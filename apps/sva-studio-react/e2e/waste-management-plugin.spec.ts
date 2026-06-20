@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 
-import { registerSharedIamRoutes } from './studio-shell.helpers';
+import { createEmptyPaginatedDataResponse } from './studio-shell.helpers';
 
 type WasteSettingsState = {
   provider: 'supabase';
@@ -151,7 +151,29 @@ const mockSharedShellRequests = async (page: Page, input: {
     });
   });
 
-  await registerSharedIamRoutes(page);
+  await page.route('**/iam/authorize', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ allowed: true, reason: 'mocked_authorize' }),
+    });
+  });
+
+  await page.route('**/iam/me/legal-texts/pending', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: createEmptyPaginatedDataResponse(),
+    });
+  });
+
+  await page.route('**/api/v1/iam/me/context', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { activeOrganizationId: null, organizations: [] } }),
+    });
+  });
 };
 
 const mockWasteFacade = async (page: Page, input: {

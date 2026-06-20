@@ -2,12 +2,6 @@
 
 Dieses Dokument beschreibt die lokale, nicht blockierende Stagehand-Schicht für explorative IAM-Admin-Läufe in `apps/sva-studio-react`.
 
-## Technische Basis
-
-- Die lokale Explorationsschicht verwendet das offizielle TypeScript-SDK `@browserbasehq/stagehand`.
-- Der aktuelle Workspace-Ausbau initialisiert Stagehand bewusst im Modus `LOCAL`, nicht über Browserbase-Cloud-Sessions.
-- Ein schmaler Adapter liegt unter `apps/sva-studio-react/stagehand/runtime/sdk.ts` und kapselt die lokalen Default-Optionen für spätere Runner-Integration.
-
 ## Zweck und Einordnung
 
 - `pnpm nx run sva-studio-react:test:explore:admin` ist ein lokaler Explorationslauf für reale IAM-Admin-Pfade.
@@ -16,9 +10,6 @@ Dieses Dokument beschreibt die lokale, nicht blockierende Stagehand-Schicht für
 
 ## Voraussetzungen
 
-- Im Workspace wurden die Abhängigkeiten einmal mit `pnpm install` aufgelöst.
-- Falls `pnpm` ausstehende Native-Builds meldet, müssen die freizugebenden Pakete explizit bestätigt werden, aktuell z. B. über `pnpm approve-builds --all`.
-- Chrome oder Chromium ist lokal installiert, weil `Stagehand` im Modus `LOCAL` einen lokalen Browser startet.
 - Die lokale Studio-App läuft und ist über die konfigurierte Base-URL erreichbar.
 - Der echte lokale IAM-/Backend-Stack ist bereit.
 - Ein gültiger `OPENAI_API_KEY` ist gesetzt, auch wenn der Pilot-Runner aktuell nur den bestehenden Env-Vertrag vorbereitet.
@@ -34,8 +25,6 @@ Dieses Dokument beschreibt die lokale, nicht blockierende Stagehand-Schicht für
   - Passwort für diese Testidentität
 - `STAGEHAND_ADMIN_MISSION`
   - optional; nur für den Legacy-Einzelmissionsmodus relevant, aktuell unterstützt nur `admin-users-overview`
-- `STAGEHAND_HEADLESS`
-  - optional; `false` oder `0` öffnet den lokalen Browser sichtbar, Standard ist `true`
 - `STAGEHAND_RUN_MODE`
   - optional; `story-loop` für den Voll-Lauf oder `mission` für den Legacy-Einzelmissionsmodus
 - `STAGEHAND_STORY_IDS`
@@ -71,7 +60,6 @@ pnpm nx run sva-studio-react:test:explore:admin
 
 - Der Runner validiert den Env-Vertrag früh und fail-closed.
 - Danach prüft er die lokale Readiness der konfigurierten Base-URL.
-- Im Legacy-Modus `mission` initialisiert der Runner anschließend eine lokale Stagehand-Browsersitzung im Modus `LOCAL`, öffnet den fachlichen Startpfad und liest den gerenderten DOM über die offizielle SDK aus.
 - Die Missionsprompts und Reports beziehen ihre fachliche Basis aus `concepts/konzeption-cms-v2/02_Anforderungen/user-stories.json`.
 - Für den aktuellen Ausbau werden die User-Stories missions- und clusterbezogen kuratiert:
   - `admin-users-overview`: Stories `18` und `19`

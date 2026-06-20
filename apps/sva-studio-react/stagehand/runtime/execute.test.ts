@@ -11,9 +11,6 @@ describe('executeStagehandAdminMission', () => {
           username: 'admin-user',
         },
         baseUrl: 'https://studio.example.test',
-        localBrowser: {
-          headless: true,
-        },
         mission: 'admin-users-overview',
         openAiApiKey: 'test-openai-key',
         runMode: 'mission',

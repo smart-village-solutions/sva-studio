@@ -16,35 +16,6 @@ function createTempReportsRoot(): string {
   return directory;
 }
 
-function createStagehandFactory(options: {
-  readonly bodyText: string;
-  readonly currentUrl?: string;
-  readonly onClose?: () => void;
-  readonly onGoto?: (url: string) => void;
-  readonly onInit?: () => void;
-}) {
-  return () => ({
-    close: async () => {
-      options.onClose?.();
-    },
-    context: {
-      pages: () => [
-        {
-          evaluate: async () => options.bodyText,
-          goto: async (url: string) => {
-            options.onGoto?.(url);
-            return undefined;
-          },
-          url: () => options.currentUrl ?? 'https://studio.example.test/admin/users',
-        },
-      ],
-    },
-    init: async () => {
-      options.onInit?.();
-    },
-  });
-}
-
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
     rmSync(directory, { force: true, recursive: true });
@@ -79,9 +50,6 @@ describe('runStagehandAdminCli', () => {
 
           throw new Error(`Unexpected URL: ${url}`);
         },
-        createStagehand: createStagehandFactory({
-          bodyText: '<main><h1>User Management</h1><table aria-label="Users table"></table></main>',
-        }),
         generatedAt: '2026-05-16T12:00:00.000Z',
         reportsRoot,
       }
@@ -183,9 +151,6 @@ describe('runStagehandAdminCli', () => {
 
           throw new Error(`Unexpected URL: ${url}`);
         },
-        createStagehand: createStagehandFactory({
-          bodyText: '<main><h1>Benutzerverwaltung</h1><table aria-label="Benutzertabelle"></table></main>',
-        }),
         generatedAt: '2026-05-16T12:00:00.000Z',
         reportsRoot,
       }
@@ -228,10 +193,6 @@ describe('runStagehandAdminCli', () => {
 
           throw new Error(`Unexpected URL: ${url}`);
         },
-        createStagehand: createStagehandFactory({
-          bodyText: '',
-          currentUrl: 'https://studio.example.test/auth/login?returnTo=%2Fadmin%2Fusers',
-        }),
         generatedAt: '2026-05-16T12:00:00.000Z',
         reportsRoot,
       }
@@ -326,9 +287,6 @@ describe('runStagehandAdminCli', () => {
 
           throw new Error(`Unexpected URL: ${url}`);
         },
-        createStagehand: createStagehandFactory({
-          bodyText: '<main><p>Keine Nutzer gefunden.</p></main>',
-        }),
         generatedAt: '2026-05-16T12:00:00.000Z',
         reportsRoot,
       }
@@ -372,10 +330,6 @@ describe('runStagehandAdminCli', () => {
 
           throw new Error(`Unexpected URL: ${url}`);
         },
-        createStagehand: createStagehandFactory({
-          bodyText: '<html><body>redirect</body></html>',
-          currentUrl: 'https://studio.example.test/somewhere-else',
-        }),
         generatedAt: '2026-05-16T12:00:00.000Z',
         reportsRoot,
       }
@@ -419,9 +373,6 @@ describe('runStagehandAdminCli', () => {
 
           throw new Error(`Unexpected URL: ${url}`);
         },
-        createStagehand: createStagehandFactory({
-          bodyText: '<main><h1>Kaputt</h1></main>',
-        }),
         generatedAt: '2026-05-16T12:00:00.000Z',
         reportsRoot,
       }
@@ -465,9 +416,6 @@ describe('runStagehandAdminCli', () => {
 
           throw new Error(`Unexpected URL: ${url}`);
         },
-        createStagehand: createStagehandFactory({
-          bodyText: '<main><h1>Dashboard</h1><p>Keine erkennbare Nutzerliste.</p></main>',
-        }),
         generatedAt: '2026-05-16T12:00:00.000Z',
         reportsRoot,
       }
@@ -579,54 +527,6 @@ describe('runStagehandAdminCli', () => {
         message: 'Invalid Stagehand admin base URL: /. Expected an absolute http(s) URL.',
       },
     });
-  });
-
-  it('initializes, navigates and closes a local Stagehand session in mission mode', async () => {
-    const reportsRoot = createTempReportsRoot();
-    const initSpy = vi.fn();
-    const gotoSpy = vi.fn();
-    const closeSpy = vi.fn();
-
-    const result = await runStagehandAdminCli(
-      {
-        STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
-        STAGEHAND_ADMIN_USERNAME: 'admin-user',
-        STAGEHAND_ADMIN_PASSWORD: 'super-secret',
-        STAGEHAND_ADMIN_MISSION: 'admin-users-overview',
-        OPENAI_API_KEY: 'test-openai-key',
-      },
-      {
-        createStagehand: createStagehandFactory({
-          bodyText: '<main><h1>User Management</h1><table aria-label="Users table"></table></main>',
-          onClose: closeSpy,
-          onGoto: gotoSpy,
-          onInit: initSpy,
-        }),
-        fetchImpl: async (input: string | URL | Request) => {
-          const url = String(input);
-
-          if (url === 'https://studio.example.test') {
-            return new Response('<html><body>ready</body></html>', { status: 200 });
-          }
-
-          if (url === 'https://studio.example.test/admin/users') {
-            return new Response('<main><h1>User Management</h1><table aria-label="Users table"></table></main>', {
-              status: 200,
-              headers: { 'content-type': 'text/html; charset=utf-8' },
-            });
-          }
-
-          throw new Error(`Unexpected URL: ${url}`);
-        },
-        generatedAt: '2026-05-16T12:00:00.000Z',
-        reportsRoot,
-      }
-    );
-
-    expect(result.exitCode).toBe(0);
-    expect(initSpy).toHaveBeenCalledTimes(1);
-    expect(gotoSpy).toHaveBeenCalledWith('https://studio.example.test/admin/users');
-    expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 
   it('returns READY JSON payload and writes an overlay in story-loop mode', async () => {

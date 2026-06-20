@@ -1,26 +1,1068 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
-import {
-  ROOT_AUTH_SESSION_FILE,
-  adminAuthPayload,
-  getRootPlaywrightBaseUrl,
-  gotoHomeAsAuthenticatedUser,
-  loadPlaywrightEnv,
-  navigateClientSide,
-  registerSharedAccountAdminRoutes,
-  resolveAuthSessionFile,
-  unauthenticatedStorageState,
-} from './account-admin-ui.helpers';
+import { createEmptyPaginatedDataResponse } from './studio-shell.helpers';
 
-loadPlaywrightEnv(process.cwd());
+const adminAuthPayload = {
+  user: {
+    id: 'kc-admin-1',
+    name: 'Admin One',
+    email: 'admin@example.com',
+    instanceId: '11111111-1111-1111-8111-111111111111',
+    roles: ['system_admin'],
+    permissionActions: [
+      'iam.user.read',
+      'iam.user.write',
+      'iam.role.read',
+      'iam.role.write',
+      'iam.org.read',
+      'iam.org.write',
+      'integration.manage',
+      'app.read',
+      'cockpit.read',
+    ],
+  },
+};
 
-test.use({
-  baseURL: getRootPlaywrightBaseUrl(process.env),
-  storageState: resolveAuthSessionFile(process.cwd(), ROOT_AUTH_SESSION_FILE),
-});
+const platformAuthPayload = {
+  user: {
+    id: 'kc-root-1',
+    name: 'Root Admin',
+    email: 'root@example.com',
+    roles: ['instance_registry_admin'],
+    permissionActions: [],
+  },
+};
+
+const privacyOverviewPayload = {
+  data: {
+    instanceId: 'de-musterhausen',
+    accountId: 'account-1',
+    requests: [
+      {
+        id: 'request-1',
+        type: 'request',
+        canonicalStatus: 'queued',
+        rawStatus: 'accepted',
+        title: 'Auskunftsanfrage',
+        summary: 'Ihre Anfrage wird vorbereitet.',
+        createdAt: '2026-03-10T09:00:00.000Z',
+        completedAt: undefined,
+        blockedReason: undefined,
+        format: undefined,
+      },
+    ],
+    exportJobs: [
+      {
+        id: 'export-1',
+        type: 'export_job',
+        canonicalStatus: 'completed',
+        rawStatus: 'completed',
+        title: 'JSON-Export',
+        summary: 'Der Export wurde erfolgreich erstellt.',
+        createdAt: '2026-03-09T08:00:00.000Z',
+        completedAt: '2026-03-09T08:05:00.000Z',
+        blockedReason: undefined,
+        format: 'json',
+      },
+    ],
+    legalHolds: [],
+    activityItems: [
+      {
+        id: 'request-1',
+        source: 'dsr',
+        type: 'request',
+        canonicalStatus: 'queued',
+        rawStatus: 'accepted',
+        title: 'Auskunftsanfrage',
+        summary: 'Ihre Anfrage wird vorbereitet.',
+        createdAt: '2026-03-10T09:00:00.000Z',
+      },
+      {
+        id: 'export-1',
+        source: 'dsr',
+        type: 'export_job',
+        canonicalStatus: 'completed',
+        rawStatus: 'completed',
+        title: 'JSON-Export',
+        summary: 'Der Export wurde erfolgreich erstellt.',
+        createdAt: '2026-03-09T08:00:00.000Z',
+        completedAt: '2026-03-09T08:05:00.000Z',
+        format: 'json',
+      },
+    ],
+    nonEssentialProcessingAllowed: false,
+    processingRestrictedAt: '2026-03-08T07:00:00.000Z',
+    processingRestrictionReason: 'pending_verification',
+    nonEssentialProcessingOptOutAt: '2026-03-07T06:00:00.000Z',
+  },
+};
+
+const privacyDetailPayload = {
+  data: {
+    id: 'request-1',
+    source: 'dsr',
+    type: 'request',
+    canonicalStatus: 'queued',
+    rawStatus: 'accepted',
+    title: 'Auskunftsanfrage',
+    summary: 'Ihre Anfrage wird vorbereitet.',
+    createdAt: '2026-03-10T09:00:00.000Z',
+    metadata: { origin: 'self_service' },
+  },
+};
+
+const deletionRulesPayload = {
+  instanceId: 'de-musterhausen',
+  lastLoginAt: '2026-03-20T10:00:00.000Z',
+  lifecycleState: 'active',
+  rules: {
+    instanceId: 'de-musterhausen',
+    deactivateAfterDays: 90,
+    pseudonymizeAfterDays: 180,
+    deleteAfterDays: 365,
+    defaultContentStrategy: 'retain',
+    allowContentPreferenceOverride: true,
+    canEdit: false,
+  },
+  contentPreference: {
+    isOverridden: false,
+    effectiveStrategy: 'retain',
+  },
+};
+
+const navigateClientSide = async (page: Page, targetPath: string) => {
+  await page.waitForFunction(() => {
+    return Boolean(
+      (
+        window as typeof window & {
+          __SVA_PLAYWRIGHT_ROUTER__?: {
+            navigate: (options: { to: string }) => Promise<void> | void;
+          };
+        }
+      ).__SVA_PLAYWRIGHT_ROUTER__
+    );
+  });
+
+  await page.evaluate(async (path) => {
+    const router = (
+      window as typeof window & {
+        __SVA_PLAYWRIGHT_ROUTER__?: {
+          navigate: (options: { to: string }) => Promise<void> | void;
+        };
+      }
+    ).__SVA_PLAYWRIGHT_ROUTER__;
+
+    if (!router) {
+      throw new Error('Playwright router hook fehlt.');
+    }
+
+    await router.navigate({ to: path });
+  }, targetPath);
+};
+
+const escapeForRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const resolveInitials = (value: string) =>
+  value
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+
+const gotoHomeAsAuthenticatedUser = async (page: Page, expectedUserName = 'Admin One') => {
+  const authMeResponse = page.waitForResponse(
+    (response) => response.request().method() === 'GET' && response.url().includes('/auth/me') && response.status() === 200
+  );
+  const expectedTriggerPattern = new RegExp(`${escapeForRegex(expectedUserName)}|${escapeForRegex(resolveInitials(expectedUserName))}`);
+
+  await page.goto('/');
+  await authMeResponse;
+  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+  await expect(page.getByRole('button', { name: expectedTriggerPattern })).toBeVisible();
+};
 
 test.beforeEach(async ({ page }) => {
-  await registerSharedAccountAdminRoutes(page);
+  await page.route('**/iam/authorize', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ allowed: true, reason: 'mocked_authorize' }),
+    });
+  });
+
+  await page.route('**/iam/me/legal-texts/pending', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: createEmptyPaginatedDataResponse(),
+    });
+  });
+
+  await page.route('**/api/v1/iam/me/context', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          activeOrganizationId: null,
+          organizations: [],
+        },
+      }),
+    });
+  });
+});
+
+test('profile page supports loading and saving own profile', async ({ page }) => {
+  test.slow();
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(adminAuthPayload),
+    });
+  });
+
+  await page.route('**/api/v1/iam/users/me/profile', async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            id: 'account-1',
+            keycloakSubject: 'kc-admin-1',
+            displayName: 'Admin One',
+            firstName: 'Admin',
+            lastName: 'One',
+            email: 'admin@example.com',
+            status: 'active',
+            roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
+            mainserverUserApplicationSecretSet: false,
+          },
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          id: 'account-1',
+          keycloakSubject: 'kc-admin-1',
+          displayName: 'Admin Updated',
+          firstName: 'Admin',
+          lastName: 'Updated',
+          email: 'admin@example.com',
+          status: 'active',
+          roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
+          mainserverUserApplicationSecretSet: false,
+        },
+      }),
+    });
+  });
+
+  await gotoHomeAsAuthenticatedUser(page);
+  await navigateClientSide(page, '/account');
+
+  await expect(page.getByRole('heading', { name: 'Mein Konto' })).toBeVisible({ timeout: 10000 });
+
+  await page.getByLabel('Nachname').fill('Updated');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+
+  await expect(page.getByText('Profil wurde erfolgreich gespeichert.')).toBeVisible();
+});
+
+test('header menu opens privacy cockpit, detail view, and account rules', async ({ page }) => {
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(adminAuthPayload),
+    });
+  });
+
+  await page.route('**/api/v1/iam/users/me/profile', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          id: 'account-1',
+          keycloakSubject: 'kc-admin-1',
+          displayName: 'Admin One',
+          firstName: 'Admin',
+          lastName: 'One',
+          email: 'admin@example.com',
+          status: 'active',
+          roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
+          mainserverUserApplicationSecretSet: false,
+        },
+      }),
+    });
+  });
+
+  await page.route('**/iam/me/data-subject-rights/requests', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(privacyOverviewPayload),
+    });
+  });
+
+  await page.route('**/iam/me/data-subject-rights/cases/*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(privacyDetailPayload),
+    });
+  });
+
+  await page.route('**/iam/me/deletion-rules', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(deletionRulesPayload),
+    });
+  });
+
+  await gotoHomeAsAuthenticatedUser(page);
+  await page.getByRole('button', { name: /Admin One/ }).click();
+  await page.getByRole('menuitem', { name: 'Datenschutz' }).click();
+
+  await expect(page).toHaveURL(/\/account\/privacy$/);
+  await expect(page.getByRole('heading', { name: 'Datenschutz & Transparenz' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('table', { name: 'Datenschutzvorgänge' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Rechteänderung beantragen' })).toBeVisible();
+
+  await page.getByRole('link', { name: 'Details' }).first().click();
+  await expect(page).toHaveURL(/\/account\/privacy\/request-1$/);
+  await expect(page.getByRole('button', { name: 'Zurück zur Datenschutzübersicht' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Zurück zur Datenschutzübersicht' }).click();
+  await expect(page).toHaveURL(/\/account\/privacy$/);
+
+  await page.getByRole('button', { name: /Admin One/ }).click();
+  await page.getByRole('menuitem', { name: 'Kontoregeln' }).click();
+  await expect(page).toHaveURL(/\/account\/rules$/);
+  await expect(page.getByRole('heading', { name: 'Kontoregeln' })).toBeVisible();
+  await expect(page.getByLabel('Regel für eigene Inhalte')).toBeVisible();
+});
+
+test('admin user list and edit page are reachable for system_admin', async ({ page }) => {
+  let updateRequestBody: Record<string, unknown> | null = null;
+
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(adminAuthPayload),
+    });
+  });
+
+  await page.route('**/api/v1/iam/users?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          {
+            id: 'account-2',
+            keycloakSubject: 'kc-user-2',
+            displayName: 'User Two',
+            email: 'user2@example.com',
+            status: 'active',
+            roles: [{ roleId: 'role-2', roleName: 'editor', roleLevel: 10 }],
+            mainserverUserApplicationSecretSet: false,
+          },
+        ],
+        pagination: {
+          page: 1,
+          pageSize: 25,
+          total: 1,
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/users/sync-keycloak', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          outcome: 'success',
+          checkedCount: 2,
+          correctedCount: 2,
+          manualReviewCount: 0,
+          importedCount: 1,
+          updatedCount: 1,
+          skippedCount: 0,
+          totalKeycloakUsers: 2,
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/users/account-2', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      updateRequestBody = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            id: 'account-2',
+            keycloakSubject: 'kc-user-2',
+            displayName: 'User Two Edited',
+            email: 'user2@example.com',
+            status: 'active',
+            roles: [{ roleId: 'role-2', roleName: 'editor', roleLevel: 10 }],
+            permissions: ['content.read'],
+            mainserverUserApplicationId: 'updated-app-id',
+            mainserverUserApplicationSecretSet: true,
+          },
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          id: 'account-2',
+          keycloakSubject: 'kc-user-2',
+          displayName: 'User Two',
+          email: 'user2@example.com',
+          status: 'active',
+          roles: [{ roleId: 'role-2', roleName: 'editor', roleLevel: 10 }],
+          permissions: ['content.read'],
+          mainserverUserApplicationId: 'existing-app-id',
+          mainserverUserApplicationSecretSet: true,
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/roles', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          {
+            id: 'role-2',
+            roleName: 'editor',
+            isSystemRole: false,
+            roleLevel: 10,
+            memberCount: 2,
+            permissions: [],
+          },
+        ],
+        pagination: {
+          page: 1,
+          pageSize: 1,
+          total: 1,
+        },
+      }),
+    });
+  });
+
+  await gotoHomeAsAuthenticatedUser(page);
+  const usersResponsePromise = page.waitForResponse(
+    (response) => response.url().includes('/api/v1/iam/users?') && response.status() === 200
+  );
+  await navigateClientSide(page, '/admin/users');
+  await usersResponsePromise;
+  await expect(page.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Benutzertabelle' })).toContainText('User Two');
+  await page.getByRole('button', { name: 'Aus Keycloak synchronisieren' }).dispatchEvent('click');
+  await expect(page.getByText(/2 geprüft: 2 korrigiert, 0 manuell prüfen/)).toBeVisible();
+
+  const userDetailResponsePromise = page.waitForResponse(
+    (response) => response.url().includes('/api/v1/iam/users/account-2') && response.status() === 200
+  );
+  await navigateClientSide(page, '/admin/users/account-2');
+  await userDetailResponsePromise;
+  await expect(page.getByRole('heading', { name: 'User Two' })).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Verwaltung' }).click();
+  await page.getByLabel('Mainserver Application-ID').fill('updated-app-id');
+  await page.getByLabel('Mainserver Application-Secret').fill('new-secret');
+  await page.getByRole('button', { name: 'Änderungen speichern' }).click();
+
+  await expect
+    .poll(() => updateRequestBody)
+    .toEqual(
+      expect.objectContaining({
+        mainserverUserApplicationId: 'updated-app-id',
+        mainserverUserApplicationSecret: 'new-secret',
+      })
+    );
+  await expect(page.getByText('Nutzerdaten wurden gespeichert.')).toBeVisible();
+  await expect(page.getByText('Ein Secret ist bereits hinterlegt.')).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Berechtigungen' }).click();
+  await expect(page.getByText('content.read')).toBeVisible();
+});
+
+test('tenant admin mutations fail closed in the browser when the admin client contract is missing', async ({ page }) => {
+  const registryAdminAuthPayload = {
+    user: {
+      ...adminAuthPayload.user,
+      roles: ['system_admin', 'instance_registry_admin'],
+    },
+  };
+
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(registryAdminAuthPayload),
+    });
+  });
+
+  await page.route('**/api/v1/iam/instances/demo', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          instanceId: 'demo',
+          displayName: 'Demo',
+          status: 'requested',
+          parentDomain: 'studio.example.org',
+          primaryHostname: 'demo.studio.example.org',
+          realmMode: 'existing',
+          authRealm: 'demo',
+          authClientId: 'sva-studio',
+          authClientSecretConfigured: true,
+          tenantAdminClient: {
+            clientId: 'sva-studio-admin',
+            secretConfigured: true,
+          },
+          hostnames: [],
+          provisioningRuns: [],
+          auditEvents: [],
+          tenantAdminBootstrap: {
+            username: 'demo-admin',
+            email: 'demo@example.org',
+          },
+          keycloakPreflight: {
+            overallStatus: 'ready',
+            checkedAt: '2026-04-12T10:00:00.000Z',
+            generatedAt: '2026-04-12T10:00:00.000Z',
+            checks: [],
+          },
+          keycloakPlan: {
+            mode: 'existing',
+            overallStatus: 'ready',
+            generatedAt: '2026-04-12T10:00:00.000Z',
+            driftSummary: 'Kein Drift.',
+            steps: [],
+          },
+          keycloakProvisioningRuns: [],
+          keycloakStatus: {
+            realmExists: true,
+            clientExists: true,
+            tenantAdminClientExists: true,
+            tenantAdminExists: true,
+            tenantAdminHasSystemAdmin: true,
+            tenantAdminHasInstanceRegistryAdmin: false,
+            redirectUrisMatch: true,
+            logoutUrisMatch: true,
+            webOriginsMatch: true,
+            clientSecretConfigured: true,
+            tenantClientSecretReadable: true,
+            clientSecretAligned: true,
+            tenantAdminClientSecretConfigured: true,
+            tenantAdminClientSecretReadable: true,
+            tenantAdminClientSecretAligned: true,
+            runtimeSecretSource: 'tenant',
+          },
+          latestKeycloakProvisioningRun: null,
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/instances/demo/keycloak/preflight', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          overallStatus: 'ready',
+          checkedAt: '2026-04-12T10:00:00.000Z',
+          generatedAt: '2026-04-12T10:00:00.000Z',
+          checks: [],
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/instances/demo/keycloak/status', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          tenantAdminHasInstanceRegistryAdmin: false,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: true,
+          tenantAdminClientSecretReadable: true,
+          tenantAdminClientSecretAligned: true,
+          runtimeSecretSource: 'tenant',
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/roles', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          {
+            id: 'role-2',
+            roleName: 'editor',
+            isSystemRole: false,
+            roleLevel: 10,
+            memberCount: 2,
+            permissions: [],
+          },
+        ],
+        pagination: {
+          page: 1,
+          pageSize: 1,
+          total: 1,
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/groups', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [],
+        pagination: {
+          page: 1,
+          pageSize: 0,
+          total: 0,
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/users/account-2', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: {
+            code: 'tenant_admin_client_not_configured',
+            message: 'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt.',
+          },
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          id: 'account-2',
+          keycloakSubject: 'kc-user-2',
+          displayName: 'User Two',
+          email: 'user2@example.com',
+          status: 'active',
+          roles: [{ roleId: 'role-2', roleName: 'editor', roleLevel: 10 }],
+          groups: [],
+          permissions: ['content.read'],
+          permissionTrace: [],
+          mainserverUserApplicationSecretSet: false,
+        },
+      }),
+    });
+  });
+
+  await gotoHomeAsAuthenticatedUser(page);
+  await navigateClientSide(page, '/admin/instances/demo');
+
+  await expect(page.getByRole('heading', { name: 'Instanzdetails' })).toBeVisible({ timeout: 10000 });
+  await page.getByRole('tab', { name: 'Einstellungen' }).click();
+  await expect(page.locator('#detail-auth-client-id')).toHaveValue('sva-studio');
+  await expect(page.locator('#detail-admin-username')).toHaveValue('demo-admin');
+
+  await navigateClientSide(page, '/admin/users/account-2');
+
+  await expect(page.getByRole('heading', { name: 'User Two' })).toBeVisible({ timeout: 10000 });
+  await page.getByRole('tab', { name: 'Verwaltung' }).click();
+  await page.getByLabel('Mainserver Application-ID').fill('updated-app-id');
+  await page.getByRole('button', { name: 'Änderungen speichern' }).click();
+
+  await expect(
+    page.getByText('Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Bitte zuerst den Instanzvertrag abgleichen.')
+  ).toBeVisible();
+});
+
+test('root control plane exposes tenant IAM reconcile for platform admins', async ({ page }) => {
+  const instanceDetail = {
+    instanceId: 'demo',
+    displayName: 'Demo',
+    status: 'requested',
+    parentDomain: 'studio.example.org',
+    primaryHostname: 'demo.studio.example.org',
+    realmMode: 'existing',
+    authRealm: 'demo',
+    authClientId: 'sva-studio',
+    authClientSecretConfigured: true,
+    tenantAdminClient: {
+      clientId: 'sva-studio-admin',
+      secretConfigured: true,
+    },
+    hostnames: [],
+    assignedModules: ['news'],
+    provisioningRuns: [],
+    auditEvents: [],
+    tenantAdminBootstrap: {
+      username: 'demo-admin',
+      email: 'demo@example.org',
+    },
+    keycloakPreflight: {
+      overallStatus: 'ready',
+      checkedAt: '2026-06-05T10:00:00.000Z',
+      generatedAt: '2026-06-05T10:00:00.000Z',
+      checks: [],
+    },
+    keycloakPlan: {
+      mode: 'existing',
+      overallStatus: 'ready',
+      generatedAt: '2026-06-05T10:00:00.000Z',
+      driftSummary: 'Tenant-IAM-Reconcile empfohlen.',
+      steps: [],
+    },
+    keycloakProvisioningRuns: [],
+    keycloakStatus: {
+      realmExists: true,
+      clientExists: true,
+      tenantAdminClientExists: true,
+      tenantAdminExists: true,
+      tenantAdminHasSystemAdmin: true,
+      tenantAdminHasInstanceRegistryAdmin: false,
+      redirectUrisMatch: true,
+      logoutUrisMatch: true,
+      webOriginsMatch: true,
+      clientSecretConfigured: true,
+      tenantClientSecretReadable: true,
+      clientSecretAligned: true,
+      tenantAdminClientSecretConfigured: true,
+      tenantAdminClientSecretReadable: true,
+      tenantAdminClientSecretAligned: true,
+      runtimeSecretSource: 'tenant',
+    },
+    latestKeycloakProvisioningRun: {
+      id: 'kc-run-1',
+      intent: 'reconcile',
+      mode: 'existing',
+      overallStatus: 'planned',
+      driftSummary: 'Legacy-Admin-Artefakte müssen bereinigt werden.',
+      requestId: 'req-reconcile-1',
+      steps: [],
+    },
+    tenantIamStatus: {
+      configuration: {
+        status: 'ready',
+        summary: 'Tenant-IAM-Struktur ist vollständig vorhanden.',
+        source: 'registry',
+      },
+      access: {
+        status: 'ready',
+        summary: 'Tenant-IAM-Zugriff ist verifiziert.',
+        source: 'access_probe',
+      },
+      reconcile: {
+        status: 'degraded',
+        summary: '1 Legacy-Admin-Artefakt erfordert manuelle Bereinigung.',
+        source: 'role_reconcile',
+      },
+      overall: {
+        status: 'degraded',
+        summary: 'Tenant-IAM ist eingeschränkt.',
+        source: 'role_reconcile',
+      },
+    },
+  };
+
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(platformAuthPayload),
+    });
+  });
+
+  const fulfillInstanceList = async (route: Parameters<Parameters<typeof page.route>[1]>[0]) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          {
+            instanceId: 'demo',
+            displayName: 'Demo',
+            status: 'requested',
+            parentDomain: 'studio.example.org',
+            primaryHostname: 'demo.studio.example.org',
+            realmMode: 'existing',
+            authRealm: 'demo',
+            authClientId: 'sva-studio',
+            hostnames: [],
+          },
+        ],
+        pagination: {
+          page: 1,
+          pageSize: 1,
+          total: 1,
+        },
+      }),
+    });
+  };
+
+  await page.route('**/api/v1/iam/instances', fulfillInstanceList);
+  await page.route('**/api/v1/iam/instances?**', fulfillInstanceList);
+
+  await page.route('**/api/v1/iam/instances/demo', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: instanceDetail }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/instances/demo/keycloak/status', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: instanceDetail.keycloakStatus }),
+    });
+  });
+
+  await gotoHomeAsAuthenticatedUser(page, 'Root Admin');
+  await navigateClientSide(page, '/admin/instances/demo');
+
+  await expect(page.getByRole('heading', { name: 'Instanzdetails' })).toBeVisible({ timeout: 10000 });
+  await page.getByRole('tab', { name: 'Einstellungen' }).click();
+  await expect(page.locator('#detail-auth-client-id')).toHaveValue('sva-studio');
+  await expect(page.locator('#detail-admin-username')).toHaveValue('demo-admin');
+});
+
+test('instance create flow bootstraps tenant admin structure with selected modules', async ({ page }) => {
+  let createRequestBody: Record<string, unknown> | null = null;
+  let bootstrapRequestBody: Record<string, unknown> | null = null;
+
+  const createdInstance = {
+    instanceId: 'demo',
+    displayName: 'Demo',
+    status: 'requested',
+    parentDomain: 'studio.example.org',
+    primaryHostname: 'demo.studio.example.org',
+    realmMode: 'new',
+    authRealm: 'demo',
+    authClientId: 'tenant-client',
+    authClientSecretConfigured: false,
+    hostnames: [],
+  };
+
+  const bootstrappedInstance = {
+    ...createdInstance,
+    assignedModules: ['news', 'events'],
+    provisioningRuns: [],
+    keycloakProvisioningRuns: [],
+    auditEvents: [],
+  };
+
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(platformAuthPayload),
+    });
+  });
+
+  const fulfillInstanceList = async (route: Parameters<Parameters<typeof page.route>[1]>[0]) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [bootstrappedInstance],
+        pagination: {
+          page: 1,
+          pageSize: 1,
+          total: 1,
+        },
+      }),
+    });
+  };
+
+  await page.route('**/api/v1/iam/instances', fulfillInstanceList);
+  await page.route('**/api/v1/iam/instances?**', fulfillInstanceList);
+
+  await page.route('**/api/v1/iam/instances/demo', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          ...bootstrappedInstance,
+          tenantAdminClient: {
+            clientId: 'sva-studio-realm-admin',
+            secretConfigured: true,
+          },
+          keycloakStatus: {
+            realmExists: true,
+            clientExists: true,
+            tenantAdminClientExists: true,
+            tenantAdminExists: true,
+            tenantAdminHasSystemAdmin: true,
+            tenantAdminHasInstanceRegistryAdmin: false,
+            redirectUrisMatch: true,
+            logoutUrisMatch: true,
+            webOriginsMatch: true,
+            clientSecretConfigured: true,
+            tenantClientSecretReadable: true,
+            clientSecretAligned: true,
+            tenantAdminClientSecretConfigured: true,
+            tenantAdminClientSecretReadable: true,
+            tenantAdminClientSecretAligned: true,
+            runtimeSecretSource: 'tenant',
+          },
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/instances/demo/keycloak/status', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          tenantAdminHasInstanceRegistryAdmin: false,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: true,
+          tenantAdminClientSecretReadable: true,
+          tenantAdminClientSecretAligned: true,
+          runtimeSecretSource: 'tenant',
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/instances', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.fallback();
+      return;
+    }
+
+    createRequestBody = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: createdInstance }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/instances/demo/modules/bootstrap-admin-structure', async (route) => {
+    bootstrapRequestBody = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: bootstrappedInstance }),
+    });
+  });
+
+  await gotoHomeAsAuthenticatedUser(page, 'Root Admin');
+  await navigateClientSide(page, '/admin/instances/new');
+
+  await expect(page.getByRole('heading', { name: 'Neue Instanz anlegen' })).toBeVisible({ timeout: 10000 });
+
+  await page.locator('#instance-id').fill('demo');
+  await page.locator('#instance-display-name').fill('Demo');
+  await page.locator('#instance-parent-domain').fill('studio.example.org');
+  await page.getByRole('button', { name: 'Weiter' }).click();
+
+  await page.locator('#instance-auth-realm').fill('demo');
+  await page.locator('#instance-auth-client-id').fill('tenant-client');
+  await page.getByRole('button', { name: 'Weiter' }).click();
+
+  await page.locator('#instance-admin-username').fill('setup-admin');
+  await page.locator('#instance-admin-email').fill('admin@example.org');
+  await page.getByRole('button', { name: 'Weiter' }).click();
+
+  await page.getByRole('button', { name: 'Instanz anlegen' }).click();
+
+  await expect
+    .poll(() => createRequestBody)
+    .toEqual(
+      expect.objectContaining({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        authRealm: 'demo',
+        authClientId: 'tenant-client',
+      })
+    );
+
+  await page.getByRole('link', { name: 'Setup abschließen' }).click();
+  await expect(page.getByRole('heading', { name: 'Setup abschließen' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' })).toBeVisible();
+
+  await page.getByRole('checkbox', { name: /News/u }).check();
+  await page.getByRole('checkbox', { name: /Events/u }).check();
+  await page.getByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' }).click();
+
+  await expect
+    .poll(() => bootstrapRequestBody)
+    .toEqual({
+      moduleIds: ['news', 'events'],
+    });
+
+  await expect(
+    page.getByText('Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Der Setup-Schritt ist damit abgeschlossen.')
+  ).toBeVisible();
 });
 
 test('admin links are hidden for non-admin user and route guard redirects', async ({ page }) => {
@@ -28,7 +1070,15 @@ test('admin links are hidden for non-admin user and route guard redirects', asyn
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ user: { id: 'kc-editor-1', name: 'Editor User', email: 'editor@example.com', instanceId: '11111111-1111-1111-8111-111111111111', roles: ['editor'] } }),
+      body: JSON.stringify({
+        user: {
+          id: 'kc-editor-1',
+          name: 'Editor User',
+          email: 'editor@example.com',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          roles: ['editor'],
+        },
+      }),
     });
   });
 
@@ -42,32 +1092,47 @@ test('admin links are hidden for non-admin user and route guard redirects', asyn
   await expect(page.getByRole('heading', { name: /SVA Studio/i })).toBeVisible();
 });
 
-test.describe('unauthenticated admin access', () => {
-  test.use({ storageState: unauthenticatedStorageState });
-
-  test('direct access to admin users redirects unauthenticated clients to login', async ({ request }) => {
-    const response = await request.get('/admin/users', { maxRedirects: 0 });
-    if ([302, 303, 307, 308].includes(response.status())) {
-      expect(response.headers().location).toMatch(
-        /(\/\?auth=login&returnTo=%2Fadmin%2Fusers|\/auth\/login\?returnTo=%2Fadmin%2Fusers|\/protocol\/openid-connect\/auth(?:\?|$)|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth)|\/\?auth=(?:mock-login|dev-login)(?:$|&))/,
-      );
-      return;
-    }
-
-    expect(response.status()).toBe(200);
-    await expect(response.text()).resolves.toContain('Benutzerverwaltung');
+test('direct access to admin users redirects unauthenticated clients to login', async ({ request }) => {
+  const response = await request.get('/admin/users', {
+    maxRedirects: 0,
   });
+
+  if ([302, 303, 307, 308].includes(response.status())) {
+    expect(response.headers().location).toMatch(
+      /(\/\?auth=login&returnTo=%2Fadmin%2Fusers|\/auth\/login\?returnTo=%2Fadmin%2Fusers|\/protocol\/openid-connect\/auth(?:\?|$)|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth)|\/\?auth=(?:mock-login|dev-login)(?:$|&))/
+    );
+    return;
+  }
+
+  expect(response.status()).toBe(200);
+  await expect(response.text()).resolves.toContain('Benutzerverwaltung');
 });
 
 test('responsive IAM views render on mobile, tablet, desktop', async ({ page }) => {
   await page.route('**/auth/me', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(adminAuthPayload) });
-  });
-  await page.route('**/api/v1/iam/users?**', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], pagination: { page: 1, pageSize: 25, total: 0 } }) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(adminAuthPayload),
+    });
   });
 
-  for (const viewport of [{ width: 320, height: 800 }, { width: 768, height: 1024 }, { width: 1024, height: 768 }]) {
+  await page.route('**/api/v1/iam/users?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [],
+        pagination: { page: 1, pageSize: 25, total: 0 },
+      }),
+    });
+  });
+
+  for (const viewport of [
+    { width: 320, height: 800 },
+    { width: 768, height: 1024 },
+    { width: 1024, height: 768 },
+  ]) {
     await page.setViewportSize(viewport);
     await gotoHomeAsAuthenticatedUser(page);
     await navigateClientSide(page, '/admin/users');
@@ -77,31 +1142,88 @@ test('responsive IAM views render on mobile, tablet, desktop', async ({ page }) 
 
 test('direct iam users api call returns forbidden for non-admin user', async ({ page }) => {
   await page.route('**/api/v1/iam/users', async (route) => {
-    await route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ error: { code: 'forbidden', message: 'missing_admin_role' } }) });
+    await route.fulfill({
+      status: 403,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: {
+          code: 'forbidden',
+          message: 'missing_admin_role',
+        },
+      }),
+    });
   });
 
   await page.goto('/');
-  const statusCode = await page.evaluate(async () => (await fetch('/api/v1/iam/users', { credentials: 'include' })).status);
+  const statusCode = await page.evaluate(async () => {
+    const response = await fetch('/api/v1/iam/users', {
+      credentials: 'include',
+    });
+    return response.status;
+  });
+
   expect(statusCode).toBe(403);
 });
 
 test('csrf header is required for mutating iam endpoints', async ({ page }) => {
   await page.route('**/api/v1/iam/users/me/profile', async (route) => {
     const csrfHeader = route.request().headers()['x-requested-with'];
+    if (csrfHeader === 'XMLHttpRequest') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            id: 'account-1',
+            keycloakSubject: 'kc-admin-1',
+            displayName: 'Admin One',
+            status: 'active',
+            roles: [],
+            mainserverUserApplicationSecretSet: false,
+          },
+        }),
+      });
+      return;
+    }
+
     await route.fulfill({
-      status: csrfHeader === 'XMLHttpRequest' ? 200 : 403,
+      status: 403,
       contentType: 'application/json',
-      body: JSON.stringify(
-        csrfHeader === 'XMLHttpRequest'
-          ? { data: { id: 'account-1', keycloakSubject: 'kc-admin-1', displayName: 'Admin One', status: 'active', roles: [], mainserverUserApplicationSecretSet: false } }
-          : { error: { code: 'csrf_validation_failed', message: 'missing_header' } },
-      ),
+      body: JSON.stringify({
+        error: {
+          code: 'csrf_validation_failed',
+          message: 'missing_header',
+        },
+      }),
     });
   });
 
   await page.goto('/');
-  const statusWithoutCsrf = await page.evaluate(async () => (await fetch('/api/v1/iam/users/me/profile', { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: 'NoHeader' }) })).status);
-  const statusWithCsrf = await page.evaluate(async () => (await fetch('/api/v1/iam/users/me/profile', { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({ firstName: 'WithHeader' }) })).status);
+
+  const statusWithoutCsrf = await page.evaluate(async () => {
+    const response = await fetch('/api/v1/iam/users/me/profile', {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ firstName: 'NoHeader' }),
+    });
+    return response.status;
+  });
   expect(statusWithoutCsrf).toBe(403);
+
+  const statusWithCsrf = await page.evaluate(async () => {
+    const response = await fetch('/api/v1/iam/users/me/profile', {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify({ firstName: 'WithHeader' }),
+    });
+    return response.status;
+  });
   expect(statusWithCsrf).toBe(200);
 });

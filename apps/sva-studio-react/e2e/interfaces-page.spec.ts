@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-import { registerSharedIamRoutes } from './studio-shell.helpers';
+import { createEmptyPaginatedDataResponse } from './studio-shell.helpers';
 
 type RecordedServerFnResponse = {
   body: string;
@@ -70,7 +70,34 @@ const mockAuthenticatedInterfacesShell = async (page: Page) => {
     });
   });
 
-  await registerSharedIamRoutes(page);
+  await page.route('**/iam/authorize', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ allowed: true, reason: 'mocked_authorize' }),
+    });
+  });
+
+  await page.route('**/iam/me/legal-texts/pending', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: createEmptyPaginatedDataResponse(),
+    });
+  });
+
+  await page.route('**/api/v1/iam/me/context', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          activeOrganizationId: null,
+          organizations: [],
+        },
+      }),
+    });
+  });
 };
 
 test('interfaces page uses the real /_server transport for overview load', async ({ page }) => {

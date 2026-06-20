@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-import { navigateClientSide, registerSharedIamRoutes } from './studio-shell.helpers';
+import { createEmptyPaginatedDataResponse } from './studio-shell.helpers';
 
 type RecordedServerFnResponse = {
   body: string;
@@ -106,7 +106,34 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
     });
   });
 
-  await registerSharedIamRoutes(page);
+  await page.route('**/iam/authorize', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ allowed: true, reason: 'mocked_authorize' }),
+    });
+  });
+
+  await page.route('**/iam/me/legal-texts/pending', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: createEmptyPaginatedDataResponse(),
+    });
+  });
+
+  await page.route('**/api/v1/iam/me/context', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          activeOrganizationId: null,
+          organizations: [],
+        },
+      }),
+    });
+  });
 
   await page.route('**/api/v1/mainserver/news**', async (route) => {
     await route.fulfill({
@@ -225,6 +252,24 @@ test('interfaces page uses the real /_server transport during overview load', as
   expect(pageErrors).toEqual([]);
 });
 
+const navigateWithPlaywrightRouter = async (page: Page, to: string) => {
+  await page.evaluate(async (target) => {
+    const router = (
+      window as typeof window & {
+        __SVA_PLAYWRIGHT_ROUTER__?: {
+          navigate: (options: { to: string }) => Promise<void> | void;
+        };
+      }
+    ).__SVA_PLAYWRIGHT_ROUTER__;
+
+    if (!router) {
+      throw new Error('Playwright router hook fehlt.');
+    }
+
+    await router.navigate({ to: target });
+  }, to);
+};
+
 test('authenticated client navigation to /admin/content renders the host-owned content route', async ({ page }) => {
   const pageErrors: string[] = [];
   const consoleErrors: string[] = [];
@@ -256,7 +301,7 @@ test('authenticated client navigation to /admin/content renders the host-owned c
   expect(response?.status()).toBeLessThan(400);
   await expectInterfacesShellReady(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
-  await navigateClientSide(page, '/admin/content');
+  await navigateWithPlaywrightRouter(page, '/admin/content');
   await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
   await expect(page.getByRole('heading', { name: 'Inhalte', exact: true })).toBeVisible();
 });
@@ -280,16 +325,16 @@ test('GET /auth/login returns redirect response', async ({ request }) => {
 test('tenant-host login fails closed when canonical auth redirect prerequisites are unavailable', async ({ request }) => {
   const playwrightPort = process.env.PLAYWRIGHT_PORT ?? '4173';
   const tenantLoginUrl = process.env.PLAYWRIGHT_TENANT_LOGIN_URL
-    ?? `http://demo2.studio.localhost:${playwrightPort}/auth/login?returnTo=%2Fadmin%2Finstances`;
+    ?? `http://demo2.studio.lvh.me:${playwrightPort}/auth/login?returnTo=%2Fadmin%2Finstances`;
   const parsedTenantLoginUrl = new URL(tenantLoginUrl);
   const requestUrl =
-    parsedTenantLoginUrl.hostname === 'demo2.studio.localhost'
+    parsedTenantLoginUrl.hostname === 'demo2.studio.lvh.me'
       ? new URL(`${parsedTenantLoginUrl.pathname}${parsedTenantLoginUrl.search}`, `http://127.0.0.1:${playwrightPort}`).toString()
       : tenantLoginUrl;
 
   const response = await request.get(requestUrl, {
     headers:
-      parsedTenantLoginUrl.hostname === 'demo2.studio.localhost'
+      parsedTenantLoginUrl.hostname === 'demo2.studio.lvh.me'
         ? {
             host: parsedTenantLoginUrl.host,
           }
@@ -338,9 +383,9 @@ test('router keeps the shell active during client-side navigation', async ({ pag
   await page.goto('/interfaces');
   await expectInterfacesShellReady(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
-  await navigateClientSide(page, '/admin/content');
+  await navigateWithPlaywrightRouter(page, '/admin/content');
   await expect(page.getByRole('heading', { name: 'Inhalte', exact: true })).toBeVisible();
-  await navigateClientSide(page, '/interfaces');
+  await navigateWithPlaywrightRouter(page, '/interfaces');
   await expect(page).toHaveURL(/\/interfaces$/);
   await expectInterfacesShellReady(page);
   expect(pageErrors).toEqual([]);

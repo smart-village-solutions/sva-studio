@@ -1,14 +1,8 @@
-import { fileURLToPath } from 'node:url';
-
-import { getDeMusterhausenPlaywrightBaseUrl, loadPlaywrightEnv } from '../src/lib/playwright-auth-session-config';
-
-const appRoot = fileURLToPath(new URL('../', import.meta.url));
-loadPlaywrightEnv(appRoot);
-
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const waitForAppRoute = async (): Promise<void> => {
-  const baseURL = getDeMusterhausenPlaywrightBaseUrl(process.env);
+  const configuredPort = process.env.PLAYWRIGHT_PORT ?? '4173';
+  const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${configuredPort}`;
   const readyURL = new URL('/auth/login', baseURL).toString();
   let lastError: unknown;
 

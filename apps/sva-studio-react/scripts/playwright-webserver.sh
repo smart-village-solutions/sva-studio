@@ -4,9 +4,9 @@ set -eu
 
 PORT="${1:?port required}"
 
-: "${SVA_PARENT_DOMAIN:=studio.localhost}"
-: "${SVA_PUBLIC_BASE_URL:=http://studio.localhost:${PORT}}"
-: "${SVA_MOCK_AUTH:=false}"
+: "${SVA_PARENT_DOMAIN:=studio.lvh.me}"
+: "${SVA_PUBLIC_BASE_URL:=http://studio.lvh.me:${PORT}}"
+: "${SVA_MOCK_AUTH:=true}"
 : "${PLAYWRIGHT_TEST:=true}"
 : "${VITE_PLAYWRIGHT_TEST:=true}"
 

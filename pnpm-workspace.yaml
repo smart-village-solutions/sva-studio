@@ -14,8 +14,6 @@ trustPolicyExclude:
   - semver@6.3.1
 blockExoticSubdeps: true
 allowBuilds:
-  '@google/genai': true
-  bufferutil: true
   esbuild: true
   msw: false
   nx@22.7.1 || 22.7.4: true
@@ -38,8 +36,6 @@ overrides:
   solid-js: "1.9.11"
   seroval: "1.4.2"
   "@types/node@22>undici-types": "6.18.2"
-  pino: "9.12.0"
-  slow-redact: "0.3.1"
 
 packages:
   - apps/*

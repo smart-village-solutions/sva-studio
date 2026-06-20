@@ -18,9 +18,6 @@ describe('parseStagehandAdminConfig', () => {
         password: 'super-secret',
       },
       baseUrl: 'https://studio.example.test/admin',
-      localBrowser: {
-        headless: true,
-      },
       mission: 'admin-users-overview',
       openAiApiKey: 'test-openai-key',
       runMode: 'mission',
@@ -48,9 +45,6 @@ describe('parseStagehandAdminConfig', () => {
         password: 'fallback-password',
       },
       baseUrl: 'https://iam.example.test',
-      localBrowser: {
-        headless: true,
-      },
       mission: 'admin-users-overview',
       openAiApiKey: 'fallback-openai-key',
       runMode: 'mission',
@@ -69,7 +63,6 @@ describe('parseStagehandAdminConfig', () => {
       STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
       STAGEHAND_ADMIN_USERNAME: 'admin-user',
       STAGEHAND_ADMIN_PASSWORD: 'super-secret',
-      STAGEHAND_HEADLESS: 'false',
       STAGEHAND_RUN_MODE: 'story-loop',
       STAGEHAND_STORY_IDS: '18, 19, 37',
       STAGEHAND_STORY_PACKAGE_IDS: 'IAM-P2, IAM-P5',
@@ -90,9 +83,6 @@ describe('parseStagehandAdminConfig', () => {
         password: 'super-secret',
       },
       baseUrl: 'https://studio.example.test',
-      localBrowser: {
-        headless: false,
-      },
       mission: 'admin-users-overview',
       openAiApiKey: 'test-openai-key',
       runMode: 'story-loop',
@@ -146,18 +136,6 @@ describe('parseStagehandAdminConfig', () => {
     });
 
     expect(config.mission).toBe('admin-users-overview');
-  });
-
-  it('rejects invalid headless values deterministically', () => {
-    expect(() =>
-      parseStagehandAdminConfig({
-        STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
-        STAGEHAND_ADMIN_USERNAME: 'admin-user',
-        STAGEHAND_ADMIN_PASSWORD: 'super-secret',
-        STAGEHAND_HEADLESS: 'visible',
-        OPENAI_API_KEY: 'test-openai-key',
-      })
-    ).toThrowError('Invalid Stagehand headless flag: visible. Expected one of: true, false, 1, 0, yes, no');
   });
 
   it('throws a deterministic error listing missing required env keys', () => {

@@ -1,17 +1,9 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
 
-import {
-  DE_MUSTERHAUSEN_AUTH_SESSION_FILE,
-  getDeMusterhausenPlaywrightBaseUrl,
-  loadPlaywrightEnv,
-  resolveAuthSessionFile,
-} from './src/lib/playwright-auth-session-config';
-
 const appRoot = fileURLToPath(new URL('./', import.meta.url));
-loadPlaywrightEnv(appRoot);
-
-const baseURL = getDeMusterhausenPlaywrightBaseUrl(process.env);
+const configuredPort = process.env.PLAYWRIGHT_PORT ?? '4173';
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${configuredPort}`;
 const webServerReadyURL = new URL('/@vite/client', baseURL).toString();
 const parsedBaseURL = new URL(baseURL);
 const webServerPort = parsedBaseURL.port || (parsedBaseURL.protocol === 'https:' ? '443' : '80');
@@ -28,29 +20,6 @@ export default defineConfig({
   outputDir: './test-results',
   reporter: process.env.CI ? [['html', { open: 'never', outputFolder: 'playwright-report' }], ['list']] : 'list',
   globalSetup: './e2e/global-setup.ts',
-  projects: [
-    {
-      name: 'auth-setup',
-      testMatch: /auth\.setup\.ts/,
-    },
-    {
-      name: 'chromium',
-      dependencies: ['auth-setup'],
-      testIgnore: /auth\.setup\.ts/,
-      use: {
-        storageState: resolveAuthSessionFile(appRoot, DE_MUSTERHAUSEN_AUTH_SESSION_FILE),
-      },
-    },
-    {
-      name: 'firefox-smoke',
-      dependencies: ['auth-setup'],
-      testMatch: /real-auth\.cross-browser\.spec\.ts/,
-      use: {
-        browserName: 'firefox',
-        storageState: resolveAuthSessionFile(appRoot, DE_MUSTERHAUSEN_AUTH_SESSION_FILE),
-      },
-    },
-  ],
   use: {
     baseURL,
     trace: 'retain-on-failure',

@@ -7,7 +7,7 @@ afterEach(() => {
 });
 
 describe('renderQuantumDeployProject', () => {
-  it('validates the rendered compose document against the resolved remote app service', () => {
+  it('validates the rendered compose document against the compose app service key', () => {
     const assertComposeServiceNetworks = vi.fn(() => ({ labels: {}, networks: ['internal', 'public'] }));
     const assertComposeServiceIngressLabels = vi.fn();
 
@@ -38,7 +38,7 @@ describe('renderQuantumDeployProject', () => {
       rootDir: '/repo',
       run: vi.fn(),
       runBootstrapJobAgainstAcceptance: vi.fn(),
-      runCapture: vi.fn(() => JSON.stringify({ services: { 'studio-app': {} } })),
+      runCapture: vi.fn(() => JSON.stringify({ services: { app: {} } })),
       runCaptureDetailed: vi.fn(),
       runMigrationJobAgainstAcceptance: vi.fn(),
       runQuantumExec: vi.fn(),
@@ -48,8 +48,8 @@ describe('renderQuantumDeployProject', () => {
       withoutDebugEnv: vi.fn(),
     }, { SVA_RUNTIME_PROFILE: 'studio' });
 
-    expect(assertComposeServiceNetworks).toHaveBeenCalledWith({ services: { 'studio-app': {} } }, 'studio-app', ['internal', 'public']);
-    expect(assertComposeServiceIngressLabels).toHaveBeenCalledWith({ services: { 'studio-app': {} } }, 'studio-app');
+    expect(assertComposeServiceNetworks).toHaveBeenCalledWith({ services: { app: {} } }, 'app', ['internal', 'public']);
+    expect(assertComposeServiceIngressLabels).toHaveBeenCalledWith({ services: { app: {} } }, 'app');
 
     project.cleanup();
   });

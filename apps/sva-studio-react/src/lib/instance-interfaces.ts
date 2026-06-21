@@ -4,7 +4,7 @@ import type {
 } from '@sva/core';
 import type { SvaMainserverConnectionStatus } from '@sva/sva-mainserver';
 
-export type InstanceInterfaceType = 'mainserver' | 's3' | 'supabase' | 'mailTransport';
+export type InstanceInterfaceType = 'mainserver' | 's3' | 'supabase' | 'mailTransport' | 'mapGeocoding';
 
 export type InstanceInterfaceStatus = 'connected' | 'error' | 'disabled' | 'unknown';
 
@@ -41,6 +41,20 @@ export type InstanceInterfaceMailTransportConfig = Readonly<{
   rateLimitPerMinute: string;
 }>;
 
+export type InstanceInterfaceMapGeocodingConfig = Readonly<{
+  provider: 'geoapify' | 'custom';
+  styleUrl: string;
+  autocompleteEnabled: boolean;
+  geocodeEnabled: boolean;
+  reverseGeocodeEnabled: boolean;
+  suggestEndpoint: string;
+  geocodeEndpoint: string;
+  reverseGeocodeEndpoint: string;
+  requestTimeoutMs: string;
+  rateLimitPerMinute: string;
+  killSwitchEnabled: boolean;
+}>;
+
 type InstanceInterfaceBase = Readonly<{
   id: string;
   instanceId: string;
@@ -74,17 +88,24 @@ export type InstanceInterfaceMailTransport = InstanceInterfaceBase & Readonly<{
   config: InstanceInterfaceMailTransportConfig;
 }>;
 
+export type InstanceInterfaceMapGeocoding = InstanceInterfaceBase & Readonly<{
+  type: 'mapGeocoding';
+  config: InstanceInterfaceMapGeocodingConfig;
+}>;
+
 export type InstanceInterface =
   | InstanceInterfaceMainserver
   | InstanceInterfaceS3
   | InstanceInterfaceSupabase
-  | InstanceInterfaceMailTransport;
+  | InstanceInterfaceMailTransport
+  | InstanceInterfaceMapGeocoding;
 
 export type InstanceInterfaceDraft =
   | { type: 'mainserver'; name: string; enabled: boolean; config: InstanceInterfaceMainserverConfig }
   | { type: 's3'; name: string; enabled: boolean; config: InstanceInterfaceS3Config & { secretAccessKey: string } }
   | { type: 'supabase'; name: string; enabled: boolean; config: InstanceInterfaceSupabaseConfig & { serviceRoleKey: string } }
-  | { type: 'mailTransport'; name: string; enabled: boolean; config: InstanceInterfaceMailTransportConfig & { password: string } };
+  | { type: 'mailTransport'; name: string; enabled: boolean; config: InstanceInterfaceMailTransportConfig & { password: string } }
+  | { type: 'mapGeocoding'; name: string; enabled: boolean; config: InstanceInterfaceMapGeocodingConfig & { apiKey: string } };
 
 export const instanceInterfaceTypeMeta: Record<InstanceInterfaceType, { titleKey: string; descriptionKey: string }> = {
   mainserver: {
@@ -102,6 +123,10 @@ export const instanceInterfaceTypeMeta: Record<InstanceInterfaceType, { titleKey
   mailTransport: {
     titleKey: 'interfaces.types.mailTransport.label',
     descriptionKey: 'interfaces.types.mailTransport.description',
+  },
+  mapGeocoding: {
+    titleKey: 'interfaces.types.mapGeocoding.label',
+    descriptionKey: 'interfaces.types.mapGeocoding.description',
   },
 };
 
@@ -149,6 +174,27 @@ export const createEmptyInstanceInterfaceDraft = (
         defaultReplyToEmail: '',
         maxBatchSize: '',
         rateLimitPerMinute: '',
+      },
+    };
+  }
+  if (type === 'mapGeocoding') {
+    return {
+      type: 'mapGeocoding',
+      name: 'Karte & Geocoding',
+      enabled: true,
+      config: {
+        provider: 'geoapify',
+        styleUrl: 'https://tileserver-gl.smart-village.app/styles/osm-bright/',
+        autocompleteEnabled: true,
+        geocodeEnabled: true,
+        reverseGeocodeEnabled: true,
+        suggestEndpoint: '',
+        geocodeEndpoint: '',
+        reverseGeocodeEndpoint: '',
+        requestTimeoutMs: '3000',
+        rateLimitPerMinute: '60',
+        killSwitchEnabled: false,
+        apiKey: '',
       },
     };
   }

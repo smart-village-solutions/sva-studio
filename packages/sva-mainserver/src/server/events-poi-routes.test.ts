@@ -512,6 +512,144 @@ describe('mainserver content route contracts', () => {
     );
   });
 
+  it('creates POI with structured editor-owned sections without dropping nested fields', async () => {
+    mockAuthorizedMutation();
+    state.createSvaMainserverPoi.mockResolvedValue({ id: 'poi-structured-1' });
+
+    const response = await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: ' Stadtpark ',
+          addresses: [
+            {
+              addition: ' Nordtor ',
+              street: 'Parkallee 1',
+              zip: '12345',
+              city: 'Musterhausen',
+              kind: 'visit',
+              geoLocation: { latitude: '52.5', longitude: '13.4' },
+            },
+          ],
+          contact: {
+            firstName: 'Anna',
+            lastName: 'Muster',
+            phone: '+49 30 1234',
+            fax: '+49 30 5555',
+            email: 'park@example.invalid',
+            webUrls: [{ url: 'https://example.invalid/contact', description: ' Kontakt ' }],
+          },
+          openingHours: [
+            { weekday: 'MO', dateFrom: '2026-06-01', dateTo: '2026-09-30', timeFrom: '08:00', timeTo: '18:00', open: true, description: ' Sommer ' },
+            { weekday: 'TU', timeFrom: '09:00', timeTo: '17:00', open: false, description: ' Winter ' },
+          ],
+          priceInformations: [
+            { name: ' Erwachsene ', amount: '12.5', description: ' Eintritt ', category: 'adult' },
+            { name: ' Kinder ', amount: 7.5, category: 'child' },
+          ],
+          operatingCompany: {
+            name: ' Stadtwerke ',
+            address: { street: 'Betriebshof 1', city: 'Musterhausen' },
+            contact: { email: 'betrieb@example.invalid' },
+          },
+          mediaContents: [
+            {
+              captionText: ' Parkplan ',
+              copyright: ' Stadt ',
+              contentType: 'image',
+              sourceUrl: { url: 'https://example.invalid/park.jpg', description: ' Karte ' },
+            },
+          ],
+          location: {
+            name: ' Stadtpark ',
+            district: ' Mitte ',
+            regionName: 'Region',
+            geoLocation: { latitude: 52.6, longitude: 13.5 },
+          },
+          certificates: [{ name: ' Familienfreundlich ' }],
+          accessibilityInformation: {
+            description: ' Stufenlos ',
+            types: 'wheelchair',
+            urls: [{ url: 'https://example.invalid/accessibility', description: ' Details ' }],
+          },
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(201);
+    expect(state.createSvaMainserverPoi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        poi: expect.objectContaining({
+          addresses: [
+            {
+              addition: 'Nordtor',
+              street: 'Parkallee 1',
+              zip: '12345',
+              city: 'Musterhausen',
+              kind: 'visit',
+              geoLocation: { latitude: 52.5, longitude: 13.4 },
+            },
+          ],
+          contact: {
+            firstName: 'Anna',
+            lastName: 'Muster',
+            phone: '+49 30 1234',
+            fax: '+49 30 5555',
+            email: 'park@example.invalid',
+            webUrls: [{ url: 'https://example.invalid/contact', description: 'Kontakt' }],
+          },
+          openingHours: [
+            {
+              weekday: 'MO',
+              dateFrom: '2026-06-01',
+              dateTo: '2026-09-30',
+              timeFrom: '08:00',
+              timeTo: '18:00',
+              open: true,
+              description: 'Sommer',
+            },
+            {
+              weekday: 'TU',
+              timeFrom: '09:00',
+              timeTo: '17:00',
+              open: false,
+              description: 'Winter',
+            },
+          ],
+          priceInformations: [
+            { name: 'Erwachsene', amount: 12.5, description: 'Eintritt', category: 'adult' },
+            { name: 'Kinder', amount: 7.5, category: 'child' },
+          ],
+          operatingCompany: {
+            name: 'Stadtwerke',
+            address: { street: 'Betriebshof 1', city: 'Musterhausen' },
+            contact: { email: 'betrieb@example.invalid' },
+          },
+          mediaContents: [
+            {
+              captionText: 'Parkplan',
+              copyright: 'Stadt',
+              contentType: 'image',
+              sourceUrl: { url: 'https://example.invalid/park.jpg', description: 'Karte' },
+            },
+          ],
+          location: {
+            name: 'Stadtpark',
+            district: 'Mitte',
+            regionName: 'Region',
+            geoLocation: { latitude: 52.6, longitude: 13.5 },
+          },
+          certificates: [{ name: 'Familienfreundlich' }],
+          accessibilityInformation: {
+            description: 'Stufenlos',
+            types: 'wheelchair',
+            urls: [{ url: 'https://example.invalid/accessibility', description: 'Details' }],
+          },
+        }),
+      })
+    );
+  });
+
   it('deletes event and POI items after delete authorization', async () => {
     mockAuthorizedMutation();
     state.deleteSvaMainserverEvent.mockResolvedValue({ id: 'event-1', deleted: true });

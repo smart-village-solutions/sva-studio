@@ -63,5 +63,6 @@ export default defineConfig({
   },
   test: {
     coverage: sharedCoverageConfig,
+    exclude: ['.worktrees/**'],
   },
 });

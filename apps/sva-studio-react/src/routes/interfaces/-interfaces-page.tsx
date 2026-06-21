@@ -44,6 +44,9 @@ const getInterfaceEndpoint = (entry: InstanceInterface): string => {
   if (entry.type === 'supabase') {
     return entry.config.projectUrl || '-';
   }
+  if (entry.type === 'mapGeocoding') {
+    return entry.config.suggestEndpoint || entry.config.geocodeEndpoint || entry.config.styleUrl || '-';
+  }
   return entry.config.host || '-';
 };
 

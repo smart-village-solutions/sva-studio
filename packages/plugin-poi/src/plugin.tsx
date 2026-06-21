@@ -28,6 +28,11 @@ export const pluginPoiMediaPickers = {
     allowedMediaTypes: ['image'],
     presetKey: 'teaser',
   }),
+  attachments: defineMediaPickerDefinition({
+    roles: ['attachment_image'],
+    allowedMediaTypes: ['image'],
+    presetKey: 'gallery',
+  }),
 } as const;
 
 export const pluginPoi: PluginDefinition = createStandardContentPluginDefinition({

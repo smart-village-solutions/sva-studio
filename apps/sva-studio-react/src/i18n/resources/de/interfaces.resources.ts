@@ -89,6 +89,11 @@ export const interfacesDEResources = {
       description:
         'Zentrale technische SMTP-Anbindung für transaktionale Zustellung.',
     },
+    mapGeocoding: {
+      label: 'Karte & Geocoding',
+      description:
+        'Tenant-eigene Karten- und Geocoding-Konfiguration für Adresseingabe, Koordinaten und Kartenstil.',
+    },
   },
   create: {
     action: 'Neue Schnittstelle',
@@ -149,6 +154,23 @@ export const interfacesDEResources = {
       defaultReplyToEmail: 'Standard-Reply-To',
       maxBatchSize: 'Maximale Batch-Größe',
       rateLimitPerMinute: 'Rate-Limit pro Minute',
+    },
+    mapGeocoding: {
+      provider: 'Provider',
+      providerOptions: {
+        custom: 'Benutzerdefiniert',
+      },
+      styleUrl: 'Style-URL',
+      suggestEndpoint: 'Suggest-Endpoint',
+      geocodeEndpoint: 'Geocode-Endpoint',
+      reverseGeocodeEndpoint: 'Reverse-Geocode-Endpoint',
+      apiKey: 'API-Key',
+      requestTimeoutMs: 'Timeout in ms',
+      rateLimitPerMinute: 'Rate-Limit pro Minute',
+      autocompleteEnabled: 'Autocomplete aktivieren',
+      geocodeEnabled: 'Geocoding aktivieren',
+      reverseGeocodeEnabled: 'Reverse-Geocoding aktivieren',
+      killSwitchEnabled: 'Kill-Switch aktivieren',
     },
   },
 } as const;

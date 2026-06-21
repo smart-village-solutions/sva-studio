@@ -14,4 +14,29 @@ describe('validatePoiForm', () => {
   it('requires a name and https urls', () => {
     expect(validatePoiForm({ name: '', webUrls: [{ url: 'http://example.test' }] })).toEqual(['name', 'webUrls']);
   });
+
+  it('validates structured geo, price, operator, and contact web url fields', () => {
+    expect(
+      validatePoiForm({
+        name: 'Stadtpark',
+        addresses: [{ geoLocation: { latitude: 91, longitude: 13 } }],
+        location: { geoLocation: { latitude: 52.5, longitude: 181 } },
+        contact: {
+          email: 'park@example.test',
+          webUrls: [{ url: 'http://example.test/contact' }],
+        },
+        operatingCompany: {
+          name: 'Stadtwerke',
+          contact: { webUrls: [{ url: 'http://example.test/operator' }] },
+        },
+        priceInformations: [{ name: 'Erwachsene', amount: Number.NaN }],
+      })
+    ).toEqual([
+      'addresses',
+      'location',
+      'contact.webUrls',
+      'operatingCompany.contact.webUrls',
+      'priceInformations',
+    ]);
+  });
 });

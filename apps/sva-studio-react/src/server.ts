@@ -64,6 +64,9 @@ let dispatchMainserverPoiRequestPromise:
 let dispatchMainserverCategoriesRequestPromise:
   | Promise<typeof import('./lib/mainserver-categories-api.server')['dispatchMainserverCategoriesRequest']>
   | null = null;
+let dispatchMapGeocodingRequestPromise:
+  | Promise<typeof import('./lib/map-geocoding-api.server')['dispatchMapGeocodingRequest']>
+  | null = null;
 let pluginOperationHandlerRegistrationPromise: Promise<void> | null = null;
 let pluginOperationWorkerBootstrapPromise: Promise<void> | null = null;
 const getSdk = async (): Promise<RequestContextSdk> => {
@@ -120,6 +123,13 @@ const getDispatchMainserverCategoriesRequest = async () => {
     (mod) => mod.dispatchMainserverCategoriesRequest
   );
   return dispatchMainserverCategoriesRequestPromise;
+};
+
+const getDispatchMapGeocodingRequest = async () => {
+  dispatchMapGeocodingRequestPromise ??= import('./lib/map-geocoding-api.server').then(
+    (mod) => mod.dispatchMapGeocodingRequest
+  );
+  return dispatchMapGeocodingRequestPromise;
 };
 
 const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
@@ -253,6 +263,16 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       status: mainserverCategoriesResponse.status,
     });
     return mainserverCategoriesResponse;
+  }
+
+  const dispatchMapGeocodingRequest = await getDispatchMapGeocodingRequest();
+  const mapGeocodingResponse = await dispatchMapGeocodingRequest(request);
+
+  if (mapGeocodingResponse) {
+    await logServerEntryDebug('Server entry map geocoding route dispatched', {
+      status: mapGeocodingResponse.status,
+    });
+    return mapGeocodingResponse;
   }
 
   if (studioJobWorkerEnabled) {

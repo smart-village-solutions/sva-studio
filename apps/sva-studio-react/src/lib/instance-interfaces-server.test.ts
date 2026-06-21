@@ -353,6 +353,78 @@ describe('instance-interfaces-server', () => {
     );
   });
 
+  it('persists map geocoding interfaces with public runtime config and encrypted api keys', async () => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
+    let savedRecord: Record<string, unknown> | null = null;
+    state.saveExternalInterfaceRecord.mockImplementation(async (record: Record<string, unknown>) => {
+      savedRecord = record;
+    });
+    state.loadExternalInterfaceRecordById.mockImplementation(async () => {
+      if (!savedRecord) {
+        return null;
+      }
+
+      return {
+        ...savedRecord,
+        createdAt: '2026-05-12T08:00:00.000Z',
+        updatedAt: '2026-05-12T08:00:00.000Z',
+      };
+    });
+
+    const { upsertStoredInterface } = await import('./instance-interfaces-server');
+
+    await expect(
+      upsertStoredInterface('de-test', {
+        type: 'mapGeocoding',
+        name: 'POI-Karte',
+        enabled: true,
+        config: {
+          provider: 'geoapify',
+          styleUrl: 'https://tiles.example/styles/poi',
+          autocompleteEnabled: true,
+          geocodeEnabled: true,
+          reverseGeocodeEnabled: true,
+          suggestEndpoint: 'https://host.example/suggest',
+          geocodeEndpoint: 'https://host.example/geocode',
+          reverseGeocodeEndpoint: 'https://host.example/reverse',
+          requestTimeoutMs: '2500',
+          rateLimitPerMinute: '90',
+          killSwitchEnabled: false,
+          apiKey: 'geoapify-key',
+        },
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        type: 'mapGeocoding',
+      })
+    );
+
+    expect(state.saveExternalInterfaceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        typeKey: 'map_geocoding',
+        category: 'api',
+        authMode: 'api_key',
+        statusCheckKind: 'map_geocoding',
+        publicConfig: expect.objectContaining({
+          provider: 'geoapify',
+          styleUrl: 'https://tiles.example/styles/poi',
+          suggestEndpoint: 'https://host.example/suggest',
+          geocodeEndpoint: 'https://host.example/geocode',
+          reverseGeocodeEndpoint: 'https://host.example/reverse',
+          requestTimeoutMs: 2500,
+          rateLimitPerMinute: 90,
+          killSwitchEnabled: false,
+        }),
+        secretConfigCiphertext: expect.any(String),
+      })
+    );
+
+    const persisted = state.saveExternalInterfaceRecord.mock.calls[0]?.[0];
+    expect(persisted?.secretConfigCiphertext).toBe(
+      `iam.instance_external_interfaces.secret_config:${persisted?.id}:{"apiKey":"geoapify-key"}`
+    );
+  });
+
   it('preserves waste-specific supabase public config fields on interface updates', async () => {
     state.loadExternalInterfaceRecordById.mockResolvedValue({
       id: 'existing-supabase-id',
@@ -694,6 +766,36 @@ describe('instance-interfaces-server', () => {
       expect.objectContaining({
         status: 'unknown',
         statusMessage: 'S3-Verbindungsprüfung ausstehend.',
+      })
+    );
+
+    expect(
+      checkStoredInterfaceHealth({
+        id: 'map-1',
+        instanceId: 'de-test',
+        type: 'mapGeocoding',
+        name: 'POI-Karte',
+        enabled: true,
+        config: {
+          provider: 'geoapify',
+          styleUrl: '',
+          autocompleteEnabled: true,
+          geocodeEnabled: true,
+          reverseGeocodeEnabled: true,
+          suggestEndpoint: '',
+          geocodeEndpoint: '',
+          reverseGeocodeEndpoint: '',
+          requestTimeoutMs: '2500',
+          rateLimitPerMinute: '90',
+          killSwitchEnabled: false,
+        },
+        createdAt: '2026-05-12T08:00:00.000Z',
+        updatedAt: '2026-05-12T08:00:00.000Z',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        status: 'error',
+        statusMessage: expect.stringContaining('Style-URL erforderlich'),
       })
     );
   });

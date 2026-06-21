@@ -43,6 +43,11 @@ export const interfacesENResources = {
       description:
         'Central technical SMTP integration for transactional delivery.',
     },
+    mapGeocoding: {
+      label: 'Map & geocoding',
+      description:
+        'Tenant-owned map and geocoding configuration for address input, coordinates, and map styling.',
+    },
   },
   form: {
     sectionTitle: 'Mainserver settings',
@@ -91,6 +96,23 @@ export const interfacesENResources = {
       defaultReplyToEmail: 'Default reply-to',
       maxBatchSize: 'Maximum batch size',
       rateLimitPerMinute: 'Rate limit per minute',
+    },
+    mapGeocoding: {
+      provider: 'Provider',
+      providerOptions: {
+        custom: 'Custom',
+      },
+      styleUrl: 'Style URL',
+      suggestEndpoint: 'Suggest endpoint',
+      geocodeEndpoint: 'Geocode endpoint',
+      reverseGeocodeEndpoint: 'Reverse geocode endpoint',
+      apiKey: 'API key',
+      requestTimeoutMs: 'Timeout in ms',
+      rateLimitPerMinute: 'Rate limit per minute',
+      autocompleteEnabled: 'Enable autocomplete',
+      geocodeEnabled: 'Enable geocoding',
+      reverseGeocodeEnabled: 'Enable reverse geocoding',
+      killSwitchEnabled: 'Enable kill switch',
     },
   },
   actions: {

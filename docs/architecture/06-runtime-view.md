@@ -822,3 +822,11 @@ Fehlerpfad:
 
 - Bei fehlender `SVA_PARENT_DOMAIN` (Entwicklungsmodus) wird die Host-Validierung übersprungen.
 - Bei lokalen oder migrationsbezogenen Fallback-Pfaden bricht die App bei ungültigen Einträgen in `SVA_ALLOWED_INSTANCE_IDS` weiterhin fail-fast ab.
+
+### Ergänzung 2026-06: POI-Ort- und Medienfluss
+
+1. Redaktion öffnet `/admin/poi/$id` oder den Create-Pfad; `PoiDetailPage` lädt POI-Daten, Host-Media-Assets und bestehende Media-Referenzen getrennt.
+2. Im Bereich `Ort` fragt der Browser zunächst die hostseitige Map-Konfiguration ab und verwendet danach nur die normierten IAM-Endpunkte für Adresssuche oder Reverse-Geocoding.
+3. Ein übernommener Treffer synchronisiert Adressfelder sowie Koordinaten; Geocoding-Fehler bleiben lokal im Bereich und blockieren den restlichen Editor nicht.
+4. Im Bereich `Medien & Dateien` startet ein Upload den Host-Flow `initialize -> signed PUT -> complete`; danach wird die Asset-Liste neu geladen und als Referenz auswählbar gemacht.
+5. Beim Speichern persistiert der Editor den strukturierten POI-Write-Pfad zuerst im Mainserver und schreibt anschließend die Host-Media-Referenzen für Teaser und zusätzliche Medien.

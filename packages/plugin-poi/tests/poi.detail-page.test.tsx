@@ -1,6 +1,6 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { listHostMediaReferencesByTarget, registerPluginTranslationResolver } from '@sva/plugin-sdk';
+import { listHostMediaAssets, listHostMediaReferencesByTarget, registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPoi, deletePoi, getPoi, updatePoi } from '../src/poi.api.js';
 
@@ -18,12 +18,26 @@ vi.mock('../src/poi.api.js', () => ({
   updatePoi: vi.fn(),
 }));
 
+vi.mock('../src/poi.location-map.js', () => ({
+  PoiLocationMap: () => <div data-testid="poi-location-map" />,
+}));
+
 vi.mock('@sva/plugin-sdk', async () => {
   const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
   return {
     ...actual,
+    getHostMapGeocodingConfig: vi.fn(async () => ({
+      provider: 'geoapify',
+      styleUrl: 'https://tiles.example/styles/poi',
+      autocompleteEnabled: false,
+      geocodeEnabled: true,
+      reverseGeocodeEnabled: true,
+      killSwitchEnabled: false,
+    })),
+    suggestHostMapAddresses: vi.fn(async () => []),
     listHostMediaAssets: vi.fn(async () => []),
     listHostMediaReferencesByTarget: vi.fn(async () => []),
+    uploadHostMediaFile: vi.fn(async () => ({ assetId: 'uploaded-asset', uploadSessionId: 'upload-1' })),
     replaceHostMediaReferences: (...args: Parameters<typeof replaceHostMediaReferencesMock>) =>
       replaceHostMediaReferencesMock(...args),
   };
@@ -35,9 +49,21 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 describe('PoiDetailPage', () => {
+  const switchSection = (value: string) => {
+    fireEvent.change(screen.getByLabelText('Bereich'), { target: { value } });
+  };
+
   beforeEach(() => {
     navigateMock.mockReset();
     replaceHostMediaReferencesMock.mockClear();
+    vi.mocked(createPoi).mockReset();
+    vi.mocked(deletePoi).mockReset();
+    vi.mocked(getPoi).mockReset();
+    vi.mocked(updatePoi).mockReset();
+    vi.mocked(listHostMediaAssets).mockReset();
+    vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockReset();
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([] as never);
     vi.unstubAllGlobals();
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
@@ -46,26 +72,75 @@ describe('PoiDetailPage', () => {
         'poi.actions.save': 'Speichern',
         'poi.actions.delete': 'Löschen',
         'poi.detailTabs.basis.title': 'Basis',
-        'poi.detailTabs.content.title': 'Inhalt',
-        'poi.detailTabs.settings.title': 'Einstellungen',
+        'poi.detailTabs.location.title': 'Ort',
+        'poi.detailTabs.description.title': 'Beschreibung',
+        'poi.detailTabs.contact.title': 'Kontakt',
+        'poi.detailTabs.openingHours.title': 'Öffnungszeiten',
+        'poi.detailTabs.links.title': 'Links',
+        'poi.detailTabs.operator.title': 'Betreiber',
+        'poi.detailTabs.prices.title': 'Preise',
+        'poi.detailTabs.media.title': 'Medien & Dateien',
+        'poi.detailTabs.advanced.title': 'Erweiterte Daten',
         'poi.detailTabs.history.title': 'Historie',
         'poi.tabs.mobileLabel': 'Bereich',
         'poi.tabs.ariaLabel': 'Bereiche',
-        'poi.cards.content.descriptions.title': 'Beschreibungen',
-        'poi.cards.content.contact.title': 'Kontakt',
-        'poi.cards.content.location.title': 'Lage und Adresse',
-        'poi.cards.content.openingHours.title': 'Öffnungszeiten',
-        'poi.cards.content.links.title': 'Weblinks',
-        'poi.cards.content.payload.title': 'Zusatzdaten',
+        'poi.cards.location.address.title': 'Lage und Adresse',
+        'poi.cards.location.address.description': 'Adressdaten',
+        'poi.cards.location.coordinates.title': 'Koordinaten',
+        'poi.cards.location.coordinates.description': 'Geo-Daten',
+        'poi.cards.location.map.title': 'Karte',
+        'poi.cards.location.map.description': 'Marker setzen',
+        'poi.cards.location.search.title': 'Adresssuche',
+        'poi.cards.location.search.description': 'Adresse suchen und übernehmen',
+        'poi.cards.description.text.title': 'Beschreibungen',
+        'poi.cards.description.text.description': 'Texte',
+        'poi.cards.contact.primary.title': 'Kontakt',
+        'poi.cards.contact.primary.description': 'Kontaktfelder',
+        'poi.cards.openingHours.entries.title': 'Öffnungszeiten',
+        'poi.cards.openingHours.entries.description': 'Zeitfenster',
+        'poi.cards.links.entries.title': 'Weblinks',
+        'poi.cards.links.entries.description': 'Weblinks',
+        'poi.cards.operator.details.title': 'Betreiber',
+        'poi.cards.operator.details.description': 'Betriebsdaten',
+        'poi.cards.prices.entries.title': 'Preise',
+        'poi.cards.prices.entries.description': 'Preisangaben',
+        'poi.cards.media.references.title': 'Medien',
+        'poi.cards.media.references.description': 'Teaserbild und Dateien',
+        'poi.cards.advanced.payload.title': 'Zusatzdaten',
+        'poi.cards.advanced.payload.description': 'Payload und Zusatzfelder',
         'poi.fields.name': 'Name',
+        'poi.fields.street': 'Straße',
+        'poi.fields.city': 'Ort',
+        'poi.fields.zip': 'PLZ',
+        'poi.fields.addressSearch': 'Adresse suchen',
+        'poi.fields.searchResults': 'Suchergebnisse',
+        'poi.fields.latitude': 'Breitengrad',
+        'poi.fields.longitude': 'Längengrad',
+        'poi.fields.description': 'Beschreibung',
+        'poi.fields.mobileDescription': 'Mobile Beschreibung',
         'poi.fields.url': 'URL',
+        'poi.fields.email': 'E-Mail',
+        'poi.fields.weekday': 'Wochentag',
         'poi.fields.payload': 'Payload',
         'poi.messages.validationError': 'Bitte Eingaben prüfen.',
         'poi.history.empty.title': 'Noch keine Historie verfügbar.',
         'poi.messages.createSuccess': 'POI erstellt.',
         'poi.messages.updateSuccess': 'POI aktualisiert.',
         'poi.messages.deleteError': 'POI konnte nicht gelöscht werden.',
+        'poi.messages.locationSearchError': 'Adresssuche nicht verfügbar.',
+        'poi.messages.locationSearchEmpty': 'Keine Treffer gefunden.',
+        'poi.messages.locationMapUnavailable': 'Karte deaktiviert.',
+        'poi.messages.locationMapError': 'Karte nicht verfügbar.',
         'poi.actions.deleteConfirm': 'Wirklich löschen?',
+        'poi.actions.searchAddress': 'Adresse suchen',
+        'poi.actions.applySearchResult': 'Übernehmen',
+        'poi.actions.reverseGeocode': 'Adresse aus Koordinaten übernehmen',
+        'poi.actions.reverseGeocoding': 'Adresse wird ermittelt',
+        'poi.actions.uploadMedia': 'Medium hochladen',
+        'poi.actions.uploadingMedia': 'Medium wird hochgeladen',
+        'poi.fields.attachmentAsset': 'Weiteres Medium',
+        'poi.messages.mediaUploadError': 'Upload fehlgeschlagen.',
+        'poi.messages.mediaUploadSuccess': 'Upload erfolgreich.',
       };
 
       return labels[key] ?? key;
@@ -83,29 +158,60 @@ describe('PoiDetailPage', () => {
       expect(screen.getByRole('tab', { name: 'Basis' })).toBeTruthy();
     });
 
-    expect(screen.getByRole('tab', { name: 'Inhalt' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Einstellungen' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Ort' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Beschreibung' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Kontakt' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Öffnungszeiten' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Links' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Betreiber' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Preise' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Medien & Dateien' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Erweiterte Daten' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Historie' })).toBeTruthy();
   });
 
-  it('shows poi-specific cards inside the content tab', async () => {
+  it('shows the new task-oriented editor sections', async () => {
     render(<PoiDetailPage mode="create" />);
 
-    fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+    await screen.findByRole('tab', { name: 'Ort' });
+    switchSection('location');
 
-    expect(screen.getByText('Beschreibungen')).toBeTruthy();
-    expect(screen.getByText('Kontakt')).toBeTruthy();
-    expect(screen.getByText('Lage und Adresse')).toBeTruthy();
-    expect(screen.getByText('Öffnungszeiten')).toBeTruthy();
-    expect(screen.getByText('Weblinks')).toBeTruthy();
-    expect(screen.getByText('Zusatzdaten')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByLabelText('Straße')).toBeTruthy();
+      expect(screen.getByLabelText('Breitengrad')).toBeTruthy();
+    });
+
+    switchSection('description');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Mobile Beschreibung')).toBeTruthy();
+    });
+
+    switchSection('contact');
+    await waitFor(() => {
+      expect(screen.getByLabelText('E-Mail')).toBeTruthy();
+    });
+
+    switchSection('openingHours');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Wochentag')).toBeTruthy();
+    });
+
+    switchSection('links');
+    await waitFor(() => {
+      expect(screen.getByLabelText('URL')).toBeTruthy();
+    });
+
+    switchSection('advanced');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Payload')).toBeTruthy();
+    });
   });
 
   it('renders a global save action and a history placeholder for poi', async () => {
     render(<PoiDetailPage mode="create" />);
 
     expect(await screen.findByRole('button', { name: 'Speichern' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('tab', { name: 'Historie' }));
+    switchSection('history');
     expect(screen.getByText('Noch keine Historie verfügbar.')).toBeTruthy();
   });
 
@@ -134,8 +240,10 @@ describe('PoiDetailPage', () => {
   it('blocks submission on invalid payload json and invalid https links', async () => {
     render(<PoiDetailPage mode="create" />);
 
-    fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+    await screen.findByRole('tab', { name: 'Links' });
+    switchSection('links');
     fireEvent.change(screen.getByLabelText('URL'), { target: { value: 'http://example.com/poi' } });
+    switchSection('advanced');
     fireEvent.change(screen.getByLabelText('Payload'), { target: { value: '{' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
@@ -143,7 +251,7 @@ describe('PoiDetailPage', () => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
     });
 
-    expect(screen.getByDisplayValue('http://example.com/poi')).toBeTruthy();
+    expect(screen.getByLabelText('Payload')).toBeTruthy();
   });
 
   it('keeps the basis tab active when the name is missing', async () => {
@@ -161,7 +269,7 @@ describe('PoiDetailPage', () => {
     render(<PoiDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
-    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    switchSection('links');
     fireEvent.change(await screen.findByLabelText('URL'), { target: { value: 'http://invalid.example' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
@@ -217,6 +325,52 @@ describe('PoiDetailPage', () => {
         ],
       });
       expect(screen.getByText('POI aktualisiert.')).toBeTruthy();
+    });
+  });
+
+  it('persists teaser and attachment references together on save', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      payload: {},
+    } as never);
+    vi.mocked(listHostMediaAssets).mockResolvedValueOnce([
+      { id: 'asset-1', metadata: { title: 'Teaser' } },
+      { id: 'asset-2', metadata: { title: 'Bestehend' } },
+      { id: 'asset-3', metadata: { title: 'Neu' } },
+    ] as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
+      { id: 'reference-1', assetId: 'asset-1', role: 'teaser_image' },
+      { id: 'reference-2', assetId: 'asset-2', role: 'attachment_image', sortOrder: 1 },
+    ] as never);
+    vi.mocked(updatePoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+    } as never);
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
+    });
+
+    switchSection('media');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Weiteres Medium')).toBeTruthy();
+    });
+    fireEvent.change(screen.getByLabelText('Weiteres Medium'), { target: { value: 'asset-3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(replaceHostMediaReferencesMock).toHaveBeenCalledWith({
+        fetch: expect.any(Function),
+        targetType: 'poi',
+        targetId: 'poi-1',
+        references: [
+          { assetId: 'asset-1', role: 'teaser_image', sortOrder: 0 },
+          { assetId: 'asset-3', role: 'attachment_image', sortOrder: 0 },
+        ],
+      });
     });
   });
 

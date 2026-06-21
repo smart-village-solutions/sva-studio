@@ -425,3 +425,8 @@ Referenzen:
    - Impact: mittel (Admin-UI bleibt trotz vereinfachter Gates erklärungsbedürftig)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Fachbereiche strikt über `Modulzuweisung + namespace.read` sichtbar machen, kanonische punktgetrennte Permission-IDs zentralisieren und Modul-/Rollen-Semantik im UI explizit erklären
+
+33. Verfügbarkeit externer Karten-Styles und Tile-Endpunkte im neuen POI-Ort-Bereich
+   - Impact: mittel (Marker-Interaktion bleibt lokal funktionsfähig, aber die Kartenansicht kann visuell degradiert sein)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Host-seitige Kill-Switch- und Observability-Pfade aktiv halten, Style-Endpoint überwachen und UI-Fallback auf manuelle Koordinatenpflege beibehalten

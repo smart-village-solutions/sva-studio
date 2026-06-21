@@ -10,13 +10,20 @@ import type {
   SvaMainserverPoiInput,
 } from '../types.js';
 import {
+  parseAccessibilityInformation,
   errorJson,
   isResponse,
   json,
   matchRequestRoute,
   parseAddressList,
+  parseCertificates,
   parseCategories,
   parseContact,
+  parseLocation,
+  parseMediaContents,
+  parseOpeningHours,
+  parseOperatingCompany,
+  parsePrices,
   parseJsonObjectBody,
   parseTags,
   parseWebUrls,
@@ -57,7 +64,14 @@ const buildPoiInput = (input: {
   categories: SvaMainserverPoiInput['categories'] | undefined;
   addresses: SvaMainserverPoiInput['addresses'] | undefined;
   contact: ReturnType<typeof parseContact> extends Response | infer T | undefined ? T | undefined : never;
+  priceInformations: SvaMainserverPoiInput['priceInformations'] | undefined;
+  openingHours: SvaMainserverPoiInput['openingHours'] | undefined;
+  operatingCompany: SvaMainserverPoiInput['operatingCompany'] | undefined;
   webUrls: SvaMainserverPoiInput['webUrls'] | undefined;
+  mediaContents: SvaMainserverPoiInput['mediaContents'] | undefined;
+  location: SvaMainserverPoiInput['location'] | undefined;
+  certificates: SvaMainserverPoiInput['certificates'] | undefined;
+  accessibilityInformation: SvaMainserverPoiInput['accessibilityInformation'] | undefined;
   tags: readonly string[] | undefined;
 }): SvaMainserverPoiInput => ({
   name: input.name,
@@ -71,7 +85,14 @@ const buildPoiInput = (input: {
   ...(input.categories ? { categories: input.categories } : {}),
   ...(input.addresses ? { addresses: input.addresses } : {}),
   ...(input.contact ? { contact: input.contact } : {}),
+  ...(input.priceInformations ? { priceInformations: input.priceInformations } : {}),
+  ...(input.openingHours ? { openingHours: input.openingHours } : {}),
+  ...(input.operatingCompany ? { operatingCompany: input.operatingCompany } : {}),
   ...(input.webUrls ? { webUrls: input.webUrls } : {}),
+  ...(input.mediaContents ? { mediaContents: input.mediaContents } : {}),
+  ...(input.location ? { location: input.location } : {}),
+  ...(input.certificates ? { certificates: input.certificates } : {}),
+  ...(input.accessibilityInformation ? { accessibilityInformation: input.accessibilityInformation } : {}),
   ...(input.tags ? { tags: input.tags } : {}),
 });
 
@@ -88,7 +109,14 @@ const parsePoiInput = async (request: Request): Promise<SvaMainserverPoiInput | 
   const categories = parseCategories(body.categories);
   const addresses = parseAddressList(body.addresses);
   const contact = parseContact(body.contact);
+  const priceInformations = parsePrices(body.priceInformations);
+  const openingHours = parseOpeningHours(body.openingHours);
+  const operatingCompany = parseOperatingCompany(body.operatingCompany);
   const webUrls = parseWebUrls(body.webUrls);
+  const mediaContents = parseMediaContents(body.mediaContents);
+  const location = parseLocation(body.location);
+  const certificates = parseCertificates(body.certificates);
+  const accessibilityInformation = parseAccessibilityInformation(body.accessibilityInformation);
   const tags = parseTags(body.tags);
   if (categories instanceof Response) {
     return categories;
@@ -99,13 +127,49 @@ const parsePoiInput = async (request: Request): Promise<SvaMainserverPoiInput | 
   if (contact instanceof Response) {
     return contact;
   }
+  if (priceInformations instanceof Response) {
+    return priceInformations;
+  }
+  if (openingHours instanceof Response) {
+    return openingHours;
+  }
+  if (operatingCompany instanceof Response) {
+    return operatingCompany;
+  }
   if (webUrls instanceof Response) {
     return webUrls;
+  }
+  if (mediaContents instanceof Response) {
+    return mediaContents;
+  }
+  if (location instanceof Response) {
+    return location;
+  }
+  if (certificates instanceof Response) {
+    return certificates;
+  }
+  if (accessibilityInformation instanceof Response) {
+    return accessibilityInformation;
   }
   if (tags instanceof Response) {
     return tags;
   }
-  return buildPoiInput({ body, name, categories, addresses, contact, webUrls, tags });
+  return buildPoiInput({
+    body,
+    name,
+    categories,
+    addresses,
+    contact,
+    priceInformations,
+    openingHours,
+    operatingCompany,
+    webUrls,
+    mediaContents,
+    location,
+    certificates,
+    accessibilityInformation,
+    tags,
+  });
 };
 
 const validateMutationRequest = (request: Request, requestId?: string): Response | null => {

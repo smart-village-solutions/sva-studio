@@ -102,6 +102,14 @@ export type { MediaPickerDefinition, MediaPickerSelectionMode } from './media-pi
 export { defineMediaPickerDefinition } from './media-picker.js';
 export type { HostMediaAssetListItem, HostMediaReferenceSelection } from './media-picker-client.js';
 export { listHostMediaAssets, listHostMediaReferencesByTarget, replaceHostMediaReferences } from './media-picker-client.js';
+export type {
+  CompleteHostMediaUploadResult,
+  HostMediaUploadVisibility,
+  InitializeHostMediaUploadInput,
+  InitializeHostMediaUploadResult,
+  UploadHostMediaFileResult,
+} from './media-upload-client.js';
+export { completeHostMediaUpload, initializeHostMediaUpload, uploadHostMediaFile } from './media-upload-client.js';
 export type { HostMediaFieldOption } from './content-ui-utils.js';
 export {
   compactOptionalString,
@@ -112,6 +120,20 @@ export {
   toDatetimeLocalValue,
   toHostMediaFieldOptions,
 } from './content-ui-utils.js';
+export type {
+  MapGeocodingAddressInput,
+  MapGeocodingCoordinates,
+  MapGeocodingFeature,
+  MapGeocodingProvider,
+  MapGeocodingRuntimeConfig,
+} from './map-geocoding.js';
+export {
+  MapGeocodingClientError,
+  geocodeHostMapAddress,
+  getHostMapGeocodingConfig,
+  reverseGeocodeHostCoordinates,
+  suggestHostMapAddresses,
+} from './map-geocoding-client.js';
 export type {
   MainserverCrudClientOptions,
   MainserverErrorFactory,

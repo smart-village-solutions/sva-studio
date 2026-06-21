@@ -1,14 +1,13 @@
 import type { SchemaGuardReport } from '../../../packages/auth-runtime/src/iam-account-management/schema-guard.ts';
 import type { RuntimeProfile } from '../../../packages/core/src/runtime-profile.ts';
 import type { AcceptanceDeployOptions, AcceptanceDeployReport, AcceptanceDeployStep, AcceptanceProbeResult, DoctorCheck, DoctorReport, RemoteRuntimeProfile, TenantRuntimeTarget } from '../runtime-env.shared.ts';
-import type { ComposeDocument } from './deploy-project.ts';
+import type { ComposeDocument, ServiceContract } from './deploy-project.ts';
 import type { RemoteServiceContract } from './remote-service-spec.ts';
 import type { RemoteRuntimeConfigDeps, RuntimeCommandRunnerDeps, RuntimeContractDeps } from './runtime-deps.types.ts';
 import type {
   LocalTenantSecretState,
   SchemaSnapshotVerificationReport,
 } from './doctor-db-checks.types.ts';
-import type { ServiceContract } from './deploy-project.ts';
 import type { LocalState } from './local-runtime.ts';
 
 export type RuntimeRemoteBundleDeps = RuntimeCommandRunnerDeps & RemoteRuntimeConfigDeps & RuntimeContractDeps & {

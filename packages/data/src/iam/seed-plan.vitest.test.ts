@@ -148,4 +148,8 @@ describe('iamSeedPlan content permissions', () => {
     expect(personaSeedSql).toContain("('de-musterhausen', 'categories')");
     expect(bbGubenSeedSql).toContain("('bb-guben', 'categories')");
   });
+
+  it('throws for unknown persona keys', () => {
+    expect(() => getPersonaSeed('unknown' as never)).toThrowError('Unknown persona key: unknown');
+  });
 });

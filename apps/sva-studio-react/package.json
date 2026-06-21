@@ -48,7 +48,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.17.0",
-    "nitro": "3.0.260415-beta",
+    "nitro": "3.0.260429-beta",
     "pg": "^8.20.0",
     "postcss": "^8.5.11",
     "qrcode": "^1.5.4",
@@ -61,6 +61,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
+    "@browserbasehq/stagehand": "3.6.0",
     "@codecov/rollup-plugin": "^2.0.1",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "4.2.4",
@@ -73,10 +74,11 @@
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^4.1.5",
     "axe-core": "^4.11.4",
+    "dotenv": "^16.4.7",
     "jsdom": "^29.1.0",
     "tooling-testing": "workspace:*",
     "typescript": "^6.0.3",
-    "vite": "^8.0.5",
+    "vite": "^8.0.16",
     "vitest": "^4.1.5"
   }
 }

@@ -145,7 +145,7 @@ describe('AppShell', () => {
     const main = screen.getByRole('main');
 
     expect(await screen.findByText('Sidebar Ready')).toBeTruthy();
-    expect(await screen.findByTestId('organization-context-switcher')).toBeTruthy();
+    expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
     expect(screen.queryByText('Sidebar Loading')).toBeNull();
     expect(within(main).getByLabelText('Inhalt lädt')).toBeTruthy();
     expect(main.getAttribute('aria-busy')).toBe('true');

@@ -85,4 +85,42 @@ describe('tenant secret registry', () => {
       }),
     );
   });
+
+  it('avoids nested process env wrapping during local tenant secret sync', async () => {
+    loadInstanceWithSecret
+      .mockResolvedValueOnce({
+        authClientSecret: null,
+        instance: {
+          authClientSecretConfigured: false,
+          instanceId: 'tenant-a',
+          tenantAdminClient: null,
+        },
+        tenantAdminClientSecret: null,
+      })
+      .mockResolvedValueOnce({
+        authClientSecret: 'restored-secret',
+        instance: {
+          authClientSecretConfigured: true,
+          instanceId: 'tenant-a',
+          tenantAdminClient: null,
+        },
+        tenantAdminClientSecret: null,
+      });
+
+    const envWrapCalls: string[] = [];
+    const withTemporaryProcessEnv = async <T>(_env: NodeJS.ProcessEnv, operation: () => Promise<T>): Promise<T> => {
+      envWrapCalls.push('wrapped');
+      return await operation();
+    };
+    const ops = createTenantSecretRegistryOps({
+      createDbSqlRunner: vi.fn(),
+      isRemoteRuntimeProfile: vi.fn(() => false),
+      parseJsonFromCommandOutput: vi.fn(),
+      withTemporaryProcessEnv,
+    });
+
+    await ops.syncLocalTenantSecretsToRegistry({});
+
+    expect(envWrapCalls).toHaveLength(1);
+  });
 });

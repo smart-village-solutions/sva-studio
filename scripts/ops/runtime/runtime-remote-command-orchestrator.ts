@@ -6,7 +6,6 @@ import { createAcceptanceCommandRunner } from './acceptance-command.ts';
 import { mergeExplicitTenantTargetsWithRegistry, parseTenantRealmOverrides } from './remote-verification.ts';
 import { createRuntimeRemoteBundle } from './runtime-remote-bundle.ts';
 import type { SchemaGuardReport } from '../../../packages/auth-runtime/src/iam-account-management/schema-guard.ts';
-import type { LocalTenantSecretState } from './doctor-db-checks.types.ts';
 import type { RuntimeRemoteCommandOrchestratorDeps } from './runtime-remote-command-orchestrator.types.ts';
 
 type AcceptanceRuntimeCore = ReturnType<typeof createAcceptanceRuntimeCore>;
@@ -136,8 +135,7 @@ const remoteBundleRuntimeDeps = (deps: RuntimeRemoteCommandOrchestratorDeps) => 
   isProcessAlive: deps.isProcessAlive,
   isRemoteRuntimeProfile: deps.isRemoteRuntimeProfile,
   listGooseMigrationFiles: deps.listGooseMigrationFiles,
-  loadActiveLocalTenantSecretStates: async (env: NodeJS.ProcessEnv): Promise<readonly LocalTenantSecretState[]> =>
-    (await deps.loadActiveLocalTenantSecretStates(env)) as unknown as readonly LocalTenantSecretState[],
+  loadActiveLocalTenantSecretStates: deps.loadActiveLocalTenantSecretStates,
   loadRegistryTenantTargets: deps.tenantSecretRegistryOps.loadRegistryTenantTargets,
   localWorkerStateFile: deps.localWorkerStateFile,
 });
@@ -190,7 +188,12 @@ const createRemoteBundle = (
 const createRuntimeEnvRemoteVerification = (deps: RuntimeRemoteCommandOrchestratorDeps, remoteBundle: RemoteBundle) => ({
   assertLoginFlow: remoteBundle.runtimeHealthOps.assertLoginFlow,
   buildKeycloakClientSecretCheck: remoteBundle.runtimeHealthOps.buildKeycloakClientSecretCheck,
-  buildLocalProvisioningWorkerCheck: deps.buildLocalProvisioningWorkerCheckBase,
+  buildLocalProvisioningWorkerCheck: (
+    runtimeProfile: RuntimeProfile,
+    workerState: Parameters<RuntimeRemoteCommandOrchestratorDeps['buildLocalProvisioningWorkerCheckBase']>[1],
+    isAlive: (pid: number) => boolean = deps.isProcessAlive,
+  ) =>
+    deps.buildLocalProvisioningWorkerCheckBase(runtimeProfile, workerState, isAlive),
   buildStudioImageVerifyEvidenceCheck: deps.buildStudioImageVerifyEvidenceCheck,
   decorateDoctorCheck: deps.decorateDoctorCheck,
   mergeExplicitTenantTargetsWithRegistry,

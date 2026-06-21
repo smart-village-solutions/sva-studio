@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
 
-import { createEmptyPaginatedDataResponse, gotoHomeAsAuthenticatedUser } from './studio-shell.helpers';
+import { gotoHomeAsAuthenticatedUser, navigateClientSide, registerSharedIamRoutes } from './studio-shell.helpers';
 
 const adminAuthPayload = {
   user: {
@@ -24,42 +23,8 @@ const adminAuthPayload = {
   },
 };
 
-const navigateClientSide = async (page: Page, targetPath: string) => {
-  await page.evaluate((path) => {
-    window.history.pushState({}, '', path);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  }, targetPath);
-};
-
 test.beforeEach(async ({ page }) => {
-  await page.route('**/iam/authorize', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ allowed: true, reason: 'mocked_authorize' }),
-    });
-  });
-
-  await page.route('**/iam/me/legal-texts/pending', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: createEmptyPaginatedDataResponse(),
-    });
-  });
-
-  await page.route('**/api/v1/iam/me/context', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: {
-          activeOrganizationId: null,
-          organizations: [],
-        },
-      }),
-    });
-  });
+  await registerSharedIamRoutes(page);
 });
 
 test('role create page opens and submits successfully', async ({ page }) => {

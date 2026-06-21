@@ -1,8 +1,8 @@
 import type { RuntimeProfile } from '../../../packages/core/src/runtime-profile.ts';
 import type { DoctorCheck, DoctorReasonCode, DoctorReport } from '../runtime-env.shared.ts';
 import { createLocalCommandFacade } from './local-command-facade.ts';
+import type { LocalSchemaGuardResult } from './local-command.types.ts';
 import { createLocalRuntimeRepairOps } from './local-repair.ts';
-import type { SchemaGuardReport } from '../../../packages/auth-runtime/src/iam-account-management/schema-guard.ts';
 import type { LocalTenantSecretSyncSummary } from './tenant-secret-registry.ts';
 
 type RuntimeLocalCommandOrchestratorDeps = {
@@ -32,7 +32,7 @@ type RuntimeLocalCommandOrchestratorDeps = {
   resolveLocalDangerousApprovalRequirement: typeof import('./runtime-approvals.ts').resolveLocalDangerousApprovalRequirement;
   rootDir: string;
   run: (command: string, args: readonly string[], env?: NodeJS.ProcessEnv) => void;
-  runSchemaGuard: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => { ok: boolean };
+  runSchemaGuard: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => LocalSchemaGuardResult;
   shouldAuditLocalRuntimeCommand: typeof import('./rebuild-audit.ts').shouldAuditLocalRuntimeCommand;
   shouldRunLocalProvisioningWorker: typeof import('./local-runtime.ts').shouldRunLocalProvisioningWorker;
   smokeRuntime: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<void>;
@@ -81,7 +81,7 @@ export const createRuntimeLocalCommandOrchestrator = (deps: RuntimeLocalCommandO
     checkLocalInstanceRegistryDrift: deps.localInstanceOps.checkLocalInstanceRegistryDrift,
     cliOptions: deps.cliOptions,
     composeWithMonitoringArgs: deps.composeWithMonitoringArgs,
-    createLocalRuntimeAuditLogger: (input) => deps.createLocalRuntimeAuditLogger(input as never),
+    createLocalRuntimeAuditLogger: deps.createLocalRuntimeAuditLogger,
     doctorRuntime: deps.doctorRuntime,
     downLocalInfra: deps.downLocalInfra,
     getComposeArgs: deps.getComposeArgs,
@@ -109,7 +109,7 @@ export const createRuntimeLocalCommandOrchestrator = (deps: RuntimeLocalCommandO
     startLocalProvisioningWorker: deps.startLocalProvisioningWorker,
     stopLocalApp: deps.stopLocalApp,
     stopLocalProvisioningWorker: deps.stopLocalProvisioningWorker,
-    summarizeSchemaGuardFailures: (result) => deps.summarizeSchemaGuardFailures(result as SchemaGuardReport),
+    summarizeSchemaGuardFailures: deps.summarizeSchemaGuardFailures,
     syncLocalTenantSecretsToRegistry: deps.syncLocalTenantSecretsToRegistry,
     upLocalInfra: deps.upLocalInfra,
     verifyLocalDbSchemaSnapshot: deps.verifyLocalDbSchemaSnapshot,

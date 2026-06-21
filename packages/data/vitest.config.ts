@@ -4,7 +4,7 @@ import { sharedCoverageConfig } from '../../vitest.config';
 
 export default defineConfig({
   test: {
-    include: ['src/**/*.vitest.test.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.vitest.test.ts'],
     exclude: ['dist/**', 'coverage/**', 'node_modules/**'],
     environment: 'node',
     coverage: {

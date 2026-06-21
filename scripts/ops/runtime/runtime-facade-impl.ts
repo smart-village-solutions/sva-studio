@@ -212,7 +212,7 @@ const {
   isRemoteRuntimeProfile,
   jsonOutput,
   listGooseMigrationFiles,
-  loadActiveLocalTenantSecretStates: tenantSecretRegistryOps.loadActiveLocalTenantSecretStates as never,
+  loadActiveLocalTenantSecretStates: tenantSecretRegistryOps.loadActiveLocalTenantSecretStates,
   localInstanceOps,
   localStateFile,
   localWorkerStateFile,

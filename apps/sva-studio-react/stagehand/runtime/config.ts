@@ -1,6 +1,7 @@
 import {
   STAGEHAND_MISSION_NAMES,
   type StagehandAdminConfig,
+  type StagehandLocalBrowserConfig,
   type StagehandMissionName,
   type StagehandRunMode,
   type StagehandStoryFilters,
@@ -121,6 +122,24 @@ function parseResumeFlag(value: string | undefined): boolean {
   return normalizedValue === '1' || normalizedValue === 'true' || normalizedValue === 'yes';
 }
 
+function parseBooleanFlag(value: string | undefined, defaultValue: boolean): boolean {
+  const normalizedValue = value?.trim().toLowerCase();
+
+  if (normalizedValue === undefined || normalizedValue === '') {
+    return defaultValue;
+  }
+
+  if (normalizedValue === '1' || normalizedValue === 'true' || normalizedValue === 'yes') {
+    return true;
+  }
+
+  if (normalizedValue === '0' || normalizedValue === 'false' || normalizedValue === 'no') {
+    return false;
+  }
+
+  throw new Error(`Invalid Stagehand headless flag: ${value}. Expected one of: true, false, 1, 0, yes, no`);
+}
+
 function parseStoryFilters(env: StagehandAdminEnv): StagehandStoryFilters {
   const clusters = normalizeCsvValues(env.STAGEHAND_STORY_CLUSTERS);
   const invalidCluster = clusters.find((clusterId) => STAGEHAND_CLUSTER_ID_SET.has(clusterId) === false);
@@ -189,6 +208,12 @@ function parseTenantConfig(env: StagehandAdminEnv): StagehandTenantConfig | null
   };
 }
 
+function parseLocalBrowserConfig(env: StagehandAdminEnv): StagehandLocalBrowserConfig {
+  return {
+    headless: parseBooleanFlag(env.STAGEHAND_HEADLESS, true),
+  };
+}
+
 function parseMission(mission: string | undefined): StagehandMissionName {
   const normalizedMission = mission?.trim();
 
@@ -248,6 +273,7 @@ export function parseStagehandAdminConfig(env: StagehandAdminEnv): StagehandAdmi
       password,
     },
     baseUrl: parseBaseUrl(baseUrl),
+    localBrowser: parseLocalBrowserConfig(env),
     mission,
     openAiApiKey,
     runMode,

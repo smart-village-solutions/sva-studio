@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 
 import * as data from './instance-integrations.js';
 import * as repos from '@sva/data-repositories';

@@ -13,10 +13,6 @@ import { createRuntimeDoctorFacade } from './runtime-doctor-facade.ts';
 import { createAcceptanceDeployFacade } from './acceptance-runtime-facade.ts';
 import type { SchemaGuardReport } from '../../../packages/auth-runtime/src/iam-account-management/schema-guard.ts';
 import type { RuntimeRemoteBundleDeps } from './runtime-remote-bundle.types.ts';
-import type {
-  LocalTenantSecretState,
-  SchemaSnapshotVerificationReport,
-} from './doctor-db-checks.types.ts';
 import type { LocalState } from './local-runtime.ts';
 
 type RuntimeRemoteVerificationOps = ReturnType<typeof createRuntimeRemoteVerification>;
@@ -88,8 +84,7 @@ const createDoctorDbCheckOps = (deps: RuntimeRemoteBundleDeps, runtimeRemoteVeri
     getRuntimeProfileDefinition: deps.getRuntimeProfileDefinition,
     isMigrationStatusCheckRequired: deps.isMigrationStatusCheckRequired,
     isRemoteRuntimeProfile: deps.isRemoteRuntimeProfile,
-    loadActiveLocalTenantSecretStates: async (env): Promise<readonly LocalTenantSecretState[]> =>
-      (await deps.loadActiveLocalTenantSecretStates(env)) as unknown as readonly LocalTenantSecretState[],
+    loadActiveLocalTenantSecretStates: deps.loadActiveLocalTenantSecretStates,
     parseJsonFromCommandOutput: deps.parseJsonFromCommandOutput,
     resolveTenantRuntimeTargets: runtimeRemoteVerificationOps.resolveTenantRuntimeTargets,
     runLocalGooseStatus: deps.runLocalGooseStatus,
@@ -97,8 +92,7 @@ const createDoctorDbCheckOps = (deps: RuntimeRemoteBundleDeps, runtimeRemoteVeri
     sqlLiteral: deps.sqlLiteral,
     summarizeSchemaGuardFailures: deps.summarizeSchemaGuardFailures,
     toDoctorCheck: deps.toDoctorCheck,
-    verifyLocalDbSchemaSnapshot: (env): SchemaSnapshotVerificationReport =>
-      deps.verifyLocalDbSchemaSnapshot(env) as SchemaSnapshotVerificationReport,
+    verifyLocalDbSchemaSnapshot: deps.verifyLocalDbSchemaSnapshot,
   });
 
 const createImageSmokeOps = (deps: RuntimeRemoteBundleDeps, runtimeHealthOps: RuntimeHealthOps) =>

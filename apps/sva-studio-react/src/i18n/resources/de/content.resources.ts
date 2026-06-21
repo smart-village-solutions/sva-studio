@@ -5,8 +5,6 @@ export const contentDEResources = {
       'Verwalten Sie generische Inhalte mit Kernmetadaten, JSON-Payload und auditierbarer Historie.',
   },
   filters: {
-    searchLabel: 'Suche',
-    searchPlaceholder: 'Nach Titel, Typ, Autor oder Payload suchen',
     typeLabel: 'Typ',
     typeAll: 'Alle Typen',
     statusLabel: 'Status',
@@ -57,9 +55,6 @@ export const contentDEResources = {
   table: {
     caption: 'Tabelle der verwalteten Inhalte',
     ariaLabel: 'Inhalte',
-    sectionTitle: 'Inhaltsliste',
-    sectionDescription:
-      'Durchsuchen Sie die gemeinsamen redaktionellen Inhalte und öffnen Sie bei Bedarf die typspezifische Detailansicht.',
     headerTitle: 'Titel',
     headerType: 'Typ',
     headerPublished: 'Veröffentlichungsdatum',
@@ -162,7 +157,6 @@ export const contentDEResources = {
       'Aktionen bleiben deaktiviert, bis die erforderlichen Berechtigungen im aktuellen Kontext vorliegen.',
     readOnly:
       'Der Inhalt ist im aktuellen Kontext nur lesbar. Felder und Speichern bleiben deaktiviert.',
-    accessSummary: 'Aktueller Zugriffsstatus: {{state}}. {{context}}',
     accessLoadError:
       'Der globale Inhaltskontext konnte nicht vollständig geladen werden. Einzelne Statusangaben bleiben erhalten.',
   },

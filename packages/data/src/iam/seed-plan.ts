@@ -135,7 +135,7 @@ export const iamSeedPlan: IamSeedPlan & { readonly seedFiles: typeof iamSeedFile
     id,
     key,
     action: key,
-    resourceType: key.split('.')[0] ?? key,
+    resourceType: key.replace(/\..*$/, ''),
     effect: 'allow',
     scope: {},
     description,

@@ -1,10 +1,10 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { test } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const readRepoFile = (relativePath: string) => readFileSync(resolve(testDirectory, '..', '..', relativePath), 'utf8');
@@ -441,6 +441,8 @@ test('sva-studio-react vite SSR config resolves mail-runtime from workspace sour
 
   assert.match(viteConfig, /'@sva\/mail-runtime': resolveAppPath\('\.\.\/\.\.\/packages\/mail-runtime\/src\/index\.ts'\)/);
   assert.match(viteConfig, /'@sva\/mail-runtime',/);
+  assert.match(viteConfig, /'\.localhost'/);
+  assert.doesNotMatch(viteConfig, /lvh\.me/);
 });
 
 test('sva-studio-react vitest shared config resolves mail-runtime from workspace source', () => {

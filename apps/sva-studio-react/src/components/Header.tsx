@@ -14,6 +14,7 @@ import { Input } from './ui/input';
 import { t } from '../i18n';
 import { createAccountActionHref, createLoginHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
 import { clearClientLogoutState } from '../lib/auth-session-state';
+import { useOrganizationContext } from '../hooks/use-organization-context';
 import { hasExperimentalAccess } from '../lib/iam-admin-access';
 import { cn } from '../lib/utils';
 import { useAuth } from '../providers/auth-provider';
@@ -47,6 +48,7 @@ type HeaderAuthActionProps = Readonly<{
   isLoading: boolean;
   isAuthLoading: boolean;
   isAuthenticated: boolean;
+  showOrganizationContext: boolean;
   isDevAuthAvailable?: boolean;
   hideAnonymousLoginAction: boolean;
   loginHref: string;
@@ -78,16 +80,21 @@ const HeaderDropdownMenu = ({
   align = 'right',
   menuLabel,
   className,
+  menuClassName,
+  popupRole,
 }: {
   readonly trigger: (props: { readonly open: boolean; readonly toggle: () => void; readonly menuId: string }) => React.ReactNode;
   readonly items: readonly HeaderDropdownItem[];
   readonly align?: 'left' | 'right';
   readonly menuLabel: string;
   readonly className?: string;
+  readonly menuClassName?: string;
+  readonly popupRole?: 'dialog' | 'menu';
 }) => {
   const [open, setOpen] = React.useState(false);
   const wrapperRef = React.useRef<HTMLDivElement | null>(null);
   const menuId = React.useId();
+  const resolvedPopupRole = popupRole ?? 'menu';
 
   React.useEffect(() => {
     if (!open) {
@@ -121,12 +128,13 @@ const HeaderDropdownMenu = ({
       {open ? (
         <div
           id={menuId}
-          role="menu"
+          role={resolvedPopupRole}
           aria-label={menuLabel}
-          aria-orientation="vertical"
+          aria-orientation={resolvedPopupRole === 'menu' ? 'vertical' : undefined}
           className={cn(
             'absolute top-full z-50 mt-2 min-w-56 overflow-hidden rounded-lg border border-border bg-popover p-1.5 shadow-md',
-            align === 'right' ? 'right-0' : 'left-0'
+            align === 'right' ? 'right-0' : 'left-0',
+            menuClassName
           )}
         >
           {items.map((item) => {
@@ -242,6 +250,7 @@ const HeaderAuthAction = ({
   isLoading,
   isAuthLoading,
   isAuthenticated,
+  showOrganizationContext,
   isDevAuthAvailable = false,
   hideAnonymousLoginAction,
   loginHref,
@@ -314,6 +323,18 @@ const HeaderAuthAction = ({
       };
 
   const accountMenuItems: readonly HeaderDropdownItem[] = [
+    ...(showOrganizationContext
+      ? ([
+          {
+            id: 'organization-context',
+            render: <OrganizationContextSwitcher variant="menu" />,
+          },
+          {
+            id: 'divider-organization-context',
+            render: <HeaderSectionDivider />,
+          },
+        ] satisfies readonly HeaderDropdownItem[])
+      : []),
     { id: 'account', label: t('account.profile.title'), href: '/account' },
     {
       id: 'password',
@@ -325,8 +346,16 @@ const HeaderAuthAction = ({
       id: 'divider-privacy',
       render: <HeaderSectionDivider />,
     },
-    { id: 'privacy', label: t('account.privacy.navLabel'), href: '/account/privacy' },
-    { id: 'rules', label: t('account.rules.navLabel'), href: '/account/rules' },
+    {
+      id: 'privacy',
+      label: t('account.privacy.navLabel'),
+      href: '/account/privacy',
+    },
+    {
+      id: 'rules',
+      label: t('account.rules.navLabel'),
+      href: '/account/rules',
+    },
     {
       id: 'divider-session',
       render: <HeaderSectionDivider />,
@@ -339,10 +368,12 @@ const HeaderAuthAction = ({
       align="right"
       menuLabel={t('shell.header.accountMenu')}
       items={accountMenuItems}
+      menuClassName="min-w-72"
+      popupRole="dialog"
       trigger={({ open, toggle, menuId }) => (
         <button
           type="button"
-          aria-haspopup="menu"
+          aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={menuId}
           className="flex items-center gap-3 rounded-full px-1 py-1 text-left hover:bg-accent/60"
@@ -373,6 +404,7 @@ export default function Header({
   onOpenMobileNavigation,
 }: HeaderProps) {
   const { user, isAuthenticated, isLoading: isAuthLoading, isDevAuthAvailable, loginWithDevAuth, logout } = useAuth();
+  const organizationContext = useOrganizationContext();
   const { locale, setLocale } = useLocale();
   const { mode, toggleMode } = useTheme();
   const currentPathname = useRouterState({
@@ -381,7 +413,16 @@ export default function Header({
   const [isHydrated, setIsHydrated] = React.useState(false);
   const resolvedMode = isHydrated ? mode : 'light';
   const loginHref = isHydrated ? createLoginHref(resolveCurrentReturnTo()) : '/auth/login';
-  const showOrganizationContext = isHydrated && isAuthenticated && !isLoading && !isAuthLoading && Boolean(user);
+  const hasMultipleActiveOrganizations =
+    (organizationContext.context?.organizations.filter((organization) => organization.isActive).length ?? 0) > 1;
+  const showOrganizationContext =
+    isHydrated &&
+    isAuthenticated &&
+    !isLoading &&
+    !isAuthLoading &&
+    Boolean(user) &&
+    !organizationContext.isLoading &&
+    hasMultipleActiveOrganizations;
   const showAuthenticatedHeaderTools = isHydrated && isAuthenticated && !isLoading && !isAuthLoading;
   const showExperimentalHeaderTools = showAuthenticatedHeaderTools && hasExperimentalAccess(user);
   const hideAnonymousLoginAction = !isAuthenticated && currentPathname === '/';
@@ -441,11 +482,6 @@ export default function Header({
           ) : null}
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          {showOrganizationContext ? (
-            <div className="min-w-0 shrink-0">
-              <OrganizationContextSwitcher />
-            </div>
-          ) : null}
           {showExperimentalHeaderTools ? (
             <div className="hidden min-w-0 flex-1 items-center gap-3 xl:flex">
               <HeaderPromptField icon={<Search className="h-4 w-4" />} label={searchPromptLabel} />
@@ -511,6 +547,7 @@ export default function Header({
             isLoading={isLoading}
             isAuthLoading={isAuthLoading}
             isAuthenticated={isAuthenticated}
+            showOrganizationContext={showOrganizationContext}
             isDevAuthAvailable={isDevAuthAvailable}
             hideAnonymousLoginAction={hideAnonymousLoginAction}
             loginHref={loginHref}

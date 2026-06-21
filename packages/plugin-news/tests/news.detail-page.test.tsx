@@ -233,12 +233,14 @@ describe('NewsDetailPage', () => {
     });
   });
 
-  it('renders publication mode radio labels through explicit htmlFor bindings', () => {
+  it('renders publication mode radio labels through explicit labels and descriptions', () => {
     const source = fs.readFileSync(newsDetailSettingsSourcePath, 'utf8');
 
+    expect(source).toContain('aria-describedby={`publication-mode-${option}-description`}');
     expect(source).toContain('htmlFor={`publication-mode-${option}`}');
-    expect(source).toContain('<span className="space-y-1">');
-    expect(source).not.toContain('<div key={option} className="flex gap-3 rounded-xl border border-border/60 p-4 text-sm">');
+    expect(source).toContain('{pt(`publicationModes.${option}.label`)}');
+    expect(source).toContain('<p id={`publication-mode-${option}-description`} className="text-muted-foreground">');
+    expect(source).toContain('<label');
   });
 
   it('renders the push notification checkbox through an explicit label binding', () => {
@@ -246,5 +248,7 @@ describe('NewsDetailPage', () => {
 
     expect(source).toContain('htmlFor="news-push-notification-enabled"');
     expect(source).toContain('id="news-push-notification-enabled"');
+    expect(source).toContain('aria-labelledby="news-push-notification-label"');
+    expect(source).toContain('id="news-push-notification-label"');
   });
 });

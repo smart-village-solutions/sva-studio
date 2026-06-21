@@ -83,14 +83,20 @@ function NewsPushNotificationCard({
             render={({ field }) => (
               <Checkbox
                 id="news-push-notification-enabled"
+                aria-labelledby="news-push-notification-label"
+                aria-describedby="news-push-notification-hint"
                 checked={field.value}
                 onChange={(event) => field.onChange(event.target.checked)}
               />
             )}
           />
           <span className="space-y-1">
-            <span className="block font-medium text-foreground">{pt('fields.pushNotification')}</span>
-            <span className="block text-muted-foreground">{pt('cards.settings.push.toggleHint')}</span>
+            <span id="news-push-notification-label" className="block font-medium text-foreground">
+              {pt('fields.pushNotification')}
+            </span>
+            <span id="news-push-notification-hint" className="block text-muted-foreground">
+              {pt('cards.settings.push.toggleHint')}
+            </span>
           </span>
         </label>
       )}
@@ -124,17 +130,18 @@ function NewsPublicationModeFieldset({
                 type="radio"
                 name={field.name}
                 value={option}
+                aria-describedby={`publication-mode-${option}-description`}
                 checked={field.value === option}
                 onChange={(event) => field.onChange(event.target.value)}
               />
-              <span className="space-y-1">
+              <div className="space-y-1">
                 <span className="block font-medium text-foreground">
                   {pt(`publicationModes.${option}.label`)}
                 </span>
-                <span className="block text-muted-foreground">
+                <p id={`publication-mode-${option}-description`} className="text-muted-foreground">
                   {pt(`publicationModes.${option}.description`)}
-                </span>
-              </span>
+                </p>
+              </div>
             </label>
           ))}
         </fieldset>

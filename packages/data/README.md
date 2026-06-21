@@ -91,8 +91,8 @@ Wichtige Standard-Targets:
 | `pnpm nx run data:build` | Baut das Package über `tsc -p packages/data/tsconfig.lib.json` |
 | `pnpm nx run data:check:runtime` | Prüft die Server-Runtime-Kompatibilität des Packages |
 | `pnpm nx run data:lint` | Führt ESLint für `packages/data/src` aus |
-| `pnpm nx run data:test:unit` | Startet die paketinternen Node-Unit-Tests |
-| `pnpm nx run data:test:coverage` | Führt die Vitest-Coverage-Suite aus |
+| `pnpm nx run data:test:unit` | Startet die paketinterne Vitest-Unit-Suite |
+| `pnpm nx run data:test:coverage` | Führt dieselbe Vitest-Suite mit Coverage-Erhebung aus |
 | `pnpm nx run data:test:integration` | Prüft Seed-Integration über das Shell-Skript des Packages |
 
 Datenbank- und Betriebs-Targets:

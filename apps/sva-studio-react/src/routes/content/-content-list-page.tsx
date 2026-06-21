@@ -16,7 +16,6 @@ import { createStudioDataTableLabels } from '../../components/studio-data-table-
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { useAuth } from '../../providers/auth-provider';
@@ -40,7 +39,6 @@ type ContentListSortState = Readonly<{
 }>;
 type RouteSearchState = Readonly<Record<string, unknown>>;
 type ContentListRouteState = Readonly<{
-  search: string;
   type: string;
   status: StatusFilter;
   page: number;
@@ -99,23 +97,6 @@ const resolveRowAccess = (
     organizationIds: [],
     sourceKinds: [],
   };
-};
-
-const contentAccessLabelKeyByState = {
-  editable: 'content.access.states.editable',
-  read_only: 'content.access.states.readOnly',
-  blocked: 'content.access.states.blocked',
-  server_denied: 'content.access.states.serverDenied',
-} as const;
-
-const formatAccessContext = (access: IamContentAccessSummary) => {
-  if (access.organizationIds.length > 0) {
-    return t('content.access.context.organizationIds', { value: access.organizationIds.join(', ') });
-  }
-  if (access.sourceKinds.length > 0) {
-    return t('content.access.context.sourceKinds', { value: access.sourceKinds.join(', ') });
-  }
-  return t('content.access.context.none');
 };
 
 const statusVariantByValue = {
@@ -189,13 +170,6 @@ const normalizeSortState = (value: unknown): ContentListSortState | undefined =>
   return undefined;
 };
 
-const resolveRouteSearchText = (search: RouteSearchState): string => {
-  if (typeof search.search === 'string') {
-    return search.search;
-  }
-  return typeof search.q === 'string' ? search.q : '';
-};
-
 const resolveFallbackSortState = (): ContentListSortState | undefined =>
   contentSorting
     ? {
@@ -221,7 +195,6 @@ const readNormalizedRouteState = (search: RouteSearchState): ContentListRouteSta
   const pageSizeDefault = contentPagination?.defaultPageSize ?? 25;
 
   return {
-    search: resolveRouteSearchText(search),
     type: normalizeTypeFilter(normalizedFilters?.type ?? search.type),
     status: normalizeStatusFilter(normalizedFilters?.status ?? search.status),
     page: normalizePositiveInteger(search.page, 1),
@@ -231,7 +204,6 @@ const readNormalizedRouteState = (search: RouteSearchState): ContentListRouteSta
 };
 
 const serializeRouteState = (state: ContentListRouteState): RouteSearchState => ({
-  ...(state.search.trim().length > 0 ? { q: state.search.trim() } : {}),
   ...(state.type !== 'all' ? { type: state.type } : {}),
   ...(state.status !== 'all' ? { status: state.status } : {}),
   ...(state.sort ? { sortBy: state.sort.field, sortDirection: state.sort.direction } : {}),
@@ -461,7 +433,6 @@ export const ContentListPage = () => {
     () => ({
       page: routeState.page,
       pageSize: routeState.pageSize,
-      ...(routeState.search.trim().length > 0 ? { q: routeState.search.trim() } : {}),
       ...(routeState.type !== 'all' ? { type: routeState.type } : {}),
       ...(routeState.status !== 'all' ? { status: routeState.status } : {}),
       visibleTypes: readableContentTypes.map((definition) => definition.contentType),
@@ -474,7 +445,6 @@ export const ContentListPage = () => {
       routeSortField,
       routeState.page,
       routeState.pageSize,
-      routeState.search,
       routeState.status,
       routeState.type,
     ]
@@ -589,18 +559,7 @@ export const ContentListPage = () => {
       <StudioListPageTemplate
         title={t('content.page.title')}
         description={t('content.page.subtitle')}
-      >
-        {contentAccessApi.access ? (
-          <p className="text-sm text-muted-foreground">
-            {t('content.messages.accessSummary', {
-              state: t(contentAccessLabelKeyByState[contentAccessApi.access.state]),
-              context: formatAccessContext(contentAccessApi.access),
-            })}
-          </p>
-        ) : createDisabled ? (
-          <p className="text-sm text-muted-foreground">{t('content.messages.actionsDisabled')}</p>
-        ) : null}
-      </StudioListPageTemplate>
+      />
 
       {contentsApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
@@ -614,14 +573,7 @@ export const ContentListPage = () => {
         </Alert>
       ) : null}
 
-      <section className="space-y-4" aria-labelledby="content-workspace-title">
-        <header className="space-y-2">
-          <h2 id="content-workspace-title" className="text-xl font-semibold text-foreground">
-            {t('content.table.sectionTitle')}
-          </h2>
-          <p className="max-w-3xl text-sm text-muted-foreground">{t('content.table.sectionDescription')}</p>
-        </header>
-
+      <section>
         <StudioDataTable
           ariaLabel={t('content.table.ariaLabel')}
           labels={studioDataTableLabels}
@@ -641,15 +593,6 @@ export const ContentListPage = () => {
           }
           toolbarCenter={
             <>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="content-search">{t('content.filters.searchLabel')}</Label>
-                <Input
-                  id="content-search"
-                  value={routeState.search}
-                  onChange={(event) => navigateSearch({ search: event.target.value, page: 1 })}
-                  placeholder={t('content.filters.searchPlaceholder')}
-                />
-              </div>
               <div className="flex flex-col gap-1">
                 <Label htmlFor="content-type-filter">{t('content.filters.typeLabel')}</Label>
                 <Select

@@ -162,7 +162,7 @@ const createLocalCommandRuntime = (
     buildProfileEnv: deps.buildProfileEnv,
     cliOptions: deps.cliOptions,
     composeWithMonitoringArgs: deps.composeWithMonitoringArgs,
-    createLocalRuntimeAuditLogger: (input) => deps.createLocalRuntimeAuditLogger(input as never),
+    createLocalRuntimeAuditLogger: deps.createLocalRuntimeAuditLogger,
     doctorRuntime,
     downLocalInfra: deps.downLocalInfra,
     getComposeArgs: deps.getComposeArgs,

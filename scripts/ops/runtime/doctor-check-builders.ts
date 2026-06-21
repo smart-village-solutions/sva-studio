@@ -30,7 +30,7 @@ export const createRuntimeEnvCheck = (
 
 export const createEndpointHealthCheck = async (
   deps: RuntimeDoctorDeps,
-  input: { baseUrl: string; errorCode: string; name: string; okCode: string; okMessage: string; path: string; unreachableCode: string },
+  input: { baseUrl: string; errorCode: string; errorMessage: (status: number) => string; name: string; okCode: string; okMessage: string; path: string; unreachableCode: string },
 ): Promise<DoctorCheck> => {
   try {
     const result = await deps.checkHttpHealth(new URL(input.path, input.baseUrl).toString());
@@ -38,7 +38,7 @@ export const createEndpointHealthCheck = async (
       input.name,
       result.response.ok ? 'ok' : 'error',
       result.response.ok ? input.okCode : input.errorCode,
-      result.response.ok ? input.okMessage : `${input.okMessage.split(' erfolgreich.')[0]} antwortet mit ${result.response.status}.`,
+      result.response.ok ? input.okMessage : input.errorMessage(result.response.status),
       { payload: (result.payload ?? {}) as Record<string, unknown>, status: result.response.status },
     );
   } catch (error) {

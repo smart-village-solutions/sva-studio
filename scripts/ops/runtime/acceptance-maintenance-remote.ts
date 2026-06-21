@@ -1,11 +1,10 @@
 import { shellEscape } from './runtime-config.ts';
 import type { AcceptanceMaintenanceDeps } from './acceptance-maintenance.types.ts';
+import { resolveAcceptanceContainerServices, resolveRemoteShortServiceName, resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
 
 export const buildSwarmServicePresenceProbe = (deps: AcceptanceMaintenanceDeps, env: NodeJS.ProcessEnv) => {
-  const requiredServices =
-    (env.ENABLE_OTEL?.trim() || 'true').toLowerCase() === 'false'
-      ? ['app', 'redis', 'postgres']
-      : ['app', 'redis', 'postgres', 'otel-collector'];
+  const stackName = deps.getConfiguredStackName(env);
+  const requiredServices = resolveAcceptanceContainerServices(env, resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env)));
 
   return {
     durationMs: 0,
@@ -20,9 +19,10 @@ export const buildSwarmServicePresenceProbe = (deps: AcceptanceMaintenanceDeps, 
 
 export const resolveRemoteInternalNetworkName = async (deps: AcceptanceMaintenanceDeps, env: NodeJS.ProcessEnv) => {
   const stackName = deps.getConfiguredStackName(env);
+  const appServiceName = resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env));
   const liveContract = await deps.inspectRemoteServiceContract(env, {
     quantumEndpoint: deps.getConfiguredQuantumEndpoint(env),
-    serviceName: deps.getRemoteAppServiceName(env),
+    serviceName: appServiceName,
     stackName,
   });
   const internalNetworkName = (liveContract?.networkNames ?? []).find((networkName) => networkName !== 'public')?.trim();
@@ -30,7 +30,9 @@ export const resolveRemoteInternalNetworkName = async (deps: AcceptanceMaintenan
     return internalNetworkName;
   }
 
-  throw new Error(`Internes Overlay-Netz fuer ${stackName}_app konnte nicht aus der Live-Service-Spec abgeleitet werden.`);
+  throw new Error(
+    `Internes Overlay-Netz fuer ${resolveRemoteStackServiceName(stackName, appServiceName)} konnte nicht aus der Live-Service-Spec abgeleitet werden.`,
+  );
 };
 
 export const runAcceptanceServiceScript = (

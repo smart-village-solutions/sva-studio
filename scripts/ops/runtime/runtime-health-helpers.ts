@@ -40,6 +40,12 @@ export const parseLiveRuntimeFlags = (raw: string): LiveRuntimeFlags => {
 
 export const normalizeBaseUrl = (value: string) => value.replace(/\/+$/u, '');
 
+export const resolveRemoteShortServiceName = (stackName: string, serviceName: string) =>
+  serviceName.startsWith(`${stackName}_`) ? serviceName.slice(stackName.length + 1) : serviceName;
+
+export const resolveRemoteStackServiceName = (stackName: string, serviceName: string) =>
+  `${stackName}_${resolveRemoteShortServiceName(stackName, serviceName)}`;
+
 export const readJsonResponse = async (response: Response): Promise<Record<string, unknown>> => {
   const text = await response.text();
   if (!text.trim()) return {};
@@ -74,10 +80,13 @@ export const buildOidcClientSecretProbes = (env: NodeJS.ProcessEnv): readonly Oi
   return probes;
 };
 
-export const resolveAcceptanceContainerServices = (env: NodeJS.ProcessEnv): readonly string[] =>
+export const resolveAcceptanceContainerServices = (
+  env: NodeJS.ProcessEnv,
+  appServiceName = 'app',
+): readonly string[] =>
   (env.ENABLE_OTEL?.trim() || 'true').toLowerCase() === 'false'
-    ? ['app', 'redis', 'postgres']
-    : ['app', 'redis', 'postgres', 'otel-collector'];
+    ? [appServiceName, 'redis', 'postgres']
+    : [appServiceName, 'redis', 'postgres', 'otel-collector'];
 
 export const evaluateOidcClientSecretProbeResponse = (
   probe: OidcClientSecretProbe,

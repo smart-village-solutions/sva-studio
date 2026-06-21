@@ -15,12 +15,17 @@ import {
   buildAcceptanceServiceCheck as buildAcceptanceServiceCheckWithDeps,
   buildAppPrincipalReadinessCheck as buildAppPrincipalReadinessCheckWithDeps,
 } from './acceptance-runtime-checks.ts';
+import { resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
 import type { ComposeDocument } from './deploy-project.ts';
 import type { SchemaGuardReport } from '../../../packages/auth-runtime/src/iam-account-management/schema-guard.ts';
-import type { AcceptanceRuntimeFacadeDeps } from './acceptance-runtime-facade.types.ts';
+import type {
+  AcceptanceDeployFacadeDeps,
+  AcceptanceRuntimeCoreDeps,
+} from './acceptance-runtime-facade.types.ts';
+import type { AcceptanceRuntimeCheckDeps } from './acceptance-runtime-checks.types.ts';
 
 type AcceptanceDeployFacadeInput = Pick<
-  AcceptanceRuntimeFacadeDeps,
+  AcceptanceDeployFacadeDeps,
   'runImageSmoke' | 'runInternalVerify' | 'writeAcceptanceDeployReport'
 > & {
   captureAcceptanceStackStatus: (env: NodeJS.ProcessEnv) => Promise<{ services?: string; tasks?: string }>;
@@ -32,16 +37,16 @@ type AcceptanceDeployFacadeInput = Pick<
     gitCommitSha?: string,
   ) => AcceptanceDeployReport;
   deployAcceptanceStack: (env: NodeJS.ProcessEnv) => void;
-  runAcceptanceDeployExternalSmoke: AcceptanceRuntimeFacadeDeps['runExternalSmokeWithWarmup'];
+  runAcceptanceDeployExternalSmoke: AcceptanceDeployFacadeDeps['runExternalSmokeWithWarmup'];
 };
 
-export const createAcceptanceRuntimeCore = (deps: AcceptanceRuntimeFacadeDeps) => {
+export const createAcceptanceRuntimeCore = (deps: AcceptanceRuntimeCoreDeps) => {
   const renderRemoteComposeDocument = (env: NodeJS.ProcessEnv): ComposeDocument =>
     JSON.parse(
       deps.runCapture('docker', ['compose', '-f', resolve(deps.rootDir, deps.getRemoteComposeFile(env)), 'config', '--format', 'json'], env),
     ) as ComposeDocument;
 
-  const acceptanceRuntimeCheckDeps = {
+  const acceptanceRuntimeCheckDeps: AcceptanceRuntimeCheckDeps = {
     assertComposeServiceIngressLabels: deps.assertComposeServiceIngressLabels,
     assertComposeServiceNetworks: deps.assertComposeServiceNetworks,
     checkHttpHealth: deps.checkHttpHealth,
@@ -55,9 +60,10 @@ export const createAcceptanceRuntimeCore = (deps: AcceptanceRuntimeFacadeDeps) =
     readRemoteStackEvidence: deps.acceptanceRemoteStateOps.readRemoteStackEvidence,
     renderRemoteComposeDocument,
     resolveLiveImageFallback: async (env: NodeJS.ProcessEnv, input: { stackName: string }) => {
+      const appServiceName = deps.getRemoteAppServiceName(env);
       const liveContractResult = deps.runCaptureDetailed(
         'docker',
-        ['service', 'inspect', `${input.stackName}_app`, '--format', '{{.Spec.TaskTemplate.ContainerSpec.Image}}'],
+        ['service', 'inspect', resolveRemoteStackServiceName(input.stackName, appServiceName), '--format', '{{.Spec.TaskTemplate.ContainerSpec.Image}}'],
         env,
       );
       return liveContractResult.status === 0 ? liveContractResult.stdout.trim() : '';
@@ -66,20 +72,20 @@ export const createAcceptanceRuntimeCore = (deps: AcceptanceRuntimeFacadeDeps) =
   };
 
   const buildAcceptanceServiceCheck = (env: NodeJS.ProcessEnv): Promise<DoctorCheck> =>
-    buildAcceptanceServiceCheckWithDeps(acceptanceRuntimeCheckDeps as never, env);
+    buildAcceptanceServiceCheckWithDeps(acceptanceRuntimeCheckDeps, env);
 
   const buildAcceptanceIngressConsistencyCheck = (env: NodeJS.ProcessEnv): Promise<DoctorCheck> =>
-    buildAcceptanceIngressConsistencyCheckWithDeps(acceptanceRuntimeCheckDeps as never, env);
+    buildAcceptanceIngressConsistencyCheckWithDeps(acceptanceRuntimeCheckDeps, env);
 
   const buildAcceptanceLiveSpecCheck = (
     runtimeProfile: RuntimeProfile,
     env: NodeJS.ProcessEnv,
     options: AcceptanceDeployOptions,
   ): Promise<DoctorCheck> =>
-    buildAcceptanceLiveSpecCheckWithDeps(acceptanceRuntimeCheckDeps as never, runtimeProfile, env, options);
+    buildAcceptanceLiveSpecCheckWithDeps(acceptanceRuntimeCheckDeps, runtimeProfile, env, options);
 
   const buildAppPrincipalReadinessCheck = (env: NodeJS.ProcessEnv): Promise<DoctorCheck> =>
-    buildAppPrincipalReadinessCheckWithDeps(acceptanceRuntimeCheckDeps as never, env);
+    buildAppPrincipalReadinessCheckWithDeps(acceptanceRuntimeCheckDeps, env);
 
   const acceptanceMaintenanceOps = createAcceptanceMaintenanceOps({
     assertComposeServiceIngressLabels: deps.assertComposeServiceIngressLabels,
@@ -100,7 +106,7 @@ export const createAcceptanceRuntimeCore = (deps: AcceptanceRuntimeFacadeDeps) =
     getRuntimeContractSummary: deps.getRuntimeContractSummary,
     getRuntimeProfileDerivedEnvKeys: deps.getRuntimeProfileDerivedEnvKeys,
     getRuntimeProfileRequiredEnvKeys: deps.getRuntimeProfileRequiredEnvKeys,
-    inspectRemoteServiceContract: deps.inspectRemoteServiceContract as never,
+    inspectRemoteServiceContract: deps.inspectRemoteServiceContract,
     isRemoteRuntimeProfile: deps.isRemoteRuntimeProfile,
     listGooseMigrationFiles: deps.listGooseMigrationFiles,
     parseJsonFromCommandOutput: deps.parseJsonFromCommandOutput,
@@ -147,7 +153,7 @@ export const createAcceptanceRuntimeCore = (deps: AcceptanceRuntimeFacadeDeps) =
 };
 
 export const createAcceptanceDeployFacade = (
-  deps: AcceptanceRuntimeFacadeDeps,
+  deps: AcceptanceDeployFacadeDeps,
   input: AcceptanceDeployFacadeInput,
 ) =>
   createAcceptanceDeployRunner(

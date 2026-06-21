@@ -30,7 +30,7 @@ const acceptanceRuntimeCoreBaseDeps = (deps: RuntimeRemoteCommandOrchestratorDep
   checkHttpHealth: deps.checkHttpHealth,
   cliOptions: deps.cliOptions,
   commandExists: deps.commandExists,
-  createProbeResult: createAcceptanceProbeResult as never,
+  createProbeResult: createAcceptanceProbeResult,
   createStepResult: deps.createStepResult,
   deployReportDir: deps.deployReportDir,
   ensureDirs: deps.ensureDirs,
@@ -82,44 +82,28 @@ const createAcceptanceRuntimeCoreOps = (
     ...acceptanceRuntimeCoreRuntimeDeps(deps),
     buildInstanceHostnameMappingCheck: async (runtimeProfile, env) =>
       requireRuntimeDoctorDbCheckOps(getRuntimeDoctorDbCheckOps).buildInstanceHostnameMappingCheck(runtimeProfile, env),
-    createBaseAcceptanceDeployReport: () => {
-      throw new Error('createBaseAcceptanceDeployReport ist erst nach Maintenance-Wiring verfuegbar.');
-    },
-    getGitCommitSha: deps.getGitCommitSha,
-    precheckAcceptance: async () => {
-      throw new Error('precheckAcceptance ist noch nicht initialisiert.');
-    },
-    runExternalSmokeWithWarmup: async () => [] as const,
-    runImageSmoke: async () => [] as const,
-    runInternalVerify: async () => {
-      throw new Error('runInternalVerify ist noch nicht initialisiert.');
-    },
     runSchemaGuard: (runtimeProfile, env) => requireRuntimeDoctorDbCheckOps(getRuntimeDoctorDbCheckOps).runSchemaGuard(runtimeProfile, env),
-    waitForPostDeployStabilization: async () => 0,
-    writeAcceptanceDeployReport: () => {
-      throw new Error('writeAcceptanceDeployReport ist erst nach Maintenance-Wiring verfuegbar.');
-    },
   });
 
 const remoteBundleBaseDeps = (deps: RuntimeRemoteCommandOrchestratorDeps, acceptanceRuntimeCore: AcceptanceRuntimeCore) => ({
   acceptanceRemoteStateOps: deps.acceptanceRemoteStateOps,
   acceptanceRuntimeCore,
-  assertComposeServiceIngressLabels: deps.assertComposeServiceIngressLabels as never,
-  assertComposeServiceNetworks: deps.assertComposeServiceNetworks as never,
+  assertComposeServiceIngressLabels: deps.assertComposeServiceIngressLabels,
+  assertComposeServiceNetworks: deps.assertComposeServiceNetworks,
   assertDeterministicRemoteMutationContext: deps.assertDeterministicRemoteMutationContext,
   assertRuntimeEnv: deps.assertRuntimeEnv,
   buildAcceptanceReportPaths: deps.buildAcceptanceReportPaths,
   buildGuardrailDoctorChecks: deps.buildGuardrailDoctorChecks,
   buildImagePlatformDoctorCheck: deps.buildImagePlatformDoctorCheck,
-  buildLocalProvisioningWorkerCheckBase: deps.buildLocalProvisioningWorkerCheckBase as never,
-  buildQuantumDeployComposeDocument: deps.buildQuantumDeployComposeDocument as never,
+  buildLocalProvisioningWorkerCheckBase: deps.buildLocalProvisioningWorkerCheckBase,
+  buildQuantumDeployComposeDocument: deps.buildQuantumDeployComposeDocument,
   buildStudioImageVerifyEvidenceCheck: deps.buildStudioImageVerifyEvidenceCheck,
   buildTrustedForwardedHeaders: deps.buildTrustedForwardedHeaders,
   checkHttpHealth: deps.checkHttpHealth,
   cliOptions: deps.cliOptions,
   commandExists: deps.commandExists,
   createDbSqlRunner: deps.createDbSqlRunner,
-  createProbeResult: createAcceptanceProbeResult as never,
+  createProbeResult: createAcceptanceProbeResult,
   createStepResult: deps.createStepResult,
   deployReportDir: deps.deployReportDir,
   ensureDirs: deps.ensureDirs,
@@ -151,7 +135,7 @@ const remoteBundleRuntimeDeps = (deps: RuntimeRemoteCommandOrchestratorDeps) => 
   isProcessAlive: deps.isProcessAlive,
   isRemoteRuntimeProfile: deps.isRemoteRuntimeProfile,
   listGooseMigrationFiles: deps.listGooseMigrationFiles,
-  loadActiveLocalTenantSecretStates: deps.loadActiveLocalTenantSecretStates as never,
+  loadActiveLocalTenantSecretStates: deps.loadActiveLocalTenantSecretStates,
   loadRegistryTenantTargets: deps.tenantSecretRegistryOps.loadRegistryTenantTargets,
   localWorkerStateFile: deps.localWorkerStateFile,
 });
@@ -184,7 +168,7 @@ const remoteBundleCommandDeps = (
   summarizeSchemaGuardFailures: deps.summarizeSchemaGuardFailures,
   toDoctorCheck: deps.toDoctorCheck,
   validateRuntimeProfileEnv: deps.validateRuntimeProfileEnv,
-  verifyLocalDbSchemaSnapshot: deps.verifyLocalDbSchemaSnapshot as never,
+  verifyLocalDbSchemaSnapshot: deps.verifyLocalDbSchemaSnapshot,
   wait: deps.wait,
   withoutDebugEnv: deps.withoutDebugEnv,
 });

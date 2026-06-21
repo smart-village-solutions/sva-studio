@@ -1,5 +1,6 @@
 import type { RuntimeProfile } from '../../../packages/core/src/runtime-profile.ts';
 import type { AcceptanceProbeResult, RemoteRuntimeProfile } from '../runtime-env.shared.ts';
+import type { LocalTenantSecretState } from './doctor-db-checks.types.ts';
 
 export type RuntimeCommandRunnerDeps = {
   rootDir: string;
@@ -46,7 +47,7 @@ export type RuntimeProfileInspectionDeps = {
   isRemoteRuntimeProfile: (runtimeProfile: RuntimeProfile) => runtimeProfile is RemoteRuntimeProfile;
   jsonOutput: boolean;
   listGooseMigrationFiles: () => readonly string[];
-  loadActiveLocalTenantSecretStates: (env: NodeJS.ProcessEnv) => Promise<readonly unknown[]>;
+  loadActiveLocalTenantSecretStates: (env: NodeJS.ProcessEnv) => Promise<readonly LocalTenantSecretState[]>;
   localInstanceOps: ReturnType<typeof import('./runtime-local-instance-ops.ts').createRuntimeLocalInstanceOps>;
 };
 

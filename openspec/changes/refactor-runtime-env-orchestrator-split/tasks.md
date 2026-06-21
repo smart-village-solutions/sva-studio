@@ -12,4 +12,6 @@
 - [x] 2.1 Wiederholte Runtime-Dependency-Typen in lokale, fachlich benannte Typgruppen zusammenziehen
 - [x] 2.2 Grosse Runtime-Factory-Kapseln weiter in kleinere Builder-/Dispatch-Funktionen schneiden
 - [ ] 2.3 Runtime-CRAP-Funde ohne echte Logikballung ueber gezielte Tests senken und echte Entscheidungsballungen refaktorieren
-- [x] 2.4 Runtime-Fallow-Audit, Runtime-Duplication-Check, LOC-Scan sowie relevante Script-Type- und Unit-Gates als Abschlussnachweis ausfuehren
+- [x] 2.4 Remote-App-Service-Aufloesung ueber Deploy, Doctor, Smoke und Reporting hinweg auf eine gemeinsame Quelle haerten
+- [x] 2.5 Risikoreiche Adapter-Grenzen (`as never`, Placeholder-Wiring) im Remote-Orchestrator gezielt durch explizite Typen und stabilere Konstruktion ersetzen
+- [x] 2.6 Runtime-Fallow-Audit, Runtime-Duplication-Check, LOC-Scan sowie relevante Script-Type- und Unit-Gates als Abschlussnachweis ausfuehren

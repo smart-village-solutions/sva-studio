@@ -1,5 +1,6 @@
 import type { AcceptanceDeployOptions, AcceptanceProbeResult, RemoteRuntimeProfile } from '../runtime-env.shared.ts';
 import type { RuntimeImageSmokeDeps } from './image-smoke.types.ts';
+import { resolveRemoteShortServiceName } from './runtime-health-helpers.ts';
 
 export const collectRemoteParityChecks = async (
   deps: RuntimeImageSmokeDeps,
@@ -54,10 +55,11 @@ export const tryReuseLiveParityEvidence = async (
   env: NodeJS.ProcessEnv,
   options: AcceptanceDeployOptions,
 ): Promise<readonly AcceptanceProbeResult[] | null> => {
+  const stackName = deps.getConfiguredStackName(env);
   const liveContract = await deps.inspectRemoteServiceContract(env, {
     quantumEndpoint: deps.getConfiguredQuantumEndpoint(env),
-    serviceName: deps.getRemoteAppServiceName(env),
-    stackName: deps.getConfiguredStackName(env),
+    serviceName: resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env)),
+    stackName,
   });
 
   if (liveContract?.image !== options.imageRef) {
@@ -74,10 +76,11 @@ export const buildImageSmokeRuntimeEnvEntries = async (deps: RuntimeImageSmokeDe
   delete mergedEnv.REDIS_URL;
 
   try {
+    const stackName = deps.getConfiguredStackName(env);
     const liveContract = await deps.inspectRemoteServiceContract(env, {
       quantumEndpoint: deps.getConfiguredQuantumEndpoint(env),
-      serviceName: deps.getRemoteAppServiceName(env),
-      stackName: deps.getConfiguredStackName(env),
+      serviceName: resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env)),
+      stackName,
     });
     if (liveContract) {
       for (const [key, value] of Object.entries(liveContract.env)) {

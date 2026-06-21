@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 
-import { defineConfig, type ViteUserConfig } from 'vitest/config';
+import { configDefaults, defineConfig, type ViteUserConfig } from 'vitest/config';
 
 export const sharedCoverageConfig: NonNullable<NonNullable<ViteUserConfig['test']>['coverage']> = {
   provider: 'v8',
@@ -63,6 +63,6 @@ export default defineConfig({
   },
   test: {
     coverage: sharedCoverageConfig,
-    exclude: ['.worktrees/**'],
+    exclude: [...configDefaults.exclude, '.worktrees/**'],
   },
 });

@@ -58,6 +58,14 @@ const permission: EffectivePermission = {
   effect: 'allow',
 };
 
+const scopedPermission: EffectivePermission = {
+  action: 'news.read',
+  resourceType: 'news',
+  effect: 'allow',
+  organizationId: '11111111-1111-4111-8111-111111111111',
+  accessScope: 'organization',
+};
+
 const createCtx = (instanceId: string = 'instance-1'): AuthenticatedRequestContext => {
   return {
     sessionId: 'session-1',
@@ -237,6 +245,70 @@ describe('authorizeContentPrimitiveForUser', () => {
         }),
       }),
       [permission]
+    );
+  });
+
+  it('falls back to account-wide authorization when no organization context is available', async () => {
+    resolveEffectivePermissionsMock.mockResolvedValueOnce({
+      ok: true,
+      permissions: [scopedPermission],
+    });
+    evaluateAuthorizeDecisionMock
+      .mockReturnValueOnce({ allowed: false, reason: 'permission_missing' })
+      .mockReturnValueOnce({ allowed: true });
+
+    await expect(
+      authorizeContentPrimitiveForUser({
+        ctx: createCtx(),
+        action: 'news.read',
+        resource: {
+          contentType: 'news.article',
+        },
+      })
+    ).resolves.toEqual({
+      ok: true,
+      actor: {
+        instanceId: 'instance-1',
+        keycloakSubject: 'subject-1',
+      },
+      permissions: [scopedPermission],
+    });
+
+    expect(resolveEffectivePermissionsMock).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      keycloakSubject: 'subject-1',
+      organizationId: undefined,
+    });
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        action: 'news.read',
+        resource: expect.objectContaining({
+          type: 'news',
+        }),
+        context: expect.objectContaining({
+          requestId: 'request-1',
+          traceId: 'trace-1',
+          attributes: expect.objectContaining({
+            contentType: 'news.article',
+          }),
+        }),
+      }),
+      [scopedPermission]
+    );
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        action: 'news.read',
+      }),
+      [
+        expect.objectContaining({
+          action: 'news.read',
+          resourceType: 'news',
+          organizationId: undefined,
+          accessScope: undefined,
+        }),
+      ]
     );
   });
 

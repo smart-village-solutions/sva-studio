@@ -81,6 +81,15 @@ const buildAuthorizeRequest = (input: {
     },
   });
 
+const projectPermissionsForOrganizationOptionalAccess = (
+  permissions: readonly EffectivePermission[]
+): readonly EffectivePermission[] =>
+  permissions.map((permission) => ({
+    ...permission,
+    organizationId: undefined,
+    ...(permission.accessScope === 'organization' ? { accessScope: undefined } : {}),
+  }));
+
 export const authorizeContentPrimitiveForUser = async (input: {
   readonly ctx: AuthenticatedRequestContext;
   readonly action: string;
@@ -227,6 +236,21 @@ export const authorizeContentPrimitiveForUser = async (input: {
     traceId: workspaceContext.traceId,
   });
   const decision = evaluateAuthorizeDecision(request, permissions);
+  if (!decision.allowed && !organizationId && permissions.some((permission) => permission.organizationId)) {
+    const organizationOptionalPermissions = projectPermissionsForOrganizationOptionalAccess(permissions);
+    const organizationOptionalDecision = evaluateAuthorizeDecision(request, organizationOptionalPermissions);
+    if (organizationOptionalDecision.allowed) {
+      return {
+        ok: true,
+        actor: {
+          instanceId,
+          keycloakSubject: input.ctx.user.id,
+        },
+        permissions,
+      };
+    }
+  }
+
   if (!decision.allowed) {
     accountLogger.warn('Content primitive authorization denied', {
       operation: 'content_primitive_authorize',

@@ -1,6 +1,7 @@
 import type { SchemaGuardReport } from '../../../packages/auth-runtime/src/iam-account-management/schema-guard.ts';
 import type { RuntimeProfile } from '../../../packages/core/src/runtime-profile.ts';
 import type { DoctorCheck, TenantRuntimeTargetResolution } from '../runtime-env.shared.ts';
+import type { LocalInstanceRegistryReconciliationInput } from './local-instance-registry.ts';
 
 export type LocalTenantSecretState = Readonly<{
   authClientSecretConfigured: boolean;
@@ -20,7 +21,7 @@ export type SchemaSnapshotVerificationReport = Readonly<{
 }>;
 
 export type RuntimeDoctorDbCheckDeps = {
-  buildLocalInstanceRegistryReconciliationInput: (env: NodeJS.ProcessEnv) => { allowedInstanceIds: readonly string[]; reconcileMode: string } | null;
+  buildLocalInstanceRegistryReconciliationInput: (env: NodeJS.ProcessEnv) => LocalInstanceRegistryReconciliationInput | null;
   collectLocalInstanceIdentityDrift: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => readonly unknown[];
   createDbSqlRunner: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => (sql: string) => string;
   getGooseConfiguredVersion: () => string;

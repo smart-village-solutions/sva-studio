@@ -5,7 +5,7 @@ import { acceptanceOptions, createDeps } from './acceptance-runtime-checks.test-
 
 describe('acceptance runtime checks live spec and readiness', () => {
   it('reports live spec drift details when image or env diverge', async () => {
-    const getRemoteAppServiceName = vi.fn(() => 'studio-app');
+    const getRemoteAppServiceName = vi.fn(() => 'studio_studio-app');
     const assertComposeServiceNetworks = vi.fn(() => ({
       labels: {
         'traefik.http.routers.app.rule': 'Host(`studio.smart-village.app`)',
@@ -110,7 +110,7 @@ describe('acceptance runtime checks live spec and readiness', () => {
     const deps = createDeps({
       assertComposeServiceIngressLabels,
       assertComposeServiceNetworks,
-      getRemoteAppServiceName: vi.fn(() => 'studio-app'),
+      getRemoteAppServiceName: vi.fn(() => 'studio_studio-app'),
       inspectRemoteServiceContract,
     });
 

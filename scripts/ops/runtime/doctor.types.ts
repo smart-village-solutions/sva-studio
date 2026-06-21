@@ -1,4 +1,5 @@
 import type { AcceptanceDeployOptions, DoctorCheck, DoctorReport, RemoteRuntimeProfile, RuntimeProfile } from '../runtime-env.shared.ts';
+import type { LocalState } from './local-runtime.ts';
 
 export type RuntimeProfileValidation = {
   derived: readonly string[] | Record<string, unknown>;
@@ -31,7 +32,7 @@ export type RuntimeDoctorDeps = {
   buildKeycloakClientSecretCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorCheck>;
   buildLiveRuntimeEnvCheck: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorCheck>;
   buildLocalInstanceIdentityDoctorCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => DoctorCheck;
-  buildLocalProvisioningWorkerCheck: (runtimeProfile: RuntimeProfile, workerState: unknown) => DoctorCheck;
+  buildLocalProvisioningWorkerCheck: (runtimeProfile: RuntimeProfile, workerState: LocalState | null) => DoctorCheck;
   buildMigrationStatusCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => DoctorCheck;
   buildObservabilityDoctorCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorCheck>;
   buildSchemaGuardCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => DoctorCheck;
@@ -50,7 +51,7 @@ export type RuntimeDoctorDeps = {
   isMainserverCheckRequired: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => boolean;
   isRemoteRuntimeProfile: (runtimeProfile: RuntimeProfile) => runtimeProfile is RemoteRuntimeProfile;
   localWorkerStateFile: string;
-  readLocalWorkerState: (path: string) => unknown;
+  readLocalWorkerState: (path: string) => LocalState | null;
   toDoctorCheck: (name: string, status: DoctorCheck['status'], code: string, message: string, details?: Readonly<Record<string, unknown>>) => DoctorCheck;
   validateRuntimeProfileEnv: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => RuntimeProfileValidation;
 };

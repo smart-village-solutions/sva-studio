@@ -25,25 +25,25 @@ const createRemoteVerificationOps = (deps: RuntimeRemoteBundleDeps) =>
   createRuntimeRemoteVerification({
     commandExists: deps.commandExists,
     isRemoteRuntimeProfile: deps.isRemoteRuntimeProfile,
-    loadRegistryTenantTargets: deps.loadRegistryTenantTargets as never,
+    loadRegistryTenantTargets: deps.loadRegistryTenantTargets,
     parseInstanceIdList: deps.parseInstanceIdList,
     runCapture: (command, args) => deps.runCapture(command, args ?? []),
     runtimeArtifactsDir: deps.runtimeArtifactsDir,
-    wait: deps.wait as never,
+    wait: deps.wait,
   });
 
 const createSmokeOps = (deps: RuntimeRemoteBundleDeps, runtimeRemoteVerificationOps: RuntimeRemoteVerificationOps) =>
   createRuntimeSmokeOps({
     buildSwarmAppTaskProbe: deps.acceptanceRemoteStateOps.buildSwarmAppTaskProbe,
     buildSwarmServicePresenceProbe: deps.acceptanceRuntimeCore.buildSwarmServicePresenceProbe,
-    doctorRuntime: deps.doctorRuntime as never,
+    doctorRuntime: deps.doctorRuntime,
     isExpectedOidcRedirect: deps.isExpectedOidcRedirect,
     parseRuntimeProfile: (value) => deps.parseRuntimeProfile(value) ?? undefined,
     resolveTenantRuntimeTargets: runtimeRemoteVerificationOps.resolveTenantRuntimeTargets,
     runHttpProbe: deps.runHttpProbe,
     selectSmokeTenantTargets: runtimeRemoteVerificationOps.selectSmokeTenantTargets,
     shouldUseStudioReleaseBlockingTenantScope: runtimeRemoteVerificationOps.shouldUseStudioReleaseBlockingTenantScope,
-    wait: deps.wait as never,
+    wait: deps.wait,
   });
 
 const createHealthOps = (
@@ -69,21 +69,21 @@ const createHealthOps = (
     runSchemaGuard: deps.runSchemaGuard,
     summarizeSchemaGuardFailures: (report) => deps.summarizeSchemaGuardFailures(report as SchemaGuardReport),
     toDoctorCheck: deps.toDoctorCheck,
-    wait: deps.wait as never,
+    wait: deps.wait,
     waitForRemoteSmokeWarmup: runtimeSmokeOps.waitForRemoteSmokeWarmup,
     withoutDebugEnv: deps.withoutDebugEnv,
   });
 
 const createDoctorDbCheckOps = (deps: RuntimeRemoteBundleDeps, runtimeRemoteVerificationOps: RuntimeRemoteVerificationOps) =>
   createRuntimeDoctorDbCheckOps({
-    buildLocalInstanceRegistryReconciliationInput: deps.buildLocalInstanceRegistryReconciliationInput as never,
+    buildLocalInstanceRegistryReconciliationInput: deps.buildLocalInstanceRegistryReconciliationInput,
     collectLocalInstanceIdentityDrift: deps.collectLocalInstanceIdentityDrift,
     createDbSqlRunner: deps.createDbSqlRunner,
     getGooseConfiguredVersion: () => deps.getGooseConfiguredVersion() ?? '',
     getRuntimeProfileDefinition: deps.getRuntimeProfileDefinition,
     isMigrationStatusCheckRequired: deps.isMigrationStatusCheckRequired,
     isRemoteRuntimeProfile: deps.isRemoteRuntimeProfile,
-    loadActiveLocalTenantSecretStates: deps.loadActiveLocalTenantSecretStates as never,
+    loadActiveLocalTenantSecretStates: deps.loadActiveLocalTenantSecretStates,
     parseJsonFromCommandOutput: deps.parseJsonFromCommandOutput,
     resolveTenantRuntimeTargets: runtimeRemoteVerificationOps.resolveTenantRuntimeTargets,
     runLocalGooseStatus: deps.runLocalGooseStatus,
@@ -91,7 +91,7 @@ const createDoctorDbCheckOps = (deps: RuntimeRemoteBundleDeps, runtimeRemoteVeri
     sqlLiteral: deps.sqlLiteral,
     summarizeSchemaGuardFailures: deps.summarizeSchemaGuardFailures,
     toDoctorCheck: deps.toDoctorCheck,
-    verifyLocalDbSchemaSnapshot: deps.verifyLocalDbSchemaSnapshot as never,
+    verifyLocalDbSchemaSnapshot: deps.verifyLocalDbSchemaSnapshot,
   });
 
 const createImageSmokeOps = (deps: RuntimeRemoteBundleDeps, runtimeHealthOps: RuntimeHealthOps) =>
@@ -103,13 +103,13 @@ const createImageSmokeOps = (deps: RuntimeRemoteBundleDeps, runtimeHealthOps: Ru
     buildTenantAuthProofCheck: runtimeHealthOps.buildTenantAuthProofCheck,
     buildTrustedForwardedHeaders: deps.buildTrustedForwardedHeaders,
     commandExists: deps.commandExists,
-    createProbeResult: deps.createProbeResult as never,
+    createProbeResult: deps.createProbeResult,
     ensureDirs: deps.ensureDirs,
     getConfiguredQuantumEndpoint: deps.getConfiguredQuantumEndpoint,
     getConfiguredStackName: deps.getConfiguredStackName,
     getRemoteAppServiceName: deps.getRemoteAppServiceName,
     hasLocalEmergencyRemoteMutationOverride: deps.hasLocalEmergencyRemoteMutationOverride,
-    inspectRemoteServiceContract: deps.inspectRemoteServiceContract as never,
+    inspectRemoteServiceContract: deps.inspectRemoteServiceContract,
     isExpectedOidcRedirect: deps.isExpectedOidcRedirect,
     isRemoteRuntimeProfile: deps.isRemoteRuntimeProfile,
     parseRuntimeProfile: (value) => deps.parseRuntimeProfile(value) ?? undefined,
@@ -118,7 +118,7 @@ const createImageSmokeOps = (deps: RuntimeRemoteBundleDeps, runtimeHealthOps: Ru
     runHttpProbe: deps.runHttpProbe,
     runtimeArtifactsDir: deps.runtimeArtifactsDir,
     summarizeProcessOutput: deps.summarizeProcessOutput,
-    wait: deps.wait as never,
+    wait: deps.wait,
   });
 
 const createDoctorFacadeOps = (
@@ -145,7 +145,8 @@ const createDoctorFacadeOps = (
     buildKeycloakClientSecretCheck: runtimeHealthOps.buildKeycloakClientSecretCheck,
     buildLiveRuntimeEnvCheck: runtimeHealthOps.buildLiveRuntimeEnvCheck,
     buildLocalInstanceIdentityDoctorCheck: runtimeDoctorDbCheckOps.buildLocalInstanceIdentityDoctorCheck,
-    buildLocalProvisioningWorkerCheckBase: deps.buildLocalProvisioningWorkerCheckBase,
+    buildLocalProvisioningWorkerCheckBase: (runtimeProfile, workerState, isProcessAlive) =>
+      deps.buildLocalProvisioningWorkerCheckBase(runtimeProfile, workerState, isProcessAlive),
     buildMigrationStatusCheck: runtimeDoctorDbCheckOps.buildMigrationStatusCheck,
     buildObservabilityDoctorCheck: runtimeHealthOps.buildObservabilityDoctorCheck,
     buildSchemaGuardCheck: runtimeDoctorDbCheckOps.buildSchemaGuardCheck,
@@ -183,7 +184,7 @@ const createAcceptanceDeployCoreDeps = (deps: RuntimeRemoteBundleDeps) => ({
   cliOptions: deps.cliOptions,
   commandExists: deps.commandExists,
   createBaseAcceptanceDeployReport: deps.acceptanceRuntimeCore.acceptanceMaintenanceOps.createBaseAcceptanceDeployReport,
-  createProbeResult: deps.createProbeResult as never,
+  createProbeResult: deps.createProbeResult,
   createStepResult: deps.createStepResult,
   deployReportDir: deps.deployReportDir,
   ensureDirs: deps.ensureDirs,
@@ -236,9 +237,9 @@ const createAcceptanceDeployRunnerDeps = (
   runImageSmoke: runtimeImageSmokeOps.runImageSmoke,
   runInternalVerify: runtimeSmokeOps.runInternalVerify,
   runQuantumExec: deps.runQuantumExec,
-  runSchemaGuard: deps.runSchemaGuard as never,
+  runSchemaGuard: deps.runSchemaGuard,
   summarizeProcessOutput: (result: { stderr?: string; stdout?: string }) => deps.summarizeProcessOutput(`${result.stdout ?? ''}\n${result.stderr ?? ''}`),
-  wait: deps.wait as never,
+  wait: deps.wait,
   waitForPostDeployStabilization: runtimeRemoteVerificationOps.waitForPostDeployStabilization,
   writeAcceptanceDeployReport: deps.acceptanceRuntimeCore.writeAcceptanceDeployReport,
 });

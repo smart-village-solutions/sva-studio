@@ -83,14 +83,20 @@ function NewsPushNotificationCard({
             render={({ field }) => (
               <Checkbox
                 id="news-push-notification-enabled"
+                aria-labelledby="news-push-notification-label"
+                aria-describedby="news-push-notification-hint"
                 checked={field.value}
                 onChange={(event) => field.onChange(event.target.checked)}
               />
             )}
           />
           <span className="space-y-1">
-            <span className="block font-medium text-foreground">{pt('fields.pushNotification')}</span>
-            <span className="block text-muted-foreground">{pt('cards.settings.push.toggleHint')}</span>
+            <span id="news-push-notification-label" className="block font-medium text-foreground">
+              {pt('fields.pushNotification')}
+            </span>
+            <span id="news-push-notification-hint" className="block text-muted-foreground">
+              {pt('cards.settings.push.toggleHint')}
+            </span>
           </span>
         </label>
       )}

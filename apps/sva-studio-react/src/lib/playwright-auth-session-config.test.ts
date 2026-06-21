@@ -7,7 +7,9 @@ import {
   getDeMusterhausenPlaywrightBaseUrl,
   getRootAuthSetupEnv,
   getRootPlaywrightBaseUrl,
+  hasDeMusterhausenAuthSetupCredentials,
   hasRealAuthSetupCredentials,
+  hasRootAuthSetupCredentials,
   unauthenticatedStorageState,
 } from './playwright-auth-session-config';
 
@@ -30,6 +32,17 @@ describe('playwright auth session config', () => {
     expect(
       getRootAuthSetupEnv({
         PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:4173',
+        PLAYWRIGHT_ROOT_PASSWORD: 'super-secret',
+        PLAYWRIGHT_ROOT_USERNAME: 'root@example.test',
+      }).baseUrl
+    ).toBe('http://127.0.0.1:4173');
+  });
+
+  it('ignores empty scoped base urls and uses the shared Playwright base url instead', () => {
+    expect(
+      getRootAuthSetupEnv({
+        PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:4173',
+        PLAYWRIGHT_ROOT_BASE_URL: '',
         PLAYWRIGHT_ROOT_PASSWORD: 'super-secret',
         PLAYWRIGHT_ROOT_USERNAME: 'root@example.test',
       }).baseUrl
@@ -65,6 +78,19 @@ describe('playwright auth session config', () => {
         SVA_AUTH_ISSUER: 'https://accounts.google.com',
       })
     ).toBe(false);
+  });
+
+  it('requires both scoped Playwright credential pairs for the real auth setup', () => {
+    const env = {
+      PLAYWRIGHT_DE_MUSTERHAUSEN_PASSWORD: 'tenant-secret',
+      PLAYWRIGHT_DE_MUSTERHAUSEN_USERNAME: 'editor@example.test',
+      PLAYWRIGHT_ROOT_PASSWORD: 'super-secret',
+      PLAYWRIGHT_ROOT_USERNAME: 'root@example.test',
+    };
+
+    expect(hasRootAuthSetupCredentials(env)).toBe(true);
+    expect(hasDeMusterhausenAuthSetupCredentials(env)).toBe(true);
+    expect(hasRealAuthSetupCredentials(env)).toBe(true);
   });
 
   it('resolves the scoped Playwright base urls from the configured port when no explicit host is set', () => {

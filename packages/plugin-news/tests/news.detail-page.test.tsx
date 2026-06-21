@@ -248,5 +248,7 @@ describe('NewsDetailPage', () => {
 
     expect(source).toContain('htmlFor="news-push-notification-enabled"');
     expect(source).toContain('id="news-push-notification-enabled"');
+    expect(source).toContain('aria-labelledby="news-push-notification-label"');
+    expect(source).toContain('id="news-push-notification-label"');
   });
 });

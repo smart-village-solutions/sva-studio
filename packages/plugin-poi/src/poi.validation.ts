@@ -32,46 +32,33 @@ const hasInvalidGeoLocation = (value?: { readonly latitude?: number; readonly lo
 
 export const validatePoiForm = (input: PoiFormInput): readonly string[] => {
   const errors: string[] = [];
+  const pushIf = (condition: boolean, error: string) => {
+    if (condition) {
+      errors.push(error);
+    }
+  };
 
-  if (input.name.trim().length === 0) {
-    errors.push('name');
-  }
-
-  if (input.categoryName && input.categoryName.length > 128) {
-    errors.push('categoryName');
-  }
-
-  if ((input.webUrls ?? []).some((url) => url.url.trim().length > 0 && isHttpsUrl(url.url) === false)) {
-    errors.push('webUrls');
-  }
-
-  if ((input.addresses ?? []).some((address) => hasInvalidGeoLocation(address.geoLocation))) {
-    errors.push('addresses');
-  }
-
-  if (hasInvalidGeoLocation(input.location?.geoLocation)) {
-    errors.push('location');
-  }
-
-  if ((input.contact?.webUrls ?? []).some((url) => url.url.trim().length > 0 && isHttpsUrl(url.url) === false)) {
-    errors.push('contact.webUrls');
-  }
-
-  if (
+  pushIf(input.name.trim().length === 0, 'name');
+  pushIf(Boolean(input.categoryName && input.categoryName.length > 128), 'categoryName');
+  pushIf((input.webUrls ?? []).some((url) => url.url.trim().length > 0 && isHttpsUrl(url.url) === false), 'webUrls');
+  pushIf((input.addresses ?? []).some((address) => hasInvalidGeoLocation(address.geoLocation)), 'addresses');
+  pushIf(hasInvalidGeoLocation(input.location?.geoLocation), 'location');
+  pushIf(
+    (input.contact?.webUrls ?? []).some((url) => url.url.trim().length > 0 && isHttpsUrl(url.url) === false),
+    'contact.webUrls',
+  );
+  pushIf(
     (input.operatingCompany?.contact?.webUrls ?? []).some(
-      (url) => url.url.trim().length > 0 && isHttpsUrl(url.url) === false
-    )
-  ) {
-    errors.push('operatingCompany.contact.webUrls');
-  }
-
-  if (
+      (url) => url.url.trim().length > 0 && isHttpsUrl(url.url) === false,
+    ),
+    'operatingCompany.contact.webUrls',
+  );
+  pushIf(
     (input.priceInformations ?? []).some(
-      (price) => price.amount !== undefined && (typeof price.amount !== 'number' || Number.isFinite(price.amount) === false)
-    )
-  ) {
-    errors.push('priceInformations');
-  }
+      (price) => price.amount !== undefined && (typeof price.amount !== 'number' || Number.isFinite(price.amount) === false),
+    ),
+    'priceInformations',
+  );
 
   return errors;
 };

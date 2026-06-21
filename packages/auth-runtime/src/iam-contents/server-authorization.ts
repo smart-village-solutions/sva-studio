@@ -90,6 +90,32 @@ const projectPermissionsForOrganizationOptionalAccess = (
     ...(permission.accessScope === 'organization' ? { accessScope: undefined } : {}),
   }));
 
+const databaseUnavailableAuthorizationResult = (): ContentPrimitiveAuthorizationResult => ({
+  ok: false,
+  status: 503,
+  error: 'database_unavailable',
+  message: 'Berechtigungen konnten nicht geprüft werden.',
+});
+
+const shouldRetryWithoutOrganizationScope = (
+  allowed: boolean,
+  organizationId: string | undefined,
+  permissions: readonly EffectivePermission[],
+): boolean => !allowed && !organizationId && permissions.some((permission) => permission.organizationId);
+
+const resolveOrganizationOptionalDecision = (
+  request: AuthorizeRequest,
+  organizationId: string | undefined,
+  permissions: readonly EffectivePermission[],
+): boolean => {
+  if (!shouldRetryWithoutOrganizationScope(false, organizationId, permissions)) {
+    return false;
+  }
+
+  const organizationOptionalPermissions = projectPermissionsForOrganizationOptionalAccess(permissions);
+  return evaluateAuthorizeDecision(request, organizationOptionalPermissions).allowed;
+};
+
 export const authorizeContentPrimitiveForUser = async (input: {
   readonly ctx: AuthenticatedRequestContext;
   readonly action: string;
@@ -136,12 +162,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
         error: error instanceof Error ? error.message : String(error),
       });
 
-      return {
-        ok: false,
-        status: 503,
-        error: 'database_unavailable',
-        message: 'Berechtigungen konnten nicht geprüft werden.',
-      };
+      return databaseUnavailableAuthorizationResult();
     }
   }
 
@@ -168,12 +189,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
         error: error instanceof Error ? error.message : String(error),
       });
 
-      return {
-        ok: false,
-        status: 503,
-        error: 'database_unavailable',
-        message: 'Berechtigungen konnten nicht geprüft werden.',
-      };
+      return databaseUnavailableAuthorizationResult();
     }
   }
 
@@ -198,12 +214,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
           error: resolved.error,
         });
 
-        return {
-          ok: false,
-          status: 503,
-          error: 'database_unavailable',
-          message: 'Berechtigungen konnten nicht geprüft werden.',
-        };
+        return databaseUnavailableAuthorizationResult();
       }
 
       permissions = resolved.permissions;
@@ -217,12 +228,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
         error: error instanceof Error ? error.message : String(error),
       });
 
-      return {
-        ok: false,
-        status: 503,
-        error: 'database_unavailable',
-        message: 'Berechtigungen konnten nicht geprüft werden.',
-      };
+      return databaseUnavailableAuthorizationResult();
     }
   }
 
@@ -236,19 +242,15 @@ export const authorizeContentPrimitiveForUser = async (input: {
     traceId: workspaceContext.traceId,
   });
   const decision = evaluateAuthorizeDecision(request, permissions);
-  if (!decision.allowed && !organizationId && permissions.some((permission) => permission.organizationId)) {
-    const organizationOptionalPermissions = projectPermissionsForOrganizationOptionalAccess(permissions);
-    const organizationOptionalDecision = evaluateAuthorizeDecision(request, organizationOptionalPermissions);
-    if (organizationOptionalDecision.allowed) {
-      return {
-        ok: true,
-        actor: {
-          instanceId,
-          keycloakSubject: input.ctx.user.id,
-        },
-        permissions,
-      };
-    }
+  if (resolveOrganizationOptionalDecision(request, organizationId, permissions)) {
+    return {
+      ok: true,
+      actor: {
+        instanceId,
+        keycloakSubject: input.ctx.user.id,
+      },
+      permissions,
+    };
   }
 
   if (!decision.allowed) {

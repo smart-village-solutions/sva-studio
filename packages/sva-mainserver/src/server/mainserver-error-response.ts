@@ -1,4 +1,4 @@
-import { errorJson } from './content-route-helpers.js';
+import { errorJson } from './content-route-core.js';
 import { SvaMainserverError } from './errors.js';
 
 const MAINSERVER_ERROR_STATUS_BY_CODE = {

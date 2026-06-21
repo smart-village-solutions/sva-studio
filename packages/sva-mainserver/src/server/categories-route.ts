@@ -5,7 +5,7 @@ import {
 } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
-import { errorJson, json } from './content-route-helpers.js';
+import { errorJson, json } from './content-route-core.js';
 import { SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import { listSvaMainserverCategories } from './service.js';

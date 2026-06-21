@@ -16,13 +16,11 @@ import {
   isRecord,
   isResponse,
   json,
-  parseAddress,
-  parseCategories,
-  parseWebUrl,
   readBoolean,
   readNumber,
   readString,
-} from './content-route-helpers.js';
+} from './content-route-core.js';
+import { parseAddress, parseCategories, parseWebUrl } from './content-route-parsers.js';
 import { SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';

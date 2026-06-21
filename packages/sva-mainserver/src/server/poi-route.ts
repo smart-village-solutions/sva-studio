@@ -10,11 +10,17 @@ import type {
   SvaMainserverPoiInput,
 } from '../types.js';
 import {
-  parseAccessibilityInformation,
   errorJson,
   isResponse,
   json,
   matchRequestRoute,
+  parseJsonObjectBody,
+  readBoolean,
+  readString,
+  type RouteMatch as SharedRouteMatch,
+} from './content-route-core.js';
+import {
+  parseAccessibilityInformation,
   parseAddressList,
   parseCertificates,
   parseCategories,
@@ -24,13 +30,9 @@ import {
   parseOpeningHours,
   parseOperatingCompany,
   parsePrices,
-  parseJsonObjectBody,
   parseTags,
   parseWebUrls,
-  readBoolean,
-  readString,
-  type RouteMatch as SharedRouteMatch,
-} from './content-route-helpers.js';
+} from './content-route-parsers.js';
 import { SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import {

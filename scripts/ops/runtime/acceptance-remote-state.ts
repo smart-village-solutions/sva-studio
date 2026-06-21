@@ -11,6 +11,7 @@ import { runBootstrapJobAgainstAcceptance as runBootstrapJobAgainstAcceptanceWit
 import { filterRemoteOutputLines, wait, withoutDebugEnv } from './process.ts';
 import { formatRemoteStackSnapshot, inspectRemoteStack, type RemoteStackSnapshot } from './remote-stack-state.ts';
 import { inspectRemoteServiceContract } from './remote-service-spec.ts';
+import { resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
 
 export type RemoteStackEvidence = {
   channel: 'docker' | 'portainer-api' | 'quantum-cli';
@@ -107,7 +108,9 @@ const resolveRemoteInternalNetworkName = async (deps: AcceptanceRemoteStateDeps,
     .filter((networkName) => networkName !== 'public')[0]
     ?.trim();
   if (internalNetworkName) return internalNetworkName;
-  throw new Error(`Internes Overlay-Netz fuer ${stackName}_app konnte nicht aus der Live-Service-Spec abgeleitet werden.`);
+  throw new Error(
+    `Internes Overlay-Netz fuer ${resolveRemoteStackServiceName(stackName, deps.getRemoteAppServiceName(env))} konnte nicht aus der Live-Service-Spec abgeleitet werden.`,
+  );
 };
 
 const remoteJobDeps = (deps: AcceptanceRemoteStateDeps) => ({

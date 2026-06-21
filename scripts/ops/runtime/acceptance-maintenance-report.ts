@@ -57,8 +57,9 @@ export const renderRemoteComposeDocument = (deps: AcceptanceMaintenanceDeps, env
 export const renderQuantumDeployProject = (deps: AcceptanceMaintenanceDeps, env: NodeJS.ProcessEnv) => {
   const runtimeProfile = env.SVA_RUNTIME_PROFILE?.trim() || 'studio';
   const renderedComposeDocument = renderRemoteComposeDocument(deps, env);
-  deps.assertComposeServiceNetworks(renderedComposeDocument, 'app', ['internal', 'public']);
-  deps.assertComposeServiceIngressLabels(renderedComposeDocument, 'app');
+  const appServiceName = deps.getRemoteAppServiceName(env);
+  deps.assertComposeServiceNetworks(renderedComposeDocument, appServiceName, ['internal', 'public']);
+  deps.assertComposeServiceIngressLabels(renderedComposeDocument, appServiceName);
   const renderedCompose = JSON.stringify(deps.buildQuantumDeployComposeDocument(renderedComposeDocument), null, 2);
   const projectDir = mkdtempSync(resolve(tmpdir(), `sva-studio-${runtimeProfile}-deploy-`));
 
@@ -74,6 +75,7 @@ export const renderQuantumDeployProject = (deps: AcceptanceMaintenanceDeps, env:
 
 export const deployAcceptanceStack = (deps: AcceptanceMaintenanceDeps, env: NodeJS.ProcessEnv) => {
   const stackName = deps.getConfiguredStackName(env);
+  const appServiceName = deps.getRemoteAppServiceName(env);
 
   if (deps.commandExists('quantum-cli')) {
     const renderedProject = renderQuantumDeployProject(deps, env);

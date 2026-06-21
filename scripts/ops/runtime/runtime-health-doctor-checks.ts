@@ -7,6 +7,7 @@ import {
   normalizeBaseUrl,
   parseLiveRuntimeFlags,
   readJsonResponse,
+  resolveRemoteStackServiceName,
 } from './runtime-health-helpers.ts';
 import type { LiveRuntimeFlags, OidcClientSecretProbe, OidcClientSecretProbeResult, RuntimeHealthDeps } from './runtime-health.types.ts';
 
@@ -101,7 +102,8 @@ const buildObservabilityDoctorCheck = async (
 
   try {
     const stackName = deps.getConfiguredStackName(env);
-    const lines = await queryRecentLokiLinesWithRetry(deps, env, `{swarm_stack="${stackName}",swarm_service="${stackName}_app"} |= "observability_"`, { attempts: 3, delayMs: 2_000, limit: 50 });
+    const appService = resolveRemoteStackServiceName(stackName, deps.getRemoteAppServiceName(env));
+    const lines = await queryRecentLokiLinesWithRetry(deps, env, `{swarm_stack="${stackName}",swarm_service="${appService}"} |= "observability_"`, { attempts: 3, delayMs: 2_000, limit: 50 });
     const readyLine = [...lines].reverse().find((line) => line.includes('observability_ready'));
     const degradedLine = [...lines].reverse().find((line) => line.includes('observability_degraded'));
     if (readyLine) return deps.toDoctorCheck('observability-readiness', 'ok', 'observability_ready', 'Ein frisches Observability-Ready-Event ist in Loki sichtbar.', { ...summary, sample: readyLine });
@@ -150,9 +152,10 @@ const buildTenantAuthProofCheck = async (
 
   try {
     const stackName = deps.getConfiguredStackName(env);
+    const appService = resolveRemoteStackServiceName(stackName, deps.getRemoteAppServiceName(env));
     const missingEvidence: string[] = [];
     for (const probe of redirectResult.probeResults) {
-      const query = `{swarm_stack="${stackName}",swarm_service="${stackName}_app"} |= "tenant_auth_resolution_summary" |= "${probe.instanceId}"`;
+      const query = `{swarm_stack="${stackName}",swarm_service="${appService}"} |= "tenant_auth_resolution_summary" |= "${probe.instanceId}"`;
       const lines = await queryRecentLokiLinesWithRetry(deps, env, query, { attempts: 3, delayMs: 2_000, limit: 20 });
       if (lines.length === 0) missingEvidence.push(probe.instanceId);
     }

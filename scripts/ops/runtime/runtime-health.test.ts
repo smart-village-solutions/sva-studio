@@ -92,8 +92,82 @@ describe('runtime-health helpers', () => {
   });
 
   it('resolves remote container services based on otel mode', () => {
-    expect(resolveAcceptanceContainerServices({})).toEqual(['app', 'redis', 'postgres', 'otel-collector']);
-    expect(resolveAcceptanceContainerServices({ ENABLE_OTEL: 'false' })).toEqual(['app', 'redis', 'postgres']);
+    expect(resolveAcceptanceContainerServices({}, 'studio-app')).toEqual(['studio-app', 'redis', 'postgres', 'otel-collector']);
+    expect(resolveAcceptanceContainerServices({ ENABLE_OTEL: 'false' }, 'studio-app')).toEqual(['studio-app', 'redis', 'postgres']);
+  });
+
+  it('queries Loki using the resolved remote app service name', async () => {
+    const fetchCalls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        fetchCalls.push(url);
+
+        if (url.includes('tenant.example.test')) {
+          return new Response(null, {
+            headers: { location: 'https://issuer.example.test/realms/studio/protocol/openid-connect/auth' },
+            status: 302,
+          });
+        }
+
+        return new Response(JSON.stringify({
+          data: { result: [{ values: [['1', 'observability_ready tenant_auth_resolution_summary']] }] },
+        }), { status: 200 });
+      }),
+    );
+
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(() => 'https://quantum.example.test'),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRemoteAppServiceName: vi.fn(() => 'studio-app'),
+      getRuntimeProfileDefinition: vi.fn(() => ({ isLocal: false })),
+      inspectRemoteServiceContract: vi.fn(async () => ({
+        env: {},
+        image: 'ghcr.io/test/image',
+        labels: {},
+        networkNames: ['internal', 'public'],
+        serviceName: 'studio_studio-app',
+      })),
+      isExpectedOidcRedirect: vi.fn(() => true),
+      isMainserverCheckRequired: vi.fn(() => false),
+      isMockAuthRuntimeProfile: vi.fn(() => false),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(async () => ({
+        source: 'registry' as const,
+        targets: [{ authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
+      })),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn((name, status, code, message, details) => ({ code, details, message, name, status })),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn((env) => env),
+    });
+
+    await ops.buildObservabilityDoctorCheck('studio', {
+      SVA_GRAFANA_TOKEN: 'token',
+      SVA_LOKI_URL: 'https://loki.example.test',
+      SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
+    });
+    await ops.buildTenantAuthProofCheck('studio', {
+      SVA_GRAFANA_TOKEN: 'token',
+      SVA_LOKI_URL: 'https://loki.example.test',
+      SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
+    });
+
+    const lokiQueries = fetchCalls
+      .filter((url) => url.includes('loki.example.test'))
+      .map((url) => new URL(url).searchParams.get('query') ?? '');
+
+    expect(lokiQueries).toContain('{swarm_stack="studio",swarm_service="studio_studio-app"} |= "observability_"');
+    expect(lokiQueries).toContain(
+      '{swarm_stack="studio",swarm_service="studio_studio-app"} |= "tenant_auth_resolution_summary" |= "de-musterhausen"',
+    );
   });
 
   it('uses timeouts for login and me smoke requests', async () => {

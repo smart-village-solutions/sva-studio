@@ -1,11 +1,9 @@
 import { shellEscape } from './runtime-config.ts';
 import type { AcceptanceMaintenanceDeps } from './acceptance-maintenance.types.ts';
+import { resolveAcceptanceContainerServices, resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
 
 export const buildSwarmServicePresenceProbe = (deps: AcceptanceMaintenanceDeps, env: NodeJS.ProcessEnv) => {
-  const requiredServices =
-    (env.ENABLE_OTEL?.trim() || 'true').toLowerCase() === 'false'
-      ? ['app', 'redis', 'postgres']
-      : ['app', 'redis', 'postgres', 'otel-collector'];
+  const requiredServices = resolveAcceptanceContainerServices(env, deps.getRemoteAppServiceName(env));
 
   return {
     durationMs: 0,
@@ -30,7 +28,9 @@ export const resolveRemoteInternalNetworkName = async (deps: AcceptanceMaintenan
     return internalNetworkName;
   }
 
-  throw new Error(`Internes Overlay-Netz fuer ${stackName}_app konnte nicht aus der Live-Service-Spec abgeleitet werden.`);
+  throw new Error(
+    `Internes Overlay-Netz fuer ${resolveRemoteStackServiceName(stackName, deps.getRemoteAppServiceName(env))} konnte nicht aus der Live-Service-Spec abgeleitet werden.`,
+  );
 };
 
 export const runAcceptanceServiceScript = (

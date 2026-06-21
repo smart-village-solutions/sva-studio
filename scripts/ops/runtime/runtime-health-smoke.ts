@@ -111,7 +111,7 @@ const assertRemoteEvidenceHasServices = async (deps: RuntimeHealthDeps, env: Nod
 
 const assertAcceptanceContainerHealth = async (deps: RuntimeHealthDeps, env: NodeJS.ProcessEnv) => {
   const stackName = deps.getConfiguredStackName(env);
-  const services = resolveAcceptanceContainerServices(env);
+  const services = resolveAcceptanceContainerServices(env, deps.getRemoteAppServiceName(env));
 
   try {
     await assertRemoteEvidenceHasServices(deps, env, services);

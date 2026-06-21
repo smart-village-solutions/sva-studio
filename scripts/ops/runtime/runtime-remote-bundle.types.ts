@@ -1,7 +1,15 @@
 import type { SchemaGuardReport } from '../../../packages/auth-runtime/src/iam-account-management/schema-guard.ts';
 import type { RuntimeProfile } from '../../../packages/core/src/runtime-profile.ts';
-import type { AcceptanceDeployOptions, AcceptanceDeployReport, AcceptanceDeployStep, AcceptanceProbeResult, DoctorCheck, DoctorReport, RemoteRuntimeProfile } from '../runtime-env.shared.ts';
+import type { AcceptanceDeployOptions, AcceptanceDeployReport, AcceptanceDeployStep, AcceptanceProbeResult, DoctorCheck, DoctorReport, RemoteRuntimeProfile, TenantRuntimeTarget } from '../runtime-env.shared.ts';
+import type { ComposeDocument } from './deploy-project.ts';
+import type { RemoteServiceContract } from './remote-service-spec.ts';
 import type { RemoteRuntimeConfigDeps, RuntimeCommandRunnerDeps, RuntimeContractDeps } from './runtime-deps.types.ts';
+import type {
+  LocalTenantSecretState,
+  SchemaSnapshotVerificationReport,
+} from './doctor-db-checks.types.ts';
+import type { ServiceContract } from './deploy-project.ts';
+import type { LocalState } from './local-runtime.ts';
 
 export type RuntimeRemoteBundleDeps = RuntimeCommandRunnerDeps & RemoteRuntimeConfigDeps & RuntimeContractDeps & {
   acceptanceRemoteStateOps: {
@@ -24,17 +32,17 @@ export type RuntimeRemoteBundleDeps = RuntimeCommandRunnerDeps & RemoteRuntimeCo
     resetAcceptance: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv, verifyPostReset: () => Promise<void>) => Promise<void>;
     writeAcceptanceDeployReport: (report: AcceptanceDeployReport) => void;
   };
-  assertComposeServiceIngressLabels: (compose: never, serviceName: string) => void;
-  assertComposeServiceNetworks: (compose: never, serviceName: string, expectedNetworks: readonly string[]) => never;
+  assertComposeServiceIngressLabels: (compose: ComposeDocument, serviceName: string) => ServiceContract;
+  assertComposeServiceNetworks: (compose: ComposeDocument, serviceName: string, expectedNetworks: readonly string[]) => ServiceContract;
   assertDeterministicRemoteMutationContext: (env: NodeJS.ProcessEnv, runtimeProfile: RemoteRuntimeProfile, command: 'deploy') => { mode: 'ci' | 'ci-runner' | 'local-emergency' | 'local-operator' };
   assertRuntimeEnv: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => void;
   buildAcceptanceReportPaths: typeof import('../runtime-env.shared.ts').buildAcceptanceReportPaths;
   buildGuardrailDoctorChecks: (runtimeProfile: RuntimeProfile, options: { readonly env: NodeJS.ProcessEnv }) => Promise<readonly DoctorCheck[]>;
   buildImagePlatformDoctorCheck: (env: NodeJS.ProcessEnv, options?: AcceptanceDeployOptions) => DoctorCheck;
-  buildLocalInstanceRegistryReconciliationInput: (env: NodeJS.ProcessEnv) => unknown;
-  buildLocalProvisioningWorkerCheckBase: (runtimeProfile: RuntimeProfile, workerState: unknown, isProcessAlive: (pid: number) => boolean) => DoctorCheck;
+  buildLocalInstanceRegistryReconciliationInput: (env: NodeJS.ProcessEnv) => { allowedInstanceIds: readonly string[]; reconcileMode: string } | null;
+  buildLocalProvisioningWorkerCheckBase: (runtimeProfile: RuntimeProfile, workerState: LocalState | null, isProcessAlive: (pid: number) => boolean) => DoctorCheck;
   buildProdParityProbePlan: typeof import('../runtime-env.shared.ts').buildProdParityProbePlan;
-  buildQuantumDeployComposeDocument: (compose: never) => never;
+  buildQuantumDeployComposeDocument: (compose: ComposeDocument) => ComposeDocument;
   buildStudioImageVerifyEvidenceCheck: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv, options?: AcceptanceDeployOptions) => DoctorCheck;
   buildTrustedForwardedHeaders: typeof import('../runtime-env.shared.ts').buildTrustedForwardedHeaders;
   checkHttpHealth: (url: string) => Promise<{ payload?: unknown; response: { ok: boolean; status: number } }>;
@@ -42,7 +50,16 @@ export type RuntimeRemoteBundleDeps = RuntimeCommandRunnerDeps & RemoteRuntimeCo
   commandExists: (commandName: string) => boolean;
   collectLocalInstanceIdentityDrift: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => readonly unknown[];
   createDbSqlRunner: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => (sql: string) => string;
-  createProbeResult: (input: unknown) => AcceptanceProbeResult;
+  createProbeResult: (input: {
+    details?: Readonly<Record<string, unknown>>;
+    durationMs: number;
+    httpStatus?: number;
+    message: string;
+    name: string;
+    scope: AcceptanceProbeResult['scope'];
+    status: AcceptanceProbeResult['status'];
+    target: string;
+  }) => AcceptanceProbeResult;
   createStepResult: (name: AcceptanceDeployStep['name'], startedAt: number, status: AcceptanceDeployStep['status'], summary: string, details?: Readonly<Record<string, unknown>>) => AcceptanceDeployStep;
   deployReportDir: string;
   doctorRuntime: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorReport>;
@@ -51,7 +68,7 @@ export type RuntimeRemoteBundleDeps = RuntimeCommandRunnerDeps & RemoteRuntimeCo
   getGitCommitSha: () => string | undefined;
   getRuntimeProfileDefinition: (runtimeProfile: RuntimeProfile) => { isLocal: boolean };
   hasLocalEmergencyRemoteMutationOverride: (env: NodeJS.ProcessEnv) => boolean;
-  inspectRemoteServiceContract: (env: NodeJS.ProcessEnv, input: { quantumEndpoint: string; serviceName: string; stackName: string }) => Promise<unknown>;
+  inspectRemoteServiceContract: (env: NodeJS.ProcessEnv, input: { quantumEndpoint: string; serviceName: string; stackName: string }) => Promise<RemoteServiceContract | null>;
   isExpectedOidcRedirect: (location: string, env: NodeJS.ProcessEnv) => boolean;
   isMainserverCheckRequired: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => boolean;
   isMigrationStatusCheckRequired: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => boolean;
@@ -60,8 +77,8 @@ export type RuntimeRemoteBundleDeps = RuntimeCommandRunnerDeps & RemoteRuntimeCo
   isRemoteRuntimeProfile: (runtimeProfile: RuntimeProfile) => runtimeProfile is RemoteRuntimeProfile;
   jsonOutput: boolean;
   listGooseMigrationFiles: () => readonly string[];
-  loadActiveLocalTenantSecretStates: (env: NodeJS.ProcessEnv) => Promise<readonly unknown[]>;
-  loadRegistryTenantTargets: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv, options?: { readonly limit?: number }) => readonly { authRealm: string; host: string; instanceId: string }[];
+  loadActiveLocalTenantSecretStates: (env: NodeJS.ProcessEnv) => Promise<readonly LocalTenantSecretState[]>;
+  loadRegistryTenantTargets: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv, options?: { readonly limit?: number }) => readonly TenantRuntimeTarget[];
   localWorkerStateFile: string;
   parseInstanceIdList: (value: string | undefined) => readonly string[];
   parseJsonFromCommandOutput: <T>(value: string) => T;
@@ -78,7 +95,7 @@ export type RuntimeRemoteBundleDeps = RuntimeCommandRunnerDeps & RemoteRuntimeCo
   summarizeSchemaGuardFailures: (report: SchemaGuardReport) => string | undefined;
   toDoctorCheck: (name: string, status: DoctorCheck['status'], code: string, message: string, details?: Readonly<Record<string, unknown>>) => DoctorCheck;
   validateRuntimeProfileEnv: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => { derived: readonly string[] | Record<string, unknown>; invalid: readonly string[]; missing: readonly string[]; placeholders: readonly string[] };
-  verifyLocalDbSchemaSnapshot: (env: NodeJS.ProcessEnv) => unknown;
+  verifyLocalDbSchemaSnapshot: (env: NodeJS.ProcessEnv) => SchemaSnapshotVerificationReport;
   wait: (ms: number) => Promise<unknown>;
   withoutDebugEnv: (env: NodeJS.ProcessEnv) => NodeJS.ProcessEnv;
 };

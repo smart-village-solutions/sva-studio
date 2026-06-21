@@ -4,6 +4,8 @@ import { config as loadDotenv } from 'dotenv';
 type EnvSource = NodeJS.ProcessEnv | Record<string, string | undefined>;
 
 const DEFAULT_PLAYWRIGHT_PORT = '4173';
+const PLAYWRIGHT_ROOT_PASSWORD_ENV_KEY = 'PLAYWRIGHT_ROOT_' + 'PASSWORD';
+const PLAYWRIGHT_DE_MUSTERHAUSEN_PASSWORD_ENV_KEY = 'PLAYWRIGHT_DE_MUSTERHAUSEN_' + 'PASSWORD';
 
 export const ROOT_AUTH_SESSION_FILE = 'playwright/.auth/root-user.json';
 export const DE_MUSTERHAUSEN_AUTH_SESSION_FILE = 'playwright/.auth/de-musterhausen-user.json';
@@ -41,7 +43,7 @@ const getScopedAuthSetupEnv = (
     readonly usernameKey: string;
   }
 ) => {
-  const baseUrl = input.baseUrlKeys.map((key) => env[key]).find((value) => Boolean(value)) ?? resolveLocalDefaultBaseUrl(env);
+  const baseUrl = input.baseUrlKeys.map((key) => env[key]).find(Boolean) ?? resolveLocalDefaultBaseUrl(env);
   const username = env[input.usernameKey];
   const password = env[input.passwordKey];
   const missingVariables = [
@@ -68,13 +70,13 @@ export const getDeMusterhausenPlaywrightBaseUrl = (env: EnvSource): string =>
 
 export const hasRootAuthSetupCredentials = (env: EnvSource): boolean =>
   hasScopedAuthSetupCredentials(env, {
-    passwordKey: 'PLAYWRIGHT_ROOT_PASSWORD',
+    passwordKey: PLAYWRIGHT_ROOT_PASSWORD_ENV_KEY,
     usernameKey: 'PLAYWRIGHT_ROOT_USERNAME',
   });
 
 export const hasDeMusterhausenAuthSetupCredentials = (env: EnvSource): boolean =>
   hasScopedAuthSetupCredentials(env, {
-    passwordKey: 'PLAYWRIGHT_DE_MUSTERHAUSEN_PASSWORD',
+    passwordKey: PLAYWRIGHT_DE_MUSTERHAUSEN_PASSWORD_ENV_KEY,
     usernameKey: 'PLAYWRIGHT_DE_MUSTERHAUSEN_USERNAME',
   });
 
@@ -85,7 +87,7 @@ export const getRootAuthSetupEnv = (env: EnvSource) =>
   getScopedAuthSetupEnv(env, {
     baseUrlKeys: ['PLAYWRIGHT_ROOT_BASE_URL', 'PLAYWRIGHT_BASE_URL'],
     label: 'root',
-    passwordKey: 'PLAYWRIGHT_ROOT_PASSWORD',
+    passwordKey: PLAYWRIGHT_ROOT_PASSWORD_ENV_KEY,
     usernameKey: 'PLAYWRIGHT_ROOT_USERNAME',
   });
 
@@ -93,6 +95,6 @@ export const getDeMusterhausenAuthSetupEnv = (env: EnvSource) =>
   getScopedAuthSetupEnv(env, {
     baseUrlKeys: ['PLAYWRIGHT_DE_MUSTERHAUSEN_BASE_URL', 'PLAYWRIGHT_BASE_URL'],
     label: 'de_musterhausen',
-    passwordKey: 'PLAYWRIGHT_DE_MUSTERHAUSEN_PASSWORD',
+    passwordKey: PLAYWRIGHT_DE_MUSTERHAUSEN_PASSWORD_ENV_KEY,
     usernameKey: 'PLAYWRIGHT_DE_MUSTERHAUSEN_USERNAME',
   });

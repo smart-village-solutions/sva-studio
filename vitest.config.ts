@@ -1,12 +1,12 @@
 import { resolve } from 'node:path';
 
-import { defineConfig } from 'vitest/config';
+import { defineConfig, type ViteUserConfig } from 'vitest/config';
 
-export const sharedCoverageConfig = {
+export const sharedCoverageConfig: NonNullable<NonNullable<ViteUserConfig['test']>['coverage']> = {
   provider: 'v8',
   reporter: ['text-summary', 'json-summary', 'lcov'],
   reportsDirectory: './coverage',
-} as const;
+};
 
 export default defineConfig({
   resolve: {
@@ -63,5 +63,6 @@ export default defineConfig({
   },
   test: {
     coverage: sharedCoverageConfig,
+    exclude: ['.worktrees/**'],
   },
 });

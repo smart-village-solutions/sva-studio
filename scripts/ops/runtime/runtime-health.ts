@@ -2,6 +2,7 @@ export {
   buildOidcClientSecretProbes,
   evaluateOidcClientSecretProbeResponse,
   resolveAcceptanceContainerServices,
+  resolveRemoteShortServiceName,
   resolveRemoteStackServiceName,
 } from './runtime-health-helpers.ts';
 

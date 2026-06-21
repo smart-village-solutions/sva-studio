@@ -7,15 +7,17 @@ import {
   normalizeBaseUrl,
   parseLiveRuntimeFlags,
   readJsonResponse,
+  resolveRemoteShortServiceName,
   resolveRemoteStackServiceName,
 } from './runtime-health-helpers.ts';
 import type { LiveRuntimeFlags, OidcClientSecretProbe, OidcClientSecretProbeResult, RuntimeHealthDeps } from './runtime-health.types.ts';
 
 const readLiveRuntimeFlags = async (deps: RuntimeHealthDeps, env: NodeJS.ProcessEnv): Promise<LiveRuntimeFlags> => {
+  const stackName = deps.getConfiguredStackName(env);
   const liveContract = await deps.inspectRemoteServiceContract(env, {
     quantumEndpoint: deps.getConfiguredQuantumEndpoint(env),
-    serviceName: deps.getRemoteAppServiceName(env),
-    stackName: deps.getConfiguredStackName(env),
+    serviceName: resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env)),
+    stackName,
   });
   if (!liveContract) throw new Error('Live-Service-Spec fuer den App-Container konnte nicht gelesen werden.');
   return parseLiveRuntimeFlags(Object.entries(liveContract.env).map(([key, value]) => `${key}=${value}`).join('\n'));

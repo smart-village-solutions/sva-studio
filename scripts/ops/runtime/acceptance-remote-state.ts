@@ -11,7 +11,7 @@ import { runBootstrapJobAgainstAcceptance as runBootstrapJobAgainstAcceptanceWit
 import { filterRemoteOutputLines, wait, withoutDebugEnv } from './process.ts';
 import { formatRemoteStackSnapshot, inspectRemoteStack, type RemoteStackSnapshot } from './remote-stack-state.ts';
 import { inspectRemoteServiceContract } from './remote-service-spec.ts';
-import { resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
+import { resolveRemoteShortServiceName, resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
 
 export type RemoteStackEvidence = {
   channel: 'docker' | 'portainer-api' | 'quantum-cli';
@@ -99,17 +99,18 @@ const readRemoteStackEvidence = async (deps: AcceptanceRemoteStateDeps, env: Nod
 
 const resolveRemoteInternalNetworkName = async (deps: AcceptanceRemoteStateDeps, env: NodeJS.ProcessEnv) => {
   const stackName = deps.getConfiguredStackName(env);
+  const appServiceName = resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env));
   const liveContract = await inspectRemoteServiceContract(
     { commandExists: deps.commandExists, runCapture: deps.runCapture },
     env,
-    { quantumEndpoint: deps.getConfiguredQuantumEndpoint(env), serviceName: deps.getRemoteAppServiceName(env), stackName },
+    { quantumEndpoint: deps.getConfiguredQuantumEndpoint(env), serviceName: appServiceName, stackName },
   );
   const internalNetworkName = (liveContract?.networkNames ?? [])
     .filter((networkName) => networkName !== 'public')[0]
     ?.trim();
   if (internalNetworkName) return internalNetworkName;
   throw new Error(
-    `Internes Overlay-Netz fuer ${resolveRemoteStackServiceName(stackName, deps.getRemoteAppServiceName(env))} konnte nicht aus der Live-Service-Spec abgeleitet werden.`,
+    `Internes Overlay-Netz fuer ${resolveRemoteStackServiceName(stackName, appServiceName)} konnte nicht aus der Live-Service-Spec abgeleitet werden.`,
   );
 };
 
@@ -177,7 +178,7 @@ const quantumAppTaskProbe = (deps: AcceptanceRemoteStateDeps, env: NodeJS.Proces
 };
 
 const dockerAppTaskProbe = (deps: AcceptanceRemoteStateDeps, startedAt: number, stackName: string, appService: string) => {
-  const serviceOutput = deps.runCapture('docker', ['service', 'ps', `${stackName}_${appService}`, '--format', '{{.CurrentState}}']);
+  const serviceOutput = deps.runCapture('docker', ['service', 'ps', resolveRemoteStackServiceName(stackName, appService), '--format', '{{.CurrentState}}']);
   const firstState = serviceOutput.split('\n').map((entry) => entry.trim()).find((entry) => entry.length > 0);
   const isOk = typeof firstState === 'string' && firstState.toLowerCase().startsWith('running');
 
@@ -205,7 +206,7 @@ const failedAppTaskProbe = (error: unknown, startedAt: number, stackName: string
 const buildSwarmAppTaskProbe = (deps: AcceptanceRemoteStateDeps, env: NodeJS.ProcessEnv): AcceptanceProbeResult => {
   const startedAt = Date.now();
   const stackName = deps.getConfiguredStackName(env);
-  const appService = deps.getRemoteAppServiceName(env);
+  const appService = resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env));
   try {
     return deps.commandExists('quantum-cli')
       ? quantumAppTaskProbe(deps, env, startedAt, stackName, appService)

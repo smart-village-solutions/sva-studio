@@ -1,5 +1,6 @@
 import type { DoctorCheck } from '../runtime-env.shared.ts';
 import type { AcceptanceRuntimeCheckDeps } from './acceptance-runtime-checks.types.ts';
+import { resolveRemoteShortServiceName } from './runtime-health-helpers.ts';
 
 export const buildAcceptanceServiceCheck = async (
   deps: AcceptanceRuntimeCheckDeps,
@@ -29,7 +30,9 @@ export const buildAcceptanceIngressConsistencyCheck = async (
     const evidence = await deps.readRemoteStackEvidence(env);
     const stackName = deps.getConfiguredStackName(env);
     const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'https://studio.smart-village.app';
-    const hasRunningAppTask = evidence.hasRunningService(deps.getRemoteAppServiceName(env));
+    const hasRunningAppTask = evidence.hasRunningService(
+      resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env)),
+    );
     const live = await deps.checkHttpHealth(new URL('/health/live', baseUrl).toString());
 
     return hasRunningAppTask && !live.response.ok

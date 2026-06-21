@@ -7,6 +7,7 @@ import {
   type AcceptanceRuntimeCheckDeps,
   type ExpectedAppContract,
 } from './acceptance-runtime-checks.types.ts';
+import { resolveRemoteShortServiceName } from './runtime-health-helpers.ts';
 
 const createLiveSpecUnavailableCheck = (
   deps: AcceptanceRuntimeCheckDeps,
@@ -51,7 +52,8 @@ export const buildAcceptanceLiveSpecCheck = async (
 ): Promise<DoctorCheck> => {
   const renderedCompose = deps.renderRemoteComposeDocument(env);
   const renderedComposeAppServiceName = 'app';
-  const liveServiceName = deps.getRemoteAppServiceName(env);
+  const stackName = deps.getConfiguredStackName(env);
+  const liveServiceName = resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env));
   const expectedAppContract = deps.assertComposeServiceNetworks(renderedCompose, renderedComposeAppServiceName, ['internal', 'public']);
   deps.assertComposeServiceIngressLabels(renderedCompose, renderedComposeAppServiceName);
   const expectedIngressLabels = Object.fromEntries(
@@ -67,7 +69,6 @@ export const buildAcceptanceLiveSpecCheck = async (
   };
 
   try {
-    const stackName = deps.getConfiguredStackName(env);
     const liveContract = await deps.inspectRemoteServiceContract(env, {
       quantumEndpoint: deps.getConfiguredQuantumEndpoint(env),
       serviceName: liveServiceName,

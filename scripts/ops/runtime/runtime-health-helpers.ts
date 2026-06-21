@@ -40,8 +40,11 @@ export const parseLiveRuntimeFlags = (raw: string): LiveRuntimeFlags => {
 
 export const normalizeBaseUrl = (value: string) => value.replace(/\/+$/u, '');
 
+export const resolveRemoteShortServiceName = (stackName: string, serviceName: string) =>
+  serviceName.startsWith(`${stackName}_`) ? serviceName.slice(stackName.length + 1) : serviceName;
+
 export const resolveRemoteStackServiceName = (stackName: string, serviceName: string) =>
-  serviceName.startsWith(`${stackName}_`) ? serviceName : `${stackName}_${serviceName}`;
+  `${stackName}_${resolveRemoteShortServiceName(stackName, serviceName)}`;
 
 export const readJsonResponse = async (response: Response): Promise<Record<string, unknown>> => {
   const text = await response.text();

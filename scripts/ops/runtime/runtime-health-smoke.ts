@@ -1,5 +1,5 @@
 import type { RuntimeProfile } from '../../../packages/core/src/runtime-profile.ts';
-import { resolveAcceptanceContainerServices } from './runtime-health-helpers.ts';
+import { resolveAcceptanceContainerServices, resolveRemoteShortServiceName, resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
 import type { RuntimeHealthDeps } from './runtime-health.types.ts';
 
 const baseUrl = (env: NodeJS.ProcessEnv) => env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
@@ -111,7 +111,8 @@ const assertRemoteEvidenceHasServices = async (deps: RuntimeHealthDeps, env: Nod
 
 const assertAcceptanceContainerHealth = async (deps: RuntimeHealthDeps, env: NodeJS.ProcessEnv) => {
   const stackName = deps.getConfiguredStackName(env);
-  const services = resolveAcceptanceContainerServices(env, deps.getRemoteAppServiceName(env));
+  const appServiceName = resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env));
+  const services = resolveAcceptanceContainerServices(env, appServiceName);
 
   try {
     await assertRemoteEvidenceHasServices(deps, env, services);
@@ -128,7 +129,7 @@ const assertAcceptanceContainerHealth = async (deps: RuntimeHealthDeps, env: Nod
   }
 
   for (const service of services) {
-    const output = deps.runCapture('docker', ['ps', '--filter', `name=${stackName}_${service}`, '--format', '{{.Status}}'], env);
+    const output = deps.runCapture('docker', ['ps', '--filter', `name=${resolveRemoteStackServiceName(stackName, service)}`, '--format', '{{.Status}}'], env);
     if (output.length === 0) throw new Error(`Container fuer ${service} nicht gefunden.`);
   }
 };

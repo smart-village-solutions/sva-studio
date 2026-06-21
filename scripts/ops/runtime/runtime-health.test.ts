@@ -5,6 +5,7 @@ import {
   createRuntimeHealthOps,
   evaluateOidcClientSecretProbeResponse,
   resolveAcceptanceContainerServices,
+  resolveRemoteShortServiceName,
   resolveRemoteStackServiceName,
 } from './runtime-health.ts';
 
@@ -100,6 +101,11 @@ describe('runtime-health helpers', () => {
   it('does not prefix an already qualified remote service name twice', () => {
     expect(resolveRemoteStackServiceName('studio', 'studio-app')).toBe('studio_studio-app');
     expect(resolveRemoteStackServiceName('studio', 'studio_studio-app')).toBe('studio_studio-app');
+  });
+
+  it('normalizes already qualified remote service names back to short names', () => {
+    expect(resolveRemoteShortServiceName('studio', 'studio-app')).toBe('studio-app');
+    expect(resolveRemoteShortServiceName('studio', 'studio_studio-app')).toBe('studio-app');
   });
 
   it('queries Loki using the resolved remote app service name', async () => {
@@ -220,5 +226,42 @@ describe('runtime-health helpers', () => {
     expect(fetchCalls).toHaveLength(2);
     expect(fetchCalls[0]?.signal).toBeInstanceOf(AbortSignal);
     expect(fetchCalls[1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('normalizes qualified remote app service names for acceptance container checks', async () => {
+    const hasRunningService = vi.fn(() => true);
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(() => false),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRemoteAppServiceName: vi.fn(() => 'studio_studio-app'),
+      getRuntimeProfileDefinition: vi.fn(() => ({ isLocal: false })),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(() => true),
+      isMainserverCheckRequired: vi.fn(() => false),
+      isMockAuthRuntimeProfile: vi.fn(() => false),
+      readRemoteStackEvidence: vi.fn(async () => ({
+        channel: 'portainer-api' as const,
+        hasRunningService,
+        summary: 'ok',
+      })),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn(),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn((env) => env),
+    });
+
+    await ops.assertAcceptanceContainerHealth({});
+
+    expect(hasRunningService).toHaveBeenCalledWith('studio-app');
+    expect(hasRunningService).toHaveBeenCalledWith('redis');
+    expect(hasRunningService).toHaveBeenCalledWith('postgres');
+    expect(hasRunningService).toHaveBeenCalledWith('otel-collector');
   });
 });

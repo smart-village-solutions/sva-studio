@@ -5,6 +5,7 @@ import {
   createRuntimeHealthOps,
   evaluateOidcClientSecretProbeResponse,
   resolveAcceptanceContainerServices,
+  resolveRemoteStackServiceName,
 } from './runtime-health.ts';
 
 afterEach(() => {
@@ -94,6 +95,11 @@ describe('runtime-health helpers', () => {
   it('resolves remote container services based on otel mode', () => {
     expect(resolveAcceptanceContainerServices({}, 'studio-app')).toEqual(['studio-app', 'redis', 'postgres', 'otel-collector']);
     expect(resolveAcceptanceContainerServices({ ENABLE_OTEL: 'false' }, 'studio-app')).toEqual(['studio-app', 'redis', 'postgres']);
+  });
+
+  it('does not prefix an already qualified remote service name twice', () => {
+    expect(resolveRemoteStackServiceName('studio', 'studio-app')).toBe('studio_studio-app');
+    expect(resolveRemoteStackServiceName('studio', 'studio_studio-app')).toBe('studio_studio-app');
   });
 
   it('queries Loki using the resolved remote app service name', async () => {

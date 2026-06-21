@@ -1,4 +1,9 @@
-export { buildOidcClientSecretProbes, evaluateOidcClientSecretProbeResponse, resolveAcceptanceContainerServices } from './runtime-health-helpers.ts';
+export {
+  buildOidcClientSecretProbes,
+  evaluateOidcClientSecretProbeResponse,
+  resolveAcceptanceContainerServices,
+  resolveRemoteStackServiceName,
+} from './runtime-health-helpers.ts';
 
 import { createRuntimeHealthDoctorChecks } from './runtime-health-doctor-checks.ts';
 import { createRuntimeHealthSmokeOps } from './runtime-health-smoke.ts';

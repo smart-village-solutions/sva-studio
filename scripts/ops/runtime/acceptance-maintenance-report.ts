@@ -75,7 +75,6 @@ export const renderQuantumDeployProject = (deps: AcceptanceMaintenanceDeps, env:
 
 export const deployAcceptanceStack = (deps: AcceptanceMaintenanceDeps, env: NodeJS.ProcessEnv) => {
   const stackName = deps.getConfiguredStackName(env);
-  const appServiceName = deps.getRemoteAppServiceName(env);
 
   if (deps.commandExists('quantum-cli')) {
     const renderedProject = renderQuantumDeployProject(deps, env);

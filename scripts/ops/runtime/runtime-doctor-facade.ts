@@ -2,19 +2,16 @@ import type { DoctorCheck } from '../runtime-env.shared.ts';
 import { createRuntimeDoctorOps } from './doctor.ts';
 import type { RuntimeProfile } from '../../../packages/core/src/runtime-profile.ts';
 import type { RuntimeDoctorDeps } from './doctor.types.ts';
-
-type LocalStateLike = {
-  [key: string]: unknown;
-} | null;
+import type { LocalState } from './local-runtime.ts';
 
 type RuntimeDoctorFacadeDeps = Omit<RuntimeDoctorDeps, 'buildLocalProvisioningWorkerCheck' | 'readLocalWorkerState'> & {
   buildLocalProvisioningWorkerCheckBase: (
     runtimeProfile: RuntimeProfile,
-    workerState: unknown,
+    workerState: LocalState | null,
     isProcessAlive: (pid: number) => boolean,
   ) => DoctorCheck;
   isProcessAlive: (pid: number) => boolean;
-  readLocalWorkerState: (path: string) => LocalStateLike;
+  readLocalWorkerState: (path: string) => LocalState | null;
 };
 
 export const createRuntimeDoctorFacade = (deps: RuntimeDoctorFacadeDeps) => {

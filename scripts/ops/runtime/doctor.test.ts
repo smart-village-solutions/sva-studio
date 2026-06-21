@@ -8,12 +8,20 @@ import type {
   RuntimeProfile,
 } from '../runtime-env.shared.ts';
 import { createRuntimeDoctorOps } from './doctor.ts';
+import type { LocalState } from './local-runtime.ts';
 
 const createCheck = (name: string, status: DoctorCheck['status'] = 'ok'): DoctorCheck => ({
   code: `${name}_code`,
   message: name,
   name,
   status,
+});
+
+const createWorkerState = (): LocalState => ({
+  logFile: '/tmp/local-worker.log',
+  pid: 1,
+  profile: 'local-keycloak',
+  startedAt: '2026-06-19T10:00:00.000Z',
 });
 
 describe('createRuntimeDoctorOps', () => {
@@ -62,7 +70,7 @@ describe('createRuntimeDoctorOps', () => {
       isMainserverCheckRequired: vi.fn(() => false),
       isRemoteRuntimeProfile: ((profile: RuntimeProfile): profile is RemoteRuntimeProfile => profile === 'studio'),
       localWorkerStateFile: '/tmp/local-worker.json',
-      readLocalWorkerState: vi.fn(() => ({ pid: 1 })),
+      readLocalWorkerState: vi.fn(() => createWorkerState()),
       toDoctorCheck: vi.fn((name: string, status: DoctorCheck['status'], code: string, message: string, details?: Readonly<Record<string, unknown>>) => ({
         code,
         details,
@@ -155,7 +163,7 @@ describe('createRuntimeDoctorOps', () => {
       isMainserverCheckRequired: vi.fn(() => false),
       isRemoteRuntimeProfile: ((profile: RuntimeProfile): profile is RemoteRuntimeProfile => profile === 'studio'),
       localWorkerStateFile: '/tmp/local-worker.json',
-      readLocalWorkerState: vi.fn(() => ({ pid: 1 })),
+      readLocalWorkerState: vi.fn(() => createWorkerState()),
       toDoctorCheck: vi.fn((name: string, status: DoctorCheck['status'], code: string, message: string, details?: Readonly<Record<string, unknown>>) => ({
         code,
         details,

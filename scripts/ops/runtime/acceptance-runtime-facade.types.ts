@@ -14,7 +14,7 @@ type AcceptanceRemoteStateOps = {
 };
 
 type AcceptanceRuntimeSharedDeps = Readonly<RemoteRuntimeConfigDeps & RuntimeCommandProcessDeps & RuntimeContractDeps & AcceptanceRemoteStateOps & {
-  assertComposeServiceIngressLabels: (compose: ComposeDocument, serviceName: string) => void;
+  assertComposeServiceIngressLabels: (compose: ComposeDocument, serviceName: string) => ServiceContract;
   assertComposeServiceNetworks: (compose: ComposeDocument, serviceName: string, expectedNetworks: readonly string[]) => ServiceContract;
   assertDeterministicRemoteMutationContext: (env: NodeJS.ProcessEnv, runtimeProfile: RemoteRuntimeProfile, command: 'deploy') => { mode: 'ci' | 'ci-runner' | 'local-emergency' | 'local-operator' };
   buildAcceptanceReportPaths: typeof import('../runtime-env.shared.ts').buildAcceptanceReportPaths;

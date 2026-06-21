@@ -13,7 +13,6 @@ import { createRuntimeDoctorFacade } from './runtime-doctor-facade.ts';
 import { createAcceptanceDeployFacade } from './acceptance-runtime-facade.ts';
 import type { SchemaGuardReport } from '../../../packages/auth-runtime/src/iam-account-management/schema-guard.ts';
 import type { RuntimeRemoteBundleDeps } from './runtime-remote-bundle.types.ts';
-import type { LocalState } from './local-runtime.ts';
 
 type RuntimeRemoteVerificationOps = ReturnType<typeof createRuntimeRemoteVerification>;
 type RuntimeSmokeOps = ReturnType<typeof createRuntimeSmokeOps>;
@@ -147,7 +146,7 @@ const createDoctorFacadeOps = (
     buildLiveRuntimeEnvCheck: runtimeHealthOps.buildLiveRuntimeEnvCheck,
     buildLocalInstanceIdentityDoctorCheck: runtimeDoctorDbCheckOps.buildLocalInstanceIdentityDoctorCheck,
     buildLocalProvisioningWorkerCheckBase: (runtimeProfile, workerState, isProcessAlive) =>
-      deps.buildLocalProvisioningWorkerCheckBase(runtimeProfile, workerState as LocalState | null, isProcessAlive),
+      deps.buildLocalProvisioningWorkerCheckBase(runtimeProfile, workerState, isProcessAlive),
     buildMigrationStatusCheck: runtimeDoctorDbCheckOps.buildMigrationStatusCheck,
     buildObservabilityDoctorCheck: runtimeHealthOps.buildObservabilityDoctorCheck,
     buildSchemaGuardCheck: runtimeDoctorDbCheckOps.buildSchemaGuardCheck,

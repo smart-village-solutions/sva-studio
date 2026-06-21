@@ -38,7 +38,7 @@ export type RuntimeRemoteBundleDeps = RuntimeCommandRunnerDeps & RemoteRuntimeCo
   buildAcceptanceReportPaths: typeof import('../runtime-env.shared.ts').buildAcceptanceReportPaths;
   buildGuardrailDoctorChecks: (runtimeProfile: RuntimeProfile, options: { readonly env: NodeJS.ProcessEnv }) => Promise<readonly DoctorCheck[]>;
   buildImagePlatformDoctorCheck: (env: NodeJS.ProcessEnv, options?: AcceptanceDeployOptions) => DoctorCheck;
-  buildLocalInstanceRegistryReconciliationInput: (env: NodeJS.ProcessEnv) => { allowedInstanceIds: readonly string[]; reconcileMode: string } | null;
+  buildLocalInstanceRegistryReconciliationInput: typeof import('./local-instance-registry.ts').buildLocalInstanceRegistryReconciliationInput;
   buildLocalProvisioningWorkerCheckBase: (runtimeProfile: RuntimeProfile, workerState: LocalState | null, isProcessAlive: (pid: number) => boolean) => DoctorCheck;
   buildProdParityProbePlan: typeof import('../runtime-env.shared.ts').buildProdParityProbePlan;
   buildQuantumDeployComposeDocument: (compose: ComposeDocument) => ComposeDocument;
@@ -84,7 +84,7 @@ export type RuntimeRemoteBundleDeps = RuntimeCommandRunnerDeps & RemoteRuntimeCo
   parseRuntimeProfile: (value: string | undefined) => RuntimeProfile | undefined;
   precheckAcceptance: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv, options?: AcceptanceDeployOptions) => Promise<DoctorReport>;
   printJsonIfRequested: (payload: unknown) => void;
-  readLocalWorkerState: (path: string) => { [key: string]: unknown } | null;
+  readLocalWorkerState: typeof import('./local-runtime.ts').readLocalWorkerState;
   resolveAcceptanceDeployOptions: (env: NodeJS.ProcessEnv, cliOptions: unknown, runtimeProfile: RemoteRuntimeProfile) => AcceptanceDeployOptions;
   runSchemaGuard: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => SchemaGuardReport;
   shouldSkipQuantumPrePull: (env: NodeJS.ProcessEnv) => boolean;

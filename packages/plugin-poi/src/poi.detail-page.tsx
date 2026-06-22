@@ -244,7 +244,7 @@ export function PoiDetailPage({
       if (validationErrors.includes('operatingCompany.contact.webUrls')) {
         methods.setError('content.operator.contact.webUrls.0.url', {
           type: 'manual',
-          message: 'operatingCompany.contact.webUrls',
+          message: 'webUrls',
         });
         setActiveTab('content');
         focusFieldById('poi-operator-url');

@@ -120,6 +120,7 @@ describe('PoiDetailPage', () => {
         'poi.fields.timeTo': 'Endzeit',
         'poi.fields.payload': 'Payload',
         'poi.messages.validationError': 'Bitte Eingaben prüfen.',
+        'poi.validation.webUrls': 'URLs müssen mit https:// beginnen.',
         'poi.history.empty.title': 'Noch keine Historie verfügbar.',
         'poi.messages.createSuccess': 'Ort erstellt.',
         'poi.messages.updateSuccess': 'Ort aktualisiert.',
@@ -380,6 +381,8 @@ describe('PoiDetailPage', () => {
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
       expect(document.activeElement).toBe(document.getElementById('poi-operator-url'));
+      expect(screen.getByText('URLs müssen mit https:// beginnen.')).toBeTruthy();
+      expect(document.getElementById('poi-operator-url')?.getAttribute('aria-invalid')).toBe('true');
     });
   });
 

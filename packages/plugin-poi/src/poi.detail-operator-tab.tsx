@@ -10,9 +10,15 @@ import { PoiDetailSectionCard } from './poi.detail-section-card.js';
 import type { PoiDetailFormValues } from './poi.detail-form.js';
 
 export function PoiDetailOperatorTab({ pt }: Readonly<{ pt: (key: string) => string }>) {
-  const { control, setValue } = useFormContext<PoiDetailFormValues>();
+  const {
+    control,
+    clearErrors,
+    formState: { errors },
+    setValue,
+  } = useFormContext<PoiDetailFormValues>();
   const operator = useWatch({ control, name: 'content.operator' }) ?? {};
   const operatorWebUrl = operator.contact?.webUrls?.[0];
+  const operatorUrlError = errors.content?.operator?.contact?.webUrls?.[0]?.url;
   const [isGeocodingEnabled, setIsGeocodingEnabled] = React.useState(true);
   const [isReverseGeocodingEnabled, setIsReverseGeocodingEnabled] = React.useState(true);
   const [isMapEnabled, setIsMapEnabled] = React.useState(true);
@@ -62,6 +68,7 @@ export function PoiDetailOperatorTab({ pt }: Readonly<{ pt: (key: string) => str
   }, []);
 
   const updateOperatorWebUrl = (nextValue: Readonly<{ url?: string; description?: string }>) => {
+    clearErrors('content.operator.contact.webUrls.0.url');
     setValue(
       'content.operator.contact.webUrls',
       [
@@ -216,9 +223,16 @@ export function PoiDetailOperatorTab({ pt }: Readonly<{ pt: (key: string) => str
             onChange={(event) => setValue('content.operator.contact.fax', event.target.value, { shouldDirty: true })}
           />
         </StudioField>
-        <StudioField id="poi-operator-url" label={pt('fields.url')}>
+        <StudioField
+          id="poi-operator-url"
+          label={pt('fields.url')}
+          error={operatorUrlError ? pt('validation.webUrls') : undefined}
+          errorId="poi-operator-url-error"
+        >
           <Input
             id="poi-operator-url"
+            aria-describedby={operatorUrlError ? 'poi-operator-url-error' : undefined}
+            aria-invalid={operatorUrlError ? true : undefined}
             value={operatorWebUrl?.url ?? ''}
             onChange={(event) => updateOperatorWebUrl({ url: event.target.value })}
           />

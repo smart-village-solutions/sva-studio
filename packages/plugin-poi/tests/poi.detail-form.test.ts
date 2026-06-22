@@ -299,4 +299,265 @@ describe('poi.detail-form', () => {
       ).openingHours
     ).toMatchObject([{ weekday: 'MO', timeFrom: '10:00', open: true }]);
   });
+
+  it('drops empty structured fragments and preserves falsy scalar branches during serialization', () => {
+    expect(
+      mapPoiDetailFormValuesToInput(
+        {
+          name: 'Test POI',
+          basis: {
+            categoryName: '',
+            active: false,
+          },
+          content: {
+            description: ' ',
+            mobileDescription: '',
+            addresses: [
+              {
+                addition: ' ',
+                street: '',
+                zip: '',
+                city: '',
+                kind: '',
+                geoLocation: { latitude: '52.5', longitude: '' },
+              },
+            ],
+            location: {
+              name: '',
+              department: '',
+              district: '',
+              regionName: '',
+              state: '',
+              geoLocation: { latitude: '', longitude: '' },
+            },
+            contact: {
+              firstName: '',
+              lastName: '',
+              phone: '',
+              fax: '',
+              email: '',
+              webUrls: [{ url: ' ', description: 'leer' }],
+            },
+            openingHours: [
+              {
+                weekday: 'Montag',
+                sortNumber: '0',
+                open: false,
+                useYear: false,
+              },
+            ],
+            webUrls: [{ url: 'https://example.test', description: ' Start ' }],
+            operator: {
+              name: '',
+              address: {
+                addition: '',
+                street: '',
+                zip: '',
+                city: '',
+                kind: '',
+                geoLocation: { latitude: '', longitude: '' },
+              },
+              contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            },
+            prices: [
+              {
+                amount: '0',
+                groupPrice: false,
+                ageFrom: '0',
+                minChildrenCount: '0',
+              },
+            ],
+            mediaContents: [
+              {
+                captionText: '',
+                contentType: '',
+                sourceUrl: { url: ' ', description: 'ignore' },
+              },
+            ],
+            certificates: [{ name: ' ' }],
+            accessibilityInformation: {
+              description: '',
+              types: '',
+              urls: [{ url: ' ', description: 'leer' }],
+            },
+            tagsText: ' , ,, ',
+            payloadText: '{}',
+          },
+          media: {
+            images: [],
+          },
+          settings: {},
+        },
+        {}
+      )
+    ).toEqual({
+      name: 'Test POI',
+      active: false,
+      addresses: [{ geoLocation: { latitude: 52.5, longitude: undefined } }],
+      openingHours: [{ weekday: 'MO', sortNumber: 0, open: false, useYear: false }],
+      webUrls: [{ url: 'https://example.test', description: 'Start' }],
+      priceInformations: [{ amount: 0, groupPrice: false, ageFrom: 0, minChildrenCount: 0 }],
+      mediaContents: [],
+      certificates: [],
+    });
+  });
+
+  it('serializes secondary optional fields and keeps finite numeric branches stable', () => {
+    expect(
+      mapPoiDetailFormValuesToInput(
+        {
+          name: 'Test POI',
+          basis: {
+            categoryName: 'Freizeit',
+            active: true,
+          },
+          content: {
+            description: '',
+            mobileDescription: '',
+            addresses: [],
+            location: {
+              name: 'Park',
+              department: 'Nord',
+              district: '',
+              regionName: 'Ruhrgebiet',
+              state: 'NRW',
+              geoLocation: { latitude: '52.1', longitude: '13.2' },
+            },
+            contact: {
+              firstName: '',
+              lastName: '',
+              phone: '',
+              fax: '',
+              email: '',
+              webUrls: [],
+            },
+            openingHours: [
+              {
+                weekday: 'Dienstag',
+                dateFrom: '2026-07-01',
+                dateTo: '2026-07-31',
+                timeFrom: '09:00',
+                timeTo: '17:00',
+                description: 'Sommer',
+              },
+            ],
+            webUrls: [],
+            operator: {
+              name: 'Tourismus',
+              address: {
+                addition: '',
+                street: '',
+                zip: '',
+                city: '',
+                kind: '',
+                geoLocation: { latitude: '', longitude: '' },
+              },
+              contact: {
+                firstName: '',
+                lastName: '',
+                phone: '',
+                fax: '',
+                email: 'tourismus@example.test',
+                webUrls: [],
+              },
+            },
+            prices: [
+              {
+                name: 'Tarif',
+                amount: 15,
+                ageTo: '17',
+                minAdultCount: '1',
+                maxAdultCount: '2',
+                maxChildrenCount: '4',
+                description: 'Familie',
+                category: 'family',
+              },
+            ],
+            mediaContents: [
+              {
+                captionText: 'Plan',
+                copyright: 'Stadt',
+                height: 480,
+                width: '640',
+                contentType: 'image',
+                sourceUrl: { url: 'https://example.test/plan.jpg', description: 'Plan' },
+              },
+              {
+                captionText: '',
+                contentType: '',
+                height: Number.POSITIVE_INFINITY,
+                width: 'abc',
+                sourceUrl: undefined,
+              },
+            ],
+            certificates: [{ name: 'Familienfreundlich' }],
+            accessibilityInformation: {
+              description: 'Stufenlos',
+              types: 'wheelchair',
+              urls: [],
+            },
+            tagsText: 'park, familie',
+            payloadText: '',
+          },
+          media: {
+            images: [],
+          },
+          settings: {},
+        },
+        { source: 'manual' }
+      )
+    ).toMatchObject({
+      categoryName: 'Freizeit',
+      location: {
+        name: 'Park',
+        department: 'Nord',
+        regionName: 'Ruhrgebiet',
+        state: 'NRW',
+        geoLocation: { latitude: 52.1, longitude: 13.2 },
+      },
+      openingHours: [
+        {
+          weekday: 'TU',
+          dateFrom: '2026-07-01',
+          dateTo: '2026-07-31',
+          timeFrom: '09:00',
+          timeTo: '17:00',
+          description: 'Sommer',
+        },
+      ],
+      operatingCompany: {
+        name: 'Tourismus',
+        contact: { email: 'tourismus@example.test' },
+      },
+      priceInformations: [
+        {
+          name: 'Tarif',
+          amount: 15,
+          ageTo: 17,
+          minAdultCount: 1,
+          maxAdultCount: 2,
+          maxChildrenCount: 4,
+          description: 'Familie',
+          category: 'family',
+        },
+      ],
+      mediaContents: [
+        {
+          captionText: 'Plan',
+          copyright: 'Stadt',
+          height: 480,
+          width: 640,
+          contentType: 'image',
+          sourceUrl: { url: 'https://example.test/plan.jpg', description: 'Plan' },
+        },
+      ],
+      certificates: [{ name: 'Familienfreundlich' }],
+      accessibilityInformation: {
+        description: 'Stufenlos',
+        types: 'wheelchair',
+      },
+      tags: ['park', 'familie'],
+      payload: { source: 'manual' },
+    });
+  });
 });

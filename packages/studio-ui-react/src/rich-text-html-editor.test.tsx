@@ -232,6 +232,16 @@ describe('RichTextHtmlEditor', () => {
     expect(tiptapState.actions).toEqual(expect.arrayContaining(['paragraph', 'blockquote', 'heading:2']));
   });
 
+  it('reflects the active heading format in the block type select', () => {
+    tiptapState.editor.isActive.mockImplementation((name: string, attrs?: { level?: number }) =>
+      name === 'heading' && attrs?.level === 2
+    );
+
+    renderEditor();
+
+    expect(screen.getByRole('combobox', { name: 'Textformat' })).toHaveProperty('value', 'heading-2');
+  });
+
   it('removes links when the prompt returns an empty value and ignores cancelled prompts', () => {
     tiptapState.editor.getAttributes.mockReturnValue({ href: 'https://example.com' });
     Object.defineProperty(window, 'prompt', {
@@ -257,5 +267,32 @@ describe('RichTextHtmlEditor', () => {
     expect(screen.getByRole('combobox', { name: 'Textformat' })).toHaveProperty('disabled', true);
     expect(screen.getByRole('button', { name: 'Link setzen' })).toHaveProperty('disabled', true);
     expect(screen.getByRole('button', { name: 'Fett' })).toHaveProperty('disabled', true);
+  });
+
+  it('normalizes empty html input and keeps absolute link schemes unchanged', () => {
+    Object.defineProperty(window, 'prompt', {
+      configurable: true,
+      writable: true,
+      value: vi.fn(() => 'mailto:test@example.com'),
+    });
+
+    renderEditor({ value: '   ' });
+
+    expect(tiptapState.calls.setContent).toHaveBeenCalledWith('<p></p>');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Link setzen' }));
+
+    expect(tiptapState.calls.setLink).toHaveBeenCalledWith('mailto:test@example.com');
+  });
+
+  it('falls back safely when no editor instance is available', () => {
+    useEditorMock.mockReturnValue(null);
+
+    renderEditor();
+
+    expect(screen.getByRole('combobox', { name: 'Textformat' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'UL' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Link setzen' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('textbox').innerHTML).toBe('');
   });
 });

@@ -286,4 +286,239 @@ describe('map-geocoding-api', () => {
       message: 'no_result',
     });
   });
+
+  it('covers shared helpers for error mapping, parsing and provider normalization', async () => {
+    const {
+      buildProviderUrl,
+      compactQuery,
+      createClientError,
+      createErrorResponse,
+      normalizeProviderFeatures,
+      parsePositiveInteger,
+      readJsonBody,
+      readMapGeocodingErrorDiagnostics,
+    } = await import('./map-geocoding-api.shared.js');
+
+    expect(compactQuery({ query: ' Poi ', street: ' Hauptstraße 1 ', zip: ' 12345 ', city: ' Musterstadt ' })).toBe(
+      'Poi, Hauptstraße 1, 12345, Musterstadt',
+    );
+    expect(parsePositiveInteger(' 4800 ')).toBe(4800);
+    expect(parsePositiveInteger('abc')).toBe(3000);
+
+    const error = createClientError('provider_error', {
+      statusCode: 503,
+      endpoint: 'https://provider.example/geocode',
+      provider: 'custom',
+    });
+    expect(readMapGeocodingErrorDiagnostics(error)).toEqual({
+      error_message: 'provider_error',
+      error_code: 'provider_error',
+      provider_status: 503,
+      provider_endpoint: 'https://provider.example/geocode',
+      provider: 'custom',
+    });
+    expect(readMapGeocodingErrorDiagnostics('unexpected')).toEqual({});
+
+    expect(createErrorResponse('rate_limited').status).toBe(429);
+    expect(createErrorResponse('timeout').status).toBe(504);
+    expect(createErrorResponse('disabled').status).toBe(503);
+    expect(createErrorResponse('unauthorized').status).toBe(401);
+    expect(createErrorResponse('other').status).toBe(400);
+
+    await expect(
+      readJsonBody(
+        new Request('http://localhost/api/v1/iam/map-geocoding/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{"query":',
+        }),
+      ),
+    ).rejects.toThrow('invalid_input');
+
+    const normalizedFeatures = normalizeProviderFeatures(
+      {
+        features: [
+          {
+            properties: {
+              formatted: 'Musterstraße 1, 12345 Musterstadt',
+              street: 'Musterstraße',
+              housenumber: '1',
+              postcode: '12345',
+              city: 'Musterstadt',
+              country: 'Deutschland',
+              country_code: 'de',
+            },
+            geometry: {
+              coordinates: [13.405, 52.52],
+            },
+          },
+          {
+            properties: {
+              formatted: '',
+            },
+          },
+        ],
+      },
+      'custom',
+    );
+    expect(normalizedFeatures).toEqual([
+      {
+        label: 'Musterstraße 1, 12345 Musterstadt',
+        coordinates: { latitude: 52.52, longitude: 13.405 },
+        street: 'Musterstraße',
+        houseNumber: '1',
+        postalCode: '12345',
+        city: 'Musterstadt',
+        country: 'Deutschland',
+        countryCode: 'de',
+        source: 'custom',
+      },
+    ]);
+
+    const geoapifyUrl = buildProviderUrl(
+      {
+        provider: 'geoapify',
+        styleUrl: 'https://tiles.example/style.json',
+        autocompleteEnabled: true,
+        geocodeEnabled: true,
+        reverseGeocodeEnabled: true,
+        killSwitchEnabled: false,
+        suggestEndpoint: '',
+        geocodeEndpoint: '',
+        reverseGeocodeEndpoint: '',
+        requestTimeoutMs: '3000',
+        rateLimitPerMinute: '60',
+        apiKey: 'geoapify-key',
+      },
+      'reverse',
+      { coordinates: { latitude: 52.52, longitude: 13.405 } },
+    );
+    expect(geoapifyUrl.toString()).toContain('/reverse?');
+    expect(geoapifyUrl.searchParams.get('apiKey')).toBe('geoapify-key');
+
+    const customUrl = buildProviderUrl(
+      {
+        provider: 'custom',
+        styleUrl: 'https://tiles.example/style.json',
+        autocompleteEnabled: true,
+        geocodeEnabled: true,
+        reverseGeocodeEnabled: true,
+        killSwitchEnabled: false,
+        suggestEndpoint: 'https://custom.example/suggest',
+        geocodeEndpoint: 'https://custom.example/geocode',
+        reverseGeocodeEndpoint: 'https://custom.example/reverse',
+        requestTimeoutMs: '3000',
+        rateLimitPerMinute: '60',
+      },
+      'suggest',
+      { query: 'Musterstraße 1' },
+    );
+    expect(customUrl.toString()).toBe('https://custom.example/suggest?query=Musterstra%C3%9Fe+1');
+  });
+
+  it('covers operation helpers for provider and validation edge cases', async () => {
+    const {
+      executeGeocodeOperation,
+      executeProviderRequest,
+      executeReverseGeocodeOperation,
+      executeSuggestOperation,
+      getPublicMapGeocodingConfig,
+    } = await import('./map-geocoding-api.operations.js');
+
+    const config = {
+      provider: 'geoapify' as const,
+      styleUrl: 'https://tiles.example/styles/poi',
+      autocompleteEnabled: true,
+      geocodeEnabled: true,
+      reverseGeocodeEnabled: true,
+      killSwitchEnabled: false,
+      suggestEndpoint: '',
+      geocodeEndpoint: '',
+      reverseGeocodeEndpoint: '',
+      requestTimeoutMs: '3000',
+      rateLimitPerMinute: '60',
+      apiKey: 'geoapify-key',
+    };
+
+    expect(getPublicMapGeocodingConfig(config)).toEqual({
+      provider: 'geoapify',
+      styleUrl: 'https://tiles.example/styles/poi',
+      autocompleteEnabled: true,
+      geocodeEnabled: true,
+      reverseGeocodeEnabled: true,
+      killSwitchEnabled: false,
+    });
+
+    state.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        features: [
+          {
+            properties: {
+              formatted: 'Musterstraße 1, 12345 Musterstadt',
+              lat: 52.52,
+              lon: 13.405,
+            },
+          },
+        ],
+      }),
+    });
+    await expect(executeSuggestOperation(config, 'Musterstraße 1')).resolves.toHaveLength(1);
+
+    await expect(executeSuggestOperation({ ...config, autocompleteEnabled: false }, 'Musterstraße 1')).rejects.toThrow(
+      'disabled',
+    );
+    await expect(executeGeocodeOperation(config, { street: '   ' })).rejects.toThrow('invalid_input');
+    await expect(
+      executeReverseGeocodeOperation(config, { latitude: Number.NaN, longitude: 13.405 }),
+    ).rejects.toThrow('invalid_input');
+
+    state.fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      json: async () => ({}),
+    });
+    await expect(executeProviderRequest({ config, mode: 'suggest', query: 'Musterstraße' })).rejects.toThrow(
+      'rate_limited',
+    );
+
+    state.fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    });
+    await expect(executeProviderRequest({ config, mode: 'geocode', query: 'Musterstraße' })).rejects.toThrow(
+      'provider_error',
+    );
+
+    state.fetch.mockImplementationOnce(async (_url: URL, init?: RequestInit) => {
+      init?.signal?.throwIfAborted?.();
+      throw new DOMException('Timed out', 'AbortError');
+    });
+    await expect(
+      executeProviderRequest({
+        config: { ...config, requestTimeoutMs: '1' },
+        mode: 'reverse',
+        coordinates: { latitude: 52.52, longitude: 13.405 },
+      }),
+    ).rejects.toThrow('timeout');
+  });
+
+  it('dispatches map geocoding requests only for supported routes and methods', async () => {
+    const { dispatchMapGeocodingRequest } = await import('./map-geocoding-api.server.js');
+
+    const configResponse = await dispatchMapGeocodingRequest(
+      new Request('http://localhost/api/v1/iam/map-geocoding/config'),
+    );
+    expect(configResponse?.status).toBe(200);
+
+    const methodNotAllowedResponse = await dispatchMapGeocodingRequest(
+      new Request('http://localhost/api/v1/iam/map-geocoding/config', { method: 'POST' }),
+    );
+    expect(methodNotAllowedResponse?.status).toBe(405);
+
+    await expect(
+      dispatchMapGeocodingRequest(new Request('http://localhost/api/v1/iam/map-geocoding/unknown')),
+    ).resolves.toBeNull();
+  });
 });

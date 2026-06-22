@@ -221,4 +221,41 @@ describe('RichTextHtmlEditor', () => {
 
     expect(onChange).toHaveBeenCalledWith('<p>Beta</p>');
   });
+
+  it('switches paragraph, blockquote and heading formats through the block type select', () => {
+    renderEditor();
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Textformat' }), { target: { value: 'paragraph' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Textformat' }), { target: { value: 'blockquote' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Textformat' }), { target: { value: 'heading-2' } });
+
+    expect(tiptapState.actions).toEqual(expect.arrayContaining(['paragraph', 'blockquote', 'heading:2']));
+  });
+
+  it('removes links when the prompt returns an empty value and ignores cancelled prompts', () => {
+    tiptapState.editor.getAttributes.mockReturnValue({ href: 'https://example.com' });
+    Object.defineProperty(window, 'prompt', {
+      configurable: true,
+      writable: true,
+      value: vi.fn()
+        .mockReturnValueOnce('')
+        .mockReturnValueOnce(null),
+    });
+
+    renderEditor();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Link setzen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Link setzen' }));
+
+    expect(tiptapState.actions).toContain('unsetLink');
+    expect(tiptapState.calls.setLink).not.toHaveBeenCalled();
+  });
+
+  it('disables toolbar controls when the editor is disabled', () => {
+    renderEditor({ disabled: true });
+
+    expect(screen.getByRole('combobox', { name: 'Textformat' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Link setzen' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Fett' })).toHaveProperty('disabled', true);
+  });
 });

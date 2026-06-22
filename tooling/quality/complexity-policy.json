@@ -2906,6 +2906,72 @@
       "status": "open",
       "summary": "Lange POI-Detail-Page-Komponente in kleinere Presentational- und State-Bausteine aufteilen (packages/plugin-poi/src/poi.detail-page.tsx)"
     },
+    "packages-default:packages/plugin-poi/src/index.ts:publicExports": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-004",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Plugin-Exports in kleinere API-Kanten und Re-Export-Segmente aufteilen (packages/plugin-poi/src/index.ts)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-location-controller.ts:functionLines": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-005",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Location-Controller in kleinere Config-, Sync- und Geocoding-Helfer zerlegen (packages/plugin-poi/src/poi.detail-location-controller.ts)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-location-section.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-006",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Location-Section-Verzweigungen in kleinere Actions, Alerts und Kartenbausteine zerlegen (packages/plugin-poi/src/poi.detail-location-section.tsx)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-location-section.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-006",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange POI-Location-Section in kleinere Formular-, Geocoding- und Map-Teilkomponenten aufteilen (packages/plugin-poi/src/poi.detail-location-section.tsx)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-operator-tab.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-007",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Operator-Tab-Verzweigungen in kleinere Kontakt-, Standort- und Kartenbausteine zerlegen (packages/plugin-poi/src/poi.detail-operator-tab.tsx)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-operator-tab.tsx:fileLines": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-007",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Operator-Tab-Datei in kleinere Kontakt-, Standort- und Medienmodule splitten (packages/plugin-poi/src/poi.detail-operator-tab.tsx)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-operator-tab.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-007",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Langen POI-Operator-Tab in kleinere Presentational- und State-Bausteine aufteilen (packages/plugin-poi/src/poi.detail-operator-tab.tsx)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-settings-images-card.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-008",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Bildauswahlkarte in kleinere Preview-, Auswahl- und Dialogbausteine zerlegen (packages/plugin-poi/src/poi.detail-settings-images-card.tsx)"
+    },
+    "packages-default:packages/studio-ui-react/src/rich-text-html-editor.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-STUDIO-UI-RTE-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Rich-Text-Editor-Verzweigungen in kleinere Toolbar-, Blocktyp- und Link-Handler zerlegen (packages/studio-ui-react/src/rich-text-html-editor.tsx)"
+    },
+    "packages-default:packages/studio-ui-react/src/rich-text-html-editor.tsx:fileLines": {
+      "ticketId": "QUAL-STUDIO-UI-RTE-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Rich-Text-Editor-Datei in kleinere Toolbar-, Editor-Setup- und Utility-Module splitten (packages/studio-ui-react/src/rich-text-html-editor.tsx)"
+    },
+    "packages-default:packages/studio-ui-react/src/rich-text-html-editor.tsx:functionLines": {
+      "ticketId": "QUAL-STUDIO-UI-RTE-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Langen Rich-Text-Editor in kleinere State-, Toolbar- und Content-Bausteine aufteilen (packages/studio-ui-react/src/rich-text-html-editor.tsx)"
+    },
     "apps-default:apps/public-waste-calendar-web/src/components/public-waste-app.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-008",
       "ticketSystem": "backlog",

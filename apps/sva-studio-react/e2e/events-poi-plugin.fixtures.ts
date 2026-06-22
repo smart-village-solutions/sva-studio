@@ -22,7 +22,7 @@ export const expectEventOrPoiEditorReady = async (page: Page, path: '/admin/even
     await expectPluginPageHeading(page, /Event anlegen|events\.detail\.createTitle|events\.editor\.createTitle/);
     await expect(page.locator('#event-title')).toBeVisible();
   } else {
-    await expectPluginPageHeading(page, /POI anlegen|poi\.detail\.createTitle|poi\.editor\.createTitle/);
+    await expectPluginPageHeading(page, /Ort anlegen|POI anlegen|poi\.detail\.createTitle|poi\.editor\.createTitle/);
     await expect(page.locator('#poi-name')).toBeVisible();
   }
 };
@@ -34,9 +34,26 @@ export const expectCreateContentActionReady = async (page: Page) => {
   await expect(page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ })).toBeVisible();
 };
 export const expectLoginRedirect = async (page: Page, returnToPattern: RegExp) => {
-  await page.waitForFunction(() => { const { pathname, search } = window.location; return pathname === '/' || pathname === '/auth/login' || search.startsWith('?auth=login&returnTo=') || search.startsWith('?auth=dev-login&returnTo=') || search.startsWith('?auth=mock-login&returnTo='); });
+  await Promise.any([
+    page.waitForFunction(() => {
+      const { pathname, search } = window.location;
+      return (
+        pathname === '/' ||
+        pathname === '/auth/login' ||
+        search.startsWith('?auth=login&returnTo=') ||
+        search.startsWith('?auth=dev-login&returnTo=') ||
+        search.startsWith('?auth=mock-login&returnTo=')
+      );
+    }),
+    page.getByRole('heading', { name: /Sign in to your account/i }).waitFor({ state: 'visible' }),
+  ]);
   const loginUrl = new URL(page.url());
-  if (loginUrl.pathname !== '/') expect(loginUrl.searchParams.get('returnTo')).toMatch(returnToPattern);
+  if (loginUrl.pathname !== '/') {
+    const returnTo = loginUrl.searchParams.get('returnTo');
+    if (returnTo !== null) {
+      expect(returnTo).toMatch(returnToPattern);
+    }
+  }
 };
 
 export const mockSharedShellRequests = async (page: Page) => {

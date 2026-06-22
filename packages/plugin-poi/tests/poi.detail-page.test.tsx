@@ -291,7 +291,7 @@ describe('PoiDetailPage', () => {
     expect(screen.getByText('Noch keine Historie verfügbar.')).toBeTruthy();
   });
 
-  it('renders the poi editor after the core item loaded even when media references are still pending', async () => {
+  it('keeps the poi editor loading until media references are hydrated', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',
       name: 'Rathaus',
@@ -302,11 +302,21 @@ describe('PoiDetailPage', () => {
       webUrls: [{ url: 'https://example.com/poi' }],
       payload: { source: 'test' },
     } as never);
+    let resolveReferences: ((value: readonly unknown[]) => void) | null = null;
     vi.mocked(listHostMediaReferencesByTarget).mockImplementationOnce(
-      () => new Promise(() => undefined)
+      () =>
+        new Promise((resolve) => {
+          resolveReferences = resolve as (value: readonly unknown[]) => void;
+        }) as never
     );
 
     render(<PoiDetailPage mode="edit" contentId="poi-1" instanceId="de-musterhausen" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('poi.messages.loading')).toBeTruthy();
+    });
+
+    resolveReferences?.([]);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();

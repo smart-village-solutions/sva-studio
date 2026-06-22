@@ -185,8 +185,8 @@ describe('PoiLocationMap', () => {
     expect(maplibreState.constructorOptions?.attributionControl).not.toBe(false);
   });
 
-  it('logs maplibre render errors with the style url', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  it('signals map render errors to the caller', async () => {
+    const onError = vi.fn();
 
     render(
       <PoiLocationMap
@@ -194,7 +194,7 @@ describe('PoiLocationMap', () => {
         latitude="48.100000"
         longitude="11.500000"
         onCoordinatesChange={() => undefined}
-        onError={() => undefined}
+        onError={onError}
       />,
     );
 
@@ -211,16 +211,7 @@ describe('PoiLocationMap', () => {
       },
     });
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      'POI map render failed',
-      expect.objectContaining({
-        style_url: 'https://tiles.example/style.json',
-        source_id: 'basemap',
-        provider_status: 404,
-      }),
-    );
-
-    warnSpy.mockRestore();
+    expect(onError).toHaveBeenCalledWith('map_error');
   });
 
   it('keeps the existing map instance while coordinates change', async () => {

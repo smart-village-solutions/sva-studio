@@ -1,4 +1,4 @@
-import type maplibregl from 'maplibre-gl';
+import type * as maplibregl from 'maplibre-gl';
 
 export type PoiMapLibreModule = typeof import('maplibre-gl');
 export type PoiMapLibreMap = maplibregl.Map;
@@ -36,8 +36,8 @@ export const createPoiLocationMapRuntimeLoader = (
         runtimePromise = null;
       });
 
-    await currentCssPromise;
-    return currentRuntimePromise;
+    const [, runtime] = await Promise.all([currentCssPromise, currentRuntimePromise]);
+    return runtime;
   };
 };
 

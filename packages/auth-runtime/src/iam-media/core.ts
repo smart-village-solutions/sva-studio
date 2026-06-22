@@ -210,7 +210,15 @@ type MediaAuditResult = 'success' | 'failure' | 'denied';
 const MEDIA_VISIBILITIES = new Set<string>(['public', 'protected']);
 const MEDIA_UPLOAD_STATUSES = new Set<string>(['pending', 'validated', 'processed', 'failed', 'blocked']);
 const MEDIA_PROCESSING_STATUSES = new Set<string>(['pending', 'ready', 'failed']);
-const MEDIA_ROLES = new Set<string>(['thumbnail', 'teaser_image', 'header_image', 'gallery_item', 'download', 'hero_image']);
+const MEDIA_ROLES = new Set<string>([
+  'thumbnail',
+  'teaser_image',
+  'header_image',
+  'gallery_item',
+  'download',
+  'hero_image',
+  'attachment_image',
+]);
 
 const isMediaVisibility = (value: string): value is MediaVisibility => MEDIA_VISIBILITIES.has(value);
 const isMediaUploadStatus = (value: string): value is MediaUploadStatus => MEDIA_UPLOAD_STATUSES.has(value);

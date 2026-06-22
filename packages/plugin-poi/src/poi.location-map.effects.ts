@@ -36,24 +36,6 @@ const createMapClickHandler =
     });
   };
 
-const readMapErrorMeta = (error: unknown): Record<string, unknown> => {
-  if (!error || typeof error !== 'object') {
-    return {};
-  }
-
-  const candidate = error as {
-    error?: { message?: string; status?: number; url?: string };
-    sourceId?: string;
-    tile?: unknown;
-  };
-
-  return {
-    source_id: candidate.sourceId,
-    tile: candidate.tile,
-    provider_status: candidate.error?.status,
-  };
-};
-
 export const usePoiLocationMapLifecycle = (
   refs: MapRefs,
   { runtime, styleUrl, latitude, longitude, onCoordinatesChangeRef, onErrorRef, syncMarker }: MapState,
@@ -74,21 +56,13 @@ export const usePoiLocationMapLifecycle = (
 
       map.on('click', createMapClickHandler(onCoordinatesChangeRef));
       map.on('error', (event) => {
-        console.warn('POI map render failed', {
-          style_url: styleUrl,
-          ...readMapErrorMeta(event),
-        });
         onErrorRef.current?.('map_error');
       });
 
       refs.mapRef.current = map;
       onErrorRef.current?.(null);
       syncMarker(latitude ?? '', longitude ?? '');
-    } catch (error) {
-      console.error('POI map initialization failed', {
-        style_url: styleUrl,
-        error_message: error instanceof Error ? error.message : String(error),
-      });
+    } catch {
       onErrorRef.current?.('map_error');
     }
 

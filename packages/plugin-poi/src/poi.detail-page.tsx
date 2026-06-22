@@ -124,7 +124,6 @@ export function PoiDetailPage({
         }
         reset(mapPoiItemToDetailFormValues(item));
         setLoadedItem(item);
-        setLoading(false);
         void listHostMediaReferencesByTarget({
           fetch: globalThis.fetch.bind(globalThis),
           instanceId,
@@ -147,11 +146,13 @@ export function PoiDetailPage({
               .filter((assetId) => assetId.length > 0)
               .map((assetId) => ({ assetId, label: '' })),
           );
+          setLoading(false);
         }).catch(() => {
           if (active) {
             setLoadedOwnedMediaReferenceCount(0);
             setPreservedMediaReferences([]);
             setMediaReferencesLoadFailed(true);
+            setLoading(false);
           }
         });
       })

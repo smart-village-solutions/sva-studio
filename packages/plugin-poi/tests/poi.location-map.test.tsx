@@ -200,9 +200,7 @@ describe('PoiLocationMap', () => {
       expect.objectContaining({
         style_url: 'https://tiles.example/style.json',
         source_id: 'basemap',
-        provider_message: 'Style not found',
         provider_status: 404,
-        provider_url: 'https://tiles.example/style.json',
       }),
     );
 

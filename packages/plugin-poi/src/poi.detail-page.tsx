@@ -93,6 +93,7 @@ export function PoiDetailPage({
   const [loadedItem, setLoadedItem] = React.useState<PoiContentItem | null>(null);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [preservedMediaReferences, setPreservedMediaReferences] = React.useState<readonly HostMediaReferenceSelection[]>([]);
+  const [mediaReferencesLoadFailed, setMediaReferencesLoadFailed] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<PoiDetailTabId>('basis');
   const [visitedTabs, setVisitedTabs] = React.useState<readonly PoiDetailTabId[]>(['basis']);
 
@@ -132,6 +133,7 @@ export function PoiDetailPage({
           if (!active) {
             return;
           }
+          setMediaReferencesLoadFailed(false);
           const ownedRole = pluginPoiMediaPickers.images.roles[0];
           setPreservedMediaReferences(references.filter((reference) => reference.role !== ownedRole));
           setValue(
@@ -146,6 +148,7 @@ export function PoiDetailPage({
         }).catch(() => {
           if (active) {
             setPreservedMediaReferences([]);
+            setMediaReferencesLoadFailed(true);
           }
         });
       })
@@ -242,6 +245,11 @@ export function PoiDetailPage({
           role: pluginPoiMediaPickers.images.roles[0],
           sortOrder: index,
         }));
+      if (mediaReferencesLoadFailed && mediaReferences.length > 0) {
+        setStatus({ kind: 'error', text: pt('messages.mediaReferencesUnavailable') });
+        setActiveTab('settings');
+        return;
+      }
       const nextReferences = [...preservedMediaReferences, ...mediaReferences];
       if (nextReferences.length > 0) {
         await replaceHostMediaReferences({

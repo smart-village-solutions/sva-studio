@@ -19,6 +19,14 @@ const compactString = (value?: string | null) => {
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
 
+const hasSubstantiveFields = <T extends Record<string, unknown>, K extends keyof T>(
+  entry: T,
+  ignoredKey: K,
+): boolean => {
+  const { [ignoredKey]: _ignored, ...rest } = entry;
+  return Object.keys(rest).length > 0;
+};
+
 const compactFiniteNumber = (value?: string | number | null) => {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? value : undefined;
@@ -117,7 +125,7 @@ const serializeOpeningHours = (values: PoiDetailFormValues['content']['openingHo
         return false;
       }
 
-      return !(keys.length === 1 && entry.open === true);
+      return hasSubstantiveFields(entry, 'open');
     });
 
 const serializePrices = (values: PoiDetailFormValues['content']['prices']) =>
@@ -153,7 +161,7 @@ const serializePrices = (values: PoiDetailFormValues['content']['prices']) =>
         return false;
       }
 
-      return !(keys.length === 1 && entry.groupPrice === false);
+      return hasSubstantiveFields(entry, 'groupPrice');
     });
 
 const serializeMediaContents = (values: readonly PoiMediaContent[]) =>

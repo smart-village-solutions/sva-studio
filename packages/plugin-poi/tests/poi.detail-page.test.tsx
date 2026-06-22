@@ -128,6 +128,7 @@ describe('PoiDetailPage', () => {
         'poi.messages.locationGeocodeEmpty': 'Keine Geo-Koordinaten gefunden.',
         'poi.messages.locationMapUnavailable': 'Karte deaktiviert.',
         'poi.messages.locationMapError': 'Karte nicht verfügbar.',
+        'poi.messages.mediaReferencesUnavailable': 'Medienreferenzen konnten nicht geladen werden.',
         'poi.actions.deleteConfirm': 'Wirklich löschen?',
         'poi.actions.geocodeAddress': 'Geo-Koordinaten ermitteln',
         'poi.actions.geocodingAddress': 'Geo-Koordinaten werden ermittelt',
@@ -717,6 +718,43 @@ describe('PoiDetailPage', () => {
       expect(vi.mocked(updatePoi)).toHaveBeenCalledTimes(1);
       expect(replaceHostMediaReferencesMock).not.toHaveBeenCalled();
     });
+  });
+
+  it('blocks media reference replacement when existing references failed to load', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      payload: {},
+    } as never);
+    vi.mocked(listHostMediaAssets).mockResolvedValueOnce([
+      { id: 'asset-3', metadata: { title: 'Neu' } },
+    ] as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockRejectedValueOnce(new Error('media boom'));
+    vi.mocked(updatePoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+    } as never);
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
+    });
+
+    switchSection('settings');
+    fireEvent.click(screen.getByRole('button', { name: 'Bild hinzufügen' }));
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Auswählen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Medienreferenzen konnten nicht geladen werden.')).toBeTruthy();
+    });
+
+    expect(vi.mocked(updatePoi)).toHaveBeenCalledTimes(1);
+    expect(replaceHostMediaReferencesMock).not.toHaveBeenCalled();
   });
 
   it('deletes poi items after confirmation and returns to the content overview', async () => {

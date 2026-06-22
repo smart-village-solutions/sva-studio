@@ -609,6 +609,50 @@ describe('poi.detail-form', () => {
     });
   });
 
+  it('drops opening-hours and price rows that only toggle the boolean flag', () => {
+    expect(
+      mapPoiDetailFormValuesToInput(
+        {
+          name: 'Test POI',
+          basis: { categoryName: '', active: true },
+          content: {
+            description: '',
+            mobileDescription: '',
+            addresses: [],
+            location: {
+              name: '',
+              department: '',
+              district: '',
+              regionName: '',
+              state: '',
+              geoLocation: { latitude: '', longitude: '' },
+            },
+            contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            openingHours: [{ open: false }],
+            webUrls: [],
+            operator: {
+              name: '',
+              address: { addition: '', street: '', zip: '', city: '', kind: '', geoLocation: { latitude: '', longitude: '' } },
+              contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            },
+            prices: [{ groupPrice: true }],
+            mediaContents: [],
+            certificates: [],
+            accessibilityInformation: { description: '', types: '', urls: [] },
+            tagsText: '',
+            payloadText: '{}',
+          },
+          media: { images: [] },
+          settings: {},
+        },
+        {}
+      )
+    ).toMatchObject({
+      openingHours: [],
+      priceInformations: [],
+    });
+  });
+
   it('preserves non-empty invalid numeric input so validation can reject it explicitly', () => {
     const mutation = mapPoiDetailFormValuesToInput(
       {

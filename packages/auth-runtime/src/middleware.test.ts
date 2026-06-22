@@ -397,7 +397,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
     await expect(response.json()).resolves.toMatchObject({
       error: {
         code: 'internal_error',
-        message: 'Authentifizierungsfehler.',
+        message: 'Interner Verarbeitungsfehler.',
       },
     });
 

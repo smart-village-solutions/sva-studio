@@ -135,7 +135,7 @@ export const logProtectedHandlerError = (request: Request, error: unknown): Resp
     ...logContext,
   });
 
-  return createApiError(500, 'internal_error', 'Authentifizierungsfehler.', logContext.request_id, {
+  return createApiError(500, 'internal_error', 'Interner Verarbeitungsfehler.', logContext.request_id, {
     reason_code: 'authenticated_handler_failed',
   });
 };

@@ -50,9 +50,7 @@ const readMapErrorMeta = (error: unknown): Record<string, unknown> => {
   return {
     source_id: candidate.sourceId,
     tile: candidate.tile,
-    provider_message: candidate.error?.message,
     provider_status: candidate.error?.status,
-    provider_url: candidate.error?.url,
   };
 };
 

@@ -4,6 +4,54 @@ import { useFormContext, useWatch } from 'react-hook-form';
 import { PoiDetailSectionCard } from './poi.detail-section-card.js';
 import type { PoiDetailFormValues } from './poi.detail-form.js';
 
+const buildContactWebUrls = (
+  currentValue: Readonly<{ url?: string; description?: string }> | undefined,
+  nextValue: Readonly<{ url?: string; description?: string }>
+) => [
+  {
+    url: nextValue.url ?? currentValue?.url ?? '',
+    description: nextValue.description ?? currentValue?.description ?? '',
+  },
+];
+
+function ContactUrlFields({
+  pt,
+  value,
+  hasError,
+  onChange,
+}: Readonly<{
+  pt: (key: string) => string;
+  value: Readonly<{ url?: string; description?: string }> | undefined;
+  hasError: boolean;
+  onChange: (nextValue: Readonly<{ url?: string; description?: string }>) => void;
+}>) {
+  return (
+    <>
+      <StudioField
+        id="poi-contact-url"
+        label={pt('fields.url')}
+        error={hasError ? pt('validation.webUrls') : undefined}
+        errorId="poi-contact-url-error"
+      >
+        <Input
+          id="poi-contact-url"
+          aria-describedby={hasError ? 'poi-contact-url-error' : undefined}
+          aria-invalid={hasError ? true : undefined}
+          value={value?.url ?? ''}
+          onChange={(event) => onChange({ url: event.target.value })}
+        />
+      </StudioField>
+      <StudioField id="poi-contact-url-description" label={pt('fields.urlDescription')}>
+        <Input
+          id="poi-contact-url-description"
+          value={value?.description ?? ''}
+          onChange={(event) => onChange({ description: event.target.value })}
+        />
+      </StudioField>
+    </>
+  );
+}
+
 export function PoiDetailContactTab({ pt }: Readonly<{ pt: (key: string) => string }>) {
   const {
     control,
@@ -17,16 +65,7 @@ export function PoiDetailContactTab({ pt }: Readonly<{ pt: (key: string) => stri
 
   const updateContactWebUrl = (nextValue: Readonly<{ url?: string; description?: string }>) => {
     clearErrors('content.contact.webUrls.0.url');
-    setValue(
-      'content.contact.webUrls',
-      [
-        {
-          url: nextValue.url ?? contactWebUrl?.url ?? '',
-          description: nextValue.description ?? contactWebUrl?.description ?? '',
-        },
-      ],
-      { shouldDirty: true },
-    );
+    setValue('content.contact.webUrls', buildContactWebUrls(contactWebUrl, nextValue), { shouldDirty: true });
   };
 
   return (
@@ -67,27 +106,12 @@ export function PoiDetailContactTab({ pt }: Readonly<{ pt: (key: string) => stri
             onChange={(event) => setValue('content.contact.fax', event.target.value, { shouldDirty: true })}
           />
         </StudioField>
-        <StudioField
-          id="poi-contact-url"
-          label={pt('fields.url')}
-          error={contactUrlError ? pt('validation.webUrls') : undefined}
-          errorId="poi-contact-url-error"
-        >
-          <Input
-            id="poi-contact-url"
-            aria-describedby={contactUrlError ? 'poi-contact-url-error' : undefined}
-            aria-invalid={contactUrlError ? true : undefined}
-            value={contactWebUrl?.url ?? ''}
-            onChange={(event) => updateContactWebUrl({ url: event.target.value })}
-          />
-        </StudioField>
-        <StudioField id="poi-contact-url-description" label={pt('fields.urlDescription')}>
-          <Input
-            id="poi-contact-url-description"
-            value={contactWebUrl?.description ?? ''}
-            onChange={(event) => updateContactWebUrl({ description: event.target.value })}
-          />
-        </StudioField>
+        <ContactUrlFields
+          pt={pt}
+          value={contactWebUrl}
+          hasError={Boolean(contactUrlError)}
+          onChange={updateContactWebUrl}
+        />
       </StudioFieldGroup>
     </PoiDetailSectionCard>
   );

@@ -384,14 +384,22 @@ describe('auth-runtime withAuthenticatedUser', () => {
     );
   });
 
-  it('does not log downstream handler domain errors as auth middleware failures', async () => {
+  it('maps downstream handler errors to a structured 500 response without logging them as auth resolution failures', async () => {
     const request = new Request('http://localhost/api/v1/iam/map-geocoding/geocode', {
       headers: { cookie: 'sva_auth_session=session-2' },
     });
 
-    await expect(withAuthenticatedUser(request, async () => {
+    const response = await withAuthenticatedUser(request, async () => {
       throw new Error('no_result');
-    })).rejects.toThrow('no_result');
+    });
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'internal_error',
+        message: 'Authentifizierungsfehler.',
+      },
+    });
 
     expect(middlewareLogger.error).not.toHaveBeenCalledWith(
       'Auth middleware failed unexpectedly',

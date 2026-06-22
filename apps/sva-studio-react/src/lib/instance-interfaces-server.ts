@@ -398,6 +398,20 @@ const trimToUndefined = (value: string): string | undefined => {
   return trimmed ? trimmed : undefined;
 };
 
+const isValidAbsoluteHttpUrl = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 const isObviouslyUrlLikeMailHost = (value: string): boolean => {
   const trimmed = value.trim();
   return trimmed.includes('://') || trimmed.includes('/') || trimmed.includes('?') || trimmed.includes('#');
@@ -530,12 +544,54 @@ const buildMapGeocodingRecord = (input: {
   readonly hasDefaultRecord: boolean;
   readonly previousSecrets: Record<string, string>;
 }): ExternalInterfaceRecord => {
-  const existingPublicConfig = input.existing?.publicConfig ?? {};
+  const existingPublicConfig = { ...(input.existing?.publicConfig ?? {}) };
   const styleUrl = input.draft.config.styleUrl.trim();
+  const suggestEndpoint = input.draft.config.suggestEndpoint.trim();
+  const geocodeEndpoint = input.draft.config.geocodeEndpoint.trim();
+  const reverseGeocodeEndpoint = input.draft.config.reverseGeocodeEndpoint.trim();
   const timeoutMs = parseOptionalPositiveInteger(input.draft.config.requestTimeoutMs);
   const rateLimitPerMinute = parseOptionalPositiveInteger(input.draft.config.rateLimitPerMinute);
+  const nextApiKey = input.draft.config.apiKey.trim() || input.previousSecrets.apiKey || '';
+
+  for (const key of [
+    'provider',
+    'styleUrl',
+    'autocompleteEnabled',
+    'geocodeEnabled',
+    'reverseGeocodeEnabled',
+    'suggestEndpoint',
+    'geocodeEndpoint',
+    'reverseGeocodeEndpoint',
+    'requestTimeoutMs',
+    'rateLimitPerMinute',
+    'killSwitchEnabled',
+  ] as const) {
+    delete existingPublicConfig[key];
+  }
 
   if (!input.draft.name.trim() || !styleUrl) {
+    throw new Error('invalid_config');
+  }
+
+  if (!input.existing && input.hasDefaultRecord) {
+    throw new Error('invalid_config');
+  }
+
+  const hasEnabledOperation =
+    input.draft.config.autocompleteEnabled ||
+    input.draft.config.geocodeEnabled ||
+    input.draft.config.reverseGeocodeEnabled;
+
+  if (
+    input.draft.config.provider === 'custom' &&
+    ((input.draft.config.autocompleteEnabled && !isValidAbsoluteHttpUrl(suggestEndpoint)) ||
+      (input.draft.config.geocodeEnabled && !isValidAbsoluteHttpUrl(geocodeEndpoint)) ||
+      (input.draft.config.reverseGeocodeEnabled && !isValidAbsoluteHttpUrl(reverseGeocodeEndpoint)))
+  ) {
+    throw new Error('invalid_config');
+  }
+
+  if (input.draft.config.provider === 'geoapify' && hasEnabledOperation && !nextApiKey.trim()) {
     throw new Error('invalid_config');
   }
 
@@ -550,11 +606,7 @@ const buildMapGeocodingRecord = (input: {
     enabled: input.draft.enabled,
     isDefault: input.existing?.isDefault ?? !input.hasDefaultRecord,
     category: 'api',
-    baseUrl:
-      input.draft.config.suggestEndpoint.trim() ||
-      input.draft.config.geocodeEndpoint.trim() ||
-      input.draft.config.reverseGeocodeEndpoint.trim() ||
-      styleUrl,
+    baseUrl: suggestEndpoint || geocodeEndpoint || reverseGeocodeEndpoint || styleUrl,
     authMode: 'api_key',
     publicConfig: {
       ...existingPublicConfig,
@@ -563,20 +615,16 @@ const buildMapGeocodingRecord = (input: {
       autocompleteEnabled: input.draft.config.autocompleteEnabled,
       geocodeEnabled: input.draft.config.geocodeEnabled,
       reverseGeocodeEnabled: input.draft.config.reverseGeocodeEnabled,
-      suggestEndpoint: input.draft.config.suggestEndpoint.trim(),
-      geocodeEndpoint: input.draft.config.geocodeEndpoint.trim(),
-      reverseGeocodeEndpoint: input.draft.config.reverseGeocodeEndpoint.trim(),
+      suggestEndpoint,
+      geocodeEndpoint,
+      reverseGeocodeEndpoint,
       ...(timeoutMs !== undefined ? { requestTimeoutMs: timeoutMs } : {}),
       ...(rateLimitPerMinute !== undefined ? { rateLimitPerMinute } : {}),
       killSwitchEnabled: input.draft.config.killSwitchEnabled,
     },
     secretConfigCiphertext: buildSecretCiphertext({
       interfaceId: input.interfaceId,
-      secretConfig: input.draft.config.apiKey.trim()
-        ? { apiKey: input.draft.config.apiKey.trim() }
-        : input.previousSecrets.apiKey
-          ? { apiKey: input.previousSecrets.apiKey }
-          : {},
+      secretConfig: nextApiKey.trim() ? { apiKey: nextApiKey.trim() } : {},
     }),
     statusCheckKind: 'map_geocoding',
     visibleStatus: resolveVisibleStatus(input.draft.enabled, input.existing?.visibleStatus),

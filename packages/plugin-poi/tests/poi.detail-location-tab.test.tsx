@@ -205,4 +205,31 @@ describe('PoiDetailLocationTab', () => {
       longitude: 11.5,
     });
   });
+
+  it('trims reverse-geocoded street fragments before writing them into the form', async () => {
+    geocodingState.reverseCoordinates.mockResolvedValueOnce({
+      label: 'Gefundene Adresse',
+      coordinates: { latitude: 48.1, longitude: 11.5 },
+      street: ' Neue Straße ',
+      houseNumber: ' 5 ',
+      postalCode: '54321',
+      city: 'Neustadt',
+      country: 'Deutschland',
+      countryCode: 'de',
+      source: 'geoapify' as const,
+    });
+
+    render(<TestForm />);
+    await waitFor(() => {
+      expect(geocodingState.getConfig).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText('Breitengrad'), { target: { value: '48.100000' } });
+    fireEvent.change(screen.getByLabelText('Längengrad'), { target: { value: '11.500000' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Adresse ermitteln' }));
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Straße') as HTMLInputElement).value).toBe('Neue Straße 5');
+    });
+  });
 });

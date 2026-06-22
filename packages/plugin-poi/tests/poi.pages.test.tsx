@@ -9,6 +9,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPoi, getPoi, listPoi, updatePoi } from '../src/poi.api.js';
 import { PoiCreatePage, PoiEditPage, PoiListPage } from '../src/poi.pages.js';
+import { pluginPoiMediaPickers } from '../src/plugin.js';
 
 vi.mock('@sva/studio-ui-react', async () => {
   const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
@@ -92,6 +93,8 @@ const navigateMock = vi.fn();
 const paramsMock = vi.fn(() => ({ id: 'poi-1' }));
 
 describe('PoiListPage', () => {
+  const imageRole = pluginPoiMediaPickers.images.roles[0];
+
   const switchSection = (value: string) => {
     fireEvent.change(screen.getByLabelText('Bereich'), { target: { value } });
   };
@@ -282,7 +285,7 @@ describe('PoiListPage', () => {
         instanceId: undefined,
         targetType: 'poi',
         targetId: 'poi-created',
-        references: [{ assetId: 'asset-teaser', role: 'attachment_image', sortOrder: 0 }],
+        references: [{ assetId: 'asset-teaser', role: imageRole, sortOrder: 0 }],
       });
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/poi/$id', params: { id: 'poi-created' } });
     });
@@ -295,7 +298,7 @@ describe('PoiListPage', () => {
         assetId: 'asset-teaser',
         targetType: 'poi',
         targetId: 'poi-1',
-        role: 'attachment_image',
+        role: imageRole,
       },
     ]);
 

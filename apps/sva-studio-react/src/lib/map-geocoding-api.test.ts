@@ -287,6 +287,46 @@ describe('map-geocoding-api', () => {
     });
   });
 
+  it('keeps map-geocoding domain errors deterministic even when auth middleware wraps thrown handler errors', async () => {
+    state.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) => {
+      try {
+        return await handler({
+          sessionId: 'session-1',
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['editor'],
+          },
+        });
+      } catch {
+        return new Response(JSON.stringify({ error: { code: 'invalid_config', message: 'invalid_config' } }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    });
+    state.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ features: [] }),
+    });
+
+    const { suggestMapAddressesHandler } = await import('./map-geocoding-api');
+
+    const response = await suggestMapAddressesHandler(
+      new Request('http://localhost/api/v1/iam/map-geocoding/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'leer' }),
+      }),
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'no_result', message: 'no_result' },
+      message: 'no_result',
+    });
+  });
+
   it('covers shared helpers for error mapping, parsing and provider normalization', async () => {
     const {
       buildProviderUrl,
@@ -296,7 +336,9 @@ describe('map-geocoding-api', () => {
       normalizeProviderFeatures,
       parsePositiveInteger,
       readJsonBody,
+      readMapGeocodingErrorCode,
       readMapGeocodingErrorDiagnostics,
+      sanitizeMapGeocodingErrorCode,
     } = await import('./map-geocoding-api.shared.js');
 
     expect(compactQuery({ query: ' Poi ', street: ' Hauptstraße 1 ', zip: ' 12345 ', city: ' Musterstadt ' })).toBe(
@@ -311,7 +353,6 @@ describe('map-geocoding-api', () => {
       provider: 'custom',
     });
     expect(readMapGeocodingErrorDiagnostics(error)).toEqual({
-      error_message: 'provider_error',
       error_code: 'provider_error',
       provider_status: 503,
       provider_endpoint: 'https://provider.example/geocode',
@@ -319,12 +360,20 @@ describe('map-geocoding-api', () => {
     });
     expect(readMapGeocodingErrorDiagnostics('unexpected')).toEqual({});
     expect(readMapGeocodingErrorDiagnostics(new Error('stack details'))).toEqual({});
+    expect(readMapGeocodingErrorCode(error)).toBe('provider_error');
+    expect(readMapGeocodingErrorCode(new Error('stack details'))).toBe('provider_error');
+    expect(sanitizeMapGeocodingErrorCode('timeout')).toBe('timeout');
+    expect(sanitizeMapGeocodingErrorCode('stack details')).toBe('provider_error');
 
     expect(createErrorResponse('rate_limited').status).toBe(429);
     expect(createErrorResponse('timeout').status).toBe(504);
     expect(createErrorResponse('disabled').status).toBe(503);
     expect(createErrorResponse('unauthorized').status).toBe(401);
     expect(createErrorResponse('other').status).toBe(400);
+    await expect(createErrorResponse('stack details').json()).resolves.toEqual({
+      error: { code: 'provider_error', message: 'provider_error' },
+      message: 'provider_error',
+    });
 
     await expect(
       readJsonBody(

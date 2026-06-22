@@ -7,12 +7,12 @@ import type {
   MapGeocodingRuntimeConfig,
 } from '@sva/plugin-sdk';
 
-import { readErrorMessage } from './error-message-utils';
 import {
   createClientError,
   createErrorResponse,
   readJsonBody,
   jsonResponse,
+  readMapGeocodingErrorCode,
 } from './map-geocoding-api.shared.js';
 import {
   executeGeocodeOperation,
@@ -30,7 +30,7 @@ const withRouteResponse = async <T>(run: () => Promise<T>): Promise<Response> =>
   try {
     return jsonResponse(200, await run());
   } catch (error) {
-    return createErrorResponse(readErrorMessage(error, 'provider_error'));
+    return createErrorResponse(readMapGeocodingErrorCode(error));
   }
 };
 

@@ -7,6 +7,7 @@ import {
   replaceHostMediaReferences,
   usePluginTranslation,
   type HostMediaAssetListItem,
+  type HostMediaReferenceSelection,
 } from '@sva/plugin-sdk';
 import {
   Button,
@@ -91,7 +92,7 @@ export function PoiDetailPage({
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<PoiContentItem | null>(null);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
-  const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
+  const [preservedMediaReferences, setPreservedMediaReferences] = React.useState<readonly HostMediaReferenceSelection[]>([]);
   const [activeTab, setActiveTab] = React.useState<PoiDetailTabId>('basis');
   const [visitedTabs, setVisitedTabs] = React.useState<readonly PoiDetailTabId[]>(['basis']);
 
@@ -131,11 +132,12 @@ export function PoiDetailPage({
           if (!active) {
             return;
           }
-          setExistingMediaReferenceCount(references.length);
+          const ownedRole = pluginPoiMediaPickers.images.roles[0];
+          setPreservedMediaReferences(references.filter((reference) => reference.role !== ownedRole));
           setValue(
             'media.images',
             references
-              .filter((reference) => reference.role === pluginPoiMediaPickers.images.roles[0])
+              .filter((reference) => reference.role === ownedRole)
               .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
               .map((reference) => normalizePoiMediaAssetId(reference.assetId))
               .filter((assetId) => assetId.length > 0)
@@ -143,7 +145,7 @@ export function PoiDetailPage({
           );
         }).catch(() => {
           if (active) {
-            setExistingMediaReferenceCount(0);
+            setPreservedMediaReferences([]);
           }
         });
       })
@@ -195,6 +197,7 @@ export function PoiDetailPage({
     const validationErrors = validatePoiForm(mutation);
 
     if (validationErrors.length > 0) {
+      setStatus({ kind: 'error', text: pt('messages.validationError') });
       if (validationErrors.includes('name')) {
         methods.setError('name', { type: 'manual', message: 'name' });
         methods.setFocus('name');
@@ -214,6 +217,18 @@ export function PoiDetailPage({
         }
         setActiveTab('content');
       }
+      if (validationErrors.includes('addresses')) {
+        methods.setError('content.addresses.0.geoLocation.latitude', { type: 'manual', message: 'addresses' });
+        setActiveTab('content');
+      }
+      if (validationErrors.includes('location')) {
+        methods.setError('content.location.geoLocation.latitude', { type: 'manual', message: 'location' });
+        setActiveTab('content');
+      }
+      if (validationErrors.includes('priceInformations')) {
+        methods.setError('content.prices.0.amount', { type: 'manual', message: 'priceInformations' });
+        setActiveTab('content');
+      }
       return;
     }
 
@@ -227,13 +242,14 @@ export function PoiDetailPage({
           role: pluginPoiMediaPickers.images.roles[0],
           sortOrder: index,
         }));
-      if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
+      const nextReferences = [...preservedMediaReferences, ...mediaReferences];
+      if (nextReferences.length > 0) {
         await replaceHostMediaReferences({
           fetch: globalThis.fetch.bind(globalThis),
           instanceId,
           targetType: 'poi',
           targetId: saved.id,
-          references: mediaReferences,
+          references: nextReferences,
         });
       }
       setStatus({ kind: 'success', text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess') });

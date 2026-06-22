@@ -3,7 +3,7 @@ import { useFormContext, useWatch } from 'react-hook-form';
 import type { MapGeocodingFeature } from '@sva/plugin-sdk';
 
 import type { PoiDetailFormValues } from './poi.detail-form.js';
-import { getCurrentAddress, getCurrentLocation } from './poi.detail-location-shared.js';
+import { getCurrentAddress, getCurrentLocation, joinStreetParts } from './poi.detail-location-shared.js';
 import { getMapGeocodingConfig } from './poi.map-geocoding-client.js';
 
 export const usePoiDetailLocationController = () => {
@@ -67,7 +67,7 @@ export const usePoiDetailLocationController = () => {
 
   const applyReverseGeocodeResult = React.useCallback(
     (result: MapGeocodingFeature) => {
-      setValue('content.addresses.0.street', [result.street, result.houseNumber].filter(Boolean).join(' '), { shouldDirty: true });
+      setValue('content.addresses.0.street', joinStreetParts(result.street, result.houseNumber), { shouldDirty: true });
       setValue('content.addresses.0.zip', result.postalCode ?? '', { shouldDirty: true });
       setValue('content.addresses.0.city', result.city ?? '', { shouldDirty: true });
       setMapError(null);

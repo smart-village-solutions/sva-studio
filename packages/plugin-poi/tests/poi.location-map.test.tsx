@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PoiLocationMap } from '../src/poi.location-map.js';
@@ -14,6 +14,7 @@ const maplibreState = vi.hoisted(() => ({
   markerDragHandler: null as null | (() => void),
   markerLngLat: { lng: 0, lat: 0 },
   constructorOptions: null as null | { center: [number, number]; zoom: number },
+  mapConstructorCalls: 0,
   setCenter: vi.fn(),
   setZoom: vi.fn(),
   reset() {
@@ -22,6 +23,7 @@ const maplibreState = vi.hoisted(() => ({
     this.markerDragHandler = null;
     this.markerLngLat = { lng: 0, lat: 0 };
     this.constructorOptions = null;
+    this.mapConstructorCalls = 0;
     this.setCenter.mockReset();
     this.setZoom.mockReset();
   },
@@ -40,6 +42,7 @@ const maplibreState = vi.hoisted(() => ({
 vi.mock('maplibre-gl', () => {
   class MockMap {
     public constructor(options: { center: [number, number]; zoom: number }) {
+      maplibreState.mapConstructorCalls += 1;
       maplibreState.constructorOptions = options;
     }
 
@@ -97,12 +100,14 @@ vi.mock('maplibre-gl', () => {
   };
 });
 
+vi.mock('maplibre-gl/dist/maplibre-gl.css', () => ({}));
+
 describe('PoiLocationMap', () => {
   afterEach(() => {
     maplibreState.reset();
   });
 
-  it('propagates map clicks as normalized coordinates', () => {
+  it('propagates map clicks as normalized coordinates', async () => {
     const onCoordinatesChange = vi.fn();
 
     render(
@@ -112,6 +117,10 @@ describe('PoiLocationMap', () => {
         onError={() => undefined}
       />,
     );
+
+    await waitFor(() => {
+      expect(maplibreState.constructorOptions).toBeTruthy();
+    });
 
     maplibreState.triggerMapClick(13.401, 52.51);
 
@@ -127,7 +136,7 @@ describe('PoiLocationMap', () => {
     );
   });
 
-  it('propagates draggable marker updates back to the editor', () => {
+  it('propagates draggable marker updates back to the editor', async () => {
     const onCoordinatesChange = vi.fn();
 
     render(
@@ -139,6 +148,10 @@ describe('PoiLocationMap', () => {
         onError={() => undefined}
       />,
     );
+
+    await waitFor(() => {
+      expect(maplibreState.constructorOptions).toBeTruthy();
+    });
 
     maplibreState.triggerMarkerDrag(11.6, 48.2);
 
@@ -156,7 +169,7 @@ describe('PoiLocationMap', () => {
     expect(maplibreState.setZoom).toHaveBeenCalledWith(focusedPoiMapZoom);
   });
 
-  it('logs maplibre render errors with the style url', () => {
+  it('logs maplibre render errors with the style url', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     render(
@@ -168,6 +181,10 @@ describe('PoiLocationMap', () => {
         onError={() => undefined}
       />,
     );
+
+    await waitFor(() => {
+      expect(maplibreState.constructorOptions).toBeTruthy();
+    });
 
     maplibreState.triggerMapError({
       sourceId: 'basemap',
@@ -190,5 +207,38 @@ describe('PoiLocationMap', () => {
     );
 
     warnSpy.mockRestore();
+  });
+
+  it('keeps the existing map instance while coordinates change', async () => {
+    const { rerender } = render(
+      <PoiLocationMap
+        styleUrl="https://tiles.example/style.json"
+        latitude="48.100000"
+        longitude="11.500000"
+        onCoordinatesChange={() => undefined}
+        onError={() => undefined}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(maplibreState.constructorOptions).toBeTruthy();
+    });
+
+    rerender(
+      <PoiLocationMap
+        styleUrl="https://tiles.example/style.json"
+        latitude="48.200000"
+        longitude="11.600000"
+        onCoordinatesChange={() => undefined}
+        onError={() => undefined}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(maplibreState.mapConstructorCalls).toBe(1);
+    });
+
+    expect(maplibreState.setCenter).toHaveBeenCalledWith([11.6, 48.2]);
+    expect(maplibreState.setZoom).toHaveBeenCalledWith(focusedPoiMapZoom);
   });
 });

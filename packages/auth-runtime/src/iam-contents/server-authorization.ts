@@ -112,7 +112,7 @@ const shouldRetryWithoutOrganizationScope = (
   !organizationId &&
   permissions.some((permission) => permission.organizationId) &&
   (ORGANIZATION_OPTIONAL_ACTIONS.has(action) ||
-    (contentType ? ORGANIZATION_OPTIONAL_CONTENT_TYPES.has(contentType) : false));
+    (action.endsWith('.read') && contentType ? ORGANIZATION_OPTIONAL_CONTENT_TYPES.has(contentType) : false));
 
 const resolveOrganizationOptionalDecision = (
   request: AuthorizeRequest,

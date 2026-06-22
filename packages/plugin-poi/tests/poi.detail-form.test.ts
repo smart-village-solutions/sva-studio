@@ -4,6 +4,7 @@ import {
   mapPoiDetailFormValuesToInput,
   mapPoiItemToDetailFormValues,
 } from '../src/poi.detail-form.js';
+import { validatePoiForm } from '../src/poi.validation.js';
 import type { PoiContentItem } from '../src/poi.types.js';
 
 describe('poi.detail-form', () => {
@@ -559,5 +560,96 @@ describe('poi.detail-form', () => {
       tags: ['park', 'familie'],
       payload: { source: 'manual' },
     });
+  });
+
+  it('skips blank placeholder rows for opening hours and prices', () => {
+    expect(
+      mapPoiDetailFormValuesToInput(
+        {
+          name: 'Test POI',
+          basis: {
+            categoryName: '',
+            active: true,
+          },
+          content: {
+            description: '',
+            mobileDescription: '',
+            addresses: [],
+            location: {
+              name: '',
+              department: '',
+              district: '',
+              regionName: '',
+              state: '',
+              geoLocation: { latitude: '', longitude: '' },
+            },
+            contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            openingHours: [{ open: true }],
+            webUrls: [],
+            operator: {
+              name: '',
+              address: { addition: '', street: '', zip: '', city: '', kind: '', geoLocation: { latitude: '', longitude: '' } },
+              contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            },
+            prices: [{ groupPrice: false }],
+            mediaContents: [],
+            certificates: [],
+            accessibilityInformation: { description: '', types: '', urls: [] },
+            tagsText: '',
+            payloadText: '{}',
+          },
+          media: { images: [] },
+          settings: {},
+        },
+        {}
+      )
+    ).toMatchObject({
+      openingHours: [],
+      priceInformations: [],
+    });
+  });
+
+  it('preserves non-empty invalid numeric input so validation can reject it explicitly', () => {
+    const mutation = mapPoiDetailFormValuesToInput(
+      {
+        name: 'Test POI',
+        basis: {
+          categoryName: '',
+          active: true,
+        },
+        content: {
+          description: '',
+          mobileDescription: '',
+          addresses: [{ street: '', zip: '', city: '', kind: '', addition: '', geoLocation: { latitude: 'abc', longitude: '' } }],
+          location: {
+            name: '',
+            department: '',
+            district: '',
+            regionName: '',
+            state: '',
+            geoLocation: { latitude: '', longitude: '' },
+          },
+          contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+          openingHours: [],
+          webUrls: [],
+          operator: {
+            name: '',
+            address: { addition: '', street: '', zip: '', city: '', kind: '', geoLocation: { latitude: '', longitude: '' } },
+            contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+          },
+          prices: [{ amount: 'abc' }],
+          mediaContents: [],
+          certificates: [],
+          accessibilityInformation: { description: '', types: '', urls: [] },
+          tagsText: '',
+          payloadText: '{}',
+        },
+        media: { images: [] },
+        settings: {},
+      },
+      {}
+    );
+
+    expect(validatePoiForm(mutation)).toEqual(['addresses', 'priceInformations']);
   });
 });

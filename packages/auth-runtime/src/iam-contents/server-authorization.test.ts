@@ -359,6 +359,32 @@ describe('authorizeContentPrimitiveForUser', () => {
     expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledTimes(1);
   });
 
+  it('does not widen organization-scoped permissions for non-read actions without organization context', async () => {
+    resolveEffectivePermissionsMock.mockResolvedValueOnce({
+      ok: true,
+      permissions: [scopedPermission],
+    });
+    evaluateAuthorizeDecisionMock.mockReturnValueOnce({ allowed: false, reason: 'permission_missing' });
+
+    await expect(
+      authorizeContentPrimitiveForUser({
+        ctx: createCtx(),
+        action: 'poi.update',
+        resource: {
+          contentType: 'poi.point-of-interest',
+          contentId: 'poi-1',
+        },
+      })
+    ).resolves.toEqual({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für diese Inhaltsoperation.',
+    });
+
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledTimes(1);
+  });
+
   it('adds the resolved actorAccountId for ownership-based authorization checks', async () => {
     await expect(
       authorizeContentPrimitiveForUser({

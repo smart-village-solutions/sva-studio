@@ -18,6 +18,21 @@ type MapGeocodingClientError = Error & {
   provider?: string;
 };
 
+const mapGeocodingErrorCodes = [
+  'disabled',
+  'invalid_config',
+  'invalid_input',
+  'no_result',
+  'provider_error',
+  'rate_limited',
+  'timeout',
+  'unauthorized',
+] as const;
+
+export type MapGeocodingErrorCode = (typeof mapGeocodingErrorCodes)[number];
+
+const mapGeocodingErrorCodeSet = new Set<string>(mapGeocodingErrorCodes);
+
 export type AuthenticatedMapGeocodingContext = Readonly<{
   sessionId: string;
   user: {
@@ -78,6 +93,24 @@ export const createClientError = (
   return error;
 };
 
+export const sanitizeMapGeocodingErrorCode = (
+  candidate: unknown,
+  fallback: MapGeocodingErrorCode = 'provider_error',
+): MapGeocodingErrorCode =>
+  typeof candidate === 'string' && mapGeocodingErrorCodeSet.has(candidate) ? candidate as MapGeocodingErrorCode : fallback;
+
+export const readMapGeocodingErrorCode = (
+  error: unknown,
+  fallback: MapGeocodingErrorCode = 'provider_error',
+): MapGeocodingErrorCode => {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  const candidate = error as MapGeocodingClientError;
+  return sanitizeMapGeocodingErrorCode(candidate.code ?? error.message, fallback);
+};
+
 export const readMapGeocodingErrorDiagnostics = (error: unknown): Record<string, unknown> => {
   if (!(error instanceof Error)) {
     return {};
@@ -86,7 +119,6 @@ export const readMapGeocodingErrorDiagnostics = (error: unknown): Record<string,
   const candidate = error as MapGeocodingClientError;
   const diagnostics: Record<string, unknown> = {};
   if (typeof candidate.code === 'string' && candidate.code.length > 0) {
-    diagnostics.error_message = error.message;
     diagnostics.error_code = candidate.code;
   } else {
     return {};
@@ -105,23 +137,24 @@ export const readMapGeocodingErrorDiagnostics = (error: unknown): Record<string,
 };
 
 export const createErrorResponse = (code: string): Response =>
+  ((safeCode) =>
   jsonResponse(
-    code === 'unauthorized'
+    safeCode === 'unauthorized'
       ? 401
-      : code === 'no_result'
+      : safeCode === 'no_result'
         ? 404
-        : code === 'disabled'
+        : safeCode === 'disabled'
           ? 503
-          : code === 'rate_limited'
+          : safeCode === 'rate_limited'
             ? 429
-            : code === 'timeout'
+            : safeCode === 'timeout'
               ? 504
               : 400,
     {
-      error: { code, message: code },
-      message: code,
+      error: { code: safeCode, message: safeCode },
+      message: safeCode,
     },
-  );
+  ))(sanitizeMapGeocodingErrorCode(code));
 
 export const readJsonBody = async <T>(request: Request): Promise<T> => {
   try {

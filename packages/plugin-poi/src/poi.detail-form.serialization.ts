@@ -19,7 +19,7 @@ const compactString = (value?: string | null) => {
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
 
-const compactNumber = (value?: string | number | null) => {
+const compactFiniteNumber = (value?: string | number | null) => {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? value : undefined;
   }
@@ -31,9 +31,21 @@ const compactNumber = (value?: string | number | null) => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const compactValidatedNumber = (value?: string | number | null) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : Number.NaN;
+  }
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+};
+
 const compactGeoLocation = (value?: PoiFormGeoLocationValue | null) => {
-  const latitude = compactNumber(value?.latitude);
-  const longitude = compactNumber(value?.longitude);
+  const latitude = compactValidatedNumber(value?.latitude);
+  const longitude = compactValidatedNumber(value?.longitude);
   return latitude !== undefined || longitude !== undefined ? { latitude, longitude } : undefined;
 };
 
@@ -92,41 +104,65 @@ const serializeOpeningHours = (values: PoiDetailFormValues['content']['openingHo
       ...(compactString(entry?.dateTo) ? { dateTo: compactString(entry?.dateTo) } : {}),
       ...(compactString(entry?.timeFrom) ? { timeFrom: compactString(entry?.timeFrom) } : {}),
       ...(compactString(entry?.timeTo) ? { timeTo: compactString(entry?.timeTo) } : {}),
-      ...(compactNumber(entry?.sortNumber) !== undefined ? { sortNumber: compactNumber(entry?.sortNumber) } : {}),
+      ...(compactFiniteNumber(entry?.sortNumber) !== undefined
+        ? { sortNumber: compactFiniteNumber(entry?.sortNumber) }
+        : {}),
       ...(entry?.open !== undefined ? { open: entry.open } : {}),
       ...(entry?.useYear !== undefined ? { useYear: entry.useYear } : {}),
       ...(compactString(entry?.description) ? { description: compactString(entry?.description) } : {}),
     }))
-    .filter((entry) => Object.keys(entry).length > 0);
+    .filter((entry) => {
+      const keys = Object.keys(entry);
+      if (keys.length === 0) {
+        return false;
+      }
+
+      return !(keys.length === 1 && entry.open === true);
+    });
 
 const serializePrices = (values: PoiDetailFormValues['content']['prices']) =>
   (values ?? [])
     .map((entry) => ({
       ...(compactString(entry?.name) ? { name: compactString(entry?.name) } : {}),
-      ...(compactNumber(entry?.amount) !== undefined ? { amount: compactNumber(entry?.amount) } : {}),
-      ...(entry?.groupPrice !== undefined ? { groupPrice: entry.groupPrice } : {}),
-      ...(compactNumber(entry?.ageFrom) !== undefined ? { ageFrom: compactNumber(entry?.ageFrom) } : {}),
-      ...(compactNumber(entry?.ageTo) !== undefined ? { ageTo: compactNumber(entry?.ageTo) } : {}),
-      ...(compactNumber(entry?.minAdultCount) !== undefined ? { minAdultCount: compactNumber(entry?.minAdultCount) } : {}),
-      ...(compactNumber(entry?.maxAdultCount) !== undefined ? { maxAdultCount: compactNumber(entry?.maxAdultCount) } : {}),
-      ...(compactNumber(entry?.minChildrenCount) !== undefined
-        ? { minChildrenCount: compactNumber(entry?.minChildrenCount) }
+      ...(compactValidatedNumber(entry?.amount) !== undefined
+        ? { amount: compactValidatedNumber(entry?.amount) }
         : {}),
-      ...(compactNumber(entry?.maxChildrenCount) !== undefined
-        ? { maxChildrenCount: compactNumber(entry?.maxChildrenCount) }
+      ...(entry?.groupPrice !== undefined ? { groupPrice: entry.groupPrice } : {}),
+      ...(compactFiniteNumber(entry?.ageFrom) !== undefined
+        ? { ageFrom: compactFiniteNumber(entry?.ageFrom) }
+        : {}),
+      ...(compactFiniteNumber(entry?.ageTo) !== undefined ? { ageTo: compactFiniteNumber(entry?.ageTo) } : {}),
+      ...(compactFiniteNumber(entry?.minAdultCount) !== undefined
+        ? { minAdultCount: compactFiniteNumber(entry?.minAdultCount) }
+        : {}),
+      ...(compactFiniteNumber(entry?.maxAdultCount) !== undefined
+        ? { maxAdultCount: compactFiniteNumber(entry?.maxAdultCount) }
+        : {}),
+      ...(compactFiniteNumber(entry?.minChildrenCount) !== undefined
+        ? { minChildrenCount: compactFiniteNumber(entry?.minChildrenCount) }
+        : {}),
+      ...(compactFiniteNumber(entry?.maxChildrenCount) !== undefined
+        ? { maxChildrenCount: compactFiniteNumber(entry?.maxChildrenCount) }
         : {}),
       ...(compactString(entry?.description) ? { description: compactString(entry?.description) } : {}),
       ...(compactString(entry?.category) ? { category: compactString(entry?.category) } : {}),
     }))
-    .filter((entry) => Object.keys(entry).length > 0);
+    .filter((entry) => {
+      const keys = Object.keys(entry);
+      if (keys.length === 0) {
+        return false;
+      }
+
+      return !(keys.length === 1 && entry.groupPrice === false);
+    });
 
 const serializeMediaContents = (values: readonly PoiMediaContent[]) =>
   (values ?? [])
     .map((entry) => ({
       ...(compactString(entry?.captionText) ? { captionText: compactString(entry?.captionText) } : {}),
       ...(compactString(entry?.copyright) ? { copyright: compactString(entry?.copyright) } : {}),
-      ...(compactNumber(entry?.height) !== undefined ? { height: compactNumber(entry?.height) } : {}),
-      ...(compactNumber(entry?.width) !== undefined ? { width: compactNumber(entry?.width) } : {}),
+      ...(compactFiniteNumber(entry?.height) !== undefined ? { height: compactFiniteNumber(entry?.height) } : {}),
+      ...(compactFiniteNumber(entry?.width) !== undefined ? { width: compactFiniteNumber(entry?.width) } : {}),
       ...(compactString(entry?.contentType) ? { contentType: compactString(entry?.contentType) } : {}),
       ...(entry?.sourceUrl && compactWebUrls([entry.sourceUrl]).length > 0
         ? { sourceUrl: compactWebUrls([entry.sourceUrl])[0] }

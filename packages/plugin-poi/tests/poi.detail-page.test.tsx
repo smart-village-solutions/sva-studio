@@ -108,12 +108,14 @@ describe('PoiDetailPage', () => {
         'poi.fields.dateFrom': 'Startdatum',
         'poi.fields.dateTo': 'Enddatum',
         'poi.fields.description': 'Beschreibung',
+        'poi.fields.mobileDescription': 'Mobile Beschreibung',
         'poi.fields.url': 'URL',
         'poi.fields.urlDescription': 'Link-Beschreibung',
         'poi.fields.email': 'E-Mail',
         'poi.fields.phone': 'Telefon',
         'poi.fields.fax': 'Fax',
         'poi.fields.weekday': 'Wochentag',
+        'poi.fields.open': 'Geöffnet',
         'poi.fields.timeFrom': 'Startzeit',
         'poi.fields.timeTo': 'Endzeit',
         'poi.fields.payload': 'Payload',
@@ -323,7 +325,7 @@ describe('PoiDetailPage', () => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
     });
 
-    expect(screen.getByLabelText('Payload')).toBeTruthy();
+    expect(screen.getByLabelText('Payload').getAttribute('aria-invalid')).toBe('true');
   });
 
   it('keeps the basis tab active when the name is missing', async () => {
@@ -350,6 +352,51 @@ describe('PoiDetailPage', () => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
       expect(screen.getAllByLabelText('URL').length).toBeGreaterThan(1);
     });
+  });
+
+  it('renders and persists the mobile description field in the content section', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      description: 'Lang',
+      mobileDescription: 'Kurz mobil',
+      payload: {},
+    } as never);
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
+    });
+
+    switchSection('content');
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Kurz mobil')).toBeTruthy();
+    });
+  });
+
+  it('reflects loaded opening hours as checked checkboxes', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      openingHours: [{ weekday: 'MO', open: true }],
+      payload: {},
+    } as never);
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
+    });
+
+    switchSection('content');
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Geöffnet')).toBeTruthy();
+    });
+
+    expect((screen.getByLabelText('Geöffnet') as HTMLInputElement).checked).toBe(true);
   });
 
   it('updates poi items and preserves the loaded image references on save', async () => {
@@ -509,6 +556,55 @@ describe('PoiDetailPage', () => {
           { assetId: 'asset-2', role: 'attachment_image', sortOrder: 0 },
           { assetId: 'asset-1', role: 'attachment_image', sortOrder: 1 },
           { assetId: 'asset-3', role: 'attachment_image', sortOrder: 2 },
+        ],
+      });
+    });
+  });
+
+  it('preserves non-image media references when saving image changes', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      payload: {},
+    } as never);
+    vi.mocked(listHostMediaAssets).mockResolvedValueOnce([
+      { id: 'asset-1', metadata: { title: 'Bestehend' } },
+      { id: 'asset-3', metadata: { title: 'Neu' } },
+    ] as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
+      { id: 'reference-1', assetId: 'asset-1', role: 'attachment_image', sortOrder: 0 },
+      { id: 'reference-2', assetId: 'asset-teaser', role: 'teaser_image', sortOrder: 4 },
+      { id: 'reference-3', assetId: 'asset-download', role: 'download', sortOrder: 5 },
+    ] as never);
+    vi.mocked(updatePoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+    } as never);
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
+    });
+
+    switchSection('settings');
+    fireEvent.click(screen.getByRole('button', { name: 'Bild hinzufügen' }));
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Auswählen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(replaceHostMediaReferencesMock).toHaveBeenCalledWith({
+        fetch: expect.any(Function),
+        targetType: 'poi',
+        targetId: 'poi-1',
+        references: [
+          { id: 'reference-2', assetId: 'asset-teaser', role: 'teaser_image', sortOrder: 4 },
+          { id: 'reference-3', assetId: 'asset-download', role: 'download', sortOrder: 5 },
+          { assetId: 'asset-1', role: 'attachment_image', sortOrder: 0 },
+          { assetId: 'asset-3', role: 'attachment_image', sortOrder: 1 },
         ],
       });
     });

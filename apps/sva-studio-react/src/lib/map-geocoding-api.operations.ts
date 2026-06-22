@@ -5,15 +5,16 @@ import type {
   MapGeocodingRuntimeConfig,
 } from '@sva/plugin-sdk';
 
-import { readErrorMessage } from './error-message-utils';
 import {
   COMPONENT,
   buildProviderUrl,
   compactQuery,
   createClientError,
+  createErrorResponse,
   jsonResponse,
   normalizeProviderFeatures,
   parsePositiveInteger,
+  readMapGeocodingErrorCode,
   readMapGeocodingErrorDiagnostics,
   type AuthenticatedMapGeocodingContext,
   type MapGeocodingLogger,
@@ -97,11 +98,26 @@ const withAuthenticatedMapUser = async <T>(
     if (!ctx.user.instanceId) {
       return jsonResponse(400, { error: 'invalid_config' });
     }
-    return jsonResponse(200, await run({ sessionId: ctx.sessionId, user: ctx.user }));
+    try {
+      return jsonResponse(200, await run({ sessionId: ctx.sessionId, user: ctx.user }));
+    } catch (error) {
+      return createErrorResponse(readMapGeocodingErrorCode(error));
+    }
   });
 
   if (!response.ok) {
-    throw createClientError(response.status === 401 ? 'unauthorized' : 'invalid_config');
+    const payload = (await response.json().catch(() => null)) as
+      | { error?: string | { code?: string } }
+      | null;
+    const errorCode =
+      typeof payload?.error === 'string'
+        ? payload.error
+        : typeof payload?.error?.code === 'string'
+          ? payload.error.code
+          : response.status === 401
+            ? 'unauthorized'
+            : 'invalid_config';
+    throw createClientError(errorCode);
   }
 
   const payload = (await response.json().catch(() => null)) as T | { error?: string } | null;
@@ -133,7 +149,7 @@ const withGeocodingOperation = async <T>(
         operation,
         workspace_id: ctx.user.instanceId,
         provider: config.provider,
-        outcome: readErrorMessage(error, 'provider_error'),
+        outcome: readMapGeocodingErrorCode(error),
         provider_configured: Boolean(config.apiKey),
         style_url_configured: config.styleUrl.length > 0,
         request_timeout_ms: config.requestTimeoutMs,

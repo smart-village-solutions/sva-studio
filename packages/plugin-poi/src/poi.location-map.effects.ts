@@ -1,5 +1,5 @@
 import * as React from 'react';
-import maplibregl from 'maplibre-gl';
+import type { MapMouseEvent } from 'maplibre-gl';
 
 import {
   defaultPoiMapZoom,
@@ -7,28 +7,30 @@ import {
   resolvePoiMapCenter,
   toCoordinateString,
 } from './poi.location-map.shared.js';
+import type { PoiMapLibreMap, PoiMapLibreMarker, PoiMapLibreModule } from './poi.location-map.runtime.js';
 
 type CoordinatesChangeHandler = (coordinates: Readonly<{ latitude: string; longitude: string }>) => void;
 
 type MapRefs = Readonly<{
   containerRef: React.RefObject<HTMLDivElement | null>;
-  mapRef: React.RefObject<maplibregl.Map | null>;
-  markerRef: React.RefObject<maplibregl.Marker | null>;
+  mapRef: React.RefObject<PoiMapLibreMap | null>;
+  markerRef: React.RefObject<PoiMapLibreMarker | null>;
 }>;
 
 type MapState = Readonly<{
+  runtime: PoiMapLibreModule | null;
   styleUrl: string;
   latitude?: string;
   longitude?: string;
-  onCoordinatesChange: CoordinatesChangeHandler;
-  onError: (message: string | null) => void;
+  onCoordinatesChangeRef: React.RefObject<CoordinatesChangeHandler>;
+  onErrorRef: React.RefObject<(message: string | null) => void>;
   syncMarker: (latitude: string, longitude: string) => void;
 }>;
 
 const createMapClickHandler =
-  (onCoordinatesChange: CoordinatesChangeHandler) =>
-  (event: maplibregl.MapMouseEvent & object) => {
-    onCoordinatesChange({
+  (onCoordinatesChangeRef: React.RefObject<CoordinatesChangeHandler>) =>
+  (event: MapMouseEvent & object) => {
+    onCoordinatesChangeRef.current?.({
       latitude: toCoordinateString(event.lngLat.lat),
       longitude: toCoordinateString(event.lngLat.lng),
     });
@@ -56,16 +58,16 @@ const readMapErrorMeta = (error: unknown): Record<string, unknown> => {
 
 export const usePoiLocationMapLifecycle = (
   refs: MapRefs,
-  { styleUrl, latitude, longitude, onCoordinatesChange, onError, syncMarker }: MapState,
+  { runtime, styleUrl, latitude, longitude, onCoordinatesChangeRef, onErrorRef, syncMarker }: MapState,
 ) => {
   React.useEffect(() => {
-    if (!refs.containerRef.current || refs.mapRef.current) {
+    if (!runtime || !refs.containerRef.current || refs.mapRef.current) {
       return;
     }
 
     try {
       const center = resolvePoiMapCenter(latitude, longitude);
-      const map = new maplibregl.Map({
+      const map = new runtime.Map({
         container: refs.containerRef.current,
         style: styleUrl,
         center: [center.longitude, center.latitude],
@@ -73,28 +75,24 @@ export const usePoiLocationMapLifecycle = (
         attributionControl: false,
       });
 
-      map.on('click', createMapClickHandler(onCoordinatesChange));
+      map.on('click', createMapClickHandler(onCoordinatesChangeRef));
       map.on('error', (event) => {
         console.warn('POI map render failed', {
           style_url: styleUrl,
-          latitude,
-          longitude,
           ...readMapErrorMeta(event),
         });
-        onError('map_error');
+        onErrorRef.current?.('map_error');
       });
 
       refs.mapRef.current = map;
-      onError(null);
+      onErrorRef.current?.(null);
       syncMarker(latitude ?? '', longitude ?? '');
     } catch (error) {
       console.error('POI map initialization failed', {
         style_url: styleUrl,
-        latitude,
-        longitude,
         error_message: error instanceof Error ? error.message : String(error),
       });
-      onError('map_error');
+      onErrorRef.current?.('map_error');
     }
 
     return () => {
@@ -103,11 +101,11 @@ export const usePoiLocationMapLifecycle = (
       refs.mapRef.current?.remove();
       refs.mapRef.current = null;
     };
-  }, [refs, latitude, longitude, onCoordinatesChange, onError, styleUrl, syncMarker]);
+  }, [refs, onCoordinatesChangeRef, onErrorRef, runtime, styleUrl, syncMarker]);
 };
 
 export const usePoiLocationMapViewport = (
-  mapRef: React.RefObject<maplibregl.Map | null>,
+  mapRef: React.RefObject<PoiMapLibreMap | null>,
   { latitude, longitude, syncMarker }: Pick<MapState, 'latitude' | 'longitude' | 'syncMarker'>,
 ) => {
   React.useEffect(() => {

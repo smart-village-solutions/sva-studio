@@ -1,15 +1,29 @@
-import { Button, Input, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
-import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
+import { Button, Input, StudioField, StudioFieldGroup, Textarea, getStudioFormFieldProps } from '@sva/studio-ui-react';
+import { useFieldArray, useFormContext, useWatch, type FieldError } from 'react-hook-form';
 
 import { PoiDetailSectionCard } from './poi.detail-section-card.js';
 import type { PoiDetailFormValues } from './poi.detail-form.js';
 
 export function PoiDetailAdvancedTab({ pt }: Readonly<{ pt: (key: string) => string }>) {
-  const { control, register, setValue } = useFormContext<PoiDetailFormValues>();
+  const {
+    control,
+    formState: { errors },
+    register,
+    setValue,
+  } = useFormContext<PoiDetailFormValues>();
   const payloadText = useWatch({ control, name: 'content.payloadText' }) ?? '{}';
   const tagsText = useWatch({ control, name: 'content.tagsText' }) ?? '';
   const accessibility = useWatch({ control, name: 'content.accessibilityInformation' }) ?? {};
   const { fields, append, remove } = useFieldArray({ control, name: 'content.certificates' });
+  const payloadError = errors.content?.payloadText;
+  const translatedPayloadError =
+    payloadError && typeof payloadError.message === 'string'
+      ? ({ ...payloadError, message: pt(`validation.${payloadError.message}`) } as FieldError)
+      : payloadError;
+  const payloadField = getStudioFormFieldProps({
+    id: 'poi-payload',
+    error: translatedPayloadError,
+  });
 
   return (
     <PoiDetailSectionCard title={pt('cards.advanced.payload.title')} description={pt('cards.advanced.payload.description')}>
@@ -54,9 +68,9 @@ export function PoiDetailAdvancedTab({ pt }: Readonly<{ pt: (key: string) => str
         {pt('actions.add')}
       </Button>
 
-      <StudioField id="poi-payload" label={pt('fields.payload')}>
+      <StudioField {...payloadField} label={pt('fields.payload')}>
         <Textarea
-          id="poi-payload"
+          {...payloadField.controlProps}
           rows={8}
           value={payloadText}
           onChange={(event) => setValue('content.payloadText', event.target.value, { shouldDirty: true })}

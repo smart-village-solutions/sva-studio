@@ -325,7 +325,7 @@ Referenzen:
 - Entrypoint-basierte Secret-Injektion muss abwärtskompatibel sein (No-Op ohne `/run/secrets/`).
 - Rolling Updates (`start-first`) dürfen keine Downtime verursachen; Healthchecks müssen vor dem Routing-Start grün sein.
 
-### Ergänzung 2026-06: Qualitätsziele POI-Volleditor
+### Ergänzung 2026-06: Qualitätsziele POI-Voll-Editor
 
 - `plugin-poi` muss Roundtrip-Mapping, Bereichsvalidierung, Reverse-Geocode-Unterstützung und Host-Media-Referenzpersistenz über Unit-Tests explizit abdecken.
 - `plugin-sdk`-Clients für Geocoding und Media-Upload müssen deterministische HTTP- und Signed-Upload-Fehler stabil serialisieren.

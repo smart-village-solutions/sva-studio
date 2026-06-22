@@ -7,6 +7,7 @@ import {
   ensureAccountLifecycleAllowsAccess,
   logComplianceDiagnosticsIfEnabled,
   logProfileDiagnosticsIfEnabled,
+  logProtectedHandlerError,
   logUnexpectedMiddlewareError,
 } from './middleware-guards.js';
 import { withLegalTextCompliance } from './legal-text-enforcement.js';
@@ -245,5 +246,9 @@ export const withAuthenticatedUser = async (
     return logUnexpectedMiddlewareError(request, error);
   }
 
-  return runWithLegalTextComplianceIfRequired(request, ctx, handler);
+  try {
+    return await runWithLegalTextComplianceIfRequired(request, ctx, handler);
+  } catch (error) {
+    return logProtectedHandlerError(request, error);
+  }
 };

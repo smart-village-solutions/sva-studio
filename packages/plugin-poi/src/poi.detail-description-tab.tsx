@@ -8,6 +8,7 @@ export function PoiDetailDescriptionTab({ pt }: Readonly<{ pt: (key: string) => 
   const { control, setValue } = useFormContext<PoiDetailFormValues>();
   const name = useWatch({ control, name: 'name' }) ?? '';
   const description = useWatch({ control, name: 'content.description' }) ?? '';
+  const mobileDescription = useWatch({ control, name: 'content.mobileDescription' }) ?? '';
   const descriptionLabelId = 'poi-description-label';
   const blockTypeOptions = [
     { value: 'paragraph' as const, label: pt('richText.paragraph') },
@@ -45,6 +46,13 @@ export function PoiDetailDescriptionTab({ pt }: Readonly<{ pt: (key: string) => 
           }}
         />
       </div>
+      <StudioField id="poi-mobile-description" label={pt('fields.mobileDescription')}>
+        <Input
+          id="poi-mobile-description"
+          value={mobileDescription}
+          onChange={(event) => setValue('content.mobileDescription', event.target.value, { shouldDirty: true })}
+        />
+      </StudioField>
     </PoiDetailSectionCard>
   );
 }

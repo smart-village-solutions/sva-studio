@@ -70,7 +70,6 @@ export const usePoiLocationMapLifecycle = (
         style: styleUrl,
         center: [center.longitude, center.latitude],
         zoom: latitude && longitude ? focusedPoiMapZoom : defaultPoiMapZoom,
-        attributionControl: true,
       });
 
       map.on('click', createMapClickHandler(onCoordinatesChangeRef));

@@ -246,6 +246,22 @@ describe('studio-ui-react primitives', () => {
     expect(label?.getAttribute('for')).toBe('resolved-id');
   });
 
+  it('renders checkbox fields with horizontal label alignment and a fixed gap', () => {
+    render(
+      <StudioField id="active" label="Aktiv">
+        <Checkbox id="active" checked onChange={() => undefined} />
+      </StudioField>
+    );
+
+    const label = screen.getByText('Aktiv').closest('label');
+    const row = label?.parentElement;
+
+    expect(label).toBeTruthy();
+    expect(row?.className).toContain('items-center');
+    expect(row?.className).toContain('gap-3');
+    expect(label?.className).toContain('leading-none');
+  });
+
   it('derives default description and error ids from the effective control id', () => {
     render(
       <StudioField

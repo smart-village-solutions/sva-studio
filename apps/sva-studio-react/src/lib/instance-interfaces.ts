@@ -184,7 +184,7 @@ export const createEmptyInstanceInterfaceDraft = (
       enabled: true,
       config: {
         provider: 'geoapify',
-        styleUrl: 'https://tileserver-gl.smart-village.app/styles/osm-bright/',
+        styleUrl: 'https://tileserver-gl.smart-village.app/styles/osm-bright/style.json',
         autocompleteEnabled: true,
         geocodeEnabled: true,
         reverseGeocodeEnabled: true,

@@ -30,6 +30,7 @@ describe('poi.detail-form', () => {
       content: {
         description: 'Zentrale',
         mobileDescription: 'Kurz',
+        openingHours: [{ weekday: 'MO', timeFrom: '08:00', open: true }],
       },
     });
   });
@@ -194,9 +195,9 @@ describe('poi.detail-form', () => {
             payloadText: '{"source":"sync"}',
           },
           media: {
-            teaserImageAssetId: 'asset-1',
-            attachments: [{ assetId: 'asset-2', label: 'Flyer' }],
+            images: [{ assetId: 'asset-2', label: 'Flyer' }],
           },
+          settings: {},
         },
         { source: 'sync' }
       )
@@ -249,5 +250,53 @@ describe('poi.detail-form', () => {
       tags: ['park', 'familie'],
       payload: { source: 'sync' },
     });
+  });
+
+  it('normalizes weekday aliases to the canonical GraphQL values', () => {
+    expect(
+      mapPoiItemToDetailFormValues({
+        id: 'poi-3',
+        contentType: 'poi.point-of-interest',
+        status: 'published',
+        createdAt: '2026-06-11T10:00:00.000Z',
+        updatedAt: '2026-06-11T10:00:00.000Z',
+        name: 'Museum',
+        active: true,
+        openingHours: [{ weekday: 'Montag', timeFrom: '10:00', open: true }],
+      } satisfies PoiContentItem).content.openingHours[0]?.weekday
+    ).toBe('MO');
+
+    expect(
+      mapPoiDetailFormValuesToInput(
+        {
+          name: 'Museum',
+          basis: {
+            categoryName: '',
+            active: true,
+          },
+          content: {
+            description: '',
+            mobileDescription: '',
+            addresses: [],
+            location: { name: '', department: '', district: '', regionName: '', state: '', geoLocation: { latitude: '', longitude: '' } },
+            contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            openingHours: [{ weekday: 'Montag', timeFrom: '10:00', open: true }],
+            webUrls: [],
+            operator: { name: '', address: { addition: '', street: '', zip: '', city: '', kind: '', geoLocation: { latitude: '', longitude: '' } }, contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] } },
+            prices: [],
+            mediaContents: [],
+            certificates: [],
+            accessibilityInformation: { description: '', types: '', urls: [] },
+            tagsText: '',
+            payloadText: '{}',
+          },
+          media: {
+            images: [],
+          },
+          settings: {},
+        },
+        {}
+      ).openingHours
+    ).toMatchObject([{ weekday: 'MO', timeFrom: '10:00', open: true }]);
   });
 });

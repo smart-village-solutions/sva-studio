@@ -1,45 +1,121 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { FormProvider, useForm } from 'react-hook-form';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { PoiDetailContentTab } from '../src/poi.detail-content-tab.js';
 import type { PoiDetailFormValues } from '../src/poi.detail-form.js';
 
+vi.mock('../src/poi.location-map.js', () => ({
+  PoiLocationMap: () => <div data-testid="poi-location-map" />,
+}));
+
+vi.mock('@sva/studio-ui-react', async () => {
+  const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
+  return {
+    ...actual,
+    RichTextHtmlEditor: ({
+      id,
+      value,
+      onChange,
+    }: {
+      id: string;
+      value: string;
+      onChange: (value: string) => void;
+    }) => (
+      <textarea
+        id={id}
+        aria-label="Beschreibung Editor"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    ),
+  };
+});
+
+vi.mock('@sva/plugin-sdk', async () => {
+  const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
+  return {
+    ...actual,
+    getHostMapGeocodingConfig: vi.fn(async () => ({
+      provider: 'geoapify',
+      styleUrl: 'https://tiles.example/styles/poi',
+      autocompleteEnabled: false,
+      geocodeEnabled: true,
+      reverseGeocodeEnabled: true,
+      killSwitchEnabled: false,
+    })),
+  };
+});
+
 const pt = (key: string) =>
   ({
-    'messages.validationError': 'Bitte Eingaben prüfen.',
-    'validation.webUrls': 'URL muss mit https:// beginnen.',
-    'validation.payload': 'Payload muss valides JSON sein.',
-    'cards.content.descriptions.title': 'Beschreibungen',
-    'cards.content.descriptions.description': 'Texte',
-    'cards.content.location.title': 'Lage',
-    'cards.content.location.description': 'Adresse',
-    'cards.content.contact.title': 'Kontakt',
-    'cards.content.contact.description': 'Kontaktfelder',
-    'cards.content.openingHours.title': 'Öffnungszeiten',
-    'cards.content.openingHours.description': 'Zeitfenster',
-    'cards.content.links.title': 'Links',
-    'cards.content.links.description': 'Weblinks',
-    'cards.content.payload.title': 'Payload',
-    'cards.content.payload.description': 'Zusatzdaten',
+    'cards.location.address.title': 'Lage und Adresse',
+    'cards.location.address.description': 'Adressdaten, Karte und Koordinaten',
+    'cards.location.search.title': 'Adresssuche',
+    'cards.location.search.description': 'Adresse suchen und übernehmen',
+    'cards.description.text.title': 'Beschreibungen',
+    'cards.description.text.description': 'Texte',
+    'cards.contact.primary.title': 'Kontakt',
+    'cards.contact.primary.description': 'Kontaktfelder',
+    'cards.openingHours.entries.title': 'Öffnungszeiten',
+    'cards.openingHours.entries.description': 'Zeitfenster',
+    'cards.openingHours.entry.title': 'Öffnungszeit',
+    'cards.links.entries.title': 'Weblinks',
+    'cards.links.entries.description': 'Weblinks',
+    'cards.operator.details.title': 'Betreiber',
+    'cards.operator.details.description': 'Betriebsdaten',
+    'cards.prices.entries.title': 'Preise',
+    'cards.prices.entries.description': 'Preisangaben',
+    'fields.name': 'Name',
     'fields.description': 'Beschreibung',
-    'fields.mobileDescription': 'Mobile Beschreibung',
+    'richText.heading2': 'Überschrift 2',
+    'richText.heading3': 'Überschrift 3',
+    'richText.heading4': 'Überschrift 4',
+    'richText.blockType': 'Textformat',
+    'richText.paragraph': 'Absatz',
+    'richText.blockquote': 'Zitat',
+    'richText.bulletList': 'Aufzählung',
+    'richText.orderedList': 'Nummerierung',
+    'richText.bold': 'Fett',
+    'richText.italic': 'Kursiv',
+    'richText.undo': 'Zurück',
+    'richText.redo': 'Vorwärts',
+    'richText.linkInput': 'Link-URL',
+    'richText.applyLink': 'Link setzen',
     'fields.street': 'Straße',
     'fields.city': 'Ort',
+    'fields.zip': 'PLZ',
+    'fields.locationName': 'Ortsbezeichnung',
+    'fields.latitude': 'Breitengrad',
+    'fields.longitude': 'Längengrad',
+    'fields.firstName': 'Vorname',
+    'fields.lastName': 'Nachname',
     'fields.email': 'E-Mail',
     'fields.phone': 'Telefon',
     'fields.weekday': 'Wochentag',
-    'fields.timeFrom': 'Öffnet',
+    'fields.dateFrom': 'Startdatum',
+    'fields.dateTo': 'Enddatum',
+    'fields.timeFrom': 'Startzeit',
+    'fields.timeTo': 'Endzeit',
     'fields.open': 'Geöffnet',
     'fields.url': 'URL',
     'fields.urlDescription': 'Link-Beschreibung',
-    'fields.payload': 'Payload',
+    'fields.operatorName': 'Name des Betreibers',
+    'fields.priceName': 'Preisname',
+    'fields.amount': 'Betrag',
+    'fields.fax': 'Fax',
+    'actions.addOpeningHour': 'Öffnungszeit hinzufügen',
+    'actions.remove': 'Entfernen',
+    'actions.geocodeAddress': 'Geo-Koordinaten ermitteln',
+    'actions.geocodingAddress': 'Geo-Koordinaten werden ermittelt',
+    'messages.locationMapUnavailable': 'Karte deaktiviert.',
+    'messages.locationMapError': 'Karte nicht verfügbar.',
+    'messages.locationGeocodeEmpty': 'Keine Geo-Koordinaten gefunden.',
+    'messages.locationGeocodeError': 'Geo-Koordinaten nicht verfügbar.',
   })[key] ?? key;
 
 function renderTab(defaultValues?: Partial<PoiDetailFormValues>) {
-  let latestValues: PoiDetailFormValues | undefined;
-
   const Wrapper = () => {
     const methods = useForm<PoiDetailFormValues>({
       defaultValues: {
@@ -49,90 +125,56 @@ function renderTab(defaultValues?: Partial<PoiDetailFormValues>) {
         content: {
           description: '',
           mobileDescription: '',
-          addresses: [{ street: '', city: '' }],
-          contact: { email: '', phone: '' },
+          addresses: [{ street: '', zip: '', city: '', geoLocation: { latitude: '', longitude: '' } }],
+          location: { name: '' },
+          contact: { firstName: '', lastName: '', email: '', phone: '' },
           openingHours: [{ weekday: '', timeFrom: '', open: true }],
           webUrls: [{ url: '', description: '' }],
+          operator: { name: '', contact: { email: '' } },
+          prices: [{ name: '', amount: '' }],
           payloadText: '{}',
         },
-        settings: { teaserImageAssetId: '' },
+        media: { images: [] },
+        settings: {},
         ...defaultValues,
       } as PoiDetailFormValues,
     });
-    latestValues = methods.getValues();
 
     return (
       <FormProvider {...methods}>
-        <PoiDetailContentTab pt={pt} />
+        <PoiDetailContentTab
+          pt={pt}
+        />
       </FormProvider>
     );
   };
 
-  const view = render(<Wrapper />);
-
-  return {
-    ...view,
-    getValues: () => latestValues as PoiDetailFormValues,
-  };
+  return render(<Wrapper />);
 }
 
 describe('PoiDetailContentTab', () => {
-  it('renders translated summary errors and persists content field edits', () => {
-    const { getValues } = renderTab({
-      content: {
-        description: '',
-        mobileDescription: '',
-        addresses: [{ street: '', city: '' }],
-        contact: { email: '', phone: '' },
-        openingHours: [{ weekday: '', timeFrom: '', open: true }],
-        webUrls: [{ url: '', description: '' }],
-        payloadText: '{}',
-      },
-    });
+  it('renders the editorial section cards inside the content tab', async () => {
+    renderTab({ name: 'Test POI' });
 
-    fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Bürgerservice' } });
-    fireEvent.change(screen.getByLabelText('Mobile Beschreibung'), { target: { value: 'Kurztext' } });
-    fireEvent.change(screen.getByLabelText('Straße'), { target: { value: 'Markt 2' } });
-    fireEvent.change(screen.getByLabelText('Ort'), { target: { value: 'Musterstadt' } });
-    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'poi@example.com' } });
-    fireEvent.change(screen.getByLabelText('Telefon'), { target: { value: '01234 9876' } });
-    fireEvent.change(screen.getByLabelText('Wochentag'), { target: { value: 'Montag' } });
-    fireEvent.change(screen.getByLabelText('Öffnet'), { target: { value: '09:00' } });
-    fireEvent.click(screen.getByLabelText('Geöffnet'));
-    fireEvent.change(screen.getByLabelText('URL'), { target: { value: 'https://example.com/poi' } });
-    fireEvent.change(screen.getByLabelText('Link-Beschreibung'), { target: { value: 'Website' } });
-    fireEvent.change(screen.getByLabelText('Payload'), { target: { value: '{"source":"test"}' } });
-
-    expect(getValues().content).toMatchObject({
-      description: 'Bürgerservice',
-      mobileDescription: 'Kurztext',
-      contact: { email: 'poi@example.com', phone: '01234 9876' },
-      payloadText: '{"source":"test"}',
-    });
-    expect(getValues().content.addresses?.[0]).toMatchObject({ street: 'Markt 2', city: 'Musterstadt' });
-    expect(getValues().content.openingHours?.[0]).toMatchObject({ weekday: 'Montag', timeFrom: '09:00', open: false });
-    expect(getValues().content.webUrls?.[0]).toMatchObject({
-      url: 'https://example.com/poi',
-      description: 'Website',
-    });
-  });
-
-  it('falls back to empty values and hides summary errors without field errors', () => {
-    renderTab({
-      content: {
-        description: '',
-        mobileDescription: '',
-        addresses: [],
-        contact: {},
-        openingHours: [],
-        webUrls: [],
-        payloadText: '',
-      },
-    });
-
-    expect((screen.getByLabelText('Straße') as HTMLInputElement).value).toBe('');
-    expect((screen.getByLabelText('Wochentag') as HTMLInputElement).value).toBe('');
-    expect((screen.getByLabelText('URL') as HTMLInputElement).value).toBe('');
-    expect(screen.queryByText('Bitte Eingaben prüfen.')).toBeNull();
+    expect(screen.getByText('Beschreibungen')).toBeTruthy();
+    expect(screen.getByDisplayValue('Test POI')).toBeTruthy();
+    expect(screen.getByLabelText('Beschreibung Editor')).toBeTruthy();
+    expect(await screen.findByText('Lage und Adresse')).toBeTruthy();
+    expect(screen.getByText('Kontakt')).toBeTruthy();
+    expect(screen.getByText('Öffnungszeiten')).toBeTruthy();
+    expect(screen.getByText('Öffnungszeit')).toBeTruthy();
+    expect(screen.getByLabelText('Startdatum')).toBeTruthy();
+    expect(screen.getByLabelText('Enddatum')).toBeTruthy();
+    expect(screen.getByLabelText('Startzeit')).toBeTruthy();
+    expect(screen.getByLabelText('Endzeit')).toBeTruthy();
+    expect(screen.getAllByText('Weblinks').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Betreiber').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Name des Betreibers')).toBeTruthy();
+    expect(screen.getAllByLabelText('Vorname').length).toBeGreaterThan(1);
+    expect(screen.getAllByLabelText('Nachname').length).toBeGreaterThan(1);
+    expect(screen.getByLabelText('Fax')).toBeTruthy();
+    expect(screen.getByText('Preise')).toBeTruthy();
+    expect(screen.queryByText('Medien')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Öffnungszeit hinzufügen' })).toBeTruthy();
   });
 });

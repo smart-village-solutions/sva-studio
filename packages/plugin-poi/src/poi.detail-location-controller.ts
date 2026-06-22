@@ -3,14 +3,14 @@ import { useFormContext, useWatch } from 'react-hook-form';
 import type { MapGeocodingFeature } from '@sva/plugin-sdk';
 
 import type { PoiDetailFormValues } from './poi.detail-form.js';
-import { getCurrentAddress, getCurrentLocation, joinStreetParts } from './poi.detail-location-shared.js';
+import { getCurrentAddress, getCurrentLocation } from './poi.detail-location-shared.js';
 import { getMapGeocodingConfig } from './poi.map-geocoding-client.js';
 
 export const usePoiDetailLocationController = () => {
   const { control, setValue } = useFormContext<PoiDetailFormValues>();
   const address = useWatch({ control, name: 'content.addresses.0' });
   const location = useWatch({ control, name: 'content.location' });
-  const [isSearchEnabled, setIsSearchEnabled] = React.useState(true);
+  const [isGeocodingEnabled, setIsGeocodingEnabled] = React.useState(true);
   const [isReverseGeocodingEnabled, setIsReverseGeocodingEnabled] = React.useState(true);
   const [isMapEnabled, setIsMapEnabled] = React.useState(true);
   const [mapStyleUrl, setMapStyleUrl] = React.useState('');
@@ -26,14 +26,14 @@ export const usePoiDetailLocationController = () => {
         if (!active) {
           return;
         }
-        setIsSearchEnabled(config.autocompleteEnabled);
+        setIsGeocodingEnabled(config.geocodeEnabled);
         setIsReverseGeocodingEnabled(config.reverseGeocodeEnabled);
         setMapStyleUrl(config.styleUrl);
         setIsMapEnabled(config.killSwitchEnabled === false && config.styleUrl.length > 0);
       })
       .catch(() => {
         if (active) {
-          setIsSearchEnabled(false);
+          setIsGeocodingEnabled(false);
           setIsReverseGeocodingEnabled(false);
           setIsMapEnabled(false);
         }
@@ -56,26 +56,33 @@ export const usePoiDetailLocationController = () => {
     (result: MapGeocodingFeature) => {
       const latitude = String(result.coordinates.latitude);
       const longitude = String(result.coordinates.longitude);
-      setValue('content.addresses.0.street', joinStreetParts(result.street, result.houseNumber), { shouldDirty: true });
-      setValue('content.addresses.0.zip', result.postalCode ?? '', { shouldDirty: true });
-      setValue('content.addresses.0.city', result.city ?? '', { shouldDirty: true });
       setValue('content.addresses.0.geoLocation.latitude', latitude, { shouldDirty: true });
       setValue('content.addresses.0.geoLocation.longitude', longitude, { shouldDirty: true });
       setValue('content.location.geoLocation.latitude', latitude, { shouldDirty: true });
       setValue('content.location.geoLocation.longitude', longitude, { shouldDirty: true });
-      setValue('content.location.name', currentLocation.name?.trim() ? currentLocation.name : result.label, { shouldDirty: true });
       setMapError(null);
     },
-    [currentLocation.name, setValue],
+    [setValue],
+  );
+
+  const applyReverseGeocodeResult = React.useCallback(
+    (result: MapGeocodingFeature) => {
+      setValue('content.addresses.0.street', [result.street, result.houseNumber].filter(Boolean).join(' '), { shouldDirty: true });
+      setValue('content.addresses.0.zip', result.postalCode ?? '', { shouldDirty: true });
+      setValue('content.addresses.0.city', result.city ?? '', { shouldDirty: true });
+      setMapError(null);
+    },
+    [setValue],
   );
 
   return {
     applySearchResult,
+    applyReverseGeocodeResult,
     currentAddress,
     currentLocation,
-    isMapEnabled,
+    isGeocodingEnabled,
     isReverseGeocodingEnabled,
-    isSearchEnabled,
+    isMapEnabled,
     mapError,
     mapStyleUrl,
     setCoordinateValue,

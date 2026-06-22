@@ -27,7 +27,7 @@ describe('media upload client', () => {
           { status: 200 },
         );
       }
-      if (url === '/api/v1/iam/media/upload-sessions/upload-1/complete') {
+      if (url === '/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=de-demo') {
         return new Response(
           JSON.stringify({
             data: {
@@ -49,6 +49,7 @@ describe('media upload client', () => {
           mimeType: 'image/jpeg',
           byteSize: 1024,
           visibility: 'protected',
+          instanceId: 'de-demo',
         },
       }),
     ).resolves.toMatchObject({
@@ -60,6 +61,7 @@ describe('media upload client', () => {
       completeHostMediaUpload({
         fetch: fetchMock as never,
         uploadSessionId: 'upload-1',
+        instanceId: 'de-demo',
       }),
     ).resolves.toEqual({
       assetId: 'asset-1',
@@ -93,7 +95,7 @@ describe('media upload client', () => {
         expect(init?.body).toBeInstanceOf(File);
         return new Response(null, { status: 200 });
       }
-      if (url === '/api/v1/iam/media/upload-sessions/upload-2/complete') {
+      if (url === '/api/v1/iam/media/upload-sessions/upload-2/complete?instanceId=de-demo') {
         return new Response(
           JSON.stringify({
             data: {
@@ -115,6 +117,7 @@ describe('media upload client', () => {
         fetch: fetchMock as never,
         file,
         visibility: 'protected',
+        instanceId: 'de-demo',
       }),
     ).resolves.toEqual({
       assetId: 'asset-2',
@@ -152,7 +155,62 @@ describe('media upload client', () => {
       uploadHostMediaFile({
         fetch: fetchMock as never,
         file: new File(['image'], 'broken.png', { type: 'image/png' }),
+        instanceId: 'de-demo',
       }),
     ).rejects.toThrow('media_upload_put_failed:500');
+  });
+
+  it('passes the explicit instance context through initialize and complete requests', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === '/api/v1/iam/media/upload-sessions') {
+        expect(JSON.parse(String(init?.body))).toMatchObject({
+          instanceId: 'de-demo',
+          mimeType: 'image/webp',
+        });
+        return new Response(
+          JSON.stringify({
+            data: {
+              assetId: 'asset-4',
+              uploadSessionId: 'upload-4',
+              uploadUrl: 'https://uploads.example/asset-4',
+              method: 'PUT',
+              headers: {},
+              expiresAt: '2026-06-21T10:00:00.000Z',
+              status: 'pending',
+              initializedAt: '2026-06-21T09:00:00.000Z',
+            },
+          }),
+          { status: 200 },
+        );
+      }
+      if (url === 'https://uploads.example/asset-4') {
+        return new Response(null, { status: 200 });
+      }
+      if (url === '/api/v1/iam/media/upload-sessions/upload-4/complete?instanceId=de-demo') {
+        return new Response(
+          JSON.stringify({
+            data: {
+              assetId: 'asset-4',
+              uploadSessionId: 'upload-4',
+              status: 'validated',
+            },
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ error: 'unexpected' }), { status: 500 });
+    });
+
+    await expect(
+      uploadHostMediaFile({
+        fetch: fetchMock as never,
+        file: new File(['img'], 'ctx.webp', { type: 'image/webp' }),
+        instanceId: 'de-demo',
+      }),
+    ).resolves.toEqual({
+      assetId: 'asset-4',
+      uploadSessionId: 'upload-4',
+    });
   });
 });

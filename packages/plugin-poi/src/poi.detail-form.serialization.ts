@@ -12,6 +12,7 @@ import type {
   PoiFormGeoLocationValue,
   PoiLocationFormValue,
 } from './poi.detail-form.types.js';
+import { normalizeOpeningHourWeekday } from './poi.opening-hours.js';
 
 const compactString = (value?: string | null) => {
   const trimmed = value?.trim();
@@ -86,7 +87,7 @@ const compactLocation = (value?: PoiLocationFormValue | null) => {
 const serializeOpeningHours = (values: PoiDetailFormValues['content']['openingHours']) =>
   (values ?? [])
     .map((entry) => ({
-      ...(compactString(entry?.weekday) ? { weekday: compactString(entry?.weekday) } : {}),
+      ...(compactString(entry?.weekday) ? { weekday: normalizeOpeningHourWeekday(compactString(entry?.weekday)) } : {}),
       ...(compactString(entry?.dateFrom) ? { dateFrom: compactString(entry?.dateFrom) } : {}),
       ...(compactString(entry?.dateTo) ? { dateTo: compactString(entry?.dateTo) } : {}),
       ...(compactString(entry?.timeFrom) ? { timeFrom: compactString(entry?.timeFrom) } : {}),

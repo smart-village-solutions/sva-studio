@@ -16,6 +16,7 @@ import {
   type PoiLocationFormValue,
   type PoiPriceFormValue,
 } from './poi.detail-form.types.js';
+import { normalizeOpeningHourWeekday } from './poi.opening-hours.js';
 
 const mapNumberToString = (value?: number) => (typeof value === 'number' && Number.isFinite(value) ? String(value) : '');
 
@@ -73,7 +74,12 @@ const mapPoiContentToFormValues = (item: PoiContentItem): PoiDetailFormValues['c
   addresses: item.addresses?.length ? item.addresses.map(mapAddressToFormValue) : [createDefaultAddress()],
   location: mapLocationToFormValue(item.location),
   contact: mapContactToFormValue(item.contact),
-  openingHours: item.openingHours?.length ? item.openingHours : [createDefaultOpeningHour()],
+  openingHours: item.openingHours?.length
+    ? item.openingHours.map((entry) => ({
+        ...entry,
+        weekday: normalizeOpeningHourWeekday(entry.weekday),
+      }))
+    : [createDefaultOpeningHour()],
   webUrls: item.webUrls?.length ? item.webUrls : [createDefaultWebUrl()],
   operator: {
     name: item.operatingCompany?.name ?? '',
@@ -101,12 +107,9 @@ export const mapPoiItemToDetailFormValues = (item: PoiContentItem): PoiDetailFor
   },
   content: mapPoiContentToFormValues(item),
   media: {
-    teaserImageAssetId: '',
-    attachments: [],
+    images: [],
   },
-  settings: {
-    teaserImageAssetId: '',
-  },
+  settings: {},
 });
 
 export const parsePoiPayloadText = (payloadText: string): Record<string, unknown> | null => {

@@ -1,3 +1,5 @@
+import 'maplibre-gl/dist/maplibre-gl.css';
+
 import { usePoiLocationMap } from './poi.location-map.hook.js';
 
 export function PoiLocationMap({

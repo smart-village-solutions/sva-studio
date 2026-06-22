@@ -80,10 +80,7 @@ export type PoiDetailFormValues = Readonly<{
     payloadText: string;
   };
   media: {
-    teaserImageAssetId: string;
-    attachments: readonly PoiMediaAttachment[];
+    images: readonly PoiMediaAttachment[];
   };
-  settings: {
-    teaserImageAssetId: string;
-  };
+  settings: Record<string, never>;
 }>;

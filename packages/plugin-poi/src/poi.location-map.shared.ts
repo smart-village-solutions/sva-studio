@@ -1,4 +1,6 @@
-export const defaultPoiMapCenter = { latitude: 52.52, longitude: 13.405 } as const;
+export const defaultPoiMapCenter = { latitude: 51.163361, longitude: 10.447683 } as const;
+export const defaultPoiMapZoom = 5.8;
+export const focusedPoiMapZoom = 19;
 
 export const toCoordinateString = (value: number): string => value.toFixed(6);
 

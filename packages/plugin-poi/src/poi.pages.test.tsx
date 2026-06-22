@@ -33,10 +33,7 @@ vi.mock('@sva/plugin-sdk', () => ({
 
 vi.mock('./plugin.js', () => ({
   pluginPoiMediaPickers: {
-    teaserImage: {
-      roles: ['teaser'],
-    },
-    attachments: {
+    images: {
       roles: ['attachment'],
     },
   },

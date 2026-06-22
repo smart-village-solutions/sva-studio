@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createTranslator, createTranslatorFromResources, getActiveLocale, setActiveLocale, t } from './translate';
-import { i18nResources, mergeI18nResources } from './resources';
+import { i18nResources, mergeI18nResources, resetMergedI18nResources } from './resources';
 
 describe('translate', () => {
   it('resolves account namespace keys for de locale', () => {
@@ -200,6 +200,52 @@ describe('translate', () => {
         },
       })
     ).toThrow('duplicate_i18n_key:de:pluginConflictProbe.navigation.title');
+  });
+
+  it('allows replacing plugin-owned translation content after resetting merged plugin resources', () => {
+    mergeI18nResources({
+      de: {
+        pluginResetProbe: {
+          navigation: {
+            title: 'Probe',
+          },
+        },
+      },
+      en: {
+        pluginResetProbe: {
+          navigation: {
+            title: 'Probe',
+          },
+        },
+      },
+    });
+
+    resetMergedI18nResources();
+
+    expect(() =>
+      mergeI18nResources({
+        de: {
+          pluginResetProbe: {
+            navigation: {
+              title: 'Neu',
+            },
+          },
+        },
+        en: {
+          pluginResetProbe: {
+            navigation: {
+              title: 'New',
+            },
+          },
+        },
+      })
+    ).not.toThrow();
+
+    expect((i18nResources.de as Record<string, unknown>).pluginResetProbe).toEqual({
+      navigation: {
+        title: 'Neu',
+      },
+    });
   });
 
   it('uses the active locale for global translations', () => {

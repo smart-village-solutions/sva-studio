@@ -205,7 +205,19 @@ type StudioFieldChildProps = Readonly<{
   id?: string;
   'aria-invalid'?: true;
   'aria-describedby'?: string;
+  type?: string;
 }>;
+
+const isCheckboxElement = (element: React.ReactElement<StudioFieldChildProps>) => {
+  if (element.type === 'input' && element.props.type === 'checkbox') {
+    return true;
+  }
+  if (typeof element.type === 'object' && element.type !== null) {
+    const componentType = element.type as { displayName?: string };
+    return componentType.displayName === 'Checkbox';
+  }
+  return false;
+};
 
 export function StudioField({
   id,
@@ -235,14 +247,27 @@ export function StudioField({
           id: controlProps.id,
         })
       : children;
+  const isCheckboxField = childElement ? isCheckboxElement(childElement) : false;
 
   return (
     <div className={cn('space-y-1', className)}>
-      <label htmlFor={resolvedControlId} className="text-sm font-medium">
-        {label}
-        {required ? <span aria-hidden="true" className="ml-1 before:content-['*']" /> : null}
-      </label>
-      {resolvedChildren}
+      {isCheckboxField ? (
+        <div className="flex items-center gap-3">
+          <label htmlFor={resolvedControlId} className="text-sm font-medium leading-none">
+            {label}
+            {required ? <span aria-hidden="true" className="ml-1 before:content-['*']" /> : null}
+          </label>
+          {resolvedChildren}
+        </div>
+      ) : (
+        <>
+          <label htmlFor={resolvedControlId} className="text-sm font-medium">
+            {label}
+            {required ? <span aria-hidden="true" className="ml-1 before:content-['*']" /> : null}
+          </label>
+          {resolvedChildren}
+        </>
+      )}
       {description ? (
         <p id={resolvedDescriptionId} className="text-xs text-muted-foreground">
           {description}

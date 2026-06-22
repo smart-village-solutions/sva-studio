@@ -131,6 +131,57 @@ describe('map-geocoding-api', () => {
     ]);
   });
 
+  it('requests Geoapify geocoding in geojson format so feature payloads are normalized correctly', async () => {
+    state.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        features: [
+          {
+            properties: {
+              formatted: 'Klein Glien 25, 14806 Bad Belzig, Germany',
+              lat: 52.1319617,
+              lon: 12.5171171,
+              street: 'Klein Glien',
+              housenumber: '25',
+              postcode: '14806',
+              city: 'Bad Belzig',
+              country: 'Germany',
+              country_code: 'de',
+            },
+          },
+        ],
+      }),
+    });
+
+    const { geocodeMapAddressServerFn } = await import('./map-geocoding-api');
+
+    await expect(
+      geocodeMapAddressServerFn({
+        data: {
+          street: 'Klein Glien 25',
+          zip: '14806',
+          city: 'Bad Belzig',
+          country: 'Deutschland',
+        },
+      }),
+    ).resolves.toMatchObject({
+      label: 'Klein Glien 25, 14806 Bad Belzig, Germany',
+      coordinates: { latitude: 52.1319617, longitude: 12.5171171 },
+    });
+
+    expect(state.fetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        searchParams: expect.objectContaining({
+          get: expect.any(Function),
+        }),
+      }),
+      expect.any(Object),
+    );
+    const [url] = state.fetch.mock.calls[0] ?? [];
+    expect(url).toBeInstanceOf(URL);
+    expect((url as URL).searchParams.get('format')).toBe('geojson');
+  });
+
   it('fails with no_result when the provider returns no normalized features', async () => {
     state.fetch.mockResolvedValue({
       ok: true,
@@ -182,6 +233,17 @@ describe('map-geocoding-api', () => {
         },
       }),
     ).rejects.toThrow('timeout');
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'Map geocoding operation failed',
+      expect.objectContaining({
+        operation: 'reverse_geocode',
+        workspace_id: 'de-musterhausen',
+        provider: 'geoapify',
+        outcome: 'timeout',
+        provider_endpoint: 'https://api.geoapify.com/v1/geocode/reverse',
+        error_code: 'timeout',
+      }),
+    );
   });
 
   it('serves the public runtime config over the rest handler without exposing secrets', async () => {

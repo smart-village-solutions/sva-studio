@@ -2,12 +2,18 @@ import { render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PoiLocationMap } from '../src/poi.location-map.js';
+import {
+  defaultPoiMapCenter,
+  defaultPoiMapZoom,
+  focusedPoiMapZoom,
+} from '../src/poi.location-map.shared.js';
 
 const maplibreState = vi.hoisted(() => ({
   clickHandler: null as null | ((event: { lngLat: { lng: number; lat: number } }) => void),
-  errorHandler: null as null | (() => void),
+  errorHandler: null as null | ((event?: unknown) => void),
   markerDragHandler: null as null | (() => void),
   markerLngLat: { lng: 0, lat: 0 },
+  constructorOptions: null as null | { center: [number, number]; zoom: number },
   setCenter: vi.fn(),
   setZoom: vi.fn(),
   reset() {
@@ -15,6 +21,7 @@ const maplibreState = vi.hoisted(() => ({
     this.errorHandler = null;
     this.markerDragHandler = null;
     this.markerLngLat = { lng: 0, lat: 0 };
+    this.constructorOptions = null;
     this.setCenter.mockReset();
     this.setZoom.mockReset();
   },
@@ -25,10 +32,17 @@ const maplibreState = vi.hoisted(() => ({
     this.markerLngLat = { lng, lat };
     this.markerDragHandler?.();
   },
+  triggerMapError(event?: unknown) {
+    this.errorHandler?.(event);
+  },
 }));
 
 vi.mock('maplibre-gl', () => {
   class MockMap {
+    public constructor(options: { center: [number, number]; zoom: number }) {
+      maplibreState.constructorOptions = options;
+    }
+
     public on(event: string, handler: (...args: never[]) => void) {
       if (event === 'click') {
         maplibreState.clickHandler = handler as (event: { lngLat: { lng: number; lat: number } }) => void;
@@ -105,6 +119,12 @@ describe('PoiLocationMap', () => {
       latitude: '52.510000',
       longitude: '13.401000',
     });
+    expect(maplibreState.constructorOptions).toEqual(
+      expect.objectContaining({
+        center: [defaultPoiMapCenter.longitude, defaultPoiMapCenter.latitude],
+        zoom: defaultPoiMapZoom,
+      }),
+    );
   });
 
   it('propagates draggable marker updates back to the editor', () => {
@@ -126,5 +146,49 @@ describe('PoiLocationMap', () => {
       latitude: '48.200000',
       longitude: '11.600000',
     });
+    expect(maplibreState.constructorOptions).toEqual(
+      expect.objectContaining({
+        center: [11.5, 48.1],
+        zoom: focusedPoiMapZoom,
+      }),
+    );
+    expect(maplibreState.setCenter).toHaveBeenCalledWith([11.5, 48.1]);
+    expect(maplibreState.setZoom).toHaveBeenCalledWith(focusedPoiMapZoom);
+  });
+
+  it('logs maplibre render errors with the style url', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    render(
+      <PoiLocationMap
+        styleUrl="https://tiles.example/style.json"
+        latitude="48.100000"
+        longitude="11.500000"
+        onCoordinatesChange={() => undefined}
+        onError={() => undefined}
+      />,
+    );
+
+    maplibreState.triggerMapError({
+      sourceId: 'basemap',
+      error: {
+        message: 'Style not found',
+        status: 404,
+        url: 'https://tiles.example/style.json',
+      },
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'POI map render failed',
+      expect.objectContaining({
+        style_url: 'https://tiles.example/style.json',
+        source_id: 'basemap',
+        provider_message: 'Style not found',
+        provider_status: 404,
+        provider_url: 'https://tiles.example/style.json',
+      }),
+    );
+
+    warnSpy.mockRestore();
   });
 });

@@ -94,7 +94,12 @@ describe('root route document', () => {
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { title: 'SVA Studio' },
       ],
-      links: [],
+      links: [
+        {
+          rel: 'stylesheet',
+          href: expect.any(String),
+        },
+      ],
     });
   });
 
@@ -123,7 +128,7 @@ describe('root route document', () => {
     expect(skipLink.className).toContain('bg-card');
     expect(skipLink.className).toContain('border-border');
     expect(document.head.querySelector('script[data-theme-bootstrap="true"]')).not.toBeNull();
-    expect(document.head.querySelector('style[data-app-styles="true"]')).not.toBeNull();
+    expect(document.head.querySelector('style[data-app-styles="true"]')).toBeNull();
   });
 
   it('updates the document title for the unified content route', async () => {

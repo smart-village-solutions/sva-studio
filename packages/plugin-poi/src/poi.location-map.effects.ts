@@ -1,7 +1,12 @@
 import * as React from 'react';
 import maplibregl from 'maplibre-gl';
 
-import { resolvePoiMapCenter, toCoordinateString } from './poi.location-map.shared.js';
+import {
+  defaultPoiMapZoom,
+  focusedPoiMapZoom,
+  resolvePoiMapCenter,
+  toCoordinateString,
+} from './poi.location-map.shared.js';
 
 type CoordinatesChangeHandler = (coordinates: Readonly<{ latitude: string; longitude: string }>) => void;
 
@@ -29,6 +34,26 @@ const createMapClickHandler =
     });
   };
 
+const readMapErrorMeta = (error: unknown): Record<string, unknown> => {
+  if (!error || typeof error !== 'object') {
+    return {};
+  }
+
+  const candidate = error as {
+    error?: { message?: string; status?: number; url?: string };
+    sourceId?: string;
+    tile?: unknown;
+  };
+
+  return {
+    source_id: candidate.sourceId,
+    tile: candidate.tile,
+    provider_message: candidate.error?.message,
+    provider_status: candidate.error?.status,
+    provider_url: candidate.error?.url,
+  };
+};
+
 export const usePoiLocationMapLifecycle = (
   refs: MapRefs,
   { styleUrl, latitude, longitude, onCoordinatesChange, onError, syncMarker }: MapState,
@@ -44,17 +69,31 @@ export const usePoiLocationMapLifecycle = (
         container: refs.containerRef.current,
         style: styleUrl,
         center: [center.longitude, center.latitude],
-        zoom: latitude && longitude ? 15 : 5,
+        zoom: latitude && longitude ? focusedPoiMapZoom : defaultPoiMapZoom,
         attributionControl: false,
       });
 
       map.on('click', createMapClickHandler(onCoordinatesChange));
-      map.on('error', () => onError('map_error'));
+      map.on('error', (event) => {
+        console.warn('POI map render failed', {
+          style_url: styleUrl,
+          latitude,
+          longitude,
+          ...readMapErrorMeta(event),
+        });
+        onError('map_error');
+      });
 
       refs.mapRef.current = map;
       onError(null);
       syncMarker(latitude ?? '', longitude ?? '');
-    } catch {
+    } catch (error) {
+      console.error('POI map initialization failed', {
+        style_url: styleUrl,
+        latitude,
+        longitude,
+        error_message: error instanceof Error ? error.message : String(error),
+      });
       onError('map_error');
     }
 
@@ -78,9 +117,7 @@ export const usePoiLocationMapViewport = (
 
     const center = resolvePoiMapCenter(latitude, longitude);
     mapRef.current.setCenter([center.longitude, center.latitude]);
-    if (latitude && longitude) {
-      mapRef.current.setZoom(15);
-    }
+    mapRef.current.setZoom(latitude && longitude ? focusedPoiMapZoom : defaultPoiMapZoom);
     syncMarker(latitude ?? '', longitude ?? '');
   }, [latitude, longitude, mapRef, syncMarker]);
 };

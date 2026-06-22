@@ -11,6 +11,13 @@ export type MapGeocodingLogger = {
   error: (message: string, meta: Record<string, unknown>) => void;
 };
 
+type MapGeocodingClientError = Error & {
+  code?: string;
+  statusCode?: number;
+  endpoint?: string;
+  provider?: string;
+};
+
 export type AuthenticatedMapGeocodingContext = Readonly<{
   sessionId: string;
   user: {
@@ -49,7 +56,53 @@ export const jsonResponse = (status: number, payload: unknown): Response =>
     headers: { 'Content-Type': 'application/json' },
   });
 
-export const createClientError = (code: string): Error => new Error(code);
+export const createClientError = (
+  code: string,
+  details: {
+    statusCode?: number;
+    endpoint?: string;
+    provider?: string;
+  } = {},
+): Error => {
+  const error = new Error(code) as MapGeocodingClientError;
+  error.code = code;
+  if (details.statusCode !== undefined) {
+    error.statusCode = details.statusCode;
+  }
+  if (details.endpoint) {
+    error.endpoint = details.endpoint;
+  }
+  if (details.provider) {
+    error.provider = details.provider;
+  }
+  return error;
+};
+
+export const readMapGeocodingErrorDiagnostics = (error: unknown): Record<string, unknown> => {
+  if (!(error instanceof Error)) {
+    return {};
+  }
+
+  const diagnostics: Record<string, unknown> = {
+    error_message: error.message,
+  };
+
+  const candidate = error as MapGeocodingClientError;
+  if (typeof candidate.code === 'string' && candidate.code.length > 0) {
+    diagnostics.error_code = candidate.code;
+  }
+  if (typeof candidate.statusCode === 'number') {
+    diagnostics.provider_status = candidate.statusCode;
+  }
+  if (typeof candidate.endpoint === 'string' && candidate.endpoint.length > 0) {
+    diagnostics.provider_endpoint = candidate.endpoint;
+  }
+  if (typeof candidate.provider === 'string' && candidate.provider.length > 0) {
+    diagnostics.provider = candidate.provider;
+  }
+
+  return diagnostics;
+};
 
 export const createErrorResponse = (code: string): Response =>
   jsonResponse(
@@ -132,7 +185,7 @@ const buildGeoapifyUrl = (
   },
 ): URL => {
   const url = new URL(`https://api.geoapify.com/v1/geocode/${endpoint}`);
-  url.searchParams.set('format', 'json');
+  url.searchParams.set('format', 'geojson');
   if (input.query) {
     url.searchParams.set('text', input.query);
   }

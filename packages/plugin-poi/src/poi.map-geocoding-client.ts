@@ -1,18 +1,28 @@
 import {
+  geocodeHostMapAddress,
   getHostMapGeocodingConfig,
   reverseGeocodeHostCoordinates,
-  suggestHostMapAddresses,
+  type MapGeocodingAddressInput,
   type MapGeocodingFeature,
   type MapGeocodingRuntimeConfig,
 } from '@sva/plugin-sdk';
 
-export const getMapGeocodingConfig = async (): Promise<MapGeocodingRuntimeConfig> =>
-  getHostMapGeocodingConfig();
+let configPromise: Promise<MapGeocodingRuntimeConfig> | null = null;
 
-export const suggestMapAddresses = async (input: {
-  readonly query: string;
-}): Promise<readonly MapGeocodingFeature[]> =>
-  suggestHostMapAddresses({ query: input.query });
+export const getMapGeocodingConfig = async (): Promise<MapGeocodingRuntimeConfig> => {
+  configPromise ??= getHostMapGeocodingConfig().catch((error) => {
+    configPromise = null;
+    throw error;
+  });
+  return configPromise;
+};
+
+export const geocodeMapAddress = async (input: {
+  readonly address: MapGeocodingAddressInput;
+}): Promise<MapGeocodingFeature> =>
+  geocodeHostMapAddress({
+    address: input.address,
+  });
 
 export const reverseMapCoordinates = async (input: {
   readonly latitude: number;
@@ -24,3 +34,7 @@ export const reverseMapCoordinates = async (input: {
       longitude: input.longitude,
     },
   });
+
+export const resetMapGeocodingConfigCache = (): void => {
+  configPromise = null;
+};

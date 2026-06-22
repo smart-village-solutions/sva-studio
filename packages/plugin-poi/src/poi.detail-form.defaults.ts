@@ -113,10 +113,7 @@ export const createDefaultPoiDetailFormValues = (): PoiDetailFormValues => ({
     payloadText: '{}',
   },
   media: {
-    teaserImageAssetId: '',
-    attachments: [],
+    images: [],
   },
-  settings: {
-    teaserImageAssetId: '',
-  },
+  settings: {},
 });

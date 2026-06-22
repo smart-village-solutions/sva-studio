@@ -1,9 +1,9 @@
 import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
 import type { IamOrganizationContextOption, IamOrganizationDetail } from '@sva/core';
 import { CategoriesPage } from '@sva/plugin-categories';
-import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events/events.pages';
+import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events';
 import { NewsDetailPage, NewsEditPage, type NewsAuthorControl } from '@sva/plugin-news';
-import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi/poi.pages';
+import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
@@ -156,6 +156,16 @@ const MonitoringRoutePage = () => renderLazyPage(LazyMonitoringOverviewPage);
 const NewsCreateRoutePage = () => {
   const authorControl = useNewsCreateAuthorControl();
   return <NewsDetailPage mode="create" authorControl={authorControl} />;
+};
+
+const PoiCreateRoutePage = () => {
+  const { user } = useAuth();
+  return <PoiCreatePage instanceId={user?.instanceId} />;
+};
+
+const PoiEditRoutePage = () => {
+  const { user } = useAuth();
+  return <PoiEditPage instanceId={user?.instanceId} />;
 };
 
 const HelpPlaceholderRoutePage = () => (
@@ -377,8 +387,8 @@ export const appRouteBindings: StudioAppRouteBindings = {
   eventsDetail: EventsEditPage,
   eventsEditor: EventsCreatePage,
   poiList: ContentListPage,
-  poiDetail: PoiEditPage,
-  poiEditor: PoiCreatePage,
+  poiDetail: PoiEditRoutePage,
+  poiEditor: PoiCreateRoutePage,
   media: MediaPage,
   adminMedia: MediaPage,
   categories: CategoriesPage,

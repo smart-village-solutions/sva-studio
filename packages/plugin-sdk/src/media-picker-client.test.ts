@@ -15,9 +15,10 @@ describe('media picker client', () => {
       return new Response(JSON.stringify({ data: [] }), { status: 200 });
     });
 
-    const assets = await listHostMediaAssets({ fetch: fetchMock as never, search: 'hero' });
+    const assets = await listHostMediaAssets({ fetch: fetchMock as never, search: 'hero', instanceId: 'de-demo' });
     const references = await listHostMediaReferencesByTarget({
       fetch: fetchMock as never,
+      instanceId: 'de-demo',
       targetType: 'news',
       targetId: 'news-1',
     });
@@ -26,14 +27,14 @@ describe('media picker client', () => {
     expect(references).toEqual([{ id: 'ref-1', assetId: 'asset-1', role: 'teaser_image' }]);
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      '/api/v1/iam/media?search=hero',
+      '/api/v1/iam/media?search=hero&instanceId=de-demo',
       expect.objectContaining({
         credentials: 'include',
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      '/api/v1/iam/media/references?targetType=news&targetId=news-1',
+      '/api/v1/iam/media/references?targetType=news&targetId=news-1&instanceId=de-demo',
       expect.objectContaining({
         credentials: 'include',
       })
@@ -72,12 +73,14 @@ describe('media picker client', () => {
 
     const response = await replaceHostMediaReferences({
       fetch: fetchMock as never,
+      instanceId: 'de-demo',
       targetType: 'events',
       targetId: 'event-1',
       references: [{ assetId: 'asset-1', role: 'header_image', sortOrder: 0 }],
     });
 
     expect(response).toEqual({
+      instanceId: 'de-demo',
       targetType: 'events',
       targetId: 'event-1',
       references: [{ assetId: 'asset-1', role: 'header_image', sortOrder: 0 }],
@@ -88,6 +91,7 @@ describe('media picker client', () => {
         method: 'PUT',
         credentials: 'include',
         body: JSON.stringify({
+          instanceId: 'de-demo',
           targetType: 'events',
           targetId: 'event-1',
           references: [{ assetId: 'asset-1', role: 'header_image', sortOrder: 0 }],

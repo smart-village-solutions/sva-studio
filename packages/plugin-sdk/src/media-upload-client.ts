@@ -7,6 +7,7 @@ export type InitializeHostMediaUploadInput = Readonly<{
   mimeType: string;
   byteSize: number;
   visibility?: HostMediaUploadVisibility;
+  instanceId?: string;
 }>;
 
 export type InitializeHostMediaUploadResult = Readonly<{
@@ -82,10 +83,17 @@ export const initializeHostMediaUpload = async (input: {
 export const completeHostMediaUpload = async (input: {
   readonly fetch: FetchLike;
   readonly uploadSessionId: string;
+  readonly instanceId?: string;
 }): Promise<CompleteHostMediaUploadResult> => {
+  const searchParams = new URLSearchParams();
+  if (input.instanceId) {
+    searchParams.set('instanceId', input.instanceId);
+  }
   const response = await requestJson<{ data: CompleteHostMediaUploadResult }>({
     fetch: input.fetch,
-    url: `/api/v1/iam/media/upload-sessions/${input.uploadSessionId}/complete`,
+    url: `/api/v1/iam/media/upload-sessions/${input.uploadSessionId}/complete${
+      searchParams.size > 0 ? `?${searchParams.toString()}` : ''
+    }`,
     init: {
       method: 'POST',
       headers: {
@@ -118,6 +126,7 @@ export const uploadHostMediaFile = async (input: {
   readonly file: File;
   readonly visibility?: HostMediaUploadVisibility;
   readonly mediaType?: 'image';
+  readonly instanceId?: string;
 }): Promise<UploadHostMediaFileResult> => {
   const initialized = await initializeHostMediaUpload({
     fetch: input.fetch,
@@ -126,6 +135,7 @@ export const uploadHostMediaFile = async (input: {
       mimeType: input.file.type,
       byteSize: input.file.size,
       visibility: input.visibility,
+      instanceId: input.instanceId,
     },
   });
 
@@ -140,6 +150,7 @@ export const uploadHostMediaFile = async (input: {
   const completed = await completeHostMediaUpload({
     fetch: input.fetch,
     uploadSessionId: initialized.uploadSessionId,
+    instanceId: input.instanceId,
   });
 
   return {

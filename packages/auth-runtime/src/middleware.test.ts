@@ -383,4 +383,19 @@ describe('auth-runtime withAuthenticatedUser', () => {
       { returnTo: '/api/v1/iam/users/me/profile?tab=account' }
     );
   });
+
+  it('does not log downstream handler domain errors as auth middleware failures', async () => {
+    const request = new Request('http://localhost/api/v1/iam/map-geocoding/geocode', {
+      headers: { cookie: 'sva_auth_session=session-2' },
+    });
+
+    await expect(withAuthenticatedUser(request, async () => {
+      throw new Error('no_result');
+    })).rejects.toThrow('no_result');
+
+    expect(middlewareLogger.error).not.toHaveBeenCalledWith(
+      'Auth middleware failed unexpectedly',
+      expect.anything(),
+    );
+  });
 });

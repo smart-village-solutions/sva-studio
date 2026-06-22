@@ -14,6 +14,7 @@ import {
   jsonResponse,
   normalizeProviderFeatures,
   parsePositiveInteger,
+  readMapGeocodingErrorDiagnostics,
   type AuthenticatedMapGeocodingContext,
   type MapGeocodingLogger,
   type MapGeocodingRuntimeConfigWithSecrets,
@@ -41,14 +42,22 @@ const fetchJsonWithTimeout = async (url: URL, timeoutMs: number): Promise<Geoapi
     const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) {
       if (response.status === 429) {
-        throw createClientError('rate_limited');
+        throw createClientError('rate_limited', {
+          statusCode: response.status,
+          endpoint: url.origin + url.pathname,
+        });
       }
-      throw createClientError('provider_error');
+      throw createClientError('provider_error', {
+        statusCode: response.status,
+        endpoint: url.origin + url.pathname,
+      });
     }
     return (await response.json()) as GeoapifyResponse;
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      throw createClientError('timeout');
+      throw createClientError('timeout', {
+        endpoint: url.origin + url.pathname,
+      });
     }
     throw error;
   } finally {
@@ -125,6 +134,15 @@ const withGeocodingOperation = async <T>(
         workspace_id: ctx.user.instanceId,
         provider: config.provider,
         outcome: readErrorMessage(error, 'provider_error'),
+        provider_configured: Boolean(config.apiKey),
+        style_url_configured: config.styleUrl.length > 0,
+        request_timeout_ms: config.requestTimeoutMs,
+        rate_limit_per_minute: config.rateLimitPerMinute,
+        autocomplete_enabled: config.autocompleteEnabled,
+        geocode_enabled: config.geocodeEnabled,
+        reverse_geocode_enabled: config.reverseGeocodeEnabled,
+        kill_switch_enabled: config.killSwitchEnabled,
+        ...readMapGeocodingErrorDiagnostics(error),
       });
       throw error;
     }

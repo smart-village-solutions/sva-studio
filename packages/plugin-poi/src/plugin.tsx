@@ -10,7 +10,7 @@ import { pluginPoiTranslations } from './plugin.translations.js';
 
 const standardPoiContribution = createStandardContentPluginContribution({
   pluginId: 'poi',
-  displayName: 'POI',
+  displayName: 'Orte',
   contentType: POI_CONTENT_TYPE,
   titleKey: 'poi.navigation.title',
   listBindingKey: 'poiList',
@@ -23,12 +23,7 @@ export const pluginPoiPermissionDefinitions = standardPoiContribution.permission
 export const pluginPoiActionDefinitions = standardPoiContribution.actions;
 
 export const pluginPoiMediaPickers = {
-  teaserImage: defineMediaPickerDefinition({
-    roles: ['teaser_image'],
-    allowedMediaTypes: ['image'],
-    presetKey: 'teaser',
-  }),
-  attachments: defineMediaPickerDefinition({
+  images: defineMediaPickerDefinition({
     roles: ['attachment_image'],
     allowedMediaTypes: ['image'],
     presetKey: 'gallery',
@@ -37,7 +32,7 @@ export const pluginPoiMediaPickers = {
 
 export const pluginPoi: PluginDefinition = createStandardContentPluginDefinition({
   pluginId: 'poi',
-  displayName: 'POI',
+  displayName: 'Orte',
   contribution: standardPoiContribution,
   translations: pluginPoiTranslations,
 });

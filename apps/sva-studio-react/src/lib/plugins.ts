@@ -12,7 +12,7 @@ import {
 import studioPluginCatalogConfig from '../../plugin-catalog.json';
 import { appAdminResources } from '../routing/admin-resources';
 
-import { i18nResources, mergeI18nResources, resetTranslatorCache, t } from '../i18n';
+import { i18nResources, mergeI18nResources, resetMergedI18nResources, resetTranslatorCache, t } from '../i18n';
 import {
   createPluginBuildRegistries,
   resolvePluginModuleFromRegistry,
@@ -129,6 +129,7 @@ if (
   translationResourcesChanged ||
   globalPluginTranslationState[studioPluginTranslationsSignatureKey] !== studioBuildTimeTranslationsSignature
 ) {
+  resetMergedI18nResources();
   mergeI18nResources(studioBuildTimeRegistry.translations);
   globalPluginTranslationState[studioPluginTranslationsSignatureKey] = studioBuildTimeTranslationsSignature;
   globalPluginTranslationState[studioPluginTranslationsResourcesKey] = i18nResources;

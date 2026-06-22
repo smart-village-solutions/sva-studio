@@ -91,7 +91,7 @@ const loadRuntimeConfig = async (instanceId: string): Promise<MapGeocodingRuntim
 
 const withAuthenticatedMapUser = async <T>(
   request: Request,
-  action: 'poi.read' | 'poi.update',
+  action: 'poi.read' | 'poi.create' | 'poi.update',
   run: (ctx: AuthenticatedMapGeocodingContext) => Promise<T>,
 ): Promise<T> => {
   const { authorizeInstancePermissionForUser, withAuthenticatedUser } = await import('@sva/auth-runtime/server');
@@ -99,7 +99,12 @@ const withAuthenticatedMapUser = async <T>(
     if (!ctx.user.instanceId) {
       return jsonResponse(400, { error: 'invalid_config' });
     }
-    const authorization = await authorizeInstancePermissionForUser({ ctx, action });
+    const authorization =
+      action === 'poi.update'
+        ? await authorizeInstancePermissionForUser({ ctx, action: 'poi.update' }).then(async (result) =>
+            result.ok ? result : authorizeInstancePermissionForUser({ ctx, action: 'poi.create' }),
+          )
+        : await authorizeInstancePermissionForUser({ ctx, action });
     if (!authorization.ok) {
       return jsonResponse(authorization.status, { error: authorization.error });
     }

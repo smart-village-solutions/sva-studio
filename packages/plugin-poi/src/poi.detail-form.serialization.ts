@@ -185,12 +185,11 @@ const serializeCertificates = (values: readonly PoiCertificate[]) =>
 
 const serializeAccessibilityInformation = (value: PoiAccessibilityInformation) => {
   const urls = compactWebUrls(value.urls);
-  const accessibilityInformation = {
+  return {
     ...(compactString(value.description) ? { description: compactString(value.description) } : {}),
     ...(compactString(value.types) ? { types: compactString(value.types) } : {}),
     ...(urls.length > 0 ? { urls } : {}),
   };
-  return Object.keys(accessibilityInformation).length > 0 ? accessibilityInformation : undefined;
 };
 
 const serializeTags = (value: string) => {
@@ -227,13 +226,11 @@ export const mapPoiDetailFormValuesToInput = (
     ...(compactLocation(values.content.location) ? { location: compactLocation(values.content.location) } : {}),
     openingHours: serializeOpeningHours(values.content.openingHours),
     webUrls: compactWebUrls(values.content.webUrls),
-    ...(Object.keys(operator).length > 0 ? { operatingCompany: operator } : {}),
+    operatingCompany: operator,
     priceInformations: serializePrices(values.content.prices),
     mediaContents: serializeMediaContents(values.content.mediaContents),
     certificates: serializeCertificates(values.content.certificates),
-    ...(serializeAccessibilityInformation(values.content.accessibilityInformation)
-      ? { accessibilityInformation: serializeAccessibilityInformation(values.content.accessibilityInformation) }
-      : {}),
+    accessibilityInformation: serializeAccessibilityInformation(values.content.accessibilityInformation),
     tags: serializeTags(values.content.tagsText),
     ...(Object.keys(payload).length > 0 ? { payload } : {}),
   };

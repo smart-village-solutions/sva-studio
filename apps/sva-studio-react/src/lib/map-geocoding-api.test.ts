@@ -152,7 +152,60 @@ describe('map-geocoding-api', () => {
     );
   });
 
-  it('rejects provider-backed geocoding calls without poi.update permission', async () => {
+  it('falls back to poi.create permission for provider-backed geocoding calls', async () => {
+    state.authorizeInstancePermissionForUser
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'subject-1',
+        },
+        permissions: [],
+      });
+    state.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        features: [
+          {
+            properties: {
+              formatted: 'Musterstraße 1, 12345 Musterstadt',
+              lat: 52.52,
+              lon: 13.405,
+              country_code: 'de',
+            },
+          },
+        ],
+      }),
+    });
+
+    const { suggestMapAddressesServerFn } = await import('./map-geocoding-api');
+
+    await expect(suggestMapAddressesServerFn({ data: { query: 'Musterstraße 1' } })).resolves.toMatchObject([
+      expect.objectContaining({ label: 'Musterstraße 1, 12345 Musterstadt' }),
+    ]);
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ action: 'poi.update' }),
+    );
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ action: 'poi.create' }),
+    );
+  });
+
+  it('rejects provider-backed geocoding calls without poi.update or poi.create permission', async () => {
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für diese Instanzoperation.',
+    });
     state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
       ok: false,
       status: 403,

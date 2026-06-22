@@ -93,6 +93,7 @@ export function PoiDetailPage({
   const [loadedItem, setLoadedItem] = React.useState<PoiContentItem | null>(null);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [preservedMediaReferences, setPreservedMediaReferences] = React.useState<readonly HostMediaReferenceSelection[]>([]);
+  const [loadedOwnedMediaReferenceCount, setLoadedOwnedMediaReferenceCount] = React.useState(0);
   const [mediaReferencesLoadFailed, setMediaReferencesLoadFailed] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<PoiDetailTabId>('basis');
   const [visitedTabs, setVisitedTabs] = React.useState<readonly PoiDetailTabId[]>(['basis']);
@@ -135,11 +136,12 @@ export function PoiDetailPage({
           }
           setMediaReferencesLoadFailed(false);
           const ownedRole = pluginPoiMediaPickers.images.roles[0];
+          const ownedReferences = references.filter((reference) => reference.role === ownedRole);
+          setLoadedOwnedMediaReferenceCount(ownedReferences.length);
           setPreservedMediaReferences(references.filter((reference) => reference.role !== ownedRole));
           setValue(
             'media.images',
-            references
-              .filter((reference) => reference.role === ownedRole)
+            ownedReferences
               .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
               .map((reference) => normalizePoiMediaAssetId(reference.assetId))
               .filter((assetId) => assetId.length > 0)
@@ -147,6 +149,7 @@ export function PoiDetailPage({
           );
         }).catch(() => {
           if (active) {
+            setLoadedOwnedMediaReferenceCount(0);
             setPreservedMediaReferences([]);
             setMediaReferencesLoadFailed(true);
           }
@@ -251,7 +254,7 @@ export function PoiDetailPage({
         return;
       }
       const nextReferences = [...preservedMediaReferences, ...mediaReferences];
-      if (nextReferences.length > 0) {
+      if (nextReferences.length > 0 || loadedOwnedMediaReferenceCount > 0) {
         await replaceHostMediaReferences({
           fetch: globalThis.fetch.bind(globalThis),
           instanceId,

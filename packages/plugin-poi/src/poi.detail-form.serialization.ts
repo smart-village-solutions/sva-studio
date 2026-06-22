@@ -198,7 +198,7 @@ const serializeTags = (value: string) => {
     .split(',')
     .map((tag) => tag.trim())
     .filter((tag) => tag.length > 0);
-  return tags.length > 0 ? tags : undefined;
+  return tags;
 };
 
 export const mapPoiDetailFormValuesToInput = (
@@ -236,7 +236,7 @@ export const mapPoiDetailFormValuesToInput = (
     ...(serializeAccessibilityInformation(values.content.accessibilityInformation)
       ? { accessibilityInformation: serializeAccessibilityInformation(values.content.accessibilityInformation) }
       : {}),
-    ...(compactString(values.content.tagsText) ? { tags: serializeTags(values.content.tagsText) } : {}),
+    tags: serializeTags(values.content.tagsText),
     ...(Object.keys(payload).length > 0 ? { payload } : {}),
   };
 };

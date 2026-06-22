@@ -611,6 +611,43 @@ describe('PoiDetailPage', () => {
     });
   });
 
+  it('sends an empty replacement when all loaded poi images are removed', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      payload: {},
+    } as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
+      { id: 'reference-1', assetId: 'asset-1', role: 'attachment_image', sortOrder: 0 },
+    ] as never);
+    vi.mocked(updatePoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+    } as never);
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
+    });
+
+    switchSection('settings');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Entfernen' })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(replaceHostMediaReferencesMock).toHaveBeenCalledWith({
+        fetch: expect.any(Function),
+        targetType: 'poi',
+        targetId: 'poi-1',
+        references: [],
+      });
+    });
+  });
+
   it('creates poi items, skips media replacement without references, and navigates to the new detail page', async () => {
     vi.mocked(createPoi).mockResolvedValueOnce({
       id: 'poi-created',

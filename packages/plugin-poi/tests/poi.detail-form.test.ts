@@ -400,6 +400,7 @@ describe('poi.detail-form', () => {
       priceInformations: [{ amount: 0, groupPrice: false, ageFrom: 0, minChildrenCount: 0 }],
       mediaContents: [],
       certificates: [],
+      tags: [],
     });
   });
 
@@ -650,6 +651,50 @@ describe('poi.detail-form', () => {
     ).toMatchObject({
       openingHours: [],
       priceInformations: [],
+      tags: [],
+    });
+  });
+
+  it('serializes an empty tag list when the tags field is cleared', () => {
+    expect(
+      mapPoiDetailFormValuesToInput(
+        {
+          name: 'Test POI',
+          basis: { categoryName: '', active: true },
+          content: {
+            description: '',
+            mobileDescription: '',
+            addresses: [],
+            location: {
+              name: '',
+              department: '',
+              district: '',
+              regionName: '',
+              state: '',
+              geoLocation: { latitude: '', longitude: '' },
+            },
+            contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            openingHours: [],
+            webUrls: [],
+            operator: {
+              name: '',
+              address: { addition: '', street: '', zip: '', city: '', kind: '', geoLocation: { latitude: '', longitude: '' } },
+              contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            },
+            prices: [],
+            mediaContents: [],
+            certificates: [],
+            accessibilityInformation: { description: '', types: '', urls: [] },
+            tagsText: ' , , ',
+            payloadText: '{}',
+          },
+          media: { images: [] },
+          settings: {},
+        },
+        {}
+      )
+    ).toMatchObject({
+      tags: [],
     });
   });
 

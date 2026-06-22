@@ -97,6 +97,11 @@ export function PoiDetailPage({
   const [mediaReferencesLoadFailed, setMediaReferencesLoadFailed] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<PoiDetailTabId>('basis');
   const [visitedTabs, setVisitedTabs] = React.useState<readonly PoiDetailTabId[]>(['basis']);
+  const focusFieldById = React.useCallback((fieldId: string) => {
+    globalThis.setTimeout(() => {
+      globalThis.document.getElementById(fieldId)?.focus();
+    }, 0);
+  }, []);
 
   const refreshMediaAssets = React.useCallback(async () => {
     try {
@@ -235,6 +240,14 @@ export function PoiDetailPage({
       if (validationErrors.includes('priceInformations')) {
         methods.setError('content.prices.0.amount', { type: 'manual', message: 'priceInformations' });
         setActiveTab('content');
+      }
+      if (validationErrors.includes('operatingCompany.contact.webUrls')) {
+        methods.setError('content.operator.contact.webUrls.0.url', {
+          type: 'manual',
+          message: 'operatingCompany.contact.webUrls',
+        });
+        setActiveTab('content');
+        focusFieldById('poi-operator-url');
       }
       return;
     }

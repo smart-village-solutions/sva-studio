@@ -365,6 +365,24 @@ describe('PoiDetailPage', () => {
     });
   });
 
+  it('focuses the operator url field when the operator web url is invalid', async () => {
+    render(<PoiDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
+    switchSection('content');
+    fireEvent.change(screen.getByLabelText('Name des Betreibers'), { target: { value: 'Stadtwerke' } });
+    fireEvent.change(document.getElementById('poi-operator-url') as HTMLInputElement, {
+      target: { value: 'http://invalid.example/operator' },
+    });
+    switchSection('basis');
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(document.getElementById('poi-operator-url'));
+    });
+  });
+
   it('renders and persists the mobile description field in the content section', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',

@@ -312,6 +312,53 @@ describe('authorizeContentPrimitiveForUser', () => {
     );
   });
 
+  it('does not retry the organization-optional fallback when the primary decision already allowed', async () => {
+    resolveEffectivePermissionsMock.mockResolvedValueOnce({
+      ok: true,
+      permissions: [scopedPermission],
+    });
+
+    await expect(
+      authorizeContentPrimitiveForUser({
+        ctx: createCtx(),
+        action: 'news.read',
+        resource: {
+          contentType: 'news.article',
+        },
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      permissions: [scopedPermission],
+    });
+
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not widen organization-scoped permissions for non-opted-in content types', async () => {
+    resolveEffectivePermissionsMock.mockResolvedValueOnce({
+      ok: true,
+      permissions: [scopedPermission],
+    });
+    evaluateAuthorizeDecisionMock.mockReturnValueOnce({ allowed: false, reason: 'permission_missing' });
+
+    await expect(
+      authorizeContentPrimitiveForUser({
+        ctx: createCtx(),
+        action: 'content.read',
+        resource: {
+          contentType: 'custom.secure-record',
+        },
+      })
+    ).resolves.toEqual({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für diese Inhaltsoperation.',
+    });
+
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledTimes(1);
+  });
+
   it('adds the resolved actorAccountId for ownership-based authorization checks', async () => {
     await expect(
       authorizeContentPrimitiveForUser({

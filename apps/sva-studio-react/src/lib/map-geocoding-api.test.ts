@@ -318,6 +318,7 @@ describe('map-geocoding-api', () => {
       provider: 'custom',
     });
     expect(readMapGeocodingErrorDiagnostics('unexpected')).toEqual({});
+    expect(readMapGeocodingErrorDiagnostics(new Error('stack details'))).toEqual({});
 
     expect(createErrorResponse('rate_limited').status).toBe(429);
     expect(createErrorResponse('timeout').status).toBe(504);
@@ -414,6 +415,26 @@ describe('map-geocoding-api', () => {
       { query: 'Musterstraße 1' },
     );
     expect(customUrl.toString()).toBe('https://custom.example/suggest?query=Musterstra%C3%9Fe+1');
+
+    expect(() =>
+      buildProviderUrl(
+        {
+          provider: 'custom',
+          styleUrl: 'https://tiles.example/style.json',
+          autocompleteEnabled: true,
+          geocodeEnabled: true,
+          reverseGeocodeEnabled: true,
+          killSwitchEnabled: false,
+          suggestEndpoint: 'file:///etc/passwd',
+          geocodeEndpoint: 'https://custom.example/geocode',
+          reverseGeocodeEndpoint: 'https://custom.example/reverse',
+          requestTimeoutMs: '3000',
+          rateLimitPerMinute: '60',
+        },
+        'suggest',
+        { query: 'Musterstraße 1' },
+      ),
+    ).toThrow('invalid_input');
   });
 
   it('covers operation helpers for provider and validation edge cases', async () => {

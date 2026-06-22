@@ -394,6 +394,7 @@ describe('PoiDetailPage', () => {
           {
             assetId: 'asset-1',
             role: 'attachment_image',
+            sortOrder: 0,
           },
         ],
       });
@@ -448,6 +449,7 @@ describe('PoiDetailPage', () => {
           {
             assetId: 'asset-1',
             role: 'attachment_image',
+            sortOrder: 0,
           },
         ],
       });
@@ -466,8 +468,8 @@ describe('PoiDetailPage', () => {
       { id: 'asset-3', metadata: { title: 'Neu' } },
     ] as never);
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
-      { id: 'reference-1', assetId: 'asset-1', role: 'attachment_image' },
-      { id: 'reference-2', assetId: 'asset-2', role: 'attachment_image' },
+      { id: 'reference-1', assetId: 'asset-1', role: 'attachment_image', sortOrder: 1 },
+      { id: 'reference-2', assetId: 'asset-2', role: 'attachment_image', sortOrder: 0 },
     ] as never);
     vi.mocked(updatePoi).mockResolvedValueOnce({
       id: 'poi-1',
@@ -481,6 +483,16 @@ describe('PoiDetailPage', () => {
     });
 
     switchSection('settings');
+    await waitFor(() => {
+      const removeButtons = screen.getAllByRole('button', { name: 'Entfernen' });
+      expect(removeButtons).toHaveLength(2);
+      const firstCard = removeButtons[0]!.closest('article');
+      const secondCard = removeButtons[1]!.closest('article');
+      expect(firstCard).not.toBeNull();
+      expect(secondCard).not.toBeNull();
+      expect(within(firstCard as HTMLElement).getAllByText('Bestehend').length).toBeGreaterThan(0);
+      expect(within(secondCard as HTMLElement).getAllByText('Teaser').length).toBeGreaterThan(0);
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Bild hinzufügen' }));
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeTruthy();
@@ -494,9 +506,9 @@ describe('PoiDetailPage', () => {
         targetType: 'poi',
         targetId: 'poi-1',
         references: [
-          { assetId: 'asset-1', role: 'attachment_image' },
-          { assetId: 'asset-2', role: 'attachment_image' },
-          { assetId: 'asset-3', role: 'attachment_image' },
+          { assetId: 'asset-2', role: 'attachment_image', sortOrder: 0 },
+          { assetId: 'asset-1', role: 'attachment_image', sortOrder: 1 },
+          { assetId: 'asset-3', role: 'attachment_image', sortOrder: 2 },
         ],
       });
     });

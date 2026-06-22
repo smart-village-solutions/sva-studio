@@ -279,9 +279,10 @@ describe('PoiListPage', () => {
       );
       expect(replaceHostMediaReferences).toHaveBeenCalledWith({
         fetch: expect.any(Function),
+        instanceId: undefined,
         targetType: 'poi',
         targetId: 'poi-created',
-        references: [{ assetId: 'asset-teaser', role: 'attachment_image' }],
+        references: [{ assetId: 'asset-teaser', role: 'attachment_image', sortOrder: 0 }],
       });
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/poi/$id', params: { id: 'poi-created' } });
     });

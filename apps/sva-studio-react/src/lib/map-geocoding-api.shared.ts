@@ -83,13 +83,13 @@ export const readMapGeocodingErrorDiagnostics = (error: unknown): Record<string,
     return {};
   }
 
-  const diagnostics: Record<string, unknown> = {
-    error_message: error.message,
-  };
-
   const candidate = error as MapGeocodingClientError;
+  const diagnostics: Record<string, unknown> = {};
   if (typeof candidate.code === 'string' && candidate.code.length > 0) {
+    diagnostics.error_message = error.message;
     diagnostics.error_code = candidate.code;
+  } else {
+    return {};
   }
   if (typeof candidate.statusCode === 'number') {
     diagnostics.provider_status = candidate.statusCode;
@@ -206,7 +206,15 @@ const buildCustomUrl = (
     coordinates?: MapGeocodingCoordinates;
   },
 ): URL => {
-  const url = new URL(endpoint);
+  const trimmedEndpoint = endpoint.trim();
+  if (trimmedEndpoint.length === 0) {
+    throw createClientError('invalid_input');
+  }
+
+  const url = new URL(trimmedEndpoint);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw createClientError('invalid_input');
+  }
   if (input.query) {
     url.searchParams.set('query', input.query);
   }

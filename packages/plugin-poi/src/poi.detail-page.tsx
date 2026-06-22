@@ -136,6 +136,7 @@ export function PoiDetailPage({
             'media.images',
             references
               .filter((reference) => reference.role === pluginPoiMediaPickers.images.roles[0])
+              .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
               .map((reference) => normalizePoiMediaAssetId(reference.assetId))
               .filter((assetId) => assetId.length > 0)
               .map((assetId) => ({ assetId, label: '' })),
@@ -221,9 +222,10 @@ export function PoiDetailPage({
       const mediaReferences = (values.media.images ?? [])
         .map((image) => normalizePoiMediaAssetId(image.assetId))
         .filter((assetId) => assetId.length > 0)
-        .map((assetId) => ({
+        .map((assetId, index) => ({
           assetId,
           role: pluginPoiMediaPickers.images.roles[0],
+          sortOrder: index,
         }));
       if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
         await replaceHostMediaReferences({

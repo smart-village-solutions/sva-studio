@@ -36,6 +36,12 @@ export type ContentPrimitiveAuthorizationResult =
     };
 
 const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,30}\.[A-Za-z][A-Za-z0-9-]*$/;
+const ORGANIZATION_OPTIONAL_ACTIONS = new Set(['categories.read']);
+const ORGANIZATION_OPTIONAL_CONTENT_TYPES = new Set([
+  'events.event-record',
+  'news.article',
+  'poi.point-of-interest',
+]);
 
 const normalizeAuthorizationAction = (action: string): string | null => {
   const normalized = action.trim();
@@ -98,17 +104,24 @@ const databaseUnavailableAuthorizationResult = (): ContentPrimitiveAuthorization
 });
 
 const shouldRetryWithoutOrganizationScope = (
-  allowed: boolean,
   organizationId: string | undefined,
   permissions: readonly EffectivePermission[],
-): boolean => !allowed && !organizationId && permissions.some((permission) => permission.organizationId);
+  action: string,
+  contentType: string | undefined,
+): boolean =>
+  !organizationId &&
+  permissions.some((permission) => permission.organizationId) &&
+  (ORGANIZATION_OPTIONAL_ACTIONS.has(action) ||
+    (contentType ? ORGANIZATION_OPTIONAL_CONTENT_TYPES.has(contentType) : false));
 
 const resolveOrganizationOptionalDecision = (
   request: AuthorizeRequest,
   organizationId: string | undefined,
   permissions: readonly EffectivePermission[],
+  action: string,
+  contentType: string | undefined,
 ): boolean => {
-  if (!shouldRetryWithoutOrganizationScope(false, organizationId, permissions)) {
+  if (!shouldRetryWithoutOrganizationScope(organizationId, permissions, action, contentType)) {
     return false;
   }
 
@@ -242,7 +255,10 @@ export const authorizeContentPrimitiveForUser = async (input: {
     traceId: workspaceContext.traceId,
   });
   const decision = evaluateAuthorizeDecision(request, permissions);
-  if (resolveOrganizationOptionalDecision(request, organizationId, permissions)) {
+  if (
+    !decision.allowed &&
+    resolveOrganizationOptionalDecision(request, organizationId, permissions, action, resource.contentType)
+  ) {
     return {
       ok: true,
       actor: {

@@ -299,6 +299,22 @@ describe('RichTextHtmlEditor', () => {
     expect(tiptapState.calls.setLink).not.toHaveBeenCalled();
   });
 
+  it('rejects unsafe link protocols from the toolbar prompt', () => {
+    tiptapState.editor.getAttributes.mockReturnValue({ href: 'https://example.com' });
+    Object.defineProperty(window, 'prompt', {
+      configurable: true,
+      writable: true,
+      value: vi.fn(() => 'javascript:alert(1)'),
+    });
+
+    renderEditor();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Link setzen' }));
+
+    expect(tiptapState.actions).toContain('unsetLink');
+    expect(tiptapState.calls.setLink).not.toHaveBeenCalled();
+  });
+
   it('disables toolbar controls when the editor is disabled', () => {
     renderEditor({ disabled: true });
 

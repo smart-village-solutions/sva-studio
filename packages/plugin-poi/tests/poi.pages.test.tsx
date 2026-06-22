@@ -263,7 +263,9 @@ describe('PoiListPage', () => {
     fireEvent.change(screen.getByLabelText('Beschreibung', { selector: 'textarea' }), {
       target: { value: 'Bürgerservice vor Ort' },
     });
-    fireEvent.change(screen.getAllByLabelText('Web-URL')[0]!, { target: { value: 'https://example.com/poi' } });
+    fireEvent.change(document.getElementById('poi-link-url-0') as HTMLInputElement, {
+      target: { value: 'https://example.com/poi' },
+    });
     switchSection('settings');
     fireEvent.click(screen.getByRole('button', { name: 'Bild hinzufügen' }));
     await waitFor(() => {
@@ -352,7 +354,9 @@ describe('PoiListPage', () => {
     await waitFor(() => {
       expect(screen.getAllByLabelText('Web-URL').length).toBeGreaterThan(1);
     });
-    fireEvent.change(screen.getAllByLabelText('Web-URL')[0]!, { target: { value: 'http://invalid.example' } });
+    fireEvent.change(document.getElementById('poi-link-url-0') as HTMLInputElement, {
+      target: { value: 'http://invalid.example' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {

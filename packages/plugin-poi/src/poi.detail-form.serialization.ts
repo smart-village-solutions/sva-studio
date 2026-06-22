@@ -217,9 +217,7 @@ export const mapPoiDetailFormValuesToInput = (
   return {
     name: values.name.trim(),
     ...(compactString(values.content.description) ? { description: compactString(values.content.description) } : {}),
-    ...(compactString(values.content.mobileDescription)
-      ? { mobileDescription: compactString(values.content.mobileDescription) }
-      : {}),
+    mobileDescription: compactString(values.content.mobileDescription) ?? '',
     active: values.basis.active,
     ...(compactString(values.basis.categoryName) ? { categoryName: compactString(values.basis.categoryName) } : {}),
     addresses: (values.content.addresses ?? [])

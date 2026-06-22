@@ -172,7 +172,7 @@ describe('PoiDetailPage', () => {
       expect(screen.getAllByLabelText('Breitengrad').length).toBeGreaterThan(1);
       expect(screen.getByLabelText('Name des Betreibers')).toBeTruthy();
       expect(screen.getAllByLabelText('Vorname').length).toBeGreaterThan(1);
-      expect(screen.getByLabelText('Fax')).toBeTruthy();
+      expect(screen.getAllByLabelText('Fax').length).toBeGreaterThan(1);
       expect(screen.getByLabelText('Startdatum')).toBeTruthy();
       expect(screen.getByLabelText('Enddatum')).toBeTruthy();
       expect(screen.getByLabelText('Wochentag')).toBeTruthy();
@@ -328,7 +328,9 @@ describe('PoiDetailPage', () => {
     render(<PoiDetailPage mode="create" />);
 
     switchSection('content');
-    fireEvent.change(screen.getAllByLabelText('URL')[0]!, { target: { value: 'http://example.com/poi' } });
+    fireEvent.change(document.getElementById('poi-link-url-0') as HTMLInputElement, {
+      target: { value: 'http://example.com/poi' },
+    });
     switchSection('settings');
     fireEvent.change(screen.getByLabelText('Payload'), { target: { value: '{' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
@@ -356,7 +358,9 @@ describe('PoiDetailPage', () => {
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
-    fireEvent.change((await screen.findAllByLabelText('URL'))[0]!, { target: { value: 'http://invalid.example' } });
+    fireEvent.change(document.getElementById('poi-link-url-0') as HTMLInputElement, {
+      target: { value: 'http://invalid.example' },
+    });
     switchSection('basis');
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
@@ -383,6 +387,25 @@ describe('PoiDetailPage', () => {
       expect(document.activeElement).toBe(document.getElementById('poi-operator-url'));
       expect(screen.getByText('URLs müssen mit https:// beginnen.')).toBeTruthy();
       expect(document.getElementById('poi-operator-url')?.getAttribute('aria-invalid')).toBe('true');
+    });
+  });
+
+  it('focuses the primary contact url field when the primary contact web url is invalid', async () => {
+    render(<PoiDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
+    switchSection('content');
+    fireEvent.change(document.getElementById('poi-contact-url') as HTMLInputElement, {
+      target: { value: 'http://invalid.example/contact' },
+    });
+    switchSection('basis');
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(document.getElementById('poi-contact-url'));
+      expect(screen.getByText('URLs müssen mit https:// beginnen.')).toBeTruthy();
+      expect(document.getElementById('poi-contact-url')?.getAttribute('aria-invalid')).toBe('true');
     });
   });
 

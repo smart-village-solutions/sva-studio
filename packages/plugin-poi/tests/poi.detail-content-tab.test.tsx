@@ -172,7 +172,7 @@ describe('PoiDetailContentTab', () => {
     expect(screen.getByLabelText('Name des Betreibers')).toBeTruthy();
     expect(screen.getAllByLabelText('Vorname').length).toBeGreaterThan(1);
     expect(screen.getAllByLabelText('Nachname').length).toBeGreaterThan(1);
-    expect(screen.getByLabelText('Fax')).toBeTruthy();
+    expect(screen.getAllByLabelText('Fax').length).toBeGreaterThan(1);
     expect(screen.getByText('Preise')).toBeTruthy();
     expect(screen.queryByText('Medien')).toBeNull();
     expect(screen.getByRole('button', { name: 'Öffnungszeit hinzufügen' })).toBeTruthy();

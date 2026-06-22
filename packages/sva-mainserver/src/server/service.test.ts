@@ -895,6 +895,42 @@ describe('createSvaMainserverService', () => {
     await expect(deleteSvaMainserverPoi({ ...connection, poiId: 'poi-1' })).resolves.toEqual({ id: 'poi-1' });
   });
 
+  it('keeps explicit mobile description clearing values in POI update mutations', async () => {
+    state.loadSvaMainserverInstanceConfig.mockResolvedValue(baseConfig);
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'user',
+      credentials: { apiKey: 'key-1', apiSecret: 'secret-1' },
+    });
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true } } }));
+    vi.stubGlobal('fetch', fetchImpl);
+
+    await expect(
+      updateSvaMainserverPoi({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        poiId: 'poi-1',
+        poi: {
+          name: 'POI',
+          mobileDescription: '',
+        },
+      })
+    ).resolves.toMatchObject({ id: 'poi-1' });
+
+    const requestBody = JSON.parse(fetchImpl.mock.calls[1]?.[1]?.body as string) as {
+      variables?: Record<string, unknown>;
+    };
+    expect(requestBody.variables).toMatchObject({
+      id: 'poi-1',
+      name: 'POI',
+      mobileDescription: '',
+      forceCreate: false,
+    });
+  });
+
   it('normalizes unsupported visible-list page sizes back to the canonical contract', async () => {
     const item = {
       id: 'news-1',

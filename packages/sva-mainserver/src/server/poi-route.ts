@@ -78,7 +78,9 @@ const buildPoiInput = (input: {
 }): SvaMainserverPoiInput => ({
   name: input.name,
   ...(readString(input.body.description) ? { description: readString(input.body.description) } : {}),
-  ...(readString(input.body.mobileDescription) ? { mobileDescription: readString(input.body.mobileDescription) } : {}),
+  ...(typeof input.body.mobileDescription === 'string'
+    ? { mobileDescription: input.body.mobileDescription.trim() }
+    : {}),
   ...(readString(input.body.externalId) ? { externalId: readString(input.body.externalId) } : {}),
   ...(readString(input.body.keywords) ? { keywords: readString(input.body.keywords) } : {}),
   ...(readBoolean(input.body.active) !== undefined ? { active: readBoolean(input.body.active) } : {}),

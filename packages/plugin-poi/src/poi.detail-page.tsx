@@ -229,6 +229,11 @@ export function PoiDetailPage({
         }
         setActiveTab('content');
       }
+      if (validationErrors.includes('contact.webUrls')) {
+        methods.setError('content.contact.webUrls.0.url', { type: 'manual', message: 'webUrls' });
+        setActiveTab('content');
+        focusFieldById('poi-contact-url');
+      }
       if (validationErrors.includes('addresses')) {
         methods.setError('content.addresses.0.geoLocation.latitude', { type: 'manual', message: 'addresses' });
         setActiveTab('content');

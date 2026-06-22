@@ -512,6 +512,32 @@ describe('mainserver content route contracts', () => {
     );
   });
 
+  it('preserves explicit mobile description clearing values during POI updates', async () => {
+    mockAuthorizedMutation();
+    state.updateSvaMainserverPoi.mockResolvedValue({ id: 'poi-1' });
+
+    const response = await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: ' Rathaus ',
+          mobileDescription: '   ',
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverPoi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        poiId: 'poi-1',
+        poi: expect.objectContaining({
+          name: 'Rathaus',
+          mobileDescription: '',
+        }),
+      })
+    );
+  });
+
   it('creates POI with structured editor-owned sections without dropping nested fields', async () => {
     mockAuthorizedMutation();
     state.createSvaMainserverPoi.mockResolvedValue({ id: 'poi-structured-1' });

@@ -393,6 +393,7 @@ describe('poi.detail-form', () => {
       )
     ).toEqual({
       name: 'Test POI',
+      mobileDescription: '',
       active: false,
       addresses: [{ geoLocation: { latitude: 52.5, longitude: undefined } }],
       openingHours: [{ weekday: 'MO', sortNumber: 0, open: false, useYear: false }],
@@ -401,6 +402,52 @@ describe('poi.detail-form', () => {
       mediaContents: [],
       certificates: [],
       tags: [],
+    });
+  });
+
+  it('serializes an explicit mobile description clearing value', () => {
+    expect(
+      mapPoiDetailFormValuesToInput(
+        {
+          name: 'Test POI',
+          basis: {
+            categoryName: '',
+            active: true,
+          },
+          content: {
+            description: '',
+            mobileDescription: '',
+            addresses: [],
+            location: {
+              name: '',
+              department: '',
+              district: '',
+              regionName: '',
+              state: '',
+              geoLocation: { latitude: '', longitude: '' },
+            },
+            contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            openingHours: [],
+            webUrls: [],
+            operator: {
+              name: '',
+              address: { addition: '', street: '', zip: '', city: '', kind: '', geoLocation: { latitude: '', longitude: '' } },
+              contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            },
+            prices: [],
+            mediaContents: [],
+            certificates: [],
+            accessibilityInformation: { description: '', types: '', urls: [] },
+            tagsText: '',
+            payloadText: '{}',
+          },
+          media: { images: [] },
+          settings: {},
+        },
+        {}
+      )
+    ).toMatchObject({
+      mobileDescription: '',
     });
   });
 

@@ -111,6 +111,8 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     locationGeocodeEmpty: 'Zu diesen Adressdaten wurden keine Geo-Koordinaten gefunden.',
     locationMapUnavailable: 'Die Kartenansicht ist für diese Instanz derzeit deaktiviert.',
     locationMapError: 'Die Kartenansicht konnte nicht geladen werden. Die Felder bleiben manuell bearbeitbar.',
+    mediaReferencesUnavailable:
+      'Die bestehenden Medienreferenzen konnten nicht geladen werden. Bildänderungen können derzeit nicht gespeichert werden.',
     mediaUploadError: 'Das Medium konnte nicht hochgeladen werden.',
     mediaUploadSuccess: 'Das Medium wurde hochgeladen und kann jetzt referenziert werden.',
     imagePickerEmpty: 'Keine Bilder gefunden.',

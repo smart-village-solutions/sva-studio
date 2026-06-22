@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   request: new Request('http://localhost/map-geocoding'),
   withAuthenticatedUser: vi.fn(),
+  authorizeInstancePermissionForUser: vi.fn(),
   getStoredMapGeocodingRuntimeConfig: vi.fn(),
   fetch: vi.fn(),
   logger: {
@@ -28,6 +29,7 @@ vi.mock('@tanstack/react-start/server', () => ({
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
+  authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
   withAuthenticatedUser: state.withAuthenticatedUser,
 }));
 
@@ -44,6 +46,7 @@ describe('map-geocoding-api', () => {
     vi.resetModules();
     vi.stubGlobal('fetch', state.fetch);
     state.withAuthenticatedUser.mockReset();
+    state.authorizeInstancePermissionForUser.mockReset();
     state.getStoredMapGeocodingRuntimeConfig.mockReset();
     state.fetch.mockReset();
     state.logger.info.mockReset();
@@ -60,6 +63,14 @@ describe('map-geocoding-api', () => {
         },
       }),
     );
+    state.authorizeInstancePermissionForUser.mockResolvedValue({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+      },
+      permissions: [],
+    });
     state.getStoredMapGeocodingRuntimeConfig.mockResolvedValue({
       id: 'map-1',
       instanceId: 'de-musterhausen',
@@ -90,6 +101,11 @@ describe('map-geocoding-api', () => {
       reverseGeocodeEnabled: true,
       killSwitchEnabled: false,
     });
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'poi.read',
+      }),
+    );
   });
 
   it('normalizes Geoapify suggestions into provider-neutral features', async () => {
@@ -129,6 +145,37 @@ describe('map-geocoding-api', () => {
         source: 'geoapify',
       },
     ]);
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'poi.update',
+      }),
+    );
+  });
+
+  it('rejects provider-backed geocoding calls without poi.update permission', async () => {
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für diese Instanzoperation.',
+    });
+
+    const { suggestMapAddressesHandler } = await import('./map-geocoding-api');
+
+    const response = await suggestMapAddressesHandler(
+      new Request('http://localhost/api/v1/iam/map-geocoding/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'Musterstraße 1' }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'forbidden', message: 'forbidden' },
+      message: 'forbidden',
+    });
+    expect(state.fetch).not.toHaveBeenCalled();
   });
 
   it('requests Geoapify geocoding in geojson format so feature payloads are normalized correctly', async () => {
@@ -369,6 +416,7 @@ describe('map-geocoding-api', () => {
     expect(createErrorResponse('timeout').status).toBe(504);
     expect(createErrorResponse('disabled').status).toBe(503);
     expect(createErrorResponse('unauthorized').status).toBe(401);
+    expect(createErrorResponse('forbidden').status).toBe(403);
     expect(createErrorResponse('other').status).toBe(400);
     await expect(createErrorResponse('stack details').json()).resolves.toEqual({
       error: { code: 'provider_error', message: 'provider_error' },

@@ -91,12 +91,17 @@ const loadRuntimeConfig = async (instanceId: string): Promise<MapGeocodingRuntim
 
 const withAuthenticatedMapUser = async <T>(
   request: Request,
+  action: 'poi.read' | 'poi.update',
   run: (ctx: AuthenticatedMapGeocodingContext) => Promise<T>,
 ): Promise<T> => {
-  const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
+  const { authorizeInstancePermissionForUser, withAuthenticatedUser } = await import('@sva/auth-runtime/server');
   const response = await withAuthenticatedUser(request, async (ctx) => {
     if (!ctx.user.instanceId) {
       return jsonResponse(400, { error: 'invalid_config' });
+    }
+    const authorization = await authorizeInstancePermissionForUser({ ctx, action });
+    if (!authorization.ok) {
+      return jsonResponse(authorization.status, { error: authorization.error });
     }
     try {
       return jsonResponse(200, await run({ sessionId: ctx.sessionId, user: ctx.user }));
@@ -132,7 +137,7 @@ const withGeocodingOperation = async <T>(
   operation: 'get_config' | 'suggest' | 'geocode' | 'reverse_geocode',
   run: (ctx: AuthenticatedMapGeocodingContext, config: MapGeocodingRuntimeConfigWithSecrets) => Promise<T>,
 ): Promise<T> =>
-  withAuthenticatedMapUser(request, async (ctx) => {
+  withAuthenticatedMapUser(request, operation === 'get_config' ? 'poi.read' : 'poi.update', async (ctx) => {
     const logger = await getLogger();
     const config = await loadRuntimeConfig(ctx.user.instanceId as string);
     try {

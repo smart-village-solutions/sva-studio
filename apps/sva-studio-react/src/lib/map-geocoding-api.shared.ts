@@ -27,6 +27,7 @@ const mapGeocodingErrorCodes = [
   'rate_limited',
   'timeout',
   'unauthorized',
+  'forbidden',
 ] as const;
 
 export type MapGeocodingErrorCode = (typeof mapGeocodingErrorCodes)[number];
@@ -141,6 +142,8 @@ export const createErrorResponse = (code: string): Response =>
   jsonResponse(
     safeCode === 'unauthorized'
       ? 401
+      : safeCode === 'forbidden'
+        ? 403
       : safeCode === 'no_result'
         ? 404
         : safeCode === 'disabled'

@@ -569,7 +569,7 @@ const buildMapGeocodingRecord = (input: {
     delete existingPublicConfig[key];
   }
 
-  if (!input.draft.name.trim() || !styleUrl) {
+  if (!input.draft.name.trim() || !isValidAbsoluteHttpUrl(styleUrl)) {
     throw new Error('invalid_config');
   }
 

@@ -455,6 +455,28 @@ describe('instance-interfaces-server', () => {
     await expect(
       upsertStoredInterface('de-test', {
         type: 'mapGeocoding',
+        name: 'Ungueltige Style-URL',
+        enabled: true,
+        config: {
+          provider: 'geoapify',
+          styleUrl: 'not-a-url',
+          autocompleteEnabled: true,
+          geocodeEnabled: true,
+          reverseGeocodeEnabled: true,
+          suggestEndpoint: '',
+          geocodeEndpoint: '',
+          reverseGeocodeEndpoint: '',
+          requestTimeoutMs: '',
+          rateLimitPerMinute: '',
+          killSwitchEnabled: false,
+          apiKey: 'geoapify-key',
+        },
+      })
+    ).rejects.toThrow('invalid_config');
+
+    await expect(
+      upsertStoredInterface('de-test', {
+        type: 'mapGeocoding',
         name: 'Geoapify-Geocoding',
         enabled: true,
         config: {

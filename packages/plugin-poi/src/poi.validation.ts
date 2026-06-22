@@ -1,6 +1,6 @@
 import type { PoiFormInput } from './poi.types.js';
 
-const isHttpsUrl = (value: string): boolean => {
+export const isHttpsUrl = (value: string): boolean => {
   try {
     return new URL(value).protocol === 'https:';
   } catch {

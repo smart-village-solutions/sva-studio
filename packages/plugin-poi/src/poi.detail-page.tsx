@@ -37,7 +37,7 @@ import { createPoiDetailTabDefinitions, type PoiDetailTabId } from './poi.detail
 import { PoiDetailSettingsTab } from './poi.detail-settings-tab.js';
 import { pluginPoiMediaPickers } from './plugin.js';
 import type { PoiContentItem } from './poi.types.js';
-import { validatePoiForm } from './poi.validation.js';
+import { isHttpsUrl, validatePoiForm } from './poi.validation.js';
 
 type StatusMessage = Readonly<{
   kind: 'success' | 'error';
@@ -71,14 +71,6 @@ const renderPoiTabPanel = ({
 );
 
 const PoiTabTriggerLabel = ({ label }: Readonly<{ label: string }>) => <span>{label}</span>;
-
-const isHttpsUrl = (value: string): boolean => {
-  try {
-    return new URL(value).protocol === 'https:';
-  } catch {
-    return false;
-  }
-};
 
 export function PoiDetailPage({
   mode,

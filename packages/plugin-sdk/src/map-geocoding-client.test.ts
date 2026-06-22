@@ -7,6 +7,25 @@ import {
   reverseGeocodeHostCoordinates,
   suggestHostMapAddresses,
 } from './map-geocoding-client.js';
+import type { MapGeocodingFeature } from './map-geocoding.js';
+
+const suggestFeature: MapGeocodingFeature = {
+  label: 'Suggest',
+  coordinates: { latitude: 52.51, longitude: 13.4 },
+  source: 'geoapify',
+};
+
+const geocodeFeature: MapGeocodingFeature = {
+  label: 'Geocode',
+  coordinates: { latitude: 52.52, longitude: 13.41 },
+  source: 'geoapify',
+};
+
+const reverseFeature: MapGeocodingFeature = {
+  label: 'Reverse',
+  coordinates: { latitude: 52.5, longitude: 13.4 },
+  source: 'geoapify',
+};
 
 describe('map geocoding client', () => {
   it('loads the public host config over the stable iam route', async () => {
@@ -44,7 +63,7 @@ describe('map geocoding client', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/suggest')) {
-        return new Response(JSON.stringify([{ label: 'Suggest' }]), {
+        return new Response(JSON.stringify([suggestFeature]), {
           status: 200,
         });
       }
@@ -53,37 +72,28 @@ describe('map geocoding client', () => {
           street: 'Musterstraße',
           city: 'Musterstadt',
         });
-        return new Response(JSON.stringify({ label: 'Geocode' }), {
+        return new Response(JSON.stringify(geocodeFeature), {
           status: 200,
         });
       }
-      return new Response(
-        JSON.stringify({
-          label: 'Reverse',
-          coordinates: { latitude: 52.5, longitude: 13.4 },
-        }),
-        { status: 200 },
-      );
+      return new Response(JSON.stringify(reverseFeature), { status: 200 });
     });
 
     await expect(
       suggestHostMapAddresses({ fetch: fetchMock as never, query: 'Musterstraße' }),
-    ).resolves.toEqual([{ label: 'Suggest' }]);
+    ).resolves.toEqual([suggestFeature]);
     await expect(
       geocodeHostMapAddress({
         fetch: fetchMock as never,
         address: { street: 'Musterstraße', city: 'Musterstadt' },
       }),
-    ).resolves.toEqual({ label: 'Geocode' });
+    ).resolves.toEqual(geocodeFeature);
     await expect(
       reverseGeocodeHostCoordinates({
         fetch: fetchMock as never,
         coordinates: { latitude: 52.5, longitude: 13.4 },
       }),
-    ).resolves.toEqual({
-      label: 'Reverse',
-      coordinates: { latitude: 52.5, longitude: 13.4 },
-    });
+    ).resolves.toEqual(reverseFeature);
   });
 
   it('surfaces deterministic route errors as typed map geocoding client errors', async () => {

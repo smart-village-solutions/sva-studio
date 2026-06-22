@@ -439,6 +439,34 @@ describe('PoiDetailPage', () => {
     });
   });
 
+  it('focuses the invalid media source url row when later media entries are invalid', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      payload: {},
+      mediaContents: [
+        { captionText: 'Erstes Bild', sourceUrl: { url: 'https://example.test/one.jpg' } },
+        { captionText: 'Zweites Bild', sourceUrl: { url: 'http://invalid.example/two.jpg' } },
+      ],
+    } as never);
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
+    });
+
+    switchSection('content');
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(updatePoi)).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(document.getElementById('poi-media-url-1'));
+      expect(document.getElementById('poi-media-url-0')?.getAttribute('aria-invalid')).toBeNull();
+      expect(document.getElementById('poi-media-url-1')?.getAttribute('aria-invalid')).toBe('true');
+    });
+  });
+
   it('focuses the operator latitude field when operator coordinates are invalid', async () => {
     render(<PoiDetailPage mode="create" />);
 

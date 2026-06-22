@@ -72,6 +72,14 @@ const renderPoiTabPanel = ({
 
 const PoiTabTriggerLabel = ({ label }: Readonly<{ label: string }>) => <span>{label}</span>;
 
+const isHttpsUrl = (value: string): boolean => {
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 export function PoiDetailPage({
   mode,
   contentId,
@@ -247,9 +255,14 @@ export function PoiDetailPage({
         setActiveTab('content');
       }
       if (validationErrors.includes('mediaContents')) {
-        methods.setError('content.mediaContents.0.sourceUrl.url', { type: 'manual', message: 'webUrls' });
+        const invalidMediaIndex = values.content.mediaContents.findIndex((entry) => {
+          const url = entry.sourceUrl?.url?.trim() ?? '';
+          return url.length > 0 && isHttpsUrl(url) === false;
+        });
+        const mediaIndex = invalidMediaIndex >= 0 ? invalidMediaIndex : 0;
+        methods.setError(`content.mediaContents.${mediaIndex}.sourceUrl.url`, { type: 'manual', message: 'webUrls' });
         setActiveTab('content');
-        focusFieldById('poi-media-url-0');
+        focusFieldById(`poi-media-url-${mediaIndex}`);
       }
       if (validationErrors.includes('operatingCompany.address')) {
         methods.setError('content.operator.address.geoLocation.latitude', {

@@ -55,7 +55,7 @@ export const usePoiLocationMapLifecycle = (
       });
 
       map.on('click', createMapClickHandler(onCoordinatesChangeRef));
-      map.on('error', (event) => {
+      map.on('error', () => {
         onErrorRef.current?.('map_error');
       });
 

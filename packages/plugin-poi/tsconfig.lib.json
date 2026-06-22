@@ -13,5 +13,5 @@
       "@sva/studio-ui-react": ["packages/studio-ui-react/dist/index.d.ts"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "types-css.d.ts"]
 }

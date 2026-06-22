@@ -242,6 +242,14 @@ describe('RichTextHtmlEditor', () => {
     expect(screen.getByRole('combobox', { name: 'Textformat' })).toHaveProperty('value', 'heading-2');
   });
 
+  it('reflects an active blockquote format in the block type select', () => {
+    tiptapState.editor.isActive.mockImplementation((name: string) => name === 'blockquote');
+
+    renderEditor();
+
+    expect(screen.getByRole('combobox', { name: 'Textformat' })).toHaveProperty('value', 'blockquote');
+  });
+
   it('removes links when the prompt returns an empty value and ignores cancelled prompts', () => {
     tiptapState.editor.getAttributes.mockReturnValue({ href: 'https://example.com' });
     Object.defineProperty(window, 'prompt', {
@@ -283,6 +291,19 @@ describe('RichTextHtmlEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Link setzen' }));
 
     expect(tiptapState.calls.setLink).toHaveBeenCalledWith('mailto:test@example.com');
+  });
+
+  it('wires aria labelling attributes through to the editor surface', () => {
+    renderEditor({ labelId: 'editor-label', describedBy: 'editor-help' });
+
+    const config = useEditorMock.mock.calls[0]?.[0] as {
+      editorProps?: { attributes?: Record<string, string> };
+    };
+
+    expect(config.editorProps?.attributes).toMatchObject({
+      'aria-labelledby': 'editor-label',
+      'aria-describedby': 'editor-help',
+    });
   });
 
   it('falls back safely when no editor instance is available', () => {

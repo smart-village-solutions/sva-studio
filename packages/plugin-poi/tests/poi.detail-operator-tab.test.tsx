@@ -193,4 +193,45 @@ describe('PoiDetailOperatorTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Kartenfehler' }));
     expect(screen.getByText('Karte nicht verfügbar.')).toBeTruthy();
   });
+
+  it('falls back to the unavailable-map state when the geocoding config cannot be loaded', async () => {
+    geocodingState.getConfig.mockRejectedValueOnce(new Error('config unavailable'));
+
+    render(<TestForm />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Karte deaktiviert.')).toBeTruthy();
+    });
+  });
+
+  it('surfaces empty and generic geocoding failures for operator lookups', async () => {
+    geocodingState.geocodeAddress.mockRejectedValueOnce(new Error('no_result')).mockRejectedValueOnce(new Error('boom'));
+    geocodingState.reverseCoordinates.mockRejectedValueOnce(new Error('no_result'));
+
+    render(<TestForm />);
+    await waitFor(() => {
+      expect(geocodingState.getConfig).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText('Ort'), { target: { value: 'Musterstadt' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Geo-Koordinaten ermitteln' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Keine Geo-Koordinaten gefunden.')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Geo-Koordinaten ermitteln' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Geo-Koordinaten nicht verfügbar.')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Breitengrad'), { target: { value: '48.200000' } });
+    fireEvent.change(screen.getByLabelText('Längengrad'), { target: { value: '11.600000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Adresse ermitteln' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Keine Geo-Koordinaten gefunden.')).toBeTruthy();
+    });
+  });
 });

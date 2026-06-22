@@ -208,6 +208,36 @@ describe('RichTextHtmlEditor', () => {
     expect(tiptapState.actions).toContain('setLink:https://example.com');
   });
 
+  it('runs the remaining toolbar actions and prevents focus loss on mouse down', () => {
+    tiptapState.editor.isActive.mockImplementation((name: string) => name === 'bold' || name === 'bulletList');
+
+    renderEditor();
+
+    const bulletListButton = screen.getByRole('button', { name: 'UL' });
+    const orderedListButton = screen.getByRole('button', { name: 'OL' });
+    const boldButton = screen.getByRole('button', { name: 'Fett' });
+    const italicButton = screen.getByRole('button', { name: 'Kursiv' });
+    const undoButton = screen.getByRole('button', { name: 'Zurück' });
+    const redoButton = screen.getByRole('button', { name: 'Vorwärts' });
+
+    const mouseDownEvent = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    bulletListButton.dispatchEvent(mouseDownEvent);
+
+    fireEvent.click(bulletListButton);
+    fireEvent.click(orderedListButton);
+    fireEvent.click(boldButton);
+    fireEvent.click(italicButton);
+    fireEvent.click(undoButton);
+    fireEvent.click(redoButton);
+
+    expect(mouseDownEvent.defaultPrevented).toBe(true);
+    expect(bulletListButton.className).toContain('bg-muted');
+    expect(boldButton.className).toContain('bg-muted');
+    expect(tiptapState.actions).toEqual(
+      expect.arrayContaining(['bulletList', 'orderedList', 'bold', 'italic', 'undo', 'redo'])
+    );
+  });
+
   it('syncs external html updates and forwards editor updates', () => {
     const { onChange } = renderEditor({ value: '<p>Alpha</p>' });
 

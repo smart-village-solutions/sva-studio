@@ -8,6 +8,14 @@ const isHttpsUrl = (value: string): boolean => {
   }
 };
 
+const hasInvalidHttpsUrl = (
+  values?: readonly Readonly<{
+    url: string;
+  }>[]
+) => (values ?? []).some((entry) => entry.url.trim().length > 0 && isHttpsUrl(entry.url) === false);
+
+const defined = <T>(value: T | undefined | null): value is T => value !== undefined && value !== null;
+
 const hasInvalidGeoLocation = (value?: { readonly latitude?: number; readonly longitude?: number }) => {
   if (!value) {
     return false;
@@ -40,24 +48,21 @@ export const validatePoiForm = (input: PoiFormInput): readonly string[] => {
 
   pushIf(input.name.trim().length === 0, 'name');
   pushIf(Boolean(input.categoryName && input.categoryName.length > 128), 'categoryName');
-  pushIf((input.webUrls ?? []).some((url) => url.url.trim().length > 0 && isHttpsUrl(url.url) === false), 'webUrls');
+  pushIf(hasInvalidHttpsUrl(input.webUrls), 'webUrls');
   pushIf((input.addresses ?? []).some((address) => hasInvalidGeoLocation(address.geoLocation)), 'addresses');
   pushIf(hasInvalidGeoLocation(input.location?.geoLocation), 'location');
-  pushIf(
-    (input.contact?.webUrls ?? []).some((url) => url.url.trim().length > 0 && isHttpsUrl(url.url) === false),
-    'contact.webUrls',
-  );
-  pushIf(
-    (input.operatingCompany?.contact?.webUrls ?? []).some(
-      (url) => url.url.trim().length > 0 && isHttpsUrl(url.url) === false,
-    ),
-    'operatingCompany.contact.webUrls',
-  );
+  pushIf(hasInvalidHttpsUrl(input.contact?.webUrls), 'contact.webUrls');
+  pushIf(hasInvalidGeoLocation(input.operatingCompany?.address?.geoLocation), 'operatingCompany.address');
+  pushIf(hasInvalidHttpsUrl(input.operatingCompany?.contact?.webUrls), 'operatingCompany.contact.webUrls');
   pushIf(
     (input.priceInformations ?? []).some(
       (price) => price.amount !== undefined && (typeof price.amount !== 'number' || Number.isFinite(price.amount) === false),
     ),
     'priceInformations',
+  );
+  pushIf(
+    hasInvalidHttpsUrl((input.mediaContents ?? []).map((entry) => entry.sourceUrl).filter(defined)),
+    'mediaContents',
   );
 
   return errors;

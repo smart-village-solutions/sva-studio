@@ -118,10 +118,12 @@ describe('poi.detail-form', () => {
     ]);
     expect(values.content.operator).toMatchObject({ name: 'Stadtwerke' });
     expect(values.content.prices).toMatchObject([
-      { name: 'Erwachsene', amount: '12.5' },
-      { name: 'Kinder', amount: '7.5' },
+      { name: 'Erwachsene', amount: '12.5', category: 'adult' },
+      { name: 'Kinder', amount: '7.5', category: 'child' },
     ]);
-    expect(values.content.mediaContents).toMatchObject([{ captionText: 'Parkplan' }]);
+    expect(values.content.mediaContents).toMatchObject([
+      { captionText: 'Parkplan', contentType: 'image', sourceUrl: { url: 'https://example.test/park.jpg' } },
+    ]);
     expect(values.content.location).toMatchObject({ name: 'Stadtpark', district: 'Mitte' });
     expect(values.content.certificates).toMatchObject([{ name: 'Familienfreundlich' }]);
     expect(values.content.accessibilityInformation).toMatchObject({
@@ -242,7 +244,9 @@ describe('poi.detail-form', () => {
         { name: 'Erwachsene', amount: 12.5, category: 'adult' },
         { name: 'Kinder', amount: 7.5, category: 'child' },
       ],
-      mediaContents: [{ captionText: 'Parkplan' }],
+      mediaContents: [
+        { captionText: 'Parkplan', contentType: 'image', sourceUrl: { url: 'https://example.test/park.jpg' } },
+      ],
       certificates: [{ name: 'Familienfreundlich' }],
       accessibilityInformation: {
         description: 'Stufenlos',

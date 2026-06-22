@@ -19,6 +19,9 @@ export function PoiDetailOperatorTab({ pt }: Readonly<{ pt: (key: string) => str
   const operator = useWatch({ control, name: 'content.operator' }) ?? {};
   const operatorWebUrl = operator.contact?.webUrls?.[0];
   const operatorUrlError = errors.content?.operator?.contact?.webUrls?.[0]?.url;
+  const operatorLatitudeError = errors.content?.operator?.address?.geoLocation?.latitude;
+  const operatorLongitudeError = errors.content?.operator?.address?.geoLocation?.longitude;
+  const operatorGeoLocationError = operatorLatitudeError ?? operatorLongitudeError;
   const [isGeocodingEnabled, setIsGeocodingEnabled] = React.useState(true);
   const [isReverseGeocodingEnabled, setIsReverseGeocodingEnabled] = React.useState(true);
   const [isMapEnabled, setIsMapEnabled] = React.useState(true);
@@ -317,16 +320,30 @@ export function PoiDetailOperatorTab({ pt }: Readonly<{ pt: (key: string) => str
       ) : null}
 
       <StudioFieldGroup columns={2}>
-        <StudioField id="poi-operator-latitude" label={pt('fields.latitude')}>
+        <StudioField
+          id="poi-operator-latitude"
+          label={pt('fields.latitude')}
+          error={operatorGeoLocationError ? pt('validation.geoLocation') : undefined}
+          errorId="poi-operator-latitude-error"
+        >
           <Input
             id="poi-operator-latitude"
+            aria-describedby={operatorGeoLocationError ? 'poi-operator-latitude-error' : undefined}
+            aria-invalid={operatorGeoLocationError ? true : undefined}
             value={operatorLatitude}
             onChange={(event) => setOperatorCoordinateValue('latitude', event.target.value)}
           />
         </StudioField>
-        <StudioField id="poi-operator-longitude" label={pt('fields.longitude')}>
+        <StudioField
+          id="poi-operator-longitude"
+          label={pt('fields.longitude')}
+          error={operatorGeoLocationError ? pt('validation.geoLocation') : undefined}
+          errorId="poi-operator-longitude-error"
+        >
           <Input
             id="poi-operator-longitude"
+            aria-describedby={operatorGeoLocationError ? 'poi-operator-longitude-error' : undefined}
+            aria-invalid={operatorGeoLocationError ? true : undefined}
             value={operatorLongitude}
             onChange={(event) => setOperatorCoordinateValue('longitude', event.target.value)}
           />

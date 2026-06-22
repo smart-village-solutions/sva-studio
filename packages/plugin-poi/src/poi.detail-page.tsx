@@ -246,6 +246,23 @@ export function PoiDetailPage({
         methods.setError('content.prices.0.amount', { type: 'manual', message: 'priceInformations' });
         setActiveTab('content');
       }
+      if (validationErrors.includes('mediaContents')) {
+        methods.setError('content.mediaContents.0.sourceUrl.url', { type: 'manual', message: 'webUrls' });
+        setActiveTab('content');
+        focusFieldById('poi-media-url-0');
+      }
+      if (validationErrors.includes('operatingCompany.address')) {
+        methods.setError('content.operator.address.geoLocation.latitude', {
+          type: 'manual',
+          message: 'geoLocation',
+        });
+        methods.setError('content.operator.address.geoLocation.longitude', {
+          type: 'manual',
+          message: 'geoLocation',
+        });
+        setActiveTab('content');
+        focusFieldById('poi-operator-latitude');
+      }
       if (validationErrors.includes('operatingCompany.contact.webUrls')) {
         methods.setError('content.operator.contact.webUrls.0.url', {
           type: 'manual',

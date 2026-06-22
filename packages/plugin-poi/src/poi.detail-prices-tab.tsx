@@ -19,6 +19,12 @@ export function PoiDetailPricesTab({ pt }: Readonly<{ pt: (key: string) => strin
             <StudioField id={`poi-price-amount-${index}`} label={pt('fields.amount')}>
               <Input id={`poi-price-amount-${index}`} {...register(`content.prices.${index}.amount`)} />
             </StudioField>
+            <StudioField id={`poi-price-category-${index}`} label={pt('fields.priceCategory')}>
+              <Input id={`poi-price-category-${index}`} {...register(`content.prices.${index}.category`)} />
+            </StudioField>
+            <StudioField id={`poi-price-description-${index}`} label={pt('fields.priceDescription')}>
+              <Input id={`poi-price-description-${index}`} {...register(`content.prices.${index}.description`)} />
+            </StudioField>
           </StudioFieldGroup>
           {fields.length > 1 ? (
             <div className="mt-4 flex justify-end">

@@ -27,16 +27,20 @@ describe('validatePoiForm', () => {
         },
         operatingCompany: {
           name: 'Stadtwerke',
+          address: { geoLocation: { latitude: 52.5, longitude: 181 } },
           contact: { webUrls: [{ url: 'http://example.test/operator' }] },
         },
         priceInformations: [{ name: 'Erwachsene', amount: Number.NaN }],
+        mediaContents: [{ sourceUrl: { url: 'http://example.test/media.jpg' } }],
       })
     ).toEqual([
       'addresses',
       'location',
       'contact.webUrls',
+      'operatingCompany.address',
       'operatingCompany.contact.webUrls',
       'priceInformations',
+      'mediaContents',
     ]);
   });
 });

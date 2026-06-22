@@ -67,6 +67,8 @@ const pt = (key: string) =>
     'cards.operator.details.description': 'Betriebsdaten',
     'cards.prices.entries.title': 'Preise',
     'cards.prices.entries.description': 'Preisangaben',
+    'cards.media.entries.title': 'Medieninhalte',
+    'cards.media.entries.description': 'Medienquellen',
     'fields.name': 'Name',
     'fields.description': 'Beschreibung',
     'richText.heading2': 'Überschrift 2',
@@ -104,6 +106,11 @@ const pt = (key: string) =>
     'fields.operatorName': 'Name des Betreibers',
     'fields.priceName': 'Preisname',
     'fields.amount': 'Betrag',
+    'fields.priceCategory': 'Preiskategorie',
+    'fields.priceDescription': 'Preisbeschreibung',
+    'fields.mediaCaption': 'Medienbeschriftung',
+    'fields.mediaCopyright': 'Copyright',
+    'fields.mediaContentType': 'Medientyp',
     'fields.fax': 'Fax',
     'actions.addOpeningHour': 'Öffnungszeit hinzufügen',
     'actions.remove': 'Entfernen',
@@ -131,7 +138,10 @@ function renderTab(defaultValues?: Partial<PoiDetailFormValues>) {
           openingHours: [{ weekday: '', timeFrom: '', open: true }],
           webUrls: [{ url: '', description: '' }],
           operator: { name: '', contact: { email: '' } },
-          prices: [{ name: '', amount: '' }],
+          prices: [{ name: '', amount: '', category: '', description: '' }],
+          mediaContents: [{ captionText: '', copyright: '', contentType: '', sourceUrl: { url: '', description: '' } }],
+          certificates: [],
+          accessibilityInformation: { description: '', types: '', urls: [] },
           payloadText: '{}',
         },
         media: { images: [] },
@@ -174,7 +184,12 @@ describe('PoiDetailContentTab', () => {
     expect(screen.getAllByLabelText('Nachname').length).toBeGreaterThan(1);
     expect(screen.getAllByLabelText('Fax').length).toBeGreaterThan(1);
     expect(screen.getByText('Preise')).toBeTruthy();
-    expect(screen.queryByText('Medien')).toBeNull();
+    expect(screen.getByText('Medieninhalte')).toBeTruthy();
+    expect(screen.getByLabelText('Preiskategorie')).toBeTruthy();
+    expect(screen.getByLabelText('Preisbeschreibung')).toBeTruthy();
+    expect(screen.getByLabelText('Medienbeschriftung')).toBeTruthy();
+    expect(screen.getByLabelText('Copyright')).toBeTruthy();
+    expect(screen.getByLabelText('Medientyp')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Öffnungszeit hinzufügen' })).toBeTruthy();
   });
 });

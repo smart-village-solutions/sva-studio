@@ -50,6 +50,11 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     open: 'Geöffnet',
     priceName: 'Preisname',
     amount: 'Betrag',
+    priceCategory: 'Preiskategorie',
+    priceDescription: 'Preisbeschreibung',
+    mediaCaption: 'Medienbeschriftung',
+    mediaCopyright: 'Copyright',
+    mediaContentType: 'Medientyp',
     certificateName: 'Zertifikat',
     accessibilityDescription: 'Barrierefreiheit',
     accessibilityTypes: 'Barrierefreiheits-Typen',
@@ -166,6 +171,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
       entries: { title: 'Preise', description: 'Mehrere Preisangaben pflegen.' },
     },
     media: {
+      entries: { title: 'Medieninhalte', description: 'Quellen und Metadaten der übertragenen Medien pflegen.' },
       references: { title: 'Medien', description: 'Dateireferenzen des Ortes.' },
     },
     advanced: {
@@ -204,6 +210,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
   validation: {
     name: 'Der Name ist erforderlich.',
     webUrls: 'URLs müssen mit https:// beginnen.',
+    geoLocation: 'Koordinaten müssen gültige Breiten- und Längengrade sein.',
     categoryName: 'Die Kategorie darf maximal 128 Zeichen haben.',
     payload: 'Payload muss gültiges JSON sein.',
   },

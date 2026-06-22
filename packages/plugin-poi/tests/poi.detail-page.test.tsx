@@ -91,6 +91,8 @@ describe('PoiDetailPage', () => {
         'poi.cards.operator.details.description': 'Betriebsdaten',
         'poi.cards.prices.entries.title': 'Preise',
         'poi.cards.prices.entries.description': 'Preisangaben',
+        'poi.cards.media.entries.title': 'Medieninhalte',
+        'poi.cards.media.entries.description': 'Medienquellen',
         'poi.cards.settings.media.title': 'Bilder',
         'poi.cards.settings.media.description': 'Bilder des Ortes verwalten',
         'poi.cards.advanced.payload.title': 'Zusatzdaten',
@@ -118,9 +120,15 @@ describe('PoiDetailPage', () => {
         'poi.fields.open': 'Geöffnet',
         'poi.fields.timeFrom': 'Startzeit',
         'poi.fields.timeTo': 'Endzeit',
+        'poi.fields.priceCategory': 'Preiskategorie',
+        'poi.fields.priceDescription': 'Preisbeschreibung',
+        'poi.fields.mediaCaption': 'Medienbeschriftung',
+        'poi.fields.mediaCopyright': 'Copyright',
+        'poi.fields.mediaContentType': 'Medientyp',
         'poi.fields.payload': 'Payload',
         'poi.messages.validationError': 'Bitte Eingaben prüfen.',
         'poi.validation.webUrls': 'URLs müssen mit https:// beginnen.',
+        'poi.validation.geoLocation': 'Koordinaten müssen gültige Breiten- und Längengrade sein.',
         'poi.history.empty.title': 'Noch keine Historie verfügbar.',
         'poi.messages.createSuccess': 'Ort erstellt.',
         'poi.messages.updateSuccess': 'Ort aktualisiert.',
@@ -177,7 +185,10 @@ describe('PoiDetailPage', () => {
       expect(screen.getByLabelText('Enddatum')).toBeTruthy();
       expect(screen.getByLabelText('Wochentag')).toBeTruthy();
       expect(screen.getAllByLabelText('URL').length).toBeGreaterThan(1);
-      expect(screen.queryByText('Bilder')).toBeNull();
+      expect(screen.getByText('Medieninhalte')).toBeTruthy();
+      expect(screen.getByLabelText('Preiskategorie')).toBeTruthy();
+      expect(screen.getByLabelText('Preisbeschreibung')).toBeTruthy();
+      expect(screen.getByLabelText('Medienbeschriftung')).toBeTruthy();
     });
   });
 
@@ -406,6 +417,49 @@ describe('PoiDetailPage', () => {
       expect(document.activeElement).toBe(document.getElementById('poi-contact-url'));
       expect(screen.getByText('URLs müssen mit https:// beginnen.')).toBeTruthy();
       expect(document.getElementById('poi-contact-url')?.getAttribute('aria-invalid')).toBe('true');
+    });
+  });
+
+  it('focuses the first media source url when a media url is invalid', async () => {
+    render(<PoiDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
+    switchSection('content');
+    fireEvent.change(document.getElementById('poi-media-url-0') as HTMLInputElement, {
+      target: { value: 'http://invalid.example/media.jpg' },
+    });
+    switchSection('basis');
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(document.getElementById('poi-media-url-0'));
+      expect(screen.getByText('URLs müssen mit https:// beginnen.')).toBeTruthy();
+      expect(document.getElementById('poi-media-url-0')?.getAttribute('aria-invalid')).toBe('true');
+    });
+  });
+
+  it('focuses the operator latitude field when operator coordinates are invalid', async () => {
+    render(<PoiDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
+    switchSection('content');
+    fireEvent.change(screen.getByLabelText('Name des Betreibers'), { target: { value: 'Stadtwerke' } });
+    fireEvent.change(document.getElementById('poi-operator-latitude') as HTMLInputElement, {
+      target: { value: '91' },
+    });
+    fireEvent.change(document.getElementById('poi-operator-longitude') as HTMLInputElement, {
+      target: { value: '13' },
+    });
+    switchSection('basis');
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(document.getElementById('poi-operator-latitude'));
+      expect(screen.getAllByText('Koordinaten müssen gültige Breiten- und Längengrade sein.')).toHaveLength(2);
+      expect(document.getElementById('poi-operator-latitude')?.getAttribute('aria-invalid')).toBe('true');
+      expect(document.getElementById('poi-operator-longitude')?.getAttribute('aria-invalid')).toBe('true');
     });
   });
 

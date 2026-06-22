@@ -2,6 +2,7 @@ import { PoiDetailContactTab } from './poi.detail-contact-tab.js';
 import { PoiDetailDescriptionTab } from './poi.detail-description-tab.js';
 import { PoiDetailLinksTab } from './poi.detail-links-tab.js';
 import { PoiDetailLocationTab } from './poi.detail-location-tab.js';
+import { PoiDetailMediaTab } from './poi.detail-media-tab.js';
 import { PoiDetailOpeningHoursTab } from './poi.detail-opening-hours-tab.js';
 import { PoiDetailOperatorTab } from './poi.detail-operator-tab.js';
 import { PoiDetailPricesTab } from './poi.detail-prices-tab.js';
@@ -16,6 +17,7 @@ export function PoiDetailContentTab({ pt }: Readonly<{ pt: (key: string) => stri
       <PoiDetailLinksTab pt={pt} />
       <PoiDetailOperatorTab pt={pt} />
       <PoiDetailPricesTab pt={pt} />
+      <PoiDetailMediaTab pt={pt} />
     </div>
   );
 }

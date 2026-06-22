@@ -50,6 +50,11 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     open: 'Open',
     priceName: 'Price name',
     amount: 'Amount',
+    priceCategory: 'Price category',
+    priceDescription: 'Price description',
+    mediaCaption: 'Media caption',
+    mediaCopyright: 'Copyright',
+    mediaContentType: 'Media type',
     certificateName: 'Certificate',
     accessibilityDescription: 'Accessibility',
     accessibilityTypes: 'Accessibility types',
@@ -166,6 +171,7 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
       entries: { title: 'Prices', description: 'Maintain multiple price entries.' },
     },
     media: {
+      entries: { title: 'Media contents', description: 'Maintain transferred media sources and metadata.' },
       references: { title: 'Media', description: 'File references for the POI.' },
     },
     advanced: {
@@ -204,6 +210,7 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
   validation: {
     name: 'Name is required.',
     webUrls: 'URLs must start with https://.',
+    geoLocation: 'Coordinates must be valid latitude and longitude values.',
     categoryName: 'Category must be at most 128 characters.',
     payload: 'Payload must be valid JSON.',
   },

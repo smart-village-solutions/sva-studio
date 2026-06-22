@@ -13,7 +13,7 @@ const maplibreState = vi.hoisted(() => ({
   errorHandler: null as null | ((event?: unknown) => void),
   markerDragHandler: null as null | (() => void),
   markerLngLat: { lng: 0, lat: 0 },
-  constructorOptions: null as null | { center: [number, number]; zoom: number },
+  constructorOptions: null as null | { center: [number, number]; zoom: number; attributionControl?: boolean },
   mapConstructorCalls: 0,
   setCenter: vi.fn(),
   setZoom: vi.fn(),
@@ -130,6 +130,7 @@ describe('PoiLocationMap', () => {
     });
     expect(maplibreState.constructorOptions).toEqual(
       expect.objectContaining({
+        attributionControl: true,
         center: [defaultPoiMapCenter.longitude, defaultPoiMapCenter.latitude],
         zoom: defaultPoiMapZoom,
       }),
@@ -161,12 +162,31 @@ describe('PoiLocationMap', () => {
     });
     expect(maplibreState.constructorOptions).toEqual(
       expect.objectContaining({
+        attributionControl: true,
         center: [11.5, 48.1],
         zoom: focusedPoiMapZoom,
       }),
     );
     expect(maplibreState.setCenter).toHaveBeenCalledWith([11.5, 48.1]);
     expect(maplibreState.setZoom).toHaveBeenCalledWith(focusedPoiMapZoom);
+  });
+
+  it('keeps map attribution enabled for provider compliance', async () => {
+    render(
+      <PoiLocationMap
+        styleUrl="https://tiles.example/style.json"
+        onCoordinatesChange={() => undefined}
+        onError={() => undefined}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(maplibreState.constructorOptions).toEqual(
+        expect.objectContaining({
+          attributionControl: true,
+        }),
+      );
+    });
   });
 
   it('logs maplibre render errors with the style url', async () => {

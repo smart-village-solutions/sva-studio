@@ -1,3 +1,5 @@
+import { mergeRequestHeaders } from './http-client.js';
+
 export type MainserverListQuery = Readonly<{
   page: number;
   pageSize: number;
@@ -55,19 +57,6 @@ const resolveFetch = (fetchOverride?: typeof fetch): typeof fetch => {
   return resolvedFetch;
 };
 
-const mergeHeaders = (...headersList: Array<HeadersInit | undefined>): Headers => {
-  const merged = new Headers();
-  for (const headers of headersList) {
-    if (!headers) {
-      continue;
-    }
-    for (const [key, value] of new Headers(headers).entries()) {
-      merged.set(key, value);
-    }
-  }
-  return merged;
-};
-
 const createTimeoutSignal = (timeoutMs: number): {
   readonly cancel: () => void;
   readonly signal: AbortSignal;
@@ -86,7 +75,7 @@ const createTimeoutSignal = (timeoutMs: number): {
 };
 
 export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): Headers =>
-  mergeHeaders(
+  mergeRequestHeaders(
     {
       'Content-Type': 'application/json',
       'X-Requested-With': 'XMLHttpRequest',
@@ -96,6 +85,90 @@ export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): Heade
 
 export const buildMainserverListUrl = (basePath: string, query: MainserverListQuery): string =>
   `${basePath}?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
+
+const resolveMainserverErrorFactory = <TError extends Error>(
+  errorFactory?: MainserverErrorFactory<TError>
+): MainserverErrorFactory<TError | MainserverApiError> =>
+  errorFactory ?? ((code: string, errorMessage: string) => new MainserverApiError(code, errorMessage));
+
+const createMainserverTimeoutError = <TError extends Error>(
+  errorFactory?: MainserverErrorFactory<TError>
+): TError | MainserverApiError => resolveMainserverErrorFactory(errorFactory)('mainserver_timeout', 'mainserver_timeout');
+
+const fetchMainserverResponse = async <TError extends Error>(input: {
+  readonly url: string;
+  readonly init?: RequestInit;
+  readonly fetch?: typeof fetch;
+  readonly errorFactory?: MainserverErrorFactory<TError>;
+  readonly signal: AbortSignal;
+}): Promise<Response> => {
+  try {
+    return await resolveFetch(input.fetch)(input.url, {
+      credentials: 'include',
+      ...input.init,
+      signal: input.signal,
+      headers: mergeRequestHeaders({ Accept: 'application/json' }, input.init?.headers),
+    });
+  } catch (error: unknown) {
+    if (error instanceof DOMException && error.name === 'TimeoutError') {
+      throw createMainserverTimeoutError(input.errorFactory);
+    }
+    throw error;
+  }
+};
+
+const readNonEmptyString = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.length > 0 ? value : undefined;
+
+const readStructuredErrorDetails = (value: ApiErrorResponse['error']): {
+  readonly code?: string;
+  readonly message?: string;
+} => {
+  if (typeof value !== 'object' || value === null) {
+    return {};
+  }
+  return {
+    code: readNonEmptyString(value.code),
+    message: readNonEmptyString(value.message),
+  };
+};
+
+const parseMainserverErrorResponse = async (response: Response): Promise<{
+  readonly code: string;
+  readonly message: string;
+}> => {
+  const fallback = {
+    code: `http_${response.status}`,
+    message: `http_${response.status}`,
+  };
+
+  try {
+    const body = await response.json();
+    if (!isApiErrorResponse(body)) {
+      throw new Error('invalid_mainserver_error_response');
+    }
+    const structuredError = readStructuredErrorDetails(body.error);
+    const errorCode = readNonEmptyString(body.error) ?? structuredError.code ?? fallback.code;
+    const message = readNonEmptyString(body.message) ?? structuredError.message ?? errorCode;
+    return {
+      code: errorCode,
+      message,
+    };
+  } catch {
+    return fallback;
+  }
+};
+
+const assertMainserverResponseOk = async <TError extends Error>(
+  response: Response,
+  errorFactory?: MainserverErrorFactory<TError>
+): Promise<void> => {
+  if (response.ok) {
+    return;
+  }
+  const { code, message } = await parseMainserverErrorResponse(response);
+  throw resolveMainserverErrorFactory(errorFactory)(code, message);
+};
 
 export function requestMainserverJson<T>(input: {
   readonly url: string;
@@ -111,6 +184,7 @@ export function requestMainserverJson<T, TError extends Error>(input: {
   readonly errorFactory: MainserverErrorFactory<TError>;
   readonly timeoutMs?: number;
 }): Promise<T>;
+
 export async function requestMainserverJson<T, TError extends Error = MainserverApiError>(input: {
   readonly url: string;
   readonly init?: RequestInit;
@@ -120,53 +194,14 @@ export async function requestMainserverJson<T, TError extends Error = Mainserver
 }): Promise<T> {
   const timeout = createTimeoutSignal(input.timeoutMs ?? DEFAULT_MAINSERVER_REQUEST_TIMEOUT_MS);
   try {
-    const response = await resolveFetch(input.fetch)(input.url, {
-      credentials: 'include',
-      ...input.init,
+    const response = await fetchMainserverResponse({
+      url: input.url,
+      init: input.init,
+      fetch: input.fetch,
+      errorFactory: input.errorFactory,
       signal: input.init?.signal ? AbortSignal.any([input.init.signal, timeout.signal]) : timeout.signal,
-      headers: mergeHeaders({ Accept: 'application/json' }, input.init?.headers),
-    }).catch((error: unknown) => {
-      if (error instanceof DOMException && error.name === 'TimeoutError') {
-        const errorFactory =
-          input.errorFactory ?? ((code: string, errorMessage: string) => new MainserverApiError(code, errorMessage));
-        throw errorFactory('mainserver_timeout', 'mainserver_timeout');
-      }
-
-      throw error;
     });
-
-    if (!response.ok) {
-      let errorCode = `http_${response.status}`;
-      let message = errorCode;
-
-      try {
-        const body = await response.json();
-        if (!isApiErrorResponse(body)) {
-          throw new Error('invalid_mainserver_error_response');
-        }
-        errorCode =
-          typeof body.error === 'string' && body.error.length > 0
-            ? body.error
-            : typeof body.error === 'object' && body.error !== null && typeof body.error.code === 'string' && body.error.code.length > 0
-              ? body.error.code
-              : errorCode;
-        message =
-          typeof body.message === 'string' && body.message.length > 0
-            ? body.message
-            : typeof body.error === 'object' &&
-                body.error !== null &&
-                typeof body.error.message === 'string' &&
-                body.error.message.length > 0
-              ? body.error.message
-              : errorCode;
-      } catch {
-        // Keep the deterministic HTTP fallback when the server returns no JSON error envelope.
-      }
-
-      const errorFactory = input.errorFactory ?? ((code: string, errorMessage: string) => new MainserverApiError(code, errorMessage));
-      throw errorFactory(errorCode, message);
-    }
-
+    await assertMainserverResponseOk(response, input.errorFactory);
     return (await response.json()) as T;
   } finally {
     timeout.cancel();

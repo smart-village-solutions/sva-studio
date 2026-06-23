@@ -116,7 +116,7 @@ gleichzeitig beeinflussen.
 
 - Mandantenisolation basiert auf kanonischem Scope `instanceId` als fachlichem String-Schlüssel (inkl. Mapping zu `workspace_id` in Logs)
 - Im tenant-spezifischen Login ist Host/Registry/Realm die führende Quelle für diesen Scope; ein fehlender benutzerbezogener `instanceId`-Claim blockiert die Session nicht.
-- Keycloak ist führend für Authentifizierung; Postgres ist führend für Studio-verwaltete IAM-Fachdaten
+- Keycloak ist führend für Authentifizierung, Realm-Zugang und technische Sonderrollen; Postgres ist führend für Studio-verwaltete IAM-Fachdaten inklusive tenantlokaler Rollen, Gruppen und Permissions
 - Autorisierungspfade erzwingen `instanceId`-Filterung vor Rollen-/Policy-Evaluation
 - Effektive Berechtigungen aggregieren direkte Nutzerrechte, direkte Rollen und gruppenvermittelte Rollen; die Provenance hält `direct_user`, `direct_role` und `group_role` als strukturierte Quelle fest
 - Rollen-Permission-Zuordnungen koennen fuer explizit scope-faehige Datensatzrechte zusaetzlich einen Assignment-Scope `all|own|organization` tragen; dieser Scope lebt auf `iam.role_permissions.access_scope` und nicht im generischen `iam.permissions.scope`
@@ -141,10 +141,10 @@ gleichzeitig beeinflussen.
   - Plattform-Scope: `iam.platform_activity_logs` + OTEL via Server-Runtime-Logger
 - Audit-Daten enthalten korrelierbare IDs (`request_id`, `trace_id`) und pseudonymisierte Actor-Referenzen
 - Der Root-Host ist ein expliziter Plattform-Scope und keine Pseudo-Instanz in `iam.instances`
-- Studio-verwaltete Rollen werden über `managed_by = 'studio'` und `instance_id` gegen fremdverwaltete Keycloak-Rollen abgegrenzt
+- Studio-verwaltete Rollen werden über `managed_by = 'studio'` und `instance_id` in der IAM-Datenbank abgegrenzt; Keycloak spiegelt tenantseitig nur die technische Sonderrolle `system_admin`
 - Keycloak bleibt von direkten Nutzerrechten fachlich entkoppelt; diese Konfiguration ist ausschließlich Studio-intern und wird nicht in den IdP gespiegelt
 - `role_key` ist die stabile technische Identität, `display_name` der editierbare UI-Name
-- Rollen-Alias-Mapping für erhöhte Berechtigungen (z. B. `Admin -> system_admin`) wird ausschließlich aus `realm_access` übernommen; `resource_access`-Rollen bleiben client-spezifisch und erhalten keine globalen Privileg-Aliasse
+- Rohe Keycloak-Rollen aus `realm_access` werden separat als `keycloakRoles` geführt; tenantseitige Fachautorisierung nutzt ausschließlich IAM-Rollen, Gruppen und Permissions. Nur der technische Tenant-Schnitt `system_admin` bleibt Keycloak-relevant.
 - Idempotency-Schlüssel für mutierende IAM-Endpoints sind mandantenspezifisch gescoped: (`instance_id`, `actor_account_id`, `endpoint`, `idempotency_key`)
 - Keycloak-Provisioning-Runs nutzen denselben kanonischen Header `Idempotency-Key`, aber einen plattformweiten Run-Scope aus (`instance_id`, `mutation`, `idempotency_key`); der gespeicherte Payload-Fingerprint basiert nur auf stabilen Request-Eingaben, nicht auf aus aktuellem Instanzzustand abgeleiteten Reconcile-Intents.
 - Inhalts-Schreibpfade folgen denselben Guardrails: CSRF-Header, Idempotency-Key bei Create, permission-basierte Freigabe (`content.read|create|update`) und revisionssichere History-Events
@@ -168,7 +168,7 @@ gleichzeitig beeinflussen.
 - Aktionshierarchien auf operativen Detailseiten verwenden genau eine Primäraktion im Überblick; Spezial- und Folgeaktionen werden sichtbar nachgeordnet gruppiert, damit Operatoren nicht mehrere gleichgewichtete Handlungsoptionen im Erstblick interpretieren müssen.
 - Dezente Motion auf der Instanz-Detailseite ist nur zulässig, wenn sie Blickführung, Statusfeedback oder Prozesszustände unterstützt; `prefers-reduced-motion`, Fokusindikatoren, Statuskontrast und Incident-Lesbarkeit haben stets Vorrang vor dekorativer Wirkung.
 - Root-/Plattform-Zugriff umfasst Instanz-Lifecycle, Provisioning, Platform-User, Platform-Rollen, Platform-Sync und explizites Break-Glass; tenantlokale Daten bleiben davon getrennt
-- User-, Rollen- und Rollenzuordnungsänderungen folgen einem Keycloak-first-Vertrag. Studio schreibt erst Keycloak, synchronisiert danach die lokalen Read-Models und macht Abweichungen über `mappingStatus`, `editability` und Diagnosecodes sichtbar.
+- User-Identity-Änderungen folgen weiter dem Keycloak-Admin-Vertrag. Rollen- und Rollenzuordnungsänderungen für normale Tenant-Rollen sind DB-only; Keycloak-Sync ist auf `system_admin`, `instance_registry_admin` und explizit technische Realm-Artefakte begrenzt.
 - `system_admin` bleibt die einzige geschützte tenantlokale Defaultrolle; frühere Standardrollen wie `app_manager`, `designer` oder `editor` gehören nicht mehr zum tenantlokalen Sollmodell, werden nicht mehr als Systemrollen behandelt und sind höchstens noch historische Altartefakte für explizite Migrations- und Repair-Pfade.
 - Tenant-Userlisten richten sich nach dem Tenant-Realm in Keycloak; ungemappte oder mehrdeutige Benutzer werden als `unmapped` beziehungsweise `manual_review` angezeigt.
 - Keycloak-Built-in-Rollen bleiben als Rollenobjekte read-only, werden aber in Listen nicht ausgeblendet.
@@ -324,6 +324,7 @@ gleichzeitig beeinflussen.
 - Ersatzbilder wie leere Rollen, UUID-Anzeigenamen oder `Ausstehend` sind nur zulässig, wenn der kanonische Projektionskern genau diesen Fachzustand liefert.
 - `IamHttpError` bleibt bis in die Browser-Schicht mit `classification`, `requestId` und `safeDetails` erhalten; relevante Klassen sind insbesondere `registry_or_provisioning_drift`, `keycloak_reconcile`, `auth_resolution`, `oidc_discovery_or_exchange`, `frontend_state_or_permission_staleness` und `legacy_workaround_or_regression`.
 - Reconcile- und Sync-Berichte serialisieren deterministische Abschlusszustände und Aggregationen statt impliziter Erfolgssignale.
+- Rollen-Reconcile materialisiert keine tenantlokalen Fachrollen mehr in Keycloak; technische Sonderrollen werden repariert, nicht-technische Keycloak-Rollen werden als Legacy-/Drift-Diagnose ausgewiesen.
 - Tenant-Admin-abhängige Mutationen arbeiten fail-closed gegen blockerrelevanten Drift; ein grüner Basis-Health-Status überschreibt diesen Befund nicht.
 
 ### Fortschreibung 2026-04: Tenant-IAM-Status als öffentlicher Diagnosekern

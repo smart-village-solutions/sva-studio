@@ -1,17 +1,17 @@
-# Keycloak-Rollen-Sync und Reconcile-Runbook
+# Keycloak-Sonderrollen-Sync und Reconcile-Runbook
 
 ## Zweck
 
-Dieses Runbook beschreibt den Betrieb des Studio-verwalteten Rollen-Katalog-Syncs zwischen `iam.roles` und Keycloak-Realm-Rollen.
+Dieses Runbook beschreibt den Betrieb des eng begrenzten Rollenabgleichs zwischen IAM und Keycloak. Keycloak wird nur noch für technische Sonderrollen abgeglichen; tenantlokale Fachrollen bleiben IAM-DB-kanonisch.
 
 ## Geltungsbereich
 
-- Source of Truth ist die IAM-Datenbank.
-- Synchronisiert werden nur studio-verwaltete Rollen mit `managed_by = 'studio'`.
-- Rollen mit `managed_by = 'external'` sind read-only und werden nicht in den Keycloak-Sync/Reconcile aufgenommen.
+- Source of Truth für tenantlokale Fachrollen ist die IAM-Datenbank.
+- Synchronisiert werden nur technische Sonderrollen: `system_admin` im Tenant-Kontext und `instance_registry_admin` im Plattform-Kontext.
+- Rollen mit `managed_by = 'external'` sowie normale fachliche Tenant-Rollen sind nicht Teil des Keycloak-Syncs.
 - Der technische Schlüssel `role_key` ist stabil und bleibt nach der Erstellung unverändert.
-- Der Anzeigename wird separat als `display_name` gepflegt und nach Keycloak als Attribut repliziert.
-- Orphaned Keycloak-Rollen werden im Reconcile-Lauf standardmäßig nur gemeldet (`report-only`), nicht automatisch gelöscht.
+- Der Anzeigename wird separat als `display_name` gepflegt. Für normale Tenant-Rollen bleibt diese Pflege DB-only.
+- Nicht-technische Keycloak-Rollen werden im Reconcile-Lauf nur als Legacy-/Drift-Diagnose gemeldet (`report-only`), nicht automatisch gelöscht oder in IAM importiert.
 
 ## Relevante Betriebsparameter
 
@@ -27,7 +27,7 @@ IAM_ROLE_RECONCILE_INSTANCE_IDS=<uuid-1>,<uuid-2>
 Wichtig:
 
 - `KEYCLOAK_ADMIN_REALM` ist nur der technische Token-Realm des Service-Accounts.
-- Der Rollen-Sync arbeitet pro `instance_id` gegen den in `iam.instances.authRealm` hinterlegten Ziel-Realm.
+- Der technische Sonderrollen-Sync arbeitet pro `instance_id` gegen den in `iam.instances.authRealm` hinterlegten Ziel-Realm.
 - Fehlt `authRealm` oder `authClientId` bei einer aktiven Instanz, muss der Lauf fail-closed behandelt und vor dem nächsten Reconcile korrigiert werden.
 
 Empfohlene Startwerte:
@@ -37,20 +37,22 @@ Empfohlene Startwerte:
 
 ## Normaler Betriebsablauf
 
-1. `POST /api/v1/iam/roles` legt zuerst die Realm-Rolle in Keycloak an und schreibt danach das DB-Mapping.
-2. `PATCH /api/v1/iam/roles/:id` aktualisiert zuerst Keycloak und dann das DB-Mapping.
-3. `DELETE /api/v1/iam/roles/:id` entfernt zuerst die Realm-Rolle in Keycloak und danach im Tenant alle direkten Benutzerzuordnungen (`iam.account_roles`), Gruppenzuordnungen (`iam.group_roles`) und die verbleibenden Rollen-Datensätze.
-4. Bei erfolgreichem Abschluss wird `sync_state = 'synced'` gesetzt.
+1. `POST /api/v1/iam/roles`, `PATCH /api/v1/iam/roles/:id` und `DELETE /api/v1/iam/roles/:id` für normale Tenant-Rollen schreiben ausschließlich die IAM-Datenbank.
+2. Technische Sonderrollenpfade stellen `system_admin` gezielt in Keycloak und IAM sicher.
+3. User-Create und User-Update persistieren fachliche Rollen in IAM und synchronisieren nach Keycloak nur die technische Teilmenge.
+4. Bei erfolgreichem Abschluss einer DB-only-Rollenmutation gilt der IAM-Zustand als abgeschlossen; es wird kein neuer Keycloak-Sync-State für fachliche Rollen eingeführt.
 5. Die Bestätigung in der Admin-UI warnt allgemein davor, dass vorhandene Benutzer- und Gruppenzuordnungen mit entfernt werden.
-6. Bei Fehlern setzt der Service `sync_state = 'failed'`, schreibt `last_error_code` und emittiert Audit-Events.
-7. Falls der synchrone Pfad nach erfolgreichem Keycloak-Schritt an der DB scheitert, läuft eine Compensation.
+6. Bei Fehlern im technischen Sonderrollenpfad setzt der Service `sync_state = 'failed'`, schreibt `last_error_code` und emittiert Audit-Events.
+7. Falls ein technischer Keycloak-Schritt erfolgreich war und der nachgelagerte IAM-Schritt scheitert, läuft eine Compensation.
 8. Idempotency für mutierende Endpunkte ist pro Mandant isoliert (`instance_id`, `actor_account_id`, `endpoint`, `idempotency_key`) und verhindert damit Kollisionen über Instanzgrenzen.
 
 ## Sync-Zustände
 
-- `synced`: DB und Keycloak sind konsistent, kein manueller Eingriff nötig.
-- `pending`: ein Write oder Reconcile-Lauf ist aktiv oder wurde begonnen.
-- `failed`: der letzte Sync-Versuch ist fehlgeschlagen; `last_error_code` bestimmt die Triage.
+- `synced`: technische Sonderrolle ist in DB und Keycloak konsistent, kein manueller Eingriff nötig.
+- `pending`: ein technischer Write oder Reconcile-Lauf ist aktiv oder wurde begonnen.
+- `failed`: der letzte technische Sync-Versuch ist fehlgeschlagen; `last_error_code` bestimmt die Triage.
+
+Für normale tenantlokale Fachrollen sind diese Zustände keine Keycloak-Wahrheit mehr.
 
 Häufige Fehlercodes:
 
@@ -73,12 +75,12 @@ Häufige Fehlercodes:
    - `reconcile`: letzter aggregierter Rollenabgleich aus `iam.roles` und `iam.activity_logs`
    - `overall`: verdichteter Operator-Befund mit Präzedenz `blocked` vor `degraded` vor `unknown` vor `ready`
 4. Falls `access = unknown`, zuerst die Aktion `Tenant-IAM-Zugriff prüfen` auslösen, bevor ein erneuter Reconcile-Lauf bewertet wird.
-5. `POST /api/v1/iam/admin/reconcile` als `system_admin` ausführen (wirkt auf die `instanceId` des authentifizierten Actors).
+5. `POST /api/v1/iam/admin/reconcile` als `system_admin` ausführen (wirkt auf die `instanceId` des authentifizierten Actors und repariert nur technische Sonderrollen).
 6. Ergebnis bewerten:
    - `corrected`: Drift wurde behoben.
    - `failed`: Korrekturversuch ist fehlgeschlagen; Ursache im Keycloak-/DB-Pfad analysieren.
-   - `requires_manual_action`: meist orphaned Keycloak-Rolle, manuelle Freigabe erforderlich.
-7. Bei orphaned Rollen vor einer Löschung immer Freigabe und Nutzungsprüfung dokumentieren.
+   - `requires_manual_action`: meist Legacy- oder orphaned-Keycloak-Rolle außerhalb des technischen Schnitts, manuelle Freigabe erforderlich.
+7. Bei Legacy- oder orphaned Rollen vor einer Löschung immer Freigabe und Nutzungsprüfung dokumentieren; eine fehlende fachliche IAM-Rolle in Keycloak ist kein Driftfehler.
 
 ## Repair-Pfad für Legacy-Admin-Artefakte
 
@@ -117,14 +119,14 @@ Leitplanken:
 ### Sync-Fehlerquote erhöht
 
 1. `iam_role_sync_operations_total` nach `operation`, `result` und `error_code` auswerten.
-2. Prüfen, ob die Fehler nur den `retry`-Pfad oder alle Write-Operationen betreffen.
+2. Prüfen, ob die Fehler nur technische Sonderrollenpfade betreffen. Retry-/Sync-Aktionen für nicht-technische Rollen sind erwartbar blockiert und kein Keycloak-Störfall.
 3. `iam_keycloak_request_duration_seconds` und `iam_circuit_breaker_state` parallel prüfen.
 4. Bei `IDP_FORBIDDEN` zuerst den Scope bestimmen:
    - Root-Host/Platform-Scope: Plattform-Service-Account und Plattform-Realm prüfen.
    - Tenant-Host/Instance-Scope: `tenantAdminClient.clientId`, Tenant-Admin-Client-Secret, Realm-Zuordnung und Rechte im Tenant-Realm prüfen.
 5. Bei Tenant-`IDP_FORBIDDEN` keinen Fallback auf globale Plattform-Credentials verwenden; stattdessen Tenant-Admin-Client über die Instanzverwaltung neu provisionieren, Secret rotieren oder den Tenant-Admin zurücksetzen.
 6. Die Rollenmatrix des betroffenen Service-Accounts gegen `docs/guides/keycloak-service-account-setup-iam.md` prüfen.
-7. Bei `DB_WRITE_FAILED` Postgres-Verfügbarkeit und Migration `0007_iam_role_catalog_sync.sql` verifizieren.
+7. Bei `DB_WRITE_FAILED` Postgres-Verfügbarkeit und die IAM-Rollenpersistenz verifizieren.
 
 ### Tenant-IAM-Access-Probe schlägt fehl
 
@@ -147,7 +149,7 @@ Leitplanken:
 2. Letzten geplanten oder manuellen Reconcile-Lauf im Log suchen (`operation = reconcile_roles` oder `reconcile_roles_scheduler`).
 3. Prüfen, ob nur `requires_manual_action` vorliegt oder echte `failed`-Einträge existieren.
 4. Bei `LEGACY_ADMIN_ARTIFACT_DRIFT` den Repair-Pfad für `admins` und `core_admin` aus diesem Runbook abarbeiten.
-5. Bei ausschließlich orphaned Rollen Freigabeprozess starten; bei fehlenden Rollen oder Metadatenabweichungen Reconcile erneut ausführen.
+5. Bei ausschließlich orphaned oder Legacy-Keycloak-Rollen Freigabeprozess starten. Nur bei fehlenden oder abweichenden technischen Sonderrollen Reconcile erneut ausführen.
 
 ## Audit- und Logging-Nachweise
 

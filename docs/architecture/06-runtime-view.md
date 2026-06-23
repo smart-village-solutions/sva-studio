@@ -251,7 +251,7 @@ Fehlerpfad:
    - Bei Tenant-Hosts wird `instanceId` aus dem zuvor aufgelösten Auth-Scope aus Host, Registry und Realm in den Session-User übernommen.
    - Ein fehlender `instanceId`-Claim blockiert den Tenant-Login nicht; ein widersprüchlicher Claim beendet den Callback fail-closed als Scope-Konflikt.
 5. Session-Cookie wird mit expliziter Laufzeit aus `expiresAt` gesetzt; Redis-TTL wird technisch aus der Restlaufzeit plus Puffer abgeleitet
-6. App ruft `/auth/me` fuer minimalen Auth-Kontext (`id`, `instanceId`, Rollen)
+6. App ruft `/auth/me` fuer minimalen Auth-Kontext (`id`, `instanceId`, kanonische IAM-`roles`, technische `keycloakRoles`)
 7. Falls UI Profildaten wie Name oder E-Mail braucht, laedt sie diese ueber dedizierte Profil-Endpunkte getrennt nach
 
 Fehlerpfad:
@@ -332,7 +332,7 @@ Fehlerpfad:
 2. Der Server unterscheidet Root-Host-Platform-Scope und Tenant-Instance-Scope. Im Platform-Scope nutzt er den Plattform-Realm ohne `instanceId`; im Tenant-Scope lädt er den Instanzkontext und prüft vor jeder tenantlokalen Admin-Mutation blockerrelevanten Drift aus Registry, Preflight und Provisioning-Plan.
 3. Beim Keycloak-User-Sync ist der aktive Tenant-Realm die führende Benutzergrenze; fehlende `instanceId`-Attribute blockieren den Import nicht.
 4. Liegt ein Blocker vor, endet der Lauf sofort fail-closed mit technischem Fehlervertrag inklusive `classification`, `requestId` und freigegebenen Safe-Details.
-5. Ohne Blocker führt `packages/iam-admin` den Sync oder Reconcile deterministisch aus und trennt pro Eintrag zwischen korrigiert, fehlgeschlagen und fachlichem Restzustand `manual_review`.
+5. Ohne Blocker führt `packages/iam-admin` den Sync oder Reconcile deterministisch aus. Der Rollen-Reconcile repariert nur technische Sonderrollen; nicht-technische Keycloak-Rollen werden als Legacy-/Drift-Diagnose oder fachlicher Restzustand `manual_review` berichtet.
 6. Die Handler antworten immer mit genau einem Abschlusszustand `success`, `partial_failure`, `blocked` oder `failed` sowie aggregierten Zählwerten.
 7. Read-Pfade für Profil, User-Liste und Rollenansicht laden anschließend denselben kanonischen Projektionskern nach, damit UI und Fachzustand übereinstimmen.
 
@@ -375,22 +375,22 @@ Fehlerpfad:
 - fehlt die Zuweisung, blockiert das Routing die Plugin-Route vor dem Rendern.
 - direkte API-Aufrufe bleiben zusätzlich durch fehlende modulbezogene Permissions abgesichert.
 
-### Szenario 2f: Keycloak-first User- und Rollenverwaltung
+### Szenario 2f: IAM-User- und Rollenverwaltung mit technischem Keycloak-Schnitt
 
-1. `/admin/users` und `/admin/roles` laden Listen über den aktiven Keycloak-Admin-Pfad.
+1. `/admin/users` verbindet Keycloak-Identität mit der IAM-DB-Projektion; `/admin/roles` lädt tenantlokale Fachrollen kanonisch aus der IAM-Datenbank.
 2. Im Platform-Scope wird nur der Platform-Admin-Keycloak-Client verwendet.
 3. Im Tenant-Scope wird nur der Tenant-Admin-Keycloak-Client der Instanz verwendet; fehlt dieser, endet der Request mit `tenant_admin_client_not_configured`.
 4. Tenant-Userlisten lesen den vollständigen Realm-Ausschnitt aus Keycloak und verbinden ihn anschließend mit Studio-Read-Models.
-5. Keycloak-Objekte ohne Studio-Zuordnung bleiben als `unmapped` oder `manual_review` sichtbar.
-6. Mutierende Aktionen schreiben zuerst Keycloak, synchronisieren anschließend Studio-Read-Models und erzeugen Audit-Events.
+5. Keycloak-Rollen ohne technische Sonderrollenbedeutung bleiben als `keycloakRoles`, `unmapped` oder `manual_review` sichtbar, begründen aber keine fachliche Tenant-Autorisierung.
+6. Mutierende Rollenaktionen für normale Tenant-Rollen schreiben DB-only und erzeugen Audit-Events. Keycloak-Mutationen bleiben auf technische Sonderrollen, Identität und Credential-nahe Operationen begrenzt.
 7. Read-only- oder blockierte Objekte werden in der UI mit Diagnosecode angezeigt und serverseitig erneut vor der Mutation geprüft.
 
 Fehlerpfad:
 
 - Keycloak `403` wird als `IDP_FORBIDDEN` beziehungsweise `idp_forbidden` eingeordnet.
 - föderierte oder profilrichtliniengeschützte Felder werden als `read_only_federated_field` sichtbar und nicht überschrieben.
-- verbotene Rollenzuordnungen werden als `forbidden_role_mapping` sichtbar.
-- Built-in-Rollen bleiben als Rollenobjekt read-only, dürfen aber abhängig von der aktiven Rechte-Matrix zugewiesen oder entfernt werden.
+- verbotene technische Rollenzuordnungen werden als `forbidden_role_mapping` sichtbar.
+- Built-in- und Legacy-Keycloak-Rollen bleiben technische Diagnoseobjekte und dürfen nicht als tenantlokale Fachrollen materialisiert werden.
 
 ### Szenario 2b: Forced Reauth für einen Benutzer
 

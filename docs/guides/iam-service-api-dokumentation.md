@@ -144,15 +144,17 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
 - `tenant_admin_client_not_configured`
 - `internal_error`
 
-## Keycloak-first Admin-Vertrag
+## IAM-Admin-Vertrag mit begrenztem Keycloak-Rollenabgleich
 
-- Keycloak ist für Benutzer, Realm-Rollen und Rollenzuordnungen die führende Quelle. Studio mutiert zuerst Keycloak und synchronisiert danach die Studio-Read-Models.
+- Keycloak ist führend für Identität, Login, Realm-Zugang, Benutzerkonto und technische Sonderrollen. Tenantlokale Fachrollen, Gruppen und Permissions sind IAM-DB-kanonisch.
+- Der Keycloak-Rollenabgleich ist auf `system_admin` im Tenant-Scope und `instance_registry_admin` im Platform-Scope begrenzt. Normale Tenant-Rollen werden DB-only erstellt, geändert, gelöscht und zugewiesen.
+- `/auth/me` liefert getrennte Rollensichten: `roles` enthält kanonische IAM-Rollen inklusive gruppenabgeleiteter Rollen, `keycloakRoles` enthält rohe Keycloak-Rollen als technische Diagnose.
 - Root-/Platform-Scope nutzt ausschließlich den Platform-Admin-Keycloak-Client. Tenant-Scope nutzt ausschließlich den Tenant-Admin-Keycloak-Client der Instanz; ein Fallback auf Platform- oder globale Admin-Credentials ist nicht zulässig.
 - `user === null` im Frontend ist ein Loading-/Unknown-Zustand und darf keinen Platform-Scope auslösen.
 - `mappingStatus` hat die stabilen Werte `mapped`, `unmapped` und `manual_review`.
 - `editability` hat die stabilen Werte `editable`, `read_only` und `blocked`.
 - Objektbezogene Diagnosen werden als stabile Codes übertragen, zum Beispiel `missing_instance_attribute`, `mapping_missing`, `forbidden_role_mapping`, `read_only_federated_field` und `idp_forbidden`.
-- Sync- und Reconcile-Reports verwenden die Abschlusszustände `success`, `partial_failure`, `blocked` und `failed` und dürfen betroffene Objektlisten sowie Zähler additiv enthalten.
+- Sync- und Reconcile-Reports verwenden die Abschlusszustände `success`, `partial_failure`, `blocked` und `failed` und dürfen betroffene Objektlisten sowie Zähler additiv enthalten. Reconcile repariert nur technische Sonderrollen; nicht-technische Keycloak-Rollen werden als Legacy-/Drift-Diagnose oder `manual_review` gemeldet.
 - Keycloak-Fehler werden differenziert gemappt; insbesondere `403` aus Keycloak wird als IdP-Berechtigungsproblem (`IDP_FORBIDDEN` beziehungsweise API-Diagnose `idp_forbidden`) sichtbar.
 
 ## Wichtige Vertragszusagen fuer scoped Rollen-Permissions

@@ -1,12 +1,12 @@
 # Change: Keycloak-Rollenabgleich auf technische Sonderrollen begrenzen
 
 ## Why
-Die bestehende Spezifikation beschreibt Keycloak weiterhin als System of Record fuer Realm-Rollen und fordert fuer studioverwaltete Rollen einen bidirektionalen Abgleich. Das widerspricht dem bereits normierten Zwei-Ebenen-Modell aus Plattformrolle `instance_registry_admin`, tenantlokaler Sonderrolle `system_admin` und sonstiger fachlicher Autorisierung aus der IAM-Datenbank. Solange fachliche Rollen parallel in Keycloak und in der IAM-Datenbank gepflegt werden, bleiben doppelte Wahrheiten, widerspruechliche UI-Projektionen und riskante Drift-Pfade bestehen.
+Die bestehende Spezifikation beschreibt Keycloak weiterhin als System of Record für Realm-Rollen und fordert für studioverwaltete Rollen einen bidirektionalen Abgleich. Das widerspricht dem bereits normierten Zwei-Ebenen-Modell aus Plattformrolle `instance_registry_admin`, tenantlokaler Sonderrolle `system_admin` und sonstiger fachlicher Autorisierung aus der IAM-Datenbank. Solange fachliche Rollen parallel in Keycloak und in der IAM-Datenbank gepflegt werden, bleiben doppelte Wahrheiten, widersprüchliche UI-Projektionen und riskante Drift-Pfade bestehen.
 
 ## What Changes
 - Begrenze den normativen Keycloak-Rollenabgleich auf technische Sonderrollen und Realm-Zugangskontrakte.
-- Definiere Keycloak fuer Rollen nicht mehr als generelle Quelle tenantlokaler Fachautorisierung.
-- Verlagere tenantlokale Custom-Rollen, Gruppen und deren Permissions vollstaendig in die IAM-Datenbank.
+- Definiere Keycloak für Rollen nicht mehr als generelle Quelle tenantlokaler Fachautorisierung.
+- Verlagere tenantlokale Custom-Rollen, Gruppen und deren Permissions vollständig in die IAM-Datenbank.
 - Stelle Session-, Guard- und Profilprojektionen auf kanonische IAM-Rollen und Permissions um, statt rohe Keycloak-Rollenlisten fachlich auszuwerten.
 - Liefere in `/auth/me` beide Sichten explizit getrennt aus: kanonische IAM-Rollen (inklusive impliziter Rollenwirkung aus Gruppenzuordnungen) und rohe Keycloak-Rollen als technische Sicht.
 - Erhalte Legacy-Keycloak-Rollen nur noch als Diagnose-, Drift- und Migrationsinput.

@@ -4,7 +4,6 @@ import type { z } from 'zod';
 
 import type { QueryClient } from '../db.js';
 
-import { getRoleExternalName } from './role-audit.js';
 import { updateUserSchema } from './schemas.js';
 import {
   ensureActorCanManageTarget,
@@ -27,12 +26,12 @@ export type UserUpdatePlan = {
   nextRoleNames?: readonly string[];
 };
 
-const resolveExternalRoleNames = async (
+const resolveTechnicalRoleNames = async (
   client: QueryClient,
   input: { instanceId: string; roleIds: readonly string[] }
 ): Promise<readonly string[]> => {
   const roles = await resolveRolesByIds(client, input);
-  return [...new Set([...roles.map((role) => getRoleExternalName(role)), ...resolveTenantTechnicalKeycloakRoleNames(roles)])];
+  return resolveTenantTechnicalKeycloakRoleNames(roles);
 };
 
 const ensureActorCanUpdateTarget = (input: {
@@ -89,10 +88,7 @@ const resolveNextRoleNames = async (
   }
 
   const assignedRoles = roleValidation.roles;
-  const nextRoleNames = [...new Set([
-    ...assignedRoles.map((role) => getRoleExternalName(role)),
-    ...resolveTenantTechnicalKeycloakRoleNames(assignedRoles),
-  ])];
+  const nextRoleNames = resolveTenantTechnicalKeycloakRoleNames(assignedRoles);
   const wouldRemoveSystemAdmin =
     hasSystemAdminRole(input.existing.roles) &&
     !assignedRoles.some((role) => role.role_key === 'system_admin') &&
@@ -207,7 +203,7 @@ export const resolveUserUpdatePlan = async (
     });
   }
 
-  const previousRoleNames = await resolveExternalRoleNames(client, {
+  const previousRoleNames = await resolveTechnicalRoleNames(client, {
     instanceId: input.instanceId,
     roleIds: existing.roles.map((role) => role.roleId),
   });

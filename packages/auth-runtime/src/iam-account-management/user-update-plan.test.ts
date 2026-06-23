@@ -170,7 +170,7 @@ describe('resolveUserUpdatePlan', () => {
     ).rejects.toThrow('forbidden:Gruppenrolle zu hoch');
   });
 
-  it('returns a plan with previous and next external role names and skips actor checks for system admins', async () => {
+  it('returns a plan with technical role names and skips actor checks for system admins', async () => {
     const { resolveUserUpdatePlan } = await import('./user-update-plan.js');
     state.resolveUserDetail.mockResolvedValueOnce({
       id: 'user-1',
@@ -192,8 +192,8 @@ describe('resolveUserUpdatePlan', () => {
     } as never);
 
     expect(plan).toMatchObject({
-      previousRoleNames: ['external-editor'],
-      nextRoleNames: ['editor'],
+      previousRoleNames: [],
+      nextRoleNames: [],
     });
     expect(state.ensureActorCanManageTarget).not.toHaveBeenCalled();
   });
@@ -222,8 +222,8 @@ describe('resolveUserUpdatePlan', () => {
     } as never);
 
     expect(plan).toMatchObject({
-      previousRoleNames: ['legacy-system-admin', 'system_admin'],
-      nextRoleNames: ['legacy-system-admin', 'system_admin'],
+      previousRoleNames: ['system_admin'],
+      nextRoleNames: ['system_admin'],
     });
   });
 

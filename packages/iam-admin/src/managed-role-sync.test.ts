@@ -64,7 +64,7 @@ describe('managed-role-sync', () => {
   });
 
   it('creates missing realm roles and marks sync as successful', async () => {
-    const { deps } = createDeps();
+    const { deps } = createDeps([{ ...managedRoleRow, external_role_name: 'legacy-system-admin' }]);
     const identityProvider = {
       provider: {
         getRoleByName: vi.fn(async () => null),

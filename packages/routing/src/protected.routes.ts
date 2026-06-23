@@ -254,7 +254,4 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
 
 export const createAdminRoute = <TContext extends RouteGuardContext = RouteGuardContext>(
   options: ProtectedRouteOptions = {}
-) =>
-  createProtectedRoute<TContext>({
-    ...options,
-  });
+) => createProtectedRoute<TContext>({ ...options });

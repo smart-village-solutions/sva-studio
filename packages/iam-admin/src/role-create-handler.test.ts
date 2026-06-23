@@ -81,7 +81,7 @@ describe('createCreateRoleHandlerInternal', () => {
     identityProvider.provider.deleteRole.mockClear();
   });
 
-  it('creates the role in Keycloak, persists it locally and completes idempotency', async () => {
+  it('persists tenant roles locally without creating Keycloak roles', async () => {
     const deps = createDeps();
     const handler = createCreateRoleHandlerInternal(deps);
 
@@ -92,16 +92,8 @@ describe('createCreateRoleHandlerInternal', () => {
       data: roleItem,
       requestId: 'req-create-role',
     });
-    expect(identityProvider.provider.createRole).toHaveBeenCalledWith({
-      externalName: 'editor',
-      description: 'Can edit content',
-      attributes: {
-        managedBy: 'studio',
-        instanceId: 'de-musterhausen',
-        roleKey: 'editor',
-        displayName: 'Editor',
-      },
-    });
+    expect(deps.requireRoleIdentityProvider).not.toHaveBeenCalled();
+    expect(identityProvider.provider.createRole).not.toHaveBeenCalled();
     expect(deps.persistCreatedRole).toHaveBeenCalledWith({
       actor,
       roleKey: 'editor',
@@ -136,7 +128,7 @@ describe('createCreateRoleHandlerInternal', () => {
     expect(identityProvider.provider.createRole).not.toHaveBeenCalled();
   });
 
-  it('stores a failed idempotency response when no identity provider is configured', async () => {
+  it('does not require an identity provider for local tenant roles', async () => {
     const deps = createDeps({
       requireRoleIdentityProvider: vi.fn(async () => createJsonResponse(409, { error: { code: 'tenant_admin_client_not_configured' } })),
     });
@@ -144,21 +136,19 @@ describe('createCreateRoleHandlerInternal', () => {
 
     const response = await handler(new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }), ctx);
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(201);
     expect(deps.completeIdempotency).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       actorAccountId: 'actor-account-1',
       endpoint: 'POST:/api/v1/iam/roles',
       idempotencyKey: 'idem-role-1',
-      status: 'FAILED',
-      responseStatus: 503,
-      responseBody: expect.objectContaining({
-        error: expect.objectContaining({ code: 'keycloak_unavailable' }),
-      }),
+      status: 'COMPLETED',
+      responseStatus: 201,
+      responseBody: expect.objectContaining({ requestId: 'req-create-role' }),
     });
   });
 
-  it('returns invalid_request before idempotency or Keycloak when tenant permissions are not manageable', async () => {
+  it('returns invalid_request before idempotency when tenant permissions are not manageable', async () => {
     const invalidResponse = createJsonResponse(400, {
       error: { code: 'invalid_request', message: 'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.' },
       requestId: 'req-create-role',
@@ -176,7 +166,7 @@ describe('createCreateRoleHandlerInternal', () => {
     expect(deps.persistCreatedRole).not.toHaveBeenCalled();
   });
 
-  it('compensates Keycloak role creation when local persistence fails', async () => {
+  it('returns a local creation failure without Keycloak compensation when persistence fails', async () => {
     const deps = createDeps({
       persistCreatedRole: vi.fn(async () => {
         throw new Error('db write failed');
@@ -186,17 +176,18 @@ describe('createCreateRoleHandlerInternal', () => {
 
     const response = await handler(new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }), ctx);
 
-    expect(response.status).toBe(409);
-    expect(identityProvider.provider.deleteRole).toHaveBeenCalledWith('editor');
+    expect(response.status).toBe(503);
+    expect(identityProvider.provider.createRole).not.toHaveBeenCalled();
+    expect(identityProvider.provider.deleteRole).not.toHaveBeenCalled();
     expect(deps.completeIdempotency).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       actorAccountId: 'actor-account-1',
       endpoint: 'POST:/api/v1/iam/roles',
       idempotencyKey: 'idem-role-1',
       status: 'FAILED',
-      responseStatus: 409,
+      responseStatus: 503,
       responseBody: expect.objectContaining({
-        error: expect.objectContaining({ code: 'conflict' }),
+        error: expect.objectContaining({ code: 'keycloak_unavailable' }),
       }),
     });
   });

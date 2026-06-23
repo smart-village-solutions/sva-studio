@@ -102,7 +102,7 @@ describe('createUpdateRoleHandlerInternal', () => {
     identityProvider.provider.updateRole.mockClear();
   });
 
-  it('updates the role in Keycloak, persists it locally and returns the API item', async () => {
+  it('updates tenant roles locally without updating Keycloak', async () => {
     const deps = createDeps();
     const handler = createUpdateRoleHandlerInternal(deps);
 
@@ -113,15 +113,9 @@ describe('createUpdateRoleHandlerInternal', () => {
       data: roleItem,
       requestId: 'req-update-role',
     });
-    expect(identityProvider.provider.updateRole).toHaveBeenCalledWith('editor', {
-      description: 'Can edit more content',
-      attributes: {
-        managedBy: 'studio',
-        instanceId: 'de-musterhausen',
-        roleKey: 'editor',
-        displayName: 'Editor Plus',
-      },
-    });
+    expect(deps.requireRoleIdentityProvider).not.toHaveBeenCalled();
+    expect(identityProvider.provider.updateRole).not.toHaveBeenCalled();
+    expect(deps.markRoleSyncState).not.toHaveBeenCalled();
     expect(deps.persistUpdatedRole).toHaveBeenCalledWith({
       actor,
       roleId: 'role-1',
@@ -135,40 +129,21 @@ describe('createUpdateRoleHandlerInternal', () => {
     });
   });
 
-  it('marks sync failure and returns the injected Keycloak failure response', async () => {
+  it('rejects retry sync for non-technical tenant roles', async () => {
     const keycloakError = new Error('keycloak down');
     const deps = createDeps({
-      trackKeycloakCall: vi.fn(async (operation, work) => {
-        if (operation === 'update_role') {
-          throw keycloakError;
-        }
-        return work();
-      }),
+      parseUpdateRoleBody: vi.fn(async () => ({ ok: true, data: { ...payload, retrySync: true }, rawBody: '{}' })),
     });
     const handler = createUpdateRoleHandlerInternal(deps);
 
     const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }), ctx);
 
-    expect(response.status).toBe(503);
-    expect(deps.markRoleSyncState).toHaveBeenCalledWith({
-      actor,
-      roleId: 'role-1',
-      operation: 'update',
-      result: 'failure',
-      roleKey: 'editor',
-      externalRoleName: 'editor',
-      errorCode: 'IDP_UNAVAILABLE',
-      syncState: 'failed',
-    });
-    expect(deps.buildRoleSyncFailure).toHaveBeenCalledWith({
-      error: keycloakError,
-      requestId: 'req-update-role',
-      fallbackMessage: 'Rolle konnte nicht mit Keycloak synchronisiert werden.',
-      roleId: 'role-1',
-    });
+    expect(response.status).toBe(400);
+    expect(identityProvider.provider.updateRole).not.toHaveBeenCalled();
+    expect(keycloakError).toBeInstanceOf(Error);
   });
 
-  it('compensates Keycloak when local persistence fails after the external update', async () => {
+  it('returns a local failure without Keycloak compensation for tenant role persistence errors', async () => {
     const deps = createDeps({
       persistUpdatedRole: vi.fn(async () => {
         throw new Error('db write failed');
@@ -179,23 +154,7 @@ describe('createUpdateRoleHandlerInternal', () => {
     const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }), ctx);
 
     expect(response.status).toBe(500);
-    expect(identityProvider.provider.updateRole).toHaveBeenCalledTimes(2);
-    expect(identityProvider.provider.updateRole).toHaveBeenLastCalledWith('editor', {
-      description: 'Can edit content',
-      attributes: {
-        managedBy: 'studio',
-        instanceId: 'de-musterhausen',
-        roleKey: 'editor',
-        displayName: 'Editor',
-      },
-    });
-    expect(deps.logger.error).toHaveBeenCalledWith(
-      'Role update database write failed after successful Keycloak update',
-      expect.objectContaining({
-        error: 'db write failed',
-        role_key: 'editor',
-      })
-    );
+    expect(identityProvider.provider.updateRole).not.toHaveBeenCalled();
   });
 
   it('returns precondition responses before mutation work', async () => {

@@ -59,7 +59,7 @@ const plan = {
     keycloakSubject: 'kc-user-1',
   },
   previousRoleNames: ['viewer'],
-  nextRoleNames: ['editor'],
+  nextRoleNames: ['system_admin', 'editor'],
 } satisfies TestPlan;
 
 const updatedDetail = {
@@ -152,12 +152,12 @@ describe('createUpdateUserHandlerInternal', () => {
     expect(deps.ensureManagedRealmRolesExist).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       identityProvider,
-      externalRoleNames: ['editor'],
+      externalRoleNames: ['system_admin'],
       actorAccountId: 'actor-account-1',
       requestId: 'req-update',
       traceId: 'trace-update',
     });
-    expect(identityProvider.provider.syncRoles).toHaveBeenCalledWith('kc-user-1', ['editor']);
+    expect(identityProvider.provider.syncRoles).toHaveBeenCalledWith('kc-user-1', ['system_admin']);
     expect(deps.persistUpdatedUserDetail).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       requestId: 'req-update',

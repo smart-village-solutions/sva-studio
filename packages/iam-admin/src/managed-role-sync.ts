@@ -1,5 +1,6 @@
 import type { IdentityProviderPort, IdentityManagedRoleAttributes } from './identity-provider-port.js';
 import { getRoleExternalName, mapRoleSyncErrorCode } from './role-audit.js';
+import { filterTenantTechnicalKeycloakRoleNames } from './role-governance.js';
 import type { QueryClient } from './query-client.js';
 import type { ManagedRoleRow } from './types.js';
 
@@ -56,7 +57,8 @@ export const createManagedRoleSync = (deps: ManagedRoleSyncDeps) => {
     instanceId: string,
     externalRoleNames: readonly string[]
   ): Promise<readonly ManagedRoleSyncRow[]> => {
-    if (externalRoleNames.length === 0) {
+    const technicalRoleNames = filterTenantTechnicalKeycloakRoleNames(externalRoleNames);
+    if (technicalRoleNames.length === 0) {
       return [];
     }
 
@@ -81,7 +83,7 @@ WHERE instance_id = $1
   AND managed_by = 'studio'
   AND COALESCE(external_role_name, role_key) = ANY($2::text[]);
 `,
-        [instanceId, [...new Set(externalRoleNames)]]
+        [instanceId, [...technicalRoleNames]]
       );
 
       return result.rows;

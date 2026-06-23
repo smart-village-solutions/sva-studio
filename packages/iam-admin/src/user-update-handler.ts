@@ -1,4 +1,5 @@
 import type { QueryClient } from './query-client.js';
+import { filterTenantTechnicalKeycloakRoleNames } from './role-governance.js';
 
 export type UpdateAuthenticatedRequestContext = {
   readonly sessionId: string;
@@ -194,7 +195,10 @@ const syncUpdatedIdentityAndRoles = async <
   }
 
   if (input.plan.nextRoleNames) {
-    const nextRoleNames = input.plan.nextRoleNames;
+    const nextRoleNames = filterTenantTechnicalKeycloakRoleNames(input.plan.nextRoleNames);
+    if (nextRoleNames.length === 0) {
+      return;
+    }
     await deps.ensureManagedRealmRolesExist({
       instanceId: input.actor.instanceId,
       identityProvider: input.identityProvider,

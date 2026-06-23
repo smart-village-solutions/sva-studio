@@ -1,5 +1,6 @@
 import type { IamRolePermissionAssignmentScope } from '@sva/core';
 import { getRoleDisplayName, getRoleExternalName } from './role-audit.js';
+import { isTenantTechnicalKeycloakRole } from './role-governance.js';
 
 export type UpdateRoleAuthenticatedRequestContext = {
   readonly sessionId: string;
@@ -166,11 +167,6 @@ export const createUpdateRoleHandlerInternal =
       return permissionValidationResponse;
     }
 
-    const identityProvider = await deps.requireRoleIdentityProvider(actor.instanceId, actor.requestId);
-    if (identityProvider instanceof Response) {
-      return identityProvider;
-    }
-
     try {
       const existing = await deps.resolveMutableRole(actor, roleId);
       if (existing instanceof Response) {
@@ -182,6 +178,37 @@ export const createUpdateRoleHandlerInternal =
       const nextDescription = parsed.data.description ?? existing.description ?? undefined;
       const nextRoleLevel = parsed.data.roleLevel ?? existing.role_level;
       const externalRoleName = getRoleExternalName(existing);
+      const shouldSyncIdentityRole = isTenantTechnicalKeycloakRole(existing);
+
+      if (!shouldSyncIdentityRole) {
+        if (parsed.data.retrySync) {
+          return deps.createApiError(
+            400,
+            'invalid_request',
+            'Rollenabgleich ist nur für technische Sonderrollen verfügbar.',
+            actor.requestId
+          );
+        }
+
+        const roleItem = await deps.persistUpdatedRole({
+          actor,
+          roleId,
+          existing,
+          displayName: nextDisplayName,
+          description: nextDescription,
+          roleLevel: nextRoleLevel,
+          externalRoleName,
+          permissionIds: parsed.data.permissionIds,
+          permissionAssignments: parsed.data.permissionAssignments,
+          operation,
+        });
+        return deps.jsonResponse(200, deps.asApiItem(roleItem, actor.requestId));
+      }
+
+      const identityProvider = await deps.requireRoleIdentityProvider(actor.instanceId, actor.requestId);
+      if (identityProvider instanceof Response) {
+        return identityProvider;
+      }
 
       await deps.markRoleSyncState({
         actor,

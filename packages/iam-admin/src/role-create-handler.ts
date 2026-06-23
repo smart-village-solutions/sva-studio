@@ -1,5 +1,6 @@
 import type { ApiErrorResponse, IamRolePermissionAssignmentScope } from '@sva/core';
 
+import { isTenantTechnicalKeycloakRole } from './role-governance.js';
 import type { IdempotencyReserveResult } from './types.js';
 
 export type CreateRoleAuthenticatedRequestContext = {
@@ -234,6 +235,52 @@ export const createCreateRoleHandlerInternal =
       return deps.createApiError(409, 'idempotency_key_reuse', reserve.message, actor.requestId);
     }
 
+    const roleKey = parsed.data.roleName;
+    const displayName = parsed.data.displayName?.trim() || roleKey;
+    const externalRoleName = roleKey;
+    const shouldSyncIdentityRole = isTenantTechnicalKeycloakRole({ role_key: roleKey, external_role_name: externalRoleName });
+
+    if (!shouldSyncIdentityRole) {
+      try {
+        const role = await deps.persistCreatedRole({
+          actor,
+          roleKey,
+          displayName,
+          externalRoleName,
+          description: parsed.data.description ?? undefined,
+          roleLevel: parsed.data.roleLevel,
+          permissionIds: parsed.data.permissionIds,
+          permissionAssignments: parsed.data.permissionAssignments,
+        });
+
+        deps.iamUserOperationsCounter.add(1, { action: 'create_role', result: 'success' });
+        const responseBody = deps.asApiItem(role, actor.requestId);
+        await completeCreateRoleIdempotency(deps, {
+          actor,
+          idempotencyKey: idempotencyKey.key,
+          status: 'COMPLETED',
+          responseStatus: 201,
+          responseBody,
+        });
+        return deps.jsonResponse(201, responseBody);
+      } catch (error) {
+        deps.iamUserOperationsCounter.add(1, { action: 'create_role', result: 'failure' });
+        const failureResponse = deps.buildRoleSyncFailure({
+          error,
+          requestId: actor.requestId,
+          fallbackMessage: 'Rolle konnte nicht erstellt werden.',
+        });
+        await completeCreateRoleIdempotency(deps, {
+          actor,
+          idempotencyKey: idempotencyKey.key,
+          status: 'FAILED',
+          responseStatus: failureResponse.status,
+          responseBody: await failureResponse.clone().json(),
+        });
+        return failureResponse;
+      }
+    }
+
     const identityProvider = await deps.requireRoleIdentityProvider(actor.instanceId, actor.requestId);
     if (identityProvider instanceof Response) {
       const responseBody = buildCreateRoleUnavailableBody(actor.requestId);
@@ -247,9 +294,6 @@ export const createCreateRoleHandlerInternal =
       return deps.jsonResponse(503, responseBody);
     }
 
-    const roleKey = parsed.data.roleName;
-    const displayName = parsed.data.displayName?.trim() || roleKey;
-    const externalRoleName = roleKey;
     let createdInIdentityProvider = false;
 
     try {

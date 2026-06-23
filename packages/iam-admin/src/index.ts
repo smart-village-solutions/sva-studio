@@ -81,9 +81,14 @@ export {
   resolveSystemAdminCount,
 } from './actor-authorization.js';
 export {
+  filterPlatformTechnicalKeycloakRoleNames,
+  filterTenantTechnicalKeycloakRoleNames,
   isProtectedTenantRole,
+  isTenantTechnicalKeycloakRole,
   isRootOnlyRole,
   isTenantManageableRole,
+  PLATFORM_TECHNICAL_KEYCLOAK_ROLE_NAMES,
+  TENANT_TECHNICAL_KEYCLOAK_ROLE_NAMES,
 } from './role-governance.js';
 
 export {

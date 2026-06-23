@@ -215,7 +215,7 @@ describe('runRoleCatalogReconciliation', () => {
     expect(deps.setRoleDriftBacklog).toHaveBeenCalledWith('tenant-a', 0);
   });
 
-  it('does not import the same role key twice when multiple identity roles point to one canonical role', async () => {
+  it('reports non-technical managed Keycloak roles as manual drift instead of importing them', async () => {
     const insertAttempts: string[] = [];
     const deps = createDeps({
       resolveIdentityProviderForInstance: vi.fn(async () => ({
@@ -275,12 +275,21 @@ describe('runRoleCatalogReconciliation', () => {
     });
 
     expect(report).toMatchObject({
-      outcome: 'success',
-      correctedCount: 1,
+      outcome: 'failed',
+      correctedCount: 0,
       failedCount: 0,
-      manualReviewCount: 0,
+      manualReviewCount: 2,
     });
-    expect(insertAttempts).toHaveLength(1);
+    expect(insertAttempts).toHaveLength(0);
+    expect(report.roles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          externalRoleName: 'mainserver_editor',
+          action: 'report',
+          status: 'requires_manual_action',
+        }),
+      ])
+    );
   });
 
   it('updates mismatched managed roles and persists synced reconcile state', async () => {
@@ -290,13 +299,13 @@ describe('runRoleCatalogReconciliation', () => {
         provider: {
           listRoles: vi.fn(async () => [
             {
-              externalName: 'mainserver_editor',
+              externalName: 'system_admin',
               description: 'Outdated description',
               clientRole: false,
               attributes: {
                 managed_by: ['studio'],
                 instance_id: ['tenant-a'],
-                role_key: ['mainserver_editor'],
+                role_key: ['system_admin'],
                 display_name: ['Old display name'],
               },
             },
@@ -313,10 +322,10 @@ describe('runRoleCatalogReconciliation', () => {
                 rows: [
                   {
                     id: 'role-1',
-                    role_key: 'mainserver_editor',
-                    role_name: 'mainserver_editor',
-                    display_name: 'Editor',
-                    external_role_name: 'mainserver_editor',
+                    role_key: 'system_admin',
+                    role_name: 'system_admin',
+                    display_name: 'System Admin',
+                    external_role_name: 'system_admin',
                     description: 'Canonical description',
                     is_system_role: false,
                     role_level: 0,
@@ -341,13 +350,13 @@ describe('runRoleCatalogReconciliation', () => {
       traceId: 'trace-1',
     });
 
-    expect(updateRole).toHaveBeenCalledWith('mainserver_editor', {
+    expect(updateRole).toHaveBeenCalledWith('system_admin', {
       description: 'Canonical description',
       attributes: {
         managedBy: 'studio',
         instanceId: 'tenant-a',
-        roleKey: 'mainserver_editor',
-        displayName: 'Editor',
+        roleKey: 'system_admin',
+        displayName: 'System Admin',
       },
     });
     expect(deps.setRoleSyncState).toHaveBeenCalledWith(
@@ -367,8 +376,8 @@ describe('runRoleCatalogReconciliation', () => {
       roles: [
         {
           roleId: 'role-1',
-          roleKey: 'mainserver_editor',
-          externalRoleName: 'mainserver_editor',
+          roleKey: 'system_admin',
+          externalRoleName: 'system_admin',
           action: 'update',
           status: 'corrected',
         },
@@ -383,14 +392,14 @@ describe('runRoleCatalogReconciliation', () => {
         provider: {
           listRoles: vi.fn(async () => [
             {
-              externalName: 'mainserver_editor',
+              externalName: 'system_admin',
               description: 'Canonical description',
               clientRole: false,
               attributes: {
                 managed_by: ['studio'],
                 instance_id: ['tenant-a'],
-                role_key: ['mainserver_editor'],
-                display_name: ['Editor'],
+                role_key: ['system_admin'],
+                display_name: ['System Admin'],
               },
             },
           ]),
@@ -406,10 +415,10 @@ describe('runRoleCatalogReconciliation', () => {
                 rows: [
                   {
                     id: 'role-legacy-alias',
-                    role_key: 'mainserver_editor',
-                    role_name: 'mainserver_editor',
-                    display_name: 'Editor',
-                    external_role_name: 'Editor',
+                    role_key: 'system_admin',
+                    role_name: 'system_admin',
+                    display_name: 'System Admin',
+                    external_role_name: 'System Admin',
                     description: 'Canonical description',
                     is_system_role: false,
                     role_level: 0,
@@ -451,8 +460,8 @@ describe('runRoleCatalogReconciliation', () => {
       roles: [
         {
           roleId: 'role-legacy-alias',
-          roleKey: 'mainserver_editor',
-          externalRoleName: 'Editor',
+          roleKey: 'system_admin',
+          externalRoleName: 'System Admin',
           action: 'noop',
           status: 'corrected',
         },
@@ -460,25 +469,21 @@ describe('runRoleCatalogReconciliation', () => {
     });
   });
 
-  it('reports partial failures when one role sync succeeds and another one fails', async () => {
-    const createRole = vi.fn(async ({ externalName }: { externalName: string }) => {
-      if (externalName === 'missing_role') {
-        throw Object.assign(new Error('timeout'), { name: 'KeycloakAdminRequestError', code: 'read_timeout', statusCode: 504 });
-      }
-    });
+  it('reports partial failures when a technical role is repaired and a legacy Keycloak role needs manual review', async () => {
+    const createRole = vi.fn(async () => undefined);
     const deps = createDeps({
       resolveIdentityProviderForInstance: vi.fn(async () => ({
         provider: {
           listRoles: vi.fn(async () => [
             {
-              externalName: 'existing_role',
-              description: 'Canonical description',
+              externalName: 'legacy_editor',
+              description: 'Legacy editor role',
               clientRole: false,
               attributes: {
                 managed_by: ['studio'],
                 instance_id: ['tenant-a'],
-                role_key: ['existing_role'],
-                display_name: ['Existing role'],
+                role_key: ['legacy_editor'],
+                display_name: ['Legacy editor'],
               },
             },
           ]),
@@ -494,26 +499,12 @@ describe('runRoleCatalogReconciliation', () => {
               return {
                 rows: [
                   {
-                    id: 'role-existing',
-                    role_key: 'existing_role',
-                    role_name: 'existing_role',
-                    display_name: 'Existing role',
-                    external_role_name: 'existing_role',
+                    id: 'role-system-admin',
+                    role_key: 'system_admin',
+                    role_name: 'system_admin',
+                    display_name: 'System Admin',
+                    external_role_name: 'system_admin',
                     description: 'Canonical description',
-                    is_system_role: false,
-                    role_level: 0,
-                    managed_by: 'studio',
-                    sync_state: 'failed',
-                    last_synced_at: null,
-                    last_error_code: 'OLD_ERROR',
-                  },
-                  {
-                    id: 'role-missing',
-                    role_key: 'missing_role',
-                    role_name: 'missing_role',
-                    display_name: 'Missing role',
-                    external_role_name: 'missing_role',
-                    description: null,
                     is_system_role: false,
                     role_level: 0,
                     managed_by: 'studio',
@@ -539,13 +530,18 @@ describe('runRoleCatalogReconciliation', () => {
     expect(report).toMatchObject({
       outcome: 'partial_failure',
       correctedCount: 1,
-      failedCount: 1,
-      requiresManualActionCount: 0,
+      failedCount: 0,
+      requiresManualActionCount: 1,
     });
     expect(report.roles).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ roleKey: 'existing_role', status: 'corrected' }),
-        expect.objectContaining({ roleKey: 'missing_role', status: 'failed', errorCode: 'IDP_TIMEOUT' }),
+        expect.objectContaining({ roleKey: 'system_admin', status: 'corrected' }),
+        expect.objectContaining({
+          roleKey: 'legacy_editor',
+          externalRoleName: 'legacy_editor',
+          status: 'requires_manual_action',
+          errorCode: 'REQUIRES_MANUAL_ACTION',
+        }),
       ])
     );
   });

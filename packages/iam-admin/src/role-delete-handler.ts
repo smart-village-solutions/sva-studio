@@ -1,4 +1,5 @@
 import { getRoleDisplayName, getRoleExternalName } from './role-audit.js';
+import { isTenantTechnicalKeycloakRole } from './role-governance.js';
 import type { MutableRoleShape, UpdateRoleActor, UpdateRoleAuthenticatedRequestContext } from './role-update-handler.js';
 
 export type DeleteRoleAuthenticatedRequestContext = UpdateRoleAuthenticatedRequestContext;
@@ -101,11 +102,6 @@ export const createDeleteRoleHandlerInternal =
       return roleId;
     }
 
-    const identityProvider = await deps.requireRoleIdentityProvider(actor.instanceId, actor.requestId);
-    if (identityProvider instanceof Response) {
-      return identityProvider;
-    }
-
     try {
       const existing = await deps.resolveDeletableRole(actor, roleId);
       if (existing instanceof Response) {
@@ -113,6 +109,34 @@ export const createDeleteRoleHandlerInternal =
       }
 
       const externalRoleName = getRoleExternalName(existing);
+      const shouldSyncIdentityRole = isTenantTechnicalKeycloakRole(existing);
+      if (!shouldSyncIdentityRole) {
+        await deps.deleteRoleFromDatabase({
+          actor,
+          roleId,
+          roleKey: existing.role_key,
+          externalRoleName,
+        });
+        return deps.jsonResponse(
+          200,
+          deps.asApiItem(
+            {
+              id: roleId,
+              roleKey: existing.role_key,
+              roleName: getRoleDisplayName(existing),
+              externalRoleName,
+              syncState: 'synced' as const,
+            },
+            actor.requestId
+          )
+        );
+      }
+
+      const identityProvider = await deps.requireRoleIdentityProvider(actor.instanceId, actor.requestId);
+      if (identityProvider instanceof Response) {
+        return identityProvider;
+      }
+
       const directAssignmentSubjects = await deps.listDirectRoleAssignmentSubjects({
         instanceId: actor.instanceId,
         roleId,

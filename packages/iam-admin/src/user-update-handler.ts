@@ -57,6 +57,8 @@ export type UpdateUserPayloadShape = {
 export type UserUpdatePlanShape = {
   readonly existing: {
     readonly keycloakSubject: string;
+    readonly mainserverUserApplicationId?: string;
+    readonly mainserverUserApplicationSecretSet?: boolean;
     readonly roles?: readonly { readonly roleId: string }[];
     readonly groups?: readonly { readonly groupId: string }[];
   };
@@ -68,6 +70,11 @@ export type UpdatedIdentityStateShape = {
   readonly existingIdentityAttributes?: UpdateIdentityAttributes;
   readonly nextIdentityAttributes?: UpdateIdentityAttributes;
   readonly nextMainserverCredentialState?: unknown;
+};
+
+type UserMainserverCredentialStateShape = {
+  readonly mainserverUserApplicationId?: string;
+  readonly mainserverUserApplicationSecretSet: boolean;
 };
 
 export type UpdateRequestContext<
@@ -129,6 +136,7 @@ export type UpdateUserHandlerDeps<
     readonly existingRoleIds?: readonly string[];
     readonly existingGroupIds?: readonly string[];
     readonly payload: TPayload;
+    readonly existingMainserverCredentialState?: UserMainserverCredentialStateShape;
     readonly nextMainserverCredentialState: TIdentityState['nextMainserverCredentialState'];
   }) => Promise<unknown | undefined>;
   readonly compensateUserIdentityUpdate: (input: {
@@ -212,6 +220,16 @@ const shouldResolveIdentityProvider = (input: {
   readonly payload: UpdateUserPayloadShape;
   readonly plan: UserUpdatePlanShape;
 }): boolean => shouldUpdateIdentityPayload(input.payload) || hasTechnicalRoleDelta(input.plan);
+
+const resolveExistingMainserverCredentialState = (
+  existing: UserUpdatePlanShape['existing']
+): UserMainserverCredentialStateShape | undefined =>
+  existing.mainserverUserApplicationSecretSet === undefined
+    ? undefined
+    : {
+        mainserverUserApplicationId: existing.mainserverUserApplicationId,
+        mainserverUserApplicationSecretSet: existing.mainserverUserApplicationSecretSet,
+      };
 
 const requireRoleMutationCapability = (
   identityProvider: UpdateIdentityProvider,
@@ -457,6 +475,7 @@ const executeUserUpdate = async <
       existingRoleIds: plan.existing.roles?.map((role) => role.roleId),
       existingGroupIds: plan.existing.groups?.map((group) => group.groupId),
       payload: input.payload,
+      existingMainserverCredentialState: resolveExistingMainserverCredentialState(plan.existing),
       nextMainserverCredentialState: resolvedIdentityState.nextMainserverCredentialState,
     });
 

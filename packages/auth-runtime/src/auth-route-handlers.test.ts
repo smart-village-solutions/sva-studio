@@ -5,6 +5,7 @@ type SessionUser = {
   id: string;
   instanceId?: string;
   roles: string[];
+  permissionStatus?: 'ok' | 'degraded';
   assignedModules?: string[];
   groups?: readonly IamUserGroupAssignment[];
 };
@@ -12,6 +13,13 @@ type SessionUser = {
 type EffectivePermission = {
   action: string;
   effect: string;
+};
+
+type AuthMePermissionPayload = {
+  user: {
+    permissionActions: string[];
+    permissionStatus: string;
+  };
 };
 
 const mocks = vi.hoisted(() => {
@@ -147,6 +155,25 @@ vi.mock('./audit-events.js', () => ({
   emitAuthAuditEvent: vi.fn(),
 }));
 
+const createAuthMeRequest = () => new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } });
+
+const readAuthMePermissionPayload = async (response: Response): Promise<AuthMePermissionPayload> =>
+  (await response.json()) as AuthMePermissionPayload;
+
+const mockAuthenticatedSessionUserOnce = (user: SessionUser) => {
+  mocks.withAuthenticatedUser.mockImplementationOnce(
+    async (
+      _request: Request,
+      handler: (ctx: { user: SessionUser; sessionExpiresAt?: number; sessionId: string }) => Promise<Response>
+    ) =>
+      handler({
+        user,
+        sessionExpiresAt: 1_800_000_000_000,
+        sessionId: 'session-1',
+      })
+  );
+};
+
 describe('meHandler', () => {
   let meHandler: typeof import('./auth-route-handlers.js').meHandler;
 
@@ -226,7 +253,7 @@ describe('meHandler', () => {
   });
 
   it('returns no-store auth headers and deny-dominant permissionActions', async () => {
-    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+    const response = await meHandler(createAuthMeRequest());
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toContain('application/json');
@@ -315,15 +342,9 @@ describe('meHandler', () => {
   });
 
   it('skips permission lookup and returns empty permissionActions when user has no instanceId', async () => {
-    mocks.withAuthenticatedUser.mockImplementationOnce(
-      async (
-        _request: Request,
-        handler: (ctx: { user: Omit<SessionUser, 'instanceId'>; sessionExpiresAt?: number; sessionId: string }) => Promise<Response>
-      ) =>
-        handler({ user: { id: 'kc-no-instance', roles: [] }, sessionExpiresAt: 1_800_000_000_000, sessionId: 'session-1' })
-    );
+    mockAuthenticatedSessionUserOnce({ id: 'kc-no-instance', roles: [] });
 
-    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+    const response = await meHandler(createAuthMeRequest());
 
     expect(response.status).toBe(200);
     expect(mocks.resolveEffectivePermissions).not.toHaveBeenCalled();
@@ -351,7 +372,7 @@ describe('meHandler', () => {
       expect.objectContaining({ reason_code: 'permission_snapshot_unavailable' })
     );
 
-    const payload = (await response.json()) as { user: { permissionStatus: string; permissionActions: string[] } };
+    const payload = await readAuthMePermissionPayload(response);
     expect(payload.user.permissionStatus).toBe('degraded');
     expect(payload.user.permissionActions).toEqual([]);
   });
@@ -361,7 +382,7 @@ describe('meHandler', () => {
 
     mocks.resolveEffectivePermissions.mockRejectedValueOnce(new Error('Connection refused'));
 
-    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+    const response = await meHandler(createAuthMeRequest());
 
     expect(response.status).toBe(200);
     expect(mocks.logger.error).toHaveBeenCalledWith(
@@ -369,8 +390,26 @@ describe('meHandler', () => {
       expect.objectContaining({ reason_code: 'permission_action_lookup_failed', error_type: 'Error' })
     );
 
-    const payload = (await response.json()) as { user: { permissionStatus: string } };
+    const payload = await readAuthMePermissionPayload(response);
     expect(payload.user.permissionStatus).toBe('degraded');
+  });
+
+  it('preserves degraded session permissionStatus when permission lookup succeeds', async () => {
+    mockAuthenticatedSessionUserOnce({
+      id: 'kc-user-1',
+      instanceId: 'de-test',
+      roles: [],
+      permissionStatus: 'degraded',
+    });
+
+    const response = await meHandler(createAuthMeRequest());
+
+    expect(response.status).toBe(200);
+    expect(mocks.resolveEffectivePermissions).toHaveBeenCalled();
+
+    const payload = await readAuthMePermissionPayload(response);
+    expect(payload.user.permissionStatus).toBe('degraded');
+    expect(payload.user.permissionActions).toEqual(['events.read']);
   });
 
   it('skips permissions with non-string action values', async () => {

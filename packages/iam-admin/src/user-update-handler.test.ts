@@ -18,6 +18,8 @@ type TestPayload = {
 type TestPlan = {
   readonly existing: {
     readonly keycloakSubject: string;
+    readonly mainserverUserApplicationId?: string;
+    readonly mainserverUserApplicationSecretSet?: boolean;
   };
   readonly previousRoleNames: readonly string[];
   readonly nextRoleNames?: readonly string[];
@@ -264,6 +266,11 @@ describe('createUpdateUserHandlerInternal', () => {
         userId: updatedDetail.id,
       })),
       ...createPlanOnlyUpdateDeps({
+        existing: {
+          keycloakSubject: 'kc-user-1',
+          mainserverUserApplicationId: 'existing-app',
+          mainserverUserApplicationSecretSet: true,
+        },
         previousRoleNames: [],
         nextRoleNames: [],
       }),
@@ -285,6 +292,14 @@ describe('createUpdateUserHandlerInternal', () => {
     });
     expect(identityProvider.provider.updateUser).not.toHaveBeenCalled();
     expect(deps.ensureManagedRealmRolesExist).not.toHaveBeenCalled();
+    expect(deps.persistUpdatedUserDetail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        existingMainserverCredentialState: {
+          mainserverUserApplicationId: 'existing-app',
+          mainserverUserApplicationSecretSet: true,
+        },
+      })
+    );
   });
 
   it('fails through the Keycloak error mapping when a technical role delta needs missing capabilities', async () => {

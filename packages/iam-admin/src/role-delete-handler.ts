@@ -141,7 +141,7 @@ export const createDeleteRoleHandlerInternal =
         }
         return deps.jsonResponse(
           200,
-          deps.asApiItem(buildDeletedRolePayloadFromRole(roleId, existing), actor.requestId)
+          deps.asApiItem(buildDeletedRolePayloadFromRole(roleId, existing, externalRoleName), actor.requestId)
         );
       }
 
@@ -264,7 +264,7 @@ export const createDeleteRoleHandlerInternal =
       deps.iamRoleSyncCounter.add(1, { operation: 'delete', result: 'success', error_code: 'none' });
       return deps.jsonResponse(
         200,
-        deps.asApiItem(buildDeletedRolePayloadFromRole(roleId, existing), actor.requestId)
+        deps.asApiItem(buildDeletedRolePayloadFromRole(roleId, existing, externalRoleName), actor.requestId)
       );
     } catch {
       return deps.createApiError(500, 'internal_error', 'Rolle konnte nicht gelöscht werden.', actor.requestId);

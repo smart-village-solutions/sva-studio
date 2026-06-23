@@ -15,12 +15,16 @@ const buildDeletedRolePayload = (input: {
   syncState: 'synced' as const,
 });
 
-export const buildDeletedRolePayloadFromRole = (roleId: string, existing: MutableRoleShape) =>
+export const buildDeletedRolePayloadFromRole = (
+  roleId: string,
+  existing: MutableRoleShape,
+  externalRoleName = getRoleExternalName(existing)
+) =>
   buildDeletedRolePayload({
     roleId,
     roleKey: existing.role_key,
     roleName: getRoleDisplayName(existing),
-    externalRoleName: getRoleExternalName(existing),
+    externalRoleName,
   });
 
 export const failLocalRoleDeleteDatabaseWrite = <

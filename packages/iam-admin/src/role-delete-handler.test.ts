@@ -217,6 +217,12 @@ describe('createDeleteRoleHandlerInternal', () => {
     const response = await runDeleteRoleRequest(deps);
 
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        roleKey: 'system_admin',
+        externalRoleName: 'system_admin',
+      },
+    });
     expect(identityProvider.provider.deleteRole).toHaveBeenCalledWith('system_admin');
     expect(deps.deleteRoleFromDatabase).toHaveBeenCalledWith({
       actor,

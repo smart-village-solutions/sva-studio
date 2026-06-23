@@ -166,6 +166,122 @@ describe('aggregated content list api', () => {
     expect(state.listSvaMainserverNews).not.toHaveBeenCalled();
   });
 
+  it('merges local IAM content and mainserver content into one paginated list', async () => {
+    state.authorizeContentPrimitiveForUser
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'kc-user-1',
+        },
+        permissions: [
+          { action: 'content.read' },
+          { action: 'news.update' },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'kc-user-1',
+        },
+        permissions: [],
+      });
+
+    state.listContentsHandler.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: 'local-1',
+              instanceId: 'de-musterhausen',
+              contentType: 'legal.text',
+              title: 'Datenschutz',
+              status: 'published',
+              createdAt: '2026-06-20T10:00:00.000Z',
+              updatedAt: '2026-06-23T10:00:00.000Z',
+              access: {
+                state: 'editable',
+                canRead: true,
+                canCreate: true,
+                canUpdate: true,
+                organizationIds: [],
+                sourceKinds: ['direct_role'],
+              },
+            },
+          ],
+          pagination: { page: 1, pageSize: 100, total: 1 },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+    );
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [
+        {
+          id: 'news-1',
+          title: 'Rathaus',
+          contentType: 'news.article',
+          payload: { teaser: 'A' },
+          status: 'published',
+          author: 'Redaktion',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          publishedAt: '2026-06-21T09:00:00.000Z',
+          contentBlocks: [],
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await dispatchAggregatedContentListRequest(
+      new Request(
+        'https://studio.test/api/v1/iam/contents?page=1&pageSize=25&sortBy=updatedAt&sortDirection=desc&visibleType=legal.text&visibleType=news.article'
+      )
+    );
+
+    const payload = (await response?.json()) as {
+      data: Array<{ id: string }>;
+      pagination: { total: number };
+    };
+
+    expect(payload.data.map((item) => item.id)).toEqual(['local-1', 'news-1']);
+    expect(payload.pagination.total).toBe(2);
+    expect(state.listContentsHandler).toHaveBeenCalledTimes(1);
+    expect(state.listContentsHandler.mock.calls[0]?.[0]).toBeInstanceOf(Request);
+    expect(new URL(String(state.listContentsHandler.mock.calls[0]?.[0]?.url)).searchParams.getAll('visibleType')).toEqual([
+      'legal.text',
+    ]);
+    expect(state.listSvaMainserverNews).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns a deterministic list error when a mainserver source fails', async () => {
+    state.authorizeContentPrimitiveForUser.mockResolvedValueOnce({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+      },
+      permissions: [{ action: 'content.read' }],
+    });
+    state.listSvaMainserverNews.mockRejectedValue(Object.assign(new Error('upstream down'), { code: 'database_unavailable' }));
+
+    const response = await dispatchAggregatedContentListRequest(
+      new Request('https://studio.test/api/v1/iam/contents?page=1&pageSize=25&visibleType=news.article')
+    );
+
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+        message: 'upstream down',
+      },
+      requestId: 'req-1',
+    });
+  });
+
   it('falls back to the auth runtime list handler for unsupported visible types', async () => {
     const fallback = new Response(JSON.stringify({ data: [], pagination: { page: 1, pageSize: 25, total: 0 } }), {
       status: 200,

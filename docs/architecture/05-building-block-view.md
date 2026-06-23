@@ -154,6 +154,7 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/plugin-sdk` für Erweiterungspunkte, Registries und Namespace-Verträge
   - `packages/auth-runtime` für Runtime-Handler und `packages/iam-governance` für legal-/audit-nahe Fachanteile
   - `apps/sva-studio-react/src/routes/content/*` für Listen- und Editor-UI unter `/admin/content`
+  - `apps/sva-studio-react/src/lib/iam-content-list-api.server.ts` als host-geführte Aggregationsschicht für `GET /api/v1/iam/contents`, die lokale IAM-Inhalte und Mainserver-Projektionen in eine gemeinsame Listenantwort überführt
   - `packages/plugin-news` für plugin-spezifische News-Ansichten auf Basis derselben Core-Content-API
 - Externe Mainserver-Anbindung:
   - `packages/sva-mainserver` (`server/config-store.ts`, `server/service.ts`, `server/service-internals/*`, `generated/*`)
@@ -177,6 +178,7 @@ Abhängigkeiten des aktuellen Systems.
 - Redis hält lediglich Permission-Snapshots zur Beschleunigung des Authorize-Pfads.
 - `packages/auth-runtime` haelt zusaetzlich nur sehr kurzlebige In-Process-Caches fuer Session-Resolution und Account-Lifecycle-Pruefung, um wiederholte Authorize-Requests derselben Session ohne neuen Redis-/DB-Roundtrip abzufangen.
 - Der SVA-Mainserver bleibt fachliche Source of Truth für seine GraphQL-Daten; Studio hält nur Endpunktkonfiguration und kurzlebige Laufzeit-Caches für Credentials und Access-Tokens.
+- Für `/admin/content` ist `GET /api/v1/iam/contents` die einzige führende Listenquelle; Mainserver-News, -Events und -POI werden serverseitig projiziert und nicht mehr browserseitig vollgescannt.
 - Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.
 - `packages/iam-admin` hält zusätzlich die tenantseitige Governance-Trennung für Rollen und Permissions: Root-only-Rollen/-Permissions werden vor Admin-CRUD gefiltert oder abgewiesen, normale Tenant-Rollen werden DB-only gepflegt, während `system_admin` als geschützte technische Tenant-Sonderrolle in IAM und Keycloak erhalten bleibt.
 

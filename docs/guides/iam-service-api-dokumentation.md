@@ -114,6 +114,15 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
 - `POST /api/v1/iam/legal-texts`
 - `PATCH /api/v1/iam/legal-texts/{legalTextVersionId}`
 
+### Contents
+
+- `GET /api/v1/iam/contents`
+  - Query: `page`, `pageSize`, `q`, `type`, `status`, `sortBy`, `sortDirection`, `visibleType`
+  - `/admin/content` verwendet diese Route als einzige führende Listenquelle.
+  - Für Mainserver-gestützte Typen (`news.article`, `events.event-record`, `poi.point-of-interest`) antwortet der Host mit einer serverseitig aggregierten Listenprojektion; der Browser lädt dafür keine separaten Vollscans über `mainserver/news`, `mainserver/events` oder `mainserver/poi`.
+  - Gemischte Listen aus lokalen IAM-Inhalten und Mainserver-Projektionen werden serverseitig zusammengeführt, danach gemeinsam sortiert und paginiert.
+  - Für Mainserver-Typen ist `status` in der Übersicht deterministisch auf `published` begrenzt; nicht unterstützte Statuswerte liefern für diese Teilmenge eine leere Liste statt eines endlosen Ladezustands.
+
 ### Admin
 
 - `POST /api/v1/iam/admin/reconcile` (Platzhalter, `501`)

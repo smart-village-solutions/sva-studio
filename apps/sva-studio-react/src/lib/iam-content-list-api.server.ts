@@ -105,9 +105,15 @@ const readContentListQuery = (request: Request): IamContentListQuery => {
   };
 };
 
-const shouldHandleMainserverContentList = (query: IamContentListQuery): boolean => {
-  const visibleTypes = query.visibleTypes ?? [];
-  return visibleTypes.length > 0 && visibleTypes.every(isMainserverContentType);
+const partitionRequestedTypes = (query: IamContentListQuery): {
+  readonly localTypes: readonly string[];
+  readonly mainserverTypes: readonly string[];
+} => {
+  const requestedTypes = query.type ? [query.type] : (query.visibleTypes ?? []);
+  return {
+    mainserverTypes: requestedTypes.filter(isMainserverContentType),
+    localTypes: requestedTypes.filter((value) => !isMainserverContentType(value)),
+  };
 };
 
 const readPermissionActions = (
@@ -352,6 +358,44 @@ const createListResponse = (
     }
   );
 
+const appendQueryValues = (searchParams: URLSearchParams, query: IamContentListQuery): void => {
+  searchParams.set('page', String(query.page));
+  searchParams.set('pageSize', String(query.pageSize));
+
+  if (query.q) {
+    searchParams.set('q', query.q);
+  }
+  if (query.type) {
+    searchParams.set('type', query.type);
+  }
+  if (query.status) {
+    searchParams.set('status', query.status);
+  }
+  if (query.sortBy) {
+    searchParams.set('sortBy', query.sortBy);
+  }
+  if (query.sortDirection) {
+    searchParams.set('sortDirection', query.sortDirection);
+  }
+  for (const visibleType of query.visibleTypes ?? []) {
+    searchParams.append('visibleType', visibleType);
+  }
+};
+
+const createListSubrequest = (
+  request: Request,
+  query: IamContentListQuery
+): Request => {
+  const url = new URL(request.url);
+  url.search = '';
+  appendQueryValues(url.searchParams, query);
+
+  return new Request(url.toString(), {
+    method: 'GET',
+    headers: request.headers,
+  });
+};
+
 const fetchAllPages = async <TItem>(
   loadPage: (query: { readonly page: number; readonly pageSize: number }) => Promise<{
     readonly data: readonly TItem[];
@@ -372,19 +416,45 @@ const fetchAllPages = async <TItem>(
   return items;
 };
 
+const fetchAllLocalItems = async (
+  request: Request,
+  query: IamContentListQuery
+): Promise<readonly IamContentListItem[] | Response> => {
+  const items: IamContentListItem[] = [];
+  let page = 1;
+  let total = Number.POSITIVE_INFINITY;
+
+  while (items.length < total) {
+    const response = await listContentsHandler(
+      createListSubrequest(request, {
+        ...query,
+        page,
+        pageSize: MAINSERVER_FETCH_PAGE_SIZE,
+      })
+    );
+
+    if (!response.ok) {
+      return response;
+    }
+
+    const payload = (await response.json()) as ApiListResponse<IamContentListItem>;
+    items.push(...payload.data);
+    total = payload.pagination.total;
+    if (payload.data.length === 0) {
+      break;
+    }
+    page += 1;
+  }
+
+  return items;
+};
+
 const loadMainserverItems = async (
   ctx: AuthenticatedRequestContext,
-  query: IamContentListQuery,
+  mainserverTypes: readonly string[],
   permissionActions: readonly string[]
 ): Promise<readonly IamContentListItem[]> => {
   if (!ctx.user.instanceId) {
-    return [];
-  }
-
-  const visibleTypes = query.visibleTypes ?? [];
-  const requestedTypes = query.type ? [query.type] : visibleTypes;
-
-  if (query.status && query.status !== 'published') {
     return [];
   }
 
@@ -394,7 +464,7 @@ const loadMainserverItems = async (
   };
 
   const items = await Promise.all(
-    requestedTypes.map(async (contentType) => {
+    mainserverTypes.map(async (contentType) => {
       if (contentType === 'news.article') {
         const news = await fetchAllPages((pageQuery) =>
           listSvaMainserverNews({
@@ -471,6 +541,7 @@ const handleMainserverContentList = async (request: Request): Promise<Response> 
   withAuthenticatedUser(request, async (ctx) => {
     const requestId = getWorkspaceContext().requestId;
     const query = readContentListQuery(request);
+    const { localTypes, mainserverTypes } = partitionRequestedTypes(query);
     const authorization = await authorizeContentPrimitiveForUser({
       ctx,
       action: 'content.read',
@@ -487,13 +558,29 @@ const handleMainserverContentList = async (request: Request): Promise<Response> 
 
     try {
       const permissionActions = readPermissionActions(authorization.permissions);
-      const loadedItems = await loadMainserverItems(ctx, query, permissionActions);
-      const authorizedItems = await filterAuthorizedItems(ctx, loadedItems);
-      if (authorizedItems instanceof Response) {
-        return authorizedItems;
+      const localItemsResult =
+        localTypes.length > 0
+          ? await fetchAllLocalItems(request, {
+              ...query,
+              ...(query.type && localTypes.includes(query.type) ? { type: query.type } : {}),
+              ...(localTypes.length > 0 ? { visibleTypes: localTypes } : {}),
+            })
+          : [];
+      if (localItemsResult instanceof Response) {
+        return localItemsResult;
       }
 
-      const filteredItems = filterItems(authorizedItems, query);
+      const mainserverItems =
+        query.status && query.status !== 'published'
+          ? []
+          : await loadMainserverItems(ctx, mainserverTypes, permissionActions);
+      const authorizedMainserverItems = await filterAuthorizedItems(ctx, mainserverItems);
+      if (authorizedMainserverItems instanceof Response) {
+        return authorizedMainserverItems;
+      }
+
+      const combinedItems = [...localItemsResult, ...authorizedMainserverItems];
+      const filteredItems = filterItems(combinedItems, query);
       const sortedItems = sortItems(filteredItems, query.sortBy, query.sortDirection);
       const paginatedItems = paginateItems(sortedItems, query.page, query.pageSize);
       return createListResponse(
@@ -525,7 +612,8 @@ export const dispatchAggregatedContentListRequest = async (request: Request): Pr
   }
 
   const query = readContentListQuery(request);
-  if (!shouldHandleMainserverContentList(query)) {
+  const { mainserverTypes } = partitionRequestedTypes(query);
+  if (mainserverTypes.length === 0) {
     return listContentsHandler(request);
   }
 

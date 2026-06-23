@@ -43,5 +43,14 @@ export const isTenantTechnicalKeycloakRole = (role: RoleIdentity): boolean =>
 export const filterTenantTechnicalKeycloakRoleNames = (roleNames: readonly string[]): readonly string[] =>
   [...new Set(roleNames.filter((roleName) => TENANT_TECHNICAL_KEYCLOAK_ROLE_SET.has(roleName)))];
 
+export const resolveTenantTechnicalKeycloakRoleNames = (roles: readonly RoleIdentity[]): readonly string[] =>
+  [
+    ...new Set(
+      roles.flatMap((role) =>
+        isTenantTechnicalKeycloakRole(role) ? TENANT_TECHNICAL_KEYCLOAK_ROLE_NAMES : []
+      )
+    ),
+  ];
+
 export const filterPlatformTechnicalKeycloakRoleNames = (roleNames: readonly string[]): readonly string[] =>
   [...new Set(roleNames.filter((roleName) => PLATFORM_TECHNICAL_KEYCLOAK_ROLE_SET.has(roleName)))];

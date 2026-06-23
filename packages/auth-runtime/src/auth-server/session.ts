@@ -15,8 +15,11 @@ const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 const shouldRefreshSession = (expiresAt: number | undefined): boolean =>
   typeof expiresAt === 'number' && expiresAt <= Date.now() + TOKEN_REFRESH_SKEW_MS;
 
-const needsSessionUserHydration = (user: SessionUser | null | undefined): boolean =>
-  !user?.instanceId || user.roles.length === 0;
+const needsSessionUserHydration = (
+  user: SessionUser | null | undefined,
+  scope?: RuntimeScopeRef
+): boolean =>
+  !user?.id || (scope?.kind === 'instance' && user.instanceId !== scope.instanceId);
 
 export type SessionResolutionFailureReason =
   | 'invalid_session'
@@ -70,7 +73,7 @@ const logIncompleteSessionUser = (
     ? { kind: 'instance', instanceId: user.instanceId }
     : undefined
 ) => {
-  if (!needsSessionUserHydration(user)) {
+  if (!needsSessionUserHydration(user, scope)) {
     return;
   }
 
@@ -88,7 +91,7 @@ const hydrateSessionUserFromAccessToken = async (
   sessionId: string,
   session: { user?: SessionUser; accessToken?: string; auth?: Session['auth'] }
 ): Promise<SessionUser | null> => {
-  if (!session.accessToken || !needsSessionUserHydration(session.user)) {
+  if (!session.accessToken || !needsSessionUserHydration(session.user, session.auth)) {
     return session.user ?? null;
   }
 
@@ -102,7 +105,7 @@ const hydrateSessionUserFromAccessToken = async (
     scope: session.auth,
   });
 
-  if (!hydratedUser.id || needsSessionUserHydration(hydratedUser)) {
+  if (needsSessionUserHydration(hydratedUser, session.auth)) {
     logIncompleteSessionUser(session.user, 'access_token_hydrate', session.auth);
     return session.user ?? null;
   }
@@ -184,7 +187,7 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
 
   if (!shouldRefreshSession(session.expiresAt)) {
     const user = await hydrateSessionUserFromAccessToken(sessionId, session);
-    logIncompleteSessionUser(user, 'session_read');
+    logIncompleteSessionUser(user, 'session_read', session.auth);
     const result = {
       kind: 'authenticated',
       user,

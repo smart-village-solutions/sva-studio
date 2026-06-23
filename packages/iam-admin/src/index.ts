@@ -83,6 +83,7 @@ export {
 export {
   filterPlatformTechnicalKeycloakRoleNames,
   filterTenantTechnicalKeycloakRoleNames,
+  resolveTenantTechnicalKeycloakRoleNames,
   isProtectedTenantRole,
   isTenantTechnicalKeycloakRole,
   isRootOnlyRole,

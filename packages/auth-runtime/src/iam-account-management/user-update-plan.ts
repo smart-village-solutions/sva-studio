@@ -1,4 +1,5 @@
 import type { IamUserDetail } from '@sva/core';
+import { resolveTenantTechnicalKeycloakRoleNames } from '@sva/iam-admin';
 import type { z } from 'zod';
 
 import type { QueryClient } from '../db.js';
@@ -31,7 +32,7 @@ const resolveExternalRoleNames = async (
   input: { instanceId: string; roleIds: readonly string[] }
 ): Promise<readonly string[]> => {
   const roles = await resolveRolesByIds(client, input);
-  return roles.map((role) => getRoleExternalName(role));
+  return [...new Set([...roles.map((role) => getRoleExternalName(role)), ...resolveTenantTechnicalKeycloakRoleNames(roles)])];
 };
 
 const ensureActorCanUpdateTarget = (input: {
@@ -88,7 +89,10 @@ const resolveNextRoleNames = async (
   }
 
   const assignedRoles = roleValidation.roles;
-  const nextRoleNames = assignedRoles.map((role) => getRoleExternalName(role));
+  const nextRoleNames = [...new Set([
+    ...assignedRoles.map((role) => getRoleExternalName(role)),
+    ...resolveTenantTechnicalKeycloakRoleNames(assignedRoles),
+  ])];
   const wouldRemoveSystemAdmin =
     hasSystemAdminRole(input.existing.roles) &&
     !assignedRoles.some((role) => role.role_key === 'system_admin') &&

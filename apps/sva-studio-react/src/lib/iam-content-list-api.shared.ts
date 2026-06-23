@@ -3,7 +3,6 @@ import type {
   ApiErrorResponse,
   ApiListResponse,
   ApiPagination,
-  ContentJsonValue,
   IamContentListItem,
   IamContentListQuery,
 } from '@sva/core';

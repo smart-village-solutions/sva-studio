@@ -101,7 +101,6 @@ describe('user projection', () => {
     const { resolveProjectedUserDetail } = await import('./user-projection.js');
 
     const projectedUser = await resolveProjectedUserDetail({
-      client: {},
       instanceId: 'de-musterhausen',
       user: baseUser(),
       keycloakRoleNames: null,
@@ -134,7 +133,6 @@ describe('user projection', () => {
     ]);
 
     const projectedUser = await resolveProjectedUserDetail({
-      client: {},
       instanceId: 'de-musterhausen',
       user: baseUser(),
       keycloakRoleNames: ['news.editor'],
@@ -153,7 +151,6 @@ describe('user projection', () => {
     state.readIdentityUserAttributes.mockRejectedValueOnce(new Error('identity attributes unavailable'));
 
     const projectedUser = await applyCanonicalUserDetailProjection({
-      client: {},
       instanceId: 'de-musterhausen',
       user: {
         ...baseUser(),
@@ -196,7 +193,6 @@ describe('user projection', () => {
     ]);
 
     const users = await applyCanonicalUserListProjection({
-      client: {},
       instanceId: 'de-musterhausen',
       users: [
         listUser({

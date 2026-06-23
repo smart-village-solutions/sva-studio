@@ -51,7 +51,6 @@ export const resolveKeycloakRoleNames = async (
 };
 
 export const resolveProjectedUserDetail = async (input: {
-  client: unknown;
   instanceId: string;
   user: IamUserDetail;
   keycloakRoleNames: readonly string[] | null;
@@ -84,7 +83,6 @@ export const isRecoverableUserProjectionError = (
   error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError;
 
 export const applyCanonicalUserDetailProjection = async (input: {
-  client: unknown;
   instanceId: string;
   user: IamUserDetail;
   keycloakRoleNames?: readonly string[] | null;
@@ -108,7 +106,6 @@ export const applyCanonicalUserDetailProjection = async (input: {
     ));
 
   const projectedUser = await resolveProjectedUserDetail({
-    client: input.client,
     instanceId: input.instanceId,
     user: input.user,
     keycloakRoleNames: resolvedKeycloakRoleNames,
@@ -119,7 +116,6 @@ export const applyCanonicalUserDetailProjection = async (input: {
 };
 
 export const applyCanonicalUserListProjection = async (input: {
-  client: unknown;
   instanceId: string;
   users: readonly IamUserListItem[];
   keycloakRoleNamesBySubject?: ReadonlyMap<string, readonly string[] | null>;

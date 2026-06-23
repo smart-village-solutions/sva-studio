@@ -357,14 +357,14 @@ describe('runRoleCatalogReconciliation', () => {
     );
   });
 
-	  it('updates mismatched managed roles and persists synced reconcile state', async () => {
-	    const updateRole = vi.fn(async () => undefined);
-	    const deps = createDeps({
-	      resolveIdentityProviderForInstance: createSystemAdminProviderResolver({
-	        description: 'Outdated description',
-	        displayName: 'Old display name',
-	        updateRole,
-	      }),
+  it('updates mismatched managed roles and persists synced reconcile state', async () => {
+    const updateRole = vi.fn(async () => undefined);
+    const deps = createDeps({
+      resolveIdentityProviderForInstance: createSystemAdminProviderResolver({
+        description: 'Outdated description',
+        displayName: 'Old display name',
+        updateRole,
+      }),
       withInstanceScopedDb: createScopedDbWithRoles([
         createDatabaseRole({
           id: 'role-1',
@@ -406,14 +406,14 @@ describe('runRoleCatalogReconciliation', () => {
     });
   });
 
-	  it('accepts canonical identity roles for legacy external-name aliases without forcing an idp update', async () => {
-	    const updateRole = vi.fn(async () => undefined);
-	    const deps = createDeps({
-	      resolveIdentityProviderForInstance: createSystemAdminProviderResolver({
-	        description: 'Canonical description',
-	        displayName: 'System Admin',
-	        updateRole,
-	      }),
+  it('accepts canonical identity roles for legacy external-name aliases without forcing an idp update', async () => {
+    const updateRole = vi.fn(async () => undefined);
+    const deps = createDeps({
+      resolveIdentityProviderForInstance: createSystemAdminProviderResolver({
+        description: 'Canonical description',
+        displayName: 'System Admin',
+        updateRole,
+      }),
       withInstanceScopedDb: createScopedDbWithRoles([
         createDatabaseRole({
           id: 'role-legacy-alias',

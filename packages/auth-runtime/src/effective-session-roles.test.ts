@@ -54,7 +54,7 @@ describe('effective session roles', () => {
     });
   });
 
-  it('keeps the session user unchanged when role hydration fails', async () => {
+  it('fails closed and marks permissions degraded when role hydration fails', async () => {
     const { enrichSessionUserWithEffectiveRoles } = await import('./effective-session-roles.js');
     const user: SessionUser = {
       id: 'kc-user-1',
@@ -69,7 +69,11 @@ describe('effective session roles', () => {
           throw new Error('db unavailable');
         }),
       })
-    ).resolves.toBe(user);
+    ).resolves.toEqual({
+      ...user,
+      roles: [],
+      permissionStatus: 'degraded',
+    });
 
     expect(loggerState.warn).toHaveBeenCalledWith(
       'Effective IAM role hydration failed for session user',

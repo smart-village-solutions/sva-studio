@@ -73,6 +73,8 @@ const identityProvider = {
   provider: {
     updateUser: vi.fn(async () => undefined),
     syncRoles: vi.fn(async () => undefined),
+    assignRealmRoles: vi.fn(async () => undefined),
+    removeRealmRoles: vi.fn(async () => undefined),
   },
 };
 
@@ -119,9 +121,11 @@ describe('createUpdateUserHandlerInternal', () => {
     vi.clearAllMocks();
     identityProvider.provider.updateUser.mockClear();
     identityProvider.provider.syncRoles.mockClear();
+    identityProvider.provider.assignRealmRoles.mockClear();
+    identityProvider.provider.removeRealmRoles.mockClear();
   });
 
-  it('updates identity, syncs roles, persists detail and returns the API item', async () => {
+  it('updates identity, assigns added technical roles, persists detail and returns the API item', async () => {
     const deps = createDeps();
     const handler = createUpdateUserHandlerInternal(deps);
 
@@ -157,7 +161,8 @@ describe('createUpdateUserHandlerInternal', () => {
       requestId: 'req-update',
       traceId: 'trace-update',
     });
-    expect(identityProvider.provider.syncRoles).toHaveBeenCalledWith('kc-user-1', ['system_admin']);
+    expect(identityProvider.provider.assignRealmRoles).toHaveBeenCalledWith('kc-user-1', ['system_admin']);
+    expect(identityProvider.provider.syncRoles).not.toHaveBeenCalled();
     expect(deps.persistUpdatedUserDetail).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       requestId: 'req-update',
@@ -172,6 +177,27 @@ describe('createUpdateUserHandlerInternal', () => {
       action: 'update_user',
       result: 'success',
     });
+  });
+
+  it('removes system_admin on demotion without broad role replacement or legacy role deletion', async () => {
+    const deps = createDeps({
+      resolveUserUpdatePlan: vi.fn(async () => ({
+        existing: {
+          keycloakSubject: 'kc-user-1',
+        },
+        previousRoleNames: ['system_admin', 'legacy_keycloak_editor'],
+        nextRoleNames: ['editor'],
+      })),
+    });
+    const handler = createUpdateUserHandlerInternal(deps);
+
+    const response = await handler(new Request(`http://localhost/api/v1/iam/users/${updatedDetail.id}`), ctx);
+
+    expect(response.status).toBe(200);
+    expect(deps.ensureManagedRealmRolesExist).not.toHaveBeenCalled();
+    expect(identityProvider.provider.removeRealmRoles).toHaveBeenCalledWith('kc-user-1', ['system_admin']);
+    expect(identityProvider.provider.assignRealmRoles).not.toHaveBeenCalled();
+    expect(identityProvider.provider.syncRoles).not.toHaveBeenCalled();
   });
 
   it('returns the precondition response without update work', async () => {

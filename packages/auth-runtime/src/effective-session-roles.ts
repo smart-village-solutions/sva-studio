@@ -120,6 +120,10 @@ export const enrichSessionUserWithEffectiveRoles = async (
       error: error instanceof Error ? error.message : String(error),
       ...buildLogContext({ kind: 'instance', instanceId }),
     });
-    return user;
+    return {
+      ...user,
+      roles: [],
+      permissionStatus: 'degraded',
+    };
   }
 };

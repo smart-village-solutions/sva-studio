@@ -32,6 +32,8 @@ export type UpdateIdentityProvider = {
       }
     ) => Promise<void>;
     readonly syncRoles: (keycloakSubject: string, roleNames: string[]) => Promise<void>;
+    readonly assignRealmRoles?: (keycloakSubject: string, roleNames: readonly string[]) => Promise<void>;
+    readonly removeRealmRoles?: (keycloakSubject: string, roleNames: readonly string[]) => Promise<void>;
   };
 };
 
@@ -158,6 +160,22 @@ export type UpdateUserHandlerDeps<
   ) => Promise<T>;
 };
 
+const resolveTechnicalRoleDelta = (input: {
+  readonly previousRoleNames: readonly string[];
+  readonly nextRoleNames: readonly string[];
+}): {
+  readonly addedRoleNames: readonly string[];
+  readonly removedRoleNames: readonly string[];
+} => {
+  const previousRoleNames = new Set(filterTenantTechnicalKeycloakRoleNames(input.previousRoleNames));
+  const nextRoleNames = new Set(filterTenantTechnicalKeycloakRoleNames(input.nextRoleNames));
+
+  return {
+    addedRoleNames: [...nextRoleNames].filter((roleName) => !previousRoleNames.has(roleName)),
+    removedRoleNames: [...previousRoleNames].filter((roleName) => !nextRoleNames.has(roleName)),
+  };
+};
+
 const syncUpdatedIdentityAndRoles = async <
   TPayload extends UpdateUserPayloadShape,
   TPlan extends UserUpdatePlanShape,
@@ -195,22 +213,39 @@ const syncUpdatedIdentityAndRoles = async <
   }
 
   if (input.plan.nextRoleNames) {
-    const nextRoleNames = filterTenantTechnicalKeycloakRoleNames(input.plan.nextRoleNames);
-    if (nextRoleNames.length === 0) {
+    const { addedRoleNames, removedRoleNames } = resolveTechnicalRoleDelta({
+      previousRoleNames: input.plan.previousRoleNames,
+      nextRoleNames: input.plan.nextRoleNames,
+    });
+    if (addedRoleNames.length === 0 && removedRoleNames.length === 0) {
       return;
     }
-    await deps.ensureManagedRealmRolesExist({
-      instanceId: input.actor.instanceId,
-      identityProvider: input.identityProvider,
-      externalRoleNames: nextRoleNames,
-      actorAccountId: input.actor.actorAccountId,
-      requestId: input.actor.requestId,
-      traceId: input.actor.traceId,
-    });
-    await deps.trackKeycloakCall('sync_roles', () =>
-      input.identityProvider.provider.syncRoles(input.plan.existing.keycloakSubject, [...nextRoleNames])
-    );
-    input.shouldRestoreRolesRef.current = true;
+    if (addedRoleNames.length > 0) {
+      if (!input.identityProvider.provider.assignRealmRoles) {
+        throw new Error('assignRealmRoles provider capability unavailable');
+      }
+      await deps.ensureManagedRealmRolesExist({
+        instanceId: input.actor.instanceId,
+        identityProvider: input.identityProvider,
+        externalRoleNames: addedRoleNames,
+        actorAccountId: input.actor.actorAccountId,
+        requestId: input.actor.requestId,
+        traceId: input.actor.traceId,
+      });
+      await deps.trackKeycloakCall('sync_roles', () =>
+        input.identityProvider.provider.assignRealmRoles!(input.plan.existing.keycloakSubject, addedRoleNames)
+      );
+      input.shouldRestoreRolesRef.current = true;
+    }
+    if (removedRoleNames.length > 0) {
+      if (!input.identityProvider.provider.removeRealmRoles) {
+        throw new Error('removeRealmRoles provider capability unavailable');
+      }
+      await deps.trackKeycloakCall('sync_roles', () =>
+        input.identityProvider.provider.removeRealmRoles!(input.plan.existing.keycloakSubject, removedRoleNames)
+      );
+      input.shouldRestoreRolesRef.current = true;
+    }
   }
 };
 

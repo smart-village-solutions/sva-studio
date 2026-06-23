@@ -47,7 +47,9 @@ export const resolveTenantTechnicalKeycloakRoleNames = (roles: readonly RoleIden
   [
     ...new Set(
       roles.flatMap((role) =>
-        isTenantTechnicalKeycloakRole(role) ? TENANT_TECHNICAL_KEYCLOAK_ROLE_NAMES : []
+        collectRoleIdentifiers(role).filter((identifier) =>
+          TENANT_TECHNICAL_KEYCLOAK_ROLE_SET.has(identifier)
+        )
       )
     ),
   ];

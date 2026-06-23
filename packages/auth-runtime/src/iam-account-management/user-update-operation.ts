@@ -1,4 +1,8 @@
-import { createUserUpdatePersistence } from '@sva/iam-admin';
+import {
+  createUserUpdatePersistence,
+  shouldUpdateUserIdentityAttributes,
+  shouldUpdateUserIdentityPayload,
+} from '@sva/iam-admin';
 
 import type { IdentityUserAttributes } from '../identity-provider-port.js';
 import {
@@ -24,16 +28,8 @@ export const resolveUpdatedIdentityState = async (input: {
   payload: UpdateUserPayload;
   identityProvider?: UserUpdateIdentityProviderResolution;
 }) => {
-  const shouldUpdateIdentityAttributes =
-    input.payload.displayName !== undefined ||
-    input.payload.mainserverUserApplicationId !== undefined ||
-    input.payload.mainserverUserApplicationSecret !== undefined;
-  const shouldUpdateIdentity =
-    input.payload.email !== undefined ||
-    input.payload.firstName !== undefined ||
-    input.payload.lastName !== undefined ||
-    input.payload.status !== undefined ||
-    shouldUpdateIdentityAttributes;
+  const shouldUpdateIdentityAttributes = shouldUpdateUserIdentityAttributes(input.payload);
+  const shouldUpdateIdentity = shouldUpdateUserIdentityPayload(input.payload);
 
   let existingIdentityAttributes: IdentityUserAttributes | undefined;
   let nextIdentityAttributes: IdentityUserAttributes | undefined;

@@ -4,13 +4,18 @@ import { createJsonResponse, createTestDepsBuilder } from './handler-test-helper
 import {
   createUpdateUserHandlerInternal,
   RoleMutationCapabilityUnavailableError,
+  shouldUpdateUserIdentityAttributes,
+  shouldUpdateUserIdentityPayload,
   type UpdateUserHandlerDeps,
 } from './user-update-handler.js';
 
 type TestPayload = {
+  readonly displayName?: string;
   readonly email?: string;
   readonly firstName?: string;
   readonly lastName?: string;
+  readonly mainserverUserApplicationId?: string;
+  readonly mainserverUserApplicationSecret?: string;
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly roleIds?: readonly string[];
 };
@@ -429,5 +434,24 @@ describe('createUpdateUserHandlerInternal', () => {
       action: 'update_user',
       result: 'failure',
     });
+  });
+});
+
+describe('user update identity predicates', () => {
+  it('keeps attribute updates as a subset of identity-provider updates', () => {
+    const attributePayloads: readonly TestPayload[] = [
+      { displayName: 'Alice' },
+      { mainserverUserApplicationId: 'app-1' },
+      { mainserverUserApplicationSecret: 'secret-1' },
+    ];
+
+    for (const payload of attributePayloads) {
+      expect(shouldUpdateUserIdentityAttributes(payload)).toBe(true);
+      expect(shouldUpdateUserIdentityPayload(payload)).toBe(true);
+    }
+
+    expect(shouldUpdateUserIdentityAttributes({ email: 'alice@example.test' })).toBe(false);
+    expect(shouldUpdateUserIdentityPayload({ email: 'alice@example.test' })).toBe(true);
+    expect(shouldUpdateUserIdentityPayload({ roleIds: ['role-editor'] })).toBe(false);
   });
 });

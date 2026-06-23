@@ -154,6 +154,8 @@ export {
 export {
   createUpdateUserHandlerInternal,
   RoleMutationCapabilityUnavailableError,
+  shouldUpdateUserIdentityAttributes,
+  shouldUpdateUserIdentityPayload,
   type UpdateAuthenticatedRequestContext,
   type UpdateUserHandlerDeps,
 } from './user-update-handler.js';

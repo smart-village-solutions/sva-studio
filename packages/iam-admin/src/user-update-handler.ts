@@ -207,19 +207,22 @@ const hasTechnicalRoleDelta = (plan: UserUpdatePlanShape): boolean => {
   return addedRoleNames.length > 0 || removedRoleNames.length > 0;
 };
 
-const shouldUpdateIdentityPayload = (payload: UpdateUserPayloadShape): boolean =>
+export const shouldUpdateUserIdentityAttributes = (payload: UpdateUserPayloadShape): boolean =>
   payload.displayName !== undefined ||
+  payload.mainserverUserApplicationId !== undefined ||
+  payload.mainserverUserApplicationSecret !== undefined;
+
+export const shouldUpdateUserIdentityPayload = (payload: UpdateUserPayloadShape): boolean =>
   payload.email !== undefined ||
   payload.firstName !== undefined ||
   payload.lastName !== undefined ||
-  payload.mainserverUserApplicationId !== undefined ||
-  payload.mainserverUserApplicationSecret !== undefined ||
+  shouldUpdateUserIdentityAttributes(payload) ||
   payload.status !== undefined;
 
 const shouldResolveIdentityProvider = (input: {
   readonly payload: UpdateUserPayloadShape;
   readonly plan: UserUpdatePlanShape;
-}): boolean => shouldUpdateIdentityPayload(input.payload) || hasTechnicalRoleDelta(input.plan);
+}): boolean => shouldUpdateUserIdentityPayload(input.payload) || hasTechnicalRoleDelta(input.plan);
 
 const resolveExistingMainserverCredentialState = (
   existing: UserUpdatePlanShape['existing']

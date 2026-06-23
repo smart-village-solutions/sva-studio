@@ -551,3 +551,9 @@ Referenzen:
 - Das DSR-UI verwendet ein kanonisches Statusmodell (`queued`, `in_progress`, `completed`, `blocked`, `failed`) und zeigt Rohstatus nur sekundär zur Betriebsdiagnose.
 - Transparenzlisten laden tab-spezifisch, serverseitig paginiert und filterbar; Detaildaten und User-Timeline-Ereignisse werden on demand geladen.
 - Neue IAM-/Privacy-Texte laufen vollständig über Translation-Keys in `de` und `en`; harte Strings in den neuen Views sind nicht zulässig.
+
+### Ergänzung 2026-06: Karten-, Geocoding- und Media-Querschnitt
+
+- Tenantkonfiguration für Karten/Geocoding liegt ausschließlich im Interface-Typ `mapGeocoding`; Browser-Code erhält nur normalisierte Laufzeitflags und eine Style-URL.
+- Host-Observability für Geocoding loggt nur normierte Outcomes wie `success`, `no_result`, `provider_error`, `timeout` oder `rate_limited`; Roh-Providerpayloads, Secrets und unredigierte Volladressen bleiben aus Logs ausgeschlossen.
+- Der POI-Editor behandelt Geocoding- und Upload-Probleme als lokale, nicht blockierende Teilfehler; manuelle Felder und der übrige Save-Pfad bleiben nutzbar.

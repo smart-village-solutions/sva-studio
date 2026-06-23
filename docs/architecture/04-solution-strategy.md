@@ -202,3 +202,9 @@ Referenzen:
 - Tenant-Realms behalten `system_admin` als einzige geschützte Defaultrolle; frühere Standardrollen wie `app_manager`, `designer` oder `editor` gehören nicht mehr zum Sollmodell, werden nicht mehr geseedet und nur noch als historische Altartefakte bestehender Instanzen über Migrations- und Repair-Pfade behandelt.
 - Tenantseitige Rollen- und Permission-Verträge dürfen Root-only-Artefakte wie `instance_registry_admin` und `instance.registry.manage` weder anzeigen noch als wirksame Tenant-Berechtigung behandeln.
 - `roleLevel` bleibt als Kompatibilitätsfeld bestehen, verliert aber seine normative Führungsrolle für neue Autorisierungsentscheidungen.
+
+### Fortschreibung 2026-06: Vollständiger redaktionsorientierter POI-Editor
+
+- Der POI-Editor folgt strategisch nicht mehr einem reduzierten CRUD-Minimum, sondern einem festen redaktionsorientierten Bereichsmodell mit RHF-basierter Formularorchestrierung.
+- Karten- und Geocoding-Funktionen bleiben host-owned: Browser-Plugins sprechen ausschließlich normierte IAM-Endpunkte und kennen weder Providerdetails noch Secret-Referenzen.
+- Medienreferenzen und Uploads folgen ebenfalls einem host-owned Vertrag über IAM-Media-Endpunkte; das Plugin speichert Referenzen, aber kein Storage- oder Signaturwissen.

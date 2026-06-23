@@ -11,7 +11,32 @@ const TranslationProbe = () => {
 
 const PluginTranslationProbe = () => {
   const pt = usePluginTranslation('news');
-  return <span>{pt('list.title')}</span>;
+  return (
+    <div>
+      <span>{pt('list.title')}</span>
+      <span>{pt('editor.editTitle')}</span>
+      <span>{pt('editor.editDescription')}</span>
+      <span>{pt('actions.save')}</span>
+      <span>{pt('actions.back')}</span>
+      <span>{pt('actions.delete')}</span>
+      <span>{pt('tabs.basis.label')}</span>
+      <span>{pt('tabs.content.label')}</span>
+      <span>{pt('tabs.settings.label')}</span>
+      <span>{pt('tabs.history.label')}</span>
+      <span>{pt('tabs.basis.title')}</span>
+      <span>{pt('tabs.basis.description')}</span>
+      <span>{pt('cards.basis.titleCategories.title')}</span>
+      <span>{pt('cards.basis.titleCategories.description')}</span>
+      <span>{pt('fields.title')}</span>
+      <span>{pt('fields.characterCount', { count: 4 })}</span>
+      <span>{pt('fields.categories')}</span>
+      <span>{pt('fields.categoriesSearchPlaceholder')}</span>
+      <span>{pt('fields.categoriesHelp')}</span>
+      <span>{pt('actions.addCategory')}</span>
+      <span>{pt('cards.basis.authorMeta.title')}</span>
+      <span>{pt('cards.basis.authorMeta.description')}</span>
+    </div>
+  );
 };
 
 const LocaleSwitchProbe = () => {
@@ -84,5 +109,30 @@ describe('LocaleProvider', () => {
     );
 
     expect(screen.getByText('News')).toBeTruthy();
+    expect(screen.getByText('News-Eintrag bearbeiten')).toBeTruthy();
+    expect(screen.getByText('Aktualisieren oder löschen Sie den News-Eintrag.')).toBeTruthy();
+    expect(screen.getByText('Speichern')).toBeTruthy();
+    expect(screen.getByText('Zurück zur Liste')).toBeTruthy();
+    expect(screen.getByText('Löschen')).toBeTruthy();
+    expect(screen.getByText('Basis')).toBeTruthy();
+    expect(screen.getByText('Inhalte')).toBeTruthy();
+    expect(screen.getByText('Einstellungen')).toBeTruthy();
+    expect(screen.getByText('Historie')).toBeTruthy();
+    expect(screen.getByText('Basisdaten')).toBeTruthy();
+    expect(
+      screen.getByText('Titel, Kategorien, Autor und redaktionelle Metadaten des News-Eintrags.')
+    ).toBeTruthy();
+    expect(screen.getByText('Titel & Kategorien')).toBeTruthy();
+    expect(
+      screen.getByText('Pflegen Sie den redaktionellen Titel und ordnen Sie passende Kategorien zu.')
+    ).toBeTruthy();
+    expect(screen.getAllByText('Titel')).toHaveLength(1);
+    expect(screen.getByText('4 Zeichen')).toBeTruthy();
+    expect(screen.getByText('Kategorien')).toBeTruthy();
+    expect(screen.getByText('Kategorie suchen oder auswählen')).toBeTruthy();
+    expect(screen.getAllByText('Wählen Sie keine, eine oder mehrere Kategorien aus.')).toHaveLength(1);
+    expect(screen.getByText('Kategorie hinzufügen')).toBeTruthy();
+    expect(screen.getByText('Autor & Metadaten')).toBeTruthy();
+    expect(screen.getByText('Autorenschaft und zeitliche Einordnung dieses News-Eintrags.')).toBeTruthy();
   });
 });

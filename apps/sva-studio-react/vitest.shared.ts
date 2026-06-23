@@ -45,6 +45,10 @@ export const sharedVitestConfig = defineConfig({
       '@sva/sva-mainserver': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)),
       '@sva/instance-registry': fileURLToPath(new URL('../../packages/instance-registry/src/index.ts', import.meta.url)),
       '@sva/media': fileURLToPath(new URL('../../packages/media/src/index.ts', import.meta.url)),
+      '@sva/plugin-categories': fileURLToPath(new URL('../../packages/plugin-categories/src/index.ts', import.meta.url)),
+      '@sva/plugin-events': fileURLToPath(new URL('../../packages/plugin-events/src/index.ts', import.meta.url)),
+      '@sva/plugin-news': fileURLToPath(new URL('../../packages/plugin-news/src/index.ts', import.meta.url)),
+      '@sva/plugin-poi': fileURLToPath(new URL('../../packages/plugin-poi/src/index.ts', import.meta.url)),
       '@sva/plugin-events/events.pages': fileURLToPath(new URL('../../packages/plugin-events/src/events.pages.tsx', import.meta.url)),
       '@sva/plugin-poi/poi.pages': fileURLToPath(new URL('../../packages/plugin-poi/src/poi.pages.tsx', import.meta.url)),
       '@sva/plugin-waste-management/waste-management.job-definitions': fileURLToPath(

@@ -6,11 +6,11 @@ import { MediaStorageObjectNotFoundError, MediaStorageUnavailableError } from '.
 const allowAuthorization = vi.fn(async () => ({ ok: true } as const));
 const emitAuditEvent = vi.fn(async () => undefined);
 
-const createContext = (instanceId = 'tenant-a') =>
+const createContext = (...args: [instanceId?: string]) =>
   ({
     user: {
       id: 'kc-user-1',
-      instanceId,
+      instanceId: args.length === 0 ? 'tenant-a' : args[0],
       requestId: 'req-1',
     },
   }) as never;
@@ -1431,6 +1431,45 @@ describe('media http handlers', () => {
     });
   });
 
+  it('preserves attachment_image roles when listing references for poi targets', async () => {
+    const service = createService();
+    service.listReferencesByTarget = vi.fn(async () => [
+      {
+        id: 'reference-1',
+        assetId: 'asset-1',
+        targetType: 'poi',
+        targetId: 'poi-1',
+        role: 'attachment_image',
+      },
+    ]);
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.listReferences(
+      new Request('http://localhost/api/v1/iam/media/references?instanceId=tenant-a&targetType=poi&targetId=poi-1'),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: [
+        {
+          id: 'reference-1',
+          assetId: 'asset-1',
+          targetType: 'poi',
+          targetId: 'poi-1',
+          role: 'attachment_image',
+        },
+      ],
+    });
+  });
+
   it('completes an uploaded media session through the processing service', async () => {
     const service = createService();
     const storagePort = {
@@ -1474,6 +1513,39 @@ describe('media http handlers', () => {
     );
 
     expect(response.status).toBe(200);
+  });
+
+  it('passes the resolved request instance into media reference authorization when no session instance is active', async () => {
+    const service = createService();
+    const authorizeAction = vi.fn(async () => ({ ok: true } as const));
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.listReferences(
+      new Request('http://localhost/api/v1/iam/media/references?instanceId=tenant-a&targetType=poi&targetId=1517831'),
+      createContext(undefined)
+    );
+
+    expect(response.status).toBe(200);
+    expect(authorizeAction).toHaveBeenCalledWith({
+      ctx: expect.objectContaining({
+        user: expect.objectContaining({
+          instanceId: undefined,
+        }),
+      }),
+      instanceId: 'tenant-a',
+      action: 'media.reference.manage',
+      resource: {
+        targetType: 'poi',
+        targetId: '1517831',
+      },
+    });
   });
 
   it('returns a server error when upload completion hits infrastructure failures after persistence starts', async () => {

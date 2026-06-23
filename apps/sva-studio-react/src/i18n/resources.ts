@@ -7,12 +7,17 @@ import {
   type TranslationNode,
 } from './resources-merge';
 
-export const i18nResources = {
+const hostResources = {
   de: deResources,
   en: enResources,
 } as const;
 
-const mergedSourceTracker = createMergeTracker(Object.keys(i18nResources) as SupportedLocale[]);
+export const i18nResources = {
+  de: { ...hostResources.de },
+  en: { ...hostResources.en },
+} as const;
+
+let mergedSourceTracker = createMergeTracker(Object.keys(i18nResources) as SupportedLocale[]);
 
 export const mergeI18nResources = (
   resources: Readonly<Record<SupportedLocale, Readonly<Record<string, unknown>>>>
@@ -43,6 +48,16 @@ export const mergeI18nResources = (
   }
 
   commitMergedPluginSources(mergedSourceTracker, mergedSources);
+};
+
+export const resetMergedI18nResources = () => {
+  const mutableResources = i18nResources as unknown as Record<SupportedLocale, Record<string, unknown>>;
+
+  for (const locale of Object.keys(hostResources) as SupportedLocale[]) {
+    mutableResources[locale] = { ...hostResources[locale] };
+  }
+
+  mergedSourceTracker = createMergeTracker(Object.keys(i18nResources) as SupportedLocale[]);
 };
 
 export const DEFAULT_LOCALE = 'de';

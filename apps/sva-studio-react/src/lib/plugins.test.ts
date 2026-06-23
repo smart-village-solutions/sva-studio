@@ -126,7 +126,7 @@ vi.mock('../../../../packages/plugin-events/src/index.ts', () => ({
 vi.mock('../../../../packages/plugin-poi/src/index.ts', () => ({
   pluginPoi: {
     id: 'poi',
-    displayName: 'POI',
+    displayName: 'Orte',
     routes: [],
     actions: [],
     adminResources: [

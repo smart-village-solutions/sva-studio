@@ -1,20 +1,15 @@
-export type PoiAddress = {
-  readonly street?: string;
-  readonly zip?: string;
-  readonly city?: string;
-};
-
-export type PoiContact = {
-  readonly firstName?: string;
-  readonly lastName?: string;
-  readonly phone?: string;
-  readonly email?: string;
-};
-
-export type PoiWebUrl = {
-  readonly url: string;
-  readonly description?: string;
-};
+import type {
+  PoiAccessibilityInformation,
+  PoiAddress,
+  PoiCertificate,
+  PoiContact,
+  PoiLocation,
+  PoiMediaContent,
+  PoiOpeningHour,
+  PoiOperatingCompany,
+  PoiPriceInformation,
+  PoiWebUrl,
+} from './poi.content.types.js';
 
 export type PoiListQuery = {
   readonly page: number;
@@ -33,14 +28,6 @@ export type PoiListResult = {
   readonly pagination: PoiPagination;
 };
 
-export type PoiOpeningHour = {
-  readonly weekday?: string;
-  readonly timeFrom?: string;
-  readonly timeTo?: string;
-  readonly open?: boolean;
-  readonly description?: string;
-};
-
 export type PoiFormInput = {
   readonly name: string;
   readonly description?: string;
@@ -50,8 +37,14 @@ export type PoiFormInput = {
   readonly payload?: Record<string, unknown>;
   readonly addresses?: readonly PoiAddress[];
   readonly contact?: PoiContact;
+  readonly location?: PoiLocation;
   readonly openingHours?: readonly PoiOpeningHour[];
+  readonly operatingCompany?: PoiOperatingCompany;
+  readonly priceInformations?: readonly PoiPriceInformation[];
   readonly webUrls?: readonly PoiWebUrl[];
+  readonly mediaContents?: readonly PoiMediaContent[];
+  readonly certificates?: readonly PoiCertificate[];
+  readonly accessibilityInformation?: PoiAccessibilityInformation;
   readonly tags?: readonly string[];
 };
 

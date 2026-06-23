@@ -20,17 +20,19 @@ import {
   isResponse,
   json,
   matchRequestRoute,
-  parseAddressList,
-  parseCategories,
-  parseContact,
   parseJsonObjectBody,
-  parseTags,
-  parseWebUrls,
   readBoolean,
   readString,
   type ParsedValue,
   type RouteMatch as SharedRouteMatch,
-} from './content-route-helpers.js';
+} from './content-route-core.js';
+import {
+  parseAddressList,
+  parseCategories,
+  parseContact,
+  parseTags,
+  parseWebUrls,
+} from './content-route-parsers.js';
 import { SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';

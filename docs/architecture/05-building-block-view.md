@@ -601,3 +601,12 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 7. Studio-Frontend (`apps/sva-studio-react/src/routes/admin/media/*`, `src/hooks/use-media.ts`)
    - startet in `/admin/media` den Browser-Flow `initialize -> signed PUT -> complete`
    - trennt Bibliotheks-UI, Upload-Orchestrierung und Detailnavigation bewusst in eigene Bausteine
+
+### Ergänzung 2026-06: POI-Geocoding- und Media-Bridges
+
+1. `packages/plugin-sdk/src/map-geocoding-client.ts`, `packages/plugin-sdk/src/media-upload-client.ts`
+   - definieren die browser-sicheren Host-Verträge für Geocoding-Konfiguration, Suggest/Geocode/Reverse-Geocode sowie IAM-basierte Upload-Sessions.
+2. `apps/sva-studio-react/src/lib/map-geocoding-api.ts`, `apps/sva-studio-react/src/lib/map-geocoding-api.server.ts`
+   - binden tenantkonfiguriertes `mapGeocoding` an normierte Host-Endpunkte unter `/api/v1/iam/map-geocoding/*`.
+3. `packages/plugin-poi/src/poi.detail-page.tsx`, `poi.detail-location-tab.tsx`, `poi.detail-media-tab.tsx`
+   - orchestrieren den vollständigen POI-Editor mit Bereichs-Tabs, Geocoding-Feldern, Reverse-Geocode-Unterstützung und Host-Media-Referenzierung.

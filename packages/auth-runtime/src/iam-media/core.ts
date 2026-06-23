@@ -191,6 +191,7 @@ type MediaHttpHandlerDeps = {
   readonly resolveStoragePort?: (instanceId: string) => Promise<MediaStoragePort>;
   readonly authorizeAction: (input: {
     ctx: AuthenticatedRequestContext;
+    instanceId?: string;
     action: string;
     resource?: {
       assetId?: string;
@@ -209,7 +210,15 @@ type MediaAuditResult = 'success' | 'failure' | 'denied';
 const MEDIA_VISIBILITIES = new Set<string>(['public', 'protected']);
 const MEDIA_UPLOAD_STATUSES = new Set<string>(['pending', 'validated', 'processed', 'failed', 'blocked']);
 const MEDIA_PROCESSING_STATUSES = new Set<string>(['pending', 'ready', 'failed']);
-const MEDIA_ROLES = new Set<string>(['thumbnail', 'teaser_image', 'header_image', 'gallery_item', 'download', 'hero_image']);
+const MEDIA_ROLES = new Set<string>([
+  'thumbnail',
+  'teaser_image',
+  'header_image',
+  'gallery_item',
+  'download',
+  'hero_image',
+  'attachment_image',
+]);
 
 const isMediaVisibility = (value: string): value is MediaVisibility => MEDIA_VISIBILITIES.has(value);
 const isMediaUploadStatus = (value: string): value is MediaUploadStatus => MEDIA_UPLOAD_STATUSES.has(value);
@@ -418,7 +427,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     if (instanceId instanceof Response) {
       return instanceId;
     }
-    const authorization = await deps.authorizeAction({ ctx, action: 'media.read' });
+    const authorization = await deps.authorizeAction({ ctx, instanceId, action: 'media.read' });
     if (!authorization.ok) {
       await emitMediaAuditEvent({
         deps,
@@ -572,7 +581,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     if (assetId instanceof Response) {
       return assetId;
     }
-    const authorization = await deps.authorizeAction({ ctx, action: 'media.read', resource: { assetId } });
+    const authorization = await deps.authorizeAction({ ctx, instanceId, action: 'media.read', resource: { assetId } });
     if (!authorization.ok) {
       await emitMediaAuditEvent({
         deps,
@@ -624,7 +633,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     if (assetId instanceof Response) {
       return assetId;
     }
-    const authorization = await deps.authorizeAction({ ctx, action: 'media.read', resource: { assetId } });
+    const authorization = await deps.authorizeAction({ ctx, instanceId, action: 'media.read', resource: { assetId } });
     if (!authorization.ok) {
       await emitMediaAuditEvent({
         deps,
@@ -664,7 +673,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return instanceScope.response;
     }
     const { instanceId } = instanceScope;
-    const authorization = await deps.authorizeAction({ ctx, action: 'media.create' });
+    const authorization = await deps.authorizeAction({ ctx, instanceId, action: 'media.create' });
     if (!authorization.ok) {
       await emitMediaAuditEvent({
         deps,
@@ -784,7 +793,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     }
     const { instanceId } = instanceScope;
 
-    const authorization = await deps.authorizeAction({ ctx, action: 'media.create' });
+    const authorization = await deps.authorizeAction({ ctx, instanceId, action: 'media.create' });
     if (!authorization.ok) {
       await emitMediaAuditEvent({
         deps,
@@ -926,7 +935,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return assetId;
     }
 
-    const authorization = await deps.authorizeAction({ ctx, action: 'media.update', resource: { assetId } });
+    const authorization = await deps.authorizeAction({ ctx, instanceId, action: 'media.update', resource: { assetId } });
     if (!authorization.ok) {
       await emitMediaAuditEvent({
         deps,
@@ -997,7 +1006,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return uploadSessionId;
     }
 
-    const authorization = await deps.authorizeAction({ ctx, action: 'media.create' });
+    const authorization = await deps.authorizeAction({ ctx, instanceId, action: 'media.create' });
     if (!authorization.ok) {
       await emitMediaAuditEvent({
         deps,
@@ -1101,6 +1110,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
     const authorization = await deps.authorizeAction({
       ctx,
+      instanceId,
       action: 'media.reference.manage',
       resource: {
         targetType: parsed.data.targetType,
@@ -1208,6 +1218,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
     const authorization = await deps.authorizeAction({
       ctx,
+      instanceId,
       action: 'media.reference.manage',
       resource: {
         targetType,
@@ -1284,6 +1295,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       const visibility = asset.visibility;
       const authorization = await deps.authorizeAction({
         ctx,
+        instanceId,
         action: visibility === 'protected' ? 'media.deliver.protected' : 'media.read',
         resource: {
           assetId,
@@ -1343,7 +1355,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return assetId;
     }
 
-    const authorization = await deps.authorizeAction({ ctx, action: 'media.delete', resource: { assetId } });
+    const authorization = await deps.authorizeAction({ ctx, instanceId, action: 'media.delete', resource: { assetId } });
     if (!authorization.ok) {
       await emitMediaAuditEvent({
         deps,

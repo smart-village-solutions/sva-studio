@@ -120,13 +120,40 @@ const mailTransportEntry = {
   },
 } as const;
 
+const mapGeocodingEntry = {
+  id: 'map-geocoding-1',
+  instanceId: 'de-musterhausen',
+  type: 'mapGeocoding',
+  name: 'POI-Karte',
+  enabled: true,
+  status: 'unknown',
+  statusMessage: 'Konfiguration gespeichert',
+  lastCheckedAt: '2026-03-15T20:04:00.000Z',
+  createdAt: '2026-03-15T20:04:00.000Z',
+  updatedAt: '2026-03-15T20:04:00.000Z',
+  config: {
+    provider: 'geoapify',
+    styleUrl: 'https://tiles.example/styles/osm-bright',
+    autocompleteEnabled: true,
+    geocodeEnabled: true,
+    reverseGeocodeEnabled: true,
+    suggestEndpoint: 'https://host.example/suggest',
+    geocodeEndpoint: 'https://host.example/geocode',
+    reverseGeocodeEndpoint: 'https://host.example/reverse',
+    requestTimeoutMs: '3000',
+    rateLimitPerMinute: '60',
+    killSwitchEnabled: false,
+  },
+} as const;
+
 const createListResponse = (
   entries: readonly unknown[],
-  availableTypes: readonly ('mainserver' | 's3' | 'supabase' | 'mailTransport')[] = [
+  availableTypes: readonly ('mainserver' | 's3' | 'supabase' | 'mailTransport' | 'mapGeocoding')[] = [
     'mainserver',
     's3',
     'supabase',
     'mailTransport',
+    'mapGeocoding',
   ]
 ) => ({
   instanceId: 'de-musterhausen',
@@ -415,6 +442,73 @@ describe('InterfacesPage', () => {
     });
   });
 
+  it('creates a map geocoding interface through the picker dialog and upsert endpoint', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
+    state.upsertInterface.mockResolvedValue({
+      ...mapGeocodingEntry,
+      config: { ...mapGeocodingEntry.config },
+    });
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Karte & Geocoding/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    fireEvent.change(screen.getByLabelText('Anzeigename'), {
+      target: { value: 'POI-Karte' },
+    });
+    fireEvent.change(screen.getByLabelText('Style-URL'), {
+      target: { value: 'https://tiles.example/styles/poi' },
+    });
+    fireEvent.change(screen.getByLabelText('Suggest-Endpoint'), {
+      target: { value: 'https://host.example/suggest' },
+    });
+    fireEvent.change(screen.getByLabelText('Geocode-Endpoint'), {
+      target: { value: 'https://host.example/geocode' },
+    });
+    fireEvent.change(screen.getByLabelText('Reverse-Geocode-Endpoint'), {
+      target: { value: 'https://host.example/reverse' },
+    });
+    fireEvent.change(screen.getByLabelText('API-Key'), {
+      target: { value: 'geoapify-key' },
+    });
+    fireEvent.change(screen.getByLabelText('Timeout in ms'), {
+      target: { value: '2500' },
+    });
+    fireEvent.change(screen.getByLabelText('Rate-Limit pro Minute'), {
+      target: { value: '90' },
+    });
+    fireEvent.click(screen.getByLabelText('Kill-Switch aktivieren'));
+    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
+
+    await waitFor(() => {
+      expect(state.upsertInterface).toHaveBeenCalledWith({
+        data: {
+          instanceId: 'de-musterhausen',
+          draft: expect.objectContaining({
+            type: 'mapGeocoding',
+            name: 'POI-Karte',
+            config: expect.objectContaining({
+              styleUrl: 'https://tiles.example/styles/poi',
+              suggestEndpoint: 'https://host.example/suggest',
+              geocodeEndpoint: 'https://host.example/geocode',
+              reverseGeocodeEndpoint: 'https://host.example/reverse',
+              apiKey: 'geoapify-key',
+              requestTimeoutMs: '2500',
+              rateLimitPerMinute: '90',
+              killSwitchEnabled: true,
+            }),
+          }),
+        },
+      });
+    });
+  });
+
   it('does not offer provider API mail transports in the dialog before runtime support exists', async () => {
     state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
 
@@ -515,7 +609,7 @@ describe('InterfacesPage', () => {
 
   it('does not offer supabase in the picker when the waste-management module is unavailable', async () => {
     state.listInterfaces.mockResolvedValue(
-      createListResponse([mainserverEntry], ['mainserver', 's3', 'mailTransport'])
+      createListResponse([mainserverEntry], ['mainserver', 's3', 'mailTransport', 'mapGeocoding'])
     );
 
     render(<InterfacesPage />);
@@ -534,6 +628,7 @@ describe('InterfacesPage', () => {
     );
     expect(screen.getByRole('radio', { name: /S3-kompatibler Object Storage/i })).toBeTruthy();
     expect(screen.getByRole('radio', { name: /Mail-Transport/i })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Karte & Geocoding/i })).toBeTruthy();
   });
 
   it('keeps the whole picker card clickable through the description text', async () => {

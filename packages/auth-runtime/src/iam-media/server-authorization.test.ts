@@ -25,12 +25,12 @@ vi.mock('../iam-authorization/permission-store.js', () => ({
     resolveEffectivePermissionsMock(...args),
 }));
 
-const createContext = (instanceId = 'tenant-a') =>
+const createContext = (...args: [instanceId?: string]) =>
   ({
     sessionId: 'session-1',
     user: {
       id: 'kc-user-1',
-      instanceId,
+      instanceId: args.length === 0 ? 'tenant-a' : args[0],
     },
   }) as never;
 
@@ -75,6 +75,27 @@ describe('authorizeMediaPrimitiveForUser', () => {
 
     expect(resolveEffectivePermissionsMock).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
+      keycloakSubject: 'kc-user-1',
+    });
+  });
+
+  it('uses an explicit instance scope when the session has no active instance context', async () => {
+    await expect(
+      authorizeMediaPrimitiveForUser({
+        ctx: createContext(undefined),
+        instanceId: 'tenant-requested',
+        action: 'media.read',
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      actor: {
+        instanceId: 'tenant-requested',
+        keycloakSubject: 'kc-user-1',
+      },
+    });
+
+    expect(resolveEffectivePermissionsMock).toHaveBeenCalledWith({
+      instanceId: 'tenant-requested',
       keycloakSubject: 'kc-user-1',
     });
   });

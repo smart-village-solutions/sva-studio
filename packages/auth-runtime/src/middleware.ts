@@ -7,6 +7,7 @@ import {
   ensureAccountLifecycleAllowsAccess,
   logComplianceDiagnosticsIfEnabled,
   logProfileDiagnosticsIfEnabled,
+  logProtectedHandlerError,
   logUnexpectedMiddlewareError,
 } from './middleware-guards.js';
 import { withLegalTextCompliance } from './legal-text-enforcement.js';
@@ -202,13 +203,14 @@ export const withAuthenticatedUser = async (
   handler: (ctx: AuthenticatedRequestContext) => Promise<Response> | Response
 ): Promise<Response> => {
   const middlewareStartedAt = performance.now();
+  let ctx: AuthenticatedRequestContext;
   try {
     const resolution = await createAuthenticatedContext(request);
     if (resolution.kind === 'response') {
       return resolution.response;
     }
 
-    const ctx = {
+    ctx = {
       sessionId: resolution.sessionId,
       sessionExpiresAt: resolution.sessionExpiresAt,
       freshReauthAt: resolution.freshReauthAt,
@@ -240,8 +242,13 @@ export const withAuthenticatedUser = async (
         ...buildLogContext(ctx.user.instanceId, { includeTraceId: true }),
       });
     }
-    return await runWithLegalTextComplianceIfRequired(request, ctx, handler);
   } catch (error) {
     return logUnexpectedMiddlewareError(request, error);
+  }
+
+  try {
+    return await runWithLegalTextComplianceIfRequired(request, ctx, handler);
+  } catch (error) {
+    return logProtectedHandlerError(request, error);
   }
 };

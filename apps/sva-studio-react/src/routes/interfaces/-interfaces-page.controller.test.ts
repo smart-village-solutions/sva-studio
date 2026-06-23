@@ -29,7 +29,7 @@ const createEntry = (overrides: Partial<InstanceInterface>): InstanceInterface =
 
 describe('interfaces page controller helpers', () => {
   it('exposes the stable default type fallback for empty API responses', () => {
-    expect(DEFAULT_AVAILABLE_TYPES).toEqual(['mainserver', 's3', 'mailTransport']);
+    expect(DEFAULT_AVAILABLE_TYPES).toEqual(['mainserver', 's3', 'mailTransport', 'mapGeocoding']);
   });
 
   it('validates the instance interfaces payload shape', () => {
@@ -139,6 +139,45 @@ describe('interfaces page controller helpers', () => {
         defaultReplyToEmail: 'service@example.org',
         maxBatchSize: '50',
         rateLimitPerMinute: '120',
+      },
+    });
+
+    expect(
+      draftFromEntry(
+        createEntry({
+          type: 'mapGeocoding',
+          config: {
+            provider: 'geoapify',
+            styleUrl: 'https://tiles.example/styles/basic',
+            autocompleteEnabled: true,
+            geocodeEnabled: true,
+            reverseGeocodeEnabled: false,
+            suggestEndpoint: 'https://host.example/suggest',
+            geocodeEndpoint: 'https://host.example/geocode',
+            reverseGeocodeEndpoint: 'https://host.example/reverse',
+            requestTimeoutMs: '2500',
+            rateLimitPerMinute: '90',
+            killSwitchEnabled: false,
+          },
+        })
+      )
+    ).toEqual({
+      type: 'mapGeocoding',
+      name: 'Entry',
+      enabled: true,
+      config: {
+        provider: 'geoapify',
+        styleUrl: 'https://tiles.example/styles/basic',
+        autocompleteEnabled: true,
+        geocodeEnabled: true,
+        reverseGeocodeEnabled: false,
+        suggestEndpoint: 'https://host.example/suggest',
+        geocodeEndpoint: 'https://host.example/geocode',
+        reverseGeocodeEndpoint: 'https://host.example/reverse',
+        requestTimeoutMs: '2500',
+        rateLimitPerMinute: '90',
+        killSwitchEnabled: false,
+        apiKey: '',
       },
     });
   });

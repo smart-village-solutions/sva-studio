@@ -123,3 +123,19 @@ export const logUnexpectedMiddlewareError = (request: Request, error: unknown): 
     reason_code: 'auth_resolution_failed',
   });
 };
+
+export const logProtectedHandlerError = (request: Request, error: unknown): Response => {
+  const logContext = buildLogContext(undefined, { includeTraceId: true });
+
+  logger.error('Authenticated handler failed unexpectedly', {
+    endpoint: request.url,
+    operation: 'auth_middleware',
+    error_type: error instanceof Error ? error.constructor.name : typeof error,
+    error_message: error instanceof Error ? error.message : String(error),
+    ...logContext,
+  });
+
+  return createApiError(500, 'internal_error', 'Interner Verarbeitungsfehler.', logContext.request_id, {
+    reason_code: 'authenticated_handler_failed',
+  });
+};

@@ -116,6 +116,8 @@ export const InterfaceForm = ({ draft, isSaving, onChange, onCancel, onSubmit }:
       <MainserverFields draft={draft} onChange={onChange} />
     ) : draft.type === 's3' ? (
       <S3Fields draft={draft} onChange={onChange} />
+    ) : draft.type === 'mapGeocoding' ? (
+      <MapGeocodingFields draft={draft} onChange={onChange} />
     ) : draft.type === 'mailTransport' ? (
       <MailTransportFields draft={draft} onChange={onChange} />
     ) : (
@@ -476,6 +478,156 @@ const MailTransportFields = ({
           value={draft.config.maxBatchSize}
           onChange={(event) => updateConfig({ maxBatchSize: event.currentTarget.value })}
         />
+      </div>
+    </>
+  );
+};
+
+const MapGeocodingFields = ({
+  draft,
+  onChange,
+}: {
+  draft: Extract<InstanceInterfaceDraft, { type: 'mapGeocoding' }>;
+  onChange: (next: InstanceInterfaceDraft) => void;
+}) => {
+  const updateConfig = (
+    patch: Partial<Extract<InstanceInterfaceDraft, { type: 'mapGeocoding' }>['config']>
+  ) => {
+    onChange({
+      ...draft,
+      config: {
+        ...draft.config,
+        ...patch,
+      },
+    });
+  };
+
+  return (
+    <>
+      <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="map-provider">{t('interfaces.forms.mapGeocoding.provider')}</Label>
+          <select
+            id="map-provider"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={draft.config.provider}
+            onChange={(event) =>
+              updateConfig({
+                provider: event.currentTarget.value as typeof draft.config.provider,
+              })
+            }
+          >
+            <option value="geoapify">Geoapify</option>
+            <option value="custom">{t('interfaces.forms.mapGeocoding.providerOptions.custom')}</option>
+          </select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="map-style-url">{t('interfaces.forms.mapGeocoding.styleUrl')}</Label>
+          <Input
+            id="map-style-url"
+            type="url"
+            value={draft.config.styleUrl}
+            onChange={(event) => updateConfig({ styleUrl: event.currentTarget.value })}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="map-suggest-endpoint">{t('interfaces.forms.mapGeocoding.suggestEndpoint')}</Label>
+          <Input
+            id="map-suggest-endpoint"
+            type="url"
+            value={draft.config.suggestEndpoint}
+            onChange={(event) => updateConfig({ suggestEndpoint: event.currentTarget.value })}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="map-geocode-endpoint">{t('interfaces.forms.mapGeocoding.geocodeEndpoint')}</Label>
+          <Input
+            id="map-geocode-endpoint"
+            type="url"
+            value={draft.config.geocodeEndpoint}
+            onChange={(event) => updateConfig({ geocodeEndpoint: event.currentTarget.value })}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="map-reverse-endpoint">{t('interfaces.forms.mapGeocoding.reverseGeocodeEndpoint')}</Label>
+          <Input
+            id="map-reverse-endpoint"
+            type="url"
+            value={draft.config.reverseGeocodeEndpoint}
+            onChange={(event) => updateConfig({ reverseGeocodeEndpoint: event.currentTarget.value })}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="map-api-key">{t('interfaces.forms.mapGeocoding.apiKey')}</Label>
+          <Input
+            id="map-api-key"
+            type="password"
+            value={draft.config.apiKey}
+            onChange={(event) => updateConfig({ apiKey: event.currentTarget.value })}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="map-timeout">{t('interfaces.forms.mapGeocoding.requestTimeoutMs')}</Label>
+          <Input
+            id="map-timeout"
+            inputMode="numeric"
+            value={draft.config.requestTimeoutMs}
+            onChange={(event) => updateConfig({ requestTimeoutMs: event.currentTarget.value })}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="map-rate-limit">{t('interfaces.forms.mapGeocoding.rateLimitPerMinute')}</Label>
+          <Input
+            id="map-rate-limit"
+            inputMode="numeric"
+            value={draft.config.rateLimitPerMinute}
+            onChange={(event) => updateConfig({ rateLimitPerMinute: event.currentTarget.value })}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <Label htmlFor="map-autocomplete-enabled" className="flex items-center gap-3">
+          <Checkbox
+            id="map-autocomplete-enabled"
+            checked={draft.config.autocompleteEnabled}
+            onChange={(event) => updateConfig({ autocompleteEnabled: event.currentTarget.checked })}
+          />
+          <span>{t('interfaces.forms.mapGeocoding.autocompleteEnabled')}</span>
+        </Label>
+        <Label htmlFor="map-geocode-enabled" className="flex items-center gap-3">
+          <Checkbox
+            id="map-geocode-enabled"
+            checked={draft.config.geocodeEnabled}
+            onChange={(event) => updateConfig({ geocodeEnabled: event.currentTarget.checked })}
+          />
+          <span>{t('interfaces.forms.mapGeocoding.geocodeEnabled')}</span>
+        </Label>
+        <Label htmlFor="map-reverse-enabled" className="flex items-center gap-3">
+          <Checkbox
+            id="map-reverse-enabled"
+            checked={draft.config.reverseGeocodeEnabled}
+            onChange={(event) => updateConfig({ reverseGeocodeEnabled: event.currentTarget.checked })}
+          />
+          <span>{t('interfaces.forms.mapGeocoding.reverseGeocodeEnabled')}</span>
+        </Label>
+        <Label htmlFor="map-kill-switch-enabled" className="flex items-center gap-3">
+          <Checkbox
+            id="map-kill-switch-enabled"
+            checked={draft.config.killSwitchEnabled}
+            onChange={(event) => updateConfig({ killSwitchEnabled: event.currentTarget.checked })}
+          />
+          <span>{t('interfaces.forms.mapGeocoding.killSwitchEnabled')}</span>
+        </Label>
       </div>
     </>
   );

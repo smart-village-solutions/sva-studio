@@ -2,75 +2,10 @@ import type {
   SvaMainserverAddressInput,
   SvaMainserverCategoryInput,
   SvaMainserverContactInput,
+  SvaMainserverLocationInput,
   SvaMainserverWebUrlInput,
 } from '../types.js';
-
-export type ParsedValue<T> = T | Response;
-
-export type RouteMatch<ContentKind extends string> =
-  | { readonly kind: 'collection'; readonly contentKind: ContentKind }
-  | { readonly kind: 'item'; readonly contentKind: ContentKind; readonly itemId: string };
-
-export const json = (body: unknown, status = 200): Response =>
-  Response.json(body, {
-    status,
-    headers: {
-      'Cache-Control': 'no-store',
-    },
-  });
-
-export const errorJson = (status: number, error: string, message: string): Response =>
-  json({ error, message }, status);
-
-const decodePathSegment = (value: string): string | null => {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return null;
-  }
-};
-
-export const matchRequestRoute = <ContentKind extends string>(
-  request: Request,
-  collectionPath: string,
-  contentKind: ContentKind
-): RouteMatch<ContentKind> | null => {
-  const pathname = new URL(request.url).pathname;
-  if (pathname === collectionPath) {
-    return { kind: 'collection', contentKind };
-  }
-
-  const prefix = `${collectionPath}/`;
-  if (pathname.startsWith(prefix)) {
-    const itemId = decodePathSegment(pathname.slice(prefix.length));
-    if (itemId !== null && itemId.length > 0 && itemId.includes('/') === false) {
-      return { kind: 'item', contentKind, itemId };
-    }
-  }
-
-  return null;
-};
-
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && Array.isArray(value) === false;
-
-export const isResponse = <T>(value: ParsedValue<T>): value is Response => value instanceof Response;
-
-export const readString = (value: unknown): string | undefined =>
-  typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
-
-export const readBoolean = (value: unknown): boolean | undefined => (typeof value === 'boolean' ? value : undefined);
-
-export const readNumber = (value: unknown): number | undefined => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === 'string' && value.trim().length > 0) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }
-  return undefined;
-};
+import { errorJson, isRecord, readNumber, readString } from './content-route-core.js';
 
 const isHttpsUrl = (value: string): boolean => {
   try {
@@ -80,12 +15,38 @@ const isHttpsUrl = (value: string): boolean => {
   }
 };
 
-export const parseJsonObjectBody = async (
-  request: Request,
-  message: string
-): Promise<Record<string, unknown> | Response> => {
-  const body = (await request.json().catch(() => null)) as unknown;
-  return isRecord(body) ? body : errorJson(400, 'invalid_request', message);
+type ParseAddressOptions = {
+  readonly requireGeoLocationObjectMessage?: string;
+};
+
+const readGeoLocation = (
+  value: Record<string, unknown>,
+  options?: ParseAddressOptions,
+): { readonly latitude?: number; readonly longitude?: number } | Response => {
+  const { geoLocation } = value;
+  if (geoLocation === undefined || geoLocation === null) {
+    return {};
+  }
+  if (isRecord(geoLocation) === false) {
+    return options?.requireGeoLocationObjectMessage
+      ? errorJson(400, 'invalid_request', options.requireGeoLocationObjectMessage)
+      : {};
+  }
+
+  const latitude = readNumber(geoLocation.latitude);
+  const longitude = readNumber(geoLocation.longitude);
+  if (
+    latitude === undefined ||
+    longitude === undefined ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    return errorJson(400, 'invalid_request', 'Geo-Koordinaten sind ungültig.');
+  }
+
+  return { latitude, longitude };
 };
 
 export const parseWebUrl = (value: unknown): SvaMainserverWebUrlInput | Response | undefined => {
@@ -112,6 +73,7 @@ export const parseWebUrls = (value: unknown): readonly SvaMainserverWebUrlInput[
   if (!Array.isArray(value)) {
     return errorJson(400, 'invalid_request', 'URLs müssen als Liste gesendet werden.');
   }
+
   const urls: SvaMainserverWebUrlInput[] = [];
   for (const item of value) {
     const parsed = parseWebUrl(item);
@@ -133,7 +95,8 @@ export const parseCategories = (value: unknown): readonly SvaMainserverCategoryI
     return errorJson(400, 'invalid_request', 'Kategorien müssen als Liste gesendet werden.');
   }
 
-  const parseCategory = (item: unknown): SvaMainserverCategoryInput | Response => {
+  const categories: SvaMainserverCategoryInput[] = [];
+  for (const item of value) {
     if (!isRecord(item)) {
       return errorJson(400, 'invalid_request', 'Kategorien müssen Objekte sein.');
     }
@@ -145,64 +108,18 @@ export const parseCategories = (value: unknown): readonly SvaMainserverCategoryI
     if (children instanceof Response) {
       return children;
     }
-    return {
+    categories.push({
       name,
       ...(isRecord(item.payload) ? { payload: item.payload } : {}),
       ...(children ? { children } : {}),
-    };
-  };
-
-  const categories: SvaMainserverCategoryInput[] = [];
-  for (const item of value) {
-    const category = parseCategory(item);
-    if (category instanceof Response) {
-      return category;
-    }
-    categories.push(category);
+    });
   }
   return categories;
 };
 
-type ParseAddressOptions = {
-  readonly requireGeoLocationObjectMessage?: string;
-};
-
-const readGeoLocation = (
-  value: Record<string, unknown>,
-  options?: ParseAddressOptions
-): { readonly latitude?: number; readonly longitude?: number } | Response => {
-  const { geoLocation } = value;
-
-  if (geoLocation === undefined || geoLocation === null) {
-    return {};
-  }
-
-  if (isRecord(geoLocation) === false) {
-    return options?.requireGeoLocationObjectMessage
-      ? errorJson(400, 'invalid_request', options.requireGeoLocationObjectMessage)
-      : {};
-  }
-
-  const latitude = readNumber(geoLocation.latitude);
-  const longitude = readNumber(geoLocation.longitude);
-  const hasInvalidRange =
-    latitude === undefined ||
-    longitude === undefined ||
-    latitude < -90 ||
-    latitude > 90 ||
-    longitude < -180 ||
-    longitude > 180;
-
-  if (hasInvalidRange) {
-    return errorJson(400, 'invalid_request', 'Geo-Koordinaten sind ungültig.');
-  }
-
-  return { latitude, longitude };
-};
-
 export const parseAddress = (
   value: unknown,
-  options?: ParseAddressOptions
+  options?: ParseAddressOptions,
 ): SvaMainserverAddressInput | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
@@ -235,6 +152,7 @@ export const parseAddressList = (value: unknown): readonly SvaMainserverAddressI
   if (!Array.isArray(value)) {
     return errorJson(400, 'invalid_request', 'Adressen müssen als Liste gesendet werden.');
   }
+
   const addresses: SvaMainserverAddressInput[] = [];
   for (const item of value) {
     const parsed = parseAddress(item);
@@ -259,6 +177,7 @@ export const parseContact = (value: unknown): SvaMainserverContactInput | Respon
   if (webUrls instanceof Response) {
     return webUrls;
   }
+
   return {
     ...(readString(value.firstName) ? { firstName: readString(value.firstName) } : {}),
     ...(readString(value.lastName) ? { lastName: readString(value.lastName) } : {}),
@@ -277,4 +196,30 @@ export const parseTags = (value: unknown): readonly string[] | Response | undefi
     return errorJson(400, 'invalid_request', 'Tags müssen als Liste gesendet werden.');
   }
   return value.map(readString).filter((tag): tag is string => Boolean(tag));
+};
+
+export const parseLocation = (value: unknown): SvaMainserverLocationInput | Response | undefined => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!isRecord(value)) {
+    return errorJson(400, 'invalid_request', 'Ortsdaten müssen als Objekt gesendet werden.');
+  }
+  const geoLocation = readGeoLocation(value, {
+    requireGeoLocationObjectMessage: 'Geo-Koordinaten müssen als Objekt gesendet werden.',
+  });
+  if (geoLocation instanceof Response) {
+    return geoLocation;
+  }
+
+  return {
+    ...(readString(value.name) ? { name: readString(value.name) } : {}),
+    ...(readString(value.department) ? { department: readString(value.department) } : {}),
+    ...(readString(value.district) ? { district: readString(value.district) } : {}),
+    ...(readString(value.regionName) ? { regionName: readString(value.regionName) } : {}),
+    ...(readString(value.state) ? { state: readString(value.state) } : {}),
+    ...(geoLocation.latitude !== undefined && geoLocation.longitude !== undefined
+      ? { geoLocation: { latitude: geoLocation.latitude, longitude: geoLocation.longitude } }
+      : {}),
+  };
 };

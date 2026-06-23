@@ -1,3 +1,7 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { describe, expect, it } from 'vitest';
 
 import type {
@@ -75,6 +79,18 @@ const createExecutor = (rows: readonly Record<string, unknown>[] = []) => {
 };
 
 describe('external interface repository (data package coverage)', () => {
+  it('registers the map geocoding host type in IAM migrations', () => {
+    const currentDir = dirname(fileURLToPath(import.meta.url));
+    const migrationsDir = join(currentDir, '../../migrations');
+    const migrationSql = readdirSync(migrationsDir)
+      .filter((entry) => entry.endsWith('.sql'))
+      .sort()
+      .map((entry) => readFileSync(join(migrationsDir, entry), 'utf8'))
+      .join('\n');
+
+    expect(migrationSql).toContain("'map_geocoding'");
+  });
+
   it('maps interface type and instance rows', async () => {
     const { executor } = createExecutor([
       {

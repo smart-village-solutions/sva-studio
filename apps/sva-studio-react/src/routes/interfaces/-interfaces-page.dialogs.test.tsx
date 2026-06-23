@@ -34,6 +34,26 @@ const createMailTransportDraft = (): Extract<InstanceInterfaceDraft, { type: 'ma
   },
 });
 
+const createMapGeocodingDraft = (): Extract<InstanceInterfaceDraft, { type: 'mapGeocoding' }> => ({
+  type: 'mapGeocoding',
+  name: 'Karte & Geocoding',
+  enabled: true,
+  config: {
+    provider: 'geoapify',
+    styleUrl: 'https://tiles.example/styles/osm-bright',
+    autocompleteEnabled: true,
+    geocodeEnabled: true,
+    reverseGeocodeEnabled: true,
+    suggestEndpoint: 'https://host.example/suggest',
+    geocodeEndpoint: 'https://host.example/geocode',
+    reverseGeocodeEndpoint: 'https://host.example/reverse',
+    requestTimeoutMs: '3000',
+    rateLimitPerMinute: '60',
+    killSwitchEnabled: false,
+    apiKey: '',
+  },
+});
+
 describe('interfaces-page dialogs', () => {
   afterEach(() => {
     cleanup();
@@ -163,6 +183,47 @@ describe('interfaces-page dialogs', () => {
       3,
       expect.objectContaining({
         config: expect.objectContaining({ authMode: 'none' }),
+      })
+    );
+  });
+
+  it('updates map geocoding fields and toggles runtime flags without exposing secret reads', () => {
+    const onChange = vi.fn();
+
+    render(
+      <InterfaceForm
+        draft={createMapGeocodingDraft()}
+        isSaving={false}
+        onChange={onChange}
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText('Style-URL'), {
+      target: { value: 'https://tiles.example/styles/editorial' },
+    });
+    fireEvent.change(screen.getByLabelText('API-Key'), {
+      target: { value: 'geoapify-secret' },
+    });
+    fireEvent.click(screen.getByLabelText('Kill-Switch aktivieren'));
+
+    expect(onChange).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        config: expect.objectContaining({ styleUrl: 'https://tiles.example/styles/editorial' }),
+      })
+    );
+    expect(onChange).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        config: expect.objectContaining({ apiKey: 'geoapify-secret' }),
+      })
+    );
+    expect(onChange).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        config: expect.objectContaining({ killSwitchEnabled: true }),
       })
     );
   });

@@ -324,3 +324,9 @@ Referenzen:
 - Zielbild: Auth-Session-Cookies werden auf die Parent-Domain gesetzt, um SSO über Instanz-Subdomains zu ermöglichen; aktuell sind gemäß ADR-020 host-only-Cookies umgesetzt (Folgearbeit: Parent-Domain-Cookie-Scoping implementieren und verifizieren).
 - Entrypoint-basierte Secret-Injektion muss abwärtskompatibel sein (No-Op ohne `/run/secrets/`).
 - Rolling Updates (`start-first`) dürfen keine Downtime verursachen; Healthchecks müssen vor dem Routing-Start grün sein.
+
+### Ergänzung 2026-06: Qualitätsziele POI-Voll-Editor
+
+- `plugin-poi` muss Roundtrip-Mapping, Bereichsvalidierung, Reverse-Geocode-Unterstützung und Host-Media-Referenzpersistenz über Unit-Tests explizit abdecken.
+- `plugin-sdk`-Clients für Geocoding und Media-Upload müssen deterministische HTTP- und Signed-Upload-Fehler stabil serialisieren.
+- Bei Vertragsänderungen bleiben `pnpm nx affected --target=test:types --base=origin/main` und `pnpm check:server-runtime` verpflichtende Gates.

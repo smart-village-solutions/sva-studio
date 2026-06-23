@@ -1,4 +1,4 @@
-export { DEFAULT_LOCALE, i18nResources, mergeI18nResources, type SupportedLocale } from './resources';
+export { DEFAULT_LOCALE, i18nResources, mergeI18nResources, resetMergedI18nResources, type SupportedLocale } from './resources';
 export {
   createTranslator,
   getActiveLocale,

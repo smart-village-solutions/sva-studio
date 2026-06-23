@@ -161,11 +161,11 @@ export function PoiListPage() {
   );
 }
 
-export function PoiCreatePage() {
-  return <PoiDetailPage mode="create" />;
+export function PoiCreatePage({ instanceId }: Readonly<{ instanceId?: string }> = {}) {
+  return <PoiDetailPage mode="create" instanceId={instanceId} />;
 }
 
-export function PoiEditPage() {
+export function PoiEditPage({ instanceId }: Readonly<{ instanceId?: string }> = {}) {
   const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
-  return <PoiDetailPage mode="edit" contentId={params.contentId ?? params.id} />;
+  return <PoiDetailPage mode="edit" contentId={params.contentId ?? params.id} instanceId={instanceId} />;
 }

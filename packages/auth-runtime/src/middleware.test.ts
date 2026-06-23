@@ -383,4 +383,27 @@ describe('auth-runtime withAuthenticatedUser', () => {
       { returnTo: '/api/v1/iam/users/me/profile?tab=account' }
     );
   });
+
+  it('maps downstream handler errors to a structured 500 response without logging them as auth resolution failures', async () => {
+    const request = new Request('http://localhost/api/v1/iam/map-geocoding/geocode', {
+      headers: { cookie: 'sva_auth_session=session-2' },
+    });
+
+    const response = await withAuthenticatedUser(request, async () => {
+      throw new Error('no_result');
+    });
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'internal_error',
+        message: 'Interner Verarbeitungsfehler.',
+      },
+    });
+
+    expect(middlewareLogger.error).not.toHaveBeenCalledWith(
+      'Auth middleware failed unexpectedly',
+      expect.anything(),
+    );
+  });
 });

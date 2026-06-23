@@ -1,4 +1,8 @@
-export type PoiDetailTabId = 'basis' | 'content' | 'settings' | 'history';
+export type PoiDetailTabId =
+  | 'basis'
+  | 'content'
+  | 'settings'
+  | 'history';
 
 export type PoiDetailTabDefinition = Readonly<{
   id: PoiDetailTabId;

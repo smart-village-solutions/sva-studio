@@ -19,7 +19,6 @@ import { ThemeProvider } from '../providers/theme-provider';
 import { t } from '../i18n';
 
 import appCssHref from '../styles.css?url';
-import appCssText from '../styles.css?inline';
 
 const tanstackDevtoolsEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_TANSTACK_DEVTOOLS === 'true';
 const playwrightDevRuntimeDisabled = import.meta.env.VITE_PLAYWRIGHT_TEST === 'true';
@@ -57,7 +56,12 @@ export const getRootHead = () => ({
     },
   ],
   links: import.meta.env.DEV
-    ? []
+    ? [
+        {
+          rel: 'stylesheet',
+          href: appCssHref,
+        },
+      ]
     : [
         {
           rel: 'stylesheet',
@@ -123,7 +127,6 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
       <head>
         <HeadContent />
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} data-theme-bootstrap="true" />
-        {import.meta.env.DEV ? <style dangerouslySetInnerHTML={{ __html: appCssText }} data-app-styles="true" /> : null}
       </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground antialiased" suppressHydrationWarning>
         <AuthProvider>

@@ -29,6 +29,13 @@ export {
 } from './dialog.js';
 export { Input } from './input.js';
 export {
+  RichTextHtmlEditor,
+  type RichTextBlockTypeOption,
+  type RichTextBlockTypeValue,
+  type RichTextHtmlEditorToolbarLabels,
+  type RichTextHtmlEditorProps,
+} from './rich-text-html-editor.js';
+export {
   MediaReferenceField,
   type MediaReferenceFieldOption,
   type MediaReferenceFieldProps,

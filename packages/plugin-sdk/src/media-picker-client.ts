@@ -1,8 +1,10 @@
 export type HostMediaAssetListItem = Readonly<{
   id: string;
+  fileName?: string;
   metadata?: Readonly<Record<string, unknown>>;
   visibility?: string;
   mimeType?: string;
+  previewUrl?: string | null;
 }>;
 
 export type HostMediaReferenceSelection = Readonly<{
@@ -47,6 +49,7 @@ export const listHostMediaAssets = async (input: {
   readonly fetch: FetchLike;
   readonly search?: string;
   readonly visibility?: 'public' | 'protected';
+  readonly instanceId?: string;
 }): Promise<readonly HostMediaAssetListItem[]> => {
   const searchParams = new URLSearchParams();
   if (input.search) {
@@ -54,6 +57,9 @@ export const listHostMediaAssets = async (input: {
   }
   if (input.visibility) {
     searchParams.set('visibility', input.visibility);
+  }
+  if (input.instanceId) {
+    searchParams.set('instanceId', input.instanceId);
   }
 
   const response = await requestJson<{ data: readonly HostMediaAssetListItem[] }>({
@@ -67,11 +73,15 @@ export const listHostMediaReferencesByTarget = async (input: {
   readonly fetch: FetchLike;
   readonly targetType: string;
   readonly targetId: string;
+  readonly instanceId?: string;
 }): Promise<readonly HostMediaReferenceSelection[]> => {
   const searchParams = new URLSearchParams({
     targetType: input.targetType,
     targetId: input.targetId,
   });
+  if (input.instanceId) {
+    searchParams.set('instanceId', input.instanceId);
+  }
   const response = await requestJson<{ data: readonly HostMediaReferenceSelection[] }>({
     fetch: input.fetch,
     url: `/api/v1/iam/media/references?${searchParams.toString()}`,
@@ -84,6 +94,7 @@ export const replaceHostMediaReferences = async (input: {
   readonly targetType: string;
   readonly targetId: string;
   readonly references: readonly HostMediaReferenceSelection[];
+  readonly instanceId?: string;
 }): Promise<{
   readonly targetType: string;
   readonly targetId: string;
@@ -105,6 +116,7 @@ export const replaceHostMediaReferences = async (input: {
         'X-Requested-With': 'XMLHttpRequest',
       },
       body: JSON.stringify({
+        instanceId: input.instanceId,
         targetType: input.targetType,
         targetId: input.targetId,
         references: input.references,

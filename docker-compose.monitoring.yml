@@ -113,7 +113,7 @@ services:
     restart: unless-stopped
 
   promtail:
-    image: grafana/promtail:2.9.8
+    image: grafana/promtail@sha256:45d54f0ebd7a19acbcd4693a3227d84d27d98abe1dc7ea3068d31d5d02dbe696
     container_name: sva-studio-promtail
     environment:
       DOCKER_API_VERSION: "1.44"

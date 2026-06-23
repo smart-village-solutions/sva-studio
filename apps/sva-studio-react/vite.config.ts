@@ -214,6 +214,10 @@ const config = defineConfig({
         '../../packages/plugin-waste-management/src/waste-management.job-definitions.ts'
       ),
       '@sva/media': resolveAppPath('../../packages/media/src/index.ts'),
+      '@sva/plugin-categories': resolveAppPath('../../packages/plugin-categories/src/index.ts'),
+      '@sva/plugin-events': resolveAppPath('../../packages/plugin-events/src/index.ts'),
+      '@sva/plugin-news': resolveAppPath('../../packages/plugin-news/src/index.ts'),
+      '@sva/plugin-poi': resolveAppPath('../../packages/plugin-poi/src/index.ts'),
       '@sva/plugin-waste-management': resolveAppPath('../../packages/plugin-waste-management/src/index.ts'),
       '@sva/plugin-sdk': resolveAppPath('../../packages/plugin-sdk/src/index.ts'),
       '@sva/plugin-events/events.pages': resolveAppPath('../../packages/plugin-events/src/events.pages.tsx'),

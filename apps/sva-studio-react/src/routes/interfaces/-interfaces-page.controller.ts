@@ -20,6 +20,7 @@ export const DEFAULT_AVAILABLE_TYPES: readonly InstanceInterfaceType[] = [
   'mainserver',
   's3',
   'mailTransport',
+  'mapGeocoding',
 ];
 
 export const isInstanceInterfacesResponse = (
@@ -70,6 +71,14 @@ export const draftFromEntry = (entry: InstanceInterface): InstanceInterfaceDraft
       name: entry.name,
       enabled: entry.enabled,
       config: { ...entry.config, password: '' },
+    };
+  }
+  if (entry.type === 'mapGeocoding') {
+    return {
+      type: 'mapGeocoding',
+      name: entry.name,
+      enabled: entry.enabled,
+      config: { ...entry.config, apiKey: '' },
     };
   }
   return {

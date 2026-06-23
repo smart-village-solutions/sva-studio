@@ -19,10 +19,29 @@ import { buildExternalInterfaceSecretConfigAad, createSdkLogger } from '@sva/ser
 
 import type {
   InstanceInterfaceDraft,
+  InstanceInterfaceMapGeocoding,
   InstanceInterfaceMailTransport,
   InstanceInterfaceS3,
   InstanceInterfaceSupabase,
 } from './instance-interfaces';
+
+export type StoredMapGeocodingRuntimeConfig = Readonly<{
+  id: string;
+  instanceId: string;
+  enabled: boolean;
+  provider: 'geoapify' | 'custom';
+  styleUrl: string;
+  autocompleteEnabled: boolean;
+  geocodeEnabled: boolean;
+  reverseGeocodeEnabled: boolean;
+  suggestEndpoint: string;
+  geocodeEndpoint: string;
+  reverseGeocodeEndpoint: string;
+  requestTimeoutMs: string;
+  rateLimitPerMinute: string;
+  killSwitchEnabled: boolean;
+  apiKey?: string;
+}>;
 
 type StoredS3 = Omit<InstanceInterfaceS3, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>;
 type StoredSupabase = Omit<InstanceInterfaceSupabase, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>;
@@ -30,8 +49,12 @@ type StoredMailTransport = Omit<
   InstanceInterfaceMailTransport,
   'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
 >;
+type StoredMapGeocoding = Omit<
+  InstanceInterfaceMapGeocoding,
+  'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
+>;
 
-type StoredEntry = StoredS3 | StoredSupabase | StoredMailTransport;
+type StoredEntry = StoredS3 | StoredSupabase | StoredMailTransport | StoredMapGeocoding;
 type StoredInterfaceType = StoredEntry['type'];
 
 const logger = createSdkLogger({ component: 'instance-interfaces-server' });
@@ -75,7 +98,8 @@ const parseSecretConfig = (ciphertext: string | undefined, interfaceId: string):
 
 const mapStoredTypeToKey = (
   type: StoredInterfaceType
-): 's3' | 'supabase' | 'mail_transport' => (type === 'mailTransport' ? 'mail_transport' : type);
+): 's3' | 'supabase' | 'mail_transport' | 'map_geocoding' =>
+  type === 'mailTransport' ? 'mail_transport' : type === 'mapGeocoding' ? 'map_geocoding' : type;
 
 const coerceOptionalText = (value: unknown): string =>
   typeof value === 'string' ? value : '';
@@ -175,6 +199,41 @@ const mapRecordToStoredEntry = (record: ExternalInterfaceRecord): PersistedStore
         defaultReplyToEmail: coerceOptionalText(record.publicConfig.defaultReplyToEmail),
         maxBatchSize: coerceOptionalNumberString(record.publicConfig.maxBatchSize),
         rateLimitPerMinute: coerceOptionalNumberString(record.publicConfig.rateLimitPerMinute),
+      },
+      createdAt,
+      updatedAt,
+      visibleStatus: record.visibleStatus,
+      lastCheckedAt: record.lastCheckedAt,
+      lastCheckErrorCode: record.lastCheckErrorCode,
+      lastCheckErrorMessage: record.lastCheckErrorMessage,
+    };
+  }
+
+  if (record.typeKey === 'map_geocoding') {
+    return {
+      id: record.id,
+      instanceId: record.instanceId,
+      type: 'mapGeocoding',
+      name: record.displayName,
+      enabled: record.enabled,
+      config: {
+        provider: coerceText(record.publicConfig.provider) === 'custom' ? 'custom' : 'geoapify',
+        styleUrl: coerceText(record.publicConfig.styleUrl),
+        autocompleteEnabled: coerceBoolean(record.publicConfig.autocompleteEnabled),
+        geocodeEnabled: coerceBoolean(record.publicConfig.geocodeEnabled),
+        reverseGeocodeEnabled: coerceBoolean(record.publicConfig.reverseGeocodeEnabled),
+        suggestEndpoint: coerceText(record.publicConfig.suggestEndpoint),
+        geocodeEndpoint: coerceText(record.publicConfig.geocodeEndpoint),
+        reverseGeocodeEndpoint: coerceText(record.publicConfig.reverseGeocodeEndpoint),
+        requestTimeoutMs:
+          typeof record.publicConfig.requestTimeoutMs === 'string'
+            ? record.publicConfig.requestTimeoutMs
+            : coerceOptionalNumberString(record.publicConfig.requestTimeoutMs),
+        rateLimitPerMinute:
+          typeof record.publicConfig.rateLimitPerMinute === 'string'
+            ? record.publicConfig.rateLimitPerMinute
+            : coerceOptionalNumberString(record.publicConfig.rateLimitPerMinute),
+        killSwitchEnabled: coerceBoolean(record.publicConfig.killSwitchEnabled),
       },
       createdAt,
       updatedAt,
@@ -339,6 +398,20 @@ const trimToUndefined = (value: string): string | undefined => {
   return trimmed ? trimmed : undefined;
 };
 
+const isValidAbsoluteHttpUrl = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 const isObviouslyUrlLikeMailHost = (value: string): boolean => {
   const trimmed = value.trim();
   return trimmed.includes('://') || trimmed.includes('/') || trimmed.includes('?') || trimmed.includes('#');
@@ -463,9 +536,110 @@ const buildMailTransportRecord = (input: {
   };
 };
 
+const buildMapGeocodingRecord = (input: {
+  readonly instanceId: string;
+  readonly draft: Extract<InstanceInterfaceDraft, { type: 'mapGeocoding' }>;
+  readonly interfaceId: string;
+  readonly existing: ExternalInterfaceRecord | null;
+  readonly hasDefaultRecord: boolean;
+  readonly previousSecrets: Record<string, string>;
+}): ExternalInterfaceRecord => {
+  const existingPublicConfig = { ...(input.existing?.publicConfig ?? {}) };
+  const styleUrl = input.draft.config.styleUrl.trim();
+  const suggestEndpoint = input.draft.config.suggestEndpoint.trim();
+  const geocodeEndpoint = input.draft.config.geocodeEndpoint.trim();
+  const reverseGeocodeEndpoint = input.draft.config.reverseGeocodeEndpoint.trim();
+  const timeoutMs = parseOptionalPositiveInteger(input.draft.config.requestTimeoutMs);
+  const rateLimitPerMinute = parseOptionalPositiveInteger(input.draft.config.rateLimitPerMinute);
+  const nextApiKey = input.draft.config.apiKey.trim() || input.previousSecrets.apiKey || '';
+
+  for (const key of [
+    'provider',
+    'styleUrl',
+    'autocompleteEnabled',
+    'geocodeEnabled',
+    'reverseGeocodeEnabled',
+    'suggestEndpoint',
+    'geocodeEndpoint',
+    'reverseGeocodeEndpoint',
+    'requestTimeoutMs',
+    'rateLimitPerMinute',
+    'killSwitchEnabled',
+  ] as const) {
+    delete existingPublicConfig[key];
+  }
+
+  if (!input.draft.name.trim() || !isValidAbsoluteHttpUrl(styleUrl)) {
+    throw new Error('invalid_config');
+  }
+
+  if (!input.existing && input.hasDefaultRecord) {
+    throw new Error('invalid_config');
+  }
+
+  const hasEnabledOperation =
+    input.draft.config.autocompleteEnabled ||
+    input.draft.config.geocodeEnabled ||
+    input.draft.config.reverseGeocodeEnabled;
+
+  if (
+    input.draft.config.provider === 'custom' &&
+    ((input.draft.config.autocompleteEnabled && !isValidAbsoluteHttpUrl(suggestEndpoint)) ||
+      (input.draft.config.geocodeEnabled && !isValidAbsoluteHttpUrl(geocodeEndpoint)) ||
+      (input.draft.config.reverseGeocodeEnabled && !isValidAbsoluteHttpUrl(reverseGeocodeEndpoint)))
+  ) {
+    throw new Error('invalid_config');
+  }
+
+  if (input.draft.config.provider === 'geoapify' && hasEnabledOperation && !nextApiKey.trim()) {
+    throw new Error('invalid_config');
+  }
+
+  return {
+    id: input.interfaceId,
+    instanceId: input.instanceId,
+    typeKey: 'map_geocoding',
+    ownerKind: 'host',
+    ownerId: 'host',
+    displayName: input.draft.name.trim(),
+    alias: input.existing?.alias ?? input.interfaceId,
+    enabled: input.draft.enabled,
+    isDefault: input.existing?.isDefault ?? !input.hasDefaultRecord,
+    category: 'api',
+    baseUrl: suggestEndpoint || geocodeEndpoint || reverseGeocodeEndpoint || styleUrl,
+    authMode: 'api_key',
+    publicConfig: {
+      ...existingPublicConfig,
+      provider: input.draft.config.provider,
+      styleUrl,
+      autocompleteEnabled: input.draft.config.autocompleteEnabled,
+      geocodeEnabled: input.draft.config.geocodeEnabled,
+      reverseGeocodeEnabled: input.draft.config.reverseGeocodeEnabled,
+      suggestEndpoint,
+      geocodeEndpoint,
+      reverseGeocodeEndpoint,
+      ...(timeoutMs !== undefined ? { requestTimeoutMs: timeoutMs } : {}),
+      ...(rateLimitPerMinute !== undefined ? { rateLimitPerMinute } : {}),
+      killSwitchEnabled: input.draft.config.killSwitchEnabled,
+    },
+    secretConfigCiphertext: buildSecretCiphertext({
+      interfaceId: input.interfaceId,
+      secretConfig: nextApiKey.trim() ? { apiKey: nextApiKey.trim() } : {},
+    }),
+    statusCheckKind: 'map_geocoding',
+    visibleStatus: resolveVisibleStatus(input.draft.enabled, input.existing?.visibleStatus),
+    lastCheckedAt: input.existing?.lastCheckedAt,
+    lastCheckStatus: input.existing?.lastCheckStatus,
+    lastCheckErrorCode: input.existing?.lastCheckErrorCode,
+    lastCheckErrorMessage: input.existing?.lastCheckErrorMessage,
+    createdAt: input.existing?.createdAt,
+    updatedAt: input.existing?.updatedAt,
+  };
+};
+
 const buildRecordFromDraft = async (input: {
   readonly instanceId: string;
-  readonly draft: Extract<InstanceInterfaceDraft, { type: 's3' | 'supabase' | 'mailTransport' }>;
+  readonly draft: Extract<InstanceInterfaceDraft, { type: 's3' | 'supabase' | 'mailTransport' | 'mapGeocoding' }>;
   readonly existingId?: string;
 }): Promise<ExternalInterfaceRecord> => {
   logger.info('Building external interface record from draft', {
@@ -478,7 +652,9 @@ const buildRecordFromDraft = async (input: {
         ? input.draft.config.secretAccessKey.length > 0
         : input.draft.type === 'supabase'
           ? input.draft.config.databaseUrl.length > 0 || input.draft.config.serviceRoleKey.length > 0
-          : input.draft.config.password.length > 0,
+          : input.draft.type === 'mailTransport'
+            ? input.draft.config.password.length > 0
+            : input.draft.config.apiKey.length > 0,
   });
   const existing = input.existingId
     ? await loadExternalInterfaceRecordById(input.instanceId, input.existingId)
@@ -536,7 +712,9 @@ const buildRecordFromDraft = async (input: {
     ? buildS3Record({ ...sharedInput, draft: input.draft })
     : input.draft.type === 'supabase'
       ? buildSupabaseRecord({ ...sharedInput, draft: input.draft })
-      : buildMailTransportRecord({ ...sharedInput, draft: input.draft });
+      : input.draft.type === 'mailTransport'
+        ? buildMailTransportRecord({ ...sharedInput, draft: input.draft })
+        : buildMapGeocodingRecord({ ...sharedInput, draft: input.draft });
 };
 
 export const isCustomInterfaceStorageAvailable = (): boolean => true;
@@ -620,6 +798,40 @@ export const getStoredInterface = async (instanceId: string, id: string): Promis
   return record ? mapRecordToStoredEntry(record) : null;
 };
 
+export const loadStoredMapGeocodingRuntimeConfig = async (
+  instanceId: string
+): Promise<StoredMapGeocodingRuntimeConfig | null> => {
+  const record = await loadDefaultExternalInterfaceRecord(instanceId, 'map_geocoding');
+  if (!record || record.typeKey !== 'map_geocoding') {
+    return null;
+  }
+
+  const entry = mapRecordToStoredEntry(record);
+  if (!entry || entry.type !== 'mapGeocoding') {
+    return null;
+  }
+
+  const secrets = parseSecretConfig(record.secretConfigCiphertext, record.id);
+
+  return {
+    id: entry.id,
+    instanceId: entry.instanceId,
+    enabled: entry.enabled,
+    provider: entry.config.provider,
+    styleUrl: entry.config.styleUrl,
+    autocompleteEnabled: entry.config.autocompleteEnabled,
+    geocodeEnabled: entry.config.geocodeEnabled,
+    reverseGeocodeEnabled: entry.config.reverseGeocodeEnabled,
+    suggestEndpoint: entry.config.suggestEndpoint,
+    geocodeEndpoint: entry.config.geocodeEndpoint,
+    reverseGeocodeEndpoint: entry.config.reverseGeocodeEndpoint,
+    requestTimeoutMs: entry.config.requestTimeoutMs,
+    rateLimitPerMinute: entry.config.rateLimitPerMinute,
+    killSwitchEnabled: entry.config.killSwitchEnabled,
+    ...(secrets.apiKey ? { apiKey: secrets.apiKey } : {}),
+  };
+};
+
 export type InterfaceHealthResult = Readonly<{
   status: 'connected' | 'error' | 'disabled' | 'unknown';
   statusMessage?: string;
@@ -682,6 +894,28 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
     return {
       status: 'unknown',
       statusMessage: 'Statusprüfung für Mail-Transporte ist noch nicht verfügbar.',
+      checkedAt,
+    };
+  }
+
+  if (entry.type === 'mapGeocoding') {
+    if (!entry.config.styleUrl) {
+      return {
+        status: 'error',
+        statusMessage: 'Karten-/Geocoding-Konfiguration unvollständig (Style-URL erforderlich).',
+        checkedAt,
+      };
+    }
+    if (entry.config.killSwitchEnabled) {
+      return {
+        status: 'disabled',
+        statusMessage: 'Karten-/Geocoding-Schnittstelle wurde per Kill-Switch deaktiviert.',
+        checkedAt,
+      };
+    }
+    return {
+      status: 'unknown',
+      statusMessage: 'Statusprüfung für Karten-/Geocoding-Schnittstellen ist noch nicht verfügbar.',
       checkedAt,
     };
   }

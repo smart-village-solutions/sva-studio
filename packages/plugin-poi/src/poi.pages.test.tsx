@@ -26,14 +26,15 @@ vi.mock('@sva/plugin-sdk', () => ({
   listHostMediaAssets: listHostMediaAssetsMock,
   listHostMediaReferencesByTarget: vi.fn(),
   replaceHostMediaReferences: vi.fn(),
+  uploadHostMediaFile: vi.fn(),
   toHostMediaFieldOptions: (assets: readonly { assetId: string; label: string }[]) => assets,
   usePluginTranslation: () => (key: string) => key,
 }));
 
 vi.mock('./plugin.js', () => ({
   pluginPoiMediaPickers: {
-    teaserImage: {
-      roles: ['teaser'],
+    images: {
+      roles: ['attachment_image'],
     },
   },
 }));
@@ -48,6 +49,10 @@ vi.mock('./poi.api.js', () => ({
 }));
 
 describe('PoiCreatePage', () => {
+  const switchSection = (value: string) => {
+    fireEvent.change(screen.getByLabelText('tabs.mobileLabel'), { target: { value } });
+  };
+
   beforeEach(() => {
     navigateMock.mockReset();
     createPoiMock.mockReset();
@@ -65,7 +70,7 @@ describe('PoiCreatePage', () => {
   it('maps validation errors through the shared StudioField bridge before submit', async () => {
     render(<PoiCreatePage />);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'detailTabs.content.title' }));
+    switchSection('links');
     await waitFor(() => {
       expect(screen.getByLabelText('fields.url')).toBeTruthy();
     });
@@ -99,14 +104,14 @@ describe('PoiCreatePage', () => {
     fireEvent.change(screen.getByLabelText('fields.name'), {
       target: { value: 'Valid POI' },
     });
-    fireEvent.click(screen.getByRole('tab', { name: 'detailTabs.content.title' }));
+    switchSection('links');
     await waitFor(() => {
       expect(screen.getByLabelText('fields.url')).toBeTruthy();
     });
     fireEvent.change(screen.getByLabelText('fields.url'), {
       target: { value: 'https://example.com' },
     });
-    fireEvent.click(screen.getByRole('tab', { name: 'detailTabs.basis.title' }));
+    switchSection('basis');
     await waitFor(() => {
       expect(screen.getByLabelText('fields.categoryName')).toBeTruthy();
     });
@@ -139,7 +144,7 @@ describe('PoiCreatePage', () => {
     fireEvent.change(screen.getByLabelText('fields.name'), {
       target: { value: ' Test POI ' },
     });
-    fireEvent.click(screen.getByRole('tab', { name: 'detailTabs.content.title' }));
+    switchSection('advanced');
     await waitFor(() => {
       expect(screen.getByLabelText('fields.payload')).toBeTruthy();
     });

@@ -22,6 +22,7 @@ describe('media type contracts', () => {
       'gallery_item',
       'download',
       'hero_image',
+      'attachment_image',
     ]);
     expect(mediaLiterals.formats).toEqual(['jpeg', 'png', 'webp']);
   });

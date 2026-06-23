@@ -214,7 +214,7 @@ describe('interfaces app adapter', () => {
 
     await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
       instanceId: 'de-musterhausen',
-      availableTypes: ['mainserver', 's3', 'mailTransport', 'supabase'],
+      availableTypes: ['mainserver', 's3', 'mailTransport', 'mapGeocoding', 'supabase'],
       entries: [
         expect.objectContaining({
           id: 's3-1',
@@ -297,7 +297,7 @@ describe('interfaces app adapter', () => {
 
     await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
       instanceId: 'de-musterhausen',
-      availableTypes: ['mainserver', 's3', 'mailTransport'],
+      availableTypes: ['mainserver', 's3', 'mailTransport', 'mapGeocoding'],
       entries: [],
     });
   });
@@ -325,9 +325,83 @@ describe('interfaces app adapter', () => {
 
     await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
       instanceId: 'de-musterhausen',
-      availableTypes: ['mainserver', 's3', 'mailTransport'],
+      availableTypes: ['mainserver', 's3', 'mailTransport', 'mapGeocoding'],
       entries: [],
     });
+  });
+
+  it('upserts map geocoding interfaces without triggering a follow-up healthcheck job', async () => {
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
+    state.upsertStoredInterface.mockResolvedValue({
+      id: 'map-1',
+      instanceId: 'de-musterhausen',
+      type: 'mapGeocoding',
+      name: 'POI-Karte',
+      enabled: true,
+      config: {
+        provider: 'geoapify',
+        styleUrl: 'https://tiles.example/styles/poi',
+        autocompleteEnabled: true,
+        geocodeEnabled: true,
+        reverseGeocodeEnabled: true,
+        suggestEndpoint: 'https://host.example/suggest',
+        geocodeEndpoint: 'https://host.example/geocode',
+        reverseGeocodeEndpoint: 'https://host.example/reverse',
+        requestTimeoutMs: '2500',
+        rateLimitPerMinute: '90',
+        killSwitchEnabled: false,
+      },
+      createdAt: '2026-05-12T08:00:00.000Z',
+      updatedAt: '2026-05-12T08:00:00.000Z',
+    });
+    state.getStoredInterface.mockResolvedValue(null);
+
+    const { upsertInstanceInterfaceServerFn } = await import('./interfaces-api');
+
+    await expect(
+      upsertInstanceInterfaceServerFn({
+        data: {
+          instanceId: 'de-musterhausen',
+          draft: {
+            type: 'mapGeocoding',
+            name: 'POI-Karte',
+            enabled: true,
+            config: {
+              provider: 'geoapify',
+              styleUrl: 'https://tiles.example/styles/poi',
+              autocompleteEnabled: true,
+              geocodeEnabled: true,
+              reverseGeocodeEnabled: true,
+              suggestEndpoint: 'https://host.example/suggest',
+              geocodeEndpoint: 'https://host.example/geocode',
+              reverseGeocodeEndpoint: 'https://host.example/reverse',
+              requestTimeoutMs: '2500',
+              rateLimitPerMinute: '90',
+              killSwitchEnabled: false,
+              apiKey: 'geoapify-key',
+            },
+          },
+        },
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        type: 'mapGeocoding',
+        status: 'unknown',
+      })
+    );
+
+    expect(state.upsertStoredInterface).toHaveBeenCalledWith(
+      'de-musterhausen',
+      expect.objectContaining({
+        type: 'mapGeocoding',
+      }),
+      undefined
+    );
+    expect(state.runStoredInterfaceHealthcheck).not.toHaveBeenCalled();
   });
 
   it('rejects malformed authenticated interface list payloads before they reach the UI', async () => {

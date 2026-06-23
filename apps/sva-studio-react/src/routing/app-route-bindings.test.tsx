@@ -6,7 +6,7 @@ const routeState = vi.hoisted(() => ({
   search: {} as Record<string, unknown>,
   normalizeIamTab: vi.fn((tab: unknown) => `iam:${String(tab ?? '')}`),
   normalizeRoleDetailTab: vi.fn((tab: unknown) => `role:${String(tab ?? '')}`),
-  authUser: null as null | { id: string; displayName?: string; name?: string },
+  authUser: null as null | { id: string; displayName?: string; name?: string; instanceId?: string },
   organizationContext: {
     activeOrganizationId: undefined as string | undefined,
     organizations: [] as Array<{ organizationId: string; displayName: string; isActive: boolean }>,
@@ -287,15 +287,23 @@ vi.mock('@sva/plugin-news', () => ({
   NewsEditPage: () => <div data-testid="news-edit-page" />,
 }));
 
-vi.mock('@sva/plugin-events/events.pages', () => ({
+vi.mock('@sva/plugin-events', async () => {
+  const actual = await vi.importActual<object>('@sva/plugin-events');
+  return {
+    ...actual,
   EventsCreatePage: () => <div data-testid="events-create-page" />,
   EventsEditPage: () => <div data-testid="events-edit-page" />,
-}));
+  };
+});
 
-vi.mock('@sva/plugin-poi/poi.pages', () => ({
-  PoiCreatePage: () => <div data-testid="poi-create-page" />,
-  PoiEditPage: () => <div data-testid="poi-edit-page" />,
-}));
+vi.mock('@sva/plugin-poi', async () => {
+  const actual = await vi.importActual<object>('@sva/plugin-poi');
+  return {
+    ...actual,
+  PoiCreatePage: ({ instanceId }: { instanceId?: string }) => <div data-testid="poi-create-page">{instanceId ?? ''}</div>,
+  PoiEditPage: ({ instanceId }: { instanceId?: string }) => <div data-testid="poi-edit-page">{instanceId ?? ''}</div>,
+  };
+});
 
 vi.mock('@sva/plugin-categories', () => ({
   CategoriesPage: () => <div data-testid="categories-page">plugin categories</div>,
@@ -652,6 +660,7 @@ describe('appRouteBindings', () => {
 
   it('exposes the direct page bindings for the canonical route keys', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
+    routeState.authUser = { id: 'user-1', instanceId: 'de-musterhausen' };
 
     render(<appRouteBindings.home />);
     expect(screen.getByTestId('home-page')).toBeTruthy();
@@ -747,9 +756,11 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.poiEditor />);
     expect(screen.getByTestId('poi-create-page')).toBeTruthy();
+    expect(screen.getByTestId('poi-create-page').textContent).toBe('de-musterhausen');
     cleanup();
 
     render(<appRouteBindings.poiDetail />);
     expect(screen.getByTestId('poi-edit-page')).toBeTruthy();
+    expect(screen.getByTestId('poi-edit-page').textContent).toBe('de-musterhausen');
   });
 });

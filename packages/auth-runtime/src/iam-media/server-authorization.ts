@@ -83,11 +83,12 @@ const buildAuthorizeRequest = (input: {
 
 export const authorizeMediaPrimitiveForUser = async (input: {
   readonly ctx: AuthenticatedRequestContext;
+  readonly instanceId?: string;
   readonly action: string;
   readonly resource?: MediaPrimitiveAuthorizationResource;
   readonly permissions?: readonly EffectivePermission[];
 }): Promise<MediaPrimitiveAuthorizationResult> => {
-  const instanceId = input.ctx.user.instanceId;
+  const instanceId = input.instanceId ?? input.ctx.user.instanceId;
   if (!instanceId) {
     return {
       ok: false,

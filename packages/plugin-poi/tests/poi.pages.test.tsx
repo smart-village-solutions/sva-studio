@@ -9,6 +9,32 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPoi, getPoi, listPoi, updatePoi } from '../src/poi.api.js';
 import { PoiCreatePage, PoiEditPage, PoiListPage } from '../src/poi.pages.js';
+import { pluginPoiMediaPickers } from '../src/plugin.js';
+
+vi.mock('@sva/studio-ui-react', async () => {
+  const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
+  return {
+    ...actual,
+    RichTextHtmlEditor: ({
+      id,
+      value,
+      onChange,
+      labelId,
+    }: {
+      id: string;
+      value: string;
+      onChange: (nextValue: string) => void;
+      labelId?: string;
+    }) => (
+      <textarea
+        id={id}
+        aria-labelledby={labelId}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    ),
+  };
+});
 
 vi.mock('../src/poi.api.js', () => ({
   listPoi: vi.fn(async () => ({
@@ -50,10 +76,33 @@ vi.mock('@tanstack/react-router', () => ({
   useSearch: () => ({ page: 1, pageSize: 25 }),
 }));
 
+vi.mock('../src/poi.map-geocoding-client.js', () => ({
+  getMapGeocodingConfig: vi.fn(async () => ({
+    provider: 'geoapify' as const,
+    styleUrl: 'https://tileserver.example/style.json',
+    autocompleteEnabled: true,
+    geocodeEnabled: true,
+    reverseGeocodeEnabled: true,
+    killSwitchEnabled: false,
+  })),
+  suggestMapAddresses: vi.fn(),
+  reverseMapCoordinates: vi.fn(),
+}));
+
 const navigateMock = vi.fn();
 const paramsMock = vi.fn(() => ({ id: 'poi-1' }));
 
 describe('PoiListPage', () => {
+  const imageRole = pluginPoiMediaPickers.images.roles[0];
+
+  const switchSection = (value: string) => {
+    fireEvent.change(screen.getByLabelText('Bereich'), { target: { value } });
+  };
+  const getEditableNameInput = () =>
+    screen
+      .getAllByLabelText('Name')
+      .find((element): element is HTMLInputElement => element instanceof HTMLInputElement && element.readOnly === false);
+
   beforeEach(() => {
     vi.clearAllMocks();
     navigateMock.mockReset();
@@ -61,17 +110,17 @@ describe('PoiListPage', () => {
     paramsMock.mockReturnValue({ id: 'poi-1' });
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
-        'poi.list.title': 'POI',
-        'poi.list.description': 'Points of Interest aus dem Mainserver bearbeiten.',
-        'poi.messages.loading': 'POI werden geladen.',
-        'poi.messages.loadError': 'POI konnten nicht geladen werden.',
-        'poi.messages.missingContent': 'Der POI konnte nicht geladen werden.',
-        'poi.messages.saveError': 'POI konnte nicht gespeichert werden.',
-        'poi.messages.createSuccess': 'POI wurde erstellt.',
-        'poi.messages.updateSuccess': 'POI wurde aktualisiert.',
+        'poi.list.title': 'Orte',
+        'poi.list.description': 'Orte aus dem Mainserver bearbeiten.',
+        'poi.messages.loading': 'Orte werden geladen.',
+        'poi.messages.loadError': 'Orte konnten nicht geladen werden.',
+        'poi.messages.missingContent': 'Der Ort konnte nicht geladen werden.',
+        'poi.messages.saveError': 'Der Ort konnte nicht gespeichert werden.',
+        'poi.messages.createSuccess': 'Der Ort wurde erstellt.',
+        'poi.messages.updateSuccess': 'Der Ort wurde aktualisiert.',
         'poi.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
-        'poi.empty.title': 'Noch keine POI vorhanden',
-        'poi.actions.create': 'POI anlegen',
+        'poi.empty.title': 'Noch keine Orte vorhanden',
+        'poi.actions.create': 'Ort anlegen',
         'poi.actions.save': 'Speichern',
         'poi.actions.update': 'Änderungen speichern',
         'poi.actions.back': 'Zurück zur Liste',
@@ -81,7 +130,6 @@ describe('PoiListPage', () => {
         'poi.fields.name': 'Name',
         'poi.fields.description': 'Beschreibung',
         'poi.fields.mobileDescription': 'Mobile Beschreibung',
-        'poi.fields.teaserImage': 'Teaserbild',
         'poi.fields.active': 'Aktiv',
         'poi.fields.categoryName': 'Kategorie',
         'poi.fields.street': 'Straße',
@@ -90,58 +138,89 @@ describe('PoiListPage', () => {
         'poi.fields.url': 'Web-URL',
         'poi.fields.urlDescription': 'Link-Beschreibung',
         'poi.fields.weekday': 'Wochentag',
-        'poi.fields.timeFrom': 'Öffnet',
+        'poi.fields.dateFrom': 'Startdatum',
+        'poi.fields.dateTo': 'Enddatum',
+        'poi.fields.timeFrom': 'Startzeit',
+        'poi.fields.timeTo': 'Endzeit',
         'poi.fields.open': 'Geöffnet',
         'poi.fields.payload': 'Payload JSON',
-        'poi.fields.mediaPlaceholder': 'Medium auswählen',
+        'poi.fields.imageSearch': 'Dateiname filtern',
         'poi.fields.createdAt': 'Erstellt',
         'poi.fields.updatedAt': 'Aktualisiert',
-        'poi.pagination.ariaLabel': 'POI-Pagination',
+        'poi.pagination.ariaLabel': 'Orte-Pagination',
         'poi.pagination.previous': 'Zurück',
         'poi.pagination.next': 'Weiter',
         'poi.pagination.pageLabel': 'Seite {{page}}',
         'poi.values.notAvailable': 'Nicht verfügbar',
         'poi.values.active': 'Ja',
-        'poi.detail.createTitle': 'POI anlegen',
-        'poi.detail.createDescription': 'Erstellen Sie einen neuen Point of Interest.',
-        'poi.detail.editTitle': 'POI bearbeiten',
-        'poi.detail.editDescription': 'Aktualisieren oder löschen Sie den Point of Interest.',
+        'poi.detail.createTitle': 'Ort anlegen',
+        'poi.detail.createDescription': 'Erstellen Sie einen neuen Ort.',
+        'poi.detail.editTitle': 'Ort bearbeiten',
+        'poi.detail.editDescription': 'Aktualisieren oder löschen Sie den Ort.',
         'poi.detailTabs.basis.title': 'Basis',
         'poi.detailTabs.content.title': 'Inhalt',
         'poi.detailTabs.settings.title': 'Einstellungen',
         'poi.detailTabs.history.title': 'Historie',
+        'poi.tabs.mobileLabel': 'Bereich',
+        'poi.tabs.ariaLabel': 'Bereiche',
         'poi.cards.basis.identity.title': 'Basisdaten',
         'poi.cards.basis.identity.description': 'Name, Kategorie und Aktivstatus.',
         'poi.cards.basis.meta.title': 'Metadaten',
         'poi.cards.basis.meta.description': 'Zeitliche Einordnung des Eintrags.',
-        'poi.cards.content.descriptions.title': 'Beschreibungen',
-        'poi.cards.content.descriptions.description': 'Redaktionelle Beschreibungen des POI.',
-        'poi.cards.content.location.title': 'Lage und Adresse',
-        'poi.cards.content.location.description': 'Adressdaten des POI.',
-        'poi.cards.content.contact.title': 'Kontakt',
-        'poi.cards.content.contact.description': 'Kontaktinformationen für den POI.',
-        'poi.cards.content.openingHours.title': 'Öffnungszeiten',
-        'poi.cards.content.openingHours.description': 'Aktuelle Öffnungsinformationen.',
-        'poi.cards.content.links.title': 'Weblinks',
-        'poi.cards.content.links.description': 'Externe Verweise zum POI.',
-        'poi.cards.content.payload.title': 'Zusatzdaten',
-        'poi.cards.content.payload.description': 'Zusätzliche Mainserver-Daten als JSON.',
-        'poi.cards.settings.media.title': 'Medien',
-        'poi.cards.settings.media.description': 'Teaserbild für die Übersicht.',
+        'poi.cards.location.address.title': 'Lage und Adresse',
+        'poi.cards.location.address.description': 'Adressdaten des Ortes.',
+        'poi.cards.location.coordinates.title': 'Koordinaten',
+        'poi.cards.location.coordinates.description': 'Geo-Daten des Ortes.',
+        'poi.cards.description.text.title': 'Beschreibungen',
+        'poi.cards.description.text.description': 'Redaktionelle Beschreibungen des Ortes.',
+        'poi.cards.contact.primary.title': 'Kontakt',
+        'poi.cards.contact.primary.description': 'Kontaktinformationen für den Ort.',
+        'poi.cards.openingHours.entries.title': 'Öffnungszeiten',
+        'poi.cards.openingHours.entries.description': 'Aktuelle Öffnungsinformationen.',
+        'poi.cards.openingHours.entry.title': 'Öffnungszeit',
+        'poi.cards.links.entries.title': 'Weblinks',
+        'poi.cards.links.entries.description': 'Externe Verweise zum Ort.',
+        'poi.cards.operator.details.title': 'Betreiber',
+        'poi.cards.operator.details.description': 'Betreiberdaten und Kontakte.',
+        'poi.cards.prices.entries.title': 'Preise',
+        'poi.cards.prices.entries.description': 'Preisangaben des Ortes.',
+        'poi.cards.settings.media.title': 'Bilder',
+        'poi.cards.settings.media.description': 'Bilder des Ortes verwalten.',
+        'poi.cards.advanced.payload.title': 'Zusatzdaten',
+        'poi.cards.advanced.payload.description': 'Zusätzliche Mainserver-Daten als JSON.',
         'poi.history.empty.title': 'Noch keine Historie verfügbar.',
-        'poi.history.empty.description': 'Historienereignisse für POI werden in einem späteren Schritt angebunden.',
-        'poi.editor.createTitle': 'POI anlegen',
-        'poi.editor.createDescription': 'Erstellen Sie einen neuen Point of Interest.',
-        'poi.editor.editTitle': 'POI bearbeiten',
-        'poi.editor.editDescription': 'Aktualisieren oder löschen Sie den Point of Interest.',
+        'poi.history.empty.description': 'Historienereignisse für Orte werden in einem späteren Schritt angebunden.',
+        'poi.editor.createTitle': 'Ort anlegen',
+        'poi.editor.createDescription': 'Erstellen Sie einen neuen Ort.',
+        'poi.editor.editTitle': 'Ort bearbeiten',
+        'poi.editor.editDescription': 'Aktualisieren oder löschen Sie den Ort.',
         'poi.validation.name': 'Der Name ist erforderlich.',
         'poi.validation.webUrls': 'URLs müssen mit https:// beginnen.',
         'poi.validation.categoryName': 'Die Kategorie darf maximal 128 Zeichen haben.',
         'poi.validation.payload': 'Payload muss gültiges JSON sein.',
+        'poi.fields.locationName': 'Ortsbezeichnung',
+        'poi.fields.assetId': 'Asset-ID',
+        'poi.fields.label': 'Bezeichnung',
+        'poi.fields.timeTo': 'Schließt',
+        'poi.fields.priceName': 'Preisname',
+        'poi.fields.amount': 'Betrag',
+        'poi.fields.certificateName': 'Zertifikat',
+        'poi.fields.accessibilityDescription': 'Barrierefreiheit',
+        'poi.fields.accessibilityTypes': 'Barrierefreiheits-Typen',
+        'poi.fields.tags': 'Tags',
+        'poi.actions.add': 'Hinzufügen',
+        'poi.actions.addOpeningHour': 'Öffnungszeit hinzufügen',
+        'poi.actions.remove': 'Entfernen',
+        'poi.actions.addImage': 'Bild hinzufügen',
+        'poi.actions.selectImage': 'Auswählen',
+        'poi.actions.removeImage': 'Entfernen',
+        'poi.messages.imagePickerEmpty': 'Keine Bilder gefunden.',
       };
       return labels[key] ?? key;
     });
-    vi.mocked(listHostMediaAssets).mockResolvedValue([{ id: 'asset-teaser', metadata: { title: 'Teaser Asset' } }]);
+    vi.mocked(listHostMediaAssets).mockResolvedValue([
+      { id: 'asset-teaser', fileName: 'teaser-asset.jpg', metadata: { title: 'Teaser Asset' } },
+    ]);
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
     vi.mocked(replaceHostMediaReferences).mockResolvedValue({
       targetType: 'poi',
@@ -158,7 +237,7 @@ describe('PoiListPage', () => {
     render(<PoiListPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Noch keine POI vorhanden')).toBeTruthy();
+      expect(screen.getByText('Noch keine Orte vorhanden')).toBeTruthy();
     });
   });
 
@@ -168,7 +247,7 @@ describe('PoiListPage', () => {
     render(<PoiListPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('POI konnten nicht geladen werden.')).toBeTruthy();
+      expect(screen.getByText('Orte konnten nicht geladen werden.')).toBeTruthy();
     });
   });
 
@@ -180,17 +259,19 @@ describe('PoiListPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Rathaus' } });
-    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
-    await waitFor(() => {
-      expect(screen.getByLabelText('Beschreibung')).toBeTruthy();
+    switchSection('content');
+    fireEvent.change(screen.getByLabelText('Beschreibung', { selector: 'textarea' }), {
+      target: { value: 'Bürgerservice vor Ort' },
     });
-    fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Bürgerservice vor Ort' } });
-    fireEvent.change(screen.getByLabelText('Web-URL'), { target: { value: 'https://example.com/poi' } });
-    fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
-    await waitFor(() => {
-      expect(screen.getByLabelText('Teaserbild')).toBeTruthy();
+    fireEvent.change(document.getElementById('poi-link-url-0') as HTMLInputElement, {
+      target: { value: 'https://example.com/poi' },
     });
-    fireEvent.change(screen.getByLabelText('Teaserbild'), { target: { value: 'asset-teaser' } });
+    switchSection('settings');
+    fireEvent.click(screen.getByRole('button', { name: 'Bild hinzufügen' }));
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Auswählen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
@@ -203,9 +284,10 @@ describe('PoiListPage', () => {
       );
       expect(replaceHostMediaReferences).toHaveBeenCalledWith({
         fetch: expect.any(Function),
+        instanceId: undefined,
         targetType: 'poi',
         targetId: 'poi-created',
-        references: [{ assetId: 'asset-teaser', role: 'teaser_image', sortOrder: 0 }],
+        references: [{ assetId: 'asset-teaser', role: imageRole, sortOrder: 0 }],
       });
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/poi/$id', params: { id: 'poi-created' } });
     });
@@ -218,8 +300,7 @@ describe('PoiListPage', () => {
         assetId: 'asset-teaser',
         targetType: 'poi',
         targetId: 'poi-1',
-        role: 'teaser_image',
-        sortOrder: 0,
+        role: imageRole,
       },
     ]);
 
@@ -230,16 +311,16 @@ describe('PoiListPage', () => {
       expect(screen.getByDisplayValue('Stadtbibliothek')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
+    switchSection('settings');
     await waitFor(() => {
-      expect((screen.getByLabelText('Teaserbild') as HTMLSelectElement).value).toBe('asset-teaser');
+      expect(screen.getAllByText('Teaser Asset').length).toBeGreaterThan(0);
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Medium entfernen' }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Basis' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }));
+    switchSection('basis');
     await waitFor(() => {
-      expect(screen.getByLabelText('Name')).toBeTruthy();
+      expect(getEditableNameInput()).toBeTruthy();
     });
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Aktualisierte Stadtbibliothek' } });
+    fireEvent.change(getEditableNameInput()!, { target: { value: 'Aktualisierte Stadtbibliothek' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
@@ -252,7 +333,7 @@ describe('PoiListPage', () => {
           payload: { source: 'legacy' },
         })
       );
-      expect(screen.getByText('POI wurde aktualisiert.')).toBeTruthy();
+      expect(screen.getByText('Der Ort wurde aktualisiert.')).toBeTruthy();
     });
   });
 
@@ -266,19 +347,21 @@ describe('PoiListPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
-      expect(screen.getByText('POI wurde aktualisiert.')).toBeTruthy();
+      expect(screen.getByText('Der Ort wurde aktualisiert.')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    switchSection('content');
     await waitFor(() => {
-      expect(screen.getByLabelText('Web-URL')).toBeTruthy();
+      expect(screen.getAllByLabelText('Web-URL').length).toBeGreaterThan(1);
     });
-    fireEvent.change(screen.getByLabelText('Web-URL'), { target: { value: 'http://invalid.example' } });
+    fireEvent.change(document.getElementById('poi-link-url-0') as HTMLInputElement, {
+      target: { value: 'http://invalid.example' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
-      expect(screen.queryByText('POI wurde aktualisiert.')).toBeNull();
-      expect(screen.getAllByText('URLs müssen mit https:// beginnen.').length).toBeGreaterThan(0);
+      expect(screen.queryByText('Der Ort wurde aktualisiert.')).toBeNull();
+      expect(updatePoi).toHaveBeenCalledTimes(1);
     });
   });
 });

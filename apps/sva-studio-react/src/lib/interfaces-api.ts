@@ -10,6 +10,7 @@ import { extractErrorDiagnostics, isRecord, readErrorMessage } from './error-mes
 import type {
   InstanceInterface,
   InstanceInterfaceDraft,
+  InstanceInterfaceMapGeocoding,
   InstanceInterfaceMailTransport,
   InstanceInterfaceS3,
   InstanceInterfaceSupabase,
@@ -56,7 +57,11 @@ const isSvaMainserverInstanceConfig = (value: unknown): value is SvaMainserverIn
 };
 
 const isInstanceInterfaceType = (value: unknown): value is InstanceInterfaceType =>
-  value === 'mainserver' || value === 's3' || value === 'supabase' || value === 'mailTransport';
+  value === 'mainserver' ||
+  value === 's3' ||
+  value === 'supabase' ||
+  value === 'mailTransport' ||
+  value === 'mapGeocoding';
 
 const isListInstanceInterfacesResponse = (
   value: unknown
@@ -261,6 +266,7 @@ const DEFAULT_AVAILABLE_INTERFACE_TYPES: readonly InstanceInterfaceType[] = [
   'mainserver',
   's3',
   'mailTransport',
+  'mapGeocoding',
 ];
 
 const resolveAvailableInterfaceTypes = async (instanceId: string): Promise<readonly InstanceInterfaceType[]> => {
@@ -550,6 +556,7 @@ const projectStoredEntry = async (
     | Omit<InstanceInterfaceS3, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfaceSupabase, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfaceMailTransport, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
+    | Omit<InstanceInterfaceMapGeocoding, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
 ): Promise<InstanceInterface> => {
   const { checkStoredInterfaceHealth } = await import('./instance-interfaces-server.js');
   const health = checkStoredInterfaceHealth(entry);
@@ -685,7 +692,9 @@ export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
                 ? data.draft.config.databaseUrl.length > 0 || data.draft.config.serviceRoleKey.length > 0
                 : data.draft.type === 'mailTransport'
                   ? data.draft.config.password.length > 0
-                  : false,
+                  : data.draft.type === 'mapGeocoding'
+                    ? data.draft.config.apiKey.length > 0
+                    : false,
           request_host: new URL(dependencies.request.url).host,
           has_iam_database_url: Boolean(process.env.IAM_DATABASE_URL),
         });

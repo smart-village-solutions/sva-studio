@@ -38,7 +38,7 @@ const buildPoiMutationVariables = (input: {
   ...includeTruthyField('externalId', input.poi.externalId),
   ...includeTruthyField('description', input.poi.description),
   ...includeTruthyField('keywords', input.poi.keywords),
-  ...includeTruthyField('mobileDescription', input.poi.mobileDescription),
+  ...includeDefinedField('mobileDescription', input.poi.mobileDescription),
   ...includeDefinedField('active', input.poi.active),
   ...includeTruthyField('categoryName', input.poi.categoryName),
   ...includeDefinedField('payload', input.poi.payload),

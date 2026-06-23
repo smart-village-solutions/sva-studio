@@ -36,6 +36,12 @@ export type ContentPrimitiveAuthorizationResult =
     };
 
 const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,30}\.[A-Za-z][A-Za-z0-9-]*$/;
+const ORGANIZATION_OPTIONAL_ACTIONS = new Set(['categories.read']);
+const ORGANIZATION_OPTIONAL_CONTENT_TYPES = new Set([
+  'events.event-record',
+  'news.article',
+  'poi.point-of-interest',
+]);
 
 const normalizeAuthorizationAction = (action: string): string | null => {
   const normalized = action.trim();
@@ -80,6 +86,48 @@ const buildAuthorizeRequest = (input: {
       },
     },
   });
+
+const projectPermissionsForOrganizationOptionalAccess = (
+  permissions: readonly EffectivePermission[]
+): readonly EffectivePermission[] =>
+  permissions.map((permission) => ({
+    ...permission,
+    organizationId: undefined,
+    ...(permission.accessScope === 'organization' ? { accessScope: undefined } : {}),
+  }));
+
+const databaseUnavailableAuthorizationResult = (): ContentPrimitiveAuthorizationResult => ({
+  ok: false,
+  status: 503,
+  error: 'database_unavailable',
+  message: 'Berechtigungen konnten nicht geprüft werden.',
+});
+
+const shouldRetryWithoutOrganizationScope = (
+  organizationId: string | undefined,
+  permissions: readonly EffectivePermission[],
+  action: string,
+  contentType: string | undefined,
+): boolean =>
+  !organizationId &&
+  permissions.some((permission) => permission.organizationId) &&
+  (ORGANIZATION_OPTIONAL_ACTIONS.has(action) ||
+    (action.endsWith('.read') && contentType ? ORGANIZATION_OPTIONAL_CONTENT_TYPES.has(contentType) : false));
+
+const resolveOrganizationOptionalDecision = (
+  request: AuthorizeRequest,
+  organizationId: string | undefined,
+  permissions: readonly EffectivePermission[],
+  action: string,
+  contentType: string | undefined,
+): boolean => {
+  if (!shouldRetryWithoutOrganizationScope(organizationId, permissions, action, contentType)) {
+    return false;
+  }
+
+  const organizationOptionalPermissions = projectPermissionsForOrganizationOptionalAccess(permissions);
+  return evaluateAuthorizeDecision(request, organizationOptionalPermissions).allowed;
+};
 
 export const authorizeContentPrimitiveForUser = async (input: {
   readonly ctx: AuthenticatedRequestContext;
@@ -127,12 +175,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
         error: error instanceof Error ? error.message : String(error),
       });
 
-      return {
-        ok: false,
-        status: 503,
-        error: 'database_unavailable',
-        message: 'Berechtigungen konnten nicht geprüft werden.',
-      };
+      return databaseUnavailableAuthorizationResult();
     }
   }
 
@@ -159,12 +202,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
         error: error instanceof Error ? error.message : String(error),
       });
 
-      return {
-        ok: false,
-        status: 503,
-        error: 'database_unavailable',
-        message: 'Berechtigungen konnten nicht geprüft werden.',
-      };
+      return databaseUnavailableAuthorizationResult();
     }
   }
 
@@ -189,12 +227,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
           error: resolved.error,
         });
 
-        return {
-          ok: false,
-          status: 503,
-          error: 'database_unavailable',
-          message: 'Berechtigungen konnten nicht geprüft werden.',
-        };
+        return databaseUnavailableAuthorizationResult();
       }
 
       permissions = resolved.permissions;
@@ -208,12 +241,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
         error: error instanceof Error ? error.message : String(error),
       });
 
-      return {
-        ok: false,
-        status: 503,
-        error: 'database_unavailable',
-        message: 'Berechtigungen konnten nicht geprüft werden.',
-      };
+      return databaseUnavailableAuthorizationResult();
     }
   }
 
@@ -227,6 +255,20 @@ export const authorizeContentPrimitiveForUser = async (input: {
     traceId: workspaceContext.traceId,
   });
   const decision = evaluateAuthorizeDecision(request, permissions);
+  if (
+    !decision.allowed &&
+    resolveOrganizationOptionalDecision(request, organizationId, permissions, action, resource.contentType)
+  ) {
+    return {
+      ok: true,
+      actor: {
+        instanceId,
+        keycloakSubject: input.ctx.user.id,
+      },
+      permissions,
+    };
+  }
+
   if (!decision.allowed) {
     accountLogger.warn('Content primitive authorization denied', {
       operation: 'content_primitive_authorize',

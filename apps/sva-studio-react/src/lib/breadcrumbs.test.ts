@@ -58,17 +58,17 @@ describe('resolveBreadcrumbItems', () => {
     ]);
   });
 
-  it('returns content breadcrumbs for POI create and edit pages', () => {
+  it('returns content breadcrumbs for poi create and edit pages', () => {
     expect(resolveBreadcrumbItems('/admin/poi/new')).toEqual([
       { href: '/', label: 'Übersicht' },
       { href: '/admin/content', label: 'Inhalte' },
-      { label: 'POI anlegen' },
+      { label: 'Ort anlegen' },
     ]);
 
     expect(resolveBreadcrumbItems('/admin/poi/poi-1')).toEqual([
       { href: '/', label: 'Übersicht' },
       { href: '/admin/content', label: 'Inhalte' },
-      { label: 'POI bearbeiten' },
+      { label: 'Ort bearbeiten' },
     ]);
   });
 

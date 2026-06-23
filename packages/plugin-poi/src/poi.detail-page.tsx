@@ -2,18 +2,19 @@ import React from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
-  findHostMediaReferenceAssetId,
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
   replaceHostMediaReferences,
-  toHostMediaFieldOptions,
   usePluginTranslation,
+  type HostMediaAssetListItem,
+  type HostMediaReferenceSelection,
 } from '@sva/plugin-sdk';
 import {
   Button,
   StudioDetailPageTemplate,
   StudioFormSummary,
   StudioLoadingState,
+  Select,
   Tabs,
   TabsContent,
   TabsList,
@@ -31,69 +32,54 @@ import {
 } from './poi.detail-form.js';
 import { PoiDetailContentTab } from './poi.detail-content-tab.js';
 import { PoiDetailHistoryTab } from './poi.detail-history-tab.js';
-import { PoiDetailSettingsTab } from './poi.detail-settings-tab.js';
+import { normalizePoiMediaAssetId } from './poi.media-asset-id.js';
 import { createPoiDetailTabDefinitions, type PoiDetailTabId } from './poi.detail-tabs.js';
+import { PoiDetailSettingsTab } from './poi.detail-settings-tab.js';
 import { pluginPoiMediaPickers } from './plugin.js';
 import type { PoiContentItem } from './poi.types.js';
-import { validatePoiForm } from './poi.validation.js';
+import { isHttpsUrl, validatePoiForm } from './poi.validation.js';
 
 type StatusMessage = Readonly<{
   kind: 'success' | 'error';
   text: string;
 }>;
 
-type PoiTabIconProps = Readonly<{ className?: string }>;
-
-const PoiTabBasisIcon = ({ className }: PoiTabIconProps) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-    <path d="M7 4.75h7.5L19 9.25v9A1.75 1.75 0 0 1 17.25 20h-10.5A1.75 1.75 0 0 1 5 18.25v-11.5A1.75 1.75 0 0 1 6.75 5Z" />
-    <path d="M14 4.75v4.5h4.5" />
-    <path d="M8.5 12h7" />
-    <path d="M8.5 15.5h7" />
-  </svg>
-);
-
-const PoiTabContentIcon = ({ className }: PoiTabIconProps) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-    <rect x="4.5" y="5" width="15" height="14" rx="2" />
-    <path d="m8 14 2.5-2.5 2 2 2.5-3 3 4.5" />
-    <circle cx="9" cy="9.5" r="1.2" />
-  </svg>
-);
-
-const PoiTabSettingsIcon = ({ className }: PoiTabIconProps) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-    <path d="M4 7h10" />
-    <path d="M4 17h16" />
-    <circle cx="17" cy="7" r="2.5" />
-    <circle cx="9" cy="17" r="2.5" />
-  </svg>
-);
-
-const PoiTabHistoryIcon = ({ className }: PoiTabIconProps) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-    <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
-    <path d="M4.5 5.5v3.7h3.7" />
-    <path d="M12 8.5v4l2.5 1.5" />
-  </svg>
-);
-
-const poiTabIconMap = {
-  basis: PoiTabBasisIcon,
-  content: PoiTabContentIcon,
-  settings: PoiTabSettingsIcon,
-  history: PoiTabHistoryIcon,
-} as const satisfies Record<PoiDetailTabId, (props: PoiTabIconProps) => React.JSX.Element>;
-
 const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknown, fallbackKey: string) =>
   error instanceof PoiApiError ? error.message : pt(fallbackKey);
+
+const renderPoiTabPanel = ({
+  title,
+  description,
+  panel,
+}: Readonly<{
+  title: string;
+  description: string;
+  panel: React.JSX.Element;
+}>) => (
+  <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
+    <section
+      aria-label={title}
+      className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
+    >
+      <div className="space-y-1">
+        <h2 className="text-base font-semibold text-foreground">{title}</h2>
+        {description ? <p className="text-sm leading-relaxed text-muted-foreground">{description}</p> : null}
+      </div>
+    </section>
+    {panel}
+  </div>
+);
+
+const PoiTabTriggerLabel = ({ label }: Readonly<{ label: string }>) => <span>{label}</span>;
 
 export function PoiDetailPage({
   mode,
   contentId,
+  instanceId,
 }: Readonly<{
   mode: 'create' | 'edit';
   contentId?: string;
+  instanceId?: string;
 }>) {
   const pt = usePluginTranslation('poi');
   const navigate = useNavigate();
@@ -105,16 +91,30 @@ export function PoiDetailPage({
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<PoiContentItem | null>(null);
-  const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
-  const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
+  const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
+  const [preservedMediaReferences, setPreservedMediaReferences] = React.useState<readonly HostMediaReferenceSelection[]>([]);
+  const [loadedOwnedMediaReferenceCount, setLoadedOwnedMediaReferenceCount] = React.useState(0);
+  const [mediaReferencesLoadFailed, setMediaReferencesLoadFailed] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<PoiDetailTabId>('basis');
   const [visitedTabs, setVisitedTabs] = React.useState<readonly PoiDetailTabId[]>(['basis']);
+  const focusFieldById = React.useCallback((fieldId: string) => {
+    globalThis.setTimeout(() => {
+      globalThis.document.getElementById(fieldId)?.focus();
+    }, 0);
+  }, []);
+
+  const refreshMediaAssets = React.useCallback(async () => {
+    try {
+      const assets = await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), instanceId });
+      setMediaAssets(assets);
+    } catch {
+      setMediaAssets([]);
+    }
+  }, [instanceId]);
 
   React.useEffect(() => {
-    void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
-      .then((assets) => setMediaOptions(toHostMediaFieldOptions(assets)))
-      .catch(() => setMediaOptions([]));
-  }, []);
+    void refreshMediaAssets();
+  }, [refreshMediaAssets]);
 
   React.useEffect(() => {
     if (mode !== 'edit' || !contentId) {
@@ -129,23 +129,35 @@ export function PoiDetailPage({
         }
         reset(mapPoiItemToDetailFormValues(item));
         setLoadedItem(item);
-        setLoading(false);
         void listHostMediaReferencesByTarget({
           fetch: globalThis.fetch.bind(globalThis),
+          instanceId,
           targetType: 'poi',
           targetId: item.id,
         }).then((references) => {
           if (!active) {
             return;
           }
-          setExistingMediaReferenceCount(references.length);
+          setMediaReferencesLoadFailed(false);
+          const ownedRole = pluginPoiMediaPickers.images.roles[0];
+          const ownedReferences = references.filter((reference) => reference.role === ownedRole);
+          setLoadedOwnedMediaReferenceCount(ownedReferences.length);
+          setPreservedMediaReferences(references.filter((reference) => reference.role !== ownedRole));
           setValue(
-            'settings.teaserImageAssetId',
-            findHostMediaReferenceAssetId(references, pluginPoiMediaPickers.teaserImage.roles[0]) ?? ''
+            'media.images',
+            ownedReferences
+              .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
+              .map((reference) => normalizePoiMediaAssetId(reference.assetId))
+              .filter((assetId) => assetId.length > 0)
+              .map((assetId) => ({ assetId, label: '' })),
           );
+          setLoading(false);
         }).catch(() => {
           if (active) {
-            setExistingMediaReferenceCount(0);
+            setLoadedOwnedMediaReferenceCount(0);
+            setPreservedMediaReferences([]);
+            setMediaReferencesLoadFailed(true);
+            setLoading(false);
           }
         });
       })
@@ -159,21 +171,27 @@ export function PoiDetailPage({
     return () => {
       active = false;
     };
-  }, [contentId, mode, reset, setValue]);
+  }, [contentId, instanceId, mode, reset, setValue]);
 
   const tabs = createPoiDetailTabDefinitions(pt);
+
+  const handleTabChange = React.useCallback(
+    (tabId: PoiDetailTabId) => {
+      if (tabId === activeTab) {
+        return;
+      }
+      setActiveTab(tabId);
+    },
+    [activeTab]
+  );
 
   const warmTab = React.useCallback((tabId: PoiDetailTabId) => {
     setVisitedTabs((current) => (current.includes(tabId) ? current : [...current, tabId]));
   }, []);
 
-  const handleTabChange = React.useCallback(
-    (tabId: PoiDetailTabId) => {
-      warmTab(tabId);
-      setActiveTab(tabId);
-    },
-    [warmTab]
-  );
+  React.useEffect(() => {
+    setVisitedTabs((current) => (current.includes(activeTab) ? current : [...current, activeTab]));
+  }, [activeTab]);
 
   const submit = methods.handleSubmit(async (values) => {
     methods.clearErrors();
@@ -182,7 +200,7 @@ export function PoiDetailPage({
 
     if (!payload) {
       methods.setError('content.payloadText', { type: 'manual', message: 'payload' });
-      setActiveTab('content');
+      setActiveTab('settings');
       methods.setFocus('content.payloadText');
       return;
     }
@@ -191,6 +209,7 @@ export function PoiDetailPage({
     const validationErrors = validatePoiForm(mutation);
 
     if (validationErrors.length > 0) {
+      setStatus({ kind: 'error', text: pt('messages.validationError') });
       if (validationErrors.includes('name')) {
         methods.setError('name', { type: 'manual', message: 'name' });
         methods.setFocus('name');
@@ -210,26 +229,79 @@ export function PoiDetailPage({
         }
         setActiveTab('content');
       }
+      if (validationErrors.includes('contact.webUrls')) {
+        methods.setError('content.contact.webUrls.0.url', { type: 'manual', message: 'webUrls' });
+        setActiveTab('content');
+        focusFieldById('poi-contact-url');
+      }
+      if (validationErrors.includes('addresses')) {
+        methods.setError('content.addresses.0.geoLocation.latitude', { type: 'manual', message: 'addresses' });
+        setActiveTab('content');
+      }
+      if (validationErrors.includes('location')) {
+        methods.setError('content.location.geoLocation.latitude', { type: 'manual', message: 'location' });
+        setActiveTab('content');
+      }
+      if (validationErrors.includes('priceInformations')) {
+        methods.setError('content.prices.0.amount', { type: 'manual', message: 'priceInformations' });
+        setActiveTab('content');
+      }
+      if (validationErrors.includes('mediaContents')) {
+        const invalidMediaIndex = values.content.mediaContents.findIndex((entry) => {
+          const url = entry.sourceUrl?.url?.trim() ?? '';
+          return url.length > 0 && isHttpsUrl(url) === false;
+        });
+        const mediaIndex = invalidMediaIndex >= 0 ? invalidMediaIndex : 0;
+        methods.setError(`content.mediaContents.${mediaIndex}.sourceUrl.url`, { type: 'manual', message: 'webUrls' });
+        setActiveTab('content');
+        focusFieldById(`poi-media-url-${mediaIndex}`);
+      }
+      if (validationErrors.includes('operatingCompany.address')) {
+        methods.setError('content.operator.address.geoLocation.latitude', {
+          type: 'manual',
+          message: 'geoLocation',
+        });
+        methods.setError('content.operator.address.geoLocation.longitude', {
+          type: 'manual',
+          message: 'geoLocation',
+        });
+        setActiveTab('content');
+        focusFieldById('poi-operator-latitude');
+      }
+      if (validationErrors.includes('operatingCompany.contact.webUrls')) {
+        methods.setError('content.operator.contact.webUrls.0.url', {
+          type: 'manual',
+          message: 'webUrls',
+        });
+        setActiveTab('content');
+        focusFieldById('poi-operator-url');
+      }
       return;
     }
 
     try {
       const saved = mode === 'create' ? await createPoi(mutation) : await updatePoi(contentId as string, mutation);
-      const mediaReferences = values.settings.teaserImageAssetId
-        ? [
-            {
-              assetId: values.settings.teaserImageAssetId,
-              role: pluginPoiMediaPickers.teaserImage.roles[0],
-              sortOrder: 0,
-            },
-          ]
-        : [];
-      if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
+      const mediaReferences = (values.media.images ?? [])
+        .map((image) => normalizePoiMediaAssetId(image.assetId))
+        .filter((assetId) => assetId.length > 0)
+        .map((assetId, index) => ({
+          assetId,
+          role: pluginPoiMediaPickers.images.roles[0],
+          sortOrder: index,
+        }));
+      if (mediaReferencesLoadFailed && mediaReferences.length > 0) {
+        setStatus({ kind: 'error', text: pt('messages.mediaReferencesUnavailable') });
+        setActiveTab('settings');
+        return;
+      }
+      const nextReferences = [...preservedMediaReferences, ...mediaReferences];
+      if (nextReferences.length > 0 || loadedOwnedMediaReferenceCount > 0) {
         await replaceHostMediaReferences({
           fetch: globalThis.fetch.bind(globalThis),
+          instanceId,
           targetType: 'poi',
           targetId: saved.id,
-          references: mediaReferences,
+          references: nextReferences,
         });
       }
       setStatus({ kind: 'success', text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess') });
@@ -258,6 +330,13 @@ export function PoiDetailPage({
     return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   }
 
+  const tabPanels = {
+    basis: <PoiDetailBasisTab loadedItem={loadedItem} mode={mode} pt={pt} />,
+    content: <PoiDetailContentTab pt={pt} />,
+    settings: <PoiDetailSettingsTab mediaAssets={mediaAssets} pt={pt} />,
+    history: <PoiDetailHistoryTab pt={pt} />,
+  } as const satisfies Record<PoiDetailTabId, React.JSX.Element>;
+
   return (
     <FormProvider {...methods}>
       <StudioDetailPageTemplate
@@ -284,9 +363,9 @@ export function PoiDetailPage({
           <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as PoiDetailTabId)} className="space-y-0">
             <label className="block md:hidden">
               <span className="sr-only">{pt('tabs.mobileLabel')}</span>
-              <select
+              <Select
                 aria-label={pt('tabs.mobileLabel')}
-                className="h-11 w-full rounded-xl border border-border/70 bg-card px-3 text-sm"
+                className="h-11 rounded-xl border-border/70 bg-card"
                 value={activeTab}
                 onChange={(event) => handleTabChange(event.target.value as PoiDetailTabId)}
               >
@@ -295,28 +374,23 @@ export function PoiDetailPage({
                     {tab.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] hidden gap-10 md:flex">
               {tabs.map((tab) => {
-                const TabIcon = poiTabIconMap[tab.id];
                 const isActive = tab.id === activeTab;
 
                 return (
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
                     onMouseEnter={() => warmTab(tab.id)}
                     onFocus={() => warmTab(tab.id)}
-                    className={`relative z-10 gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
+                    className={`relative z-10 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
                       isActive ? 'mb-[-1px] border-primary text-primary' : 'border-transparent text-muted-foreground'
                     }`}
                   >
-                    <span className="inline-flex items-center gap-2">
-                      <TabIcon aria-hidden="true" className="h-4 w-4 shrink-0" />
-                      <span>{tab.label}</span>
-                    </span>
+                    <PoiTabTriggerLabel label={tab.label} />
                   </TabsTrigger>
                 );
               })}
@@ -331,21 +405,11 @@ export function PoiDetailPage({
                   forceMount={shouldKeepMounted || undefined}
                   className="mt-0 data-[state=inactive]:hidden"
                 >
-                  <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
-                    <section
-                      aria-label={tab.title}
-                      className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
-                    >
-                      <div className="space-y-1">
-                        <h2 className="text-base font-semibold text-foreground">{tab.title}</h2>
-                        <p className="text-sm leading-relaxed text-muted-foreground">{tab.description}</p>
-                      </div>
-                    </section>
-                    {tab.id === 'basis' ? <PoiDetailBasisTab loadedItem={loadedItem} mode={mode} pt={pt} /> : null}
-                    {tab.id === 'content' ? <PoiDetailContentTab pt={pt} /> : null}
-                    {tab.id === 'settings' ? <PoiDetailSettingsTab mediaOptions={mediaOptions} pt={pt} /> : null}
-                    {tab.id === 'history' ? <PoiDetailHistoryTab pt={pt} /> : null}
-                  </div>
+                  {renderPoiTabPanel({
+                    title: tab.title,
+                    description: tab.description,
+                    panel: tabPanels[tab.id],
+                  })}
                 </TabsContent>
               );
             })}

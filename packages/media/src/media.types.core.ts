@@ -3,7 +3,7 @@ export const mediaLiterals = {
   visibilities: ['public', 'protected'],
   uploadStatuses: ['pending', 'validated', 'processed', 'failed', 'blocked'],
   processingStatuses: ['pending', 'ready', 'failed'],
-  roles: ['thumbnail', 'teaser_image', 'header_image', 'gallery_item', 'download', 'hero_image'],
+  roles: ['thumbnail', 'teaser_image', 'header_image', 'gallery_item', 'download', 'hero_image', 'attachment_image'],
   formats: ['jpeg', 'png', 'webp'],
 } as const;
 

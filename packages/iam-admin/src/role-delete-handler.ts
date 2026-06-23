@@ -82,6 +82,24 @@ export type DeleteRoleHandlerDeps<
   ) => Promise<T>;
 };
 
+const resolveDeleteRoleRequest = async <
+  TAttributes,
+  TIdentityProvider extends DeleteRoleIdentityProvider<TAttributes>,
+  TRole extends MutableRoleShape,
+>(
+  deps: DeleteRoleHandlerDeps<TAttributes, TIdentityProvider, TRole>,
+  request: Request,
+  ctx: DeleteRoleAuthenticatedRequestContext
+): Promise<{ readonly actor: DeleteRoleActor; readonly roleId: string } | Response> => {
+  const resolvedActor = await deps.resolveRoleMutationActor(request, ctx);
+  if ('response' in resolvedActor) {
+    return resolvedActor.response;
+  }
+
+  const roleId = deps.requireRoleId(request, resolvedActor.actor.requestId);
+  return roleId instanceof Response ? roleId : { actor: resolvedActor.actor, roleId };
+};
+
 export const createDeleteRoleHandlerInternal =
   <
     TAttributes,
@@ -91,16 +109,12 @@ export const createDeleteRoleHandlerInternal =
     deps: DeleteRoleHandlerDeps<TAttributes, TIdentityProvider, TRole>
   ) =>
   async (request: Request, ctx: DeleteRoleAuthenticatedRequestContext): Promise<Response> => {
-    const resolvedActor = await deps.resolveRoleMutationActor(request, ctx);
-    if ('response' in resolvedActor) {
-      return resolvedActor.response;
+    const resolvedRequest = await resolveDeleteRoleRequest(deps, request, ctx);
+    if (resolvedRequest instanceof Response) {
+      return resolvedRequest;
     }
 
-    const { actor } = resolvedActor;
-    const roleId = deps.requireRoleId(request, actor.requestId);
-    if (roleId instanceof Response) {
-      return roleId;
-    }
+    const { actor, roleId } = resolvedRequest;
 
     try {
       const existing = await deps.resolveDeletableRole(actor, roleId);

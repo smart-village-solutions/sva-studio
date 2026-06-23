@@ -72,7 +72,12 @@ const createDeps = createTestDepsBuilder<
     toPayloadHash: vi.fn(() => 'payload-hash-1'),
     trackKeycloakCall: vi.fn(async (_operation, work) => work()),
     validateRequestedPermissions: vi.fn(async () => null),
-  })) satisfies CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>;
+	  })) satisfies CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>;
+
+const runCreateRoleRequest = async (deps: CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>) => {
+  const handler = createCreateRoleHandlerInternal(deps);
+  return handler(new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }), ctx);
+};
 
 describe('createCreateRoleHandlerInternal', () => {
   beforeEach(() => {
@@ -114,27 +119,23 @@ describe('createCreateRoleHandlerInternal', () => {
     });
   });
 
-  it('returns replayed idempotency responses without creating a role', async () => {
-    const replayBody = { data: { id: 'existing-role' } };
-    const deps = createDeps({
-      reserveIdempotency: vi.fn(async () => ({ status: 'replay', responseStatus: 201, responseBody: replayBody })),
-    });
-    const handler = createCreateRoleHandlerInternal(deps);
-
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }), ctx);
+	  it('returns replayed idempotency responses without creating a role', async () => {
+	    const replayBody = { data: { id: 'existing-role' } };
+	    const deps = createDeps({
+	      reserveIdempotency: vi.fn(async () => ({ status: 'replay', responseStatus: 201, responseBody: replayBody })),
+	    });
+	    const response = await runCreateRoleRequest(deps);
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual(replayBody);
     expect(identityProvider.provider.createRole).not.toHaveBeenCalled();
   });
 
-  it('does not require an identity provider for local tenant roles', async () => {
-    const deps = createDeps({
-      requireRoleIdentityProvider: vi.fn(async () => createJsonResponse(409, { error: { code: 'tenant_admin_client_not_configured' } })),
-    });
-    const handler = createCreateRoleHandlerInternal(deps);
-
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }), ctx);
+	  it('does not require an identity provider for local tenant roles', async () => {
+	    const deps = createDeps({
+	      requireRoleIdentityProvider: vi.fn(async () => createJsonResponse(409, { error: { code: 'tenant_admin_client_not_configured' } })),
+	    });
+	    const response = await runCreateRoleRequest(deps);
 
     expect(response.status).toBe(201);
     expect(deps.completeIdempotency).toHaveBeenCalledWith({

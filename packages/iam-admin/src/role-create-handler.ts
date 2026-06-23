@@ -1,6 +1,7 @@
-import type { ApiErrorResponse, IamRolePermissionAssignmentScope } from '@sva/core';
+import type { IamRolePermissionAssignmentScope } from '@sva/core';
 
 import { isTenantTechnicalKeycloakRole } from './role-governance.js';
+import { persistLocalRoleCreate, reserveCreateRoleIdempotency, syncTechnicalRoleCreate, type PreparedRoleCreate } from './role-create-sync.js';
 import type { IdempotencyReserveResult } from './types.js';
 
 export type CreateRoleAuthenticatedRequestContext = {
@@ -45,6 +46,11 @@ export type CreateRoleIdentityProvider<TAttributes = unknown> = {
 export type ParsedCreateRoleBody<TPayload extends CreateRolePayloadShape> =
   | { readonly ok: true; readonly data: TPayload; readonly rawBody: string }
   | { readonly ok: false };
+
+type ParsedCreateRoleSuccess<TPayload extends CreateRolePayloadShape> = Extract<
+  ParsedCreateRoleBody<TPayload>,
+  { readonly ok: true }
+>;
 
 export type CreateRoleHandlerDeps<
   TPayload extends CreateRolePayloadShape = CreateRolePayloadShape,
@@ -135,56 +141,39 @@ export type CreateRoleHandlerDeps<
     readonly permissionAssignments?: readonly {
       readonly permissionId: string;
       readonly accessScope?: IamRolePermissionAssignmentScope;
-    }[];
+  }[];
   }) => Promise<Response | null>;
 };
 
-const CREATE_ROLE_ENDPOINT = 'POST:/api/v1/iam/roles';
-
-const buildCreateRoleUnavailableBody = (requestId?: string): ApiErrorResponse => ({
-  error: {
-    code: 'keycloak_unavailable',
-    message: 'Keycloak Admin API ist nicht konfiguriert.',
-    details: {
-      syncState: 'failed',
-      syncError: { code: 'IDP_UNAVAILABLE' },
-    },
-  },
-  ...(requestId ? { requestId } : {}),
-});
-
-const buildCreateRoleDbWriteFailureBody = (requestId?: string): ApiErrorResponse => ({
-  error: {
-    code: 'conflict',
-    message: 'Rolle konnte nicht erstellt werden.',
-    details: {
-      syncState: 'failed',
-      syncError: { code: 'DB_WRITE_FAILED' },
-    },
-  },
-  ...(requestId ? { requestId } : {}),
-});
-
-const completeCreateRoleIdempotency = async (
-  deps: Pick<CreateRoleHandlerDeps, 'completeIdempotency'>,
-  input: {
-    readonly actor: CreateRoleActor;
-    readonly idempotencyKey: string;
-    readonly status: 'COMPLETED' | 'FAILED';
-    readonly responseStatus: number;
-    readonly responseBody: unknown;
-  }
-) => {
-  await deps.completeIdempotency({
-    instanceId: input.actor.instanceId,
-    actorAccountId: input.actor.actorAccountId,
-    endpoint: CREATE_ROLE_ENDPOINT,
-    idempotencyKey: input.idempotencyKey,
-    status: input.status,
-    responseStatus: input.responseStatus,
-    responseBody: input.responseBody,
-  });
+const parseCreateRoleRequest = async <
+  TPayload extends CreateRolePayloadShape,
+  TAttributes,
+  TIdentityProvider extends CreateRoleIdentityProvider<TAttributes>,
+  TRole,
+>(
+  deps: CreateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole>,
+  request: Request,
+  actor: CreateRoleActor
+): Promise<ParsedCreateRoleSuccess<TPayload> | Response> => {
+  const parsed = await deps.parseCreateRoleBody(request);
+  return parsed.ok ? parsed : deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
 };
+
+const validateCreateRolePermissions = async <
+  TPayload extends CreateRolePayloadShape,
+  TAttributes,
+  TIdentityProvider extends CreateRoleIdentityProvider<TAttributes>,
+  TRole,
+>(
+  deps: CreateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole>,
+  actor: CreateRoleActor,
+  data: TPayload
+): Promise<Response | null> =>
+  deps.validateRequestedPermissions?.({
+    actor,
+    permissionIds: data.permissionIds,
+    permissionAssignments: data.permissionAssignments,
+  }) ?? null;
 
 export const createCreateRoleHandlerInternal =
   <
@@ -207,208 +196,38 @@ export const createCreateRoleHandlerInternal =
       return idempotencyKey.error;
     }
 
-    const parsed = await deps.parseCreateRoleBody(request);
-    if (!parsed.ok) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+    const parsed = await parseCreateRoleRequest(deps, request, actor);
+    if (parsed instanceof Response) {
+      return parsed;
     }
 
-    const permissionValidationResponse = await deps.validateRequestedPermissions?.({
-      actor,
-      permissionIds: parsed.data.permissionIds,
-      permissionAssignments: parsed.data.permissionAssignments,
-    });
+    const permissionValidationResponse = await validateCreateRolePermissions(deps, actor, parsed.data);
     if (permissionValidationResponse) {
       return permissionValidationResponse;
     }
 
-    const reserve = await deps.reserveIdempotency({
-      instanceId: actor.instanceId,
-      actorAccountId: actor.actorAccountId,
-      endpoint: CREATE_ROLE_ENDPOINT,
+    const reservedResponse = await reserveCreateRoleIdempotency(deps, {
+      actor,
       idempotencyKey: idempotencyKey.key,
-      payloadHash: deps.toPayloadHash(parsed.rawBody),
+      rawBody: parsed.rawBody,
     });
-    if (reserve.status === 'replay') {
-      return deps.jsonResponse(reserve.responseStatus, reserve.responseBody);
-    }
-    if (reserve.status === 'conflict') {
-      return deps.createApiError(409, 'idempotency_key_reuse', reserve.message, actor.requestId);
+    if (reservedResponse) {
+      return reservedResponse;
     }
 
     const roleKey = parsed.data.roleName;
     const displayName = parsed.data.displayName?.trim() || roleKey;
     const externalRoleName = roleKey;
-    const shouldSyncIdentityRole = isTenantTechnicalKeycloakRole({ role_key: roleKey, external_role_name: externalRoleName });
+    const preparedCreate = {
+      actor,
+      data: parsed.data,
+      displayName,
+      externalRoleName,
+      idempotencyKey: idempotencyKey.key,
+      roleKey,
+    } satisfies PreparedRoleCreate<TPayload>;
 
-    if (!shouldSyncIdentityRole) {
-      try {
-        const role = await deps.persistCreatedRole({
-          actor,
-          roleKey,
-          displayName,
-          externalRoleName,
-          description: parsed.data.description ?? undefined,
-          roleLevel: parsed.data.roleLevel,
-          permissionIds: parsed.data.permissionIds,
-          permissionAssignments: parsed.data.permissionAssignments,
-        });
-
-        deps.iamUserOperationsCounter.add(1, { action: 'create_role', result: 'success' });
-        const responseBody = deps.asApiItem(role, actor.requestId);
-        await completeCreateRoleIdempotency(deps, {
-          actor,
-          idempotencyKey: idempotencyKey.key,
-          status: 'COMPLETED',
-          responseStatus: 201,
-          responseBody,
-        });
-        return deps.jsonResponse(201, responseBody);
-      } catch (error) {
-        deps.iamUserOperationsCounter.add(1, { action: 'create_role', result: 'failure' });
-        const failureResponse = deps.buildRoleSyncFailure({
-          error,
-          requestId: actor.requestId,
-          fallbackMessage: 'Rolle konnte nicht erstellt werden.',
-        });
-        await completeCreateRoleIdempotency(deps, {
-          actor,
-          idempotencyKey: idempotencyKey.key,
-          status: 'FAILED',
-          responseStatus: failureResponse.status,
-          responseBody: await failureResponse.clone().json(),
-        });
-        return failureResponse;
-      }
-    }
-
-    const identityProvider = await deps.requireRoleIdentityProvider(actor.instanceId, actor.requestId);
-    if (identityProvider instanceof Response) {
-      const responseBody = buildCreateRoleUnavailableBody(actor.requestId);
-      await completeCreateRoleIdempotency(deps, {
-        actor,
-        idempotencyKey: idempotencyKey.key,
-        status: 'FAILED',
-        responseStatus: 503,
-        responseBody,
-      });
-      return deps.jsonResponse(503, responseBody);
-    }
-
-    let createdInIdentityProvider = false;
-
-    try {
-      await deps.trackKeycloakCall('create_role', () =>
-        identityProvider.provider.createRole({
-          externalName: externalRoleName,
-          description: parsed.data.description ?? undefined,
-          attributes: deps.buildRoleAttributes({
-            instanceId: actor.instanceId,
-            roleKey,
-            displayName,
-          }),
-        })
-      );
-      createdInIdentityProvider = true;
-
-      const role = await deps.persistCreatedRole({
-        actor,
-        roleKey,
-        displayName,
-        externalRoleName,
-        description: parsed.data.description ?? undefined,
-        roleLevel: parsed.data.roleLevel,
-        permissionIds: parsed.data.permissionIds,
-        permissionAssignments: parsed.data.permissionAssignments,
-      });
-
-      deps.iamUserOperationsCounter.add(1, { action: 'create_role', result: 'success' });
-      deps.iamRoleSyncCounter.add(1, { operation: 'create', result: 'success', error_code: 'none' });
-
-      const responseBody = deps.asApiItem(role, actor.requestId);
-      await completeCreateRoleIdempotency(deps, {
-        actor,
-        idempotencyKey: idempotencyKey.key,
-        status: 'COMPLETED',
-        responseStatus: 201,
-        responseBody,
-      });
-      return deps.jsonResponse(201, responseBody);
-    } catch (error) {
-      if (createdInIdentityProvider) {
-        try {
-          await deps.trackKeycloakCall('delete_role_compensation', () =>
-            identityProvider.provider.deleteRole(externalRoleName)
-          );
-        } catch (compensationError) {
-          deps.iamRoleSyncCounter.add(1, {
-            operation: 'create',
-            result: 'failure',
-            error_code: 'COMPENSATION_FAILED',
-          });
-          deps.logger.error('Role create compensation failed', {
-            operation: 'create_role_compensation',
-            instance_id: actor.instanceId,
-            request_id: actor.requestId,
-            trace_id: actor.traceId,
-            role_key: roleKey,
-            external_role_name: externalRoleName,
-            error_code: 'COMPENSATION_FAILED',
-            error: deps.sanitizeRoleErrorMessage(compensationError),
-          });
-          const responseBody = deps.createApiError(
-            500,
-            'internal_error',
-            'Rolle konnte nicht konsistent erstellt werden.',
-            actor.requestId,
-            {
-              syncState: 'failed',
-              syncError: { code: 'COMPENSATION_FAILED' },
-            }
-          );
-          await completeCreateRoleIdempotency(deps, {
-            actor,
-            idempotencyKey: idempotencyKey.key,
-            status: 'FAILED',
-            responseStatus: 500,
-            responseBody: await responseBody.clone().json(),
-          });
-          return responseBody;
-        }
-
-        deps.iamRoleSyncCounter.add(1, {
-          operation: 'create',
-          result: 'failure',
-          error_code: 'DB_WRITE_FAILED',
-        });
-        const responseBody = buildCreateRoleDbWriteFailureBody(actor.requestId);
-        await completeCreateRoleIdempotency(deps, {
-          actor,
-          idempotencyKey: idempotencyKey.key,
-          status: 'FAILED',
-          responseStatus: 409,
-          responseBody,
-        });
-        return deps.jsonResponse(409, responseBody);
-      }
-
-      deps.iamUserOperationsCounter.add(1, { action: 'create_role', result: 'failure' });
-      deps.iamRoleSyncCounter.add(1, {
-        operation: 'create',
-        result: 'failure',
-        error_code: deps.mapRoleSyncErrorCode(error),
-      });
-      const failureResponse = deps.buildRoleSyncFailure({
-        error,
-        requestId: actor.requestId,
-        fallbackMessage: 'Rolle konnte nicht erstellt werden.',
-      });
-      await completeCreateRoleIdempotency(deps, {
-        actor,
-        idempotencyKey: idempotencyKey.key,
-        status: 'FAILED',
-        responseStatus: failureResponse.status,
-        responseBody: await failureResponse.clone().json(),
-      });
-      return failureResponse;
-    }
+    return isTenantTechnicalKeycloakRole({ role_key: roleKey, external_role_name: externalRoleName })
+      ? syncTechnicalRoleCreate(deps, preparedCreate)
+      : persistLocalRoleCreate(deps, preparedCreate);
   };

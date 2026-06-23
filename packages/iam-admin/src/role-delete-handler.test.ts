@@ -29,6 +29,16 @@ const existingRole = {
   role_level: 20,
 };
 
+const systemAdminRole = {
+  ...existingRole,
+  role_key: 'system_admin',
+  role_name: 'system_admin',
+  display_name: 'System Admin',
+  external_role_name: 'system_admin',
+  is_system_role: true,
+  role_level: 90,
+};
+
 const identityProvider = {
   provider: {
     assignRealmRoles: vi.fn(async () => undefined),
@@ -167,15 +177,7 @@ describe('createDeleteRoleHandlerInternal', () => {
 
   it('recreates the role in Keycloak when local deletion fails', async () => {
     const deps = createDeps({
-      resolveDeletableRole: vi.fn(async () => ({
-        ...existingRole,
-        role_key: 'system_admin',
-        role_name: 'system_admin',
-        display_name: 'System Admin',
-        external_role_name: 'system_admin',
-        is_system_role: true,
-        role_level: 90,
-      })),
+      resolveDeletableRole: vi.fn(async () => systemAdminRole),
       deleteRoleFromDatabase: vi.fn(async () => {
         throw new Error('db write failed');
       }),
@@ -199,15 +201,7 @@ describe('createDeleteRoleHandlerInternal', () => {
 
   it('replays direct user role mappings when compensation recreates a deleted role', async () => {
     const deps = createDeps({
-      resolveDeletableRole: vi.fn(async () => ({
-        ...existingRole,
-        role_key: 'system_admin',
-        role_name: 'system_admin',
-        display_name: 'System Admin',
-        external_role_name: 'system_admin',
-        is_system_role: true,
-        role_level: 90,
-      })),
+      resolveDeletableRole: vi.fn(async () => systemAdminRole),
       deleteRoleFromDatabase: vi.fn(async () => {
         throw new Error('db write failed');
       }),

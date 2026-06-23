@@ -40,9 +40,6 @@ export const isTenantManageableRole = (role: RoleIdentity): boolean =>
 export const isTenantTechnicalKeycloakRole = (role: RoleIdentity): boolean =>
   collectRoleIdentifiers(role).some((identifier) => TENANT_TECHNICAL_KEYCLOAK_ROLE_SET.has(identifier));
 
-export const isPlatformTechnicalKeycloakRoleName = (roleName: string): boolean =>
-  PLATFORM_TECHNICAL_KEYCLOAK_ROLE_SET.has(roleName);
-
 export const filterTenantTechnicalKeycloakRoleNames = (roleNames: readonly string[]): readonly string[] =>
   [...new Set(roleNames.filter((roleName) => TENANT_TECHNICAL_KEYCLOAK_ROLE_SET.has(roleName)))];
 

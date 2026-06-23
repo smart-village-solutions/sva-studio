@@ -394,14 +394,12 @@ const syncUpdatedIdentityAndRoles = async <
     input.shouldRestoreIdentityRef.current = true;
   }
 
-  if (await syncUpdatedTechnicalRoles(deps, {
+  await syncUpdatedTechnicalRoles(deps, {
     ...input,
     beforeRoleMutation: () => {
       input.shouldRestoreRolesRef.current = true;
     },
-  })) {
-    input.shouldRestoreRolesRef.current = true;
-  }
+  });
 };
 
 const executeUserUpdate = async <

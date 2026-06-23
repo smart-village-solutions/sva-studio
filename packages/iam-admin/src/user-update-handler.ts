@@ -31,11 +31,18 @@ export type UpdateIdentityProvider = {
         readonly attributes?: UpdateIdentityAttributes;
       }
     ) => Promise<void>;
-    readonly assignRealmRoles: (keycloakSubject: string, roleNames: readonly string[]) => Promise<void>;
-    readonly removeRealmRoles: (keycloakSubject: string, roleNames: readonly string[]) => Promise<void>;
+    readonly assignRealmRoles?: (keycloakSubject: string, roleNames: readonly string[]) => Promise<void>;
+    readonly removeRealmRoles?: (keycloakSubject: string, roleNames: readonly string[]) => Promise<void>;
     readonly syncRoles: (keycloakSubject: string, roleNames: string[]) => Promise<void>;
   };
 };
+
+export class RoleMutationCapabilityUnavailableError extends Error {
+  constructor(readonly capability: 'assignRealmRoles' | 'removeRealmRoles') {
+    super(`${capability} provider capability unavailable`);
+    this.name = 'RoleMutationCapabilityUnavailableError';
+  }
+}
 
 export type UpdateUserPayloadShape = {
   readonly email?: string;
@@ -229,6 +236,9 @@ const assignTechnicalRoles = async <
   if (input.roleNames.length === 0) {
     return;
   }
+  if (!input.identityProvider.provider.assignRealmRoles) {
+    throw new RoleMutationCapabilityUnavailableError('assignRealmRoles');
+  }
   await deps.ensureManagedRealmRolesExist({
     instanceId: input.actor.instanceId,
     identityProvider: input.identityProvider,
@@ -238,7 +248,7 @@ const assignTechnicalRoles = async <
     traceId: input.actor.traceId,
   });
   await deps.trackKeycloakCall('assign_realm_roles', () =>
-    input.identityProvider.provider.assignRealmRoles(input.keycloakSubject, input.roleNames)
+    input.identityProvider.provider.assignRealmRoles!(input.keycloakSubject, input.roleNames)
   );
 };
 
@@ -258,8 +268,11 @@ const removeTechnicalRoles = async <
   if (input.roleNames.length === 0) {
     return;
   }
+  if (!input.identityProvider.provider.removeRealmRoles) {
+    throw new RoleMutationCapabilityUnavailableError('removeRealmRoles');
+  }
   await deps.trackKeycloakCall('remove_realm_roles', () =>
-    input.identityProvider.provider.removeRealmRoles(input.keycloakSubject, input.roleNames)
+    input.identityProvider.provider.removeRealmRoles!(input.keycloakSubject, input.roleNames)
   );
 };
 

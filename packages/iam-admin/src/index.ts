@@ -153,6 +153,7 @@ export {
 
 export {
   createUpdateUserHandlerInternal,
+  RoleMutationCapabilityUnavailableError,
   type UpdateAuthenticatedRequestContext,
   type UpdateUserHandlerDeps,
 } from './user-update-handler.js';

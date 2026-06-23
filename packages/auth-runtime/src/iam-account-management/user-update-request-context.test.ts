@@ -147,11 +147,11 @@ describe('resolveUpdateRequestContext', () => {
     });
   });
 
-  it('fails closed when the identity provider cannot mutate technical realm roles', async () => {
+  it('allows updates without early role-capability checks', async () => {
     state.parseRequestBody.mockResolvedValue({
       ok: true,
       data: {
-        roleIds: ['role-admin'],
+        firstName: 'Alice',
       },
     });
     state.requireUserMutationIdentityProvider.mockResolvedValue({
@@ -162,10 +162,10 @@ describe('resolveUpdateRequestContext', () => {
 
     const { resolveUpdateRequestContext } = await import('./user-update-request-context.js');
 
-    const response = await resolveUpdateRequestContext(
+    const context = await resolveUpdateRequestContext(
       new Request('http://localhost/api/v1/iam/users/user-1', {
         method: 'PATCH',
-        body: JSON.stringify({ roleIds: ['role-admin'] }),
+        body: JSON.stringify({ firstName: 'Alice' }),
       }),
       {
         sessionId: 'session-1',
@@ -177,14 +177,22 @@ describe('resolveUpdateRequestContext', () => {
       }
     );
 
-    expect(response).toBeInstanceOf(Response);
-    expect((response as Response).status).toBe(503);
-    await expect((response as Response).json()).resolves.toEqual({
-      error: {
-        code: 'keycloak_unavailable',
-        message: 'Keycloak Admin API unterstützt technische Rollenzuweisungen nicht.',
+    expect(context).toEqual({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
       },
-      requestId: 'req-1',
+      identityProvider: {
+        provider: {
+          users: [],
+        },
+      },
+      payload: {
+        firstName: 'Alice',
+      },
+      userId: 'user-1',
     });
   });
 });

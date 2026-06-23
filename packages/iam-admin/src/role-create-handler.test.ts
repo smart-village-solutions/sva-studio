@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createJsonResponse, createTestDepsBuilder } from './handler-test-helpers.js';
+import { createJsonResponse, createTestDepsBuilder, dbWriteFailedErrorBody } from './handler-test-helpers.js';
 import { createCreateRoleHandlerInternal, type CreateRoleHandlerDeps } from './role-create-handler.js';
 
 const actor = {
@@ -72,7 +72,7 @@ const createDeps = createTestDepsBuilder<
     toPayloadHash: vi.fn(() => 'payload-hash-1'),
     trackKeycloakCall: vi.fn(async (_operation, work) => work()),
     validateRequestedPermissions: vi.fn(async () => null),
-	  })) satisfies CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>;
+  })) satisfies CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>;
 
 const runCreateRoleRequest = async (deps: CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>) => {
   const handler = createCreateRoleHandlerInternal(deps);
@@ -119,23 +119,23 @@ describe('createCreateRoleHandlerInternal', () => {
     });
   });
 
-	  it('returns replayed idempotency responses without creating a role', async () => {
-	    const replayBody = { data: { id: 'existing-role' } };
-	    const deps = createDeps({
-	      reserveIdempotency: vi.fn(async () => ({ status: 'replay', responseStatus: 201, responseBody: replayBody })),
-	    });
-	    const response = await runCreateRoleRequest(deps);
+  it('returns replayed idempotency responses without creating a role', async () => {
+    const replayBody = { data: { id: 'existing-role' } };
+    const deps = createDeps({
+      reserveIdempotency: vi.fn(async () => ({ status: 'replay', responseStatus: 201, responseBody: replayBody })),
+    });
+    const response = await runCreateRoleRequest(deps);
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual(replayBody);
     expect(identityProvider.provider.createRole).not.toHaveBeenCalled();
   });
 
-	  it('does not require an identity provider for local tenant roles', async () => {
-	    const deps = createDeps({
-	      requireRoleIdentityProvider: vi.fn(async () => createJsonResponse(409, { error: { code: 'tenant_admin_client_not_configured' } })),
-	    });
-	    const response = await runCreateRoleRequest(deps);
+  it('does not require an identity provider for local tenant roles', async () => {
+    const deps = createDeps({
+      requireRoleIdentityProvider: vi.fn(async () => createJsonResponse(409, { error: { code: 'tenant_admin_client_not_configured' } })),
+    });
+    const response = await runCreateRoleRequest(deps);
 
     expect(response.status).toBe(201);
     expect(deps.completeIdempotency).toHaveBeenCalledWith({
@@ -167,7 +167,7 @@ describe('createCreateRoleHandlerInternal', () => {
     expect(deps.persistCreatedRole).not.toHaveBeenCalled();
   });
 
-  it('returns a local creation failure without Keycloak compensation when persistence fails', async () => {
+  it('returns a DB write conflict without Keycloak compensation when local persistence fails', async () => {
     const deps = createDeps({
       persistCreatedRole: vi.fn(async () => {
         throw new Error('db write failed');
@@ -177,18 +177,30 @@ describe('createCreateRoleHandlerInternal', () => {
 
     const response = await handler(new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }), ctx);
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject(dbWriteFailedErrorBody('conflict', 'req-create-role'));
     expect(identityProvider.provider.createRole).not.toHaveBeenCalled();
     expect(identityProvider.provider.deleteRole).not.toHaveBeenCalled();
+    expect(deps.logger.error).toHaveBeenCalledWith(
+      'Role create database write failed',
+      expect.objectContaining({
+        operation: 'create_role',
+        error_code: 'DB_WRITE_FAILED',
+        error: 'db write failed',
+      })
+    );
     expect(deps.completeIdempotency).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       actorAccountId: 'actor-account-1',
       endpoint: 'POST:/api/v1/iam/roles',
       idempotencyKey: 'idem-role-1',
       status: 'FAILED',
-      responseStatus: 503,
+      responseStatus: 409,
       responseBody: expect.objectContaining({
-        error: expect.objectContaining({ code: 'keycloak_unavailable' }),
+        error: expect.objectContaining({
+          code: 'conflict',
+          details: expect.objectContaining({ syncError: { code: 'DB_WRITE_FAILED' } }),
+        }),
       }),
     });
   });

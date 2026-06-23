@@ -83,6 +83,40 @@ const persistPreparedRole = async <
     permissionAssignments: input.data.permissionAssignments,
   });
 
+const recordCreateRoleOperationFailure = <
+  TPayload extends CreateRolePayloadShape,
+  TAttributes,
+  TIdentityProvider extends CreateRoleIdentityProvider<TAttributes>,
+  TRole,
+>(
+  deps: CreateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole>
+) => {
+  deps.iamUserOperationsCounter.add(1, { action: 'create_role', result: 'failure' });
+};
+
+const logCreateRoleDatabaseWriteFailure = <
+  TPayload extends CreateRolePayloadShape,
+  TAttributes,
+  TIdentityProvider extends CreateRoleIdentityProvider<TAttributes>,
+  TRole,
+>(
+  deps: CreateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole>,
+  input: PreparedRoleCreate<TPayload>,
+  error: unknown,
+  message: string
+) => {
+  deps.logger.error(message, {
+    operation: 'create_role',
+    instance_id: input.actor.instanceId,
+    request_id: input.actor.requestId,
+    trace_id: input.actor.traceId,
+    role_key: input.roleKey,
+    external_role_name: input.externalRoleName,
+    error_code: 'DB_WRITE_FAILED',
+    error: deps.sanitizeRoleErrorMessage(error),
+  });
+};
+
 const finishCreatedRole = async <
   TPayload extends CreateRolePayloadShape,
   TAttributes,
@@ -115,7 +149,7 @@ const failCreatedRole = async <
   input: PreparedRoleCreate<TPayload>,
   error: unknown
 ): Promise<Response> => {
-  deps.iamUserOperationsCounter.add(1, { action: 'create_role', result: 'failure' });
+  recordCreateRoleOperationFailure(deps);
   const failureResponse = deps.buildRoleSyncFailure({
     error,
     requestId: input.actor.requestId,
@@ -129,6 +163,41 @@ const failCreatedRole = async <
     responseBody: await failureResponse.clone().json(),
   });
   return failureResponse;
+};
+
+const failLocalRoleDatabaseWrite = async <
+  TPayload extends CreateRolePayloadShape,
+  TAttributes,
+  TIdentityProvider extends CreateRoleIdentityProvider<TAttributes>,
+  TRole,
+>(
+  deps: CreateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole>,
+  input: PreparedRoleCreate<TPayload>
+): Promise<Response> => {
+  const responseBody = buildCreateRoleDbWriteFailureBody(input.actor.requestId);
+  await completeCreateRoleIdempotency(deps, {
+    actor: input.actor,
+    idempotencyKey: input.idempotencyKey,
+    status: 'FAILED',
+    responseStatus: 409,
+    responseBody,
+  });
+  return deps.jsonResponse(409, responseBody);
+};
+
+const failLocalRoleCreateDatabaseWrite = async <
+  TPayload extends CreateRolePayloadShape,
+  TAttributes,
+  TIdentityProvider extends CreateRoleIdentityProvider<TAttributes>,
+  TRole,
+>(
+  deps: CreateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole>,
+  input: PreparedRoleCreate<TPayload>,
+  error: unknown
+): Promise<Response> => {
+  recordCreateRoleOperationFailure(deps);
+  logCreateRoleDatabaseWriteFailure(deps, input, error, 'Role create database write failed');
+  return failLocalRoleDatabaseWrite(deps, input);
 };
 
 const failCreateCompensation = async <
@@ -183,22 +252,21 @@ const failTechnicalRoleDatabaseWrite = async <
   TRole,
 >(
   deps: CreateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole>,
-  input: PreparedRoleCreate<TPayload>
+  input: PreparedRoleCreate<TPayload>,
+  error: unknown
 ): Promise<Response> => {
   deps.iamRoleSyncCounter.add(1, {
     operation: 'create',
     result: 'failure',
     error_code: 'DB_WRITE_FAILED',
   });
-  const responseBody = buildCreateRoleDbWriteFailureBody(input.actor.requestId);
-  await completeCreateRoleIdempotency(deps, {
-    actor: input.actor,
-    idempotencyKey: input.idempotencyKey,
-    status: 'FAILED',
-    responseStatus: 409,
-    responseBody,
-  });
-  return deps.jsonResponse(409, responseBody);
+  logCreateRoleDatabaseWriteFailure(
+    deps,
+    input,
+    error,
+    'Role create database write failed after successful Keycloak create'
+  );
+  return failLocalRoleDatabaseWrite(deps, input);
 };
 
 export const reserveCreateRoleIdempotency = async <
@@ -247,7 +315,7 @@ export const persistLocalRoleCreate = async <
   try {
     return await finishCreatedRole(deps, input, await persistPreparedRole(deps, input));
   } catch (error) {
-    return failCreatedRole(deps, input, error);
+    return failLocalRoleCreateDatabaseWrite(deps, input, error);
   }
 };
 
@@ -306,6 +374,6 @@ export const syncTechnicalRoleCreate = async <
     } catch (compensationError) {
       return failCreateCompensation(deps, input, compensationError);
     }
-    return failTechnicalRoleDatabaseWrite(deps, input);
+    return failTechnicalRoleDatabaseWrite(deps, input, error);
   }
 };

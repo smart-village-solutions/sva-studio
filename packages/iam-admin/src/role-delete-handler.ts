@@ -100,6 +100,50 @@ const resolveDeleteRoleRequest = async <
   return roleId instanceof Response ? roleId : { actor: resolvedActor.actor, roleId };
 };
 
+const buildDeletedRolePayload = (input: {
+  readonly roleId: string;
+  readonly roleKey: string;
+  readonly roleName: string;
+  readonly externalRoleName: string;
+}) => ({
+  id: input.roleId,
+  roleKey: input.roleKey,
+  roleName: input.roleName,
+  externalRoleName: input.externalRoleName,
+  syncState: 'synced' as const,
+});
+
+const failLocalRoleDeleteDatabaseWrite = <
+  TAttributes,
+  TIdentityProvider extends DeleteRoleIdentityProvider<TAttributes>,
+  TRole extends MutableRoleShape,
+>(
+  deps: DeleteRoleHandlerDeps<TAttributes, TIdentityProvider, TRole>,
+  input: {
+    readonly actor: DeleteRoleActor;
+    readonly roleId: string;
+    readonly existing: TRole;
+    readonly externalRoleName: string;
+    readonly error: unknown;
+  }
+): Response => {
+  deps.logger.error('Role delete database write failed', {
+    operation: 'delete_role',
+    instance_id: input.actor.instanceId,
+    request_id: input.actor.requestId,
+    trace_id: input.actor.traceId,
+    role_id: input.roleId,
+    role_key: input.existing.role_key,
+    external_role_name: input.externalRoleName,
+    error_code: 'DB_WRITE_FAILED',
+    error: deps.sanitizeRoleErrorMessage(input.error),
+  });
+  return deps.createApiError(500, 'internal_error', 'Rolle konnte nicht gelöscht werden.', input.actor.requestId, {
+    syncState: 'failed',
+    syncError: { code: 'DB_WRITE_FAILED' },
+  });
+};
+
 export const createDeleteRoleHandlerInternal =
   <
     TAttributes,
@@ -125,22 +169,25 @@ export const createDeleteRoleHandlerInternal =
       const externalRoleName = getRoleExternalName(existing);
       const shouldSyncIdentityRole = isTenantTechnicalKeycloakRole(existing);
       if (!shouldSyncIdentityRole) {
-        await deps.deleteRoleFromDatabase({
-          actor,
-          roleId,
-          roleKey: existing.role_key,
-          externalRoleName,
-        });
+        try {
+          await deps.deleteRoleFromDatabase({
+            actor,
+            roleId,
+            roleKey: existing.role_key,
+            externalRoleName,
+          });
+        } catch (error) {
+          return failLocalRoleDeleteDatabaseWrite(deps, { actor, roleId, existing, externalRoleName, error });
+        }
         return deps.jsonResponse(
           200,
           deps.asApiItem(
-            {
-              id: roleId,
+            buildDeletedRolePayload({
+              roleId,
               roleKey: existing.role_key,
               roleName: getRoleDisplayName(existing),
               externalRoleName,
-              syncState: 'synced' as const,
-            },
+            }),
             actor.requestId
           )
         );
@@ -266,13 +313,12 @@ export const createDeleteRoleHandlerInternal =
       return deps.jsonResponse(
         200,
         deps.asApiItem(
-          {
-            id: roleId,
+          buildDeletedRolePayload({
+            roleId,
             roleKey: existing.role_key,
             roleName: getRoleDisplayName(existing),
             externalRoleName,
-            syncState: 'synced' as const,
-          },
+          }),
           actor.requestId
         )
       );

@@ -1,7 +1,12 @@
 import type { IamRolePermissionAssignmentScope } from '@sva/core';
 import { getRoleDisplayName, getRoleExternalName } from './role-audit.js';
 import { isTenantTechnicalKeycloakRole } from './role-governance.js';
-import { persistLocalRoleUpdate, syncTechnicalRoleUpdate, type PreparedRoleUpdate } from './role-update-sync.js';
+import {
+  persistLocalRoleUpdate,
+  redirectRoleSyncRetryToReconcile,
+  syncTechnicalRoleUpdate,
+  type PreparedRoleUpdate,
+} from './role-update-sync.js';
 
 export type UpdateRoleAuthenticatedRequestContext = {
   readonly sessionId: string;
@@ -158,6 +163,9 @@ export const createUpdateRoleHandlerInternal =
     if (!parsed.ok) {
       return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
     }
+    if (parsed.data.retrySync) {
+      return redirectRoleSyncRetryToReconcile(deps, actor.requestId);
+    }
 
     const permissionValidationResponse = await deps.validateRequestedPermissions?.({
       actor,
@@ -179,7 +187,7 @@ export const createUpdateRoleHandlerInternal =
         roleId,
         existing,
         data: parsed.data,
-        operation: parsed.data.retrySync ? 'retry' : 'update',
+        operation: 'update',
         displayName: parsed.data.displayName?.trim() || getRoleDisplayName(existing),
         description: parsed.data.description ?? existing.description ?? undefined,
         roleLevel: parsed.data.roleLevel ?? existing.role_level,
@@ -187,14 +195,6 @@ export const createUpdateRoleHandlerInternal =
       } satisfies PreparedRoleUpdate<TPayload, TRole>;
 
       if (!isTenantTechnicalKeycloakRole(existing)) {
-        if (parsed.data.retrySync) {
-          return deps.createApiError(
-            400,
-            'invalid_request',
-            'Rollenabgleich ist nur für technische Sonderrollen verfügbar.',
-            actor.requestId
-          );
-        }
         return await persistLocalRoleUpdate(deps, preparedUpdate);
       }
       return await syncTechnicalRoleUpdate(deps, preparedUpdate);

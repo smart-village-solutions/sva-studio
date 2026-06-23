@@ -19,7 +19,7 @@ export type PreparedRoleUpdate<TPayload extends UpdateRolePayloadShape, TRole ex
   readonly externalRoleName: string;
 };
 
-export const persistLocalRoleUpdate = async <
+const persistPreparedRoleUpdate = async <
   TPayload extends UpdateRolePayloadShape,
   TAttributes,
   TIdentityProvider extends UpdateRoleIdentityProvider<TAttributes>,
@@ -28,8 +28,8 @@ export const persistLocalRoleUpdate = async <
 >(
   deps: UpdateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole, TRoleItem>,
   input: PreparedRoleUpdate<TPayload, TRole>
-): Promise<Response> => {
-  const roleItem = await deps.persistUpdatedRole({
+): Promise<TRoleItem> =>
+  deps.persistUpdatedRole({
     actor: input.actor,
     roleId: input.roleId,
     existing: input.existing,
@@ -41,8 +41,92 @@ export const persistLocalRoleUpdate = async <
     permissionAssignments: input.data.permissionAssignments,
     operation: input.operation,
   });
-  return deps.jsonResponse(200, deps.asApiItem(roleItem, input.actor.requestId));
+
+const buildUpdatedRoleResponse = <
+  TPayload extends UpdateRolePayloadShape,
+  TAttributes,
+  TIdentityProvider extends UpdateRoleIdentityProvider<TAttributes>,
+  TRole extends MutableRoleShape,
+  TRoleItem,
+>(
+  deps: UpdateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole, TRoleItem>,
+  input: PreparedRoleUpdate<TPayload, TRole>,
+  roleItem: TRoleItem
+): Response => deps.jsonResponse(200, deps.asApiItem(roleItem, input.actor.requestId));
+
+const failLocalRoleDatabaseWrite = <
+  TPayload extends UpdateRolePayloadShape,
+  TAttributes,
+  TIdentityProvider extends UpdateRoleIdentityProvider<TAttributes>,
+  TRole extends MutableRoleShape,
+  TRoleItem,
+>(
+  deps: UpdateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole, TRoleItem>,
+  input: PreparedRoleUpdate<TPayload, TRole>,
+  error: unknown
+): Response => {
+  deps.logger.error('Role update database write failed', {
+    operation: 'update_role',
+    instance_id: input.actor.instanceId,
+    request_id: input.actor.requestId,
+    trace_id: input.actor.traceId,
+    role_id: input.roleId,
+    role_key: input.existing.role_key,
+    external_role_name: input.externalRoleName,
+    error_code: 'DB_WRITE_FAILED',
+    error: deps.sanitizeRoleErrorMessage(error),
+  });
+  return deps.createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', input.actor.requestId, {
+    syncState: 'failed',
+    syncError: { code: 'DB_WRITE_FAILED' },
+  });
 };
+
+export const persistLocalRoleUpdate = async <
+  TPayload extends UpdateRolePayloadShape,
+  TAttributes,
+  TIdentityProvider extends UpdateRoleIdentityProvider<TAttributes>,
+  TRole extends MutableRoleShape,
+  TRoleItem,
+>(
+  deps: UpdateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole, TRoleItem>,
+  input: PreparedRoleUpdate<TPayload, TRole>
+): Promise<Response> => {
+  try {
+    return buildUpdatedRoleResponse(deps, input, await persistPreparedRoleUpdate(deps, input));
+  } catch (error) {
+    return failLocalRoleDatabaseWrite(deps, input, error);
+  }
+};
+
+const failRoleSyncRetryViaReconcile = <
+  TPayload extends UpdateRolePayloadShape,
+  TAttributes,
+  TIdentityProvider extends UpdateRoleIdentityProvider<TAttributes>,
+  TRole extends MutableRoleShape,
+  TRoleItem,
+>(
+  deps: UpdateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole, TRoleItem>,
+  requestId?: string
+): Response =>
+  deps.createApiError(
+    400,
+    'invalid_request',
+    'Rollenabgleich wird über den Reconcile-Lauf ausgeführt.',
+    requestId,
+    { syncState: 'pending', syncAction: 'reconcile_roles' }
+  );
+
+export const redirectRoleSyncRetryToReconcile = <
+  TPayload extends UpdateRolePayloadShape,
+  TAttributes,
+  TIdentityProvider extends UpdateRoleIdentityProvider<TAttributes>,
+  TRole extends MutableRoleShape,
+  TRoleItem,
+>(
+  deps: UpdateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole, TRoleItem>,
+  requestId?: string
+): Response => failRoleSyncRetryViaReconcile(deps, requestId);
 
 const failTechnicalRoleCompensation = async <
   TPayload extends UpdateRolePayloadShape,
@@ -57,14 +141,18 @@ const failTechnicalRoleCompensation = async <
   await deps.markRoleSyncState({
     actor: input.actor,
     roleId: input.roleId,
-    operation: 'update',
+    operation: input.operation,
     result: 'failure',
     roleKey: input.existing.role_key,
     externalRoleName: input.externalRoleName,
     errorCode: 'COMPENSATION_FAILED',
     syncState: 'failed',
   });
-  deps.iamRoleSyncCounter.add(1, { operation: 'update', result: 'failure', error_code: 'COMPENSATION_FAILED' });
+  deps.iamRoleSyncCounter.add(1, {
+    operation: input.operation,
+    result: 'failure',
+    error_code: 'COMPENSATION_FAILED',
+  });
   return deps.createApiError(500, 'internal_error', 'Rolle konnte nicht konsistent aktualisiert werden.', input.actor.requestId, {
     syncState: 'failed',
     syncError: { code: 'COMPENSATION_FAILED' },
@@ -83,7 +171,7 @@ const persistTechnicalRoleUpdate = async <
   identityProvider: TIdentityProvider
 ): Promise<Response> => {
   try {
-    const response = await persistLocalRoleUpdate(deps, input);
+    const response = buildUpdatedRoleResponse(deps, input, await persistPreparedRoleUpdate(deps, input));
     deps.iamRoleSyncCounter.add(1, { operation: input.operation, result: 'success', error_code: 'none' });
     return response;
   } catch (error) {
@@ -105,14 +193,18 @@ const persistTechnicalRoleUpdate = async <
     await deps.markRoleSyncState({
       actor: input.actor,
       roleId: input.roleId,
-      operation: 'update',
+      operation: input.operation,
       result: 'failure',
       roleKey: input.existing.role_key,
       externalRoleName: input.externalRoleName,
       errorCode: 'DB_WRITE_FAILED',
       syncState: 'failed',
     });
-    deps.iamRoleSyncCounter.add(1, { operation: 'update', result: 'failure', error_code: 'DB_WRITE_FAILED' });
+    deps.iamRoleSyncCounter.add(1, {
+      operation: input.operation,
+      result: 'failure',
+      error_code: 'DB_WRITE_FAILED',
+    });
     deps.logger.error('Role update database write failed after successful Keycloak update', {
       operation: 'update_role',
       instance_id: input.actor.instanceId,

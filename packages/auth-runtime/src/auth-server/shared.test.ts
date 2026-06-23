@@ -36,11 +36,30 @@ describe('auth-server shared helpers', () => {
     ).toMatchObject({
       id: 'user-1',
       instanceId: 'instance-from-token',
+      roles: [],
+      keycloakRoles: ['viewer'],
       username: 'alice',
       email: 'alice@example.org',
       firstName: 'Alice',
       lastName: 'Example',
       displayName: 'Alice Example',
+    });
+  });
+
+  it('keeps only the platform technical role in canonical platform roles', () => {
+    expect(
+      buildSessionUser({
+        claims: {
+          sub: 'platform-admin',
+          realm_access: { roles: ['instance_registry_admin', 'system_admin', 'legacy_role'] },
+        },
+        clientId: 'sva-studio',
+        scope: { kind: 'platform' },
+      })
+    ).toMatchObject({
+      id: 'platform-admin',
+      roles: ['instance_registry_admin'],
+      keycloakRoles: ['instance_registry_admin', 'system_admin', 'legacy_role'],
     });
   });
 

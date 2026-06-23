@@ -5,6 +5,7 @@ import { emitRoutingDiagnostic, type RoutingDiagnosticsHook } from './diagnostic
 export type RouteGuardUser = {
   readonly instanceId?: string;
   readonly roles: readonly string[];
+  readonly keycloakRoles?: readonly string[];
   readonly permissionActions?: readonly string[];
   readonly assignedModules?: readonly string[];
   readonly permissionStatus?: 'ok' | 'degraded';

@@ -21,6 +21,7 @@ export type SessionUser = {
   id: string;
   instanceId?: string;
   roles: string[];
+  keycloakRoles?: string[];
   groups?: readonly IamUserGroupAssignment[];
   username?: string;
   email?: string;

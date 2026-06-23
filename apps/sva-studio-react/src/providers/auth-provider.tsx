@@ -48,6 +48,7 @@ type SessionUser = {
   instanceId?: string;
   assignedModules?: string[];
   groups?: readonly IamUserGroupAssignment[];
+  keycloakRoles?: string[];
   permissionActions?: readonly string[];
   roles: string[];
   permissionStatus?: 'ok' | 'degraded';

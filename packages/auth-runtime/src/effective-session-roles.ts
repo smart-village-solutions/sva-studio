@@ -100,7 +100,7 @@ export const enrichSessionUserWithEffectiveRoles = async (
           keycloakSubject: user.id,
         })
     );
-    const mergedRoles = normalizeRoleNames([...user.roles, ...persistedRoleNames]);
+    const mergedRoles = normalizeRoleNames([...persistedRoleNames]);
 
     if (
       mergedRoles.length === user.roles.length &&

@@ -102,19 +102,23 @@ describe('resolveUpdateRequestContext', () => {
         requestId: 'req-1',
         traceId: 'trace-1',
       },
-      identityProvider: {
-        provider: {
-          assignRealmRoles: expect.any(Function),
-          removeRealmRoles: expect.any(Function),
-          users: [],
-        },
-      },
       payload: {
         displayName: 'Alice Example',
       },
+      resolveIdentityProvider: expect.any(Function),
       userId: 'user-1',
     });
     expect(state.resolveUserMutationTargetActorContext).toHaveBeenCalledOnce();
+    expect(state.requireUserMutationIdentityProvider).not.toHaveBeenCalled();
+    await expect(
+      (context as Exclude<typeof context, Response>).resolveIdentityProvider()
+    ).resolves.toEqual({
+      provider: {
+        assignRealmRoles: expect.any(Function),
+        removeRealmRoles: expect.any(Function),
+        users: [],
+      },
+    });
   });
 
   it('returns invalid_request before resolving the identity provider when the payload is invalid', async () => {
@@ -184,15 +188,12 @@ describe('resolveUpdateRequestContext', () => {
         requestId: 'req-1',
         traceId: 'trace-1',
       },
-      identityProvider: {
-        provider: {
-          users: [],
-        },
-      },
       payload: {
         firstName: 'Alice',
       },
+      resolveIdentityProvider: expect.any(Function),
       userId: 'user-1',
     });
+    expect(state.requireUserMutationIdentityProvider).not.toHaveBeenCalled();
   });
 });

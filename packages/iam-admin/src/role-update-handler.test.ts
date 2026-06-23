@@ -171,6 +171,33 @@ describe('createUpdateRoleHandlerInternal', () => {
     });
   });
 
+  it('updates technical roles in Keycloak by canonical role key when legacy aliases exist', async () => {
+    const deps = createDeps({
+      resolveMutableRole: vi.fn(async () => ({
+        ...systemAdminRole,
+        external_role_name: 'legacy-system-admin',
+      })),
+    });
+    const handler = createUpdateRoleHandlerInternal(deps);
+
+    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }), ctx);
+
+    expect(response.status).toBe(200);
+    expect(identityProvider.provider.updateRole).toHaveBeenCalledWith(
+      'system_admin',
+      expect.objectContaining({
+        attributes: expect.objectContaining({
+          roleKey: 'system_admin',
+        }),
+      })
+    );
+    expect(deps.persistUpdatedRole).toHaveBeenCalledWith(
+      expect.objectContaining({
+        externalRoleName: 'system_admin',
+      })
+    );
+  });
+
   it('rejects retry sync for non-technical tenant roles', async () => {
     const keycloakError = new Error('keycloak down');
     const deps = createDeps({

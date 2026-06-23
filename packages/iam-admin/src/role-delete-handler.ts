@@ -101,6 +101,9 @@ const resolveDeleteRoleRequest = async <
   return roleId instanceof Response ? roleId : { actor: resolvedActor.actor, roleId };
 };
 
+const getKeycloakRoleNameForDelete = (role: MutableRoleShape): string =>
+  isTenantTechnicalKeycloakRole(role) ? role.role_key : getRoleExternalName(role);
+
 export const createDeleteRoleHandlerInternal =
   <
     TAttributes,
@@ -123,7 +126,7 @@ export const createDeleteRoleHandlerInternal =
         return existing;
       }
 
-      const externalRoleName = getRoleExternalName(existing);
+      const externalRoleName = getKeycloakRoleNameForDelete(existing);
       const shouldSyncIdentityRole = isTenantTechnicalKeycloakRole(existing);
       if (!shouldSyncIdentityRole) {
         try {

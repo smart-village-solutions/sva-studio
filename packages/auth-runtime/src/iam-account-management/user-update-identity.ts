@@ -70,7 +70,7 @@ export const compensateUserIdentityUpdate = async (input: {
   restoreIdentity: boolean;
   restoreRoles: boolean;
   restoreIdentityAttributes?: IdentityUserAttributes;
-  identityProvider: UserUpdateIdentityProviderResolution;
+  identityProvider?: UserUpdateIdentityProviderResolution;
 }): Promise<void> => {
   const {
     identityProvider,
@@ -84,7 +84,7 @@ export const compensateUserIdentityUpdate = async (input: {
     userId,
   } = input;
 
-  if (restoreIdentity) {
+  if (restoreIdentity && identityProvider) {
     try {
       await trackKeycloakCall('update_user_compensation', () =>
         identityProvider.provider.updateUser(plan.existing.keycloakSubject, {
@@ -111,7 +111,7 @@ export const compensateUserIdentityUpdate = async (input: {
     }
   }
 
-  if (!restoreRoles) {
+  if (!restoreRoles || !identityProvider) {
     return;
   }
 

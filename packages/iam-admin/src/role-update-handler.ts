@@ -56,6 +56,9 @@ export type UpdateRoleIdentityProvider<TAttributes = unknown> = {
   };
 };
 
+const getKeycloakRoleNameForMutation = (role: MutableRoleShape): string =>
+  isTenantTechnicalKeycloakRole(role) ? role.role_key : getRoleExternalName(role);
+
 export type ParsedUpdateRoleBody<TPayload extends UpdateRolePayloadShape> =
   | { readonly ok: true; readonly data: TPayload; readonly rawBody: string }
   | { readonly ok: false };
@@ -191,7 +194,7 @@ export const createUpdateRoleHandlerInternal =
         displayName: parsed.data.displayName?.trim() || getRoleDisplayName(existing),
         description: parsed.data.description ?? existing.description ?? undefined,
         roleLevel: parsed.data.roleLevel ?? existing.role_level,
-        externalRoleName: getRoleExternalName(existing),
+        externalRoleName: getKeycloakRoleNameForMutation(existing),
       } satisfies PreparedRoleUpdate<TPayload, TRole>;
 
       if (!isTenantTechnicalKeycloakRole(existing)) {

@@ -45,9 +45,12 @@ export class RoleMutationCapabilityUnavailableError extends Error {
 }
 
 export type UpdateUserPayloadShape = {
+  readonly displayName?: string;
   readonly email?: string;
   readonly firstName?: string;
   readonly lastName?: string;
+  readonly mainserverUserApplicationId?: string;
+  readonly mainserverUserApplicationSecret?: string;
   readonly status?: 'active' | 'inactive' | 'pending';
 };
 
@@ -74,8 +77,9 @@ export type UpdateRequestContext<
   | Response
   | {
       readonly actor: UpdateActor;
-      readonly identityProvider: TIdentityProvider;
+      readonly identityProvider?: TIdentityProvider;
       readonly payload: TPayload;
+      readonly resolveIdentityProvider?: () => Promise<TIdentityProvider | Response>;
       readonly userId: string;
     };
 
@@ -136,7 +140,7 @@ export type UpdateUserHandlerDeps<
     readonly restoreIdentity: boolean;
     readonly restoreRoles: boolean;
     readonly restoreIdentityAttributes?: TIdentityState['existingIdentityAttributes'];
-    readonly identityProvider: TIdentityProvider;
+    readonly identityProvider?: TIdentityProvider;
   }) => Promise<void>;
   readonly resolveUpdateRequestContext: (
     request: Request,
@@ -145,7 +149,7 @@ export type UpdateUserHandlerDeps<
   readonly resolveUpdatedIdentityState: (input: {
     readonly plan: TPlan;
     readonly payload: TPayload;
-    readonly identityProvider: TIdentityProvider;
+    readonly identityProvider?: TIdentityProvider;
   }) => Promise<TIdentityState>;
   readonly resolveUserUpdatePlan: (
     client: QueryClient,
@@ -194,6 +198,20 @@ const hasTechnicalRoleDelta = (plan: UserUpdatePlanShape): boolean => {
   });
   return addedRoleNames.length > 0 || removedRoleNames.length > 0;
 };
+
+const shouldUpdateIdentityPayload = (payload: UpdateUserPayloadShape): boolean =>
+  payload.displayName !== undefined ||
+  payload.email !== undefined ||
+  payload.firstName !== undefined ||
+  payload.lastName !== undefined ||
+  payload.mainserverUserApplicationId !== undefined ||
+  payload.mainserverUserApplicationSecret !== undefined ||
+  payload.status !== undefined;
+
+const shouldResolveIdentityProvider = (input: {
+  readonly payload: UpdateUserPayloadShape;
+  readonly plan: UserUpdatePlanShape;
+}): boolean => shouldUpdateIdentityPayload(input.payload) || hasTechnicalRoleDelta(input.plan);
 
 const requireRoleMutationCapability = (
   identityProvider: UpdateIdentityProvider,
@@ -302,6 +320,7 @@ const syncUpdatedTechnicalRoles = async <
     readonly actor: UpdateActor;
     readonly identityProvider: TIdentityProvider;
     readonly plan: TPlan;
+    readonly beforeRoleMutation: () => void;
   }
 ): Promise<boolean> => {
   if (!input.plan.nextRoleNames) {
@@ -316,6 +335,7 @@ const syncUpdatedTechnicalRoles = async <
   }
   requireRoleMutationCapability(input.identityProvider, 'assignRealmRoles');
   requireRoleMutationCapability(input.identityProvider, 'removeRealmRoles');
+  input.beforeRoleMutation();
 
   await assignTechnicalRoles(deps, {
     actor: input.actor,
@@ -353,10 +373,12 @@ const syncUpdatedIdentityAndRoles = async <
     input.shouldRestoreIdentityRef.current = true;
   }
 
-  if (hasTechnicalRoleDelta(input.plan)) {
-    input.shouldRestoreRolesRef.current = true;
-  }
-  if (await syncUpdatedTechnicalRoles(deps, input)) {
+  if (await syncUpdatedTechnicalRoles(deps, {
+    ...input,
+    beforeRoleMutation: () => {
+      input.shouldRestoreRolesRef.current = true;
+    },
+  })) {
     input.shouldRestoreRolesRef.current = true;
   }
 };
@@ -371,8 +393,9 @@ const executeUserUpdate = async <
   input: {
     readonly actor: UpdateActor;
     readonly ctx: UpdateAuthenticatedRequestContext;
-    readonly identityProvider: TIdentityProvider;
+    readonly identityProvider?: TIdentityProvider;
     readonly payload: TPayload;
+    readonly resolveIdentityProvider?: () => Promise<TIdentityProvider | Response>;
     readonly userId: string;
   }
 ): Promise<Response> => {
@@ -390,25 +413,39 @@ const executeUserUpdate = async <
     return deps.notFoundResponse(input.actor.requestId);
   }
 
+  let identityProvider = input.identityProvider;
+  if (!identityProvider && shouldResolveIdentityProvider({ payload: input.payload, plan })) {
+    if (!input.resolveIdentityProvider) {
+      throw new Error('identity_provider_resolution_unavailable');
+    }
+    const resolvedIdentityProvider = await input.resolveIdentityProvider();
+    if (resolvedIdentityProvider instanceof Response) {
+      return resolvedIdentityProvider;
+    }
+    identityProvider = resolvedIdentityProvider;
+  }
+
   const resolvedIdentityState = await deps.resolveUpdatedIdentityState({
     plan,
     payload: input.payload,
-    identityProvider: input.identityProvider,
+    identityProvider,
   });
 
   const shouldRestoreIdentityRef = { current: false };
   const shouldRestoreRolesRef = { current: false };
 
   try {
-    await syncUpdatedIdentityAndRoles(deps, {
-      actor: input.actor,
-      identityProvider: input.identityProvider,
-      plan,
-      payload: input.payload,
-      nextIdentityAttributes: resolvedIdentityState.nextIdentityAttributes,
-      shouldRestoreIdentityRef,
-      shouldRestoreRolesRef,
-    });
+    if (identityProvider) {
+      await syncUpdatedIdentityAndRoles(deps, {
+        actor: input.actor,
+        identityProvider,
+        plan,
+        payload: input.payload,
+        nextIdentityAttributes: resolvedIdentityState.nextIdentityAttributes,
+        shouldRestoreIdentityRef,
+        shouldRestoreRolesRef,
+      });
+    }
 
     const detail = await deps.persistUpdatedUserDetail({
       instanceId: input.actor.instanceId,
@@ -439,7 +476,7 @@ const executeUserUpdate = async <
       restoreIdentity: shouldRestoreIdentityRef.current,
       restoreRoles: shouldRestoreRolesRef.current,
       restoreIdentityAttributes: resolvedIdentityState.existingIdentityAttributes,
-      identityProvider: input.identityProvider,
+      identityProvider,
     });
     throw error;
   }

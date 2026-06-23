@@ -98,6 +98,11 @@ const createLegacyIdentityProvider = () => ({
   },
 });
 
+const createPlanOnlyUpdateDeps = (planOverrides: Partial<TestPlan>) => ({
+  resolveUserUpdatePlan: vi.fn(async () => createPlan(planOverrides)),
+  resolveUpdatedIdentityState: vi.fn(async () => ({})),
+});
+
 const createDeps = createTestDepsBuilder<UpdateUserHandlerDeps<TestPayload, TestPlan, TestIdentityState>>(() => ({
   asApiItem: vi.fn((data, requestId) => ({ data, ...(requestId ? { requestId } : {}) })),
   compensateUserIdentityUpdate: vi.fn(async () => undefined),
@@ -228,11 +233,10 @@ describe('createUpdateUserHandlerInternal', () => {
         },
         userId: updatedDetail.id,
       })),
-      resolveUserUpdatePlan: vi.fn(async () => createPlan({
+      ...createPlanOnlyUpdateDeps({
         previousRoleNames: ['system_admin'],
         nextRoleNames: undefined,
-      })),
-      resolveUpdatedIdentityState: vi.fn(async () => ({})),
+      }),
     });
     const handler = createUpdateUserHandlerInternal(deps);
 
@@ -244,6 +248,42 @@ describe('createUpdateUserHandlerInternal', () => {
       expect.objectContaining({ firstName: 'Alice' })
     );
     expect(legacyIdentityProvider.provider.syncRoles).not.toHaveBeenCalled();
+    expect(deps.ensureManagedRealmRolesExist).not.toHaveBeenCalled();
+  });
+
+  it('persists db-only role updates without resolving an identity provider', async () => {
+    const deps = createDeps({
+      resolveUpdateRequestContext: vi.fn(async () => ({
+        actor,
+        payload: {
+          roleIds: ['role-editor'],
+        },
+        resolveIdentityProvider: vi.fn(async () => {
+          throw new Error('identity provider should not be resolved');
+        }),
+        userId: updatedDetail.id,
+      })),
+      ...createPlanOnlyUpdateDeps({
+        previousRoleNames: [],
+        nextRoleNames: [],
+      }),
+    });
+    const handler = createUpdateUserHandlerInternal(deps);
+
+    const response = await handler(createUserUpdateRequest(), ctx);
+
+    expect(response.status).toBe(200);
+    expect(deps.resolveUpdatedIdentityState).toHaveBeenCalledWith({
+      plan: expect.objectContaining({
+        previousRoleNames: [],
+        nextRoleNames: [],
+      }),
+      payload: {
+        roleIds: ['role-editor'],
+      },
+      identityProvider: undefined,
+    });
+    expect(identityProvider.provider.updateUser).not.toHaveBeenCalled();
     expect(deps.ensureManagedRealmRolesExist).not.toHaveBeenCalled();
   });
 
@@ -281,7 +321,7 @@ describe('createUpdateUserHandlerInternal', () => {
     expect(deps.compensateUserIdentityUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         identityProvider: partialIdentityProvider,
-        restoreRoles: true,
+        restoreRoles: false,
       })
     );
     expect(deps.persistUpdatedUserDetail).not.toHaveBeenCalled();

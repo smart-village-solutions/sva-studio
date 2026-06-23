@@ -22,7 +22,7 @@ import type { UserUpdateIdentityProviderResolution } from './user-update-request
 export const resolveUpdatedIdentityState = async (input: {
   plan: UserUpdatePlan;
   payload: UpdateUserPayload;
-  identityProvider: UserUpdateIdentityProviderResolution;
+  identityProvider?: UserUpdateIdentityProviderResolution;
 }) => {
   const shouldUpdateIdentityAttributes =
     input.payload.displayName !== undefined ||
@@ -37,20 +37,25 @@ export const resolveUpdatedIdentityState = async (input: {
 
   let existingIdentityAttributes: IdentityUserAttributes | undefined;
   let nextIdentityAttributes: IdentityUserAttributes | undefined;
-  let nextMainserverCredentialState: ReturnType<typeof resolveMainserverCredentialState>;
+  let nextMainserverCredentialState: ReturnType<typeof resolveMainserverCredentialState> | undefined;
 
   if (shouldUpdateIdentityAttributes) {
+    const identityProvider = input.identityProvider;
+    if (!identityProvider) {
+      throw new Error('identity_provider_resolution_unavailable');
+    }
     existingIdentityAttributes = await trackKeycloakCall('get_user_attributes_for_update', () =>
-      input.identityProvider.provider.getUserAttributes(input.plan.existing.keycloakSubject)
+      identityProvider.provider.getUserAttributes(input.plan.existing.keycloakSubject)
     );
     nextIdentityAttributes = buildIdentityAttributesForUserUpdate({
       existingAttributes: existingIdentityAttributes,
       payload: input.payload,
     });
     nextMainserverCredentialState = resolveMainserverCredentialState(nextIdentityAttributes);
-  } else {
+  } else if (shouldUpdateIdentity && input.identityProvider) {
+    const { identityProvider } = input;
     nextMainserverCredentialState = await trackKeycloakCall('get_user_attributes_for_response', () =>
-      input.identityProvider.provider
+      identityProvider.provider
         .getUserAttributes(input.plan.existing.keycloakSubject, getSvaMainserverCredentialAttributeNames())
         .then((attributes) => resolveMainserverCredentialState(attributes))
     );

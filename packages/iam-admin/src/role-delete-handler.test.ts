@@ -206,6 +206,26 @@ describe('createDeleteRoleHandlerInternal', () => {
     });
   });
 
+  it('deletes technical roles in Keycloak by canonical role key when legacy aliases exist', async () => {
+    const deps = createDeps({
+      resolveDeletableRole: vi.fn(async () => ({
+        ...systemAdminRole,
+        external_role_name: 'legacy-system-admin',
+      })),
+    });
+
+    const response = await runDeleteRoleRequest(deps);
+
+    expect(response.status).toBe(200);
+    expect(identityProvider.provider.deleteRole).toHaveBeenCalledWith('system_admin');
+    expect(deps.deleteRoleFromDatabase).toHaveBeenCalledWith({
+      actor,
+      roleId: 'role-1',
+      roleKey: 'system_admin',
+      externalRoleName: 'system_admin',
+    });
+  });
+
   it('recreates the role in Keycloak when local deletion fails', async () => {
     const deps = createDeps({
       resolveDeletableRole: vi.fn(async () => systemAdminRole),

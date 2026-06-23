@@ -98,7 +98,7 @@ export type UpdateUserHandlerDeps<
   readonly ensureManagedRealmRolesExist: (input: {
     readonly instanceId: string;
     readonly identityProvider: TIdentityProvider;
-    readonly externalRoleNames: readonly string[];
+    readonly roleKeys: readonly string[];
     readonly actorAccountId?: string;
     readonly requestId?: string;
     readonly traceId?: string;
@@ -242,7 +242,7 @@ const assignTechnicalRoles = async <
   await deps.ensureManagedRealmRolesExist({
     instanceId: input.actor.instanceId,
     identityProvider: input.identityProvider,
-    externalRoleNames: input.roleNames,
+    roleKeys: input.roleNames,
     actorAccountId: input.actor.actorAccountId,
     requestId: input.actor.requestId,
     traceId: input.actor.traceId,

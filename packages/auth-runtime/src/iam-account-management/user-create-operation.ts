@@ -80,7 +80,7 @@ const syncUserRolesIfNeeded = async (input: {
   await ensureManagedRealmRolesExist({
     instanceId: input.actor.instanceId,
     identityProvider: input.identityProvider,
-    externalRoleNames: technicalRoleNames,
+    roleKeys: technicalRoleNames,
     actorAccountId: input.actor.actorAccountId,
     requestId: input.actor.requestId,
     traceId: input.actor.traceId,

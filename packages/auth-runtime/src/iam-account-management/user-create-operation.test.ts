@@ -547,7 +547,7 @@ describe('executeCreateUser', () => {
     expect(state.ensureManagedRealmRolesExist).toHaveBeenCalledWith({
       instanceId: 'instance-1',
       identityProvider,
-      externalRoleNames: ['system_admin'],
+      roleKeys: ['system_admin'],
       actorAccountId: 'actor-1',
       requestId: 'req-1',
       traceId: 'trace-1',

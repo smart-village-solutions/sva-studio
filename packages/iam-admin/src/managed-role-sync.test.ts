@@ -42,20 +42,20 @@ const createDeps = (rows = [managedRoleRow]) => {
 };
 
 describe('managed-role-sync', () => {
-  it('skips database access when no external role names are requested', async () => {
+  it('skips database access when no role keys are requested', async () => {
     const { deps } = createDeps([]);
     const sync = createManagedRoleSync(deps);
 
-    await expect(sync.loadManagedRolesByExternalNames('inst-1', [])).resolves.toEqual([]);
+    await expect(sync.loadManagedRolesByRoleKeys('inst-1', [])).resolves.toEqual([]);
 
     expect(deps.withInstanceScopedDb).not.toHaveBeenCalled();
   });
 
-  it('loads managed roles by external names with instance scope and deduplicated names', async () => {
+  it('loads managed roles by role key with instance scope and deduplicated keys', async () => {
     const { client, deps } = createDeps();
     const sync = createManagedRoleSync(deps);
 
-    await expect(sync.loadManagedRolesByExternalNames('inst-1', ['system_admin', 'system_admin'])).resolves.toEqual([
+    await expect(sync.loadManagedRolesByRoleKeys('inst-1', ['system_admin', 'system_admin'])).resolves.toEqual([
       managedRoleRow,
     ]);
 
@@ -76,7 +76,7 @@ describe('managed-role-sync', () => {
     await sync.ensureManagedRealmRolesExist({
       instanceId: 'inst-1',
       identityProvider,
-      externalRoleNames: ['system_admin', 'editor'],
+      roleKeys: ['system_admin', 'editor'],
       actorAccountId: 'actor-1',
       requestId: 'req-1',
       traceId: 'trace-1',
@@ -123,7 +123,7 @@ describe('managed-role-sync', () => {
     await sync.ensureManagedRealmRolesExist({
       instanceId: 'inst-1',
       identityProvider,
-      externalRoleNames: ['system_admin'],
+      roleKeys: ['system_admin'],
     });
 
     expect(identityProvider.provider.createRole).not.toHaveBeenCalled();
@@ -149,7 +149,7 @@ describe('managed-role-sync', () => {
       sync.ensureManagedRealmRolesExist({
         instanceId: 'inst-1',
         identityProvider,
-      externalRoleNames: ['system_admin'],
+        roleKeys: ['system_admin'],
       })
     ).rejects.toThrow(error);
 

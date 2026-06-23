@@ -53,12 +53,12 @@ export type ManagedRoleIdentityProviderResolution = {
 };
 
 export const createManagedRoleSync = (deps: ManagedRoleSyncDeps) => {
-  const loadManagedRolesByExternalNames = async (
+  const loadManagedRolesByRoleKeys = async (
     instanceId: string,
-    externalRoleNames: readonly string[]
+    roleKeys: readonly string[]
   ): Promise<readonly ManagedRoleSyncRow[]> => {
-    const technicalRoleNames = filterTenantTechnicalKeycloakRoleNames(externalRoleNames);
-    if (technicalRoleNames.length === 0) {
+    const technicalRoleKeys = filterTenantTechnicalKeycloakRoleNames(roleKeys);
+    if (technicalRoleKeys.length === 0) {
       return [];
     }
 
@@ -83,7 +83,7 @@ WHERE instance_id = $1
   AND managed_by = 'studio'
   AND role_key = ANY($2::text[]);
 `,
-        [instanceId, [...technicalRoleNames]]
+        [instanceId, [...technicalRoleKeys]]
       );
 
       return result.rows;
@@ -128,12 +128,12 @@ WHERE instance_id = $1
   const ensureManagedRealmRolesExist = async (input: {
     readonly instanceId: string;
     readonly identityProvider: ManagedRoleIdentityProviderResolution;
-    readonly externalRoleNames: readonly string[];
+    readonly roleKeys: readonly string[];
     readonly actorAccountId?: string;
     readonly requestId?: string;
     readonly traceId?: string;
   }): Promise<void> => {
-    const managedRoles = await loadManagedRolesByExternalNames(input.instanceId, input.externalRoleNames);
+    const managedRoles = await loadManagedRolesByRoleKeys(input.instanceId, input.roleKeys);
 
     for (const role of managedRoles) {
       const externalRoleName = role.role_key;
@@ -187,6 +187,6 @@ WHERE instance_id = $1
 
   return {
     ensureManagedRealmRolesExist,
-    loadManagedRolesByExternalNames,
+    loadManagedRolesByRoleKeys,
   };
 };

@@ -176,7 +176,7 @@ describe('createUpdateUserHandlerInternal', () => {
     expect(deps.ensureManagedRealmRolesExist).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       identityProvider,
-      externalRoleNames: ['system_admin'],
+      roleKeys: ['system_admin'],
       actorAccountId: 'actor-account-1',
       requestId: 'req-update',
       traceId: 'trace-update',

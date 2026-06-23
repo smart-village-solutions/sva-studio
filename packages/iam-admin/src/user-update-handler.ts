@@ -31,9 +31,9 @@ export type UpdateIdentityProvider = {
         readonly attributes?: UpdateIdentityAttributes;
       }
     ) => Promise<void>;
+    readonly assignRealmRoles: (keycloakSubject: string, roleNames: readonly string[]) => Promise<void>;
+    readonly removeRealmRoles: (keycloakSubject: string, roleNames: readonly string[]) => Promise<void>;
     readonly syncRoles: (keycloakSubject: string, roleNames: string[]) => Promise<void>;
-    readonly assignRealmRoles?: (keycloakSubject: string, roleNames: readonly string[]) => Promise<void>;
-    readonly removeRealmRoles?: (keycloakSubject: string, roleNames: readonly string[]) => Promise<void>;
   };
 };
 
@@ -151,7 +151,7 @@ export type UpdateUserHandlerDeps<
     }
   ) => Promise<TPlan | undefined>;
   readonly trackKeycloakCall: <T>(
-    operation: 'update_user' | 'sync_roles',
+    operation: 'assign_realm_roles' | 'remove_realm_roles' | 'update_user',
     work: () => Promise<T>
   ) => Promise<T>;
   readonly withInstanceScopedDb: <T>(
@@ -229,9 +229,6 @@ const assignTechnicalRoles = async <
   if (input.roleNames.length === 0) {
     return;
   }
-  if (!input.identityProvider.provider.assignRealmRoles) {
-    throw new Error('assignRealmRoles provider capability unavailable');
-  }
   await deps.ensureManagedRealmRolesExist({
     instanceId: input.actor.instanceId,
     identityProvider: input.identityProvider,
@@ -240,8 +237,8 @@ const assignTechnicalRoles = async <
     requestId: input.actor.requestId,
     traceId: input.actor.traceId,
   });
-  await deps.trackKeycloakCall('sync_roles', () =>
-    input.identityProvider.provider.assignRealmRoles!(input.keycloakSubject, input.roleNames)
+  await deps.trackKeycloakCall('assign_realm_roles', () =>
+    input.identityProvider.provider.assignRealmRoles(input.keycloakSubject, input.roleNames)
   );
 };
 
@@ -261,11 +258,8 @@ const removeTechnicalRoles = async <
   if (input.roleNames.length === 0) {
     return;
   }
-  if (!input.identityProvider.provider.removeRealmRoles) {
-    throw new Error('removeRealmRoles provider capability unavailable');
-  }
-  await deps.trackKeycloakCall('sync_roles', () =>
-    input.identityProvider.provider.removeRealmRoles!(input.keycloakSubject, input.roleNames)
+  await deps.trackKeycloakCall('remove_realm_roles', () =>
+    input.identityProvider.provider.removeRealmRoles(input.keycloakSubject, input.roleNames)
   );
 };
 

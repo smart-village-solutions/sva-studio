@@ -63,6 +63,8 @@ describe('resolveUpdateRequestContext', () => {
     });
     state.requireUserMutationIdentityProvider.mockResolvedValue({
       provider: {
+        assignRealmRoles: vi.fn(async () => undefined),
+        removeRealmRoles: vi.fn(async () => undefined),
         users: [],
       },
     });
@@ -102,6 +104,8 @@ describe('resolveUpdateRequestContext', () => {
       },
       identityProvider: {
         provider: {
+          assignRealmRoles: expect.any(Function),
+          removeRealmRoles: expect.any(Function),
           users: [],
         },
       },
@@ -139,6 +143,47 @@ describe('resolveUpdateRequestContext', () => {
     expect(state.requireUserMutationIdentityProvider).not.toHaveBeenCalled();
     await expect((response as Response).json()).resolves.toEqual({
       error: { code: 'invalid_request', message: 'Ungültiger Payload.' },
+      requestId: 'req-1',
+    });
+  });
+
+  it('fails closed when the identity provider cannot mutate technical realm roles', async () => {
+    state.parseRequestBody.mockResolvedValue({
+      ok: true,
+      data: {
+        roleIds: ['role-admin'],
+      },
+    });
+    state.requireUserMutationIdentityProvider.mockResolvedValue({
+      provider: {
+        users: [],
+      },
+    });
+
+    const { resolveUpdateRequestContext } = await import('./user-update-request-context.js');
+
+    const response = await resolveUpdateRequestContext(
+      new Request('http://localhost/api/v1/iam/users/user-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ roleIds: ['role-admin'] }),
+      }),
+      {
+        sessionId: 'session-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'instance-1',
+          roles: ['system_admin'],
+        },
+      }
+    );
+
+    expect(response).toBeInstanceOf(Response);
+    expect((response as Response).status).toBe(503);
+    await expect((response as Response).json()).resolves.toEqual({
+      error: {
+        code: 'keycloak_unavailable',
+        message: 'Keycloak Admin API unterstützt technische Rollenzuweisungen nicht.',
+      },
       requestId: 'req-1',
     });
   });

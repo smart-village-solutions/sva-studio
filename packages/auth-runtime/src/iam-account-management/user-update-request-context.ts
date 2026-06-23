@@ -1,6 +1,7 @@
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import type { AuthenticatedRequestContext } from '../middleware.js';
+import type { IdentityProviderPort } from '../identity-provider-port.js';
 
 import { createApiError, parseRequestBody } from './api-helpers.js';
 import type { IdentityProviderResolution } from './shared-runtime.js';
@@ -12,14 +13,25 @@ import {
 } from './user-mutation-request-context.shared.js';
 import type { UpdateUserPayload } from './user-update-plan.js';
 
+export type UserUpdateIdentityProviderResolution = IdentityProviderResolution & {
+  readonly provider: IdentityProviderResolution['provider'] &
+    Required<Pick<IdentityProviderPort, 'assignRealmRoles' | 'removeRealmRoles'>>;
+};
+
 export type UserUpdateRequestContext =
   | Response
   | {
       actor: UserMutationActor;
-      identityProvider: IdentityProviderResolution;
+      identityProvider: UserUpdateIdentityProviderResolution;
       payload: UpdateUserPayload;
       userId: string;
     };
+
+const hasUserUpdateRoleCapabilities = (
+  identityProvider: IdentityProviderResolution
+): identityProvider is UserUpdateIdentityProviderResolution =>
+  typeof identityProvider.provider.assignRealmRoles === 'function' &&
+  typeof identityProvider.provider.removeRealmRoles === 'function';
 
 export const resolveUpdateRequestContext = async (
   request: Request,
@@ -46,6 +58,14 @@ export const resolveUpdateRequestContext = async (
   );
   if (identityProvider instanceof Response) {
     return identityProvider;
+  }
+  if (!hasUserUpdateRoleCapabilities(identityProvider)) {
+    return createApiError(
+      503,
+      'keycloak_unavailable',
+      'Keycloak Admin API unterstützt technische Rollenzuweisungen nicht.',
+      targetActorContext.actor.requestId
+    );
   }
 
   return {

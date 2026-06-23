@@ -9,7 +9,7 @@ import {
 import { assignGroups, assignRoles } from './shared-assignment.js';
 import { emitActivityLog, notifyPermissionInvalidation } from './shared-activity.js';
 import { trackKeycloakCall } from './shared-observability.js';
-import { withInstanceScopedDb, resolveIdentityProvider } from './shared-runtime.js';
+import { withInstanceScopedDb } from './shared-runtime.js';
 import { resolveUserDetail } from './user-detail-query.js';
 import { revokeUserSessions } from '../session-revocation.js';
 import { clearUserSessionLoginBlock } from '../session-revocation.js';
@@ -17,11 +17,12 @@ import {
   buildIdentityAttributesForUserUpdate,
 } from './user-update-identity.js';
 import type { UpdateUserPayload, UserUpdatePlan } from './user-update-plan.js';
+import type { UserUpdateIdentityProviderResolution } from './user-update-request-context.js';
 
 export const resolveUpdatedIdentityState = async (input: {
   plan: UserUpdatePlan;
   payload: UpdateUserPayload;
-  identityProvider: NonNullable<ReturnType<typeof resolveIdentityProvider>>;
+  identityProvider: UserUpdateIdentityProviderResolution;
 }) => {
   const shouldUpdateIdentityAttributes =
     input.payload.displayName !== undefined ||

@@ -3,7 +3,8 @@ import type { IdentityUserAttributes } from '../identity-provider-port.js';
 import { buildMainserverIdentityAttributes } from '../mainserver-credentials.js';
 
 import type { UpdateUserPayload, UserUpdatePlan } from './user-update-plan.js';
-import { logger, resolveIdentityProvider, trackKeycloakCall } from './shared.js';
+import { logger, trackKeycloakCall } from './shared.js';
+import type { UserUpdateIdentityProviderResolution } from './user-update-request-context.js';
 
 export const buildIdentityAttributesForUserUpdate = (input: {
   readonly existingAttributes: IdentityUserAttributes | undefined;
@@ -36,7 +37,7 @@ const resolveRoleCompensationDelta = (plan: UserUpdatePlan): {
 };
 
 const compensateUserRoleDelta = async (input: {
-  readonly identityProvider: NonNullable<ReturnType<typeof resolveIdentityProvider>>;
+  readonly identityProvider: UserUpdateIdentityProviderResolution;
   readonly keycloakSubject: string;
   readonly rolesToAssign: readonly string[];
   readonly rolesToRemove: readonly string[];
@@ -69,7 +70,7 @@ export const compensateUserIdentityUpdate = async (input: {
   restoreIdentity: boolean;
   restoreRoles: boolean;
   restoreIdentityAttributes?: IdentityUserAttributes;
-  identityProvider: NonNullable<ReturnType<typeof resolveIdentityProvider>>;
+  identityProvider: UserUpdateIdentityProviderResolution;
 }): Promise<void> => {
   const {
     identityProvider,

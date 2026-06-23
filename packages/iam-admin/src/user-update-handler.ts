@@ -183,6 +183,27 @@ const resolveTechnicalRoleDelta = (input: {
   };
 };
 
+const hasTechnicalRoleDelta = (plan: UserUpdatePlanShape): boolean => {
+  if (!plan.nextRoleNames) {
+    return false;
+  }
+
+  const { addedRoleNames, removedRoleNames } = resolveTechnicalRoleDelta({
+    previousRoleNames: plan.previousRoleNames,
+    nextRoleNames: plan.nextRoleNames,
+  });
+  return addedRoleNames.length > 0 || removedRoleNames.length > 0;
+};
+
+const requireRoleMutationCapability = (
+  identityProvider: UpdateIdentityProvider,
+  capability: 'assignRealmRoles' | 'removeRealmRoles'
+): void => {
+  if (!identityProvider.provider[capability]) {
+    throw new RoleMutationCapabilityUnavailableError(capability);
+  }
+};
+
 const syncUpdatedIdentity = async <
   TPayload extends UpdateUserPayloadShape,
   TPlan extends UserUpdatePlanShape,
@@ -236,9 +257,6 @@ const assignTechnicalRoles = async <
   if (input.roleNames.length === 0) {
     return;
   }
-  if (!input.identityProvider.provider.assignRealmRoles) {
-    throw new RoleMutationCapabilityUnavailableError('assignRealmRoles');
-  }
   await deps.ensureManagedRealmRolesExist({
     instanceId: input.actor.instanceId,
     identityProvider: input.identityProvider,
@@ -268,9 +286,6 @@ const removeTechnicalRoles = async <
   if (input.roleNames.length === 0) {
     return;
   }
-  if (!input.identityProvider.provider.removeRealmRoles) {
-    throw new RoleMutationCapabilityUnavailableError('removeRealmRoles');
-  }
   await deps.trackKeycloakCall('remove_realm_roles', () =>
     input.identityProvider.provider.removeRealmRoles!(input.keycloakSubject, input.roleNames)
   );
@@ -296,6 +311,11 @@ const syncUpdatedTechnicalRoles = async <
     previousRoleNames: input.plan.previousRoleNames,
     nextRoleNames: input.plan.nextRoleNames,
   });
+  if (addedRoleNames.length === 0 && removedRoleNames.length === 0) {
+    return false;
+  }
+  requireRoleMutationCapability(input.identityProvider, 'assignRealmRoles');
+  requireRoleMutationCapability(input.identityProvider, 'removeRealmRoles');
 
   await assignTechnicalRoles(deps, {
     actor: input.actor,
@@ -309,7 +329,7 @@ const syncUpdatedTechnicalRoles = async <
     roleNames: removedRoleNames,
   });
 
-  return addedRoleNames.length > 0 || removedRoleNames.length > 0;
+  return true;
 };
 
 const syncUpdatedIdentityAndRoles = async <
@@ -333,6 +353,9 @@ const syncUpdatedIdentityAndRoles = async <
     input.shouldRestoreIdentityRef.current = true;
   }
 
+  if (hasTechnicalRoleDelta(input.plan)) {
+    input.shouldRestoreRolesRef.current = true;
+  }
   if (await syncUpdatedTechnicalRoles(deps, input)) {
     input.shouldRestoreRolesRef.current = true;
   }

@@ -249,11 +249,17 @@ describe('createUpdateUserHandlerInternal', () => {
 
   it('fails through the Keycloak error mapping when a technical role delta needs missing capabilities', async () => {
     const mappedResponse = createJsonResponse(503, { error: { code: 'keycloak_unavailable' } });
-    const legacyIdentityProvider = createLegacyIdentityProvider();
+    const assignRealmRoles = vi.fn(async () => undefined);
+    const partialIdentityProvider = {
+      provider: {
+        ...createLegacyIdentityProvider().provider,
+        assignRealmRoles,
+      },
+    };
     const deps = createDeps({
       resolveUpdateRequestContext: vi.fn(async () => ({
         actor,
-        identityProvider: legacyIdentityProvider,
+        identityProvider: partialIdentityProvider,
         payload,
         userId: updatedDetail.id,
       })),
@@ -267,10 +273,17 @@ describe('createUpdateUserHandlerInternal', () => {
     const response = await handler(createUserUpdateRequest(), ctx);
 
     expect(response).toBe(mappedResponse);
+    expect(assignRealmRoles).not.toHaveBeenCalled();
     expect(deps.handleKeycloakUpdateError).toHaveBeenCalledWith({
       error: expect.any(RoleMutationCapabilityUnavailableError),
       requestId: 'req-update',
     });
+    expect(deps.compensateUserIdentityUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identityProvider: partialIdentityProvider,
+        restoreRoles: true,
+      })
+    );
     expect(deps.persistUpdatedUserDetail).not.toHaveBeenCalled();
   });
 

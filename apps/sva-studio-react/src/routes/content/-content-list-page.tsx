@@ -8,7 +8,7 @@ import { deleteEvent } from '@sva/plugin-events';
 import { deleteNews } from '@sva/plugin-news';
 import { deletePoi } from '@sva/plugin-poi';
 import { IconEdit, IconEye, IconTrash, IconXboxX } from '@tabler/icons-react';
-import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
+import { StudioDataTable, StudioListPageTemplate, type StudioBulkAction, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
@@ -18,9 +18,8 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
-import { useAuth } from '../../providers/auth-provider';
+import { useContents } from '../../hooks/use-contents';
 import { useContentAccess } from '../../hooks/use-content-access';
-import { useUnifiedContentList } from '../../hooks/use-unified-content-list';
 import { t } from '../../i18n';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 import type { IamHttpError } from '../../lib/iam-api';
@@ -56,7 +55,6 @@ type RegisteredContentRow = IamContentListItem & Readonly<{
 
 const contentAdminResource = appAdminResources.find((resource) => resource.resourceId === 'content');
 const contentListCapabilities = contentAdminResource?.capabilities?.list;
-const contentBulkActions = contentListCapabilities?.bulkActions ?? [];
 const contentPagination = contentListCapabilities?.pagination;
 const contentSorting = contentListCapabilities?.sorting;
 const contentStatusOptions = ['all', 'draft', 'in_review', 'approved', 'published', 'archived'] as const satisfies readonly StatusFilter[];
@@ -220,33 +218,6 @@ const updateRouteState = (
     ...normalized,
     ...next,
   });
-};
-
-const resolveSelectionModeLabelKey = (
-  selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery'
-): 'content.bulk.scope.explicitIds' | 'content.bulk.scope.currentPage' | 'content.bulk.scope.allMatchingQuery' => {
-  switch (selectionMode) {
-    case 'explicitIds':
-      return 'content.bulk.scope.explicitIds';
-    case 'currentPage':
-      return 'content.bulk.scope.currentPage';
-    default:
-      return 'content.bulk.scope.allMatchingQuery';
-  }
-};
-
-const isBulkActionDisabled = (
-  selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery',
-  currentPageCount: number,
-  totalCount: number
-): boolean | undefined => {
-  if (selectionMode === 'explicitIds') {
-    return undefined;
-  }
-  if (selectionMode === 'currentPage') {
-    return currentPageCount === 0;
-  }
-  return totalCount === 0;
 };
 
 const resolveRowActionLabel = (access: IamContentAccessSummary): string => {
@@ -417,7 +388,6 @@ export const ContentListPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as RouteSearchState;
-  const { user } = useAuth();
   const contentAccessApi = useContentAccess();
   const routeState = readNormalizedRouteState(search);
   const routeSortField = routeState.sort?.field;
@@ -449,12 +419,7 @@ export const ContentListPage = () => {
       routeState.type,
     ]
   );
-  const contentsApi = useUnifiedContentList(
-    contentListQuery,
-    contentListQuery.visibleTypes ?? [],
-    user?.instanceId ?? '',
-    contentAccessApi.permissionActions
-  );
+  const contentsApi = useContents(contentListQuery);
   const creatableContentTypes = React.useMemo(
     () => filterCreatableStudioContentTypes(studioContentTypes, contentAccessApi.permissionActions),
     [contentAccessApi.permissionActions]
@@ -536,23 +501,7 @@ export const ContentListPage = () => {
     []
   );
 
-  const bulkActionButtons = contentsApi.supportsBulkActions
-    ? contentBulkActions.flatMap((action) =>
-        action.selectionModes
-          .filter((selectionMode) => selectionMode !== 'allMatchingQuery')
-          .map((selectionMode) => {
-            const labelKey = resolveSelectionModeLabelKey(selectionMode);
-
-            return {
-              id: `${action.id}:${selectionMode}`,
-              label: `${t(action.labelKey)} (${t(labelKey)})`,
-              disabled: isBulkActionDisabled(selectionMode, registeredContents.length, contentsApi.pagination.total),
-              variant: 'outline' as const,
-              onClick: async () => undefined,
-            };
-          })
-      )
-    : [];
+  const bulkActionButtons: readonly StudioBulkAction<RegisteredContentRow>[] = [];
 
   return (
     <section className="space-y-5" aria-busy={contentsApi.isLoading}>

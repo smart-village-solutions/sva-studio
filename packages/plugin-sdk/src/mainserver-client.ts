@@ -3,6 +3,8 @@ export type MainserverListQuery = Readonly<{
   pageSize: number;
 }>;
 
+const DEFAULT_MAINSERVER_REQUEST_TIMEOUT_MS = 10_000;
+
 export type MainserverErrorFactory<TError extends Error> = (code: string, message: string) => TError;
 
 export type MainserverCrudClientOptions<
@@ -66,6 +68,23 @@ const mergeHeaders = (...headersList: Array<HeadersInit | undefined>): Headers =
   return merged;
 };
 
+const createTimeoutSignal = (timeoutMs: number): {
+  readonly cancel: () => void;
+  readonly signal: AbortSignal;
+} => {
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => {
+    controller.abort(new DOMException('mainserver_timeout', 'TimeoutError'));
+  }, timeoutMs);
+
+  return {
+    cancel: () => {
+      globalThis.clearTimeout(timeoutId);
+    },
+    signal: controller.signal,
+  };
+};
+
 export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): Headers =>
   mergeHeaders(
     {
@@ -83,58 +102,75 @@ export function requestMainserverJson<T>(input: {
   readonly init?: RequestInit;
   readonly fetch?: typeof fetch;
   readonly errorFactory?: MainserverErrorFactory<MainserverApiError>;
+  readonly timeoutMs?: number;
 }): Promise<T>;
 export function requestMainserverJson<T, TError extends Error>(input: {
   readonly url: string;
   readonly init?: RequestInit;
   readonly fetch?: typeof fetch;
   readonly errorFactory: MainserverErrorFactory<TError>;
+  readonly timeoutMs?: number;
 }): Promise<T>;
 export async function requestMainserverJson<T, TError extends Error = MainserverApiError>(input: {
   readonly url: string;
   readonly init?: RequestInit;
   readonly fetch?: typeof fetch;
   readonly errorFactory?: MainserverErrorFactory<TError>;
+  readonly timeoutMs?: number;
 }): Promise<T> {
-  const response = await resolveFetch(input.fetch)(input.url, {
-    credentials: 'include',
-    ...input.init,
-    headers: mergeHeaders({ Accept: 'application/json' }, input.init?.headers),
-  });
-
-  if (!response.ok) {
-    let errorCode = `http_${response.status}`;
-    let message = errorCode;
-
-    try {
-      const body = await response.json();
-      if (!isApiErrorResponse(body)) {
-        throw new Error('invalid_mainserver_error_response');
+  const timeout = createTimeoutSignal(input.timeoutMs ?? DEFAULT_MAINSERVER_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await resolveFetch(input.fetch)(input.url, {
+      credentials: 'include',
+      ...input.init,
+      signal: input.init?.signal ? AbortSignal.any([input.init.signal, timeout.signal]) : timeout.signal,
+      headers: mergeHeaders({ Accept: 'application/json' }, input.init?.headers),
+    }).catch((error: unknown) => {
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        const errorFactory =
+          input.errorFactory ?? ((code: string, errorMessage: string) => new MainserverApiError(code, errorMessage));
+        throw errorFactory('mainserver_timeout', 'mainserver_timeout');
       }
-      errorCode =
-        typeof body.error === 'string' && body.error.length > 0
-          ? body.error
-          : typeof body.error === 'object' && body.error !== null && typeof body.error.code === 'string' && body.error.code.length > 0
-            ? body.error.code
-            : errorCode;
-      message =
-        typeof body.message === 'string' && body.message.length > 0
-          ? body.message
-          : typeof body.error === 'object' &&
-              body.error !== null &&
-              typeof body.error.message === 'string' &&
-              body.error.message.length > 0
-            ? body.error.message
-            : errorCode;
-    } catch {
-      // Keep the deterministic HTTP fallback when the server returns no JSON error envelope.
+
+      throw error;
+    });
+
+    if (!response.ok) {
+      let errorCode = `http_${response.status}`;
+      let message = errorCode;
+
+      try {
+        const body = await response.json();
+        if (!isApiErrorResponse(body)) {
+          throw new Error('invalid_mainserver_error_response');
+        }
+        errorCode =
+          typeof body.error === 'string' && body.error.length > 0
+            ? body.error
+            : typeof body.error === 'object' && body.error !== null && typeof body.error.code === 'string' && body.error.code.length > 0
+              ? body.error.code
+              : errorCode;
+        message =
+          typeof body.message === 'string' && body.message.length > 0
+            ? body.message
+            : typeof body.error === 'object' &&
+                body.error !== null &&
+                typeof body.error.message === 'string' &&
+                body.error.message.length > 0
+              ? body.error.message
+              : errorCode;
+      } catch {
+        // Keep the deterministic HTTP fallback when the server returns no JSON error envelope.
+      }
+
+      const errorFactory = input.errorFactory ?? ((code: string, errorMessage: string) => new MainserverApiError(code, errorMessage));
+      throw errorFactory(errorCode, message);
     }
 
-    const errorFactory = input.errorFactory ?? ((code: string, errorMessage: string) => new MainserverApiError(code, errorMessage));
-    throw errorFactory(errorCode, message);
+    return (await response.json()) as T;
+  } finally {
+    timeout.cancel();
   }
-
-  return (await response.json()) as T;
 }
 
 export const createMainserverCrudClient = <

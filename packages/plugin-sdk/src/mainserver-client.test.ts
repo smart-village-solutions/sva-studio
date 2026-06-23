@@ -147,6 +147,40 @@ describe('mainserver-client', () => {
     });
   });
 
+  it('fails deterministically when a mainserver request exceeds the timeout budget', async () => {
+    vi.useFakeTimers();
+
+    const fetchMock = vi.fn(
+      (_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            'abort',
+            () => {
+              reject(init.signal?.reason ?? new DOMException('mainserver_timeout', 'AbortError'));
+            },
+            { once: true }
+          );
+        })
+    );
+
+    const requestPromise = requestMainserverJson({
+      url: '/timeout',
+      fetch: fetchMock as typeof fetch,
+      timeoutMs: 50,
+    });
+    const rejectionExpectation = expect(requestPromise).rejects.toMatchObject({
+      code: 'mainserver_timeout',
+      message: 'mainserver_timeout',
+      name: 'MainserverApiError',
+    });
+
+    await vi.advanceTimersByTimeAsync(51);
+
+    await rejectionExpectation;
+
+    vi.useRealTimers();
+  });
+
   it('preserves tuple and Headers instances when merging request headers', async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'news-1', title: 'Erste' } }), { status: 200 }));
     const headerClient = createMainserverCrudClient<

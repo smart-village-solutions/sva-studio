@@ -6,7 +6,6 @@ import { ContentListPage } from './-content-list-page';
 
 const useContentsMock = vi.fn();
 const useContentAccessMock = vi.fn();
-const useAuthMock = vi.fn();
 const deleteNewsMock = vi.fn();
 const deleteEventMock = vi.fn();
 const deletePoiMock = vi.fn();
@@ -59,12 +58,8 @@ vi.mock('@tanstack/react-router', () => ({
   },
 }));
 
-vi.mock('../../hooks/use-unified-content-list', () => ({
-  useUnifiedContentList: (...args: unknown[]) => useContentsMock(...args),
-}));
-
-vi.mock('../../providers/auth-provider', () => ({
-  useAuth: () => useAuthMock(),
+vi.mock('../../hooks/use-contents', () => ({
+  useContents: (...args: unknown[]) => useContentsMock(...args),
 }));
 
 vi.mock('../../hooks/use-content-access', () => ({
@@ -91,17 +86,11 @@ describe('ContentListPage', () => {
   beforeEach(() => {
     useContentsMock.mockReset();
     useContentAccessMock.mockReset();
-    useAuthMock.mockReset();
     deleteNewsMock.mockReset();
     deleteEventMock.mockReset();
     deletePoiMock.mockReset();
     navigateMock.mockReset();
     searchState = {};
-    useAuthMock.mockReturnValue({
-      user: {
-        instanceId: 'de-musterhausen',
-      },
-    });
     useContentAccessMock.mockReturnValue({
       access: {
         state: 'editable',
@@ -137,8 +126,11 @@ describe('ContentListPage', () => {
     pagination: { page: 1, pageSize: 25, total: 0 },
     isLoading: false,
     error: null,
+    mutationError: null,
     refetch: vi.fn(),
-    supportsBulkActions: false,
+    clearMutationError: vi.fn(),
+    archiveContents: vi.fn(),
+    deleteContents: vi.fn(),
     ...overrides,
   });
 
@@ -195,18 +187,7 @@ describe('ContentListPage', () => {
       sortBy: 'updatedAt',
       sortDirection: 'desc',
       visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
-    }, ['news.article', 'events.event-record', 'poi.point-of-interest'], 'de-musterhausen', [
-      'news.read',
-      'news.create',
-      'news.update',
-      'news.delete',
-      'poi.read',
-      'poi.create',
-      'poi.delete',
-      'events.read',
-      'events.create',
-      'events.delete',
-    ]);
+    });
     expect(screen.getByRole('heading', { name: 'Inhalte' })).toBeTruthy();
     expect(screen.queryByText(/Aktueller Zugriffsstatus:/)).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Inhaltsliste', level: 2 })).toBeNull();
@@ -259,18 +240,7 @@ describe('ContentListPage', () => {
       sortBy: 'updatedAt',
       sortDirection: 'desc',
       visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
-    }, ['news.article', 'events.event-record', 'poi.point-of-interest'], 'de-musterhausen', [
-      'news.read',
-      'news.create',
-      'news.update',
-      'news.delete',
-      'poi.read',
-      'poi.create',
-      'poi.delete',
-      'events.read',
-      'events.create',
-      'events.delete',
-    ]);
+    });
     expect(screen.getAllByText('Archiv').length).toBeGreaterThan(0);
   });
 
@@ -579,18 +549,7 @@ describe('ContentListPage', () => {
       sortBy: 'updatedAt',
       sortDirection: 'desc',
       visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
-    }, ['news.article', 'events.event-record', 'poi.point-of-interest'], 'de-musterhausen', [
-      'news.read',
-      'news.create',
-      'news.update',
-      'news.delete',
-      'poi.read',
-      'poi.create',
-      'poi.delete',
-      'events.read',
-      'events.create',
-      'events.delete',
-    ]);
+    });
   });
 
   it('hides generic bulk actions for mainserver-backed content items', async () => {
@@ -635,7 +594,7 @@ describe('ContentListPage', () => {
     expect(screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile content-1 auswählen' })).toHaveLength(2);
   });
 
-  it('normalizes legacy string sort params from route state before querying the unified list', () => {
+  it('normalizes legacy string sort params from route state before querying the content list', () => {
     searchState = {
       sort: '-title',
     };
@@ -650,17 +609,6 @@ describe('ContentListPage', () => {
       sortBy: 'title',
       sortDirection: 'desc',
       visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
-    }, ['news.article', 'events.event-record', 'poi.point-of-interest'], 'de-musterhausen', [
-      'news.read',
-      'news.create',
-      'news.update',
-      'news.delete',
-      'poi.read',
-      'poi.create',
-      'poi.delete',
-      'events.read',
-      'events.create',
-      'events.delete',
-    ]);
+    });
   });
 });

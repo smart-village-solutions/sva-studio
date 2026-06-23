@@ -1,5 +1,5 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { afterEach, describe, expect, it } from 'vitest';
@@ -110,7 +110,7 @@ describe('stagehand story state', () => {
 
   it('writes an overlay without mutating the source catalog', () => {
     const filePath = createTempCatalogFile();
-    const overlayPath = join(tmpdir(), `stagehand-story-overlay-${Date.now()}.json`);
+    const overlayPath = join(dirname(filePath), 'stagehand-story-overlay.json');
 
     writeStagehandStoryCheckOverlay(overlayPath, {
       generatedAt: '2026-05-16T18:00:00.000Z',

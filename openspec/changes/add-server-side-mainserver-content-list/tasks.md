@@ -1,11 +1,11 @@
 ## 1. Implementation
-- [x] 1.1 Die bestehende Capability- und Architekturreferenz fuer Content-Liste und Mainserver-Integration gegen die aktuelle Implementierung und Runbook-Grenze abgleichen
-- [x] 1.2 Eine serverseitige Aggregationsschicht fuer `GET /api/v1/iam/contents` entwerfen, die lokale IAM-Inhalte und Mainserver-Projektionen in ein gemeinsames Listenmodell ueberfuehrt
+- [x] 1.1 Die bestehende Capability- und Architekturreferenz für Content-Liste und Mainserver-Integration gegen die aktuelle Implementierung und Runbook-Grenze abgleichen
+- [x] 1.2 Eine serverseitige Aggregationsschicht für `GET /api/v1/iam/contents` entwerfen, die lokale IAM-Inhalte und Mainserver-Projektionen in ein gemeinsames Listenmodell überführt
 - [x] 1.3 Mainserver-Listenadapter fuer News, Events und POI mit hostseitiger Projektion auf das gemeinsame Inhaltslistenmodell implementieren
 - [x] 1.4 Serverseitige Pagination, Sortierung, Suche, Typfilter, Statusfilter und `visibleType` auf dem aggregierten Listenpfad umsetzen
-- [x] 1.5 Rechteauswertung und Fehlervertrag fuer den aggregierten Listenpfad deterministisch absichern
-- [x] 1.6 `apps/sva-studio-react/src/routes/content/-content-list-page.tsx` auf die fuehrende serverseitige Listenquelle stabilisieren und den Browser-Vollscan-Pfad aus dem produktiven Flow entfernen
-- [x] 1.7 Unit- und Integrations-Tests fuer Aggregation, Pagination, Sortierung, Filterung, Rechte und Fehlerfaelle ergaenzen oder anpassen
-- [x] 1.8 E2E-/Regressionstests fuer `/admin/content` mit grossen Mainserver-Bestaenden und Downstream-Fehlern ergaenzen oder anpassen
+- [x] 1.5 Rechteauswertung und Fehlervertrag für den aggregierten Listenpfad deterministisch absichern
+- [x] 1.6 `apps/sva-studio-react/src/routes/content/-content-list-page.tsx` auf die führende serverseitige Listenquelle stabilisieren und den Browser-Vollscan-Pfad aus dem produktiven Flow entfernen
+- [x] 1.7 Unit- und Integrations-Tests für Aggregation, Pagination, Sortierung, Filterung, Rechte und Fehlerfälle ergänzen oder anpassen
+- [x] 1.8 E2E-/Regressionstests für `/admin/content` mit großen Mainserver-Beständen und Downstream-Fehlern ergänzen oder anpassen
 - [x] 1.9 Betroffene API-, Runbook- und arc42-Dokumentation aktualisieren
-- [x] 1.10 `openspec validate add-server-side-mainserver-content-list --strict` erfolgreich ausfuehren
+- [x] 1.10 `openspec validate add-server-side-mainserver-content-list --strict` erfolgreich ausführen

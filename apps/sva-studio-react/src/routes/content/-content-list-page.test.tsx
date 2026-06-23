@@ -14,6 +14,14 @@ let searchState: Record<string, unknown> = {};
 const { mockedStudioContentTypes } = vi.hoisted(() => ({
   mockedStudioContentTypes: [
     {
+      contentType: 'generic',
+      displayName: 'Inhalte',
+      requiredReadAction: 'content.read',
+      requiredCreateAction: 'content.create',
+      createPath: '/admin/content/new',
+      detailPath: '/admin/content/$contentId',
+    },
+    {
       contentType: 'news.article',
       displayName: 'News',
       requiredReadAction: 'news.read',
@@ -101,6 +109,8 @@ describe('ContentListPage', () => {
         sourceKinds: ['direct_role'],
       },
       permissionActions: [
+        'content.read',
+        'content.create',
         'news.read',
         'news.create',
         'news.update',
@@ -186,7 +196,7 @@ describe('ContentListPage', () => {
       pageSize: 25,
       sortBy: 'updatedAt',
       sortDirection: 'desc',
-      visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
+      visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
     });
     expect(screen.getByRole('heading', { name: 'Inhalte' })).toBeTruthy();
     expect(screen.queryByText(/Aktueller Zugriffsstatus:/)).toBeNull();
@@ -239,7 +249,7 @@ describe('ContentListPage', () => {
       status: 'archived',
       sortBy: 'updatedAt',
       sortDirection: 'desc',
-      visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
+      visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
     });
     expect(screen.getAllByText('Archiv').length).toBeGreaterThan(0);
   });
@@ -548,7 +558,7 @@ describe('ContentListPage', () => {
       status: 'published',
       sortBy: 'updatedAt',
       sortDirection: 'desc',
-      visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
+      visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
     });
   });
 
@@ -589,9 +599,66 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
 
     expect(screen.queryByRole('button', { name: 'Löschen (Auswahl)' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Archivieren (Aktuelle Seite)' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Archivieren (Auswahl)' })).toBeNull();
     expect(screen.getByRole('checkbox', { name: 'Inhalte: Alle Zeilen auswählen' })).toBeTruthy();
     expect(screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile content-1 auswählen' })).toHaveLength(2);
+  });
+
+  it('shows local-only bulk actions when the current page contains IAM content', async () => {
+    useContentsMock.mockReturnValue(createContentsApiResult({
+      contents: [
+        {
+          id: 'local-1',
+          contentType: 'generic',
+          title: 'Lokaler Inhalt',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-23T10:00:00.000Z',
+          author: 'Editor',
+          payload: { hero: 'A' },
+          status: 'draft',
+        },
+      ],
+      pagination: { page: 1, pageSize: 1, total: 1 },
+    }));
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: ['org-1'],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['content.read', 'content.archive', 'content.delete'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<ContentListPage />);
+
+    expect(screen.getByRole('button', { name: 'Archivieren (Auswahl)' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Löschen (Auswahl)' })).toBeTruthy();
+    expect(screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile local-1 auswählen' })).toHaveLength(2);
+  });
+
+  it('uses a sentinel visible type when no readable content types are available', () => {
+    useContentAccessMock.mockReturnValue({
+      access: null,
+      permissionActions: [],
+      isLoading: false,
+      error: null,
+    });
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+
+    expect(useContentsMock).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: 25,
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+      visibleTypes: ['__no_readable_content__'],
+    });
   });
 
   it('normalizes legacy string sort params from route state before querying the content list', () => {
@@ -608,7 +675,7 @@ describe('ContentListPage', () => {
       pageSize: 25,
       sortBy: 'title',
       sortDirection: 'desc',
-      visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
+      visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
     });
   });
 });

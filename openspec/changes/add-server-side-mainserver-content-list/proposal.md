@@ -1,17 +1,17 @@
-# Change: Serverseitige Mainserver-Content-Liste fuer `/admin/content`
+# Change: Serverseitige Mainserver-Content-Liste für `/admin/content`
 
 ## Why
-Die aktuelle Inhaltsuebersicht fuer Mainserver-gestuetzte Inhalte basiert fachlich nicht auf einer einzigen autoritativen serverseitigen Listenquelle. Der bisherige Browser-Pfad fuer News, Events und POI fuehrt Vollscans ueber mehrere Mainserver-Fassaden aus und skaliert bei grossen Bestaenden schlecht. Gleichzeitig liest `GET /api/v1/iam/contents` heute nur aus `iam.contents`, obwohl Mainserver-News, -Events und -POI produktiv nicht per Dual-Write in diese Tabelle geschrieben werden.
+Die aktuelle Inhaltsübersicht für Mainserver-gestützte Inhalte basiert fachlich nicht auf einer einzigen autoritativen serverseitigen Listenquelle. Der bisherige Browser-Pfad für News, Events und POI führt Vollscans über mehrere Mainserver-Fassaden aus und skaliert bei großen Beständen schlecht. Gleichzeitig liest `GET /api/v1/iam/contents` heute nur aus `iam.contents`, obwohl Mainserver-News, -Events und -POI produktiv nicht per Dual-Write in diese Tabelle geschrieben werden.
 
-Dadurch kann die Seite `/admin/content` zwar technisch gerendert werden, bildet aber Mainserver-Inhalte entweder langsam, unvollstaendig oder inkonsistent ab. Fuer eine belastbare Umstellung auf eine einzige Listenquelle braucht Studio eine hostgefuhrte serverseitige Aggregation und Pagination fuer Mainserver-gestuetzte Inhalte.
+Dadurch kann die Seite `/admin/content` zwar technisch gerendert werden, bildet aber Mainserver-Inhalte entweder langsam, unvollständig oder inkonsistent ab. Für eine belastbare Umstellung auf eine einzige Listenquelle braucht Studio eine hostgeführte serverseitige Aggregation und Pagination für Mainserver-gestützte Inhalte.
 
 ## What Changes
-- `GET /api/v1/iam/contents` wird von einem reinen IAM-Repository-Listing zu einer fuehrenden hostgefuhrten Inhaltslisten-Schnittstelle fuer die Content-Uebersicht erweitert
+- `GET /api/v1/iam/contents` wird von einem reinen IAM-Repository-Listing zu einer führenden hostgeführten Inhaltslisten-Schnittstelle für die Content-Übersicht erweitert
 - Die Listenquelle aggregiert Mainserver-News, -Events und -POI serverseitig in ein gemeinsames Inhaltslistenmodell
-- Die Content-Uebersicht `/admin/content` verwendet nur noch diese eine serverseitige Listenquelle und fuehrt keine Browser-Vollscans ueber `news`, `events` und `poi` mehr aus
+- Die Content-Übersicht `/admin/content` verwendet nur noch diese eine serverseitige Listenquelle und führt keine Browser-Vollscans über `news`, `events` und `poi` mehr aus
 - Pagination, Sortierung, Suchfilter, Typfilter und sichtbare Typen werden serverseitig auf den aggregierten Bestand angewendet
-- Rechteauswertung und Fehlerabbildung bleiben hostseitig fuehrend; ein Ausfall einer Mainserver-Quelle darf nicht mehr als endloser Ladezustand im Browser erscheinen
-- Die bestehende Nicht-Dual-Write-Grenze fuer Mainserver-News, -Events und -POI bleibt unveraendert; die Loesung fuehrt bewusst keine Materialisierung in `iam.contents` ein
+- Rechteauswertung und Fehlerabbildung bleiben hostseitig führend; ein Ausfall einer Mainserver-Quelle darf nicht mehr als endloser Ladezustand im Browser erscheinen
+- Die bestehende Nicht-Dual-Write-Grenze für Mainserver-News, -Events und -POI bleibt unverändert; die Lösung führt bewusst keine Materialisierung in `iam.contents` ein
 
 ## Impact
 - Affected specs:
@@ -25,7 +25,7 @@ Dadurch kann die Seite `/admin/content` zwar technisch gerendert werden, bildet 
   - `apps/sva-studio-react/src/hooks/use-contents.ts`
   - `apps/sva-studio-react/src/routes/content/-content-list-page.tsx`
   - `apps/sva-studio-react/src/hooks/use-unified-content-list.ts`
-  - zugehoerige Unit-, Integrations- und E2E-Tests
+  - zugehörige Unit-, Integrations- und E2E-Tests
 - Affected arc42 sections:
   - `docs/architecture/05-building-block-view.md`
   - `docs/architecture/06-runtime-view.md`

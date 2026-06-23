@@ -53,6 +53,13 @@ type RegisteredContentRow = IamContentListItem & Readonly<{
   editPath: string;
 }>;
 
+const MAIN_SERVER_CONTENT_TYPES = new Set([
+  'news.article',
+  'events.event-record',
+  'poi.point-of-interest',
+]);
+const EMPTY_VISIBLE_TYPE_SENTINEL = '__no_readable_content__';
+
 const contentAdminResource = appAdminResources.find((resource) => resource.resourceId === 'content');
 const contentListCapabilities = contentAdminResource?.capabilities?.list;
 const contentPagination = contentListCapabilities?.pagination;
@@ -266,6 +273,13 @@ const resolveContentSortField = (routeSortField: string | undefined): IamContent
   }
 };
 
+const isMainserverContentType = (contentType: string): boolean => MAIN_SERVER_CONTENT_TYPES.has(contentType);
+
+const isBulkActionableContent = (item: RegisteredContentRow): boolean => !isMainserverContentType(item.contentType);
+
+const buildBulkActionLabel = (actionLabelKey: 'content.actions.archive' | 'content.actions.delete'): string =>
+  `${t(actionLabelKey)} (${t('content.bulk.scope.explicitIds')})`;
+
 const resolveRowActionIcon = (access: IamContentAccessSummary): React.ReactNode => {
   if (access.canUpdate) {
     return <IconEdit aria-hidden="true" className="h-4 w-4" />;
@@ -405,7 +419,10 @@ export const ContentListPage = () => {
       pageSize: routeState.pageSize,
       ...(routeState.type !== 'all' ? { type: routeState.type } : {}),
       ...(routeState.status !== 'all' ? { status: routeState.status } : {}),
-      visibleTypes: readableContentTypes.map((definition) => definition.contentType),
+      visibleTypes:
+        readableContentTypes.length > 0
+          ? readableContentTypes.map((definition) => definition.contentType)
+          : [EMPTY_VISIBLE_TYPE_SENTINEL],
       sortBy: resolveContentSortField(routeSortField),
       sortDirection: routeSortDirection ?? 'desc',
     }),
@@ -446,6 +463,10 @@ export const ContentListPage = () => {
     1,
     Math.ceil(contentsApi.pagination.total / Math.max(1, contentsApi.pagination.pageSize))
   );
+  const hasBulkActionableContents = React.useMemo(
+    () => registeredContents.some(isBulkActionableContent),
+    [registeredContents]
+  );
 
   const navigateSearch = React.useCallback(
     (next: Partial<ContentListRouteState>) => {
@@ -465,6 +486,69 @@ export const ContentListPage = () => {
       await contentsApi.refetch();
     },
     [contentsApi]
+  );
+
+  const bulkActionButtons = React.useMemo<readonly StudioBulkAction<RegisteredContentRow>[]>(
+    () =>
+      hasBulkActionableContents
+        ? [
+            {
+              id: 'archive-selection',
+              label: buildBulkActionLabel('content.actions.archive'),
+              disabled: !contentAccessApi.permissionActions?.includes('content.archive'),
+              onClick: async ({ selectedRows, clearSelection }) => {
+                if (selectedRows.length === 0) {
+                  return;
+                }
+                await contentsApi.archiveContents({
+                  actionId: 'content.archive',
+                  contentIds: selectedRows.map((item) => item.id),
+                  matchingCount: selectedRows.length,
+                  page: routeState.page,
+                  pageSize: routeState.pageSize,
+                  selectionMode: 'explicitIds',
+                  sort: routeState.sort,
+                  statusFilter: routeState.status,
+                });
+                clearSelection();
+              },
+            },
+            {
+              id: 'delete-selection',
+              label: buildBulkActionLabel('content.actions.delete'),
+              disabled: !contentAccessApi.permissionActions?.includes('content.delete'),
+              variant: 'destructive',
+              onClick: async ({ selectedRows, clearSelection }) => {
+                if (
+                  selectedRows.length === 0 ||
+                  !window.confirm(t('content.actions.deleteConfirm'))
+                ) {
+                  return;
+                }
+                await contentsApi.deleteContents({
+                  actionId: 'content.delete',
+                  contentIds: selectedRows.map((item) => item.id),
+                  matchingCount: selectedRows.length,
+                  page: routeState.page,
+                  pageSize: routeState.pageSize,
+                  selectionMode: 'explicitIds',
+                  sort: routeState.sort,
+                  statusFilter: routeState.status,
+                });
+                clearSelection();
+              },
+            },
+          ]
+        : [],
+    [
+      contentAccessApi.permissionActions,
+      contentsApi,
+      hasBulkActionableContents,
+      routeState.page,
+      routeState.pageSize,
+      routeState.sort,
+      routeState.status,
+    ]
   );
 
   const contentColumns = React.useMemo<readonly StudioColumnDef<RegisteredContentRow>[]>(
@@ -501,8 +585,6 @@ export const ContentListPage = () => {
     []
   );
 
-  const bulkActionButtons: readonly StudioBulkAction<RegisteredContentRow>[] = [];
-
   return (
     <section className="space-y-5" aria-busy={contentsApi.isLoading}>
       <StudioListPageTemplate
@@ -531,6 +613,7 @@ export const ContentListPage = () => {
           columns={contentColumns}
           getRowId={(item) => item.id}
           selectionMode="multiple"
+          canSelectRow={isBulkActionableContent}
           bulkActions={bulkActionButtons}
           isLoading={contentsApi.isLoading || contentAccessApi.isLoading}
           loadingState={t('content.messages.loading')}

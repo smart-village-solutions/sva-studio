@@ -44,6 +44,7 @@ describe('aggregated content list api', () => {
     state.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
       handler({
         sessionId: 'session-1',
+        activeOrganizationId: 'org-1',
         user: {
           id: 'kc-user-1',
           instanceId: 'de-musterhausen',
@@ -138,6 +139,7 @@ describe('aggregated content list api', () => {
     expect(state.listSvaMainserverNews).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
+      activeOrganizationId: 'org-1',
       page: 1,
       pageSize: 100,
     });
@@ -276,7 +278,7 @@ describe('aggregated content list api', () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: {
         code: 'database_unavailable',
-        message: 'upstream down',
+        message: 'Inhalte konnten nicht geladen werden.',
       },
       requestId: 'req-1',
     });

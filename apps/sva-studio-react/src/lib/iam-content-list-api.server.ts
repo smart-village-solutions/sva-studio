@@ -36,6 +36,11 @@ const readPermissionActions = (
     .filter((permission) => permission.effect !== 'deny')
     .map((permission) => permission.action);
 
+const buildMainserverReadAction = (contentType: string): string => {
+  const namespace = contentType.split('.')[0]?.trim();
+  return namespace ? `${namespace}.read` : 'content.read';
+};
+
 const fetchAllPages = async <TItem>(
   loadPage: (query: { readonly page: number; readonly pageSize: number }) => Promise<{
     readonly data: readonly TItem[];
@@ -101,6 +106,7 @@ const loadMainserverItems = async (
   const connection = {
     instanceId: ctx.user.instanceId,
     keycloakSubject: ctx.user.id,
+    activeOrganizationId: ctx.activeOrganizationId,
   };
 
   const items = await Promise.all(
@@ -146,26 +152,24 @@ const filterAuthorizedItems = async (
   ctx: AuthenticatedRequestContext,
   items: readonly IamContentListItem[]
 ): Promise<readonly IamContentListItem[] | Response> => {
-  const authorized: IamContentListItem[] = [];
+  const authorizationResults = await Promise.all(
+    items.map(async (item) => ({
+      item,
+      authorization: await authorizeContentPrimitiveForUser({
+        ctx,
+        action: buildMainserverReadAction(item.contentType),
+        resource: {
+          contentId: item.id,
+          contentType: item.contentType,
+          organizationId: item.organizationId,
+          createdByAccountId: item.createdBy,
+        },
+      }),
+    }))
+  );
 
-  for (const item of items) {
-    const authorization = await authorizeContentPrimitiveForUser({
-      ctx,
-      action: 'content.read',
-      resource: {
-        contentId: item.id,
-        contentType: item.contentType,
-        organizationId: item.organizationId,
-        createdByAccountId: item.createdBy,
-      },
-    });
-
-    if (authorization.ok) {
-      authorized.push(item);
-      continue;
-    }
-
-    if (authorization.status >= 500) {
+  for (const { authorization } of authorizationResults) {
+    if (!authorization.ok && authorization.status >= 500) {
       return createListErrorResponse(
         authorization.status,
         normalizeApiErrorCode(authorization.error),
@@ -174,7 +178,9 @@ const filterAuthorizedItems = async (
     }
   }
 
-  return authorized;
+  return authorizationResults
+    .filter((result) => result.authorization.ok)
+    .map((result) => result.item);
 };
 
 const handleMainserverContentList = async (request: Request): Promise<Response> =>
@@ -219,9 +225,9 @@ const handleMainserverContentList = async (request: Request): Promise<Response> 
         return authorizedMainserverItems;
       }
 
-      const combinedItems = [...localItemsResult, ...authorizedMainserverItems];
-      const filteredItems = filterItems(combinedItems, query);
-      const sortedItems = sortItems(filteredItems, query.sortBy, query.sortDirection);
+      const filteredMainserverItems = filterItems(authorizedMainserverItems, query);
+      const combinedItems = [...localItemsResult, ...filteredMainserverItems];
+      const sortedItems = sortItems(combinedItems, query.sortBy, query.sortDirection);
       const paginatedItems = paginateItems(sortedItems, query.page, query.pageSize);
       return createListResponse(
         paginatedItems,
@@ -237,11 +243,7 @@ const handleMainserverContentList = async (request: Request): Promise<Response> 
         error instanceof Error && 'code' in error && typeof error.code === 'string'
           ? normalizeApiErrorCode(error.code)
           : 'database_unavailable';
-      const message =
-        error instanceof Error && error.message.length > 0
-          ? error.message
-          : 'Inhalte konnten nicht geladen werden.';
-      return createListErrorResponse(503, code, message, requestId);
+      return createListErrorResponse(503, code, 'Inhalte konnten nicht geladen werden.', requestId);
     }
   });
 

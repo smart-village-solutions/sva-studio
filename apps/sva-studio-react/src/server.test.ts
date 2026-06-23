@@ -7,6 +7,7 @@ const dispatchMainserverNewsRequestMock = vi.fn();
 const dispatchMainserverEventsRequestMock = vi.fn();
 const dispatchMainserverPoiRequestMock = vi.fn();
 const dispatchMainserverCategoriesRequestMock = vi.fn();
+const dispatchAggregatedContentListRequestMock = vi.fn();
 const dispatchMapGeocodingRequestMock = vi.fn();
 const ensurePluginOperationWorkerStartedMock = vi.fn();
 const getWorkspaceContextMock = vi.fn();
@@ -56,6 +57,10 @@ vi.mock('./lib/mainserver-categories-api.server', () => ({
   dispatchMainserverCategoriesRequest: dispatchMainserverCategoriesRequestMock,
 }));
 
+vi.mock('./lib/iam-content-list-api.server', () => ({
+  dispatchAggregatedContentListRequest: dispatchAggregatedContentListRequestMock,
+}));
+
 vi.mock('./lib/map-geocoding-api.server', () => ({
   dispatchMapGeocodingRequest: dispatchMapGeocodingRequestMock,
 }));
@@ -82,6 +87,7 @@ describe('server transport', () => {
     dispatchMainserverEventsRequestMock.mockReset();
     dispatchMainserverPoiRequestMock.mockReset();
     dispatchMainserverCategoriesRequestMock.mockReset();
+    dispatchAggregatedContentListRequestMock.mockReset();
     dispatchMapGeocodingRequestMock.mockReset();
     ensurePluginOperationWorkerStartedMock.mockReset();
     ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
@@ -186,6 +192,7 @@ describe('server transport', () => {
     dispatchMainserverCategoriesRequestMock.mockResolvedValue(
       new Response('categories', { status: 200 })
     );
+    dispatchAggregatedContentListRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
 
@@ -198,6 +205,7 @@ describe('server transport', () => {
     expect(dispatchMainserverEventsRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverPoiRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverCategoriesRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchAggregatedContentListRequestMock).not.toHaveBeenCalled();
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
     expect(startFetch).not.toHaveBeenCalled();
     await expect(response.text()).resolves.toBe('categories');
@@ -212,19 +220,27 @@ describe('server transport', () => {
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverCategoriesRequestMock.mockResolvedValue(null);
+    dispatchAggregatedContentListRequestMock
+      .mockResolvedValueOnce(new Response('contents', { status: 200 }))
+      .mockResolvedValueOnce(null);
     dispatchMapGeocodingRequestMock.mockResolvedValue(new Response('map', { status: 200 }));
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
 
     const mod = await import('./server');
+    const aggregatedResponse = await mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/iam/contents?page=1&pageSize=25&visibleType=news.article')
+    );
     const response = await mod.default.fetch(
       new Request('http://localhost:3000/api/v1/iam/map-geocoding/config')
     );
 
-    expect(dispatchMainserverNewsRequestMock).toHaveBeenCalledTimes(1);
-    expect(dispatchMainserverEventsRequestMock).toHaveBeenCalledTimes(1);
-    expect(dispatchMainserverPoiRequestMock).toHaveBeenCalledTimes(1);
-    expect(dispatchMainserverCategoriesRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchAggregatedContentListRequestMock).toHaveBeenCalledTimes(2);
+    await expect(aggregatedResponse.text()).resolves.toBe('contents');
+    expect(dispatchMainserverNewsRequestMock).toHaveBeenCalledTimes(2);
+    expect(dispatchMainserverEventsRequestMock).toHaveBeenCalledTimes(2);
+    expect(dispatchMainserverPoiRequestMock).toHaveBeenCalledTimes(2);
+    expect(dispatchMainserverCategoriesRequestMock).toHaveBeenCalledTimes(2);
     expect(dispatchMapGeocodingRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
     expect(startFetch).not.toHaveBeenCalled();

@@ -1,0 +1,11 @@
+## 1. Implementation
+- [ ] 1.1 Die bestehende Capability- und Architekturreferenz fuer Content-Liste und Mainserver-Integration gegen die aktuelle Implementierung und Runbook-Grenze abgleichen
+- [ ] 1.2 Eine serverseitige Aggregationsschicht fuer `GET /api/v1/iam/contents` entwerfen, die lokale IAM-Inhalte und Mainserver-Projektionen in ein gemeinsames Listenmodell ueberfuehrt
+- [ ] 1.3 Mainserver-Listenadapter fuer News, Events und POI mit hostseitiger Projektion auf das gemeinsame Inhaltslistenmodell implementieren
+- [ ] 1.4 Serverseitige Pagination, Sortierung, Suche, Typfilter, Statusfilter und `visibleType` auf dem aggregierten Listenpfad umsetzen
+- [ ] 1.5 Rechteauswertung und Fehlervertrag fuer den aggregierten Listenpfad deterministisch absichern
+- [ ] 1.6 `apps/sva-studio-react/src/routes/content/-content-list-page.tsx` auf die fuehrende serverseitige Listenquelle stabilisieren und den Browser-Vollscan-Pfad aus dem produktiven Flow entfernen
+- [ ] 1.7 Unit- und Integrations-Tests fuer Aggregation, Pagination, Sortierung, Filterung, Rechte und Fehlerfaelle ergaenzen oder anpassen
+- [ ] 1.8 E2E-/Regressionstests fuer `/admin/content` mit grossen Mainserver-Bestaenden und Downstream-Fehlern ergaenzen oder anpassen
+- [ ] 1.9 Betroffene API-, Runbook- und arc42-Dokumentation aktualisieren
+- [ ] 1.10 `openspec validate add-server-side-mainserver-content-list --strict` erfolgreich ausfuehren

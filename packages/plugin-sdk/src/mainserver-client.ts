@@ -95,27 +95,85 @@ const createMainserverTimeoutError = <TError extends Error>(
   errorFactory?: MainserverErrorFactory<TError>
 ): TError | MainserverApiError => resolveMainserverErrorFactory(errorFactory)('mainserver_timeout', 'mainserver_timeout');
 
+const isMainserverTimeoutError = (error: unknown): boolean =>
+  error instanceof DOMException && error.name === 'TimeoutError';
+
+const wrapMainserverTimeoutError = <TError extends Error>(
+  error: unknown,
+  errorFactory?: MainserverErrorFactory<TError>
+): never => {
+  if (isMainserverTimeoutError(error)) {
+    throw createMainserverTimeoutError(errorFactory);
+  }
+
+  throw error;
+};
+
+const combineAbortSignals = (signals: readonly AbortSignal[]): {
+  readonly cancel: () => void;
+  readonly signal: AbortSignal;
+} => {
+  if (signals.length === 1) {
+    return {
+      cancel: () => undefined,
+      signal: signals[0]!,
+    };
+  }
+
+  if (typeof AbortSignal.any === 'function') {
+    return {
+      cancel: () => undefined,
+      signal: AbortSignal.any([...signals]),
+    };
+  }
+
+  const controller = new AbortController();
+  const listeners = new Map<AbortSignal, () => void>();
+
+  const abortFrom = (signal: AbortSignal) => {
+    controller.abort(signal.reason);
+  };
+
+  for (const signal of signals) {
+    if (signal.aborted) {
+      abortFrom(signal);
+      return {
+        cancel: () => undefined,
+        signal: controller.signal,
+      };
+    }
+
+    const handleAbort = () => {
+      abortFrom(signal);
+    };
+    listeners.set(signal, handleAbort);
+    signal.addEventListener('abort', handleAbort, { once: true });
+  }
+
+  return {
+    cancel: () => {
+      for (const [signal, handleAbort] of listeners.entries()) {
+        signal.removeEventListener('abort', handleAbort);
+      }
+      listeners.clear();
+    },
+    signal: controller.signal,
+  };
+};
+
 const fetchMainserverResponse = async <TError extends Error>(input: {
   readonly url: string;
   readonly init?: RequestInit;
   readonly fetch?: typeof fetch;
   readonly errorFactory?: MainserverErrorFactory<TError>;
   readonly signal: AbortSignal;
-}): Promise<Response> => {
-  try {
-    return await resolveFetch(input.fetch)(input.url, {
-      credentials: 'include',
-      ...input.init,
-      signal: input.signal,
-      headers: mergeRequestHeaders({ Accept: 'application/json' }, input.init?.headers),
-    });
-  } catch (error: unknown) {
-    if (error instanceof DOMException && error.name === 'TimeoutError') {
-      throw createMainserverTimeoutError(input.errorFactory);
-    }
-    throw error;
-  }
-};
+}): Promise<Response> =>
+  resolveFetch(input.fetch)(input.url, {
+    credentials: 'include',
+    ...input.init,
+    signal: input.signal,
+    headers: mergeRequestHeaders({ Accept: 'application/json' }, input.init?.headers),
+  });
 
 const readNonEmptyString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined;
@@ -193,17 +251,25 @@ export async function requestMainserverJson<T, TError extends Error = Mainserver
   readonly timeoutMs?: number;
 }): Promise<T> {
   const timeout = createTimeoutSignal(input.timeoutMs ?? DEFAULT_MAINSERVER_REQUEST_TIMEOUT_MS);
+  const combinedSignal = combineAbortSignals(
+    input.init?.signal ? [input.init.signal, timeout.signal] : [timeout.signal]
+  );
   try {
-    const response = await fetchMainserverResponse({
-      url: input.url,
-      init: input.init,
-      fetch: input.fetch,
-      errorFactory: input.errorFactory,
-      signal: input.init?.signal ? AbortSignal.any([input.init.signal, timeout.signal]) : timeout.signal,
-    });
-    await assertMainserverResponseOk(response, input.errorFactory);
-    return (await response.json()) as T;
+    try {
+      const response = await fetchMainserverResponse({
+        url: input.url,
+        init: input.init,
+        fetch: input.fetch,
+        errorFactory: input.errorFactory,
+        signal: combinedSignal.signal,
+      });
+      await assertMainserverResponseOk(response, input.errorFactory);
+      return (await response.json()) as T;
+    } catch (error) {
+      return wrapMainserverTimeoutError(error, input.errorFactory);
+    }
   } finally {
+    combinedSignal.cancel();
     timeout.cancel();
   }
 }

@@ -16,7 +16,7 @@ vi.mock('@sva/server-runtime', () => ({
 }));
 
 describe('effective session roles', () => {
-  it('merges direct and group-derived IAM roles into the session user', async () => {
+  it('uses direct and group-derived IAM roles as the canonical session roles', async () => {
     const { enrichSessionUserWithEffectiveRoles } = await import('./effective-session-roles.js');
     const withResolvedInstanceDb = vi.fn(
       async (
@@ -39,7 +39,8 @@ describe('effective session roles', () => {
     const user: SessionUser = {
       id: 'kc-user-1',
       instanceId: 'de-musterhausen',
-      roles: ['custom_editor', 'custom_curator'],
+      roles: ['legacy_keycloak_role', 'custom_curator'],
+      keycloakRoles: ['legacy_keycloak_role'],
     };
 
     await expect(
@@ -49,11 +50,11 @@ describe('effective session roles', () => {
       })
     ).resolves.toEqual({
       ...user,
-      roles: ['custom_editor', 'custom_curator', 'system_admin'],
+      roles: ['system_admin', 'custom_curator'],
     });
   });
 
-  it('keeps the session user unchanged when role hydration fails', async () => {
+  it('fails closed and marks permissions degraded when role hydration fails', async () => {
     const { enrichSessionUserWithEffectiveRoles } = await import('./effective-session-roles.js');
     const user: SessionUser = {
       id: 'kc-user-1',
@@ -68,7 +69,11 @@ describe('effective session roles', () => {
           throw new Error('db unavailable');
         }),
       })
-    ).resolves.toBe(user);
+    ).resolves.toEqual({
+      ...user,
+      roles: [],
+      permissionStatus: 'degraded',
+    });
 
     expect(loggerState.warn).toHaveBeenCalledWith(
       'Effective IAM role hydration failed for session user',

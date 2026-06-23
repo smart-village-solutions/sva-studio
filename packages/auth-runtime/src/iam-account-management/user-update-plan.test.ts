@@ -170,7 +170,7 @@ describe('resolveUserUpdatePlan', () => {
     ).rejects.toThrow('forbidden:Gruppenrolle zu hoch');
   });
 
-  it('returns a plan with previous and next external role names and skips actor checks for system admins', async () => {
+  it('returns a plan with technical role names and skips actor checks for system admins', async () => {
     const { resolveUserUpdatePlan } = await import('./user-update-plan.js');
     state.resolveUserDetail.mockResolvedValueOnce({
       id: 'user-1',
@@ -192,10 +192,39 @@ describe('resolveUserUpdatePlan', () => {
     } as never);
 
     expect(plan).toMatchObject({
-      previousRoleNames: ['external-editor'],
-      nextRoleNames: ['editor'],
+      previousRoleNames: [],
+      nextRoleNames: [],
     });
     expect(state.ensureActorCanManageTarget).not.toHaveBeenCalled();
+  });
+
+  it('adds canonical technical role names for aliased system_admin rows', async () => {
+    const { resolveUserUpdatePlan } = await import('./user-update-plan.js');
+    state.resolveUserDetail.mockResolvedValueOnce({
+      id: 'user-1',
+      status: 'active',
+      roles: [{ roleId: 'role-admin', roleKey: 'system_admin', roleName: 'System Admin' }],
+    });
+    state.resolveRolesByIds.mockResolvedValueOnce([
+      { role_key: 'system_admin', externalName: 'legacy-system-admin' },
+    ]);
+    state.ensureTenantManageableRoleAssignments.mockResolvedValueOnce({
+      ok: true,
+      roles: [{ role_key: 'system_admin', externalName: 'legacy-system-admin' }],
+    });
+
+    const plan = await resolveUserUpdatePlan({} as never, {
+      instanceId: 'instance-1',
+      actorSubject: 'kc-actor',
+      actorRoles: ['system_admin'],
+      userId: 'user-1',
+      payload: { roleIds: ['role-admin'], status: 'active' },
+    } as never);
+
+    expect(plan).toMatchObject({
+      previousRoleNames: ['system_admin'],
+      nextRoleNames: ['system_admin'],
+    });
   });
 
   it('rejects root-only tenant role assignments even for system_admin actors', async () => {

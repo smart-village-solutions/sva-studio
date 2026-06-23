@@ -26,6 +26,33 @@ vi.mock('./shared.js', () => ({
   trackKeycloakCall: state.trackKeycloakCall,
 }));
 
+const createCompensationPlan = (overrides: {
+  readonly keycloakSubject?: string;
+  readonly email?: string;
+  readonly firstName?: string;
+  readonly lastName?: string;
+  readonly status?: 'active' | 'inactive';
+  readonly previousRoleNames?: readonly string[];
+  readonly nextRoleNames?: readonly string[];
+} = {}) => ({
+  existing: {
+    keycloakSubject: overrides.keycloakSubject ?? 'kc-1',
+    email: overrides.email ?? 'jane@example.test',
+    firstName: overrides.firstName ?? 'Jane',
+    lastName: overrides.lastName ?? 'Doe',
+    status: overrides.status ?? 'active',
+  },
+  previousRoleNames: overrides.previousRoleNames ?? [],
+  nextRoleNames: overrides.nextRoleNames ?? [],
+});
+
+const createIdentityProviderMocks = () => ({
+  updateUser: vi.fn(async () => undefined),
+  assignRealmRoles: vi.fn(async () => undefined),
+  removeRealmRoles: vi.fn(async () => undefined),
+  syncRoles: vi.fn(async () => undefined),
+});
+
 describe('user update identity helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -66,23 +93,19 @@ describe('user update identity helpers', () => {
       .fn()
       .mockRejectedValueOnce(new Error('identity compensation failed'))
       .mockResolvedValueOnce(undefined);
-    const syncRoles = vi.fn().mockRejectedValueOnce('role compensation failed');
+    const assignRealmRoles = vi.fn().mockRejectedValueOnce('role compensation failed');
+    const removeRealmRoles = vi.fn(async () => undefined);
     const identityProvider = {
       provider: {
         updateUser,
-        syncRoles,
+        assignRealmRoles,
+        removeRealmRoles,
       },
     };
-    const plan = {
-      existing: {
-        keycloakSubject: 'kc-1',
-        email: 'jane@example.test',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        status: 'active',
-      },
+    const plan = createCompensationPlan({
       previousRoleNames: ['system_admin'],
-    };
+      nextRoleNames: [],
+    });
 
     await compensateUserIdentityUpdate({
       instanceId: 'instance-1',
@@ -113,14 +136,15 @@ describe('user update identity helpers', () => {
     await compensateUserIdentityUpdate({
       instanceId: 'instance-1',
       userId: 'user-1',
-      plan: { ...plan, existing: { ...plan.existing, status: 'inactive' } } as never,
+      plan: createCompensationPlan({ status: 'inactive', previousRoleNames: ['system_admin'] }) as never,
       restoreIdentity: true,
       restoreRoles: false,
       restoreIdentityAttributes: { locale: ['de'] },
       identityProvider: {
         provider: {
           updateUser,
-          syncRoles,
+          assignRealmRoles,
+          removeRealmRoles,
         },
       } as never,
     });
@@ -129,22 +153,15 @@ describe('user update identity helpers', () => {
 
   it('returns early when neither identity nor roles must be restored and logs string compensation errors', async () => {
     const { compensateUserIdentityUpdate } = await import('./user-update-identity.js');
-    const updateUser = vi.fn(async () => undefined);
-    const syncRoles = vi.fn(async () => undefined);
+    const { assignRealmRoles, removeRealmRoles, syncRoles, updateUser } = createIdentityProviderMocks();
 
     await compensateUserIdentityUpdate({
       instanceId: 'instance-1',
       userId: 'user-1',
-      plan: {
-        existing: {
-          keycloakSubject: 'kc-1',
-          email: 'jane@example.test',
-          firstName: 'Jane',
-          lastName: 'Doe',
-          status: 'active',
-        },
+      plan: createCompensationPlan({
         previousRoleNames: ['editor'],
-      } as never,
+        nextRoleNames: ['editor'],
+      }) as never,
       restoreIdentity: false,
       restoreRoles: false,
       identityProvider: {
@@ -157,32 +174,32 @@ describe('user update identity helpers', () => {
 
     expect(state.trackKeycloakCall).not.toHaveBeenCalled();
 
-    syncRoles.mockRejectedValueOnce('sync failed');
+    assignRealmRoles.mockRejectedValueOnce('sync failed');
     await compensateUserIdentityUpdate({
       instanceId: 'instance-1',
       requestId: 'req-2',
       traceId: 'trace-2',
       userId: 'user-2',
-      plan: {
-        existing: {
-          keycloakSubject: 'kc-2',
-          email: 'john@example.test',
-          firstName: 'John',
-          lastName: 'Doe',
-          status: 'active',
-        },
-        previousRoleNames: ['editor'],
-      } as never,
+      plan: createCompensationPlan({
+        keycloakSubject: 'kc-2',
+        email: 'john@example.test',
+        firstName: 'John',
+        previousRoleNames: ['system_admin'],
+        nextRoleNames: [],
+      }) as never,
       restoreIdentity: false,
       restoreRoles: true,
       identityProvider: {
         provider: {
           updateUser,
+          assignRealmRoles,
+          removeRealmRoles,
           syncRoles,
         },
       } as never,
     });
 
+    expect(syncRoles).not.toHaveBeenCalled();
     expect(state.logger.error).toHaveBeenCalledWith(
       'IAM user role compensation failed',
       expect.objectContaining({
@@ -193,5 +210,32 @@ describe('user update identity helpers', () => {
         }),
       })
     );
+  });
+
+  it('compensates role updates with non-destructive technical deltas', async () => {
+    const { compensateUserIdentityUpdate } = await import('./user-update-identity.js');
+    const { assignRealmRoles, removeRealmRoles, syncRoles } = createIdentityProviderMocks();
+
+    await compensateUserIdentityUpdate({
+      instanceId: 'instance-1',
+      userId: 'user-1',
+      plan: createCompensationPlan({
+        previousRoleNames: ['system_admin'],
+        nextRoleNames: ['other_technical'],
+      }) as never,
+      restoreIdentity: false,
+      restoreRoles: true,
+      identityProvider: {
+        provider: {
+          assignRealmRoles,
+          removeRealmRoles,
+          syncRoles,
+        },
+      } as never,
+    });
+
+    expect(assignRealmRoles).toHaveBeenCalledWith('kc-1', ['system_admin']);
+    expect(removeRealmRoles).toHaveBeenCalledWith('kc-1', ['other_technical']);
+    expect(syncRoles).not.toHaveBeenCalled();
   });
 });

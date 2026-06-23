@@ -158,14 +158,14 @@ Referenzen:
 - Auf dem Root-Host wird derselbe IAM-v1-Routenvertrag im `platform`-Scope ausgewertet; Plattform-User und Plattform-Rollen stammen aus dem Plattform-Realm und benötigen keine tenantgebundene `instanceId`.
 - Tenant-Admin-abhängige Reconcile- und Sync-Pfade reagieren fail-closed, sobald blockerrelevanter Drift in Registry oder Provisioning erkannt wird.
 
-### Fortschreibung 2026-04: Studio als Keycloak-first Admin-UI
+### Fortschreibung 2026-06: Keycloak-Rollenabgleich auf technische Sonderrollen begrenzt
 
-- Studio wird für Benutzer, Realm-Rollen und Rollenzuordnungen als auditierte Admin-UI über Keycloak positioniert; Keycloak bleibt System of Record.
-- Platform-Scope und Tenant-Scope sind strategisch getrennte Admin-Pfade: Platform-Scope nutzt ausschließlich den Platform-Admin-Keycloak-Client, Tenant-Scope ausschließlich den Tenant-Admin-Keycloak-Client der Instanz.
-- Tenant-Listen folgen dem Keycloak-Realm als Benutzergrenze. Fehlende Studio-Zuordnungen werden nicht versteckt, sondern über `mappingStatus`, `editability` und stabile Diagnosecodes angezeigt.
-- Mutationen sind Keycloak-first. Studio-Read-Models werden nachgelagert synchronisiert oder als Drift/Diagnose sichtbar gemacht.
-- Nutzernahe Credential-Änderungen bleiben ebenfalls Keycloak-first: Sichtbar angeboten wird im Studio derzeit nur der Passwort-Wechsel; dieser wird über einen serverseitigen AIA-Einstieg (`/auth/account-action`) kontrolliert in den Keycloak-Self-Service-Flow delegiert. Der E-Mail-Wechsel bleibt bis zur Keycloak-seitigen Freischaltung von `UPDATE_EMAIL` ausgeblendet.
-- `manual_review` bleibt bewusst ein fachlicher Restzustand für nicht deterministisch behebbaren Abgleich; technische Fehler wie `IDP_UNAVAILABLE` und `IDP_FORBIDDEN` bleiben getrennt sichtbar.
+- Keycloak bleibt führend für Identität, Login, Realm-Zugang, Benutzerkonto und technische Sonderrollen; tenantlokale Fachrollen, Gruppen und Permissions sind ausschließlich IAM-DB-kanonisch.
+- Der technische Rollenschnitt ist hart begrenzt: `system_admin` im Tenant-Kontext und `instance_registry_admin` im Plattform-Kontext. Andere Keycloak-Realm-Rollen begründen keine tenantseitige Fachautorisierung.
+- `/auth/me` und Session-Projektionen liefern getrennte Sichten: `roles` enthält kanonische IAM-Rollen inklusive gruppenabgeleiteter Rollen, `keycloakRoles` enthält rohe Keycloak-Rollen nur für Diagnose und Betrieb.
+- Platform-Scope und Tenant-Scope bleiben getrennte Admin-Pfade: Platform-Scope nutzt den Platform-Admin-Keycloak-Client, Tenant-Scope den Tenant-Admin-Keycloak-Client der Instanz. Der breite Rollenabgleich ist dabei kein Sollmodell mehr.
+- Rollen-CRUD für normale Tenant-Rollen ist DB-only. Keycloak-Mutationen bleiben auf technische Sonderrollen, Realm-Zugang und benutzernahe Identity-/Credential-Flows beschränkt.
+- Reconcile repariert fehlende oder abweichende technische Sonderrollen. Fehlende fachliche DB-Rollen in Keycloak sind kein Fehler; nicht-technische Keycloak-Rollen werden nur als Legacy-/Drift-Diagnose oder `manual_review` berichtet.
 - Browser- und UI-Verträge behalten `classification`, `requestId` und `safeDetails` vollständig, damit Diagnose, Operator-Handlung und Fachzustand nicht auseinanderlaufen.
 
 ### Fortschreibung 2026-04: Tenant-IAM-Betriebsstatus auf der Instanz-Detailseite

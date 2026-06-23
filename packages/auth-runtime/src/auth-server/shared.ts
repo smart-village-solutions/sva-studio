@@ -1,4 +1,5 @@
 import { extractRoles, parseJwtPayload, resolveInstanceId } from '@sva/core';
+import { filterPlatformTechnicalKeycloakRoleNames } from '@sva/iam-admin';
 
 import { TenantScopeConflictError } from '../runtime-errors.js';
 import type { RuntimeScopeRef, SessionUser } from '../types.js';
@@ -17,6 +18,7 @@ export const buildSessionUser = (input: {
   const accessTokenClaims = input.accessToken ? parseJwtPayload(input.accessToken) : null;
   const claims = { ...accessTokenClaims, ...input.claims };
   const roleClaims = accessTokenClaims ?? input.claims;
+  const keycloakRoles = extractRoles(roleClaims, input.clientId);
   const preferredUsername = readClaimString(claims, 'preferred_username');
   const username = readClaimString(claims, 'username');
   const tokenInstanceIds = [accessTokenClaims, input.claims]
@@ -43,7 +45,8 @@ export const buildSessionUser = (input: {
   return {
     id: String(claims.sub ?? ''),
     instanceId: scopedInstanceId,
-    roles: extractRoles(roleClaims, input.clientId),
+    roles: input.scope?.kind === 'platform' ? [...filterPlatformTechnicalKeycloakRoleNames(keycloakRoles)] : [],
+    keycloakRoles,
     username: preferredUsername ?? username,
     email: readClaimString(claims, 'email'),
     firstName: readClaimString(claims, 'given_name'),

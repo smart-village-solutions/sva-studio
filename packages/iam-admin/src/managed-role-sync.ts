@@ -1,5 +1,6 @@
 import type { IdentityProviderPort, IdentityManagedRoleAttributes } from './identity-provider-port.js';
-import { getRoleExternalName, mapRoleSyncErrorCode } from './role-audit.js';
+import { mapRoleSyncErrorCode } from './role-audit.js';
+import { filterTenantTechnicalKeycloakRoleNames } from './role-governance.js';
 import type { QueryClient } from './query-client.js';
 import type { ManagedRoleRow } from './types.js';
 
@@ -52,11 +53,12 @@ export type ManagedRoleIdentityProviderResolution = {
 };
 
 export const createManagedRoleSync = (deps: ManagedRoleSyncDeps) => {
-  const loadManagedRolesByExternalNames = async (
+  const loadManagedRolesByRoleKeys = async (
     instanceId: string,
-    externalRoleNames: readonly string[]
+    roleKeys: readonly string[]
   ): Promise<readonly ManagedRoleSyncRow[]> => {
-    if (externalRoleNames.length === 0) {
+    const technicalRoleKeys = filterTenantTechnicalKeycloakRoleNames(roleKeys);
+    if (technicalRoleKeys.length === 0) {
       return [];
     }
 
@@ -79,9 +81,9 @@ SELECT
 FROM iam.roles
 WHERE instance_id = $1
   AND managed_by = 'studio'
-  AND COALESCE(external_role_name, role_key) = ANY($2::text[]);
+  AND role_key = ANY($2::text[]);
 `,
-        [instanceId, [...new Set(externalRoleNames)]]
+        [instanceId, [...technicalRoleKeys]]
       );
 
       return result.rows;
@@ -126,15 +128,15 @@ WHERE instance_id = $1
   const ensureManagedRealmRolesExist = async (input: {
     readonly instanceId: string;
     readonly identityProvider: ManagedRoleIdentityProviderResolution;
-    readonly externalRoleNames: readonly string[];
+    readonly roleKeys: readonly string[];
     readonly actorAccountId?: string;
     readonly requestId?: string;
     readonly traceId?: string;
   }): Promise<void> => {
-    const managedRoles = await loadManagedRolesByExternalNames(input.instanceId, input.externalRoleNames);
+    const managedRoles = await loadManagedRolesByRoleKeys(input.instanceId, input.roleKeys);
 
     for (const role of managedRoles) {
-      const externalRoleName = getRoleExternalName(role);
+      const externalRoleName = role.role_key;
       const existingRole = await deps.trackKeycloakCall('ensure_role_exists_get', () =>
         input.identityProvider.provider.getRoleByName(externalRoleName)
       );
@@ -185,6 +187,6 @@ WHERE instance_id = $1
 
   return {
     ensureManagedRealmRolesExist,
-    loadManagedRolesByExternalNames,
+    loadManagedRolesByRoleKeys,
   };
 };

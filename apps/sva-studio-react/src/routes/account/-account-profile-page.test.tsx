@@ -36,6 +36,7 @@ type ProfileFixture = {
     roles?: string;
   };
   roles: ProfileRoleFixture[];
+  keycloakRoles?: string[];
   mainserverUserApplicationSecretSet: boolean;
 };
 
@@ -435,6 +436,7 @@ describe('AccountProfilePage', () => {
           { roleId: 'role-1', roleName: 'Editor' },
           { roleId: 'role-2', roleName: 'Reviewer' },
         ],
+        keycloakRoles: ['legacy_editor', 'system_admin'],
       })
     );
 
@@ -451,6 +453,9 @@ describe('AccountProfilePage', () => {
     expect(statusField.value).toBe('Aktiv');
     expect(roleField.readOnly).toBe(true);
     expect(roleField.value).toBe('Editor, Reviewer');
+    expect((screen.getByLabelText('Technische Keycloak-Rollen') as HTMLInputElement).value).toBe(
+      'legacy_editor, system_admin'
+    );
   });
 
   it('shows load error with retry and keeps display name fallback from auth user', async () => {

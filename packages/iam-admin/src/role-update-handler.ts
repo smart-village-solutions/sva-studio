@@ -1,5 +1,12 @@
 import type { IamRolePermissionAssignmentScope } from '@sva/core';
 import { getRoleDisplayName, getRoleExternalName } from './role-audit.js';
+import { isTenantTechnicalKeycloakRole } from './role-governance.js';
+import {
+  persistLocalRoleUpdate,
+  redirectRoleSyncRetryToReconcile,
+  syncTechnicalRoleUpdate,
+  type PreparedRoleUpdate,
+} from './role-update-sync.js';
 
 export type UpdateRoleAuthenticatedRequestContext = {
   readonly sessionId: string;
@@ -48,6 +55,9 @@ export type UpdateRoleIdentityProvider<TAttributes = unknown> = {
     ) => Promise<unknown>;
   };
 };
+
+const getKeycloakRoleNameForMutation = (role: MutableRoleShape): string =>
+  isTenantTechnicalKeycloakRole(role) ? role.role_key : getRoleExternalName(role);
 
 export type ParsedUpdateRoleBody<TPayload extends UpdateRolePayloadShape> =
   | { readonly ok: true; readonly data: TPayload; readonly rawBody: string }
@@ -156,6 +166,9 @@ export const createUpdateRoleHandlerInternal =
     if (!parsed.ok) {
       return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
     }
+    if (parsed.data.retrySync) {
+      return redirectRoleSyncRetryToReconcile(deps, actor.requestId);
+    }
 
     const permissionValidationResponse = await deps.validateRequestedPermissions?.({
       actor,
@@ -166,149 +179,28 @@ export const createUpdateRoleHandlerInternal =
       return permissionValidationResponse;
     }
 
-    const identityProvider = await deps.requireRoleIdentityProvider(actor.instanceId, actor.requestId);
-    if (identityProvider instanceof Response) {
-      return identityProvider;
-    }
-
     try {
       const existing = await deps.resolveMutableRole(actor, roleId);
       if (existing instanceof Response) {
         return existing;
       }
 
-      const operation = parsed.data.retrySync ? 'retry' : 'update';
-      const nextDisplayName = parsed.data.displayName?.trim() || getRoleDisplayName(existing);
-      const nextDescription = parsed.data.description ?? existing.description ?? undefined;
-      const nextRoleLevel = parsed.data.roleLevel ?? existing.role_level;
-      const externalRoleName = getRoleExternalName(existing);
-
-      await deps.markRoleSyncState({
+      const preparedUpdate = {
         actor,
         roleId,
-        operation,
-        result: 'success',
-        roleKey: existing.role_key,
-        externalRoleName,
-        syncState: 'pending',
-      });
+        existing,
+        data: parsed.data,
+        operation: 'update',
+        displayName: parsed.data.displayName?.trim() || getRoleDisplayName(existing),
+        description: parsed.data.description ?? existing.description ?? undefined,
+        roleLevel: parsed.data.roleLevel ?? existing.role_level,
+        externalRoleName: getKeycloakRoleNameForMutation(existing),
+      } satisfies PreparedRoleUpdate<TPayload, TRole>;
 
-      try {
-        await deps.trackKeycloakCall('update_role', () =>
-          identityProvider.provider.updateRole(externalRoleName, {
-            description: nextDescription,
-            attributes: deps.buildRoleAttributes({
-              instanceId: actor.instanceId,
-              roleKey: existing.role_key,
-              displayName: nextDisplayName,
-            }),
-          })
-        );
-      } catch (error) {
-        const errorCode = deps.mapRoleSyncErrorCode(error);
-        deps.iamRoleSyncCounter.add(1, { operation, result: 'failure', error_code: errorCode });
-        await deps.markRoleSyncState({
-          actor,
-          roleId,
-          operation,
-          result: 'failure',
-          roleKey: existing.role_key,
-          externalRoleName,
-          errorCode,
-          syncState: 'failed',
-        });
-        return deps.buildRoleSyncFailure({
-          error,
-          requestId: actor.requestId,
-          fallbackMessage: 'Rolle konnte nicht mit Keycloak synchronisiert werden.',
-          roleId,
-        });
+      if (!isTenantTechnicalKeycloakRole(existing)) {
+        return await persistLocalRoleUpdate(deps, preparedUpdate);
       }
-
-      try {
-        const roleItem = await deps.persistUpdatedRole({
-          actor,
-          roleId,
-          existing,
-          displayName: nextDisplayName,
-          description: nextDescription,
-          roleLevel: nextRoleLevel,
-          externalRoleName,
-          permissionIds: parsed.data.permissionIds,
-          permissionAssignments: parsed.data.permissionAssignments,
-          operation,
-        });
-        deps.iamRoleSyncCounter.add(1, { operation, result: 'success', error_code: 'none' });
-        return deps.jsonResponse(200, deps.asApiItem(roleItem, actor.requestId));
-      } catch (error) {
-        try {
-          await deps.trackKeycloakCall('update_role_compensation', () =>
-            identityProvider.provider.updateRole(externalRoleName, {
-              description: existing.description ?? undefined,
-              attributes: deps.buildRoleAttributes({
-                instanceId: actor.instanceId,
-                roleKey: existing.role_key,
-                displayName: getRoleDisplayName(existing),
-              }),
-            })
-          );
-        } catch {
-          await deps.markRoleSyncState({
-            actor,
-            roleId,
-            operation: 'update',
-            result: 'failure',
-            roleKey: existing.role_key,
-            externalRoleName,
-            errorCode: 'COMPENSATION_FAILED',
-            syncState: 'failed',
-          });
-          deps.iamRoleSyncCounter.add(1, {
-            operation: 'update',
-            result: 'failure',
-            error_code: 'COMPENSATION_FAILED',
-          });
-          return deps.createApiError(
-            500,
-            'internal_error',
-            'Rolle konnte nicht konsistent aktualisiert werden.',
-            actor.requestId,
-            {
-              syncState: 'failed',
-              syncError: { code: 'COMPENSATION_FAILED' },
-            }
-          );
-        }
-
-        await deps.markRoleSyncState({
-          actor,
-          roleId,
-          operation: 'update',
-          result: 'failure',
-          roleKey: existing.role_key,
-          externalRoleName,
-          errorCode: 'DB_WRITE_FAILED',
-          syncState: 'failed',
-        });
-        deps.iamRoleSyncCounter.add(1, {
-          operation: 'update',
-          result: 'failure',
-          error_code: 'DB_WRITE_FAILED',
-        });
-        deps.logger.error('Role update database write failed after successful Keycloak update', {
-          operation: 'update_role',
-          instance_id: actor.instanceId,
-          request_id: actor.requestId,
-          trace_id: actor.traceId,
-          role_id: roleId,
-          role_key: existing.role_key,
-          error: deps.sanitizeRoleErrorMessage(error),
-        });
-        return deps.createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', actor.requestId, {
-          syncState: 'failed',
-          syncError: { code: 'DB_WRITE_FAILED' },
-        });
-      }
+      return await syncTechnicalRoleUpdate(deps, preparedUpdate);
     } catch {
       return deps.createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', actor.requestId);
     }

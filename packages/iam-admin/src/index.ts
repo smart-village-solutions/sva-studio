@@ -81,9 +81,15 @@ export {
   resolveSystemAdminCount,
 } from './actor-authorization.js';
 export {
+  filterPlatformTechnicalKeycloakRoleNames,
+  filterTenantTechnicalKeycloakRoleNames,
+  resolveTenantTechnicalKeycloakRoleNames,
   isProtectedTenantRole,
+  isTenantTechnicalKeycloakRole,
   isRootOnlyRole,
   isTenantManageableRole,
+  PLATFORM_TECHNICAL_KEYCLOAK_ROLE_NAMES,
+  TENANT_TECHNICAL_KEYCLOAK_ROLE_NAMES,
 } from './role-governance.js';
 
 export {
@@ -147,6 +153,9 @@ export {
 
 export {
   createUpdateUserHandlerInternal,
+  RoleMutationCapabilityUnavailableError,
+  shouldUpdateUserIdentityAttributes,
+  shouldUpdateUserIdentityPayload,
   type UpdateAuthenticatedRequestContext,
   type UpdateUserHandlerDeps,
 } from './user-update-handler.js';

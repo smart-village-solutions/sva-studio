@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createJsonResponse, createTestDepsBuilder } from './handler-test-helpers.js';
+import { createJsonResponse, createTestDepsBuilder, dbWriteFailedErrorBody } from './handler-test-helpers.js';
 import { createUpdateRoleHandlerInternal, type UpdateRoleHandlerDeps } from './role-update-handler.js';
+import { syncTechnicalRoleUpdate, type PreparedRoleUpdate } from './role-update-sync.js';
 
 const actor = {
   instanceId: 'de-musterhausen',
@@ -35,6 +36,17 @@ const existingRole = {
   is_system_role: false,
   managed_by: 'studio',
   role_level: 20,
+};
+
+const systemAdminRole = {
+  ...existingRole,
+  role_key: 'system_admin',
+  role_name: 'system_admin',
+  display_name: 'System Admin',
+  external_role_name: 'system_admin',
+  description: 'System administration',
+  is_system_role: true,
+  role_level: 100,
 };
 
 const roleItem = {
@@ -92,6 +104,36 @@ const createDeps = createTestDepsBuilder<
     typeof roleItem
   >;
 
+const preparedRetryUpdate = {
+  actor,
+  roleId: 'role-system-admin',
+  existing: systemAdminRole,
+  data: payload,
+  operation: 'retry',
+  displayName: 'System Admin',
+  description: 'System administration',
+  roleLevel: 100,
+  externalRoleName: 'system_admin',
+} satisfies PreparedRoleUpdate<typeof payload, typeof existingRole>;
+
+const expectRetrySyncFailureMarked = (
+  deps: UpdateRoleHandlerDeps<typeof payload, ReturnType<typeof buildAttributes>, typeof identityProvider, typeof existingRole, typeof roleItem>,
+  errorCode: 'COMPENSATION_FAILED' | 'DB_WRITE_FAILED'
+) => {
+  expect(deps.markRoleSyncState).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      operation: 'retry',
+      result: 'failure',
+      errorCode,
+    })
+  );
+  expect(deps.iamRoleSyncCounter.add).toHaveBeenLastCalledWith(1, {
+    operation: 'retry',
+    result: 'failure',
+    error_code: errorCode,
+  });
+};
+
 function buildAttributes(input: { readonly instanceId: string; readonly roleKey: string; readonly displayName: string }) {
   return { managedBy: 'studio' as const, ...input };
 }
@@ -102,7 +144,7 @@ describe('createUpdateRoleHandlerInternal', () => {
     identityProvider.provider.updateRole.mockClear();
   });
 
-  it('updates the role in Keycloak, persists it locally and returns the API item', async () => {
+  it('updates tenant roles locally without updating Keycloak', async () => {
     const deps = createDeps();
     const handler = createUpdateRoleHandlerInternal(deps);
 
@@ -113,15 +155,9 @@ describe('createUpdateRoleHandlerInternal', () => {
       data: roleItem,
       requestId: 'req-update-role',
     });
-    expect(identityProvider.provider.updateRole).toHaveBeenCalledWith('editor', {
-      description: 'Can edit more content',
-      attributes: {
-        managedBy: 'studio',
-        instanceId: 'de-musterhausen',
-        roleKey: 'editor',
-        displayName: 'Editor Plus',
-      },
-    });
+    expect(deps.requireRoleIdentityProvider).not.toHaveBeenCalled();
+    expect(identityProvider.provider.updateRole).not.toHaveBeenCalled();
+    expect(deps.markRoleSyncState).not.toHaveBeenCalled();
     expect(deps.persistUpdatedRole).toHaveBeenCalledWith({
       actor,
       roleId: 'role-1',
@@ -135,40 +171,59 @@ describe('createUpdateRoleHandlerInternal', () => {
     });
   });
 
-  it('marks sync failure and returns the injected Keycloak failure response', async () => {
-    const keycloakError = new Error('keycloak down');
+  it('updates technical roles in Keycloak by canonical role key when legacy aliases exist', async () => {
     const deps = createDeps({
-      trackKeycloakCall: vi.fn(async (operation, work) => {
-        if (operation === 'update_role') {
-          throw keycloakError;
-        }
-        return work();
-      }),
+      resolveMutableRole: vi.fn(async () => ({
+        ...systemAdminRole,
+        external_role_name: 'legacy-system-admin',
+      })),
     });
     const handler = createUpdateRoleHandlerInternal(deps);
 
     const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }), ctx);
 
-    expect(response.status).toBe(503);
-    expect(deps.markRoleSyncState).toHaveBeenCalledWith({
-      actor,
-      roleId: 'role-1',
-      operation: 'update',
-      result: 'failure',
-      roleKey: 'editor',
-      externalRoleName: 'editor',
-      errorCode: 'IDP_UNAVAILABLE',
-      syncState: 'failed',
-    });
-    expect(deps.buildRoleSyncFailure).toHaveBeenCalledWith({
-      error: keycloakError,
-      requestId: 'req-update-role',
-      fallbackMessage: 'Rolle konnte nicht mit Keycloak synchronisiert werden.',
-      roleId: 'role-1',
-    });
+    expect(response.status).toBe(200);
+    expect(identityProvider.provider.updateRole).toHaveBeenCalledWith(
+      'system_admin',
+      expect.objectContaining({
+        attributes: expect.objectContaining({
+          roleKey: 'system_admin',
+        }),
+      })
+    );
+    expect(deps.persistUpdatedRole).toHaveBeenCalledWith(
+      expect.objectContaining({
+        externalRoleName: 'system_admin',
+      })
+    );
   });
 
-  it('compensates Keycloak when local persistence fails after the external update', async () => {
+  it('rejects retry sync for non-technical tenant roles', async () => {
+    const keycloakError = new Error('keycloak down');
+    const deps = createDeps({
+      parseUpdateRoleBody: vi.fn(async () => ({ ok: true, data: { ...payload, retrySync: true }, rawBody: '{}' })),
+    });
+    const handler = createUpdateRoleHandlerInternal(deps);
+
+    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }), ctx);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        details: {
+          syncState: 'pending',
+          syncAction: 'reconcile_roles',
+        },
+      },
+      requestId: 'req-update-role',
+    });
+    expect(deps.resolveMutableRole).not.toHaveBeenCalled();
+    expect(identityProvider.provider.updateRole).not.toHaveBeenCalled();
+    expect(keycloakError).toBeInstanceOf(Error);
+  });
+
+  it('returns DB_WRITE_FAILED without Keycloak compensation for tenant role persistence errors', async () => {
     const deps = createDeps({
       persistUpdatedRole: vi.fn(async () => {
         throw new Error('db write failed');
@@ -179,21 +234,14 @@ describe('createUpdateRoleHandlerInternal', () => {
     const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }), ctx);
 
     expect(response.status).toBe(500);
-    expect(identityProvider.provider.updateRole).toHaveBeenCalledTimes(2);
-    expect(identityProvider.provider.updateRole).toHaveBeenLastCalledWith('editor', {
-      description: 'Can edit content',
-      attributes: {
-        managedBy: 'studio',
-        instanceId: 'de-musterhausen',
-        roleKey: 'editor',
-        displayName: 'Editor',
-      },
-    });
+    await expect(response.json()).resolves.toMatchObject(dbWriteFailedErrorBody('internal_error', 'req-update-role'));
+    expect(identityProvider.provider.updateRole).not.toHaveBeenCalled();
     expect(deps.logger.error).toHaveBeenCalledWith(
-      'Role update database write failed after successful Keycloak update',
+      'Role update database write failed',
       expect.objectContaining({
+        operation: 'update_role',
+        error_code: 'DB_WRITE_FAILED',
         error: 'db write failed',
-        role_key: 'editor',
       })
     );
   });
@@ -228,5 +276,37 @@ describe('createUpdateRoleHandlerInternal', () => {
     expect(deps.requireRoleIdentityProvider).not.toHaveBeenCalled();
     expect(identityProvider.provider.updateRole).not.toHaveBeenCalled();
     expect(deps.persistUpdatedRole).not.toHaveBeenCalled();
+  });
+
+  it('marks retry DB write failures as retry failures', async () => {
+    const deps = createDeps({
+      persistUpdatedRole: vi.fn(async () => {
+        throw new Error('db write failed');
+      }),
+    });
+
+    const response = await syncTechnicalRoleUpdate(deps, preparedRetryUpdate);
+
+    expect(response.status).toBe(500);
+    expectRetrySyncFailureMarked(deps, 'DB_WRITE_FAILED');
+  });
+
+  it('marks retry compensation failures as retry failures', async () => {
+    const deps = createDeps({
+      persistUpdatedRole: vi.fn(async () => {
+        throw new Error('db write failed');
+      }),
+      trackKeycloakCall: vi.fn(async (operation, work) => {
+        if (operation === 'update_role_compensation') {
+          throw new Error('compensation failed');
+        }
+        return work();
+      }),
+    });
+
+    const response = await syncTechnicalRoleUpdate(deps, preparedRetryUpdate);
+
+    expect(response.status).toBe(500);
+    expectRetrySyncFailureMarked(deps, 'COMPENSATION_FAILED');
   });
 });

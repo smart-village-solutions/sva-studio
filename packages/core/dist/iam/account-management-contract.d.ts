@@ -131,6 +131,7 @@ export type IamUserListItem = {
     readonly department?: string;
     readonly lastLoginAt?: string;
     readonly roles: readonly IamUserRoleAssignment[];
+    readonly keycloakRoles?: readonly string[];
 };
 export type IamUserDetail = IamUserListItem & {
     readonly username?: string;

@@ -101,7 +101,6 @@ describe('user projection', () => {
     const { resolveProjectedUserDetail } = await import('./user-projection.js');
 
     const projectedUser = await resolveProjectedUserDetail({
-      client: {},
       instanceId: 'de-musterhausen',
       user: baseUser(),
       keycloakRoleNames: null,
@@ -122,7 +121,7 @@ describe('user projection', () => {
     );
   });
 
-  it('replaces outdated user roles with mapped canonical roles', async () => {
+  it('keeps DB roles canonical and exposes keycloak role names separately', async () => {
     const { resolveProjectedUserDetail } = await import('./user-projection.js');
     state.resolveRolesByExternalNames.mockResolvedValueOnce([
       {
@@ -134,20 +133,14 @@ describe('user projection', () => {
     ]);
 
     const projectedUser = await resolveProjectedUserDetail({
-      client: {},
       instanceId: 'de-musterhausen',
       user: baseUser(),
       keycloakRoleNames: ['news.editor'],
     });
 
-    expect(projectedUser.roles).toEqual([
-      {
-        roleId: 'role-news-editor',
-        roleKey: 'news_editor',
-        roleName: 'News Editor',
-        roleLevel: 30,
-      },
-    ]);
+    expect(projectedUser.roles).toEqual(baseUser().roles);
+    expect(projectedUser.keycloakRoles).toEqual(['news.editor']);
+    expect(state.resolveRolesByExternalNames).not.toHaveBeenCalled();
   });
 
   it('falls back to the default mainserver credential state on credential projection errors', async () => {
@@ -158,7 +151,6 @@ describe('user projection', () => {
     state.readIdentityUserAttributes.mockRejectedValueOnce(new Error('identity attributes unavailable'));
 
     const projectedUser = await applyCanonicalUserDetailProjection({
-      client: {},
       instanceId: 'de-musterhausen',
       user: {
         ...baseUser(),
@@ -174,7 +166,7 @@ describe('user projection', () => {
     ).toHaveLength(1);
   });
 
-  it('applies canonical list projections and ignores recoverable keycloak lookup errors', async () => {
+  it('keeps list DB roles canonical while attaching keycloak role names', async () => {
     const { applyCanonicalUserListProjection } = await import('./user-projection.js');
     state.resolveIdentityProviderForInstance
       .mockResolvedValueOnce({
@@ -201,10 +193,19 @@ describe('user projection', () => {
     ]);
 
     const users = await applyCanonicalUserListProjection({
-      client: {},
       instanceId: 'de-musterhausen',
       users: [
-        listUser({ keycloakSubject: 'kc-user-1' }),
+        listUser({
+          keycloakSubject: 'kc-user-1',
+          roles: [
+            {
+              roleId: 'role-db-editor',
+              roleKey: 'db_editor',
+              roleName: 'DB Editor',
+              roleLevel: 20,
+            },
+          ],
+        }),
         listUser({
           id: '33333333-3333-4333-8333-333333333333',
           keycloakSubject: 'kc-user-2',
@@ -216,12 +217,15 @@ describe('user projection', () => {
 
     expect(users[0]?.roles).toEqual([
       {
-        roleId: 'role-news-editor',
-        roleKey: 'news_editor',
-        roleName: 'News Editor',
-        roleLevel: 30,
+        roleId: 'role-db-editor',
+        roleKey: 'db_editor',
+        roleName: 'DB Editor',
+        roleLevel: 20,
       },
     ]);
+    expect(users[0]?.keycloakRoles).toEqual(['news.editor']);
     expect(users[1]?.roles).toEqual([]);
+    expect(users[1]?.keycloakRoles).toBeUndefined();
+    expect(state.resolveRolesByExternalNames).not.toHaveBeenCalled();
   });
 });

@@ -51,7 +51,7 @@ Außerhalb des Scopes:
 | Verantwortung | Führendes System |
 | --- | --- |
 | Authentifizierung, Session-Einstieg, Token-Claims | Keycloak |
-| IAM-Fachdaten, Rollenkatalog, Zuordnungen, Audit | Postgres |
+| IAM-Fachdaten, tenantlokaler Rollenkatalog, Zuordnungen, Audit | Postgres |
 | Schnelle Laufzeitauflösung effektiver Rechte | Redis-Cache auf Basis Postgres |
 | Fachliche Autorisierungsentscheidung | IAM Permission Engine |
 
@@ -66,7 +66,7 @@ Außerhalb des Scopes:
 
 - Verwaltet Benutzerprofile, Rollenzuweisungen und Rollen-Lifecycle.
 - Nutzt eine IdP-Abstraktionsschicht für Keycloak-Admin-Operationen.
-- Führt schreibende Rollenoperationen Keycloak-first mit lokaler Persistenz und Compensation aus.
+- Führt normale tenantlokale Rollenoperationen DB-only aus; Keycloak-Mutationen bleiben auf technische Sonderrollen und Identity-nahe Operationen begrenzt.
 - Verwaltet fuer scope-faehige Datensatzrechte additive Rollen-Permission-Zuordnungen als `permissionAssignments[]` mit `accessScope`.
 
 ### 3. Permission Engine
@@ -174,15 +174,15 @@ Außerhalb des Scopes:
 
 - Keycloak bleibt System of Record für Authentifizierung.
 - Postgres bleibt System of Record für Studio-verwaltete IAM-Fachdaten.
-- Studioverwaltete Rollen werden über technische Merkmale eindeutig vom externen Realm-Bestand abgegrenzt.
+- Studioverwaltete Fachrollen werden in Postgres eindeutig vom externen Realm-Bestand abgegrenzt.
 
 ### Sync-Regeln
 
-- Schreibende Rollenoperationen laufen Keycloak-first.
-- Nach erfolgreichem IdP-Write wird das lokale Mapping aktualisiert.
-- Bei lokalem Folgefehler wird eine Compensation ausgelöst.
-- Reconcile-Läufe erkennen Drift und korrigieren nur den Managed-Scope.
-- Orphaned, studio-markierte Keycloak-Rollen werden standardmäßig report-only behandelt.
+- Schreibende Rollenoperationen für normale Tenant-Rollen laufen DB-only.
+- Technische Sonderrollen (`system_admin`, `instance_registry_admin`) dürfen gezielt in Keycloak abgeglichen werden.
+- Nach erfolgreichem technischem IdP-Write wird das lokale Mapping aktualisiert; bei lokalem Folgefehler wird eine Compensation ausgelöst.
+- Reconcile-Läufe erkennen Drift und korrigieren nur den technischen Managed-Scope.
+- Nicht-technische Keycloak-Rollen werden standardmäßig report-only als Legacy-/Drift-Diagnose behandelt.
 
 ## Cache- und Invalidierungsmodell
 

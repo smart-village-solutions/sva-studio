@@ -1,4 +1,5 @@
 import type { IamCreateUserResult } from '@sva/core';
+import { filterTenantTechnicalKeycloakRoleNames } from '@sva/iam-admin';
 import {
   logger,
   resolveIdentityProviderForInstance,
@@ -71,20 +72,21 @@ const syncUserRolesIfNeeded = async (input: {
   keycloakSubject: string;
   roleNames: readonly string[];
 }) => {
-  if (input.roleNames.length === 0) {
+  const technicalRoleNames = filterTenantTechnicalKeycloakRoleNames(input.roleNames);
+  if (technicalRoleNames.length === 0) {
     return;
   }
 
   await ensureManagedRealmRolesExist({
     instanceId: input.actor.instanceId,
     identityProvider: input.identityProvider,
-    externalRoleNames: input.roleNames,
+    roleKeys: technicalRoleNames,
     actorAccountId: input.actor.actorAccountId,
     requestId: input.actor.requestId,
     traceId: input.actor.traceId,
   });
   await trackKeycloakCall('sync_roles', () =>
-    input.identityProvider.provider.syncRoles(input.keycloakSubject, input.roleNames)
+    input.identityProvider.provider.syncRoles(input.keycloakSubject, [...technicalRoleNames])
   );
 };
 

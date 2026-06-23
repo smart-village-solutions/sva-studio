@@ -1,4 +1,6 @@
 import { getRoleDisplayName, getRoleExternalName } from './role-audit.js';
+import { buildDeletedRolePayloadFromRole, failLocalRoleDeleteDatabaseWrite } from './role-delete-support.js';
+import { isTenantTechnicalKeycloakRole } from './role-governance.js';
 import type { MutableRoleShape, UpdateRoleActor, UpdateRoleAuthenticatedRequestContext } from './role-update-handler.js';
 
 export type DeleteRoleAuthenticatedRequestContext = UpdateRoleAuthenticatedRequestContext;
@@ -81,6 +83,27 @@ export type DeleteRoleHandlerDeps<
   ) => Promise<T>;
 };
 
+const resolveDeleteRoleRequest = async <
+  TAttributes,
+  TIdentityProvider extends DeleteRoleIdentityProvider<TAttributes>,
+  TRole extends MutableRoleShape,
+>(
+  deps: DeleteRoleHandlerDeps<TAttributes, TIdentityProvider, TRole>,
+  request: Request,
+  ctx: DeleteRoleAuthenticatedRequestContext
+): Promise<{ readonly actor: DeleteRoleActor; readonly roleId: string } | Response> => {
+  const resolvedActor = await deps.resolveRoleMutationActor(request, ctx);
+  if ('response' in resolvedActor) {
+    return resolvedActor.response;
+  }
+
+  const roleId = deps.requireRoleId(request, resolvedActor.actor.requestId);
+  return roleId instanceof Response ? roleId : { actor: resolvedActor.actor, roleId };
+};
+
+const getKeycloakRoleNameForDelete = (role: MutableRoleShape): string =>
+  isTenantTechnicalKeycloakRole(role) ? role.role_key : getRoleExternalName(role);
+
 export const createDeleteRoleHandlerInternal =
   <
     TAttributes,
@@ -90,21 +113,12 @@ export const createDeleteRoleHandlerInternal =
     deps: DeleteRoleHandlerDeps<TAttributes, TIdentityProvider, TRole>
   ) =>
   async (request: Request, ctx: DeleteRoleAuthenticatedRequestContext): Promise<Response> => {
-    const resolvedActor = await deps.resolveRoleMutationActor(request, ctx);
-    if ('response' in resolvedActor) {
-      return resolvedActor.response;
+    const resolvedRequest = await resolveDeleteRoleRequest(deps, request, ctx);
+    if (resolvedRequest instanceof Response) {
+      return resolvedRequest;
     }
 
-    const { actor } = resolvedActor;
-    const roleId = deps.requireRoleId(request, actor.requestId);
-    if (roleId instanceof Response) {
-      return roleId;
-    }
-
-    const identityProvider = await deps.requireRoleIdentityProvider(actor.instanceId, actor.requestId);
-    if (identityProvider instanceof Response) {
-      return identityProvider;
-    }
+    const { actor, roleId } = resolvedRequest;
 
     try {
       const existing = await deps.resolveDeletableRole(actor, roleId);
@@ -112,7 +126,30 @@ export const createDeleteRoleHandlerInternal =
         return existing;
       }
 
-      const externalRoleName = getRoleExternalName(existing);
+      const externalRoleName = getKeycloakRoleNameForDelete(existing);
+      const shouldSyncIdentityRole = isTenantTechnicalKeycloakRole(existing);
+      if (!shouldSyncIdentityRole) {
+        try {
+          await deps.deleteRoleFromDatabase({
+            actor,
+            roleId,
+            roleKey: existing.role_key,
+            externalRoleName,
+          });
+        } catch (error) {
+          return failLocalRoleDeleteDatabaseWrite(deps, { actor, roleId, existing, externalRoleName, error });
+        }
+        return deps.jsonResponse(
+          200,
+          deps.asApiItem(buildDeletedRolePayloadFromRole(roleId, existing, externalRoleName), actor.requestId)
+        );
+      }
+
+      const identityProvider = await deps.requireRoleIdentityProvider(actor.instanceId, actor.requestId);
+      if (identityProvider instanceof Response) {
+        return identityProvider;
+      }
+
       const directAssignmentSubjects = await deps.listDirectRoleAssignmentSubjects({
         instanceId: actor.instanceId,
         roleId,
@@ -227,16 +264,7 @@ export const createDeleteRoleHandlerInternal =
       deps.iamRoleSyncCounter.add(1, { operation: 'delete', result: 'success', error_code: 'none' });
       return deps.jsonResponse(
         200,
-        deps.asApiItem(
-          {
-            id: roleId,
-            roleKey: existing.role_key,
-            roleName: getRoleDisplayName(existing),
-            externalRoleName,
-            syncState: 'synced' as const,
-          },
-          actor.requestId
-        )
+        deps.asApiItem(buildDeletedRolePayloadFromRole(roleId, existing, externalRoleName), actor.requestId)
       );
     } catch {
       return deps.createApiError(500, 'internal_error', 'Rolle konnte nicht gelöscht werden.', actor.requestId);

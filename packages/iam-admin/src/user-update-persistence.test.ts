@@ -33,6 +33,19 @@ const createDeps = (client: QueryClient) => ({
   ),
 });
 
+const createPersistenceTestContext = () => {
+  const client: QueryClient = {
+    query: vi.fn(async () => ({ rowCount: 1, rows: [] })),
+  };
+  const deps = createDeps(client);
+
+  return {
+    client,
+    deps,
+    persistence: createUserUpdatePersistence(deps),
+  };
+};
+
 describe('user-update-persistence', () => {
   it('builds encrypted update params and keeps optional fields nullable', () => {
     expect(
@@ -62,11 +75,7 @@ describe('user-update-persistence', () => {
   });
 
   it('persists user updates, assignments, activity and invalidations', async () => {
-    const client: QueryClient = {
-      query: vi.fn(async () => ({ rowCount: 1, rows: [] })),
-    };
-    const deps = createDeps(client);
-    const persistence = createUserUpdatePersistence(deps);
+    const { client, deps, persistence } = createPersistenceTestContext();
 
     await expect(
       persistence.persistUpdatedUserDetail({
@@ -173,6 +182,31 @@ describe('user-update-persistence', () => {
         },
       })
     ).resolves.toBeUndefined();
+  });
+
+  it('preserves existing mainserver credential state when identity state was not reloaded', async () => {
+    const { persistence } = createPersistenceTestContext();
+
+    await expect(
+      persistence.persistUpdatedUserDetail({
+        instanceId: 'inst-1',
+        actorAccountId: 'actor-1',
+        userId: 'user-1',
+        keycloakSubject: 'kc-1',
+        existingRoleIds: ['role-0'],
+        payload: {
+          roleIds: ['role-1'],
+        },
+        existingMainserverCredentialState: {
+          mainserverUserApplicationId: 'existing-app',
+          mainserverUserApplicationSecretSet: true,
+        },
+      })
+    ).resolves.toEqual({
+      ...detail,
+      mainserverUserApplicationId: 'existing-app',
+      mainserverUserApplicationSecretSet: true,
+    });
   });
 
   it('revokes existing sessions when a user update deactivates the account', async () => {

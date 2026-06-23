@@ -220,7 +220,8 @@ export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => 
     readonly existingRoleIds?: readonly string[];
     readonly existingGroupIds?: readonly string[];
     readonly payload: UpdateUserPersistencePayload;
-    readonly nextMainserverCredentialState: UserMainserverCredentialState;
+    readonly existingMainserverCredentialState?: UserMainserverCredentialState;
+    readonly nextMainserverCredentialState?: UserMainserverCredentialState;
   }) => {
     const persisted = await deps.withInstanceScopedDb(input.instanceId, async (client) => {
       if (input.payload.roleIds) {
@@ -277,12 +278,17 @@ export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => 
         };
       }
 
+      const mainserverCredentialState =
+        input.nextMainserverCredentialState ?? input.existingMainserverCredentialState;
+
       return {
-        detail: {
-          ...detail,
-          mainserverUserApplicationId: input.nextMainserverCredentialState.mainserverUserApplicationId,
-          mainserverUserApplicationSecretSet: input.nextMainserverCredentialState.mainserverUserApplicationSecretSet,
-        },
+        detail: mainserverCredentialState
+          ? {
+              ...detail,
+              mainserverUserApplicationId: mainserverCredentialState.mainserverUserApplicationId,
+              mainserverUserApplicationSecretSet: mainserverCredentialState.mainserverUserApplicationSecretSet,
+            }
+          : detail,
         sessionAction,
       };
     });

@@ -100,7 +100,7 @@ export const enrichSessionUserWithEffectiveRoles = async (
           keycloakSubject: user.id,
         })
     );
-    const mergedRoles = normalizeRoleNames([...user.roles, ...persistedRoleNames]);
+    const mergedRoles = normalizeRoleNames([...persistedRoleNames]);
 
     if (
       mergedRoles.length === user.roles.length &&
@@ -120,6 +120,10 @@ export const enrichSessionUserWithEffectiveRoles = async (
       error: error instanceof Error ? error.message : String(error),
       ...buildLogContext({ kind: 'instance', instanceId }),
     });
-    return user;
+    return {
+      ...user,
+      roles: [],
+      permissionStatus: 'degraded',
+    };
   }
 };

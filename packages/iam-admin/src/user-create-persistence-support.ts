@@ -1,6 +1,7 @@
 import type { IamUserDetail } from '@sva/core';
 
 import { getRoleExternalName } from './role-audit.js';
+import { resolveTenantTechnicalKeycloakRoleNames } from './role-governance.js';
 import type { QueryClient } from './query-client.js';
 import type { IamGroupRow, IamRoleRow } from './types.js';
 import { mapRoles } from './user-mapping.js';
@@ -167,5 +168,8 @@ export const buildCreatedUserResult = (
     roles: mapRoles(assignedRoleRows),
     mainserverUserApplicationSecretSet: false,
   },
-  roleNames: assignedRoleRows.map((entry) => getRoleExternalName(entry)),
+  roleNames: [...new Set([
+    ...assignedRoleRows.map((entry) => getRoleExternalName(entry)),
+    ...resolveTenantTechnicalKeycloakRoleNames(assignedRoleRows),
+  ])],
 });

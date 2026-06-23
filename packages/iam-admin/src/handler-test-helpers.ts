@@ -10,3 +10,14 @@ export const createTestDepsBuilder =
     ...buildDefaults(),
     ...overrides,
   });
+
+export const dbWriteFailedErrorBody = (code: 'conflict' | 'internal_error', requestId: string) => ({
+  error: {
+    code,
+    details: {
+      syncState: 'failed',
+      syncError: { code: 'DB_WRITE_FAILED' },
+    },
+  },
+  requestId,
+});

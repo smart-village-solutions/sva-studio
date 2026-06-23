@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createUserCreatePersistence } from './user-create-persistence.js';
+import type { CreateUserPersistenceActor, CreateUserPersistencePayload } from './user-create-persistence.js';
 import type { QueryClient } from './query-client.js';
 
 const roleRow = {
@@ -11,6 +12,15 @@ const roleRow = {
   external_role_name: 'Editor',
   role_level: 20,
   is_system_role: false,
+};
+
+const systemAdminAliasRoleRow = {
+  ...roleRow,
+  role_key: 'system_admin',
+  role_name: 'system_admin',
+  display_name: 'System Admin',
+  external_role_name: 'legacy-system-admin',
+  is_system_role: true,
 };
 
 const createDeps = () => ({
@@ -34,35 +44,74 @@ const createDeps = () => ({
   resolveRolesByIds: vi.fn(async () => [roleRow]),
 });
 
+const createInsertClient = (accountId: string): QueryClient => ({
+  query: vi.fn(async (text: string) => {
+    if (text.includes('RETURNING id')) {
+      return { rowCount: 1, rows: [{ id: accountId }] };
+    }
+    return { rowCount: 1, rows: [] };
+  }),
+});
+
+type UserCreatePersistence = ReturnType<typeof createUserCreatePersistence>;
+type UserCreatePersistenceDeps = Parameters<typeof createUserCreatePersistence>[0];
+
+const persistCreatedTestUser = (
+  persistence: UserCreatePersistence,
+  client: QueryClient,
+  overrides: {
+    readonly actor?: Partial<CreateUserPersistenceActor>;
+    readonly externalId?: string;
+    readonly payload?: Partial<CreateUserPersistencePayload>;
+  } = {}
+) =>
+  persistence.persistCreatedUser(client, {
+    actor: {
+      instanceId: 'inst-1',
+      actorAccountId: 'actor-1',
+      actorRoles: ['admin'],
+      ...overrides.actor,
+    },
+    actorSubject: 'subject-actor',
+    externalId: overrides.externalId ?? 'subject-new',
+    payload: {
+      email: 'user@example.test',
+      roleIds: ['role-1'],
+      ...overrides.payload,
+    },
+  });
+
+const createNoWriteClient = (): QueryClient => ({
+  query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+});
+
+const expectCreateToRejectBeforeWrite = async (
+  deps: UserCreatePersistenceDeps,
+  message: string,
+  overrides?: Parameters<typeof persistCreatedTestUser>[2]
+) => {
+  const client = createNoWriteClient();
+  const persistence = createUserCreatePersistence(deps);
+
+  await expect(persistCreatedTestUser(persistence, client, overrides)).rejects.toThrow(message);
+  expect(client.query).not.toHaveBeenCalled();
+};
+
 describe('user-create-persistence', () => {
   it('persists a created user with membership, groups, roles, activity log and invalidation', async () => {
     const deps = createDeps();
-    const client: QueryClient = {
-      query: vi.fn(async (text: string) => {
-        if (text.includes('RETURNING id')) {
-          return { rowCount: 1, rows: [{ id: 'account-1' }] };
-        }
-        return { rowCount: 1, rows: [] };
-      }),
-    };
+    const client = createInsertClient('account-1');
     const persistence = createUserCreatePersistence(deps);
 
     await expect(
-      persistence.persistCreatedUser(client, {
+      persistCreatedTestUser(persistence, client, {
         actor: {
-          instanceId: 'inst-1',
-          actorAccountId: 'actor-1',
-          actorRoles: ['admin'],
           requestId: 'req-1',
           traceId: 'trace-1',
         },
-        actorSubject: 'subject-actor',
-        externalId: 'subject-new',
         payload: {
-          email: 'user@example.test',
           firstName: 'Ada',
           lastName: 'Lovelace',
-          roleIds: ['role-1'],
           groupIds: ['group-1'],
         },
       })
@@ -140,6 +189,29 @@ describe('user-create-persistence', () => {
     });
   });
 
+  it('includes canonical system_admin for aliased technical role rows', async () => {
+    const deps = {
+      ...createDeps(),
+      ensureRoleAssignmentWithinActorLevel: vi.fn(async () => ({
+        ok: true as const,
+        roles: [systemAdminAliasRoleRow],
+      })),
+      resolveRolesByIds: vi.fn(async () => [systemAdminAliasRoleRow]),
+    };
+    const client = createInsertClient('account-1');
+    const persistence = createUserCreatePersistence(deps);
+
+    await expect(
+      persistCreatedTestUser(persistence, client, {
+        payload: {
+          roleIds: ['role-admin'],
+        },
+      })
+    ).resolves.toMatchObject({
+      roleNames: ['legacy-system-admin', 'system_admin'],
+    });
+  });
+
   it('rejects role assignments above the actor level before writing the account', async () => {
     const deps = {
       ...createDeps(),
@@ -149,24 +221,9 @@ describe('user-create-persistence', () => {
         message: 'denied',
       })),
     };
-    const client: QueryClient = {
-      query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
-    };
-    const persistence = createUserCreatePersistence(deps);
-
-    await expect(
-      persistence.persistCreatedUser(client, {
-        actor: { instanceId: 'inst-1', actorAccountId: 'actor-1' },
-        actorSubject: 'subject-actor',
-        externalId: 'subject-new',
-        payload: {
-          email: 'user@example.test',
-          roleIds: ['role-1'],
-        },
-      })
-    ).rejects.toThrow('forbidden:denied');
-
-    expect(client.query).not.toHaveBeenCalled();
+    await expectCreateToRejectBeforeWrite(deps, 'forbidden:denied', {
+      actor: { actorRoles: undefined },
+    });
   });
 
   it('rejects unknown groups before writing the account', async () => {
@@ -174,25 +231,12 @@ describe('user-create-persistence', () => {
       ...createDeps(),
       resolveGroupsByIds: vi.fn(async () => []),
     };
-    const client: QueryClient = {
-      query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
-    };
-    const persistence = createUserCreatePersistence(deps);
-
-    await expect(
-      persistence.persistCreatedUser(client, {
-        actor: { instanceId: 'inst-1', actorAccountId: 'actor-1', actorRoles: ['admin'] },
-        actorSubject: 'subject-actor',
-        externalId: 'subject-new',
-        payload: {
-          email: 'user@example.test',
-          roleIds: [],
-          groupIds: ['missing-group'],
-        },
-      })
-    ).rejects.toThrow('invalid_request:Mindestens eine aktive Gruppe existiert nicht.');
-
-    expect(client.query).not.toHaveBeenCalled();
+    await expectCreateToRejectBeforeWrite(deps, 'invalid_request:Mindestens eine aktive Gruppe existiert nicht.', {
+      payload: {
+        roleIds: [],
+        groupIds: ['missing-group'],
+      },
+    });
   });
 
   it('skips bundled group role validation when the selected groups do not add direct roles', async () => {
@@ -200,23 +244,12 @@ describe('user-create-persistence', () => {
       ...createDeps(),
       resolveRoleIdsForGroups: vi.fn(async () => []),
     };
-    const client: QueryClient = {
-      query: vi.fn(async (text: string) => {
-        if (text.includes('RETURNING id')) {
-          return { rowCount: 1, rows: [{ id: 'account-1' }] };
-        }
-        return { rowCount: 1, rows: [] };
-      }),
-    };
+    const client = createInsertClient('account-1');
     const persistence = createUserCreatePersistence(deps);
 
     await expect(
-      persistence.persistCreatedUser(client, {
-        actor: { instanceId: 'inst-1', actorAccountId: 'actor-1', actorRoles: ['admin'] },
-        actorSubject: 'subject-actor',
-        externalId: 'subject-new',
+      persistCreatedTestUser(persistence, client, {
         payload: {
-          email: 'user@example.test',
           roleIds: [],
           groupIds: ['group-1'],
         },
@@ -237,24 +270,12 @@ describe('user-create-persistence', () => {
       ...createDeps(),
       resolveRoleIdsForGroups: vi.fn(async () => ['role-1', 'role-1']),
     };
-    const client: QueryClient = {
-      query: vi.fn(async (text: string) => {
-        if (text.includes('RETURNING id')) {
-          return { rowCount: 1, rows: [{ id: 'account-3' }] };
-        }
-        return { rowCount: 1, rows: [] };
-      }),
-    };
+    const client = createInsertClient('account-3');
     const persistence = createUserCreatePersistence(deps);
 
     await expect(
-      persistence.persistCreatedUser(client, {
-        actor: { instanceId: 'inst-1', actorAccountId: 'actor-1', actorRoles: ['admin'] },
-        actorSubject: 'subject-actor',
-        externalId: 'subject-new',
+      persistCreatedTestUser(persistence, client, {
         payload: {
-          email: 'user@example.test',
-          roleIds: ['role-1'],
           groupIds: ['group-1'],
         },
       })
@@ -280,52 +301,22 @@ describe('user-create-persistence', () => {
           message: 'group bundle denied',
         }),
     };
-    const client: QueryClient = {
-      query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
-    };
-    const persistence = createUserCreatePersistence(deps);
-
-    await expect(
-      persistence.persistCreatedUser(client, {
-        actor: { instanceId: 'inst-1', actorAccountId: 'actor-1', actorRoles: ['admin'] },
-        actorSubject: 'subject-actor',
-        externalId: 'subject-new',
-        payload: {
-          email: 'user@example.test',
-          roleIds: ['role-1'],
-          groupIds: ['group-1'],
-        },
-      })
-    ).rejects.toThrow('forbidden:group bundle denied');
-
-    expect(client.query).not.toHaveBeenCalled();
+    await expectCreateToRejectBeforeWrite(deps, 'forbidden:group bundle denied', {
+      payload: {
+        groupIds: ['group-1'],
+      },
+    });
   });
 
   it('persists users without groups and keeps explicit display names', async () => {
     const deps = createDeps();
-    const client: QueryClient = {
-      query: vi.fn(async (text: string) => {
-        if (text.includes('RETURNING id')) {
-          return { rowCount: 1, rows: [{ id: 'account-2' }] };
-        }
-        return { rowCount: 1, rows: [] };
-      }),
-    };
+    const client = createInsertClient('account-2');
     const persistence = createUserCreatePersistence(deps);
 
     await expect(
-      persistence.persistCreatedUser(client, {
-        actor: {
-          instanceId: 'inst-1',
-          actorAccountId: 'actor-1',
-          actorRoles: ['admin'],
-        },
-        actorSubject: 'subject-actor',
-        externalId: 'subject-new',
+      persistCreatedTestUser(persistence, client, {
         payload: {
-          email: 'user@example.test',
           displayName: 'Ada Display',
-          roleIds: ['role-1'],
         },
       })
     ).resolves.toMatchObject({

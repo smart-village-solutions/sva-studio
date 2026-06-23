@@ -1,10 +1,10 @@
-# Keycloak Service-Account Setup für IAM-User- und Rollen-Management
+# Keycloak Service-Account Setup für IAM-User-Management und technische Sonderrollen
 
 ## Ziel
 
 Diese Anleitung beschreibt die minimale Keycloak-Konfiguration für den IAM-Service des SVA Studio (`sva-studio-iam-service`).
-Sie deckt sowohl User-Management als auch den Studio-verwalteten Rollen-Katalog-Sync nach Keycloak ab.
-Studio ist für Benutzer, Rollen und Rollenzuordnungen eine auditierte Admin-UI über Keycloak: Keycloak bleibt System of Record, Studio schreibt Keycloak-first und aktualisiert anschließend seine Read-Models.
+Sie deckt User-Management sowie den eng begrenzten Abgleich technischer Sonderrollen nach Keycloak ab.
+Keycloak bleibt System of Record für Identität, Login, Realm-Zugang und technische Sonderrollen. Tenantlokale Fachrollen, Gruppen, Permissions und Rollenzuordnungen sind IAM-DB-kanonisch und werden nicht mehr allgemein als Keycloak-Rollenkatalog gespiegelt.
 
 Der fachliche Sollzustand tenant-spezifischer Realms, inklusive `sva-studio`-Client, `instanceId`-Claim, Protocol Mappern und minimalen Tenant-Admin-Rollen, ist separat unter [Keycloak-Tenant-Realm-Bootstrap für Studio](./keycloak-tenant-realm-bootstrap.md) dokumentiert.
 Der vollständige Root-Host-Betriebspfad für Preflight, Plan und Provisioning-Läufe ist unter [Instanzverwaltung als Keycloak-Control-Plane](./instance-keycloak-provisioning.md) beschrieben.
@@ -33,10 +33,10 @@ Begründung und Scope:
 
 | Rolle | Erlaubte Operationen | Nicht damit begründete Operationen |
 | --- | --- | --- |
-| `manage-users` | User anlegen, aktualisieren, deaktivieren; Rollenzuweisungen an User schreiben | Realm-Rollenkatalog ändern |
+| `manage-users` | User anlegen, aktualisieren, deaktivieren; technische Sonderrollen gezielt an User schreiben | allgemeinen Realm-Rollenkatalog für fachliche Tenant-Rollen ändern |
 | `view-users` | User lesen, Detailansichten laden | Schreibzugriffe auf User oder Rollen |
 | `view-realm` | Realm-Metadaten und Rollenbestand lesen | Änderungen an Rollen, Clients oder Flows |
-| `manage-realm` | Studio-verwaltete Realm-Rollen anlegen, aktualisieren und löschen | Clients, Identity Provider oder Auth-Flows verwalten |
+| `manage-realm` | technische Sonderrollen wie `system_admin` im Tenant-Realm anlegen, aktualisieren und löschen | fachliche Tenant-Rollen, Clients, Identity Provider oder Auth-Flows verwalten |
 
 Explizit verboten:
 
@@ -51,8 +51,8 @@ Für Tenant-Hosts gilt zusätzlich:
 
 - Studio verwendet ausschließlich den in der Instanz-Registry hinterlegten Tenant-Admin-Client.
 - Ein fehlender Tenant-Admin-Client oder ein fehlendes Tenant-Admin-Secret führt fail-closed zu `tenant_admin_client_not_configured`.
-- Platform- oder globale Admin-Credentials dürfen tenantlokale User-, Rollen- oder Rollenzuordnungsoperationen nicht ersetzen.
-- Built-in-/Default-Rollen aus Keycloak dürfen sichtbar und abhängig von der Rechte-Matrix zuweisbar sein; ihre Rollenobjekte selbst bleiben read-only.
+- Platform- oder globale Admin-Credentials dürfen tenantlokale User- oder technische Rollenzuordnungsoperationen nicht ersetzen.
+- Fachliche Tenant-Rollen werden DB-only gepflegt. Built-in-, Default- und Legacy-Keycloak-Rollen dürfen sichtbar sein, bleiben aber technische Diagnose und keine normative Fachsicht.
 
 ## 3. Secret-Handling
 
@@ -74,7 +74,7 @@ KEYCLOAK_ADMIN_CLIENT_SECRET=<injected-via-secrets-manager>
 Wichtig:
 
 - `KEYCLOAK_ADMIN_REALM` bezeichnet nur den Realm, in dem der technische Service-Account sein Access-Token holt.
-- Der fachliche Ziel-Realm für User-, Rollen- und Provisioning-Operationen wird pro Instanz aus `iam.instances.authRealm` aufgelöst.
+- Der fachliche Ziel-Realm für User-, technische Sonderrollen- und Provisioning-Operationen wird pro Instanz aus `iam.instances.authRealm` aufgelöst.
 - Neue produktive Instanzen benötigen deshalb in der Registry mindestens `authRealm` und `authClientId`.
 
 Für den geplanten Reconcile-Lauf zusätzlich:
@@ -99,16 +99,16 @@ Die Rotation erfolgt spätestens alle 90 Tage (BSI-Grundschutz ORP.4) im Dual-Se
 
 1. Neues Secret erzeugen (`secret_v2`) und im Secrets-Manager als neue aktive Version hinterlegen.
 2. Deployment mit `secret_v2` ausrollen, `secret_v1` bleibt im Overlap-Fenster gültig.
-3. Funktionstest der IAM-Admin-Calls (`list users`, `create user`, `create role`, `reconcile roles`) durchführen.
+3. Funktionstest der IAM-Admin-Calls (`list users`, `create user`, technische `system_admin`-Zuweisung, `reconcile roles`) durchführen.
 4. Nach erfolgreicher Stabilitätsphase (`24h` empfohlen) `secret_v1` in Keycloak deaktivieren/löschen.
 5. Rotation mit Zeitstempel und Verantwortlichem im Betriebsprotokoll dokumentieren.
 
 ## 7. Operative Checks nach Setup/Rotation
 
 - IAM-Health-Check (`/health/ready`) meldet Keycloak als `healthy`.
-- `POST /api/v1/iam/roles`, `PATCH /api/v1/iam/roles/:id` und `DELETE /api/v1/iam/roles/:id` liefern keinen `keycloak_unavailable`-Fehler.
+- `POST /api/v1/iam/roles`, `PATCH /api/v1/iam/roles/:id` und `DELETE /api/v1/iam/roles/:id` für normale Tenant-Rollen laufen DB-only und dürfen keinen Keycloak-Admin-Call benötigen.
 - `POST /api/v1/iam/admin/reconcile` erzeugt keinen Berechtigungsfehler im Keycloak-Adapter.
 - `GET /api/v1/iam/users` listet im Tenant-Scope Keycloak-Benutzer auch dann, wenn die Studio-Zuordnung fehlt; solche Objekte müssen als `unmapped` oder `manual_review` sichtbar sein.
-- `GET /api/v1/iam/roles` zeigt Built-in-Rollen als read-only und enthält bei Drift stabile Diagnosecodes.
+- `GET /api/v1/iam/roles` zeigt IAM-Rollen als kanonische Fachsicht; Keycloak-Rollen erscheinen nur als technische Diagnose oder Driftcode.
 - Keine `401`/`403`-Fehler bei Keycloak-Admin-Aufrufen.
 - Keine Secrets oder Tokens in Logs; Audit-Events enthalten nur `workspace_id`, `operation`, `result`, `error_code?`, `request_id`, `trace_id?`, `span_id?`.

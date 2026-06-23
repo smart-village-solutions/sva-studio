@@ -5,13 +5,13 @@ import type { QueryClient } from './query-client.js';
 
 const managedRoleRow = {
   id: 'role-1',
-  role_key: 'editor',
-  role_name: 'editor',
-  display_name: 'Editor',
-  external_role_name: 'Editor',
-  description: 'Can edit content',
-  is_system_role: false,
-  role_level: 20,
+  role_key: 'system_admin',
+  role_name: 'system_admin',
+  display_name: 'System Admin',
+  external_role_name: 'system_admin',
+  description: 'Can manage tenant IAM',
+  is_system_role: true,
+  role_level: 90,
   managed_by: 'studio',
   sync_state: 'pending',
   last_synced_at: null,
@@ -42,33 +42,33 @@ const createDeps = (rows = [managedRoleRow]) => {
 };
 
 describe('managed-role-sync', () => {
-  it('skips database access when no external role names are requested', async () => {
+  it('skips database access when no role keys are requested', async () => {
     const { deps } = createDeps([]);
     const sync = createManagedRoleSync(deps);
 
-    await expect(sync.loadManagedRolesByExternalNames('inst-1', [])).resolves.toEqual([]);
+    await expect(sync.loadManagedRolesByRoleKeys('inst-1', [])).resolves.toEqual([]);
 
     expect(deps.withInstanceScopedDb).not.toHaveBeenCalled();
   });
 
-  it('loads managed roles by external names with instance scope and deduplicated names', async () => {
+  it('loads managed roles by role key with instance scope and deduplicated keys', async () => {
     const { client, deps } = createDeps();
     const sync = createManagedRoleSync(deps);
 
-    await expect(sync.loadManagedRolesByExternalNames('inst-1', ['Editor', 'Editor'])).resolves.toEqual([
+    await expect(sync.loadManagedRolesByRoleKeys('inst-1', ['system_admin', 'system_admin'])).resolves.toEqual([
       managedRoleRow,
     ]);
 
     expect(deps.withInstanceScopedDb).toHaveBeenCalledWith('inst-1', expect.any(Function));
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM iam.roles'), ['inst-1', ['Editor']]);
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM iam.roles'), ['inst-1', ['system_admin']]);
   });
 
   it('creates missing realm roles and marks sync as successful', async () => {
-    const { deps } = createDeps();
+    const { deps } = createDeps([{ ...managedRoleRow, external_role_name: 'legacy-system-admin' }]);
     const identityProvider = {
       provider: {
         getRoleByName: vi.fn(async () => null),
-        createRole: vi.fn(async () => ({ externalName: 'Editor' })),
+        createRole: vi.fn(async () => ({ externalName: 'system_admin' })),
       },
     };
     const sync = createManagedRoleSync(deps);
@@ -76,20 +76,20 @@ describe('managed-role-sync', () => {
     await sync.ensureManagedRealmRolesExist({
       instanceId: 'inst-1',
       identityProvider,
-      externalRoleNames: ['Editor'],
+      roleKeys: ['system_admin', 'editor'],
       actorAccountId: 'actor-1',
       requestId: 'req-1',
       traceId: 'trace-1',
     });
 
     expect(identityProvider.provider.createRole).toHaveBeenCalledWith({
-      externalName: 'Editor',
-      description: 'Can edit content',
+      externalName: 'system_admin',
+      description: 'Can manage tenant IAM',
       attributes: {
         managedBy: 'studio',
         instanceId: 'inst-1',
-        roleKey: 'editor',
-        displayName: 'Editor',
+        roleKey: 'system_admin',
+        displayName: 'System Admin',
       },
     });
     expect(deps.setRoleSyncState).toHaveBeenCalledWith(expect.anything(), {
@@ -104,8 +104,8 @@ describe('managed-role-sync', () => {
       expect.objectContaining({
         eventType: 'role.sync_succeeded',
         result: 'success',
-        roleKey: 'editor',
-        externalRoleName: 'Editor',
+        roleKey: 'system_admin',
+        externalRoleName: 'system_admin',
       })
     );
   });
@@ -114,8 +114,8 @@ describe('managed-role-sync', () => {
     const { deps } = createDeps();
     const identityProvider = {
       provider: {
-        getRoleByName: vi.fn(async () => ({ externalName: 'Editor' })),
-        createRole: vi.fn(async () => ({ externalName: 'Editor' })),
+        getRoleByName: vi.fn(async () => ({ externalName: 'system_admin' })),
+        createRole: vi.fn(async () => ({ externalName: 'system_admin' })),
       },
     };
     const sync = createManagedRoleSync(deps);
@@ -123,7 +123,7 @@ describe('managed-role-sync', () => {
     await sync.ensureManagedRealmRolesExist({
       instanceId: 'inst-1',
       identityProvider,
-      externalRoleNames: ['Editor'],
+      roleKeys: ['system_admin'],
     });
 
     expect(identityProvider.provider.createRole).not.toHaveBeenCalled();
@@ -149,7 +149,7 @@ describe('managed-role-sync', () => {
       sync.ensureManagedRealmRolesExist({
         instanceId: 'inst-1',
         identityProvider,
-        externalRoleNames: ['Editor'],
+        roleKeys: ['system_admin'],
       })
     ).rejects.toThrow(error);
 

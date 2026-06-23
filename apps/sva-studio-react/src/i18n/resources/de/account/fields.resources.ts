@@ -10,6 +10,7 @@ export const fieldsAccountDEResources = {
   language: 'Sprache',
   timezone: 'Zeitzone',
   role: 'Rolle',
+  keycloakRoles: 'Technische Keycloak-Rollen',
   status: 'Status',
   lastLogin: 'Letzter Login',
 } as const;

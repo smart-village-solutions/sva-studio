@@ -170,14 +170,15 @@ Abhängigkeiten des aktuellen Systems.
 ### Verantwortungsgrenzen im IAM-Pfad
 
 - Keycloak ist führend für Authentifizierung, Token-Claims und IdP-nahe Admin-Operationen.
-- Postgres ist führend für Studio-verwaltete IAM-Fachdaten wie Accounts, Rollen, Permissions und Auditdaten.
+- Postgres ist führend für Studio-verwaltete IAM-Fachdaten wie Accounts, tenantlokale Fachrollen, Gruppen, Permissions und Auditdaten.
+- Der Keycloak-Rollenabgleich ist auf technische Sonderrollen begrenzt: `system_admin` im Tenant-Kontext und `instance_registry_admin` im Plattform-Kontext.
 - `iam.instances` modelliert ausschließlich Tenant-Instanzen; der Root-Host ist ein separater Plattform-Scope.
 - `iam.instances` fuehrt fuer jede tenantfaehige Instanz getrennte Auth-Vertraege fuer Login (`authClientId`) und Tenant-Administration (`tenantAdminClient`) als kanonische Registry-Basisdaten.
 - Redis hält lediglich Permission-Snapshots zur Beschleunigung des Authorize-Pfads.
 - `packages/auth-runtime` haelt zusaetzlich nur sehr kurzlebige In-Process-Caches fuer Session-Resolution und Account-Lifecycle-Pruefung, um wiederholte Authorize-Requests derselben Session ohne neuen Redis-/DB-Roundtrip abzufangen.
 - Der SVA-Mainserver bleibt fachliche Source of Truth für seine GraphQL-Daten; Studio hält nur Endpunktkonfiguration und kurzlebige Laufzeit-Caches für Credentials und Access-Tokens.
 - Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.
-- `packages/iam-admin` hält zusätzlich die tenantseitige Governance-Trennung für Rollen und Permissions: Root-only-Rollen/-Permissions werden vor Admin-CRUD gefiltert oder abgewiesen, während `system_admin` als geschützte Tenant-Sonderrolle erhalten bleibt.
+- `packages/iam-admin` hält zusätzlich die tenantseitige Governance-Trennung für Rollen und Permissions: Root-only-Rollen/-Permissions werden vor Admin-CRUD gefiltert oder abgewiesen, normale Tenant-Rollen werden DB-only gepflegt, während `system_admin` als geschützte technische Tenant-Sonderrolle in IAM und Keycloak erhalten bleibt.
 
 ### Fortschreibung 2026-05: Scoped Rollen-Permissions fuer Datensatzrechte
 
@@ -211,18 +212,20 @@ Abhängigkeiten des aktuellen Systems.
    - rendert unter `/monitoring` den betrieblichen Einstieg fuer Plugin-Jobs und den GUI-gestuetzten Authorize-Benchmark.
    - trennt bewusst Monitoring-Operations von der IAM-Cockpit-Oberflaeche und zeigt nur sichere Ergebnisfelder, Kennzahlen und Report-Referenzen an.
 
-### Fortschreibung 2026-04: Keycloak-Admin-UI-Bausteine
+### Fortschreibung 2026-06: IAM-Admin-Bausteine mit begrenztem Keycloak-Rollenabgleich
 
 1. `@sva/core`
-   - Definiert additive Verträge für `mappingStatus`, `editability`, objektbezogene Diagnosecodes und Sync-/Reconcile-Objektlisten.
+   - Definiert additive Verträge für `mappingStatus`, `editability`, objektbezogene Diagnosecodes, kanonische IAM-Rollen und getrennte technische `keycloakRoles`.
 2. `packages/iam-admin/src/identity-provider-port.ts`
-   - Kapselt Keycloak-nahe Listen-, Count-, Mutations- und explizite Role-Assignment-Operationen.
+   - Kapselt Keycloak-nahe Listen-, Count-, Mutations- und explizite Role-Assignment-Operationen; Call-Sites dürfen tenantseitig nur technische Sonderrollen synchronisieren.
 3. `packages/iam-admin/src/keycloak-admin-client`
    - Implementiert serverseitige Pagination/Count für Realm-Rollen und User sowie differenzierte Fehlerabbildung für Keycloak-Admin-Aufrufe.
 4. `packages/iam-admin/src`
-   - Trennt Platform-Admin-Client, Tenant-Admin-Client, Keycloak-first Mutationen, Read-Model-Synchronisation und Drift-/Diagnoseprojektion.
+   - Trennt Platform-Admin-Client, Tenant-Admin-Client, DB-only-Rollen-CRUD, technische Keycloak-Sonderrollen-Synchronisation und Drift-/Diagnoseprojektion.
+   - `role-governance.ts` definiert den technischen Keycloak-Schnitt (`system_admin`, `instance_registry_admin`); `reconcile-core.ts` repariert nur diesen Schnitt und berichtet nicht-technische Keycloak-Rollen als Legacy-/Drift-Diagnose.
+   - `user-projection.ts` hält `roles` IAM-kanonisch und reicht rohe Keycloak-Rollen separat als `keycloakRoles` durch.
 5. `apps/sva-studio-react/src/routes/admin/users` und `apps/sva-studio-react/src/routes/admin/roles`
-   - Rendern Mappingstatus, Bearbeitbarkeit und Diagnosecodes; blockierte oder read-only Aktionen bleiben sichtbar, aber deaktiviert.
+   - Rendern IAM-Rollen als fachliche Sicht sowie Keycloak-Rollen nur als technische Diagnose; blockierte oder read-only Aktionen bleiben sichtbar, aber deaktiviert.
 
 ### Fortschreibung 2026-04: Diagnosegrenzen im IAM-Pfad
 

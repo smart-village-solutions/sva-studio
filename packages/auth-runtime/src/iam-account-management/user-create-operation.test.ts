@@ -547,12 +547,12 @@ describe('executeCreateUser', () => {
     expect(state.ensureManagedRealmRolesExist).toHaveBeenCalledWith({
       instanceId: 'instance-1',
       identityProvider,
-      externalRoleNames: ['system_admin', 'editor'],
+      roleKeys: ['system_admin'],
       actorAccountId: 'actor-1',
       requestId: 'req-1',
       traceId: 'trace-1',
     });
-    expect(identityProvider.provider.syncRoles).toHaveBeenCalledWith('kc-user-1', ['system_admin', 'editor']);
+    expect(identityProvider.provider.syncRoles).toHaveBeenCalledWith('kc-user-1', ['system_admin']);
   });
 
   it('deactivates the created external user when persistence fails after Keycloak creation', async () => {

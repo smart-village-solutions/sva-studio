@@ -258,7 +258,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
       freshReauthAt: 1_700_000_000_000,
       activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       userId: 'user-1',
-      roles: ['admin', 'system_admin'],
+      roles: ['system_admin'],
     });
     expect(authServerMocks.resolveSessionUser).toHaveBeenCalledWith(
       request,

@@ -7,6 +7,96 @@ const createIdentityProvider = () => ({
   getRoleByName: vi.fn(async () => null),
 });
 
+const createRealmRole = (input: {
+  readonly description: string;
+  readonly displayName: string;
+  readonly externalName: string;
+  readonly roleKey: string;
+  readonly roleLevel?: number;
+}) => ({
+  externalName: input.externalName,
+  description: input.description,
+  clientRole: false,
+  attributes: {
+    managed_by: ['studio'],
+    instance_id: ['tenant-a'],
+    role_key: [input.roleKey],
+    display_name: [input.displayName],
+    ...(input.roleLevel === undefined ? {} : { role_level: [String(input.roleLevel)] }),
+  },
+});
+
+const createDatabaseRole = (
+  overrides: Partial<{
+    readonly description: string;
+    readonly display_name: string;
+    readonly external_role_name: string;
+    readonly id: string;
+    readonly is_system_role: boolean;
+    readonly last_error_code: string | null;
+    readonly last_synced_at: string | null;
+    readonly managed_by: string;
+    readonly role_key: string;
+    readonly role_level: number;
+    readonly role_name: string;
+    readonly sync_state: string;
+  }>
+) => ({
+  id: 'role-1',
+  role_key: 'system_admin',
+  role_name: 'system_admin',
+  display_name: 'System Admin',
+  external_role_name: 'system_admin',
+  description: 'Canonical description',
+  is_system_role: false,
+  role_level: 0,
+  managed_by: 'studio',
+  sync_state: 'failed',
+  last_synced_at: null,
+  last_error_code: 'OLD_ERROR',
+  ...overrides,
+});
+
+const createScopedDbWithRoles = (rows: readonly unknown[]) =>
+  vi.fn(async (_instanceId, work) =>
+    work({
+      query: vi.fn(async (sql: string) => (sql.includes('SELECT\n  id,') ? { rows } : { rows: [] })),
+    } as never)
+  );
+
+const expectRoleSyncMarkedSynced = (deps: RoleCatalogReconciliationDeps, roleId: string) => {
+  expect(deps.setRoleSyncState).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      instanceId: 'tenant-a',
+      roleId,
+      syncState: 'synced',
+      errorCode: null,
+      syncedAt: true,
+    })
+  );
+};
+
+const createSystemAdminProviderResolver = (input: {
+  readonly description: string;
+  readonly displayName: string;
+  readonly updateRole: ReturnType<typeof vi.fn>;
+}) =>
+  vi.fn(async () => ({
+    provider: {
+      listRoles: vi.fn(async () => [
+        createRealmRole({
+          externalName: 'system_admin',
+          description: input.description,
+          roleKey: 'system_admin',
+          displayName: input.displayName,
+        }),
+      ]),
+      getRoleByName: vi.fn(async () => null),
+      updateRole: input.updateRole,
+    } as never,
+  }));
+
 const createDeps = (overrides: Partial<RoleCatalogReconciliationDeps> = {}): RoleCatalogReconciliationDeps => ({
   resolveIdentityProviderForInstance: vi.fn(async () => ({ provider: createIdentityProvider() as never })),
   withInstanceScopedDb: vi.fn(async (_instanceId, work) =>
@@ -165,34 +255,19 @@ describe('runRoleCatalogReconciliation', () => {
           updateRole,
         } as never,
       })),
-      withInstanceScopedDb: vi.fn(async (_instanceId, work) =>
-        work({
-          query: vi.fn(async (sql: string) => {
-            if (sql.includes('SELECT\n  id,')) {
-              return {
-                rows: [
-                  {
-                    id: 'role-root-only',
-                    role_key: 'instance_registry_admin',
-                    role_name: 'instance_registry_admin',
-                    display_name: 'Instance Registry Administrator',
-                    external_role_name: 'instance_registry_admin',
-                    description: '[legacy-root-role-in-tenant]',
-                    is_system_role: false,
-                    role_level: 100,
-                    managed_by: 'studio',
-                    sync_state: 'pending',
-                    last_synced_at: null,
-                    last_error_code: null,
-                  },
-                ],
-              };
-            }
-
-            return { rows: [] };
-          }),
-        } as never)
-      ),
+      withInstanceScopedDb: createScopedDbWithRoles([
+        createDatabaseRole({
+          id: 'role-root-only',
+          role_key: 'instance_registry_admin',
+          role_name: 'instance_registry_admin',
+          display_name: 'Instance Registry Administrator',
+          external_role_name: 'instance_registry_admin',
+          description: '[legacy-root-role-in-tenant]',
+          role_level: 100,
+          sync_state: 'pending',
+          last_error_code: null,
+        }),
+      ]),
     });
 
     const report = await runRoleCatalogReconciliation({
@@ -215,36 +290,26 @@ describe('runRoleCatalogReconciliation', () => {
     expect(deps.setRoleDriftBacklog).toHaveBeenCalledWith('tenant-a', 0);
   });
 
-  it('does not import the same role key twice when multiple identity roles point to one canonical role', async () => {
+  it('reports non-technical managed Keycloak roles as manual drift instead of importing them', async () => {
     const insertAttempts: string[] = [];
     const deps = createDeps({
       resolveIdentityProviderForInstance: vi.fn(async () => ({
         provider: {
           listRoles: vi.fn(async () => [
-            {
+            createRealmRole({
               externalName: 'mainserver_editor',
               description: 'Canonical editor role',
-              clientRole: false,
-              attributes: {
-                managed_by: ['studio'],
-                instance_id: ['tenant-a'],
-                role_key: ['mainserver_editor'],
-                display_name: ['Editor'],
-                role_level: ['0'],
-              },
-            },
-            {
+              roleKey: 'mainserver_editor',
+              displayName: 'Editor',
+              roleLevel: 0,
+            }),
+            createRealmRole({
               externalName: 'Editor',
               description: 'Alias editor role',
-              clientRole: false,
-              attributes: {
-                managed_by: ['studio'],
-                instance_id: ['tenant-a'],
-                role_key: ['mainserver_editor'],
-                display_name: ['Editor'],
-                role_level: ['0'],
-              },
-            },
+              roleKey: 'mainserver_editor',
+              displayName: 'Editor',
+              roleLevel: 0,
+            }),
           ]),
           getRoleByName: vi.fn(async () => null),
         } as never,
@@ -275,63 +340,37 @@ describe('runRoleCatalogReconciliation', () => {
     });
 
     expect(report).toMatchObject({
-      outcome: 'success',
-      correctedCount: 1,
+      outcome: 'failed',
+      correctedCount: 0,
       failedCount: 0,
-      manualReviewCount: 0,
+      manualReviewCount: 2,
     });
-    expect(insertAttempts).toHaveLength(1);
+    expect(insertAttempts).toHaveLength(0);
+    expect(report.roles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          externalRoleName: 'mainserver_editor',
+          action: 'report',
+          status: 'requires_manual_action',
+        }),
+      ])
+    );
   });
 
   it('updates mismatched managed roles and persists synced reconcile state', async () => {
     const updateRole = vi.fn(async () => undefined);
     const deps = createDeps({
-      resolveIdentityProviderForInstance: vi.fn(async () => ({
-        provider: {
-          listRoles: vi.fn(async () => [
-            {
-              externalName: 'mainserver_editor',
-              description: 'Outdated description',
-              clientRole: false,
-              attributes: {
-                managed_by: ['studio'],
-                instance_id: ['tenant-a'],
-                role_key: ['mainserver_editor'],
-                display_name: ['Old display name'],
-              },
-            },
-          ]),
-          getRoleByName: vi.fn(async () => null),
-          updateRole,
-        } as never,
-      })),
-      withInstanceScopedDb: vi.fn(async (_instanceId, work) =>
-        work({
-          query: vi.fn(async (sql: string) => {
-            if (sql.includes('SELECT\n  id,')) {
-              return {
-                rows: [
-                  {
-                    id: 'role-1',
-                    role_key: 'mainserver_editor',
-                    role_name: 'mainserver_editor',
-                    display_name: 'Editor',
-                    external_role_name: 'mainserver_editor',
-                    description: 'Canonical description',
-                    is_system_role: false,
-                    role_level: 0,
-                    managed_by: 'studio',
-                    sync_state: 'failed',
-                    last_synced_at: null,
-                    last_error_code: 'PREVIOUS_ERROR',
-                  },
-                ],
-              };
-            }
-            return { rows: [] };
-          }),
-        } as never)
-      ),
+      resolveIdentityProviderForInstance: createSystemAdminProviderResolver({
+        description: 'Outdated description',
+        displayName: 'Old display name',
+        updateRole,
+      }),
+      withInstanceScopedDb: createScopedDbWithRoles([
+        createDatabaseRole({
+          id: 'role-1',
+          last_error_code: 'PREVIOUS_ERROR',
+        }),
+      ]),
     });
 
     const report = await runRoleCatalogReconciliation({
@@ -341,25 +380,16 @@ describe('runRoleCatalogReconciliation', () => {
       traceId: 'trace-1',
     });
 
-    expect(updateRole).toHaveBeenCalledWith('mainserver_editor', {
+    expect(updateRole).toHaveBeenCalledWith('system_admin', {
       description: 'Canonical description',
       attributes: {
         managedBy: 'studio',
         instanceId: 'tenant-a',
-        roleKey: 'mainserver_editor',
-        displayName: 'Editor',
+        roleKey: 'system_admin',
+        displayName: 'System Admin',
       },
     });
-    expect(deps.setRoleSyncState).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        instanceId: 'tenant-a',
-        roleId: 'role-1',
-        syncState: 'synced',
-        errorCode: null,
-        syncedAt: true,
-      })
-    );
+    expectRoleSyncMarkedSynced(deps, 'role-1');
     expect(report).toMatchObject({
       outcome: 'success',
       correctedCount: 1,
@@ -367,8 +397,8 @@ describe('runRoleCatalogReconciliation', () => {
       roles: [
         {
           roleId: 'role-1',
-          roleKey: 'mainserver_editor',
-          externalRoleName: 'mainserver_editor',
+          roleKey: 'system_admin',
+          externalRoleName: 'system_admin',
           action: 'update',
           status: 'corrected',
         },
@@ -379,52 +409,17 @@ describe('runRoleCatalogReconciliation', () => {
   it('accepts canonical identity roles for legacy external-name aliases without forcing an idp update', async () => {
     const updateRole = vi.fn(async () => undefined);
     const deps = createDeps({
-      resolveIdentityProviderForInstance: vi.fn(async () => ({
-        provider: {
-          listRoles: vi.fn(async () => [
-            {
-              externalName: 'mainserver_editor',
-              description: 'Canonical description',
-              clientRole: false,
-              attributes: {
-                managed_by: ['studio'],
-                instance_id: ['tenant-a'],
-                role_key: ['mainserver_editor'],
-                display_name: ['Editor'],
-              },
-            },
-          ]),
-          getRoleByName: vi.fn(async () => null),
-          updateRole,
-        } as never,
-      })),
-      withInstanceScopedDb: vi.fn(async (_instanceId, work) =>
-        work({
-          query: vi.fn(async (sql: string) => {
-            if (sql.includes('SELECT\n  id,')) {
-              return {
-                rows: [
-                  {
-                    id: 'role-legacy-alias',
-                    role_key: 'mainserver_editor',
-                    role_name: 'mainserver_editor',
-                    display_name: 'Editor',
-                    external_role_name: 'Editor',
-                    description: 'Canonical description',
-                    is_system_role: false,
-                    role_level: 0,
-                    managed_by: 'studio',
-                    sync_state: 'failed',
-                    last_synced_at: null,
-                    last_error_code: 'OLD_ERROR',
-                  },
-                ],
-              };
-            }
-            return { rows: [] };
-          }),
-        } as never)
-      ),
+      resolveIdentityProviderForInstance: createSystemAdminProviderResolver({
+        description: 'Canonical description',
+        displayName: 'System Admin',
+        updateRole,
+      }),
+      withInstanceScopedDb: createScopedDbWithRoles([
+        createDatabaseRole({
+          id: 'role-legacy-alias',
+          external_role_name: 'System Admin',
+        }),
+      ]),
     });
 
     const report = await runRoleCatalogReconciliation({
@@ -434,16 +429,7 @@ describe('runRoleCatalogReconciliation', () => {
     });
 
     expect(updateRole).not.toHaveBeenCalled();
-    expect(deps.setRoleSyncState).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        instanceId: 'tenant-a',
-        roleId: 'role-legacy-alias',
-        syncState: 'synced',
-        errorCode: null,
-        syncedAt: true,
-      })
-    );
+    expectRoleSyncMarkedSynced(deps, 'role-legacy-alias');
     expect(report).toMatchObject({
       outcome: 'success',
       correctedCount: 1,
@@ -451,8 +437,8 @@ describe('runRoleCatalogReconciliation', () => {
       roles: [
         {
           roleId: 'role-legacy-alias',
-          roleKey: 'mainserver_editor',
-          externalRoleName: 'Editor',
+          roleKey: 'system_admin',
+          externalRoleName: 'System Admin',
           action: 'noop',
           status: 'corrected',
         },
@@ -460,74 +446,29 @@ describe('runRoleCatalogReconciliation', () => {
     });
   });
 
-  it('reports partial failures when one role sync succeeds and another one fails', async () => {
-    const createRole = vi.fn(async ({ externalName }: { externalName: string }) => {
-      if (externalName === 'missing_role') {
-        throw Object.assign(new Error('timeout'), { name: 'KeycloakAdminRequestError', code: 'read_timeout', statusCode: 504 });
-      }
-    });
+  it('reports partial failures when a technical role is repaired and a legacy Keycloak role needs manual review', async () => {
+    const createRole = vi.fn(async () => undefined);
     const deps = createDeps({
       resolveIdentityProviderForInstance: vi.fn(async () => ({
         provider: {
           listRoles: vi.fn(async () => [
-            {
-              externalName: 'existing_role',
-              description: 'Canonical description',
-              clientRole: false,
-              attributes: {
-                managed_by: ['studio'],
-                instance_id: ['tenant-a'],
-                role_key: ['existing_role'],
-                display_name: ['Existing role'],
-              },
-            },
+            createRealmRole({
+              externalName: 'legacy_editor',
+              description: 'Legacy editor role',
+              roleKey: 'legacy_editor',
+              displayName: 'Legacy editor',
+            }),
           ]),
           getRoleByName: vi.fn(async () => null),
           createRole,
           updateRole: vi.fn(async () => undefined),
         } as never,
       })),
-      withInstanceScopedDb: vi.fn(async (_instanceId, work) =>
-        work({
-          query: vi.fn(async (sql: string) => {
-            if (sql.includes('SELECT\n  id,')) {
-              return {
-                rows: [
-                  {
-                    id: 'role-existing',
-                    role_key: 'existing_role',
-                    role_name: 'existing_role',
-                    display_name: 'Existing role',
-                    external_role_name: 'existing_role',
-                    description: 'Canonical description',
-                    is_system_role: false,
-                    role_level: 0,
-                    managed_by: 'studio',
-                    sync_state: 'failed',
-                    last_synced_at: null,
-                    last_error_code: 'OLD_ERROR',
-                  },
-                  {
-                    id: 'role-missing',
-                    role_key: 'missing_role',
-                    role_name: 'missing_role',
-                    display_name: 'Missing role',
-                    external_role_name: 'missing_role',
-                    description: null,
-                    is_system_role: false,
-                    role_level: 0,
-                    managed_by: 'studio',
-                    sync_state: 'failed',
-                    last_synced_at: null,
-                    last_error_code: 'OLD_ERROR',
-                  },
-                ],
-              };
-            }
-            return { rows: [] };
-          }),
-        } as never)
-      ),
+      withInstanceScopedDb: createScopedDbWithRoles([
+        createDatabaseRole({
+          id: 'role-system-admin',
+        }),
+      ]),
     });
 
     const report = await runRoleCatalogReconciliation({
@@ -539,13 +480,18 @@ describe('runRoleCatalogReconciliation', () => {
     expect(report).toMatchObject({
       outcome: 'partial_failure',
       correctedCount: 1,
-      failedCount: 1,
-      requiresManualActionCount: 0,
+      failedCount: 0,
+      requiresManualActionCount: 1,
     });
     expect(report.roles).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ roleKey: 'existing_role', status: 'corrected' }),
-        expect.objectContaining({ roleKey: 'missing_role', status: 'failed', errorCode: 'IDP_TIMEOUT' }),
+        expect.objectContaining({ roleKey: 'system_admin', status: 'corrected' }),
+        expect.objectContaining({
+          roleKey: 'legacy_editor',
+          externalRoleName: 'legacy_editor',
+          status: 'requires_manual_action',
+          errorCode: 'REQUIRES_MANUAL_ACTION',
+        }),
       ])
     );
   });

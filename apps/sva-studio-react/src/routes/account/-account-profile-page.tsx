@@ -309,6 +309,7 @@ export const AccountProfilePage = () => {
     '-';
   const email = profile?.email ?? '-';
   const roleNames = profile?.roles.map((role) => role.roleName).join(', ') || '-';
+  const keycloakRoleNames = profile?.keycloakRoles?.join(', ') || '-';
   const hasProjectionWarning =
     profile?.mappingStatus === 'manual_review' || Boolean(profile?.diagnostics?.length);
   const projectionStatusLabel = profile?.mappingStatus
@@ -509,6 +510,10 @@ export const AccountProfilePage = () => {
           <div className="grid gap-2 text-sm text-foreground md:col-span-2">
             <Label htmlFor="account-roles-readonly">{t('account.fields.role')}</Label>
             <Input id="account-roles-readonly" value={roleNames} readOnly aria-readonly="true" />
+          </div>
+          <div className="grid gap-2 text-sm text-foreground md:col-span-2">
+            <Label htmlFor="account-keycloak-roles-readonly">{t('account.fields.keycloakRoles')}</Label>
+            <Input id="account-keycloak-roles-readonly" value={keycloakRoleNames} readOnly aria-readonly="true" />
           </div>
         </section>
 

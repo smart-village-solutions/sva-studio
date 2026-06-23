@@ -178,6 +178,31 @@ describe('auth server session resolution', () => {
     expect(state.getSessionControlState).toHaveBeenCalledTimes(2);
   });
 
+  it('treats tenant sessions with empty canonical IAM roles as complete', async () => {
+    const userWithoutHydratedRoles: SessionUser = {
+      id: 'user-1',
+      instanceId: 'tenant-a',
+      roles: [],
+      keycloakRoles: ['legacy_editor'],
+    };
+    state.getSession.mockResolvedValue(
+      createSession({ user: userWithoutHydratedRoles, expiresAt: 100_000 })
+    );
+
+    const { resolveSessionUser } = await import('./session.js');
+
+    await expect(resolveSessionUser('session-1')).resolves.toMatchObject({
+      kind: 'authenticated',
+      user: userWithoutHydratedRoles,
+    });
+    expect(state.buildSessionUser).not.toHaveBeenCalled();
+    expect(state.updateSession).not.toHaveBeenCalled();
+    expect(state.logger.warn).not.toHaveBeenCalledWith(
+      'Session user is missing required IAM context',
+      expect.anything()
+    );
+  });
+
   it('deletes disallowed sessions when control state invalidates them', async () => {
     state.getSession.mockResolvedValue(createSession({ sessionVersion: 1 }));
     state.getSessionControlState.mockResolvedValue({ minimumSessionVersion: 2 });

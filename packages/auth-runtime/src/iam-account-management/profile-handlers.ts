@@ -341,19 +341,16 @@ const resolveProjectedProfileDetail = async (input: {
     resolveProjectedMainserverCredentialState(input.user.keycloakSubject, input.instanceId),
   ]);
 
-  const projectedDetail = await withInstanceScopedDb(input.instanceId, (client) =>
-    applyCanonicalUserDetailProjection({
-      client,
-      instanceId: input.instanceId,
-      user: input.user,
-      keycloakRoleNames:
-        keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null,
-      mainserverCredentialState:
-        mainserverCredentialStateResult.status === 'fulfilled'
-          ? mainserverCredentialStateResult.value
-          : DEFAULT_MAINSERVER_CREDENTIAL_STATE,
-    })
-  );
+  const projectedDetail = await applyCanonicalUserDetailProjection({
+    instanceId: input.instanceId,
+    user: input.user,
+    keycloakRoleNames:
+      keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null,
+    mainserverCredentialState:
+      mainserverCredentialStateResult.status === 'fulfilled'
+        ? mainserverCredentialStateResult.value
+        : DEFAULT_MAINSERVER_CREDENTIAL_STATE,
+  });
 
   return keycloakRoleNamesResult.status === 'rejected'
     ? markUserProjectionDegraded(projectedDetail)

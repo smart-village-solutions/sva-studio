@@ -1,4 +1,4 @@
-import { createUpdateUserHandlerInternal } from '@sva/iam-admin';
+import { createUpdateUserHandlerInternal, RoleMutationCapabilityUnavailableError } from '@sva/iam-admin';
 
 import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client.js';
 import { jsonResponse } from '../db.js';
@@ -21,6 +21,15 @@ export const updateUserInternal = createUpdateUserHandlerInternal({
   createUserMutationErrorResponse,
   ensureManagedRealmRolesExist,
   handleKeycloakUpdateError: ({ error, requestId }) => {
+    if (error instanceof RoleMutationCapabilityUnavailableError) {
+      return createApiError(
+        503,
+        'keycloak_unavailable',
+        'Keycloak Admin API unterstützt technische Rollenzuweisungen nicht.',
+        requestId
+      );
+    }
+
     if (error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError) {
       return buildRoleSyncFailure({
         error,

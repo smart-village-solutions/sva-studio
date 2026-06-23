@@ -12,12 +12,14 @@ import {
 } from './user-mutation-request-context.shared.js';
 import type { UpdateUserPayload } from './user-update-plan.js';
 
+export type UserUpdateIdentityProviderResolution = IdentityProviderResolution;
+
 export type UserUpdateRequestContext =
   | Response
   | {
       actor: UserMutationActor;
-      identityProvider: IdentityProviderResolution;
       payload: UpdateUserPayload;
+      resolveIdentityProvider: () => Promise<UserUpdateIdentityProviderResolution | Response>;
       userId: string;
     };
 
@@ -40,18 +42,11 @@ export const resolveUpdateRequestContext = async (
     return createApiError(400, 'invalid_request', 'Ungültiger Payload.', targetActorContext.actor.requestId);
   }
 
-  const identityProvider = await requireUserMutationIdentityProvider(
-    targetActorContext.actor.instanceId,
-    targetActorContext.actor.requestId
-  );
-  if (identityProvider instanceof Response) {
-    return identityProvider;
-  }
-
   return {
     actor: targetActorContext.actor,
-    identityProvider,
     payload: parsedBody.data,
+    resolveIdentityProvider: () =>
+      requireUserMutationIdentityProvider(targetActorContext.actor.instanceId, targetActorContext.actor.requestId),
     userId: targetActorContext.userId,
   };
 };

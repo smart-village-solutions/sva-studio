@@ -1,4 +1,4 @@
-import type { IamUserDetail, IamUserListItem, IamUserRoleAssignment } from '@sva/core';
+import type { IamUserDetail, IamUserListItem } from '@sva/core';
 
 import {
   KeycloakAdminRequestError,
@@ -10,10 +10,8 @@ import {
   resolveMainserverCredentialState,
 } from '../mainserver-credentials.js';
 
-import { getRoleDisplayName } from './role-audit.js';
 import {
   resolveIdentityProviderForInstance,
-  resolveRolesByExternalNames,
   trackKeycloakCall,
 } from './shared.js';
 import { markUserProjectionDegraded } from './projection-diagnostics.js';
@@ -24,21 +22,6 @@ const DEFAULT_MAINSERVER_CREDENTIAL_STATE: ProjectedMainserverCredentialState = 
   mainserverUserApplicationId: undefined,
   mainserverUserApplicationSecretSet: false,
 };
-
-const mapProjectedRoles = (
-  roles: Awaited<ReturnType<typeof resolveRolesByExternalNames>>
-): readonly IamUserRoleAssignment[] =>
-  roles.map((role) => ({
-    roleId: role.id,
-    roleKey: role.role_key,
-    roleName: getRoleDisplayName(role),
-    roleLevel: role.role_level,
-  }));
-
-const mergeProjectedRoles = (user: IamUserDetail, roles: readonly IamUserRoleAssignment[]): IamUserDetail => ({
-  ...user,
-  roles,
-});
 
 export const mergeMainserverCredentialState = (
   user: IamUserDetail,
@@ -68,7 +51,6 @@ export const resolveKeycloakRoleNames = async (
 };
 
 export const resolveProjectedUserDetail = async (input: {
-  client: Parameters<typeof resolveRolesByExternalNames>[0];
   instanceId: string;
   user: IamUserDetail;
   keycloakRoleNames: readonly string[] | null;
@@ -77,17 +59,10 @@ export const resolveProjectedUserDetail = async (input: {
     return markUserProjectionDegraded(input.user);
   }
 
-  const mappedRoles = await resolveRolesByExternalNames(input.client, {
-    instanceId: input.instanceId,
-    externalRoleNames: input.keycloakRoleNames,
-  });
-  const projectedRoles = mapProjectedRoles(mappedRoles);
-  const currentRoleIds = new Set(input.user.roles.map((role) => role.roleId));
-  const changed =
-    currentRoleIds.size !== projectedRoles.length ||
-    projectedRoles.some((role) => !currentRoleIds.has(role.roleId));
-
-  return changed ? mergeProjectedRoles(input.user, projectedRoles) : input.user;
+  return {
+    ...input.user,
+    keycloakRoles: [...input.keycloakRoleNames],
+  };
 };
 
 export const resolveProjectedMainserverCredentialState = async (
@@ -108,7 +83,6 @@ export const isRecoverableUserProjectionError = (
   error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError;
 
 export const applyCanonicalUserDetailProjection = async (input: {
-  client: Parameters<typeof resolveRolesByExternalNames>[0];
   instanceId: string;
   user: IamUserDetail;
   keycloakRoleNames?: readonly string[] | null;
@@ -132,7 +106,6 @@ export const applyCanonicalUserDetailProjection = async (input: {
     ));
 
   const projectedUser = await resolveProjectedUserDetail({
-    client: input.client,
     instanceId: input.instanceId,
     user: input.user,
     keycloakRoleNames: resolvedKeycloakRoleNames,
@@ -142,43 +115,7 @@ export const applyCanonicalUserDetailProjection = async (input: {
   return keycloakProjectionDegraded ? markUserProjectionDegraded(mergedUser) : mergedUser;
 };
 
-const buildProjectedRolesByExternalName = async (
-  client: Parameters<typeof resolveRolesByExternalNames>[0],
-  instanceId: string,
-  keycloakRoleNamesBySubject: ReadonlyMap<string, readonly string[] | null>
-) => {
-  const externalRoleNames = [
-    ...new Set(
-      [...keycloakRoleNamesBySubject.values()]
-        .flatMap((roleNames) => roleNames ?? [])
-        .filter((roleName) => roleName.trim().length > 0)
-    ),
-  ];
-
-  if (externalRoleNames.length === 0) {
-    return new Map<string, IamUserRoleAssignment>();
-  }
-
-  const mappedRoles = await resolveRolesByExternalNames(client, {
-    instanceId,
-    externalRoleNames,
-  });
-
-  return new Map(
-    mappedRoles.map((role) => [
-      role.external_role_name ?? role.role_key,
-      {
-        roleId: role.id,
-        roleKey: role.role_key,
-        roleName: getRoleDisplayName(role),
-        roleLevel: role.role_level,
-      } satisfies IamUserRoleAssignment,
-    ])
-  );
-};
-
 export const applyCanonicalUserListProjection = async (input: {
-  client: Parameters<typeof resolveRolesByExternalNames>[0];
   instanceId: string;
   users: readonly IamUserListItem[];
   keycloakRoleNamesBySubject?: ReadonlyMap<string, readonly string[] | null>;
@@ -203,31 +140,15 @@ export const applyCanonicalUserListProjection = async (input: {
       )
     );
 
-  const projectedRolesByExternalName = await buildProjectedRolesByExternalName(
-    input.client,
-    input.instanceId,
-    keycloakRoleNamesBySubject
-  );
-
   return input.users.map((user) => {
     const keycloakRoleNames = keycloakRoleNamesBySubject.get(user.keycloakSubject) ?? null;
     if (keycloakRoleNames === null) {
       return user;
     }
 
-    const projectedRoles = [...new Set(keycloakRoleNames)]
-      .map((roleName) => projectedRolesByExternalName.get(roleName))
-      .filter((role): role is IamUserRoleAssignment => role !== undefined);
-    const currentRoleIds = new Set(user.roles.map((role) => role.roleId));
-    const changed =
-      currentRoleIds.size !== projectedRoles.length ||
-      projectedRoles.some((role) => !currentRoleIds.has(role.roleId));
-
-    return changed
-      ? {
-          ...user,
-          roles: projectedRoles,
-        }
-      : user;
+    return {
+      ...user,
+      keycloakRoles: [...keycloakRoleNames],
+    };
   });
 };

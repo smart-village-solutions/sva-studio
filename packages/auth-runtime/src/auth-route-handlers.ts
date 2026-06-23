@@ -976,23 +976,27 @@ const createAuthMeResponse = (
   user: Record<string, unknown>,
   resolution: AuthMeResolution,
   expiresAt?: number
-) =>
-  new Response(
+) => {
+  const permissionStatus =
+    user.permissionStatus === 'degraded' || resolution.permissionStatus === 'degraded' ? 'degraded' : 'ok';
+
+  return new Response(
     JSON.stringify({
       ...(typeof expiresAt === 'number' ? { expiresAt } : {}),
       user: {
-      ...user,
-      assignedModules: resolution.assignedModules,
-      groups: resolution.groups,
-      permissionActions: resolution.permissionActions,
-      permissionStatus: resolution.permissionStatus,
-    },
+        ...user,
+        assignedModules: resolution.assignedModules,
+        groups: resolution.groups,
+        permissionActions: resolution.permissionActions,
+        permissionStatus,
+      },
     }),
     {
       status: 200,
       headers: createAuthMeHeaders(),
     }
   );
+};
 
 const resolveLoginRequestContext = async (request?: Request) => {
   const url = request ? new URL(request.url) : null;

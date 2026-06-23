@@ -8,7 +8,7 @@ import {
   sanitizeRoleErrorMessage,
 } from './role-audit.js';
 import type { QueryClient } from './query-client.js';
-import { isTenantManageableRole } from './role-governance.js';
+import { isTenantManageableRole, isTenantTechnicalKeycloakRole } from './role-governance.js';
 import type { ManagedRoleRow } from './types.js';
 
 type IdentityRole = Awaited<ReturnType<IdentityProviderPort['getRoleByName']>> extends infer T ? Exclude<T, null> : never;
@@ -575,6 +575,12 @@ const appendManualActionEntry = (entries: ReconcileRoleEntry[], identityRole: Id
   });
 };
 
+const isTechnicalIdentityRole = (identityRole: IdentityRole): boolean =>
+  isTenantTechnicalKeycloakRole({
+    role_key: readRoleAttribute(identityRole.attributes, 'role_key') ?? identityRole.externalName,
+    external_role_name: identityRole.externalName,
+  });
+
 const appendImportedRoleEntry = (
   entries: ReconcileRoleEntry[],
   importedRole: { roleId: string },
@@ -754,6 +760,11 @@ const reconcileManagedIdentityRoles = async (input: {
 }) => {
   const { deps } = input;
   for (const identityRole of input.managedIdpRoles) {
+    if (!isTechnicalIdentityRole(identityRole)) {
+      appendManualActionEntry(input.entries, identityRole);
+      continue;
+    }
+
     if (
       shouldSkipManagedIdentityRole({
         identityRole,
@@ -872,8 +883,14 @@ const reportRemainingPotentialStudioRoles = (input: {
   dbByExternalName: ReadonlyMap<string, ManagedRoleRow>;
   entries: ReconcileRoleEntry[];
 }) => {
+  const reportedExternalNames = new Set(input.entries.map((entry) => entry.externalRoleName));
+
   for (const identityRole of input.idpRoles) {
-    if (input.idpByExternalName.has(identityRole.externalName) || input.dbByExternalName.has(identityRole.externalName)) {
+    if (input.idpByExternalName.has(identityRole.externalName)) {
+      continue;
+    }
+
+    if (reportedExternalNames.has(identityRole.externalName)) {
       continue;
     }
 
@@ -930,19 +947,21 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
     );
     return result.rows.filter((role) => isTenantManageableRole(role));
   });
+  const technicalDbRoles = dbRoles.filter((role) => isTenantTechnicalKeycloakRole(role));
 
   const listedIdpRoles = await deps.trackKeycloakCall('reconcile_list_roles', () => identityProvider.provider.listRoles());
   const idpRoles = await hydrateRoleDetailsForReconciliation(deps, identityProvider, listedIdpRoles);
   const managedIdpRoles = idpRoles.filter((role) => isStudioManagedIdentityRole(role, input.instanceId));
-  const idpByExternalName = new Map(managedIdpRoles.map((role) => [role.externalName, role]));
+  const technicalManagedIdpRoles = managedIdpRoles.filter(isTechnicalIdentityRole);
+  const idpByExternalName = new Map(technicalManagedIdpRoles.map((role) => [role.externalName, role]));
   const idpByRoleKey = new Map(
-    managedIdpRoles.flatMap((role) => {
+    technicalManagedIdpRoles.flatMap((role) => {
       const roleKey = readRoleAttribute(role.attributes, 'role_key');
       return roleKey ? ([[roleKey, role]] as const) : [];
     })
   );
-  const dbByExternalName = new Map(dbRoles.map((role) => [getRoleExternalName(role), role]));
-  const dbByRoleKey = new Map(dbRoles.map((role) => [role.role_key, role]));
+  const dbByExternalName = new Map(technicalDbRoles.map((role) => [getRoleExternalName(role), role]));
+  const dbByRoleKey = new Map(technicalDbRoles.map((role) => [role.role_key, role]));
   const matchedIdentityExternalNames = new Set<string>();
   const matchedIdentityRoleKeys = new Set<string>();
 
@@ -957,7 +976,7 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
 
   await reconcileDatabaseRoles({
     deps,
-    dbRoles,
+    dbRoles: technicalDbRoles,
     idpByExternalName,
     idpByRoleKey,
     matchedIdentityExternalNames,

@@ -3,7 +3,8 @@ import type { IdentityUserAttributes } from '../identity-provider-port.js';
 import { buildMainserverIdentityAttributes } from '../mainserver-credentials.js';
 
 import type { UpdateUserPayload, UserUpdatePlan } from './user-update-plan.js';
-import { logger, resolveIdentityProvider, trackKeycloakCall } from './shared.js';
+import { logger, trackKeycloakCall } from './shared.js';
+import type { UserUpdateIdentityProviderResolution } from './user-update-request-context.js';
 
 export const buildIdentityAttributesForUserUpdate = (input: {
   readonly existingAttributes: IdentityUserAttributes | undefined;
@@ -22,6 +23,44 @@ export const buildIdentityAttributesForUserUpdate = (input: {
   return attributes;
 };
 
+const resolveRoleCompensationDelta = (plan: UserUpdatePlan): {
+  readonly rolesToAssign: readonly string[];
+  readonly rolesToRemove: readonly string[];
+} => {
+  const previousRoleNames = new Set(plan.previousRoleNames);
+  const nextRoleNames = new Set(plan.nextRoleNames ?? []);
+
+  return {
+    rolesToAssign: [...previousRoleNames].filter((roleName) => !nextRoleNames.has(roleName)),
+    rolesToRemove: [...nextRoleNames].filter((roleName) => !previousRoleNames.has(roleName)),
+  };
+};
+
+const compensateUserRoleDelta = async (input: {
+  readonly identityProvider: UserUpdateIdentityProviderResolution;
+  readonly keycloakSubject: string;
+  readonly rolesToAssign: readonly string[];
+  readonly rolesToRemove: readonly string[];
+}): Promise<void> => {
+  if (input.rolesToAssign.length > 0) {
+    if (!input.identityProvider.provider.assignRealmRoles) {
+      throw new Error('assignRealmRoles provider capability unavailable');
+    }
+    await trackKeycloakCall('sync_roles_compensation', () =>
+      input.identityProvider.provider.assignRealmRoles!(input.keycloakSubject, input.rolesToAssign)
+    );
+  }
+
+  if (input.rolesToRemove.length > 0) {
+    if (!input.identityProvider.provider.removeRealmRoles) {
+      throw new Error('removeRealmRoles provider capability unavailable');
+    }
+    await trackKeycloakCall('sync_roles_compensation', () =>
+      input.identityProvider.provider.removeRealmRoles!(input.keycloakSubject, input.rolesToRemove)
+    );
+  }
+};
+
 export const compensateUserIdentityUpdate = async (input: {
   instanceId: string;
   requestId?: string;
@@ -31,7 +70,7 @@ export const compensateUserIdentityUpdate = async (input: {
   restoreIdentity: boolean;
   restoreRoles: boolean;
   restoreIdentityAttributes?: IdentityUserAttributes;
-  identityProvider: NonNullable<ReturnType<typeof resolveIdentityProvider>>;
+  identityProvider?: UserUpdateIdentityProviderResolution;
 }): Promise<void> => {
   const {
     identityProvider,
@@ -45,7 +84,7 @@ export const compensateUserIdentityUpdate = async (input: {
     userId,
   } = input;
 
-  if (restoreIdentity) {
+  if (restoreIdentity && identityProvider) {
     try {
       await trackKeycloakCall('update_user_compensation', () =>
         identityProvider.provider.updateUser(plan.existing.keycloakSubject, {
@@ -72,14 +111,16 @@ export const compensateUserIdentityUpdate = async (input: {
     }
   }
 
-  if (!restoreRoles) {
+  if (!restoreRoles || !identityProvider) {
     return;
   }
 
   try {
-    await trackKeycloakCall('sync_roles_compensation', () =>
-      identityProvider.provider.syncRoles(plan.existing.keycloakSubject, [...plan.previousRoleNames])
-    );
+    await compensateUserRoleDelta({
+      identityProvider,
+      keycloakSubject: plan.existing.keycloakSubject,
+      ...resolveRoleCompensationDelta(plan),
+    });
   } catch (compensationError) {
     logger.error('IAM user role compensation failed', {
       workspace_id: instanceId,

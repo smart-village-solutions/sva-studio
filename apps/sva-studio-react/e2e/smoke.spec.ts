@@ -41,6 +41,21 @@ const isAcceptedAuthRedirect = (location: string | null | undefined) =>
     )
   );
 
+const resolvePlaywrightServerPort = () => {
+  if (process.env.PLAYWRIGHT_PORT) {
+    return process.env.PLAYWRIGHT_PORT;
+  }
+
+  const configuredBaseUrl = process.env.PLAYWRIGHT_DE_MUSTERHAUSEN_BASE_URL ?? process.env.PLAYWRIGHT_BASE_URL;
+
+  if (!configuredBaseUrl) {
+    return '4173';
+  }
+
+  const parsedBaseUrl = new URL(configuredBaseUrl);
+  return parsedBaseUrl.port || (parsedBaseUrl.protocol === 'https:' ? '443' : '80');
+};
+
 const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
   await expect(page.getByRole('heading', { name: 'Schnittstellen', exact: true })).toBeVisible({ timeout });
 };
@@ -278,13 +293,19 @@ test('GET /auth/login returns redirect response', async ({ request }) => {
 });
 
 test('tenant-host login fails closed when canonical auth redirect prerequisites are unavailable', async ({ request }) => {
-  const playwrightPort = process.env.PLAYWRIGHT_PORT ?? '4173';
+  const playwrightPort = resolvePlaywrightServerPort();
   const tenantLoginUrl = process.env.PLAYWRIGHT_TENANT_LOGIN_URL
     ?? `http://demo2.studio.localhost:${playwrightPort}/auth/login?returnTo=%2Fadmin%2Finstances`;
   const parsedTenantLoginUrl = new URL(tenantLoginUrl);
+  const tenantRequestPort = parsedTenantLoginUrl.port
+    || (parsedTenantLoginUrl.hostname === 'demo2.studio.localhost'
+      ? playwrightPort
+      : parsedTenantLoginUrl.protocol === 'https:'
+        ? '443'
+        : '80');
   const requestUrl =
     parsedTenantLoginUrl.hostname === 'demo2.studio.localhost'
-      ? new URL(`${parsedTenantLoginUrl.pathname}${parsedTenantLoginUrl.search}`, `http://127.0.0.1:${playwrightPort}`).toString()
+      ? new URL(`${parsedTenantLoginUrl.pathname}${parsedTenantLoginUrl.search}`, `http://127.0.0.1:${tenantRequestPort}`).toString()
       : tenantLoginUrl;
 
   const response = await request.get(requestUrl, {

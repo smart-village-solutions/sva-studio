@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { dbWriteFailedErrorBody } from './handler-test-helpers.js';
 import { createDeleteRoleHandlerInternal, type DeleteRoleHandlerDeps } from './role-delete-handler.js';
 
 const actor = {
@@ -29,6 +30,16 @@ const existingRole = {
   role_level: 20,
 };
 
+const systemAdminRole = {
+  ...existingRole,
+  role_key: 'system_admin',
+  role_name: 'system_admin',
+  display_name: 'System Admin',
+  external_role_name: 'system_admin',
+  is_system_role: true,
+  role_level: 90,
+};
+
 const identityProvider = {
   provider: {
     assignRealmRoles: vi.fn(async () => undefined),
@@ -44,6 +55,10 @@ const buildAttributes = (input: { readonly instanceId: string; readonly roleKey:
   managedBy: 'studio' as const,
   ...input,
 });
+
+const rejectDbWrite = async () => {
+  throw new Error('db write failed');
+};
 
 const createDeps = (
   overrides: Partial<DeleteRoleHandlerDeps<ReturnType<typeof buildAttributes>, typeof identityProvider, typeof existingRole>> = {}
@@ -75,6 +90,13 @@ const createDeps = (
     ...overrides,
   }) satisfies DeleteRoleHandlerDeps<ReturnType<typeof buildAttributes>, typeof identityProvider, typeof existingRole>;
 
+const runDeleteRoleRequest = (
+  deps: DeleteRoleHandlerDeps<ReturnType<typeof buildAttributes>, typeof identityProvider, typeof existingRole>
+) => {
+  const handler = createDeleteRoleHandlerInternal(deps);
+  return handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'DELETE' }), ctx);
+};
+
 describe('createDeleteRoleHandlerInternal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -83,11 +105,10 @@ describe('createDeleteRoleHandlerInternal', () => {
     identityProvider.provider.deleteRole.mockClear();
   });
 
-  it('deletes the role in Keycloak and locally, then returns the deleted role summary', async () => {
+  it('deletes tenant roles locally without deleting Keycloak roles', async () => {
     const deps = createDeps();
-    const handler = createDeleteRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'DELETE' }), ctx);
+    const response = await runDeleteRoleRequest(deps);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -100,7 +121,8 @@ describe('createDeleteRoleHandlerInternal', () => {
       },
       requestId: 'req-delete-role',
     });
-    expect(identityProvider.provider.deleteRole).toHaveBeenCalledWith('editor');
+    expect(deps.requireRoleIdentityProvider).not.toHaveBeenCalled();
+    expect(identityProvider.provider.deleteRole).not.toHaveBeenCalled();
     expect(deps.deleteRoleFromDatabase).toHaveBeenCalledWith({
       actor,
       roleId: 'role-1',
@@ -109,7 +131,7 @@ describe('createDeleteRoleHandlerInternal', () => {
     });
   });
 
-  it('treats identity-provider 404 as already deleted and still removes local state', async () => {
+  it('does not require Keycloak for local role deletion', async () => {
     const missingRoleError = new Error('missing role');
     const deps = createDeps({
       isIdentityRoleNotFoundError: vi.fn((error) => error === missingRoleError),
@@ -120,16 +142,47 @@ describe('createDeleteRoleHandlerInternal', () => {
         return work();
       }),
     });
-    const handler = createDeleteRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'DELETE' }), ctx);
+    const response = await runDeleteRoleRequest(deps);
 
     expect(response.status).toBe(200);
     expect(deps.deleteRoleFromDatabase).toHaveBeenCalled();
+    expect(identityProvider.provider.deleteRole).not.toHaveBeenCalled();
+  });
+
+  it('returns DB_WRITE_FAILED without Keycloak compensation when local deletion fails', async () => {
+    const deps = createDeps({
+      deleteRoleFromDatabase: vi.fn(rejectDbWrite),
+    });
+
+    const response = await runDeleteRoleRequest(deps);
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toMatchObject(dbWriteFailedErrorBody('internal_error', 'req-delete-role'));
+    expect(deps.requireRoleIdentityProvider).not.toHaveBeenCalled();
+    expect(identityProvider.provider.deleteRole).not.toHaveBeenCalled();
+    expect(identityProvider.provider.createRole).not.toHaveBeenCalled();
+    expect(deps.logger.error).toHaveBeenCalledWith(
+      'Role delete database write failed',
+      expect.objectContaining({
+        operation: 'delete_role',
+        error_code: 'DB_WRITE_FAILED',
+        error: 'db write failed',
+      })
+    );
   });
 
   it('marks sync failure when Keycloak deletion fails with a non-404 error', async () => {
     const deps = createDeps({
+      resolveDeletableRole: vi.fn(async () => ({
+        ...existingRole,
+        role_key: 'system_admin',
+        role_name: 'system_admin',
+        display_name: 'System Admin',
+        external_role_name: 'system_admin',
+        is_system_role: true,
+        role_level: 90,
+      })),
       trackKeycloakCall: vi.fn(async (operation, work) => {
         if (operation === 'delete_role') {
           throw new Error('keycloak down');
@@ -137,16 +190,15 @@ describe('createDeleteRoleHandlerInternal', () => {
         return work();
       }),
     });
-    const handler = createDeleteRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'DELETE' }), ctx);
+    const response = await runDeleteRoleRequest(deps);
 
     expect(response.status).toBe(503);
     expect(deps.markDeleteRoleSyncState).toHaveBeenCalledWith({
       actor,
       roleId: 'role-1',
-      roleKey: 'editor',
-      externalRoleName: 'editor',
+      roleKey: 'system_admin',
+      externalRoleName: 'system_admin',
       result: 'failure',
       eventType: 'role.sync_failed',
       errorCode: 'IDP_UNAVAILABLE',
@@ -154,44 +206,66 @@ describe('createDeleteRoleHandlerInternal', () => {
     });
   });
 
+  it('deletes technical roles in Keycloak by canonical role key when legacy aliases exist', async () => {
+    const deps = createDeps({
+      resolveDeletableRole: vi.fn(async () => ({
+        ...systemAdminRole,
+        external_role_name: 'legacy-system-admin',
+      })),
+    });
+
+    const response = await runDeleteRoleRequest(deps);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        roleKey: 'system_admin',
+        externalRoleName: 'system_admin',
+      },
+    });
+    expect(identityProvider.provider.deleteRole).toHaveBeenCalledWith('system_admin');
+    expect(deps.deleteRoleFromDatabase).toHaveBeenCalledWith({
+      actor,
+      roleId: 'role-1',
+      roleKey: 'system_admin',
+      externalRoleName: 'system_admin',
+    });
+  });
+
   it('recreates the role in Keycloak when local deletion fails', async () => {
     const deps = createDeps({
-      deleteRoleFromDatabase: vi.fn(async () => {
-        throw new Error('db write failed');
-      }),
+      resolveDeletableRole: vi.fn(async () => systemAdminRole),
+      deleteRoleFromDatabase: vi.fn(rejectDbWrite),
     });
-    const handler = createDeleteRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'DELETE' }), ctx);
+    const response = await runDeleteRoleRequest(deps);
 
     expect(response.status).toBe(500);
     expect(identityProvider.provider.createRole).toHaveBeenCalledWith({
-      externalName: 'editor',
+      externalName: 'system_admin',
       description: 'Can edit content',
       attributes: {
         managedBy: 'studio',
         instanceId: 'de-musterhausen',
-        roleKey: 'editor',
-        displayName: 'Editor',
+        roleKey: 'system_admin',
+        displayName: 'System Admin',
       },
     });
   });
 
   it('replays direct user role mappings when compensation recreates a deleted role', async () => {
     const deps = createDeps({
-      deleteRoleFromDatabase: vi.fn(async () => {
-        throw new Error('db write failed');
-      }),
+      resolveDeletableRole: vi.fn(async () => systemAdminRole),
+      deleteRoleFromDatabase: vi.fn(rejectDbWrite),
       listDirectRoleAssignmentSubjects: vi.fn(async () => ['kc-user-1', 'kc-user-2']),
     });
-    const handler = createDeleteRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'DELETE' }), ctx);
+    const response = await runDeleteRoleRequest(deps);
 
     expect(response.status).toBe(500);
     expect(identityProvider.provider.createRole).toHaveBeenCalledOnce();
     expect(identityProvider.provider.assignRealmRoles).toHaveBeenCalledTimes(2);
-    expect(identityProvider.provider.assignRealmRoles).toHaveBeenNthCalledWith(1, 'kc-user-1', ['editor']);
-    expect(identityProvider.provider.assignRealmRoles).toHaveBeenNthCalledWith(2, 'kc-user-2', ['editor']);
+    expect(identityProvider.provider.assignRealmRoles).toHaveBeenNthCalledWith(1, 'kc-user-1', ['system_admin']);
+    expect(identityProvider.provider.assignRealmRoles).toHaveBeenNthCalledWith(2, 'kc-user-2', ['system_admin']);
   });
 });

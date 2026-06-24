@@ -145,6 +145,37 @@ describe('content list api dispatch', () => {
     );
   });
 
+  it('accepts POST /api/v1/iam/contents/refresh without a request body', async () => {
+    state.refreshProjectedContents.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            status: 'completed',
+            syncStates: [],
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+    );
+
+    const response = await dispatchAggregatedContentListRequest(
+      new Request('https://studio.test/api/v1/iam/contents/refresh', {
+        method: 'POST',
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.refreshProjectedContents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activeOrganizationId: 'org-1',
+      }),
+      {}
+    );
+  });
+
   it('returns a deterministic list error when the projected list handler throws', async () => {
     state.listProjectedContents.mockRejectedValue(new Error('projection failed'));
 

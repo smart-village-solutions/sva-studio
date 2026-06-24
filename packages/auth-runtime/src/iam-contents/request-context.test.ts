@@ -172,6 +172,35 @@ describe('content request authorization context', () => {
     );
   });
 
+  it('uses the plugin resource type for plugin-scoped read actions', async () => {
+    await expect(
+      authorizeContentAction(
+        {
+          instanceId: 'instance-1',
+          keycloakSubject: 'subject-1',
+          actorDisplayName: 'Actor',
+          activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+        },
+        'news.read',
+        {
+          contentId: 'content-1',
+          contentType: 'news.article',
+        }
+      )
+    ).resolves.toBeNull();
+
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'news.read',
+        resource: expect.objectContaining({
+          type: 'news',
+          id: 'content-1',
+        }),
+      }),
+      []
+    );
+  });
+
   it('returns forbidden and database_unavailable responses for denied or failing authorization checks', async () => {
     evaluateAuthorizeDecisionMock.mockReturnValueOnce({ allowed: false, reason: 'denied' });
     const denied = await authorizeContentAction(

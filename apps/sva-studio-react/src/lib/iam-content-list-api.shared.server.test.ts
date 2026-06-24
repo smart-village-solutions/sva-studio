@@ -27,6 +27,20 @@ describe('iam content list api shared helpers', () => {
     });
   });
 
+  it('preserves the empty visible-type sentinel when it is the only requested type', () => {
+    expect(
+      readContentListQuery(
+        new Request(`https://studio.test/api/content?visibleType=${EMPTY_VISIBLE_TYPE_SENTINEL}`)
+      )
+    ).toEqual({
+      page: 1,
+      pageSize: 25,
+      visibleTypes: [EMPTY_VISIBLE_TYPE_SENTINEL],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+  });
+
   it('falls back for invalid query, error, and content type values', async () => {
     expect(
       readContentListQuery(

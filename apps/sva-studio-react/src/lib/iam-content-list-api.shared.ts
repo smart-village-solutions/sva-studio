@@ -61,10 +61,12 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
   const statusValue = url.searchParams.get('status')?.trim();
   const sortByValue = url.searchParams.get('sortBy')?.trim();
   const sortDirectionValue = url.searchParams.get('sortDirection')?.trim();
-  const visibleTypes = url.searchParams
+  const requestedVisibleTypes = url.searchParams
     .getAll('visibleType')
     .map((value) => value.trim())
-    .filter((value) => value.length > 0 && value !== EMPTY_VISIBLE_TYPE_SENTINEL);
+    .filter((value) => value.length > 0);
+  const visibleTypes = requestedVisibleTypes.filter((value) => value !== EMPTY_VISIBLE_TYPE_SENTINEL);
+  const hasEmptyVisibleTypeSentinel = requestedVisibleTypes.includes(EMPTY_VISIBLE_TYPE_SENTINEL);
 
   return {
     page,
@@ -78,7 +80,11 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
     statusValue === 'archived'
       ? { status: statusValue }
       : {}),
-    ...(visibleTypes.length > 0 ? { visibleTypes } : {}),
+    ...(visibleTypes.length > 0
+      ? { visibleTypes }
+      : hasEmptyVisibleTypeSentinel
+        ? { visibleTypes: [EMPTY_VISIBLE_TYPE_SENTINEL] }
+        : {}),
     sortBy:
       sortByValue === 'title' ||
       sortByValue === 'contentType' ||

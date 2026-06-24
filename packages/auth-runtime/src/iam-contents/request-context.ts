@@ -47,6 +47,19 @@ type ContentAuthorizationOptions = {
 const contentPermissionUnavailable = (requestId?: string): Response =>
   createApiError(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.', requestId);
 
+const deriveAuthorizeResourceType = (action: ContentAuthorizationAction): AuthorizeRequest['resource']['type'] => {
+  if (action.startsWith('news.')) {
+    return 'news';
+  }
+  if (action.startsWith('events.')) {
+    return 'events';
+  }
+  if (action.startsWith('poi.')) {
+    return 'poi';
+  }
+  return 'content';
+};
+
 const buildContentAuthorizeRequest = (
   actor: ResolvedContentActor['actor'],
   action: ContentAuthorizationAction,
@@ -57,7 +70,7 @@ const buildContentAuthorizeRequest = (
     instanceId: actor.instanceId,
     action,
     resource: {
-      type: 'content',
+      type: deriveAuthorizeResourceType(action),
       ...(resource.contentId ? { id: resource.contentId } : {}),
       ...(organizationId ? { organizationId } : {}),
       ...((resource.contentType || resource.createdByAccountId || organizationId)

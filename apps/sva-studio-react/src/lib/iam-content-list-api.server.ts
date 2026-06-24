@@ -35,7 +35,8 @@ const handleProjectedContentRefresh = async (request: Request): Promise<Response
     }
 
     try {
-      const payload = (await request.json()) as {
+      const rawBody = await request.text();
+      const payload = (rawBody.length > 0 ? JSON.parse(rawBody) : {}) as {
         readonly visibleTypes?: unknown;
         readonly force?: unknown;
       };

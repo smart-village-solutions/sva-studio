@@ -1053,6 +1053,86 @@ describe('content list projection', () => {
     });
   });
 
+  it('does not block unfiltered lists when another scope is missing a mainserver snapshot', async () => {
+    projectionRows = [
+      {
+        id: 'content-1',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        content_type: 'generic',
+        title: 'Visible',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'account-9',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'account-9',
+        author_display_name: 'Alice',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'iam',
+        source_entity_type: 'iam.contents',
+        source_entity_id: 'content-1',
+      },
+      {
+        id: 'news-foreign',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-2',
+        owner_subject_id: null,
+        content_type: 'news.article',
+        title: 'Foreign',
+        published_at: '2026-06-21T09:00:00.000Z',
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_name: 'Redaktion',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-news',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'mainserver',
+        source_entity_type: 'news.article',
+        source_entity_id: 'news-foreign',
+      },
+    ];
+    syncStates.set('news.article', {
+      last_started_at: null,
+      last_succeeded_at: '2026-06-20T10:00:00.000Z',
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 1,
+    });
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: expect.arrayContaining([expect.objectContaining({ id: 'content-1' })]),
+      pagination: {
+        page: 1,
+        pageSize: 25,
+      },
+      requestId: 'req-1',
+    });
+  });
+
   it('treats the empty visible type sentinel as an empty list instead of forbidden', async () => {
     const response = await listProjectedContents(ctx, {
       page: 1,
@@ -1377,7 +1457,7 @@ describe('content list projection', () => {
     expect(payload.data.syncStates).toEqual([
       expect.objectContaining({
         contentType: 'poi.point-of-interest',
-        hasSnapshot: false,
+        hasSnapshot: true,
       }),
     ]);
     expect(projectionRows).toEqual([]);

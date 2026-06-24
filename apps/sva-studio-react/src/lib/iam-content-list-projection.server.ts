@@ -659,13 +659,13 @@ const computeProjectionSyncState = async (
   let hasSnapshot = hasGlobalSnapshot;
 
   if (hasGlobalSnapshot) {
-    hasSnapshot =
-      (await countProjectedRowsForScope(
-        target.instanceId,
-        target.contentType,
-        target.keycloakSubject,
-        target.organizationId
-      )) > 0;
+    const projectedRowsForScope = await countProjectedRowsForScope(
+      target.instanceId,
+      target.contentType,
+      target.keycloakSubject,
+      target.organizationId
+    );
+    hasSnapshot = projectedRowsForScope > 0 || (syncState?.projected_count ?? 0) === 0;
   }
 
   return {
@@ -1236,7 +1236,11 @@ export const listProjectedContents = async (
     ? await computeProjectionSyncStates(projectionTargets)
     : syncStates;
 
-  const blockingSyncGap = responseSyncStates.find((syncState) => syncState.hasSnapshot === false);
+  const shouldBlockOnMissingSnapshot =
+    Boolean(query.type) || (query.visibleTypes?.length ?? 0) > 0;
+  const blockingSyncGap = shouldBlockOnMissingSnapshot
+    ? responseSyncStates.find((syncState) => syncState.hasSnapshot === false)
+    : undefined;
   if (blockingSyncGap) {
     return createListErrorResponse(
       503,

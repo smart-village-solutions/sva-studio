@@ -3,7 +3,6 @@ import {
   MainserverApiError,
   requestMainserverJson,
   type MainserverErrorFactory,
-  type MainserverResponseMeta,
 } from './mainserver-request.js';
 
 export type MainserverListQuery = Readonly<{
@@ -15,8 +14,8 @@ export {
   MainserverApiError,
   requestMainserverJson,
   type MainserverErrorFactory,
-  type MainserverResponseMeta,
 } from './mainserver-request.js';
+export type { MainserverResponseMeta } from './mainserver-request.js';
 
 export type MainserverCrudClientOptions<
   TItem,

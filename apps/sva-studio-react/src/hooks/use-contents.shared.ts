@@ -1,8 +1,10 @@
+import type { IamContentDetail, IamContentHistoryEntry } from '@sva/core';
+
 import { createOperationLogger } from '../lib/browser-operation-logging';
 
 export type UseContentDetailResult = {
-  readonly content: import('@sva/core').IamContentDetail | null;
-  readonly history: readonly import('@sva/core').IamContentHistoryEntry[];
+  readonly content: IamContentDetail | null;
+  readonly history: readonly IamContentHistoryEntry[];
   readonly isLoading: boolean;
   readonly error: import('../lib/iam-api').IamHttpError | null;
   readonly mutationError: import('../lib/iam-api').IamHttpError | null;

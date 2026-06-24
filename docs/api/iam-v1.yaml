@@ -1329,6 +1329,9 @@ paths:
   /api/v1/iam/contents:
     get:
       summary: Inhalte auflisten
+      description: >
+        Führende Listen-API für `/admin/content`. Die Route liest aus der serverseitigen
+        Content-Projektion und stößt keinen synchronen Mainserver-Refresh mehr an.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
@@ -1377,7 +1380,13 @@ paths:
           description: Wiederholbarer Parameter zur Begrenzung auf sichtbare Inhaltstypen.
       responses:
         '200':
-          description: Inhaltsliste.
+          description: >
+            Inhaltsliste inklusive optionaler Projektions-Metadaten für Mainserver-Typen,
+            zum Beispiel Freshness-, Fehler- und Laufstatus des Hintergrund-Syncs.
+        '503':
+          description: >
+            Kein verwertbarer Snapshot für mindestens einen angefragten Mainserver-Typ
+            vorhanden oder harter Listenfehler im Host.
     post:
       summary: Inhalt anlegen
       parameters:
@@ -1395,6 +1404,43 @@ paths:
       responses:
         '201':
           description: Inhalt erstellt.
+  /api/v1/iam/contents/refresh:
+    post:
+      summary: Content-Projektion aktualisieren
+      description: >
+        Startet oder dedupliziert einen serverseitigen Refresh der Mainserver-Anteile
+        für die Content-Übersicht. Gedacht für die manuelle Aktualisierung von
+        `/admin/content`.
+      parameters:
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                visibleTypes:
+                  type: array
+                  items:
+                    type: string
+                  description: >
+                    Sichtbare Content-Typen der aktuellen Tabellenansicht. Relevante
+                    Mainserver-Typen werden daraus serverseitig normalisiert.
+                force:
+                  type: boolean
+                  description: Ignoriert das Freshness-Fenster und erzwingt einen Refresh-Versuch.
+      responses:
+        '200':
+          description: >
+            Refresh-Vertrag mit stabilem Statuswert `accepted`, `already_running`,
+            `completed` oder `failed`.
   /api/v1/iam/contents/{contentId}:
     get:
       summary: Inhaltsdetail

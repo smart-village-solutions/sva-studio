@@ -160,6 +160,18 @@ export const contentDEResources = {
     accessLoadError:
       'Der globale Inhaltskontext konnte nicht vollständig geladen werden. Einzelne Statusangaben bleiben erhalten.',
   },
+  sync: {
+    refresh: 'Aktualisieren',
+    refreshing: 'Synchronisiert ...',
+    running: 'Die Mainserver-Inhalte werden gerade im Hintergrund synchronisiert.',
+    runningWithSnapshot:
+      'Die Mainserver-Inhalte werden gerade im Hintergrund synchronisiert. Angezeigt wird der letzte erfolgreiche Stand von {{value}}.',
+    stale:
+      'Die angezeigten Mainserver-Inhalte stammen aus dem letzten erfolgreichen Abgleich von {{value}}. Ein Hintergrundabgleich wurde angestoßen.',
+    staleWithError:
+      'Die angezeigten Mainserver-Inhalte stammen aus dem letzten erfolgreichen Abgleich von {{value}}. Der letzte Hintergrundabgleich meldete {{errorCode}}.',
+    fresh: 'Letzter erfolgreicher Mainserver-Abgleich: {{value}}.',
+  },
   errors: {
     forbidden: 'Unzureichende Berechtigungen für diese Inhaltsaktion.',
     csrfValidationFailed:

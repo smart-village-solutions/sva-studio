@@ -16,6 +16,12 @@ export type ProjectionReadVisibilityRule = {
   readonly denyOwn: boolean;
 };
 
+const ORGANIZATION_OPTIONAL_CONTENT_TYPES = new Set([
+  'events.event-record',
+  'news.article',
+  'poi.point-of-interest',
+]);
+
 const buildReadAction = (contentType: string): string =>
   contentType === 'news.article' || contentType === 'events.event-record' || contentType === 'poi.point-of-interest'
     ? `${contentType.split('.')[0] ?? 'content'}.read`
@@ -28,13 +34,27 @@ const uniqueSortedStrings = (values: readonly string[]) => [...new Set(values)].
 const matchesReadPermission = (permission: EffectivePermission, action: string): boolean =>
   permission.action === action && permission.resourceType === buildReadResourceType(action) && !permission.resourceId;
 
+const normalizePermissionForProjectionRead = (
+  contentType: string,
+  permission: EffectivePermission
+): EffectivePermission =>
+  ORGANIZATION_OPTIONAL_CONTENT_TYPES.has(contentType) && permission.organizationId
+    ? {
+        ...permission,
+        organizationId: undefined,
+        ...(permission.accessScope === 'organization' ? { accessScope: undefined } : {}),
+      }
+    : permission;
+
 export const buildProjectionReadVisibilityRules = (
   contentTypes: readonly string[],
   permissions: readonly EffectivePermission[]
 ): readonly ProjectionReadVisibilityRule[] =>
   contentTypes.map((contentType) => {
     const action = buildReadAction(contentType);
-    const matchingPermissions = permissions.filter((permission) => matchesReadPermission(permission, action));
+    const matchingPermissions = permissions
+      .filter((permission) => matchesReadPermission(permission, action))
+      .map((permission) => normalizePermissionForProjectionRead(contentType, permission));
     const allowPermissions = matchingPermissions.filter((permission) => permission.effect !== 'deny');
     const denyPermissions = matchingPermissions.filter((permission) => permission.effect === 'deny');
 

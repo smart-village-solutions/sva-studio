@@ -15,6 +15,8 @@ import {
   getContentHistory,
   IamHttpError,
   listContents,
+  refreshProjectedContents,
+  type IamContentListMetadata,
   updateContent,
   type CreateContentPayload,
   type UpdateContentPayload,
@@ -31,10 +33,13 @@ import { useIamAdminList } from './use-iam-admin-list';
 type UseContentsResult = {
   readonly contents: readonly IamContentListItem[];
   readonly pagination: ApiPagination;
+  readonly metadata: IamContentListMetadata | null;
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
   readonly mutationError: IamHttpError | null;
   readonly refetch: () => Promise<void>;
+  readonly refreshProjection: (input?: { readonly force?: boolean }) => Promise<boolean>;
+  readonly refreshProjectionPending: boolean;
   readonly clearMutationError: () => void;
   readonly archiveContents: (input: ContentBulkMutationInput) => Promise<ContentBulkMutationResult>;
   readonly deleteContents: (input: ContentBulkMutationInput) => Promise<ContentBulkMutationResult>;
@@ -77,6 +82,10 @@ export type ContentBulkMutationResult = Readonly<{
   readonly skippedCount: number;
 }>;
 
+type UseContentsOptions = Readonly<{
+  readonly enabled?: boolean;
+}>;
+
 const DEFAULT_CONTENT_PAGINATION = {
   page: 1,
   pageSize: 25,
@@ -86,12 +95,15 @@ const DEFAULT_CONTENT_PAGINATION = {
 const contentsLogger = createOperationLogger('contents-hook', 'debug');
 const PERMISSION_INVALIDATED_EVENT = 'permission_invalidated_after_401_or_403';
 
-export const useContents = (query: IamContentListQuery): UseContentsResult => {
+export const useContents = (query: IamContentListQuery, options: UseContentsOptions = {}): UseContentsResult => {
   const { invalidatePermissions } = useAuth();
+  const enabled = options.enabled ?? true;
   const [pagination, setPagination] = React.useState<ApiPagination>(DEFAULT_CONTENT_PAGINATION);
+  const [metadata, setMetadata] = React.useState<IamContentListMetadata | null>(null);
+  const [refreshProjectionPending, setRefreshProjectionPending] = React.useState(false);
   const listItems = React.useCallback(() => listContents(query), [query]);
   const handleLoaded = React.useCallback(
-    (response: { readonly pagination?: ApiPagination }) => {
+    (response: { readonly pagination?: ApiPagination; readonly metadata?: IamContentListMetadata }) => {
       const nextPagination = response.pagination ?? DEFAULT_CONTENT_PAGINATION;
       setPagination((currentPagination) =>
         currentPagination.page === nextPagination.page &&
@@ -100,12 +112,23 @@ export const useContents = (query: IamContentListQuery): UseContentsResult => {
           ? currentPagination
           : nextPagination
       );
+      setMetadata(response.metadata ?? null);
     },
     []
   );
   const adminList = useIamAdminList(listItems, invalidatePermissions, {
+    enabled,
     onLoaded: handleLoaded,
   });
+
+  React.useEffect(() => {
+    if (enabled) {
+      return;
+    }
+
+    setMetadata(null);
+    setPagination(DEFAULT_CONTENT_PAGINATION);
+  }, [enabled]);
 
   const runBulkMutation = React.useCallback(
     async (
@@ -191,13 +214,55 @@ export const useContents = (query: IamContentListQuery): UseContentsResult => {
     [runBulkMutation]
   );
 
+  const refreshProjectionState = React.useMemo(
+    () =>
+      metadata?.mainserverSyncStates
+        ?.map((entry) => entry.contentType)
+        .filter((contentType): contentType is string => typeof contentType === 'string') ??
+      query.visibleTypes?.filter((contentType): contentType is string => typeof contentType === 'string') ??
+      [],
+    [metadata, query.visibleTypes]
+  );
+
+  const refreshProjectionForList = React.useCallback(
+    async (input: { readonly force?: boolean } = {}) => {
+      setRefreshProjectionPending(true);
+      try {
+        await refreshProjectedContents({
+          ...(refreshProjectionState.length > 0 ? { visibleTypes: refreshProjectionState } : {}),
+          ...(input.force ? { force: true } : {}),
+        });
+        await adminList.refetch();
+        return true;
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 401 || resolvedError.status === 403) {
+          await invalidatePermissions();
+          contentsLogger.info(PERMISSION_INVALIDATED_EVENT, {
+            operation: 'refresh_projected_contents',
+            status: resolvedError.status,
+            error_code: resolvedError.code,
+          });
+        }
+        adminList.setError(resolvedError);
+        return false;
+      } finally {
+        setRefreshProjectionPending(false);
+      }
+    },
+    [adminList, invalidatePermissions, refreshProjectionState]
+  );
+
   return {
     contents: adminList.items,
     pagination,
+    metadata,
     isLoading: adminList.isLoading,
     error: adminList.error,
     mutationError: adminList.mutationError,
     refetch: adminList.refetch,
+    refreshProjection: refreshProjectionForList,
+    refreshProjectionPending,
     clearMutationError: adminList.clearMutationError,
     archiveContents,
     deleteContents,

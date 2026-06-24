@@ -69,6 +69,40 @@ describe('iam content list visibility', () => {
     });
   });
 
+  it('widens organization-scoped plugin read permissions for unscoped projected mainserver rows', () => {
+    const [rule] = buildProjectionReadVisibilityRules(
+      ['news.article'],
+      [
+        createPermission({
+          action: 'news.read',
+          resourceType: 'news',
+          organizationId: 'org-1',
+          accessScope: 'organization',
+        }),
+      ]
+    );
+
+    expect(rule).toEqual({
+      contentType: 'news.article',
+      allowGlobal: true,
+      allowOrganizationIds: [],
+      allowOwn: false,
+      denyGlobal: false,
+      denyOrganizationIds: [],
+      denyOwn: false,
+    });
+    expect(
+      isProjectionRowVisibleForRead(
+        rule,
+        {
+          contentType: 'news.article',
+          createdByAccountId: 'account-a',
+        },
+        undefined
+      )
+    ).toBe(true);
+  });
+
   it('evaluates row visibility with deny precedence and own fallback', () => {
     const [rule] = buildProjectionReadVisibilityRules(
       ['generic'],

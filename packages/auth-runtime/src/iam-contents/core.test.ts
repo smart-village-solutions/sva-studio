@@ -286,7 +286,7 @@ describe('content core authorization', () => {
     expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
       2,
       actor,
-      'content.read',
+      'news.read',
       expect.objectContaining({
         contentId: 'content-1',
         contentType: 'news.article',
@@ -295,7 +295,7 @@ describe('content core authorization', () => {
     expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
       3,
       actor,
-      'content.read',
+      'poi.read',
       expect.objectContaining({
         contentId: 'content-2',
         contentType: 'poi.point-of-interest',
@@ -348,7 +348,7 @@ describe('content core authorization', () => {
     expect(response.status).toBe(200);
     expect(authorizeContentActionMock).toHaveBeenCalledWith(
       actor,
-      'content.read',
+      'news.read',
       expect.objectContaining({
         contentId: 'content-1',
         contentType: 'news.article',
@@ -393,6 +393,45 @@ describe('content core authorization', () => {
 
     expect(response.status).toBe(403);
     expect(loadContentDetailMock).not.toHaveBeenCalled();
+  });
+
+  it('uses plugin-specific read actions for scope prechecks and list items', async () => {
+    const poiItem = item('content-2', '11111111-1111-4111-8111-111111111111');
+    poiItem.contentType = 'poi.point-of-interest';
+
+    loadContentListScopesMock.mockResolvedValue(['11111111-1111-4111-8111-111111111111']);
+    loadContentListItemsMock.mockResolvedValue({
+      items: [poiItem],
+      total: 1,
+    });
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    const response = await listContentsInternal(
+      new Request(
+        'https://studio.test/api/v1/iam/contents?page=1&pageSize=25&type=poi.point-of-interest&visibleType=poi.point-of-interest'
+      ),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      1,
+      actor,
+      'poi.read',
+      expect.objectContaining({
+        organizationId: '11111111-1111-4111-8111-111111111111',
+        createdByAccountId: 'account-1',
+      })
+    );
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      2,
+      actor,
+      'poi.read',
+      expect.objectContaining({
+        contentId: 'content-2',
+        contentType: 'poi.point-of-interest',
+      })
+    );
   });
 
   it('returns not found when detail data disappears after authorization', async () => {

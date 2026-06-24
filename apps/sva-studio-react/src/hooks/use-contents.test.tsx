@@ -13,6 +13,7 @@ const contentListQuery = {
 
 const listContentsMock = vi.fn();
 const createContentMock = vi.fn();
+const refreshProjectedContentsMock = vi.fn();
 const getContentMock = vi.fn();
 const getContentHistoryMock = vi.fn();
 const updateContentMock = vi.fn();
@@ -49,6 +50,7 @@ vi.mock('../lib/iam-api', () => ({
   },
   listContents: (...args: unknown[]) => listContentsMock(...args),
   createContent: (...args: unknown[]) => createContentMock(...args),
+  refreshProjectedContents: (...args: unknown[]) => refreshProjectedContentsMock(...args),
   getContent: (...args: unknown[]) => getContentMock(...args),
   getContentHistory: (...args: unknown[]) => getContentHistoryMock(...args),
   updateContent: (...args: unknown[]) => updateContentMock(...args),
@@ -71,6 +73,7 @@ describe('useContents', () => {
   beforeEach(() => {
     listContentsMock.mockReset();
     createContentMock.mockReset();
+    refreshProjectedContentsMock.mockReset();
     getContentMock.mockReset();
     getContentHistoryMock.mockReset();
     updateContentMock.mockReset();
@@ -98,6 +101,20 @@ describe('useContents', () => {
         },
       ],
       pagination: { page: 1, pageSize: 1, total: 1 },
+      metadata: {
+        mainserverSyncStates: [
+          {
+            contentType: 'news.article',
+            lastSucceededAt: '2026-06-24T08:00:00.000Z',
+            isStale: false,
+            isSyncRunning: false,
+            hasSnapshot: true,
+          },
+        ],
+        hasStaleMainserverContent: false,
+        hasBlockingSyncGap: false,
+        hasRunningMainserverSync: false,
+      },
     });
 
     const { result } = renderHook(() => useContents(contentListQuery));
@@ -105,7 +122,99 @@ describe('useContents', () => {
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
       expect(result.current.contents).toHaveLength(1);
+      expect(result.current.metadata?.mainserverSyncStates).toHaveLength(1);
     });
+  });
+
+  it('refreshes the projected mainserver snapshot and refetches the current list', async () => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    listContentsMock
+      .mockResolvedValueOnce({
+        data: [],
+        pagination: { page: 1, pageSize: 25, total: 0 },
+        metadata: {
+          mainserverSyncStates: [
+            {
+              contentType: 'news.article',
+              lastSucceededAt: '2026-06-24T08:00:00.000Z',
+              isStale: true,
+              isSyncRunning: false,
+              hasSnapshot: true,
+            },
+          ],
+          hasStaleMainserverContent: true,
+          hasBlockingSyncGap: false,
+          hasRunningMainserverSync: false,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'content-1',
+            contentType: 'news.article',
+            title: 'Neu',
+            createdAt: '2026-03-21T10:00:00.000Z',
+            updatedAt: '2026-03-21T11:00:00.000Z',
+            author: 'Editor',
+            payload: { blocks: [] },
+            status: 'draft',
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+        metadata: {
+          mainserverSyncStates: [
+            {
+              contentType: 'news.article',
+              lastSucceededAt: '2026-06-24T08:05:00.000Z',
+              isStale: false,
+              isSyncRunning: false,
+              hasSnapshot: true,
+            },
+          ],
+          hasStaleMainserverContent: false,
+          hasBlockingSyncGap: false,
+          hasRunningMainserverSync: false,
+        },
+      });
+    refreshProjectedContentsMock.mockResolvedValue({
+      data: {
+        status: 'completed',
+        syncStates: [],
+      },
+    });
+
+    const { result } = renderHook(() => useContents(contentListQuery));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.metadata?.hasStaleMainserverContent).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.refreshProjection({ force: true });
+    });
+
+    expect(refreshProjectedContentsMock).toHaveBeenCalledWith({
+      visibleTypes: ['news.article'],
+      force: true,
+    });
+    await waitFor(() => {
+      expect(result.current.contents).toHaveLength(1);
+      expect(result.current.metadata?.hasStaleMainserverContent).toBe(false);
+    });
+  });
+
+  it('does not start the content list request while disabled', async () => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+
+    const { result } = renderHook(() => useContents(contentListQuery, { enabled: false }));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.contents).toEqual([]);
+    });
+
+    expect(listContentsMock).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -124,6 +233,47 @@ describe('useContents', () => {
     });
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the last successful items when a later refetch times out', async () => {
+    const timeoutError = { status: 0, code: 'timeout', message: 'request_timeout' };
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    listContentsMock
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'content-1',
+            contentType: 'generic',
+            title: 'Startseite',
+            createdAt: '2026-03-21T10:00:00.000Z',
+            updatedAt: '2026-03-21T11:00:00.000Z',
+            author: 'Editor',
+            payload: { blocks: [] },
+            status: 'draft',
+          },
+        ],
+        pagination: { page: 1, pageSize: 1, total: 1 },
+      })
+      .mockRejectedValueOnce(new Error('timed-out-refetch'));
+
+    const { result } = renderHook(() => useContents(contentListQuery));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.contents).toHaveLength(1);
+    });
+
+    asIamErrorMock.mockReturnValue(timeoutError);
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(timeoutError);
+      expect(result.current.contents).toHaveLength(1);
+      expect(result.current.contents[0]?.id).toBe('content-1');
+    });
   });
 
   it.each([
@@ -164,7 +314,8 @@ describe('useContents', () => {
 
     await waitFor(() => {
       expect(result.current.error).toBe(protectedError);
-      expect(result.current.contents).toEqual([]);
+      expect(result.current.contents).toHaveLength(1);
+      expect(result.current.contents[0]?.id).toBe('content-1');
     });
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);

@@ -32,6 +32,29 @@ const isServerAuthorizationError = (response: Response): boolean => response.sta
 const isContentStatus = (value: string): value is IamContentStatus =>
   (iamContentStatuses as readonly string[]).includes(value);
 
+const buildReadActionForContentType = (contentType: string | undefined): 'content.read' | 'news.read' | 'events.read' | 'poi.read' => {
+  switch (contentType) {
+    case 'news.article':
+      return 'news.read';
+    case 'events.event-record':
+      return 'events.read';
+    case 'poi.point-of-interest':
+      return 'poi.read';
+    default:
+      return 'content.read';
+  }
+};
+
+const collectListReadActions = (query: IamContentListQuery): readonly ('content.read' | 'news.read' | 'events.read' | 'poi.read')[] => {
+  const requestedContentTypes =
+    query.type && query.type.trim().length > 0
+      ? [query.type]
+      : (query.visibleTypes ?? []);
+
+  const actions = requestedContentTypes.map((contentType) => buildReadActionForContentType(contentType));
+  return actions.length > 0 ? [...new Set(actions)] : ['content.read'];
+};
+
 const readContentListQuery = (request: Request): IamContentListQuery => {
   const url = new URL(request.url);
   const { page, pageSize } = readPage(request);
@@ -74,7 +97,7 @@ const authorizeReadableContentItem = (
     readonly createdBy?: string;
   }
 ) =>
-  authorizeContentAction(actor, 'content.read', {
+  authorizeContentAction(actor, buildReadActionForContentType(item.contentType), {
     contentId: item.id,
     contentType: item.contentType,
     organizationId: item.organizationId,
@@ -83,28 +106,38 @@ const authorizeReadableContentItem = (
 
 const resolveReadableContentScopes = async (
   actor: ResolvedContentActor['actor'],
-  scopes: readonly (string | null)[]
+  scopes: readonly (string | null)[],
+  query: IamContentListQuery
 ): Promise<{ readonly allowedOrganizationIds: readonly string[]; readonly includeUnscopedContent: boolean } | Response> => {
   const allowedOrganizationIds: string[] = [];
   let includeUnscopedContent = false;
+  const readActions = collectListReadActions(query);
 
   for (const scope of scopes) {
-    const authorizationError = await authorizeContentAction(actor, 'content.read', {
-      ...(scope ? { organizationId: scope } : {}),
-      ...(actor.actorAccountId ? { createdByAccountId: actor.actorAccountId } : {}),
-    });
+    let scopeAllowed = false;
+    for (const action of readActions) {
+      const authorizationError = await authorizeContentAction(actor, action, {
+        ...(scope ? { organizationId: scope } : {}),
+        ...(actor.actorAccountId ? { createdByAccountId: actor.actorAccountId } : {}),
+      });
 
-    if (!authorizationError) {
-      if (scope) {
-        allowedOrganizationIds.push(scope);
-      } else {
-        includeUnscopedContent = true;
+      if (!authorizationError) {
+        scopeAllowed = true;
+        if (scope) {
+          allowedOrganizationIds.push(scope);
+        } else {
+          includeUnscopedContent = true;
+        }
+        break;
       }
-      continue;
+
+      if (isServerAuthorizationError(authorizationError)) {
+        return authorizationError;
+      }
     }
 
-    if (isServerAuthorizationError(authorizationError)) {
-      return authorizationError;
+    if (scopeAllowed) {
+      continue;
     }
   }
 
@@ -126,7 +159,7 @@ export const listContentsInternal = async (
   try {
     const query = readContentListQuery(request);
     const scopes = await loadContentListScopes(actorResolution.actor.instanceId, query);
-    const readableScopes = await resolveReadableContentScopes(actorResolution.actor, scopes);
+    const readableScopes = await resolveReadableContentScopes(actorResolution.actor, scopes, query);
     if (readableScopes instanceof Response) {
       return readableScopes;
     }

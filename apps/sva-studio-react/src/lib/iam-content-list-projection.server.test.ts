@@ -66,7 +66,18 @@ describe('content list projection', () => {
   };
 
   let projectionRows: ProjectionRow[];
-  let syncStates: Map<string, { last_succeeded_at: string | null }>;
+  let syncStates: Map<
+    string,
+    {
+      last_started_at: string | null;
+      last_succeeded_at: string | null;
+      last_failed_at: string | null;
+      last_error_code: string | null;
+      last_error_message: string | null;
+      projected_count: number;
+    }
+  >;
+  let projectionInsertArgs: readonly unknown[] | null;
 
   const applyProjectionFilters = (text: string, values: readonly unknown[] | undefined): ProjectionRow[] => {
     const scopedInstanceId = String(values?.[0] ?? '');
@@ -95,6 +106,7 @@ describe('content list projection', () => {
   beforeEach(() => {
     projectionRows = [];
     syncStates = new Map();
+    projectionInsertArgs = null;
     state.authorizeContentPrimitiveForUser.mockReset();
     state.resolveActorAccountId.mockReset();
     state.withInstanceScopedDb.mockReset();
@@ -126,7 +138,7 @@ describe('content list projection', () => {
     state.withInstanceScopedDb.mockImplementation(async (_instanceId: string, work: (client: { query: <TRow>(text: string, values?: readonly unknown[]) => Promise<{ rows: TRow[]; rowCount: number }> }) => Promise<unknown>) =>
       work({
         query: async <TRow>(text: string, values?: readonly unknown[]) => {
-          if (text.includes('FROM iam.content_list_projection_sync_state') && text.includes('SELECT last_succeeded_at::text')) {
+          if (text.includes('FROM iam.content_list_projection_sync_state')) {
             const contentType = String(values?.[1] ?? '');
             const row = syncStates.get(contentType);
             return { rows: row ? ([row] as TRow[]) : [], rowCount: row ? 1 : 0 };
@@ -135,11 +147,62 @@ describe('content list projection', () => {
           if (text.includes('INSERT INTO iam.content_list_projection_sync_state')) {
             const contentType = String(values?.[1] ?? '');
             if ((values?.length ?? 0) >= 4) {
-              syncStates.set(contentType, { last_succeeded_at: null });
+              syncStates.set(contentType, {
+                ...(syncStates.get(contentType) ?? {
+                  last_started_at: null,
+                  last_succeeded_at: null,
+                  last_failed_at: null,
+                  last_error_code: null,
+                  last_error_message: null,
+                  projected_count: 0,
+                }),
+                last_failed_at: new Date().toISOString(),
+                last_error_code: String(values?.[2] ?? ''),
+                last_error_message: String(values?.[3] ?? ''),
+              });
+            } else if ((values?.length ?? 0) === 3) {
+              syncStates.set(contentType, {
+                ...(syncStates.get(contentType) ?? {
+                  last_started_at: null,
+                  last_succeeded_at: null,
+                  last_failed_at: null,
+                  last_error_code: null,
+                  last_error_message: null,
+                  projected_count: 0,
+                }),
+                last_succeeded_at: new Date().toISOString(),
+                last_failed_at: null,
+                last_error_code: null,
+                last_error_message: null,
+                projected_count: Number(values?.[2] ?? 0),
+              });
             } else {
-              syncStates.set(contentType, { last_succeeded_at: new Date().toISOString() });
+              syncStates.set(contentType, {
+                last_started_at: new Date().toISOString(),
+                ...(syncStates.get(contentType) ?? {
+                  last_succeeded_at: null,
+                  last_failed_at: null,
+                  last_error_code: null,
+                  last_error_message: null,
+                  projected_count: 0,
+                }),
+              });
             }
             return { rows: [], rowCount: 1 };
+          }
+
+          if (text.includes('FROM iam.content_list_projection') && text.includes("source_system = 'mainserver'") && text.includes('organization_id::text = $3')) {
+            const instanceId = String(values?.[0] ?? '');
+            const contentType = String(values?.[1] ?? '');
+            const organizationId = String(values?.[2] ?? '');
+            const total = projectionRows.filter(
+              (row) =>
+                row.instance_id === instanceId &&
+                row.source_system === 'mainserver' &&
+                row.content_type === contentType &&
+                row.organization_id === organizationId
+            ).length;
+            return { rows: [{ total }] as TRow[], rowCount: 1 };
           }
 
           if (text.includes('DELETE FROM iam.content_list_projection')) {
@@ -149,7 +212,8 @@ describe('content list projection', () => {
           }
 
           if (text.includes('INSERT INTO iam.content_list_projection')) {
-            const rows = JSON.parse(String(values?.[2] ?? '[]')) as Array<Record<string, unknown>>;
+            projectionInsertArgs = values ?? null;
+            const rows = JSON.parse(String(values?.[0] ?? '[]')) as Array<Record<string, unknown>>;
             projectionRows.push(
               ...(rows.map((row) => ({
                 id: String(row.id),
@@ -217,7 +281,7 @@ describe('content list projection', () => {
     });
   });
 
-  it('refreshes stale mainserver projections and returns the projected rows', async () => {
+  it('returns a deterministic error without a snapshot and starts a background refresh', async () => {
     state.listSvaMainserverNews.mockResolvedValue({
       data: [
         {
@@ -244,21 +308,85 @@ describe('content list projection', () => {
       sortDirection: 'desc',
     });
 
+    expect(response.status).toBe(503);
+    expect(state.listSvaMainserverNews).toHaveBeenCalledTimes(1);
+    expect(syncStates.get('news.article')?.last_started_at).toBeTruthy();
+    expect(projectionInsertArgs).toHaveLength(1);
+  });
+
+  it('returns the last successful snapshot together with sync metadata while a background refresh runs', async () => {
+    projectionRows = [
+      {
+        id: 'news-1',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        content_type: 'news.article',
+        title: 'Rathaus',
+        published_at: '2026-06-21T09:00:00.000Z',
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'account-9',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'account-9',
+        author_display_name: 'Alice',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'mainserver',
+        source_entity_type: 'news.article',
+        source_entity_id: 'news-1',
+      },
+    ];
+    syncStates.set('news.article', {
+      last_started_at: null,
+      last_succeeded_at: '2026-06-20T10:00:00.000Z',
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 1,
+    });
+    state.listSvaMainserverNews.mockImplementation(
+      () => new Promise(() => undefined)
+    );
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['news.article'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
     const payload = (await response.json()) as {
-      data: Array<{ id: string; contentType: string; title: string }>;
-      pagination: { total: number };
+      data: Array<{ id: string; title: string }>;
+      metadata: {
+        hasStaleMainserverContent: boolean;
+        hasRunningMainserverSync: boolean;
+        mainserverSyncStates: Array<{ contentType: string; isStale: boolean }>;
+      };
     };
 
+    expect(response.status).toBe(200);
     expect(payload.data).toEqual([
       expect.objectContaining({
         id: 'news-1',
-        contentType: 'news.article',
         title: 'Rathaus',
       }),
     ]);
-    expect(payload.pagination.total).toBe(1);
+    expect(payload.metadata.hasStaleMainserverContent).toBe(true);
+    expect(payload.metadata.hasRunningMainserverSync).toBe(true);
+    expect(payload.metadata.mainserverSyncStates).toEqual([
+      expect.objectContaining({
+        contentType: 'news.article',
+        isStale: true,
+      }),
+    ]);
     expect(state.listSvaMainserverNews).toHaveBeenCalledTimes(1);
-    expect(syncStates.get('news.article')?.last_succeeded_at).toBeTruthy();
   });
 
   it('keeps pagination total aligned with organization-scoped read visibility', async () => {
@@ -351,6 +479,79 @@ describe('content list projection', () => {
     });
   });
 
+  it('derives row access from the resolved permissions without per-item reauthorization calls', async () => {
+    projectionRows = [
+      {
+        id: 'content-1',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        content_type: 'generic',
+        title: 'Visible',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'account-1',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'account-1',
+        author_display_name: 'Alice',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'iam',
+        source_entity_type: 'iam.contents',
+        source_entity_id: 'content-1',
+      },
+    ];
+    state.authorizeContentPrimitiveForUser.mockImplementation(async ({ action }: { action: string }) =>
+      action === 'content.read'
+        ? {
+            ok: true,
+            actor: {
+              instanceId: 'de-musterhausen',
+              keycloakSubject: 'kc-user-1',
+            },
+            permissions: [
+              { action: 'content.read', resourceType: 'content' },
+              { action: 'content.create', resourceType: 'content' },
+              { action: 'content.updateMetadata', resourceType: 'content' },
+            ],
+          }
+        : {
+            ok: false,
+            status: 403,
+            error: 'forbidden',
+            message: 'forbidden',
+          }
+    );
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['generic'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    await expect(response.json()).resolves.toMatchObject({
+      data: [
+        expect.objectContaining({
+          id: 'content-1',
+          access: expect.objectContaining({
+            state: 'editable',
+            canCreate: true,
+            canUpdate: true,
+          }),
+        }),
+      ],
+    });
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledTimes(1);
+  });
+
   it('returns a deterministic list error when the mainserver refresh fails', async () => {
     state.listSvaMainserverNews.mockRejectedValue(Object.assign(new Error('upstream down'), { code: 'database_unavailable' }));
 
@@ -366,9 +567,288 @@ describe('content list projection', () => {
     await expect(response.json()).resolves.toEqual({
       error: {
         code: 'database_unavailable',
-        message: 'upstream down',
+        message: 'Für mindestens einen angefragten Mainserver-Inhaltstyp liegt noch kein synchronisierter Snapshot vor.',
       },
       requestId: 'req-1',
     });
+  });
+
+  it('keeps mainserver rows visible for organization-scoped plugin read permissions', async () => {
+    projectionRows = [
+      {
+        id: 'news-1',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        content_type: 'news.article',
+        title: 'Rathaus',
+        published_at: '2026-06-21T09:00:00.000Z',
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_name: 'Redaktion',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'mainserver',
+        source_entity_type: 'news.article',
+        source_entity_id: 'news-1',
+      },
+    ];
+    syncStates.set('news.article', {
+      last_started_at: null,
+      last_succeeded_at: new Date().toISOString(),
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 1,
+    });
+    state.authorizeContentPrimitiveForUser.mockImplementation(async ({ action }: { action: string }) =>
+      action === 'news.read'
+        ? {
+            ok: true,
+            actor: {
+              instanceId: 'de-musterhausen',
+              keycloakSubject: 'kc-user-1',
+              organizationId: 'org-1',
+            },
+            permissions: [{ action, resourceType: 'news', organizationId: 'org-1', accessScope: 'organization' }],
+          }
+        : {
+            ok: false,
+            status: 403,
+            error: 'forbidden',
+            message: 'forbidden',
+          }
+    );
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['news.article'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    await expect(response.json()).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'news-1', organizationId: 'org-1' })],
+      pagination: {
+        page: 1,
+        pageSize: 25,
+        total: 1,
+      },
+      requestId: 'req-1',
+    });
+  });
+
+  it('keeps unscoped mainserver rows visible when no active organization is set', async () => {
+    projectionRows = [
+      {
+        id: 'news-1',
+        instance_id: 'de-musterhausen',
+        organization_id: null,
+        owner_subject_id: null,
+        content_type: 'news.article',
+        title: 'Rathaus',
+        published_at: '2026-06-21T09:00:00.000Z',
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_name: 'Redaktion',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'mainserver',
+        source_entity_type: 'news.article',
+        source_entity_id: 'news-1',
+      },
+    ];
+    syncStates.set('news.article', {
+      last_started_at: null,
+      last_succeeded_at: new Date().toISOString(),
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 1,
+    });
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [
+        {
+          id: 'news-1',
+          title: 'Rathaus',
+          contentType: 'news.article',
+          payload: {},
+          status: 'published',
+          author: 'Redaktion',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          publishedAt: '2026-06-21T09:00:00.000Z',
+          contentBlocks: [],
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    state.authorizeContentPrimitiveForUser.mockImplementation(async ({ action }: { action: string }) =>
+      action === 'news.read'
+        ? {
+            ok: true,
+            actor: {
+              instanceId: 'de-musterhausen',
+              keycloakSubject: 'kc-user-1',
+            },
+            permissions: [{ action, resourceType: 'news', organizationId: 'org-1', accessScope: 'organization' }],
+          }
+        : {
+            ok: false,
+            status: 403,
+            error: 'forbidden',
+            message: 'forbidden',
+          }
+    );
+
+    const response = await listProjectedContents(
+      {
+        ...ctx,
+        activeOrganizationId: undefined,
+      },
+      {
+        page: 1,
+        pageSize: 25,
+        visibleTypes: ['news.article'],
+        sortBy: 'updatedAt',
+        sortDirection: 'desc',
+      }
+    );
+
+    await expect(response.json()).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'news-1' })],
+      pagination: {
+        page: 1,
+        pageSize: 25,
+        total: 1,
+      },
+    });
+  });
+
+  it('treats stale legacy org-less mainserver rows as a blocking snapshot gap for organization-scoped views', async () => {
+    projectionRows = [
+      {
+        id: 'news-legacy',
+        instance_id: 'de-musterhausen',
+        organization_id: null,
+        owner_subject_id: null,
+        content_type: 'news.article',
+        title: 'Legacy',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_name: 'Redaktion',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-legacy',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'mainserver',
+        source_entity_type: 'news.article',
+        source_entity_id: 'news-legacy',
+      },
+    ];
+    syncStates.set('news.article', {
+      last_started_at: null,
+      last_succeeded_at: '2026-06-20T10:00:00.000Z',
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 1,
+    });
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [
+        {
+          id: 'news-1',
+          title: 'Rathaus',
+          contentType: 'news.article',
+          payload: { teaser: 'A' },
+          status: 'published',
+          author: 'Redaktion',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          publishedAt: '2026-06-21T09:00:00.000Z',
+          contentBlocks: [],
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    state.authorizeContentPrimitiveForUser.mockImplementation(async ({ action }: { action: string }) =>
+      action === 'news.read'
+        ? {
+            ok: true,
+            actor: {
+              instanceId: 'de-musterhausen',
+              keycloakSubject: 'kc-user-1',
+              organizationId: 'org-1',
+            },
+            permissions: [{ action, resourceType: 'news', organizationId: 'org-1', accessScope: 'organization' }],
+          }
+        : {
+            ok: false,
+            status: 403,
+            error: 'forbidden',
+            message: 'forbidden',
+          }
+    );
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['news.article'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        message: 'Für mindestens einen angefragten Mainserver-Inhaltstyp liegt noch kein synchronisierter Snapshot vor.',
+      },
+    });
+  });
+
+  it('treats the empty visible type sentinel as an empty list instead of forbidden', async () => {
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['__no_readable_content__'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: [],
+      pagination: {
+        page: 1,
+        pageSize: 25,
+        total: 0,
+      },
+      requestId: 'req-1',
+    });
+    expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
   });
 });

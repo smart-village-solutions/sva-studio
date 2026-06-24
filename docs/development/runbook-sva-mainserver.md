@@ -30,26 +30,31 @@ Dieses Runbook beschreibt Betrieb, Fehlerdiagnose und Notfallmaßnahmen für die
 
 ## Host-geführte Inhaltsübersicht
 
-Die Admin-Route `/admin/content` lädt Mainserver-Inhalte nicht mehr browserseitig über getrennte Listen-Scans. Führender Vertrag ist `GET /api/v1/iam/contents`; der Host liest dafür aus einer persistierten Content-Listenprojektion, in die lokale IAM-Inhalte triggerbasiert und Mainserver-Typen per serverseitigem Refresh geschrieben werden.
+Die Admin-Route `/admin/content` lädt Mainserver-Inhalte nicht mehr browserseitig über getrennte Listen-Scans. Führender Vertrag ist `GET /api/v1/iam/contents`; der Host liest dafür ausschließlich aus der persistierten Content-Listenprojektion `iam.content_list_projection`.
 
 Betriebsrelevante Regeln:
 
 - Browser-seitige Vollscans über `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi` sind für die Übersicht kein Sollzustand mehr.
-- Das Listen-Read-Model liegt in `iam.content_list_projection`; der Mainserver-Refresh-Status pro Typ und Instanz liegt in `iam.content_list_projection_sync_state`.
-- Phase 1 verwendet bewusst keinen separaten Scheduler oder Delta-Sync. Der Mainserver-Refresh für die Übersicht ist requestgetriggert.
-- Ein Mainserver-Typ gilt aktuell für fünf Minuten als frisch. Der erste Listenrequest nach Ablauf dieses Fensters stößt für den betroffenen Typ einen serverseitigen Full-Refresh an.
-- Scheitert dieser Refresh, antwortet `GET /api/v1/iam/contents` mit einem regulären Listenfehler; es gibt keinen stillen Fallback auf einen Browser-Vollscan.
-- Der requestgetriggerte Refresh ist der führende Betriebsvertrag für Phase 1. Ein späterer Scheduler oder inkrementeller Sync erweitert diesen Vertrag, ersetzt ihn aber nicht implizit.
-- Fehler einer angefragten Mainserver-Quelle schlagen als regulärer Listenfehler auf `/api/v1/iam/contents` durch; die Übersicht darf nicht dauerhaft im Ladezustand hängen bleiben.
+- Das Listen-Read-Model liegt in `iam.content_list_projection`; der Mainserver-Sync- und Fehlerstatus pro Typ und Instanz liegt in `iam.content_list_projection_sync_state`.
+- Lokale IAM-Inhalte bleiben triggerbasiert sofort in der Projektion sichtbar.
+- Mainserver-Typen (`news.article`, `events.event-record`, `poi.point-of-interest`) werden serverseitig im Hintergrund synchronisiert; der Listenrequest selbst stößt keinen synchronen Full-Refresh mehr an.
+- Ein Mainserver-Typ gilt aktuell für fünf Minuten als frisch. Ist der Snapshot älter, markiert der Host die Liste als veraltet und startet dedupliziert einen Hintergrund-Sync.
+- Existiert bereits ein letzter erfolgreicher Snapshot, bleibt dieser auch bei Sync-Fehlern lesbar. `GET /api/v1/iam/contents` liefert dann den letzten Stand plus Diagnosemetadaten statt eines blockierenden Ladepfads.
+- Existiert für einen angefragten Mainserver-Typ noch nie ein erfolgreicher Snapshot, antwortet `GET /api/v1/iam/contents` weiterhin mit einem regulären Listenfehler.
+- Der Listenresponse enthält projektionsbezogene Metadaten wie `lastSucceededAt`, `lastStartedAt`, `lastFailedAt`, `lastErrorCode`, `isStale` und `isSyncRunning`.
+- Die Übersicht kann einen manuellen Refresh über `POST /api/v1/iam/contents/refresh` auslösen. Dieser Endpunkt startet oder dedupliziert einen serverseitigen Sync; er umgeht keinen Browser- oder HTTP-Cache.
 - Die Listen-Pagination der Übersicht ist serverseitig führend. Große Bestände müssen sich daher zuerst über die Antwortzeiten von `/api/v1/iam/contents` und erst danach über einzelne Mainserver-Adapter diagnostizieren lassen.
 - Die Detail- und Mutationspfade der Fachplugins bleiben unverändert auf den jeweiligen Host-Fassaden unter `/api/v1/mainserver/*`.
+- Nach erfolgreichen hostgeführten Mainserver-Mutationen für News, Events und POI stößt der Host direkt einen typbezogenen Projektions-Refresh an, damit ein anschließender Refetch auf `/admin/content` den neuen Stand sieht.
 
 ### Schnelldiagnose für `/admin/content`
 
 1. Im Browser-Netzwerk prüfen, dass die Übersicht `GET /api/v1/iam/contents` verwendet und keine direkte Listenserie über `mainserver/news`, `mainserver/events` oder `mainserver/poi` startet.
-2. Bei Listenfehlern zuerst den Host-Response von `/api/v1/iam/contents` prüfen.
-3. Erst bei bestätigtem Mainserver-Anteil die zugehörigen Adapterpfade und ihre Fehlercodes (`database_unavailable`, `network_error`, `graphql_error`, `invalid_response`) korrelieren.
-4. Bei gemischten Listen (`visibleType` enthält lokale und Mainserver-Typen) die lokale IAM-Antwort nicht separat als alternative Listenquelle interpretieren; führend bleibt die aggregierte Host-Antwort.
+2. Bei erfolgreicher Listenantwort die Response-Metadaten `mainserverSyncStates`, `hasStaleMainserverContent` und `hasRunningMainserverSync` prüfen.
+3. Bei Listenfehlern zuerst den Host-Response von `/api/v1/iam/contents` prüfen und unterscheiden, ob kein Snapshot vorliegt oder ein harter Host-/DB-Fehler vorliegt.
+4. Erst bei bestätigtem Mainserver-Anteil die zugehörigen Adapterpfade und ihre Fehlercodes (`database_unavailable`, `network_error`, `graphql_error`, `invalid_response`) korrelieren.
+5. Bei gemischten Listen (`visibleType` enthält lokale und Mainserver-Typen) die lokale IAM-Antwort nicht separat als alternative Listenquelle interpretieren; führend bleibt die aggregierte Host-Antwort.
+6. Bei manuell ausgelöstem Refresh zusätzlich den Statusvertrag von `POST /api/v1/iam/contents/refresh` prüfen: `accepted`, `already_running`, `completed` oder `failed`.
 
 ## News-Operationen
 

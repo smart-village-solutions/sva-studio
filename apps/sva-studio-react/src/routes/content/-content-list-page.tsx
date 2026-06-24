@@ -23,7 +23,10 @@ import { useContentAccess } from '../../hooks/use-content-access';
 import { t } from '../../i18n';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 import type { IamHttpError } from '../../lib/iam-api';
+import type { IamContentListMetadata } from '../../lib/iam-api';
+import { EMPTY_VISIBLE_TYPE_SENTINEL } from '../../lib/iam-content-list-api.shared';
 import { studioContentTypes } from '../../lib/plugins';
+import { useAuth } from '../../providers/auth-provider';
 import {
   filterCreatableStudioContentTypes,
   filterRegisteredStudioContentItems,
@@ -58,7 +61,6 @@ const MAIN_SERVER_CONTENT_TYPES = new Set([
   'events.event-record',
   'poi.point-of-interest',
 ]);
-const EMPTY_VISIBLE_TYPE_SENTINEL = '__no_readable_content__';
 
 const contentAdminResource = appAdminResources.find((resource) => resource.resourceId === 'content');
 const contentListCapabilities = contentAdminResource?.capabilities?.list;
@@ -82,6 +84,51 @@ const contentErrorMessage = (error: IamHttpError | null): string => {
 };
 
 const formatDateTime = (value: string): string => formatEditorDateTime(value) ?? value;
+
+const renderProjectionSyncMessage = (metadata: IamContentListMetadata): string | null => {
+  if (metadata.mainserverSyncStates.length === 0) {
+    return null;
+  }
+
+  const latestSucceededAt = metadata.mainserverSyncStates
+    .map((entry) => entry.lastSucceededAt)
+    .filter((value): value is string => typeof value === 'string')
+    .sort((left, right) => right.localeCompare(left))[0];
+  const latestErrorCode = metadata.mainserverSyncStates
+    .map((entry) => entry.lastErrorCode)
+    .find((value): value is string => typeof value === 'string' && value.length > 0);
+
+  if (metadata.hasRunningMainserverSync && latestSucceededAt) {
+    return t('content.sync.runningWithSnapshot', {
+      value: formatDateTime(latestSucceededAt),
+    });
+  }
+
+  if (metadata.hasRunningMainserverSync) {
+    return t('content.sync.running');
+  }
+
+  if (metadata.hasStaleMainserverContent && latestSucceededAt && latestErrorCode) {
+    return t('content.sync.staleWithError', {
+      value: formatDateTime(latestSucceededAt),
+      errorCode: latestErrorCode,
+    });
+  }
+
+  if (metadata.hasStaleMainserverContent && latestSucceededAt) {
+    return t('content.sync.stale', {
+      value: formatDateTime(latestSucceededAt),
+    });
+  }
+
+  if (latestSucceededAt) {
+    return t('content.sync.fresh', {
+      value: formatDateTime(latestSucceededAt),
+    });
+  }
+
+  return null;
+};
 
 const resolveRowAccess = (
   access: IamContentAccessSummary | undefined,
@@ -402,16 +449,58 @@ export const ContentListPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as RouteSearchState;
+  const auth = useAuth();
   const contentAccessApi = useContentAccess();
   const routeState = readNormalizedRouteState(search);
   const routeSortField = routeState.sort?.field;
   const routeSortDirection = routeState.sort?.direction;
+  const authPermissionActions = auth.user?.permissionActions ?? [];
+  const authSessionPending = auth.isLoading || !auth.hasResolvedSession;
+  const contentAccessPending =
+    contentAccessApi.permissionActions.length === 0 &&
+    contentAccessApi.access === null &&
+    contentAccessApi.error === null;
+  const contentListEnabled =
+    !authSessionPending &&
+    Boolean(auth.user) &&
+    (!contentAccessPending || authPermissionActions.length > 0);
+  const effectivePermissionActions = React.useMemo(
+    () =>
+      authSessionPending || contentAccessApi.isLoading || contentAccessPending
+        ? authPermissionActions
+        : contentAccessApi.permissionActions,
+    [
+      authPermissionActions,
+      authSessionPending,
+      contentAccessApi.isLoading,
+      contentAccessApi.permissionActions,
+      contentAccessApi.access,
+      contentAccessApi.error,
+      contentAccessPending,
+    ]
+  );
   const readableContentTypes = React.useMemo(
     () =>
       studioContentTypes.filter((definition) =>
-        contentAccessApi.permissionActions?.includes(definition.requiredReadAction)
+        effectivePermissionActions.includes(definition.requiredReadAction)
       ),
-    [contentAccessApi.permissionActions]
+    [effectivePermissionActions]
+  );
+  const visibleTypeSignature = React.useMemo(() => {
+    if (readableContentTypes.length === 0) {
+      return EMPTY_VISIBLE_TYPE_SENTINEL;
+    }
+
+    return readableContentTypes
+      .map((definition) => definition.contentType)
+      .join('|');
+  }, [readableContentTypes]);
+  const visibleTypes = React.useMemo(
+    () =>
+      visibleTypeSignature === EMPTY_VISIBLE_TYPE_SENTINEL
+        ? [EMPTY_VISIBLE_TYPE_SENTINEL]
+        : visibleTypeSignature.split('|'),
+    [visibleTypeSignature]
   );
   const contentListQuery = React.useMemo<IamContentListQuery>(
     () => ({
@@ -419,27 +508,29 @@ export const ContentListPage = () => {
       pageSize: routeState.pageSize,
       ...(routeState.type !== 'all' ? { type: routeState.type } : {}),
       ...(routeState.status !== 'all' ? { status: routeState.status } : {}),
-      visibleTypes:
-        readableContentTypes.length > 0
-          ? readableContentTypes.map((definition) => definition.contentType)
-          : [EMPTY_VISIBLE_TYPE_SENTINEL],
+      visibleTypes,
       sortBy: resolveContentSortField(routeSortField),
       sortDirection: routeSortDirection ?? 'desc',
     }),
     [
-      readableContentTypes,
       routeSortDirection,
       routeSortField,
       routeState.page,
       routeState.pageSize,
       routeState.status,
       routeState.type,
+      visibleTypes,
+      visibleTypeSignature,
     ]
   );
-  const contentsApi = useContents(contentListQuery);
+  const contentsApi = useContents(contentListQuery, { enabled: contentListEnabled });
+  const projectionSyncMessage = React.useMemo(
+    () => (contentsApi.metadata ? renderProjectionSyncMessage(contentsApi.metadata) : null),
+    [contentsApi.metadata]
+  );
   const creatableContentTypes = React.useMemo(
-    () => filterCreatableStudioContentTypes(studioContentTypes, contentAccessApi.permissionActions),
-    [contentAccessApi.permissionActions]
+    () => filterCreatableStudioContentTypes(studioContentTypes, effectivePermissionActions),
+    [effectivePermissionActions]
   );
   const createDisabled =
     creatableContentTypes.length === 0 &&
@@ -447,7 +538,7 @@ export const ContentListPage = () => {
 
   const registeredContents = React.useMemo(
     () =>
-      filterRegisteredStudioContentItems(contentsApi.contents, studioContentTypes, contentAccessApi.permissionActions).map(
+      filterRegisteredStudioContentItems(contentsApi.contents, studioContentTypes, effectivePermissionActions).map(
         ({ item, definition }) => ({
           ...item,
           typeLabel: definition.displayName,
@@ -456,7 +547,7 @@ export const ContentListPage = () => {
             .replace('$id', encodeURIComponent(item.id)),
         })
       ),
-    [contentAccessApi.permissionActions, contentsApi.contents]
+    [contentsApi.contents, effectivePermissionActions]
   );
   const safePage = Math.max(1, contentsApi.pagination.page);
   const pageCount = Math.max(
@@ -495,7 +586,7 @@ export const ContentListPage = () => {
             {
               id: 'archive-selection',
               label: buildBulkActionLabel('content.actions.archive'),
-              disabled: !contentAccessApi.permissionActions?.includes('content.archive'),
+              disabled: !effectivePermissionActions.includes('content.archive'),
               onClick: async ({ selectedRows, clearSelection }) => {
                 if (selectedRows.length === 0) {
                   return;
@@ -516,7 +607,7 @@ export const ContentListPage = () => {
             {
               id: 'delete-selection',
               label: buildBulkActionLabel('content.actions.delete'),
-              disabled: !contentAccessApi.permissionActions?.includes('content.delete'),
+              disabled: !effectivePermissionActions.includes('content.delete'),
               variant: 'destructive',
               onClick: async ({ selectedRows, clearSelection }) => {
                 if (
@@ -541,8 +632,8 @@ export const ContentListPage = () => {
           ]
         : [],
     [
-      contentAccessApi.permissionActions,
       contentsApi,
+      effectivePermissionActions,
       hasBulkActionableContents,
       routeState.page,
       routeState.pageSize,
@@ -586,7 +677,7 @@ export const ContentListPage = () => {
   );
 
   return (
-    <section className="space-y-5" aria-busy={contentsApi.isLoading}>
+    <section className="space-y-5" aria-busy={contentsApi.isLoading || authSessionPending || contentAccessPending}>
       <StudioListPageTemplate
         title={t('content.page.title')}
         description={t('content.page.subtitle')}
@@ -604,6 +695,12 @@ export const ContentListPage = () => {
         </Alert>
       ) : null}
 
+      {projectionSyncMessage && !contentsApi.error ? (
+        <Alert className="border-secondary/40 bg-secondary/5 text-secondary">
+          <AlertDescription>{projectionSyncMessage}</AlertDescription>
+        </Alert>
+      ) : null}
+
       <section>
         <StudioDataTable
           ariaLabel={t('content.table.ariaLabel')}
@@ -615,7 +712,7 @@ export const ContentListPage = () => {
           selectionMode="multiple"
           canSelectRow={isBulkActionableContent}
           bulkActions={bulkActionButtons}
-          isLoading={contentsApi.isLoading || contentAccessApi.isLoading}
+          isLoading={contentsApi.isLoading || contentAccessApi.isLoading || authSessionPending || contentAccessPending}
           loadingState={t('content.messages.loading')}
           emptyState={
             <div className="space-y-2">
@@ -658,15 +755,27 @@ export const ContentListPage = () => {
             </>
           }
           toolbarEnd={
-            createDisabled ? (
-              <Button type="button" disabled>
-                {t('content.actions.create')}
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={contentsApi.refreshProjectionPending}
+                onClick={() => void contentsApi.refreshProjection({ force: true })}
+              >
+                {contentsApi.refreshProjectionPending
+                  ? t('content.sync.refreshing')
+                  : t('content.sync.refresh')}
               </Button>
-            ) : (
-              <Button asChild>
-                <Link to="/admin/content/new">{t('content.actions.create')}</Link>
-              </Button>
-            )
+              {createDisabled ? (
+                <Button type="button" disabled>
+                  {t('content.actions.create')}
+                </Button>
+              ) : (
+                <Button asChild>
+                  <Link to="/admin/content/new">{t('content.actions.create')}</Link>
+                </Button>
+              )}
+            </div>
           }
           footer={
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -698,7 +807,7 @@ export const ContentListPage = () => {
             <ContentRowActions
               item={item}
               listError={contentsApi.error}
-              permissionActions={contentAccessApi.permissionActions}
+              permissionActions={effectivePermissionActions}
               onDelete={handleDeleteContent}
             />
           )}

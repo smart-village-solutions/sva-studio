@@ -9,6 +9,7 @@ const MAIN_SERVER_CONTENT_TYPES = new Set([
   'events.event-record',
   'poi.point-of-interest',
 ]);
+export const EMPTY_VISIBLE_TYPE_SENTINEL = '__no_readable_content__';
 
 const API_ERROR_CODES = new Set<ApiErrorCode>([
   'unauthorized',
@@ -63,7 +64,7 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
   const visibleTypes = url.searchParams
     .getAll('visibleType')
     .map((value) => value.trim())
-    .filter((value) => value.length > 0);
+    .filter((value) => value.length > 0 && value !== EMPTY_VISIBLE_TYPE_SENTINEL);
 
   return {
     page,

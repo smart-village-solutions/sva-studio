@@ -200,6 +200,38 @@ export type CreateContentPayload = CreateIamContentInput;
 
 export type UpdateContentPayload = UpdateIamContentInput;
 
+export type IamContentProjectionSyncState = Readonly<{
+  contentType: 'news.article' | 'events.event-record' | 'poi.point-of-interest';
+  lastStartedAt?: string;
+  lastSucceededAt?: string;
+  lastFailedAt?: string;
+  lastErrorCode?: string;
+  isStale: boolean;
+  isSyncRunning: boolean;
+  hasSnapshot: boolean;
+}>;
+
+export type IamContentListMetadata = Readonly<{
+  mainserverSyncStates: readonly IamContentProjectionSyncState[];
+  hasStaleMainserverContent: boolean;
+  hasBlockingSyncGap: boolean;
+  hasRunningMainserverSync: boolean;
+}>;
+
+export type IamContentListResponse = ApiListResponse<IamContentListItem> & Readonly<{
+  metadata?: IamContentListMetadata;
+}>;
+
+export type RefreshProjectedContentsPayload = Readonly<{
+  visibleTypes?: readonly string[];
+  force?: boolean;
+}>;
+
+export type RefreshProjectedContentsResult = Readonly<{
+  status: 'accepted' | 'already_running' | 'completed' | 'failed';
+  syncStates: readonly IamContentProjectionSyncState[];
+}>;
+
 export type MediaVisibility = 'public' | 'protected';
 export type MediaUploadStatus = 'pending' | 'validated' | 'processed' | 'failed' | 'blocked';
 export type MediaProcessingStatus = 'pending' | 'ready' | 'failed';
@@ -558,7 +590,7 @@ export const listLegalTexts = async (): Promise<ApiListResponse<IamLegalTextList
 
 export const listContents = async (
   query: IamContentListQuery
-): Promise<ApiListResponse<IamContentListItem>> => {
+): Promise<IamContentListResponse> => {
   const params = new URLSearchParams({
     page: String(query.page),
     pageSize: String(query.pageSize),
@@ -579,8 +611,16 @@ export const listContents = async (
     params.append('visibleType', contentType);
   }
 
-  return requestJson<ApiListResponse<IamContentListItem>>(`/api/v1/iam/contents?${params.toString()}`);
+  return requestJson<IamContentListResponse>(`/api/v1/iam/contents?${params.toString()}`);
 };
+
+export const refreshProjectedContents = async (
+  payload: RefreshProjectedContentsPayload
+): Promise<ApiItemResponse<RefreshProjectedContentsResult>> =>
+  postJson<ApiItemResponse<RefreshProjectedContentsResult>, RefreshProjectedContentsPayload>(
+    '/api/v1/iam/contents/refresh',
+    payload
+  );
 
 export const getContent = async (contentId: string): Promise<ApiItemResponse<IamContentDetail>> =>
   requestJson<ApiItemResponse<IamContentDetail>>(`/api/v1/iam/contents/${contentId}`);

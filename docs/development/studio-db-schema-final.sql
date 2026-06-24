@@ -235,7 +235,7 @@ BEGIN
     NEW.id::text,
     NOW()
   )
-  ON CONFLICT (instance_id, source_system, source_entity_type, source_entity_id)
+  ON CONFLICT ON CONSTRAINT content_list_projection_scope_key
   DO UPDATE SET
     id = EXCLUDED.id,
     organization_id = EXCLUDED.organization_id,
@@ -1664,19 +1664,19 @@ ALTER TABLE ONLY iam.content_history
 
 
 --
--- Name: content_list_projection content_list_projection_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.content_list_projection
-    ADD CONSTRAINT content_list_projection_pkey PRIMARY KEY (instance_id, source_system, source_entity_type, source_entity_id);
-
-
---
 -- Name: content_list_projection_sync_state content_list_projection_sync_state_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
 ALTER TABLE ONLY iam.content_list_projection_sync_state
     ADD CONSTRAINT content_list_projection_sync_state_pkey PRIMARY KEY (instance_id, source_system, content_type);
+
+
+--
+-- Name: content_list_projection content_list_projection_scope_key; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.content_list_projection
+    ADD CONSTRAINT content_list_projection_scope_key UNIQUE NULLS NOT DISTINCT (instance_id, source_system, source_entity_type, source_entity_id, organization_id, owner_subject_id);
 
 
 --
@@ -4053,4 +4053,3 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 --
 
 \unrestrict H22mmSUTDhehNpiWGjOqMQMfClDKe30BxSOWn9fReQw07ozSJ3WsAdxfOTX8caN
-

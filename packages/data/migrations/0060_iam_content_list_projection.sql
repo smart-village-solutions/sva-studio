@@ -25,8 +25,15 @@ CREATE TABLE IF NOT EXISTS iam.content_list_projection (
   source_entity_type TEXT NOT NULL,
   source_entity_id TEXT NOT NULL,
   projection_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT content_list_projection_pkey
-    PRIMARY KEY (instance_id, source_system, source_entity_type, source_entity_id),
+  CONSTRAINT content_list_projection_scope_key
+    UNIQUE NULLS NOT DISTINCT (
+      instance_id,
+      source_system,
+      source_entity_type,
+      source_entity_id,
+      organization_id,
+      owner_subject_id
+    ),
   CONSTRAINT content_list_projection_status_chk
     CHECK (status IN ('draft', 'in_review', 'approved', 'published', 'archived')),
   CONSTRAINT content_list_projection_validation_state_chk
@@ -156,7 +163,7 @@ BEGIN
     NEW.id::text,
     NOW()
   )
-  ON CONFLICT (instance_id, source_system, source_entity_type, source_entity_id)
+  ON CONFLICT ON CONSTRAINT content_list_projection_scope_key
   DO UPDATE SET
     id = EXCLUDED.id,
     organization_id = EXCLUDED.organization_id,
@@ -266,7 +273,7 @@ SELECT
   content.id::text,
   NOW()
 FROM iam.contents AS content
-ON CONFLICT (instance_id, source_system, source_entity_type, source_entity_id)
+ON CONFLICT ON CONSTRAINT content_list_projection_scope_key
 DO UPDATE SET
   id = EXCLUDED.id,
   organization_id = EXCLUDED.organization_id,

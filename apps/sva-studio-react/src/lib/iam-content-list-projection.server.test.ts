@@ -1330,6 +1330,60 @@ describe('content list projection', () => {
     ]);
   });
 
+  it('stores the same mainserver entity separately for different projection scopes', async () => {
+    state.listSvaMainserverEvents.mockResolvedValue({
+      data: [
+        {
+          id: 'event-shared-1',
+          title: 'Geteilte Veranstaltung',
+          contentType: 'events.event-record',
+          status: 'published',
+          dates: [],
+          recurringWeekdays: [],
+          categories: [],
+          addresses: [],
+          contacts: [],
+          urls: [],
+          mediaContents: [],
+          priceInformations: [],
+          tags: [],
+          visible: true,
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['events.event-record'],
+      force: true,
+    });
+    await refreshProjectedContents(
+      {
+        ...ctx,
+        activeOrganizationId: undefined,
+      },
+      {
+        visibleTypes: ['events.event-record'],
+        force: true,
+      }
+    );
+
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        source_entity_id: 'event-shared-1',
+      }),
+      expect.objectContaining({
+        organization_id: null,
+        owner_subject_id: 'kc-user-1',
+        source_entity_id: 'event-shared-1',
+      }),
+    ]);
+  });
+
   it('returns deterministic refresh errors for missing instances, permission backend failures, and forbidden types', async () => {
     const missingInstanceResponse = await refreshProjectedContents(
       {

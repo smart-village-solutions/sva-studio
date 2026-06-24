@@ -2,6 +2,15 @@ import { mergeRequestHeaders } from './http-client.js';
 
 export type MainserverErrorFactory<TError extends Error> = (code: string, message: string) => TError;
 
+export type MainserverResponseMeta = Readonly<{
+  url: string;
+  method: string;
+  status: number;
+  ok: boolean;
+  contentType: string | null;
+  durationMs: number;
+}>;
+
 type ApiErrorResponse = Readonly<{
   error?: string | Readonly<{ code?: string; message?: string }>;
   message?: string;
@@ -149,6 +158,20 @@ const fetchMainserverResponse = async (input: {
 const readNonEmptyString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined;
 
+const readResponseContentType = (response: Response): string | null => {
+  const headers = response.headers;
+  return typeof headers?.get === 'function' ? headers.get('content-type') : null;
+};
+
+const isHtmlLikeContentType = (response: Response): boolean => {
+  const contentType = readResponseContentType(response);
+  if (contentType === null || contentType.length === 0) {
+    return false;
+  }
+  const normalized = contentType.toLowerCase();
+  return normalized.includes('text/html') || normalized.includes('application/xhtml+xml');
+};
+
 const readStructuredErrorDetails = (value: ApiErrorResponse['error']): {
   readonly code?: string;
   readonly message?: string;
@@ -166,6 +189,13 @@ const parseMainserverErrorResponse = async (response: Response, signal?: AbortSi
   readonly code: string;
   readonly message: string;
 }> => {
+  if (isHtmlLikeContentType(response)) {
+    return {
+      code: `http_${response.status}`,
+      message: `http_${response.status}`,
+    };
+  }
+
   const fallback = {
     code: `http_${response.status}`,
     message: `http_${response.status}`,
@@ -208,6 +238,7 @@ export function requestMainserverJson<T>(input: {
   readonly init?: RequestInit;
   readonly fetch?: typeof fetch;
   readonly errorFactory?: MainserverErrorFactory<MainserverApiError>;
+  readonly onResponse?: (meta: MainserverResponseMeta) => void;
   readonly timeoutMs?: number;
 }): Promise<T>;
 export function requestMainserverJson<T, TError extends Error>(input: {
@@ -215,6 +246,7 @@ export function requestMainserverJson<T, TError extends Error>(input: {
   readonly init?: RequestInit;
   readonly fetch?: typeof fetch;
   readonly errorFactory: MainserverErrorFactory<TError>;
+  readonly onResponse?: (meta: MainserverResponseMeta) => void;
   readonly timeoutMs?: number;
 }): Promise<T>;
 
@@ -223,8 +255,10 @@ export async function requestMainserverJson<T, TError extends Error = Mainserver
   readonly init?: RequestInit;
   readonly fetch?: typeof fetch;
   readonly errorFactory?: MainserverErrorFactory<TError>;
+  readonly onResponse?: (meta: MainserverResponseMeta) => void;
   readonly timeoutMs?: number;
 }): Promise<T> {
+  const startedAt = Date.now();
   const timeout = createTimeoutSignal(input.timeoutMs ?? DEFAULT_MAINSERVER_REQUEST_TIMEOUT_MS);
   const combinedSignal = combineAbortSignals(
     input.init?.signal ? [input.init.signal, timeout.signal] : [timeout.signal]
@@ -237,7 +271,18 @@ export async function requestMainserverJson<T, TError extends Error = Mainserver
         fetch: input.fetch,
         signal: combinedSignal.signal,
       });
+      input.onResponse?.({
+        url: input.url,
+        method: (input.init?.method ?? 'GET').toUpperCase(),
+        status: response.status,
+        ok: response.ok,
+        contentType: readResponseContentType(response),
+        durationMs: Date.now() - startedAt,
+      });
       await assertMainserverResponseOk(response, input.errorFactory, combinedSignal.signal);
+      if (isHtmlLikeContentType(response)) {
+        throw resolveMainserverErrorFactory(input.errorFactory)('non_json_response', 'non_json_response');
+      }
       return (await response.json()) as T;
     } catch (error) {
       return wrapMainserverTimeoutError(error, input.errorFactory, combinedSignal.signal);

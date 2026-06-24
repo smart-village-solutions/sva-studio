@@ -234,7 +234,7 @@ export const mapPoiDetailFormValuesToInput = (
     ...(compactLocation(values.content.location) ? { location: compactLocation(values.content.location) } : {}),
     openingHours: serializeOpeningHours(values.content.openingHours),
     webUrls: compactWebUrls(values.content.webUrls),
-    operatingCompany: operator,
+    ...(Object.keys(operator).length > 0 ? { operatingCompany: operator } : {}),
     priceInformations: serializePrices(values.content.prices),
     mediaContents: serializeMediaContents(values.content.mediaContents),
     certificates: serializeCertificates(values.content.certificates),

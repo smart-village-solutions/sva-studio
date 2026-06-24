@@ -183,6 +183,21 @@ describe('map-geocoding-api', () => {
         action: 'poi.update',
       }),
     );
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'Map geocoding operation succeeded',
+      expect.objectContaining({
+        operation: 'suggest',
+        workspace_id: 'de-musterhausen',
+        provider: 'geoapify',
+        outcome: 'success',
+        auth_resolution_duration_ms: expect.any(Number),
+        authorization_duration_ms: expect.any(Number),
+        config_load_duration_ms: expect.any(Number),
+        operation_duration_ms: expect.any(Number),
+        total_duration_ms: expect.any(Number),
+        provider_request_duration_ms: expect.any(Number),
+      }),
+    );
   });
 
   it('falls back to poi.create permission for provider-backed geocoding calls', async () => {
@@ -445,6 +460,12 @@ describe('map-geocoding-api', () => {
         outcome: 'timeout',
         provider_endpoint: 'https://api.geoapify.com/v1/geocode/reverse',
         error_code: 'timeout',
+        auth_resolution_duration_ms: expect.any(Number),
+        authorization_duration_ms: expect.any(Number),
+        config_load_duration_ms: expect.any(Number),
+        operation_duration_ms: expect.any(Number),
+        total_duration_ms: expect.any(Number),
+        provider_request_duration_ms: expect.any(Number),
       }),
     );
   });

@@ -24,6 +24,7 @@ export const resolveEventsMapGeocodingMessageKey = (error: unknown): EventsMapGe
     case 'rate_limited':
       return 'messages.locationGeocodeRateLimited';
     case 'timeout':
+    case 'mainserver_timeout':
       return 'messages.locationGeocodeTimeout';
     case 'forbidden':
       return 'messages.locationGeocodeForbidden';

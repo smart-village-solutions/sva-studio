@@ -174,4 +174,65 @@ describe('mainserver-request', () => {
       vi.useRealTimers();
     }
   });
+
+  it('fails fast for non-json success responses instead of waiting for response parsing timeouts', async () => {
+    const nonJsonSuccessFetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'text/html; charset=utf-8' }),
+      json: () => new Promise(() => undefined),
+    })) as typeof fetch;
+
+    await expect(
+      requestMainserverJson({ url: '/html-success', fetch: nonJsonSuccessFetch })
+    ).rejects.toMatchObject({
+      code: 'non_json_response',
+      message: 'non_json_response',
+      name: 'MainserverApiError',
+    });
+  });
+
+  it('falls back deterministically for non-json error responses without waiting for body parsing timeouts', async () => {
+    const nonJsonErrorFetch = vi.fn(async () => ({
+      ok: false,
+      status: 503,
+      headers: new Headers({ 'content-type': 'text/html; charset=utf-8' }),
+      json: () => new Promise(() => undefined),
+    })) as typeof fetch;
+
+    await expect(
+      requestMainserverJson({ url: '/html-error', fetch: nonJsonErrorFetch })
+    ).rejects.toMatchObject({
+      code: 'http_503',
+      message: 'http_503',
+      name: 'MainserverApiError',
+    });
+  });
+
+  it('emits response metadata for request observers', async () => {
+    const onResponse = vi.fn();
+
+    await expect(
+      requestMainserverJson({
+        url: '/meta',
+        onResponse,
+        fetch: vi.fn(async () =>
+          new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { 'content-type': 'application/json; charset=utf-8' },
+          }),
+        ) as typeof fetch,
+      }),
+    ).resolves.toEqual({ ok: true });
+
+    expect(onResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/meta',
+        method: 'GET',
+        status: 200,
+        ok: true,
+        contentType: 'application/json; charset=utf-8',
+      }),
+    );
+  });
 });

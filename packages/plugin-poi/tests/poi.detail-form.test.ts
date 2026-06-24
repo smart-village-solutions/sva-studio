@@ -407,7 +407,6 @@ describe('poi.detail-form', () => {
       addresses: [{ geoLocation: { latitude: 52.5, longitude: undefined } }],
       openingHours: [{ weekday: 'MO', sortNumber: 0, open: false, useYear: false }],
       webUrls: [{ url: 'https://example.test', description: 'Start' }],
-      operatingCompany: {},
       priceInformations: [{ amount: 0, groupPrice: false, ageFrom: 0, minChildrenCount: 0 }],
       mediaContents: [],
       certificates: [],
@@ -448,9 +447,80 @@ describe('poi.detail-form', () => {
         {}
       )
     ).toMatchObject({
-      operatingCompany: {},
       accessibilityInformation: {},
     });
+    expect(
+      mapPoiDetailFormValuesToInput(
+        {
+          name: 'Test POI',
+          basis: { categories: [], active: true },
+          content: {
+            description: '',
+            mobileDescription: '',
+            addresses: [],
+            location: { name: '', department: '', district: '', regionName: '', state: '', geoLocation: { latitude: '', longitude: '' } },
+            contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            openingHours: [],
+            webUrls: [],
+            operator: {
+              name: '',
+              address: { addition: '', street: '', zip: '', city: '', kind: '', geoLocation: { latitude: '', longitude: '' } },
+              contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            },
+            prices: [],
+            mediaContents: [],
+            certificates: [],
+            accessibilityInformation: { description: '', types: '', urls: [] },
+            tagsText: '',
+            payloadText: '{}',
+          },
+          media: { images: [] },
+          settings: {},
+        },
+        {}
+      ),
+    ).not.toHaveProperty('operatingCompany');
+  });
+
+  it('omits an empty operating company from the serialized payload', () => {
+    const mutation = mapPoiDetailFormValuesToInput(
+      {
+        name: 'Test POI',
+        basis: { categories: [], active: true },
+        content: {
+          description: '',
+          mobileDescription: '',
+          addresses: [],
+          location: {
+            name: '',
+            department: '',
+            district: '',
+            regionName: '',
+            state: '',
+            geoLocation: { latitude: '', longitude: '' },
+          },
+          contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+          openingHours: [],
+          webUrls: [],
+          operator: {
+            name: '',
+            address: { addition: '', street: '', zip: '', city: '', kind: '', geoLocation: { latitude: '', longitude: '' } },
+            contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+          },
+          prices: [],
+          mediaContents: [],
+          certificates: [],
+          accessibilityInformation: { description: '', types: '', urls: [] },
+          tagsText: '',
+          payloadText: '{}',
+        },
+        media: { images: [] },
+        settings: {},
+      },
+      {}
+    );
+
+    expect(mutation).not.toHaveProperty('operatingCompany');
   });
 
   it('serializes an explicit mobile description clearing value', () => {

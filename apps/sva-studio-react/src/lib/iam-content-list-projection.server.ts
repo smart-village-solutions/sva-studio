@@ -2,6 +2,7 @@ import type { EffectivePermission, IamContentAccessSummary, IamContentListItem, 
 import {
   authorizeContentPrimitiveForUser,
   type AuthenticatedRequestContext,
+  resolveActorAccountId,
   withInstanceScopedDb,
 } from '@sva/auth-runtime/server';
 import {
@@ -17,6 +18,10 @@ import {
   MAINSERVER_FETCH_PAGE_SIZE,
   normalizeApiErrorCode,
 } from './iam-content-list-api.shared.js';
+import {
+  buildProjectionReadVisibilityRules,
+  type ProjectionReadVisibilityRule,
+} from './iam-content-list-visibility.js';
 import { mapEventItem, mapNewsItem, mapPoiItem } from './iam-content-list-mainserver.js';
 
 const MAIN_SERVER_SYNC_STALE_MS = 5 * 60 * 1000;
@@ -494,6 +499,56 @@ const resolveEffectiveTypes = (query: IamContentListQuery): readonly string[] =>
   return visibleTypes;
 };
 
+const buildProjectionReadVisibilitySql = (
+  rules: readonly ProjectionReadVisibilityRule[],
+  actorAccountId: string | undefined,
+  params: unknown[]
+): string => {
+  const perTypeClauses = rules.flatMap((rule) => {
+    if (rule.denyGlobal) {
+      return [];
+    }
+
+    const allowClauses: string[] = [];
+    if (rule.allowGlobal) {
+      allowClauses.push('TRUE');
+    }
+    if (rule.allowOrganizationIds.length > 0) {
+      params.push([...rule.allowOrganizationIds]);
+      allowClauses.push(`projection.organization_id::text = ANY($${params.length}::text[])`);
+    }
+    if (rule.allowOwn && actorAccountId) {
+      params.push(actorAccountId);
+      allowClauses.push(`projection.created_by = $${params.length}`);
+    }
+
+    if (allowClauses.length === 0) {
+      return [];
+    }
+
+    const denyClauses: string[] = [];
+    if (rule.denyOrganizationIds.length > 0) {
+      params.push([...rule.denyOrganizationIds]);
+      denyClauses.push(`projection.organization_id::text = ANY($${params.length}::text[])`);
+    }
+    if (rule.denyOwn && actorAccountId) {
+      params.push(actorAccountId);
+      denyClauses.push(`projection.created_by = $${params.length}`);
+    }
+
+    params.push(rule.contentType);
+    const typeParam = `$${params.length}`;
+
+    return [
+      denyClauses.length > 0
+        ? `(projection.content_type = ${typeParam} AND (${allowClauses.join(' OR ')}) AND NOT (${denyClauses.join(' OR ')}))`
+        : `(projection.content_type = ${typeParam} AND (${allowClauses.join(' OR ')}))`,
+    ];
+  });
+
+  return perTypeClauses.length > 0 ? `(${perTypeClauses.join(' OR ')})` : 'FALSE';
+};
+
 const listSortColumnByField = {
   title: 'projection.title',
   contentType: 'projection.content_type',
@@ -504,16 +559,13 @@ const listSortColumnByField = {
 const loadProjectionPage = async (
   instanceId: string,
   query: IamContentListQuery,
-  effectiveTypes: readonly string[]
+  rules: readonly ProjectionReadVisibilityRule[],
+  actorAccountId: string | undefined
 ): Promise<{ readonly items: readonly IamContentListItem[]; readonly total: number }> =>
   withInstanceScopedDb(instanceId, async (client) => {
     const conditions = ['projection.instance_id = $1'];
     const params: unknown[] = [instanceId];
-
-    if (effectiveTypes.length > 0) {
-      params.push(effectiveTypes);
-      conditions.push(`projection.content_type = ANY($${params.length}::text[])`);
-    }
+    conditions.push(buildProjectionReadVisibilitySql(rules, actorAccountId, params));
 
     if (query.status) {
       params.push(query.status);
@@ -640,45 +692,21 @@ const resolveItemAccess = async (
       };
 };
 
-const filterAuthorizedProjectionItems = async (
+const enrichProjectionItemsWithAccess = async (
   ctx: AuthenticatedRequestContext,
   items: readonly IamContentListItem[],
   permissions: readonly EffectivePermission[]
 ): Promise<readonly IamContentListItem[] | Response> => {
-  const authorizedItems: IamContentListItem[] = [];
+  const itemsWithAccess: IamContentListItem[] = [];
 
   for (const item of items) {
-    const readAuthorization = await authorizeContentPrimitiveForUser({
-      ctx,
-      action: buildReadAction(item.contentType),
-      resource: {
-        contentId: item.id,
-        contentType: item.contentType,
-        organizationId: item.organizationId,
-        createdByAccountId: item.createdBy,
-      },
-      permissions,
-    });
-
-    if (!readAuthorization.ok) {
-      if (readAuthorization.status >= 500) {
-        return createListErrorResponse(
-          readAuthorization.status,
-          normalizeApiErrorCode(readAuthorization.error),
-          readAuthorization.message,
-          getWorkspaceContext().requestId
-        );
-      }
-      continue;
-    }
-
-    authorizedItems.push({
+    itemsWithAccess.push({
       ...item,
       access: await resolveItemAccess(ctx, item, permissions),
     });
   }
 
-  return authorizedItems;
+  return itemsWithAccess;
 };
 
 const authorizeRequestedTypes = async (
@@ -774,8 +802,31 @@ export const listProjectedContents = async (
     return refreshResponse;
   }
 
-  const { items, total } = await loadProjectionPage(instanceId, query, typeAuthorization.allowedTypes);
-  const authorizedItems = await filterAuthorizedProjectionItems(ctx, items, typeAuthorization.permissions);
+  const visibilityRules = buildProjectionReadVisibilityRules(
+    typeAuthorization.allowedTypes,
+    typeAuthorization.permissions
+  );
+  let actorAccountId: string | undefined;
+  if (visibilityRules.some((rule) => rule.allowOwn || rule.denyOwn)) {
+    try {
+      actorAccountId = await withInstanceScopedDb(instanceId, async (client) =>
+        resolveActorAccountId(client, {
+          instanceId,
+          keycloakSubject: ctx.user.id,
+        })
+      );
+    } catch (error) {
+      return createListErrorResponse(
+        503,
+        'database_unavailable',
+        error instanceof Error ? error.message : 'Der Akteurkontext konnte nicht geladen werden.',
+        getWorkspaceContext().requestId
+      );
+    }
+  }
+
+  const { items, total } = await loadProjectionPage(instanceId, query, visibilityRules, actorAccountId);
+  const authorizedItems = await enrichProjectionItemsWithAccess(ctx, items, typeAuthorization.permissions);
   if (authorizedItems instanceof Response) {
     return authorizedItems;
   }

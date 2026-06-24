@@ -36,6 +36,10 @@ Betriebsrelevante Regeln:
 
 - Browser-seitige Vollscans über `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi` sind für die Übersicht kein Sollzustand mehr.
 - Das Listen-Read-Model liegt in `iam.content_list_projection`; der Mainserver-Refresh-Status pro Typ und Instanz liegt in `iam.content_list_projection_sync_state`.
+- Phase 1 verwendet bewusst keinen separaten Scheduler oder Delta-Sync. Der Mainserver-Refresh für die Übersicht ist requestgetriggert.
+- Ein Mainserver-Typ gilt aktuell für fünf Minuten als frisch. Der erste Listenrequest nach Ablauf dieses Fensters stößt für den betroffenen Typ einen serverseitigen Full-Refresh an.
+- Scheitert dieser Refresh, antwortet `GET /api/v1/iam/contents` mit einem regulären Listenfehler; es gibt keinen stillen Fallback auf einen Browser-Vollscan.
+- Der requestgetriggerte Refresh ist der führende Betriebsvertrag für Phase 1. Ein späterer Scheduler oder inkrementeller Sync erweitert diesen Vertrag, ersetzt ihn aber nicht implizit.
 - Fehler einer angefragten Mainserver-Quelle schlagen als regulärer Listenfehler auf `/api/v1/iam/contents` durch; die Übersicht darf nicht dauerhaft im Ladezustand hängen bleiben.
 - Die Listen-Pagination der Übersicht ist serverseitig führend. Große Bestände müssen sich daher zuerst über die Antwortzeiten von `/api/v1/iam/contents` und erst danach über einzelne Mainserver-Adapter diagnostizieren lassen.
 - Die Detail- und Mutationspfade der Fachplugins bleiben unverändert auf den jeweiligen Host-Fassaden unter `/api/v1/mainserver/*`.

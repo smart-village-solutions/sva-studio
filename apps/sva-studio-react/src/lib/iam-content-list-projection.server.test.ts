@@ -28,6 +28,7 @@ type ProjectionRow = {
 
 const state = vi.hoisted(() => ({
   authorizeContentPrimitiveForUser: vi.fn(),
+  resolveActorAccountId: vi.fn(),
   withInstanceScopedDb: vi.fn(),
   listSvaMainserverNews: vi.fn(),
   listSvaMainserverEvents: vi.fn(),
@@ -37,6 +38,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
+  resolveActorAccountId: state.resolveActorAccountId,
   withInstanceScopedDb: state.withInstanceScopedDb,
 }));
 
@@ -66,10 +68,35 @@ describe('content list projection', () => {
   let projectionRows: ProjectionRow[];
   let syncStates: Map<string, { last_succeeded_at: string | null }>;
 
+  const applyProjectionFilters = (text: string, values: readonly unknown[] | undefined): ProjectionRow[] => {
+    const scopedInstanceId = String(values?.[0] ?? '');
+    let rows = projectionRows.filter((row) => row.instance_id === scopedInstanceId);
+
+    const contentTypeMatches = [...text.matchAll(/projection\.content_type = \$(\d+)/g)];
+    if (contentTypeMatches.length > 0) {
+      const contentTypes = contentTypeMatches
+        .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
+        .filter((value): value is string => typeof value === 'string');
+      rows = rows.filter((row) => contentTypes.includes(row.content_type));
+    }
+
+    const orgMatches = [...text.matchAll(/projection\.organization_id::text = ANY\(\$(\d+)::text\[\]\)/g)];
+    if (orgMatches.length > 0 && !text.includes('NOT (projection.organization_id::text = ANY')) {
+      const allowedOrganizationIds = orgMatches.flatMap((match) => {
+        const value = values?.[Number.parseInt(match[1] ?? '0', 10) - 1];
+        return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
+      });
+      rows = rows.filter((row) => row.organization_id !== null && allowedOrganizationIds.includes(row.organization_id));
+    }
+
+    return rows;
+  };
+
   beforeEach(() => {
     projectionRows = [];
     syncStates = new Map();
     state.authorizeContentPrimitiveForUser.mockReset();
+    state.resolveActorAccountId.mockReset();
     state.withInstanceScopedDb.mockReset();
     state.listSvaMainserverNews.mockReset();
     state.listSvaMainserverEvents.mockReset();
@@ -77,14 +104,24 @@ describe('content list projection', () => {
     state.getWorkspaceContext.mockReset();
     state.getWorkspaceContext.mockReturnValue({ requestId: 'req-1' });
 
-    state.authorizeContentPrimitiveForUser.mockImplementation(async ({ action }: { action: string }) => ({
-      ok: true,
-      actor: {
-        instanceId: 'de-musterhausen',
-        keycloakSubject: 'kc-user-1',
-      },
-      permissions: [{ action, resourceType: action.split('.')[0] ?? 'content' }],
-    }));
+    state.authorizeContentPrimitiveForUser.mockImplementation(async ({ action }: { action: string }) =>
+      action.endsWith('.read')
+        ? {
+            ok: true,
+            actor: {
+              instanceId: 'de-musterhausen',
+              keycloakSubject: 'kc-user-1',
+            },
+            permissions: [{ action, resourceType: action.split('.')[0] ?? 'content' }],
+          }
+        : {
+            ok: false,
+            status: 403,
+            error: 'forbidden',
+            message: 'forbidden',
+          }
+    );
+    state.resolveActorAccountId.mockResolvedValue('account-1');
 
     state.withInstanceScopedDb.mockImplementation(async (_instanceId: string, work: (client: { query: <TRow>(text: string, values?: readonly unknown[]) => Promise<{ rows: TRow[]; rowCount: number }> }) => Promise<unknown>) =>
       work({
@@ -144,11 +181,13 @@ describe('content list projection', () => {
           }
 
           if (text.includes('SELECT COUNT(*)::int AS total')) {
-            return { rows: [{ total: projectionRows.length }] as TRow[], rowCount: 1 };
+            const rows = applyProjectionFilters(text, values);
+            return { rows: [{ total: rows.length }] as TRow[], rowCount: 1 };
           }
 
           if (text.includes('FROM iam.content_list_projection AS projection')) {
-            return { rows: projectionRows as TRow[], rowCount: projectionRows.length };
+            const rows = applyProjectionFilters(text, values);
+            return { rows: rows as TRow[], rowCount: rows.length };
           }
 
           return { rows: [], rowCount: 0 };
@@ -220,6 +259,96 @@ describe('content list projection', () => {
     expect(payload.pagination.total).toBe(1);
     expect(state.listSvaMainserverNews).toHaveBeenCalledTimes(1);
     expect(syncStates.get('news.article')?.last_succeeded_at).toBeTruthy();
+  });
+
+  it('keeps pagination total aligned with organization-scoped read visibility', async () => {
+    projectionRows = [
+      {
+        id: 'content-1',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        content_type: 'generic',
+        title: 'Visible',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'account-9',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'account-9',
+        author_display_name: 'Alice',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'iam',
+        source_entity_type: 'iam.contents',
+        source_entity_id: 'content-1',
+      },
+      {
+        id: 'content-2',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-2',
+        owner_subject_id: null,
+        content_type: 'generic',
+        title: 'Hidden',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'account-9',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'account-9',
+        author_display_name: 'Bob',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-2',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'iam',
+        source_entity_type: 'iam.contents',
+        source_entity_id: 'content-2',
+      },
+    ];
+    state.authorizeContentPrimitiveForUser.mockImplementation(async ({ action }: { action: string }) =>
+      action === 'content.read'
+        ? {
+            ok: true,
+            actor: {
+              instanceId: 'de-musterhausen',
+              keycloakSubject: 'kc-user-1',
+            },
+            permissions: [{ action, resourceType: 'content', organizationId: 'org-1' }],
+          }
+        : {
+            ok: false,
+            status: 403,
+            error: 'forbidden',
+            message: 'forbidden',
+          }
+    );
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['generic'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    await expect(response.json()).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'content-1', title: 'Visible' })],
+      pagination: {
+        page: 1,
+        pageSize: 25,
+        total: 1,
+      },
+      requestId: 'req-1',
+    });
   });
 
   it('returns a deterministic list error when the mainserver refresh fails', async () => {

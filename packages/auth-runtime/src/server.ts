@@ -60,6 +60,7 @@ export {
 } from './audit-db-sink.js';
 export { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.js';
 export { withInstanceScopedDb } from './iam-account-management/shared.js';
+export { resolveActorAccountId } from './iam-account-management/shared.js';
 export { withMediaRepository, withMediaService } from './iam-media/index.js';
 export { completeMediaUploadHandler } from './iam-media/core.js';
 export {

@@ -89,22 +89,39 @@ const loadRuntimeConfig = async (instanceId: string): Promise<MapGeocodingRuntim
   };
 };
 
+const authorizeFirstAllowedAction = async (
+  ctx: Parameters<
+    Awaited<typeof import('@sva/auth-runtime/server')>['authorizeInstancePermissionForUser']
+  >[0]['ctx'],
+  actions: readonly ('poi.read' | 'poi.create' | 'poi.update' | 'events.read' | 'events.create' | 'events.update')[],
+) => {
+  const { authorizeInstancePermissionForUser } = await import('@sva/auth-runtime/server');
+  let lastResult:
+    | Awaited<ReturnType<typeof authorizeInstancePermissionForUser>>
+    | null = null;
+
+  for (const action of actions) {
+    const result = await authorizeInstancePermissionForUser({ ctx, action });
+    if (result.ok) {
+      return result;
+    }
+    lastResult = result;
+  }
+
+  return lastResult ?? { ok: false as const, status: 403, error: 'forbidden', message: 'forbidden' };
+};
+
 const withAuthenticatedMapUser = async <T>(
   request: Request,
-  action: 'poi.read' | 'poi.create' | 'poi.update',
+  actions: readonly ('poi.read' | 'poi.create' | 'poi.update' | 'events.read' | 'events.create' | 'events.update')[],
   run: (ctx: AuthenticatedMapGeocodingContext) => Promise<T>,
 ): Promise<T> => {
-  const { authorizeInstancePermissionForUser, withAuthenticatedUser } = await import('@sva/auth-runtime/server');
+  const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
   const response = await withAuthenticatedUser(request, async (ctx) => {
     if (!ctx.user.instanceId) {
       return jsonResponse(400, { error: 'invalid_config' });
     }
-    const authorization =
-      action === 'poi.update'
-        ? await authorizeInstancePermissionForUser({ ctx, action: 'poi.update' }).then(async (result) =>
-            result.ok ? result : authorizeInstancePermissionForUser({ ctx, action: 'poi.create' }),
-          )
-        : await authorizeInstancePermissionForUser({ ctx, action });
+    const authorization = await authorizeFirstAllowedAction(ctx, actions);
     if (!authorization.ok) {
       return jsonResponse(authorization.status, { error: authorization.error });
     }
@@ -142,7 +159,10 @@ const withGeocodingOperation = async <T>(
   operation: 'get_config' | 'suggest' | 'geocode' | 'reverse_geocode',
   run: (ctx: AuthenticatedMapGeocodingContext, config: MapGeocodingRuntimeConfigWithSecrets) => Promise<T>,
 ): Promise<T> =>
-  withAuthenticatedMapUser(request, operation === 'get_config' ? 'poi.read' : 'poi.update', async (ctx) => {
+  withAuthenticatedMapUser(
+    request,
+    operation === 'get_config' ? ['poi.read', 'events.read'] : ['poi.update', 'poi.create', 'events.update', 'events.create'],
+    async (ctx) => {
     const logger = await getLogger();
     const config = await loadRuntimeConfig(ctx.user.instanceId as string);
     try {
@@ -172,7 +192,8 @@ const withGeocodingOperation = async <T>(
       });
       throw error;
     }
-  });
+    },
+  );
 
 export const withCurrentRequestGeocodingOperation = async <T>(
   operation: 'get_config' | 'suggest' | 'geocode' | 'reverse_geocode',

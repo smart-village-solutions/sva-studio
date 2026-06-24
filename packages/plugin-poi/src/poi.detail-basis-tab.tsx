@@ -104,6 +104,7 @@ export function PoiDetailBasisTab({
                 errorMessage={categoryOptionsError ?? undefined}
                 loading={categoryOptionsLoading}
                 helpText={pt('fields.categoriesHelp')}
+                inputId="poi-category"
                 inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
                 loadingText={pt('messages.categoryOptionsLoading')}
                 searchLabel={pt('fields.categoriesSearch')}

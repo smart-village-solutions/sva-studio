@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Alert, AlertDescription, Button, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
 import { EventsLocationMap } from './events.location-map.js';
-import { getMapGeocodingConfig, geocodeMapAddress, reverseMapCoordinates } from './events.map-geocoding-client.js';
+import { geocodeMapAddress, reverseMapCoordinates } from './events.map-geocoding-client.js';
 import { parseCoordinate } from './events.location-map.shared.js';
 
 type Translator = (key: string) => string;
@@ -13,12 +13,16 @@ export function EventsGeoAddressFields({
   additionId,
   city,
   cityId,
+  geocodingEnabled,
+  mapEnabled,
+  mapStyleUrl,
   latitude,
   latitudeError,
   latitudeId,
   longitude,
   longitudeError,
   longitudeId,
+  reverseGeocodingEnabled,
   street,
   streetId,
   zip,
@@ -36,12 +40,16 @@ export function EventsGeoAddressFields({
   additionId: string;
   city: string;
   cityId: string;
+  geocodingEnabled: boolean;
+  mapEnabled: boolean;
+  mapStyleUrl: string;
   latitude: string;
   latitudeError?: string;
   latitudeId: string;
   longitude: string;
   longitudeError?: string;
   longitudeId: string;
+  reverseGeocodingEnabled: boolean;
   street: string;
   streetId: string;
   zip: string;
@@ -54,10 +62,6 @@ export function EventsGeoAddressFields({
   onStreetChange: (value: string) => void;
   onZipChange: (value: string) => void;
 }>) {
-  const [isGeocodingEnabled, setIsGeocodingEnabled] = React.useState(true);
-  const [isReverseGeocodingEnabled, setIsReverseGeocodingEnabled] = React.useState(true);
-  const [isMapEnabled, setIsMapEnabled] = React.useState(true);
-  const [mapStyleUrl, setMapStyleUrl] = React.useState('');
   const [mapError, setMapError] = React.useState<string | null>(null);
   const [geocodingError, setGeocodingError] = React.useState<string | null>(null);
   const [isGeocoding, setIsGeocoding] = React.useState(false);
@@ -69,32 +73,6 @@ export function EventsGeoAddressFields({
   const hasReverseGeocodingInput = parsedLatitude !== null && parsedLongitude !== null;
   const geoLocationError = latitudeError ?? longitudeError;
 
-  React.useEffect(() => {
-    let active = true;
-    void getMapGeocodingConfig()
-      .then((config) => {
-        if (!active) {
-          return;
-        }
-        setIsGeocodingEnabled(config.geocodeEnabled);
-        setIsReverseGeocodingEnabled(config.reverseGeocodeEnabled);
-        setMapStyleUrl(config.styleUrl);
-        setIsMapEnabled(config.killSwitchEnabled === false && config.styleUrl.length > 0);
-      })
-      .catch(() => {
-        if (!active) {
-          return;
-        }
-        setIsGeocodingEnabled(false);
-        setIsReverseGeocodingEnabled(false);
-        setIsMapEnabled(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
   const handleGeocode = React.useCallback(async () => {
     const address = {
       query: addition.trim() || undefined,
@@ -104,7 +82,7 @@ export function EventsGeoAddressFields({
       country: 'Deutschland',
     };
 
-    if (!isGeocodingEnabled || !hasGeocodingInput) {
+    if (!geocodingEnabled || !hasGeocodingInput) {
       setGeocodingError(pt('messages.locationGeocodeError'));
       return;
     }
@@ -124,10 +102,10 @@ export function EventsGeoAddressFields({
     } finally {
       setIsGeocoding(false);
     }
-  }, [addition, city, hasGeocodingInput, isGeocodingEnabled, onCoordinatesChange, pt, street, zip]);
+  }, [addition, city, geocodingEnabled, hasGeocodingInput, onCoordinatesChange, pt, street, zip]);
 
   const handleReverseGeocode = React.useCallback(async () => {
-    if (!isReverseGeocodingEnabled || parsedLatitude === null || parsedLongitude === null) {
+    if (!reverseGeocodingEnabled || parsedLatitude === null || parsedLongitude === null) {
       setGeocodingError(pt('messages.locationGeocodeError'));
       return;
     }
@@ -149,7 +127,7 @@ export function EventsGeoAddressFields({
     } finally {
       setIsReverseGeocoding(false);
     }
-  }, [isReverseGeocodingEnabled, onCityChange, onStreetChange, onZipChange, parsedLatitude, parsedLongitude, pt]);
+  }, [onCityChange, onStreetChange, onZipChange, parsedLatitude, parsedLongitude, pt, reverseGeocodingEnabled]);
 
   return (
     <div className="space-y-4">
@@ -192,7 +170,7 @@ export function EventsGeoAddressFields({
         </Alert>
       ) : null}
 
-      {isMapEnabled && mapStyleUrl ? (
+      {mapEnabled && mapStyleUrl ? (
         <EventsLocationMap
           styleUrl={mapStyleUrl}
           latitude={latitude}

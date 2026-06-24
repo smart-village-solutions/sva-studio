@@ -8,6 +8,7 @@ export type EventsCategoryMultiselectProps = Readonly<{
   disabled?: boolean;
   errorMessage?: string;
   helpText: string;
+  inputId?: string;
   inputPlaceholder: string;
   loading: boolean;
   loadingText: string;
@@ -28,6 +29,7 @@ export function EventsCategoryMultiselect({
   disabled = false,
   errorMessage,
   helpText,
+  inputId,
   inputPlaceholder,
   loading,
   loadingText,
@@ -78,12 +80,14 @@ export function EventsCategoryMultiselect({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <div className="flex-1 space-y-2">
           <Input
+            id={inputId}
             aria-label={searchLabel}
             list={datalistId}
             disabled={disabled || loading}
             placeholder={inputPlaceholder}
             value={draftValue}
             onChange={(event) => setDraftValue(event.currentTarget.value)}
+            onBlur={() => addCategory()}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();

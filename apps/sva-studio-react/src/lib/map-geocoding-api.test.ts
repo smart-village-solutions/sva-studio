@@ -108,6 +108,39 @@ describe('map-geocoding-api', () => {
     );
   });
 
+  it('falls back to events.read when poi.read is missing for runtime config access', async () => {
+    state.authorizeInstancePermissionForUser
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'subject-1',
+        },
+        permissions: [],
+      });
+
+    const { getMapGeocodingConfigServerFn } = await import('./map-geocoding-api');
+
+    await expect(getMapGeocodingConfigServerFn()).resolves.toMatchObject({
+      provider: 'geoapify',
+      styleUrl: 'https://tiles.example/styles/poi',
+    });
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ action: 'poi.read' }),
+    );
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ action: 'events.read' }),
+    );
+  });
+
   it('normalizes Geoapify suggestions into provider-neutral features', async () => {
     state.fetch.mockResolvedValue({
       ok: true,
@@ -199,14 +232,84 @@ describe('map-geocoding-api', () => {
     );
   });
 
-  it('rejects provider-backed geocoding calls without poi.update or poi.create permission', async () => {
-    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
-      ok: false,
-      status: 403,
-      error: 'forbidden',
-      message: 'Keine Berechtigung für diese Instanzoperation.',
+  it('falls back to events.update when poi permissions are missing for provider-backed geocoding calls', async () => {
+    state.authorizeInstancePermissionForUser
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'subject-1',
+        },
+        permissions: [],
+      });
+    state.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        features: [
+          {
+            properties: {
+              formatted: 'Musterstraße 1, 12345 Musterstadt',
+              lat: 52.52,
+              lon: 13.405,
+              country_code: 'de',
+            },
+          },
+        ],
+      }),
     });
-    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+
+    const { suggestMapAddressesServerFn } = await import('./map-geocoding-api');
+
+    await expect(suggestMapAddressesServerFn({ data: { query: 'Musterstraße 1' } })).resolves.toMatchObject([
+      expect.objectContaining({ label: 'Musterstraße 1, 12345 Musterstadt' }),
+    ]);
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ action: 'poi.update' }),
+    );
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ action: 'poi.create' }),
+    );
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({ action: 'events.update' }),
+    );
+  });
+
+  it('rejects provider-backed geocoding calls without poi or event write permissions', async () => {
+    state.authorizeInstancePermissionForUser
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
+      .mockResolvedValueOnce({
       ok: false,
       status: 403,
       error: 'forbidden',

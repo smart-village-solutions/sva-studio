@@ -75,6 +75,7 @@ export function EventsDetailBasisTab({
                 errorMessage={categoryOptionsError ?? undefined}
                 loading={categoryOptionsLoading}
                 helpText={pt('fields.categoriesHelp')}
+                inputId="event-category"
                 inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
                 loadingText={pt('messages.categoryOptionsLoading')}
                 searchLabel={pt('fields.categoriesSearch')}
@@ -176,6 +177,7 @@ export function EventsDetailBasisTab({
                 clearLabel={pt('actions.clearPoiSelection')}
                 emptyText={pt('messages.poiOptionsEmpty')}
                 errorMessage={poiOptionsError ?? undefined}
+                inputId="event-poi"
                 inputPlaceholder={pt('fields.pointOfInterestSearchPlaceholder')}
                 loading={poiOptionsLoading}
                 loadingText={pt('messages.poiOptionsLoading')}

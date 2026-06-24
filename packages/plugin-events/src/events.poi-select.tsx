@@ -8,6 +8,7 @@ export type EventsPoiSelectProps = Readonly<{
   clearLabel: string;
   emptyText: string;
   errorMessage?: string;
+  inputId?: string;
   inputPlaceholder: string;
   loading: boolean;
   loadingText: string;
@@ -23,6 +24,7 @@ export function EventsPoiSelect({
   clearLabel,
   emptyText,
   errorMessage,
+  inputId,
   inputPlaceholder,
   loading,
   loadingText,
@@ -63,6 +65,7 @@ export function EventsPoiSelect({
     <div ref={rootRef} className="relative space-y-2">
       <div className="flex gap-2">
         <Input
+          id={inputId}
           aria-label={searchLabel}
           placeholder={inputPlaceholder}
           value={query}

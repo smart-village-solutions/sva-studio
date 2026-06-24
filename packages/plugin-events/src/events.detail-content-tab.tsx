@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button, Checkbox, Input, RichTextHtmlEditor, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
 
@@ -13,6 +14,7 @@ import {
 } from './events.detail-form.js';
 import { EventsDetailCard } from './events.detail-card.js';
 import { EventsGeoAddressFields } from './events.geo-address-fields.js';
+import { getMapGeocodingConfig } from './events.map-geocoding-client.js';
 type Translator = (key: string) => string;
 
 const EventCardSection = ({
@@ -73,6 +75,10 @@ export function EventsDetailContentTab({
   const descriptionLabelId = 'event-description-label';
   const addressGeoLocationErrors = errors.content?.addresses ?? [];
   const organizerGeoLocationErrors = errors.content?.organizer?.address?.geoLocation;
+  const [isGeocodingEnabled, setIsGeocodingEnabled] = useState(true);
+  const [isReverseGeocodingEnabled, setIsReverseGeocodingEnabled] = useState(true);
+  const [isMapEnabled, setIsMapEnabled] = useState(true);
+  const [mapStyleUrl, setMapStyleUrl] = useState('');
   const blockTypeOptions = [
     { value: 'paragraph' as const, label: pt('richText.paragraph') },
     { value: 'heading-2' as const, label: pt('richText.heading2') },
@@ -80,6 +86,32 @@ export function EventsDetailContentTab({
     { value: 'heading-4' as const, label: pt('richText.heading4') },
     { value: 'blockquote' as const, label: pt('richText.blockquote') },
   ];
+
+  useEffect(() => {
+    let active = true;
+    void getMapGeocodingConfig()
+      .then((config) => {
+        if (!active) {
+          return;
+        }
+        setIsGeocodingEnabled(config.geocodeEnabled);
+        setIsReverseGeocodingEnabled(config.reverseGeocodeEnabled);
+        setMapStyleUrl(config.styleUrl);
+        setIsMapEnabled(config.killSwitchEnabled === false && config.styleUrl.length > 0);
+      })
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+        setIsGeocodingEnabled(false);
+        setIsReverseGeocodingEnabled(false);
+        setIsMapEnabled(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -238,12 +270,16 @@ export function EventsDetailContentTab({
               additionId={index === 0 ? 'event-address-name' : `event-address-name-${index}`}
               city={address.city ?? ''}
               cityId={index === 0 ? 'event-city' : `event-city-${index}`}
+              geocodingEnabled={isGeocodingEnabled}
+              mapEnabled={isMapEnabled}
+              mapStyleUrl={mapStyleUrl}
               latitude={address.geoLocation?.latitude ?? ''}
               latitudeError={addressGeoLocationErrors[index]?.geoLocation?.latitude ? pt('validation.geoLocation') : undefined}
               latitudeId={index === 0 ? 'event-address-latitude' : `event-address-latitude-${index}`}
               longitude={address.geoLocation?.longitude ?? ''}
               longitudeError={addressGeoLocationErrors[index]?.geoLocation?.longitude ? pt('validation.geoLocation') : undefined}
               longitudeId={index === 0 ? 'event-address-longitude' : `event-address-longitude-${index}`}
+              reverseGeocodingEnabled={isReverseGeocodingEnabled}
               street={address.street ?? ''}
               streetId={index === 0 ? 'event-street' : `event-street-${index}`}
               zip={address.zip ?? ''}
@@ -297,12 +333,16 @@ export function EventsDetailContentTab({
           additionId="event-organizer-addition"
           city={organizer.address?.city ?? ''}
           cityId="event-organizer-city"
+          geocodingEnabled={isGeocodingEnabled}
+          mapEnabled={isMapEnabled}
+          mapStyleUrl={mapStyleUrl}
           latitude={organizer.address?.geoLocation?.latitude ?? ''}
           latitudeError={organizerGeoLocationErrors?.latitude ? pt('validation.geoLocation') : undefined}
           latitudeId="event-organizer-latitude"
           longitude={organizer.address?.geoLocation?.longitude ?? ''}
           longitudeError={organizerGeoLocationErrors?.longitude ? pt('validation.geoLocation') : undefined}
           longitudeId="event-organizer-longitude"
+          reverseGeocodingEnabled={isReverseGeocodingEnabled}
           street={organizer.address?.street ?? ''}
           streetId="event-organizer-street"
           zip={organizer.address?.zip ?? ''}

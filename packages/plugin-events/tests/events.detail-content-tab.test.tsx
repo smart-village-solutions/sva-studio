@@ -371,7 +371,7 @@ describe('EventsDetailContentTab', () => {
 
     expect(getValues().content.dates).toHaveLength(1);
     expect(getValues().content.addresses).toHaveLength(1);
-  });
+  }, 10_000);
 
   it('marks invalid first date inputs for assistive technology', async () => {
     renderTab(

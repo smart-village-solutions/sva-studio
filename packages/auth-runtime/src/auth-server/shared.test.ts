@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { TOKEN_REFRESH_SKEW_MS, buildSessionUser, resolveExpiresAt, resolveSessionExpiry } from './shared.js';
+import { TOKEN_REFRESH_SKEW_MS, buildSessionUser, resolveSessionExpiry } from './shared.js';
 import { TenantScopeConflictError } from '../runtime-errors.js';
 
 describe('auth-server shared helpers', () => {
@@ -104,8 +104,14 @@ describe('auth-server shared helpers', () => {
   it('derives expiry timestamps with fallback and absolute session limits', () => {
     vi.spyOn(Date, 'now').mockReturnValue(1_000);
 
-    expect(resolveExpiresAt(undefined, 5_000)).toBe(5_000);
-    expect(resolveExpiresAt(2)).toBe(3_000);
+    expect(
+      resolveSessionExpiry({
+        expiresInSeconds: undefined,
+        issuedAt: 10_000,
+        sessionTtlMs: 5_000,
+        fallback: 5_000,
+      })
+    ).toBe(5_000);
     expect(
       resolveSessionExpiry({
         expiresInSeconds: undefined,
@@ -121,6 +127,13 @@ describe('auth-server shared helpers', () => {
         fallback: 99_000,
       })
     ).toBe(11_000);
+    expect(
+      resolveSessionExpiry({
+        expiresInSeconds: 2,
+        issuedAt: 10_000,
+        sessionTtlMs: 50_000,
+      })
+    ).toBe(3_000);
 
     vi.restoreAllMocks();
   });

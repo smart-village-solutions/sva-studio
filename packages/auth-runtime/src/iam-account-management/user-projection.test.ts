@@ -98,12 +98,16 @@ describe('user projection', () => {
   });
 
   it('marks user detail projections as degraded when keycloak roles are unavailable', async () => {
-    const { resolveProjectedUserDetail } = await import('./user-projection.js');
+    const { applyCanonicalUserDetailProjection } = await import('./user-projection.js');
 
-    const projectedUser = await resolveProjectedUserDetail({
+    const projectedUser = await applyCanonicalUserDetailProjection({
       instanceId: 'de-musterhausen',
       user: baseUser(),
       keycloakRoleNames: null,
+      mainserverCredentialState: {
+        mainserverUserApplicationId: undefined,
+        mainserverUserApplicationSecretSet: false,
+      },
     });
 
     expect(projectedUser.mappingStatus).toBe('manual_review');
@@ -122,7 +126,7 @@ describe('user projection', () => {
   });
 
   it('keeps DB roles canonical and exposes keycloak role names separately', async () => {
-    const { resolveProjectedUserDetail } = await import('./user-projection.js');
+    const { applyCanonicalUserDetailProjection } = await import('./user-projection.js');
     state.resolveRolesByExternalNames.mockResolvedValueOnce([
       {
         id: 'role-news-editor',
@@ -132,10 +136,14 @@ describe('user projection', () => {
       },
     ]);
 
-    const projectedUser = await resolveProjectedUserDetail({
+    const projectedUser = await applyCanonicalUserDetailProjection({
       instanceId: 'de-musterhausen',
       user: baseUser(),
       keycloakRoleNames: ['news.editor'],
+      mainserverCredentialState: {
+        mainserverUserApplicationId: undefined,
+        mainserverUserApplicationSecretSet: false,
+      },
     });
 
     expect(projectedUser.roles).toEqual(baseUser().roles);

@@ -50,7 +50,7 @@ export const resolveKeycloakRoleNames = async (
   ];
 };
 
-export const resolveProjectedUserDetail = async (input: {
+const resolveProjectedUserDetail = async (input: {
   instanceId: string;
   user: IamUserDetail;
   keycloakRoleNames: readonly string[] | null;

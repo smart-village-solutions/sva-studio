@@ -1,9 +1,6 @@
 import type {
   ApiErrorCode,
   ApiErrorResponse,
-  ApiListResponse,
-  ApiPagination,
-  IamContentListItem,
   IamContentListQuery,
 } from '@sva/core';
 
@@ -92,75 +89,6 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
   };
 };
 
-export const partitionRequestedTypes = (query: IamContentListQuery): {
-  readonly localTypes: readonly string[];
-  readonly mainserverTypes: readonly string[];
-} => {
-  const requestedTypes = query.type ? [query.type] : (query.visibleTypes ?? []);
-  return {
-    mainserverTypes: requestedTypes.filter(isMainserverContentType),
-    localTypes: requestedTypes.filter((value) => !isMainserverContentType(value)),
-  };
-};
-
-export const filterItems = (
-  items: readonly IamContentListItem[],
-  query: IamContentListQuery
-): readonly IamContentListItem[] => {
-  const normalizedSearch = query.q?.trim().toLowerCase();
-
-  return items.filter((item) => {
-    if (query.type && item.contentType !== query.type) {
-      return false;
-    }
-    if (query.status && item.status !== query.status) {
-      return false;
-    }
-    if (normalizedSearch) {
-      const searchableText = [item.title, item.contentType, item.author, JSON.stringify(item.payload)]
-        .join(' ')
-        .toLowerCase();
-      if (!searchableText.includes(normalizedSearch)) {
-        return false;
-      }
-    }
-    return true;
-  });
-};
-
-export const sortItems = (
-  items: readonly IamContentListItem[],
-  sortBy: IamContentListQuery['sortBy'],
-  sortDirection: IamContentListQuery['sortDirection']
-): readonly IamContentListItem[] => {
-  const direction = sortDirection === 'asc' ? 1 : -1;
-  const collator = new Intl.Collator('de', { sensitivity: 'base', numeric: true });
-
-  return [...items].sort((left, right) => {
-    const result =
-      sortBy === 'contentType'
-        ? collator.compare(left.contentType, right.contentType)
-        : sortBy === 'title'
-          ? collator.compare(left.title, right.title)
-          : sortBy === 'status'
-            ? collator.compare(left.status, right.status)
-            : collator.compare(left.updatedAt, right.updatedAt);
-    if (result !== 0) {
-      return result * direction;
-    }
-    return collator.compare(left.id, right.id) * direction;
-  });
-};
-
-export const paginateItems = (
-  items: readonly IamContentListItem[],
-  page: number,
-  pageSize: number
-): readonly IamContentListItem[] => {
-  const offset = Math.max(0, (page - 1) * pageSize);
-  return items.slice(offset, offset + pageSize);
-};
-
 export const createListErrorResponse = (
   status: number,
   code: ApiErrorCode,
@@ -180,51 +108,3 @@ export const createListErrorResponse = (
       headers: { 'Content-Type': 'application/json' },
     }
   );
-
-export const createListResponse = (
-  items: readonly IamContentListItem[],
-  pagination: ApiPagination,
-  requestId?: string
-): Response =>
-  new Response(
-    JSON.stringify({
-      data: items,
-      pagination,
-      ...(requestId ? { requestId } : {}),
-    } satisfies ApiListResponse<IamContentListItem>),
-    {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }
-  );
-
-export const createListSubrequest = (request: Request, query: IamContentListQuery): Request => {
-  const url = new URL(request.url);
-  url.search = '';
-  url.searchParams.set('page', String(query.page));
-  url.searchParams.set('pageSize', String(query.pageSize));
-
-  if (query.q) {
-    url.searchParams.set('q', query.q);
-  }
-  if (query.type) {
-    url.searchParams.set('type', query.type);
-  }
-  if (query.status) {
-    url.searchParams.set('status', query.status);
-  }
-  if (query.sortBy) {
-    url.searchParams.set('sortBy', query.sortBy);
-  }
-  if (query.sortDirection) {
-    url.searchParams.set('sortDirection', query.sortDirection);
-  }
-  for (const visibleType of query.visibleTypes ?? []) {
-    url.searchParams.append('visibleType', visibleType);
-  }
-
-  return new Request(url.toString(), {
-    method: 'GET',
-    headers: request.headers,
-  });
-};

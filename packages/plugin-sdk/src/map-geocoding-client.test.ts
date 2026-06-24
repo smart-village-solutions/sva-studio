@@ -189,4 +189,55 @@ describe('map geocoding client', () => {
       suggestHostMapAddresses({ fetch: fetchMock as never, query: 'leer' }),
     ).rejects.toEqual(new MapGeocodingClientError('disabled', 'disabled'));
   });
+
+  it('logs failed debug requests with safe response metadata', async () => {
+    const originalLocalStorage = globalThis.localStorage;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => (key === 'sva:debug:map-geocoding' ? 'true' : null),
+      },
+    });
+
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          error: { code: 'rate_limited', message: 'Too many requests' },
+        }),
+        {
+          status: 429,
+          headers: { 'content-type': 'application/json' },
+        },
+      ),
+    );
+
+    try {
+      await expect(
+        reverseGeocodeHostCoordinates({
+          fetch: fetchMock as never,
+          coordinates: { latitude: Number.NaN, longitude: 13.4 },
+        }),
+      ).rejects.toEqual(new MapGeocodingClientError('rate_limited', 'Too many requests'));
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[map-geocoding]',
+        'client request failed',
+        expect.objectContaining({
+          operation: 'reverse_geocode',
+          http_status: 429,
+          content_type: 'application/json',
+          error_code: 'rate_limited',
+          error_message: 'Too many requests',
+        }),
+      );
+    } finally {
+      warnSpy.mockRestore();
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: originalLocalStorage,
+      });
+    }
+  });
 });

@@ -198,4 +198,49 @@ describe('iam content list visibility', () => {
       )
     ).toBe(false);
   });
+
+  it('handles plugin deny precedence, content type mismatches, and unscoped optional rows', () => {
+    const [rule] = buildProjectionReadVisibilityRules(
+      ['events.event-record'],
+      [
+        createPermission({
+          action: 'events.read',
+          resourceType: 'events',
+          organizationId: 'org-2',
+          accessScope: 'organization',
+        }),
+        createPermission({
+          action: 'events.read',
+          resourceType: 'events',
+          effect: 'deny',
+          accessScope: 'own',
+        }),
+      ]
+    );
+
+    expect(
+      isProjectionRowVisibleForRead(rule, { contentType: 'news.article', createdByAccountId: 'account-a' }, 'account-a')
+    ).toBe(false);
+    expect(
+      isProjectionRowVisibleForRead(rule, { contentType: 'events.event-record', createdByAccountId: 'account-a' }, 'account-b')
+    ).toBe(true);
+    expect(
+      isProjectionRowVisibleForRead(rule, { contentType: 'events.event-record', createdByAccountId: 'account-a' }, 'account-a')
+    ).toBe(false);
+
+    const [globalDenyRule] = buildProjectionReadVisibilityRules(
+      ['content.custom'],
+      [
+        createPermission({ action: 'content.read', resourceType: 'content' }),
+        createPermission({ action: 'content.read', resourceType: 'content', effect: 'deny' }),
+      ]
+    );
+    expect(
+      isProjectionRowVisibleForRead(
+        globalDenyRule,
+        { contentType: 'content.custom', organizationId: 'org-1', createdByAccountId: 'account-a' },
+        'account-b'
+      )
+    ).toBe(false);
+  });
 });

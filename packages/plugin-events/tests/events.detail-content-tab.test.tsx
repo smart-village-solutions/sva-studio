@@ -167,10 +167,17 @@ const pt = (key: string) =>
     'richText.applyLink': 'Link setzen',
   })[key] ?? key;
 
-function renderTab(defaultValues?: Partial<EventsDetailFormValues>) {
+function renderTab(
+  defaultValues?: Partial<EventsDetailFormValues>,
+  options?: {
+    readonly dateEndInput?: string;
+    readonly dateInputsInvalid?: Readonly<{ dateStart: boolean; dateEnd: boolean }>;
+    readonly dateStartInput?: string;
+  }
+) {
   const onDateStartInputChange = vi.fn();
   const onDateEndInputChange = vi.fn();
-  let latestValues: EventsDetailFormValues | undefined;
+  let getCurrentValues: (() => EventsDetailFormValues) | undefined;
 
   const Wrapper = () => {
     const methods = useForm<EventsDetailFormValues>({
@@ -179,14 +186,14 @@ function renderTab(defaultValues?: Partial<EventsDetailFormValues>) {
         ...defaultValues,
       } as EventsDetailFormValues,
     });
-    latestValues = methods.getValues();
+    getCurrentValues = methods.getValues;
 
     return (
       <FormProvider {...methods}>
         <EventsDetailContentTab
-          dateEndInput=""
-          dateInputsInvalid={{ dateStart: false, dateEnd: false }}
-          dateStartInput=""
+          dateEndInput={options?.dateEndInput ?? ''}
+          dateInputsInvalid={options?.dateInputsInvalid ?? { dateStart: false, dateEnd: false }}
+          dateStartInput={options?.dateStartInput ?? ''}
           onDateEndInputChange={onDateEndInputChange}
           onDateStartInputChange={onDateStartInputChange}
           pt={pt}
@@ -201,7 +208,7 @@ function renderTab(defaultValues?: Partial<EventsDetailFormValues>) {
     ...view,
     onDateEndInputChange,
     onDateStartInputChange,
-    getValues: () => latestValues as EventsDetailFormValues,
+    getValues: () => getCurrentValues?.() as EventsDetailFormValues,
   };
 }
 
@@ -297,6 +304,88 @@ describe('EventsDetailContentTab', () => {
     expect(screen.getAllByText('Kontakt').length).toBeGreaterThan(1);
     expect(screen.getAllByText('Link').length).toBeGreaterThan(1);
     expect(screen.getAllByText('Preis').length).toBeGreaterThan(1);
+  });
+
+  it('edits and removes repeated optional entries without using first-date callbacks', async () => {
+    const { getValues, onDateEndInputChange, onDateStartInputChange } = renderTab({
+      content: {
+        ...createDefaultEventsDetailFormValues().content,
+        dates: [createDefaultEventsDetailFormValues().content.dates[0]!, createDefaultEventsDetailFormValues().content.dates[0]!],
+        addresses: [
+          createDefaultEventsDetailFormValues().content.addresses[0]!,
+          createDefaultEventsDetailFormValues().content.addresses[0]!,
+        ],
+        contacts: [
+          createDefaultEventsDetailFormValues().content.contacts[0]!,
+          createDefaultEventsDetailFormValues().content.contacts[0]!,
+        ],
+        urls: [createDefaultEventsDetailFormValues().content.urls[0]!, createDefaultEventsDetailFormValues().content.urls[0]!],
+        priceInformations: [
+          createDefaultEventsDetailFormValues().content.priceInformations[0]!,
+          createDefaultEventsDetailFormValues().content.priceInformations[0]!,
+        ],
+      },
+    });
+    await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
+
+    fireEvent.change(screen.getByLabelText('Startdatum', { selector: '#event-date-start-1' }), {
+      target: { value: '2026-09-01T08:00' },
+    });
+    fireEvent.change(screen.getByLabelText('Enddatum', { selector: '#event-date-end-1' }), {
+      target: { value: '2026-09-01T09:00' },
+    });
+    fireEvent.click(screen.getByLabelText('Nur Zeit-Hinweis verwenden', { selector: '#event-only-time-description-0' }));
+    fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street-1' }), {
+      target: { value: 'Zweite Straße 2' },
+    });
+    fireEvent.change(screen.getByLabelText('Nachname', { selector: '#event-contact-last-name-1' }), {
+      target: { value: 'Kontakt Zwei' },
+    });
+    fireEvent.change(screen.getByLabelText('URL', { selector: '#event-url-1' }), {
+      target: { value: 'https://example.test/zwei' },
+    });
+    fireEvent.change(screen.getByLabelText('Link-Beschreibung', { selector: '#event-url-description-1' }), {
+      target: { value: 'Zweiter Link' },
+    });
+    fireEvent.change(screen.getByLabelText('Preis', { selector: '#event-price-amount-1' }), {
+      target: { value: '' },
+    });
+
+    expect(onDateStartInputChange).not.toHaveBeenCalled();
+    expect(onDateEndInputChange).not.toHaveBeenCalled();
+    expect(getValues().content.dates?.[1]).toMatchObject({
+      dateStart: '2026-09-01T08:00',
+      dateEnd: '2026-09-01T09:00',
+    });
+    expect(getValues().content.dates?.[0]?.useOnlyTimeDescription).toBe(true);
+    expect(getValues().content.addresses?.[1]?.street).toBe('Zweite Straße 2');
+    expect(getValues().content.contacts?.[1]?.lastName).toBe('Kontakt Zwei');
+    expect(getValues().content.urls?.[1]).toMatchObject({
+      url: 'https://example.test/zwei',
+      description: 'Zweiter Link',
+    });
+    expect(getValues().content.priceInformations?.[1]?.amount).toBeUndefined();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Entfernen' })[0] as HTMLButtonElement);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Entfernen' })[0] as HTMLButtonElement);
+
+    expect(getValues().content.dates).toHaveLength(1);
+    expect(getValues().content.addresses).toHaveLength(1);
+  });
+
+  it('marks invalid first date inputs for assistive technology', async () => {
+    renderTab(
+      undefined,
+      {
+        dateStartInput: 'invalid-start',
+        dateEndInput: 'invalid-end',
+        dateInputsInvalid: { dateStart: true, dateEnd: true },
+      }
+    );
+    await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
+
+    expect(screen.getByLabelText('Startdatum').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Enddatum').getAttribute('aria-invalid')).toBe('true');
   });
 
   it('renders fallback values when optional arrays are initially missing', async () => {

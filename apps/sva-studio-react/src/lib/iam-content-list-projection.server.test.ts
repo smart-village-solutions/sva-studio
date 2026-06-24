@@ -54,7 +54,11 @@ vi.mock('@sva/server-runtime', () => ({
   getWorkspaceContext: state.getWorkspaceContext,
 }));
 
-import { listProjectedContents } from './iam-content-list-projection.server';
+import {
+  listProjectedContents,
+  refreshProjectedContents,
+  refreshProjectedContentsForMainserverMutation,
+} from './iam-content-list-projection.server';
 
 describe('content list projection', () => {
   const ctx = {
@@ -1113,5 +1117,275 @@ describe('content list projection', () => {
         total: 1,
       },
     });
+  });
+
+  it('refreshes requested mainserver projections synchronously', async () => {
+    state.listSvaMainserverEvents.mockResolvedValue({
+      data: [
+        {
+          id: 'event-refresh-1',
+          title: 'Aktuelle Veranstaltung',
+          contentType: 'events.event-record',
+          status: 'published',
+          dates: [],
+          recurringWeekdays: [],
+          categories: [],
+          addresses: [],
+          contacts: [],
+          urls: [],
+          mediaContents: [],
+          priceInformations: [],
+          tags: [],
+          visible: true,
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['events.event-record'],
+      force: true,
+    });
+    const payload = (await response.json()) as {
+      data: {
+        status: string;
+        syncStates: Array<{
+          contentType: string;
+          hasSnapshot: boolean;
+          isStale: boolean;
+        }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.status).toBe('completed');
+    expect(payload.data.syncStates).toEqual([
+      expect.objectContaining({
+        contentType: 'events.event-record',
+        hasSnapshot: true,
+        isStale: false,
+      }),
+    ]);
+    expect(projectionInsertArgs).toHaveLength(1);
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        content_type: 'events.event-record',
+        organization_id: 'org-1',
+        source_entity_id: 'event-refresh-1',
+        source_system: 'mainserver',
+      }),
+    ]);
+  });
+
+  it('accepts refresh requests without mainserver-backed visible types', async () => {
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['generic'],
+      force: true,
+    });
+
+    await expect(response.json()).resolves.toEqual({
+      data: {
+        status: 'accepted',
+        syncStates: [],
+      },
+      requestId: 'req-1',
+    });
+    expect(state.listSvaMainserverNews).not.toHaveBeenCalled();
+    expect(state.listSvaMainserverEvents).not.toHaveBeenCalled();
+    expect(state.listSvaMainserverPoi).not.toHaveBeenCalled();
+  });
+
+  it('refreshes a mainserver projection after direct mainserver mutations', async () => {
+    state.listSvaMainserverPoi.mockResolvedValue({
+      data: [
+        {
+          id: 'poi-mutation-1',
+          name: 'Mutation POI',
+          contentType: 'poi.point-of-interest',
+          status: 'published',
+          active: true,
+          categories: [],
+          addresses: [],
+          priceInformations: [],
+          openingHours: [],
+          webUrls: [],
+          mediaContents: [],
+          certificates: [],
+          tags: [],
+          visible: true,
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    await refreshProjectedContentsForMainserverMutation({
+      contentType: 'poi.point-of-interest',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      organizationId: 'org-1',
+    });
+
+    expect(state.listSvaMainserverPoi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activeOrganizationId: 'org-1',
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+      })
+    );
+    expect(syncStates.get('poi.point-of-interest')).toEqual(
+      expect.objectContaining({
+        last_error_code: null,
+        projected_count: 1,
+      })
+    );
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        organization_id: 'org-1',
+        source_entity_id: 'poi-mutation-1',
+      }),
+    ]);
+  });
+
+  it('returns deterministic refresh errors for missing instances, permission backend failures, and forbidden types', async () => {
+    const missingInstanceResponse = await refreshProjectedContents(
+      {
+        ...ctx,
+        user: {
+          ...ctx.user,
+          instanceId: undefined,
+        },
+      },
+      {
+        visibleTypes: ['events.event-record'],
+        force: true,
+      }
+    );
+
+    expect(missingInstanceResponse.status).toBe(400);
+    await expect(missingInstanceResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_instance_id',
+      },
+    });
+
+    state.resolveEffectivePermissions.mockResolvedValueOnce({
+      ok: false,
+    });
+
+    const permissionFailureResponse = await refreshProjectedContents(ctx, {
+      visibleTypes: ['events.event-record'],
+      force: true,
+    });
+
+    expect(permissionFailureResponse.status).toBe(503);
+    await expect(permissionFailureResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+      },
+    });
+
+    state.resolveEffectivePermissions.mockResolvedValueOnce({
+      ok: true,
+      permissions: [],
+    });
+
+    const forbiddenResponse = await refreshProjectedContents(ctx, {
+      visibleTypes: ['events.event-record'],
+      force: true,
+    });
+
+    expect(forbiddenResponse.status).toBe(403);
+    await expect(forbiddenResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+      },
+    });
+  });
+
+  it('refreshes multiple mainserver event pages and stops on empty follow-up pages', async () => {
+    state.listSvaMainserverEvents.mockImplementation(async ({ page }: { page: number }) => ({
+      data:
+        page === 1
+          ? [
+              {
+                id: 'event-page-1',
+                title: 'Erste Seite',
+                contentType: 'events.event-record',
+                status: 'published',
+                dates: [],
+                recurringWeekdays: [],
+                categories: [],
+                addresses: [],
+                contacts: [],
+                urls: [],
+                mediaContents: [],
+                priceInformations: [],
+                tags: [],
+                visible: true,
+                createdAt: '2026-06-20T10:00:00.000Z',
+                updatedAt: '2026-06-21T10:00:00.000Z',
+              },
+            ]
+          : [],
+      pagination: { page, pageSize: 100, hasNextPage: true },
+    }));
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['events.event-record'],
+      force: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect(state.listSvaMainserverEvents).toHaveBeenCalledTimes(2);
+    expect(state.listSvaMainserverEvents).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        page: 2,
+        pageSize: 100,
+      })
+    );
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        source_entity_id: 'event-page-1',
+      }),
+    ]);
+  });
+
+  it('marks empty mainserver POI projections as successful snapshots', async () => {
+    state.listSvaMainserverPoi.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['poi.point-of-interest'],
+      force: true,
+    });
+    const payload = (await response.json()) as {
+      data: {
+        status: string;
+        syncStates: Array<{ contentType: string; hasSnapshot: boolean }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.status).toBe('completed');
+    expect(payload.data.syncStates).toEqual([
+      expect.objectContaining({
+        contentType: 'poi.point-of-interest',
+        hasSnapshot: false,
+      }),
+    ]);
+    expect(projectionRows).toEqual([]);
+    expect(syncStates.get('poi.point-of-interest')).toEqual(
+      expect.objectContaining({
+        last_error_code: null,
+        projected_count: 0,
+      })
+    );
   });
 });

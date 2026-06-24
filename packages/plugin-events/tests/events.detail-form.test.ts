@@ -188,4 +188,225 @@ describe('events.detail-form', () => {
       visible: false,
     });
   });
+
+  it('serializes all optional nested event fields when they are present', () => {
+    expect(
+      mapEventsDetailFormValuesToInput({
+        title: 'Workshop',
+        basis: {
+          categories: [],
+          pointOfInterestId: '',
+          repeat: false,
+          recurring: '',
+          recurringType: '',
+          recurringInterval: '',
+          recurringWeekdays: [],
+        },
+        content: {
+          description: '',
+          dates: [
+            {
+              weekday: ' Dienstag ',
+              dateStart: '2026-08-01',
+              dateEnd: '2026-08-02',
+              timeStart: '10:00',
+              timeEnd: '12:00',
+              timeDescription: '',
+              useOnlyTimeDescription: false,
+            },
+          ],
+          addresses: [
+            {
+              addition: '',
+              street: ' Nebenstraße 2 ',
+              zip: ' 44787 ',
+              city: ' Bochum ',
+              kind: ' venue ',
+              geoLocation: { latitude: 'not-a-number', longitude: '7.2162' },
+            },
+          ],
+          urls: [],
+          contacts: [
+            {
+              firstName: '',
+              lastName: ' Mustermann ',
+              phone: ' 0234 ',
+              fax: ' 0235 ',
+              email: '',
+              webUrls: [],
+            },
+          ],
+          organizer: {
+            name: '',
+            contact: {
+              firstName: ' Max ',
+              lastName: ' Muster ',
+              phone: '',
+              fax: '',
+              email: ' max@example.test ',
+              webUrls: [{ url: 'https://example.test/team', description: ' Team ' }],
+            },
+          },
+          priceInformations: [
+            {
+              name: ' Regulär ',
+              amount: Number.NaN,
+              description: '',
+              category: '',
+            },
+          ],
+          accessibilityInformation: {
+            description: '',
+            types: '',
+            urls: [],
+          },
+        },
+        settings: {
+          headerImageAssetId: '',
+          pushNotification: false,
+          visible: true,
+          externalId: '',
+          keywords: '',
+          tags: '',
+        },
+      })
+    ).toEqual({
+      title: 'Workshop',
+      dates: [
+        {
+          weekday: 'Dienstag',
+          dateStart: '2026-08-01',
+          dateEnd: '2026-08-02',
+          timeStart: '10:00',
+          timeEnd: '12:00',
+        },
+      ],
+      addresses: [
+        {
+          street: 'Nebenstraße 2',
+          zip: '44787',
+          city: 'Bochum',
+          kind: 'venue',
+        },
+      ],
+      contacts: [
+        {
+          lastName: 'Mustermann',
+          phone: '0234',
+          fax: '0235',
+        },
+      ],
+      organizer: {
+        contact: {
+          firstName: 'Max',
+          lastName: 'Muster',
+          email: 'max@example.test',
+          webUrls: [{ url: 'https://example.test/team', description: 'Team' }],
+        },
+      },
+      priceInformations: [{ name: 'Regulär' }],
+      repeat: false,
+      recurringWeekdays: [],
+      pushNotification: false,
+      visible: true,
+    });
+  });
+
+  it('maps sparse event items to editor defaults without leaking invalid geo values', () => {
+    expect(
+      mapEventItemToDetailFormValues({
+        id: 'event-2',
+        contentType: 'events.event-record',
+        status: 'draft',
+        createdAt: '2026-06-11T10:00:00.000Z',
+        updatedAt: '2026-06-11T10:00:00.000Z',
+        title: 'Kurzmeldung',
+        categoryName: 'Nachbarschaft',
+        addresses: [{ geoLocation: { latitude: Number.NaN, longitude: Number.POSITIVE_INFINITY } }],
+        organizer: {},
+      } satisfies EventContentItem)
+    ).toMatchObject({
+      basis: {
+        categories: ['Nachbarschaft'],
+        repeat: false,
+        recurringWeekdays: [],
+      },
+      content: {
+        dates: [
+          {
+            dateStart: '',
+            dateEnd: '',
+            useOnlyTimeDescription: false,
+          },
+        ],
+        addresses: [
+          {
+            addition: '',
+            street: '',
+            zip: '',
+            city: '',
+            kind: '',
+            geoLocation: { latitude: '', longitude: '' },
+          },
+        ],
+        urls: [{ url: '', description: '' }],
+        contacts: [{ firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [{ url: '', description: '' }] }],
+        organizer: {
+          address: {
+            geoLocation: { latitude: '', longitude: '' },
+          },
+        },
+        priceInformations: [{ category: '', description: '', amount: undefined }],
+        accessibilityInformation: { description: '', types: '', urls: [{ url: '', description: '' }] },
+      },
+      settings: {
+        pushNotification: false,
+        visible: true,
+        tags: '',
+      },
+    });
+  });
+
+  it('serializes defensively when optional collections are absent at runtime', () => {
+    expect(
+      mapEventsDetailFormValuesToInput({
+        title: 'Defensiv',
+        basis: {
+          categories: undefined,
+          pointOfInterestId: '',
+          repeat: false,
+          recurring: '',
+          recurringType: '',
+          recurringInterval: '',
+          recurringWeekdays: undefined,
+        },
+        content: {
+          description: '',
+          dates: undefined,
+          addresses: undefined,
+          urls: undefined,
+          contacts: undefined,
+          organizer: {},
+          priceInformations: undefined,
+          accessibilityInformation: { description: '', types: '', urls: undefined },
+        },
+        settings: {
+          headerImageAssetId: '',
+          pushNotification: false,
+          visible: true,
+          externalId: '',
+          keywords: '',
+          tags: '',
+        },
+      } as never)
+    ).toEqual({
+      title: 'Defensiv',
+      dates: [],
+      addresses: [],
+      repeat: false,
+      recurringWeekdays: [],
+      pushNotification: false,
+      visible: true,
+    });
+  });
 });

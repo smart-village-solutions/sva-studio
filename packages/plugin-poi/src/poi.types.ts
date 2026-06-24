@@ -34,6 +34,7 @@ export type PoiFormInput = {
   readonly mobileDescription?: string;
   readonly active?: boolean;
   readonly categoryName?: string;
+  readonly categories?: readonly PoiCategory[];
   readonly payload?: Record<string, unknown>;
   readonly addresses?: readonly PoiAddress[];
   readonly contact?: PoiContact;
@@ -46,6 +47,17 @@ export type PoiFormInput = {
   readonly certificates?: readonly PoiCertificate[];
   readonly accessibilityInformation?: PoiAccessibilityInformation;
   readonly tags?: readonly string[];
+};
+
+export type PoiCategory = {
+  readonly name: string;
+  readonly payload?: Readonly<Record<string, unknown>>;
+  readonly children?: readonly PoiCategory[];
+};
+
+export type PoiCategoryOption = {
+  readonly id?: string;
+  readonly name: string;
 };
 
 export type PoiContentItem = PoiFormInput & {

@@ -409,6 +409,65 @@ describe('mainserver content route contracts', () => {
     );
   });
 
+  it('accepts expanded event structures with contacts, organizer, prices and accessibility information', async () => {
+    mockAuthorizedMutation();
+    state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-9' });
+
+    const response = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/event-9', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: 'Lange Nacht',
+          contacts: [
+            { firstName: 'Eva', email: 'eva@example.invalid' },
+            { firstName: 'Tom', phone: '+49 30 123' },
+          ],
+          organizer: {
+            name: 'Stadtmarketing',
+            address: { street: 'Marktplatz 1', city: 'Musterhausen' },
+            contact: { email: 'orga@example.invalid' },
+          },
+          priceInformations: [
+            { category: 'Erwachsene', amount: 12, description: 'Abendkasse' },
+            { category: 'Kinder', amount: 0 },
+          ],
+          accessibilityInformation: {
+            description: 'Stufenlos erreichbar',
+            types: 'wheelchair',
+            urls: [{ url: 'https://example.invalid/barrierefrei', description: 'Details' }],
+          },
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'event-9',
+        event: expect.objectContaining({
+          contacts: [
+            { firstName: 'Eva', email: 'eva@example.invalid' },
+            { firstName: 'Tom', phone: '+49 30 123' },
+          ],
+          organizer: {
+            name: 'Stadtmarketing',
+            address: { street: 'Marktplatz 1', city: 'Musterhausen' },
+            contact: { email: 'orga@example.invalid' },
+          },
+          priceInformations: [
+            { category: 'Erwachsene', amount: 12, description: 'Abendkasse' },
+            { category: 'Kinder', amount: 0 },
+          ],
+          accessibilityInformation: {
+            description: 'Stufenlos erreichbar',
+            types: 'wheelchair',
+            urls: [{ url: 'https://example.invalid/barrierefrei', description: 'Details' }],
+          },
+        }),
+      })
+    );
+  });
+
   it('creates POI with normalized optional fields, payload, contact, URLs and addresses', async () => {
     mockAuthorizedMutation();
     state.createSvaMainserverPoi.mockResolvedValue({ id: 'poi-1' });

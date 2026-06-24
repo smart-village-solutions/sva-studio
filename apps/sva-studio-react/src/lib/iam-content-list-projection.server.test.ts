@@ -29,6 +29,7 @@ type ProjectionRow = {
 const state = vi.hoisted(() => ({
   authorizeContentPrimitiveForUser: vi.fn(),
   resolveActorAccountId: vi.fn(),
+  resolveEffectivePermissions: vi.fn(),
   withInstanceScopedDb: vi.fn(),
   listSvaMainserverNews: vi.fn(),
   listSvaMainserverEvents: vi.fn(),
@@ -39,6 +40,7 @@ const state = vi.hoisted(() => ({
 vi.mock('@sva/auth-runtime/server', () => ({
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
   resolveActorAccountId: state.resolveActorAccountId,
+  resolveEffectivePermissions: state.resolveEffectivePermissions,
   withInstanceScopedDb: state.withInstanceScopedDb,
 }));
 
@@ -97,7 +99,38 @@ describe('content list projection', () => {
         const value = values?.[Number.parseInt(match[1] ?? '0', 10) - 1];
         return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
       });
-      rows = rows.filter((row) => row.organization_id !== null && allowedOrganizationIds.includes(row.organization_id));
+      const allowsUnscopedOrganizations = text.includes('projection.organization_id IS NULL');
+      rows = rows.filter(
+        (row) =>
+          (row.organization_id !== null && allowedOrganizationIds.includes(row.organization_id)) ||
+          (allowsUnscopedOrganizations && row.organization_id === null)
+      );
+    }
+
+    const createdByMatches = [...text.matchAll(/projection\.created_by = \$(\d+)/g)];
+    if (
+      createdByMatches.length > 0 &&
+      orgMatches.length === 0 &&
+      !text.includes('projection.organization_id IS NULL')
+    ) {
+      const allowedCreators = createdByMatches
+        .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
+        .filter((value): value is string => typeof value === 'string');
+      rows = rows.filter((row) => allowedCreators.includes(row.created_by));
+    }
+
+    if (text.includes('projection.owner_subject_id = $')) {
+      const ownerSubjectIdMatches = [...text.matchAll(/projection\.owner_subject_id = \$(\d+)/g)];
+      const allowedOwnerSubjectIds = ownerSubjectIdMatches
+        .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
+        .filter((value): value is string => typeof value === 'string');
+      rows = rows.filter(
+        (row) =>
+          row.source_system !== 'mainserver' ||
+          row.organization_id !== null ||
+          row.owner_subject_id === null ||
+          allowedOwnerSubjectIds.includes(row.owner_subject_id)
+      );
     }
 
     return rows;
@@ -109,6 +142,7 @@ describe('content list projection', () => {
     projectionInsertArgs = null;
     state.authorizeContentPrimitiveForUser.mockReset();
     state.resolveActorAccountId.mockReset();
+    state.resolveEffectivePermissions.mockReset();
     state.withInstanceScopedDb.mockReset();
     state.listSvaMainserverNews.mockReset();
     state.listSvaMainserverEvents.mockReset();
@@ -130,9 +164,18 @@ describe('content list projection', () => {
             ok: false,
             status: 403,
             error: 'forbidden',
-            message: 'forbidden',
-          }
+          message: 'forbidden',
+        }
     );
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [
+        { action: 'content.read', resourceType: 'content' },
+        { action: 'news.read', resourceType: 'news' },
+        { action: 'events.read', resourceType: 'events' },
+        { action: 'poi.read', resourceType: 'poi' },
+      ],
+    });
     state.resolveActorAccountId.mockResolvedValue('account-1');
 
     state.withInstanceScopedDb.mockImplementation(async (_instanceId: string, work: (client: { query: <TRow>(text: string, values?: readonly unknown[]) => Promise<{ rows: TRow[]; rowCount: number }> }) => Promise<unknown>) =>
@@ -142,6 +185,16 @@ describe('content list projection', () => {
             const contentType = String(values?.[1] ?? '');
             const row = syncStates.get(contentType);
             return { rows: row ? ([row] as TRow[]) : [], rowCount: row ? 1 : 0 };
+          }
+
+          if (text.includes('SELECT DISTINCT projection.content_type')) {
+            const instanceId = String(values?.[0] ?? '');
+            const rows = [...new Set(projectionRows
+              .filter((row) => row.instance_id === instanceId)
+              .map((row) => row.content_type))]
+              .sort((left, right) => left.localeCompare(right))
+              .map((content_type) => ({ content_type })) as TRow[];
+            return { rows, rowCount: rows.length };
           }
 
           if (text.includes('INSERT INTO iam.content_list_projection_sync_state')) {
@@ -191,23 +244,45 @@ describe('content list projection', () => {
             return { rows: [], rowCount: 1 };
           }
 
-          if (text.includes('FROM iam.content_list_projection') && text.includes("source_system = 'mainserver'") && text.includes('organization_id::text = $3')) {
+          if (text.includes('FROM iam.content_list_projection') && text.includes("source_system = 'mainserver'") && text.includes('COUNT(*)::int AS total')) {
             const instanceId = String(values?.[0] ?? '');
             const contentType = String(values?.[1] ?? '');
-            const organizationId = String(values?.[2] ?? '');
+            const organizationId =
+              typeof values?.[2] === 'string' ? String(values[2]) : undefined;
+            const keycloakSubject = String(values?.[3] ?? '');
             const total = projectionRows.filter(
               (row) =>
                 row.instance_id === instanceId &&
                 row.source_system === 'mainserver' &&
                 row.content_type === contentType &&
-                row.organization_id === organizationId
+                (
+                  (organizationId ? row.organization_id === organizationId : row.organization_id === null) &&
+                  (!organizationId
+                    ? row.owner_subject_id === null || row.owner_subject_id === keycloakSubject
+                    : true)
+                )
             ).length;
             return { rows: [{ total }] as TRow[], rowCount: 1 };
           }
 
           if (text.includes('DELETE FROM iam.content_list_projection')) {
             const contentType = String(values?.[1] ?? '');
-            projectionRows = projectionRows.filter((row) => !(row.source_system === 'mainserver' && row.content_type === contentType));
+            const organizationId =
+              typeof values?.[2] === 'string' ? String(values[2]) : undefined;
+            const keycloakSubject = String(values?.[3] ?? '');
+            projectionRows = projectionRows.filter(
+              (row) =>
+                !(
+                  row.source_system === 'mainserver' &&
+                  row.content_type === contentType &&
+                  (
+                    (organizationId ? row.organization_id === organizationId : row.organization_id === null) &&
+                    (!organizationId
+                      ? row.owner_subject_id === null || row.owner_subject_id === keycloakSubject
+                      : true)
+                  )
+                )
+            );
             return { rows: [], rowCount: 0 };
           }
 
@@ -459,6 +534,10 @@ describe('content list projection', () => {
             message: 'forbidden',
           }
     );
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'content.read', resourceType: 'content', organizationId: 'org-1' }],
+    });
 
     const response = await listProjectedContents(ctx, {
       page: 1,
@@ -476,6 +555,52 @@ describe('content list projection', () => {
         total: 1,
       },
       requestId: 'req-1',
+    });
+  });
+
+  it('finds projected rows when the search term appears only in payload_json', async () => {
+    projectionRows = [
+      {
+        id: 'content-1',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        content_type: 'generic',
+        title: 'Visible',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'account-9',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'account-9',
+        author_display_name: 'Alice',
+        payload_json: { teaser: 'Nur im Payload' },
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'iam',
+        source_entity_type: 'iam.contents',
+        source_entity_id: 'content-1',
+      },
+    ];
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['generic'],
+      q: 'payload',
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    await expect(response.json()).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'content-1' })],
+      pagination: {
+        total: 1,
+      },
     });
   });
 
@@ -528,6 +653,14 @@ describe('content list projection', () => {
             message: 'forbidden',
           }
     );
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [
+        { action: 'content.read', resourceType: 'content' },
+        { action: 'content.create', resourceType: 'content' },
+        { action: 'content.updateMetadata', resourceType: 'content' },
+      ],
+    });
 
     const response = await listProjectedContents(ctx, {
       page: 1,
@@ -549,7 +682,81 @@ describe('content list projection', () => {
         }),
       ],
     });
-    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledTimes(1);
+    expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
+  });
+
+  it('keeps own-scoped readers on the list and filters rows by creator later', async () => {
+    projectionRows = [
+      {
+        id: 'content-1',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        content_type: 'generic',
+        title: 'Own Row',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'account-1',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'account-1',
+        author_display_name: 'Alice',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'iam',
+        source_entity_type: 'iam.contents',
+        source_entity_id: 'content-1',
+      },
+      {
+        id: 'content-2',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        content_type: 'generic',
+        title: 'Other Row',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'account-9',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'account-9',
+        author_display_name: 'Bob',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-2',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'iam',
+        source_entity_type: 'iam.contents',
+        source_entity_id: 'content-2',
+      },
+    ];
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'content.read', resourceType: 'content', accessScope: 'own' }],
+    });
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['generic'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    await expect(response.json()).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'content-1', title: 'Own Row' })],
+      pagination: {
+        total: 1,
+      },
+    });
   });
 
   it('returns a deterministic list error when the mainserver refresh fails', async () => {
@@ -627,6 +834,10 @@ describe('content list projection', () => {
             message: 'forbidden',
           }
     );
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'news.read', resourceType: 'news', organizationId: 'org-1', accessScope: 'organization' }],
+    });
 
     const response = await listProjectedContents(ctx, {
       page: 1,
@@ -717,6 +928,10 @@ describe('content list projection', () => {
             message: 'forbidden',
           }
     );
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'news.read', resourceType: 'news', organizationId: 'org-1', accessScope: 'organization' }],
+    });
 
     const response = await listProjectedContents(
       {
@@ -813,6 +1028,10 @@ describe('content list projection', () => {
             message: 'forbidden',
           }
     );
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'news.read', resourceType: 'news', organizationId: 'org-1', accessScope: 'organization' }],
+    });
 
     const response = await listProjectedContents(ctx, {
       page: 1,
@@ -850,5 +1069,49 @@ describe('content list projection', () => {
       requestId: 'req-1',
     });
     expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
+  });
+
+  it('preserves unfiltered list semantics when neither type nor visibleTypes are supplied', async () => {
+    projectionRows = [
+      {
+        id: 'content-1',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        content_type: 'generic',
+        title: 'Visible',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'account-9',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'account-9',
+        author_display_name: 'Alice',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'iam',
+        source_entity_type: 'iam.contents',
+        source_entity_id: 'content-1',
+      },
+    ];
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    await expect(response.json()).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'content-1' })],
+      pagination: {
+        total: 1,
+      },
+    });
   });
 });

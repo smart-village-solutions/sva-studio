@@ -1,4 +1,8 @@
-import { withAuthenticatedUser } from '@sva/auth-runtime/server';
+import {
+  ensureFeature,
+  getFeatureFlags,
+  withAuthenticatedUser,
+} from '@sva/auth-runtime/server';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import { createListErrorResponse, readContentListQuery } from './iam-content-list-api.shared.js';
@@ -6,13 +10,18 @@ import { listProjectedContents, refreshProjectedContents } from './iam-content-l
 
 const handleProjectedContentList = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
+    const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', getWorkspaceContext().requestId);
+    if (featureCheck) {
+      return featureCheck;
+    }
+
     try {
       return await listProjectedContents(ctx, readContentListQuery(request));
     } catch (error) {
       return createListErrorResponse(
         503,
         'database_unavailable',
-        error instanceof Error ? error.message : 'Inhalte konnten nicht geladen werden.',
+        'Inhalte konnten nicht geladen werden.',
         getWorkspaceContext().requestId
       );
     }
@@ -20,6 +29,11 @@ const handleProjectedContentList = async (request: Request): Promise<Response> =
 
 const handleProjectedContentRefresh = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
+    const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', getWorkspaceContext().requestId);
+    if (featureCheck) {
+      return featureCheck;
+    }
+
     try {
       const payload = (await request.json()) as {
         readonly visibleTypes?: unknown;
@@ -38,7 +52,7 @@ const handleProjectedContentRefresh = async (request: Request): Promise<Response
       return createListErrorResponse(
         400,
         'invalid_request',
-        error instanceof Error ? error.message : 'Ungültige Refresh-Anfrage.',
+        'Ungültige Refresh-Anfrage.',
         getWorkspaceContext().requestId
       );
     }

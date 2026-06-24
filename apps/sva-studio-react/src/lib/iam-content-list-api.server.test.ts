@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  ensureFeature: vi.fn(),
+  getFeatureFlags: vi.fn(),
   withAuthenticatedUser: vi.fn(),
   listProjectedContents: vi.fn(),
   refreshProjectedContents: vi.fn(),
@@ -8,6 +10,8 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
+  ensureFeature: state.ensureFeature,
+  getFeatureFlags: state.getFeatureFlags,
   withAuthenticatedUser: state.withAuthenticatedUser,
 }));
 
@@ -24,10 +28,14 @@ import { dispatchAggregatedContentListRequest } from './iam-content-list-api.ser
 
 describe('content list api dispatch', () => {
   beforeEach(() => {
+    state.ensureFeature.mockReset();
+    state.getFeatureFlags.mockReset();
     state.withAuthenticatedUser.mockReset();
     state.listProjectedContents.mockReset();
     state.refreshProjectedContents.mockReset();
     state.getWorkspaceContext.mockReset();
+    state.ensureFeature.mockReturnValue(null);
+    state.getFeatureFlags.mockReturnValue({ iamAdminEnabled: true });
     state.getWorkspaceContext.mockReturnValue({ requestId: 'req-1' });
     state.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
       handler({
@@ -148,9 +156,35 @@ describe('content list api dispatch', () => {
     await expect(response?.json()).resolves.toEqual({
       error: {
         code: 'database_unavailable',
-        message: 'projection failed',
+        message: 'Inhalte konnten nicht geladen werden.',
       },
       requestId: 'req-1',
+    });
+  });
+
+  it('returns the iam admin feature gate response before dispatching the projected handlers', async () => {
+    state.ensureFeature.mockReturnValueOnce(
+      Response.json(
+        {
+          error: {
+            code: 'feature_disabled',
+            message: 'Feature iam-admin-enabled ist deaktiviert.',
+          },
+        },
+        { status: 503 }
+      )
+    );
+
+    const response = await dispatchAggregatedContentListRequest(
+      new Request('https://studio.test/api/v1/iam/contents?page=1&pageSize=25&visibleType=news.article')
+    );
+
+    expect(response?.status).toBe(503);
+    expect(state.listProjectedContents).not.toHaveBeenCalled();
+    await expect(response?.json()).resolves.toMatchObject({
+      error: {
+        code: 'feature_disabled',
+      },
     });
   });
 });

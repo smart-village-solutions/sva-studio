@@ -69,7 +69,7 @@ describe('iam content list visibility', () => {
     });
   });
 
-  it('widens organization-scoped plugin read permissions for unscoped projected mainserver rows', () => {
+  it('keeps organization-scoped plugin read permissions scoped to matching organizations', () => {
     const [rule] = buildProjectionReadVisibilityRules(
       ['news.article'],
       [
@@ -84,9 +84,9 @@ describe('iam content list visibility', () => {
 
     expect(rule).toEqual({
       contentType: 'news.article',
-      allowGlobal: true,
-      allowOrganizationIds: [],
-      allowOwn: false,
+      allowGlobal: false,
+      allowOrganizationIds: ['org-1'],
+      allowOwn: true,
       denyGlobal: false,
       denyOrganizationIds: [],
       denyOwn: false,
@@ -96,11 +96,23 @@ describe('iam content list visibility', () => {
         rule,
         {
           contentType: 'news.article',
+          organizationId: 'org-1',
           createdByAccountId: 'account-a',
         },
         undefined
       )
     ).toBe(true);
+    expect(
+      isProjectionRowVisibleForRead(
+        rule,
+        {
+          contentType: 'news.article',
+          organizationId: 'org-2',
+          createdByAccountId: 'account-a',
+        },
+        undefined
+      )
+    ).toBe(false);
   });
 
   it('evaluates row visibility with deny precedence and own fallback', () => {

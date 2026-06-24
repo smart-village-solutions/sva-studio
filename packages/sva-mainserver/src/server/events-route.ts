@@ -7,11 +7,14 @@ import {
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type {
+  SvaMainserverAccessibilityInformationInput,
   SvaMainserverAddressInput,
   SvaMainserverCategoryInput,
   SvaMainserverContactInput,
   SvaMainserverDateInput,
   SvaMainserverEventInput,
+  SvaMainserverOperatingCompanyInput,
+  SvaMainserverPriceInput,
   SvaMainserverWebUrlInput,
 } from '../types.js';
 import {
@@ -27,9 +30,12 @@ import {
   type RouteMatch as SharedRouteMatch,
 } from './content-route-core.js';
 import {
+  parseAccessibilityInformation,
   parseAddressList,
   parseCategories,
   parseContact,
+  parseOperatingCompany,
+  parsePrices,
   parseTags,
   parseWebUrls,
 } from './content-route-parsers.js';
@@ -82,9 +88,12 @@ const parseEventRelations = (
 ): ParsedValue<{
   readonly categories: readonly SvaMainserverCategoryInput[] | undefined;
   readonly addresses: readonly SvaMainserverAddressInput[] | undefined;
-  readonly contact: SvaMainserverContactInput | undefined;
+  readonly contacts: readonly SvaMainserverContactInput[] | undefined;
   readonly urls: readonly SvaMainserverWebUrlInput[] | undefined;
   readonly tags: readonly string[] | undefined;
+  readonly organizer: SvaMainserverOperatingCompanyInput | undefined;
+  readonly priceInformations: readonly SvaMainserverPriceInput[] | undefined;
+  readonly accessibilityInformation: SvaMainserverAccessibilityInformationInput | undefined;
 }> => {
   const categories = parseCategories(body.categories);
   if (isResponse(categories)) {
@@ -96,9 +105,27 @@ const parseEventRelations = (
     return addresses;
   }
 
-  const contact = parseContact(body.contact);
-  if (isResponse(contact)) {
-    return contact;
+  const contactsValue = body.contacts;
+  const contactValue = body.contact;
+  let contacts: readonly SvaMainserverContactInput[] | undefined;
+  if (Array.isArray(contactsValue)) {
+    const nextContacts: SvaMainserverContactInput[] = [];
+    for (const item of contactsValue) {
+      const parsedContact = parseContact(item);
+      if (isResponse(parsedContact)) {
+        return parsedContact;
+      }
+      if (parsedContact) {
+        nextContacts.push(parsedContact);
+      }
+    }
+    contacts = nextContacts;
+  } else {
+    const contact = parseContact(contactValue);
+    if (isResponse(contact)) {
+      return contact;
+    }
+    contacts = contact ? [contact] : undefined;
   }
 
   const urls = parseWebUrls(body.urls);
@@ -111,12 +138,30 @@ const parseEventRelations = (
     return tags;
   }
 
+  const organizer = parseOperatingCompany(body.organizer);
+  if (isResponse(organizer)) {
+    return organizer;
+  }
+
+  const priceInformations = parsePrices(body.priceInformations);
+  if (isResponse(priceInformations)) {
+    return priceInformations;
+  }
+
+  const accessibilityInformation = parseAccessibilityInformation(body.accessibilityInformation);
+  if (isResponse(accessibilityInformation)) {
+    return accessibilityInformation;
+  }
+
   return {
     categories,
     addresses,
-    contact,
+    contacts,
     urls,
     tags,
+    organizer,
+    priceInformations,
+    accessibilityInformation,
   };
 };
 
@@ -126,9 +171,12 @@ const buildEventInput = (
   relations: {
     readonly categories: readonly SvaMainserverCategoryInput[] | undefined;
     readonly addresses: readonly SvaMainserverAddressInput[] | undefined;
-    readonly contact: SvaMainserverContactInput | undefined;
+    readonly contacts: readonly SvaMainserverContactInput[] | undefined;
     readonly urls: readonly SvaMainserverWebUrlInput[] | undefined;
     readonly tags: readonly string[] | undefined;
+    readonly organizer: SvaMainserverOperatingCompanyInput | undefined;
+    readonly priceInformations: readonly SvaMainserverPriceInput[] | undefined;
+    readonly accessibilityInformation: SvaMainserverAccessibilityInformationInput | undefined;
   }
 ): SvaMainserverEventInput => {
   const dates = parseEventDates(body.dates);
@@ -143,8 +191,11 @@ const buildEventInput = (
     ...(readString(body.categoryName) ? { categoryName: readString(body.categoryName) } : {}),
     ...(relations.categories ? { categories: relations.categories } : {}),
     ...(relations.addresses ? { addresses: relations.addresses } : {}),
-    ...(relations.contact ? { contacts: [relations.contact] } : {}),
+    ...(relations.contacts ? { contacts: relations.contacts } : {}),
     ...(relations.urls ? { urls: relations.urls } : {}),
+    ...(relations.organizer ? { organizer: relations.organizer } : {}),
+    ...(relations.priceInformations ? { priceInformations: relations.priceInformations } : {}),
+    ...(relations.accessibilityInformation ? { accessibilityInformation: relations.accessibilityInformation } : {}),
     ...(relations.tags ? { tags: relations.tags } : {}),
     ...(readString(body.recurring) ? { recurring: readString(body.recurring) } : {}),
     ...(readString(body.recurringType) ? { recurringType: readString(body.recurringType) } : {}),

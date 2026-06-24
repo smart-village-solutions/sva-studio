@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createJsonResponse, createTestDepsBuilder, dbWriteFailedErrorBody } from '../test-support/handler-test-helpers.js';
 import { createUpdateRoleHandlerInternal, type UpdateRoleHandlerDeps } from './role-update-handler.js';
-import { syncTechnicalRoleUpdate, type PreparedRoleUpdate } from './role-update-sync.js';
+import {
+  persistLocalRoleUpdate,
+  redirectRoleSyncRetryToReconcile,
+  syncTechnicalRoleUpdate,
+  type PreparedRoleUpdate,
+} from './role-update-sync.js';
 
 const actor = {
   instanceId: 'de-musterhausen',
@@ -308,5 +313,118 @@ describe('createUpdateRoleHandlerInternal', () => {
 
     expect(response.status).toBe(500);
     expectRetrySyncFailureMarked(deps, 'COMPENSATION_FAILED');
+  });
+
+  it('persists local role updates directly and surfaces local db write failures deterministically', async () => {
+    const deps = createDeps();
+
+    const successResponse = await persistLocalRoleUpdate(deps, preparedRetryUpdate);
+
+    expect(successResponse.status).toBe(200);
+    await expect(successResponse.json()).resolves.toMatchObject({
+      data: roleItem,
+      requestId: 'req-update-role',
+    });
+
+    const failingDeps = createDeps({
+      persistUpdatedRole: vi.fn(async () => {
+        throw new Error('db write failed');
+      }),
+    });
+    const failureResponse = await persistLocalRoleUpdate(failingDeps, preparedRetryUpdate);
+
+    expect(failureResponse.status).toBe(500);
+    await expect(failureResponse.json()).resolves.toMatchObject(
+      dbWriteFailedErrorBody('internal_error', 'req-update-role')
+    );
+  });
+
+  it('redirects retry sync requests to reconcile with a stable payload', async () => {
+    const deps = createDeps();
+
+    const response = redirectRoleSyncRetryToReconcile(deps, 'req-reconcile');
+
+    expect(response.status).toBe(400);
+    expect(deps.createApiError).toHaveBeenCalledWith(
+      400,
+      'invalid_request',
+      'Rollenabgleich wird über den Reconcile-Lauf ausgeführt.',
+      'req-reconcile',
+      {
+        syncState: 'pending',
+        syncAction: 'reconcile_roles',
+      }
+    );
+  });
+
+  it('returns the identity-provider response before any sync work starts', async () => {
+    const unavailableResponse = createJsonResponse(503, { error: { code: 'keycloak_unavailable' } });
+    const deps = createDeps({
+      requireRoleIdentityProvider: vi.fn(async () => unavailableResponse),
+    });
+
+    const response = await syncTechnicalRoleUpdate(deps, preparedRetryUpdate);
+
+    expect(response).toBe(unavailableResponse);
+    expect(deps.markRoleSyncState).not.toHaveBeenCalled();
+  });
+
+  it('updates technical roles successfully and marks pending sync state before the keycloak call', async () => {
+    const deps = createDeps();
+
+    const response = await syncTechnicalRoleUpdate(deps, preparedRetryUpdate);
+
+    expect(response.status).toBe(200);
+    expect(deps.markRoleSyncState).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        operation: 'retry',
+        result: 'success',
+        syncState: 'pending',
+      })
+    );
+    expect(identityProvider.provider.updateRole).toHaveBeenCalledWith('system_admin', {
+      description: 'System administration',
+      attributes: {
+        managedBy: 'studio',
+        instanceId: 'de-musterhausen',
+        roleKey: 'system_admin',
+        displayName: 'System Admin',
+      },
+    });
+    expect(deps.iamRoleSyncCounter.add).toHaveBeenLastCalledWith(1, {
+      operation: 'retry',
+      result: 'success',
+      error_code: 'none',
+    });
+  });
+
+  it('maps direct keycloak update failures through the sync-failure builder', async () => {
+    const deps = createDeps({
+      trackKeycloakCall: vi.fn(async (operation, work) => {
+        if (operation === 'update_role') {
+          throw new Error('keycloak down');
+        }
+        return work();
+      }),
+    });
+
+    const response = await syncTechnicalRoleUpdate(deps, preparedRetryUpdate);
+
+    expect(response.status).toBe(503);
+    expect(deps.buildRoleSyncFailure).toHaveBeenCalledWith({
+      error: new Error('keycloak down'),
+      requestId: 'req-update-role',
+      fallbackMessage: 'Rolle konnte nicht mit Keycloak synchronisiert werden.',
+      roleId: 'role-system-admin',
+    });
+    expect(deps.markRoleSyncState).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        operation: 'retry',
+        result: 'failure',
+        errorCode: 'IDP_UNAVAILABLE',
+        syncState: 'failed',
+      })
+    );
   });
 });

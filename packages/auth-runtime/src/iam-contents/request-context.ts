@@ -29,6 +29,9 @@ export type ResolvedContentActor = {
   };
 };
 
+export type ContentReadAction = 'content.read' | 'news.read' | 'events.read' | 'poi.read';
+type ContentAuthorizationAction = IamContentPrimitiveAction | ContentReadAction;
+
 type ContentAuthorizationResource = {
   readonly contentId?: string;
   readonly contentType?: string;
@@ -46,7 +49,7 @@ const contentPermissionUnavailable = (requestId?: string): Response =>
 
 const buildContentAuthorizeRequest = (
   actor: ResolvedContentActor['actor'],
-  action: IamContentPrimitiveAction,
+  action: ContentAuthorizationAction,
   resource: ContentAuthorizationResource
 ): AuthorizeRequest => {
   const organizationId = resource.organizationId ?? actor.activeOrganizationId;
@@ -81,7 +84,7 @@ const buildContentAuthorizeRequest = (
 
 const logContentAuthorizationDenied = (
   actor: ResolvedContentActor['actor'],
-  action: IamContentPrimitiveAction,
+  action: ContentAuthorizationAction,
   resource: ContentAuthorizationResource,
   reason: string
 ) => {
@@ -141,7 +144,7 @@ export const resolveContentAuthorizationPermissions = async (
 
 export const authorizeContentAction = async (
   actor: ResolvedContentActor['actor'],
-  action: IamContentPrimitiveAction,
+  action: ContentAuthorizationAction,
   resource: ContentAuthorizationResource = {},
   options: ContentAuthorizationOptions = {}
 ): Promise<Response | null> => {

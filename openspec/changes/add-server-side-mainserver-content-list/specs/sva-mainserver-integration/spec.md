@@ -1,7 +1,7 @@
 ## ADDED Requirements
 ### Requirement: Mainserver-Inhalte sind hostseitig in die kanonische Content-Liste projiziert
 
-Das System SHALL Mainserver-News, -Events und -POI hostseitig in das kanonische Inhaltslistenmodell fuer `GET /api/v1/iam/contents` projizieren, ohne einen Browser-Vollscan oder ein lokales Dual-Write nach `iam.contents` vorauszusetzen.
+Das System SHALL Mainserver-News, -Events und -POI hostseitig in das kanonische Inhaltslistenmodell für `GET /api/v1/iam/contents` projizieren, ohne einen Browser-Vollscan oder ein lokales Dual-Write nach `iam.contents` vorauszusetzen.
 
 #### Scenario: News erscheinen in der kanonischen Content-Liste
 

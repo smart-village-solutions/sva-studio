@@ -128,7 +128,7 @@ function renderTab(defaultValues?: Partial<PoiDetailFormValues>) {
       defaultValues: {
         name: '',
         active: true,
-        basis: { categoryName: '' },
+        basis: { categories: [], active: true },
         content: {
           description: '',
           mobileDescription: '',

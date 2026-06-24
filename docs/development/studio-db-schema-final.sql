@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict KcbbagD8WOzRgJn0OSe4YhE5CZn8mBQnhAjg4Wp51NWmy3mtAmHl7loiFu7Py7M
+\restrict H22mmSUTDhehNpiWGjOqMQMfClDKe30BxSOWn9fReQw07ozSJ3WsAdxfOTX8caN
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -154,6 +154,32 @@ BEGIN
       AND source_system = 'iam'
       AND source_entity_type = 'iam.contents'
       AND source_entity_id = OLD.id::text;
+
+    INSERT INTO iam.content_list_projection_sync_state (
+      instance_id,
+      source_system,
+      content_type,
+      sync_mode,
+      last_succeeded_at,
+      projected_count,
+      updated_at
+    )
+    VALUES (
+      OLD.instance_id,
+      'iam',
+      OLD.content_type,
+      'full_refresh',
+      NOW(),
+      0,
+      NOW()
+    )
+    ON CONFLICT (instance_id, source_system, content_type)
+    DO UPDATE SET
+      last_succeeded_at = EXCLUDED.last_succeeded_at,
+      last_error_code = NULL,
+      last_error_message = NULL,
+      updated_at = EXCLUDED.updated_at;
+
     RETURN OLD;
   END IF;
 
@@ -231,6 +257,31 @@ BEGIN
     current_revision_ref = EXCLUDED.current_revision_ref,
     last_audit_event_ref = EXCLUDED.last_audit_event_ref,
     projection_updated_at = EXCLUDED.projection_updated_at;
+
+  INSERT INTO iam.content_list_projection_sync_state (
+    instance_id,
+    source_system,
+    content_type,
+    sync_mode,
+    last_succeeded_at,
+    projected_count,
+    updated_at
+  )
+  VALUES (
+    NEW.instance_id,
+    'iam',
+    NEW.content_type,
+    'full_refresh',
+    NOW(),
+    1,
+    NOW()
+  )
+  ON CONFLICT (instance_id, source_system, content_type)
+  DO UPDATE SET
+    last_succeeded_at = EXCLUDED.last_succeeded_at,
+    last_error_code = NULL,
+    last_error_message = NULL,
+    updated_at = EXCLUDED.updated_at;
 
   RETURN NEW;
 END;
@@ -445,40 +496,6 @@ CREATE TABLE iam.content_history (
 
 
 --
--- Name: contents; Type: TABLE; Schema: iam; Owner: -
---
-
-CREATE TABLE iam.contents (
-    id uuid NOT NULL,
-    instance_id text NOT NULL,
-    content_type text NOT NULL,
-    title text NOT NULL,
-    published_at timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    author_account_id uuid NOT NULL,
-    author_display_name text NOT NULL,
-    payload_json jsonb NOT NULL,
-    status text NOT NULL,
-    organization_id uuid,
-    owner_subject_id text,
-    validation_state text DEFAULT 'valid'::text NOT NULL,
-    publish_from timestamp with time zone,
-    publish_until timestamp with time zone,
-    creator_account_id uuid NOT NULL,
-    updater_account_id uuid NOT NULL,
-    history_ref text NOT NULL,
-    current_revision_ref text,
-    last_audit_event_ref text,
-    deletion_lifecycle_state text DEFAULT 'active'::text NOT NULL,
-    deletion_lifecycle_changed_at timestamp with time zone,
-    CONSTRAINT contents_deletion_lifecycle_state_chk CHECK ((deletion_lifecycle_state = ANY (ARRAY['active'::text, 'deactivated'::text, 'pseudonymized'::text, 'deleted'::text]))),
-    CONSTRAINT contents_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'in_review'::text, 'approved'::text, 'published'::text, 'archived'::text]))),
-    CONSTRAINT contents_validation_state_chk CHECK ((validation_state = ANY (ARRAY['valid'::text, 'invalid'::text, 'pending'::text])))
-);
-
-
---
 -- Name: content_list_projection; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -531,6 +548,40 @@ CREATE TABLE iam.content_list_projection_sync_state (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT content_list_projection_sync_state_mode_chk CHECK ((sync_mode = 'full_refresh'::text)),
     CONSTRAINT content_list_projection_sync_state_source_system_chk CHECK ((source_system = ANY (ARRAY['iam'::text, 'mainserver'::text])))
+);
+
+
+--
+-- Name: contents; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.contents (
+    id uuid NOT NULL,
+    instance_id text NOT NULL,
+    content_type text NOT NULL,
+    title text NOT NULL,
+    published_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    author_account_id uuid NOT NULL,
+    author_display_name text NOT NULL,
+    payload_json jsonb NOT NULL,
+    status text NOT NULL,
+    organization_id uuid,
+    owner_subject_id text,
+    validation_state text DEFAULT 'valid'::text NOT NULL,
+    publish_from timestamp with time zone,
+    publish_until timestamp with time zone,
+    creator_account_id uuid NOT NULL,
+    updater_account_id uuid NOT NULL,
+    history_ref text NOT NULL,
+    current_revision_ref text,
+    last_audit_event_ref text,
+    deletion_lifecycle_state text DEFAULT 'active'::text NOT NULL,
+    deletion_lifecycle_changed_at timestamp with time zone,
+    CONSTRAINT contents_deletion_lifecycle_state_chk CHECK ((deletion_lifecycle_state = ANY (ARRAY['active'::text, 'deactivated'::text, 'pseudonymized'::text, 'deleted'::text]))),
+    CONSTRAINT contents_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'in_review'::text, 'approved'::text, 'published'::text, 'archived'::text]))),
+    CONSTRAINT contents_validation_state_chk CHECK ((validation_state = ANY (ARRAY['valid'::text, 'invalid'::text, 'pending'::text])))
 );
 
 
@@ -1460,6 +1511,71 @@ ALTER TABLE public.goose_db_version ALTER COLUMN id ADD GENERATED BY DEFAULT AS 
 
 
 --
+-- Name: waste_email_reminder_outbox; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.waste_email_reminder_outbox (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    subscription_id uuid NOT NULL,
+    message_kind text NOT NULL,
+    transport_id text NOT NULL,
+    template_key text NOT NULL,
+    send_at timestamp with time zone NOT NULL,
+    dedupe_key text NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    payload jsonb NOT NULL,
+    leased_at timestamp with time zone,
+    sent_at timestamp with time zone,
+    attempt_count integer DEFAULT 0 NOT NULL,
+    last_error text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT waste_email_reminder_outbox_message_kind_check CHECK ((message_kind = ANY (ARRAY['doi'::text, 'reminder'::text]))),
+    CONSTRAINT waste_email_reminder_outbox_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'sent'::text, 'failed'::text, 'cancelled'::text])))
+);
+
+
+--
+-- Name: waste_email_reminder_subscription_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.waste_email_reminder_subscription_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    subscription_id uuid NOT NULL,
+    fraction_id uuid NOT NULL,
+    slot_id text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: waste_email_reminder_subscriptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.waste_email_reminder_subscriptions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    email text NOT NULL,
+    email_hash text NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    region_id uuid,
+    city_id uuid NOT NULL,
+    street_id text NOT NULL,
+    house_number_id uuid,
+    location_label text NOT NULL,
+    consent_version text NOT NULL,
+    consent_accepted_at timestamp with time zone NOT NULL,
+    doi_token_hash text NOT NULL,
+    unsubscribe_token_hash text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    activated_at timestamp with time zone,
+    unsubscribed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT waste_email_reminder_subscriptions_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'unsubscribed'::text, 'expired'::text])))
+);
+
+
+--
 -- Name: account_deletion_content_preferences account_deletion_content_preferences_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -1548,14 +1664,6 @@ ALTER TABLE ONLY iam.content_history
 
 
 --
--- Name: contents contents_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.contents
-    ADD CONSTRAINT contents_pkey PRIMARY KEY (id);
-
-
---
 -- Name: content_list_projection content_list_projection_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -1569,6 +1677,14 @@ ALTER TABLE ONLY iam.content_list_projection
 
 ALTER TABLE ONLY iam.content_list_projection_sync_state
     ADD CONSTRAINT content_list_projection_sync_state_pkey PRIMARY KEY (instance_id, source_system, content_type);
+
+
+--
+-- Name: contents contents_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.contents
+    ADD CONSTRAINT contents_pkey PRIMARY KEY (id);
 
 
 --
@@ -2004,24 +2120,66 @@ ALTER TABLE ONLY public.goose_db_version
 
 
 --
+-- Name: waste_email_reminder_outbox waste_email_reminder_outbox_dedupe_key_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.waste_email_reminder_outbox
+    ADD CONSTRAINT waste_email_reminder_outbox_dedupe_key_unique UNIQUE (dedupe_key);
+
+
+--
+-- Name: waste_email_reminder_outbox waste_email_reminder_outbox_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.waste_email_reminder_outbox
+    ADD CONSTRAINT waste_email_reminder_outbox_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: waste_email_reminder_subscription_items waste_email_reminder_subscription_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.waste_email_reminder_subscription_items
+    ADD CONSTRAINT waste_email_reminder_subscription_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: waste_email_reminder_subscription_items waste_email_reminder_subscription_items_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.waste_email_reminder_subscription_items
+    ADD CONSTRAINT waste_email_reminder_subscription_items_unique UNIQUE (subscription_id, fraction_id, slot_id);
+
+
+--
+-- Name: waste_email_reminder_subscriptions waste_email_reminder_subscriptions_doi_token_hash_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.waste_email_reminder_subscriptions
+    ADD CONSTRAINT waste_email_reminder_subscriptions_doi_token_hash_unique UNIQUE (doi_token_hash);
+
+
+--
+-- Name: waste_email_reminder_subscriptions waste_email_reminder_subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.waste_email_reminder_subscriptions
+    ADD CONSTRAINT waste_email_reminder_subscriptions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: waste_email_reminder_subscriptions waste_email_reminder_subscriptions_unsubscribe_token_hash_uniqu; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.waste_email_reminder_subscriptions
+    ADD CONSTRAINT waste_email_reminder_subscriptions_unsubscribe_token_hash_uniqu UNIQUE (unsubscribe_token_hash);
+
+
+--
 -- Name: iam_content_history_instance_content_created_idx; Type: INDEX; Schema: iam; Owner: -
 --
 
 CREATE INDEX iam_content_history_instance_content_created_idx ON iam.content_history USING btree (instance_id, content_id, created_at DESC);
-
-
---
--- Name: iam_contents_instance_org_updated_idx; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE INDEX iam_contents_instance_org_updated_idx ON iam.contents USING btree (instance_id, organization_id, updated_at DESC);
-
-
---
--- Name: iam_contents_instance_updated_idx; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE INDEX iam_contents_instance_updated_idx ON iam.contents USING btree (instance_id, updated_at DESC);
 
 
 --
@@ -2043,6 +2201,20 @@ CREATE INDEX iam_content_list_projection_instance_type_updated_idx ON iam.conten
 --
 
 CREATE INDEX iam_content_list_projection_instance_updated_idx ON iam.content_list_projection USING btree (instance_id, updated_at DESC);
+
+
+--
+-- Name: iam_contents_instance_org_updated_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX iam_contents_instance_org_updated_idx ON iam.contents USING btree (instance_id, organization_id, updated_at DESC);
+
+
+--
+-- Name: iam_contents_instance_updated_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX iam_contents_instance_updated_idx ON iam.contents USING btree (instance_id, updated_at DESC);
 
 
 --
@@ -2627,10 +2799,52 @@ CREATE UNIQUE INDEX uq_roles_instance_role_key ON iam.roles USING btree (instanc
 
 
 --
+-- Name: idx_waste_email_reminder_outbox_status_send_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_waste_email_reminder_outbox_status_send_at ON public.waste_email_reminder_outbox USING btree (status, send_at);
+
+
+--
+-- Name: idx_waste_email_reminder_outbox_subscription_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_waste_email_reminder_outbox_subscription_id ON public.waste_email_reminder_outbox USING btree (subscription_id);
+
+
+--
+-- Name: idx_waste_email_reminder_subscription_items_subscription_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_waste_email_reminder_subscription_items_subscription_id ON public.waste_email_reminder_subscription_items USING btree (subscription_id);
+
+
+--
+-- Name: idx_waste_email_reminder_subscriptions_email_location_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_waste_email_reminder_subscriptions_email_location_status ON public.waste_email_reminder_subscriptions USING btree (email_hash, city_id, street_id, house_number_id, status);
+
+
+--
+-- Name: idx_waste_email_reminder_subscriptions_status_expires_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_waste_email_reminder_subscriptions_status_expires_at ON public.waste_email_reminder_subscriptions USING btree (status, expires_at);
+
+
+--
 -- Name: geo_hierarchy geo_hierarchy_depth_check; Type: TRIGGER; Schema: iam; Owner: -
 --
 
 CREATE TRIGGER geo_hierarchy_depth_check BEFORE INSERT ON iam.geo_hierarchy FOR EACH ROW EXECUTE FUNCTION iam.check_geo_hierarchy_depth();
+
+
+--
+-- Name: contents sync_content_list_projection_from_contents_trg; Type: TRIGGER; Schema: iam; Owner: -
+--
+
+CREATE TRIGGER sync_content_list_projection_from_contents_trg AFTER INSERT OR DELETE OR UPDATE ON iam.contents FOR EACH ROW EXECUTE FUNCTION iam.sync_content_list_projection_from_contents();
 
 
 --
@@ -2645,13 +2859,6 @@ CREATE TRIGGER trg_immutable_activity_logs BEFORE DELETE OR UPDATE ON iam.activi
 --
 
 CREATE TRIGGER trg_immutable_platform_activity_logs BEFORE DELETE OR UPDATE ON iam.platform_activity_logs FOR EACH ROW EXECUTE FUNCTION iam.prevent_platform_activity_logs_mutation();
-
-
---
--- Name: contents sync_content_list_projection_from_contents_trg; Type: TRIGGER; Schema: iam; Owner: -
---
-
-CREATE TRIGGER sync_content_list_projection_from_contents_trg AFTER INSERT OR DELETE OR UPDATE ON iam.contents FOR EACH ROW EXECUTE FUNCTION iam.sync_content_list_projection_from_contents();
 
 
 --
@@ -3519,6 +3726,22 @@ ALTER TABLE ONLY iam.studio_jobs
 
 
 --
+-- Name: waste_email_reminder_outbox waste_email_reminder_outbox_subscription_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.waste_email_reminder_outbox
+    ADD CONSTRAINT waste_email_reminder_outbox_subscription_id_fkey FOREIGN KEY (subscription_id) REFERENCES public.waste_email_reminder_subscriptions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: waste_email_reminder_subscription_items waste_email_reminder_subscription_items_subscription_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.waste_email_reminder_subscription_items
+    ADD CONSTRAINT waste_email_reminder_subscription_items_subscription_id_fkey FOREIGN KEY (subscription_id) REFERENCES public.waste_email_reminder_subscriptions(id) ON DELETE CASCADE;
+
+
+--
 -- Name: account_deletion_content_preferences; Type: ROW SECURITY; Schema: iam; Owner: -
 --
 
@@ -3824,179 +4047,10 @@ CREATE POLICY role_permissions_isolation_policy ON iam.role_permissions USING ((
 
 CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
 
---
--- Name: waste_email_reminder_outbox; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.waste_email_reminder_outbox (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    subscription_id uuid NOT NULL,
-    message_kind text NOT NULL,
-    transport_id text NOT NULL,
-    template_key text NOT NULL,
-    send_at timestamp with time zone NOT NULL,
-    dedupe_key text NOT NULL,
-    status text DEFAULT 'pending'::text NOT NULL,
-    payload jsonb NOT NULL,
-    leased_at timestamp with time zone,
-    sent_at timestamp with time zone,
-    attempt_count integer DEFAULT 0 NOT NULL,
-    last_error text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT waste_email_reminder_outbox_message_kind_check CHECK ((message_kind = ANY (ARRAY['doi'::text, 'reminder'::text]))),
-    CONSTRAINT waste_email_reminder_outbox_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'sent'::text, 'failed'::text, 'cancelled'::text])))
-);
-
-
---
--- Name: waste_email_reminder_subscription_items; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.waste_email_reminder_subscription_items (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    subscription_id uuid NOT NULL,
-    fraction_id uuid NOT NULL,
-    slot_id text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: waste_email_reminder_subscriptions; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.waste_email_reminder_subscriptions (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    email text NOT NULL,
-    email_hash text NOT NULL,
-    status text DEFAULT 'pending'::text NOT NULL,
-    region_id uuid,
-    city_id uuid NOT NULL,
-    street_id text NOT NULL,
-    house_number_id uuid,
-    location_label text NOT NULL,
-    consent_version text NOT NULL,
-    consent_accepted_at timestamp with time zone NOT NULL,
-    doi_token_hash text NOT NULL,
-    unsubscribe_token_hash text NOT NULL,
-    expires_at timestamp with time zone NOT NULL,
-    activated_at timestamp with time zone,
-    unsubscribed_at timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT waste_email_reminder_subscriptions_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'unsubscribed'::text, 'expired'::text])))
-);
-
---
--- Name: waste_email_reminder_outbox waste_email_reminder_outbox_dedupe_key_unique; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.waste_email_reminder_outbox
-    ADD CONSTRAINT waste_email_reminder_outbox_dedupe_key_unique UNIQUE (dedupe_key);
-
-
---
--- Name: waste_email_reminder_outbox waste_email_reminder_outbox_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.waste_email_reminder_outbox
-    ADD CONSTRAINT waste_email_reminder_outbox_pkey PRIMARY KEY (id);
-
-
---
--- Name: waste_email_reminder_subscription_items waste_email_reminder_subscription_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.waste_email_reminder_subscription_items
-    ADD CONSTRAINT waste_email_reminder_subscription_items_pkey PRIMARY KEY (id);
-
-
---
--- Name: waste_email_reminder_subscription_items waste_email_reminder_subscription_items_unique; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.waste_email_reminder_subscription_items
-    ADD CONSTRAINT waste_email_reminder_subscription_items_unique UNIQUE (subscription_id, fraction_id, slot_id);
-
-
---
--- Name: waste_email_reminder_subscriptions waste_email_reminder_subscriptions_doi_token_hash_unique; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.waste_email_reminder_subscriptions
-    ADD CONSTRAINT waste_email_reminder_subscriptions_doi_token_hash_unique UNIQUE (doi_token_hash);
-
-
---
--- Name: waste_email_reminder_subscriptions waste_email_reminder_subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.waste_email_reminder_subscriptions
-    ADD CONSTRAINT waste_email_reminder_subscriptions_pkey PRIMARY KEY (id);
-
-
---
--- Name: waste_email_reminder_subscriptions waste_email_reminder_subscriptions_unsubscribe_token_hash_uniqu; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.waste_email_reminder_subscriptions
-    ADD CONSTRAINT waste_email_reminder_subscriptions_unsubscribe_token_hash_uniqu UNIQUE (unsubscribe_token_hash);
-
-
---
--- Name: idx_waste_email_reminder_outbox_status_send_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_waste_email_reminder_outbox_status_send_at ON public.waste_email_reminder_outbox USING btree (status, send_at);
-
-
---
--- Name: idx_waste_email_reminder_outbox_subscription_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_waste_email_reminder_outbox_subscription_id ON public.waste_email_reminder_outbox USING btree (subscription_id);
-
-
---
--- Name: idx_waste_email_reminder_subscription_items_subscription_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_waste_email_reminder_subscription_items_subscription_id ON public.waste_email_reminder_subscription_items USING btree (subscription_id);
-
-
---
--- Name: idx_waste_email_reminder_subscriptions_email_location_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_waste_email_reminder_subscriptions_email_location_status ON public.waste_email_reminder_subscriptions USING btree (email_hash, city_id, street_id, house_number_id, status);
-
-
---
--- Name: idx_waste_email_reminder_subscriptions_status_expires_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_waste_email_reminder_subscriptions_status_expires_at ON public.waste_email_reminder_subscriptions USING btree (status, expires_at);
-
-
---
--- Name: waste_email_reminder_outbox waste_email_reminder_outbox_subscription_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.waste_email_reminder_outbox
-    ADD CONSTRAINT waste_email_reminder_outbox_subscription_id_fkey FOREIGN KEY (subscription_id) REFERENCES public.waste_email_reminder_subscriptions(id) ON DELETE CASCADE;
-
-
---
--- Name: waste_email_reminder_subscription_items waste_email_reminder_subscription_items_subscription_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.waste_email_reminder_subscription_items
-    ADD CONSTRAINT waste_email_reminder_subscription_items_subscription_id_fkey FOREIGN KEY (subscription_id) REFERENCES public.waste_email_reminder_subscriptions(id) ON DELETE CASCADE;
-
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict KcbbagD8WOzRgJn0OSe4YhE5CZn8mBQnhAjg4Wp51NWmy3mtAmHl7loiFu7Py7M
+\unrestrict H22mmSUTDhehNpiWGjOqMQMfClDKe30BxSOWn9fReQw07ozSJ3WsAdxfOTX8caN
+

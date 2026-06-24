@@ -43,4 +43,10 @@ describe('validatePoiForm', () => {
       'mediaContents',
     ]);
   });
+
+  it('rejects invalid category names', () => {
+    expect(validatePoiForm({ name: 'Rathaus', categories: [{ name: '' }, { name: 'x'.repeat(129) }] })).toEqual([
+      'categories',
+    ]);
+  });
 });

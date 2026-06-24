@@ -21,7 +21,7 @@ import {
   TabsTrigger,
 } from '@sva/studio-ui-react';
 
-import { createPoi, deletePoi, getPoi, PoiApiError, updatePoi } from './poi.api.js';
+import { createPoi, deletePoi, getPoi, listPoiCategories, PoiApiError, updatePoi } from './poi.api.js';
 import { PoiDetailBasisTab } from './poi.detail-basis-tab.js';
 import {
   createDefaultPoiDetailFormValues,
@@ -36,7 +36,7 @@ import { normalizePoiMediaAssetId } from './poi.media-asset-id.js';
 import { createPoiDetailTabDefinitions, type PoiDetailTabId } from './poi.detail-tabs.js';
 import { PoiDetailSettingsTab } from './poi.detail-settings-tab.js';
 import { pluginPoiMediaPickers } from './plugin.js';
-import type { PoiContentItem } from './poi.types.js';
+import type { PoiCategoryOption, PoiContentItem } from './poi.types.js';
 import { isHttpsUrl, validatePoiForm } from './poi.validation.js';
 
 type StatusMessage = Readonly<{
@@ -97,6 +97,9 @@ export function PoiDetailPage({
   const [mediaReferencesLoadFailed, setMediaReferencesLoadFailed] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<PoiDetailTabId>('basis');
   const [visitedTabs, setVisitedTabs] = React.useState<readonly PoiDetailTabId[]>(['basis']);
+  const [categoryOptions, setCategoryOptions] = React.useState<readonly PoiCategoryOption[]>([]);
+  const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
+  const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
   const focusFieldById = React.useCallback((fieldId: string) => {
     globalThis.setTimeout(() => {
       globalThis.document.getElementById(fieldId)?.focus();
@@ -113,8 +116,21 @@ export function PoiDetailPage({
   }, [instanceId]);
 
   React.useEffect(() => {
+    void listPoiCategories()
+      .then((categories) => {
+        setCategoryOptions(categories);
+        setCategoryOptionsError(null);
+      })
+      .catch((loadError: unknown) => {
+        setCategoryOptions([]);
+        setCategoryOptionsError(errorMessage(pt, loadError, 'messages.categoryOptionsLoadError'));
+      })
+      .finally(() => {
+        setCategoryOptionsLoading(false);
+      });
+
     void refreshMediaAssets();
-  }, [refreshMediaAssets]);
+  }, [pt, refreshMediaAssets]);
 
   React.useEffect(() => {
     if (mode !== 'edit' || !contentId) {
@@ -215,16 +231,16 @@ export function PoiDetailPage({
         methods.setFocus('name');
         setActiveTab('basis');
       }
-      if (validationErrors.includes('categoryName')) {
-        methods.setError('basis.categoryName', { type: 'manual', message: 'categoryName' });
+      if (validationErrors.includes('categories')) {
+        methods.setError('basis.categories', { type: 'manual', message: 'categories' });
         if (!validationErrors.includes('name')) {
-          methods.setFocus('basis.categoryName');
+          methods.setFocus('basis.categories');
         }
         setActiveTab('basis');
       }
       if (validationErrors.includes('webUrls')) {
         methods.setError('content.webUrls.0.url', { type: 'manual', message: 'webUrls' });
-        if (!validationErrors.includes('name') && !validationErrors.includes('categoryName')) {
+        if (!validationErrors.includes('name') && !validationErrors.includes('categories')) {
           methods.setFocus('content.webUrls.0.url');
         }
         setActiveTab('content');
@@ -331,7 +347,16 @@ export function PoiDetailPage({
   }
 
   const tabPanels = {
-    basis: <PoiDetailBasisTab loadedItem={loadedItem} mode={mode} pt={pt} />,
+    basis: (
+      <PoiDetailBasisTab
+        availableCategories={categoryOptions}
+        categoryOptionsError={categoryOptionsError}
+        categoryOptionsLoading={categoryOptionsLoading}
+        loadedItem={loadedItem}
+        mode={mode}
+        pt={pt}
+      />
+    ),
     content: <PoiDetailContentTab pt={pt} />,
     settings: <PoiDetailSettingsTab mediaAssets={mediaAssets} pt={pt} />,
     history: <PoiDetailHistoryTab pt={pt} />,

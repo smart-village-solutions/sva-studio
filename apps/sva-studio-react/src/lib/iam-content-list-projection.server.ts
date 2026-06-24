@@ -7,9 +7,9 @@ import {
   type IamContentListQuery,
 } from '@sva/core';
 import {
-  authorizeContentPrimitiveForUser,
   type AuthenticatedRequestContext,
   resolveActorAccountId,
+  resolveEffectivePermissions,
   withInstanceScopedDb,
 } from '@sva/auth-runtime/server';
 import {
@@ -28,6 +28,7 @@ import {
 } from './iam-content-list-api.shared.js';
 import {
   buildProjectionReadVisibilityRules,
+  isOrganizationOptionalProjectionContentType,
   type ProjectionReadVisibilityRule,
 } from './iam-content-list-visibility.js';
 import { mapEventItem, mapNewsItem, mapPoiItem } from './iam-content-list-mainserver.js';
@@ -207,8 +208,9 @@ let contentProjectionSchedulerStarted = false;
 const buildProjectionTargetKey = (
   instanceId: string,
   contentType: MainserverContentType,
+  keycloakSubject: string,
   organizationId?: string
-): string => `${instanceId}::${contentType}::${organizationId ?? '__global__'}`;
+): string => `${instanceId}::${contentType}::${organizationId ?? `subject:${keycloakSubject}`}`;
 
 const toMainserverContentType = (value: string): MainserverContentType | null => {
   if (
@@ -248,10 +250,11 @@ LIMIT 1;
     return result.rows[0] ?? null;
   });
 
-const countProjectedRowsForOrganization = async (
+const countProjectedRowsForScope = async (
   instanceId: string,
   contentType: string,
-  organizationId: string
+  keycloakSubject: string,
+  organizationId?: string
 ): Promise<number> =>
   withInstanceScopedDb(instanceId, async (client) => {
     const result = await client.query<{ total: string | number }>(
@@ -261,9 +264,19 @@ FROM iam.content_list_projection
 WHERE instance_id = $1
   AND source_system = 'mainserver'
   AND content_type = $2
-  AND organization_id::text = $3;
+  AND (
+    ($3::text IS NOT NULL AND organization_id::text = $3::text)
+    OR (
+      $3::text IS NULL
+      AND organization_id IS NULL
+      AND (
+        owner_subject_id = $4
+        OR owner_subject_id IS NULL
+      )
+    )
+  );
       `,
-      [instanceId, contentType, organizationId]
+      [instanceId, contentType, organizationId ?? null, keycloakSubject]
     );
 
     return Number(result.rows[0]?.total ?? 0);
@@ -327,6 +340,7 @@ DO UPDATE SET
 const replaceMainserverProjectionRows = async (
   instanceId: string,
   contentType: string,
+  keycloakSubject: string,
   organizationId: string | undefined,
   rows: readonly MainserverProjectionRowInput[]
 ): Promise<void> => {
@@ -338,11 +352,18 @@ WHERE instance_id = $1
   AND source_system = 'mainserver'
   AND content_type = $2
   AND (
-    ($3::text IS NULL AND organization_id IS NULL)
-    OR organization_id::text = $3::text
+    ($3::text IS NOT NULL AND organization_id::text = $3::text)
+    OR (
+      $3::text IS NULL
+      AND organization_id IS NULL
+      AND (
+        owner_subject_id = $4
+        OR owner_subject_id IS NULL
+      )
+    )
   );
       `,
-      [instanceId, contentType, organizationId ?? null]
+      [instanceId, contentType, organizationId ?? null, keycloakSubject]
     );
 
     if (rows.length > 0) {
@@ -430,7 +451,8 @@ FROM jsonb_to_recordset($1::jsonb) AS item(
               id: row.id,
               instance_id: row.instanceId,
               organization_id: row.organizationId ?? null,
-              owner_subject_id: row.ownerSubjectId ?? null,
+              owner_subject_id:
+                row.ownerSubjectId ?? (row.organizationId ? null : keycloakSubject),
               content_type: row.contentType,
               title: row.title,
               published_at: row.publishedAt ?? null,
@@ -576,7 +598,13 @@ const refreshMainserverProjection = async (
               }))
             : [];
 
-    await replaceMainserverProjectionRows(instanceId, contentType, projectedOrganizationId, rows);
+    await replaceMainserverProjectionRows(
+      instanceId,
+      contentType,
+      keycloakSubject,
+      projectedOrganizationId,
+      rows
+    );
     return null;
   } catch (error) {
     const errorCode = normalizeApiErrorCode(
@@ -595,7 +623,12 @@ const refreshMainserverProjection = async (
 
 const registerProjectionTarget = (target: ContentProjectionSyncTarget): void => {
   registeredProjectionTargets.set(
-    buildProjectionTargetKey(target.instanceId, target.contentType, target.organizationId),
+    buildProjectionTargetKey(
+      target.instanceId,
+      target.contentType,
+      target.keycloakSubject,
+      target.organizationId
+    ),
     target
   );
 };
@@ -625,11 +658,12 @@ const computeProjectionSyncState = async (
   const hasGlobalSnapshot = Number.isFinite(lastSucceededAtMs);
   let hasSnapshot = hasGlobalSnapshot;
 
-  if (target.organizationId && hasGlobalSnapshot && (syncState?.projected_count ?? 0) > 0) {
+  if (hasGlobalSnapshot) {
     hasSnapshot =
-      (await countProjectedRowsForOrganization(
+      (await countProjectedRowsForScope(
         target.instanceId,
         target.contentType,
+        target.keycloakSubject,
         target.organizationId
       )) > 0;
   }
@@ -645,7 +679,12 @@ const computeProjectionSyncState = async (
       !Number.isFinite(lastSucceededAtMs) ||
       Date.now() - lastSucceededAtMs >= MAIN_SERVER_SYNC_STALE_MS,
     isSyncRunning: runningProjectionSyncs.has(
-      buildProjectionTargetKey(target.instanceId, target.contentType, target.organizationId)
+      buildProjectionTargetKey(
+        target.instanceId,
+        target.contentType,
+        target.keycloakSubject,
+        target.organizationId
+      )
     ),
     hasSnapshot,
   };
@@ -664,6 +703,7 @@ const triggerMainserverProjectionRefresh = async (
   const targetKey = buildProjectionTargetKey(
     target.instanceId,
     target.contentType,
+    target.keycloakSubject,
     target.organizationId
   );
   const currentState = await computeProjectionSyncState(target);
@@ -769,6 +809,23 @@ const resolveEffectiveTypes = (query: IamContentListQuery): readonly string[] =>
   return visibleTypes;
 };
 
+const loadProjectedContentTypes = async (instanceId: string): Promise<readonly string[]> =>
+  withInstanceScopedDb(instanceId, async (client) => {
+    const result = await client.query<{ content_type: string }>(
+      `
+SELECT DISTINCT projection.content_type
+FROM iam.content_list_projection AS projection
+WHERE projection.instance_id = $1
+ORDER BY projection.content_type ASC;
+      `,
+      [instanceId]
+    );
+
+    return result.rows
+      .map((row) => row.content_type.trim())
+      .filter((contentType) => contentType.length > 0);
+  });
+
 const buildProjectionReadVisibilitySql = (
   rules: readonly ProjectionReadVisibilityRule[],
   actorAccountId: string | undefined,
@@ -786,6 +843,9 @@ const buildProjectionReadVisibilitySql = (
     if (rule.allowOrganizationIds.length > 0) {
       params.push([...rule.allowOrganizationIds]);
       allowClauses.push(`projection.organization_id::text = ANY($${params.length}::text[])`);
+      if (isOrganizationOptionalProjectionContentType(rule.contentType)) {
+        allowClauses.push('projection.organization_id IS NULL');
+      }
     }
     if (rule.allowOwn && actorAccountId) {
       params.push(actorAccountId);
@@ -828,6 +888,7 @@ const listSortColumnByField = {
 
 const loadProjectionPage = async (
   instanceId: string,
+  keycloakSubject: string,
   query: IamContentListQuery,
   rules: readonly ProjectionReadVisibilityRule[],
   actorAccountId: string | undefined
@@ -846,9 +907,25 @@ const loadProjectionPage = async (
       params.push(`%${query.q.trim().toLowerCase()}%`);
       const searchParam = `$${params.length}`;
       conditions.push(
-        `(LOWER(projection.title) LIKE ${searchParam} OR LOWER(projection.content_type) LIKE ${searchParam} OR LOWER(projection.author_display_name) LIKE ${searchParam})`
+        `(
+          LOWER(projection.title) LIKE ${searchParam}
+          OR LOWER(projection.content_type) LIKE ${searchParam}
+          OR LOWER(projection.author_display_name) LIKE ${searchParam}
+          OR LOWER(projection.payload_json::text) LIKE ${searchParam}
+        )`
       );
     }
+
+    params.push(keycloakSubject);
+    const keycloakSubjectParam = `$${params.length}`;
+    conditions.push(
+      `(
+        projection.source_system <> 'mainserver'
+        OR projection.organization_id IS NOT NULL
+        OR projection.owner_subject_id IS NULL
+        OR projection.owner_subject_id = ${keycloakSubjectParam}
+      )`
+    );
 
     const whereClause = `WHERE ${conditions.join('\n  AND ')}`;
     const orderByClause = `ORDER BY ${listSortColumnByField[query.sortBy]} ${
@@ -985,6 +1062,67 @@ const enrichProjectionItemsWithAccess = async (
   return itemsWithAccess;
 };
 
+const buildTypeAuthorizeRequest = (
+  instanceId: string,
+  contentType: string,
+  organizationId: string | undefined
+): AuthorizeRequest => {
+  const action = buildReadAction(contentType);
+  const workspaceContext = getWorkspaceContext();
+
+  return {
+    instanceId,
+    action,
+    resource: {
+      type: action.split('.')[0] || 'content',
+      ...(organizationId ? { organizationId } : {}),
+      attributes: {
+        contentType,
+        ...(organizationId ? { organizationId } : {}),
+      },
+    },
+    context: {
+      ...(organizationId ? { organizationId } : {}),
+      ...(workspaceContext.requestId ? { requestId: workspaceContext.requestId } : {}),
+      ...(workspaceContext.traceId ? { traceId: workspaceContext.traceId } : {}),
+      attributes: {
+        contentType,
+      },
+    },
+  };
+};
+
+const hasDeferredRowScopedReadPermission = (
+  permissions: readonly EffectivePermission[],
+  contentType: string,
+  activeOrganizationId: string | undefined
+): boolean => {
+  const action = buildReadAction(contentType);
+  const resourceType = action.split('.')[0] ?? 'content';
+
+  return permissions.some((permission) => {
+    if (
+      permission.effect === 'deny' ||
+      permission.action !== action ||
+      permission.resourceType !== resourceType ||
+      permission.resourceId
+    ) {
+      return false;
+    }
+
+    if (permission.accessScope === 'own') {
+      return true;
+    }
+
+    return (
+      !activeOrganizationId &&
+      isOrganizationOptionalProjectionContentType(contentType) &&
+      permission.accessScope === 'organization' &&
+      Boolean(permission.organizationId)
+    );
+  });
+};
+
 const authorizeRequestedTypes = async (
   ctx: AuthenticatedRequestContext,
   effectiveTypes: readonly string[]
@@ -995,33 +1133,49 @@ const authorizeRequestedTypes = async (
     }
   | Response
 > => {
+  const instanceId = ctx.user.instanceId;
+  if (!instanceId) {
+    return createListErrorResponse(
+      400,
+      'invalid_instance_id',
+      'Kein Instanzkontext für diese Inhalte vorhanden.',
+      getWorkspaceContext().requestId
+    );
+  }
+
+  const resolvedPermissions = await resolveEffectivePermissions({
+    instanceId,
+    keycloakSubject: ctx.user.id,
+    ...(ctx.activeOrganizationId ? { organizationId: ctx.activeOrganizationId } : {}),
+  });
+  if (!resolvedPermissions.ok) {
+    return createListErrorResponse(
+      503,
+      'database_unavailable',
+      'Berechtigungen konnten nicht geprüft werden.',
+      getWorkspaceContext().requestId
+    );
+  }
+
   const allowedTypes: string[] = [];
-  let permissions: readonly EffectivePermission[] | undefined;
   let sawForbidden = false;
 
   for (const contentType of effectiveTypes) {
-    const authorization = await authorizeContentPrimitiveForUser({
-      ctx,
-      action: buildReadAction(contentType),
-      resource: {
+    const decision = evaluateAuthorizeDecision(
+      buildTypeAuthorizeRequest(instanceId, contentType, ctx.activeOrganizationId),
+      resolvedPermissions.permissions
+    );
+
+    if (
+      decision.allowed ||
+      hasDeferredRowScopedReadPermission(
+        resolvedPermissions.permissions,
         contentType,
-      },
-      permissions,
-    });
-
-    if (authorization.ok) {
+        ctx.activeOrganizationId
+      )
+    ) {
       allowedTypes.push(contentType);
-      permissions = authorization.permissions;
       continue;
-    }
-
-    if (authorization.status >= 500) {
-      return createListErrorResponse(
-        authorization.status,
-        normalizeApiErrorCode(authorization.error),
-        authorization.message,
-        getWorkspaceContext().requestId
-      );
     }
 
     sawForbidden = true;
@@ -1038,7 +1192,7 @@ const authorizeRequestedTypes = async (
 
   return {
     allowedTypes,
-    permissions: permissions ?? [],
+    permissions: resolvedPermissions.permissions,
   };
 };
 
@@ -1051,7 +1205,9 @@ export const listProjectedContents = async (
     return createListErrorResponse(400, 'invalid_instance_id', 'Kein Instanzkontext für diese Inhalte vorhanden.', getWorkspaceContext().requestId);
   }
 
-  const effectiveTypes = resolveEffectiveTypes(query);
+  const requestedTypes = resolveEffectiveTypes(query);
+  const effectiveTypes =
+    requestedTypes.length > 0 ? requestedTypes : await loadProjectedContentTypes(instanceId);
   if (query.type && effectiveTypes.length === 0) {
     return new Response(
       JSON.stringify({
@@ -1119,7 +1275,13 @@ export const listProjectedContents = async (
     }
   }
 
-  const { items, total } = await loadProjectionPage(instanceId, query, visibilityRules, actorAccountId);
+  const { items, total } = await loadProjectionPage(
+    instanceId,
+    ctx.user.id,
+    query,
+    visibilityRules,
+    actorAccountId
+  );
   const authorizedItems = await enrichProjectionItemsWithAccess(
     instanceId,
     ctx.activeOrganizationId,

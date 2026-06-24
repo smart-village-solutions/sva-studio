@@ -35,6 +35,7 @@ export type RichTextHtmlEditorProps = Readonly<{
   toolbarLabels: RichTextHtmlEditorToolbarLabels;
   labelId?: string;
   describedBy?: string;
+  ariaInvalid?: boolean;
   disabled?: boolean;
   className?: string;
 }>;
@@ -97,6 +98,7 @@ export const RichTextHtmlEditor = ({
   toolbarLabels,
   labelId,
   describedBy,
+  ariaInvalid = false,
   disabled = false,
   className,
 }: RichTextHtmlEditorProps) => {
@@ -132,6 +134,7 @@ export const RichTextHtmlEditor = ({
         id,
         role: 'textbox',
         'aria-multiline': 'true',
+        ...(ariaInvalid ? { 'aria-invalid': 'true' } : {}),
         ...(labelId ? { 'aria-labelledby': labelId } : {}),
         ...(describedBy ? { 'aria-describedby': describedBy } : {}),
         class: cn(

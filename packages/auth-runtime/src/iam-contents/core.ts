@@ -13,9 +13,13 @@ import {
   authorizeContentAction,
   resolveContentAccess,
   resolveContentActor,
-  type ResolvedContentActor,
   withAuthenticatedContentHandler,
 } from './request-context.js';
+import {
+  authorizeReadableContentItem,
+  isServerAuthorizationError,
+  resolveReadableContentScopes,
+} from './read-authorization.js';
 import { createContentResponse, deleteContentResponse, updateContentResponse } from './mutations.js';
 import {
   loadContentById,
@@ -27,33 +31,8 @@ import {
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
-const isServerAuthorizationError = (response: Response): boolean => response.status >= 500;
-
 const isContentStatus = (value: string): value is IamContentStatus =>
   (iamContentStatuses as readonly string[]).includes(value);
-
-const buildReadActionForContentType = (contentType: string | undefined): 'content.read' | 'news.read' | 'events.read' | 'poi.read' => {
-  switch (contentType) {
-    case 'news.article':
-      return 'news.read';
-    case 'events.event-record':
-      return 'events.read';
-    case 'poi.point-of-interest':
-      return 'poi.read';
-    default:
-      return 'content.read';
-  }
-};
-
-const collectListReadActions = (query: IamContentListQuery): readonly ('content.read' | 'news.read' | 'events.read' | 'poi.read')[] => {
-  const requestedContentTypes =
-    query.type && query.type.trim().length > 0
-      ? [query.type]
-      : (query.visibleTypes ?? []);
-
-  const actions = requestedContentTypes.map((contentType) => buildReadActionForContentType(contentType));
-  return actions.length > 0 ? [...new Set(actions)] : ['content.read'];
-};
 
 const readContentListQuery = (request: Request): IamContentListQuery => {
   const url = new URL(request.url);
@@ -85,65 +64,6 @@ const readContentListQuery = (request: Request): IamContentListQuery => {
       sortDirectionValue && (iamContentListSortDirections as readonly string[]).includes(sortDirectionValue)
         ? (sortDirectionValue as IamContentListQuery['sortDirection'])
         : 'desc',
-  };
-};
-
-const authorizeReadableContentItem = (
-  actor: ResolvedContentActor['actor'],
-  item: {
-    readonly id: string;
-    readonly contentType: string;
-    readonly organizationId?: string;
-    readonly createdBy?: string;
-  }
-) =>
-  authorizeContentAction(actor, buildReadActionForContentType(item.contentType), {
-    contentId: item.id,
-    contentType: item.contentType,
-    organizationId: item.organizationId,
-    createdByAccountId: item.createdBy,
-  });
-
-const resolveReadableContentScopes = async (
-  actor: ResolvedContentActor['actor'],
-  scopes: readonly (string | null)[],
-  query: IamContentListQuery
-): Promise<{ readonly allowedOrganizationIds: readonly string[]; readonly includeUnscopedContent: boolean } | Response> => {
-  const allowedOrganizationIds: string[] = [];
-  let includeUnscopedContent = false;
-  const readActions = collectListReadActions(query);
-
-  for (const scope of scopes) {
-    let scopeAllowed = false;
-    for (const action of readActions) {
-      const authorizationError = await authorizeContentAction(actor, action, {
-        ...(scope ? { organizationId: scope } : {}),
-        ...(actor.actorAccountId ? { createdByAccountId: actor.actorAccountId } : {}),
-      });
-
-      if (!authorizationError) {
-        scopeAllowed = true;
-        if (scope) {
-          allowedOrganizationIds.push(scope);
-        } else {
-          includeUnscopedContent = true;
-        }
-        break;
-      }
-
-      if (isServerAuthorizationError(authorizationError)) {
-        return authorizationError;
-      }
-    }
-
-    if (scopeAllowed) {
-      continue;
-    }
-  }
-
-  return {
-    allowedOrganizationIds,
-    includeUnscopedContent,
   };
 };
 

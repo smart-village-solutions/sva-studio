@@ -1,6 +1,6 @@
-import { createMainserverCrudClient } from '@sva/plugin-sdk';
+import { createMainserverCrudClient, requestMainserverJson } from '@sva/plugin-sdk';
 
-import type { PoiContentItem, PoiFormInput, PoiListQuery, PoiListResult } from './poi.types.js';
+import type { PoiCategoryOption, PoiContentItem, PoiFormInput, PoiListQuery, PoiListResult } from './poi.types.js';
 
 export class PoiApiError extends Error {
   public constructor(
@@ -28,3 +28,12 @@ export const updatePoi = async (contentId: string, input: PoiFormInput): Promise
   poiClient.update(contentId, input);
 
 export const deletePoi = async (contentId: string): Promise<void> => poiClient.remove(contentId);
+
+export const listPoiCategories = async (): Promise<readonly PoiCategoryOption[]> => {
+  const response = await requestMainserverJson<{ readonly data: readonly PoiCategoryOption[] }, PoiApiError>({
+    url: '/api/v1/mainserver/categories',
+    errorFactory: (code, message) => new PoiApiError(code, message),
+  });
+
+  return response.data;
+};

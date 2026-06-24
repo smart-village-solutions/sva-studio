@@ -769,6 +769,9 @@ importers:
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      maplibre-gl:
+        specifier: ^5.24.0
+        version: 5.24.0
       react:
         specifier: ^19.2.0
         version: 19.2.6
@@ -12681,6 +12684,7 @@ snapshots:
       '@sva/plugin-sdk': file:packages/plugin-sdk
       '@sva/studio-ui-react': file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.79.0(react@19.2.6))(react@19.2.6)
       '@tanstack/react-router': 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      maplibre-gl: 5.24.0
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
       react-hook-form: 7.79.0(react@19.2.6)

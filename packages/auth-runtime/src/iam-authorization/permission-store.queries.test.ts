@@ -40,6 +40,12 @@ describe('permission-store queries', () => {
           access_scope: 'organization',
           effect: 'allow',
         },
+        {
+          permission_key: 'roles.read',
+          organization_id: null,
+          access_scope: 'all',
+          effect: 'allow',
+        },
       ],
     });
 
@@ -62,6 +68,12 @@ describe('permission-store queries', () => {
         organizationId: ORGANIZATION_ID,
         effect: 'allow',
         accessScope: 'organization',
+      },
+      {
+        action: 'roles.read',
+        resourceType: 'roles',
+        effect: 'allow',
+        accessScope: 'all',
       },
     ]);
     expect(state.query).toHaveBeenCalledWith(

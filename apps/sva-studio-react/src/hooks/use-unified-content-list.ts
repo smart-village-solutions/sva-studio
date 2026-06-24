@@ -121,7 +121,7 @@ const mapEventItem = (
     categoryName: item.categoryName,
     dates: item.dates,
     addresses: item.addresses,
-    contact: item.contact,
+    contacts: item.contacts,
     urls: item.urls,
     tags: item.tags,
     pointOfInterestId: item.pointOfInterestId,

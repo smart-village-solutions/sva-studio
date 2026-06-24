@@ -59,8 +59,10 @@ export {
   type PersistAuthAuditResult,
 } from './audit-db-sink.js';
 export { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.js';
+export { ensureFeature, getFeatureFlags } from './iam-account-management/feature-flags.js';
 export { withInstanceScopedDb } from './iam-account-management/shared.js';
 export { resolveActorAccountId } from './iam-account-management/shared.js';
+export { resolveEffectivePermissions } from './iam-authorization/permission-store.js';
 export { withMediaRepository, withMediaService } from './iam-media/index.js';
 export { completeMediaUploadHandler } from './iam-media/core.js';
 export {

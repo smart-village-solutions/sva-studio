@@ -10,11 +10,43 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEvent, getEvent, listEvents, updateEvent } from '../src/events.api.js';
 import { EventsCreatePage, EventsEditPage, EventsListPage } from '../src/events.pages.js';
 
+vi.mock('@sva/studio-ui-react', async () => {
+  const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
+  return {
+    ...actual,
+    RichTextHtmlEditor: ({
+      id,
+      value,
+      onChange,
+      labelId,
+      describedBy,
+      ariaInvalid,
+    }: {
+      id: string;
+      value: string;
+      onChange: (nextValue: string) => void;
+      labelId?: string;
+      describedBy?: string;
+      ariaInvalid?: boolean;
+    }) => (
+      <textarea
+        id={id}
+        aria-labelledby={labelId}
+        aria-describedby={describedBy}
+        aria-invalid={ariaInvalid ? 'true' : undefined}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    ),
+  };
+});
+
 vi.mock('../src/events.api.js', () => ({
   listEvents: vi.fn(async () => ({
     data: [],
     pagination: { page: 1, pageSize: 25, hasNextPage: false },
   })),
+  listEventCategories: vi.fn(async () => [{ id: 'cat-1', name: 'Kultur' }, { id: 'cat-2', name: 'Open Air' }]),
   listPoiForEventSelection: vi.fn(async () => []),
   getEvent: vi.fn(async () => ({
     id: 'event-1',
@@ -79,7 +111,10 @@ describe('EventsListPage', () => {
         'events.fields.title': 'Titel',
         'events.fields.description': 'Beschreibung',
         'events.fields.headerImage': 'Headerbild',
-        'events.fields.categoryName': 'Kategorie',
+        'events.fields.categories': 'Kategorien',
+        'events.fields.categoriesHelp': 'Mehrfachauswahl',
+        'events.fields.categoriesSearch': 'Kategorien suchen',
+        'events.fields.categoriesSearchPlaceholder': 'Kategorie suchen oder auswählen',
         'events.fields.dateStart': 'Startdatum',
         'events.fields.dateEnd': 'Enddatum',
         'events.fields.street': 'Straße',
@@ -95,6 +130,8 @@ describe('EventsListPage', () => {
         'events.fields.timeEnd': 'Endzeit',
         'events.fields.createdAt': 'Erstellt',
         'events.fields.updatedAt': 'Aktualisiert',
+        'events.messages.categoryOptionsLoading': 'Kategorien werden geladen.',
+        'events.messages.categoryOptionsLoadError': 'Kategorien konnten nicht geladen werden.',
         'events.pagination.ariaLabel': 'Events-Pagination',
         'events.pagination.previous': 'Zurück',
         'events.pagination.next': 'Weiter',
@@ -129,6 +166,8 @@ describe('EventsListPage', () => {
         'events.cards.settings.media.description': 'Headerbild für die Detailseite.',
         'events.history.empty.title': 'Noch keine Historie verfügbar.',
         'events.history.empty.description': 'Historienereignisse für Events werden in einem späteren Schritt angebunden.',
+        'events.actions.addCategory': 'Kategorie hinzufügen',
+        'events.actions.removeCategory': 'Kategorie {{name}} entfernen',
         'events.editor.createTitle': 'Event anlegen',
         'events.editor.createDescription': 'Erstellen Sie einen neuen Veranstaltungseintrag.',
         'events.editor.editTitle': 'Event bearbeiten',
@@ -136,7 +175,7 @@ describe('EventsListPage', () => {
         'events.validation.title': 'Der Titel ist erforderlich.',
         'events.validation.dates': 'Datumswerte müssen gültig sein.',
         'events.validation.urls': 'URLs müssen mit https:// beginnen.',
-        'events.validation.categoryName': 'Die Kategorie darf maximal 128 Zeichen haben.',
+        'events.validation.categories': 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
       };
       return labels[key] ?? key;
     });

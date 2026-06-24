@@ -22,6 +22,9 @@ const ORGANIZATION_OPTIONAL_CONTENT_TYPES = new Set([
   'poi.point-of-interest',
 ]);
 
+export const isOrganizationOptionalProjectionContentType = (contentType: string): boolean =>
+  ORGANIZATION_OPTIONAL_CONTENT_TYPES.has(contentType);
+
 const buildReadAction = (contentType: string): string =>
   contentType === 'news.article' || contentType === 'events.event-record' || contentType === 'poi.point-of-interest'
     ? `${contentType.split('.')[0] ?? 'content'}.read`
@@ -29,22 +32,11 @@ const buildReadAction = (contentType: string): string =>
 
 const buildReadResourceType = (action: string): string => action.split('.')[0] ?? 'content';
 
-const uniqueSortedStrings = (values: readonly string[]) => [...new Set(values)].sort((left, right) => left.localeCompare(right));
+const uniqueSortedStrings = (values: readonly string[]) =>
+  [...new Set(values)].sort((left, right) => left.localeCompare(right, 'de'));
 
 const matchesReadPermission = (permission: EffectivePermission, action: string): boolean =>
   permission.action === action && permission.resourceType === buildReadResourceType(action) && !permission.resourceId;
-
-const normalizePermissionForProjectionRead = (
-  contentType: string,
-  permission: EffectivePermission
-): EffectivePermission =>
-  ORGANIZATION_OPTIONAL_CONTENT_TYPES.has(contentType) && permission.organizationId
-    ? {
-        ...permission,
-        organizationId: undefined,
-        ...(permission.accessScope === 'organization' ? { accessScope: undefined } : {}),
-      }
-    : permission;
 
 export const buildProjectionReadVisibilityRules = (
   contentTypes: readonly string[],
@@ -54,7 +46,14 @@ export const buildProjectionReadVisibilityRules = (
     const action = buildReadAction(contentType);
     const matchingPermissions = permissions
       .filter((permission) => matchesReadPermission(permission, action))
-      .map((permission) => normalizePermissionForProjectionRead(contentType, permission));
+      .map((permission) =>
+        ORGANIZATION_OPTIONAL_CONTENT_TYPES.has(contentType) && !permission.organizationId
+          ? {
+              ...permission,
+              ...(permission.accessScope === 'organization' ? { accessScope: undefined } : {}),
+            }
+          : permission
+      );
     const allowPermissions = matchingPermissions.filter((permission) => permission.effect !== 'deny');
     const denyPermissions = matchingPermissions.filter((permission) => permission.effect === 'deny');
 
@@ -88,8 +87,14 @@ export const isProjectionRowVisibleForRead = (
   const ownMatch = Boolean(actorAccountId && row.createdByAccountId === actorAccountId);
   const organizationMatch = Boolean(row.organizationId && rule.allowOrganizationIds.includes(row.organizationId));
   const deniedOrganizationMatch = Boolean(row.organizationId && rule.denyOrganizationIds.includes(row.organizationId));
+  const organizationOptionalUnscopedMatch = Boolean(
+    !row.organizationId &&
+      isOrganizationOptionalProjectionContentType(rule.contentType) &&
+      rule.allowOrganizationIds.length > 0
+  );
 
-  const allowed = rule.allowGlobal || organizationMatch || (rule.allowOwn && ownMatch);
+  const allowed =
+    rule.allowGlobal || organizationMatch || organizationOptionalUnscopedMatch || (rule.allowOwn && ownMatch);
   if (!allowed) {
     return false;
   }

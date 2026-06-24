@@ -2840,11 +2840,35 @@
       "status": "open",
       "summary": "Langen Events-Content-Tab in kleinere Untersektionen und Form-Bausteine aufteilen (packages/plugin-events/src/events.detail-content-tab.tsx)"
     },
+    "packages-default:packages/plugin-events/src/events.detail-content-tab.tsx:fileLines": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Content-Tab-Datei in kleinere Untersektionen, Karten- und Formularmodule splitten (packages/plugin-events/src/events.detail-content-tab.tsx)"
+    },
     "packages-default:packages/plugin-events/src/events.detail-form.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-002",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Events-Detail-Form-Mapping in kleinere Parser-, Mapper- und Normalisierungshelfer zerlegen (packages/plugin-events/src/events.detail-form.ts)"
+    },
+    "packages-default:packages/plugin-events/src/events.detail-form.ts:fileLines": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Detail-Form-Datei in kleinere Mapping-, Default- und Serialisierungsbausteine splitten (packages/plugin-events/src/events.detail-form.ts)"
+    },
+    "packages-default:packages/plugin-events/src/events.detail-form.ts:functionLines": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange Events-Detail-Form-Funktionen in kleinere Mapping-, Validierungs- und Normalisierungsschritte aufteilen (packages/plugin-events/src/events.detail-form.ts)"
+    },
+    "packages-default:packages/plugin-events/src/events.detail-form.ts:publicExports": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Detail-Form-Exports in kleinere API-Segmente und Re-Export-Dateien aufteilen (packages/plugin-events/src/events.detail-form.ts)"
     },
     "packages-default:packages/plugin-events/src/events.detail-page.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-003",
@@ -2869,6 +2893,66 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Plugin-Events-Exports in kleinere Re-Export-Segmente und API-Kanten aufteilen (packages/plugin-events/src/index.ts)"
+    },
+    "packages-default:packages/plugin-events/src/events.category-multiselect.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-005",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Kategorieauswahl in kleinere Query-, Badge- und Auswahlbausteine aufteilen (packages/plugin-events/src/events.category-multiselect.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/events.detail-basis-tab.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-006",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Basis-Tab-Verzweigungen in kleinere Formular-, Termin- und Metadatenbereiche zerlegen (packages/plugin-events/src/events.detail-basis-tab.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/events.detail-basis-tab.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-006",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Langen Events-Basis-Tab in kleinere Formular-, Termin- und Metadatenbausteine aufteilen (packages/plugin-events/src/events.detail-basis-tab.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/events.detail-settings-tab.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-007",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Settings-Tab in kleinere Formular-, Status- und Medienbausteine aufteilen (packages/plugin-events/src/events.detail-settings-tab.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/events.geo-address-fields.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-008",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Geo-Adressfelder in kleinere Geocoding-, Karten- und Formularzweige zerlegen (packages/plugin-events/src/events.geo-address-fields.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/events.geo-address-fields.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-008",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange Events-Geo-Adressfeld-Komponente in kleinere Geocoding-, Karten- und Formularbausteine aufteilen (packages/plugin-events/src/events.geo-address-fields.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/events.poi-select.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-009",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-POI-Auswahl in kleinere Such-, Auswahl- und Anzeige-Bausteine aufteilen (packages/plugin-events/src/events.poi-select.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/events.types.ts:publicExports": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-010",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Typdefinitionen in kleinere Vertragsmodule und Re-Exports aufteilen (packages/plugin-events/src/events.types.ts)"
+    },
+    "packages-default:packages/plugin-events/src/events.validation.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-011",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Validierung in kleinere Schema-, Normalisierungs- und Cross-Field-Checks zerlegen (packages/plugin-events/src/events.validation.ts)"
+    },
+    "packages-default:packages/plugin-events/src/plugin.translations.ts:fileLines": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-012",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Translations in kleinere Themenmodule und Re-Exports aufteilen (packages/plugin-events/src/plugin.translations.ts)"
     },
     "packages-default:packages/plugin-poi/src/poi.detail-content-tab.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-POI-DETAIL-001",
@@ -2911,6 +2995,18 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "POI-Plugin-Exports in kleinere API-Kanten und Re-Export-Segmente aufteilen (packages/plugin-poi/src/index.ts)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.category-multiselect.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-009",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Kategorieauswahl in kleinere Query-, Badge- und Auswahlbausteine aufteilen (packages/plugin-poi/src/poi.category-multiselect.tsx)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-basis-tab.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-010",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Basis-Tab in kleinere Formular-, Metadaten- und Organisationsbausteine aufteilen (packages/plugin-poi/src/poi.detail-basis-tab.tsx)"
     },
     "packages-default:packages/plugin-poi/src/poi.detail-location-controller.ts:functionLines": {
       "ticketId": "QUAL-PLUGIN-POI-DETAIL-005",
@@ -3079,6 +3175,12 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Waste-Operations-Runtime-Datei in kleinere Operation- und Helper-Module splitten (apps/sva-studio-react/src/lib/waste-management-operations.server.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/lib/iam-content-list-projection.server.ts:fileLines": {
+      "ticketId": "QUAL-IAM-CONTENT-LIST-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Content-List-Projektion in kleinere Query-, Sync- und Autorisierungs-Module splitten (apps/sva-studio-react/src/lib/iam-content-list-projection.server.ts)"
     },
     "frontend-app:apps/sva-studio-react/src/routes/interfaces/-interfaces-page.dialogs.tsx:fileLines": {
       "ticketId": "QUAL-INTERFACES-COMPLEXITY-002",

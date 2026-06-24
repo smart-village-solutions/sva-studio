@@ -62,12 +62,20 @@ describe('aggregated content list api', () => {
           keycloakSubject: 'kc-user-1',
         },
         permissions: [
-          { action: 'content.read' },
+          { action: 'news.read', resourceType: 'news' },
           { action: 'news.create' },
           { action: 'news.update' },
           { action: 'events.read' },
           { action: 'poi.read' },
         ],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'kc-user-1',
+        },
+        permissions: [],
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -177,8 +185,20 @@ describe('aggregated content list api', () => {
           keycloakSubject: 'kc-user-1',
         },
         permissions: [
-          { action: 'content.read' },
+          { action: 'news.read', resourceType: 'news' },
           { action: 'news.update' },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'kc-user-1',
+        },
+        permissions: [
+          { action: 'content.read', resourceType: 'content' },
+          { action: 'news.read', resourceType: 'news' },
+          { action: 'news.update', resourceType: 'news' },
         ],
       })
       .mockResolvedValueOnce({
@@ -298,5 +318,95 @@ describe('aggregated content list api', () => {
     expect(response).toBe(fallback);
     expect(state.listContentsHandler).toHaveBeenCalledTimes(1);
     expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
+  });
+
+  it('clamps oversized page sizes to the documented maximum', async () => {
+    state.authorizeContentPrimitiveForUser.mockResolvedValueOnce({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+      },
+      permissions: [{ action: 'content.read' }],
+    });
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await dispatchAggregatedContentListRequest(
+      new Request('https://studio.test/api/v1/iam/contents?page=1&pageSize=999&visibleType=news.article')
+    );
+
+    const payload = (await response?.json()) as { pagination: { pageSize: number } };
+    expect(payload.pagination.pageSize).toBe(100);
+  });
+
+  it('stops scanning when a mainserver source reports hasNextPage without advancing data', async () => {
+    state.authorizeContentPrimitiveForUser
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'kc-user-1',
+        },
+        permissions: [{ action: 'content.read' }],
+      });
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: true },
+    });
+
+    const response = await dispatchAggregatedContentListRequest(
+      new Request('https://studio.test/api/v1/iam/contents?page=1&pageSize=25&visibleType=news.article')
+    );
+
+    const payload = (await response?.json()) as { data: unknown[]; pagination: { total: number } };
+    expect(payload.data).toEqual([]);
+    expect(payload.pagination.total).toBe(0);
+    expect(state.listSvaMainserverNews).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts plugin-specific mainserver read permissions without requiring content.read', async () => {
+    state.authorizeContentPrimitiveForUser.mockResolvedValueOnce({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+      },
+      permissions: [{ action: 'news.read', resourceType: 'news' }],
+    });
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [
+        {
+          id: 'news-1',
+          title: 'Rathaus',
+          contentType: 'news.article',
+          payload: { teaser: 'A' },
+          status: 'published',
+          author: 'Redaktion',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          publishedAt: '2026-06-21T09:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    state.authorizeContentPrimitiveForUser.mockResolvedValueOnce({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+      },
+      permissions: [{ action: 'news.read', resourceType: 'news' }],
+    });
+
+    const response = await dispatchAggregatedContentListRequest(
+      new Request('https://studio.test/api/v1/iam/contents?page=1&pageSize=25&visibleType=news.article')
+    );
+
+    const payload = (await response?.json()) as { data: Array<{ id: string }>; pagination: { total: number } };
+    expect(payload.data.map((item) => item.id)).toEqual(['news-1']);
+    expect(payload.pagination.total).toBe(1);
   });
 });

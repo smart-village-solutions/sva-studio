@@ -42,6 +42,7 @@ const API_ERROR_CODES = new Set<ApiErrorCode>([
 ]);
 
 export const MAINSERVER_FETCH_PAGE_SIZE = 100;
+const MAX_CONTENT_LIST_PAGE_SIZE = 100;
 
 export const isMainserverContentType = (value: string): boolean => MAIN_SERVER_CONTENT_TYPES.has(value);
 
@@ -53,7 +54,10 @@ export const normalizeApiErrorCode = (value: unknown): ApiErrorCode =>
 export const readContentListQuery = (request: Request): IamContentListQuery => {
   const url = new URL(request.url);
   const page = Math.max(1, Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
-  const pageSize = Math.max(1, Number.parseInt(url.searchParams.get('pageSize') ?? '25', 10) || 25);
+  const pageSize = Math.min(
+    MAX_CONTENT_LIST_PAGE_SIZE,
+    Math.max(1, Number.parseInt(url.searchParams.get('pageSize') ?? '25', 10) || 25)
+  );
   const q = url.searchParams.get('q')?.trim() || undefined;
   const typeValue = url.searchParams.get('type')?.trim();
   const statusValue = url.searchParams.get('status')?.trim();

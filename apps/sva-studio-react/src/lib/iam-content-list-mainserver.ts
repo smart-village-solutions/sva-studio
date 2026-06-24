@@ -1,4 +1,9 @@
-import type { IamContentAccessSummary, IamContentListItem, ContentJsonValue } from '@sva/core';
+import type {
+  ContentJsonValue,
+  EffectivePermission,
+  IamContentAccessSummary,
+  IamContentListItem,
+} from '@sva/core';
 import type {
   SvaMainserverEventItem,
   SvaMainserverNewsItem,
@@ -18,14 +23,22 @@ const deriveNamespacedAction = (contentType: string, action: 'create' | 'update'
   return namespace ? `${namespace}.${action}` : null;
 };
 
+type PermissionView = Pick<EffectivePermission, 'action' | 'effect'>;
+
+const hasAllowedAction = (permissions: readonly PermissionView[], action: string): boolean =>
+  permissions.some((permission) => permission.action === action && permission.effect !== 'deny');
+
+const hasDeniedAction = (permissions: readonly PermissionView[], action: string): boolean =>
+  permissions.some((permission) => permission.action === action && permission.effect === 'deny');
+
 const createMainserverItemAccess = (
   contentType: string,
-  permissionActions: readonly string[]
+  permissions: readonly PermissionView[]
 ): IamContentAccessSummary => {
   const updateAction = deriveNamespacedAction(contentType, 'update');
   const createAction = deriveNamespacedAction(contentType, 'create');
-  const canUpdate = updateAction ? permissionActions.includes(updateAction) : false;
-  const canCreate = createAction ? permissionActions.includes(createAction) : false;
+  const canUpdate = updateAction ? hasAllowedAction(permissions, updateAction) && !hasDeniedAction(permissions, updateAction) : false;
+  const canCreate = createAction ? hasAllowedAction(permissions, createAction) && !hasDeniedAction(permissions, createAction) : false;
 
   return canUpdate
     ? {
@@ -53,7 +66,7 @@ const resolveNewsTitle = (item: SvaMainserverNewsItem): string =>
 export const mapNewsItem = (
   item: SvaMainserverNewsItem,
   instanceId: string,
-  permissionActions: readonly string[]
+  permissions: readonly PermissionView[]
 ): IamContentListItem => ({
   id: item.id,
   instanceId,
@@ -69,13 +82,13 @@ export const mapNewsItem = (
   validationState: 'valid',
   historyRef: `mainserver:news:${item.id}`,
   publishedAt: item.publishedAt,
-  access: createMainserverItemAccess(item.contentType, permissionActions),
+  access: createMainserverItemAccess(item.contentType, permissions),
 });
 
 export const mapEventItem = (
   item: SvaMainserverEventItem,
   instanceId: string,
-  permissionActions: readonly string[]
+  permissions: readonly PermissionView[]
 ): IamContentListItem => ({
   id: item.id,
   instanceId,
@@ -98,13 +111,13 @@ export const mapEventItem = (
   status: 'published',
   validationState: 'valid',
   historyRef: `mainserver:events:${item.id}`,
-  access: createMainserverItemAccess(item.contentType, permissionActions),
+  access: createMainserverItemAccess(item.contentType, permissions),
 });
 
 export const mapPoiItem = (
   item: SvaMainserverPoiItem,
   instanceId: string,
-  permissionActions: readonly string[]
+  permissions: readonly PermissionView[]
 ): IamContentListItem => ({
   id: item.id,
   instanceId,
@@ -130,5 +143,5 @@ export const mapPoiItem = (
   status: 'published',
   validationState: 'valid',
   historyRef: `mainserver:poi:${item.id}`,
-  access: createMainserverItemAccess(item.contentType, permissionActions),
+  access: createMainserverItemAccess(item.contentType, permissions),
 });

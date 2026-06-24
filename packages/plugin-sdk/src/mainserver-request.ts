@@ -62,14 +62,16 @@ const createMainserverTimeoutError = <TError extends Error>(
   errorFactory?: MainserverErrorFactory<TError>
 ): TError | MainserverApiError => resolveMainserverErrorFactory(errorFactory)('mainserver_timeout', 'mainserver_timeout');
 
-const isMainserverTimeoutError = (error: unknown): boolean =>
-  error instanceof DOMException && error.name === 'TimeoutError';
+const isMainserverTimeoutError = (error: unknown, signal?: AbortSignal): boolean =>
+  (error instanceof DOMException && error.name === 'TimeoutError') ||
+  Boolean(signal?.aborted && signal.reason instanceof DOMException && signal.reason.name === 'TimeoutError');
 
 const wrapMainserverTimeoutError = <TError extends Error>(
   error: unknown,
-  errorFactory?: MainserverErrorFactory<TError>
+  errorFactory?: MainserverErrorFactory<TError>,
+  signal?: AbortSignal
 ): never => {
-  if (isMainserverTimeoutError(error)) {
+  if (isMainserverTimeoutError(error, signal)) {
     throw createMainserverTimeoutError(errorFactory);
   }
 
@@ -101,11 +103,19 @@ const combineAbortSignals = (signals: readonly AbortSignal[]): {
     controller.abort(signal.reason);
   };
 
+  const cleanup = () => {
+    for (const [signal, handleAbort] of listeners.entries()) {
+      signal.removeEventListener('abort', handleAbort);
+    }
+    listeners.clear();
+  };
+
   for (const signal of signals) {
     if (signal.aborted) {
+      cleanup();
       abortFrom(signal);
       return {
-        cancel: () => undefined,
+        cancel: cleanup,
         signal: controller.signal,
       };
     }
@@ -118,12 +128,7 @@ const combineAbortSignals = (signals: readonly AbortSignal[]): {
   }
 
   return {
-    cancel: () => {
-      for (const [signal, handleAbort] of listeners.entries()) {
-        signal.removeEventListener('abort', handleAbort);
-      }
-      listeners.clear();
-    },
+    cancel: cleanup,
     signal: controller.signal,
   };
 };
@@ -157,7 +162,7 @@ const readStructuredErrorDetails = (value: ApiErrorResponse['error']): {
   };
 };
 
-const parseMainserverErrorResponse = async (response: Response): Promise<{
+const parseMainserverErrorResponse = async (response: Response, signal?: AbortSignal): Promise<{
   readonly code: string;
   readonly message: string;
 }> => {
@@ -178,19 +183,23 @@ const parseMainserverErrorResponse = async (response: Response): Promise<{
       code: errorCode,
       message,
     };
-  } catch {
+  } catch (error) {
+    if (isMainserverTimeoutError(error, signal)) {
+      throw signal?.reason ?? error;
+    }
     return fallback;
   }
 };
 
 const assertMainserverResponseOk = async <TError extends Error>(
   response: Response,
-  errorFactory?: MainserverErrorFactory<TError>
+  errorFactory?: MainserverErrorFactory<TError>,
+  signal?: AbortSignal
 ): Promise<void> => {
   if (response.ok) {
     return;
   }
-  const { code, message } = await parseMainserverErrorResponse(response);
+  const { code, message } = await parseMainserverErrorResponse(response, signal);
   throw resolveMainserverErrorFactory(errorFactory)(code, message);
 };
 
@@ -228,10 +237,10 @@ export async function requestMainserverJson<T, TError extends Error = Mainserver
         fetch: input.fetch,
         signal: combinedSignal.signal,
       });
-      await assertMainserverResponseOk(response, input.errorFactory);
+      await assertMainserverResponseOk(response, input.errorFactory, combinedSignal.signal);
       return (await response.json()) as T;
     } catch (error) {
-      return wrapMainserverTimeoutError(error, input.errorFactory);
+      return wrapMainserverTimeoutError(error, input.errorFactory, combinedSignal.signal);
     }
   } finally {
     combinedSignal.cancel();

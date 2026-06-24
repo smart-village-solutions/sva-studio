@@ -218,6 +218,42 @@ describe('mainserver-client', () => {
     }
   });
 
+  it('translates timeouts that happen while reading a non-ok error body', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => ({
+        ok: false,
+        status: 503,
+        json: () =>
+          new Promise((_, reject) => {
+            init?.signal?.addEventListener(
+              'abort',
+              () => {
+                reject(new DOMException('mainserver_timeout', 'AbortError'));
+              },
+              { once: true }
+            );
+          }),
+      })) as typeof fetch;
+
+      const requestPromise = requestMainserverJson({
+        url: '/timeout-error-body',
+        fetch: fetchMock,
+        timeoutMs: 50,
+      }).catch((error: unknown) => error);
+
+      await vi.advanceTimersByTimeAsync(51);
+
+      await expect(requestPromise).resolves.toMatchObject({
+        code: 'mainserver_timeout',
+        message: 'mainserver_timeout',
+        name: 'MainserverApiError',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('supports caller-provided abort signals even when AbortSignal.any is unavailable', async () => {
     const originalAbortSignalAny = AbortSignal.any;
     Object.defineProperty(AbortSignal, 'any', {

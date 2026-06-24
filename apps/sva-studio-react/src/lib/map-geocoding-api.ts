@@ -66,19 +66,23 @@ export const suggestMapAddressesServerFn = createServerFn({ method: 'POST' })
     if (!query) {
       throw createClientError('invalid_input');
     }
-    return withCurrentRequestGeocodingOperation('suggest', async (_ctx, config) => executeSuggestOperation(config, query));
+    return withCurrentRequestGeocodingOperation('suggest', async (_ctx, config, diagnostics) =>
+      executeSuggestOperation(config, query, diagnostics),
+    );
   });
 
 export const geocodeMapAddressServerFn = createServerFn({ method: 'POST' })
   .inputValidator((data: MapGeocodingAddressInput) => data)
   .handler(async ({ data }): Promise<MapGeocodingFeature> =>
-    withCurrentRequestGeocodingOperation('geocode', async (_ctx, config) => executeGeocodeOperation(config, data)),
+    withCurrentRequestGeocodingOperation('geocode', async (_ctx, config, diagnostics) =>
+      executeGeocodeOperation(config, data, diagnostics),
+    ),
   );
 
 export const reverseGeocodeMapCoordinatesServerFn = createServerFn({ method: 'POST' })
   .inputValidator((data: MapGeocodingCoordinates) => data)
   .handler(async ({ data }): Promise<MapGeocodingFeature> =>
-    withCurrentRequestGeocodingOperation('reverse_geocode', async (_ctx, config) =>
-      executeReverseGeocodeOperation(config, data),
+    withCurrentRequestGeocodingOperation('reverse_geocode', async (_ctx, config, diagnostics) =>
+      executeReverseGeocodeOperation(config, data, diagnostics),
     ),
   );

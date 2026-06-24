@@ -27,7 +27,12 @@ const translations: Record<string, string> = {
   'actions.reverseGeocodeAddress': 'Adresse ermitteln',
   'actions.reverseGeocodingAddress': 'Adresse wird ermittelt',
   'messages.locationGeocodeError': 'Geo-Koordinaten nicht verfügbar.',
+  'messages.locationGeocodeDisabled': 'Geo-Koordinaten für diese Instanz nicht verfügbar.',
   'messages.locationGeocodeEmpty': 'Keine Geo-Koordinaten gefunden.',
+  'messages.locationGeocodeRateLimited': 'Geocoding-Limit erreicht.',
+  'messages.locationGeocodeTimeout': 'Geocoding hat zu lange gedauert.',
+  'messages.locationGeocodeForbidden': 'Berechtigung für Geocoding fehlt.',
+  'messages.locationGeocodeUnauthorized': 'Geocoding-Sitzung abgelaufen.',
   'messages.locationMapUnavailable': 'Karte deaktiviert.',
   'messages.locationMapError': 'Karte nicht verfügbar.',
 };
@@ -232,6 +237,46 @@ describe('PoiDetailOperatorTab', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Keine Geo-Koordinaten gefunden.')).toBeTruthy();
+    });
+  });
+
+  it('shows specific geocoding errors for rate limits, missing permissions, and disabled config', async () => {
+    geocodingState.geocodeAddress.mockRejectedValueOnce(new Error('rate_limited'));
+    geocodingState.reverseCoordinates.mockRejectedValueOnce(new Error('forbidden'));
+
+    render(<TestForm />);
+    await waitFor(() => {
+      expect(geocodingState.getConfig).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText('Ort'), { target: { value: 'Musterstadt' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Geo-Koordinaten ermitteln' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Geocoding-Limit erreicht.')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Breitengrad'), { target: { value: '48.200000' } });
+    fireEvent.change(screen.getByLabelText('Längengrad'), { target: { value: '11.600000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Adresse ermitteln' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Berechtigung für Geocoding fehlt.')).toBeTruthy();
+    });
+
+    cleanup();
+    geocodingState.getConfig.mockRejectedValueOnce(new Error('config unavailable'));
+
+    render(<TestForm />);
+    await waitFor(() => {
+      expect(screen.getByText('Karte deaktiviert.')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Ort'), { target: { value: 'Musterstadt' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Geo-Koordinaten ermitteln' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Geo-Koordinaten für diese Instanz nicht verfügbar.')).toBeTruthy();
     });
   });
 });

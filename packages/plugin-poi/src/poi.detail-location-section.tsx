@@ -4,6 +4,7 @@ import { Alert, AlertDescription, Button, Input, StudioField, StudioFieldGroup }
 
 import { PoiDetailSectionCard } from './poi.detail-section-card.js';
 import { PoiLocationMap } from './poi.location-map.js';
+import { resolvePoiMapGeocodingMessageKey } from './poi.map-geocoding-messages.js';
 import { geocodeMapAddress, reverseMapCoordinates } from './poi.map-geocoding-client.js';
 import { parseCoordinate } from './poi.location-map.shared.js';
 
@@ -78,7 +79,7 @@ export function PoiDetailLocationSection({
     };
 
     if (!geocodingEnabled || !hasGeocodingInput) {
-      setGeocodingError(pt('messages.locationGeocodeError'));
+      setGeocodingError(pt('messages.locationGeocodeDisabled'));
       return;
     }
 
@@ -89,8 +90,7 @@ export function PoiDetailLocationSection({
       onApplyResult(result);
       onMapError(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      setGeocodingError(message === 'no_result' ? pt('messages.locationGeocodeEmpty') : pt('messages.locationGeocodeError'));
+      setGeocodingError(pt(resolvePoiMapGeocodingMessageKey(error)));
     } finally {
       setIsGeocoding(false);
     }
@@ -98,7 +98,7 @@ export function PoiDetailLocationSection({
 
   const handleReverseGeocode = React.useCallback(async () => {
     if (!reverseGeocodingEnabled || parsedLatitude === null || parsedLongitude === null) {
-      setGeocodingError(pt('messages.locationGeocodeError'));
+      setGeocodingError(pt('messages.locationGeocodeDisabled'));
       return;
     }
 
@@ -112,8 +112,7 @@ export function PoiDetailLocationSection({
       onApplyReverseGeocodeResult(result);
       onMapError(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      setGeocodingError(message === 'no_result' ? pt('messages.locationGeocodeEmpty') : pt('messages.locationGeocodeError'));
+      setGeocodingError(pt(resolvePoiMapGeocodingMessageKey(error)));
     } finally {
       setIsReverseGeocoding(false);
     }

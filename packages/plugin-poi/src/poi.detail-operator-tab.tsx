@@ -4,6 +4,7 @@ import { Alert, AlertDescription, Button, Input, StudioField, StudioFieldGroup }
 import { useFormContext, useWatch } from 'react-hook-form';
 
 import { PoiLocationMap } from './poi.location-map.js';
+import { resolvePoiMapGeocodingMessageKey } from './poi.map-geocoding-messages.js';
 import { geocodeMapAddress, getMapGeocodingConfig, reverseMapCoordinates } from './poi.map-geocoding-client.js';
 import { parseCoordinate } from './poi.location-map.shared.js';
 import { PoiDetailSectionCard } from './poi.detail-section-card.js';
@@ -123,7 +124,7 @@ export function PoiDetailOperatorTab({ pt }: Readonly<{ pt: (key: string) => str
     };
 
     if (!isGeocodingEnabled || !hasGeocodingInput) {
-      setGeocodingError(pt('messages.locationGeocodeError'));
+      setGeocodingError(pt('messages.locationGeocodeDisabled'));
       return;
     }
 
@@ -134,8 +135,7 @@ export function PoiDetailOperatorTab({ pt }: Readonly<{ pt: (key: string) => str
       applyOperatorSearchResult(result);
       setMapError(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      setGeocodingError(message === 'no_result' ? pt('messages.locationGeocodeEmpty') : pt('messages.locationGeocodeError'));
+      setGeocodingError(pt(resolvePoiMapGeocodingMessageKey(error)));
     } finally {
       setIsGeocoding(false);
     }
@@ -152,7 +152,7 @@ export function PoiDetailOperatorTab({ pt }: Readonly<{ pt: (key: string) => str
 
   const handleOperatorReverseGeocode = React.useCallback(async () => {
     if (!isReverseGeocodingEnabled || parsedLatitude === null || parsedLongitude === null) {
-      setGeocodingError(pt('messages.locationGeocodeError'));
+      setGeocodingError(pt('messages.locationGeocodeDisabled'));
       return;
     }
 
@@ -166,8 +166,7 @@ export function PoiDetailOperatorTab({ pt }: Readonly<{ pt: (key: string) => str
       applyOperatorReverseGeocodeResult(result);
       setMapError(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      setGeocodingError(message === 'no_result' ? pt('messages.locationGeocodeEmpty') : pt('messages.locationGeocodeError'));
+      setGeocodingError(pt(resolvePoiMapGeocodingMessageKey(error)));
     } finally {
       setIsReverseGeocoding(false);
     }

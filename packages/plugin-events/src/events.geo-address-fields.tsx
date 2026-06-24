@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Alert, AlertDescription, Button, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
 import { EventsLocationMap } from './events.location-map.js';
+import { resolveEventsMapGeocodingMessageKey } from './events.map-geocoding-messages.js';
 import { geocodeMapAddress, reverseMapCoordinates } from './events.map-geocoding-client.js';
 import { parseCoordinate } from './events.location-map.shared.js';
 
@@ -83,7 +84,7 @@ export function EventsGeoAddressFields({
     };
 
     if (!geocodingEnabled || !hasGeocodingInput) {
-      setGeocodingError(pt('messages.locationGeocodeError'));
+      setGeocodingError(pt('messages.locationGeocodeDisabled'));
       return;
     }
 
@@ -97,8 +98,7 @@ export function EventsGeoAddressFields({
       });
       setMapError(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      setGeocodingError(message === 'no_result' ? pt('messages.locationGeocodeEmpty') : pt('messages.locationGeocodeError'));
+      setGeocodingError(pt(resolveEventsMapGeocodingMessageKey(error)));
     } finally {
       setIsGeocoding(false);
     }
@@ -106,7 +106,7 @@ export function EventsGeoAddressFields({
 
   const handleReverseGeocode = React.useCallback(async () => {
     if (!reverseGeocodingEnabled || parsedLatitude === null || parsedLongitude === null) {
-      setGeocodingError(pt('messages.locationGeocodeError'));
+      setGeocodingError(pt('messages.locationGeocodeDisabled'));
       return;
     }
 
@@ -122,8 +122,7 @@ export function EventsGeoAddressFields({
       onCityChange(result.city ?? '');
       setMapError(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      setGeocodingError(message === 'no_result' ? pt('messages.locationGeocodeEmpty') : pt('messages.locationGeocodeError'));
+      setGeocodingError(pt(resolveEventsMapGeocodingMessageKey(error)));
     } finally {
       setIsReverseGeocoding(false);
     }

@@ -119,7 +119,12 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     updateSuccess: 'POI was updated.',
     validationError: 'Please correct the highlighted fields.',
     locationGeocodeError: 'Resolving geo coordinates is currently unavailable.',
+    locationGeocodeDisabled: 'Resolving geo coordinates is currently unavailable for this instance.',
     locationGeocodeEmpty: 'No geo coordinates were found for this address.',
+    locationGeocodeRateLimited: 'The geocoding rate limit has been reached. Please try again later.',
+    locationGeocodeTimeout: 'Resolving geo coordinates took too long. Please try again.',
+    locationGeocodeForbidden: 'Missing permission to resolve geo coordinates.',
+    locationGeocodeUnauthorized: 'The geocoding session has expired. Please reload the page.',
     locationMapUnavailable: 'The map view is currently disabled for this instance.',
     locationMapError: 'The map view could not be loaded. Manual editing remains available.',
     mediaReferencesUnavailable:

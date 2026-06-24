@@ -20,7 +20,12 @@ const testTranslations: Record<string, string> = {
   'actions.reverseGeocodeAddress': 'Adresse ermitteln',
   'actions.reverseGeocodingAddress': 'Adresse wird ermittelt',
   'messages.locationGeocodeError': 'Geo-Koordinaten nicht verfügbar.',
+  'messages.locationGeocodeDisabled': 'Geo-Koordinaten für diese Instanz nicht verfügbar.',
   'messages.locationGeocodeEmpty': 'Keine Geo-Koordinaten gefunden.',
+  'messages.locationGeocodeRateLimited': 'Geocoding-Limit erreicht.',
+  'messages.locationGeocodeTimeout': 'Geocoding hat zu lange gedauert.',
+  'messages.locationGeocodeForbidden': 'Berechtigung für Geocoding fehlt.',
+  'messages.locationGeocodeUnauthorized': 'Geocoding-Sitzung abgelaufen.',
   'messages.locationMapUnavailable': 'Karte deaktiviert.',
   'messages.locationMapError': 'Karte nicht verfügbar.',
 };
@@ -230,6 +235,39 @@ describe('PoiDetailLocationTab', () => {
 
     await waitFor(() => {
       expect((screen.getByLabelText('Straße') as HTMLInputElement).value).toBe('Neue Straße 5');
+    });
+  });
+
+  it('shows specific geocoding errors for rate limits and disabled config', async () => {
+    geocodingState.geocodeAddress.mockRejectedValueOnce(new Error('rate_limited'));
+
+    render(<TestForm />);
+    await waitFor(() => {
+      expect(geocodingState.getConfig).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText('Straße'), { target: { value: 'Marktplatz 1' } });
+    fireEvent.change(screen.getByLabelText('Ort'), { target: { value: 'Musterstadt' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Geo-Koordinaten ermitteln' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Geocoding-Limit erreicht.')).toBeTruthy();
+    });
+
+    cleanup();
+    geocodingState.getConfig.mockRejectedValueOnce(new Error('config unavailable'));
+
+    render(<TestForm />);
+    await waitFor(() => {
+      expect(screen.getByText('Karte deaktiviert.')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Straße'), { target: { value: 'Marktplatz 1' } });
+    fireEvent.change(screen.getByLabelText('Ort'), { target: { value: 'Musterstadt' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Geo-Koordinaten ermitteln' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Geo-Koordinaten für diese Instanz nicht verfügbar.')).toBeTruthy();
     });
   });
 });

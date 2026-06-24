@@ -119,7 +119,12 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     updateSuccess: 'Der Ort wurde aktualisiert.',
     validationError: 'Bitte korrigieren Sie die markierten Felder.',
     locationGeocodeError: 'Die Ermittlung von Geo-Koordinaten ist derzeit nicht verfügbar.',
+    locationGeocodeDisabled: 'Die Ermittlung von Geo-Koordinaten ist für diese Instanz derzeit nicht verfügbar.',
     locationGeocodeEmpty: 'Zu diesen Adressdaten wurden keine Geo-Koordinaten gefunden.',
+    locationGeocodeRateLimited: 'Das Geocoding-Limit wurde erreicht. Bitte versuchen Sie es später erneut.',
+    locationGeocodeTimeout: 'Die Ermittlung von Geo-Koordinaten hat zu lange gedauert. Bitte versuchen Sie es erneut.',
+    locationGeocodeForbidden: 'Für die Ermittlung von Geo-Koordinaten fehlen die erforderlichen Berechtigungen.',
+    locationGeocodeUnauthorized: 'Die Sitzung für die Ermittlung von Geo-Koordinaten ist abgelaufen. Bitte laden Sie die Seite neu.',
     locationMapUnavailable: 'Die Kartenansicht ist für diese Instanz derzeit deaktiviert.',
     locationMapError: 'Die Kartenansicht konnte nicht geladen werden. Die Felder bleiben manuell bearbeitbar.',
     mediaReferencesUnavailable:

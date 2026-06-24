@@ -142,7 +142,12 @@ const pt = (key: string) =>
     'actions.reverseGeocodingAddress': 'Adresse wird ermittelt',
     'actions.remove': 'Entfernen',
     'messages.locationGeocodeError': 'Geo-Koordinaten konnten nicht ermittelt werden.',
+    'messages.locationGeocodeDisabled': 'Geo-Koordinaten sind für diese Instanz derzeit nicht verfügbar.',
     'messages.locationGeocodeEmpty': 'Keine Koordinaten gefunden.',
+    'messages.locationGeocodeRateLimited': 'Geocoding-Limit erreicht.',
+    'messages.locationGeocodeTimeout': 'Geocoding hat zu lange gedauert.',
+    'messages.locationGeocodeForbidden': 'Berechtigung für Geocoding fehlt.',
+    'messages.locationGeocodeUnauthorized': 'Geocoding-Sitzung abgelaufen.',
     'messages.locationMapUnavailable': 'Karte nicht verfügbar.',
     'messages.locationMapError': 'Karte konnte nicht geladen werden.',
     'validation.geoLocation': 'Koordinaten sind ungültig.',
@@ -312,5 +317,50 @@ describe('EventsDetailContentTab', () => {
     expect((screen.getAllByLabelText('Startzeit')[0] as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Straße', { selector: '#event-street' }) as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('URL') as HTMLInputElement).value).toBe('');
+  });
+
+  it('shows specific geocoding errors for rate limits, missing permissions, and disabled config', async () => {
+    geocodingState.geocodeAddress.mockRejectedValueOnce(new Error('rate_limited'));
+    geocodingState.reverseCoordinates.mockRejectedValueOnce(new Error('forbidden'));
+
+    renderTab();
+    await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
+
+    fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street' }), { target: { value: 'Marktplatz 1' } });
+    fireEvent.change(screen.getByLabelText('Ort', { selector: '#event-city' }), { target: { value: 'Bochum' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Geo-Koordinaten ermitteln' })[0] as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(screen.getByText('Geocoding-Limit erreicht.')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Breitengrad', { selector: '#event-organizer-latitude' }), {
+      target: { value: '51.4820' },
+    });
+    fireEvent.change(screen.getByLabelText('Längengrad', { selector: '#event-organizer-longitude' }), {
+      target: { value: '7.2166' },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Adresse ermitteln' })[1] as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(screen.getByText('Berechtigung für Geocoding fehlt.')).toBeTruthy();
+    });
+  });
+
+  it('shows a disabled geocoding message when the instance config cannot be loaded', async () => {
+    geocodingState.getConfig.mockRejectedValueOnce(new Error('config unavailable'));
+
+    renderTab();
+    await waitFor(() => {
+      expect(screen.getAllByText('Karte nicht verfügbar.').length).toBeGreaterThan(1);
+    });
+
+    fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street' }), { target: { value: 'Neue Straße 1' } });
+    fireEvent.change(screen.getByLabelText('Ort', { selector: '#event-city' }), { target: { value: 'Essen' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Geo-Koordinaten ermitteln' })[0] as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(screen.getByText('Geo-Koordinaten sind für diese Instanz derzeit nicht verfügbar.')).toBeTruthy();
+    });
   });
 });

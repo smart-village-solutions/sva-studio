@@ -112,7 +112,7 @@ const hasDefinedEntries = (value: Record<string, unknown>): boolean =>
 export const createContentSchema = z
   .object({
     contentType: z.string().trim().min(1).max(128),
-    organizationId: z.uuid().optional(),
+    organizationId: z.string().uuid().optional(),
     ownerSubjectId: z.string().trim().min(1).max(255).optional(),
     title: z.string().trim().min(1).max(255),
     payload: jsonValueSchema,
@@ -126,7 +126,7 @@ export const createContentSchema = z
 
 export const updateContentSchema = z
   .object({
-    organizationId: z.uuid().optional(),
+    organizationId: z.string().uuid().optional(),
     ownerSubjectId: z.string().trim().min(1).max(255).optional(),
     title: z.string().trim().min(1).max(255).optional(),
     payload: jsonValueSchema.optional(),

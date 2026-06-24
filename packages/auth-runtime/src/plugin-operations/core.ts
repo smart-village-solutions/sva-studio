@@ -35,7 +35,7 @@ const startPluginOperationJobSchema = z.object({
   jobTypeId: z.string().trim().min(1),
   importProfileId: z.string().trim().min(1).optional(),
   correlationId: z.string().trim().min(1).optional(),
-  parentJobId: z.string().trim().pipe(z.uuid()).optional(),
+  parentJobId: z.string().trim().uuid().optional(),
   input: z.record(z.string(), z.unknown()),
 }) satisfies z.ZodType<StudioPluginOperationStartRequest>;
 

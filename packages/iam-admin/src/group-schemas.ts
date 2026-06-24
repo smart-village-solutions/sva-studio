@@ -29,8 +29,8 @@ export const assignGroupRoleSchema = z.object({
 
 export const assignGroupMembershipSchema = z.object({
   keycloakSubject: z.string().min(1),
-  validFrom: z.iso.datetime({ offset: true }).optional(),
-  validUntil: z.iso.datetime({ offset: true }).optional(),
+  validFrom: z.string().datetime({ offset: true }).optional(),
+  validUntil: z.string().datetime({ offset: true }).optional(),
 });
 
 export const removeGroupMembershipSchema = z.object({

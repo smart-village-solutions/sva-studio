@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const nonEmptyString = z.string().trim().min(1);
 const optionalRecord = z.record(z.string(), z.unknown()).optional();
-const optionalUuid = z.uuid().optional();
+const optionalUuid = z.string().uuid().optional();
 
 export const authorizeRequestSchema = z.object({
   instanceId: nonEmptyString,
@@ -40,7 +40,7 @@ export const governanceRequestSchema = z.object({
   payload: z.record(z.string(), z.unknown()),
 });
 
-export const dataSubjectRightsRequestSchema = z.looseObject({
+export const dataSubjectRightsRequestSchema = z.object({
   instanceId: nonEmptyString.optional(),
   requestType: nonEmptyString.optional(),
   payload: z.record(z.string(), z.unknown()).optional(),
@@ -51,6 +51,6 @@ export const dataSubjectRightsRequestSchema = z.looseObject({
   holdReason: nonEmptyString.optional(),
   holdUntil: nonEmptyString.optional(),
   releaseReason: nonEmptyString.optional(),
-});
+}).passthrough();
 
 export type GovernanceRequestInput = z.infer<typeof governanceRequestSchema>;

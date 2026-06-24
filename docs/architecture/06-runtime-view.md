@@ -201,7 +201,7 @@ Fehlerpfad:
 2. Der Router materialisiert host-owned Admin-Ressourcen für News, Events und POI unter `/admin/news`, `/admin/events` und `/admin/poi`.
 3. Beim Aufruf der Route wendet der Host den registrierten Plugin-Guard an, zum Beispiel `news.read`, `events.read` oder `poi.read`, und rendert optional die spezialisierte Plugin-Fläche innerhalb der Host-Shell.
 4. Die gemeinsame Übersicht `/admin/content` ruft ausschließlich `GET /api/v1/iam/contents` auf.
-5. Die App-Fassade aggregiert hinter dieser Route lokale IAM-Inhalte und Mainserver-Projektionen für News, Events und POI serverseitig, sortiert und paginiert die Gesamtliste und liefert einen einheitlichen Fehlervertrag zurück.
+5. Die App-Fassade liest hinter dieser Route aus der persistierten Listenprojektion `iam.content_list_projection`; lokale IAM-Inhalte landen dort triggerbasiert, Mainserver-News, -Events und -POI werden bei Bedarf serverseitig refresht, bevor Sortierung, Filterung und Pagination datenbankseitig greifen.
 6. Die Fachlisten und Detailseiten unter `/admin/news`, `/admin/events` und `/admin/poi` rufen weiterhin ihre jeweiligen Host-Fassaden auf: `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi`.
 7. Die tab-basierten Detail-/Editorseiten senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
 8. Die App-Fassade prüft Session, `instanceId`, aktiven Organisationskontext, plugin-spezifische IAM-Permission und Mainserver-Credentials serverseitig.

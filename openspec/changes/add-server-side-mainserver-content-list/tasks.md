@@ -1,8 +1,8 @@
 ## 1. Implementation
 - [x] 1.1 Die bestehende Capability- und Architekturreferenz für Content-Liste und Mainserver-Integration gegen die aktuelle Implementierung und Runbook-Grenze abgleichen
-- [x] 1.2 Eine serverseitige Aggregationsschicht für `GET /api/v1/iam/contents` entwerfen, die lokale IAM-Inhalte und Mainserver-Projektionen in ein gemeinsames Listenmodell überführt
-- [x] 1.3 Mainserver-Listenadapter fuer News, Events und POI mit hostseitiger Projektion auf das gemeinsame Inhaltslistenmodell implementieren
-- [x] 1.4 Serverseitige Pagination, Sortierung, Suche, Typfilter, Statusfilter und `visibleType` auf dem aggregierten Listenpfad umsetzen
+- [x] 1.2 Eine persistente Listenprojektion für `GET /api/v1/iam/contents` entwerfen, die lokale IAM-Inhalte und Mainserver-Projektionen in ein gemeinsames Read-Model überführt
+- [x] 1.3 Triggerbasierte Spiegelung lokaler IAM-Inhalte und Mainserver-Refresh-Pfade für News, Events und POI auf das gemeinsame Inhaltslistenmodell implementieren
+- [x] 1.4 Serverseitige Pagination, Sortierung, Suche, Typfilter, Statusfilter und `visibleType` auf dem projektionsbasierten Listenpfad umsetzen
 - [x] 1.5 Rechteauswertung und Fehlervertrag für den aggregierten Listenpfad deterministisch absichern
 - [x] 1.6 `apps/sva-studio-react/src/routes/content/-content-list-page.tsx` auf die führende serverseitige Listenquelle stabilisieren und den Browser-Vollscan-Pfad aus dem produktiven Flow entfernen
 - [x] 1.7 Unit- und Integrations-Tests für Aggregation, Pagination, Sortierung, Filterung, Rechte und Fehlerfälle ergänzen oder anpassen

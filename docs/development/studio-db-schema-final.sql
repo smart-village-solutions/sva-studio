@@ -140,6 +140,103 @@ END;
 $$;
 
 
+--
+-- Name: sync_content_list_projection_from_contents(); Type: FUNCTION; Schema: iam; Owner: -
+--
+
+CREATE FUNCTION iam.sync_content_list_projection_from_contents() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    DELETE FROM iam.content_list_projection
+    WHERE instance_id = OLD.instance_id
+      AND source_system = 'iam'
+      AND source_entity_type = 'iam.contents'
+      AND source_entity_id = OLD.id::text;
+    RETURN OLD;
+  END IF;
+
+  INSERT INTO iam.content_list_projection (
+    id,
+    instance_id,
+    organization_id,
+    owner_subject_id,
+    content_type,
+    title,
+    published_at,
+    publish_from,
+    publish_until,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by,
+    author_display_name,
+    payload_json,
+    status,
+    validation_state,
+    history_ref,
+    current_revision_ref,
+    last_audit_event_ref,
+    source_system,
+    source_entity_type,
+    source_entity_id,
+    projection_updated_at
+  )
+  VALUES (
+    NEW.id::text,
+    NEW.instance_id,
+    NEW.organization_id,
+    NEW.owner_subject_id,
+    NEW.content_type,
+    NEW.title,
+    NEW.published_at,
+    NEW.publish_from,
+    NEW.publish_until,
+    NEW.created_at,
+    NEW.creator_account_id::text,
+    NEW.updated_at,
+    NEW.updater_account_id::text,
+    NEW.author_display_name,
+    NEW.payload_json,
+    NEW.status,
+    NEW.validation_state,
+    NEW.history_ref,
+    NEW.current_revision_ref,
+    NEW.last_audit_event_ref,
+    'iam',
+    'iam.contents',
+    NEW.id::text,
+    NOW()
+  )
+  ON CONFLICT (instance_id, source_system, source_entity_type, source_entity_id)
+  DO UPDATE SET
+    id = EXCLUDED.id,
+    organization_id = EXCLUDED.organization_id,
+    owner_subject_id = EXCLUDED.owner_subject_id,
+    content_type = EXCLUDED.content_type,
+    title = EXCLUDED.title,
+    published_at = EXCLUDED.published_at,
+    publish_from = EXCLUDED.publish_from,
+    publish_until = EXCLUDED.publish_until,
+    created_at = EXCLUDED.created_at,
+    created_by = EXCLUDED.created_by,
+    updated_at = EXCLUDED.updated_at,
+    updated_by = EXCLUDED.updated_by,
+    author_display_name = EXCLUDED.author_display_name,
+    payload_json = EXCLUDED.payload_json,
+    status = EXCLUDED.status,
+    validation_state = EXCLUDED.validation_state,
+    history_ref = EXCLUDED.history_ref,
+    current_revision_ref = EXCLUDED.current_revision_ref,
+    last_audit_event_ref = EXCLUDED.last_audit_event_ref,
+    projection_updated_at = EXCLUDED.projection_updated_at;
+
+  RETURN NEW;
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -378,6 +475,62 @@ CREATE TABLE iam.contents (
     CONSTRAINT contents_deletion_lifecycle_state_chk CHECK ((deletion_lifecycle_state = ANY (ARRAY['active'::text, 'deactivated'::text, 'pseudonymized'::text, 'deleted'::text]))),
     CONSTRAINT contents_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'in_review'::text, 'approved'::text, 'published'::text, 'archived'::text]))),
     CONSTRAINT contents_validation_state_chk CHECK ((validation_state = ANY (ARRAY['valid'::text, 'invalid'::text, 'pending'::text])))
+);
+
+
+--
+-- Name: content_list_projection; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.content_list_projection (
+    id text NOT NULL,
+    instance_id text NOT NULL,
+    organization_id uuid,
+    owner_subject_id text,
+    content_type text NOT NULL,
+    title text NOT NULL,
+    published_at timestamp with time zone,
+    publish_from timestamp with time zone,
+    publish_until timestamp with time zone,
+    created_at timestamp with time zone NOT NULL,
+    created_by text NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    updated_by text NOT NULL,
+    author_display_name text NOT NULL,
+    payload_json jsonb DEFAULT '{}'::jsonb NOT NULL,
+    status text NOT NULL,
+    validation_state text DEFAULT 'valid'::text NOT NULL,
+    history_ref text NOT NULL,
+    current_revision_ref text,
+    last_audit_event_ref text,
+    source_system text NOT NULL,
+    source_entity_type text NOT NULL,
+    source_entity_id text NOT NULL,
+    projection_updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT content_list_projection_source_system_chk CHECK ((source_system = ANY (ARRAY['iam'::text, 'mainserver'::text]))),
+    CONSTRAINT content_list_projection_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'in_review'::text, 'approved'::text, 'published'::text, 'archived'::text]))),
+    CONSTRAINT content_list_projection_validation_state_chk CHECK ((validation_state = ANY (ARRAY['valid'::text, 'invalid'::text, 'pending'::text])))
+);
+
+
+--
+-- Name: content_list_projection_sync_state; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.content_list_projection_sync_state (
+    instance_id text NOT NULL,
+    source_system text NOT NULL,
+    content_type text NOT NULL,
+    sync_mode text DEFAULT 'full_refresh'::text NOT NULL,
+    last_started_at timestamp with time zone,
+    last_succeeded_at timestamp with time zone,
+    last_failed_at timestamp with time zone,
+    last_error_code text,
+    last_error_message text,
+    projected_count integer DEFAULT 0 NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT content_list_projection_sync_state_mode_chk CHECK ((sync_mode = 'full_refresh'::text)),
+    CONSTRAINT content_list_projection_sync_state_source_system_chk CHECK ((source_system = ANY (ARRAY['iam'::text, 'mainserver'::text])))
 );
 
 
@@ -1403,6 +1556,22 @@ ALTER TABLE ONLY iam.contents
 
 
 --
+-- Name: content_list_projection content_list_projection_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.content_list_projection
+    ADD CONSTRAINT content_list_projection_pkey PRIMARY KEY (instance_id, source_system, source_entity_type, source_entity_id);
+
+
+--
+-- Name: content_list_projection_sync_state content_list_projection_sync_state_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.content_list_projection_sync_state
+    ADD CONSTRAINT content_list_projection_sync_state_pkey PRIMARY KEY (instance_id, source_system, content_type);
+
+
+--
 -- Name: data_subject_export_jobs data_subject_export_jobs_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -1853,6 +2022,27 @@ CREATE INDEX iam_contents_instance_org_updated_idx ON iam.contents USING btree (
 --
 
 CREATE INDEX iam_contents_instance_updated_idx ON iam.contents USING btree (instance_id, updated_at DESC);
+
+
+--
+-- Name: iam_content_list_projection_instance_org_updated_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX iam_content_list_projection_instance_org_updated_idx ON iam.content_list_projection USING btree (instance_id, organization_id, updated_at DESC);
+
+
+--
+-- Name: iam_content_list_projection_instance_type_updated_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX iam_content_list_projection_instance_type_updated_idx ON iam.content_list_projection USING btree (instance_id, content_type, updated_at DESC);
+
+
+--
+-- Name: iam_content_list_projection_instance_updated_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX iam_content_list_projection_instance_updated_idx ON iam.content_list_projection USING btree (instance_id, updated_at DESC);
 
 
 --
@@ -2455,6 +2645,13 @@ CREATE TRIGGER trg_immutable_activity_logs BEFORE DELETE OR UPDATE ON iam.activi
 --
 
 CREATE TRIGGER trg_immutable_platform_activity_logs BEFORE DELETE OR UPDATE ON iam.platform_activity_logs FOR EACH ROW EXECUTE FUNCTION iam.prevent_platform_activity_logs_mutation();
+
+
+--
+-- Name: contents sync_content_list_projection_from_contents_trg; Type: TRIGGER; Schema: iam; Owner: -
+--
+
+CREATE TRIGGER sync_content_list_projection_from_contents_trg AFTER INSERT OR DELETE OR UPDATE ON iam.contents FOR EACH ROW EXECUTE FUNCTION iam.sync_content_list_projection_from_contents();
 
 
 --

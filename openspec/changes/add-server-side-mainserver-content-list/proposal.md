@@ -1,17 +1,17 @@
 # Change: Serverseitige Mainserver-Content-Liste für `/admin/content`
 
 ## Why
-Die aktuelle Inhaltsübersicht für Mainserver-gestützte Inhalte basiert fachlich nicht auf einer einzigen autoritativen serverseitigen Listenquelle. Der bisherige Browser-Pfad für News, Events und POI führt Vollscans über mehrere Mainserver-Fassaden aus und skaliert bei großen Beständen schlecht. Gleichzeitig liest `GET /api/v1/iam/contents` heute nur aus `iam.contents`, obwohl Mainserver-News, -Events und -POI produktiv nicht per Dual-Write in diese Tabelle geschrieben werden.
+Die aktuelle Inhaltsübersicht für Mainserver-gestützte Inhalte basiert fachlich nicht auf einer einzigen autoritativen serverseitigen Listenquelle. Der bisherige Browser-Pfad für News, Events und POI führt Vollscans über mehrere Mainserver-Fassaden aus und skaliert bei großen Beständen schlecht. Gleichzeitig ist ein requestweises Live-Mergen hinter `GET /api/v1/iam/contents` für große Bestände und Fehlerdiagnose betrieblich zu instabil.
 
-Dadurch kann die Seite `/admin/content` zwar technisch gerendert werden, bildet aber Mainserver-Inhalte entweder langsam, unvollständig oder inkonsistent ab. Für eine belastbare Umstellung auf eine einzige Listenquelle braucht Studio eine hostgeführte serverseitige Aggregation und Pagination für Mainserver-gestützte Inhalte.
+Dadurch kann die Seite `/admin/content` zwar technisch gerendert werden, bildet Mainserver-Inhalte aber entweder langsam, unvollständig oder inkonsistent ab. Für eine belastbare Umstellung auf eine einzige Listenquelle braucht Studio ein persistentes serverseitiges Content-Read-Model mit echter datenbankseitiger Pagination.
 
 ## What Changes
-- `GET /api/v1/iam/contents` wird von einem reinen IAM-Repository-Listing zu einer führenden hostgeführten Inhaltslisten-Schnittstelle für die Content-Übersicht erweitert
-- Die Listenquelle aggregiert Mainserver-News, -Events und -POI serverseitig in ein gemeinsames Inhaltslistenmodell
+- `GET /api/v1/iam/contents` wird zu einer führenden hostgeführten Inhaltslisten-Schnittstelle, die ausschließlich aus einem persistierten Read-Model liest
+- Die Listenquelle materialisiert Mainserver-News, -Events und -POI serverseitig in ein gemeinsames Inhaltslistenmodell
 - Die Content-Übersicht `/admin/content` verwendet nur noch diese eine serverseitige Listenquelle und führt keine Browser-Vollscans über `news`, `events` und `poi` mehr aus
-- Pagination, Sortierung, Suchfilter, Typfilter und sichtbare Typen werden serverseitig auf den aggregierten Bestand angewendet
+- Pagination, Sortierung, Suchfilter, Typfilter und sichtbare Typen werden serverseitig und datenbankgestützt auf der Projektion angewendet
 - Rechteauswertung und Fehlerabbildung bleiben hostseitig führend; ein Ausfall einer Mainserver-Quelle darf nicht mehr als endloser Ladezustand im Browser erscheinen
-- Die bestehende Nicht-Dual-Write-Grenze für Mainserver-News, -Events und -POI bleibt unverändert; die Lösung führt bewusst keine Materialisierung in `iam.contents` ein
+- Die bestehende Nicht-Dual-Write-Grenze für Mainserver-News, -Events und -POI bleibt unverändert; die Lösung führt bewusst eine separate Listenprojektion statt einer Materialisierung in `iam.contents` ein
 
 ## Impact
 - Affected specs:

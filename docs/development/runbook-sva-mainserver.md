@@ -30,11 +30,12 @@ Dieses Runbook beschreibt Betrieb, Fehlerdiagnose und Notfallmaßnahmen für die
 
 ## Host-geführte Inhaltsübersicht
 
-Die Admin-Route `/admin/content` lädt Mainserver-Inhalte nicht mehr browserseitig über getrennte Listen-Scans. Führender Vertrag ist `GET /api/v1/iam/contents`; der Host aggregiert dahinter lokale IAM-Inhalte und Mainserver-Projektionen serverseitig.
+Die Admin-Route `/admin/content` lädt Mainserver-Inhalte nicht mehr browserseitig über getrennte Listen-Scans. Führender Vertrag ist `GET /api/v1/iam/contents`; der Host liest dafür aus einer persistierten Content-Listenprojektion, in die lokale IAM-Inhalte triggerbasiert und Mainserver-Typen per serverseitigem Refresh geschrieben werden.
 
 Betriebsrelevante Regeln:
 
 - Browser-seitige Vollscans über `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi` sind für die Übersicht kein Sollzustand mehr.
+- Das Listen-Read-Model liegt in `iam.content_list_projection`; der Mainserver-Refresh-Status pro Typ und Instanz liegt in `iam.content_list_projection_sync_state`.
 - Fehler einer angefragten Mainserver-Quelle schlagen als regulärer Listenfehler auf `/api/v1/iam/contents` durch; die Übersicht darf nicht dauerhaft im Ladezustand hängen bleiben.
 - Die Listen-Pagination der Übersicht ist serverseitig führend. Große Bestände müssen sich daher zuerst über die Antwortzeiten von `/api/v1/iam/contents` und erst danach über einzelne Mainserver-Adapter diagnostizieren lassen.
 - Die Detail- und Mutationspfade der Fachplugins bleiben unverändert auf den jeweiligen Host-Fassaden unter `/api/v1/mainserver/*`.

@@ -1,3 +1,5 @@
+// fallow-ignore-file unused-file
+
 export const createJsonResponse = (status: number, body: unknown): Response =>
   new Response(JSON.stringify(body), {
     status,

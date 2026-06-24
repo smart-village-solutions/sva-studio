@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createJsonResponse, createTestDepsBuilder, dbWriteFailedErrorBody } from './handler-test-helpers.js';
+import { createJsonResponse, createTestDepsBuilder, dbWriteFailedErrorBody } from '../test-support/handler-test-helpers.js';
 import { createCreateRoleHandlerInternal, type CreateRoleHandlerDeps } from './role-create-handler.js';
 
 const actor = {

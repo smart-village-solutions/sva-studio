@@ -9,7 +9,7 @@
       "dependsOn": ["^build"],
       "outputs": ["{projectRoot}/dist"],
       "options": {
-        "command": "tsc -p packages/iam-admin/tsconfig.lib.json"
+        "command": "rm -rf packages/iam-admin/dist packages/iam-admin/tsconfig.lib.tsbuildinfo && tsc -p packages/iam-admin/tsconfig.lib.json"
       }
     },
     "check:runtime": {

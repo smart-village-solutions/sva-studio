@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { dbWriteFailedErrorBody } from './handler-test-helpers.js';
+import { dbWriteFailedErrorBody } from '../test-support/handler-test-helpers.js';
 import { createDeleteRoleHandlerInternal, type DeleteRoleHandlerDeps } from './role-delete-handler.js';
 
 const actor = {

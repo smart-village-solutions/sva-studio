@@ -1,7 +1,7 @@
 import type { IamUserDetail } from '@sva/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createJsonResponse, createTestDepsBuilder } from './handler-test-helpers.js';
+import { createJsonResponse, createTestDepsBuilder } from '../test-support/handler-test-helpers.js';
 import {
   createDeactivateUserHandlerInternal,
   type DeactivateUserHandlerDeps,

@@ -1,9 +1,21 @@
+import {
+  createMainserverJsonRequestHeaders,
+  MainserverApiError,
+  requestMainserverJson,
+  type MainserverErrorFactory,
+} from './mainserver-request.js';
+
 export type MainserverListQuery = Readonly<{
   page: number;
   pageSize: number;
 }>;
-
-export type MainserverErrorFactory<TError extends Error> = (code: string, message: string) => TError;
+export {
+  createMainserverJsonRequestHeaders,
+  MainserverApiError,
+  requestMainserverJson,
+  type MainserverErrorFactory,
+} from './mainserver-request.js';
+export type { MainserverResponseMeta } from './mainserver-request.js';
 
 export type MainserverCrudClientOptions<
   TItem,
@@ -27,115 +39,8 @@ type ApiItemResponse<T> = Readonly<{
   data: T;
 }>;
 
-type ApiErrorResponse = Readonly<{
-  error?: string | Readonly<{ code?: string; message?: string }>;
-  message?: string;
-}>;
-
-const isApiErrorResponse = (value: unknown): value is ApiErrorResponse =>
-  typeof value === 'object' && value !== null;
-
-export class MainserverApiError extends Error {
-  public constructor(
-    public readonly code: string,
-    message = code
-  ) {
-    super(message);
-    this.name = 'MainserverApiError';
-  }
-}
-
-const resolveFetch = (fetchOverride?: typeof fetch): typeof fetch => {
-  const resolvedFetch = fetchOverride ?? globalThis.fetch?.bind(globalThis);
-  if (!resolvedFetch) {
-    throw new Error('mainserver_fetch_unavailable');
-  }
-  return resolvedFetch;
-};
-
-const mergeHeaders = (...headersList: Array<HeadersInit | undefined>): Headers => {
-  const merged = new Headers();
-  for (const headers of headersList) {
-    if (!headers) {
-      continue;
-    }
-    for (const [key, value] of new Headers(headers).entries()) {
-      merged.set(key, value);
-    }
-  }
-  return merged;
-};
-
-export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): Headers =>
-  mergeHeaders(
-    {
-      'Content-Type': 'application/json',
-      'X-Requested-With': 'XMLHttpRequest',
-    },
-    headers
-  );
-
 export const buildMainserverListUrl = (basePath: string, query: MainserverListQuery): string =>
   `${basePath}?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
-
-export function requestMainserverJson<T>(input: {
-  readonly url: string;
-  readonly init?: RequestInit;
-  readonly fetch?: typeof fetch;
-  readonly errorFactory?: MainserverErrorFactory<MainserverApiError>;
-}): Promise<T>;
-export function requestMainserverJson<T, TError extends Error>(input: {
-  readonly url: string;
-  readonly init?: RequestInit;
-  readonly fetch?: typeof fetch;
-  readonly errorFactory: MainserverErrorFactory<TError>;
-}): Promise<T>;
-export async function requestMainserverJson<T, TError extends Error = MainserverApiError>(input: {
-  readonly url: string;
-  readonly init?: RequestInit;
-  readonly fetch?: typeof fetch;
-  readonly errorFactory?: MainserverErrorFactory<TError>;
-}): Promise<T> {
-  const response = await resolveFetch(input.fetch)(input.url, {
-    credentials: 'include',
-    ...input.init,
-    headers: mergeHeaders({ Accept: 'application/json' }, input.init?.headers),
-  });
-
-  if (!response.ok) {
-    let errorCode = `http_${response.status}`;
-    let message = errorCode;
-
-    try {
-      const body = await response.json();
-      if (!isApiErrorResponse(body)) {
-        throw new Error('invalid_mainserver_error_response');
-      }
-      errorCode =
-        typeof body.error === 'string' && body.error.length > 0
-          ? body.error
-          : typeof body.error === 'object' && body.error !== null && typeof body.error.code === 'string' && body.error.code.length > 0
-            ? body.error.code
-            : errorCode;
-      message =
-        typeof body.message === 'string' && body.message.length > 0
-          ? body.message
-          : typeof body.error === 'object' &&
-              body.error !== null &&
-              typeof body.error.message === 'string' &&
-              body.error.message.length > 0
-            ? body.error.message
-            : errorCode;
-    } catch {
-      // Keep the deterministic HTTP fallback when the server returns no JSON error envelope.
-    }
-
-    const errorFactory = input.errorFactory ?? ((code: string, errorMessage: string) => new MainserverApiError(code, errorMessage));
-    throw errorFactory(errorCode, message);
-  }
-
-  return (await response.json()) as T;
-}
 
 export const createMainserverCrudClient = <
   TItem,

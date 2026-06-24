@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createEvent, EventsApiError, listEvents, listPoiForEventSelection } from '../src/events.api.js';
+import { createEvent, EventsApiError, listEventCategories, listEvents, listPoiForEventSelection } from '../src/events.api.js';
 
 describe('events api', () => {
   afterEach(() => {
@@ -35,6 +35,14 @@ describe('events api', () => {
       '/api/v1/mainserver/events',
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ title: 'Stadtfest' }) })
     );
+  });
+
+  it('lists event categories from the categories route', async () => {
+    const fetchMock = vi.fn(async () => Response.json({ data: [{ id: 'cat-1', name: 'Kultur' }] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listEventCategories()).resolves.toEqual([{ id: 'cat-1', name: 'Kultur' }]);
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/mainserver/categories', expect.any(Object));
   });
 
   it('maps POI selection items through the POI facade', async () => {

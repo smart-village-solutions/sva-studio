@@ -19,6 +19,9 @@ const compactString = (value?: string | null) => {
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
 
+const compactCategoryNames = (values: readonly string[]) =>
+  Array.from(new Set(values.map((value) => value.trim()).filter((value) => value.length > 0)));
+
 const hasSubstantiveFields = <T extends Record<string, unknown>, K extends keyof T>(
   entry: T,
   ignoredKey: K,
@@ -218,7 +221,12 @@ export const mapPoiDetailFormValuesToInput = (
     ...(compactString(values.content.description) ? { description: compactString(values.content.description) } : {}),
     mobileDescription: compactString(values.content.mobileDescription) ?? '',
     active: values.basis.active,
-    ...(compactString(values.basis.categoryName) ? { categoryName: compactString(values.basis.categoryName) } : {}),
+    ...(compactCategoryNames(values.basis.categories).length > 0
+      ? {
+          categoryName: compactCategoryNames(values.basis.categories)[0],
+          categories: compactCategoryNames(values.basis.categories).map((name) => ({ name })),
+        }
+      : {}),
     addresses: (values.content.addresses ?? [])
       .map((entry) => compactAddress(entry))
       .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
@@ -226,7 +234,7 @@ export const mapPoiDetailFormValuesToInput = (
     ...(compactLocation(values.content.location) ? { location: compactLocation(values.content.location) } : {}),
     openingHours: serializeOpeningHours(values.content.openingHours),
     webUrls: compactWebUrls(values.content.webUrls),
-    operatingCompany: operator,
+    ...(Object.keys(operator).length > 0 ? { operatingCompany: operator } : {}),
     priceInformations: serializePrices(values.content.prices),
     mediaContents: serializeMediaContents(values.content.mediaContents),
     certificates: serializeCertificates(values.content.certificates),

@@ -200,19 +200,26 @@ Fehlerpfad:
 1. Die App initialisiert `studioPlugins` und merged Plugin-Übersetzungen in die i18n-Ressourcen.
 2. Der Router materialisiert host-owned Admin-Ressourcen für News, Events und POI unter `/admin/news`, `/admin/events` und `/admin/poi`.
 3. Beim Aufruf der Route wendet der Host den registrierten Plugin-Guard an, zum Beispiel `news.read`, `events.read` oder `poi.read`, und rendert optional die spezialisierte Plugin-Fläche innerhalb der Host-Shell.
-4. Die Fachlisten rufen ihre Host-Fassaden auf: `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi`; lokale IAM-Contents werden nicht mehr produktiv gelesen.
-5. Die tab-basierten Detail-/Editorseiten senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
-6. Die App-Fassade prüft Session, `instanceId`, aktiven Organisationskontext, plugin-spezifische IAM-Permission und Mainserver-Credentials serverseitig.
-7. `@sva/sva-mainserver/server` lädt über getrennte interne Provider Endpunktkonfiguration, organisationsgebundene oder persönliche Credentials, OAuth2-Token und den GraphQL-Transport.
-8. Ressourcenspezifische Operations-Module für News, Events und POI rufen denselben Transport-Port auf; das News-Plugin übersetzt dabei den vereinfachten Redaktionseditor in ein Save-Plan-Modell mit `contentBlocks[0]`, Veröffentlichungsmodus und optionaler Push-Auslösung, während Events und POI ihre tab-basierten Detailseiten mit festen Bereichen `Basis`, `Inhalt`, `Einstellungen` und `Historie` über eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug anbinden.
-9. Beim Speichern von News laufen zwei technische Schritte: zuerst `createNews` oder `updateNews`, danach für den redaktionellen Zustand ein separater `changeVisibility(recordType: "NewsItem")`-Aufruf.
-10. Die host-owned Studio-Newsliste liest denselben Pfad mit `includeInvisible=true` und filtert redaktionelle Stati (`Entwurf`, `Geplant`, `Veröffentlicht`) erst auf Studio-Seite aus Sichtbarkeit und `publishedAt`.
-11. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
-12. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
+4. Die gemeinsame Übersicht `/admin/content` ruft ausschließlich `GET /api/v1/iam/contents` auf.
+5. Die App-Fassade liest hinter dieser Route ausschließlich aus der persistierten Listenprojektion `iam.content_list_projection`; lokale IAM-Inhalte landen dort triggerbasiert, Mainserver-News, -Events und -POI über einen deduplizierten Hintergrund-Sync pro `instanceId` und `contentType`.
+6. Ist ein Mainserver-Snapshot älter als das Freshness-Fenster, markiert der Host die Liste als veraltet und startet den Sync im Hintergrund, blockiert die Listenanzeige aber nicht, solange bereits ein letzter erfolgreicher Snapshot existiert.
+7. Fehlt für einen angefragten Mainserver-Typ noch jeder erfolgreiche Snapshot, antwortet die Listenroute mit einem regulären Fehlervertrag statt mit einem stillen Fallback oder einem endlosen Ladeschirm.
+8. Ein manueller Refresh aus der UI ruft `POST /api/v1/iam/contents/refresh` auf; der Host startet oder dedupliziert den serverseitigen Sync und die UI refetcht anschließend die Liste.
+9. Die Fachlisten und Detailseiten unter `/admin/news`, `/admin/events` und `/admin/poi` rufen weiterhin ihre jeweiligen Host-Fassaden auf: `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi`.
+10. Die tab-basierten Detail-/Editorseiten senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
+11. Die App-Fassade prüft Session, `instanceId`, aktiven Organisationskontext, plugin-spezifische IAM-Permission und Mainserver-Credentials serverseitig.
+12. `@sva/sva-mainserver/server` lädt über getrennte interne Provider Endpunktkonfiguration, organisationsgebundene oder persönliche Credentials, OAuth2-Token und den GraphQL-Transport.
+13. Ressourcenspezifische Operations-Module für News, Events und POI rufen denselben Transport-Port auf; das News-Plugin übersetzt dabei den vereinfachten Redaktionseditor in ein Save-Plan-Modell mit `contentBlocks[0]`, Veröffentlichungsmodus und optionaler Push-Auslösung, während Events und POI ihre tab-basierten Detailseiten mit festen Bereichen `Basis`, `Inhalt`, `Einstellungen` und `Historie` über eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug anbinden.
+14. Nach erfolgreichen Mainserver-Mutationen stößt der Host direkt einen typbezogenen Projektions-Refresh an, damit ein anschließender Listen-Refetch den aktualisierten Stand aus der Projektion lesen kann.
+15. Beim Speichern von News laufen zwei technische Schritte: zuerst `createNews` oder `updateNews`, danach für den redaktionellen Zustand ein separater `changeVisibility(recordType: "NewsItem")`-Aufruf.
+16. Die host-owned Studio-Newsliste liest denselben Pfad mit `includeInvisible=true` und filtert redaktionelle Stati (`Entwurf`, `Geplant`, `Veröffentlicht`) erst auf Studio-Seite aus Sichtbarkeit und `publishedAt`.
+17. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
+18. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
 
 Fehlerpfad:
 
 - fehlt die Berechtigung, blendet die Shell die Admin-Navigation fail-closed aus, blockiert der Host die Admin-Route vor dem Rendern oder verweigert die serverseitige Mutation mit `capability_authorization_denied` im Diagnosekontext.
+- fehlt für einen angefragten Mainserver-Typ noch jeder erfolgreiche Projektion-Snapshot, liefert `/api/v1/iam/contents` einen regulären Listenfehler; mit vorhandenem Snapshot bleibt stattdessen der letzte erfolgreiche Stand sichtbar und wird nur als veraltet markiert.
 - ist das News-Input-Modell ungültig, enthält schreibgeschützte Felder oder fehlt `publishedAt`, antwortet die Mainserver-News-Fassade mit HTTP `400`.
 - schlägt ein API-Call fehl, zeigt das Plugin eine verständliche Fehlermeldung und behält den Formzustand.
 

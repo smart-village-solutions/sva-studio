@@ -2,7 +2,14 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { listHostMediaReferencesByTarget, registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createEvent, deleteEvent, getEvent, updateEvent } from '../src/events.api.js';
+import {
+  createEvent,
+  deleteEvent,
+  getEvent,
+  listEventCategories,
+  listPoiForEventSelection,
+  updateEvent,
+} from '../src/events.api.js';
 
 import { EventsDetailPage } from '../src/events.detail-page.js';
 
@@ -14,6 +21,7 @@ vi.mock('../src/events.api.js', () => ({
   deleteEvent: vi.fn(),
   EventsApiError: class EventsApiError extends Error {},
   getEvent: vi.fn(),
+  listEventCategories: vi.fn(async () => []),
   listEvents: vi.fn(),
   listPoiForEventSelection: vi.fn(async () => []),
   updateEvent: vi.fn(),
@@ -30,6 +38,37 @@ vi.mock('@sva/plugin-sdk', async () => {
   };
 });
 
+vi.mock('@sva/studio-ui-react', async () => {
+  const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
+  return {
+    ...actual,
+    RichTextHtmlEditor: ({
+      id,
+      value,
+      onChange,
+      labelId,
+      describedBy,
+      ariaInvalid,
+    }: {
+      id: string;
+      value: string;
+      onChange: (nextValue: string) => void;
+      labelId?: string;
+      describedBy?: string;
+      ariaInvalid?: boolean;
+    }) => (
+      <textarea
+        id={id}
+        aria-labelledby={labelId}
+        aria-describedby={describedBy}
+        aria-invalid={ariaInvalid ? 'true' : undefined}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    ),
+  };
+});
+
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
@@ -39,6 +78,14 @@ describe('EventsDetailPage', () => {
   beforeEach(() => {
     navigateMock.mockReset();
     replaceHostMediaReferencesMock.mockClear();
+    vi.mocked(createEvent).mockReset();
+    vi.mocked(deleteEvent).mockReset();
+    vi.mocked(getEvent).mockReset();
+    vi.mocked(listEventCategories).mockReset();
+    vi.mocked(listEventCategories).mockResolvedValue([] as never);
+    vi.mocked(listPoiForEventSelection).mockReset();
+    vi.mocked(listPoiForEventSelection).mockResolvedValue([] as never);
+    vi.mocked(updateEvent).mockReset();
     vi.unstubAllGlobals();
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
@@ -52,20 +99,49 @@ describe('EventsDetailPage', () => {
         'events.detailTabs.history.title': 'Historie',
         'events.tabs.mobileLabel': 'Bereich',
         'events.tabs.ariaLabel': 'Bereiche',
+        'events.cards.basis.identity.title': 'Titel & Kategorie',
+        'events.cards.basis.recurrence.title': 'Serien-Logik',
+        'events.cards.basis.relations.title': 'Verknüpfungen',
         'events.cards.content.dates.title': 'Termine',
-        'events.cards.content.addresses.title': 'Orte und Adressen',
-        'events.cards.content.contact.title': 'Kontakt',
+        'events.cards.content.addresses.title': 'Veranstaltungsort',
+        'events.cards.content.organizer.title': 'Veranstalter',
+        'events.cards.content.contacts.title': 'Ansprechpartner',
         'events.cards.content.links.title': 'Links',
-        'events.cards.content.recurrence.title': 'Wiederholung',
-        'events.cards.content.poi.title': 'POI-Verknüpfung',
+        'events.cards.content.prices.title': 'Preise',
+        'events.cards.content.accessibility.title': 'Barrierefreiheit',
+        'events.cards.settings.publication.title': 'Sichtbarkeit & Benachrichtigung',
+        'events.cards.settings.technical.title': 'Technische Zusatzdaten',
         'events.fields.title': 'Titel',
+        'events.fields.categories': 'Kategorien',
+        'events.fields.categoriesHelp': 'Mehrfachauswahl',
+        'events.fields.categoriesSearch': 'Kategorien suchen',
+        'events.fields.categoriesSearchPlaceholder': 'Kategorie suchen oder auswählen',
         'events.fields.url': 'URL',
         'events.fields.dateStart': 'Startdatum',
+        'events.fields.repeat': 'Wiederholung',
+        'events.fields.visible': 'Sichtbar',
+        'events.fields.pushNotification': 'Push-Benachrichtigung',
+        'events.fields.externalId': 'Externe ID',
+        'events.fields.pointOfInterestId': 'Zugehöriger POI',
+        'events.fields.pointOfInterestSearch': 'POI suchen',
+        'events.fields.pointOfInterestSearchPlaceholder': 'POI suchen oder auswählen',
+        'events.fields.recurringType': 'Wiederholungstyp',
+        'events.fields.recurringTypePlaceholder': 'Bitte auswählen',
+        'events.fields.recurringTypeOptions.days': 'Tage',
+        'events.fields.recurringTypeOptions.weeks': 'Wochen',
+        'events.fields.recurringTypeOptions.months': 'Monate',
+        'events.fields.recurringTypeOptions.years': 'Jahre',
         'events.messages.validationError': 'Bitte Eingaben prüfen.',
+        'events.messages.categoryOptionsLoading': 'Kategorien werden geladen.',
+        'events.messages.poiOptionsLoading': 'POI werden geladen.',
+        'events.messages.poiOptionsEmpty': 'Keine passenden POI gefunden.',
         'events.history.empty.title': 'Noch keine Historie verfügbar.',
         'events.messages.updateSuccess': 'Event aktualisiert.',
         'events.messages.deleteError': 'Event konnte nicht gelöscht werden.',
         'events.actions.deleteConfirm': 'Wirklich löschen?',
+        'events.actions.addCategory': 'Kategorie hinzufügen',
+        'events.actions.removeCategory': 'Kategorie {{name}} entfernen',
+        'events.actions.clearPoiSelection': 'Auswahl löschen',
       };
 
       return labels[key] ?? key;
@@ -97,11 +173,42 @@ describe('EventsDetailPage', () => {
       expect(screen.getByText('Termine')).toBeTruthy();
     });
 
-    expect(screen.getByText('Orte und Adressen')).toBeTruthy();
-    expect(screen.getByText('Kontakt')).toBeTruthy();
+    expect(screen.getByText('Veranstaltungsort')).toBeTruthy();
+    expect(screen.getByText('Veranstalter')).toBeTruthy();
+    expect(screen.getByText('Ansprechpartner')).toBeTruthy();
     expect(screen.getByText('Links')).toBeTruthy();
-    expect(screen.getByText('Wiederholung')).toBeTruthy();
-    expect(screen.getByText('POI-Verknüpfung')).toBeTruthy();
+    expect(screen.getByText('Preise')).toBeTruthy();
+    expect(screen.getByText('Barrierefreiheit')).toBeTruthy();
+  });
+
+  it('shows the planned basis and settings cards in their dedicated tabs', async () => {
+    render(<EventsDetailPage mode="create" />);
+
+    await screen.findByRole('tab', { name: 'Basis' });
+    expect(screen.getByText('Titel & Kategorie')).toBeTruthy();
+    expect(screen.getByText('Serien-Logik')).toBeTruthy();
+    expect(screen.getByText('Verknüpfungen')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Sichtbarkeit & Benachrichtigung')).toBeTruthy();
+    });
+    expect(screen.getByText('Technische Zusatzdaten')).toBeTruthy();
+  });
+
+  it('maps recurring type to the fixed event options', async () => {
+    render(<EventsDetailPage mode="create" />);
+
+    fireEvent.click(await screen.findByLabelText('Wiederholung'));
+    const recurringTypeSelect = await screen.findByLabelText('Wiederholungstyp');
+    fireEvent.change(recurringTypeSelect, { target: { value: '1' } });
+
+    expect(screen.getByRole('option', { name: 'Tage' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Wochen' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Monate' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Jahre' })).toBeTruthy();
+    expect((recurringTypeSelect as HTMLSelectElement).value).toBe('1');
   });
 
   it('renders a global save action and a history placeholder for events', async () => {
@@ -227,14 +334,36 @@ describe('EventsDetailPage', () => {
       id: 'event-created',
       title: 'Neues Event',
     } as never);
+    vi.mocked(listPoiForEventSelection).mockResolvedValue([{ id: 'poi-7', name: 'Rathaus' }] as never);
 
     render(<EventsDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Neues Event' } });
+    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Kultur' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie hinzufügen' }));
+    fireEvent.change(screen.getByLabelText('POI suchen'), { target: { value: 'Rathaus' } });
+    await waitFor(() => {
+      expect(screen.getByText('Rathaus')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText('Rathaus').closest('button') as HTMLButtonElement);
+    fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
+    fireEvent.click(await screen.findByLabelText('Push-Benachrichtigung'));
+    fireEvent.change(screen.getByLabelText('Externe ID'), { target: { value: 'event-ext-1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
       expect(vi.mocked(createEvent)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(createEvent)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Neues Event',
+          categoryName: 'Kultur',
+          categories: [{ name: 'Kultur' }],
+          pointOfInterestId: 'poi-7',
+          pushNotification: true,
+          externalId: 'event-ext-1',
+          visible: true,
+        })
+      );
       expect(replaceHostMediaReferencesMock).not.toHaveBeenCalled();
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/events/$id', params: { id: 'event-created' } });
     });

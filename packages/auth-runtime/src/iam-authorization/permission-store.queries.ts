@@ -73,7 +73,10 @@ WITH target_organization AS (
 )
 ${PERMISSION_ROW_SELECTION_SQL}
   CASE
-    WHEN rp.access_scope IS NOT NULL OR p.permission_key = ANY($4::text[]) THEN $3::uuid
+    WHEN (
+      (rp.access_scope IS NOT NULL AND rp.access_scope <> 'all')
+      OR (rp.access_scope IS NULL AND p.permission_key = ANY($4::text[]))
+    ) THEN $3::uuid
     ELSE NULL::uuid
   END AS organization_id
 ${ROLE_PERMISSION_JOIN_SQL}
@@ -97,11 +100,30 @@ WHERE a.keycloak_subject = $2
       AND NOT (p.permission_key = ANY($4::text[]))
     )
     OR (
-      (rp.access_scope IS NOT NULL OR p.permission_key = ANY($4::text[]))
-      AND target.id IS NOT NULL
-      AND (
-        ao.organization_id = target.id
-        OR ao.organization_id = ANY(target.hierarchy_path)
+      (
+        rp.access_scope = 'all'
+      )
+      OR (
+        (
+          rp.access_scope IS NOT NULL
+          AND rp.access_scope <> 'all'
+        )
+        AND target.id IS NOT NULL
+        AND (
+          ao.organization_id = target.id
+          OR ao.organization_id = ANY(target.hierarchy_path)
+        )
+      )
+      OR (
+        (
+          rp.access_scope IS NULL
+          AND p.permission_key = ANY($4::text[])
+        )
+        AND target.id IS NOT NULL
+        AND (
+          ao.organization_id = target.id
+          OR ao.organization_id = ANY(target.hierarchy_path)
+        )
       )
     )
   )
@@ -125,7 +147,10 @@ const listUnscopedPermissionRows = async (
     `
 ${PERMISSION_ROW_SELECTION_SQL}
   CASE
-    WHEN rp.access_scope IS NOT NULL OR p.permission_key = ANY($3::text[]) THEN ao.organization_id
+    WHEN (
+      (rp.access_scope IS NOT NULL AND rp.access_scope <> 'all')
+      OR (rp.access_scope IS NULL AND p.permission_key = ANY($3::text[]))
+    ) THEN ao.organization_id
     ELSE NULL::uuid
   END AS organization_id
 ${ROLE_PERMISSION_JOIN_SQL}

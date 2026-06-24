@@ -93,7 +93,7 @@ export const createDefaultAccessibilityInformation = (): PoiAccessibilityInforma
 export const createDefaultPoiDetailFormValues = (): PoiDetailFormValues => ({
   name: '',
   basis: {
-    categoryName: '',
+    categories: [],
     active: true,
   },
   content: {

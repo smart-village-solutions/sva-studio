@@ -102,7 +102,7 @@ const mapPoiContentToFormValues = (item: PoiContentItem): PoiDetailFormValues['c
 export const mapPoiItemToDetailFormValues = (item: PoiContentItem): PoiDetailFormValues => ({
   name: item.name,
   basis: {
-    categoryName: item.categoryName ?? '',
+    categories: item.categories?.length ? item.categories.map((category) => category.name) : item.categoryName ? [item.categoryName] : [],
     active: item.active !== false,
   },
   content: mapPoiContentToFormValues(item),

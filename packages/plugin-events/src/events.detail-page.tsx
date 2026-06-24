@@ -13,6 +13,7 @@ import {
 } from '@sva/plugin-sdk';
 import {
   Button,
+  Select,
   StudioDetailPageTemplate,
   StudioFormSummary,
   StudioLoadingState,
@@ -22,7 +23,15 @@ import {
   TabsTrigger,
 } from '@sva/studio-ui-react';
 
-import { createEvent, deleteEvent, EventsApiError, getEvent, listPoiForEventSelection, updateEvent } from './events.api.js';
+import {
+  createEvent,
+  deleteEvent,
+  EventsApiError,
+  getEvent,
+  listEventCategories,
+  listPoiForEventSelection,
+  updateEvent,
+} from './events.api.js';
 import {
   createDefaultEventsDetailFormValues,
   mapEventItemToDetailFormValues,
@@ -35,8 +44,9 @@ import { EventsDetailHistoryTab } from './events.detail-history-tab.js';
 import { EventsDetailSettingsTab } from './events.detail-settings-tab.js';
 import { createEventsDetailTabDefinitions, type EventsDetailTabId } from './events.detail-tabs.js';
 import { pluginEventsMediaPickers } from './plugin.js';
-import type { EventContentItem, PoiSelectItem } from './events.types.js';
-import { validateEventForm } from './events.validation.js';
+import type { EventCategoryOption, EventContentItem } from './events.types.js';
+import type { PoiSelectItem } from './events.types.js';
+import { hasInvalidGeoLocation, validateEventForm } from './events.validation.js';
 
 type StatusMessage = Readonly<{
   kind: 'success' | 'error';
@@ -129,7 +139,6 @@ export function EventsDetailPage({
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<EventContentItem | null>(null);
-  const [pois, setPois] = React.useState<readonly PoiSelectItem[]>([]);
   const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
   const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
   const [dateStartInput, setDateStartInput] = React.useState('');
@@ -137,13 +146,42 @@ export function EventsDetailPage({
   const [invalidDateInputs, setInvalidDateInputs] = React.useState({ dateStart: false, dateEnd: false });
   const [activeTab, setActiveTab] = React.useState<EventsDetailTabId>('basis');
   const [visitedTabs, setVisitedTabs] = React.useState<readonly EventsDetailTabId[]>(['basis']);
+  const [categoryOptions, setCategoryOptions] = React.useState<readonly EventCategoryOption[]>([]);
+  const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
+  const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
+  const [poiOptions, setPoiOptions] = React.useState<readonly PoiSelectItem[]>([]);
+  const [poiOptionsLoading, setPoiOptionsLoading] = React.useState(true);
+  const [poiOptionsError, setPoiOptionsError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    void listPoiForEventSelection().then(setPois).catch(() => setPois([]));
+    void listPoiForEventSelection()
+      .then((pois) => {
+        setPoiOptions(pois);
+        setPoiOptionsError(null);
+      })
+      .catch((loadError: unknown) => {
+        setPoiOptions([]);
+        setPoiOptionsError(errorMessage(pt, loadError, 'messages.poiOptionsLoadError'));
+      })
+      .finally(() => {
+        setPoiOptionsLoading(false);
+      });
+    void listEventCategories()
+      .then((categories) => {
+        setCategoryOptions(categories);
+        setCategoryOptionsError(null);
+      })
+      .catch((loadError: unknown) => {
+        setCategoryOptions([]);
+        setCategoryOptionsError(errorMessage(pt, loadError, 'messages.categoryOptionsLoadError'));
+      })
+      .finally(() => {
+        setCategoryOptionsLoading(false);
+      });
     void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
       .then((assets) => setMediaOptions(toHostMediaFieldOptions(assets)))
       .catch(() => setMediaOptions([]));
-  }, []);
+  }, [pt]);
 
   React.useEffect(() => {
     if (mode !== 'edit' || !contentId) {
@@ -230,6 +268,7 @@ export function EventsDetailPage({
 
   const submit = methods.handleSubmit(async (values) => {
     setStatus(null);
+    methods.clearErrors();
     const payload = mapEventsDetailFormValuesToInput(values);
     const validationErrors = [
       ...validateEventForm(payload),
@@ -241,6 +280,20 @@ export function EventsDetailPage({
       if (validationErrors.includes('dates')) {
         methods.setFocus('content.dates.0.dateStart');
         setActiveTab('content');
+      } else if (validationErrors.includes('geoLocation')) {
+        if ((payload.addresses ?? []).some((address) => hasInvalidGeoLocation(address.geoLocation))) {
+          methods.setError('content.addresses.0.geoLocation.latitude', { type: 'manual', message: 'geoLocation' });
+          methods.setError('content.addresses.0.geoLocation.longitude', { type: 'manual', message: 'geoLocation' });
+          methods.setFocus('content.addresses.0.geoLocation.latitude');
+        }
+        if (hasInvalidGeoLocation(payload.organizer?.address?.geoLocation)) {
+          methods.setError('content.organizer.address.geoLocation.latitude', { type: 'manual', message: 'geoLocation' });
+          methods.setError('content.organizer.address.geoLocation.longitude', { type: 'manual', message: 'geoLocation' });
+          methods.setFocus('content.organizer.address.geoLocation.latitude');
+        }
+        setActiveTab('content');
+      } else if (validationErrors.includes('categories')) {
+        setActiveTab('basis');
       } else if (validationErrors.includes('title')) {
         methods.setFocus('title');
         setActiveTab('basis');
@@ -314,9 +367,9 @@ export function EventsDetailPage({
           <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as EventsDetailTabId)} className="space-y-0">
             <label className="block md:hidden">
               <span className="sr-only">{pt('tabs.mobileLabel')}</span>
-              <select
+              <Select
                 aria-label={pt('tabs.mobileLabel')}
-                className="h-11 w-full rounded-xl border border-border/70 bg-card px-3 text-sm"
+                className="h-11 rounded-xl border-border/70 bg-card"
                 value={activeTab}
                 onChange={(event) => handleTabChange(event.target.value as EventsDetailTabId)}
               >
@@ -325,7 +378,7 @@ export function EventsDetailPage({
                     {tab.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] hidden gap-10 md:flex">
               {tabs.map((tab) => {
@@ -371,7 +424,19 @@ export function EventsDetailPage({
                         <p className="text-sm leading-relaxed text-muted-foreground">{tab.description}</p>
                       </div>
                     </section>
-                    {tab.id === 'basis' ? <EventsDetailBasisTab loadedItem={loadedItem} mode={mode} pt={pt} /> : null}
+                    {tab.id === 'basis' ? (
+        <EventsDetailBasisTab
+          availableCategories={categoryOptions}
+          availablePois={poiOptions}
+          categoryOptionsError={categoryOptionsError}
+          categoryOptionsLoading={categoryOptionsLoading}
+          loadedItem={loadedItem}
+          mode={mode}
+          poiOptionsError={poiOptionsError}
+          poiOptionsLoading={poiOptionsLoading}
+          pt={pt}
+        />
+                    ) : null}
                     {tab.id === 'content' ? (
                       <EventsDetailContentTab
                         dateEndInput={dateEndInput}
@@ -379,7 +444,6 @@ export function EventsDetailPage({
                         dateStartInput={dateStartInput}
                         onDateEndInputChange={(nextValue) => updateDateField('dateEnd', nextValue)}
                         onDateStartInputChange={(nextValue) => updateDateField('dateStart', nextValue)}
-                        pois={pois}
                         pt={pt}
                       />
                     ) : null}

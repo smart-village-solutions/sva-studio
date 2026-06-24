@@ -52,7 +52,7 @@ type CreateUserPersistenceDeps = {
   >;
 };
 
-export const buildDisplayName = (
+const buildDisplayName = (
   payload: CreateUserPersistencePayload,
   externalId: string
 ): string => payload.displayName ?? ([payload.firstName, payload.lastName].filter(Boolean).join(' ') || externalId);

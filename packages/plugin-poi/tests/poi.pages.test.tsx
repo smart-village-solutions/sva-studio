@@ -7,7 +7,7 @@ import {
   replaceHostMediaReferences,
 } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPoi, getPoi, listPoi, updatePoi } from '../src/poi.api.js';
+import { createPoi, getPoi, listPoi, listPoiCategories, updatePoi } from '../src/poi.api.js';
 import { PoiCreatePage, PoiEditPage, PoiListPage } from '../src/poi.pages.js';
 import { pluginPoiMediaPickers } from '../src/plugin.js';
 
@@ -53,6 +53,7 @@ vi.mock('../src/poi.api.js', () => ({
     openingHours: [{ weekday: 'Montag', timeFrom: '09:00' }],
     payload: { source: 'legacy' },
   })),
+  listPoiCategories: vi.fn(async () => []),
   createPoi: vi.fn(async () => ({ id: 'poi-created' })),
   updatePoi: vi.fn(async () => ({ id: 'poi-1' })),
   deletePoi: vi.fn(),
@@ -132,6 +133,10 @@ describe('PoiListPage', () => {
         'poi.fields.mobileDescription': 'Mobile Beschreibung',
         'poi.fields.active': 'Aktiv',
         'poi.fields.categoryName': 'Kategorie',
+        'poi.fields.categories': 'Kategorien',
+        'poi.fields.categoriesHelp': 'Wählen Sie keine, eine oder mehrere Kategorien aus.',
+        'poi.fields.categoriesSearch': 'Kategorien suchen',
+        'poi.fields.categoriesSearchPlaceholder': 'Kategorie suchen oder auswählen',
         'poi.fields.street': 'Straße',
         'poi.fields.city': 'Ort',
         'poi.fields.email': 'E-Mail',
@@ -197,6 +202,7 @@ describe('PoiListPage', () => {
         'poi.validation.name': 'Der Name ist erforderlich.',
         'poi.validation.webUrls': 'URLs müssen mit https:// beginnen.',
         'poi.validation.categoryName': 'Die Kategorie darf maximal 128 Zeichen haben.',
+        'poi.validation.categories': 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
         'poi.validation.payload': 'Payload muss gültiges JSON sein.',
         'poi.fields.locationName': 'Ortsbezeichnung',
         'poi.fields.assetId': 'Asset-ID',
@@ -209,18 +215,26 @@ describe('PoiListPage', () => {
         'poi.fields.accessibilityTypes': 'Barrierefreiheits-Typen',
         'poi.fields.tags': 'Tags',
         'poi.actions.add': 'Hinzufügen',
+        'poi.actions.addCategory': 'Kategorie hinzufügen',
         'poi.actions.addOpeningHour': 'Öffnungszeit hinzufügen',
         'poi.actions.remove': 'Entfernen',
+        'poi.actions.removeCategory': 'Kategorie {{name}} entfernen',
         'poi.actions.addImage': 'Bild hinzufügen',
         'poi.actions.selectImage': 'Auswählen',
         'poi.actions.removeImage': 'Entfernen',
         'poi.messages.imagePickerEmpty': 'Keine Bilder gefunden.',
+        'poi.messages.categoryOptionsLoading': 'Kategorien werden geladen.',
+        'poi.messages.categoryOptionsLoadError': 'Die Kategorien konnten nicht geladen werden.',
       };
       return labels[key] ?? key;
     });
     vi.mocked(listHostMediaAssets).mockResolvedValue([
       { id: 'asset-teaser', fileName: 'teaser-asset.jpg', metadata: { title: 'Teaser Asset' } },
     ]);
+    vi.mocked(listPoiCategories).mockResolvedValue([
+      { id: 'cat-1', name: 'Bildung' },
+      { id: 'cat-2', name: 'Verwaltung' },
+    ] as never);
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
     vi.mocked(replaceHostMediaReferences).mockResolvedValue({
       targetType: 'poi',
@@ -259,6 +273,8 @@ describe('PoiListPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Rathaus' } });
+    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Verwaltung' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie hinzufügen' }));
     switchSection('content');
     fireEvent.change(screen.getByLabelText('Beschreibung', { selector: 'textarea' }), {
       target: { value: 'Bürgerservice vor Ort' },
@@ -278,6 +294,8 @@ describe('PoiListPage', () => {
       expect(createPoi).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Rathaus',
+          categoryName: 'Verwaltung',
+          categories: [{ name: 'Verwaltung' }],
           description: 'Bürgerservice vor Ort',
           webUrls: [{ url: 'https://example.com/poi' }],
         })

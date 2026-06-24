@@ -47,7 +47,10 @@ export const validatePoiForm = (input: PoiFormInput): readonly string[] => {
   };
 
   pushIf(input.name.trim().length === 0, 'name');
-  pushIf(Boolean(input.categoryName && input.categoryName.length > 128), 'categoryName');
+  pushIf(
+    Boolean(input.categories?.some((category) => category.name.trim().length === 0 || category.name.length > 128)),
+    'categories',
+  );
   pushIf(hasInvalidHttpsUrl(input.webUrls), 'webUrls');
   pushIf((input.addresses ?? []).some((address) => hasInvalidGeoLocation(address.geoLocation)), 'addresses');
   pushIf(hasInvalidGeoLocation(input.location?.geoLocation), 'location');

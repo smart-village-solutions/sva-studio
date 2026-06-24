@@ -64,6 +64,9 @@ let dispatchMainserverPoiRequestPromise:
 let dispatchMainserverCategoriesRequestPromise:
   | Promise<typeof import('./lib/mainserver-categories-api.server')['dispatchMainserverCategoriesRequest']>
   | null = null;
+let dispatchAggregatedContentListRequestPromise:
+  | Promise<typeof import('./lib/iam-content-list-api.server')['dispatchAggregatedContentListRequest']>
+  | null = null;
 let dispatchMapGeocodingRequestPromise:
   | Promise<typeof import('./lib/map-geocoding-api.server')['dispatchMapGeocodingRequest']>
   | null = null;
@@ -123,6 +126,13 @@ const getDispatchMainserverCategoriesRequest = async () => {
     (mod) => mod.dispatchMainserverCategoriesRequest
   );
   return dispatchMainserverCategoriesRequestPromise;
+};
+
+const getDispatchAggregatedContentListRequest = async () => {
+  dispatchAggregatedContentListRequestPromise ??= import('./lib/iam-content-list-api.server').then(
+    (mod) => mod.dispatchAggregatedContentListRequest
+  );
+  return dispatchAggregatedContentListRequestPromise;
 };
 
 const getDispatchMapGeocodingRequest = async () => {
@@ -263,6 +273,16 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       status: mainserverCategoriesResponse.status,
     });
     return mainserverCategoriesResponse;
+  }
+
+  const dispatchAggregatedContentListRequest = await getDispatchAggregatedContentListRequest();
+  const aggregatedContentListResponse = await dispatchAggregatedContentListRequest(request);
+
+  if (aggregatedContentListResponse) {
+    await logServerEntryDebug('Server entry aggregated content list route dispatched', {
+      status: aggregatedContentListResponse.status,
+    });
+    return aggregatedContentListResponse;
   }
 
   const dispatchMapGeocodingRequest = await getDispatchMapGeocodingRequest();

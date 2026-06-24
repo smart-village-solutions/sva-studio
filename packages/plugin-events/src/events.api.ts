@@ -4,7 +4,14 @@ import {
   requestMainserverJson,
 } from '@sva/plugin-sdk';
 
-import type { EventContentItem, EventFormInput, EventListQuery, EventListResult, PoiSelectItem } from './events.types.js';
+import type {
+  EventCategoryOption,
+  EventContentItem,
+  EventFormInput,
+  EventListQuery,
+  EventListResult,
+  PoiSelectItem,
+} from './events.types.js';
 
 export class EventsApiError extends Error {
   public constructor(
@@ -34,6 +41,14 @@ export const updateEvent = async (contentId: string, input: EventFormInput): Pro
   eventsClient.update(contentId, input);
 
 export const deleteEvent = async (contentId: string): Promise<void> => eventsClient.remove(contentId);
+
+export const listEventCategories = async (): Promise<readonly EventCategoryOption[]> => {
+  const response = await requestMainserverJson<{ readonly data: readonly EventCategoryOption[] }, EventsApiError>({
+    url: '/api/v1/mainserver/categories',
+    errorFactory: (code, message) => new EventsApiError(code, message),
+  });
+  return response.data;
+};
 
 export const listPoiForEventSelection = async (): Promise<readonly PoiSelectItem[]> => {
   const items: PoiSelectItem[] = [];

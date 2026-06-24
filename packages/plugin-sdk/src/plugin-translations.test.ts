@@ -13,4 +13,14 @@ describe('plugin-translations', () => {
     const t = usePluginTranslation('events');
     expect(t('list.empty', { count: 0 })).toBe('events.list.empty:{"count":0}');
   });
+
+  it('returns a stable translation function per plugin id across repeated calls', () => {
+    registerPluginTranslationResolver((key) => `translated:${key}`);
+
+    const first = usePluginTranslation('poi');
+    const second = usePluginTranslation('poi');
+
+    expect(first).toBe(second);
+    expect(first('messages.saved')).toBe('translated:poi.messages.saved');
+  });
 });

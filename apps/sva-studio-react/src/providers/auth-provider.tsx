@@ -147,6 +147,29 @@ const redirectToSessionExpiredNotice = (meta: AuthDiagnosticMeta): void => {
   currentWindow.location.assign(createSessionExpiredHref(resolveCurrentReturnTo()));
 };
 
+const redirectToLogin = (meta: AuthDiagnosticMeta): void => {
+  const currentWindow = globalThis.window;
+  if (!currentWindow) {
+    return;
+  }
+
+  recordAuthDiagnosticEvent({
+    authFlowId: meta.authFlowId,
+    attempt: meta.attempt,
+    classification: meta.classification,
+    diagnosticStatus: meta.diagnosticStatus,
+    event: 'auth_redirect_login_required',
+    pathname: currentWindow.location.pathname,
+    reasonCode: meta.reasonCode,
+    recoveryStep: meta.recoveryStep ?? 'redirect_login_required',
+    requestId: meta.requestId,
+    result: 'failed',
+    safeDetails: meta.safeDetails,
+    status: meta.status,
+  });
+  currentWindow.location.assign(createLoginHref(resolveCurrentReturnTo()));
+};
+
 const parseAuthUser = (payload: unknown): SessionUser | null => {
   if (!payload || typeof payload !== 'object') {
     return null;
@@ -537,14 +560,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (!recovered && hadKnownSession && !silent && isMountedRef.current) {
         setSessionRecoveryFailed(true);
-        redirectToSessionExpiredNotice({
+        const redirectMeta = {
           attempt: firstAttempt,
           authFlowId,
           ...responseMeta,
           reasonCode: responseMeta.reasonCode ?? 'silent_recovery_failed',
           recoveryStep: 'session_expired_redirect',
           result: 'failed',
-        });
+        } satisfies AuthDiagnosticMeta;
+        if (responseMeta.reasonCode === 'missing_session_cookie') {
+          redirectToLogin(redirectMeta);
+        } else {
+          redirectToSessionExpiredNotice(redirectMeta);
+        }
       }
 
       if (!recovered) {
@@ -569,14 +597,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (!recoveryResult.ok && recoveryResult.status === 401 && hadKnownSession && !silent && isMountedRef.current) {
         const retryResponseMeta = readAuthDiagnosticMeta(recoveryResult.error);
         setSessionRecoveryFailed(true);
-        redirectToSessionExpiredNotice({
+        const redirectMeta = {
           attempt: recoveryAttempt,
           authFlowId,
           ...retryResponseMeta,
           reasonCode: retryResponseMeta.reasonCode ?? 'session_expired',
           recoveryStep: 'session_expired_redirect',
           result: 'failed',
-        });
+        } satisfies AuthDiagnosticMeta;
+        if (retryResponseMeta.reasonCode === 'missing_session_cookie') {
+          redirectToLogin(redirectMeta);
+        } else {
+          redirectToSessionExpiredNotice(redirectMeta);
+        }
       }
 
       return recoveryResult;

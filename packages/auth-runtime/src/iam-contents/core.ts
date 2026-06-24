@@ -13,9 +13,13 @@ import {
   authorizeContentAction,
   resolveContentAccess,
   resolveContentActor,
-  type ResolvedContentActor,
   withAuthenticatedContentHandler,
 } from './request-context.js';
+import {
+  authorizeReadableContentItem,
+  isServerAuthorizationError,
+  resolveReadableContentScopes,
+} from './read-authorization.js';
 import { createContentResponse, deleteContentResponse, updateContentResponse } from './mutations.js';
 import {
   loadContentById,
@@ -26,8 +30,6 @@ import {
 } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
-
-const isServerAuthorizationError = (response: Response): boolean => response.status >= 500;
 
 const isContentStatus = (value: string): value is IamContentStatus =>
   (iamContentStatuses as readonly string[]).includes(value);
@@ -65,55 +67,6 @@ const readContentListQuery = (request: Request): IamContentListQuery => {
   };
 };
 
-const authorizeReadableContentItem = (
-  actor: ResolvedContentActor['actor'],
-  item: {
-    readonly id: string;
-    readonly contentType: string;
-    readonly organizationId?: string;
-    readonly createdBy?: string;
-  }
-) =>
-  authorizeContentAction(actor, 'content.read', {
-    contentId: item.id,
-    contentType: item.contentType,
-    organizationId: item.organizationId,
-    createdByAccountId: item.createdBy,
-  });
-
-const resolveReadableContentScopes = async (
-  actor: ResolvedContentActor['actor'],
-  scopes: readonly (string | null)[]
-): Promise<{ readonly allowedOrganizationIds: readonly string[]; readonly includeUnscopedContent: boolean } | Response> => {
-  const allowedOrganizationIds: string[] = [];
-  let includeUnscopedContent = false;
-
-  for (const scope of scopes) {
-    const authorizationError = await authorizeContentAction(actor, 'content.read', {
-      ...(scope ? { organizationId: scope } : {}),
-      ...(actor.actorAccountId ? { createdByAccountId: actor.actorAccountId } : {}),
-    });
-
-    if (!authorizationError) {
-      if (scope) {
-        allowedOrganizationIds.push(scope);
-      } else {
-        includeUnscopedContent = true;
-      }
-      continue;
-    }
-
-    if (isServerAuthorizationError(authorizationError)) {
-      return authorizationError;
-    }
-  }
-
-  return {
-    allowedOrganizationIds,
-    includeUnscopedContent,
-  };
-};
-
 export const listContentsInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
@@ -126,7 +79,7 @@ export const listContentsInternal = async (
   try {
     const query = readContentListQuery(request);
     const scopes = await loadContentListScopes(actorResolution.actor.instanceId, query);
-    const readableScopes = await resolveReadableContentScopes(actorResolution.actor, scopes);
+    const readableScopes = await resolveReadableContentScopes(actorResolution.actor, scopes, query);
     if (readableScopes instanceof Response) {
       return readableScopes;
     }

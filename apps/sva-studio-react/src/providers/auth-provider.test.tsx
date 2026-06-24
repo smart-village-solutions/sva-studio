@@ -666,6 +666,56 @@ describe('AuthProvider', () => {
     });
   });
 
+  it('redirects known sessions with missing session cookie directly to login', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      createJsonResponse(401, {
+        error: {
+          code: 'unauthorized',
+          message: 'missing session',
+          classification: 'session_store_or_session_hydration',
+          status: 'recovery_laeuft',
+          recommendedAction: 'erneut_anmelden',
+          safeDetails: {
+            reason_code: 'missing_session_cookie',
+          },
+        },
+        requestId: 'req-auth-401',
+      })
+    );
+    const assignMock = vi.fn();
+    const originalLocation = window.location;
+
+    window.localStorage.setItem('sva_auth_had_session', '1');
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...originalLocation,
+        origin: originalLocation.origin,
+        pathname: '/',
+        search: '',
+        assign: assignMock,
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-recovery-failed').textContent).toBe('yes');
+    });
+
+    expect(assignMock).toHaveBeenCalledWith('/auth/login?returnTo=%2F');
+
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: originalLocation,
+    });
+  });
+
   it('ignores cross-origin silent-sso messages and accepts same-origin success', async () => {
     const fetchMock = vi
       .fn()

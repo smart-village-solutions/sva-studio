@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createPoi, listPoi, PoiApiError } from '../src/poi.api.js';
+import { createPoi, listPoi, listPoiCategories, PoiApiError } from '../src/poi.api.js';
 
 const defaultListQuery = {
   page: 1,
@@ -39,6 +39,17 @@ describe('poi api', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/mainserver/poi',
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ name: 'Rathaus' }) })
+    );
+  });
+
+  it('lists poi categories from the categories route', async () => {
+    const fetchMock = vi.fn(async () => Response.json({ data: [{ id: 'cat-1', name: 'Verwaltung' }] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listPoiCategories()).resolves.toEqual([{ id: 'cat-1', name: 'Verwaltung' }]);
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/mainserver/categories',
+      expect.objectContaining({ credentials: 'include' })
     );
   });
 

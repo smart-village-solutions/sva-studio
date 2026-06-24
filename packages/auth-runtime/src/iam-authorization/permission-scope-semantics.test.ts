@@ -39,6 +39,13 @@ describe('permission scope semantics', () => {
         accessScope: 'all',
         organizationId: 'org-1',
       })
+    ).toBeUndefined();
+    expect(
+      projectOrganizationIdForPermission({
+        permissionKey: 'content.read',
+        accessScope: 'organization',
+        organizationId: 'org-1',
+      })
     ).toBe('org-1');
     expect(
       projectOrganizationIdForPermission({

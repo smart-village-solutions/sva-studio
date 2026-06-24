@@ -8,7 +8,7 @@ import { deleteEvent } from '@sva/plugin-events';
 import { deleteNews } from '@sva/plugin-news';
 import { deletePoi } from '@sva/plugin-poi';
 import { IconEdit, IconEye, IconTrash, IconXboxX } from '@tabler/icons-react';
-import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
+import { StudioDataTable, StudioListPageTemplate, type StudioBulkAction, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
@@ -18,13 +18,15 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
-import { useAuth } from '../../providers/auth-provider';
+import { useContents } from '../../hooks/use-contents';
 import { useContentAccess } from '../../hooks/use-content-access';
-import { useUnifiedContentList } from '../../hooks/use-unified-content-list';
 import { t } from '../../i18n';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 import type { IamHttpError } from '../../lib/iam-api';
+import type { IamContentListMetadata } from '../../lib/iam-api';
+import { EMPTY_VISIBLE_TYPE_SENTINEL } from '../../lib/iam-content-list-api.shared';
 import { studioContentTypes } from '../../lib/plugins';
+import { useAuth } from '../../providers/auth-provider';
 import {
   filterCreatableStudioContentTypes,
   filterRegisteredStudioContentItems,
@@ -54,9 +56,14 @@ type RegisteredContentRow = IamContentListItem & Readonly<{
   editPath: string;
 }>;
 
+const MAIN_SERVER_CONTENT_TYPES = new Set([
+  'news.article',
+  'events.event-record',
+  'poi.point-of-interest',
+]);
+
 const contentAdminResource = appAdminResources.find((resource) => resource.resourceId === 'content');
 const contentListCapabilities = contentAdminResource?.capabilities?.list;
-const contentBulkActions = contentListCapabilities?.bulkActions ?? [];
 const contentPagination = contentListCapabilities?.pagination;
 const contentSorting = contentListCapabilities?.sorting;
 const contentStatusOptions = ['all', 'draft', 'in_review', 'approved', 'published', 'archived'] as const satisfies readonly StatusFilter[];
@@ -77,6 +84,51 @@ const contentErrorMessage = (error: IamHttpError | null): string => {
 };
 
 const formatDateTime = (value: string): string => formatEditorDateTime(value) ?? value;
+
+const renderProjectionSyncMessage = (metadata: IamContentListMetadata): string | null => {
+  if (metadata.mainserverSyncStates.length === 0) {
+    return null;
+  }
+
+  const latestSucceededAt = metadata.mainserverSyncStates
+    .map((entry) => entry.lastSucceededAt)
+    .filter((value): value is string => typeof value === 'string')
+    .sort((left, right) => right.localeCompare(left))[0];
+  const latestErrorCode = metadata.mainserverSyncStates
+    .map((entry) => entry.lastErrorCode)
+    .find((value): value is string => typeof value === 'string' && value.length > 0);
+
+  if (metadata.hasRunningMainserverSync && latestSucceededAt) {
+    return t('content.sync.runningWithSnapshot', {
+      value: formatDateTime(latestSucceededAt),
+    });
+  }
+
+  if (metadata.hasRunningMainserverSync) {
+    return t('content.sync.running');
+  }
+
+  if (metadata.hasStaleMainserverContent && latestSucceededAt && latestErrorCode) {
+    return t('content.sync.staleWithError', {
+      value: formatDateTime(latestSucceededAt),
+      errorCode: latestErrorCode,
+    });
+  }
+
+  if (metadata.hasStaleMainserverContent && latestSucceededAt) {
+    return t('content.sync.stale', {
+      value: formatDateTime(latestSucceededAt),
+    });
+  }
+
+  if (latestSucceededAt) {
+    return t('content.sync.fresh', {
+      value: formatDateTime(latestSucceededAt),
+    });
+  }
+
+  return null;
+};
 
 const resolveRowAccess = (
   access: IamContentAccessSummary | undefined,
@@ -222,33 +274,6 @@ const updateRouteState = (
   });
 };
 
-const resolveSelectionModeLabelKey = (
-  selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery'
-): 'content.bulk.scope.explicitIds' | 'content.bulk.scope.currentPage' | 'content.bulk.scope.allMatchingQuery' => {
-  switch (selectionMode) {
-    case 'explicitIds':
-      return 'content.bulk.scope.explicitIds';
-    case 'currentPage':
-      return 'content.bulk.scope.currentPage';
-    default:
-      return 'content.bulk.scope.allMatchingQuery';
-  }
-};
-
-const isBulkActionDisabled = (
-  selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery',
-  currentPageCount: number,
-  totalCount: number
-): boolean | undefined => {
-  if (selectionMode === 'explicitIds') {
-    return undefined;
-  }
-  if (selectionMode === 'currentPage') {
-    return currentPageCount === 0;
-  }
-  return totalCount === 0;
-};
-
 const resolveRowActionLabel = (access: IamContentAccessSummary): string => {
   if (access.canUpdate) {
     return t('content.actions.edit');
@@ -294,6 +319,13 @@ const resolveContentSortField = (routeSortField: string | undefined): IamContent
       return 'updatedAt';
   }
 };
+
+const isMainserverContentType = (contentType: string): boolean => MAIN_SERVER_CONTENT_TYPES.has(contentType);
+
+const isBulkActionableContent = (item: RegisteredContentRow): boolean => !isMainserverContentType(item.contentType);
+
+const buildBulkActionLabel = (actionLabelKey: 'content.actions.archive' | 'content.actions.delete'): string =>
+  `${t(actionLabelKey)} (${t('content.bulk.scope.explicitIds')})`;
 
 const resolveRowActionIcon = (access: IamContentAccessSummary): React.ReactNode => {
   if (access.canUpdate) {
@@ -417,17 +449,58 @@ export const ContentListPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as RouteSearchState;
-  const { user } = useAuth();
+  const auth = useAuth();
   const contentAccessApi = useContentAccess();
   const routeState = readNormalizedRouteState(search);
   const routeSortField = routeState.sort?.field;
   const routeSortDirection = routeState.sort?.direction;
+  const authPermissionActions = auth.user?.permissionActions ?? [];
+  const authSessionPending = auth.isLoading || !auth.hasResolvedSession;
+  const contentAccessPending =
+    contentAccessApi.permissionActions.length === 0 &&
+    contentAccessApi.access === null &&
+    contentAccessApi.error === null;
+  const contentListEnabled =
+    !authSessionPending &&
+    Boolean(auth.user) &&
+    (!contentAccessPending || authPermissionActions.length > 0);
+  const effectivePermissionActions = React.useMemo(
+    () =>
+      authSessionPending || contentAccessApi.isLoading || contentAccessPending
+        ? authPermissionActions
+        : contentAccessApi.permissionActions,
+    [
+      authPermissionActions,
+      authSessionPending,
+      contentAccessApi.isLoading,
+      contentAccessApi.permissionActions,
+      contentAccessApi.access,
+      contentAccessApi.error,
+      contentAccessPending,
+    ]
+  );
   const readableContentTypes = React.useMemo(
     () =>
       studioContentTypes.filter((definition) =>
-        contentAccessApi.permissionActions?.includes(definition.requiredReadAction)
+        effectivePermissionActions.includes(definition.requiredReadAction)
       ),
-    [contentAccessApi.permissionActions]
+    [effectivePermissionActions]
+  );
+  const visibleTypeSignature = React.useMemo(() => {
+    if (readableContentTypes.length === 0) {
+      return EMPTY_VISIBLE_TYPE_SENTINEL;
+    }
+
+    return readableContentTypes
+      .map((definition) => definition.contentType)
+      .join('|');
+  }, [readableContentTypes]);
+  const visibleTypes = React.useMemo(
+    () =>
+      visibleTypeSignature === EMPTY_VISIBLE_TYPE_SENTINEL
+        ? [EMPTY_VISIBLE_TYPE_SENTINEL]
+        : visibleTypeSignature.split('|'),
+    [visibleTypeSignature]
   );
   const contentListQuery = React.useMemo<IamContentListQuery>(
     () => ({
@@ -435,29 +508,29 @@ export const ContentListPage = () => {
       pageSize: routeState.pageSize,
       ...(routeState.type !== 'all' ? { type: routeState.type } : {}),
       ...(routeState.status !== 'all' ? { status: routeState.status } : {}),
-      visibleTypes: readableContentTypes.map((definition) => definition.contentType),
+      visibleTypes,
       sortBy: resolveContentSortField(routeSortField),
       sortDirection: routeSortDirection ?? 'desc',
     }),
     [
-      readableContentTypes,
       routeSortDirection,
       routeSortField,
       routeState.page,
       routeState.pageSize,
       routeState.status,
       routeState.type,
+      visibleTypes,
+      visibleTypeSignature,
     ]
   );
-  const contentsApi = useUnifiedContentList(
-    contentListQuery,
-    contentListQuery.visibleTypes ?? [],
-    user?.instanceId ?? '',
-    contentAccessApi.permissionActions
+  const contentsApi = useContents(contentListQuery, { enabled: contentListEnabled });
+  const projectionSyncMessage = React.useMemo(
+    () => (contentsApi.metadata ? renderProjectionSyncMessage(contentsApi.metadata) : null),
+    [contentsApi.metadata]
   );
   const creatableContentTypes = React.useMemo(
-    () => filterCreatableStudioContentTypes(studioContentTypes, contentAccessApi.permissionActions),
-    [contentAccessApi.permissionActions]
+    () => filterCreatableStudioContentTypes(studioContentTypes, effectivePermissionActions),
+    [effectivePermissionActions]
   );
   const createDisabled =
     creatableContentTypes.length === 0 &&
@@ -465,7 +538,7 @@ export const ContentListPage = () => {
 
   const registeredContents = React.useMemo(
     () =>
-      filterRegisteredStudioContentItems(contentsApi.contents, studioContentTypes, contentAccessApi.permissionActions).map(
+      filterRegisteredStudioContentItems(contentsApi.contents, studioContentTypes, effectivePermissionActions).map(
         ({ item, definition }) => ({
           ...item,
           typeLabel: definition.displayName,
@@ -474,12 +547,16 @@ export const ContentListPage = () => {
             .replace('$id', encodeURIComponent(item.id)),
         })
       ),
-    [contentAccessApi.permissionActions, contentsApi.contents]
+    [contentsApi.contents, effectivePermissionActions]
   );
   const safePage = Math.max(1, contentsApi.pagination.page);
   const pageCount = Math.max(
     1,
     Math.ceil(contentsApi.pagination.total / Math.max(1, contentsApi.pagination.pageSize))
+  );
+  const hasBulkActionableContents = React.useMemo(
+    () => registeredContents.some(isBulkActionableContent),
+    [registeredContents]
   );
 
   const navigateSearch = React.useCallback(
@@ -500,6 +577,69 @@ export const ContentListPage = () => {
       await contentsApi.refetch();
     },
     [contentsApi]
+  );
+
+  const bulkActionButtons = React.useMemo<readonly StudioBulkAction<RegisteredContentRow>[]>(
+    () =>
+      hasBulkActionableContents
+        ? [
+            {
+              id: 'archive-selection',
+              label: buildBulkActionLabel('content.actions.archive'),
+              disabled: !effectivePermissionActions.includes('content.archive'),
+              onClick: async ({ selectedRows, clearSelection }) => {
+                if (selectedRows.length === 0) {
+                  return;
+                }
+                await contentsApi.archiveContents({
+                  actionId: 'content.archive',
+                  contentIds: selectedRows.map((item) => item.id),
+                  matchingCount: selectedRows.length,
+                  page: routeState.page,
+                  pageSize: routeState.pageSize,
+                  selectionMode: 'explicitIds',
+                  sort: routeState.sort,
+                  statusFilter: routeState.status,
+                });
+                clearSelection();
+              },
+            },
+            {
+              id: 'delete-selection',
+              label: buildBulkActionLabel('content.actions.delete'),
+              disabled: !effectivePermissionActions.includes('content.delete'),
+              variant: 'destructive',
+              onClick: async ({ selectedRows, clearSelection }) => {
+                if (
+                  selectedRows.length === 0 ||
+                  !window.confirm(t('content.actions.deleteConfirm'))
+                ) {
+                  return;
+                }
+                await contentsApi.deleteContents({
+                  actionId: 'content.delete',
+                  contentIds: selectedRows.map((item) => item.id),
+                  matchingCount: selectedRows.length,
+                  page: routeState.page,
+                  pageSize: routeState.pageSize,
+                  selectionMode: 'explicitIds',
+                  sort: routeState.sort,
+                  statusFilter: routeState.status,
+                });
+                clearSelection();
+              },
+            },
+          ]
+        : [],
+    [
+      contentsApi,
+      effectivePermissionActions,
+      hasBulkActionableContents,
+      routeState.page,
+      routeState.pageSize,
+      routeState.sort,
+      routeState.status,
+    ]
   );
 
   const contentColumns = React.useMemo<readonly StudioColumnDef<RegisteredContentRow>[]>(
@@ -536,26 +676,8 @@ export const ContentListPage = () => {
     []
   );
 
-  const bulkActionButtons = contentsApi.supportsBulkActions
-    ? contentBulkActions.flatMap((action) =>
-        action.selectionModes
-          .filter((selectionMode) => selectionMode !== 'allMatchingQuery')
-          .map((selectionMode) => {
-            const labelKey = resolveSelectionModeLabelKey(selectionMode);
-
-            return {
-              id: `${action.id}:${selectionMode}`,
-              label: `${t(action.labelKey)} (${t(labelKey)})`,
-              disabled: isBulkActionDisabled(selectionMode, registeredContents.length, contentsApi.pagination.total),
-              variant: 'outline' as const,
-              onClick: async () => undefined,
-            };
-          })
-      )
-    : [];
-
   return (
-    <section className="space-y-5" aria-busy={contentsApi.isLoading}>
+    <section className="space-y-5" aria-busy={contentsApi.isLoading || authSessionPending || contentAccessPending}>
       <StudioListPageTemplate
         title={t('content.page.title')}
         description={t('content.page.subtitle')}
@@ -573,6 +695,12 @@ export const ContentListPage = () => {
         </Alert>
       ) : null}
 
+      {projectionSyncMessage && !contentsApi.error ? (
+        <Alert className="border-secondary/40 bg-secondary/5 text-secondary">
+          <AlertDescription>{projectionSyncMessage}</AlertDescription>
+        </Alert>
+      ) : null}
+
       <section>
         <StudioDataTable
           ariaLabel={t('content.table.ariaLabel')}
@@ -582,8 +710,9 @@ export const ContentListPage = () => {
           columns={contentColumns}
           getRowId={(item) => item.id}
           selectionMode="multiple"
+          canSelectRow={isBulkActionableContent}
           bulkActions={bulkActionButtons}
-          isLoading={contentsApi.isLoading || contentAccessApi.isLoading}
+          isLoading={contentsApi.isLoading || contentAccessApi.isLoading || authSessionPending || contentAccessPending}
           loadingState={t('content.messages.loading')}
           emptyState={
             <div className="space-y-2">
@@ -626,15 +755,27 @@ export const ContentListPage = () => {
             </>
           }
           toolbarEnd={
-            createDisabled ? (
-              <Button type="button" disabled>
-                {t('content.actions.create')}
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={contentsApi.refreshProjectionPending}
+                onClick={() => void contentsApi.refreshProjection({ force: true })}
+              >
+                {contentsApi.refreshProjectionPending
+                  ? t('content.sync.refreshing')
+                  : t('content.sync.refresh')}
               </Button>
-            ) : (
-              <Button asChild>
-                <Link to="/admin/content/new">{t('content.actions.create')}</Link>
-              </Button>
-            )
+              {createDisabled ? (
+                <Button type="button" disabled>
+                  {t('content.actions.create')}
+                </Button>
+              ) : (
+                <Button asChild>
+                  <Link to="/admin/content/new">{t('content.actions.create')}</Link>
+                </Button>
+              )}
+            </div>
           }
           footer={
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -666,7 +807,7 @@ export const ContentListPage = () => {
             <ContentRowActions
               item={item}
               listError={contentsApi.error}
-              permissionActions={contentAccessApi.permissionActions}
+              permissionActions={effectivePermissionActions}
               onDelete={handleDeleteContent}
             />
           )}

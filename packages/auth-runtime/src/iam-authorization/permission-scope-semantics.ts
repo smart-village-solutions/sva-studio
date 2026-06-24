@@ -48,5 +48,12 @@ export const projectOrganizationIdForPermission = (input: {
   permissionKey: string;
   accessScope?: IamRolePermissionAssignmentScope | null;
   organizationId?: string | null;
-}): string | undefined =>
-  isScopeSensitivePermission(input) ? input.organizationId ?? undefined : undefined;
+}): string | undefined => {
+  if (input.accessScope === 'all') {
+    return undefined;
+  }
+
+  return isScopeSensitivePermission(input)
+    ? input.organizationId ?? undefined
+    : undefined;
+};

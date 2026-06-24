@@ -50,7 +50,7 @@ export type PoiMediaAttachment = Readonly<{
 export type PoiDetailFormValues = Readonly<{
   name: string;
   basis: {
-    categoryName: string;
+    categories: string[];
     active: boolean;
   };
   content: {

@@ -55,7 +55,7 @@ export const buildSessionUser = (input: {
   };
 };
 
-export const resolveExpiresAt = (expiresInSeconds: number | undefined, fallback?: number): number | undefined => {
+const resolveExpiresAt = (expiresInSeconds: number | undefined, fallback?: number): number | undefined => {
   if (!expiresInSeconds) {
     return fallback;
   }

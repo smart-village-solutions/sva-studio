@@ -1,5 +1,5 @@
 import { useFieldArray, useFormContext, useWatch, type FieldError } from 'react-hook-form';
-import { Button, Input, StudioField, StudioFormSummaryErrors, Textarea, getStudioFormFieldProps } from '@sva/studio-ui-react';
+import { Button, Input, RichTextHtmlEditor, StudioField, StudioFormSummaryErrors, getStudioFormFieldProps } from '@sva/studio-ui-react';
 
 import { NewsDetailCard } from './news.detail-card.js';
 import type { NewsDetailFormValues, NewsMediaContentFormValue } from './news.types.js';
@@ -55,7 +55,7 @@ type NewsContentTextSectionProps = Readonly<{
   contentBody: string;
   teaserField: ContentFieldBindings;
   bodyField: ContentFieldBindings;
-  register: ReturnType<typeof useFormContext<NewsDetailFormValues>>['register'];
+  setValue: ReturnType<typeof useFormContext<NewsDetailFormValues>>['setValue'];
 }>;
 
 function NewsContentTextSection({
@@ -65,8 +65,29 @@ function NewsContentTextSection({
   contentBody,
   teaserField,
   bodyField,
-  register,
+  setValue,
 }: NewsContentTextSectionProps) {
+  const blockTypeOptions = [
+    { value: 'paragraph' as const, label: pt('richText.paragraph') },
+    { value: 'heading-2' as const, label: pt('richText.heading2') },
+    { value: 'heading-3' as const, label: pt('richText.heading3') },
+    { value: 'heading-4' as const, label: pt('richText.heading4') },
+    { value: 'blockquote' as const, label: pt('richText.blockquote') },
+  ];
+  const toolbarLabels = {
+    blockType: pt('richText.blockType'),
+    bulletList: pt('richText.bulletList'),
+    orderedList: pt('richText.orderedList'),
+    bold: pt('richText.bold'),
+    italic: pt('richText.italic'),
+    undo: pt('richText.undo'),
+    redo: pt('richText.redo'),
+    link: pt('richText.applyLink'),
+    linkPrompt: pt('richText.linkInput'),
+  };
+  const teaserLabelId = `${teaserField.id}-label`;
+  const bodyLabelId = `${bodyField.id}-label`;
+
   return (
     <NewsDetailCard
       title={pt('cards.content.text.title')}
@@ -76,27 +97,54 @@ function NewsContentTextSection({
         <Input id="news-content-headline" value={title} readOnly />
       </StudioField>
 
-      <StudioField
-        {...teaserField}
-        label={pt('fields.contentTeaser')}
-        description={pt('fields.characterCount', { count: teaser.length })}
-      >
-        <Textarea {...teaserField.controlProps} className="min-h-24" {...register('contentTeaser')} />
-      </StudioField>
-
-      <StudioField
-        {...bodyField}
-        label={pt('fields.contentBody')}
-        description={pt('fields.characterCount', { count: contentBody.length })}
-        required
-      >
-        <Textarea
-          {...bodyField.controlProps}
-          className="min-h-64"
-          required
-          {...register('contentBody')}
+      <div className="space-y-1">
+        <label id={teaserLabelId} htmlFor={teaserField.id} className="text-sm font-medium">
+          {pt('fields.contentTeaser')}
+        </label>
+        <RichTextHtmlEditor
+          id={teaserField.id}
+          labelId={teaserLabelId}
+          describedBy={teaserField.controlProps['aria-describedby']}
+          ariaInvalid={teaserField.controlProps['aria-invalid'] === true}
+          value={teaser}
+          onChange={(nextValue) => setValue('contentTeaser', nextValue, { shouldDirty: true })}
+          blockTypeOptions={blockTypeOptions}
+          toolbarLabels={toolbarLabels}
         />
-      </StudioField>
+        <p id={teaserField.descriptionId} className="text-xs text-muted-foreground">
+          {pt('fields.characterCount', { count: teaser.length })}
+        </p>
+        {teaserField.error ? (
+          <p id={teaserField.errorId} className="text-sm text-destructive">
+            {teaserField.error}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="space-y-1">
+        <label id={bodyLabelId} htmlFor={bodyField.id} className="text-sm font-medium">
+          {pt('fields.contentBody')}
+          <span aria-hidden="true" className="ml-1 before:content-['*']" />
+        </label>
+        <RichTextHtmlEditor
+          id={bodyField.id}
+          labelId={bodyLabelId}
+          describedBy={bodyField.controlProps['aria-describedby']}
+          ariaInvalid={bodyField.controlProps['aria-invalid'] === true}
+          value={contentBody}
+          onChange={(nextValue) => setValue('contentBody', nextValue, { shouldDirty: true })}
+          blockTypeOptions={blockTypeOptions}
+          toolbarLabels={toolbarLabels}
+        />
+        <p id={bodyField.descriptionId} className="text-xs text-muted-foreground">
+          {pt('fields.characterCount', { count: contentBody.length })}
+        </p>
+        {bodyField.error ? (
+          <p id={bodyField.errorId} className="text-sm text-destructive">
+            {bodyField.error}
+          </p>
+        ) : null}
+      </div>
     </NewsDetailCard>
   );
 }
@@ -196,6 +244,7 @@ export function NewsDetailContentTab({ pt }: NewsDetailContentTabProps) {
     control,
     formState: { errors },
     register,
+    setValue,
   } = useFormContext<NewsDetailFormValues>();
   const { fields, append, remove } = useFieldArray({
     control,
@@ -243,7 +292,7 @@ export function NewsDetailContentTab({ pt }: NewsDetailContentTabProps) {
         contentBody={contentBody}
         teaserField={teaserField}
         bodyField={bodyField}
-        register={register}
+        setValue={setValue}
       />
       <NewsContentMediaSection
         pt={pt}

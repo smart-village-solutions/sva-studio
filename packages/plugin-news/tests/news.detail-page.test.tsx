@@ -13,6 +13,37 @@ import {
 import { listNewsCategories } from '../src/news.api.js';
 import { NewsDetailPage } from '../src/news.detail-page.js';
 
+vi.mock('@sva/studio-ui-react', async () => {
+  const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
+  return {
+    ...actual,
+    RichTextHtmlEditor: ({
+      id,
+      value,
+      onChange,
+      labelId,
+      describedBy,
+      ariaInvalid,
+    }: {
+      id: string;
+      value: string;
+      onChange: (nextValue: string) => void;
+      labelId?: string;
+      describedBy?: string;
+      ariaInvalid?: boolean;
+    }) => (
+      <textarea
+        id={id}
+        aria-labelledby={labelId}
+        aria-describedby={describedBy}
+        aria-invalid={ariaInvalid ? 'true' : undefined}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    ),
+  };
+});
+
 const navigateMock = vi.fn();
 const newsDetailSettingsSourcePath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),

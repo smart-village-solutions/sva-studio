@@ -52,6 +52,7 @@ export const useIamAdminList = <TItem>(
   const [isLoading, setIsLoading] = React.useState(enabled);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
+  const hasLoadedItemsRef = React.useRef(false);
 
   const refetch = React.useCallback(async () => {
     if (!enabled) {
@@ -68,6 +69,7 @@ export const useIamAdminList = <TItem>(
     try {
       const response = await listItems();
       setItems(response.data);
+      hasLoadedItemsRef.current = true;
       onLoaded?.(response);
       logBrowserOperationSuccess(
         adminListLogger,
@@ -87,7 +89,9 @@ export const useIamAdminList = <TItem>(
           error_code: resolvedError.code,
         });
       }
-      setItems([]);
+      if (!hasLoadedItemsRef.current) {
+        setItems([]);
+      }
       setError(resolvedError);
       logBrowserOperationFailure(adminListLogger, 'list_refetch_failed', resolvedError);
     } finally {

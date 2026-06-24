@@ -42,6 +42,7 @@ vi.mock('./plugin.js', () => ({
 vi.mock('./poi.api.js', () => ({
   PoiApiError: class PoiApiError extends Error {},
   listPoi: vi.fn(),
+  listPoiCategories: vi.fn(async () => []),
   getPoi: getPoiMock,
   createPoi: createPoiMock,
   updatePoi: vi.fn(),
@@ -113,19 +114,20 @@ describe('PoiCreatePage', () => {
     });
     switchSection('basis');
     await waitFor(() => {
-      expect(screen.getByLabelText('fields.categoryName')).toBeTruthy();
+      expect(screen.getByLabelText('fields.categoriesSearch')).toBeTruthy();
     });
-    fireEvent.change(screen.getByLabelText('fields.categoryName'), {
+    fireEvent.change(screen.getByLabelText('fields.categoriesSearch'), {
       target: { value: 'x'.repeat(129) },
     });
+    fireEvent.click(screen.getByRole('button', { name: 'actions.addCategory' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
 
     await waitFor(() => {
-      expect(screen.getAllByRole('alert').some((element) => element.textContent?.includes('validation.categoryName'))).toBe(true);
+      expect(screen.getAllByRole('alert').some((element) => element.textContent?.includes('validation.categories'))).toBe(true);
     });
 
-    expect(screen.getByLabelText('fields.categoryName').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByRole('button', { name: 'actions.addCategory' }).closest('section')?.textContent).toContain('validation.categories');
     expect(createPoiMock).not.toHaveBeenCalled();
   });
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { listHostMediaAssets, listHostMediaReferencesByTarget, registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPoi, deletePoi, getPoi, updatePoi } from '../src/poi.api.js';
+import { createPoi, deletePoi, getPoi, listPoiCategories, updatePoi } from '../src/poi.api.js';
 
 import { PoiDetailPage } from '../src/poi.detail-page.js';
 
@@ -13,6 +13,7 @@ vi.mock('../src/poi.api.js', () => ({
   createPoi: vi.fn(),
   deletePoi: vi.fn(),
   getPoi: vi.fn(),
+  listPoiCategories: vi.fn(async () => []),
   listPoi: vi.fn(),
   PoiApiError: class PoiApiError extends Error {},
   updatePoi: vi.fn(),
@@ -58,6 +59,8 @@ describe('PoiDetailPage', () => {
     vi.mocked(createPoi).mockReset();
     vi.mocked(deletePoi).mockReset();
     vi.mocked(getPoi).mockReset();
+    vi.mocked(listPoiCategories).mockReset();
+    vi.mocked(listPoiCategories).mockResolvedValue([] as never);
     vi.mocked(updatePoi).mockReset();
     vi.mocked(listHostMediaAssets).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
@@ -98,6 +101,10 @@ describe('PoiDetailPage', () => {
         'poi.cards.advanced.payload.title': 'Zusatzdaten',
         'poi.cards.advanced.payload.description': 'Payload und Zusatzfelder',
         'poi.fields.name': 'Name',
+        'poi.fields.categories': 'Kategorien',
+        'poi.fields.categoriesHelp': 'Wählen Sie keine, eine oder mehrere Kategorien aus.',
+        'poi.fields.categoriesSearch': 'Kategorien suchen',
+        'poi.fields.categoriesSearchPlaceholder': 'Kategorie suchen oder auswählen',
         'poi.fields.operatorName': 'Name des Betreibers',
         'poi.fields.firstName': 'Vorname',
         'poi.fields.lastName': 'Nachname',
@@ -127,8 +134,11 @@ describe('PoiDetailPage', () => {
         'poi.fields.mediaContentType': 'Medientyp',
         'poi.fields.payload': 'Payload',
         'poi.messages.validationError': 'Bitte Eingaben prüfen.',
+        'poi.messages.categoryOptionsLoading': 'Kategorien werden geladen.',
+        'poi.messages.categoryOptionsLoadError': 'Kategorien konnten nicht geladen werden.',
         'poi.validation.webUrls': 'URLs müssen mit https:// beginnen.',
         'poi.validation.geoLocation': 'Koordinaten müssen gültige Breiten- und Längengrade sein.',
+        'poi.validation.categories': 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
         'poi.history.empty.title': 'Noch keine Historie verfügbar.',
         'poi.messages.createSuccess': 'Ort erstellt.',
         'poi.messages.updateSuccess': 'Ort aktualisiert.',
@@ -142,10 +152,12 @@ describe('PoiDetailPage', () => {
         'poi.actions.geocodeAddress': 'Geo-Koordinaten ermitteln',
         'poi.actions.geocodingAddress': 'Geo-Koordinaten werden ermittelt',
         'poi.actions.addOpeningHour': 'Öffnungszeit hinzufügen',
+        'poi.actions.addCategory': 'Kategorie hinzufügen',
         'poi.actions.addImage': 'Bild hinzufügen',
         'poi.actions.selectImage': 'Auswählen',
         'poi.actions.removeImage': 'Entfernen',
         'poi.actions.closeImagePicker': 'Schließen',
+        'poi.actions.removeCategory': 'Kategorie {{name}} entfernen',
         'poi.fields.imageSearch': 'Dateiname filtern',
         'poi.fields.imageFileName': 'Dateiname',
         'poi.messages.imagePickerEmpty': 'Keine Bilder gefunden.',
@@ -198,7 +210,7 @@ describe('PoiDetailPage', () => {
       name: 'Rathaus',
       payload: {},
     } as never);
-    vi.mocked(listHostMediaAssets).mockResolvedValueOnce([
+    vi.mocked(listHostMediaAssets).mockResolvedValue([
       {
         id: 'asset-1',
         fileName: 'rathaus-aussen.jpg',
@@ -264,7 +276,7 @@ describe('PoiDetailPage', () => {
       name: 'Rathaus',
       payload: {},
     } as never);
-    vi.mocked(listHostMediaAssets).mockResolvedValueOnce([
+    vi.mocked(listHostMediaAssets).mockResolvedValue([
       { id: 'asset-1', metadata: { title: 'Rathaus außen' } },
       { id: 'asset-2', metadata: { title: 'Stadtpark' } },
     ] as never);
@@ -361,6 +373,30 @@ describe('PoiDetailPage', () => {
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
       expect(screen.getByLabelText('Name')).toBeTruthy();
+    });
+  });
+
+  it('creates poi with news-style category multiselect selections', async () => {
+    vi.mocked(listPoiCategories).mockResolvedValueOnce([
+      { id: 'cat-1', name: 'Verwaltung' },
+      { id: 'cat-2', name: 'Service' },
+    ] as never);
+
+    render(<PoiDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
+    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Verwaltung' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createPoi)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Neuer POI',
+          categoryName: 'Verwaltung',
+          categories: [{ name: 'Verwaltung' }],
+        })
+      );
     });
   });
 
@@ -646,7 +682,7 @@ describe('PoiDetailPage', () => {
       name: 'Rathaus',
       payload: {},
     } as never);
-    vi.mocked(listHostMediaAssets).mockResolvedValueOnce([
+    vi.mocked(listHostMediaAssets).mockResolvedValue([
       { id: 'asset-1', metadata: { title: 'Teaser' } },
       { id: 'asset-2', metadata: { title: 'Bestehend' } },
       { id: 'asset-3', metadata: { title: 'Neu' } },
@@ -704,7 +740,7 @@ describe('PoiDetailPage', () => {
       name: 'Rathaus',
       payload: {},
     } as never);
-    vi.mocked(listHostMediaAssets).mockResolvedValueOnce([
+    vi.mocked(listHostMediaAssets).mockResolvedValue([
       { id: 'asset-1', metadata: { title: 'Bestehend' } },
       { id: 'asset-3', metadata: { title: 'Neu' } },
     ] as never);
@@ -899,7 +935,7 @@ describe('PoiDetailPage', () => {
       name: 'Rathaus',
       payload: {},
     } as never);
-    vi.mocked(listHostMediaAssets).mockResolvedValueOnce([
+    vi.mocked(listHostMediaAssets).mockResolvedValue([
       { id: 'asset-3', metadata: { title: 'Neu' } },
     ] as never);
     vi.mocked(listHostMediaReferencesByTarget).mockRejectedValueOnce(new Error('media boom'));

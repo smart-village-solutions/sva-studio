@@ -147,6 +147,148 @@ describe('mainserver-client', () => {
     });
   });
 
+  it('fails deterministically when a mainserver request exceeds the timeout budget', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn(
+        (_input: RequestInfo | URL, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener(
+              'abort',
+              () => {
+                reject(init.signal?.reason ?? new DOMException('mainserver_timeout', 'AbortError'));
+              },
+              { once: true }
+            );
+          })
+      );
+
+      const requestPromise = requestMainserverJson({
+        url: '/timeout',
+        fetch: fetchMock as typeof fetch,
+        timeoutMs: 50,
+      });
+      const rejectionExpectation = expect(requestPromise).rejects.toMatchObject({
+        code: 'mainserver_timeout',
+        message: 'mainserver_timeout',
+        name: 'MainserverApiError',
+      });
+
+      await vi.advanceTimersByTimeAsync(51);
+
+      await rejectionExpectation;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('translates timeouts that happen while reading the response body', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => ({
+        ok: true,
+        status: 200,
+        json: () =>
+          new Promise((_, reject) => {
+            init?.signal?.addEventListener(
+              'abort',
+              () => {
+                reject(init.signal?.reason ?? new DOMException('mainserver_timeout', 'TimeoutError'));
+              },
+              { once: true }
+            );
+          }),
+      })) as typeof fetch;
+
+      const requestPromise = requestMainserverJson({
+        url: '/timeout-body',
+        fetch: fetchMock,
+        timeoutMs: 50,
+      }).catch((error: unknown) => error);
+
+      await vi.advanceTimersByTimeAsync(51);
+
+      await expect(requestPromise).resolves.toMatchObject({
+        code: 'mainserver_timeout',
+        message: 'mainserver_timeout',
+        name: 'MainserverApiError',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('translates timeouts that happen while reading a non-ok error body', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => ({
+        ok: false,
+        status: 503,
+        json: () =>
+          new Promise((_, reject) => {
+            init?.signal?.addEventListener(
+              'abort',
+              () => {
+                reject(new DOMException('mainserver_timeout', 'AbortError'));
+              },
+              { once: true }
+            );
+          }),
+      })) as typeof fetch;
+
+      const requestPromise = requestMainserverJson({
+        url: '/timeout-error-body',
+        fetch: fetchMock,
+        timeoutMs: 50,
+      }).catch((error: unknown) => error);
+
+      await vi.advanceTimersByTimeAsync(51);
+
+      await expect(requestPromise).resolves.toMatchObject({
+        code: 'mainserver_timeout',
+        message: 'mainserver_timeout',
+        name: 'MainserverApiError',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('supports caller-provided abort signals even when AbortSignal.any is unavailable', async () => {
+    const originalAbortSignalAny = AbortSignal.any;
+    Object.defineProperty(AbortSignal, 'any', {
+      configurable: true,
+      value: undefined,
+    });
+
+    const callerAbort = new AbortController();
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      callerAbort.abort(new DOMException('caller_cancelled', 'AbortError'));
+      await Promise.resolve();
+      throw init?.signal?.reason ?? new DOMException('caller_cancelled', 'AbortError');
+    });
+
+    try {
+      await expect(
+        requestMainserverJson({
+          url: '/caller-abort',
+          fetch: fetchMock as typeof fetch,
+          init: {
+            signal: callerAbort.signal,
+          },
+        })
+      ).rejects.toMatchObject({
+        name: 'AbortError',
+        message: 'caller_cancelled',
+      });
+    } finally {
+      Object.defineProperty(AbortSignal, 'any', {
+        configurable: true,
+        value: originalAbortSignalAny,
+      });
+    }
+  });
+
   it('preserves tuple and Headers instances when merging request headers', async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'news-1', title: 'Erste' } }), { status: 200 }));
     const headerClient = createMainserverCrudClient<

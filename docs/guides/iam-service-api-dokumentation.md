@@ -114,6 +114,23 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
 - `POST /api/v1/iam/legal-texts`
 - `PATCH /api/v1/iam/legal-texts/{legalTextVersionId}`
 
+### Contents
+
+- `GET /api/v1/iam/contents`
+  - Query: `page`, `pageSize`, `q`, `type`, `status`, `sortBy`, `sortDirection`, `visibleType`
+  - `/admin/content` verwendet diese Route als einzige führende Listenquelle.
+  - Für Mainserver-gestützte Typen (`news.article`, `events.event-record`, `poi.point-of-interest`) antwortet der Host aus der persistierten Listenprojektion `iam.content_list_projection`; der Browser lädt dafür keine separaten Vollscans über `mainserver/news`, `mainserver/events` oder `mainserver/poi`.
+  - Gemischte Listen aus lokalen IAM-Inhalten und Mainserver-Projektionen werden serverseitig zusammengeführt, danach gemeinsam sortiert und paginiert.
+  - Für Mainserver-Typen ist `status` in der Übersicht deterministisch auf `published` begrenzt; nicht unterstützte Statuswerte liefern für diese Teilmenge eine leere Liste statt eines endlosen Ladezustands.
+  - Der Response kann zusätzliche Metadaten zur Projektionsfrische enthalten: `mainserverSyncStates`, `hasStaleMainserverContent`, `hasBlockingSyncGap`, `hasRunningMainserverSync`.
+  - Die Listenroute stößt keinen synchronen Mainserver-Refresh mehr an. Wenn ein Snapshot veraltet ist, läuft der Sync dedupliziert im Hintergrund weiter.
+  - Existiert bereits ein letzter erfolgreicher Snapshot, bleibt dieser bei Sync-Fehlern lesbar; existiert noch nie ein Snapshot für einen angefragten Mainserver-Typ, liefert die Route einen regulären Listenfehler.
+- `POST /api/v1/iam/contents/refresh`
+  - Body: `visibleTypes?: string[]`, optional `force?: boolean`
+  - Startet einen deduplizierten serverseitigen Refresh für die betroffenen Mainserver-Typen.
+  - Antwortet mit einem stabilen Statusvertrag: `accepted`, `already_running`, `completed`, `failed`.
+  - Der Endpunkt ist für die manuelle Aktualisierung von `/admin/content` gedacht und ersetzt keinen Listen-Refetch.
+
 ### Admin
 
 - `POST /api/v1/iam/admin/reconcile` (Platzhalter, `501`)

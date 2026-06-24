@@ -67,14 +67,15 @@ test.describe('events and POI plugins', () => {
     await expectEventOrPoiEditorReady(page, '/admin/events/new');
     await page.locator('#event-title').fill('Stadtfest');
     await page.locator('#event-category').fill('Kultur');
+    await page.locator('#event-poi').fill('Rathaus');
+    await page.getByRole('button', { name: /Rathaus\s*poi-1/ }).click();
     await page.getByRole('tab', { name: /Inhalt|events\.detailTabs\.content\.title/ }).click();
     await page.locator('#event-description').fill('Sommerfest in der Innenstadt');
     await page.locator('#event-date-start').fill('2026-04-14T09:30');
     await page.locator('#event-street').fill('Marktplatz');
     await page.locator('#event-city').fill('Musterhausen');
-    await page.locator('#event-email').fill('events@example.com');
+    await page.locator('#event-contact-email').fill('events@example.com');
     await page.locator('#event-url').fill('https://example.com/event');
-    await page.locator('#event-poi').selectOption('poi-1');
     await page.getByRole('button', { name: /Speichern|events\.actions\.save/ }).click();
     await page.getByRole('tab', { name: /Basis|events\.detailTabs\.basis\.title/ }).click();
     await page.locator('#event-title').fill('Stadtfest aktualisiert');

@@ -157,6 +157,18 @@ export const contentENResources = {
     accessLoadError:
       'The global content context could not be loaded completely. Per-item states remain available.',
   },
+  sync: {
+    refresh: 'Refresh',
+    refreshing: 'Refreshing ...',
+    running: 'Mainserver content is currently synchronizing in the background.',
+    runningWithSnapshot:
+      'Mainserver content is currently synchronizing in the background. The last successful snapshot from {{value}} is still shown.',
+    stale:
+      'The displayed Mainserver content comes from the last successful sync at {{value}}. A background refresh was started.',
+    staleWithError:
+      'The displayed Mainserver content comes from the last successful sync at {{value}}. The last background refresh reported {{errorCode}}.',
+    fresh: 'Last successful Mainserver sync: {{value}}.',
+  },
   errors: {
     forbidden: 'You do not have sufficient permissions for this content action.',
     csrfValidationFailed: 'Security validation failed. Please reload the page and try again.',

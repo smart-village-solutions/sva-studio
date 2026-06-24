@@ -183,15 +183,19 @@ Kernidee:
 
 ### 6. Content-Management
 
-Host-seitiges Kernmodell für Inhalte:
+Host-seitiges Kernmodell für Inhalte und ihre führende Listenprojektion:
 
 - `iam.contents`
 - `iam.content_history`
+- `iam.content_list_projection`
+- `iam.content_list_projection_sync_state`
 
 Kernidee:
 
-- `contents` hält den aktuellen Stand.
+- `contents` hält den aktuellen Stand lokaler IAM-Inhalte.
 - `content_history` hält Historisierung und Änderungsverlauf.
+- `content_list_projection` ist das persistierte führende Read-Model für `/admin/content`; lokale IAM-Inhalte werden triggerbasiert gespiegelt, Mainserver-Typen serverseitig materialisiert. Mainserver-Projektionen sind pro Sichtbarkeits-Scope eindeutig, damit derselbe Mainserver-Datensatz für unterschiedliche Organisationen oder Benutzer-Sichten parallel materialisiert werden kann.
+- `content_list_projection_sync_state` hält pro Instanz und Mainserver-Content-Typ den letzten erfolgreichen beziehungsweise fehlgeschlagenen Refresh-Lauf.
 - `contents` trägt zusätzlich einen eigenen Lösch-Lifecycle-Zustand, damit tenantweite Account-Löschregeln in V1 referenzwahrend auf Inhalte abgebildet werden können.
 
 ### 7. Media-Management

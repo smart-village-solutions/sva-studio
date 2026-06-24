@@ -40,6 +40,12 @@ describe('permission-store queries', () => {
           access_scope: 'organization',
           effect: 'allow',
         },
+        {
+          permission_key: 'roles.read',
+          organization_id: null,
+          access_scope: 'all',
+          effect: 'allow',
+        },
       ],
     });
 
@@ -62,6 +68,12 @@ describe('permission-store queries', () => {
         organizationId: ORGANIZATION_ID,
         effect: 'allow',
         accessScope: 'organization',
+      },
+      {
+        action: 'roles.read',
+        resourceType: 'roles',
+        effect: 'allow',
+        accessScope: 'all',
       },
     ]);
     expect(state.query).toHaveBeenCalledWith(
@@ -87,6 +99,12 @@ describe('permission-store queries', () => {
         {
           permission_key: 'content.read',
           organization_id: ORGANIZATION_ID,
+          access_scope: 'all',
+          effect: 'allow',
+        },
+        {
+          permission_key: 'news.read',
+          organization_id: ORGANIZATION_ID,
           access_scope: null,
           effect: 'allow',
         },
@@ -108,6 +126,12 @@ describe('permission-store queries', () => {
       {
         action: 'content.read',
         resourceType: 'content',
+        effect: 'allow',
+        accessScope: 'all',
+      },
+      {
+        action: 'news.read',
+        resourceType: 'news',
         organizationId: ORGANIZATION_ID,
         effect: 'allow',
       },

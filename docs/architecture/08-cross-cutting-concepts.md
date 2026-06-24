@@ -529,6 +529,7 @@ Referenzen:
 - Die Mainserver-Integration ist eine reine Server-Side-Integration; es gibt keinen generischen Browser-Proxy auf den externen GraphQL-Endpunkt.
 - Fachadapter wie News stellen getypte, eng zugeschnittene Fassaden bereit; Browser-Plugins sprechen nur hosteigene HTTP-Endpunkte und importieren keine Mainserver-Servermodule.
 - Events und POI folgen demselben Host-Fassadenmuster. Der Event-Editor bezieht POI-Auswahldaten über `/api/v1/mainserver/poi`, nicht über einen direkten Import von `@sva/plugin-poi`.
+- Die Übersicht `/admin/content` nutzt `GET /api/v1/iam/contents` als host-geführten Read-Model-Vertrag. Browser-seitige Vollscans über mehrere Mainserver-Listen sind für diesen Pfad nicht zulässig; lokale IAM-Inhalte werden triggerbasiert in `iam.content_list_projection` gespiegelt und Mainserver-Typen serverseitig in dieselbe Projektion refresht.
 - `apps/sva-studio-react` bleibt bewusst Host für TanStack-`createServerFn`-Bindings, Request-Matching und die Dispatch-Reihenfolge im Server-Entry. Diese Transport- und Framework-Bindung ist keine fachliche Package-Ownership.
 - Organisationsgebundene Mainserver-Credentials werden verschlüsselt in einem dedizierten IAM-Speicher gehalten; persönliche Keycloak-Credentials (`mainserverUserApplicationId`, `mainserverUserApplicationSecret`) bleiben nur Fallback bei `org_or_personal`.
 - Die Studio-Datenbank hält nur instanzbezogene Endpunktkonfiguration (`graphql_base_url`, `oauth_token_url`, Prüfstatus) in `iam.instance_integrations`.

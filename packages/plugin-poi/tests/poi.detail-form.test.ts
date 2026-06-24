@@ -21,6 +21,7 @@ describe('poi.detail-form', () => {
         mobileDescription: 'Kurz',
         active: true,
         categoryName: 'Verwaltung',
+        categories: [{ name: 'Verwaltung' }, { name: 'Service' }],
         addresses: [{ street: 'Rathausplatz 1', city: 'Essen' }],
         openingHours: [{ weekday: 'Mo', timeFrom: '08:00', open: true }],
         webUrls: [{ url: 'https://example.test' }],
@@ -28,6 +29,9 @@ describe('poi.detail-form', () => {
       } satisfies PoiContentItem)
     ).toMatchObject({
       name: 'Rathaus',
+      basis: {
+        categories: ['Verwaltung', 'Service'],
+      },
       content: {
         description: 'Zentrale',
         mobileDescription: 'Kurz',
@@ -140,7 +144,7 @@ describe('poi.detail-form', () => {
         {
           name: ' Stadtpark ',
           basis: {
-            categoryName: 'Freizeit',
+            categories: ['Freizeit', 'Kultur', 'Freizeit'],
             active: true,
           },
           content: {
@@ -209,6 +213,7 @@ describe('poi.detail-form', () => {
       description: 'Ein schöner Ort',
       mobileDescription: 'Kurz',
       categoryName: 'Freizeit',
+      categories: [{ name: 'Freizeit' }, { name: 'Kultur' }],
       addresses: [
         {
           addition: 'Nordtor',
@@ -276,7 +281,7 @@ describe('poi.detail-form', () => {
         {
           name: 'Museum',
           basis: {
-            categoryName: '',
+            categories: [],
             active: true,
           },
           content: {
@@ -311,7 +316,7 @@ describe('poi.detail-form', () => {
         {
           name: 'Test POI',
           basis: {
-            categoryName: '',
+            categories: [],
             active: false,
           },
           content: {
@@ -402,7 +407,6 @@ describe('poi.detail-form', () => {
       addresses: [{ geoLocation: { latitude: 52.5, longitude: undefined } }],
       openingHours: [{ weekday: 'MO', sortNumber: 0, open: false, useYear: false }],
       webUrls: [{ url: 'https://example.test', description: 'Start' }],
-      operatingCompany: {},
       priceInformations: [{ amount: 0, groupPrice: false, ageFrom: 0, minChildrenCount: 0 }],
       mediaContents: [],
       certificates: [],
@@ -416,7 +420,7 @@ describe('poi.detail-form', () => {
       mapPoiDetailFormValuesToInput(
         {
           name: 'Test POI',
-          basis: { categoryName: '', active: true },
+          basis: { categories: [], active: true },
           content: {
             description: '',
             mobileDescription: '',
@@ -443,9 +447,80 @@ describe('poi.detail-form', () => {
         {}
       )
     ).toMatchObject({
-      operatingCompany: {},
       accessibilityInformation: {},
     });
+    expect(
+      mapPoiDetailFormValuesToInput(
+        {
+          name: 'Test POI',
+          basis: { categories: [], active: true },
+          content: {
+            description: '',
+            mobileDescription: '',
+            addresses: [],
+            location: { name: '', department: '', district: '', regionName: '', state: '', geoLocation: { latitude: '', longitude: '' } },
+            contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            openingHours: [],
+            webUrls: [],
+            operator: {
+              name: '',
+              address: { addition: '', street: '', zip: '', city: '', kind: '', geoLocation: { latitude: '', longitude: '' } },
+              contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            },
+            prices: [],
+            mediaContents: [],
+            certificates: [],
+            accessibilityInformation: { description: '', types: '', urls: [] },
+            tagsText: '',
+            payloadText: '{}',
+          },
+          media: { images: [] },
+          settings: {},
+        },
+        {}
+      ),
+    ).not.toHaveProperty('operatingCompany');
+  });
+
+  it('omits an empty operating company from the serialized payload', () => {
+    const mutation = mapPoiDetailFormValuesToInput(
+      {
+        name: 'Test POI',
+        basis: { categories: [], active: true },
+        content: {
+          description: '',
+          mobileDescription: '',
+          addresses: [],
+          location: {
+            name: '',
+            department: '',
+            district: '',
+            regionName: '',
+            state: '',
+            geoLocation: { latitude: '', longitude: '' },
+          },
+          contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+          openingHours: [],
+          webUrls: [],
+          operator: {
+            name: '',
+            address: { addition: '', street: '', zip: '', city: '', kind: '', geoLocation: { latitude: '', longitude: '' } },
+            contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+          },
+          prices: [],
+          mediaContents: [],
+          certificates: [],
+          accessibilityInformation: { description: '', types: '', urls: [] },
+          tagsText: '',
+          payloadText: '{}',
+        },
+        media: { images: [] },
+        settings: {},
+      },
+      {}
+    );
+
+    expect(mutation).not.toHaveProperty('operatingCompany');
   });
 
   it('serializes an explicit mobile description clearing value', () => {
@@ -454,7 +529,7 @@ describe('poi.detail-form', () => {
         {
           name: 'Test POI',
           basis: {
-            categoryName: '',
+            categories: [],
             active: true,
           },
           content: {
@@ -500,7 +575,7 @@ describe('poi.detail-form', () => {
         {
           name: 'Test POI',
           basis: {
-            categoryName: 'Freizeit',
+            categories: ['Freizeit'],
             active: true,
           },
           content: {
@@ -659,7 +734,7 @@ describe('poi.detail-form', () => {
         {
           name: 'Test POI',
           basis: {
-            categoryName: '',
+            categories: [],
             active: true,
           },
           content: {
@@ -705,7 +780,7 @@ describe('poi.detail-form', () => {
       mapPoiDetailFormValuesToInput(
         {
           name: 'Test POI',
-          basis: { categoryName: '', active: true },
+          basis: { categories: [], active: true },
           content: {
             description: '',
             mobileDescription: '',
@@ -750,7 +825,7 @@ describe('poi.detail-form', () => {
       mapPoiDetailFormValuesToInput(
         {
           name: 'Test POI',
-          basis: { categoryName: '', active: true },
+          basis: { categories: [], active: true },
           content: {
             description: '',
             mobileDescription: '',
@@ -793,7 +868,7 @@ describe('poi.detail-form', () => {
       {
         name: 'Test POI',
         basis: {
-          categoryName: '',
+          categories: [],
           active: true,
         },
         content: {

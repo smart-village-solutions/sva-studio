@@ -99,6 +99,96 @@ test.describe('news plugin', () => {
     await expect(page.getByRole('tab', { selected: true, name: /Einstellungen|news\.tabs\.settings/ })).toBeVisible();
   });
 
+  test('loads the content overview via paginated IAM requests without browser-side mainserver list scans', async ({ page }) => {
+    const contentListRequests: string[] = [];
+    let mainserverNewsListCalls = 0;
+
+    await page.route('**/auth/me', async (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authenticatedUser) })
+    );
+    await page.route('**/iam/me/permissions?**', async (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(permissionPayload) })
+    );
+    await page.route('**/api/v1/iam/contents**', async (route) => {
+      const requestUrl = new URL(route.request().url());
+      contentListRequests.push(requestUrl.toString());
+      const pageParam = Number.parseInt(requestUrl.searchParams.get('page') ?? '1', 10);
+      const items =
+        pageParam === 1
+          ? Array.from({ length: 25 }, (_, index) => ({
+              id: `news-${index + 1}`,
+              contentType: 'news.article',
+              title: `News ${index + 1}`,
+              status: 'published',
+              author: 'Editor One',
+              createdAt: '2026-04-13T12:10:00.000Z',
+              updatedAt: `2026-04-13T12:${String(index).padStart(2, '0')}:00.000Z`,
+              publishedAt: '2026-04-13T12:10:00.000Z',
+              access: {
+                state: 'editable',
+                canRead: true,
+                canCreate: true,
+                canUpdate: true,
+                organizationIds: ['org-1'],
+                sourceKinds: ['direct_role'],
+              },
+            }))
+          : Array.from({ length: 25 }, (_, index) => ({
+              id: `news-${index + 26}`,
+              contentType: 'news.article',
+              title: `News ${index + 26}`,
+              status: 'published',
+              author: 'Editor One',
+              createdAt: '2026-04-13T12:10:00.000Z',
+              updatedAt: `2026-04-13T13:${String(index).padStart(2, '0')}:00.000Z`,
+              publishedAt: '2026-04-13T12:10:00.000Z',
+              access: {
+                state: 'editable',
+                canRead: true,
+                canCreate: true,
+                canUpdate: true,
+                organizationIds: ['org-1'],
+                sourceKinds: ['direct_role'],
+              },
+            }));
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: items,
+          pagination: {
+            page: pageParam,
+            pageSize: 25,
+            total: 250,
+          },
+        }),
+      });
+    });
+    await page.route('**/api/v1/mainserver/news**', async (route) => {
+      mainserverNewsListCalls += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [], pagination: createPagination(0) }),
+      });
+    });
+
+    await gotoHomeAsAuthenticatedUser(page);
+    await navigateClientSide(page, '/admin/content');
+    await expectContentOverviewReady(page);
+    await expect.poll(() => contentListRequests.length).toBeGreaterThan(0);
+    expect(contentListRequests.every((requestUrl) => new URL(requestUrl).searchParams.get('page') === '1')).toBe(true);
+    expect(mainserverNewsListCalls).toBe(0);
+
+    await page.getByRole('button', { name: /Weiter|content\.pagination\.next/ }).click();
+
+    await expect.poll(() =>
+      contentListRequests.some((requestUrl) => new URL(requestUrl).searchParams.get('page') === '2')
+    ).toBe(true);
+    expect(mainserverNewsListCalls).toBe(0);
+  });
+
   test.describe('unauthenticated access', () => {
     test.use({ storageState: unauthenticatedStorageState });
     test('blocks unauthenticated access to admin news routes', async ({ page }) => {

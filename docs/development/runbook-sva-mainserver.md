@@ -28,6 +28,34 @@ Dieses Runbook beschreibt Betrieb, Fehlerdiagnose und Notfallmaßnahmen für die
 | `graphql_error` | GraphQL antwortet mit fachlichem Fehlerarray | Schema-/Resolver-Fehler upstream | Response-Details und Snapshot-Drift prüfen |
 | `invalid_response` | OAuth2- oder GraphQL-Body verletzt den erwarteten Contract | HTML statt JSON, unvollständige Antwort, Schema-Drift | Upstream-Response und Snapshot prüfen |
 
+## Host-geführte Inhaltsübersicht
+
+Die Admin-Route `/admin/content` lädt Mainserver-Inhalte nicht mehr browserseitig über getrennte Listen-Scans. Führender Vertrag ist `GET /api/v1/iam/contents`; der Host liest dafür ausschließlich aus der persistierten Content-Listenprojektion `iam.content_list_projection`.
+
+Betriebsrelevante Regeln:
+
+- Browser-seitige Vollscans über `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi` sind für die Übersicht kein Sollzustand mehr.
+- Das Listen-Read-Model liegt in `iam.content_list_projection`; der Mainserver-Sync- und Fehlerstatus pro Typ und Instanz liegt in `iam.content_list_projection_sync_state`.
+- Lokale IAM-Inhalte bleiben triggerbasiert sofort in der Projektion sichtbar.
+- Mainserver-Typen (`news.article`, `events.event-record`, `poi.point-of-interest`) werden serverseitig im Hintergrund synchronisiert; der Listenrequest selbst stößt keinen synchronen Full-Refresh mehr an.
+- Ein Mainserver-Typ gilt aktuell für fünf Minuten als frisch. Ist der Snapshot älter, markiert der Host die Liste als veraltet und startet dedupliziert einen Hintergrund-Sync.
+- Existiert bereits ein letzter erfolgreicher Snapshot, bleibt dieser auch bei Sync-Fehlern lesbar. `GET /api/v1/iam/contents` liefert dann den letzten Stand plus Diagnosemetadaten statt eines blockierenden Ladepfads.
+- Existiert für einen angefragten Mainserver-Typ noch nie ein erfolgreicher Snapshot, antwortet `GET /api/v1/iam/contents` weiterhin mit einem regulären Listenfehler.
+- Der Listenresponse enthält projektionsbezogene Metadaten wie `lastSucceededAt`, `lastStartedAt`, `lastFailedAt`, `lastErrorCode`, `isStale` und `isSyncRunning`.
+- Die Übersicht kann einen manuellen Refresh über `POST /api/v1/iam/contents/refresh` auslösen. Dieser Endpunkt startet oder dedupliziert einen serverseitigen Sync; er umgeht keinen Browser- oder HTTP-Cache.
+- Die Listen-Pagination der Übersicht ist serverseitig führend. Große Bestände müssen sich daher zuerst über die Antwortzeiten von `/api/v1/iam/contents` und erst danach über einzelne Mainserver-Adapter diagnostizieren lassen.
+- Die Detail- und Mutationspfade der Fachplugins bleiben unverändert auf den jeweiligen Host-Fassaden unter `/api/v1/mainserver/*`.
+- Nach erfolgreichen hostgeführten Mainserver-Mutationen für News, Events und POI stößt der Host direkt einen typbezogenen Projektions-Refresh an, damit ein anschließender Refetch auf `/admin/content` den neuen Stand sieht.
+
+### Schnelldiagnose für `/admin/content`
+
+1. Im Browser-Netzwerk prüfen, dass die Übersicht `GET /api/v1/iam/contents` verwendet und keine direkte Listenserie über `mainserver/news`, `mainserver/events` oder `mainserver/poi` startet.
+2. Bei erfolgreicher Listenantwort die Response-Metadaten `mainserverSyncStates`, `hasStaleMainserverContent` und `hasRunningMainserverSync` prüfen.
+3. Bei Listenfehlern zuerst den Host-Response von `/api/v1/iam/contents` prüfen und unterscheiden, ob kein Snapshot vorliegt oder ein harter Host-/DB-Fehler vorliegt.
+4. Erst bei bestätigtem Mainserver-Anteil die zugehörigen Adapterpfade und ihre Fehlercodes (`database_unavailable`, `network_error`, `graphql_error`, `invalid_response`) korrelieren.
+5. Bei gemischten Listen (`visibleType` enthält lokale und Mainserver-Typen) die lokale IAM-Antwort nicht separat als alternative Listenquelle interpretieren; führend bleibt die aggregierte Host-Antwort.
+6. Bei manuell ausgelöstem Refresh zusätzlich den Statusvertrag von `POST /api/v1/iam/contents/refresh` prüfen: `accepted`, `already_running`, `completed` oder `failed`.
+
 ## News-Operationen
 
 Das News-Plugin nutzt produktiv keine lokalen IAM-Content-Datensätze mehr. Der Browser ruft ausschließlich die hostgeführte Fassade unter `/api/v1/mainserver/news` und `/api/v1/mainserver/news/$newsId` auf; die App prüft Session, Instanzkontext, lokale Content-Primitive und Mainserver-Credentials, bevor ein Upstream-Call erfolgt.

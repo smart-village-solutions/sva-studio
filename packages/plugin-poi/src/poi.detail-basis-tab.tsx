@@ -1,10 +1,11 @@
 import type React from 'react';
 import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { Checkbox, Input, StudioField, StudioFormSummaryErrors, getStudioFormFieldProps } from '@sva/studio-ui-react';
-import { useFormContext, useWatch, type FieldError } from 'react-hook-form';
+import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
 
+import { PoiCategoryMultiselect } from './poi.category-multiselect.js';
 import type { PoiDetailFormValues } from './poi.detail-form.js';
-import type { PoiContentItem } from './poi.types.js';
+import type { PoiCategoryOption, PoiContentItem } from './poi.types.js';
 
 const formatMetaDate = (value?: string) => (value ? formatDateTimeInEditorTimeZone(value) ?? value : '--.--.-- --:--');
 
@@ -36,11 +37,25 @@ const translateFieldError = (error: FieldError | undefined, pt: (key: string) =>
   };
 };
 
+const readCategoryFieldError = (value: unknown): FieldError | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+
+  return 'message' in value || 'type' in value ? (value as FieldError) : undefined;
+};
+
 export function PoiDetailBasisTab({
+  availableCategories,
+  categoryOptionsError,
+  categoryOptionsLoading,
   loadedItem,
   mode,
   pt,
 }: Readonly<{
+  availableCategories: readonly PoiCategoryOption[];
+  categoryOptionsError?: string | null;
+  categoryOptionsLoading: boolean;
   loadedItem: PoiContentItem | null;
   mode: 'create' | 'edit';
   pt: (key: string) => string;
@@ -51,15 +66,15 @@ export function PoiDetailBasisTab({
     setValue,
   } = useFormContext<PoiDetailFormValues>();
   const name = useWatch({ control, name: 'name' }) ?? '';
-  const categoryName = useWatch({ control, name: 'basis.categoryName' }) ?? '';
   const active = useWatch({ control, name: 'basis.active' }) ?? true;
   const nameField = getStudioFormFieldProps({
     id: 'poi-name',
     error: translateFieldError(errors.name, pt),
   });
   const categoryField = getStudioFormFieldProps({
-    id: 'poi-category',
-    error: translateFieldError(errors.basis?.categoryName, pt),
+    id: 'poi-categories',
+    error: translateFieldError(readCategoryFieldError(errors.basis?.categories), pt),
+    hasDescription: true,
   });
   const summaryErrors = collectSummaryErrors([nameField, categoryField]);
 
@@ -75,11 +90,30 @@ export function PoiDetailBasisTab({
             onChange={(event) => setValue('name', event.target.value, { shouldDirty: true })}
           />
         </StudioField>
-        <StudioField {...categoryField} label={pt('fields.categoryName')}>
-          <Input
-            {...categoryField.controlProps}
-            value={categoryName}
-            onChange={(event) => setValue('basis.categoryName', event.target.value, { shouldDirty: true })}
+        <StudioField
+          {...categoryField}
+          label={pt('fields.categories')}
+          description={pt('fields.categoriesHelp')}
+        >
+          <Controller
+            name="basis.categories"
+            control={control}
+            render={({ field }) => (
+              <PoiCategoryMultiselect
+                availableCategories={availableCategories}
+                errorMessage={categoryOptionsError ?? undefined}
+                loading={categoryOptionsLoading}
+                helpText={pt('fields.categoriesHelp')}
+                inputId="poi-category"
+                inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
+                loadingText={pt('messages.categoryOptionsLoading')}
+                searchLabel={pt('fields.categoriesSearch')}
+                addLabel={pt('actions.addCategory')}
+                removeLabel={(name) => pt('actions.removeCategory').replace('{{name}}', name)}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
           />
         </StudioField>
         <StudioField id="poi-active" label={pt('fields.active')}>

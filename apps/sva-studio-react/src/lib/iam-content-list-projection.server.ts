@@ -471,7 +471,26 @@ FROM jsonb_to_recordset($1::jsonb) AS item(
   last_audit_event_ref text,
   source_entity_type text,
   source_entity_id text
-);
+)
+ON CONFLICT ON CONSTRAINT content_list_projection_scope_key
+DO UPDATE SET
+  id = EXCLUDED.id,
+  title = EXCLUDED.title,
+  published_at = EXCLUDED.published_at,
+  publish_from = EXCLUDED.publish_from,
+  publish_until = EXCLUDED.publish_until,
+  created_at = EXCLUDED.created_at,
+  created_by = EXCLUDED.created_by,
+  updated_at = EXCLUDED.updated_at,
+  updated_by = EXCLUDED.updated_by,
+  author_display_name = EXCLUDED.author_display_name,
+  payload_json = EXCLUDED.payload_json,
+  status = EXCLUDED.status,
+  validation_state = EXCLUDED.validation_state,
+  history_ref = EXCLUDED.history_ref,
+  current_revision_ref = EXCLUDED.current_revision_ref,
+  last_audit_event_ref = EXCLUDED.last_audit_event_ref,
+  projection_updated_at = NOW();
         `,
         [
           JSON.stringify(

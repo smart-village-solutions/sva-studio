@@ -128,6 +128,32 @@ type MainserverProjectionRowInput = Pick<
     sourceEntityId: string;
   }>;
 
+const buildProjectionScopeKey = (
+  row: MainserverProjectionRowInput,
+  fallbackOwnerSubjectId: string
+): string =>
+  [
+    row.instanceId,
+    row.contentType,
+    row.sourceEntityType,
+    row.sourceEntityId,
+    row.organizationId ?? '',
+    row.ownerSubjectId ?? (row.organizationId ? '' : fallbackOwnerSubjectId),
+  ].join('::');
+
+const dedupeProjectionRows = (
+  rows: readonly MainserverProjectionRowInput[],
+  fallbackOwnerSubjectId: string
+): readonly MainserverProjectionRowInput[] => {
+  const deduped = new Map<string, MainserverProjectionRowInput>();
+
+  for (const row of rows) {
+    deduped.set(buildProjectionScopeKey(row, fallbackOwnerSubjectId), row);
+  }
+
+  return [...deduped.values()];
+};
+
 const mapProjectionRow = (row: ProjectionRow): IamContentListItem => ({
   id: row.id,
   instanceId: row.instance_id,
@@ -344,6 +370,8 @@ const replaceMainserverProjectionRows = async (
   organizationId: string | undefined,
   rows: readonly MainserverProjectionRowInput[]
 ): Promise<void> => {
+  const dedupedRows = dedupeProjectionRows(rows, keycloakSubject);
+
   await withInstanceScopedDb(instanceId, async (client) => {
     await client.query(
       `
@@ -366,7 +394,7 @@ WHERE instance_id = $1
       [instanceId, contentType, organizationId ?? null, keycloakSubject]
     );
 
-    if (rows.length > 0) {
+    if (dedupedRows.length > 0) {
       await client.query(
         `
 INSERT INTO iam.content_list_projection (
@@ -447,7 +475,7 @@ FROM jsonb_to_recordset($1::jsonb) AS item(
         `,
         [
           JSON.stringify(
-            rows.map((row) => ({
+            dedupedRows.map((row) => ({
               id: row.id,
               instance_id: row.instanceId,
               organization_id: row.organizationId ?? null,
@@ -501,7 +529,7 @@ DO UPDATE SET
   projected_count = EXCLUDED.projected_count,
   updated_at = NOW();
       `,
-      [instanceId, contentType, rows.length]
+      [instanceId, contentType, dedupedRows.length]
     );
   });
 };

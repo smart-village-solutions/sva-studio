@@ -1384,6 +1384,65 @@ describe('content list projection', () => {
     ]);
   });
 
+  it('deduplicates duplicate mainserver projection rows before insert', async () => {
+    state.listSvaMainserverEvents.mockResolvedValue({
+      data: [
+        {
+          id: 'event-duplicate-1',
+          title: 'Doppelte Veranstaltung',
+          contentType: 'events.event-record',
+          status: 'published',
+          dates: [],
+          recurringWeekdays: [],
+          categories: [],
+          addresses: [],
+          contacts: [],
+          urls: [],
+          mediaContents: [],
+          priceInformations: [],
+          tags: [],
+          visible: true,
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        },
+        {
+          id: 'event-duplicate-1',
+          title: 'Doppelte Veranstaltung',
+          contentType: 'events.event-record',
+          status: 'published',
+          dates: [],
+          recurringWeekdays: [],
+          categories: [],
+          addresses: [],
+          contacts: [],
+          urls: [],
+          mediaContents: [],
+          priceInformations: [],
+          tags: [],
+          visible: true,
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['events.event-record'],
+      force: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect(projectionInsertArgs).toHaveLength(1);
+    expect(JSON.parse(String(projectionInsertArgs?.[0] ?? '[]'))).toHaveLength(1);
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        content_type: 'events.event-record',
+        source_entity_id: 'event-duplicate-1',
+      }),
+    ]);
+  });
+
   it('returns deterministic refresh errors for missing instances, permission backend failures, and forbidden types', async () => {
     const missingInstanceResponse = await refreshProjectedContents(
       {

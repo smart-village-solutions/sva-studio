@@ -84,6 +84,28 @@ describe('content list projection', () => {
     }
   >;
   let projectionInsertArgs: readonly unknown[] | null;
+  let projectionInsertSql: string | null;
+  let simulateConcurrentProjectionConflict: boolean;
+
+  const buildScopeKey = (
+    row: Pick<
+      ProjectionRow,
+      | 'instance_id'
+      | 'source_system'
+      | 'source_entity_type'
+      | 'source_entity_id'
+      | 'organization_id'
+      | 'owner_subject_id'
+    >
+  ): string =>
+    [
+      row.instance_id,
+      row.source_system,
+      row.source_entity_type,
+      row.source_entity_id,
+      row.organization_id ?? '',
+      row.owner_subject_id ?? '',
+    ].join('::');
 
   const applyProjectionFilters = (text: string, values: readonly unknown[] | undefined): ProjectionRow[] => {
     const scopedInstanceId = String(values?.[0] ?? '');
@@ -144,6 +166,8 @@ describe('content list projection', () => {
     projectionRows = [];
     syncStates = new Map();
     projectionInsertArgs = null;
+    projectionInsertSql = null;
+    simulateConcurrentProjectionConflict = false;
     state.authorizeContentPrimitiveForUser.mockReset();
     state.resolveActorAccountId.mockReset();
     state.resolveEffectivePermissions.mockReset();
@@ -292,9 +316,9 @@ describe('content list projection', () => {
 
           if (text.includes('INSERT INTO iam.content_list_projection')) {
             projectionInsertArgs = values ?? null;
+            projectionInsertSql = text;
             const rows = JSON.parse(String(values?.[0] ?? '[]')) as Array<Record<string, unknown>>;
-            projectionRows.push(
-              ...(rows.map((row) => ({
+            const mappedRows = rows.map((row) => ({
                 id: String(row.id),
                 instance_id: String(row.instance_id),
                 organization_id: (row.organization_id as string | null) ?? null,
@@ -318,9 +342,42 @@ describe('content list projection', () => {
                 source_system: 'mainserver',
                 source_entity_type: String(row.source_entity_type),
                 source_entity_id: String(row.source_entity_id),
-              })) satisfies ProjectionRow[])
-            );
-            return { rows: [], rowCount: rows.length };
+              })) satisfies ProjectionRow[];
+
+            if (simulateConcurrentProjectionConflict && mappedRows.length > 0) {
+              projectionRows.push({
+                ...mappedRows[0],
+                id: 'concurrent-row',
+              });
+              simulateConcurrentProjectionConflict = false;
+            }
+
+            for (const row of mappedRows) {
+              const existingIndex = projectionRows.findIndex(
+                (candidate) => buildScopeKey(candidate) === buildScopeKey(row)
+              );
+
+              if (existingIndex >= 0) {
+                if (
+                  !text.includes(
+                    'ON CONFLICT ON CONSTRAINT content_list_projection_scope_key DO UPDATE'
+                  )
+                ) {
+                  const error = new Error(
+                    'duplicate key value violates unique constraint "content_list_projection_scope_key"'
+                  ) as Error & { code?: string };
+                  error.code = '23505';
+                  throw error;
+                }
+
+                projectionRows[existingIndex] = row;
+                continue;
+              }
+
+              projectionRows.push(row);
+            }
+
+            return { rows: [], rowCount: mappedRows.length };
           }
 
           if (text.includes('SELECT COUNT(*)::int AS total')) {
@@ -1380,6 +1437,109 @@ describe('content list projection', () => {
         organization_id: null,
         owner_subject_id: 'kc-user-1',
         source_entity_id: 'event-shared-1',
+      }),
+    ]);
+  });
+
+  it('deduplicates duplicate mainserver projection rows before insert', async () => {
+    state.listSvaMainserverEvents.mockResolvedValue({
+      data: [
+        {
+          id: 'event-duplicate-1',
+          title: 'Doppelte Veranstaltung',
+          contentType: 'events.event-record',
+          status: 'published',
+          dates: [],
+          recurringWeekdays: [],
+          categories: [],
+          addresses: [],
+          contacts: [],
+          urls: [],
+          mediaContents: [],
+          priceInformations: [],
+          tags: [],
+          visible: true,
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        },
+        {
+          id: 'event-duplicate-1',
+          title: 'Doppelte Veranstaltung',
+          contentType: 'events.event-record',
+          status: 'published',
+          dates: [],
+          recurringWeekdays: [],
+          categories: [],
+          addresses: [],
+          contacts: [],
+          urls: [],
+          mediaContents: [],
+          priceInformations: [],
+          tags: [],
+          visible: true,
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['events.event-record'],
+      force: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect(projectionInsertArgs).toHaveLength(1);
+    expect(JSON.parse(String(projectionInsertArgs?.[0] ?? '[]'))).toHaveLength(1);
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        content_type: 'events.event-record',
+        source_entity_id: 'event-duplicate-1',
+      }),
+    ]);
+  });
+
+  it('upserts mainserver projection rows when a concurrent write recreates the same scope', async () => {
+    simulateConcurrentProjectionConflict = true;
+    state.listSvaMainserverEvents.mockResolvedValue({
+      data: [
+        {
+          id: 'event-concurrent-1',
+          title: 'Konkurrierende Veranstaltung',
+          contentType: 'events.event-record',
+          status: 'published',
+          dates: [],
+          recurringWeekdays: [],
+          categories: [],
+          addresses: [],
+          contacts: [],
+          urls: [],
+          mediaContents: [],
+          priceInformations: [],
+          tags: [],
+          visible: true,
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['events.event-record'],
+      force: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect(projectionInsertSql).toContain(
+      'ON CONFLICT ON CONSTRAINT content_list_projection_scope_key'
+    );
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        content_type: 'events.event-record',
+        organization_id: 'org-1',
+        source_entity_id: 'event-concurrent-1',
       }),
     ]);
   });

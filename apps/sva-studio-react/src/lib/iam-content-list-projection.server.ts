@@ -124,9 +124,13 @@ type MainserverProjectionRowInput = Pick<
   | 'lastAuditEventRef'
 > &
   Readonly<{
-    sourceEntityType: string;
-    sourceEntityId: string;
-  }>;
+  sourceEntityType: string;
+  sourceEntityId: string;
+}>;
+
+type ProjectionDbClient = Readonly<{
+  query: (text: string, values?: readonly unknown[]) => Promise<unknown>;
+}>;
 
 const buildProjectionScopeKey = (
   row: MainserverProjectionRowInput,
@@ -363,18 +367,15 @@ DO UPDATE SET
   });
 };
 
-const replaceMainserverProjectionRows = async (
+const deleteMainserverProjectionRows = async (
+  client: ProjectionDbClient,
   instanceId: string,
   contentType: string,
-  keycloakSubject: string,
   organizationId: string | undefined,
-  rows: readonly MainserverProjectionRowInput[]
+  keycloakSubject: string
 ): Promise<void> => {
-  const dedupedRows = dedupeProjectionRows(rows, keycloakSubject);
-
-  await withInstanceScopedDb(instanceId, async (client) => {
-    await client.query(
-      `
+  await client.query(
+    `
 DELETE FROM iam.content_list_projection
 WHERE instance_id = $1
   AND source_system = 'mainserver'
@@ -390,13 +391,48 @@ WHERE instance_id = $1
       )
     )
   );
-      `,
-      [instanceId, contentType, organizationId ?? null, keycloakSubject]
-    );
+    `,
+    [instanceId, contentType, organizationId ?? null, keycloakSubject]
+  );
+};
 
-    if (dedupedRows.length > 0) {
-      await client.query(
-        `
+const buildMainserverProjectionPayloadJson = (
+  rows: readonly MainserverProjectionRowInput[],
+  keycloakSubject: string
+): string =>
+  JSON.stringify(
+    rows.map((row) => ({
+      id: row.id,
+      instance_id: row.instanceId,
+      organization_id: row.organizationId ?? null,
+      owner_subject_id: row.ownerSubjectId ?? (row.organizationId ? null : keycloakSubject),
+      content_type: row.contentType,
+      title: row.title,
+      published_at: row.publishedAt ?? null,
+      publish_from: row.publishFrom ?? null,
+      publish_until: row.publishUntil ?? null,
+      created_at: row.createdAt,
+      created_by: row.createdBy,
+      updated_at: row.updatedAt,
+      updated_by: row.updatedBy,
+      author_display_name: row.author,
+      payload_json: row.payload,
+      status: row.status,
+      validation_state: row.validationState,
+      history_ref: row.historyRef,
+      current_revision_ref: row.currentRevisionRef ?? '',
+      last_audit_event_ref: row.lastAuditEventRef ?? '',
+      source_entity_type: row.sourceEntityType,
+      source_entity_id: row.sourceEntityId,
+    }))
+  );
+
+const upsertMainserverProjectionRows = async (
+  client: ProjectionDbClient,
+  payloadJson: string
+): Promise<void> => {
+  await client.query(
+    `
 INSERT INTO iam.content_list_projection (
   id,
   instance_id,
@@ -491,41 +527,19 @@ DO UPDATE SET
   current_revision_ref = EXCLUDED.current_revision_ref,
   last_audit_event_ref = EXCLUDED.last_audit_event_ref,
   projection_updated_at = NOW();
-        `,
-        [
-          JSON.stringify(
-            dedupedRows.map((row) => ({
-              id: row.id,
-              instance_id: row.instanceId,
-              organization_id: row.organizationId ?? null,
-              owner_subject_id:
-                row.ownerSubjectId ?? (row.organizationId ? null : keycloakSubject),
-              content_type: row.contentType,
-              title: row.title,
-              published_at: row.publishedAt ?? null,
-              publish_from: row.publishFrom ?? null,
-              publish_until: row.publishUntil ?? null,
-              created_at: row.createdAt,
-              created_by: row.createdBy,
-              updated_at: row.updatedAt,
-              updated_by: row.updatedBy,
-              author_display_name: row.author,
-              payload_json: row.payload,
-              status: row.status,
-              validation_state: row.validationState,
-              history_ref: row.historyRef,
-              current_revision_ref: row.currentRevisionRef ?? '',
-              last_audit_event_ref: row.lastAuditEventRef ?? '',
-              source_entity_type: row.sourceEntityType,
-              source_entity_id: row.sourceEntityId,
-            }))
-          ),
-        ]
-      );
-    }
+    `,
+    [payloadJson]
+  );
+};
 
-    await client.query(
-      `
+const markMainserverProjectionSyncSucceeded = async (
+  client: ProjectionDbClient,
+  instanceId: string,
+  contentType: string,
+  projectedCount: number
+): Promise<void> => {
+  await client.query(
+    `
 INSERT INTO iam.content_list_projection_sync_state (
   instance_id,
   source_system,
@@ -547,8 +561,39 @@ DO UPDATE SET
   last_error_message = NULL,
   projected_count = EXCLUDED.projected_count,
   updated_at = NOW();
-      `,
-      [instanceId, contentType, dedupedRows.length]
+    `,
+    [instanceId, contentType, projectedCount]
+  );
+};
+
+const replaceMainserverProjectionRows = async (
+  instanceId: string,
+  contentType: string,
+  keycloakSubject: string,
+  organizationId: string | undefined,
+  rows: readonly MainserverProjectionRowInput[]
+): Promise<void> => {
+  const dedupedRows = dedupeProjectionRows(rows, keycloakSubject);
+  const projectionPayloadJson = buildMainserverProjectionPayloadJson(dedupedRows, keycloakSubject);
+
+  await withInstanceScopedDb(instanceId, async (client) => {
+    await deleteMainserverProjectionRows(
+      client,
+      instanceId,
+      contentType,
+      organizationId,
+      keycloakSubject
+    );
+
+    if (dedupedRows.length > 0) {
+      await upsertMainserverProjectionRows(client, projectionPayloadJson);
+    }
+
+    await markMainserverProjectionSyncSucceeded(
+      client,
+      instanceId,
+      contentType,
+      dedupedRows.length
     );
   });
 };

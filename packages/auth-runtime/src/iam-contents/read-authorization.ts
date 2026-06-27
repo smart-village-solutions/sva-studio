@@ -23,13 +23,15 @@ const buildReadActionForContentType = (contentType: string | undefined): Content
 
 export const isServerAuthorizationError = (response: Response): boolean => response.status >= 500;
 
-export const collectListReadActions = (query: IamContentListQuery): readonly ContentReadAction[] => {
+export const collectListReadActions = (
+  query: IamContentListQuery
+): readonly ContentReadAction[] => {
   const requestedContentTypes =
-    query.type && query.type.trim().length > 0
-      ? [query.type]
-      : (query.visibleTypes ?? []);
+    query.type && query.type.trim().length > 0 ? [query.type] : (query.visibleTypes ?? []);
 
-  const actions = requestedContentTypes.map((contentType) => buildReadActionForContentType(contentType));
+  const actions = requestedContentTypes.map((contentType) =>
+    buildReadActionForContentType(contentType)
+  );
   return actions.length > 0 ? [...new Set(actions)] : ['content.read'];
 };
 
@@ -65,50 +67,70 @@ export const resolveReadableContentScopes = async (
   return resolveReadableContentAuthorization(actor, sourcePermissions.permissions, query);
 };
 
-const readResourceTypeForAction = (action: ContentReadAction): string => action.split('.')[0] || 'content';
+const readResourceTypeForAction = (action: ContentReadAction): string =>
+  action.split('.')[0] || 'content';
 
-const isMatchingReadPermission = (permission: EffectivePermission, action: ContentReadAction): boolean =>
-  permission.action === action && permission.resourceType === readResourceTypeForAction(action) && !permission.resourceId;
+const isMatchingReadPermission = (
+  permission: EffectivePermission,
+  action: ContentReadAction
+): boolean =>
+  permission.action === action &&
+  permission.resourceType === readResourceTypeForAction(action) &&
+  !permission.resourceId;
 
-export const resolveReadableContentAuthorization = (
+const applyReadablePermission = (
+  permission: EffectivePermission,
+  actor: ResolvedContentActor['actor'],
+  state: {
+    allowGlobal: boolean;
+    allowOwn: boolean;
+    allowedOrganizationIds: Set<string>;
+  }
+): void => {
+  if (!permission.accessScope || permission.accessScope === 'all') {
+    state.allowGlobal = true;
+    return;
+  }
+
+  if (permission.accessScope === 'own') {
+    state.allowOwn = true;
+    return;
+  }
+
+  if (permission.accessScope === 'organization') {
+    state.allowOwn = true;
+    if (actor.activeOrganizationId && permission.organizationId) {
+      state.allowedOrganizationIds.add(permission.organizationId);
+    }
+  }
+};
+
+const resolveReadableContentAuthorization = (
   actor: ResolvedContentActor['actor'],
   permissions: readonly EffectivePermission[],
   query: IamContentListQuery
 ): LoadContentListAuthorizationInput => {
-  const allowedOrganizationIds = new Set<string>();
-  let allowGlobal = false;
-  let allowOwn = false;
+  const state = {
+    allowGlobal: false,
+    allowOwn: false,
+    allowedOrganizationIds: new Set<string>(),
+  };
   const readActions = collectListReadActions(query);
 
   for (const action of readActions) {
     for (const permission of permissions) {
-      if (!isMatchingReadPermission(permission, action)) {
-        continue;
-      }
-
-      if (!permission.accessScope || permission.accessScope === 'all') {
-        allowGlobal = true;
-        continue;
-      }
-
-      if (permission.accessScope === 'own') {
-        allowOwn = true;
-        continue;
-      }
-
-      if (permission.accessScope === 'organization') {
-        allowOwn = true;
-        if (actor.activeOrganizationId && permission.organizationId) {
-          allowedOrganizationIds.add(permission.organizationId);
-        }
+      if (isMatchingReadPermission(permission, action)) {
+        applyReadablePermission(permission, actor, state);
       }
     }
   }
 
   return {
-    allowGlobal,
-    allowOwn,
-    allowedOrganizationIds: [...allowedOrganizationIds].sort((left, right) => left.localeCompare(right)),
+    allowGlobal: state.allowGlobal,
+    allowOwn: state.allowOwn,
+    allowedOrganizationIds: [...state.allowedOrganizationIds].sort((left, right) =>
+      left.localeCompare(right)
+    ),
     ...(actor.actorAccountId ? { actorAccountId: actor.actorAccountId } : {}),
   };
 };

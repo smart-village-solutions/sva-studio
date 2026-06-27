@@ -20,11 +20,10 @@ const ORGANIZATION_OPTIONAL_CONTENT_TYPES = new Set([
   'poi.point-of-interest',
 ]);
 
-export const isOrganizationOptionalProjectionContentType = (contentType: string): boolean =>
-  ORGANIZATION_OPTIONAL_CONTENT_TYPES.has(contentType);
-
 const buildReadAction = (contentType: string): string =>
-  contentType === 'news.article' || contentType === 'events.event-record' || contentType === 'poi.point-of-interest'
+  contentType === 'news.article' ||
+  contentType === 'events.event-record' ||
+  contentType === 'poi.point-of-interest'
     ? `${contentType.split('.')[0] ?? 'content'}.read`
     : 'content.read';
 
@@ -34,7 +33,9 @@ const uniqueSortedStrings = (values: readonly string[]) =>
   [...new Set(values)].sort((left, right) => left.localeCompare(right, 'de'));
 
 const matchesReadPermission = (permission: EffectivePermission, action: string): boolean =>
-  permission.action === action && permission.resourceType === buildReadResourceType(action) && !permission.resourceId;
+  permission.action === action &&
+  permission.resourceType === buildReadResourceType(action) &&
+  !permission.resourceId;
 
 export const buildProjectionReadVisibilityRules = (
   contentTypes: readonly string[],
@@ -57,9 +58,13 @@ export const buildProjectionReadVisibilityRules = (
 
     return {
       contentType,
-      allowGlobal: matchingPermissions.some((permission) => !permission.organizationId && permission.accessScope !== 'own'),
+      allowGlobal: matchingPermissions.some(
+        (permission) => !permission.organizationId && permission.accessScope !== 'own'
+      ),
       allowOrganizationIds: uniqueSortedStrings(
-        matchingPermissions.flatMap((permission) => (permission.organizationId ? [permission.organizationId] : []))
+        matchingPermissions.flatMap((permission) =>
+          permission.organizationId ? [permission.organizationId] : []
+        )
       ),
       allowOwn: matchingPermissions.some(hasOwnFallback),
     };

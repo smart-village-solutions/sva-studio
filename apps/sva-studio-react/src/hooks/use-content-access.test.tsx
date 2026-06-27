@@ -58,6 +58,28 @@ vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
 }));
 
+type PermissionResponseEntry = {
+  readonly action: string;
+  readonly resourceType: string;
+  readonly organizationId?: string;
+  readonly provenance?: { readonly sourceKinds: readonly ('direct_role' | 'group_role')[] };
+};
+
+const stubPermissionResponse = (permissions: readonly PermissionResponseEntry[]) => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ permissions }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+};
+
+const expectPermissionRequest = (fetchMock: ReturnType<typeof vi.fn>, url: string) => {
+  expect(fetchMock).toHaveBeenCalledWith(url, undefined, {
+    timeoutMs: 10_000,
+  });
+};
+
 describe('useContentAccess', () => {
   beforeEach(() => {
     resetRequestSingleFlight();
@@ -109,33 +131,24 @@ describe('useContentAccess', () => {
   });
 
   it('summarizes fetched permissions into content access', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        permissions: [
-          {
-            action: 'content.read',
-            resourceType: 'content',
-            effect: 'allow',
-            organizationId: 'org-1',
-            provenance: { sourceKinds: ['direct_role'] },
-          },
-          {
-            action: 'content.updatePayload',
-            resourceType: 'content',
-            effect: 'allow',
-            organizationId: 'org-1',
-            provenance: { sourceKinds: ['group_role'] },
-          },
-          {
-            action: 'news.read',
-            resourceType: 'news',
-            effect: 'allow',
-          },
-        ],
-      }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubPermissionResponse([
+      {
+        action: 'content.read',
+        resourceType: 'content',
+        organizationId: 'org-1',
+        provenance: { sourceKinds: ['direct_role'] },
+      },
+      {
+        action: 'content.updatePayload',
+        resourceType: 'content',
+        organizationId: 'org-1',
+        provenance: { sourceKinds: ['group_role'] },
+      },
+      {
+        action: 'news.read',
+        resourceType: 'news',
+      },
+    ]);
 
     const { result } = renderHook(() => useContentAccess());
 
@@ -149,17 +162,15 @@ describe('useContentAccess', () => {
         organizationIds: ['org-1'],
         sourceKinds: ['direct_role', 'group_role'],
       });
-      expect(result.current.permissionActions).toEqual(['content.read', 'content.updatePayload', 'news.read']);
+      expect(result.current.permissionActions).toEqual([
+        'content.read',
+        'content.updatePayload',
+        'news.read',
+      ]);
       expect(result.current.error).toBeNull();
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/iam/me/permissions?instanceId=de-musterhausen',
-      undefined,
-      {
-        timeoutMs: 10_000,
-      }
-    );
+    expectPermissionRequest(fetchMock, '/iam/me/permissions?instanceId=de-musterhausen');
     expect(browserLoggerMock.debug).toHaveBeenCalledWith(
       'content_access_load_succeeded',
       expect.objectContaining({ operation: 'load_content_access', instance_id: 'de-musterhausen' })
@@ -170,26 +181,18 @@ describe('useContentAccess', () => {
     organizationContextMockValue.context = {
       activeOrganizationId: '11111111-1111-4111-8111-111111111111',
     };
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        permissions: [
-          {
-            action: 'content.read',
-            resourceType: 'content',
-            effect: 'allow',
-            organizationId: '11111111-1111-4111-8111-111111111111',
-          },
-          {
-            action: 'content.create',
-            resourceType: 'content',
-            effect: 'allow',
-            organizationId: '11111111-1111-4111-8111-111111111111',
-          },
-        ],
-      }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubPermissionResponse([
+      {
+        action: 'content.read',
+        resourceType: 'content',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      },
+      {
+        action: 'content.create',
+        resourceType: 'content',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      },
+    ]);
 
     const { result } = renderHook(() => useContentAccess());
 
@@ -198,31 +201,21 @@ describe('useContentAccess', () => {
       expect(result.current.access?.canCreate).toBe(true);
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/iam/me/permissions?instanceId=de-musterhausen&organizationId=11111111-1111-4111-8111-111111111111',
-      undefined,
-      {
-        timeoutMs: 10_000,
-      }
+    expectPermissionRequest(
+      fetchMock,
+      '/iam/me/permissions?instanceId=de-musterhausen&organizationId=11111111-1111-4111-8111-111111111111'
     );
   });
 
   it('waits for the organization context before requesting permissions', async () => {
     organizationContextMockValue.isLoading = true;
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        permissions: [
-          {
-            action: 'content.read',
-            resourceType: 'content',
-            effect: 'allow',
-            organizationId: '11111111-1111-4111-8111-111111111111',
-          },
-        ],
-      }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubPermissionResponse([
+      {
+        action: 'content.read',
+        resourceType: 'content',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      },
+    ]);
 
     const { result, rerender } = renderHook(() => useContentAccess());
 
@@ -240,39 +233,27 @@ describe('useContentAccess', () => {
       expect(result.current.permissionActions).toEqual(['content.read']);
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/iam/me/permissions?instanceId=de-musterhausen&organizationId=11111111-1111-4111-8111-111111111111',
-      undefined,
-      {
-        timeoutMs: 10_000,
-      }
+    expectPermissionRequest(
+      fetchMock,
+      '/iam/me/permissions?instanceId=de-musterhausen&organizationId=11111111-1111-4111-8111-111111111111'
     );
   });
 
-  it('treats legacy deny-shaped permissions as allow-only action entries', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        permissions: [
-          {
-            action: 'news.read',
-            resourceType: 'news',
-            effect: 'allow',
-          },
-          {
-            action: 'news.read',
-            resourceType: 'news',
-            effect: 'deny',
-          },
-          {
-            action: 'events.read',
-            resourceType: 'events',
-            effect: 'allow',
-          },
-        ],
-      }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
+  it('deduplicates repeated allow-only action entries', async () => {
+    stubPermissionResponse([
+      {
+        action: 'news.read',
+        resourceType: 'news',
+      },
+      {
+        action: 'news.read',
+        resourceType: 'news',
+      },
+      {
+        action: 'events.read',
+        resourceType: 'events',
+      },
+    ]);
 
     const { result } = renderHook(() => useContentAccess());
 
@@ -381,7 +362,6 @@ describe('useContentAccess', () => {
           {
             action: 'content.read',
             resourceType: 'content',
-            effect: 'allow',
           },
         ],
       }),
@@ -419,7 +399,6 @@ describe('useContentAccess', () => {
           {
             action: 'waste-management.read',
             resourceType: 'waste-management',
-            effect: 'allow',
           },
         ],
       }),

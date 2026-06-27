@@ -32,7 +32,8 @@ vi.mock('../../lib/iam-api', () => ({
 
 vi.mock('../../lib/iam-viewer-access', () => ({
   getAllowedIamCockpitTabs: (...args: unknown[]) => getAllowedIamCockpitTabsMock(...args),
-  hasGovernanceComplianceExportRole: (...args: unknown[]) => hasGovernanceComplianceExportRoleMock(...args),
+  hasGovernanceComplianceExportRole: (...args: unknown[]) =>
+    hasGovernanceComplianceExportRoleMock(...args),
   hasIamCockpitAccessRole: (...args: unknown[]) => hasIamCockpitAccessRoleMock(...args),
   isIamCockpitEnabled: () => isIamCockpitEnabledMock(),
 }));
@@ -108,11 +109,12 @@ describe('IamViewerPage', () => {
     const invalidatePermissions = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(JSON.stringify({ error: 'forbidden_scope' }), {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
-        })
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: 'forbidden_scope' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          })
       )
     );
 
@@ -241,7 +243,9 @@ describe('IamViewerPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Rechte verständlich prüfen')).toBeTruthy();
       expect(screen.getByText('Das können Sie hier tun')).toBeTruthy();
-      expect(screen.getByText(/Mit "Authorize prüfen" einen konkreten Zugriff testen/)).toBeTruthy();
+      expect(
+        screen.getByText(/Mit "Authorize prüfen" einen konkreten Zugriff testen/)
+      ).toBeTruthy();
     });
 
     getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
@@ -249,7 +253,9 @@ describe('IamViewerPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Governance-Fälle einordnen')).toBeTruthy();
-      expect(screen.getByText(/Bei vorhandener Berechtigung die aktuelle Sicht als CSV exportieren/)).toBeTruthy();
+      expect(
+        screen.getByText(/Bei vorhandener Berechtigung die aktuelle Sicht als CSV exportieren/)
+      ).toBeTruthy();
     });
 
     getAllowedIamCockpitTabsMock.mockReturnValue(['dsr']);
@@ -265,7 +271,9 @@ describe('IamViewerPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Löschregeln tenantweit verwalten')).toBeTruthy();
-      expect(screen.getByText(/Fristen in Tagen für Deaktivierung, Pseudonymisierung und Löschung/)).toBeTruthy();
+      expect(
+        screen.getByText(/Fristen in Tagen für Deaktivierung, Pseudonymisierung und Löschung/)
+      ).toBeTruthy();
     });
   });
 
@@ -528,7 +536,9 @@ describe('IamViewerPage', () => {
       expect(screen.getAllByRole('link', { name: /Rechteänderung/i }).length).toBeGreaterThan(0);
     });
 
-    expect(screen.getAllByText('Ich benötige Schreibrechte für die Veranstaltungsredaktion.').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText('Ich benötige Schreibrechte für die Veranstaltungsredaktion.').length
+    ).toBeGreaterThan(0);
     expect(screen.queryByText('requestOrigin: self_service')).toBeNull();
   });
 
@@ -561,10 +571,14 @@ describe('IamViewerPage', () => {
     render(<IamViewerPage activeTab="governance" />);
 
     await waitFor(() => {
-      expect(screen.getAllByRole('link', { name: 'Delegation freigeben' })[0]?.getAttribute('href')).toBe('/admin/iam/governance/gov-1');
+      expect(
+        screen.getAllByRole('link', { name: 'Delegation freigeben' })[0]?.getAttribute('href')
+      ).toBe('/admin/iam/governance/gov-1');
     });
 
-    expect(screen.queryByText('Wählen Sie links einen Eintrag aus, um Details anzuzeigen.')).toBeNull();
+    expect(
+      screen.queryByText('Wählen Sie links einen Eintrag aus, um Details anzuzeigen.')
+    ).toBeNull();
   });
 
   it('loads DSR entries and renders canonical status badges', async () => {
@@ -631,10 +645,14 @@ describe('IamViewerPage', () => {
     render(<IamViewerPage activeTab="dsr" />);
 
     await waitFor(() => {
-      expect(screen.getAllByRole('link', { name: 'Auskunftsersuchen' })[0]?.getAttribute('href')).toBe('/admin/iam/dsr/dsr-1');
+      expect(
+        screen.getAllByRole('link', { name: 'Auskunftsersuchen' })[0]?.getAttribute('href')
+      ).toBe('/admin/iam/dsr/dsr-1');
     });
 
-    expect(screen.queryByText('Wählen Sie links einen Eintrag aus, um Details anzuzeigen.')).toBeNull();
+    expect(
+      screen.queryByText('Wählen Sie links einen Eintrag aus, um Details anzuzeigen.')
+    ).toBeNull();
   });
 
   it('loads and saves tenant deletion rules in the admin cockpit', async () => {
@@ -670,7 +688,9 @@ describe('IamViewerPage', () => {
     render(<IamViewerPage activeTab="deletion-rules" />);
 
     await waitFor(() => {
-      expect(getAdminDeletionRulesMock).toHaveBeenCalledWith('11111111-1111-1111-8111-111111111111');
+      expect(getAdminDeletionRulesMock).toHaveBeenCalledWith(
+        '11111111-1111-1111-8111-111111111111'
+      );
       expect(screen.getByRole('heading', { name: 'Tenant-Löschregeln' })).toBeTruthy();
     });
 
@@ -686,7 +706,9 @@ describe('IamViewerPage', () => {
     fireEvent.change(screen.getByLabelText('Standardregel für Inhalte'), {
       target: { value: 'with_owner_lifecycle' },
     });
-    fireEvent.click(screen.getByLabelText('Nutzer dürfen die Standardregel für eigene Inhalte überschreiben'));
+    fireEvent.click(
+      screen.getByLabelText('Nutzer dürfen die Standardregel für eigene Inhalte überschreiben')
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Löschregeln speichern' }));
 
     await waitFor(() => {
@@ -713,18 +735,19 @@ describe('IamViewerPage', () => {
     getAllowedIamCockpitTabsMock.mockReturnValue(['rights', 'governance']);
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            permissions: [],
-            subject: {
-              actorUserId: 'user-1',
-              effectiveUserId: 'user-1',
-              isImpersonating: false,
-            },
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        )
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              permissions: [],
+              subject: {
+                actorUserId: 'user-1',
+                effectiveUserId: 'user-1',
+                isImpersonating: false,
+              },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
       )
     );
     listGovernanceCasesMock.mockResolvedValue({ data: [] });
@@ -777,7 +800,10 @@ describe('IamViewerPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Diese Löschregeln sind nur lesbar.')).toBeTruthy();
-      expect(screen.getByRole('button', { name: 'Löschregeln speichern' })).toHaveProperty('disabled', true);
+      expect(screen.getByRole('button', { name: 'Löschregeln speichern' })).toHaveProperty(
+        'disabled',
+        true
+      );
     });
     cleanup();
 
@@ -924,46 +950,47 @@ describe('IamViewerPage', () => {
     getAllowedIamCockpitTabsMock.mockReturnValue([]);
 
     rerender(<IamViewerPage activeTab="rights" />);
-    expect(screen.getByText('Für dieses IAM Transparenz-Cockpit fehlen die erforderlichen Rollen.')).toBeTruthy();
+    expect(
+      screen.getByText('Für dieses IAM Transparenz-Cockpit fehlen die erforderlichen Rollen.')
+    ).toBeTruthy();
   });
 
   it('renders permissions, impersonation context and organization filters on the rights tab', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            permissions: [
-              {
-                action: 'content.read',
-                resourceType: 'article',
-                resourceId: 'article-1',
-                organizationId: 'org-1',
-                effect: 'allow',
-                scope: { locale: 'de' },
-                sourceRoleIds: ['editor'],
-                sourceGroupIds: ['group-editor'],
-                groupName: 'Redaktion Standard',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              permissions: [
+                {
+                  action: 'content.read',
+                  resourceType: 'article',
+                  resourceId: 'article-1',
+                  organizationId: 'org-1',
+                  scope: { locale: 'de' },
+                  sourceRoleIds: ['editor'],
+                  sourceGroupIds: ['group-editor'],
+                  groupName: 'Redaktion Standard',
+                },
+                {
+                  action: 'content.updatePayload',
+                  resourceType: 'article',
+                  resourceId: null,
+                  organizationId: null,
+                  scope: {},
+                  sourceRoleIds: [],
+                  sourceGroupIds: [],
+                },
+              ],
+              subject: {
+                actorUserId: 'user-2',
+                effectiveUserId: 'user-3',
+                isImpersonating: true,
               },
-              {
-                action: 'content.updatePayload',
-                resourceType: 'article',
-                resourceId: null,
-                organizationId: null,
-                effect: null,
-                scope: {},
-                sourceRoleIds: [],
-                sourceGroupIds: [],
-              },
-            ],
-            subject: {
-              actorUserId: 'user-2',
-              effectiveUserId: 'user-3',
-              isImpersonating: true,
-            },
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        )
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
       )
     );
 
@@ -989,21 +1016,51 @@ describe('IamViewerPage', () => {
       expect(screen.getByText('Redaktion Standard')).toBeTruthy();
       expect(screen.queryByText('group-editor')).toBeNull();
       expect(screen.getAllByText('Keine Organisation').length).toBeGreaterThan(0);
-      expect((screen.getByLabelText('Organisation', { selector: '#iam-organization-filter' }) as HTMLSelectElement).value).toBe('');
-      expect((screen.getByLabelText('Organisation', { selector: '#iam-authorize-organization-id' }) as HTMLSelectElement).value).toBe('');
+      expect(
+        (
+          screen.getByLabelText('Organisation', {
+            selector: '#iam-organization-filter',
+          }) as HTMLSelectElement
+        ).value
+      ).toBe('');
+      expect(
+        (
+          screen.getByLabelText('Organisation', {
+            selector: '#iam-authorize-organization-id',
+          }) as HTMLSelectElement
+        ).value
+      ).toBe('');
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'org-1' }));
-    fireEvent.change(screen.getByLabelText('Organisation', { selector: '#iam-organization-filter' }), {
-      target: { value: 'org-1' },
-    });
-    fireEvent.change(screen.getByLabelText('Organisation', { selector: '#iam-authorize-organization-id' }), {
-      target: { value: 'org-1' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Organisation', { selector: '#iam-organization-filter' }),
+      {
+        target: { value: 'org-1' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Organisation', { selector: '#iam-authorize-organization-id' }),
+      {
+        target: { value: 'org-1' },
+      }
+    );
 
     expect(screen.getByRole('button', { name: 'org-1' }).className).toContain('border-primary');
-    expect((screen.getByLabelText('Organisation', { selector: '#iam-organization-filter' }) as HTMLSelectElement).value).toBe('org-1');
-    expect((screen.getByLabelText('Organisation', { selector: '#iam-authorize-organization-id' }) as HTMLSelectElement).value).toBe('org-1');
+    expect(
+      (
+        screen.getByLabelText('Organisation', {
+          selector: '#iam-organization-filter',
+        }) as HTMLSelectElement
+      ).value
+    ).toBe('org-1');
+    expect(
+      (
+        screen.getByLabelText('Organisation', {
+          selector: '#iam-authorize-organization-id',
+        }) as HTMLSelectElement
+      ).value
+    ).toBe('org-1');
   });
 
   it('shows governance and dsr fetch errors without stale success state', async () => {
@@ -1036,18 +1093,19 @@ describe('IamViewerPage', () => {
   it('requires an instance id before authorize checks and handles Home and End tab keys', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            permissions: [],
-            subject: {
-              actorUserId: 'user-1',
-              effectiveUserId: 'user-1',
-              isImpersonating: false,
-            },
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        )
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              permissions: [],
+              subject: {
+                actorUserId: 'user-1',
+                effectiveUserId: 'user-1',
+                isImpersonating: false,
+              },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
       )
     );
 
@@ -1094,18 +1152,19 @@ describe('IamViewerPage', () => {
     getAllowedIamCockpitTabsMock.mockReturnValue(['rights', 'governance', 'dsr']);
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            permissions: [],
-            subject: {
-              actorUserId: 'user-1',
-              effectiveUserId: 'user-1',
-              isImpersonating: false,
-            },
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        )
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              permissions: [],
+              subject: {
+                actorUserId: 'user-1',
+                effectiveUserId: 'user-1',
+                isImpersonating: false,
+              },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
       )
     );
 
@@ -1246,8 +1305,14 @@ describe('IamViewerPage', () => {
       expect(listGovernanceCasesMock).toHaveBeenCalledTimes(1);
     });
 
-    const statusSelect = screen.getByLabelText('Status', { selector: '#iam-governance-status' }) as HTMLSelectElement;
-    expect(Array.from(statusSelect.options).map((option) => option.value)).toEqual(['', 'open', 'submitted']);
+    const statusSelect = screen.getByLabelText('Status', {
+      selector: '#iam-governance-status',
+    }) as HTMLSelectElement;
+    expect(Array.from(statusSelect.options).map((option) => option.value)).toEqual([
+      '',
+      'open',
+      'submitted',
+    ]);
 
     fireEvent.change(statusSelect, { target: { value: 'submitted' } });
 
@@ -1307,7 +1372,9 @@ describe('IamViewerPage', () => {
     rerender(<IamViewerPage activeTab="dsr" />);
 
     await waitFor(() => {
-      expect(screen.getAllByText('account-target-2 / account-requester-2').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('account-target-2 / account-requester-2').length).toBeGreaterThan(
+        0
+      );
     });
   });
 });

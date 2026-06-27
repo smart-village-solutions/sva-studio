@@ -86,6 +86,11 @@ const mocks = vi.hoisted(() => {
       sessionRedisTtlBufferMs: 60_000,
       sessionTtlMs: 120_000,
     })),
+    logger: {
+      debug: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+    },
     redis: new FakeRedis(),
   };
 });
@@ -105,6 +110,10 @@ vi.mock('./crypto.js', () => ({
 
 vi.mock('./redis.js', () => ({
   getRedisClient: () => mocks.redis,
+}));
+
+vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => mocks.logger,
 }));
 
 import {
@@ -155,6 +164,9 @@ describe('redis-backed auth runtime session store', () => {
     mocks.encryptToken.mockClear();
     mocks.decryptToken.mockClear();
     mocks.getAuthConfig.mockClear();
+    mocks.logger.debug.mockClear();
+    mocks.logger.error.mockClear();
+    mocks.logger.info.mockClear();
     vi.unstubAllEnvs();
   });
 
@@ -216,7 +228,9 @@ describe('redis-backed auth runtime session store', () => {
     await setSessionControlState('user-persistent', controlState, null);
 
     await expect(getSessionControlState('user-persistent')).resolves.toEqual(controlState);
-    const controlKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('session_control:user-persistent'));
+    const controlKey = [...mocks.redis.data.keys()].find((key) =>
+      key.endsWith('session_control:user-persistent')
+    );
     expect(controlKey).toBeDefined();
     expect(controlKey ? mocks.redis.expirations.has(controlKey) : false).toBe(false);
   });
@@ -249,8 +263,12 @@ describe('redis-backed auth runtime session store', () => {
     );
     await createLoginState('login-prefixed', createLoginStateInput());
 
-    const prefixedSessionKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('session:session-prefixed'));
-    const prefixedLoginKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('login_state:login-prefixed'));
+    const prefixedSessionKey = [...mocks.redis.data.keys()].find((key) =>
+      key.endsWith('session:session-prefixed')
+    );
+    const prefixedLoginKey = [...mocks.redis.data.keys()].find((key) =>
+      key.endsWith('login_state:login-prefixed')
+    );
     expect(prefixedSessionKey).toBeDefined();
     expect(prefixedLoginKey).toBeDefined();
     expect(prefixedSessionKey?.includes('session:session-prefixed')).toBe(true);
@@ -275,7 +293,9 @@ describe('redis-backed auth runtime session store', () => {
       60
     );
 
-    const encryptedSessionKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('session:session-encrypted'));
+    const encryptedSessionKey = [...mocks.redis.data.keys()].find((key) =>
+      key.endsWith('session:session-encrypted')
+    );
     const stored = encryptedSessionKey ? mocks.redis.data.get(encryptedSessionKey) : undefined;
     expect(stored).toContain('enc(secret-key):access');
     await expect(getSession('session-encrypted')).resolves.toMatchObject({
@@ -294,12 +314,17 @@ describe('redis-backed auth runtime session store', () => {
         expiresAt: undefined,
       })
     );
-    const defaultTtlKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('session:session-default-ttl'));
+    const defaultTtlKey = [...mocks.redis.data.keys()].find((key) =>
+      key.endsWith('session:session-default-ttl')
+    );
     expect(defaultTtlKey).toBeDefined();
     expect(mocks.redis.expirations.get(expectDefined(defaultTtlKey))).toBe(605100);
 
-    const badEncryptionKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('session:session-encrypted'))
-      ?.replace('session-encrypted', 'session-bad-encryption') ?? 'session:session-bad-encryption';
+    const badEncryptionKey =
+      [...mocks.redis.data.keys()]
+        .find((key) => key.endsWith('session:session-encrypted'))
+        ?.replace('session-encrypted', 'session-bad-encryption') ??
+      'session:session-bad-encryption';
     mocks.redis.data.set(
       badEncryptionKey,
       JSON.stringify({
@@ -312,18 +337,84 @@ describe('redis-backed auth runtime session store', () => {
     });
   });
 
+  it('can read session metadata without decrypting stored tokens', async () => {
+    vi.stubEnv('ENCRYPTION_KEY', 'secret-key');
+    await createSession(
+      'session-fast-read',
+      createTestSession({
+        id: 'session-fast-read',
+        accessToken: 'access',
+        refreshToken: 'refresh',
+        idToken: 'id',
+      }),
+      60
+    );
+
+    await expect(getSession('session-fast-read', { decryptTokens: false })).resolves.toMatchObject({
+      id: 'session-fast-read',
+      accessToken: 'enc(secret-key):access',
+      refreshToken: 'enc(secret-key):refresh',
+      idToken: 'enc(secret-key):id',
+      userId: 'user-a',
+    });
+    expect(mocks.decryptToken).not.toHaveBeenCalled();
+  });
+
+  it('logs getSession timing diagnostics when authorize timing debug is enabled', async () => {
+    vi.stubEnv('IAM_DEBUG_AUTHORIZE_TIMINGS', 'true');
+    vi.stubEnv('ENCRYPTION_KEY', 'secret-key');
+    await createSession(
+      'timed-session',
+      createTestSession({
+        id: 'timed-session',
+        accessToken: 'access',
+        refreshToken: 'refresh',
+        idToken: 'id',
+      }),
+      60
+    );
+
+    await expect(getSession('timed-session')).resolves.toMatchObject({
+      id: 'timed-session',
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      idToken: 'id',
+    });
+
+    expect(mocks.logger.info).toHaveBeenCalledWith(
+      'Redis session get timing diagnostics',
+      expect.objectContaining({
+        operation: 'redis_session_get_timing',
+        found: true,
+        redis_get_ms: expect.any(Number),
+        json_parse_ms: expect.any(Number),
+        decrypt_ms: expect.any(Number),
+        expiry_check_ms: expect.any(Number),
+        total_ms: expect.any(Number),
+        has_access_token: true,
+        has_refresh_token: true,
+        has_id_token: true,
+        user_id: 'user-a',
+      })
+    );
+  });
+
   it('handles empty control state, cleanup helpers and redis failures as typed store errors', async () => {
     await expect(getSessionControlState('missing-user')).resolves.toBeUndefined();
     await expect(listUserSessionIds('missing-user')).resolves.toEqual([]);
     await expect(getAllSessionKeys()).resolves.toEqual([]);
     await expect(getSessionCount()).resolves.toBe(0);
-    await expect(import('./redis-session.js').then((mod) => mod.clearExpiredSessions())).resolves.toBeUndefined();
+    await expect(
+      import('./redis-session.js').then((mod) => mod.clearExpiredSessions())
+    ).resolves.toBeUndefined();
 
     const originalGet = mocks.redis.get.bind(mocks.redis);
     mocks.redis.get = vi.fn(async () => {
       throw 'redis down';
     }) as typeof mocks.redis.get;
-    await expect(getSession('broken')).rejects.toThrow('Session store unavailable during get_session');
+    await expect(getSession('broken')).rejects.toThrow(
+      'Session store unavailable during get_session'
+    );
     mocks.redis.get = originalGet;
   });
 });

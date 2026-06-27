@@ -23,10 +23,53 @@ const meter = metrics.getMeter('sva.auth.sessions');
 const sessionOperationsCounter = meter.createCounter('session_operations_total', {
   description: 'Session and login-state operations grouped by operation and result.',
 });
-const sessionOperationDurationHistogram = meter.createHistogram('session_operation_duration_seconds', {
-  description: 'Duration of session and login-state operations.',
-  unit: 's',
-});
+const sessionOperationDurationHistogram = meter.createHistogram(
+  'session_operation_duration_seconds',
+  {
+    description: 'Duration of session and login-state operations.',
+    unit: 's',
+  }
+);
+
+type GetSessionTimingDiagnostics = {
+  readonly decryptMs: number;
+  readonly expiryCheckMs: number;
+  readonly jsonParseMs: number;
+  readonly redisGetMs: number;
+  readonly totalMs: number;
+};
+
+export type GetSessionOptions = {
+  readonly decryptTokens?: boolean;
+};
+
+const isAuthorizeTimingDebugEnabled = (): boolean =>
+  process.env.IAM_DEBUG_AUTHORIZE_TIMINGS === 'true';
+
+const logGetSessionTimingIfEnabled = (input: {
+  diagnostics: GetSessionTimingDiagnostics;
+  found: boolean;
+  session?: Session;
+}): void => {
+  if (!isAuthorizeTimingDebugEnabled()) {
+    return;
+  }
+
+  logger.info('Redis session get timing diagnostics', {
+    operation: 'redis_session_get_timing',
+    found: input.found,
+    redis_get_ms: Number(input.diagnostics.redisGetMs.toFixed(2)),
+    json_parse_ms: Number(input.diagnostics.jsonParseMs.toFixed(2)),
+    decrypt_ms: Number(input.diagnostics.decryptMs.toFixed(2)),
+    expiry_check_ms: Number(input.diagnostics.expiryCheckMs.toFixed(2)),
+    total_ms: Number(input.diagnostics.totalMs.toFixed(2)),
+    has_access_token: Boolean(input.session?.accessToken),
+    has_refresh_token: Boolean(input.session?.refreshToken),
+    has_id_token: Boolean(input.session?.idToken),
+    user_id: input.session?.userId ?? null,
+    session_expires_at: input.session?.expiresAt ?? null,
+  });
+};
 
 const resolveDefaultTestPrefix = (): string => {
   if (process.env.NODE_ENV !== 'test') {
@@ -161,7 +204,9 @@ const encryptSessionTokens = (session: Session): Session => {
   return {
     ...session,
     accessToken: session.accessToken ? encryptToken(session.accessToken, encryptionKey) : undefined,
-    refreshToken: session.refreshToken ? encryptToken(session.refreshToken, encryptionKey) : undefined,
+    refreshToken: session.refreshToken
+      ? encryptToken(session.refreshToken, encryptionKey)
+      : undefined,
     idToken: session.idToken ? encryptToken(session.idToken, encryptionKey) : undefined,
   };
 };
@@ -176,8 +221,12 @@ const decryptSessionTokens = (session: Session): Session => {
   try {
     return {
       ...session,
-      accessToken: session.accessToken ? decryptToken(session.accessToken, encryptionKey) : undefined,
-      refreshToken: session.refreshToken ? decryptToken(session.refreshToken, encryptionKey) : undefined,
+      accessToken: session.accessToken
+        ? decryptToken(session.accessToken, encryptionKey)
+        : undefined,
+      refreshToken: session.refreshToken
+        ? decryptToken(session.refreshToken, encryptionKey)
+        : undefined,
       idToken: session.idToken ? decryptToken(session.idToken, encryptionKey) : undefined,
     };
   } catch (err) {
@@ -238,22 +287,43 @@ export async function createSession(
 /**
  * Get a session from Redis (tokens decrypted if ENCRYPTION_KEY set).
  */
-export async function getSession(sessionId: string): Promise<Session | undefined> {
+export async function getSession(
+  sessionId: string,
+  options: GetSessionOptions = {}
+): Promise<Session | undefined> {
   return trackSessionOperation('get_session', async () => {
+    const shouldDecryptTokens = options.decryptTokens ?? true;
+    const startedAt = performance.now();
+    let redisGetMs = 0;
     const data = await runWithRequiredRedisSessionStore({
       operation: 'get_session',
       runAgainstRedis: async () => {
         const redis = getRedisClient();
         const key = sessionPrefix() + sessionId;
-        return redis.get(key);
+        const redisGetStartedAt = performance.now();
+        const value = await redis.get(key);
+        redisGetMs = performance.now() - redisGetStartedAt;
+        return value;
       },
       runInMemoryForTests: () => {
+        const redisGetStartedAt = performance.now();
         const session = getInMemorySession(sessionId);
+        redisGetMs = performance.now() - redisGetStartedAt;
         return session ? JSON.stringify(session) : null;
       },
     });
 
     if (!data) {
+      logGetSessionTimingIfEnabled({
+        diagnostics: {
+          decryptMs: 0,
+          expiryCheckMs: 0,
+          jsonParseMs: 0,
+          redisGetMs,
+          totalMs: performance.now() - startedAt,
+        },
+        found: false,
+      });
       logger.debug('Session not found', {
         operation: 'get_session',
         found: false,
@@ -261,10 +331,30 @@ export async function getSession(sessionId: string): Promise<Session | undefined
       return undefined;
     }
 
+    const jsonParseStartedAt = performance.now();
     let session = JSON.parse(data) as Session;
-    session = decryptSessionTokens(session);
+    const jsonParseMs = performance.now() - jsonParseStartedAt;
+    const decryptStartedAt = performance.now();
+    if (shouldDecryptTokens) {
+      session = decryptSessionTokens(session);
+    }
+    const decryptMs = performance.now() - decryptStartedAt;
 
-    if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
+    const expiryCheckStartedAt = performance.now();
+    const isExpired = Boolean(session.expiresAt && new Date(session.expiresAt) < new Date());
+    const expiryCheckMs = performance.now() - expiryCheckStartedAt;
+    logGetSessionTimingIfEnabled({
+      diagnostics: {
+        decryptMs,
+        expiryCheckMs,
+        jsonParseMs,
+        redisGetMs,
+        totalMs: performance.now() - startedAt,
+      },
+      found: true,
+      session,
+    });
+    if (isExpired) {
       logger.info('Session expired', {
         operation: 'get_session',
         expired: true,
@@ -286,10 +376,7 @@ export async function getSession(sessionId: string): Promise<Session | undefined
 /**
  * Update an existing session in Redis (preserves TTL, encrypts tokens).
  */
-export async function updateSession(
-  sessionId: string,
-  updates: Partial<Session>
-): Promise<void> {
+export async function updateSession(sessionId: string, updates: Partial<Session>): Promise<void> {
   await trackSessionOperation('update_session', async () => {
     const currentSession = await getSession(sessionId);
     if (!currentSession) {
@@ -383,10 +470,7 @@ export async function clearExpiredSessions(): Promise<void> {
 /**
  * Store login state for OAuth PKCE flow.
  */
-export async function createLoginState(
-  state: string,
-  data: LoginState
-): Promise<void> {
+export async function createLoginState(state: string, data: LoginState): Promise<void> {
   await trackSessionOperation('create_login_state', async () => {
     await runWithRequiredRedisSessionStore({
       operation: 'create_login_state',
@@ -418,17 +502,18 @@ export async function createLoginState(
 /**
  * Consume login state (one-time use for security).
  */
-export async function consumeLoginState(
-  state: string
-): Promise<{
-  codeVerifier: string;
-  nonce: string;
-  createdAt: number;
-  returnTo?: string;
-  silent?: boolean;
-  kind: 'platform' | 'instance';
-  instanceId?: string;
-} | undefined> {
+export async function consumeLoginState(state: string): Promise<
+  | {
+      codeVerifier: string;
+      nonce: string;
+      createdAt: number;
+      returnTo?: string;
+      silent?: boolean;
+      kind: 'platform' | 'instance';
+      instanceId?: string;
+    }
+  | undefined
+> {
   return trackSessionOperation('consume_login_state', async () => {
     const data = await runWithRequiredRedisSessionStore({
       operation: 'consume_login_state',
@@ -480,7 +565,9 @@ export async function consumeLoginState(
   });
 }
 
-export async function getSessionControlState(userId: string): Promise<SessionControlState | undefined> {
+export async function getSessionControlState(
+  userId: string
+): Promise<SessionControlState | undefined> {
   const data = await runWithRequiredRedisSessionStore({
     operation: 'get_session_control_state',
     runAgainstRedis: async () => {

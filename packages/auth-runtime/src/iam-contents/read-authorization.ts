@@ -80,13 +80,18 @@ const isMatchingReadPermission = (
 
 const applyReadablePermission = (
   permission: EffectivePermission,
-  actor: ResolvedContentActor['actor'],
   state: {
     allowGlobal: boolean;
     allowOwn: boolean;
     allowedOrganizationIds: Set<string>;
   }
 ): void => {
+  if (permission.organizationId) {
+    state.allowOwn = true;
+    state.allowedOrganizationIds.add(permission.organizationId);
+    return;
+  }
+
   if (!permission.accessScope || permission.accessScope === 'all') {
     state.allowGlobal = true;
     return;
@@ -99,9 +104,6 @@ const applyReadablePermission = (
 
   if (permission.accessScope === 'organization') {
     state.allowOwn = true;
-    if (actor.activeOrganizationId && permission.organizationId) {
-      state.allowedOrganizationIds.add(permission.organizationId);
-    }
   }
 };
 
@@ -120,7 +122,7 @@ const resolveReadableContentAuthorization = (
   for (const action of readActions) {
     for (const permission of permissions) {
       if (isMatchingReadPermission(permission, action)) {
-        applyReadablePermission(permission, actor, state);
+        applyReadablePermission(permission, state);
       }
     }
   }

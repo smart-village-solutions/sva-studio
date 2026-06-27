@@ -21,6 +21,12 @@ WHERE projection.instance_id = content.instance_id
   AND projection.source_entity_type = 'iam.contents'
   AND projection.source_entity_id = content.id::text;
 
+DELETE FROM iam.content_list_projection
+WHERE source_system = 'mainserver'
+  AND owner_subject_id IS NOT NULL
+  AND owner_user_id IS NULL
+  AND owner_organization_id IS NULL;
+
 ALTER TABLE iam.content_list_projection
   DROP CONSTRAINT IF EXISTS content_list_projection_scope_key;
 
@@ -82,6 +88,14 @@ BEGIN
       updated_at = EXCLUDED.updated_at;
 
     RETURN OLD;
+  END IF;
+
+  IF TG_OP = 'UPDATE' THEN
+    DELETE FROM iam.content_list_projection
+    WHERE instance_id = OLD.instance_id
+      AND source_system = 'iam'
+      AND source_entity_type = 'iam.contents'
+      AND source_entity_id = OLD.id::text;
   END IF;
 
   INSERT INTO iam.content_list_projection (

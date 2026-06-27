@@ -25,11 +25,13 @@ const expectStudioShellReady = async (page: Page) => {
 
 const expectContentOverviewReady = async (page: Page) => {
   await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
-  await Promise.any([
-    page.getByRole('heading', { name: 'Inhalte' }).waitFor({ state: 'visible' }),
-    page.getByRole('table', { name: 'Inhalte' }).waitFor({ state: 'visible' }),
-    page.getByText('Noch keine Inhalte vorhanden').waitFor({ state: 'visible' }),
-  ]);
+  await expect(
+    page
+      .getByRole('heading', { name: 'Inhalte' })
+      .or(page.getByRole('table', { name: 'Inhalte' }))
+      .or(page.getByText('Noch keine Inhalte vorhanden'))
+      .first()
+  ).toBeVisible();
 };
 
 const expectInstancesOverviewReady = async (page: Page) => {
@@ -42,7 +44,10 @@ const expectInstancesOverviewReady = async (page: Page) => {
 };
 
 test.describe('tenant real auth', () => {
-  test.skip(!hasTenantRealAuthSetup, 'Real tenant auth E2E requires PLAYWRIGHT_DE_MUSTERHAUSEN_* credentials.');
+  test.skip(
+    !hasTenantRealAuthSetup,
+    'Real tenant auth E2E requires PLAYWRIGHT_DE_MUSTERHAUSEN_* credentials.'
+  );
 
   test('tenant content overview loads with a real authenticated session', async ({ page }) => {
     await page.goto('/admin/content');
@@ -50,19 +55,21 @@ test.describe('tenant real auth', () => {
     await expectStudioShellReady(page);
   });
 
-  test('tenant session loss redirects to the session-expired notice', async ({ page }) => {
+  test('tenant session loss redirects to the tenant login', async ({ page }) => {
     await page.goto('/admin/content');
     await expectContentOverviewReady(page);
+    await page.waitForLoadState('networkidle');
 
     await page.context().clearCookies();
     await page.reload({ waitUntil: 'networkidle' });
 
-    await expect(page).toHaveURL(/\/(?:\?auth=session-expired(?:&|$).*)?$/);
-    await expect(page.getByText('Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.')).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Erneut anmelden' })).toBeVisible();
+    await expect(page).toHaveURL(/\/realms\/de-musterhausen\/protocol\/openid-connect\/auth\?/);
+    await expect(page.getByRole('heading', { name: 'Sign in to your account' })).toBeVisible();
   });
 
-  test('tenant content overview shows a robust error state when the content list request fails', async ({ page }) => {
+  test('tenant content overview shows a robust error state when the content list request fails', async ({
+    page,
+  }) => {
     await page.route('**/api/v1/mainserver/events**', async (route) => {
       await route.fulfill({
         status: 500,
@@ -75,7 +82,13 @@ test.describe('tenant real auth', () => {
 
     await expect(page.getByRole('heading', { name: 'Inhalte' })).toBeVisible();
     await expectStudioShellReady(page);
-    await expect(page.getByText('Inhalte konnten nicht geladen werden.')).toBeVisible();
+    await expect(
+      page
+        .getByRole('alert')
+        .getByText(
+          'Die Inhaltsdaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.'
+        )
+    ).toBeVisible();
   });
 });
 

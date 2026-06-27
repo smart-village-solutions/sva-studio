@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict H22mmSUTDhehNpiWGjOqMQMfClDKe30BxSOWn9fReQw07ozSJ3WsAdxfOTX8caN
+\restrict y4iO1T35Ug2FO1d7cN3CHaBWEOsdX2smPhEc3AJT1IsYkPGeHagdKpVETkr7Tmg
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -181,6 +181,14 @@ BEGIN
       updated_at = EXCLUDED.updated_at;
 
     RETURN OLD;
+  END IF;
+
+  IF TG_OP = 'UPDATE' THEN
+    DELETE FROM iam.content_list_projection
+    WHERE instance_id = OLD.instance_id
+      AND source_system = 'iam'
+      AND source_entity_type = 'iam.contents'
+      AND source_entity_id = OLD.id::text;
   END IF;
 
   INSERT INTO iam.content_list_projection (
@@ -492,8 +500,6 @@ CREATE TABLE iam.content_list_projection (
     instance_id text NOT NULL,
     organization_id uuid,
     owner_subject_id text,
-    owner_user_id uuid,
-    owner_organization_id uuid,
     content_type text NOT NULL,
     title text NOT NULL,
     published_at timestamp with time zone,
@@ -514,6 +520,8 @@ CREATE TABLE iam.content_list_projection (
     source_entity_type text NOT NULL,
     source_entity_id text NOT NULL,
     projection_updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    owner_user_id uuid,
+    owner_organization_id uuid,
     CONSTRAINT content_list_projection_source_system_chk CHECK ((source_system = ANY (ARRAY['iam'::text, 'mainserver'::text]))),
     CONSTRAINT content_list_projection_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'in_review'::text, 'approved'::text, 'published'::text, 'archived'::text]))),
     CONSTRAINT content_list_projection_validation_state_chk CHECK ((validation_state = ANY (ARRAY['valid'::text, 'invalid'::text, 'pending'::text])))
@@ -559,8 +567,6 @@ CREATE TABLE iam.contents (
     status text NOT NULL,
     organization_id uuid,
     owner_subject_id text,
-    owner_user_id uuid,
-    owner_organization_id uuid,
     validation_state text DEFAULT 'valid'::text NOT NULL,
     publish_from timestamp with time zone,
     publish_until timestamp with time zone,
@@ -571,6 +577,8 @@ CREATE TABLE iam.contents (
     last_audit_event_ref text,
     deletion_lifecycle_state text DEFAULT 'active'::text NOT NULL,
     deletion_lifecycle_changed_at timestamp with time zone,
+    owner_user_id uuid,
+    owner_organization_id uuid,
     CONSTRAINT contents_deletion_lifecycle_state_chk CHECK ((deletion_lifecycle_state = ANY (ARRAY['active'::text, 'deactivated'::text, 'pseudonymized'::text, 'deleted'::text]))),
     CONSTRAINT contents_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'in_review'::text, 'approved'::text, 'published'::text, 'archived'::text]))),
     CONSTRAINT contents_validation_state_chk CHECK ((validation_state = ANY (ARRAY['valid'::text, 'invalid'::text, 'pending'::text])))
@@ -1646,19 +1654,19 @@ ALTER TABLE ONLY iam.content_history
 
 
 --
--- Name: content_list_projection_sync_state content_list_projection_sync_state_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.content_list_projection_sync_state
-    ADD CONSTRAINT content_list_projection_sync_state_pkey PRIMARY KEY (instance_id, source_system, content_type);
-
-
---
 -- Name: content_list_projection content_list_projection_scope_key; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
 ALTER TABLE ONLY iam.content_list_projection
     ADD CONSTRAINT content_list_projection_scope_key UNIQUE NULLS NOT DISTINCT (instance_id, source_system, source_entity_type, source_entity_id, organization_id, owner_user_id, owner_organization_id);
+
+
+--
+-- Name: content_list_projection_sync_state content_list_projection_sync_state_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.content_list_projection_sync_state
+    ADD CONSTRAINT content_list_projection_sync_state_pkey PRIMARY KEY (instance_id, source_system, content_type);
 
 
 --
@@ -2172,20 +2180,6 @@ CREATE INDEX iam_content_list_projection_instance_org_updated_idx ON iam.content
 
 
 --
--- Name: iam_content_list_projection_owner_org_updated_idx; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE INDEX iam_content_list_projection_owner_org_updated_idx ON iam.content_list_projection USING btree (instance_id, owner_organization_id, updated_at DESC);
-
-
---
--- Name: iam_content_list_projection_owner_user_updated_idx; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE INDEX iam_content_list_projection_owner_user_updated_idx ON iam.content_list_projection USING btree (instance_id, owner_user_id, updated_at DESC);
-
-
---
 -- Name: iam_content_list_projection_instance_type_updated_idx; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -2197,6 +2191,20 @@ CREATE INDEX iam_content_list_projection_instance_type_updated_idx ON iam.conten
 --
 
 CREATE INDEX iam_content_list_projection_instance_updated_idx ON iam.content_list_projection USING btree (instance_id, updated_at DESC);
+
+
+--
+-- Name: iam_content_list_projection_owner_org_updated_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX iam_content_list_projection_owner_org_updated_idx ON iam.content_list_projection USING btree (instance_id, owner_organization_id, updated_at DESC);
+
+
+--
+-- Name: iam_content_list_projection_owner_user_updated_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX iam_content_list_projection_owner_user_updated_idx ON iam.content_list_projection USING btree (instance_id, owner_user_id, updated_at DESC);
 
 
 --
@@ -2889,8 +2897,6 @@ ALTER TABLE ONLY iam.account_organizations
 
 ALTER TABLE ONLY iam.account_organizations
     ADD CONSTRAINT account_org_organization_fk FOREIGN KEY (instance_id, organization_id) REFERENCES iam.organizations(instance_id, id) ON DELETE CASCADE;
-
-
 
 
 --
@@ -3999,4 +4005,4 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict H22mmSUTDhehNpiWGjOqMQMfClDKe30BxSOWn9fReQw07ozSJ3WsAdxfOTX8caN
+\unrestrict y4iO1T35Ug2FO1d7cN3CHaBWEOsdX2smPhEc3AJT1IsYkPGeHagdKpVETkr7Tmg

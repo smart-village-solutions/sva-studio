@@ -1,24 +1,33 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  resolveActorAccountId: vi.fn(),
   withAuthenticatedUser: vi.fn(),
+  withInstanceScopedDb: vi.fn(),
   refreshProjectedContentsForMainserverMutation: vi.fn(),
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
+  resolveActorAccountId: state.resolveActorAccountId,
   withAuthenticatedUser: state.withAuthenticatedUser,
+  withInstanceScopedDb: state.withInstanceScopedDb,
 }));
 
 vi.mock('./iam-content-list-projection.server', () => ({
-  refreshProjectedContentsForMainserverMutation: state.refreshProjectedContentsForMainserverMutation,
+  refreshProjectedContentsForMainserverMutation:
+    state.refreshProjectedContentsForMainserverMutation,
 }));
 
 import { refreshProjectionAfterMainserverMutation } from './mainserver-projection-refresh.server';
 
 describe('mainserver projection refresh', () => {
   beforeEach(() => {
+    state.resolveActorAccountId.mockReset();
     state.withAuthenticatedUser.mockReset();
+    state.withInstanceScopedDb.mockReset();
     state.refreshProjectedContentsForMainserverMutation.mockReset();
+    state.resolveActorAccountId.mockResolvedValue('account-1');
+    state.withInstanceScopedDb.mockImplementation(async (_instanceId, work) => work({}));
     state.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
       handler({
         activeOrganizationId: 'org-1',
@@ -40,6 +49,7 @@ describe('mainserver projection refresh', () => {
     expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
       contentType: 'news.article',
       organizationId: 'org-1',
     });

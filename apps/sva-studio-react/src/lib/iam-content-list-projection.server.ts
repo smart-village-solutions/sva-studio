@@ -1462,6 +1462,7 @@ export const refreshProjectedContents = async (
 export const refreshProjectedContentsForMainserverMutation = async (input: {
   readonly instanceId: string;
   readonly keycloakSubject: string;
+  readonly actorAccountId?: string;
   readonly contentType: MainserverContentType;
   readonly organizationId?: string;
 }): Promise<void> => {
@@ -1469,6 +1470,7 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
     {
       instanceId: input.instanceId,
       keycloakSubject: input.keycloakSubject,
+      ...(input.actorAccountId ? { actorAccountId: input.actorAccountId } : {}),
       contentType: input.contentType,
       ...(input.organizationId ? { organizationId: input.organizationId } : {}),
     },

@@ -1508,6 +1508,7 @@ describe('content list projection', () => {
       contentType: 'poi.point-of-interest',
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
       organizationId: 'org-1',
     });
 
@@ -1528,6 +1529,47 @@ describe('content list projection', () => {
       expect.objectContaining({
         organization_id: 'org-1',
         source_entity_id: 'poi-mutation-1',
+      }),
+    ]);
+  });
+
+  it('keeps user-scoped mainserver mutation refreshes bound to the actor account', async () => {
+    state.listSvaMainserverPoi.mockResolvedValue({
+      data: [
+        {
+          id: 'poi-user-1',
+          name: 'User POI',
+          contentType: 'poi.point-of-interest',
+          status: 'published',
+          active: true,
+          categories: [],
+          addresses: [],
+          priceInformations: [],
+          openingHours: [],
+          webUrls: [],
+          mediaContents: [],
+          certificates: [],
+          tags: [],
+          visible: true,
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    await refreshProjectedContentsForMainserverMutation({
+      contentType: 'poi.point-of-interest',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+    });
+
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        organization_id: null,
+        owner_user_id: 'account-1',
+        source_entity_id: 'poi-user-1',
       }),
     ]);
   });

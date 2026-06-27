@@ -42,10 +42,25 @@ describe('withLegalTextCompliance', () => {
     expect(response.status).toBe(200);
   });
 
+  it('cached erfolgreiche Prüfungen ohne offene Akzeptanzen kurzzeitig pro Instanz und Benutzer', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [{ pending_count: 0 }] });
+    mockWithDb.mockImplementation((_id: string, fn: (c: unknown) => unknown) => fn({ query }));
+
+    const firstHandler = makeHandler();
+    const secondHandler = makeHandler();
+
+    await withLegalTextCompliance('inst-cache', 'user-sub', firstHandler);
+    await withLegalTextCompliance('inst-cache', 'user-sub', secondHandler);
+
+    expect(firstHandler).toHaveBeenCalledOnce();
+    expect(secondHandler).toHaveBeenCalledOnce();
+    expect(mockWithDb).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
   it('gibt 403 zurück wenn pendingCount > 0', async () => {
-    mockWithDb.mockImplementation((_id: string, fn: (c: unknown) => unknown) =>
-      fn({ query: vi.fn().mockResolvedValue({ rows: [{ pending_count: 2 }] }) })
-    );
+    const query = vi.fn().mockResolvedValue({ rows: [{ pending_count: 2 }] });
+    mockWithDb.mockImplementation((_id: string, fn: (c: unknown) => unknown) => fn({ query }));
 
     const handler = makeHandler();
     const response = await withLegalTextCompliance('inst-2', 'user-sub', handler, {
@@ -73,6 +88,10 @@ describe('withLegalTextCompliance', () => {
       }),
       requestId: 'req-x',
     });
+
+    await withLegalTextCompliance('inst-2', 'user-sub', makeHandler());
+    expect(mockWithDb).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenCalledTimes(2);
   });
 
   it('enthält Content-Type application/json im 403', async () => {
@@ -85,7 +104,9 @@ describe('withLegalTextCompliance', () => {
   });
 
   it('gibt 503 zurück bei DB-Fehler und ruft handler nicht auf', async () => {
-    mockWithDb.mockRejectedValueOnce(new Error('DB down'));
+    mockWithDb
+      .mockRejectedValueOnce(new Error('DB down'))
+      .mockRejectedValueOnce(new Error('DB still down'));
 
     const handler = makeHandler();
     const response = await withLegalTextCompliance('inst-4', 'user-sub', handler);
@@ -102,6 +123,9 @@ describe('withLegalTextCompliance', () => {
       }),
       requestId: 'req-x',
     });
+
+    await withLegalTextCompliance('inst-4', 'user-sub', makeHandler());
+    expect(mockWithDb).toHaveBeenCalledTimes(2);
   });
 
   it('gibt handler-Response weiter wenn kein Fehler', async () => {

@@ -5,7 +5,15 @@ import { withInstanceDb } from './db.js';
 
 const logger = createSdkLogger({ component: 'iam-legal-compliance', level: 'info' });
 const DEFAULT_RETURN_TO = '/';
-const isAuthorizeTimingDebugEnabled = (): boolean => process.env.IAM_DEBUG_AUTHORIZE_TIMINGS === 'true';
+const ACCEPTED_LEGAL_TEXT_CACHE_TTL_MS = 30_000;
+const isAuthorizeTimingDebugEnabled = (): boolean =>
+  process.env.IAM_DEBUG_AUTHORIZE_TIMINGS === 'true';
+
+type AcceptedLegalTextCacheEntry = {
+  readonly expiresAtMs: number;
+};
+
+const acceptedLegalTextCache = new Map<string, AcceptedLegalTextCacheEntry>();
 
 const sanitizeReturnTo = (value: string | null | undefined): string => {
   if (!value) {
@@ -23,14 +31,44 @@ const sanitizeReturnTo = (value: string | null | undefined): string => {
   return value;
 };
 
-type PendingAcceptanceResult =
-  | { pending: false }
-  | { pending: true; pendingCount: number };
+type PendingAcceptanceResult = { pending: false } | { pending: true; pendingCount: number };
+
+const toAcceptedLegalTextCacheKey = (instanceId: string, keycloakSubject: string): string =>
+  `${instanceId}:${keycloakSubject}`;
+
+const readAcceptedLegalTextCache = (
+  instanceId: string,
+  keycloakSubject: string
+): PendingAcceptanceResult | null => {
+  const key = toAcceptedLegalTextCacheKey(instanceId, keycloakSubject);
+  const entry = acceptedLegalTextCache.get(key);
+  if (!entry) {
+    return null;
+  }
+
+  if (entry.expiresAtMs <= Date.now()) {
+    acceptedLegalTextCache.delete(key);
+    return null;
+  }
+
+  return { pending: false };
+};
+
+const markAcceptedLegalTextCache = (instanceId: string, keycloakSubject: string): void => {
+  acceptedLegalTextCache.set(toAcceptedLegalTextCacheKey(instanceId, keycloakSubject), {
+    expiresAtMs: Date.now() + ACCEPTED_LEGAL_TEXT_CACHE_TTL_MS,
+  });
+};
 
 const checkPendingLegalAcceptances = async (
   instanceId: string,
   keycloakSubject: string
 ): Promise<PendingAcceptanceResult> => {
+  const cached = readAcceptedLegalTextCache(instanceId, keycloakSubject);
+  if (cached) {
+    return cached;
+  }
+
   const result = await withInstanceDb(instanceId, async (client) => {
     const row = await client.query<{ pending_count: number }>(
       `
@@ -53,7 +91,12 @@ WHERE ltv.instance_id = $1
     return row.rows[0]?.pending_count ?? 0;
   });
 
-  return result > 0 ? { pending: true, pendingCount: result } : { pending: false };
+  if (result > 0) {
+    return { pending: true, pendingCount: result };
+  }
+
+  markAcceptedLegalTextCache(instanceId, keycloakSubject);
+  return { pending: false };
 };
 
 /**

@@ -12,30 +12,36 @@ const RESOURCE_ID = '33333333-3333-4333-8333-333333333333';
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
   withRequestContext: vi.fn(async (_input: unknown, work: () => Promise<Response>) => work()),
-  getWorkspaceContext: vi.fn(() => ({ requestId: 'workspace-request', traceId: 'workspace-trace' })),
+  getWorkspaceContext: vi.fn(() => ({
+    requestId: 'workspace-request',
+    traceId: 'workspace-trace',
+  })),
   resolveImpersonationSubject: vi.fn(async () => ({ ok: true })),
   loadAuthorizeRequest: vi.fn(),
-  errorResponse: vi.fn((status: number, error: string) =>
-    new Response(JSON.stringify({ error }), {
-      status,
-      headers: { 'Content-Type': 'application/json' },
-    })
+  errorResponse: vi.fn(
+    (status: number, error: string) =>
+      new Response(JSON.stringify({ error }), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      })
   ),
   resolveEffectivePermissions: vi.fn(),
   resolveAuthorizeGeoContext: vi.fn(() => ({})),
-  denyAuthorizeRequest: vi.fn(async () =>
-    new Response(JSON.stringify({ denied: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
+  denyAuthorizeRequest: vi.fn(
+    async () =>
+      new Response(JSON.stringify({ denied: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
   ),
   emitPluginActionAuditEvent: vi.fn(async () => undefined),
   evaluateAuthorizeDecision: vi.fn(),
-  jsonResponse: vi.fn((status: number, body: unknown) =>
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { 'Content-Type': 'application/json' },
-    })
+  jsonResponse: vi.fn(
+    (status: number, body: unknown) =>
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      })
   ),
   buildRequestContext: vi.fn((instanceId?: string) => ({ workspaceId: instanceId })),
   logger: {
@@ -136,15 +142,33 @@ describe('authorize handler', () => {
     const { authorizeHandler } = await import('./authorize.js');
     state.loadAuthorizeRequest.mockResolvedValueOnce(null);
 
-    const response = await authorizeHandler(new Request('https://example.test/api/v1/iam/authorize'));
+    const response = await authorizeHandler(
+      new Request('https://example.test/api/v1/iam/authorize')
+    );
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: 'invalid_request' });
     expect(state.histogramRecord).toHaveBeenCalledWith(
       expect.any(Number),
-      expect.objectContaining({ allowed: false, reason: 'invalid_request', endpoint: '/iam/authorize' })
+      expect.objectContaining({
+        allowed: false,
+        reason: 'invalid_request',
+        endpoint: '/iam/authorize',
+      })
     );
     expect(state.resolveEffectivePermissions).not.toHaveBeenCalled();
+  });
+
+  it('uses the lightweight authenticated context because authorize resolves permissions separately', async () => {
+    const { authorizeHandler } = await import('./authorize.js');
+
+    await authorizeHandler(new Request('https://example.test/api/v1/iam/authorize'));
+
+    expect(state.withAuthenticatedUser).toHaveBeenCalledWith(
+      expect.any(Request),
+      expect.any(Function),
+      { skipEffectiveRoleHydration: true }
+    );
   });
 
   it('rejects blank instance ids after parsing the request body', async () => {
@@ -154,7 +178,9 @@ describe('authorize handler', () => {
       instanceId: '   ',
     });
 
-    const response = await authorizeHandler(new Request('https://example.test/api/v1/iam/authorize'));
+    const response = await authorizeHandler(
+      new Request('https://example.test/api/v1/iam/authorize')
+    );
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: 'invalid_instance_id' });
@@ -171,7 +197,9 @@ describe('authorize handler', () => {
         handler({ user: { ...baseUser, instanceId: '44444444-4444-4444-8444-444444444444' } })
     );
 
-    const response = await authorizeHandler(new Request('https://example.test/api/v1/iam/authorize'));
+    const response = await authorizeHandler(
+      new Request('https://example.test/api/v1/iam/authorize')
+    );
 
     expect(response.status).toBe(200);
     expect(state.denyAuthorizeRequest).toHaveBeenCalledWith(
@@ -201,7 +229,9 @@ describe('authorize handler', () => {
       reasonCode: 'DENY_TICKET_REQUIRED',
     });
 
-    const response = await authorizeHandler(new Request('https://example.test/api/v1/iam/authorize'));
+    const response = await authorizeHandler(
+      new Request('https://example.test/api/v1/iam/authorize')
+    );
 
     expect(response.status).toBe(200);
     expect(state.resolveImpersonationSubject).toHaveBeenCalledWith({
@@ -228,7 +258,9 @@ describe('authorize handler', () => {
     const { authorizeHandler } = await import('./authorize.js');
     state.resolveAuthorizeGeoContext.mockReturnValueOnce(null);
 
-    const response = await authorizeHandler(new Request('https://example.test/api/v1/iam/authorize'));
+    const response = await authorizeHandler(
+      new Request('https://example.test/api/v1/iam/authorize')
+    );
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: 'invalid_request' });
@@ -247,7 +279,9 @@ describe('authorize handler', () => {
       error: 'database_unavailable',
     });
 
-    const response = await authorizeHandler(new Request('https://example.test/api/v1/iam/authorize'));
+    const response = await authorizeHandler(
+      new Request('https://example.test/api/v1/iam/authorize')
+    );
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({ error: 'database_unavailable' });
@@ -283,23 +317,26 @@ describe('authorize handler', () => {
       snapshotVersion: 'snapshot-1',
       cacheStatus: 'hit',
     });
-    state.evaluateAuthorizeDecision.mockImplementationOnce((payload, permissions: Array<{ action: string }>) =>
-      permissions.some((permission) => permission.action === payload.action)
-        ? {
-            allowed: true,
-            reason: 'allowed_by_root_only_permission',
-            requestId: undefined,
-            traceId: undefined,
-          }
-        : {
-            allowed: false,
-            reason: 'permission_missing',
-            requestId: undefined,
-            traceId: undefined,
-          }
+    state.evaluateAuthorizeDecision.mockImplementationOnce(
+      (payload, permissions: Array<{ action: string }>) =>
+        permissions.some((permission) => permission.action === payload.action)
+          ? {
+              allowed: true,
+              reason: 'allowed_by_root_only_permission',
+              requestId: undefined,
+              traceId: undefined,
+            }
+          : {
+              allowed: false,
+              reason: 'permission_missing',
+              requestId: undefined,
+              traceId: undefined,
+            }
     );
 
-    const response = await authorizeHandler(new Request('https://example.test/api/v1/iam/authorize'));
+    const response = await authorizeHandler(
+      new Request('https://example.test/api/v1/iam/authorize')
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -315,7 +352,9 @@ describe('authorize handler', () => {
   it('returns successful authorization decisions with workspace fallback ids', async () => {
     const { authorizeHandler } = await import('./authorize.js');
 
-    const response = await authorizeHandler(new Request('https://example.test/api/v1/iam/authorize'));
+    const response = await authorizeHandler(
+      new Request('https://example.test/api/v1/iam/authorize')
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -349,7 +388,9 @@ describe('authorize handler', () => {
     vi.stubEnv('IAM_DEBUG_AUTHORIZE_TIMINGS', 'true');
     const { authorizeHandler } = await import('./authorize.js');
 
-    const response = await authorizeHandler(new Request('https://example.test/api/v1/iam/authorize'));
+    const response = await authorizeHandler(
+      new Request('https://example.test/api/v1/iam/authorize')
+    );
 
     expect(response.status).toBe(200);
     expect(state.logger.info).toHaveBeenCalledWith(
@@ -372,7 +413,9 @@ describe('authorize handler', () => {
       traceId: 'decision-trace',
     });
 
-    const response = await authorizeHandler(new Request('https://example.test/api/v1/iam/authorize'));
+    const response = await authorizeHandler(
+      new Request('https://example.test/api/v1/iam/authorize')
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({

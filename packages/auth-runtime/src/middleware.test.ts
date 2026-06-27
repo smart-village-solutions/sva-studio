@@ -267,6 +267,38 @@ describe('auth-runtime withAuthenticatedUser', () => {
     expect(dbMocks.withResolvedInstanceDb).toHaveBeenCalledTimes(1);
   });
 
+  it('can skip effective role hydration for handlers that resolve permissions separately', async () => {
+    getSessionUserMock.mockResolvedValue({
+      kind: 'authenticated',
+      user: {
+        id: 'user-1',
+        name: 'Max',
+        roles: ['session_role'],
+        instanceId: 'de-musterhausen',
+      },
+    });
+    const request = new Request('http://localhost/iam/authorize', {
+      headers: { cookie: 'sva_auth_session=session-2' },
+    });
+
+    const response = await withAuthenticatedUser(
+      request,
+      ({ user }) =>
+        Response.json({
+          userId: user.id,
+          roles: user.roles,
+        }),
+      { skipEffectiveRoleHydration: true }
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      userId: 'user-1',
+      roles: ['session_role'],
+    });
+    expect(dbMocks.withResolvedInstanceDb).not.toHaveBeenCalled();
+  });
+
   it('logs middleware timing diagnostics when authorize timing debug is enabled', async () => {
     vi.stubEnv('IAM_DEBUG_AUTHORIZE_TIMINGS', 'true');
     const request = new Request('http://localhost/iam/authorize', {
@@ -403,7 +435,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
 
     expect(middlewareLogger.error).not.toHaveBeenCalledWith(
       'Auth middleware failed unexpectedly',
-      expect.anything(),
+      expect.anything()
     );
   });
 });

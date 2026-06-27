@@ -457,13 +457,11 @@ export const ContentListPage = () => {
   const authPermissionActions = auth.user?.permissionActions ?? [];
   const authSessionPending = auth.isLoading || !auth.hasResolvedSession;
   const contentAccessPending =
-    contentAccessApi.permissionActions.length === 0 &&
-    contentAccessApi.access === null &&
-    contentAccessApi.error === null;
-  const contentListEnabled =
-    !authSessionPending &&
-    Boolean(auth.user) &&
-    (!contentAccessPending || authPermissionActions.length > 0);
+    contentAccessApi.isLoading ||
+    (contentAccessApi.permissionActions.length === 0 &&
+      contentAccessApi.access === null &&
+      contentAccessApi.error === null);
+  const contentListEnabled = !authSessionPending && Boolean(auth.user) && !contentAccessPending;
   const effectivePermissionActions = React.useMemo(
     () =>
       authSessionPending || contentAccessApi.isLoading || contentAccessPending

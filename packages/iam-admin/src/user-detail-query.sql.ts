@@ -103,10 +103,10 @@ const buildUserDetailQuery = (includeDirectPermissions: boolean, includeStructur
     USER_DETAIL_FROM_SQL,
   ].join('');
 
-const USER_DETAIL_QUERY = buildUserDetailQuery(true, true);
+const USER_DETAIL_QUERY = buildUserDetailQuery(false, true);
 const USER_DETAIL_SCHEMA_SUPPORT_QUERY = `
 SELECT
-  to_regclass('iam.account_permissions') IS NOT NULL AS account_permissions_exists,
+  false AS account_permissions_exists,
   EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'iam' AND table_name = 'permissions' AND column_name = 'action'
@@ -119,10 +119,7 @@ SELECT
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'iam' AND table_name = 'permissions' AND column_name = 'resource_id'
   ) AS permissions_resource_id_exists,
-  EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'iam' AND table_name = 'permissions' AND column_name = 'effect'
-  ) AS permissions_effect_exists,
+  false AS permissions_effect_exists,
   EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'iam' AND table_name = 'permissions' AND column_name = 'scope'
@@ -136,33 +133,22 @@ export const readUserDetailSchemaSupport = async (
   const row = result.rows[0];
 
   return {
-    hasAccountPermissionsTable: row?.account_permissions_exists === true,
     hasStructuredPermissions:
       row?.permissions_action_exists === true &&
       row?.permissions_resource_type_exists === true &&
       row?.permissions_resource_id_exists === true &&
-      row?.permissions_effect_exists === true &&
       row?.permissions_scope_exists === true,
   };
 };
 
 export const selectUserDetailQuery = (schemaSupport: UserDetailSchemaSupport): string => {
-  if (schemaSupport.hasStructuredPermissions && schemaSupport.hasAccountPermissionsTable) {
+  if (schemaSupport.hasStructuredPermissions) {
     return USER_DETAIL_QUERY;
-  }
-
-  if (!schemaSupport.hasAccountPermissionsTable) {
-    throw new IamSchemaDriftError({
-      message: 'IAM user detail query requires iam.account_permissions',
-      operation: 'resolve_user_detail',
-      schemaObject: 'iam.account_permissions',
-      expectedMigration: '0014_iam_groups.sql',
-    });
   }
 
   throw new IamSchemaDriftError({
     message: 'IAM user detail query requires structured permission columns',
     operation: 'resolve_user_detail',
-    schemaObject: 'iam.permissions.action/resource_type/resource_id/effect/scope',
+    schemaObject: 'iam.permissions.action/resource_type/resource_id/scope',
   });
 };

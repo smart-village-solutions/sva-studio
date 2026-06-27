@@ -497,15 +497,15 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 ### Ergänzung 2026-03: Strukturierte Permissions und Hierarchie-Vererbung
 
 1. `packages/data/migrations/0010_iam_structured_permissions.sql` (historischer Migrationsort)
-   - Erweitert `iam.permissions` um `action`, `resource_type`, `resource_id`, `effect` und `scope` als strukturiertes Read-/Compute-Modell.
+   - Erweiterte historisch `iam.permissions` um strukturierte Felder; das aktuelle Zielmodell nutzt `action`, `resource_type`, `resource_id` und `scope` ohne fachliches `effect`.
 2. `packages/data/seeds/0001_iam_personas.sql` (historischer Seed-Ort)
    - Seedet Basis-Permissions rückwärtskompatibel sowohl mit `permission_key` als auch mit strukturierten Feldern.
 3. `packages/core/src/iam/authorization-engine.ts`
-   - Wertet `allow`/`deny`, Resource-Spezifität, Org-Hierarchie und Scope-Daten deterministisch in einer festen Prioritätsreihenfolge aus.
+   - Wertet Allow-Grants, Resource-Spezifität, Org-Hierarchie und Scope-Daten deterministisch in einer festen Prioritätsreihenfolge aus.
 4. `packages/iam-core/src/permission-store.ts`
    - Lädt effektive Rollen-Permissions org-kontextbezogen aus Postgres und normalisiert Parent-Mitgliedschaften auf den angefragten Zielkontext.
 5. `packages/iam-core/src/shared.ts`
-   - Transformiert DB-Permission-Zeilen in deduplizierte effektive Permissions inklusive `effect` und `scope`.
+   - Transformiert DB-Permission-Zeilen in deduplizierte effektive Permissions inklusive Scope-Daten.
 
 ### Ergänzung 2026-03: IAM-Transparenz-UI
 
@@ -531,18 +531,18 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 5. `apps/sva-studio-react/src/routes/admin/-iam-page.tsx` und `apps/sva-studio-react/src/routes/account/-account-privacy-page.tsx`
    - Erweitern das IAM-Transparenz-Cockpit um den Tab `deletion-rules` und das Datenschutz-Cockpit um eine tenantgebundene Konten-Löschregeln-Box.
 
-### Ergänzung 2026-03: Direkte Nutzerrechte in der Benutzerverwaltung
+### Historische Ergänzung 2026-03: Direkte Nutzerrechte in der Benutzerverwaltung
 
 1. `packages/data/migrations/0024_iam_account_permissions.sql` (historischer Migrationsort)
-   - Führt `iam.account_permissions` als instanzgebundene Zuordnung `Account -> Permission -> effect` ein.
+   - Führte historisch `iam.account_permissions` als instanzgebundene Zuordnung `Account -> Permission -> effect` ein; das aktuelle Zielmodell entfernt diese Tabelle wieder.
 2. `packages/iam-admin/src/users`
-   - Erweitern den User-Update- und Read-Pfad um direkte Nutzerrechte einschließlich Validierung, Persistenz und Invalidation.
+   - Entfernt direkte Nutzerrechte aus User-Update- und Read-Pfaden; Berechtigungen kommen über Rollen und Gruppen.
 3. `packages/iam-core/src/permission-store.ts` und `packages/iam-core/src/shared.ts`
-   - Laden direkte Nutzerrechte zusätzlich zu Rollen- und Gruppenrechten und serialisieren deren Herkunft als `direct_user`.
+   - Laden Rollen- und Gruppenrechte und serialisieren deren Herkunft ohne `direct_user`.
 4. `packages/core/src/iam/authorization-contract.ts` und `packages/core/src/iam/account-management-contract.ts`
-   - Erweitern die gemeinsamen Verträge um direkte Nutzerrechte, zusätzliche Provenance und die Admin-Read-Modelle für den Nutzer-Editor.
+   - Halten die gemeinsamen Verträge allow-only und ohne direkte Nutzerrechte.
 5. `apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx`
-   - Ergänzt im Nutzer-Detail eine eigene Rechte-Tab mit Drei-Zustands-Auswahl `nicht gesetzt | erlauben | verweigern` und separater Wirksicht.
+   - Zeigt wirksame Rechte aus Rollen- und Gruppenzuordnungen ohne Drei-Zustands-Direktzuweisung.
 
 ### Ergänzung 2026-03: Fachliche Rechtstext-Verwaltung
 

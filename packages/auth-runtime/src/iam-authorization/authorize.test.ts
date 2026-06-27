@@ -120,7 +120,7 @@ describe('authorize handler', () => {
     state.resolveAuthorizeGeoContext.mockReturnValue({});
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
-      permissions: [{ action: 'waste.publish', resourceType: 'waste', effect: 'allow' }],
+      permissions: [{ action: 'waste.publish', resourceType: 'waste' }],
       snapshotVersion: 'snapshot-1',
       cacheStatus: 'hit',
     });
@@ -279,7 +279,7 @@ describe('authorize handler', () => {
     });
     state.resolveEffectivePermissions.mockResolvedValueOnce({
       ok: true,
-      permissions: [{ action: 'instance.registry.manage', resourceType: 'instance', effect: 'allow' }],
+      permissions: [{ action: 'instance.registry.manage', resourceType: 'instance' }],
       snapshotVersion: 'snapshot-1',
       cacheStatus: 'hit',
     });

@@ -59,6 +59,22 @@ describe('content-management core contract', () => {
       )
     ).toEqual(['contentType', 'title', 'payload', 'publishedAt']);
   });
+
+  it('rejects create-time organization and ownership override fields', () => {
+    expect(
+      validateCreateIamContentInput(
+        {
+          contentType: GENERIC_CONTENT_TYPE,
+          organizationId: '11111111-1111-4111-8111-111111111111',
+          ownerUserId: '00000000-0000-0000-0000-000000000001',
+          title: 'Startseite',
+          status: 'draft',
+          payload: { body: 'Hallo' },
+        },
+        [GENERIC_CONTENT_TYPE]
+      )
+    ).toEqual(['ownership']);
+  });
 });
 
 describe('content-management capability mapping', () => {
@@ -108,14 +124,12 @@ describe('content-management access helpers', () => {
         {
           action: 'content.read',
           resourceType: 'content',
-          effect: 'allow',
           organizationId: 'org-1',
           provenance: { sourceKinds: ['direct_role'] },
         },
         {
           action: 'content.updatePayload',
           resourceType: 'content',
-          effect: 'allow',
           organizationId: 'org-1',
           provenance: { sourceKinds: ['group_role'] },
         },
@@ -136,7 +150,6 @@ describe('content-management access helpers', () => {
         {
           action: 'content.read',
           resourceType: 'content',
-          effect: 'allow',
         },
       ])
     ).toEqual({
@@ -147,6 +160,25 @@ describe('content-management access helpers', () => {
       reasonCode: 'content_update_missing',
       organizationIds: [],
       sourceKinds: [],
+    });
+  });
+
+  it('treats permissions as allow grants without deny filtering', () => {
+    expect(
+      summarizeContentAccess([
+        {
+          action: 'content.read',
+          resourceType: 'content',
+        },
+        {
+          action: 'content.updatePayload',
+          resourceType: 'content',
+        },
+      ])
+    ).toMatchObject({
+      state: 'editable',
+      canRead: true,
+      canUpdate: true,
     });
   });
 

@@ -27,25 +27,17 @@ export type UserDetailGroupRow = {
   valid_to: string | null;
 };
 
-export type UserDetailDirectPermissionRow = {
-  permission_id: string;
-  permission_key: string;
-  effect: 'allow' | 'deny';
-  description: string | null;
-};
-
 export type UserDetailPermissionTraceRow = {
   permission_key: string;
   action: string;
   resource_type: string;
   resource_id: string | null;
   organization_id: string | null;
-  effect: 'allow' | 'deny';
   scope: Record<string, unknown> | null;
   access_scope: IamRolePermissionAssignmentScope | null;
   is_effective: boolean;
   status: IamUserPermissionTraceStatus;
-  source_kind: 'direct_permission' | 'direct_role' | 'group_role';
+  source_kind: 'direct_role' | 'group_role';
   role_id: string | null;
   role_key: string | null;
   role_name: string | null;
@@ -82,7 +74,6 @@ export type UserDetailRow = {
   role_rows: UserDetailRoleRow[] | null;
   group_rows: UserDetailGroupRow[] | null;
   permission_rows: Array<{ permission_key: string }> | null;
-  direct_permission_rows: UserDetailDirectPermissionRow[] | null;
   permission_trace_rows: UserDetailPermissionTraceRow[] | null;
 };
 
@@ -96,6 +87,5 @@ export type UserDetailSchemaSupportRow = {
 };
 
 export type UserDetailSchemaSupport = {
-  hasAccountPermissionsTable: boolean;
   hasStructuredPermissions: boolean;
 };

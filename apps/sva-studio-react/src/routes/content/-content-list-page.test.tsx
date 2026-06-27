@@ -292,6 +292,29 @@ describe('ContentListPage', () => {
     expect(screen.getAllByText('Archiv').length).toBeGreaterThan(0);
   });
 
+  it('does not load contents before content access has resolved', () => {
+    useContentAccessMock.mockReturnValue({
+      access: null,
+      permissionActions: [],
+      isLoading: true,
+      error: null,
+    });
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+
+    expect(useContentsMock).toHaveBeenCalledWith(
+      {
+        page: 1,
+        pageSize: 25,
+        sortBy: 'updatedAt',
+        sortDirection: 'desc',
+        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
+      },
+      { enabled: false }
+    );
+  });
+
   it('deletes a mainserver content row when delete permission exists', async () => {
     const refetch = vi.fn(async () => undefined);
     const confirmMock = vi.fn(() => true);
@@ -796,7 +819,7 @@ describe('ContentListPage', () => {
     );
   });
 
-  it('falls back to session permissionActions while content access is still loading', () => {
+  it('waits for content access before requesting the content list while access is loading', () => {
     useContentAccessMock.mockReturnValue({
       access: null,
       permissionActions: [],
@@ -815,11 +838,11 @@ describe('ContentListPage', () => {
         sortDirection: 'desc',
         visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
       },
-      { enabled: true }
+      { enabled: false }
     );
   });
 
-  it('falls back to session permissionActions while content access is still unresolved before the first load starts', () => {
+  it('waits for content access before requesting the content list before the first load starts', () => {
     useContentAccessMock.mockReturnValue({
       access: null,
       permissionActions: [],
@@ -838,7 +861,7 @@ describe('ContentListPage', () => {
         sortDirection: 'desc',
         visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
       },
-      { enabled: true }
+      { enabled: false }
     );
   });
 

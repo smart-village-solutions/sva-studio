@@ -5,6 +5,8 @@ type ProjectionRow = {
   instance_id: string;
   organization_id: string | null;
   owner_subject_id: string | null;
+  owner_user_id?: string | null;
+  owner_organization_id?: string | null;
   content_type: string;
   title: string;
   published_at: string | null;
@@ -96,6 +98,8 @@ describe('content list projection', () => {
       | 'source_entity_id'
       | 'organization_id'
       | 'owner_subject_id'
+      | 'owner_user_id'
+      | 'owner_organization_id'
     >
   ): string =>
     [
@@ -104,7 +108,8 @@ describe('content list projection', () => {
       row.source_entity_type,
       row.source_entity_id,
       row.organization_id ?? '',
-      row.owner_subject_id ?? '',
+      row.owner_user_id ?? '',
+      row.owner_organization_id ?? '',
     ].join('::');
 
   const applyProjectionFilters = (text: string, values: readonly unknown[] | undefined): ProjectionRow[] => {
@@ -119,21 +124,29 @@ describe('content list projection', () => {
       rows = rows.filter((row) => contentTypes.includes(row.content_type));
     }
 
-    const orgMatches = [...text.matchAll(/projection\.organization_id::text = ANY\(\$(\d+)::text\[\]\)/g)];
+    const legacyOrgMatches = [...text.matchAll(/projection\.organization_id::text = ANY\(\$(\d+)::text\[\]\)/g)];
+    const ownerOrgMatches = [...text.matchAll(/projection\.owner_organization_id::text = ANY\(\$(\d+)::text\[\]\)/g)];
+    const orgMatches = [...legacyOrgMatches, ...ownerOrgMatches];
+    const mainserverSourceGuardIndex = text.indexOf("projection.source_system <> 'mainserver'");
     if (orgMatches.length > 0 && !text.includes('NOT (projection.organization_id::text = ANY')) {
       const allowedOrganizationIds = orgMatches.flatMap((match) => {
         const value = values?.[Number.parseInt(match[1] ?? '0', 10) - 1];
         return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
       });
-      const allowsUnscopedOrganizations = text.includes('projection.organization_id IS NULL');
+      const visibilityOwnerUserIds = [...text.matchAll(/projection\.owner_user_id::text = \$(\d+)/g)]
+        .filter((match) => match.index < mainserverSourceGuardIndex || mainserverSourceGuardIndex < 0)
+        .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
+        .filter((value): value is string => typeof value === 'string');
       rows = rows.filter(
         (row) =>
-          (row.organization_id !== null && allowedOrganizationIds.includes(row.organization_id)) ||
-          (allowsUnscopedOrganizations && row.organization_id === null)
+          (legacyOrgMatches.length > 0 && row.organization_id != null && allowedOrganizationIds.includes(row.organization_id)) ||
+          (row.owner_organization_id != null && allowedOrganizationIds.includes(row.owner_organization_id)) ||
+          (row.owner_user_id != null && visibilityOwnerUserIds.includes(row.owner_user_id))
       );
     }
 
-    const createdByMatches = [...text.matchAll(/projection\.created_by = \$(\d+)/g)];
+    const createdByMatches = [...text.matchAll(/projection\.owner_user_id::text = \$(\d+)/g)]
+      .filter((match) => mainserverSourceGuardIndex < 0 || match.index < mainserverSourceGuardIndex);
     if (
       createdByMatches.length > 0 &&
       orgMatches.length === 0 &&
@@ -142,20 +155,20 @@ describe('content list projection', () => {
       const allowedCreators = createdByMatches
         .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
         .filter((value): value is string => typeof value === 'string');
-      rows = rows.filter((row) => allowedCreators.includes(row.created_by));
+      rows = rows.filter((row) => row.owner_user_id != null && allowedCreators.includes(row.owner_user_id));
     }
 
-    if (text.includes('projection.owner_subject_id = $')) {
-      const ownerSubjectIdMatches = [...text.matchAll(/projection\.owner_subject_id = \$(\d+)/g)];
-      const allowedOwnerSubjectIds = ownerSubjectIdMatches
+    if (text.includes('projection.owner_user_id::text = $')) {
+      const ownerUserIdMatches = [...text.matchAll(/projection\.owner_user_id::text = \$(\d+)/g)];
+      const allowedOwnerUserIds = ownerUserIdMatches
         .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
         .filter((value): value is string => typeof value === 'string');
       rows = rows.filter(
         (row) =>
           row.source_system !== 'mainserver' ||
           row.organization_id !== null ||
-          row.owner_subject_id === null ||
-          allowedOwnerSubjectIds.includes(row.owner_subject_id)
+          row.owner_user_id == null ||
+          allowedOwnerUserIds.includes(row.owner_user_id)
       );
     }
 
@@ -277,7 +290,7 @@ describe('content list projection', () => {
             const contentType = String(values?.[1] ?? '');
             const organizationId =
               typeof values?.[2] === 'string' ? String(values[2]) : undefined;
-            const keycloakSubject = String(values?.[3] ?? '');
+            const actorAccountId = typeof values?.[3] === 'string' ? String(values[3]) : undefined;
             const total = projectionRows.filter(
               (row) =>
                 row.instance_id === instanceId &&
@@ -286,7 +299,7 @@ describe('content list projection', () => {
                 (
                   (organizationId ? row.organization_id === organizationId : row.organization_id === null) &&
                   (!organizationId
-                    ? row.owner_subject_id === null || row.owner_subject_id === keycloakSubject
+                    ? row.owner_user_id === null || row.owner_user_id === actorAccountId
                     : true)
                 )
             ).length;
@@ -297,7 +310,7 @@ describe('content list projection', () => {
             const contentType = String(values?.[1] ?? '');
             const organizationId =
               typeof values?.[2] === 'string' ? String(values[2]) : undefined;
-            const keycloakSubject = String(values?.[3] ?? '');
+            const actorAccountId = typeof values?.[3] === 'string' ? String(values[3]) : undefined;
             projectionRows = projectionRows.filter(
               (row) =>
                 !(
@@ -306,7 +319,7 @@ describe('content list projection', () => {
                   (
                     (organizationId ? row.organization_id === organizationId : row.organization_id === null) &&
                     (!organizationId
-                      ? row.owner_subject_id === null || row.owner_subject_id === keycloakSubject
+                      ? row.owner_user_id === null || row.owner_user_id === actorAccountId
                       : true)
                   )
                 )
@@ -323,6 +336,8 @@ describe('content list projection', () => {
                 instance_id: String(row.instance_id),
                 organization_id: (row.organization_id as string | null) ?? null,
                 owner_subject_id: (row.owner_subject_id as string | null) ?? null,
+                owner_user_id: (row.owner_user_id as string | null) ?? null,
+                owner_organization_id: (row.owner_organization_id as string | null) ?? null,
                 content_type: String(row.content_type),
                 title: String(row.title),
                 published_at: (row.published_at as string | null) ?? null,
@@ -532,6 +547,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-1',
         owner_subject_id: null,
+        owner_user_id: 'account-1',
+        owner_organization_id: 'org-1',
         content_type: 'generic',
         title: 'Visible',
         published_at: null,
@@ -557,6 +574,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-2',
         owner_subject_id: null,
+        owner_user_id: 'account-2',
+        owner_organization_id: 'org-2',
         content_type: 'generic',
         title: 'Hidden',
         published_at: null,
@@ -586,7 +605,7 @@ describe('content list projection', () => {
               instanceId: 'de-musterhausen',
               keycloakSubject: 'kc-user-1',
             },
-            permissions: [{ action, resourceType: 'content', organizationId: 'org-1' }],
+            permissions: [{ action, resourceType: 'content', organizationId: 'org-1', accessScope: 'organization' }],
           }
         : {
             ok: false,
@@ -597,7 +616,7 @@ describe('content list projection', () => {
     );
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
-      permissions: [{ action: 'content.read', resourceType: 'content', organizationId: 'org-1' }],
+      permissions: [{ action: 'content.read', resourceType: 'content', organizationId: 'org-1', accessScope: 'organization' }],
     });
 
     const response = await listProjectedContents(ctx, {
@@ -626,6 +645,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-1',
         owner_subject_id: null,
+        owner_user_id: 'account-1',
+        owner_organization_id: 'org-1',
         content_type: 'generic',
         title: 'Visible',
         published_at: null,
@@ -672,6 +693,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-1',
         owner_subject_id: null,
+        owner_user_id: 'account-1',
+        owner_organization_id: 'org-1',
         content_type: 'generic',
         title: 'Visible',
         published_at: null,
@@ -753,6 +776,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-1',
         owner_subject_id: null,
+        owner_user_id: 'account-1',
+        owner_organization_id: 'org-1',
         content_type: 'generic',
         title: 'Own Row',
         published_at: null,
@@ -778,6 +803,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-1',
         owner_subject_id: null,
+        owner_user_id: 'account-9',
+        owner_organization_id: 'org-1',
         content_type: 'generic',
         title: 'Other Row',
         published_at: null,
@@ -848,6 +875,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-1',
         owner_subject_id: null,
+        owner_user_id: null,
+        owner_organization_id: 'org-1',
         content_type: 'news.article',
         title: 'Rathaus',
         published_at: '2026-06-21T09:00:00.000Z',
@@ -919,13 +948,15 @@ describe('content list projection', () => {
     });
   });
 
-  it('keeps unscoped mainserver rows visible when no active organization is set', async () => {
+  it('keeps own mainserver rows visible when no active organization is set', async () => {
     projectionRows = [
       {
         id: 'news-1',
         instance_id: 'de-musterhausen',
         organization_id: null,
         owner_subject_id: null,
+        owner_user_id: 'account-1',
+        owner_organization_id: null,
         content_type: 'news.article',
         title: 'Rathaus',
         published_at: '2026-06-21T09:00:00.000Z',
@@ -1009,7 +1040,7 @@ describe('content list projection', () => {
     );
 
     await expect(response.json()).resolves.toMatchObject({
-      data: [expect.objectContaining({ id: 'news-1' })],
+      data: expect.arrayContaining([expect.objectContaining({ id: 'news-1' })]),
       pagination: {
         page: 1,
         pageSize: 25,
@@ -1430,12 +1461,14 @@ describe('content list projection', () => {
     expect(projectionRows).toEqual([
       expect.objectContaining({
         organization_id: 'org-1',
-        owner_subject_id: null,
+        owner_user_id: null,
+        owner_organization_id: 'org-1',
         source_entity_id: 'event-shared-1',
       }),
       expect.objectContaining({
         organization_id: null,
-        owner_subject_id: 'kc-user-1',
+        owner_user_id: null,
+        owner_organization_id: null,
         source_entity_id: 'event-shared-1',
       }),
     ]);

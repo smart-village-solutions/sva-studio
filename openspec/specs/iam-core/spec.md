@@ -233,17 +233,22 @@ Das bestehende IAM-Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`
 
 ### Requirement: Keycloak Admin API Integration
 
-Das System MUST über dedizierte Service-Accounts mit der Keycloak Admin REST API kommunizieren, um Benutzer, Rollen und Rollenzuordnungen im jeweiligen Platform- oder Tenant-Scope vollständig listen, bearbeiten und synchronisieren zu können. Keycloak bleibt System of Record für Identitäten und Realm-Rollen; Studio stellt eine auditierte Admin-UI und synchronisierte Fachansicht bereit.
+Das System MUST über dedizierte Service-Accounts mit der Keycloak Admin REST API kommunizieren, um Benutzer, Identitätsattribute, technische Realm-Artefakte und die ausdrücklich verbleibenden Sonderrollen im jeweiligen Platform- oder Tenant-Scope vollständig listen, bearbeiten und synchronisieren zu können. Keycloak bleibt System of Record für Identitäten, Login und technische Realm-Zugänge; tenantlokale Fachrollen und deren Permissions werden normativ im Studio-IAM-Modell verwaltet.
 
-#### Scenario: Keycloak-first user mutation
+#### Scenario: Benutzerupdate erhält fachlich unveränderte Rollen- und Gruppenzuweisungen
 
-- **WHEN** ein berechtigter Admin einen User im Studio erstellt, deaktiviert oder Profilfelder ändert
-- **THEN** führt das System die Mutation zuerst gegen Keycloak aus
-- **AND** synchronisiert anschließend das Studio-Read-Model
-- **AND** bei Benutzererstellung dürfen initial sowohl direkte `roleIds` als auch `groupIds` übergeben werden
-- **AND** das System schreibt initiale Gruppenmitgliedschaften im aktiven Instanzkontext, wenn `groupIds` gesetzt sind
-- **AND** direkte Rollen bleiben optionale additive Zuweisungen
-- **AND** bei nachgelagertem Sync-Fehler bleibt der Keycloak-Zustand sichtbar und wird als Drift gemeldet
+- **WHEN** ein berechtigter Admin einen bestehenden Benutzer aktualisiert und eine bereits vorhandene Rollen- oder Gruppenzuordnung fachlich unverändert bestehen bleibt
+- **THEN** ersetzt das System diese Zuordnung nicht blind durch Löschen und Neuanlegen
+- **AND** bleiben vorhandene Assignment-Metadaten wie Ursprung und Gültigkeitsfenster erhalten
+- **AND** setzt dies keine allgemeine Keycloak-Realm-Rollenmutation für tenantlokale Fachrollen voraus
+
+#### Scenario: Benutzerupdate schreibt nur die fachliche Differenz
+
+- **WHEN** ein berechtigter Admin bei einem bestehenden Benutzer Rollen oder Gruppen gezielt hinzufügt, entfernt oder ändert
+- **THEN** persistiert das System nur die fachliche Differenz der betroffenen Zuordnungen
+- **AND** bleiben nicht geänderte Zuordnungen unverändert bestehen
+- **AND** werden nachgelagerte Invalidierungen und Synchronisationsschritte nur für den betroffenen Benutzerkontext ausgelöst
+- **AND** bleiben Autorisierungsentscheidungen auf die kanonische IAM-Sicht beschränkt
 
 ### Requirement: Instanz-Registry speichert Auth-Metadaten pro Instanz
 
@@ -380,27 +385,28 @@ Alle IAM-Datenfelder MUST nach PII-Stufe klassifiziert und entsprechend behandel
 
 ### Requirement: Studio-Rollen-Lebenszyklus mit Keycloak-Synchronisierung
 
-Das System MUST Rollen-CRUD aus dem Studio mit Keycloak Realm Roles synchronisieren, sodass für studioverwaltete Rollen keine manuelle Keycloak-Pflege erforderlich ist.
+Das System MUST Rollen-CRUD für tenantlokale Custom-Rollen im Studio-IAM-Modell ausführen. Allgemeine Custom-Rollen werden nicht als Keycloak Realm Roles materialisiert; Keycloak-Abgleich bleibt auf technische Sonderrollen und Realm-Zugangskontrakte begrenzt.
 
 #### Scenario: Custom-Rolle erstellen
 
 - **WHEN** ein `system_admin` eine neue Custom-Rolle im Studio erstellt
-- **THEN** wird die Rolle in Keycloak als Realm Role angelegt
-- **AND** danach wird die Rolle in `iam.roles` persistiert
-- **AND** die API-Antwort enthält `syncState = "synced"`
+- **THEN** wird die Rolle in `iam.roles` persistiert
+- **AND** führt das System dafür keine allgemeine Keycloak-Realm-Rollenmutation aus
+- **AND** behandelt es eine fehlende korrespondierende Keycloak-Rolle nicht als Drift des Sollmodells
 
 #### Scenario: Custom-Rolle aktualisieren
 
 - **WHEN** ein `system_admin` eine bestehende Custom-Rolle aktualisiert
-- **THEN** werden die relevanten Metadaten in Keycloak und IAM-Datenbank konsistent aktualisiert
-- **AND** die Antwort enthält den finalen Synchronisierungsstatus
+- **THEN** werden die relevanten Metadaten im IAM-Rollenmodell konsistent aktualisiert
+- **AND** ein technischer Keycloak-Call erfolgt nur, wenn ausdrücklich eine verbleibende Sonderrolle betroffen ist
 
 #### Scenario: Custom-Rolle löschen
 
 - **WHEN** ein `system_admin` eine löschbare Custom-Rolle entfernt
-- **THEN** werden abhängige Rollenzuweisungen gemäß bestehender Schutzregeln verarbeitet
-- **AND** die zugehörige Keycloak-Rolle wird entfernt
-- **AND** das Mapping wird aus dem IAM-Speicher gelöscht
+- **THEN** werden vor dem eigentlichen Rollen-Delete alle direkten Benutzerzuordnungen in `iam.account_roles` dieser Rolle entfernt
+- **AND** werden vor dem eigentlichen Rollen-Delete alle Gruppenzuordnungen in `iam.group_roles` dieser Rolle entfernt
+- **AND** wird die Rolle aus dem IAM-Speicher gelöscht
+- **AND** wird keine allgemeine Keycloak-Realm-Rolle für diese Custom-Rolle erwartet oder entfernt
 
 ### Requirement: Deterministisches Role-Mapping und Sync-Status
 
@@ -1030,17 +1036,18 @@ Der IAM-Diagnosekern SHALL öffentliche Fehlerklassifikationen, handlungsleitend
 - **AND** markiert den Zustand nicht als vollständig gesund
 
 ### Requirement: IAM Account Management Scope Resolution
-
-IAM Account Management SHALL resolve each authenticated IAM-v1 request as either `platform` or `instance` scope before reading or mutating users, roles, permissions, or sync state.
+IAM Account Management SHALL resolve each authenticated IAM-v1 request as either `platform` or `instance` scope before reading or mutating users, roles, permissions, or sync state. The platform scope MUST be backed by the Root-Realm with `instance_registry_admin` as the only relevant platform role. The instance scope MUST be backed by the Tenant-Realm with tenantlokale Rollen und Permissions.
 
 #### Scenario: Root-host user list uses platform scope
 - **WHEN** an authenticated platform admin without `instanceId` calls `GET /api/v1/iam/users`
 - **THEN** the system returns platform users from the platform identity provider
+- **AND** it projects only platform-relevant roles such as `instance_registry_admin`
 - **AND** it does not require or synthesize a tenant `instanceId`
 
 #### Scenario: Tenant user list remains instance-scoped
 - **WHEN** an authenticated tenant admin with `instanceId` calls `GET /api/v1/iam/users`
 - **THEN** the system uses the existing tenant IAM read model for that `instanceId`
+- **AND** it ignores platform-role information from the Root-Realm
 
 ### Requirement: Keycloak User Synchronization Scope
 
@@ -1222,4 +1229,73 @@ Das System SHALL Zugriffe auf den externen SVA-Mainserver serverseitig delegiere
 - **AND** für den aktuellen Benutzer weder aktuelle noch Legacy-Credentials vollständig vorhanden sind
 - **THEN** wird kein Upstream-Aufruf gestartet
 - **AND** der gemeinsame Resolver-Vertrag liefert den stabilen Fehlercode `missing_credentials`
+
+### Requirement: Permission-Metadaten beschreiben die Laufzeitsemantik explizit
+
+Das System MUST für verwaltete IAM-Permissions explizit ausweisen, ob sie instanzweit, datensatzbezogen oder organisationskontextbezogen ausgewertet werden.
+
+#### Scenario: Rollen- und Transparenzmodelle tragen `runtimeScope`
+
+- **WHEN** verwaltete Permissions über Rollenlisten, Permissions-Listen oder Benutzer-Detail-Transparenzmodelle zurückgegeben werden
+- **THEN** enthält jeder Eintrag eine explizite Laufzeitklassifikation `instance | record | organization_context`
+- **AND** dürfen neue verwaltete Permission-Keys nicht stillschweigend ohne diese Klassifikation eingeführt werden
+
+### Requirement: Root- und Tenant-Rollenmodell sind realm-separiert
+Das System SHALL Root-/Plattform-Rollen und tenantlokale Rollen strikt nach Realm trennen. Plattformrollen gelten ausschließlich im Root-Realm; tenantlokale Rollen gelten ausschließlich im Tenant-Realm.
+
+#### Scenario: Root-Request bleibt tenant-los
+- **WHEN** ein authentifizierter Benutzer auf dem Root-Host einen IAM- oder Instanzverwaltungs-Request ausführt
+- **THEN** bleibt `instanceId` im Session- und Handler-Kontext leer
+- **AND** der Root-Scope wird nicht als Pseudo-Tenant modelliert
+- **AND** tenantlokale Rollen oder Gruppen werden für diesen Request nicht aufgelöst
+
+#### Scenario: Tenant-Request kennt keine Plattformrollen
+- **WHEN** ein authentifizierter Benutzer in einem Tenant-Realm einen tenantseitigen IAM-Request ausführt
+- **THEN** berücksichtigt das System ausschließlich tenantlokale Rollen, Gruppen und Permissions der aktiven `instanceId`
+- **AND** Plattformrollen aus dem Root-Realm haben in diesem Kontext keine Wirkung
+
+### Requirement: Root-Realm verwendet nur instance_registry_admin als relevante Plattformrolle
+Das System SHALL im Root-Realm `instance_registry_admin` als einzige relevante Rolle für Root-Control-Plane- und Instanzverwaltungszugriffe behandeln.
+
+#### Scenario: Plattform-User wird mit Root-Rolle projiziert
+- **WHEN** ein Root-User über den Plattformpfad gelesen oder in das Session-Profil projiziert wird
+- **THEN** enthält die Rollenprojektion höchstens die Rolle `instance_registry_admin`
+- **AND** andere tenantbezogene Rollen werden nicht in den Plattformvertrag injiziert
+
+#### Scenario: Root-Control-Plane prüft nur instance_registry_admin
+- **WHEN** ein Root-Host-Request eine Instanzverwaltungs-, Provisioning- oder Root-Control-Plane-Mutation ausführt
+- **THEN** prüft das System ausschließlich auf die Plattformrolle `instance_registry_admin`
+- **AND** es verlangt dafür keine tenantlokalen Rollen oder Permissions
+
+### Requirement: Tenant-Realm verwendet system_admin als geschützte Vollzugriffsrolle
+Das System SHALL im Tenant-Realm `system_admin` als geschützte, defaultfähige Vollzugriffsrolle für die initiale Instanzadministration beibehalten. `system_admin` MUST direkt die vollständige tenantlokale Permission-Menge bündeln und darf funktional nicht von zusätzlichen Gruppen, Rollenbündeln oder Übergangs-Standardrollen abhängen.
+
+#### Scenario: Initialer Tenant-Admin erhält system_admin
+- **WHEN** eine neue Instanz erfolgreich angelegt und ihr initialer Tenant-Admin gebootstrappt wird
+- **THEN** weist das System diesem Benutzer die Rolle `system_admin` im Tenant-Realm zu
+- **AND** diese Rolle enthält die vollständige tenantlokale Verwaltungs- und Fachrechtebasis
+
+#### Scenario: system_admin wirkt ohne zusätzliche Admin-Gruppe vollständig
+- **WHEN** ein Tenant-Benutzer ausschließlich die Rolle `system_admin` besitzt
+- **THEN** erhält er dieselbe vollständige tenantlokale Permission-Basis, die für den geschützten Vollzugriff vorgesehen ist
+- **AND** das System verlangt dafür keine zusätzliche Gruppenmitgliedschaft wie `admins`
+- **AND** das System verlangt dafür keine ergänzende Standardrolle wie `core_admin`
+
+#### Scenario: Tenant-Admin-Projektion enthält keine Root-Rolle
+- **WHEN** der initiale Tenant-Admin oder ein anderer Tenant-User im Tenant-Realm gelesen wird
+- **THEN** enthält seine Rollenprojektion keine Plattformrolle `instance_registry_admin`
+- **AND** die Root-/Tenant-Rollenmodelle bleiben getrennt
+
+### Requirement: Frühere Standardrollen sind nur noch Altbestands- und Migrationsartefakte
+Das System SHALL frühere tenantlokale Standardrollen wie `app_manager`, `feature-manager`, `interface-manager`, `designer`, `editor` oder `moderator` nicht mehr als automatisch verwaltete Default- oder Systemrollen materialisieren. Historische Altbestände dürfen nur noch von Cleanup-, Repair- oder Upgrade-Pfaden erkannt und bereinigt werden.
+
+#### Scenario: Reseed oder Reconcile erzeugt keine Legacy-Standardrollen neu
+- **WHEN** ein Seed-, Repair- oder Reconcile-Pfad tenantlokale Rollen gegen das aktuelle Sollmodell abgleicht
+- **THEN** materialisiert er `system_admin` als einzige geschützte tenantlokale Defaultrolle
+- **AND** er erzeugt keine frühere Standardrolle wie `app_manager` oder `editor` neu als Default- oder Systemrolle
+
+#### Scenario: Historische Legacy-Rollen bleiben nur Migrationsinput
+- **WHEN** eine Bestandsinstanz noch frühere tenantlokale Standardrollen enthält
+- **THEN** dürfen Cleanup- oder Upgrade-Pfade diese Rollen als historischen Altbestand markieren, neutralisieren oder manuell ersetzbar machen
+- **AND** das System behandelt sie nicht mehr als normative Quelle tenantlokaler Verwaltungs- oder Modulrechte
 

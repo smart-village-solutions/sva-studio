@@ -52,7 +52,6 @@ const createDeps = (action = 'waste-management.read') => ({
       {
         action,
         resourceType: 'waste-management',
-        effect: 'allow' as const,
       },
     ],
   })),
@@ -171,7 +170,6 @@ describe('waste-management read handlers', () => {
               action: 'waste-management.read',
               resourceType: 'waste-management',
               organizationId: '11111111-1111-4111-8111-111111111111',
-              effect: 'allow' as const,
             },
           ],
         })),

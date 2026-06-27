@@ -64,7 +64,7 @@ export const createContentResponse = async (
   }
   const parsedData = {
     ...prepared.parsedData,
-    organizationId: prepared.parsedData.organizationId ?? actor.activeOrganizationId,
+    organizationId: actor.activeOrganizationId,
   };
 
   const replayOrConflict = await reserveCreateIdempotency(actor, prepared.idempotencyKey, prepared.rawBody);
@@ -226,7 +226,8 @@ export const deleteContentResponse = async (
       contentType: currentContent.contentType,
       domainCapability: 'content.delete',
       organizationId: currentContent.organizationId,
-      createdByAccountId: currentContent.createdBy,
+      ownerUserId: currentContent.ownerUserId,
+      ownerOrganizationId: currentContent.ownerOrganizationId,
     });
     if (authorizationError) {
       return authorizationError;

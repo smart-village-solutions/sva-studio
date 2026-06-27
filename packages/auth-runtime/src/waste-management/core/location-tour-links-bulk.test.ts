@@ -45,7 +45,6 @@ const createDeps = () => ({
       {
         action: 'waste-management.tours.manage',
         resourceType: 'waste-management',
-        effect: 'allow' as const,
       },
     ],
   })),

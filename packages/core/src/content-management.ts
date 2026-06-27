@@ -80,10 +80,9 @@ export type ContentJsonValue =
 
 type ContentPermissionView = {
   readonly action: string;
-  readonly effect?: 'allow' | 'deny';
   readonly organizationId?: string;
   readonly provenance?: {
-    readonly sourceKinds?: readonly ('direct_user' | 'direct_role' | 'group_role')[];
+    readonly sourceKinds?: readonly ('direct_role' | 'group_role')[];
   };
 };
 
@@ -94,7 +93,7 @@ export type IamContentAccessSummary = {
   readonly canUpdate: boolean;
   readonly reasonCode?: IamContentAccessReasonCode;
   readonly organizationIds: readonly string[];
-  readonly sourceKinds: readonly ('direct_user' | 'direct_role' | 'group_role')[];
+  readonly sourceKinds: readonly ('direct_role' | 'group_role')[];
 };
 
 export type IamContentHistoryEntry = {
@@ -114,7 +113,8 @@ export type IamContentListItem = {
   readonly contentType: string;
   readonly instanceId: string;
   readonly organizationId?: string;
-  readonly ownerSubjectId?: string;
+  readonly ownerUserId?: string;
+  readonly ownerOrganizationId?: string;
   readonly title: string;
   readonly publishedAt?: string;
   readonly publishFrom?: string;
@@ -150,8 +150,6 @@ export type IamContentListQuery = {
 
 export type CreateIamContentInput = {
   readonly contentType: string;
-  readonly organizationId?: string;
-  readonly ownerSubjectId?: string;
   readonly title: string;
   readonly publishedAt?: string;
   readonly publishFrom?: string;
@@ -161,7 +159,14 @@ export type CreateIamContentInput = {
   readonly validationState?: IamContentValidationState;
 };
 
-export type UpdateIamContentInput = Partial<CreateIamContentInput>;
+export type UpdateIamContentInput = Partial<
+  CreateIamContentInput & {
+    readonly organizationId: string;
+    readonly ownerUserId: string;
+    readonly ownerOrganizationId: string;
+    readonly authorDisplayName: string;
+  }
+>;
 
 const CONTENT_READ_ACTIONS = new Set(['content.read']);
 const CONTENT_CREATE_ACTIONS = new Set(['content.create']);
@@ -178,7 +183,7 @@ const CONTENT_UPDATE_ACTIONS = new Set([
 
 const uniqueSortedStrings = (values: readonly string[]) => [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right));
 
-const uniqueSortedSourceKinds = (values: readonly ('direct_user' | 'direct_role' | 'group_role')[]) =>
+const uniqueSortedSourceKinds = (values: readonly ('direct_role' | 'group_role')[]) =>
   [...new Set(values)].sort((left, right) => left.localeCompare(right));
 
 const matchesActionSet = (action: string, candidates: ReadonlySet<string>) => candidates.has(action.trim());
@@ -193,23 +198,11 @@ export const summarizeContentAccess = (
   const organizationIds = uniqueSortedStrings(
     contentPermissions.flatMap((permission) => (permission.organizationId ? [permission.organizationId] : []))
   );
-  const hasAllowedRead = contentPermissions.some(
-    (permission) => permission.effect !== 'deny' && matchesActionSet(permission.action, CONTENT_READ_ACTIONS)
-  );
-  const hasAllowedCreate = contentPermissions.some(
-    (permission) => permission.effect !== 'deny' && matchesActionSet(permission.action, CONTENT_CREATE_ACTIONS)
-  );
-  const hasAllowedUpdate = contentPermissions.some(
-    (permission) => permission.effect !== 'deny' && matchesActionSet(permission.action, CONTENT_UPDATE_ACTIONS)
-  );
-  const hasDeniedRead = contentPermissions.some(
-    (permission) => permission.effect === 'deny' && matchesActionSet(permission.action, CONTENT_READ_ACTIONS)
-  );
-  const hasDeniedUpdate = contentPermissions.some(
-    (permission) => permission.effect === 'deny' && matchesActionSet(permission.action, CONTENT_UPDATE_ACTIONS)
-  );
+  const hasAllowedRead = contentPermissions.some((permission) => matchesActionSet(permission.action, CONTENT_READ_ACTIONS));
+  const hasAllowedCreate = contentPermissions.some((permission) => matchesActionSet(permission.action, CONTENT_CREATE_ACTIONS));
+  const hasAllowedUpdate = contentPermissions.some((permission) => matchesActionSet(permission.action, CONTENT_UPDATE_ACTIONS));
 
-  if (hasAllowedRead && hasAllowedUpdate && !hasDeniedUpdate) {
+  if (hasAllowedRead && hasAllowedUpdate) {
     return {
       state: 'editable',
       canRead: true,
@@ -220,13 +213,13 @@ export const summarizeContentAccess = (
     };
   }
 
-  if (hasAllowedRead && !hasDeniedRead) {
+  if (hasAllowedRead) {
     return {
       state: 'read_only',
       canRead: true,
       canCreate: hasAllowedCreate,
       canUpdate: false,
-      reasonCode: hasDeniedUpdate || contentPermissions.length > 0 ? 'content_update_missing' : 'context_restricted',
+      reasonCode: contentPermissions.length > 0 ? 'content_update_missing' : 'context_restricted',
       organizationIds,
       sourceKinds,
     };
@@ -237,7 +230,7 @@ export const summarizeContentAccess = (
     canRead: false,
     canCreate: hasAllowedCreate,
     canUpdate: false,
-    reasonCode: hasDeniedRead || contentPermissions.length > 0 ? 'content_read_missing' : 'context_restricted',
+    reasonCode: contentPermissions.length > 0 ? 'content_read_missing' : 'context_restricted',
     organizationIds,
     sourceKinds,
   };
@@ -355,10 +348,21 @@ export const validateCreateIamContentInput = (
     readonly publishedAt?: string;
     readonly payload?: unknown;
     readonly status?: unknown;
+    readonly organizationId?: unknown;
+    readonly ownerUserId?: unknown;
+    readonly ownerOrganizationId?: unknown;
   },
   registeredContentTypes: readonly string[]
 ): readonly string[] => {
   const errors: string[] = [];
+
+  if (
+    input.organizationId !== undefined ||
+    input.ownerUserId !== undefined ||
+    input.ownerOrganizationId !== undefined
+  ) {
+    errors.push('ownership');
+  }
 
   if (!input.contentType || !registeredContentTypes.includes(input.contentType)) {
     errors.push('contentType');

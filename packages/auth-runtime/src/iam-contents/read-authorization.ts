@@ -1,6 +1,12 @@
-import type { IamContentListQuery } from '@sva/core';
+import type { EffectivePermission, IamContentListQuery } from '@sva/core';
 
-import { authorizeContentAction, type ContentReadAction, type ResolvedContentActor } from './request-context.js';
+import {
+  authorizeContentAction,
+  resolveContentAuthorizationPermissions,
+  type ContentReadAction,
+  type ResolvedContentActor,
+} from './request-context.js';
+import type { LoadContentListAuthorizationInput } from './repository-types.js';
 
 const buildReadActionForContentType = (contentType: string | undefined): ContentReadAction => {
   switch (contentType) {
@@ -34,54 +40,75 @@ export const authorizeReadableContentItem = (
     readonly contentType: string;
     readonly organizationId?: string;
     readonly createdBy?: string;
+    readonly ownerUserId?: string;
+    readonly ownerOrganizationId?: string;
   }
 ) =>
   authorizeContentAction(actor, buildReadActionForContentType(item.contentType), {
     contentId: item.id,
     contentType: item.contentType,
     organizationId: item.organizationId,
-    createdByAccountId: item.createdBy,
+    ownerUserId: item.ownerUserId,
+    ownerOrganizationId: item.ownerOrganizationId,
   });
 
 export const resolveReadableContentScopes = async (
   actor: ResolvedContentActor['actor'],
-  scopes: readonly (string | null)[],
+  _scopes: readonly (string | null)[],
   query: IamContentListQuery
-): Promise<{ readonly allowedOrganizationIds: readonly string[]; readonly includeUnscopedContent: boolean } | Response> => {
-  const allowedOrganizationIds: string[] = [];
-  let includeUnscopedContent = false;
+): Promise<LoadContentListAuthorizationInput | Response> => {
+  const sourcePermissions = await resolveContentAuthorizationPermissions(actor);
+  if ('error' in sourcePermissions) {
+    return sourcePermissions.error;
+  }
+
+  return resolveReadableContentAuthorization(actor, sourcePermissions.permissions, query);
+};
+
+const readResourceTypeForAction = (action: ContentReadAction): string => action.split('.')[0] || 'content';
+
+const isMatchingReadPermission = (permission: EffectivePermission, action: ContentReadAction): boolean =>
+  permission.action === action && permission.resourceType === readResourceTypeForAction(action) && !permission.resourceId;
+
+export const resolveReadableContentAuthorization = (
+  actor: ResolvedContentActor['actor'],
+  permissions: readonly EffectivePermission[],
+  query: IamContentListQuery
+): LoadContentListAuthorizationInput => {
+  const allowedOrganizationIds = new Set<string>();
+  let allowGlobal = false;
+  let allowOwn = false;
   const readActions = collectListReadActions(query);
 
-  for (const scope of scopes) {
-    let scopeAllowed = false;
-    for (const action of readActions) {
-      const authorizationError = await authorizeContentAction(actor, action, {
-        ...(scope ? { organizationId: scope } : {}),
-        ...(actor.actorAccountId ? { createdByAccountId: actor.actorAccountId } : {}),
-      });
+  for (const action of readActions) {
+    for (const permission of permissions) {
+      if (!isMatchingReadPermission(permission, action)) {
+        continue;
+      }
 
-      if (!authorizationError) {
-        scopeAllowed = true;
-        if (scope) {
-          allowedOrganizationIds.push(scope);
-        } else {
-          includeUnscopedContent = true;
+      if (!permission.accessScope || permission.accessScope === 'all') {
+        allowGlobal = true;
+        continue;
+      }
+
+      if (permission.accessScope === 'own') {
+        allowOwn = true;
+        continue;
+      }
+
+      if (permission.accessScope === 'organization') {
+        allowOwn = true;
+        if (actor.activeOrganizationId && permission.organizationId) {
+          allowedOrganizationIds.add(permission.organizationId);
         }
-        break;
       }
-
-      if (isServerAuthorizationError(authorizationError)) {
-        return authorizationError;
-      }
-    }
-
-    if (scopeAllowed) {
-      continue;
     }
   }
 
   return {
-    allowedOrganizationIds,
-    includeUnscopedContent,
+    allowGlobal,
+    allowOwn,
+    allowedOrganizationIds: [...allowedOrganizationIds].sort((left, right) => left.localeCompare(right)),
+    ...(actor.actorAccountId ? { actorAccountId: actor.actorAccountId } : {}),
   };
 };

@@ -199,7 +199,6 @@ describe('instance permission authorization', () => {
     const permissions = [
       {
         action: 'integration.manage',
-        effect: 'allow',
       },
     ] as never;
 

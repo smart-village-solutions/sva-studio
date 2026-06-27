@@ -2,7 +2,6 @@ import type {
   AuthorizeRequest,
   AuthorizeResponse,
   EffectivePermission,
-  IamPermissionEffect,
   IamPermissionProvenance,
   IamPermissionSourceKind,
 } from './authorization-contract';
@@ -49,24 +48,16 @@ const readActorAccountId = (
   return readString(contextAttributes?.actorAccountId) ?? readString(contextAttributes?.effectiveAccountId);
 };
 
-const readCreatedByAccountId = (
+const readOwnerUserId = (
   resourceAttributes: Readonly<Record<string, unknown>> | undefined
 ): string | undefined => {
-  return readString(resourceAttributes?.createdByAccountId);
+  return readString(resourceAttributes?.ownerUserId);
 };
 
-const readGeoUnitId = (
-  contextAttributes: Readonly<Record<string, unknown>> | undefined,
+const readOwnerOrganizationId = (
   resourceAttributes: Readonly<Record<string, unknown>> | undefined
 ): string | undefined => {
-  return readString(resourceAttributes?.geoUnitId) ?? readString(contextAttributes?.geoUnitId);
-};
-
-const readGeoHierarchy = (
-  contextAttributes: Readonly<Record<string, unknown>> | undefined,
-  resourceAttributes: Readonly<Record<string, unknown>> | undefined
-): readonly string[] | undefined => {
-  return readStringArray(resourceAttributes?.geoHierarchy) ?? readStringArray(contextAttributes?.geoHierarchy);
+  return readString(resourceAttributes?.ownerOrganizationId);
 };
 
 const resolveSourceKinds = (permission: EffectivePermission): readonly IamPermissionSourceKind[] | undefined => {
@@ -76,12 +67,8 @@ const resolveSourceKinds = (permission: EffectivePermission): readonly IamPermis
   }
 
   const derivedKinds = new Set<IamPermissionSourceKind>();
-  const sourceUserIds = permission.sourceUserIds ?? [];
   const sourceRoleIds = permission.sourceRoleIds ?? [];
   const sourceGroupIds = permission.sourceGroupIds ?? [];
-  if (sourceUserIds.length > 0) {
-    derivedKinds.add('direct_user');
-  }
   if (sourceRoleIds.length > 0) {
     derivedKinds.add('direct_role');
   }
@@ -199,91 +186,27 @@ const mergePermissionAttributes = (
 const isPermissionActiveForScope = (
   permission: EffectivePermission,
   request: AuthorizeRequest,
-  targetOrganizationId: string | undefined,
+  _targetOrganizationId: string | undefined,
   contextAttributes: Readonly<Record<string, unknown>> | undefined,
   resourceAttributes: Readonly<Record<string, unknown>> | undefined
 ): { active: boolean; denyReason?: AuthorizeResponse['reason'] } => {
   const actorAccountId = readActorAccountId(contextAttributes);
-  const createdByAccountId = readCreatedByAccountId(resourceAttributes);
-  const resourceOrganizationId = readString(resourceAttributes?.organizationId) ?? request.resource.organizationId;
+  const activeOrganizationId = request.context?.organizationId;
+  const ownerUserId = readOwnerUserId(resourceAttributes);
+  const ownerOrganizationId = readOwnerOrganizationId(resourceAttributes);
 
   if (permission.accessScope === 'own') {
-    if (!actorAccountId || !createdByAccountId || actorAccountId !== createdByAccountId) {
+    if (!actorAccountId || !ownerUserId || actorAccountId !== ownerUserId) {
       return { active: false };
     }
   }
 
   if (permission.accessScope === 'organization') {
-    const ownMatch = Boolean(actorAccountId && createdByAccountId && actorAccountId === createdByAccountId);
-    const organizationMatch = Boolean(
-      targetOrganizationId && resourceOrganizationId && targetOrganizationId === resourceOrganizationId
-    );
+    const ownMatch = Boolean(actorAccountId && ownerUserId && actorAccountId === ownerUserId);
+    const organizationMatch = Boolean(activeOrganizationId && ownerOrganizationId === activeOrganizationId);
 
     if (!ownMatch && !organizationMatch) {
       return { active: false };
-    }
-  }
-
-  return { active: true };
-};
-
-const isPermissionActiveForPolicyScope = (
-  permission: EffectivePermission,
-  request: AuthorizeRequest,
-  targetOrganizationId: string | undefined,
-  contextAttributes: Readonly<Record<string, unknown>> | undefined,
-  resourceAttributes: Readonly<Record<string, unknown>> | undefined
-): { active: boolean; denyReason?: AuthorizeResponse['reason'] } => {
-  const attributes = mergePermissionAttributes(permission, contextAttributes, resourceAttributes);
-  const resourceGeoScope = readString(resourceAttributes?.geoScope) ?? undefined;
-  const resourceGeoUnitId = readGeoUnitId(contextAttributes, resourceAttributes);
-  const geoHierarchy = readGeoHierarchy(contextAttributes, resourceAttributes);
-  const allowedGeoScopes = readStringArray(permission.scope?.allowedGeoScopes);
-  const allowedGeoUnitIds = readStringArray(permission.scope?.allowedGeoUnitIds);
-  const restrictedGeoUnitIds = readStringArray(permission.scope?.restrictedGeoUnitIds);
-  const restrictedOrganizationIds = readStringArray(permission.scope?.restrictedOrganizationIds);
-  const requireActingAs = readBoolean(permission.scope?.requireActingAs) ?? false;
-  const forceDeny = readBoolean(permission.scope?.forceDeny) ?? false;
-  const requiredGeoScope = readBoolean(permission.scope?.requireGeoScope) ?? false;
-  const geoUnitMatch = resolveGeoUnitMatch(
-    allowedGeoUnitIds,
-    restrictedGeoUnitIds,
-    resourceGeoUnitId,
-    geoHierarchy
-  );
-
-  if (requireActingAs && !request.context?.actingAsUserId) {
-    return { active: false };
-  }
-
-  if (requiredGeoScope && !resourceGeoScope && !resourceGeoUnitId) {
-    return { active: false };
-  }
-
-  const shouldApplyGeoScopeFallback = !allowedGeoUnitIds || allowedGeoUnitIds.length === 0;
-  if (shouldApplyGeoScopeFallback && allowedGeoScopes && (!resourceGeoScope || !allowedGeoScopes.includes(resourceGeoScope))) {
-    return { active: false };
-  }
-
-  if (allowedGeoUnitIds && !geoUnitMatch.matchedAllowedGeoUnitId) {
-    return { active: false };
-  }
-
-  if (permission.effect === 'deny') {
-    if (restrictedOrganizationIds && targetOrganizationId && restrictedOrganizationIds.includes(targetOrganizationId)) {
-      return { active: true, denyReason: 'hierarchy_restriction' };
-    }
-
-    if (geoUnitMatch.matchedRestrictedGeoUnitId) {
-      return { active: true, denyReason: 'hierarchy_restriction' };
-    }
-
-    if (forceDeny) {
-      return { active: true, denyReason: 'policy_conflict_restrictive_wins' };
-    }
-
-    if (!attributes || Object.keys(attributes).length === 0) {
-      return { active: true, denyReason: 'policy_conflict_restrictive_wins' };
     }
   }
 
@@ -474,7 +397,6 @@ export const evaluateAuthorizeDecision = (
     isPermissionMatch(request, permission, targetOrganizationId, hierarchyPath)
   );
   const matchedPermissionSummaries = matchedPermissions.map((permission) => {
-    const sourceUserIds = permission.sourceUserIds ?? [];
     const sourceGroupIds = permission.sourceGroupIds ?? [];
     const sourceRoleIds = permission.sourceRoleIds ?? [];
 
@@ -482,23 +404,16 @@ export const evaluateAuthorizeDecision = (
       action: permission.action,
       resourceType: permission.resourceType,
       ...(permission.resourceId ? { resourceId: permission.resourceId } : {}),
-      effect: permission.effect ?? ('allow' satisfies IamPermissionEffect),
       source: (() => {
-        if (sourceUserIds.length > 0) return 'user' as const;
         if (sourceGroupIds.length > 0) return 'group' as const;
         return 'role' as const;
       })(),
-      ...((() => { const id = sourceUserIds[0] ?? sourceGroupIds[0] ?? sourceRoleIds[0]; return id ? { sourceId: id } : {}; })()),
+      ...((() => { const id = sourceGroupIds[0] ?? sourceRoleIds[0]; return id ? { sourceId: id } : {}; })()),
       ...(permission.groupName ? { sourceName: permission.groupName } : {}),
       ...(typeof permission.scope?.geoScope === 'string' ? { geoScope: permission.scope.geoScope } : {}),
     };
   });
-  const denyPermissions = matchedPermissions.filter(
-    (permission) => (permission.effect ?? ('allow' satisfies IamPermissionEffect)) === 'deny'
-  );
-  const allowPermissions = matchedPermissions.filter(
-    (permission) => (permission.effect ?? ('allow' satisfies IamPermissionEffect)) === 'allow'
-  );
+  const allowPermissions = matchedPermissions;
 
   if (matchedPermissions.length === 0 || allowPermissions.length === 0) {
     return {
@@ -516,56 +431,7 @@ export const evaluateAuthorizeDecision = (
     };
   }
 
-  // Stage 4: restrictive rules.
-  for (const permission of denyPermissions) {
-    const denyAttributes = mergePermissionAttributes(permission, contextAttributes, resourceAttributes);
-    const denyGeoMatch = resolveGeoUnitMatch(
-      readStringArray(denyAttributes?.allowedGeoUnitIds),
-      readStringArray(denyAttributes?.restrictedGeoUnitIds),
-      readGeoUnitId(contextAttributes, resourceAttributes),
-      readGeoHierarchy(contextAttributes, resourceAttributes)
-    );
-    const assignmentScopeMatch = isPermissionActiveForScope(
-      permission,
-      request,
-      targetOrganizationId,
-      contextAttributes,
-      resourceAttributes
-    );
-    if (!assignmentScopeMatch.active) {
-      continue;
-    }
-    const denyMatch = isPermissionActiveForPolicyScope(
-      permission,
-      request,
-      targetOrganizationId,
-      contextAttributes,
-      resourceAttributes
-    );
-    if (denyMatch.active) {
-      return {
-        allowed: false,
-        reason: denyMatch.denyReason ?? 'policy_conflict_restrictive_wins',
-        instanceId: request.instanceId,
-        action: request.action,
-        resourceType: request.resource.type,
-        resourceId: request.resource.id,
-        requestId: request.context?.requestId,
-        traceId: request.context?.traceId,
-        evaluatedAt: new Date().toISOString(),
-        diagnostics: {
-          stage: 'restrictive_rule',
-          restricted_by_geo_unit_id: denyGeoMatch.matchedRestrictedGeoUnitId,
-        },
-        matchedPermissions: matchedPermissionSummaries,
-        provenance: buildProvenance(permission, {
-          restrictedByGeoUnitId: denyGeoMatch.matchedRestrictedGeoUnitId,
-        }),
-      };
-    }
-  }
-
-  // Stage 5: ABAC rules.
+  // Stage 4: ABAC rules.
   const abacResults = allowPermissions.map((permission) => {
     const scopeMatch = isPermissionActiveForScope(
       permission,

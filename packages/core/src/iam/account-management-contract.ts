@@ -1,6 +1,5 @@
 import type {
   IamLegalTextTargeting,
-  IamPermissionEffect,
   IamRolePermissionAssignmentScope,
   IamUuid,
 } from './authorization-contract';
@@ -168,14 +167,7 @@ export type IamUserGroupAssignment = {
   readonly validTo?: string;
 };
 
-export type IamUserDirectPermissionAssignment = {
-  readonly permissionId: IamUuid;
-  readonly permissionKey: string;
-  readonly effect: IamPermissionEffect;
-  readonly description?: string;
-};
-
-export type IamUserPermissionTraceSourceKind = 'direct_permission' | 'direct_role' | 'group_role';
+export type IamUserPermissionTraceSourceKind = 'direct_role' | 'group_role';
 export type IamUserPermissionTraceStatus = 'effective' | 'inactive' | 'expired' | 'disabled';
 export type IamUserPermissionTraceInactiveReason =
   | 'assignment_not_started'
@@ -192,7 +184,6 @@ export type IamUserPermissionTraceItem = {
   readonly resourceId?: string;
   readonly runtimeScope?: IamPermissionRuntimeScope;
   readonly organizationId?: IamUuid;
-  readonly effect: IamPermissionEffect;
   readonly scope?: Readonly<Record<string, unknown>>;
   readonly accessScope?: IamRolePermissionAssignmentScope;
   readonly isEffective: boolean;
@@ -240,7 +231,6 @@ export type IamUserDetail = IamUserListItem & {
   readonly avatarUrl?: string;
   readonly notes?: string;
   readonly permissions?: readonly string[];
-  readonly directPermissions?: readonly IamUserDirectPermissionAssignment[];
   readonly permissionTrace?: readonly IamUserPermissionTraceItem[];
   readonly groups?: readonly IamUserGroupAssignment[];
   readonly mainserverUserApplicationId?: string;

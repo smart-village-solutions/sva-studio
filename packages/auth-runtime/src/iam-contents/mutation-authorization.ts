@@ -16,7 +16,9 @@ const metadataFields = [
   'publishFrom',
   'publishUntil',
   'organizationId',
-  'ownerSubjectId',
+  'ownerUserId',
+  'ownerOrganizationId',
+  'authorDisplayName',
   'validationState',
 ] as const;
 
@@ -93,7 +95,8 @@ export const authorizeUpdateContentActions = async (
       contentType: currentContent.contentType,
       domainCapability: action.domainCapability,
       organizationId: currentContent.organizationId,
-      createdByAccountId: currentContent.createdBy,
+      ownerUserId: currentContent.ownerUserId,
+      ownerOrganizationId: currentContent.ownerOrganizationId,
     }, { permissions: sourcePermissions.permissions });
     if (authorizationError) {
       return authorizationError;
@@ -113,7 +116,8 @@ export const authorizeUpdateContentActions = async (
         contentType: currentContent.contentType,
         domainCapability: action.domainCapability,
         organizationId: data.organizationId,
-        createdByAccountId: currentContent.createdBy,
+        ownerUserId: currentContent.ownerUserId,
+        ownerOrganizationId: data.organizationId,
       }, { permissions: destinationPermissions.permissions });
       if (destinationAuthorizationError) {
         return destinationAuthorizationError;

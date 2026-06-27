@@ -383,7 +383,6 @@ export {
 } from './user-detail-query.sql.js';
 
 export type {
-  UserDetailDirectPermissionRow,
   UserDetailGroupRow,
   UserDetailPermissionTraceRow,
   UserDetailRoleRow,

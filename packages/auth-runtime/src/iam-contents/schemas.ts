@@ -112,8 +112,6 @@ const hasDefinedEntries = (value: Record<string, unknown>): boolean =>
 export const createContentSchema = z
   .object({
     contentType: z.string().trim().min(1).max(128),
-    organizationId: z.string().uuid().optional(),
-    ownerSubjectId: z.string().trim().min(1).max(255).optional(),
     title: z.string().trim().min(1).max(255),
     payload: jsonValueSchema,
     status: contentStatusSchema.default('draft'),
@@ -122,12 +120,15 @@ export const createContentSchema = z
     publishFrom: isoDateTimeString.optional(),
     publishUntil: isoDateTimeString.optional(),
   })
+  .strict()
   .superRefine(validatePublishedAtForStatus);
 
 export const updateContentSchema = z
   .object({
     organizationId: z.string().uuid().optional(),
-    ownerSubjectId: z.string().trim().min(1).max(255).optional(),
+    ownerUserId: z.string().uuid().optional(),
+    ownerOrganizationId: z.string().uuid().optional(),
+    authorDisplayName: z.string().trim().min(1).max(200).optional(),
     title: z.string().trim().min(1).max(255).optional(),
     payload: jsonValueSchema.optional(),
     status: contentStatusSchema.optional(),

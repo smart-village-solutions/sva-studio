@@ -43,7 +43,6 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
       "resourceId": "article-1",
       "runtimeScope": "record",
       "organizationId": "22222222-2222-2222-8222-222222222222",
-      "effect": "allow",
       "accessScope": "organization",
       "scope": {
         "allowedGeoUnitIds": ["geo-bw"],
@@ -75,7 +74,8 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
 
 ### Zusätzliche Zusagen für Transparenz-UI
 
-- `resourceId`, `effect`, `scope`, `sourceRoleIds`, `sourceGroupIds`, `provenance` und `subject` sind Teil des stabilen Read-Modells für das Rights-Tab in `/admin/iam`.
+- `resourceId`, `scope`, `sourceRoleIds`, `sourceGroupIds`, `provenance` und `subject` sind Teil des stabilen Read-Modells für das Rights-Tab in `/admin/iam`.
+- Effektive Permissions sind Allow-Grants. Die Antwort enthält keine fachliche `effect`-Unterscheidung und keine direkte Nutzer-Provenienz.
 - `runtimeScope` klassifiziert jede Permission explizit als `instance`, `record` oder `organization_context`.
 - `accessScope` ist ein additives Feld fuer scoped Rollen-Permissions und beschreibt den wirksamen Rollen-Zugriffsmodus (`all`, `own`, `organization`).
 - Ein gesetzter Query-Parameter `organizationId` bindet instanzweite Permissions nicht implizit an eine Organisation. Für instanzweite Rechte wie `media.read`, `waste-management.read`, `app.read` oder `cockpit.read` bleibt `permissions[].organizationId` deshalb leer.

@@ -96,23 +96,11 @@ export const usersAdminDEResources = {
     groupsLabel: 'Gruppen-Zuweisung',
     notesLabel: 'Notizen',
     notesCounter: '{{count}} / 2000 Zeichen',
-    directPermissionsTitle: 'Direkte Rechte',
-    directPermissionsHint:
-      'Direkte Nutzerrechte ergänzen oder überschreiben Rollen- und Gruppenrechte. Direkte Verweigerungen haben Vorrang.',
-    directPermissionsSectionHint:
-      'Setzen Sie je Berechtigung eine direkte Wirkung oder lassen Sie die Vererbung aktiv.',
-    directPermissionsEmpty: 'Es sind keine direkten Nutzerrechte gesetzt.',
-    directPermissionsSelectLabel: 'Direkte Wirkung für {{permission}}',
     effectivePermissionsTitle: 'Aktuell wirksame Rechte',
     effectivePermissionsHint:
-      'Diese Liste zeigt die derzeit aufgelösten Rechte des Nutzers. Direkte Rechte werden separat gepflegt.',
+      'Diese Liste zeigt die derzeit aufgelösten Rechte des Nutzers aus Rollen- und Gruppen-Zuweisungen.',
     permissionsLoading: 'Berechtigungskatalog wird geladen ...',
     permissionDescriptionFallback: 'Keine zusätzliche Beschreibung vorhanden.',
-    directPermissionEffect: {
-      inherit: 'Nicht gesetzt',
-      allow: 'Erlauben',
-      deny: 'Verweigern',
-    },
     permissionsEmpty: 'Keine effektiven Berechtigungen vorhanden.',
     permissionTrace: {
       title: 'Effektive Berechtigungen',

@@ -11,10 +11,9 @@ describe('shared effective permission mapping', () => {
         resource_type: ' content ',
         resource_id: ' content-1 ',
         organization_id: '22222222-2222-4222-8222-222222222222',
-        effect: 'allow',
         scope: { contentType: 'news.article' },
-        account_id: 'user-2',
-        source_kind: 'direct_user',
+        role_id: 'role-2',
+        source_kind: 'direct_role',
       },
       {
         permission_key: 'content.read',
@@ -22,9 +21,7 @@ describe('shared effective permission mapping', () => {
         resource_type: 'content',
         resource_id: 'content-1',
         organization_id: '22222222-2222-4222-8222-222222222222',
-        effect: 'allow',
         scope: { contentType: 'news.article' },
-        account_id: 'user-1',
         role_id: 'role-1',
         group_id: 'group-1',
         group_key: 'editors',
@@ -33,7 +30,6 @@ describe('shared effective permission mapping', () => {
       {
         permission_key: 'content.delete',
         organization_id: null,
-        effect: 'deny',
         source_kind: 'direct_role',
       },
     ];
@@ -45,18 +41,15 @@ describe('shared effective permission mapping', () => {
         resourceType: 'content',
         resourceId: 'content-1',
         organizationId: '22222222-2222-4222-8222-222222222222',
-        effect: 'allow',
         scope: { contentType: 'news.article' },
-        sourceUserIds: ['user-1', 'user-2'],
-        sourceRoleIds: ['role-1'],
+        sourceRoleIds: ['role-1', 'role-2'],
         sourceGroupIds: ['group-1'],
         groupName: 'editors',
-        provenance: { sourceKinds: ['direct_user', 'group_role'] },
+        provenance: { sourceKinds: ['direct_role', 'group_role'] },
       },
       {
         action: 'content.delete',
         resourceType: 'content',
-        effect: 'deny',
         provenance: { sourceKinds: ['direct_role'] },
       },
     ]);
@@ -74,8 +67,6 @@ describe('shared effective permission mapping', () => {
       {
         action: 'system',
         resourceType: 'system',
-        effect: 'allow',
-        provenance: undefined,
       },
     ]);
   });
@@ -86,41 +77,32 @@ describe('shared effective permission mapping', () => {
         {
           permission_key: 'media.read',
           organization_id: '22222222-2222-4222-8222-222222222222',
-          effect: 'allow',
         },
         {
           permission_key: 'content.read',
           organization_id: '22222222-2222-4222-8222-222222222222',
           access_scope: 'all',
-          effect: 'allow',
         },
         {
           permission_key: 'iam.role.read',
           organization_id: '22222222-2222-4222-8222-222222222222',
           access_scope: 'all',
-          effect: 'allow',
         },
       ])
     ).toEqual([
       {
         action: 'media.read',
         resourceType: 'media',
-        effect: 'allow',
-        provenance: undefined,
       },
         {
           action: 'content.read',
           resourceType: 'content',
-          effect: 'allow',
           accessScope: 'all',
-          provenance: undefined,
         },
         {
           action: 'iam.role.read',
           resourceType: 'iam',
-          effect: 'allow',
           accessScope: 'all',
-          provenance: undefined,
         },
       ]);
   });

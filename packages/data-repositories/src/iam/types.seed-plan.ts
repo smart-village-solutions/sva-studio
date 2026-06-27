@@ -1,4 +1,4 @@
-import type { PermissionEffect, PermissionKey } from './types.permissions.js';
+import type { PermissionKey } from './types.permissions.js';
 import type {
   ContentAuthorPolicy,
   GeoUnitType,
@@ -79,7 +79,6 @@ type IamSeedPlan = {
     readonly action: string;
     readonly resourceType: string;
     readonly resourceId?: string;
-    readonly effect: PermissionEffect;
     readonly scope: Readonly<Record<string, unknown>>;
     readonly description: string;
   }[];

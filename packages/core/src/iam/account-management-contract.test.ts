@@ -118,7 +118,6 @@ describe('account-management-contract runtime diagnostics exports', () => {
       permissionKey: 'content.read',
       action: 'content.read',
       resourceType: 'content',
-      effect: 'allow',
       isEffective: false,
       status: 'disabled',
       sourceKind: 'group_role',

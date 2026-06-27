@@ -12,7 +12,6 @@ type SessionUser = {
 
 type EffectivePermission = {
   action: string;
-  effect: string;
 };
 
 type AuthMePermissionPayload = {
@@ -207,9 +206,9 @@ describe('meHandler', () => {
     mocks.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
       permissions: [
-        { action: 'news.read', effect: 'allow' },
-        { action: 'news.read', effect: 'deny' },
-        { action: 'events.read', effect: 'allow' },
+        { action: 'news.read' },
+        { action: 'news.read' },
+        { action: 'events.read' },
       ] satisfies EffectivePermission[],
       cacheStatus: 'hit',
       snapshotVersion: 'snap-1',
@@ -252,7 +251,7 @@ describe('meHandler', () => {
     expect('userId' in resolverInput).toBe(false);
   });
 
-  it('returns no-store auth headers and deny-dominant permissionActions', async () => {
+  it('returns no-store auth headers and sorted allow-only permissionActions', async () => {
     const response = await meHandler(createAuthMeRequest());
 
     expect(response.status).toBe(200);
@@ -280,7 +279,7 @@ describe('meHandler', () => {
         origin: 'manual',
       },
     ]);
-    expect(payload.user.permissionActions).toEqual(['events.read']);
+    expect(payload.user.permissionActions).toEqual(['events.read', 'news.read']);
     expect(payload.expiresAt).toBe(1_800_000_000_000);
     expect(mocks.appendSetCookie).toHaveBeenCalledWith(
       response,
@@ -409,7 +408,7 @@ describe('meHandler', () => {
 
     const payload = await readAuthMePermissionPayload(response);
     expect(payload.user.permissionStatus).toBe('degraded');
-    expect(payload.user.permissionActions).toEqual(['events.read']);
+    expect(payload.user.permissionActions).toEqual(['events.read', 'news.read']);
   });
 
   it('skips permissions with non-string action values', async () => {
@@ -418,8 +417,8 @@ describe('meHandler', () => {
     mocks.resolveEffectivePermissions.mockResolvedValueOnce({
       ok: true,
       permissions: [
-        { action: 999 as unknown as string, effect: 'allow' },
-        { action: 'valid.read', effect: 'allow' },
+        { action: 999 as unknown as string },
+        { action: 'valid.read' },
       ] satisfies EffectivePermission[],
       cacheStatus: 'hit',
       snapshotVersion: 'snap-1',
@@ -436,8 +435,8 @@ describe('meHandler', () => {
     mocks.resolveEffectivePermissions.mockResolvedValueOnce({
       ok: true,
       permissions: [
-        { action: 'instance.registry.manage', effect: 'allow' },
-        { action: 'events.read', effect: 'allow' },
+        { action: 'instance.registry.manage' },
+        { action: 'events.read' },
       ] satisfies EffectivePermission[],
       cacheStatus: 'hit',
       snapshotVersion: 'snap-1',
@@ -448,14 +447,14 @@ describe('meHandler', () => {
     expect(payload.user.permissionActions).toEqual(['events.read']);
   });
 
-  it('skips permissions with unknown or absent effect values', async () => {
+  it('collects permissions as allow-only grants', async () => {
     const { meHandler } = await import('./auth-route-handlers.js');
 
     mocks.resolveEffectivePermissions.mockResolvedValueOnce({
       ok: true,
       permissions: [
-        { action: 'news.read', effect: 'pending' as 'allow' },
-        { action: 'events.read', effect: 'allow' },
+        { action: 'news.read' },
+        { action: 'events.read' },
       ] satisfies EffectivePermission[],
       cacheStatus: 'hit',
       snapshotVersion: 'snap-1',
@@ -463,18 +462,18 @@ describe('meHandler', () => {
 
     const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
     const payload = (await response.json()) as { user: { permissionActions: string[] } };
-    expect(payload.user.permissionActions).toEqual(['events.read']);
+    expect(payload.user.permissionActions).toEqual(['events.read', 'news.read']);
   });
 
-  it('deny-first overrides a subsequent allow for the same action', async () => {
+  it('deduplicates repeated permission actions', async () => {
     const { meHandler } = await import('./auth-route-handlers.js');
 
     mocks.resolveEffectivePermissions.mockResolvedValueOnce({
       ok: true,
       permissions: [
-        { action: 'news.read', effect: 'deny' },
-        { action: 'news.read', effect: 'allow' },
-        { action: 'events.read', effect: 'allow' },
+        { action: 'news.read' },
+        { action: 'news.read' },
+        { action: 'events.read' },
       ] satisfies EffectivePermission[],
       cacheStatus: 'hit',
       snapshotVersion: 'snap-1',
@@ -482,7 +481,7 @@ describe('meHandler', () => {
 
     const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
     const payload = (await response.json()) as { user: { permissionActions: string[] } };
-    expect(payload.user.permissionActions).toEqual(['events.read']);
+    expect(payload.user.permissionActions).toEqual(['events.read', 'news.read']);
   });
 
   it('sorts multiple allowed permission actions alphabetically', async () => {
@@ -491,9 +490,9 @@ describe('meHandler', () => {
     mocks.resolveEffectivePermissions.mockResolvedValueOnce({
       ok: true,
       permissions: [
-        { action: 'z.write', effect: 'allow' },
-        { action: 'a.read', effect: 'allow' },
-        { action: 'm.update', effect: 'allow' },
+        { action: 'z.write' },
+        { action: 'a.read' },
+        { action: 'm.update' },
       ] satisfies EffectivePermission[],
       cacheStatus: 'hit',
       snapshotVersion: 'snap-1',

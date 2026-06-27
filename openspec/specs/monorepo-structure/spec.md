@@ -815,3 +815,44 @@ Das Monorepo SHALL für große App-Test-Suiten mehrere stabile Nx-Unit-Targets n
 - **THEN** wird kein partieller Slice-Lauf erzwungen
 - **AND** der PR-Pfad fällt auf das aggregierte App-Unit-Target zurück
 
+### Requirement: Neue Repository-Logik lebt nicht in `@sva/data`
+
+Das System MUST `@sva/data` auf Migrationen, Seeds, DB-Skripte/-Operationen und dokumentierte Kompatibilitäts-Re-Exports bzw. Delegation begrenzen. Neue serverseitige Persistenz- oder Repository-Logik MUST in `@sva/data-repositories` liegen und darf in `@sva/data` nicht als parallele Implementierung aufgebaut werden.
+
+#### Scenario: Neue Repository-Logik wird eingeordnet
+
+- **WHEN** neue serverseitige Persistenz- oder Repository-Funktionalität entsteht
+- **THEN** liegt die führende Implementierung in `@sva/data-repositories`
+- **AND** `@sva/data` erhält höchstens einen dünnen Re-Export oder eine dokumentierte Delegation ohne eigene fachliche Ownership
+
+#### Scenario: Bestehende Altpfade bleiben kontrolliert nutzbar
+
+- **WHEN** bestehende Consumer weiterhin `@sva/data` oder `@sva/data/server` verwenden
+- **THEN** delegiert das Package auf dokumentierte Zielpackages oder re-exportiert deren öffentliche API
+- **AND** es führt keine parallele Implementierung derselben Repository-Funktionalität
+
+### Requirement: Plugin-Packages konsumieren nur oeffentliche Host-Vertraege
+
+The monorepo SHALL treat every `packages/plugin-*` package as a plugin boundary that may consume host capabilities only through documented public plugin contracts.
+
+#### Scenario: Plugin folgt dem Standard Path
+
+- **GIVEN** ein Plugin-Package nutzt nur `@sva/plugin-sdk` und optional `@sva/studio-ui-react`
+- **WHEN** die Workspace-Dependencies und Source-Imports validiert werden
+- **THEN** gilt das Package als Standard-Path-konform
+- **AND** interne und externe Plugins werden nach derselben Regel bewertet
+
+#### Scenario: Plugin importiert internes Host-Package
+
+- **GIVEN** ein Plugin-Package deklariert oder importiert `@sva/core`, `@sva/auth-runtime`, `@sva/routing`, `@sva/studio-module-iam` oder ein gleichwertiges internes Host-Package
+- **WHEN** der Architektur-Gate laeuft
+- **THEN** faellt das Plugin als Boundary-Verstoss durch
+- **AND** ein guenstiges Nx-Tag oder eine gemischte Package-Rolle zaehlt nicht als Freigabe
+
+#### Scenario: Bestehender Altverstoss ist dokumentiert
+
+- **GIVEN** ein bestehender Plugin-Verstoss ist mit Package, Regel, Subject, Owner, Begruendung und Folgechange in der Baseline dokumentiert
+- **WHEN** der Architektur-Gate laeuft
+- **THEN** bleibt genau dieser Altfall toleriert
+- **AND** jede neue oder veraenderte Abweichung blockiert weiterhin den Lauf
+

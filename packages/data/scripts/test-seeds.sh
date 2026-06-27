@@ -153,7 +153,6 @@ assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = 'de-musterhause
 assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = 'de-musterhausen' AND managed_by = 'external';" "0" "external role count"
 assert_count "SELECT COUNT(*) FROM iam.permissions WHERE instance_id = 'de-musterhausen';" "57" "permission count"
 assert_count "SELECT COUNT(*) FROM iam.permissions WHERE instance_id = 'de-musterhausen' AND action = permission_key;" "57" "permission actions"
-assert_count "SELECT COUNT(*) FROM iam.permissions WHERE instance_id = 'de-musterhausen' AND effect = 'allow';" "57" "permission effects"
 assert_count "SELECT COUNT(*) FROM iam.permissions WHERE instance_id = 'de-musterhausen' AND scope = '{}'::jsonb;" "57" "permission scopes"
 assert_count "SELECT COUNT(*) FROM iam.accounts WHERE keycloak_subject LIKE 'seed:%';" "1" "account count"
 assert_count "SELECT COUNT(*) FROM iam.accounts WHERE instance_id = 'de-musterhausen' AND keycloak_subject = 'seed:instance_registry_admin';" "0" "tenant instance registry admin account"

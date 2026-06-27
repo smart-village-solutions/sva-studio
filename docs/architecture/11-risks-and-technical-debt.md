@@ -411,10 +411,10 @@ Referenzen:
    - Wahrscheinlichkeit: mittel
    - Maßnahme: UI-Hinweise auf Ausnahmecharakter, getrennte Darstellung von direkten und wirksamen Rechten und Review-Gate für privilegierte Einzelzuweisungen
 
-30. Konfliktwahrnehmung zwischen direkter Nutzerzuweisung und geerbten Rechten
-   - Impact: hoch (falsche Erwartung an die effektive Berechtigung)
+30. Konfliktwahrnehmung zwischen Rollen- und Gruppenrechten
+   - Impact: mittel (falsche Erwartung an die effektive Berechtigung)
    - Wahrscheinlichkeit: mittel
-   - Maßnahme: Provenance in `me/permissions`/`authorize`, explizite `deny vor allow`-Doku und gezielte Negativtests
+   - Maßnahme: Provenance in `me/permissions`/`authorize`, klare Rollen-/Gruppen-Herkunft und gezielte Negativtests für fehlende Allows
 
 31. Einführungsrisiko bei historischer Renummerierung der SQL-Migrationen
    - Impact: mittel bis hoch (falsche Referenzen in Diagnose, Doku oder Acceptance-Operationen)

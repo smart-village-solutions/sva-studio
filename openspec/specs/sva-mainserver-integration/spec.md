@@ -121,25 +121,32 @@ The adapters SHALL use the policy-driven SVA Mainserver credential resolution ch
 
 ### Requirement: Typed POI GraphQL Adapters
 
-The system SHALL expose typed, server-only SVA Mainserver adapters for Point-of-Interest list, detail, create, update, and archive-or-delete operations.
+Das System MUST typed, server-only SVA-Mainserver-Adapter für Point-of-Interest-Liste, Detail, Create, Update und Archive-or-Delete bereitstellen.
 
-The adapters SHALL use the policy-driven SVA Mainserver credential resolution chain defined by the effective organization context and SHALL NOT expose a generic GraphQL executor to browser code, plugin code, or app UI components.
+Die Adapter MUST die policy-gesteuerte SVA-Mainserver-Credential-Resolution-Chain des effektiven Organisationskontexts verwenden und dürfen keinen generischen GraphQL-Executor an Browsercode, Plugincode oder App-UI-Komponenten exponieren.
 
 #### Scenario: POI list is loaded through typed adapter
 
-- **GIVEN** a user has a valid Studio session, instance context, local content permission, and effective Mainserver credentials
-- **WHEN** the POI list is requested
-- **THEN** the host calls a typed server-side POI list adapter in `@sva/sva-mainserver/server`
-- **AND** the adapter executes the `pointsOfInterest` GraphQL query through the existing Mainserver service path
-- **AND** the browser receives only the mapped plugin POI list model
+- **WENN** ein Benutzer eine gültige Studio-Session, einen Instanzkontext, lokale Content-Berechtigung und effektive Mainserver-Credentials besitzt
+- **UND** die POI-Liste angefordert wird
+- **DANN** ruft der Host einen typed serverseitigen POI-List-Adapter in `@sva/sva-mainserver/server` auf
+- **UND** führt der Adapter die GraphQL-Abfrage `pointsOfInterest` über den bestehenden Mainserver-Servicepfad aus
+- **UND** erhält der Browser nur das gemappte Plugin-POI-Listenmodell
 
 #### Scenario: POI detail is loaded through typed adapter
 
-- **GIVEN** a user has a valid Studio session, instance context, local content permission, and effective Mainserver credentials
-- **WHEN** a single POI is requested
-- **THEN** the host calls a typed server-side POI detail adapter in `@sva/sva-mainserver/server`
-- **AND** the adapter executes the `pointOfInterest(id: ID!)` GraphQL query with typed variables
-- **AND** missing or invalid response data is mapped to a deterministic integration error
+- **WENN** ein Benutzer eine gültige Studio-Session, einen Instanzkontext, lokale Content-Berechtigung und effektive Mainserver-Credentials besitzt
+- **UND** ein einzelner POI angefordert wird
+- **DANN** ruft der Host einen typed serverseitigen POI-Detail-Adapter in `@sva/sva-mainserver/server` auf
+- **UND** führt der Adapter die GraphQL-Abfrage `pointOfInterest(id: ID!)` mit typed Variablen aus
+- **UND** werden fehlende oder invalide Antwortdaten auf einen deterministischen Integrationsfehler gemappt
+
+#### Scenario: POI update preserves structured editor sections
+
+- **WENN** ein Benutzer einen POI in Studio über den redaktionsorientierten Voll-Editor bearbeitet
+- **UND** der Host die Mainserver-Mutation vorbereitet
+- **DANN** bewahrt der typed POI-Adapter strukturierte Bereiche für `addresses`, `contact`, `priceInformations`, `openingHours`, `operatingCompany`, `webUrls`, `mediaContents`, `certificates`, `accessibilityInformation`, `tags`, `payload` und editorseitig verantwortete `location`-Daten
+- **UND** bleiben diese strukturierten Daten über Host-Route, Service-Adapter, GraphQL-Dokument und Mapping-Layer hinweg typed
 
 ### Requirement: Event And POI GraphQL Documents Follow Snapshot Contract
 
@@ -534,4 +541,170 @@ The system SHALL include at least `instanceId`, `keycloakSubject`, `activeOrgani
 - **WHEN** the cache key is derived
 - **THEN** it includes `instanceId`, `keycloakSubject`, `activeOrganizationId`, and the effective credential source or an equivalent credential signature
 - **AND** two requests that differ in any of these dimensions do not share the same cache entry
+
+### Requirement: Mainserver-Inhalte sind hostseitig in die kanonische Content-Liste projiziert
+
+Das System SHALL Mainserver-News, -Events und -POI hostseitig in das kanonische Inhaltslistenmodell für `GET /api/v1/iam/contents` projizieren, ohne einen Browser-Vollscan oder ein lokales Dual-Write nach `iam.contents` vorauszusetzen.
+
+#### Scenario: News erscheinen in der kanonischen Content-Liste
+
+- **GIVEN** eine Instanz hat lesbare Mainserver-News und keine korrespondierenden lokalen IAM-Content-Datensaetze
+- **WHEN** `GET /api/v1/iam/contents` fuer sichtbare Typen aufgerufen wird
+- **THEN** projiziert der Host die Mainserver-News serverseitig in das gemeinsame Inhaltslistenmodell
+- **AND** die Browser-Antwort enthaelt diese Eintraege ohne lokale Browser-Aggregation
+
+#### Scenario: Events und POI erscheinen in der kanonischen Content-Liste
+
+- **GIVEN** eine Instanz hat lesbare Mainserver-Events oder Mainserver-POI und keine korrespondierenden lokalen IAM-Content-Datensaetze
+- **WHEN** `GET /api/v1/iam/contents` fuer sichtbare Typen aufgerufen wird
+- **THEN** projiziert der Host die Mainserver-Events und -POI serverseitig in das gemeinsame Inhaltslistenmodell
+- **AND** die Browser-Antwort enthaelt diese Eintraege ohne lokale Browser-Aggregation
+
+#### Scenario: Mainserver-Projektion bleibt innerhalb der Host-Grenze
+
+- **GIVEN** die kanonische Content-Liste benoetigt Mainserver-Daten
+- **WHEN** die Listenanfrage verarbeitet wird
+- **THEN** die Host-Runtime laedt und projiziert die Mainserver-Daten serverseitig
+- **AND** Browser-Code und Plugin-Code erhalten keinen generischen GraphQL-Zugriff und keinen direkten Server-Bypass
+
+### Requirement: Aggregierte Mainserver-Content-Liste unterstuetzt serverseitige Query-Semantik
+
+Das System SHALL fuer Mainserver-projizierte Inhaltstypen serverseitige Pagination, Sortierung und Filterung innerhalb der kanonischen Content-Liste bereitstellen.
+
+#### Scenario: Aggregierte Liste respektiert sichtbare Typen
+
+- **GIVEN** die Listenanfrage enthaelt mehrere `visibleType`-Werte
+- **WHEN** der Host die kanonische Content-Liste bildet
+- **THEN** beruecksichtigt er nur die fuer die Anfrage sichtbaren Mainserver- und IAM-Inhaltstypen
+- **AND** nicht sichtbare Typen erscheinen nicht in der Antwort
+
+#### Scenario: Aggregierte Liste respektiert Seite und Seitengroesse
+
+- **GIVEN** die Listenanfrage enthaelt `page` und `pageSize`
+- **WHEN** der Host die kanonische Content-Liste fuer Mainserver-Inhalte berechnet
+- **THEN** liefert er nur die angeforderte Seite im gemeinsamen Listenmodell zurueck
+- **AND** die Antwort enthaelt eine dazu passende Pagination-Metadatenstruktur
+
+#### Scenario: Aggregierte Liste respektiert Sortierung und Filter
+
+- **GIVEN** die Listenanfrage enthaelt `q`, `type`, `status`, `sortBy` oder `sortDirection`
+- **WHEN** der Host die kanonische Content-Liste fuer Mainserver-Inhalte berechnet
+- **THEN** wendet er diese Query-Semantik serverseitig auf die aggregierte Liste an
+- **AND** der Browser muss keine lokale Nachfilterung oder Nachsortierung ueber den Gesamtbestand ausfuehren
+
+### Requirement: Aggregierte Mainserver-Content-Liste bleibt deterministisch bei Fehlern und Rechten
+
+Das System SHALL Fehler, Sichtbarkeit und Rechte fuer serverseitig projizierte Mainserver-Inhalte in derselben Host-Antwort deterministisch behandeln.
+
+#### Scenario: Mainserver-Quelle schlaegt fehl
+
+- **GIVEN** eine fuer die angefragte kanonische Content-Liste benoetigte Mainserver-Quelle kann nicht erfolgreich geladen werden
+- **WHEN** der Host die Listenanfrage verarbeitet
+- **THEN** beendet er die Anfrage mit einem deterministischen Fehlervertrag
+- **AND** der Browser verbleibt nicht in einem unendlichen Ladezustand
+
+#### Scenario: Lokale Leseberechtigung fehlt fuer projizierten Inhalt
+
+- **GIVEN** ein Mainserver-Inhalt ist technisch ladbar, aber lokal nicht fuer `content.read` freigegeben
+- **WHEN** der Host die kanonische Content-Liste bildet
+- **THEN** wendet er die bestehende hostseitige Rechtepruefung auf den projizierten Inhalt an
+- **AND** der Inhalt erscheint nicht als unautorisiert sichtbarer Eintrag in der Antwort
+
+### Requirement: Tenant-owned Karten- und Geocoding-Interfaces kapseln Provider-Konfiguration
+
+Das System MUST tenant-owned Interfaces für Karten- und Geocoding-Fähigkeiten bereitstellen, damit Providerwahl, Stil-Konfiguration, Secret-Referenzen, Rate-Limits, Timeouts und Fallback-Verhalten in der Tenant-Integrationsschicht statt in Plugin- oder Browserlogik gesteuert werden.
+
+#### Scenario: POI editor consumes normalized tenant-owned capabilities
+
+- **WENN** ein Tenant Karten- und Geocoding-Fähigkeiten über ein tenant-owned Interface konfiguriert hat
+- **UND** der POI-Editor Adressvorschläge, Geocoding, Reverse-Geocoding oder Karten-Rendering benötigt
+- **DANN** konsumiert er ausschließlich normierte Operationen und normierte Ergebnisformen
+- **UND** greift nicht auf provider-spezifische Secrets, Keys, Endpunkte oder Rohverträge zu
+- **UND** wird provider-spezifische Konfiguration über das tenant-owned Interface und dessen hostseitige Implementierung aufgelöst
+
+#### Scenario: Tenant changes provider without editor contract change
+
+- **WENN** ein Tenant den konfigurierten Geocoding-Provider oder die Kartenimplementierung ändert
+- **UND** der POI-Editor danach genutzt wird
+- **DANN** bleibt der Editor-Vertrag unverändert
+- **UND** bleiben provider-spezifische Konfiguration und Secret-Handling im tenant-owned Interface und dessen Adapter isoliert
+
+### Requirement: Studio-POI-Write-Pfad deckt den relevanten Mainserver-Vertrag vollständig ab
+
+Das System MUST die von Studio gepflegten POI-Editor-Daten an den typed Mainserver-POI-Mutationspfad weiterleiten, ohne unterstützte, editorseitig verantwortete POI-Felder stillschweigend zu verwerfen.
+
+#### Scenario: Full POI editor data reaches the typed write path
+
+- **WENN** der Studio-POI-Editor `addresses`, `contact`, `openingHours`, `priceInformations`, `operatingCompany`, `webUrls`, `mediaContents`, `certificates`, `accessibilityInformation`, `tags`, `payload` und optionale `location`-Daten erfasst
+- **UND** ein Benutzer den POI speichert
+- **DANN** baut der hostseitige POI-Write-Pfad ein typed `SvaMainserverPoiInput`
+- **UND** enthält dieses alle vorhandenen und gültigen, editorseitig verantworteten Feldgruppen
+- **UND** verengt der Adapter die Editor-Payload nicht stillschweigend auf Name, Beschreibung, Kategorie, Minimaladresse und Links
+
+#### Scenario: Unsupported field omission is explicit
+
+- **WENN** ein Studio-POI-Editor-Feld absichtlich nicht auf den typed Mainserver-POI-Input gemappt wird
+- **UND** der Write-Pfad reviewed oder getestet wird
+- **DANN** ist die Omission explizit, dokumentiert und durch eine deterministische Produktentscheidung gedeckt
+- **UND** entsteht sie nicht durch versehentliche Adapter-Unvollständigkeit
+
+#### Scenario: Non-edited structured fields are preserved when declared as passthrough
+
+- **WENN** ein geladener POI strukturierte Mainserver-Daten enthält, die im aktuellen Studio-Slice noch nicht vollständig editierbar sind
+- **UND** der Benutzer andere editorseitig verantwortete POI-Bereiche aktualisiert und speichert
+- **DANN** bleiben alle als Read/Passthrough markierten Feldgruppen verlustfrei über den Write-Pfad erhalten
+- **UND** kollabiert der Adapter mehrwertige oder strukturierte Werte nicht stillschweigend auf die aktuell editierte Teilmenge
+
+### Requirement: Mapping, passthrough, and omissions are deterministic per field group
+
+Das System MUST für jede relevante POI-Feldgruppe festlegen, ob Studio sie als Read/Write, Read/Passthrough oder explizite Omission behandelt, damit Datenverlust und versehentliche Vertragsverengung reviewbar und testbar bleiben.
+
+#### Scenario: Field group mapping mode is reviewable
+
+- **WENN** eine relevante strukturierte Feldgruppe wie `addresses`, `openingHours`, `priceInformations`, `operatingCompany`, `mediaContents`, `certificates`, `accessibilityInformation`, `location`, `tags` oder `payload` reviewed oder getestet wird
+- **DANN** besitzt die Feldgruppe einen expliziten Mapping-Modus
+- **UND** sind Normalisierung, Kardinalität und Verlustfreiheitsregel für diesen Change dokumentiert
+
+#### Scenario: Explicit omission does not masquerade as support
+
+- **WENN** eine Feldgruppe oder Teilstruktur außerhalb des unterstützten Studio-Scopes dieses Changes liegt
+- **UND** der POI-Editor implementiert und getestet wird
+- **DANN** ist der nicht unterstützte Scope explizit als Omission oder Passthrough gekennzeichnet
+- **UND** stellt das Produkt diese Feldgruppe nicht als voll unterstützt dar, wenn das nicht der Fall ist
+
+### Requirement: Host POI route validates extended structured POI inputs
+
+Das System MUST strukturierte POI-Inputs des erweiterten Studio-POI-Editors in der hostseitigen POI-Route validieren, bevor sie an den typed Mainserver-Service-Adapter weitergereicht werden.
+
+#### Scenario: Extended POI route accepts valid structured sections
+
+- **WENN** der Browser eine POI-Payload mit strukturierten `openingHours`, `priceInformations`, `operatingCompany`, `location`, `certificates` und `accessibilityInformation` übermittelt
+- **UND** die hostseitige POI-Route die Anfrage parst
+- **DANN** validiert und normalisiert sie diese Bereiche gemäß dem typed Mainserver-Integrationsvertrag
+- **UND** leitet das normalisierte Ergebnis über den typed POI-Servicepfad weiter
+
+#### Scenario: Invalid structured POI section is rejected deterministically
+
+- **WENN** der Browser einen ungültigen strukturierten POI-Bereich wie fehlerhafte Geo-Koordinaten oder invalide Teilobjekte übermittelt
+- **UND** die hostseitige POI-Route die Anfrage parst
+- **DANN** weist die Route die Anfrage mit einem deterministischen Validierungsfehler zurück
+- **UND** leitet kein teilweise defektes Objekt an den Mainserver-Write-Pfad weiter
+
+### Requirement: Host POI write and geocoding paths emit structured observability signals
+
+Das System MUST für POI-Write-Validierung, Geocoding-Operationen, Reverse-Geocoding, Nicht-Treffer und Providerfehler strukturierte, PII-bewusste Observability-Signale emittieren, damit Produktionsdiagnose nicht von Roh-Payloads oder geleakten Secrets abhängt.
+
+#### Scenario: Provider and validation outcomes are distinguishable
+
+- **WENN** der Host einen POI-Write oder eine tenant-owned Geocoding-Operation verarbeitet
+- **UND** die Operation erfolgreich endet, fehlschlägt, keinen Treffer liefert oder auf einen Fallback wechselt
+- **DANN** emittiert der Host ein strukturiertes Outcome, das mindestens `success`, `no_result`, `invalid_input`, `provider_error`, `rate_limited`, `timeout` und `fallback_used` unterscheidet
+- **UND** kann das Signal dem betroffenen Host-Pfad zugeordnet werden, ohne Provider-Secrets oder Rohverträge offenzulegen
+
+#### Scenario: Diagnostics stay PII-aware
+
+- **WENN** Geocoding oder POI-Write-Validierung auf ungültige Adressen, Kontaktdaten oder providerseitige Fehler stößt
+- **UND** der Host Logs oder Metriken zur Diagnose ausgibt
+- **DANN** lässt das Signal Roh-Secrets, Provider-Tokens und unredigierte Provider-Payloads aus
+- **UND** stützt sich die Standarddiagnose nicht auf vollständige Suchqueries oder vollständige Kontaktfelder
 

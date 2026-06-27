@@ -48,6 +48,8 @@ const createContentRow = (overrides: Partial<ContentRow> = {}): ContentRow => ({
   instance_id: 'instance-1',
   organization_id: null,
   owner_subject_id: null,
+  owner_user_id: null,
+  owner_organization_id: null,
   title: 'Titel',
   published_at: null,
   publish_from: null,
@@ -196,13 +198,42 @@ describe('iam content repository helpers', () => {
     await expect(insertContentRow(client, createCreateInput())).rejects.toThrow('content_create_failed');
   });
 
+  it('uses the active organization display name as create author when available', async () => {
+    const client = createClient();
+    client.query
+      .mockResolvedValueOnce({ rows: [{ display_name: 'Stadt Musterhausen' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 'content-2' }] });
+
+    await expect(
+      insertContentRow(
+        client,
+        createCreateInput({
+          organizationId: '00000000-0000-0000-0000-000000000002',
+        })
+      )
+    ).resolves.toBe('content-2');
+
+    expect(client.query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('FROM iam.organizations'),
+      ['instance-1', '00000000-0000-0000-0000-000000000002']
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('INSERT INTO iam.contents'),
+      expect.arrayContaining(['Stadt Musterhausen'])
+    );
+  });
+
   it('updates content rows and revision references with normalized values', async () => {
     const client = createClient();
     client.query.mockResolvedValue({ rows: [] });
 
     await updateContentRow(client, createUpdateInput(), {
       organizationId: '00000000-0000-0000-0000-000000000002',
-      ownerSubjectId: 'subject-1',
+      ownerUserId: '00000000-0000-0000-0000-000000000001',
+      ownerOrganizationId: '00000000-0000-0000-0000-000000000002',
+      authorDisplayName: 'Stadt Musterhausen',
       title: 'Neuer Titel',
       payloadJson: '{"body":"Neu"}',
       status: 'published',
@@ -220,7 +251,9 @@ describe('iam content repository helpers', () => {
         'instance-1',
         'content-1',
         '00000000-0000-0000-0000-000000000002',
-        'subject-1',
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000002',
+        'Stadt Musterhausen',
         'Neuer Titel',
         '{"body":"Neu"}',
         'published',
@@ -229,7 +262,6 @@ describe('iam content repository helpers', () => {
         '2026-05-02T08:00:00.000Z',
         '2026-05-04T08:00:00.000Z',
         '00000000-0000-0000-0000-000000000001',
-        'Autor',
       ])
     );
     expect(client.query).toHaveBeenNthCalledWith(
@@ -281,9 +313,12 @@ describe('iam content repository helpers', () => {
     await emitContentUpdatedActivity(client, createUpdateInput(), createContentRow(), {
       eventType: 'iam.content.updated',
       action: 'content.updateMetadata',
-      changedFields: ['title'],
+      changedFields: ['title', 'ownerUserId', 'ownerOrganizationId', 'authorDisplayName'],
       nextStatus: 'draft',
       nextTitle: 'Titel',
+      nextOwnerUserId: '00000000-0000-0000-0000-000000000002',
+      nextOwnerOrganizationId: '00000000-0000-0000-0000-000000000003',
+      nextAuthorDisplayName: 'Stadt Musterhausen',
     });
     await emitContentUpdatedActivity(client, createUpdateInput(), createContentRow(), {
       eventType: 'iam.content.status_changed',
@@ -291,6 +326,9 @@ describe('iam content repository helpers', () => {
       changedFields: ['payload'],
       nextStatus: 'draft',
       nextTitle: 'Titel',
+      nextOwnerUserId: null,
+      nextOwnerOrganizationId: null,
+      nextAuthorDisplayName: 'Autor',
     });
 
     expect(state.emitActivityLogMock).toHaveBeenNthCalledWith(
@@ -304,6 +342,20 @@ describe('iam content repository helpers', () => {
           payload_change: 'payload_unchanged',
           previous_status: 'draft',
           next_status: 'draft',
+          field_changes: {
+            ownerUserId: {
+              previous: null,
+              next: '00000000-0000-0000-0000-000000000002',
+            },
+            ownerOrganizationId: {
+              previous: null,
+              next: '00000000-0000-0000-0000-000000000003',
+            },
+            authorDisplayName: {
+              previous: 'Autor',
+              next: 'Stadt Musterhausen',
+            },
+          },
         }),
       })
     );

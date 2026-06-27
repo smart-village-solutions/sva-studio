@@ -223,7 +223,6 @@ SET
     action?: string;
     resourceType?: string;
     resourceId?: string;
-    effect?: 'allow' | 'deny';
     scope?: Readonly<Record<string, unknown>>;
     description: string;
   }): SqlStatement => ({
@@ -235,17 +234,15 @@ INSERT INTO iam.permissions (
   action,
   resource_type,
   resource_id,
-  effect,
   scope,
   description
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
+VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
 ON CONFLICT (instance_id, permission_key) DO UPDATE
 SET
   action = EXCLUDED.action,
   resource_type = EXCLUDED.resource_type,
   resource_id = EXCLUDED.resource_id,
-  effect = EXCLUDED.effect,
   scope = EXCLUDED.scope,
   description = EXCLUDED.description,
   updated_at = NOW();
@@ -253,7 +250,7 @@ SET
     values: [
       input.id, input.instanceId, input.permissionKey, input.action ?? input.permissionKey,
       input.resourceType ?? defaultResourceType(input.permissionKey), input.resourceId ?? null,
-      input.effect ?? 'allow', JSON.stringify(input.scope ?? {}), input.description,
+      JSON.stringify(input.scope ?? {}), input.description,
     ],
   }),
 

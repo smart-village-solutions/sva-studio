@@ -233,6 +233,39 @@ describe('content mutations', () => {
     expect(state.completeCreateIdempotencyMock).toHaveBeenCalledOnce();
   });
 
+  it('derives create ownership only from the active organization context', async () => {
+    state.parseCreateRequestMock.mockResolvedValueOnce({
+      idempotencyKey: 'idem-1',
+      rawBody: '{"contentType":"news.article","organizationId":"22222222-2222-4222-8222-222222222222"}',
+      parsedData: {
+        contentType: 'news.article',
+        organizationId: '22222222-2222-4222-8222-222222222222',
+        title: 'Titel',
+        payload: { body: 'Text' },
+        status: 'draft',
+        validationState: 'valid',
+      },
+      payload: { body: 'Text' },
+    });
+    state.authorizeContentActionMock.mockResolvedValueOnce(null);
+
+    const response = await createContentResponse(new Request('https://studio.test/api/v1/iam/contents'), actor);
+
+    expect(response.status).toBe(201);
+    expect(state.authorizeContentActionMock).toHaveBeenCalledWith(
+      actor,
+      'content.create',
+      expect.objectContaining({
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      })
+    );
+    expect(state.createContentMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      })
+    );
+  });
+
   it('maps create validation and database failures to the shared failure helpers', async () => {
     state.authorizeContentActionMock.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
     state.createContentMock.mockRejectedValueOnce({ code: 'content_publication_window_invalid' });
@@ -274,6 +307,25 @@ describe('content mutations', () => {
     const ok = await updateContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor);
     expect(ok.status).toBe(200);
     expect(state.updateContentMock).toHaveBeenCalled();
+  });
+
+  it('passes visible author updates through normal update authorization', async () => {
+    state.parseRequestBodyMock.mockResolvedValueOnce({ ok: true, data: { authorDisplayName: 'Stadt Musterhausen' } });
+
+    const response = await updateContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor);
+
+    expect(response.status).toBe(200);
+    expect(state.authorizeUpdateContentActionsMock).toHaveBeenCalledWith(
+      actor,
+      'content-1',
+      expect.anything(),
+      { authorDisplayName: 'Stadt Musterhausen' }
+    );
+    expect(state.updateContentMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authorDisplayName: 'Stadt Musterhausen',
+      })
+    );
   });
 
   it('handles delete request validation, authorization and success paths', async () => {

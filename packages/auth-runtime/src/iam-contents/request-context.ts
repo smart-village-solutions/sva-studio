@@ -37,7 +37,8 @@ type ContentAuthorizationResource = {
   readonly contentType?: string;
   readonly domainCapability?: IamContentDomainCapability;
   readonly organizationId?: string;
-  readonly createdByAccountId?: string;
+  readonly ownerUserId?: string;
+  readonly ownerOrganizationId?: string;
 };
 
 type ContentAuthorizationOptions = {
@@ -73,11 +74,12 @@ const buildContentAuthorizeRequest = (
       type: deriveAuthorizeResourceType(action),
       ...(resource.contentId ? { id: resource.contentId } : {}),
       ...(organizationId ? { organizationId } : {}),
-      ...((resource.contentType || resource.createdByAccountId || organizationId)
+      ...((resource.contentType || resource.ownerUserId || resource.ownerOrganizationId || organizationId)
         ? {
             attributes: {
               ...(resource.contentType ? { contentType: resource.contentType } : {}),
-              ...(resource.createdByAccountId ? { createdByAccountId: resource.createdByAccountId } : {}),
+              ...(resource.ownerUserId ? { ownerUserId: resource.ownerUserId } : {}),
+              ...(resource.ownerOrganizationId ? { ownerOrganizationId: resource.ownerOrganizationId } : {}),
               ...(organizationId ? { organizationId } : {}),
             },
           }

@@ -91,10 +91,9 @@ describe('authorization-contract exports', () => {
         {
           action: 'news.read',
           resourceType: 'article',
-          effect: 'allow',
-          sourceUserIds: ['user-1'],
+          sourceRoleIds: ['role-1'],
           provenance: {
-            sourceKinds: ['direct_user'],
+            sourceKinds: ['direct_role'],
             inheritedFromOrganizationId: '11111111-1111-4111-8111-111111111111',
           },
         },
@@ -108,13 +107,12 @@ describe('authorization-contract exports', () => {
       cacheStatus: 'hit',
       snapshotVersion: 'snapshot-2',
       provenance: {
-        hasDirectUserPermissions: true,
         hasGroupDerivedPermissions: false,
         hasGeoInheritance: false,
       },
     };
 
     expect(response.subject.isImpersonating).toBe(true);
-    expect(response.permissions[0]?.provenance?.sourceKinds).toEqual(['direct_user']);
+    expect(response.permissions[0]?.provenance?.sourceKinds).toEqual(['direct_role']);
   });
 });

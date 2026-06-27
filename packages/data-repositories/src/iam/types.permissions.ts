@@ -41,6 +41,4 @@ type PermissionKey =
   | 'feature.toggle'
   | 'instance.registry.manage';
 
-type PermissionEffect = 'allow' | 'deny';
-
-export type { PermissionEffect, PermissionKey };
+export type { PermissionKey };

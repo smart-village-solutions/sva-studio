@@ -14,6 +14,7 @@ const {
   loadContentListScopesMock,
   resolveContentAccessMock,
   resolveContentActorMock,
+  resolveContentAuthorizationPermissionsMock,
   updateContentResponseMock,
   withAuthenticatedContentHandlerMock,
 } = vi.hoisted(() => ({
@@ -27,6 +28,7 @@ const {
   loadContentListScopesMock: vi.fn(),
   resolveContentAccessMock: vi.fn(),
   resolveContentActorMock: vi.fn(),
+  resolveContentAuthorizationPermissionsMock: vi.fn(),
   updateContentResponseMock: vi.fn(),
   withAuthenticatedContentHandlerMock: vi.fn(),
 }));
@@ -35,6 +37,7 @@ vi.mock('./request-context.js', () => ({
   authorizeContentAction: authorizeContentActionMock,
   resolveContentAccess: resolveContentAccessMock,
   resolveContentActor: resolveContentActorMock,
+  resolveContentAuthorizationPermissions: resolveContentAuthorizationPermissionsMock,
   withAuthenticatedContentHandler: withAuthenticatedContentHandlerMock,
 }));
 
@@ -74,6 +77,7 @@ const actor = {
   actorDisplayName: 'Actor',
   requestId: 'request-1',
   traceId: 'trace-1',
+  activeOrganizationId: '11111111-1111-4111-8111-111111111111',
 };
 
 const access = {
@@ -90,6 +94,8 @@ const item = (id: string, organizationId: string): IamContentListItem => ({
   instanceId: 'instance-1',
   contentType: 'news.article',
   organizationId,
+  ownerUserId: 'account-1',
+  ownerOrganizationId: organizationId,
   title: `Content ${id}`,
   createdAt: '2026-04-26T10:00:00.000Z',
   createdBy: 'creator-1',
@@ -117,11 +123,34 @@ describe('content core authorization', () => {
     loadContentListScopesMock.mockReset();
     resolveContentAccessMock.mockReset();
     resolveContentActorMock.mockReset();
+    resolveContentAuthorizationPermissionsMock.mockReset();
     updateContentResponseMock.mockReset();
     withAuthenticatedContentHandlerMock.mockReset();
 
     resolveContentActorMock.mockResolvedValue({ actor });
     resolveContentAccessMock.mockResolvedValue(access);
+    resolveContentAuthorizationPermissionsMock.mockResolvedValue({
+      permissions: [
+        {
+          action: 'content.read',
+          resourceType: 'content',
+          organizationId: '11111111-1111-4111-8111-111111111111',
+          accessScope: 'organization',
+        },
+        {
+          action: 'news.read',
+          resourceType: 'news',
+          organizationId: '11111111-1111-4111-8111-111111111111',
+          accessScope: 'organization',
+        },
+        {
+          action: 'poi.read',
+          resourceType: 'poi',
+          organizationId: '11111111-1111-4111-8111-111111111111',
+          accessScope: 'organization',
+        },
+      ],
+    });
     loadContentListScopesMock.mockResolvedValue([]);
   });
 
@@ -158,24 +187,20 @@ describe('content core authorization', () => {
         sortDirection: 'desc',
       }),
       {
+        allowGlobal: false,
+        allowOwn: true,
         allowedOrganizationIds: ['11111111-1111-4111-8111-111111111111'],
-        includeUnscopedContent: false,
+        actorAccountId: 'account-1',
       }
     );
     expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
       1,
       actor,
-      'content.read',
+      'news.read',
       expect.objectContaining({
+        contentId: 'content-1',
+        contentType: 'news.article',
         organizationId: '11111111-1111-4111-8111-111111111111',
-      })
-    );
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      2,
-      actor,
-      'content.read',
-      expect.objectContaining({
-        organizationId: '22222222-2222-4222-8222-222222222222',
       })
     );
     expect(await readJson(response)).toMatchObject({
@@ -184,7 +209,7 @@ describe('content core authorization', () => {
     });
   });
 
-  it('passes the actor account id into list scope prechecks for own-scoped permissions', async () => {
+  it('passes the actor account id into owner-based list authorization', async () => {
     loadContentListScopesMock.mockResolvedValue(['11111111-1111-4111-8111-111111111111']);
     loadContentListItemsMock.mockResolvedValue({
       items: [item('content-1', '11111111-1111-4111-8111-111111111111')],
@@ -195,13 +220,12 @@ describe('content core authorization', () => {
     const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
 
     expect(response.status).toBe(200);
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      1,
-      actor,
-      'content.read',
+    expect(loadContentListItemsMock).toHaveBeenCalledWith(
+      'instance-1',
+      expect.any(Object),
       expect.objectContaining({
-        organizationId: '11111111-1111-4111-8111-111111111111',
-        createdByAccountId: 'account-1',
+        allowOwn: true,
+        actorAccountId: 'account-1',
       })
     );
   });
@@ -247,8 +271,10 @@ describe('content core authorization', () => {
         visibleTypes: ['poi.point-of-interest', 'news.article'],
       }),
       {
+        allowGlobal: false,
+        allowOwn: true,
         allowedOrganizationIds: ['11111111-1111-4111-8111-111111111111'],
-        includeUnscopedContent: false,
+        actorAccountId: 'account-1',
       }
     );
     await expect(readJson(response)).resolves.toMatchObject({
@@ -273,7 +299,6 @@ describe('content core authorization', () => {
     });
     authorizeContentActionMock
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(new Response(null, { status: 403 }));
 
     const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
@@ -284,7 +309,7 @@ describe('content core authorization', () => {
       pagination: expect.objectContaining({ total: 1 }),
     });
     expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      2,
+      1,
       actor,
       'news.read',
       expect.objectContaining({
@@ -293,7 +318,7 @@ describe('content core authorization', () => {
       })
     );
     expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      3,
+      2,
       actor,
       'poi.read',
       expect.objectContaining({
@@ -395,7 +420,7 @@ describe('content core authorization', () => {
     expect(loadContentDetailMock).not.toHaveBeenCalled();
   });
 
-  it('uses plugin-specific read actions for scope prechecks and list items', async () => {
+  it('uses plugin-specific read actions for list items', async () => {
     const poiItem = item('content-2', '11111111-1111-4111-8111-111111111111');
     poiItem.contentType = 'poi.point-of-interest';
 
@@ -416,15 +441,6 @@ describe('content core authorization', () => {
     expect(response.status).toBe(200);
     expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
       1,
-      actor,
-      'poi.read',
-      expect.objectContaining({
-        organizationId: '11111111-1111-4111-8111-111111111111',
-        createdByAccountId: 'account-1',
-      })
-    );
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      2,
       actor,
       'poi.read',
       expect.objectContaining({

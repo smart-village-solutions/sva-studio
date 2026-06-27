@@ -76,37 +76,13 @@ const createNotFoundResponse = () =>
 const collectEffectivePermissionActions = (
   permissions: readonly {
     action?: string;
-    effect?: string;
   }[]
 ): string[] => {
-  const byAction = new Map<string, 'allow' | 'deny'>();
-
-  for (const permission of permissions) {
-    const action = typeof permission.action === 'string' ? permission.action.trim() : '';
-    if (action.length === 0) {
-      continue;
-    }
-    let normalizedEffect: 'allow' | 'deny' | null = null;
-    if (permission.effect === 'deny') {
-      normalizedEffect = 'deny';
-    } else if (permission.effect === 'allow') {
-      normalizedEffect = 'allow';
-    }
-    if (!normalizedEffect) {
-      continue;
-    }
-    if (normalizedEffect === 'deny') {
-      byAction.set(action, 'deny');
-      continue;
-    }
-    if (byAction.get(action) !== 'deny') {
-      byAction.set(action, 'allow');
-    }
-  }
-
-  return [...byAction.entries()]
-    .filter(([, effect]) => effect === 'allow')
-    .map(([action]) => action)
+  return [...new Set(
+    permissions
+      .map((permission) => (typeof permission.action === 'string' ? permission.action.trim() : ''))
+      .filter((action) => action.length > 0)
+  )]
     .sort((left, right) => left.localeCompare(right));
 };
 

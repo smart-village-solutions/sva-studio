@@ -103,19 +103,19 @@ Speichert organisationsgebundene Mainserver-Zugangsdaten pro `instance_id` und `
 - `mainserver_application_secret_ciphertext` enthält ausschließlich verschlüsselte Werte.
 - API- und UI-Modelle geben nie das Secret zurück, sondern nur `mainserverApplicationSecretSet: boolean`.
 
-### 2. Gruppen und direkte Rechte
+### 2. Gruppen und Rollenrechte
 
 Erweiterungen für feinere Berechtigungssteuerung:
 
 - `iam.groups`
 - `iam.group_roles`
 - `iam.account_groups`
-- `iam.account_permissions`
 
 Kernidee:
 
 - Gruppen bündeln Rollen.
-- Nutzer können zusätzlich direkte Rechte über `account_permissions` erhalten.
+- Nutzer erhalten Rechte ausschließlich über Rollen- und Gruppen-Zuordnungen.
+- Effektive Rechte sind Allow-Grants; explizite `deny`-Effekte und direkte Account-Permissions sind nicht Teil des Zielmodells.
 
 ### 3. Governance, Audit und Compliance
 
@@ -197,6 +197,8 @@ Kernidee:
 - `content_list_projection` ist das persistierte führende Read-Model für `/admin/content`; lokale IAM-Inhalte werden triggerbasiert gespiegelt, Mainserver-Typen serverseitig materialisiert. Mainserver-Projektionen sind pro Sichtbarkeits-Scope eindeutig, damit derselbe Mainserver-Datensatz für unterschiedliche Organisationen oder Benutzer-Sichten parallel materialisiert werden kann.
 - `content_list_projection_sync_state` hält pro Instanz und Mainserver-Content-Typ den letzten erfolgreichen beziehungsweise fehlgeschlagenen Refresh-Lauf.
 - `contents` trägt zusätzlich einen eigenen Lösch-Lifecycle-Zustand, damit tenantweite Account-Löschregeln in V1 referenzwahrend auf Inhalte abgebildet werden können.
+- `owner_user_id` und `owner_organization_id` sind die kanonischen Ownership-Spalten für Scope-Prüfungen (`own`, `organization`, `all`) und werden in `content_list_projection` gespiegelt.
+- `owner_subject_id` bleibt nur noch Legacy-Kompatibilitätsfeld und ist nicht mehr maßgeblich für Autorisierung.
 
 ### 7. Media-Management
 

@@ -7,7 +7,6 @@ const resolveEffectivePermissionsMock = vi.fn(async () => ({
   permissions: [
     {
       action: 'media.read',
-      effect: 'allow',
       resourceType: 'media',
     },
   ],
@@ -42,7 +41,6 @@ describe('authorizeMediaPrimitiveForUser', () => {
       permissions: [
         {
           action: 'media.read',
-          effect: 'allow',
           resourceType: 'media',
         },
       ],

@@ -197,10 +197,6 @@ export const formatScope = (scope?: Readonly<Record<string, unknown>>) => {
 
 export const describePermissionTraceSource = (entry: IamUserPermissionTraceItem) => {
   const base = t(permissionTraceSourceTranslationKeyByValue[entry.sourceKind]);
-  if (entry.sourceKind === 'direct_permission') {
-    return base;
-  }
-
   if (entry.sourceKind === 'group_role') {
     const parts = [base];
     if (entry.groupDisplayName) {

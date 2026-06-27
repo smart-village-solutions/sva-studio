@@ -122,7 +122,6 @@ const allowPermission = (action: string) => [
   {
     action,
     resourceType: 'waste-management',
-    effect: 'allow' as const,
   },
 ];
 

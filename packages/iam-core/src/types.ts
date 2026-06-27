@@ -6,7 +6,6 @@ export type {
   DenyReasonCode,
   EffectivePermission,
   IamAction,
-  IamPermissionEffect,
   IamResourceRef,
   MatchedPermissionSummary,
 } from '@sva/core';

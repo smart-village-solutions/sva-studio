@@ -43,6 +43,11 @@ vi.mock('../providers/auth-provider', () => ({
 
 const organizationContextMockValue = {
   context: null as { activeOrganizationId?: string | null } | null,
+  isLoading: false,
+  isUpdating: false,
+  error: null,
+  refetch: vi.fn(),
+  switchOrganization: vi.fn(),
 };
 
 vi.mock('./use-organization-context', () => ({
@@ -64,6 +69,11 @@ describe('useContentAccess', () => {
     };
     authMockValue.invalidatePermissions.mockReset();
     organizationContextMockValue.context = null;
+    organizationContextMockValue.isLoading = false;
+    organizationContextMockValue.isUpdating = false;
+    organizationContextMockValue.error = null;
+    organizationContextMockValue.refetch.mockReset();
+    organizationContextMockValue.switchOrganization.mockReset();
     asIamErrorMock.mockReset();
     asIamErrorMock.mockImplementation((error: unknown) => error);
     browserLoggerMock.debug.mockReset();
@@ -197,7 +207,49 @@ describe('useContentAccess', () => {
     );
   });
 
-  it('treats deny actions as dominant when permission actions are aggregated', async () => {
+  it('waits for the organization context before requesting permissions', async () => {
+    organizationContextMockValue.isLoading = true;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        permissions: [
+          {
+            action: 'content.read',
+            resourceType: 'content',
+            effect: 'allow',
+            organizationId: '11111111-1111-4111-8111-111111111111',
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result, rerender } = renderHook(() => useContentAccess());
+
+    expect(result.current.isLoading).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    organizationContextMockValue.isLoading = false;
+    organizationContextMockValue.context = {
+      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    };
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.permissionActions).toEqual(['content.read']);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/iam/me/permissions?instanceId=de-musterhausen&organizationId=11111111-1111-4111-8111-111111111111',
+      undefined,
+      {
+        timeoutMs: 10_000,
+      }
+    );
+  });
+
+  it('treats legacy deny-shaped permissions as allow-only action entries', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -226,7 +278,7 @@ describe('useContentAccess', () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.permissionActions).toEqual(['events.read']);
+      expect(result.current.permissionActions).toEqual(['events.read', 'news.read']);
       expect(result.current.error).toBeNull();
     });
   });

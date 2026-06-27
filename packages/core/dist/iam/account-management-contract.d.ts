@@ -1,4 +1,4 @@
-import type { IamLegalTextTargeting, IamPermissionEffect, IamRolePermissionAssignmentScope, IamUuid } from './authorization-contract';
+import type { IamLegalTextTargeting, IamRolePermissionAssignmentScope, IamUuid } from './authorization-contract';
 import type { IamPermissionRuntimeScope } from './account-management.js';
 import type { WasteManagementSettingsRecord } from '../waste-management-contract.js';
 export type ApiErrorCode = 'unauthorized' | 'forbidden' | 'not_found' | 'invalid_request' | 'invalid_instance_id' | 'invalid_organization_id' | 'organization_inactive' | 'rate_limited' | 'csrf_validation_failed' | 'idempotency_key_required' | 'idempotency_key_reuse' | 'idempotency_in_progress' | 'keycloak_unavailable' | 'tenant_auth_client_secret_missing' | 'tenant_admin_client_not_configured' | 'tenant_admin_client_secret_missing' | 'encryption_not_configured' | 'database_unavailable' | 'last_admin_protection' | 'self_protection' | 'feature_disabled' | 'conflict' | 'legal_acceptance_required' | 'reauth_required' | 'internal_error';
@@ -81,13 +81,7 @@ export type IamUserGroupAssignment = {
     readonly validFrom?: string;
     readonly validTo?: string;
 };
-export type IamUserDirectPermissionAssignment = {
-    readonly permissionId: IamUuid;
-    readonly permissionKey: string;
-    readonly effect: IamPermissionEffect;
-    readonly description?: string;
-};
-export type IamUserPermissionTraceSourceKind = 'direct_permission' | 'direct_role' | 'group_role';
+export type IamUserPermissionTraceSourceKind = 'direct_role' | 'group_role';
 export type IamUserPermissionTraceStatus = 'effective' | 'inactive' | 'expired' | 'disabled';
 export type IamUserPermissionTraceInactiveReason = 'assignment_not_started' | 'assignment_expired' | 'membership_not_started' | 'membership_expired' | 'group_disabled' | 'hierarchy_restricted';
 export type IamUserPermissionTraceItem = {
@@ -97,7 +91,6 @@ export type IamUserPermissionTraceItem = {
     readonly resourceId?: string;
     readonly runtimeScope?: IamPermissionRuntimeScope;
     readonly organizationId?: IamUuid;
-    readonly effect: IamPermissionEffect;
     readonly scope?: Readonly<Record<string, unknown>>;
     readonly accessScope?: IamRolePermissionAssignmentScope;
     readonly isEffective: boolean;
@@ -143,7 +136,6 @@ export type IamUserDetail = IamUserListItem & {
     readonly avatarUrl?: string;
     readonly notes?: string;
     readonly permissions?: readonly string[];
-    readonly directPermissions?: readonly IamUserDirectPermissionAssignment[];
     readonly permissionTrace?: readonly IamUserPermissionTraceItem[];
     readonly groups?: readonly IamUserGroupAssignment[];
     readonly mainserverUserApplicationId?: string;

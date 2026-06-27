@@ -25,7 +25,6 @@ describe('user-detail-query.mapping', () => {
       role_rows: [],
       group_rows: [],
       permission_rows: [],
-      direct_permission_rows: [],
       permission_trace_rows: [
         {
           permission_key: 'content.read',
@@ -33,7 +32,6 @@ describe('user-detail-query.mapping', () => {
           resource_type: 'content',
           resource_id: null,
           organization_id: 'org-1',
-          effect: 'allow',
           scope: { allowedGeoUnitIds: ['geo-parent-1'] },
           is_effective: false,
           status: 'disabled',
@@ -59,7 +57,6 @@ describe('user-detail-query.mapping', () => {
           resource_type: 'media',
           resource_id: null,
           organization_id: null,
-          effect: 'allow',
           scope: null,
           access_scope: null,
           is_effective: true,

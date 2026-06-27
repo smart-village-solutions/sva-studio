@@ -1,13 +1,11 @@
 import type {
   IamUserDetail,
-  IamUserDirectPermissionAssignment,
   IamUserPermissionTraceItem,
 } from '@sva/core';
 
 import { revealField } from './encryption.js';
 import { mapUserRowToListItem } from './user-mapping.js';
 import type {
-  UserDetailDirectPermissionRow,
   UserDetailGroupRow,
   UserDetailPermissionTraceRow,
   UserDetailRoleRow,
@@ -29,16 +27,6 @@ const mapRoleRows = (roleRows: UserDetailRoleRow[] | null) =>
 
 const mapPermissionRows = (permissionRows: UserDetailRow['permission_rows']) =>
   permissionRows?.map((entry) => entry.permission_key) ?? [];
-
-const mapDirectPermissionRows = (
-  permissionRows: UserDetailDirectPermissionRow[] | null
-): IamUserDirectPermissionAssignment[] =>
-  permissionRows?.map((entry) => ({
-    permissionId: entry.permission_id,
-    permissionKey: entry.permission_key,
-    effect: entry.effect,
-    ...(entry.description ? { description: entry.description } : {}),
-  })) ?? [];
 
 const mapGroupRows = (groupRows: UserDetailGroupRow[] | null) =>
   groupRows?.map((entry) => ({
@@ -97,7 +85,6 @@ const mapPermissionTraceRows = (
     action: entry.action,
     resourceType: entry.resource_type,
     ...mapPermissionTraceScopeFields(entry),
-    effect: entry.effect,
     isEffective: entry.is_effective,
     status: entry.status,
     sourceKind: entry.source_kind,
@@ -133,7 +120,6 @@ export const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
     avatarUrl: row.avatar_url ?? undefined,
     notes: row.notes ?? undefined,
     permissions: mapPermissionRows(row.permission_rows),
-    directPermissions: mapDirectPermissionRows(row.direct_permission_rows),
     permissionTrace: mapPermissionTraceRows(row.permission_trace_rows),
     groups: mapGroupRows(row.group_rows),
     mainserverUserApplicationSecretSet: false,

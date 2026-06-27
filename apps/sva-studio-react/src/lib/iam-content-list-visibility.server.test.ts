@@ -26,7 +26,7 @@ const findRule = (
 };
 
 describe('iam content list visibility', () => {
-  it('derives organization-scoped allow and deny rules for projected rows', () => {
+  it('derives organization-scoped allow rules for projected rows', () => {
     const rules = buildProjectionReadVisibilityRules(
       ['generic', 'news.article'],
       [
@@ -35,12 +35,6 @@ describe('iam content list visibility', () => {
           resourceType: 'content',
           organizationId: 'org-1',
           accessScope: 'organization',
-        }),
-        createPermission({
-          action: 'content.read',
-          resourceType: 'content',
-          organizationId: 'org-2',
-          effect: 'deny',
         }),
         createPermission({
           action: 'news.read',
@@ -54,18 +48,12 @@ describe('iam content list visibility', () => {
       allowGlobal: false,
       allowOrganizationIds: ['org-1'],
       allowOwn: true,
-      denyGlobal: false,
-      denyOrganizationIds: ['org-2'],
-      denyOwn: false,
     });
     expect(findRule(rules, 'news.article')).toEqual({
       contentType: 'news.article',
       allowGlobal: true,
       allowOrganizationIds: [],
       allowOwn: false,
-      denyGlobal: false,
-      denyOrganizationIds: [],
-      denyOwn: false,
     });
   });
 
@@ -87,9 +75,6 @@ describe('iam content list visibility', () => {
       allowGlobal: false,
       allowOrganizationIds: ['org-1'],
       allowOwn: true,
-      denyGlobal: false,
-      denyOrganizationIds: [],
-      denyOwn: false,
     });
     expect(
       isProjectionRowVisibleForRead(
@@ -97,7 +82,8 @@ describe('iam content list visibility', () => {
         {
           contentType: 'news.article',
           organizationId: 'org-1',
-          createdByAccountId: 'account-a',
+          ownerUserId: 'account-a',
+          ownerOrganizationId: 'org-1',
         },
         undefined
       )
@@ -108,24 +94,33 @@ describe('iam content list visibility', () => {
         {
           contentType: 'news.article',
           organizationId: 'org-2',
-          createdByAccountId: 'account-a',
+          ownerUserId: 'account-a',
+          ownerOrganizationId: 'org-2',
+        },
+        undefined
+      )
+    ).toBe(false);
+    expect(
+      isProjectionRowVisibleForRead(
+        rule,
+        {
+          contentType: 'news.article',
+          organizationId: 'org-1',
+          ownerUserId: 'account-a',
+          ownerOrganizationId: 'org-2',
         },
         undefined
       )
     ).toBe(false);
   });
 
-  it('evaluates row visibility with deny precedence and own fallback', () => {
+  it('evaluates row visibility with own fallback', () => {
     const [rule] = buildProjectionReadVisibilityRules(
       ['generic'],
       [
         createPermission({
           organizationId: 'org-1',
           accessScope: 'organization',
-        }),
-        createPermission({
-          organizationId: 'org-2',
-          effect: 'deny',
         }),
       ]
     );
@@ -136,7 +131,8 @@ describe('iam content list visibility', () => {
         {
           contentType: 'generic',
           organizationId: 'org-1',
-          createdByAccountId: 'account-a',
+          ownerUserId: 'account-a',
+          ownerOrganizationId: 'org-1',
         },
         'account-b'
       )
@@ -147,7 +143,8 @@ describe('iam content list visibility', () => {
         {
           contentType: 'generic',
           organizationId: 'org-9',
-          createdByAccountId: 'account-a',
+          ownerUserId: 'account-a',
+          ownerOrganizationId: 'org-9',
         },
         'account-a'
       )
@@ -158,18 +155,20 @@ describe('iam content list visibility', () => {
         {
           contentType: 'generic',
           organizationId: 'org-2',
-          createdByAccountId: 'account-a',
+          ownerUserId: 'account-a',
+          ownerOrganizationId: 'org-2',
         },
         'account-a'
       )
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isProjectionRowVisibleForRead(
         rule,
         {
           contentType: 'generic',
           organizationId: 'org-9',
-          createdByAccountId: 'account-x',
+          ownerUserId: 'account-x',
+          ownerOrganizationId: 'org-9',
         },
         'account-a'
       )
@@ -192,14 +191,15 @@ describe('iam content list visibility', () => {
         {
           contentType: 'generic',
           organizationId: 'org-1',
-          createdByAccountId: 'account-a',
+          ownerUserId: 'account-a',
+          ownerOrganizationId: 'org-1',
         },
         undefined
       )
     ).toBe(false);
   });
 
-  it('handles plugin deny precedence, content type mismatches, and unscoped optional rows', () => {
+  it('handles content type mismatches and ownerless optional rows', () => {
     const [rule] = buildProjectionReadVisibilityRules(
       ['events.event-record'],
       [
@@ -209,38 +209,17 @@ describe('iam content list visibility', () => {
           organizationId: 'org-2',
           accessScope: 'organization',
         }),
-        createPermission({
-          action: 'events.read',
-          resourceType: 'events',
-          effect: 'deny',
-          accessScope: 'own',
-        }),
       ]
     );
 
     expect(
-      isProjectionRowVisibleForRead(rule, { contentType: 'news.article', createdByAccountId: 'account-a' }, 'account-a')
+      isProjectionRowVisibleForRead(rule, { contentType: 'news.article', ownerUserId: 'account-a' }, 'account-a')
     ).toBe(false);
     expect(
-      isProjectionRowVisibleForRead(rule, { contentType: 'events.event-record', createdByAccountId: 'account-a' }, 'account-b')
+      isProjectionRowVisibleForRead(rule, { contentType: 'events.event-record', ownerUserId: 'account-a' }, 'account-b')
+    ).toBe(false);
+    expect(
+      isProjectionRowVisibleForRead(rule, { contentType: 'events.event-record', ownerUserId: 'account-a' }, 'account-a')
     ).toBe(true);
-    expect(
-      isProjectionRowVisibleForRead(rule, { contentType: 'events.event-record', createdByAccountId: 'account-a' }, 'account-a')
-    ).toBe(false);
-
-    const [globalDenyRule] = buildProjectionReadVisibilityRules(
-      ['content.custom'],
-      [
-        createPermission({ action: 'content.read', resourceType: 'content' }),
-        createPermission({ action: 'content.read', resourceType: 'content', effect: 'deny' }),
-      ]
-    );
-    expect(
-      isProjectionRowVisibleForRead(
-        globalDenyRule,
-        { contentType: 'content.custom', organizationId: 'org-1', createdByAccountId: 'account-a' },
-        'account-b'
-      )
-    ).toBe(false);
   });
 });

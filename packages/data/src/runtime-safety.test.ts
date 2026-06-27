@@ -253,6 +253,25 @@ test('system admin core permission backfill migration restores missing tenant ia
   assert.doesNotMatch(sql, /DELETE FROM iam\.role_permissions/);
 });
 
+test('iam ownership authorization model migration replaces legacy ownership, direct permissions and deny effects', () => {
+  const sql = readRepoFile('data/migrations/0061_iam_content_ownership_authorization_model.sql');
+
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS owner_user_id UUID NULL/);
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS owner_organization_id UUID NULL/);
+  assert.doesNotMatch(sql, /owner_user_id = creator_account_id/);
+  assert.doesNotMatch(sql, /owner_organization_id = organization_id/);
+  assert.match(sql, /Existing rows without canonical owner columns remain ownerless intentionally/);
+  assert.match(sql, /ALTER TABLE iam\.content_list_projection[\s\S]*ADD COLUMN IF NOT EXISTS owner_user_id UUID NULL/);
+  assert.match(sql, /ALTER TABLE iam\.content_list_projection[\s\S]*ADD COLUMN IF NOT EXISTS owner_organization_id UUID NULL/);
+  assert.match(sql, /DROP CONSTRAINT IF EXISTS content_list_projection_scope_key/);
+  assert.match(sql, /UNIQUE NULLS NOT DISTINCT[\s\S]*owner_user_id[\s\S]*owner_organization_id/);
+  assert.match(sql, /DROP TABLE IF EXISTS iam\.account_permissions/);
+  assert.match(sql, /DROP COLUMN IF EXISTS effect/);
+  assert.match(sql, /RAISE EXCEPTION 'iam\.permissions contains deny rows/);
+  assert.doesNotMatch(sql, /DELETE FROM iam\.permissions/);
+  assert.match(sql, /DROP INDEX IF EXISTS iam\.idx_permissions_instance_action_resource_effect/);
+});
+
 test('runtime artifact verification runs workspace node helper via bash', () => {
   const script = readFileSync(resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'), 'utf8');
 

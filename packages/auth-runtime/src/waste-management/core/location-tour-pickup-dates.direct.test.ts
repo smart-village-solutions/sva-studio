@@ -28,7 +28,6 @@ const createDeps = () => ({
       {
         action: 'waste-management.scheduling.manage',
         resourceType: 'waste-management',
-        effect: 'allow' as const,
       },
     ],
   })),

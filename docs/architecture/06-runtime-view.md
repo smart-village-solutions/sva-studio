@@ -701,18 +701,18 @@ Fehlerpfad:
 - Nicht existente Gruppen oder instanzfremde IDs werden mit `invalid_request` abgewiesen.
 - Läuft die Invalidation nicht sofort durch, begrenzen TTL und Recompute den Stale-Zeitraum fail-closed.
 
-### Szenario 15a: Admin pflegt direkte Nutzerrechte
+### Szenario 15a: Admin pflegt Rollen- und Gruppenzuordnungen
 
 1. Ein Admin öffnet `/admin/users/:userId` und wechselt in den Tab `Berechtigungen`.
-2. Die UI lädt den globalen Permission-Katalog sowie die direkten Nutzerrechte aus `GET /api/v1/iam/users/:userId`.
-3. Pro Permission wird eine direkte Wirkung `nicht gesetzt`, `allow` oder `deny` gewählt und mit `PATCH /api/v1/iam/users/:userId` gespeichert.
-4. Der Server validiert die referenzierten `permissionId`s instanzgebunden und ersetzt die aktiven Einträge in `iam.account_permissions`.
-5. Anschließend wird ein `user_permission_changed`-Invalidation-Event emittiert; der nächste `GET /iam/me/permissions`- oder `POST /iam/authorize`-Aufruf recomputet den Snapshot.
-6. `me/permissions` und `authorize` liefern die Quelle als `direct_user`; direkte `deny`-Einträge schlagen konfliktäre Allows aus Rollen oder Gruppen deterministisch.
+2. Die UI lädt den globalen Permission-Katalog sowie die Rollen- und Gruppenzuordnungen aus `GET /api/v1/iam/users/:userId`.
+3. Rollen- oder Gruppenzuordnungen werden mit `PATCH /api/v1/iam/users/:userId` gespeichert; direkte Nutzerrechte sind kein API-Vertrag mehr.
+4. Der Server validiert die referenzierten Rollen und Gruppen instanzgebunden und ersetzt die aktiven Zuordnungen.
+5. Anschließend wird ein rollen- oder gruppenbezogenes Invalidation-Event emittiert; der nächste `GET /iam/me/permissions`- oder `POST /iam/authorize`-Aufruf recomputet den Snapshot.
+6. `me/permissions` und `authorize` liefern die Quellen als `direct_role` oder `group_role`; effektive Permissions sind Allow-Grants ohne fachliches `effect`.
 
 Fehlerpfad:
 
-- Unbekannte Permissions oder doppelte Zuordnungen im Payload werden mit `invalid_request` abgewiesen.
+- Unbekannte Rollen, unbekannte Gruppen oder doppelte Zuordnungen im Payload werden mit `invalid_request` abgewiesen.
 - Fehlt der Admin-Kontext oder ist die Zielperson außerhalb des zulässigen Manage-Scope, endet der Vorgang fail-closed mit `forbidden`.
 - Reine Nutzerrechte-Änderungen schreiben nur Studio-IAM-Daten und lösen keinen Keycloak-Write aus.
 
@@ -785,17 +785,17 @@ Fehlerpfad:
 ### Ergänzung 2026-03: Strukturierte Permission-Vererbung im Recompute-Pfad
 
 1. `POST /iam/authorize` oder `GET /iam/me/permissions` löst bei Cache-Miss den Permission-Store aus.
-2. Der Store lädt strukturierte Permission-Felder (`action`, `resource_type`, `resource_id`, `effect`, `scope`) zusammen mit Rollen- und Membership-Kontext.
+2. Der Store lädt strukturierte Permission-Felder (`action`, `resource_type`, `resource_id`, `scope`) zusammen mit Rollen- und Membership-Kontext.
 3. Bei org-spezifischen Anfragen werden Parent-Mitgliedschaften über `hierarchy_path` des Zielkontexts aufgelöst.
 4. Die Engine prüft zuerst Matching von `action`, `resource_type` und optionaler `resource_id`.
-5. Danach werden `deny`-Permissions vor `allow`-Permissions ausgewertet; lokale Restriktionen können vererbte Parent-Freigaben blockieren.
+5. Danach werden Allow-Grants und Scope-Restriktionen ausgewertet; fehlende passende Grants bleiben fail-closed.
 6. Anschließend werden ABAC-Attribute wie Geo-Scope, Acting-As und Restriktionslisten gegen den Requestkontext ausgewertet.
 7. Das Ergebnis wird als effektiver Permission-Snapshot mit Scope-Daten gecacht.
 
 Fehlerpfad:
 
 - Fehlen strukturierte Felder noch in Alt-Daten, greift der Kompatibilitätspfad über `permission_key`.
-- Widersprechen `allow` und `deny`, gewinnt deterministisch die restriktivere Regel.
+- Explizite `deny`-Permissions sind kein fachliches Zielmodell mehr; fehlende oder unpassende Allows führen zu `denied`.
 
 ### Ergänzung 2026-03: IAM-Transparenz-Cockpit und Privacy-Self-Service
 

@@ -55,13 +55,11 @@ const { authorizeContentPrimitiveForUser } = await import('./server-authorizatio
 const permission: EffectivePermission = {
   action: 'content.read',
   resourceType: 'content',
-  effect: 'allow',
-};
+  };
 
 const scopedPermission: EffectivePermission = {
   action: 'news.read',
   resourceType: 'news',
-  effect: 'allow',
   organizationId: '11111111-1111-4111-8111-111111111111',
   accessScope: 'organization',
 };
@@ -392,7 +390,7 @@ describe('authorizeContentPrimitiveForUser', () => {
         action: 'content.read',
         resource: {
           contentType: 'news.article',
-          createdByAccountId: 'account-1',
+          ownerUserId: 'account-1',
         },
       })
     ).resolves.toMatchObject({
@@ -411,7 +409,7 @@ describe('authorizeContentPrimitiveForUser', () => {
       expect.objectContaining({
         resource: expect.objectContaining({
           attributes: expect.objectContaining({
-            createdByAccountId: 'account-1',
+            ownerUserId: 'account-1',
           }),
         }),
         context: expect.objectContaining({
@@ -506,7 +504,7 @@ describe('authorizeContentPrimitiveForUser', () => {
         ctx: createCtx(),
         action: 'content.read',
         resource: {
-          createdByAccountId: 'account-1',
+          ownerUserId: 'account-1',
         },
       })
     ).resolves.toMatchObject({

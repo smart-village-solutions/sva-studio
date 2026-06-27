@@ -72,8 +72,6 @@ export type PermissionKey =
   | 'feature.toggle'
   | 'instance.registry.manage';
 
-export type PermissionEffect = 'allow' | 'deny';
-
 export type PersonaSeed = {
   readonly personaKey: PersonaKey;
   readonly roleSlug: string;
@@ -141,7 +139,6 @@ export type IamSeedPlan = {
     readonly action: string;
     readonly resourceType: string;
     readonly resourceId?: string;
-    readonly effect: PermissionEffect;
     readonly scope: Readonly<Record<string, unknown>>;
     readonly description: string;
   }[];

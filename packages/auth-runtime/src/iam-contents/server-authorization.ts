@@ -15,7 +15,8 @@ export type ContentPrimitiveAuthorizationResource = {
   readonly contentId?: string;
   readonly contentType?: string;
   readonly organizationId?: string;
-  readonly createdByAccountId?: string;
+  readonly ownerUserId?: string;
+  readonly ownerOrganizationId?: string;
 };
 
 export type ContentPrimitiveAuthorizationResult =
@@ -66,11 +67,12 @@ const buildAuthorizeRequest = (input: {
       type: input.action.split('.')[0] || 'content',
       ...(input.resource.contentId ? { id: input.resource.contentId } : {}),
       ...(input.resource.organizationId ? { organizationId: input.resource.organizationId } : {}),
-      ...((input.resource.contentType || input.resource.createdByAccountId || input.resource.organizationId)
+      ...((input.resource.contentType || input.resource.ownerUserId || input.resource.ownerOrganizationId || input.resource.organizationId)
         ? {
             attributes: {
               ...(input.resource.contentType ? { contentType: input.resource.contentType } : {}),
-              ...(input.resource.createdByAccountId ? { createdByAccountId: input.resource.createdByAccountId } : {}),
+              ...(input.resource.ownerUserId ? { ownerUserId: input.resource.ownerUserId } : {}),
+              ...(input.resource.ownerOrganizationId ? { ownerOrganizationId: input.resource.ownerOrganizationId } : {}),
               ...(input.resource.organizationId ? { organizationId: input.resource.organizationId } : {}),
             },
           }
@@ -183,7 +185,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
     resource.organizationId = organizationId;
   }
 
-  if (resource.createdByAccountId) {
+  if (resource.ownerUserId || resource.ownerOrganizationId) {
     try {
       actorAccountId = await resolveActorAccountIdWithProvision({
         instanceId,

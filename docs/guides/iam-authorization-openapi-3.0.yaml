@@ -413,11 +413,6 @@ components:
         organizationId:
           type: string
           format: uuid
-        effect:
-          type: string
-          enum:
-            - allow
-            - deny
         scope:
           type: object
           additionalProperties: true

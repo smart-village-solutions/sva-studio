@@ -3,7 +3,8 @@ import type { EffectivePermission } from '@sva/core';
 type ProjectionRowReadView = {
   readonly contentType: string;
   readonly organizationId?: string;
-  readonly createdByAccountId: string;
+  readonly ownerUserId?: string;
+  readonly ownerOrganizationId?: string;
 };
 
 export type ProjectionReadVisibilityRule = {
@@ -11,9 +12,6 @@ export type ProjectionReadVisibilityRule = {
   readonly allowGlobal: boolean;
   readonly allowOrganizationIds: readonly string[];
   readonly allowOwn: boolean;
-  readonly denyGlobal: boolean;
-  readonly denyOrganizationIds: readonly string[];
-  readonly denyOwn: boolean;
 };
 
 const ORGANIZATION_OPTIONAL_CONTENT_TYPES = new Set([
@@ -54,24 +52,16 @@ export const buildProjectionReadVisibilityRules = (
             }
           : permission
       );
-    const allowPermissions = matchingPermissions.filter((permission) => permission.effect !== 'deny');
-    const denyPermissions = matchingPermissions.filter((permission) => permission.effect === 'deny');
-
     const hasOwnFallback = (permission: EffectivePermission): boolean =>
       permission.accessScope === 'own' || permission.accessScope === 'organization';
 
     return {
       contentType,
-      allowGlobal: allowPermissions.some((permission) => !permission.organizationId && permission.accessScope !== 'own'),
+      allowGlobal: matchingPermissions.some((permission) => !permission.organizationId && permission.accessScope !== 'own'),
       allowOrganizationIds: uniqueSortedStrings(
-        allowPermissions.flatMap((permission) => (permission.organizationId ? [permission.organizationId] : []))
+        matchingPermissions.flatMap((permission) => (permission.organizationId ? [permission.organizationId] : []))
       ),
-      allowOwn: allowPermissions.some(hasOwnFallback),
-      denyGlobal: denyPermissions.some((permission) => !permission.organizationId && permission.accessScope !== 'own'),
-      denyOrganizationIds: uniqueSortedStrings(
-        denyPermissions.flatMap((permission) => (permission.organizationId ? [permission.organizationId] : []))
-      ),
-      denyOwn: denyPermissions.some(hasOwnFallback),
+      allowOwn: matchingPermissions.some(hasOwnFallback),
     };
   });
 
@@ -84,32 +74,11 @@ export const isProjectionRowVisibleForRead = (
     return false;
   }
 
-  const ownMatch = Boolean(actorAccountId && row.createdByAccountId === actorAccountId);
-  const organizationMatch = Boolean(row.organizationId && rule.allowOrganizationIds.includes(row.organizationId));
-  const deniedOrganizationMatch = Boolean(row.organizationId && rule.denyOrganizationIds.includes(row.organizationId));
-  const organizationOptionalUnscopedMatch = Boolean(
-    !row.organizationId &&
-      isOrganizationOptionalProjectionContentType(rule.contentType) &&
-      rule.allowOrganizationIds.length > 0
+  const ownMatch = Boolean(actorAccountId && row.ownerUserId === actorAccountId);
+  const organizationMatch = Boolean(
+    row.ownerOrganizationId && rule.allowOrganizationIds.includes(row.ownerOrganizationId)
   );
 
-  const allowed =
-    rule.allowGlobal || organizationMatch || organizationOptionalUnscopedMatch || (rule.allowOwn && ownMatch);
-  if (!allowed) {
-    return false;
-  }
-
-  if (rule.denyGlobal) {
-    return false;
-  }
-
-  if (deniedOrganizationMatch) {
-    return false;
-  }
-
-  if (rule.denyOwn && ownMatch) {
-    return false;
-  }
-
-  return true;
+  const allowed = rule.allowGlobal || organizationMatch || (rule.allowOwn && ownMatch);
+  return allowed;
 };

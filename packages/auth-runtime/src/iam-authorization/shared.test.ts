@@ -161,9 +161,7 @@ describe('iam authorization shared helpers', () => {
           action: ' news.publish ',
           resource_type: ' news ',
           resource_id: ' article-1 ',
-          effect: 'allow',
           organization_id: '11111111-1111-4111-8111-111111111111',
-          account_id: 'user-b',
           role_id: 'role-2',
           group_id: 'group-b',
           group_key: 'publishers',
@@ -175,15 +173,13 @@ describe('iam authorization shared helpers', () => {
           resource_type: 'news',
           resource_id: 'article-1',
           organization_id: '11111111-1111-4111-8111-111111111111',
-          account_id: 'user-a',
           role_id: 'role-1',
           group_id: 'group-a',
-          source_kind: 'direct_user',
+          source_kind: 'direct_role',
         },
         {
           permission_key: 'system.audit',
           organization_id: null,
-          effect: 'deny',
           source_kind: 'direct_role',
         },
       ])
@@ -193,17 +189,14 @@ describe('iam authorization shared helpers', () => {
         resourceType: 'news',
         resourceId: 'article-1',
         organizationId: '11111111-1111-4111-8111-111111111111',
-        effect: 'allow',
-        sourceUserIds: ['user-a', 'user-b'],
         sourceRoleIds: ['role-1', 'role-2'],
         sourceGroupIds: ['group-a', 'group-b'],
         groupName: 'publishers',
-        provenance: { sourceKinds: ['direct_user', 'group_role'] },
+        provenance: { sourceKinds: ['direct_role', 'group_role'] },
       },
       {
         action: 'system.audit',
         resourceType: 'system',
-        effect: 'deny',
         provenance: { sourceKinds: ['direct_role'] },
       },
     ]);
@@ -220,9 +213,7 @@ describe('iam authorization shared helpers', () => {
           resource_type: null,
           resource_id: '   ',
           organization_id: null,
-          effect: null,
           scope: null,
-          account_id: 'user-1',
           role_id: 'role-1',
           group_id: 'group-1',
           group_key: null,
@@ -234,9 +225,7 @@ describe('iam authorization shared helpers', () => {
           resource_type: '',
           resource_id: '',
           organization_id: null,
-          effect: null,
           scope: null,
-          account_id: 'user-1',
           role_id: 'role-1',
           group_id: 'group-1',
           group_key: null,
@@ -247,10 +236,9 @@ describe('iam authorization shared helpers', () => {
       {
         action: 'events.read',
         resourceType: 'events',
-        effect: 'allow',
-        sourceUserIds: ['user-1'],
         sourceRoleIds: ['role-1'],
         sourceGroupIds: ['group-1'],
+        provenance: undefined,
       },
     ]);
   });
@@ -310,8 +298,6 @@ describe('iam authorization shared helpers', () => {
           {
             action: 'content.read',
             resourceType: 'content',
-            effect: 'allow',
-            sourceUserIds: ['user-1'],
             sourceGroupIds: ['group-1'],
             scope: {
               allowedGeoUnitIds: ['11111111-1111-4111-8111-111111111112'],
@@ -326,8 +312,6 @@ describe('iam authorization shared helpers', () => {
         {
           action: 'content.read',
           resourceType: 'content',
-          effect: 'allow',
-          sourceUserIds: ['user-1'],
           sourceGroupIds: ['group-1'],
           scope: {
             allowedGeoUnitIds: ['11111111-1111-4111-8111-111111111112'],
@@ -345,7 +329,6 @@ describe('iam authorization shared helpers', () => {
       snapshotVersion: 'snap-1',
       cacheStatus: 'hit',
       provenance: {
-        hasDirectUserPermissions: true,
         hasGroupDerivedPermissions: true,
         hasGeoInheritance: true,
       },
@@ -365,7 +348,6 @@ describe('iam authorization shared helpers', () => {
           {
             action: 'system.audit',
             resourceType: 'system',
-            effect: 'deny',
           },
         ],
       })
@@ -376,7 +358,6 @@ describe('iam authorization shared helpers', () => {
         {
           action: 'system.audit',
           resourceType: 'system',
-          effect: 'deny',
         },
       ],
       subject: {
@@ -390,7 +371,6 @@ describe('iam authorization shared helpers', () => {
       snapshotVersion: undefined,
       cacheStatus: undefined,
       provenance: {
-        hasDirectUserPermissions: false,
         hasGroupDerivedPermissions: false,
         hasGeoInheritance: false,
       },

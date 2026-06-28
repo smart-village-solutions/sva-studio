@@ -8,7 +8,7 @@ const publishedTimestamps = {
 };
 
 describe('iam content list mainserver mapping', () => {
-  it('maps mainserver access from allow and deny permissions', () => {
+  it('maps mainserver access from allow permissions', () => {
     expect(
       mapEventItem(
         {
@@ -28,15 +28,13 @@ describe('iam content list mainserver mapping', () => {
         [
           { action: 'events.create' },
           { action: 'events.update' },
-          { action: 'events.update', effect: 'deny' },
         ]
       ).access
     ).toEqual({
-      state: 'read_only',
+      state: 'editable',
       canRead: true,
       canCreate: true,
-      canUpdate: false,
-      reasonCode: 'content_update_missing',
+      canUpdate: true,
       organizationIds: [],
       sourceKinds: [],
     });

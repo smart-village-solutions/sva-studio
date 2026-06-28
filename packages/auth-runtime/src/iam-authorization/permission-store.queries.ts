@@ -41,7 +41,6 @@ SELECT DISTINCT
   p.action,
   p.resource_type,
   p.resource_id,
-  p.effect,
   p.scope,
   rp.access_scope,
   source.role_id,

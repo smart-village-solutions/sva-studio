@@ -11,6 +11,32 @@ import type { SessionUser } from './types.js';
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
 const IPV4_HOST_PATTERN = /^(?:\d{1,3}\.){3}\d{1,3}$/;
+const ACTIVE_TENANT_HOST_CACHE_TTL_MS = 5_000;
+
+const activeTenantHostCache = new Map<string, { readonly expiresAtMs: number }>();
+
+const toTenantHostCacheKey = (host: string): string => host.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
+
+const isActiveTenantHostCached = (host: string, nowMs = Date.now()): boolean => {
+  const cacheKey = toTenantHostCacheKey(host);
+  const cached = activeTenantHostCache.get(cacheKey);
+  if (!cached) {
+    return false;
+  }
+
+  if (cached.expiresAtMs <= nowMs) {
+    activeTenantHostCache.delete(cacheKey);
+    return false;
+  }
+
+  return true;
+};
+
+const markActiveTenantHostCached = (host: string, nowMs = Date.now()): void => {
+  activeTenantHostCache.set(toTenantHostCacheKey(host), {
+    expiresAtMs: nowMs + ACTIVE_TENANT_HOST_CACHE_TTL_MS,
+  });
+};
 
 const forbiddenTenantHost = (input: {
   code?: 'forbidden' | 'database_unavailable';
@@ -78,6 +104,10 @@ export const validateTenantHost = async (request: Request): Promise<Response | n
     return null;
   }
 
+  if (isActiveTenantHostCached(host)) {
+    return null;
+  }
+
   const requestId = getWorkspaceContext().requestId;
   let registryEntry: Awaited<ReturnType<typeof loadInstanceByHostname>>;
   try {
@@ -119,5 +149,6 @@ export const validateTenantHost = async (request: Request): Promise<Response | n
     });
   }
 
+  markActiveTenantHostCached(host);
   return null;
 };

@@ -2,9 +2,9 @@ import type {
   AuthorizeRequest,
   AuthorizeResponse,
   EffectivePermission,
-  IamPermissionEffect,
   IamPermissionProvenance,
   IamPermissionSourceKind,
+  MatchedPermissionSummary,
 } from './authorization-contract';
 
 const readString = (value: unknown): string | undefined => {
@@ -43,45 +43,62 @@ const readOrganizationScope = (request: AuthorizeRequest): string | undefined =>
   return request.context?.organizationId ?? request.resource.organizationId;
 };
 
+const buildDecisionResponse = (
+  request: AuthorizeRequest,
+  allowed: boolean,
+  reason: AuthorizeResponse['reason'],
+  input?: {
+    readonly diagnostics?: Readonly<Record<string, unknown>>;
+    readonly matchedPermissions?: readonly MatchedPermissionSummary[];
+    readonly provenance?: IamPermissionProvenance;
+  }
+): AuthorizeResponse => ({
+  allowed,
+  reason,
+  instanceId: request.instanceId,
+  action: request.action,
+  resourceType: request.resource.type,
+  resourceId: request.resource.id,
+  requestId: request.context?.requestId,
+  traceId: request.context?.traceId,
+  evaluatedAt: new Date().toISOString(),
+  ...(input?.diagnostics ? { diagnostics: input.diagnostics } : {}),
+  ...(input?.matchedPermissions ? { matchedPermissions: input.matchedPermissions } : {}),
+  ...(input?.provenance ? { provenance: input.provenance } : {}),
+});
+
 const readActorAccountId = (
   contextAttributes: Readonly<Record<string, unknown>> | undefined
 ): string | undefined => {
-  return readString(contextAttributes?.actorAccountId) ?? readString(contextAttributes?.effectiveAccountId);
+  return (
+    readString(contextAttributes?.actorAccountId) ??
+    readString(contextAttributes?.effectiveAccountId)
+  );
 };
 
-const readCreatedByAccountId = (
+const readOwnerUserId = (
   resourceAttributes: Readonly<Record<string, unknown>> | undefined
 ): string | undefined => {
-  return readString(resourceAttributes?.createdByAccountId);
+  return readString(resourceAttributes?.ownerUserId);
 };
 
-const readGeoUnitId = (
-  contextAttributes: Readonly<Record<string, unknown>> | undefined,
+const readOwnerOrganizationId = (
   resourceAttributes: Readonly<Record<string, unknown>> | undefined
 ): string | undefined => {
-  return readString(resourceAttributes?.geoUnitId) ?? readString(contextAttributes?.geoUnitId);
+  return readString(resourceAttributes?.ownerOrganizationId);
 };
 
-const readGeoHierarchy = (
-  contextAttributes: Readonly<Record<string, unknown>> | undefined,
-  resourceAttributes: Readonly<Record<string, unknown>> | undefined
-): readonly string[] | undefined => {
-  return readStringArray(resourceAttributes?.geoHierarchy) ?? readStringArray(contextAttributes?.geoHierarchy);
-};
-
-const resolveSourceKinds = (permission: EffectivePermission): readonly IamPermissionSourceKind[] | undefined => {
+const resolveSourceKinds = (
+  permission: EffectivePermission
+): readonly IamPermissionSourceKind[] | undefined => {
   const sourceKinds = permission.provenance?.sourceKinds;
   if (sourceKinds && sourceKinds.length > 0) {
     return sourceKinds;
   }
 
   const derivedKinds = new Set<IamPermissionSourceKind>();
-  const sourceUserIds = permission.sourceUserIds ?? [];
   const sourceRoleIds = permission.sourceRoleIds ?? [];
   const sourceGroupIds = permission.sourceGroupIds ?? [];
-  if (sourceUserIds.length > 0) {
-    derivedKinds.add('direct_user');
-  }
   if (sourceRoleIds.length > 0) {
     derivedKinds.add('direct_role');
   }
@@ -103,6 +120,29 @@ const buildProvenance = (
   };
 
   return Object.keys(provenance).length > 0 ? provenance : undefined;
+};
+
+const buildMatchedPermissionOptionalFields = (
+  permission: EffectivePermission,
+  sourceId: string | undefined
+): Partial<MatchedPermissionSummary> => ({
+  ...(permission.resourceId ? { resourceId: permission.resourceId } : {}),
+  ...(sourceId ? { sourceId } : {}),
+  ...(permission.groupName ? { sourceName: permission.groupName } : {}),
+  ...(typeof permission.scope?.geoScope === 'string' ? { geoScope: permission.scope.geoScope } : {}),
+});
+
+const summarizeMatchedPermission = (permission: EffectivePermission): MatchedPermissionSummary => {
+  const sourceGroupIds = permission.sourceGroupIds ?? [];
+  const sourceRoleIds = permission.sourceRoleIds ?? [];
+  const sourceId = sourceGroupIds[0] ?? sourceRoleIds[0];
+
+  return {
+    action: permission.action,
+    resourceType: permission.resourceType,
+    source: sourceGroupIds.length > 0 ? 'group' : 'role',
+    ...buildMatchedPermissionOptionalFields(permission, sourceId),
+  };
 };
 
 const resolveGeoUnitMatch = (
@@ -199,91 +239,29 @@ const mergePermissionAttributes = (
 const isPermissionActiveForScope = (
   permission: EffectivePermission,
   request: AuthorizeRequest,
-  targetOrganizationId: string | undefined,
+  _targetOrganizationId: string | undefined,
   contextAttributes: Readonly<Record<string, unknown>> | undefined,
   resourceAttributes: Readonly<Record<string, unknown>> | undefined
 ): { active: boolean; denyReason?: AuthorizeResponse['reason'] } => {
   const actorAccountId = readActorAccountId(contextAttributes);
-  const createdByAccountId = readCreatedByAccountId(resourceAttributes);
-  const resourceOrganizationId = readString(resourceAttributes?.organizationId) ?? request.resource.organizationId;
+  const activeOrganizationId = request.context?.organizationId;
+  const ownerUserId = readOwnerUserId(resourceAttributes);
+  const ownerOrganizationId = readOwnerOrganizationId(resourceAttributes);
 
   if (permission.accessScope === 'own') {
-    if (!actorAccountId || !createdByAccountId || actorAccountId !== createdByAccountId) {
+    if (!actorAccountId || !ownerUserId || actorAccountId !== ownerUserId) {
       return { active: false };
     }
   }
 
   if (permission.accessScope === 'organization') {
-    const ownMatch = Boolean(actorAccountId && createdByAccountId && actorAccountId === createdByAccountId);
+    const ownMatch = Boolean(actorAccountId && ownerUserId && actorAccountId === ownerUserId);
     const organizationMatch = Boolean(
-      targetOrganizationId && resourceOrganizationId && targetOrganizationId === resourceOrganizationId
+      activeOrganizationId && ownerOrganizationId === activeOrganizationId
     );
 
     if (!ownMatch && !organizationMatch) {
       return { active: false };
-    }
-  }
-
-  return { active: true };
-};
-
-const isPermissionActiveForPolicyScope = (
-  permission: EffectivePermission,
-  request: AuthorizeRequest,
-  targetOrganizationId: string | undefined,
-  contextAttributes: Readonly<Record<string, unknown>> | undefined,
-  resourceAttributes: Readonly<Record<string, unknown>> | undefined
-): { active: boolean; denyReason?: AuthorizeResponse['reason'] } => {
-  const attributes = mergePermissionAttributes(permission, contextAttributes, resourceAttributes);
-  const resourceGeoScope = readString(resourceAttributes?.geoScope) ?? undefined;
-  const resourceGeoUnitId = readGeoUnitId(contextAttributes, resourceAttributes);
-  const geoHierarchy = readGeoHierarchy(contextAttributes, resourceAttributes);
-  const allowedGeoScopes = readStringArray(permission.scope?.allowedGeoScopes);
-  const allowedGeoUnitIds = readStringArray(permission.scope?.allowedGeoUnitIds);
-  const restrictedGeoUnitIds = readStringArray(permission.scope?.restrictedGeoUnitIds);
-  const restrictedOrganizationIds = readStringArray(permission.scope?.restrictedOrganizationIds);
-  const requireActingAs = readBoolean(permission.scope?.requireActingAs) ?? false;
-  const forceDeny = readBoolean(permission.scope?.forceDeny) ?? false;
-  const requiredGeoScope = readBoolean(permission.scope?.requireGeoScope) ?? false;
-  const geoUnitMatch = resolveGeoUnitMatch(
-    allowedGeoUnitIds,
-    restrictedGeoUnitIds,
-    resourceGeoUnitId,
-    geoHierarchy
-  );
-
-  if (requireActingAs && !request.context?.actingAsUserId) {
-    return { active: false };
-  }
-
-  if (requiredGeoScope && !resourceGeoScope && !resourceGeoUnitId) {
-    return { active: false };
-  }
-
-  const shouldApplyGeoScopeFallback = !allowedGeoUnitIds || allowedGeoUnitIds.length === 0;
-  if (shouldApplyGeoScopeFallback && allowedGeoScopes && (!resourceGeoScope || !allowedGeoScopes.includes(resourceGeoScope))) {
-    return { active: false };
-  }
-
-  if (allowedGeoUnitIds && !geoUnitMatch.matchedAllowedGeoUnitId) {
-    return { active: false };
-  }
-
-  if (permission.effect === 'deny') {
-    if (restrictedOrganizationIds && targetOrganizationId && restrictedOrganizationIds.includes(targetOrganizationId)) {
-      return { active: true, denyReason: 'hierarchy_restriction' };
-    }
-
-    if (geoUnitMatch.matchedRestrictedGeoUnitId) {
-      return { active: true, denyReason: 'hierarchy_restriction' };
-    }
-
-    if (forceDeny) {
-      return { active: true, denyReason: 'policy_conflict_restrictive_wins' };
-    }
-
-    if (!attributes || Object.keys(attributes).length === 0) {
-      return { active: true, denyReason: 'policy_conflict_restrictive_wins' };
     }
   }
 
@@ -298,7 +276,11 @@ const parseClockMinutes = (value: string): number | null => {
   return Number(match[1]) * 60 + Number(match[2]);
 };
 
-const isWithinWindow = (currentMinutes: number, startMinutes: number, endMinutes: number): boolean => {
+const isWithinWindow = (
+  currentMinutes: number,
+  startMinutes: number,
+  endMinutes: number
+): boolean => {
   if (startMinutes <= endMinutes) {
     return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
   }
@@ -331,7 +313,8 @@ const evaluateAbacRules = (
     readString(resourceAttributes?.geoScope) ?? readString(attributes.geoScope) ?? undefined;
   const resourceGeoUnitId =
     readString(resourceAttributes?.geoUnitId) ?? readString(attributes.geoUnitId) ?? undefined;
-  const geoHierarchy = readStringArray(resourceAttributes?.geoHierarchy) ?? readStringArray(attributes.geoHierarchy);
+  const geoHierarchy =
+    readStringArray(resourceAttributes?.geoHierarchy) ?? readStringArray(attributes.geoHierarchy);
   const allowedGeoScopes = readStringArray(attributes.allowedGeoScopes);
   const allowedGeoUnitIds = readStringArray(attributes.allowedGeoUnitIds);
   const restrictedGeoUnitIds = readStringArray(attributes.restrictedGeoUnitIds);
@@ -348,7 +331,11 @@ const evaluateAbacRules = (
     return { allowed: false, reason: 'context_attribute_missing', hasActiveRules: true };
   }
 
-  if (restrictedOrganizationIds && targetOrganizationId && restrictedOrganizationIds.includes(targetOrganizationId)) {
+  if (
+    restrictedOrganizationIds &&
+    targetOrganizationId &&
+    restrictedOrganizationIds.includes(targetOrganizationId)
+  ) {
     return { allowed: false, reason: 'hierarchy_restriction', hasActiveRules: true };
   }
 
@@ -358,13 +345,19 @@ const evaluateAbacRules = (
       reason: 'hierarchy_restriction',
       hasActiveRules: true,
       provenance: permission
-        ? buildProvenance(permission, { restrictedByGeoUnitId: geoUnitMatch.matchedRestrictedGeoUnitId })
+        ? buildProvenance(permission, {
+            restrictedByGeoUnitId: geoUnitMatch.matchedRestrictedGeoUnitId,
+          })
         : undefined,
     };
   }
 
   const shouldApplyGeoScopeFallback = !allowedGeoUnitIds || allowedGeoUnitIds.length === 0;
-  if (shouldApplyGeoScopeFallback && allowedGeoScopes && (!resourceGeoScope || !allowedGeoScopes.includes(resourceGeoScope))) {
+  if (
+    shouldApplyGeoScopeFallback &&
+    allowedGeoScopes &&
+    (!resourceGeoScope || !allowedGeoScopes.includes(resourceGeoScope))
+  ) {
     return { allowed: false, reason: 'abac_condition_unmet', hasActiveRules: true };
   }
 
@@ -400,13 +393,13 @@ const evaluateAbacRules = (
 
   const hasRules = Boolean(
     requiredGeoScope ||
-      allowedGeoScopes ||
-      allowedGeoUnitIds ||
-      restrictedGeoUnitIds ||
-      restrictedOrganizationIds ||
-      timeWindow ||
-      shouldForceDeny ||
-      (readBoolean(attributes.requireActingAs) ?? false)
+    allowedGeoScopes ||
+    allowedGeoUnitIds ||
+    restrictedGeoUnitIds ||
+    restrictedOrganizationIds ||
+    timeWindow ||
+    shouldForceDeny ||
+    (readBoolean(attributes.requireActingAs) ?? false)
   );
   return {
     allowed: true,
@@ -435,37 +428,22 @@ export const evaluateAuthorizeDecision = (
 
   // Stage 1: instance scope enforcement.
   const scopedInstance =
-    readString(contextAttributes?.instanceId) ?? readString(resourceAttributes?.instanceId) ?? request.instanceId;
+    readString(contextAttributes?.instanceId) ??
+    readString(resourceAttributes?.instanceId) ??
+    request.instanceId;
   if (scopedInstance !== request.instanceId) {
-    return {
-      allowed: false,
-      reason: 'instance_scope_mismatch',
-      instanceId: request.instanceId,
-      action: request.action,
-      resourceType: request.resource.type,
-      resourceId: request.resource.id,
-      requestId: request.context?.requestId,
-      traceId: request.context?.traceId,
-      evaluatedAt: new Date().toISOString(),
+    return buildDecisionResponse(request, false, 'instance_scope_mismatch', {
       diagnostics: { stage: 'instance_scope', scoped_instance: scopedInstance },
-    };
+    });
   }
 
   // Stage 2: hard-deny checks for required context attributes.
-  const requireContextAttributes = readBoolean(contextAttributes?.requireContextAttributes) ?? false;
+  const requireContextAttributes =
+    readBoolean(contextAttributes?.requireContextAttributes) ?? false;
   if (requireContextAttributes && !contextAttributes) {
-    return {
-      allowed: false,
-      reason: 'context_attribute_missing',
-      instanceId: request.instanceId,
-      action: request.action,
-      resourceType: request.resource.type,
-      resourceId: request.resource.id,
-      requestId: request.context?.requestId,
-      traceId: request.context?.traceId,
-      evaluatedAt: new Date().toISOString(),
+    return buildDecisionResponse(request, false, 'context_attribute_missing', {
       diagnostics: { stage: 'hard_deny' },
-    };
+    });
   }
 
   // Stage 3: RBAC baseline.
@@ -473,99 +451,17 @@ export const evaluateAuthorizeDecision = (
   const matchedPermissions = permissions.filter((permission) =>
     isPermissionMatch(request, permission, targetOrganizationId, hierarchyPath)
   );
-  const matchedPermissionSummaries = matchedPermissions.map((permission) => {
-    const sourceUserIds = permission.sourceUserIds ?? [];
-    const sourceGroupIds = permission.sourceGroupIds ?? [];
-    const sourceRoleIds = permission.sourceRoleIds ?? [];
-
-    return {
-      action: permission.action,
-      resourceType: permission.resourceType,
-      ...(permission.resourceId ? { resourceId: permission.resourceId } : {}),
-      effect: permission.effect ?? ('allow' satisfies IamPermissionEffect),
-      source: (() => {
-        if (sourceUserIds.length > 0) return 'user' as const;
-        if (sourceGroupIds.length > 0) return 'group' as const;
-        return 'role' as const;
-      })(),
-      ...((() => { const id = sourceUserIds[0] ?? sourceGroupIds[0] ?? sourceRoleIds[0]; return id ? { sourceId: id } : {}; })()),
-      ...(permission.groupName ? { sourceName: permission.groupName } : {}),
-      ...(typeof permission.scope?.geoScope === 'string' ? { geoScope: permission.scope.geoScope } : {}),
-    };
-  });
-  const denyPermissions = matchedPermissions.filter(
-    (permission) => (permission.effect ?? ('allow' satisfies IamPermissionEffect)) === 'deny'
-  );
-  const allowPermissions = matchedPermissions.filter(
-    (permission) => (permission.effect ?? ('allow' satisfies IamPermissionEffect)) === 'allow'
-  );
+  const matchedPermissionSummaries = matchedPermissions.map(summarizeMatchedPermission);
+  const allowPermissions = matchedPermissions;
 
   if (matchedPermissions.length === 0 || allowPermissions.length === 0) {
-    return {
-      allowed: false,
-      reason: 'permission_missing',
-      instanceId: request.instanceId,
-      action: request.action,
-      resourceType: request.resource.type,
-      resourceId: request.resource.id,
-      requestId: request.context?.requestId,
-      traceId: request.context?.traceId,
-      evaluatedAt: new Date().toISOString(),
+    return buildDecisionResponse(request, false, 'permission_missing', {
       diagnostics: { stage: 'rbac' },
       matchedPermissions: matchedPermissionSummaries,
-    };
+    });
   }
 
-  // Stage 4: restrictive rules.
-  for (const permission of denyPermissions) {
-    const denyAttributes = mergePermissionAttributes(permission, contextAttributes, resourceAttributes);
-    const denyGeoMatch = resolveGeoUnitMatch(
-      readStringArray(denyAttributes?.allowedGeoUnitIds),
-      readStringArray(denyAttributes?.restrictedGeoUnitIds),
-      readGeoUnitId(contextAttributes, resourceAttributes),
-      readGeoHierarchy(contextAttributes, resourceAttributes)
-    );
-    const assignmentScopeMatch = isPermissionActiveForScope(
-      permission,
-      request,
-      targetOrganizationId,
-      contextAttributes,
-      resourceAttributes
-    );
-    if (!assignmentScopeMatch.active) {
-      continue;
-    }
-    const denyMatch = isPermissionActiveForPolicyScope(
-      permission,
-      request,
-      targetOrganizationId,
-      contextAttributes,
-      resourceAttributes
-    );
-    if (denyMatch.active) {
-      return {
-        allowed: false,
-        reason: denyMatch.denyReason ?? 'policy_conflict_restrictive_wins',
-        instanceId: request.instanceId,
-        action: request.action,
-        resourceType: request.resource.type,
-        resourceId: request.resource.id,
-        requestId: request.context?.requestId,
-        traceId: request.context?.traceId,
-        evaluatedAt: new Date().toISOString(),
-        diagnostics: {
-          stage: 'restrictive_rule',
-          restricted_by_geo_unit_id: denyGeoMatch.matchedRestrictedGeoUnitId,
-        },
-        matchedPermissions: matchedPermissionSummaries,
-        provenance: buildProvenance(permission, {
-          restrictedByGeoUnitId: denyGeoMatch.matchedRestrictedGeoUnitId,
-        }),
-      };
-    }
-  }
-
-  // Stage 5: ABAC rules.
+  // Stage 4: ABAC rules.
   const abacResults = allowPermissions.map((permission) => {
     const scopeMatch = isPermissionActiveForScope(
       permission,
@@ -579,7 +475,8 @@ export const evaluateAuthorizeDecision = (
         permission,
         result: {
           allowed: false,
-          reason: scopeMatch.denyReason ?? ('abac_condition_unmet' satisfies AuthorizeResponse['reason']),
+          reason:
+            scopeMatch.denyReason ?? ('abac_condition_unmet' satisfies AuthorizeResponse['reason']),
           hasActiveRules: true,
           provenance: buildProvenance(permission),
         },
@@ -600,35 +497,27 @@ export const evaluateAuthorizeDecision = (
 
   if (!firstAllowedResult) {
     const denyResult = abacResults.find((entry) => !entry.result.allowed);
-    return {
-      allowed: false,
-      reason: denyResult?.result.reason ?? 'abac_condition_unmet',
-      instanceId: request.instanceId,
-      action: request.action,
-      resourceType: request.resource.type,
-      resourceId: request.resource.id,
-      requestId: request.context?.requestId,
-      traceId: request.context?.traceId,
-      evaluatedAt: new Date().toISOString(),
-      diagnostics: { stage: 'abac' },
-      matchedPermissions: matchedPermissionSummaries,
-      provenance: denyResult?.result.provenance,
-    };
+    return buildDecisionResponse(
+      request,
+      false,
+      denyResult?.result.reason ?? 'abac_condition_unmet',
+      {
+        diagnostics: { stage: 'abac' },
+        matchedPermissions: matchedPermissionSummaries,
+        provenance: denyResult?.result.provenance,
+      }
+    );
   }
 
   // Stage 6: final decision.
-  return {
-    allowed: true,
-    reason: firstAllowedResult.result.hasActiveRules ? 'allowed_by_abac' : 'allowed_by_rbac',
-    instanceId: request.instanceId,
-    action: request.action,
-    resourceType: request.resource.type,
-    resourceId: request.resource.id,
-    requestId: request.context?.requestId,
-    traceId: request.context?.traceId,
-    evaluatedAt: new Date().toISOString(),
-    diagnostics: { stage: 'final', matched_role_count: matchedPermissions.length },
-    matchedPermissions: matchedPermissionSummaries,
-    provenance: firstAllowedResult.result.provenance,
-  };
+  return buildDecisionResponse(
+    request,
+    true,
+    firstAllowedResult.result.hasActiveRules ? 'allowed_by_abac' : 'allowed_by_rbac',
+    {
+      diagnostics: { stage: 'final', matched_role_count: matchedPermissions.length },
+      matchedPermissions: matchedPermissionSummaries,
+      provenance: firstAllowedResult.result.provenance,
+    }
+  );
 };

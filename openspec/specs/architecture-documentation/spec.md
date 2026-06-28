@@ -322,3 +322,27 @@ Die Entwicklungsdokumentation SHALL Regeln, Beispiele und Review-Kriterien für 
 - **AND** findet er die erlaubten öffentlichen Imports und Host-Entry-Points
 - **AND** findet er die verbotenen Direktimporte in App-, Runtime-, IAM- oder Secret-Interna
 
+### Requirement: Architekturdoku beschreibt scoped role permissions als getrenntes IAM-Pattern
+Das System SHALL die neue Rollen-Rechte-Scope-Logik in der Architekturdokumentation als eigenes IAM-Pattern mit klarer Abgrenzung zu `permission.scope` dokumentieren.
+
+#### Scenario: Architektur trennt Assignment-Scope von ABAC-Scope
+- **WHEN** die Architektur- oder Entwicklungsdokumentation die IAM-Autorisierung beschreibt
+- **THEN** unterscheidet sie explizit zwischen `role_permissions.access_scope` und dem generischen ABAC-Feld `permissions.scope`
+- **AND** sie nennt die benoetigten Resource-Attribute fuer `own` und `organization`
+
+### Requirement: Architekturdokumentation beschreibt `@sva/data` nur als kontrollierten Shim-Pfad
+
+Die Architekturdokumentation MUST `@sva/data` als historisches Paket für Migrationen, Seeds, DB-Skripte/-Operationen und dokumentierte Kompatibilitäts-Re-Exports bzw. Delegation beschreiben. Sie MUST `@sva/data-repositories` gleichzeitig als einzige führende Repository-Schicht benennen.
+
+#### Scenario: Zielarchitektur dokumentiert die Datenpaket-Grenze
+
+- **WHEN** Teammitglieder `docs/architecture/package-zielarchitektur.md` oder `docs/architecture/package-gesamtuebersicht.md` lesen
+- **THEN** beschreiben diese Quellen `@sva/data` nur als Migrations-, Seed-, DB-Skript/-Operations- und Kompatibilitätspfad
+- **AND** benennen `@sva/data-repositories` als führende serverseitige Repository-Schicht
+
+#### Scenario: Architekturänderung mit Datenpaket-Wirkung wird dokumentiert
+
+- **WHEN** ein Change `@sva/data`, `@sva/data/server` oder `@sva/data-repositories` berührt
+- **THEN** erklären die betroffenen Architekturquellen, ob `@sva/data` nur delegiert oder Re-Exports bereitstellt
+- **AND** sie dokumentieren keine neue fachliche Repository-Ownership in `@sva/data`
+

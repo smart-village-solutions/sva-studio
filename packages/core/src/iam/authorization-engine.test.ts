@@ -107,7 +107,7 @@ describe('evaluateAuthorizeDecision', () => {
     expect(result.reason).toBe('allowed_by_abac');
   });
 
-  it('denies when a matching deny permission overrides an inherited allow', () => {
+  it('treats duplicate matching permissions as allow-only grants', () => {
     const request = baseRequest();
 
     const result = evaluateAuthorizeDecision(request, [
@@ -116,7 +116,6 @@ describe('evaluateAuthorizeDecision', () => {
         action: 'read',
         resourceType: 'document',
         organizationId: 'org-child',
-        effect: 'deny',
         scope: {
           restrictedOrganizationIds: ['org-child'],
         },
@@ -125,9 +124,8 @@ describe('evaluateAuthorizeDecision', () => {
       },
     ]);
 
-    expect(result.allowed).toBe(false);
-    expect(result.reason).toBe('hierarchy_restriction');
-    expect(result.diagnostics?.stage).toBe('restrictive_rule');
+    expect(result.allowed).toBe(true);
+    expect(result.reason).toBe('allowed_by_rbac');
   });
 
   it('matches resource-specific permissions only for the targeted resource id', () => {
@@ -151,13 +149,14 @@ describe('evaluateAuthorizeDecision', () => {
     expect(deniedResult.reason).toBe('permission_missing');
   });
 
-  it('allows own-scoped permissions only for records created by the acting account', () => {
+  it('allows own-scoped permissions only for records owned by the acting account', () => {
     const request: AuthorizeRequest = {
       ...baseRequest(),
       resource: {
         ...baseRequest().resource,
         attributes: {
-          createdByAccountId: 'account-1',
+          createdByAccountId: 'account-2',
+          ownerUserId: 'account-1',
           organizationId: 'org-child',
         },
       },
@@ -182,7 +181,8 @@ describe('evaluateAuthorizeDecision', () => {
         resource: {
           ...request.resource,
           attributes: {
-            createdByAccountId: 'account-2',
+            createdByAccountId: 'account-1',
+            ownerUserId: 'account-2',
             organizationId: 'org-child',
           },
         },
@@ -200,14 +200,16 @@ describe('evaluateAuthorizeDecision', () => {
     expect(deniedResult.reason).toBe('abac_condition_unmet');
   });
 
-  it('allows organization-scoped permissions for records in the active organization', () => {
+  it('allows organization-scoped permissions for records owned by the actor or active organization', () => {
     const request: AuthorizeRequest = {
       ...baseRequest(),
       resource: {
         ...baseRequest().resource,
         attributes: {
           createdByAccountId: 'account-2',
-          organizationId: 'org-child',
+          organizationId: 'org-other',
+          ownerUserId: 'account-2',
+          ownerOrganizationId: 'org-child',
         },
       },
       context: {
@@ -232,8 +234,10 @@ describe('evaluateAuthorizeDecision', () => {
           ...request.resource,
           organizationId: 'org-other',
           attributes: {
-            createdByAccountId: 'account-2',
+            createdByAccountId: 'account-1',
             organizationId: 'org-other',
+            ownerUserId: 'account-2',
+            ownerOrganizationId: 'org-other',
           },
         },
         context: {
@@ -252,6 +256,99 @@ describe('evaluateAuthorizeDecision', () => {
     expect(allowedResult.allowed).toBe(true);
     expect(deniedResult.allowed).toBe(false);
     expect(deniedResult.reason).toBe('abac_condition_unmet');
+  });
+
+  it('treats organization-scoped permissions as own-scoped when no active organization exists', () => {
+    const request: AuthorizeRequest = {
+      ...baseRequest(),
+      resource: {
+        ...baseRequest().resource,
+        attributes: {
+          ownerUserId: 'account-1',
+          ownerOrganizationId: 'org-child',
+        },
+      },
+      context: {
+        ...baseRequest().context,
+        organizationId: undefined,
+        attributes: {
+          actorAccountId: 'account-1',
+        },
+      },
+    };
+
+    const allowedResult = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        organizationId: undefined,
+        accessScope: 'organization',
+      },
+    ]);
+    const deniedResult = evaluateAuthorizeDecision(
+      {
+        ...request,
+        resource: {
+          ...request.resource,
+          attributes: {
+            ownerUserId: 'account-2',
+            ownerOrganizationId: 'org-child',
+          },
+        },
+      },
+      [
+        {
+          ...basePermission(),
+          organizationId: undefined,
+          accessScope: 'organization',
+        },
+      ]
+    );
+
+    expect(allowedResult.allowed).toBe(true);
+    expect(deniedResult.allowed).toBe(false);
+    expect(deniedResult.reason).toBe('abac_condition_unmet');
+  });
+
+  it('keeps ownerless records restricted to all-scoped permissions', () => {
+    const request: AuthorizeRequest = {
+      ...baseRequest(),
+      resource: {
+        ...baseRequest().resource,
+        attributes: {
+          organizationId: 'org-child',
+        },
+      },
+      context: {
+        ...baseRequest().context,
+        attributes: {
+          organizationHierarchy: ['org-root', 'org-child'],
+          actorAccountId: 'account-1',
+        },
+      },
+    };
+
+    const ownResult = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        accessScope: 'own',
+      },
+    ]);
+    const organizationResult = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        accessScope: 'organization',
+      },
+    ]);
+    const allResult = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        accessScope: 'all',
+      },
+    ]);
+
+    expect(ownResult.allowed).toBe(false);
+    expect(organizationResult.allowed).toBe(false);
+    expect(allResult.allowed).toBe(true);
   });
 
   it('allows globally scoped permissions without an organization id', () => {
@@ -404,7 +501,7 @@ describe('evaluateAuthorizeDecision', () => {
     expect(result.reason).toBe('allowed_by_abac');
   });
 
-  it('denies when a child geo-unit restriction overrides a parent allow', () => {
+  it('treats geo restrictions on allow permissions as scope conditions for that grant', () => {
     const request: AuthorizeRequest = {
       ...baseRequest(),
       resource: {
@@ -419,13 +516,6 @@ describe('evaluateAuthorizeDecision', () => {
     const result = evaluateAuthorizeDecision(request, [
       {
         ...basePermission(),
-        scope: {
-          allowedGeoUnitIds: ['geo-root'],
-        },
-      },
-      {
-        ...basePermission(),
-        effect: 'deny',
         provenance: { sourceKinds: ['direct_role'] },
         scope: {
           restrictedGeoUnitIds: ['geo-child'],
@@ -435,10 +525,6 @@ describe('evaluateAuthorizeDecision', () => {
 
     expect(result.allowed).toBe(false);
     expect(result.reason).toBe('hierarchy_restriction');
-    expect(result.provenance).toEqual({
-      sourceKinds: ['direct_role'],
-      restrictedByGeoUnitId: 'geo-child',
-    });
   });
 
   it('denies when requireGeoScope is active but the resource scope is missing', () => {
@@ -455,12 +541,10 @@ describe('evaluateAuthorizeDecision', () => {
     expect(result.reason).toBe('context_attribute_missing');
   });
 
-  it('denies when a restrictive permission forces a deny', () => {
+  it('denies when an allow permission scope is marked forceDeny', () => {
     const result = evaluateAuthorizeDecision(baseRequest(), [
-      basePermission(),
       {
         ...basePermission(),
-        effect: 'deny',
         scope: {
           forceDeny: true,
         },

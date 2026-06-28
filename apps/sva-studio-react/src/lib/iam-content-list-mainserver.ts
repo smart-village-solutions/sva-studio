@@ -23,13 +23,10 @@ const deriveNamespacedAction = (contentType: string, action: 'create' | 'update'
   return namespace ? `${namespace}.${action}` : null;
 };
 
-type PermissionView = Pick<EffectivePermission, 'action' | 'effect'>;
+type PermissionView = Pick<EffectivePermission, 'action'>;
 
 const hasAllowedAction = (permissions: readonly PermissionView[], action: string): boolean =>
-  permissions.some((permission) => permission.action === action && permission.effect !== 'deny');
-
-const hasDeniedAction = (permissions: readonly PermissionView[], action: string): boolean =>
-  permissions.some((permission) => permission.action === action && permission.effect === 'deny');
+  permissions.some((permission) => permission.action === action);
 
 const createMainserverItemAccess = (
   contentType: string,
@@ -37,8 +34,8 @@ const createMainserverItemAccess = (
 ): IamContentAccessSummary => {
   const updateAction = deriveNamespacedAction(contentType, 'update');
   const createAction = deriveNamespacedAction(contentType, 'create');
-  const canUpdate = updateAction ? hasAllowedAction(permissions, updateAction) && !hasDeniedAction(permissions, updateAction) : false;
-  const canCreate = createAction ? hasAllowedAction(permissions, createAction) && !hasDeniedAction(permissions, createAction) : false;
+  const canUpdate = updateAction ? hasAllowedAction(permissions, updateAction) : false;
+  const canCreate = createAction ? hasAllowedAction(permissions, createAction) : false;
 
   return canUpdate
     ? {

@@ -57,7 +57,7 @@ Wichtige Integrationsdetails aus dem Code:
 
 - Die Autorisierungslogik wertet nicht nur RBAC-Basisrechte, sondern auch Scope-, Geo-, Hierarchie- und Acting-as-Regeln aus.
 - `summarizeContentAccess()` verdichtet rohe `content.*`-Permissions in UI-taugliche Zustände wie `editable`, `read_only`, `blocked` und `server_denied`.
-- `validateCreateIamContentInput()` akzeptiert nur registrierte `contentType`s, valide JSON-Payloads und für `published` einen gültigen Zeitstempel.
+- `validateCreateIamContentInput()` akzeptiert nur registrierte `contentType`s, valide JSON-Payloads und für `published` einen gültigen Zeitstempel; Create-seitige Owner-/Organisations-Overrides werden abgelehnt.
 - `validateRuntimeProfileEnv()` erkennt neben fehlenden Variablen auch Platzhalterwerte und ungültiges `IAM_PII_KEYRING_JSON`.
 
 ## Projektstruktur

@@ -423,7 +423,6 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                           <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline">{entry.effect}</Badge>
                           <Badge variant="outline">{t(userEditTranslationKeys.permissionTraceStatus[entry.status])}</Badge>
                           {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
                         </div>
@@ -485,25 +484,8 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
             </div>
           ) : null}
 
-          {userApi.user.directPermissions && userApi.user.directPermissions.length > 0 ? (
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-foreground">{t('admin.users.edit.permissionTrace.directAssignmentsTitle')}</h3>
-              <ul className="grid gap-2 text-sm text-foreground sm:grid-cols-2">
-                {userApi.user.directPermissions.map((permission) => (
-                  <li key={`${permission.permissionId}:${permission.effect}`} className="rounded border border-border bg-background px-3 py-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <span>{permission.permissionKey}</span>
-                      <Badge variant="outline">{permission.effect}</Badge>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
           {effectivePermissionTrace.length === 0 &&
           inactivePermissionTrace.length === 0 &&
-          (!userApi.user.directPermissions || userApi.user.directPermissions.length === 0) &&
           userApi.user.permissions &&
           userApi.user.permissions.length > 0 ? (
             <ul className="grid gap-2 text-sm text-foreground sm:grid-cols-2">
@@ -517,7 +499,6 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
 
           {effectivePermissionTrace.length === 0 &&
           inactivePermissionTrace.length === 0 &&
-          (!userApi.user.directPermissions || userApi.user.directPermissions.length === 0) &&
           (!userApi.user.permissions || userApi.user.permissions.length === 0) ? (
             <p className="text-sm text-muted-foreground">{t('admin.users.edit.permissionsEmpty')}</p>
           ) : null}

@@ -54,7 +54,6 @@ export const iamSeedPlan: IamSeedPlan = {
     key,
     action: key,
     resourceType: key.split('.')[0] ?? key,
-    effect: 'allow',
     scope: {},
     description,
   })),

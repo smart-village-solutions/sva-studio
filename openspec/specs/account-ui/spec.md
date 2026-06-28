@@ -114,18 +114,21 @@ Das System MUST eine User-Administrationsliste unter `/admin/users` bereitstelle
 
 ### Requirement: User-Bearbeitungsseite
 
-Das System MUST eine User-Bearbeitungsseite unter `/admin/users/:userId` bereitstellen, die eine detaillierte Bearbeitung eines Benutzer-Accounts in einer Tab-Ansicht ermöglicht.
+Das System MUST eine User-Bearbeitungsseite unter `/admin/users/:userId` bereitstellen, die eine detaillierte Bearbeitung eines Benutzer-Accounts in einer Tab-Ansicht ermöglicht und direkte, gruppenbasierte sowie vererbte Berechtigungsursachen nachvollziehbar darstellt.
 
-#### Scenario: Verwaltung – Status, Rollen und Mainserver-Credentials
+#### Scenario: Verwaltung zeigt nachvollziehbare Berechtigungsherkunft
 
-- **WENN** ein Administrator den Tab „Verwaltung" öffnet
-- **DANN** kann er den Account-Status ändern (aktiv/inaktiv/ausstehend)
-- **UND** Rollen zuweisen oder entfernen (unter Beachtung des Privilege-Escalation-Schutzes)
-- **UND** Sprach- und Zeitzone-Präferenzen setzen
-- **UND** administrative Notizen hinterlegen (max. 2000 Zeichen)
-- **UND** die Mainserver-Felder `mainserverUserApplicationId` und `mainserverUserApplicationSecret` bearbeiten
-- **UND** das Secret-Feld wird nicht mit seinem aktuellen Klartextwert vorbefüllt
-- **UND** die UI zeigt stattdessen an, ob bereits ein Secret hinterlegt ist
+- **WENN** ein Administrator den Benutzer-Detailbereich mit Rollen- und Rechteinformationen öffnet
+- **DANN** zeigt die UI direkte Rollen, Gruppenherkünfte und effektive Berechtigungen in lesbarer Form an
+- **UND** markiert sie sichtbar, ob ein Eintrag instanzweit, datensatzbezogen oder organisationskontextbezogen ausgewertet wird
+- **UND** bleibt erkennbar, ob ein Eintrag direkt zugewiesen, über eine Gruppe wirksam oder über Organisations- bzw. Geo-Hierarchien vererbt ist
+- **UND** bleiben blockierte oder fachlich unwirksame Einträge als solche erkennbar statt still ausgeblendet zu werden
+
+#### Scenario: Benutzerbearbeitung löscht fachlich unveränderte Assignment-Metadaten nicht
+
+- **WENN** ein Administrator einen Benutzer speichert, ohne eine bestehende Rollen- oder Gruppenzuordnung fachlich zu ändern
+- **DANN** bleiben vorhandene Metadaten wie Herkunft und Gültigkeitsfenster erhalten
+- **UND** erstellt die UI keinen Bedienfluss, der diese Metadaten implizit zurücksetzt, nur weil derselbe Benutzer erneut gespeichert wurde
 
 ### Requirement: Rollen-Verwaltungsseite
 
@@ -168,9 +171,14 @@ Das System MUST eine Rollen-Verwaltungsseite unter `/admin/roles` bereitstellen,
 #### Scenario: Cockpit-Einstieg genügt für die erste Ausbaustufe
 
 - **WENN** die Rollenverwaltung eine bestehende IAM-Prüffunktion integriert
-- **DANN** ist ein klarer Link- oder Deep-Link-Einstieg in das bestehende IAM-Cockpit für die erste Ausbaustufe ausreichend
-- **UND** eine eingebettete Szenario-Prüfung innerhalb der Rollenansicht ist optional
-- **UND** fehlende Inline-Prüfmasken machen den Rollenarbeitsbereich in diesem Change nicht unvollständig
+- **DANN** genügt ein klarer Einstieg in das bestehende IAM-Cockpit oder eine gleichwertige Transparenzfunktion
+- **UND** fehlende eingebettete Prüfformen machen die Rollenverwaltung in dieser Ausbaustufe nicht unvollständig
+
+#### Scenario: Bestätigtes Löschen weist auf Kaskadeneffekt hin
+
+- **WENN** ein Administrator eine löschbare Custom-Rolle aus der Rollenliste löschen möchte
+- **DANN** erklärt der Bestätigungsdialog vor dem Absenden, dass bestehende Benutzer- und Gruppenzuordnungen der Rolle ebenfalls entfernt werden
+- **UND** der Administrator kann den Löschvorgang an dieser Stelle noch abbrechen
 
 ### Requirement: Vollständige Internationalisierung der UI
 
@@ -357,21 +365,20 @@ Das System MUST im Admin-Bereich eine Oberfläche zur Verwaltung instanzgebunden
 
 ### Requirement: Sichtbare Gruppenherkunft in IAM-Transparenzdaten
 
-Das System MUST gruppenbasierte Herkunft von Berechtigungen in den relevanten IAM-Ansichten sichtbar machen.
+Das System MUST gruppenbasierte Herkunft von Berechtigungen in den relevanten IAM-Ansichten sichtbar machen und zusätzlich Vererbungs- und Restriktionsgründe strukturiert anzeigen.
 
-#### Scenario: Effektive Berechtigung stammt aus einer Gruppe
+#### Scenario: Geo-Vererbung mit untergeordneter Restriktion bleibt nachvollziehbar
 
-- **WENN** eine effektive Berechtigung eines Benutzers aus einer Gruppenmitgliedschaft stammt
-- **DANN** zeigt die UI diese Herkunft explizit als lesbaren Namen direkt in der Listenansicht an (z. B. „Gruppe: Presseteam") — ohne zusätzlichen Klick oder Hover
-- **UND** Herkunftsbeschriftungen verwenden lesbare Namen statt interner IDs
-- **UND** falls Tooltip-Darstellung genutzt wird, ist diese per Tastatur erreichbar (`role="tooltip"`, `aria-describedby`)
+- **WENN** eine Parent-Freigabe über eine Geo-Hierarchie grundsätzlich wirksam wäre, aber auf einer untergeordneten Einheit eine Restriktion greift
+- **DANN** zeigt die UI sowohl die geerbte Herkunft als auch den blockierenden Restriktionsgrund
+- **UND** bleibt erkennbar, aus welcher Gruppe oder Rolle die ursprüngliche Freigabe stammt
+- **UND** modelliert die UI diese Restriktion nicht als fachliche `deny`-Permission
 
-#### Scenario: Rollen- und Rechteansicht verdichtet Mehrfachherkunft nachvollziehbar
+#### Scenario: Inaktive Gruppen- oder Membership-Zustände bleiben sichtbar
 
-- **WENN** eine effektive Berechtigung gleichzeitig aus direkter Rolle und aus einer oder mehreren Gruppen stammt
-- **DANN** zeigt die UI die Berechtigung nur einmal als fachliches Ergebnis
-- **UND** listet die gesamte Herkunft in lesbarer Form nach Quelle auf
-- **UND** direkte Rollen- und Gruppenherkunft bleiben visuell unterscheidbar
+- **WENN** eine Berechtigung wegen deaktivierter Gruppe, abgelaufener Membership oder noch nicht begonnenem Gültigkeitsfenster fachlich nicht wirksam ist
+- **DANN** zeigt die UI den Eintrag weiterhin mit einem lesbaren Inaktivitätsgrund
+- **UND** muss ein Administrator nicht zwischen mehreren Ansichten springen, um die Ursache zu verstehen
 
 ### Requirement: Organisations-Verwaltungsseite
 
@@ -514,47 +521,46 @@ Das System MUST die Organisationsverwaltung und den Org-Switcher auf den definie
 
 ### Requirement: IAM-Transparenz-Cockpit für Administratoren
 
-Das System MUST unter `/admin/iam` ein tab-basiertes Transparenz-Cockpit bereitstellen, das strukturierte Rechteinformationen, Governance-Vorgänge und Betroffenenrechtsfälle aufgabengerecht sichtbar macht.
+Das System MUST unter `/admin/iam` ein tab-basiertes Transparenz-Cockpit bereitstellen, das strukturierte Rechteinformationen, Governance-Vorgänge und Betroffenenrechtsfälle aufgabengerecht sichtbar macht. Die Tabs SHALL das etablierte Waste-Management-Muster für Trigger-Leiste, mobile Alternativauswahl und gemeinsame Panel-Hülle übernehmen.
 
 #### Scenario: Rechte-Tab zeigt strukturierte Effective Permissions
 
 - **WENN** ein Administrator den Tab `Rechte` in `/admin/iam` öffnet
-- **DANN** werden effektive Berechtigungen mit `action`, `resourceType`, optionaler `resourceId`, `effect`, `organizationId`, `scope` und `sourceRoleIds` angezeigt
+- **DANN** werden effektive Berechtigungen tabellarisch mit `action`, `resourceType`, optionaler `resourceId`, optionaler `organizationId`, `scope`, `sourceRoleIds` und Rollen-/Gruppen-Provenienz angezeigt
+- **UND** enthält die Ansicht keine fachliche `effect`-Unterscheidung zwischen Allow und Deny
+- **UND** die Tabelle besitzt eine semantische `caption` oder ein gleichwertiges Tabellenlabel
 - **UND** ein Authorize-Check zeigt `reason` und vorhandene Diagnoseinformationen ohne Roh-JSON-Zwang im Standardzustand
 
-#### Scenario: Governance-Tab zeigt operative Freigabe- und Delegationsdaten
+#### Scenario: Governance-Tab zeigt tabellarische Übersicht und separate Detailseiten
 
 - **WENN** ein Administrator den Tab `Governance` öffnet
-- **DANN** sieht er Listen und Detailansichten für Permission-Change-Requests, Delegationen, Impersonation-Sitzungen und Legal-Text-Akzeptanzen
+- **DANN** sieht er eine tabellarische Übersicht für Permission-Change-Requests, Delegationen, Impersonation-Sitzungen und Legal-Text-Akzeptanzen
 - **UND** pro Eintrag sind mindestens Status, beteiligte Identitäten, Ticketbezug und relevante Zeitstempel sichtbar
+- **UND** die Übersicht rendert keine konkurrierende Inline-Detailkarte
+- **UND** die Navigation zu einem Eintrag führt auf eine separate Detailseite innerhalb des IAM-Bereichs
 
-#### Scenario: Betroffenenrechte-Tab zeigt Compliance-relevante Fälle
+#### Scenario: Betroffenenrechte-Tab zeigt tabellarische Übersicht und separate Detailseiten
 
 - **WENN** ein Administrator den Tab `Betroffenenrechte` öffnet
-- **DANN** sieht er Requests, Export-Jobs, Legal Holds, Profilkorrekturen und Empfängerbenachrichtigungen
+- **DANN** sieht er Requests, Export-Jobs, Legal Holds, Profilkorrekturen und Empfängerbenachrichtigungen in einer tabellarischen Übersicht
 - **UND** pro Fall sind Status, Frist-/Zeitinformationen und Blockierungsgründe nachvollziehbar
+- **UND** die Übersicht rendert keine konkurrierende Inline-Detailkarte
+- **UND** die Navigation zu einem Fall führt auf eine separate Detailseite innerhalb des IAM-Bereichs
 
 #### Scenario: Transparenz-Cockpit bleibt barrierefrei und fokussiert
 
 - **WENN** Datenmengen groß oder Teilbereiche leer sind
 - **DANN** bietet das Cockpit Filter, klare Empty-States, Loading-States und Fehlerzustände
-- **UND** Tabs, Tabellen und Detailpanels sind vollständig tastaturbedienbar und screenreader-tauglich
-- **UND** Fokuswechsel sind deterministisch (Tab/Panel/Dialog setzt Fokus zielgerichtet; beim Schließen erfolgt Fokus-Restore)
+- **UND** Tabs, Tabellen und Detailseiten sind vollständig tastaturbedienbar und screenreader-tauglich
+- **UND** Fokuswechsel sind deterministisch (Tab/Panel/Detailseite/Dialog setzt Fokus zielgerichtet; beim Schließen erfolgt Fokus-Restore)
 - **UND** asynchrone Statusmeldungen sind als Live-Regionen für assistive Technologien wahrnehmbar
-
-#### Scenario: Zugriff auf Admin-Cockpit wird rollenbasiert begrenzt
-
-- **WENN** ein Benutzer ohne ausreichende Berechtigung `/admin/iam` oder einen sensiblen Tab aufruft
-- **DANN** erhält er einen verweigerten Zustand ohne Leckage sensitiver Felder
-- **UND** die UI zeigt eine verständliche Meldung mit nächstem sicheren Schritt
-- **UND** die Route selbst bleibt auf `iam_admin`, `support_admin`, `system_admin`, `security_admin` und `compliance_officer` begrenzt
-- **UND** der Tab `Governance` ist zusätzlich für `security_admin` und `compliance_officer` lesbar, ohne DSR- oder Rechte-Details freizuschalten
 
 #### Scenario: Große Datenmengen werden performanzstabil angezeigt
 
 - **WENN** Governance- oder DSR-Listen hohe Datenmengen enthalten
 - **DANN** werden serverseitige Pagination, Filter und Sortierung verwendet
-- **UND** initial lädt nur der aktive Tab; Detaildaten werden on-demand nachgeladen
+- **UND** initial lädt nur der aktive Tab
+- **UND** Detaildaten werden on-demand erst auf der jeweiligen Detailseite nachgeladen
 
 ### Requirement: Datenschutz-Self-Service im Account-Bereich
 
@@ -995,177 +1001,86 @@ The system SHALL allow plugin custom views only when they preserve Studio shell,
 
 ### Requirement: Tenant-IAM-Betriebsblock auf der Instanz-Detailseite
 
-Das System MUST auf `/admin/instances/:instanceId` einen eigenen Tenant-IAM-Betriebsblock bereitstellen, der Konfiguration, Rechteprobe und Reconcile fuer die gewaehlte Instanz getrennt darstellt und sich in eine progressive Seitenstruktur einordnet.
+Das System MUST Tenant-IAM-Befunde im Bestandsbetrieb sichtbar halten, ohne die
+Bestandsseite wieder in mehrere gleichrangige technische Hauptbloecke zu
+zerlegen. Tenant-IAM-Konfiguration, Rechteprobe und Reconcile sollen im
+Bestandsbetrieb und im Doctor-Modus konsistent auffindbar sein.
 
-#### Scenario: Instanz-Detailseite zeigt getrennte Tenant-IAM-Abschnitte
+#### Scenario: Tenant-IAM bleibt im Betrieb sichtbar, aber nicht als zweites Cockpit
 
-- **WENN** ein berechtigter Operator die Detailseite einer Instanz oeffnet
-- **DANN** zeigt die Seite einen separaten Tenant-IAM-Bereich oder eine gleichwertige drill-down-faehige Tenant-IAM-Sicht
-- **UND** sind dort mindestens `Konfiguration`, `Rechteprobe`, `Reconcile` und ein zusammengefasster Gesamtzustand sichtbar
-- **UND** bleibt dieser Bereich vom bestehenden Keycloak-Setup- und Provisioning-Bereich unterscheidbar
-- **UND** konkurriert er in der Standardansicht nicht gleichrangig mit Konfigurationsformularen, Historie und technischer Schrittliste
-
-#### Scenario: Tenant-IAM-Befund enthaelt Diagnose und Korrelation
-
-- **WENN** die Detailseite einen degradierten oder blockierten Tenant-IAM-Zustand zeigt
-- **DANN** enthaelt die UI verstaendliche Diagnoseinformationen wie Fehlercode, letzten Prueflauf oder `requestId`
-- **UND** kann ein Operator den Befund ohne Wechsel in eine andere Admin-Seite einordnen
-
-#### Scenario: Tenant-IAM erscheint als Betriebsachse statt als konkurrierender Hauptblock
-
-- **WENN** die Standardansicht der Instanz geladen wird
-- **DANN** ist Tenant-IAM als eigenstaendige Betriebsachse sichtbar
-- **UND** bleibt klar unterscheidbar, ob der Befund `Konfiguration`, `Zugriff` oder `Reconcile` betrifft
-- **UND** konkurriert dieser Befund in der Uebersicht nicht gleichrangig mit Formularen, Vollhistorie und technischen Rohlisten
+- **WENN** die Bestandsseite im Modus `Betrieb` geladen wird
+- **DANN** bleibt ein Tenant-IAM-Befund als betriebliche Achse sichtbar
+- **UND** ist weiterhin unterscheidbar, ob ein Befund `Konfiguration`,
+  `Zugriff` oder `Reconcile` betrifft
+- **UND** tritt dieser Befund nicht als konkurrierende zweite
+  Langscroll-Diagnoseflaeche neben Modulverwaltung und Stammdaten auf
 
 ### Requirement: Tenant-IAM-Aktionen bleiben kontextbezogen und begrenzt
 
-Das System MUST auf der Instanz-Detailseite nur fachlich sinnvolle Tenant-IAM-Aktionen anbieten, diese dem sichtbaren Befund zuordnen und sie gegenueber der primaeren Seitenaktion klar als Spezial- oder Folgeaktionen abstufen.
+Das System MUST einen dauerhaft sichtbaren Einstieg `Doctor öffnen` auf der
+Bestandsseite bereitstellen. Diagnose- und Reparaturaktionen werden ueber einen
+gefuehrten Doctor-Modus angeboten, statt als ungeordnete Menge gleichrangiger
+Buttons im Bestandsbetrieb aufzutreten.
 
-#### Scenario: Detailseite verknuepft bestehende Reparaturpfade gezielt
+#### Scenario: Doctor-Einstieg ist immer sichtbar
 
-- **WENN** ein sichtbarer Tenant-IAM-Befund durch eine bestehende Aktion adressierbar ist
-- **DANN** bietet die Detailseite genau diese Aktion kontextbezogen an
-- **UND** kann sie dafuer bestehende Provisioning-, Secret-, Reset- oder Reconcile-Pfade nutzen
-- **UND** werden irrelevante oder nicht wirksame Aktionen nicht vorgeschlagen
+- **WENN** ein berechtigter Operator eine Bestandsinstanz oeffnet
+- **DANN** ist `Doctor öffnen` immer an derselben Stelle sichtbar
+- **UND** kann der Operator Diagnose auch dann aktiv starten, wenn das System
+  keinen Befund automatisch erkannt hat
 
-#### Scenario: Rechteprobe ist als eigene Operator-Aktion verfuegbar
+#### Scenario: Erkanntes Problem verstaerkt denselben Doctor-Einstieg
 
-- **WENN** ein Operator die tenantlokale IAM-Betriebsfaehigkeit gezielt pruefen moechte
-- **DANN** bietet die Detailseite eine explizite Aktion fuer die Tenant-IAM-Rechteprobe an
-- **UND** zeigt nach Abschluss den aktualisierten Access-Zustand im Tenant-IAM-Bereich
+- **WENN** das System selbst einen degradierten oder blockierten Befund erkennt
+- **DANN** darf die Bestandsseite im Kopf einen Warnkontext fuer denselben
+  Einstieg `Doctor öffnen` anzeigen
+- **UND** bleibt der Einstieg an derselben Position
+- **UND** muss der Operator kein neues Interaktionsmuster fuer Fehlerfaelle
+  lernen
 
-#### Scenario: Detailseite bleibt trotz Rechteprobe reaktionsfaehig
+#### Scenario: Doctor fuehrt durch Diagnose und Reparatur
 
-- **WENN** ein Operator die Instanz-Detailseite oeffnet, ohne eine Rechteprobe anzustossen
-- **DANN** rendert die Seite den vorhandenen Tenant-IAM-Befund ohne blockierende Zusatzpruefung
-- **UND** zeigt bei Bedarf klar an, dass die Rechteprobe gezielt ausgeloest werden kann
-
-#### Scenario: UI zeigt unbestimmte Access-Lage ehrlich an
-
-- **WENN** fuer `access` noch keine belastbare Rechteprobe oder aequivalente Access-Evidenz vorliegt
-- **DANN** zeigt die Detailseite diesen Teilzustand als `unknown` oder fachlich gleichwertig an
-- **UND** suggeriert nicht, dass aus einer gruenen Strukturpruefung bereits betriebliche Tenant-IAM-Rechte folgen
+- **WENN** ein Operator den Modus `Doctor` oeffnet
+- **DANN** zeigt die Oberflaeche einen gefuehrten Ablauf aus `Überblick`,
+  `Empfohlene Maßnahme`, `Reparatur ausführen` und `Validieren`
+- **UND** enthaelt der Schritt `Überblick` bewusst auch gruene Vorbedingungen
+- **UND** wird der Operator nicht direkt in tiefe Reparaturaktionen geworfen
 
 ### Requirement: Progressive Informationsarchitektur auf der Instanz-Detailseite
 
-Das System MUST die Instanz-Detailseite unter `/admin/instances/:instanceId` so strukturieren, dass aktuelle Betriebsbewertung, Konfiguration, technische Diagnose und Historie nicht mehr als gleichrangiger Lang-Scrollbereich konkurrieren. Die Detailseite MUST den Realm-Modus als führende Betriebsdimension behandeln und abhängig von `realmMode` unterschiedliche operative Hauptansichten rendern.
+Das System MUST die Instanz-Detailoberflaeche entlang von Lebensphase und
+Arbeitsmodus strukturieren. Nach abgeschlossenem Setup darf die
+Bestandsverwaltung nicht mehr als fortgesetztes Setup erscheinen. Fuer
+vollstaendig eingerichtete Instanzen besteht die Hauptoberflaeche aus einem
+kompakten Kopf und den drei dauerhaften Modi `Betrieb`, `Doctor` und
+`Einstellungen`.
 
-#### Scenario: Standardansicht priorisiert den aktuellen Operator-Kontext
+#### Scenario: Bestandsinstanz oeffnet standardmaessig im Betrieb
 
-- **WENN** ein berechtigter Operator die Detailseite einer Instanz oeffnet
-- **DANN** zeigt die Seite zuerst eine kompakte Uebersicht mit aktuellem Gesamtzustand, den wichtigsten offenen Befunden und der naechsten primaeren Aktion
-- **UND** enthaelt diese Uebersicht nicht mehrere gleichrangige Wiederholungen desselben Zustands in verschiedenen Card-Gruppen
-- **UND** muss der Operator nicht zuerst Preflight, Keycloak-Status, Run-Historie und Formulare gleichzeitig interpretieren
+- **WENN** eine Instanz fachlich fertig eingerichtet ist
+- **UND** ein berechtigter Operator `/admin/instances/:instanceId` oeffnet
+- **DANN** oeffnet die Seite standardmaessig im Modus `Betrieb`
+- **UND** bleibt die Modulverwaltung der primäre Happy Path
+- **UND** konkurrieren Konfigurationsformular, Vollhistorie und
+  Setup-Steuerung nicht gleichrangig im Erstblick
 
-#### Scenario: Uebersicht funktioniert wie ein operatives Cockpit
+#### Scenario: Bestandsseite besitzt dauerhafte Modi statt gemischter Langseite
 
-- **WENN** ein berechtigter Operator die Detailseite einer Instanz oeffnet
-- **DANN** zeigt die Uebersicht mindestens Identitaet der Instanz, Gesamtstatus, Frische der dominanten Evidenz und den aktuell wichtigsten Handlungsaufruf
-- **UND** ordnet die Seite Befunde vor Steuerung und Steuerung vor Historie an
-- **UND** folgt der Erstblick dem Prinzip `overview first, anomalies second, controls third, history last`
+- **WENN** ein berechtigter Operator die Bestandsseite einer Instanz oeffnet
+- **DANN** zeigt der Kopf mindestens Instanzidentitaet, `Setup-Status`,
+  `Betriebsstatus` und einen festen Einstieg `Doctor öffnen`
+- **UND** sind die Modi `Betrieb`, `Doctor` und `Einstellungen` dauerhaft
+  erreichbar
+- **UND** ist die technische Historie kein gleichrangiger Hauptmodus mehr
 
-#### Scenario: Sekundaerbereiche folgen progressiver Offenlegung
+#### Scenario: Betrieb bleibt ruhig und fokussiert
 
-- **WENN** ein Operator tiefer in Konfiguration, Diagnose oder Historie einsteigen moechte
-- **DANN** sind diese Informationen in klar getrennten Arbeitsbereichen wie Tabs, Panels oder gleichwertigen Sektionen erreichbar
-- **UND** bleibt der aktuelle Uebersichtsblock visuell von diesen Sekundaerbereichen unterscheidbar
-- **UND** fuehrt die Seite kein zweites konkurrierendes Gesamtlayout fuer dieselbe Instanz ein
-
-#### Scenario: Historische Fehl-Laeufe wirken nicht wie ein aktueller Gesamtblocker
-
-- **WENN** eine Instanz aktuell betriebsbereit oder strukturell gruen ist, aber aeltere fehlgeschlagene Provisioning-Laeufe besitzt
-- **DANN** trennt die Detailseite den aktuellen Zustand klar von der historischen Run-Historie
-- **UND** darf ein aelterer Fehl-Lauf nicht denselben visuellen Rang wie ein aktueller blockierender Befund erhalten
-
-#### Scenario: Detailseite rendert mode-aware Operationsansicht fuer neue Realms
-
-- **WENN** `realmMode` einer Instanz auf `new` steht
-- **DANN** zeigt die Detailseite im operativen Hauptbereich einen linearen Aufbaupfad fuer Realm-Erzeugung und Erstbootstrap
-- **UND** priorisiert sie die naechste sinnvolle Aufbauaktion gegenueber Diagnose- oder Rohstatuslisten
-- **UND** stellt sie erwartbar noch nicht erzeugte Artefakte nicht als aktuellen Defekt derselben Stufe wie echte Fehlzustaende dar
-
-#### Scenario: Neuer Realm fuehrt ueber die tatsaechlichen technischen Teilphasen
-
-- **WENN** `realmMode` einer Instanz auf `new` steht
-- **DANN** bildet die Detailseite den Aufbaupfad mindestens entlang der Teilphasen `Registry-Vertrag`, `Vorbedingungen`, `Worker-Plan`, `Realm`, `Login-Client`, `Tenant-Admin-Client`, `Realm-Rollen`, `Tenant-Admin`, `Secret-Sync` und `Abschlussvalidierung` ab
-- **UND** fasst sie diese Teilphasen nicht zu einer einzigen unscharfen Gesamtaktion ohne Zwischenschritte zusammen
-- **UND** bleibt fuer einen Operator erkennbar, welche Teilphase bereits erfolgreich, welche laufend und welche als naechste vorgesehen ist
-
-#### Scenario: Neuer Realm zeigt pro Schritt belastbare Zwischenausgaben
-
-- **WENN** die Detailseite eine Teilphase des `new`-Pfads rendert
-- **DANN** zeigt sie fuer diese Teilphase mindestens einen fachlichen Status, die letzte belastbare Evidenz und einen kurzen artefaktspezifischen Hinweis
-- **UND** nennt sie bei Fehlern den betroffenen Artefakttyp explizit, statt nur einen generischen Gesamtfehler fuer `Provisioning` auszugeben
-- **UND** bleibt dadurch unterscheidbar, ob der Fehler aus Vorbedingungen, Plan, Keycloak-Ausfuehrung oder Abschlussvalidierung stammt
-
-#### Scenario: Detailseite rendert mode-aware Operationsansicht fuer Bestands-Realms
-
-- **WENN** `realmMode` einer Instanz auf `existing` steht
-- **DANN** zeigt die Detailseite im operativen Hauptbereich einen Diagnose- und Reconcile-Pfad fuer den vorhandenen Realm
-- **UND** stellt sie fehlende oder abweichende Vertrags- und Keycloak-Artefakte als echte Befunde oder Drift dar
-- **UND** bleibt klar erkennbar, welche Aktion den sichtbaren Befund adressiert
-
-#### Scenario: Teilweise erfolgreicher Aufbaupfad bleibt nachvollziehbar
-
-- **WENN** `realmMode` einer Instanz auf `new` steht
-- **UND** einzelne fruehe Aufbau-Schritte bereits erfolgreich waren, aber ein spaeterer Schritt fehlgeschlagen ist
-- **DANN** zeigt die Detailseite den letzten erfolgreichen Schritt, den ersten fehlgeschlagenen Schritt und die naechste sinnvolle Fortsetzungs- oder Reparaturaktion
-- **UND** faellt sie dabei nicht in eine generische Driftdarstellung fuer Bestands-Realms zurueck
-
-#### Scenario: Detailseite leitet fuer neue Realms genau eine naechste Hauptaktion ab
-
-- **WENN** `realmMode` einer Instanz auf `new` steht
-- **DANN** leitet die Detailseite aus dem ersten noch offenen oder fehlgeschlagenen relevanten Schritt genau eine primaere naechste Aktion ab
-- **UND** aendert sich diese primaere Aktion nachvollziehbar, wenn Vorbedingungen blockieren, ein Retry sinnvoll ist oder der Abschluss bereits erfolgreich war
-- **UND** muss der Operator nicht mehrere gleichrangige Buttons interpretieren, um den naechsten fachlich richtigen Schritt zu erraten
-
-#### Scenario: Neuer Realm endet im Cockpit beim erfolgreichen Realm-Grundaufbau
-
-- **WENN** `realmMode` einer Instanz auf `new` steht
-- **UND** Realm, Clients, Rollen, Tenant-Admin, Secret-Sync und Abschlussvalidierung erfolgreich sind
-- **DANN** markiert die Detailseite den `new`-Kernworkflow als fachlich abgeschlossen
-- **UND** behandelt sie eine optionale Instanzaktivierung oder nachgelagerte Modul-/IAM-Folgearbeiten nicht als noch fehlenden Pflichtschritt desselben Kernworkflows
-
-#### Scenario: Folgearbeiten bleiben sichtbar, aber vom Realm-Grundaufbau getrennt
-
-- **WENN** nach erfolgreichem Realm-Grundaufbau noch Modulzuordnung, Modul-IAM-Synchronisation oder andere Folgearbeiten sinnvoll sind
-- **DANN** zeigt die Detailseite diese Arbeiten als nachgelagerte Empfehlungen oder getrennten Bereich
-- **UND** vermischt sie diese Folgearbeiten nicht mit der linearen Aufbau-Schrittkette des neuen Realm
-
-#### Scenario: Moduskonflikt bei neuem Realm wird explizit angezeigt
-
-- **WENN** `realmMode` einer Instanz auf `new` steht
-- **UND** der Ziel-Realm in Keycloak bereits existiert
-- **DANN** zeigt die Detailseite einen expliziten Konflikt zwischen Sollmodus und Live-Zustand
-- **UND** blockiert den linearen Erstaufbaupfad sichtbar, bis der Konflikt geklaert oder bereinigt wurde
-
-#### Scenario: Moduskonflikt bei Bestands-Realm wird als harter Defekt angezeigt
-
-- **WENN** `realmMode` einer Instanz auf `existing` steht
-- **UND** der erwartete Realm live nicht existiert
-- **DANN** zeigt die Detailseite diesen Zustand als harten Strukturdefekt
-- **UND** stellt sie ihn nicht als geringfuegige Konfigurationsabweichung oder normalen Folge-Drift dar
-
-#### Scenario: Veraltete Evidenz bleibt von aktuellem Zustand unterscheidbar
-
-- **WENN** die Detailseite nur alte oder unvollstaendige Live-Evidenz fuer Provisioning, Keycloak-Status oder Tenant-IAM besitzt
-- **DANN** markiert die Uebersicht diese Evidenz sichtbar als veraltet, unvollstaendig oder fachlich gleichwertig
-- **UND** trennt den Hinweis klar von historischen Run-Eintraegen und aktuellen Erfolgs- oder Fehleraussagen
-
-#### Scenario: Erstblick bleibt trotz Fehlerdiagnose kompakt
-
-- **WENN** fuer einen Schritt technische Fehlerdetails, Request-IDs oder Rohmeldungen vorliegen
-- **DANN** zeigt der Erstblick nur Schritt, Kurzursache und naechste Aktion
-- **UND** bleiben technische Details ueber nachgelagerte Detailbereiche oder Expand-Zustaende erreichbar
-- **UND** kippt die Hauptuebersicht dadurch nicht erneut in ein konkurrierendes Lang-Scroll-Diagnoselayout
-
-#### Scenario: Nicht ausfuehrbare Aktionen bleiben sichtbar erklaert
-
-- **WENN** eine im Workflow naechstliegende Operator-Aktion aus Berechtigungs- oder Technikgruenden aktuell nicht ausfuehrbar ist
-- **DANN** bleibt der fachliche Schritt in der Detailseite sichtbar
-- **UND** kennzeichnet die UI die Aktion als nicht ausfuehrbar inklusive Grundhinweis
-- **UND** verschweigt sie nicht, dass dieser Schritt grundsaetzlich zum Workflow gehoert
+- **WENN** die Bestandsseite im Modus `Betrieb` angezeigt wird
+- **DANN** priorisiert die Oberflaeche Modulzuweisung, Modulentzug und
+  alltaegliche Betriebsaktionen
+- **UND** bleibt Diagnose nur ueber denselben festen Einstieg `Doctor öffnen`
+  schnell erreichbar
+- **UND** dominiert die Diagnoseansicht den Happy Path nicht dauerhaft
 
 ### Requirement: Zentraler Admin-Bereich fuer instanzbezogene Modulzuweisung auf Studio-Root-Ebene
 
@@ -1248,22 +1163,25 @@ Das System SHALL auf der Instanz-Detailseite alle global bekannten Module in ein
 
 ### Requirement: Instanz-Anlage-Flow fuehrt einen gefuehrten Admin-Bootstrap-Abschnitt
 
-Das System SHALL im Instanz-Anlage-Flow einen eigenen Abschnitt fuer den initialen Admin-Bootstrap der neuen Instanz bereitstellen. Der Abschnitt muss sich harmonisch in den Happy Path einfuegen, aber Fehler aus Modulzuordnung, Rollenerzeugung und Gruppierung klar getrennt sichtbar machen.
+Das System SHALL die Instanz-Anlage klar von der spaeteren Bestandsverwaltung
+trennen. Nach erfolgreicher Anlage fuehrt der primaere naechste Schritt in
+einen separaten einmaligen Flow `Setup abschliessen`, statt direkt in die
+normale Bestandsseite zu springen.
 
-#### Scenario: Abschnitt zeigt Happy-Path-Bedienung mit genau einem Sammel-Button
+#### Scenario: Erfolgreiche Anlage fuehrt zuerst in den Setup-Abschluss
 
-- **GIVEN** die Instanz wurde erfolgreich angelegt
-- **WHEN** der Studio-Admin den Bootstrap-Abschnitt oeffnet
-- **THEN** zeigt die UI eine optionale Modulauswahl
-- **AND** zeigt sie genau einen Sammel-Button zum Anlegen der Admin-Struktur
-- **AND** erklaert sie knapp, dass ohne Modulauswahl mindestens `Admins` und `Core Admin` angelegt werden
+- **GIVEN** eine Instanz wurde erfolgreich angelegt
+- **WHEN** der Studio-Admin den primaeren naechsten Schritt ausloest
+- **THEN** fuehrt die UI zuerst in einen separaten Flow
+  `Setup abschliessen`
+- **AND** ist die normale Bestandsseite noch nicht der primaere Zielbildschirm
 
-#### Scenario: Abschnitt zeigt Warnhinweis fuer Namenskonflikte
+#### Scenario: Stammdaten bleiben im Bestand nachgeordnet
 
-- **GIVEN** der Bootstrap-Abschnitt kann bestehende Rollen mit denselben Namen ueberschreiben
-- **WHEN** der Studio-Admin den Abschnitt betrachtet oder die Aktion vorbereitet
-- **THEN** weist die UI sichtbar darauf hin, dass gleichnamige bestehende Rollen ueberschrieben werden koennen
-- **AND** bleibt die Aktion trotzdem als Happy-Path-Sammelaktion verstaendlich
+- **GIVEN** das Setup einer Instanz wurde erfolgreich abgeschlossen
+- **WHEN** ein Operator spaeter Vertrags- oder Stammdaten aendern moechte
+- **THEN** findet er diese Aenderungen im Modus `Einstellungen`
+- **AND** nicht mehr in der Hauptarbeitsflaeche des Bestandsbetriebs
 
 ### Requirement: Initiale Admin-Struktur wird mit editierbaren Rollen aufgebaut
 
@@ -1308,4 +1226,215 @@ Das System MUST in der Organisationsverwaltung eine abgesicherte Pflege organisa
 - **WENN** ein Administrator die Organisationsdetailansicht ohne neues Secret absendet
 - **DANN** behandelt die UI dies nicht als Secret-Löschung
 - **UND** die Oberfläche sendet keinen leeren oder `null`-basierten Secret-Wert als impliziten Revoke-Request
+
+### Requirement: Rollen-Detailseite pflegt Assignment-Scopes fuer scope-faehige Rechte
+Das System SHALL in der Rollen-Detailseite fuer scope-faehige Datensatzrechte neben der Zuweisung auch den Assignment-Scope pflegbar machen.
+
+#### Scenario: Scope-Selector erscheint nur fuer geeignete Rechte
+- **WHEN** ein Administrator den Permissions-Tab einer editierbaren Rolle oeffnet
+- **THEN** zeigt die UI fuer scope-faehige Rechte einen Selector fuer `all`, `own` und `organization`
+- **AND** nicht scope-faehige Rechte bleiben binaer zuweisbar
+
+#### Scenario: Speichern sendet strukturierte Permission-Assignments
+- **WHEN** ein Administrator Rechte- oder Scope-Aenderungen speichert
+- **THEN** sendet die UI `permissionAssignments[]` mit `permissionId` und `accessScope`
+- **AND** neu zugewiesene scope-faehige Rechte erhalten standardmaessig `all`
+
+### Requirement: Nutzeransicht zeigt effektive Permission-Scopes transparent an
+Das System SHALL in der Nutzer-Berechtigungsansicht den effektiven Assignment-Scope rollen- oder gruppenvermittelter Datensatzrechte sichtbar machen.
+
+#### Scenario: Effektiver Scope wird im Permission Trace dargestellt
+- **WHEN** ein Administrator den Tab `Berechtigungen` einer Nutzerdetailseite betrachtet
+- **THEN** enthalten effektive Permission-Trace-Eintraege den wirksamen Assignment-Scope
+- **AND** die Darstellung bleibt read-only
+
+### Requirement: Separate IAM-Detailseiten für Governance- und DSR-Fälle
+
+Das System SHALL innerhalb des IAM-Bereichs eigenständige Detailseiten für Governance- und Betroffenenrechtsfälle bereitstellen, damit Übersichten und Bearbeitungskontext nicht in derselben Oberfläche konkurrieren.
+
+#### Scenario: Governance-Detailseite strukturiert den Fallkontext
+
+- **WENN** ein berechtigter Administrator einen Governance-Eintrag aus der Übersicht öffnet
+- **DANN** landet er auf einer dedizierten Governance-Detailseite
+- **UND** die Seite zeigt mindestens Titel, Status, Typ, beteiligte Identitäten, Ticketbezug und relevante Zeitstempel in einer Kopfsektion
+- **UND** weitere Metadaten und Zusammenhänge werden in strukturierten Inhaltsblöcken statt in einer einzelnen Inline-Karte dargestellt
+
+#### Scenario: DSR-Detailseite strukturiert den Fallkontext
+
+- **WENN** ein berechtigter Administrator einen DSR-Fall aus der Übersicht öffnet
+- **DANN** landet er auf einer dedizierten DSR-Detailseite
+- **UND** die Seite zeigt mindestens Titel, Status, Typ, betroffene Person, Antragsteller und relevante Zeitstempel in einer Kopfsektion
+- **UND** weitere Metadaten, Blocker und Fallzusammenhänge werden in strukturierten Inhaltsblöcken statt in einer einzelnen Inline-Karte dargestellt
+
+#### Scenario: Rücknavigation erhält den fachlichen Übersichtskontext
+
+- **WENN** ein Administrator von einer Governance- oder DSR-Detailseite zur Übersicht zurückkehrt
+- **DANN** führt die Navigation deterministisch zurück in den passenden IAM-Tab
+- **UND** die Rückkehr bleibt ohne manuelles Neuwählen des Fachbereichs verständlich und erwartbar
+
+### Requirement: Tenant-Rollenverwaltung zeigt keine Root-Plattformrolle als tenantlokales Artefakt
+Das System SHALL in tenantlokalen Rollen- und Benutzerverwaltungsansichten die Plattformrolle `instance_registry_admin` nicht als zuweisbare Tenant-Rolle darstellen.
+
+#### Scenario: Tenant-Rollenliste blendet Root-Plattformrolle aus
+- **WHEN** ein Administrator die tenantlokale Rollenverwaltung unter `/admin/roles` öffnet
+- **THEN** erscheint `instance_registry_admin` dort nicht als tenantseitig verwaltbare Rolle
+- **AND** die Ansicht bleibt auf tenantlokale Rollen des aktiven Tenant-Realm beschränkt
+
+#### Scenario: Tenant-Benutzerbearbeitung bietet keine Root-Plattformrolle an
+- **WHEN** ein Administrator im Tenant-Realm Rollen für einen Benutzer bearbeitet
+- **THEN** ist `instance_registry_admin` nicht als auswählbare Rollenzuweisung verfügbar
+- **AND** die UI behandelt tenantlokale und Root-Rollen nicht als gemeinsamen Katalog
+
+### Requirement: Tenant-Rollenverwaltung erlaubt individuelle Rechtezuschnitte ohne Standardrollenpflicht
+Das System SHALL in der tenantlokalen Rollenverwaltung die Zuordnung von Rechten zu individuellen Rollen unterstützen, ohne kanonische Standardrollen als Primärmodell vorauszusetzen.
+
+#### Scenario: Individuelle Rolle erhält modulbezogene Rechte
+- **WHEN** ein Administrator eine editierbare tenantlokale Rolle erstellt oder bearbeitet
+- **THEN** kann er modulbezogene und tenantlokale Rechte direkt über die Rollenverwaltung zuweisen
+- **AND** die UI verlangt dafür keine Auswahl oder Kopplung an Rollen wie `editor`, `designer` oder `app_manager`
+
+### Requirement: UI-Gates behandeln system_admin als vollständigen Tenant-Vollzugriff
+Das System SHALL tenantlokale Navigations-, Aktions- und Verwaltungs-Gates so auswerten, dass ein Benutzer mit `system_admin` die vollständigen vorgesehenen Tenant-Admin-Funktionen nutzen kann, ohne zusätzliche versteckte Rollen- oder Gruppenabhängigkeiten.
+
+#### Scenario: Sidebar und Admin-Funktionen bleiben für system_admin sichtbar
+- **WHEN** ein Benutzer im Tenant-Realm ausschließlich `system_admin` besitzt
+- **THEN** bleiben die für Tenant-Administratoren vorgesehenen Navigationspunkte, Verwaltungsseiten und Aktionen sichtbar und nutzbar
+- **AND** ihre Verfügbarkeit hängt nicht zusätzlich von Gruppen wie `admins` oder Rollen wie `core_admin` ab
+
+### Requirement: GUI-gestuetzter Authorize-Performance-Lauf im Monitoring
+Das System MUST im bestehenden Monitoring-Bereich unter `/monitoring` einen bedienbaren Bereich fuer einen sessiongebundenen Authorize-Performance-Lauf bereitstellen.
+
+#### Scenario: Berechtigter Administrator findet den Lauf im Monitoring-Menue
+
+- **WHEN** ein berechtigter Administrator den Monitoring-Bereich der Anwendung oeffnet
+- **THEN** ist dort ein eigener IAM-bezogener Einstieg `Authorize Performance` erreichbar
+- **AND** ist der Einstieg nicht nur als Unterfunktion des IAM-Cockpits versteckt
+- **AND** bleibt das IAM-Cockpit unter `/admin/iam` von dieser Platzierung fachlich getrennt
+
+#### Scenario: Berechtigter Administrator startet den Lauf
+
+- **WHEN** ein berechtigter Administrator den Monitoring-Einstieg `Authorize Performance` nutzt
+- **THEN** kann er einen serverseitigen Benchmark fuer `POST /iam/authorize` mit seiner aktuellen Session starten
+- **AND** die UI bietet Eingaben fuer mindestens `action`, `resourceType`, optionale `resourceId` und optionales `organizationId`
+- **AND** die UI zeigt waehrend des Laufs einen klaren Status statt stiller Hintergrundaktivitaet
+
+#### Scenario: Ergebnis wird lesbar ausgewertet
+
+- **WHEN** der Benchmark erfolgreich abgeschlossen wurde
+- **THEN** zeigt die UI die Szenarien `cache-hit`, `cache-miss` und `recompute`
+- **AND** zeigt pro Szenario mindestens `Samples`, `p50`, `p95`, `p99` und eine fachliche Bewertung
+- **AND** macht die UI klar kenntlich, dass die Messung serverseitig und nicht als Browser-Timing erhoben wurde
+
+#### Scenario: Lauf scheitert sicher und verstaendlich
+
+- **WHEN** Session, Berechtigung, Invalidation oder Servermessung fehlschlagen
+- **THEN** zeigt die UI einen verstaendlichen Fehlerzustand ohne Stacktrace- oder Geheimnisleck
+- **AND** suggeriert keinen gueltigen Performance-Nachweis aus einem unvollstaendigen Lauf
+
+### Requirement: Tenant-Löschregeln im IAM-Admin-Cockpit
+
+Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Admin-Tab für Löschregeln bereitstellen. Der Tab zeigt und bearbeitet ausschließlich die Regeln der aktiven `instanceId` und ist nicht für Root- oder Plattform-Administration ohne Tenant-Scope vorgesehen.
+
+#### Scenario: Tenant-Admin bearbeitet Löschregeln der aktiven Instanz
+
+- **WENN** ein berechtigter Tenant-Admin `/admin/iam?tab=deletion-rules` öffnet
+- **DANN** zeigt die UI die aktuellen Werte für `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays`, die tenantweite Default-Inhaltsstrategie und den Tenant-Schalter `Nutzer dürfen die Standardregel für eigene Inhalte überschreiben`
+- **UND** zeigt die UI die Baseline-Defaults/Fallbacks `90 / 180 / 365` getrennt von tenant-spezifischen Werten an
+- **UND** zeigt die UI bei unkonfigurierten Tenants die Baseline-Defaults `90 / 180 / 365`, die geerbte Default-Inhaltsstrategie `beibehalten` und den Override-Schalter standardmäßig deaktiviert als wirksamen Zustand
+- **UND** können die Werte in einer validierten Bearbeitungsmaske geändert werden
+- **UND** ist die auswählbare Strategiemenge auf `beibehalten` und `mit Eigentümer-Lifecycle mitbehandeln` begrenzt
+- **UND** wird klar angezeigt, dass sich die Regeln nur auf Tenant-Accounts der aktiven `instanceId` beziehen
+
+#### Scenario: Speichern erzeugt oder aktualisiert explizite Tenant-Konfiguration
+
+- **WENN** ein berechtigter Tenant-Admin im Tab `deletion-rules` Werte speichert
+- **DANN** erzeugt das System für zuvor unkonfigurierte Tenants eine explizite Tenant-Konfiguration
+- **UND** aktualisiert das System für bereits konfigurierte Tenants die bestehende Tenant-Konfiguration
+- **UND** zeigt die UI nach dem Speichern die gespeicherten tenant-spezifischen Werte statt nur geerbter Baseline-Defaults
+- **UND** bleibt die Speicheraktion ausschließlich mit `iam.deletionRules.manage` verfügbar
+
+#### Scenario: Entfernen einer expliziten Tenant-Konfiguration kehrt zum geerbten Zustand zurück
+
+- **WENN** ein berechtigter Tenant-Admin eine bestehende explizite Tenant-Konfiguration entfernt
+- **DANN** zeigt die UI wieder die wirksamen Baseline-Defaults `90 / 180 / 365` und die geerbte Strategie `beibehalten`
+- **UND** behandelt die UI dies als gültigen Zustandswechsel statt als leeren oder fehlerhaften Zustand
+
+#### Scenario: UI erklärt die fachlichen Lebenszykluszustände
+
+- **WENN** der Tab `deletion-rules` dargestellt wird
+- **DANN** beschreibt die UI die Zustände `active`, `deactivated`, `pseudonymized` und `deleted`
+- **UND** erläutert, dass `deleted` einen finalen Tombstone-Soft-Delete und keine physische Löschung bedeutet
+- **UND** erläutert, dass `deactivated` nicht automatisch durch Login aufgehoben wird und eine separate Reaktivierung verlangt
+- **UND** macht kenntlich, dass ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterlaufen können
+- **UND** weist darauf hin, dass V1 Inaktivität ausschließlich aus dem letzten `login`-Event der aktiven `instanceId` ableitet
+
+#### Scenario: Root- oder plattformweite Administration erhält keinen Tenant-Regeltab
+
+- **WENN** ein Benutzer ohne aktiven Tenant-Scope oder nur mit Root-/Plattformrechten `/admin/iam?tab=deletion-rules` aufruft
+- **DANN** zeigt die UI keinen bearbeitbaren Tenant-Regelzustand
+- **UND** erhält der Benutzer einen verweigerten oder nicht verfügbaren Zustand ohne Leckage tenantbezogener Konfigurationsdaten
+
+#### Scenario: Ladezustand zeigt wirksame Regelermittlung an
+
+- **WENN** die UI die wirksamen Regeln, Baseline-Defaults oder tenant-spezifischen Werte für `deletion-rules` lädt
+- **DANN** zeigt sie einen expliziten Ladezustand
+- **UND** vermeidet sie währenddessen irreführende Leer- oder Default-Formulare als vermeintlich bereits geladene Daten
+
+#### Scenario: Fehlerzustand für Laden oder Speichern ist handlungsleitend
+
+- **WENN** das Laden oder Speichern der Löschregeln fehlschlägt
+- **DANN** zeigt die UI einen expliziten Fehlerzustand mit verständlicher, handlungsleitender Meldung
+- **UND** bleibt erkennbar, ob der Fehler beim Laden oder beim Speichern entstanden ist
+- **UND** werden keine unbestätigten Eingaben als erfolgreich übernommen dargestellt
+
+#### Scenario: Unkonfigurierter Tenant erzeugt keinen leeren Admin-Zustand
+
+- **WENN** für einen Tenant noch keine explizite Löschregel-Konfiguration gespeichert ist
+- **DANN** zeigt die UI die Baseline-Defaults `90 / 180 / 365`, die geerbte Strategie `beibehalten` und den Override-Default `deaktiviert` als wirksamen Zustand
+- **UND** verwendet sie keinen leeren oder mehrdeutigen Empty-State anstelle dieser wirksamen Standardwerte
+
+### Requirement: Self-Service zeigt Löschregeln und Inhaltspräferenz transparent an
+
+Das System MUST in den Account-/Privacy-Oberflächen die tenantweiten Löschregeln transparent darstellen und dem Benutzer einen per-Account-Override für die Behandlung eigener Inhalte im Scope `iam.contents` anbieten.
+
+#### Scenario: Benutzer sieht tenantweite Fristen und eigene Inhaltspräferenz
+
+- **WENN** ein authentifizierter Benutzer `/account/privacy` oder die zugehörige Datenschutzfläche seines Accounts öffnet
+- **DANN** sieht er die tenantweiten Fristen für Deaktivierung, Pseudonymisierung und finalen Tombstone-Soft-Delete
+- **UND** sieht er bei nicht konfigurierten Tenants die Baseline-Defaults/Fallbacks `90 / 180 / 365` als wirksame Standardwerte
+- **UND** sieht er bei nicht konfigurierten Tenants `beibehalten` als geerbte wirksame Default-Inhaltsstrategie
+- **UND** wird erklärt, dass die Fristen sich auf den letzten `login`-Zeitpunkt innerhalb der aktiven `instanceId` beziehen
+- **UND** wird erklärt, dass Accounts ohne Login-Event in V1 nicht automatisch in den Inaktivitäts-Lifecycle fallen
+- **UND** sieht der Benutzer den aktuell wirksamen Strategiewert für eigene Inhalte im Scope `iam.contents`
+- **UND** werden die zulässigen Strategiewerte `beibehalten` und `mit Eigentümer-Lifecycle mitbehandeln` verständlich benannt
+- **UND** werden die Strategiewirkungen verständlich erklärt: unverändert lassen oder die jeweils erreichte Account-Stufe auf Inhalte spiegeln
+
+#### Scenario: Root- oder Plattform-Accounts ohne Tenant-Scope sehen keine Konten-Löschregeln-Box
+
+- **WENN** ein Root- oder Plattform-Account ohne aktive `instanceId` `/account/privacy` öffnet
+- **DANN** zeigt die UI keine Konten-Löschregeln-Box
+- **UND** leakt sie keinen tenantbezogenen Regelzustand in diese Oberfläche
+
+#### Scenario: Benutzer überschreibt die tenantweite Default-Inhaltsstrategie für eigene Inhalte
+
+- **WENN** ein Benutzer seine Inhaltspräferenz in der Privacy-Oberfläche ändert und der Tenant Self-Service-Overrides erlaubt
+- **DANN** kann er die tenantweite Default-Inhaltsstrategie für seine eigenen Inhalte gezielt überschreiben
+- **UND** ist der Override auf den Scope `iam.contents` begrenzt
+- **UND** ist der schreibbare Zielaccount serverseitig aus dem Session-/Authentifizierungskontext des Benutzers gebunden
+- **UND** kann die Self-Service-Oberfläche keinen Override für andere Benutzerkonten schreiben
+- **UND** ist im Auswahlfeld direkt die wirksame Regel vorausgewählt
+- **UND** zeigt die UI nach dem Speichern den wirksamen Zustand verständlich und ohne Rohdateninterpretation an
+
+#### Scenario: Tenant deaktiviert Self-Service-Overrides
+
+- **WENN** für den Tenant `allowContentPreferenceOverride = false` gilt
+- **DANN** zeigt die UI in der Konten-Löschregeln-Box keinen Überschreibungs- und Speicherbereich
+- **UND** bleibt nur die tenantweit wirksame Regel sichtbar
+
+#### Scenario: Self-Service bleibt auch ohne verfügbare Override-Daten verständlich
+
+- **WENN** für einen Benutzer noch kein individueller Override gespeichert ist
+- **DANN** zeigt die UI die tenantweite Default-Inhaltsstrategie als wirksamen Zustand
+- **UND** erklärt, dass nur eigene Inhalte im Scope `iam.contents` betroffen sind
+- **UND** bleibt die Oberfläche tastaturbedienbar, screenreader-tauglich und mit klaren Leer-, Lade- und Fehlerzuständen ausgestattet
 

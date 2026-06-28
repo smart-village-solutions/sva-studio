@@ -2,17 +2,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { IamContentListItem } from '@sva/core';
 
-const { authorizeContentActionMock, resolveContentAuthorizationPermissionsMock } = vi.hoisted(() => ({
-  authorizeContentActionMock: vi.fn(),
-  resolveContentAuthorizationPermissionsMock: vi.fn(),
-}));
+const { authorizeContentActionMock, resolveContentAuthorizationPermissionsMock } = vi.hoisted(
+  () => ({
+    authorizeContentActionMock: vi.fn(),
+    resolveContentAuthorizationPermissionsMock: vi.fn(),
+  })
+);
 
 vi.mock('./request-context.js', () => ({
   authorizeContentAction: authorizeContentActionMock,
   resolveContentAuthorizationPermissions: resolveContentAuthorizationPermissionsMock,
 }));
 
-const { authorizeUpdateContentActions, resolveUpdateContentActions } = await import('./mutation-authorization.js');
+const { authorizeUpdateContentActions, resolveUpdateContentActions } =
+  await import('./mutation-authorization.js');
 
 const content = (
   status: IamContentListItem['status'] = 'draft',
@@ -150,6 +153,7 @@ describe('content mutation authorization', () => {
       expect.objectContaining({
         domainCapability: 'content.update_metadata',
         organizationId: '22222222-2222-4222-8222-222222222222',
+        ownerOrganizationId: undefined,
       }),
       expect.objectContaining({ permissions: [] })
     );
@@ -233,10 +237,43 @@ describe('content mutation authorization', () => {
       expect.objectContaining({
         domainCapability: 'content.publish',
         organizationId: '22222222-2222-4222-8222-222222222222',
+        ownerOrganizationId: undefined,
       }),
       expect.objectContaining({ permissions: [] })
     );
     expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('checks the destination authorization against prospective owner attributes', async () => {
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    await expect(
+      authorizeUpdateContentActions(
+        actor,
+        'content-1',
+        {
+          ...content(),
+          ownerUserId: '33333333-3333-4333-8333-333333333333',
+          ownerOrganizationId: '11111111-1111-4111-8111-111111111111',
+        },
+        {
+          organizationId: '22222222-2222-4222-8222-222222222222',
+          ownerUserId: '44444444-4444-4444-8444-444444444444',
+        }
+      )
+    ).resolves.toBeNull();
+
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      2,
+      actor,
+      'content.updateMetadata',
+      expect.objectContaining({
+        organizationId: '22222222-2222-4222-8222-222222222222',
+        ownerUserId: '44444444-4444-4444-8444-444444444444',
+        ownerOrganizationId: '11111111-1111-4111-8111-111111111111',
+      }),
+      expect.objectContaining({ permissions: [] })
+    );
   });
 
   it('stops on authorization denial before later actions are evaluated', async () => {

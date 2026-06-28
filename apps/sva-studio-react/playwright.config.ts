@@ -16,6 +16,8 @@ const webServerReadyURL = new URL('/@vite/client', baseURL).toString();
 const parsedBaseURL = new URL(baseURL);
 const webServerPort = parsedBaseURL.port || (parsedBaseURL.protocol === 'https:' ? '443' : '80');
 const reuseExistingServer = process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === 'true';
+const runFirefoxSmoke =
+  process.env.CI === 'true' || process.env.PLAYWRIGHT_ENABLE_FIREFOX_SMOKE === 'true';
 
 export default defineConfig({
   testDir: './e2e',
@@ -41,15 +43,19 @@ export default defineConfig({
         storageState: resolveAuthSessionFile(appRoot, DE_MUSTERHAUSEN_AUTH_SESSION_FILE),
       },
     },
-    {
-      name: 'firefox-smoke',
-      dependencies: ['auth-setup'],
-      testMatch: /real-auth\.cross-browser\.spec\.ts/,
-      use: {
-        browserName: 'firefox',
-        storageState: resolveAuthSessionFile(appRoot, DE_MUSTERHAUSEN_AUTH_SESSION_FILE),
-      },
-    },
+    ...(runFirefoxSmoke
+      ? [
+          {
+            name: 'firefox-smoke',
+            dependencies: ['auth-setup'],
+            testMatch: /real-auth\.cross-browser\.spec\.ts/,
+            use: {
+              browserName: 'firefox' as const,
+              storageState: resolveAuthSessionFile(appRoot, DE_MUSTERHAUSEN_AUTH_SESSION_FILE),
+            },
+          },
+        ]
+      : []),
   ],
   use: {
     baseURL,

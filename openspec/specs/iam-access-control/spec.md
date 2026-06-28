@@ -91,45 +91,13 @@ Das System SHALL `instanceId` als primären Scoping-Filter für RBAC-Entscheidun
 
 ### Requirement: Permissions-Übersicht pro aktivem Kontext
 
-Das System SHALL eine kontextbezogene Permissions-Übersicht für den aktuell angemeldeten Benutzer bereitstellen, optional einen impersonierten Zielkontext auswerten und dabei alle für Transparenz- und Diagnose-UI erforderlichen strukturierten Felder liefern.
+Das System SHALL eine kontextbezogene Permissions-Übersicht für den aktuell angemeldeten Benutzer bereitstellen, optional einen impersonierten Zielkontext auswerten und dabei alle für Transparenz- und Diagnose-UI erforderlichen strukturierten Felder einschließlich `runtimeScope`, Vererbungs-, Restriktions- und Inaktivitätsgründen liefern.
 
-#### Scenario: Laden der effektiven Berechtigungen (Self)
+#### Scenario: Strukturierte Permission-Felder enthalten Vererbungs- und Restriktionsgründe
 
-- **WHEN** `GET /iam/me/permissions` ohne `actingAsUserId` im aktiven Instanzkontext aufgerufen wird
-- **THEN** werden die effektiven RBAC-Berechtigungen für den aktuellen Benutzer zurückgegeben
-- **AND** die Antwort enthält ein `subject`-Objekt mit `actorUserId == effectiveUserId` und `isImpersonating=false`
-
-#### Scenario: Laden der effektiven Berechtigungen (Impersonation aktiv)
-
-- **WHEN** `GET /iam/me/permissions` mit `actingAsUserId` aufgerufen wird
-- **AND** eine aktive, gültige Impersonation-Session zwischen Actor und Target existiert
-- **THEN** werden die effektiven RBAC-Berechtigungen des Target-Subjekts zurückgegeben
-- **AND** die Antwort enthält `subject.actorUserId`, `subject.effectiveUserId` und `subject.isImpersonating=true`
-
-#### Scenario: Impersonation nur im zulässigen Policy-Kontext
-
-- **WHEN** `GET /iam/me/permissions` mit `actingAsUserId` aufgerufen wird
-- **AND** Actor und Target nicht im zulässigen Instanz-/Organisationskontext liegen
-- **THEN** wird die Anfrage mit einem strukturierten Deny-Fehler abgewiesen
-- **AND** es werden keine Detaildaten des Target-Subjekts offengelegt
-
-#### Scenario: Strukturierte Permission-Felder sind UI-verfügbar
-
-- **WHEN** die Permissions-Übersicht zurückgegeben wird
-- **THEN** enthält jeder Permission-Eintrag mindestens `action`, `resourceType`, optionale `resourceId`, optionale `organizationId`, optionale `effect`, optionale `scope` und `sourceRoleIds`
-- **AND** diese Felder können ohne zusätzliche Server-Interpretation in einer Admin-UI gerendert werden
-
-#### Scenario: Keine aktive Impersonation für Target
-
-- **WHEN** `GET /iam/me/permissions` mit `actingAsUserId` aufgerufen wird
-- **AND** keine aktive Impersonation-Session existiert
-- **THEN** wird die Anfrage mit Fehlercode `impersonation_not_active` abgewiesen
-
-#### Scenario: Impersonation ist abgelaufen
-
-- **WHEN** `GET /iam/me/permissions` mit `actingAsUserId` aufgerufen wird
-- **AND** die zugehörige Impersonation-Session abgelaufen ist
-- **THEN** wird die Anfrage mit Fehlercode `impersonation_expired` abgewiesen
+- **WHEN** die Permissions-Übersicht oder ein äquivalentes Benutzer-Detail-Read-Modell für Transparenzzwecke zurückgegeben wird
+- **THEN** enthält jeder Permission-Eintrag neben Quelle und Scope auch strukturierte Felder für `runtimeScope`, organisations- oder geo-bezogene Vererbung sowie blockierende Restriktionen
+- **AND** kann die Admin-UI direkte, vererbte und unwirksame Pfade ohne zusätzliche Serverheuristik unterscheiden
 
 ### Requirement: RBAC-v1-Baseline-Performance
 
@@ -153,14 +121,14 @@ Das System SHALL neben RBAC kontextbasierte ABAC-Regeln auswerten und diese dete
 
 ### Requirement: Hierarchische Vererbung mit Restriktionen
 
-Das System SHALL Berechtigungen entlang definierter Org-/Geo-Hierarchien vererben und untergeordnete Restriktionen berücksichtigen.
+Das System SHALL Berechtigungen entlang definierter Org-/Geo-Hierarchien vererben, untergeordnete Restriktionen berücksichtigen und die daraus resultierende Wirkung reproduzierbar begründen.
 
-#### Scenario: Vererbte Berechtigung mit Einschränkung
+#### Scenario: Vererbte Berechtigung mit Einschränkung bleibt erklärbar
 
 - **WHEN** eine Berechtigung auf übergeordneter Ebene vergeben ist
 - **AND** auf untergeordneter Ebene eine Einschränkung existiert
 - **THEN** wird die effektive Berechtigung unter Berücksichtigung der Einschränkung berechnet
-- **AND** die Entscheidung ist reproduzierbar
+- **AND** das Read-Modell enthält genug Informationen, um sowohl den Vererbungsursprung als auch die blockierende Restriktion nachvollziehbar anzuzeigen
 
 ### Requirement: Cache-basierte Berechtigungs-Snapshots
 
@@ -258,20 +226,16 @@ Das System SHALL kritische Rechteänderungen als approval-pflichtige Governance-
 - **AND** ein Denial mit `reason_code` wird erzeugt
 
 ### Requirement: Plattformrollen und Tenant-Admin-Rollen bleiben getrennt
-
-Das System SHALL tenant-lokale Admin-Rollen und globale Plattformrollen in der Instanzverwaltung strikt trennen.
+Das System SHALL tenant-lokale Admin-Rollen und globale Plattformrollen in der Instanzverwaltung strikt trennen. `instance_registry_admin` ist eine reine Plattformrolle des Root-Realm. `system_admin` ist die geschützte tenantlokale Vollzugriffs- und Defaultrolle des Tenant-Realm.
 
 #### Scenario: Nur Plattform-Admin darf Keycloak-Provisioning anstossen
-
-- **WHEN** ein Benutzer ohne `instance_registry_admin` versucht, Instanz-Realm-Grundeinstellungen zu ändern oder ein Keycloak-Provisioning auszulösen
+- **WHEN** ein Benutzer ohne `instance_registry_admin` im Root-Realm versucht, Instanz-Realm-Grundeinstellungen zu ändern oder ein Keycloak-Provisioning auszulösen
 - **THEN** lehnt das System die Operation ab
 
-#### Scenario: Technischer Keycloak-Zugang blockiert fehlende Rechte vor dem Lauf
-
-- **WHEN** der technische Keycloak-Admin-Zugang den Ziel-Realm nicht verwalten kann
-- **THEN** markiert der Preflight die Ausführung als blockiert
-- **AND** wird getrennt ausgewiesen, ob der Plattformpfad oder der Tenant-Admin-Client betroffen ist
-- **AND** es wird kein Keycloak-Mutationslauf gestartet
+#### Scenario: Tenant-Admin-Rechte ersetzen keine Plattformrechte
+- **WHEN** ein Benutzer im Tenant-Realm `system_admin` oder andere tenantlokale Verwaltungsrechte besitzt
+- **THEN** darf er dadurch keine Root-Control-Plane- oder Instanzverwaltungsfunktion auslösen
+- **AND** tenantlokale Verwaltungsrechte eskalieren nicht in den Plattform-Scope
 
 ### Requirement: Ticket-Validierung für kritische Governance-Aktionen
 
@@ -345,25 +309,19 @@ Das System MUST bei Synchronisierung und Reconciliation strikt zwischen studiove
 
 ### Requirement: Gruppen als zusätzliche Quelle effektiver Berechtigungen
 
-Das System SHALL Gruppen als instanzgebundene IAM-Entität auswerten und deren Zuweisungen in die effektive Berechtigungsberechnung einbeziehen.
+Das System SHALL Gruppen als instanzgebundene IAM-Entität auswerten, deren Zuweisungen in die effektive Berechtigungsberechnung einbeziehen und inaktive oder historisierte Zustände transparent von wirksamen Zuständen trennen.
 
-#### Scenario: Gruppenmitgliedschaft erweitert effektive Rechte
+#### Scenario: Mehrfachherkunft direkt plus Gruppe bleibt fachlich verdichtet
 
-- **WHEN** ein Benutzer einer Gruppe mit fachlich relevanten Berechtigungen zugewiesen ist
-- **THEN** werden diese Gruppenrechte in `GET /iam/me/permissions` und `POST /iam/authorize` berücksichtigt
-- **AND** die Herkunft der Berechtigung bleibt nachvollziehbar
+- **WHEN** dieselbe effektive Berechtigung gleichzeitig aus einer direkten Rolle und einer oder mehreren Gruppen stammt
+- **THEN** wird das fachliche Ergebnis deterministisch nur einmal bewertet
+- **AND** das Transparenzmodell listet die vollständige Herkunft getrennt nach direkter und gruppenbasierter Quelle
 
-#### Scenario: Konflikte zwischen Rollen und Gruppen bleiben deterministisch
+#### Scenario: Inaktive oder soft-gelöschte Gruppen bleiben transparent, aber wirkungslos
 
-- **WHEN** eine Rollenfreigabe und eine gruppenbasierte Restriktion denselben Zugriff betreffen
-- **THEN** wird die finale Entscheidung nach einer dokumentierten Prioritätsregel berechnet
-- **AND** identischer Kontext führt zu identischem Ergebnis und identischem Reasoning
-
-#### Scenario: Inaktive oder soft-gelöschte Gruppen bleiben fachlich wirkungslos
-
-- **WHEN** eine Gruppe deaktiviert oder soft-gelöscht ist
-- **THEN** fließen weder ihre Rollenzuordnungen noch ihre Mitgliedschaften in `GET /iam/me/permissions` oder `POST /iam/authorize` ein
-- **AND** bestehende Historien- und Herkunftsdaten bleiben weiterhin auditierbar
+- **WHEN** eine Gruppe deaktiviert oder soft-gelöscht ist oder eine Membership zeitlich nicht wirksam ist
+- **THEN** fließen ihre Rechte nicht in die effektive Berechtigungsentscheidung ein
+- **AND** das Transparenzmodell kann den inaktiven Zustand für Diagnose- und Abnahmezwecke weiterhin ausweisen
 
 ### Requirement: Hierarchische Geo-Vererbung für ABAC-Scopes
 
@@ -511,7 +469,7 @@ Das System SHALL fachliche Berechtigungen in strukturierter Form persistieren, s
 #### Scenario: Strukturierte Rollen-Permission wird gespeichert
 
 - **WHEN** eine Rollen-Permission im IAM erfasst oder aus Seeds bereitgestellt wird
-- **THEN** liegen mindestens `action`, `resource_type`, optional `resource_id`, `scope` und `effect` in maschinenlesbarer Form vor
+- **THEN** liegen mindestens `action`, `resource_type`, optional `resource_id` und `scope` in maschinenlesbarer Form vor
 - **AND** die Berechtigung bleibt auf die aktive `instanceId` begrenzt
 
 #### Scenario: Bestehende Permission-Key-Daten bleiben während der Migration auswertbar
@@ -759,7 +717,6 @@ Bei Verweigerung enthält `reason` einen maschinenlesbaren Code (z. B. `geo_scop
     {
       "action": "content.write",
       "resourceType": "content",
-      "effect": "allow",
       "organizationId": "uuid-org",
       "sourceRoleIds": ["uuid-role"],
       "sourceGroupIds": ["uuid-group"],
@@ -825,18 +782,18 @@ Das System SHALL deterministische Entscheidungen für alle bekannten Konfliktfä
 
 | Quelle A | Quelle B | Erwartetes Ergebnis | Begründung |
 |----------|----------|---------------------|------------|
-| Rolle: allow | Gruppe: deny (gleiche Ressource) | deny | deny vor allow |
-| Gruppe: allow | Geo-Restriktion | deny | lokal vor vererbt |
-| Org-Parent: allow | Org-Child: deny | deny | lokal vor Parent |
+| Rolle: allow | Gruppe: kein passender Grant | allow | passender Rollen-Grant reicht |
+| Gruppe: allow | Geo-Restriktion nicht erfüllt | deny | Scope-Bedingung nicht erfüllt |
+| Org-Parent: allow | Org-Child: kein passender Grant | allow | Vererbung greift |
 | Org-Parent: allow | Org-Child: kein Eintrag | allow | Vererbung greift |
-| Geo-Parent: allow | Geo-Child: deny | deny | lokal vor Parent |
-| Geo-Parent: allow | Geo-Child (3. Ebene): deny | deny | 3+-Ebenen denselben Regeln |
-| Rolle: allow | Org-Child: deny + Gruppe: allow | deny | deny schlägt alle allow |
-| permission_key-legacy: allow | Strukturiert: deny | deny | strukturiert vor legacy |
+| Geo-Parent: allow | Geo-Child: Scope nicht erfüllt | deny | Scope-Bedingung nicht erfüllt |
+| Geo-Parent: allow | Geo-Child (3. Ebene): Scope nicht erfüllt | deny | 3+-Ebenen denselben Regeln |
+| Rolle: kein passender Grant | Gruppe: allow | allow | passender Gruppen-Grant reicht |
+| permission_key-legacy: kein passender Grant | Strukturiert: allow | allow | strukturiert vor legacy |
 
-#### Scenario: Dreistufige Geo-Hierarchie mit Konflikten
+#### Scenario: Dreistufige Geo-Hierarchie mit nicht erfülltem Scope
 
-- **WHEN** auf Ebene 1 (Bundesland) eine `allow`-Berechtigung vorliegt, Ebene 2 (Landkreis) keinen Eintrag hat und Ebene 3 (Gemeinde) eine `deny`-Regel trägt
+- **WHEN** auf Ebene 1 (Bundesland) eine `allow`-Berechtigung vorliegt, Ebene 2 (Landkreis) keinen Eintrag hat und Ebene 3 (Gemeinde) die Scope-Bedingung nicht erfüllt
 - **THEN** wird die Berechtigung für Ebene 3 verweigert
 - **AND** identischer Kontext führt immer zu identischem Ergebnis
 
@@ -865,12 +822,12 @@ Das System SHALL für Paket 4A eine tabellarische Abnahmematrix bereitstellen, d
 | Kategorie | Ausgangslage | Mutation / Anfrage | Erwarteter Cache-Status | Erwartetes Ergebnis |
 |-----------|--------------|--------------------|-------------------------|---------------------|
 | Org-Vererbung | Parent-Org `allow`, Child ohne lokale Regel | `POST /iam/authorize` im Child-Kontext | `miss` oder `recompute` beim Erstlauf | `allow`, Reasoning verweist auf Parent-Vererbung |
-| Org-Restriktion | Parent-Org `allow`, Child-Org `deny` | `POST /iam/authorize` im Child-Kontext | `hit` oder `miss` zulässig | `deny`, lokale Restriktion schlägt Parent-Allow |
-| Geo-Vererbung 3 Ebenen | Geo-Parent `allow`, Ebene 2 ohne Regel, Ebene 3 `deny` | `POST /iam/authorize` auf Ebene 3 | `miss` oder `recompute` beim Erstlauf | `deny`, Denial-Reason für Child-Restriktion |
+| Org-Restriktion | Parent-Org `allow`, Child-Org erfüllt Scope nicht | `POST /iam/authorize` im Child-Kontext | `hit` oder `miss` zulässig | `deny`, Scope-Bedingung nicht erfüllt |
+| Geo-Vererbung 3 Ebenen | Geo-Parent `allow`, Ebene 2 ohne Regel, Ebene 3 erfüllt Scope nicht | `POST /iam/authorize` auf Ebene 3 | `miss` oder `recompute` beim Erstlauf | `deny`, Denial-Reason für nicht erfüllten Scope |
 | Cache-Hit | Gültiger Snapshot für `{instanceId,userId,orgCtxHash,geoCtxHash}` vorhanden | Wiederholter `POST /iam/authorize` mit identischem Kontext | `hit` | keine zusätzliche Datenbankberechnung erforderlich |
 | Cache-Miss | Kein Snapshot vorhanden | Erstaufruf `GET /iam/me/permissions` | `miss` gefolgt von Write | Snapshot wird berechnet und in Redis persistiert |
 | Recompute nach TTL | Snapshot abgelaufen, Redis erreichbar | `POST /iam/authorize` nach TTL | `recompute` | neue Entscheidung aus führenden Daten, alter Snapshot wird nicht weiterverwendet |
-| Mixed-State-Migration | Rolle enthält legacy `permission_key` und strukturierte Permission mit Widerspruch | `POST /iam/authorize` | `miss` oder `recompute` | strukturierte Permission gewinnt deterministisch |
+| Mixed-State-Migration | Rolle enthält legacy `permission_key` und strukturierte Permission mit unterschiedlicher Spezifität | `POST /iam/authorize` | `miss` oder `recompute` | strukturierte Permission gewinnt deterministisch |
 | User-scoped Invalidierung | Gruppenmitgliedschaft eines Benutzers ändert sich | Event `GroupMembershipChanged` | nächster Zugriff `miss` oder `recompute` | alter Snapshot dieses Benutzers ist unbrauchbar |
 | Hierarchische Invalidierung | Org-Hierarchie einer Instanz ändert sich | Event `OrgHierarchyChanged` | betroffene Folgezugriffe `miss` oder `recompute` | betroffene Instanz-Snapshots werden asynchron erneuert |
 | Event-Duplikat | identisches Invalidation-Event wird mehrfach zugestellt | Consumer verarbeitet dieselbe `eventId` erneut | unverändert | keine doppelte Seiteneffekte, Idempotenz bleibt gewahrt |
@@ -884,7 +841,7 @@ Das System SHALL die bestehende Rollenverwaltung, Rechteübersicht und Szenario-
 #### Scenario: Rollennahe Rechteansichten nutzen bestehende Permissions-Felder
 
 - **WHEN** eine Admin-UI Rollenrechte, effektive Rechte oder Prüfergebnisse darstellt
-- **THEN** kann sie auf vorhandene strukturierte Felder wie `action`, `resourceType`, optionale `resourceId`, optionale `organizationId`, optionale `effect`, optionale `scope`, `sourceRoleIds` und `sourceGroupIds` zugreifen
+- **THEN** kann sie auf vorhandene strukturierte Felder wie `action`, `resourceType`, optionale `resourceId`, optionale `organizationId`, optionale `scope`, `sourceRoleIds` und `sourceGroupIds` zugreifen
 - **AND** diese Felder bleiben ohne zusätzliche serverseitige Sonderlogik UI-tauglich
 
 #### Scenario: Rechteprüfung verwendet bestehende Authorize-Pfade
@@ -1368,3 +1325,157 @@ Das System SHALL Seed- und Reset-Operationen als gesondert autorisierbare Hochri
 - **THEN** wird die Operation nur mit einem expliziten Reset-Recht zugelassen
 - **AND** die Berechtigung bleibt von allgemeinen Schreib- oder Verwaltungsrechten getrennt
 
+### Requirement: Rollenrechte koennen Assignment-Scopes fuer Datensatzzugriffe tragen
+Das System SHALL Rollen-Rechte-Zuordnungen fuer scope-faehige Datensatzrechte mit einem Assignment-Scope `all`, `own` oder `organization` speichern und auswerten.
+
+#### Scenario: Legacy-Rollenpayload bleibt kompatibel
+- **WHEN** ein Rollen-Update weiterhin nur `permissionIds` sendet
+- **THEN** interpretiert das System jede dieser Zuordnungen als `accessScope = all`
+- **AND** es schreibt konsistente `role_permissions` ohne Scope-Verlust
+
+#### Scenario: Own-Scope verlangt IAM-Ownership
+- **WHEN** eine Authorize-Anfrage fuer ein scope-faehiges Datensatzrecht auf eine Permission mit `accessScope = own` trifft
+- **THEN** erlaubt das System den Zugriff nur bei passendem `ownerUserId` beziehungsweise technischer `owner_user_id`
+- **AND** `createdByAccountId` oder `creator_account_id` allein begruendet keinen Own-Zugriff
+- **AND** fehlende oder fremde Ownership-Bezuege fuehren fail-closed zu keinem Match
+
+#### Scenario: Organization-Scope folgt IAM-Ownership und aktiver Session-Organisation
+- **WHEN** eine Authorize-Anfrage fuer ein scope-faehiges Datensatzrecht auf eine Permission mit `accessScope = organization` trifft
+- **THEN** erlaubt das System den Zugriff fuer Datensaetze mit passendem `ownerUserId` oder passender `ownerOrganizationId` zur aktiven Session-Organisation
+- **AND** Datensaetze ausserhalb dieses Kontexts matchen nicht
+- **AND** ohne aktive Session-Organisation faellt dieser Scope fuer inhaltsartige Datensaetze auf `own` zurueck
+
+### Requirement: Tenantweite Rechte bleiben bei aktivem Organisationskontext instanzweit wirksam
+
+Das System SHALL tenantweite Host- und Plugin-Rechte nicht allein deshalb organisationsgebunden behandeln, weil ein aktiver `organizationId`-Kontext vorhanden ist.
+
+#### Scenario: Instanzrecht bleibt trotz aktivem Organisationskontext organisationsagnostisch
+
+- **WHEN** eine instanzweite Permission wie `media.read` oder `waste-management.read` für einen Benutzer aufgelöst wird
+- **AND** der Request oder die Session gleichzeitig einen aktiven `organizationId`-Kontext trägt
+- **THEN** bleibt die effektive Permission instanzweit wirksam
+- **AND** wird im effektiven Permission-Modell kein organisationsbezogener Scope allein aus diesem Kontext abgeleitet
+
+### Requirement: Plattformrecht instance.registry.manage ist nicht tenantfähig
+Das System SHALL das Recht `instance.registry.manage` ausschließlich im Plattform-/Root-Scope auswerten. Tenantlokale Rollen, Gruppen oder Permissions dürfen dieses Recht nicht verleihen.
+
+#### Scenario: Tenant-Rolle kann Instanzverwaltung nicht freischalten
+- **WHEN** eine tenantlokale Rolle, Gruppe oder Permission-Zuordnung versucht, `instance.registry.manage` oder einen gleichwertigen Instanzverwaltungszugriff zu modellieren
+- **THEN** behandelt das System diesen Zustand nicht als wirksame tenantlokale Berechtigung
+- **AND** ein tenantseitiger Request auf Root-Control-Plane-Funktionalität bleibt fail-closed verweigert
+
+#### Scenario: Root-Instanzverwaltung bleibt auf Plattformrolle begrenzt
+- **WHEN** ein Root-Host-Request eine Instanzverwaltungsoperation ausführt
+- **THEN** entscheidet das System den Zugriff ausschließlich über die Plattformrolle `instance_registry_admin`
+- **AND** tenantlokale Permission-Snapshots oder Gruppenmitgliedschaften werden dafür nicht ausgewertet
+
+### Requirement: Tenantseitige Modulrechte sind von kanonischen Standardrollen entkoppelt
+Das System SHALL tenantseitige modulbezogene Rechte so modellieren, dass sie individuellen Rollen und Gruppen einer Instanz zugeordnet werden können, ohne kanonische Standardrollen als normative Rechtequelle zu verlangen.
+
+#### Scenario: Modulrecht wird einer individuellen Tenant-Rolle zugeordnet
+- **WHEN** ein Administrator einer Instanz ein modulbezogenes Recht einer editierbaren Custom-Rolle zuweist
+- **THEN** wird dieses Recht serverseitig wie jede andere tenantlokale Rollen-Permission-Zuordnung persistiert und ausgewertet
+- **AND** es ist dafür keine kanonische Standardrolle wie `editor` oder `app_manager` erforderlich
+
+#### Scenario: Gruppen vermitteln modulbezogene Rechte ohne Standardrollenpflicht
+- **WHEN** eine Gruppe tenantlokale Rollen bündelt, die modulbezogene Rechte enthalten
+- **THEN** erhält der Benutzer die entsprechenden Rechte über die Gruppenauflösung
+- **AND** die Wirksamkeit hängt nicht davon ab, ob eine kanonische Standardrolle existiert
+
+### Requirement: Geschützte Tenant-Sonderrollen bleiben von frei verwaltbaren Rollen unterscheidbar
+Das System SHALL tenantlokale geschützte Sonderrollen wie `system_admin` von frei verwaltbaren tenantlokalen Rollen unterscheiden.
+
+#### Scenario: system_admin bleibt gesondert geschützt
+- **WHEN** ein Benutzer oder eine Rolle im Tenant-Realm verwaltet wird
+- **THEN** behandelt das System `system_admin` weiterhin als geschützte Sonderrolle
+- **AND** Sonderregeln wie Letztadmin-Schutz oder strengere Verwaltungsprüfungen bleiben erhalten
+- **AND** die geschützte Rolle bündelt direkt alle tenantlokalen Permissions des aktiven Sollzustands
+
+#### Scenario: Individuelle Tenant-Rollen bleiben editierbar
+- **WHEN** eine tenantlokale Custom-Rolle ohne Sonderstatus gelesen oder bearbeitet wird
+- **THEN** bleibt sie über die normale Rollenverwaltung editierbar
+- **AND** ihre Rechtebasis kann unabhängig von kanonischen Standardrollen gepflegt werden
+
+### Requirement: system_admin ist die normative Vollzugriffsrolle im Tenant
+Das System SHALL `system_admin` als normative tenantlokale Vollzugriffsrolle behandeln. Die effektive Permission-Menge von `system_admin` MUST mindestens alle tenantlokalen Core-, Verwaltungs- und Modul-Permissions umfassen, die über tenantseitige UI- und API-Gates relevant sind.
+
+#### Scenario: UI-Gate akzeptiert system_admin ohne Nebenartefakte
+- **WHEN** ein UI- oder API-Gate auf eine tenantlokale Verwaltungs- oder Modul-Permission prüft
+- **THEN** erhält ein Benutzer mit `system_admin` die Freigabe auch dann, wenn keine zusätzliche Gruppe wie `admins` und keine ergänzende Rolle wie `core_admin` zugewiesen ist
+
+#### Scenario: Komfortgruppen bleiben optional
+- **WHEN** eine Tenant-Instanz Gruppen oder Standardrollen als Komfortbündel für Administratoren verwendet
+- **THEN** dürfen diese Artefakte weiterhin Permissions vermitteln
+- **AND** sie sind nicht die normative Quelle dafür, dass ein `system_admin` vollen Zugriff besitzt
+
+### Requirement: Sessiongebundene serverseitige Authorize-Performance-Ausfuehrung
+Das System SHALL einen geschuetzten serverseitigen Performance-Lauf fuer den echten `POST /iam/authorize`-Pfad bereitstellen, der den aktuellen Session-Benutzer als Messsubjekt nutzt.
+
+#### Scenario: Session-Benutzer ist die Messidentitaet
+
+- **WHEN** ein berechtigter Administrator einen GUI-gestuetzten Performance-Lauf startet
+- **THEN** leitet der Server `instanceId` und `keycloakSubject` aus der aktuellen Session ab
+- **AND** verwendet keine in der UI eingegebenen technischen Login-Credentials
+- **AND** fuehrt die Messung im Kontext dieses Benutzers fail-closed aus
+
+#### Scenario: Recompute invalidiert nur den aktuellen Benutzerkontext
+
+- **WHEN** das Szenario `recompute` gemessen wird
+- **THEN** invalidiert das System gezielt den Permission-Snapshot des aktuellen Session-Benutzers
+- **AND** fuehrt danach einen neuen `authorize`-Request gegen denselben fachlichen Kontext aus
+- **AND** invalidiert dabei nicht stillschweigend globale oder fremde Benutzer-Snapshots
+
+#### Scenario: Ergebnis ist fuer GUI und Nachweisfuehrung anschlussfaehig
+
+- **WHEN** der serverseitige Lauf abgeschlossen wurde
+- **THEN** liefert das System strukturierte Ergebnisse fuer `cache-hit`, `cache-miss` und `recompute`
+- **AND** enthaelt jedes Szenario mindestens `Samples`, `p50`, `p95`, `p99` und eine Bewertungsinformation
+- **AND** kann das Ergebnis fuer versionierte Report-Artefakte unter `docs/reports/` wiederverwendet werden
+
+### Requirement: Tenant-Scope und Rollen-Gates schützen Löschregeln und Lifecycle-Zugriffe
+
+Das System SHALL das Lesen und Bearbeiten tenantbezogener Löschregeln sowie den Self-Service-Zugriff auf Inhaltspräferenzen tenantgebunden schützen. Dieses Feature ist ausschließlich tenantgebunden und darf nicht über Root- oder Plattform-Scope ohne aktive `instanceId` freigeschaltet werden.
+
+#### Scenario: Tenant-Admin liest oder bearbeitet Löschregeln der aktiven Instanz
+
+- **WHEN** ein Administrator `/admin/iam?tab=deletion-rules` öffnet oder dort Änderungen speichert
+- **THEN** erfolgt die Prüfung immer gegen die aktive `instanceId`
+- **AND** ist der gelieferte V1-Scope auf tenantgebundene Admin-Rollen beschränkt
+- **AND** werden Cross-Tenant-Zugriffe abgewiesen
+
+#### Scenario: Root- oder Plattformrechte schalten Tenant-Löschregeln nicht implizit frei
+
+- **WHEN** ein Benutzer ohne aktiven Tenant-Scope oder nur mit Plattform-/Root-Rechten eine Aktion für Tenant-Löschregeln ausführt
+- **THEN** wird die Aktion abgewiesen
+- **AND** behandelt das System Plattformrechte nicht als Fallback für tenantgebundene Löschregeln
+
+#### Scenario: Self-Service-Override bleibt auf den eigenen Tenant-Account beschränkt
+
+- **WHEN** ein authentifizierter Tenant-Benutzer einen per-Account-Override für die Inhaltsstrategie speichert
+- **THEN** darf er nur den Override für seinen eigenen Tenant-Account schreiben
+- **AND** bindet der Server den Zielaccount ausschließlich aus Session-/Authentifizierungskontext
+- **AND** akzeptiert der Schreibpfad keine fremden Benutzer- oder Account-IDs als Override-Ziel
+
+#### Scenario: Tenant kann Self-Service-Overrides vollständig unterbinden
+
+- **WHEN** ein Tenant `allowContentPreferenceOverride = false` gesetzt hat
+- **THEN** weist der Server Self-Service-Schreibversuche für Inhaltspräferenzen ab
+- **AND** bleibt die wirksame Inhaltsregel auf den tenantweiten Standard begrenzt
+
+### Requirement: Löschregeln werden fachlich und autorisierungsseitig validiert
+
+Das System SHALL Änderungen an tenantbezogenen Löschregeln serverseitig validieren, bevor sie wirksam werden.
+
+#### Scenario: Geordnete Fristen sind verpflichtend
+
+- **WHEN** ein Benutzer tenantbezogene Löschregeln speichert
+- **THEN** gilt `deactivateAfterDays < pseudonymizeAfterDays < deleteAfterDays`
+- **AND** müssen alle drei Werte positive ganzzahlige Tageswerte sein
+- **AND** werden null, negative oder nicht-ganzzahlige Werte ebenso wie ungültige oder gleichrangige Fristen mit einer stabilen, verständlichen Fehlermeldung abgewiesen
+
+#### Scenario: Inhaltsstrategie bleibt auf V1-Scope begrenzt
+
+- **WHEN** ein Benutzer eine Default-Inhaltsstrategie oder einen per-Account-Override speichert
+- **THEN** akzeptiert das System nur Werte für den Scope `iam.contents`
+- **AND** akzeptiert es als Strategiewerte ausschließlich `beibehalten` und `mit Eigentümer-Lifecycle mitbehandeln`
+- **AND** werden Strategien für andere Inhaltsdomänen in diesem Change zurückgewiesen

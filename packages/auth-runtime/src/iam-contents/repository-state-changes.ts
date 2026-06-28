@@ -40,5 +40,7 @@ export const resolveContentChangedFields = (
     ['publishUntil', next.nextPublishUntil, current.publish_until],
     ['validationState', next.nextValidationState, current.validation_state],
     ['organizationId', next.nextOrganizationId, current.organization_id],
-    ['ownerSubjectId', next.nextOwnerSubjectId, current.owner_subject_id],
+    ['ownerUserId', next.nextOwnerUserId, current.owner_user_id],
+    ['ownerOrganizationId', next.nextOwnerOrganizationId, current.owner_organization_id],
+    ['authorDisplayName', next.nextAuthorDisplayName, current.author_display_name],
   ]);

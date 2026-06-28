@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict H22mmSUTDhehNpiWGjOqMQMfClDKe30BxSOWn9fReQw07ozSJ3WsAdxfOTX8caN
+\restrict y4iO1T35Ug2FO1d7cN3CHaBWEOsdX2smPhEc3AJT1IsYkPGeHagdKpVETkr7Tmg
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -183,11 +183,21 @@ BEGIN
     RETURN OLD;
   END IF;
 
+  IF TG_OP = 'UPDATE' THEN
+    DELETE FROM iam.content_list_projection
+    WHERE instance_id = OLD.instance_id
+      AND source_system = 'iam'
+      AND source_entity_type = 'iam.contents'
+      AND source_entity_id = OLD.id::text;
+  END IF;
+
   INSERT INTO iam.content_list_projection (
     id,
     instance_id,
     organization_id,
     owner_subject_id,
+    owner_user_id,
+    owner_organization_id,
     content_type,
     title,
     published_at,
@@ -214,6 +224,8 @@ BEGIN
     NEW.instance_id,
     NEW.organization_id,
     NEW.owner_subject_id,
+    NEW.owner_user_id,
+    NEW.owner_organization_id,
     NEW.content_type,
     NEW.title,
     NEW.published_at,
@@ -240,6 +252,8 @@ BEGIN
     id = EXCLUDED.id,
     organization_id = EXCLUDED.organization_id,
     owner_subject_id = EXCLUDED.owner_subject_id,
+    owner_user_id = EXCLUDED.owner_user_id,
+    owner_organization_id = EXCLUDED.owner_organization_id,
     content_type = EXCLUDED.content_type,
     title = EXCLUDED.title,
     published_at = EXCLUDED.published_at,
@@ -339,24 +353,6 @@ CREATE TABLE iam.account_organizations (
     instance_id text NOT NULL,
     CONSTRAINT account_organizations_visibility_chk CHECK ((membership_visibility = ANY (ARRAY['internal'::text, 'external'::text])))
 );
-
-
---
--- Name: account_permissions; Type: TABLE; Schema: iam; Owner: -
---
-
-CREATE TABLE iam.account_permissions (
-    instance_id text NOT NULL,
-    account_id uuid NOT NULL,
-    permission_id uuid NOT NULL,
-    effect text DEFAULT 'allow'::text NOT NULL,
-    assigned_by_account_id uuid,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT account_permissions_effect_chk CHECK ((effect = ANY (ARRAY['allow'::text, 'deny'::text])))
-);
-
-ALTER TABLE ONLY iam.account_permissions FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -524,6 +520,8 @@ CREATE TABLE iam.content_list_projection (
     source_entity_type text NOT NULL,
     source_entity_id text NOT NULL,
     projection_updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    owner_user_id uuid,
+    owner_organization_id uuid,
     CONSTRAINT content_list_projection_source_system_chk CHECK ((source_system = ANY (ARRAY['iam'::text, 'mainserver'::text]))),
     CONSTRAINT content_list_projection_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'in_review'::text, 'approved'::text, 'published'::text, 'archived'::text]))),
     CONSTRAINT content_list_projection_validation_state_chk CHECK ((validation_state = ANY (ARRAY['valid'::text, 'invalid'::text, 'pending'::text])))
@@ -579,6 +577,8 @@ CREATE TABLE iam.contents (
     last_audit_event_ref text,
     deletion_lifecycle_state text DEFAULT 'active'::text NOT NULL,
     deletion_lifecycle_changed_at timestamp with time zone,
+    owner_user_id uuid,
+    owner_organization_id uuid,
     CONSTRAINT contents_deletion_lifecycle_state_chk CHECK ((deletion_lifecycle_state = ANY (ARRAY['active'::text, 'deactivated'::text, 'pseudonymized'::text, 'deleted'::text]))),
     CONSTRAINT contents_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'in_review'::text, 'approved'::text, 'published'::text, 'archived'::text]))),
     CONSTRAINT contents_validation_state_chk CHECK ((validation_state = ANY (ARRAY['valid'::text, 'invalid'::text, 'pending'::text])))
@@ -1353,10 +1353,8 @@ CREATE TABLE iam.permissions (
     action text NOT NULL,
     resource_type text NOT NULL,
     resource_id text,
-    effect text DEFAULT 'allow'::text NOT NULL,
     scope jsonb DEFAULT '{}'::jsonb NOT NULL,
-    instance_id text NOT NULL,
-    CONSTRAINT permissions_effect_chk CHECK ((effect = ANY (ARRAY['allow'::text, 'deny'::text])))
+    instance_id text NOT NULL
 );
 
 
@@ -1600,14 +1598,6 @@ ALTER TABLE ONLY iam.account_organizations
 
 
 --
--- Name: account_permissions account_permissions_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.account_permissions
-    ADD CONSTRAINT account_permissions_pkey PRIMARY KEY (instance_id, account_id, permission_id);
-
-
---
 -- Name: account_profile_corrections account_profile_corrections_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -1664,19 +1654,19 @@ ALTER TABLE ONLY iam.content_history
 
 
 --
+-- Name: content_list_projection content_list_projection_scope_key; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.content_list_projection
+    ADD CONSTRAINT content_list_projection_scope_key UNIQUE NULLS NOT DISTINCT (instance_id, source_system, source_entity_type, source_entity_id, organization_id, owner_user_id, owner_organization_id);
+
+
+--
 -- Name: content_list_projection_sync_state content_list_projection_sync_state_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
 ALTER TABLE ONLY iam.content_list_projection_sync_state
     ADD CONSTRAINT content_list_projection_sync_state_pkey PRIMARY KEY (instance_id, source_system, content_type);
-
-
---
--- Name: content_list_projection content_list_projection_scope_key; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.content_list_projection
-    ADD CONSTRAINT content_list_projection_scope_key UNIQUE NULLS NOT DISTINCT (instance_id, source_system, source_entity_type, source_entity_id, organization_id, owner_subject_id);
 
 
 --
@@ -2204,6 +2194,20 @@ CREATE INDEX iam_content_list_projection_instance_updated_idx ON iam.content_lis
 
 
 --
+-- Name: iam_content_list_projection_owner_org_updated_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX iam_content_list_projection_owner_org_updated_idx ON iam.content_list_projection USING btree (instance_id, owner_organization_id, updated_at DESC);
+
+
+--
+-- Name: iam_content_list_projection_owner_user_updated_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX iam_content_list_projection_owner_user_updated_idx ON iam.content_list_projection USING btree (instance_id, owner_user_id, updated_at DESC);
+
+
+--
 -- Name: iam_contents_instance_org_updated_idx; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -2236,20 +2240,6 @@ CREATE INDEX idx_account_groups_group ON iam.account_groups USING btree (instanc
 --
 
 CREATE INDEX idx_account_groups_group_account ON iam.account_groups USING btree (instance_id, group_id, account_id);
-
-
---
--- Name: idx_account_permissions_instance_account; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE INDEX idx_account_permissions_instance_account ON iam.account_permissions USING btree (instance_id, account_id);
-
-
---
--- Name: idx_account_permissions_instance_permission; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE INDEX idx_account_permissions_instance_permission ON iam.account_permissions USING btree (instance_id, permission_id);
 
 
 --
@@ -2907,30 +2897,6 @@ ALTER TABLE ONLY iam.account_organizations
 
 ALTER TABLE ONLY iam.account_organizations
     ADD CONSTRAINT account_org_organization_fk FOREIGN KEY (instance_id, organization_id) REFERENCES iam.organizations(instance_id, id) ON DELETE CASCADE;
-
-
---
--- Name: account_permissions account_permissions_assigned_by_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.account_permissions
-    ADD CONSTRAINT account_permissions_assigned_by_fk FOREIGN KEY (assigned_by_account_id) REFERENCES iam.accounts(id) ON DELETE SET NULL;
-
-
---
--- Name: account_permissions account_permissions_membership_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.account_permissions
-    ADD CONSTRAINT account_permissions_membership_fk FOREIGN KEY (instance_id, account_id) REFERENCES iam.instance_memberships(instance_id, account_id) ON DELETE CASCADE;
-
-
---
--- Name: account_permissions account_permissions_permission_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.account_permissions
-    ADD CONSTRAINT account_permissions_permission_fk FOREIGN KEY (instance_id, permission_id) REFERENCES iam.permissions(instance_id, id) ON DELETE CASCADE;
 
 
 --
@@ -3769,19 +3735,6 @@ CREATE POLICY account_organizations_isolation_policy ON iam.account_organization
 
 
 --
--- Name: account_permissions; Type: ROW SECURITY; Schema: iam; Owner: -
---
-
-ALTER TABLE iam.account_permissions ENABLE ROW LEVEL SECURITY;
-
---
--- Name: account_permissions account_permissions_isolation_policy; Type: POLICY; Schema: iam; Owner: -
---
-
-CREATE POLICY account_permissions_isolation_policy ON iam.account_permissions USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
-
-
---
 -- Name: account_profile_corrections account_profile_corrections_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
@@ -4052,4 +4005,4 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict H22mmSUTDhehNpiWGjOqMQMfClDKe30BxSOWn9fReQw07ozSJ3WsAdxfOTX8caN
+\unrestrict y4iO1T35Ug2FO1d7cN3CHaBWEOsdX2smPhEc3AJT1IsYkPGeHagdKpVETkr7Tmg

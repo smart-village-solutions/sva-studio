@@ -97,14 +97,14 @@ describe('me permissions handler', () => {
     state.resolveImpersonationSubject.mockResolvedValue({ ok: true });
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
-      permissions: [{ action: 'waste.read', resourceType: 'waste', effect: 'allow' }],
+      permissions: [{ action: 'waste.read', resourceType: 'waste' }],
       snapshotVersion: 'snapshot-1',
       cacheStatus: 'hit',
     });
     state.buildMePermissionsResponse.mockReturnValue({
       instanceId: INSTANCE_ID,
       organizationId: ORGANIZATION_ID,
-      permissions: [{ action: 'waste.read', resourceType: 'waste', effect: 'allow' }],
+      permissions: [{ action: 'waste.read', resourceType: 'waste' }],
       subject: {
         actorUserId: 'actor-1',
         effectiveUserId: 'actor-1',
@@ -217,7 +217,7 @@ describe('me permissions handler', () => {
     state.buildMePermissionsResponse.mockReturnValueOnce({
       instanceId: INSTANCE_ID,
       organizationId: ORGANIZATION_ID,
-      permissions: [{ action: 'waste.read', resourceType: 'waste', effect: 'allow' }],
+      permissions: [{ action: 'waste.read', resourceType: 'waste' }],
       subject: {
         actorUserId: 'actor-1',
         effectiveUserId: 'delegate-1',
@@ -259,7 +259,7 @@ describe('me permissions handler', () => {
     expect(state.buildMePermissionsResponse).toHaveBeenCalledWith({
       instanceId: INSTANCE_ID,
       organizationId: ORGANIZATION_ID,
-      permissions: [{ action: 'waste.read', resourceType: 'waste', effect: 'allow' }],
+      permissions: [{ action: 'waste.read', resourceType: 'waste' }],
       actorUserId: 'actor-1',
       effectiveUserId: 'delegate-1',
       isImpersonating: true,
@@ -281,8 +281,8 @@ describe('me permissions handler', () => {
     state.resolveEffectivePermissions.mockResolvedValueOnce({
       ok: true,
       permissions: [
-        { action: 'instance.registry.manage', resourceType: 'instance', effect: 'allow' },
-        { action: 'waste.read', resourceType: 'waste', effect: 'allow' },
+        { action: 'instance.registry.manage', resourceType: 'instance' },
+        { action: 'waste.read', resourceType: 'waste' },
       ],
       snapshotVersion: 'snapshot-1',
       cacheStatus: 'hit',
@@ -292,7 +292,7 @@ describe('me permissions handler', () => {
 
     expect(state.buildMePermissionsResponse).toHaveBeenCalledWith(
       expect.objectContaining({
-        permissions: [{ action: 'waste.read', resourceType: 'waste', effect: 'allow' }],
+        permissions: [{ action: 'waste.read', resourceType: 'waste' }],
       })
     );
   });

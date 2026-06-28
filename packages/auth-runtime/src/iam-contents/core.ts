@@ -206,7 +206,8 @@ export const getContentHistoryInternal = async (
       contentId: item.id,
       contentType: item.contentType,
       organizationId: item.organizationId,
-      createdByAccountId: item.createdBy,
+      ownerUserId: item.ownerUserId,
+      ownerOrganizationId: item.ownerOrganizationId,
     });
     if (authorizationError) {
       return authorizationError;

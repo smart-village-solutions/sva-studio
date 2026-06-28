@@ -5,6 +5,8 @@ type ProjectionRow = {
   instance_id: string;
   organization_id: string | null;
   owner_subject_id: string | null;
+  owner_user_id?: string | null;
+  owner_organization_id?: string | null;
   content_type: string;
   title: string;
   published_at: string | null;
@@ -36,6 +38,42 @@ const state = vi.hoisted(() => ({
   listSvaMainserverPoi: vi.fn(),
   getWorkspaceContext: vi.fn(),
 }));
+
+const readNullableString = (value: unknown): string | null =>
+  typeof value === 'string' ? value : null;
+
+const readPayloadJson = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
+const mapInsertedProjectionRow = (row: Record<string, unknown>): ProjectionRow => ({
+  id: String(row.id),
+  instance_id: String(row.instance_id),
+  organization_id: readNullableString(row.organization_id),
+  owner_subject_id: readNullableString(row.owner_subject_id),
+  owner_user_id: readNullableString(row.owner_user_id),
+  owner_organization_id: readNullableString(row.owner_organization_id),
+  content_type: String(row.content_type),
+  title: String(row.title),
+  published_at: readNullableString(row.published_at),
+  publish_from: readNullableString(row.publish_from),
+  publish_until: readNullableString(row.publish_until),
+  created_at: String(row.created_at),
+  created_by: String(row.created_by),
+  updated_at: String(row.updated_at),
+  updated_by: String(row.updated_by),
+  author_display_name: String(row.author_display_name),
+  payload_json: readPayloadJson(row.payload_json),
+  status: row.status as ProjectionRow['status'],
+  validation_state: row.validation_state as ProjectionRow['validation_state'],
+  history_ref: String(row.history_ref),
+  current_revision_ref: readNullableString(row.current_revision_ref),
+  last_audit_event_ref: readNullableString(row.last_audit_event_ref),
+  source_system: 'mainserver',
+  source_entity_type: String(row.source_entity_type),
+  source_entity_id: String(row.source_entity_id),
+});
 
 vi.mock('@sva/auth-runtime/server', () => ({
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
@@ -96,6 +134,8 @@ describe('content list projection', () => {
       | 'source_entity_id'
       | 'organization_id'
       | 'owner_subject_id'
+      | 'owner_user_id'
+      | 'owner_organization_id'
     >
   ): string =>
     [
@@ -104,10 +144,14 @@ describe('content list projection', () => {
       row.source_entity_type,
       row.source_entity_id,
       row.organization_id ?? '',
-      row.owner_subject_id ?? '',
+      row.owner_user_id ?? '',
+      row.owner_organization_id ?? '',
     ].join('::');
 
-  const applyProjectionFilters = (text: string, values: readonly unknown[] | undefined): ProjectionRow[] => {
+  const applyProjectionFilters = (
+    text: string,
+    values: readonly unknown[] | undefined
+  ): ProjectionRow[] => {
     const scopedInstanceId = String(values?.[0] ?? '');
     let rows = projectionRows.filter((row) => row.instance_id === scopedInstanceId);
 
@@ -119,21 +163,43 @@ describe('content list projection', () => {
       rows = rows.filter((row) => contentTypes.includes(row.content_type));
     }
 
-    const orgMatches = [...text.matchAll(/projection\.organization_id::text = ANY\(\$(\d+)::text\[\]\)/g)];
+    const legacyOrgMatches = [
+      ...text.matchAll(/projection\.organization_id::text = ANY\(\$(\d+)::text\[\]\)/g),
+    ];
+    const ownerOrgMatches = [
+      ...text.matchAll(/projection\.owner_organization_id::text = ANY\(\$(\d+)::text\[\]\)/g),
+    ];
+    const orgMatches = [...legacyOrgMatches, ...ownerOrgMatches];
+    const mainserverSourceGuardIndex = text.indexOf("projection.source_system <> 'mainserver'");
     if (orgMatches.length > 0 && !text.includes('NOT (projection.organization_id::text = ANY')) {
       const allowedOrganizationIds = orgMatches.flatMap((match) => {
         const value = values?.[Number.parseInt(match[1] ?? '0', 10) - 1];
-        return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
+        return Array.isArray(value)
+          ? value.filter((entry): entry is string => typeof entry === 'string')
+          : [];
       });
-      const allowsUnscopedOrganizations = text.includes('projection.organization_id IS NULL');
+      const visibilityOwnerUserIds = [
+        ...text.matchAll(/projection\.owner_user_id::text = \$(\d+)/g),
+      ]
+        .filter(
+          (match) => match.index < mainserverSourceGuardIndex || mainserverSourceGuardIndex < 0
+        )
+        .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
+        .filter((value): value is string => typeof value === 'string');
       rows = rows.filter(
         (row) =>
-          (row.organization_id !== null && allowedOrganizationIds.includes(row.organization_id)) ||
-          (allowsUnscopedOrganizations && row.organization_id === null)
+          (legacyOrgMatches.length > 0 &&
+            row.organization_id != null &&
+            allowedOrganizationIds.includes(row.organization_id)) ||
+          (row.owner_organization_id != null &&
+            allowedOrganizationIds.includes(row.owner_organization_id)) ||
+          (row.owner_user_id != null && visibilityOwnerUserIds.includes(row.owner_user_id))
       );
     }
 
-    const createdByMatches = [...text.matchAll(/projection\.created_by = \$(\d+)/g)];
+    const createdByMatches = [
+      ...text.matchAll(/projection\.owner_user_id::text = \$(\d+)/g),
+    ].filter((match) => mainserverSourceGuardIndex < 0 || match.index < mainserverSourceGuardIndex);
     if (
       createdByMatches.length > 0 &&
       orgMatches.length === 0 &&
@@ -142,20 +208,22 @@ describe('content list projection', () => {
       const allowedCreators = createdByMatches
         .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
         .filter((value): value is string => typeof value === 'string');
-      rows = rows.filter((row) => allowedCreators.includes(row.created_by));
+      rows = rows.filter(
+        (row) => row.owner_user_id != null && allowedCreators.includes(row.owner_user_id)
+      );
     }
 
-    if (text.includes('projection.owner_subject_id = $')) {
-      const ownerSubjectIdMatches = [...text.matchAll(/projection\.owner_subject_id = \$(\d+)/g)];
-      const allowedOwnerSubjectIds = ownerSubjectIdMatches
+    if (text.includes('projection.owner_user_id::text = $')) {
+      const ownerUserIdMatches = [...text.matchAll(/projection\.owner_user_id::text = \$(\d+)/g)];
+      const allowedOwnerUserIds = ownerUserIdMatches
         .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
         .filter((value): value is string => typeof value === 'string');
       rows = rows.filter(
         (row) =>
           row.source_system !== 'mainserver' ||
           row.organization_id !== null ||
-          row.owner_subject_id === null ||
-          allowedOwnerSubjectIds.includes(row.owner_subject_id)
+          row.owner_user_id == null ||
+          allowedOwnerUserIds.includes(row.owner_user_id)
       );
     }
 
@@ -178,22 +246,23 @@ describe('content list projection', () => {
     state.getWorkspaceContext.mockReset();
     state.getWorkspaceContext.mockReturnValue({ requestId: 'req-1' });
 
-    state.authorizeContentPrimitiveForUser.mockImplementation(async ({ action }: { action: string }) =>
-      action.endsWith('.read')
-        ? {
-            ok: true,
-            actor: {
-              instanceId: 'de-musterhausen',
-              keycloakSubject: 'kc-user-1',
-            },
-            permissions: [{ action, resourceType: action.split('.')[0] ?? 'content' }],
-          }
-        : {
-            ok: false,
-            status: 403,
-            error: 'forbidden',
-          message: 'forbidden',
-        }
+    state.authorizeContentPrimitiveForUser.mockImplementation(
+      async ({ action }: { action: string }) =>
+        action.endsWith('.read')
+          ? {
+              ok: true,
+              actor: {
+                instanceId: 'de-musterhausen',
+                keycloakSubject: 'kc-user-1',
+              },
+              permissions: [{ action, resourceType: action.split('.')[0] ?? 'content' }],
+            }
+          : {
+              ok: false,
+              status: 403,
+              error: 'forbidden',
+              message: 'forbidden',
+            }
     );
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
@@ -206,193 +275,190 @@ describe('content list projection', () => {
     });
     state.resolveActorAccountId.mockResolvedValue('account-1');
 
-    state.withInstanceScopedDb.mockImplementation(async (_instanceId: string, work: (client: { query: <TRow>(text: string, values?: readonly unknown[]) => Promise<{ rows: TRow[]; rowCount: number }> }) => Promise<unknown>) =>
-      work({
-        query: async <TRow>(text: string, values?: readonly unknown[]) => {
-          if (text.includes('FROM iam.content_list_projection_sync_state')) {
-            const contentType = String(values?.[1] ?? '');
-            const row = syncStates.get(contentType);
-            return { rows: row ? ([row] as TRow[]) : [], rowCount: row ? 1 : 0 };
-          }
-
-          if (text.includes('SELECT DISTINCT projection.content_type')) {
-            const instanceId = String(values?.[0] ?? '');
-            const rows = [...new Set(projectionRows
-              .filter((row) => row.instance_id === instanceId)
-              .map((row) => row.content_type))]
-              .sort((left, right) => left.localeCompare(right))
-              .map((content_type) => ({ content_type })) as TRow[];
-            return { rows, rowCount: rows.length };
-          }
-
-          if (text.includes('INSERT INTO iam.content_list_projection_sync_state')) {
-            const contentType = String(values?.[1] ?? '');
-            if ((values?.length ?? 0) >= 4) {
-              syncStates.set(contentType, {
-                ...(syncStates.get(contentType) ?? {
-                  last_started_at: null,
-                  last_succeeded_at: null,
-                  last_failed_at: null,
-                  last_error_code: null,
-                  last_error_message: null,
-                  projected_count: 0,
-                }),
-                last_failed_at: new Date().toISOString(),
-                last_error_code: String(values?.[2] ?? ''),
-                last_error_message: String(values?.[3] ?? ''),
-              });
-            } else if ((values?.length ?? 0) === 3) {
-              syncStates.set(contentType, {
-                ...(syncStates.get(contentType) ?? {
-                  last_started_at: null,
-                  last_succeeded_at: null,
-                  last_failed_at: null,
-                  last_error_code: null,
-                  last_error_message: null,
-                  projected_count: 0,
-                }),
-                last_succeeded_at: new Date().toISOString(),
-                last_failed_at: null,
-                last_error_code: null,
-                last_error_message: null,
-                projected_count: Number(values?.[2] ?? 0),
-              });
-            } else {
-              syncStates.set(contentType, {
-                last_started_at: new Date().toISOString(),
-                ...(syncStates.get(contentType) ?? {
-                  last_succeeded_at: null,
-                  last_failed_at: null,
-                  last_error_code: null,
-                  last_error_message: null,
-                  projected_count: 0,
-                }),
-              });
+    state.withInstanceScopedDb.mockImplementation(
+      async (
+        _instanceId: string,
+        work: (client: {
+          query: <TRow>(
+            text: string,
+            values?: readonly unknown[]
+          ) => Promise<{ rows: TRow[]; rowCount: number }>;
+        }) => Promise<unknown>
+      ) =>
+        work({
+          query: async <TRow>(text: string, values?: readonly unknown[]) => {
+            if (text.includes('FROM iam.content_list_projection_sync_state')) {
+              const contentType = String(values?.[1] ?? '');
+              const row = syncStates.get(contentType);
+              return { rows: row ? ([row] as TRow[]) : [], rowCount: row ? 1 : 0 };
             }
-            return { rows: [], rowCount: 1 };
-          }
 
-          if (text.includes('FROM iam.content_list_projection') && text.includes("source_system = 'mainserver'") && text.includes('COUNT(*)::int AS total')) {
-            const instanceId = String(values?.[0] ?? '');
-            const contentType = String(values?.[1] ?? '');
-            const organizationId =
-              typeof values?.[2] === 'string' ? String(values[2]) : undefined;
-            const keycloakSubject = String(values?.[3] ?? '');
-            const total = projectionRows.filter(
-              (row) =>
-                row.instance_id === instanceId &&
-                row.source_system === 'mainserver' &&
-                row.content_type === contentType &&
-                (
-                  (organizationId ? row.organization_id === organizationId : row.organization_id === null) &&
-                  (!organizationId
-                    ? row.owner_subject_id === null || row.owner_subject_id === keycloakSubject
-                    : true)
-                )
-            ).length;
-            return { rows: [{ total }] as TRow[], rowCount: 1 };
-          }
+            if (text.includes('SELECT DISTINCT projection.content_type')) {
+              const instanceId = String(values?.[0] ?? '');
+              const rows = [
+                ...new Set(
+                  projectionRows
+                    .filter((row) => row.instance_id === instanceId)
+                    .map((row) => row.content_type)
+                ),
+              ]
+                .sort((left, right) => left.localeCompare(right))
+                .map((content_type) => ({ content_type })) as TRow[];
+              return { rows, rowCount: rows.length };
+            }
 
-          if (text.includes('DELETE FROM iam.content_list_projection')) {
-            const contentType = String(values?.[1] ?? '');
-            const organizationId =
-              typeof values?.[2] === 'string' ? String(values[2]) : undefined;
-            const keycloakSubject = String(values?.[3] ?? '');
-            projectionRows = projectionRows.filter(
-              (row) =>
-                !(
+            if (text.includes('INSERT INTO iam.content_list_projection_sync_state')) {
+              const contentType = String(values?.[1] ?? '');
+              if ((values?.length ?? 0) >= 4) {
+                syncStates.set(contentType, {
+                  ...(syncStates.get(contentType) ?? {
+                    last_started_at: null,
+                    last_succeeded_at: null,
+                    last_failed_at: null,
+                    last_error_code: null,
+                    last_error_message: null,
+                    projected_count: 0,
+                  }),
+                  last_failed_at: new Date().toISOString(),
+                  last_error_code: String(values?.[2] ?? ''),
+                  last_error_message: String(values?.[3] ?? ''),
+                });
+              } else if ((values?.length ?? 0) === 3) {
+                syncStates.set(contentType, {
+                  ...(syncStates.get(contentType) ?? {
+                    last_started_at: null,
+                    last_succeeded_at: null,
+                    last_failed_at: null,
+                    last_error_code: null,
+                    last_error_message: null,
+                    projected_count: 0,
+                  }),
+                  last_succeeded_at: new Date().toISOString(),
+                  last_failed_at: null,
+                  last_error_code: null,
+                  last_error_message: null,
+                  projected_count: Number(values?.[2] ?? 0),
+                });
+              } else {
+                syncStates.set(contentType, {
+                  last_started_at: new Date().toISOString(),
+                  ...(syncStates.get(contentType) ?? {
+                    last_succeeded_at: null,
+                    last_failed_at: null,
+                    last_error_code: null,
+                    last_error_message: null,
+                    projected_count: 0,
+                  }),
+                });
+              }
+              return { rows: [], rowCount: 1 };
+            }
+
+            if (
+              text.includes('FROM iam.content_list_projection') &&
+              text.includes("source_system = 'mainserver'") &&
+              text.includes('COUNT(*)::int AS total')
+            ) {
+              const instanceId = String(values?.[0] ?? '');
+              const contentType = String(values?.[1] ?? '');
+              const organizationId =
+                typeof values?.[2] === 'string' ? String(values[2]) : undefined;
+              const actorAccountId =
+                typeof values?.[3] === 'string' ? String(values[3]) : undefined;
+              const total = projectionRows.filter(
+                (row) =>
+                  row.instance_id === instanceId &&
                   row.source_system === 'mainserver' &&
                   row.content_type === contentType &&
-                  (
-                    (organizationId ? row.organization_id === organizationId : row.organization_id === null) &&
+                  (organizationId
+                    ? row.organization_id === organizationId
+                    : row.organization_id === null) &&
+                  (!organizationId
+                    ? row.owner_user_id === null || row.owner_user_id === actorAccountId
+                    : true)
+              ).length;
+              return { rows: [{ total }] as TRow[], rowCount: 1 };
+            }
+
+            if (text.includes('DELETE FROM iam.content_list_projection')) {
+              const contentType = String(values?.[1] ?? '');
+              const organizationId =
+                typeof values?.[2] === 'string' ? String(values[2]) : undefined;
+              const actorAccountId =
+                typeof values?.[3] === 'string' ? String(values[3]) : undefined;
+              projectionRows = projectionRows.filter(
+                (row) =>
+                  !(
+                    row.source_system === 'mainserver' &&
+                    row.content_type === contentType &&
+                    (organizationId
+                      ? row.organization_id === organizationId
+                      : row.organization_id === null) &&
                     (!organizationId
-                      ? row.owner_subject_id === null || row.owner_subject_id === keycloakSubject
+                      ? row.owner_user_id === null || row.owner_user_id === actorAccountId
                       : true)
                   )
-                )
-            );
-            return { rows: [], rowCount: 0 };
-          }
-
-          if (text.includes('INSERT INTO iam.content_list_projection')) {
-            projectionInsertArgs = values ?? null;
-            projectionInsertSql = text;
-            const rows = JSON.parse(String(values?.[0] ?? '[]')) as Array<Record<string, unknown>>;
-            const mappedRows = rows.map((row) => ({
-                id: String(row.id),
-                instance_id: String(row.instance_id),
-                organization_id: (row.organization_id as string | null) ?? null,
-                owner_subject_id: (row.owner_subject_id as string | null) ?? null,
-                content_type: String(row.content_type),
-                title: String(row.title),
-                published_at: (row.published_at as string | null) ?? null,
-                publish_from: (row.publish_from as string | null) ?? null,
-                publish_until: (row.publish_until as string | null) ?? null,
-                created_at: String(row.created_at),
-                created_by: String(row.created_by),
-                updated_at: String(row.updated_at),
-                updated_by: String(row.updated_by),
-                author_display_name: String(row.author_display_name),
-                payload_json: (row.payload_json as Record<string, unknown>) ?? {},
-                status: row.status as ProjectionRow['status'],
-                validation_state: row.validation_state as ProjectionRow['validation_state'],
-                history_ref: String(row.history_ref),
-                current_revision_ref: (row.current_revision_ref as string | null) ?? null,
-                last_audit_event_ref: (row.last_audit_event_ref as string | null) ?? null,
-                source_system: 'mainserver',
-                source_entity_type: String(row.source_entity_type),
-                source_entity_id: String(row.source_entity_id),
-              })) satisfies ProjectionRow[];
-
-            if (simulateConcurrentProjectionConflict && mappedRows.length > 0) {
-              projectionRows.push({
-                ...mappedRows[0],
-                id: 'concurrent-row',
-              });
-              simulateConcurrentProjectionConflict = false;
+              );
+              return { rows: [], rowCount: 0 };
             }
 
-            for (const row of mappedRows) {
-              const existingIndex = projectionRows.findIndex(
-                (candidate) => buildScopeKey(candidate) === buildScopeKey(row)
-              );
+            if (text.includes('INSERT INTO iam.content_list_projection')) {
+              projectionInsertArgs = values ?? null;
+              projectionInsertSql = text;
+              const rows = JSON.parse(String(values?.[0] ?? '[]')) as Array<
+                Record<string, unknown>
+              >;
+              const mappedRows = rows.map(mapInsertedProjectionRow);
 
-              if (existingIndex >= 0) {
-                if (
-                  !text.includes(
-                    'ON CONFLICT ON CONSTRAINT content_list_projection_scope_key DO UPDATE'
-                  )
-                ) {
-                  const error = new Error(
-                    'duplicate key value violates unique constraint "content_list_projection_scope_key"'
-                  ) as Error & { code?: string };
-                  error.code = '23505';
-                  throw error;
-                }
-
-                projectionRows[existingIndex] = row;
-                continue;
+              if (simulateConcurrentProjectionConflict && mappedRows.length > 0) {
+                projectionRows.push({
+                  ...mappedRows[0],
+                  id: 'concurrent-row',
+                });
+                simulateConcurrentProjectionConflict = false;
               }
 
-              projectionRows.push(row);
+              for (const row of mappedRows) {
+                const existingIndex = projectionRows.findIndex(
+                  (candidate) => buildScopeKey(candidate) === buildScopeKey(row)
+                );
+
+                if (existingIndex >= 0) {
+                  if (
+                    !text.includes(
+                      'ON CONFLICT ON CONSTRAINT content_list_projection_scope_key DO UPDATE'
+                    )
+                  ) {
+                    const error = new Error(
+                      'duplicate key value violates unique constraint "content_list_projection_scope_key"'
+                    ) as Error & { code?: string };
+                    error.code = '23505';
+                    throw error;
+                  }
+
+                  projectionRows[existingIndex] = row;
+                  continue;
+                }
+
+                projectionRows.push(row);
+              }
+
+              return { rows: [], rowCount: mappedRows.length };
             }
 
-            return { rows: [], rowCount: mappedRows.length };
-          }
+            if (text.includes('SELECT COUNT(*)::int AS total')) {
+              const rows = applyProjectionFilters(text, values);
+              return { rows: [{ total: rows.length }] as TRow[], rowCount: 1 };
+            }
 
-          if (text.includes('SELECT COUNT(*)::int AS total')) {
-            const rows = applyProjectionFilters(text, values);
-            return { rows: [{ total: rows.length }] as TRow[], rowCount: 1 };
-          }
+            if (text.includes('FROM iam.content_list_projection AS projection')) {
+              const rows = applyProjectionFilters(text, values);
+              return { rows: rows as TRow[], rowCount: rows.length };
+            }
 
-          if (text.includes('FROM iam.content_list_projection AS projection')) {
-            const rows = applyProjectionFilters(text, values);
-            return { rows: rows as TRow[], rowCount: rows.length };
-          }
-
-          return { rows: [], rowCount: 0 };
-        },
-      })
+            return { rows: [], rowCount: 0 };
+          },
+        })
     );
   });
 
@@ -486,9 +552,7 @@ describe('content list projection', () => {
       last_error_message: null,
       projected_count: 1,
     });
-    state.listSvaMainserverNews.mockImplementation(
-      () => new Promise(() => undefined)
-    );
+    state.listSvaMainserverNews.mockImplementation(() => new Promise(() => undefined));
 
     const response = await listProjectedContents(ctx, {
       page: 1,
@@ -532,6 +596,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-1',
         owner_subject_id: null,
+        owner_user_id: 'account-1',
+        owner_organization_id: 'org-1',
         content_type: 'generic',
         title: 'Visible',
         published_at: null,
@@ -557,6 +623,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-2',
         owner_subject_id: null,
+        owner_user_id: 'account-2',
+        owner_organization_id: 'org-2',
         content_type: 'generic',
         title: 'Hidden',
         published_at: null,
@@ -578,26 +646,41 @@ describe('content list projection', () => {
         source_entity_id: 'content-2',
       },
     ];
-    state.authorizeContentPrimitiveForUser.mockImplementation(async ({ action }: { action: string }) =>
-      action === 'content.read'
-        ? {
-            ok: true,
-            actor: {
-              instanceId: 'de-musterhausen',
-              keycloakSubject: 'kc-user-1',
-            },
-            permissions: [{ action, resourceType: 'content', organizationId: 'org-1' }],
-          }
-        : {
-            ok: false,
-            status: 403,
-            error: 'forbidden',
-            message: 'forbidden',
-          }
+    state.authorizeContentPrimitiveForUser.mockImplementation(
+      async ({ action }: { action: string }) =>
+        action === 'content.read'
+          ? {
+              ok: true,
+              actor: {
+                instanceId: 'de-musterhausen',
+                keycloakSubject: 'kc-user-1',
+              },
+              permissions: [
+                {
+                  action,
+                  resourceType: 'content',
+                  organizationId: 'org-1',
+                  accessScope: 'organization',
+                },
+              ],
+            }
+          : {
+              ok: false,
+              status: 403,
+              error: 'forbidden',
+              message: 'forbidden',
+            }
     );
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
-      permissions: [{ action: 'content.read', resourceType: 'content', organizationId: 'org-1' }],
+      permissions: [
+        {
+          action: 'content.read',
+          resourceType: 'content',
+          organizationId: 'org-1',
+          accessScope: 'organization',
+        },
+      ],
     });
 
     const response = await listProjectedContents(ctx, {
@@ -626,6 +709,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-1',
         owner_subject_id: null,
+        owner_user_id: 'account-1',
+        owner_organization_id: 'org-1',
         content_type: 'generic',
         title: 'Visible',
         published_at: null,
@@ -672,6 +757,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-1',
         owner_subject_id: null,
+        owner_user_id: 'account-1',
+        owner_organization_id: 'org-1',
         content_type: 'generic',
         title: 'Visible',
         published_at: null,
@@ -693,26 +780,27 @@ describe('content list projection', () => {
         source_entity_id: 'content-1',
       },
     ];
-    state.authorizeContentPrimitiveForUser.mockImplementation(async ({ action }: { action: string }) =>
-      action === 'content.read'
-        ? {
-            ok: true,
-            actor: {
-              instanceId: 'de-musterhausen',
-              keycloakSubject: 'kc-user-1',
-            },
-            permissions: [
-              { action: 'content.read', resourceType: 'content' },
-              { action: 'content.create', resourceType: 'content' },
-              { action: 'content.updateMetadata', resourceType: 'content' },
-            ],
-          }
-        : {
-            ok: false,
-            status: 403,
-            error: 'forbidden',
-            message: 'forbidden',
-          }
+    state.authorizeContentPrimitiveForUser.mockImplementation(
+      async ({ action }: { action: string }) =>
+        action === 'content.read'
+          ? {
+              ok: true,
+              actor: {
+                instanceId: 'de-musterhausen',
+                keycloakSubject: 'kc-user-1',
+              },
+              permissions: [
+                { action: 'content.read', resourceType: 'content' },
+                { action: 'content.create', resourceType: 'content' },
+                { action: 'content.updateMetadata', resourceType: 'content' },
+              ],
+            }
+          : {
+              ok: false,
+              status: 403,
+              error: 'forbidden',
+              message: 'forbidden',
+            }
     );
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
@@ -753,6 +841,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-1',
         owner_subject_id: null,
+        owner_user_id: 'account-1',
+        owner_organization_id: 'org-1',
         content_type: 'generic',
         title: 'Own Row',
         published_at: null,
@@ -778,6 +868,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-1',
         owner_subject_id: null,
+        owner_user_id: 'account-9',
+        owner_organization_id: 'org-1',
         content_type: 'generic',
         title: 'Other Row',
         published_at: null,
@@ -821,7 +913,9 @@ describe('content list projection', () => {
   });
 
   it('returns a deterministic list error when the mainserver refresh fails', async () => {
-    state.listSvaMainserverNews.mockRejectedValue(Object.assign(new Error('upstream down'), { code: 'database_unavailable' }));
+    state.listSvaMainserverNews.mockRejectedValue(
+      Object.assign(new Error('upstream down'), { code: 'database_unavailable' })
+    );
 
     const response = await listProjectedContents(ctx, {
       page: 1,
@@ -835,7 +929,8 @@ describe('content list projection', () => {
     await expect(response.json()).resolves.toEqual({
       error: {
         code: 'database_unavailable',
-        message: 'Für mindestens einen angefragten Mainserver-Inhaltstyp liegt noch kein synchronisierter Snapshot vor.',
+        message:
+          'Für mindestens einen angefragten Mainserver-Inhaltstyp liegt noch kein synchronisierter Snapshot vor.',
       },
       requestId: 'req-1',
     });
@@ -848,6 +943,8 @@ describe('content list projection', () => {
         instance_id: 'de-musterhausen',
         organization_id: 'org-1',
         owner_subject_id: null,
+        owner_user_id: null,
+        owner_organization_id: 'org-1',
         content_type: 'news.article',
         title: 'Rathaus',
         published_at: '2026-06-21T09:00:00.000Z',
@@ -877,27 +974,42 @@ describe('content list projection', () => {
       last_error_message: null,
       projected_count: 1,
     });
-    state.authorizeContentPrimitiveForUser.mockImplementation(async ({ action }: { action: string }) =>
-      action === 'news.read'
-        ? {
-            ok: true,
-            actor: {
-              instanceId: 'de-musterhausen',
-              keycloakSubject: 'kc-user-1',
-              organizationId: 'org-1',
-            },
-            permissions: [{ action, resourceType: 'news', organizationId: 'org-1', accessScope: 'organization' }],
-          }
-        : {
-            ok: false,
-            status: 403,
-            error: 'forbidden',
-            message: 'forbidden',
-          }
+    state.authorizeContentPrimitiveForUser.mockImplementation(
+      async ({ action }: { action: string }) =>
+        action === 'news.read'
+          ? {
+              ok: true,
+              actor: {
+                instanceId: 'de-musterhausen',
+                keycloakSubject: 'kc-user-1',
+                organizationId: 'org-1',
+              },
+              permissions: [
+                {
+                  action,
+                  resourceType: 'news',
+                  organizationId: 'org-1',
+                  accessScope: 'organization',
+                },
+              ],
+            }
+          : {
+              ok: false,
+              status: 403,
+              error: 'forbidden',
+              message: 'forbidden',
+            }
     );
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
-      permissions: [{ action: 'news.read', resourceType: 'news', organizationId: 'org-1', accessScope: 'organization' }],
+      permissions: [
+        {
+          action: 'news.read',
+          resourceType: 'news',
+          organizationId: 'org-1',
+          accessScope: 'organization',
+        },
+      ],
     });
 
     const response = await listProjectedContents(ctx, {
@@ -919,13 +1031,15 @@ describe('content list projection', () => {
     });
   });
 
-  it('keeps unscoped mainserver rows visible when no active organization is set', async () => {
+  it('keeps own mainserver rows visible when no active organization is set', async () => {
     projectionRows = [
       {
         id: 'news-1',
         instance_id: 'de-musterhausen',
         organization_id: null,
         owner_subject_id: null,
+        owner_user_id: 'account-1',
+        owner_organization_id: null,
         content_type: 'news.article',
         title: 'Rathaus',
         published_at: '2026-06-21T09:00:00.000Z',
@@ -972,26 +1086,41 @@ describe('content list projection', () => {
       ],
       pagination: { page: 1, pageSize: 100, hasNextPage: false },
     });
-    state.authorizeContentPrimitiveForUser.mockImplementation(async ({ action }: { action: string }) =>
-      action === 'news.read'
-        ? {
-            ok: true,
-            actor: {
-              instanceId: 'de-musterhausen',
-              keycloakSubject: 'kc-user-1',
-            },
-            permissions: [{ action, resourceType: 'news', organizationId: 'org-1', accessScope: 'organization' }],
-          }
-        : {
-            ok: false,
-            status: 403,
-            error: 'forbidden',
-            message: 'forbidden',
-          }
+    state.authorizeContentPrimitiveForUser.mockImplementation(
+      async ({ action }: { action: string }) =>
+        action === 'news.read'
+          ? {
+              ok: true,
+              actor: {
+                instanceId: 'de-musterhausen',
+                keycloakSubject: 'kc-user-1',
+              },
+              permissions: [
+                {
+                  action,
+                  resourceType: 'news',
+                  organizationId: 'org-1',
+                  accessScope: 'organization',
+                },
+              ],
+            }
+          : {
+              ok: false,
+              status: 403,
+              error: 'forbidden',
+              message: 'forbidden',
+            }
     );
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
-      permissions: [{ action: 'news.read', resourceType: 'news', organizationId: 'org-1', accessScope: 'organization' }],
+      permissions: [
+        {
+          action: 'news.read',
+          resourceType: 'news',
+          organizationId: 'org-1',
+          accessScope: 'organization',
+        },
+      ],
     });
 
     const response = await listProjectedContents(
@@ -1009,7 +1138,7 @@ describe('content list projection', () => {
     );
 
     await expect(response.json()).resolves.toMatchObject({
-      data: [expect.objectContaining({ id: 'news-1' })],
+      data: expect.arrayContaining([expect.objectContaining({ id: 'news-1' })]),
       pagination: {
         page: 1,
         pageSize: 25,
@@ -1071,27 +1200,42 @@ describe('content list projection', () => {
       ],
       pagination: { page: 1, pageSize: 100, hasNextPage: false },
     });
-    state.authorizeContentPrimitiveForUser.mockImplementation(async ({ action }: { action: string }) =>
-      action === 'news.read'
-        ? {
-            ok: true,
-            actor: {
-              instanceId: 'de-musterhausen',
-              keycloakSubject: 'kc-user-1',
-              organizationId: 'org-1',
-            },
-            permissions: [{ action, resourceType: 'news', organizationId: 'org-1', accessScope: 'organization' }],
-          }
-        : {
-            ok: false,
-            status: 403,
-            error: 'forbidden',
-            message: 'forbidden',
-          }
+    state.authorizeContentPrimitiveForUser.mockImplementation(
+      async ({ action }: { action: string }) =>
+        action === 'news.read'
+          ? {
+              ok: true,
+              actor: {
+                instanceId: 'de-musterhausen',
+                keycloakSubject: 'kc-user-1',
+                organizationId: 'org-1',
+              },
+              permissions: [
+                {
+                  action,
+                  resourceType: 'news',
+                  organizationId: 'org-1',
+                  accessScope: 'organization',
+                },
+              ],
+            }
+          : {
+              ok: false,
+              status: 403,
+              error: 'forbidden',
+              message: 'forbidden',
+            }
     );
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
-      permissions: [{ action: 'news.read', resourceType: 'news', organizationId: 'org-1', accessScope: 'organization' }],
+      permissions: [
+        {
+          action: 'news.read',
+          resourceType: 'news',
+          organizationId: 'org-1',
+          accessScope: 'organization',
+        },
+      ],
     });
 
     const response = await listProjectedContents(ctx, {
@@ -1105,7 +1249,8 @@ describe('content list projection', () => {
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({
       error: {
-        message: 'Für mindestens einen angefragten Mainserver-Inhaltstyp liegt noch kein synchronisierter Snapshot vor.',
+        message:
+          'Für mindestens einen angefragten Mainserver-Inhaltstyp liegt noch kein synchronisierter Snapshot vor.',
       },
     });
   });
@@ -1363,6 +1508,7 @@ describe('content list projection', () => {
       contentType: 'poi.point-of-interest',
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
       organizationId: 'org-1',
     });
 
@@ -1383,6 +1529,47 @@ describe('content list projection', () => {
       expect.objectContaining({
         organization_id: 'org-1',
         source_entity_id: 'poi-mutation-1',
+      }),
+    ]);
+  });
+
+  it('keeps user-scoped mainserver mutation refreshes bound to the actor account', async () => {
+    state.listSvaMainserverPoi.mockResolvedValue({
+      data: [
+        {
+          id: 'poi-user-1',
+          name: 'User POI',
+          contentType: 'poi.point-of-interest',
+          status: 'published',
+          active: true,
+          categories: [],
+          addresses: [],
+          priceInformations: [],
+          openingHours: [],
+          webUrls: [],
+          mediaContents: [],
+          certificates: [],
+          tags: [],
+          visible: true,
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    await refreshProjectedContentsForMainserverMutation({
+      contentType: 'poi.point-of-interest',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+    });
+
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        organization_id: null,
+        owner_user_id: 'account-1',
+        source_entity_id: 'poi-user-1',
       }),
     ]);
   });
@@ -1430,12 +1617,14 @@ describe('content list projection', () => {
     expect(projectionRows).toEqual([
       expect.objectContaining({
         organization_id: 'org-1',
-        owner_subject_id: null,
+        owner_user_id: null,
+        owner_organization_id: 'org-1',
         source_entity_id: 'event-shared-1',
       }),
       expect.objectContaining({
         organization_id: null,
-        owner_subject_id: 'kc-user-1',
+        owner_user_id: null,
+        owner_organization_id: null,
         source_entity_id: 'event-shared-1',
       }),
     ]);

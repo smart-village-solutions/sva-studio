@@ -1,4 +1,8 @@
-import { withAuthenticatedUser } from '@sva/auth-runtime/server';
+import {
+  resolveActorAccountId,
+  withAuthenticatedUser,
+  withInstanceScopedDb,
+} from '@sva/auth-runtime/server';
 
 import { refreshProjectedContentsForMainserverMutation } from './iam-content-list-projection.server.js';
 
@@ -8,7 +12,10 @@ type MainserverProjectionContentType =
   | 'poi.point-of-interest';
 
 const shouldRefreshProjectionForRequest = (request: Request, response: Response): boolean =>
-  response.ok && request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS';
+  response.ok &&
+  request.method !== 'GET' &&
+  request.method !== 'HEAD' &&
+  request.method !== 'OPTIONS';
 
 export const refreshProjectionAfterMainserverMutation = async (
   request: Request,
@@ -23,11 +30,18 @@ export const refreshProjectionAfterMainserverMutation = async (
     if (!ctx.user.instanceId) {
       return response;
     }
+    const actorAccountId = await withInstanceScopedDb(ctx.user.instanceId, async (client) =>
+      resolveActorAccountId(client, {
+        instanceId: ctx.user.instanceId!,
+        keycloakSubject: ctx.user.id,
+      })
+    );
 
     await refreshProjectedContentsForMainserverMutation({
       instanceId: ctx.user.instanceId,
       keycloakSubject: ctx.user.id,
       contentType,
+      ...(actorAccountId ? { actorAccountId } : {}),
       ...(ctx.activeOrganizationId ? { organizationId: ctx.activeOrganizationId } : {}),
     });
 

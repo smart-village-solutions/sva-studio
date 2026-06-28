@@ -12,7 +12,7 @@ describe('iam authorization cache', () => {
       geoContextHash: 'geo-1',
     };
 
-    const snapshot = cache.set(key, [{ action: 'content.read', resourceType: 'content', effect: 'allow' }], 10_000, 'snap-1');
+    const snapshot = cache.set(key, [{ action: 'content.read', resourceType: 'content' }], 10_000, 'snap-1');
     expect(snapshot).toMatchObject({ version: 1, snapshotVersion: 'snap-1' });
     expect(cache.size()).toBe(1);
 

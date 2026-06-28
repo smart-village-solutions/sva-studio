@@ -85,7 +85,6 @@ export const iamAdminENResources = {
       resourceType: 'Resource type',
       resourceId: 'Resource ID',
       organization: 'Organization',
-      effect: 'Effect',
       scope: 'Scope',
       sourceRoles: 'Source roles',
       sourceGroups: 'Source groups',

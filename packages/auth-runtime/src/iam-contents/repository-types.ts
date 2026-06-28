@@ -11,6 +11,8 @@ export type ContentRow = {
   instance_id: string;
   organization_id: string | null;
   owner_subject_id: string | null;
+  owner_user_id: string | null;
+  owner_organization_id: string | null;
   title: string;
   published_at: string | null;
   publish_from: string | null;
@@ -48,7 +50,6 @@ export type CreateContentInput = {
   traceId?: string;
   contentType: string;
   organizationId?: string;
-  ownerSubjectId?: string;
   title: string;
   payload: ContentJsonValue;
   status: IamContentStatus;
@@ -66,7 +67,9 @@ export type UpdateContentInput = {
   traceId?: string;
   contentId: string;
   organizationId?: string;
-  ownerSubjectId?: string;
+  ownerUserId?: string;
+  ownerOrganizationId?: string;
+  authorDisplayName?: string;
   title?: string;
   payload?: ContentJsonValue;
   status?: IamContentStatus;
@@ -92,8 +95,10 @@ export type LoadContentListItemsInput = Pick<
 >;
 
 export type LoadContentListAuthorizationInput = {
+  readonly allowGlobal: boolean;
+  readonly allowOwn: boolean;
   readonly allowedOrganizationIds: readonly string[];
-  readonly includeUnscopedContent: boolean;
+  readonly actorAccountId?: string;
 };
 
 export const CONTENT_SELECT = `
@@ -103,6 +108,8 @@ SELECT
   content.instance_id,
   content.organization_id::text,
   content.owner_subject_id,
+  content.owner_user_id::text,
+  content.owner_organization_id::text,
   content.title,
   content.published_at::text,
   content.publish_from::text,

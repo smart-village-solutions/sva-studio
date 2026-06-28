@@ -1,6 +1,5 @@
 import type {
   EffectivePermission,
-  IamPermissionEffect,
   IamRolePermissionAssignmentScope,
 } from '@sva/core';
 
@@ -11,23 +10,20 @@ export type PermissionRow = {
   action?: string | null;
   resource_type?: string | null;
   resource_id?: string | null;
-  effect?: IamPermissionEffect | null;
   scope?: Record<string, unknown> | null;
   access_scope?: IamRolePermissionAssignmentScope | null;
-  account_id?: string | null;
   role_id?: string | null;
   organization_id: string | null;
   group_id?: string | null;
   group_key?: string | null;
-  source_kind?: 'direct_user' | 'direct_role' | 'group_role' | null;
+  source_kind?: 'direct_role' | 'group_role' | null;
 };
 
 export const readResourceType = (permissionKey: string) => permissionKey.split('.')[0] ?? permissionKey;
 
 const SOURCE_KIND_ORDER: Record<NonNullable<PermissionRow['source_kind']>, number> = {
-  direct_user: 0,
-  direct_role: 1,
-  group_role: 2,
+  direct_role: 0,
+  group_role: 1,
 };
 
 const sortStrings = (values: readonly string[]): readonly string[] =>
@@ -37,6 +33,9 @@ const sortSourceKinds = (
   values: readonly NonNullable<PermissionRow['source_kind']>[]
 ): readonly NonNullable<PermissionRow['source_kind']>[] =>
   [...values].sort((left, right) => SOURCE_KIND_ORDER[left] - SOURCE_KIND_ORDER[right] || left.localeCompare(right));
+
+const normalizeSourceKind = (value: PermissionRow['source_kind']): PermissionRow['source_kind'] =>
+  value === 'direct_role' || value === 'group_role' ? value : undefined;
 
 const appendUniqueString = (
   values: readonly string[] | undefined,
@@ -69,7 +68,6 @@ type NormalizedPermissionRow = {
   resourceType: string;
   resourceId?: string;
   organizationId?: string;
-  effect: 'allow' | 'deny';
   scope?: Record<string, unknown>;
   accessScope?: IamRolePermissionAssignmentScope;
   groupId?: string;
@@ -81,7 +79,6 @@ const normalizePermissionRow = (row: PermissionRow): NormalizedPermissionRow => 
   const action = row.action?.trim() || row.permission_key;
   const resourceType = row.resource_type?.trim() || readResourceType(row.permission_key);
   const resourceId = row.resource_id?.trim() || undefined;
-  const effect = row.effect ?? 'allow';
   const scope = row.scope ?? undefined;
   const accessScope = row.access_scope ?? undefined;
   const organizationId = projectOrganizationIdForPermission({
@@ -94,7 +91,6 @@ const normalizePermissionRow = (row: PermissionRow): NormalizedPermissionRow => 
     resourceType,
     resourceId,
     organizationId,
-    effect,
     scope,
     accessScope,
     groupId: row.group_id ?? undefined,
@@ -104,27 +100,27 @@ const normalizePermissionRow = (row: PermissionRow): NormalizedPermissionRow => 
       resourceType,
       resourceId,
       organizationId: organizationId ?? '',
-      effect,
       scope,
       accessScope,
     }),
   };
 };
 
-const createPermissionBucket = (row: PermissionRow, normalized: NormalizedPermissionRow): EffectivePermission => ({
-  action: normalized.action,
-  resourceType: normalized.resourceType,
-  resourceId: normalized.resourceId,
-  organizationId: normalized.organizationId,
-  effect: normalized.effect,
-  scope: normalized.scope,
-  accessScope: normalized.accessScope,
-  ...(row.account_id ? { sourceUserIds: [row.account_id] } : {}),
-  ...(row.role_id ? { sourceRoleIds: [row.role_id] } : {}),
-  ...(normalized.groupId ? { sourceGroupIds: [normalized.groupId] } : {}),
-  ...(normalized.groupKey ? { groupName: normalized.groupKey } : {}),
-  provenance: row.source_kind ? { sourceKinds: [row.source_kind] } : undefined,
-});
+const createPermissionBucket = (row: PermissionRow, normalized: NormalizedPermissionRow): EffectivePermission => {
+  const sourceKind = normalizeSourceKind(row.source_kind);
+  return {
+    action: normalized.action,
+    resourceType: normalized.resourceType,
+    ...(normalized.resourceId ? { resourceId: normalized.resourceId } : {}),
+    ...(normalized.organizationId ? { organizationId: normalized.organizationId } : {}),
+    ...(normalized.scope ? { scope: normalized.scope } : {}),
+    ...(normalized.accessScope ? { accessScope: normalized.accessScope } : {}),
+    ...(row.role_id ? { sourceRoleIds: [row.role_id] } : {}),
+    ...(normalized.groupId ? { sourceGroupIds: [normalized.groupId] } : {}),
+    ...(normalized.groupKey ? { groupName: normalized.groupKey } : {}),
+    ...(sourceKind ? { provenance: { sourceKinds: [sourceKind] } } : {}),
+  };
+};
 
 const withSortedValues = (
   values: readonly string[] | undefined
@@ -136,13 +132,11 @@ const finalizePermissionBucket = (permission: EffectivePermission): EffectivePer
   const sourceKinds = permission.provenance?.sourceKinds
     ? sortSourceKinds(permission.provenance.sourceKinds)
     : undefined;
-  const normalizedSourceUserIds = withSortedValues(permission.sourceUserIds);
   const normalizedSourceRoleIds = withSortedValues(permission.sourceRoleIds);
   const normalizedSourceGroupIds = withSortedValues(permission.sourceGroupIds);
 
   return {
     ...permission,
-    ...(normalizedSourceUserIds ? { sourceUserIds: normalizedSourceUserIds } : {}),
     ...(normalizedSourceRoleIds ? { sourceRoleIds: normalizedSourceRoleIds } : {}),
     ...(normalizedSourceGroupIds ? { sourceGroupIds: normalizedSourceGroupIds } : {}),
     provenance: sourceKinds
@@ -158,16 +152,13 @@ const mergePermissionBucket = (
   row: PermissionRow,
   normalized: NormalizedPermissionRow
 ): EffectivePermission => {
-  const nextSourceUserIds = withSortedValues(
-    appendUniqueString(existing.sourceUserIds, row.account_id ?? undefined)
-  );
   const nextSourceRoleIds = withSortedValues(
     appendUniqueString(existing.sourceRoleIds, row.role_id ?? undefined)
   );
   const nextSourceGroupIds = withSortedValues(
     appendUniqueString(existing.sourceGroupIds, normalized.groupId)
   );
-  const nextSourceKinds = mergeSourceKinds(existing.provenance?.sourceKinds, row.source_kind);
+  const nextSourceKinds = mergeSourceKinds(existing.provenance?.sourceKinds, normalizeSourceKind(row.source_kind));
   const nextGroupName = normalized.groupKey ?? existing.groupName;
   const nextProvenance = nextSourceKinds
     ? {
@@ -178,7 +169,6 @@ const mergePermissionBucket = (
 
   return {
     ...existing,
-    ...(nextSourceUserIds ? { sourceUserIds: nextSourceUserIds } : {}),
     ...(nextSourceRoleIds ? { sourceRoleIds: nextSourceRoleIds } : {}),
     ...(nextSourceGroupIds ? { sourceGroupIds: nextSourceGroupIds } : {}),
     ...(nextGroupName ? { groupName: nextGroupName } : {}),

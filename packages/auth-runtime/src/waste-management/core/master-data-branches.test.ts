@@ -69,7 +69,6 @@ const createDeps = (action = 'waste-management.master-data.manage') => ({
       {
         action,
         resourceType: 'waste-management',
-        effect: 'allow' as const,
       },
     ],
   })),

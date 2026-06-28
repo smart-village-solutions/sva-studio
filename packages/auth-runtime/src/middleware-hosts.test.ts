@@ -181,4 +181,18 @@ describe('middleware-hosts', () => {
     const { validateTenantHost } = await import('./middleware-hosts.js');
     await expect(validateTenantHost(new Request('https://tenant.example.test/path'))).resolves.toBeNull();
   });
+
+  it('caches active tenant host validation briefly by host', async () => {
+    state.loadInstanceByHostname.mockResolvedValue({
+      instanceId: 'instance-3',
+      status: 'active',
+    });
+    state.isTrafficEnabledInstanceStatus.mockReturnValue(true);
+
+    const { validateTenantHost } = await import('./middleware-hosts.js');
+    await expect(validateTenantHost(new Request('https://tenant.example.test/one'))).resolves.toBeNull();
+    await expect(validateTenantHost(new Request('https://tenant.example.test/two'))).resolves.toBeNull();
+
+    expect(state.loadInstanceByHostname).toHaveBeenCalledTimes(1);
+  });
 });

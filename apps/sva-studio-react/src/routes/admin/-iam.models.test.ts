@@ -45,9 +45,7 @@ describe('iam.models', () => {
         action: 'content.read',
         resourceType: 'content',
         organizationId: 'org-a',
-        effect: 'allow',
         resourceId: 'resource-a',
-        sourceUserIds: [],
         sourceRoleIds: ['role-1'],
         sourceGroupIds: [],
         scope: {
@@ -58,14 +56,12 @@ describe('iam.models', () => {
         action: 'iam.user.read',
         resourceType: 'iam',
         organizationId: 'org-b',
-        sourceUserIds: [],
         sourceRoleIds: ['role-2'],
         sourceGroupIds: ['group-1'],
       },
       {
         action: 'feature.toggle',
         resourceType: 'feature',
-        sourceUserIds: [],
         sourceRoleIds: ['role-3'],
         sourceGroupIds: [],
       },
@@ -85,7 +81,6 @@ describe('iam.models', () => {
       {
         action: 'feature.toggle',
         resourceType: 'feature',
-        sourceUserIds: [],
         sourceRoleIds: ['role-3'],
         sourceGroupIds: [],
       },
@@ -94,14 +89,12 @@ describe('iam.models', () => {
     expect(filterPermissions(permissions, { query: 'feature' })).toHaveLength(1);
   });
 
-  it('matches permission queries against resource ids, effects and serialized scope values', () => {
+  it('matches permission queries against resource ids and serialized scope values', () => {
     const permissions: EffectivePermission[] = [
       {
         action: 'content.read',
         resourceType: 'content',
         resourceId: 'article-1',
-        effect: 'deny',
-        sourceUserIds: [],
         sourceRoleIds: ['role-1'],
         sourceGroupIds: ['group-1'],
         scope: {
@@ -112,7 +105,6 @@ describe('iam.models', () => {
     ];
 
     expect(filterPermissions(permissions, { query: 'article-1' })).toHaveLength(1);
-    expect(filterPermissions(permissions, { query: 'deny' })).toHaveLength(1);
     expect(filterPermissions(permissions, { query: 'tenant:north' })).toHaveLength(1);
   });
 
@@ -132,7 +124,6 @@ describe('iam.models', () => {
           action: 'content.read',
           resourceType: 'content',
           organizationId: 'org-a',
-          sourceUserIds: [],
           sourceRoleIds: ['role-1'],
           sourceGroupIds: [],
         },
@@ -147,11 +138,10 @@ describe('iam.models', () => {
   it('formats permission source kinds via localized labels and keeps unknown values readable', () => {
     expect(formatPermissionSourceKindLabels(undefined)).toBe('—');
     expect(formatPermissionSourceKindLabels([])).toBe('—');
-    expect(formatPermissionSourceKindLabels(['direct_user'])).toBe('Nutzer');
     expect(formatPermissionSourceKindLabels(['direct_role'])).toBe('Rolle');
     expect(formatPermissionSourceKindLabels(['group_role'])).toBe('Gruppe');
     expect(formatPermissionSourceKindLabels(['delegation'])).toBe('Delegation');
-    expect(formatPermissionSourceKindLabels(['user', 'role', 'group'])).toBe('Nutzer, Rolle, Gruppe');
+    expect(formatPermissionSourceKindLabels(['role', 'group'])).toBe('Rolle, Gruppe');
     expect(formatPermissionSourceKindLabels(['custom_source'])).toBe('custom_source');
   });
 
@@ -159,15 +149,14 @@ describe('iam.models', () => {
     const permission: EffectivePermission = {
       action: 'content.read',
       resourceType: 'content',
-      sourceUserIds: [],
       sourceRoleIds: ['role-1'],
       sourceGroupIds: ['group-1'],
       provenance: {
-        sourceKinds: ['direct_user', 'group_role'],
+        sourceKinds: ['direct_role', 'group_role'],
       },
     };
 
-    expect(formatPermissionSourceKinds(permission)).toBe('Nutzer, Gruppe');
+    expect(formatPermissionSourceKinds(permission)).toBe('Rolle, Gruppe');
     expect(
       formatPermissionSourceKinds({
         ...permission,
@@ -181,7 +170,6 @@ describe('iam.models', () => {
       formatPermissionAreaLabel({
         action: 'integration.manage',
         resourceType: 'integration',
-        sourceUserIds: [],
         sourceRoleIds: ['role-1'],
         sourceGroupIds: [],
       })
@@ -191,7 +179,6 @@ describe('iam.models', () => {
       formatPermissionAreaLabel({
         action: 'custom.action',
         resourceType: 'custom',
-        sourceUserIds: [],
         sourceRoleIds: ['role-1'],
         sourceGroupIds: [],
       })

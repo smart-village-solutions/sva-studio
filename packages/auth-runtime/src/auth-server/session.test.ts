@@ -98,7 +98,11 @@ const createSession = (overrides: Partial<Session> = {}): Session => ({
 });
 
 describe('auth server session resolution', () => {
+  let previousAuthorizeTimingDebug: string | undefined;
+
   beforeEach(() => {
+    previousAuthorizeTimingDebug = process.env.IAM_DEBUG_AUTHORIZE_TIMINGS;
+    delete process.env.IAM_DEBUG_AUTHORIZE_TIMINGS;
     vi.clearAllMocks();
     vi.resetModules();
     vi.spyOn(Date, 'now').mockReturnValue(5_000);
@@ -142,6 +146,11 @@ describe('auth server session resolution', () => {
   });
 
   afterEach(() => {
+    if (previousAuthorizeTimingDebug === undefined) {
+      delete process.env.IAM_DEBUG_AUTHORIZE_TIMINGS;
+    } else {
+      process.env.IAM_DEBUG_AUTHORIZE_TIMINGS = previousAuthorizeTimingDebug;
+    }
     vi.restoreAllMocks();
   });
 
@@ -156,7 +165,7 @@ describe('auth server session resolution', () => {
     });
   });
 
-  it('revalidates authenticated session resolutions on every request', async () => {
+  it('revalidates session data on every request and briefly caches absent control state', async () => {
     state.getSession.mockResolvedValue(createSession({ expiresAt: 100_000 }));
 
     const { resolveSessionUser } = await import('./session.js');
@@ -175,6 +184,64 @@ describe('auth server session resolution', () => {
     });
 
     expect(state.getSession).toHaveBeenCalledTimes(2);
+    expect(state.getSession).toHaveBeenNthCalledWith(1, 'session-1', { decryptTokens: false });
+    expect(state.getSession).toHaveBeenNthCalledWith(2, 'session-1', { decryptTokens: false });
+    expect(state.getSessionControlState).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs session resolution timing diagnostics when authorize timing debug is enabled', async () => {
+    process.env.IAM_DEBUG_AUTHORIZE_TIMINGS = 'true';
+    state.getSession.mockResolvedValue(createSession({ expiresAt: 100_000 }));
+
+    const { resolveSessionUser } = await import('./session.js');
+
+    await expect(resolveSessionUser('session-1')).resolves.toMatchObject({
+      kind: 'authenticated',
+      user: completeUser,
+    });
+    expect(state.getSession).toHaveBeenCalledWith('session-1', { decryptTokens: false });
+
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'Session resolution timing diagnostics',
+      expect.objectContaining({
+        operation: 'session_resolution_timing',
+        result_reason: 'authenticated',
+        get_session_ms: expect.any(Number),
+        control_state_ms: expect.any(Number),
+        control_state_cache_status: 'miss_absent',
+        hydrate_user_ms: expect.any(Number),
+        refresh_ms: 0,
+        refresh_session_read_ms: 0,
+        delete_session_ms: 0,
+        total_ms: expect.any(Number),
+        session_id_present: true,
+        user_id: 'user-1',
+        session_refresh_required: false,
+        trace_id: 'trace-1',
+      })
+    );
+  });
+
+  it('rechecks absent control state after the short hot-path cache expires', async () => {
+    state.getSession.mockResolvedValue(createSession({ expiresAt: 100_000 }));
+
+    const { resolveSessionUser } = await import('./session.js');
+
+    await expect(resolveSessionUser('session-1')).resolves.toMatchObject({
+      kind: 'authenticated',
+      user: completeUser,
+    });
+
+    vi.mocked(Date.now).mockReturnValue(10_001);
+
+    await expect(resolveSessionUser('session-1')).resolves.toMatchObject({
+      kind: 'authenticated',
+      user: completeUser,
+    });
+
+    expect(state.getSession).toHaveBeenCalledTimes(2);
+    expect(state.getSession).toHaveBeenNthCalledWith(1, 'session-1', { decryptTokens: false });
+    expect(state.getSession).toHaveBeenNthCalledWith(2, 'session-1', { decryptTokens: false });
     expect(state.getSessionControlState).toHaveBeenCalledTimes(2);
   });
 
@@ -241,6 +308,8 @@ describe('auth server session resolution', () => {
     const { getSessionUser } = await import('./session.js');
 
     await expect(getSessionUser('session-1')).resolves.toEqual(completeUser);
+    expect(state.getSession).toHaveBeenNthCalledWith(1, 'session-1', { decryptTokens: false });
+    expect(state.getSession).toHaveBeenNthCalledWith(2, 'session-1', { decryptTokens: true });
     expect(state.updateSession).toHaveBeenCalledWith('session-1', { user: completeUser });
   });
 
@@ -259,8 +328,10 @@ describe('auth server session resolution', () => {
   });
 
   it('refreshes expiring sessions and returns the updated user', async () => {
+    const expiringSession = createSession({ expiresAt: 5_100 });
     state.getSession
-      .mockResolvedValueOnce(createSession({ expiresAt: 5_100 }))
+      .mockResolvedValueOnce(expiringSession)
+      .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(
         createSession({
           user: completeUser,
@@ -272,6 +343,9 @@ describe('auth server session resolution', () => {
     const { getSessionUser } = await import('./session.js');
 
     await expect(getSessionUser('session-1')).resolves.toEqual(completeUser);
+    expect(state.getSession).toHaveBeenNthCalledWith(1, 'session-1', { decryptTokens: false });
+    expect(state.getSession).toHaveBeenNthCalledWith(2, 'session-1', { decryptTokens: true });
+    expect(state.getSession).toHaveBeenNthCalledWith(3, 'session-1', { decryptTokens: false });
     expect(state.refreshTokenGrant).toHaveBeenCalledTimes(1);
     expect(state.updateSession).toHaveBeenCalledWith(
       'session-1',
@@ -286,8 +360,10 @@ describe('auth server session resolution', () => {
   });
 
   it('resolves tenant auth config with the instance secret before refreshing an instance session', async () => {
+    const expiringSession = createSession({ expiresAt: 5_100 });
     state.getSession
-      .mockResolvedValueOnce(createSession({ expiresAt: 5_100 }))
+      .mockResolvedValueOnce(expiringSession)
+      .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(
         createSession({
           user: completeUser,
@@ -311,17 +387,17 @@ describe('auth server session resolution', () => {
   });
 
   it('prefers the redirect uri origin over the post-logout redirect uri during instance refresh', async () => {
+    const expiringSession = createSession({
+      auth: {
+        ...auth,
+        redirectUri: 'https://studio.tenant.example/auth/callback',
+        postLogoutRedirectUri: 'https://marketing.example/logout',
+      },
+      expiresAt: 5_100,
+    });
     state.getSession
-      .mockResolvedValueOnce(
-        createSession({
-          auth: {
-            ...auth,
-            redirectUri: 'https://studio.tenant.example/auth/callback',
-            postLogoutRedirectUri: 'https://marketing.example/logout',
-          },
-          expiresAt: 5_100,
-        })
-      )
+      .mockResolvedValueOnce(expiringSession)
+      .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(
         createSession({
           user: completeUser,
@@ -339,17 +415,17 @@ describe('auth server session resolution', () => {
   });
 
   it('falls back to the post-logout redirect uri for legacy instance sessions without redirect uri', async () => {
+    const expiringSession = createSession({
+      auth: {
+        ...auth,
+        redirectUri: undefined,
+        postLogoutRedirectUri: 'https://legacy-tenant.example/logout',
+      },
+      expiresAt: 5_100,
+    });
     state.getSession
-      .mockResolvedValueOnce(
-        createSession({
-          auth: {
-            ...auth,
-            redirectUri: undefined,
-            postLogoutRedirectUri: 'https://legacy-tenant.example/logout',
-          },
-          expiresAt: 5_100,
-        })
-      )
+      .mockResolvedValueOnce(expiringSession)
+      .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(
         createSession({
           user: completeUser,
@@ -408,13 +484,16 @@ describe('auth server session resolution', () => {
   it('rethrows session store failures from the refresh path', async () => {
     const session = createSession({ expiresAt: 5_100, user: completeUser });
     state.getSession.mockResolvedValue(session);
-    const { SessionStoreUnavailableError: RuntimeSessionStoreUnavailableError } = await import('../runtime-errors.js');
+    const { SessionStoreUnavailableError: RuntimeSessionStoreUnavailableError } =
+      await import('../runtime-errors.js');
     state.refreshTokenGrant.mockRejectedValue(
       new RuntimeSessionStoreUnavailableError('refresh_token')
     );
 
     const { getSessionUser } = await import('./session.js');
 
-    await expect(getSessionUser('session-1')).rejects.toBeInstanceOf(RuntimeSessionStoreUnavailableError);
+    await expect(getSessionUser('session-1')).rejects.toBeInstanceOf(
+      RuntimeSessionStoreUnavailableError
+    );
   });
 });

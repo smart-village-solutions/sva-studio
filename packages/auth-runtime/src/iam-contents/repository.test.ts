@@ -176,7 +176,9 @@ describe('iam content repository', () => {
     state.resolveNextContentStateMock.mockReturnValue({
       changedFields: ['title'],
       nextOrganizationId: null,
-      nextOwnerSubjectId: null,
+      nextOwnerUserId: null,
+      nextOwnerOrganizationId: null,
+      nextAuthorDisplayName: 'Autor',
       nextPayload: { body: 'Neu' },
       nextPublishedAt: null,
       nextPublishFrom: null,
@@ -201,8 +203,9 @@ describe('iam content repository', () => {
         sortBy: 'updatedAt',
         sortDirection: 'desc',
       }, {
+        allowGlobal: true,
+        allowOwn: false,
         allowedOrganizationIds: [],
-        includeUnscopedContent: true,
       })
     ).resolves.toEqual({
       items: [
@@ -233,14 +236,16 @@ describe('iam content repository', () => {
       status: 'published',
       sortBy: 'title',
       sortDirection: 'asc',
-    }, {
-      allowedOrganizationIds: ['11111111-1111-4111-8111-111111111111'],
-      includeUnscopedContent: true,
-    });
+      }, {
+        allowedOrganizationIds: ['11111111-1111-4111-8111-111111111111'],
+        allowGlobal: false,
+        allowOwn: true,
+        actorAccountId: '00000000-0000-0000-0000-000000000001',
+      });
 
     expect(state.queryMock).toHaveBeenNthCalledWith(
       1,
-      expect.stringContaining('(content.organization_id IS NULL OR content.organization_id = ANY'),
+      expect.stringContaining('content.owner_organization_id = ANY'),
       [
         'instance-1',
         ['news.article', 'events.event-record'],
@@ -248,8 +253,12 @@ describe('iam content repository', () => {
         'published',
         '%news%',
         ['11111111-1111-4111-8111-111111111111'],
+        '00000000-0000-0000-0000-000000000001',
       ]
     );
+    expect(state.queryMock.mock.calls[0]?.[0]).toContain('content.owner_user_id = $7::uuid');
+    expect(state.queryMock.mock.calls[0]?.[0]).not.toContain('content.organization_id = ANY');
+    expect(state.queryMock.mock.calls[0]?.[0]).not.toContain('content.organization_id IS NULL');
     expect(state.queryMock).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('ORDER BY content.title ASC'),
@@ -260,6 +269,7 @@ describe('iam content repository', () => {
         'published',
         '%news%',
         ['11111111-1111-4111-8111-111111111111'],
+        '00000000-0000-0000-0000-000000000001',
         10,
         10,
       ]
@@ -399,7 +409,9 @@ describe('iam content repository', () => {
       state.resolveNextContentStateMock.mockReturnValueOnce({
         changedFields: [...changedFields],
         nextOrganizationId: null,
-        nextOwnerSubjectId: null,
+        nextOwnerUserId: null,
+        nextOwnerOrganizationId: null,
+        nextAuthorDisplayName: 'Autor',
         nextPayload: { body: 'Neu' },
         nextPublishedAt: nextStatus === 'published' ? '2026-05-03T08:00:00.000Z' : null,
         nextPublishFrom: null,

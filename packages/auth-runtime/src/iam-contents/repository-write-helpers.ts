@@ -12,6 +12,66 @@ const buildContentActionAuditPayload = (primitiveAction: IamContentPrimitiveActi
   primitive_action: primitiveAction,
 });
 
+const buildContentFieldChanges = (
+  current: ContentRow,
+  event: {
+    readonly changedFields: readonly string[];
+    readonly nextOwnerUserId: string | null;
+    readonly nextOwnerOrganizationId: string | null;
+    readonly nextAuthorDisplayName: string;
+  }
+) => {
+  const changedFields = new Set(event.changedFields);
+  return {
+    ...(changedFields.has('ownerUserId')
+      ? {
+          ownerUserId: {
+            previous: current.owner_user_id,
+            next: event.nextOwnerUserId,
+          },
+        }
+      : {}),
+    ...(changedFields.has('ownerOrganizationId')
+      ? {
+          ownerOrganizationId: {
+            previous: current.owner_organization_id,
+            next: event.nextOwnerOrganizationId,
+          },
+        }
+      : {}),
+    ...(changedFields.has('authorDisplayName')
+      ? {
+          authorDisplayName: {
+            previous: current.author_display_name,
+            next: event.nextAuthorDisplayName,
+          },
+        }
+      : {}),
+  };
+};
+
+const resolveCreateAuthorDisplayName = async (
+  client: InstanceScopedClient,
+  input: CreateContentInput
+): Promise<string> => {
+  if (!input.organizationId) {
+    return input.actorDisplayName;
+  }
+
+  const result = await client.query<{ display_name: string }>(
+    `
+SELECT display_name
+FROM iam.organizations
+WHERE instance_id = $1
+  AND id = $2::uuid
+LIMIT 1;
+`,
+    [input.instanceId, input.organizationId]
+  );
+
+  return result.rows[0]?.display_name ?? input.actorDisplayName;
+};
+
 export const validatePublicationWindow = (input: { publishFrom?: string; publishUntil?: string }) => {
   if (
     resolveContentPublicationInvariant({
@@ -27,18 +87,19 @@ export const insertContentRow = async (
   client: InstanceScopedClient,
   input: CreateContentInput
 ): Promise<string> => {
+  const authorDisplayName = await resolveCreateAuthorDisplayName(client, input);
   const insert = await client.query<{ id: string }>(
     `
 INSERT INTO iam.contents (
-  id, instance_id, content_type, organization_id, owner_subject_id, title,
+  id, instance_id, content_type, organization_id, owner_user_id, owner_organization_id, title,
   published_at, publish_from, publish_until, author_account_id, author_display_name,
   creator_account_id, updater_account_id,
   payload_json, status, validation_state, history_ref
 )
 VALUES (
-  gen_random_uuid(), $1, $2, $3::uuid, $4, $5,
-  COALESCE($6::timestamptz, CASE WHEN $10 = 'published' THEN NOW() ELSE NULL END),
-  $7::timestamptz, $8::timestamptz, $9::uuid, $11, $9::uuid, $9::uuid, $12::jsonb, $10, $13,
+  gen_random_uuid(), $1, $2, $3::uuid, $4::uuid, $5::uuid, $6,
+  COALESCE($7::timestamptz, CASE WHEN $11 = 'published' THEN NOW() ELSE NULL END),
+  $8::timestamptz, $9::timestamptz, $10::uuid, $12, $10::uuid, $10::uuid, $13::jsonb, $11, $14,
   gen_random_uuid()::text
 )
 RETURNING id;
@@ -47,14 +108,15 @@ RETURNING id;
       input.instanceId,
       input.contentType,
       input.organizationId ?? null,
-      input.ownerSubjectId ?? null,
+      input.actorAccountId,
+      input.organizationId ?? null,
       input.title,
       input.publishedAt ?? null,
       input.publishFrom ?? null,
       input.publishUntil ?? null,
       input.actorAccountId,
       input.status,
-      input.actorDisplayName,
+      authorDisplayName,
       JSON.stringify(input.payload),
       input.validationState ?? 'valid',
     ]
@@ -71,7 +133,9 @@ export const updateContentRow = async (
   input: UpdateContentInput,
   next: {
     readonly organizationId: string | null;
-    readonly ownerSubjectId: string | null;
+    readonly ownerUserId: string | null;
+    readonly ownerOrganizationId: string | null;
+    readonly authorDisplayName: string;
     readonly title: string;
     readonly payloadJson: string;
     readonly status: string;
@@ -86,18 +150,18 @@ export const updateContentRow = async (
 UPDATE iam.contents
 SET
   organization_id = $3::uuid,
-  owner_subject_id = $4,
-  title = $5,
-  payload_json = $6::jsonb,
-  status = $7,
-  validation_state = $8,
-  published_at = COALESCE($9::timestamptz, CASE WHEN $7 = 'published' THEN NOW() ELSE NULL END),
-  publish_from = $10::timestamptz,
-  publish_until = $11::timestamptz,
+  owner_user_id = $4::uuid,
+  owner_organization_id = $5::uuid,
+  author_display_name = $6,
+  title = $7,
+  payload_json = $8::jsonb,
+  status = $9,
+  validation_state = $10,
+  published_at = COALESCE($11::timestamptz, CASE WHEN $9 = 'published' THEN NOW() ELSE NULL END),
+  publish_from = $12::timestamptz,
+  publish_until = $13::timestamptz,
   updated_at = NOW(),
-  author_account_id = $12::uuid,
-  updater_account_id = $12::uuid,
-  author_display_name = $13
+  updater_account_id = $14::uuid
 WHERE instance_id = $1
   AND id = $2::uuid;
 `,
@@ -105,7 +169,9 @@ WHERE instance_id = $1
       input.instanceId,
       input.contentId,
       next.organizationId,
-      next.ownerSubjectId,
+      next.ownerUserId,
+      next.ownerOrganizationId,
+      next.authorDisplayName,
       next.title,
       next.payloadJson,
       next.status,
@@ -114,7 +180,6 @@ WHERE instance_id = $1
       next.publishFrom,
       next.publishUntil,
       input.actorAccountId,
-      input.actorDisplayName,
     ]
   );
 };
@@ -188,6 +253,9 @@ export const emitContentUpdatedActivity = (
     readonly changedFields: readonly string[];
     readonly nextStatus: string;
     readonly nextTitle: string;
+    readonly nextOwnerUserId: string | null;
+    readonly nextOwnerOrganizationId: string | null;
+    readonly nextAuthorDisplayName: string;
   }
 ): Promise<void> =>
   emitActivityLog(client, {
@@ -203,6 +271,7 @@ export const emitContentUpdatedActivity = (
       changed_fields: event.changedFields,
       previous_status: current.status,
       next_status: event.nextStatus,
+      field_changes: buildContentFieldChanges(current, event),
       payload_change: event.changedFields.includes('payload') ? 'payload_updated' : 'payload_unchanged',
     },
     requestId: input.requestId,

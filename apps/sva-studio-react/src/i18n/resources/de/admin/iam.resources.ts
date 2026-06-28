@@ -93,7 +93,6 @@ export const iamAdminDEResources = {
       resourceType: 'Ressourcentyp',
       resourceId: 'Ressourcen-ID',
       organization: 'Organisation',
-      effect: 'Effekt',
       scope: 'Scope',
       sourceRoles: 'Quellrollen',
       sourceGroups: 'Quellgruppen',

@@ -7,13 +7,35 @@ Definiert die fachliche Inhaltsverwaltung für SVA Studio mit tabellarischer Adm
 
 Das System MUST eine Seite `Inhalte` bereitstellen, die vorhandene Inhalte in einer tabellarischen Admin-Ansicht darstellt.
 
+Die Seite MUST fuer sichtbare Inhaltstypen eine einzige fuehrende serverseitige Listenquelle verwenden und darf fuer den produktiven Listenpfad keine browserseitigen Vollscans ueber mehrere Fachlisten ausfuehren.
+
 #### Scenario: Inhaltsliste wird geladen
 
-- **WENN** ein berechtigter Benutzer die Seite `Inhalte` öffnet
-- **DANN** zeigt das System eine semantische Tabelle mit den Spalten Titel, Veröffentlichungsdatum, Erstellungsdatum, Änderungsdatum, Autor, Payload, Status und Historie
-- **UND** jede Tabellenzeile repräsentiert genau einen Inhalt
+- **WENN** ein berechtigter Benutzer die Seite `Inhalte` oeffnet
+- **DANN** zeigt das System eine semantische Tabelle mit den Spalten Titel, Veroeffentlichungsdatum, Erstellungsdatum, Aenderungsdatum, Autor, Payload, Status und Historie
+- **UND** jede Tabellenzeile repraesentiert genau einen Inhalt
 - **UND** der Inhaltstyp ist pro Zeile erkennbar
-- **UND** das System zeigt einen Ladezustand, bis die Inhaltsdaten verfügbar sind
+- **UND** das System zeigt einen Ladezustand, bis die Inhaltsdaten verfuegbar sind
+
+#### Scenario: Mainserver-gestuetzte Inhaltstypen erscheinen ueber die fuehrende Listenquelle
+
+- **WENN** fuer die aktive Instanz lesbare News-, Event- oder POI-Inhalte nur im Mainserver existieren
+- **DANN** erscheinen sie dennoch in der Seite `Inhalte`
+- **UND** die Seite liest sie ueber dieselbe fuehrende serverseitige Listenquelle wie andere sichtbare Inhalte
+- **UND** der Browser fuehrt dafuer keinen lokalen Vollscan ueber mehrere Mainserver-Fachlisten aus
+
+#### Scenario: Inhaltsliste nutzt serverseitige Pagination
+
+- **WENN** die Seite `Inhalte` mit `page`, `pageSize`, `sortBy`, `sortDirection`, `q`, `type`, `status` oder `visibleType` angefragt wird
+- **DANN** wendet das System diese Parameter serverseitig auf die fuehrende Listenquelle an
+- **UND** der Browser erhaelt nur die angeforderte Ergebnis-Seite
+- **UND** die Seite laedt nicht den vollstaendigen Mainserver-Bestand vor der Anzeige
+
+#### Scenario: Downstream-Fehler fuehren nicht zu endlosem Ladezustand
+
+- **WENN** eine fuer die Inhaltsuebersicht benoetigte Mainserver-Quelle fehlschlaegt oder auslaeuft
+- **DANN** beendet die Seite den Ladezustand deterministisch
+- **UND** sie zeigt einen regulären Fehlerzustand statt eines dauerhaften "Inhalte werden geladen ..."
 
 ### Requirement: Inhalt ist ein erweiterbares Core-Element
 
@@ -136,6 +158,13 @@ Das System MUST eine Erstellungs- und eine Bearbeitungsansicht für Inhalte bere
 - **WENN** ein Inhalt einen registrierten `contentType` mit SDK-Erweiterung besitzt
 - **DANN** rendert die Erstellungs- oder Bearbeitungsansicht zusätzlich die zugehörigen typspezifischen UI-Bereiche
 - **UND** die Core-Felder bleiben weiterhin sichtbar und konsistent bedienbar
+
+#### Scenario: POI verwendet einen redaktionsorientierten Voll-Editor
+
+- **WENN** ein berechtigter Benutzer einen Inhalt vom Typ `poi.point-of-interest` erstellt oder bearbeitet
+- **DANN** rendert das System keinen reduzierten Sammel-Tab für alle Zusatzdaten
+- **SONDERN** einen aufgabenorientierten Voll-Editor mit den Bereichen `Basis`, `Ort`, `Beschreibung`, `Kontakt`, `Öffnungszeiten`, `Links`, `Betreiber`, `Preise`, `Medien & Dateien`, `Erweiterte Daten` und `Historie`
+- **UND** der Editor unterstützt sowohl Erstpflege als auch spätere gezielte Nachpflege
 
 ### Requirement: Kontrolliertes Statusmodell für Inhalte
 
@@ -282,7 +311,7 @@ Das Content-Management SHALL seine CRUD-artigen Admin-Flaechen ueber denselben h
 ### Requirement: Minimal Content Core Contract
 The system SHALL define a minimal host-owned content core contract for identity, content type, owner scope, lifecycle status, validation state, publication metadata, history references, revision references, and audit-relevant metadata.
 
-The host-owned core contract SHALL include at least `contentId`, `contentType`, `instanceId`, optional `organizationId`, optional `ownerSubjectId`, `status`, `validationState`, optional `publishedAt`, optional `publishFrom`, optional `publishUntil`, `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `historyRef`, optional `currentRevisionRef`, and optional `lastAuditEventRef`.
+The host-owned core contract SHALL include at least `contentId`, `contentType`, `instanceId`, optional `organizationId`, optional `ownerUserId`, optional `ownerOrganizationId`, `status`, `validationState`, optional `publishedAt`, optional `publishFrom`, optional `publishUntil`, `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `author`, `historyRef`, optional `currentRevisionRef`, and optional `lastAuditEventRef`.
 
 Plugins MAY contribute payload schemas, field definitions, UI bindings, display metadata, and additional validation rules for their namespaced `contentType`. Plugins SHALL NOT redefine required core fields, lifecycle status semantics, owner-scope semantics, history/revision references, or audit metadata.
 
@@ -801,3 +830,104 @@ Das System SHALL wiederkehrende technische Muster für standardisierte Content-P
 - **THEN** bleiben fachliche Typen, Validierung, Übersetzungen und Editor-Mappings weiterhin im jeweiligen Plugin
 - **AND** das SDK übernimmt nur technische Wiederverwendung
 
+### Requirement: POI-Redaktionsflow trennt Kernpflege und Zusatzdaten
+
+Das System MUST die POI-Pflege so strukturieren, dass Redakteure einen minimalen, fachlich sinnvollen POI zuerst anlegen und ihn danach ohne technische Reibung schrittweise anreichern können.
+
+#### Scenario: Erstnutzer legt einen neuen POI an
+
+- **WENN** ein Redakteur einen neuen POI erstellt
+- **DANN** beginnt der Flow mit den Kernbereichen `Basis` und `Ort`
+- **UND** der Redakteur muss keine seltenen Spezialfelder aus `Erweiterte Daten` vor dem ersten Speichern ausfüllen
+- **UND** das System kann nach der ersten Speicherung auf den nächsten sinnvollen Bereich hinweisen
+
+#### Scenario: Wiederkehrer pflegt einen bestehenden POI nach
+
+- **WENN** ein Redakteur einen bestehenden POI gezielt aktualisieren will
+- **DANN** kann er direkt in den relevanten Bereich wie `Öffnungszeiten`, `Links` oder `Preise` springen
+- **UND** der Editor zwingt ihn nicht durch einen linearen Assistentenpfad
+
+### Requirement: POI-Ortsdaten nutzen Adresse, Geo-Koordinaten und Karte
+
+Das System MUST für POI-Ortsdaten eine strukturierte Adresspflege mit Geo-Koordinaten und Kartenunterstützung bereitstellen.
+
+#### Scenario: POI-Ort wird visuell verortet
+
+- **WENN** ein Redakteur den Bereich `Ort` bearbeitet
+- **DANN** kann er Straße, PLZ, Ort und einen adressbezogenen Zusatz pflegen
+- **UND** er sieht eine Karte mit dem Stil `https://tileserver-gl.smart-village.app/styles/osm-bright/`
+- **UND** Geo-Koordinaten sind sichtbar und editierbar
+
+#### Scenario: Koordinaten werden über Karteninteraktion gepflegt
+
+- **WENN** ein Redakteur den Kartenmarker verschiebt oder einen Kartenpunkt setzt
+- **DANN** synchronisiert das System die zugehörigen `latitude`- und `longitude`-Werte in den Formularfeldern
+- **UND** textuelle Koordinaten-Änderungen bleiben ebenfalls möglich
+
+#### Scenario: Adresssuche erzeugt POI-Ortsdaten
+
+- **WENN** ein Redakteur im Bereich `Ort` eine Adresse oder einen Ort sucht
+- **DANN** zeigt das System passende Vorschläge an
+- **UND** die Auswahl eines Vorschlags kann Adressfelder, Kartenposition und Geo-Koordinaten des POI befüllen
+
+#### Scenario: Eingegebene Adresse wird geokodiert
+
+- **WENN** ein Redakteur Straße, PLZ und Ort manuell eingibt
+- **UND** eine Geokodierung auslösen möchte
+- **DANN** kann das System daraus einen Geo-Treffer bestimmen
+- **UND** Marker und Koordinaten werden aus dem Treffer aktualisiert
+- **UND** die Adresse bleibt für den Redakteur weiter prüf- und korrigierbar
+
+#### Scenario: Ortsdaten bleiben ohne direkte Kartenbedienung pflegbar
+
+- **WENN** ein Redakteur die Karteninteraktion nicht nutzen kann oder nicht nutzen möchte
+- **DANN** kann er Ortsdaten über Adresssuche, manuelle Adresspflege und Koordinatenfelder vollständig bearbeiten
+- **UND** Kartenprobleme blockieren die restliche POI-Bearbeitung nicht
+
+### Requirement: POI-Mehrfachdaten werden als wiederholbare Listen gepflegt
+
+Das System MUST wiederholbare POI-Daten als strukturierte Listen-Editoren statt als Einzelfelder behandeln.
+
+#### Scenario: Mehrere Öffnungszeiten werden gepflegt
+
+- **WENN** ein Redakteur mehrere Öffnungszeiten für einen POI hinterlegt
+- **DANN** kann er mehrere strukturierte Einträge mit Wochentag, Zeitfenster, Beschreibung und Offen-Status anlegen
+- **UND** das System beschränkt die UI nicht auf den ersten Eintrag
+
+#### Scenario: Mehrere Links, Preise oder Dateien werden gepflegt
+
+- **WENN** ein Redakteur mehrere Links, Preise oder Dateien erfassen muss
+- **DANN** bietet das System für jeden dieser Bereiche einen konsistenten Listen-Editor mit `Hinzufügen` und `Entfernen`
+- **UND** jeder Eintrag bleibt in seiner eigenen fachlichen Struktur editierbar
+
+### Requirement: Betreiber und allgemeiner POI-Kontakt bleiben getrennt
+
+Das System MUST den allgemeinen POI-Kontakt und den Betreiber als getrennte Redaktionskonzepte behandeln.
+
+#### Scenario: Betreiber weicht vom allgemeinen Kontakt ab
+
+- **WENN** ein POI einen institutionellen Betreiber hat, der nicht identisch mit dem allgemeinen Kontakt ist
+- **DANN** kann der Redakteur im Bereich `Betreiber` einen eigenen Namen, Kontakt und eine eigene Adresse pflegen
+- **UND** der allgemeine Kontakt im Bereich `Kontakt` bleibt davon unabhängig
+
+#### Scenario: Betreiberdaten sind nicht erforderlich
+
+- **WENN** ein POI keinen abweichenden Betreiber benötigt
+- **DANN** bleibt der Bereich `Betreiber` optional
+- **UND** das System verlangt keine redundanten Doppeleingaben
+
+### Requirement: Erweiterte POI-Daten bleiben aus dem Hauptflow herausgezogen
+
+Das System MUST technische oder selten genutzte POI-Zusatzdaten aus dem Standard-Redaktionsflow herausziehen.
+
+#### Scenario: Payload bleibt ein Spezialbereich
+
+- **WENN** ein Redakteur einen POI im Standardfall bearbeitet
+- **DANN** muss er nicht mit `payload` oder anderen fortgeschrittenen Zusatzfeldern beginnen
+- **UND** diese Felder erscheinen gesammelt unter `Erweiterte Daten`
+
+#### Scenario: Erweiterte Zusatzfelder bleiben verfügbar
+
+- **WENN** ein fortgeschrittener Redakteur Zertifikate, Accessibility-Daten oder technische Zusatzinformationen pflegen muss
+- **DANN** sind diese Felder weiterhin erreichbar
+- **UND** sie verdrängen nicht die Kernpflege von Name, Ort, Kontakt und Öffnungszeiten

@@ -55,7 +55,6 @@ describe('UserEditPage', () => {
     roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
     groups: [{ groupId: 'group-1', groupKey: 'admins', displayName: 'Admins', groupType: 'role_bundle', origin: 'manual' as const }],
     permissions: ['content.read'],
-    directPermissions: [],
     mainserverUserApplicationId: 'app-id-1',
     mainserverUserApplicationSecretSet: true,
   };
@@ -286,16 +285,14 @@ describe('UserEditPage', () => {
           permissionKey: 'content.read',
           action: 'content.read',
           resourceType: 'content',
-          effect: 'allow',
           isEffective: true,
           status: 'effective',
-          sourceKind: 'direct_permission',
+          sourceKind: 'direct_role',
         },
         {
           permissionKey: 'content.archive',
           action: 'content.archive',
           resourceType: 'content',
-          effect: 'deny',
           isEffective: false,
           status: 'expired',
           sourceKind: 'direct_role',
@@ -385,14 +382,12 @@ describe('UserEditPage', () => {
     useUserMock.mockReturnValue({
       user: {
         ...baseUser,
-        directPermissions: [{ permissionId: 'perm-1', permissionKey: 'content.updatePayload', effect: 'deny' as const }],
         permissionTrace: [
           {
             permissionKey: 'content.read',
             action: 'content.read',
             resourceType: 'content',
             runtimeScope: 'record' as const,
-            effect: 'allow' as const,
             isEffective: true,
             status: 'effective' as const,
             sourceKind: 'group_role' as const,
@@ -409,7 +404,6 @@ describe('UserEditPage', () => {
             action: 'content.archive',
             resourceType: 'content',
             runtimeScope: 'instance' as const,
-            effect: 'deny' as const,
             isEffective: false,
             status: 'expired' as const,
             sourceKind: 'direct_role' as const,
@@ -443,7 +437,6 @@ describe('UserEditPage', () => {
     expect(screen.getByText('Nicht wirksame Quellen')).toBeTruthy();
     expect(screen.getByText('content.read')).toBeTruthy();
     expect(screen.getByText('content.archive')).toBeTruthy();
-    expect(screen.getByText('Direkte Zuweisungen')).toBeTruthy();
     expect(screen.getByText(/Organisation: org-1/)).toBeTruthy();
     expect(screen.getByText(/Vererbt ab Organisation: org-root/)).toBeTruthy();
     expect(screen.getByText(/Geo-Freigabe ab: geo-root/)).toBeTruthy();
@@ -815,46 +808,6 @@ describe('UserEditPage', () => {
         mainserverUserApplicationSecret: 'new-secret',
       });
     });
-  });
-
-  it('renders direct user permission assignments read-only in the permissions tab', async () => {
-    const userWithDirectPermission = {
-      ...baseUser,
-      directPermissions: [{ permissionId: 'perm-write', permissionKey: 'content.updatePayload', effect: 'deny' as const }],
-    };
-    const save = vi.fn().mockResolvedValue({
-      ...userWithDirectPermission,
-      mainserverUserApplicationId: 'app-id-1',
-      mainserverUserApplicationSecretSet: true,
-    });
-
-    useUserMock.mockReturnValue({
-      user: userWithDirectPermission,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      save,
-    });
-
-    useRolesMock.mockReturnValue({
-      roles: [{ id: 'role-1', roleName: 'system_admin' }],
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      createRole: vi.fn(),
-      updateRole: vi.fn(),
-      deleteRole: vi.fn(),
-    });
-
-    render(<UserEditPage userId="user-1" />);
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Berechtigungen' }));
-
-    expect(screen.getByText('Direkte Zuweisungen')).toBeTruthy();
-    expect(screen.getByText('content.updatePayload')).toBeTruthy();
-    expect(screen.getByText('deny')).toBeTruthy();
-    expect(screen.queryByLabelText('Direkte Wirkung für content.updatePayload')).toBeNull();
-    expect(save).not.toHaveBeenCalled();
   });
 
   it('shows permissions empty state and handles unsaved-tab dialog', async () => {

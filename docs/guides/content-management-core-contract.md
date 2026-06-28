@@ -8,13 +8,15 @@ Persistente Content-Datensätze führen neben `id`, `contentType`, `title`, `pay
 
 - `instanceId`
 - optional `organizationId`
-- optional `ownerSubjectId`
+- optional `ownerUserId`
+- optional `ownerOrganizationId`
 - `validationState`
 - optional `publishedAt`
 - optional `publishFrom`
 - optional `publishUntil`
 - `createdBy`
 - `updatedBy`
+- `author`
 - `historyRef`
 - optional `currentRevisionRef`
 - optional `lastAuditEventRef`
@@ -43,7 +45,7 @@ Content-Operationen verwenden keine groben Schreibrechte mehr. Kanonisch sind:
 
 - Listen und Details prüfen `content.read`.
 - Create prüft `content.create` vor Persistenz.
-- Titel, Publikationsfenster, Owner, Organisation und Validation State prüfen `content.updateMetadata`.
+- Titel, Publikationsfenster, Owner, Organisation, sichtbare Autorenanzeige und Validation State prüfen `content.updateMetadata`.
 - Payload-Änderungen prüfen `content.updatePayload`.
 - Statuswechsel prüfen zielabhängig `content.publish`, `content.archive`, `content.restore` oder `content.changeStatus`.
 - History-Lesen prüft `content.readHistory`.
@@ -53,17 +55,19 @@ Content-Operationen verwenden keine groben Schreibrechte mehr. Kanonisch sind:
 
 - Die datensatzbezogenen Content-Rechte koennen ueber Rollen additiv mit `accessScope` eingeschraenkt werden:
   - `all`: keine zusaetzliche Einschraenkung
-  - `own`: nur Datensaetze mit passendem `createdBy`
-  - `organization`: eigene Datensaetze plus Datensaetze der aktiven Session-Organisation
+  - `own`: nur Datensaetze mit `ownerUserId = actorAccountId`
+  - `organization`: eigene Datensaetze plus Datensaetze mit `ownerOrganizationId = aktive Session-Organisation`; ohne aktive Organisation verhaelt sich dieser Scope wie `own`
 - Diese Scope-Information lebt auf `iam.role_permissions.access_scope`, nicht auf `iam.permissions.scope`.
 - Der Content-Autorisierungspfad liefert dafuer kanonisch:
-  - `resource.attributes.createdByAccountId`
+  - `resource.attributes.ownerUserId`
+  - `resource.attributes.ownerOrganizationId`
   - `resource.attributes.organizationId`, wenn der Datensatz organisationsrelevant ist
   - `context.attributes.actorAccountId`
 - Fehlt dieser Kontext fuer ein scope-faehiges Content-Recht, bleibt die Entscheidung fail-closed.
+- Create-Requests duerfen `organizationId`, `ownerUserId` und `ownerOrganizationId` nicht als Payload-Override setzen; der Server leitet Owner aus Account und aktiver Organisation ab.
 
 ## Audit und History
 
-History darf Snapshot- und Diff-nahe Daten für Revisionen behalten. Audit-Events speichern dagegen nur stabile Core-Metadaten wie Content-ID, Content-Type, Action, Actor, Ergebnis sowie Request- und Trace-Korrelation.
+History darf Snapshot- und Diff-nahe Daten für Revisionen behalten. Audit-Events speichern dagegen nur stabile Core-Metadaten wie Content-ID, Content-Type, Action, Actor, Ergebnis sowie Request- und Trace-Korrelation. Ownership- und Autorenanzeige-Änderungen enthalten alte und neue Werte für `ownerUserId`, `ownerOrganizationId` und die sichtbare Autorenanzeige.
 
 Plugin-Payloads werden nicht als Audit-Rohdaten geschrieben. Payload-Änderungen erscheinen nur als Klassifikation wie `payload_created`, `payload_updated` oder `payload_unchanged`.

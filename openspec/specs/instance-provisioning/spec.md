@@ -178,22 +178,19 @@ Das System SHALL Runtime-IAM-Fehler und Instanz-/Keycloak-Provisioning-Diagnosen
 - **AND** bleibt für UI und Betrieb sichtbar, ob das Problem aus Runtime-Konfiguration, Provisioning-Blockern oder nachträglicher Drift stammt
 
 ### Requirement: Getrennter Tenant-Admin-Client-Vertrag pro Instanz
-
-Das System SHALL pro Instanz einen separaten technischen Vertrag für den tenant-lokalen Admin-Client führen.
+Das System SHALL pro Instanz einen separaten technischen Vertrag für den tenant-lokalen Admin-Client führen. Dieser Vertrag verwaltet tenantlokale IAM-Operationen im Tenant-Realm und setzt keine Plattformrolle `instance_registry_admin` im Tenant-Realm voraus.
 
 #### Scenario: Registry beschreibt Login- und Admin-Client getrennt
-
 - **WHEN** eine Instanz gelesen oder aktualisiert wird
 - **THEN** enthält der Instanzvertrag `authClientId` für den interaktiven Login-Pfad
 - **AND** enthält er zusätzlich `tenantAdminClient.clientId`
-- **AND** enthält `tenantAdminClient` mindestens den Secret-Status
-- **AND** bleibt das zugehörige Secret write-only
+- **AND** bleibt der Tenant-Admin-Client auf tenantlokale IAM-Operationen des Tenant-Realm beschränkt
 
 #### Scenario: Tenant-Admin-Client fehlt bei betriebsfähiger Tenant-Administration
-
 - **WHEN** eine Instanz keinen vollständigen `tenantAdminClient` besitzt
 - **THEN** markieren Preflight, Doctor oder Status diesen Zustand als `warning` oder `blocked`
 - **AND** normale Tenant-Admin-Mutationen werden nicht freigeschaltet
+- **AND** der Fehler bezieht sich auf tenantlokale IAM-Betriebsfähigkeit, nicht auf Root-Plattformrollen
 
 ### Requirement: Provisioning prüft Login-Client und Tenant-Admin-Client getrennt
 
@@ -269,41 +266,19 @@ Die Instanzdiagnostik SHALL Runtime-IAM-Fehler, Provisioning-Drift, Reconcile-Be
 
 ### Requirement: Instanz-Detailseite zeigt Tenant-IAM-Betriebszustand getrennt von Provisioning-Readiness
 
-Das System SHALL in der Instanz-Detailansicht den Tenant-IAM-Betriebszustand getrennt von der bestehenden Provisioning- und Keycloak-Struktur-Readiness ausweisen und diese Befunde so gruppieren, dass aktuelle Betriebsbewertung und historische Diagnose nicht verwechselt werden.
+Das System SHALL nach abgeschlossenem Setup die laufende Bestandsdiagnose von
+der einmaligen Inbetriebnahme trennen. Provisioning-nahe Historie und
+Reparaturpfade bleiben verfuegbar, sind fuer Bestandsinstanzen aber in einem
+eigenen Diagnosemodus organisiert.
 
-#### Scenario: Strukturstatus und Tenant-IAM-Status werden nicht vermischt
+#### Scenario: Historie bleibt diagnostisch verfuegbar, aber nicht als Hauptmodus
 
-- **WHEN** eine Instanzdetailansicht geladen wird
-- **THEN** bleiben `keycloakStatus`, `keycloakPreflight`, `keycloakPlan` und Provisioning-Runs fuer Struktur- und Provisioning-Fragen erhalten
-- **AND** wird ein separater `tenantIamStatus` fuer die laufende Tenant-IAM-Betriebsfaehigkeit angezeigt
-- **AND** kann eine formal gruene Strukturansicht gleichzeitig einen degradierten Tenant-IAM-Befund tragen
-- **AND** erzwingt die UI nicht, dass Operatoren alle diese Ebenen im selben Erstblick gleichrangig interpretieren muessen
-
-#### Scenario: Aktueller Strukturzustand dominiert gegenueber alter Run-Historie
-
-- **WHEN** aktuelle Struktur-Evidenz und Historien-Evidenz unterschiedliche Signale liefern
-- **THEN** priorisiert die Detailansicht fuer den Erstblick den aktuellen Strukturzustand
-- **AND** bleibt alte Provisioning-Historie diagnostisch verfuegbar
-- **AND** darf historische Fehl-Evidenz nicht den Primaerstatus der Seite bestimmen, solange aktuelle Evidenz etwas anderes belegt
-
-#### Scenario: Bestandsaktionen werden tenant-iam-bezogen zugeordnet
-
-- **WHEN** die Instanzdetailansicht fuer einen Tenant-IAM-Befund Handlungsmoeglichkeiten anbietet
-- **THEN** ordnet die UI nur fachlich sinnvolle Bestandsaktionen wie bestehende Provisioning-/Reset-Pfade oder den Rollen-Reconcile dem Befund zu
-- **AND** schlaegt sie keine unspezifische globale Reparaturaktion vor
-
-#### Scenario: Historische Provisioning-Evidenz bleibt nachgeordnet verfuegbar
-
-- **WHEN** aktuelle Struktur-Checks und der letzte erfolgreiche Provisioning-Zustand gruene oder betriebsbereite Signale liefern
-- **THEN** bleiben aeltere Run-Eintraege mit fehlgeschlagenen Schritten weiterhin verfuegbar
-- **AND** werden diese in der Detailansicht als historische Evidenz und nicht als aktueller Primärstatus dargestellt
-- **AND** bleibt fuer Operatoren klar erkennbar, welcher Befund aktuell und welcher nur rueckblickend relevant ist
-
-#### Scenario: Befunde zeigen Status, Frische und Herkunft
-
-- **WHEN** die Detailansicht einen hervorgehobenen Struktur- oder Tenant-IAM-Befund anzeigt
-- **THEN** zeigt die UI fuer diesen Befund nach Moeglichkeit nicht nur den Status, sondern auch letzte belastbare Evidenzzeit oder gleichwertige Frischeinformation
-- **AND** macht sie sichtbar, ob der Befund aus Preflight, Access-Probe, Reconcile oder Provisioning-Evidenz abgeleitet wurde
+- **WENN** eine Bestandsinstanz abgeschlossen eingerichtet ist
+- **UND** ein Operator technische Laeufe oder Reconcile-Evidenz nachvollziehen
+  moechte
+- **DANN** findet er diese Historie im Diagnosekontext des Doctor-Modus
+- **UND** wird Historie nicht als gleichrangiger Hauptmodus des Bestandsbetriebs
+  praesentiert
 
 ### Requirement: Instanzdiagnostik korreliert Tenant-IAM-Reconcile und Access-Probe
 
@@ -457,21 +432,18 @@ Das System SHALL die Zuweisung eines Moduls zu einer Instanz als Studio-Admin-Mu
 
 ### Requirement: Instanz-Anlage-Flow enthaelt einen sichtbaren Abschnitt fuer den initialen Admin-Bootstrap
 
-Das System SHALL im Instanz-Anlage-Flow nach erfolgreichem Instanz-Create einen eigenen sichtbaren Abschnitt fuer den initialen Admin-Bootstrap der Instanz bereitstellen. Der Abschnitt folgt dem Navigationsmodell der frueheren Flow-Abschnitte, ist aber erst nach erfolgreichem Create aktiv sinnvoll nutzbar.
+Das System SHALL den initialen Admin-Bootstrap nach erfolgreicher Instanzanlage
+in einen separaten einmaligen Flow `Setup abschliessen` ueberfuehren. Dieser
+Flow ist kein dauerhafter Bestandsmodus, sondern dient ausschliesslich dem
+Abschluss der Inbetriebnahme.
 
-#### Scenario: Abschnitt wird erst nach erfolgreichem Create aktiv
+#### Scenario: Setup-Abschluss ist eigener Folgeschritt nach dem Create
 
-- **GIVEN** der Studio-Admin befindet sich im Instanz-Anlage-Flow
-- **WHEN** die Instanz noch nicht erfolgreich angelegt wurde
-- **THEN** ist der Abschnitt fuer den initialen Admin-Bootstrap sichtbar, aber noch nicht aktiv ausfuehrbar
-- **AND** bleibt die eigentliche Bootstrap-Aktion blockiert
-
-#### Scenario: Bootstrap-Abschnitt wird nach Create nutzbar
-
-- **GIVEN** die Instanz wurde erfolgreich angelegt
-- **WHEN** der Studio-Admin den naechsten Abschnitt des Flows aufruft
-- **THEN** kann er dort optional Module fuer die Instanz auswaehlen
-- **AND** kann er den initialen Admin-Bootstrap ueber genau einen Sammel-Button ausloesen
+- **GIVEN** eine Instanz wurde erfolgreich angelegt
+- **WHEN** der Studio-Admin den naechsten primaeren Schritt waehlt
+- **THEN** fuehrt die UI in den separaten Flow `Setup abschliessen`
+- **AND** bleibt dieser Flow klar von `Betrieb`, `Doctor` und
+  `Einstellungen` getrennt
 
 ### Requirement: Initialer Admin-Bootstrap funktioniert auch ohne Modulauswahl
 
@@ -501,22 +473,27 @@ Das System SHALL die Modulauswahl im Bootstrap-Abschnitt als echte offizielle In
 
 ### Requirement: Instanz gilt erst nach erfolgreichem Bootstrap-Lauf als fertig
 
-Das System SHALL eine im neuen Flow angelegte Instanz erst dann als fachlich `fertig` behandeln, wenn der initiale Admin-Bootstrap mindestens einmal erfolgreich ausgefuehrt wurde.
+Das System SHALL eine Instanz erst dann als fachlich fertig eingerichtet
+behandeln, wenn die Inbetriebnahme vollstaendig abgeschlossen ist. Vollstaendig
+abgeschlossen bedeutet mindestens: die Instanz ist aktiv und die
+Tenant-Admin-Struktur wurde initialisiert.
 
-#### Scenario: Create allein macht die Instanz noch nicht fertig
+#### Scenario: Aktivierung allein beendet das Setup noch nicht
+
+- **GIVEN** eine Instanz wurde angelegt und aktiviert
+- **AND** die Tenant-Admin-Struktur wurde noch nicht initialisiert
+- **WHEN** der Studio-Admin den Setup-Status betrachtet
+- **THEN** gilt die Inbetriebnahme noch nicht als abgeschlossen
+- **AND** weist der Flow auf den noch ausstehenden Schritt zur
+  Tenant-Admin-Struktur hin
+
+#### Scenario: Setup ist erst nach Aktivierung und Admin-Struktur abgeschlossen
 
 - **GIVEN** eine Instanz wurde erfolgreich angelegt
-- **AND** der Bootstrap-Abschnitt wurde noch nicht erfolgreich abgeschlossen
-- **WHEN** der Studio-Admin den Flow oder den Instanzstatus betrachtet
-- **THEN** behandelt das System die Instanz noch nicht als `fertig`
-- **AND** weist der Flow auf den noch ausstehenden Bootstrap-Schritt hin
-
-#### Scenario: Erfolgreicher Bootstrap markiert den Flow als fertig
-
-- **GIVEN** eine Instanz wurde erfolgreich angelegt
-- **WHEN** der Sammel-Button fuer den initialen Admin-Bootstrap mindestens einmal erfolgreich durchlaeuft
-- **THEN** behandelt das System die Instanz im neuen Flow als `fertig`
-- **AND** darf der Abschlussstatus unabhaengig davon erreicht werden, ob Module ausgewaehlt wurden oder nicht
+- **WHEN** die Instanz aktiv ist
+- **AND** die Tenant-Admin-Struktur erfolgreich initialisiert wurde
+- **THEN** behandelt das System den Setup-Abschluss als fachlich fertig
+- **AND** fuehrt die UI danach standardmaessig in die Bestandsverwaltung
 
 ### Requirement: Bootstrap-Aktion darf bereits erfolgreiche Modulzuordnung bei Folgefehlern erhalten
 
@@ -604,3 +581,82 @@ Das System SHALL fuer kritische Root-Host-Control-Plane-Mutationen der Instanzve
 - **WHEN** dieselbe Mutation in einem explizit als lokal oder nicht-produktiv definierten Entwicklungsprofil ausgefuehrt wird
 - **THEN** verwendet das System einen dokumentierten serverseitigen Dev-Pfad oder einen expliziten Nicht-Produktiv-Bypass
 - **AND** ist dieses Verhalten ausserhalb dieser Profile nicht verfuegbar
+
+### Requirement: Tenant-Admin-Bootstrap vergibt nur tenantlokale Sonderrechte
+Das System SHALL beim Bootstrap einer neuen Instanz dem initialen Tenant-Admin ausschließlich tenantlokale Sonderrechte des Tenant-Realm zuweisen.
+
+#### Scenario: Bootstrap vergibt system_admin, aber keine Plattformrolle
+- **WHEN** der initiale Tenant-Admin einer neuen Instanz angelegt oder aktualisiert wird
+- **THEN** synchronisiert das System im Tenant-Realm mindestens die Rolle `system_admin`
+- **AND** es synchronisiert für `system_admin` die vollständige tenantlokale Permission-Basis aus der führenden Permission-Quelle
+- **AND** es synchronisiert dabei nicht die Plattformrolle `instance_registry_admin`
+
+#### Scenario: Tenant-Status fordert keine Plattformrolle im Tenant-Realm
+- **WHEN** der Keycloak-Status oder Preflight einer Tenant-Instanz gelesen wird
+- **THEN** bewertet das System tenantlokale Rollen und Tenant-Admin-Zustand ohne Erwartung einer Rolle `instance_registry_admin` im Tenant-Realm
+- **AND** fehlende Plattformrollen im Tenant-Realm werden nicht als Drift des Tenant-Realm interpretiert
+
+#### Scenario: Tenant-Admin-Repair erkennt fehlende Vollzugriffs-Permissions
+- **WHEN** ein Bootstrap-, Repair- oder Reconcile-Pfad einen Tenant mit `system_admin` prüft
+- **THEN** behandelt das System fehlende tenantlokale Permissions auf `system_admin` als Drift
+- **AND** der Repair-Pfad kann diese Permission-Bündelung idempotent wiederherstellen
+
+#### Scenario: Root-Bootstrap materialisiert keine Legacy-Admin-Struktur mehr
+- **WHEN** ein Root-/Plattform-Administrator in der Instanzverwaltung die Tenant-Admin-Struktur bootstrappt oder repariert
+- **THEN** synchronisiert das System nur die geschützte Tenant-Rolle `system_admin` sowie die IAM-Basis der zugewiesenen Module
+- **AND** es materialisiert dabei keine Gruppen wie `admins`, keine Rollen wie `core_admin` und keine modulbezogenen Standard-Admin-Rollen mehr
+
+#### Scenario: Legacy-Admin-Artefakte bleiben als reparierbarer Drift sichtbar
+- **WHEN** eine Bestandsinstanz weiterhin Komfortartefakte wie die Gruppe `admins` oder die Rolle `core_admin` enthält
+- **THEN** weist das System diesen Zustand im Tenant-IAM- oder Rollenabgleich als Drift bzw. manuellen Nacharbeitsbedarf aus
+- **AND** der Zustand bleibt über die regulären Tenant-Rollen- und Gruppenverwaltungswege bereinigbar, ohne `system_admin` als normative Vollzugriffsrolle zu ersetzen
+
+### Requirement: Root- und Tenant-Provisioning-Evidenz bleiben getrennt
+Das System SHALL Provisioning-, Status- und Diagnosepfade für Root-Control-Plane und Tenant-Realm getrennt ausweisen.
+
+#### Scenario: Root- und Tenant-Befunde bleiben semantisch getrennt
+- **WHEN** eine Instanz im Root-Control-Plane-Cockpit betrachtet wird
+- **THEN** bleiben Plattformzugang, Root-Operator-Rechte und tenantlokale Realm-Befunde als getrennte Achsen oder Diagnosen modelliert
+- **AND** ein tenantlokaler Rollenfehler wird nicht als Root-Realm-Problem dargestellt
+
+### Requirement: Lokaler Bootstrap bewahrt bestehende Umgebungsidentität
+
+Das System SHALL fuer bestehende lokale Instanzdatenbanken den normalen Startpfad, explizite Registry-Korrektur und tenant-spezifische Secret-Reparatur trennen.
+
+#### Scenario: Bestehende lokale Instanz wird nicht beim Start ueberschrieben
+
+- **WHEN** eine bereits konfigurierte lokale Instanzdatenbank erneut ueber `pnpm env:up:local-keycloak` gestartet wird
+- **THEN** bleiben bestehende Host-, Realm- und Client-Identitaeten unveraendert
+- **AND** werden Abweichungen nur als Drift sichtbar gemacht
+
+#### Scenario: Lokaler Repair nutzt vorhandene Provisioning-Vertraege
+
+- **WHEN** `pnpm env:repair:local-keycloak` eine lokale Instanz mit fehlenden tenant-spezifischen Secrets oder Registry-Drift bearbeitet
+- **THEN** verwendet der Repair-Pfad dieselben Provisioning- und Registry-Vertraege wie die vorhandene Instanzverwaltung
+- **AND** fuehrt keine parallelen Direkt-SQL-Pfade fuer Secret-Heilung ein
+
+### Requirement: Gefaehrlicher lokaler Bootstrap benoetigt explizite Freigabe
+
+Das System SHALL repo-gesteuerte lokale Bootstrap-Pfade fuer bestehende oder neu anzulegende Instanzdatenbanken nur mit expliziter Freigabe ausfuehren.
+
+#### Scenario: Lokaler Instanz-DB-Bootstrap bleibt ohne Approval gesperrt
+
+- **WHEN** `pnpm env:bootstrap:local-instance-db` eine lokale Zielinstanz initialisieren oder neu aufbauen soll
+- **THEN** blockiert das Skript den Lauf ohne passenden `--approve-dangerous=bootstrap-local-instance-db:<target-instance-id>`
+- **AND** nennt die Fehlermeldung den exakt erwarteten Freigabetoken
+
+### Requirement: Lokaler DB-Snapshot bleibt migrationsbasiert ableitbar
+
+Das System SHALL den eingecheckten DB-Snapshot als aus Migrationen ableitbares Artefakt behandeln.
+
+#### Scenario: Snapshot-Check erkennt nicht migrierte Objekte
+
+- **WHEN** `pnpm env:verify:db-schema-snapshot` gegen den lokalen Datenbankstand ausgefuehrt wird
+- **THEN** schlaegt der Befehl fehl, wenn der Snapshot Objekte enthaelt, die der migrationsbasierte Datenbankstand nicht besitzt
+- **AND** meldet er fehlende und unerwartete Objekte maschinenlesbar
+
+#### Scenario: Runtime-Schemas werden aus dem Snapshot-Check ausgeschlossen
+
+- **WHEN** der Snapshot-Check einen lokalen Datenbank-Dump mit reinen Runtime- oder Infra-Schemas liest
+- **THEN** ignoriert der Check mindestens `graphile_worker`
+- **AND** behandelt diese Schemata nicht als fachliche Snapshot-Drift

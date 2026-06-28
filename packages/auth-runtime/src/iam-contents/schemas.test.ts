@@ -32,6 +32,42 @@ describe('iam content schemas', () => {
     ).toBe(true);
   });
 
+  it('rejects create-time ownership and organization overrides', () => {
+    expect(
+      createContentSchema.safeParse({
+        contentType: 'news.article',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+        payload: { body: 'Text' },
+        status: 'draft',
+        title: 'News',
+      }).success
+    ).toBe(false);
+    expect(
+      createContentSchema.safeParse({
+        contentType: 'news.article',
+        ownerUserId: '00000000-0000-0000-0000-000000000001',
+        payload: { body: 'Text' },
+        status: 'draft',
+        title: 'News',
+      }).success
+    ).toBe(false);
+    expect(
+      createContentSchema.safeParse({
+        contentType: 'news.article',
+        ownerOrganizationId: '11111111-1111-4111-8111-111111111111',
+        payload: { body: 'Text' },
+        status: 'draft',
+        title: 'News',
+      }).success
+    ).toBe(false);
+  });
+
+  it('accepts visible author changes on update', () => {
+    expect(updateContentSchema.safeParse({ authorDisplayName: 'Stadt Musterhausen' }).success).toBe(true);
+    expect(updateContentSchema.safeParse({ authorDisplayName: '' }).success).toBe(false);
+    expect(updateContentSchema.safeParse({ authorDisplayName: '  ' }).success).toBe(false);
+  });
+
   it('accepts valid ISO timestamps with variable fractional precision', () => {
     for (const publishedAt of [
       '2026-04-25T12:00:00.1Z',

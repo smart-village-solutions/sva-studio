@@ -10,6 +10,8 @@ const row = (payload: ContentRow['payload_json']): ContentRow => ({
   instance_id: 'instance-1',
   organization_id: null,
   owner_subject_id: null,
+  owner_user_id: null,
+  owner_organization_id: null,
   title: 'Titel',
   published_at: null,
   publish_from: null,
@@ -32,7 +34,9 @@ describe('iam content repository state helpers', () => {
     expect(
       resolveContentChangedFields(row({ teaser: 'Kurz', body: { de: 'Text', en: 'Text' } }), {
         nextOrganizationId: null,
-        nextOwnerSubjectId: null,
+        nextOwnerUserId: null,
+        nextOwnerOrganizationId: null,
+        nextAuthorDisplayName: 'Autor',
         nextTitle: 'Titel',
         nextPayload: { body: { en: 'Text', de: 'Text' }, teaser: 'Kurz' },
         nextStatus: 'draft',
@@ -48,7 +52,9 @@ describe('iam content repository state helpers', () => {
     expect(() =>
       validateNextContentState({
         nextOrganizationId: null,
-        nextOwnerSubjectId: null,
+        nextOwnerUserId: null,
+        nextOwnerOrganizationId: null,
+        nextAuthorDisplayName: 'Autor',
         nextTitle: 'Titel',
         nextPayload: {},
         nextStatus: 'published',
@@ -62,7 +68,9 @@ describe('iam content repository state helpers', () => {
     expect(() =>
       validateNextContentState({
         nextOrganizationId: null,
-        nextOwnerSubjectId: null,
+        nextOwnerUserId: null,
+        nextOwnerOrganizationId: null,
+        nextAuthorDisplayName: 'Autor',
         nextTitle: 'Titel',
         nextPayload: {},
         nextStatus: 'draft',
@@ -76,7 +84,9 @@ describe('iam content repository state helpers', () => {
     expect(() =>
       validateNextContentState({
         nextOrganizationId: null,
-        nextOwnerSubjectId: null,
+        nextOwnerUserId: null,
+        nextOwnerOrganizationId: null,
+        nextAuthorDisplayName: 'Autor',
         nextTitle: 'Titel',
         nextPayload: {},
         nextStatus: 'draft',
@@ -90,7 +100,9 @@ describe('iam content repository state helpers', () => {
     expect(() =>
       validateNextContentState({
         nextOrganizationId: null,
-        nextOwnerSubjectId: null,
+        nextOwnerUserId: null,
+        nextOwnerOrganizationId: null,
+        nextAuthorDisplayName: 'Autor',
         nextTitle: 'Titel',
         nextPayload: {},
         nextStatus: 'draft',
@@ -104,7 +116,9 @@ describe('iam content repository state helpers', () => {
     expect(() =>
       validateNextContentState({
         nextOrganizationId: null,
-        nextOwnerSubjectId: null,
+        nextOwnerUserId: null,
+        nextOwnerOrganizationId: null,
+        nextAuthorDisplayName: 'Autor',
         nextTitle: 'Titel',
         nextPayload: {},
         nextStatus: 'draft',

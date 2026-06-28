@@ -23,19 +23,10 @@ type UseContentAccessResult = {
 };
 
 const collectEffectivePermissionActions = (permissions: MePermissionsResponse['permissions']): readonly string[] => {
-  const deniedActions = new Set(
-    permissions
-      .filter((permission) => permission.effect === 'deny')
-      .map((permission) => permission.action)
-      .filter((action): action is string => typeof action === 'string' && action.length > 0)
-  );
-
   return [...new Set(
     permissions
-      .filter((permission) => permission.effect !== 'deny')
       .map((permission) => permission.action)
       .filter((action): action is string => typeof action === 'string' && action.length > 0)
-      .filter((action) => !deniedActions.has(action))
   )].sort((left, right) => left.localeCompare(right));
 };
 
@@ -61,6 +52,14 @@ export const useContentAccess = (): UseContentAccessResult => {
       setPermissionActions([]);
       setError(null);
       setIsLoading(false);
+      return;
+    }
+
+    if (organizationContext.isLoading) {
+      setAccess(null);
+      setPermissionActions([]);
+      setError(null);
+      setIsLoading(true);
       return;
     }
 
@@ -135,7 +134,12 @@ export const useContentAccess = (): UseContentAccessResult => {
     return () => {
       isActive = false;
     };
-  }, [invalidatePermissions, organizationContext.context?.activeOrganizationId, user?.instanceId]);
+  }, [
+    invalidatePermissions,
+    organizationContext.context?.activeOrganizationId,
+    organizationContext.isLoading,
+    user?.instanceId,
+  ]);
 
   return {
     access,

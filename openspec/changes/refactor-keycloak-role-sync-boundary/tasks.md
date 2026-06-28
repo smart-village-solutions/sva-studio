@@ -1,3 +1,5 @@
+> Stand nach Archivierung der vorgelagerten IAM-Changes: Die repo-lokalen Spezifikations-, Code-, Test- und Doku-Aufgaben sind abgeschlossen. Offen bleiben ausschließlich operative Zielumgebungs- und Rollout-Aufgaben, die Drift-Berichte, Pilot-Tenant-Smokes und tenantweise Betriebsfreigaben benötigen; diese Checkboxen dürfen erst mit entsprechenden Zielumgebungsnachweisen geschlossen werden.
+
 ## 1. Spezifikation und Vertragsgrenze
 - [x] 1.1 Bestehende OpenSpec-Annahmen entfernen, nach denen studioverwaltete Tenant-Rollen generell mit Keycloak-Realm-Rollen synchronisiert werden.
 - [x] 1.2 Die normative Trennung dokumentieren: Keycloak für Identität und technische Sonderrollen, IAM-Datenbank für fachliche Tenant-Rollen und Permissions.

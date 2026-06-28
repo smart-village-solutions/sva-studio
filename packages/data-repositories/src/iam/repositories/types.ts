@@ -7,7 +7,6 @@ import type {
   IamUuid,
   OrganizationMembershipVisibility,
   OrganizationType,
-  PermissionEffect,
 } from '../types.js';
 import type { RoleManagedBy, RoleSyncState } from './role-sync-types.js';
 
@@ -87,7 +86,6 @@ export type IamSeedRepository = {
     action?: string;
     resourceType?: string;
     resourceId?: string;
-    effect?: PermissionEffect;
     scope?: Readonly<Record<string, unknown>>;
     description: string;
   }): Promise<void>;

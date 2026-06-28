@@ -54,7 +54,6 @@ const createDeps = () => ({
       {
         action: 'waste-management.settings.manage',
         resourceType: 'waste-management',
-        effect: 'allow' as const,
       },
     ],
   })),

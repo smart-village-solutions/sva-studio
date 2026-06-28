@@ -4,7 +4,6 @@ import type {
   EffectivePermission,
   IamApiErrorCode,
   IamApiErrorResponse,
-  IamPermissionEffect,
   MePermissionsResponse,
 } from '@sva/core';
 import type { SnapshotCacheStatus } from '@sva/core';
@@ -37,14 +36,12 @@ export type PermissionRow = {
   action?: string | null;
   resource_type?: string | null;
   resource_id?: string | null;
-  effect?: IamPermissionEffect | null;
   scope?: Record<string, unknown> | null;
-  account_id?: string | null;
   role_id?: string | null;
   organization_id: string | null;
   group_id?: string | null;
   group_key?: string | null;
-  source_kind?: 'direct_user' | 'direct_role' | 'group_role' | null;
+  source_kind?: 'direct_role' | 'group_role' | null;
 };
 
 export type EffectivePermissionsResolution =
@@ -112,9 +109,8 @@ export const recordPermissionCacheColdStart = (instanceId: string): void => {
 export const readResourceType = (permissionKey: string) => permissionKey.split('.')[0] ?? permissionKey;
 
 const SOURCE_KIND_ORDER: Record<NonNullable<PermissionRow['source_kind']>, number> = {
-  direct_user: 0,
-  direct_role: 1,
-  group_role: 2,
+  direct_role: 0,
+  group_role: 1,
 };
 
 const sortStrings = (values: readonly string[]): readonly string[] => [...values].sort((left, right) => left.localeCompare(right));
@@ -129,7 +125,6 @@ const buildPermissionBucketKey = (input: {
   readonly resourceType: string;
   readonly resourceId?: string;
   readonly organizationId?: string | null;
-  readonly effect: IamPermissionEffect;
   readonly scope?: Record<string, unknown>;
 }): string =>
   JSON.stringify({
@@ -137,7 +132,6 @@ const buildPermissionBucketKey = (input: {
     resourceType: input.resourceType,
     resourceId: input.resourceId,
     organizationId: input.organizationId ?? '',
-    effect: input.effect,
     scope: input.scope,
   });
 
@@ -166,43 +160,36 @@ const createEffectivePermission = (
     readonly action: string;
     readonly resourceType: string;
     readonly resourceId?: string;
-    readonly effect: IamPermissionEffect;
     readonly scope?: Record<string, unknown>;
-    readonly accountId?: string;
     readonly groupId?: string;
     readonly groupKey?: string;
   }
 ): EffectivePermission => ({
   action: normalized.action,
   resourceType: normalized.resourceType,
-  resourceId: normalized.resourceId,
-  organizationId: row.organization_id ?? undefined,
-  effect: normalized.effect,
-  scope: normalized.scope,
-  ...(normalized.accountId ? { sourceUserIds: [normalized.accountId] } : {}),
+  ...(normalized.resourceId ? { resourceId: normalized.resourceId } : {}),
+  ...(row.organization_id ? { organizationId: row.organization_id } : {}),
+  ...(normalized.scope ? { scope: normalized.scope } : {}),
   ...(row.role_id ? { sourceRoleIds: [row.role_id] } : {}),
   ...(normalized.groupId ? { sourceGroupIds: [normalized.groupId] } : {}),
   ...(normalized.groupKey ? { groupName: normalized.groupKey } : {}),
-  provenance: row.source_kind ? { sourceKinds: [row.source_kind] } : undefined,
+  ...(row.source_kind ? { provenance: { sourceKinds: [row.source_kind] } } : {}),
 });
 
 const mergeEffectivePermission = (
   existing: EffectivePermission,
   row: PermissionRow,
   normalized: {
-    readonly accountId?: string;
     readonly groupId?: string;
     readonly groupKey?: string;
   }
 ): EffectivePermission => {
-  const sourceUserIds = appendSortedUnique(existing.sourceUserIds, normalized.accountId);
   const sourceRoleIds = appendSortedUnique(existing.sourceRoleIds, row.role_id ?? undefined);
   const sourceGroupIds = appendSortedUnique(existing.sourceGroupIds, normalized.groupId);
   const sourceKinds = mergeSortedSourceKinds(existing.provenance?.sourceKinds, row.source_kind ?? undefined);
 
   return {
     ...existing,
-    ...(sourceUserIds ? { sourceUserIds } : {}),
     ...(sourceRoleIds ? { sourceRoleIds } : {}),
     ...(sourceGroupIds ? { sourceGroupIds } : {}),
     ...(normalized.groupKey ?? existing.groupName ? { groupName: normalized.groupKey ?? existing.groupName } : {}),
@@ -212,7 +199,6 @@ const mergeEffectivePermission = (
 
 const finalizeEffectivePermission = (permission: EffectivePermission): EffectivePermission => ({
   ...permission,
-  ...(permission.sourceUserIds ? { sourceUserIds: sortStrings(permission.sourceUserIds) } : {}),
   ...(permission.sourceRoleIds ? { sourceRoleIds: sortStrings(permission.sourceRoleIds) } : {}),
   ...(permission.sourceGroupIds ? { sourceGroupIds: sortStrings(permission.sourceGroupIds) } : {}),
   provenance: permission.provenance?.sourceKinds
@@ -228,9 +214,7 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
       action: row.action?.trim() || row.permission_key,
       resourceType: row.resource_type?.trim() || readResourceType(row.permission_key),
       resourceId: row.resource_id?.trim() || undefined,
-      effect: row.effect ?? 'allow',
       scope: row.scope ?? undefined,
-      accountId: row.account_id ?? undefined,
       groupId: row.group_id ?? undefined,
       groupKey: row.group_key ?? undefined,
     };
@@ -239,7 +223,6 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
       resourceType: normalized.resourceType,
       resourceId: normalized.resourceId,
       organizationId: row.organization_id,
-      effect: normalized.effect,
       scope: normalized.scope,
     });
     const existing = buckets.get(bucketKey);
@@ -374,7 +357,6 @@ export const buildMePermissionsResponse = (input: {
   snapshotVersion: input.snapshotVersion,
   cacheStatus: input.cacheStatus,
   provenance: {
-    hasDirectUserPermissions: input.permissions.some((permission) => (permission.sourceUserIds?.length ?? 0) > 0),
     hasGroupDerivedPermissions: input.permissions.some((permission) => (permission.sourceGroupIds?.length ?? 0) > 0),
     hasGeoInheritance: input.permissions.some((permission) => {
       const scope = permission.scope;

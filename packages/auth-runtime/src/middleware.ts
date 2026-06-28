@@ -24,7 +24,8 @@ import type { SessionUser } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
-const isAuthorizeTimingDebugEnabled = (): boolean => process.env.IAM_DEBUG_AUTHORIZE_TIMINGS === 'true';
+const isAuthorizeTimingDebugEnabled = (): boolean =>
+  process.env.IAM_DEBUG_AUTHORIZE_TIMINGS === 'true';
 
 export type AuthenticatedRequestContext = {
   sessionId: string;
@@ -33,6 +34,10 @@ export type AuthenticatedRequestContext = {
   isLocalDevelopmentAuth?: boolean;
   activeOrganizationId?: string;
   user: SessionUser;
+};
+
+export type AuthenticatedUserOptions = {
+  readonly skipEffectiveRoleHydration?: boolean;
 };
 
 type SessionResolution =
@@ -56,7 +61,10 @@ const readSessionId = (request: Request) => {
   return cookies[sessionCookieName];
 };
 
-const createAuthenticatedContext = async (request: Request): Promise<SessionResolution> => {
+const createAuthenticatedContext = async (
+  request: Request,
+  options: AuthenticatedUserOptions = {}
+): Promise<SessionResolution> => {
   const tenantHostValidationStartedAt = performance.now();
   const tenantHostError = await validateTenantHost(request);
   const tenantHostValidationMs = performance.now() - tenantHostValidationStartedAt;
@@ -153,19 +161,21 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
 
   const runtimeSessionHydrationStartedAt = performance.now();
   const runtimeSessionUser = await resolveRuntimeSessionUser(request, sessionResolution.user);
-  const effectiveSessionUser = await enrichSessionUserWithEffectiveRoles(runtimeSessionUser);
+  const effectiveSessionUser = options.skipEffectiveRoleHydration
+    ? runtimeSessionUser
+    : await enrichSessionUserWithEffectiveRoles(runtimeSessionUser);
   const runtimeSessionHydrationMs = performance.now() - runtimeSessionHydrationStartedAt;
 
   return {
     kind: 'authenticated',
     tenantHostValidationMs,
     storedSessionResolutionMs,
-      runtimeSessionHydrationMs,
-      freshReauthAt: sessionResolution.freshReauthAt,
-      activeOrganizationId: sessionResolution.activeOrganizationId,
-      sessionId,
-      sessionExpiresAt: sessionResolution.expiresAt,
-      user: effectiveSessionUser,
+    runtimeSessionHydrationMs,
+    freshReauthAt: sessionResolution.freshReauthAt,
+    activeOrganizationId: sessionResolution.activeOrganizationId,
+    sessionId,
+    sessionExpiresAt: sessionResolution.expiresAt,
+    user: effectiveSessionUser,
   };
 };
 
@@ -200,12 +210,13 @@ const runWithLegalTextComplianceIfRequired = async (
  */
 export const withAuthenticatedUser = async (
   request: Request,
-  handler: (ctx: AuthenticatedRequestContext) => Promise<Response> | Response
+  handler: (ctx: AuthenticatedRequestContext) => Promise<Response> | Response,
+  options: AuthenticatedUserOptions = {}
 ): Promise<Response> => {
   const middlewareStartedAt = performance.now();
   let ctx: AuthenticatedRequestContext;
   try {
-    const resolution = await createAuthenticatedContext(request);
+    const resolution = await createAuthenticatedContext(request, options);
     if (resolution.kind === 'response') {
       return resolution.response;
     }

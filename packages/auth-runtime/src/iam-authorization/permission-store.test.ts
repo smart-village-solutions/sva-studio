@@ -75,7 +75,7 @@ describe('resolveEffectivePermissions', () => {
       version: 'redis-1',
     });
     mocks.loadPermissionsFromDb.mockResolvedValue([
-      { action: 'news.read', effect: 'allow' },
+      { action: 'news.read' },
     ]);
   });
 
@@ -85,7 +85,7 @@ describe('resolveEffectivePermissions', () => {
     mocks.permissionSnapshotCache.get.mockReturnValueOnce({
       status: 'hit',
       snapshot: {
-        permissions: [{ action: 'news.read', effect: 'allow' }],
+        permissions: [{ action: 'news.read' }],
         snapshotVersion: 'memory-1',
       },
       ttlRemainingSeconds: 42,
@@ -98,7 +98,7 @@ describe('resolveEffectivePermissions', () => {
 
     expect(result).toEqual({
       ok: true,
-      permissions: [{ action: 'news.read', effect: 'allow' }],
+      permissions: [{ action: 'news.read' }],
       cacheStatus: 'hit',
       snapshotVersion: 'memory-1',
     });
@@ -111,7 +111,7 @@ describe('resolveEffectivePermissions', () => {
 
     mocks.getRedisPermissionSnapshot.mockResolvedValueOnce({
       hit: true,
-      permissions: [{ action: 'events.read', effect: 'allow' }],
+      permissions: [{ action: 'events.read' }],
       version: 'redis-2',
     });
     mocks.permissionSnapshotCache.set.mockReturnValueOnce({
@@ -126,7 +126,7 @@ describe('resolveEffectivePermissions', () => {
 
     expect(result).toEqual({
       ok: true,
-      permissions: [{ action: 'events.read', effect: 'allow' }],
+      permissions: [{ action: 'events.read' }],
       cacheStatus: 'hit',
       snapshotVersion: 'memory-2',
     });
@@ -162,7 +162,7 @@ describe('resolveEffectivePermissions', () => {
       ageSeconds: 600,
     });
     mocks.loadPermissionsFromDb.mockResolvedValueOnce([
-      { action: 'locations.manage', effect: 'allow' },
+      { action: 'locations.manage' },
     ]);
     mocks.setRedisPermissionSnapshot.mockResolvedValueOnce({
       ok: true,
@@ -181,7 +181,7 @@ describe('resolveEffectivePermissions', () => {
 
     expect(result).toEqual({
       ok: true,
-      permissions: [{ action: 'locations.manage', effect: 'allow' }],
+      permissions: [{ action: 'locations.manage' }],
       cacheStatus: 'recompute',
       snapshotVersion: 'memory-3',
     });

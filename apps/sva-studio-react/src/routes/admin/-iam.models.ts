@@ -111,9 +111,6 @@ export const mapAuthorizeDecision = (response: AuthorizeResponse): AuthorizeDeci
 
 const mapSourceKindToLabel = (sourceKind: string): string => {
   switch (sourceKind) {
-    case 'direct_user':
-    case 'user':
-      return t('admin.iam.rights.permissionSource.user');
     case 'direct_role':
     case 'role':
       return t('admin.iam.rights.permissionSource.role');
@@ -226,7 +223,6 @@ export const filterPermissions = (
       includesIgnoreCase(permission.resourceType, query) ||
       includesIgnoreCase(permission.resourceId, query) ||
       includesIgnoreCase(permission.organizationId, query) ||
-      includesIgnoreCase(permission.effect, query) ||
       includesIgnoreCase((permission.sourceRoleIds ?? []).join(' '), query) ||
       includesIgnoreCase((permission.sourceGroupIds ?? []).join(' '), query) ||
       includesIgnoreCase(

@@ -118,15 +118,14 @@ gleichzeitig beeinflussen.
 - Im tenant-spezifischen Login ist Host/Registry/Realm die führende Quelle für diesen Scope; ein fehlender benutzerbezogener `instanceId`-Claim blockiert die Session nicht.
 - Keycloak ist führend für Authentifizierung, Realm-Zugang und technische Sonderrollen; Postgres ist führend für Studio-verwaltete IAM-Fachdaten inklusive tenantlokaler Rollen, Gruppen und Permissions
 - Autorisierungspfade erzwingen `instanceId`-Filterung vor Rollen-/Policy-Evaluation
-- Effektive Berechtigungen aggregieren direkte Nutzerrechte, direkte Rollen und gruppenvermittelte Rollen; die Provenance hält `direct_user`, `direct_role` und `group_role` als strukturierte Quelle fest
+- Effektive Berechtigungen aggregieren direkte Rollen und gruppenvermittelte Rollen; die Provenance hält `direct_role` und `group_role` als strukturierte Quelle fest
 - Rollen-Permission-Zuordnungen koennen fuer explizit scope-faehige Datensatzrechte zusaetzlich einen Assignment-Scope `all|own|organization` tragen; dieser Scope lebt auf `iam.role_permissions.access_scope` und nicht im generischen `iam.permissions.scope`
-- `all` bedeutet unveraenderte globale Freigabe innerhalb des Instanzkontexts; `own` bindet die Freigabe an `createdByAccountId`; `organization` erweitert `own` um Datensaetze der aktiven Session-Organisation
+- `all` bedeutet unveraenderte globale Freigabe innerhalb des Instanzkontexts; `own` bindet die Freigabe an `ownerUserId`; `organization` erweitert `own` um Datensaetze der aktiven Session-Organisation über `ownerOrganizationId`
 - Verwaltete Permissions tragen zusätzlich eine explizite Laufzeitklassifikation `runtimeScope = instance | record | organization_context`; nur `record`- und `organization_context`-Rechte werten zusätzlichen Organisations- oder Ownership-Kontext fachlich aus
 - Ein aktiver `organizationId`-Kontext ist deshalb kein blanket Projektionssignal für alle effektiven Permissions; instanzweite Rechte wie `media.*`, `waste-management.*`, `app.read` oder `cockpit.read` bleiben im Snapshot- und Transparenzpfad instanzweit
-- Scope-faehige Fachmodule muessen fuer Authorize-Entscheidungen die kanonischen Resource-Attribute `createdByAccountId` und bei organisationsrelevanten Datensaetzen `organizationId` liefern; fehlt dieser Kontext, bleibt die Entscheidung fail-closed
+- Scope-faehige Fachmodule muessen fuer Authorize-Entscheidungen die kanonischen Resource-Attribute `ownerUserId` und bei organisationsrelevanten Datensaetzen `ownerOrganizationId` liefern; fehlt dieser Kontext, bleibt die Entscheidung fail-closed
 - Gruppen sind instanzgebundene Rollenbündel (`group_type = role_bundle`); direkte Gruppen-Permissions sind bewusst nicht Teil des ersten Schnitts
-- Direkte Nutzerrechte werden in `iam.account_permissions` mit eigenem `effect` (`allow|deny`) persistiert und bewusst von Rollen-/Gruppenmitgliedschaften getrennt gepflegt
-- Konfliktregel für direkte Nutzerrechte bleibt konservativ: direkte Nutzer-Denies schlagen alle Allows; direkte Nutzer-Allows ergänzen nur, wenn kein restriktiver Konflikt greift
+- Direkte Nutzerrechte und fachliche `deny`-Permissions sind nicht Teil des Zielmodells; effektive Permissions sind Allow-Grants aus Rollen und Gruppen.
 - Gruppenmitgliedschaften werden mit Herkunft (`manual|seed|sync`) und optionalen Gültigkeitsfenstern in `iam.account_groups` geführt
 - Geo-Scopes werden kanonisch über `allowedGeoUnitIds` und `restrictedGeoUnitIds` gegen das Read-Modell `iam.geo_units` ausgewertet; `allowedGeoScopes` bleibt nur als Kompatibilitäts-Fallback bestehen
 - Geo-Vererbung ist strikt restriktiv: Parent-Allow darf auf Children vererben, ein spezifischer Child-Deny schlägt diesen Allow deterministisch
@@ -491,11 +490,11 @@ Referenzen:
 - Fehlercodes wie `invalid_organization_id`, `organization_inactive` und `csrf_validation_failed` bleiben stabil, damit UI, Audit und Betriebsanalyse konsistent korrelieren können.
 - Organisations-Read-Models liefern Parent-, Typ-, Policy- und Zählerdaten serverseitig aus einem lesefähigen Modell, um N+1-Abfragen in der UI zu vermeiden.
 
-### Ergänzung 2026-03: Strukturierte Permissions und restriktive Vererbung
+### Ergänzung 2026-06: Strukturierte Permissions und Allow-only-Vererbung
 
-- `iam.permissions` bleibt rückwärtskompatibel über `permission_key`, nutzt im Read-/Compute-Pfad aber strukturierte Felder (`action`, `resource_type`, `resource_id`, `effect`, `scope`) als kanonisches Modell.
+- `iam.permissions` bleibt rückwärtskompatibel über `permission_key`, nutzt im Read-/Compute-Pfad aber strukturierte Felder (`action`, `resource_type`, `resource_id`, `scope`) als kanonisches Modell.
 - Org-bezogene Vererbung wird nur innerhalb derselben `instanceId` ausgewertet; Parent-Scopes werden über die `hierarchy_path` des aktiven Zielkontexts gelesen.
-- Restriktive Regeln (`effect = 'deny'`) werden vor Freigaben ausgewertet; lokale Restriktionen dürfen vererbte Parent-Freigaben einschränken.
+- Effektive Permissions sind Allow-Grants; fehlende oder unpassende Allows bleiben fail-closed.
 - Scope-Daten für Geo, Acting-As und Restriktionen werden in effektive Permissions übernommen und im Snapshot mitgeführt.
 - Der Kompatibilitätspfad liest fehlende strukturierte Felder deterministisch aus `permission_key`, bis alle relevanten Alt-Daten migriert sind.
 

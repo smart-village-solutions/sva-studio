@@ -43,6 +43,11 @@ vi.mock('../providers/auth-provider', () => ({
 
 const organizationContextMockValue = {
   context: null as { activeOrganizationId?: string | null } | null,
+  isLoading: false,
+  isUpdating: false,
+  error: null,
+  refetch: vi.fn(),
+  switchOrganization: vi.fn(),
 };
 
 vi.mock('./use-organization-context', () => ({
@@ -52,6 +57,28 @@ vi.mock('./use-organization-context', () => ({
 vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
 }));
+
+type PermissionResponseEntry = {
+  readonly action: string;
+  readonly resourceType: string;
+  readonly organizationId?: string;
+  readonly provenance?: { readonly sourceKinds: readonly ('direct_role' | 'group_role')[] };
+};
+
+const stubPermissionResponse = (permissions: readonly PermissionResponseEntry[]) => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ permissions }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+};
+
+const expectPermissionRequest = (fetchMock: ReturnType<typeof vi.fn>, url: string) => {
+  expect(fetchMock).toHaveBeenCalledWith(url, undefined, {
+    timeoutMs: 10_000,
+  });
+};
 
 describe('useContentAccess', () => {
   beforeEach(() => {
@@ -64,6 +91,11 @@ describe('useContentAccess', () => {
     };
     authMockValue.invalidatePermissions.mockReset();
     organizationContextMockValue.context = null;
+    organizationContextMockValue.isLoading = false;
+    organizationContextMockValue.isUpdating = false;
+    organizationContextMockValue.error = null;
+    organizationContextMockValue.refetch.mockReset();
+    organizationContextMockValue.switchOrganization.mockReset();
     asIamErrorMock.mockReset();
     asIamErrorMock.mockImplementation((error: unknown) => error);
     browserLoggerMock.debug.mockReset();
@@ -99,33 +131,24 @@ describe('useContentAccess', () => {
   });
 
   it('summarizes fetched permissions into content access', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        permissions: [
-          {
-            action: 'content.read',
-            resourceType: 'content',
-            effect: 'allow',
-            organizationId: 'org-1',
-            provenance: { sourceKinds: ['direct_role'] },
-          },
-          {
-            action: 'content.updatePayload',
-            resourceType: 'content',
-            effect: 'allow',
-            organizationId: 'org-1',
-            provenance: { sourceKinds: ['group_role'] },
-          },
-          {
-            action: 'news.read',
-            resourceType: 'news',
-            effect: 'allow',
-          },
-        ],
-      }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubPermissionResponse([
+      {
+        action: 'content.read',
+        resourceType: 'content',
+        organizationId: 'org-1',
+        provenance: { sourceKinds: ['direct_role'] },
+      },
+      {
+        action: 'content.updatePayload',
+        resourceType: 'content',
+        organizationId: 'org-1',
+        provenance: { sourceKinds: ['group_role'] },
+      },
+      {
+        action: 'news.read',
+        resourceType: 'news',
+      },
+    ]);
 
     const { result } = renderHook(() => useContentAccess());
 
@@ -139,17 +162,15 @@ describe('useContentAccess', () => {
         organizationIds: ['org-1'],
         sourceKinds: ['direct_role', 'group_role'],
       });
-      expect(result.current.permissionActions).toEqual(['content.read', 'content.updatePayload', 'news.read']);
+      expect(result.current.permissionActions).toEqual([
+        'content.read',
+        'content.updatePayload',
+        'news.read',
+      ]);
       expect(result.current.error).toBeNull();
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/iam/me/permissions?instanceId=de-musterhausen',
-      undefined,
-      {
-        timeoutMs: 10_000,
-      }
-    );
+    expectPermissionRequest(fetchMock, '/iam/me/permissions?instanceId=de-musterhausen');
     expect(browserLoggerMock.debug).toHaveBeenCalledWith(
       'content_access_load_succeeded',
       expect.objectContaining({ operation: 'load_content_access', instance_id: 'de-musterhausen' })
@@ -160,26 +181,18 @@ describe('useContentAccess', () => {
     organizationContextMockValue.context = {
       activeOrganizationId: '11111111-1111-4111-8111-111111111111',
     };
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        permissions: [
-          {
-            action: 'content.read',
-            resourceType: 'content',
-            effect: 'allow',
-            organizationId: '11111111-1111-4111-8111-111111111111',
-          },
-          {
-            action: 'content.create',
-            resourceType: 'content',
-            effect: 'allow',
-            organizationId: '11111111-1111-4111-8111-111111111111',
-          },
-        ],
-      }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubPermissionResponse([
+      {
+        action: 'content.read',
+        resourceType: 'content',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      },
+      {
+        action: 'content.create',
+        resourceType: 'content',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      },
+    ]);
 
     const { result } = renderHook(() => useContentAccess());
 
@@ -188,45 +201,65 @@ describe('useContentAccess', () => {
       expect(result.current.access?.canCreate).toBe(true);
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/iam/me/permissions?instanceId=de-musterhausen&organizationId=11111111-1111-4111-8111-111111111111',
-      undefined,
-      {
-        timeoutMs: 10_000,
-      }
+    expectPermissionRequest(
+      fetchMock,
+      '/iam/me/permissions?instanceId=de-musterhausen&organizationId=11111111-1111-4111-8111-111111111111'
     );
   });
 
-  it('treats deny actions as dominant when permission actions are aggregated', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        permissions: [
-          {
-            action: 'news.read',
-            resourceType: 'news',
-            effect: 'allow',
-          },
-          {
-            action: 'news.read',
-            resourceType: 'news',
-            effect: 'deny',
-          },
-          {
-            action: 'events.read',
-            resourceType: 'events',
-            effect: 'allow',
-          },
-        ],
-      }),
+  it('waits for the organization context before requesting permissions', async () => {
+    organizationContextMockValue.isLoading = true;
+    const fetchMock = stubPermissionResponse([
+      {
+        action: 'content.read',
+        resourceType: 'content',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      },
+    ]);
+
+    const { result, rerender } = renderHook(() => useContentAccess());
+
+    expect(result.current.isLoading).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    organizationContextMockValue.isLoading = false;
+    organizationContextMockValue.context = {
+      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    };
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.permissionActions).toEqual(['content.read']);
     });
-    vi.stubGlobal('fetch', fetchMock);
+
+    expectPermissionRequest(
+      fetchMock,
+      '/iam/me/permissions?instanceId=de-musterhausen&organizationId=11111111-1111-4111-8111-111111111111'
+    );
+  });
+
+  it('deduplicates repeated allow-only action entries', async () => {
+    stubPermissionResponse([
+      {
+        action: 'news.read',
+        resourceType: 'news',
+      },
+      {
+        action: 'news.read',
+        resourceType: 'news',
+      },
+      {
+        action: 'events.read',
+        resourceType: 'events',
+      },
+    ]);
 
     const { result } = renderHook(() => useContentAccess());
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.permissionActions).toEqual(['events.read']);
+      expect(result.current.permissionActions).toEqual(['events.read', 'news.read']);
       expect(result.current.error).toBeNull();
     });
   });
@@ -329,7 +362,6 @@ describe('useContentAccess', () => {
           {
             action: 'content.read',
             resourceType: 'content',
-            effect: 'allow',
           },
         ],
       }),
@@ -367,7 +399,6 @@ describe('useContentAccess', () => {
           {
             action: 'waste-management.read',
             resourceType: 'waste-management',
-            effect: 'allow',
           },
         ],
       }),

@@ -4,17 +4,17 @@ import { resolveUserDetail } from './user-detail-query.js';
 import { IamSchemaDriftError } from './runtime-errors.js';
 
 describe('resolveUserDetail', () => {
-  it('maps groups, direct permissions and permission traces from the detail query', async () => {
+  it('maps groups and role/group permission traces from the detail query', async () => {
     const query = vi
       .fn()
       .mockResolvedValueOnce({
         rows: [
           {
-            account_permissions_exists: true,
+            account_permissions_exists: false,
             permissions_action_exists: true,
             permissions_resource_type_exists: true,
             permissions_resource_id_exists: true,
-            permissions_effect_exists: true,
+            permissions_effect_exists: false,
             permissions_scope_exists: true,
           },
         ],
@@ -62,14 +62,6 @@ describe('resolveUserDetail', () => {
               },
             ],
             permission_rows: [{ permission_key: 'content.read' }],
-            direct_permission_rows: [
-              {
-                permission_id: 'perm-1',
-                permission_key: 'content.updatePayload',
-                effect: 'deny',
-                description: 'Schreiben verweigern',
-              },
-            ],
             permission_trace_rows: [
               {
                 permission_key: 'content.read',
@@ -77,7 +69,6 @@ describe('resolveUserDetail', () => {
                 resource_type: 'content',
                 resource_id: null,
                 organization_id: 'org-1',
-                effect: 'allow',
                 scope: { geoUnitId: 'geo-1' },
                 is_effective: true,
                 status: 'effective',
@@ -103,7 +94,6 @@ describe('resolveUserDetail', () => {
                 resource_type: 'media',
                 resource_id: null,
                 organization_id: null,
-                effect: 'allow',
                 scope: null,
                 access_scope: null,
                 is_effective: true,
@@ -130,7 +120,6 @@ describe('resolveUserDetail', () => {
                 resource_type: 'content',
                 resource_id: null,
                 organization_id: null,
-                effect: 'deny',
                 scope: null,
                 is_effective: false,
                 status: 'expired',
@@ -160,13 +149,12 @@ describe('resolveUserDetail', () => {
       userId: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
     });
 
-    expect(String(query.mock.calls[0]?.[0])).toContain("to_regclass('iam.account_permissions')");
+    expect(String(query.mock.calls[0]?.[0])).not.toContain("to_regclass('iam.account_permissions')");
     expect(query.mock.calls[1]).toEqual([
       expect.stringContaining('AS group_rows'),
       ['de-musterhausen', 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb'],
     ]);
-    expect(String(query.mock.calls[1]?.[0])).toContain('WHERE ap.instance_id = $1');
-    expect(String(query.mock.calls[1]?.[0])).toContain('AND ap.account_id = a.id');
+    expect(String(query.mock.calls[1]?.[0])).not.toContain('FROM iam.account_permissions');
     expect(String(query.mock.calls[1]?.[0])).toContain('WHERE ar.instance_id = $1');
     expect(String(query.mock.calls[1]?.[0])).toContain('AND ar.account_id = a.id');
     expect(String(query.mock.calls[1]?.[0])).toContain('WHERE ag.instance_id = $1');
@@ -185,14 +173,6 @@ describe('resolveUserDetail', () => {
       avatarUrl: 'https://example.com/avatar.png',
       notes: 'Gruppenpflege aktiv',
       permissions: ['content.read'],
-      directPermissions: [
-        {
-          permissionId: 'perm-1',
-          permissionKey: 'content.updatePayload',
-          effect: 'deny',
-          description: 'Schreiben verweigern',
-        },
-      ],
       permissionTrace: [
         {
           permissionKey: 'content.read',
@@ -246,11 +226,11 @@ describe('resolveUserDetail', () => {
       .mockResolvedValueOnce({
         rows: [
           {
-            account_permissions_exists: true,
+            account_permissions_exists: false,
             permissions_action_exists: true,
             permissions_resource_type_exists: true,
             permissions_resource_id_exists: true,
-            permissions_effect_exists: true,
+            permissions_effect_exists: false,
             permissions_scope_exists: true,
           },
         ],
@@ -265,7 +245,7 @@ describe('resolveUserDetail', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('fails fast when the account permissions table is not available', async () => {
+  it('does not require the legacy account permissions table', async () => {
     const query = vi
       .fn()
       .mockResolvedValueOnce({
@@ -275,19 +255,20 @@ describe('resolveUserDetail', () => {
             permissions_action_exists: true,
             permissions_resource_type_exists: true,
             permissions_resource_id_exists: true,
-            permissions_effect_exists: true,
+            permissions_effect_exists: false,
             permissions_scope_exists: true,
           },
         ],
-      });
+      })
+      .mockResolvedValueOnce({ rows: [] });
 
     await expect(
       resolveUserDetail({ query } as never, {
         instanceId: 'de-musterhausen',
         userId: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
       })
-    ).rejects.toBeInstanceOf(IamSchemaDriftError);
-    expect(query).toHaveBeenCalledTimes(1);
+    ).resolves.toBeUndefined();
+    expect(query).toHaveBeenCalledTimes(2);
   });
 
   it('fails fast when structured permission columns are not available', async () => {

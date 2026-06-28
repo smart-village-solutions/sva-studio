@@ -418,11 +418,11 @@ Zuordnung:
 - Abschnitt 09 (Entscheidungen): ADR-033, ADR-034, ADR-037
 - Abschnitt 10/11 (Qualität/Risiken): ADR-033, ADR-034, ADR-037
 
-### Fortschreibung 2026-03: Direkte Nutzerrechte ohne neue ADR
+### Fortschreibung 2026-06: Allow-only-IAM ohne direkte Nutzerrechte
 
-- Für direkte Nutzerrechte war keine neue ADR erforderlich.
-  - Die Konfliktregel bleibt vollständig innerhalb der bestehenden Leitplanken aus ADR-025.
-  - Die Erweiterung führt kein neues IdP- oder Sync-Pattern ein, sondern ergänzt die bestehende Studio-IAM-Persistenz um eine zusätzliche Herkunft `direct_user`.
+- Für die Entfernung direkter Nutzerrechte war keine neue ADR erforderlich.
+  - Die Änderung reduziert das Zielmodell auf tenantlokale Rollen und Gruppen.
+  - Die Änderung führt kein neues IdP- oder Sync-Pattern ein und entfernt die Herkunft `direct_user` aus dem aktiven Vertrag.
 - Die maßgeblichen Architekturentscheidungen bleiben daher:
 
 ### Fortschreibung 2026-04: Medienmanagement als Host-Capability
@@ -437,9 +437,9 @@ Zuordnung:
 
 - Abschnitt 03/04/05/06/07/08/09/10/11: ADR-039
 - Querverweis: ADR-034 für Plugin-SDK- und UI-Verträge
-  - ADR-025 für `deny vor allow` und konservative Konfliktauflösung
+  - ADR-025 für fail-closed Autorisierung und konservative Konfliktauflösung ohne fachliches Deny-Modell
   - ADR-017 für die modulare Erweiterung der Auth-/IAM-Serverbausteine
-  - ADR-016 bleibt unverändert, weil direkte Nutzerrechte bewusst nicht in Keycloak gespiegelt werden
+  - ADR-016 bleibt unverändert, weil tenantlokale Rollen und Gruppen bewusst nicht als fachliche Direktrechte in Keycloak gespiegelt werden
 
 Zuordnung:
 

@@ -93,19 +93,26 @@ Die Plattform SHALL Authentifizierung und Keycloak-Admin-Operationen für Tenant
 
 ### Requirement: Bootstrap- und Seed-Pfade unterscheiden neue und bestehende Umgebungen
 
-Das System SHALL im lokalen und staging-nahen Betrieb normativ zwischen neuer Umgebung und bestehender Umgebung unterscheiden, damit Seed-, Bootstrap- und Reconcile-Pfade keine bestehende Umgebungsidentität stillschweigend überschreiben.
+Das System SHALL im lokalen und staging-nahen Betrieb normativ zwischen neuer Umgebung, read-only Standardstart und explizitem Repair-Pfad unterscheiden, damit Seed-, Bootstrap- und Reconcile-Pfade keine bestehende Umgebungsidentitaet stillschweigend ueberschreiben.
 
-#### Scenario: Neue Umgebung darf autoritativ initialisiert werden
+#### Scenario: Standardstart bleibt read-only
 
-- **WHEN** ein Teammitglied eine neue lokale Entwicklungsumgebung oder einen neuen staging-nahen Server initialisiert
-- **THEN** darf der autoritative Bootstrap-Pfad die geschützten Identitätsfelder der Instanz setzen
-- **AND** ist dieser Pfad bewusst vom normalen kontinuierlichen Seed- oder Testpfad getrennt
+- **WHEN** ein Teammitglied `pnpm env:up:local-keycloak` oder `pnpm env:update:local-keycloak` gegen eine bestehende lokale Umgebung ausfuehrt
+- **THEN** schreibt der Standardpfad keine geschuetzten Identitaetsfelder und keine tenant-spezifischen Secrets still zurueck
+- **AND** meldet er Drift nur sichtbar ueber `doctor` oder den read-only Drift-Check
 
-#### Scenario: Bestehende Umgebung bleibt im kontinuierlichen Betrieb geschützt
+#### Scenario: Expliziter Repair-Pfad heilt lokale Drift ohne Rebootstrap
 
-- **WHEN** ein Seed-, Test- oder Routine-Betriebspfad gegen eine bestehende Umgebung mit bereits gesetzten Identitätsfeldern läuft
-- **THEN** werden `parent_domain`, `primary_hostname`, `auth_realm`, `auth_client_id`, `tenant_admin_client_id` und tenant-spezifische Auth-Secret-Zuordnungen standardmäßig nicht still überschrieben
-- **AND** bleibt die Umgebung für kontinuierliche lokale oder staging-nahe Tests stabil
+- **WHEN** eine bestehende lokale `local-keycloak`-Umgebung Drift bei Migration, Registry-Identitaet oder tenant-spezifischen Secrets aufweist
+- **THEN** steht mit `pnpm env:repair:local-keycloak` ein expliziter, idempotenter Repair-Pfad zur Verfuegung
+- **AND** fuehrt dieser Pfad hoechstens Migration, Registry-Reconcile und Secret-Sync aus
+- **AND** loest er weder `down` noch `reset` noch einen kompletten Rebootstrap implizit aus
+
+#### Scenario: Gefaehrliche Runtime-Mutationen benoetigen ein Approval-Token
+
+- **WHEN** ein Teammitglied einen gefaehrlichen Runtime-Pfad wie autoritativen lokalen Repair, autoritativen lokalen Reconcile, Remote-Migrate, Remote-Deploy, Remote-Down oder Remote-Reset ausfuehrt
+- **THEN** blockiert das Repo den Befehl ohne passenden `--approve-dangerous=<token>`
+- **AND** nennt die Fehlermeldung den exakt erwarteten Freigabetoken fuer die Wiederholung
 
 ### Requirement: Bestehende staging-nahe Umgebungen erhalten sichtbare Drift-Guardrails für Identitätsfelder
 
@@ -120,13 +127,19 @@ Das System SHALL für bestehende staging-nahe Umgebungen sichtbare Guardrails be
 
 ### Requirement: Betriebsfähige Tenant-Umgebungen erfordern konsistente Secret-Zuordnungen
 
-Das System SHALL im lokalen und staging-nahen Betrieb tenant-spezifische Auth-Secrets als Teil der Umgebungs-Readiness behandeln, damit ein erfolgreicher Login nicht nach korrekter Host-Auflösung am Callback mit ungültigen Client-Credentials scheitert.
+Das System SHALL im lokalen und staging-nahen Betrieb tenant-spezifische Auth-Secrets und tenant-spezifische Tenant-Admin-Secrets als Teil der Umgebungs-Readiness behandeln.
 
-#### Scenario: Readiness erkennt Secret-Drift vor kontinuierlichem Testbetrieb
+#### Scenario: Doctor klassifiziert Secret-Drift maschinenlesbar
 
-- **WHEN** eine bestehende Tenant-Umgebung für kontinuierliche lokale oder staging-nahe Tests bereitgestellt oder reconciled wird
-- **THEN** prüft der Betriebs- oder Readiness-Pfad, ob tenant-spezifische Auth-Secrets für die konfigurierte Realm-/Client-Kombination vorhanden und nutzbar sind
-- **AND** wird eine Umgebung mit fehlendem tenant-spezifischem Secret nicht still als betriebsbereit eingestuft
+- **WHEN** `pnpm env:doctor:local-keycloak --json` gegen eine Umgebung mit fehlenden oder unlesbaren tenant-spezifischen Secrets laeuft
+- **THEN** enthaelt der Report stabile `reasonCode`-, `repairable`- und `recommendedAction`-Felder fuer die betroffene Driftklasse
+- **AND** verwendet der Report fuer Tenant-Secrets Codes wie `tenant_auth_client_secret_missing`, `tenant_auth_client_secret_unreadable`, `tenant_admin_client_secret_missing` oder `tenant_admin_client_secret_unreadable`
+
+#### Scenario: Repair synchronisiert tenant-spezifische Secrets gegen Keycloak
+
+- **WHEN** `pnpm env:repair:local-keycloak` auf tenant-spezifische Secret-Drift trifft
+- **THEN** gleicht der Repair-Pfad die Secrets ueber vorhandene Keycloak-/Registry-Mechanik gegen den Live-Zustand ab
+- **AND** heilt er fehlende oder mit dem aktuellen Verschluesselungsmaterial nicht lesbare Registry-Secrets ohne globale Fallback-Secrets
 
 ### Requirement: Minimaler Betriebsvertrag für stateful Swarm-Services
 
@@ -265,14 +278,14 @@ Das System SHALL nach manuellen Eingriffen in produktionsnahe Swarm-Stacks einen
 
 ### Requirement: Dokumentierte Vertragsgrenze zwischen lokalem Development und `studio`
 
-Das System SHALL die Unterschiede zwischen lokaler Entwicklungsumgebung und dem produktionsnahen `studio`-Profil als verbindliche Vertragsgrenze dokumentieren.
+Das System SHALL den lokalen Entwicklungsbetrieb in einen deterministischen `local-dev`-Pfad und staging-nahe Sonderfaelle trennen.
 
-#### Scenario: Lokale gruene Tests werden als begrenzter Nachweis eingeordnet
+#### Scenario: `local-dev` nutzt Doctor, Repair und Snapshot-Check
 
-- **WHEN** ein Team lokale Unit-, Integrations- oder Dev-E2E-Tests fuer eine Rollout-Entscheidung betrachtet
-- **THEN** stellt die Dokumentation klar, dass diese Laeufe nicht automatisch den Betriebsvertrag von `studio` beweisen
-- **AND** benennt sie die wesentlichen Differenzen bei Host-Modell, Laufzeitprofil, Secrets, Ingress und produktionsnaher Auth- bzw. Registry-Integration
-- **AND** verweist sie fuer die produktionsnahe Freigabe auf das definierte Parity-Gate und die Remote-Verifikation
+- **WHEN** ein Teammitglied den offiziellen lokalen Betriebsvertrag fuer `local-keycloak` verwendet
+- **THEN** lautet die Eskalationsfolge `up -> doctor -> repair -> reset`
+- **AND** bleibt `reset` auf echte Hard-Fail-Faelle begrenzt
+- **AND** steht fuer Snapshot-Drift ein eigener Verifikationsbefehl `pnpm env:verify:db-schema-snapshot` bereit
 
 ### Requirement: Kanonischer Studio-Rollout-Pfad
 

@@ -40,7 +40,7 @@ describe('IAM seed statements', () => {
         permissionKey: 'content.publish',
         description: 'Publish content',
       }).values
-    ).toEqual([uuid, instanceId, 'content.publish', 'content.publish', 'content', null, 'allow', '{}', 'Publish content']);
+    ).toEqual([uuid, instanceId, 'content.publish', 'content.publish', 'content', null, '{}', 'Publish content']);
 
     expect(
       iamSeedStatements.upsertGroup({
@@ -69,7 +69,6 @@ describe('IAM seed statements', () => {
         action: 'read',
         resourceType: 'iam-user',
         resourceId: 'user-1',
-        effect: 'deny',
         scope: { organizationId: 'org-1' },
         description: 'Read users',
       }).values
@@ -80,7 +79,6 @@ describe('IAM seed statements', () => {
       'read',
       'iam-user',
       'user-1',
-      'deny',
       '{"organizationId":"org-1"}',
       'Read users',
     ]);

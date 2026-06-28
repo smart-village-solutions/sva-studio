@@ -94,22 +94,11 @@ export const usersAdminENResources = {
     groupsLabel: 'Group assignment',
     notesLabel: 'Notes',
     notesCounter: '{{count}} / 2000 characters',
-    directPermissionsTitle: 'Direct permissions',
-    directPermissionsHint:
-      'Direct user permissions extend or override role and group permissions. Direct denies take precedence.',
-    directPermissionsSectionHint: 'Set a direct effect per permission or keep inherited behavior.',
-    directPermissionsEmpty: 'No direct user permissions are set.',
-    directPermissionsSelectLabel: 'Direct effect for {{permission}}',
     effectivePermissionsTitle: 'Currently effective permissions',
     effectivePermissionsHint:
-      'This list shows the permissions currently resolved for the user. Direct rights are managed separately.',
+      'This list shows the permissions currently resolved for the user from role and group assignments.',
     permissionsLoading: 'Loading permission catalog ...',
     permissionDescriptionFallback: 'No additional description available.',
-    directPermissionEffect: {
-      inherit: 'Not set',
-      allow: 'Allow',
-      deny: 'Deny',
-    },
     permissionsEmpty: 'No effective permissions available.',
     permissionTrace: {
       title: 'Effective permissions',

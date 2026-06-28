@@ -38,15 +38,14 @@ export const upsertPermission = async (
     statement(
       `
 INSERT INTO iam.permissions (
-  id, instance_id, permission_key, action, resource_type, resource_id, effect, scope, description
+  id, instance_id, permission_key, action, resource_type, resource_id, scope, description
 )
-VALUES (gen_random_uuid(), $1, $2, $2, split_part($2, '.', 1), NULL, 'allow', '{}'::jsonb, $3)
+VALUES (gen_random_uuid(), $1, $2, $2, split_part($2, '.', 1), NULL, '{}'::jsonb, $3)
 ON CONFLICT (instance_id, permission_key) DO UPDATE
 SET
   action = EXCLUDED.action,
   resource_type = EXCLUDED.resource_type,
   resource_id = EXCLUDED.resource_id,
-  effect = EXCLUDED.effect,
   scope = EXCLUDED.scope,
   description = EXCLUDED.description,
   updated_at = NOW();

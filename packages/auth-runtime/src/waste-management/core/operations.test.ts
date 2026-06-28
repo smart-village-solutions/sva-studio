@@ -66,12 +66,10 @@ const createDeps = () => ({
       {
         action: 'waste-management.import.execute',
         resourceType: 'waste-management',
-        effect: 'allow' as const,
       },
       {
         action: 'waste-management.seed.execute',
         resourceType: 'waste-management',
-        effect: 'allow' as const,
       },
     ],
   })),
@@ -194,7 +192,6 @@ describe('waste-management operation handlers', () => {
             {
               action: 'waste-management.reset.execute',
               resourceType: 'waste-management',
-              effect: 'allow' as const,
             },
           ],
         })),
@@ -224,7 +221,6 @@ describe('waste-management operation handlers', () => {
             {
               action: 'waste-management.seed.execute',
               resourceType: 'waste-management',
-              effect: 'allow' as const,
             },
           ],
         })),
@@ -318,7 +314,6 @@ describe('waste-management operation handlers', () => {
             {
               action: 'waste-management.settings.manage',
               resourceType: 'waste-management',
-              effect: 'allow' as const,
             },
           ],
         })),
@@ -349,7 +344,6 @@ describe('waste-management operation handlers', () => {
             {
               action: 'waste-management.master-data.manage',
               resourceType: 'waste-management',
-              effect: 'allow' as const,
             },
           ],
         })),
@@ -387,7 +381,6 @@ describe('waste-management operation handlers', () => {
             {
               action: 'waste-management.scheduling.manage',
               resourceType: 'waste-management',
-              effect: 'allow' as const,
             },
           ],
         })),
@@ -433,7 +426,6 @@ describe('waste-management operation handlers', () => {
             {
               action: 'waste-management.settings.manage',
               resourceType: 'waste-management',
-              effect: 'allow' as const,
             },
           ],
         })),
@@ -552,7 +544,6 @@ describe('waste-management operation handlers', () => {
             {
               action: 'waste-management.reset.execute',
               resourceType: 'waste-management',
-              effect: 'allow' as const,
             },
           ],
         })),
@@ -642,7 +633,6 @@ describe('waste-management operation handlers', () => {
             {
               action: 'waste-management.settings.manage',
               resourceType: 'waste-management',
-              effect: 'allow' as const,
             },
           ],
         })),
@@ -700,7 +690,6 @@ describe('waste-management operation handlers', () => {
             {
               action: 'waste-management.settings.manage',
               resourceType: 'waste-management',
-              effect: 'allow' as const,
             },
           ],
         })),
@@ -749,7 +738,6 @@ describe('waste-management operation handlers', () => {
             {
               action: 'waste-management.settings.manage',
               resourceType: 'waste-management',
-              effect: 'allow' as const,
             },
           ],
         })),
@@ -789,7 +777,6 @@ describe('waste-management operation handlers', () => {
             {
               action: 'waste-management.settings.manage',
               resourceType: 'waste-management',
-              effect: 'allow' as const,
             },
           ],
         })),

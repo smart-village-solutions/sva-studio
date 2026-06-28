@@ -21,19 +21,7 @@ const buildTraceOrganizationProjection = (
             ELSE NULL::text
           END`;
 
-const DIRECT_PERMISSION_KEYS_SQL = `
-        UNION
-
-        SELECT p.permission_key
-        FROM iam.account_permissions ap
-        JOIN iam.permissions p
-          ON p.instance_id = ap.instance_id
-         AND p.id = ap.permission_id
-        WHERE ap.instance_id = $1
-          AND ap.account_id = a.id
-`;
-
-export const buildPermissionRowsSql = (includeDirectPermissions: boolean): string => `
+export const buildPermissionRowsSql = (_includeDirectPermissions: boolean): string => `
   COALESCE(
     (
       SELECT json_agg(
@@ -57,7 +45,6 @@ export const buildPermissionRowsSql = (includeDirectPermissions: boolean): strin
           AND ar.account_id = a.id
           AND ar.valid_from <= NOW()
           AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
-${includeDirectPermissions ? DIRECT_PERMISSION_KEYS_SQL : ''}
 
         UNION
 
@@ -90,42 +77,9 @@ ${includeDirectPermissions ? DIRECT_PERMISSION_KEYS_SQL : ''}
   ) AS permission_rows,
 `;
 
-export const buildDirectPermissionRowsSql = (includeDirectPermissions: boolean): string => {
-  if (!includeDirectPermissions) {
-    return `
+export const buildDirectPermissionRowsSql = (_includeDirectPermissions: boolean): string => `
   '[]'::json AS direct_permission_rows,
 `;
-  }
-
-  return `
-  COALESCE(
-    (
-      SELECT json_agg(
-        DISTINCT jsonb_build_object(
-          'permission_id', direct.permission_id,
-          'permission_key', direct.permission_key,
-          'effect', direct.effect,
-          'description', direct.description
-        )
-      )
-      FROM (
-        SELECT
-          p.id AS permission_id,
-          p.permission_key,
-          ap.effect,
-          p.description
-        FROM iam.account_permissions ap
-        JOIN iam.permissions p
-          ON p.instance_id = ap.instance_id
-         AND p.id = ap.permission_id
-        WHERE ap.instance_id = $1
-          AND ap.account_id = a.id
-      ) AS direct
-    ),
-    '[]'::json
-  ) AS direct_permission_rows,
-`;
-};
 
 const buildPermissionProjection = (includeStructuredPermissions: boolean) =>
   includeStructuredPermissions
@@ -133,66 +87,14 @@ const buildPermissionProjection = (includeStructuredPermissions: boolean) =>
         action: `COALESCE(p.action, p.permission_key)`,
         resourceType: `COALESCE(p.resource_type, split_part(p.permission_key, '.', 1))`,
         resourceId: `p.resource_id::text`,
-        effect: `COALESCE(p.effect, 'allow')`,
         scope: `p.scope`,
       }
     : {
         action: `p.permission_key`,
         resourceType: `split_part(p.permission_key, '.', 1)`,
         resourceId: `NULL::text`,
-        effect: `'allow'::text`,
         scope: `NULL::jsonb`,
       };
-
-const buildDirectPermissionTraceSql = (includeStructuredPermissions: boolean): string => {
-  const projection = buildPermissionProjection(includeStructuredPermissions);
-
-  return `
-
-        UNION ALL
-
-        SELECT
-          p.permission_key,
-          ${projection.action} AS action,
-          ${projection.resourceType} AS resource_type,
-          ${projection.resourceId} AS resource_id,
-          NULL::text AS organization_id,
-          ap.effect,
-          ${projection.scope} AS scope,
-          NULL::text AS access_scope,
-          TRUE AS is_effective,
-          'effective'::text AS status,
-          'direct_permission'::text AS source_kind,
-          NULL::text AS role_id,
-          NULL::text AS role_key,
-          NULL::text AS role_name,
-          NULL::text AS group_id,
-          NULL::text AS group_key,
-          NULL::text AS group_display_name,
-          NULL::boolean AS group_active,
-          NULL::text AS assignment_origin,
-          NULL::text AS inherited_from_organization_id,
-          CASE
-            WHEN jsonb_typeof(COALESCE(p.scope, '{}'::jsonb) -> 'allowedGeoUnitIds') = 'array'
-              THEN p.scope -> 'allowedGeoUnitIds' ->> 0
-            ELSE NULL::text
-          END AS inherited_from_geo_unit_id,
-          CASE
-            WHEN jsonb_typeof(COALESCE(p.scope, '{}'::jsonb) -> 'restrictedGeoUnitIds') = 'array'
-              THEN p.scope -> 'restrictedGeoUnitIds' ->> 0
-            ELSE NULL::text
-          END AS restricted_by_geo_unit_id,
-          NULL::text AS inactive_reason,
-          NULL::text AS valid_from,
-          NULL::text AS valid_to
-        FROM iam.account_permissions ap
-        JOIN iam.permissions p
-          ON p.instance_id = ap.instance_id
-         AND p.id = ap.permission_id
-        WHERE ap.instance_id = $1
-          AND ap.account_id = a.id
-`;
-};
 
 const buildDirectRolePermissionTraceSql = (projection: ReturnType<typeof buildPermissionProjection>): string => `
         SELECT
@@ -201,7 +103,6 @@ const buildDirectRolePermissionTraceSql = (projection: ReturnType<typeof buildPe
           ${projection.resourceType} AS resource_type,
           ${projection.resourceId} AS resource_id,
           ${buildTraceOrganizationProjection('p.permission_key', 'rp.access_scope', 'ao.organization_id::text')} AS organization_id,
-          ${projection.effect} AS effect,
           ${projection.scope} AS scope,
           rp.access_scope::text AS access_scope,
           (ar.valid_from <= NOW() AND (ar.valid_to IS NULL OR ar.valid_to > NOW())) AS is_effective,
@@ -261,7 +162,6 @@ const buildGroupRolePermissionTraceSql = (projection: ReturnType<typeof buildPer
           ${projection.resourceType} AS resource_type,
           ${projection.resourceId} AS resource_id,
           ${buildTraceOrganizationProjection('p.permission_key', 'rp.access_scope', 'ao.organization_id::text')} AS organization_id,
-          ${projection.effect} AS effect,
           ${projection.scope} AS scope,
           rp.access_scope::text AS access_scope,
           (
@@ -327,13 +227,10 @@ const buildGroupRolePermissionTraceSql = (projection: ReturnType<typeof buildPer
 `;
 
 export const buildPermissionTraceRowsSql = (
-  includeDirectPermissions: boolean,
+  _includeDirectPermissions: boolean,
   includeStructuredPermissions: boolean
 ): string => {
   const projection = buildPermissionProjection(includeStructuredPermissions);
-  const directPermissionTraceSql = includeDirectPermissions
-    ? buildDirectPermissionTraceSql(includeStructuredPermissions)
-    : '';
 
   return `
   COALESCE(
@@ -345,7 +242,6 @@ export const buildPermissionTraceRowsSql = (
           'resource_type', trace.resource_type,
           'resource_id', trace.resource_id,
           'organization_id', trace.organization_id,
-          'effect', trace.effect,
           'scope', trace.scope,
           'access_scope', trace.access_scope,
           'is_effective', trace.is_effective,
@@ -373,7 +269,6 @@ ${buildDirectRolePermissionTraceSql(projection)}
         UNION ALL
 
 ${buildGroupRolePermissionTraceSql(projection)}
-${directPermissionTraceSql}
       ) AS trace
     ),
     '[]'::json

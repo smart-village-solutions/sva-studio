@@ -289,8 +289,8 @@ Referenzen:
 
 - Strukturierte Permission-Seeds und Migrationen müssen idempotent sein; `pnpm nx run data:db:migrate:validate` und `pnpm nx run data:db:test:seeds` müssen grün sein.
 - `pnpm nx run data:db:migrate:status` muss den erwarteten `goose`-Stand reproduzierbar anzeigen.
-- `authorize`- und `me/permissions`-Pfad müssen Resource-Spezifität, `allow`/`deny` und Org-Vererbung deterministisch auflösen.
-- Negativtests für restriktive Parent-/Child-Konflikte, Geo-Scope-Mismatches und fehlende Resource-IDs müssen grün sein.
+- `authorize`- und `me/permissions`-Pfad müssen Resource-Spezifität, Allow-Grants und Org-Vererbung deterministisch auflösen.
+- Negativtests für fehlende Allows, Geo-Scope-Mismatches und fehlende Resource-IDs müssen grün sein.
 - Der Kompatibilitätspfad von `permission_key` auf strukturierte Felder darf bestehende Permission-Reads nicht regressiv brechen.
 
 ### Ergänzung 2026-03: Qualitätsziele Gruppen und Geo-Hierarchie
@@ -308,13 +308,13 @@ Referenzen:
 - Route-, UI- und Server-Gates für `system_admin` sowie individuell vergebene tenantlokale Permissions müssen konsistent wirken; neue Fachzugriffe dürfen nicht wieder an frühere Default-Rollennamen gekoppelt werden.
 - Neue Inhaltsmigrationen gelten nur als verifiziert, wenn `pnpm nx run data:db:migrate:validate` lokal erfolgreich `up -> down -> up` bestätigt.
 
-### Ergänzung 2026-03: Qualitätsziele direkte Nutzerrechte
+### Ergänzung 2026-06: Qualitätsziele Allow-only-IAM
 
-- `PATCH /api/v1/iam/users/{userId}` mit `directPermissions` muss bekannte Permission-IDs streng validieren und doppelte Zuordnungen fail-closed abweisen.
-- `GET /iam/me/permissions` und `POST /iam/authorize` müssen direkte Nutzerrechte mit Provenance `direct_user` stabil serialisieren.
-- Direkte Nutzer-Denies müssen konfliktäre Allows aus Rollen oder Gruppen deterministisch schlagen; entsprechende Negativtests bleiben grün.
-- Reine Änderungen an direkten Nutzerrechten dürfen keinen Keycloak-Sync auslösen.
-- Die Nutzerdetailseite `/admin/users/{userId}` muss direkte Rechte und aktuell wirksame Rechte getrennt und ohne harte Strings darstellen.
+- `PATCH /api/v1/iam/users/{userId}` darf keine direkten Nutzerrechte mehr annehmen oder serialisieren.
+- `GET /iam/me/permissions` und `POST /iam/authorize` müssen Permissions ohne fachliches `effect`-Feld und ohne Provenance `direct_user` stabil serialisieren.
+- Fehlende Allows bleiben fail-closed; `deny` ist kein persistiertes fachliches Permission-Modell mehr.
+- Reine Änderungen an Rollen- oder Gruppenzuordnungen dürfen keinen unnötigen Keycloak-Sync auslösen.
+- Die Nutzerdetailseite `/admin/users/{userId}` muss rollen- und gruppenbasierte Rechte ohne harte Strings darstellen.
 
 ### Ergänzung 2026-03: Qualitätsziele Swarm-Deployment und Multi-Host-Betrieb
 

@@ -100,20 +100,24 @@ const appendAuthorizationScopeCondition = (
   params: unknown[],
   authorization: LoadContentListAuthorizationInput
 ) => {
-  if (authorization.allowedOrganizationIds.length > 0 && authorization.includeUnscopedContent) {
-    params.push(authorization.allowedOrganizationIds);
-    conditions.push(`(content.organization_id IS NULL OR content.organization_id = ANY($${params.length}::uuid[]))`);
+  if (authorization.allowGlobal) {
     return;
   }
+
+  const allowClauses: string[] = [];
 
   if (authorization.allowedOrganizationIds.length > 0) {
     params.push(authorization.allowedOrganizationIds);
-    conditions.push(`content.organization_id = ANY($${params.length}::uuid[])`);
-    return;
+    allowClauses.push(`content.owner_organization_id = ANY($${params.length}::uuid[])`);
   }
 
-  if (authorization.includeUnscopedContent) {
-    conditions.push('content.organization_id IS NULL');
+  if (authorization.allowOwn && authorization.actorAccountId) {
+    params.push(authorization.actorAccountId);
+    allowClauses.push(`content.owner_user_id = $${params.length}::uuid`);
+  }
+
+  if (allowClauses.length > 0) {
+    conditions.push(`(${allowClauses.join(' OR ')})`);
     return;
   }
 
@@ -265,7 +269,9 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
     const {
       changedFields,
       nextOrganizationId,
-      nextOwnerSubjectId,
+      nextOwnerUserId,
+      nextOwnerOrganizationId,
+      nextAuthorDisplayName,
       nextPayload,
       nextPublishedAt,
       nextPublishFrom,
@@ -276,7 +282,9 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
     } = resolveNextContentState(current, input);
     await updateContentRow(client, input, {
       organizationId: nextOrganizationId,
-      ownerSubjectId: nextOwnerSubjectId,
+      ownerUserId: nextOwnerUserId,
+      ownerOrganizationId: nextOwnerOrganizationId,
+      authorDisplayName: nextAuthorDisplayName,
       title: nextTitle,
       payloadJson: JSON.stringify(nextPayload),
       status: nextStatus,
@@ -308,6 +316,9 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
       changedFields,
       nextStatus,
       nextTitle,
+      nextOwnerUserId,
+      nextOwnerOrganizationId,
+      nextAuthorDisplayName,
     });
     return input.contentId;
   });

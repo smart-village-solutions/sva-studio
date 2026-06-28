@@ -1613,7 +1613,7 @@ describe('content list projection', () => {
       expect.objectContaining({
         organization_id: 'org-1',
         owner_user_id: null,
-        owner_organization_id: null,
+        owner_organization_id: 'org-1',
         source_entity_id: 'event-shared-1',
       }),
       expect.objectContaining({

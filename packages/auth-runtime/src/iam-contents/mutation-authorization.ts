@@ -89,6 +89,9 @@ export const authorizeUpdateContentActions = async (
   data: UpdateContentSchemaInput
 ): Promise<Response | null> => {
   const actions = resolveUpdateContentActions(currentContent, data);
+  const metadataAction = actions.find(
+    (action) => action.domainCapability === 'content.update_metadata'
+  );
   const sourcePermissions = await resolveContentAuthorizationPermissions(
     actor,
     currentContent.organizationId
@@ -114,6 +117,39 @@ export const authorizeUpdateContentActions = async (
     );
     if (authorizationError) {
       return authorizationError;
+    }
+  }
+
+  const destinationOrganizationId = data.organizationId;
+  if (
+    metadataAction &&
+    destinationOrganizationId &&
+    destinationOrganizationId !== currentContent.organizationId
+  ) {
+    const destinationPermissions = await resolveContentAuthorizationPermissions(
+      actor,
+      destinationOrganizationId
+    );
+
+    if ('error' in destinationPermissions) {
+      return destinationPermissions.error;
+    }
+
+    const destinationAuthorizationError = await authorizeContentAction(
+      actor,
+      metadataAction.primitiveAction,
+      {
+        contentId,
+        contentType: currentContent.contentType,
+        domainCapability: metadataAction.domainCapability,
+        organizationId: destinationOrganizationId,
+        ownerUserId: currentContent.ownerUserId,
+        ownerOrganizationId: destinationOrganizationId,
+      },
+      { permissions: destinationPermissions.permissions }
+    );
+    if (destinationAuthorizationError) {
+      return destinationAuthorizationError;
     }
   }
 

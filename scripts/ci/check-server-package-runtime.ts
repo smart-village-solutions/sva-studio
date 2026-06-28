@@ -255,6 +255,8 @@ export const syncInjectedWorkspacePackageDists = (rootDir: string): number => {
   }
 
   let updatedCopies = 0;
+  const virtualStoreEntries = fs.readdirSync(virtualStoreDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory());
 
   for (const { packageDir } of discoverWorkspacePackages(rootDir).values()) {
     const packageJson = readJsonFile<{ name?: string }>(path.join(packageDir, 'package.json'));
@@ -270,11 +272,7 @@ export const syncInjectedWorkspacePackageDists = (rootDir: string): number => {
     const sourceRealDir = fs.realpathSync(packageDir);
     const packageSegments = packageJson.name.split('/');
 
-    for (const entry of fs.readdirSync(virtualStoreDir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) {
-        continue;
-      }
-
+    for (const entry of virtualStoreEntries) {
       const injectedPackageDir = path.join(virtualStoreDir, entry.name, 'node_modules', ...packageSegments);
       if (!isDirectory(injectedPackageDir)) {
         continue;

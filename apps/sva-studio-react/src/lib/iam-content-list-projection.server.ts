@@ -452,7 +452,7 @@ const mapMainserverProjectionPayloadRow = (
   instance_id: row.instanceId,
   organization_id: toNullableProjectionValue(row.organizationId),
   owner_user_id: resolveProjectionOwnerUserId(row, actorAccountId),
-  owner_organization_id: toNullableProjectionValue(row.ownerOrganizationId),
+  owner_organization_id: toNullableProjectionValue(row.ownerOrganizationId ?? row.organizationId),
   content_type: row.contentType,
   title: row.title,
   published_at: toNullableProjectionValue(row.publishedAt),

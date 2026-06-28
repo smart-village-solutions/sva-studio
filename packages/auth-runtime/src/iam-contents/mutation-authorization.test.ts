@@ -130,7 +130,7 @@ describe('content mutation authorization', () => {
     );
   });
 
-  it('uses persisted source organization for update checks during reassignment', async () => {
+  it('checks source and destination organization for reassignment', async () => {
     authorizeContentActionMock.mockResolvedValue(null);
 
     await expect(
@@ -143,13 +143,23 @@ describe('content mutation authorization', () => {
       domainCapability: 'content.update_metadata',
       organizationId: '11111111-1111-4111-8111-111111111111',
     });
-    expect(authorizeContentActionMock).toHaveBeenCalledTimes(1);
+    expectAuthorizationCall(2, 'content.updateMetadata', {
+      domainCapability: 'content.update_metadata',
+      organizationId: '22222222-2222-4222-8222-222222222222',
+      ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+    });
+    expect(authorizeContentActionMock).toHaveBeenCalledTimes(2);
     expect(resolveContentAuthorizationPermissionsMock).toHaveBeenNthCalledWith(
       1,
       actor,
       '11111111-1111-4111-8111-111111111111'
     );
-    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(1);
+    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenNthCalledWith(
+      2,
+      actor,
+      '22222222-2222-4222-8222-222222222222'
+    );
+    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(2);
   });
 
   it('checks status and payload actions against the current organization during reassignment', async () => {
@@ -175,8 +185,13 @@ describe('content mutation authorization', () => {
       domainCapability: 'content.publish',
       organizationId: '11111111-1111-4111-8111-111111111111',
     });
-    expect(authorizeContentActionMock).toHaveBeenCalledTimes(3);
-    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(1);
+    expectAuthorizationCall(4, 'content.updateMetadata', {
+      domainCapability: 'content.update_metadata',
+      organizationId: '22222222-2222-4222-8222-222222222222',
+      ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+    });
+    expect(authorizeContentActionMock).toHaveBeenCalledTimes(4);
+    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(2);
   });
 
   it('does not require authorization against prospective owner attributes', async () => {
@@ -203,8 +218,12 @@ describe('content mutation authorization', () => {
       ownerUserId: '33333333-3333-4333-8333-333333333333',
       ownerOrganizationId: '11111111-1111-4111-8111-111111111111',
     });
-    expect(authorizeContentActionMock).toHaveBeenCalledTimes(1);
-    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(1);
+    expectAuthorizationCall(2, 'content.updateMetadata', {
+      organizationId: '22222222-2222-4222-8222-222222222222',
+      ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+    });
+    expect(authorizeContentActionMock).toHaveBeenCalledTimes(2);
+    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(2);
   });
 
   it('stops on authorization denial before later actions are evaluated', async () => {

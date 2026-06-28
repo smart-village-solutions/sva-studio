@@ -31,6 +31,7 @@ export type {
   OtelInitializationResult,
 } from './logger/logging-runtime.server.js';
 export {
+  getLoggingRuntimeConfig,
   getOtelInitializationResult,
 } from './logger/logging-runtime.server.js';
 export type { RequestContextOptions } from './middleware/request-context.server.js';

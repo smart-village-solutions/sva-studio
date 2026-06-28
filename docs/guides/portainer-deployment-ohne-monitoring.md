@@ -89,10 +89,10 @@ Wenn neue SQL-Migrationen dazugekommen sind, reicht ein normales Redeploy **nich
 
 ## Historischer Hinweis zum Betrieb ohne Monitoring
 
-Der hier beschriebene Ansatz mit `ENABLE_OTEL=false` entspricht **nicht** mehr dem aktuellen Zielmodell fuer produktive Umgebungen. Nach heutigem Stand gilt:
+Der hier beschriebene Ansatz mit `ENABLE_OTEL=false` entspricht **nicht** mehr dem aktuellen Zielmodell für produktive Umgebungen. Nach heutigem Stand gilt:
 
-- Production-Logging laeuft ueber OTEL.
-- Console-Logging ist dort kein regulaerer Betriebsweg.
+- Production-Logging läuft über OTEL.
+- Console-Logging ist dort kein regulärer Betriebsweg.
 - Fehlende OTEL-Readiness gilt in Production als Fehlerzustand.
 
 Die folgende Konstellation ist daher nur noch als historische oder provisorische Bring-up-Referenz zu verstehen, nicht als aktuelle Produktionsfreigabe.

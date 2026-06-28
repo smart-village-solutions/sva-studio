@@ -402,6 +402,49 @@ describe('iam content repository', () => {
     expect(state.insertContentHistoryMock).not.toHaveBeenCalled();
   });
 
+  it('preserves persisted author display fields on unrelated updates', async () => {
+    const current = createContentRow({
+      author_display_mode: 'organization',
+      author_display_name: 'Historischer Organisationsname',
+    });
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(current);
+
+    await expect(updateContent(createUpdateInput({ title: 'Neuer Titel' }))).resolves.toBe('content-1');
+
+    expect(state.resolveUpdateAuthorDisplayMock).not.toHaveBeenCalled();
+    expect(state.resolveNextContentStateMock).toHaveBeenCalledWith(
+      current,
+      expect.not.objectContaining({
+        authorDisplayMode: expect.any(String),
+        authorDisplayName: expect.any(String),
+      })
+    );
+  });
+
+  it('resolves author display only when the request changes author display fields', async () => {
+    const current = createContentRow();
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(current);
+    state.resolveUpdateAuthorDisplayMock.mockResolvedValueOnce({
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Autorin',
+    });
+
+    await expect(updateContent(createUpdateInput({ authorDisplayMode: 'user' }))).resolves.toBe('content-1');
+
+    expect(state.resolveUpdateAuthorDisplayMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      current,
+      expect.objectContaining({ authorDisplayMode: 'user' })
+    );
+    expect(state.resolveNextContentStateMock).toHaveBeenCalledWith(
+      current,
+      expect.objectContaining({
+        authorDisplayMode: 'user',
+        authorDisplayName: 'Autorin',
+      })
+    );
+  });
+
   it.each([
     ['draft', 'published', ['status'], 'content.publish'],
     ['draft', 'archived', ['status'], 'content.archive'],

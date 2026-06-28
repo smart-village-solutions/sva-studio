@@ -1,4 +1,4 @@
-import type { EffectivePermission } from '@sva/core';
+import type { EffectivePermission } from '@sva/iam-core';
 import { createHash, createHmac } from 'node:crypto';
 import { createSdkLogger } from '@sva/server-runtime';
 

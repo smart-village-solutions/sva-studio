@@ -1,10 +1,8 @@
 import type {
-  AuthorizeResponse,
-  EffectivePermission,
   IamDsrCaseListItem,
   IamGovernanceCaseListItem,
-  MePermissionsResponse,
 } from '@sva/core';
+import type { AuthorizeResponse, EffectivePermission, MePermissionsResponse } from '@sva/iam-core';
 import { t } from '../../i18n';
 import type { TranslationKey } from '../../i18n/translate';
 

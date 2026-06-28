@@ -1,7 +1,8 @@
 import {
-  evaluateAuthorizeDecision, summarizeContentAccess, type AuthorizeRequest, type EffectivePermission,
+  summarizeContentAccess,
   type IamContentAccessSummary, type IamContentDomainCapability, type IamContentPrimitiveAction,
 } from '@sva/core';
+import { evaluateAuthorizeDecision, type AuthorizeRequest, type EffectivePermission } from '@sva/iam-core';
 import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
 
 import { createApiError } from '../iam-account-management/api-helpers.js';

@@ -1,8 +1,8 @@
 import {
   iamRolePermissionAssignmentScopes,
-  type IamPermissionRuntimeScope,
   type IamRolePermissionAssignmentScope,
-} from '@sva/core';
+} from '@sva/iam-core';
+import type { IamPermissionRuntimeScope } from '@sva/core';
 import { studioModuleIamContracts } from '@sva/studio-module-iam';
 
 export type ManagedPermissionMetadata = Readonly<{

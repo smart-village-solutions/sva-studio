@@ -37,6 +37,7 @@
       "@sva/data-repositories/server": ["../../packages/data-repositories/src/server.ts"],
       "@sva/iam-admin": ["../../packages/iam-admin/src/index.ts"],
       "@sva/iam-admin/encryption": ["../../packages/iam-admin/src/encryption.ts"],
+      "@sva/iam-core": ["../../packages/iam-core/src/index.ts"],
       "@sva/iam-governance/legal-text-html": ["../../packages/iam-governance/src/legal-text-html.ts"],
       "@sva/iam-governance/legal-text-sanitize-html": ["../../packages/iam-governance/src/legal-text-sanitize-html.ts"],
       "@sva/plugin-categories": ["../../packages/plugin-categories/src/index.ts"],

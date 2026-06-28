@@ -1,4 +1,4 @@
-import type { IamRolePermissionAssignmentScope } from './authorization-contract';
+import type { IamRolePermissionAssignmentScope } from '@sva/iam-core';
 
 export type IamAccountStatus = 'active' | 'inactive' | 'pending';
 export type IamPermissionRuntimeScope = 'instance' | 'record' | 'organization_context';

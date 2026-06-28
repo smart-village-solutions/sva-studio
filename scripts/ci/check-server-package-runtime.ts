@@ -248,6 +248,87 @@ export const collectDistRuntimeEntryPoints = (packageDir: string): string[] => {
   return [...entryPoints].sort();
 };
 
+const resolveWorkspaceRuntimePackageDirs = (
+  rootDir: string,
+  packageDir: string,
+  workspacePackages = discoverWorkspacePackages(rootDir)
+): ReadonlySet<string> => {
+  const packageDirs = new Set<string>();
+  const pending = [packageDir];
+
+  while (pending.length > 0) {
+    const currentPackageDir = pending.pop();
+    if (!currentPackageDir || packageDirs.has(currentPackageDir)) {
+      continue;
+    }
+    packageDirs.add(currentPackageDir);
+
+    const packageJson = readJsonFile<{
+      dependencies?: Record<string, string>;
+    }>(path.join(currentPackageDir, 'package.json'));
+
+    for (const [dependencyName, dependencyRange] of Object.entries(packageJson.dependencies ?? {})) {
+      if (!dependencyRange.startsWith('workspace:')) {
+        continue;
+      }
+      const workspaceDependency = workspacePackages.get(dependencyName);
+      if (workspaceDependency) {
+        pending.push(workspaceDependency.packageDir);
+      }
+    }
+  }
+
+  return packageDirs;
+};
+
+export const syncInjectedWorkspacePackageDists = (
+  rootDir: string,
+  packageDirs: Iterable<string> = [...discoverWorkspacePackages(rootDir).values()].map(
+    (workspacePackage) => workspacePackage.packageDir
+  )
+): number => {
+  const virtualStoreDir = path.join(rootDir, 'node_modules', '.pnpm');
+  if (!isDirectory(virtualStoreDir)) {
+    return 0;
+  }
+
+  let updatedCopies = 0;
+  const virtualStoreEntries = fs.readdirSync(virtualStoreDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory());
+
+  for (const packageDir of packageDirs) {
+    const packageJson = readJsonFile<{ name?: string }>(path.join(packageDir, 'package.json'));
+    if (!packageJson.name) {
+      continue;
+    }
+
+    const sourceDistDir = path.join(packageDir, 'dist');
+    if (!isDirectory(sourceDistDir)) {
+      continue;
+    }
+
+    const sourceRealDir = fs.realpathSync(packageDir);
+    const packageSegments = packageJson.name.split('/');
+
+    for (const entry of virtualStoreEntries) {
+      const injectedPackageDir = path.join(virtualStoreDir, entry.name, 'node_modules', ...packageSegments);
+      if (!isDirectory(injectedPackageDir)) {
+        continue;
+      }
+      if (fs.realpathSync(injectedPackageDir) === sourceRealDir) {
+        continue;
+      }
+
+      const targetDistDir = path.join(injectedPackageDir, 'dist');
+      fs.rmSync(targetDistDir, { recursive: true, force: true });
+      fs.cpSync(sourceDistDir, targetDistDir, { force: true, recursive: true });
+      updatedCopies += 1;
+    }
+  }
+
+  return updatedCopies;
+};
+
 export const runDistRuntimeSmokeCheck = async (rootDir: string, packageDir: string): Promise<RuntimeViolation[]> => {
   const violations: RuntimeViolation[] = [];
   const previousEnableOtel = process.env.ENABLE_OTEL;
@@ -257,6 +338,8 @@ export const runDistRuntimeSmokeCheck = async (rootDir: string, packageDir: stri
   }
 
   try {
+    syncInjectedWorkspacePackageDists(rootDir, resolveWorkspaceRuntimePackageDirs(rootDir, packageDir));
+
     for (const relativeEntryPoint of collectDistRuntimeEntryPoints(packageDir)) {
       const absoluteEntryPoint = path.join(packageDir, relativeEntryPoint);
       const relativePath = path.relative(rootDir, absoluteEntryPoint);

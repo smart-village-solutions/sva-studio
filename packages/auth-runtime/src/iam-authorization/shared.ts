@@ -5,15 +5,20 @@ import type {
   IamApiErrorCode,
   IamApiErrorResponse,
   MePermissionsResponse,
-} from '@sva/core';
-import type { SnapshotCacheStatus } from '@sva/core';
+  SnapshotCacheStatus,
+} from '@sva/iam-core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { metrics } from '@opentelemetry/api';
 import type { PoolClient } from 'pg';
 
 import { parseInvalidationEvent, PermissionSnapshotCache } from '../iam-authorization-cache.js';
 import { processSnapshotInvalidationEvent } from './snapshot-invalidation.server.js';
-import { createPoolResolver, jsonResponse, type QueryClient, withResolvedInstanceDb } from '../db.js';
+import {
+  createPoolResolver,
+  jsonResponse,
+  type QueryClient,
+  withResolvedInstanceDb,
+} from '../db.js';
 import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { isUuid, readString } from '../shared/input-readers.js';
 import { buildLogContext } from '../log-context.js';
@@ -23,6 +28,7 @@ import {
   buildPermissionCacheColdStartLog,
   markPermissionCacheColdStart,
 } from './shared-cache-health.js';
+export { readResourceType, toEffectivePermissions } from './shared-effective-permissions.js';
 export {
   cacheMetricsState,
   getPermissionCacheHealth,
@@ -30,19 +36,6 @@ export {
   recordPermissionCacheRecompute,
   recordPermissionCacheRedisLatency,
 } from './shared-cache-health.js';
-
-export type PermissionRow = {
-  permission_key: string;
-  action?: string | null;
-  resource_type?: string | null;
-  resource_id?: string | null;
-  scope?: Record<string, unknown> | null;
-  role_id?: string | null;
-  organization_id: string | null;
-  group_id?: string | null;
-  group_key?: string | null;
-  source_kind?: 'direct_role' | 'group_role' | null;
-};
 
 export type EffectivePermissionsResolution =
   | {
@@ -58,16 +51,22 @@ export type ResolvedGeoContext = {
   readonly geoHierarchy?: readonly string[];
 };
 
-export const logger: ReturnType<typeof createSdkLogger> = createSdkLogger({ component: 'iam-authorize', level: 'info' });
+export const logger: ReturnType<typeof createSdkLogger> = createSdkLogger({
+  component: 'iam-authorize',
+  level: 'info',
+});
 export const cacheLogger: ReturnType<typeof createSdkLogger> = createSdkLogger({
   component: 'iam-cache',
   level: 'info',
 });
 export const authMeter = metrics.getMeter('sva.auth');
-export const iamAuthorizeLatencyHistogram = authMeter.createHistogram('sva_iam_authorize_duration_ms', {
-  description: 'Latency distribution for IAM authorize decisions in milliseconds.',
-  unit: 'ms',
-});
+export const iamAuthorizeLatencyHistogram = authMeter.createHistogram(
+  'sva_iam_authorize_duration_ms',
+  {
+    description: 'Latency distribution for IAM authorize decisions in milliseconds.',
+    unit: 'ms',
+  }
+);
 export const iamCacheLookupCounter = authMeter.createCounter('sva_iam_cache_lookup_total', {
   description: 'Cache lookups for IAM authorization snapshots.',
 });
@@ -78,9 +77,12 @@ export const iamCacheInvalidationLatencyHistogram = authMeter.createHistogram(
     unit: 'ms',
   }
 );
-export const iamCacheStaleEntriesGauge = authMeter.createObservableGauge('sva_iam_cache_stale_entry_rate', {
-  description: 'Ratio of stale cache lookups in IAM authorization path.',
-});
+export const iamCacheStaleEntriesGauge = authMeter.createObservableGauge(
+  'sva_iam_cache_stale_entry_rate',
+  {
+    description: 'Ratio of stale cache lookups in IAM authorization path.',
+  }
+);
 
 export const resolvePool = createPoolResolver(getIamDatabaseUrl);
 export const permissionSnapshotCache = new PermissionSnapshotCache(300_000, 300_000);
@@ -91,11 +93,14 @@ let invalidationListenerClient: PoolClient | null = null;
 
 iamCacheStaleEntriesGauge.addCallback((result) => {
   const staleRate =
-    cacheMetricsState.lookups === 0 ? 0 : cacheMetricsState.staleLookups / cacheMetricsState.lookups;
+    cacheMetricsState.lookups === 0
+      ? 0
+      : cacheMetricsState.staleLookups / cacheMetricsState.lookups;
   result.observe(staleRate);
 });
 
-export const buildRequestContext = (workspaceId?: string) => buildLogContext(workspaceId, { includeTraceId: true });
+export const buildRequestContext = (workspaceId?: string) =>
+  buildLogContext(workspaceId, { includeTraceId: true });
 
 export const recordPermissionCacheColdStart = (instanceId: string): void => {
   if (!markPermissionCacheColdStart()) {
@@ -104,138 +109,6 @@ export const recordPermissionCacheColdStart = (instanceId: string): void => {
 
   const coldStartLog = buildPermissionCacheColdStartLog(instanceId);
   cacheLogger.info(coldStartLog.message, coldStartLog.attributes);
-};
-
-export const readResourceType = (permissionKey: string) => permissionKey.split('.')[0] ?? permissionKey;
-
-const SOURCE_KIND_ORDER: Record<NonNullable<PermissionRow['source_kind']>, number> = {
-  direct_role: 0,
-  group_role: 1,
-};
-
-const sortStrings = (values: readonly string[]): readonly string[] => [...values].sort((left, right) => left.localeCompare(right));
-
-const sortSourceKinds = (
-  values: readonly NonNullable<PermissionRow['source_kind']>[]
-): readonly NonNullable<PermissionRow['source_kind']>[] =>
-  [...values].sort((left, right) => SOURCE_KIND_ORDER[left] - SOURCE_KIND_ORDER[right] || left.localeCompare(right));
-
-const buildPermissionBucketKey = (input: {
-  readonly action: string;
-  readonly resourceType: string;
-  readonly resourceId?: string;
-  readonly organizationId?: string | null;
-  readonly scope?: Record<string, unknown>;
-}): string =>
-  JSON.stringify({
-    action: input.action,
-    resourceType: input.resourceType,
-    resourceId: input.resourceId,
-    organizationId: input.organizationId ?? '',
-    scope: input.scope,
-  });
-
-const appendSortedUnique = (values: readonly string[] | undefined, nextValue: string | undefined): readonly string[] | undefined => {
-  if (!nextValue) {
-    return values;
-  }
-
-  return sortStrings(values?.includes(nextValue) ? values : [...(values ?? []), nextValue]);
-};
-
-const mergeSortedSourceKinds = (
-  values: readonly NonNullable<PermissionRow['source_kind']>[] | undefined,
-  nextValue: NonNullable<PermissionRow['source_kind']> | undefined
-): readonly NonNullable<PermissionRow['source_kind']>[] | undefined => {
-  if (!nextValue) {
-    return values;
-  }
-
-  return sortSourceKinds(Array.from(new Set([...(values ?? []), nextValue])));
-};
-
-const createEffectivePermission = (
-  row: PermissionRow,
-  normalized: {
-    readonly action: string;
-    readonly resourceType: string;
-    readonly resourceId?: string;
-    readonly scope?: Record<string, unknown>;
-    readonly groupId?: string;
-    readonly groupKey?: string;
-  }
-): EffectivePermission => ({
-  action: normalized.action,
-  resourceType: normalized.resourceType,
-  ...(normalized.resourceId ? { resourceId: normalized.resourceId } : {}),
-  ...(row.organization_id ? { organizationId: row.organization_id } : {}),
-  ...(normalized.scope ? { scope: normalized.scope } : {}),
-  ...(row.role_id ? { sourceRoleIds: [row.role_id] } : {}),
-  ...(normalized.groupId ? { sourceGroupIds: [normalized.groupId] } : {}),
-  ...(normalized.groupKey ? { groupName: normalized.groupKey } : {}),
-  ...(row.source_kind ? { provenance: { sourceKinds: [row.source_kind] } } : {}),
-});
-
-const mergeEffectivePermission = (
-  existing: EffectivePermission,
-  row: PermissionRow,
-  normalized: {
-    readonly groupId?: string;
-    readonly groupKey?: string;
-  }
-): EffectivePermission => {
-  const sourceRoleIds = appendSortedUnique(existing.sourceRoleIds, row.role_id ?? undefined);
-  const sourceGroupIds = appendSortedUnique(existing.sourceGroupIds, normalized.groupId);
-  const sourceKinds = mergeSortedSourceKinds(existing.provenance?.sourceKinds, row.source_kind ?? undefined);
-
-  return {
-    ...existing,
-    ...(sourceRoleIds ? { sourceRoleIds } : {}),
-    ...(sourceGroupIds ? { sourceGroupIds } : {}),
-    ...(normalized.groupKey ?? existing.groupName ? { groupName: normalized.groupKey ?? existing.groupName } : {}),
-    provenance: sourceKinds ? { ...(existing.provenance ?? {}), sourceKinds } : existing.provenance,
-  };
-};
-
-const finalizeEffectivePermission = (permission: EffectivePermission): EffectivePermission => ({
-  ...permission,
-  ...(permission.sourceRoleIds ? { sourceRoleIds: sortStrings(permission.sourceRoleIds) } : {}),
-  ...(permission.sourceGroupIds ? { sourceGroupIds: sortStrings(permission.sourceGroupIds) } : {}),
-  provenance: permission.provenance?.sourceKinds
-    ? { ...permission.provenance, sourceKinds: sortSourceKinds(permission.provenance.sourceKinds) }
-    : permission.provenance,
-});
-
-export const toEffectivePermissions = (rows: readonly PermissionRow[]): EffectivePermission[] => {
-  const buckets = new Map<string, EffectivePermission>();
-
-  for (const row of rows) {
-    const normalized = {
-      action: row.action?.trim() || row.permission_key,
-      resourceType: row.resource_type?.trim() || readResourceType(row.permission_key),
-      resourceId: row.resource_id?.trim() || undefined,
-      scope: row.scope ?? undefined,
-      groupId: row.group_id ?? undefined,
-      groupKey: row.group_key ?? undefined,
-    };
-    const bucketKey = buildPermissionBucketKey({
-      action: normalized.action,
-      resourceType: normalized.resourceType,
-      resourceId: normalized.resourceId,
-      organizationId: row.organization_id,
-      scope: normalized.scope,
-    });
-    const existing = buckets.get(bucketKey);
-
-    if (!existing) {
-      buckets.set(bucketKey, createEffectivePermission(row, normalized));
-      continue;
-    }
-
-    buckets.set(bucketKey, mergeEffectivePermission(existing, row, normalized));
-  }
-
-  return [...buckets.values()].map(finalizeEffectivePermission);
 };
 
 export const withInstanceScopedDb = async <T>(
@@ -297,7 +170,9 @@ export const ensureInvalidationListener = async (): Promise<void> => {
           ...buildRequestContext(parsed.instanceId),
         });
       });
-      iamCacheInvalidationLatencyHistogram.record(Date.now() - receivedAt, { trigger: parsed.trigger });
+      iamCacheInvalidationLatencyHistogram.record(Date.now() - receivedAt, {
+        trigger: parsed.trigger,
+      });
       cacheLogger.info('Cache invalidation event received', {
         operation: 'cache_invalidate',
         trigger: parsed.trigger,
@@ -357,7 +232,9 @@ export const buildMePermissionsResponse = (input: {
   snapshotVersion: input.snapshotVersion,
   cacheStatus: input.cacheStatus,
   provenance: {
-    hasGroupDerivedPermissions: input.permissions.some((permission) => (permission.sourceGroupIds?.length ?? 0) > 0),
+    hasGroupDerivedPermissions: input.permissions.some(
+      (permission) => (permission.sourceGroupIds?.length ?? 0) > 0
+    ),
     hasGeoInheritance: input.permissions.some((permission) => {
       const scope = permission.scope;
       if (!scope) {
@@ -427,9 +304,7 @@ export const resolveGeoContextFromRequest = (request: Request): ResolvedGeoConte
   }
 
   const geoHierarchy = normalizeGeoHierarchy(
-    url.searchParams
-      .getAll('geoHierarchy')
-      .flatMap((entry) => entry.split(','))
+    url.searchParams.getAll('geoHierarchy').flatMap((entry) => entry.split(','))
   );
 
   if (geoHierarchy === null) {

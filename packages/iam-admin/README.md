@@ -8,6 +8,8 @@ Serverseitiges TypeScript-Package für administrative IAM-Abläufe. Das Package 
 
 Die Implementierung sitzt zwischen fachlichen Kernbausteinen wie `@sva/core` und `@sva/iam-core` sowie Infrastrukturzugriffen wie `@sva/data-repositories` und einem injizierten Identity-Provider-Port. Der lokale `QueryClient`-Typ zeigt zudem, dass Datenbankzugriffe bewusst über eine kleine Abstraktionsschicht eingebunden werden.
 
+Authorize-nahe Verträge werden aus `@sva/iam-core` konsumiert. Benutzer-, Rollen-, Gruppen- und Organisationslogik bleiben fachliche Ownership von `@sva/iam-admin`.
+
 ## Öffentliche API
 
 Der öffentliche Einstiegspunkt ist `src/index.ts`. Er re-exportiert die API in thematischen Gruppen:

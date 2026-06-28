@@ -23,6 +23,7 @@ import {
   emitContentDeletedActivity,
   emitContentUpdatedActivity,
   insertContentRow,
+  resolveUpdateAuthorDisplay,
   updateContentRevisionRefs,
   updateContentRow,
   validatePublicationWindow,
@@ -47,6 +48,14 @@ const resolveAuditAction = (input: {
   }
   return input.changedFields.includes('payload') ? 'content.updatePayload' : 'content.updateMetadata';
 };
+
+const hasAuthorDisplayAffectingChange = (
+  current: ContentRow,
+  input: UpdateContentInput
+): boolean =>
+  input.authorDisplayMode !== undefined ||
+  input.authorDisplayName !== undefined ||
+  (input.organizationId !== undefined && input.organizationId !== current.organization_id);
 
 const listSortColumnByField = {
   title: 'content.title',
@@ -266,11 +275,18 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
     if (!current) {
       return undefined;
     }
+    const stateInput = hasAuthorDisplayAffectingChange(current, input)
+      ? {
+          ...input,
+          ...(await resolveUpdateAuthorDisplay(client, current, input)),
+        }
+      : input;
     const {
       changedFields,
       nextOrganizationId,
       nextOwnerUserId,
       nextOwnerOrganizationId,
+      nextAuthorDisplayMode,
       nextAuthorDisplayName,
       nextPayload,
       nextPublishedAt,
@@ -279,11 +295,12 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
       nextStatus,
       nextTitle,
       nextValidationState,
-    } = resolveNextContentState(current, input);
+    } = resolveNextContentState(current, stateInput);
     await updateContentRow(client, input, {
       organizationId: nextOrganizationId,
       ownerUserId: nextOwnerUserId,
       ownerOrganizationId: nextOwnerOrganizationId,
+      authorDisplayMode: nextAuthorDisplayMode,
       authorDisplayName: nextAuthorDisplayName,
       title: nextTitle,
       payloadJson: JSON.stringify(nextPayload),
@@ -310,7 +327,7 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
       snapshot: nextPayload,
     });
     await updateContentRevisionRefs(client, input.instanceId, input.contentId, historyId);
-    await emitContentUpdatedActivity(client, input, current, {
+    await emitContentUpdatedActivity(client, stateInput, current, {
       eventType: activityEventType,
       action: resolveAuditAction({ changedFields, previousStatus: current.status, nextStatus }),
       changedFields,
@@ -318,6 +335,7 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
       nextTitle,
       nextOwnerUserId,
       nextOwnerOrganizationId,
+      nextAuthorDisplayMode,
       nextAuthorDisplayName,
     });
     return input.contentId;

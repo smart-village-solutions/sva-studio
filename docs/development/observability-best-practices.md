@@ -13,7 +13,7 @@ Architektur-Referenz: [Logging Architecture](../architecture/logging-architectur
 - **Workspace Context**: Jedes Log sollte `workspace_id` beinhalten
 - **PII-Sicherheit**: Sensible Daten gehören in Message Body, nicht in Labels
 - **Keine Token-URLs**: Redirect- oder Logout-URLs mit `id_token_hint`, `code` oder anderen Geheimnissen werden nie als Rohwert geloggt
-- **Development-Modell**: Console und Dev-Konsole sind lokal aktiv; OTEL ist in Development ein zusätzlicher Exportpfad nur bei erfolgreicher Initialisierung
+- **Development-Modell**: Console ist lokal aktiv; OTEL ist in Development ein zusätzlicher Exportpfad nur bei erfolgreicher Initialisierung
 
 ### ✅ DO: Strukturiertes Logging mit Server-Runtime-Logger
 
@@ -26,7 +26,7 @@ const logger = createSdkLogger({ component: 'auth-service' });
 logger.info('User authenticated successfully', {
   workspace_id: 'org-123',
   userId: 'user-456',
-  method: 'oauth2'
+  method: 'oauth2',
 });
 
 // ✅ GOOD: Fehler mit Context
@@ -34,11 +34,12 @@ logger.error('Database connection failed', {
   workspace_id: 'org-123',
   component: 'database',
   code: 'ECONNREFUSED',
-  retries: 3
+  retries: 3,
 });
 ```
 
 **Vorteile:**
+
 - Automatische Redaction von PII (email, token, api_key, etc.)
 - Automatische Maskierung von JWT-aehnlichen Strings und sensitiven URL-Query-Parametern
 - OTEL Integration (logs + metrics + traces)
@@ -64,16 +65,14 @@ console.log('Auth completed');
 
 // ❌ BAD: PII in Labels
 logger.info('User login', {
-  email: 'john@example.com',  // ← Diese Labels werden gefilmt!
-  password: 'secret123'       // ← NIE!
+  email: 'john@example.com', // ← Diese Labels werden gefilmt!
+  password: 'secret123', // ← NIE!
 });
 ```
 
 ### Development Runtime
 
 - In Development ist die Server-Console immer aktiv.
-- Die React-App rendert eine lokale Dev-Konsole fuer Browser- und Server-Logs.
-- Die Server-Schnittstelle fuer diese Dev-Konsole liefert ausserhalb von Development bewusst keine Eintraege.
 - OTEL darf in Development ausfallen oder explizit deaktiviert werden, ohne den App-Start zu blockieren.
 - In Production ist dieses Verhalten nicht zulaessig; dort ist OTEL verpflichtend.
 
@@ -111,29 +110,41 @@ Das System redacted automatisch **sensible Labels** auf mehreren Ebenen:
 ```typescript
 // Diese Labels werden automatisch redacted:
 const forbiddenLabels = [
-  'user_id', 'session_id', 'email', 'request_id',
-  'token', 'authorization', 'api_key', 'secret',
-  'ip', 'password', 'card', 'credit', 'ssn'
+  'user_id',
+  'session_id',
+  'email',
+  'request_id',
+  'token',
+  'authorization',
+  'api_key',
+  'secret',
+  'ip',
+  'password',
+  'card',
+  'credit',
+  'ssn',
 ];
 
 // Diese Labels sind ERLAUBT (Whitelist):
 const allowedLabels = [
-  'workspace_id',    // ← Mandatory!
-  'component',       // Service/Module Name
-  'environment',     // dev/test/prod
-  'level'            // info/error/warn/debug
+  'workspace_id', // ← Mandatory!
+  'component', // Service/Module Name
+  'environment', // dev/test/prod
+  'level', // info/error/warn/debug
 ];
 ```
 
 **Email-Masking bei Logs:**
+
 ```
 john.doe@example.com → j***@example.com
 ```
 
 **Zusaetzliche Schutzregeln:**
+
 - JWT-aehnliche Strings werden maskiert
 - `id_token_hint`, `access_token`, `refresh_token` und `code` werden in URLs redacted
-- lokale Dev-Konsole, Console und OTEL folgen derselben Redaction
+- Console und OTEL folgen derselben Redaction
 
 ### Ebene 2: Log Collection (Promtail)
 
@@ -143,14 +154,15 @@ Promtail scrapet Docker Container Logs und entfernt weitere PII-Labels:
 # dev/monitoring/promtail/promtail-config.yml
 relabel_configs:
   - action: labeldrop
-    regex: "(user_id|session_id|email|request_id|...)"
+    regex: '(user_id|session_id|email|request_id|...)'
   - action: labelkeep
-    regex: "(workspace_id|component|environment|level)"
+    regex: '(workspace_id|component|environment|level)'
 ```
 
 ### Ebene 3: Logs in Loki
 
 In Loki landen nur die whitelisted Labels:
+
 ```
 {workspace_id="org-123", component="auth", environment="production", level="info"} → message
 ```
@@ -165,10 +177,12 @@ Der Workspace Context wird automatisch injiziert und sollte immer vorhanden sein
 // packages/auth-runtime/runtime-routes.ts
 import { createWorkspaceContextMiddleware } from '@sva/server-runtime';
 
-app.use(createWorkspaceContextMiddleware({
-  headerNames: ['x-workspace-id', 'x-sva-workspace-id'],
-  environment: 'production'
-}));
+app.use(
+  createWorkspaceContextMiddleware({
+    headerNames: ['x-workspace-id', 'x-sva-workspace-id'],
+    environment: 'production',
+  })
+);
 
 // Jetzt ist workspace_id in AsyncLocalStorage verfügbar
 ```
@@ -182,9 +196,9 @@ export const deleteUserAccount = async (userId: string) => {
   const { workspaceId } = getWorkspaceContext();
 
   logger.info('User account deletion initiated', {
-    workspace_id: workspaceId,  // ← Automatisch injiziert!
+    workspace_id: workspaceId, // ← Automatisch injiziert!
     userId,
-    action: 'account_deletion'
+    action: 'account_deletion',
   });
 
   // ... Logik ...
@@ -205,18 +219,19 @@ recordBusinessEvent('content.published', {
   workspace_id: 'org-123',
   component: 'cms',
   content_type: 'article',
-  environment: 'production'
+  environment: 'production',
 });
 
 // User-Aktion
 recordBusinessEvent('user.signed_up', {
   workspace_id: 'org-123',
   component: 'auth',
-  signup_method: 'oauth2'
+  signup_method: 'oauth2',
 });
 ```
 
 **Metrik in Prometheus:**
+
 ```promql
 sva_business_events_total{workspace_id="org-123", event="content.published"}
 ```
@@ -281,8 +296,8 @@ describe('PII Redaction', () => {
     const logger = createSdkLogger({ component: 'test' });
 
     logger.info('User login', {
-      email: 'john.doe@example.com',  // ← Will be masked
-      workspace_id: 'test-ws'
+      email: 'john.doe@example.com', // ← Will be masked
+      workspace_id: 'test-ws',
     });
 
     // Verify in Loki that email was masked
@@ -297,13 +312,10 @@ describe('PII Redaction', () => {
 ```typescript
 describe('Workspace Context', () => {
   it('propagates workspace_id through async operations', async () => {
-    await runWithWorkspaceContext(
-      { workspaceId: 'org-123' },
-      async () => {
-        const context = getWorkspaceContext();
-        expect(context.workspaceId).toBe('org-123');
-      }
-    );
+    await runWithWorkspaceContext({ workspaceId: 'org-123' }, async () => {
+      const context = getWorkspaceContext();
+      expect(context.workspaceId).toBe('org-123');
+    });
   });
 });
 ```

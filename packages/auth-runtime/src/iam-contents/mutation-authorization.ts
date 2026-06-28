@@ -21,6 +21,7 @@ const metadataFields = [
   'organizationId',
   'ownerUserId',
   'ownerOrganizationId',
+  'authorDisplayMode',
   'authorDisplayName',
   'validationState',
 ] as const;
@@ -81,27 +82,6 @@ export const resolveUpdateContentActions = (
   return [...requiredCapabilities].map(resolveContentAuthorizationAction);
 };
 
-const resolveProspectiveContentResource = (
-  currentContent: IamContentListItem,
-  data: UpdateContentSchemaInput
-) => ({
-  organizationId: data.organizationId ?? currentContent.organizationId,
-  ownerUserId: data.ownerUserId ?? currentContent.ownerUserId,
-  ownerOrganizationId: data.ownerOrganizationId ?? currentContent.ownerOrganizationId,
-});
-
-const hasDestinationAuthorizationTargetChanged = (
-  currentContent: IamContentListItem,
-  data: UpdateContentSchemaInput
-): boolean => {
-  const nextResource = resolveProspectiveContentResource(currentContent, data);
-  return (
-    nextResource.organizationId !== currentContent.organizationId ||
-    nextResource.ownerUserId !== currentContent.ownerUserId ||
-    nextResource.ownerOrganizationId !== currentContent.ownerOrganizationId
-  );
-};
-
 export const authorizeUpdateContentActions = async (
   actor: ResolvedContentActor['actor'],
   contentId: string,
@@ -137,12 +117,25 @@ export const authorizeUpdateContentActions = async (
     }
   }
 
-  if (hasDestinationAuthorizationTargetChanged(currentContent, data)) {
-    const nextResource = resolveProspectiveContentResource(currentContent, data);
-    const destinationPermissions = await resolveContentAuthorizationPermissions(
-      actor,
-      nextResource.organizationId
-    );
+  const destinationOrganizationId = data.organizationId ?? currentContent.organizationId;
+  const destinationOwnerOrganizationId =
+    data.ownerOrganizationId ?? currentContent.ownerOrganizationId;
+  const destinationOwnerUserId =
+    data.ownerUserId ??
+    (data.ownerOrganizationId !== undefined &&
+    destinationOwnerOrganizationId !== currentContent.ownerOrganizationId
+      ? undefined
+      : currentContent.ownerUserId);
+  const hasProspectiveAuthorizationTargetChange =
+    destinationOrganizationId !== currentContent.organizationId ||
+    destinationOwnerUserId !== currentContent.ownerUserId ||
+    destinationOwnerOrganizationId !== currentContent.ownerOrganizationId;
+
+  if (hasProspectiveAuthorizationTargetChange) {
+    const destinationPermissions =
+      destinationOrganizationId === currentContent.organizationId
+        ? sourcePermissions
+        : await resolveContentAuthorizationPermissions(actor, destinationOrganizationId);
 
     if ('error' in destinationPermissions) {
       return destinationPermissions.error;
@@ -156,9 +149,9 @@ export const authorizeUpdateContentActions = async (
           contentId,
           contentType: currentContent.contentType,
           domainCapability: action.domainCapability,
-          organizationId: nextResource.organizationId,
-          ownerUserId: nextResource.ownerUserId,
-          ownerOrganizationId: nextResource.ownerOrganizationId,
+          organizationId: destinationOrganizationId,
+          ownerUserId: destinationOwnerUserId,
+          ownerOrganizationId: destinationOwnerOrganizationId,
         },
         { permissions: destinationPermissions.permissions }
       );

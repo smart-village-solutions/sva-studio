@@ -1,4 +1,5 @@
-import type { IamDeletionContentStrategy, IamDeletionLifecycleState, IamInstanceId, IamUuid } from '@sva/core';
+import type { IamInstanceId, IamUuid } from '@sva/iam-core';
+import type { IamDeletionContentStrategy, IamDeletionLifecycleState } from '@sva/core';
 
 export const deletionRulesBaselineDefaults = {
   deactivateAfterDays: 90,

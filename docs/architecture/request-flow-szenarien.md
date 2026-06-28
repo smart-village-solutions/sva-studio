@@ -39,7 +39,7 @@ flowchart TD
     T --> K
     T --> N
     T --> U["Redis Session Store"]
-    T --> V["@sva/core\nTypen / Authorization-Logik"]
+    T --> V["@sva/iam-core\nAuthorize-Typen / Permission-Engine"]
     T --> W["JSON / Redirect Response"]
     W --> A
 
@@ -66,7 +66,7 @@ flowchart TD
 
 - Requests auf Pfade wie `/auth/*`, `/iam/*` oder `/api/v1/iam/*` werden früh von `@sva/routing/server` abgefangen.
 - Die eigentliche Bearbeitung liegt dann in `@sva/auth-runtime` und den IAM-Zielpackages.
-- `@sva/auth-runtime` spricht je nach Use Case mit Redis, Postgres, Keycloak und der Autorisierungslogik aus `@sva/core`.
+- `@sva/auth-runtime` spricht je nach Use Case mit Redis, Postgres, Keycloak und der Authorize-/Permission-Engine aus `@sva/iam-core`.
 
 ### Integrationsszenario mit externem Downstream
 

@@ -1,4 +1,4 @@
-import type { IamRolePermissionAssignmentScope } from '@sva/core';
+import type { IamRolePermissionAssignmentScope } from '@sva/iam-core';
 
 import { isTenantTechnicalKeycloakRole } from './role-governance.js';
 import { persistLocalRoleCreate, reserveCreateRoleIdempotency, syncTechnicalRoleCreate, type PreparedRoleCreate } from './role-create-sync.js';

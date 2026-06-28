@@ -204,6 +204,13 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     fetchWithRetry,
   });
 
+  const loadListCredentialMetadata = async (input: SvaMainserverConnectionInput) => {
+    const credentials = await loadCredentials(input);
+    return {
+      ...(credentials.credentialSource ? { credentialSource: credentials.credentialSource } : {}),
+    };
+  };
+
   const executeGraphqlWithConfig = createGraphqlExecutor({
     fetchWithRetry,
     loadAccessToken,
@@ -298,7 +305,11 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
 
   const listNews = async (input: SvaMainserverConnectionInput & SvaMainserverNewsListInput) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    return newsOperations.listNewsWithConfig(input, config);
+    const credentialMetadata = await loadListCredentialMetadata(input);
+    return {
+      ...(await newsOperations.listNewsWithConfig(input, config)),
+      ...credentialMetadata,
+    };
   };
 
   const getNews = async (input: SvaMainserverConnectionInput & { readonly newsId: string }) => {
@@ -332,7 +343,11 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
 
   const listEvents = async (input: SvaMainserverListInput) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    return eventOperations.listEventsWithConfig(input, config);
+    const credentialMetadata = await loadListCredentialMetadata(input);
+    return {
+      ...(await eventOperations.listEventsWithConfig(input, config)),
+      ...credentialMetadata,
+    };
   };
 
   const getEvent = async (input: SvaMainserverConnectionInput & { readonly eventId: string }) => {
@@ -359,7 +374,11 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
 
   const listPoi = async (input: SvaMainserverListInput) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    return poiOperations.listPoiWithConfig(input, config);
+    const credentialMetadata = await loadListCredentialMetadata(input);
+    return {
+      ...(await poiOperations.listPoiWithConfig(input, config)),
+      ...credentialMetadata,
+    };
   };
 
   const getPoi = async (input: SvaMainserverConnectionInput & { readonly poiId: string }) => {

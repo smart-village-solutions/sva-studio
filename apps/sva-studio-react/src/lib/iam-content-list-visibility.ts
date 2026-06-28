@@ -1,4 +1,4 @@
-import type { EffectivePermission } from '@sva/core';
+import type { EffectivePermission } from '@sva/iam-core';
 
 type ProjectionRowReadView = {
   readonly contentType: string;

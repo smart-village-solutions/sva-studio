@@ -2,7 +2,7 @@ import type {
   IamLegalTextTargeting,
   IamRolePermissionAssignmentScope,
   IamUuid,
-} from './authorization-contract';
+} from '@sva/iam-core';
 import type { IamPermissionRuntimeScope } from './account-management.js';
 import type { WasteManagementSettingsRecord } from '../waste-management-contract.js';
 

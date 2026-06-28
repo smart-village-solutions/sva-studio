@@ -3,8 +3,8 @@ import type {
   AuthorizePerformanceScenario,
   AuthorizePerformanceScenarioResult,
   AuthorizeResponse,
-} from '@sva/core';
-import { buildAuthorizePerformancePayload, summarizeAuthorizePerformanceDurations } from '@sva/core';
+} from '@sva/iam-core';
+import { buildAuthorizePerformancePayload, summarizeAuthorizePerformanceDurations } from '@sva/iam-core';
 
 import { authorizeHandler } from './authorize.js';
 import { invalidateRedisPermissionSnapshots } from './redis-permission-snapshot.server.js';

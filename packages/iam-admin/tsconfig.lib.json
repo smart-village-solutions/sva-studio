@@ -11,6 +11,7 @@
     "paths": {
       "@sva/core": ["packages/core/dist/index.d.ts"],
       "@sva/core/security": ["packages/core/dist/security/index.d.ts"],
+      "@sva/iam-core": ["packages/iam-core/dist/index.d.ts"],
       "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"],
       "@sva/studio-module-iam": ["packages/studio-module-iam/dist/index.d.ts"]
     }

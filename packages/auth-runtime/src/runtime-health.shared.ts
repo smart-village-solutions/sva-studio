@@ -1,4 +1,4 @@
-import type { RuntimeDependencyHealth, RuntimeHealthResponse } from '@sva/core';
+import type { RuntimeDependencyHealth, RuntimeHealthResponse } from '@sva/iam-core';
 import { getPermissionCacheHealth } from './iam-authorization/shared.js';
 import { resolveTenantAuthClientSecret } from './config-tenant-secret.js';
 

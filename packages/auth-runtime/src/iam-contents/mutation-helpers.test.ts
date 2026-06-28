@@ -103,7 +103,11 @@ describe('content mutation helpers', () => {
   it('preserves authorization failure status and response body for idempotent create failures', async () => {
     const authorizationResponse = new Response(
       JSON.stringify({
-        error: { code: 'database_unavailable', message: 'Berechtigungen konnten nicht geprüft werden.' },
+        error: {
+          code: 'database_unavailable',
+          message: 'Berechtigungen konnten nicht geprüft werden.',
+          details: { reason_code: 'permission_store_unavailable' },
+        },
         requestId: 'request-1',
       }),
       { status: 503, headers: { 'Content-Type': 'application/json' } }
@@ -112,7 +116,11 @@ describe('content mutation helpers', () => {
     const response = await createFailureResponseFromResponse(actor, 'idem-1', authorizationResponse);
 
     await expect(response.json()).resolves.toEqual({
-      error: { code: 'database_unavailable', message: 'Berechtigungen konnten nicht geprüft werden.' },
+      error: {
+        code: 'database_unavailable',
+        message: 'Berechtigungen konnten nicht geprüft werden.',
+        details: { reason_code: 'permission_store_unavailable' },
+      },
       requestId: 'request-1',
     });
     expect(response.status).toBe(503);

@@ -39,12 +39,14 @@ const isAllowedErrorBody = (value: unknown): value is Record<string, unknown> =>
   }
 
   const error = body.error as Record<string, unknown>;
-  const allowedErrorKeys = new Set(['code', 'message']);
+  const allowedErrorKeys = new Set(['code', 'message', 'details']);
 
   return (
     Object.keys(error).every((key) => allowedErrorKeys.has(key)) &&
     typeof error.code === 'string' &&
-    typeof error.message === 'string'
+    typeof error.message === 'string' &&
+    (error.details === undefined ||
+      (!!error.details && typeof error.details === 'object' && !Array.isArray(error.details)))
   );
 };
 
@@ -108,6 +110,7 @@ export type ParsedCreateRequest = {
     CreateContentInput,
     | 'contentType'
     | 'organizationId'
+    | 'authorDisplayMode'
     | 'title'
     | 'payload'
     | 'status'

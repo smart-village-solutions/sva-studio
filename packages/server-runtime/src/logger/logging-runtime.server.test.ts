@@ -29,7 +29,6 @@ describe('logging runtime state', () => {
       mode: 'console_to_loki',
       otelRequested: false,
       otelRequired: false,
-      uiEnabled: false,
     });
   });
 

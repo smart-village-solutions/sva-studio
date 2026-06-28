@@ -20,6 +20,7 @@ const state = vi.hoisted(() => ({
   mapContentListItemMock: vi.fn(),
   queryMock: vi.fn(),
   resolveContentMutationMetadataMock: vi.fn(),
+  resolveUpdateAuthorDisplayMock: vi.fn(),
   resolveNextContentStateMock: vi.fn(),
   updateContentRevisionRefsMock: vi.fn(),
   updateContentRowMock: vi.fn(),
@@ -51,6 +52,7 @@ vi.mock('./repository-write-helpers.js', () => ({
   emitContentDeletedActivity: (...args: unknown[]) => state.emitContentDeletedActivityMock(...args),
   emitContentUpdatedActivity: (...args: unknown[]) => state.emitContentUpdatedActivityMock(...args),
   insertContentRow: (...args: unknown[]) => state.insertContentRowMock(...args),
+  resolveUpdateAuthorDisplay: (...args: unknown[]) => state.resolveUpdateAuthorDisplayMock(...args),
   updateContentRevisionRefs: (...args: unknown[]) => state.updateContentRevisionRefsMock(...args),
   updateContentRow: (...args: unknown[]) => state.updateContentRowMock(...args),
   validatePublicationWindow: (...args: unknown[]) => state.validatePublicationWindowMock(...args),
@@ -82,6 +84,7 @@ const createContentRow = (overrides: Partial<ContentRow> = {}): ContentRow => ({
   created_by: 'account-1',
   updated_at: '2026-05-01T08:00:00.000Z',
   updated_by: 'account-1',
+  author_display_mode: 'organization',
   author_display_name: 'Autor',
   payload_json: { body: 'Text' },
   status: 'draft',
@@ -173,11 +176,16 @@ describe('iam content repository', () => {
       historyAction: 'updated',
       historySummary: 'Inhalt aktualisiert',
     });
+    state.resolveUpdateAuthorDisplayMock.mockResolvedValue({
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Autor',
+    });
     state.resolveNextContentStateMock.mockReturnValue({
       changedFields: ['title'],
       nextOrganizationId: null,
       nextOwnerUserId: null,
       nextOwnerOrganizationId: null,
+      nextAuthorDisplayMode: 'organization',
       nextAuthorDisplayName: 'Autor',
       nextPayload: { body: 'Neu' },
       nextPublishedAt: null,
@@ -394,6 +402,83 @@ describe('iam content repository', () => {
     expect(state.insertContentHistoryMock).not.toHaveBeenCalled();
   });
 
+  it('preserves persisted author display fields on unrelated updates', async () => {
+    const current = createContentRow({
+      author_display_mode: 'organization',
+      author_display_name: 'Historischer Organisationsname',
+    });
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(current);
+
+    await expect(updateContent(createUpdateInput({ title: 'Neuer Titel' }))).resolves.toBe('content-1');
+
+    expect(state.resolveUpdateAuthorDisplayMock).not.toHaveBeenCalled();
+    expect(state.resolveNextContentStateMock).toHaveBeenCalledWith(
+      current,
+      expect.not.objectContaining({
+        authorDisplayMode: expect.any(String),
+        authorDisplayName: expect.any(String),
+      })
+    );
+  });
+
+  it('resolves author display only when the request changes author display fields', async () => {
+    const current = createContentRow();
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(current);
+    state.resolveUpdateAuthorDisplayMock.mockResolvedValueOnce({
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Autorin',
+    });
+
+    await expect(updateContent(createUpdateInput({ authorDisplayMode: 'user' }))).resolves.toBe('content-1');
+
+    expect(state.resolveUpdateAuthorDisplayMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      current,
+      expect.objectContaining({ authorDisplayMode: 'user' })
+    );
+    expect(state.resolveNextContentStateMock).toHaveBeenCalledWith(
+      current,
+      expect.objectContaining({
+        authorDisplayMode: 'user',
+        authorDisplayName: 'Autorin',
+      })
+    );
+  });
+
+  it('resolves author display when the request changes the organization', async () => {
+    const current = createContentRow({
+      organization_id: '11111111-1111-4111-8111-111111111111',
+      author_display_mode: 'organization',
+      author_display_name: 'Alte Organisation',
+    });
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(current);
+    state.resolveUpdateAuthorDisplayMock.mockResolvedValueOnce({
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Neue Organisation',
+    });
+
+    await expect(
+      updateContent(
+        createUpdateInput({
+          organizationId: '22222222-2222-4222-8222-222222222222',
+        })
+      )
+    ).resolves.toBe('content-1');
+
+    expect(state.resolveUpdateAuthorDisplayMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      current,
+      expect.objectContaining({ organizationId: '22222222-2222-4222-8222-222222222222' })
+    );
+    expect(state.resolveNextContentStateMock).toHaveBeenCalledWith(
+      current,
+      expect.objectContaining({
+        authorDisplayMode: 'organization',
+        authorDisplayName: 'Neue Organisation',
+      })
+    );
+  });
+
   it.each([
     ['draft', 'published', ['status'], 'content.publish'],
     ['draft', 'archived', ['status'], 'content.archive'],
@@ -411,6 +496,7 @@ describe('iam content repository', () => {
         nextOrganizationId: null,
         nextOwnerUserId: null,
         nextOwnerOrganizationId: null,
+        nextAuthorDisplayMode: 'organization',
         nextAuthorDisplayName: 'Autor',
         nextPayload: { body: 'Neu' },
         nextPublishedAt: nextStatus === 'published' ? '2026-05-03T08:00:00.000Z' : null,

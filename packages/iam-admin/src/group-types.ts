@@ -1,10 +1,10 @@
 import type {
-  IamAdminGroupDetail,
-  IamAdminGroupListItem,
-  IamAdminGroupMembership,
-  IamAdminGroupType,
+  IamGroupDetail as IamAdminGroupDetail,
+  IamGroupListItem as IamAdminGroupListItem,
+  IamGroupMembership as IamAdminGroupMembership,
+  IamGroupType as IamAdminGroupType,
   IamUuid,
-} from '@sva/core';
+} from '@sva/iam-core';
 
 import { revealField } from './encryption.js';
 import { resolveUserDisplayName } from './user-mapping.js';

@@ -23,7 +23,6 @@ describe('logging runtime config', () => {
     expect(getLoggingRuntimeConfig()).toEqual({
       environment: 'development',
       consoleEnabled: true,
-      uiEnabled: true,
       otelRequested: true,
       otelRequired: false,
       mode: 'otel_to_loki',
@@ -39,7 +38,6 @@ describe('logging runtime config', () => {
     expect(getLoggingRuntimeConfig()).toEqual({
       environment: 'development',
       consoleEnabled: true,
-      uiEnabled: true,
       otelRequested: false,
       otelRequired: false,
       mode: 'console_to_loki',
@@ -56,7 +54,6 @@ describe('logging runtime config', () => {
     expect(getLoggingRuntimeConfig()).toEqual({
       environment: 'production',
       consoleEnabled: true,
-      uiEnabled: false,
       otelRequested: false,
       otelRequired: false,
       mode: 'console_to_loki',
@@ -73,7 +70,6 @@ describe('logging runtime config', () => {
     expect(getLoggingRuntimeConfig()).toEqual({
       environment: 'production',
       consoleEnabled: false,
-      uiEnabled: false,
       otelRequested: false,
       otelRequired: false,
       mode: 'degraded',
@@ -89,7 +85,6 @@ describe('logging runtime config', () => {
     expect(getLoggingRuntimeConfig()).toEqual({
       environment: 'production',
       consoleEnabled: false,
-      uiEnabled: false,
       otelRequested: true,
       otelRequired: true,
       mode: 'otel_to_loki',

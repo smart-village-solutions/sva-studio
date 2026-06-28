@@ -6,6 +6,9 @@
     "declarationMap": true,
     "lib": ["ES2021", "DOM"],
     "outDir": "dist",
+    "paths": {
+      "@sva/iam-core": ["packages/iam-core/dist/index.d.ts"]
+    },
     "rootDir": "src",
     "types": ["node"]
   },

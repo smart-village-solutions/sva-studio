@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AuthorizeRequest, EffectivePermission } from './authorization-contract';
-import { evaluateAuthorizeDecision } from './authorization-engine';
+import type { AuthorizeRequest, EffectivePermission } from './authorization-contract.js';
+import { evaluateAuthorizeDecision } from './authorization-engine.js';
 
 const baseRequest = (): AuthorizeRequest => ({
   instanceId: 'instance-a',
@@ -86,6 +86,37 @@ describe('evaluateAuthorizeDecision', () => {
     expect(result.allowed).toBe(true);
     expect(result.reason).toBe('allowed_by_rbac');
     expect(result.diagnostics?.stage).toBe('final');
+  });
+
+  it('allows plain RBAC requests without merged attributes and derives group provenance', () => {
+    const request: AuthorizeRequest = {
+      instanceId: 'instance-a',
+      action: 'read',
+      resource: {
+        type: 'document',
+        id: 'doc-1',
+      },
+    };
+
+    const result = evaluateAuthorizeDecision(request, [
+      {
+        action: 'read',
+        resourceType: 'document',
+        sourceGroupIds: ['group-1'],
+        groupName: 'Editors',
+      },
+    ]);
+
+    expect(result.allowed).toBe(true);
+    expect(result.reason).toBe('allowed_by_rbac');
+    expect(result.provenance?.sourceKinds).toEqual(['group_role']);
+    expect(result.matchedPermissions).toEqual([
+      expect.objectContaining({
+        source: 'group',
+        sourceId: 'group-1',
+        sourceName: 'Editors',
+      }),
+    ]);
   });
 
   it('allows by ABAC when active rules are satisfied (stage 5)', () => {
@@ -443,6 +474,57 @@ describe('evaluateAuthorizeDecision', () => {
     expect(result.diagnostics?.stage).toBe('abac');
   });
 
+  it('denies when geo unit allow lists do not include the resource hierarchy', () => {
+    const request: AuthorizeRequest = {
+      ...baseRequest(),
+      resource: {
+        ...baseRequest().resource,
+        attributes: {
+          geoUnitId: 'district-2',
+          geoHierarchy: ['city-1', 'district-2'],
+        },
+      },
+    };
+
+    const result = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        scope: {
+          allowedGeoUnitIds: ['district-1'],
+        },
+      },
+    ]);
+
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('abac_condition_unmet');
+  });
+
+  it('denies and reports provenance when a restricted geo unit matches the hierarchy', () => {
+    const request: AuthorizeRequest = {
+      ...baseRequest(),
+      resource: {
+        ...baseRequest().resource,
+        attributes: {
+          geoUnitId: 'district-2',
+          geoHierarchy: ['city-1', 'district-2'],
+        },
+      },
+    };
+
+    const result = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        scope: {
+          restrictedGeoUnitIds: ['city-1'],
+        },
+      },
+    ]);
+
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('hierarchy_restriction');
+    expect(result.provenance?.restrictedByGeoUnitId).toBe('city-1');
+  });
+
   it('allows inherited geo-unit permissions for descendant geo units and reports provenance', () => {
     const request: AuthorizeRequest = {
       ...baseRequest(),
@@ -592,6 +674,24 @@ describe('evaluateAuthorizeDecision', () => {
             start: 'invalid',
             end: '17:00',
           },
+        },
+      },
+    ]);
+
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('abac_condition_unmet');
+  });
+
+  it('denies when the current time is malformed', () => {
+    const result = evaluateAuthorizeDecision(baseRequest(), [
+      {
+        ...basePermission(),
+        scope: {
+          timeWindow: {
+            start: '08:00',
+            end: '17:00',
+          },
+          currentTime: 'not-a-clock',
         },
       },
     ]);

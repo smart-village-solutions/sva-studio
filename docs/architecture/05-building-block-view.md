@@ -193,15 +193,17 @@ Abhängigkeiten des aktuellen Systems.
 3. `packages/auth-runtime`
    - erweitert die effektive Permission-Aufloesung und den Authorize-Pfad um `accessScope`.
    - verwendet fuer scope-faehige Datensatzentscheidungen kanonische Resource-Attribute wie `createdByAccountId` und `organizationId`.
+   - normalisiert effektive Grants pro fachlichem Permission-Key auf den weitesten Scope, ohne Rollen-/Gruppen-Provenance zu verlieren.
 4. `packages/data` und `packages/data-repositories`
    - versionieren `iam.role_permissions.access_scope` SQL-first als Teil des fuehrenden IAM-Schemas.
 5. `apps/sva-studio-react`
    - erweitert die Rollen-Detailseite um Scope-Pflege pro Permission-Zuweisung.
    - zeigt in der Nutzeransicht die resultierenden effektiven Scopes read-only als Transparenzsignal.
+   - materialisiert Mainserver-Read-Models mit getrennter externer DataProvider-/Credential-Identität und kanonischer IAM-Ownership.
 
 ### Fortschreibung 2026-05: Monitoring-Einstieg fuer IAM-Authorize-Performance
 
-1. `@sva/core`
+1. `@sva/iam-core`
    - definiert den gemeinsamen Ergebnis- und Report-Vertrag fuer GUI, API und persistierten Nachweis des Authorize-Performance-Laufs.
 2. `packages/auth-runtime`
    - exponiert den geschuetzten Endpoint `GET|POST /api/v1/iam/authorize-performance` fuer `system_admin`.
@@ -301,7 +303,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/plugin-waste-management` -> `@sva/plugin-sdk`, `@sva/studio-ui-react`; Host-Datenzugriffe ausschließlich über `/api/v1/waste-management/*`
 - `@sva/plugin-categories`, `@sva/plugin-news`, `@sva/plugin-events` und `@sva/plugin-poi` bleiben absichtlich auf SDK, Studio-UI und Peer Dependencies beschränkt; API-Aufrufe laufen über öffentliche Host-Fassaden statt über App-Module
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/server-runtime` Context API
-- `@sva/iam-core` -> `@sva/core`
+- `@sva/core` -> `@sva/iam-core` fuer verbliebene gemeinsame IAM-Vertragstypen waehrend der Hard-Cut-Migration
 - `apps/sva-studio-react` -> Zielpackages über Server-Funktionen für Inhaltsliste, Detail, Historie und Statuswechsel
 - `apps/public-waste-calendar-web` -> `@sva/core`, `@sva/data-repositories`; die App hält ihren öffentlichen UI- und Node-Laufzeitpfad trotzdem lokal und getrennt von der Studio-Admin-Shell
 
@@ -500,12 +502,12 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Erweiterte historisch `iam.permissions` um strukturierte Felder; das aktuelle Zielmodell nutzt `action`, `resource_type`, `resource_id` und `scope` ohne fachliches `effect`.
 2. `packages/data/seeds/0001_iam_personas.sql` (historischer Seed-Ort)
    - Seedet Basis-Permissions rückwärtskompatibel sowohl mit `permission_key` als auch mit strukturierten Feldern.
-3. `packages/core/src/iam/authorization-engine.ts`
+3. `packages/iam-core/src/authorization-engine.ts`
    - Wertet Allow-Grants, Resource-Spezifität, Org-Hierarchie und Scope-Daten deterministisch in einer festen Prioritätsreihenfolge aus.
-4. `packages/iam-core/src/permission-store.ts`
-   - Lädt effektive Rollen-Permissions org-kontextbezogen aus Postgres und normalisiert Parent-Mitgliedschaften auf den angefragten Zielkontext.
-5. `packages/iam-core/src/shared.ts`
-   - Transformiert DB-Permission-Zeilen in deduplizierte effektive Permissions inklusive Scope-Daten.
+4. `packages/iam-core/src/authorization-contract.ts`
+   - Hält Authorize-Verträge, Reason Codes und Permission-Typen.
+5. `packages/auth-runtime/src/iam-authorization/permission-store.ts`
+   - Hält Runtime-nahe Snapshot-, Redis- und DB-Recompute-Infrastruktur.
 
 ### Ergänzung 2026-03: IAM-Transparenz-UI
 
@@ -537,10 +539,10 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Führte historisch `iam.account_permissions` als instanzgebundene Zuordnung `Account -> Permission -> effect` ein; das aktuelle Zielmodell entfernt diese Tabelle wieder.
 2. `packages/iam-admin/src/users`
    - Entfernt direkte Nutzerrechte aus User-Update- und Read-Pfaden; Berechtigungen kommen über Rollen und Gruppen.
-3. `packages/iam-core/src/permission-store.ts` und `packages/iam-core/src/shared.ts`
+3. `packages/auth-runtime/src/iam-authorization/permission-store.ts` und `packages/auth-runtime/src/iam-authorization/shared-effective-permissions.ts`
    - Laden Rollen- und Gruppenrechte und serialisieren deren Herkunft ohne `direct_user`.
-4. `packages/core/src/iam/authorization-contract.ts` und `packages/core/src/iam/account-management-contract.ts`
-   - Halten die gemeinsamen Verträge allow-only und ohne direkte Nutzerrechte.
+4. `packages/iam-core/src/authorization-contract.ts` und `packages/core/src/iam/account-management-contract.ts`
+   - Halten Authorize-Verträge und allgemeine IAM-Projektionen allow-only und ohne direkte Nutzerrechte.
 5. `apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx`
    - Zeigt wirksame Rechte aus Rollen- und Gruppenzuordnungen ohne Drei-Zustands-Direktzuweisung.
 

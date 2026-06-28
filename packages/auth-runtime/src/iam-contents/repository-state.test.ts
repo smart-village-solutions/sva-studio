@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ContentRow } from './repository-types.js';
 import { ContentStateValidationError, validateNextContentState } from './repository-state-validation.js';
 import { resolveContentChangedFields } from './repository-state-changes.js';
+import { resolveNextContentStateValues } from './repository-state-values.js';
 
 const row = (payload: ContentRow['payload_json']): ContentRow => ({
   id: 'content-1',
@@ -20,6 +21,7 @@ const row = (payload: ContentRow['payload_json']): ContentRow => ({
   created_by: 'creator-1',
   updated_at: '2026-04-26T10:00:00.000Z',
   updated_by: 'updater-1',
+  author_display_mode: 'organization',
   author_display_name: 'Autor',
   payload_json: payload,
   status: 'draft',
@@ -30,12 +32,29 @@ const row = (payload: ContentRow['payload_json']): ContentRow => ({
 });
 
 describe('iam content repository state helpers', () => {
+  it('clears the current user owner when only the owner organization changes', () => {
+    const state = resolveNextContentStateValues(
+      {
+        ...row({}),
+        owner_user_id: '33333333-3333-4333-8333-333333333333',
+        owner_organization_id: '11111111-1111-4111-8111-111111111111',
+      },
+      {
+        ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+      }
+    );
+
+    expect(state.nextOwnerUserId).toBeNull();
+    expect(state.nextOwnerOrganizationId).toBe('22222222-2222-4222-8222-222222222222');
+  });
+
   it('uses canonical payload comparison for changed fields', () => {
     expect(
       resolveContentChangedFields(row({ teaser: 'Kurz', body: { de: 'Text', en: 'Text' } }), {
         nextOrganizationId: null,
         nextOwnerUserId: null,
         nextOwnerOrganizationId: null,
+        nextAuthorDisplayMode: 'organization',
         nextAuthorDisplayName: 'Autor',
         nextTitle: 'Titel',
         nextPayload: { body: { en: 'Text', de: 'Text' }, teaser: 'Kurz' },
@@ -54,6 +73,7 @@ describe('iam content repository state helpers', () => {
         nextOrganizationId: null,
         nextOwnerUserId: null,
         nextOwnerOrganizationId: null,
+        nextAuthorDisplayMode: 'organization',
         nextAuthorDisplayName: 'Autor',
         nextTitle: 'Titel',
         nextPayload: {},
@@ -70,6 +90,7 @@ describe('iam content repository state helpers', () => {
         nextOrganizationId: null,
         nextOwnerUserId: null,
         nextOwnerOrganizationId: null,
+        nextAuthorDisplayMode: 'organization',
         nextAuthorDisplayName: 'Autor',
         nextTitle: 'Titel',
         nextPayload: {},
@@ -86,6 +107,7 @@ describe('iam content repository state helpers', () => {
         nextOrganizationId: null,
         nextOwnerUserId: null,
         nextOwnerOrganizationId: null,
+        nextAuthorDisplayMode: 'organization',
         nextAuthorDisplayName: 'Autor',
         nextTitle: 'Titel',
         nextPayload: {},
@@ -102,6 +124,7 @@ describe('iam content repository state helpers', () => {
         nextOrganizationId: null,
         nextOwnerUserId: null,
         nextOwnerOrganizationId: null,
+        nextAuthorDisplayMode: 'organization',
         nextAuthorDisplayName: 'Autor',
         nextTitle: 'Titel',
         nextPayload: {},

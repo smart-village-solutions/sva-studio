@@ -1,24 +1,27 @@
 # @sva/iam-core
 
-Kleines IAM-Kernpaket für gemeinsam genutzte Autorisierungsverträge im SVA-Workspace. Das Paket bündelt die öffentlichen IAM-Typen aus `@sva/core` und stellt die Entscheidungslogik für Autorisierungsprüfungen unter einem stabilen Paketnamen bereit.
+Kleines IAM-Kernpaket für gemeinsam genutzte Autorisierungsverträge im SVA-Workspace. Das Paket besitzt die öffentlichen Authorize-Typen und stellt die Entscheidungslogik für Autorisierungsprüfungen unter einem stabilen Paketnamen bereit.
 
 ## Architektur-Rolle
 
 `@sva/iam-core` ist eine schlanke Bibliothek an der IAM-Grenze des Monorepos. Sie kapselt keine eigene Persistenz oder Framework-Bindings, sondern dient als fokussierter Einstiegspunkt für Autorisierungskontrakte, Permission-Auswertung und IAM-bezogene Invarianten.
 
+Die Authorize-Engine und die Authorize-Verträge liegen in diesem Package. `@sva/core` ist kein Owner dieser Entscheidung mehr.
+
 ## Öffentliche API
 
-Die aktuelle API ist bewusst klein:
+Die aktuelle API ist bewusst klein und framework-unabhängig:
 
-- `evaluateAuthorizeDecision` wird aus `@sva/core` re-exportiert.
+- `evaluateAuthorizeDecision` ist die reine, synchrone Permission-Engine.
 - Zentrale IAM-Typen wie `AuthorizeRequest`, `AuthorizeResponse`, `IamAction` und `EffectivePermission` werden als Typ-Exports bereitgestellt.
+- Performance-Verträge für Authorize-Messungen werden als lokale Contract-Types und Helper bereitgestellt.
 - `iamCoreVersion` dokumentiert die Paketversion im Code.
 - `iamCorePackageRoles` und `IamCorePackageRole` markieren die beabsichtigten Rollen des Pakets: `authorization-contracts`, `permission-engine`, `pii-invariants`.
 - Die Autorisierungsverträge umfassen additive Rollen-Scopes für Datensatzrechte (`accessScope = all|own|organization`) sowie die dafür benötigten Resource-/Context-Attribute.
 
 ## Nutzung und Integration
 
-Das Paket wird als ESM-Bibliothek mit Export auf `dist/index.js` gebaut. Laufzeitabhängigkeit ist ausschließlich `@sva/core` über `workspace:*`.
+Das Paket wird als ESM-Bibliothek mit Export auf `dist/index.js` gebaut. Die Authorize-Engine hat keine Runtime-, Persistenz-, Redis-, Keycloak- oder React-Abhängigkeiten.
 
 Typischer Einsatz:
 
@@ -47,7 +50,7 @@ const request: AuthorizeRequest = {
 const result = evaluateAuthorizeDecision(request, []);
 ```
 
-Für serverseitige Nutzung gelten die Workspace-Regeln zu Node-ESM-Runtime-Imports. Die eigentliche Autorisierungslogik liegt derzeit in `@sva/core`; `@sva/iam-core` stellt dafür die paketierte Integrationsoberfläche bereit.
+Für serverseitige Nutzung gelten die Workspace-Regeln zu Node-ESM-Runtime-Imports. Relative Runtime-Imports und Re-Exports verwenden explizite `.js`-Endungen.
 
 ## Projektstruktur
 
@@ -55,6 +58,9 @@ Für serverseitige Nutzung gelten die Workspace-Regeln zu Node-ESM-Runtime-Impor
 packages/iam-core/
 ├── src/
 │   ├── index.ts
+│   ├── authorization-contract.ts
+│   ├── authorization-engine.ts
+│   ├── authorize-performance-contract.ts
 │   └── index.test.ts
 ├── package.json
 ├── project.json
@@ -64,7 +70,10 @@ packages/iam-core/
 ```
 
 - `src/index.ts` definiert die öffentlichen Exporte.
-- `src/index.test.ts` prüft Paketrolle und Re-Export der Autorisierungsentscheidung.
+- `src/authorization-contract.ts` definiert Authorize-Verträge, Reason Codes und IAM-Ressourcen-Typen.
+- `src/authorization-engine.ts` enthält die reine Entscheidungsfunktion.
+- `src/authorize-performance-contract.ts` enthält Performance-Verträge und Report-Helper.
+- `src/index.test.ts` prüft Paketrolle und lokale Ownership der Autorisierungsentscheidung.
 - `project.json` enthält die Nx-Targets für Build, Runtime-Check, Linting und Tests.
 
 ## Nx-Konfiguration
@@ -82,5 +91,5 @@ Verfügbare Targets:
 
 ## Verwandte Dokumentation
 
-- [packages/core](../core/README.md) für die aktuell re-exportierte Autorisierungslogik
+- [packages/core](../core/README.md) für allgemeine IAM-Projektionen und Claim-Helfer
 - [DEVELOPMENT_RULES.md](../../DEVELOPMENT_RULES.md) für verbindliche Entwicklungs- und Runtime-Regeln im Workspace

@@ -1,7 +1,7 @@
 import type {
   EffectivePermission,
   IamRolePermissionAssignmentScope,
-} from '@sva/core';
+} from '@sva/iam-core';
 
 import { projectOrganizationIdForPermission } from './permission-scope-semantics.js';
 
@@ -34,6 +34,25 @@ const sortSourceKinds = (
 ): readonly NonNullable<PermissionRow['source_kind']>[] =>
   [...values].sort((left, right) => SOURCE_KIND_ORDER[left] - SOURCE_KIND_ORDER[right] || left.localeCompare(right));
 
+const ACCESS_SCOPE_RANK: Record<IamRolePermissionAssignmentScope, number> = {
+  own: 0,
+  organization: 1,
+  all: 2,
+};
+
+const resolveWiderAccessScope = (
+  current: IamRolePermissionAssignmentScope | undefined,
+  next: IamRolePermissionAssignmentScope | undefined
+): IamRolePermissionAssignmentScope | undefined => {
+  if (!next) {
+    return current;
+  }
+  if (!current) {
+    return next;
+  }
+  return ACCESS_SCOPE_RANK[next] > ACCESS_SCOPE_RANK[current] ? next : current;
+};
+
 const normalizeSourceKind = (value: PermissionRow['source_kind']): PermissionRow['source_kind'] =>
   value === 'direct_role' || value === 'group_role' ? value : undefined;
 
@@ -62,6 +81,11 @@ const mergeSourceKinds = (
 
   return sortSourceKinds(Array.from(new Set([...(values ?? []), nextValue])));
 };
+
+const pickDefinedPermissionFields = (
+  fields: Partial<EffectivePermission>
+): Partial<EffectivePermission> =>
+  Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined)) as Partial<EffectivePermission>;
 
 type NormalizedPermissionRow = {
   action: string;
@@ -101,7 +125,6 @@ const normalizePermissionRow = (row: PermissionRow): NormalizedPermissionRow => 
       resourceId,
       organizationId: organizationId ?? '',
       scope,
-      accessScope,
     }),
   };
 };
@@ -159,7 +182,6 @@ const mergePermissionBucket = (
     appendUniqueString(existing.sourceGroupIds, normalized.groupId)
   );
   const nextSourceKinds = mergeSourceKinds(existing.provenance?.sourceKinds, normalizeSourceKind(row.source_kind));
-  const nextGroupName = normalized.groupKey ?? existing.groupName;
   const nextProvenance = nextSourceKinds
     ? {
         ...(existing.provenance ?? {}),
@@ -169,10 +191,13 @@ const mergePermissionBucket = (
 
   return {
     ...existing,
-    ...(nextSourceRoleIds ? { sourceRoleIds: nextSourceRoleIds } : {}),
-    ...(nextSourceGroupIds ? { sourceGroupIds: nextSourceGroupIds } : {}),
-    ...(nextGroupName ? { groupName: nextGroupName } : {}),
-    provenance: nextProvenance,
+    ...pickDefinedPermissionFields({
+      sourceRoleIds: nextSourceRoleIds,
+      sourceGroupIds: nextSourceGroupIds,
+      groupName: normalized.groupKey ?? existing.groupName,
+      accessScope: resolveWiderAccessScope(existing.accessScope, normalized.accessScope),
+      provenance: nextProvenance,
+    }),
   };
 };
 

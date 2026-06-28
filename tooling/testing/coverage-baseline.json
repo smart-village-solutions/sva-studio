@@ -1,136 +1,136 @@
 {
   "projects": {
+    "project-report": {
+      "lines": 92.52,
+      "statements": 92.95,
+      "functions": 95.77,
+      "branches": 88.05
+    },
     "sva-studio-react": {
-      "lines": 87.42,
-      "statements": 87.24,
-      "functions": 85.54,
-      "branches": 75.62
+      "lines": 91.31,
+      "statements": 91.04,
+      "functions": 89.57,
+      "branches": 80.42
     },
     "auth-runtime": {
-      "lines": 55.46,
-      "statements": 54.98,
-      "functions": 48.94,
-      "branches": 43.98
+      "lines": 89.1,
+      "statements": 89.03,
+      "functions": 90.18,
+      "branches": 75.63
     },
     "core": {
-      "lines": 94.21,
-      "statements": 94.09,
-      "functions": 98.18,
-      "branches": 85.66
+      "lines": 97.02,
+      "statements": 97,
+      "functions": 98.25,
+      "branches": 88.96
     },
     "data": {
-      "lines": 73.4,
-      "statements": 72.19,
-      "functions": 59.81,
-      "branches": 52.48
-    },
-    "data-client": {
-      "lines": 74.5,
-      "statements": 74.5,
-      "functions": 62.5,
-      "branches": 54.83
-    },
-    "data-repositories": {
-      "lines": 87.64,
-      "statements": 88.23,
-      "functions": 88.09,
-      "branches": 84.37
-    },
-    "iam-admin": {
-      "lines": 70.79,
-      "statements": 70.91,
-      "functions": 81.81,
-      "branches": 53.47
-    },
-    "media": {
-      "lines": 88.88,
-      "statements": 88.88,
-      "functions": 100,
-      "branches": 87.5
-    },
-    "iam-core": {
       "lines": 100,
       "statements": 100,
       "functions": 100,
       "branches": 100
     },
+    "data-client": {
+      "lines": 97.22,
+      "statements": 97.22,
+      "functions": 91.67,
+      "branches": 86.49
+    },
+    "data-repositories": {
+      "lines": 95.27,
+      "statements": 94.67,
+      "functions": 92.26,
+      "branches": 85.04
+    },
+    "iam-admin": {
+      "lines": 88.07,
+      "statements": 88.09,
+      "functions": 94.67,
+      "branches": 70.76
+    },
+    "iam-core": {
+      "lines": 95.28,
+      "statements": 95.44,
+      "functions": 100,
+      "branches": 85.45
+    },
     "iam-governance": {
-      "lines": 74.46,
-      "statements": 74.45,
-      "functions": 81.77,
-      "branches": 61.01
+      "lines": 90.24,
+      "statements": 90.25,
+      "functions": 97.1,
+      "branches": 81.03
     },
     "instance-registry": {
-      "lines": 72.83,
-      "statements": 72.75,
-      "functions": 77.48,
-      "branches": 52.46
+      "lines": 93.08,
+      "statements": 93.07,
+      "functions": 96.27,
+      "branches": 80.64
+    },
+    "mail-runtime": {
+      "lines": 100,
+      "statements": 95.35,
+      "functions": 81.82,
+      "branches": 95.65
+    },
+    "media": {
+      "lines": 90,
+      "statements": 90,
+      "functions": 100,
+      "branches": 87.5
     },
     "monitoring-client": {
-      "lines": 81.56,
-      "statements": 80.97,
-      "functions": 82.85,
-      "branches": 66.66
+      "lines": 95.06,
+      "statements": 94.58,
+      "functions": 93.55,
+      "branches": 89.91
     },
     "plugin-categories": {
-      "lines": 80,
-      "statements": 80,
-      "functions": 80,
-      "branches": 70
-    },
-    "plugin-news": {
-      "lines": 90.95,
-      "statements": 89.36,
-      "functions": 81.03,
-      "branches": 80.74
+      "lines": 95.1,
+      "statements": 95.3,
+      "functions": 93.88,
+      "branches": 91.36
     },
     "plugin-events": {
-      "lines": 77.27,
-      "statements": 77.25,
-      "functions": 59.03,
-      "branches": 72.76
+      "lines": 86.57,
+      "statements": 86.32,
+      "functions": 77.82,
+      "branches": 83.9
+    },
+    "plugin-news": {
+      "lines": 93.97,
+      "statements": 93.82,
+      "functions": 93.13,
+      "branches": 83.42
     },
     "plugin-poi": {
-      "lines": 76.84,
-      "statements": 76.5,
-      "functions": 58.66,
-      "branches": 72.72
+      "lines": 89.67,
+      "statements": 89.74,
+      "functions": 83.53,
+      "branches": 84.36
     },
     "plugin-sdk": {
-      "lines": 86.3,
-      "statements": 86.4,
-      "functions": 94.33,
-      "branches": 72.27
+      "lines": 92.84,
+      "statements": 93.16,
+      "functions": 96.81,
+      "branches": 86.27
     },
     "plugin-waste-management": {
-      "lines": 75.79,
-      "statements": 73.44,
-      "functions": 68.51,
-      "branches": 52.28
-    },
-    "waste-management-runtime": {
-      "lines": 63.63,
-      "statements": 64.7,
-      "functions": 69.56,
-      "branches": 39.39
-    },
-    "project-report": {
-      "lines": 87.87,
-      "statements": 88.62,
-      "functions": 91.17,
-      "branches": 85.16
+      "lines": 90.66,
+      "statements": 90.19,
+      "functions": 87.67,
+      "branches": 79
     },
     "routing": {
-      "lines": 99.51,
-      "statements": 99.53,
+      "lines": 99.31,
+      "statements": 99.35,
       "functions": 100,
-      "branches": 97.46
+      "branches": 97.31
     },
     "server-runtime": {
-      "lines": 82.82,
-      "statements": 82.58,
-      "functions": 85.1,
-      "branches": 70.73
+      "lines": 95.41,
+      "statements": 94.91,
+      "functions": 97.85,
+      "branches": 81.98
     },
     "studio-module-iam": {
       "lines": 100,
@@ -139,16 +139,22 @@
       "branches": 100
     },
     "studio-ui-react": {
-      "lines": 97.69,
-      "statements": 97.73,
-      "functions": 98.93,
-      "branches": 86.95
+      "lines": 97.23,
+      "statements": 97.32,
+      "functions": 100,
+      "branches": 90.81
     },
     "sva-mainserver": {
-      "lines": 91.39,
-      "statements": 91.25,
-      "functions": 90.62,
-      "branches": 81.34
+      "lines": 92.15,
+      "statements": 92.22,
+      "functions": 94.66,
+      "branches": 82.8
+    },
+    "waste-management-runtime": {
+      "lines": 84.62,
+      "statements": 85.42,
+      "functions": 72.97,
+      "branches": 70.73
     }
   }
 }

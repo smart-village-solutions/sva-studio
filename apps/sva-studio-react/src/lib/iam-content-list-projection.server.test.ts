@@ -1,32 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-type ProjectionRow = {
-  id: string;
-  instance_id: string;
-  organization_id: string | null;
-  owner_subject_id: string | null;
-  owner_user_id?: string | null;
-  owner_organization_id?: string | null;
-  content_type: string;
-  title: string;
-  published_at: string | null;
-  publish_from: string | null;
-  publish_until: string | null;
-  created_at: string;
-  created_by: string;
-  updated_at: string;
-  updated_by: string;
-  author_display_name: string;
-  payload_json: Record<string, unknown>;
-  status: 'draft' | 'in_review' | 'approved' | 'published' | 'archived';
-  validation_state: 'valid' | 'invalid' | 'pending';
-  history_ref: string;
-  current_revision_ref: string | null;
-  last_audit_event_ref: string | null;
-  source_system: 'iam' | 'mainserver';
-  source_entity_type: string;
-  source_entity_id: string;
-};
+import type { ProjectionRow } from './iam-content-list-projection.server.js';
+
+type OptionalTestProjectionField =
+  | 'owner_user_id'
+  | 'owner_organization_id'
+  | 'author_display_mode'
+  | 'source_data_provider_id'
+  | 'source_data_provider_name'
+  | 'credential_source';
+
+type TestProjectionRow = Omit<ProjectionRow, OptionalTestProjectionField | 'payload_json'> &
+  Partial<Pick<ProjectionRow, OptionalTestProjectionField>> & {
+    owner_subject_id: string | null;
+    payload_json: Record<string, unknown>;
+  };
 
 const state = vi.hoisted(() => ({
   authorizeContentPrimitiveForUser: vi.fn(),
@@ -47,7 +35,7 @@ const readPayloadJson = (value: unknown): Record<string, unknown> =>
     ? (value as Record<string, unknown>)
     : {};
 
-const mapInsertedProjectionRow = (row: Record<string, unknown>): ProjectionRow => ({
+const mapInsertedProjectionRow = (row: Record<string, unknown>): TestProjectionRow => ({
   id: String(row.id),
   instance_id: String(row.instance_id),
   organization_id: readNullableString(row.organization_id),
@@ -63,13 +51,20 @@ const mapInsertedProjectionRow = (row: Record<string, unknown>): ProjectionRow =
   created_by: String(row.created_by),
   updated_at: String(row.updated_at),
   updated_by: String(row.updated_by),
+  author_display_mode: row.author_display_mode === 'user' ? 'user' : 'organization',
   author_display_name: String(row.author_display_name),
   payload_json: readPayloadJson(row.payload_json),
-  status: row.status as ProjectionRow['status'],
-  validation_state: row.validation_state as ProjectionRow['validation_state'],
+  status: row.status as TestProjectionRow['status'],
+  validation_state: row.validation_state as TestProjectionRow['validation_state'],
   history_ref: String(row.history_ref),
   current_revision_ref: readNullableString(row.current_revision_ref),
   last_audit_event_ref: readNullableString(row.last_audit_event_ref),
+  source_data_provider_id: readNullableString(row.source_data_provider_id),
+  source_data_provider_name: readNullableString(row.source_data_provider_name),
+  credential_source:
+    row.credential_source === 'organization' || row.credential_source === 'user'
+      ? row.credential_source
+      : null,
   source_system: 'mainserver',
   source_entity_type: String(row.source_entity_type),
   source_entity_id: String(row.source_entity_id),
@@ -109,7 +104,7 @@ describe('content list projection', () => {
     },
   };
 
-  let projectionRows: ProjectionRow[];
+  let projectionRows: TestProjectionRow[];
   let syncStates: Map<
     string,
     {
@@ -127,7 +122,7 @@ describe('content list projection', () => {
 
   const buildScopeKey = (
     row: Pick<
-      ProjectionRow,
+      TestProjectionRow,
       | 'instance_id'
       | 'source_system'
       | 'source_entity_type'
@@ -151,7 +146,7 @@ describe('content list projection', () => {
   const applyProjectionFilters = (
     text: string,
     values: readonly unknown[] | undefined
-  ): ProjectionRow[] => {
+  ): TestProjectionRow[] => {
     const scopedInstanceId = String(values?.[0] ?? '');
     let rows = projectionRows.filter((row) => row.instance_id === scopedInstanceId);
 
@@ -514,6 +509,47 @@ describe('content list projection', () => {
     expect(state.listSvaMainserverNews).toHaveBeenCalledTimes(1);
     expect(syncStates.get('news.article')?.last_started_at).toBeTruthy();
     expect(projectionInsertArgs).toHaveLength(1);
+  });
+
+  it('persists the resolved mainserver credential source for organization-scoped projections', async () => {
+    state.listSvaMainserverNews.mockResolvedValue({
+      credentialSource: 'user',
+      data: [
+        {
+          id: 'news-1',
+          title: 'Rathaus',
+          contentType: 'news.article',
+          payload: { teaser: 'A' },
+          status: 'published',
+          author: 'Redaktion',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          publishedAt: '2026-06-21T09:00:00.000Z',
+          contentBlocks: [],
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['news.article'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    expect(response.status).toBe(503);
+    const insertedRows = JSON.parse(String(projectionInsertArgs?.[0] ?? '[]')) as Array<
+      Record<string, unknown>
+    >;
+    expect(insertedRows).toEqual([
+      expect.objectContaining({
+        organization_id: 'org-1',
+        owner_organization_id: 'org-1',
+        credential_source: 'user',
+      }),
+    ]);
   });
 
   it('returns the last successful snapshot together with sync metadata while a background refresh runs', async () => {

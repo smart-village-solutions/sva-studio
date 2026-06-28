@@ -224,6 +224,26 @@ Zusätzlich gilt:
 - Ein normales Update eines Inhalts ändert den sichtbaren Autor nicht automatisch.
 - Ersteller, letzter Bearbeiter, IAM-Owner und sichtbarer Autor sind getrennte Begriffe.
 
+## Mainserver-DataProvider und externe Identität
+
+Mainserver-`dataProvider` sind externe Veröffentlichungsidentitäten. Sie sind nicht automatisch Studio-IAM-Owner.
+
+Für Mainserver-Projektionen gilt:
+
+- `sourceDataProviderId` und `sourceDataProviderName` beschreiben den vom Mainserver gelieferten DataProvider.
+- `credentialSource` beschreibt, ob die Projektion über Organisations- oder persönliche Credentials gelesen beziehungsweise geschrieben wurde.
+- `ownerUserId` und `ownerOrganizationId` bleiben die einzigen IAM-Ownership-Felder.
+- `ownerOrganizationId` darf nur gesetzt werden, wenn eine explizite Studio-IAM-Zuordnung zur Organisation besteht.
+- Eine aktive Organisation, ein UI-Filter, ein Mainserver-Organisationswert oder ein DataProvider darf keine Organisationsownership implizit erzeugen.
+- Ownerlose externe Inhalte bleiben fail-closed und sind nur mit globalem Recht oder nach expliziter Ownership-Zuordnung sichtbar.
+
+Schreibende Mainserver-Flows laufen immer in genau einem Kontext:
+
+- `organization`: im Namen der validierten aktiven Organisation und mit deren Credentials.
+- `user`: persönlich im Namen des aktuellen Accounts.
+
+Bei Benutzern mit mehreren Organisationen muss die aktive Organisation vor der Mutation eindeutig im Request-/Session-Kontext feststehen und serverseitig validiert sein.
+
 ## Audit
 
 Ownership-Änderungen und Änderungen an der sichtbaren Autorenanzeige müssen historisiert werden.

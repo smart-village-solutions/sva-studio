@@ -1,4 +1,5 @@
-import type { IamRoleListItem, IamRolePermissionAssignmentScope } from '@sva/core';
+import type { IamRolePermissionAssignmentScope } from '@sva/iam-core';
+import type { IamRoleListItem } from '@sva/core';
 import type { ManagedRoleRow } from './types.js';
 
 import { getManagedPermissionMetadata, isRootOnlyPermissionKey } from './managed-permissions.js';

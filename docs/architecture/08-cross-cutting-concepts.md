@@ -124,6 +124,7 @@ gleichzeitig beeinflussen.
 - Verwaltete Permissions tragen zusätzlich eine explizite Laufzeitklassifikation `runtimeScope = instance | record | organization_context`; nur `record`- und `organization_context`-Rechte werten zusätzlichen Organisations- oder Ownership-Kontext fachlich aus
 - Ein aktiver `organizationId`-Kontext ist deshalb kein blanket Projektionssignal für alle effektiven Permissions; instanzweite Rechte wie `media.*`, `waste-management.*`, `app.read` oder `cockpit.read` bleiben im Snapshot- und Transparenzpfad instanzweit
 - Scope-faehige Fachmodule muessen fuer Authorize-Entscheidungen die kanonischen Resource-Attribute `ownerUserId` und bei organisationsrelevanten Datensaetzen `ownerOrganizationId` liefern; fehlt dieser Kontext, bleibt die Entscheidung fail-closed
+- Mainserver-Projektionen trennen externe Quellidentität (`sourceDataProviderId`, `sourceDataProviderName`, `credentialSource`) von kanonischer IAM-Ownership; DataProvider, Credential-Kontext und aktive UI-Organisation erzeugen keine implizite `ownerOrganizationId`
 - Gruppen sind instanzgebundene Rollenbündel (`group_type = role_bundle`); direkte Gruppen-Permissions sind bewusst nicht Teil des ersten Schnitts
 - Direkte Nutzerrechte und fachliche `deny`-Permissions sind nicht Teil des Zielmodells; effektive Permissions sind Allow-Grants aus Rollen und Gruppen.
 - Gruppenmitgliedschaften werden mit Herkunft (`manual|seed|sync`) und optionalen Gültigkeitsfenstern in `iam.account_groups` geführt
@@ -182,7 +183,7 @@ gleichzeitig beeinflussen.
 - Einheitlicher Server-Logger über `@sva/server-runtime`
 - AsyncLocalStorage für `workspace_id`/request context
 - OTEL Pipeline für Logs + Metrics
-- Development nutzt zusätzlich eine lokale Debug-Konsole im Frontend; sie zeigt Browser-Logs und redaktierte Server-Logs, ist aber kein produktiver Telemetriepfad
+- Development nutzt lokale Console-Logs als Diagnosepfad; produktionsnahe Telemetrie läuft über OTEL
 - Operative Logs enthalten keine Tokens, keine tokenhaltigen Redirect- oder Logout-URLs und keine decodierbaren JWT-Strings; zulässig sind nur sichere Summary-Felder
 - Runtime-Diagnostik folgt einem zweistufigen Modell: öffentliche Health-/API-Responses liefern knappe, nicht-sensitive `reason_code`s; OTEL liefert die tiefe technische Korrelation über Span-Attribute und Events
 - Der Server-Entry-Diagnosevertrag ist env-gesteuert: `SVA_SERVER_ENTRY_DEBUG=true` aktiviert strukturierte Logs für Request-Eingang, Auth-Dispatch, Delegation an TanStack Start und Antwortstatus, ohne Secrets oder Tokeninhalte zu protokollieren
@@ -444,7 +445,7 @@ Referenzen:
 - `packages/iam-admin/src/index.ts`
 - `packages/iam-governance/src/index.ts`
 - `packages/instance-registry/src/index.ts`
-- `packages/core/src/iam/authorization-engine.ts`
+- `packages/iam-core/src/authorization-engine.ts`
 - `packages/server-runtime/src/index.ts`
 - `packages/monitoring-client/src/otel.server.ts`
 - `docs/adr/ADR-014-postgres-notify-cache-invalidierung.md`

@@ -1,4 +1,5 @@
-import type { EffectivePermission, IamContentListQuery } from '@sva/core';
+import type { IamContentListQuery } from '@sva/core';
+import type { EffectivePermission } from '@sva/iam-core';
 
 import {
   authorizeContentAction,

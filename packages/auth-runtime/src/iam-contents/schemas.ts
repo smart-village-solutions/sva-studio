@@ -1,5 +1,5 @@
 import type { ContentJsonValue } from '@sva/core';
-import { iamContentStatuses, iamContentValidationStates } from '@sva/core';
+import { iamContentAuthorDisplayModes, iamContentStatuses, iamContentValidationStates } from '@sva/core';
 import { z } from 'zod';
 
 import { resolveContentPublicationInvariant } from './content-publication-invariants.js';
@@ -69,6 +69,7 @@ const isoDateTimeString = z
 
 const contentStatusSchema = z.enum(iamContentStatuses);
 const contentValidationStateSchema = z.enum(iamContentValidationStates);
+const contentAuthorDisplayModeSchema = z.enum(iamContentAuthorDisplayModes);
 const jsonValueSchema: z.ZodType<ContentJsonValue> = z.lazy(() =>
   z.union([
     z.string(),
@@ -113,6 +114,7 @@ export const createContentSchema = z
   .object({
     contentType: z.string().trim().min(1).max(128),
     title: z.string().trim().min(1).max(255),
+    authorDisplayMode: contentAuthorDisplayModeSchema.optional(),
     payload: jsonValueSchema,
     status: contentStatusSchema.default('draft'),
     validationState: contentValidationStateSchema.default('valid'),
@@ -128,6 +130,7 @@ export const updateContentSchema = z
     organizationId: z.string().uuid().optional(),
     ownerUserId: z.string().uuid().optional(),
     ownerOrganizationId: z.string().uuid().optional(),
+    authorDisplayMode: contentAuthorDisplayModeSchema.optional(),
     authorDisplayName: z.string().trim().min(1).max(200).optional(),
     title: z.string().trim().min(1).max(255).optional(),
     payload: jsonValueSchema.optional(),

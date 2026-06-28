@@ -25,7 +25,6 @@ Diese Funktionen sollten auch ohne vollständig geladene Nutzersitzung sichtbar 
   - Redis
   - Keycloak
   - Autorisierungs-Cache
-- lokale Log-Konsole in der Entwicklungsumgebung
 
 ## Zentrale Funktionsbereiche mit Sitzung
 

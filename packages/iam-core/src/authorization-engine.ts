@@ -5,7 +5,7 @@ import type {
   IamPermissionProvenance,
   IamPermissionSourceKind,
   MatchedPermissionSummary,
-} from './authorization-contract';
+} from './authorization-contract.js';
 
 const readString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {

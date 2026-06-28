@@ -14,8 +14,9 @@ Diese Spezifikation definiert den stabilen API-Vertrag für:
 - `POST /api/v1/iam/legal-texts`
 - `PATCH /api/v1/iam/legal-texts/:legalTextVersionId`
 
-Die Contract-Typen liegen in `@sva/core` unter `packages/core/src/iam/authorization-contract.ts`
-sowie für die Rechtstext-Verwaltung unter
+Die Authorize-Contract-Typen liegen in `@sva/iam-core` unter
+`packages/iam-core/src/authorization-contract.ts`; allgemeine IAM-Projektionen
+und Rechtstext-Verwaltungsverträge liegen weiterhin unter
 `packages/core/src/iam/account-management-contract.ts`.
 
 ## Endpunkt: GET `/iam/me/permissions`

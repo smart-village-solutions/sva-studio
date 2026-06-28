@@ -1,4 +1,4 @@
-import type { RuntimeDependencyKey, RuntimeDependencyStatus } from '@sva/core';
+import type { RuntimeDependencyKey, RuntimeDependencyStatus } from '@sva/iam-core';
 
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';

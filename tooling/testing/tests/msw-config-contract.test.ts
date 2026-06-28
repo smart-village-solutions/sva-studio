@@ -7,7 +7,8 @@ import { describe, expect, it } from 'vitest';
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(testDir, '../../..');
 const expectedSetupEntry = 'tooling-testing/msw/setup';
-const expectedSetupPath = "fileURLToPath(new URL(import.meta.resolve('tooling-testing/msw/setup')))";
+const expectedSetupPathPattern =
+  /fileURLToPath\(\s*new URL\(import\.meta\.resolve\('tooling-testing\/msw\/setup'\)\)\s*\)/;
 
 const readText = (relativePath: string): string => {
   return fs.readFileSync(path.join(workspaceRoot, relativePath), 'utf8');
@@ -34,9 +35,9 @@ describe('MSW setup package contract', () => {
     const poiVitestConfig = readText('packages/plugin-poi/vitest.config.ts');
     const wasteVitestConfig = readText('packages/plugin-waste-management/vitest.config.ts');
 
-    expect(appVitestShared).toContain(expectedSetupPath);
-    expect(poiVitestConfig).toContain(expectedSetupPath);
-    expect(wasteVitestConfig).toContain(expectedSetupPath);
+    expect(appVitestShared).toMatch(expectedSetupPathPattern);
+    expect(poiVitestConfig).toMatch(expectedSetupPathPattern);
+    expect(wasteVitestConfig).toMatch(expectedSetupPathPattern);
     expect(appVitestShared).toContain('setupFiles: [studioMswSetupFile]');
     expect(poiVitestConfig).toContain('setupFiles: [studioMswSetupFile]');
     expect(wasteVitestConfig).toContain('setupFiles: [studioMswSetupFile]');

@@ -1,4 +1,4 @@
-import type { IamRolePermissionAssignmentScope } from '@sva/core';
+import type { IamRolePermissionAssignmentScope } from '@sva/iam-core';
 import { getRoleDisplayName, getRoleExternalName } from './role-audit.js';
 import { isTenantTechnicalKeycloakRole } from './role-governance.js';
 import {

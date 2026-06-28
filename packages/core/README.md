@@ -1,16 +1,18 @@
 # @sva/core
 
-Framework-agnostisches Kernpaket von SVA Studio. `@sva/core` bündelt die stabilen Domänenbausteine, die in mehreren Laufzeitkontexten wiederverwendet werden: Content-Management-Grundtypen, Routing-Komposition, IAM-Entscheidungslogik, Instanz-Registry-Regeln, Runtime-Profile sowie sicherheitsnahe Hilfsfunktionen.
+Framework-agnostisches Kernpaket von SVA Studio. `@sva/core` bündelt die stabilen Domänenbausteine, die in mehreren Laufzeitkontexten wiederverwendet werden: Content-Management-Grundtypen, Routing-Komposition, allgemeine IAM-Projektionen, Instanz-Registry-Regeln, Runtime-Profile sowie sicherheitsnahe Hilfsfunktionen.
 
 ## Architektur-Rolle
 
-`@sva/core` bildet die fachliche Unterkante des Workspaces: Das Paket exportiert ausschließlich TypeScript- und Node-kompatible Kernlogik ohne Workspace-Abhängigkeiten und kann deshalb sowohl von Frontend- als auch von serverseitigen Paketen konsumiert werden.
+`@sva/core` bildet die fachliche Unterkante des Workspaces: Das Paket exportiert ausschließlich TypeScript- und Node-kompatible Kernlogik ohne Framework- oder Infrastrukturabhängigkeiten und kann deshalb sowohl von Frontend- als auch von serverseitigen Paketen konsumiert werden. Während der IAM-Hard-Cut-Migration nutzt `@sva/core` `@sva/iam-core` als begrenzte Workspace-Abhängigkeit für gemeinsam verbleibende IAM-Vertragstypen.
+
+Authorize-Engine und Authorize-Verträge liegen in `@sva/iam-core`; `@sva/core` hält weiterhin allgemeine Kernverträge und nicht-Authorize-spezifische IAM-Helfer.
 
 Konkret kapselt das Paket Regeln und Datenträgerformate, die nicht an React, Router-Bindings oder konkrete Infrastrukturadapter gebunden sein sollen:
 
 - Content-spezifische Status-, Capability- und Zugriffsauswertung für IAM-nahe Inhalte
 - Generische Route-Factory-Komposition über `mergeRouteFactories()` und `buildRouteTree()`
-- IAM-Hilfen für Claim-Auswertung, JWT-Payload-Parsing, Autorisierungsentscheidung und Runtime-Diagnostik
+- IAM-Hilfen für Claim-Auswertung, JWT-Payload-Parsing, allgemeine IAM-Verträge und Runtime-Diagnostik
 - Instanz- und Host-Regeln für Mandantenbetrieb einschließlich Keycloak-Readiness-Checkliste
 - Sicherheitsfunktionen für Feldverschlüsselung und E-Mail-Redaction
 - Runtime-Profil-Definitionen inklusive Pflicht- und abgeleiteter Umgebungsvariablen
@@ -30,7 +32,7 @@ Die Root-API ist in sechs klar abgegrenzte Bereiche aufgeteilt:
 | --- | --- | --- |
 | Content-Management | `GENERIC_CONTENT_TYPE`, `iamContentStatuses`, `iamContentCapabilityMappings`, `summarizeContentAccess()`, `validateCreateIamContentInput()` | Normiert Content-Status, Primitive Actions, Domain-Capabilities und validiert Eingaben bzw. Zugriffszustände |
 | Routing | `RouteFactory`, `mergeRouteFactories()`, `buildRouteTree()` | Führt Core- und Plugin-Route-Factories zu einem deterministischen Route-Tree zusammen |
-| IAM | `extractRoles()`, `resolveInstanceId()`, `resolveUserName()`, `parseJwtPayload()`, `evaluateAuthorizeDecision()`, `deriveIamRuntimeDiagnostics()` sowie Vertrags-Typen | Kapselt OIDC-/JWT-Auswertung, hybride RBAC-/ABAC-Entscheidung und typisierte IAM-Verträge |
+| IAM | `extractRoles()`, `resolveInstanceId()`, `resolveUserName()`, `parseJwtPayload()`, `deriveIamRuntimeDiagnostics()` sowie nicht-Authorize-spezifische IAM-Projektionen | Kapselt OIDC-/JWT-Auswertung und allgemeine IAM-Verträge; Authorize-Engine und Authorize-Verträge liegen in `@sva/iam-core` |
 | Instanzen | `buildPrimaryHostname()`, `classifyHost()`, `canTransitionInstanceStatus()`, `isValidInstanceId()`, `isValidParentDomain()` | Validiert Tenant-Hosts, Statusübergänge und Registry-Metadaten |
 | Keycloak-Checkliste | `INSTANCE_KEYCLOAK_REQUIREMENTS`, `isInstanceKeycloakRequirementSatisfied()`, `areAllInstanceKeycloakRequirementsSatisfied()` | Beschreibt, welche Registry-, Secret- und Realm-Voraussetzungen für eine betriebsbereite Tenant-Instanz erfüllt sein müssen |
 | Runtime-Profile | `RUNTIME_PROFILES`, `parseRuntimeProfile()`, `getRuntimeProfileDefinition()`, `validateRuntimeProfileEnv()` | Definiert die Profile `local-keycloak`, `local-builder` und `studio` samt Pflichtvariablen und Validierungslogik |
@@ -48,14 +50,14 @@ Der Sicherheits-Subpath `@sva/core/security` exportiert:
 Typische Integrationspunkte im Workspace:
 
 - Routing-Pakete kombinieren Core- und Plugin-Routen über `mergeRouteFactories()` und materialisieren sie über `buildRouteTree()`.
-- IAM-nahe Server- und Client-Pfade nutzen die Vertrags-Typen, `extractRoles()` und `evaluateAuthorizeDecision()`, damit Berechtigungsentscheidungen und Claim-Auswertung zentral bleiben.
+- IAM-nahe Server- und Client-Pfade nutzen allgemeine Vertrags-Typen, `extractRoles()` und `deriveIamRuntimeDiagnostics()`, während Authorize-spezifische Berechtigungsentscheidungen über `@sva/iam-core` laufen.
 - Tenant- und Provisioning-Pfade validieren Hosts, Instanz-IDs, Statusübergänge und Keycloak-Readiness gegen die Registry- und Checklist-Helfer.
 - Runtime-Startpfade lesen `SVA_RUNTIME_PROFILE` oder `VITE_SVA_RUNTIME_PROFILE` über `getRuntimeProfileFromEnv()` und prüfen Pflicht-Env mit `validateRuntimeProfileEnv()`.
 - Sicherheitsnahe Pakete importieren Feldverschlüsselung gezielt über `@sva/core/security`, während die generische E-Mail-Maskierung auch über den Root-Export verfügbar ist.
 
 Wichtige Integrationsdetails aus dem Code:
 
-- Die Autorisierungslogik wertet nicht nur RBAC-Basisrechte, sondern auch Scope-, Geo-, Hierarchie- und Acting-as-Regeln aus.
+- Authorize-Engine und Authorize-Verträge werden von `@sva/iam-core` bereitgestellt; `@sva/core` behält nur allgemeine IAM-Projektionen und Claim-Helfer.
 - `summarizeContentAccess()` verdichtet rohe `content.*`-Permissions in UI-taugliche Zustände wie `editable`, `read_only`, `blocked` und `server_denied`.
 - `validateCreateIamContentInput()` akzeptiert nur registrierte `contentType`s, valide JSON-Payloads und für `published` einen gültigen Zeitstempel; Create-seitige Owner-/Organisations-Overrides werden abgelehnt.
 - `validateRuntimeProfileEnv()` erkennt neben fehlenden Variablen auch Platzhalterwerte und ungültiges `IAM_PII_KEYRING_JSON`.
@@ -76,8 +78,6 @@ packages/core/
 │   │   ├── index.ts
 │   │   ├── claims.ts
 │   │   ├── token.ts
-│   │   ├── authorization-contract.ts
-│   │   ├── authorization-engine.ts
 │   │   ├── account-management-contract.ts
 │   │   ├── account-management.ts
 │   │   ├── runtime-diagnostics.ts
@@ -92,7 +92,7 @@ packages/core/
 └── vitest.config.ts
 ```
 
-Tests liegen co-lokal in `src/` und decken die Kernbereiche Content-Management, Runtime-Profile, Instanz-Registry, Keycloak-Checkliste, Claims, Authorization-Engine und Security ab.
+Tests liegen co-lokal in `src/` und decken die Kernbereiche Content-Management, Runtime-Profile, Instanz-Registry, Keycloak-Checkliste, Claims, IAM-Projektionen und Security ab.
 
 ## Nx-Konfiguration
 

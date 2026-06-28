@@ -14,7 +14,8 @@ flowchart TB
     D["@sva/data\nPersistenz,\nPostgres-Zugriff,\ninstanzgebundene Daten"]
     E["@sva/sva-mainserver\nIntegrationslogik fuer\nexternen Mainserver"]
     F["@sva/server-runtime\nLogging, Request-Kontext,\nFehlerantworten,\nObservability"]
-    G["@sva/core\nFachlicher Kern\nTypen, Regeln,\nRouting-Registry,\nAuthorization-Engine,\nSecurity-Helfer"]
+    G["@sva/core\nAllgemeiner Kern\nTypen, Regeln,\nRouting-Registry,\nSecurity-Helfer"]
+    G2["@sva/iam-core\nAuthorize-Vertraege\nPermission-Engine"]
 
     H["Postgres"]
     I["Redis"]
@@ -27,17 +28,18 @@ flowchart TB
     A --> E
     A --> F
     A --> G
+    A --> G2
 
     B --> G
     B --> C
 
-    C --> G
+    C --> G2
     C --> F
     C --> D
     C --> I
     C --> J
 
-    C2 --> G
+    C2 --> G2
     C2 --> F
     C2 --> D
     C2 --> J

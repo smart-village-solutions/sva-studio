@@ -23,8 +23,6 @@ Die Root-API exportiert Metrikfunktionen für fachliche Ereignisse und Latenzen:
 Die Logging-API unter `@sva/monitoring-client/logging` stellt bereit:
 
 - `createBrowserLogger(...)` für browserseitiges Logging mit konfigurierbarem Log-Level
-- `registerBrowserLogSink(...)` zum Mitschneiden strukturierter Browser-Logs
-- `isBrowserConsoleCaptureSuppressed()` zur Vermeidung rekursiver Sink-Fehler
 - `redactLogString(...)`, `redactLogMeta(...)`, `serializeAndRedactLogValue(...)` und `stringifyNonPlainValue(...)` für PII-sichere Log-Aufbereitung
 
 Die Server-API unter `@sva/monitoring-client/server` ergänzt:
@@ -45,10 +43,7 @@ Das Modul `@sva/monitoring-client/logger-provider.server` exportiert:
 Für fachliche Metriken wird die Root-API direkt verwendet:
 
 ```ts
-import {
-  recordBusinessEvent,
-  recordIamAuthorizeDecisionLatency,
-} from '@sva/monitoring-client';
+import { recordBusinessEvent, recordIamAuthorizeDecisionLatency } from '@sva/monitoring-client';
 
 recordBusinessEvent('user_login', {
   workspace_id: 'ws-123',
@@ -88,7 +83,7 @@ await startOtelSdk({
 });
 ```
 
-Die integrierte Redaktionslogik maskiert E-Mail-Adressen, JWT-ähnliche Tokens sowie sensible Schlüssel wie `authorization`, `access_token`, `session_id` oder `email`, bevor Logs in Konsole, Sinks oder OTEL-Exporter gelangen.
+Die integrierte Redaktionslogik maskiert E-Mail-Adressen, JWT-ähnliche Tokens sowie sensible Schlüssel wie `authorization`, `access_token`, `session_id` oder `email`, bevor Logs in Konsole oder OTEL-Exporter gelangen.
 
 ## Projektstruktur
 

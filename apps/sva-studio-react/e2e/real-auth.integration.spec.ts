@@ -70,7 +70,7 @@ test.describe('tenant real auth', () => {
   test('tenant content overview shows a robust error state when the content list request fails', async ({
     page,
   }) => {
-    await page.route('**/api/v1/mainserver/events**', async (route) => {
+    await page.route('**/api/v1/iam/contents**', async (route) => {
       await route.fulfill({
         status: 500,
         contentType: 'application/json',

@@ -35,14 +35,14 @@ vi.mock('../components/AppShell', () => ({
     isLoading: boolean;
     currentPathname: string;
   }) => (
-    <div data-current-pathname={currentPathname} data-is-loading={String(isLoading)} data-testid="app-shell">
+    <div
+      data-current-pathname={currentPathname}
+      data-is-loading={String(isLoading)}
+      data-testid="app-shell"
+    >
       {children}
     </div>
   ),
-}));
-
-vi.mock('../components/DevelopmentLogConsole', () => ({
-  default: () => <div data-testid="development-log-console" />,
 }));
 
 vi.mock('../components/ErrorFallback', () => ({
@@ -70,13 +70,39 @@ vi.mock('../i18n', () => ({
 }));
 
 describe('root route document', () => {
+  const importRootDocument = async () => {
+    const { RootDocument } = await import('./__root');
+    return RootDocument;
+  };
+
+  const mockPendingRoute = () => {
+    useRouterStateMock.mockImplementation(({ select }) =>
+      select({
+        status: 'pending',
+        isLoading: true,
+        location: { pathname: '/admin/users' },
+      })
+    );
+  };
+
+  const renderPendingRootDocument = async () => {
+    mockPendingRoute();
+    const RootDocument = await importRootDocument();
+
+    render(
+      <RootDocument>
+        <div>content</div>
+      </RootDocument>
+    );
+  };
+
   beforeEach(() => {
     useRouterStateMock.mockImplementation(({ select }) =>
       select({
         status: 'idle',
         isLoading: false,
         location: { pathname: '/admin/users' },
-      }),
+      })
     );
   });
 
@@ -112,14 +138,16 @@ describe('root route document', () => {
         <RootDocument>
           <div>content</div>
         </RootDocument>
-      </>,
+      </>
     );
 
     const skipLink = screen.getByRole('link', { name: 'shell.skipToContent' });
     fireEvent.click(skipLink);
 
     await waitFor(() => {
-      expect(screen.getByTestId('app-shell').getAttribute('data-current-pathname')).toBe('/admin/users');
+      expect(screen.getByTestId('app-shell').getAttribute('data-current-pathname')).toBe(
+        '/admin/users'
+      );
       expect(document.getElementById('main-content')).toBe(document.activeElement);
     });
 
@@ -137,7 +165,7 @@ describe('root route document', () => {
         status: 'idle',
         isLoading: false,
         location: { pathname: '/admin/content' },
-      }),
+      })
     );
 
     const { RootDocument } = await import('./__root');
@@ -148,7 +176,7 @@ describe('root route document', () => {
         <RootDocument>
           <div>content</div>
         </RootDocument>
-      </>,
+      </>
     );
 
     await waitFor(() => {
@@ -157,21 +185,7 @@ describe('root route document', () => {
   });
 
   it('keeps the shell mounted and forwards route-level pending state to the content area', async () => {
-    useRouterStateMock.mockImplementation(({ select }) =>
-      select({
-        status: 'pending',
-        isLoading: true,
-        location: { pathname: '/admin/users' },
-      }),
-    );
-
-    const { RootDocument } = await import('./__root');
-
-    render(
-      <RootDocument>
-        <div>content</div>
-      </RootDocument>,
-    );
+    await renderPendingRootDocument();
 
     await waitFor(() => {
       expect(screen.getByTestId('app-shell').getAttribute('data-is-loading')).toBe('true');
@@ -179,20 +193,14 @@ describe('root route document', () => {
   });
 
   it('renders pending shell content as non-loading during server render to keep hydration stable', async () => {
-    useRouterStateMock.mockImplementation(({ select }) =>
-      select({
-        status: 'pending',
-        isLoading: true,
-        location: { pathname: '/admin/users' },
-      }),
-    );
+    mockPendingRoute();
 
-    const { RootDocument } = await import('./__root');
+    const RootDocument = await importRootDocument();
 
     const markup = renderToStaticMarkup(
       <RootDocument>
         <div>content</div>
-      </RootDocument>,
+      </RootDocument>
     );
 
     expect(markup).toContain('data-is-loading="false"');
@@ -200,25 +208,12 @@ describe('root route document', () => {
   });
 
   it('keeps the shell mounted with the current pathname during route-level pending navigation', async () => {
-    useRouterStateMock.mockImplementation(({ select }) =>
-      select({
-        status: 'pending',
-        isLoading: true,
-        location: { pathname: '/admin/users' },
-      }),
-    );
-
-    const { RootDocument } = await import('./__root');
-
-    render(
-      <RootDocument>
-        <div>content</div>
-      </RootDocument>,
-    );
+    await renderPendingRootDocument();
 
     await waitFor(() => {
-      expect(screen.getByTestId('app-shell').getAttribute('data-current-pathname')).toBe('/admin/users');
+      expect(screen.getByTestId('app-shell').getAttribute('data-current-pathname')).toBe(
+        '/admin/users'
+      );
     });
   });
-
 });

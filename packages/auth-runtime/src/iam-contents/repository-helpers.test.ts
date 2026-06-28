@@ -33,6 +33,8 @@ const {
   emitContentDeletedActivity,
   emitContentUpdatedActivity,
   insertContentRow,
+  resolveCreateAuthorDisplay,
+  resolveUpdateAuthorDisplay,
   updateContentRevisionRefs,
   updateContentRow,
   validatePublicationWindow,
@@ -58,6 +60,7 @@ const createContentRow = (overrides: Partial<ContentRow> = {}): ContentRow => ({
   created_by: 'account-1',
   updated_at: '2026-05-01T08:00:00.000Z',
   updated_by: 'account-1',
+  author_display_mode: 'organization',
   author_display_name: 'Autor',
   payload_json: { body: 'Text' },
   status: 'draft',
@@ -225,6 +228,91 @@ describe('iam content repository helpers', () => {
     );
   });
 
+  it('enforces organization author policy for create author display mode', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({
+      rows: [{ display_name: 'Stadt Musterhausen', content_author_policy: 'org_only' }],
+    });
+
+    await expect(
+      resolveCreateAuthorDisplay(
+        client,
+        createCreateInput({
+          organizationId: '00000000-0000-0000-0000-000000000002',
+          authorDisplayMode: 'user',
+        })
+      )
+    ).rejects.toThrow(new ContentStateValidationError('content_author_display_mode_not_allowed'));
+
+    client.query.mockResolvedValueOnce({
+      rows: [{ display_name: 'Stadt Musterhausen', content_author_policy: 'org_or_personal' }],
+    });
+    await expect(
+      resolveCreateAuthorDisplay(
+        client,
+        createCreateInput({
+          organizationId: '00000000-0000-0000-0000-000000000002',
+          authorDisplayMode: 'user',
+        })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Autor',
+    });
+  });
+
+  it('derives update author display snapshots from the selected mode', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({
+      rows: [{ display_name: 'Stadt Musterhausen', content_author_policy: 'org_or_personal' }],
+    });
+
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({ organization_id: '00000000-0000-0000-0000-000000000002' }),
+        createUpdateInput({ authorDisplayMode: 'organization' })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Stadt Musterhausen',
+    });
+
+    client.query.mockResolvedValueOnce({ rows: [] });
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({ organization_id: null, author_display_mode: 'user' }),
+        createUpdateInput({ authorDisplayMode: 'organization' })
+      )
+    ).rejects.toThrow(new ContentStateValidationError('content_author_organization_not_found'));
+  });
+
+  it('preserves user author snapshots when organization moves only revalidate policy', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({
+      rows: [{ display_name: 'Neue Organisation', content_author_policy: 'org_or_personal' }],
+    });
+
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({
+          organization_id: '00000000-0000-0000-0000-000000000001',
+          author_display_mode: 'user',
+          author_display_name: 'Ursprüngliche Autorin',
+        }),
+        createUpdateInput({
+          organizationId: '00000000-0000-0000-0000-000000000002',
+          actorDisplayName: 'Bearbeiter',
+        })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Ursprüngliche Autorin',
+    });
+  });
+
   it('updates content rows and revision references with normalized values', async () => {
     const client = createClient();
     client.query.mockResolvedValue({ rows: [] });
@@ -233,6 +321,7 @@ describe('iam content repository helpers', () => {
       organizationId: '00000000-0000-0000-0000-000000000002',
       ownerUserId: '00000000-0000-0000-0000-000000000001',
       ownerOrganizationId: '00000000-0000-0000-0000-000000000002',
+      authorDisplayMode: 'organization',
       authorDisplayName: 'Stadt Musterhausen',
       title: 'Neuer Titel',
       payloadJson: '{"body":"Neu"}',

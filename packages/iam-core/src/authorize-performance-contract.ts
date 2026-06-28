@@ -1,5 +1,3 @@
-import type { ApiItemResponse } from './account-management-contract.js';
-
 export const authorizePerformanceScenarios = ['cache-hit', 'cache-miss', 'recompute'] as const;
 
 export type AuthorizePerformanceScenario = (typeof authorizePerformanceScenarios)[number];
@@ -76,7 +74,9 @@ export type AuthorizePerformanceRunResult = {
   readonly report?: AuthorizePerformanceReportReference;
 };
 
-export type AuthorizePerformanceRunResponse = ApiItemResponse<AuthorizePerformanceRunResult | null>;
+export type AuthorizePerformanceRunResponse = {
+  readonly data: AuthorizePerformanceRunResult | null;
+};
 
 const sortedCopy = (values: readonly number[]): number[] => [...values].sort((a, b) => a - b);
 

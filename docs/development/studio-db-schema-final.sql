@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict y4iO1T35Ug2FO1d7cN3CHaBWEOsdX2smPhEc3AJT1IsYkPGeHagdKpVETkr7Tmg
+\restrict 1ugJP7BDXFaPR9YgsKK3TZzQTddLwXFiJjir05XJfqbmkpA6OidoP927HKFo5do
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -207,6 +207,7 @@ BEGIN
     created_by,
     updated_at,
     updated_by,
+    author_display_mode,
     author_display_name,
     payload_json,
     status,
@@ -235,6 +236,7 @@ BEGIN
     NEW.creator_account_id::text,
     NEW.updated_at,
     NEW.updater_account_id::text,
+    NEW.author_display_mode,
     NEW.author_display_name,
     NEW.payload_json,
     NEW.status,
@@ -263,6 +265,7 @@ BEGIN
     created_by = EXCLUDED.created_by,
     updated_at = EXCLUDED.updated_at,
     updated_by = EXCLUDED.updated_by,
+    author_display_mode = EXCLUDED.author_display_mode,
     author_display_name = EXCLUDED.author_display_name,
     payload_json = EXCLUDED.payload_json,
     status = EXCLUDED.status,
@@ -522,6 +525,12 @@ CREATE TABLE iam.content_list_projection (
     projection_updated_at timestamp with time zone DEFAULT now() NOT NULL,
     owner_user_id uuid,
     owner_organization_id uuid,
+    author_display_mode text DEFAULT 'organization'::text NOT NULL,
+    source_data_provider_id text,
+    source_data_provider_name text,
+    credential_source text,
+    CONSTRAINT content_list_projection_author_display_mode_chk CHECK ((author_display_mode = ANY (ARRAY['organization'::text, 'user'::text]))),
+    CONSTRAINT content_list_projection_credential_source_chk CHECK (((credential_source IS NULL) OR (credential_source = ANY (ARRAY['organization'::text, 'user'::text])))),
     CONSTRAINT content_list_projection_source_system_chk CHECK ((source_system = ANY (ARRAY['iam'::text, 'mainserver'::text]))),
     CONSTRAINT content_list_projection_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'in_review'::text, 'approved'::text, 'published'::text, 'archived'::text]))),
     CONSTRAINT content_list_projection_validation_state_chk CHECK ((validation_state = ANY (ARRAY['valid'::text, 'invalid'::text, 'pending'::text])))
@@ -579,6 +588,8 @@ CREATE TABLE iam.contents (
     deletion_lifecycle_changed_at timestamp with time zone,
     owner_user_id uuid,
     owner_organization_id uuid,
+    author_display_mode text DEFAULT 'organization'::text NOT NULL,
+    CONSTRAINT contents_author_display_mode_chk CHECK ((author_display_mode = ANY (ARRAY['organization'::text, 'user'::text]))),
     CONSTRAINT contents_deletion_lifecycle_state_chk CHECK ((deletion_lifecycle_state = ANY (ARRAY['active'::text, 'deactivated'::text, 'pseudonymized'::text, 'deleted'::text]))),
     CONSTRAINT contents_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'in_review'::text, 'approved'::text, 'published'::text, 'archived'::text]))),
     CONSTRAINT contents_validation_state_chk CHECK ((validation_state = ANY (ARRAY['valid'::text, 'invalid'::text, 'pending'::text])))
@@ -4005,4 +4016,5 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict y4iO1T35Ug2FO1d7cN3CHaBWEOsdX2smPhEc3AJT1IsYkPGeHagdKpVETkr7Tmg
+\unrestrict 1ugJP7BDXFaPR9YgsKK3TZzQTddLwXFiJjir05XJfqbmkpA6OidoP927HKFo5do
+

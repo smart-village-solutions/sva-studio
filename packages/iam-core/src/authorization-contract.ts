@@ -101,7 +101,7 @@ export type AuthorizeResponse = {
   readonly requestId?: string;
   readonly traceId?: string;
   readonly diagnostics?: Readonly<Record<string, unknown>>;
-  // Paket 4: Snapshot-Metadaten (optionale additive Felder)
+  // Snapshot metadata
   readonly snapshotVersion?: string;
   readonly cacheStatus?: SnapshotCacheStatus;
   readonly matchedPermissions?: readonly MatchedPermissionSummary[];
@@ -158,7 +158,7 @@ export type MePermissionsResponse = {
   readonly evaluatedAt: string;
   readonly requestId?: string;
   readonly traceId?: string;
-  // Paket 4: Snapshot-Metadaten
+  // Snapshot metadata
   readonly snapshotVersion?: string;
   readonly cacheStatus?: SnapshotCacheStatus;
   readonly provenance?: Readonly<{
@@ -167,7 +167,7 @@ export type MePermissionsResponse = {
   }>;
 };
 
-// Paket 3: Gruppen-Kontrakt-Typen
+// Group contracts
 export type IamGroupType = 'role_bundle';
 
 export type IamGroupListItem = {
@@ -201,7 +201,7 @@ export type IamGroupMembership = {
   readonly assignedByAccountId?: IamUuid;
 };
 
-// Paket 3: Geo-Kontrakt-Typen
+// Geo contracts
 export type IamGeoNodeType = 'country' | 'state' | 'district' | 'municipality' | 'locality';
 
 export type IamGeoNode = {
@@ -218,7 +218,7 @@ export type IamGeoHierarchyEntry = {
   readonly depth: number;
 };
 
-// Paket 5: Legal-Text-Kontrakt-Typen
+// Legal text contracts
 export type LegalAcceptanceActionType = 'accepted' | 'revoked' | 'prompted';
 
 export type IamLegalTextTargeting = {

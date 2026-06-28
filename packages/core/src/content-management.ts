@@ -2,7 +2,13 @@ export const GENERIC_CONTENT_TYPE = 'generic' as const;
 export const IAM_PSEUDONYMIZED_CONTENT_AUTHOR_TOKEN = '__iam_author_pseudonymized__' as const;
 export const IAM_DELETED_CONTENT_AUTHOR_TOKEN = '__iam_author_deleted__' as const;
 
-export const iamContentStatuses = ['draft', 'in_review', 'approved', 'published', 'archived'] as const;
+export const iamContentStatuses = [
+  'draft',
+  'in_review',
+  'approved',
+  'published',
+  'archived',
+] as const;
 export const iamContentListSortFields = ['title', 'contentType', 'status', 'updatedAt'] as const;
 export const iamContentListSortDirections = ['asc', 'desc'] as const;
 export const iamContentValidationStates = ['valid', 'invalid', 'pending'] as const;
@@ -30,7 +36,12 @@ export const iamContentDomainCapabilities = [
   'content.manage_revisions',
   'content.delete',
 ] as const;
-export const iamContentAccessStates = ['editable', 'read_only', 'blocked', 'server_denied'] as const;
+export const iamContentAccessStates = [
+  'editable',
+  'read_only',
+  'blocked',
+  'server_denied',
+] as const;
 export const iamContentAccessReasonCodes = [
   'content_read_missing',
   'content_update_missing',
@@ -108,6 +119,11 @@ export type IamContentHistoryEntry = {
   readonly summary?: string;
 };
 
+export const iamContentAuthorDisplayModes = ['organization', 'user'] as const;
+export type IamContentAuthorDisplayMode = (typeof iamContentAuthorDisplayModes)[number];
+const iamContentCredentialSources = ['organization', 'user'] as const;
+export type IamContentCredentialSource = (typeof iamContentCredentialSources)[number];
+
 export type IamContentListItem = {
   readonly id: string;
   readonly contentType: string;
@@ -123,7 +139,11 @@ export type IamContentListItem = {
   readonly createdBy: string;
   readonly updatedAt: string;
   readonly updatedBy: string;
+  readonly authorDisplayMode: IamContentAuthorDisplayMode;
   readonly author: string;
+  readonly sourceDataProviderId?: string;
+  readonly sourceDataProviderName?: string;
+  readonly credentialSource?: IamContentCredentialSource;
   readonly payload: ContentJsonValue;
   readonly status: IamContentStatus;
   readonly validationState: IamContentValidationState;
@@ -151,6 +171,7 @@ export type IamContentListQuery = {
 export type CreateIamContentInput = {
   readonly contentType: string;
   readonly title: string;
+  readonly authorDisplayMode?: IamContentAuthorDisplayMode;
   readonly publishedAt?: string;
   readonly publishFrom?: string;
   readonly publishUntil?: string;
@@ -164,6 +185,7 @@ export type UpdateIamContentInput = Partial<
     readonly organizationId: string;
     readonly ownerUserId: string;
     readonly ownerOrganizationId: string;
+    readonly authorDisplayMode: IamContentAuthorDisplayMode;
     readonly authorDisplayName: string;
   }
 >;
@@ -181,26 +203,38 @@ const CONTENT_UPDATE_ACTIONS = new Set([
   'content.delete',
 ]);
 
-const uniqueSortedStrings = (values: readonly string[]) => [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right));
+const uniqueSortedStrings = (values: readonly string[]) =>
+  [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right));
 
 const uniqueSortedSourceKinds = (values: readonly ('direct_role' | 'group_role')[]) =>
   [...new Set(values)].sort((left, right) => left.localeCompare(right));
 
-const matchesActionSet = (action: string, candidates: ReadonlySet<string>) => candidates.has(action.trim());
+const matchesActionSet = (action: string, candidates: ReadonlySet<string>) =>
+  candidates.has(action.trim());
 
 export const summarizeContentAccess = (
   permissions: readonly ContentPermissionView[]
 ): IamContentAccessSummary => {
-  const contentPermissions = permissions.filter((permission) => permission.action.startsWith('content.'));
+  const contentPermissions = permissions.filter((permission) =>
+    permission.action.startsWith('content.')
+  );
   const sourceKinds = uniqueSortedSourceKinds(
     contentPermissions.flatMap((permission) => permission.provenance?.sourceKinds ?? [])
   );
   const organizationIds = uniqueSortedStrings(
-    contentPermissions.flatMap((permission) => (permission.organizationId ? [permission.organizationId] : []))
+    contentPermissions.flatMap((permission) =>
+      permission.organizationId ? [permission.organizationId] : []
+    )
   );
-  const hasAllowedRead = contentPermissions.some((permission) => matchesActionSet(permission.action, CONTENT_READ_ACTIONS));
-  const hasAllowedCreate = contentPermissions.some((permission) => matchesActionSet(permission.action, CONTENT_CREATE_ACTIONS));
-  const hasAllowedUpdate = contentPermissions.some((permission) => matchesActionSet(permission.action, CONTENT_UPDATE_ACTIONS));
+  const hasAllowedRead = contentPermissions.some((permission) =>
+    matchesActionSet(permission.action, CONTENT_READ_ACTIONS)
+  );
+  const hasAllowedCreate = contentPermissions.some((permission) =>
+    matchesActionSet(permission.action, CONTENT_CREATE_ACTIONS)
+  );
+  const hasAllowedUpdate = contentPermissions.some((permission) =>
+    matchesActionSet(permission.action, CONTENT_UPDATE_ACTIONS)
+  );
 
   if (hasAllowedRead && hasAllowedUpdate) {
     return {

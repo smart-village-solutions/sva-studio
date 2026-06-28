@@ -9,6 +9,7 @@ Architektur-Referenz: [Logging Architecture](../architecture/logging-architectur
 ## Überblick
 
 Der Stack besteht aus:
+
 - Prometheus (Metriken)
 - Loki (Logs)
 - Grafana (Dashboards)
@@ -48,8 +49,8 @@ Die Dashboards werden beim Start automatisch aus dem Repo geladen:
 
 Das Logging-Modell unterscheidet zwei feste Betriebsmodi:
 
-- Development: Console und lokale Dev-Konsole sind aktiv; OTEL wird nur als aktiver Exportpfad genutzt, wenn das SDK erfolgreich initialisiert wurde.
-- Production: Console und Dev-Konsole sind aus; OTEL ist verpflichtender Exportpfad.
+- Development: Console ist aktiv; OTEL wird nur als aktiver Exportpfad genutzt, wenn das SDK erfolgreich initialisiert wurde.
+- Production: Console ist aus; OTEL ist verpflichtender Exportpfad.
 
 Beispiel für die Initialisierung:
 
@@ -59,16 +60,15 @@ import { startOtelSdk } from '@sva/monitoring-client';
 await startOtelSdk({
   serviceName: 'sva-studio-backend',
   environment: process.env.NODE_ENV ?? 'development',
-  otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT
+  otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
 });
 ```
 
 Hinweis fuer lokale Entwicklung:
 
 - Ohne laufenden Monitoring-Stack bleibt die App funktionsfaehig.
-- Console und Dev-Konsole liefern weiterhin lokale Diagnose.
+- Console-Logs liefern weiterhin lokale Diagnose.
 - Fuer einen bewusst schlanken lokalen Lauf kann OTEL via `ENABLE_OTEL=false` deaktiviert werden.
-- Die lokale Dev-Konsole liest redaktierte Server-Logs nur in Development; in Production gibt es dafuer keinen aktiven UI- oder Serverpfad.
 
 Custom Metrics (Business Events):
 
@@ -77,19 +77,21 @@ import { recordBusinessEvent } from '@sva/monitoring-client';
 
 recordBusinessEvent('content.published', {
   workspace_id: 'local-dev',
-  component: 'cms'
+  component: 'cms',
 });
 ```
 
 ## Label-Schema (Whitelist)
 
 Erlaubte Labels:
+
 - `workspace_id` (mandatory)
 - `component`
 - `environment`
 - `level`
 
 Verbotene Labels (PII / High Cardinality):
+
 - `user_id`, `session_id`, `email`, `request_id`, `token`, `authorization`, `api_key`, `secret`, `ip`
 
 ## PII-Redaction
@@ -101,10 +103,12 @@ Verbotene Labels (PII / High Cardinality):
 ## Beispiel-Queries
 
 **PromQL:**
+
 - Requests/s: `sum(rate(http_requests_total[5m])) by (job)`
 - CPU: `sum(rate(process_cpu_seconds_total[5m])) by (job)`
 
 **LogQL:**
+
 - Alle App-Logs: `{job="sva-studio"}`
 - Errors (5m): `sum(count_over_time({job="sva-studio",level="error"}[5m]))`
 - App-Logs eines Workspace: `{job="sva-studio"} |= "\"workspace_id\":\"default\""`
@@ -143,16 +147,20 @@ Der CI-Lauf prüft:
 ## Troubleshooting
 
 **Port-Konflikte**
+
 - Prüfen, ob Ports 3001/3100/9090/4317/4318 belegt sind.
 
 **Hoher RAM-Verbrauch**
+
 - Prüfen, ob Docker Desktop ausreichend RAM hat (>= 4 GB empfohlen).
 
 **Grafana zeigt keine Daten**
+
 - Datasources prüfen (Prometheus/Loki erreichbar?)
 - Health-Checks abrufen.
 
 **Loki meldet „entry too far behind“**
+
 - Ursache: Promtail liest alte Container-Logs mit Zeitstempeln außerhalb des akzeptierten Loki-Fensters.
 - Aktuelle Schutzmaßnahme: `drop`-Stage in `dev/monitoring/promtail/promtail-config.yml` mit `older_than: 1h`.
 - Wirkung: Alte Backfill-Zeilen werden vor dem Push verworfen; neue Logs werden normal ingestiert.
@@ -160,13 +168,16 @@ Der CI-Lauf prüft:
 ## Runbooks
 
 **Install**
+
 - `docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d`
 
 **Update/Rollback**
+
 - Update: `docker compose pull && docker compose up -d`
 - Rollback: `docker compose down` und `docker compose up -d` mit vorherigem Image-Tag
 
 **Backup/Restore**
+
 - Prometheus/Loki nutzen lokale Volumes.
 - Sicherung: `docker volume inspect` + `docker run --rm -v <volume>:/data -v $PWD:/backup alpine tar -czf /backup/<name>.tgz /data`
 - Restore: `docker run --rm -v <volume>:/data -v $PWD:/backup alpine tar -xzf /backup/<name>.tgz -C /`

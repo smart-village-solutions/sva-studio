@@ -1,4 +1,4 @@
-import { evaluateAuthorizeDecision, type EffectivePermission } from '@sva/core';
+import { evaluateAuthorizeDecision, type EffectivePermission } from '@sva/iam-core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import { emitAuthAuditEvent } from '../../audit-events.js';

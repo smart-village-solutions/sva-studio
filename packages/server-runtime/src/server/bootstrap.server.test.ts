@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 type RuntimeConfig = {
   environment: 'development' | 'production';
   consoleEnabled: boolean;
-  uiEnabled: boolean;
   otelRequested: boolean;
   otelRequired: boolean;
   mode: 'console_to_loki' | 'otel_to_loki' | 'degraded';
@@ -17,7 +16,6 @@ const logger = {
 const defaultRuntimeConfig: RuntimeConfig = {
   environment: 'development',
   consoleEnabled: true,
-  uiEnabled: true,
   otelRequested: true,
   otelRequired: false,
   mode: 'otel_to_loki',
@@ -144,7 +142,6 @@ describe('server bootstrap', () => {
       runtimeConfig: {
         environment: 'production',
         consoleEnabled: false,
-        uiEnabled: false,
         otelRequired: true,
       },
       startOtelSdk: vi.fn().mockRejectedValue(error),

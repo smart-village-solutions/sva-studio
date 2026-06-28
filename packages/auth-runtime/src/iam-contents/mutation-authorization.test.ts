@@ -265,6 +265,38 @@ describe('content mutation authorization', () => {
     expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(1);
   });
 
+  it('does not carry the current user owner into organization-owner transfers', async () => {
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    await expect(
+      authorizeUpdateContentActions(
+        actor,
+        'content-1',
+        {
+          ...content(),
+          ownerUserId: '33333333-3333-4333-8333-333333333333',
+          ownerOrganizationId: '11111111-1111-4111-8111-111111111111',
+        },
+        {
+          ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+        }
+      )
+    ).resolves.toBeNull();
+
+    expectAuthorizationCall(1, 'content.updateMetadata', {
+      organizationId: '11111111-1111-4111-8111-111111111111',
+      ownerUserId: '33333333-3333-4333-8333-333333333333',
+      ownerOrganizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expectAuthorizationCall(2, 'content.updateMetadata', {
+      organizationId: '11111111-1111-4111-8111-111111111111',
+      ownerUserId: undefined,
+      ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+    });
+    expect(authorizeContentActionMock).toHaveBeenCalledTimes(2);
+    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(1);
+  });
+
   it('stops on authorization denial before later actions are evaluated', async () => {
     const denied = new Response(null, { status: 403 });
     authorizeContentActionMock.mockResolvedValueOnce(denied);

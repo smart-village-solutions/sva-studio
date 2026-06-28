@@ -118,9 +118,14 @@ export const authorizeUpdateContentActions = async (
   }
 
   const destinationOrganizationId = data.organizationId ?? currentContent.organizationId;
-  const destinationOwnerUserId = data.ownerUserId ?? currentContent.ownerUserId;
   const destinationOwnerOrganizationId =
     data.ownerOrganizationId ?? currentContent.ownerOrganizationId;
+  const destinationOwnerUserId =
+    data.ownerUserId ??
+    (data.ownerOrganizationId !== undefined &&
+    destinationOwnerOrganizationId !== currentContent.ownerOrganizationId
+      ? undefined
+      : currentContent.ownerUserId);
   const hasProspectiveAuthorizationTargetChange =
     destinationOrganizationId !== currentContent.organizationId ||
     destinationOwnerUserId !== currentContent.ownerUserId ||

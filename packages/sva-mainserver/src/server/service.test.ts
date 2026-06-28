@@ -522,6 +522,48 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('exposes the resolved credential source on list responses', async () => {
+    const item = {
+      id: 'news-1',
+      title: 'News',
+      payload: { teaser: 'Kurztext', body: '<p>Body</p>' },
+      publishedAt: '2026-04-14T09:30:00.000Z',
+      createdAt: '2026-04-14T09:00:00.000Z',
+      updatedAt: '2026-04-14T09:30:00.000Z',
+      visible: true,
+    };
+    const readCredentials = vi.fn().mockResolvedValue({
+      apiKey: 'key-1',
+      apiSecret: 'secret-1',
+      credentialSource: 'user' as const,
+    });
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItems: [item] } }));
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials,
+      fetchImpl,
+    });
+
+    await expect(
+      service.listNews({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        activeOrganizationId: 'org-1',
+        page: 1,
+        pageSize: 25,
+      })
+    ).resolves.toMatchObject({
+      credentialSource: 'user',
+      data: [expect.objectContaining({ id: 'news-1' })],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    expect(readCredentials).toHaveBeenCalledTimes(1);
+  });
+
   it('routes default news helpers through the default service', async () => {
     const item = {
       id: 'news-1',

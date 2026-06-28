@@ -69,6 +69,8 @@ export type SvaMainserverListPagination = {
 export type SvaMainserverListResult<TItem> = {
   readonly data: readonly TItem[];
   readonly pagination: SvaMainserverListPagination;
+  readonly credentialSource?: 'organization' | 'user';
+  readonly credentialOrganizationId?: string;
 };
 
 export type SvaMainserverNewsPayload = {

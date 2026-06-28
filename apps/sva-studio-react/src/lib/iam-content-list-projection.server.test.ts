@@ -511,6 +511,47 @@ describe('content list projection', () => {
     expect(projectionInsertArgs).toHaveLength(1);
   });
 
+  it('persists the resolved mainserver credential source for organization-scoped projections', async () => {
+    state.listSvaMainserverNews.mockResolvedValue({
+      credentialSource: 'user',
+      data: [
+        {
+          id: 'news-1',
+          title: 'Rathaus',
+          contentType: 'news.article',
+          payload: { teaser: 'A' },
+          status: 'published',
+          author: 'Redaktion',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          publishedAt: '2026-06-21T09:00:00.000Z',
+          contentBlocks: [],
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['news.article'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    expect(response.status).toBe(503);
+    const insertedRows = JSON.parse(String(projectionInsertArgs?.[0] ?? '[]')) as Array<
+      Record<string, unknown>
+    >;
+    expect(insertedRows).toEqual([
+      expect.objectContaining({
+        organization_id: 'org-1',
+        owner_organization_id: 'org-1',
+        credential_source: 'user',
+      }),
+    ]);
+  });
+
   it('returns the last successful snapshot together with sync metadata while a background refresh runs', async () => {
     projectionRows = [
       {

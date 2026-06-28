@@ -677,15 +677,21 @@ const replaceMainserverProjectionRows = async (
 const fetchAllPages = async <TItem>(
   loadPage: (query: { readonly page: number; readonly pageSize: number }) => Promise<{
     readonly data: readonly TItem[];
+    readonly credentialSource?: IamContentListItem['credentialSource'];
     readonly pagination: { readonly hasNextPage: boolean; readonly page?: number };
   }>
-): Promise<readonly TItem[]> => {
+): Promise<{
+  readonly credentialSource?: IamContentListItem['credentialSource'];
+  readonly data: readonly TItem[];
+}> => {
   const items: TItem[] = [];
+  let credentialSource: IamContentListItem['credentialSource'] | undefined;
   let page = 1;
   let hasNextPage = true;
 
   while (hasNextPage && items.length < MAX_SYNC_ITEMS_PER_TYPE) {
     const response = await loadPage({ page, pageSize: MAINSERVER_FETCH_PAGE_SIZE });
+    credentialSource ??= response.credentialSource;
     const remaining = MAX_SYNC_ITEMS_PER_TYPE - items.length;
     items.push(...response.data.slice(0, remaining));
     hasNextPage = response.pagination.hasNextPage;
@@ -696,8 +702,22 @@ const fetchAllPages = async <TItem>(
     page = nextPage + 1;
   }
 
-  return items;
+  return {
+    data: items,
+    ...(credentialSource ? { credentialSource } : {}),
+  };
 };
+
+type MainserverProjectionPageResult<TItem> = {
+  readonly credentialSource?: IamContentListItem['credentialSource'];
+  readonly data: readonly TItem[];
+};
+
+const resolveMainserverProjectionCredentialSource = <TItem>(
+  result: MainserverProjectionPageResult<TItem>,
+  projectedOrganizationId: string | undefined
+): IamContentListItem['credentialSource'] =>
+  result.credentialSource ?? (projectedOrganizationId ? 'organization' : 'user');
 
 const refreshMainserverProjection = async (
   target: ContentProjectionSyncTarget
@@ -720,57 +740,64 @@ const refreshMainserverProjection = async (
       activeOrganizationId: organizationId,
     };
     const projectedOrganizationId = organizationId;
-    const credentialSource: IamContentListItem['credentialSource'] = projectedOrganizationId
-      ? 'organization'
-      : 'user';
 
-    const rows =
-      contentType === 'news.article'
-        ? (
-            await fetchAllPages((pageQuery) =>
-              listSvaMainserverNews({
-                ...connection,
-                ...pageQuery,
-              })
-            )
-          ).map((item) => ({
-            ...mapNewsItem(item, instanceId, []),
-            ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
-            credentialSource,
-            sourceEntityType: 'news.article',
-            sourceEntityId: item.id,
-          }))
-        : contentType === 'events.event-record'
-          ? (
-              await fetchAllPages((pageQuery) =>
-                listSvaMainserverEvents({
-                  ...connection,
-                  ...pageQuery,
-                })
-              )
-            ).map((item) => ({
-              ...mapEventItem(item, instanceId, []),
-              ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
-              credentialSource,
-              sourceEntityType: 'events.event-record',
-              sourceEntityId: item.id,
-            }))
-          : contentType === 'poi.point-of-interest'
-            ? (
-                await fetchAllPages((pageQuery) =>
-                  listSvaMainserverPoi({
-                    ...connection,
-                    ...pageQuery,
-                  })
-                )
-              ).map((item) => ({
-                ...mapPoiItem(item, instanceId, []),
-                ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
-                credentialSource,
-                sourceEntityType: 'poi.point-of-interest',
-                sourceEntityId: item.id,
-              }))
-            : [];
+    let rows: readonly MainserverProjectionRowInput[] = [];
+
+    if (contentType === 'news.article') {
+      const result = await fetchAllPages((pageQuery) =>
+        listSvaMainserverNews({
+          ...connection,
+          ...pageQuery,
+        })
+      );
+      const credentialSource = resolveMainserverProjectionCredentialSource(
+        result,
+        projectedOrganizationId
+      );
+      rows = result.data.map((item) => ({
+        ...mapNewsItem(item, instanceId, []),
+        ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+        credentialSource,
+        sourceEntityType: 'news.article',
+        sourceEntityId: item.id,
+      }));
+    } else if (contentType === 'events.event-record') {
+      const result = await fetchAllPages((pageQuery) =>
+        listSvaMainserverEvents({
+          ...connection,
+          ...pageQuery,
+        })
+      );
+      const credentialSource = resolveMainserverProjectionCredentialSource(
+        result,
+        projectedOrganizationId
+      );
+      rows = result.data.map((item) => ({
+        ...mapEventItem(item, instanceId, []),
+        ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+        credentialSource,
+        sourceEntityType: 'events.event-record',
+        sourceEntityId: item.id,
+      }));
+    } else if (contentType === 'poi.point-of-interest') {
+      const result = await fetchAllPages((pageQuery) =>
+        listSvaMainserverPoi({
+          ...connection,
+          ...pageQuery,
+        })
+      );
+      const credentialSource = resolveMainserverProjectionCredentialSource(
+        result,
+        projectedOrganizationId
+      );
+      rows = result.data.map((item) => ({
+        ...mapPoiItem(item, instanceId, []),
+        ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+        credentialSource,
+        sourceEntityType: 'poi.point-of-interest',
+        sourceEntityId: item.id,
+      }));
+    }
 
     await replaceMainserverProjectionRows(
       instanceId,

@@ -201,9 +201,6 @@ describe('poi.detail-form', () => {
             tagsText: 'park, familie ,',
             payloadText: '{"source":"sync"}',
           },
-          media: {
-            images: [{ assetId: 'asset-2', label: 'Flyer' }],
-          },
           settings: {},
         },
         { source: 'sync' }
@@ -300,9 +297,6 @@ describe('poi.detail-form', () => {
             tagsText: '',
             payloadText: '{}',
           },
-          media: {
-            images: [],
-          },
           settings: {},
         },
         {}
@@ -393,9 +387,6 @@ describe('poi.detail-form', () => {
             tagsText: ' , ,, ',
             payloadText: '{}',
           },
-          media: {
-            images: [],
-          },
           settings: {},
         },
         {}
@@ -441,7 +432,6 @@ describe('poi.detail-form', () => {
             tagsText: '',
             payloadText: '{}',
           },
-          media: { images: [] },
           settings: {},
         },
         {}
@@ -474,7 +464,6 @@ describe('poi.detail-form', () => {
             tagsText: '',
             payloadText: '{}',
           },
-          media: { images: [] },
           settings: {},
         },
         {}
@@ -514,7 +503,6 @@ describe('poi.detail-form', () => {
           tagsText: '',
           payloadText: '{}',
         },
-        media: { images: [] },
         settings: {},
       },
       {}
@@ -559,7 +547,6 @@ describe('poi.detail-form', () => {
             tagsText: '',
             payloadText: '{}',
           },
-          media: { images: [] },
           settings: {},
         },
         {}
@@ -666,9 +653,6 @@ describe('poi.detail-form', () => {
             tagsText: 'park, familie',
             payloadText: '',
           },
-          media: {
-            images: [],
-          },
           settings: {},
         },
         { source: 'manual' }
@@ -764,7 +748,6 @@ describe('poi.detail-form', () => {
             tagsText: '',
             payloadText: '{}',
           },
-          media: { images: [] },
           settings: {},
         },
         {}
@@ -808,7 +791,6 @@ describe('poi.detail-form', () => {
             tagsText: '',
             payloadText: '{}',
           },
-          media: { images: [] },
           settings: {},
         },
         {}
@@ -853,7 +835,6 @@ describe('poi.detail-form', () => {
             tagsText: ' , , ',
             payloadText: '{}',
           },
-          media: { images: [] },
           settings: {},
         },
         {}
@@ -898,12 +879,77 @@ describe('poi.detail-form', () => {
           tagsText: '',
           payloadText: '{}',
         },
-        media: { images: [] },
         settings: {},
       },
       {}
     );
 
     expect(validatePoiForm(mutation)).toEqual(['addresses', 'priceInformations']);
+  });
+
+  it('normalizes media MIME types to the Mainserver media content type values', () => {
+    const input = mapPoiDetailFormValuesToInput(
+      {
+        name: 'Medien POI',
+        basis: {
+          categories: [],
+          active: true,
+        },
+        content: {
+          description: '',
+          mobileDescription: '',
+          addresses: [],
+          location: {
+            name: '',
+            department: '',
+            district: '',
+            regionName: '',
+            state: '',
+            geoLocation: { latitude: '', longitude: '' },
+          },
+          contact: {
+            firstName: '',
+            lastName: '',
+            phone: '',
+            fax: '',
+            email: '',
+            webUrls: [],
+          },
+          openingHours: [],
+          webUrls: [],
+          operator: {
+            name: '',
+            address: undefined,
+            contact: undefined,
+          },
+          prices: [],
+          mediaContents: [
+            { contentType: 'image/jpeg', sourceUrl: { url: 'https://example.test/image.jpg' } },
+            { contentType: 'audio/mpeg', sourceUrl: { url: 'https://example.test/audio.mp3' } },
+            { contentType: 'video/mp4', sourceUrl: { url: 'https://example.test/video.mp4' } },
+            { contentType: 'application/pdf', sourceUrl: { url: 'https://example.test/file.pdf' } },
+            { contentType: 'logo', sourceUrl: { url: 'https://example.test/logo.svg' } },
+          ],
+          certificates: [],
+          accessibilityInformation: {
+            description: '',
+            types: '',
+            urls: [],
+          },
+          tagsText: '',
+          payloadText: '{}',
+        },
+        settings: {},
+      },
+      {}
+    );
+
+    expect(input.mediaContents).toMatchObject([
+      { contentType: 'image' },
+      { contentType: 'audio' },
+      { contentType: 'video' },
+      { contentType: 'attachement' },
+      { contentType: 'logo' },
+    ]);
   });
 });

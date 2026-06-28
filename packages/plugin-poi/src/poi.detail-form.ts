@@ -6,7 +6,6 @@ export {
   type PoiDetailFormValues,
   type PoiFormGeoLocationValue,
   type PoiLocationFormValue,
-  type PoiMediaAttachment,
   type PoiOperatingCompanyFormValue,
   type PoiPriceFormValue,
 } from './poi.detail-form.types.js';

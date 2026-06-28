@@ -1,13 +1,12 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { listHostMediaAssets, listHostMediaReferencesByTarget, registerPluginTranslationResolver } from '@sva/plugin-sdk';
+import { listHostMediaAssets, registerPluginTranslationResolver, uploadHostMediaFile } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPoi, deletePoi, getPoi, listPoiCategories, updatePoi } from '../src/poi.api.js';
 
 import { PoiDetailPage } from '../src/poi.detail-page.js';
 
 const navigateMock = vi.fn();
-const replaceHostMediaReferencesMock = vi.fn(async (input: unknown) => input);
 
 vi.mock('../src/poi.api.js', () => ({
   createPoi: vi.fn(),
@@ -36,10 +35,7 @@ vi.mock('@sva/plugin-sdk', async () => {
       killSwitchEnabled: false,
     })),
     listHostMediaAssets: vi.fn(async () => []),
-    listHostMediaReferencesByTarget: vi.fn(async () => []),
     uploadHostMediaFile: vi.fn(async () => ({ assetId: 'uploaded-asset', uploadSessionId: 'upload-1' })),
-    replaceHostMediaReferences: (...args: Parameters<typeof replaceHostMediaReferencesMock>) =>
-      replaceHostMediaReferencesMock(...args),
   };
 });
 
@@ -55,7 +51,6 @@ describe('PoiDetailPage', () => {
 
   beforeEach(() => {
     navigateMock.mockReset();
-    replaceHostMediaReferencesMock.mockClear();
     vi.mocked(createPoi).mockReset();
     vi.mocked(deletePoi).mockReset();
     vi.mocked(getPoi).mockReset();
@@ -64,8 +59,8 @@ describe('PoiDetailPage', () => {
     vi.mocked(updatePoi).mockReset();
     vi.mocked(listHostMediaAssets).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockReset();
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([] as never);
+    vi.mocked(uploadHostMediaFile).mockReset();
+    vi.mocked(uploadHostMediaFile).mockResolvedValue({ assetId: 'uploaded-asset', uploadSessionId: 'upload-1' } as never);
     vi.unstubAllGlobals();
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
@@ -95,7 +90,7 @@ describe('PoiDetailPage', () => {
         'poi.cards.prices.entries.title': 'Preise',
         'poi.cards.prices.entries.description': 'Preisangaben',
         'poi.cards.media.entries.title': 'Medieninhalte',
-        'poi.cards.media.entries.description': 'Medienquellen',
+        'poi.cards.media.entries.description': 'Quellen und Metadaten der übertragenen Medien pflegen.',
         'poi.cards.settings.media.title': 'Bilder',
         'poi.cards.settings.media.description': 'Bilder des Ortes verwalten',
         'poi.cards.advanced.payload.title': 'Zusatzdaten',
@@ -147,13 +142,20 @@ describe('PoiDetailPage', () => {
         'poi.messages.locationGeocodeEmpty': 'Keine Geo-Koordinaten gefunden.',
         'poi.messages.locationMapUnavailable': 'Karte deaktiviert.',
         'poi.messages.locationMapError': 'Karte nicht verfügbar.',
-        'poi.messages.mediaReferencesUnavailable': 'Medienreferenzen konnten nicht geladen werden.',
+        'poi.messages.mediaUploadInitializing': 'Upload wird vorbereitet.',
+        'poi.messages.mediaUploadUploading': 'Medium wird hochgeladen.',
+        'poi.messages.mediaUploadFinalizing': 'Upload wird abgeschlossen.',
+        'poi.messages.mediaUploadSuccess': 'Medium wurde hochgeladen und zugeordnet.',
+        'poi.messages.mediaUploadError': 'Das Medium konnte nicht hochgeladen werden.',
+        'poi.messages.mediaUploadUnsupportedType': 'Nur JPG, PNG und WebP können hochgeladen werden.',
         'poi.actions.deleteConfirm': 'Wirklich löschen?',
         'poi.actions.geocodeAddress': 'Geo-Koordinaten ermitteln',
         'poi.actions.geocodingAddress': 'Geo-Koordinaten werden ermittelt',
         'poi.actions.addOpeningHour': 'Öffnungszeit hinzufügen',
         'poi.actions.addCategory': 'Kategorie hinzufügen',
-        'poi.actions.addImage': 'Bild hinzufügen',
+        'poi.actions.addMediaManual': 'Manuell hinzufügen',
+        'poi.actions.addImage': 'Aus Mediathek auswählen',
+        'poi.actions.uploadMedia': 'Medium hochladen',
         'poi.actions.selectImage': 'Auswählen',
         'poi.actions.removeImage': 'Entfernen',
         'poi.actions.closeImagePicker': 'Schließen',
@@ -198,17 +200,32 @@ describe('PoiDetailPage', () => {
       expect(screen.getByLabelText('Wochentag')).toBeTruthy();
       expect(screen.getAllByLabelText('URL').length).toBeGreaterThan(1);
       expect(screen.getByText('Medieninhalte')).toBeTruthy();
+      expect(screen.getByText('Quellen und Metadaten der übertragenen Medien pflegen.')).toBeTruthy();
       expect(screen.getByLabelText('Preiskategorie')).toBeTruthy();
       expect(screen.getByLabelText('Preisbeschreibung')).toBeTruthy();
-      expect(screen.getByLabelText('Medienbeschriftung')).toBeTruthy();
+      expect(screen.queryByLabelText('Medienbeschriftung')).toBeNull();
     });
+    const mediaSection = screen.getByText('Medieninhalte').closest('section');
+    expect(mediaSection).toBeTruthy();
+    const libraryAction = within(mediaSection as HTMLElement).getByText('Aus Mediathek auswählen');
+    const uploadAction = within(mediaSection as HTMLElement).getByText('Medium hochladen');
+    const manualAction = within(mediaSection as HTMLElement).getByText('Manuell hinzufügen');
+    expect(libraryAction.compareDocumentPosition(uploadAction) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(uploadAction.compareDocumentPosition(manualAction) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('manages poi image references in the settings tab through the media library overlay', async () => {
+  it('manages poi mediaContents in the content tab through the media library overlay', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',
       name: 'Rathaus',
       payload: {},
+      mediaContents: [
+        {
+          captionText: 'Rathaus außen',
+          contentType: 'image/jpeg',
+          sourceUrl: { url: 'https://cdn.example.test/rathaus-aussen.jpg', description: 'rathaus-aussen.jpg' },
+        },
+      ],
     } as never);
     vi.mocked(listHostMediaAssets).mockResolvedValue([
       {
@@ -226,24 +243,20 @@ describe('PoiDetailPage', () => {
         metadata: { title: 'Stadtpark' },
       },
     ] as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
-      { id: 'reference-1', assetId: 'asset-1', role: 'attachment_image' },
-    ] as never);
-
     render(<PoiDetailPage mode="edit" contentId="poi-1" />);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
     });
 
-    switchSection('settings');
+    switchSection('content');
 
     await waitFor(() => {
-      expect(screen.getByText('Bilder')).toBeTruthy();
-      expect(screen.getByText('Rathaus außen')).toBeTruthy();
+      expect(screen.getByText('Medieninhalte')).toBeTruthy();
+      expect(screen.getByDisplayValue('https://cdn.example.test/rathaus-aussen.jpg')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Bild hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Aus Mediathek auswählen' }));
 
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeTruthy();
@@ -259,51 +272,16 @@ describe('PoiDetailPage', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();
-      expect(screen.getByText('Stadtpark')).toBeTruthy();
+      expect(screen.getByDisplayValue('https://cdn.example.test/stadtpark.jpg')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Entfernen' })[0]!);
+    const removeButtons = screen.getAllByRole('button', { name: 'Entfernen' });
+    expect(removeButtons[0]).toBeTruthy();
+    fireEvent.click(removeButtons[0] as HTMLButtonElement);
 
     await waitFor(() => {
-      expect(screen.queryByText('Rathaus außen')).toBeNull();
-      expect(screen.getByText('Stadtpark')).toBeTruthy();
-    });
-  });
-
-  it('keeps the image picker stable when legacy media references contain non-string asset ids', async () => {
-    vi.mocked(getPoi).mockResolvedValueOnce({
-      id: 'poi-1',
-      name: 'Rathaus',
-      payload: {},
-    } as never);
-    vi.mocked(listHostMediaAssets).mockResolvedValue([
-      { id: 'asset-1', metadata: { title: 'Rathaus außen' } },
-      { id: 'asset-2', metadata: { title: 'Stadtpark' } },
-    ] as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
-      { id: 'reference-1', assetId: 42 as never, role: 'attachment_image' },
-    ] as never);
-
-    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
-    });
-
-    switchSection('settings');
-    fireEvent.click(screen.getByRole('button', { name: 'Bild hinzufügen' }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeTruthy();
-    });
-
-    fireEvent.change(screen.getByLabelText('Dateiname filtern'), { target: { value: 'stadtpark' } });
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Auswählen' }));
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).toBeNull();
-      expect(screen.getAllByText('Stadtpark').length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('button', { name: 'Entfernen' })).toHaveLength(2);
+      expect(screen.queryByDisplayValue('https://cdn.example.test/rathaus-aussen.jpg')).toBeNull();
+      expect(screen.getByDisplayValue('https://cdn.example.test/stadtpark.jpg')).toBeTruthy();
     });
   });
 
@@ -315,7 +293,7 @@ describe('PoiDetailPage', () => {
     expect(screen.getByText('Noch keine Historie verfügbar.')).toBeTruthy();
   });
 
-  it('keeps the poi editor loading until media references are hydrated', async () => {
+  it('loads the poi editor from GraphQL content without waiting for media references', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',
       name: 'Rathaus',
@@ -326,21 +304,8 @@ describe('PoiDetailPage', () => {
       webUrls: [{ url: 'https://example.com/poi' }],
       payload: { source: 'test' },
     } as never);
-    let resolveReferences: ((value: readonly unknown[]) => void) | null = null;
-    vi.mocked(listHostMediaReferencesByTarget).mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveReferences = resolve as (value: readonly unknown[]) => void;
-        }) as never
-    );
 
     render(<PoiDetailPage mode="edit" contentId="poi-1" instanceId="de-musterhausen" />);
-
-    await waitFor(() => {
-      expect(screen.getByText('poi.messages.loading')).toBeTruthy();
-    });
-
-    resolveReferences?.([]);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
@@ -461,6 +426,7 @@ describe('PoiDetailPage', () => {
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
+    fireEvent.click(screen.getByRole('button', { name: 'Manuell hinzufügen' }));
     fireEvent.change(document.getElementById('poi-media-url-0') as HTMLInputElement, {
       target: { value: 'http://invalid.example/media.jpg' },
     });
@@ -572,7 +538,7 @@ describe('PoiDetailPage', () => {
     expect((screen.getByLabelText('Geöffnet') as HTMLInputElement).checked).toBe(true);
   });
 
-  it('updates poi items and preserves the loaded image references on save', async () => {
+  it('updates poi items and preserves loaded mediaContents on save', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',
       name: 'Rathaus',
@@ -581,15 +547,15 @@ describe('PoiDetailPage', () => {
       categoryName: 'Verwaltung',
       addresses: [{ street: 'Marktplatz 1', city: 'Musterhausen' }],
       webUrls: [{ url: 'https://example.com/poi' }],
+      mediaContents: [
+        {
+          captionText: 'Rathaus außen',
+          contentType: 'image/jpeg',
+          sourceUrl: { url: 'https://cdn.example.test/rathaus-aussen.jpg', description: 'rathaus-aussen.jpg' },
+        },
+      ],
       payload: { source: 'test' },
     } as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
-      {
-        id: 'reference-1',
-        assetId: 'asset-1',
-        role: 'attachment_image',
-      },
-    ] as never);
     vi.mocked(updatePoi).mockResolvedValueOnce({
       id: 'poi-1',
       name: 'Rathaus',
@@ -604,40 +570,30 @@ describe('PoiDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
-      expect(vi.mocked(updatePoi)).toHaveBeenCalledTimes(1);
-      expect(replaceHostMediaReferencesMock).toHaveBeenCalledWith({
-        fetch: expect.any(Function),
-        instanceId: 'de-musterhausen',
-        targetType: 'poi',
-        targetId: 'poi-1',
-        references: [
-          {
-            assetId: 'asset-1',
-            role: 'teaser_image',
-            sortOrder: 0,
-          },
-        ],
-      });
+      expect(vi.mocked(updatePoi)).toHaveBeenCalledWith(
+        'poi-1',
+        expect.objectContaining({
+          mediaContents: [
+            expect.objectContaining({
+              captionText: 'Rathaus außen',
+              contentType: 'image',
+              sourceUrl: {
+                url: 'https://cdn.example.test/rathaus-aussen.jpg',
+                description: 'rathaus-aussen.jpg',
+              },
+            }),
+          ],
+        })
+      );
       expect(screen.getByText('Ort aktualisiert.')).toBeTruthy();
     });
   });
 
-  it('passes the explicit instance context into media host requests when available', async () => {
+  it('passes the explicit instance context into media asset requests when available', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: '1517831',
       name: 'Rathaus',
       payload: {},
-    } as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
-      {
-        id: 'reference-1',
-        assetId: 'asset-1',
-        role: 'attachment_image',
-      },
-    ] as never);
-    vi.mocked(updatePoi).mockResolvedValueOnce({
-      id: '1517831',
-      name: 'Rathaus',
     } as never);
 
     render(<PoiDetailPage mode="edit" contentId="1517831" instanceId="de-musterhausen" />);
@@ -650,46 +606,22 @@ describe('PoiDetailPage', () => {
       fetch: expect.any(Function),
       instanceId: 'de-musterhausen',
     });
-    expect(vi.mocked(listHostMediaReferencesByTarget)).toHaveBeenCalledWith({
-      fetch: expect.any(Function),
-      instanceId: 'de-musterhausen',
-      targetType: 'poi',
-      targetId: '1517831',
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
-
-    await waitFor(() => {
-      expect(replaceHostMediaReferencesMock).toHaveBeenCalledWith({
-        fetch: expect.any(Function),
-        instanceId: 'de-musterhausen',
-        targetType: 'poi',
-        targetId: '1517831',
-        references: [
-          {
-            assetId: 'asset-1',
-            role: 'teaser_image',
-            sortOrder: 0,
-          },
-        ],
-      });
-    });
   });
 
-  it('persists poi image references together on save', async () => {
+  it('persists selected library images as poi mediaContents on save', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',
       name: 'Rathaus',
       payload: {},
     } as never);
     vi.mocked(listHostMediaAssets).mockResolvedValue([
-      { id: 'asset-1', metadata: { title: 'Teaser' } },
-      { id: 'asset-2', metadata: { title: 'Bestehend' } },
-      { id: 'asset-3', metadata: { title: 'Neu' } },
-    ] as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
-      { id: 'reference-1', assetId: 'asset-1', role: 'attachment_image', sortOrder: 1 },
-      { id: 'reference-2', assetId: 'asset-2', role: 'attachment_image', sortOrder: 0 },
+      {
+        id: 'asset-3',
+        fileName: 'neu.jpg',
+        mimeType: 'image/jpeg',
+        previewUrl: 'https://cdn.example.test/neu.jpg',
+        metadata: { title: 'Neu' },
+      },
     ] as never);
     vi.mocked(updatePoi).mockResolvedValueOnce({
       id: 'poi-1',
@@ -702,18 +634,8 @@ describe('PoiDetailPage', () => {
       expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
     });
 
-    switchSection('settings');
-    await waitFor(() => {
-      const removeButtons = screen.getAllByRole('button', { name: 'Entfernen' });
-      expect(removeButtons).toHaveLength(2);
-      const firstCard = removeButtons[0]!.closest('article');
-      const secondCard = removeButtons[1]!.closest('article');
-      expect(firstCard).not.toBeNull();
-      expect(secondCard).not.toBeNull();
-      expect(within(firstCard as HTMLElement).getAllByText('Bestehend').length).toBeGreaterThan(0);
-      expect(within(secondCard as HTMLElement).getAllByText('Teaser').length).toBeGreaterThan(0);
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Bild hinzufügen' }));
+    switchSection('content');
+    fireEvent.click(screen.getByRole('button', { name: 'Aus Mediathek auswählen' }));
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeTruthy();
     });
@@ -721,34 +643,33 @@ describe('PoiDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
-      expect(replaceHostMediaReferencesMock).toHaveBeenCalledWith({
-        fetch: expect.any(Function),
-        targetType: 'poi',
-        targetId: 'poi-1',
-        references: [
-          { assetId: 'asset-2', role: 'teaser_image', sortOrder: 0 },
-          { assetId: 'asset-1', role: 'teaser_image', sortOrder: 1 },
-          { assetId: 'asset-3', role: 'teaser_image', sortOrder: 2 },
-        ],
-      });
+      expect(vi.mocked(updatePoi)).toHaveBeenCalledWith(
+        'poi-1',
+        expect.objectContaining({
+          mediaContents: [
+            expect.objectContaining({
+              captionText: 'Neu',
+              contentType: 'image',
+              sourceUrl: { url: 'https://cdn.example.test/neu.jpg', description: 'neu.jpg' },
+            }),
+          ],
+        })
+      );
     });
   });
 
-  it('preserves non-image media references when saving image changes', async () => {
+  it('saves an empty mediaContents list when all loaded poi images are removed', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',
       name: 'Rathaus',
+      mediaContents: [
+        {
+          captionText: 'Rathaus außen',
+          sourceUrl: { url: 'https://cdn.example.test/rathaus.jpg', description: 'rathaus.jpg' },
+        },
+      ],
       payload: {},
     } as never);
-    vi.mocked(listHostMediaAssets).mockResolvedValue([
-      { id: 'asset-1', metadata: { title: 'Bestehend' } },
-      { id: 'asset-3', metadata: { title: 'Neu' } },
-    ] as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
-      { id: 'reference-1', assetId: 'asset-1', role: 'attachment_image', sortOrder: 0 },
-      { id: 'reference-2', assetId: 'asset-teaser', role: 'teaser_image', sortOrder: 4 },
-      { id: 'reference-3', assetId: 'asset-download', role: 'download', sortOrder: 5 },
-    ] as never);
     vi.mocked(updatePoi).mockResolvedValueOnce({
       id: 'poi-1',
       name: 'Rathaus',
@@ -760,50 +681,7 @@ describe('PoiDetailPage', () => {
       expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
     });
 
-    switchSection('settings');
-    fireEvent.click(screen.getByRole('button', { name: 'Bild hinzufügen' }));
-    await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeTruthy();
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Auswählen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
-
-    await waitFor(() => {
-      expect(replaceHostMediaReferencesMock).toHaveBeenCalledWith({
-        fetch: expect.any(Function),
-        targetType: 'poi',
-        targetId: 'poi-1',
-        references: [
-          { id: 'reference-3', assetId: 'asset-download', role: 'download', sortOrder: 5 },
-          { assetId: 'asset-1', role: 'teaser_image', sortOrder: 0 },
-          { assetId: 'asset-teaser', role: 'teaser_image', sortOrder: 1 },
-          { assetId: 'asset-3', role: 'teaser_image', sortOrder: 2 },
-        ],
-      });
-    });
-  });
-
-  it('sends an empty replacement when all loaded poi images are removed', async () => {
-    vi.mocked(getPoi).mockResolvedValueOnce({
-      id: 'poi-1',
-      name: 'Rathaus',
-      payload: {},
-    } as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
-      { id: 'reference-1', assetId: 'asset-1', role: 'attachment_image', sortOrder: 0 },
-    ] as never);
-    vi.mocked(updatePoi).mockResolvedValueOnce({
-      id: 'poi-1',
-      name: 'Rathaus',
-    } as never);
-
-    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
-    });
-
-    switchSection('settings');
+    switchSection('content');
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Entfernen' })).toBeTruthy();
     });
@@ -811,16 +689,11 @@ describe('PoiDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
-      expect(replaceHostMediaReferencesMock).toHaveBeenCalledWith({
-        fetch: expect.any(Function),
-        targetType: 'poi',
-        targetId: 'poi-1',
-        references: [],
-      });
+      expect(vi.mocked(updatePoi)).toHaveBeenCalledWith('poi-1', expect.objectContaining({ mediaContents: [] }));
     });
   });
 
-  it('creates poi items, skips media replacement without references, and navigates to the new detail page', async () => {
+  it('creates poi items and navigates to the new detail page', async () => {
     vi.mocked(createPoi).mockResolvedValueOnce({
       id: 'poi-created',
       name: 'Neuer POI',
@@ -833,9 +706,164 @@ describe('PoiDetailPage', () => {
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).toHaveBeenCalledTimes(1);
-      expect(replaceHostMediaReferencesMock).not.toHaveBeenCalled();
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/poi/$id', params: { id: 'poi-created' } });
     });
+  });
+
+  it('creates poi items with selected library images in mediaContents', async () => {
+    vi.mocked(listHostMediaAssets).mockResolvedValue([
+      {
+        id: 'asset-rathaus',
+        fileName: 'rathaus-aussen.jpg',
+        mimeType: 'image/jpeg',
+        previewUrl: 'https://cdn.example.test/rathaus-aussen.jpg',
+        metadata: { title: 'Rathaus außen', copyright: 'Stadt Musterhausen' },
+      },
+    ] as never);
+    vi.mocked(createPoi).mockResolvedValueOnce({
+      id: 'poi-created',
+      name: 'Neuer POI',
+    } as never);
+
+    render(<PoiDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
+    switchSection('content');
+    fireEvent.click(screen.getByRole('button', { name: 'Aus Mediathek auswählen' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeTruthy();
+      expect(screen.getByText('Rathaus außen')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Auswählen' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(screen.getByDisplayValue('https://cdn.example.test/rathaus-aussen.jpg')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createPoi)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mediaContents: [
+            expect.objectContaining({
+              captionText: 'Rathaus außen',
+              copyright: 'Stadt Musterhausen',
+              contentType: 'image',
+              sourceUrl: {
+                url: 'https://cdn.example.test/rathaus-aussen.jpg',
+                description: 'rathaus-aussen.jpg',
+              },
+            }),
+          ],
+        })
+      );
+    });
+  });
+
+  it('uploads media files and assigns the uploaded image to created poi items', async () => {
+    const uploadedFile = new File(['image-bytes'], 'upload-rathaus.webp', { type: 'image/webp' });
+
+    vi.mocked(uploadHostMediaFile).mockResolvedValueOnce({
+      assetId: 'asset-uploaded',
+      uploadSessionId: 'upload-session-1',
+    } as never);
+    vi.mocked(listHostMediaAssets)
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([
+        {
+          id: 'asset-uploaded',
+          fileName: 'upload-rathaus.webp',
+          mimeType: 'image/webp',
+          previewUrl: 'https://cdn.example.test/upload-rathaus.webp',
+          metadata: { title: 'Upload Rathaus', copyright: 'Stadt Musterhausen' },
+        },
+      ] as never);
+    vi.mocked(createPoi).mockResolvedValueOnce({
+      id: 'poi-created',
+      name: 'Neuer POI',
+    } as never);
+
+    render(<PoiDetailPage mode="create" instanceId="de-musterhausen" />);
+
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
+    switchSection('content');
+    fireEvent.change(screen.getByLabelText('Medium hochladen'), { target: { files: [uploadedFile] } });
+
+    await waitFor(() => {
+      expect(vi.mocked(uploadHostMediaFile)).toHaveBeenCalledWith({
+        fetch: expect.any(Function),
+        file: uploadedFile,
+        mediaType: 'image',
+        visibility: 'public',
+        instanceId: 'de-musterhausen',
+      });
+      expect(screen.getByText('Medium wurde hochgeladen und zugeordnet.')).toBeTruthy();
+      expect(screen.getByDisplayValue('https://cdn.example.test/upload-rathaus.webp')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createPoi)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mediaContents: [
+            expect.objectContaining({
+              captionText: 'Upload Rathaus',
+              copyright: 'Stadt Musterhausen',
+              contentType: 'image',
+              sourceUrl: {
+                url: 'https://cdn.example.test/upload-rathaus.webp',
+                description: 'upload-rathaus.webp',
+              },
+            }),
+          ],
+        })
+      );
+    });
+  });
+
+  it('keeps poi mediaContents unchanged when media upload fails', async () => {
+    const failedFile = new File(['image-bytes'], 'broken-rathaus.png', { type: 'image/png' });
+
+    vi.mocked(uploadHostMediaFile).mockRejectedValueOnce(new Error('upload boom'));
+
+    render(<PoiDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
+    switchSection('content');
+    fireEvent.change(screen.getByLabelText('Medium hochladen'), { target: { files: [failedFile] } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Das Medium konnte nicht hochgeladen werden.')).toBeTruthy();
+    });
+
+    expect(screen.queryByDisplayValue('broken-rathaus.png')).toBeNull();
+  });
+
+  it('shows an upload error when the uploaded media asset is missing after refresh', async () => {
+    const uploadedFile = new File(['image-bytes'], 'missing-rathaus.webp', { type: 'image/webp' });
+
+    vi.mocked(uploadHostMediaFile).mockResolvedValueOnce({
+      assetId: 'asset-missing',
+      uploadSessionId: 'upload-session-1',
+    } as never);
+    vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
+
+    render(<PoiDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
+    switchSection('content');
+    fireEvent.change(screen.getByLabelText('Medium hochladen'), { target: { files: [uploadedFile] } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Das Medium konnte nicht hochgeladen werden.')).toBeTruthy();
+    });
+
+    expect(screen.queryByDisplayValue('missing-rathaus.webp')).toBeNull();
   });
 
   it('shows translated fallback errors when loading or saving fails unexpectedly', async () => {
@@ -901,69 +929,6 @@ describe('PoiDetailPage', () => {
       expect(screen.getByText('Ort konnte nicht gelöscht werden.')).toBeTruthy();
       expect(navigateMock).not.toHaveBeenCalled();
     });
-  });
-
-  it('falls back to zero existing media references when loading media links fails', async () => {
-    vi.mocked(getPoi).mockResolvedValueOnce({
-      id: 'poi-1',
-      name: 'Rathaus',
-      payload: {},
-    } as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockRejectedValueOnce(new Error('media boom'));
-    vi.mocked(updatePoi).mockResolvedValueOnce({
-      id: 'poi-1',
-      name: 'Rathaus',
-    } as never);
-
-    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
-
-    await waitFor(() => {
-      expect(vi.mocked(updatePoi)).toHaveBeenCalledTimes(1);
-      expect(replaceHostMediaReferencesMock).not.toHaveBeenCalled();
-    });
-  });
-
-  it('blocks media reference replacement when existing references failed to load', async () => {
-    vi.mocked(getPoi).mockResolvedValueOnce({
-      id: 'poi-1',
-      name: 'Rathaus',
-      payload: {},
-    } as never);
-    vi.mocked(listHostMediaAssets).mockResolvedValue([
-      { id: 'asset-3', metadata: { title: 'Neu' } },
-    ] as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockRejectedValueOnce(new Error('media boom'));
-    vi.mocked(updatePoi).mockResolvedValueOnce({
-      id: 'poi-1',
-      name: 'Rathaus',
-    } as never);
-
-    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
-    });
-
-    switchSection('settings');
-    fireEvent.click(screen.getByRole('button', { name: 'Bild hinzufügen' }));
-    await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeTruthy();
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Auswählen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Medienreferenzen konnten nicht geladen werden.')).toBeTruthy();
-    });
-
-    expect(vi.mocked(updatePoi)).toHaveBeenCalledTimes(1);
-    expect(replaceHostMediaReferencesMock).not.toHaveBeenCalled();
   });
 
   it('deletes poi items after confirmation and returns to the content overview', async () => {

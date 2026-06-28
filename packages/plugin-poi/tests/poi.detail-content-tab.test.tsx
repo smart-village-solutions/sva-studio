@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -68,7 +68,7 @@ const pt = (key: string) =>
     'cards.prices.entries.title': 'Preise',
     'cards.prices.entries.description': 'Preisangaben',
     'cards.media.entries.title': 'Medieninhalte',
-    'cards.media.entries.description': 'Medienquellen',
+    'cards.media.entries.description': 'Quellen und Metadaten der übertragenen Medien pflegen.',
     'fields.name': 'Name',
     'fields.description': 'Beschreibung',
     'richText.heading2': 'Überschrift 2',
@@ -112,6 +112,9 @@ const pt = (key: string) =>
     'fields.mediaCopyright': 'Copyright',
     'fields.mediaContentType': 'Medientyp',
     'fields.fax': 'Fax',
+    'actions.addMediaManual': 'Manuell hinzufügen',
+    'actions.addImage': 'Aus Mediathek auswählen',
+    'actions.uploadMedia': 'Medium hochladen',
     'actions.addOpeningHour': 'Öffnungszeit hinzufügen',
     'actions.remove': 'Entfernen',
     'actions.geocodeAddress': 'Geo-Koordinaten ermitteln',
@@ -139,12 +142,11 @@ function renderTab(defaultValues?: Partial<PoiDetailFormValues>) {
           webUrls: [{ url: '', description: '' }],
           operator: { name: '', contact: { email: '' } },
           prices: [{ name: '', amount: '', category: '', description: '' }],
-          mediaContents: [{ captionText: '', copyright: '', contentType: '', sourceUrl: { url: '', description: '' } }],
+          mediaContents: [],
           certificates: [],
           accessibilityInformation: { description: '', types: '', urls: [] },
           payloadText: '{}',
         },
-        media: { images: [] },
         settings: {},
         ...defaultValues,
       } as PoiDetailFormValues,
@@ -187,6 +189,8 @@ describe('PoiDetailContentTab', () => {
     expect(screen.getByText('Medieninhalte')).toBeTruthy();
     expect(screen.getByLabelText('Preiskategorie')).toBeTruthy();
     expect(screen.getByLabelText('Preisbeschreibung')).toBeTruthy();
+    expect(screen.queryByLabelText('Medienbeschriftung')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Manuell hinzufügen' }));
     expect(screen.getByLabelText('Medienbeschriftung')).toBeTruthy();
     expect(screen.getByLabelText('Copyright')).toBeTruthy();
     expect(screen.getByLabelText('Medientyp')).toBeTruthy();

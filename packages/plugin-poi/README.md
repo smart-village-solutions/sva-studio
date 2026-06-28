@@ -4,14 +4,14 @@
 
 ## Architektur-Rolle
 
-Das Paket ist eine fachliche Plugin-Bibliothek im Scope `scope:plugin`. Es hängt auf `@sva/plugin-sdk` für den standardisierten Plugin-Vertrag, Berechtigungen, Admin-Ressourcen und Host-Media-Integration sowie auf `@sva/studio-ui-react` für die Studio-Oberflächen auf.
+Das Paket ist eine fachliche Plugin-Bibliothek im Scope `scope:plugin`. Es hängt auf `@sva/plugin-sdk` für den standardisierten Plugin-Vertrag, Berechtigungen, Admin-Ressourcen und Medienbibliothekszugriffe sowie auf `@sva/studio-ui-react` für die Studio-Oberflächen auf.
 
 Innerhalb der Architektur übernimmt `@sva/plugin-poi` die POI-spezifische Ausprägung eines Standard-Content-Plugins:
 
 - Plugin-ID und Content-Type sind auf `poi` beziehungsweise `poi.point-of-interest` festgelegt.
 - Navigation, Actions, Permissions und Admin-Resource-Bindings werden über den gemeinsamen Standard-Content-Mechanismus erzeugt.
 - Die Datenanbindung erfolgt gegen den Mainserver-Endpunkt `/api/v1/mainserver/poi`.
-- Medienreferenzen für Teaserbilder werden zusätzlich über die Host-Media-Schnittstellen verwaltet.
+- POI-Bilder werden im Mainserver-GraphQL-Modell über `mediaContents` gepflegt. Die Host-Medienbibliothek dient nur als Quelle für Upload und Auswahl.
 
 ## Öffentliche API
 
@@ -33,7 +33,7 @@ Für den Betrieb sind insbesondere diese Rahmenbedingungen relevant:
 
 - React und `@tanstack/react-router` werden als Peer Dependencies vom Host bereitgestellt.
 - Die Listen- und Detailflüsse erwarten den Mainserver-CRUD-Endpunkt unter `/api/v1/mainserver/poi`.
-- Für die Medienauswahl nutzt das Plugin Host-Media-Assets und schreibt Referenzen mit dem Role-Key `teaser_image`.
+- Für die Medienauswahl nutzt das Plugin Host-Media-Assets, übernimmt ausgewählte Bilder aber als `mediaContents` in den POI-Write-Pfad.
 - Die Bearbeitungsseiten sind auf Admin-Routen im Muster `/admin/poi`, `/admin/poi/new` und `/admin/poi/$id` ausgelegt.
 - Die Formularvalidierung erzwingt mindestens einen Namen, akzeptiert nur `https://`-Web-URLs und begrenzt `categoryName` auf 128 Zeichen.
 

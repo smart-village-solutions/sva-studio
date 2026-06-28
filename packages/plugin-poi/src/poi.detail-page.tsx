@@ -3,11 +3,9 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
   listHostMediaAssets,
-  listHostMediaReferencesByTarget,
-  replaceHostMediaReferences,
+  uploadHostMediaFile,
   usePluginTranslation,
   type HostMediaAssetListItem,
-  type HostMediaReferenceSelection,
 } from '@sva/plugin-sdk';
 import {
   Button,
@@ -32,10 +30,8 @@ import {
 } from './poi.detail-form.js';
 import { PoiDetailContentTab } from './poi.detail-content-tab.js';
 import { PoiDetailHistoryTab } from './poi.detail-history-tab.js';
-import { normalizePoiMediaAssetId } from './poi.media-asset-id.js';
 import { createPoiDetailTabDefinitions, type PoiDetailTabId } from './poi.detail-tabs.js';
 import { PoiDetailSettingsTab } from './poi.detail-settings-tab.js';
-import { pluginPoiMediaPickers } from './plugin.js';
 import type { PoiCategoryOption, PoiContentItem } from './poi.types.js';
 import { isHttpsUrl, validatePoiForm } from './poi.validation.js';
 
@@ -72,12 +68,6 @@ const renderPoiTabPanel = ({
 
 const PoiTabTriggerLabel = ({ label }: Readonly<{ label: string }>) => <span>{label}</span>;
 
-const legacyPoiImageRoles = ['attachment_image'] as const;
-
-const isPoiImageReferenceRole = (role: string): boolean =>
-  role === pluginPoiMediaPickers.images.roles[0] ||
-  legacyPoiImageRoles.includes(role as (typeof legacyPoiImageRoles)[number]);
-
 export function PoiDetailPage({
   mode,
   contentId,
@@ -93,14 +83,11 @@ export function PoiDetailPage({
   const methods = useForm<PoiDetailFormValues>({
     defaultValues: createDefaultPoiDetailFormValues(),
   });
-  const { reset, setValue } = methods;
+  const { reset } = methods;
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<PoiContentItem | null>(null);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
-  const [preservedMediaReferences, setPreservedMediaReferences] = React.useState<readonly HostMediaReferenceSelection[]>([]);
-  const [loadedOwnedMediaReferenceCount, setLoadedOwnedMediaReferenceCount] = React.useState(0);
-  const [mediaReferencesLoadFailed, setMediaReferencesLoadFailed] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<PoiDetailTabId>('basis');
   const [visitedTabs, setVisitedTabs] = React.useState<readonly PoiDetailTabId[]>(['basis']);
   const [categoryOptions, setCategoryOptions] = React.useState<readonly PoiCategoryOption[]>([]);
@@ -116,10 +103,31 @@ export function PoiDetailPage({
     try {
       const assets = await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), instanceId });
       setMediaAssets(assets);
+      return assets;
     } catch {
       setMediaAssets([]);
+      return [];
     }
   }, [instanceId]);
+
+  const uploadMediaFile = React.useCallback(
+    async (file: File): Promise<HostMediaAssetListItem> => {
+      const uploaded = await uploadHostMediaFile({
+        fetch: globalThis.fetch.bind(globalThis),
+        file,
+        mediaType: 'image',
+        visibility: 'public',
+        instanceId,
+      });
+      const assets = await refreshMediaAssets();
+      const uploadedAsset = assets.find((asset) => asset.id === uploaded.assetId);
+      if (!uploadedAsset) {
+        throw new Error('poi_media_uploaded_asset_not_found');
+      }
+      return uploadedAsset;
+    },
+    [instanceId, refreshMediaAssets]
+  );
 
   React.useEffect(() => {
     void listPoiCategories()
@@ -151,36 +159,7 @@ export function PoiDetailPage({
         }
         reset(mapPoiItemToDetailFormValues(item));
         setLoadedItem(item);
-        void listHostMediaReferencesByTarget({
-          fetch: globalThis.fetch.bind(globalThis),
-          instanceId,
-          targetType: 'poi',
-          targetId: item.id,
-        }).then((references) => {
-          if (!active) {
-            return;
-          }
-          setMediaReferencesLoadFailed(false);
-          const ownedReferences = references.filter((reference) => isPoiImageReferenceRole(reference.role));
-          setLoadedOwnedMediaReferenceCount(ownedReferences.length);
-          setPreservedMediaReferences(references.filter((reference) => isPoiImageReferenceRole(reference.role) === false));
-          setValue(
-            'media.images',
-            ownedReferences
-              .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
-              .map((reference) => normalizePoiMediaAssetId(reference.assetId))
-              .filter((assetId) => assetId.length > 0)
-              .map((assetId) => ({ assetId, label: '' })),
-          );
-          setLoading(false);
-        }).catch(() => {
-          if (active) {
-            setLoadedOwnedMediaReferenceCount(0);
-            setPreservedMediaReferences([]);
-            setMediaReferencesLoadFailed(true);
-            setLoading(false);
-          }
-        });
+        setLoading(false);
       })
       .catch((loadError) => {
         if (active) {
@@ -192,7 +171,7 @@ export function PoiDetailPage({
     return () => {
       active = false;
     };
-  }, [contentId, instanceId, mode, reset, setValue]);
+  }, [contentId, mode, reset]);
 
   const tabs = createPoiDetailTabDefinitions(pt);
 
@@ -302,29 +281,6 @@ export function PoiDetailPage({
 
     try {
       const saved = mode === 'create' ? await createPoi(mutation) : await updatePoi(contentId as string, mutation);
-      const mediaReferences = (values.media.images ?? [])
-        .map((image) => normalizePoiMediaAssetId(image.assetId))
-        .filter((assetId) => assetId.length > 0)
-        .map((assetId, index) => ({
-          assetId,
-          role: pluginPoiMediaPickers.images.roles[0],
-          sortOrder: index,
-        }));
-      if (mediaReferencesLoadFailed && mediaReferences.length > 0) {
-        setStatus({ kind: 'error', text: pt('messages.mediaReferencesUnavailable') });
-        setActiveTab('settings');
-        return;
-      }
-      const nextReferences = [...preservedMediaReferences, ...mediaReferences];
-      if (nextReferences.length > 0 || loadedOwnedMediaReferenceCount > 0) {
-        await replaceHostMediaReferences({
-          fetch: globalThis.fetch.bind(globalThis),
-          instanceId,
-          targetType: 'poi',
-          targetId: saved.id,
-          references: nextReferences,
-        });
-      }
       setStatus({ kind: 'success', text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess') });
       if (mode === 'create') {
         await navigate({ to: '/admin/poi/$id', params: { id: saved.id } });
@@ -362,8 +318,8 @@ export function PoiDetailPage({
         pt={pt}
       />
     ),
-    content: <PoiDetailContentTab pt={pt} />,
-    settings: <PoiDetailSettingsTab mediaAssets={mediaAssets} pt={pt} />,
+    content: <PoiDetailContentTab mediaAssets={mediaAssets} onUploadFile={uploadMediaFile} pt={pt} />,
+    settings: <PoiDetailSettingsTab pt={pt} />,
     history: <PoiDetailHistoryTab pt={pt} />,
   } as const satisfies Record<PoiDetailTabId, React.JSX.Element>;
 

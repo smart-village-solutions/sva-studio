@@ -19,6 +19,29 @@ const compactString = (value?: string | null) => {
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
 
+const normalizeMediaContentType = (value?: string | null) => {
+  const contentType = compactString(value);
+  if (!contentType) {
+    return undefined;
+  }
+
+  if (['image', 'audio', 'video', 'logo', 'attachement'].includes(contentType)) {
+    return contentType;
+  }
+
+  if (contentType.startsWith('image/')) {
+    return 'image';
+  }
+  if (contentType.startsWith('audio/')) {
+    return 'audio';
+  }
+  if (contentType.startsWith('video/')) {
+    return 'video';
+  }
+
+  return 'attachement';
+};
+
 const compactCategoryNames = (values: readonly string[]) =>
   Array.from(new Set(values.map((value) => value.trim()).filter((value) => value.length > 0)));
 
@@ -26,8 +49,7 @@ const hasSubstantiveFields = <T extends Record<string, unknown>, K extends keyof
   entry: T,
   ignoredKey: K,
 ): boolean => {
-  const { [ignoredKey]: _ignored, ...rest } = entry;
-  return Object.keys(rest).length > 0;
+  return Object.keys(entry).some((key) => key !== ignoredKey);
 };
 
 const compactFiniteNumber = (value?: string | number | null) => {
@@ -174,7 +196,7 @@ const serializeMediaContents = (values: readonly PoiMediaContent[]) =>
       ...(compactString(entry?.copyright) ? { copyright: compactString(entry?.copyright) } : {}),
       ...(compactFiniteNumber(entry?.height) !== undefined ? { height: compactFiniteNumber(entry?.height) } : {}),
       ...(compactFiniteNumber(entry?.width) !== undefined ? { width: compactFiniteNumber(entry?.width) } : {}),
-      ...(compactString(entry?.contentType) ? { contentType: compactString(entry?.contentType) } : {}),
+      ...(normalizeMediaContentType(entry?.contentType) ? { contentType: normalizeMediaContentType(entry?.contentType) } : {}),
       ...(entry?.sourceUrl && compactWebUrls([entry.sourceUrl]).length > 0
         ? { sourceUrl: compactWebUrls([entry.sourceUrl])[0] }
         : {}),

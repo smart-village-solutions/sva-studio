@@ -42,11 +42,6 @@ export type PoiPriceFormValue = Omit<
     maxChildrenCount?: string;
   }>;
 
-export type PoiMediaAttachment = Readonly<{
-  assetId: string;
-  label?: string;
-}>;
-
 export type PoiDetailFormValues = Readonly<{
   name: string;
   basis: {
@@ -78,9 +73,6 @@ export type PoiDetailFormValues = Readonly<{
     accessibilityInformation: PoiAccessibilityInformation;
     tagsText: string;
     payloadText: string;
-  };
-  media: {
-    images: readonly PoiMediaAttachment[];
   };
   settings: Record<string, never>;
 }>;

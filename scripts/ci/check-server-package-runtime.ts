@@ -248,7 +248,45 @@ export const collectDistRuntimeEntryPoints = (packageDir: string): string[] => {
   return [...entryPoints].sort();
 };
 
-export const syncInjectedWorkspacePackageDists = (rootDir: string): number => {
+const resolveWorkspaceRuntimePackageDirs = (
+  rootDir: string,
+  packageDir: string,
+  workspacePackages = discoverWorkspacePackages(rootDir)
+): ReadonlySet<string> => {
+  const packageDirs = new Set<string>();
+  const pending = [packageDir];
+
+  while (pending.length > 0) {
+    const currentPackageDir = pending.pop();
+    if (!currentPackageDir || packageDirs.has(currentPackageDir)) {
+      continue;
+    }
+    packageDirs.add(currentPackageDir);
+
+    const packageJson = readJsonFile<{
+      dependencies?: Record<string, string>;
+    }>(path.join(currentPackageDir, 'package.json'));
+
+    for (const [dependencyName, dependencyRange] of Object.entries(packageJson.dependencies ?? {})) {
+      if (!dependencyRange.startsWith('workspace:')) {
+        continue;
+      }
+      const workspaceDependency = workspacePackages.get(dependencyName);
+      if (workspaceDependency) {
+        pending.push(workspaceDependency.packageDir);
+      }
+    }
+  }
+
+  return packageDirs;
+};
+
+export const syncInjectedWorkspacePackageDists = (
+  rootDir: string,
+  packageDirs: Iterable<string> = [...discoverWorkspacePackages(rootDir).values()].map(
+    (workspacePackage) => workspacePackage.packageDir
+  )
+): number => {
   const virtualStoreDir = path.join(rootDir, 'node_modules', '.pnpm');
   if (!isDirectory(virtualStoreDir)) {
     return 0;
@@ -258,7 +296,7 @@ export const syncInjectedWorkspacePackageDists = (rootDir: string): number => {
   const virtualStoreEntries = fs.readdirSync(virtualStoreDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory());
 
-  for (const { packageDir } of discoverWorkspacePackages(rootDir).values()) {
+  for (const packageDir of packageDirs) {
     const packageJson = readJsonFile<{ name?: string }>(path.join(packageDir, 'package.json'));
     if (!packageJson.name) {
       continue;
@@ -301,7 +339,7 @@ export const runDistRuntimeSmokeCheck = async (rootDir: string, packageDir: stri
   }
 
   try {
-    syncInjectedWorkspacePackageDists(rootDir);
+    syncInjectedWorkspacePackageDists(rootDir, resolveWorkspaceRuntimePackageDirs(rootDir, packageDir));
 
     for (const relativeEntryPoint of collectDistRuntimeEntryPoints(packageDir)) {
       const absoluteEntryPoint = path.join(packageDir, relativeEntryPoint);

@@ -236,6 +236,17 @@ describe('check-server-package-runtime', () => {
       },
     });
 
+    createWorkspacePackage(rootDir, {
+      dirName: 'unused',
+      name: '@sva/unused',
+      srcFiles: {
+        'src/index.ts': 'export const unusedFresh = true;\n',
+      },
+      distFiles: {
+        'dist/index.js': 'export const unusedFresh = true;\n',
+      },
+    });
+
     const injectedCoreDir = path.join(
       rootDir,
       'node_modules/.pnpm/@sva+core@file+packages+core/node_modules/@sva/core'
@@ -258,12 +269,35 @@ describe('check-server-package-runtime', () => {
     );
     writeFile(path.join(injectedCoreDir, 'dist/index.js'), 'export const staleExport = true;\n');
 
+    const injectedUnusedDir = path.join(
+      rootDir,
+      'node_modules/.pnpm/@sva+unused@file+packages+unused/node_modules/@sva/unused'
+    );
+    writeFile(
+      path.join(injectedUnusedDir, 'package.json'),
+      JSON.stringify(
+        {
+          name: '@sva/unused',
+          type: 'module',
+          exports: {
+            '.': {
+              default: './dist/index.js',
+            },
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFile(path.join(injectedUnusedDir, 'dist/index.js'), 'export const unusedStale = true;\n');
+
     const scopedNodeModulesDir = path.join(rootDir, 'node_modules/@sva');
     fs.mkdirSync(scopedNodeModulesDir, { recursive: true });
     fs.symlinkSync(injectedCoreDir, path.join(scopedNodeModulesDir, 'core'), 'dir');
 
-    expect(syncInjectedWorkspacePackageDists(rootDir)).toBe(1);
+    expect(syncInjectedWorkspacePackageDists(rootDir, [path.join(rootDir, 'packages/core')])).toBe(1);
     expect(fs.readFileSync(path.join(injectedCoreDir, 'dist/index.js'), 'utf8')).toContain('freshExport');
+    expect(fs.readFileSync(path.join(injectedUnusedDir, 'dist/index.js'), 'utf8')).toContain('unusedStale');
 
     await expect(
       checkServerPackageRuntime({
@@ -272,6 +306,7 @@ describe('check-server-package-runtime', () => {
         mode: 'smoke',
       })
     ).resolves.toEqual([]);
+    expect(fs.readFileSync(path.join(injectedUnusedDir, 'dist/index.js'), 'utf8')).toContain('unusedStale');
 
     fs.rmSync(rootDir, { recursive: true, force: true });
   });

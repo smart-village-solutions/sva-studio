@@ -120,16 +120,23 @@ export const authorizeUpdateContentActions = async (
     }
   }
 
-  const destinationOrganizationId = data.organizationId;
+  const destinationOrganizationId = data.organizationId ?? currentContent.organizationId;
+  const destinationOwnerUserId = data.ownerUserId ?? currentContent.ownerUserId;
+  const destinationOwnerOrganizationId =
+    data.ownerOrganizationId ?? currentContent.ownerOrganizationId;
+  const hasProspectiveMetadataTargetChange =
+    destinationOrganizationId !== currentContent.organizationId ||
+    destinationOwnerUserId !== currentContent.ownerUserId ||
+    destinationOwnerOrganizationId !== currentContent.ownerOrganizationId;
+
   if (
     metadataAction &&
-    destinationOrganizationId &&
-    destinationOrganizationId !== currentContent.organizationId
+    hasProspectiveMetadataTargetChange
   ) {
-    const destinationPermissions = await resolveContentAuthorizationPermissions(
-      actor,
-      destinationOrganizationId
-    );
+    const destinationPermissions =
+      destinationOrganizationId === currentContent.organizationId
+        ? sourcePermissions
+        : await resolveContentAuthorizationPermissions(actor, destinationOrganizationId);
 
     if ('error' in destinationPermissions) {
       return destinationPermissions.error;
@@ -143,8 +150,8 @@ export const authorizeUpdateContentActions = async (
         contentType: currentContent.contentType,
         domainCapability: metadataAction.domainCapability,
         organizationId: destinationOrganizationId,
-        ownerUserId: currentContent.ownerUserId,
-        ownerOrganizationId: destinationOrganizationId,
+        ownerUserId: destinationOwnerUserId,
+        ownerOrganizationId: destinationOwnerOrganizationId,
       },
       { permissions: destinationPermissions.permissions }
     );

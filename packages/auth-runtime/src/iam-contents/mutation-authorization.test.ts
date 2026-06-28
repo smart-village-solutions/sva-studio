@@ -146,7 +146,6 @@ describe('content mutation authorization', () => {
     expectAuthorizationCall(2, 'content.updateMetadata', {
       domainCapability: 'content.update_metadata',
       organizationId: '22222222-2222-4222-8222-222222222222',
-      ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
     });
     expect(authorizeContentActionMock).toHaveBeenCalledTimes(2);
     expect(resolveContentAuthorizationPermissionsMock).toHaveBeenNthCalledWith(
@@ -188,13 +187,12 @@ describe('content mutation authorization', () => {
     expectAuthorizationCall(4, 'content.updateMetadata', {
       domainCapability: 'content.update_metadata',
       organizationId: '22222222-2222-4222-8222-222222222222',
-      ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
     });
     expect(authorizeContentActionMock).toHaveBeenCalledTimes(4);
     expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(2);
   });
 
-  it('does not require authorization against prospective owner attributes', async () => {
+  it('authorizes reassignment against prospective owner attributes', async () => {
     authorizeContentActionMock.mockResolvedValue(null);
 
     await expect(
@@ -220,10 +218,43 @@ describe('content mutation authorization', () => {
     });
     expectAuthorizationCall(2, 'content.updateMetadata', {
       organizationId: '22222222-2222-4222-8222-222222222222',
-      ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+      ownerUserId: '44444444-4444-4444-8444-444444444444',
+      ownerOrganizationId: '11111111-1111-4111-8111-111111111111',
     });
     expect(authorizeContentActionMock).toHaveBeenCalledTimes(2);
     expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('authorizes owner-only transfers against the prospective owner target', async () => {
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    await expect(
+      authorizeUpdateContentActions(
+        actor,
+        'content-1',
+        {
+          ...content(),
+          ownerUserId: '33333333-3333-4333-8333-333333333333',
+          ownerOrganizationId: '11111111-1111-4111-8111-111111111111',
+        },
+        {
+          ownerUserId: '44444444-4444-4444-8444-444444444444',
+        }
+      )
+    ).resolves.toBeNull();
+
+    expectAuthorizationCall(1, 'content.updateMetadata', {
+      organizationId: '11111111-1111-4111-8111-111111111111',
+      ownerUserId: '33333333-3333-4333-8333-333333333333',
+      ownerOrganizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expectAuthorizationCall(2, 'content.updateMetadata', {
+      organizationId: '11111111-1111-4111-8111-111111111111',
+      ownerUserId: '44444444-4444-4444-8444-444444444444',
+      ownerOrganizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expect(authorizeContentActionMock).toHaveBeenCalledTimes(2);
+    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(1);
   });
 
   it('stops on authorization denial before later actions are evaluated', async () => {

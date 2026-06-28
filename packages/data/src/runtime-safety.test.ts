@@ -220,6 +220,20 @@ test('categories permission migration backfills additive plugin permissions with
   assert.doesNotMatch(sql, /DELETE FROM iam\.role_permissions/);
 });
 
+test('content author display migration keeps existing personal content user-authored', () => {
+  const sql = readRepoFile('data/migrations/0062_iam_content_author_display_mode.sql');
+
+  assert.match(sql, /UPDATE iam\.contents\s+SET author_display_mode = 'user'\s+WHERE organization_id IS NULL;/);
+  assert.match(
+    sql,
+    /UPDATE iam\.content_list_projection\s+SET author_display_mode = 'user'\s+WHERE source_system = 'iam'\s+AND organization_id IS NULL;/
+  );
+  assert.match(
+    sql,
+    /SET author_display_mode = content\.author_display_mode\s+FROM iam\.contents AS content/
+  );
+});
+
 test('categories instance-module migration backfills additive module assignments for mainserver content tenants', () => {
   const sql = readRepoFile('data/migrations/0055_iam_categories_instance_modules.sql');
 

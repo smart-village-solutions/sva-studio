@@ -6,6 +6,15 @@ ALTER TABLE iam.contents
 ALTER TABLE iam.content_list_projection
   ADD COLUMN IF NOT EXISTS author_display_mode TEXT NOT NULL DEFAULT 'organization';
 
+UPDATE iam.contents
+SET author_display_mode = 'user'
+WHERE organization_id IS NULL;
+
+UPDATE iam.content_list_projection
+SET author_display_mode = 'user'
+WHERE source_system = 'iam'
+  AND organization_id IS NULL;
+
 DO $$
 BEGIN
   IF NOT EXISTS (

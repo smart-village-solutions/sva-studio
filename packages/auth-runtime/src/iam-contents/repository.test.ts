@@ -445,6 +445,40 @@ describe('iam content repository', () => {
     );
   });
 
+  it('resolves author display when the request changes the organization', async () => {
+    const current = createContentRow({
+      organization_id: '11111111-1111-4111-8111-111111111111',
+      author_display_mode: 'organization',
+      author_display_name: 'Alte Organisation',
+    });
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(current);
+    state.resolveUpdateAuthorDisplayMock.mockResolvedValueOnce({
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Neue Organisation',
+    });
+
+    await expect(
+      updateContent(
+        createUpdateInput({
+          organizationId: '22222222-2222-4222-8222-222222222222',
+        })
+      )
+    ).resolves.toBe('content-1');
+
+    expect(state.resolveUpdateAuthorDisplayMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      current,
+      expect.objectContaining({ organizationId: '22222222-2222-4222-8222-222222222222' })
+    );
+    expect(state.resolveNextContentStateMock).toHaveBeenCalledWith(
+      current,
+      expect.objectContaining({
+        authorDisplayMode: 'organization',
+        authorDisplayName: 'Neue Organisation',
+      })
+    );
+  });
+
   it.each([
     ['draft', 'published', ['status'], 'content.publish'],
     ['draft', 'archived', ['status'], 'content.archive'],

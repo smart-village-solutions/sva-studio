@@ -49,8 +49,13 @@ const resolveAuditAction = (input: {
   return input.changedFields.includes('payload') ? 'content.updatePayload' : 'content.updateMetadata';
 };
 
-const hasExplicitAuthorDisplayChange = (input: UpdateContentInput): boolean =>
-  input.authorDisplayMode !== undefined || input.authorDisplayName !== undefined;
+const hasAuthorDisplayAffectingChange = (
+  current: ContentRow,
+  input: UpdateContentInput
+): boolean =>
+  input.authorDisplayMode !== undefined ||
+  input.authorDisplayName !== undefined ||
+  (input.organizationId !== undefined && input.organizationId !== current.organization_id);
 
 const listSortColumnByField = {
   title: 'content.title',
@@ -270,7 +275,7 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
     if (!current) {
       return undefined;
     }
-    const stateInput = hasExplicitAuthorDisplayChange(input)
+    const stateInput = hasAuthorDisplayAffectingChange(current, input)
       ? {
           ...input,
           ...(await resolveUpdateAuthorDisplay(client, current, input)),

@@ -124,15 +124,12 @@ export const authorizeUpdateContentActions = async (
   const destinationOwnerUserId = data.ownerUserId ?? currentContent.ownerUserId;
   const destinationOwnerOrganizationId =
     data.ownerOrganizationId ?? currentContent.ownerOrganizationId;
-  const hasProspectiveMetadataTargetChange =
+  const hasProspectiveAuthorizationTargetChange =
     destinationOrganizationId !== currentContent.organizationId ||
     destinationOwnerUserId !== currentContent.ownerUserId ||
     destinationOwnerOrganizationId !== currentContent.ownerOrganizationId;
 
-  if (
-    metadataAction &&
-    hasProspectiveMetadataTargetChange
-  ) {
+  if (metadataAction && hasProspectiveAuthorizationTargetChange) {
     const destinationPermissions =
       destinationOrganizationId === currentContent.organizationId
         ? sourcePermissions
@@ -142,21 +139,23 @@ export const authorizeUpdateContentActions = async (
       return destinationPermissions.error;
     }
 
-    const destinationAuthorizationError = await authorizeContentAction(
-      actor,
-      metadataAction.primitiveAction,
-      {
-        contentId,
-        contentType: currentContent.contentType,
-        domainCapability: metadataAction.domainCapability,
-        organizationId: destinationOrganizationId,
-        ownerUserId: destinationOwnerUserId,
-        ownerOrganizationId: destinationOwnerOrganizationId,
-      },
-      { permissions: destinationPermissions.permissions }
-    );
-    if (destinationAuthorizationError) {
-      return destinationAuthorizationError;
+    for (const action of actions) {
+      const destinationAuthorizationError = await authorizeContentAction(
+        actor,
+        action.primitiveAction,
+        {
+          contentId,
+          contentType: currentContent.contentType,
+          domainCapability: action.domainCapability,
+          organizationId: destinationOrganizationId,
+          ownerUserId: destinationOwnerUserId,
+          ownerOrganizationId: destinationOwnerOrganizationId,
+        },
+        { permissions: destinationPermissions.permissions }
+      );
+      if (destinationAuthorizationError) {
+        return destinationAuthorizationError;
+      }
     }
   }
 

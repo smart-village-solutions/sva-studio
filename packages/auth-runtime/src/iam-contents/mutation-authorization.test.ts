@@ -161,7 +161,7 @@ describe('content mutation authorization', () => {
     expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(2);
   });
 
-  it('checks status and payload actions against the current organization during reassignment', async () => {
+  it('checks status and payload actions against current and destination organizations during reassignment', async () => {
     authorizeContentActionMock.mockResolvedValue(null);
 
     await expect(
@@ -188,7 +188,15 @@ describe('content mutation authorization', () => {
       domainCapability: 'content.update_metadata',
       organizationId: '22222222-2222-4222-8222-222222222222',
     });
-    expect(authorizeContentActionMock).toHaveBeenCalledTimes(4);
+    expectAuthorizationCall(5, 'content.updatePayload', {
+      domainCapability: 'content.update_payload',
+      organizationId: '22222222-2222-4222-8222-222222222222',
+    });
+    expectAuthorizationCall(6, 'content.publish', {
+      domainCapability: 'content.publish',
+      organizationId: '22222222-2222-4222-8222-222222222222',
+    });
+    expect(authorizeContentActionMock).toHaveBeenCalledTimes(6);
     expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(2);
   });
 

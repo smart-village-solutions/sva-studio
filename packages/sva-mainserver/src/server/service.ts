@@ -208,7 +208,6 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     const credentials = await loadCredentials(input);
     return {
       ...(credentials.credentialSource ? { credentialSource: credentials.credentialSource } : {}),
-      ...(credentials.credentialOrganizationId ? { credentialOrganizationId: credentials.credentialOrganizationId } : {}),
     };
   };
 

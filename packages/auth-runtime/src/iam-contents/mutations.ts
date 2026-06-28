@@ -28,46 +28,6 @@ import { updateContentSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
-const createContentStateValidationResponse = (
-  error: unknown,
-  requestId?: string
-): Response | null => {
-  if (!isContentStateValidationError(error)) {
-    return null;
-  }
-  if (
-    error.code === 'content_author_display_mode_not_allowed' ||
-    error.code === 'content_author_organization_not_found'
-  ) {
-    return createApiError(
-      400,
-      'invalid_request',
-      error.code === 'content_author_display_mode_not_allowed'
-        ? 'Die gewählte Autorenanzeige ist für diese Organisation nicht erlaubt.'
-        : 'Die Organisation für die Autorenanzeige wurde nicht gefunden.',
-      requestId,
-      { reason_code: error.code }
-    );
-  }
-  if (error.code === 'content_published_at_required') {
-    return createApiError(
-      400,
-      'invalid_request',
-      'Veröffentlichungsdatum ist für veröffentlichte Inhalte erforderlich.',
-      requestId,
-      { reason_code: error.code }
-    );
-  }
-
-  return createApiError(
-    400,
-    'invalid_request',
-    'Das Veröffentlichungsfenster ist ungültig.',
-    requestId,
-    { reason_code: error.code }
-  );
-};
-
 const resolveContentStateValidationMessage = (error: ContentStateValidationError): string => {
   switch (error.code) {
     case 'content_author_display_mode_not_allowed':
@@ -81,6 +41,23 @@ const resolveContentStateValidationMessage = (error: ContentStateValidationError
     default:
       return 'Das Veröffentlichungsfenster ist ungültig.';
   }
+};
+
+const createContentStateValidationResponse = (
+  error: unknown,
+  requestId?: string
+): Response | null => {
+  if (!isContentStateValidationError(error)) {
+    return null;
+  }
+
+  return createApiError(
+    400,
+    'invalid_request',
+    resolveContentStateValidationMessage(error),
+    requestId,
+    { reason_code: error.code }
+  );
 };
 
 export const createContentResponse = async (
@@ -130,13 +107,12 @@ export const createContentResponse = async (
     await completeCreateIdempotency(actor, prepared.idempotencyKey, 201, responseBody);
     return jsonResponse(201, responseBody);
   } catch (error) {
-    const validationResponse = createContentStateValidationResponse(error, actor.requestId);
     const validationError = isContentStateValidationError(error) ? error : null;
-    if (validationResponse && validationError) {
+    if (validationError) {
       return createFailureResponse(
         actor,
         prepared.idempotencyKey,
-        validationResponse.status,
+        400,
         'invalid_request',
         resolveContentStateValidationMessage(validationError)
       );

@@ -321,7 +321,6 @@ export const syncInjectedWorkspacePackageDists = (
 
       const targetDistDir = path.join(injectedPackageDir, 'dist');
       fs.rmSync(targetDistDir, { recursive: true, force: true });
-      fs.mkdirSync(injectedPackageDir, { recursive: true });
       fs.cpSync(sourceDistDir, targetDistDir, { force: true, recursive: true });
       updatedCopies += 1;
     }

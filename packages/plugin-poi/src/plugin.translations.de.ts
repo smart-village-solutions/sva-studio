@@ -134,6 +134,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     mediaUploadSuccess: 'Medium wurde hochgeladen und zugeordnet.',
     mediaUploadError: 'Das Medium konnte nicht hochgeladen werden.',
     mediaUploadUnsupportedType: 'Nur JPG, PNG und WebP können hochgeladen werden.',
+    mediaUploadUnavailableUrl: 'Für dieses Medium ist keine öffentliche URL verfügbar.',
     imagePickerEmpty: 'Keine Bilder gefunden.',
     categoryOptionsLoading: 'Kategorien werden geladen.',
     categoryOptionsLoadError: 'Die Kategorien konnten nicht geladen werden.',
@@ -223,11 +224,12 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
       SU: 'Sonntag',
     },
     mediaContentTypes: {
+      unspecified: 'Nicht festgelegt',
       image: 'Bild',
       audio: 'Audio',
       video: 'Video',
       logo: 'Logo',
-      attachement: 'Anhang',
+      attachment: 'Anhang',
     },
   },
   validation: {

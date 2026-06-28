@@ -300,6 +300,7 @@ export const createS3MediaStoragePort = (
         return {
           deliveryUrl: publicUrl,
           expiresAt: toExpiresAt(),
+          isPublicUrl: true,
         };
       }
     }
@@ -316,6 +317,7 @@ export const createS3MediaStoragePort = (
     return {
       deliveryUrl,
       expiresAt: toExpiresAt(),
+      isPublicUrl: false,
     };
   };
 

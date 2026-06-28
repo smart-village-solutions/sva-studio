@@ -299,7 +299,7 @@ const enrichListItemWithPreviewUrl = async (input: {
       visibility: input.item.visibility,
     });
 
-    if (!delivery?.deliveryUrl) {
+    if (!delivery?.deliveryUrl || delivery.isPublicUrl !== true) {
       return input.item;
     }
 

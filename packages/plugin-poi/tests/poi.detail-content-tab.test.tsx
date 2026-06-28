@@ -115,7 +115,8 @@ const pt = (key: string) =>
     'values.mediaContentTypes.audio': 'Audio',
     'values.mediaContentTypes.video': 'Video',
     'values.mediaContentTypes.logo': 'Logo',
-    'values.mediaContentTypes.attachement': 'Anhang',
+    'values.mediaContentTypes.attachment': 'Anhang',
+    'values.mediaContentTypes.unspecified': 'Nicht festgelegt',
     'fields.fax': 'Fax',
     'actions.addMediaManual': 'Manuell hinzufügen',
     'actions.addImage': 'Aus Mediathek auswählen',
@@ -213,6 +214,7 @@ describe('PoiDetailContentTab', () => {
     expect(screen.getByRole('option', { name: 'Audio' })).toHaveProperty('value', 'audio');
     expect(screen.getByRole('option', { name: 'Video' })).toHaveProperty('value', 'video');
     expect(screen.getByRole('option', { name: 'Logo' })).toHaveProperty('value', 'logo');
-    expect(screen.getByRole('option', { name: 'Anhang' })).toHaveProperty('value', 'attachement');
+    expect(screen.getByRole('option', { name: 'Anhang' })).toHaveProperty('value', 'attachment');
+    expect(screen.getByRole('option', { name: 'Nicht festgelegt' })).toHaveProperty('value', '');
   });
 });

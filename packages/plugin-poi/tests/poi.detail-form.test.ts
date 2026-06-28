@@ -948,7 +948,7 @@ describe('poi.detail-form', () => {
       { contentType: 'image' },
       { contentType: 'audio' },
       { contentType: 'video' },
-      { contentType: 'attachement' },
+      { contentType: 'attachment' },
       { contentType: 'logo' },
     ]);
   });

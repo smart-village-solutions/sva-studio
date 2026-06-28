@@ -1,6 +1,6 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { listHostMediaAssets, registerPluginTranslationResolver, uploadHostMediaFile } from '@sva/plugin-sdk';
+import { listHostMediaAssets, listHostMediaReferencesByTarget, registerPluginTranslationResolver, uploadHostMediaFile } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPoi, deletePoi, getPoi, listPoiCategories, updatePoi } from '../src/poi.api.js';
 
@@ -35,6 +35,7 @@ vi.mock('@sva/plugin-sdk', async () => {
       killSwitchEnabled: false,
     })),
     listHostMediaAssets: vi.fn(async () => []),
+    listHostMediaReferencesByTarget: vi.fn(async () => []),
     uploadHostMediaFile: vi.fn(async () => ({ assetId: 'uploaded-asset', uploadSessionId: 'upload-1' })),
   };
 });
@@ -59,6 +60,8 @@ describe('PoiDetailPage', () => {
     vi.mocked(updatePoi).mockReset();
     vi.mocked(listHostMediaAssets).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockReset();
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([] as never);
     vi.mocked(uploadHostMediaFile).mockReset();
     vi.mocked(uploadHostMediaFile).mockResolvedValue({ assetId: 'uploaded-asset', uploadSessionId: 'upload-1' } as never);
     vi.unstubAllGlobals();
@@ -148,6 +151,7 @@ describe('PoiDetailPage', () => {
         'poi.messages.mediaUploadSuccess': 'Medium wurde hochgeladen und zugeordnet.',
         'poi.messages.mediaUploadError': 'Das Medium konnte nicht hochgeladen werden.',
         'poi.messages.mediaUploadUnsupportedType': 'Nur JPG, PNG und WebP können hochgeladen werden.',
+        'poi.messages.mediaUploadUnavailableUrl': 'Für dieses Medium ist keine öffentliche URL verfügbar.',
         'poi.actions.deleteConfirm': 'Wirklich löschen?',
         'poi.actions.geocodeAddress': 'Geo-Koordinaten ermitteln',
         'poi.actions.geocodingAddress': 'Geo-Koordinaten werden ermittelt',
@@ -163,6 +167,12 @@ describe('PoiDetailPage', () => {
         'poi.fields.imageSearch': 'Dateiname filtern',
         'poi.fields.imageFileName': 'Dateiname',
         'poi.messages.imagePickerEmpty': 'Keine Bilder gefunden.',
+        'poi.values.mediaContentTypes.unspecified': 'Nicht festgelegt',
+        'poi.values.mediaContentTypes.image': 'Bild',
+        'poi.values.mediaContentTypes.audio': 'Audio',
+        'poi.values.mediaContentTypes.video': 'Video',
+        'poi.values.mediaContentTypes.logo': 'Logo',
+        'poi.values.mediaContentTypes.attachment': 'Anhang',
       };
 
       return labels[key] ?? key;
@@ -233,6 +243,7 @@ describe('PoiDetailPage', () => {
         fileName: 'rathaus-aussen.jpg',
         mimeType: 'image/jpeg',
         previewUrl: 'https://cdn.example.test/rathaus-aussen.jpg',
+        visibility: 'public',
         metadata: { title: 'Rathaus außen' },
       },
       {
@@ -240,7 +251,24 @@ describe('PoiDetailPage', () => {
         fileName: 'stadtpark.jpg',
         mimeType: 'image/jpeg',
         previewUrl: 'https://cdn.example.test/stadtpark.jpg',
+        visibility: 'public',
         metadata: { title: 'Stadtpark' },
+      },
+      {
+        id: 'asset-protected',
+        fileName: 'intern.jpg',
+        mimeType: 'image/jpeg',
+        previewUrl: 'https://signed.example.test/intern.jpg',
+        visibility: 'protected',
+        metadata: { title: 'Intern' },
+      },
+      {
+        id: 'asset-without-url',
+        fileName: 'ohne-url.jpg',
+        mimeType: 'image/jpeg',
+        previewUrl: null,
+        visibility: 'public',
+        metadata: { title: 'Ohne URL' },
       },
     ] as never);
     render(<PoiDetailPage mode="edit" contentId="poi-1" />);
@@ -267,12 +295,24 @@ describe('PoiDetailPage', () => {
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).queryByText('Rathaus außen')).toBeNull();
     expect(within(dialog).getByText('Stadtpark')).toBeTruthy();
+    expect(within(dialog).queryByText('Intern')).toBeNull();
+    expect(within(dialog).queryByText('Ohne URL')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Auswählen' }));
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(screen.getByDisplayValue('https://cdn.example.test/stadtpark.jpg')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aus Mediathek auswählen' }));
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeTruthy();
+    });
+    expect(within(screen.getByRole('dialog')).queryByText('Stadtpark')).toBeNull();
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
     });
 
     const removeButtons = screen.getAllByRole('button', { name: 'Entfernen' });
@@ -293,7 +333,7 @@ describe('PoiDetailPage', () => {
     expect(screen.getByText('Noch keine Historie verfügbar.')).toBeTruthy();
   });
 
-  it('loads the poi editor from GraphQL content without waiting for media references', async () => {
+  it('loads the poi editor from GraphQL content and keeps missing legacy media references optional', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',
       name: 'Rathaus',
@@ -309,6 +349,54 @@ describe('PoiDetailPage', () => {
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
+    });
+  });
+
+  it('migrates legacy poi image references into mediaContents during edit loading', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      payload: {},
+    } as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
+      { assetId: 'asset-teaser', role: 'teaser_image', sortOrder: 0 },
+      { assetId: 'asset-attachment', role: 'attachment_image', sortOrder: 1 },
+    ] as never);
+    vi.mocked(listHostMediaAssets)
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([
+        {
+          id: 'asset-teaser',
+          fileName: 'teaser.jpg',
+          mimeType: 'image/jpeg',
+          previewUrl: 'https://cdn.example.test/teaser.jpg',
+          visibility: 'public',
+          metadata: { title: 'Teaser' },
+        },
+        {
+          id: 'asset-attachment',
+          fileName: 'anhang.jpg',
+          mimeType: 'image/jpeg',
+          previewUrl: 'https://cdn.example.test/anhang.jpg',
+          visibility: 'public',
+          metadata: { title: 'Anhang' },
+        },
+      ] as never);
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" instanceId="de-musterhausen" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
+    });
+
+    switchSection('content');
+    expect(await screen.findByDisplayValue('https://cdn.example.test/teaser.jpg')).toBeTruthy();
+    expect(screen.getByDisplayValue('https://cdn.example.test/anhang.jpg')).toBeTruthy();
+    expect(vi.mocked(listHostMediaReferencesByTarget)).toHaveBeenCalledWith({
+      fetch: expect.any(Function),
+      targetType: 'poi',
+      targetId: 'poi-1',
+      instanceId: 'de-musterhausen',
     });
   });
 
@@ -605,6 +693,7 @@ describe('PoiDetailPage', () => {
     expect(vi.mocked(listHostMediaAssets)).toHaveBeenCalledWith({
       fetch: expect.any(Function),
       instanceId: 'de-musterhausen',
+      visibility: 'public',
     });
   });
 

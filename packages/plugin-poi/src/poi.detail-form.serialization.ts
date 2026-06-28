@@ -12,34 +12,12 @@ import type {
   PoiFormGeoLocationValue,
   PoiLocationFormValue,
 } from './poi.detail-form.types.js';
+import { normalizeMediaContentType } from './poi.detail-media-content-type.js';
 import { normalizeOpeningHourWeekday } from './poi.opening-hours.js';
 
 const compactString = (value?: string | null) => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
-};
-
-const normalizeMediaContentType = (value?: string | null) => {
-  const contentType = compactString(value);
-  if (!contentType) {
-    return undefined;
-  }
-
-  if (['image', 'audio', 'video', 'logo', 'attachement'].includes(contentType)) {
-    return contentType;
-  }
-
-  if (contentType.startsWith('image/')) {
-    return 'image';
-  }
-  if (contentType.startsWith('audio/')) {
-    return 'audio';
-  }
-  if (contentType.startsWith('video/')) {
-    return 'video';
-  }
-
-  return 'attachement';
 };
 
 const compactCategoryNames = (values: readonly string[]) =>

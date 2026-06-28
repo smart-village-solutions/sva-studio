@@ -502,10 +502,10 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Seedet Basis-Permissions rückwärtskompatibel sowohl mit `permission_key` als auch mit strukturierten Feldern.
 3. `packages/iam-core/src/authorization-engine.ts`
    - Wertet Allow-Grants, Resource-Spezifität, Org-Hierarchie und Scope-Daten deterministisch in einer festen Prioritätsreihenfolge aus.
-4. `packages/iam-core/src/permission-store.ts`
-   - Lädt effektive Rollen-Permissions org-kontextbezogen aus Postgres und normalisiert Parent-Mitgliedschaften auf den angefragten Zielkontext.
-5. `packages/iam-core/src/shared.ts`
-   - Transformiert DB-Permission-Zeilen in deduplizierte effektive Permissions inklusive Scope-Daten.
+4. `packages/iam-core/src/authorization-contract.ts`
+   - Hält Authorize-Verträge, Reason Codes und Permission-Typen.
+5. `packages/auth-runtime/src/iam-authorization/permission-store.ts`
+   - Hält Runtime-nahe Snapshot-, Redis- und DB-Recompute-Infrastruktur.
 
 ### Ergänzung 2026-03: IAM-Transparenz-UI
 
@@ -537,7 +537,7 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Führte historisch `iam.account_permissions` als instanzgebundene Zuordnung `Account -> Permission -> effect` ein; das aktuelle Zielmodell entfernt diese Tabelle wieder.
 2. `packages/iam-admin/src/users`
    - Entfernt direkte Nutzerrechte aus User-Update- und Read-Pfaden; Berechtigungen kommen über Rollen und Gruppen.
-3. `packages/iam-core/src/permission-store.ts` und `packages/iam-core/src/shared.ts`
+3. `packages/auth-runtime/src/iam-authorization/permission-store.ts` und `packages/auth-runtime/src/iam-authorization/shared-effective-permissions.ts`
    - Laden Rollen- und Gruppenrechte und serialisieren deren Herkunft ohne `direct_user`.
 4. `packages/iam-core/src/authorization-contract.ts` und `packages/core/src/iam/account-management-contract.ts`
    - Halten Authorize-Verträge und allgemeine IAM-Projektionen allow-only und ohne direkte Nutzerrechte.

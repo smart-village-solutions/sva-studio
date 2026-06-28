@@ -474,6 +474,8 @@ Fehlerpfad:
 5. Bei Miss, Stale oder Integritätsfehler erfolgt Recompute aus Postgres als fachlicher Quelle; ein erfolgreicher Recompute schreibt zuerst Redis und danach den L1-Cache.
 6. Bei Redis- oder Recompute-Fehler im sicherheitskritischen Pfad greift Fail-Closed mit HTTP `503` und Fehlercode `database_unavailable`.
 
+Die Runtime lädt effektive Permissions über `packages/auth-runtime/src/iam-authorization/permission-store.ts`. Die eigentliche Entscheidung wird anschließend synchron über `@sva/iam-core` ausgeführt. Der Package-Cut darf den Cache-Hit-Pfad nicht um zusätzliche Redis- oder Datenbankzugriffe erweitern.
+
 Fehlerpfad:
 
 - Eventverlust bei Invalidation: TTL begrenzt die Stale-Dauer; ein stale Snapshot darf bei technischem Fehler nicht fachlich weiterverwendet werden.

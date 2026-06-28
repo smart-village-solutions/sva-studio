@@ -6,6 +6,8 @@ Framework-agnostisches Kernpaket von SVA Studio. `@sva/core` bündelt die stabil
 
 `@sva/core` bildet die fachliche Unterkante des Workspaces: Das Paket exportiert ausschließlich TypeScript- und Node-kompatible Kernlogik ohne Framework- oder Infrastrukturabhängigkeiten und kann deshalb sowohl von Frontend- als auch von serverseitigen Paketen konsumiert werden. Während der IAM-Hard-Cut-Migration nutzt `@sva/core` `@sva/iam-core` als begrenzte Workspace-Abhängigkeit für gemeinsam verbleibende IAM-Vertragstypen.
 
+Authorize-Engine und Authorize-Verträge liegen in `@sva/iam-core`; `@sva/core` hält weiterhin allgemeine Kernverträge und nicht-Authorize-spezifische IAM-Helfer.
+
 Konkret kapselt das Paket Regeln und Datenträgerformate, die nicht an React, Router-Bindings oder konkrete Infrastrukturadapter gebunden sein sollen:
 
 - Content-spezifische Status-, Capability- und Zugriffsauswertung für IAM-nahe Inhalte

@@ -6,6 +6,8 @@ Kleines IAM-Kernpaket für gemeinsam genutzte Autorisierungsverträge im SVA-Wor
 
 `@sva/iam-core` ist eine schlanke Bibliothek an der IAM-Grenze des Monorepos. Sie kapselt keine eigene Persistenz oder Framework-Bindings, sondern dient als fokussierter Einstiegspunkt für Autorisierungskontrakte, Permission-Auswertung und IAM-bezogene Invarianten.
 
+Die Authorize-Engine und die Authorize-Verträge liegen in diesem Package. `@sva/core` ist kein Owner dieser Entscheidung mehr.
+
 ## Öffentliche API
 
 Die aktuelle API ist bewusst klein und framework-unabhängig:

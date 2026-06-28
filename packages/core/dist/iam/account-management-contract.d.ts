@@ -1,4 +1,4 @@
-import type { IamLegalTextTargeting, IamRolePermissionAssignmentScope, IamUuid } from './authorization-contract';
+import type { IamLegalTextTargeting, IamRolePermissionAssignmentScope, IamUuid } from '@sva/iam-core';
 import type { IamPermissionRuntimeScope } from './account-management.js';
 import type { WasteManagementSettingsRecord } from '../waste-management-contract.js';
 export type ApiErrorCode = 'unauthorized' | 'forbidden' | 'not_found' | 'invalid_request' | 'invalid_instance_id' | 'invalid_organization_id' | 'organization_inactive' | 'rate_limited' | 'csrf_validation_failed' | 'idempotency_key_required' | 'idempotency_key_reuse' | 'idempotency_in_progress' | 'keycloak_unavailable' | 'tenant_auth_client_secret_missing' | 'tenant_admin_client_not_configured' | 'tenant_admin_client_secret_missing' | 'encryption_not_configured' | 'database_unavailable' | 'last_admin_protection' | 'self_protection' | 'feature_disabled' | 'conflict' | 'legal_acceptance_required' | 'reauth_required' | 'internal_error';

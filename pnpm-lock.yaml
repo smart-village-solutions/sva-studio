@@ -491,6 +491,10 @@ importers:
         version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.7)(happy-dom@20.9.0(bufferutil@4.1.0))(jsdom@29.1.1)(msw@2.14.6(@types/node@25.9.1)(typescript@6.0.3))(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
 
   packages/core:
+    dependencies:
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
     devDependencies:
       fast-check:
         specifier: ^3.23.2
@@ -588,10 +592,6 @@ importers:
         version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.7)(happy-dom@20.9.0(bufferutil@4.1.0))(jsdom@29.1.1)(msw@2.14.6(@types/node@25.9.1)(typescript@6.0.3))(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
 
   packages/iam-core:
-    dependencies:
-      '@sva/core':
-        specifier: workspace:*
-        version: link:../core
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.5
@@ -12597,7 +12597,9 @@ snapshots:
       - supports-color
       - typescript
 
-  '@sva/core@file:packages/core': {}
+  '@sva/core@file:packages/core':
+    dependencies:
+      '@sva/iam-core': file:packages/iam-core
 
   '@sva/data-repositories@file:packages/data-repositories(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))':
     dependencies:
@@ -12619,9 +12621,7 @@ snapshots:
       - '@opentelemetry/core'
       - supports-color
 
-  '@sva/iam-core@file:packages/iam-core':
-    dependencies:
-      '@sva/core': file:packages/core
+  '@sva/iam-core@file:packages/iam-core': {}
 
   '@sva/iam-governance@file:packages/iam-governance(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))':
     dependencies:

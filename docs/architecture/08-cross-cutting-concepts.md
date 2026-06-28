@@ -444,7 +444,7 @@ Referenzen:
 - `packages/iam-admin/src/index.ts`
 - `packages/iam-governance/src/index.ts`
 - `packages/instance-registry/src/index.ts`
-- `packages/core/src/iam/authorization-engine.ts`
+- `packages/iam-core/src/authorization-engine.ts`
 - `packages/server-runtime/src/index.ts`
 - `packages/monitoring-client/src/otel.server.ts`
 - `docs/adr/ADR-014-postgres-notify-cache-invalidierung.md`

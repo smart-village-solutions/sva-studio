@@ -28,6 +28,7 @@ export type {
   IamGroupMembership,
   IamGroupType,
   IamInstanceId,
+  IamLegalTextTargeting,
   IamPermissionProvenance,
   IamPermissionSourceKind,
   IamResourceRef,

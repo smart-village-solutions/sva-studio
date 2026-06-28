@@ -4,7 +4,7 @@
 
 ### `@sva/core`
 
-`@sva/core` ist das fachliche Fundament des Monorepos. Das Package enthält framework-agnostische Kernlogik, die von vielen anderen Paketen genutzt wird. Dazu gehören unter anderem Content-Grundmodelle, Routing-Komposition, IAM-Verträge und Autorisierungslogik, Instanz- und Host-Regeln, Runtime-Profile sowie sicherheitsnahe Hilfsfunktionen wie Feldverschlüsselung und E-Mail-Redaction.
+`@sva/core` ist das allgemeine fachliche Fundament des Monorepos. Das Package enthält framework-agnostische Kernlogik, die von vielen anderen Paketen genutzt wird. Dazu gehören unter anderem Content-Grundmodelle, Routing-Komposition, allgemeine IAM-Projektionen, Instanz- und Host-Regeln, Runtime-Profile sowie sicherheitsnahe Hilfsfunktionen wie Feldverschlüsselung und E-Mail-Redaction. Authorize-Verträge und die reine Permission-Engine liegen in `@sva/iam-core`.
 
 Wenn ein Paket fachliche Regeln braucht, die nicht an React, HTTP, Datenbank oder konkrete Infrastruktur gebunden sein sollen, dann gehören diese Regeln in der Regel nach `@sva/core`.
 

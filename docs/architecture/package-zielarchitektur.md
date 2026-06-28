@@ -85,8 +85,7 @@ flowchart TB
   AuthRuntime --> IamCore
   AuthRuntime --> ServerRuntime
   AuthRuntime --> DataRepos
-  IamCore --> Core
-  IamCore --> ServerRuntime
+  Core -.->|IAM-Hard-Cut: Vertragstypen| IamCore
   IamAdmin --> IamCore
   IamAdmin --> ServerRuntime
   IamAdmin --> DataRepos
@@ -145,9 +144,9 @@ Die Zielrichtung ist eine gerichtete Schichtung:
 1. App und Plugins konsumieren öffentliche Verträge.
 2. Routing konsumiert Core- und SDK-Verträge, aber keine Auth-Runtime-Implementierung.
 3. Fachmodule konsumieren `@sva/iam-core`, Server-Runtime und serverseitige Repositories.
-4. `@sva/iam-core` konsumiert Core und Server-Runtime, aber keine Fachmodule.
+4. `@sva/iam-core` bleibt framework-, runtime- und persistenzfrei und konsumiert weder Core noch Server-Runtime.
 5. Repositories konsumieren Core und Server-Runtime, aber keine Fachmodule.
-6. Core bleibt ohne Workspace-Abhängigkeiten.
+6. Core bleibt ohne Framework- oder Infrastrukturabhängigkeiten; während des IAM-Hard-Cuts ist nur die gerichtete Workspace-Abhängigkeit zu `@sva/iam-core` für gemeinsame IAM-Vertragstypen zulässig.
 
 Ergänzende Regeln:
 

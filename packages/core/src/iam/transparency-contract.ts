@@ -1,4 +1,4 @@
-import type { IamInstanceId, IamUuid } from './authorization-contract';
+import type { IamInstanceId, IamUuid } from '@sva/iam-core';
 
 export type IamGovernanceCaseType =
   | 'permission_change'

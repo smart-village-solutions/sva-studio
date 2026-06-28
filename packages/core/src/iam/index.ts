@@ -1,6 +1,5 @@
 export { extractRoles, resolveInstanceId, resolveUserName } from './claims.js';
 export { parseJwtPayload } from './token.js';
-export { evaluateAuthorizeDecision } from './authorization-engine.js';
 export type {
   IamAccountProfile,
   IamAccountStatus,
@@ -98,63 +97,6 @@ export type {
   IamUserTimelineEventCategory,
   IamUserTimelinePerspective,
 } from './transparency-contract.js';
-export type {
-  AllowReasonCode,
-  AuthorizeRequest,
-  AuthorizeReasonCode,
-  AuthorizeResponse,
-  DenyReasonCode,
-  EffectivePermission,
-  HealthReadyResponse,
-  IamApiErrorCode,
-  IamApiErrorResponse,
-  IamAction,
-  IamGeoHierarchyEntry,
-  IamGeoNode,
-  IamGeoNodeType,
-  IamInstanceId,
-  IamRolePermissionAssignmentScope,
-  IamPermissionProvenance,
-  IamPermissionSourceKind,
-  IamResourceRef,
-  IamUuid,
-  LegalAcceptanceActionType,
-  LegalConsentExportRecord,
-  MatchedPermissionSummary,
-  MePermissionsRequest,
-  MePermissionsSubject,
-  MePermissionsResponse,
-  ReadinessStatus,
-  RuntimeDependencyHealth,
-  RuntimeDependencyKey,
-  RuntimeDependencyStatus,
-  RuntimeHealthResponse,
-  RuntimeHealthServices,
-  SnapshotCacheStatus,
-} from './authorization-contract.js';
-export {
-  authorizePerformanceScenarios,
-  buildAuthorizePerformancePayload,
-  renderAuthorizePerformanceMarkdownReport,
-  summarizeAuthorizePerformanceDurations,
-} from './authorize-performance-contract.js';
-export type {
-  AuthorizePerformanceDurationSummary,
-  AuthorizePerformanceEvaluation,
-  AuthorizePerformancePayload,
-  AuthorizePerformanceReportReference,
-  AuthorizePerformanceRequest,
-  AuthorizePerformanceRunResponse,
-  AuthorizePerformanceRunResult,
-  AuthorizePerformanceScenario,
-  AuthorizePerformanceScenarioResult,
-} from './authorize-performance-contract.js';
-export type {
-  IamGroupDetail as IamAdminGroupDetail,
-  IamGroupListItem as IamAdminGroupListItem,
-  IamGroupMembership as IamAdminGroupMembership,
-  IamGroupType as IamAdminGroupType,
-} from './authorization-contract.js';
 export {
   iamRuntimeDiagnosticClassifications,
   iamRuntimeDiagnosticStatuses,
@@ -164,5 +106,3 @@ export {
   iamTenantIamAxisStatuses,
   iamTenantIamSources,
 } from './account-management-contract.js';
-export { allowReasonCodes, denyReasonCodes, iamApiErrorCodes } from './authorization-contract.js';
-export { iamRolePermissionAssignmentScopes } from './authorization-contract.js';

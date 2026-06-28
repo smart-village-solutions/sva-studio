@@ -111,6 +111,11 @@ const pt = (key: string) =>
     'fields.mediaCaption': 'Medienbeschriftung',
     'fields.mediaCopyright': 'Copyright',
     'fields.mediaContentType': 'Medientyp',
+    'values.mediaContentTypes.image': 'Bild',
+    'values.mediaContentTypes.audio': 'Audio',
+    'values.mediaContentTypes.video': 'Video',
+    'values.mediaContentTypes.logo': 'Logo',
+    'values.mediaContentTypes.attachement': 'Anhang',
     'fields.fax': 'Fax',
     'actions.addMediaManual': 'Manuell hinzufügen',
     'actions.addImage': 'Aus Mediathek auswählen',
@@ -195,5 +200,19 @@ describe('PoiDetailContentTab', () => {
     expect(screen.getByLabelText('Copyright')).toBeTruthy();
     expect(screen.getByLabelText('Medientyp')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Öffnungszeit hinzufügen' })).toBeTruthy();
+  });
+
+  it('renders media content type as a fixed Mainserver dropdown', () => {
+    renderTab();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Manuell hinzufügen' }));
+
+    const contentTypeSelect = screen.getByRole('combobox', { name: 'Medientyp' });
+    expect(contentTypeSelect).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Bild' })).toHaveProperty('value', 'image');
+    expect(screen.getByRole('option', { name: 'Audio' })).toHaveProperty('value', 'audio');
+    expect(screen.getByRole('option', { name: 'Video' })).toHaveProperty('value', 'video');
+    expect(screen.getByRole('option', { name: 'Logo' })).toHaveProperty('value', 'logo');
+    expect(screen.getByRole('option', { name: 'Anhang' })).toHaveProperty('value', 'attachement');
   });
 });

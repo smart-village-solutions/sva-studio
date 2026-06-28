@@ -222,6 +222,13 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
       SA: 'Samstag',
       SU: 'Sonntag',
     },
+    mediaContentTypes: {
+      image: 'Bild',
+      audio: 'Audio',
+      video: 'Video',
+      logo: 'Logo',
+      attachement: 'Anhang',
+    },
   },
   validation: {
     name: 'Der Name ist erforderlich.',

@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Select,
   StudioField,
   StudioFieldGroup,
 } from '@sva/studio-ui-react';
@@ -23,6 +24,7 @@ const previewPanelClassName =
 type MediaUploadPhase = 'idle' | 'initializing' | 'uploading' | 'finalizing' | 'success' | 'error';
 
 const acceptedUploadMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const mediaContentTypeOptions = ['image', 'audio', 'video', 'logo', 'attachement'] as const;
 
 const isSupportedUploadFile = (file: File): boolean => acceptedUploadMimeTypes.has(file.type);
 
@@ -210,7 +212,13 @@ export function PoiDetailMediaTab({
                     <Input id={`poi-media-copyright-${index}`} {...register(`content.mediaContents.${index}.copyright`)} />
                   </StudioField>
                   <StudioField id={`poi-media-content-type-${index}`} label={pt('fields.mediaContentType')}>
-                    <Input id={`poi-media-content-type-${index}`} {...register(`content.mediaContents.${index}.contentType`)} />
+                    <Select id={`poi-media-content-type-${index}`} {...register(`content.mediaContents.${index}.contentType`)}>
+                      {mediaContentTypeOptions.map((contentType) => (
+                        <option key={contentType} value={contentType}>
+                          {pt(`values.mediaContentTypes.${contentType}`)}
+                        </option>
+                      ))}
+                    </Select>
                   </StudioField>
                 </StudioFieldGroup>
                 <div className="flex justify-end">

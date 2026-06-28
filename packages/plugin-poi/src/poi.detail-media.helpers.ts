@@ -5,7 +5,7 @@ import { normalizeMediaContentType } from './poi.detail-media-content-type.js';
 
 export type MediaUploadPhase = 'idle' | 'initializing' | 'uploading' | 'finalizing' | 'success' | 'error';
 
-export const acceptedUploadMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const acceptedUploadMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 export const isSupportedUploadFile = (file: File): boolean => acceptedUploadMimeTypes.has(file.type);
 

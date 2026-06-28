@@ -98,22 +98,14 @@ export function usePoiDetailMediaState({
     [append, resetUploadStatus]
   );
 
-  const handleSelectAsset = React.useCallback(
-    (asset: HostMediaAssetListItem) => {
-      if (appendMediaContent(asset)) {
-        closeDialog();
-      }
-    },
-    [appendMediaContent, closeDialog]
-  );
+  const handleSelectAsset = React.useCallback((asset: HostMediaAssetListItem) => {
+    if (appendMediaContent(asset)) closeDialog();
+  }, [appendMediaContent, closeDialog]);
 
-  const handleRemove = React.useCallback(
-    (index: number) => {
-      remove(index);
-      resetUploadStatus();
-    },
-    [remove, resetUploadStatus]
-  );
+  const handleRemove = React.useCallback((index: number) => {
+    remove(index);
+    resetUploadStatus();
+  }, [remove, resetUploadStatus]);
 
   const handleManualAdd = React.useCallback(() => {
     append(createDefaultMediaContent());

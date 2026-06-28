@@ -1,11 +1,9 @@
 import winston, { type Logger, type Logform } from 'winston';
 import Transport from 'winston-transport';
 import type { OtelLogRecord, OtelLogger } from './otel-logger.types.js';
-import type { DevelopmentLogJsonValue } from './dev-log-buffer.server.js';
 
 import { getWorkspaceContext } from '../observability/context.server.js';
 import { getGlobalLoggerProviderFromMonitoring } from '../observability/monitoring-client.bridge.server.js';
-import { appendDevelopmentLogEntry } from './dev-log-buffer.server.js';
 import {
   getLoggingRuntimeConfig,
   isOtelRuntimeReady,
@@ -13,25 +11,10 @@ import {
   registerOtelAwareLogger,
   unregisterOtelAwareLogger,
 } from './logging-runtime.server.js';
-import { redactLogMeta, serializeAndRedactLogValue } from '../logging/redaction.js';
+import { redactLogMeta } from '../logging/redaction.js';
 
 export const redactObject = (value: Record<string, unknown>): Record<string, unknown> => {
   return redactLogMeta(value);
-};
-
-const normalizeDevelopmentUiContext = (
-  context: unknown
-): Record<string, DevelopmentLogJsonValue> | undefined => {
-  if (!context || typeof context !== 'object' || Array.isArray(context)) {
-    return undefined;
-  }
-
-  const serializedContext = serializeAndRedactLogValue(context);
-  if (!serializedContext || typeof serializedContext !== 'object' || Array.isArray(serializedContext)) {
-    return undefined;
-  }
-
-  return serializedContext as Record<string, DevelopmentLogJsonValue>;
 };
 
 const enrichWithContext = winston.format((info) => {
@@ -40,7 +23,10 @@ const enrichWithContext = winston.format((info) => {
   if (context.workspaceId && !info.workspace_id) {
     info.workspace_id = context.workspaceId;
   }
-  const existingContext = typeof info.context === 'object' && info.context ? (info.context as Record<string, unknown>) : {};
+  const existingContext =
+    typeof info.context === 'object' && info.context
+      ? (info.context as Record<string, unknown>)
+      : {};
   const nextContext: Record<string, unknown> = { ...existingContext };
 
   if (context.requestId && !nextContext.request_id) {
@@ -134,25 +120,6 @@ class DirectOtelTransport extends Transport {
   }
 }
 
-class DevelopmentUiTransport extends Transport {
-  log(info: Logform.TransformableInfo, callback?: () => void) {
-    setImmediate(() => {
-      const { level, message, component, context, timestamp } = info;
-
-      appendDevelopmentLogEntry({
-        timestamp: typeof timestamp === 'string' ? timestamp : new Date().toISOString(),
-        level: (typeof level === 'string' ? level : 'info') as 'debug' | 'info' | 'warn' | 'error' | 'verbose',
-        source: 'server',
-        message: typeof message === 'string' ? message : String(message),
-        component: typeof component === 'string' ? component : undefined,
-        context: normalizeDevelopmentUiContext(context),
-      });
-
-      callback?.();
-    });
-  }
-}
-
 const patchLoggerCloseForRegistryCleanup = (logger: Logger, cleanup: () => void): void => {
   const originalClose = logger.close.bind(logger);
   let cleanedUp = false;
@@ -182,7 +149,10 @@ const resolveEffectiveLoggingMode = (input: {
   return 'degraded';
 };
 
-const buildConsoleTransport = (environment: string, emergencyFallback = false): winston.transport => {
+const buildConsoleTransport = (
+  environment: string,
+  emergencyFallback = false
+): winston.transport => {
   if (environment === 'development' && !emergencyFallback) {
     return new winston.transports.Console({
       format: winston.format.combine(
@@ -194,7 +164,7 @@ const buildConsoleTransport = (environment: string, emergencyFallback = false): 
           const metaString = Object.keys(meta).length > 0 ? JSON.stringify(meta) : '';
           return `${timestamp} ${level}: ${message} ${metaString}`.trim();
         })
-      )
+      ),
     });
   }
 
@@ -213,7 +183,7 @@ export const createSdkLogger = ({
   environment = process.env.NODE_ENV ?? 'development',
   level = 'info',
   enableConsole,
-  enableOtel
+  enableOtel,
 }: LoggerOptions): Logger => {
   const runtimeConfig = getLoggingRuntimeConfig();
   const consoleEnabled = enableConsole ?? runtimeConfig.consoleEnabled;
@@ -228,10 +198,6 @@ export const createSdkLogger = ({
   if (otelEnabled && isOtelRuntimeReady()) {
     otelTransport = new DirectOtelTransport();
     transportsArray.push(otelTransport);
-  }
-
-  if (runtimeConfig.uiEnabled) {
-    transportsArray.push(new DevelopmentUiTransport());
   }
 
   if (consoleEnabled) {
@@ -249,19 +215,27 @@ export const createSdkLogger = ({
       environment,
       logging_mode: loggingMode,
     },
-    format: winston.format.combine(winston.format.timestamp(), enrichWithContext(), redactSensitive(), winston.format.json()),
-    transports: transportsArray
+    format: winston.format.combine(
+      winston.format.timestamp(),
+      enrichWithContext(),
+      redactSensitive(),
+      winston.format.json()
+    ),
+    transports: transportsArray,
   });
 
   if (!consoleEnabled && !otelEnabled && !hasReportedMissingTransport) {
     hasReportedMissingTransport = true;
-    logger.error('Observability degraded: logger started without configured transport; emergency console fallback enabled', {
-      operation: 'observability_bootstrap',
-      error_type: 'logger_transport_missing',
-      logger_mode: 'degraded',
-      otel_requested: otelEnabled,
-      console_enabled: consoleEnabled,
-    });
+    logger.error(
+      'Observability degraded: logger started without configured transport; emergency console fallback enabled',
+      {
+        operation: 'observability_bootstrap',
+        error_type: 'logger_transport_missing',
+        logger_mode: 'degraded',
+        otel_requested: otelEnabled,
+        console_enabled: consoleEnabled,
+      }
+    );
   }
 
   if (otelEnabled && isOtelRuntimePending()) {

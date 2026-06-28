@@ -7,7 +7,7 @@
 Das Paket stellt die gemeinsame Server-Runtime für Node-basierte SVA-Dienste bereit. Es kapselt wiederverwendbare Infrastruktur, die nicht in Fachlogik oder UI-Pakete gehört:
 
 - Request- und Workspace-Kontext über `AsyncLocalStorage`
-- strukturierte Server-Logs mit Redaction, Development-Puffer und OpenTelemetry-Anbindung
+- strukturierte Server-Logs mit Redaction, Console- und OpenTelemetry-Anbindung
 - Bootstrap-Helfer für die Initialisierung der Observability-Laufzeit
 - standardisierte JSON-Fehlerantworten für serverseitige Handler
 - Multi-Host-Instanzkonfiguration für Host-basierte Deployments
@@ -19,7 +19,7 @@ Die Kernidee ist, servernahe Querschnittsfunktionen zentral zu halten, damit and
 Der Einstiegspunkt ist `src/index.ts`. Er exportiert eine kleine, auf Server-Laufzeit ausgerichtete API:
 
 - Logging:
-  `createSdkLogger`, `redactObject`, `getLoggingRuntimeConfig`, `getOtelInitializationResult`, `readDevelopmentLogEntries`
+  `createSdkLogger`, `redactObject`, `getLoggingRuntimeConfig`, `getOtelInitializationResult`
 - Request-Kontext:
   `withRequestContext`, `getHeadersFromRequest`, `extractWorkspaceIdFromHeaders`, `extractRequestIdFromHeaders`, `extractTraceIdFromHeaders`
 - Observability-Kontext:
@@ -33,7 +33,6 @@ Zusätzlich veröffentlicht das Paket gezielte Subpath-Exports für servernahe I
 
 - `@sva/server-runtime/logger/index.server`
 - `@sva/server-runtime/logger/logging-runtime.server`
-- `@sva/server-runtime/logger/dev-log-buffer.server`
 - `@sva/server-runtime/middleware/request-context.server`
 - `@sva/server-runtime/observability/context.server`
 
@@ -70,7 +69,6 @@ packages/server-runtime/
     ├── instance/
     │   └── config.server.ts
     ├── logger/
-    │   ├── dev-log-buffer.server.ts
     │   ├── index.server.ts
     │   ├── logging-runtime.server.ts
     │   └── otel-logger.types.ts

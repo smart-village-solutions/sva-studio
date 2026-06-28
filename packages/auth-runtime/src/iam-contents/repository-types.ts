@@ -1,6 +1,7 @@
 import type {
   ContentJsonValue,
   IamContentListQuery,
+  IamContentAuthorDisplayMode,
   IamContentStatus,
   IamContentValidationState,
 } from '@sva/core';
@@ -21,6 +22,7 @@ export type ContentRow = {
   created_by: string;
   updated_at: string;
   updated_by: string;
+  author_display_mode: IamContentAuthorDisplayMode;
   author_display_name: string;
   payload_json: ContentJsonValue;
   status: IamContentStatus;
@@ -50,6 +52,7 @@ export type CreateContentInput = {
   traceId?: string;
   contentType: string;
   organizationId?: string;
+  authorDisplayMode?: IamContentAuthorDisplayMode;
   title: string;
   payload: ContentJsonValue;
   status: IamContentStatus;
@@ -69,6 +72,7 @@ export type UpdateContentInput = {
   organizationId?: string;
   ownerUserId?: string;
   ownerOrganizationId?: string;
+  authorDisplayMode?: IamContentAuthorDisplayMode;
   authorDisplayName?: string;
   title?: string;
   payload?: ContentJsonValue;
@@ -118,6 +122,7 @@ SELECT
   content.creator_account_id::text AS created_by,
   content.updated_at::text,
   content.updater_account_id::text AS updated_by,
+  content.author_display_mode,
   content.author_display_name,
   content.payload_json,
   content.status,

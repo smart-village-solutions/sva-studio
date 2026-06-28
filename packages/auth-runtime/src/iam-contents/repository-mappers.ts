@@ -17,6 +17,7 @@ export const mapContentListItem = (row: ContentRow): IamContentListItem => ({
   createdBy: row.created_by,
   updatedAt: row.updated_at,
   updatedBy: row.updated_by,
+  authorDisplayMode: row.author_display_mode,
   author: row.author_display_name,
   payload: row.payload_json,
   status: row.status,

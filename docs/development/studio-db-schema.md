@@ -198,6 +198,8 @@ Kernidee:
 - `content_list_projection_sync_state` hält pro Instanz und Mainserver-Content-Typ den letzten erfolgreichen beziehungsweise fehlgeschlagenen Refresh-Lauf.
 - `contents` trägt zusätzlich einen eigenen Lösch-Lifecycle-Zustand, damit tenantweite Account-Löschregeln in V1 referenzwahrend auf Inhalte abgebildet werden können.
 - `owner_user_id` und `owner_organization_id` sind die kanonischen Ownership-Spalten für Scope-Prüfungen (`own`, `organization`, `all`) und werden in `content_list_projection` gespiegelt.
+- `author_display_mode` (`organization` oder `user`) steuert die fachliche sichtbare Autorenanzeige; `author_display_name` bleibt der persistierte Anzeige-Snapshot.
+- `source_data_provider_id`, `source_data_provider_name` und `credential_source` beschreiben bei Mainserver-Projektionen die externe Veröffentlichungsidentität und verwendete Credential-Quelle. Diese Felder setzen keine IAM-Ownership.
 - `owner_subject_id` bleibt nur noch Legacy-Kompatibilitätsfeld und ist nicht mehr maßgeblich für Autorisierung.
 
 ### 7. Media-Management

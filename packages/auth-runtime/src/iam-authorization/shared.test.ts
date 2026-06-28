@@ -188,7 +188,6 @@ describe('iam authorization shared helpers', () => {
         action: 'news.publish',
         resourceType: 'news',
         resourceId: 'article-1',
-        organizationId: '11111111-1111-4111-8111-111111111111',
         sourceRoleIds: ['role-1', 'role-2'],
         sourceGroupIds: ['group-a', 'group-b'],
         groupName: 'publishers',

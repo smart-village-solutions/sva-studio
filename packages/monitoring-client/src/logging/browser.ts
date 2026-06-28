@@ -23,8 +23,6 @@ export interface BrowserLogger {
   error: (message: string, meta?: BrowserLogMeta) => void;
 }
 
-type BrowserLogSink = (entry: BrowserLogEntry) => void;
-
 const browserLogLevelPriority: Record<BrowserLogLevel, number> = {
   debug: 10,
   info: 20,
@@ -32,44 +30,18 @@ const browserLogLevelPriority: Record<BrowserLogLevel, number> = {
   error: 40,
 };
 
-const browserLogSinks = new Set<BrowserLogSink>();
-let suppressedBrowserConsoleCaptureDepth = 0;
-
-const getConsoleMethod = (level: BrowserLogLevel): ((message?: unknown, ...optionalParams: unknown[]) => void) => {
+const getConsoleMethod = (
+  level: BrowserLogLevel
+): ((message?: unknown, ...optionalParams: unknown[]) => void) => {
   return console[level].bind(console);
 };
 
-const shouldLogBrowserLevel = (configuredLevel: BrowserLogLevel, targetLevel: BrowserLogLevel): boolean => {
+const shouldLogBrowserLevel = (
+  configuredLevel: BrowserLogLevel,
+  targetLevel: BrowserLogLevel
+): boolean => {
   return browserLogLevelPriority[targetLevel] >= browserLogLevelPriority[configuredLevel];
 };
-
-const emitBrowserLogEntry = (entry: BrowserLogEntry): void => {
-  for (const sink of browserLogSinks) {
-    try {
-      sink(entry);
-    } catch (error) {
-      suppressedBrowserConsoleCaptureDepth += 1;
-      try {
-        console.warn('Browser log sink failed', {
-          component: entry.component,
-          sink_error: error instanceof Error ? error.message : String(error),
-        });
-      } finally {
-        suppressedBrowserConsoleCaptureDepth -= 1;
-      }
-    }
-  }
-};
-
-export const registerBrowserLogSink = (sink: BrowserLogSink): (() => void) => {
-  browserLogSinks.add(sink);
-
-  return () => {
-    browserLogSinks.delete(sink);
-  };
-};
-
-export const isBrowserConsoleCaptureSuppressed = (): boolean => suppressedBrowserConsoleCaptureDepth > 0;
 
 export const createBrowserLogger = ({
   component,
@@ -91,20 +63,11 @@ export const createBrowserLogger = ({
         context: sanitizedMeta,
       };
 
-      if (browserLogSinks.size > 0) {
-        emitBrowserLogEntry(entry);
-      }
-
-      suppressedBrowserConsoleCaptureDepth += 1;
-      try {
-        const consoleMethod = getConsoleMethod(targetLevel);
-        if (sanitizedMeta && Object.keys(sanitizedMeta).length > 0) {
-          consoleMethod(entry.message, sanitizedMeta);
-        } else {
-          consoleMethod(entry.message);
-        }
-      } finally {
-        suppressedBrowserConsoleCaptureDepth -= 1;
+      const consoleMethod = getConsoleMethod(targetLevel);
+      if (sanitizedMeta && Object.keys(sanitizedMeta).length > 0) {
+        consoleMethod(entry.message, sanitizedMeta);
+      } else {
+        consoleMethod(entry.message);
       }
     };
 

@@ -416,14 +416,14 @@ Fehlerpfad:
 
 1. Server-Code loggt via `createSdkLogger(...)` aus `@sva/server-runtime`
 2. Context (workspace/request) wird über AsyncLocalStorage injiziert
-3. In Development schreiben Console- und Dev-UI-Transport die redaktierten Logs sofort lokal aus
+3. In Development schreibt der Console-Transport die redaktierten Logs sofort lokal aus
 4. Sobald OTEL bereit ist, werden bestehende Logger um den Direct-OTEL-Transport erweitert
 5. OTEL Processor redacted und filtert Labels
 6. Export via OTLP an Collector -> Loki/Prometheus
 
 Fehlerpfad:
 
-- Development ohne OTEL-Readiness: Console und Dev-Konsole bleiben aktiv, die App bleibt lauffähig
+- Development ohne OTEL-Readiness: Console-Logs bleiben aktiv, die App bleibt lauffähig
 - Production ohne OTEL-Readiness: der Start gilt als Fehlerzustand und wird fail-closed behandelt
 
 ### Szenario 3a: Auth-Route wirft Fehler außerhalb des Request-Kontexts
@@ -672,6 +672,7 @@ Fehlerpfad:
 - Fehlschlag vor dem Rollout bleibt auf `config`, `image` oder `migration` klassifiziert.
 - Fehlschlag nach erfolgreichem Stack-Update, aber vor öffentlicher Verifikation, bleibt als `health` oder `ingress` sichtbar und wird nicht als erfolgreicher Release bewertet.
 - Fehlende Image-Verify-Evidenz fuer einen expliziten Digest ist mindestens ein Warnsignal im Precheck und darf nicht als stiller Erfolgsfall verschwinden.
+
 6. Nachgelagerte UI- und Backend-Pfade lesen den aktiven Organisationskontext aus dem kanonischen Sessionzustand.
 
 ### Szenario 14: Admin verwaltet Gruppen und weist Rollenbündel zu

@@ -53,7 +53,7 @@ export type ReconcileHandlerDeps = {
   readonly requireSystemAdminRole: (
     ctx: ReconcileAuthenticatedRequestContext,
     requestId?: string
-  ) => Response | null;
+  ) => Response | null | Promise<Response | null>;
   readonly resolveActorInfo: (
     request: Request,
     ctx: ReconcileAuthenticatedRequestContext,
@@ -83,7 +83,7 @@ export const createReconcileHandlerInternal =
       return deps.reconcilePlatformRoles(request, ctx, requestContext.requestId, requestContext.traceId);
     }
 
-    const roleCheck = deps.requireSystemAdminRole(ctx, requestContext.requestId);
+    const roleCheck = await deps.requireSystemAdminRole(ctx, requestContext.requestId);
     if (roleCheck) {
       return roleCheck;
     }

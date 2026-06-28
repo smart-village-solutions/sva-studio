@@ -38,6 +38,7 @@ const item = (overrides: Partial<IamContentListItem>): IamContentListItem =>
     createdBy: 'system',
     updatedAt: '2026-05-24T09:00:00.000Z',
     updatedBy: 'system',
+    authorDisplayMode: 'organization',
     author: 'System',
     payload: {},
     status: 'draft',

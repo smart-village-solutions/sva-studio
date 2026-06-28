@@ -31,6 +31,7 @@ const content = (
     createdBy: 'actor-1',
     updatedAt: '2026-04-26T10:00:00.000Z',
     updatedBy: 'actor-1',
+    authorDisplayMode: 'organization',
     author: 'Actor',
     payload: {},
     status,
@@ -44,6 +45,20 @@ const actor = {
   actorDisplayName: 'Actor',
   requestId: 'request-1',
   traceId: 'trace-1',
+};
+
+const expectAuthorizationCall = (
+  callIndex: number,
+  primitiveAction: string,
+  expectedResource: Record<string, unknown>
+) => {
+  expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+    callIndex,
+    actor,
+    primitiveAction,
+    expect.objectContaining(expectedResource),
+    expect.objectContaining({ permissions: [] })
+  );
 };
 
 describe('content mutation authorization', () => {
@@ -100,26 +115,14 @@ describe('content mutation authorization', () => {
       })
     ).resolves.toBeNull();
 
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      1,
-      actor,
-      'content.updateMetadata',
-      expect.objectContaining({
-        domainCapability: 'content.update_metadata',
-        organizationId: '11111111-1111-4111-8111-111111111111',
-      }),
-      expect.objectContaining({ permissions: [] })
-    );
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      2,
-      actor,
-      'content.updatePayload',
-      expect.objectContaining({
-        domainCapability: 'content.update_payload',
-        organizationId: '11111111-1111-4111-8111-111111111111',
-      }),
-      expect.objectContaining({ permissions: [] })
-    );
+    expectAuthorizationCall(1, 'content.updateMetadata', {
+      domainCapability: 'content.update_metadata',
+      organizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expectAuthorizationCall(2, 'content.updatePayload', {
+      domainCapability: 'content.update_payload',
+      organizationId: '11111111-1111-4111-8111-111111111111',
+    });
     expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(1);
     expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledWith(
       actor,
@@ -127,7 +130,7 @@ describe('content mutation authorization', () => {
     );
   });
 
-  it('uses persisted source organization for update checks and checks destination on reassignment', async () => {
+  it('uses persisted source organization for update checks during reassignment', async () => {
     authorizeContentActionMock.mockResolvedValue(null);
 
     await expect(
@@ -136,40 +139,20 @@ describe('content mutation authorization', () => {
       })
     ).resolves.toBeNull();
 
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      1,
-      actor,
-      'content.updateMetadata',
-      expect.objectContaining({
-        domainCapability: 'content.update_metadata',
-        organizationId: '11111111-1111-4111-8111-111111111111',
-      }),
-      expect.objectContaining({ permissions: [] })
-    );
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      2,
-      actor,
-      'content.updateMetadata',
-      expect.objectContaining({
-        domainCapability: 'content.update_metadata',
-        organizationId: '22222222-2222-4222-8222-222222222222',
-        ownerOrganizationId: undefined,
-      }),
-      expect.objectContaining({ permissions: [] })
-    );
+    expectAuthorizationCall(1, 'content.updateMetadata', {
+      domainCapability: 'content.update_metadata',
+      organizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expect(authorizeContentActionMock).toHaveBeenCalledTimes(1);
     expect(resolveContentAuthorizationPermissionsMock).toHaveBeenNthCalledWith(
       1,
       actor,
       '11111111-1111-4111-8111-111111111111'
     );
-    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenNthCalledWith(
-      2,
-      actor,
-      '22222222-2222-4222-8222-222222222222'
-    );
+    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(1);
   });
 
-  it('checks status and payload actions against the destination organization during reassignment', async () => {
+  it('checks status and payload actions against the current organization during reassignment', async () => {
     authorizeContentActionMock.mockResolvedValue(null);
 
     await expect(
@@ -180,71 +163,23 @@ describe('content mutation authorization', () => {
       })
     ).resolves.toBeNull();
 
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      1,
-      actor,
-      'content.updateMetadata',
-      expect.objectContaining({
-        domainCapability: 'content.update_metadata',
-        organizationId: '11111111-1111-4111-8111-111111111111',
-      }),
-      expect.objectContaining({ permissions: [] })
-    );
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      2,
-      actor,
-      'content.updatePayload',
-      expect.objectContaining({
-        domainCapability: 'content.update_payload',
-        organizationId: '11111111-1111-4111-8111-111111111111',
-      }),
-      expect.objectContaining({ permissions: [] })
-    );
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      3,
-      actor,
-      'content.publish',
-      expect.objectContaining({
-        domainCapability: 'content.publish',
-        organizationId: '11111111-1111-4111-8111-111111111111',
-      }),
-      expect.objectContaining({ permissions: [] })
-    );
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      4,
-      actor,
-      'content.updateMetadata',
-      expect.objectContaining({
-        domainCapability: 'content.update_metadata',
-        organizationId: '22222222-2222-4222-8222-222222222222',
-      }),
-      expect.objectContaining({ permissions: [] })
-    );
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      5,
-      actor,
-      'content.updatePayload',
-      expect.objectContaining({
-        domainCapability: 'content.update_payload',
-        organizationId: '22222222-2222-4222-8222-222222222222',
-      }),
-      expect.objectContaining({ permissions: [] })
-    );
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      6,
-      actor,
-      'content.publish',
-      expect.objectContaining({
-        domainCapability: 'content.publish',
-        organizationId: '22222222-2222-4222-8222-222222222222',
-        ownerOrganizationId: undefined,
-      }),
-      expect.objectContaining({ permissions: [] })
-    );
-    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(2);
+    expectAuthorizationCall(1, 'content.updateMetadata', {
+      domainCapability: 'content.update_metadata',
+      organizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expectAuthorizationCall(2, 'content.updatePayload', {
+      domainCapability: 'content.update_payload',
+      organizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expectAuthorizationCall(3, 'content.publish', {
+      domainCapability: 'content.publish',
+      organizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expect(authorizeContentActionMock).toHaveBeenCalledTimes(3);
+    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(1);
   });
 
-  it('checks the destination authorization against prospective owner attributes', async () => {
+  it('does not require authorization against prospective owner attributes', async () => {
     authorizeContentActionMock.mockResolvedValue(null);
 
     await expect(
@@ -263,17 +198,13 @@ describe('content mutation authorization', () => {
       )
     ).resolves.toBeNull();
 
-    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
-      2,
-      actor,
-      'content.updateMetadata',
-      expect.objectContaining({
-        organizationId: '22222222-2222-4222-8222-222222222222',
-        ownerUserId: '44444444-4444-4444-8444-444444444444',
-        ownerOrganizationId: '11111111-1111-4111-8111-111111111111',
-      }),
-      expect.objectContaining({ permissions: [] })
-    );
+    expectAuthorizationCall(1, 'content.updateMetadata', {
+      organizationId: '11111111-1111-4111-8111-111111111111',
+      ownerUserId: '33333333-3333-4333-8333-333333333333',
+      ownerOrganizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expect(authorizeContentActionMock).toHaveBeenCalledTimes(1);
+    expect(resolveContentAuthorizationPermissionsMock).toHaveBeenCalledTimes(1);
   });
 
   it('stops on authorization denial before later actions are evaluated', async () => {

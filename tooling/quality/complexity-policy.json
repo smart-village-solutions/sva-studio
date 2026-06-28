@@ -21,15 +21,8 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/**/src/**/*.ts",
-        "packages/**/src/**/*.tsx"
-      ],
-      "exclude": [
-        "**/*.test.ts",
-        "**/*.test.tsx",
-        "packages/sva-mainserver/src/generated/**/*.ts"
-      ]
+      "include": ["packages/**/src/**/*.ts", "packages/**/src/**/*.tsx"],
+      "exclude": ["**/*.test.ts", "**/*.test.tsx", "packages/sva-mainserver/src/generated/**/*.ts"]
     },
     {
       "id": "apps-default",
@@ -37,14 +30,8 @@
       "class": "zentral",
       "owner": "team-frontend",
       "reviewCadence": "pro-pr",
-      "include": [
-        "apps/**/src/**/*.ts",
-        "apps/**/src/**/*.tsx"
-      ],
-      "exclude": [
-        "**/*.test.ts",
-        "**/*.test.tsx"
-      ]
+      "include": ["apps/**/src/**/*.ts", "apps/**/src/**/*.tsx"],
+      "exclude": ["**/*.test.ts", "**/*.test.tsx"]
     },
     {
       "id": "scripts-default",
@@ -52,12 +39,8 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "scripts/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ]
+      "include": ["scripts/**/*.ts"],
+      "exclude": ["**/*.test.ts"]
     },
     {
       "id": "routing",
@@ -65,12 +48,8 @@
       "class": "kritisch",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/routing/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/routing/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100
     },
     {
@@ -79,12 +58,8 @@
       "class": "kritisch",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/core/src/security/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/core/src/security/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100
     },
     {
@@ -93,12 +68,8 @@
       "class": "kritisch",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/core/src/iam/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/core/src/iam/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -113,12 +84,8 @@
       "class": "zentral",
       "owner": "team-iam",
       "reviewCadence": "sprintweise",
-      "include": [
-        "packages/data/src/iam/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/data/src/iam/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100
     },
     {
@@ -127,12 +94,8 @@
       "class": "kritisch",
       "owner": "team-data",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/data/src/instance-registry/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/data/src/instance-registry/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100
     },
     {
@@ -141,12 +104,8 @@
       "class": "kritisch",
       "owner": "team-data",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/data-repositories/src/instance-registry/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/data-repositories/src/instance-registry/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100
     },
     {
@@ -155,12 +114,8 @@
       "class": "kritisch",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/auth-runtime/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/auth-runtime/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -175,12 +130,8 @@
       "class": "kritisch",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/iam-admin/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/iam-admin/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -195,12 +146,8 @@
       "class": "zentral",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/iam-governance/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/iam-governance/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -215,12 +162,8 @@
       "class": "kritisch",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/instance-registry/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/instance-registry/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -235,12 +178,8 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/plugin-sdk/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/plugin-sdk/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -255,14 +194,8 @@
       "class": "zentral",
       "owner": "team-content",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/plugin-news/src/**/*.ts",
-        "packages/plugin-news/src/**/*.tsx"
-      ],
-      "exclude": [
-        "**/*.test.ts",
-        "**/*.test.tsx"
-      ],
+      "include": ["packages/plugin-news/src/**/*.ts", "packages/plugin-news/src/**/*.tsx"],
+      "exclude": ["**/*.test.ts", "**/*.test.tsx"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -277,13 +210,8 @@
       "class": "kritisch",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/sva-mainserver/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts",
-        "packages/sva-mainserver/src/generated/**/*.ts"
-      ],
+      "include": ["packages/sva-mainserver/src/**/*.ts"],
+      "exclude": ["**/*.test.ts", "packages/sva-mainserver/src/generated/**/*.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -298,14 +226,8 @@
       "class": "zentral",
       "owner": "team-frontend",
       "reviewCadence": "pro-pr",
-      "include": [
-        "apps/sva-studio-react/src/**/*.ts",
-        "apps/sva-studio-react/src/**/*.tsx"
-      ],
-      "exclude": [
-        "**/*.test.ts",
-        "**/*.test.tsx"
-      ],
+      "include": ["apps/sva-studio-react/src/**/*.ts", "apps/sva-studio-react/src/**/*.tsx"],
+      "exclude": ["**/*.test.ts", "**/*.test.tsx"],
       "priority": 100,
       "overrides": {
         "fileLines": 400,
@@ -320,12 +242,8 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "scripts/ci/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["scripts/ci/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -340,12 +258,8 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "scripts/ops/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["scripts/ops/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 400,
@@ -793,12 +707,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/core/src/iam/index.ts)"
-    },
-    "frontend-app:apps/sva-studio-react/src/components/DevelopmentLogConsole.tsx:functionLines": {
-      "ticketId": "baseline-sva-studio-react-src-components-developmentlogconsole-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/components/DevelopmentLogConsole.tsx)"
     },
     "frontend-app:apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.tsx:cyclomaticComplexity": {
       "ticketId": "baseline-sva-studio-react-src-components-legaltextacceptancedialog-tsx",

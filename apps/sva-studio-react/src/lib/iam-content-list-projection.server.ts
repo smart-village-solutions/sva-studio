@@ -36,7 +36,7 @@ const MAX_SYNC_ITEMS_PER_TYPE = 5_000;
 
 type MainserverContentType = 'news.article' | 'events.event-record' | 'poi.point-of-interest';
 
-type ProjectionRow = {
+export type ProjectionRow = {
   id: string;
   instance_id: string;
   organization_id: string | null;
@@ -51,6 +51,7 @@ type ProjectionRow = {
   created_by: string;
   updated_at: string;
   updated_by: string;
+  author_display_mode: IamContentListItem['authorDisplayMode'];
   author_display_name: string;
   payload_json: IamContentListItem['payload'];
   status: IamContentListItem['status'];
@@ -58,6 +59,9 @@ type ProjectionRow = {
   history_ref: string;
   current_revision_ref: string | null;
   last_audit_event_ref: string | null;
+  source_data_provider_id: string | null;
+  source_data_provider_name: string | null;
+  credential_source: IamContentListItem['credentialSource'] | null;
   source_system: 'iam' | 'mainserver';
   source_entity_type: string;
   source_entity_id: string;
@@ -112,7 +116,11 @@ type MainserverProjectionRowInput = Pick<
   | 'createdBy'
   | 'updatedAt'
   | 'updatedBy'
+  | 'authorDisplayMode'
   | 'author'
+  | 'sourceDataProviderId'
+  | 'sourceDataProviderName'
+  | 'credentialSource'
   | 'payload'
   | 'status'
   | 'validationState'
@@ -140,7 +148,7 @@ const buildProjectionScopeKey = (
     row.sourceEntityId,
     row.organizationId ?? '',
     row.ownerUserId ?? (row.organizationId ? '' : fallbackOwnerSubjectId),
-    row.ownerOrganizationId ?? row.organizationId ?? '',
+    row.ownerOrganizationId ?? '',
   ].join('::');
 
 const dedupeProjectionRows = (
@@ -156,28 +164,54 @@ const dedupeProjectionRows = (
   return [...deduped.values()];
 };
 
+type OptionalProjectionItemFields = Pick<
+  IamContentListItem,
+  | 'organizationId'
+  | 'ownerUserId'
+  | 'ownerOrganizationId'
+  | 'publishedAt'
+  | 'publishFrom'
+  | 'publishUntil'
+  | 'currentRevisionRef'
+  | 'lastAuditEventRef'
+  | 'sourceDataProviderId'
+  | 'sourceDataProviderName'
+  | 'credentialSource'
+>;
+
+const pickPresentProjectionFields = (row: ProjectionRow): Partial<OptionalProjectionItemFields> =>
+  Object.fromEntries(
+    Object.entries({
+      organizationId: row.organization_id,
+      ownerUserId: row.owner_user_id,
+      ownerOrganizationId: row.owner_organization_id,
+      publishedAt: row.published_at,
+      publishFrom: row.publish_from,
+      publishUntil: row.publish_until,
+      currentRevisionRef: row.current_revision_ref,
+      lastAuditEventRef: row.last_audit_event_ref,
+      sourceDataProviderId: row.source_data_provider_id,
+      sourceDataProviderName: row.source_data_provider_name,
+      credentialSource: row.credential_source,
+    }).filter(([, value]) => typeof value === 'string' && value.length > 0)
+  ) as Partial<OptionalProjectionItemFields>;
+
 const mapProjectionRow = (row: ProjectionRow): IamContentListItem => ({
   id: row.id,
   instanceId: row.instance_id,
-  ...(row.organization_id ? { organizationId: row.organization_id } : {}),
-  ...(row.owner_user_id ? { ownerUserId: row.owner_user_id } : {}),
-  ...(row.owner_organization_id ? { ownerOrganizationId: row.owner_organization_id } : {}),
+  ...pickPresentProjectionFields(row),
   contentType: row.content_type,
   title: row.title,
-  ...(row.published_at ? { publishedAt: row.published_at } : {}),
-  ...(row.publish_from ? { publishFrom: row.publish_from } : {}),
-  ...(row.publish_until ? { publishUntil: row.publish_until } : {}),
   createdAt: row.created_at,
   createdBy: row.created_by,
   updatedAt: row.updated_at,
   updatedBy: row.updated_by,
+  authorDisplayMode: row.author_display_mode,
   author: row.author_display_name,
   payload: row.payload_json,
   status: row.status,
   validationState: row.validation_state,
   historyRef: row.history_ref,
-  ...(row.current_revision_ref ? { currentRevisionRef: row.current_revision_ref } : {}),
-  ...(row.last_audit_event_ref ? { lastAuditEventRef: row.last_audit_event_ref } : {}),
 });
 
 const buildReadAction = (contentType: string): string =>
@@ -418,7 +452,7 @@ const mapMainserverProjectionPayloadRow = (
   instance_id: row.instanceId,
   organization_id: toNullableProjectionValue(row.organizationId),
   owner_user_id: resolveProjectionOwnerUserId(row, actorAccountId),
-  owner_organization_id: toNullableProjectionValue(row.ownerOrganizationId ?? row.organizationId),
+  owner_organization_id: toNullableProjectionValue(row.ownerOrganizationId),
   content_type: row.contentType,
   title: row.title,
   published_at: toNullableProjectionValue(row.publishedAt),
@@ -428,7 +462,11 @@ const mapMainserverProjectionPayloadRow = (
   created_by: row.createdBy,
   updated_at: row.updatedAt,
   updated_by: row.updatedBy,
+  author_display_mode: row.authorDisplayMode,
   author_display_name: row.author,
+  source_data_provider_id: toNullableProjectionValue(row.sourceDataProviderId),
+  source_data_provider_name: toNullableProjectionValue(row.sourceDataProviderName),
+  credential_source: toNullableProjectionValue(row.credentialSource),
   payload_json: row.payload,
   status: row.status,
   validation_state: row.validationState,
@@ -466,7 +504,11 @@ INSERT INTO iam.content_list_projection (
   created_by,
   updated_at,
   updated_by,
+  author_display_mode,
   author_display_name,
+  source_data_provider_id,
+  source_data_provider_name,
+  credential_source,
   payload_json,
   status,
   validation_state,
@@ -493,7 +535,11 @@ SELECT
   item.created_by,
   item.updated_at::timestamptz,
   item.updated_by,
+  item.author_display_mode,
   item.author_display_name,
+  item.source_data_provider_id,
+  item.source_data_provider_name,
+  item.credential_source,
   item.payload_json::jsonb,
   item.status,
   item.validation_state,
@@ -519,7 +565,11 @@ FROM jsonb_to_recordset($1::jsonb) AS item(
   created_by text,
   updated_at text,
   updated_by text,
+  author_display_mode text,
   author_display_name text,
+  source_data_provider_id text,
+  source_data_provider_name text,
+  credential_source text,
   payload_json jsonb,
   status text,
   validation_state text,
@@ -540,7 +590,11 @@ DO UPDATE SET
   created_by = EXCLUDED.created_by,
   updated_at = EXCLUDED.updated_at,
   updated_by = EXCLUDED.updated_by,
+  author_display_mode = EXCLUDED.author_display_mode,
   author_display_name = EXCLUDED.author_display_name,
+  source_data_provider_id = EXCLUDED.source_data_provider_id,
+  source_data_provider_name = EXCLUDED.source_data_provider_name,
+  credential_source = EXCLUDED.credential_source,
   payload_json = EXCLUDED.payload_json,
   status = EXCLUDED.status,
   validation_state = EXCLUDED.validation_state,
@@ -666,6 +720,9 @@ const refreshMainserverProjection = async (
       activeOrganizationId: organizationId,
     };
     const projectedOrganizationId = organizationId;
+    const credentialSource: IamContentListItem['credentialSource'] = projectedOrganizationId
+      ? 'organization'
+      : 'user';
 
     const rows =
       contentType === 'news.article'
@@ -679,6 +736,7 @@ const refreshMainserverProjection = async (
           ).map((item) => ({
             ...mapNewsItem(item, instanceId, []),
             ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+            credentialSource,
             sourceEntityType: 'news.article',
             sourceEntityId: item.id,
           }))
@@ -693,6 +751,7 @@ const refreshMainserverProjection = async (
             ).map((item) => ({
               ...mapEventItem(item, instanceId, []),
               ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+              credentialSource,
               sourceEntityType: 'events.event-record',
               sourceEntityId: item.id,
             }))
@@ -707,6 +766,7 @@ const refreshMainserverProjection = async (
               ).map((item) => ({
                 ...mapPoiItem(item, instanceId, []),
                 ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+                credentialSource,
                 sourceEntityType: 'poi.point-of-interest',
                 sourceEntityId: item.id,
               }))
@@ -1039,6 +1099,7 @@ SELECT
   projection.created_by,
   projection.updated_at::text,
   projection.updated_by,
+  projection.author_display_mode,
   projection.author_display_name,
   projection.payload_json,
   projection.status,
@@ -1046,6 +1107,9 @@ SELECT
   projection.history_ref,
   projection.current_revision_ref,
   projection.last_audit_event_ref,
+  projection.source_data_provider_id,
+  projection.source_data_provider_name,
+  projection.credential_source,
   projection.source_system,
   projection.source_entity_type,
   projection.source_entity_id

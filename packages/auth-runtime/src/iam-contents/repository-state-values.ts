@@ -13,6 +13,7 @@ export type NextContentStateValues = {
   nextOrganizationId: string | null;
   nextOwnerUserId: string | null;
   nextOwnerOrganizationId: string | null;
+  nextAuthorDisplayMode: ContentRow['author_display_mode'];
   nextAuthorDisplayName: string;
 };
 
@@ -30,5 +31,6 @@ export const resolveNextContentStateValues = (
   nextOrganizationId: input.organizationId ?? current.organization_id ?? null,
   nextOwnerUserId: input.ownerUserId ?? current.owner_user_id ?? null,
   nextOwnerOrganizationId: input.ownerOrganizationId ?? current.owner_organization_id ?? null,
+  nextAuthorDisplayMode: input.authorDisplayMode ?? current.author_display_mode,
   nextAuthorDisplayName: input.authorDisplayName ?? current.author_display_name,
 });

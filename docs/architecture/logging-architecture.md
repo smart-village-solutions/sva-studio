@@ -23,7 +23,7 @@ Abgedeckt sind:
 
 Nicht abgedeckt sind:
 
-- produktives Browser-Logging außerhalb der lokalen Dev-Konsole.
+- produktives Browser-Logging.
 - Alerting-Regeln im Detail (siehe Monitoring-Doku).
 
 ## Komponentenuebersicht
@@ -35,11 +35,12 @@ Nicht abgedeckt sind:
   - JSON-Format fuer strukturierte Logs,
   - Kontext-Anreicherung (`workspace_id`, `request_id`, `user_id`, `session_id`),
   - Redaction sensibler Felder,
-  - modusspezifischen Transports fuer Console, Dev-UI und OTEL,
+  - modusspezifischen Transports fuer Console und OTEL,
   - direktem OTEL-Transport (`DirectOtelTransport`),
   - Laufzeit-Rekonfiguration bereits erzeugter Logger nach erfolgreicher OTEL-Initialisierung.
 
 Wichtig:
+
 - Server-Code nutzt `@sva/server-runtime`.
 - Keine direkten `console.*` Calls im regulären Server-Code (Ausnahme: zirkulaere Abhaengigkeiten im Context-Middleware-Modul).
 
@@ -63,14 +64,6 @@ Damit werden Logs in async Workflows automatisch mit Kontext angereichert.
 - Rueckgabewert: strukturiertes Ergebnisobjekt mit `status: ready|disabled|failed`
 - Der Bootstrap erzwingt kein zusaetzliches OTEL-Diag-Console-Logging; regulaere App-Logs folgen ausschliesslich dem Runtime-Modell.
 - `flushOtelSdk()` fuer kontrolliertes Flush-Verhalten beim Shutdown.
-
-### 3a) Development Log Console (`apps/sva-studio-react/src/components/DevelopmentLogConsole.tsx`)
-
-- Nur in der Entwicklungsumgebung gerendert.
-- Zeigt Browser-Logs und redaktierte Server-Logs in einer lokalen Debug-Konsole am Seitenende.
-- Browser-Logs werden clientseitig gesammelt.
-- Server-Logs werden ueber einen redaktierten In-Memory-Buffer in `@sva/server-runtime` und Polling aus der App bereitgestellt.
-- Der zugehoerige Serverpfad liefert ausserhalb von Development keine Eintraege aus.
 
 ### 4) OTEL SDK + Processor (`packages/monitoring-client/src/otel.server.ts`)
 
@@ -102,7 +95,6 @@ Damit werden Logs in async Workflows automatisch mit Kontext angereichert.
 App Code (createSdkLogger)
   -> Winston Logger (JSON + Kontext + Redaction)
     -> Console Transport (Development)
-    -> Development UI Transport (Development)
     -> DirectOtelTransport (nur wenn OTEL ready)
       -> Global OTEL LoggerProvider
         -> OTEL SDK LogRecord
@@ -219,15 +211,13 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 ### Development
 
 - Console-Logging ist immer aktiv.
-- Die lokale Dev-Konsole im Frontend ist immer aktiv.
 - OTEL wird standardmäßig initialisiert, aber nur bei erfolgreichem SDK-Start als aktiver Transport zugeschaltet.
 - OTEL kann fuer lokale Entwicklungslaeufe explizit via `ENABLE_OTEL=false|0` deaktiviert werden.
-- Lokale Diagnosekanaele folgen denselben Redaction-Regeln wie OTEL; Development ist kein Privacy-Sonderfall.
+- Lokale Console-Diagnose folgt denselben Redaction-Regeln wie OTEL; Development ist kein Privacy-Sonderfall.
 
 ### Production
 
 - Console-Logging ist aus.
-- Die Dev-Konsole ist aus.
 - OTEL ist verpflichtend aktiv.
 - Strukturiertes Logging und Export ueber Collector verpflichtend.
 - Graceful Shutdown mit `forceFlush` + `sdk.shutdown()`.
@@ -281,7 +271,7 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 
 1. Monitoring-Stack starten (`docker-compose.monitoring.yml`).
 2. App starten und Flows triggern.
-3. Optional OTEL lokal deaktivieren (`ENABLE_OTEL=false`), wenn nur Console + Dev-Konsole genutzt werden sollen.
+3. Optional OTEL lokal deaktivieren (`ENABLE_OTEL=false`), wenn nur Console-Logs genutzt werden sollen.
 4. In Grafana/Loki verifizieren:
    - Labels entsprechen Whitelist.
    - PII ist maskiert/redacted.
@@ -291,7 +281,7 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 
 1. Doppelte Pipeline (OTEL + Promtail) kann ohne saubere Trennung Duplikate erzeugen.
 2. Context-Middleware nutzt in einem Sonderfall `console.warn` (zirkulaere Abhaengigkeit zum Logger), bewusst begrenzt auf Development-Warnpfad.
-3. In Development kann die Anwendung bewusst ohne aktiven OTEL-Transport laufen; Console und Dev-Konsole bleiben dann die primären Diagnosekanaele.
+3. In Development kann die Anwendung bewusst ohne aktiven OTEL-Transport laufen; Console-Logs bleiben dann der primäre Diagnosekanal.
 
 ## Referenzen
 

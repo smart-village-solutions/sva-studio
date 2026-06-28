@@ -1,17 +1,34 @@
 import { getWorkspaceContext } from '@sva/server-runtime';
-import { createReconcileHandlerInternal } from '@sva/iam-admin';
+import { createReconcileHandlerInternal, type ReconcileAuthenticatedRequestContext } from '@sva/iam-admin';
 
 import { jsonResponse } from '../db.js';
+import { authorizeInstancePermissionForUser, toInstancePermissionApiErrorCode } from '../instance-permission-authorization.js';
 
-import { SYSTEM_ADMIN_ROLES } from './constants.js';
 import { asApiItem, createApiError } from './api-helpers.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
 import { consumeRateLimit } from './rate-limit.js';
 import { reconcilePlatformRolesInternal } from './platform-iam-handlers.js';
 import { runRoleCatalogReconciliation } from './reconcile-core.js';
-import { logger, requireRoles, resolveActorInfo } from './shared.js';
+import { logger, resolveActorInfo } from './shared.js';
 import { validateCsrf } from './csrf.js';
 import { mapRoleSyncErrorCode, sanitizeRoleErrorMessage } from './role-audit.js';
+
+const requireRoleReconcilePermission = async (
+  ctx: ReconcileAuthenticatedRequestContext,
+  requestId?: string
+): Promise<Response | null> => {
+  const authorization = await authorizeInstancePermissionForUser({ ctx, action: 'iam.role.write' });
+  if (authorization.ok) {
+    return null;
+  }
+
+  return createApiError(
+    authorization.status,
+    toInstancePermissionApiErrorCode(authorization.error),
+    authorization.message,
+    requestId
+  );
+};
 
 export const reconcilePlaceholderInternal = createReconcileHandlerInternal({
   asApiItem,
@@ -23,7 +40,7 @@ export const reconcilePlaceholderInternal = createReconcileHandlerInternal({
   logger,
   mapRoleSyncErrorCode,
   reconcilePlatformRoles: reconcilePlatformRolesInternal,
-  requireSystemAdminRole: (ctx, requestId) => requireRoles(ctx, SYSTEM_ADMIN_ROLES, requestId),
+  requireSystemAdminRole: requireRoleReconcilePermission,
   resolveActorInfo,
   runRoleCatalogReconciliation,
   sanitizeRoleErrorMessage,

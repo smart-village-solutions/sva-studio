@@ -2,13 +2,18 @@
  * Root-Route-Konfiguration der Anwendung inklusive Dokument-Shell.
  */
 import { TanStackDevtools } from '@tanstack/react-devtools';
-import { HeadContent, Outlet, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router';
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRoute,
+  useRouterState,
+} from '@tanstack/react-router';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 import { createServerOnlyFn } from '@tanstack/react-start';
 import React from 'react';
 
 import AppShell from '../components/AppShell';
-import DevelopmentLogConsole from '../components/DevelopmentLogConsole';
 import ErrorFallback from '../components/ErrorFallback';
 import NotFound from '../components/NotFound';
 import { resolveBreadcrumbItems } from '../lib/breadcrumbs';
@@ -20,8 +25,8 @@ import { t } from '../i18n';
 
 import appCssHref from '../styles.css?url';
 
-const tanstackDevtoolsEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_TANSTACK_DEVTOOLS === 'true';
-const playwrightDevRuntimeDisabled = import.meta.env.VITE_PLAYWRIGHT_TEST === 'true';
+const tanstackDevtoolsEnabled =
+  import.meta.env.DEV && import.meta.env.VITE_ENABLE_TANSTACK_DEVTOOLS === 'true';
 const themeBootstrapScript = createThemeBootstrapScript();
 
 export const ensureRootSdkInitialized = createServerOnlyFn(async () => {
@@ -126,9 +131,15 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
     <html lang="de" suppressHydrationWarning>
       <head>
         <HeadContent />
-        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} data-theme-bootstrap="true" />
+        <script
+          dangerouslySetInnerHTML={{ __html: themeBootstrapScript }}
+          data-theme-bootstrap="true"
+        />
       </head>
-      <body className="flex min-h-screen flex-col bg-background text-foreground antialiased" suppressHydrationWarning>
+      <body
+        className="flex min-h-screen flex-col bg-background text-foreground antialiased"
+        suppressHydrationWarning
+      >
         <AuthProvider>
           <LocaleProvider>
             <a
@@ -168,7 +179,6 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
             ]}
           />
         ) : null}
-        {import.meta.env.DEV && !playwrightDevRuntimeDisabled ? <DevelopmentLogConsole /> : null}
         <Scripts />
       </body>
     </html>

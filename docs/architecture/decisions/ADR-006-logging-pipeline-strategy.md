@@ -33,12 +33,12 @@ Ziel ist eine Pipeline, die **Entwicklung, Tests und späteren Betrieb** konsist
 
 ## Betrachtete Optionen
 
-| Option | Kriterien | Bewertung | Kommentar |
-|---|---|---|---|
-| **A: OTEL SDK → Collector → Loki (empfohlen)** | Standardisierung, Korrelation, Future-Proof | 9/10 | Einheitlicher Weg für Logs + Metrics ✅ |
-| B: Promtail-only (stdout) | Einfachheit, keine App-Änderung | 6/10 | Kein strukturiertes Context-Management |
-| C: Direkter Loki-Client in Apps | Direkter Weg | 5/10 | Starker Lock-in, geringe Flexibilität |
-| D: Logger-only (File/Console) | Minimal | 3/10 | Keine zentrale Observability, keine Dashboards |
+| Option                                         | Kriterien                                   | Bewertung | Kommentar                                      |
+| ---------------------------------------------- | ------------------------------------------- | --------- | ---------------------------------------------- |
+| **A: OTEL SDK → Collector → Loki (empfohlen)** | Standardisierung, Korrelation, Future-Proof | 9/10      | Einheitlicher Weg für Logs + Metrics ✅        |
+| B: Promtail-only (stdout)                      | Einfachheit, keine App-Änderung             | 6/10      | Kein strukturiertes Context-Management         |
+| C: Direkter Loki-Client in Apps                | Direkter Weg                                | 5/10      | Starker Lock-in, geringe Flexibilität          |
+| D: Logger-only (File/Console)                  | Minimal                                     | 3/10      | Keine zentrale Observability, keine Dashboards |
 
 ### Warum Option A?
 
@@ -52,11 +52,13 @@ Ziel ist eine Pipeline, die **Entwicklung, Tests und späteren Betrieb** konsist
 ## Trade-offs & Limitierungen
 
 ### Pros
+
 - ✅ Vereinheitlichte Pipeline (ein Exporter, ein Collector).
 - ✅ Bessere Korrelation zwischen Log-Events und Metriken.
 - ✅ Skalierbar: OTEL Collector als zentraler Hub.
 
 ### Cons
+
 - ❌ Zusätzliche Komplexität (Collector + Exporter).
 - ❌ Höherer Setup-Aufwand für Entwickler.
 - ❌ Doppelpfad möglich (Promtail + OTEL) → Risiko von Duplikaten.
@@ -65,8 +67,8 @@ Ziel ist eine Pipeline, die **Entwicklung, Tests und späteren Betrieb** konsist
 
 ## Betriebsmodell
 
-- **Development:** Console und lokale Dev-Konsole sind aktiv. OTEL wird nur als aktiver Zusatzkanal genutzt, wenn das SDK erfolgreich initialisiert wurde.
-- **Production:** Console und Dev-Konsole sind aus. OTEL ist der verpflichtende Exportpfad fuer Server-Logs; fehlende OTEL-Readiness ist ein Fehlerzustand.
+- **Development:** Console ist aktiv. OTEL wird nur als aktiver Zusatzkanal genutzt, wenn das SDK erfolgreich initialisiert wurde.
+- **Production:** Console ist aus. OTEL ist der verpflichtende Exportpfad fuer Server-Logs; fehlende OTEL-Readiness ist ein Fehlerzustand.
 
 ---
 
@@ -86,5 +88,6 @@ Bei Wechsel zu z. B. Datadog oder ELK bleibt der App-Code gleich; nur der OTEL C
 ---
 
 **Links:**
+
 - [ADR-004: Monitoring Stack – Loki, Grafana & Prometheus](ADR-004-monitoring-stack-loki-grafana-prometheus.md)
 - [Logging-Architektur](../logging-architecture.md)

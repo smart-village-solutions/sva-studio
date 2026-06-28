@@ -23,6 +23,7 @@ describe('iam content schemas', () => {
   it('accepts published content with a valid publishedAt timestamp', () => {
     expect(
       createContentSchema.safeParse({
+        authorDisplayMode: 'organization',
         contentType: 'news.article',
         payload: { body: 'Text', teaser: 'Teaser' },
         publishedAt: '2026-04-25T12:00:00.000Z',
@@ -30,6 +31,16 @@ describe('iam content schemas', () => {
         title: 'News',
       }).success
     ).toBe(true);
+    expect(
+      createContentSchema.safeParse({
+        authorDisplayMode: 'team',
+        contentType: 'news.article',
+        payload: { body: 'Text', teaser: 'Teaser' },
+        publishedAt: '2026-04-25T12:00:00.000Z',
+        status: 'published',
+        title: 'News',
+      }).success
+    ).toBe(false);
   });
 
   it('rejects create-time ownership and organization overrides', () => {
@@ -64,6 +75,9 @@ describe('iam content schemas', () => {
 
   it('accepts visible author changes on update', () => {
     expect(updateContentSchema.safeParse({ authorDisplayName: 'Stadt Musterhausen' }).success).toBe(true);
+    expect(updateContentSchema.safeParse({ authorDisplayMode: 'organization' }).success).toBe(true);
+    expect(updateContentSchema.safeParse({ authorDisplayMode: 'user' }).success).toBe(true);
+    expect(updateContentSchema.safeParse({ authorDisplayMode: 'team' }).success).toBe(false);
     expect(updateContentSchema.safeParse({ authorDisplayName: '' }).success).toBe(false);
     expect(updateContentSchema.safeParse({ authorDisplayName: '  ' }).success).toBe(false);
   });

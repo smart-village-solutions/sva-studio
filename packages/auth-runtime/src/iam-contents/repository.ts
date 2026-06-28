@@ -23,6 +23,7 @@ import {
   emitContentDeletedActivity,
   emitContentUpdatedActivity,
   insertContentRow,
+  resolveUpdateAuthorDisplay,
   updateContentRevisionRefs,
   updateContentRow,
   validatePublicationWindow,
@@ -266,11 +267,18 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
     if (!current) {
       return undefined;
     }
+    const authorDisplay = await resolveUpdateAuthorDisplay(client, current, input);
+    const stateInput = {
+      ...input,
+      authorDisplayMode: authorDisplay.authorDisplayMode,
+      authorDisplayName: authorDisplay.authorDisplayName,
+    };
     const {
       changedFields,
       nextOrganizationId,
       nextOwnerUserId,
       nextOwnerOrganizationId,
+      nextAuthorDisplayMode,
       nextAuthorDisplayName,
       nextPayload,
       nextPublishedAt,
@@ -279,11 +287,12 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
       nextStatus,
       nextTitle,
       nextValidationState,
-    } = resolveNextContentState(current, input);
+    } = resolveNextContentState(current, stateInput);
     await updateContentRow(client, input, {
       organizationId: nextOrganizationId,
       ownerUserId: nextOwnerUserId,
       ownerOrganizationId: nextOwnerOrganizationId,
+      authorDisplayMode: nextAuthorDisplayMode,
       authorDisplayName: nextAuthorDisplayName,
       title: nextTitle,
       payloadJson: JSON.stringify(nextPayload),
@@ -310,7 +319,7 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
       snapshot: nextPayload,
     });
     await updateContentRevisionRefs(client, input.instanceId, input.contentId, historyId);
-    await emitContentUpdatedActivity(client, input, current, {
+    await emitContentUpdatedActivity(client, stateInput, current, {
       eventType: activityEventType,
       action: resolveAuditAction({ changedFields, previousStatus: current.status, nextStatus }),
       changedFields,
@@ -318,6 +327,7 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
       nextTitle,
       nextOwnerUserId,
       nextOwnerOrganizationId,
+      nextAuthorDisplayMode,
       nextAuthorDisplayName,
     });
     return input.contentId;

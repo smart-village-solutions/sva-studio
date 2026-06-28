@@ -118,6 +118,7 @@ export {
 } from './reconcile-core.js';
 export {
   createReconcileHandlerInternal,
+  type ReconcileAuthenticatedRequestContext,
   type ReconcileHandlerDeps,
 } from './reconcile-handler.js';
 

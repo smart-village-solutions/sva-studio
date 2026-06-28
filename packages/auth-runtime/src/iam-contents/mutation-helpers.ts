@@ -108,6 +108,7 @@ export type ParsedCreateRequest = {
     CreateContentInput,
     | 'contentType'
     | 'organizationId'
+    | 'authorDisplayMode'
     | 'title'
     | 'payload'
     | 'status'

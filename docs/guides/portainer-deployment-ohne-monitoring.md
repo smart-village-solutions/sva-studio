@@ -92,7 +92,7 @@ Wenn neue SQL-Migrationen dazugekommen sind, reicht ein normales Redeploy **nich
 Der hier beschriebene Ansatz mit `ENABLE_OTEL=false` entspricht **nicht** mehr dem aktuellen Zielmodell fuer produktive Umgebungen. Nach heutigem Stand gilt:
 
 - Production-Logging laeuft ueber OTEL.
-- Console- und Dev-Konsole sind dort keine regulaeren Betriebswege.
+- Console-Logging ist dort kein regulaerer Betriebsweg.
 - Fehlende OTEL-Readiness gilt in Production als Fehlerzustand.
 
 Die folgende Konstellation ist daher nur noch als historische oder provisorische Bring-up-Referenz zu verstehen, nicht als aktuelle Produktionsfreigabe.

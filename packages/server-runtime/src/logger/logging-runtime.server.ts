@@ -4,7 +4,6 @@ import type { NodeSDK } from '@opentelemetry/sdk-node';
 export interface LoggingRuntimeConfig {
   readonly environment: 'development' | 'production';
   readonly consoleEnabled: boolean;
-  readonly uiEnabled: boolean;
   readonly otelRequested: boolean;
   readonly otelRequired: boolean;
   readonly mode: 'console_to_loki' | 'otel_to_loki' | 'degraded';
@@ -61,7 +60,6 @@ export const getLoggingRuntimeConfig = (): LoggingRuntimeConfig => {
   return {
     environment,
     consoleEnabled,
-    uiEnabled: environment === 'development',
     otelRequested,
     otelRequired: environment === 'production' && otelRequested,
     mode: resolveLoggingMode({

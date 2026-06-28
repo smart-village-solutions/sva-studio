@@ -193,11 +193,13 @@ Abhängigkeiten des aktuellen Systems.
 3. `packages/auth-runtime`
    - erweitert die effektive Permission-Aufloesung und den Authorize-Pfad um `accessScope`.
    - verwendet fuer scope-faehige Datensatzentscheidungen kanonische Resource-Attribute wie `createdByAccountId` und `organizationId`.
+   - normalisiert effektive Grants pro fachlichem Permission-Key auf den weitesten Scope, ohne Rollen-/Gruppen-Provenance zu verlieren.
 4. `packages/data` und `packages/data-repositories`
    - versionieren `iam.role_permissions.access_scope` SQL-first als Teil des fuehrenden IAM-Schemas.
 5. `apps/sva-studio-react`
    - erweitert die Rollen-Detailseite um Scope-Pflege pro Permission-Zuweisung.
    - zeigt in der Nutzeransicht die resultierenden effektiven Scopes read-only als Transparenzsignal.
+   - materialisiert Mainserver-Read-Models mit getrennter externer DataProvider-/Credential-Identität und kanonischer IAM-Ownership.
 
 ### Fortschreibung 2026-05: Monitoring-Einstieg fuer IAM-Authorize-Performance
 

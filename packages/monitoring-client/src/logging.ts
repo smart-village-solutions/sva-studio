@@ -5,9 +5,10 @@ export type {
   BrowserLogger,
   BrowserLoggerOptions,
 } from './logging/browser.js';
+export { createBrowserLogger } from './logging/browser.js';
 export {
-  createBrowserLogger,
-  isBrowserConsoleCaptureSuppressed,
-  registerBrowserLogSink,
-} from './logging/browser.js';
-export { redactLogMeta, redactLogString, serializeAndRedactLogValue, stringifyNonPlainValue } from './logging/redaction.js';
+  redactLogMeta,
+  redactLogString,
+  serializeAndRedactLogValue,
+  stringifyNonPlainValue,
+} from './logging/redaction.js';

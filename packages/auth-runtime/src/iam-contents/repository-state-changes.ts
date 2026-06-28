@@ -42,5 +42,6 @@ export const resolveContentChangedFields = (
     ['organizationId', next.nextOrganizationId, current.organization_id],
     ['ownerUserId', next.nextOwnerUserId, current.owner_user_id],
     ['ownerOrganizationId', next.nextOwnerOrganizationId, current.owner_organization_id],
+    ['authorDisplayMode', next.nextAuthorDisplayMode, current.author_display_mode],
     ['authorDisplayName', next.nextAuthorDisplayName, current.author_display_name],
   ]);

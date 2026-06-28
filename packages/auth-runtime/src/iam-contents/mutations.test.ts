@@ -46,12 +46,14 @@ vi.mock('./content-type-registry.js', () => ({
 }));
 
 vi.mock('./mutation-authorization.js', () => ({
-  authorizeUpdateContentActions: (...args: unknown[]) => state.authorizeUpdateContentActionsMock(...args),
+  authorizeUpdateContentActions: (...args: unknown[]) =>
+    state.authorizeUpdateContentActionsMock(...args),
 }));
 
 vi.mock('./mutation-helpers.js', () => ({
   createFailureResponse: (...args: unknown[]) => state.createFailureResponseMock(...args),
-  createFailureResponseFromResponse: (...args: unknown[]) => state.createFailureResponseFromResponseMock(...args),
+  createFailureResponseFromResponse: (...args: unknown[]) =>
+    state.createFailureResponseFromResponseMock(...args),
   logCreateFailure: (...args: unknown[]) => state.logCreateFailureMock(...args),
   parseCreateRequest: (...args: unknown[]) => state.parseCreateRequestMock(...args),
   reserveCreateIdempotency: (...args: unknown[]) => state.reserveCreateIdempotencyMock(...args),
@@ -77,14 +79,16 @@ vi.mock('./repository-mappers.js', () => ({
 }));
 
 vi.mock('./repository-state-validation.js', () => ({
-  isContentStateValidationError: (...args: unknown[]) => state.isContentStateValidationErrorMock(...args),
+  isContentStateValidationError: (...args: unknown[]) =>
+    state.isContentStateValidationErrorMock(...args),
 }));
 
 vi.mock('./schemas.js', () => ({
   updateContentSchema: {},
 }));
 
-const { createContentResponse, deleteContentResponse, updateContentResponse } = await import('./mutations.js');
+const { createContentResponse, deleteContentResponse, updateContentResponse } =
+  await import('./mutations.js');
 
 const actor = {
   instanceId: 'instance-1',
@@ -123,9 +127,24 @@ describe('content mutations', () => {
         { status: 403, headers: { 'Content-Type': 'application/json' } }
       )
     );
-    state.createFailureResponseFromResponseMock.mockResolvedValue(new Response('forbidden', { status: 403 }));
+    state.createFailureResponseFromResponseMock.mockResolvedValue(
+      new Response('forbidden', { status: 403 })
+    );
     state.createFailureResponseMock.mockImplementation(
-      async (_actor: unknown, _idempotencyKey: string, status: number, code: string, message: string) =>
+      async (
+        _actor: unknown,
+        _idempotencyKey: string,
+        status: number,
+        code: string,
+        message: string
+      ) =>
+        new Response(JSON.stringify({ error: { code, message } }), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+    state.createApiErrorMock.mockImplementation(
+      (status: number, code: string, message: string) =>
         new Response(JSON.stringify({ error: { code, message } }), {
           status,
           headers: { 'Content-Type': 'application/json' },
@@ -161,6 +180,7 @@ describe('content mutations', () => {
       created_by: 'creator-1',
       updated_at: '2026-04-26T10:00:00.000Z',
       updated_by: 'updater-1',
+      author_display_mode: 'organization',
       author_display_name: 'Actor',
       payload_json: {},
       status: 'draft',
@@ -176,20 +196,21 @@ describe('content mutations', () => {
     });
     state.deleteContentMock.mockResolvedValue('content-1');
     state.isContentStateValidationErrorMock.mockReturnValue(false);
-    state.createApiErrorMock.mockImplementation(
-      (status: number, code: string, message: string, requestId?: string) =>
-        new Response(JSON.stringify({ error: { code, message }, ...(requestId ? { requestId } : {}) }), {
-          status,
-          headers: { 'Content-Type': 'application/json' },
-        })
-    );
+    state.createApiErrorMock.mockImplementation((status: number) => new Response(null, { status }));
   });
 
   it('reserves the idempotency key before authorization short-circuits create requests', async () => {
-    const response = await createContentResponse(new Request('https://studio.test/api/v1/iam/contents'), actor);
+    const response = await createContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      actor
+    );
 
     expect(response.status).toBe(403);
-    expect(state.reserveCreateIdempotencyMock).toHaveBeenCalledWith(actor, 'idem-1', '{"contentType":"news.article"}');
+    expect(state.reserveCreateIdempotencyMock).toHaveBeenCalledWith(
+      actor,
+      'idem-1',
+      '{"contentType":"news.article"}'
+    );
     expect(state.authorizeContentActionMock).toHaveBeenCalledWith(
       actor,
       'content.create',
@@ -209,18 +230,25 @@ describe('content mutations', () => {
   it('returns early for parsed create responses and idempotency replay responses', async () => {
     const parseResponse = new Response('invalid', { status: 400 });
     state.parseCreateRequestMock.mockResolvedValueOnce(parseResponse);
-    expect(await createContentResponse(new Request('https://studio.test/api/v1/iam/contents'), actor)).toBe(parseResponse);
+    expect(
+      await createContentResponse(new Request('https://studio.test/api/v1/iam/contents'), actor)
+    ).toBe(parseResponse);
 
     const replayResponse = new Response('replay', { status: 201 });
     state.authorizeContentActionMock.mockResolvedValueOnce(null);
     state.reserveCreateIdempotencyMock.mockResolvedValueOnce(replayResponse);
-    expect(await createContentResponse(new Request('https://studio.test/api/v1/iam/contents'), actor)).toBe(replayResponse);
+    expect(
+      await createContentResponse(new Request('https://studio.test/api/v1/iam/contents'), actor)
+    ).toBe(replayResponse);
   });
 
   it('creates content successfully and completes idempotency with the response body', async () => {
     state.authorizeContentActionMock.mockResolvedValueOnce(null);
 
-    const response = await createContentResponse(new Request('https://studio.test/api/v1/iam/contents'), actor);
+    const response = await createContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      actor
+    );
 
     expect(response.status).toBe(201);
     expect(state.createContentMock).toHaveBeenCalledWith(
@@ -236,7 +264,8 @@ describe('content mutations', () => {
   it('derives create ownership only from the active organization context', async () => {
     state.parseCreateRequestMock.mockResolvedValueOnce({
       idempotencyKey: 'idem-1',
-      rawBody: '{"contentType":"news.article","organizationId":"22222222-2222-4222-8222-222222222222"}',
+      rawBody:
+        '{"contentType":"news.article","organizationId":"22222222-2222-4222-8222-222222222222"}',
       parsedData: {
         contentType: 'news.article',
         organizationId: '22222222-2222-4222-8222-222222222222',
@@ -249,7 +278,10 @@ describe('content mutations', () => {
     });
     state.authorizeContentActionMock.mockResolvedValueOnce(null);
 
-    const response = await createContentResponse(new Request('https://studio.test/api/v1/iam/contents'), actor);
+    const response = await createContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      actor
+    );
 
     expect(response.status).toBe(201);
     expect(state.authorizeContentActionMock).toHaveBeenCalledWith(
@@ -269,16 +301,22 @@ describe('content mutations', () => {
   it('maps create validation and database failures to the shared failure helpers', async () => {
     state.authorizeContentActionMock.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
     state.createContentMock.mockRejectedValueOnce({ code: 'content_publication_window_invalid' });
-    state.isContentStateValidationErrorMock.mockImplementationOnce(
-      (error: unknown) => Boolean(error && typeof error === 'object' && 'code' in (error as Record<string, unknown>))
+    state.isContentStateValidationErrorMock.mockImplementation((error: unknown) =>
+      Boolean(error && typeof error === 'object' && 'code' in (error as Record<string, unknown>))
     );
 
-    const validationResponse = await createContentResponse(new Request('https://studio.test/api/v1/iam/contents'), actor);
+    const validationResponse = await createContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      actor
+    );
     expect(validationResponse.status).toBe(400);
     expect(state.createFailureResponseMock).toHaveBeenCalledOnce();
 
     state.createContentMock.mockRejectedValueOnce(new Error('db down'));
-    const failureResponse = await createContentResponse(new Request('https://studio.test/api/v1/iam/contents'), actor);
+    const failureResponse = await createContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      actor
+    );
     expect(failureResponse.status).toBe(503);
     expect(state.logCreateFailureMock).toHaveBeenCalledOnce();
   });
@@ -286,33 +324,61 @@ describe('content mutations', () => {
   it('handles update request validation, authorization and success paths', async () => {
     const csrfResponse = new Response('csrf', { status: 403 });
     state.validateCsrfMock.mockReturnValueOnce(csrfResponse);
-    expect(await updateContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor)).toBe(csrfResponse);
+    expect(
+      await updateContentResponse(
+        new Request('https://studio.test/api/v1/iam/contents/content-1'),
+        actor
+      )
+    ).toBe(csrfResponse);
 
     state.readPathSegmentMock.mockReturnValueOnce('');
-    const missingId = await updateContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor);
+    const missingId = await updateContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      actor
+    );
     expect(missingId.status).toBe(400);
 
     state.parseRequestBodyMock.mockResolvedValueOnce({ ok: false, message: 'invalid body' });
-    const invalidBody = await updateContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor);
+    const invalidBody = await updateContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      actor
+    );
     expect(invalidBody.status).toBe(400);
 
     state.loadContentByIdMock.mockResolvedValueOnce(undefined);
-    const notFound = await updateContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor);
+    const notFound = await updateContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      actor
+    );
     expect(notFound.status).toBe(404);
 
-    state.authorizeUpdateContentActionsMock.mockResolvedValueOnce(new Response('forbidden', { status: 403 }));
-    const denied = await updateContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor);
+    state.authorizeUpdateContentActionsMock.mockResolvedValueOnce(
+      new Response('forbidden', { status: 403 })
+    );
+    const denied = await updateContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      actor
+    );
     expect(denied.status).toBe(403);
 
-    const ok = await updateContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor);
+    const ok = await updateContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      actor
+    );
     expect(ok.status).toBe(200);
     expect(state.updateContentMock).toHaveBeenCalled();
   });
 
   it('passes visible author updates through normal update authorization', async () => {
-    state.parseRequestBodyMock.mockResolvedValueOnce({ ok: true, data: { authorDisplayName: 'Stadt Musterhausen' } });
+    state.parseRequestBodyMock.mockResolvedValueOnce({
+      ok: true,
+      data: { authorDisplayName: 'Stadt Musterhausen' },
+    });
 
-    const response = await updateContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor);
+    const response = await updateContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      actor
+    );
 
     expect(response.status).toBe(200);
     expect(state.authorizeUpdateContentActionsMock).toHaveBeenCalledWith(
@@ -331,22 +397,41 @@ describe('content mutations', () => {
   it('handles delete request validation, authorization and success paths', async () => {
     const csrfResponse = new Response('csrf', { status: 403 });
     state.validateCsrfMock.mockReturnValueOnce(csrfResponse);
-    expect(await deleteContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor)).toBe(csrfResponse);
+    expect(
+      await deleteContentResponse(
+        new Request('https://studio.test/api/v1/iam/contents/content-1'),
+        actor
+      )
+    ).toBe(csrfResponse);
 
     state.readPathSegmentMock.mockReturnValueOnce('');
-    const missingId = await deleteContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor);
+    const missingId = await deleteContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      actor
+    );
     expect(missingId.status).toBe(400);
 
     state.loadContentRowByIdMock.mockResolvedValueOnce(undefined);
-    const notFound = await deleteContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor);
+    const notFound = await deleteContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      actor
+    );
     expect(notFound.status).toBe(404);
 
-    state.authorizeContentActionMock.mockResolvedValueOnce(new Response('forbidden', { status: 403 }));
-    const denied = await deleteContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor);
+    state.authorizeContentActionMock.mockResolvedValueOnce(
+      new Response('forbidden', { status: 403 })
+    );
+    const denied = await deleteContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      actor
+    );
     expect(denied.status).toBe(403);
 
     state.authorizeContentActionMock.mockResolvedValueOnce(null);
-    const ok = await deleteContentResponse(new Request('https://studio.test/api/v1/iam/contents/content-1'), actor);
+    const ok = await deleteContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      actor
+    );
     expect(ok.status).toBe(200);
     expect(state.deleteContentMock).toHaveBeenCalled();
   });

@@ -106,4 +106,40 @@ describe('shared effective permission mapping', () => {
         },
       ]);
   });
+
+  it('normalizes identical permission keys to the widest access scope while preserving provenance', () => {
+    expect(
+      toEffectivePermissions([
+        {
+          permission_key: 'content.update',
+          action: 'content.update',
+          resource_type: 'content',
+          organization_id: '22222222-2222-4222-8222-222222222222',
+          access_scope: 'own',
+          role_id: 'role-own',
+          source_kind: 'direct_role',
+        },
+        {
+          permission_key: 'content.update',
+          action: 'content.update',
+          resource_type: 'content',
+          organization_id: '22222222-2222-4222-8222-222222222222',
+          access_scope: 'organization',
+          role_id: 'role-org',
+          group_id: 'group-editors',
+          source_kind: 'group_role',
+        },
+      ])
+    ).toEqual([
+      {
+        action: 'content.update',
+        resourceType: 'content',
+        organizationId: '22222222-2222-4222-8222-222222222222',
+        accessScope: 'organization',
+        sourceRoleIds: ['role-org', 'role-own'],
+        sourceGroupIds: ['group-editors'],
+        provenance: { sourceKinds: ['direct_role', 'group_role'] },
+      },
+    ]);
+  });
 });

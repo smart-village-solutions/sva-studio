@@ -1,16 +1,11 @@
-import type {
-  ApiPagination,
-  ContentJsonValue,
-  IamContentAccessSummary,
-  IamContentListItem,
-  IamContentListQuery,
-} from '@sva/core';
-import { listEvents, type EventContentItem } from '@sva/plugin-events';
-import { listNews, type NewsContentItem } from '@sva/plugin-news';
-import { listPoi, type PoiContentItem } from '@sva/plugin-poi';
+import type { ApiPagination, IamContentListItem, IamContentListQuery } from '@sva/core';
+import { listEvents } from '@sva/plugin-events';
+import { listNews } from '@sva/plugin-news';
+import { listPoi } from '@sva/plugin-poi';
 import React from 'react';
 
 import type { IamHttpError } from '../lib/iam-api';
+import { mapEventItem, mapNewsItem, mapPoiItem } from '../lib/iam-content-list-mainserver';
 
 type UnifiedContentListResult = {
   readonly contents: readonly IamContentListItem[];
@@ -23,146 +18,18 @@ type UnifiedContentListResult = {
 
 const MAINSERVER_FETCH_PAGE_SIZE = 100;
 
-const studioContentTypeIds = ['news.article', 'events.event-record', 'poi.point-of-interest'] as const;
+const studioContentTypeIds = [
+  'news.article',
+  'events.event-record',
+  'poi.point-of-interest',
+] as const;
 
 const toSearchableText = (item: IamContentListItem): string =>
-  [item.title, item.contentType, item.author, JSON.stringify(item.payload)]
-    .join(' ')
-    .toLowerCase();
+  [item.title, item.contentType, item.author, JSON.stringify(item.payload)].join(' ').toLowerCase();
 
-const normalizeTitle = (value: string | undefined, fallback: string): string => {
-  const normalized = value?.trim();
-  return normalized && normalized.length > 0 ? normalized : fallback;
-};
-
-const resolveNewsTitle = (item: NewsContentItem): string =>
-  normalizeTitle(item.title, normalizeTitle(item.contentBlocks?.[0]?.title, item.id));
-
-const deriveUpdateAction = (contentType: string): string | null => {
-  const namespace = contentType.split('.')[0]?.trim();
-  return namespace ? `${namespace}.update` : null;
-};
-
-const deriveCreateAction = (contentType: string): string | null => {
-  const namespace = contentType.split('.')[0]?.trim();
-  return namespace ? `${namespace}.create` : null;
-};
-
-const createMainserverItemAccess = (
-  contentType: string,
+const toPermissionViews = (
   permissionActions: readonly string[]
-): IamContentAccessSummary => {
-  const updateAction = deriveUpdateAction(contentType);
-  const createAction = deriveCreateAction(contentType);
-  const canUpdate = updateAction ? permissionActions.includes(updateAction) : false;
-  const canCreate = createAction ? permissionActions.includes(createAction) : false;
-
-  return canUpdate
-    ? {
-        state: 'editable',
-        canRead: true,
-        canCreate,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: [],
-      }
-    : {
-        state: 'read_only',
-        canRead: true,
-        canCreate,
-        canUpdate: false,
-        reasonCode: 'content_update_missing',
-        organizationIds: [],
-        sourceKinds: [],
-      };
-};
-
-const toContentJsonValue = (value: unknown): ContentJsonValue =>
-  JSON.parse(JSON.stringify(value ?? null)) as ContentJsonValue;
-
-const mapNewsItem = (
-  item: NewsContentItem,
-  instanceId: string,
-  permissionActions: readonly string[]
-): IamContentListItem => ({
-  id: item.id,
-  instanceId,
-  contentType: item.contentType,
-  title: resolveNewsTitle(item),
-  createdAt: item.createdAt,
-  createdBy: item.author,
-  updatedAt: item.updatedAt,
-  updatedBy: item.author,
-  author: item.author,
-  payload: toContentJsonValue(item.payload),
-  status: 'published',
-  validationState: 'valid',
-  historyRef: `mainserver:news:${item.id}`,
-  publishedAt: item.publishedAt,
-  access: createMainserverItemAccess(item.contentType, permissionActions),
-});
-
-const mapEventItem = (
-  item: EventContentItem,
-  instanceId: string,
-  permissionActions: readonly string[]
-): IamContentListItem => ({
-  id: item.id,
-  instanceId,
-  contentType: item.contentType,
-  title: normalizeTitle(item.title, item.id),
-  createdAt: item.createdAt,
-  createdBy: 'mainserver',
-  updatedAt: item.updatedAt,
-  updatedBy: 'mainserver',
-  author: 'mainserver',
-  payload: toContentJsonValue({
-    description: item.description,
-    categoryName: item.categoryName,
-    dates: item.dates,
-    addresses: item.addresses,
-    contacts: item.contacts,
-    urls: item.urls,
-    tags: item.tags,
-    pointOfInterestId: item.pointOfInterestId,
-  }),
-  status: 'published',
-  validationState: 'valid',
-  historyRef: `mainserver:events:${item.id}`,
-  access: createMainserverItemAccess(item.contentType, permissionActions),
-});
-
-const mapPoiItem = (
-  item: PoiContentItem,
-  instanceId: string,
-  permissionActions: readonly string[]
-): IamContentListItem => ({
-  id: item.id,
-  instanceId,
-  contentType: item.contentType,
-  title: normalizeTitle(item.name, item.id),
-  createdAt: item.createdAt,
-  createdBy: 'mainserver',
-  updatedAt: item.updatedAt,
-  updatedBy: 'mainserver',
-  author: 'mainserver',
-  payload: toContentJsonValue({
-    description: item.description,
-    mobileDescription: item.mobileDescription,
-    active: item.active,
-    categoryName: item.categoryName,
-    payload: item.payload,
-    addresses: item.addresses,
-    contact: item.contact,
-    openingHours: item.openingHours,
-    webUrls: item.webUrls,
-    tags: item.tags,
-  }),
-  status: 'published',
-  validationState: 'valid',
-  historyRef: `mainserver:poi:${item.id}`,
-  access: createMainserverItemAccess(item.contentType, permissionActions),
-});
+): readonly { readonly action: string }[] => permissionActions.map((action) => ({ action }));
 
 const compareItemsBySortField = (
   left: IamContentListItem,
@@ -201,7 +68,10 @@ const sortItems = (
   });
 };
 
-const filterItems = (items: readonly IamContentListItem[], query: IamContentListQuery): readonly IamContentListItem[] => {
+const filterItems = (
+  items: readonly IamContentListItem[],
+  query: IamContentListQuery
+): readonly IamContentListItem[] => {
   const normalizedSearch = query.q?.trim().toLowerCase();
 
   return items.filter((item) => {
@@ -218,7 +88,11 @@ const filterItems = (items: readonly IamContentListItem[], query: IamContentList
   });
 };
 
-const paginateItems = (items: readonly IamContentListItem[], page: number, pageSize: number): readonly IamContentListItem[] => {
+const paginateItems = (
+  items: readonly IamContentListItem[],
+  page: number,
+  pageSize: number
+): readonly IamContentListItem[] => {
   const offset = Math.max(0, (page - 1) * pageSize);
   return items.slice(offset, offset + pageSize);
 };
@@ -248,13 +122,21 @@ const loadItemsForContentType = async (
   instanceId: string,
   permissionActions: readonly string[]
 ): Promise<readonly IamContentListItem[]> => {
+  const permissions = toPermissionViews(permissionActions);
+
   switch (contentType) {
     case 'news.article':
-      return (await fetchAllPages(listNews)).map((item) => mapNewsItem(item, instanceId, permissionActions));
+      return (await fetchAllPages(listNews)).map((item) =>
+        mapNewsItem(item, instanceId, permissions)
+      );
     case 'events.event-record':
-      return (await fetchAllPages(listEvents)).map((item) => mapEventItem(item, instanceId, permissionActions));
+      return (await fetchAllPages(listEvents)).map((item) =>
+        mapEventItem(item, instanceId, permissions)
+      );
     case 'poi.point-of-interest':
-      return (await fetchAllPages(listPoi)).map((item) => mapPoiItem(item, instanceId, permissionActions));
+      return (await fetchAllPages(listPoi)).map((item) =>
+        mapPoiItem(item, instanceId, permissions)
+      );
   }
 };
 
@@ -280,8 +162,9 @@ export const useUnifiedContentList = (
 
   const normalizedVisibleTypes = React.useMemo(
     () =>
-      studioContentTypeIds.filter((contentType) =>
-        visibleTypes.includes(contentType) && (!query.type || query.type === contentType)
+      studioContentTypeIds.filter(
+        (contentType) =>
+          visibleTypes.includes(contentType) && (!query.type || query.type === contentType)
       ),
     [query.type, visibleTypes]
   );
@@ -322,7 +205,9 @@ export const useUnifiedContentList = (
 
       try {
         const sources = await Promise.all(
-          normalizedVisibleTypes.map((contentType) => loadItemsForContentType(contentType, instanceId, permissionActions))
+          normalizedVisibleTypes.map((contentType) =>
+            loadItemsForContentType(contentType, instanceId, permissionActions)
+          )
         );
 
         if (!isActive) {
@@ -349,7 +234,14 @@ export const useUnifiedContentList = (
     return () => {
       isActive = false;
     };
-  }, [fetchCacheKey, instanceId, normalizedVisibleTypes, permissionActions, reloadToken, unsupportedStatusFilter]);
+  }, [
+    fetchCacheKey,
+    instanceId,
+    normalizedVisibleTypes,
+    permissionActions,
+    reloadToken,
+    unsupportedStatusFilter,
+  ]);
 
   const pagination = React.useMemo<ApiPagination>(() => {
     if (unsupportedStatusFilter) {

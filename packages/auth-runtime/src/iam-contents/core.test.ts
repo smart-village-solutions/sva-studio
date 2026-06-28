@@ -101,6 +101,7 @@ const item = (id: string, organizationId: string): IamContentListItem => ({
   createdBy: 'creator-1',
   updatedAt: '2026-04-26T10:00:00.000Z',
   updatedBy: 'updater-1',
+  authorDisplayMode: 'organization',
   author: 'Actor',
   payload: {},
   status: 'draft',

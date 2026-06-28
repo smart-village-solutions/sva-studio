@@ -23,7 +23,7 @@ import type { ResolvedContentActor } from './request-context.js';
 import { authorizeContentAction, resolveContentAccess } from './request-context.js';
 import { createContent, deleteContent, loadContentById, loadContentDetail, loadContentRowById, updateContent } from './repository.js';
 import { mapContentListItem } from './repository-mappers.js';
-import { isContentStateValidationError } from './repository-state-validation.js';
+import { ContentStateValidationError, isContentStateValidationError } from './repository-state-validation.js';
 import { updateContentSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
@@ -34,6 +34,20 @@ const createContentStateValidationResponse = (
 ): Response | null => {
   if (!isContentStateValidationError(error)) {
     return null;
+  }
+  if (
+    error.code === 'content_author_display_mode_not_allowed' ||
+    error.code === 'content_author_organization_not_found'
+  ) {
+    return createApiError(
+      400,
+      'invalid_request',
+      error.code === 'content_author_display_mode_not_allowed'
+        ? 'Die gewählte Autorenanzeige ist für diese Organisation nicht erlaubt.'
+        : 'Die Organisation für die Autorenanzeige wurde nicht gefunden.',
+      requestId,
+      { reason_code: error.code }
+    );
   }
   if (error.code === 'content_published_at_required') {
     return createApiError(
@@ -52,6 +66,19 @@ const createContentStateValidationResponse = (
     requestId,
     { reason_code: error.code }
   );
+};
+
+const resolveContentStateValidationMessage = (error: ContentStateValidationError): string => {
+  switch (error.code) {
+    case 'content_author_display_mode_not_allowed':
+      return 'Die gewählte Autorenanzeige ist für diese Organisation nicht erlaubt.';
+    case 'content_author_organization_not_found':
+      return 'Die Organisation für die Autorenanzeige wurde nicht gefunden.';
+    case 'content_publication_window_invalid':
+      return 'Das Veröffentlichungsfenster ist ungültig.';
+    case 'content_published_at_required':
+      return 'Veröffentlichungsdatum ist für veröffentlichte Inhalte erforderlich.';
+  }
 };
 
 export const createContentResponse = async (
@@ -102,15 +129,14 @@ export const createContentResponse = async (
     return jsonResponse(201, responseBody);
   } catch (error) {
     const validationResponse = createContentStateValidationResponse(error, actor.requestId);
-    if (validationResponse) {
+    const validationError = isContentStateValidationError(error) ? error : null;
+    if (validationResponse && validationError) {
       return createFailureResponse(
         actor,
         prepared.idempotencyKey,
         validationResponse.status,
         'invalid_request',
-        isContentStateValidationError(error) && error.code === 'content_publication_window_invalid'
-          ? 'Das Veröffentlichungsfenster ist ungültig.'
-          : 'Veröffentlichungsdatum ist für veröffentlichte Inhalte erforderlich.'
+        resolveContentStateValidationMessage(validationError)
       );
     }
     logCreateFailure(actor, error);

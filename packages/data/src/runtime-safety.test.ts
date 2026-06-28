@@ -469,6 +469,6 @@ test('sva-studio-react vitest shared config resolves mail-runtime from workspace
 
   assert.match(
     vitestSharedConfig,
-    /'@sva\/mail-runtime': fileURLToPath\(new URL\('\.\.\/\.\.\/packages\/mail-runtime\/src\/index\.ts', import\.meta\.url\)\)/
+    /'@sva\/mail-runtime': fileURLToPath\(\s*new URL\('\.\.\/\.\.\/packages\/mail-runtime\/src\/index\.ts', import\.meta\.url\)\s*\)/
   );
 });

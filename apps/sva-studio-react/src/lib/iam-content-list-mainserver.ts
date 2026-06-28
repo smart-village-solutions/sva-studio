@@ -4,11 +4,58 @@ import type {
   IamContentListItem,
 } from '@sva/core';
 import type { EffectivePermission } from '@sva/iam-core';
-import type {
-  SvaMainserverEventItem,
-  SvaMainserverNewsItem,
-  SvaMainserverPoiItem,
-} from '@sva/sva-mainserver';
+
+type MainserverDataProvider = Readonly<{
+  id?: string;
+  name?: string;
+}>;
+
+type MainserverNewsItem = Readonly<{
+  id: string;
+  contentType: string;
+  title?: string;
+  contentBlocks?: readonly Readonly<{ title?: string }>[];
+  author: string;
+  payload?: unknown;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
+  dataProvider?: MainserverDataProvider;
+}>;
+
+type MainserverEventItem = Readonly<{
+  id: string;
+  contentType: string;
+  title?: string;
+  description?: string;
+  categoryName?: string;
+  dates?: unknown;
+  addresses?: unknown;
+  contacts?: unknown;
+  urls?: unknown;
+  tags?: unknown;
+  pointOfInterestId?: string;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+type MainserverPoiItem = Readonly<{
+  id: string;
+  contentType: string;
+  name?: string;
+  description?: string;
+  mobileDescription?: string;
+  active?: boolean;
+  categoryName?: string;
+  payload?: unknown;
+  addresses?: unknown;
+  contact?: unknown;
+  openingHours?: unknown;
+  webUrls?: unknown;
+  tags?: unknown;
+  createdAt: string;
+  updatedAt: string;
+}>;
 
 const normalizeTitle = (value: string | undefined, fallback: string): string => {
   const normalized = value?.trim();
@@ -18,7 +65,10 @@ const normalizeTitle = (value: string | undefined, fallback: string): string => 
 const toContentJsonValue = (value: unknown): ContentJsonValue =>
   JSON.parse(JSON.stringify(value ?? null)) as ContentJsonValue;
 
-const deriveNamespacedAction = (contentType: string, action: 'create' | 'update'): string | null => {
+const deriveNamespacedAction = (
+  contentType: string,
+  action: 'create' | 'update'
+): string | null => {
   const namespace = contentType.split('.')[0]?.trim();
   return namespace ? `${namespace}.${action}` : null;
 };
@@ -57,11 +107,11 @@ const createMainserverItemAccess = (
       };
 };
 
-const resolveNewsTitle = (item: SvaMainserverNewsItem): string =>
+const resolveNewsTitle = (item: MainserverNewsItem): string =>
   normalizeTitle(item.title, normalizeTitle(item.contentBlocks?.[0]?.title, item.id));
 
 export const mapNewsItem = (
-  item: SvaMainserverNewsItem,
+  item: MainserverNewsItem,
   instanceId: string,
   permissions: readonly PermissionView[]
 ): IamContentListItem => ({
@@ -73,7 +123,10 @@ export const mapNewsItem = (
   createdBy: item.author,
   updatedAt: item.updatedAt,
   updatedBy: item.author,
+  authorDisplayMode: 'organization',
   author: item.author,
+  ...(item.dataProvider?.id ? { sourceDataProviderId: item.dataProvider.id } : {}),
+  ...(item.dataProvider?.name ? { sourceDataProviderName: item.dataProvider.name } : {}),
   payload: toContentJsonValue(item.payload),
   status: 'published',
   validationState: 'valid',
@@ -83,7 +136,7 @@ export const mapNewsItem = (
 });
 
 export const mapEventItem = (
-  item: SvaMainserverEventItem,
+  item: MainserverEventItem,
   instanceId: string,
   permissions: readonly PermissionView[]
 ): IamContentListItem => ({
@@ -95,6 +148,7 @@ export const mapEventItem = (
   createdBy: 'mainserver',
   updatedAt: item.updatedAt,
   updatedBy: 'mainserver',
+  authorDisplayMode: 'organization',
   author: 'mainserver',
   payload: toContentJsonValue({
     description: item.description,
@@ -104,6 +158,7 @@ export const mapEventItem = (
     contacts: item.contacts,
     urls: item.urls,
     tags: item.tags,
+    pointOfInterestId: item.pointOfInterestId,
   }),
   status: 'published',
   validationState: 'valid',
@@ -112,7 +167,7 @@ export const mapEventItem = (
 });
 
 export const mapPoiItem = (
-  item: SvaMainserverPoiItem,
+  item: MainserverPoiItem,
   instanceId: string,
   permissions: readonly PermissionView[]
 ): IamContentListItem => ({
@@ -124,6 +179,7 @@ export const mapPoiItem = (
   createdBy: 'mainserver',
   updatedAt: item.updatedAt,
   updatedBy: 'mainserver',
+  authorDisplayMode: 'organization',
   author: 'mainserver',
   payload: toContentJsonValue({
     description: item.description,

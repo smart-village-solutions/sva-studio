@@ -47,13 +47,16 @@
 - **ESLint ausführen:** `pnpm lint`
 - **Shift-left (verbindlich):** Nach jedem abgeschlossenen Änderungsblock sofort die betroffenen Tests ausführen (nicht erst am Ende der Umsetzung)
 - **Schnelliterationsphase:** Details, Grenzen und Transparenzpflichten stehen kanonisch in [DEVELOPMENT_RULES.md](./DEVELOPMENT_RULES.md); hier nur anwenden, nicht doppelt ausdefinieren
-- **Push-Gate (Mindestanforderung):** Wenn `pnpm test:pr` aus Zeit- oder Ressourcen-Gründen nicht läuft, vor jedem Push mindestens `pnpm nx affected --target=test:unit --base=origin/main` ausführen; bei Typänderungen zusätzlich `pnpm nx affected --target=test:types --base=origin/main`
+- **Push-Gate (Mindestanforderung):** Wenn `pnpm test:pr` aus Zeit- oder Ressourcen-Gründen nicht läuft, vor jedem Push mindestens den kleinsten relevanten Gate-Pfad ausführen; `pnpm nx affected --target=test:unit --base=origin/main` ist nur dann der Standard, wenn der gemessene affected-Scope lokal klein und handhabbar ist. Bei Typänderungen zusätzlich den passenden Type-Gate-Pfad ausführen.
 - **Arbeitsregel:** Keine weitere Implementierung auf bekannt rotem Teststand
 - **Kleinster echte Gate-Pfad zuerst:** Vor Commit oder Push immer den kleinsten tatsächlich relevanten Gate-Pfad ausführen, nicht reflexartig die Vollsuite. Beispiele:
-  - UI-/Hook-Fix: betroffener Unit-Run plus `pnpm nx affected --target=test:unit --base=origin/main`
-  - Typänderung: `pnpm nx affected --target=test:types --base=origin/main`
+  - UI-/Hook-Fix: betroffener Unit-Run plus Scope-Prüfung für `pnpm nx affected --target=test:unit --base=origin/main`
+  - Typänderung: betroffener Type-Run oder `pnpm nx affected --target=test:types --base=origin/main`, wenn der affected-Scope klein ist
   - Skript-/CI-Datei unter `scripts/ci/` oder Root-TS-Skripten: zusätzlich `pnpm exec tsc -p tsconfig.scripts.json --noEmit` oder den passenden Wrapper wie `NX_BASE=origin/main pnpm test:types:affected`
   - Server-Runtime-relevante Änderung: früh `pnpm check:server-runtime`
+- **Affected-Scope vor breiten Runs messen:** Vor lokalen `affected`-Unit-Runs gegen `origin/main` zuerst `pnpm nx show projects --affected --withTarget=test:unit --base=origin/main` ausführen. Wenn der Lauf mehr als 6 Projekte, App-UI-/Routes-Matrizen oder offensichtlich PR-fremde Langläufer zieht, gilt er lokal als breiter PR-Gate-Lauf und nicht als Standard-Shift-left-Run.
+- **Große/langlaufende PR-Branches:** Bei PR-Fixes auf Branches mit großem Alt-Scope den Fixblock gezielt validieren (Package-Targets, `--testFiles`, relevante Type-/Runtime-/Complexity-Gates) und den ausgelassenen breiten affected-Run transparent benennen. Breite affected-Runs gegen `origin/main` nur vor finaler PR-Freigabe, auf explizite Anforderung oder wenn der gemessene Scope klein ist.
+- **Timeouts in PR-fremden Tests:** Wenn ein breiter affected-Run in einem nicht direkt geänderten Bereich timeoutet, den Lauf abbrechen und den einzelnen Test separat reproduzieren. Nur wenn der Einzeltest reproduzierbar rot ist oder der Bereich vom Fix betroffen ist, wird er Teil des aktuellen Fixblocks.
 - **Effizienter, zielgerichteter Test-Workflow:**
   1. **Nur affected:** `pnpm nx affected --target=test:unit` (vergleicht mit `main`-Branch)
   2. **Spezifische Packages:** `pnpm nx run sva-studio-react:test:unit`

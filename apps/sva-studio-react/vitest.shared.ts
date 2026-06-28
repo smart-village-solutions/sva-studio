@@ -55,6 +55,9 @@ export const sharedVitestConfig = defineConfig({
       '@sva/iam-admin': fileURLToPath(
         new URL('../../packages/iam-admin/src/index.ts', import.meta.url)
       ),
+      '@sva/iam-core': fileURLToPath(
+        new URL('../../packages/iam-core/src/index.ts', import.meta.url)
+      ),
       '@sva/iam-governance/legal-text-html': fileURLToPath(
         new URL('../../packages/iam-governance/src/legal-text-html.ts', import.meta.url)
       ),

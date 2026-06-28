@@ -20,6 +20,7 @@ export default defineConfig({
       '@sva/auth-runtime': resolve(__dirname, '../auth-runtime/src/index.ts'),
       '@sva/iam-admin/encryption': resolve(__dirname, '../iam-admin/src/encryption.ts'),
       '@sva/iam-admin': resolve(__dirname, '../iam-admin/src/index.ts'),
+      '@sva/iam-core': resolve(__dirname, '../iam-core/src/index.ts'),
       '@sva/iam-governance/dsr-export-payload': resolve(__dirname, '../iam-governance/src/dsr-export-payload.ts'),
       '@sva/data-repositories/server': resolve(__dirname, '../data-repositories/src/server.ts'),
       '@sva/data-repositories': resolve(__dirname, '../data-repositories/src/index.ts'),

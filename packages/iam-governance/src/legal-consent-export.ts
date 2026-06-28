@@ -1,4 +1,4 @@
-import type { LegalAcceptanceActionType, LegalConsentExportRecord } from '@sva/core';
+import type { LegalAcceptanceActionType, LegalConsentExportRecord } from '@sva/iam-core';
 
 import type { QueryClient } from './query-client.js';
 

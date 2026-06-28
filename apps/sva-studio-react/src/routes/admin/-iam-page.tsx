@@ -1,11 +1,10 @@
 import type {
-  AuthorizeResponse,
-  EffectivePermission,
   IamDeletionContentStrategy,
   IamDsrCaseListItem,
   IamGovernanceCaseListItem,
   IamTenantDeletionRulesOverview,
 } from '@sva/core';
+import type { AuthorizeResponse, EffectivePermission } from '@sva/iam-core';
 import { StudioDataTable, type StudioColumnDef } from '@sva/studio-ui-react';
 import { useNavigate } from '@tanstack/react-router';
 import React from 'react';

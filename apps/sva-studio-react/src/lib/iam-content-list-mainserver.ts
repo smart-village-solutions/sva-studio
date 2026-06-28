@@ -1,9 +1,9 @@
 import type {
   ContentJsonValue,
-  EffectivePermission,
   IamContentAccessSummary,
   IamContentListItem,
 } from '@sva/core';
+import type { EffectivePermission } from '@sva/iam-core';
 import type {
   SvaMainserverEventItem,
   SvaMainserverNewsItem,

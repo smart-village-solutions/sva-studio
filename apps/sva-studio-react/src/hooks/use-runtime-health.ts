@@ -1,4 +1,4 @@
-import type { RuntimeDependencyHealth, RuntimeDependencyKey, RuntimeHealthResponse } from '@sva/core';
+import type { RuntimeDependencyHealth, RuntimeDependencyKey, RuntimeHealthResponse } from '@sva/iam-core';
 import React from 'react';
 
 import { asIamError, getRuntimeHealth, type IamHttpError } from '../lib/iam-api';

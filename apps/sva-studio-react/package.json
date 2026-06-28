@@ -26,6 +26,7 @@
     "@sva/core": "workspace:*",
     "@sva/data-repositories": "workspace:*",
     "@sva/iam-admin": "workspace:*",
+    "@sva/iam-core": "workspace:*",
     "@sva/iam-governance": "workspace:*",
     "@sva/mail-runtime": "workspace:*",
     "@sva/monitoring-client": "workspace:*",

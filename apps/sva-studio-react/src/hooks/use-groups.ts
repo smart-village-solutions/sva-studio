@@ -1,4 +1,7 @@
-import type { IamAdminGroupDetail, IamAdminGroupListItem } from '@sva/core';
+import type {
+  IamGroupDetail as IamAdminGroupDetail,
+  IamGroupListItem as IamAdminGroupListItem,
+} from '@sva/iam-core';
 
 import React from 'react';
 

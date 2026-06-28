@@ -1,4 +1,5 @@
-import { summarizeContentAccess, withServerDeniedContentAccess, type IamContentAccessSummary, type MePermissionsResponse } from '@sva/core';
+import type { MePermissionsResponse } from '@sva/iam-core';
+import { summarizeContentAccess, withServerDeniedContentAccess, type IamContentAccessSummary } from '@sva/core';
 import React from 'react';
 
 import { asIamError, fetchWithRequestTimeout, IamHttpError } from '../lib/iam-api';

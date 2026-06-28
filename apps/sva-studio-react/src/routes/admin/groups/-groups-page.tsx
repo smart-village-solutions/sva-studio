@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import type { IamAdminGroupDetail } from '@sva/core';
+import type { IamGroupDetail as IamAdminGroupDetail } from '@sva/iam-core';
 
 import React from 'react';
 

@@ -1,8 +1,5 @@
-import type {
-  IamRolePermissionAssignmentScope,
-  IamUserPermissionTraceInactiveReason,
-  IamUserPermissionTraceStatus,
-} from '@sva/core';
+import type { IamRolePermissionAssignmentScope } from '@sva/iam-core';
+import type { IamUserPermissionTraceInactiveReason, IamUserPermissionTraceStatus } from '@sva/core';
 
 import type { UserStatus } from './types.js';
 

@@ -1,11 +1,9 @@
 import {
-  evaluateAuthorizeDecision,
-  type AuthorizeRequest,
-  type EffectivePermission,
   type IamContentAccessSummary,
   type IamContentListItem,
   type IamContentListQuery,
 } from '@sva/core';
+import { evaluateAuthorizeDecision, type AuthorizeRequest, type EffectivePermission } from '@sva/iam-core';
 import {
   type AuthenticatedRequestContext,
   resolveActorAccountId,

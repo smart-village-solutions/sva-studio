@@ -247,6 +247,9 @@ importers:
       '@sva/iam-admin':
         specifier: workspace:*
         version: link:../../packages/iam-admin
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../../packages/iam-core
       '@sva/iam-governance':
         specifier: workspace:*
         version: file:packages/iam-governance(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
@@ -574,6 +577,9 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../server-runtime
@@ -605,6 +611,9 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../server-runtime
@@ -12614,6 +12623,7 @@ snapshots:
   '@sva/iam-admin@file:packages/iam-admin(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))':
     dependencies:
       '@sva/core': file:packages/core
+      '@sva/iam-core': file:packages/iam-core
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/studio-module-iam': file:packages/studio-module-iam
       zod: 4.4.3
@@ -12626,6 +12636,7 @@ snapshots:
   '@sva/iam-governance@file:packages/iam-governance(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))':
     dependencies:
       '@sva/core': file:packages/core
+      '@sva/iam-core': file:packages/iam-core
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       postcss: 8.5.11
       sanitize-html: 2.17.5

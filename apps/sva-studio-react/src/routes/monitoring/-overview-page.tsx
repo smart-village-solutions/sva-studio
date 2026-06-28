@@ -1,4 +1,4 @@
-import type { AuthorizePerformanceRunResult } from '@sva/core';
+import type { AuthorizePerformanceRunResult } from '@sva/iam-core';
 import { StudioListPageTemplate } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';

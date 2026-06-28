@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AuthorizeResponse, EffectivePermission } from '@sva/core';
+import type { AuthorizeResponse, EffectivePermission } from '@sva/iam-core';
 
 import {
   filterPermissions,

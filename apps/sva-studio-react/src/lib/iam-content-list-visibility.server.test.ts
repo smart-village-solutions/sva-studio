@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { EffectivePermission } from '@sva/core';
+import type { EffectivePermission } from '@sva/iam-core';
 
 import {
   buildProjectionReadVisibilityRules,

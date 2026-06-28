@@ -131,8 +131,15 @@ export const createContentResponse = async (
     return jsonResponse(201, responseBody);
   } catch (error) {
     const validationResponse = createContentStateValidationResponse(error, actor.requestId);
-    if (validationResponse) {
-      return createFailureResponseFromResponse(actor, prepared.idempotencyKey, validationResponse);
+    const validationError = isContentStateValidationError(error) ? error : null;
+    if (validationResponse && validationError) {
+      return createFailureResponse(
+        actor,
+        prepared.idempotencyKey,
+        validationResponse.status,
+        'invalid_request',
+        resolveContentStateValidationMessage(validationError)
+      );
     }
     logCreateFailure(actor, error);
 

@@ -167,6 +167,36 @@ Für zusätzliche lokale Instanzen oder weitere lokale Datenbanken ist `../guide
 
 Für lokale Multi-Tenant-Hosttests ist `../guides/instance-registry-local-development.md` der kanonische Pfad. Offiziell unterstützt sind `studio.localhost` und `<instanceId>.studio.localhost`.
 
+### Playwright- und PR-Gate-Läufe mit `local-keycloak`
+
+Der lokale E2E- und PR-Gate-Pfad muss dieselbe Runtime-Konfiguration verwenden wie `pnpm env:up:local-keycloak`. Relevant sind dabei nicht nur `apps/sva-studio-react/.env.local`, sondern auch:
+
+- `config/runtime/base.vars`
+- `config/runtime/local-keycloak.vars`
+- `config/runtime/local-keycloak.local.vars`
+
+Diese Dateien liefern unter anderem `SVA_RUNTIME_PROFILE`, `VITE_SVA_RUNTIME_PROFILE`, `IAM_DATABASE_URL`, `IAM_PII_ACTIVE_KEY_ID` und `IAM_PII_KEYRING_JSON`. Ohne diese Werte kann der von Playwright gestartete Vite-Server tenant-spezifische Secrets zwar aus der Datenbank lesen, aber nicht entschlüsseln. Das Fehlerbild ist dann ein `internal_error` auf `/auth/login` mit `tenant_auth_client_secret_unreadable`, obwohl die normal gestartete lokale App funktioniert.
+
+Der korrekte lokale Ablauf vor einem PR-Gate ist:
+
+```bash
+pnpm env:up:local-keycloak
+pnpm test:pr
+```
+
+`apps/sva-studio-react/playwright.config.ts` lädt lokal standardmäßig das Runtime-Profil `local-keycloak`, bevor die app-spezifische `.env.local` angewendet wird. In CI bleibt dieser lokale Profil-Default deaktiviert. Falls ein anderer lokaler E2E-Kontext gebraucht wird, kann das Profil explizit gesetzt werden:
+
+```bash
+PLAYWRIGHT_RUNTIME_PROFILE=local-keycloak pnpm test:e2e
+```
+
+Wenn Playwright seinen eigenen Webserver startet, muss Port `3000` frei sein. Läuft bereits eine lokale App auf diesem Port, gibt es zwei saubere Optionen:
+
+- Für das echte PR-Gate die lokale App kurz stoppen und `pnpm test:pr` den Playwright-Webserver selbst starten lassen.
+- Für gezielte manuelle Tests bewusst `PLAYWRIGHT_REUSE_EXISTING_SERVER=true` verwenden; das ersetzt aber nicht das PR-Gate, weil es an einen bereits laufenden Server andockt.
+
+Nach einem Testlauf, der die lokale App beendet hat, wird die normale Entwicklungsumgebung wieder mit `pnpm env:up:local-keycloak` gestartet. Die Infrastruktur-Container und der Provisioning-Worker müssen dafür nicht neu aufgebaut werden.
+
 ### Lokal mit Builder.io
 
 ```bash

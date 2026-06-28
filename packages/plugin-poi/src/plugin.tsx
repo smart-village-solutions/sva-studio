@@ -24,9 +24,9 @@ export const pluginPoiActionDefinitions = standardPoiContribution.actions;
 
 export const pluginPoiMediaPickers = {
   images: defineMediaPickerDefinition({
-    roles: ['attachment_image'],
+    roles: ['teaser_image'],
     allowedMediaTypes: ['image'],
-    presetKey: 'gallery',
+    presetKey: 'teaser',
   }),
 } as const;
 

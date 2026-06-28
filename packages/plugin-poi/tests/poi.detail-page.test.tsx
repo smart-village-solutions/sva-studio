@@ -613,7 +613,7 @@ describe('PoiDetailPage', () => {
         references: [
           {
             assetId: 'asset-1',
-            role: 'attachment_image',
+            role: 'teaser_image',
             sortOrder: 0,
           },
         ],
@@ -668,7 +668,7 @@ describe('PoiDetailPage', () => {
         references: [
           {
             assetId: 'asset-1',
-            role: 'attachment_image',
+            role: 'teaser_image',
             sortOrder: 0,
           },
         ],
@@ -726,9 +726,9 @@ describe('PoiDetailPage', () => {
         targetType: 'poi',
         targetId: 'poi-1',
         references: [
-          { assetId: 'asset-2', role: 'attachment_image', sortOrder: 0 },
-          { assetId: 'asset-1', role: 'attachment_image', sortOrder: 1 },
-          { assetId: 'asset-3', role: 'attachment_image', sortOrder: 2 },
+          { assetId: 'asset-2', role: 'teaser_image', sortOrder: 0 },
+          { assetId: 'asset-1', role: 'teaser_image', sortOrder: 1 },
+          { assetId: 'asset-3', role: 'teaser_image', sortOrder: 2 },
         ],
       });
     });
@@ -774,10 +774,10 @@ describe('PoiDetailPage', () => {
         targetType: 'poi',
         targetId: 'poi-1',
         references: [
-          { id: 'reference-2', assetId: 'asset-teaser', role: 'teaser_image', sortOrder: 4 },
           { id: 'reference-3', assetId: 'asset-download', role: 'download', sortOrder: 5 },
-          { assetId: 'asset-1', role: 'attachment_image', sortOrder: 0 },
-          { assetId: 'asset-3', role: 'attachment_image', sortOrder: 1 },
+          { assetId: 'asset-1', role: 'teaser_image', sortOrder: 0 },
+          { assetId: 'asset-teaser', role: 'teaser_image', sortOrder: 1 },
+          { assetId: 'asset-3', role: 'teaser_image', sortOrder: 2 },
         ],
       });
     });

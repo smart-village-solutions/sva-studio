@@ -170,6 +170,33 @@ describe('waste data source runtime', () => {
     });
   });
 
+  it('uses the current time for waste connection checks when no clock is injected', async () => {
+    const dataSource = {
+      instanceId: 'tenant-a',
+      provider: 'supabase' as const,
+      projectUrl: 'https://tenant-a.supabase.co',
+      schemaName: 'public',
+      enabled: true,
+      databaseUrl: 'postgres://db.example/waste',
+      serviceRoleKey: 'service-role-key',
+      visibleStatus: 'unknown' as const,
+    };
+
+    await expect(
+      runWasteConnectionCheck({
+        dataSource,
+        probe: async () => undefined,
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        checkStatus: 'succeeded',
+        visibleStatus: 'ok',
+        checkedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+      })
+    );
+  });
+
   it('resolves the supabase interface registry as the only waste datasource source', async () => {
     const revealCalls: Array<{ ciphertext: string | null | undefined; aad: string }> = [];
 

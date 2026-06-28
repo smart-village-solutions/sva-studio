@@ -72,6 +72,12 @@ const renderPoiTabPanel = ({
 
 const PoiTabTriggerLabel = ({ label }: Readonly<{ label: string }>) => <span>{label}</span>;
 
+const legacyPoiImageRoles = ['attachment_image'] as const;
+
+const isPoiImageReferenceRole = (role: string): boolean =>
+  role === pluginPoiMediaPickers.images.roles[0] ||
+  legacyPoiImageRoles.includes(role as (typeof legacyPoiImageRoles)[number]);
+
 export function PoiDetailPage({
   mode,
   contentId,
@@ -155,10 +161,9 @@ export function PoiDetailPage({
             return;
           }
           setMediaReferencesLoadFailed(false);
-          const ownedRole = pluginPoiMediaPickers.images.roles[0];
-          const ownedReferences = references.filter((reference) => reference.role === ownedRole);
+          const ownedReferences = references.filter((reference) => isPoiImageReferenceRole(reference.role));
           setLoadedOwnedMediaReferenceCount(ownedReferences.length);
-          setPreservedMediaReferences(references.filter((reference) => reference.role !== ownedRole));
+          setPreservedMediaReferences(references.filter((reference) => isPoiImageReferenceRole(reference.role) === false));
           setValue(
             'media.images',
             ownedReferences

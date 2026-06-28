@@ -230,6 +230,47 @@ describe('DirectOtelTransport', () => {
     });
   });
 
+  it('adds request and session ids to non-object log contexts', async () => {
+    let emittedData: Record<string, unknown> | null = null;
+    const mockProvider = {
+      getLogger: vi.fn(() => ({
+        emit: vi.fn((data: Record<string, unknown>) => {
+          emittedData = data;
+        }),
+      })),
+    };
+
+    await setGlobalLoggerProviderForMonitoring(mockProvider);
+    setOtelInitializationResult({
+      status: 'ready',
+      reason: 'test-ready',
+    });
+
+    const logger = createSdkLogger({
+      component: 'ctx-test',
+      enableOtel: true,
+      enableConsole: false,
+    });
+
+    await runWithWorkspaceContext(
+      {
+        requestId: 'req-context',
+        sessionId: 'session-context',
+      },
+      async () => {
+        logger.info('Context message', {
+          context: 'ignored-primitive',
+        });
+        await flushAsyncLogs();
+      }
+    );
+
+    expect((emittedData?.attributes as Record<string, unknown>).context).toEqual({
+      request_id: 'req-context',
+      session_id: '[REDACTED]',
+    });
+  });
+
   it('creates an emergency fallback transport when console and otel are disabled', () => {
     process.env.NODE_ENV = 'production';
     resetLoggingRuntimeForTests();

@@ -236,4 +236,29 @@ describe('external interfaces runtime', () => {
       errorMessage: 'DB handshake failed',
     });
   });
+
+  it('uses the current time for connection checks when no clock is injected', async () => {
+    const resolved = {
+      ...baseRecord,
+      secretConfig: {
+        databaseUrl: 'postgres://db.example/supabase',
+        serviceRoleKey: 'service-role-key',
+      },
+    };
+
+    await expect(
+      runExternalInterfaceConnectionCheck({
+        resolvedInterface: resolved,
+        probe: async () => undefined,
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        interfaceId: 'interface-1',
+        checkStatus: 'succeeded',
+        visibleStatus: 'ok',
+        checkedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+      })
+    );
+  });
 });

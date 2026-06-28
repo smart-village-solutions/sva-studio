@@ -89,9 +89,6 @@ export const authorizeUpdateContentActions = async (
   data: UpdateContentSchemaInput
 ): Promise<Response | null> => {
   const actions = resolveUpdateContentActions(currentContent, data);
-  const metadataAction = actions.find(
-    (action) => action.domainCapability === 'content.update_metadata'
-  );
   const sourcePermissions = await resolveContentAuthorizationPermissions(
     actor,
     currentContent.organizationId
@@ -129,7 +126,7 @@ export const authorizeUpdateContentActions = async (
     destinationOwnerUserId !== currentContent.ownerUserId ||
     destinationOwnerOrganizationId !== currentContent.ownerOrganizationId;
 
-  if (metadataAction && hasProspectiveAuthorizationTargetChange) {
+  if (hasProspectiveAuthorizationTargetChange) {
     const destinationPermissions =
       destinationOrganizationId === currentContent.organizationId
         ? sourcePermissions

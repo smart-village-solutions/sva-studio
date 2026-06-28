@@ -78,6 +78,8 @@ const resolveContentStateValidationMessage = (error: ContentStateValidationError
       return 'Das Veröffentlichungsfenster ist ungültig.';
     case 'content_published_at_required':
       return 'Veröffentlichungsdatum ist für veröffentlichte Inhalte erforderlich.';
+    default:
+      return 'Das Veröffentlichungsfenster ist ungültig.';
   }
 };
 
@@ -129,15 +131,8 @@ export const createContentResponse = async (
     return jsonResponse(201, responseBody);
   } catch (error) {
     const validationResponse = createContentStateValidationResponse(error, actor.requestId);
-    const validationError = isContentStateValidationError(error) ? error : null;
-    if (validationResponse && validationError) {
-      return createFailureResponse(
-        actor,
-        prepared.idempotencyKey,
-        validationResponse.status,
-        'invalid_request',
-        resolveContentStateValidationMessage(validationError)
-      );
+    if (validationResponse) {
+      return createFailureResponseFromResponse(actor, prepared.idempotencyKey, validationResponse);
     }
     logCreateFailure(actor, error);
 

@@ -288,6 +288,31 @@ describe('iam content repository helpers', () => {
     ).rejects.toThrow(new ContentStateValidationError('content_author_organization_not_found'));
   });
 
+  it('preserves user author snapshots when organization moves only revalidate policy', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({
+      rows: [{ display_name: 'Neue Organisation', content_author_policy: 'org_or_personal' }],
+    });
+
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({
+          organization_id: '00000000-0000-0000-0000-000000000001',
+          author_display_mode: 'user',
+          author_display_name: 'Ursprüngliche Autorin',
+        }),
+        createUpdateInput({
+          organizationId: '00000000-0000-0000-0000-000000000002',
+          actorDisplayName: 'Bearbeiter',
+        })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Ursprüngliche Autorin',
+    });
+  });
+
   it('updates content rows and revision references with normalized values', async () => {
     const client = createClient();
     client.query.mockResolvedValue({ rows: [] });

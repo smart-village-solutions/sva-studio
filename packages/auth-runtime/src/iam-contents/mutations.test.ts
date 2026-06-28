@@ -300,6 +300,9 @@ describe('content mutations', () => {
 
   it('maps create validation and database failures to the shared failure helpers', async () => {
     state.authorizeContentActionMock.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    state.createFailureResponseFromResponseMock.mockImplementation(
+      async (_actor: unknown, _idempotencyKey: string, response: Response) => response
+    );
     state.createContentMock.mockRejectedValueOnce({ code: 'content_publication_window_invalid' });
     state.isContentStateValidationErrorMock.mockImplementation((error: unknown) =>
       Boolean(error && typeof error === 'object' && 'code' in (error as Record<string, unknown>))
@@ -310,7 +313,8 @@ describe('content mutations', () => {
       actor
     );
     expect(validationResponse.status).toBe(400);
-    expect(state.createFailureResponseMock).toHaveBeenCalledOnce();
+    expect(state.createFailureResponseFromResponseMock).toHaveBeenCalledOnce();
+    expect(state.createFailureResponseMock).not.toHaveBeenCalled();
 
     state.createContentMock.mockRejectedValueOnce(new Error('db down'));
     const failureResponse = await createContentResponse(
@@ -323,6 +327,9 @@ describe('content mutations', () => {
 
   it('maps author display validation failures to stable invalid request responses', async () => {
     state.authorizeContentActionMock.mockResolvedValue(null);
+    state.createFailureResponseFromResponseMock.mockImplementation(
+      async (_actor: unknown, _idempotencyKey: string, response: Response) => response
+    );
     state.isContentStateValidationErrorMock.mockImplementation((error: unknown) =>
       Boolean(error && typeof error === 'object' && 'code' in (error as Record<string, unknown>))
     );
@@ -385,22 +392,18 @@ describe('content mutations', () => {
       'request-1',
       { reason_code: 'content_author_organization_not_found' }
     );
-    expect(state.createFailureResponseMock).toHaveBeenCalledTimes(2);
-    expect(state.createFailureResponseMock).toHaveBeenNthCalledWith(
+    expect(state.createFailureResponseFromResponseMock).toHaveBeenCalledTimes(2);
+    expect(state.createFailureResponseFromResponseMock).toHaveBeenNthCalledWith(
       1,
       actor,
       'idem-1',
-      400,
-      'invalid_request',
-      'Die gewählte Autorenanzeige ist für diese Organisation nicht erlaubt.'
+      expect.objectContaining({ status: 400 })
     );
-    expect(state.createFailureResponseMock).toHaveBeenNthCalledWith(
+    expect(state.createFailureResponseFromResponseMock).toHaveBeenNthCalledWith(
       2,
       actor,
       'idem-1',
-      400,
-      'invalid_request',
-      'Die Organisation für die Autorenanzeige wurde nicht gefunden.'
+      expect.objectContaining({ status: 400 })
     );
   });
 

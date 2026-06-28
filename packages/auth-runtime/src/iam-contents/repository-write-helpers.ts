@@ -151,15 +151,20 @@ export const resolveUpdateAuthorDisplay = async (
     : null;
   const authorDisplayMode = input.authorDisplayMode ?? current.author_display_mode;
   assertAuthorDisplayPolicy(authorDisplayMode, organization);
+  const hasExplicitAuthorDisplayChange =
+    input.authorDisplayMode !== undefined || input.authorDisplayName !== undefined;
 
   return {
     authorDisplayMode,
-    authorDisplayName: resolveAuthorDisplayName({
-      actorDisplayName: input.actorDisplayName,
-      mode: authorDisplayMode,
-      organization,
-      requestedDisplayName: input.authorDisplayName,
-    }),
+    authorDisplayName:
+      !hasExplicitAuthorDisplayChange && authorDisplayMode === 'user'
+        ? current.author_display_name
+        : resolveAuthorDisplayName({
+            actorDisplayName: input.actorDisplayName,
+            mode: authorDisplayMode,
+            organization,
+            requestedDisplayName: input.authorDisplayName,
+          }),
   };
 };
 

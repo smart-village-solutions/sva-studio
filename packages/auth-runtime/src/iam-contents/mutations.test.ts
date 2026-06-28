@@ -321,6 +321,89 @@ describe('content mutations', () => {
     expect(state.logCreateFailureMock).toHaveBeenCalledOnce();
   });
 
+  it('maps author display validation failures to stable invalid request responses', async () => {
+    state.authorizeContentActionMock.mockResolvedValue(null);
+    state.isContentStateValidationErrorMock.mockImplementation((error: unknown) =>
+      Boolean(error && typeof error === 'object' && 'code' in (error as Record<string, unknown>))
+    );
+    state.createApiErrorMock.mockImplementation(
+      (
+        status: number,
+        code: string,
+        message: string,
+        _requestId?: string,
+        details?: Record<string, unknown>
+      ) =>
+        new Response(JSON.stringify({ error: { code, message, details } }), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+
+    state.createContentMock
+      .mockRejectedValueOnce({ code: 'content_author_display_mode_not_allowed' })
+      .mockRejectedValueOnce({ code: 'content_author_organization_not_found' });
+
+    const modeResponse = await createContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      actor
+    );
+    const modeBody = (await modeResponse.json()) as {
+      error: { message: string; details?: { reason_code?: string } };
+    };
+
+    expect(modeResponse.status).toBe(400);
+    expect(modeBody.error.message).toBe(
+      'Die gewählte Autorenanzeige ist für diese Organisation nicht erlaubt.'
+    );
+    expect(state.createApiErrorMock).toHaveBeenNthCalledWith(
+      1,
+      400,
+      'invalid_request',
+      'Die gewählte Autorenanzeige ist für diese Organisation nicht erlaubt.',
+      'request-1',
+      { reason_code: 'content_author_display_mode_not_allowed' }
+    );
+
+    const organizationResponse = await createContentResponse(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      actor
+    );
+    const organizationBody = (await organizationResponse.json()) as {
+      error: { message: string; details?: { reason_code?: string } };
+    };
+
+    expect(organizationResponse.status).toBe(400);
+    expect(organizationBody.error.message).toBe(
+      'Die Organisation für die Autorenanzeige wurde nicht gefunden.'
+    );
+    expect(state.createApiErrorMock).toHaveBeenNthCalledWith(
+      2,
+      400,
+      'invalid_request',
+      'Die Organisation für die Autorenanzeige wurde nicht gefunden.',
+      'request-1',
+      { reason_code: 'content_author_organization_not_found' }
+    );
+    expect(state.createFailureResponseMock).toHaveBeenCalledTimes(2);
+    expect(state.createFailureResponseMock).toHaveBeenNthCalledWith(
+      1,
+      actor,
+      'idem-1',
+      400,
+      'invalid_request',
+      'Die gewählte Autorenanzeige ist für diese Organisation nicht erlaubt.'
+    );
+    expect(state.createFailureResponseMock).toHaveBeenNthCalledWith(
+      2,
+      actor,
+      'idem-1',
+      400,
+      'invalid_request',
+      'Die Organisation für die Autorenanzeige wurde nicht gefunden.'
+    );
+  });
+
   it('handles update request validation, authorization and success paths', async () => {
     const csrfResponse = new Response('csrf', { status: 403 });
     state.validateCsrfMock.mockReturnValueOnce(csrfResponse);

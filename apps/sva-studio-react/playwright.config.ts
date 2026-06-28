@@ -1,5 +1,8 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
+import { parse as parseDotenv } from 'dotenv';
 
 import {
   DE_MUSTERHAUSEN_AUTH_SESSION_FILE,
@@ -9,6 +12,31 @@ import {
 } from './src/lib/playwright-auth-session-config';
 
 const appRoot = fileURLToPath(new URL('./', import.meta.url));
+const workspaceRoot = fileURLToPath(new URL('../../', import.meta.url));
+
+const loadVarsFile = (relativePath: string): Record<string, string> => {
+  const filePath = resolve(workspaceRoot, relativePath);
+  return existsSync(filePath) ? parseDotenv(readFileSync(filePath, 'utf8')) : {};
+};
+
+const applyRuntimeProfileEnv = (profile: string): void => {
+  const profileEnv = {
+    ...loadVarsFile('config/runtime/base.vars'),
+    ...loadVarsFile(`config/runtime/${profile}.vars`),
+    ...loadVarsFile(`config/runtime/${profile}.local.vars`),
+    SVA_RUNTIME_PROFILE: profile,
+    VITE_SVA_RUNTIME_PROFILE: profile,
+  };
+
+  for (const [key, value] of Object.entries(profileEnv)) {
+    process.env[key] ??= value;
+  }
+};
+
+const runtimeProfile = process.env.PLAYWRIGHT_RUNTIME_PROFILE ?? (process.env.CI === 'true' ? undefined : 'local-keycloak');
+if (runtimeProfile) {
+  applyRuntimeProfileEnv(runtimeProfile);
+}
 loadPlaywrightEnv(appRoot);
 
 const baseURL = getDeMusterhausenPlaywrightBaseUrl(process.env);

@@ -9,6 +9,7 @@ import {
   collectDistRuntimeEntryPoints,
   collectRuntimeImportReferences,
   findStaticRuntimeViolations,
+  syncInjectedWorkspacePackageDists,
 } from '../../../scripts/ci/check-server-package-runtime.ts';
 
 const writeFile = (filePath: string, content: string): void => {
@@ -203,6 +204,74 @@ describe('check-server-package-runtime', () => {
         message: expect.stringContaining('dist runtime import failed'),
       }),
     ]);
+
+    fs.rmSync(rootDir, { recursive: true, force: true });
+  });
+
+  it('syncs stale pnpm workspace package dist copies before smoke imports', async () => {
+    const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'runtime-pnpm-sync-'));
+
+    createWorkspacePackage(rootDir, {
+      dirName: 'core',
+      name: '@sva/core',
+      srcFiles: {
+        'src/index.ts': 'export const freshExport = true;\n',
+      },
+      distFiles: {
+        'dist/index.js': 'export const freshExport = true;\n',
+      },
+    });
+
+    createWorkspacePackage(rootDir, {
+      dependencies: {
+        '@sva/core': 'workspace:*',
+      },
+      dirName: 'runtime-fixture',
+      name: '@sva/runtime-fixture',
+      srcFiles: {
+        'src/index.ts': "import { freshExport } from '@sva/core';\nexport const value = freshExport;\n",
+      },
+      distFiles: {
+        'dist/index.js': "import { freshExport } from '@sva/core';\nexport const value = freshExport;\n",
+      },
+    });
+
+    const injectedCoreDir = path.join(
+      rootDir,
+      'node_modules/.pnpm/@sva+core@file+packages+core/node_modules/@sva/core'
+    );
+    writeFile(
+      path.join(injectedCoreDir, 'package.json'),
+      JSON.stringify(
+        {
+          name: '@sva/core',
+          type: 'module',
+          exports: {
+            '.': {
+              default: './dist/index.js',
+            },
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFile(path.join(injectedCoreDir, 'dist/index.js'), 'export const staleExport = true;\n');
+
+    const scopedNodeModulesDir = path.join(rootDir, 'node_modules/@sva');
+    fs.mkdirSync(scopedNodeModulesDir, { recursive: true });
+    fs.symlinkSync(injectedCoreDir, path.join(scopedNodeModulesDir, 'core'), 'dir');
+
+    expect(syncInjectedWorkspacePackageDists(rootDir)).toBe(1);
+    expect(fs.readFileSync(path.join(injectedCoreDir, 'dist/index.js'), 'utf8')).toContain('freshExport');
+
+    await expect(
+      checkServerPackageRuntime({
+        rootDir,
+        packageSelector: 'runtime-fixture',
+        mode: 'smoke',
+      })
+    ).resolves.toEqual([]);
 
     fs.rmSync(rootDir, { recursive: true, force: true });
   });

@@ -79,6 +79,22 @@
       }
     },
     {
+      "id": "iam-core",
+      "label": "IAM Core",
+      "class": "kritisch",
+      "owner": "team-iam",
+      "reviewCadence": "pro-pr",
+      "include": ["packages/iam-core/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
+      "priority": 100,
+      "overrides": {
+        "fileLines": 320,
+        "functionLines": 120,
+        "cyclomaticComplexity": 20,
+        "publicExports": 24
+      }
+    },
+    {
       "id": "iam-data",
       "label": "IAM Data",
       "class": "zentral",
@@ -707,6 +723,54 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/core/src/iam/index.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-contents/repository-state-values.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-auth-runtime-iam-contents-repository-state-values-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Content-State-Wertelogik in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-contents/repository-state-values.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-contents/repository-write-helpers.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-iam-contents-repository-write-helpers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Content-Write-Helfer in kleinere Persistenz- und Author-Display-Bausteine zerlegen (packages/auth-runtime/src/iam-contents/repository-write-helpers.ts)"
+    },
+    "iam-core:packages/iam-core/src/authorization-contract.ts:fileLines": {
+      "ticketId": "baseline-iam-core-authorization-contract-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "IAM-Authorization-Vertragsmodell in kleinere fachliche API-Segmente aufteilen (packages/iam-core/src/authorization-contract.ts)"
+    },
+    "iam-core:packages/iam-core/src/authorization-contract.ts:publicExports": {
+      "ticketId": "baseline-iam-core-authorization-contract-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche IAM-Core-Vertragsoberflaeche in kleinere Export-Segmente aufteilen (packages/iam-core/src/authorization-contract.ts)"
+    },
+    "iam-core:packages/iam-core/src/authorization-engine.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-iam-core-authorization-engine-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "IAM-Entscheidungslogik fuer Scope, ABAC und Provenance in kleinere Bausteine zerlegen (packages/iam-core/src/authorization-engine.ts)"
+    },
+    "iam-core:packages/iam-core/src/authorization-engine.ts:fileLines": {
+      "ticketId": "baseline-iam-core-authorization-engine-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "IAM-Authorization-Engine in kleinere fachliche Einheiten zerlegen (packages/iam-core/src/authorization-engine.ts)"
+    },
+    "iam-core:packages/iam-core/src/authorization-engine.ts:functionLines": {
+      "ticketId": "baseline-iam-core-authorization-engine-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange IAM-Decision-Funktion in kleinere Auswertungsschritte aufteilen (packages/iam-core/src/authorization-engine.ts)"
+    },
+    "iam-core:packages/iam-core/src/index.ts:publicExports": {
+      "ticketId": "baseline-iam-core-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche IAM-Core-Export-Oberflaeche in kleinere API-Segmente aufteilen (packages/iam-core/src/index.ts)"
     },
     "frontend-app:apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.tsx:cyclomaticComplexity": {
       "ticketId": "baseline-sva-studio-react-src-components-legaltextacceptancedialog-tsx",

@@ -248,6 +248,52 @@ export const collectDistRuntimeEntryPoints = (packageDir: string): string[] => {
   return [...entryPoints].sort();
 };
 
+export const syncInjectedWorkspacePackageDists = (rootDir: string): number => {
+  const virtualStoreDir = path.join(rootDir, 'node_modules', '.pnpm');
+  if (!isDirectory(virtualStoreDir)) {
+    return 0;
+  }
+
+  let updatedCopies = 0;
+
+  for (const { packageDir } of discoverWorkspacePackages(rootDir).values()) {
+    const packageJson = readJsonFile<{ name?: string }>(path.join(packageDir, 'package.json'));
+    if (!packageJson.name) {
+      continue;
+    }
+
+    const sourceDistDir = path.join(packageDir, 'dist');
+    if (!isDirectory(sourceDistDir)) {
+      continue;
+    }
+
+    const sourceRealDir = fs.realpathSync(packageDir);
+    const packageSegments = packageJson.name.split('/');
+
+    for (const entry of fs.readdirSync(virtualStoreDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      const injectedPackageDir = path.join(virtualStoreDir, entry.name, 'node_modules', ...packageSegments);
+      if (!isDirectory(injectedPackageDir)) {
+        continue;
+      }
+      if (fs.realpathSync(injectedPackageDir) === sourceRealDir) {
+        continue;
+      }
+
+      const targetDistDir = path.join(injectedPackageDir, 'dist');
+      fs.rmSync(targetDistDir, { recursive: true, force: true });
+      fs.mkdirSync(injectedPackageDir, { recursive: true });
+      fs.cpSync(sourceDistDir, targetDistDir, { force: true, recursive: true });
+      updatedCopies += 1;
+    }
+  }
+
+  return updatedCopies;
+};
+
 export const runDistRuntimeSmokeCheck = async (rootDir: string, packageDir: string): Promise<RuntimeViolation[]> => {
   const violations: RuntimeViolation[] = [];
   const previousEnableOtel = process.env.ENABLE_OTEL;
@@ -257,6 +303,8 @@ export const runDistRuntimeSmokeCheck = async (rootDir: string, packageDir: stri
   }
 
   try {
+    syncInjectedWorkspacePackageDists(rootDir);
+
     for (const relativeEntryPoint of collectDistRuntimeEntryPoints(packageDir)) {
       const absoluteEntryPoint = path.join(packageDir, relativeEntryPoint);
       const relativePath = path.relative(rootDir, absoluteEntryPoint);

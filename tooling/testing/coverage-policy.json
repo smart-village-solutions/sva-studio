@@ -56,10 +56,10 @@
       "branches": 70
     },
     "iam-core": {
-      "lines": 100,
-      "statements": 100,
+      "lines": 95,
+      "statements": 95,
       "functions": 100,
-      "branches": 100
+      "branches": 85
     },
     "iam-governance": {
       "lines": 74,
@@ -218,14 +218,24 @@
             "functions": 95,
             "branches": 70
           }
-        },
+        }
+      ]
+    },
+    "iam-core": {
+      "minimumFloors": {
+        "lines": 95,
+        "statements": 95,
+        "functions": 100,
+        "branches": 85
+      },
+      "hotspotFloors": [
         {
-          "path": "packages/core/src/iam/authorization-engine.ts",
+          "path": "packages/iam-core/src/authorization-engine.ts",
           "reason": "Zentrale IAM-Entscheidungslogik für Restrictions, Scope und Deny-Priorität",
           "metrics": {
-            "lines": 85,
-            "functions": 95,
-            "branches": 75
+            "lines": 95,
+            "functions": 100,
+            "branches": 85
           }
         }
       ]

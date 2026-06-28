@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict y4iO1T35Ug2FO1d7cN3CHaBWEOsdX2smPhEc3AJT1IsYkPGeHagdKpVETkr7Tmg
+\restrict 1ugJP7BDXFaPR9YgsKK3TZzQTddLwXFiJjir05XJfqbmkpA6OidoP927HKFo5do
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -512,7 +512,6 @@ CREATE TABLE iam.content_list_projection (
     created_by text NOT NULL,
     updated_at timestamp with time zone NOT NULL,
     updated_by text NOT NULL,
-    author_display_mode text DEFAULT 'organization'::text NOT NULL,
     author_display_name text NOT NULL,
     payload_json jsonb DEFAULT '{}'::jsonb NOT NULL,
     status text NOT NULL,
@@ -520,15 +519,16 @@ CREATE TABLE iam.content_list_projection (
     history_ref text NOT NULL,
     current_revision_ref text,
     last_audit_event_ref text,
-    source_data_provider_id text,
-    source_data_provider_name text,
-    credential_source text,
     source_system text NOT NULL,
     source_entity_type text NOT NULL,
     source_entity_id text NOT NULL,
     projection_updated_at timestamp with time zone DEFAULT now() NOT NULL,
     owner_user_id uuid,
     owner_organization_id uuid,
+    author_display_mode text DEFAULT 'organization'::text NOT NULL,
+    source_data_provider_id text,
+    source_data_provider_name text,
+    credential_source text,
     CONSTRAINT content_list_projection_author_display_mode_chk CHECK ((author_display_mode = ANY (ARRAY['organization'::text, 'user'::text]))),
     CONSTRAINT content_list_projection_credential_source_chk CHECK (((credential_source IS NULL) OR (credential_source = ANY (ARRAY['organization'::text, 'user'::text])))),
     CONSTRAINT content_list_projection_source_system_chk CHECK ((source_system = ANY (ARRAY['iam'::text, 'mainserver'::text]))),
@@ -571,7 +571,6 @@ CREATE TABLE iam.contents (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     author_account_id uuid NOT NULL,
-    author_display_mode text DEFAULT 'organization'::text NOT NULL,
     author_display_name text NOT NULL,
     payload_json jsonb NOT NULL,
     status text NOT NULL,
@@ -589,6 +588,7 @@ CREATE TABLE iam.contents (
     deletion_lifecycle_changed_at timestamp with time zone,
     owner_user_id uuid,
     owner_organization_id uuid,
+    author_display_mode text DEFAULT 'organization'::text NOT NULL,
     CONSTRAINT contents_author_display_mode_chk CHECK ((author_display_mode = ANY (ARRAY['organization'::text, 'user'::text]))),
     CONSTRAINT contents_deletion_lifecycle_state_chk CHECK ((deletion_lifecycle_state = ANY (ARRAY['active'::text, 'deactivated'::text, 'pseudonymized'::text, 'deleted'::text]))),
     CONSTRAINT contents_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'in_review'::text, 'approved'::text, 'published'::text, 'archived'::text]))),
@@ -4016,4 +4016,5 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict y4iO1T35Ug2FO1d7cN3CHaBWEOsdX2smPhEc3AJT1IsYkPGeHagdKpVETkr7Tmg
+\unrestrict 1ugJP7BDXFaPR9YgsKK3TZzQTddLwXFiJjir05XJfqbmkpA6OidoP927HKFo5do
+

@@ -8,4 +8,4 @@ export type {
   IamAction,
   IamResourceRef,
   MatchedPermissionSummary,
-} from '@sva/core';
+} from './authorization-contract.js';

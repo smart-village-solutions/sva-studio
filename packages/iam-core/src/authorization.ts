@@ -1,1 +1,1 @@
-export { evaluateAuthorizeDecision } from '@sva/core';
+export { evaluateAuthorizeDecision } from './authorization-engine.js';

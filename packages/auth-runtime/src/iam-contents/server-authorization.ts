@@ -1,4 +1,4 @@
-import type { EffectivePermission } from '@sva/core';
+import type { EffectivePermission } from '@sva/iam-core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import type { AuthenticatedRequestContext } from '../middleware.js';

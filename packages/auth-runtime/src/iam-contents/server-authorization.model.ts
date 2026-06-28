@@ -2,7 +2,7 @@ import {
   evaluateAuthorizeDecision,
   type AuthorizeRequest,
   type EffectivePermission,
-} from '@sva/core';
+} from '@sva/iam-core';
 
 import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
 import { resolveActorAccountIdWithProvision } from '../iam-account-management/shared-actor-resolution-helpers.js';

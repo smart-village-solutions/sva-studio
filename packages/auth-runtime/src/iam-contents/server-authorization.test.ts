@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { EffectivePermission } from '@sva/core';
+import type { EffectivePermission } from '@sva/iam-core';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 
 const {
@@ -22,8 +22,8 @@ const {
     resolveEffectivePermissionsMock: vi.fn(),
   }));
 
-vi.mock('@sva/core', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sva/core')>();
+vi.mock('@sva/iam-core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/iam-core')>();
   return {
     ...actual,
     evaluateAuthorizeDecision: evaluateAuthorizeDecisionMock,

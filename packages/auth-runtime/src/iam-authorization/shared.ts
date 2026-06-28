@@ -5,8 +5,8 @@ import type {
   IamApiErrorCode,
   IamApiErrorResponse,
   MePermissionsResponse,
-} from '@sva/core';
-import type { SnapshotCacheStatus } from '@sva/core';
+  SnapshotCacheStatus,
+} from '@sva/iam-core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { metrics } from '@opentelemetry/api';
 import type { PoolClient } from 'pg';

@@ -2,7 +2,7 @@ import {
   evaluateAuthorizeDecision,
   type AuthorizeRequest,
   type EffectivePermission,
-} from '@sva/core';
+} from '@sva/iam-core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import { logger as accountLogger } from '../iam-account-management/shared.js';

@@ -1,4 +1,4 @@
-import type { EffectivePermission } from '@sva/core';
+import type { EffectivePermission } from '@sva/iam-core';
 export type { CacheInvalidationEvent } from './iam-authorization-cache-events.js';
 export { parseInvalidationEvent } from './iam-authorization-cache-events.js';
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { iamRolePermissionAssignmentScopes } from '@sva/core';
+import { iamRolePermissionAssignmentScopes } from '@sva/iam-core';
 
 import { uuidLikeString } from '../shared/validators.js';
 import { USER_STATUS } from './types.js';

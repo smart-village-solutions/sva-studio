@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import type {
   AuthorizePerformanceRunResult,
-} from '@sva/core';
-import { renderAuthorizePerformanceMarkdownReport } from '@sva/core';
+} from '@sva/iam-core';
+import { renderAuthorizePerformanceMarkdownReport } from '@sva/iam-core';
 
 import { runAuthorizePerformanceScenarios, type BenchmarkInput } from './authorize-performance-benchmark.js';
 

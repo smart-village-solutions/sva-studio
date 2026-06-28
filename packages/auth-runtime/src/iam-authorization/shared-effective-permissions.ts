@@ -1,7 +1,7 @@
 import type {
   EffectivePermission,
   IamRolePermissionAssignmentScope,
-} from '@sva/core';
+} from '@sva/iam-core';
 
 import { projectOrganizationIdForPermission } from './permission-scope-semantics.js';
 

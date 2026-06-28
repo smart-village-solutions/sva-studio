@@ -1,4 +1,4 @@
-import type { AuthorizeResponse } from '@sva/core';
+import type { AuthorizeResponse } from '@sva/iam-core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import { emitAuthAuditEvent } from '../audit-events.js';

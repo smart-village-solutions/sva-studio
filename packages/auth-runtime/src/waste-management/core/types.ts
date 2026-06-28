@@ -1,5 +1,4 @@
 import type {
-  EffectivePermission,
   ExternalInterfaceConnectionCheckRecord,
   ExternalInterfaceRecord,
   WasteManagementSettingsInterfaceOption,
@@ -31,6 +30,7 @@ import type {
   WasteTourDateShiftRecord,
   WasteTourRecord,
 } from '@sva/core';
+import type { EffectivePermission } from '@sva/iam-core';
 import type { ResolvedWasteDataSource } from '@sva/server-runtime';
 
 import type { emitAuthAuditEvent } from '../../audit-events.js';

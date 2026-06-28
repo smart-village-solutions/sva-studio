@@ -1,7 +1,5 @@
-import type {
-  IamPermissionRuntimeScope,
-  IamRolePermissionAssignmentScope,
-} from '@sva/core';
+import type { IamPermissionRuntimeScope } from '@sva/core';
+import type { IamRolePermissionAssignmentScope } from '@sva/iam-core';
 import {
   getManagedPermissionMetadata,
   listManagedPermissionMetadata,

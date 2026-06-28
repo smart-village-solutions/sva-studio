@@ -1,4 +1,4 @@
-import type { AuthorizePerformanceRequest } from '@sva/core';
+import type { AuthorizePerformanceRequest } from '@sva/iam-core';
 import { z } from 'zod';
 
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/server-runtime';

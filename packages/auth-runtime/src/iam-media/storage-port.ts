@@ -12,6 +12,7 @@ export type MediaDeliveryResolution = Readonly<{
   deliveryUrl: string;
   expiresAt: string;
   contentType?: string;
+  isPublicUrl?: boolean;
 }>;
 
 export type MediaStorageObjectSummary = Readonly<{

@@ -4,7 +4,6 @@ import {
   createDefaultAccessibilityInformation,
   createDefaultAddress,
   createDefaultCertificate,
-  createDefaultMediaContent,
   createDefaultOpeningHour,
   createDefaultPrice,
   createDefaultWebUrl,
@@ -87,7 +86,7 @@ const mapPoiContentToFormValues = (item: PoiContentItem): PoiDetailFormValues['c
     contact: mapContactToFormValue(item.operatingCompany?.contact),
   },
   prices: item.priceInformations?.length ? item.priceInformations.map(mapPriceToFormValue) : [createDefaultPrice()],
-  mediaContents: item.mediaContents?.length ? item.mediaContents : [createDefaultMediaContent()],
+  mediaContents: item.mediaContents?.length ? item.mediaContents : [],
   certificates: item.certificates?.length ? item.certificates : [createDefaultCertificate()],
   accessibilityInformation: {
     ...createDefaultAccessibilityInformation(),
@@ -106,9 +105,6 @@ export const mapPoiItemToDetailFormValues = (item: PoiContentItem): PoiDetailFor
     active: item.active !== false,
   },
   content: mapPoiContentToFormValues(item),
-  media: {
-    images: [],
-  },
   settings: {},
 });
 

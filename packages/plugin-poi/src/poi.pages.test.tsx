@@ -22,21 +22,9 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('@sva/plugin-sdk', () => ({
-  findHostMediaReferenceAssetId: vi.fn(),
   listHostMediaAssets: listHostMediaAssetsMock,
-  listHostMediaReferencesByTarget: vi.fn(),
-  replaceHostMediaReferences: vi.fn(),
   uploadHostMediaFile: vi.fn(),
-  toHostMediaFieldOptions: (assets: readonly { assetId: string; label: string }[]) => assets,
   usePluginTranslation: () => (key: string) => key,
-}));
-
-vi.mock('./plugin.js', () => ({
-  pluginPoiMediaPickers: {
-    images: {
-      roles: ['attachment_image'],
-    },
-  },
 }));
 
 vi.mock('./poi.api.js', () => ({

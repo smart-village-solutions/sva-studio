@@ -286,6 +286,17 @@ test('iam ownership authorization model migration replaces legacy ownership, dir
   assert.match(sql, /DROP INDEX IF EXISTS iam\.idx_permissions_instance_action_resource_effect/);
 });
 
+test('content projection legacy primary key migration preserves scoped mainserver snapshots', () => {
+  const sql = readRepoFile('data/migrations/0064_content_projection_legacy_primary_key.sql');
+
+  assert.match(sql, /DROP CONSTRAINT IF EXISTS content_list_projection_pkey/);
+  assert.match(sql, /content_list_projection_scope_key/);
+  assert.match(sql, /Mainserver entity may be materialized for multiple organization\/user scopes/);
+  assert.match(sql, /rollback is intentionally omitted/i);
+  assert.doesNotMatch(sql, /ADD CONSTRAINT content_list_projection_pkey/);
+  assert.doesNotMatch(sql, /DELETE FROM iam\.content_list_projection/);
+});
+
 test('runtime artifact verification runs workspace node helper via bash', () => {
   const script = readFileSync(resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'), 'utf8');
 

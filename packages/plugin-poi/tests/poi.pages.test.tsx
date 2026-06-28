@@ -1,15 +1,9 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import {
-  listHostMediaAssets,
-  listHostMediaReferencesByTarget,
-  registerPluginTranslationResolver,
-  replaceHostMediaReferences,
-} from '@sva/plugin-sdk';
+import { listHostMediaAssets, registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPoi, getPoi, listPoi, listPoiCategories, updatePoi } from '../src/poi.api.js';
 import { PoiCreatePage, PoiEditPage, PoiListPage } from '../src/poi.pages.js';
-import { pluginPoiMediaPickers } from '../src/plugin.js';
 
 vi.mock('@sva/studio-ui-react', async () => {
   const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
@@ -51,6 +45,7 @@ vi.mock('../src/poi.api.js', () => ({
     addresses: [{ street: 'Markt 2', city: 'Musterhausen' }],
     webUrls: [{ url: 'https://example.com/poi' }],
     openingHours: [{ weekday: 'Montag', timeFrom: '09:00' }],
+    mediaContents: [{ captionText: 'Bibliothek', sourceUrl: { url: 'https://example.com/poi/library.jpg' } }],
     payload: { source: 'legacy' },
   })),
   listPoiCategories: vi.fn(async () => []),
@@ -65,8 +60,6 @@ vi.mock('@sva/plugin-sdk', async () => {
   return {
     ...actual,
     listHostMediaAssets: vi.fn(async () => []),
-    listHostMediaReferencesByTarget: vi.fn(async () => []),
-    replaceHostMediaReferences: vi.fn(async (input: unknown) => input),
   };
 });
 
@@ -94,8 +87,6 @@ const navigateMock = vi.fn();
 const paramsMock = vi.fn(() => ({ id: 'poi-1' }));
 
 describe('PoiListPage', () => {
-  const imageRole = pluginPoiMediaPickers.images.roles[0];
-
   const switchSection = (value: string) => {
     fireEvent.change(screen.getByLabelText('Bereich'), { target: { value } });
   };
@@ -215,11 +206,13 @@ describe('PoiListPage', () => {
         'poi.fields.accessibilityTypes': 'Barrierefreiheits-Typen',
         'poi.fields.tags': 'Tags',
         'poi.actions.add': 'Hinzufügen',
+        'poi.actions.addMediaManual': 'Manuell hinzufügen',
         'poi.actions.addCategory': 'Kategorie hinzufügen',
         'poi.actions.addOpeningHour': 'Öffnungszeit hinzufügen',
         'poi.actions.remove': 'Entfernen',
         'poi.actions.removeCategory': 'Kategorie {{name}} entfernen',
-        'poi.actions.addImage': 'Bild hinzufügen',
+        'poi.actions.addImage': 'Aus Mediathek auswählen',
+        'poi.actions.uploadMedia': 'Medium hochladen',
         'poi.actions.selectImage': 'Auswählen',
         'poi.actions.removeImage': 'Entfernen',
         'poi.messages.imagePickerEmpty': 'Keine Bilder gefunden.',
@@ -229,18 +222,18 @@ describe('PoiListPage', () => {
       return labels[key] ?? key;
     });
     vi.mocked(listHostMediaAssets).mockResolvedValue([
-      { id: 'asset-teaser', fileName: 'teaser-asset.jpg', metadata: { title: 'Teaser Asset' } },
+      {
+        id: 'asset-teaser',
+        fileName: 'teaser-asset.jpg',
+        mimeType: 'image/jpeg',
+        previewUrl: 'https://cdn.example.test/teaser-asset.jpg',
+        metadata: { title: 'Teaser Asset' },
+      },
     ]);
     vi.mocked(listPoiCategories).mockResolvedValue([
       { id: 'cat-1', name: 'Bildung' },
       { id: 'cat-2', name: 'Verwaltung' },
     ] as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
-    vi.mocked(replaceHostMediaReferences).mockResolvedValue({
-      targetType: 'poi',
-      targetId: 'poi-1',
-      references: [],
-    });
   });
 
   afterEach(() => {
@@ -265,7 +258,7 @@ describe('PoiListPage', () => {
     });
   });
 
-  it('creates host media references alongside the legacy poi payload without leaking storage artifacts', async () => {
+  it('creates poi mediaContents from the media library selection', async () => {
     render(<PoiCreatePage />);
 
     await waitFor(() => {
@@ -282,8 +275,8 @@ describe('PoiListPage', () => {
     fireEvent.change(document.getElementById('poi-link-url-0') as HTMLInputElement, {
       target: { value: 'https://example.com/poi' },
     });
-    switchSection('settings');
-    fireEvent.click(screen.getByRole('button', { name: 'Bild hinzufügen' }));
+    switchSection('content');
+    fireEvent.click(screen.getByRole('button', { name: 'Aus Mediathek auswählen' }));
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeTruthy();
     });
@@ -298,30 +291,23 @@ describe('PoiListPage', () => {
           categories: [{ name: 'Verwaltung' }],
           description: 'Bürgerservice vor Ort',
           webUrls: [{ url: 'https://example.com/poi' }],
+          mediaContents: [
+            expect.objectContaining({
+              captionText: 'Teaser Asset',
+              contentType: 'image',
+              sourceUrl: {
+                url: 'https://cdn.example.test/teaser-asset.jpg',
+                description: 'teaser-asset.jpg',
+              },
+            }),
+          ],
         })
       );
-      expect(replaceHostMediaReferences).toHaveBeenCalledWith({
-        fetch: expect.any(Function),
-        instanceId: undefined,
-        targetType: 'poi',
-        targetId: 'poi-created',
-        references: [{ assetId: 'asset-teaser', role: imageRole, sortOrder: 0 }],
-      });
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/poi/$id', params: { id: 'poi-created' } });
     });
   });
 
-  it('loads existing host media references on edit and keeps the update flow stable', async () => {
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([
-      {
-        id: 'ref-poi-1',
-        assetId: 'asset-teaser',
-        targetType: 'poi',
-        targetId: 'poi-1',
-        role: imageRole,
-      },
-    ]);
-
+  it('loads existing poi mediaContents on edit and keeps the update flow stable', async () => {
     render(<PoiEditPage />);
 
     await waitFor(() => {
@@ -329,16 +315,18 @@ describe('PoiListPage', () => {
       expect(screen.getByDisplayValue('Stadtbibliothek')).toBeTruthy();
     });
 
-    switchSection('settings');
+    switchSection('content');
     await waitFor(() => {
-      expect(screen.getAllByText('Teaser Asset').length).toBeGreaterThan(0);
+      expect(screen.getByDisplayValue('https://example.com/poi/library.jpg')).toBeTruthy();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }));
     switchSection('basis');
     await waitFor(() => {
       expect(getEditableNameInput()).toBeTruthy();
     });
-    fireEvent.change(getEditableNameInput()!, { target: { value: 'Aktualisierte Stadtbibliothek' } });
+    const nameInput = getEditableNameInput();
+    expect(nameInput).toBeTruthy();
+    fireEvent.change(nameInput as HTMLInputElement, { target: { value: 'Aktualisierte Stadtbibliothek' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
@@ -348,6 +336,7 @@ describe('PoiListPage', () => {
           name: 'Aktualisierte Stadtbibliothek',
           description: 'Öffentliche Bibliothek',
           webUrls: [{ url: 'https://example.com/poi' }],
+          mediaContents: [],
           payload: { source: 'legacy' },
         })
       );

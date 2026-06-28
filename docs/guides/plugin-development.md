@@ -268,7 +268,7 @@ Spezialcontrols wie Rich-Text, Upload, Medienauswahl, Farbe, Icon und Geo-Auswah
 
 ## Medien-Extension-Points
 
-Plugins binden Medien ausschließlich über den hostseitigen Media-Picker-Vertrag an.
+Plugins binden hostseitig verwaltete Medienreferenzen über den Media-Picker-Vertrag an. Wenn ein externer Fachvertrag eigene Medienfelder vorgibt, bleibt dieses Fachmodell führend; die Medienbibliothek darf dann nur Quelle für Auswahl und Upload sein.
 
 Erlaubt:
 
@@ -283,13 +283,13 @@ Nicht erlaubt:
 - direkte Importe aus `@sva/auth-runtime` oder anderen Host-Storage-Interna
 - neue URL-basierte Storage-Artefakte als führendes Persistenzmodell
 
-Plugins deklarieren Rollen, Medientypen und optional Preset-Anforderungen, erhalten aber keine technischen Storage-Details zurück.
+Plugins mit Host-Medienreferenzen deklarieren Rollen, Medientypen und optional Preset-Anforderungen, erhalten aber keine technischen Storage-Details zurück. Das POI-Plugin ist hiervon bewusst ausgenommen: Bilder werden dort als Mainserver-`mediaContents` gespeichert, nicht als Host-Role-Referenzen.
 
 Beispielhaft verwendet:
 
 - News: `teaser_image`, `header_image`
 - Events: `header_image`
-- POI: `teaser_image`
+- POI: keine Host-Rolle; Persistenz über `mediaContents`
 
 ## Vertragselemente
 

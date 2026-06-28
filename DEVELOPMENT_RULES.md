@@ -476,6 +476,8 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Vor jedem Push muss ein schneller lokaler Gate-Lauf für betroffene Projekte erfolgen.
 - Vor dem Commit ist sicherzustellen, dass neue oder geänderte Logik durch Tests abgedeckt ist.
 - Verifikation muss den kleinsten relevanten echten Gate-Pfad bevorzugen, nicht pauschal den größten Lauf.
+- Lokale `affected`-Runs gegen `origin/main` müssen vorab im Scope geprüft werden, wenn der PR-Branch bereits viele Altänderungen enthält.
+- Bei großem affected-Scope sind gezielte Fixblock-Gates zulässig und dem breiten lokalen affected-Lauf vorzuziehen, sofern die Abweichung transparent dokumentiert wird.
 
 ### ❌ FORBIDDEN
 - „Big-bang“-Validierung erst am Ende der Umsetzung.
@@ -486,13 +488,16 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 1. Implementiere eine kleine, in sich geschlossene Änderung.
 2. Führe sofort zielgerichtete Tests aus (affected, Projekt oder Datei).
 3. Erst bei grünem Zwischenstand mit dem nächsten Änderungsblock weitermachen.
-4. Vor Push mindestens den schnellen Gate-Lauf ausführen:
-  - `pnpm nx affected --target=test:unit --base=origin/main`
-  - zusätzlich bei Bedarf `pnpm nx affected --target=test:types --base=origin/main`
-5. Wenn die Änderung Skripte, CI-Wrapper oder Workspace-Tooling betrifft, zusätzlich den Skript-Typecheck ausführen:
+4. Prüfe vor einem lokalen affected-Unit-Run gegen `origin/main` den Scope:
+  - `pnpm nx show projects --affected --withTarget=test:unit --base=origin/main`
+5. Vor Push mindestens den kleinsten relevanten schnellen Gate-Lauf ausführen:
+  - bei kleinem affected-Scope: `pnpm nx affected --target=test:unit --base=origin/main`
+  - bei großem affected-Scope: gezielte Package-/Datei-Unit-Tests für den Fixblock und transparente Notiz, dass der breite Lauf der CI oder einem separaten finalen Gate vorbehalten bleibt
+  - zusätzlich bei Bedarf ein gezielter Type-Gate-Pfad oder `pnpm nx affected --target=test:types --base=origin/main`, wenn der Scope handhabbar ist
+6. Wenn die Änderung Skripte, CI-Wrapper oder Workspace-Tooling betrifft, zusätzlich den Skript-Typecheck ausführen:
   - `pnpm exec tsc -p tsconfig.scripts.json --noEmit`
   - oder den passenden Sammel-Wrapper wie `NX_BASE=origin/main pnpm test:types:affected`
-6. Vor PR weiterhin vollständige Qualitätsprüfung gemäß Abschnitt 5 und 5.1.
+7. Vor PR weiterhin vollständige Qualitätsprüfung gemäß Abschnitt 5 und 5.1.
 
 ### Enforcement
 - Reviews können zurückgestellt werden, wenn eine Änderung ohne erkennbaren Shift-left-Testnachweis eingereicht wird.

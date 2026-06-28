@@ -12,6 +12,7 @@ import type {
   PoiFormGeoLocationValue,
   PoiLocationFormValue,
 } from './poi.detail-form.types.js';
+import { normalizeMediaContentType } from './poi.detail-media-content-type.js';
 import { normalizeOpeningHourWeekday } from './poi.opening-hours.js';
 
 const compactString = (value?: string | null) => {
@@ -26,8 +27,7 @@ const hasSubstantiveFields = <T extends Record<string, unknown>, K extends keyof
   entry: T,
   ignoredKey: K,
 ): boolean => {
-  const { [ignoredKey]: _ignored, ...rest } = entry;
-  return Object.keys(rest).length > 0;
+  return Object.keys(entry).some((key) => key !== ignoredKey);
 };
 
 const compactFiniteNumber = (value?: string | number | null) => {
@@ -174,7 +174,7 @@ const serializeMediaContents = (values: readonly PoiMediaContent[]) =>
       ...(compactString(entry?.copyright) ? { copyright: compactString(entry?.copyright) } : {}),
       ...(compactFiniteNumber(entry?.height) !== undefined ? { height: compactFiniteNumber(entry?.height) } : {}),
       ...(compactFiniteNumber(entry?.width) !== undefined ? { width: compactFiniteNumber(entry?.width) } : {}),
-      ...(compactString(entry?.contentType) ? { contentType: compactString(entry?.contentType) } : {}),
+      ...(normalizeMediaContentType(entry?.contentType) ? { contentType: normalizeMediaContentType(entry?.contentType) } : {}),
       ...(entry?.sourceUrl && compactWebUrls([entry.sourceUrl]).length > 0
         ? { sourceUrl: compactWebUrls([entry.sourceUrl])[0] }
         : {}),

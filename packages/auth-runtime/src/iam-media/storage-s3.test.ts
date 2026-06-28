@@ -200,6 +200,7 @@ describe('media storage s3 adapter', () => {
     ).resolves.toEqual(
       expect.objectContaining({
         deliveryUrl: 'https://cdn.example.test/media/tenant-a/originals/asset-1.jpg',
+        isPublicUrl: true,
       })
     );
   });
@@ -231,6 +232,7 @@ describe('media storage s3 adapter', () => {
     ).resolves.toEqual(
       expect.objectContaining({
         deliveryUrl: 'https://downloads.example.test/get',
+        isPublicUrl: false,
       })
     );
 

@@ -106,14 +106,11 @@ export const createDefaultPoiDetailFormValues = (): PoiDetailFormValues => ({
     webUrls: [createDefaultWebUrl()],
     operator: createDefaultOperator(),
     prices: [createDefaultPrice()],
-    mediaContents: [createDefaultMediaContent()],
+    mediaContents: [],
     certificates: [createDefaultCertificate()],
     accessibilityInformation: createDefaultAccessibilityInformation(),
     tagsText: '',
     payloadText: '{}',
-  },
-  media: {
-    images: [],
   },
   settings: {},
 });

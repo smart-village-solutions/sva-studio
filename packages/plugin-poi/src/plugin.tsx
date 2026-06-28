@@ -1,5 +1,4 @@
 import {
-  defineMediaPickerDefinition,
   createStandardContentPluginDefinition,
   createStandardContentPluginContribution,
   type PluginDefinition,
@@ -21,14 +20,6 @@ const standardPoiContribution = createStandardContentPluginContribution({
 export const pluginPoiPermissionDefinitions = standardPoiContribution.permissions;
 
 export const pluginPoiActionDefinitions = standardPoiContribution.actions;
-
-export const pluginPoiMediaPickers = {
-  images: defineMediaPickerDefinition({
-    roles: ['teaser_image'],
-    allowedMediaTypes: ['image'],
-    presetKey: 'teaser',
-  }),
-} as const;
 
 export const pluginPoi: PluginDefinition = createStandardContentPluginDefinition({
   pluginId: 'poi',

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
 
 const createInstanceRegistryRuntimeMock = vi.fn(() => ({
   withRegistryRepository: vi.fn(),
@@ -314,6 +315,46 @@ describe('iam instance registry repository wiring', () => {
         source: 'access_probe',
         errorCode: 'IDP_FORBIDDEN',
         requestId: 'req-probe-4',
+      })
+    );
+  });
+
+  it('classifies a structured keycloak 403 as forbidden without relying on message matching', async () => {
+    resolveIdentityProviderForInstanceMock.mockResolvedValueOnce({
+      provider: {
+        listRoles: vi.fn(async () => []),
+        listUsers: vi.fn(async () => {
+          throw new KeycloakAdminRequestError({
+            message: 'tenant admin access denied',
+            statusCode: 403,
+            code: 'http_403',
+            retryable: false,
+          });
+        }),
+        executeActionsEmail: vi.fn(async () => undefined),
+        getOidcClientByClientId: vi.fn(async () => ({ id: 'client-1', clientId: 'sva-studio' })),
+      },
+    });
+    resolveAuthConfigForInstanceMock.mockResolvedValueOnce({
+      clientId: 'sva-studio',
+    });
+    await import('./repository.js');
+
+    const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
+    expect(runtimeConfig).toBeDefined();
+
+    await expect(
+      runtimeConfig?.serviceDeps.probeTenantIamAccess({
+        instanceId: 'demo',
+        requestId: 'req-probe-structured-403',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'blocked',
+        summary: 'Tenant-Admin-Client darf die erforderlichen IAM-Ressourcen nicht lesen.',
+        source: 'access_probe',
+        errorCode: 'IDP_FORBIDDEN',
+        requestId: 'req-probe-structured-403',
       })
     );
   });

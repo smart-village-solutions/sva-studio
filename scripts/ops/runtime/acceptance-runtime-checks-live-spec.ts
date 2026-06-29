@@ -1,6 +1,7 @@
 import type { RuntimeProfile } from '../../../packages/core/src/runtime-profile.ts';
 import type { AcceptanceDeployOptions, DoctorCheck } from '../runtime-env.shared.ts';
 import type { RemoteServiceContract } from './remote-service-spec.ts';
+import { getExpectedRemoteAppNetworks } from './deploy-project.ts';
 import {
   runtimeContractComparisonKeys,
   runtimeContractSecretPresenceKeys,
@@ -54,7 +55,11 @@ export const buildAcceptanceLiveSpecCheck = async (
   const renderedComposeAppServiceName = 'app';
   const stackName = deps.getConfiguredStackName(env);
   const liveServiceName = resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env));
-  const expectedAppContract = deps.assertComposeServiceNetworks(renderedCompose, renderedComposeAppServiceName, ['internal', 'public']);
+  const expectedAppContract = deps.assertComposeServiceNetworks(
+    renderedCompose,
+    renderedComposeAppServiceName,
+    getExpectedRemoteAppNetworks(runtimeProfile),
+  );
   deps.assertComposeServiceIngressLabels(renderedCompose, renderedComposeAppServiceName);
   const expectedIngressLabels = Object.fromEntries(
     Object.entries(expectedAppContract.labels).filter(([key]) => key.startsWith('traefik.')),

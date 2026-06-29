@@ -23,7 +23,7 @@ export const createDeps = (overrides: Partial<AcceptanceRuntimeCheckDeps> = {}):
     labels: {
       'traefik.http.routers.app.rule': 'Host(`studio.smart-village.app`)',
     },
-    networks: ['internal', 'public'],
+    networks: ['internal', 'network-node-005'],
   })),
   checkHttpHealth: vi.fn(async () => ({
     payload: undefined,
@@ -68,7 +68,7 @@ export const createDeps = (overrides: Partial<AcceptanceRuntimeCheckDeps> = {}):
     labels: {
       'traefik.http.routers.app.rule': 'Host(`studio.smart-village.app`)',
     },
-    networkNames: ['internal', 'public'],
+    networkNames: ['internal', 'network-node-005'],
     serviceName: 'studio_app',
   })),
   readRemoteStackEvidence: vi.fn(async () => ({

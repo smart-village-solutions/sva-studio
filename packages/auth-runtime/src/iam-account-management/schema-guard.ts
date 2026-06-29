@@ -32,6 +32,7 @@ type SchemaGuardRow = {
   groups_exists: boolean;
   instance_hostnames_exists: boolean;
   instance_hostnames_rls_disabled: boolean;
+  instance_waste_data_sources_exists: boolean;
   instances_auth_client_id_column_exists: boolean;
   instances_auth_client_secret_ciphertext_column_exists: boolean;
   instances_auth_issuer_url_column_exists: boolean;
@@ -63,6 +64,7 @@ export const CRITICAL_IAM_SCHEMA_GUARD_FIELDS = [
   'account_groups_origin_column_exists',
   'instance_hostnames_exists',
   'instance_hostnames_rls_disabled',
+  'instance_waste_data_sources_exists',
   'instances_primary_hostname_column_exists',
   'instances_rls_disabled',
   'instances_auth_realm_column_exists',
@@ -192,6 +194,14 @@ const REQUIRED_SCHEMA_CHECKS = [
     reasonCode: 'policy_mismatch',
     expectedMigration: '0023_iam_disable_rls.sql',
     message: 'iam.instance_hostnames darf fuer den Runtime-Lookup keine aktive RLS erzwingen.',
+  },
+  {
+    field: 'instance_waste_data_sources_exists',
+    kind: 'table',
+    schemaObject: 'iam.instance_waste_data_sources',
+    reasonCode: 'missing_table',
+    expectedMigration: '0065_iam_instance_waste_data_sources.sql',
+    message: 'Kritische IAM-Tabelle iam.instance_waste_data_sources fehlt.',
   },
   {
     field: 'instances_primary_hostname_column_exists',
@@ -389,6 +399,7 @@ SELECT
       AND c.relrowsecurity = false
       AND c.relforcerowsecurity = false
   ) AS instance_hostnames_rls_disabled,
+  to_regclass('iam.instance_waste_data_sources') IS NOT NULL AS instance_waste_data_sources_exists,
   EXISTS (
     SELECT 1
     FROM information_schema.columns

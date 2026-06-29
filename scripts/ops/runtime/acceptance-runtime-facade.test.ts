@@ -33,7 +33,7 @@ describe('createAcceptanceRuntimeCore', () => {
         runMigrationJobAgainstAcceptance: vi.fn(),
       },
       assertComposeServiceIngressLabels: vi.fn(),
-      assertComposeServiceNetworks: vi.fn(() => ({ env: {}, labels: {}, networks: ['internal', 'public'] })),
+      assertComposeServiceNetworks: vi.fn(() => ({ env: {}, labels: {}, networks: ['internal', 'network-node-005'] })),
       assertDeterministicRemoteMutationContext: vi.fn(),
       buildAcceptanceReportPaths: vi.fn(),
       buildInstanceHostnameMappingCheck: vi.fn(),

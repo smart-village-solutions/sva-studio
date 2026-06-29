@@ -8,7 +8,7 @@ afterEach(() => {
 
 describe('renderQuantumDeployProject', () => {
   it('validates the rendered compose document against the compose app service key', () => {
-    const assertComposeServiceNetworks = vi.fn(() => ({ labels: {}, networks: ['internal', 'public'] }));
+    const assertComposeServiceNetworks = vi.fn(() => ({ labels: {}, networks: ['internal', 'network-node-005'] }));
     const assertComposeServiceIngressLabels = vi.fn();
 
     const project = renderQuantumDeployProject({
@@ -48,7 +48,11 @@ describe('renderQuantumDeployProject', () => {
       withoutDebugEnv: vi.fn(),
     }, { SVA_RUNTIME_PROFILE: 'studio' });
 
-    expect(assertComposeServiceNetworks).toHaveBeenCalledWith({ services: { app: {} } }, 'app', ['internal', 'public']);
+    expect(assertComposeServiceNetworks).toHaveBeenCalledWith(
+      { services: { app: {} } },
+      'app',
+      ['internal', 'network-node-005'],
+    );
     expect(assertComposeServiceIngressLabels).toHaveBeenCalledWith({ services: { app: {} } }, 'app');
 
     project.cleanup();

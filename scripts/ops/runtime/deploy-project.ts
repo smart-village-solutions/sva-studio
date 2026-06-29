@@ -16,6 +16,9 @@ export type ServiceContract = {
   networks: readonly string[];
 };
 
+export const getExpectedRemoteAppNetworks = (runtimeProfile: string): readonly string[] =>
+  runtimeProfile === 'studio' ? ['internal', 'network-node-005'] : ['internal', 'public'];
+
 const REQUIRED_INGRESS_LABELS = ['traefik.enable', 'traefik.docker.network'] as const;
 
 const toStringRecord = (value: JsonValue | undefined): Record<string, string> => {

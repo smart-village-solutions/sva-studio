@@ -23,6 +23,7 @@ import {
   isKeycloakIdentityProvider,
   resolveIdentityProviderForInstance,
 } from '../iam-account-management/shared-runtime.js';
+import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
 import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.js';
 
 const getWorkerKeycloakPreflight = async (input: Parameters<typeof getInstanceKeycloakPreflightViaProvisioner>[0]) =>
@@ -134,7 +135,9 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const errorCode =
-      message.includes('403') || message.toLowerCase().includes('forbidden')
+      (error instanceof KeycloakAdminRequestError && error.statusCode === 403) ||
+      message.includes('403') ||
+      message.toLowerCase().includes('forbidden')
         ? 'IDP_FORBIDDEN'
         : 'IDP_UNAVAILABLE';
 

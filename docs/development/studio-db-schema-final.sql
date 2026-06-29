@@ -926,6 +926,33 @@ ALTER TABLE ONLY iam.instance_external_interfaces FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: instance_waste_data_sources; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.instance_waste_data_sources (
+    instance_id text NOT NULL,
+    provider_key text NOT NULL,
+    project_url text NOT NULL,
+    schema_name text NOT NULL,
+    enabled boolean DEFAULT true NOT NULL,
+    database_url_ciphertext text,
+    service_role_key_ciphertext text,
+    visible_status text DEFAULT 'unknown'::text NOT NULL,
+    last_checked_at timestamp with time zone,
+    last_check_status text,
+    last_check_error_code text,
+    last_check_error_message text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT instance_waste_data_sources_last_check_status_chk CHECK (((last_check_status IS NULL) OR (last_check_status = ANY (ARRAY['succeeded'::text, 'failed'::text])))),
+    CONSTRAINT instance_waste_data_sources_visible_status_chk CHECK ((visible_status = ANY (ARRAY['not_configured'::text, 'unknown'::text, 'ok'::text, 'error'::text, 'disabled'::text])))
+);
+
+
+ALTER TABLE ONLY iam.instance_waste_data_sources FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: instance_hostnames; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -1902,6 +1929,14 @@ ALTER TABLE ONLY iam.instance_memberships
 
 ALTER TABLE ONLY iam.instance_modules
     ADD CONSTRAINT instance_modules_pkey PRIMARY KEY (instance_id, module_id);
+
+
+--
+-- Name: instance_waste_data_sources instance_waste_data_sources_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_waste_data_sources
+    ADD CONSTRAINT instance_waste_data_sources_pkey PRIMARY KEY (instance_id);
 
 
 --
@@ -3383,6 +3418,14 @@ ALTER TABLE ONLY iam.instance_modules
 
 
 --
+-- Name: instance_waste_data_sources instance_waste_data_sources_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_waste_data_sources
+    ADD CONSTRAINT instance_waste_data_sources_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
 -- Name: instance_provisioning_runs instance_provisioning_runs_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3877,10 +3920,22 @@ CREATE POLICY instance_deletion_rules_isolation_policy ON iam.instance_deletion_
 ALTER TABLE iam.instance_external_interfaces ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: instance_waste_data_sources; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.instance_waste_data_sources ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: instance_external_interfaces instance_external_interfaces_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
 CREATE POLICY instance_external_interfaces_isolation_policy ON iam.instance_external_interfaces USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+--
+-- Name: instance_waste_data_sources instance_waste_data_sources_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY instance_waste_data_sources_isolation_policy ON iam.instance_waste_data_sources USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
 
 
 --
@@ -4017,4 +4072,3 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 --
 
 \unrestrict 1ugJP7BDXFaPR9YgsKK3TZzQTddLwXFiJjir05XJfqbmkpA6OidoP927HKFo5do
-

@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 
 import type { AcceptanceDeployReport, AcceptanceReleaseManifest } from '../runtime-env.shared.ts';
 import { formatAcceptanceDeployReportMarkdown } from '../runtime-env.shared.ts';
-import type { ComposeDocument } from './deploy-project.ts';
+import { getExpectedRemoteAppNetworks, type ComposeDocument } from './deploy-project.ts';
 import type { AcceptanceMaintenanceDeps, BaseReportInput } from './acceptance-maintenance.types.ts';
 
 const writeJsonArtifact = (filePath: string, payload: unknown) => {
@@ -58,7 +58,11 @@ export const renderQuantumDeployProject = (deps: AcceptanceMaintenanceDeps, env:
   const runtimeProfile = env.SVA_RUNTIME_PROFILE?.trim() || 'studio';
   const renderedComposeDocument = renderRemoteComposeDocument(deps, env);
   const renderedComposeAppServiceName = 'app';
-  deps.assertComposeServiceNetworks(renderedComposeDocument, renderedComposeAppServiceName, ['internal', 'public']);
+  deps.assertComposeServiceNetworks(
+    renderedComposeDocument,
+    renderedComposeAppServiceName,
+    getExpectedRemoteAppNetworks(runtimeProfile),
+  );
   deps.assertComposeServiceIngressLabels(renderedComposeDocument, renderedComposeAppServiceName);
   const renderedCompose = JSON.stringify(deps.buildQuantumDeployComposeDocument(renderedComposeDocument), null, 2);
   const projectDir = mkdtempSync(resolve(tmpdir(), `sva-studio-${runtimeProfile}-deploy-`));

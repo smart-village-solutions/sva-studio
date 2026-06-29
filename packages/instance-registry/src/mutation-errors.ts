@@ -6,6 +6,7 @@ export type BlockedDriftErrorCode =
 export type InstanceMutationErrorCode =
   | BlockedDriftErrorCode
   | 'idempotency_key_reuse'
+  | 'database_unavailable'
   | 'encryption_not_configured'
   | 'keycloak_unavailable';
 
@@ -78,6 +79,18 @@ export const classifyInstanceMutationError = (error: unknown): InstanceMutationE
     return {
       status: 503,
       code: 'encryption_not_configured',
+    };
+  }
+  if (
+    message.includes('row-level security policy') ||
+    message.includes('does not exist') ||
+    message.includes('relation "') ||
+    message.includes('undefined_table') ||
+    message.includes('database_unavailable')
+  ) {
+    return {
+      status: 503,
+      code: 'database_unavailable',
     };
   }
   return {

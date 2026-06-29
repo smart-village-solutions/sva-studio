@@ -65,4 +65,32 @@ describe('runtime wiring', () => {
     expect(deps.repository).toBe(repository);
     expect(deps.protectSecret?.('secret', 'aad')).toBe('secret');
   });
+
+  it('creates scoped repositories inside an instance transaction boundary', async () => {
+    const client = createClient();
+    const repository = { marker: 'repository' } as unknown as InstanceRegistryRepository;
+    let capturedExecutor: SqlExecutor | undefined;
+    const runtime = createInstanceRegistryRuntime({
+      resolvePool: () => ({ connect: async () => client }),
+      createRepository: (executor) => {
+        capturedExecutor = executor;
+        return repository;
+      },
+      serviceDeps: {
+        invalidateHost: vi.fn(),
+      },
+    });
+
+    const result = await runtime.withScopedRegistryRepository('tenant-a', async (resolvedRepository) => {
+      await capturedExecutor?.execute({ text: 'select 1', values: ['demo'] });
+      return resolvedRepository;
+    });
+
+    expect(result).toBe(repository);
+    expect(client.query).toHaveBeenNthCalledWith(1, 'BEGIN');
+    expect(client.query).toHaveBeenNthCalledWith(2, 'SELECT set_config($1, $2, true);', ['app.instance_id', 'tenant-a']);
+    expect(client.query).toHaveBeenNthCalledWith(3, 'select 1', ['demo']);
+    expect(client.query).toHaveBeenNthCalledWith(4, 'COMMIT');
+    expect(client.release).toHaveBeenCalledOnce();
+  });
 });

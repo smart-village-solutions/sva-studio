@@ -39,6 +39,10 @@ export type InstanceRegistryMutationHttpDeps<TContext> = {
   readonly validateCsrf: (request: Request, requestId?: string) => Response | null;
   readonly requireFreshReauth: (request: Request, ctx: TContext) => Response | null;
   readonly withRegistryService: <T>(work: (service: InstanceRegistryService) => Promise<T>) => Promise<T>;
+  readonly withScopedRegistryService: <T>(
+    instanceId: string,
+    work: (service: InstanceRegistryService) => Promise<T>
+  ) => Promise<T>;
 };
 
 const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = {
@@ -50,6 +54,8 @@ const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = {
     'Für diese Instanz ist noch kein Tenant-Client-Secret hinterlegt.',
   idempotency_key_reuse:
     'Idempotency-Key wurde bereits mit anderem Payload verwendet.',
+  database_unavailable:
+    'Die Instanzverwaltung konnte wegen eines Datenbank- oder Schemafehlers nicht abgeschlossen werden.',
   encryption_not_configured:
     'Die Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',
   keycloak_unavailable:
@@ -68,6 +74,12 @@ export const createInstanceMutationErrorMapper = (
     classification.details
   );
 };
+
+export const withScopedRegistryMutation = <TContext, TResult>(
+  deps: InstanceRegistryMutationHttpDeps<TContext>,
+  instanceId: string,
+  work: (service: InstanceRegistryService) => Promise<TResult>
+): Promise<TResult> => deps.withScopedRegistryService(instanceId, work);
 
 export const requireMutationGuards = <TContext>(
   deps: InstanceRegistryMutationHttpDeps<TContext>,

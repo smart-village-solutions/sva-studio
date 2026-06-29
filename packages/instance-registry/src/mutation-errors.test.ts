@@ -46,6 +46,17 @@ describe('mutation-errors', () => {
     });
   });
 
+  it('classifies tenant RLS and schema write failures as database failures', () => {
+    expect(
+      classifyInstanceMutationError(
+        new Error('new row violates row-level security policy for table "permissions"')
+      )
+    ).toEqual({
+      status: 503,
+      code: 'database_unavailable',
+    });
+  });
+
   it('classifies unknown failures as keycloak dependency failures', () => {
     expect(classifyInstanceMutationError(new Error('boom'))).toEqual({
       status: 502,

@@ -10,7 +10,7 @@ describe('acceptance runtime checks live spec and readiness', () => {
       labels: {
         'traefik.http.routers.app.rule': 'Host(`studio.smart-village.app`)',
       },
-      networks: ['internal', 'public'],
+      networks: ['internal', 'network-node-005'],
     }));
     const assertComposeServiceIngressLabels = vi.fn();
     const inspectRemoteServiceContract = vi.fn(async () => ({
@@ -74,7 +74,11 @@ describe('acceptance runtime checks live spec and readiness', () => {
 
     expect(check.status).toBe('warn');
     expect(check.code).toBe('live_spec_differs');
-    expect(assertComposeServiceNetworks).toHaveBeenCalledWith({ services: { app: {} } }, 'app', ['internal', 'public']);
+    expect(assertComposeServiceNetworks).toHaveBeenCalledWith(
+      { services: { app: {} } },
+      'app',
+      ['internal', 'network-node-005'],
+    );
     expect(assertComposeServiceIngressLabels).toHaveBeenCalledWith({ services: { app: {} } }, 'app');
     expect(inspectRemoteServiceContract).toHaveBeenCalledWith(
       expect.anything(),
@@ -84,7 +88,7 @@ describe('acceptance runtime checks live spec and readiness', () => {
       configDrift: ['APP_DB_USER'],
       liveImage: 'ghcr.io/smart-village/studio:old',
       missingIngressLabels: ['traefik.http.routers.app.rule'],
-      missingNetworks: ['public'],
+      missingNetworks: ['network-node-005'],
       missingSecretKeys: [
         'SVA_AUTH_CLIENT_SECRET',
         'SVA_AUTH_STATE_SECRET',
@@ -103,7 +107,7 @@ describe('acceptance runtime checks live spec and readiness', () => {
       labels: {
         'traefik.http.routers.app.rule': 'Host(`studio.smart-village.app`)',
       },
-      networks: ['internal', 'public'],
+      networks: ['internal', 'network-node-005'],
     }));
     const assertComposeServiceIngressLabels = vi.fn();
     const inspectRemoteServiceContract = vi.fn(async () => null);
@@ -124,7 +128,11 @@ describe('acceptance runtime checks live spec and readiness', () => {
       acceptanceOptions,
     );
 
-    expect(assertComposeServiceNetworks).toHaveBeenCalledWith({ services: { app: {} } }, 'app', ['internal', 'public']);
+    expect(assertComposeServiceNetworks).toHaveBeenCalledWith(
+      { services: { app: {} } },
+      'app',
+      ['internal', 'network-node-005'],
+    );
     expect(assertComposeServiceIngressLabels).toHaveBeenCalledWith({ services: { app: {} } }, 'app');
     expect(inspectRemoteServiceContract).toHaveBeenCalledWith(
       expect.anything(),

@@ -9,6 +9,7 @@ services:
       PUBLIC_WASTE_INSTANCE_ID: '${PUBLIC_WASTE_INSTANCE_ID}'
       PUBLIC_WASTE_DATABASE_URL: '${PUBLIC_WASTE_DATABASE_URL}'
       PUBLIC_WASTE_SCHEMA_NAME: '${PUBLIC_WASTE_SCHEMA_NAME}'
+      PUBLIC_WASTE_PDF_URL_TEMPLATE: '${PUBLIC_WASTE_PDF_URL_TEMPLATE}'
     labels:
       com.sva-studio.component: 'public-waste-app'
       com.sva-studio.environment: 'production'
@@ -22,10 +23,13 @@ services:
       update_config:
         parallelism: 1
         delay: 10s
-        order: stop-first
+        order: start-first
+        failure_action: rollback
+        monitor: 45s
       rollback_config:
         parallelism: 1
         order: stop-first
+        monitor: 45s
       restart_policy:
         condition: any
         delay: 5s
@@ -38,12 +42,20 @@ services:
           memory: 384M
           cpus: '0.50'
       labels:
-        - traefik.enable=true
-        - traefik.docker.network=public
-        - traefik.public-waste.frontend.rule=Host:${PUBLIC_WASTE_PUBLIC_HOST}
-        - traefik.public-waste.frontend.priority=220
-        - traefik.public-waste.frontend.passHostHeader=true
-        - traefik.public-waste.port=3002
+        - "traefik.enable=true"
+        - "traefik.docker.network=public"
+
+        #Traefik v1
+        - "traefik.public-waste.frontend.rule=Host:${PUBLIC_WASTE_PUBLIC_HOST}"
+        - "traefik.public-waste.frontend.priority=220"
+        - "traefik.public-waste.frontend.passHostHeader=true"
+        - "traefik.public-waste.port=3002"
+
+        #Traefik v3
+        - "traefik.http.routers.public-waste.rule=Host(`${PUBLIC_WASTE_PUBLIC_HOST}`)"
+        - "traefik.http.routers.public-waste.tls=true"
+        - "traefik.http.services.public-waste.loadbalancer.server.port=3002"
+
     healthcheck:
       test:
         - CMD-SHELL

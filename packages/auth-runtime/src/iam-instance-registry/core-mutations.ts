@@ -13,7 +13,7 @@ import {
   requireFreshReauth,
 } from './http.js';
 import { parseRegistryRequestBody } from './request-parsing.js';
-import { withRegistryService } from './repository.js';
+import { withRegistryService, withScopedRegistryService } from './repository.js';
 
 const getRequestId = (): string | undefined => getWorkspaceContext().requestId;
 
@@ -30,6 +30,7 @@ const mutationHandlers = createInstanceRegistryMutationHttpHandlers<Authenticate
   validateCsrf,
   requireFreshReauth,
   withRegistryService,
+  withScopedRegistryService,
 });
 
 export const mapInstanceMutationError = createInstanceMutationErrorMapper({

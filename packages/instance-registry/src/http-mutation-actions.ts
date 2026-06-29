@@ -8,6 +8,7 @@ import {
   readInstanceIdOrError,
   requireIdempotencyKeyOrError,
   requireMutationGuards,
+  withScopedRegistryMutation,
 } from './http-mutation-shared.js';
 import {
   buildExecuteInstanceKeycloakProvisioningInput,
@@ -42,7 +43,7 @@ export const createReconcileInstanceKeycloakHandler =
     }
 
     try {
-      const status = await deps.withRegistryService((service) =>
+      const status = await withScopedRegistryMutation(deps, instanceId, (service) =>
         service.reconcileKeycloak(buildReconcileInstanceKeycloakInput(instanceId, payloadResult.data, {
           idempotencyKey,
           actorId: deps.getActor(ctx).id,
@@ -85,7 +86,7 @@ export const createExecuteInstanceKeycloakProvisioningHandler =
     }
 
     try {
-      const run = await deps.withRegistryService((service) =>
+      const run = await withScopedRegistryMutation(deps, instanceId, (service) =>
         service.executeKeycloakProvisioning(buildExecuteInstanceKeycloakProvisioningInput(instanceId, payloadResult.data, {
           idempotencyKey,
           actorId: deps.getActor(ctx).id,
@@ -125,7 +126,7 @@ export const createProbeTenantIamAccessHandler =
     }
 
     try {
-      const status = await deps.withRegistryService((service) =>
+      const status = await withScopedRegistryMutation(deps, instanceId, (service) =>
         service.probeTenantIamAccess(
           buildProbeTenantIamAccessInput(instanceId, {
             idempotencyKey,

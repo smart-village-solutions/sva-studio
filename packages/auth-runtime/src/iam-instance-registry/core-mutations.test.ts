@@ -26,6 +26,7 @@ const state = vi.hoisted(() => {
     requireFreshReauth: vi.fn(),
     parseRegistryRequestBody: vi.fn(),
     withRegistryService: vi.fn(),
+    withScopedRegistryService: vi.fn(),
   };
 });
 
@@ -63,6 +64,7 @@ vi.mock('./request-parsing.js', () => ({
 
 vi.mock('./repository.js', () => ({
   withRegistryService: state.withRegistryService,
+  withScopedRegistryService: state.withScopedRegistryService,
 }));
 
 describe('iam-instance-registry core mutations', () => {
@@ -84,6 +86,7 @@ describe('iam-instance-registry core mutations', () => {
     expect(config.validateCsrf).toBe(state.validateCsrf);
     expect(config.requireFreshReauth).toBe(state.requireFreshReauth);
     expect(config.withRegistryService).toBe(state.withRegistryService);
+    expect(config.withScopedRegistryService).toBe(state.withScopedRegistryService);
     expect(subject.mapInstanceMutationError).toBe('mapped-error');
     expect(state.createInstanceMutationErrorMapper).toHaveBeenCalledWith(
       expect.objectContaining({

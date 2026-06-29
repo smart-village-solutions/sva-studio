@@ -37,6 +37,23 @@ const createDeps = (): InstanceRegistryMutationHttpDeps<TestContext> => ({
   ensurePlatformAccess: vi.fn(() => null),
   validateCsrf: vi.fn(() => null),
   requireFreshReauth: vi.fn(() => null),
+  withScopedRegistryService: vi.fn(async (_instanceId, work) =>
+    work({
+      reconcileKeycloak: vi.fn(async () => ({ realmExists: true })),
+      executeKeycloakProvisioning: vi.fn(async () => ({ id: 'run-1' })),
+      assignModule: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: ['news'] } })),
+      bootstrapAdminStructure: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: ['news'] } })),
+      revokeModule: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: [] } })),
+      seedIamBaseline: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: ['news'] } })),
+      probeTenantIamAccess: vi.fn(async () => ({
+        access: { status: 'ready', summary: 'ok', source: 'access_probe' },
+        overall: { status: 'unknown', summary: 'unknown', source: 'registry' },
+        configuration: { status: 'unknown', summary: 'unknown', source: 'registry' },
+        reconcile: { status: 'unknown', summary: 'unknown', source: 'role_reconcile' },
+      })),
+      changeStatus: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', status: 'active' } })),
+    } as never)
+  ),
   withRegistryService: vi.fn(async (work) =>
     work({
       reconcileKeycloak: vi.fn(async () => ({ realmExists: true })),
@@ -90,7 +107,7 @@ describe('http mutation handlers', () => {
   });
 
   it('reconcileInstanceKeycloak returns not_found when the service has no instance', async () => {
-    vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
       work({ reconcileKeycloak: vi.fn(async () => null) } as never)
     );
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
@@ -109,9 +126,9 @@ describe('http mutation handlers', () => {
     const reconcileKeycloak = vi.fn(async () => ({ realmExists: true }));
     const executeKeycloakProvisioning = vi.fn(async () => ({ id: 'run-1' }));
     vi.mocked(deps.requireIdempotencyKey).mockReturnValue({ key: 'idem-keycloak-1' });
-    vi.mocked(deps.withRegistryService)
-      .mockImplementationOnce(async (work) => work({ reconcileKeycloak } as never))
-      .mockImplementationOnce(async (work) => work({ executeKeycloakProvisioning } as never));
+    vi.mocked(deps.withScopedRegistryService)
+      .mockImplementationOnce(async (_instanceId, work) => work({ reconcileKeycloak } as never))
+      .mockImplementationOnce(async (_instanceId, work) => work({ executeKeycloakProvisioning } as never));
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
 
     await handlers.reconcileInstanceKeycloak(
@@ -130,7 +147,7 @@ describe('http mutation handlers', () => {
   });
 
   it('executeInstanceKeycloakProvisioning maps thrown registry errors', async () => {
-    vi.mocked(deps.withRegistryService).mockImplementationOnce(async () => {
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async () => {
       throw new Error('tenant_admin_client_secret_missing');
     });
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
@@ -152,7 +169,7 @@ describe('http mutation handlers', () => {
       configuration: { status: 'ready', summary: 'ok', source: 'registry' },
       reconcile: { status: 'unknown', summary: 'unknown', source: 'role_reconcile' },
     }));
-    vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
       work({
         probeTenantIamAccess,
       } as never)
@@ -182,8 +199,8 @@ describe('http mutation handlers', () => {
 
   it('probeTenantIamAccess maps not_found and thrown registry errors', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValue({ ok: true, data: {} });
-    vi.mocked(deps.withRegistryService)
-      .mockImplementationOnce(async (work) =>
+    vi.mocked(deps.withScopedRegistryService)
+      .mockImplementationOnce(async (_instanceId, work) =>
         work({
           probeTenantIamAccess: vi.fn(async () => null),
         } as never)
@@ -259,7 +276,7 @@ describe('http mutation handlers', () => {
 
   it('assignModule returns invalid_request for unknown modules', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleId: 'unknown' } });
-    vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
       work({
         assignModule: vi.fn(async () => ({ ok: false, reason: 'unknown_module' })),
       } as never)
@@ -278,13 +295,13 @@ describe('http mutation handlers', () => {
 
   it('assignModule maps not_found and conflict results', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValue({ ok: true, data: { moduleId: 'news' } });
-    vi.mocked(deps.withRegistryService)
-      .mockImplementationOnce(async (work) =>
+    vi.mocked(deps.withScopedRegistryService)
+      .mockImplementationOnce(async (_instanceId, work) =>
         work({
           assignModule: vi.fn(async () => ({ ok: false, reason: 'not_found' })),
         } as never)
       )
-      .mockImplementationOnce(async (work) =>
+      .mockImplementationOnce(async (_instanceId, work) =>
         work({
           assignModule: vi.fn(async () => ({ ok: false, reason: 'conflict' })),
         } as never)
@@ -320,13 +337,31 @@ describe('http mutation handlers', () => {
     expect(deps.requireFreshReauth).not.toHaveBeenCalled();
   });
 
+  it('assignModule uses the scoped registry service and maps thrown database errors', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleId: 'news' } });
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, _work) => {
+      throw new Error('new row violates row-level security policy for table "permissions"');
+    });
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.assignModule(
+      new Request('http://localhost/api/instances/inst-1/modules/assign', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+    const body = await readBody(response);
+
+    expect(deps.withScopedRegistryService).toHaveBeenCalledWith('inst-1', expect.any(Function));
+    expect(response.status).toBe(503);
+    expect(body.code).toBe('database_unavailable');
+  });
+
   it('revokeModule returns the refreshed instance detail on success', async () => {
     const revokeModule = vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: [] } }));
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
       ok: true,
       data: { moduleId: 'news', confirmation: 'REVOKE' },
     });
-    vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
       work({
         revokeModule,
       } as never)
@@ -355,18 +390,18 @@ describe('http mutation handlers', () => {
 
   it('revokeModule maps not_found, unknown_module and conflict results', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValue({ ok: true, data: { moduleId: 'news', confirmation: 'REVOKE' } });
-    vi.mocked(deps.withRegistryService)
-      .mockImplementationOnce(async (work) =>
+    vi.mocked(deps.withScopedRegistryService)
+      .mockImplementationOnce(async (_instanceId, work) =>
         work({
           revokeModule: vi.fn(async () => ({ ok: false, reason: 'not_found' })),
         } as never)
       )
-      .mockImplementationOnce(async (work) =>
+      .mockImplementationOnce(async (_instanceId, work) =>
         work({
           revokeModule: vi.fn(async () => ({ ok: false, reason: 'unknown_module' })),
         } as never)
       )
-      .mockImplementationOnce(async (work) =>
+      .mockImplementationOnce(async (_instanceId, work) =>
         work({
           revokeModule: vi.fn(async () => ({ ok: false, reason: 'conflict' })),
         } as never)
@@ -417,7 +452,7 @@ describe('http mutation handlers', () => {
       instance: { instanceId: 'inst-1', assignedModules: ['news'] },
     }));
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleIds: ['news'] } });
-    vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
       work({
         bootstrapAdminStructure,
       } as never)
@@ -445,7 +480,7 @@ describe('http mutation handlers', () => {
 
   it('seedIamBaseline requires an existing instance', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: {} });
-    vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
       work({
         seedIamBaseline: vi.fn(async () => ({ ok: false, reason: 'not_found' })),
       } as never)
@@ -478,7 +513,7 @@ describe('http mutation handlers', () => {
 
   it('bootstrapAdminStructure returns invalid_request for unknown modules', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleIds: ['unknown'] } });
-    vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
       work({
         bootstrapAdminStructure: vi.fn(async () => ({ ok: false, reason: 'unknown_module' })),
       } as never)
@@ -497,13 +532,13 @@ describe('http mutation handlers', () => {
 
   it('bootstrapAdminStructure maps not_found and conflict results', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValue({ ok: true, data: { moduleIds: ['news'] } });
-    vi.mocked(deps.withRegistryService)
-      .mockImplementationOnce(async (work) =>
+    vi.mocked(deps.withScopedRegistryService)
+      .mockImplementationOnce(async (_instanceId, work) =>
         work({
           bootstrapAdminStructure: vi.fn(async () => ({ ok: false, reason: 'not_found' })),
         } as never)
       )
-      .mockImplementationOnce(async (work) =>
+      .mockImplementationOnce(async (_instanceId, work) =>
         work({
           bootstrapAdminStructure: vi.fn(async () => ({ ok: false, reason: 'conflict' })),
         } as never)
@@ -577,7 +612,7 @@ describe('http mutation handlers', () => {
 
   it('mutateInstanceStatus returns the changed instance on success', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { status: 'suspended' } });
-    vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
       work({
         changeStatus: vi.fn(async () => ({
           ok: true,
@@ -600,13 +635,13 @@ describe('http mutation handlers', () => {
 
   it('mutateInstanceStatus maps not_found and conflict service responses', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValue({ ok: true, data: { status: 'active' } });
-    vi.mocked(deps.withRegistryService)
-      .mockImplementationOnce(async (work) =>
+    vi.mocked(deps.withScopedRegistryService)
+      .mockImplementationOnce(async (_instanceId, work) =>
         work({
           changeStatus: vi.fn(async () => ({ ok: false, reason: 'not_found' })),
         } as never)
       )
-      .mockImplementationOnce(async (work) =>
+      .mockImplementationOnce(async (_instanceId, work) =>
         work({
           changeStatus: vi.fn(async () => ({ ok: false, reason: 'conflict' })),
         } as never)

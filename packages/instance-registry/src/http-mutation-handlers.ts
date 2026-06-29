@@ -24,16 +24,16 @@ export const createInstanceRegistryMutationHttpHandlers = <TContext>(
   deps: InstanceRegistryMutationHttpDeps<TContext>
 ) => {
   const mapMutationError = createInstanceMutationErrorMapper(deps);
-  const mutateInstanceStatus = createMutateInstanceStatusHandler(deps);
+  const mutateInstanceStatus = createMutateInstanceStatusHandler(deps, mapMutationError);
 
   return {
     reconcileInstanceKeycloak: createReconcileInstanceKeycloakHandler(deps, mapMutationError),
     executeInstanceKeycloakProvisioning: createExecuteInstanceKeycloakProvisioningHandler(deps, mapMutationError),
     probeTenantIamAccess: createProbeTenantIamAccessHandler(deps, mapMutationError),
-    assignModule: createAssignModuleHandler(deps),
-    bootstrapAdminStructure: createBootstrapAdminStructureHandler(deps),
-    revokeModule: createRevokeModuleHandler(deps),
-    seedIamBaseline: createSeedIamBaselineHandler(deps),
+    assignModule: createAssignModuleHandler(deps, mapMutationError),
+    bootstrapAdminStructure: createBootstrapAdminStructureHandler(deps, mapMutationError),
+    revokeModule: createRevokeModuleHandler(deps, mapMutationError),
+    seedIamBaseline: createSeedIamBaselineHandler(deps, mapMutationError),
     mutateInstanceStatus: (
       request: Request,
       ctx: TContext,

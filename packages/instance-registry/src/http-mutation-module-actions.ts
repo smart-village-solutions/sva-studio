@@ -12,6 +12,7 @@ import {
   readInstanceIdOrError,
   requireIdempotencyKeyOrError,
   requireMutationGuards,
+  withScopedRegistryMutation,
 } from './http-mutation-shared.js';
 import {
   buildAssignInstanceModuleInput,
@@ -25,7 +26,10 @@ import {
 } from './mutation-input-builders.js';
 
 export const createAssignModuleHandler =
-  <TContext>(deps: InstanceRegistryMutationHttpDeps<TContext>) =>
+  <TContext>(
+    deps: InstanceRegistryMutationHttpDeps<TContext>,
+    mapMutationError: (error: unknown) => Response
+  ) =>
   async (request: Request, ctx: TContext): Promise<Response> => {
     const guardError = requireMutationGuards(deps, request, ctx);
     if (guardError) {
@@ -47,15 +51,20 @@ export const createAssignModuleHandler =
       return deps.createApiError(400, 'invalid_request', payloadResult.message, deps.getRequestId());
     }
 
-    const result = await deps.withRegistryService((service) =>
-      service.assignModule(
-        buildAssignInstanceModuleInput(instanceId, payloadResult.data, {
-          idempotencyKey,
-          actorId: deps.getActor(ctx).id,
-          requestId: deps.getRequestId(),
-        })
-      )
-    );
+    let result;
+    try {
+      result = await withScopedRegistryMutation(deps, instanceId, (service) =>
+        service.assignModule(
+          buildAssignInstanceModuleInput(instanceId, payloadResult.data, {
+            idempotencyKey,
+            actorId: deps.getActor(ctx).id,
+            requestId: deps.getRequestId(),
+          })
+        )
+      );
+    } catch (error) {
+      return mapMutationError(error);
+    }
 
     if (!result.ok) {
       if (result.reason === 'not_found') {
@@ -71,7 +80,10 @@ export const createAssignModuleHandler =
   };
 
 export const createBootstrapAdminStructureHandler =
-  <TContext>(deps: InstanceRegistryMutationHttpDeps<TContext>) =>
+  <TContext>(
+    deps: InstanceRegistryMutationHttpDeps<TContext>,
+    mapMutationError: (error: unknown) => Response
+  ) =>
   async (request: Request, ctx: TContext): Promise<Response> => {
     const guardError = requireMutationGuards(deps, request, ctx);
     if (guardError) {
@@ -93,15 +105,20 @@ export const createBootstrapAdminStructureHandler =
       return deps.createApiError(400, 'invalid_request', payloadResult.message, deps.getRequestId());
     }
 
-    const result = await deps.withRegistryService((service) =>
-      service.bootstrapAdminStructure(
-        buildBootstrapAdminStructureInput(instanceId, payloadResult.data, {
-          idempotencyKey,
-          actorId: deps.getActor(ctx).id,
-          requestId: deps.getRequestId(),
-        })
-      )
-    );
+    let result;
+    try {
+      result = await withScopedRegistryMutation(deps, instanceId, (service) =>
+        service.bootstrapAdminStructure(
+          buildBootstrapAdminStructureInput(instanceId, payloadResult.data, {
+            idempotencyKey,
+            actorId: deps.getActor(ctx).id,
+            requestId: deps.getRequestId(),
+          })
+        )
+      );
+    } catch (error) {
+      return mapMutationError(error);
+    }
 
     if (!result.ok) {
       if (result.reason === 'not_found') {
@@ -117,7 +134,10 @@ export const createBootstrapAdminStructureHandler =
   };
 
 export const createRevokeModuleHandler =
-  <TContext>(deps: InstanceRegistryMutationHttpDeps<TContext>) =>
+  <TContext>(
+    deps: InstanceRegistryMutationHttpDeps<TContext>,
+    mapMutationError: (error: unknown) => Response
+  ) =>
   async (request: Request, ctx: TContext): Promise<Response> => {
     const guardError = requireMutationGuards(deps, request, ctx);
     if (guardError) {
@@ -139,15 +159,20 @@ export const createRevokeModuleHandler =
       return deps.createApiError(400, 'invalid_request', payloadResult.message, deps.getRequestId());
     }
 
-    const result = await deps.withRegistryService((service) =>
-      service.revokeModule(
-        buildRevokeInstanceModuleInput(instanceId, payloadResult.data, {
-          idempotencyKey,
-          actorId: deps.getActor(ctx).id,
-          requestId: deps.getRequestId(),
-        })
-      )
-    );
+    let result;
+    try {
+      result = await withScopedRegistryMutation(deps, instanceId, (service) =>
+        service.revokeModule(
+          buildRevokeInstanceModuleInput(instanceId, payloadResult.data, {
+            idempotencyKey,
+            actorId: deps.getActor(ctx).id,
+            requestId: deps.getRequestId(),
+          })
+        )
+      );
+    } catch (error) {
+      return mapMutationError(error);
+    }
 
     if (!result.ok) {
       if (result.reason === 'not_found') {
@@ -163,7 +188,10 @@ export const createRevokeModuleHandler =
   };
 
 export const createSeedIamBaselineHandler =
-  <TContext>(deps: InstanceRegistryMutationHttpDeps<TContext>) =>
+  <TContext>(
+    deps: InstanceRegistryMutationHttpDeps<TContext>,
+    mapMutationError: (error: unknown) => Response
+  ) =>
   async (request: Request, ctx: TContext): Promise<Response> => {
     const guardError = requireMutationGuards(deps, request, ctx);
     if (guardError) {
@@ -185,15 +213,20 @@ export const createSeedIamBaselineHandler =
       return deps.createApiError(400, 'invalid_request', payloadResult.message, deps.getRequestId());
     }
 
-    const result = await deps.withRegistryService((service) =>
-      service.seedIamBaseline(
-        buildSeedInstanceIamBaselineInput(instanceId, {
-          idempotencyKey,
-          actorId: deps.getActor(ctx).id,
-          requestId: deps.getRequestId(),
-        })
-      )
-    );
+    let result;
+    try {
+      result = await withScopedRegistryMutation(deps, instanceId, (service) =>
+        service.seedIamBaseline(
+          buildSeedInstanceIamBaselineInput(instanceId, {
+            idempotencyKey,
+            actorId: deps.getActor(ctx).id,
+            requestId: deps.getRequestId(),
+          })
+        )
+      );
+    } catch (error) {
+      return mapMutationError(error);
+    }
 
     if (!result.ok) {
       return deps.createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', deps.getRequestId());
@@ -203,7 +236,10 @@ export const createSeedIamBaselineHandler =
   };
 
 export const createMutateInstanceStatusHandler =
-  <TContext>(deps: InstanceRegistryMutationHttpDeps<TContext>) =>
+  <TContext>(
+    deps: InstanceRegistryMutationHttpDeps<TContext>,
+    mapMutationError: (error: unknown) => Response
+  ) =>
   async (
     request: Request,
     ctx: TContext,
@@ -235,13 +271,18 @@ export const createMutateInstanceStatusHandler =
       return instanceId;
     }
 
-    const result = await deps.withRegistryService((service) =>
-      service.changeStatus(buildChangeInstanceStatusInput(instanceId, nextStatus, {
-        idempotencyKey,
-        actorId: deps.getActor(ctx).id,
-        requestId: deps.getRequestId(),
-      }))
-    );
+    let result;
+    try {
+      result = await withScopedRegistryMutation(deps, instanceId, (service) =>
+        service.changeStatus(buildChangeInstanceStatusInput(instanceId, nextStatus, {
+          idempotencyKey,
+          actorId: deps.getActor(ctx).id,
+          requestId: deps.getRequestId(),
+        }))
+      );
+    } catch (error) {
+      return mapMutationError(error);
+    }
 
     if (!result.ok) {
       if (result.reason === 'not_found') {

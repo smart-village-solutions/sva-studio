@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 const createInstanceRegistryRuntimeMock = vi.fn(() => ({
   withRegistryRepository: vi.fn(),
+  withScopedRegistryRepository: vi.fn(),
   withRegistryService: vi.fn(),
+  withScopedRegistryService: vi.fn(),
   withRegistryProvisioningWorkerService: vi.fn(),
   withRegistryProvisioningWorkerDeps: vi.fn(),
 }));

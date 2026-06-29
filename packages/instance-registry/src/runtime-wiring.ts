@@ -33,6 +33,30 @@ const createExecutor = (client: InstanceRegistryQueryClient): SqlExecutor => ({
 });
 
 export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps) => {
+  const withScopedClient = async <T>(
+    instanceId: string,
+    work: (client: InstanceRegistryQueryClient) => Promise<T>
+  ): Promise<T> => {
+    const pool = deps.resolvePool();
+    if (!pool) {
+      throw new Error('IAM database not configured');
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
+      const result = await work(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  };
+
   const withRegistryRepository = async <T>(
     work: (repository: InstanceRegistryRepository) => Promise<T>
   ): Promise<T> => {
@@ -49,6 +73,12 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     }
   };
 
+  const withScopedRegistryRepository = async <T>(
+    instanceId: string,
+    work: (repository: InstanceRegistryRepository) => Promise<T>
+  ): Promise<T> =>
+    withScopedClient(instanceId, (client) => work(deps.createRepository(createExecutor(client))));
+
   const createService = (
     repository: InstanceRegistryRepository,
     serviceDeps: Omit<InstanceRegistryServiceDeps, 'repository'>
@@ -62,6 +92,12 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     work: (service: InstanceRegistryService) => Promise<T>
   ): Promise<T> =>
     withRegistryRepository((repository) => work(createService(repository, deps.serviceDeps)));
+
+  const withScopedRegistryService = async <T>(
+    instanceId: string,
+    work: (service: InstanceRegistryService) => Promise<T>
+  ): Promise<T> =>
+    withScopedRegistryRepository(instanceId, (repository) => work(createService(repository, deps.serviceDeps)));
 
   const getProvisioningWorkerServiceDeps = (
     repository: InstanceRegistryRepository
@@ -84,7 +120,9 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
 
   return {
     withRegistryRepository,
+    withScopedRegistryRepository,
     withRegistryService,
+    withScopedRegistryService,
     withRegistryProvisioningWorkerService,
     withRegistryProvisioningWorkerDeps,
   };

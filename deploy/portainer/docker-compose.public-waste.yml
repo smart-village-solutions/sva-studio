@@ -46,10 +46,10 @@ services:
         - "traefik.docker.network=public"
 
         #Traefik v1
-        - "traefik.public-waste.frontend.rule=Host:${PUBLIC_WASTE_PUBLIC_HOST}"
-        - "traefik.public-waste.frontend.priority=220"
-        - "traefik.public-waste.frontend.passHostHeader=true"
-        - "traefik.public-waste.port=3002"
+        - "traefik.frontend.rule=Host:${PUBLIC_WASTE_PUBLIC_HOST}"
+        - "traefik.frontend.priority=220"
+        - "traefik.frontend.passHostHeader=true"
+        - "traefik.port=3002"
 
         #Traefik v3
         - "traefik.http.routers.public-waste.rule=Host(`${PUBLIC_WASTE_PUBLIC_HOST}`)"

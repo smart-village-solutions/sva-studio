@@ -168,6 +168,7 @@ Tabellen für Instanzkonfiguration, Hostnames und technische Provisionierung:
 - `iam.instance_integrations`
 - `iam.external_interface_types`
 - `iam.instance_external_interfaces`
+- `iam.instance_waste_data_sources`
 - `iam.instance_modules`
 - `iam.instance_hostnames`
 - `iam.instance_provisioning_runs`
@@ -179,6 +180,7 @@ Kernidee:
 
 - Diese Tabellen modellieren die technische Betriebs- und Provisioning-Ebene pro Instanz.
 - Externe Schnittstellen werden hostgeführt über einen zentralen Typkatalog und instanzbezogene Konfigurationsdatensätze mit verschlüsselten Secret-Blöcken verwaltet.
+- Die instanzspezifische Waste-Datenquelle bleibt als eigener technischer Datensatz im IAM-Schema modelliert und folgt demselben `instance_id`-basierten Isolationvertrag.
 - Keycloak-bezogene Zustände sind explizit persistiert und auditierbar.
 
 ### 6. Content-Management

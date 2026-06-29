@@ -58,7 +58,7 @@ services:
       com.sva-studio.component: 'app'
       com.sva-studio.environment: 'production'
     networks:
-      - public
+      - network-node-005
       - internal
     deploy:
       replicas: 1
@@ -318,6 +318,8 @@ services:
 
 networks:
   public:
+    external: true
+  network-node-005:
     external: true
   internal:
     driver: overlay

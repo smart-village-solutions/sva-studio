@@ -84,36 +84,18 @@ services:
           memory: 512M
           cpus: '1.0'
       labels:
-        - traefik.enable=true
-        - traefik.docker.network=public
-        - traefik.main.frontend.rule=Host:${SVA_PUBLIC_HOST},${SVA_PARENT_DOMAIN}
-        - traefik.main.frontend.priority=200
-        - traefik.main.frontend.passHostHeader=true
-        - traefik.main.port=3000
-        - traefik.bb-guben.frontend.rule=Host:bb-guben.${SVA_PARENT_DOMAIN}
-        - traefik.bb-guben.frontend.priority=210
-        - traefik.bb-guben.frontend.passHostHeader=true
-        - traefik.bb-guben.port=3000
-        - traefik.de-musterhausen.frontend.rule=Host:de-musterhausen.${SVA_PARENT_DOMAIN}
-        - traefik.de-musterhausen.frontend.priority=210
-        - traefik.de-musterhausen.frontend.passHostHeader=true
-        - traefik.de-musterhausen.port=3000
-        - traefik.bb-bad-belzig.frontend.rule=Host:bb-bad-belzig.${SVA_PARENT_DOMAIN}
-        - traefik.bb-bad-belzig.frontend.priority=210
-        - traefik.bb-bad-belzig.frontend.passHostHeader=true
-        - traefik.bb-bad-belzig.port=3000
-        - traefik.de-studio-sandbox.frontend.rule=Host:de-studio-sandbox.${SVA_PARENT_DOMAIN}
-        - traefik.de-studio-sandbox.frontend.priority=210
-        - traefik.de-studio-sandbox.frontend.passHostHeader=true
-        - traefik.de-studio-sandbox.port=3000
-        - traefik.hb-meinquartier.frontend.rule=Host:hb-meinquartier.${SVA_PARENT_DOMAIN}
-        - traefik.hb-meinquartier.frontend.priority=210
-        - traefik.hb-meinquartier.frontend.passHostHeader=true
-        - traefik.hb-meinquartier.port=3000
-        - traefik.instance.frontend.rule=HostRegexp:{subdomain:[a-z0-9-]+}.${SVA_PARENT_DOMAIN}
-        - traefik.instance.frontend.priority=200
-        - traefik.instance.frontend.passHostHeader=true
-        - traefik.instance.port=3000
+        traefik.docker.network: "public"
+        traefik.enable: "true"
+        traefik.frontend.passHostHeader: "true"
+        traefik.frontend.rule: "Host:studio.smart-village.app,bb-bad-belzig.studio.smart-village.app,bb-guben.studio.smart-village.app,de-musterhausen.studio.smart-village.app,de-studio-sandbox.studio.smart-village.app,hb-meinquartier.studio.smart-village.app"
+        traefik.port: "3000"
+
+        # v3
+        traefik.http.routers.studio-app.rule: "Host(`studio.smart-village.app`) || Host(`bb-bad-belzig.studio.smart-village.app`) || Host(`bb-guben.studio.smart-village.app`) || Host(`de-musterhausen.studio.smart-village.app`) || Host(`de-studio-sandbox.studio.smart-village.app`) || Host(`hb-meinquartier.studio.smart-village.app`)"
+        traefik.http.routers.studio-app.tls: "true"
+        traefik.http.services.studio-app.loadbalancer.server.port: "3000"
+
+
     healthcheck:
       test:
         - CMD-SHELL

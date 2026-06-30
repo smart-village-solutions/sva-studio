@@ -42,6 +42,12 @@ export type WasteManagementSettingsInterfaceOption = Readonly<{
   isSelected: boolean;
 }>;
 
+export type WastePdfStaticSettingsRecord = Readonly<{
+  pdfBrandingAssetUrl?: string;
+  pdfContactBlock?: string;
+  updatedAt?: string;
+}>;
+
 export const wasteManagementDataSourceContract = {
   providers: wasteManagementDataSourceProviders,
   statuses: wasteManagementDataSourceStatuses,

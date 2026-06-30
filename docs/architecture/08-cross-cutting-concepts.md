@@ -34,6 +34,7 @@ gleichzeitig beeinflussen.
 
 - Die PDF-Erzeugung für Waste folgt keinem browserseitigen Renderpfad; Dokumentmodell, Terminauflösung und PDF-Rendering bleiben vollständig serverseitig.
 - Das Studio pflegt nur statische PDF-Stamminhalte wie Branding oder Kontakttexte und erzeugt selbst keine PDFs mehr.
+- Die führende Persistenz für diese PDF-Stamminhalte liegt im Waste-Schema der angebundenen Supabase-DB; ältere Werte aus `iam.instance_external_interfaces.public_config` dienen nur noch als Legacy-Fallback.
 - Die öffentliche Web-App löst den PDF-Export ad hoc für den vollständig aufgelösten Standort, das gewählte Jahr und die gewählten Fraktionen aus.
 - Persistente Waste-PDF-Artefakte, deterministische Storage-Schlüssel und wiederverwendbare Delivery-Links sind kein Teil des Zielbilds.
 

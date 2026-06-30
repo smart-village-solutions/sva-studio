@@ -1611,7 +1611,6 @@ CREATE TABLE public.waste_email_reminder_subscriptions (
 );
 
 
---
 -- Name: account_deletion_content_preferences account_deletion_content_preferences_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -2211,7 +2210,6 @@ ALTER TABLE ONLY public.waste_email_reminder_subscriptions
     ADD CONSTRAINT waste_email_reminder_subscriptions_unsubscribe_token_hash_uniqu UNIQUE (unsubscribe_token_hash);
 
 
---
 -- Name: iam_content_history_instance_content_created_idx; Type: INDEX; Schema: iam; Owner: -
 --
 

@@ -190,12 +190,14 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     interfaceRecords: writeContext.interfaceRecords,
     targetInterfaceRecord,
     calendarWebUrl: input.calendarWebUrl?.trim(),
-    pdfBrandingAssetUrl: input.pdfBrandingAssetUrl?.trim(),
-    pdfContactBlock: input.pdfContactBlock?.trim(),
     emailReminderConfig: normalizedEmailReminderConfig,
     holidayStateCode: input.holidayStateCode,
     lastHolidaySyncStatus,
     lastSuccessfulHolidaySyncAt,
+  });
+  await deps.saveWastePdfStaticSettings?.(instanceId, {
+    pdfBrandingAssetUrl: input.pdfBrandingAssetUrl?.trim(),
+    pdfContactBlock: input.pdfContactBlock?.trim(),
   });
   await requireDeps(deps.saveWasteCustomRecurrencePresets, 'saveWasteCustomRecurrencePresets')(instanceId, {
     nextItems: input.customRecurrencePresets,
@@ -269,8 +271,6 @@ export const runWasteManagementHolidaySyncAfterValidation = async ({
     interfaceRecords: writeContext.interfaceRecords,
     targetInterfaceRecord,
     calendarWebUrl: writeContext.current.calendarWebUrl,
-    pdfBrandingAssetUrl: writeContext.current.pdfBrandingAssetUrl,
-    pdfContactBlock: writeContext.current.pdfContactBlock,
     emailReminderConfig: writeContext.current.emailReminderConfig,
     holidayStateCode: writeContext.current.holidayStateCode,
     lastHolidaySyncStatus,

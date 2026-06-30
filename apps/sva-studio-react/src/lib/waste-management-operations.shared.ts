@@ -49,6 +49,7 @@ export const requiredWasteTables = [
   'waste_tour_date_shifts',
   'waste_global_date_shifts',
   'waste_holiday_rules',
+  'waste_settings',
 ] as const;
 
 export const quoteIdentifier = (value: string): string => {

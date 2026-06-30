@@ -93,6 +93,7 @@ export type {
   WasteManagementDataSourceRecord,
   WasteManagementDataSourceStatus,
   WasteHolidaySyncStatus,
+  WastePdfStaticSettingsRecord,
   WasteManagementSettingsInterfaceOption,
   WasteManagementSettingsRecord,
   WasteManagementTechnicalEventType,

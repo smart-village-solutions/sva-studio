@@ -159,6 +159,10 @@ describe('waste-management settings shared helpers', () => {
           },
           secretConfigCiphertext: 'cipher-secret',
         })),
+        loadWastePdfStaticSettings: vi.fn(async () => ({
+          pdfBrandingAssetUrl: 'https://cdn.example/logo-from-waste.svg',
+          pdfContactBlock: 'Abfallberatung aus Waste-DB',
+        })),
         loadWasteCustomRecurrencePresets: vi.fn(async () => [
           {
             id: 'preset-10',
@@ -192,8 +196,8 @@ describe('waste-management settings shared helpers', () => {
         },
       ],
       calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
-      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
-      pdfContactBlock: 'Abfallberatung 03395 / 1234',
+      pdfBrandingAssetUrl: 'https://cdn.example/logo-from-waste.svg',
+      pdfContactBlock: 'Abfallberatung aus Waste-DB',
       emailReminderConfig: createEmailReminderConfig(),
       databaseUrlConfigured: true,
       serviceRoleKeyConfigured: true,
@@ -214,6 +218,42 @@ describe('waste-management settings shared helpers', () => {
           updatedAt: '2026-05-09T09:30:00.000Z',
         },
       ],
+    });
+  });
+
+  it('falls back to interface pdf settings when no waste pdf settings are stored yet', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'supabase',
+          visibleStatus: 'ok',
+          publicConfig: {
+            projectUrl: 'https://tenant.example',
+            schemaName: 'wm',
+            calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+            pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+            pdfContactBlock: 'Abfallberatung 03395 / 1234',
+          },
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        loadWastePdfStaticSettings: vi.fn(async () => null),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toMatchObject({
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung 03395 / 1234',
     });
   });
 

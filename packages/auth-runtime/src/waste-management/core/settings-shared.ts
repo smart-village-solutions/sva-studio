@@ -11,6 +11,7 @@ import {
   type WasteManagementDataSourceRecord,
   type WasteManagementSettingsInterfaceOption,
   type WasteManagementSettingsRecord,
+  type WastePdfStaticSettingsRecord,
   findSelectedWasteManagementInterfaceRecord,
   readWasteManagementCalendarWebUrl,
   readWasteManagementEmailReminderConfig,
@@ -26,6 +27,18 @@ import type { WasteManagementHandlerDeps } from './types.js';
 const normalizeInterfaceWasteVisibleStatus = (
   status: 'not_configured' | 'unknown' | 'ok' | 'error' | 'disabled'
 ): WasteManagementDataSourceRecord['visibleStatus'] => (status === 'disabled' ? 'unknown' : status);
+
+const applyWastePdfStaticSettings = (
+  settings: WasteManagementSettingsRecord,
+  wastePdfStaticSettings: WastePdfStaticSettingsRecord | null | undefined
+): WasteManagementSettingsRecord =>
+  wastePdfStaticSettings
+    ? {
+        ...settings,
+        pdfBrandingAssetUrl: wastePdfStaticSettings.pdfBrandingAssetUrl,
+        pdfContactBlock: wastePdfStaticSettings.pdfContactBlock,
+      }
+    : settings;
 
 const mapExternalInterfaceToWasteSettings = (
   instanceId: string,
@@ -184,11 +197,14 @@ export const loadConfiguredWasteSettings = async (
   const customRecurrencePresets = deps.loadWasteCustomRecurrencePresets
     ? await deps.loadWasteCustomRecurrencePresets(instanceId)
     : [];
+  const wastePdfStaticSettings = deps.loadWastePdfStaticSettings
+    ? await deps.loadWastePdfStaticSettings(instanceId)
+    : null;
 
-  return {
+  return applyWastePdfStaticSettings({
     ...settings,
     customRecurrencePresets,
-  };
+  }, wastePdfStaticSettings);
 };
 
 export const defaultRunConnectionProbe = async (dataSource: ResolvedWasteDataSource): Promise<void> => {

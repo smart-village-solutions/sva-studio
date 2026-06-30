@@ -363,6 +363,7 @@ describe('waste-management settings write support', () => {
       pdfContactBlock: 'Kontakt neu',
     });
     const saveExternalInterfaceRecord = vi.fn(async () => undefined);
+    const saveWastePdfStaticSettings = vi.fn(async () => undefined);
     const saveWasteCustomRecurrencePresets = vi.fn(async () => undefined);
     const syncWasteHolidayRules = vi.fn(async () => 'success' as const);
 
@@ -372,6 +373,7 @@ describe('waste-management settings write support', () => {
       deps: {
         listInterfaceRecords: vi.fn(async () => [legacyRecord, targetRecord]),
         saveExternalInterfaceRecord,
+        saveWastePdfStaticSettings,
         saveWasteCustomRecurrencePresets,
         syncWasteHolidayRules,
       },
@@ -393,6 +395,10 @@ describe('waste-management settings write support', () => {
     });
 
     expect(syncWasteHolidayRules).toHaveBeenCalledWith('tenant-a', 'NW');
+    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
+      pdfBrandingAssetUrl: 'https://cdn.example/next.svg',
+      pdfContactBlock: 'Kontakt neu',
+    });
     expect(saveWasteCustomRecurrencePresets).toHaveBeenCalledWith('tenant-a', {
       nextItems: [{ id: 'preset-1', name: '10 Tage', intervalDays: 10 }],
       deletedPresetFallbacks: { 'preset-legacy': { kind: 'default', value: 'none' } },
@@ -405,19 +411,18 @@ describe('waste-management settings write support', () => {
 
     expect(persistedLegacy?.publicConfig).toEqual({
       calendarWebUrl: 'https://legacy.example',
-      pdfContactBlock: 'Alt',
     });
     expect(persistedTarget?.publicConfig).toEqual(
       expect.objectContaining({
         wasteManagementSelected: true,
         calendarWebUrl: 'https://calendar.next',
-        pdfBrandingAssetUrl: 'https://cdn.example/next.svg',
-        pdfContactBlock: 'Kontakt neu',
         holidayStateCode: 'NW',
         lastHolidaySyncStatus: 'success',
         lastSuccessfulHolidaySyncAt: '2026-06-07T10:15:00.000Z',
       })
     );
+    expect(persistedTarget?.publicConfig).not.toHaveProperty('pdfBrandingAssetUrl');
+    expect(persistedTarget?.publicConfig).not.toHaveProperty('pdfContactBlock');
 
     expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -927,6 +927,32 @@ describe('waste master data repository', () => {
     expect(write.statements[0]?.values).toEqual(['preset-21', '21 Tage', null, 21]);
   });
 
+  it('reads and upserts waste pdf static settings', async () => {
+    const single = createExecutor([
+      {
+        pdf_branding_asset_url: 'https://cdn.example/logo.svg',
+        pdf_contact_block: 'Abfallberatung 03395 / 1234',
+        updated_at: '2026-06-30T10:00:00.000Z',
+      },
+    ]);
+
+    await expect(createWasteMasterDataRepository(single.executor).getWastePdfStaticSettings()).resolves.toEqual({
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung 03395 / 1234',
+      updatedAt: '2026-06-30T10:00:00.000Z',
+    });
+
+    expect(single.statements[0]?.text).toContain('FROM waste_settings');
+
+    const write = createExecutor();
+    await createWasteMasterDataRepository(write.executor).upsertWastePdfStaticSettings({
+      pdfBrandingAssetUrl: 'https://cdn.example/logo-next.svg',
+      pdfContactBlock: undefined,
+    });
+
+    expect(write.statements[0]?.values).toEqual([true, 'https://cdn.example/logo-next.svg', null]);
+  });
+
   it('lists, reads and upserts location-tour links with optional date windows', async () => {
     const list = createExecutor([
       {

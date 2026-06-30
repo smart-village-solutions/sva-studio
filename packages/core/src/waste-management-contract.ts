@@ -48,6 +48,11 @@ export type WastePdfStaticSettingsRecord = Readonly<{
   updatedAt?: string;
 }>;
 
+export type WastePdfStaticSettingsWriteInput = Readonly<{
+  pdfBrandingAssetUrl?: string;
+  pdfContactBlock?: string;
+}>;
+
 export const wasteManagementDataSourceContract = {
   providers: wasteManagementDataSourceProviders,
   statuses: wasteManagementDataSourceStatuses,

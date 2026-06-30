@@ -16,9 +16,23 @@ export type PublicWastePdfStaticConfig = Readonly<{
   contactBlock?: string;
 }>;
 
+const schemaIdentifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const wastePdfStaticSettingsPoolCache = new Map<string, Pool>();
+
 const readOptionalTrimmedEnv = (value: string | undefined): string | undefined => {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+};
+
+const hasWastePdfStaticSettingsValue = (
+  record: WastePdfStaticSettingsRecord | null | undefined
+): record is WastePdfStaticSettingsRecord => Boolean(record?.pdfBrandingAssetUrl || record?.pdfContactBlock);
+
+const quoteIdentifier = (value: string): string => {
+  if (!schemaIdentifierPattern.test(value)) {
+    throw new Error(`invalid_waste_schema:${value}`);
+  }
+  return `"${value}"`;
 };
 
 const resolvePublicWasteDataDatabaseUrl = (
@@ -34,6 +48,21 @@ const resolveLegacySettingsDatabaseUrl = (
 const resolvePublicWasteSchemaName = (getSchemaName?: () => string | undefined): (() => string) =>
   () => getSchemaName?.()?.trim() || process.env.PUBLIC_WASTE_SCHEMA_NAME?.trim() || 'public';
 
+const getWastePdfStaticSettingsPool = (databaseUrl: string): Pool => {
+  const cached = wastePdfStaticSettingsPoolCache.get(databaseUrl);
+  if (cached) {
+    return cached;
+  }
+  const created = new Pool({
+    connectionString: databaseUrl,
+    max: 4,
+    idleTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 5_000,
+  });
+  wastePdfStaticSettingsPoolCache.set(databaseUrl, created);
+  return created;
+};
+
 const loadWastePdfStaticSettings = async (options: {
   readonly getDatabaseUrl?: () => string | undefined;
   readonly getSchemaName?: () => string | undefined;
@@ -44,17 +73,12 @@ const loadWastePdfStaticSettings = async (options: {
   }
 
   const schemaName = resolvePublicWasteSchemaName(options.getSchemaName)();
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    max: 1,
-    idleTimeoutMillis: 5_000,
-    connectionTimeoutMillis: 5_000,
-  });
+  const pool = getWastePdfStaticSettingsPool(databaseUrl);
 
   try {
     const client = await pool.connect();
     try {
-      await client.query(`SET search_path TO "${schemaName.replace(/"/g, '""')}", public;`);
+      await client.query(`SET search_path TO ${quoteIdentifier(schemaName)}, public;`);
       const repository = createWasteMasterDataRepository({
         async execute(statement) {
           const result = await client.query(statement.text, statement.values ? [...statement.values] : undefined);
@@ -69,7 +93,7 @@ const loadWastePdfStaticSettings = async (options: {
       client.release();
     }
   } finally {
-    await pool.end();
+    // Pool stays cached for subsequent PDF requests.
   }
 };
 
@@ -81,7 +105,7 @@ export const loadPublicWastePdfStaticConfig = async (
   } = {}
 ): Promise<PublicWastePdfStaticConfig> => {
   const wastePdfStaticSettings = await loadWastePdfStaticSettings(options).catch(() => null);
-  if (wastePdfStaticSettings) {
+  if (hasWastePdfStaticSettingsValue(wastePdfStaticSettings)) {
     return {
       brandingAssetUrl: wastePdfStaticSettings.pdfBrandingAssetUrl,
       contactBlock: wastePdfStaticSettings.pdfContactBlock,

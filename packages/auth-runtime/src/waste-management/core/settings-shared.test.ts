@@ -257,6 +257,44 @@ describe('waste-management settings shared helpers', () => {
     });
   });
 
+  it('falls back to interface pdf settings when the waste settings row has no usable values', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'supabase',
+          visibleStatus: 'ok',
+          publicConfig: {
+            projectUrl: 'https://tenant.example',
+            schemaName: 'wm',
+            pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+            pdfContactBlock: 'Abfallberatung 03395 / 1234',
+          },
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        loadWastePdfStaticSettings: vi.fn(async () => ({
+          pdfBrandingAssetUrl: undefined,
+          pdfContactBlock: undefined,
+        })),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toMatchObject({
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung 03395 / 1234',
+    });
+  });
+
   it('returns a not-configured settings shell when no interface can be resolved', async () => {
     const settings = await loadConfiguredWasteSettings(
       {

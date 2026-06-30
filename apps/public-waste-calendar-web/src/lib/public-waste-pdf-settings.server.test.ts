@@ -86,6 +86,31 @@ describe('public waste pdf settings', () => {
     expect(listExternalInterfaceRecordsMock).not.toHaveBeenCalled();
   });
 
+  it('falls through to legacy or env values when waste settings exist but are empty', async () => {
+    poolConnectMock.mockResolvedValue({
+      query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+      release: vi.fn(),
+    });
+    repositoryMock.getWastePdfStaticSettings.mockResolvedValue({
+      pdfBrandingAssetUrl: undefined,
+      pdfContactBlock: undefined,
+    });
+    listExternalInterfaceRecordsMock.mockResolvedValue([]);
+    loadDefaultExternalInterfaceRecordMock.mockResolvedValue(
+      createExternalInterfaceRecord({
+        pdfBrandingAssetUrl: 'https://cdn.example/legacy-logo.svg',
+      })
+    );
+
+    const result = await loadPublicWastePdfStaticConfig('tenant-a', {
+      getDatabaseUrl: () => 'postgres://custom',
+    });
+
+    expect(result).toEqual({
+      brandingAssetUrl: 'https://cdn.example/legacy-logo.svg',
+    });
+  });
+
   it('falls back to interface public config when no waste pdf settings exist yet', async () => {
     vi.stubEnv('PUBLIC_WASTE_PDF_BRANDING_ASSET_URL', '');
     vi.stubEnv('PUBLIC_WASTE_PDF_CONTACT_BLOCK', '');

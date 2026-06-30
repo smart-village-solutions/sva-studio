@@ -953,6 +953,18 @@ describe('waste master data repository', () => {
     expect(write.statements[0]?.values).toEqual([true, 'https://cdn.example/logo-next.svg', null]);
   });
 
+  it('treats an all-empty waste pdf settings row as missing', async () => {
+    const single = createExecutor([
+      {
+        pdf_branding_asset_url: null,
+        pdf_contact_block: null,
+        updated_at: '2026-06-30T10:00:00.000Z',
+      },
+    ]);
+
+    await expect(createWasteMasterDataRepository(single.executor).getWastePdfStaticSettings()).resolves.toBeNull();
+  });
+
   it('lists, reads and upserts location-tour links with optional date windows', async () => {
     const list = createExecutor([
       {

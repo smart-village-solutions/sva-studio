@@ -19,9 +19,15 @@ const checkHttpHealthWithRetry = async (
   let last: Awaited<ReturnType<AcceptanceRuntimeCheckDeps['checkHttpHealth']>> | null = null;
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    last = await deps.checkHttpHealth(url);
-    if (last.response.ok || attempt === attempts) {
-      return last;
+    try {
+      last = await deps.checkHttpHealth(url);
+      if (last.response.ok || attempt === attempts) {
+        return last;
+      }
+    } catch (error) {
+      if (attempt === attempts) {
+        throw error;
+      }
     }
     await wait(delayMs);
   }

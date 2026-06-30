@@ -63,6 +63,62 @@ describe('public waste runtime', () => {
     await runtime.dispose();
   });
 
+  it('passes the resolved supabase config into the pdf static settings loader', async () => {
+    const assetsDir = await createAssetsDir();
+    cleanupPaths.add(assetsDir);
+    const loadPdfStaticConfig = vi.fn(async () => ({}));
+
+    const runtime = await createPublicWasteRuntime({
+      assetsDir,
+      env: {
+        PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
+          instanceId: 'bb-prignitz',
+          supabase: {
+            databaseUrl: 'postgres://example',
+            schemaName: 'wm',
+          },
+        }),
+      },
+      createRepository: async () => ({
+        repository: {
+          listSelectionOptions: vi.fn(),
+          loadCalendarEntries: vi.fn().mockResolvedValue([
+            {
+              id: 'pickup-1',
+              date: '2026-05-19',
+              fractionId: 'bio',
+              fractionLabel: 'Bioabfall',
+              fractionShortLabel: 'BIO',
+              note: null,
+            },
+          ]),
+          loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+          loadReminderOptions: vi.fn(),
+        },
+        pool: { connect: vi.fn() } as never,
+        schemaName: 'wm',
+        dispose: async () => {},
+      }),
+      loadPdfStaticConfig,
+    });
+
+    await runtime.handle(
+      new Request(
+        'http://localhost/api/public-waste/pdf?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&year=2026&fractionId=bio'
+      )
+    );
+
+    expect(loadPdfStaticConfig).toHaveBeenCalledWith(
+      'bb-prignitz',
+      expect.objectContaining({
+        getDatabaseUrl: expect.any(Function),
+        getSchemaName: expect.any(Function),
+      })
+    );
+
+    await runtime.dispose();
+  });
+
   it('renders the DOI activation page for configured reminder paths', async () => {
     const assetsDir = await createAssetsDir();
     cleanupPaths.add(assetsDir);
@@ -79,7 +135,7 @@ describe('public waste runtime', () => {
               id: 'subscription-1',
               status: 'pending',
               location_label: 'Perleberg, Ackerstr. 12',
-              expires_at: '2026-06-16T19:00:00.000Z',
+              expires_at: '2026-07-16T19:00:00.000Z',
             },
           ],
         })

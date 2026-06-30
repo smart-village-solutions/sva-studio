@@ -19,6 +19,11 @@ import { updateWasteVisibleStatus } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { requireDeps } from './utils.js';
 
+const normalizeOptionalTrimmedText = (value: string | undefined): string | undefined => {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+};
+
 export const loadWasteSettingsWriteContext = async (
   deps: WasteManagementHandlerDeps,
   instanceId: string,
@@ -184,6 +189,10 @@ export const updateWasteManagementSettingsAfterValidation = async ({
   const normalizedEmailReminderConfig = input.emailReminderConfig
     ? withFixedWasteEmailReminderPaths(input.emailReminderConfig)
     : undefined;
+  const normalizedPdfStaticSettings = {
+    pdfBrandingAssetUrl: normalizeOptionalTrimmedText(input.pdfBrandingAssetUrl),
+    pdfContactBlock: normalizeOptionalTrimmedText(input.pdfContactBlock),
+  };
 
   await persistWasteSettingsInterfaceSelection({
     deps,
@@ -196,8 +205,8 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     lastSuccessfulHolidaySyncAt,
   });
   await deps.saveWastePdfStaticSettings?.(instanceId, {
-    pdfBrandingAssetUrl: input.pdfBrandingAssetUrl?.trim(),
-    pdfContactBlock: input.pdfContactBlock?.trim(),
+    pdfBrandingAssetUrl: normalizedPdfStaticSettings.pdfBrandingAssetUrl,
+    pdfContactBlock: normalizedPdfStaticSettings.pdfContactBlock,
   });
   await requireDeps(deps.saveWasteCustomRecurrencePresets, 'saveWasteCustomRecurrencePresets')(instanceId, {
     nextItems: input.customRecurrencePresets,
@@ -276,6 +285,10 @@ export const runWasteManagementHolidaySyncAfterValidation = async ({
     lastHolidaySyncStatus,
     lastSuccessfulHolidaySyncAt:
       lastHolidaySyncStatus !== 'failed' ? new Date().toISOString() : writeContext.current.lastSuccessfulHolidaySyncAt,
+  });
+  await deps.saveWastePdfStaticSettings?.(instanceId, {
+    pdfBrandingAssetUrl: normalizeOptionalTrimmedText(writeContext.current.pdfBrandingAssetUrl),
+    pdfContactBlock: normalizeOptionalTrimmedText(writeContext.current.pdfContactBlock),
   });
 
   const saved = await reloadWasteSettingsOrError({ deps, instanceId, requestId });

@@ -28,11 +28,16 @@ const normalizeInterfaceWasteVisibleStatus = (
   status: 'not_configured' | 'unknown' | 'ok' | 'error' | 'disabled'
 ): WasteManagementDataSourceRecord['visibleStatus'] => (status === 'disabled' ? 'unknown' : status);
 
+const hasWastePdfStaticSettingsValue = (
+  wastePdfStaticSettings: WastePdfStaticSettingsRecord | null | undefined
+): wastePdfStaticSettings is WastePdfStaticSettingsRecord =>
+  Boolean(wastePdfStaticSettings?.pdfBrandingAssetUrl || wastePdfStaticSettings?.pdfContactBlock);
+
 const applyWastePdfStaticSettings = (
   settings: WasteManagementSettingsRecord,
   wastePdfStaticSettings: WastePdfStaticSettingsRecord | null | undefined
 ): WasteManagementSettingsRecord =>
-  wastePdfStaticSettings
+  hasWastePdfStaticSettingsValue(wastePdfStaticSettings)
     ? {
         ...settings,
         pdfBrandingAssetUrl: wastePdfStaticSettings.pdfBrandingAssetUrl,

@@ -213,22 +213,32 @@ const buildSyncSql = (updates) => {
     .join(',\n');
 
   return `
-BEGIN;
-
 WITH secret_updates(instance_id, auth_client_secret_ciphertext, tenant_admin_client_secret_ciphertext) AS (
   VALUES
 ${valuesSql}
+),
+updated_rows AS (
+  UPDATE iam.instances instance
+  SET
+    auth_client_secret_ciphertext = COALESCE(secret_updates.auth_client_secret_ciphertext, instance.auth_client_secret_ciphertext),
+    tenant_admin_client_secret_ciphertext = COALESCE(secret_updates.tenant_admin_client_secret_ciphertext, instance.tenant_admin_client_secret_ciphertext),
+    updated_at = NOW()
+  FROM secret_updates
+  WHERE instance.id = secret_updates.instance_id
+    AND instance.status = 'active'
+  RETURNING
+    instance.id AS instance_id,
+    (secret_updates.auth_client_secret_ciphertext IS NOT NULL) AS auth_secret_updated,
+    (secret_updates.tenant_admin_client_secret_ciphertext IS NOT NULL) AS tenant_admin_secret_updated
 )
-UPDATE iam.instances instance
-SET
-  auth_client_secret_ciphertext = COALESCE(secret_updates.auth_client_secret_ciphertext, instance.auth_client_secret_ciphertext),
-  tenant_admin_client_secret_ciphertext = COALESCE(secret_updates.tenant_admin_client_secret_ciphertext, instance.tenant_admin_client_secret_ciphertext),
-  updated_at = NOW()
+SELECT
+  secret_updates.instance_id,
+  (updated_rows.instance_id IS NOT NULL) AS row_updated,
+  COALESCE(updated_rows.auth_secret_updated, FALSE) AS auth_secret_updated,
+  COALESCE(updated_rows.tenant_admin_secret_updated, FALSE) AS tenant_admin_secret_updated
 FROM secret_updates
-WHERE instance.id = secret_updates.instance_id
-  AND instance.status = 'active';
-
-COMMIT;
+LEFT JOIN updated_rows ON updated_rows.instance_id = secret_updates.instance_id
+ORDER BY secret_updates.instance_id;
 `;
 };
 
@@ -237,7 +247,7 @@ const runRemoteSql = (sql) => {
   const sqlPath = join(tempDir, 'sync.sql');
   try {
     writeFileSync(sqlPath, sql, { encoding: 'utf8', mode: 0o600 });
-    const result = spawnSync('node', ['scripts/debug/auth/quantum-remote-sql.mjs', sqlPath], {
+    const result = spawnSync('node', ['scripts/debug/auth/quantum-remote-query.mjs', sqlPath], {
       cwd: resolve(import.meta.dirname, '../../..'),
       env: process.env,
       encoding: 'utf8',
@@ -246,20 +256,37 @@ const runRemoteSql = (sql) => {
     if (result.status !== 0) {
       throw new Error((result.stderr || result.stdout || 'Remote SQL fehlgeschlagen.').trim());
     }
+    return (result.stdout ?? '').trim();
   } finally {
     rmSync(tempDir, { force: true, recursive: true });
   }
 };
 
+const parseSyncSummary = (rawOutput) =>
+  rawOutput
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [instanceId, rowUpdated, authSecretUpdated, tenantAdminSecretUpdated] = line.split('|');
+      return {
+        authSecretUpdated: authSecretUpdated === 't',
+        instanceId,
+        rowUpdated: rowUpdated === 't',
+        tenantAdminSecretUpdated: tenantAdminSecretUpdated === 't',
+      };
+    });
+
 const printSyncSummary = (updates) => {
-  console.log('instanceId                 authSecret  tenantAdminSecret');
-  console.log('-------------------------  ----------  -----------------');
+  console.log('instanceId                 rowStatus   authSecret  tenantAdminSecret');
+  console.log('-------------------------  ----------  ----------  -----------------');
   for (const update of updates) {
     console.log(
       [
         formatCell(update.instanceId, 25),
-        formatCell(update.authClientSecretCiphertext ? 'updated' : 'unchanged', 10),
-        formatCell(update.tenantAdminClientSecretCiphertext ? 'updated' : 'unchanged', 17),
+        formatCell(update.rowUpdated ? 'updated' : 'not_found', 10),
+        formatCell(update.authSecretUpdated ? 'updated' : 'unchanged', 10),
+        formatCell(update.tenantAdminSecretUpdated ? 'updated' : 'unchanged', 17),
       ].join('  '),
     );
   }
@@ -495,8 +522,8 @@ const main = async () => {
   if (args['sync-db']) {
     requireSuccessfulSecretRows(rows);
     const updates = buildEncryptedSecretUpdates(rows, parseRealmInstanceMap(args['realm-instance-map']));
-    runRemoteSql(buildSyncSql(updates));
-    printSyncSummary(updates);
+    const syncSummary = parseSyncSummary(runRemoteSql(buildSyncSql(updates)));
+    printSyncSummary(syncSummary);
     return;
   }
 

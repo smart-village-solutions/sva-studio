@@ -1,4 +1,4 @@
-import type { WastePdfStaticSettingsRecord } from '@sva/core';
+import type { WastePdfStaticSettingsRecord, WastePdfStaticSettingsWriteInput } from '@sva/core';
 
 import type { SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
@@ -17,6 +17,9 @@ const mapWastePdfStaticSettingsRow = (
   updatedAt: row.updated_at ?? undefined,
 });
 
+const hasWastePdfStaticSettingsValue = (record: WastePdfStaticSettingsRecord): boolean =>
+  Boolean(record.pdfBrandingAssetUrl || record.pdfContactBlock);
+
 const buildWastePdfStaticSettingsSelectStatement = (): SqlStatement => ({
   text: `
 SELECT
@@ -30,7 +33,7 @@ LIMIT 1;
   values: [],
 });
 
-const buildWastePdfStaticSettingsUpsertStatement = (input: WastePdfStaticSettingsRecord): SqlStatement => ({
+const buildWastePdfStaticSettingsUpsertStatement = (input: WastePdfStaticSettingsWriteInput): SqlStatement => ({
   text: `
 INSERT INTO waste_settings (
   id,
@@ -51,7 +54,8 @@ export const createWastePdfStaticSettingsRepositoryPart = (
 ): Pick<WasteMasterDataRepository, 'getWastePdfStaticSettings' | 'upsertWastePdfStaticSettings'> => ({
   async getWastePdfStaticSettings() {
     const result = await executor.execute<WastePdfStaticSettingsRow>(buildWastePdfStaticSettingsSelectStatement());
-    return result.rows[0] ? mapWastePdfStaticSettingsRow(result.rows[0]) : null;
+    const mapped = result.rows[0] ? mapWastePdfStaticSettingsRow(result.rows[0]) : null;
+    return mapped && hasWastePdfStaticSettingsValue(mapped) ? mapped : null;
   },
   async upsertWastePdfStaticSettings(input) {
     await executor.execute(buildWastePdfStaticSettingsUpsertStatement(input));

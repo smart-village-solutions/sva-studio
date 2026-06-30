@@ -84,14 +84,14 @@ services:
           memory: 512M
           cpus: '1.0'
       labels:
-        traefik.docker.network: "public"
+        traefik.docker.network: "network-node-005"
         traefik.enable: "true"
         traefik.frontend.passHostHeader: "true"
-        traefik.frontend.rule: "Host:studio.smart-village.app,bb-bad-belzig.studio.smart-village.app,bb-guben.studio.smart-village.app,de-musterhausen.studio.smart-village.app,de-studio-sandbox.studio.smart-village.app,hb-meinquartier.studio.smart-village.app"
+        traefik.frontend.rule: "Host:studio.smart-village.app,bb-bad-belzig.studio.smart-village.app,bb-guben.studio.smart-village.app,bb-prignitz.studio.smart-village.app,de-musterhausen.studio.smart-village.app,de-studio-sandbox.studio.smart-village.app,hb-meinquartier.studio.smart-village.app"
         traefik.port: "3000"
 
         # v3
-        traefik.http.routers.studio-app.rule: "Host(`studio.smart-village.app`) || Host(`bb-bad-belzig.studio.smart-village.app`) || Host(`bb-guben.studio.smart-village.app`) || Host(`de-musterhausen.studio.smart-village.app`) || Host(`de-studio-sandbox.studio.smart-village.app`) || Host(`hb-meinquartier.studio.smart-village.app`)"
+        traefik.http.routers.studio-app.rule: "Host(`studio.smart-village.app`) || Host(`bb-bad-belzig.studio.smart-village.app`) || Host(`bb-guben.studio.smart-village.app`) || Host(`bb-prignitz.studio.smart-village.app`) || Host(`de-musterhausen.studio.smart-village.app`) || Host(`de-studio-sandbox.studio.smart-village.app`) || Host(`hb-meinquartier.studio.smart-village.app`)"
         traefik.http.routers.studio-app.tls: "true"
         traefik.http.services.studio-app.loadbalancer.server.port: "3000"
 

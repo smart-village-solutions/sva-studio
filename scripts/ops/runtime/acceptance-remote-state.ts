@@ -99,6 +99,17 @@ const readRemoteStackEvidence = async (deps: AcceptanceRemoteStateDeps, env: Nod
 
 const resolveRemoteInternalNetworkName = async (deps: AcceptanceRemoteStateDeps, env: NodeJS.ProcessEnv) => {
   const stackName = deps.getConfiguredStackName(env);
+  const postgresServiceName = resolveRemoteShortServiceName(stackName, env.SVA_ACCEPTANCE_POSTGRES_SERVICE ?? 'postgres');
+  const postgresContract = await inspectRemoteServiceContract(
+    { commandExists: deps.commandExists, runCapture: deps.runCapture },
+    env,
+    { quantumEndpoint: deps.getConfiguredQuantumEndpoint(env), serviceName: postgresServiceName, stackName },
+  );
+  const postgresNetworkName = (postgresContract?.networkNames ?? [])
+    .find((networkName) => networkName !== 'public')
+    ?.trim();
+  if (postgresNetworkName) return postgresNetworkName;
+
   const appServiceName = resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env));
   const liveContract = await inspectRemoteServiceContract(
     { commandExists: deps.commandExists, runCapture: deps.runCapture },

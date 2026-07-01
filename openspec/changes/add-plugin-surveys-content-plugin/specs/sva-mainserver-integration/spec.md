@@ -2,7 +2,7 @@
 
 ### Requirement: Typed Survey GraphQL Adapters
 
-Das System MUST typed, server-only SVA-Mainserver-Adapter fuer Survey-Liste, Survey-Detail, Survey-Create-or-Update, Survey-Submission, Freitext-Freigabe und Ergebnisabruf bereitstellen.
+Das System MUST typed, server-only SVA-Mainserver-Adapter fuer Survey-Liste, Survey-Detail, Survey-Create-or-Update, Survey-Submission, Freitext-Freigabe, Freitext-Loeschung und Ergebnisabruf bereitstellen.
 
 Die Adapter MUST die bestehende policy-gesteuerte Mainserver-Credential-Resolution-Chain verwenden und duerfen keinen generischen GraphQL-Executor an Browsercode, Plugincode oder App-UI-Komponenten exponieren.
 
@@ -75,3 +75,9 @@ Das System MUST Mainserver- und Fachfehler fuer Survey-Operationen auf determini
 - **WENN** ein berechtigter Benutzer Freitextantworten fuer eine Survey freigibt
 - **DANN** erfolgt die Mutation ueber denselben host-owned Survey-Adapterpfad wie andere Survey-Mutationen
 - **UND** die Freigabe wird nicht ueber einen pluginseitigen Direktzugriff am Host vorbei ausgefuehrt
+
+#### Scenario: Freitext-Loeschung nutzt denselben host-owned Adapterpfad
+
+- **WENN** ein berechtigter Benutzer eine Freitextantwort einer Survey loescht
+- **DANN** erfolgt die Loeschung ueber denselben host-owned Survey-Adapterpfad wie andere Survey-Mutationen
+- **UND** wird diese Loeschung nicht ueber einen pluginseitigen Direktzugriff am Host vorbei ausgefuehrt

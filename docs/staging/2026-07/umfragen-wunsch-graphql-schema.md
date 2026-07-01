@@ -18,14 +18,14 @@ Im bestehenden Schema sind bereits einfache Survey-/Poll-Operationen vorhanden:
 Diese Operationen decken einfache Einzel-Polls mit Votes und Kommentaren ab. Sie reichen fachlich nicht für das neue Umfrage-Modul aus, weil dort unter anderem folgende Anforderungen hinzukommen:
 
 - vollständige Umfragen mit mehreren Fragen
-- Statusworkflow für Entwurf, Prüfung, Veröffentlichung, Abschluss und Archiv
+- vereinfachtes Statusmodell für Entwurf, Aktiv und Archiv
 - Zielgebiet-/Ortsteilbezug
 - anonyme Teilnahme ohne Login
 - geräteseitige Mehrfachteilnahme-Sperre
 - getrennte Verwaltungs- und Public-Views
 - Ergebnisanzeige im CMS
 - kontrollierte öffentliche Ergebnisanzeige
-- Export als CSV und PDF
+- Exportfunktionen im Studio
 
 Bestehende GraphQL-Operationen dürfen nicht breaking verändert werden. Entweder bleiben sie kompatibel erweitert bestehen oder das neue Umfrage-Modell wird über neue Operationen eingeführt.
 
@@ -47,9 +47,7 @@ scalar I18nJSON
 
 enum SurveyStatus {
   DRAFT
-  SCHEDULED
   ACTIVE
-  ENDED
   ARCHIVED
 }
 
@@ -111,7 +109,6 @@ type Survey {
 
   showResultsInApp: Boolean!
   isAnonymous: Boolean!
-  allowsMultipleSubmissionsPerDevice: Boolean!
 
   privacyNotice: I18nJSON
   transparencyNotice: I18nJSON
@@ -232,7 +229,6 @@ input UpsertSurveyInput {
   targetAreaIds: [ID!]
   showResultsInApp: Boolean
   isAnonymous: Boolean
-  allowsMultipleSubmissionsPerDevice: Boolean
   privacyNotice: I18nJSON
   transparencyNotice: I18nJSON
   questions: [UpsertSurveyQuestionInput!]
@@ -299,6 +295,8 @@ type Mutation {
 - `submitSurvey.newParticipation` wird client-seitig gesetzt.
 - `participationCount` zählt nur erste Teilnahmen.
 - `submissionCount` zählt alle gespeicherten Submission-Vorgänge, auch Ergänzungen oder Korrekturen.
+- Das Statusmodell ist auf `DRAFT`, `ACTIVE` und `ARCHIVED` reduziert.
+- Zeitliche Wirkung ergibt sich über `startAt` und `endAt`, nicht über zusätzliche Statuswerte wie `SCHEDULED` oder `ENDED`.
 - `surveys(filter)` ist die einzige Survey-Abfrage und liefert immer ein Array.
 - Zugriff auf Non-Public-Surveys wird serverseitig über Credentials entschieden.
 - Ergebnisdaten hängen an `Survey` über `results`.
@@ -361,7 +359,7 @@ query SurveysFiltered($filter: SurveyFilterInput) {
 ```json
 {
   "filter": {
-    "statuses": ["ACTIVE", "ENDED"],
+    "statuses": ["ACTIVE", "ARCHIVED"],
     "targetAreaIds": ["district-1", "district-2"],
     "includeArchived": false,
     "ongoingOnly": true
@@ -511,7 +509,6 @@ mutation CreateSurvey($input: UpsertSurveyInput!) {
     "targetAreaIds": ["district-1"],
     "showResultsInApp": true,
     "isAnonymous": true,
-    "allowsMultipleSubmissionsPerDevice": false,
     "privacyNotice": {
       "de": "Die Teilnahme erfolgt anonym."
     },

@@ -191,4 +191,3 @@ Die fachliche Zieldefinition fuer Surveys folgt dem aktuelleren Dokument `docs/s
 ## Open Questions
 
 - Wie stark die bestehende Standard-Content-Contribution fuer Surveys ohne zusaetzliche SDK-Helfer ausreicht
-- Welche Textfelder einfache `Textarea` bleiben und wo ein Rich-Text-Editor echten Mehrwert gegenueber hoeherer Komplexitaet bringt

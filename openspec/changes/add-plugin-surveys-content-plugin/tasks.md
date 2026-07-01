@@ -93,16 +93,16 @@
 
 ## 9. Tab `Ergebnisse` umsetzen
 
-- [ ] 9.1 Card `Uebersicht` mit kompakten Kennzahlen aufbauen
-- [ ] 9.2 Card `Frageergebnisse` mit aggregierten Ergebnissen pro Frage umsetzen
-- [ ] 9.3 Freitextantworten in `Ergebnisse` read-only und nur nachgeordnet ueber aufklappbare Bereiche anzeigen
-- [ ] 9.4 zwei getrennte Exportaktionen bereitstellen:
+- [x] 9.1 Card `Uebersicht` mit kompakten Kennzahlen aufbauen
+- [x] 9.2 Card `Frageergebnisse` mit aggregierten Ergebnissen pro Frage umsetzen
+- [x] 9.3 Freitextantworten in `Ergebnisse` read-only und nur nachgeordnet ueber aufklappbare Bereiche anzeigen
+- [x] 9.4 zwei getrennte Exportaktionen bereitstellen:
   - ohne Freitexte
   - mit Freitexten
-- [ ] 9.5 Exportformate `CSV`, `JSON`, `Excel` und `XML` fuer beide Exportpfade umsetzen oder hostseitig anbinden
-- [ ] 9.6 Create-Hinweiszustand fuer noch nicht verfuegbare Ergebnisse umsetzen
-- [ ] 9.7 Unit- und UI-Tests fuer Ergebnisdarstellung und Exportpfade ergaenzen
-- [ ] 9.8 kleinsten relevanten Gate-Pfad fuer `Ergebnisse` ausfuehren
+- [x] 9.5 Exportformate `CSV`, `JSON`, `Excel` und `XML` fuer beide Exportpfade umsetzen oder hostseitig anbinden
+- [x] 9.6 Create-Hinweiszustand fuer noch nicht verfuegbare Ergebnisse umsetzen
+- [x] 9.7 Unit- und UI-Tests fuer Ergebnisdarstellung und Exportpfade ergaenzen
+- [x] 9.8 kleinsten relevanten Gate-Pfad fuer `Ergebnisse` ausfuehren
 
 ## 10. Tab `Historie` umsetzen
 

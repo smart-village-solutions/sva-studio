@@ -48,6 +48,8 @@ vi.mock('@sva/plugin-sdk', async () => {
     'surveys.cards.moderation.description': 'Freitext-Freigaben werden nach dem ersten Speichern verfügbar.',
     'surveys.cards.results.title': 'Ergebnis-Rahmen',
     'surveys.cards.results.description': 'Ergebnisse und Exporte werden nach dem ersten Speichern verfügbar.',
+    'surveys.cards.results.summary.title': 'Übersicht',
+    'surveys.cards.results.summary.description': 'Kompakter Überblick über die laufende Umfrage.',
     'surveys.cards.history.title': 'Historien-Rahmen',
     'surveys.cards.history.description': 'Historieneinträge werden nach dem ersten Speichern verfügbar.',
     'surveys.messages.createPendingHint': 'Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.',
@@ -116,7 +118,10 @@ describe('survey editor pages', () => {
     ).toBeTruthy();
 
     fireEvent.change(tabSelect, { target: { value: 'results' } });
-    expect(scoped.getByText('Ergebnisse und Exporte werden nach dem ersten Speichern verfügbar.')).toBeTruthy();
+    expect(scoped.getByText('Kompakter Überblick über die laufende Umfrage.')).toBeTruthy();
+    expect(
+      scoped.getAllByText('Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.').length
+    ).toBeGreaterThan(0);
 
     fireEvent.change(tabSelect, { target: { value: 'history' } });
     expect(scoped.getByText('Die Historie erscheint hier, sobald die Umfrage bereits angelegt wurde.')).toBeTruthy();

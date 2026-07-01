@@ -109,7 +109,19 @@ export const pluginSurveysTranslations = {
         },
         results: {
           title: 'Ergebnis-Rahmen',
-          description: 'Ergebnisse und Exporte werden nach dem ersten Speichern verfügbar.',
+          description: 'Ergebnisse und Exporte der Umfrage.',
+          summary: {
+            title: 'Übersicht',
+            description: 'Kompakter Überblick über die laufende Umfrage.',
+          },
+          questions: {
+            title: 'Frageergebnisse',
+            description: 'Aggregierte Ergebnisse pro Frage.',
+          },
+          export: {
+            title: 'Export',
+            description: 'Interne Exporte der Survey-Ergebnisse.',
+          },
         },
         history: {
           title: 'Historien-Rahmen',
@@ -135,6 +147,10 @@ export const pluginSurveysTranslations = {
         deleteOptionDescription: 'Soll diese Antwortoption wirklich gelöscht werden?',
         deleteFreeTextTitle: 'Freitextantwort löschen',
         deleteFreeTextDescription: 'Soll diese Freitextantwort wirklich gelöscht werden?',
+        resultsQuestionEmpty: 'Für diese Frage liegen derzeit keine Ergebnisse vor.',
+        resultsFreeTextEmpty: 'Für diese Frage liegen keine Freitextantworten vor.',
+        resultsExportWithoutFreeText: 'Ergebnisexport ohne Freitextantworten.',
+        resultsExportWithFreeText: 'Ergebnisexport inklusive Freitextantworten.',
       },
       validation: {
         titleRequired: 'Bitte einen Titel angeben.',
@@ -166,6 +182,13 @@ export const pluginSurveysTranslations = {
         freeTextOverlayText: 'Volltext',
         freeTextOverlayStatus: 'Status',
         freeTextOverlayCreatedAt: 'Zeitstempel',
+        summaryParticipationCount: 'Teilnahmen',
+        summarySubmissionCount: 'Abgaben',
+        summaryQuestionCount: 'Fragen',
+        summaryStatus: 'Status',
+        optionVotes: 'Stimmen',
+        optionPercentage: 'Anteil',
+        freeTextSection: 'Freitextantworten',
         targetAreas: 'Zielgebiete',
         targetAreasSearch: 'Zielgebiet suchen',
         targetAreasSearchPlaceholder: 'Zielgebiet auswählen',
@@ -199,6 +222,14 @@ export const pluginSurveysTranslations = {
         questionSection: 'Frage {{index}}',
         optionSection: 'Option {{index}}',
         freeTextVisibility: 'Antwort {{index}} öffentlich sichtbar',
+        exportWithoutFreeText: 'Export ohne Freitexte',
+        exportWithFreeText: 'Export mit Freitexten',
+        exportFormats: {
+          csv: 'CSV',
+          json: 'JSON',
+          excel: 'Excel',
+          xml: 'XML',
+        },
       },
       permissions: {
         read: 'Umfragen lesen',
@@ -320,7 +351,19 @@ export const pluginSurveysTranslations = {
         },
         results: {
           title: 'Results frame',
-          description: 'Results and exports become available after the first save.',
+          description: 'Survey results and exports.',
+          summary: {
+            title: 'Overview',
+            description: 'Compact overview of the running survey.',
+          },
+          questions: {
+            title: 'Question results',
+            description: 'Aggregated results per question.',
+          },
+          export: {
+            title: 'Export',
+            description: 'Internal exports of the survey results.',
+          },
         },
         history: {
           title: 'History frame',
@@ -346,6 +389,10 @@ export const pluginSurveysTranslations = {
         deleteOptionDescription: 'Do you really want to delete this answer option?',
         deleteFreeTextTitle: 'Delete free-text response',
         deleteFreeTextDescription: 'Do you really want to delete this free-text response?',
+        resultsQuestionEmpty: 'There are currently no results for this question.',
+        resultsFreeTextEmpty: 'There are no free-text responses for this question.',
+        resultsExportWithoutFreeText: 'Result export without free-text responses.',
+        resultsExportWithFreeText: 'Result export including free-text responses.',
       },
       validation: {
         titleRequired: 'Please provide a title.',
@@ -377,6 +424,13 @@ export const pluginSurveysTranslations = {
         freeTextOverlayText: 'Full text',
         freeTextOverlayStatus: 'Status',
         freeTextOverlayCreatedAt: 'Timestamp',
+        summaryParticipationCount: 'Participations',
+        summarySubmissionCount: 'Submissions',
+        summaryQuestionCount: 'Questions',
+        summaryStatus: 'Status',
+        optionVotes: 'Votes',
+        optionPercentage: 'Share',
+        freeTextSection: 'Free-text responses',
         targetAreas: 'Target areas',
         targetAreasSearch: 'Search target area',
         targetAreasSearchPlaceholder: 'Select target area',
@@ -410,6 +464,14 @@ export const pluginSurveysTranslations = {
         questionSection: 'Question {{index}}',
         optionSection: 'Option {{index}}',
         freeTextVisibility: 'Answer {{index}} publicly visible',
+        exportWithoutFreeText: 'Export without free texts',
+        exportWithFreeText: 'Export with free texts',
+        exportFormats: {
+          csv: 'CSV',
+          json: 'JSON',
+          excel: 'Excel',
+          xml: 'XML',
+        },
       },
       permissions: {
         read: 'Read surveys',

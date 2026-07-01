@@ -749,6 +749,7 @@ const refreshMainserverProjection = async (
       const result = await fetchAllPages((pageQuery) =>
         listSvaMainserverNews({
           ...connection,
+          includeInvisible: true,
           ...pageQuery,
         })
       );
@@ -767,6 +768,7 @@ const refreshMainserverProjection = async (
       const result = await fetchAllPages((pageQuery) =>
         listSvaMainserverEvents({
           ...connection,
+          includeInvisible: true,
           ...pageQuery,
         })
       );
@@ -785,6 +787,7 @@ const refreshMainserverProjection = async (
       const result = await fetchAllPages((pageQuery) =>
         listSvaMainserverPoi({
           ...connection,
+          includeInvisible: true,
           ...pageQuery,
         })
       );

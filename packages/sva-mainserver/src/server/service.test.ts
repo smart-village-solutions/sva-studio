@@ -1917,6 +1917,105 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('keeps invisible upstream events in studio mode when requested', async () => {
+    const eventItem = {
+      id: 'event-visible',
+      title: 'Visible',
+      visible: true,
+      category: { id: 'cat-1', name: 'Kultur' },
+      categories: [{ name: 'Kultur' }],
+      dates: [{ dateStart: '2026-06-01', dateEnd: '2026-06-01' }],
+      addresses: [],
+      contacts: [],
+      urls: [],
+      mediaContents: [],
+      tags: [],
+      createdAt: '2026-06-01T10:00:00.000Z',
+      updatedAt: '2026-06-02T10:00:00.000Z',
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            eventRecords: [eventItem, { ...eventItem, id: 'event-hidden', visible: false }],
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listEvents({
+        instanceId: 'instance-1',
+        keycloakSubject: 'user-1',
+        page: 1,
+        pageSize: 25,
+        includeInvisible: true,
+      })
+    ).resolves.toMatchObject({
+      data: expect.arrayContaining([
+        expect.objectContaining({ id: 'event-visible', visible: true }),
+        expect.objectContaining({ id: 'event-hidden', visible: false }),
+      ]),
+    });
+  });
+
+  it('keeps invisible upstream poi in studio mode when requested', async () => {
+    const poiItem = {
+      id: 'poi-visible',
+      name: 'Visible',
+      visible: true,
+      payload: { source: 'mainserver' },
+      category: { id: 'cat-1', name: 'Freizeit' },
+      categories: [{ name: 'Freizeit' }],
+      addresses: [],
+      webUrls: [],
+      mediaContents: [],
+      priceInformations: [],
+      certificates: [],
+      tagList: [],
+      createdAt: '2026-06-01T10:00:00.000Z',
+      updatedAt: '2026-06-02T10:00:00.000Z',
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            pointsOfInterest: [poiItem, { ...poiItem, id: 'poi-hidden', visible: false }],
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listPoi({
+        instanceId: 'instance-1',
+        keycloakSubject: 'user-1',
+        page: 1,
+        pageSize: 25,
+        includeInvisible: true,
+      })
+    ).resolves.toMatchObject({
+      data: expect.arrayContaining([
+        expect.objectContaining({ id: 'poi-visible', visible: true }),
+        expect.objectContaining({ id: 'poi-hidden', visible: false }),
+      ]),
+    });
+  });
+
   it('calls changeVisibility with recordType NewsItem', async () => {
     const fetchImpl = vi
       .fn()

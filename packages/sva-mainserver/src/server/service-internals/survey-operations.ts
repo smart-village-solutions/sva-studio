@@ -143,7 +143,6 @@ const createListSurveysWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) 
     config
   );
 
-  const surveys = (response.surveys ?? []).map(mapSurveyItem);
   const offset = (pagination.page - 1) * pagination.pageSize;
   const rawSurveys = response.surveys ?? [];
   const pagedItems = rawSurveys.slice(offset, offset + pagination.pageSize).map(mapSurveyItem);

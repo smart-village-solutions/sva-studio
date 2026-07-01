@@ -70,7 +70,7 @@ export const createPoiOperations = (executeGraphqlWithConfig: GraphqlExecutor) =
         operationName: 'SvaMainserverPoiList',
         order: 'updatedAt_DESC',
         readItems: (response) => response.pointsOfInterest ?? [],
-        isVisible: (item) => item.visible !== false,
+        isVisible: (item) => input.includeInvisible === true || item.visible !== false,
         mapItem: mapPoiItem,
       }
     ),

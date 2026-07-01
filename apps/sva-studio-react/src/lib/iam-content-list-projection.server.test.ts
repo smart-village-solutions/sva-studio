@@ -1497,6 +1497,26 @@ describe('content list projection', () => {
     ]);
   });
 
+  it('requests invisible mainserver records during projection refresh', async () => {
+    state.listSvaMainserverEvents.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['events.event-record'],
+      force: true,
+    });
+
+    expect(state.listSvaMainserverEvents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        includeInvisible: true,
+        page: 1,
+        pageSize: 100,
+      })
+    );
+  });
+
   it('accepts refresh requests without mainserver-backed visible types', async () => {
     const response = await refreshProjectedContents(ctx, {
       visibleTypes: ['generic'],

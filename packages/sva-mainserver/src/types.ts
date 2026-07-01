@@ -617,6 +617,7 @@ export type SvaMainserverSurveyResults = {
 
 export type SvaMainserverSurveyItem = {
   readonly id: string;
+  readonly contentType: 'surveys.survey';
   readonly title: SvaMainserverLocalizedText;
   readonly shortDescription?: SvaMainserverLocalizedText;
   readonly description?: SvaMainserverLocalizedText;

@@ -1,99 +1,59 @@
 import React from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm } from 'react-hook-form';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { StudioDetailPageTemplate, StudioDetailTabs, type StudioDetailTabDefinition } from '@sva/studio-ui-react';
+import { StudioDetailPageTemplate, StudioDetailTabs, StudioFormSummary, StudioLoadingState } from '@sva/studio-ui-react';
 
-import { SurveyDetailBasisTab } from './surveys.detail-basis-tab.js';
-import { SurveyDetailContentTab } from './surveys.detail-content-tab.js';
 import { createDefaultSurveyDetailFormValues, type SurveyDetailFormValues } from './surveys.detail-form.js';
-import { SurveyDetailHistoryTab } from './surveys.detail-history-tab.js';
-import { SurveyDetailModerationTab } from './surveys.detail-moderation-tab.js';
-import { SurveyDetailResultsTab } from './surveys.detail-results-tab.js';
-import type { SurveyContentItem } from './surveys.types.js';
+import { SurveyEditorActions } from './surveys.editor.actions.js';
+import { useSurveyEditorController } from './surveys.editor.controller.js';
+import {
+  createSurveyEditorTabs,
+  type SurveyEditorMode,
+  type SurveyEditorTabId,
+} from './surveys.editor.shared.js';
 
-type SurveyEditorMode = 'create' | 'edit';
-type SurveyEditorTabId = 'basis' | 'content' | 'moderation' | 'results' | 'history';
-
-const createSurveyEditorTabs = (
-  pt: ReturnType<typeof usePluginTranslation>,
-  mode: SurveyEditorMode,
-  loadedItem: SurveyContentItem | null,
-  contentId?: string
-): readonly StudioDetailTabDefinition<SurveyEditorTabId>[] => {
-  const createPendingHint = (
-    <p>{pt('messages.createPendingHint')}</p>
-  );
-
-  return [
-    {
-      id: 'basis',
-      label: pt('tabs.basis.label'),
-      title: pt('tabs.basis.title'),
-      description: pt('tabs.basis.description'),
-      panel: (
-        <SurveyDetailBasisTab
-          mode={mode}
-          loadedItem={loadedItem}
-          availableTargetAreas={[]}
-          pt={pt}
-        />
-      ),
-    },
-    {
-      id: 'content',
-      label: pt('tabs.content.label'),
-      title: pt('tabs.content.title'),
-      description: pt('tabs.content.description'),
-      panel: <SurveyDetailContentTab pt={pt} />,
-    },
-    {
-      id: 'moderation',
-      label: pt('tabs.moderation.label'),
-      title: pt('tabs.moderation.title'),
-      description: pt('tabs.moderation.description'),
-      panel: <SurveyDetailModerationTab mode={mode} groups={[]} pt={pt} />,
-    },
-    {
-      id: 'results',
-      label: pt('tabs.results.label'),
-      title: pt('tabs.results.title'),
-      description: pt('tabs.results.description'),
-      panel: <SurveyDetailResultsTab mode={mode} resultData={null} pt={pt} />,
-    },
-    {
-      id: 'history',
-      label: pt('tabs.history.label'),
-      title: pt('tabs.history.title'),
-      description: pt('tabs.history.description'),
-      panel: <SurveyDetailHistoryTab contentId={contentId} pt={pt} />,
-    },
-  ];
-};
+const formId = 'survey-detail-form';
 
 export const SurveyEditorPage = ({
   mode,
   contentId,
 }: Readonly<{ mode: SurveyEditorMode; contentId?: string }>) => {
   const pt = usePluginTranslation('surveys');
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = React.useState<SurveyEditorTabId>('basis');
-  const methods = useForm<SurveyDetailFormValues>({
-    defaultValues: createDefaultSurveyDetailFormValues(),
+  const methods = useForm<SurveyDetailFormValues>({ defaultValues: createDefaultSurveyDetailFormValues() });
+  const { isLoading, loadedItem, status, submit } = useSurveyEditorController({
+    mode,
+    contentId,
+    methods,
+    pt,
+    navigateToContentList: () => navigate({ to: '/admin/content' }),
   });
-  const tabs = React.useMemo(() => createSurveyEditorTabs(pt, mode, null, contentId), [contentId, mode, pt]);
+  const tabs = React.useMemo(() => createSurveyEditorTabs(pt, mode, loadedItem, contentId), [contentId, loadedItem, mode, pt]);
+
+  if (isLoading) {
+    return <StudioLoadingState>{pt('history.loading')}</StudioLoadingState>;
+  }
 
   return (
     <StudioDetailPageTemplate
       title={pt(mode === 'create' ? 'pages.createTitle' : 'pages.editTitle')}
       description={pt(mode === 'create' ? 'pages.createDescription' : 'pages.editDescription')}
+      actions={<SurveyEditorActions mode={mode} formId={formId} pt={pt} />}
     >
       <FormProvider {...methods}>
-        <StudioDetailTabs
-          ariaLabel={pt('tabs.ariaLabel')}
-          tabs={tabs}
-          value={activeTab}
-          onValueChange={setActiveTab}
-          keepMounted
-        />
+        <form
+          id={formId}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
+          }}
+          className="space-y-5"
+        >
+          {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+          <StudioDetailTabs ariaLabel={pt('tabs.ariaLabel')} tabs={tabs} value={activeTab} onValueChange={setActiveTab} keepMounted />
+        </form>
       </FormProvider>
     </StudioDetailPageTemplate>
   );

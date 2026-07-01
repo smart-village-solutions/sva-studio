@@ -39,6 +39,8 @@ type ContentActor = Readonly<{
   activeOrganizationId?: string;
 }>;
 
+type SurveyMutationPayload = Awaited<ReturnType<typeof createSvaMainserverSurvey>>;
+
 const matchRoute = (request: Request): RouteMatch | null =>
   matchRequestRoute(request, SURVEYS_COLLECTION_PATH, 'surveys');
 
@@ -76,14 +78,17 @@ const authorizeOrResponse = async (
       content_type: SURVEYS_CONTENT_TYPE,
       content_id: contentId,
       action,
+      error_code: result.error,
     });
-    return errorJson(403, 'forbidden', 'Keine Berechtigung für Umfragen.');
+    return errorJson(result.status, result.error, result.message);
   }
 
   return {
-    instanceId: ctx.user.instanceId,
-    keycloakSubject: ctx.user.id,
-    ...(ctx.activeOrganizationId ? { activeOrganizationId: ctx.activeOrganizationId } : {}),
+    instanceId: result.actor.instanceId,
+    keycloakSubject: result.actor.keycloakSubject,
+    ...(result.actor.organizationId ?? ctx.activeOrganizationId
+      ? { activeOrganizationId: result.actor.organizationId ?? ctx.activeOrganizationId }
+      : {}),
   };
 };
 
@@ -121,6 +126,25 @@ const authorizeMutation = async (
   return authorizeOrResponse(ctx, action, contentId);
 };
 
+const toMutationFailureResponse = (
+  payload: SurveyMutationPayload,
+  fallbackMessage: string
+): Response => {
+  const firstError = payload.errors[0];
+  const errorCode = firstError?.code?.toLowerCase() ?? 'survey_mutation_failed';
+  const message = firstError?.message ?? fallbackMessage;
+  const status =
+    firstError?.code === 'FORBIDDEN'
+      ? 403
+      : firstError?.code === 'SURVEY_NOT_FOUND'
+        ? 404
+        : firstError?.code === 'INTERNAL_ERROR'
+          ? 500
+          : 422;
+
+  return errorJson(status, errorCode, message);
+};
+
 const handleList = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
   const actor = await authorizeOrResponse(ctx, 'read');
   if (actor instanceof Response) {
@@ -148,6 +172,9 @@ const handleCreate = async (request: Request, ctx: AuthenticatedRequestContext):
   }
 
   const created = await createSvaMainserverSurvey({ ...actor, survey });
+  if (!created.success || created.errors.length > 0 || !created.survey) {
+    return toMutationFailureResponse(created, 'Umfrage konnte nicht angelegt werden.');
+  }
   return json({ data: created.survey ?? null }, 201);
 };
 
@@ -187,6 +214,9 @@ const handleUpdate = async (
     surveyId,
     survey,
   });
+  if (!updated.success || updated.errors.length > 0 || !updated.survey) {
+    return toMutationFailureResponse(updated, 'Umfrage konnte nicht gespeichert werden.');
+  }
   return json({ data: updated.survey ?? null });
 };
 
@@ -204,6 +234,9 @@ const handleDelete = async (
     ...actor,
     surveyId,
   });
+  if (!deleted.success || deleted.errors.length > 0 || !deleted.deletedSurveyId) {
+    return toMutationFailureResponse(deleted, 'Umfrage konnte nicht gelöscht werden.');
+  }
   return json({ data: { id: deleted.deletedSurveyId ?? surveyId } });
 };
 

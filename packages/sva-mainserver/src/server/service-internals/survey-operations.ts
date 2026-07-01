@@ -145,15 +145,16 @@ const createListSurveysWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) 
 
   const surveys = (response.surveys ?? []).map(mapSurveyItem);
   const offset = (pagination.page - 1) * pagination.pageSize;
-  const pagedItems = surveys.slice(offset, offset + pagination.pageSize);
+  const rawSurveys = response.surveys ?? [];
+  const pagedItems = rawSurveys.slice(offset, offset + pagination.pageSize).map(mapSurveyItem);
 
   return {
     data: pagedItems,
     pagination: {
       page: pagination.page,
       pageSize: pagination.pageSize,
-      hasNextPage: offset + pagination.pageSize < surveys.length,
-      total: surveys.length,
+      hasNextPage: offset + pagination.pageSize < rawSurveys.length,
+      total: rawSurveys.length,
     },
   };
 };
@@ -189,7 +190,9 @@ const createGetSurveyResultsWithConfig = (executeGraphqlWithConfig: GraphqlExecu
     config
   );
 
-  return mapOptionalSurveyResults(findSurvey(response.surveys)?.results);
+  const survey = findSurvey(response.surveys);
+  const surveyItem = mapOptionalSurveyItem(survey);
+  return mapOptionalSurveyResults(surveyItem.results);
 };
 
 const createWriteSurveyWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) => async (

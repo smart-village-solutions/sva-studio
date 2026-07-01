@@ -5,9 +5,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SurveyCreatePage, SurveyEditPage } from '../src/surveys.pages.js';
 
 const fetchIamContentHistoryMock = vi.fn();
+const getSurveyMock = vi.fn();
+const createSurveyMock = vi.fn();
+const updateSurveyMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   useParams: () => ({ contentId: 'survey-123' }),
+  Link: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useNavigate: () => vi.fn(),
+}));
+
+vi.mock('../src/surveys.api.js', () => ({
+  getSurvey: (...args: unknown[]) => getSurveyMock(...args),
+  createSurvey: (...args: unknown[]) => createSurveyMock(...args),
+  updateSurvey: (...args: unknown[]) => updateSurveyMock(...args),
 }));
 
 vi.mock('@sva/plugin-sdk', async () => {
@@ -77,6 +88,15 @@ vi.mock('@sva/plugin-sdk', async () => {
     'surveys.fields.statusOptions.archived': 'Archiviert',
     'surveys.actions.addTargetArea': 'Zielgebiet hinzufügen',
     'surveys.actions.removeTargetArea': 'Zielgebiet {{name}} entfernen',
+    'surveys.actions.back': 'Zurück',
+    'surveys.actions.create': 'Umfrage anlegen',
+    'surveys.actions.update': 'Umfrage speichern',
+    'surveys.messages.loadError': 'Umfrage konnte nicht geladen werden.',
+    'surveys.messages.createError': 'Umfrage konnte nicht angelegt werden.',
+    'surveys.messages.updateError': 'Umfrage konnte nicht gespeichert werden.',
+    'surveys.messages.createSuccess': 'Umfrage wurde angelegt.',
+    'surveys.messages.updateSuccess': 'Umfrage wurde gespeichert.',
+    'surveys.messages.missingContentId': 'Keine Umfrage-ID vorhanden.',
   } as const;
 
   return {
@@ -85,14 +105,39 @@ vi.mock('@sva/plugin-sdk', async () => {
     formatDateTimeInEditorTimeZone: (value: string) => value,
     usePluginTranslation:
       (_namespace: string) =>
-      (key: string): string =>
-        messages[`surveys.${key}` as keyof typeof messages] ?? key,
+      (key: string, variables?: Readonly<Record<string, string | number>>): string => {
+        const template = messages[`surveys.${key}` as keyof typeof messages] ?? key;
+        if (!variables) {
+          return template;
+        }
+
+        return Object.entries(variables).reduce(
+          (value, [variableName, variableValue]) => value.replace(`{{${variableName}}}`, String(variableValue)),
+          template
+        );
+      },
   };
 });
 
 describe('survey editor pages', () => {
   beforeEach(() => {
     fetchIamContentHistoryMock.mockResolvedValue([]);
+    getSurveyMock.mockResolvedValue({
+      id: 'survey-123',
+      contentType: 'surveys.survey',
+      title: { de: 'Bestandsumfrage' },
+      status: 'DRAFT',
+      resultVisibility: 'NONE',
+      targetAreaIds: [],
+      showResultsInApp: false,
+      isAnonymous: false,
+      questions: [],
+      questionCount: 0,
+      participationCount: 0,
+      submissionCount: 0,
+      createdAt: '2026-07-01T08:00:00.000Z',
+      updatedAt: '2026-07-01T08:00:00.000Z',
+    });
   });
 
   afterEach(() => {
@@ -138,15 +183,17 @@ describe('survey editor pages', () => {
   });
 
   it('reuses the same editor frame in edit mode and shows the edit heading', () => {
-    const view = render(<SurveyEditPage />);
-    const scoped = within(view.container);
+    return (async () => {
+      const view = render(<SurveyEditPage />);
+      const scoped = within(view.container);
 
-    expect(scoped.getByRole('heading', { name: 'Umfrage bearbeiten' })).toBeTruthy();
-    expect(scoped.getAllByRole('tablist')).toHaveLength(1);
-    expect(scoped.getByRole('tab', { name: 'Basis' })).toBeTruthy();
-    expect(scoped.getByRole('tab', { name: 'Historie' })).toBeTruthy();
-    expect(
-      scoped.queryByText('Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.')
-    ).toBeNull();
+      expect(await scoped.findByRole('heading', { name: 'Umfrage bearbeiten' })).toBeTruthy();
+      expect(scoped.getAllByRole('tablist')).toHaveLength(1);
+      expect(scoped.getByRole('tab', { name: 'Basis' })).toBeTruthy();
+      expect(scoped.getByRole('tab', { name: 'Historie' })).toBeTruthy();
+      expect(
+        scoped.queryByText('Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.')
+      ).toBeNull();
+    })();
   });
 });

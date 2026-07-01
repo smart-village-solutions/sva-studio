@@ -243,6 +243,7 @@ const mapParsedSurveyItem = (survey: z.infer<typeof surveySchema>): SvaMainserve
   const fallbackTimestamp = survey.createdAt ?? survey.updatedAt ?? new Date(0).toISOString();
   return {
     id: survey.id,
+    contentType: 'surveys.survey',
     title: mapLocalizedText(survey.title),
     ...buildSurveyContentFields(survey),
     status: survey.status,

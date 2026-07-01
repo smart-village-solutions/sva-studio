@@ -23,6 +23,7 @@ export const pluginSurveysStructureEnTranslations = {
     closeOverlay: 'Close',
     confirmDelete: 'Delete',
     cancelDelete: 'Cancel',
+    back: 'Back',
   },
   pages: {
     createTitle: 'Create survey',

@@ -98,7 +98,7 @@ function SurveyQuestionResultsList({
           <article key={question.questionId} className="space-y-4 rounded-lg border border-border/60 bg-background p-4">
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-foreground">{question.questionTitle}</h4>
-              <p className="text-sm text-muted-foreground">{question.totalResponses} {pt('fields.summarySubmissionCount').toLowerCase()}</p>
+              <p className="text-sm text-muted-foreground">{question.totalResponses} {pt('fields.summarySubmissionCount')}</p>
             </div>
 
             {question.optionResults.length > 0 ? (
@@ -108,7 +108,7 @@ function SurveyQuestionResultsList({
                     <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                       <span className="font-medium text-foreground">{option.title}</span>
                       <span className="text-muted-foreground">
-                        {option.votes} {pt('fields.optionVotes').toLowerCase()} | {formatPercentage(option.percentage)}
+                        {option.votes} {pt('fields.optionVotes')} | {formatPercentage(option.percentage)}
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-muted">

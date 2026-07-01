@@ -1,16 +1,16 @@
 # @sva/plugin-surveys
 
-`@sva/plugin-surveys` ist das normale Content-Plugin fuer die Survey-Verwaltung im SVA Studio.
+`@sva/plugin-surveys` ist das normale Content-Plugin für die Survey-Verwaltung im SVA Studio.
 
 ## Architektur-Rolle
 
-Das Paket ist eine fachliche Plugin-Bibliothek im Scope `scope:plugin`. Es registriert den Inhaltstyp `surveys.survey`, haengt sich in den hostgeführten Standard-Content-Pfad ein und erweitert diesen nur um Survey-spezifische Moderations- und Exportrechte.
+Das Paket ist eine fachliche Plugin-Bibliothek im Scope `scope:plugin`. Es registriert den Inhaltstyp `surveys.survey`, hängt sich in den hostgeführten Standard-Content-Pfad ein und erweitert diesen nur um Survey-spezifische Moderations- und Exportrechte.
 
 Boundaries:
 
-- Browser- und Plugin-Code bleiben auf `@sva/plugin-sdk` und `@sva/studio-ui-react` beschraenkt.
-- Direkte GraphQL-, Keycloak-, IAM- oder Host-Interna-Imports sind im Plugin nicht zulaessig.
-- Der Zugriff auf den SVA Mainserver erfolgt ausschliesslich ueber hostgeführte Fassaden und typed Adapter.
+- Browser- und Plugin-Code bleiben auf `@sva/plugin-sdk` und `@sva/studio-ui-react` beschränkt.
+- Direkte GraphQL-, Keycloak-, IAM- oder Host-Interna-Imports sind im Plugin nicht zulässig.
+- Der Zugriff auf den SVA Mainserver erfolgt ausschließlich über hostgeführte Fassaden und typed Adapter.
 
 ## Fachlicher Zuschnitt
 
@@ -18,7 +18,7 @@ Das Plugin bildet Surveys als normale Inhalte mit denselben Hauptschritten wie a
 
 - Sichtbarkeit in der gemischten Inhaltsliste unter `/admin/content`
 - Auswahl als weiterer Typ im Flow `Neuer Inhalt`
-- gemeinsamer Editor-Rahmen fuer Create und Edit
+- gemeinsamer Editor-Rahmen für Create und Edit
 - Freitext-Moderation, Ergebnisse, Export und Historie innerhalb derselben Detailoberflaeche
 
 Das im Studio gefuehrte Survey-Zielmodell verwendet nur:
@@ -27,7 +27,7 @@ Das im Studio gefuehrte Survey-Zielmodell verwendet nur:
 - `ACTIVE`
 - `ARCHIVED`
 
-Zeitliche Wirkung wird ueber `startAt` und `endAt` modelliert. `SCHEDULED`, `ENDED` und eine redaktionelle Option `allowsMultipleSubmissionsPerDevice` gehoeren nicht zum Studio-Vertrag.
+Zeitliche Wirkung wird über `startAt` und `endAt` modelliert. `SCHEDULED`, `ENDED` und eine redaktionelle Option `allowsMultipleSubmissionsPerDevice` gehören nicht zum Studio-Vertrag.
 
 ## Oeffentliche API
 
@@ -36,7 +36,7 @@ Der Einstiegspunkt ist [`src/index.ts`](./src/index.ts). Exportiert werden:
 - `pluginSurveys` als `PluginDefinition`
 - `SURVEYS_CONTENT_TYPE` als kanonischer Content-Type
 - Survey-spezifische Action- und Permission-Definitionen
-- die Create-/Edit-Seiten fuer hostmaterialisierte Content-Bindings
+- die Create-/Edit-Seiten für hostmaterialisierte Content-Bindings
 - die Mainserver-CRUD-Fassade fuer Liste, Detail und Delete
 - Survey-Grundtypen fuer Listen- und Detailmodelle
 
@@ -50,16 +50,16 @@ import { pluginSurveys } from '@sva/plugin-surveys';
 
 Das Paket nutzt:
 
-- `createStandardContentPluginContribution(...)` fuer Navigation, Actions, Permissions, `moduleIam`, `contentTypes` und `adminResources`
-- `createMainserverCrudClient(...)` fuer die hostgeführte Mainserver-Basis
-- `fetchIamContentHistory(...)` fuer den read-only Historien-Tab
+- `createStandardContentPluginContribution(...)` für Navigation, Actions, Permissions, `moduleIam`, `contentTypes` und `adminResources`
+- `createMainserverCrudClient(...)` für die hostgeführte Mainserver-Basis
+- `fetchIamContentHistory(...)` für den read-only Historien-Tab
 
 ## Rechte und Actions
 
-Standard-Content-Rechte werden durch zwei Survey-spezifische Rechte ergaenzt:
+Standard-Content-Rechte werden durch zwei Survey-spezifische Rechte ergänzt:
 
-- `surveys.moderate` fuer Freitext-Freigabe und Freitext-Loeschung
-- `surveys.export` fuer Ergebnisexporte
+- `surveys.moderate` für Freitext-Freigabe und Freitext-Löschung
+- `surveys.export` für Ergebnisexporte
 
 Die zugehoerigen Actions bleiben Survey-namespaced:
 
@@ -68,7 +68,7 @@ Die zugehoerigen Actions bleiben Survey-namespaced:
 
 ## UI-Struktur
 
-Der Editor nutzt in Create und Edit denselben stabilen Rahmen mit fuenf Tabs:
+Der Editor nutzt in Create und Edit denselben stabilen Rahmen mit fünf Tabs:
 
 1. `Basis`
 2. `Inhalt`
@@ -81,15 +81,15 @@ Wichtige UI-Regeln:
 - keine Card-Verschachtelung
 - keine innere Tab-Navigation
 - wiederholende Elemente als flache Abschnitte innerhalb derselben Fach-Card
-- plugin-lokale Kompositionen fuer Frageneditor, Moderation, Ergebnisse und Historie
+- plugin-lokale Kompositionen für Frageneditor, Moderation, Ergebnisse und Historie
 
 Tab-Zuschnitt:
 
-- `Basis`: Identitaet, Laufzeit, Zielgebiet, Metadaten
+- `Basis`: Identität, Laufzeit, Zielgebiet, Metadaten
 - `Inhalt`: Beschreibung, Teilnahme und Sichtbarkeit, Hinweise, Fragen
-- `Moderation`: gruppierte Freitextantworten pro Frage mit Freigabe und Loeschung
+- `Moderation`: gruppierte Freitextantworten pro Frage mit Freigabe und Löschung
 - `Ergebnisse`: Kennzahlen, Frageergebnisse, read-only Freitexte, Export mit und ohne Freitexte
-- `Historie`: read-only Content-Historie ueber den hostgeführten History-Client
+- `Historie`: read-only Content-Historie über den hostgeführten History-Client
 
 ## Mainserver- und Host-Integration
 
@@ -105,8 +105,8 @@ Fachlich relevante Survey-Pfade:
 - Liste und Detail
 - Upsert/Create-or-Update
 - Freitext-Freigabe
-- Freitext-Loeschung
-- Ergebnisabruf als JSON-Basis fuer Studio-seitige Exportformate
+- Freitext-Löschung
+- Ergebnisabruf als JSON-Basis für Studio-seitige Exportformate
 
 Die Exportumwandlung nach `CSV`, `JSON`, `Excel` und `XML` ist Aufgabe des Studios, nicht des GraphQL-Vertrags.
 
@@ -118,8 +118,15 @@ packages/plugin-surveys/
 │   ├── index.ts
 │   ├── plugin.tsx
 │   ├── plugin.translations.ts
+│   ├── plugin.translations.content.ts
+│   ├── plugin.translations.content.en.ts
+│   ├── plugin.translations.meta.ts
+│   ├── plugin.translations.meta.en.ts
+│   ├── plugin.translations.structure.ts
+│   ├── plugin.translations.structure.en.ts
 │   ├── surveys.api.ts
 │   ├── surveys.constants.ts
+│   ├── surveys.detail-card.tsx
 │   ├── surveys.detail-basis-tab.tsx
 │   ├── surveys.detail-content-model.ts
 │   ├── surveys.detail-content-tab.tsx
@@ -128,7 +135,12 @@ packages/plugin-surveys/
 │   ├── surveys.detail-results-tab.tsx
 │   ├── surveys.editor.tsx
 │   ├── surveys.history.ts
+│   ├── surveys.moderation-model.ts
+│   ├── surveys.moderation-sections.tsx
 │   ├── surveys.pages.tsx
+│   ├── surveys.question-editor.shared.ts
+│   ├── surveys.question-list-editor.tsx
+│   ├── surveys.question-options-editor.tsx
 │   └── surveys.types.ts
 ├── tests/
 │   ├── surveys.detail-basis-tab.test.tsx

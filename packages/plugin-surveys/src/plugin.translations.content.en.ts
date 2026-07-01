@@ -22,6 +22,12 @@ export const pluginSurveysContentEnTranslations = {
     resultsFreeTextEmpty: 'There are no free-text responses for this question.',
     resultsExportWithoutFreeText: 'Result export without free-text responses.',
     resultsExportWithFreeText: 'Result export including free-text responses.',
+    loadError: 'Survey could not be loaded.',
+    createError: 'Survey could not be created.',
+    updateError: 'Survey could not be saved.',
+    createSuccess: 'Survey was created.',
+    updateSuccess: 'Survey was saved.',
+    missingContentId: 'No survey id available.',
   },
   validation: {
     titleRequired: 'Please provide a title.',

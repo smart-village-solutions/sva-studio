@@ -860,7 +860,7 @@ describe('createSvaMainserverService', () => {
     };
 
     await expect(service.listSurveys({ ...connection, page: 1, pageSize: 25 })).resolves.toEqual({
-      data: [expect.objectContaining({ id: 'survey-1', status: 'ACTIVE' })],
+      data: [expect.objectContaining({ id: 'survey-1', contentType: 'surveys.survey', status: 'ACTIVE' })],
       pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
     });
     await expect(service.getSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
@@ -1085,7 +1085,7 @@ describe('createSvaMainserverService', () => {
     const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
 
     await expect(listSvaMainserverSurveys({ ...connection, page: 1, pageSize: 25 })).resolves.toMatchObject({
-      data: [expect.objectContaining({ id: 'survey-1' })],
+      data: [expect.objectContaining({ id: 'survey-1', contentType: 'surveys.survey' })],
       pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
     });
     await expect(getSvaMainserverSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
@@ -1243,6 +1243,30 @@ describe('createSvaMainserverService', () => {
     ).rejects.toMatchObject({
       code: 'invalid_response',
       statusCode: 502,
+    });
+  });
+
+  it('returns not_found for missing survey results instead of invalid_response', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys: [] } }));
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.getSurveyResults({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        surveyId: 'survey-missing',
+      })
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      statusCode: 404,
     });
   });
 

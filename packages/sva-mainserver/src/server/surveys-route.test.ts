@@ -109,7 +109,11 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
 
   it('deletes surveys after delete authorization', async () => {
     mockAuthorizedRequest();
-    state.deleteSvaMainserverSurvey.mockResolvedValue({ deletedSurveyId: 'survey-1' });
+    state.deleteSvaMainserverSurvey.mockResolvedValue({
+      success: true,
+      errors: [],
+      deletedSurveyId: 'survey-1',
+    });
 
     const response = await dispatchSvaMainserverSurveysRequest(
       createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1', {
@@ -126,6 +130,78 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
       keycloakSubject: 'subject-1',
       activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       surveyId: 'survey-1',
+    });
+  });
+
+  it('propagates authorization status and normalized actor data', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: false,
+      status: 503,
+      error: 'database_unavailable',
+      message: 'Autorisierung derzeit nicht verfügbar.',
+    });
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys')
+    );
+
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'database_unavailable',
+      message: 'Autorisierung derzeit nicht verfügbar.',
+    });
+  });
+
+  it('returns a mutation error response instead of 2xx when create fails', async () => {
+    mockAuthorizedRequest();
+    state.createSvaMainserverSurvey.mockResolvedValue({
+      success: false,
+      errors: [{ code: 'VALIDATION_ERROR', message: 'Titel fehlt.' }],
+      survey: null,
+    });
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys', {
+        method: 'POST',
+        body: JSON.stringify({ title: { de: 'Test' } }),
+      })
+    );
+
+    expect(response?.status).toBe(422);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'validation_error',
+      message: 'Titel fehlt.',
+    });
+  });
+
+  it('uses the authorized actor organization for list calls', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        organizationId: '22222222-2222-2222-8222-222222222222',
+      },
+      permissions: [],
+    });
+    state.listSvaMainserverSurveys.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys')
+    );
+
+    expect(state.listSvaMainserverSurveys).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: '22222222-2222-2222-8222-222222222222',
+      page: 1,
+      pageSize: 25,
     });
   });
 });

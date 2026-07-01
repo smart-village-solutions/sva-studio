@@ -22,6 +22,12 @@ export const pluginSurveysContentTranslations = {
     resultsFreeTextEmpty: 'Für diese Frage liegen keine Freitextantworten vor.',
     resultsExportWithoutFreeText: 'Ergebnisexport ohne Freitextantworten.',
     resultsExportWithFreeText: 'Ergebnisexport inklusive Freitextantworten.',
+    loadError: 'Umfrage konnte nicht geladen werden.',
+    createError: 'Umfrage konnte nicht angelegt werden.',
+    updateError: 'Umfrage konnte nicht gespeichert werden.',
+    createSuccess: 'Umfrage wurde angelegt.',
+    updateSuccess: 'Umfrage wurde gespeichert.',
+    missingContentId: 'Keine Umfrage-ID vorhanden.',
   },
   validation: {
     titleRequired: 'Bitte einen Titel angeben.',

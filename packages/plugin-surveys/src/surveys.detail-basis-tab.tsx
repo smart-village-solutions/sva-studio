@@ -5,6 +5,7 @@ import { Button, Input, Select, StudioField } from '@sva/studio-ui-react';
 
 import { SurveyDetailCard } from './surveys.detail-card.js';
 import type { SurveyDetailFormValues } from './surveys.detail-form.js';
+import type { SurveyContentTranslate } from './surveys.question-editor.shared.js';
 import type { SurveyContentItem } from './surveys.types.js';
 
 type SurveyTargetAreaOption = Readonly<{
@@ -15,7 +16,7 @@ type SurveyTargetAreaOption = Readonly<{
 const formatMetadataDate = (value?: string) =>
   value ? (formatDateTimeInEditorTimeZone(value) ?? value) : '--.--.-- --:--';
 
-function SurveyIdentityCard({ pt }: Readonly<{ pt: (key: string) => string }>) {
+function SurveyIdentityCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
   const {
     register,
     setValue,
@@ -54,7 +55,7 @@ function SurveyIdentityCard({ pt }: Readonly<{ pt: (key: string) => string }>) {
   );
 }
 
-function SurveyScheduleCard({ pt }: Readonly<{ pt: (key: string) => string }>) {
+function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
   const { register } = useFormContext<SurveyDetailFormValues>();
 
   return (
@@ -77,7 +78,7 @@ function SurveyTargetAreaCard({
   pt,
 }: Readonly<{
   availableTargetAreas: readonly SurveyTargetAreaOption[];
-  pt: (key: string) => string;
+  pt: SurveyContentTranslate;
 }>) {
   const { setValue } = useFormContext<SurveyDetailFormValues>();
   const targetAreaIds = useWatch({ name: 'basis.targetAreaIds' }) ?? [];
@@ -115,7 +116,7 @@ function SurveyTargetAreaCard({
                 type="button"
                 variant="outline"
                 size="sm"
-                aria-label={pt('actions.removeTargetArea').replace('{{name}}', option.label)}
+                aria-label={pt('actions.removeTargetArea', { name: option.label })}
                 onClick={() =>
                   setValue(
                     'basis.targetAreaIds',
@@ -143,7 +144,7 @@ function SurveyMetadataCard({
 }: Readonly<{
   mode: 'create' | 'edit';
   loadedItem: Pick<SurveyContentItem, 'createdAt' | 'updatedAt' | 'publishedAt' | 'archivedAt'> | null;
-  pt: (key: string) => string;
+  pt: SurveyContentTranslate;
 }>) {
   return (
     <SurveyDetailCard title={pt('cards.basis.metadata.title')} description={pt('cards.basis.metadata.description')}>
@@ -182,7 +183,7 @@ export function SurveyDetailBasisTab({
   mode: 'create' | 'edit';
   loadedItem: Pick<SurveyContentItem, 'createdAt' | 'updatedAt' | 'publishedAt' | 'archivedAt'> | null;
   availableTargetAreas: readonly SurveyTargetAreaOption[];
-  pt: (key: string) => string;
+  pt: SurveyContentTranslate;
 }>) {
   return (
     <div className="space-y-5">

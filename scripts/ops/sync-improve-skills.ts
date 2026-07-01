@@ -4,7 +4,6 @@ import {
   existsSync,
   mkdtempSync,
   mkdirSync,
-  readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -71,7 +70,7 @@ export const syncImproveSkillSnapshot = (
 const cloneImproveSkillSource = (): { checkoutRoot: string; sourceDir: string } => {
   const checkoutRoot = mkdtempSync(join(tmpdir(), 'improve-skill-sync-'));
 
-  execFileSync('git', ['clone', '--depth', '1', IMPROVE_REPOSITORY_URL, checkoutRoot], {
+  execFileSync('git', ['clone', IMPROVE_REPOSITORY_URL, checkoutRoot], {
     stdio: 'pipe',
   });
   execFileSync('git', ['checkout', IMPROVE_SOURCE_REVISION], {

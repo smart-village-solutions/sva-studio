@@ -804,6 +804,7 @@ const refreshMainserverProjection = async (
         listSvaMainserverSurveys({
           ...connection,
           ...pageQuery,
+          includeArchived: true,
         })
       );
       const credentialSource = resolveMainserverProjectionCredentialSource(
@@ -811,7 +812,7 @@ const refreshMainserverProjection = async (
         projectedOrganizationId
       );
       rows = result.data.map((item) => ({
-        ...mapSurveyItem({ ...item, contentType: 'surveys.survey' }, instanceId, []),
+        ...mapSurveyItem(item, instanceId, []),
         ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
         credentialSource,
         sourceEntityType: 'surveys.survey',

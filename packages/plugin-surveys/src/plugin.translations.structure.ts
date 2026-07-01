@@ -23,6 +23,7 @@ export const pluginSurveysStructureTranslations = {
     closeOverlay: 'Schließen',
     confirmDelete: 'Löschen',
     cancelDelete: 'Abbrechen',
+    back: 'Zurück',
   },
   pages: {
     createTitle: 'Umfrage anlegen',

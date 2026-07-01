@@ -9,8 +9,8 @@ import {
   type SurveyDetailFormValues,
 } from '../src/surveys.detail-form.js';
 
-const pt = (key: string) =>
-  ({
+const pt = (key: string, variables?: Readonly<Record<string, string | number>>) => {
+  const template = ({
     'cards.basis.identity.title': 'Identität',
     'cards.basis.identity.description': 'Titel und Status der Umfrage.',
     'cards.basis.schedule.title': 'Laufzeit',
@@ -39,6 +39,16 @@ const pt = (key: string) =>
     'actions.addTargetArea': 'Zielgebiet hinzufügen',
     'actions.removeTargetArea': 'Zielgebiet {{name}} entfernen',
   })[key] ?? key;
+
+  if (!variables) {
+    return template;
+  }
+
+  return Object.entries(variables).reduce(
+    (value, [variableName, variableValue]) => value.replace(`{{${variableName}}}`, String(variableValue)),
+    template
+  );
+};
 
 function renderTab({
   mode = 'create',

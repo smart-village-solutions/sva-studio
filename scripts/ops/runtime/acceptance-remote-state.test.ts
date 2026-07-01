@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { RemoteServiceContract } from './remote-service-spec.ts';
+
 vi.mock('./remote-stack-state.ts', () => ({
   formatRemoteStackSnapshot: vi.fn(() => 'formatted'),
   inspectRemoteStack: vi.fn(async () => {
@@ -25,15 +27,18 @@ vi.mock('./bootstrap-job.ts', () => ({
 import { inspectRemoteServiceContract } from './remote-service-spec.ts';
 import { createAcceptanceRemoteStateOps } from './acceptance-remote-state.ts';
 
+const createRemoteServiceContract = (networkNames: readonly string[]): RemoteServiceContract => ({
+  env: {},
+  labels: {},
+  networkNames,
+  serviceName: 'studio_service',
+});
+
 describe('acceptance-remote-state', () => {
   it('derives the internal network for remote jobs without picking ingress-style overlay names', async () => {
     vi.mocked(inspectRemoteServiceContract)
-      .mockResolvedValueOnce({
-        networkNames: ['public', 'network-node-005'],
-      })
-      .mockResolvedValueOnce({
-        networkNames: ['public', 'internal'],
-      });
+      .mockResolvedValueOnce(createRemoteServiceContract(['public', 'network-node-005']))
+      .mockResolvedValueOnce(createRemoteServiceContract(['public', 'internal']));
 
     const ops = createAcceptanceRemoteStateOps({
       commandExists: vi.fn(() => false),

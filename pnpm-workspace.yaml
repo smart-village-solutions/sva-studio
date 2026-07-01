@@ -18,7 +18,7 @@ allowBuilds:
   bufferutil: true
   esbuild: true
   msw: false
-  nx@22.7.1 || 22.7.4: true
+  nx@22.7.1 || 22.7.4 || 23.0.1: true
   protobufjs: false
   sharp: true
 overrides:

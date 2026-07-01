@@ -82,14 +82,14 @@
 
 ## 8. Tab `Moderation` umsetzen
 
-- [ ] 8.1 Moderationsansicht nach Fragen gruppieren und pro Frage eine eigene Haupt-Card erzeugen
-- [ ] 8.2 innerhalb jeder Fragen-Card eine Tabelle fuer Freitextantworten mit gekuerzter Textdarstellung umsetzen
-- [ ] 8.3 Schieberegler fuer die oeffentliche Sichtbarkeit analog zu bestehenden Visibility-Einstellungen umsetzen
-- [ ] 8.4 Klick auf gekuerzten Text als Overlay fuer den Volltext umsetzen
-- [ ] 8.5 Loeschaktion pro Freitextantwort mit expliziter Bestaetigung umsetzen
-- [ ] 8.6 Create-Hinweiszustand fuer noch nicht verfuegbare Moderation umsetzen
-- [ ] 8.7 Unit- und UI-Tests fuer Gruppierung, Visibility-Toggle, Overlay und Loeschpfad ergaenzen
-- [ ] 8.8 kleinsten relevanten Gate-Pfad fuer `Moderation` ausfuehren
+- [x] 8.1 Moderationsansicht nach Fragen gruppieren und pro Frage eine eigene Haupt-Card erzeugen
+- [x] 8.2 innerhalb jeder Fragen-Card eine Tabelle fuer Freitextantworten mit gekuerzter Textdarstellung umsetzen
+- [x] 8.3 Schieberegler fuer die oeffentliche Sichtbarkeit analog zu bestehenden Visibility-Einstellungen umsetzen
+- [x] 8.4 Klick auf gekuerzten Text als Overlay fuer den Volltext umsetzen
+- [x] 8.5 Loeschaktion pro Freitextantwort mit expliziter Bestaetigung umsetzen
+- [x] 8.6 Create-Hinweiszustand fuer noch nicht verfuegbare Moderation umsetzen
+- [x] 8.7 Unit- und UI-Tests fuer Gruppierung, Visibility-Toggle, Overlay und Loeschpfad ergaenzen
+- [x] 8.8 kleinsten relevanten Gate-Pfad fuer `Moderation` ausfuehren
 
 ## 9. Tab `Ergebnisse` umsetzen
 

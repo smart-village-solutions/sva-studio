@@ -6,6 +6,7 @@ import { StudioDetailPageTemplate, StudioDetailTabs, type StudioDetailTabDefinit
 import { SurveyDetailBasisTab } from './surveys.detail-basis-tab.js';
 import { SurveyDetailContentTab } from './surveys.detail-content-tab.js';
 import { createDefaultSurveyDetailFormValues, type SurveyDetailFormValues } from './surveys.detail-form.js';
+import { SurveyDetailModerationTab } from './surveys.detail-moderation-tab.js';
 import type { SurveyContentItem } from './surveys.types.js';
 
 type SurveyEditorMode = 'create' | 'edit';
@@ -80,18 +81,7 @@ const createSurveyEditorTabs = (
       label: pt('tabs.moderation.label'),
       title: pt('tabs.moderation.title'),
       description: pt('tabs.moderation.description'),
-      panel: (
-        <SurveyTabPlaceholder
-          title={pt('cards.moderation.title')}
-          description={pt('cards.moderation.description')}
-          body={
-            <>
-              {mode === 'create' ? createPendingHint : null}
-              {genericPlaceholder}
-            </>
-          }
-        />
-      ),
+      panel: <SurveyDetailModerationTab mode={mode} groups={[]} pt={pt} />,
     },
     {
       id: 'results',

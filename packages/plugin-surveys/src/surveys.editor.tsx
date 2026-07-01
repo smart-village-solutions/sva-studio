@@ -6,6 +6,7 @@ import { StudioDetailPageTemplate, StudioDetailTabs, type StudioDetailTabDefinit
 import { SurveyDetailBasisTab } from './surveys.detail-basis-tab.js';
 import { SurveyDetailContentTab } from './surveys.detail-content-tab.js';
 import { createDefaultSurveyDetailFormValues, type SurveyDetailFormValues } from './surveys.detail-form.js';
+import { SurveyDetailHistoryTab } from './surveys.detail-history-tab.js';
 import { SurveyDetailModerationTab } from './surveys.detail-moderation-tab.js';
 import { SurveyDetailResultsTab } from './surveys.detail-results-tab.js';
 import type { SurveyContentItem } from './surveys.types.js';
@@ -13,47 +14,15 @@ import type { SurveyContentItem } from './surveys.types.js';
 type SurveyEditorMode = 'create' | 'edit';
 type SurveyEditorTabId = 'basis' | 'content' | 'moderation' | 'results' | 'history';
 
-type SurveySectionCardProps = Readonly<{
-  title: string;
-  description: string;
-  children?: React.ReactNode;
-}>;
-
-const SurveySectionCard = ({ title, description, children }: SurveySectionCardProps) => (
-  <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-    <div className="space-y-2">
-      <h3 className="text-base font-semibold text-foreground">{title}</h3>
-      <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
-    </div>
-    {children ? <div className="mt-5 border-t border-border pt-5">{children}</div> : null}
-  </section>
-);
-
-const SurveyTabPlaceholder = ({
-  title,
-  description,
-  body,
-}: Readonly<{
-  title: string;
-  description: string;
-  body: React.ReactNode;
-}>) => (
-  <div className="space-y-5">
-    <SurveySectionCard title={title} description={description}>
-      <div className="space-y-3 text-sm text-muted-foreground">{body}</div>
-    </SurveySectionCard>
-  </div>
-);
-
 const createSurveyEditorTabs = (
   pt: ReturnType<typeof usePluginTranslation>,
   mode: SurveyEditorMode,
-  loadedItem: SurveyContentItem | null
+  loadedItem: SurveyContentItem | null,
+  contentId?: string
 ): readonly StudioDetailTabDefinition<SurveyEditorTabId>[] => {
   const createPendingHint = (
     <p>{pt('messages.createPendingHint')}</p>
   );
-  const genericPlaceholder = <p>{pt('messages.sectionPlaceholder')}</p>;
 
   return [
     {
@@ -96,26 +65,21 @@ const createSurveyEditorTabs = (
       label: pt('tabs.history.label'),
       title: pt('tabs.history.title'),
       description: pt('tabs.history.description'),
-      panel: (
-        <SurveyTabPlaceholder
-          title={pt('cards.history.title')}
-          description={pt('cards.history.description')}
-          body={
-            mode === 'create' ? <p>{pt('messages.historyPlaceholder')}</p> : genericPlaceholder
-          }
-        />
-      ),
+      panel: <SurveyDetailHistoryTab contentId={contentId} pt={pt} />,
     },
   ];
 };
 
-export const SurveyEditorPage = ({ mode }: Readonly<{ mode: SurveyEditorMode }>) => {
+export const SurveyEditorPage = ({
+  mode,
+  contentId,
+}: Readonly<{ mode: SurveyEditorMode; contentId?: string }>) => {
   const pt = usePluginTranslation('surveys');
   const [activeTab, setActiveTab] = React.useState<SurveyEditorTabId>('basis');
   const methods = useForm<SurveyDetailFormValues>({
     defaultValues: createDefaultSurveyDetailFormValues(),
   });
-  const tabs = React.useMemo(() => createSurveyEditorTabs(pt, mode, null), [mode, pt]);
+  const tabs = React.useMemo(() => createSurveyEditorTabs(pt, mode, null, contentId), [contentId, mode, pt]);
 
   return (
     <StudioDetailPageTemplate

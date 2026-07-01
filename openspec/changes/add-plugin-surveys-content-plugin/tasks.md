@@ -106,10 +106,10 @@
 
 ## 10. Tab `Historie` umsetzen
 
-- [ ] 10.1 Historien-Tab nach dem Muster der Referenzmodule fuer Surveys anbinden
-- [ ] 10.2 Create-Hinweiszustand fuer noch nicht vorhandene Historie umsetzen
-- [ ] 10.3 Tests fuer Historienzustand und Fallbacks ergaenzen
-- [ ] 10.4 kleinsten relevanten Gate-Pfad fuer `Historie` ausfuehren
+- [x] 10.1 Historien-Tab nach dem Muster der Referenzmodule fuer Surveys anbinden
+- [x] 10.2 Create-Hinweiszustand fuer noch nicht vorhandene Historie umsetzen
+- [x] 10.3 Tests fuer Historienzustand und Fallbacks ergaenzen
+- [x] 10.4 kleinsten relevanten Gate-Pfad fuer `Historie` ausfuehren
 
 ## 11. Abschluss, Dokumentation und Gesamtvalidierung
 

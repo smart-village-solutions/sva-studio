@@ -1,8 +1,10 @@
 import { cleanup, fireEvent, render, within } from '@testing-library/react';
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SurveyCreatePage, SurveyEditPage } from '../src/surveys.pages.js';
+
+const fetchIamContentHistoryMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   useParams: () => ({ contentId: 'survey-123' }),
@@ -55,6 +57,7 @@ vi.mock('@sva/plugin-sdk', async () => {
     'surveys.messages.createPendingHint': 'Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.',
     'surveys.messages.sectionPlaceholder': 'Die fachlichen Felder dieses Bereichs folgen in den nächsten Umsetzungsabschnitten.',
     'surveys.messages.historyPlaceholder': 'Die Historie erscheint hier, sobald die Umfrage bereits angelegt wurde.',
+    'surveys.history.createHint': 'Die Historie wird nach dem ersten Speichern verfügbar.',
     'surveys.messages.unlimitedScheduleHint': 'Ohne Enddatum bleibt die Umfrage unbefristet.',
     'surveys.messages.targetAreasEmpty': 'Es stehen derzeit keine Zielgebiete zur Auswahl.',
     'surveys.messages.metadataCreateHint': 'Metadaten erscheinen nach dem ersten Speichern der Umfrage.',
@@ -78,6 +81,8 @@ vi.mock('@sva/plugin-sdk', async () => {
 
   return {
     ...actual,
+    fetchIamContentHistory: (...args: unknown[]) => fetchIamContentHistoryMock(...args),
+    formatDateTimeInEditorTimeZone: (value: string) => value,
     usePluginTranslation:
       (_namespace: string) =>
       (key: string): string =>
@@ -86,8 +91,13 @@ vi.mock('@sva/plugin-sdk', async () => {
 });
 
 describe('survey editor pages', () => {
+  beforeEach(() => {
+    fetchIamContentHistoryMock.mockResolvedValue([]);
+  });
+
   afterEach(() => {
     cleanup();
+    vi.clearAllMocks();
   });
 
   it('renders the shared editor frame with all survey tabs in create mode', () => {
@@ -124,7 +134,7 @@ describe('survey editor pages', () => {
     ).toBeGreaterThan(0);
 
     fireEvent.change(tabSelect, { target: { value: 'history' } });
-    expect(scoped.getByText('Die Historie erscheint hier, sobald die Umfrage bereits angelegt wurde.')).toBeTruthy();
+    expect(scoped.getByText('Die Historie wird nach dem ersten Speichern verfügbar.')).toBeTruthy();
   });
 
   it('reuses the same editor frame in edit mode and shows the edit heading', () => {

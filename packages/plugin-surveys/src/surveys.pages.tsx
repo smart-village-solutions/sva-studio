@@ -5,6 +5,6 @@ import { SurveyEditorPage } from './surveys.editor.js';
 export const SurveyCreatePage = () => <SurveyEditorPage mode="create" />;
 
 export const SurveyEditPage = () => {
-  useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
-  return <SurveyEditorPage mode="edit" />;
+  const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
+  return <SurveyEditorPage mode="edit" contentId={params.contentId ?? params.id} />;
 };

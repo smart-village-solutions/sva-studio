@@ -65,20 +65,28 @@ import {
   createSvaMainserverEvent,
   createSvaMainserverNews,
   createSvaMainserverPoi,
+  createSvaMainserverSurvey,
   createSvaMainserverService,
   deleteSvaMainserverEvent,
   deleteSvaMainserverNews,
   deleteSvaMainserverPoi,
+  deleteSvaMainserverSurvey,
+  deleteSvaMainserverSurveyFreeTextResponse,
   getSvaMainserverEvent,
   getSvaMainserverNews,
   getSvaMainserverPoi,
+  getSvaMainserverSurvey,
+  getSvaMainserverSurveyResults,
   listSvaMainserverEvents,
   listSvaMainserverNews,
   listSvaMainserverPoi,
+  listSvaMainserverSurveys,
+  releaseSvaMainserverSurveyFreeTextResponse,
   resetSvaMainserverServiceState,
   updateSvaMainserverEvent,
   updateSvaMainserverNews,
   updateSvaMainserverPoi,
+  updateSvaMainserverSurvey,
 } from './service';
 import { SvaMainserverError } from './errors';
 
@@ -603,6 +611,638 @@ describe('createSvaMainserverService', () => {
       id: 'news-1',
     });
     await expect(deleteSvaMainserverNews({ ...connection, newsId: 'news-1' })).resolves.toEqual({ id: 'news-1' });
+  });
+
+  it('lists, reads, updates results and moderates surveys with typed GraphQL variables', async () => {
+    const survey = {
+      id: 'survey-1',
+      title: { de: 'Stadtpark-Befragung' },
+      shortDescription: { de: 'Kurze Umfrage' },
+      description: { de: 'Bitte teilen Sie Ihre Meinung.' },
+      status: 'ACTIVE',
+      startAt: '2026-07-01T08:00:00.000Z',
+      endAt: null,
+      resultVisibility: 'AFTER_SURVEY_END',
+      targetAreaIds: ['district-1'],
+      showResultsInApp: true,
+      isAnonymous: true,
+      privacyNotice: { de: 'Teilnahme anonym.' },
+      transparencyNotice: { de: 'Ergebnisse intern auswertbar.' },
+      questionCount: 1,
+      participationCount: 7,
+      submissionCount: 9,
+      questions: [
+        {
+          id: 'question-1',
+          surveyId: 'survey-1',
+          title: { de: 'Wie bewerten Sie den Park?' },
+          description: { de: 'Mehrfachauswahl moeglich' },
+          type: 'MULTIPLE_CHOICE_WITH_TEXT',
+          required: true,
+          position: 1,
+          createdAt: '2026-07-01T08:00:00.000Z',
+          updatedAt: '2026-07-01T08:00:00.000Z',
+          options: [
+            {
+              id: 'option-1',
+              questionId: 'question-1',
+              title: { de: 'Sehr gut' },
+              position: 1,
+              enablesFreeText: false,
+            },
+            {
+              id: 'option-2',
+              questionId: 'question-1',
+              title: { de: 'Verbesserungsbedarf' },
+              position: 2,
+              enablesFreeText: true,
+            },
+          ],
+        },
+      ],
+      results: {
+        surveyId: 'survey-1',
+        participationCount: 7,
+        submissionCount: 9,
+        questions: [
+          {
+            questionId: 'question-1',
+            type: 'MULTIPLE_CHOICE_WITH_TEXT',
+            totalResponses: 9,
+            optionResults: [
+              {
+                optionId: 'option-1',
+                title: { de: 'Sehr gut' },
+                votes: 4,
+                percentage: 44.4,
+                freeTextResponses: [],
+              },
+              {
+                optionId: 'option-2',
+                title: { de: 'Verbesserungsbedarf' },
+                votes: 5,
+                percentage: 55.6,
+                freeTextResponses: [
+                  {
+                    id: 'free-text-1',
+                    text: 'Mehr Schattenplaetze',
+                    status: 'INTERNAL',
+                    createdAt: '2026-07-01T09:00:00.000Z',
+                  },
+                ],
+              },
+            ],
+            freeTextResponses: [
+              {
+                id: 'free-text-1',
+                text: 'Mehr Schattenplaetze',
+                status: 'INTERNAL',
+                createdAt: '2026-07-01T09:00:00.000Z',
+              },
+            ],
+          },
+        ],
+      },
+      createdAt: '2026-07-01T08:00:00.000Z',
+      updatedAt: '2026-07-01T08:30:00.000Z',
+      publishedAt: '2026-07-01T08:00:00.000Z',
+      archivedAt: null,
+    };
+    const releasedSurvey = {
+      ...survey,
+      results: {
+        ...survey.results,
+        questions: [
+          {
+            ...survey.results.questions[0],
+            optionResults: [
+              survey.results.questions[0].optionResults[0],
+              {
+                ...survey.results.questions[0].optionResults[1],
+                freeTextResponses: [
+                  {
+                    id: 'free-text-1',
+                    text: 'Mehr Schattenplaetze',
+                    status: 'PUBLIC',
+                    createdAt: '2026-07-01T09:00:00.000Z',
+                  },
+                ],
+              },
+            ],
+            freeTextResponses: [
+              {
+                id: 'free-text-1',
+                text: 'Mehr Schattenplaetze',
+                status: 'PUBLIC',
+                createdAt: '2026-07-01T09:00:00.000Z',
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys: [survey] } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys: [survey] } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys: [survey] } }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            createOrUpdateSurvey: {
+              success: true,
+              action: 'CREATED',
+              survey,
+              deletedSurveyId: null,
+              errors: [],
+            },
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            createOrUpdateSurvey: {
+              success: true,
+              action: 'UPDATED',
+              survey,
+              deletedSurveyId: null,
+              errors: [],
+            },
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            updateSurveyFreeTextStatus: {
+              success: true,
+              action: 'UPDATED',
+              survey: releasedSurvey,
+              deletedSurveyId: null,
+              errors: [],
+            },
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            deleteSurveyFreeText: {
+              success: true,
+              action: 'UPDATED',
+              survey,
+              deletedSurveyId: null,
+              errors: [],
+            },
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            createOrUpdateSurvey: {
+              success: true,
+              action: 'DELETED',
+              survey: null,
+              deletedSurveyId: 'survey-1',
+              errors: [],
+            },
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+    const surveyInput = {
+      title: { de: 'Stadtpark-Befragung' },
+      shortDescription: { de: 'Kurze Umfrage' },
+      description: { de: 'Bitte teilen Sie Ihre Meinung.' },
+      status: 'ACTIVE' as const,
+      startAt: '2026-07-01T08:00:00.000Z',
+      resultVisibility: 'AFTER_SURVEY_END' as const,
+      targetAreaIds: ['district-1'],
+      showResultsInApp: true,
+      isAnonymous: true,
+      privacyNotice: { de: 'Teilnahme anonym.' },
+      transparencyNotice: { de: 'Ergebnisse intern auswertbar.' },
+      questions: [
+        {
+          id: 'question-1',
+          title: { de: 'Wie bewerten Sie den Park?' },
+          description: { de: 'Mehrfachauswahl moeglich' },
+          type: 'MULTIPLE_CHOICE_WITH_TEXT' as const,
+          required: true,
+          position: 1,
+          options: [
+            {
+              id: 'option-1',
+              title: { de: 'Sehr gut' },
+              position: 1,
+              enablesFreeText: false,
+            },
+            {
+              id: 'option-2',
+              title: { de: 'Verbesserungsbedarf' },
+              position: 2,
+              enablesFreeText: true,
+            },
+          ],
+        },
+      ],
+    };
+
+    await expect(service.listSurveys({ ...connection, page: 1, pageSize: 25 })).resolves.toEqual({
+      data: [expect.objectContaining({ id: 'survey-1', status: 'ACTIVE' })],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
+    });
+    await expect(service.getSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
+      id: 'survey-1',
+      results: expect.objectContaining({ participationCount: 7 }),
+    });
+    await expect(service.getSurveyResults({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
+      surveyId: 'survey-1',
+      questions: [
+        expect.objectContaining({
+          freeTextResponses: [expect.objectContaining({ status: 'INTERNAL' })],
+        }),
+      ],
+    });
+    await expect(service.createSurvey({ ...connection, survey: surveyInput })).resolves.toMatchObject({
+      success: true,
+      action: 'CREATED',
+      survey: expect.objectContaining({ id: 'survey-1' }),
+      errors: [],
+    });
+    await expect(service.updateSurvey({ ...connection, surveyId: 'survey-1', survey: surveyInput })).resolves.toMatchObject({
+      success: true,
+      action: 'UPDATED',
+      survey: expect.objectContaining({ id: 'survey-1' }),
+      errors: [],
+    });
+    await expect(
+      service.releaseSurveyFreeTextResponse({
+        ...connection,
+        surveyId: 'survey-1',
+        freeTextResponseId: 'free-text-1',
+      })
+    ).resolves.toMatchObject({
+      success: true,
+      survey: expect.objectContaining({
+        results: expect.objectContaining({
+          questions: [
+            expect.objectContaining({
+              freeTextResponses: [expect.objectContaining({ status: 'PUBLIC' })],
+            }),
+          ],
+        }),
+      }),
+      errors: [],
+    });
+    await expect(
+      service.deleteSurveyFreeTextResponse({
+        ...connection,
+        surveyId: 'survey-1',
+        freeTextResponseId: 'free-text-1',
+      })
+    ).resolves.toMatchObject({
+      success: true,
+      errors: [],
+    });
+    await expect(service.deleteSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
+      success: true,
+      action: 'DELETED',
+      deletedSurveyId: 'survey-1',
+      errors: [],
+    });
+
+    const requestBodies = fetchImpl.mock.calls
+      .slice(1)
+      .map(([, init]) => JSON.parse(init?.body as string) as { operationName: string; variables?: Record<string, unknown> });
+    expect(requestBodies.map((body) => body.operationName)).toEqual([
+      'SvaMainserverSurveysList',
+      'SvaMainserverSurveyDetail',
+      'SvaMainserverSurveyResults',
+      'SvaMainserverCreateOrUpdateSurvey',
+      'SvaMainserverCreateOrUpdateSurvey',
+      'SvaMainserverUpdateSurveyFreeTextStatus',
+      'SvaMainserverDeleteSurveyFreeText',
+      'SvaMainserverCreateOrUpdateSurvey',
+    ]);
+    expect(requestBodies[0]?.variables).toEqual({
+      filter: {
+        includeArchived: false,
+        ongoingOnly: false,
+      },
+    });
+    expect(requestBodies[1]?.variables).toEqual({
+      filter: {
+        ids: ['survey-1'],
+      },
+    });
+    expect(requestBodies[3]?.variables).toMatchObject({
+      input: expect.objectContaining({
+        title: { de: 'Stadtpark-Befragung' },
+        status: 'ACTIVE',
+        resultVisibility: 'AFTER_SURVEY_END',
+        isAnonymous: true,
+      }),
+    });
+    expect(JSON.stringify(requestBodies[3]?.variables)).not.toContain('allowsMultipleSubmissionsPerDevice');
+    expect(requestBodies[4]?.variables).toMatchObject({
+      input: expect.objectContaining({
+        id: 'survey-1',
+        status: 'ACTIVE',
+      }),
+    });
+    expect(requestBodies[5]?.variables).toEqual({
+      surveyId: 'survey-1',
+      freeTextResponseId: 'free-text-1',
+      status: 'PUBLIC',
+    });
+    expect(requestBodies[6]?.variables).toEqual({
+      surveyId: 'survey-1',
+      freeTextResponseId: 'free-text-1',
+    });
+    expect(requestBodies[7]?.variables).toEqual({
+      input: {
+        id: 'survey-1',
+        delete: true,
+      },
+    });
+  });
+
+  it('routes default survey helpers through the default service', async () => {
+    const survey = {
+      id: 'survey-1',
+      title: { de: 'Stadtpark-Befragung' },
+      status: 'DRAFT',
+      resultVisibility: 'NONE',
+      targetAreaIds: [],
+      showResultsInApp: false,
+      isAnonymous: true,
+      questionCount: 0,
+      participationCount: 0,
+      submissionCount: 0,
+      questions: [],
+      createdAt: '2026-07-01T08:00:00.000Z',
+      updatedAt: '2026-07-01T08:00:00.000Z',
+      results: {
+        surveyId: 'survey-1',
+        participationCount: 0,
+        submissionCount: 0,
+        questions: [],
+      },
+    };
+
+    state.loadSvaMainserverInstanceConfig.mockResolvedValue(baseConfig);
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'user',
+      credentials: { apiKey: 'key-1', apiSecret: 'secret-1' },
+    });
+
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys: [survey] } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys: [survey] } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys: [survey] } }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            createOrUpdateSurvey: {
+              success: true,
+              action: 'CREATED',
+              survey,
+              deletedSurveyId: null,
+              errors: [],
+            },
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            createOrUpdateSurvey: {
+              success: true,
+              action: 'UPDATED',
+              survey,
+              deletedSurveyId: null,
+              errors: [],
+            },
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            updateSurveyFreeTextStatus: {
+              success: true,
+              action: 'UPDATED',
+              survey,
+              deletedSurveyId: null,
+              errors: [],
+            },
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            deleteSurveyFreeText: {
+              success: true,
+              action: 'UPDATED',
+              survey,
+              deletedSurveyId: null,
+              errors: [],
+            },
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            createOrUpdateSurvey: {
+              success: true,
+              action: 'DELETED',
+              survey: null,
+              deletedSurveyId: 'survey-1',
+              errors: [],
+            },
+          },
+        })
+      );
+    vi.stubGlobal('fetch', fetchImpl);
+
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+
+    await expect(listSvaMainserverSurveys({ ...connection, page: 1, pageSize: 25 })).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'survey-1' })],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
+    });
+    await expect(getSvaMainserverSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
+      id: 'survey-1',
+    });
+    await expect(getSvaMainserverSurveyResults({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
+      surveyId: 'survey-1',
+    });
+    await expect(
+      createSvaMainserverSurvey({
+        ...connection,
+        survey: {
+          title: { de: 'Stadtpark-Befragung' },
+          status: 'DRAFT',
+          resultVisibility: 'NONE',
+          showResultsInApp: false,
+          isAnonymous: true,
+        },
+      })
+    ).resolves.toMatchObject({
+      success: true,
+      action: 'CREATED',
+    });
+    await expect(
+      updateSvaMainserverSurvey({
+        ...connection,
+        surveyId: 'survey-1',
+        survey: {
+          title: { de: 'Stadtpark-Befragung' },
+          status: 'DRAFT',
+          resultVisibility: 'NONE',
+          showResultsInApp: false,
+          isAnonymous: true,
+        },
+      })
+    ).resolves.toMatchObject({
+      success: true,
+      action: 'UPDATED',
+    });
+    await expect(
+      releaseSvaMainserverSurveyFreeTextResponse({
+        ...connection,
+        surveyId: 'survey-1',
+        freeTextResponseId: 'free-text-1',
+      })
+    ).resolves.toMatchObject({
+      success: true,
+    });
+    await expect(
+      deleteSvaMainserverSurveyFreeTextResponse({
+        ...connection,
+        surveyId: 'survey-1',
+        freeTextResponseId: 'free-text-1',
+      })
+    ).resolves.toMatchObject({
+      success: true,
+    });
+    await expect(deleteSvaMainserverSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
+      success: true,
+      deletedSurveyId: 'survey-1',
+    });
+  });
+
+  it('maps structured survey mutation errors without leaking raw upstream payloads', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            createOrUpdateSurvey: {
+              success: false,
+              action: null,
+              survey: null,
+              deletedSurveyId: null,
+              errors: [
+                {
+                  code: 'INVALID_STATUS_TRANSITION',
+                  message: 'Aktive Umfrage kann nicht direkt geloescht werden.',
+                  field: 'status',
+                },
+              ],
+            },
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.updateSurvey({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        surveyId: 'survey-1',
+        survey: {
+          status: 'ARCHIVED',
+        },
+      })
+    ).resolves.toEqual({
+      success: false,
+      errors: [
+        {
+          code: 'INVALID_STATUS_TRANSITION',
+          message: 'Aktive Umfrage kann nicht direkt geloescht werden.',
+          field: 'status',
+        },
+      ],
+    });
+  });
+
+  it('rejects invalid survey detail responses deterministically', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            surveys: [
+              {
+                id: 'survey-1',
+                title: null,
+                status: 'ACTIVE',
+                resultVisibility: 'NONE',
+                targetAreaIds: [],
+                showResultsInApp: false,
+                isAnonymous: true,
+                questionCount: 0,
+                participationCount: 0,
+                submissionCount: 0,
+                questions: [],
+                createdAt: '2026-07-01T08:00:00.000Z',
+                updatedAt: '2026-07-01T08:00:00.000Z',
+              },
+            ],
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.getSurvey({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        surveyId: 'survey-1',
+      })
+    ).rejects.toMatchObject({
+      code: 'invalid_response',
+      statusCode: 502,
+    });
   });
 
   it('creates or updates static content with typed GraphQL variables', async () => {

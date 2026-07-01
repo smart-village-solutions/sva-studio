@@ -23,15 +23,15 @@
 
 ## 3. Mainserver-Survey-Vertrag und Adapter umsetzen
 
-- [ ] 3.1 typed Survey-GraphQL-Adapter im host-owned Mainserver-Layer fuer Liste, Detail, Upsert, Ergebnisse und Freitext-Moderation definieren
-- [ ] 3.2 Survey-GraphQL-Dokumente gegen Snapshot und verifizierte Operationen anlegen oder aktualisieren
-- [ ] 3.3 das vereinfachte Survey-Zielmodell in Mainserver-Typen, DTOs und Mapping-Layern nachziehen
-- [ ] 3.4 `allowsMultipleSubmissionsPerDevice` aus Read-/Write-Mapping, Tests und Dokumentation entfernen
-- [ ] 3.5 Freitext-Freigabe als host-owned Mutationspfad modellieren
-- [ ] 3.6 Freitext-Loeschung als host-owned Mutationspfad modellieren
-- [ ] 3.7 deterministische Fehler- und Berechtigungsabbildung fuer Survey-Operationen definieren, inklusive Moderations- und Exportpfaden
-- [ ] 3.8 Unit- und Type-Tests fuer Survey-Adapter, Response-Mapping, Schema-Drift und Fehlerverhalten ergaenzen
-- [ ] 3.9 kleinsten relevanten Mainserver-/Types-/Runtime-Gate-Pfad nach diesem Block ausfuehren
+- [x] 3.1 typed Survey-GraphQL-Adapter im host-owned Mainserver-Layer fuer Liste, Detail, Upsert, Ergebnisse und Freitext-Moderation definieren
+- [x] 3.2 Survey-GraphQL-Dokumente gegen Snapshot und verifizierte Operationen anlegen oder aktualisieren
+- [x] 3.3 das vereinfachte Survey-Zielmodell in Mainserver-Typen, DTOs und Mapping-Layern nachziehen
+- [x] 3.4 `allowsMultipleSubmissionsPerDevice` aus Read-/Write-Mapping, Tests und Dokumentation entfernen
+- [x] 3.5 Freitext-Freigabe als host-owned Mutationspfad modellieren
+- [x] 3.6 Freitext-Loeschung als host-owned Mutationspfad modellieren
+- [x] 3.7 deterministische Fehler- und Berechtigungsabbildung fuer Survey-Operationen definieren, inklusive Moderations- und Exportpfaden
+- [x] 3.8 Unit- und Type-Tests fuer Survey-Adapter, Response-Mapping, Schema-Drift und Fehlerverhalten ergaenzen
+- [x] 3.9 kleinsten relevanten Mainserver-/Types-/Runtime-Gate-Pfad nach diesem Block ausfuehren
 
 ## 4. Host- und Inhaltslisten-Integration herstellen
 

@@ -20,7 +20,7 @@
     "@sva/data-client": "workspace:*",
     "@sva/data-repositories": "workspace:*",
     "@sva/server-runtime": "workspace:*",
-    "pg": "^8.20.0"
+    "pg": "^8.22.0"
   },
   "devDependencies": {
     "@types/pg": "^8.20.0",

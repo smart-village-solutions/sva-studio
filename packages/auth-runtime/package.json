@@ -46,7 +46,7 @@
     "graphile-worker": "^0.16.6",
     "ioredis": "^5.10.1",
     "openid-client": "^6.8.4",
-    "pg": "^8.20.0",
+    "pg": "^8.22.0",
     "postcss": "^8.5.11",
     "sanitize-html": "^2.17.4",
     "sharp": "^0.34.5",

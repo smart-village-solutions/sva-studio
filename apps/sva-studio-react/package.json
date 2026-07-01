@@ -65,7 +65,7 @@
     "@browserbasehq/stagehand": "3.6.0",
     "@codecov/rollup-plugin": "^2.0.1",
     "@playwright/test": "^1.58.2",
-    "@tailwindcss/vite": "4.2.4",
+    "@tailwindcss/vite": "4.3.2",
     "@tanstack/devtools-vite": "^0.7.0",
     "@testing-library/react": "^16.2.0",
     "@types/node": "^25.6.0",

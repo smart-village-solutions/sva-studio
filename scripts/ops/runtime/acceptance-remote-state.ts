@@ -13,6 +13,13 @@ import { formatRemoteStackSnapshot, inspectRemoteStack, type RemoteStackSnapshot
 import { inspectRemoteServiceContract } from './remote-service-spec.ts';
 import { resolveRemoteShortServiceName, resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
 
+const INTERNAL_NETWORK_EXCLUSIONS = new Set(['public', 'network-node-005']);
+
+const pickInternalNetworkName = (networkNames: readonly string[] | undefined): string | undefined =>
+  networkNames
+    ?.map((networkName) => networkName.trim())
+    .find((networkName) => networkName.length > 0 && !INTERNAL_NETWORK_EXCLUSIONS.has(networkName));
+
 export type RemoteStackEvidence = {
   channel: 'docker' | 'portainer-api' | 'quantum-cli';
   hasRunningService: (serviceName: string) => boolean;
@@ -105,9 +112,7 @@ const resolveRemoteInternalNetworkName = async (deps: AcceptanceRemoteStateDeps,
     env,
     { quantumEndpoint: deps.getConfiguredQuantumEndpoint(env), serviceName: postgresServiceName, stackName },
   );
-  const postgresNetworkName = (postgresContract?.networkNames ?? [])
-    .find((networkName) => networkName !== 'public')
-    ?.trim();
+  const postgresNetworkName = pickInternalNetworkName(postgresContract?.networkNames);
   if (postgresNetworkName) return postgresNetworkName;
 
   const appServiceName = resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env));
@@ -116,9 +121,7 @@ const resolveRemoteInternalNetworkName = async (deps: AcceptanceRemoteStateDeps,
     env,
     { quantumEndpoint: deps.getConfiguredQuantumEndpoint(env), serviceName: appServiceName, stackName },
   );
-  const internalNetworkName = (liveContract?.networkNames ?? [])
-    .filter((networkName) => networkName !== 'public')[0]
-    ?.trim();
+  const internalNetworkName = pickInternalNetworkName(liveContract?.networkNames);
   if (internalNetworkName) return internalNetworkName;
   throw new Error(
     `Internes Overlay-Netz fuer ${resolveRemoteStackServiceName(stackName, appServiceName)} konnte nicht aus der Live-Service-Spec abgeleitet werden.`,

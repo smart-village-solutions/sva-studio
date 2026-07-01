@@ -2,6 +2,13 @@ import { shellEscape } from './runtime-config.ts';
 import type { AcceptanceMaintenanceDeps } from './acceptance-maintenance.types.ts';
 import { resolveAcceptanceContainerServices, resolveRemoteShortServiceName, resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
 
+const INTERNAL_NETWORK_EXCLUSIONS = new Set(['public', 'network-node-005']);
+
+const pickInternalNetworkName = (networkNames: readonly string[] | undefined): string | undefined =>
+  networkNames
+    ?.map((networkName) => networkName.trim())
+    .find((networkName) => networkName.length > 0 && !INTERNAL_NETWORK_EXCLUSIONS.has(networkName));
+
 export const buildSwarmServicePresenceProbe = (deps: AcceptanceMaintenanceDeps, env: NodeJS.ProcessEnv) => {
   const stackName = deps.getConfiguredStackName(env);
   const requiredServices = resolveAcceptanceContainerServices(env, resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env)));
@@ -25,9 +32,7 @@ export const resolveRemoteInternalNetworkName = async (deps: AcceptanceMaintenan
     serviceName: postgresServiceName,
     stackName,
   });
-  const postgresNetworkName = (postgresContract?.networkNames ?? [])
-    .find((networkName) => networkName !== 'public')
-    ?.trim();
+  const postgresNetworkName = pickInternalNetworkName(postgresContract?.networkNames);
   if (postgresNetworkName) {
     return postgresNetworkName;
   }
@@ -38,7 +43,7 @@ export const resolveRemoteInternalNetworkName = async (deps: AcceptanceMaintenan
     serviceName: appServiceName,
     stackName,
   });
-  const internalNetworkName = (liveContract?.networkNames ?? []).find((networkName) => networkName !== 'public')?.trim();
+  const internalNetworkName = pickInternalNetworkName(liveContract?.networkNames);
   if (internalNetworkName) {
     return internalNetworkName;
   }

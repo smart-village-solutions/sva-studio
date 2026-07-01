@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-import { encryptFieldValue, parseFieldEncryptionConfigFromEnv } from '../../../packages/core/dist/security/index.js';
+import { encryptFieldValue, parseFieldEncryptionConfigFromEnv } from '@sva/core/security';
 
 const DEFAULT_CLIENT_IDS = ['sva-studio', 'sva-studio-admin'];
 

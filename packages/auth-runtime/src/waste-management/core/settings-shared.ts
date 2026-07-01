@@ -33,6 +33,15 @@ const hasWastePdfStaticSettingsValue = (
 ): wastePdfStaticSettings is WastePdfStaticSettingsRecord =>
   Boolean(wastePdfStaticSettings?.pdfBrandingAssetUrl || wastePdfStaticSettings?.pdfContactBlock);
 
+const isMissingWasteSettingsTableError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const errorCode = 'code' in error ? error.code : undefined;
+  return errorCode === '42P01' || /waste_settings/i.test(error.message);
+};
+
 const applyWastePdfStaticSettings = (
   settings: WasteManagementSettingsRecord,
   wastePdfStaticSettings: WastePdfStaticSettingsRecord | null | undefined
@@ -202,9 +211,16 @@ export const loadConfiguredWasteSettings = async (
   const customRecurrencePresets = deps.loadWasteCustomRecurrencePresets
     ? await deps.loadWasteCustomRecurrencePresets(instanceId)
     : [];
-  const wastePdfStaticSettings = deps.loadWastePdfStaticSettings
-    ? await deps.loadWastePdfStaticSettings(instanceId)
-    : null;
+  let wastePdfStaticSettings: WastePdfStaticSettingsRecord | null = null;
+  if (deps.loadWastePdfStaticSettings) {
+    try {
+      wastePdfStaticSettings = await deps.loadWastePdfStaticSettings(instanceId);
+    } catch (error) {
+      if (!isMissingWasteSettingsTableError(error)) {
+        throw error;
+      }
+    }
+  }
 
   return applyWastePdfStaticSettings({
     ...settings,

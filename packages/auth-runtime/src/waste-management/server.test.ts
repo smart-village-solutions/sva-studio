@@ -90,6 +90,7 @@ const loaderMocks = vi.hoisted(() => ({
 
 const saverMocks = vi.hoisted(() => ({
   saveWasteCustomRecurrencePresets: vi.fn(async () => null),
+  saveWastePdfStaticSettings: vi.fn(async () => null),
   syncWasteHolidayRules: vi.fn(async () => 'success'),
   saveWasteCity: vi.fn(async () => null),
   saveWasteCollectionLocation: vi.fn(async () => null),
@@ -149,6 +150,7 @@ vi.mock('./server-loaders.js', () => ({
   },
   wasteManagementEntitySavers: {
     saveWasteCustomRecurrencePresets: saverMocks.saveWasteCustomRecurrencePresets,
+    saveWastePdfStaticSettings: saverMocks.saveWastePdfStaticSettings,
     syncWasteHolidayRules: saverMocks.syncWasteHolidayRules,
     saveWasteCity: saverMocks.saveWasteCity,
     saveWasteCollectionLocation: saverMocks.saveWasteCollectionLocation,
@@ -221,6 +223,8 @@ describe('wasteManagementHandlers', () => {
         deps: {
           ...sharedWasteManagementDepsMock,
           loadWasteCustomRecurrencePresets: loaderMocks.loadWasteCustomRecurrencePresets,
+          loadWastePdfStaticSettings: loaderMocks.loadWastePdfStaticSettings,
+          saveWastePdfStaticSettings: saverMocks.saveWastePdfStaticSettings,
           saveWasteCustomRecurrencePresets: saverMocks.saveWasteCustomRecurrencePresets,
           syncWasteHolidayRules: saverMocks.syncWasteHolidayRules,
         },
@@ -231,6 +235,8 @@ describe('wasteManagementHandlers', () => {
         deps: {
           ...sharedWasteManagementDepsMock,
           loadWasteCustomRecurrencePresets: loaderMocks.loadWasteCustomRecurrencePresets,
+          loadWastePdfStaticSettings: loaderMocks.loadWastePdfStaticSettings,
+          saveWastePdfStaticSettings: saverMocks.saveWastePdfStaticSettings,
           syncWasteHolidayRules: saverMocks.syncWasteHolidayRules,
         },
       },

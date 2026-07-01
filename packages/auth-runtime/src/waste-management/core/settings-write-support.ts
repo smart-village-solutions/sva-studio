@@ -194,6 +194,10 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     pdfContactBlock: normalizeOptionalTrimmedText(input.pdfContactBlock),
   };
 
+  await deps.saveWastePdfStaticSettings?.(instanceId, {
+    pdfBrandingAssetUrl: normalizedPdfStaticSettings.pdfBrandingAssetUrl,
+    pdfContactBlock: normalizedPdfStaticSettings.pdfContactBlock,
+  });
   await persistWasteSettingsInterfaceSelection({
     deps,
     interfaceRecords: writeContext.interfaceRecords,
@@ -203,10 +207,6 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     holidayStateCode: input.holidayStateCode,
     lastHolidaySyncStatus,
     lastSuccessfulHolidaySyncAt,
-  });
-  await deps.saveWastePdfStaticSettings?.(instanceId, {
-    pdfBrandingAssetUrl: normalizedPdfStaticSettings.pdfBrandingAssetUrl,
-    pdfContactBlock: normalizedPdfStaticSettings.pdfContactBlock,
   });
   await requireDeps(deps.saveWasteCustomRecurrencePresets, 'saveWasteCustomRecurrencePresets')(instanceId, {
     nextItems: input.customRecurrencePresets,

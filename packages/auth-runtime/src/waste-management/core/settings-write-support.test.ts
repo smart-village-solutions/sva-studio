@@ -480,6 +480,42 @@ describe('waste-management settings write support', () => {
     });
   });
 
+  it('saves pdf static settings before updating interface selection', async () => {
+    loadConfiguredWasteSettingsMock.mockResolvedValueOnce(createSettings()).mockResolvedValueOnce(createSettings());
+    const callOrder: string[] = [];
+    const saveWastePdfStaticSettings = vi.fn(async () => {
+      callOrder.push('saveWastePdfStaticSettings');
+    });
+    const saveExternalInterfaceRecord = vi.fn(async () => {
+      callOrder.push('saveExternalInterfaceRecord');
+    });
+
+    const response = await updateWasteManagementSettingsAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord()]),
+        saveExternalInterfaceRecord,
+        saveWastePdfStaticSettings,
+        saveWasteCustomRecurrencePresets: vi.fn(async () => undefined),
+      },
+      ctx: actor,
+      instanceId: 'tenant-a',
+      requestId: 'req-order',
+      input: {
+        projectUrl: 'https://tenant.example',
+        schemaName: 'wm',
+        enabled: true,
+        pdfBrandingAssetUrl: 'https://cdn.example/new.svg',
+        pdfContactBlock: 'Kontakt neu',
+        customRecurrencePresets: [],
+        deletedPresetFallbacks: {},
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(callOrder[0]).toBe('saveWastePdfStaticSettings');
+    expect(callOrder).toContain('saveExternalInterfaceRecord');
+  });
+
   it('returns a verification error when saved settings cannot be reloaded', async () => {
     const current = createSettings();
     const saveExternalInterfaceRecord = vi.fn(async () => undefined);
@@ -611,6 +647,34 @@ describe('waste-management settings write support', () => {
         holidayStateCode: 'NW',
         lastHolidaySyncStatus: 'partial_success',
       }),
+    });
+  });
+
+  it('preserves legacy pdf values during manual holiday sync when only interface settings exist', async () => {
+    const current = createSettings({
+      holidayStateCode: 'NW',
+      pdfBrandingAssetUrl: ' https://cdn.example/logo.svg ',
+      pdfContactBlock: ' Abfallberatung ',
+    });
+    loadConfiguredWasteSettingsMock.mockResolvedValueOnce(current).mockResolvedValueOnce(current);
+    const saveWastePdfStaticSettings = vi.fn(async () => undefined);
+
+    const response = await runWasteManagementHolidaySyncAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord()]),
+        saveExternalInterfaceRecord: vi.fn(async () => undefined),
+        saveWastePdfStaticSettings,
+        syncWasteHolidayRules: vi.fn(async () => 'success' as const),
+      },
+      ctx: actor,
+      instanceId: 'tenant-a',
+      requestId: 'req-legacy-pdf',
+    });
+
+    expect(response.status).toBe(200);
+    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung',
     });
   });
 

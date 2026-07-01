@@ -167,6 +167,7 @@ export const wasteManagementHandlers = {
         ...sharedWasteManagementDeps,
         loadWasteCustomRecurrencePresets,
         loadWastePdfStaticSettings,
+        saveWastePdfStaticSettings,
         syncWasteHolidayRules,
       })
     ),

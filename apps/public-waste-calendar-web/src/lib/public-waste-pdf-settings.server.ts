@@ -26,12 +26,11 @@ const readOptionalTrimmedEnv = (value: string | undefined): string | undefined =
 
 const hasWastePdfStaticSettingsValue = (
   record: WastePdfStaticSettingsRecord | null | undefined
-): record is WastePdfStaticSettingsRecord => Boolean(record?.pdfBrandingAssetUrl || record?.pdfContactBlock);
+): boolean => Boolean(record?.pdfBrandingAssetUrl || record?.pdfContactBlock);
 
 const hasCompleteWastePdfStaticSettings = (
   record: WastePdfStaticSettingsRecord | null | undefined
-): record is WastePdfStaticSettingsRecord =>
-  Boolean(record?.pdfBrandingAssetUrl && record?.pdfContactBlock);
+): boolean => Boolean(record?.pdfBrandingAssetUrl && record?.pdfContactBlock);
 
 const quoteIdentifier = (value: string): string => {
   if (!schemaIdentifierPattern.test(value)) {
@@ -110,10 +109,14 @@ export const loadPublicWastePdfStaticConfig = async (
   } = {}
 ): Promise<PublicWastePdfStaticConfig> => {
   const wastePdfStaticSettings = await loadWastePdfStaticSettings(options).catch(() => null);
-  if (hasCompleteWastePdfStaticSettings(wastePdfStaticSettings)) {
+  const completeWastePdfStaticSettings =
+    wastePdfStaticSettings && hasCompleteWastePdfStaticSettings(wastePdfStaticSettings)
+      ? wastePdfStaticSettings
+      : null;
+  if (completeWastePdfStaticSettings) {
     return {
-      brandingAssetUrl: wastePdfStaticSettings.pdfBrandingAssetUrl,
-      contactBlock: wastePdfStaticSettings.pdfContactBlock,
+      brandingAssetUrl: completeWastePdfStaticSettings.pdfBrandingAssetUrl,
+      contactBlock: completeWastePdfStaticSettings.pdfContactBlock,
     };
   }
 
@@ -140,12 +143,16 @@ export const loadPublicWastePdfStaticConfig = async (
           readWasteManagementPdfContactBlock(selectedInterface.publicConfig) ??
           readOptionalTrimmedEnv(process.env.PUBLIC_WASTE_PDF_CONTACT_BLOCK),
       };
-  if (!hasWastePdfStaticSettingsValue(wastePdfStaticSettings)) {
+  const partialWastePdfStaticSettings =
+    wastePdfStaticSettings && hasWastePdfStaticSettingsValue(wastePdfStaticSettings)
+    ? wastePdfStaticSettings
+    : null;
+  if (!partialWastePdfStaticSettings) {
     return fallbackConfig;
   }
 
   return {
-    brandingAssetUrl: wastePdfStaticSettings.pdfBrandingAssetUrl ?? fallbackConfig.brandingAssetUrl,
-    contactBlock: wastePdfStaticSettings.pdfContactBlock ?? fallbackConfig.contactBlock,
+    brandingAssetUrl: partialWastePdfStaticSettings.pdfBrandingAssetUrl ?? fallbackConfig.brandingAssetUrl,
+    contactBlock: partialWastePdfStaticSettings.pdfContactBlock ?? fallbackConfig.contactBlock,
   };
 };

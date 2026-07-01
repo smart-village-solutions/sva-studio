@@ -16,6 +16,10 @@ import {
 import { createWasteDateShiftRepositoryPart, wasteDateShiftStatements } from './master-data.date-shifts.js';
 import { createWasteFractionRepositoryPart, wasteFractionStatements } from './master-data.fractions.js';
 import {
+  createWastePdfStaticSettingsRepositoryPart,
+  wastePdfStaticSettingsStatements,
+} from './master-data.pdf-static-settings.js';
+import {
   createWasteGlobalDateShiftRepositoryPart,
   wasteGlobalDateShiftStatements,
 } from './master-data.global-date-shifts.js';
@@ -45,6 +49,7 @@ export const createWasteMasterDataRepository = (executor: SqlExecutor): WasteMas
   ...createWasteRegionCityRepositoryPart(executor),
   ...createWasteStreetHouseNumberRepositoryPart(executor),
   ...createWasteCollectionLocationRepositoryPart(executor),
+  ...createWastePdfStaticSettingsRepositoryPart(executor),
   ...createWasteHolidayRuleRepositoryPart(executor),
   ...createWasteCustomRecurrencePresetRepositoryPart(executor),
   ...createWasteTourRepositoryPart(executor),
@@ -60,6 +65,7 @@ export const wasteMasterDataStatements = {
   ...wasteRegionCityStatements,
   ...wasteStreetHouseNumberStatements,
   ...wasteCollectionLocationStatements,
+  ...wastePdfStaticSettingsStatements,
   ...wasteHolidayRuleStatements,
   ...wasteCustomRecurrencePresetStatements,
   ...wasteTourStatements,

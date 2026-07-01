@@ -248,7 +248,8 @@ Für den aktuellen Waste-PDF-Export-Shift ist wichtig:
 - Die öffentlichen E-Mail-Erinnerungen persistieren Pending- und aktive Abonnements in `waste_email_reminder_subscriptions`, die Fraktions-/Zeitfenster-Zuordnung in `waste_email_reminder_subscription_items` und DOI-/Reminder-Versandaufträge ressourcenschonend in `waste_email_reminder_outbox`.
 - Der runtime-nahe Backfill in `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts` schreibt `reminder_config` deterministisch aus den Legacy-Spalten und überschreibt vorhandene JSON-Konfigurationen nicht.
 - Die zugehörige Schemaquelle liegt aktuell im runtime-nahen Waste-Migrationspfad unter `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts`.
-- PDF-bezogene Stamminhalte wie `calendarWebUrl`, `pdfBrandingAssetUrl` und `pdfContactBlock` liegen dagegen weiterhin in der zentralen Studio-DB als Teil von `iam.instance_external_interfaces.public_config`.
+- `calendarWebUrl` bleibt Teil von `iam.instance_external_interfaces.public_config` in der zentralen Studio-DB.
+- Die PDF-Stamminhalte `pdfBrandingAssetUrl` und `pdfContactBlock` haben ihre führende Quelle dagegen im Waste-Schema der angebundenen Supabase-DB in `waste_settings`; die zentrale Studio-DB dient dafür nur noch als Legacy-Fallback älterer Bestandsdaten. Diese externe Tabelle gehört bewusst nicht zum IAM-/Goose-Migrationspfad der Studio-DB, sondern nur zum runtime-nahen Waste-Migrationspfad.
 
 ## Wichtige Beziehungen
 

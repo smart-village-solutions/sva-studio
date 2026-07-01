@@ -158,6 +158,13 @@ export const assertComposeServiceIngressLabels = (renderedCompose: ComposeDocume
     );
   }
 
+  const traefikNetworkName = contract.labels['traefik.docker.network']?.trim();
+  if (traefikNetworkName && !contract.networks.includes(traefikNetworkName)) {
+    throw new Error(
+      `Render-Compose fuer ${serviceName} setzt traefik.docker.network=${traefikNetworkName}, aber der Service haengt nicht an diesem Netzwerk.`,
+    );
+  }
+
   const ingressRoutingLabels = Object.keys(contract.labels).filter(
     (labelKey) =>
       labelKey.startsWith('traefik.') &&

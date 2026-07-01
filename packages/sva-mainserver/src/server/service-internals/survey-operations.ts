@@ -118,154 +118,153 @@ const buildSurveyMutationInput = (input: {
   ...buildSurveyFreeTextResponsesInput(input.survey),
 });
 
+const findSurvey = <TItem extends { readonly id?: string | null }>(
+  surveys: readonly (TItem | null | undefined)[] | null | undefined
+): TItem | undefined => (surveys ?? []).find((item): item is TItem => Boolean(item?.id));
+
+const createListSurveysWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) => async (
+  input: SvaMainserverConnectionInput & SvaMainserverSurveyListInput,
+  config: SvaMainserverInstanceConfig
+): Promise<SvaMainserverListResult<SvaMainserverSurveyItem>> => {
+  const pagination = normalizeVisibleListQuery(input);
+  const response = await executeGraphqlWithConfig<SvaMainserverSurveysListQuery>(
+    {
+      ...input,
+      document: svaMainserverSurveysListDocument,
+      operationName: 'SvaMainserverSurveysList',
+      variables: {
+        filter: buildSurveyFilter({
+          ...input,
+          includeArchived: input.includeArchived ?? false,
+          ongoingOnly: input.ongoingOnly ?? false,
+        }),
+      },
+    },
+    config
+  );
+
+  const surveys = (response.surveys ?? []).map(mapSurveyItem);
+  const offset = (pagination.page - 1) * pagination.pageSize;
+  const pagedItems = surveys.slice(offset, offset + pagination.pageSize);
+
+  return {
+    data: pagedItems,
+    pagination: {
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      hasNextPage: offset + pagination.pageSize < surveys.length,
+      total: surveys.length,
+    },
+  };
+};
+
+const createGetSurveyWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) => async (
+  input: SvaMainserverConnectionInput & { readonly surveyId: string },
+  config: SvaMainserverInstanceConfig
+): Promise<SvaMainserverSurveyItem> => {
+  const response = await executeGraphqlWithConfig<SvaMainserverSurveyDetailQuery>(
+    {
+      ...input,
+      document: svaMainserverSurveyDetailDocument,
+      operationName: 'SvaMainserverSurveyDetail',
+      variables: { filter: buildSurveyFilter({ ids: [input.surveyId] }) },
+    },
+    config
+  );
+
+  return mapOptionalSurveyItem(findSurvey(response.surveys));
+};
+
+const createGetSurveyResultsWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) => async (
+  input: SvaMainserverConnectionInput & { readonly surveyId: string },
+  config: SvaMainserverInstanceConfig
+): Promise<SvaMainserverSurveyResults> => {
+  const response = await executeGraphqlWithConfig<SvaMainserverSurveyResultsQuery>(
+    {
+      ...input,
+      document: svaMainserverSurveyResultsDocument,
+      operationName: 'SvaMainserverSurveyResults',
+      variables: { filter: buildSurveyFilter({ ids: [input.surveyId] }) },
+    },
+    config
+  );
+
+  return mapOptionalSurveyResults(findSurvey(response.surveys)?.results);
+};
+
+const createWriteSurveyWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) => async (
+  input: SvaMainserverConnectionInput & {
+    readonly survey: SvaMainserverSurveyInput;
+    readonly surveyId?: string;
+    readonly delete?: boolean;
+  },
+  config: SvaMainserverInstanceConfig
+): Promise<SvaMainserverSurveyMutationPayload> => {
+  const response = await executeGraphqlWithConfig<SvaMainserverCreateOrUpdateSurveyMutation>(
+    {
+      ...input,
+      document: svaMainserverCreateOrUpdateSurveyDocument,
+      operationName: 'SvaMainserverCreateOrUpdateSurvey',
+      variables: { input: buildSurveyMutationInput(input) },
+    },
+    config
+  );
+
+  return mapSurveyMutationPayload(response.createOrUpdateSurvey);
+};
+
+const createReleaseSurveyFreeTextResponseWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) => async (
+  input: SvaMainserverConnectionInput & {
+    readonly surveyId: string;
+    readonly freeTextResponseId: string;
+  },
+  config: SvaMainserverInstanceConfig
+): Promise<SvaMainserverSurveyMutationPayload> => {
+  const response = await executeGraphqlWithConfig<SvaMainserverUpdateSurveyFreeTextStatusMutation>(
+    {
+      ...input,
+      document: svaMainserverUpdateSurveyFreeTextStatusDocument,
+      operationName: 'SvaMainserverUpdateSurveyFreeTextStatus',
+      variables: {
+        surveyId: input.surveyId,
+        freeTextResponseId: input.freeTextResponseId,
+        status: 'PUBLIC',
+      },
+    },
+    config
+  );
+
+  return mapSurveyMutationPayload(response.updateSurveyFreeTextStatus);
+};
+
+const createDeleteSurveyFreeTextResponseWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) => async (
+  input: SvaMainserverConnectionInput & {
+    readonly surveyId: string;
+    readonly freeTextResponseId: string;
+  },
+  config: SvaMainserverInstanceConfig
+): Promise<SvaMainserverSurveyMutationPayload> => {
+  const response = await executeGraphqlWithConfig<SvaMainserverDeleteSurveyFreeTextMutation>(
+    {
+      ...input,
+      document: svaMainserverDeleteSurveyFreeTextDocument,
+      operationName: 'SvaMainserverDeleteSurveyFreeText',
+      variables: {
+        surveyId: input.surveyId,
+        freeTextResponseId: input.freeTextResponseId,
+      },
+    },
+    config
+  );
+
+  return mapSurveyMutationPayload(response.deleteSurveyFreeText);
+};
+
 export const createSurveyOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
-  listSurveysWithConfig: async (
-    input: SvaMainserverConnectionInput & SvaMainserverSurveyListInput,
-    config: SvaMainserverInstanceConfig
-  ): Promise<SvaMainserverListResult<SvaMainserverSurveyItem>> => {
-    const pagination = normalizeVisibleListQuery(input);
-    const response = await executeGraphqlWithConfig<SvaMainserverSurveysListQuery>(
-      {
-        ...input,
-        document: svaMainserverSurveysListDocument,
-        operationName: 'SvaMainserverSurveysList',
-        variables: {
-          filter: buildSurveyFilter({
-            ...input,
-            includeArchived: input.includeArchived ?? false,
-            ongoingOnly: input.ongoingOnly ?? false,
-          }),
-        },
-      },
-      config
-    );
-
-    const surveys = (response.surveys ?? []).map(mapSurveyItem);
-    const offset = (pagination.page - 1) * pagination.pageSize;
-    const pagedItems = surveys.slice(offset, offset + pagination.pageSize);
-
-    return {
-      data: pagedItems,
-      pagination: {
-        page: pagination.page,
-        pageSize: pagination.pageSize,
-        hasNextPage: offset + pagination.pageSize < surveys.length,
-        total: surveys.length,
-      },
-    };
-  },
-
-  getSurveyWithConfig: async (
-    input: SvaMainserverConnectionInput & { readonly surveyId: string },
-    config: SvaMainserverInstanceConfig
-  ): Promise<SvaMainserverSurveyItem> => {
-    const response = await executeGraphqlWithConfig<SvaMainserverSurveyDetailQuery>(
-      {
-        ...input,
-        document: svaMainserverSurveyDetailDocument,
-        operationName: 'SvaMainserverSurveyDetail',
-        variables: {
-          filter: buildSurveyFilter({
-            ids: [input.surveyId],
-          }),
-        },
-      },
-      config
-    );
-
-    const survey = (response.surveys ?? []).find((item): item is NonNullable<typeof item> => Boolean(item?.id));
-    return mapOptionalSurveyItem(survey);
-  },
-
-  getSurveyResultsWithConfig: async (
-    input: SvaMainserverConnectionInput & { readonly surveyId: string },
-    config: SvaMainserverInstanceConfig
-  ): Promise<SvaMainserverSurveyResults> => {
-    const response = await executeGraphqlWithConfig<SvaMainserverSurveyResultsQuery>(
-      {
-        ...input,
-        document: svaMainserverSurveyResultsDocument,
-        operationName: 'SvaMainserverSurveyResults',
-        variables: {
-          filter: buildSurveyFilter({
-            ids: [input.surveyId],
-          }),
-        },
-      },
-      config
-    );
-
-    const survey = (response.surveys ?? []).find((item): item is NonNullable<typeof item> => Boolean(item?.id));
-    return mapOptionalSurveyResults(survey?.results);
-  },
-
-  writeSurveyWithConfig: async (
-    input: SvaMainserverConnectionInput & {
-      readonly survey: SvaMainserverSurveyInput;
-      readonly surveyId?: string;
-      readonly delete?: boolean;
-    },
-    config: SvaMainserverInstanceConfig
-  ): Promise<SvaMainserverSurveyMutationPayload> => {
-    const response = await executeGraphqlWithConfig<SvaMainserverCreateOrUpdateSurveyMutation>(
-      {
-        ...input,
-        document: svaMainserverCreateOrUpdateSurveyDocument,
-        operationName: 'SvaMainserverCreateOrUpdateSurvey',
-        variables: {
-          input: buildSurveyMutationInput(input),
-        },
-      },
-      config
-    );
-
-    return mapSurveyMutationPayload(response.createOrUpdateSurvey);
-  },
-
-  releaseSurveyFreeTextResponseWithConfig: async (
-    input: SvaMainserverConnectionInput & {
-      readonly surveyId: string;
-      readonly freeTextResponseId: string;
-    },
-    config: SvaMainserverInstanceConfig
-  ): Promise<SvaMainserverSurveyMutationPayload> => {
-    const response = await executeGraphqlWithConfig<SvaMainserverUpdateSurveyFreeTextStatusMutation>(
-      {
-        ...input,
-        document: svaMainserverUpdateSurveyFreeTextStatusDocument,
-        operationName: 'SvaMainserverUpdateSurveyFreeTextStatus',
-        variables: {
-          surveyId: input.surveyId,
-          freeTextResponseId: input.freeTextResponseId,
-          status: 'PUBLIC',
-        },
-      },
-      config
-    );
-
-    return mapSurveyMutationPayload(response.updateSurveyFreeTextStatus);
-  },
-
-  deleteSurveyFreeTextResponseWithConfig: async (
-    input: SvaMainserverConnectionInput & {
-      readonly surveyId: string;
-      readonly freeTextResponseId: string;
-    },
-    config: SvaMainserverInstanceConfig
-  ): Promise<SvaMainserverSurveyMutationPayload> => {
-    const response = await executeGraphqlWithConfig<SvaMainserverDeleteSurveyFreeTextMutation>(
-      {
-        ...input,
-        document: svaMainserverDeleteSurveyFreeTextDocument,
-        operationName: 'SvaMainserverDeleteSurveyFreeText',
-        variables: {
-          surveyId: input.surveyId,
-          freeTextResponseId: input.freeTextResponseId,
-        },
-      },
-      config
-    );
-
-    return mapSurveyMutationPayload(response.deleteSurveyFreeText);
-  },
+  listSurveysWithConfig: createListSurveysWithConfig(executeGraphqlWithConfig),
+  getSurveyWithConfig: createGetSurveyWithConfig(executeGraphqlWithConfig),
+  getSurveyResultsWithConfig: createGetSurveyResultsWithConfig(executeGraphqlWithConfig),
+  writeSurveyWithConfig: createWriteSurveyWithConfig(executeGraphqlWithConfig),
+  releaseSurveyFreeTextResponseWithConfig: createReleaseSurveyFreeTextResponseWithConfig(executeGraphqlWithConfig),
+  deleteSurveyFreeTextResponseWithConfig: createDeleteSurveyFreeTextResponseWithConfig(executeGraphqlWithConfig),
 });

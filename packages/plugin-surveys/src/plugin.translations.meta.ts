@@ -1,0 +1,49 @@
+export const pluginSurveysMetaTranslations = {
+  labels: {
+    questionSection: 'Frage {{index}}',
+    optionSection: 'Option {{index}}',
+    freeTextVisibility: 'Antwort {{index}} öffentlich sichtbar',
+    exportWithoutFreeText: 'Export ohne Freitexte',
+    exportWithFreeText: 'Export mit Freitexten',
+    exportFormats: {
+      csv: 'CSV',
+      json: 'JSON',
+      excel: 'Excel',
+      xml: 'XML',
+    },
+  },
+  permissions: {
+    read: 'Umfragen lesen',
+    create: 'Umfragen anlegen',
+    update: 'Umfragen bearbeiten',
+    delete: 'Umfragen löschen',
+    moderate: 'Freitexte moderieren',
+    export: 'Ergebnisse exportieren',
+  },
+  history: {
+    createHint: 'Die Historie wird nach dem ersten Speichern verfügbar.',
+    loading: 'Historie wird geladen.',
+    empty: 'Noch keine Historie vorhanden.',
+    emptySummary: 'Keine zusätzliche Zusammenfassung vorhanden.',
+    tableLabel: 'Historie der Umfrage',
+    columns: {
+      time: 'Zeitpunkt',
+      action: 'Aktion',
+      actor: 'Akteur',
+      summary: 'Zusammenfassung',
+    },
+    errors: {
+      forbidden: 'Die Historie darf nicht angezeigt werden.',
+      notFound: 'Für diese Umfrage wurde keine Historie gefunden.',
+      load: 'Die Historie konnte nicht geladen werden.',
+    },
+    changedFields: 'Geänderte Felder: {{fields}}',
+    actions: {
+      created: 'Umfrage erstellt',
+      updated: 'Umfrage bearbeitet',
+      deleted: 'Umfrage gelöscht',
+      moderated: 'Freitexte moderiert',
+      exported: 'Ergebnisse exportiert',
+    },
+  },
+} as const;

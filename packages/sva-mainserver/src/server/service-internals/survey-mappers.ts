@@ -16,11 +16,8 @@ import type {
   SvaMainserverSurveyResultsFragment,
   SvaMainserverSurveyMutationPayloadFragment,
 } from '../../generated/surveys.js';
-
 import { defined, optionalNumber, optionalString, toSvaMainserverError } from './shared.js';
-
 const localizedTextSchema = z.union([z.record(z.string(), z.string()), z.string()]);
-
 const surveyFreeTextStatusSchema = z.enum(['INTERNAL', 'PUBLIC']);
 const surveyStatusSchema = z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']);
 const surveyResultVisibilitySchema = z.enum(['NONE', 'AFTER_SUBMISSION', 'AFTER_SURVEY_END']);
@@ -41,7 +38,6 @@ const surveyMutationErrorCodeSchema = z.enum([
   'FORBIDDEN',
   'INTERNAL_ERROR',
 ]);
-
 const surveyQuestionOptionSchema = z.object({
   id: z.string().min(1),
   questionId: z.string().min(1),
@@ -49,14 +45,12 @@ const surveyQuestionOptionSchema = z.object({
   position: z.number().int().nonnegative().nullish(),
   enablesFreeText: z.boolean().nullish(),
 });
-
 const surveyFreeTextResultSchema = z.object({
   id: z.string().min(1),
   text: z.string().nullish(),
   status: surveyFreeTextStatusSchema,
   createdAt: z.string().nullish(),
 });
-
 const surveyOptionResultSchema = z.object({
   optionId: z.string().min(1),
   title: localizedTextSchema,
@@ -64,7 +58,6 @@ const surveyOptionResultSchema = z.object({
   percentage: z.number().nullish(),
   freeTextResponses: z.array(surveyFreeTextResultSchema).nullish(),
 });
-
 const surveyQuestionResultsSchema = z.object({
   questionId: z.string().min(1),
   type: surveyQuestionTypeSchema,
@@ -72,14 +65,12 @@ const surveyQuestionResultsSchema = z.object({
   optionResults: z.array(surveyOptionResultSchema).nullish(),
   freeTextResponses: z.array(surveyFreeTextResultSchema).nullish(),
 });
-
 const surveyResultsSchema = z.object({
   surveyId: z.string().min(1),
   participationCount: z.number().int().nullish(),
   submissionCount: z.number().int().nullish(),
   questions: z.array(surveyQuestionResultsSchema).nullish(),
 });
-
 const surveyQuestionSchema = z.object({
   id: z.string().min(1),
   surveyId: z.string().min(1),
@@ -92,7 +83,6 @@ const surveyQuestionSchema = z.object({
   updatedAt: z.string().nullish(),
   options: z.array(surveyQuestionOptionSchema).nullish(),
 });
-
 const surveySchema = z.object({
   id: z.string().min(1),
   title: localizedTextSchema,
@@ -117,13 +107,11 @@ const surveySchema = z.object({
   publishedAt: z.string().nullish(),
   archivedAt: z.string().nullish(),
 });
-
 const surveyMutationErrorSchema = z.object({
   code: surveyMutationErrorCodeSchema,
   message: z.string().min(1),
   field: z.string().nullish(),
 });
-
 const surveyMutationPayloadSchema = z.object({
   success: z.boolean().nullish(),
   action: surveyMutationActionSchema.nullish(),
@@ -131,9 +119,20 @@ const surveyMutationPayloadSchema = z.object({
   deletedSurveyId: z.string().nullish(),
   errors: z.array(surveyMutationErrorSchema).nullish(),
 });
-
 const mapLocalizedText = (value: z.infer<typeof localizedTextSchema>): SvaMainserverLocalizedText =>
   typeof value === 'string' ? { de: value } : value;
+const optionalLocalizedField = <TKey extends string>(
+  key: TKey,
+  value: z.infer<typeof localizedTextSchema> | null | undefined
+): Partial<Record<TKey, SvaMainserverLocalizedText>> =>
+  value ? (Object.assign({}, { [key]: mapLocalizedText(value) }) as Partial<Record<TKey, SvaMainserverLocalizedText>>) : {};
+const optionalTimestampField = <TKey extends string>(
+  key: TKey,
+  value: string | null | undefined
+): Partial<Record<TKey, string>> => {
+  const timestamp = optionalString(value);
+  return timestamp ? (Object.assign({}, { [key]: timestamp }) as Partial<Record<TKey, string>>) : {};
+};
 
 const mapFreeTextResult = (
   value: z.infer<typeof surveyFreeTextResultSchema>,
@@ -203,6 +202,29 @@ const mapSurveyResults = (
   questions: (value.questions ?? []).map((item) => mapQuestionResults(item, fallbackTimestamp)),
 });
 
+const buildSurveyContentFields = (survey: z.infer<typeof surveySchema>) => ({
+  ...optionalLocalizedField('shortDescription', survey.shortDescription),
+  ...optionalLocalizedField('description', survey.description),
+  ...optionalLocalizedField('privacyNotice', survey.privacyNotice),
+  ...optionalLocalizedField('transparencyNotice', survey.transparencyNotice),
+});
+
+const buildSurveyScheduleFields = (survey: z.infer<typeof surveySchema>) => ({
+  ...optionalTimestampField('startAt', survey.startAt),
+  ...optionalTimestampField('endAt', survey.endAt),
+  ...optionalTimestampField('publishedAt', survey.publishedAt),
+  ...optionalTimestampField('archivedAt', survey.archivedAt),
+});
+
+const buildSurveyResultFields = (
+  survey: z.infer<typeof surveySchema>,
+  fallbackTimestamp: string
+) => ({
+  participationCount: survey.participationCount ?? survey.results?.participationCount ?? 0,
+  submissionCount: survey.submissionCount ?? survey.results?.submissionCount ?? 0,
+  ...(survey.results ? { results: mapSurveyResults(survey.results, fallbackTimestamp) } : {}),
+});
+
 export const mapSurveyItem = (item: SvaMainserverSurveyFragment | null | undefined): SvaMainserverSurveyItem => {
   const parsed = surveySchema.safeParse(item);
   if (!parsed.success) {
@@ -222,26 +244,18 @@ const mapParsedSurveyItem = (survey: z.infer<typeof surveySchema>): SvaMainserve
   return {
     id: survey.id,
     title: mapLocalizedText(survey.title),
-    ...(survey.shortDescription ? { shortDescription: mapLocalizedText(survey.shortDescription) } : {}),
-    ...(survey.description ? { description: mapLocalizedText(survey.description) } : {}),
+    ...buildSurveyContentFields(survey),
     status: survey.status,
-    ...(optionalString(survey.startAt) ? { startAt: optionalString(survey.startAt) } : {}),
-    ...(optionalString(survey.endAt) ? { endAt: optionalString(survey.endAt) } : {}),
+    ...buildSurveyScheduleFields(survey),
     resultVisibility: survey.resultVisibility,
     targetAreaIds: survey.targetAreaIds ?? [],
     showResultsInApp: survey.showResultsInApp === true,
     isAnonymous: survey.isAnonymous !== false,
-    ...(survey.privacyNotice ? { privacyNotice: mapLocalizedText(survey.privacyNotice) } : {}),
-    ...(survey.transparencyNotice ? { transparencyNotice: mapLocalizedText(survey.transparencyNotice) } : {}),
     questions: (survey.questions ?? []).map((question) => mapQuestion(question, fallbackTimestamp)),
     questionCount: survey.questionCount ?? (survey.questions?.length ?? 0),
-    participationCount: survey.participationCount ?? survey.results?.participationCount ?? 0,
-    submissionCount: survey.submissionCount ?? survey.results?.submissionCount ?? 0,
-    ...(survey.results ? { results: mapSurveyResults(survey.results, fallbackTimestamp) } : {}),
+    ...buildSurveyResultFields(survey, fallbackTimestamp),
     createdAt: survey.createdAt ?? fallbackTimestamp,
     updatedAt: survey.updatedAt ?? survey.createdAt ?? fallbackTimestamp,
-    ...(optionalString(survey.publishedAt) ? { publishedAt: optionalString(survey.publishedAt) } : {}),
-    ...(optionalString(survey.archivedAt) ? { archivedAt: optionalString(survey.archivedAt) } : {}),
   };
 };
 

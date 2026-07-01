@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { SURVEYS_CONTENT_TYPE, pluginSurveys } from '../src/index.js';
 import {
-  SURVEYS_CONTENT_TYPE,
-  pluginSurveys,
   pluginSurveysActionDefinitions,
   pluginSurveysModerationActionId,
   pluginSurveysPermissionDefinitions,
-} from '../src/index.js';
+} from '../src/plugin.js';
 
 describe('pluginSurveys contract', () => {
   it('keeps the standard content contract and adds survey-specific rights', () => {

@@ -4,6 +4,7 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioDetailPageTemplate, StudioDetailTabs, type StudioDetailTabDefinition } from '@sva/studio-ui-react';
 
 import { SurveyDetailBasisTab } from './surveys.detail-basis-tab.js';
+import { SurveyDetailContentTab } from './surveys.detail-content-tab.js';
 import { createDefaultSurveyDetailFormValues, type SurveyDetailFormValues } from './surveys.detail-form.js';
 import type { SurveyContentItem } from './surveys.types.js';
 
@@ -72,13 +73,7 @@ const createSurveyEditorTabs = (
       label: pt('tabs.content.label'),
       title: pt('tabs.content.title'),
       description: pt('tabs.content.description'),
-      panel: (
-        <SurveyTabPlaceholder
-          title={pt('cards.content.title')}
-          description={pt('cards.content.description')}
-          body={genericPlaceholder}
-        />
-      ),
+      panel: <SurveyDetailContentTab pt={pt} />,
     },
     {
       id: 'moderation',

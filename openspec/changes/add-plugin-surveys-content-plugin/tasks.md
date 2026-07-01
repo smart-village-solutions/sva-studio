@@ -67,18 +67,18 @@
 
 ## 7. Tab `Inhalt` umsetzen
 
-- [ ] 7.1 Card `Beschreibung` mit einfachen Textfeldern als Default anlegen
-- [ ] 7.2 Card `Teilnahme und Sichtbarkeit` mit `isAnonymous`, `showResultsInApp` und `resultVisibility` umsetzen
-- [ ] 7.3 Card `Hinweise` fuer Datenschutz- und Transparenzhinweise umsetzen
-- [ ] 7.4 entscheiden und technisch abbilden, welche Textfelder `Textarea` bleiben und welche optional Rich-Text verwenden
-- [ ] 7.5 Card `Fragen` mit plugin-lokalem `SurveyQuestionListEditor` anlegen
-- [ ] 7.6 Inline-Bearbeitung fuer Fragen innerhalb derselben `Fragen`-Card umsetzen
-- [ ] 7.7 Antwortoptionen als flache wiederholende Abschnitte innerhalb derselben `Fragen`-Card umsetzen
-- [ ] 7.8 Sortierung von Fragen und Optionen ueber `position` umsetzen
-- [ ] 7.9 alle vorgesehenen Fragetypen in der Editor-Logik und Validierung unterstuetzen
-- [ ] 7.10 jede Loeschaktion fuer Fragen und Optionen ueber bestaetigende Dialoge absichern
-- [ ] 7.11 Unit- und UI-Tests fuer Fragetypen, Inline-Bearbeitung, Sortierung und Loeschbestaetigung ergaenzen
-- [ ] 7.12 kleinsten relevanten Gate-Pfad fuer `Inhalt` ausfuehren
+- [x] 7.1 Card `Beschreibung` mit einfachen Textfeldern als Default anlegen
+- [x] 7.2 Card `Teilnahme und Sichtbarkeit` mit `isAnonymous`, `showResultsInApp` und `resultVisibility` umsetzen
+- [x] 7.3 Card `Hinweise` fuer Datenschutz- und Transparenzhinweise umsetzen
+- [x] 7.4 entscheiden und technisch abbilden, welche Textfelder `Textarea` bleiben und welche optional Rich-Text verwenden
+- [x] 7.5 Card `Fragen` mit plugin-lokalem `SurveyQuestionListEditor` anlegen
+- [x] 7.6 Inline-Bearbeitung fuer Fragen innerhalb derselben `Fragen`-Card umsetzen
+- [x] 7.7 Antwortoptionen als flache wiederholende Abschnitte innerhalb derselben `Fragen`-Card umsetzen
+- [x] 7.8 Sortierung von Fragen und Optionen ueber `position` umsetzen
+- [x] 7.9 alle vorgesehenen Fragetypen in der Editor-Logik und Validierung unterstuetzen
+- [x] 7.10 jede Loeschaktion fuer Fragen und Optionen ueber bestaetigende Dialoge absichern
+- [x] 7.11 Unit- und UI-Tests fuer Fragetypen, Inline-Bearbeitung, Sortierung und Loeschbestaetigung ergaenzen
+- [x] 7.12 kleinsten relevanten Gate-Pfad fuer `Inhalt` ausfuehren
 
 ## 8. Tab `Moderation` umsetzen
 

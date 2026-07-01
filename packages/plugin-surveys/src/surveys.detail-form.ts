@@ -1,12 +1,27 @@
-export type SurveyDetailFormValues = Readonly<{
+import type {
+  SurveyQuestionFormValues,
+  SurveyResultVisibility,
+} from './surveys.detail-content-model.js';
+
+export type SurveyDetailFormValues = {
   title: string;
-  basis: Readonly<{
+  basis: {
     status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
     startAt: string;
     endAt: string;
-    targetAreaIds: readonly string[];
-  }>;
-}>;
+    targetAreaIds: string[];
+  };
+  content: {
+    shortDescription: string;
+    description: string;
+    isAnonymous: boolean;
+    showResultsInApp: boolean;
+    resultVisibility: SurveyResultVisibility;
+    privacyNotice: string;
+    transparencyNotice: string;
+    questions: SurveyQuestionFormValues[];
+  };
+};
 
 export const createDefaultSurveyDetailFormValues = (): SurveyDetailFormValues => ({
   title: '',
@@ -15,5 +30,15 @@ export const createDefaultSurveyDetailFormValues = (): SurveyDetailFormValues =>
     startAt: '',
     endAt: '',
     targetAreaIds: [],
+  },
+  content: {
+    shortDescription: '',
+    description: '',
+    isAnonymous: false,
+    showResultsInApp: false,
+    resultVisibility: 'NONE',
+    privacyNotice: '',
+    transparencyNotice: '',
+    questions: [],
   },
 });

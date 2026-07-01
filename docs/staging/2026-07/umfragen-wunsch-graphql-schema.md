@@ -300,7 +300,6 @@ type Mutation {
 - `participationCount` zählt nur erste Teilnahmen.
 - `submissionCount` zählt alle gespeicherten Submission-Vorgänge, auch Ergänzungen oder Korrekturen.
 - `surveys(filter)` ist die einzige Survey-Abfrage und liefert immer ein Array.
-- `PUBLIC` ist ein regulärer `SurveyStatus`.
 - Zugriff auf Non-Public-Surveys wird serverseitig über Credentials entschieden.
 - Ergebnisdaten hängen an `Survey` über `results`.
 - Freitextantworten in `results` sind credential-abhängig gefiltert:
@@ -362,7 +361,7 @@ query SurveysFiltered($filter: SurveyFilterInput) {
 ```json
 {
   "filter": {
-    "statuses": ["PUBLIC", "PUBLISHED"],
+    "statuses": ["ACTIVE", "ENDED"],
     "targetAreaIds": ["district-1", "district-2"],
     "includeArchived": false,
     "ongoingOnly": true
@@ -703,7 +702,7 @@ mutation UpdateSurveyStatus($input: UpsertSurveyInput!) {
 {
   "input": {
     "id": "survey-1",
-    "status": "PUBLIC"
+    "status": "ACTIVE"
   }
 }
 ```

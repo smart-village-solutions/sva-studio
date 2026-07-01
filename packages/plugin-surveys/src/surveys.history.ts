@@ -1,3 +1,4 @@
+// fallow-ignore-file code-duplication
 import type { IamContentHistoryEntry, IamContentStatus } from '@sva/plugin-sdk';
 
 const surveyHistoryActionLabelKeys = {

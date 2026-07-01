@@ -1,6 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IamContentListQuery } from '@sva/core';
+import type { RenderHookResult } from '@testing-library/react';
 
 import { useUnifiedContentList } from './use-unified-content-list';
 
@@ -8,6 +9,103 @@ const listNewsMock = vi.fn();
 const listEventsMock = vi.fn();
 const listPoiMock = vi.fn();
 const listSurveysMock = vi.fn();
+
+const createPagination = (page = 1, pageSize = 25, hasNextPage = false) => ({
+  page,
+  pageSize,
+  hasNextPage,
+});
+
+const createListResult = <TItem,>(
+  data: readonly TItem[],
+  options?: Readonly<{
+    page?: number;
+    pageSize?: number;
+    hasNextPage?: boolean;
+  }>
+) => ({
+  data,
+  pagination: createPagination(options?.page, options?.pageSize, options?.hasNextPage),
+});
+
+const createEmptyListResult = (pageSize = 25) => createListResult([], { pageSize });
+
+const createNewsItem = (overrides: Record<string, unknown> = {}) => ({
+  id: 'news-1',
+  title: 'News',
+  contentType: 'news.article',
+  status: 'published',
+  payload: {},
+  author: 'Redaktion',
+  createdAt: '2026-05-01T10:00:00.000Z',
+  updatedAt: '2026-05-03T10:00:00.000Z',
+  publishedAt: '2026-05-03T10:00:00.000Z',
+  ...overrides,
+});
+
+const createEventItem = (overrides: Record<string, unknown> = {}) => ({
+  id: 'event-1',
+  title: 'Event',
+  contentType: 'events.event-record',
+  status: 'published',
+  createdAt: '2026-05-01T08:00:00.000Z',
+  updatedAt: '2026-05-04T10:00:00.000Z',
+  ...overrides,
+});
+
+const createPoiItem = (overrides: Record<string, unknown> = {}) => ({
+  id: 'poi-1',
+  name: 'POI',
+  contentType: 'poi.point-of-interest',
+  status: 'published',
+  createdAt: '2026-05-01T07:00:00.000Z',
+  updatedAt: '2026-05-01T10:00:00.000Z',
+  ...overrides,
+});
+
+const createSurveyItem = (overrides: Record<string, unknown> = {}) => ({
+  id: 'survey-1',
+  title: { de: 'Survey' },
+  contentType: 'surveys.survey',
+  status: 'ACTIVE',
+  resultVisibility: 'AFTER_SURVEY_END',
+  targetAreaIds: [],
+  showResultsInApp: true,
+  isAnonymous: true,
+  questionCount: 3,
+  participationCount: 15,
+  submissionCount: 16,
+  createdAt: '2026-05-01T06:00:00.000Z',
+  updatedAt: '2026-05-05T10:00:00.000Z',
+  ...overrides,
+});
+
+const waitForLoaded = async (
+  result: RenderHookResult<ReturnType<typeof useUnifiedContentList>, unknown>['result']
+) => {
+  await waitFor(() => {
+    expect(result.current.isLoading).toBe(false);
+  });
+};
+
+const renderUnifiedContentList = (
+  query: IamContentListQuery,
+  visibleTypes: readonly string[],
+  permissionActions: readonly string[] = [],
+  instanceId = 'de-musterhausen'
+) => renderHook(() => useUnifiedContentList(query, visibleTypes, instanceId, permissionActions));
+
+const setMainserverSources = (input: {
+  news?: ReturnType<typeof createListResult>;
+  events?: ReturnType<typeof createListResult>;
+  poi?: ReturnType<typeof createListResult>;
+  surveys?: ReturnType<typeof createListResult>;
+}) => {
+  listNewsMock.mockResolvedValue(input.news ?? createEmptyListResult());
+  listEventsMock.mockResolvedValue(input.events ?? createEmptyListResult());
+  listPoiMock.mockResolvedValue(input.poi ?? createEmptyListResult());
+  listSurveysMock.mockResolvedValue(input.surveys ?? createEmptyListResult());
+};
 
 vi.mock('@sva/plugin-news', () => ({
   listNews: (...args: unknown[]) => listNewsMock(...args),
@@ -40,79 +138,43 @@ describe('useUnifiedContentList', () => {
   it('loads mainserver-backed content items, filters them and paginates the merged result', async () => {
     const permissionActions: readonly string[] = [];
 
-    listNewsMock.mockResolvedValue({
-      data: [
-        {
+    listNewsMock.mockResolvedValue(
+      createListResult([
+        createNewsItem({
           id: 'news-2',
           title: 'Zoo',
-          contentType: 'news.article',
-          status: 'published',
-          payload: {},
-          author: 'Redaktion',
-          createdAt: '2026-05-01T10:00:00.000Z',
-          updatedAt: '2026-05-03T10:00:00.000Z',
-          publishedAt: '2026-05-03T10:00:00.000Z',
-        },
-        {
+        }),
+        createNewsItem({
           id: 'news-1',
           title: 'Alpha',
-          contentType: 'news.article',
-          status: 'published',
-          payload: {},
-          author: 'Redaktion',
           createdAt: '2026-05-01T09:00:00.000Z',
           updatedAt: '2026-05-02T10:00:00.000Z',
           publishedAt: '2026-05-02T10:00:00.000Z',
-        },
-      ],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-    listEventsMock.mockResolvedValue({
-      data: [
-        {
-          id: 'event-1',
+        }),
+      ])
+    );
+    listEventsMock.mockResolvedValue(
+      createListResult([
+        createEventItem({
           title: 'Beta Event',
-          contentType: 'events.event-record',
-          status: 'published',
-          createdAt: '2026-05-01T08:00:00.000Z',
-          updatedAt: '2026-05-04T10:00:00.000Z',
-        },
-      ],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-    listPoiMock.mockResolvedValue({
-      data: [
-        {
+        }),
+      ])
+    );
+    listPoiMock.mockResolvedValue(
+      createListResult([
+        createPoiItem({
           id: 'poi-1',
           name: 'Gamma POI',
-          contentType: 'poi.point-of-interest',
-          status: 'published',
-          createdAt: '2026-05-01T07:00:00.000Z',
-          updatedAt: '2026-05-01T10:00:00.000Z',
-        },
-      ],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-    listSurveysMock.mockResolvedValue({
-      data: [
-        {
-          id: 'survey-1',
+        }),
+      ])
+    );
+    listSurveysMock.mockResolvedValue(
+      createListResult([
+        createSurveyItem({
           title: { de: 'Delta Survey' },
-          contentType: 'surveys.survey',
-          status: 'ACTIVE',
-          resultVisibility: 'AFTER_SURVEY_END',
-          targetAreaIds: [],
-          showResultsInApp: true,
-          isAnonymous: true,
-          questionCount: 3,
-          participationCount: 15,
-          submissionCount: 16,
-          createdAt: '2026-05-01T06:00:00.000Z',
-          updatedAt: '2026-05-05T10:00:00.000Z',
-        },
-      ],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
+        }),
+      ])
+    );
 
     type HookProps = {
       readonly query: IamContentListQuery;
@@ -140,9 +202,7 @@ describe('useUnifiedContentList', () => {
       }
     );
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    await waitForLoaded(result);
 
     expect(result.current.contents.map((item) => item.id)).toEqual(['news-1', 'event-1']);
     expect(result.current.pagination).toEqual({ page: 1, pageSize: 2, total: 5 });
@@ -161,9 +221,7 @@ describe('useUnifiedContentList', () => {
 
     rerender(updatedProps);
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    await waitForLoaded(result);
 
     expect(result.current.contents.map((item) => item.id)).toEqual(['news-2', 'news-1']);
     expect(listNewsMock).toHaveBeenCalledTimes(1);
@@ -183,46 +241,24 @@ describe('useUnifiedContentList', () => {
       visibleTypes,
     } as const;
 
-    listNewsMock.mockResolvedValue({
-      data: [
-        {
+    setMainserverSources({
+      news: createListResult([
+        createNewsItem({
           id: 'news-untitled',
           title: '',
-          contentType: 'news.article',
-          status: 'published',
-          payload: {},
-          author: 'Redaktion',
-          createdAt: '2026-05-01T10:00:00.000Z',
-          updatedAt: '2026-05-03T10:00:00.000Z',
-          publishedAt: '2026-05-03T10:00:00.000Z',
           contentBlocks: [
             {
               title: 'Headline aus Block 1',
               body: 'Body',
             },
           ],
-        },
-      ],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-    listEventsMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-    listPoiMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-    listSurveysMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+        }),
+      ]),
     });
 
-    const { result } = renderHook(() => useUnifiedContentList(query, visibleTypes, 'de-musterhausen', permissionActions));
+    const { result } = renderUnifiedContentList(query, visibleTypes, permissionActions);
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    await waitForLoaded(result);
 
     expect(result.current.contents[0]?.title).toBe('Headline aus Block 1');
   });
@@ -238,49 +274,14 @@ describe('useUnifiedContentList', () => {
     } as const;
     const permissionActions = ['news.read', 'news.update', 'events.read'] as const;
 
-    listNewsMock.mockResolvedValue({
-      data: [
-        {
-          id: 'news-1',
-          title: 'News',
-          contentType: 'news.article',
-          status: 'published',
-          payload: {},
-          author: 'Redaktion',
-          createdAt: '2026-05-01T10:00:00.000Z',
-          updatedAt: '2026-05-03T10:00:00.000Z',
-          publishedAt: '2026-05-03T10:00:00.000Z',
-        },
-      ],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-    listEventsMock.mockResolvedValue({
-      data: [
-        {
-          id: 'event-1',
-          title: 'Event',
-          contentType: 'events.event-record',
-          status: 'published',
-          createdAt: '2026-05-01T08:00:00.000Z',
-          updatedAt: '2026-05-04T10:00:00.000Z',
-        },
-      ],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-    listPoiMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-    listSurveysMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    setMainserverSources({
+      news: createListResult([createNewsItem()]),
+      events: createListResult([createEventItem()]),
     });
 
-    const { result } = renderHook(() => useUnifiedContentList(query, visibleTypes, 'de-musterhausen', permissionActions));
+    const { result } = renderUnifiedContentList(query, visibleTypes, permissionActions);
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    await waitForLoaded(result);
 
     const eventItem = result.current.contents.find((item) => item.id === 'event-1');
     const newsItem = result.current.contents.find((item) => item.id === 'news-1');
@@ -312,11 +313,9 @@ describe('useUnifiedContentList', () => {
     } as const;
     const permissionActions = ['news.read', 'news.create'] as const;
 
-    const { result } = renderHook(() => useUnifiedContentList(query, visibleTypes, 'de-musterhausen', permissionActions));
+    const { result } = renderUnifiedContentList(query, visibleTypes, permissionActions);
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    await waitForLoaded(result);
 
     expect(result.current.contents).toEqual([]);
     expect(result.current.pagination).toEqual({ page: 2, pageSize: 10, total: 0 });
@@ -388,11 +387,9 @@ describe('useUnifiedContentList', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
-    const { result } = renderHook(() => useUnifiedContentList(query, visibleTypes, 'de-musterhausen', permissionActions));
+    const { result } = renderUnifiedContentList(query, visibleTypes, permissionActions);
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    await waitForLoaded(result);
 
     expect(listNewsMock).toHaveBeenCalledTimes(2);
     expect(listNewsMock).toHaveBeenNthCalledWith(1, { page: 1, pageSize: 100 });
@@ -420,33 +417,22 @@ describe('useUnifiedContentList', () => {
       visibleTypes,
     } as const;
 
-    listNewsMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 100, hasNextPage: false },
-    });
-    listEventsMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 100, hasNextPage: false },
-    });
-    listPoiMock.mockResolvedValue({
-      data: [
-        {
-          id: 'poi-2',
-          name: 'Bergwerk',
-          contentType: 'poi.point-of-interest',
-          status: 'published',
-          createdAt: '2026-05-01T07:00:00.000Z',
-          updatedAt: '2026-05-03T10:00:00.000Z',
-        },
-      ],
-      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    setMainserverSources({
+      poi: createListResult(
+        [
+          createPoiItem({
+            id: 'poi-2',
+            name: 'Bergwerk',
+            updatedAt: '2026-05-03T10:00:00.000Z',
+          }),
+        ],
+        { pageSize: 100 }
+      ),
     });
 
-    const { result } = renderHook(() => useUnifiedContentList(query, visibleTypes, 'de-musterhausen'));
+    const { result } = renderUnifiedContentList(query, visibleTypes);
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    await waitForLoaded(result);
 
     expect(listNewsMock).not.toHaveBeenCalled();
     expect(listEventsMock).not.toHaveBeenCalled();
@@ -458,38 +444,27 @@ describe('useUnifiedContentList', () => {
     const visibleTypes = ['news.article', 'events.event-record', 'poi.point-of-interest'] as const;
     const permissionActions = ['news.read', 'events.read', 'poi.read'] as const;
 
-    listNewsMock.mockResolvedValue({
-      data: [
-        {
-          id: 'news-1',
-          title: 'Alpha',
-          contentType: 'news.article',
-          status: 'published',
-          payload: {},
-          author: 'Redaktion',
-          createdAt: '2026-05-01T09:00:00.000Z',
-          updatedAt: '2026-05-02T10:00:00.000Z',
-          publishedAt: '2026-05-02T10:00:00.000Z',
-        },
-      ],
-      pagination: { page: 1, pageSize: 100, hasNextPage: false },
-    });
-    listEventsMock.mockResolvedValue({
-      data: [
-        {
-          id: 'event-1',
-          title: 'Beta Event',
-          contentType: 'events.event-record',
-          status: 'published',
-          createdAt: '2026-05-01T08:00:00.000Z',
-          updatedAt: '2026-05-04T10:00:00.000Z',
-        },
-      ],
-      pagination: { page: 1, pageSize: 100, hasNextPage: false },
-    });
-    listPoiMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    setMainserverSources({
+      news: createListResult(
+        [
+          createNewsItem({
+            title: 'Alpha',
+            createdAt: '2026-05-01T09:00:00.000Z',
+            updatedAt: '2026-05-02T10:00:00.000Z',
+            publishedAt: '2026-05-02T10:00:00.000Z',
+          }),
+        ],
+        { pageSize: 100 }
+      ),
+      events: createListResult(
+        [
+          createEventItem({
+            title: 'Beta Event',
+          }),
+        ],
+        { pageSize: 100 }
+      ),
+      poi: createListResult([], { pageSize: 100 }),
     });
 
     type HookProps = {
@@ -529,21 +504,15 @@ describe('useUnifiedContentList', () => {
       }
     );
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    await waitForLoaded(result);
 
     rerender({ query: sortedQuery });
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    await waitForLoaded(result);
 
     rerender({ query: pagedQuery });
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    await waitForLoaded(result);
 
     expect(listNewsMock).toHaveBeenCalledTimes(1);
     expect(listEventsMock).toHaveBeenCalledTimes(1);
@@ -568,38 +537,9 @@ describe('useUnifiedContentList', () => {
       visibleTypes,
     } as const;
 
-    listNewsMock.mockResolvedValue({
-      data: [
-        {
-          id: 'news-1',
-          title: 'News',
-          contentType: 'news.article',
-          status: 'published',
-          payload: {},
-          author: 'Redaktion',
-          createdAt: '2026-05-01T10:00:00.000Z',
-          updatedAt: '2026-05-03T10:00:00.000Z',
-          publishedAt: '2026-05-03T10:00:00.000Z',
-        },
-      ],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-    listEventsMock.mockResolvedValue({
-      data: [
-        {
-          id: 'event-1',
-          title: 'Event',
-          contentType: 'events.event-record',
-          status: 'published',
-          createdAt: '2026-05-01T08:00:00.000Z',
-          updatedAt: '2026-05-04T10:00:00.000Z',
-        },
-      ],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-    listPoiMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    setMainserverSources({
+      news: createListResult([createNewsItem()]),
+      events: createListResult([createEventItem()]),
     });
 
     const { result, unmount } = renderHook(
@@ -611,9 +551,7 @@ describe('useUnifiedContentList', () => {
       }
     );
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    await waitForLoaded(result);
 
     expect(result.current.contents.map((item) => item.id)).toEqual(['event-1', 'news-1']);
 

@@ -77,7 +77,7 @@ type ProjectionSyncStateRow = {
   projected_count: number;
 };
 
-export type ContentProjectionSyncState = Readonly<{
+type ContentProjectionSyncState = Readonly<{
   contentType: MainserverContentType;
   lastStartedAt?: string;
   lastSucceededAt?: string;
@@ -811,7 +811,7 @@ const refreshMainserverProjection = async (
         projectedOrganizationId
       );
       rows = result.data.map((item) => ({
-        ...mapSurveyItem(item, instanceId, []),
+        ...mapSurveyItem({ ...item, contentType: 'surveys.survey' }, instanceId, []),
         ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
         credentialSource,
         sourceEntityType: 'surveys.survey',

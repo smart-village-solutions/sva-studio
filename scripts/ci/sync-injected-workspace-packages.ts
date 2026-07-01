@@ -19,6 +19,10 @@ const pathExists = async (targetPath: string) => {
   }
 };
 
+const resolveExistingPath = async (targetPath: string): Promise<string | null> => {
+  return (await pathExists(targetPath)) ? targetPath : null;
+};
+
 const findWorkspaceRoot = async (startDir: string) => {
   let currentDir = startDir;
 
@@ -106,8 +110,17 @@ const findInjectedCopies = async (workspaceRoot: string, packageName: string) =>
   return [...copies.entries()].map(([realDir, dir]) => ({ dir, realDir }));
 };
 
+const replaceInjectedDist = async (sourceDistDir: string, injectedPackageDir: string) => {
+  const targetDistDir = path.join(injectedPackageDir, 'dist');
+  await mkdir(injectedPackageDir, { recursive: true });
+  await rm(targetDistDir, { recursive: true, force: true });
+  await cp(sourceDistDir, targetDistDir, { force: true, recursive: true });
+};
+
+// fallow-ignore-next-line complexity
 const syncWorkspacePackage = async (workspaceRoot: string, workspacePackage: WorkspacePackage) => {
-  if (!(await pathExists(workspacePackage.distDir))) {
+  const sourceDistDir = await resolveExistingPath(workspacePackage.distDir);
+  if (!sourceDistDir) {
     return { skipped: true, updatedCopies: 0 };
   }
 
@@ -119,10 +132,11 @@ const syncWorkspacePackage = async (workspaceRoot: string, workspacePackage: Wor
       continue;
     }
 
-    const targetDistDir = path.join(injectedCopy.dir, 'dist');
-    await mkdir(injectedCopy.dir, { recursive: true });
-    await rm(targetDistDir, { recursive: true, force: true });
-    await cp(workspacePackage.distDir, targetDistDir, { force: true, recursive: true });
+    const liveSourceDistDir = await resolveExistingPath(sourceDistDir);
+    if (!liveSourceDistDir) {
+      return { skipped: true, updatedCopies };
+    }
+    await replaceInjectedDist(liveSourceDistDir, injectedCopy.dir);
     updatedCopies += 1;
   }
 

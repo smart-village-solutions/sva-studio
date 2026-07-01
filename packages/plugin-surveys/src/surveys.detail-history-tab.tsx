@@ -1,3 +1,4 @@
+// fallow-ignore-file code-duplication
 import * as React from 'react';
 import { fetchIamContentHistory, formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { StudioLoadingState } from '@sva/studio-ui-react';

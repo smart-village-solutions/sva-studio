@@ -102,49 +102,125 @@ const toUnexpectedRouteError = (message: string) =>
     message
   );
 
+const handleRouteError = (error: unknown) =>
+  error instanceof SvaMainserverError
+    ? toMainserverErrorResponse(error, 'Umfragen konnten nicht verarbeitet werden.')
+    : toUnexpectedRouteError('Unbekannter Fehler für Umfragen.');
+
+const authorizeMutation = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  action: 'create' | 'update' | 'delete',
+  contentId?: string
+): Promise<ContentActor | Response> => {
+  const csrfError = validateMutationRequest(request, getWorkspaceContext().requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  return authorizeOrResponse(ctx, action, contentId);
+};
+
+const handleList = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
+  const actor = await authorizeOrResponse(ctx, 'read');
+  if (actor instanceof Response) {
+    return actor;
+  }
+
+  const pagination = parseMainserverListQuery(request);
+  return json(
+    await listSvaMainserverSurveys({
+      ...actor,
+      ...pagination,
+    })
+  );
+};
+
+const handleCreate = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
+  const actor = await authorizeMutation(request, ctx, 'create');
+  if (actor instanceof Response) {
+    return actor;
+  }
+
+  const survey = await parseSurveyInput(request);
+  if (survey instanceof Response) {
+    return survey;
+  }
+
+  const created = await createSvaMainserverSurvey({ ...actor, survey });
+  return json({ data: created.survey ?? null }, 201);
+};
+
+const handleGetItem = async (
+  ctx: AuthenticatedRequestContext,
+  surveyId: string
+): Promise<Response> => {
+  const actor = await authorizeOrResponse(ctx, 'read', surveyId);
+  if (actor instanceof Response) {
+    return actor;
+  }
+
+  const survey = await getSvaMainserverSurvey({
+    ...actor,
+    surveyId,
+  });
+  return survey ? json({ data: survey }) : errorJson(404, 'not_found', 'Die Umfrage wurde nicht gefunden.');
+};
+
+const handleUpdate = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  surveyId: string
+): Promise<Response> => {
+  const actor = await authorizeMutation(request, ctx, 'update', surveyId);
+  if (actor instanceof Response) {
+    return actor;
+  }
+
+  const survey = await parseSurveyInput(request);
+  if (survey instanceof Response) {
+    return survey;
+  }
+
+  const updated = await updateSvaMainserverSurvey({
+    ...actor,
+    surveyId,
+    survey,
+  });
+  return json({ data: updated.survey ?? null });
+};
+
+const handleDelete = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  surveyId: string
+): Promise<Response> => {
+  const actor = await authorizeMutation(request, ctx, 'delete', surveyId);
+  if (actor instanceof Response) {
+    return actor;
+  }
+
+  const deleted = await deleteSvaMainserverSurvey({
+    ...actor,
+    surveyId,
+  });
+  return json({ data: { id: deleted.deletedSurveyId ?? surveyId } });
+};
+
 const handleCollectionRequest = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
     try {
       if (request.method === 'GET') {
-        const actor = await authorizeOrResponse(ctx, 'read');
-        if (actor instanceof Response) {
-          return actor;
-        }
-
-        const pagination = parseMainserverListQuery(request);
-        return json(
-          await listSvaMainserverSurveys({
-            ...actor,
-            ...pagination,
-          })
-        );
+        return handleList(request, ctx);
       }
 
       if (request.method === 'POST') {
-        const csrfError = validateMutationRequest(request, getWorkspaceContext().requestId);
-        if (csrfError) {
-          return csrfError;
-        }
-
-        const actor = await authorizeOrResponse(ctx, 'create');
-        if (actor instanceof Response) {
-          return actor;
-        }
-
-        const survey = await parseSurveyInput(request);
-        if (survey instanceof Response) {
-          return survey;
-        }
-
-        const created = await createSvaMainserverSurvey({ ...actor, survey });
-        return json({ data: created.survey ?? null }, 201);
+        return handleCreate(request, ctx);
       }
 
       return errorJson(405, 'invalid_request', 'Methode für Umfragen nicht unterstützt.');
     } catch (error) {
-      return error instanceof SvaMainserverError
-        ? toMainserverErrorResponse(error, 'Umfragen konnten nicht verarbeitet werden.')
-        : toUnexpectedRouteError('Unbekannter Fehler für Umfragen.');
+      return handleRouteError(error);
     }
   });
 
@@ -155,67 +231,20 @@ const handleItemRequest = async (
   withAuthenticatedUser(request, async (ctx) => {
     try {
       if (request.method === 'GET') {
-        const actor = await authorizeOrResponse(ctx, 'read', routeMatch.itemId);
-        if (actor instanceof Response) {
-          return actor;
-        }
-
-        const survey = await getSvaMainserverSurvey({
-          ...actor,
-          surveyId: routeMatch.itemId,
-        });
-        return survey
-          ? json({ data: survey })
-          : errorJson(404, 'not_found', 'Die Umfrage wurde nicht gefunden.');
+        return handleGetItem(ctx, routeMatch.itemId);
       }
 
       if (request.method === 'PATCH') {
-        const csrfError = validateMutationRequest(request, getWorkspaceContext().requestId);
-        if (csrfError) {
-          return csrfError;
-        }
-
-        const actor = await authorizeOrResponse(ctx, 'update', routeMatch.itemId);
-        if (actor instanceof Response) {
-          return actor;
-        }
-
-        const survey = await parseSurveyInput(request);
-        if (survey instanceof Response) {
-          return survey;
-        }
-
-        const updated = await updateSvaMainserverSurvey({
-          ...actor,
-          surveyId: routeMatch.itemId,
-          survey,
-        });
-        return json({ data: updated.survey ?? null });
+        return handleUpdate(request, ctx, routeMatch.itemId);
       }
 
       if (request.method === 'DELETE') {
-        const csrfError = validateMutationRequest(request, getWorkspaceContext().requestId);
-        if (csrfError) {
-          return csrfError;
-        }
-
-        const actor = await authorizeOrResponse(ctx, 'delete', routeMatch.itemId);
-        if (actor instanceof Response) {
-          return actor;
-        }
-
-        const deleted = await deleteSvaMainserverSurvey({
-          ...actor,
-          surveyId: routeMatch.itemId,
-        });
-        return json({ data: { id: deleted.deletedSurveyId ?? routeMatch.itemId } });
+        return handleDelete(request, ctx, routeMatch.itemId);
       }
 
       return errorJson(405, 'invalid_request', 'Methode für Umfragen nicht unterstützt.');
     } catch (error) {
-      return error instanceof SvaMainserverError
-        ? toMainserverErrorResponse(error, 'Umfragen konnten nicht verarbeitet werden.')
-        : toUnexpectedRouteError('Unbekannter Fehler für Umfragen.');
+      return handleRouteError(error);
     }
   });
 

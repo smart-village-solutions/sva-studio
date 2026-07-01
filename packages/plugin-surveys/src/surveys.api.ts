@@ -2,7 +2,7 @@ import { createMainserverCrudClient } from '@sva/plugin-sdk';
 
 import type { SurveyContentItem, SurveyFormInput, SurveyListQuery, SurveyListResult } from './surveys.types.js';
 
-export class SurveysApiError extends Error {
+class SurveysApiError extends Error {
   public constructor(
     public readonly code: string,
     message = code

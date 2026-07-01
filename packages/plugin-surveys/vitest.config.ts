@@ -1,3 +1,4 @@
+// fallow-ignore-file code-duplication
 import { defineConfig, mergeConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';

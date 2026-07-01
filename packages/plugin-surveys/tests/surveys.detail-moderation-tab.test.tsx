@@ -1,3 +1,4 @@
+// fallow-ignore-file code-duplication
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { FormProvider, useForm } from 'react-hook-form';

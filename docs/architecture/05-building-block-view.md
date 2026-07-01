@@ -82,6 +82,13 @@ Abhängigkeiten des aktuellen Systems.
    - verwendet in der Bearbeitung card-basierte Tabpanels mit globalem Speichern, während Legacy-Felder außerhalb der vereinfachten Oberfläche bei Updates aus dem geladenen Datensatz erhalten bleiben
    - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
    - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an; die Studio-Liste lädt Entwürfe ausdrücklich mit `includeInvisible=true`
+11a. Plugin Surveys (`packages/plugin-surveys`)
+   - produktives Fachplugin für Mainserver-gestützte Umfragen mit pluginnahem Modell `surveys.survey`
+   - registriert sich als normales Standard-Content-Plugin über `createStandardContentPluginContribution(...)` und erweitert dieses Muster nur um die Rechte `surveys.moderate` und `surveys.export`
+   - nutzt einen stabilen Editor-Rahmen mit den Tabs `Basis`, `Inhalt`, `Moderation`, `Ergebnisse` und `Historie`
+   - hält Survey-spezifische UI-Bausteine wie Frageneditor, Freitext-Moderation, Ergebnisansicht und Historie bewusst plugin-lokal, ohne neue shared UI-Abstraktionen oder Host-Bypässe einzuführen
+   - spricht den Mainserver nicht direkt, sondern ausschließlich über hostgeführte HTTP-Fassaden und typed Adapter für Liste, Detail, Upsert, Moderation und Ergebnisse
+   - erzeugt Exportvarianten wie `CSV`, `JSON`, `Excel` und `XML` im Studio aus hostgeführten JSON-Ergebnissen statt über pluginseitige GraphQL- oder Direkt-Exportpfade
 12. Plugin Waste Management (`packages/plugin-waste-management`)
    - freies Fachplugin unter `/plugins/waste-management` für Waste-Stammdaten, Touren, Ausweichtermine, PDF-Stamminhalte, technische Werkzeuge und instanzbezogene Einstellungen
    - konsumiert ausschließlich hostgeführte Endpunkte unter `/api/v1/waste-management/*`
@@ -156,6 +163,7 @@ Abhängigkeiten des aktuellen Systems.
   - `apps/sva-studio-react/src/routes/content/*` für Listen- und Editor-UI unter `/admin/content`
   - `apps/sva-studio-react/src/lib/iam-content-list-api.server.ts` als host-geführte Read-Model-Fassade für `GET /api/v1/iam/contents`, die ausschließlich aus der persistierten Projektion `iam.content_list_projection` liest und Mainserver-Typen bei Bedarf serverseitig in diese Projektion refresht
   - `packages/plugin-news` für plugin-spezifische News-Ansichten auf Basis derselben Core-Content-API
+  - `packages/plugin-surveys` für plugin-spezifische Survey-Ansichten mit zusätzlichem Moderations-, Ergebnis- und Historienzuschnitt auf Basis desselben hostgeführten Content-/Mainserver-Backbones
 - Externe Mainserver-Anbindung:
   - `packages/sva-mainserver` (`server/config-store.ts`, `server/service.ts`, `server/service-internals/*`, `generated/*`)
 
@@ -179,6 +187,7 @@ Abhängigkeiten des aktuellen Systems.
 - `packages/auth-runtime` haelt zusaetzlich nur sehr kurzlebige In-Process-Caches fuer Session-Resolution und Account-Lifecycle-Pruefung, um wiederholte Authorize-Requests derselben Session ohne neuen Redis-/DB-Roundtrip abzufangen.
 - Der SVA-Mainserver bleibt fachliche Source of Truth für seine GraphQL-Daten; Studio hält nur Endpunktkonfiguration und kurzlebige Laufzeit-Caches für Credentials und Access-Tokens.
 - Für `/admin/content` ist `GET /api/v1/iam/contents` die einzige führende Listenquelle; Mainserver-News, -Events und -POI werden serverseitig in das persistierte Read-Model `iam.content_list_projection` projiziert und nicht mehr browserseitig vollgescannt.
+- Surveys folgen denselben Boundary-Regeln wie News, Events und POI: pluginseitige Browser-UI, hostgeführte HTTP-Fassade, typed Adapter in `@sva/sva-mainserver` und kein direkter GraphQL- oder Secret-Zugriff aus dem Plugin.
 - Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.
 - `packages/iam-admin` hält zusätzlich die tenantseitige Governance-Trennung für Rollen und Permissions: Root-only-Rollen/-Permissions werden vor Admin-CRUD gefiltert oder abgewiesen, normale Tenant-Rollen werden DB-only gepflegt, während `system_admin` als geschützte technische Tenant-Sonderrolle in IAM und Keycloak erhalten bleibt.
 

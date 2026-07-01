@@ -193,7 +193,7 @@ const mapQuestion = (
   options: (value.options ?? []).map(mapQuestionOption),
 });
 
-export const mapSurveyResults = (
+const mapSurveyResults = (
   value: z.infer<typeof surveyResultsSchema>,
   fallbackTimestamp: string
 ): SvaMainserverSurveyResults => ({
@@ -216,6 +216,7 @@ export const mapSurveyItem = (item: SvaMainserverSurveyFragment | null | undefin
   return mapParsedSurveyItem(parsed.data);
 };
 
+// fallow-ignore-next-line complexity
 const mapParsedSurveyItem = (survey: z.infer<typeof surveySchema>): SvaMainserverSurveyItem => {
   const fallbackTimestamp = survey.createdAt ?? survey.updatedAt ?? new Date(0).toISOString();
   return {

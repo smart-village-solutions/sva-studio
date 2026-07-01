@@ -120,6 +120,22 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-045: Organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation über `contentAuthorPolicy`; persönliche Keycloak-Credentials bleiben nur Fallback bei `org_or_personal` (Abschnitt 04, 05, 06, 08, 09, 10, 11, 12)
 - ADR-046: Root-only `instance_registry_admin`, geschütztes tenantseitiges `system_admin` und die Entfernung früherer Standardrollen aus dem Sollmodell bei gleichzeitiger Absicherung historischer Altbestände über Migrationspfade (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 
+### Fortschreibung 2026-07: Survey-Content-Plugin ohne neue ADR
+
+- Für `add-plugin-surveys-content-plugin` wurde keine neue ADR angelegt.
+- Maßgeblich bleiben:
+  - ADR-021 für die serverseitige Mainserver-Integrationsgrenze,
+  - ADR-034 für den statischen Plugin-SDK-Vertrag und hostmaterialisierte Content-Plugins,
+  - ADR-045 für organisations- und policygeführte Mainserver-Credentials,
+  - ADR-043 und ADR-044 für Formular- und Test-Foundation.
+- Der Change führt kein neues Plugin- oder Integrationsmuster ein, sondern wendet die bestehenden Entscheidungen auf ein weiteres Standard-Content-Plugin `@sva/plugin-surveys` an.
+- Die fachlichen Erweiterungen `surveys.moderate` und `surveys.export` bleiben additive Rechte innerhalb des bestehenden Plugin-/IAM-Vertrags und eröffnen keinen parallelen Autorisierungs- oder Routingpfad.
+- Exporte für Surveys werden bewusst im Studio aus hostgeführten JSON-Ergebnissen erzeugt; der Mainserver-GraphQL-Vertrag bleibt formatneutral.
+
+Zuordnung:
+
+- Abschnitt 05/08/09/10/11: OpenSpec-Change `add-plugin-surveys-content-plugin`
+
 ### Pflege-Regel
 
 Bei Architekturentscheidungen in OpenSpec-Changes:

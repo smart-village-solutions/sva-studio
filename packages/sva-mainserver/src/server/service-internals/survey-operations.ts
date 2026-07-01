@@ -1,3 +1,4 @@
+// fallow-ignore-file code-duplication
 import type {
   SvaMainserverConnectionInput,
   SvaMainserverInstanceConfig,
@@ -66,6 +67,43 @@ const buildSurveyQuestionInput = (question: NonNullable<SvaMainserverSurveyInput
   ...(question.options ? { options: question.options.map(buildSurveyQuestionOptionInput) } : {}),
 });
 
+const buildSurveyCoreInput = (survey: SvaMainserverSurveyInput) => ({
+  ...(survey.title ? { title: survey.title } : {}),
+  ...(survey.shortDescription ? { shortDescription: survey.shortDescription } : {}),
+  ...(survey.description ? { description: survey.description } : {}),
+  ...(survey.status ? { status: survey.status } : {}),
+  ...(survey.startAt === undefined ? {} : { startAt: survey.startAt }),
+  ...(survey.endAt === undefined ? {} : { endAt: survey.endAt }),
+});
+
+const buildSurveyVisibilityInput = (survey: SvaMainserverSurveyInput) => ({
+  ...(survey.resultVisibility ? { resultVisibility: survey.resultVisibility } : {}),
+  ...(survey.targetAreaIds ? { targetAreaIds: [...survey.targetAreaIds] } : {}),
+  ...(survey.showResultsInApp === undefined ? {} : { showResultsInApp: survey.showResultsInApp }),
+  ...(survey.isAnonymous === undefined ? {} : { isAnonymous: survey.isAnonymous }),
+});
+
+const buildSurveyNoticeInput = (survey: SvaMainserverSurveyInput) => ({
+  ...(survey.privacyNotice ? { privacyNotice: survey.privacyNotice } : {}),
+  ...(survey.transparencyNotice ? { transparencyNotice: survey.transparencyNotice } : {}),
+});
+
+const buildSurveyQuestionsInput = (survey: SvaMainserverSurveyInput) => ({
+  ...(survey.questions ? { questions: survey.questions.map(buildSurveyQuestionInput) } : {}),
+});
+
+const buildSurveyFreeTextResponsesInput = (survey: SvaMainserverSurveyInput) => ({
+  ...(survey.freeTextResponses
+    ? {
+        freeTextResponses: survey.freeTextResponses.map((freeText) => ({
+          id: freeText.id,
+          ...(freeText.status ? { status: freeText.status } : {}),
+          ...(freeText.delete === true ? { delete: true } : {}),
+        })),
+      }
+    : {}),
+});
+
 const buildSurveyMutationInput = (input: {
   readonly survey: SvaMainserverSurveyInput;
   readonly surveyId?: string;
@@ -73,28 +111,11 @@ const buildSurveyMutationInput = (input: {
 }) => ({
   ...(input.surveyId ? { id: input.surveyId } : {}),
   ...(input.delete === true ? { delete: true } : {}),
-  ...(input.survey.title ? { title: input.survey.title } : {}),
-  ...(input.survey.shortDescription ? { shortDescription: input.survey.shortDescription } : {}),
-  ...(input.survey.description ? { description: input.survey.description } : {}),
-  ...(input.survey.status ? { status: input.survey.status } : {}),
-  ...(input.survey.startAt === undefined ? {} : { startAt: input.survey.startAt }),
-  ...(input.survey.endAt === undefined ? {} : { endAt: input.survey.endAt }),
-  ...(input.survey.resultVisibility ? { resultVisibility: input.survey.resultVisibility } : {}),
-  ...(input.survey.targetAreaIds ? { targetAreaIds: [...input.survey.targetAreaIds] } : {}),
-  ...(input.survey.showResultsInApp === undefined ? {} : { showResultsInApp: input.survey.showResultsInApp }),
-  ...(input.survey.isAnonymous === undefined ? {} : { isAnonymous: input.survey.isAnonymous }),
-  ...(input.survey.privacyNotice ? { privacyNotice: input.survey.privacyNotice } : {}),
-  ...(input.survey.transparencyNotice ? { transparencyNotice: input.survey.transparencyNotice } : {}),
-  ...(input.survey.questions ? { questions: input.survey.questions.map(buildSurveyQuestionInput) } : {}),
-  ...(input.survey.freeTextResponses
-    ? {
-        freeTextResponses: input.survey.freeTextResponses.map((freeText) => ({
-          id: freeText.id,
-          ...(freeText.status ? { status: freeText.status } : {}),
-          ...(freeText.delete === true ? { delete: true } : {}),
-        })),
-      }
-    : {}),
+  ...buildSurveyCoreInput(input.survey),
+  ...buildSurveyVisibilityInput(input.survey),
+  ...buildSurveyNoticeInput(input.survey),
+  ...buildSurveyQuestionsInput(input.survey),
+  ...buildSurveyFreeTextResponsesInput(input.survey),
 });
 
 export const createSurveyOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({

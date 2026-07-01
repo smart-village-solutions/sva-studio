@@ -103,6 +103,31 @@ Der Event-Editor importiert das POI-Plugin nicht direkt. Die Auswahl nutzt aussc
 
 Rollback erfolgt wie bei News über `iam.instance_integrations.enabled = false`. Events und POI fallen dann nicht auf lokale IAM-Contents zurück.
 
+## Survey-Operationen
+
+Surveys folgen demselben Boundary-Muster wie News, Events und POI, gehen fachlich aber einen Schritt weiter: Moderation, Ergebnisabruf und Exportbasis laufen ebenfalls hostgeführt. Das Plugin erzeugt Exportdateien aus den JSON-Ergebnissen im Studio; der Mainserver liefert dafuer nur die typed Survey-Daten.
+
+| Studio-Methode | Lokale Primitive | Mainserver-Operation | Hinweis |
+| --- | --- | --- | --- |
+| `GET /api/v1/mainserver/surveys` | `content.read` | `surveys` | Liefert die Mainserver-gestuetzte Survey-Liste fuer Inhaltsliste und Editor-Einstiege. |
+| `GET /api/v1/mainserver/surveys/$surveyId` | `content.read` | `survey(id)` | Liefert den Survey-Detailvertrag fuer den Editor. |
+| `POST /api/v1/mainserver/surveys` | `content.create` | `createOrUpdateSurvey` | Der Host mappt das vereinfachte Studio-Zielmodell auf den Mainserver-Vertrag. |
+| `PATCH /api/v1/mainserver/surveys/$surveyId` | `content.updateMetadata`, `content.updatePayload` | `createOrUpdateSurvey(id)` | Updates bleiben hostgeführt und verwenden keinen Plugin-eigenen GraphQL-Pfad. |
+| `DELETE /api/v1/mainserver/surveys/$surveyId` | `content.delete` | `destroyRecord(id, recordType: "Survey")` oder Survey-spezifischer Delete-Pfad | Der konkrete Mainserver-Loeschpfad bleibt im typed Adapter gekapselt. |
+| `POST /api/v1/mainserver/surveys/$surveyId/moderation/$responseId/approve` | `surveys.moderate` | `approveSurveyFreeTextResponse` | Freitext-Freigabe bleibt fachlich auf den Moderationspfad begrenzt. |
+| `DELETE /api/v1/mainserver/surveys/$surveyId/moderation/$responseId` | `surveys.moderate` | `deleteSurveyFreeTextResponse` | Freitext-Loeschung ist getrennt absicherbar und verlaeuft ueber denselben Host-Backbone. |
+| `GET /api/v1/mainserver/surveys/$surveyId/results` | `content.read` plus ggf. `surveys.export` fuer Exportfolgeschritte | `surveyResults` | Der Host liefert JSON-Ergebnisse; Umwandlung in `CSV`, `JSON`, `Excel` oder `XML` passiert im Studio. |
+
+Fachliche Regeln des Studio-Vertrags:
+
+- Statusmodell nur `DRAFT`, `ACTIVE`, `ARCHIVED`
+- zeitliche Wirkung ueber `startAt` und `endAt`
+- keine redaktionelle Option `allowsMultipleSubmissionsPerDevice`
+- Freitext-Freigabe und Freitext-Loeschung sind getrennt von allgemeinem Bearbeiten absicherbar
+- Export mit und ohne Freitexte ist Studio-Funktionalitaet auf Basis des Ergebnis-JSON
+
+Rollback erfolgt wie bei den anderen Mainserver-Content-Typen über `iam.instance_integrations.enabled = false`. Surveys fallen nicht auf einen pluginseitigen Direkt- oder lokalen Fallback zurück.
+
 ## Credential-Rotation
 
 1. Betroffenen Benutzer in Keycloak identifizieren.

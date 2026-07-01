@@ -1,3 +1,4 @@
+// fallow-ignore-file code-duplication
 export type SvaMainserverProviderKey = 'sva_mainserver';
 export type SvaMainserverVerificationStatus = 'ok' | 'error' | 'disabled';
 

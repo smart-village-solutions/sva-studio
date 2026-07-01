@@ -51,7 +51,7 @@
     "lucide-react": "^1.17.0",
     "nitro": "3.0.260429-beta",
     "pg": "^8.22.0",
-    "postcss": "^8.5.11",
+    "postcss": "^8.5.16",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

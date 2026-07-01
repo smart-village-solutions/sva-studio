@@ -305,6 +305,11 @@ vi.mock('@sva/plugin-poi', async () => {
   };
 });
 
+vi.mock('@sva/plugin-surveys', () => ({
+  SurveyCreatePage: () => <div data-testid="surveys-create-page" />,
+  SurveyEditPage: () => <div data-testid="surveys-edit-page" />,
+}));
+
 vi.mock('@sva/plugin-categories', () => ({
   CategoriesPage: () => <div data-testid="categories-page">plugin categories</div>,
 }));
@@ -343,6 +348,18 @@ describe('appRouteBindings', () => {
       expect(screen.getByTestId('placeholder-page').textContent).toBe(expectedText);
       cleanup();
     }
+  });
+
+  it('binds survey create and edit routes to the survey plugin pages', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    const createView = render(<appRouteBindings.surveysEditor />);
+    expect(screen.getByTestId('surveys-create-page')).toBeTruthy();
+    createView.unmount();
+
+    routeState.params = { id: 'survey-1' };
+    render(<appRouteBindings.surveysDetail />);
+    expect(screen.getByTestId('surveys-edit-page')).toBeTruthy();
   });
 
   it('renders the concrete categories plugin page instead of the placeholder', async () => {

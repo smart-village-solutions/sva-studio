@@ -7,6 +7,7 @@ import { useUnifiedContentList } from './use-unified-content-list';
 const listNewsMock = vi.fn();
 const listEventsMock = vi.fn();
 const listPoiMock = vi.fn();
+const listSurveysMock = vi.fn();
 
 vi.mock('@sva/plugin-news', () => ({
   listNews: (...args: unknown[]) => listNewsMock(...args),
@@ -20,11 +21,16 @@ vi.mock('@sva/plugin-poi', () => ({
   listPoi: (...args: unknown[]) => listPoiMock(...args),
 }));
 
+vi.mock('@sva/plugin-surveys', () => ({
+  listSurveys: (...args: unknown[]) => listSurveysMock(...args),
+}));
+
 describe('useUnifiedContentList', () => {
   beforeEach(() => {
     listNewsMock.mockReset();
     listEventsMock.mockReset();
     listPoiMock.mockReset();
+    listSurveysMock.mockReset();
   });
 
   afterEach(() => {
@@ -87,6 +93,26 @@ describe('useUnifiedContentList', () => {
       ],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
+    listSurveysMock.mockResolvedValue({
+      data: [
+        {
+          id: 'survey-1',
+          title: { de: 'Delta Survey' },
+          contentType: 'surveys.survey',
+          status: 'ACTIVE',
+          resultVisibility: 'AFTER_SURVEY_END',
+          targetAreaIds: [],
+          showResultsInApp: true,
+          isAnonymous: true,
+          questionCount: 3,
+          participationCount: 15,
+          submissionCount: 16,
+          createdAt: '2026-05-01T06:00:00.000Z',
+          updatedAt: '2026-05-05T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
 
     type HookProps = {
       readonly query: IamContentListQuery;
@@ -101,9 +127,9 @@ describe('useUnifiedContentList', () => {
         q: 'a',
         sortBy: 'title',
         sortDirection: 'asc',
-        visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
+        visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
       },
-      visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
+      visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
       instanceId: 'de-musterhausen',
     };
 
@@ -119,7 +145,7 @@ describe('useUnifiedContentList', () => {
     });
 
     expect(result.current.contents.map((item) => item.id)).toEqual(['news-1', 'event-1']);
-    expect(result.current.pagination).toEqual({ page: 1, pageSize: 2, total: 4 });
+    expect(result.current.pagination).toEqual({ page: 1, pageSize: 2, total: 5 });
 
     const updatedProps: HookProps = {
       query: {
@@ -127,9 +153,9 @@ describe('useUnifiedContentList', () => {
         pageSize: 2,
         sortBy: 'updatedAt',
         sortDirection: 'desc',
-        visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
+        visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
       },
-      visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
+      visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
       instanceId: 'de-musterhausen',
     };
 
@@ -139,10 +165,11 @@ describe('useUnifiedContentList', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(result.current.contents.map((item) => item.id)).toEqual(['news-1', 'poi-1']);
+    expect(result.current.contents.map((item) => item.id)).toEqual(['news-2', 'news-1']);
     expect(listNewsMock).toHaveBeenCalledTimes(1);
     expect(listEventsMock).toHaveBeenCalledTimes(1);
     expect(listPoiMock).toHaveBeenCalledTimes(1);
+    expect(listSurveysMock).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to the first news content block headline when the news title is missing', async () => {
@@ -183,6 +210,10 @@ describe('useUnifiedContentList', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
     listPoiMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    listSurveysMock.mockResolvedValue({
       data: [],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
@@ -237,6 +268,10 @@ describe('useUnifiedContentList', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
     listPoiMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    listSurveysMock.mockResolvedValue({
       data: [],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });

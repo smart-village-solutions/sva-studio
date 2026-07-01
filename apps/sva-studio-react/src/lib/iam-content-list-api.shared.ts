@@ -8,6 +8,7 @@ const MAIN_SERVER_CONTENT_TYPES = new Set([
   'news.article',
   'events.event-record',
   'poi.point-of-interest',
+  'surveys.survey',
 ]);
 export const EMPTY_VISIBLE_TYPE_SENTINEL = '__no_readable_content__';
 

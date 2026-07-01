@@ -2,10 +2,11 @@ import type { ApiPagination, IamContentListItem, IamContentListQuery } from '@sv
 import { listEvents } from '@sva/plugin-events';
 import { listNews } from '@sva/plugin-news';
 import { listPoi } from '@sva/plugin-poi';
+import { listSurveys } from '@sva/plugin-surveys';
 import React from 'react';
 
 import type { IamHttpError } from '../lib/iam-api';
-import { mapEventItem, mapNewsItem, mapPoiItem } from '../lib/iam-content-list-mainserver';
+import { mapEventItem, mapNewsItem, mapPoiItem, mapSurveyItem } from '../lib/iam-content-list-mainserver';
 
 type UnifiedContentListResult = {
   readonly contents: readonly IamContentListItem[];
@@ -22,6 +23,7 @@ const studioContentTypeIds = [
   'news.article',
   'events.event-record',
   'poi.point-of-interest',
+  'surveys.survey',
 ] as const;
 
 const toSearchableText = (item: IamContentListItem): string =>
@@ -136,6 +138,10 @@ const loadItemsForContentType = async (
     case 'poi.point-of-interest':
       return (await fetchAllPages(listPoi)).map((item) =>
         mapPoiItem(item, instanceId, permissions)
+      );
+    case 'surveys.survey':
+      return (await fetchAllPages(listSurveys)).map((item) =>
+        mapSurveyItem(item, instanceId, permissions)
       );
   }
 };

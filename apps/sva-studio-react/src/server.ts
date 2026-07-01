@@ -61,6 +61,9 @@ let dispatchMainserverEventsRequestPromise:
 let dispatchMainserverPoiRequestPromise:
   | Promise<typeof import('./lib/mainserver-poi-api.server')['dispatchMainserverPoiRequest']>
   | null = null;
+let dispatchMainserverSurveysRequestPromise:
+  | Promise<typeof import('./lib/mainserver-surveys-api.server')['dispatchMainserverSurveysRequest']>
+  | null = null;
 let dispatchMainserverCategoriesRequestPromise:
   | Promise<typeof import('./lib/mainserver-categories-api.server')['dispatchMainserverCategoriesRequest']>
   | null = null;
@@ -119,6 +122,13 @@ const getDispatchMainserverPoiRequest = async () => {
     (mod) => mod.dispatchMainserverPoiRequest
   );
   return dispatchMainserverPoiRequestPromise;
+};
+
+const getDispatchMainserverSurveysRequest = async () => {
+  dispatchMainserverSurveysRequestPromise ??= import('./lib/mainserver-surveys-api.server').then(
+    (mod) => mod.dispatchMainserverSurveysRequest
+  );
+  return dispatchMainserverSurveysRequestPromise;
 };
 
 const getDispatchMainserverCategoriesRequest = async () => {
@@ -263,6 +273,16 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       status: mainserverPoiResponse.status,
     });
     return mainserverPoiResponse;
+  }
+
+  const dispatchMainserverSurveysRequest = await getDispatchMainserverSurveysRequest();
+  const mainserverSurveysResponse = await dispatchMainserverSurveysRequest(request);
+
+  if (mainserverSurveysResponse) {
+    await logServerEntryDebug('Server entry mainserver surveys route dispatched', {
+      status: mainserverSurveysResponse.status,
+    });
+    return mainserverSurveysResponse;
   }
 
   const dispatchMainserverCategoriesRequest = await getDispatchMainserverCategoriesRequest();

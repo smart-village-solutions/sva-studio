@@ -1,4 +1,4 @@
-import { CalendarDays, FileText, MapPin, Shapes } from 'lucide-react';
+import { BarChart3, CalendarDays, FileText, MapPin, Shapes } from 'lucide-react';
 import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import type { LucideIcon } from 'lucide-react';
@@ -21,6 +21,10 @@ const contentTypePresentationByNamespace = {
   poi: {
     icon: MapPin,
     descriptionKey: 'content.typePicker.typeDescriptions.poi',
+  },
+  surveys: {
+    icon: BarChart3,
+    descriptionKey: 'content.typePicker.typeDescriptions.surveys',
   },
 } as const satisfies Record<string, { icon: LucideIcon; descriptionKey: string }>;
 

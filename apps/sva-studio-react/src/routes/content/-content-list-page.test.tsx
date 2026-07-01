@@ -10,6 +10,7 @@ const useAuthMock = vi.fn();
 const deleteNewsMock = vi.fn();
 const deleteEventMock = vi.fn();
 const deletePoiMock = vi.fn();
+const deleteSurveyMock = vi.fn();
 const navigateMock = vi.fn();
 let searchState: Record<string, unknown> = {};
 const { mockedStudioContentTypes } = vi.hoisted(() => ({
@@ -45,6 +46,14 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
       requiredCreateAction: 'poi.create',
       createPath: '/admin/poi/new',
       detailPath: '/admin/poi/$contentId',
+    },
+    {
+      contentType: 'surveys.survey',
+      displayName: 'Umfragen',
+      requiredReadAction: 'surveys.read',
+      requiredCreateAction: 'surveys.create',
+      createPath: '/admin/surveys/new',
+      detailPath: '/admin/surveys/$contentId',
     },
   ] as const,
 }));
@@ -91,6 +100,10 @@ vi.mock('@sva/plugin-poi', () => ({
   deletePoi: (...args: unknown[]) => deletePoiMock(...args),
 }));
 
+vi.mock('@sva/plugin-surveys', () => ({
+  deleteSurvey: (...args: unknown[]) => deleteSurveyMock(...args),
+}));
+
 vi.mock('../../lib/plugins', () => ({
   studioContentTypes: mockedStudioContentTypes,
 }));
@@ -103,6 +116,7 @@ describe('ContentListPage', () => {
     deleteNewsMock.mockReset();
     deleteEventMock.mockReset();
     deletePoiMock.mockReset();
+    deleteSurveyMock.mockReset();
     navigateMock.mockReset();
     searchState = {};
     useAuthMock.mockReturnValue({
@@ -123,6 +137,9 @@ describe('ContentListPage', () => {
           'events.read',
           'events.create',
           'events.delete',
+          'surveys.read',
+          'surveys.create',
+          'surveys.delete',
         ],
       },
       isLoading: false,
@@ -150,6 +167,9 @@ describe('ContentListPage', () => {
         'events.read',
         'events.create',
         'events.delete',
+        'surveys.read',
+        'surveys.create',
+        'surveys.delete',
       ],
       isLoading: false,
       error: null,
@@ -229,7 +249,7 @@ describe('ContentListPage', () => {
         pageSize: 25,
         sortBy: 'updatedAt',
         sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
+        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
       },
       { enabled: true }
     );
@@ -285,7 +305,7 @@ describe('ContentListPage', () => {
         status: 'archived',
         sortBy: 'updatedAt',
         sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
+        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
       },
       { enabled: true }
     );
@@ -309,7 +329,7 @@ describe('ContentListPage', () => {
         pageSize: 25,
         sortBy: 'updatedAt',
         sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
+        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
       },
       { enabled: false }
     );
@@ -323,14 +343,14 @@ describe('ContentListPage', () => {
     useContentsMock.mockReturnValue(createContentsApiResult({
       contents: [
         {
-          id: 'content-1',
-          contentType: 'news.article',
-          title: 'Startseite',
+          id: 'survey-1',
+          contentType: 'surveys.survey',
+          title: 'Beteiligung',
           publishedAt: '2026-03-21T10:00:00.000Z',
           createdAt: '2026-03-20T10:00:00.000Z',
           updatedAt: '2026-03-21T11:00:00.000Z',
-          author: 'Editor',
-          payload: { hero: 'Willkommen' },
+          author: 'mainserver',
+          payload: { questionCount: 3 },
           status: 'published',
           access: {
             state: 'editable',
@@ -345,7 +365,7 @@ describe('ContentListPage', () => {
       pagination: { page: 1, pageSize: 25, total: 1 },
       refetch,
     }));
-    deleteNewsMock.mockResolvedValue(undefined);
+    deleteSurveyMock.mockResolvedValue(undefined);
 
     render(<ContentListPage />);
 
@@ -353,7 +373,7 @@ describe('ContentListPage', () => {
 
     expect(confirmMock).toHaveBeenCalledWith('Soll dieser Inhalt wirklich gelöscht werden?');
     await waitFor(() => {
-      expect(deleteNewsMock).toHaveBeenCalledWith('content-1');
+      expect(deleteSurveyMock).toHaveBeenCalledWith('survey-1');
     });
     await waitFor(() => {
       expect(refetch).toHaveBeenCalled();
@@ -646,6 +666,7 @@ describe('ContentListPage', () => {
           'events.read',
           'events.create',
           'events.delete',
+          'surveys.read',
         ],
         isLoading: false,
         error: null,
@@ -703,7 +724,7 @@ describe('ContentListPage', () => {
         status: 'published',
         sortBy: 'updatedAt',
         sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
+        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
       },
       { enabled: true }
     );
@@ -836,7 +857,7 @@ describe('ContentListPage', () => {
         pageSize: 25,
         sortBy: 'updatedAt',
         sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
+        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
       },
       { enabled: false }
     );
@@ -859,7 +880,7 @@ describe('ContentListPage', () => {
         pageSize: 25,
         sortBy: 'updatedAt',
         sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
+        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
       },
       { enabled: false }
     );
@@ -909,7 +930,7 @@ describe('ContentListPage', () => {
         pageSize: 25,
         sortBy: 'title',
         sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
+        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
       },
       { enabled: true }
     );

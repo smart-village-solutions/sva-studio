@@ -113,6 +113,7 @@
 
 ## 11. Abschluss, Dokumentation und Gesamtvalidierung
 
+- [ ] 11.0 Stelle mittels Fallow und pnpm test:pr sicher, dass wir keine Quality Gates brechen und keinen neuen Technical Debt einführen. Behebe Findings ggf.
 - [ ] 11.1 `README.md` des Plugins mit Architekturrolle, Boundaries, UI-Struktur und Integrationspunkten vervollstaendigen
 - [ ] 11.2 relevante Entwicklungsdokumentation fuer Survey-Modul und Mainserver-Vertrag aktualisieren
 - [ ] 11.3 die im Proposal genannten Architekturabschnitte `05`, `08` und `09` gezielt aktualisieren oder die Abweichung begruendet dokumentieren

@@ -26,6 +26,7 @@ import type {
   WasteManagementToursOverview,
   WasteLocationTourPickupDateImportPreview,
   WastePdfStaticSettingsRecord,
+  WastePdfStaticSettingsWriteInput,
   WasteRegionRecord,
   WasteStreetRecord,
   WasteTourDateShiftRecord,
@@ -190,7 +191,7 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     input: SaveWasteCustomRecurrencePresetsInput
   ) => Promise<void>;
-  readonly saveWastePdfStaticSettings?: (instanceId: string, input: WastePdfStaticSettingsRecord) => Promise<void>;
+  readonly saveWastePdfStaticSettings?: (instanceId: string, input: WastePdfStaticSettingsWriteInput) => Promise<void>;
   readonly saveWasteTourDateShift?: (
     instanceId: string,
     input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>

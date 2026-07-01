@@ -1,13 +1,7 @@
 import { shellEscape } from './runtime-config.ts';
 import type { AcceptanceMaintenanceDeps } from './acceptance-maintenance.types.ts';
 import { resolveAcceptanceContainerServices, resolveRemoteShortServiceName, resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
-
-const INTERNAL_NETWORK_EXCLUSIONS = new Set(['public', 'network-node-005']);
-
-const pickInternalNetworkName = (networkNames: readonly string[] | undefined): string | undefined =>
-  networkNames
-    ?.map((networkName) => networkName.trim())
-    .find((networkName) => networkName.length > 0 && !INTERNAL_NETWORK_EXCLUSIONS.has(networkName));
+import { pickInternalNetworkName } from './internal-network.ts';
 
 export const buildSwarmServicePresenceProbe = (deps: AcceptanceMaintenanceDeps, env: NodeJS.ProcessEnv) => {
   const stackName = deps.getConfiguredStackName(env);

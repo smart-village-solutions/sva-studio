@@ -34,7 +34,11 @@ const hasWastePdfStaticSettingsValue = (
   Boolean(wastePdfStaticSettings?.pdfBrandingAssetUrl || wastePdfStaticSettings?.pdfContactBlock);
 
 const isMissingWasteSettingsTableError = (error: unknown): boolean =>
-  error instanceof Error && (('code' in error ? error.code : undefined) === '42P01' || /waste_settings/i.test(error.message));
+  error instanceof Error &&
+  (('code' in error ? error.code : undefined) === '42P01' || /relation "?waste_settings"? does not exist/i.test(error.message));
+
+const canLoadWastePdfStaticSettings = (settings: WasteManagementSettingsRecord): boolean =>
+  settings.selectedInterfaceTypeKey === 'supabase' && settings.databaseUrlConfigured && settings.serviceRoleKeyConfigured;
 
 const applyWastePdfStaticSettings = (
   settings: WasteManagementSettingsRecord,
@@ -43,8 +47,8 @@ const applyWastePdfStaticSettings = (
   hasWastePdfStaticSettingsValue(wastePdfStaticSettings)
     ? {
         ...settings,
-        pdfBrandingAssetUrl: wastePdfStaticSettings.pdfBrandingAssetUrl,
-        pdfContactBlock: wastePdfStaticSettings.pdfContactBlock,
+        pdfBrandingAssetUrl: wastePdfStaticSettings.pdfBrandingAssetUrl ?? settings.pdfBrandingAssetUrl,
+        pdfContactBlock: wastePdfStaticSettings.pdfContactBlock ?? settings.pdfContactBlock,
       }
     : settings;
 
@@ -206,7 +210,7 @@ export const loadConfiguredWasteSettings = async (
     ? await deps.loadWasteCustomRecurrencePresets(instanceId)
     : [];
   let wastePdfStaticSettings: WastePdfStaticSettingsRecord | null = null;
-  if (deps.loadWastePdfStaticSettings) {
+  if (deps.loadWastePdfStaticSettings && canLoadWastePdfStaticSettings(settings)) {
     try {
       wastePdfStaticSettings = await deps.loadWastePdfStaticSettings(instanceId);
     } catch (error) {

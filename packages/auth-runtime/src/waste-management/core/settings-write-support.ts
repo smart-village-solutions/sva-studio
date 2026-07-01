@@ -275,6 +275,10 @@ export const runWasteManagementHolidaySyncAfterValidation = async ({
   }
 
   const lastHolidaySyncStatus = (await syncWasteHolidayState(deps, instanceId, writeContext.current.holidayStateCode)) ?? 'failed';
+  await deps.saveWastePdfStaticSettings?.(instanceId, {
+    pdfBrandingAssetUrl: normalizeOptionalTrimmedText(writeContext.current.pdfBrandingAssetUrl),
+    pdfContactBlock: normalizeOptionalTrimmedText(writeContext.current.pdfContactBlock),
+  });
   await persistWasteSettingsInterfaceSelection({
     deps,
     interfaceRecords: writeContext.interfaceRecords,
@@ -285,10 +289,6 @@ export const runWasteManagementHolidaySyncAfterValidation = async ({
     lastHolidaySyncStatus,
     lastSuccessfulHolidaySyncAt:
       lastHolidaySyncStatus !== 'failed' ? new Date().toISOString() : writeContext.current.lastSuccessfulHolidaySyncAt,
-  });
-  await deps.saveWastePdfStaticSettings?.(instanceId, {
-    pdfBrandingAssetUrl: normalizeOptionalTrimmedText(writeContext.current.pdfBrandingAssetUrl),
-    pdfContactBlock: normalizeOptionalTrimmedText(writeContext.current.pdfContactBlock),
   });
 
   const saved = await reloadWasteSettingsOrError({ deps, instanceId, requestId });

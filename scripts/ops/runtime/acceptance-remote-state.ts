@@ -11,14 +11,8 @@ import { runBootstrapJobAgainstAcceptance as runBootstrapJobAgainstAcceptanceWit
 import { filterRemoteOutputLines, wait, withoutDebugEnv } from './process.ts';
 import { formatRemoteStackSnapshot, inspectRemoteStack, type RemoteStackSnapshot } from './remote-stack-state.ts';
 import { inspectRemoteServiceContract } from './remote-service-spec.ts';
+import { pickInternalNetworkName } from './internal-network.ts';
 import { resolveRemoteShortServiceName, resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
-
-const INTERNAL_NETWORK_EXCLUSIONS = new Set(['public', 'network-node-005']);
-
-const pickInternalNetworkName = (networkNames: readonly string[] | undefined): string | undefined =>
-  networkNames
-    ?.map((networkName) => networkName.trim())
-    .find((networkName) => networkName.length > 0 && !INTERNAL_NETWORK_EXCLUSIONS.has(networkName));
 
 export type RemoteStackEvidence = {
   channel: 'docker' | 'portainer-api' | 'quantum-cli';

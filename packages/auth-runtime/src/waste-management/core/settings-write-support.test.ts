@@ -650,6 +650,38 @@ describe('waste-management settings write support', () => {
     });
   });
 
+  it('saves pdf static settings before rewriting interface config during manual holiday sync', async () => {
+    const current = createSettings({
+      holidayStateCode: 'NW',
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung',
+    });
+    loadConfiguredWasteSettingsMock.mockResolvedValueOnce(current).mockResolvedValueOnce(current);
+    const callOrder: string[] = [];
+    const saveWastePdfStaticSettings = vi.fn(async () => {
+      callOrder.push('saveWastePdfStaticSettings');
+    });
+    const saveExternalInterfaceRecord = vi.fn(async () => {
+      callOrder.push('saveExternalInterfaceRecord');
+    });
+
+    const response = await runWasteManagementHolidaySyncAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord()]),
+        saveExternalInterfaceRecord,
+        saveWastePdfStaticSettings,
+        syncWasteHolidayRules: vi.fn(async () => 'success' as const),
+      },
+      ctx: actor,
+      instanceId: 'tenant-a',
+      requestId: 'req-holiday-order',
+    });
+
+    expect(response.status).toBe(200);
+    expect(callOrder[0]).toBe('saveWastePdfStaticSettings');
+    expect(callOrder).toContain('saveExternalInterfaceRecord');
+  });
+
   it('preserves legacy pdf values during manual holiday sync when only interface settings exist', async () => {
     const current = createSettings({
       holidayStateCode: 'NW',

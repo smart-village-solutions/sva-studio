@@ -28,6 +28,11 @@ const hasWastePdfStaticSettingsValue = (
   record: WastePdfStaticSettingsRecord | null | undefined
 ): record is WastePdfStaticSettingsRecord => Boolean(record?.pdfBrandingAssetUrl || record?.pdfContactBlock);
 
+const hasCompleteWastePdfStaticSettings = (
+  record: WastePdfStaticSettingsRecord | null | undefined
+): record is WastePdfStaticSettingsRecord =>
+  Boolean(record?.pdfBrandingAssetUrl && record?.pdfContactBlock);
+
 const quoteIdentifier = (value: string): string => {
   if (!schemaIdentifierPattern.test(value)) {
     throw new Error(`invalid_waste_schema:${value}`);
@@ -105,7 +110,7 @@ export const loadPublicWastePdfStaticConfig = async (
   } = {}
 ): Promise<PublicWastePdfStaticConfig> => {
   const wastePdfStaticSettings = await loadWastePdfStaticSettings(options).catch(() => null);
-  if (hasWastePdfStaticSettingsValue(wastePdfStaticSettings)) {
+  if (hasCompleteWastePdfStaticSettings(wastePdfStaticSettings)) {
     return {
       brandingAssetUrl: wastePdfStaticSettings.pdfBrandingAssetUrl,
       contactBlock: wastePdfStaticSettings.pdfContactBlock,
@@ -113,24 +118,34 @@ export const loadPublicWastePdfStaticConfig = async (
   }
 
   const getDatabaseUrl = resolveLegacySettingsDatabaseUrl(options.getDatabaseUrl);
-  const interfaceRecords = await listExternalInterfaceRecords(instanceId, { getDatabaseUrl }).catch(() => []);
+  const interfaceRecords = await Promise.resolve(
+    listExternalInterfaceRecords(instanceId, { getDatabaseUrl })
+  ).catch(() => []);
   const selectedInterface =
     findSelectedWasteManagementInterfaceRecord(interfaceRecords) ??
-    (await loadDefaultExternalInterfaceRecord(instanceId, 'supabase', { getDatabaseUrl }).catch(() => null));
+    (await Promise.resolve(
+      loadDefaultExternalInterfaceRecord(instanceId, 'supabase', { getDatabaseUrl })
+    ).catch(() => null));
 
-  if (!selectedInterface) {
-    return {
-      brandingAssetUrl: readOptionalTrimmedEnv(process.env.PUBLIC_WASTE_PDF_BRANDING_ASSET_URL),
-      contactBlock: readOptionalTrimmedEnv(process.env.PUBLIC_WASTE_PDF_CONTACT_BLOCK),
-    };
+  const fallbackConfig = !selectedInterface
+    ? {
+        brandingAssetUrl: readOptionalTrimmedEnv(process.env.PUBLIC_WASTE_PDF_BRANDING_ASSET_URL),
+        contactBlock: readOptionalTrimmedEnv(process.env.PUBLIC_WASTE_PDF_CONTACT_BLOCK),
+      }
+    : {
+        brandingAssetUrl:
+          readWasteManagementPdfBrandingAssetUrl(selectedInterface.publicConfig) ??
+          readOptionalTrimmedEnv(process.env.PUBLIC_WASTE_PDF_BRANDING_ASSET_URL),
+        contactBlock:
+          readWasteManagementPdfContactBlock(selectedInterface.publicConfig) ??
+          readOptionalTrimmedEnv(process.env.PUBLIC_WASTE_PDF_CONTACT_BLOCK),
+      };
+  if (!hasWastePdfStaticSettingsValue(wastePdfStaticSettings)) {
+    return fallbackConfig;
   }
 
   return {
-    brandingAssetUrl:
-      readWasteManagementPdfBrandingAssetUrl(selectedInterface.publicConfig) ??
-      readOptionalTrimmedEnv(process.env.PUBLIC_WASTE_PDF_BRANDING_ASSET_URL),
-    contactBlock:
-      readWasteManagementPdfContactBlock(selectedInterface.publicConfig) ??
-      readOptionalTrimmedEnv(process.env.PUBLIC_WASTE_PDF_CONTACT_BLOCK),
+    brandingAssetUrl: wastePdfStaticSettings.pdfBrandingAssetUrl ?? fallbackConfig.brandingAssetUrl,
+    contactBlock: wastePdfStaticSettings.pdfContactBlock ?? fallbackConfig.contactBlock,
   };
 };

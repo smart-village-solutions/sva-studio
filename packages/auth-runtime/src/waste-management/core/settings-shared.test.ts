@@ -334,6 +334,108 @@ describe('waste-management settings shared helpers', () => {
     });
   });
 
+  it('merges partial waste pdf settings rows with legacy interface values per field', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'supabase',
+          visibleStatus: 'ok',
+          publicConfig: {
+            projectUrl: 'https://tenant.example',
+            schemaName: 'wm',
+            pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+            pdfContactBlock: 'Abfallberatung 03395 / 1234',
+          },
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        loadWastePdfStaticSettings: vi.fn(async () => ({
+          pdfBrandingAssetUrl: 'https://cdn.example/logo-from-waste.svg',
+          pdfContactBlock: undefined,
+        })),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toMatchObject({
+      pdfBrandingAssetUrl: 'https://cdn.example/logo-from-waste.svg',
+      pdfContactBlock: 'Abfallberatung 03395 / 1234',
+    });
+  });
+
+  it('does not swallow non-missing-table waste settings errors that merely mention the table name', async () => {
+    await expect(
+      loadConfiguredWasteSettings(
+        {
+          loadDefaultInterfaceRecord: vi.fn(async () => ({
+            id: 'supabase-1',
+            instanceId: 'tenant-a',
+            typeKey: 'supabase',
+            ownerKind: 'host',
+            ownerId: 'host',
+            displayName: 'Supabase',
+            alias: 'default',
+            enabled: true,
+            isDefault: true,
+            category: 'database',
+            statusCheckKind: 'supabase',
+            visibleStatus: 'ok',
+            publicConfig: {
+              projectUrl: 'https://tenant.example',
+              schemaName: 'wm',
+            },
+            secretConfigCiphertext: 'cipher-secret',
+          })),
+          loadWastePdfStaticSettings: vi.fn(async () => {
+            const error = new Error('permission denied for table waste_settings');
+            Object.assign(error, { code: '42501' });
+            throw error;
+          }),
+        },
+        'tenant-a'
+      )
+    ).rejects.toThrow('permission denied for table waste_settings');
+  });
+
+  it('skips waste pdf lookup while the waste datasource is not configured yet', async () => {
+    const loadWastePdfStaticSettings = vi.fn(async () => ({
+      pdfBrandingAssetUrl: 'https://cdn.example/logo-from-waste.svg',
+      pdfContactBlock: 'Abfallberatung aus Waste-DB',
+    }));
+
+    const settings = await loadConfiguredWasteSettings(
+      {
+        listInterfaceRecords: vi.fn(async () => []),
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+        loadWastePdfStaticSettings,
+      },
+      'tenant-a'
+    );
+
+    expect(loadWastePdfStaticSettings).not.toHaveBeenCalled();
+    expect(settings).toEqual({
+      instanceId: 'tenant-a',
+      provider: 'supabase',
+      projectUrl: '',
+      schemaName: 'public',
+      enabled: false,
+      availableInterfaces: [],
+      databaseUrlConfigured: false,
+      serviceRoleKeyConfigured: false,
+      visibleStatus: 'not_configured',
+      customRecurrencePresets: [],
+    });
+  });
+
   it('returns a not-configured settings shell when no interface can be resolved', async () => {
     const settings = await loadConfiguredWasteSettings(
       {

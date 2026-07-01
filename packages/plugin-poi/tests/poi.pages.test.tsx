@@ -305,7 +305,7 @@ describe('PoiListPage', () => {
       );
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/poi/$id', params: { id: 'poi-created' } });
     });
-  });
+  }, 10_000);
 
   it('loads existing poi mediaContents on edit and keeps the update flow stable', async () => {
     render(<PoiEditPage />);

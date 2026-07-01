@@ -52,6 +52,36 @@ export type SurveyQuestion = Readonly<{
   options: readonly SurveyQuestionOption[];
 }>;
 
+export type SurveyResultsFreeTextResponse = Readonly<{
+  id: string;
+  text: string;
+  status: 'INTERNAL' | 'PUBLIC';
+  createdAt: string;
+}>;
+
+export type SurveyResultsOptionResult = Readonly<{
+  optionId: string;
+  title: SurveyLocalizedText;
+  votes: number;
+  percentage?: number;
+  freeTextResponses: readonly SurveyResultsFreeTextResponse[];
+}>;
+
+export type SurveyResultsQuestionResult = Readonly<{
+  questionId: string;
+  type: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'FREE_TEXT' | 'SINGLE_CHOICE_WITH_TEXT' | 'MULTIPLE_CHOICE_WITH_TEXT';
+  totalResponses: number;
+  optionResults: readonly SurveyResultsOptionResult[];
+  freeTextResponses: readonly SurveyResultsFreeTextResponse[];
+}>;
+
+export type SurveyResults = Readonly<{
+  surveyId: string;
+  participationCount: number;
+  submissionCount: number;
+  questions: readonly SurveyResultsQuestionResult[];
+}>;
+
 export type SurveyContentItem = Readonly<{
   id: string;
   contentType: 'surveys.survey';
@@ -71,6 +101,7 @@ export type SurveyContentItem = Readonly<{
   questionCount: number;
   participationCount: number;
   submissionCount: number;
+  results?: SurveyResults;
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;

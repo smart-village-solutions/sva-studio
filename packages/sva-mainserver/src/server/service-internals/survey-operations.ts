@@ -167,7 +167,7 @@ const createGetSurveyWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) =>
       ...input,
       document: svaMainserverSurveyDetailDocument,
       operationName: 'SvaMainserverSurveyDetail',
-      variables: { filter: buildSurveyFilter({ ids: [input.surveyId] }) },
+      variables: { filter: buildSurveyFilter({ ids: [input.surveyId], includeArchived: true }) },
     },
     config
   );
@@ -184,7 +184,7 @@ const createGetSurveyResultsWithConfig = (executeGraphqlWithConfig: GraphqlExecu
       ...input,
       document: svaMainserverSurveyResultsDocument,
       operationName: 'SvaMainserverSurveyResults',
-      variables: { filter: buildSurveyFilter({ ids: [input.surveyId] }) },
+      variables: { filter: buildSurveyFilter({ ids: [input.surveyId], includeArchived: true }) },
     },
     config
   );

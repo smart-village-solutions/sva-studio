@@ -41,6 +41,7 @@ export const pluginSurveysMetaTranslations = {
     actions: {
       created: 'Umfrage erstellt',
       updated: 'Umfrage bearbeitet',
+      statusChanged: 'Status geändert',
       deleted: 'Umfrage gelöscht',
       moderated: 'Freitexte moderiert',
       exported: 'Ergebnisse exportiert',

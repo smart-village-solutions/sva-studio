@@ -50,7 +50,7 @@ export function SurveyModerationGroupCard({
                 <th className="px-3 py-2 font-medium text-foreground">{pt('fields.freeTextExcerpt')}</th>
                 <th className="px-3 py-2 font-medium text-foreground">{pt('fields.freeTextCreatedAt')}</th>
                 <th className="px-3 py-2 font-medium text-foreground">{pt('fields.freeTextStatus')}</th>
-                <th className="px-3 py-2 font-medium text-foreground">{pt('actions.delete')}</th>
+                <th className="px-3 py-2 font-medium text-foreground">{pt('actions.confirmDelete')}</th>
               </tr>
             </thead>
             <tbody>

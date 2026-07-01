@@ -945,6 +945,7 @@ describe('createSvaMainserverService', () => {
     expect(requestBodies[1]?.variables).toEqual({
       filter: {
         ids: ['survey-1'],
+        includeArchived: true,
       },
     });
     expect(requestBodies[3]?.variables).toMatchObject({

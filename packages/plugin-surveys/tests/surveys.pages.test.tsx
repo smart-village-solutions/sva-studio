@@ -131,10 +131,59 @@ describe('survey editor pages', () => {
       targetAreaIds: [],
       showResultsInApp: false,
       isAnonymous: false,
-      questions: [],
-      questionCount: 0,
-      participationCount: 0,
-      submissionCount: 0,
+      questionCount: 1,
+      participationCount: 12,
+      submissionCount: 9,
+      results: {
+        surveyId: 'survey-123',
+        participationCount: 12,
+        submissionCount: 9,
+        questions: [
+          {
+            questionId: 'question-1',
+            type: 'SINGLE_CHOICE_WITH_TEXT',
+            totalResponses: 9,
+            optionResults: [
+              {
+                optionId: 'option-1',
+                title: { de: 'Sehr gut' },
+                votes: 5,
+                percentage: 55.6,
+                freeTextResponses: [],
+              },
+            ],
+            freeTextResponses: [
+              {
+                id: 'free-text-1',
+                text: 'Bitte mehr Sitzgelegenheiten direkt am Markt.',
+                status: 'INTERNAL',
+                createdAt: '2026-07-01T08:00:00.000Z',
+              },
+            ],
+          },
+        ],
+      },
+      questions: [
+        {
+          id: 'question-1',
+          surveyId: 'survey-123',
+          title: { de: 'Wie bewerten Sie den Wochenmarkt?' },
+          type: 'SINGLE_CHOICE_WITH_TEXT',
+          required: true,
+          position: 0,
+          createdAt: '2026-07-01T08:00:00.000Z',
+          updatedAt: '2026-07-01T08:00:00.000Z',
+          options: [
+            {
+              id: 'option-1',
+              questionId: 'question-1',
+              title: { de: 'Sehr gut' },
+              position: 0,
+              enablesFreeText: true,
+            },
+          ],
+        },
+      ],
       createdAt: '2026-07-01T08:00:00.000Z',
       updatedAt: '2026-07-01T08:00:00.000Z',
     });
@@ -196,4 +245,5 @@ describe('survey editor pages', () => {
       ).toBeNull();
     })();
   });
+
 });

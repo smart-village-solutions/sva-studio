@@ -182,6 +182,10 @@ const repositoryMocks = vi.hoisted(() => ({
   listWasteStreets: vi.fn(async () => [{ id: 'street-1' }]),
   listWasteHouseNumbers: vi.fn(async () => [{ id: 'house-1' }]),
   listWasteCollectionLocations: vi.fn(async () => [{ id: 'location-1' }]),
+  getWastePdfStaticSettings: vi.fn(async () => ({
+    pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+    pdfContactBlock: 'Abfallberatung',
+  })),
   listWasteCustomRecurrencePresets: vi.fn(async () => [{ id: 'preset-1' }]),
   listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1' }]),
   listWasteLocationTourLinksByTourId: vi.fn(async () => [{ id: 'link-1' }]),
@@ -205,6 +209,7 @@ const repositoryMocks = vi.hoisted(() => ({
   getWasteCollectionLocationById: vi.fn(async (_id: string) => ({ id: 'location-1' })),
   upsertWasteCollectionLocation: vi.fn(async () => undefined),
   deleteWasteCollectionLocation: vi.fn(async () => undefined),
+  upsertWastePdfStaticSettings: vi.fn(async () => undefined),
   getWasteLocationTourLinkById: vi.fn(async (id: string) => ({ id, locationId: 'location-1', tourId: 'tour-1' })),
   upsertWasteLocationTourLink: vi.fn(async () => undefined),
   deleteWasteLocationTourLink: vi.fn(async () => undefined),

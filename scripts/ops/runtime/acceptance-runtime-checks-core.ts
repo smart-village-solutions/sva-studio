@@ -2,6 +2,39 @@ import type { DoctorCheck } from '../runtime-env.shared.ts';
 import type { AcceptanceRuntimeCheckDeps } from './acceptance-runtime-checks.types.ts';
 import { resolveRemoteShortServiceName } from './runtime-health-helpers.ts';
 
+const wait = (delayMs: number) => new Promise((resolve) => setTimeout(resolve, delayMs));
+
+const parsePositiveInteger = (value: string | undefined, fallback: number) => {
+  const parsed = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const checkHttpHealthWithRetry = async (
+  deps: AcceptanceRuntimeCheckDeps,
+  env: NodeJS.ProcessEnv,
+  url: string,
+) => {
+  const attempts = parsePositiveInteger(env.SVA_ACCEPTANCE_HEALTH_RETRY_ATTEMPTS, 3);
+  const delayMs = parsePositiveInteger(env.SVA_ACCEPTANCE_HEALTH_RETRY_DELAY_MS, 1_000);
+  let last: Awaited<ReturnType<AcceptanceRuntimeCheckDeps['checkHttpHealth']>> | null = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      last = await deps.checkHttpHealth(url);
+      if (last.response.ok || attempt === attempts) {
+        return last;
+      }
+    } catch (error) {
+      if (attempt === attempts) {
+        throw error;
+      }
+    }
+    await wait(delayMs);
+  }
+
+  return last ?? deps.checkHttpHealth(url);
+};
+
 export const buildAcceptanceServiceCheck = async (
   deps: AcceptanceRuntimeCheckDeps,
   env: NodeJS.ProcessEnv,
@@ -33,7 +66,7 @@ export const buildAcceptanceIngressConsistencyCheck = async (
     const hasRunningAppTask = evidence.hasRunningService(
       resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env)),
     );
-    const live = await deps.checkHttpHealth(new URL('/health/live', baseUrl).toString());
+    const live = await checkHttpHealthWithRetry(deps, env, new URL('/health/live', baseUrl).toString());
 
     return hasRunningAppTask && !live.response.ok
       ? deps.toDoctorCheck(
@@ -86,7 +119,7 @@ export const buildAppPrincipalReadinessCheck = async (
   const appDbUser = env.APP_DB_USER?.trim() || 'sva_app';
 
   try {
-    const ready = await deps.checkHttpHealth(new URL('/health/ready', baseUrl).toString());
+    const ready = await checkHttpHealthWithRetry(deps, env, new URL('/health/ready', baseUrl).toString());
     const payload = (ready.payload ?? {}) as {
       checks?: {
         auth?: { realm?: string };

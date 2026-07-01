@@ -8,8 +8,6 @@ import {
   readWasteManagementHolidayStateCode,
   readWasteManagementHolidaySyncStatus,
   readWasteManagementLastSuccessfulHolidaySyncAt,
-  readWasteManagementPdfBrandingAssetUrl,
-  readWasteManagementPdfContactBlock,
   type ExternalInterfaceRecord,
   type WasteHolidayStateCode,
   type WasteHolidaySyncStatus,
@@ -47,8 +45,6 @@ const createInterfaceSettingsRecord = (
   input: {
     readonly selected: boolean;
     readonly calendarWebUrl?: string;
-    readonly pdfBrandingAssetUrl?: string;
-    readonly pdfContactBlock?: string;
     readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
     readonly emailReminderSigningSecret?: string;
     readonly holidayStateCode?: WasteHolidayStateCode;
@@ -67,8 +63,6 @@ export const persistWasteSettingsInterfaceSelection = async ({
   interfaceRecords,
   targetInterfaceRecord,
   calendarWebUrl,
-  pdfBrandingAssetUrl,
-  pdfContactBlock,
   emailReminderConfig,
   emailReminderSigningSecret,
   holidayStateCode,
@@ -79,8 +73,6 @@ export const persistWasteSettingsInterfaceSelection = async ({
   readonly interfaceRecords: readonly ExternalInterfaceRecord[];
   readonly targetInterfaceRecord: ExternalInterfaceRecord;
   readonly calendarWebUrl?: string;
-  readonly pdfBrandingAssetUrl?: string;
-  readonly pdfContactBlock?: string;
   readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
   readonly emailReminderSigningSecret?: string;
   readonly holidayStateCode?: WasteHolidayStateCode;
@@ -98,10 +90,6 @@ export const persistWasteSettingsInterfaceSelection = async ({
       createInterfaceSettingsRecord(record, {
         selected: isTarget,
         calendarWebUrl: isTarget ? calendarWebUrl : readWasteManagementCalendarWebUrl(record.publicConfig),
-        pdfBrandingAssetUrl: isTarget
-          ? pdfBrandingAssetUrl
-          : readWasteManagementPdfBrandingAssetUrl(record.publicConfig),
-        pdfContactBlock: isTarget ? pdfContactBlock : readWasteManagementPdfContactBlock(record.publicConfig),
         emailReminderConfig: isTarget
           ? emailReminderConfig
           : readWasteManagementEmailReminderConfig(record.publicConfig),

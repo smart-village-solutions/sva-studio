@@ -1057,6 +1057,10 @@ const loadWasteCustomRecurrencePresets = createLoader(
   'load_waste_custom_recurrence_presets',
   (repository) => repository.listWasteCustomRecurrencePresets()
 );
+const loadWastePdfStaticSettings = createLoader(
+  'load_waste_pdf_static_settings',
+  (repository) => repository.getWastePdfStaticSettings()
+);
 const loadWasteHolidayRuleById = createLoader('load_waste_holiday_rule_by_id', async (repository, ruleId: string) => {
   const rules = await repository.listWasteHolidayRules();
   return rules.find((rule) => rule.id === ruleId) ?? null;
@@ -1099,6 +1103,11 @@ const saveWasteHolidayRule = createLoader(
 const deleteWasteHolidayRule = createLoader(
   'delete_waste_holiday_rule',
   (repository, ruleId: string) => repository.deleteWasteHolidayRule(ruleId)
+);
+const saveWastePdfStaticSettings = createLoader(
+  'save_waste_pdf_static_settings',
+  (repository, input: Parameters<WasteRepository['upsertWastePdfStaticSettings']>[0]) =>
+    repository.upsertWastePdfStaticSettings(input)
 );
 
 const saveWasteLocationTourLinksBulk = async (
@@ -1147,6 +1156,7 @@ export const wasteManagementOverviewLoaders = {
 
 export const wasteManagementEntityLoaders = {
   loadWasteCustomRecurrencePresets,
+  loadWastePdfStaticSettings,
   loadWasteHolidayRuleById,
   loadWasteFractionById,
   loadWasteRegionById,
@@ -1166,6 +1176,7 @@ export const wasteManagementEntityLoaders = {
 
 export const wasteManagementEntitySavers = {
   saveWasteCustomRecurrencePresets,
+  saveWastePdfStaticSettings,
   syncWasteHolidayRules,
   saveWasteHolidayRule,
   deleteWasteHolidayRule,

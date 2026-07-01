@@ -18,23 +18,23 @@ export type SurveyEditorStatus =
 
 type SurveyEditorTranslation = (key: string) => string;
 
-export const useSurveyEditorController = ({
+const useSurveyEditorLoader = ({
   mode,
   contentId,
   methods,
   pt,
-  navigateToContentList,
+  setStatus,
+  setIsLoading,
+  setLoadedItem,
 }: Readonly<{
   mode: SurveyEditorMode;
   contentId?: string;
   methods: UseFormReturn<SurveyDetailFormValues>;
   pt: SurveyEditorTranslation;
-  navigateToContentList: () => Promise<void>;
+  setStatus: React.Dispatch<React.SetStateAction<SurveyEditorStatus>>;
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  setLoadedItem: React.Dispatch<React.SetStateAction<SurveyContentItem | null>>;
 }>) => {
-  const [status, setStatus] = React.useState<SurveyEditorStatus>(null);
-  const [isLoading, setIsLoading] = React.useState(mode === 'edit');
-  const [loadedItem, setLoadedItem] = React.useState<SurveyContentItem | null>(null);
-
   React.useEffect(() => {
     if (mode !== 'edit') {
       setIsLoading(false);
@@ -75,35 +75,72 @@ export const useSurveyEditorController = ({
     return () => {
       cancelled = true;
     };
-  }, [contentId, methods, mode, pt]);
+  }, [contentId, methods, mode, pt, setIsLoading, setLoadedItem, setStatus]);
+};
 
-  const submit = methods.handleSubmit(async (values) => {
+const createSurveyEditorSubmit = (input: {
+  readonly methods: UseFormReturn<SurveyDetailFormValues>;
+  readonly mode: SurveyEditorMode;
+  readonly contentId?: string;
+  readonly pt: SurveyEditorTranslation;
+  readonly navigateToContentList: () => Promise<void>;
+  readonly setLoadedItem: React.Dispatch<React.SetStateAction<SurveyContentItem | null>>;
+  readonly setStatus: React.Dispatch<React.SetStateAction<SurveyEditorStatus>>;
+}) =>
+  input.methods.handleSubmit(async (values) => {
     try {
       const mutation = toSurveyMutationInput(values);
       const savedItem =
-        mode === 'create'
+        input.mode === 'create'
           ? await createSurvey(mutation)
-          : await updateSurvey(contentId as string, mutation);
+          : await updateSurvey(input.contentId as string, mutation);
 
-      setLoadedItem(savedItem);
-      methods.reset(mapSurveyItemToFormValues(savedItem));
-      setStatus({
+      input.setLoadedItem(savedItem);
+      input.methods.reset(mapSurveyItemToFormValues(savedItem));
+      input.setStatus({
         kind: 'success',
-        text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess'),
+        text: input.mode === 'create' ? input.pt('messages.createSuccess') : input.pt('messages.updateSuccess'),
       });
 
-      if (mode === 'create') {
-        await navigateToContentList();
+      if (input.mode === 'create') {
+        await input.navigateToContentList();
       }
     } catch (error) {
-      setStatus({
+      input.setStatus({
         kind: 'error',
         text: getSurveyEditorErrorMessage(
           error,
-          mode === 'create' ? pt('messages.createError') : pt('messages.updateError')
+          input.mode === 'create' ? input.pt('messages.createError') : input.pt('messages.updateError')
         ),
       });
     }
+  });
+
+export const useSurveyEditorController = ({
+  mode,
+  contentId,
+  methods,
+  pt,
+  navigateToContentList,
+}: Readonly<{
+  mode: SurveyEditorMode;
+  contentId?: string;
+  methods: UseFormReturn<SurveyDetailFormValues>;
+  pt: SurveyEditorTranslation;
+  navigateToContentList: () => Promise<void>;
+}>) => {
+  const [status, setStatus] = React.useState<SurveyEditorStatus>(null);
+  const [isLoading, setIsLoading] = React.useState(mode === 'edit');
+  const [loadedItem, setLoadedItem] = React.useState<SurveyContentItem | null>(null);
+  useSurveyEditorLoader({ mode, contentId, methods, pt, setStatus, setIsLoading, setLoadedItem });
+  const submit = createSurveyEditorSubmit({
+    methods,
+    mode,
+    contentId,
+    pt,
+    navigateToContentList,
+    setLoadedItem,
+    setStatus,
   });
 
   return { isLoading, loadedItem, status, submit };

@@ -205,6 +205,29 @@ const surveyFields = `
   archivedAt
 `;
 
+const surveyListFields = `
+  id
+  title
+  shortDescription
+  description
+  status
+  startAt
+  endAt
+  resultVisibility
+  targetAreaIds
+  showResultsInApp
+  isAnonymous
+  privacyNotice
+  transparencyNotice
+  questionCount
+  participationCount
+  submissionCount
+  createdAt
+  updatedAt
+  publishedAt
+  archivedAt
+`;
+
 const surveyMutationPayloadFields = `
   success
   action
@@ -222,7 +245,7 @@ const surveyMutationPayloadFields = `
 export const svaMainserverSurveysListDocument = `
   query SvaMainserverSurveysList($filter: SurveyFilterInput) {
     surveys(filter: $filter) {
-      ${surveyFields}
+      ${surveyListFields}
     }
   }
 `;

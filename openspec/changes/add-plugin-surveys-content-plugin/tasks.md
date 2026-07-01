@@ -44,16 +44,16 @@
 
 ## 5. Survey-Editor-Rahmen und gemeinsame UI-Bausteine umsetzen
 
-- [ ] 5.1 Survey-Detailseite mit `StudioDetailPageTemplate` und stabiler Tab-Struktur `Basis`, `Inhalt`, `Moderation`, `Ergebnisse`, `Historie` anlegen
-- [ ] 5.2 Create- und Edit-Ansicht in denselben Editor-Rahmen fuehren
-- [ ] 5.3 nicht verfuegbare Tabs im Create-Fall mit Hinweiszustaenden statt ausgeblendeter Navigation darstellen
-- [ ] 5.4 flache Survey-Section-Card-Komponente(n) plugin-lokal anlegen, ohne shared UI-Grenzen zu verletzen
-- [ ] 5.5 Layout-Regeln technisch absichern:
+- [x] 5.1 Survey-Detailseite mit `StudioDetailPageTemplate` und stabiler Tab-Struktur `Basis`, `Inhalt`, `Moderation`, `Ergebnisse`, `Historie` anlegen
+- [x] 5.2 Create- und Edit-Ansicht in denselben Editor-Rahmen fuehren
+- [x] 5.3 nicht verfuegbare Tabs im Create-Fall mit Hinweiszustaenden statt ausgeblendeter Navigation darstellen
+- [x] 5.4 flache Survey-Section-Card-Komponente(n) plugin-lokal anlegen, ohne shared UI-Grenzen zu verletzen
+- [x] 5.5 Layout-Regeln technisch absichern:
   - keine Card-Verschachtelung
   - keine inneren Tabs
   - wiederholende Inhalte als Abschnitte innerhalb gemeinsamer Cards
-- [ ] 5.6 grundlegende Seiten-, Tab- und Hinweiszustands-Tests ergaenzen
-- [ ] 5.7 kleinsten relevanten UI-Gate-Pfad fuer den Editor-Rahmen ausfuehren
+- [x] 5.6 grundlegende Seiten-, Tab- und Hinweiszustands-Tests ergaenzen
+- [x] 5.7 kleinsten relevanten UI-Gate-Pfad fuer den Editor-Rahmen ausfuehren
 
 ## 6. Tab `Basis` umsetzen
 

@@ -118,6 +118,10 @@ describe('waste management operations runtime', () => {
     expect(statements).toContain('ALTER TABLE "wm".waste_fractions ALTER COLUMN pdf_short_label SET NOT NULL');
     expect(statements).toContain('waste_custom_recurrence_presets');
     expect(statements).toContain('waste_holiday_rules');
+    expect(statements).toContain('waste_settings');
+    expect(statements).toContain('pdf_branding_asset_url TEXT');
+    expect(statements).toContain('pdf_contact_block TEXT');
+    expect(statements).toContain('waste_settings_singleton_check');
     expect(statements).toContain('waste_email_reminder_subscriptions');
     expect(statements).toContain('waste_email_reminder_outbox');
     expect(statements).toContain('holiday_date DATE NOT NULL');
@@ -2657,6 +2661,7 @@ const requiredTableRows = [
   { table_name: 'waste_location_tour_links' },
   { table_name: 'waste_location_tour_pickup_dates' },
   { table_name: 'waste_regions' },
+  { table_name: 'waste_settings' },
   { table_name: 'waste_streets' },
   { table_name: 'waste_tour_date_shifts' },
   { table_name: 'waste_tours' },

@@ -67,6 +67,7 @@ const {
 } = wasteManagementOverviewLoaders;
 const {
   loadWasteCustomRecurrencePresets,
+  loadWastePdfStaticSettings,
   loadWasteCityById,
   loadWasteCollectionLocationById,
   loadWasteFractionById,
@@ -85,6 +86,7 @@ const {
 } = wasteManagementEntityLoaders;
 const {
   saveWasteCustomRecurrencePresets,
+  saveWastePdfStaticSettings,
   syncWasteHolidayRules,
   saveWasteCity,
   saveWasteCollectionLocation,
@@ -145,6 +147,7 @@ export const wasteManagementHandlers = {
       getWasteManagementSettingsInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
         loadWasteCustomRecurrencePresets,
+        loadWastePdfStaticSettings,
       })
     ),
   updateSettings: (request: Request): Promise<Response> =>
@@ -152,7 +155,9 @@ export const wasteManagementHandlers = {
       updateWasteManagementSettingsInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
         loadWasteCustomRecurrencePresets,
+        loadWastePdfStaticSettings,
         saveWasteCustomRecurrencePresets,
+        saveWastePdfStaticSettings,
         syncWasteHolidayRules,
       })
     ),
@@ -161,6 +166,8 @@ export const wasteManagementHandlers = {
       runWasteManagementHolidaySyncInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
         loadWasteCustomRecurrencePresets,
+        loadWastePdfStaticSettings,
+        saveWastePdfStaticSettings,
         syncWasteHolidayRules,
       })
     ),

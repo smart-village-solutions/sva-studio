@@ -16,6 +16,8 @@ import type {
   WasteLocationTourPickupDateRecord,
   WasteLocationTourLinkListFilter,
   WasteLocationTourLinkRecord,
+  WastePdfStaticSettingsWriteInput,
+  WastePdfStaticSettingsRecord,
   WasteRegionListFilter,
   WasteRegionRecord,
   WasteStreetListFilter,
@@ -67,6 +69,8 @@ export const wasteMasterDataRepositoryContract = {
     (input: Omit<WasteCollectionLocationRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
   >(),
   deleteWasteCollectionLocation: defineRepositoryMethod<(id: string) => Promise<void>>(),
+  getWastePdfStaticSettings: defineRepositoryMethod<() => Promise<WastePdfStaticSettingsRecord | null>>(),
+  upsertWastePdfStaticSettings: defineRepositoryMethod<(input: WastePdfStaticSettingsWriteInput) => Promise<void>>(),
   listWasteHolidayRules: defineRepositoryMethod<
     (filter?: WasteHolidayRuleListFilter) => Promise<readonly WasteHolidayRuleRecord[]>
   >(),

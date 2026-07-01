@@ -11,6 +11,7 @@ import {
   type WasteManagementDataSourceRecord,
   type WasteManagementSettingsInterfaceOption,
   type WasteManagementSettingsRecord,
+  type WastePdfStaticSettingsRecord,
   findSelectedWasteManagementInterfaceRecord,
   readWasteManagementCalendarWebUrl,
   readWasteManagementEmailReminderConfig,
@@ -26,6 +27,30 @@ import type { WasteManagementHandlerDeps } from './types.js';
 const normalizeInterfaceWasteVisibleStatus = (
   status: 'not_configured' | 'unknown' | 'ok' | 'error' | 'disabled'
 ): WasteManagementDataSourceRecord['visibleStatus'] => (status === 'disabled' ? 'unknown' : status);
+
+const hasWastePdfStaticSettingsValue = (
+  wastePdfStaticSettings: WastePdfStaticSettingsRecord | null | undefined
+): wastePdfStaticSettings is WastePdfStaticSettingsRecord =>
+  Boolean(wastePdfStaticSettings?.pdfBrandingAssetUrl || wastePdfStaticSettings?.pdfContactBlock);
+
+const isMissingWasteSettingsTableError = (error: unknown): boolean =>
+  error instanceof Error &&
+  (('code' in error ? error.code : undefined) === '42P01' || /relation "?waste_settings"? does not exist/i.test(error.message));
+
+const canLoadWastePdfStaticSettings = (settings: WasteManagementSettingsRecord): boolean =>
+  settings.selectedInterfaceTypeKey === 'supabase' && settings.databaseUrlConfigured && settings.serviceRoleKeyConfigured;
+
+const applyWastePdfStaticSettings = (
+  settings: WasteManagementSettingsRecord,
+  wastePdfStaticSettings: WastePdfStaticSettingsRecord | null | undefined
+): WasteManagementSettingsRecord =>
+  hasWastePdfStaticSettingsValue(wastePdfStaticSettings)
+    ? {
+        ...settings,
+        pdfBrandingAssetUrl: wastePdfStaticSettings.pdfBrandingAssetUrl ?? settings.pdfBrandingAssetUrl,
+        pdfContactBlock: wastePdfStaticSettings.pdfContactBlock ?? settings.pdfContactBlock,
+      }
+    : settings;
 
 const mapExternalInterfaceToWasteSettings = (
   instanceId: string,
@@ -184,11 +209,18 @@ export const loadConfiguredWasteSettings = async (
   const customRecurrencePresets = deps.loadWasteCustomRecurrencePresets
     ? await deps.loadWasteCustomRecurrencePresets(instanceId)
     : [];
+  let wastePdfStaticSettings: WastePdfStaticSettingsRecord | null = null;
+  if (deps.loadWastePdfStaticSettings && canLoadWastePdfStaticSettings(settings)) {
+    try {
+      wastePdfStaticSettings = await deps.loadWastePdfStaticSettings(instanceId);
+    } catch (error) {
+      if (!isMissingWasteSettingsTableError(error)) {
+        throw error;
+      }
+    }
+  }
 
-  return {
-    ...settings,
-    customRecurrencePresets,
-  };
+  return applyWastePdfStaticSettings({ ...settings, customRecurrencePresets }, wastePdfStaticSettings);
 };
 
 export const defaultRunConnectionProbe = async (dataSource: ResolvedWasteDataSource): Promise<void> => {

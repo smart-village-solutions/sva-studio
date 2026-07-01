@@ -1,6 +1,7 @@
 import { shellEscape } from './runtime-config.ts';
 import type { AcceptanceMaintenanceDeps } from './acceptance-maintenance.types.ts';
 import { resolveAcceptanceContainerServices, resolveRemoteShortServiceName, resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
+import { pickInternalNetworkName } from './internal-network.ts';
 
 export const buildSwarmServicePresenceProbe = (deps: AcceptanceMaintenanceDeps, env: NodeJS.ProcessEnv) => {
   const stackName = deps.getConfiguredStackName(env);
@@ -19,13 +20,24 @@ export const buildSwarmServicePresenceProbe = (deps: AcceptanceMaintenanceDeps, 
 
 export const resolveRemoteInternalNetworkName = async (deps: AcceptanceMaintenanceDeps, env: NodeJS.ProcessEnv) => {
   const stackName = deps.getConfiguredStackName(env);
+  const postgresServiceName = resolveRemoteShortServiceName(stackName, env.SVA_ACCEPTANCE_POSTGRES_SERVICE ?? 'postgres');
+  const postgresContract = await deps.inspectRemoteServiceContract(env, {
+    quantumEndpoint: deps.getConfiguredQuantumEndpoint(env),
+    serviceName: postgresServiceName,
+    stackName,
+  });
+  const postgresNetworkName = pickInternalNetworkName(postgresContract?.networkNames);
+  if (postgresNetworkName) {
+    return postgresNetworkName;
+  }
+
   const appServiceName = resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env));
   const liveContract = await deps.inspectRemoteServiceContract(env, {
     quantumEndpoint: deps.getConfiguredQuantumEndpoint(env),
     serviceName: appServiceName,
     stackName,
   });
-  const internalNetworkName = (liveContract?.networkNames ?? []).find((networkName) => networkName !== 'public')?.trim();
+  const internalNetworkName = pickInternalNetworkName(liveContract?.networkNames);
   if (internalNetworkName) {
     return internalNetworkName;
   }

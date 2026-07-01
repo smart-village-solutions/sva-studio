@@ -77,7 +77,11 @@ const publicWasteApiPlugin = (): Plugin => {
       return handlePublicWastePdfRequest({
         repository,
         request,
-        loadPdfStaticConfig: () => loadPublicWastePdfStaticConfig(bootstrapState.config.instanceId),
+        loadPdfStaticConfig: () =>
+          loadPublicWastePdfStaticConfig(bootstrapState.config.instanceId, {
+            getDatabaseUrl: () => bootstrapState.config.supabase.databaseUrl,
+            getSchemaName: () => bootstrapState.config.supabase.schemaName,
+          }),
         loadBrandingImage: loadPublicWastePdfBrandingImage,
       });
     }

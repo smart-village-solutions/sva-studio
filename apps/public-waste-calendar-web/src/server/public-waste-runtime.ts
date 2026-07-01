@@ -41,6 +41,10 @@ type RepositoryHandle = {
 
 type RepositoryFactory = (config: PublicWasteConfig) => Promise<RepositoryHandle> | RepositoryHandle;
 type PublicWastePdfStaticConfig = { readonly brandingAssetUrl?: string; readonly contactBlock?: string };
+type PublicWastePdfStaticConfigLoaderOptions = {
+  readonly getDatabaseUrl?: () => string | undefined;
+  readonly getSchemaName?: () => string | undefined;
+};
 type PublicWasteBrandingImageLoader = (input: {
   readonly assetUrl: string;
   readonly requestUrl: string;
@@ -336,7 +340,10 @@ const dispatchPublicWasteApiRequest = async (input: {
   readonly pathname: string;
   readonly repository: PublicWasteRuntimeRepository;
   readonly bootstrapState: Extract<PublicWasteBootstrapState, { status: 'ready' }>;
-  readonly loadPdfStaticConfig?: (instanceId: string) => Promise<PublicWastePdfStaticConfig>;
+  readonly loadPdfStaticConfig?: (
+    instanceId: string,
+    options?: PublicWastePdfStaticConfigLoaderOptions
+  ) => Promise<PublicWastePdfStaticConfig>;
   readonly loadBrandingImage?: PublicWasteBrandingImageLoader;
   readonly submitReminderSignup?: PublicWasteReminderSignupSubmitter;
 }): Promise<Response> => {
@@ -360,7 +367,12 @@ const dispatchPublicWasteApiRequest = async (input: {
       repository: input.repository,
       request: input.request,
       loadPdfStaticConfig: async () =>
-        await (input.loadPdfStaticConfig?.(input.bootstrapState.config.instanceId) ?? {}),
+        await (
+          input.loadPdfStaticConfig?.(input.bootstrapState.config.instanceId, {
+            getDatabaseUrl: () => input.bootstrapState.config.supabase.databaseUrl,
+            getSchemaName: () => input.bootstrapState.config.supabase.schemaName,
+          }) ?? {}
+        ),
       loadBrandingImage: input.loadBrandingImage,
     });
   }
@@ -384,7 +396,10 @@ export const createPublicWasteRuntime = async (input: {
   readonly assetsDir: string;
   readonly env?: NodeJS.ProcessEnv;
   readonly createRepository?: RepositoryFactory;
-  readonly loadPdfStaticConfig?: (instanceId: string) => Promise<PublicWastePdfStaticConfig>;
+  readonly loadPdfStaticConfig?: (
+    instanceId: string,
+    options?: PublicWastePdfStaticConfigLoaderOptions
+  ) => Promise<PublicWastePdfStaticConfig>;
   readonly loadBrandingImage?: PublicWasteBrandingImageLoader;
   readonly submitReminderSignup?: PublicWasteReminderSignupSubmitter;
 }): Promise<PublicWasteRuntime> => {

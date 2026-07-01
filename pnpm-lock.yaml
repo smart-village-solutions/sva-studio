@@ -218,8 +218,8 @@ importers:
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.76.1(react@19.2.6))
       '@kern-ux/native':
-        specifier: ^2.6.2
-        version: 2.6.2
+        specifier: ^2.6.4
+        version: 2.6.4
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -2671,8 +2671,8 @@ packages:
   '@js-sdsl/ordered-map@4.4.2':
     resolution: {integrity: sha512-iUKgm52T8HOE/makSxjqoWhe95ZJA1/G1sYsGev2JDKUSS14KAgg1LHb+Ba+IPow0xflbnSkOsZcO08C7w1gYw==}
 
-  '@kern-ux/native@2.6.2':
-    resolution: {integrity: sha512-EGvMOcYfvQ01vxtVzC5lebAXwkRtPyH5oDsDGLp7CWPBFQXXrsKdJsd2bWWEIe94u6Zx04WNtD2BHsaf2lW42w==}
+  '@kern-ux/native@2.6.4':
+    resolution: {integrity: sha512-h5nmC7KMEeXoj8OB6akVMaUJrtscd3sczDRvGZjfAt2MtZ9/yIDBOMvjN85X711eDSPRVbNwVUnL+ZwFo4fSig==}
 
   '@mapbox/jsonlint-lines-primitives@2.0.2':
     resolution: {integrity: sha512-rY0o9A5ECsTQRVhv7tL/OyDpGAoUB4tTvLiW1DSzQGq4bvTPhNw1VpSNjDJc5GFZ2XuyOtSWSVN05qOtcD71qQ==}
@@ -10651,7 +10651,7 @@ snapshots:
 
   '@js-sdsl/ordered-map@4.4.2': {}
 
-  '@kern-ux/native@2.6.2': {}
+  '@kern-ux/native@2.6.4': {}
 
   '@mapbox/jsonlint-lines-primitives@2.0.2': {}
 

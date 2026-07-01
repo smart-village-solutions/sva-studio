@@ -101,7 +101,7 @@ describe('deploy-project runtime helpers', () => {
             },
             networks: {
               internal: null,
-              public: null,
+              'network-node-005': null,
             },
             deploy: {
               labels: {
@@ -112,7 +112,7 @@ describe('deploy-project runtime helpers', () => {
         },
       },
       'app',
-      ['internal', 'public'],
+      ['internal', 'network-node-005'],
     );
 
     expect(contract).toEqual({
@@ -123,11 +123,11 @@ describe('deploy-project runtime helpers', () => {
       labels: {
         'traefik.enable': 'true',
       },
-      networks: ['internal', 'public'],
+      networks: ['internal', 'network-node-005'],
     });
   });
 
-  it('fails fast when the rendered app contract misses the public network', () => {
+  it('fails fast when the rendered app contract misses the runtime ingress network', () => {
     expect(() =>
       assertComposeServiceNetworks(
         {
@@ -139,11 +139,11 @@ describe('deploy-project runtime helpers', () => {
               },
             },
           },
-        },
-        'app',
-        ['internal', 'public'],
-      ),
-    ).toThrow(/public/);
+      },
+      'app',
+      ['internal', 'network-node-005'],
+    ),
+    ).toThrow(/network-node-005/);
   });
 
   it('fails fast when the rendered app contract misses required ingress labels', () => {
@@ -155,7 +155,7 @@ describe('deploy-project runtime helpers', () => {
               image: 'ghcr.io/example/app@sha256:abc',
               networks: {
                 internal: null,
-                public: null,
+                'network-node-005': null,
               },
               deploy: {
                 labels: {
@@ -170,6 +170,32 @@ describe('deploy-project runtime helpers', () => {
     ).toThrow(/traefik\.docker\.network/);
   });
 
+  it('fails fast when the Traefik network label points at a detached network', () => {
+    expect(() =>
+      assertComposeServiceIngressLabels(
+        {
+          services: {
+            app: {
+              image: 'ghcr.io/example/app@sha256:abc',
+              networks: {
+                internal: null,
+                'network-node-005': null,
+              },
+              deploy: {
+                labels: {
+                  'traefik.enable': 'true',
+                  'traefik.docker.network': 'public',
+                  'traefik.http.routers.app.rule': 'Host(`example.test`)',
+                },
+              },
+            },
+          },
+        },
+        'app',
+      ),
+    ).toThrow(/traefik\.docker\.network=public/);
+  });
+
   it('fails fast when the rendered app contract has no ingress routing labels', () => {
     expect(() =>
       assertComposeServiceIngressLabels(
@@ -179,12 +205,12 @@ describe('deploy-project runtime helpers', () => {
               image: 'ghcr.io/example/app@sha256:abc',
               networks: {
                 internal: null,
-                public: null,
+                'network-node-005': null,
               },
               deploy: {
                 labels: {
                   'traefik.enable': 'true',
-                  'traefik.docker.network': 'public',
+                  'traefik.docker.network': 'network-node-005',
                 },
               },
             },

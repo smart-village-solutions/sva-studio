@@ -14,7 +14,7 @@ const sql = readFileSync(sqlPath, 'utf8');
 
 const apiKey = process.env.QUANTUM_API_KEY;
 const endpoint = process.env.QUANTUM_ENDPOINT ?? 'sva';
-const stack = process.env.QUANTUM_STACK ?? 'hb-meinquartier-studio-sva';
+const stack = process.env.QUANTUM_STACK ?? 'studio';
 const service = process.env.QUANTUM_SERVICE ?? 'postgres';
 const slot = process.env.QUANTUM_SLOT ?? '1';
 const postgresUser = process.env.QUANTUM_POSTGRES_USER ?? 'sva';
@@ -23,11 +23,6 @@ const postgresPassword = process.env.QUANTUM_POSTGRES_PASSWORD;
 
 if (!apiKey) {
   console.error('QUANTUM_API_KEY fehlt.');
-  process.exit(2);
-}
-
-if (!postgresPassword) {
-  console.error('QUANTUM_POSTGRES_PASSWORD fehlt.');
   process.exit(2);
 }
 
@@ -40,13 +35,16 @@ const shellEscape = (value) => {
 };
 
 const marker = '__REMOTE_QUERY__';
+const passwordPrefix = postgresPassword
+  ? `PGPASSWORD=${shellEscape(postgresPassword)}`
+  : 'PGPASSWORD="${POSTGRES_PASSWORD:-}"';
 const remoteScript = [
   'set -euo pipefail',
   `cat <<'SQL' >/tmp/remote-query.sql`,
   sql,
   'SQL',
   `printf '%s\\n' '${marker}_START'`,
-  `PGPASSWORD=${shellEscape(postgresPassword)} psql -X -P pager=off -q -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(postgresDb)} -At -F '|' -f /tmp/remote-query.sql`,
+  `${passwordPrefix} psql -X -P pager=off -q -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(postgresDb)} -At -F '|' -f /tmp/remote-query.sql`,
   `printf '%s\\n' '${marker}_END'`,
   'rm -f /tmp/remote-query.sql',
   'sleep 1',

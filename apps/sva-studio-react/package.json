@@ -64,7 +64,7 @@
     "@axe-core/playwright": "^4.12.1",
     "@browserbasehq/stagehand": "3.6.0",
     "@codecov/rollup-plugin": "^2.0.1",
-    "@playwright/test": "^1.58.2",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/vite": "4.3.2",
     "@tanstack/devtools-vite": "^0.7.0",
     "@testing-library/react": "^16.2.0",

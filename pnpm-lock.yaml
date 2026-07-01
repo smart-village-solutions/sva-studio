@@ -52,7 +52,7 @@ importers:
         version: 22.7.4(@babel/traverse@7.29.7)(nx@22.7.4)
       '@nx/playwright':
         specifier: ^22.7.0
-        version: 22.7.4(@babel/traverse@7.29.7)(@playwright/test@1.60.0)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@22.7.4)
+        version: 22.7.4(@babel/traverse@7.29.7)(@playwright/test@1.61.1)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@22.7.4)
       '@nx/vite':
         specifier: ^22.7.0
         version: 22.7.4(@babel/traverse@7.29.7)(@nx/eslint@22.7.4(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@22.7.4))(nx@22.7.4)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))(vitest@4.1.7)
@@ -173,8 +173,8 @@ importers:
         version: 0.34.5
     devDependencies:
       '@playwright/test':
-        specifier: ^1.58.2
-        version: 1.60.0
+        specifier: ^1.61.1
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: 4.3.2
         version: 4.3.2(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
@@ -349,16 +349,16 @@ importers:
     devDependencies:
       '@axe-core/playwright':
         specifier: ^4.12.1
-        version: 4.12.1(playwright-core@1.60.0)
+        version: 4.12.1(playwright-core@1.61.1)
       '@browserbasehq/stagehand':
         specifier: 3.6.0
-        version: 3.6.0(playwright-core@1.60.0)(zod@3.25.76)
+        version: 3.6.0(playwright-core@1.61.1)(zod@3.25.76)
       '@codecov/rollup-plugin':
         specifier: ^2.0.1
         version: 2.0.1(rollup@4.59.0)
       '@playwright/test':
-        specifier: ^1.58.2
-        version: 1.60.0
+        specifier: ^1.61.1
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: 4.3.2
         version: 4.3.2(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
@@ -3790,8 +3790,8 @@ packages:
     peerDependencies:
       typescript: '>3.0.0'
 
-  '@playwright/test@1.60.0':
-    resolution: {integrity: sha512-O71yZIbAh/PxDMNGns37GHBIfrVkEVyn+AXyIa5dOTfb4/xNvRWV+Vv/NMbNCtODB/pO7vLlF2OTmMVLhmr7Ag==}
+  '@playwright/test@1.61.1':
+    resolution: {integrity: sha512-8nKv6+0RJSL9FE4jYOEGXnPeM/Hg12qZpmqzZjRh3qM0Y7c3z1mrOTfFLids72RDQYVh9WpLEfR5WdpNX4fkig==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -7595,13 +7595,13 @@ packages:
     resolution: {integrity: sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==}
     engines: {node: '>=16.20.0'}
 
-  playwright-core@1.60.0:
-    resolution: {integrity: sha512-9bW6zvX/m0lEbgTKJ6YppOKx8H3VOPBMOCFh2irXFOT4BbHgrx5hPjwJYLT40Lu+4qtD36qKc/Hn56StUW57IA==}
+  playwright-core@1.61.1:
+    resolution: {integrity: sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==}
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.60.0:
-    resolution: {integrity: sha512-hheHdokM8cdqCb0lcE3s+zT4t4W+vvjpGxsZlDnikarzx8tSzMebh3UiFtgqwFwnTnjYQcsyMF8ei2mCO/tpeA==}
+  playwright@1.61.1:
+    resolution: {integrity: sha512-DWnY5o3YbLWK4GovuAVwpqL+1VwGNdUGrRr++8j8PtQQzvAVZUIMjKQ90fY689sEJZJBbZVw1rXaOKSTitkzPQ==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -9414,10 +9414,10 @@ snapshots:
 
   '@aws/lambda-invoke-store@0.2.4': {}
 
-  '@axe-core/playwright@4.12.1(playwright-core@1.60.0)':
+  '@axe-core/playwright@4.12.1(playwright-core@1.61.1)':
     dependencies:
       axe-core: 4.12.1
-      playwright-core: 1.60.0
+      playwright-core: 1.61.1
 
   '@babel/code-frame@7.27.1':
     dependencies:
@@ -10166,7 +10166,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@browserbasehq/stagehand@3.6.0(playwright-core@1.60.0)(zod@3.25.76)':
+  '@browserbasehq/stagehand@3.6.0(playwright-core@1.61.1)(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 2.0.3
       '@anthropic-ai/sdk': 0.39.0
@@ -10200,7 +10200,7 @@ snapshots:
       bufferutil: 4.1.0
       chrome-launcher: 1.2.1
       ollama-ai-provider-v2: 1.5.5(zod@3.25.76)
-      playwright-core: 1.60.0
+      playwright-core: 1.61.1
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - encoding
@@ -10875,7 +10875,7 @@ snapshots:
   '@nx/nx-win32-x64-msvc@22.7.4':
     optional: true
 
-  '@nx/playwright@22.7.4(@babel/traverse@7.29.7)(@playwright/test@1.60.0)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@22.7.4)':
+  '@nx/playwright@22.7.4(@babel/traverse@7.29.7)(@playwright/test@1.61.1)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@22.7.4)':
     dependencies:
       '@nx/devkit': 22.7.4(nx@22.7.4)
       '@nx/eslint': 22.7.4(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@22.7.4)
@@ -10883,7 +10883,7 @@ snapshots:
       minimatch: 10.2.3
       tslib: 2.8.1
     optionalDependencies:
-      '@playwright/test': 1.60.0
+      '@playwright/test': 1.61.1
     transitivePeerDependencies:
       - '@babel/traverse'
       - '@nx/jest'
@@ -11947,9 +11947,9 @@ snapshots:
       esquery: 1.7.0
       typescript: 6.0.3
 
-  '@playwright/test@1.60.0':
+  '@playwright/test@1.61.1':
     dependencies:
-      playwright: 1.60.0
+      playwright: 1.61.1
 
   '@protobufjs/aspromise@1.1.2': {}
 
@@ -16161,11 +16161,11 @@ snapshots:
 
   pkce-challenge@5.0.1: {}
 
-  playwright-core@1.60.0: {}
+  playwright-core@1.61.1: {}
 
-  playwright@1.60.0:
+  playwright@1.61.1:
     dependencies:
-      playwright-core: 1.60.0
+      playwright-core: 1.61.1
     optionalDependencies:
       fsevents: 2.3.2
 

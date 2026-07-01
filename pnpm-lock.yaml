@@ -915,6 +915,40 @@ importers:
         specifier: ^4.1.9
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.6(bufferutil@4.1.0))(jsdom@29.1.1)(msw@2.14.6(@types/node@25.9.1)(typescript@6.0.3))(vite@8.1.2(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
 
+  packages/plugin-surveys:
+    dependencies:
+      '@sva/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
+      '@sva/studio-ui-react':
+        specifier: workspace:*
+        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.79.0(react@19.2.6))(react@19.2.6)
+      '@tanstack/react-router':
+        specifier: 1.170.8
+        version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      react:
+        specifier: ^19.2.0
+        version: 19.2.6
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.2.6(react@19.2.6)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.2.15
+      '@types/react-dom':
+        specifier: ^19.2.0
+        version: 19.2.3(@types/react@19.2.15)
+      '@vitest/coverage-v8':
+        specifier: ^4.1.5
+        version: 4.1.7(vitest@4.1.7)
+      happy-dom:
+        specifier: ^20.0.8
+        version: 20.9.0(bufferutil@4.1.0)
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.7)(happy-dom@20.9.0(bufferutil@4.1.0))(jsdom@29.1.1)(msw@2.14.6(@types/node@25.9.1)(typescript@6.0.3))(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+
   packages/plugin-waste-management:
     dependencies:
       '@sva/plugin-sdk':

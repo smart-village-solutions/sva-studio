@@ -12,14 +12,14 @@
 
 ## 2. Plugin-Grundstruktur anlegen
 
-- [ ] 2.1 Nx-Library `packages/plugin-surveys` mit `scope:plugin` und Standard-Targets anlegen
-- [ ] 2.2 `package.json`, `project.json`, `tsconfig.json`, `tsconfig.lib.json`, `vitest.config.ts` und `plugin.manifest.json` nach Muster von News, Events und POI anlegen
-- [ ] 2.3 `README.md`, `src/index.ts` und `src/plugin.tsx` nach dem Standard-Content-Muster anlegen
-- [ ] 2.4 Survey-Content-Type, Survey-Plugin-ID, Standard-Action-IDs und Standard-Permissions fest verdrahten
-- [ ] 2.5 zusaetzliche Survey-Rechte fuer Moderation und Export gezielt und minimal ergaenzen
-- [ ] 2.6 plugin-lokale Grundtypen, Formmodelle und Validierungsvertraege fuer Surveys anlegen
-- [ ] 2.7 fruehe Unit- und Type-Tests fuer Plugin-Vertrag, Exporte und Typoberflaeche anlegen
-- [ ] 2.8 kleinsten relevanten Gate-Pfad fuer das neue Plugin frueh ausfuehren
+- [x] 2.1 Nx-Library `packages/plugin-surveys` mit `scope:plugin` und Standard-Targets anlegen
+- [x] 2.2 `package.json`, `project.json`, `tsconfig.json`, `tsconfig.lib.json`, `vitest.config.ts` und `plugin.manifest.json` nach Muster von News, Events und POI anlegen
+- [x] 2.3 `README.md`, `src/index.ts` und `src/plugin.tsx` nach dem Standard-Content-Muster anlegen
+- [x] 2.4 Survey-Content-Type, Survey-Plugin-ID, Standard-Action-IDs und Standard-Permissions fest verdrahten
+- [x] 2.5 zusaetzliche Survey-Rechte fuer Moderation und Export gezielt und minimal ergaenzen
+- [x] 2.6 plugin-lokale Grundtypen, Formmodelle und Validierungsvertraege fuer Surveys anlegen
+- [x] 2.7 fruehe Unit- und Type-Tests fuer Plugin-Vertrag, Exporte und Typoberflaeche anlegen
+- [x] 2.8 kleinsten relevanten Gate-Pfad fuer das neue Plugin frueh ausfuehren
 
 ## 3. Mainserver-Survey-Vertrag und Adapter umsetzen
 

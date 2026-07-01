@@ -35,12 +35,12 @@
 
 ## 4. Host- und Inhaltslisten-Integration herstellen
 
-- [ ] 4.1 Surveys in die fuehrende Inhaltsquelle der Seite `Inhalte` integrieren
-- [ ] 4.2 Surveys als normalen Eintrag in der gemischten Inhaltsliste sichtbar machen, ohne survey-spezifische Sondertabellen einzufuehren
-- [ ] 4.3 `Neuer Inhalt` um den Typ `Survey` oder `Umfrage` erweitern
-- [ ] 4.4 Host-Routing und Bindings fuer Survey-Create-, Edit- und Detailpfade im Standard-Content-Fluss verdrahten
-- [ ] 4.5 Content-List-, Routing- und Host-Integrations-Tests fuer den Survey-Typ ergaenzen
-- [ ] 4.6 kleinsten relevanten Gate-Pfad fuer Host- und Content-Integration ausfuehren
+- [x] 4.1 Surveys in die fuehrende Inhaltsquelle der Seite `Inhalte` integrieren
+- [x] 4.2 Surveys als normalen Eintrag in der gemischten Inhaltsliste sichtbar machen, ohne survey-spezifische Sondertabellen einzufuehren
+- [x] 4.3 `Neuer Inhalt` um den Typ `Survey` oder `Umfrage` erweitern
+- [x] 4.4 Host-Routing und Bindings fuer Survey-Create-, Edit- und Detailpfade im Standard-Content-Fluss verdrahten
+- [x] 4.5 Content-List-, Routing- und Host-Integrations-Tests fuer den Survey-Typ ergaenzen
+- [x] 4.6 kleinsten relevanten Gate-Pfad fuer Host- und Content-Integration ausfuehren
 
 ## 5. Survey-Editor-Rahmen und gemeinsame UI-Bausteine umsetzen
 

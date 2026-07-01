@@ -19,6 +19,11 @@ import { updateWasteVisibleStatus } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { requireDeps } from './utils.js';
 
+const normalizeOptionalTrimmedText = (value: string | undefined): string | undefined => {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+};
+
 export const loadWasteSettingsWriteContext = async (
   deps: WasteManagementHandlerDeps,
   instanceId: string,
@@ -184,14 +189,20 @@ export const updateWasteManagementSettingsAfterValidation = async ({
   const normalizedEmailReminderConfig = input.emailReminderConfig
     ? withFixedWasteEmailReminderPaths(input.emailReminderConfig)
     : undefined;
+  const normalizedPdfStaticSettings = {
+    pdfBrandingAssetUrl: normalizeOptionalTrimmedText(input.pdfBrandingAssetUrl),
+    pdfContactBlock: normalizeOptionalTrimmedText(input.pdfContactBlock),
+  };
 
+  await deps.saveWastePdfStaticSettings?.(instanceId, {
+    pdfBrandingAssetUrl: normalizedPdfStaticSettings.pdfBrandingAssetUrl,
+    pdfContactBlock: normalizedPdfStaticSettings.pdfContactBlock,
+  });
   await persistWasteSettingsInterfaceSelection({
     deps,
     interfaceRecords: writeContext.interfaceRecords,
     targetInterfaceRecord,
     calendarWebUrl: input.calendarWebUrl?.trim(),
-    pdfBrandingAssetUrl: input.pdfBrandingAssetUrl?.trim(),
-    pdfContactBlock: input.pdfContactBlock?.trim(),
     emailReminderConfig: normalizedEmailReminderConfig,
     holidayStateCode: input.holidayStateCode,
     lastHolidaySyncStatus,
@@ -264,13 +275,15 @@ export const runWasteManagementHolidaySyncAfterValidation = async ({
   }
 
   const lastHolidaySyncStatus = (await syncWasteHolidayState(deps, instanceId, writeContext.current.holidayStateCode)) ?? 'failed';
+  await deps.saveWastePdfStaticSettings?.(instanceId, {
+    pdfBrandingAssetUrl: normalizeOptionalTrimmedText(writeContext.current.pdfBrandingAssetUrl),
+    pdfContactBlock: normalizeOptionalTrimmedText(writeContext.current.pdfContactBlock),
+  });
   await persistWasteSettingsInterfaceSelection({
     deps,
     interfaceRecords: writeContext.interfaceRecords,
     targetInterfaceRecord,
     calendarWebUrl: writeContext.current.calendarWebUrl,
-    pdfBrandingAssetUrl: writeContext.current.pdfBrandingAssetUrl,
-    pdfContactBlock: writeContext.current.pdfContactBlock,
     emailReminderConfig: writeContext.current.emailReminderConfig,
     holidayStateCode: writeContext.current.holidayStateCode,
     lastHolidaySyncStatus,

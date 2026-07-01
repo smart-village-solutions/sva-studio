@@ -363,6 +363,7 @@ describe('waste-management settings write support', () => {
       pdfContactBlock: 'Kontakt neu',
     });
     const saveExternalInterfaceRecord = vi.fn(async () => undefined);
+    const saveWastePdfStaticSettings = vi.fn(async () => undefined);
     const saveWasteCustomRecurrencePresets = vi.fn(async () => undefined);
     const syncWasteHolidayRules = vi.fn(async () => 'success' as const);
 
@@ -372,6 +373,7 @@ describe('waste-management settings write support', () => {
       deps: {
         listInterfaceRecords: vi.fn(async () => [legacyRecord, targetRecord]),
         saveExternalInterfaceRecord,
+        saveWastePdfStaticSettings,
         saveWasteCustomRecurrencePresets,
         syncWasteHolidayRules,
       },
@@ -393,6 +395,10 @@ describe('waste-management settings write support', () => {
     });
 
     expect(syncWasteHolidayRules).toHaveBeenCalledWith('tenant-a', 'NW');
+    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
+      pdfBrandingAssetUrl: 'https://cdn.example/next.svg',
+      pdfContactBlock: 'Kontakt neu',
+    });
     expect(saveWasteCustomRecurrencePresets).toHaveBeenCalledWith('tenant-a', {
       nextItems: [{ id: 'preset-1', name: '10 Tage', intervalDays: 10 }],
       deletedPresetFallbacks: { 'preset-legacy': { kind: 'default', value: 'none' } },
@@ -405,19 +411,18 @@ describe('waste-management settings write support', () => {
 
     expect(persistedLegacy?.publicConfig).toEqual({
       calendarWebUrl: 'https://legacy.example',
-      pdfContactBlock: 'Alt',
     });
     expect(persistedTarget?.publicConfig).toEqual(
       expect.objectContaining({
         wasteManagementSelected: true,
         calendarWebUrl: 'https://calendar.next',
-        pdfBrandingAssetUrl: 'https://cdn.example/next.svg',
-        pdfContactBlock: 'Kontakt neu',
         holidayStateCode: 'NW',
         lastHolidaySyncStatus: 'success',
         lastSuccessfulHolidaySyncAt: '2026-06-07T10:15:00.000Z',
       })
     );
+    expect(persistedTarget?.publicConfig).not.toHaveProperty('pdfBrandingAssetUrl');
+    expect(persistedTarget?.publicConfig).not.toHaveProperty('pdfContactBlock');
 
     expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -441,6 +446,74 @@ describe('waste-management settings write support', () => {
       }),
       requestId: 'req-1',
     });
+  });
+
+  it('normalizes blank pdf values to unset before saving static settings', async () => {
+    loadConfiguredWasteSettingsMock.mockResolvedValueOnce(createSettings()).mockResolvedValueOnce(createSettings());
+    const saveWastePdfStaticSettings = vi.fn(async () => undefined);
+
+    const response = await updateWasteManagementSettingsAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord()]),
+        saveExternalInterfaceRecord: vi.fn(async () => undefined),
+        saveWastePdfStaticSettings,
+        saveWasteCustomRecurrencePresets: vi.fn(async () => undefined),
+      },
+      ctx: actor,
+      instanceId: 'tenant-a',
+      requestId: 'req-1',
+      input: {
+        projectUrl: 'https://tenant.example',
+        schemaName: 'wm',
+        enabled: true,
+        pdfBrandingAssetUrl: '   ',
+        pdfContactBlock: '   ',
+        customRecurrencePresets: [],
+        deletedPresetFallbacks: {},
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
+      pdfBrandingAssetUrl: undefined,
+      pdfContactBlock: undefined,
+    });
+  });
+
+  it('saves pdf static settings before updating interface selection', async () => {
+    loadConfiguredWasteSettingsMock.mockResolvedValueOnce(createSettings()).mockResolvedValueOnce(createSettings());
+    const callOrder: string[] = [];
+    const saveWastePdfStaticSettings = vi.fn(async () => {
+      callOrder.push('saveWastePdfStaticSettings');
+    });
+    const saveExternalInterfaceRecord = vi.fn(async () => {
+      callOrder.push('saveExternalInterfaceRecord');
+    });
+
+    const response = await updateWasteManagementSettingsAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord()]),
+        saveExternalInterfaceRecord,
+        saveWastePdfStaticSettings,
+        saveWasteCustomRecurrencePresets: vi.fn(async () => undefined),
+      },
+      ctx: actor,
+      instanceId: 'tenant-a',
+      requestId: 'req-order',
+      input: {
+        projectUrl: 'https://tenant.example',
+        schemaName: 'wm',
+        enabled: true,
+        pdfBrandingAssetUrl: 'https://cdn.example/new.svg',
+        pdfContactBlock: 'Kontakt neu',
+        customRecurrencePresets: [],
+        deletedPresetFallbacks: {},
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(callOrder[0]).toBe('saveWastePdfStaticSettings');
+    expect(callOrder).toContain('saveExternalInterfaceRecord');
   });
 
   it('returns a verification error when saved settings cannot be reloaded', async () => {
@@ -529,6 +602,7 @@ describe('waste-management settings write support', () => {
       },
     });
     const saveExternalInterfaceRecord = vi.fn(async () => undefined);
+    const saveWastePdfStaticSettings = vi.fn(async () => undefined);
     const syncWasteHolidayRules = vi.fn(async () => 'partial_success' as const);
 
     loadConfiguredWasteSettingsMock.mockResolvedValueOnce(current).mockResolvedValueOnce(saved);
@@ -537,6 +611,7 @@ describe('waste-management settings write support', () => {
       deps: {
         listInterfaceRecords: vi.fn(async () => [targetRecord]),
         saveExternalInterfaceRecord,
+        saveWastePdfStaticSettings,
         syncWasteHolidayRules,
       },
       ctx: actor,
@@ -556,6 +631,10 @@ describe('waste-management settings write support', () => {
         }),
       })
     );
+    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung',
+    });
     expect(emitWasteAuditEventMock).toHaveBeenCalledWith(
       expect.objectContaining({
         actionId: 'waste-management.settings.holiday-sync.triggered',
@@ -568,6 +647,66 @@ describe('waste-management settings write support', () => {
         holidayStateCode: 'NW',
         lastHolidaySyncStatus: 'partial_success',
       }),
+    });
+  });
+
+  it('saves pdf static settings before rewriting interface config during manual holiday sync', async () => {
+    const current = createSettings({
+      holidayStateCode: 'NW',
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung',
+    });
+    loadConfiguredWasteSettingsMock.mockResolvedValueOnce(current).mockResolvedValueOnce(current);
+    const callOrder: string[] = [];
+    const saveWastePdfStaticSettings = vi.fn(async () => {
+      callOrder.push('saveWastePdfStaticSettings');
+    });
+    const saveExternalInterfaceRecord = vi.fn(async () => {
+      callOrder.push('saveExternalInterfaceRecord');
+    });
+
+    const response = await runWasteManagementHolidaySyncAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord()]),
+        saveExternalInterfaceRecord,
+        saveWastePdfStaticSettings,
+        syncWasteHolidayRules: vi.fn(async () => 'success' as const),
+      },
+      ctx: actor,
+      instanceId: 'tenant-a',
+      requestId: 'req-holiday-order',
+    });
+
+    expect(response.status).toBe(200);
+    expect(callOrder[0]).toBe('saveWastePdfStaticSettings');
+    expect(callOrder).toContain('saveExternalInterfaceRecord');
+  });
+
+  it('preserves legacy pdf values during manual holiday sync when only interface settings exist', async () => {
+    const current = createSettings({
+      holidayStateCode: 'NW',
+      pdfBrandingAssetUrl: ' https://cdn.example/logo.svg ',
+      pdfContactBlock: ' Abfallberatung ',
+    });
+    loadConfiguredWasteSettingsMock.mockResolvedValueOnce(current).mockResolvedValueOnce(current);
+    const saveWastePdfStaticSettings = vi.fn(async () => undefined);
+
+    const response = await runWasteManagementHolidaySyncAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord()]),
+        saveExternalInterfaceRecord: vi.fn(async () => undefined),
+        saveWastePdfStaticSettings,
+        syncWasteHolidayRules: vi.fn(async () => 'success' as const),
+      },
+      ctx: actor,
+      instanceId: 'tenant-a',
+      requestId: 'req-legacy-pdf',
+    });
+
+    expect(response.status).toBe(200);
+    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung',
     });
   });
 

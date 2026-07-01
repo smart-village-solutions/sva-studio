@@ -11,6 +11,7 @@ import { runBootstrapJobAgainstAcceptance as runBootstrapJobAgainstAcceptanceWit
 import { filterRemoteOutputLines, wait, withoutDebugEnv } from './process.ts';
 import { formatRemoteStackSnapshot, inspectRemoteStack, type RemoteStackSnapshot } from './remote-stack-state.ts';
 import { inspectRemoteServiceContract } from './remote-service-spec.ts';
+import { pickInternalNetworkName } from './internal-network.ts';
 import { resolveRemoteShortServiceName, resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
 
 export type RemoteStackEvidence = {
@@ -99,15 +100,22 @@ const readRemoteStackEvidence = async (deps: AcceptanceRemoteStateDeps, env: Nod
 
 const resolveRemoteInternalNetworkName = async (deps: AcceptanceRemoteStateDeps, env: NodeJS.ProcessEnv) => {
   const stackName = deps.getConfiguredStackName(env);
+  const postgresServiceName = resolveRemoteShortServiceName(stackName, env.SVA_ACCEPTANCE_POSTGRES_SERVICE ?? 'postgres');
+  const postgresContract = await inspectRemoteServiceContract(
+    { commandExists: deps.commandExists, runCapture: deps.runCapture },
+    env,
+    { quantumEndpoint: deps.getConfiguredQuantumEndpoint(env), serviceName: postgresServiceName, stackName },
+  );
+  const postgresNetworkName = pickInternalNetworkName(postgresContract?.networkNames);
+  if (postgresNetworkName) return postgresNetworkName;
+
   const appServiceName = resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env));
   const liveContract = await inspectRemoteServiceContract(
     { commandExists: deps.commandExists, runCapture: deps.runCapture },
     env,
     { quantumEndpoint: deps.getConfiguredQuantumEndpoint(env), serviceName: appServiceName, stackName },
   );
-  const internalNetworkName = (liveContract?.networkNames ?? [])
-    .filter((networkName) => networkName !== 'public')[0]
-    ?.trim();
+  const internalNetworkName = pickInternalNetworkName(liveContract?.networkNames);
   if (internalNetworkName) return internalNetworkName;
   throw new Error(
     `Internes Overlay-Netz fuer ${resolveRemoteStackServiceName(stackName, appServiceName)} konnte nicht aus der Live-Service-Spec abgeleitet werden.`,

@@ -55,6 +55,31 @@ describe('acceptance runtime checks', () => {
     });
   });
 
+  it('retries transient network errors before succeeding on the live endpoint probe', async () => {
+    const checkHttpHealth = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('connect ECONNREFUSED'))
+      .mockResolvedValueOnce({
+        payload: undefined,
+        response: {
+          ok: true,
+          status: 200,
+        },
+      });
+    const deps = createDeps({ checkHttpHealth });
+
+    const check = await buildAcceptanceIngressConsistencyCheck(deps, {
+      SVA_ACCEPTANCE_HEALTH_RETRY_ATTEMPTS: '2',
+      SVA_ACCEPTANCE_HEALTH_RETRY_DELAY_MS: '1',
+      SVA_PUBLIC_BASE_URL: 'https://studio.smart-village.app',
+    });
+
+    expect(check.status).toBe('ok');
+    expect(checkHttpHealth).toHaveBeenCalledTimes(2);
+    expect(checkHttpHealth).toHaveBeenNthCalledWith(1, 'https://studio.smart-village.app/health/live');
+    expect(checkHttpHealth).toHaveBeenNthCalledWith(2, 'https://studio.smart-village.app/health/live');
+  });
+
   it('accepts expected oidc redirects from configured issuers and fallback realm paths', () => {
     expect(isExpectedOidcRedirect('https://issuer.example.test/protocol/openid-connect/auth', {})).toBe(false);
     expect(

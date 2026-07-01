@@ -57,13 +57,13 @@
 
 ## 6. Tab `Basis` umsetzen
 
-- [ ] 6.1 Card `Identitaet` mit Titel und Statusfeld umsetzen
-- [ ] 6.2 Card `Laufzeit` mit `startAt`, `endAt` und Hinweis fuer unbefristete Surveys umsetzen
-- [ ] 6.3 Card `Zielgebiet` mit optionaler Auswahl im Stil bestehender Mehrfachauswahlen umsetzen
-- [ ] 6.4 Card `Metadaten` fuer Create-/Edit-Zustaende umsetzen
-- [ ] 6.5 Validierung und Formularbindung fuer den Tab `Basis` ergaenzen
-- [ ] 6.6 Unit-Tests fuer `Basis`-Tab und zugehoerige Feldlogik ergaenzen
-- [ ] 6.7 kleinsten relevanten Gate-Pfad fuer `Basis` ausfuehren
+- [x] 6.1 Card `Identitaet` mit Titel und Statusfeld umsetzen
+- [x] 6.2 Card `Laufzeit` mit `startAt`, `endAt` und Hinweis fuer unbefristete Surveys umsetzen
+- [x] 6.3 Card `Zielgebiet` mit optionaler Auswahl im Stil bestehender Mehrfachauswahlen umsetzen
+- [x] 6.4 Card `Metadaten` fuer Create-/Edit-Zustaende umsetzen
+- [x] 6.5 Validierung und Formularbindung fuer den Tab `Basis` ergaenzen
+- [x] 6.6 Unit-Tests fuer `Basis`-Tab und zugehoerige Feldlogik ergaenzen
+- [x] 6.7 kleinsten relevanten Gate-Pfad fuer `Basis` ausfuehren
 
 ## 7. Tab `Inhalt` umsetzen
 

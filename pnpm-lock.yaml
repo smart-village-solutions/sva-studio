@@ -276,7 +276,7 @@ importers:
         version: link:../../packages/plugin-sdk
       '@sva/plugin-surveys':
         specifier: workspace:*
-        version: file:packages/plugin-surveys(@tanstack/react-router@1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.76.1(react@19.2.6))(react@19.2.6)
+        version: link:../../packages/plugin-surveys
       '@sva/routing':
         specifier: workspace:*
         version: file:packages/routing(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3)
@@ -935,6 +935,9 @@ importers:
       react-dom:
         specifier: ^19.2.0
         version: 19.2.6(react@19.2.6)
+      react-hook-form:
+        specifier: ^7.76.0
+        version: 7.79.0(react@19.2.6)
     devDependencies:
       '@testing-library/react':
         specifier: ^16.2.0
@@ -4946,13 +4949,6 @@ packages:
 
   '@sva/plugin-sdk@file:packages/plugin-sdk':
     resolution: {directory: packages/plugin-sdk, type: directory}
-
-  '@sva/plugin-surveys@file:packages/plugin-surveys':
-    resolution: {directory: packages/plugin-surveys, type: directory}
-    peerDependencies:
-      '@tanstack/react-router': 1.170.8
-      react: ^19.2.0
-      react-dom: ^19.2.0
 
   '@sva/plugin-waste-management@file:packages/plugin-waste-management':
     resolution: {directory: packages/plugin-waste-management, type: directory}
@@ -12930,21 +12926,6 @@ snapshots:
   '@sva/plugin-sdk@file:packages/plugin-sdk':
     dependencies:
       '@sva/core': file:packages/core
-
-  '@sva/plugin-surveys@file:packages/plugin-surveys(@tanstack/react-router@1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.76.1(react@19.2.6))(react@19.2.6)':
-    dependencies:
-      '@sva/plugin-sdk': file:packages/plugin-sdk
-      '@sva/studio-ui-react': file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.76.1(react@19.2.6))(react@19.2.6)
-      '@tanstack/react-router': 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      react: 19.2.6
-      react-dom: 19.2.6(react@19.2.6)
-    transitivePeerDependencies:
-      - '@floating-ui/dom'
-      - '@tiptap/core'
-      - '@tiptap/pm'
-      - '@types/react'
-      - '@types/react-dom'
-      - react-hook-form
 
   '@sva/plugin-waste-management@file:packages/plugin-waste-management(@tanstack/react-router@1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:

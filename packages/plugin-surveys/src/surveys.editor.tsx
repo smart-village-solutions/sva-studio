@@ -1,6 +1,11 @@
 import React from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioDetailPageTemplate, StudioDetailTabs, type StudioDetailTabDefinition } from '@sva/studio-ui-react';
+
+import { SurveyDetailBasisTab } from './surveys.detail-basis-tab.js';
+import { createDefaultSurveyDetailFormValues, type SurveyDetailFormValues } from './surveys.detail-form.js';
+import type { SurveyContentItem } from './surveys.types.js';
 
 type SurveyEditorMode = 'create' | 'edit';
 type SurveyEditorTabId = 'basis' | 'content' | 'moderation' | 'results' | 'history';
@@ -39,7 +44,8 @@ const SurveyTabPlaceholder = ({
 
 const createSurveyEditorTabs = (
   pt: ReturnType<typeof usePluginTranslation>,
-  mode: SurveyEditorMode
+  mode: SurveyEditorMode,
+  loadedItem: SurveyContentItem | null
 ): readonly StudioDetailTabDefinition<SurveyEditorTabId>[] => {
   const createPendingHint = (
     <p>{pt('messages.createPendingHint')}</p>
@@ -53,10 +59,11 @@ const createSurveyEditorTabs = (
       title: pt('tabs.basis.title'),
       description: pt('tabs.basis.description'),
       panel: (
-        <SurveyTabPlaceholder
-          title={pt('cards.basis.title')}
-          description={pt('cards.basis.description')}
-          body={genericPlaceholder}
+        <SurveyDetailBasisTab
+          mode={mode}
+          loadedItem={loadedItem}
+          availableTargetAreas={[]}
+          pt={pt}
         />
       ),
     },
@@ -130,20 +137,25 @@ const createSurveyEditorTabs = (
 export const SurveyEditorPage = ({ mode }: Readonly<{ mode: SurveyEditorMode }>) => {
   const pt = usePluginTranslation('surveys');
   const [activeTab, setActiveTab] = React.useState<SurveyEditorTabId>('basis');
-  const tabs = React.useMemo(() => createSurveyEditorTabs(pt, mode), [mode, pt]);
+  const methods = useForm<SurveyDetailFormValues>({
+    defaultValues: createDefaultSurveyDetailFormValues(),
+  });
+  const tabs = React.useMemo(() => createSurveyEditorTabs(pt, mode, null), [mode, pt]);
 
   return (
     <StudioDetailPageTemplate
       title={pt(mode === 'create' ? 'pages.createTitle' : 'pages.editTitle')}
       description={pt(mode === 'create' ? 'pages.createDescription' : 'pages.editDescription')}
     >
-      <StudioDetailTabs
-        ariaLabel={pt('tabs.ariaLabel')}
-        tabs={tabs}
-        value={activeTab}
-        onValueChange={setActiveTab}
-        keepMounted
-      />
+      <FormProvider {...methods}>
+        <StudioDetailTabs
+          ariaLabel={pt('tabs.ariaLabel')}
+          tabs={tabs}
+          value={activeTab}
+          onValueChange={setActiveTab}
+          keepMounted
+        />
+      </FormProvider>
     </StudioDetailPageTemplate>
   );
 };

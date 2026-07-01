@@ -34,6 +34,14 @@ vi.mock('@sva/plugin-sdk', async () => {
     'surveys.tabs.history.description': 'Änderungsverlauf der Umfrage.',
     'surveys.cards.basis.title': 'Basis-Rahmen',
     'surveys.cards.basis.description': 'Status, Laufzeit, Zielgebiet und Metadaten folgen in den nächsten Schritten.',
+    'surveys.cards.basis.identity.title': 'Identität',
+    'surveys.cards.basis.identity.description': 'Titel und Status der Umfrage.',
+    'surveys.cards.basis.schedule.title': 'Laufzeit',
+    'surveys.cards.basis.schedule.description': 'Start- und Endzeitraum der Umfrage.',
+    'surveys.cards.basis.targetArea.title': 'Zielgebiet',
+    'surveys.cards.basis.targetArea.description': 'Optionale Zielgebiete für die Umfrage.',
+    'surveys.cards.basis.metadata.title': 'Metadaten',
+    'surveys.cards.basis.metadata.description': 'Zeitliche Metadaten der Umfrage.',
     'surveys.cards.content.title': 'Inhalts-Rahmen',
     'surveys.cards.content.description': 'Beschreibung, Hinweise und Frageneditor folgen in den nächsten Schritten.',
     'surveys.cards.moderation.title': 'Moderations-Rahmen',
@@ -45,6 +53,25 @@ vi.mock('@sva/plugin-sdk', async () => {
     'surveys.messages.createPendingHint': 'Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.',
     'surveys.messages.sectionPlaceholder': 'Die fachlichen Felder dieses Bereichs folgen in den nächsten Umsetzungsabschnitten.',
     'surveys.messages.historyPlaceholder': 'Die Historie erscheint hier, sobald die Umfrage bereits angelegt wurde.',
+    'surveys.messages.unlimitedScheduleHint': 'Ohne Enddatum bleibt die Umfrage unbefristet.',
+    'surveys.messages.targetAreasEmpty': 'Es stehen derzeit keine Zielgebiete zur Auswahl.',
+    'surveys.messages.metadataCreateHint': 'Metadaten erscheinen nach dem ersten Speichern der Umfrage.',
+    'surveys.fields.title': 'Titel',
+    'surveys.fields.status': 'Status',
+    'surveys.fields.startAt': 'Start',
+    'surveys.fields.endAt': 'Ende',
+    'surveys.fields.targetAreas': 'Zielgebiete',
+    'surveys.fields.targetAreasSearch': 'Zielgebiet suchen',
+    'surveys.fields.targetAreasSearchPlaceholder': 'Zielgebiet auswählen',
+    'surveys.fields.createdAt': 'Erstellt',
+    'surveys.fields.updatedAt': 'Aktualisiert',
+    'surveys.fields.publishedAt': 'Veröffentlicht',
+    'surveys.fields.archivedAt': 'Archiviert',
+    'surveys.fields.statusOptions.draft': 'Entwurf',
+    'surveys.fields.statusOptions.active': 'Aktiv',
+    'surveys.fields.statusOptions.archived': 'Archiviert',
+    'surveys.actions.addTargetArea': 'Zielgebiet hinzufügen',
+    'surveys.actions.removeTargetArea': 'Zielgebiet {{name}} entfernen',
   } as const;
 
   return {
@@ -72,7 +99,7 @@ describe('survey editor pages', () => {
     expect(scoped.getByRole('tab', { name: 'Ergebnisse' })).toBeTruthy();
     expect(scoped.getByRole('tab', { name: 'Historie' })).toBeTruthy();
     expect(scoped.getAllByRole('tablist')).toHaveLength(1);
-    expect(scoped.getByText('Status, Laufzeit, Zielgebiet und Metadaten folgen in den nächsten Schritten.')).toBeTruthy();
+    expect(scoped.getByRole('heading', { name: 'Identität' })).toBeTruthy();
   });
 
   it('keeps create-only unavailable tabs visible and explains their pending state', () => {

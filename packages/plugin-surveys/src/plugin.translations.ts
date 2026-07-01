@@ -11,6 +11,8 @@ export const pluginSurveysTranslations = {
         delete: 'Umfrage löschen',
         moderate: 'Freitexte moderieren',
         export: 'Ergebnisse exportieren',
+        addTargetArea: 'Zielgebiet hinzufügen',
+        removeTargetArea: 'Zielgebiet {{name}} entfernen',
       },
       pages: {
         createTitle: 'Umfrage anlegen',
@@ -50,8 +52,24 @@ export const pluginSurveysTranslations = {
       },
       cards: {
         basis: {
-          title: 'Basis-Rahmen',
-          description: 'Status, Laufzeit, Zielgebiet und Metadaten folgen in den nächsten Schritten.',
+          title: 'Basis',
+          description: 'Status, Laufzeit, Zielgebiet und Metadaten der Umfrage.',
+          identity: {
+            title: 'Identität',
+            description: 'Titel und Status der Umfrage.',
+          },
+          schedule: {
+            title: 'Laufzeit',
+            description: 'Start- und Endzeitraum der Umfrage.',
+          },
+          targetArea: {
+            title: 'Zielgebiet',
+            description: 'Optionale Zielgebiete für die Umfrage.',
+          },
+          metadata: {
+            title: 'Metadaten',
+            description: 'Zeitliche Metadaten der Umfrage.',
+          },
         },
         content: {
           title: 'Inhalts-Rahmen',
@@ -76,6 +94,30 @@ export const pluginSurveysTranslations = {
         sectionPlaceholder:
           'Die fachlichen Felder dieses Bereichs folgen in den nächsten Umsetzungsabschnitten.',
         historyPlaceholder: 'Die Historie erscheint hier, sobald die Umfrage bereits angelegt wurde.',
+        unlimitedScheduleHint: 'Ohne Enddatum bleibt die Umfrage unbefristet.',
+        targetAreasEmpty: 'Es stehen derzeit keine Zielgebiete zur Auswahl.',
+        metadataCreateHint: 'Metadaten erscheinen nach dem ersten Speichern der Umfrage.',
+      },
+      validation: {
+        titleRequired: 'Bitte einen Titel angeben.',
+      },
+      fields: {
+        title: 'Titel',
+        status: 'Status',
+        startAt: 'Start',
+        endAt: 'Ende',
+        targetAreas: 'Zielgebiete',
+        targetAreasSearch: 'Zielgebiet suchen',
+        targetAreasSearchPlaceholder: 'Zielgebiet auswählen',
+        createdAt: 'Erstellt',
+        updatedAt: 'Aktualisiert',
+        publishedAt: 'Veröffentlicht',
+        archivedAt: 'Archiviert',
+        statusOptions: {
+          draft: 'Entwurf',
+          active: 'Aktiv',
+          archived: 'Archiviert',
+        },
       },
       permissions: {
         read: 'Umfragen lesen',
@@ -99,6 +141,8 @@ export const pluginSurveysTranslations = {
         delete: 'Delete survey',
         moderate: 'Moderate free text',
         export: 'Export results',
+        addTargetArea: 'Add target area',
+        removeTargetArea: 'Remove target area {{name}}',
       },
       pages: {
         createTitle: 'Create survey',
@@ -138,8 +182,24 @@ export const pluginSurveysTranslations = {
       },
       cards: {
         basis: {
-          title: 'Basics frame',
-          description: 'Status, schedule, target area, and metadata follow in the next steps.',
+          title: 'Basics',
+          description: 'Status, schedule, target area, and survey metadata.',
+          identity: {
+            title: 'Identity',
+            description: 'Survey title and status.',
+          },
+          schedule: {
+            title: 'Schedule',
+            description: 'Survey start and end window.',
+          },
+          targetArea: {
+            title: 'Target area',
+            description: 'Optional target areas for the survey.',
+          },
+          metadata: {
+            title: 'Metadata',
+            description: 'Temporal survey metadata.',
+          },
         },
         content: {
           title: 'Content frame',
@@ -164,6 +224,30 @@ export const pluginSurveysTranslations = {
         sectionPlaceholder:
           'The dedicated fields for this section follow in the next implementation steps.',
         historyPlaceholder: 'The history will appear here once the survey has been created.',
+        unlimitedScheduleHint: 'Without an end date, the survey remains open-ended.',
+        targetAreasEmpty: 'There are currently no target areas available.',
+        metadataCreateHint: 'Metadata appears after the survey has been saved for the first time.',
+      },
+      validation: {
+        titleRequired: 'Please provide a title.',
+      },
+      fields: {
+        title: 'Title',
+        status: 'Status',
+        startAt: 'Start',
+        endAt: 'End',
+        targetAreas: 'Target areas',
+        targetAreasSearch: 'Search target area',
+        targetAreasSearchPlaceholder: 'Select target area',
+        createdAt: 'Created',
+        updatedAt: 'Updated',
+        publishedAt: 'Published',
+        archivedAt: 'Archived',
+        statusOptions: {
+          draft: 'Draft',
+          active: 'Active',
+          archived: 'Archived',
+        },
       },
       permissions: {
         read: 'Read surveys',

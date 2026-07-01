@@ -118,7 +118,7 @@
     "@vitest/coverage-v8": "^4.1.5",
     "autoprefixer": "10.5.2",
     "eslint": "^10.6.0",
-    "fallow": "2.90.0",
+    "fallow": "2.103.0",
     "happy-dom": "^20.8.9",
     "knip": "^6.23.0",
     "nx": "22.7.4",

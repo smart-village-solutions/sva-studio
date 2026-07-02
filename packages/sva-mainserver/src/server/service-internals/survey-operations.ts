@@ -123,6 +123,21 @@ const findSurvey = <TItem extends { readonly id?: string | null }>(
   surveys: readonly (TItem | null | undefined)[] | null | undefined
 ): TItem | undefined => (surveys ?? []).find((item): item is TItem => Boolean(item?.id));
 
+const compareSurveyListItems = <
+  TItem extends { readonly id?: string | null; readonly updatedAt?: string | null }
+>(
+  left: TItem | null | undefined,
+  right: TItem | null | undefined
+): number => {
+  const leftUpdatedAt = left?.updatedAt ?? '';
+  const rightUpdatedAt = right?.updatedAt ?? '';
+  if (leftUpdatedAt !== rightUpdatedAt) {
+    return rightUpdatedAt.localeCompare(leftUpdatedAt);
+  }
+
+  return (left?.id ?? '').localeCompare(right?.id ?? '');
+};
+
 const normalizeSurveyListQuery = (
   input: SvaMainserverConnectionInput & SvaMainserverSurveyListInput
 ): SvaMainserverSurveyListInput => {
@@ -174,7 +189,10 @@ const createListSurveysWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) 
       statusCode: 502,
     });
   }
-  const pagedItems = rawSurveys.slice(offset, offset + pagination.pageSize).map(mapSurveyItem);
+  const pagedItems = [...rawSurveys]
+    .sort(compareSurveyListItems)
+    .slice(offset, offset + pagination.pageSize)
+    .map(mapSurveyItem);
 
   return {
     data: pagedItems,

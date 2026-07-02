@@ -51,6 +51,38 @@ const categoriesModuleIamContract = createStandardContentContract('categories', 
 const newsModuleIamContract = createStandardContentContract('news', 'plugins.news.description');
 const eventsModuleIamContract = createStandardContentContract('events', 'plugins.events.description');
 const poiModuleIamContract = createStandardContentContract('poi', 'plugins.poi.description');
+const surveysTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[] = [
+  {
+    roleName: 'system_admin',
+    permissionIds: [
+      'surveys.read',
+      'surveys.create',
+      'surveys.update',
+      'surveys.delete',
+      'surveys.moderate',
+      'surveys.export',
+    ],
+  },
+];
+
+const surveysModuleIamContract: StudioModuleIamContract = {
+  moduleId: 'surveys',
+  namespace: 'surveys',
+  ownerPluginId: 'surveys',
+  descriptionKey: 'plugins.surveys.description',
+  permissionIds: [
+    'surveys.read',
+    'surveys.create',
+    'surveys.update',
+    'surveys.delete',
+    'surveys.moderate',
+    'surveys.export',
+  ],
+  tenantBootstrapRoles: surveysTenantBootstrapRoles,
+  rootSystemRoles: [],
+  systemRoles: createSystemAdminSystemRoles(surveysTenantBootstrapRoles),
+};
+
 const wasteManagementTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[] = [
   {
     roleName: 'system_admin',
@@ -123,6 +155,7 @@ export const studioPluginModuleIamContracts = [
   newsModuleIamContract,
   eventsModuleIamContract,
   poiModuleIamContract,
+  surveysModuleIamContract,
   wasteManagementModuleIamContract,
 ] as const satisfies readonly StudioModuleIamContract[];
 

@@ -18,6 +18,7 @@ import {
 import { errorJson, json } from './content-route-core.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import {
+  hasRequiredSurveyTitle,
   matchSurveysRoute,
   parseSurveyInput,
   toSurveyMutationFailureResponse,
@@ -113,6 +114,9 @@ const handleCreate = async (request: Request, ctx: AuthenticatedRequestContext):
   const survey = await parseSurveyInput(request);
   if (survey instanceof Response) {
     return survey;
+  }
+  if (!hasRequiredSurveyTitle(survey.title)) {
+    return errorJson(400, 'invalid_request', 'Der Umfrage-Titel ist erforderlich.');
   }
   const created = await createSvaMainserverSurvey({ ...actor, survey });
   if (!created.success || created.errors.length > 0 || !created.survey) {

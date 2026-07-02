@@ -1828,6 +1828,46 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('sorts surveys deterministically before applying local pagination slices', async () => {
+    const surveys = Array.from({ length: 130 }, (_value, index) => {
+      const surveyNumber = 130 - index;
+      const surveyId = `survey-${String(surveyNumber).padStart(3, '0')}`;
+
+      return {
+        id: surveyId,
+        title: { de: `Umfrage ${surveyNumber}` },
+        status: 'ACTIVE',
+        isAnonymous: true,
+        showResultsInApp: false,
+        resultVisibility: 'NONE',
+        targetAreaIds: [],
+        questions: [],
+        createdAt: '2026-06-20T10:00:00.000Z',
+        updatedAt: '2026-06-21T10:00:00.000Z',
+      };
+    });
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys } }));
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listSurveys({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 2, pageSize: 101 })
+    ).resolves.toMatchObject({
+      data: expect.arrayContaining([
+        expect.objectContaining({ id: 'survey-102' }),
+        expect.objectContaining({ id: 'survey-103' }),
+        expect.objectContaining({ id: 'survey-130' }),
+      ]),
+      pagination: { page: 2, pageSize: 101, hasNextPage: false, total: 130 },
+    });
+  });
+
   it(
     'keeps the highest allowed visible-list page reachable when the has-next probe crosses the scan limit',
     { timeout: 20_000 },

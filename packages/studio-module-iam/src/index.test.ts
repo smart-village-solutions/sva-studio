@@ -15,6 +15,7 @@ describe('@sva/studio-module-iam', () => {
       'news',
       'events',
       'poi',
+      'surveys',
       'waste-management',
     ]);
     expect(studioHostModuleIamContracts.map((contract) => contract.moduleId)).toEqual(['media']);
@@ -23,6 +24,7 @@ describe('@sva/studio-module-iam', () => {
       'news',
       'events',
       'poi',
+      'surveys',
       'waste-management',
       'media',
     ]);
@@ -89,6 +91,32 @@ describe('@sva/studio-module-iam', () => {
         permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'],
       },
     ]);
+    expect(getStudioModuleIamContract('surveys')).toMatchObject({
+      moduleId: 'surveys',
+      namespace: 'surveys',
+      ownerPluginId: 'surveys',
+      permissionIds: [
+        'surveys.read',
+        'surveys.create',
+        'surveys.update',
+        'surveys.delete',
+        'surveys.moderate',
+        'surveys.export',
+      ],
+      tenantBootstrapRoles: [
+        {
+          roleName: 'system_admin',
+          permissionIds: [
+            'surveys.read',
+            'surveys.create',
+            'surveys.update',
+            'surveys.delete',
+            'surveys.moderate',
+            'surveys.export',
+          ],
+        },
+      ],
+    });
     expect(getStudioModuleIamContract('waste-management')).toMatchObject({
       moduleId: 'waste-management',
       namespace: 'waste-management',

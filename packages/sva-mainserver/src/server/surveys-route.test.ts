@@ -364,7 +364,7 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
     expect(response?.status).toBe(422);
     await expect(response?.json()).resolves.toMatchObject({
       error: 'validation_error',
-      message: 'Titel fehlt.',
+      message: 'Umfrage konnte nicht angelegt werden.',
     });
   });
 
@@ -524,12 +524,12 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
     expect(updateResponse?.status).toBe(403);
     await expect(updateResponse?.json()).resolves.toMatchObject({
       error: 'forbidden',
-      message: 'Nicht erlaubt.',
+      message: 'Umfrage konnte nicht gespeichert werden.',
     });
     expect(deleteResponse?.status).toBe(404);
     await expect(deleteResponse?.json()).resolves.toMatchObject({
       error: 'survey_not_found',
-      message: 'Nicht gefunden.',
+      message: 'Umfrage konnte nicht gelöscht werden.',
     });
   });
 
@@ -585,6 +585,83 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
     expect(response?.status).toBe(400);
     await expect(response?.json()).resolves.toMatchObject({
       error: 'invalid_request',
+    });
+    expect(state.createSvaMainserverSurvey).not.toHaveBeenCalled();
+  });
+
+  it('rejects creates without a non-empty localized title before hitting the service', async () => {
+    mockAuthorizedRequest();
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: { de: '   ' },
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'invalid_request',
+      message: 'Der Umfrage-Titel ist erforderlich.',
+    });
+    expect(state.createSvaMainserverSurvey).not.toHaveBeenCalled();
+  });
+
+  it('allows null clears for optional localized survey fields during updates', async () => {
+    mockAuthorizedRequest();
+    state.updateSvaMainserverSurvey.mockResolvedValue({
+      success: true,
+      errors: [],
+      survey: { id: 'survey-1', title: { de: 'Bestandsumfrage' } },
+    });
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: { de: 'Bestandsumfrage' },
+          shortDescription: null,
+          description: null,
+          privacyNotice: null,
+          transparencyNotice: null,
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverSurvey).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      surveyId: 'survey-1',
+      survey: {
+        title: { de: 'Bestandsumfrage' },
+        shortDescription: null,
+        description: null,
+        privacyNotice: null,
+        transparencyNotice: null,
+      },
+    });
+  });
+
+  it('rejects localized survey fields with non-string locale values before hitting the service', async () => {
+    mockAuthorizedRequest();
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: { de: 123 },
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'invalid_request',
+      message: 'Der Umfrage-Titel muss als Objekt mit String-Werten gesendet werden.',
     });
     expect(state.createSvaMainserverSurvey).not.toHaveBeenCalled();
   });

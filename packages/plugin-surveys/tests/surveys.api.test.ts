@@ -39,7 +39,6 @@ describe('surveys api payload mapping', () => {
       resultVisibility: 'NONE',
       targetAreaIds: [],
       showResultsInApp: false,
-      questions: [],
     });
 
     expect(capturedOptions?.updateBody).toBeTypeOf('function');
@@ -53,6 +52,30 @@ describe('surveys api payload mapping', () => {
       resultVisibility: 'NONE',
       targetAreaIds: [],
       showResultsInApp: false,
+      isAnonymous: false,
+      privacyNotice: null,
+      transparencyNotice: null,
+    });
+  });
+
+  it('sends question clears only when the update input explicitly sets the field', async () => {
+    const { updateSurvey } = await import('../src/surveys.api.js');
+
+    const payload = await updateSurvey('survey-1', {
+      title: 'Bestandsumfrage',
+      status: 'DRAFT',
+      isAnonymous: false,
+      questions: [],
+    });
+
+    expect(payload).toEqual({
+      title: { de: 'Bestandsumfrage' },
+      shortDescription: null,
+      description: null,
+      status: 'DRAFT',
+      startAt: null,
+      endAt: null,
+      targetAreaIds: [],
       isAnonymous: false,
       privacyNotice: null,
       transparencyNotice: null,

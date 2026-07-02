@@ -34,6 +34,9 @@ const decodePathSegment = (value: string): string | null => {
   }
 };
 
+const hasOnlyStringValues = (value: Record<string, unknown>): boolean =>
+  Object.values(value).every((entry) => typeof entry === 'string');
+
 export const matchSurveysRoute = (
   request: Request,
   collectionPath: string
@@ -65,12 +68,22 @@ export const matchSurveysRoute = (
   return matchRequestRoute(request, collectionPath, 'surveys');
 };
 
-const validateLocalizedTextShape = (value: unknown, message: string): Response | null => {
+const validateLocalizedTextShape = (
+  value: unknown,
+  message: string,
+  options?: { readonly allowNull?: boolean }
+): Response | null => {
   if (value === undefined) {
     return null;
   }
 
-  return isRecord(value) ? null : errorJson(400, 'invalid_request', message);
+  if (value === null) {
+    return options?.allowNull === true ? null : errorJson(400, 'invalid_request', message);
+  }
+
+  return isRecord(value) && hasOnlyStringValues(value)
+    ? null
+    : errorJson(400, 'invalid_request', message);
 };
 
 const validateStringArrayShape = (value: unknown, message: string): Response | null => {
@@ -112,11 +125,11 @@ const validateSurveyInputShape = (body: Record<string, unknown>): Response | nul
   }
 
   return (
-    validateLocalizedTextShape(body.title, 'Der Umfrage-Titel muss als Objekt gesendet werden.') ??
-    validateLocalizedTextShape(body.shortDescription, 'Die Kurzbeschreibung muss als Objekt gesendet werden.') ??
-    validateLocalizedTextShape(body.description, 'Die Beschreibung muss als Objekt gesendet werden.') ??
-    validateLocalizedTextShape(body.privacyNotice, 'Der Datenschutzhinweis muss als Objekt gesendet werden.') ??
-    validateLocalizedTextShape(body.transparencyNotice, 'Der Transparenzhinweis muss als Objekt gesendet werden.') ??
+    validateLocalizedTextShape(body.title, 'Der Umfrage-Titel muss als Objekt mit String-Werten gesendet werden.') ??
+    validateLocalizedTextShape(body.shortDescription, 'Die Kurzbeschreibung muss als Objekt mit String-Werten gesendet werden.', { allowNull: true }) ??
+    validateLocalizedTextShape(body.description, 'Die Beschreibung muss als Objekt mit String-Werten gesendet werden.', { allowNull: true }) ??
+    validateLocalizedTextShape(body.privacyNotice, 'Der Datenschutzhinweis muss als Objekt mit String-Werten gesendet werden.', { allowNull: true }) ??
+    validateLocalizedTextShape(body.transparencyNotice, 'Der Transparenzhinweis muss als Objekt mit String-Werten gesendet werden.', { allowNull: true }) ??
     validateStringArrayShape(body.targetAreaIds, 'Die Zielgebiete müssen als Liste von Strings gesendet werden.') ??
     validateObjectArrayShape(body.questions, 'Fragen müssen als Liste gesendet werden.', 'Fragen müssen Objekte sein.') ??
     validateObjectArrayShape(
@@ -135,6 +148,9 @@ export const parseSurveyInput = async (request: Request): Promise<SvaMainserverS
 
     return validateSurveyInputShape(body) ?? (body as SvaMainserverSurveyInput);
   });
+
+export const hasRequiredSurveyTitle = (value: SvaMainserverSurveyInput['title']): boolean =>
+  isRecord(value) && Object.values(value).some((entry) => typeof entry === 'string' && entry.trim().length > 0);
 
 export const toSurveyRouteErrorResponse = (error: unknown): Response => {
   if (error instanceof SvaMainserverError) {
@@ -158,7 +174,6 @@ export const toSurveyMutationFailureResponse = (
 ): Response => {
   const firstError = payload.errors[0];
   const errorCode = firstError?.code?.toLowerCase() ?? 'survey_mutation_failed';
-  const message = firstError?.message ?? fallbackMessage;
   const status =
     firstError?.code === 'FORBIDDEN'
       ? 403
@@ -168,5 +183,5 @@ export const toSurveyMutationFailureResponse = (
           ? 500
           : 422;
 
-  return errorJson(status, errorCode, message);
+  return errorJson(status, errorCode, fallbackMessage);
 };

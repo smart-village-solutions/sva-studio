@@ -55,6 +55,9 @@ const optionalLocalizedField = (key: string, value: string | undefined) => {
 const optionalScalarField = <TValue>(key: string, value: TValue | undefined) =>
   value === undefined ? {} : { [key]: value };
 
+const hasOwnField = <TKey extends PropertyKey>(value: object, key: TKey): boolean =>
+  Object.prototype.hasOwnProperty.call(value, key);
+
 const mapCreateOption = (option: NonNullable<NonNullable<SurveyMutationInput['questions']>[number]['options']>[number]) => ({
   title: toRequiredLocalizedText(option.title),
   position: option.position,
@@ -159,7 +162,9 @@ const buildUpdateSurveyBody = (input: SurveyMutationInputWithLocales) => ({
   isAnonymous: input.isAnonymous,
   privacyNotice: toLocalizedTextUpdate(input.privacyNotice, input.privacyNoticeLocales),
   transparencyNotice: toLocalizedTextUpdate(input.transparencyNotice, input.transparencyNoticeLocales),
-  questions: (input.questions ?? []).map(mapUpdateQuestion),
+  ...(hasOwnField(input, 'questions')
+    ? { questions: (input.questions ?? []).map(mapUpdateQuestion) }
+    : {}),
 });
 
 const enrichUpdateInputWithLocales = (

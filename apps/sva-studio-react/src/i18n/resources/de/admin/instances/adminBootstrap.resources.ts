@@ -19,6 +19,7 @@ export const adminBootstrapInstancesAdminDEResources = {
     events: 'Events',
     poi: 'POI',
     media: 'Medien',
+    surveys: 'Umfragen',
     wasteManagement: 'Abfallmanagement',
   },
 } as const;

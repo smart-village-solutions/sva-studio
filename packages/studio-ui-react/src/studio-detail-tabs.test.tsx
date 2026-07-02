@@ -318,6 +318,27 @@ describe('StudioDetailTabs', () => {
     expect(screen.queryByText('Historie Panel')).toBeNull();
   });
 
+  it('ignores keyboard navigation events on disabled tab triggers', () => {
+    const onValueChange = vi.fn<(value: 'base' | 'history') => void>();
+
+    render(
+      <StudioDetailTabs
+        ariaLabel="Detailbereiche"
+        onValueChange={onValueChange}
+        tabs={[
+          { id: 'base', label: 'Basis', panel: <p>Basis Panel</p> },
+          { id: 'history', label: 'Historie', disabled: true, panel: <p>Historie Panel</p> },
+        ]}
+      />
+    );
+
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Historie' }), { key: 'ArrowLeft' });
+
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('tab', { name: 'Basis' }).getAttribute('data-state')).toBe('active');
+    expect(screen.queryByText('Historie Panel')).toBeNull();
+  });
+
   it('shows the configured blocked-switch fallback message when onBeforeTabChange returns false', () => {
     render(
       <StudioDetailTabs

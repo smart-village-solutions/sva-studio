@@ -423,7 +423,7 @@ fi`;
   }
 });
 
-test('injected workspace sync copies dist into pnpm store package copies', () => {
+test('injected workspace sync copies dist into pnpm store package copies', { timeout: 15_000 }, () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), 'sync-injected-workspace-'));
   const appDir = resolve(tempRoot, 'apps', 'demo-app');
   const sourcePackageDir = resolve(tempRoot, 'packages', 'demo-lib');

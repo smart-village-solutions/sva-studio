@@ -11,6 +11,11 @@ const MAIN_SERVER_CONTENT_TYPES = new Set([
   'surveys.survey',
 ]);
 export const EMPTY_VISIBLE_TYPE_SENTINEL = '__no_readable_content__';
+export type MainserverContentType =
+  | 'news.article'
+  | 'events.event-record'
+  | 'poi.point-of-interest'
+  | 'surveys.survey';
 
 const API_ERROR_CODES = new Set<ApiErrorCode>([
   'unauthorized',
@@ -43,7 +48,8 @@ const API_ERROR_CODES = new Set<ApiErrorCode>([
 export const MAINSERVER_FETCH_PAGE_SIZE = 100;
 const MAX_CONTENT_LIST_PAGE_SIZE = 100;
 
-export const isMainserverContentType = (value: string): boolean => MAIN_SERVER_CONTENT_TYPES.has(value);
+export const isMainserverContentType = (value: string): value is MainserverContentType =>
+  MAIN_SERVER_CONTENT_TYPES.has(value);
 
 export const normalizeApiErrorCode = (value: unknown): ApiErrorCode =>
   typeof value === 'string' && API_ERROR_CODES.has(value as ApiErrorCode)

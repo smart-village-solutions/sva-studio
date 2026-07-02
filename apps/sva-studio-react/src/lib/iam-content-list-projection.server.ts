@@ -23,6 +23,7 @@ import {
   EMPTY_VISIBLE_TYPE_SENTINEL,
   isMainserverContentType,
   MAINSERVER_FETCH_PAGE_SIZE,
+  type MainserverContentType,
   normalizeApiErrorCode,
 } from './iam-content-list-api.shared.js';
 import {
@@ -34,8 +35,6 @@ import { mapEventItem, mapNewsItem, mapPoiItem, mapSurveyItem } from './iam-cont
 const MAIN_SERVER_SYNC_STALE_MS = 5 * 60 * 1000;
 const MAIN_SERVER_SYNC_POLL_INTERVAL_MS = 60 * 1000;
 const MAX_SYNC_ITEMS_PER_TYPE = 5_000;
-
-type MainserverContentType = 'news.article' | 'events.event-record' | 'poi.point-of-interest' | 'surveys.survey';
 
 export type ProjectionRow = {
   id: string;
@@ -1468,14 +1467,19 @@ export const listProjectedContents = async (
     );
   }
 
-  const unavailableMainserverTypes = new Set(
+  const unavailableMainserverTypes = new Set<MainserverContentType>(
     responseSyncStates
       .filter((syncState) => syncState.hasSnapshot === false)
       .map((syncState) => syncState.contentType)
   );
-  const loadableAllowedTypes = typeAuthorization.allowedTypes.filter(
-    (contentType) => !unavailableMainserverTypes.has(contentType)
-  );
+  const loadableAllowedTypes = typeAuthorization.allowedTypes.filter((contentType) => {
+    if (!isMainserverContentType(contentType)) {
+      return true;
+    }
+
+    const mainserverContentType: MainserverContentType = contentType;
+    return !unavailableMainserverTypes.has(mainserverContentType);
+  });
   const visibilityRules = buildProjectionReadVisibilityRules(
     loadableAllowedTypes,
     typeAuthorization.permissions

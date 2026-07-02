@@ -215,6 +215,47 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
     });
   });
 
+  it('propagates moderation or export authorization outages before returning read-only survey details', async () => {
+    mockAuthorizedRequest();
+    state.getSvaMainserverSurvey.mockResolvedValue({
+      id: 'survey-1',
+      title: { de: 'Bestandsumfrage' },
+    });
+    state.authorizeContentPrimitiveForUser
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'subject-1',
+          organizationId: '11111111-1111-1111-8111-111111111111',
+        },
+        permissions: [],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        error: 'database_unavailable',
+        message: 'Moderationsrechte derzeit nicht verfügbar.',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Export nicht erlaubt.',
+      });
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1')
+    );
+
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'database_unavailable',
+      message: 'Moderationsrechte derzeit nicht verfügbar.',
+    });
+    expect(state.getSvaMainserverSurveyResults).not.toHaveBeenCalled();
+  });
+
   it('deletes surveys after delete authorization', async () => {
     mockAuthorizedRequest();
     state.deleteSvaMainserverSurvey.mockResolvedValue({

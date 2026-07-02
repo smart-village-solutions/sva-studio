@@ -99,10 +99,14 @@ const createSurveyEditorSubmit = (input: {
 
       const mutation = toSurveyMutationInput(values, input.loadedItem);
       const contentId = input.contentId;
-      const savedItem =
+      const mutationResult =
         input.mode === 'create'
           ? await createSurvey(mutation)
           : await updateSurvey(contentId as string, mutation);
+      const savedItem =
+        input.mode === 'edit' && input.loadedItem?.results && mutationResult.results === undefined
+          ? { ...mutationResult, results: input.loadedItem.results }
+          : mutationResult;
 
       input.setLoadedItem(savedItem);
       input.methods.reset(mapSurveyItemToFormValues(savedItem));

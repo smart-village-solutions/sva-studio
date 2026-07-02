@@ -41,6 +41,8 @@ type ContentActor = Readonly<{
 }>;
 
 type SurveyMutationPayload = Awaited<ReturnType<typeof createSvaMainserverSurvey>>;
+type AuthorizationDecision = Awaited<ReturnType<typeof authorizeContentPrimitiveForUser>>;
+type AuthorizationFailure = Extract<AuthorizationDecision, { readonly ok: false }>;
 
 const matchRoute = (request: Request): RouteMatch | null =>
   matchRequestRoute(request, SURVEYS_COLLECTION_PATH, 'surveys');
@@ -109,6 +111,12 @@ const handleRouteError = (error: unknown) =>
   error instanceof SvaMainserverError
     ? toMainserverErrorResponse(error, 'Umfragen konnten nicht verarbeitet werden.')
     : toUnexpectedRouteError('Unbekannter Fehler für Umfragen.');
+
+const isAuthorizationDenial = (result: AuthorizationFailure): boolean =>
+  result.status === 403 && result.error === 'forbidden';
+
+const toAuthorizationFailureResponse = (result: AuthorizationFailure): Response =>
+  errorJson(result.status, result.error, result.message);
 
 const authorizeMutation = async (
   request: Request,
@@ -204,6 +212,10 @@ const handleGetItem = async (
       },
     }),
   ]);
+  const secondaryAuthorizationFailure = [moderationAccess, exportAccess].find((result): result is AuthorizationFailure => !result.ok);
+  if (secondaryAuthorizationFailure && !isAuthorizationDenial(secondaryAuthorizationFailure)) {
+    return toAuthorizationFailureResponse(secondaryAuthorizationFailure);
+  }
   if (!moderationAccess.ok && !exportAccess.ok) {
     return json({ data: survey });
   }

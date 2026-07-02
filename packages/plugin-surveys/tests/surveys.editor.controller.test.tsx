@@ -135,4 +135,98 @@ describe('useSurveyEditorController', () => {
     });
     expect(getSurveyMock).not.toHaveBeenCalled();
   });
+
+  it('preserves loaded survey results after edit saves that return no results payload', async () => {
+    const navigateToContentList = vi.fn(async () => undefined);
+    getSurveyMock.mockResolvedValue({
+      id: 'survey-1',
+      title: { de: 'Bestandsumfrage' },
+      status: 'ACTIVE',
+      isAnonymous: false,
+      resultVisibility: 'NONE',
+      showResultsInApp: false,
+      targetAreaIds: [],
+      questions: [],
+      questionCount: 0,
+      participationCount: 0,
+      submissionCount: 0,
+      createdAt: '2026-07-01T08:00:00.000Z',
+      updatedAt: '2026-07-02T08:00:00.000Z',
+      results: {
+        surveyId: 'survey-1',
+        participationCount: 4,
+        submissionCount: 3,
+        questions: [],
+      },
+    });
+    updateSurveyMock.mockResolvedValue({
+      id: 'survey-1',
+      title: { de: 'Bestandsumfrage aktualisiert' },
+      status: 'ACTIVE',
+      isAnonymous: false,
+      resultVisibility: 'NONE',
+      showResultsInApp: false,
+      targetAreaIds: [],
+      questions: [],
+      questionCount: 0,
+      participationCount: 0,
+      submissionCount: 0,
+      createdAt: '2026-07-01T08:00:00.000Z',
+      updatedAt: '2026-07-02T09:00:00.000Z',
+    });
+
+    const { result } = renderHook(() => {
+      const methods = useForm<SurveyDetailFormValues>({
+        defaultValues: {
+          title: '',
+          basis: {
+            status: 'DRAFT',
+            startAt: '',
+            endAt: '',
+            targetAreaIds: [],
+          },
+          content: {
+            shortDescription: '',
+            description: '',
+            isAnonymous: false,
+            showResultsInApp: false,
+            resultVisibility: 'NONE',
+            privacyNotice: '',
+            transparencyNotice: '',
+            questions: [],
+          },
+        },
+      });
+
+      return useSurveyEditorController({
+        mode: 'edit',
+        contentId: 'survey-1',
+        methods,
+        pt,
+        navigateToContentList,
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.loadedItem?.id).toBe('survey-1');
+      expect(result.current.loadedItem?.results?.participationCount).toBe(4);
+    });
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(updateSurveyMock).toHaveBeenCalledOnce();
+    expect(result.current.loadedItem).toMatchObject({
+      id: 'survey-1',
+      title: { de: 'Bestandsumfrage aktualisiert' },
+      results: {
+        surveyId: 'survey-1',
+        participationCount: 4,
+        submissionCount: 3,
+        questions: [],
+      },
+    });
+    expect(navigateToContentList).not.toHaveBeenCalled();
+  });
 });

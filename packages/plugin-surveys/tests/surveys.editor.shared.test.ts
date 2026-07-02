@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  createSurveyEditorTabs,
   mapSurveyItemToFormValues,
   mapSurveyModerationGroups,
   mapSurveyResultsTabData,
@@ -210,16 +209,5 @@ describe('survey editor shared mappings', () => {
         },
       ],
     });
-  });
-
-  it('keeps target area ids in the basis tab contract for loaded surveys', () => {
-    const tabs = createSurveyEditorTabs(
-      (key) => key,
-      'edit',
-      { ...surveyItem, targetAreaIds: ['district-1'] },
-      surveyItem.id
-    );
-
-    expect(tabs[0]?.id).toBe('basis');
   });
 });

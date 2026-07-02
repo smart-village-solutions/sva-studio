@@ -75,3 +75,10 @@ export const pluginSurveysActionIds = {
   moderate: pluginSurveysModerationActionId,
   export: pluginSurveysExportActionId,
 } as const;
+
+export const pluginSurveysContract = {
+  actions: pluginSurveysActionDefinitions,
+  actionIds: pluginSurveysActionIds,
+  iam: pluginSurveysModuleIam,
+  permissions: pluginSurveysPermissionDefinitions,
+} as const;

@@ -1,7 +1,7 @@
 export const pluginSurveysMetaTranslations = {
   labels: {
     questionSection: 'Frage {{index}}',
-    optionSection: 'Option {{index}}',
+    answerSection: 'Antwort {{index}}',
     freeTextVisibility: 'Antwort {{index}} öffentlich sichtbar',
     exportWithoutFreeText: 'Export ohne Freitexte',
     exportWithFreeText: 'Export mit Freitexten',

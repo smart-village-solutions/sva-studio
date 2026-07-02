@@ -30,7 +30,7 @@ export function SurveyQuestionSection({
   requestDeleteOption: (questionIndex: number, optionIndex: number) => void;
 }>) {
   return (
-    <section className="space-y-4 rounded-lg border border-border/60 bg-muted/10 p-4">
+    <section className="space-y-4">
       <SurveyQuestionHeader
         pt={pt}
         questionIndex={questionIndex}

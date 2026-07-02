@@ -7,6 +7,9 @@ const state = vi.hoisted(() => ({
   listProjectedContents: vi.fn(),
   refreshProjectedContents: vi.fn(),
   getWorkspaceContext: vi.fn(),
+  logger: {
+    error: vi.fn(),
+  },
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
@@ -16,6 +19,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
 }));
 
 vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => state.logger,
   getWorkspaceContext: state.getWorkspaceContext,
 }));
 
@@ -34,6 +38,7 @@ describe('content list api dispatch', () => {
     state.listProjectedContents.mockReset();
     state.refreshProjectedContents.mockReset();
     state.getWorkspaceContext.mockReset();
+    state.logger.error.mockReset();
     state.ensureFeature.mockReturnValue(null);
     state.getFeatureFlags.mockReturnValue({ iamAdminEnabled: true });
     state.getWorkspaceContext.mockReturnValue({ requestId: 'req-1' });
@@ -191,6 +196,14 @@ describe('content list api dispatch', () => {
       },
       requestId: 'req-1',
     });
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'Failed to load aggregated content list',
+      expect.objectContaining({
+        request_id: 'req-1',
+        instance_id: 'de-musterhausen',
+        error_message: 'projection failed',
+      })
+    );
   });
 
   it('returns the iam admin feature gate response before dispatching the projected handlers', async () => {

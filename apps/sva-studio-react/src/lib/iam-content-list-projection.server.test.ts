@@ -482,7 +482,7 @@ describe('content list projection', () => {
     });
   });
 
-  it('returns a deterministic error without a snapshot and starts a background refresh', async () => {
+  it('returns refreshed rows immediately when a missing snapshot can be rebuilt during the request', async () => {
     state.listSvaMainserverNews.mockResolvedValue({
       data: [
         {
@@ -509,7 +509,26 @@ describe('content list projection', () => {
       sortDirection: 'desc',
     });
 
-    expect(response.status).toBe(503);
+    const payload = (await response.json()) as {
+      data: Array<{ id: string }>;
+      metadata: {
+        hasBlockingSyncGap: boolean;
+        hasRunningMainserverSync: boolean;
+        mainserverSyncStates: Array<{ contentType: string; hasSnapshot: boolean }>;
+      };
+      pagination: {
+        total: number;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data[0]).toMatchObject({ id: 'news-1' });
+    expect(payload.pagination.total).toBe(1);
+    expect(payload.metadata.hasBlockingSyncGap).toBe(true);
+    expect(payload.metadata.hasRunningMainserverSync).toBe(true);
+    expect(
+      payload.metadata.mainserverSyncStates.some((entry) => entry.contentType === 'news.article')
+    ).toBe(true);
     expect(state.listSvaMainserverNews).toHaveBeenCalledTimes(1);
     expect(syncStates.get('news.article')?.last_started_at).toBeTruthy();
     expect(projectionInsertArgs).toHaveLength(1);
@@ -543,7 +562,7 @@ describe('content list projection', () => {
       sortDirection: 'desc',
     });
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(200);
     const insertedRows = JSON.parse(String(projectionInsertArgs?.[0] ?? '[]')) as Array<
       Record<string, unknown>
     >;
@@ -790,6 +809,81 @@ describe('content list projection', () => {
     });
   });
 
+  it('returns healthy snapshot rows while reporting unsynced mainserver types in metadata', async () => {
+    projectionRows = [
+      {
+        id: 'news-1',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        content_type: 'news.article',
+        title: 'Rathaus',
+        published_at: '2026-06-21T09:00:00.000Z',
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_name: 'Redaktion',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-news',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'mainserver',
+        source_entity_type: 'news.article',
+        source_entity_id: 'news-1',
+      },
+    ];
+    syncStates.set('news.article', {
+      last_started_at: null,
+      last_succeeded_at: '2026-06-20T10:00:00.000Z',
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 1,
+    });
+    state.listSvaMainserverSurveys.mockRejectedValue(new Error('surveys projection failed'));
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['news.article', 'surveys.survey'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+    const payload = (await response.json()) as {
+      data: Array<{ id: string }>;
+      metadata: {
+        hasBlockingSyncGap: boolean;
+        mainserverSyncStates: Array<{ contentType: string; hasSnapshot: boolean }>;
+      };
+      pagination: {
+        total: number;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'news-1' })]));
+    expect(payload.pagination.total).toBe(1);
+    expect(payload.metadata.hasBlockingSyncGap).toBe(true);
+    expect(payload.metadata.mainserverSyncStates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          contentType: 'news.article',
+          hasSnapshot: true,
+        }),
+        expect.objectContaining({
+          contentType: 'surveys.survey',
+          hasSnapshot: false,
+        }),
+      ])
+    );
+    expect(state.listSvaMainserverSurveys).toHaveBeenCalledTimes(1);
+  });
+
   it('derives row access from the resolved permissions without per-item reauthorization calls', async () => {
     projectionRows = [
       {
@@ -952,7 +1046,7 @@ describe('content list projection', () => {
     });
   });
 
-  it('returns a deterministic list error when the mainserver refresh fails', async () => {
+  it('returns sync metadata instead of failing the full list when the mainserver refresh fails', async () => {
     state.listSvaMainserverNews.mockRejectedValue(
       Object.assign(new Error('upstream down'), { code: 'database_unavailable' })
     );
@@ -965,15 +1059,43 @@ describe('content list projection', () => {
       sortDirection: 'desc',
     });
 
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toEqual({
-      error: {
-        code: 'database_unavailable',
-        message:
-          'Für mindestens einen angefragten Mainserver-Inhaltstyp liegt noch kein synchronisierter Snapshot vor.',
-      },
-      requestId: 'req-1',
+    const payload = (await response.json()) as {
+      data: Array<{ id: string }>;
+      pagination: {
+        page: number;
+        pageSize: number;
+        total: number;
+      };
+      metadata: {
+        hasStaleMainserverContent: boolean;
+        hasBlockingSyncGap: boolean;
+        mainserverSyncStates: Array<{
+          contentType: string;
+          hasSnapshot: boolean;
+          isStale: boolean;
+          lastErrorCode?: string;
+        }>;
+      };
+      requestId: string;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual([]);
+    expect(payload.pagination).toEqual({
+      page: 1,
+      pageSize: 25,
+      total: 0,
     });
+    expect(payload.metadata.hasStaleMainserverContent).toBe(true);
+    expect(payload.metadata.hasBlockingSyncGap).toBe(true);
+    expect(payload.metadata.mainserverSyncStates).toEqual([
+      expect.objectContaining({
+        contentType: 'news.article',
+        hasSnapshot: false,
+        isStale: true,
+      }),
+    ]);
+    expect(payload.requestId).toBe('req-1');
   });
 
   it('keeps mainserver rows visible for organization-scoped plugin read permissions', async () => {
@@ -1187,7 +1309,7 @@ describe('content list projection', () => {
     });
   });
 
-  it('treats stale legacy org-less mainserver rows as a blocking snapshot gap for organization-scoped views', async () => {
+  it('does not fail the full list for stale legacy org-less mainserver rows in organization-scoped views', async () => {
     projectionRows = [
       {
         id: 'news-legacy',
@@ -1286,13 +1408,7 @@ describe('content list projection', () => {
       sortDirection: 'desc',
     });
 
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      error: {
-        message:
-          'Für mindestens einen angefragten Mainserver-Inhaltstyp liegt noch kein synchronisierter Snapshot vor.',
-      },
-    });
+    expect(response.status).toBe(200);
   });
 
   it('does not block unfiltered lists when another scope is missing a mainserver snapshot', async () => {

@@ -1416,13 +1416,13 @@ export const listProjectedContents = async (
     return typeAuthorization;
   }
 
-  const visibilityRules = buildProjectionReadVisibilityRules(
+  const initialVisibilityRules = buildProjectionReadVisibilityRules(
     typeAuthorization.allowedTypes,
     typeAuthorization.permissions
   );
   let actorAccountId: string | undefined;
   const requiresActorAccountId =
-    visibilityRules.some((rule) => rule.allowOwn) ||
+    initialVisibilityRules.some((rule) => rule.allowOwn) ||
     typeAuthorization.permissions.some(
       (permission) => permission.accessScope === 'own' || permission.accessScope === 'organization'
     );
@@ -1457,7 +1457,7 @@ export const listProjectedContents = async (
   const blockingSyncGap = shouldBlockOnMissingSnapshot
     ? responseSyncStates.find((syncState) => syncState.hasSnapshot === false)
     : undefined;
-  if (blockingSyncGap) {
+  if (blockingSyncGap && query.type) {
     return createListErrorResponse(
       503,
       blockingSyncGap.lastErrorCode
@@ -1467,6 +1467,19 @@ export const listProjectedContents = async (
       getWorkspaceContext().requestId
     );
   }
+
+  const unavailableMainserverTypes = new Set(
+    responseSyncStates
+      .filter((syncState) => syncState.hasSnapshot === false)
+      .map((syncState) => syncState.contentType)
+  );
+  const loadableAllowedTypes = typeAuthorization.allowedTypes.filter(
+    (contentType) => !unavailableMainserverTypes.has(contentType)
+  );
+  const visibilityRules = buildProjectionReadVisibilityRules(
+    loadableAllowedTypes,
+    typeAuthorization.permissions
+  );
 
   const { items, total } = await loadProjectionPage(
     instanceId,

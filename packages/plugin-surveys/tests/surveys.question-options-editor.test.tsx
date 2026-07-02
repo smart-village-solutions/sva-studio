@@ -6,14 +6,13 @@ import type { SurveyQuestionFormValues } from '../src/surveys.detail-content-mod
 import { SurveyQuestionOptionsEditor } from '../src/surveys.question-options-editor.js';
 
 vi.mock('../src/surveys.question-option-item.js', () => ({
-  SurveyQuestionOptionItem: ({ optionIndex }: { optionIndex: number }) => <div>Option {optionIndex + 1}</div>,
+  SurveyQuestionOptionItem: ({ optionIndex }: { optionIndex: number }) => <div>Antwort {optionIndex + 1}</div>,
 }));
 
 const pt = (key: string) =>
   (
     {
-      'messages.optionSectionHint': 'Antwortoptionen bleiben als flache Abschnitte innerhalb der Frage.',
-      'actions.addOption': 'Option hinzufügen',
+      'actions.addOption': 'Antwort hinzufügen',
     } as const
   )[key] ?? key;
 
@@ -43,8 +42,7 @@ describe('SurveyQuestionOptionsEditor', () => {
       />
     );
 
-    expect(screen.getByText('Antwortoptionen bleiben als flache Abschnitte innerhalb der Frage.')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Option hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Antwort hinzufügen' }));
 
     expect(updateQuestion).toHaveBeenCalledTimes(1);
     const updater = updateQuestion.mock.calls[0]?.[1] as (value: SurveyQuestionFormValues) => SurveyQuestionFormValues;

@@ -3,10 +3,12 @@ import {
   getFeatureFlags,
   withAuthenticatedUser,
 } from '@sva/auth-runtime/server';
-import { getWorkspaceContext } from '@sva/server-runtime';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import { createListErrorResponse, readContentListQuery } from './iam-content-list-api.shared.js';
 import { listProjectedContents, refreshProjectedContents } from './iam-content-list-projection.server.js';
+
+const logger = createSdkLogger({ component: 'iam-content-list-api' });
 
 const handleProjectedContentList = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
@@ -18,6 +20,12 @@ const handleProjectedContentList = async (request: Request): Promise<Response> =
     try {
       return await listProjectedContents(ctx, readContentListQuery(request));
     } catch (error) {
+      logger.error('Failed to load aggregated content list', {
+        request_id: getWorkspaceContext().requestId ?? null,
+        instance_id: ctx.user.instanceId ?? null,
+        route: '/api/v1/iam/contents',
+        error_message: error instanceof Error ? error.message : String(error),
+      });
       return createListErrorResponse(
         503,
         'database_unavailable',

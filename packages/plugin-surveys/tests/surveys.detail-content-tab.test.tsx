@@ -17,7 +17,7 @@ const dictionary = {
   'cards.content.notices.title': 'Hinweise',
   'cards.content.notices.description': 'Datenschutz- und Transparenzhinweise.',
   'cards.content.questions.title': 'Fragen',
-  'cards.content.questions.description': 'Fragen und Antwortoptionen der Umfrage.',
+  'cards.content.questions.description': 'Fragen und Antworten der Umfrage.',
   'fields.shortDescription': 'Kurzbeschreibung',
   'fields.description': 'Beschreibung',
   'fields.isAnonymous': 'Anonyme Teilnahme',
@@ -29,8 +29,8 @@ const dictionary = {
   'fields.questionDescription': 'Fragebeschreibung',
   'fields.questionType': 'Fragetyp',
   'fields.questionRequired': 'Pflichtfrage',
-  'fields.optionTitle': 'Optionstitel',
-  'fields.optionEnablesFreeText': 'Freitext erlauben',
+  'fields.optionTitle': 'Antwort',
+  'fields.optionEnablesFreeText': 'Freitext für diese Antwort erlauben',
   'fields.resultVisibilityOptions.none': 'Nie',
   'fields.resultVisibilityOptions.afterSubmission': 'Nach Teilnahme',
   'fields.resultVisibilityOptions.afterSurveyEnd': 'Nach Umfrageende',
@@ -40,25 +40,24 @@ const dictionary = {
   'fields.questionTypeOptions.singleChoiceWithText': 'Einfachauswahl mit Freitext',
   'fields.questionTypeOptions.multipleChoiceWithText': 'Mehrfachauswahl mit Freitext',
   'actions.addQuestion': 'Frage hinzufügen',
-  'actions.addOption': 'Option hinzufügen',
+  'actions.addOption': 'Antwort hinzufügen',
   'actions.moveQuestionUp': 'Frage {{index}} nach oben',
   'actions.moveQuestionDown': 'Frage {{index}} nach unten',
   'actions.deleteQuestion': 'Frage {{index}} löschen',
-  'actions.moveOptionUp': 'Option {{index}} nach oben',
-  'actions.moveOptionDown': 'Option {{index}} nach unten',
-  'actions.deleteOption': 'Option {{index}} löschen',
+  'actions.moveOptionUp': 'Antwort {{index}} nach oben',
+  'actions.moveOptionDown': 'Antwort {{index}} nach unten',
+  'actions.deleteOption': 'Antwort {{index}} löschen',
   'actions.confirmDelete': 'Löschen',
   'actions.cancelDelete': 'Abbrechen',
   'messages.freeTextQuestionHint': 'Freitextfragen benötigen keine Antwortoptionen.',
-  'messages.optionSectionHint': 'Antwortoptionen bleiben als flache Abschnitte innerhalb der Frage.',
   'messages.deleteQuestionTitle': 'Frage löschen',
   'messages.deleteQuestionDescription': 'Soll diese Frage wirklich gelöscht werden?',
-  'messages.deleteOptionTitle': 'Option löschen',
-  'messages.deleteOptionDescription': 'Soll diese Antwortoption wirklich gelöscht werden?',
+  'messages.deleteOptionTitle': 'Antwort löschen',
+  'messages.deleteOptionDescription': 'Soll diese Antwort wirklich gelöscht werden?',
   'labels.questionSection': 'Frage {{index}}',
-  'labels.optionSection': 'Option {{index}}',
+  'labels.answerSection': 'Antwort {{index}}',
   'validation.questionTitleRequired': 'Bitte einen Fragetitel angeben.',
-  'validation.optionTitleRequired': 'Bitte einen Optionstitel angeben.',
+  'validation.optionTitleRequired': 'Bitte einen Antworttext angeben.',
 } as const;
 
 const pt = (key: string, variables?: Readonly<Record<string, string | number>>) => {
@@ -139,7 +138,6 @@ describe('SurveyDetailContentTab', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Frage hinzufügen' }));
     expect(screen.getByText('Frage 1')).toBeTruthy();
-    expect(screen.getByText('Antwortoptionen bleiben als flache Abschnitte innerhalb der Frage.')).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('Fragetyp'), { target: { value: 'FREE_TEXT' } });
     expect(screen.getByText('Freitextfragen benötigen keine Antwortoptionen.')).toBeTruthy();
@@ -147,8 +145,8 @@ describe('SurveyDetailContentTab', () => {
     fireEvent.change(screen.getByLabelText('Fragetyp'), {
       target: { value: 'MULTIPLE_CHOICE_WITH_TEXT' },
     });
-    expect(screen.getByLabelText('Optionstitel')).toBeTruthy();
-    expect(screen.getByLabelText('Freitext erlauben')).toBeTruthy();
+    expect(screen.getByLabelText('Antwort 1')).toBeTruthy();
+    expect(screen.getByLabelText('Freitext für diese Antwort erlauben')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Werte lesen' }));
     expect(valuesRef.current?.content.questions[0]?.type).toBe('MULTIPLE_CHOICE_WITH_TEXT');
@@ -159,17 +157,17 @@ describe('SurveyDetailContentTab', () => {
     const valuesRef = renderTab();
 
     fireEvent.click(screen.getByRole('button', { name: 'Frage hinzufügen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Option hinzufügen' }));
-    expect(screen.getAllByText(/^Option \d+$/)).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Antwort hinzufügen' }));
+    expect(screen.getAllByLabelText(/^Antwort \d+$/)).toHaveLength(2);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Option 2 löschen' }));
-    expect(screen.getByText('Option löschen')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Antwort 2 löschen' }));
+    expect(screen.getByText('Antwort löschen')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
-    expect(screen.getAllByText(/^Option \d+$/)).toHaveLength(2);
+    expect(screen.getAllByLabelText(/^Antwort \d+$/)).toHaveLength(2);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Option 2 löschen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Antwort 2 löschen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
-    expect(screen.getAllByText(/^Option \d+$/)).toHaveLength(1);
+    expect(screen.getAllByLabelText(/^Antwort \d+$/)).toHaveLength(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Frage 1 löschen' }));
     expect(screen.getByText('Frage löschen')).toBeTruthy();
@@ -188,10 +186,10 @@ describe('SurveyDetailContentTab', () => {
     fireEvent.change(screen.getAllByLabelText('Fragetitel')[1]!, { target: { value: 'Frage B' } });
     fireEvent.click(screen.getByRole('button', { name: 'Frage 1 nach unten' }));
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Option hinzufügen' })[1]!);
-    fireEvent.change(screen.getAllByLabelText('Optionstitel')[1]!, { target: { value: 'Option A' } });
-    fireEvent.change(screen.getAllByLabelText('Optionstitel')[2]!, { target: { value: 'Option B' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Option 1 nach unten' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Antwort hinzufügen' })[1]!);
+    fireEvent.change(screen.getAllByLabelText(/^Antwort \d+$/)[1]!, { target: { value: 'Option A' } });
+    fireEvent.change(screen.getAllByLabelText(/^Antwort \d+$/)[2]!, { target: { value: 'Option B' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Antwort 1 nach unten' })[1]!);
     fireEvent.click(screen.getByRole('button', { name: 'Werte lesen' }));
 
     expect(valuesRef.current?.content.questions.map((question) => question.title)).toEqual(['Frage B', 'Frage A']);

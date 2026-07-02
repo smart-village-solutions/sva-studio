@@ -51,6 +51,28 @@ describe('StudioDetailTabs', () => {
     expect(screen.getByText('Inhalte Panel')).toBeTruthy();
   });
 
+  it('switches tabs on pointer clicks inside a form without submitting it', () => {
+    const onSubmit = vi.fn((event: Event) => event.preventDefault());
+
+    render(
+      <form onSubmit={onSubmit}>
+        <StudioDetailTabs
+          ariaLabel="Detailbereiche"
+          tabs={[
+            { id: 'base', label: 'Basis', panel: <p>Basis Panel</p> },
+            { id: 'content', label: 'Inhalte', panel: <p>Inhalte Panel</p> },
+          ]}
+        />
+      </form>
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalte' }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole('tab', { name: 'Inhalte' }).getAttribute('data-state')).toBe('active');
+    expect(screen.getByText('Inhalte Panel')).toBeTruthy();
+  });
+
   it('filters out tabs that are not visible', () => {
     render(
       <StudioDetailTabs
@@ -146,6 +168,11 @@ describe('StudioDetailTabs', () => {
     expect(screen.getByText('Steuert den Veröffentlichungsstatus.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Veröffentlichen' })).toBeTruthy();
     expect(screen.getByText('Freigabe Panel')).toBeTruthy();
+    expect(screen.getByRole('tablist').className).toContain('ml-[10px]');
+    expect(screen.getByRole('tablist').className).toContain('gap-10');
+    expect(screen.getByRole('heading', { name: 'Freigabe' }).className).toContain('text-base');
+    expect(screen.getByText('Steuert den Veröffentlichungsstatus.').className).toContain('leading-relaxed');
+    expect(screen.getByRole('tabpanel').firstElementChild?.className).toContain('bg-[rgb(var(--waste-panel-surface))]');
   });
 
   it('announces blocked tab switches through an accessible status surface', () => {

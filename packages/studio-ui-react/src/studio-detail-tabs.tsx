@@ -179,13 +179,12 @@ export function StudioDetailTabs<TTabId extends string = string>({
   );
 
   return (
-    <Tabs value={currentValue} onValueChange={handleValueChange} className={cn('space-y-4', className)}>
-      <div className="space-y-3">
-        <label className="space-y-2 md:hidden">
+    <Tabs value={currentValue} className={cn('space-y-0', className)}>
+      <label className="block md:hidden">
           <span className="text-sm font-medium text-foreground">{mobileSelectLabel}</span>
           <select
             aria-label={mobileSelectLabel}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             value={currentValue}
             onChange={(event) => handleValueChange(event.target.value)}
           >
@@ -198,16 +197,32 @@ export function StudioDetailTabs<TTabId extends string = string>({
               />
             ))}
           </select>
-        </label>
+      </label>
 
-        <TabsList aria-label={ariaLabel} className="hidden w-full flex-wrap md:inline-flex">
+      <TabsList aria-label={ariaLabel} className="ml-[10px] hidden gap-10 md:flex">
           {visibleTabs.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id} disabled={tab.disabled} className="justify-start whitespace-normal text-left">
+            <TabsTrigger
+              key={tab.id}
+              value={tab.id}
+              disabled={tab.disabled}
+              className={cn(
+                'relative z-10 justify-start whitespace-normal text-left gap-2 rounded-none border-x-0 border-t-0 px-0 pr-5 shadow-none',
+                currentValue === tab.id
+                  ? 'mb-[-1px] border-primary text-primary'
+                  : 'border-transparent text-muted-foreground'
+              )}
+              onClick={() => handleValueChange(tab.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  handleValueChange(tab.id);
+                }
+              }}
+            >
               {renderTabLabel(tab)}
             </TabsTrigger>
           ))}
-        </TabsList>
-      </div>
+      </TabsList>
 
       {status || statusMessage ? (
         <div
@@ -230,21 +245,24 @@ export function StudioDetailTabs<TTabId extends string = string>({
           <TabsContent
             key={tab.id}
             value={tab.id}
-            className="mt-0"
+            className="mt-0 data-[state=inactive]:hidden"
             {...(shouldForceMount ? { forceMount: true } : {})}
           >
-            <section className="space-y-4">
+            <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
               {shouldRenderHeader ? (
-                <header className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
+                <section
+                  aria-label={typeof tab.label === 'string' ? tab.label : undefined}
+                  className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
+                >
                   <div className="space-y-1">
-                    {title ? <h2 className="text-lg font-semibold text-foreground">{title}</h2> : null}
-                    {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+                    {title ? <h2 className="text-base font-semibold text-foreground">{title}</h2> : null}
+                    {description ? <p className="text-sm leading-relaxed text-muted-foreground">{description}</p> : null}
                   </div>
-                  {tab.actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">{tab.actions}</div> : null}
-                </header>
+                  {tab.actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">{tab.actions}</div> : null}
+                </section>
               ) : null}
               <div>{getTabPanel(tab)}</div>
-            </section>
+            </div>
           </TabsContent>
         );
       })}

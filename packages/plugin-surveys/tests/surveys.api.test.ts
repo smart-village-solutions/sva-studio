@@ -62,6 +62,51 @@ describe('surveys api payload mapping', () => {
     });
   });
 
+  it('keeps required titles explicit and trimmed in create and update payloads', async () => {
+    const { createSurvey, updateSurvey } = await import('../src/surveys.api.js');
+
+    const createPayload = await createSurvey({
+      title: '  Neue Umfrage  ',
+      status: 'DRAFT',
+      isAnonymous: false,
+      questions: [
+        {
+          title: '  Frage 1  ',
+          type: 'SINGLE_CHOICE',
+          required: true,
+          position: 0,
+          options: [
+            {
+              title: '  Option A  ',
+              position: 0,
+              enablesFreeText: false,
+            },
+          ],
+        },
+      ],
+    });
+
+    const updatePayload = await updateSurvey('survey-1', {
+      title: '   ',
+      status: 'DRAFT',
+      isAnonymous: false,
+      questions: [],
+    });
+
+    expect(createPayload).toMatchObject({
+      title: { de: 'Neue Umfrage' },
+      questions: [
+        {
+          title: { de: 'Frage 1' },
+          options: [{ title: { de: 'Option A' } }],
+        },
+      ],
+    });
+    expect(updatePayload).toMatchObject({
+      title: { de: '' },
+    });
+  });
+
   it('forwards nested ids, delete markers, and null description clears during updates', async () => {
     const { updateSurvey } = await import('../src/surveys.api.js');
 

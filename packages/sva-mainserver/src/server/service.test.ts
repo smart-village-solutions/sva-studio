@@ -1757,6 +1757,40 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('keeps large survey page sizes for internal full-sync callers', async () => {
+    const surveys = Array.from({ length: 101 }, (_, index) => ({
+      id: `survey-${index + 1}`,
+      title: { de: `Umfrage ${index + 1}` },
+      status: 'ACTIVE',
+      isAnonymous: true,
+      showResultsInApp: false,
+      resultVisibility: 'NONE',
+      targetAreaIds: [],
+      questions: [],
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    }));
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys } }));
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listSurveys({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 1, pageSize: 5_000 })
+    ).resolves.toMatchObject({
+      data: expect.arrayContaining([
+        expect.objectContaining({ id: 'survey-1', contentType: 'surveys.survey' }),
+        expect.objectContaining({ id: 'survey-101', contentType: 'surveys.survey' }),
+      ]),
+      pagination: { page: 1, pageSize: 5_000, hasNextPage: false, total: 101 },
+    });
+  });
+
   it(
     'keeps the highest allowed visible-list page reachable when the has-next probe crosses the scan limit',
     { timeout: 20_000 },

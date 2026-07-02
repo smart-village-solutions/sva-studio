@@ -26,7 +26,12 @@ import {
   mapSurveyItem,
   mapSurveyMutationPayload,
 } from './survey-mappers.js';
-import { normalizeVisibleListQuery, toSvaMainserverError, type GraphqlExecutor } from './shared.js';
+import {
+  MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS,
+  normalizeVisibleListQuery,
+  toSvaMainserverError,
+  type GraphqlExecutor,
+} from './shared.js';
 
 const buildSurveyFilter = (input: {
   readonly ids?: readonly string[];
@@ -118,11 +123,31 @@ const findSurvey = <TItem extends { readonly id?: string | null }>(
   surveys: readonly (TItem | null | undefined)[] | null | undefined
 ): TItem | undefined => (surveys ?? []).find((item): item is TItem => Boolean(item?.id));
 
+const normalizeSurveyListQuery = (
+  input: SvaMainserverConnectionInput & SvaMainserverSurveyListInput
+): SvaMainserverSurveyListInput => {
+  const requestedPageSize = Math.trunc(input.pageSize);
+  if (requestedPageSize <= 100) {
+    return {
+      ...input,
+      ...normalizeVisibleListQuery(input),
+    };
+  }
+
+  const pageSize = Math.min(requestedPageSize, MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS);
+  const maxPage = Math.floor((MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS - 1) / pageSize) + 1;
+  return {
+    ...input,
+    page: Math.min(Math.max(1, Math.trunc(input.page)), maxPage),
+    pageSize,
+  };
+};
+
 const createListSurveysWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) => async (
   input: SvaMainserverConnectionInput & SvaMainserverSurveyListInput,
   config: SvaMainserverInstanceConfig
 ): Promise<SvaMainserverListResult<SvaMainserverSurveyItem>> => {
-  const pagination = normalizeVisibleListQuery(input);
+  const pagination = normalizeSurveyListQuery(input);
   const response = await executeGraphqlWithConfig<SvaMainserverSurveysListQuery>(
     {
       ...input,

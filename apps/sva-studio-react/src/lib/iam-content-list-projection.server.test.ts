@@ -1521,48 +1521,26 @@ describe('content list projection', () => {
     );
   });
 
-  it('paginates surveys during projection refresh before replacing the projection snapshot', async () => {
-    state.listSvaMainserverSurveys
-      .mockResolvedValueOnce({
-        data: Array.from({ length: 100 }, (_, index) => ({
-          id: `survey-${index + 1}`,
-          contentType: 'surveys.survey' as const,
-          title: { de: `Umfrage ${index + 1}` },
-          status: 'ACTIVE' as const,
-          resultVisibility: 'NONE' as const,
-          targetAreaIds: [],
-          showResultsInApp: false,
-          isAnonymous: true,
-          questions: [],
-          questionCount: 0,
-          participationCount: 0,
-          submissionCount: 0,
-          createdAt: '2026-06-20T10:00:00.000Z',
-          updatedAt: '2026-06-21T10:00:00.000Z',
-        })),
-        pagination: { page: 1, pageSize: 100, hasNextPage: true },
-      })
-      .mockResolvedValueOnce({
-        data: [
-          {
-            id: 'survey-101',
-            contentType: 'surveys.survey' as const,
-            title: { de: 'Umfrage 101' },
-            status: 'ACTIVE' as const,
-            resultVisibility: 'NONE' as const,
-            targetAreaIds: [],
-            showResultsInApp: false,
-            isAnonymous: true,
-            questions: [],
-            questionCount: 0,
-            participationCount: 0,
-            submissionCount: 0,
-            createdAt: '2026-06-20T10:00:00.000Z',
-            updatedAt: '2026-06-21T10:00:00.000Z',
-          },
-        ],
-        pagination: { page: 2, pageSize: 100, hasNextPage: false },
-      });
+  it('loads surveys once with the projection sync page size before replacing the projection snapshot', async () => {
+    state.listSvaMainserverSurveys.mockResolvedValue({
+      data: Array.from({ length: 101 }, (_, index) => ({
+        id: `survey-${index + 1}`,
+        contentType: 'surveys.survey' as const,
+        title: { de: `Umfrage ${index + 1}` },
+        status: 'ACTIVE' as const,
+        resultVisibility: 'NONE' as const,
+        targetAreaIds: [],
+        showResultsInApp: false,
+        isAnonymous: true,
+        questions: [],
+        questionCount: 0,
+        participationCount: 0,
+        submissionCount: 0,
+        createdAt: '2026-06-20T10:00:00.000Z',
+        updatedAt: '2026-06-21T10:00:00.000Z',
+      })),
+      pagination: { page: 1, pageSize: 5_000, hasNextPage: false },
+    });
 
     const response = await refreshProjectedContents(ctx, {
       visibleTypes: ['surveys.survey'],
@@ -1571,13 +1549,9 @@ describe('content list projection', () => {
 
     expect(state.resolveEffectivePermissions).toHaveBeenCalled();
     expect(response.status).toBe(200);
-    expect(state.listSvaMainserverSurveys).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ includeArchived: true, page: 1, pageSize: 100 })
-    );
-    expect(state.listSvaMainserverSurveys).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ includeArchived: true, page: 2, pageSize: 100 })
+    expect(state.listSvaMainserverSurveys).toHaveBeenCalledTimes(1);
+    expect(state.listSvaMainserverSurveys).toHaveBeenCalledWith(
+      expect.objectContaining({ includeArchived: true, page: 1, pageSize: 5_000 })
     );
     expect(projectionRows).toHaveLength(101);
     expect(projectionRows.at(-1)).toEqual(

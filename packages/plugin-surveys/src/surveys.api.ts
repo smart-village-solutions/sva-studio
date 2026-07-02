@@ -18,6 +18,8 @@ const toLocalizedText = (value: string | undefined) => {
   return normalized ? { de: normalized } : undefined;
 };
 
+const toRequiredLocalizedText = (value: string | undefined) => ({ de: value?.trim() ?? '' });
+
 const toLocalizedTextUpdate = (value: string | undefined) => toLocalizedText(value) ?? null;
 
 const optionalLocalizedField = (key: string, value: string | undefined) => {
@@ -29,7 +31,7 @@ const optionalScalarField = <TValue>(key: string, value: TValue | undefined) =>
   value === undefined ? {} : { [key]: value };
 
 const mapCreateOption = (option: NonNullable<NonNullable<SurveyMutationInput['questions']>[number]['options']>[number]) => ({
-  ...optionalLocalizedField('title', option.title),
+  title: toRequiredLocalizedText(option.title),
   position: option.position,
   enablesFreeText: option.enablesFreeText,
 });
@@ -43,7 +45,7 @@ const mapUpdateOption = (option: NonNullable<NonNullable<SurveyMutationInput['qu
 });
 
 const mapCreateQuestion = (question: NonNullable<SurveyMutationInput['questions']>[number]) => ({
-  ...optionalLocalizedField('title', question.title),
+  title: toRequiredLocalizedText(question.title),
   ...optionalLocalizedField('description', question.description),
   type: question.type,
   required: question.required,
@@ -63,7 +65,7 @@ const mapUpdateQuestion = (question: NonNullable<SurveyMutationInput['questions'
 });
 
 const buildCreateSurveyBody = (input: SurveyMutationInput) => ({
-  ...optionalLocalizedField('title', input.title),
+  title: toRequiredLocalizedText(input.title),
   ...optionalLocalizedField('shortDescription', input.shortDescription),
   ...optionalLocalizedField('description', input.description),
   status: input.status,
@@ -79,7 +81,7 @@ const buildCreateSurveyBody = (input: SurveyMutationInput) => ({
 });
 
 const buildUpdateSurveyBody = (input: SurveyMutationInput) => ({
-  ...optionalLocalizedField('title', input.title),
+  title: toRequiredLocalizedText(input.title),
   shortDescription: toLocalizedTextUpdate(input.shortDescription),
   description: toLocalizedTextUpdate(input.description),
   status: input.status,

@@ -8,6 +8,12 @@ import { type SurveyContentTranslate } from './surveys.question-editor.shared.js
 import { SurveyQuestionOptionItem } from './surveys.question-option-item.js';
 import { type UpdateSurveyQuestion } from './surveys.question-list.shared.js';
 
+const getSurveyQuestionOptionRenderKey = (
+  question: SurveyQuestionFormValues,
+  questionIndex: number,
+  optionIndex: number
+): string => question.options[optionIndex]?.id ?? `option-draft-${question.position}-${questionIndex}-${optionIndex}`;
+
 export function SurveyQuestionOptionsEditor({
   pt,
   questionIndex,
@@ -26,7 +32,7 @@ export function SurveyQuestionOptionsEditor({
       <p className="text-sm text-muted-foreground">{pt('messages.optionSectionHint')}</p>
       {question.options.map((option, optionIndex) => (
         <SurveyQuestionOptionItem
-          key={`${questionIndex}-${optionIndex}`}
+          key={getSurveyQuestionOptionRenderKey(question, questionIndex, optionIndex)}
           pt={pt}
           questionIndex={questionIndex}
           optionIndex={optionIndex}

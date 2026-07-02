@@ -90,11 +90,17 @@ const createSurveyEditorSubmit = (input: {
 }) =>
   input.methods.handleSubmit(async (values) => {
     try {
+      if (input.mode === 'edit' && !input.contentId) {
+        input.setStatus({ kind: 'error', text: input.pt('messages.missingContentId') });
+        return;
+      }
+
       const mutation = toSurveyMutationInput(values, input.loadedItem);
+      const contentId = input.contentId;
       const savedItem =
         input.mode === 'create'
           ? await createSurvey(mutation)
-          : await updateSurvey(input.contentId as string, mutation);
+          : await updateSurvey(contentId as string, mutation);
 
       input.setLoadedItem(savedItem);
       input.methods.reset(mapSurveyItemToFormValues(savedItem));

@@ -972,7 +972,7 @@ describe('createSvaMainserverService', () => {
     expect(requestBodies[6]?.variables).toEqual({
       input: {
         id: 'survey-1',
-        freeTextResponses: [{ id: 'free-text-1', delete: true }],
+        freeTextResponses: [{ id: 'free-text-1', status: 'DELETED' }],
       },
     });
     expect(requestBodies[7]?.variables).toEqual({

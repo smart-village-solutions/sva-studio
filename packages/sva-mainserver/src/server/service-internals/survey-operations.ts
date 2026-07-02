@@ -47,7 +47,7 @@ const buildSurveyQuestionOptionInput = (
 ) => ({
   ...(option.id ? { id: option.id } : {}),
   ...(option.delete === true ? { delete: true } : {}),
-  ...(option.title ? { title: option.title } : {}),
+  ...(option.title !== undefined ? { title: option.title } : {}),
   ...(option.position === undefined ? {} : { position: option.position }),
   ...(option.enablesFreeText === undefined ? {} : { enablesFreeText: option.enablesFreeText }),
 });
@@ -55,8 +55,8 @@ const buildSurveyQuestionOptionInput = (
 const buildSurveyQuestionInput = (question: NonNullable<SvaMainserverSurveyInput['questions']>[number]) => ({
   ...(question.id ? { id: question.id } : {}),
   ...(question.delete === true ? { delete: true } : {}),
-  ...(question.title ? { title: question.title } : {}),
-  ...(question.description ? { description: question.description } : {}),
+  ...(question.title !== undefined ? { title: question.title } : {}),
+  ...(question.description !== undefined ? { description: question.description } : {}),
   ...(question.type ? { type: question.type } : {}),
   ...(question.required === undefined ? {} : { required: question.required }),
   ...(question.position === undefined ? {} : { position: question.position }),
@@ -64,9 +64,9 @@ const buildSurveyQuestionInput = (question: NonNullable<SvaMainserverSurveyInput
 });
 
 const buildSurveyCoreInput = (survey: SvaMainserverSurveyInput) => ({
-  ...(survey.title ? { title: survey.title } : {}),
-  ...(survey.shortDescription ? { shortDescription: survey.shortDescription } : {}),
-  ...(survey.description ? { description: survey.description } : {}),
+  ...(survey.title !== undefined ? { title: survey.title } : {}),
+  ...(survey.shortDescription !== undefined ? { shortDescription: survey.shortDescription } : {}),
+  ...(survey.description !== undefined ? { description: survey.description } : {}),
   ...(survey.status ? { status: survey.status } : {}),
   ...(survey.startAt === undefined ? {} : { startAt: survey.startAt }),
   ...(survey.endAt === undefined ? {} : { endAt: survey.endAt }),
@@ -74,14 +74,14 @@ const buildSurveyCoreInput = (survey: SvaMainserverSurveyInput) => ({
 
 const buildSurveyVisibilityInput = (survey: SvaMainserverSurveyInput) => ({
   ...(survey.resultVisibility ? { resultVisibility: survey.resultVisibility } : {}),
-  ...(survey.targetAreaIds ? { targetAreaIds: [...survey.targetAreaIds] } : {}),
+  ...(survey.targetAreaIds !== undefined ? { targetAreaIds: [...survey.targetAreaIds] } : {}),
   ...(survey.showResultsInApp === undefined ? {} : { showResultsInApp: survey.showResultsInApp }),
   ...(survey.isAnonymous === undefined ? {} : { isAnonymous: survey.isAnonymous }),
 });
 
 const buildSurveyNoticeInput = (survey: SvaMainserverSurveyInput) => ({
-  ...(survey.privacyNotice ? { privacyNotice: survey.privacyNotice } : {}),
-  ...(survey.transparencyNotice ? { transparencyNotice: survey.transparencyNotice } : {}),
+  ...(survey.privacyNotice !== undefined ? { privacyNotice: survey.privacyNotice } : {}),
+  ...(survey.transparencyNotice !== undefined ? { transparencyNotice: survey.transparencyNotice } : {}),
 });
 
 const buildSurveyQuestionsInput = (survey: SvaMainserverSurveyInput) => ({
@@ -258,7 +258,7 @@ const createDeleteSurveyFreeTextResponseWithConfig = (executeGraphqlWithConfig: 
       variables: {
         input: {
           id: input.surveyId,
-          freeTextResponses: [{ id: input.freeTextResponseId, delete: true }],
+          freeTextResponses: [{ id: input.freeTextResponseId, status: 'DELETED' }],
         },
       },
     },

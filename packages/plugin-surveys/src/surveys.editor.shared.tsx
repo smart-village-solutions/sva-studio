@@ -17,6 +17,11 @@ import type { SurveyContentItem, SurveyLocalizedText } from './surveys.types.js'
 export type SurveyEditorMode = 'create' | 'edit';
 export type SurveyEditorTabId = 'basis' | 'content' | 'moderation' | 'results' | 'history';
 
+type SurveyTargetAreaOption = Readonly<{
+  id: string;
+  label: string;
+}>;
+
 const resolveLocalizedText = (value: SurveyLocalizedText | undefined): string => {
   if (!value) {
     return '';
@@ -78,11 +83,17 @@ export const mapSurveyResultsTabData = (
           votes: optionResult.votes,
           ...(optionResult.percentage === undefined ? {} : { percentage: optionResult.percentage }),
         })),
-        freeTextResponses: [...questionResult.freeTextResponses],
+        freeTextResponses: [
+          ...questionResult.freeTextResponses,
+          ...questionResult.optionResults.flatMap((optionResult) => optionResult.freeTextResponses),
+        ],
       };
     }),
   };
 };
+
+const resolveTargetAreaOptions = (loadedItem: SurveyContentItem | null): readonly SurveyTargetAreaOption[] =>
+  loadedItem?.targetAreaIds.map((targetAreaId) => ({ id: targetAreaId, label: targetAreaId })) ?? [];
 
 export const mapSurveyItemToFormValues = (item: SurveyContentItem): SurveyDetailFormValues => ({
   title: resolveLocalizedText(item.title),
@@ -230,7 +241,14 @@ export const createSurveyEditorTabs = (
       label: pt('tabs.basis.label'),
       title: pt('tabs.basis.title'),
       description: pt('tabs.basis.description'),
-      panel: <SurveyDetailBasisTab mode={mode} loadedItem={loadedItem} availableTargetAreas={[]} pt={pt} />,
+      panel: (
+        <SurveyDetailBasisTab
+          mode={mode}
+          loadedItem={loadedItem}
+          availableTargetAreas={resolveTargetAreaOptions(loadedItem)}
+          pt={pt}
+        />
+      ),
     },
     { id: 'content', label: pt('tabs.content.label'), title: pt('tabs.content.title'), description: pt('tabs.content.description'), panel: <SurveyDetailContentTab pt={pt} /> },
     {

@@ -15,6 +15,9 @@ import { SurveyQuestionDeleteDialog } from './surveys.question-delete-dialog.js'
 import { SurveyQuestionSection } from './surveys.question-section.js';
 import { updateSurveyQuestionList } from './surveys.question-list.shared.js';
 
+const getSurveyQuestionRenderKey = (question: SurveyQuestionFormValues, questionIndex: number): string =>
+  question.id ?? `question-draft-${question.position}-${questionIndex}`;
+
 export function SurveyQuestionListEditor({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
   const { setValue } = useFormContext<SurveyDetailFormValues>();
   const questions: SurveyQuestionFormValues[] = useWatch({ name: 'content.questions' }) ?? [];
@@ -62,7 +65,7 @@ export function SurveyQuestionListEditor({ pt }: Readonly<{ pt: SurveyContentTra
     <div className="space-y-4">
       {questions.map((question: SurveyQuestionFormValues, questionIndex: number) => (
         <SurveyQuestionSection
-          key={`question-${questionIndex}`}
+          key={getSurveyQuestionRenderKey(question, questionIndex)}
           pt={pt}
           question={question}
           questionIndex={questionIndex}

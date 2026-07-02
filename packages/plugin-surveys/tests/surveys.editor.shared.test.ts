@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createSurveyEditorTabs,
   mapSurveyItemToFormValues,
   mapSurveyModerationGroups,
   mapSurveyResultsTabData,
@@ -110,6 +111,12 @@ describe('survey editor shared mappings', () => {
               status: 'INTERNAL',
               createdAt: '2026-07-01T08:00:00.000Z',
             },
+            {
+              id: 'free-text-2',
+              text: 'Die Sitzbänke direkt daneben helfen sehr.',
+              status: 'PUBLIC',
+              createdAt: '2026-07-01T09:00:00.000Z',
+            },
           ],
         },
       ],
@@ -203,5 +210,16 @@ describe('survey editor shared mappings', () => {
         },
       ],
     });
+  });
+
+  it('keeps target area ids in the basis tab contract for loaded surveys', () => {
+    const tabs = createSurveyEditorTabs(
+      (key) => key,
+      'edit',
+      { ...surveyItem, targetAreaIds: ['district-1'] },
+      surveyItem.id
+    );
+
+    expect(tabs[0]?.id).toBe('basis');
   });
 });

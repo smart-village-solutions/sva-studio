@@ -2,10 +2,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  parseProcessTable,
-  resolveConflictingStudioServePids,
-} from '../../../scripts/ci/cleanup-e2e-webserver-conflicts';
+import { parseProcessTable, resolveConflictingStudioServePids } from './cleanup-e2e-webserver-conflicts.ts';
 
 describe('cleanup e2e webserver conflicts', () => {
   it('parses ps output into typed process rows', () => {

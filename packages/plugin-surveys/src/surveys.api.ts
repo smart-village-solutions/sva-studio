@@ -1,6 +1,6 @@
 import { createMainserverCrudClient } from '@sva/plugin-sdk';
 
-import type { SurveyContentItem, SurveyFormInput, SurveyListQuery, SurveyListResult } from './surveys.types.js';
+import type { SurveyContentItem, SurveyListQuery, SurveyListResult, SurveyMutationInput } from './surveys.types.js';
 
 class SurveysApiError extends Error {
   public constructor(
@@ -17,9 +17,11 @@ const toLocalizedText = (value: string | undefined) => {
   return normalized ? { de: normalized } : undefined;
 };
 
+const toLocalizedTextUpdate = (value: string | undefined) => toLocalizedText(value) ?? null;
+
 const surveysClient = createMainserverCrudClient<
   SurveyContentItem,
-  SurveyFormInput,
+  SurveyMutationInput,
   SurveyListResult,
   SurveyListResult,
   SurveysApiError
@@ -49,7 +51,7 @@ const surveysClient = createMainserverCrudClient<
             type: question.type,
             required: question.required,
             position: question.position,
-            options: question.options.map((option) => ({
+            options: (question.options ?? []).map((option) => ({
               ...(toLocalizedText(option.title) ? { title: toLocalizedText(option.title) } : {}),
               position: option.position,
               enablesFreeText: option.enablesFreeText,
@@ -60,29 +62,31 @@ const surveysClient = createMainserverCrudClient<
   }),
   updateBody: (input) => ({
     ...(toLocalizedText(input.title) ? { title: toLocalizedText(input.title) } : {}),
-    ...(toLocalizedText(input.shortDescription) ? { shortDescription: toLocalizedText(input.shortDescription) } : {}),
-    ...(toLocalizedText(input.description) ? { description: toLocalizedText(input.description) } : {}),
+    shortDescription: toLocalizedTextUpdate(input.shortDescription),
+    description: toLocalizedTextUpdate(input.description),
     status: input.status,
-    ...(input.startAt ? { startAt: input.startAt } : { endAt: undefined }),
-    ...(input.endAt ? { endAt: input.endAt } : { endAt: undefined }),
+    startAt: input.startAt ?? null,
+    endAt: input.endAt ?? null,
     ...(input.resultVisibility ? { resultVisibility: input.resultVisibility } : {}),
     targetAreaIds: input.targetAreaIds ?? [],
     ...(input.showResultsInApp !== undefined ? { showResultsInApp: input.showResultsInApp } : {}),
     isAnonymous: input.isAnonymous,
-    ...(toLocalizedText(input.privacyNotice) ? { privacyNotice: toLocalizedText(input.privacyNotice) } : {}),
-    ...(toLocalizedText(input.transparencyNotice)
-      ? { transparencyNotice: toLocalizedText(input.transparencyNotice) }
-      : {}),
+    privacyNotice: toLocalizedTextUpdate(input.privacyNotice),
+    transparencyNotice: toLocalizedTextUpdate(input.transparencyNotice),
     questions: (input.questions ?? []).map((question) => ({
+      ...(question.id ? { id: question.id } : {}),
+      ...(question.delete === true ? { delete: true } : {}),
       ...(toLocalizedText(question.title) ? { title: toLocalizedText(question.title) } : {}),
-      ...(toLocalizedText(question.description) ? { description: toLocalizedText(question.description) } : {}),
-      type: question.type,
-      required: question.required,
-      position: question.position,
-      options: question.options.map((option) => ({
+      description: toLocalizedTextUpdate(question.description),
+      ...(question.type ? { type: question.type } : {}),
+      ...(question.required === undefined ? {} : { required: question.required }),
+      ...(question.position === undefined ? {} : { position: question.position }),
+      options: (question.options ?? []).map((option) => ({
+        ...(option.id ? { id: option.id } : {}),
+        ...(option.delete === true ? { delete: true } : {}),
         ...(toLocalizedText(option.title) ? { title: toLocalizedText(option.title) } : {}),
-        position: option.position,
-        enablesFreeText: option.enablesFreeText,
+        ...(option.position === undefined ? {} : { position: option.position }),
+        ...(option.enablesFreeText === undefined ? {} : { enablesFreeText: option.enablesFreeText }),
       })),
     })),
   }),
@@ -93,9 +97,9 @@ export const listSurveys = async (query: SurveyListQuery): Promise<SurveyListRes
 
 export const getSurvey = async (contentId: string): Promise<SurveyContentItem> => surveysClient.get(contentId);
 
-export const createSurvey = async (input: SurveyFormInput): Promise<SurveyContentItem> => surveysClient.create(input);
+export const createSurvey = async (input: SurveyMutationInput): Promise<SurveyContentItem> => surveysClient.create(input);
 
-export const updateSurvey = async (contentId: string, input: SurveyFormInput): Promise<SurveyContentItem> =>
+export const updateSurvey = async (contentId: string, input: SurveyMutationInput): Promise<SurveyContentItem> =>
   surveysClient.update(contentId, input);
 
 export const deleteSurvey = async (contentId: string): Promise<void> => surveysClient.remove(contentId);

@@ -107,14 +107,6 @@ export type SvaMainserverCreateOrUpdateSurveyMutation = {
   readonly createOrUpdateSurvey?: SvaMainserverSurveyMutationPayloadFragment | null;
 };
 
-export type SvaMainserverUpdateSurveyFreeTextStatusMutation = {
-  readonly updateSurveyFreeTextStatus?: SvaMainserverSurveyMutationPayloadFragment | null;
-};
-
-export type SvaMainserverDeleteSurveyFreeTextMutation = {
-  readonly deleteSurveyFreeText?: SvaMainserverSurveyMutationPayloadFragment | null;
-};
-
 const surveyQuestionOptionFields = `
   id
   questionId
@@ -272,30 +264,6 @@ export const svaMainserverSurveyResultsDocument = `
 export const svaMainserverCreateOrUpdateSurveyDocument = `
   mutation SvaMainserverCreateOrUpdateSurvey($input: UpsertSurveyInput!) {
     createOrUpdateSurvey(input: $input) {
-      ${surveyMutationPayloadFields}
-    }
-  }
-`;
-
-export const svaMainserverUpdateSurveyFreeTextStatusDocument = `
-  mutation SvaMainserverUpdateSurveyFreeTextStatus(
-    $surveyId: ID!
-    $freeTextResponseId: ID!
-    $status: SurveyFreeTextStatus!
-  ) {
-    updateSurveyFreeTextStatus(
-      surveyId: $surveyId
-      freeTextResponseId: $freeTextResponseId
-      status: $status
-    ) {
-      ${surveyMutationPayloadFields}
-    }
-  }
-`;
-
-export const svaMainserverDeleteSurveyFreeTextDocument = `
-  mutation SvaMainserverDeleteSurveyFreeText($surveyId: ID!, $freeTextResponseId: ID!) {
-    deleteSurveyFreeText(surveyId: $surveyId, freeTextResponseId: $freeTextResponseId) {
       ${surveyMutationPayloadFields}
     }
   }

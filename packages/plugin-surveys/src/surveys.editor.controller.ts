@@ -82,6 +82,7 @@ const createSurveyEditorSubmit = (input: {
   readonly methods: UseFormReturn<SurveyDetailFormValues>;
   readonly mode: SurveyEditorMode;
   readonly contentId?: string;
+  readonly loadedItem: SurveyContentItem | null;
   readonly pt: SurveyEditorTranslation;
   readonly navigateToContentList: () => Promise<void>;
   readonly setLoadedItem: React.Dispatch<React.SetStateAction<SurveyContentItem | null>>;
@@ -89,7 +90,7 @@ const createSurveyEditorSubmit = (input: {
 }) =>
   input.methods.handleSubmit(async (values) => {
     try {
-      const mutation = toSurveyMutationInput(values);
+      const mutation = toSurveyMutationInput(values, input.loadedItem);
       const savedItem =
         input.mode === 'create'
           ? await createSurvey(mutation)
@@ -137,6 +138,7 @@ export const useSurveyEditorController = ({
     methods,
     mode,
     contentId,
+    loadedItem,
     pt,
     navigateToContentList,
     setLoadedItem,

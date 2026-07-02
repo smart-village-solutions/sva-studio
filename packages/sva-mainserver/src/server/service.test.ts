@@ -778,7 +778,7 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(
         createJsonResponse(200, {
           data: {
-            updateSurveyFreeTextStatus: {
+            createOrUpdateSurvey: {
               success: true,
               action: 'UPDATED',
               survey: releasedSurvey,
@@ -791,7 +791,7 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(
         createJsonResponse(200, {
           data: {
-            deleteSurveyFreeText: {
+            createOrUpdateSurvey: {
               success: true,
               action: 'UPDATED',
               survey,
@@ -932,8 +932,8 @@ describe('createSvaMainserverService', () => {
       'SvaMainserverSurveyResults',
       'SvaMainserverCreateOrUpdateSurvey',
       'SvaMainserverCreateOrUpdateSurvey',
-      'SvaMainserverUpdateSurveyFreeTextStatus',
-      'SvaMainserverDeleteSurveyFreeText',
+      'SvaMainserverCreateOrUpdateSurvey',
+      'SvaMainserverCreateOrUpdateSurvey',
       'SvaMainserverCreateOrUpdateSurvey',
     ]);
     expect(requestBodies[0]?.variables).toEqual({
@@ -964,13 +964,16 @@ describe('createSvaMainserverService', () => {
       }),
     });
     expect(requestBodies[5]?.variables).toEqual({
-      surveyId: 'survey-1',
-      freeTextResponseId: 'free-text-1',
-      status: 'PUBLIC',
+      input: {
+        id: 'survey-1',
+        freeTextResponses: [{ id: 'free-text-1', status: 'PUBLIC' }],
+      },
     });
     expect(requestBodies[6]?.variables).toEqual({
-      surveyId: 'survey-1',
-      freeTextResponseId: 'free-text-1',
+      input: {
+        id: 'survey-1',
+        freeTextResponses: [{ id: 'free-text-1', delete: true }],
+      },
     });
     expect(requestBodies[7]?.variables).toEqual({
       input: {
@@ -1045,7 +1048,7 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(
         createJsonResponse(200, {
           data: {
-            updateSurveyFreeTextStatus: {
+            createOrUpdateSurvey: {
               success: true,
               action: 'UPDATED',
               survey,
@@ -1058,7 +1061,7 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(
         createJsonResponse(200, {
           data: {
-            deleteSurveyFreeText: {
+            createOrUpdateSurvey: {
               success: true,
               action: 'UPDATED',
               survey,
@@ -1268,6 +1271,78 @@ describe('createSvaMainserverService', () => {
     ).rejects.toMatchObject({
       code: 'not_found',
       statusCode: 404,
+    });
+  });
+
+  it('maps survey results from the dedicated results query without requiring full survey detail fields', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            surveys: [
+              {
+                id: 'survey-1',
+                results: {
+                  surveyId: 'survey-1',
+                  participationCount: 8,
+                  submissionCount: 6,
+                  questions: [
+                    {
+                      questionId: 'question-1',
+                      type: 'FREE_TEXT',
+                      totalResponses: 6,
+                      optionResults: [],
+                      freeTextResponses: [
+                        {
+                          id: 'free-text-1',
+                          text: 'Mehr Schattenplätze wären gut.',
+                          status: 'INTERNAL',
+                          createdAt: '2026-07-01T08:00:00.000Z',
+                        },
+                      ],
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.getSurveyResults({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        surveyId: 'survey-1',
+      })
+    ).resolves.toEqual({
+      surveyId: 'survey-1',
+      participationCount: 8,
+      submissionCount: 6,
+      questions: [
+        {
+          questionId: 'question-1',
+          type: 'FREE_TEXT',
+          totalResponses: 6,
+          optionResults: [],
+          freeTextResponses: [
+            {
+              id: 'free-text-1',
+              text: 'Mehr Schattenplätze wären gut.',
+              status: 'INTERNAL',
+              createdAt: '2026-07-01T08:00:00.000Z',
+            },
+          ],
+        },
+      ],
     });
   });
 

@@ -25,40 +25,60 @@ describe('survey content model', () => {
 
     expect(
       getNormalizedSurveyQuestionOptions('SINGLE_CHOICE', [
-        { title: 'Option A', position: 4, enablesFreeText: true },
+        { id: 'option-1', title: 'Option A', position: 4, enablesFreeText: true },
       ])
-    ).toEqual([{ title: 'Option A', position: 0, enablesFreeText: false }]);
+    ).toEqual([{ id: 'option-1', title: 'Option A', position: 0, enablesFreeText: false }]);
   });
 
   it('keeps question and option positions in sync after normalization', () => {
     const normalized = normalizeSurveyQuestions([
       {
+        id: 'question-2',
         title: 'Zweite',
         description: '',
         type: 'MULTIPLE_CHOICE_WITH_TEXT',
         required: false,
         position: 9,
         options: [
-          { title: 'Option B', position: 3, enablesFreeText: true },
-          { title: 'Option A', position: 1, enablesFreeText: false },
+          { id: 'option-2', title: 'Option B', position: 3, enablesFreeText: true },
+          { id: 'option-1', title: 'Option A', position: 1, enablesFreeText: false },
         ],
       },
       {
+        id: 'question-1',
         title: 'Erste',
         description: '',
         type: 'FREE_TEXT',
         required: true,
         position: 4,
-        options: [{ title: 'Ignorieren', position: 2, enablesFreeText: true }],
+        options: [{ id: 'option-3', title: 'Ignorieren', position: 2, enablesFreeText: true }],
       },
     ]);
 
-    expect(normalized[0]?.position).toBe(0);
+    expect(normalized[0]).toEqual({
+      id: 'question-2',
+      title: 'Zweite',
+      description: '',
+      type: 'MULTIPLE_CHOICE_WITH_TEXT',
+      required: false,
+      position: 0,
+      options: [
+        { id: 'option-2', title: 'Option B', position: 0, enablesFreeText: true },
+        { id: 'option-1', title: 'Option A', position: 1, enablesFreeText: false },
+      ],
+    });
     expect(normalized[0]?.options).toEqual([
-      { title: 'Option B', position: 0, enablesFreeText: true },
-      { title: 'Option A', position: 1, enablesFreeText: false },
+      { id: 'option-2', title: 'Option B', position: 0, enablesFreeText: true },
+      { id: 'option-1', title: 'Option A', position: 1, enablesFreeText: false },
     ]);
-    expect(normalized[1]?.position).toBe(1);
-    expect(normalized[1]?.options).toEqual([]);
+    expect(normalized[1]).toEqual({
+      id: 'question-1',
+      title: 'Erste',
+      description: '',
+      type: 'FREE_TEXT',
+      required: true,
+      position: 1,
+      options: [],
+    });
   });
 });

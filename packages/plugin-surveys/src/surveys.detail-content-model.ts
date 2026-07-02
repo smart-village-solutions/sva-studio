@@ -8,12 +8,14 @@ export type SurveyQuestionType =
 export type SurveyResultVisibility = 'NONE' | 'AFTER_SUBMISSION' | 'AFTER_SURVEY_END';
 
 export type SurveyQuestionOptionFormValues = {
+  id?: string;
   title: string;
   position: number;
   enablesFreeText: boolean;
 };
 
 export type SurveyQuestionFormValues = {
+  id?: string;
   title: string;
   description: string;
   type: SurveyQuestionType;
@@ -58,6 +60,7 @@ export const getNormalizedSurveyQuestionOptions = (
   const baseOptions = options.length > 0 ? [...options] : [createDefaultSurveyQuestionOption(0)];
 
   return baseOptions.map((option, index) => ({
+    ...(option.id ? { id: option.id } : {}),
     title: option.title,
     position: index,
     enablesFreeText: questionTypeSupportsFreeTextOptionToggle(type) ? option.enablesFreeText : false,
@@ -80,6 +83,7 @@ export const normalizeSurveyQuestions = (
   questions: readonly SurveyQuestionFormValues[]
 ): SurveyQuestionFormValues[] =>
   questions.map((question, index) => ({
+    ...(question.id ? { id: question.id } : {}),
     title: question.title,
     description: question.description,
     type: question.type,

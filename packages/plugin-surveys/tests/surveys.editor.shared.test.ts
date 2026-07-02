@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapSurveyModerationGroups, mapSurveyResultsTabData } from '../src/surveys.editor.shared.js';
+import {
+  mapSurveyItemToFormValues,
+  mapSurveyModerationGroups,
+  mapSurveyResultsTabData,
+  toSurveyMutationInput,
+} from '../src/surveys.editor.shared.js';
 import type { SurveyContentItem } from '../src/surveys.types.js';
 
 const surveyItem: SurveyContentItem = {
@@ -51,7 +56,14 @@ const surveyItem: SurveyContentItem = {
             title: { de: 'Sehr gut' },
             votes: 5,
             percentage: 55.6,
-            freeTextResponses: [],
+            freeTextResponses: [
+              {
+                id: 'free-text-2',
+                text: 'Die Sitzbänke direkt daneben helfen sehr.',
+                status: 'PUBLIC',
+                createdAt: '2026-07-01T09:00:00.000Z',
+              },
+            ],
           },
         ],
         freeTextResponses: [
@@ -116,8 +128,80 @@ describe('survey editor shared mappings', () => {
             status: 'INTERNAL',
             createdAt: '2026-07-01T08:00:00.000Z',
           },
+          {
+            id: 'free-text-2',
+            text: 'Die Sitzbänke direkt daneben helfen sehr.',
+            status: 'PUBLIC',
+            createdAt: '2026-07-01T09:00:00.000Z',
+          },
         ],
       },
     ]);
+  });
+
+  it('keeps loaded question and option ids in form values', () => {
+    expect(mapSurveyItemToFormValues(surveyItem).content.questions).toEqual([
+      {
+        id: 'question-1',
+        title: 'Wie bewerten Sie den Wochenmarkt?',
+        description: '',
+        type: 'SINGLE_CHOICE_WITH_TEXT',
+        required: true,
+        position: 0,
+        options: [
+          {
+            id: 'option-1',
+            title: 'Sehr gut',
+            position: 0,
+            enablesFreeText: true,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('preserves nested ids and emits delete markers for removed survey questions and options', () => {
+    const values = mapSurveyItemToFormValues(surveyItem);
+    values.content.questions = [
+      {
+        ...values.content.questions[0]!,
+        title: 'Wie bewerten Sie den Markt heute?',
+        options: [],
+      },
+      {
+        title: 'Welche Verbesserungen wünschen Sie sich?',
+        description: '',
+        type: 'FREE_TEXT',
+        required: false,
+        position: 1,
+        options: [],
+      },
+    ];
+
+    expect(toSurveyMutationInput(values, surveyItem)).toEqual({
+      title: 'Bestandsumfrage',
+      status: 'ACTIVE',
+      resultVisibility: 'AFTER_SUBMISSION',
+      targetAreaIds: [],
+      showResultsInApp: true,
+      isAnonymous: false,
+      questions: [
+        {
+          id: 'question-1',
+          title: 'Wie bewerten Sie den Markt heute?',
+          type: 'SINGLE_CHOICE_WITH_TEXT',
+          required: true,
+          position: 0,
+          options: [{ id: 'option-1', delete: true }],
+        },
+        {
+          title: 'Welche Verbesserungen wünschen Sie sich?',
+          type: 'FREE_TEXT',
+          required: false,
+          position: 1,
+          options: [],
+        },
+      ],
+    });
   });
 });

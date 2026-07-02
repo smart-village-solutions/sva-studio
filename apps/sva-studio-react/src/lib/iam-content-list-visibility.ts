@@ -23,7 +23,8 @@ const ORGANIZATION_OPTIONAL_CONTENT_TYPES = new Set([
 const buildReadAction = (contentType: string): string =>
   contentType === 'news.article' ||
   contentType === 'events.event-record' ||
-  contentType === 'poi.point-of-interest'
+  contentType === 'poi.point-of-interest' ||
+  contentType === 'surveys.survey'
     ? `${contentType.split('.')[0] ?? 'content'}.read`
     : 'content.read';
 

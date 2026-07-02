@@ -11,7 +11,7 @@ import {
   type SurveyModerationQuestionGroup,
 } from './surveys.detail-moderation-tab.js';
 import { SurveyDetailResultsTab, type SurveyResultsTabData } from './surveys.detail-results-tab.js';
-import type { SurveyContentItem, SurveyFormInput, SurveyLocalizedText } from './surveys.types.js';
+import type { SurveyContentItem, SurveyLocalizedText, SurveyMutationInput } from './surveys.types.js';
 
 export type SurveyEditorMode = 'create' | 'edit';
 export type SurveyEditorTabId = 'basis' | 'content' | 'moderation' | 'results' | 'history';
@@ -43,11 +43,12 @@ export const mapSurveyModerationGroups = (item: SurveyContentItem): SurveyModera
   (item.results?.questions ?? [])
     .map((questionResult) => {
       const matchingQuestion = item.questions.find((question) => question.id === questionResult.questionId);
+      const optionFreeTextResponses = questionResult.optionResults.flatMap((optionResult) => optionResult.freeTextResponses);
 
       return {
         questionId: questionResult.questionId,
         questionTitle: resolveLocalizedText(matchingQuestion?.title),
-        responses: [...questionResult.freeTextResponses],
+        responses: [...questionResult.freeTextResponses, ...optionFreeTextResponses],
       };
     })
     .filter((group) => group.questionTitle.trim().length > 0 || group.responses.length > 0);
@@ -101,12 +102,14 @@ export const mapSurveyItemToFormValues = (item: SurveyContentItem): SurveyDetail
     privacyNotice: resolveLocalizedText(item.privacyNotice),
     transparencyNotice: resolveLocalizedText(item.transparencyNotice),
     questions: item.questions.map((question, questionIndex) => ({
+      id: question.id,
       title: resolveLocalizedText(question.title),
       description: resolveLocalizedText(question.description),
       type: question.type,
       required: question.required,
       position: question.position ?? questionIndex,
       options: question.options.map((option, optionIndex) => ({
+        id: option.id,
         title: resolveLocalizedText(option.title),
         position: option.position ?? optionIndex,
         enablesFreeText: option.enablesFreeText,
@@ -115,34 +118,81 @@ export const mapSurveyItemToFormValues = (item: SurveyContentItem): SurveyDetail
   },
 });
 
-export const toSurveyMutationInput = (values: SurveyDetailFormValues): SurveyFormInput => ({
-  title: values.title.trim(),
-  ...(values.content.shortDescription.trim() ? { shortDescription: values.content.shortDescription.trim() } : {}),
-  ...(values.content.description.trim() ? { description: values.content.description.trim() } : {}),
-  status: values.basis.status,
-  ...(values.basis.startAt ? { startAt: fromDatetimeLocalValue(values.basis.startAt) } : {}),
-  ...(values.basis.endAt ? { endAt: fromDatetimeLocalValue(values.basis.endAt) } : {}),
-  resultVisibility: values.content.resultVisibility,
-  targetAreaIds: values.basis.targetAreaIds,
-  showResultsInApp: values.content.showResultsInApp,
-  isAnonymous: values.content.isAnonymous,
-  ...(values.content.privacyNotice.trim() ? { privacyNotice: values.content.privacyNotice.trim() } : {}),
-  ...(values.content.transparencyNotice.trim()
-    ? { transparencyNotice: values.content.transparencyNotice.trim() }
-    : {}),
-  questions: values.content.questions.map((question, questionIndex) => ({
-    title: question.title.trim(),
-    ...(question.description.trim() ? { description: question.description.trim() } : {}),
-    type: question.type,
-    required: question.required,
-    position: question.position ?? questionIndex,
-    options: question.options.map((option, optionIndex) => ({
-      title: option.title.trim(),
-      position: option.position ?? optionIndex,
-      enablesFreeText: option.enablesFreeText,
-    })),
-  })),
-});
+const trimmedValueOrUndefined = (value: string): string | undefined => {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+export const toSurveyMutationInput = (
+  values: SurveyDetailFormValues,
+  loadedItem?: SurveyContentItem | null
+): SurveyMutationInput => {
+  const currentQuestionIds = new Set(
+    values.content.questions.flatMap((question) => (question.id ? [question.id] : []))
+  );
+  const removedQuestions =
+    loadedItem?.questions
+      .filter((question) => currentQuestionIds.has(question.id) === false)
+      .map((question) => ({ id: question.id, delete: true as const })) ?? [];
+
+  return {
+    title: values.title.trim(),
+    ...(trimmedValueOrUndefined(values.content.shortDescription)
+      ? { shortDescription: trimmedValueOrUndefined(values.content.shortDescription) }
+      : {}),
+    ...(trimmedValueOrUndefined(values.content.description)
+      ? { description: trimmedValueOrUndefined(values.content.description) }
+      : {}),
+    status: values.basis.status,
+    ...(values.basis.startAt ? { startAt: fromDatetimeLocalValue(values.basis.startAt) } : {}),
+    ...(values.basis.endAt ? { endAt: fromDatetimeLocalValue(values.basis.endAt) } : {}),
+    resultVisibility: values.content.resultVisibility,
+    targetAreaIds: values.basis.targetAreaIds,
+    showResultsInApp: values.content.showResultsInApp,
+    isAnonymous: values.content.isAnonymous,
+    ...(trimmedValueOrUndefined(values.content.privacyNotice)
+      ? { privacyNotice: trimmedValueOrUndefined(values.content.privacyNotice) }
+      : {}),
+    ...(trimmedValueOrUndefined(values.content.transparencyNotice)
+      ? { transparencyNotice: trimmedValueOrUndefined(values.content.transparencyNotice) }
+      : {}),
+    questions: [
+      ...values.content.questions.map((question, questionIndex) => {
+        const loadedQuestion = question.id
+          ? loadedItem?.questions.find((entry) => entry.id === question.id)
+          : undefined;
+        const currentOptionIds = new Set(
+          question.options.flatMap((option) => (option.id ? [option.id] : []))
+        );
+        const removedOptions =
+          loadedQuestion?.options
+            .filter((option) => currentOptionIds.has(option.id) === false)
+            .map((option) => ({ id: option.id, delete: true as const })) ?? [];
+
+        return {
+          ...(question.id ? { id: question.id } : {}),
+          title: question.title.trim(),
+          ...(trimmedValueOrUndefined(question.description)
+            ? { description: trimmedValueOrUndefined(question.description) }
+            : {}),
+          type: question.type,
+          required: question.required,
+          position: question.position ?? questionIndex,
+          options: [
+            ...question.options.map((option, optionIndex) => ({
+              ...(option.id ? { id: option.id } : {}),
+              title: option.title.trim(),
+              position: option.position ?? optionIndex,
+              enablesFreeText: option.enablesFreeText,
+            })),
+            ...removedOptions,
+          ],
+        };
+      }),
+      ...removedQuestions,
+    ],
+  };
+};
 
 export const getSurveyEditorErrorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error && error.message.trim().length > 0 ? error.message : fallback;

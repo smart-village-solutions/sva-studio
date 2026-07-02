@@ -11,17 +11,13 @@ import type {
 } from '../../types.js';
 import {
   svaMainserverCreateOrUpdateSurveyDocument,
-  svaMainserverDeleteSurveyFreeTextDocument,
   svaMainserverSurveyDetailDocument,
   svaMainserverSurveyResultsDocument,
   svaMainserverSurveysListDocument,
-  svaMainserverUpdateSurveyFreeTextStatusDocument,
   type SvaMainserverCreateOrUpdateSurveyMutation,
-  type SvaMainserverDeleteSurveyFreeTextMutation,
   type SvaMainserverSurveyDetailQuery,
   type SvaMainserverSurveyResultsQuery,
   type SvaMainserverSurveysListQuery,
-  type SvaMainserverUpdateSurveyFreeTextStatusMutation,
 } from '../../generated/surveys.js';
 
 import {
@@ -30,7 +26,7 @@ import {
   mapSurveyItem,
   mapSurveyMutationPayload,
 } from './survey-mappers.js';
-import { normalizeVisibleListQuery, type GraphqlExecutor } from './shared.js';
+import { normalizeVisibleListQuery, toSvaMainserverError, type GraphqlExecutor } from './shared.js';
 
 const buildSurveyFilter = (input: {
   readonly ids?: readonly string[];
@@ -190,8 +186,15 @@ const createGetSurveyResultsWithConfig = (executeGraphqlWithConfig: GraphqlExecu
   );
 
   const survey = findSurvey(response.surveys);
-  const surveyItem = mapOptionalSurveyItem(survey);
-  return mapOptionalSurveyResults(surveyItem.results);
+  if (!survey) {
+    throw toSvaMainserverError({
+      code: 'not_found',
+      message: 'Survey wurde nicht gefunden.',
+      statusCode: 404,
+    });
+  }
+
+  return mapOptionalSurveyResults(survey.results);
 };
 
 const createWriteSurveyWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) => async (
@@ -222,21 +225,22 @@ const createReleaseSurveyFreeTextResponseWithConfig = (executeGraphqlWithConfig:
   },
   config: SvaMainserverInstanceConfig
 ): Promise<SvaMainserverSurveyMutationPayload> => {
-  const response = await executeGraphqlWithConfig<SvaMainserverUpdateSurveyFreeTextStatusMutation>(
+  const response = await executeGraphqlWithConfig<SvaMainserverCreateOrUpdateSurveyMutation>(
     {
       ...input,
-      document: svaMainserverUpdateSurveyFreeTextStatusDocument,
-      operationName: 'SvaMainserverUpdateSurveyFreeTextStatus',
+      document: svaMainserverCreateOrUpdateSurveyDocument,
+      operationName: 'SvaMainserverCreateOrUpdateSurvey',
       variables: {
-        surveyId: input.surveyId,
-        freeTextResponseId: input.freeTextResponseId,
-        status: 'PUBLIC',
+        input: {
+          id: input.surveyId,
+          freeTextResponses: [{ id: input.freeTextResponseId, status: 'PUBLIC' }],
+        },
       },
     },
     config
   );
 
-  return mapSurveyMutationPayload(response.updateSurveyFreeTextStatus);
+  return mapSurveyMutationPayload(response.createOrUpdateSurvey);
 };
 
 const createDeleteSurveyFreeTextResponseWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) => async (
@@ -246,20 +250,22 @@ const createDeleteSurveyFreeTextResponseWithConfig = (executeGraphqlWithConfig: 
   },
   config: SvaMainserverInstanceConfig
 ): Promise<SvaMainserverSurveyMutationPayload> => {
-  const response = await executeGraphqlWithConfig<SvaMainserverDeleteSurveyFreeTextMutation>(
+  const response = await executeGraphqlWithConfig<SvaMainserverCreateOrUpdateSurveyMutation>(
     {
       ...input,
-      document: svaMainserverDeleteSurveyFreeTextDocument,
-      operationName: 'SvaMainserverDeleteSurveyFreeText',
+      document: svaMainserverCreateOrUpdateSurveyDocument,
+      operationName: 'SvaMainserverCreateOrUpdateSurvey',
       variables: {
-        surveyId: input.surveyId,
-        freeTextResponseId: input.freeTextResponseId,
+        input: {
+          id: input.surveyId,
+          freeTextResponses: [{ id: input.freeTextResponseId, delete: true }],
+        },
       },
     },
     config
   );
 
-  return mapSurveyMutationPayload(response.deleteSurveyFreeText);
+  return mapSurveyMutationPayload(response.createOrUpdateSurvey);
 };
 
 export const createSurveyOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({

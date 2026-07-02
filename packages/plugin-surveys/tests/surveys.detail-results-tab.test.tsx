@@ -19,6 +19,7 @@ const dictionary = {
   'messages.resultsExportWithFreeText': 'Ergebnisexport inklusive Freitextantworten.',
   'fields.summaryParticipationCount': 'Teilnahmen',
   'fields.summarySubmissionCount': 'Abgaben',
+  'fields.summaryResponseCount': 'Antworten',
   'fields.summaryQuestionCount': 'Fragen',
   'fields.summaryStatus': 'Status',
   'fields.optionVotes': 'Stimmen',
@@ -95,6 +96,7 @@ describe('SurveyDetailResultsTab', () => {
     expect(screen.getByText('98')).toBeTruthy();
     expect(screen.getByText('3')).toBeTruthy();
     expect(screen.getByText('Aktiv')).toBeTruthy();
+    expect(screen.getByText('98 Antworten')).toBeTruthy();
 
     expect(screen.getByRole('heading', { name: 'Wie bewerten Sie den Wochenmarkt?' })).toBeTruthy();
     expect(screen.getByText('Sehr gut')).toBeTruthy();
@@ -138,6 +140,25 @@ describe('SurveyDetailResultsTab', () => {
     expect(onExport).toHaveBeenCalledWith({ kind: 'withFreeText', format: 'json' });
     expect(onExport).toHaveBeenCalledWith({ kind: 'withoutFreeText', format: 'excel' });
     expect(onExport).toHaveBeenCalledWith({ kind: 'withFreeText', format: 'xml' });
+  });
+
+  it('hides export controls when no export handler is wired', () => {
+    render(
+      <SurveyDetailResultsTab
+        mode="edit"
+        pt={pt}
+        resultData={{
+          statusLabel: 'Aktiv',
+          participationCount: 10,
+          submissionCount: 8,
+          questionCount: 2,
+          questions: [],
+        }}
+      />
+    );
+
+    expect(screen.queryByRole('heading', { name: 'Export' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'CSV' })).toBeNull();
   });
 
   it('renders fallback percentages and clamps progress widths into the valid range', () => {

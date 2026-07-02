@@ -38,6 +38,7 @@ const deriveSurveyTargetAreaOptions = (item: SurveyContentItem | null): SurveyTa
   if (!item) {
     return [];
   }
+
   return [...new Set(item.targetAreaIds)].map((targetAreaId) => ({
     id: targetAreaId,
     label: targetAreaId,
@@ -242,7 +243,13 @@ export const createSurveyEditorTabs = (
       description: pt('tabs.moderation.description'),
       panel: <SurveyDetailModerationTab mode={mode} groups={moderationGroups} pt={pt} />,
     },
-    { id: 'results', label: pt('tabs.results.label'), title: pt('tabs.results.title'), description: pt('tabs.results.description'), panel: <SurveyDetailResultsTab mode={mode} resultData={resultData} pt={pt} /> },
+    {
+      id: 'results',
+      label: pt('tabs.results.label'),
+      title: pt('tabs.results.title'),
+      description: pt('tabs.results.description'),
+      panel: <SurveyDetailResultsTab mode={mode} resultData={resultData} pt={pt} />,
+    },
     {
       id: 'history',
       label: pt('tabs.history.label'),

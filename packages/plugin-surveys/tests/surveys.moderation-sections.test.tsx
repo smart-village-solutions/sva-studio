@@ -66,7 +66,6 @@ const pt = (key: string, variables?: Readonly<Record<string, string | number>>) 
         'fields.freeTextOverlayCreatedAt': 'Zeitstempel',
         'fields.freeTextStatusOptions.internal': 'Intern',
         'fields.freeTextStatusOptions.public': 'Öffentlich',
-        'labels.freeTextVisibility': 'Antwort {{index}} öffentlich sichtbar',
         'actions.closeOverlay': 'Schließen',
       } as const
     )[key] ?? key;
@@ -119,7 +118,8 @@ describe('survey moderation sections', () => {
     expect(screen.getByRole('heading', { name: 'question-1' })).toBeTruthy();
     expect(screen.getByRole('table', { name: 'question-1' })).toBeTruthy();
     expect(screen.getByText('2026-07-01T08:00:00.000Z')).toBeTruthy();
-    expect(screen.getByLabelText('Antwort 1 öffentlich sichtbar').textContent).toBe('Öffentlich');
+    expect(screen.getByLabelText('Volltext öffnen: Ein längerer Freitext für die Detailansicht.')).toBeTruthy();
+    expect(screen.getByText('Öffentlich')).toBeTruthy();
   });
 
   it('renders the empty-question state without a table', () => {

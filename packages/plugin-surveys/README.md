@@ -19,9 +19,9 @@ Das Plugin bildet Surveys als normale Inhalte mit denselben Hauptschritten wie a
 - Sichtbarkeit in der gemischten Inhaltsliste unter `/admin/content`
 - Auswahl als weiterer Typ im Flow `Neuer Inhalt`
 - gemeinsamer Editor-Rahmen für Create und Edit
-- Freitext-Moderation, Ergebnisse, Export und Historie innerhalb derselben Detailoberflaeche
+- Freitext-Moderation, Ergebnisse, Export und Historie innerhalb derselben Detailoberfläche
 
-Das im Studio gefuehrte Survey-Zielmodell verwendet nur:
+Das im Studio geführte Survey-Zielmodell verwendet nur:
 
 - `DRAFT`
 - `ACTIVE`
@@ -29,7 +29,7 @@ Das im Studio gefuehrte Survey-Zielmodell verwendet nur:
 
 Zeitliche Wirkung wird über `startAt` und `endAt` modelliert. `SCHEDULED`, `ENDED` und eine redaktionelle Option `allowsMultipleSubmissionsPerDevice` gehören nicht zum Studio-Vertrag.
 
-## Oeffentliche API
+## Öffentliche API
 
 Der Einstiegspunkt ist [`src/index.ts`](./src/index.ts). Exportiert werden:
 
@@ -37,12 +37,12 @@ Der Einstiegspunkt ist [`src/index.ts`](./src/index.ts). Exportiert werden:
 - `SURVEYS_CONTENT_TYPE` als kanonischer Content-Type
 - Survey-spezifische Action- und Permission-Definitionen
 - die Create-/Edit-Seiten für hostmaterialisierte Content-Bindings
-- die Mainserver-CRUD-Fassade fuer Liste, Detail und Delete
-- Survey-Grundtypen fuer Listen- und Detailmodelle
+- die Mainserver-CRUD-Fassade für Liste, Detail und Delete
+- Survey-Grundtypen für Listen- und Detailmodelle
 
 ## Nutzung und Integration
 
-Die Integration erfolgt ueber die Plugin-Definition und die hostseitigen Standard-Content-Bindings:
+Die Integration erfolgt über die Plugin-Definition und die hostseitigen Standard-Content-Bindings:
 
 ```ts
 import { pluginSurveys } from '@sva/plugin-surveys';
@@ -61,7 +61,7 @@ Standard-Content-Rechte werden durch zwei Survey-spezifische Rechte ergänzt:
 - `surveys.moderate` für Freitext-Freigabe und Freitext-Löschung
 - `surveys.export` für Ergebnisexporte
 
-Die zugehoerigen Actions bleiben Survey-namespaced:
+Die zugehörigen Actions bleiben Survey-namespaced:
 
 - `surveys.moderate`
 - `surveys.export`

@@ -332,6 +332,62 @@ describe('useSurveyEditorController', () => {
     });
   });
 
+  it('clears stale loaded survey state when loading another survey fails', async () => {
+    const navigateToContentList = vi.fn(async () => undefined);
+    getSurveyMock
+      .mockResolvedValueOnce({
+        id: 'survey-1',
+        contentType: 'surveys.survey',
+        title: { de: 'Erste Umfrage' },
+        status: 'ACTIVE',
+        isAnonymous: false,
+        resultVisibility: 'NONE',
+        showResultsInApp: false,
+        targetAreaIds: ['district-1'],
+        questions: [],
+        questionCount: 0,
+        participationCount: 0,
+        submissionCount: 0,
+        createdAt: '2026-07-01T08:00:00.000Z',
+        updatedAt: '2026-07-01T09:00:00.000Z',
+      })
+      .mockRejectedValueOnce({});
+
+    let methodsRef: ReturnType<typeof useForm<SurveyDetailFormValues>> | undefined;
+    const { result, rerender } = renderHook(
+      ({ contentId }: { contentId: string }) => {
+        const methods = useForm<SurveyDetailFormValues>({
+          defaultValues: createEmptyFormValues(),
+        });
+        methodsRef = methods;
+
+        return useSurveyEditorController({
+          mode: 'edit',
+          contentId,
+          methods,
+          pt,
+          navigateToContentList,
+        });
+      },
+      {
+        initialProps: { contentId: 'survey-1' },
+      }
+    );
+
+    await waitFor(() => {
+      expect(result.current.loadedItem?.id).toBe('survey-1');
+    });
+
+    rerender({ contentId: 'survey-2' });
+
+    await waitFor(() => {
+      expect(result.current.loadedItem).toBeNull();
+      expect(result.current.status).toEqual({ kind: 'error', text: 'Umfrage konnte nicht geladen werden.' });
+    });
+
+    expect(methodsRef?.getValues()).toEqual(createEmptyFormValues());
+  });
+
   it('surfaces the translated create fallback when create fails without an error message', async () => {
     const navigateToContentList = vi.fn(async () => undefined);
     createSurveyMock.mockRejectedValue({});

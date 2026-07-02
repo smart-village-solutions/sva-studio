@@ -1,4 +1,5 @@
 // fallow-ignore-file code-duplication
+import React from 'react';
 import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { Button, Input, Select, StudioField } from '@sva/studio-ui-react';
@@ -81,36 +82,59 @@ function SurveyTargetAreaCard({
   pt: SurveyContentTranslate;
 }>) {
   const { setValue } = useFormContext<SurveyDetailFormValues>();
+  const [pendingTargetAreaId, setPendingTargetAreaId] = React.useState('');
   const targetAreaIds = useWatch({ name: 'basis.targetAreaIds' }) ?? [];
-  const selectedTargetAreas = availableTargetAreas.filter((option) => targetAreaIds.includes(option.id));
+  const knownTargetAreas = React.useMemo(
+    () => new Map(availableTargetAreas.map((option) => [option.id, option.label])),
+    [availableTargetAreas]
+  );
+  const selectedTargetAreas = targetAreaIds.map((targetAreaId: string) => ({
+    id: targetAreaId,
+    label: knownTargetAreas.get(targetAreaId) ?? targetAreaId,
+  }));
+
+  const addTargetArea = () => {
+    const nextId = pendingTargetAreaId.trim();
+    if (!nextId || targetAreaIds.includes(nextId)) {
+      return;
+    }
+
+    setValue('basis.targetAreaIds', [...targetAreaIds, nextId], { shouldDirty: true });
+    setPendingTargetAreaId('');
+  };
 
   return (
     <SurveyDetailCard title={pt('cards.basis.targetArea.title')} description={pt('cards.basis.targetArea.description')}>
       <div className="space-y-4">
         <StudioField id="survey-target-area-select" label={pt('fields.targetAreas')}>
-          <Select
-            id="survey-target-area-select"
-            aria-label={pt('fields.targetAreasSearch')}
-            value=""
-            onChange={(event) => {
-              const nextId = event.target.value;
-              if (!nextId || targetAreaIds.includes(nextId)) {
-                return;
-              }
-              setValue('basis.targetAreaIds', [...targetAreaIds, nextId], { shouldDirty: true });
-            }}
-          >
-            <option value="">{pt('fields.targetAreasSearchPlaceholder')}</option>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              id="survey-target-area-select"
+              aria-label={pt('fields.targetAreasSearch')}
+              list="survey-target-area-options"
+              value={pendingTargetAreaId}
+              placeholder={pt('fields.targetAreasSearchPlaceholder')}
+              onChange={(event) => setPendingTargetAreaId(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  addTargetArea();
+                }
+              }}
+            />
+            <Button type="button" variant="outline" onClick={addTargetArea}>
+              {pt('actions.addTargetArea')}
+            </Button>
+          </div>
+          <datalist id="survey-target-area-options">
             {availableTargetAreas.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
+              <option key={option.id} value={option.id} label={option.label} />
             ))}
-          </Select>
+          </datalist>
         </StudioField>
         {selectedTargetAreas.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {selectedTargetAreas.map((option) => (
+            {selectedTargetAreas.map((option: SurveyTargetAreaOption) => (
               <Button
                 key={option.id}
                 type="button"

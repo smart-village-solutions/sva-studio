@@ -3,7 +3,6 @@ import React from 'react';
 import { useWatch } from 'react-hook-form';
 
 import type { SurveyQuestionFormValues } from './surveys.detail-content-model.js';
-import type { SurveyDetailFormValues } from './surveys.detail-form.js';
 import {
   mergeModerationGroups,
   type ModerationTranslate,

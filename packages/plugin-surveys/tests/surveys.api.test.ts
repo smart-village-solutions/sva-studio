@@ -180,8 +180,104 @@ describe('surveys api payload mapping', () => {
         {
           id: 'question-2',
           delete: true,
-          description: null,
-          options: [],
+        },
+      ],
+    });
+  });
+
+  it('preserves loaded locale maps when updating existing survey content', async () => {
+    const { updateSurvey } = await import('../src/surveys.api.js');
+
+    const payload = await updateSurvey(
+      'survey-1',
+      {
+        title: 'Aktualisierte Umfrage',
+        shortDescription: 'Kurzfassung',
+        description: 'Beschreibung',
+        status: 'ACTIVE',
+        isAnonymous: false,
+        resultVisibility: 'AFTER_SUBMISSION',
+        targetAreaIds: [],
+        showResultsInApp: true,
+        privacyNotice: 'Datenschutz',
+        transparencyNotice: 'Transparenz',
+        questions: [
+          {
+            id: 'question-1',
+            title: 'Aktualisierte Frage',
+            description: 'Neue Beschreibung',
+            type: 'SINGLE_CHOICE',
+            required: true,
+            position: 0,
+            options: [
+              {
+                id: 'option-1',
+                title: 'Aktualisierte Option',
+                position: 0,
+                enablesFreeText: false,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'survey-1',
+        contentType: 'surveys.survey',
+        title: { de: 'Bestehende Umfrage', en: 'Existing survey' },
+        shortDescription: { de: 'Bestehende Kurzfassung', en: 'Existing summary' },
+        description: { de: 'Bestehende Beschreibung', en: 'Existing description' },
+        status: 'ACTIVE',
+        isAnonymous: false,
+        resultVisibility: 'AFTER_SUBMISSION',
+        targetAreaIds: [],
+        showResultsInApp: true,
+        privacyNotice: { de: 'Bestehender Datenschutz', en: 'Existing privacy notice' },
+        transparencyNotice: { de: 'Bestehende Transparenz', en: 'Existing transparency notice' },
+        questions: [
+          {
+            id: 'question-1',
+            surveyId: 'survey-1',
+            title: { de: 'Bestehende Frage', en: 'Existing question' },
+            description: { de: 'Bestehende Fragebeschreibung', en: 'Existing question description' },
+            type: 'SINGLE_CHOICE',
+            required: true,
+            position: 0,
+            options: [
+              {
+                id: 'option-1',
+                questionId: 'question-1',
+                title: { de: 'Bestehende Option', en: 'Existing option' },
+                position: 0,
+                enablesFreeText: false,
+              },
+            ],
+          },
+        ],
+        questionCount: 1,
+        participationCount: 0,
+        submissionCount: 0,
+        createdAt: '2026-07-01T08:00:00.000Z',
+        updatedAt: '2026-07-02T08:00:00.000Z',
+      }
+    );
+
+    expect(payload).toMatchObject({
+      title: { de: 'Aktualisierte Umfrage', en: 'Existing survey' },
+      shortDescription: { de: 'Kurzfassung', en: 'Existing summary' },
+      description: { de: 'Beschreibung', en: 'Existing description' },
+      privacyNotice: { de: 'Datenschutz', en: 'Existing privacy notice' },
+      transparencyNotice: { de: 'Transparenz', en: 'Existing transparency notice' },
+      questions: [
+        {
+          id: 'question-1',
+          title: { de: 'Aktualisierte Frage', en: 'Existing question' },
+          description: { de: 'Neue Beschreibung', en: 'Existing question description' },
+          options: [
+            {
+              id: 'option-1',
+              title: { de: 'Aktualisierte Option', en: 'Existing option' },
+            },
+          ],
         },
       ],
     });

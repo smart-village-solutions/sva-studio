@@ -1,7 +1,12 @@
 import { createMainserverCrudClient } from '@sva/plugin-sdk';
 
 import type { SurveyMutationInput } from './surveys.mutation.types.js';
-import type { SurveyContentItem, SurveyListQuery, SurveyListResult } from './surveys.types.js';
+import type {
+  SurveyContentItem,
+  SurveyListQuery,
+  SurveyListResult,
+  SurveyLocalizedText,
+} from './surveys.types.js';
 
 class SurveysApiError extends Error {
   public constructor(
@@ -20,7 +25,22 @@ const toLocalizedText = (value: string | undefined) => {
 
 const toRequiredLocalizedText = (value: string | undefined) => ({ de: value?.trim() ?? '' });
 
-const toLocalizedTextUpdate = (value: string | undefined) => toLocalizedText(value) ?? null;
+const toLocalizedTextUpdate = (
+  value: string | undefined,
+  existingLocales?: SurveyLocalizedText
+) => {
+  const localizedText = toLocalizedText(value);
+  if (!localizedText) {
+    return null;
+  }
+
+  return { ...(existingLocales ?? {}), ...localizedText };
+};
+
+const toRequiredLocalizedTextUpdate = (
+  value: string | undefined,
+  existingLocales?: SurveyLocalizedText
+) => ({ ...(existingLocales ?? {}), de: value?.trim() ?? '' });
 
 const optionalLocalizedField = (key: string, value: string | undefined) => {
   const localizedText = toLocalizedText(value);
@@ -36,13 +56,44 @@ const mapCreateOption = (option: NonNullable<NonNullable<SurveyMutationInput['qu
   enablesFreeText: option.enablesFreeText,
 });
 
-const mapUpdateOption = (option: NonNullable<NonNullable<SurveyMutationInput['questions']>[number]['options']>[number]) => ({
-  ...optionalScalarField('id', option.id),
-  ...(option.delete === true ? { delete: true } : {}),
-  ...optionalLocalizedField('title', option.title),
-  ...optionalScalarField('position', option.position),
-  ...optionalScalarField('enablesFreeText', option.enablesFreeText),
-});
+type SurveyQuestionOptionMutationWithLocales = NonNullable<
+  NonNullable<SurveyMutationInput['questions']>[number]['options']
+>[number] & {
+  titleLocales?: SurveyLocalizedText;
+};
+
+type SurveyQuestionMutationWithLocales = NonNullable<SurveyMutationInput['questions']>[number] & {
+  titleLocales?: SurveyLocalizedText;
+  descriptionLocales?: SurveyLocalizedText;
+  options?: readonly SurveyQuestionOptionMutationWithLocales[];
+};
+
+type SurveyMutationInputWithLocales = SurveyMutationInput & {
+  titleLocales?: SurveyLocalizedText;
+  shortDescriptionLocales?: SurveyLocalizedText;
+  descriptionLocales?: SurveyLocalizedText;
+  privacyNoticeLocales?: SurveyLocalizedText;
+  transparencyNoticeLocales?: SurveyLocalizedText;
+  questions?: readonly SurveyQuestionMutationWithLocales[];
+};
+
+const mapUpdateOption = (option: SurveyQuestionOptionMutationWithLocales) => {
+  if (option.delete === true) {
+    return {
+      ...optionalScalarField('id', option.id),
+      delete: true,
+    };
+  }
+
+  return {
+    ...optionalScalarField('id', option.id),
+    ...(option.title === undefined
+      ? {}
+      : { title: toRequiredLocalizedTextUpdate(option.title, option.titleLocales) }),
+    ...optionalScalarField('position', option.position),
+    ...optionalScalarField('enablesFreeText', option.enablesFreeText),
+  };
+};
 
 const mapCreateQuestion = (question: NonNullable<SurveyMutationInput['questions']>[number]) => ({
   title: toRequiredLocalizedText(question.title),
@@ -53,16 +104,26 @@ const mapCreateQuestion = (question: NonNullable<SurveyMutationInput['questions'
   options: (question.options ?? []).map(mapCreateOption),
 });
 
-const mapUpdateQuestion = (question: NonNullable<SurveyMutationInput['questions']>[number]) => ({
-  ...optionalScalarField('id', question.id),
-  ...(question.delete === true ? { delete: true } : {}),
-  ...optionalLocalizedField('title', question.title),
-  description: toLocalizedTextUpdate(question.description),
-  ...optionalScalarField('type', question.type),
-  ...optionalScalarField('required', question.required),
-  ...optionalScalarField('position', question.position),
-  options: (question.options ?? []).map(mapUpdateOption),
-});
+const mapUpdateQuestion = (question: SurveyQuestionMutationWithLocales) => {
+  if (question.delete === true) {
+    return {
+      ...optionalScalarField('id', question.id),
+      delete: true,
+    };
+  }
+
+  return {
+    ...optionalScalarField('id', question.id),
+    ...(question.title === undefined
+      ? {}
+      : { title: toRequiredLocalizedTextUpdate(question.title, question.titleLocales) }),
+    description: toLocalizedTextUpdate(question.description, question.descriptionLocales),
+    ...optionalScalarField('type', question.type),
+    ...optionalScalarField('required', question.required),
+    ...optionalScalarField('position', question.position),
+    options: (question.options ?? []).map(mapUpdateOption),
+  };
+};
 
 const buildCreateSurveyBody = (input: SurveyMutationInput) => ({
   title: toRequiredLocalizedText(input.title),
@@ -80,10 +141,10 @@ const buildCreateSurveyBody = (input: SurveyMutationInput) => ({
   ...optionalScalarField('questions', input.questions?.map(mapCreateQuestion)),
 });
 
-const buildUpdateSurveyBody = (input: SurveyMutationInput) => ({
-  title: toRequiredLocalizedText(input.title),
-  shortDescription: toLocalizedTextUpdate(input.shortDescription),
-  description: toLocalizedTextUpdate(input.description),
+const buildUpdateSurveyBody = (input: SurveyMutationInputWithLocales) => ({
+  title: toRequiredLocalizedTextUpdate(input.title, input.titleLocales),
+  shortDescription: toLocalizedTextUpdate(input.shortDescription, input.shortDescriptionLocales),
+  description: toLocalizedTextUpdate(input.description, input.descriptionLocales),
   status: input.status,
   startAt: input.startAt ?? null,
   endAt: input.endAt ?? null,
@@ -91,10 +152,44 @@ const buildUpdateSurveyBody = (input: SurveyMutationInput) => ({
   targetAreaIds: input.targetAreaIds ?? [],
   ...optionalScalarField('showResultsInApp', input.showResultsInApp),
   isAnonymous: input.isAnonymous,
-  privacyNotice: toLocalizedTextUpdate(input.privacyNotice),
-  transparencyNotice: toLocalizedTextUpdate(input.transparencyNotice),
+  privacyNotice: toLocalizedTextUpdate(input.privacyNotice, input.privacyNoticeLocales),
+  transparencyNotice: toLocalizedTextUpdate(input.transparencyNotice, input.transparencyNoticeLocales),
   questions: (input.questions ?? []).map(mapUpdateQuestion),
 });
+
+const enrichUpdateInputWithLocales = (
+  input: SurveyMutationInput,
+  loadedItem?: SurveyContentItem
+): SurveyMutationInputWithLocales => {
+  if (!loadedItem) {
+    return input;
+  }
+
+  const questionsById = new Map(loadedItem.questions.map((question) => [question.id, question]));
+
+  return {
+    ...input,
+    titleLocales: loadedItem.title,
+    shortDescriptionLocales: loadedItem.shortDescription,
+    descriptionLocales: loadedItem.description,
+    privacyNoticeLocales: loadedItem.privacyNotice,
+    transparencyNoticeLocales: loadedItem.transparencyNotice,
+    questions: input.questions?.map((question) => {
+      const loadedQuestion = question.id ? questionsById.get(question.id) : undefined;
+      const optionsById = new Map((loadedQuestion?.options ?? []).map((option) => [option.id, option]));
+
+      return {
+        ...question,
+        titleLocales: loadedQuestion?.title,
+        descriptionLocales: loadedQuestion?.description,
+        options: question.options?.map((option) => ({
+          ...option,
+          titleLocales: option.id ? optionsById.get(option.id)?.title : undefined,
+        })),
+      };
+    }),
+  };
+};
 
 const surveysClient = createMainserverCrudClient<
   SurveyContentItem,
@@ -116,7 +211,10 @@ export const getSurvey = async (contentId: string): Promise<SurveyContentItem> =
 
 export const createSurvey = async (input: SurveyMutationInput): Promise<SurveyContentItem> => surveysClient.create(input);
 
-export const updateSurvey = async (contentId: string, input: SurveyMutationInput): Promise<SurveyContentItem> =>
-  surveysClient.update(contentId, input);
+export const updateSurvey = async (
+  contentId: string,
+  input: SurveyMutationInput,
+  loadedItem?: SurveyContentItem
+): Promise<SurveyContentItem> => surveysClient.update(contentId, enrichUpdateInputWithLocales(input, loadedItem));
 
 export const deleteSurvey = async (contentId: string): Promise<void> => surveysClient.remove(contentId);

@@ -98,7 +98,7 @@ function SurveyQuestionResultsList({
           <article key={question.questionId} className="space-y-4 rounded-lg border border-border/60 bg-background p-4">
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-foreground">{question.questionTitle}</h4>
-              <p className="text-sm text-muted-foreground">{question.totalResponses} {pt('fields.summarySubmissionCount')}</p>
+              <p className="text-sm text-muted-foreground">{question.totalResponses} {pt('fields.summaryResponseCount')}</p>
             </div>
 
             {question.optionResults.length > 0 ? (
@@ -235,7 +235,7 @@ export function SurveyDetailResultsTab({
     <div className="space-y-5">
       <SurveyResultsSummaryCard resultData={resultData} pt={pt} />
       <SurveyQuestionResultsList questions={resultData.questions} pt={pt} />
-      <SurveyResultsExportCard pt={pt} onExport={onExport} />
+      {onExport ? <SurveyResultsExportCard pt={pt} onExport={onExport} /> : null}
     </div>
   );
 }

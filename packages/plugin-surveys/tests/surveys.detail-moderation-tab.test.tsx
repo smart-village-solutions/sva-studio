@@ -35,7 +35,6 @@ const dictionary = {
   'fields.freeTextOverlayCreatedAt': 'Zeitstempel',
   'fields.freeTextStatusOptions.internal': 'Intern',
   'fields.freeTextStatusOptions.public': 'Öffentlich',
-  'labels.freeTextVisibility': 'Antwort {{index}} öffentlich sichtbar',
   'actions.confirmDelete': 'Löschen',
   'actions.cancelDelete': 'Abbrechen',
   'actions.closeOverlay': 'Schließen',
@@ -135,7 +134,12 @@ describe('SurveyDetailModerationTab', () => {
       )
     ).toBeTruthy();
     expect(screen.getByText('formatted:2026-07-01T08:00:00.000Z')).toBeTruthy();
-    expect(screen.getByLabelText('Antwort 1 öffentlich sichtbar').textContent).toBe('Intern');
+    expect(
+      screen.getByLabelText(
+        'Volltext öffnen: Ein längerer Freitext mit konkreten Wünschen für den Stadtteil und zu...'
+      )
+    ).toBeTruthy();
+    expect(screen.getByText('Intern')).toBeTruthy();
   });
 
   it('falls back to the question id when a moderation group has no title', () => {
@@ -178,7 +182,11 @@ describe('SurveyDetailModerationTab', () => {
       ],
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Volltext öffnen' }));
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Volltext öffnen: Ein längerer Freitext mit konkreten Wünschen für den Stadtteil und zu...',
+      })
+    );
 
     expect(screen.getByText('Volltext')).toBeTruthy();
     expect(

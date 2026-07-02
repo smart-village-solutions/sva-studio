@@ -66,6 +66,8 @@ const useSurveyEditorLoader = ({
       })
       .catch((error) => {
         if (!cancelled) {
+          setLoadedItem(null);
+          methods.reset(createDefaultSurveyDetailFormValues());
           setStatus({ kind: 'error', text: getSurveyEditorErrorMessage(error, pt('messages.loadError')) });
         }
       })
@@ -103,7 +105,7 @@ const createSurveyEditorSubmit = (input: {
       const mutationResult =
         input.mode === 'create'
           ? await createSurvey(mutation)
-          : await updateSurvey(contentId as string, mutation);
+          : await updateSurvey(contentId as string, mutation, input.loadedItem ?? undefined);
       const savedItem =
         input.mode === 'edit' && input.loadedItem?.results && mutationResult.results === undefined
           ? { ...mutationResult, results: input.loadedItem.results }

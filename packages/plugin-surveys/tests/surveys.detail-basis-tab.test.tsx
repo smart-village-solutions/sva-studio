@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, within } from '@testing-library/react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -111,6 +111,7 @@ describe('SurveyDetailBasisTab', () => {
     const scoped = within(view.container);
 
     fireEvent.change(scoped.getByLabelText('Zielgebiet suchen'), { target: { value: 'area-1' } });
+    fireEvent.click(scoped.getByRole('button', { name: 'Zielgebiet hinzufügen' }));
     expect(scoped.getByRole('button', { name: 'Zielgebiet Innenstadt entfernen' })).toBeTruthy();
 
     fireEvent.click(scoped.getByRole('button', { name: 'Zielgebiet Innenstadt entfernen' }));
@@ -133,10 +134,22 @@ describe('SurveyDetailBasisTab', () => {
     expect((scoped.getByLabelText('Status') as HTMLSelectElement).value).toBe('ARCHIVED');
 
     fireEvent.change(scoped.getByLabelText('Zielgebiet suchen'), { target: { value: 'area-1' } });
+    fireEvent.click(scoped.getByRole('button', { name: 'Zielgebiet hinzufügen' }));
     expect(scoped.getAllByRole('button', { name: 'Zielgebiet Innenstadt entfernen' })).toHaveLength(1);
 
     fireEvent.change(scoped.getByLabelText('Zielgebiet suchen'), { target: { value: '' } });
+    fireEvent.click(scoped.getByRole('button', { name: 'Zielgebiet hinzufügen' }));
     expect(scoped.getAllByRole('button', { name: 'Zielgebiet Innenstadt entfernen' })).toHaveLength(1);
+  });
+
+  it('allows adding manual target-area ids when no predefined option exists', () => {
+    const view = renderTab();
+    const scoped = within(view.container);
+
+    fireEvent.change(scoped.getByLabelText('Zielgebiet suchen'), { target: { value: 'district-42' } });
+    fireEvent.click(scoped.getByRole('button', { name: 'Zielgebiet hinzufügen' }));
+
+    expect(scoped.getByRole('button', { name: 'Zielgebiet district-42 entfernen' })).toBeTruthy();
   });
 
   it('shows a create hint instead of metadata values before the first save', () => {

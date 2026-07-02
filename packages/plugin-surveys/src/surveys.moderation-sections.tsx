@@ -41,10 +41,14 @@ export function SurveyModerationGroupCard({
   onOpenResponse: (response: SurveyModerationResponse) => void;
 }>) {
   const groupTitle = resolveModerationGroupTitle(group);
+  const responses = group.responses.map((response) => ({
+    ...response,
+    excerpt: createExcerpt(response.text),
+  }));
 
   return (
     <SurveyDetailCard title={groupTitle} description={pt('cards.moderation.description')}>
-      {group.responses.length === 0 ? (
+      {responses.length === 0 ? (
         <p className="text-sm text-muted-foreground">{pt('messages.moderationEmptyQuestion')}</p>
       ) : (
         <div className="overflow-x-auto">
@@ -57,25 +61,22 @@ export function SurveyModerationGroupCard({
               </tr>
             </thead>
             <tbody>
-              {group.responses.map((response, responseIndex) => (
+              {responses.map((response) => (
                 <tr key={response.id} className="border-b border-border/60 last:border-b-0">
                   <td className="px-3 py-3 align-top">
                     <Button
                       type="button"
                       variant="ghost"
                       className="h-auto whitespace-normal p-0 text-left"
-                      aria-label={pt('fields.freeTextOpenOverlay')}
+                      aria-label={`${pt('fields.freeTextOpenOverlay')}: ${response.excerpt}`}
                       onClick={() => onOpenResponse(response)}
                     >
-                      {createExcerpt(response.text)}
+                      {response.excerpt}
                     </Button>
                   </td>
                   <td className="px-3 py-3 align-top text-muted-foreground">{formatModerationDate(response.createdAt)}</td>
                   <td className="px-3 py-3 align-top">
-                    <span
-                      aria-label={pt('labels.freeTextVisibility', { index: responseIndex + 1 })}
-                      className="text-muted-foreground"
-                    >
+                    <span className="text-muted-foreground">
                       {pt(statusLabelKey[response.status])}
                     </span>
                   </td>

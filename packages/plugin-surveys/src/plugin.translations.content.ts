@@ -64,6 +64,7 @@ export const pluginSurveysContentTranslations = {
     freeTextOverlayCreatedAt: 'Zeitstempel',
     summaryParticipationCount: 'Teilnahmen',
     summarySubmissionCount: 'Abgaben',
+    summaryResponseCount: 'Antworten',
     summaryQuestionCount: 'Fragen',
     summaryStatus: 'Status',
     optionVotes: 'Stimmen',

@@ -465,13 +465,6 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     return surveyOperations.releaseSurveyFreeTextResponseWithConfig(input, config);
   };
 
-  const deleteSurveyFreeTextResponse = async (
-    input: SvaMainserverConnectionInput & { readonly surveyId: string; readonly freeTextResponseId: string }
-  ) => {
-    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    return surveyOperations.deleteSurveyFreeTextResponseWithConfig(input, config);
-  };
-
   const listWasteSyncSnapshot = async (input: SvaMainserverConnectionInput) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return await wasteOperations.listWasteSyncSnapshotWithConfig(input, config);
@@ -554,7 +547,6 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     deleteNews,
     deletePoi,
     deleteSurvey,
-    deleteSurveyFreeTextResponse,
     getConnectionStatus,
     getEvent,
     getMutationRootTypename,
@@ -681,10 +673,6 @@ export const deleteSvaMainserverSurvey = (input: SvaMainserverConnectionInput & 
 export const releaseSvaMainserverSurveyFreeTextResponse = (
   input: SvaMainserverConnectionInput & { readonly surveyId: string; readonly freeTextResponseId: string }
 ) => getDefaultService().releaseSurveyFreeTextResponse(input);
-
-export const deleteSvaMainserverSurveyFreeTextResponse = (
-  input: SvaMainserverConnectionInput & { readonly surveyId: string; readonly freeTextResponseId: string }
-) => getDefaultService().deleteSurveyFreeTextResponse(input);
 
 export const createOrUpdateSvaMainserverStaticContent = (
   input: SvaMainserverConnectionInput & { readonly staticContent: SvaMainserverStaticContentInput }

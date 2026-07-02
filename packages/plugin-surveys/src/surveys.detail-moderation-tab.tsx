@@ -1,17 +1,12 @@
 // fallow-ignore-file code-duplication
 import React from 'react';
 import { useWatch } from 'react-hook-form';
-import { StudioConfirmDialog } from '@sva/studio-ui-react';
 
 import type { SurveyQuestionFormValues } from './surveys.detail-content-model.js';
 import type { SurveyDetailFormValues } from './surveys.detail-form.js';
 import {
-  cloneModerationGroups,
-  deleteResponse,
   mergeModerationGroups,
-  toggleResponseStatus,
   type ModerationTranslate,
-  type PendingDeleteState,
   type SurveyModerationQuestionGroup,
   type SurveyModerationResponse,
 } from './surveys.moderation-model.js';
@@ -27,32 +22,19 @@ function SurveyModerationState({
   mergedGroups,
   pt,
   selectedResponse,
-  setPendingDelete,
-  setQuestionGroups,
   setSelectedResponse,
 }: Readonly<{
   mergedGroups: readonly SurveyModerationQuestionGroup[];
   pt: ModerationTranslate;
   selectedResponse: SurveyModerationResponse | null;
-  setPendingDelete: React.Dispatch<React.SetStateAction<PendingDeleteState>>;
-  setQuestionGroups: React.Dispatch<React.SetStateAction<SurveyModerationQuestionGroup[]>>;
   setSelectedResponse: React.Dispatch<React.SetStateAction<SurveyModerationResponse | null>>;
 }>) {
   return (
     <div className="space-y-5">
+      <p className="text-sm text-muted-foreground">{pt('messages.moderationReadOnly')}</p>
       {mergedGroups.map((group) => (
-        <SurveyModerationGroupCard
-          key={group.questionId}
-          group={group}
-          pt={pt}
-          onDelete={(questionId, responseId) => setPendingDelete({ questionId, responseId })}
-          onOpenResponse={setSelectedResponse}
-          onToggleVisibility={(questionId, responseId, nextPublic) =>
-            setQuestionGroups((currentGroups) => toggleResponseStatus(currentGroups, questionId, responseId, nextPublic))
-          }
-        />
+        <SurveyModerationGroupCard key={group.questionId} group={group} pt={pt} onOpenResponse={setSelectedResponse} />
       ))}
-
       <SurveyModerationResponseDialog pt={pt} selectedResponse={selectedResponse} onClose={() => setSelectedResponse(null)} />
     </div>
   );
@@ -68,29 +50,12 @@ export function SurveyDetailModerationTab({
   pt: ModerationTranslate;
 }>) {
   const watchedQuestions: SurveyQuestionFormValues[] = useWatch({ name: 'content.questions' }) ?? [];
-  const [questionGroups, setQuestionGroups] = React.useState<SurveyModerationQuestionGroup[]>(() =>
-    cloneModerationGroups(groups)
-  );
   const [selectedResponse, setSelectedResponse] = React.useState<SurveyModerationResponse | null>(null);
-  const [pendingDelete, setPendingDelete] = React.useState<PendingDeleteState>(null);
-
-  React.useEffect(() => {
-    setQuestionGroups(cloneModerationGroups(groups));
-  }, [groups]);
 
   const mergedGroups = React.useMemo(
-    () => mergeModerationGroups(questionGroups, watchedQuestions, pt),
-    [pt, questionGroups, watchedQuestions]
+    () => mergeModerationGroups(groups, watchedQuestions, pt),
+    [groups, pt, watchedQuestions]
   );
-
-  const handleDeleteConfirm = React.useCallback(() => {
-    if (!pendingDelete) {
-      return;
-    }
-
-    setQuestionGroups((currentGroups) => deleteResponse(currentGroups, pendingDelete));
-    setPendingDelete(null);
-  }, [pendingDelete]);
 
   if (mode === 'create') {
     return (
@@ -118,18 +83,7 @@ export function SurveyDetailModerationTab({
         mergedGroups={mergedGroups}
         pt={pt}
         selectedResponse={selectedResponse}
-        setPendingDelete={setPendingDelete}
-        setQuestionGroups={setQuestionGroups}
         setSelectedResponse={setSelectedResponse}
-      />
-      <StudioConfirmDialog
-        open={pendingDelete !== null}
-        title={pt('messages.deleteFreeTextTitle')}
-        description={pt('messages.deleteFreeTextDescription')}
-        confirmLabel={pt('actions.confirmDelete')}
-        cancelLabel={pt('actions.cancelDelete')}
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => setPendingDelete(null)}
       />
     </>
   );

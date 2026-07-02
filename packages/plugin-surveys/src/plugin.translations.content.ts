@@ -12,6 +12,8 @@ export const pluginSurveysContentTranslations = {
     optionSectionHint: 'Antwortoptionen bleiben als flache Abschnitte innerhalb der Frage.',
     moderationEmpty: 'Für diese Umfrage liegen derzeit keine Freitextantworten zur Moderation vor.',
     moderationEmptyQuestion: 'Zu dieser Frage liegen derzeit keine Freitextantworten vor.',
+    moderationReadOnly:
+      'Freitextantworten werden derzeit nur lesend angezeigt. Sichtbarkeits- und Löschaktionen folgen erst mit einer host-seitig angebundenen Mainserver-Moderation.',
     deleteQuestionTitle: 'Frage löschen',
     deleteQuestionDescription: 'Soll diese Frage wirklich gelöscht werden?',
     deleteOptionTitle: 'Option löschen',

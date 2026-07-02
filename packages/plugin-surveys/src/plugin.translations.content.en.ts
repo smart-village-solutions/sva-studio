@@ -12,6 +12,8 @@ export const pluginSurveysContentEnTranslations = {
     optionSectionHint: 'Answer options remain flat sections inside the question.',
     moderationEmpty: 'There are currently no free-text responses to moderate for this survey.',
     moderationEmptyQuestion: 'There are currently no free-text responses for this question.',
+    moderationReadOnly:
+      'Free-text responses are currently read-only. Visibility and deletion actions will follow once moderation is wired through the host-owned Mainserver integration.',
     deleteQuestionTitle: 'Delete question',
     deleteQuestionDescription: 'Do you really want to delete this question?',
     deleteOptionTitle: 'Delete option',

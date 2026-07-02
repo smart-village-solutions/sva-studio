@@ -1,5 +1,5 @@
 import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
-import { Button, Checkbox, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@sva/studio-ui-react';
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@sva/studio-ui-react';
 
 import { SurveyDetailCard } from './surveys.detail-card.js';
 import {
@@ -34,15 +34,11 @@ export function SurveyModerationPlaceholder({
 export function SurveyModerationGroupCard({
   group,
   pt,
-  onDelete,
   onOpenResponse,
-  onToggleVisibility,
 }: Readonly<{
   group: SurveyModerationQuestionGroup;
   pt: ModerationTranslate;
-  onDelete: (questionId: string, responseId: string) => void;
   onOpenResponse: (response: SurveyModerationResponse) => void;
-  onToggleVisibility: (questionId: string, responseId: string, nextPublic: boolean) => void;
 }>) {
   const groupTitle = resolveModerationGroupTitle(group);
 
@@ -58,7 +54,6 @@ export function SurveyModerationGroupCard({
                 <th className="px-3 py-2 font-medium text-foreground">{pt('fields.freeTextExcerpt')}</th>
                 <th className="px-3 py-2 font-medium text-foreground">{pt('fields.freeTextCreatedAt')}</th>
                 <th className="px-3 py-2 font-medium text-foreground">{pt('fields.freeTextStatus')}</th>
-                <th className="px-3 py-2 font-medium text-foreground">{pt('actions.confirmDelete')}</th>
               </tr>
             </thead>
             <tbody>
@@ -77,25 +72,12 @@ export function SurveyModerationGroupCard({
                   </td>
                   <td className="px-3 py-3 align-top text-muted-foreground">{formatModerationDate(response.createdAt)}</td>
                   <td className="px-3 py-3 align-top">
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        aria-label={pt('labels.freeTextVisibility', { index: responseIndex + 1 })}
-                        checked={response.status === 'PUBLIC'}
-                        onChange={(event) => onToggleVisibility(group.questionId, response.id, event.target.checked)}
-                      />
-                      <span className="text-muted-foreground">{pt(statusLabelKey[response.status])}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 align-top">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      aria-label={pt('actions.deleteFreeText', { index: responseIndex + 1 })}
-                      onClick={() => onDelete(group.questionId, response.id)}
+                    <span
+                      aria-label={pt('labels.freeTextVisibility', { index: responseIndex + 1 })}
+                      className="text-muted-foreground"
                     >
-                      {pt('actions.confirmDelete')}
-                    </Button>
+                      {pt(statusLabelKey[response.status])}
+                    </span>
                   </td>
                 </tr>
               ))}

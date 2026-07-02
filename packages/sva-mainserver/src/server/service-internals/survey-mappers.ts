@@ -300,8 +300,18 @@ export const mapSurveyMutationPayload = (
 };
 
 export const mapOptionalSurveyResults = (
-  results: SvaMainserverSurveyResultsFragment | null | undefined
+  results: SvaMainserverSurveyResultsFragment | null | undefined,
+  fallbackSurveyId: string
 ): SvaMainserverSurveyResults => {
+  if (!results) {
+    return {
+      surveyId: fallbackSurveyId,
+      participationCount: 0,
+      submissionCount: 0,
+      questions: [],
+    };
+  }
+
   const parsed = surveyResultsSchema.safeParse(results);
   if (!parsed.success) {
     throw toSvaMainserverError({

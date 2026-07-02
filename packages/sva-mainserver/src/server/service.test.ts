@@ -72,7 +72,6 @@ import {
   deleteSvaMainserverNews,
   deleteSvaMainserverPoi,
   deleteSvaMainserverSurvey,
-  deleteSvaMainserverSurveyFreeTextResponse,
   getSvaMainserverEvent,
   getSvaMainserverNews,
   getSvaMainserverPoi,
@@ -892,16 +891,6 @@ describe('createSvaMainserverService', () => {
       }),
       errors: [],
     });
-    await expect(
-      service.deleteSurveyFreeTextResponse({
-        ...connection,
-        surveyId: 'survey-1',
-        freeTextResponseId: 'free-text-1',
-      })
-    ).rejects.toMatchObject({
-      code: 'invalid_config',
-      statusCode: 501,
-    });
     await expect(service.deleteSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
       success: true,
       action: 'DELETED',
@@ -1104,16 +1093,6 @@ describe('createSvaMainserverService', () => {
     ).resolves.toMatchObject({
       success: true,
     });
-    await expect(
-      deleteSvaMainserverSurveyFreeTextResponse({
-        ...connection,
-        surveyId: 'survey-1',
-        freeTextResponseId: 'free-text-1',
-      })
-    ).rejects.toMatchObject({
-      code: 'invalid_config',
-      statusCode: 501,
-    });
     await expect(deleteSvaMainserverSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
       success: true,
       deletedSurveyId: 'survey-1',
@@ -1238,6 +1217,32 @@ describe('createSvaMainserverService', () => {
     ).rejects.toMatchObject({
       code: 'not_found',
       statusCode: 404,
+    });
+  });
+
+  it('maps null survey results to an empty survey result payload', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys: [{ id: 'survey-1', results: null }] } }));
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.getSurveyResults({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        surveyId: 'survey-1',
+      })
+    ).resolves.toEqual({
+      surveyId: 'survey-1',
+      participationCount: 0,
+      submissionCount: 0,
+      questions: [],
     });
   });
 

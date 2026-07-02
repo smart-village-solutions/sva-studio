@@ -194,7 +194,7 @@ const createGetSurveyResultsWithConfig = (executeGraphqlWithConfig: GraphqlExecu
     });
   }
 
-  return mapOptionalSurveyResults(survey.results);
+  return mapOptionalSurveyResults(survey.results, input.surveyId);
 };
 
 const createWriteSurveyWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) => async (
@@ -243,28 +243,10 @@ const createReleaseSurveyFreeTextResponseWithConfig = (executeGraphqlWithConfig:
   return mapSurveyMutationPayload(response.createOrUpdateSurvey);
 };
 
-const createDeleteSurveyFreeTextResponseWithConfig = async (
-  input: SvaMainserverConnectionInput & {
-    readonly surveyId: string;
-    readonly freeTextResponseId: string;
-  },
-  config: SvaMainserverInstanceConfig
-): Promise<SvaMainserverSurveyMutationPayload> => {
-  void input;
-  void config;
-  throw toSvaMainserverError({
-    code: 'invalid_config',
-    message:
-      'Survey-Freitext-Löschungen werden vom dokumentierten Mainserver-Schema derzeit nicht unterstützt.',
-    statusCode: 501,
-  });
-};
-
 export const createSurveyOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
   listSurveysWithConfig: createListSurveysWithConfig(executeGraphqlWithConfig),
   getSurveyWithConfig: createGetSurveyWithConfig(executeGraphqlWithConfig),
   getSurveyResultsWithConfig: createGetSurveyResultsWithConfig(executeGraphqlWithConfig),
   writeSurveyWithConfig: createWriteSurveyWithConfig(executeGraphqlWithConfig),
   releaseSurveyFreeTextResponseWithConfig: createReleaseSurveyFreeTextResponseWithConfig(executeGraphqlWithConfig),
-  deleteSurveyFreeTextResponseWithConfig: createDeleteSurveyFreeTextResponseWithConfig,
 });

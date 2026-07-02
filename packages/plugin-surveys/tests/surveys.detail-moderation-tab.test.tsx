@@ -22,6 +22,8 @@ const dictionary = {
     'Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.',
   'messages.moderationEmpty': 'Für diese Umfrage liegen derzeit keine Freitextantworten zur Moderation vor.',
   'messages.moderationEmptyQuestion': 'Zu dieser Frage liegen derzeit keine Freitextantworten vor.',
+  'messages.moderationReadOnly':
+    'Freitextantworten werden derzeit nur lesend angezeigt. Sichtbarkeits- und Löschaktionen folgen erst mit einer host-seitig angebundenen Mainserver-Moderation.',
   'messages.deleteFreeTextTitle': 'Freitextantwort löschen',
   'messages.deleteFreeTextDescription': 'Soll diese Freitextantwort wirklich gelöscht werden?',
   'fields.freeTextExcerpt': 'Freitext',
@@ -101,7 +103,7 @@ describe('SurveyDetailModerationTab', () => {
     ).toBeTruthy();
   });
 
-  it('groups free-text answers by question and toggles the public visibility', () => {
+  it('renders moderation groups in read-only mode', () => {
     renderTab({
       groups: [
         {
@@ -127,13 +129,13 @@ describe('SurveyDetailModerationTab', () => {
     expect(screen.getByRole('heading', { name: 'Was fehlt im Viertel?' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Welche Orte nutzen Sie am häufigsten?' })).toBeTruthy();
     expect(screen.getByText('Zu dieser Frage liegen derzeit keine Freitextantworten vor.')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Freitextantworten werden derzeit nur lesend angezeigt. Sichtbarkeits- und Löschaktionen folgen erst mit einer host-seitig angebundenen Mainserver-Moderation.'
+      )
+    ).toBeTruthy();
     expect(screen.getByText('formatted:2026-07-01T08:00:00.000Z')).toBeTruthy();
-
-    const visibilityToggle = screen.getByLabelText('Antwort 1 öffentlich sichtbar') as HTMLInputElement;
-    expect(visibilityToggle.checked).toBe(false);
-    fireEvent.click(visibilityToggle);
-    expect(visibilityToggle.checked).toBe(true);
-    expect(screen.getByText('Öffentlich')).toBeTruthy();
+    expect(screen.getByLabelText('Antwort 1 öffentlich sichtbar').textContent).toBe('Intern');
   });
 
   it('falls back to the question id when a moderation group has no title', () => {
@@ -188,7 +190,7 @@ describe('SurveyDetailModerationTab', () => {
     expect(screen.queryByText('Volltext')).toBeNull();
   });
 
-  it('confirms deletions before removing a free-text answer', () => {
+  it('does not offer destructive moderation actions without a persistence adapter', () => {
     renderTab({
       groups: [
         {
@@ -212,13 +214,8 @@ describe('SurveyDetailModerationTab', () => {
       ],
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Antwort 2 löschen' }));
-    expect(screen.getByText('Freitextantwort löschen')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
-    expect(screen.getByText('Antwort zwei')).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Antwort 2 löschen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
-    expect(screen.queryByText('Antwort zwei')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Antwort 1 löschen' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Antwort 2 löschen' })).toBeNull();
+    expect(screen.queryByText('Freitextantwort löschen')).toBeNull();
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createSurveyEditorTabs,
   mapSurveyItemToFormValues,
   mapSurveyModerationGroups,
   mapSurveyResultsTabData,
@@ -208,6 +209,168 @@ describe('survey editor shared mappings', () => {
           required: false,
           position: 1,
           options: [],
+        },
+      ],
+    });
+  });
+
+  it('keeps moderation groups for untitled questions when free-text responses exist', () => {
+    const untitledItem: SurveyContentItem = {
+      ...surveyItem,
+      questions: [
+        {
+          ...surveyItem.questions[0]!,
+          title: { de: '   ' },
+        },
+      ],
+    };
+
+    expect(mapSurveyModerationGroups(untitledItem)).toEqual([
+      expect.objectContaining({
+        questionId: 'question-1',
+        questionTitle: '',
+        responses: expect.arrayContaining([
+          expect.objectContaining({ id: 'free-text-1' }),
+          expect.objectContaining({ id: 'free-text-2' }),
+        ]),
+      }),
+    ]);
+  });
+
+  it('falls back to secondary locales and omits undefined option percentages', () => {
+    const localeFallbackItem: SurveyContentItem = {
+      ...surveyItem,
+      title: { en: 'Citizen Survey' },
+      shortDescription: { 'de-DE': 'Kurzfassung' },
+      description: { 'en-US': 'Detailed description' },
+      questions: [
+        {
+          ...surveyItem.questions[0]!,
+          title: { en: 'How do you rate the market?' },
+          description: { 'de-DE': 'Fragenbeschreibung' },
+          options: [
+            {
+              ...surveyItem.questions[0]!.options[0]!,
+              title: { 'en-US': 'Very good' },
+            },
+          ],
+        },
+      ],
+      results: {
+        ...surveyItem.results!,
+        questions: [
+          {
+            ...surveyItem.results!.questions[0]!,
+            optionResults: [
+              {
+                ...surveyItem.results!.questions[0]!.optionResults[0]!,
+                title: { en: 'Very good' },
+                percentage: undefined,
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(mapSurveyItemToFormValues(localeFallbackItem)).toMatchObject({
+      title: 'Citizen Survey',
+      content: {
+        shortDescription: 'Kurzfassung',
+        description: 'Detailed description',
+        questions: [
+          expect.objectContaining({
+            title: 'How do you rate the market?',
+            description: 'Fragenbeschreibung',
+            options: [expect.objectContaining({ title: 'Very good' })],
+          }),
+        ],
+      },
+    });
+
+    expect(mapSurveyResultsTabData(localeFallbackItem, (key) => key)).toEqual({
+      statusLabel: 'fields.statusOptions.active',
+      participationCount: 12,
+      submissionCount: 9,
+      questionCount: 1,
+      questions: [
+        {
+          questionId: 'question-1',
+          questionTitle: 'How do you rate the market?',
+          totalResponses: 9,
+          optionResults: [
+            {
+              optionId: 'option-1',
+              title: 'Very good',
+              votes: 5,
+            },
+          ],
+          freeTextResponses: expect.arrayContaining([
+            expect.objectContaining({ id: 'free-text-1' }),
+            expect.objectContaining({ id: 'free-text-2' }),
+          ]),
+        },
+      ],
+    });
+  });
+
+  it('creates editor tabs with empty result data and empty target areas before the first save', () => {
+    const tabs = createSurveyEditorTabs(
+      (key) => key,
+      'create',
+      null,
+      undefined
+    );
+
+    expect(tabs.map((tab) => tab.id)).toEqual(['basis', 'content', 'moderation', 'results', 'history']);
+  });
+
+  it('trims optional mutation fields, converts date values, and removes empty descriptions', () => {
+    const values = mapSurveyItemToFormValues(surveyItem);
+    values.title = '  Bestandsumfrage aktualisiert  ';
+    values.basis.startAt = '2026-07-02T10:30';
+    values.basis.endAt = '';
+    values.basis.targetAreaIds = ['district-1', 'district-2'];
+    values.content.shortDescription = '   ';
+    values.content.description = '  Neue Beschreibung  ';
+    values.content.privacyNotice = '   ';
+    values.content.transparencyNotice = '  Transparenztext  ';
+    values.content.questions[0] = {
+      ...values.content.questions[0]!,
+      description: '   ',
+      options: [
+        {
+          ...values.content.questions[0]!.options[0]!,
+          title: '  Sehr gut  ',
+        },
+      ],
+    };
+
+    expect(toSurveyMutationInput(values, surveyItem)).toEqual({
+      title: 'Bestandsumfrage aktualisiert',
+      description: 'Neue Beschreibung',
+      status: 'ACTIVE',
+      startAt: '2026-07-02T08:30:00.000Z',
+      resultVisibility: 'AFTER_SUBMISSION',
+      targetAreaIds: ['district-1', 'district-2'],
+      showResultsInApp: true,
+      isAnonymous: false,
+      transparencyNotice: 'Transparenztext',
+      questions: [
+        {
+          id: 'question-1',
+          title: 'Wie bewerten Sie den Wochenmarkt?',
+          type: 'SINGLE_CHOICE_WITH_TEXT',
+          required: true,
+          position: 0,
+          options: [
+            {
+              id: 'option-1',
+              title: 'Sehr gut',
+              position: 0,
+              enablesFreeText: true,
+            },
+          ],
         },
       ],
     });

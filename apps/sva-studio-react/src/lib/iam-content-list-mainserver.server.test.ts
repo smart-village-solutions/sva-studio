@@ -127,4 +127,145 @@ describe('iam content list mainserver mapping', () => {
       access: { state: 'editable', canCreate: true, canUpdate: true },
     });
   });
+
+  it('maps draft and archived surveys with locale fallbacks and read-only access', () => {
+    expect(
+      mapSurveyItem(
+        {
+          id: 'survey-draft',
+          contentType: 'surveys.survey',
+          title: { en: 'Citizen Survey' },
+          status: 'DRAFT',
+          resultVisibility: 'NONE',
+          targetAreaIds: ['district-1'],
+          showResultsInApp: false,
+          isAnonymous: false,
+          questionCount: 1,
+          participationCount: 0,
+          submissionCount: 0,
+          ...publishedTimestamps,
+        },
+        'instance-1',
+        [{ action: 'surveys.create' }]
+      )
+    ).toMatchObject({
+      title: 'Citizen Survey',
+      status: 'draft',
+      access: {
+        state: 'read_only',
+        canCreate: true,
+        canUpdate: false,
+        reasonCode: 'content_update_missing',
+      },
+    });
+
+    expect(
+      mapSurveyItem(
+        {
+          id: 'survey-archived',
+          contentType: 'surveys.survey',
+          title: { de: '  ' },
+          status: 'ARCHIVED',
+          resultVisibility: 'AFTER_SURVEY_END',
+          targetAreaIds: [],
+          showResultsInApp: false,
+          isAnonymous: true,
+          questionCount: 2,
+          participationCount: 10,
+          submissionCount: 8,
+          ...publishedTimestamps,
+        },
+        'instance-1',
+        []
+      )
+    ).toMatchObject({
+      title: 'survey-archived',
+      status: 'archived',
+      access: {
+        state: 'read_only',
+        canCreate: false,
+        canUpdate: false,
+      },
+    });
+  });
+
+  it('falls back across localized survey values and keeps malformed namespaces read-only', () => {
+    expect(
+      mapSurveyItem(
+        {
+          id: 'survey-fallback',
+          contentType: 'survey',
+          title: { fr: '  Enquete citoyenne  ' },
+          shortDescription: { 'de-DE': ' Kurzinfo ' },
+          description: { en: ' Detailed text ' },
+          status: 'ACTIVE',
+          resultVisibility: 'NONE',
+          targetAreaIds: ['district-1'],
+          showResultsInApp: false,
+          isAnonymous: true,
+          questionCount: 0,
+          participationCount: 0,
+          submissionCount: 0,
+          ...publishedTimestamps,
+        } as never,
+        'instance-1',
+        [{ action: 'surveys.create' }]
+      )
+    ).toMatchObject({
+      title: 'Enquete citoyenne',
+      payload: {
+        shortDescription: { 'de-DE': ' Kurzinfo ' },
+        description: { en: ' Detailed text ' },
+        targetAreaIds: ['district-1'],
+      },
+      access: {
+        state: 'read_only',
+        canCreate: false,
+        canUpdate: false,
+      },
+    });
+  });
+
+  it('maps optional provider metadata on news items and keeps event rows read-only without update rights', () => {
+    expect(
+      mapNewsItem(
+        {
+          id: 'news-provider',
+          contentType: 'news.article',
+          title: 'Hinweis',
+          contentBlocks: [],
+          author: 'redaktion',
+          dataProvider: { id: 'provider-1', name: 'OpenData' },
+          ...publishedTimestamps,
+        } as never,
+        'instance-1',
+        []
+      )
+    ).toMatchObject({
+      sourceDataProviderId: 'provider-1',
+      sourceDataProviderName: 'OpenData',
+      access: { state: 'read_only', canCreate: false, canUpdate: false },
+    });
+
+    expect(
+      mapEventItem(
+        {
+          id: 'event-read-only',
+          contentType: 'events.event-record',
+          title: '   ',
+          ...publishedTimestamps,
+        } as never,
+        'instance-1',
+        [{ action: 'events.create' }]
+      )
+    ).toMatchObject({
+      title: 'event-read-only',
+      access: {
+        state: 'read_only',
+        canCreate: true,
+        canUpdate: false,
+        reasonCode: 'content_update_missing',
+      },
+    });
+  });
 });

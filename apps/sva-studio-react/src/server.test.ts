@@ -197,6 +197,32 @@ describe('server transport', () => {
     await expect(response.text()).resolves.toBe('poi');
   });
 
+  it('bypasses mainserver surveys requests before auth routing', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchMainserverSurveysRequestMock.mockResolvedValue(new Response('surveys', { status: 200 }));
+    dispatchMainserverCategoriesRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(startFetch);
+
+    const mod = await import('./server');
+    const response = await mod.default.fetch(new Request('http://localhost:3000/api/v1/mainserver/surveys'));
+
+    expect(dispatchMainserverNewsRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverEventsRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverPoiRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverSurveysRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverCategoriesRequestMock).not.toHaveBeenCalled();
+    expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
+    expect(startFetch).not.toHaveBeenCalled();
+    await expect(response.text()).resolves.toBe('surveys');
+  });
+
   it('bypasses mainserver categories requests before auth routing', async () => {
     vi.stubEnv('NODE_ENV', 'production');
 

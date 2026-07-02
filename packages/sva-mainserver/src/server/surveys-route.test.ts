@@ -353,4 +353,91 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
       pageSize: 25,
     });
   });
+
+  it('returns method-not-allowed for unsupported collection and item methods', async () => {
+    mockAuthorizedRequest();
+
+    const collectionResponse = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys', { method: 'PUT' })
+    );
+    const itemResponse = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1', { method: 'POST' })
+    );
+
+    expect(collectionResponse?.status).toBe(405);
+    await expect(collectionResponse?.json()).resolves.toMatchObject({
+      error: 'invalid_request',
+    });
+    expect(itemResponse?.status).toBe(405);
+    await expect(itemResponse?.json()).resolves.toMatchObject({
+      error: 'invalid_request',
+    });
+  });
+
+  it('returns not_found for missing survey detail responses', async () => {
+    mockAuthorizedRequest();
+    state.getSvaMainserverSurvey.mockResolvedValue(null);
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-missing')
+    );
+
+    expect(response?.status).toBe(404);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'not_found',
+    });
+  });
+
+  it('rejects mutating survey requests when csrf validation fails before hitting the service', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(new Response(JSON.stringify({ error: 'csrf_validation_failed' }), { status: 403 }));
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys', {
+        method: 'POST',
+        body: JSON.stringify({ title: { de: 'Test' } }),
+      })
+    );
+
+    expect(response?.status).toBe(403);
+    expect(state.createSvaMainserverSurvey).not.toHaveBeenCalled();
+    expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
+  });
+
+  it('maps update and delete mutation failures to their survey-specific error statuses', async () => {
+    mockAuthorizedRequest();
+    state.updateSvaMainserverSurvey.mockResolvedValue({
+      success: false,
+      errors: [{ code: 'FORBIDDEN', message: 'Nicht erlaubt.' }],
+      survey: null,
+    });
+    state.deleteSvaMainserverSurvey.mockResolvedValue({
+      success: false,
+      errors: [{ code: 'SURVEY_NOT_FOUND', message: 'Nicht gefunden.' }],
+      deletedSurveyId: null,
+    });
+
+    const updateResponse = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: { de: 'Test' } }),
+      })
+    );
+    const deleteResponse = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1', {
+        method: 'DELETE',
+      })
+    );
+
+    expect(updateResponse?.status).toBe(403);
+    await expect(updateResponse?.json()).resolves.toMatchObject({
+      error: 'forbidden',
+      message: 'Nicht erlaubt.',
+    });
+    expect(deleteResponse?.status).toBe(404);
+    await expect(deleteResponse?.json()).resolves.toMatchObject({
+      error: 'survey_not_found',
+      message: 'Nicht gefunden.',
+    });
+  });
 });

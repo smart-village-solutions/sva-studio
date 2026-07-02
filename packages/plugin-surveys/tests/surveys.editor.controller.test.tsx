@@ -263,6 +263,102 @@ describe('useSurveyEditorController', () => {
     });
     expect(navigateToContentList).not.toHaveBeenCalled();
   });
+
+  it('creates surveys, reports success, and navigates back to the content list', async () => {
+    const navigateToContentList = vi.fn(async () => undefined);
+    createSurveyMock.mockResolvedValue({
+      id: 'survey-created',
+      title: { de: 'Neue Umfrage' },
+      status: 'DRAFT',
+      isAnonymous: false,
+      resultVisibility: 'NONE',
+      showResultsInApp: false,
+      targetAreaIds: [],
+      questions: [],
+      questionCount: 0,
+      participationCount: 0,
+      submissionCount: 0,
+      createdAt: '2026-07-02T09:00:00.000Z',
+      updatedAt: '2026-07-02T09:00:00.000Z',
+    });
+
+    const { result } = renderHook(() => {
+      const methods = useForm<SurveyDetailFormValues>({
+        defaultValues: {
+          ...createEmptyFormValues(),
+          title: 'Neue Umfrage',
+        },
+      });
+
+      return useSurveyEditorController({
+        mode: 'create',
+        methods,
+        pt,
+        navigateToContentList,
+      });
+    });
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(createSurveyMock).toHaveBeenCalledOnce();
+    expect(result.current.status).toEqual({ kind: 'success', text: 'Umfrage wurde angelegt.' });
+    expect(result.current.loadedItem?.id).toBe('survey-created');
+    expect(navigateToContentList).toHaveBeenCalledOnce();
+  });
+
+  it('surfaces the translated load fallback when loading an existing survey fails without a message', async () => {
+    const navigateToContentList = vi.fn(async () => undefined);
+    getSurveyMock.mockRejectedValue({});
+
+    const { result } = renderHook(() => {
+      const methods = useForm<SurveyDetailFormValues>({
+        defaultValues: createEmptyFormValues(),
+      });
+
+      return useSurveyEditorController({
+        mode: 'edit',
+        contentId: 'survey-1',
+        methods,
+        pt,
+        navigateToContentList,
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.status).toEqual({ kind: 'error', text: 'Umfrage konnte nicht geladen werden.' });
+    });
+  });
+
+  it('surfaces the translated create fallback when create fails without an error message', async () => {
+    const navigateToContentList = vi.fn(async () => undefined);
+    createSurveyMock.mockRejectedValue({});
+
+    const { result } = renderHook(() => {
+      const methods = useForm<SurveyDetailFormValues>({
+        defaultValues: {
+          ...createEmptyFormValues(),
+          title: 'Neue Umfrage',
+        },
+      });
+
+      return useSurveyEditorController({
+        mode: 'create',
+        methods,
+        pt,
+        navigateToContentList,
+      });
+    });
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(result.current.status).toEqual({ kind: 'error', text: 'Umfrage konnte nicht angelegt werden.' });
+    expect(navigateToContentList).not.toHaveBeenCalled();
+  });
 });
 
 function createEmptyFormValues(): SurveyDetailFormValues {

@@ -8,6 +8,7 @@ export type SurveyQuestionType =
 export type SurveyResultVisibility = 'NONE' | 'AFTER_SUBMISSION' | 'AFTER_SURVEY_END';
 
 export type SurveyQuestionOptionFormValues = {
+  clientId?: string;
   id?: string;
   title: string;
   position: number;
@@ -15,6 +16,7 @@ export type SurveyQuestionOptionFormValues = {
 };
 
 export type SurveyQuestionFormValues = {
+  clientId?: string;
   id?: string;
   title: string;
   description: string;
@@ -38,12 +40,19 @@ export const surveyResultVisibilityValues: readonly SurveyResultVisibility[] = [
   'AFTER_SURVEY_END',
 ];
 
+let surveyQuestionDraftIdCounter = 0;
+let surveyQuestionOptionDraftIdCounter = 0;
+
+const createSurveyQuestionDraftId = (): string => `question-draft-${++surveyQuestionDraftIdCounter}`;
+const createSurveyQuestionOptionDraftId = (): string => `option-draft-${++surveyQuestionOptionDraftIdCounter}`;
+
 export const questionTypeSupportsOptions = (type: SurveyQuestionType): boolean => type !== 'FREE_TEXT';
 
 export const questionTypeSupportsFreeTextOptionToggle = (type: SurveyQuestionType): boolean =>
   type === 'SINGLE_CHOICE_WITH_TEXT' || type === 'MULTIPLE_CHOICE_WITH_TEXT';
 
 export const createDefaultSurveyQuestionOption = (position: number): SurveyQuestionOptionFormValues => ({
+  clientId: createSurveyQuestionOptionDraftId(),
   title: '',
   position,
   enablesFreeText: false,
@@ -60,6 +69,7 @@ export const getNormalizedSurveyQuestionOptions = (
   const baseOptions = options.length > 0 ? [...options] : [createDefaultSurveyQuestionOption(0)];
 
   return baseOptions.map((option, index) => ({
+    clientId: option.clientId ?? createSurveyQuestionOptionDraftId(),
     ...(option.id ? { id: option.id } : {}),
     title: option.title,
     position: index,
@@ -71,6 +81,7 @@ export const createDefaultSurveyQuestion = (
   position: number,
   type: SurveyQuestionType = 'SINGLE_CHOICE'
 ): SurveyQuestionFormValues => ({
+  clientId: createSurveyQuestionDraftId(),
   title: '',
   description: '',
   type,
@@ -83,6 +94,7 @@ export const normalizeSurveyQuestions = (
   questions: readonly SurveyQuestionFormValues[]
 ): SurveyQuestionFormValues[] =>
   questions.map((question, index) => ({
+    clientId: question.clientId ?? createSurveyQuestionDraftId(),
     ...(question.id ? { id: question.id } : {}),
     title: question.title,
     description: question.description,

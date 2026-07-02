@@ -9,7 +9,7 @@
       "dependsOn": ["^build"],
       "outputs": ["{projectRoot}/dist"],
       "options": {
-        "command": "pnpm nx run instance-registry:build && tsc -p packages/auth-runtime/tsconfig.lib.json"
+        "command": "tsc -p packages/auth-runtime/tsconfig.lib.json"
       }
     },
     "check:runtime": {
@@ -36,7 +36,7 @@
       "executor": "nx:run-commands",
       "dependsOn": ["^build"],
       "options": {
-        "command": "pnpm nx run instance-registry:build && pnpm exec node -e \"require('node:fs').rmSync('packages/auth-runtime/tsconfig.lib.tsbuildinfo', { force: true });\" && tsc -p packages/auth-runtime/tsconfig.lib.json --noEmit"
+        "command": "pnpm exec node -e \"require('node:fs').rmSync('packages/auth-runtime/tsconfig.lib.tsbuildinfo', { force: true });\" && tsc -p packages/auth-runtime/tsconfig.lib.json --noEmit"
       }
     },
     "test:coverage": {

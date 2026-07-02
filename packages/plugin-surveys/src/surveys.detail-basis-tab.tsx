@@ -8,7 +8,7 @@ import type { SurveyDetailFormValues } from './surveys.detail-form.js';
 import type { SurveyContentTranslate } from './surveys.question-editor.shared.js';
 import type { SurveyContentItem } from './surveys.types.js';
 
-type SurveyTargetAreaOption = Readonly<{
+export type SurveyTargetAreaOption = Readonly<{
   id: string;
   label: string;
 }>;

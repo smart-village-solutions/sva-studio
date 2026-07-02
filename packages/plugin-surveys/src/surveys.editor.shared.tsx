@@ -3,6 +3,7 @@ import { fromDatetimeLocalValue, toDatetimeLocalValue, usePluginTranslation } fr
 import { type StudioDetailTabDefinition } from '@sva/studio-ui-react';
 
 import { SurveyDetailBasisTab } from './surveys.detail-basis-tab.js';
+import type { SurveyTargetAreaOption } from './surveys.detail-basis-tab.js';
 import { SurveyDetailContentTab } from './surveys.detail-content-tab.js';
 import { type SurveyDetailFormValues } from './surveys.detail-form.js';
 import { SurveyDetailHistoryTab } from './surveys.detail-history-tab.js';
@@ -37,6 +38,17 @@ const surveyStatusLabelKey = {
   ACTIVE: 'fields.statusOptions.active',
   ARCHIVED: 'fields.statusOptions.archived',
 } as const satisfies Record<SurveyContentItem['status'], string>;
+
+const deriveSurveyTargetAreaOptions = (item: SurveyContentItem | null): SurveyTargetAreaOption[] => {
+  if (!item) {
+    return [];
+  }
+
+  return [...new Set(item.targetAreaIds)].map((targetAreaId) => ({
+    id: targetAreaId,
+    label: targetAreaId,
+  }));
+};
 
 export const mapSurveyModerationGroups = (item: SurveyContentItem): SurveyModerationQuestionGroup[] =>
   (item.results?.questions ?? [])
@@ -104,6 +116,7 @@ export const mapSurveyItemToFormValues = (item: SurveyContentItem): SurveyDetail
     privacyNotice: resolveLocalizedText(item.privacyNotice),
     transparencyNotice: resolveLocalizedText(item.transparencyNotice),
     questions: item.questions.map((question, questionIndex) => ({
+      clientId: `question-${question.id ?? questionIndex}`,
       id: question.id,
       title: resolveLocalizedText(question.title),
       description: resolveLocalizedText(question.description),
@@ -111,6 +124,7 @@ export const mapSurveyItemToFormValues = (item: SurveyContentItem): SurveyDetail
       required: question.required,
       position: question.position ?? questionIndex,
       options: question.options.map((option, optionIndex) => ({
+        clientId: `option-${option.id ?? `${question.id ?? questionIndex}-${optionIndex}`}`,
         id: option.id,
         title: resolveLocalizedText(option.title),
         position: option.position ?? optionIndex,
@@ -226,6 +240,7 @@ export const createSurveyEditorTabs = (
 ): readonly StudioDetailTabDefinition<SurveyEditorTabId>[] => {
   const moderationGroups = loadedItem ? mapSurveyModerationGroups(loadedItem) : [];
   const resultData = loadedItem ? mapSurveyResultsTabData(loadedItem, pt) : null;
+  const availableTargetAreas = deriveSurveyTargetAreaOptions(loadedItem);
 
   return [
     {
@@ -233,7 +248,14 @@ export const createSurveyEditorTabs = (
       label: pt('tabs.basis.label'),
       title: pt('tabs.basis.title'),
       description: pt('tabs.basis.description'),
-      panel: <SurveyDetailBasisTab mode={mode} loadedItem={loadedItem} availableTargetAreas={[]} pt={pt} />,
+      panel: (
+        <SurveyDetailBasisTab
+          mode={mode}
+          loadedItem={loadedItem}
+          availableTargetAreas={availableTargetAreas}
+          pt={pt}
+        />
+      ),
     },
     { id: 'content', label: pt('tabs.content.label'), title: pt('tabs.content.title'), description: pt('tabs.content.description'), panel: <SurveyDetailContentTab pt={pt} /> },
     {

@@ -16,7 +16,7 @@ import { SurveyQuestionSection } from './surveys.question-section.js';
 import { updateSurveyQuestionList } from './surveys.question-list.shared.js';
 
 const getSurveyQuestionRenderKey = (question: SurveyQuestionFormValues, questionIndex: number): string =>
-  question.id ?? `question-draft-${question.position}-${questionIndex}`;
+  question.id ?? question.clientId ?? `question-fallback-${question.position}-${questionIndex}`;
 
 export function SurveyQuestionListEditor({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
   const { setValue } = useFormContext<SurveyDetailFormValues>();

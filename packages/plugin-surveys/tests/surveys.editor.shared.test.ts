@@ -147,22 +147,24 @@ describe('survey editor shared mappings', () => {
 
   it('keeps loaded question and option ids in form values', () => {
     expect(mapSurveyItemToFormValues(surveyItem).content.questions).toEqual([
-      {
+      expect.objectContaining({
         id: 'question-1',
+        clientId: 'question-question-1',
         title: 'Wie bewerten Sie den Wochenmarkt?',
         description: '',
         type: 'SINGLE_CHOICE_WITH_TEXT',
         required: true,
         position: 0,
         options: [
-          {
+          expect.objectContaining({
             id: 'option-1',
+            clientId: 'option-option-1',
             title: 'Sehr gut',
             position: 0,
             enablesFreeText: true,
-          },
+          }),
         ],
-      },
+      }),
     ]);
   });
 

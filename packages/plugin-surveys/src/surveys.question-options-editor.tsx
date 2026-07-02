@@ -12,7 +12,10 @@ const getSurveyQuestionOptionRenderKey = (
   question: SurveyQuestionFormValues,
   questionIndex: number,
   optionIndex: number
-): string => question.options[optionIndex]?.id ?? `option-draft-${question.position}-${questionIndex}-${optionIndex}`;
+): string =>
+  question.options[optionIndex]?.id ??
+  question.options[optionIndex]?.clientId ??
+  `option-fallback-${question.position}-${questionIndex}-${optionIndex}`;
 
 export function SurveyQuestionOptionsEditor({
   pt,

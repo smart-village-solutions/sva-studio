@@ -2,6 +2,7 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { pluginSurveysMetaEnTranslations } from '../src/plugin.translations.meta.en.js';
 import { SurveyQuestionOptionItem } from '../src/surveys.question-option-item.js';
 
 const pt = (key: string, variables?: Readonly<Record<string, string | number>>) => {
@@ -116,5 +117,9 @@ describe('SurveyQuestionOptionItem', () => {
 
     expect(screen.getByLabelText('Antwort 2')).toHaveProperty('value', '');
     expect(screen.getByLabelText('Freitext für diese Antwort erlauben')).toHaveProperty('checked', false);
+  });
+
+  it('provides an English answer-section label for aria text parity', () => {
+    expect(pluginSurveysMetaEnTranslations.labels.answerSection).toBe('Answer {{index}}');
   });
 });

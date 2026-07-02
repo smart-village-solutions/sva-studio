@@ -56,7 +56,8 @@ type WasteRepository = Pick<
 
 const wasteImportProgressBatchSize = 25;
 const normalizeKeyPart = (value: string | undefined): string => (value ?? '').trim().toLocaleLowerCase('de-DE');
-const toArrayBuffer = (source: Uint8Array): ArrayBuffer => Uint8Array.from(source).buffer;
+const toArrayBuffer = (source: Uint8Array): ArrayBuffer =>
+  source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
 const { Workbook } = ExcelJS;
 
 type ImportedLocationTourPickupDateRecord = Readonly<{
@@ -92,11 +93,11 @@ const parseImportWorkbookRows = async (source: Uint8Array): Promise<readonly Gen
 
   const headerRow = worksheet.getRow(1);
   const headerCount = Math.max(headerRow.actualCellCount, headerRow.cellCount);
-  const headers: string[] = [];
+  const headers: Array<Readonly<{ key: string; columnIndex: number }>> = [];
   for (let columnIndex = 1; columnIndex <= headerCount; columnIndex += 1) {
     const header = headerRow.getCell(columnIndex).text.trim();
     if (header.length > 0) {
-      headers.push(header);
+      headers.push({ key: header, columnIndex });
     }
   }
   if (headers.length === 0) return [];
@@ -104,12 +105,12 @@ const parseImportWorkbookRows = async (source: Uint8Array): Promise<readonly Gen
   const rows: GenericImportRow[] = [];
   for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
     const row = worksheet.getRow(rowNumber);
-    const cells = headers.map((_, index) => row.getCell(index + 1).text.trim());
+    const cells = headers.map(({ columnIndex }) => row.getCell(columnIndex).text.trim());
     if (cells.every((value) => value.length === 0)) {
       continue;
     }
     rows.push(
-      Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? '']))
+      Object.fromEntries(headers.map(({ key }, index) => [key, cells[index] ?? '']))
     );
   }
 

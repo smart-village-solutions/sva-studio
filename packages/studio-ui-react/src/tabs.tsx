@@ -23,15 +23,15 @@ TabsList.displayName = TabsPrimitive.List.displayName;
 const TabsTrigger = React.forwardRef<
   React.ComponentRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => (
+>(({ className, type: _type, ...props }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}
-    type="button"
+    {...props}
     className={cn(
       'inline-flex min-h-9 items-center justify-center border-b-[3px] border-transparent bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-primary data-[state=active]:text-foreground',
       className
     )}
-    {...props}
+    type="button"
   />
 ));
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;

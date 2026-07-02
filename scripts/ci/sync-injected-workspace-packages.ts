@@ -24,6 +24,15 @@ const resolveExistingPath = async (targetPath: string): Promise<string | null> =
   return (await pathExists(targetPath)) ? targetPath : null;
 };
 
+const readPackageName = async (packageJsonPath: string): Promise<string | null> => {
+  try {
+    const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as { name?: string };
+    return packageJson.name ?? null;
+  } catch {
+    return null;
+  }
+};
+
 const findWorkspaceRoot = async (startDir: string) => {
   let currentDir = startDir;
 
@@ -46,15 +55,15 @@ const readWorkspacePackage = async (packageDir: string): Promise<WorkspacePackag
     return null;
   }
 
-  const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as { name?: string };
-  if (!packageJson.name) {
+  const packageName = await readPackageName(packageJsonPath);
+  if (!packageName) {
     return null;
   }
 
   return {
     dir: packageDir,
     distDir: path.join(packageDir, 'dist'),
-    name: packageJson.name,
+    name: packageName,
     realDir: await realpath(packageDir),
   };
 };
@@ -89,10 +98,32 @@ const findReachableWorkspacePackageNames = async (
   consumerDirPath: string,
   workspacePackages: readonly WorkspacePackage[]
 ): Promise<Set<string>> => {
+  const workspaceRoot = await findWorkspaceRoot(consumerDirPath);
   const reachableWorkspacePackageNames = new Set<string>();
   const workspacePackageNames = new Set(workspacePackages.map((workspacePackage) => workspacePackage.name));
+  const workspacePackagesByName = new Map(workspacePackages.map((workspacePackage) => [workspacePackage.name, workspacePackage]));
   const visitedNodeModulesDirs = new Set<string>();
   const visitedPackageDirs = new Set<string>();
+
+  const getInstalledPackageNodeModulesDirs = (packageDir: string): string[] => {
+    const candidates = [path.join(packageDir, 'node_modules')];
+    const normalizedPackageDir = packageDir.split(path.sep).join('/');
+    const nodeModulesMarker = '/node_modules/';
+    const nodeModulesIndex = normalizedPackageDir.lastIndexOf(nodeModulesMarker);
+
+    if (nodeModulesIndex === -1) {
+      return candidates;
+    }
+
+    const packageParentDir = path.dirname(packageDir);
+    if (path.basename(packageParentDir).startsWith('@')) {
+      candidates.push(path.dirname(packageParentDir));
+    } else {
+      candidates.push(packageParentDir);
+    }
+
+    return [...new Set(candidates)];
+  };
 
   const inspectPackageDir = async (packageDir: string): Promise<void> => {
     let resolvedPackageDir: string;
@@ -112,12 +143,33 @@ const findReachableWorkspacePackageNames = async (
       return;
     }
 
-    const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as { name?: string };
-    if (packageJson.name && workspacePackageNames.has(packageJson.name)) {
-      reachableWorkspacePackageNames.add(packageJson.name);
+    const packageName = await readPackageName(packageJsonPath);
+    if (!packageName || !workspacePackageNames.has(packageName)) {
+      return;
     }
 
-    await walkNodeModules(path.join(resolvedPackageDir, 'node_modules'));
+    reachableWorkspacePackageNames.add(packageName);
+
+    for (const nodeModulesDir of getInstalledPackageNodeModulesDirs(packageDir)) {
+      await walkNodeModules(nodeModulesDir);
+    }
+
+    if (resolvedPackageDir !== packageDir) {
+      const workspacePackage = workspacePackagesByName.get(packageName);
+      if (workspacePackage && workspacePackage.realDir === resolvedPackageDir) {
+        const injectedCopies = await findInjectedCopies(workspaceRoot, packageName);
+        for (const injectedCopy of injectedCopies) {
+          if (injectedCopy.realDir === resolvedPackageDir) {
+            continue;
+          }
+          await inspectPackageDir(injectedCopy.dir);
+        }
+      } else {
+        for (const nodeModulesDir of getInstalledPackageNodeModulesDirs(resolvedPackageDir)) {
+          await walkNodeModules(nodeModulesDir);
+        }
+      }
+    }
   };
 
   const walkNodeModules = async (nodeModulesDir: string): Promise<void> => {

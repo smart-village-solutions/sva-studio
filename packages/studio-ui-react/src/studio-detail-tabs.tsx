@@ -180,7 +180,7 @@ export function StudioDetailTabs<TTabId extends string = string>({
   );
 
   return (
-    <Tabs value={currentValue} className={cn('space-y-0', className)}>
+    <Tabs value={currentValue} onValueChange={handleValueChange} className={cn('space-y-0', className)}>
       <StudioDetailTabsMobileSelect
         mobileSelectLabel={mobileSelectLabel}
         currentValue={currentValue}
@@ -190,7 +190,6 @@ export function StudioDetailTabs<TTabId extends string = string>({
       />
       <StudioDetailTabsTriggerList
         ariaLabel={ariaLabel}
-        currentValue={currentValue}
         visibleTabs={visibleTabs}
         renderTabLabel={renderTabLabel}
         onChange={handleValueChange}

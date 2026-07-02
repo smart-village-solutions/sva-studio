@@ -36,17 +36,17 @@ export function StudioDetailTabsMobileSelect<TTabId extends string>({
 
 export function StudioDetailTabsTriggerList<TTabId extends string>({
   ariaLabel,
-  currentValue,
   visibleTabs,
   renderTabLabel,
   onChange,
 }: Readonly<{
   ariaLabel: string;
-  currentValue: TTabId | undefined;
   visibleTabs: readonly StudioDetailTab<TTabId>[];
   renderTabLabel: (tab: StudioDetailTab<TTabId>) => React.ReactNode;
   onChange: (value: string) => void;
 }>) {
+  const enabledTabs = visibleTabs.filter((tab) => !tab.disabled);
+
   return (
     <TabsList aria-label={ariaLabel} className="ml-[10px] hidden gap-10 md:flex">
       {visibleTabs.map((tab) => (
@@ -56,13 +56,42 @@ export function StudioDetailTabsTriggerList<TTabId extends string>({
           disabled={tab.disabled}
           className={cn(
             'relative z-10 justify-start whitespace-normal text-left gap-2 rounded-none border-x-0 border-t-0 px-0 pr-5 shadow-none',
-            currentValue === tab.id ? 'mb-[-1px] border-primary text-primary' : 'border-transparent text-muted-foreground'
+            'data-[state=active]:mb-[-1px] data-[state=active]:border-primary data-[state=active]:text-primary',
+            'data-[state=inactive]:border-transparent data-[state=inactive]:text-muted-foreground'
           )}
           onClick={() => onChange(tab.id)}
           onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
+            const currentIndex = enabledTabs.findIndex((candidate) => candidate.id === tab.id);
+            if (currentIndex === -1) {
+              return;
+            }
+
+            const moveToIndex = (targetIndex: number) => {
+              const targetTab = enabledTabs[targetIndex];
+              if (!targetTab) {
+                return;
+              }
               event.preventDefault();
-              onChange(tab.id);
+              onChange(targetTab.id);
+            };
+
+            switch (event.key) {
+              case 'ArrowRight':
+              case 'ArrowDown':
+                moveToIndex((currentIndex + 1) % enabledTabs.length);
+                break;
+              case 'ArrowLeft':
+              case 'ArrowUp':
+                moveToIndex((currentIndex - 1 + enabledTabs.length) % enabledTabs.length);
+                break;
+              case 'Home':
+                moveToIndex(0);
+                break;
+              case 'End':
+                moveToIndex(enabledTabs.length - 1);
+                break;
+              default:
+                break;
             }
           }}
         >

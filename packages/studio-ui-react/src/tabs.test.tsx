@@ -30,4 +30,20 @@ describe('tabs primitives', () => {
     expect(activeTab.className).not.toContain('data-[state=active]:bg-background');
     expect(inactiveTab.className).toContain('border-transparent');
   });
+
+  it('forces tab triggers to render as buttons even when callers pass a different type', () => {
+    render(
+      <Tabs defaultValue="fractions">
+        <TabsList aria-label="Bereiche">
+          <TabsTrigger value="fractions" type="submit">
+            Abfallarten
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="fractions">Fractions</TabsContent>
+      </Tabs>
+    );
+
+    const trigger = screen.getAllByRole('tab', { name: 'Abfallarten' }).at(-1);
+    expect(trigger?.getAttribute('type')).toBe('button');
+  });
 });

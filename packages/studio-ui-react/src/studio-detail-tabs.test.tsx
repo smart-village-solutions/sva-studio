@@ -51,6 +51,25 @@ describe('StudioDetailTabs', () => {
     expect(screen.getByText('Inhalte Panel')).toBeTruthy();
   });
 
+  it('switches the active tab when arrow-key roving focus changes the Radix value', () => {
+    render(
+      <StudioDetailTabs
+        ariaLabel="Detailbereiche"
+        tabs={[
+          { id: 'base', label: 'Basis', panel: <p>Basis Panel</p> },
+          { id: 'content', label: 'Inhalte', panel: <p>Inhalte Panel</p> },
+        ]}
+      />
+    );
+
+    const baseTab = screen.getByRole('tab', { name: 'Basis' });
+
+    fireEvent.keyDown(baseTab, { key: 'ArrowRight' });
+
+    expect(screen.getByRole('tab', { name: 'Inhalte' }).getAttribute('data-state')).toBe('active');
+    expect(screen.getByText('Inhalte Panel')).toBeTruthy();
+  });
+
   it('switches tabs on pointer clicks inside a form without submitting it', () => {
     const onSubmit = vi.fn((event: Event) => event.preventDefault());
 

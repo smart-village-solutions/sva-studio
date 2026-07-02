@@ -1,40 +1,40 @@
-# Content List Logging Implementation Plan
+# Umsetzungsplan für Content-List-Logging
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Für Agenten:** Erforderlicher Sub-Skill: `superpowers:subagent-driven-development` (empfohlen) oder `superpowers:executing-plans` verwenden, um diesen Plan Aufgabe für Aufgabe umzusetzen. Die Schritte nutzen Checkboxen (`- [ ]`) zur Nachverfolgung.
 
-**Goal:** Add targeted server-side error logging for `/api/v1/iam/contents` so generic UI load failures can be correlated with the real backend error.
+**Ziel:** Zielgerichtetes serverseitiges Fehler-Logging für `/api/v1/iam/contents` ergänzen, damit generische UI-Ladefehler mit dem tatsächlichen Backend-Fehler korreliert werden können.
 
-**Architecture:** Keep the response contract unchanged and add logging only at the server catch boundary where the root error is currently swallowed. Use the existing `@sva/server-runtime` logger and cover the change with focused Vitest assertions.
+**Architektur:** Den Response-Contract unverändert lassen und Logging nur an der serverseitigen Catch-Grenze ergänzen, an der der eigentliche Fehler aktuell verschluckt wird. Den vorhandenen Logger aus `@sva/server-runtime` verwenden und die Änderung mit fokussierten Vitest-Assertions absichern.
 
-**Tech Stack:** TypeScript, Vitest, `@sva/server-runtime`
+**Technik-Stack:** TypeScript, Vitest, `@sva/server-runtime`
 
 ---
 
-### Task 1: API Catch Logging
+### Aufgabe 1: Logging im API-Catch
 
-**Files:**
-- Modify: `apps/sva-studio-react/src/lib/iam-content-list-api.server.ts`
-- Modify: `apps/sva-studio-react/src/lib/iam-content-list-api.server.test.ts`
+**Dateien:**
+- Anpassen: `apps/sva-studio-react/src/lib/iam-content-list-api.server.ts`
+- Anpassen: `apps/sva-studio-react/src/lib/iam-content-list-api.server.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Schritt 1: Fehlenden Test ergänzen**
 
-Add an assertion to the existing `"returns a deterministic list error when the projected list handler throws"` test so it expects `logger.error(...)` with the request ID and normalized context.
+Die bestehende Testprüfung `"returns a deterministic list error when the projected list handler throws"` um eine Assertion erweitern, die `logger.error(...)` mit Request-ID und normalisiertem Kontext erwartet.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Schritt 2: Test rot laufen lassen**
 
-Run: `pnpm nx run sva-studio-react:test:unit --testFiles=src/lib/iam-content-list-api.server.test.ts`
-Expected: FAIL because no logger call exists yet.
+Ausführen: `pnpm nx run sva-studio-react:test:unit --testFiles=src/lib/iam-content-list-api.server.test.ts`
+Erwartung: FEHLER, weil bisher kein Logger-Aufruf existiert.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Schritt 3: Minimale Implementierung umsetzen**
 
-Create a module-local logger with `createSdkLogger({ component: 'iam-content-list-api' })` and log inside the GET catch before returning the existing `createListErrorResponse(...)`.
+Einen modul-lokalen Logger mit `createSdkLogger({ component: 'iam-content-list-api' })` anlegen und innerhalb des GET-Catch loggen, bevor das bestehende `createListErrorResponse(...)` zurückgegeben wird.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Schritt 4: Test erneut laufen lassen**
 
-Run: `pnpm nx run sva-studio-react:test:unit --testFiles=src/lib/iam-content-list-api.server.test.ts`
-Expected: PASS.
+Ausführen: `pnpm nx run sva-studio-react:test:unit --testFiles=src/lib/iam-content-list-api.server.test.ts`
+Erwartung: ERFOLG.
 
-- [ ] **Step 5: Commit**
+- [ ] **Schritt 5: Commit**
 
 ```bash
 git add apps/sva-studio-react/src/lib/iam-content-list-api.server.ts apps/sva-studio-react/src/lib/iam-content-list-api.server.test.ts docs/superpowers/plans/2026-07-02-content-list-logging.md

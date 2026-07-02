@@ -12,6 +12,7 @@ import {
   applySchemaStatements,
   buildWasteFractionShortLabelBackfillStatement,
 } from './waste-management-operations.schema.js';
+import { parseImportRows } from './waste-management-operations.import.js';
 import { resolveRuntimeDataSource } from './waste-management-operations.shared.js';
 import {
   readPublicWasteUnsubscribeTokenSubscriptionId,
@@ -187,6 +188,36 @@ describe('waste management operations runtime', () => {
       dryRun: true,
       importProfileId: 'waste-management.geografie-abholorte',
     });
+  });
+
+  it('preserves column positions when xlsx headers contain interior gaps', async () => {
+    const rows = await parseImportRows(
+      {
+        readBinarySource: vi.fn(async () =>
+          await createWorkbookBytes([
+            ['region_id', 'region_name', 'city_id', 'city_name', 'location_id', '', 'active', 'street_name'],
+            ['region-nord', 'Nord', 'city-perleberg', 'Perleberg', 'loc-001', '', 'true', 'Ackerstraße'],
+          ])
+        ),
+      },
+      {
+        profileId: 'waste-management.geografie-abholorte',
+        sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        blobRef: 'fixture-with-gap.xlsx',
+      }
+    );
+
+    expect(rows).toEqual([
+      {
+        region_id: 'region-nord',
+        region_name: 'Nord',
+        city_id: 'city-perleberg',
+        city_name: 'Perleberg',
+        location_id: 'loc-001',
+        active: 'true',
+        street_name: 'Ackerstraße',
+      },
+    ]);
   });
 
   it('fails closed for unknown import profile ids after row parsing succeeds', async () => {

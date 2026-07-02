@@ -206,9 +206,11 @@ const handleGetItem = async (
       },
     }),
   ]);
-  const secondaryAuthorizationFailure = [moderationAccess, exportAccess].find((result): result is AuthorizationFailure => !result.ok);
-  if (secondaryAuthorizationFailure && !isAuthorizationDenial(secondaryAuthorizationFailure)) {
-    return toAuthorizationFailureResponse(secondaryAuthorizationFailure);
+  const secondaryOperationalFailure = [moderationAccess, exportAccess].find(
+    (result): result is AuthorizationFailure => !result.ok && !isAuthorizationDenial(result)
+  );
+  if (secondaryOperationalFailure) {
+    return toAuthorizationFailureResponse(secondaryOperationalFailure);
   }
   if (!moderationAccess.ok && !exportAccess.ok) {
     return json({ data: survey });

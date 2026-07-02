@@ -78,10 +78,11 @@ export const mapQuestionResults = (
 });
 
 export const mapQuestionOption = (
-  value: z.infer<typeof surveyQuestionOptionSchema>
+  value: z.infer<typeof surveyQuestionOptionSchema>,
+  fallbackQuestionId: string
 ): SvaMainserverSurveyQuestionOption => ({
   id: value.id,
-  questionId: value.questionId,
+  questionId: value.questionId ?? fallbackQuestionId,
   title: mapLocalizedText(value.title),
   position: value.position ?? 0,
   enablesFreeText: value.enablesFreeText === true,
@@ -100,7 +101,7 @@ export const mapQuestion = (
   position: value.position ?? 0,
   createdAt: value.createdAt ?? fallbackTimestamp,
   updatedAt: value.updatedAt ?? value.createdAt ?? fallbackTimestamp,
-  options: (value.options ?? []).map(mapQuestionOption),
+  options: (value.options ?? []).map((option) => mapQuestionOption(option, value.id)),
 });
 
 export const mapSurveyResults = (

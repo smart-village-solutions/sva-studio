@@ -5,7 +5,6 @@ export type SvaMainserverSurveyLocalizedTextFragment = Record<string, string>;
 
 export type SvaMainserverSurveyQuestionOptionFragment = {
   readonly id?: string | null;
-  readonly questionId?: string | null;
   readonly title?: SvaMainserverSurveyLocalizedTextFragment | null;
   readonly position?: number | null;
   readonly enablesFreeText?: boolean | null;
@@ -110,7 +109,6 @@ export type SvaMainserverCreateOrUpdateSurveyMutation = {
 
 const surveyQuestionOptionFields = `
   id
-  questionId
   title
   position
   enablesFreeText

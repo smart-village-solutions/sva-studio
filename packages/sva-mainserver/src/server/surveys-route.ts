@@ -93,10 +93,7 @@ const authorizeOrResponse = async (
   };
 };
 
-const parseSurveyInput = async (request: Request): Promise<SvaMainserverSurveyInput | Response> => {
-  const body = await parseJsonObjectBody(request, 'Umfrage-Daten müssen als Objekt gesendet werden.');
-  return isResponse(body) ? body : (body as SvaMainserverSurveyInput);
-};
+const parseSurveyInput = async (request: Request): Promise<SvaMainserverSurveyInput | Response> => parseJsonObjectBody(request, 'Umfrage-Daten müssen als Objekt gesendet werden.').then((body) => (isResponse(body) ? body : (body as SvaMainserverSurveyInput)));
 const toUnexpectedRouteError = (message: string) =>
   toMainserverErrorResponse(
     new SvaMainserverError({
@@ -112,11 +109,8 @@ const handleRouteError = (error: unknown) =>
     ? toMainserverErrorResponse(error, 'Umfragen konnten nicht verarbeitet werden.')
     : toUnexpectedRouteError('Unbekannter Fehler für Umfragen.');
 
-const isAuthorizationDenial = (result: AuthorizationFailure): boolean =>
-  result.status === 403 && result.error === 'forbidden';
-
-const toAuthorizationFailureResponse = (result: AuthorizationFailure): Response =>
-  errorJson(result.status, result.error, result.message);
+const isAuthorizationDenial = (result: AuthorizationFailure): boolean => result.status === 403 && result.error === 'forbidden';
+const toAuthorizationFailureResponse = (result: AuthorizationFailure): Response => errorJson(result.status, result.error, result.message);
 
 const authorizeMutation = async (
   request: Request,

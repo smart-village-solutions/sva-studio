@@ -56,8 +56,10 @@ type WasteRepository = Pick<
 
 const wasteImportProgressBatchSize = 25;
 const normalizeKeyPart = (value: string | undefined): string => (value ?? '').trim().toLocaleLowerCase('de-DE');
-const toArrayBuffer = (source: Uint8Array): ArrayBuffer =>
-  source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
+const toArrayBuffer = (source: Uint8Array): ArrayBuffer => {
+  const slicedBuffer = source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
+  return slicedBuffer instanceof ArrayBuffer ? slicedBuffer : new ArrayBuffer(0);
+};
 const { Workbook } = ExcelJS;
 
 type ImportedLocationTourPickupDateRecord = Readonly<{

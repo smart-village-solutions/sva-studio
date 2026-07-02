@@ -94,6 +94,45 @@ const collectWorkspacePackages = async (workspaceRoot: string) => {
   return workspacePackages;
 };
 
+const getInstalledPackageNodeModulesDirs = (packageDir: string): string[] => {
+  const candidates = [path.join(packageDir, 'node_modules')];
+  if (!packageDir.split(path.sep).join('/').includes('/node_modules/')) {
+    return candidates;
+  }
+
+  const packageParentDir = path.dirname(packageDir);
+  candidates.push(path.basename(packageParentDir).startsWith('@') ? path.dirname(packageParentDir) : packageParentDir);
+  return [...new Set(candidates)];
+};
+
+const collectPackageDirs = async (nodeModulesDir: string): Promise<readonly string[]> => {
+  const packageDirs: string[] = [];
+  const entries = await readdir(nodeModulesDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) {
+      continue;
+    }
+
+    const entryPath = path.join(nodeModulesDir, entry.name);
+    if (entry.name.startsWith('@') && entry.isDirectory()) {
+      const scopeEntries = await readdir(entryPath, { withFileTypes: true });
+      for (const scopeEntry of scopeEntries) {
+        if (scopeEntry.isDirectory() || scopeEntry.isSymbolicLink()) {
+          packageDirs.push(path.join(entryPath, scopeEntry.name));
+        }
+      }
+      continue;
+    }
+
+    if (entry.isDirectory() || entry.isSymbolicLink()) {
+      packageDirs.push(entryPath);
+    }
+  }
+
+  return packageDirs;
+};
+
 const findReachableWorkspacePackageNames = async (
   consumerDirPath: string,
   workspacePackages: readonly WorkspacePackage[]
@@ -104,26 +143,6 @@ const findReachableWorkspacePackageNames = async (
   const workspacePackagesByName = new Map(workspacePackages.map((workspacePackage) => [workspacePackage.name, workspacePackage]));
   const visitedNodeModulesDirs = new Set<string>();
   const visitedPackageDirs = new Set<string>();
-
-  const getInstalledPackageNodeModulesDirs = (packageDir: string): string[] => {
-    const candidates = [path.join(packageDir, 'node_modules')];
-    const normalizedPackageDir = packageDir.split(path.sep).join('/');
-    const nodeModulesMarker = '/node_modules/';
-    const nodeModulesIndex = normalizedPackageDir.lastIndexOf(nodeModulesMarker);
-
-    if (nodeModulesIndex === -1) {
-      return candidates;
-    }
-
-    const packageParentDir = path.dirname(packageDir);
-    if (path.basename(packageParentDir).startsWith('@')) {
-      candidates.push(path.dirname(packageParentDir));
-    } else {
-      candidates.push(packageParentDir);
-    }
-
-    return [...new Set(candidates)];
-  };
 
   const inspectPackageDir = async (packageDir: string): Promise<void> => {
     let resolvedPackageDir: string;
@@ -189,29 +208,8 @@ const findReachableWorkspacePackageNames = async (
     }
     visitedNodeModulesDirs.add(resolvedNodeModulesDir);
 
-    const entries = await readdir(resolvedNodeModulesDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.name.startsWith('.')) {
-        continue;
-      }
-
-      const entryPath = path.join(resolvedNodeModulesDir, entry.name);
-      if (entry.name.startsWith('@') && entry.isDirectory()) {
-        const scopeEntries = await readdir(entryPath, { withFileTypes: true });
-        for (const scopeEntry of scopeEntries) {
-          if (!scopeEntry.isDirectory() && !scopeEntry.isSymbolicLink()) {
-            continue;
-          }
-          await inspectPackageDir(path.join(entryPath, scopeEntry.name));
-        }
-        continue;
-      }
-
-      if (!entry.isDirectory() && !entry.isSymbolicLink()) {
-        continue;
-      }
-
-      await inspectPackageDir(entryPath);
+    for (const packageDir of await collectPackageDirs(resolvedNodeModulesDir)) {
+      await inspectPackageDir(packageDir);
     }
   };
 

@@ -70,6 +70,32 @@ describe('StudioDetailTabs', () => {
     expect(screen.getByText('Inhalte Panel')).toBeTruthy();
   });
 
+  it('supports reverse and boundary keyboard navigation across enabled tabs', () => {
+    render(
+      <StudioDetailTabs
+        ariaLabel="Detailbereiche"
+        tabs={[
+          { id: 'base', label: 'Basis', panel: <p>Basis Panel</p> },
+          { id: 'disabled', label: 'Deaktiviert', disabled: true, panel: <p>Disabled Panel</p> },
+          { id: 'content', label: 'Inhalte', panel: <p>Inhalte Panel</p> },
+          { id: 'history', label: 'Historie', panel: <p>Historie Panel</p> },
+        ]}
+      />
+    );
+
+    const baseTab = screen.getByRole('tab', { name: 'Basis' });
+    fireEvent.keyDown(baseTab, { key: 'End' });
+    expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('data-state')).toBe('active');
+
+    const historyTab = screen.getByRole('tab', { name: 'Historie' });
+    fireEvent.keyDown(historyTab, { key: 'ArrowLeft' });
+    expect(screen.getByRole('tab', { name: 'Inhalte' }).getAttribute('data-state')).toBe('active');
+
+    const contentTab = screen.getByRole('tab', { name: 'Inhalte' });
+    fireEvent.keyDown(contentTab, { key: 'Home' });
+    expect(screen.getByRole('tab', { name: 'Basis' }).getAttribute('data-state')).toBe('active');
+  });
+
   it('switches tabs on pointer clicks inside a form without submitting it', () => {
     const onSubmit = vi.fn((event: Event) => event.preventDefault());
 

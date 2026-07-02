@@ -1,7 +1,13 @@
 import * as React from 'react';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs.js';
+import { Tabs } from './tabs.js';
 import { cn } from './utils.js';
+import {
+  StudioDetailTabsMobileSelect,
+  StudioDetailTabsPanel,
+  StudioDetailTabsStatus,
+  StudioDetailTabsTriggerList,
+} from './studio-detail-tabs.parts.js';
 
 export type StudioDetailTabDefinition<TTabId extends string> = Readonly<{
   id: TTabId;
@@ -31,12 +37,14 @@ type StudioDetailTabLegacy<TTabId extends string> = Readonly<{
   content: React.ReactNode;
 }>;
 
-export type StudioDetailTab<TTabId extends string = string> = StudioDetailTabDefinition<TTabId>;
+export type StudioDetailTab<TTabId extends string = string> =
+  | StudioDetailTabDefinition<TTabId>
+  | StudioDetailTabLegacy<TTabId>;
 
 export type StudioDetailTabsProps<TTabId extends string = string> = Readonly<{
   ariaLabel: string;
   mobileSelectLabel?: string;
-  tabs: readonly (StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>)[];
+  tabs: readonly StudioDetailTab<TTabId>[];
   defaultValue?: TTabId;
   value?: TTabId;
   onValueChange?: (value: TTabId) => void;
@@ -48,23 +56,19 @@ export type StudioDetailTabsProps<TTabId extends string = string> = Readonly<{
   className?: string;
 }>;
 
-function isLegacyTab<TTabId extends string>(
-  tab: StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>
-): tab is StudioDetailTabLegacy<TTabId> {
+function isLegacyTab<TTabId extends string>(tab: StudioDetailTab<TTabId>): tab is StudioDetailTabLegacy<TTabId> {
   return 'content' in tab;
 }
 
-function getTabPanel<TTabId extends string>(tab: StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>) {
+function getTabPanel<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   return isLegacyTab(tab) ? tab.content : tab.panel;
 }
 
-function getTabDescription<TTabId extends string>(
-  tab: StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>
-) {
+function getTabDescription<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   return tab.description;
 }
 
-function getTabTitle<TTabId extends string>(tab: StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>) {
+function getTabTitle<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   if (tab.title) {
     return tab.title;
   }
@@ -72,27 +76,25 @@ function getTabTitle<TTabId extends string>(tab: StudioDetailTabDefinition<TTabI
   return isLegacyTab(tab) ? undefined : tab.label;
 }
 
-function isTabVisible<TTabId extends string>(tab: StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>) {
+function isTabVisible<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   return tab.isVisible !== false;
 }
 
-function tabHasChanges<TTabId extends string>(tab: StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>) {
+function tabHasChanges<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   return tab.hasChanges ?? (isLegacyTab(tab) ? (tab.isDirty ?? false) : false);
 }
 
-function getChangeLabel<TTabId extends string>(tab: StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>) {
+function getChangeLabel<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   return tab.changeLabel ?? (isLegacyTab(tab) ? tab.dirtyLabel : undefined);
 }
 
-function getMobileOptionLabel<TTabId extends string>(
-  tab: StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>
-) {
+function getMobileOptionLabel<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   const baseLabel = typeof tab.label === 'string' ? tab.label : tab.id;
   const changeLabel = getChangeLabel(tab);
   return tabHasChanges(tab) && changeLabel ? `${baseLabel} (${changeLabel})` : baseLabel;
 }
 
-function renderTabLabel<TTabId extends string>(tab: StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>) {
+function renderTabLabel<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   const changeLabel = getChangeLabel(tab);
 
   return (
@@ -179,73 +181,36 @@ export function StudioDetailTabs<TTabId extends string = string>({
   );
 
   return (
-    <Tabs value={currentValue} onValueChange={handleValueChange} className={cn('space-y-4', className)}>
-      <div className="space-y-3">
-        <label className="space-y-2 md:hidden">
-          <span className="text-sm font-medium text-foreground">{mobileSelectLabel}</span>
-          <select
-            aria-label={mobileSelectLabel}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            value={currentValue}
-            onChange={(event) => handleValueChange(event.target.value)}
-          >
-            {visibleTabs.map((tab) => (
-              <option
-                key={tab.id}
-                value={tab.id}
-                disabled={tab.disabled}
-                label={getMobileOptionLabel(tab)}
-              />
-            ))}
-          </select>
-        </label>
-
-        <TabsList aria-label={ariaLabel} className="hidden w-full flex-wrap md:inline-flex">
-          {visibleTabs.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id} disabled={tab.disabled} className="justify-start whitespace-normal text-left">
-              {renderTabLabel(tab)}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </div>
-
-      {status || statusMessage ? (
-        <div
-          role="status"
-          aria-live={statusAriaLive}
-          className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground"
-        >
-          {status ? <div>{status}</div> : null}
-          {statusMessage ? <p>{statusMessage}</p> : null}
-        </div>
-      ) : null}
+    <Tabs value={currentValue} onValueChange={handleValueChange} className={cn('space-y-0', className)}>
+      <StudioDetailTabsMobileSelect
+        mobileSelectLabel={mobileSelectLabel}
+        currentValue={currentValue}
+        visibleTabs={visibleTabs}
+        getMobileOptionLabel={getMobileOptionLabel}
+        onChange={handleValueChange}
+      />
+      <StudioDetailTabsTriggerList
+        ariaLabel={ariaLabel}
+        visibleTabs={visibleTabs}
+        renderTabLabel={renderTabLabel}
+        onChange={handleValueChange}
+      />
+      <StudioDetailTabsStatus status={status} statusMessage={statusMessage} statusAriaLive={statusAriaLive} />
 
       {visibleTabs.map((tab) => {
         const title = getTabTitle(tab);
         const description = getTabDescription(tab);
         const shouldForceMount = keepMounted && visitedTabs.has(tab.id);
-        const shouldRenderHeader = Boolean(title || description || tab.actions);
-
         return (
-          <TabsContent
+          <StudioDetailTabsPanel
             key={tab.id}
-            value={tab.id}
-            className="mt-0"
-            {...(shouldForceMount ? { forceMount: true } : {})}
+            tab={tab}
+            title={title}
+            description={description}
+            shouldForceMount={shouldForceMount}
           >
-            <section className="space-y-4">
-              {shouldRenderHeader ? (
-                <header className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-1">
-                    {title ? <h2 className="text-lg font-semibold text-foreground">{title}</h2> : null}
-                    {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
-                  </div>
-                  {tab.actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">{tab.actions}</div> : null}
-                </header>
-              ) : null}
-              <div>{getTabPanel(tab)}</div>
-            </section>
-          </TabsContent>
+            {getTabPanel(tab)}
+          </StudioDetailTabsPanel>
         );
       })}
     </Tabs>

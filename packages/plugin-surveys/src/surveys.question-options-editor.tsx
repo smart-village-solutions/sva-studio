@@ -32,7 +32,6 @@ export function SurveyQuestionOptionsEditor({
 }>) {
   return (
     <div className="space-y-3 border-t border-border/60 pt-4">
-      <p className="text-sm text-muted-foreground">{pt('messages.optionSectionHint')}</p>
       {question.options.map((option, optionIndex) => (
         <SurveyQuestionOptionItem
           key={getSurveyQuestionOptionRenderKey(question, questionIndex, optionIndex)}

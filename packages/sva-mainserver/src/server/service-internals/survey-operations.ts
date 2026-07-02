@@ -32,91 +32,18 @@ import {
   toSvaMainserverError,
   type GraphqlExecutor,
 } from './shared.js';
+import { buildSurveyMutationInput } from './survey-operation-inputs.js';
 
-const buildSurveyFilter = (input: {
+const buildSurveySnapshotQueryVariables = (input: {
   readonly ids?: readonly string[];
-  readonly statuses?: readonly string[];
-  readonly targetAreaIds?: readonly string[];
   readonly includeArchived?: boolean;
   readonly ongoingOnly?: boolean;
+  readonly order?: 'updatedAt_DESC';
 }) => ({
   ...(input.ids && input.ids.length > 0 ? { ids: [...input.ids] } : {}),
-  ...(input.statuses && input.statuses.length > 0 ? { statuses: [...input.statuses] } : {}),
-  ...(input.targetAreaIds && input.targetAreaIds.length > 0 ? { targetAreaIds: [...input.targetAreaIds] } : {}),
-  ...(input.includeArchived === undefined ? {} : { includeArchived: input.includeArchived }),
-  ...(input.ongoingOnly === undefined ? {} : { ongoingOnly: input.ongoingOnly }),
-});
-
-const buildSurveyQuestionOptionInput = (
-  option: NonNullable<NonNullable<SvaMainserverSurveyInput['questions']>[number]['options']>[number]
-) => ({
-  ...(option.id ? { id: option.id } : {}),
-  ...(option.delete === true ? { delete: true } : {}),
-  ...(option.title !== undefined ? { title: option.title } : {}),
-  ...(option.position === undefined ? {} : { position: option.position }),
-  ...(option.enablesFreeText === undefined ? {} : { enablesFreeText: option.enablesFreeText }),
-});
-
-const buildSurveyQuestionInput = (question: NonNullable<SvaMainserverSurveyInput['questions']>[number]) => ({
-  ...(question.id ? { id: question.id } : {}),
-  ...(question.delete === true ? { delete: true } : {}),
-  ...(question.title !== undefined ? { title: question.title } : {}),
-  ...(question.description !== undefined ? { description: question.description } : {}),
-  ...(question.type ? { type: question.type } : {}),
-  ...(question.required === undefined ? {} : { required: question.required }),
-  ...(question.position === undefined ? {} : { position: question.position }),
-  ...(question.options ? { options: question.options.map(buildSurveyQuestionOptionInput) } : {}),
-});
-
-const buildSurveyCoreInput = (survey: SvaMainserverSurveyInput) => ({
-  ...(survey.title !== undefined ? { title: survey.title } : {}),
-  ...(survey.shortDescription !== undefined ? { shortDescription: survey.shortDescription } : {}),
-  ...(survey.description !== undefined ? { description: survey.description } : {}),
-  ...(survey.status ? { status: survey.status } : {}),
-  ...(survey.startAt === undefined ? {} : { startAt: survey.startAt }),
-  ...(survey.endAt === undefined ? {} : { endAt: survey.endAt }),
-});
-
-const buildSurveyVisibilityInput = (survey: SvaMainserverSurveyInput) => ({
-  ...(survey.resultVisibility ? { resultVisibility: survey.resultVisibility } : {}),
-  ...(survey.targetAreaIds !== undefined ? { targetAreaIds: [...survey.targetAreaIds] } : {}),
-  ...(survey.showResultsInApp === undefined ? {} : { showResultsInApp: survey.showResultsInApp }),
-  ...(survey.isAnonymous === undefined ? {} : { isAnonymous: survey.isAnonymous }),
-});
-
-const buildSurveyNoticeInput = (survey: SvaMainserverSurveyInput) => ({
-  ...(survey.privacyNotice !== undefined ? { privacyNotice: survey.privacyNotice } : {}),
-  ...(survey.transparencyNotice !== undefined ? { transparencyNotice: survey.transparencyNotice } : {}),
-});
-
-const buildSurveyQuestionsInput = (survey: SvaMainserverSurveyInput) => ({
-  ...(survey.questions ? { questions: survey.questions.map(buildSurveyQuestionInput) } : {}),
-});
-
-const buildSurveyFreeTextResponsesInput = (survey: SvaMainserverSurveyInput) => ({
-  ...(survey.freeTextResponses
-    ? {
-        freeTextResponses: survey.freeTextResponses.map((freeText) => ({
-          id: freeText.id,
-          ...(freeText.status ? { status: freeText.status } : {}),
-          ...(freeText.delete === true ? { delete: true } : {}),
-        })),
-      }
-    : {}),
-});
-
-const buildSurveyMutationInput = (input: {
-  readonly survey: SvaMainserverSurveyInput;
-  readonly surveyId?: string;
-  readonly delete?: boolean;
-}) => ({
-  ...(input.surveyId ? { id: input.surveyId } : {}),
-  ...(input.delete === true ? { delete: true } : {}),
-  ...buildSurveyCoreInput(input.survey),
-  ...buildSurveyVisibilityInput(input.survey),
-  ...buildSurveyNoticeInput(input.survey),
-  ...buildSurveyQuestionsInput(input.survey),
-  ...buildSurveyFreeTextResponsesInput(input.survey),
+  ...(input.ongoingOnly === undefined ? {} : { ongoing: input.ongoingOnly }),
+  ...(input.includeArchived === undefined ? {} : { archived: input.includeArchived }),
+  ...(input.order === undefined ? {} : { order: input.order }),
 });
 
 const findSurvey = <TItem extends { readonly id?: string | null }>(
@@ -168,13 +95,12 @@ const createListSurveysWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) 
       ...input,
       document: svaMainserverSurveysListDocument,
       operationName: 'SvaMainserverSurveysList',
-      variables: {
-        filter: buildSurveyFilter({
-          ...input,
-          includeArchived: input.includeArchived ?? false,
-          ongoingOnly: input.ongoingOnly ?? false,
-        }),
-      },
+      variables: buildSurveySnapshotQueryVariables({
+        ids: input.ids,
+        includeArchived: input.includeArchived ?? false,
+        ongoingOnly: input.ongoingOnly,
+        order: 'updatedAt_DESC',
+      }),
     },
     config
   );
@@ -214,7 +140,7 @@ const createGetSurveyWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) =>
       ...input,
       document: svaMainserverSurveyDetailDocument,
       operationName: 'SvaMainserverSurveyDetail',
-      variables: { filter: buildSurveyFilter({ ids: [input.surveyId], includeArchived: true }) },
+      variables: buildSurveySnapshotQueryVariables({ ids: [input.surveyId], includeArchived: true }),
     },
     config
   );
@@ -231,7 +157,7 @@ const createGetSurveyResultsWithConfig = (executeGraphqlWithConfig: GraphqlExecu
       ...input,
       document: svaMainserverSurveyResultsDocument,
       operationName: 'SvaMainserverSurveyResults',
-      variables: { filter: buildSurveyFilter({ ids: [input.surveyId], includeArchived: true }) },
+      variables: buildSurveySnapshotQueryVariables({ ids: [input.surveyId], includeArchived: true }),
     },
     config
   );

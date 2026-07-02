@@ -1,6 +1,8 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
+import ExcelJS from 'exceljs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+const { Workbook } = ExcelJS;
 
 const createWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
 const createWasteManagementLocationTourLinksBulkMock = vi.hoisted(() => vi.fn());
@@ -110,7 +112,7 @@ describe('waste management helper modules', () => {
     vi.unstubAllGlobals();
   });
 
-  it('covers page support helpers, template/error downloads, and the reset dialog shell', () => {
+  it('covers page support helpers, template/error downloads, and the reset dialog shell', async () => {
     expect(compactOptionalString('  ')).toBeUndefined();
     expect(compactOptionalString(' value ')).toBe('value');
     expect(resolveApiErrorCode(new WasteManagementApiError('invalid_input', 'Fehler'))).toBe('invalid_input');
@@ -166,8 +168,8 @@ describe('waste management helper modules', () => {
       mappingTemplates: [],
     } as const;
 
-    downloadImportTemplate(profile, 'text/csv');
-    downloadImportTemplate(profile, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    await downloadImportTemplate(profile, 'text/csv');
+    await downloadImportTemplate(profile, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     downloadImportPreviewErrors({
       detectedDelimiter: ';',
       delimiter: ';',
@@ -193,6 +195,15 @@ describe('waste management helper modules', () => {
     expect(objectUrlSpy).toHaveBeenCalledTimes(3);
     expect(revokeSpy).toHaveBeenCalledWith('blob:template');
     expect(createdAnchors[2]?.download).toBe('waste-import-errors.csv');
+    const workbookBlob = objectUrlSpy.mock.calls[1]?.[0];
+    expect(workbookBlob).toBeInstanceOf(Blob);
+    const workbookBuffer = await workbookBlob.arrayBuffer();
+    const workbook = new Workbook();
+    await workbook.xlsx.load(workbookBuffer);
+    const worksheet = workbook.getWorksheet('Import');
+    expect(worksheet).toBeDefined();
+    expect(worksheet?.getRow(1).values).toEqual([undefined, 'region_id', 'street_id']);
+    expect(worksheet?.getRow(2).values).toEqual([undefined, 'region-1', 'street-1']);
 
     const onConfirm = vi.fn();
     const onTokenChange = vi.fn();

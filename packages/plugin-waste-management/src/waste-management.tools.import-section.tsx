@@ -213,7 +213,11 @@ export const WasteToolsImportSection = ({
             />
             <WasteToolsImportColumns profile={selectedImportProfile} />
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" onClick={() => downloadImportTemplate(selectedImportProfile, importSourceFormat)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void downloadImportTemplate(selectedImportProfile, importSourceFormat)}
+              >
                 {pt('tools.actions.downloadTemplate')}
               </Button>
             </div>

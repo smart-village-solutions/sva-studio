@@ -178,11 +178,14 @@ const handleDeleteFreeTextResponse = async (request: Request, ctx: Authenticated
     return actor;
   }
 
-  const deleted = await updateSvaMainserverSurvey({ ...actor, surveyId, survey: { freeTextResponses: [{ id: freeTextResponseId, delete: true }] } });
-  if (!deleted.success || deleted.errors.length > 0) {
-    return toSurveyMutationFailureResponse(deleted, 'Freitextantwort konnte nicht gelöscht werden.');
-  }
-  return json({ data: { id: freeTextResponseId } });
+  void request;
+  void actor;
+  void freeTextResponseId;
+  return errorJson(
+    501,
+    'unsupported_operation',
+    'Freitext-Löschung wird vom aktuellen Mainserver-Schema nicht unterstützt.'
+  );
 };
 
 const handleUpdate = async (request: Request, ctx: AuthenticatedRequestContext, surveyId: string): Promise<Response> => {

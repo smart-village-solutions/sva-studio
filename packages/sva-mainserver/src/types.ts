@@ -494,6 +494,15 @@ export type SvaMainserverSurveyFreeTextStatus = 'INTERNAL' | 'PUBLIC';
 
 export type SvaMainserverSurveyResultVisibility = 'NONE' | 'AFTER_SUBMISSION' | 'AFTER_SURVEY_END';
 
+export type SvaMainserverSurveyPayloadBackedFields = {
+  readonly startAt?: string;
+  readonly endAt?: string;
+  readonly resultVisibility: SvaMainserverSurveyResultVisibility;
+  readonly showResultsInApp: boolean;
+  readonly privacyNotice?: SvaMainserverLocalizedText;
+  readonly transparencyNotice?: SvaMainserverLocalizedText;
+};
+
 export type SvaMainserverSurveyMutationAction = 'CREATED' | 'UPDATED' | 'DELETED';
 
 export type SvaMainserverSurveyMutationErrorCode =
@@ -622,14 +631,8 @@ export type SvaMainserverSurveyItem = {
   readonly shortDescription?: SvaMainserverLocalizedText;
   readonly description?: SvaMainserverLocalizedText;
   readonly status: SvaMainserverSurveyStatus;
-  readonly startAt?: string;
-  readonly endAt?: string;
-  readonly resultVisibility: SvaMainserverSurveyResultVisibility;
   readonly targetAreaIds: readonly string[];
-  readonly showResultsInApp: boolean;
   readonly isAnonymous: boolean;
-  readonly privacyNotice?: SvaMainserverLocalizedText;
-  readonly transparencyNotice?: SvaMainserverLocalizedText;
   readonly questions: readonly SvaMainserverSurveyQuestion[];
   readonly questionCount: number;
   readonly participationCount: number;
@@ -639,7 +642,7 @@ export type SvaMainserverSurveyItem = {
   readonly updatedAt: string;
   readonly publishedAt?: string;
   readonly archivedAt?: string;
-};
+} & SvaMainserverSurveyPayloadBackedFields;
 
 export type SvaMainserverSurveyMutationError = {
   readonly code: SvaMainserverSurveyMutationErrorCode;

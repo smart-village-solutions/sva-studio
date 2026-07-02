@@ -235,6 +235,22 @@ describe('survey editor pages', () => {
     expect(scoped.getByText('Die Historie wird nach dem ersten Speichern verfügbar.')).toBeTruthy();
   });
 
+  it('switches desktop tabs by click and keeps the shared panel surface styling', () => {
+    const view = render(<SurveyCreatePage />);
+    const scoped = within(view.container);
+
+    fireEvent.click(scoped.getByRole('tab', { name: 'Inhalt' }));
+    const activePanel = scoped
+      .getAllByRole('tabpanel')
+      .find((panel) => panel.getAttribute('data-state') === 'active');
+
+    expect(scoped.getByRole('tab', { name: 'Inhalt' }).getAttribute('data-state')).toBe('active');
+    expect(scoped.getByRole('heading', { name: 'Inhalt' })).toBeTruthy();
+    expect(activePanel?.firstElementChild?.className).toContain(
+      'bg-[rgb(var(--waste-panel-surface))]'
+    );
+  });
+
   it('reuses the same editor frame in edit mode and shows the edit heading', () => {
     return (async () => {
       const view = render(<SurveyEditPage />);

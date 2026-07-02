@@ -210,12 +210,17 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Event-/POI-Adapter eng am Snapshot halten, Delete-Record-Types in Staging verifizieren, `openspec validate`, `pnpm check:server-runtime` und Mainserver-Adaptertests vor Rollout ausführen
 
-36. Divergenz zwischen global registrierten Plugins und instanzbezogener Modulfreigabe
+36. Übergangsadapter für Survey-`payload` und eingeschränkte Freitext-Moderation
+   - Impact: mittel bis hoch (Survey-Fachfelder bleiben bis zu einer Mainserver-Schemaerweiterung indirekt modelliert; einzelne Moderationspfade wie Freitext-Löschung sind bewusst nicht verfügbar)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Survey-Adapter eng am Snapshot halten, `payload`-Vertrag testgestützt dokumentieren, native Mainserver-Felder später priorisiert nachziehen und den temporären `501 unsupported_operation`-Pfad für Freitext-Löschung nach Mainserver-Erweiterung wieder abbauen
+
+37. Divergenz zwischen global registrierten Plugins und instanzbezogener Modulfreigabe
    - Impact: hoch (UI oder Routing könnten Module rendern, die fachlich nicht freigegeben sind)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: `assignedModules` als kanonischen Session- und Routing-Kontext verwenden, Plugin-Navigation fail-closed ausblenden und Modul-IAM-Baseline nach jeder Mutation neu herstellen
 
-37. Synchrone Medienverarbeitung im MVP-Upload-Pfad
+38. Synchrone Medienverarbeitung im MVP-Upload-Pfad
    - Impact: mittel bis hoch (größere Bilder oder zusätzliche Presets erhöhen Latenz und koppeln Verarbeitungsfehler direkt an Request-Antworten)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Folge-Change `openspec/changes/add-media-async-processing/` für Queue-/Worker-Pfad, Retry-Strategie und entkoppelte Variantenverarbeitung umsetzen

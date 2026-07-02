@@ -2,15 +2,17 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { pluginSurveysMetaEnTranslations } from '../src/plugin.translations.meta.en.js';
 import { SurveyQuestionOptionItem } from '../src/surveys.question-option-item.js';
 
 const pt = (key: string, variables?: Readonly<Record<string, string | number>>) => {
   const dictionary: Record<string, string> = {
-    'fields.optionTitle': 'Optionstitel',
-    'fields.optionEnablesFreeText': 'Freitext erlauben',
-    'actions.moveOptionUp': 'Option {{index}} nach oben',
-    'actions.moveOptionDown': 'Option {{index}} nach unten',
-    'actions.deleteOption': 'Option {{index}} löschen',
+    'fields.optionTitle': 'Antwort',
+    'fields.optionEnablesFreeText': 'Freitext für diese Antwort erlauben',
+    'labels.answerSection': 'Antwort {{index}}',
+    'actions.moveOptionUp': 'Antwort {{index}} nach oben',
+    'actions.moveOptionDown': 'Antwort {{index}} nach unten',
+    'actions.deleteOption': 'Antwort {{index}} löschen',
   };
   const template = dictionary[key] ?? key;
   return Object.entries(variables ?? {}).reduce(
@@ -51,22 +53,22 @@ describe('SurveyQuestionOptionItem', () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText('Optionstitel'), { target: { value: 'Option B neu' } });
+    fireEvent.change(screen.getByLabelText('Antwort 2'), { target: { value: 'Option B neu' } });
     const renameUpdater = updateQuestion.mock.calls[0]?.[1];
     expect(renameUpdater(question).options[1]).toMatchObject({ title: 'Option B neu' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Option 2 nach oben' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Antwort 2 nach oben' }));
     const moveUpdater = updateQuestion.mock.calls[1]?.[1];
     expect(moveUpdater(question).options.map((option: { title: string }) => option.title)).toEqual([
       'Option B',
       'Option A',
     ]);
 
-    fireEvent.click(screen.getByLabelText('Freitext erlauben'));
+    fireEvent.click(screen.getByLabelText('Freitext für diese Antwort erlauben'));
     const freeTextUpdater = updateQuestion.mock.calls[2]?.[1];
     expect(freeTextUpdater(question).options[1]).toMatchObject({ enablesFreeText: false });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Option 2 löschen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Antwort 2 löschen' }));
     expect(requestDeleteOption).toHaveBeenCalledWith(0, 1);
   });
 
@@ -90,7 +92,7 @@ describe('SurveyQuestionOptionItem', () => {
       />
     );
 
-    expect(screen.queryByLabelText('Freitext erlauben')).toBeNull();
+    expect(screen.queryByLabelText('Freitext für diese Antwort erlauben')).toBeNull();
   });
 
   it('falls back to empty option values when the addressed option slot is missing', () => {
@@ -113,7 +115,11 @@ describe('SurveyQuestionOptionItem', () => {
       />
     );
 
-    expect(screen.getByLabelText('Optionstitel')).toHaveProperty('value', '');
-    expect(screen.getByLabelText('Freitext erlauben')).toHaveProperty('checked', false);
+    expect(screen.getByLabelText('Antwort 2')).toHaveProperty('value', '');
+    expect(screen.getByLabelText('Freitext für diese Antwort erlauben')).toHaveProperty('checked', false);
+  });
+
+  it('provides an English answer-section label for aria text parity', () => {
+    expect(pluginSurveysMetaEnTranslations.labels.answerSection).toBe('Answer {{index}}');
   });
 });

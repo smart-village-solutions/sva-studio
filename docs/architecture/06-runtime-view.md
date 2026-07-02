@@ -221,9 +221,26 @@ Fehlerpfad:
 - fehlt die Berechtigung, blendet die Shell die Admin-Navigation fail-closed aus, blockiert der Host die Admin-Route vor dem Rendern oder verweigert die serverseitige Mutation mit `capability_authorization_denied` im Diagnosekontext.
 - fehlt für einen angefragten Mainserver-Typ noch jeder erfolgreiche Projektion-Snapshot, liefert `/api/v1/iam/contents` einen regulären Listenfehler; mit vorhandenem Snapshot bleibt stattdessen der letzte erfolgreiche Stand sichtbar und wird nur als veraltet markiert.
 - ist das News-Input-Modell ungültig, enthält schreibgeschützte Felder oder fehlt `publishedAt`, antwortet die Mainserver-News-Fassade mit HTTP `400`.
+
+### Szenario 4b: Survey-CRUD über Snapshot-nahen Host-Adapter
+
+1. Das Survey-Plugin arbeitet ausschließlich mit dem stabilen Studio-Modell und ruft hostgeführte Endpunkte unter `/api/v1/mainserver/surveys` auf.
+2. `@sva/auth-runtime` prüft Session, `instanceId`, aktiven Organisationskontext, Survey-Permissions und CSRF-Schutz serverseitig.
+3. `@sva/sva-mainserver` übersetzt Listenaufrufe auf snapshot-nahe Query-Argumente `ids`, `ongoing`, `archived` und `order`.
+4. Detail- und Listen-Reads mappen Mainserver-`SurveyPoll`-Antworten in das Studio-Modell zurück; Studio-only-Felder werden dabei aus dem kontrollierten `payload` rekonstruiert.
+5. Write-Pfade serialisieren `startAt` und `endAt` sowohl in `date.dateStart` beziehungsweise `date.dateEnd` als auch kontrolliert in `payload`, damit das Plugin-Modell trotz Snapshot-Lücke stabil bleibt.
+6. Weitere Studio-only-Felder wie `resultVisibility`, `showResultsInApp`, `privacyNotice` und `transparencyNotice` werden im Write-Pfad ausschließlich über `payload` an den Mainserver übergeben.
+7. Freitext-Freigaben bleiben als unterstützte Moderationsmutation auf `status: PUBLIC` begrenzt.
+8. Nicht unterstützte Freitext-Löschungen enden fail-closed in der Host-Fassade mit `501 unsupported_operation`, statt ein ungültiges GraphQL-Inputschema anzusprechen.
+
+Fehlerpfad:
+
+- Fehlt ein Survey-Snapshot-Feld im Mainserver, bleibt die Studio-Domäne über den Adapter stabil; Schema-Drift wird an der Hostgrenze und nicht im Plugin aufgefangen.
+- Liefert der Mainserver ein fachlich ungültiges Survey-Payload zurück, antwortet der Host mit deterministischem `invalid_response`.
+- Nicht vom Snapshot gedeckte Moderationsoperationen werden nicht simuliert, sondern explizit abgewiesen.
 - schlägt ein API-Call fehl, zeigt das Plugin eine verständliche Fehlermeldung und behält den Formzustand.
 
-### Szenario 4b: Plugin-Custom-View mit gemeinsamer Studio-UI
+### Szenario 4c: Plugin-Custom-View mit gemeinsamer Studio-UI
 
 1. Die App lädt das statisch registrierte Plugin und validiert dessen Routen, Admin-Ressourcen und Guard-Metadaten über `@sva/plugin-sdk`.
 2. Der Host materialisiert entweder eine freie Plugin-Sonderroute unter `/plugins/<pluginNamespace>` oder eine host-owned Admin-Ressource mit spezialisierter Fachfläche und bettet beide Varianten in die normale App-Shell ein.

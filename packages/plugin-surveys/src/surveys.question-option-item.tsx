@@ -1,12 +1,11 @@
-import { Checkbox, Input, StudioField } from '@sva/studio-ui-react';
-
-import {
-  questionTypeSupportsFreeTextOptionToggle,
-  type SurveyQuestionFormValues,
-} from './surveys.detail-content-model.js';
+import { type SurveyQuestionFormValues } from './surveys.detail-content-model.js';
 import { reorderEntries, type SurveyContentTranslate } from './surveys.question-editor.shared.js';
+import {
+  SurveyOptionActionButtons,
+  SurveyOptionFreeTextToggle,
+  SurveyOptionTitleField,
+} from './surveys.question-option-item.parts.js';
 import type { UpdateSurveyQuestion } from './surveys.question-list.shared.js';
-import { SurveyQuestionOptionActions } from './surveys.question-option-actions.js';
 
 export function SurveyQuestionOptionItem({
   pt,
@@ -51,37 +50,32 @@ export function SurveyQuestionOptionItem({
   };
 
   return (
-    <div className="space-y-4 rounded-lg border border-border/60 bg-background p-4">
-      <SurveyQuestionOptionActions
-        pt={pt}
-        optionIndex={optionIndex}
-        optionCount={optionCount}
-        onMoveUp={() => moveOption(optionIndex - 1)}
-        onMoveDown={() => moveOption(optionIndex + 1)}
-        onDelete={() => requestDeleteOption(questionIndex, optionIndex)}
-      />
-
-      <StudioField id={`survey-question-${questionIndex}-option-${optionIndex}-title`} label={pt('fields.optionTitle')} required>
-        <Input
-          id={`survey-question-${questionIndex}-option-${optionIndex}-title`}
-          required
-          value={question.options[optionIndex]?.title ?? ''}
-          onChange={(event) => updateOptionTitle(event.target.value)}
+    <div className="space-y-2 rounded-lg border border-border/60 bg-background p-3">
+      <div className="flex items-end gap-2">
+        <SurveyOptionTitleField
+          pt={pt}
+          questionIndex={questionIndex}
+          optionIndex={optionIndex}
+          title={question.options[optionIndex]?.title ?? ''}
+          onChange={updateOptionTitle}
         />
-      </StudioField>
-
-      {questionTypeSupportsFreeTextOptionToggle(question.type) ? (
-        <StudioField
-          id={`survey-question-${questionIndex}-option-${optionIndex}-free-text`}
-          label={pt('fields.optionEnablesFreeText')}
-        >
-          <Checkbox
-            id={`survey-question-${questionIndex}-option-${optionIndex}-free-text`}
-            checked={question.options[optionIndex]?.enablesFreeText ?? false}
-            onChange={(event) => updateOptionFreeText(event.target.checked)}
-          />
-        </StudioField>
-      ) : null}
+        <SurveyOptionActionButtons
+          pt={pt}
+          questionIndex={questionIndex}
+          optionIndex={optionIndex}
+          optionCount={optionCount}
+          onMove={moveOption}
+          onDelete={requestDeleteOption}
+        />
+      </div>
+      <SurveyOptionFreeTextToggle
+        pt={pt}
+        question={question}
+        questionIndex={questionIndex}
+        optionIndex={optionIndex}
+        checked={question.options[optionIndex]?.enablesFreeText ?? false}
+        onChange={updateOptionFreeText}
+      />
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
 
+import ExcelJS from 'exceljs';
 import {
   getWasteManagementImportCatalogEntry,
   normalizeWasteImportPickupDate,
@@ -15,7 +17,6 @@ import {
   type WasteManagementImportSourceFormat,
 } from '@sva/core';
 import type { createWasteMasterDataRepository } from '@sva/data-repositories';
-import * as XLSX from 'xlsx';
 
 import {
   defaultReadBinarySource,
@@ -56,6 +57,11 @@ type WasteRepository = Pick<
 
 const wasteImportProgressBatchSize = 25;
 const normalizeKeyPart = (value: string | undefined): string => (value ?? '').trim().toLocaleLowerCase('de-DE');
+const toArrayBuffer = (source: Uint8Array): ArrayBuffer => {
+  const slicedBuffer = source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
+  return slicedBuffer instanceof ArrayBuffer ? slicedBuffer : new ArrayBuffer(0);
+};
+const { Workbook } = ExcelJS;
 
 type ImportedLocationTourPickupDateRecord = Readonly<{
   readonly id: string;
@@ -82,18 +88,54 @@ const createLocationTourPickupDateImportProgress = (input: {
   lastUpdatedAt: new Date().toISOString(),
 });
 
-const parseImportWorkbookRows = (source: Uint8Array): readonly GenericImportRow[] => {
-  const workbook = XLSX.read(source, { type: 'array', raw: false });
-  const firstSheetName = workbook.SheetNames[0];
-  if (!firstSheetName) return [];
-  const worksheet = workbook.Sheets[firstSheetName];
-  return XLSX.utils
-    .sheet_to_json<Record<string, unknown>>(worksheet, { defval: '' })
-    .map((row) =>
-      Object.fromEntries(
-        Object.entries(row).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : String(value ?? '')])
-      )
+const readWorkbookWorksheet = async (
+  source: Uint8Array,
+  sourceFormat: WasteManagementImportSourceFormat
+) => {
+  const workbook = new Workbook();
+  if (sourceFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+    await workbook.xlsx.load(toArrayBuffer(source));
+    return workbook.worksheets[0];
+  }
+  if (sourceFormat === 'text/csv') {
+    return await workbook.csv.read(Readable.from([decodeTextSource(source)]), {
+      map: (value) => String(value ?? ''),
+      parserOptions: {
+        delimiter: ',',
+      },
+      sheetName: 'Import',
+    });
+  }
+  throw new Error(`unsupported_import_source_format:${sourceFormat}`);
+};
+
+const parseImportWorksheetRows = (worksheet: ExcelJS.Worksheet | undefined): readonly GenericImportRow[] => {
+  if (!worksheet) return [];
+
+  const headerRow = worksheet.getRow(1);
+  const headerCount = Math.max(headerRow.actualCellCount, headerRow.cellCount);
+  const headers: Array<Readonly<{ key: string; columnIndex: number }>> = [];
+  for (let columnIndex = 1; columnIndex <= headerCount; columnIndex += 1) {
+    const header = headerRow.getCell(columnIndex).text.trim();
+    if (header.length > 0) {
+      headers.push({ key: header, columnIndex });
+    }
+  }
+  if (headers.length === 0) return [];
+
+  const rows: GenericImportRow[] = [];
+  for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+    const row = worksheet.getRow(rowNumber);
+    const cells = headers.map(({ columnIndex }) => row.getCell(columnIndex).text.trim());
+    if (cells.every((value) => value.length === 0)) {
+      continue;
+    }
+    rows.push(
+      Object.fromEntries(headers.map(({ key }, index) => [key, cells[index] ?? '']))
     );
+  }
+
+  return rows;
 };
 
 const decodeTextSource = (source: Uint8Array): string => new TextDecoder('utf-8').decode(source);
@@ -110,7 +152,8 @@ export const parseImportRows = async (
   const catalogEntry = getWasteManagementImportCatalogEntry(input.profileId);
   if (!catalogEntry) throw new Error(`unknown_import_profile:${input.profileId}`);
   const source = await (deps.readBinarySource ?? defaultReadBinarySource)(input.blobRef);
-  const rows = parseImportWorkbookRows(source);
+  const worksheet = await readWorkbookWorksheet(source, input.sourceFormat);
+  const rows = parseImportWorksheetRows(worksheet);
   const headers = rows[0] ? Object.keys(rows[0]) : [];
   ensureRequiredColumns(headers, catalogEntry.requiredColumns, input.profileId);
   return rows;

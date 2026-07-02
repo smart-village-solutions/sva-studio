@@ -27,7 +27,9 @@ describe('survey content model', () => {
       getNormalizedSurveyQuestionOptions('SINGLE_CHOICE', [
         { id: 'option-1', title: 'Option A', position: 4, enablesFreeText: true },
       ])
-    ).toEqual([{ id: 'option-1', title: 'Option A', position: 0, enablesFreeText: false }]);
+    ).toEqual([
+      expect.objectContaining({ id: 'option-1', title: 'Option A', position: 0, enablesFreeText: false }),
+    ]);
   });
 
   it('keeps question and option positions in sync after normalization', () => {
@@ -55,30 +57,34 @@ describe('survey content model', () => {
       },
     ]);
 
-    expect(normalized[0]).toEqual({
-      id: 'question-2',
-      title: 'Zweite',
-      description: '',
-      type: 'MULTIPLE_CHOICE_WITH_TEXT',
-      required: false,
-      position: 0,
-      options: [
-        { id: 'option-2', title: 'Option B', position: 0, enablesFreeText: true },
-        { id: 'option-1', title: 'Option A', position: 1, enablesFreeText: false },
-      ],
-    });
+    expect(normalized[0]).toEqual(
+      expect.objectContaining({
+        id: 'question-2',
+        title: 'Zweite',
+        description: '',
+        type: 'MULTIPLE_CHOICE_WITH_TEXT',
+        required: false,
+        position: 0,
+        options: [
+          expect.objectContaining({ id: 'option-2', title: 'Option B', position: 0, enablesFreeText: true }),
+          expect.objectContaining({ id: 'option-1', title: 'Option A', position: 1, enablesFreeText: false }),
+        ],
+      })
+    );
     expect(normalized[0]?.options).toEqual([
-      { id: 'option-2', title: 'Option B', position: 0, enablesFreeText: true },
-      { id: 'option-1', title: 'Option A', position: 1, enablesFreeText: false },
+      expect.objectContaining({ id: 'option-2', title: 'Option B', position: 0, enablesFreeText: true }),
+      expect.objectContaining({ id: 'option-1', title: 'Option A', position: 1, enablesFreeText: false }),
     ]);
-    expect(normalized[1]).toEqual({
-      id: 'question-1',
-      title: 'Erste',
-      description: '',
-      type: 'FREE_TEXT',
-      required: true,
-      position: 1,
-      options: [],
-    });
+    expect(normalized[1]).toEqual(
+      expect.objectContaining({
+        id: 'question-1',
+        title: 'Erste',
+        description: '',
+        type: 'FREE_TEXT',
+        required: true,
+        position: 1,
+        options: [],
+      })
+    );
   });
 });

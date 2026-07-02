@@ -9,6 +9,9 @@ import {
   type SurveyModerationResponse,
 } from './surveys.moderation-model.js';
 
+const resolveModerationGroupTitle = (group: SurveyModerationQuestionGroup): string =>
+  group.questionTitle.trim().length > 0 ? group.questionTitle : group.questionId;
+
 export function SurveyModerationPlaceholder({
   description,
   message,
@@ -38,13 +41,15 @@ export function SurveyModerationGroupCard({
   onOpenResponse: (response: SurveyModerationResponse) => void;
   onToggleVisibility: (questionId: string, responseId: string, nextPublic: boolean) => void;
 }>) {
+  const groupTitle = resolveModerationGroupTitle(group);
+
   return (
-    <SurveyDetailCard title={group.questionTitle} description={pt('cards.moderation.description')}>
+    <SurveyDetailCard title={groupTitle} description={pt('cards.moderation.description')}>
       {group.responses.length === 0 ? (
         <p className="text-sm text-muted-foreground">{pt('messages.moderationEmptyQuestion')}</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse text-sm" aria-label={group.questionTitle}>
+          <table className="min-w-full border-collapse text-sm" aria-label={groupTitle}>
             <thead>
               <tr className="border-b border-border text-left">
                 <th className="px-3 py-2 font-medium text-foreground">{pt('fields.freeTextExcerpt')}</th>

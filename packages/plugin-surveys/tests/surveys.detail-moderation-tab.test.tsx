@@ -130,6 +130,28 @@ describe('SurveyDetailModerationTab', () => {
     expect(screen.getByText('Öffentlich')).toBeTruthy();
   });
 
+  it('falls back to the question id when a moderation group has no title', () => {
+    renderTab({
+      groups: [
+        {
+          questionId: 'question-untitled',
+          questionTitle: '',
+          responses: [
+            {
+              id: 'response-1',
+              text: 'Antwort ohne Fragetitel',
+              status: 'INTERNAL',
+              createdAt: '2026-07-01T08:00:00.000Z',
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getByRole('heading', { name: 'question-untitled' })).toBeTruthy();
+    expect(screen.getByRole('table', { name: 'question-untitled' })).toBeTruthy();
+  });
+
   it('opens the full-text overlay from the truncated excerpt and closes it again', () => {
     renderTab({
       groups: [

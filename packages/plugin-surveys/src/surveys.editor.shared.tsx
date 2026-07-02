@@ -14,10 +14,8 @@ import {
 import { SurveyDetailResultsTab, type SurveyResultsTabData } from './surveys.detail-results-tab.js';
 import type { SurveyMutationInput } from './surveys.mutation.types.js';
 import type { SurveyContentItem, SurveyLocalizedText } from './surveys.types.js';
-
 export type SurveyEditorMode = 'create' | 'edit';
 export type SurveyEditorTabId = 'basis' | 'content' | 'moderation' | 'results' | 'history';
-
 const resolveLocalizedText = (value: SurveyLocalizedText | undefined): string => {
   if (!value) {
     return '';
@@ -30,26 +28,21 @@ const resolveLocalizedText = (value: SurveyLocalizedText | undefined): string =>
   }
   return Object.values(value).find((candidate) => candidate.trim().length > 0)?.trim() ?? '';
 };
-
 const normalizeDateInput = (value?: string): string => (value ? toDatetimeLocalValue(value) : '');
-
 const surveyStatusLabelKey = {
   DRAFT: 'fields.statusOptions.draft',
   ACTIVE: 'fields.statusOptions.active',
   ARCHIVED: 'fields.statusOptions.archived',
 } as const satisfies Record<SurveyContentItem['status'], string>;
-
 const deriveSurveyTargetAreaOptions = (item: SurveyContentItem | null): SurveyTargetAreaOption[] => {
   if (!item) {
     return [];
   }
-
   return [...new Set(item.targetAreaIds)].map((targetAreaId) => ({
     id: targetAreaId,
     label: targetAreaId,
   }));
 };
-
 export const mapSurveyModerationGroups = (item: SurveyContentItem): SurveyModerationQuestionGroup[] =>
   (item.results?.questions ?? [])
     .map((questionResult) => {
@@ -63,7 +56,6 @@ export const mapSurveyModerationGroups = (item: SurveyContentItem): SurveyModera
       };
     })
     .filter((group) => group.questionTitle.trim().length > 0 || group.responses.length > 0);
-
 export const mapSurveyResultsTabData = (
   item: SurveyContentItem,
   pt: ReturnType<typeof usePluginTranslation>
@@ -71,7 +63,6 @@ export const mapSurveyResultsTabData = (
   if (!item.results) {
     return null;
   }
-
   return {
     statusLabel: pt(surveyStatusLabelKey[item.status]),
     participationCount: item.results.participationCount,
@@ -98,7 +89,6 @@ export const mapSurveyResultsTabData = (
     }),
   };
 };
-
 export const mapSurveyItemToFormValues = (item: SurveyContentItem): SurveyDetailFormValues => ({
   title: resolveLocalizedText(item.title),
   basis: {
@@ -133,17 +123,14 @@ export const mapSurveyItemToFormValues = (item: SurveyContentItem): SurveyDetail
     })),
   },
 });
-
 const trimmedValueOrUndefined = (value: string): string | undefined => {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 };
-
 const findLoadedQuestion = (
   loadedItem: SurveyContentItem | null | undefined,
   questionId: string | undefined
 ) => (questionId ? loadedItem?.questions.find((entry) => entry.id === questionId) : undefined);
-
 const buildRemovedOptionMutations = (
   loadedItem: SurveyContentItem | null | undefined,
   question: SurveyDetailFormValues['content']['questions'][number]
@@ -156,7 +143,6 @@ const buildRemovedOptionMutations = (
       .map((option) => ({ id: option.id, delete: true as const })) ?? []
   );
 };
-
 const buildQuestionMutation = (
   question: SurveyDetailFormValues['content']['questions'][number],
   questionIndex: number,
@@ -170,17 +156,13 @@ const buildQuestionMutation = (
   type: question.type,
   required: question.required,
   position: question.position ?? questionIndex,
-  options: [
-    ...question.options.map((option, optionIndex) => ({
-      ...(option.id ? { id: option.id } : {}),
-      title: option.title.trim(),
-      position: option.position ?? optionIndex,
-      enablesFreeText: option.enablesFreeText,
-    })),
-    ...buildRemovedOptionMutations(loadedItem, question),
-  ],
+  options: [...question.options.map((option, optionIndex) => ({
+    ...(option.id ? { id: option.id } : {}),
+    title: option.title.trim(),
+    position: option.position ?? optionIndex,
+    enablesFreeText: option.enablesFreeText,
+  })), ...buildRemovedOptionMutations(loadedItem, question)],
 });
-
 const buildRemovedQuestionMutations = (
   loadedItem: SurveyContentItem | null | undefined,
   questions: SurveyDetailFormValues['content']['questions']
@@ -192,13 +174,11 @@ const buildRemovedQuestionMutations = (
       .map((question) => ({ id: question.id, delete: true as const })) ?? []
   );
 };
-
 export const toSurveyMutationInput = (
   values: SurveyDetailFormValues,
   loadedItem?: SurveyContentItem | null
 ): SurveyMutationInput => {
   const removedQuestions = buildRemovedQuestionMutations(loadedItem, values.content.questions);
-
   return {
     title: values.title.trim(),
     ...(trimmedValueOrUndefined(values.content.shortDescription)
@@ -228,10 +208,8 @@ export const toSurveyMutationInput = (
     ],
   };
 };
-
 export const getSurveyEditorErrorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error && error.message.trim().length > 0 ? error.message : fallback;
-
 export const createSurveyEditorTabs = (
   pt: ReturnType<typeof usePluginTranslation>,
   mode: SurveyEditorMode,
@@ -241,7 +219,6 @@ export const createSurveyEditorTabs = (
   const moderationGroups = loadedItem ? mapSurveyModerationGroups(loadedItem) : [];
   const resultData = loadedItem ? mapSurveyResultsTabData(loadedItem, pt) : null;
   const availableTargetAreas = deriveSurveyTargetAreaOptions(loadedItem);
-
   return [
     {
       id: 'basis',

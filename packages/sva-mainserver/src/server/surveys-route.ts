@@ -49,7 +49,6 @@ const validateMutationRequest = (request: Request, requestId?: string): Response
   const csrfError = validateCsrf(request, requestId);
   return csrfError ? errorJson(403, 'csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen.') : null;
 };
-
 const authorizeOrResponse = async (
   ctx: AuthenticatedRequestContext,
   action: 'read' | 'create' | 'update' | 'delete',
@@ -83,7 +82,6 @@ const authorizeOrResponse = async (
     });
     return errorJson(result.status, result.error, result.message);
   }
-
   return {
     instanceId: result.actor.instanceId,
     keycloakSubject: result.actor.keycloakSubject,
@@ -97,7 +95,6 @@ const parseSurveyInput = async (request: Request): Promise<SvaMainserverSurveyIn
   const body = await parseJsonObjectBody(request, 'Umfrage-Daten müssen als Objekt gesendet werden.');
   return isResponse(body) ? body : (body as SvaMainserverSurveyInput);
 };
-
 const toUnexpectedRouteError = (message: string) =>
   toMainserverErrorResponse(
     new SvaMainserverError({
@@ -123,10 +120,8 @@ const authorizeMutation = async (
   if (csrfError) {
     return csrfError;
   }
-
   return authorizeOrResponse(ctx, action, contentId);
 };
-
 const toMutationFailureResponse = (
   payload: SurveyMutationPayload,
   fallbackMessage: string
@@ -142,16 +137,13 @@ const toMutationFailureResponse = (
         : firstError?.code === 'INTERNAL_ERROR'
           ? 500
           : 422;
-
   return errorJson(status, errorCode, message);
 };
-
 const handleList = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
   const actor = await authorizeOrResponse(ctx, 'read');
   if (actor instanceof Response) {
     return actor;
   }
-
   const pagination = parseMainserverListQuery(request);
   return json(
     await listSvaMainserverSurveys({
@@ -171,7 +163,6 @@ const handleCreate = async (request: Request, ctx: AuthenticatedRequestContext):
   if (survey instanceof Response) {
     return survey;
   }
-
   const created = await createSvaMainserverSurvey({ ...actor, survey });
   if (!created.success || created.errors.length > 0 || !created.survey) {
     return toMutationFailureResponse(created, 'Umfrage konnte nicht angelegt werden.');
@@ -195,7 +186,6 @@ const handleGetItem = async (
   if (!survey) {
     return errorJson(404, 'not_found', 'Die Umfrage wurde nicht gefunden.');
   }
-
   const [moderationAccess, exportAccess] = await Promise.all([
     authorizeContentPrimitiveForUser({
       ctx,
@@ -214,11 +204,9 @@ const handleGetItem = async (
       },
     }),
   ]);
-
   if (!moderationAccess.ok && !exportAccess.ok) {
     return json({ data: survey });
   }
-
   const results = await getSvaMainserverSurveyResults({
     ...actor,
     surveyId,
@@ -240,7 +228,6 @@ const handleUpdate = async (
   if (survey instanceof Response) {
     return survey;
   }
-
   const updated = await updateSvaMainserverSurvey({
     ...actor,
     surveyId,
@@ -261,7 +248,6 @@ const handleDelete = async (
   if (actor instanceof Response) {
     return actor;
   }
-
   const deleted = await deleteSvaMainserverSurvey({
     ...actor,
     surveyId,

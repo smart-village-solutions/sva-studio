@@ -243,7 +243,7 @@ const createReleaseSurveyFreeTextResponseWithConfig = (executeGraphqlWithConfig:
   return mapSurveyMutationPayload(response.createOrUpdateSurvey);
 };
 
-const createDeleteSurveyFreeTextResponseWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) => async (
+const createDeleteSurveyFreeTextResponseWithConfig = async (
   input: SvaMainserverConnectionInput & {
     readonly surveyId: string;
     readonly freeTextResponseId: string;
@@ -266,5 +266,5 @@ export const createSurveyOperations = (executeGraphqlWithConfig: GraphqlExecutor
   getSurveyResultsWithConfig: createGetSurveyResultsWithConfig(executeGraphqlWithConfig),
   writeSurveyWithConfig: createWriteSurveyWithConfig(executeGraphqlWithConfig),
   releaseSurveyFreeTextResponseWithConfig: createReleaseSurveyFreeTextResponseWithConfig(executeGraphqlWithConfig),
-  deleteSurveyFreeTextResponseWithConfig: createDeleteSurveyFreeTextResponseWithConfig(executeGraphqlWithConfig),
+  deleteSurveyFreeTextResponseWithConfig: createDeleteSurveyFreeTextResponseWithConfig,
 });

@@ -24,6 +24,7 @@ export const pluginSurveysContentTranslations = {
     resultsFreeTextEmpty: 'Für diese Frage liegen keine Freitextantworten vor.',
     resultsExportWithoutFreeText: 'Ergebnisexport ohne Freitextantworten.',
     resultsExportWithFreeText: 'Ergebnisexport inklusive Freitextantworten.',
+    editorLoading: 'Umfrage wird geladen.',
     loadError: 'Umfrage konnte nicht geladen werden.',
     createError: 'Umfrage konnte nicht angelegt werden.',
     updateError: 'Umfrage konnte nicht gespeichert werden.',

@@ -1318,6 +1318,43 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('fails closed when the mainserver returns more surveys than the local full-scan contract supports', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            surveys: Array.from({ length: 10_001 }, (_, index) => ({
+              id: `survey-${index + 1}`,
+              title: { de: `Umfrage ${index + 1}` },
+              status: 'ACTIVE',
+              isAnonymous: true,
+              showResultsInApp: false,
+              resultVisibility: 'NONE',
+              targetAreaIds: [],
+              questions: [],
+              createdAt: '2026-06-20T10:00:00.000Z',
+              updatedAt: '2026-06-21T10:00:00.000Z',
+            })),
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listSurveys({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 1, pageSize: 25 })
+    ).rejects.toMatchObject({
+      code: 'invalid_response',
+      statusCode: 502,
+    });
+  });
+
   it('creates or updates static content with typed GraphQL variables', async () => {
     const fetchImpl = vi
       .fn()

@@ -33,7 +33,7 @@ export const SurveyEditorPage = ({
   const tabs = React.useMemo(() => createSurveyEditorTabs(pt, mode, loadedItem, contentId), [contentId, loadedItem, mode, pt]);
 
   if (isLoading) {
-    return <StudioLoadingState>{pt('history.loading')}</StudioLoadingState>;
+    return <StudioLoadingState>{pt('messages.editorLoading')}</StudioLoadingState>;
   }
 
   return (

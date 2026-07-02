@@ -166,6 +166,14 @@ const createListSurveysWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) 
 
   const offset = (pagination.page - 1) * pagination.pageSize;
   const rawSurveys = response.surveys ?? [];
+  if (rawSurveys.length > MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS) {
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message:
+        'Der SVA-Mainserver lieferte mehr Umfragen als für die Studio-Synchronisation ohne serverseitige Pagination unterstützt werden.',
+      statusCode: 502,
+    });
+  }
   const pagedItems = rawSurveys.slice(offset, offset + pagination.pageSize).map(mapSurveyItem);
 
   return {

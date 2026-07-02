@@ -24,6 +24,7 @@ export const pluginSurveysContentEnTranslations = {
     resultsFreeTextEmpty: 'There are no free-text responses for this question.',
     resultsExportWithoutFreeText: 'Result export without free-text responses.',
     resultsExportWithFreeText: 'Result export including free-text responses.',
+    editorLoading: 'Loading survey.',
     loadError: 'Survey could not be loaded.',
     createError: 'Survey could not be created.',
     updateError: 'Survey could not be saved.',

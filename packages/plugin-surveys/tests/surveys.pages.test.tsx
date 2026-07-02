@@ -88,6 +88,7 @@ const messages = {
   'surveys.messages.createPendingHint': 'Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.',
   'surveys.messages.sectionPlaceholder': 'Die fachlichen Felder dieses Bereichs folgen in den nächsten Umsetzungsabschnitten.',
   'surveys.messages.historyPlaceholder': 'Die Historie erscheint hier, sobald die Umfrage bereits angelegt wurde.',
+  'surveys.messages.editorLoading': 'Umfrage wird geladen.',
   'surveys.history.createHint': 'Die Historie wird nach dem ersten Speichern verfügbar.',
   'surveys.history.loading': 'Historie wird geladen.',
   'surveys.messages.unlimitedScheduleHint': 'Ohne Enddatum bleibt die Umfrage unbefristet.',
@@ -246,6 +247,16 @@ describe('survey editor pages', () => {
         scoped.queryByText('Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.')
       ).toBeNull();
     })();
+  });
+
+  it('shows a survey-specific loading label while the editor detail is loading', () => {
+    getSurveyMock.mockReturnValue(new Promise(() => undefined));
+
+    const view = render(<SurveyEditPage />);
+    const scoped = within(view.container);
+
+    expect(scoped.getByText('Umfrage wird geladen.')).toBeTruthy();
+    expect(scoped.queryByText('Historie wird geladen.')).toBeNull();
   });
 
 });

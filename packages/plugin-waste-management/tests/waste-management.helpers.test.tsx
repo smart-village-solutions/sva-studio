@@ -202,8 +202,8 @@ describe('waste management helper modules', () => {
     await workbook.xlsx.load(workbookBuffer);
     const worksheet = workbook.getWorksheet('Import');
     expect(worksheet).toBeDefined();
-    expect(worksheet?.getRow(1).values).toEqual([, 'region_id', 'street_id']);
-    expect(worksheet?.getRow(2).values).toEqual([, 'region-1', 'street-1']);
+    expect(worksheet?.getRow(1).values).toEqual([undefined, 'region_id', 'street_id']);
+    expect(worksheet?.getRow(2).values).toEqual([undefined, 'region-1', 'street-1']);
 
     const onConfirm = vi.fn();
     const onTokenChange = vi.fn();

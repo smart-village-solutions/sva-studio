@@ -205,6 +205,55 @@ describe('survey-mappers', () => {
     });
   });
 
+  it('derives option question ids from the parent question when the upstream schema omits them', () => {
+    expect(
+      mapSurveyItem({
+        id: 'survey-1',
+        title: { de: 'Buergerumfrage' },
+        status: 'ACTIVE',
+        targetAreaIds: [],
+        isAnonymous: true,
+        questionCount: 1,
+        participationCount: 0,
+        submissionCount: 0,
+        questions: [
+          {
+            id: 'question-1',
+            surveyId: 'survey-1',
+            title: { de: 'Frage 1' },
+            type: 'SINGLE_CHOICE',
+            required: true,
+            position: 0,
+            createdAt: '2026-07-01T08:00:00.000Z',
+            updatedAt: '2026-07-01T08:00:00.000Z',
+            options: [
+              {
+                id: 'option-1',
+                title: { de: 'Ja' },
+                position: 0,
+                enablesFreeText: false,
+              },
+            ],
+          },
+        ],
+        createdAt: '2026-07-01T08:00:00.000Z',
+        updatedAt: '2026-07-01T08:00:00.000Z',
+      } as never)
+    ).toMatchObject({
+      questions: [
+        {
+          id: 'question-1',
+          options: [
+            {
+              id: 'option-1',
+              questionId: 'question-1',
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   it('reads studio-only survey fields from payload when the GraphQL snapshot does not expose them natively', () => {
     expect(
       mapSurveyItem({

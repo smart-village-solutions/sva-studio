@@ -37,13 +37,14 @@ type StudioDetailTabLegacy<TTabId extends string> = Readonly<{
   content: React.ReactNode;
 }>;
 
-export type StudioDetailTab<TTabId extends string = string> = StudioDetailTabDefinition<TTabId>;
-type StudioDetailTabLike<TTabId extends string> = StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>;
+export type StudioDetailTab<TTabId extends string = string> =
+  | StudioDetailTabDefinition<TTabId>
+  | StudioDetailTabLegacy<TTabId>;
 
 export type StudioDetailTabsProps<TTabId extends string = string> = Readonly<{
   ariaLabel: string;
   mobileSelectLabel?: string;
-  tabs: readonly StudioDetailTabLike<TTabId>[];
+  tabs: readonly StudioDetailTab<TTabId>[];
   defaultValue?: TTabId;
   value?: TTabId;
   onValueChange?: (value: TTabId) => void;
@@ -55,19 +56,19 @@ export type StudioDetailTabsProps<TTabId extends string = string> = Readonly<{
   className?: string;
 }>;
 
-function isLegacyTab<TTabId extends string>(tab: StudioDetailTabLike<TTabId>): tab is StudioDetailTabLegacy<TTabId> {
+function isLegacyTab<TTabId extends string>(tab: StudioDetailTab<TTabId>): tab is StudioDetailTabLegacy<TTabId> {
   return 'content' in tab;
 }
 
-function getTabPanel<TTabId extends string>(tab: StudioDetailTabLike<TTabId>) {
+function getTabPanel<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   return isLegacyTab(tab) ? tab.content : tab.panel;
 }
 
-function getTabDescription<TTabId extends string>(tab: StudioDetailTabLike<TTabId>) {
+function getTabDescription<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   return tab.description;
 }
 
-function getTabTitle<TTabId extends string>(tab: StudioDetailTabLike<TTabId>) {
+function getTabTitle<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   if (tab.title) {
     return tab.title;
   }
@@ -75,25 +76,25 @@ function getTabTitle<TTabId extends string>(tab: StudioDetailTabLike<TTabId>) {
   return isLegacyTab(tab) ? undefined : tab.label;
 }
 
-function isTabVisible<TTabId extends string>(tab: StudioDetailTabLike<TTabId>) {
+function isTabVisible<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   return tab.isVisible !== false;
 }
 
-function tabHasChanges<TTabId extends string>(tab: StudioDetailTabLike<TTabId>) {
+function tabHasChanges<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   return tab.hasChanges ?? (isLegacyTab(tab) ? (tab.isDirty ?? false) : false);
 }
 
-function getChangeLabel<TTabId extends string>(tab: StudioDetailTabLike<TTabId>) {
+function getChangeLabel<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   return tab.changeLabel ?? (isLegacyTab(tab) ? tab.dirtyLabel : undefined);
 }
 
-function getMobileOptionLabel<TTabId extends string>(tab: StudioDetailTabLike<TTabId>) {
+function getMobileOptionLabel<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   const baseLabel = typeof tab.label === 'string' ? tab.label : tab.id;
   const changeLabel = getChangeLabel(tab);
   return tabHasChanges(tab) && changeLabel ? `${baseLabel} (${changeLabel})` : baseLabel;
 }
 
-function renderTabLabel<TTabId extends string>(tab: StudioDetailTabLike<TTabId>) {
+function renderTabLabel<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   const changeLabel = getChangeLabel(tab);
 
   return (
@@ -122,7 +123,7 @@ export function StudioDetailTabs<TTabId extends string = string>({
   statusAriaLive = 'polite',
   className,
 }: StudioDetailTabsProps<TTabId>) {
-  const visibleTabs = React.useMemo(() => tabs.filter(isTabVisible) as readonly StudioDetailTab<TTabId>[], [tabs]);
+  const visibleTabs = React.useMemo(() => tabs.filter(isTabVisible), [tabs]);
   const firstTabId = visibleTabs[0]?.id;
   const [internalValue, setInternalValue] = React.useState<TTabId | undefined>(defaultValue ?? firstTabId);
   const requestedValue = value ?? internalValue ?? defaultValue ?? firstTabId;

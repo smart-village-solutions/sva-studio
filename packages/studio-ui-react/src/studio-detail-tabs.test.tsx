@@ -98,11 +98,13 @@ describe('StudioDetailTabs', () => {
 
   it('switches tabs on pointer clicks inside a form without submitting it', () => {
     const onSubmit = vi.fn((event: Event) => event.preventDefault());
+    const onValueChange = vi.fn<(value: 'base' | 'content') => void>();
 
     render(
       <form onSubmit={onSubmit}>
         <StudioDetailTabs
           ariaLabel="Detailbereiche"
+          onValueChange={onValueChange}
           tabs={[
             { id: 'base', label: 'Basis', panel: <p>Basis Panel</p> },
             { id: 'content', label: 'Inhalte', panel: <p>Inhalte Panel</p> },
@@ -114,6 +116,8 @@ describe('StudioDetailTabs', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Inhalte' }));
 
     expect(onSubmit).not.toHaveBeenCalled();
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledWith('content');
     expect(screen.getByRole('tab', { name: 'Inhalte' }).getAttribute('data-state')).toBe('active');
     expect(screen.getByText('Inhalte Panel')).toBeTruthy();
   });

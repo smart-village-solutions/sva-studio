@@ -238,6 +238,29 @@ describe('survey-mappers', () => {
     });
   });
 
+  it('normalizes string notices from the payload contract like other localized fields', () => {
+    expect(
+      mapSurveyItem({
+        id: 'survey-1',
+        title: { de: 'Titel' },
+        status: 'ACTIVE',
+        targetAreaIds: ['ta-1'],
+        isAnonymous: true,
+        questionCount: 0,
+        questions: [],
+        createdAt: '2026-07-01T10:00:00Z',
+        updatedAt: '2026-07-01T11:00:00Z',
+        payload: {
+          privacyNotice: 'Datenschutz',
+          transparencyNotice: 'Transparenz',
+        },
+      } as never)
+    ).toMatchObject({
+      privacyNotice: { de: 'Datenschutz' },
+      transparencyNotice: { de: 'Transparenz' },
+    });
+  });
+
   it('tolerates extra payload keys while still reading known survey fallback fields', () => {
     expect(
       mapSurveyItem({

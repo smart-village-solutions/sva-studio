@@ -220,6 +220,34 @@ describe('waste management operations runtime', () => {
     ]);
   });
 
+  it('parses canonical csv imports for profiles that allow text/csv', async () => {
+    const rows = await parseImportRows(
+      {
+        readBinarySource: vi.fn(async () =>
+          new TextEncoder().encode(
+            ['region_id,region_name,city_id,city_name,location_id,active', 'region-nord,Nord,city-perleberg,Perleberg,loc-001,true'].join('\n')
+          )
+        ),
+      },
+      {
+        profileId: 'waste-management.geografie-abholorte',
+        sourceFormat: 'text/csv',
+        blobRef: 'fixture.csv',
+      }
+    );
+
+    expect(rows).toEqual([
+      {
+        region_id: 'region-nord',
+        region_name: 'Nord',
+        city_id: 'city-perleberg',
+        city_name: 'Perleberg',
+        location_id: 'loc-001',
+        active: 'true',
+      },
+    ]);
+  });
+
   it('fails closed for unknown import profile ids after row parsing succeeds', async () => {
     vi.doMock('./waste-management-operations.import.js', async (importOriginal) => {
       const actual = await importOriginal<typeof import('./waste-management-operations.import.js')>();

@@ -240,7 +240,7 @@ Fehlerpfad:
 - Nicht vom Snapshot gedeckte Moderationsoperationen werden nicht simuliert, sondern explizit abgewiesen.
 - schlägt ein API-Call fehl, zeigt das Plugin eine verständliche Fehlermeldung und behält den Formzustand.
 
-### Szenario 4b: Plugin-Custom-View mit gemeinsamer Studio-UI
+### Szenario 4c: Plugin-Custom-View mit gemeinsamer Studio-UI
 
 1. Die App lädt das statisch registrierte Plugin und validiert dessen Routen, Admin-Ressourcen und Guard-Metadaten über `@sva/plugin-sdk`.
 2. Der Host materialisiert entweder eine freie Plugin-Sonderroute unter `/plugins/<pluginNamespace>` oder eine host-owned Admin-Ressource mit spezialisierter Fachfläche und bettet beide Varianten in die normale App-Shell ein.

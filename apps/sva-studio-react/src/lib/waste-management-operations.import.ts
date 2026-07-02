@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
 
 import ExcelJS from 'exceljs';
 import {
@@ -87,10 +88,28 @@ const createLocationTourPickupDateImportProgress = (input: {
   lastUpdatedAt: new Date().toISOString(),
 });
 
-const parseImportWorkbookRows = async (source: Uint8Array): Promise<readonly GenericImportRow[]> => {
+const readWorkbookWorksheet = async (
+  source: Uint8Array,
+  sourceFormat: WasteManagementImportSourceFormat
+) => {
   const workbook = new Workbook();
-  await workbook.xlsx.load(toArrayBuffer(source));
-  const worksheet = workbook.worksheets[0];
+  if (sourceFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+    await workbook.xlsx.load(toArrayBuffer(source));
+    return workbook.worksheets[0];
+  }
+  if (sourceFormat === 'text/csv') {
+    return await workbook.csv.read(Readable.from([decodeTextSource(source)]), {
+      map: (value) => String(value ?? ''),
+      parserOptions: {
+        delimiter: ',',
+      },
+      sheetName: 'Import',
+    });
+  }
+  throw new Error(`unsupported_import_source_format:${sourceFormat}`);
+};
+
+const parseImportWorksheetRows = (worksheet: ExcelJS.Worksheet | undefined): readonly GenericImportRow[] => {
   if (!worksheet) return [];
 
   const headerRow = worksheet.getRow(1);
@@ -133,7 +152,8 @@ export const parseImportRows = async (
   const catalogEntry = getWasteManagementImportCatalogEntry(input.profileId);
   if (!catalogEntry) throw new Error(`unknown_import_profile:${input.profileId}`);
   const source = await (deps.readBinarySource ?? defaultReadBinarySource)(input.blobRef);
-  const rows = await parseImportWorkbookRows(source);
+  const worksheet = await readWorkbookWorksheet(source, input.sourceFormat);
+  const rows = parseImportWorksheetRows(worksheet);
   const headers = rows[0] ? Object.keys(rows[0]) : [];
   ensureRequiredColumns(headers, catalogEntry.requiredColumns, input.profileId);
   return rows;

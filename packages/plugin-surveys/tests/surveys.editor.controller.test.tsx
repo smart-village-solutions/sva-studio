@@ -332,6 +332,42 @@ describe('useSurveyEditorController', () => {
     });
   });
 
+  it('blocks edit submits until the existing survey has loaded successfully', async () => {
+    const navigateToContentList = vi.fn(async () => undefined);
+    getSurveyMock.mockRejectedValue({});
+
+    const { result } = renderHook(() => {
+      const methods = useForm<SurveyDetailFormValues>({
+        defaultValues: {
+          ...createEmptyFormValues(),
+          title: 'Lokale Änderungen',
+        },
+      });
+
+      return useSurveyEditorController({
+        mode: 'edit',
+        contentId: 'survey-1',
+        methods,
+        pt,
+        navigateToContentList,
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.loadedItem).toBeNull();
+      expect(result.current.status).toEqual({ kind: 'error', text: 'Umfrage konnte nicht geladen werden.' });
+    });
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(updateSurveyMock).not.toHaveBeenCalled();
+    expect(result.current.status).toEqual({ kind: 'error', text: 'Umfrage konnte nicht geladen werden.' });
+    expect(navigateToContentList).not.toHaveBeenCalled();
+  });
+
   it('clears stale loaded survey state when loading another survey fails', async () => {
     const navigateToContentList = vi.fn(async () => undefined);
     getSurveyMock

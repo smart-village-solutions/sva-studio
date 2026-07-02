@@ -283,6 +283,81 @@ describe('surveys api payload mapping', () => {
     });
   });
 
+  it('preserves non-edited locales when clearing optional localized survey fields', async () => {
+    const { updateSurvey } = await import('../src/surveys.api.js');
+
+    const payload = await updateSurvey(
+      'survey-1',
+      {
+        title: 'Aktualisierte Umfrage',
+        shortDescription: '',
+        description: '',
+        status: 'ACTIVE',
+        isAnonymous: false,
+        resultVisibility: 'AFTER_SUBMISSION',
+        targetAreaIds: [],
+        showResultsInApp: true,
+        privacyNotice: '',
+        transparencyNotice: '',
+        questions: [
+          {
+            id: 'question-1',
+            title: 'Aktualisierte Frage',
+            description: '',
+            type: 'SINGLE_CHOICE',
+            required: true,
+            position: 0,
+            options: [],
+          },
+        ],
+      },
+      {
+        id: 'survey-1',
+        contentType: 'surveys.survey',
+        title: { de: 'Bestehende Umfrage', en: 'Existing survey' },
+        shortDescription: { de: 'Bestehende Kurzfassung', en: 'Existing summary' },
+        description: { de: 'Bestehende Beschreibung', en: 'Existing description' },
+        status: 'ACTIVE',
+        isAnonymous: false,
+        resultVisibility: 'AFTER_SUBMISSION',
+        targetAreaIds: [],
+        showResultsInApp: true,
+        privacyNotice: { de: 'Bestehender Datenschutz', en: 'Existing privacy notice' },
+        transparencyNotice: { de: 'Bestehende Transparenz', en: 'Existing transparency notice' },
+        questions: [
+          {
+            id: 'question-1',
+            surveyId: 'survey-1',
+            title: { de: 'Bestehende Frage', en: 'Existing question' },
+            description: { de: 'Bestehende Fragebeschreibung', en: 'Existing question description' },
+            type: 'SINGLE_CHOICE',
+            required: true,
+            position: 0,
+            options: [],
+          },
+        ],
+        questionCount: 1,
+        participationCount: 0,
+        submissionCount: 0,
+        createdAt: '2026-07-01T08:00:00.000Z',
+        updatedAt: '2026-07-02T08:00:00.000Z',
+      }
+    );
+
+    expect(payload).toMatchObject({
+      shortDescription: { en: 'Existing summary' },
+      description: { en: 'Existing description' },
+      privacyNotice: { en: 'Existing privacy notice' },
+      transparencyNotice: { en: 'Existing transparency notice' },
+      questions: [
+        {
+          id: 'question-1',
+          description: { en: 'Existing question description' },
+        },
+      ],
+    });
+  });
+
   it('keeps the list/get/delete wrappers and the custom surveys error contract wired through the CRUD client', async () => {
     const { deleteSurvey, getSurvey, listSurveys } = await import('../src/surveys.api.js');
 

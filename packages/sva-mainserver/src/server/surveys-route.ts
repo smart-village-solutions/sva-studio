@@ -13,11 +13,13 @@ import {
   getSvaMainserverSurvey,
   getSvaMainserverSurveyResults,
   listSvaMainserverSurveys,
+  releaseSvaMainserverSurveyFreeTextResponse,
   updateSvaMainserverSurvey,
 } from './service.js';
 import {
   errorJson,
   isResponse,
+  isRecord,
   json,
   matchRequestRoute,
   parseJsonObjectBody,
@@ -32,7 +34,14 @@ const SURVEYS_COLLECTION_PATH = '/api/v1/mainserver/surveys';
 const logger = createSdkLogger({ component: 'sva-mainserver-surveys-route', level: 'info' });
 
 type ContentKind = 'surveys';
-type RouteMatch = SharedRouteMatch<ContentKind>;
+type RouteMatch =
+  | SharedRouteMatch<ContentKind>
+  | {
+      readonly kind: 'freeTextResponse';
+      readonly contentKind: ContentKind;
+      readonly surveyId: string;
+      readonly freeTextResponseId: string;
+    };
 
 type ContentActor = Readonly<{
   instanceId: string;
@@ -44,8 +53,41 @@ type SurveyMutationPayload = Awaited<ReturnType<typeof createSvaMainserverSurvey
 type AuthorizationDecision = Awaited<ReturnType<typeof authorizeContentPrimitiveForUser>>;
 type AuthorizationFailure = Extract<AuthorizationDecision, { readonly ok: false }>;
 
-const matchRoute = (request: Request): RouteMatch | null =>
-  matchRequestRoute(request, SURVEYS_COLLECTION_PATH, 'surveys');
+const decodePathSegment = (value: string): string | null => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+};
+
+const matchRoute = (request: Request): RouteMatch | null => {
+  const pathname = new URL(request.url).pathname;
+  const freeTextResponsePrefix = `${SURVEYS_COLLECTION_PATH}/`;
+
+  if (pathname.startsWith(freeTextResponsePrefix)) {
+    const segments = pathname.slice(freeTextResponsePrefix.length).split('/');
+    if (segments.length === 3 && segments[1] === 'free-text-responses') {
+      const surveyId = decodePathSegment(segments[0] ?? '');
+      const freeTextResponseId = decodePathSegment(segments[2] ?? '');
+      if (
+        surveyId &&
+        freeTextResponseId &&
+        surveyId.includes('/') === false &&
+        freeTextResponseId.includes('/') === false
+      ) {
+        return {
+          kind: 'freeTextResponse',
+          contentKind: 'surveys',
+          surveyId,
+          freeTextResponseId,
+        };
+      }
+    }
+  }
+
+  return matchRequestRoute(request, SURVEYS_COLLECTION_PATH, 'surveys');
+};
 
 const validateMutationRequest = (request: Request, requestId?: string): Response | null => {
   const csrfError = validateCsrf(request, requestId);
@@ -53,7 +95,7 @@ const validateMutationRequest = (request: Request, requestId?: string): Response
 };
 const authorizeOrResponse = async (
   ctx: AuthenticatedRequestContext,
-  action: 'read' | 'create' | 'update' | 'delete',
+  action: 'read' | 'create' | 'update' | 'delete' | 'moderate',
   contentId?: string
 ): Promise<ContentActor | Response> => {
   if (!ctx.user.instanceId) {
@@ -93,7 +135,76 @@ const authorizeOrResponse = async (
   };
 };
 
-const parseSurveyInput = async (request: Request): Promise<SvaMainserverSurveyInput | Response> => parseJsonObjectBody(request, 'Umfrage-Daten müssen als Objekt gesendet werden.').then((body) => (isResponse(body) ? body : (body as SvaMainserverSurveyInput)));
+const validateLocalizedTextShape = (value: unknown, message: string): Response | null => {
+  if (value === undefined) {
+    return null;
+  }
+
+  return isRecord(value) ? null : errorJson(400, 'invalid_request', message);
+};
+
+const validateStringArrayShape = (value: unknown, message: string): Response | null => {
+  if (value === undefined) {
+    return null;
+  }
+
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
+    ? null
+    : errorJson(400, 'invalid_request', message);
+};
+
+const validateObjectArrayShape = (
+  value: unknown,
+  collectionMessage: string,
+  itemMessage: string
+): Response | null => {
+  if (value === undefined) {
+    return null;
+  }
+  if (!Array.isArray(value)) {
+    return errorJson(400, 'invalid_request', collectionMessage);
+  }
+  return value.every((entry) => isRecord(entry)) ? null : errorJson(400, 'invalid_request', itemMessage);
+};
+
+const validateSurveyInputShape = (body: Record<string, unknown>): Response | null => {
+  if (Array.isArray(body.questions)) {
+    for (const question of body.questions) {
+      const optionsValidation = validateObjectArrayShape(
+        isRecord(question) ? question.options : undefined,
+        'Frageoptionen müssen als Liste gesendet werden.',
+        'Frageoptionen müssen Objekte sein.'
+      );
+      if (optionsValidation) {
+        return optionsValidation;
+      }
+    }
+  }
+
+  return (
+    validateLocalizedTextShape(body.title, 'Der Umfrage-Titel muss als Objekt gesendet werden.') ??
+    validateLocalizedTextShape(body.shortDescription, 'Die Kurzbeschreibung muss als Objekt gesendet werden.') ??
+    validateLocalizedTextShape(body.description, 'Die Beschreibung muss als Objekt gesendet werden.') ??
+    validateLocalizedTextShape(body.privacyNotice, 'Der Datenschutzhinweis muss als Objekt gesendet werden.') ??
+    validateLocalizedTextShape(body.transparencyNotice, 'Der Transparenzhinweis muss als Objekt gesendet werden.') ??
+    validateStringArrayShape(body.targetAreaIds, 'Die Zielgebiete müssen als Liste von Strings gesendet werden.') ??
+    validateObjectArrayShape(body.questions, 'Fragen müssen als Liste gesendet werden.', 'Fragen müssen Objekte sein.') ??
+    validateObjectArrayShape(
+      body.freeTextResponses,
+      'Freitextantworten müssen als Liste gesendet werden.',
+      'Freitextantworten müssen Objekte sein.'
+    )
+  );
+};
+
+const parseSurveyInput = async (request: Request): Promise<SvaMainserverSurveyInput | Response> =>
+  parseJsonObjectBody(request, 'Umfrage-Daten müssen als Objekt gesendet werden.').then((body) => {
+    if (isResponse(body)) {
+      return body;
+    }
+
+    return validateSurveyInputShape(body) ?? (body as SvaMainserverSurveyInput);
+  });
 const toUnexpectedRouteError = (message: string) =>
   toMainserverErrorResponse(
     new SvaMainserverError({
@@ -115,7 +226,7 @@ const toAuthorizationFailureResponse = (result: AuthorizationFailure): Response 
 const authorizeMutation = async (
   request: Request,
   ctx: AuthenticatedRequestContext,
-  action: 'create' | 'update' | 'delete',
+  action: 'create' | 'update' | 'delete' | 'moderate',
   contentId?: string
 ): Promise<ContentActor | Response> => {
   const csrfError = validateMutationRequest(request, getWorkspaceContext().requestId);
@@ -185,9 +296,6 @@ const handleGetItem = async (
     ...actor,
     surveyId,
   });
-  if (!survey) {
-    return errorJson(404, 'not_found', 'Die Umfrage wurde nicht gefunden.');
-  }
   const [moderationAccess, exportAccess] = await Promise.all([
     authorizeContentPrimitiveForUser({
       ctx,
@@ -220,6 +328,52 @@ const handleGetItem = async (
     surveyId,
   });
   return json({ data: { ...survey, results } });
+};
+
+const handleReleaseFreeTextResponse = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  surveyId: string,
+  freeTextResponseId: string
+): Promise<Response> => {
+  const actor = await authorizeMutation(request, ctx, 'moderate', surveyId);
+  if (actor instanceof Response) {
+    return actor;
+  }
+
+  const released = await releaseSvaMainserverSurveyFreeTextResponse({
+    ...actor,
+    surveyId,
+    freeTextResponseId,
+  });
+  if (!released.success || released.errors.length > 0) {
+    return toMutationFailureResponse(released, 'Freitextantwort konnte nicht freigegeben werden.');
+  }
+  return json({ data: { id: freeTextResponseId, status: 'PUBLIC' } });
+};
+
+const handleDeleteFreeTextResponse = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  surveyId: string,
+  freeTextResponseId: string
+): Promise<Response> => {
+  const actor = await authorizeMutation(request, ctx, 'moderate', surveyId);
+  if (actor instanceof Response) {
+    return actor;
+  }
+
+  const deleted = await updateSvaMainserverSurvey({
+    ...actor,
+    surveyId,
+    survey: {
+      freeTextResponses: [{ id: freeTextResponseId, delete: true }],
+    },
+  });
+  if (!deleted.success || deleted.errors.length > 0) {
+    return toMutationFailureResponse(deleted, 'Freitextantwort konnte nicht gelöscht werden.');
+  }
+  return json({ data: { id: freeTextResponseId } });
 };
 
 const handleUpdate = async (
@@ -270,11 +424,11 @@ const handleCollectionRequest = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
     try {
       if (request.method === 'GET') {
-        return handleList(request, ctx);
+        return await handleList(request, ctx);
       }
 
       if (request.method === 'POST') {
-        return handleCreate(request, ctx);
+        return await handleCreate(request, ctx);
       }
 
       return errorJson(405, 'invalid_request', 'Methode für Umfragen nicht unterstützt.');
@@ -290,15 +444,35 @@ const handleItemRequest = async (
   withAuthenticatedUser(request, async (ctx) => {
     try {
       if (request.method === 'GET') {
-        return handleGetItem(ctx, routeMatch.itemId);
+        return await handleGetItem(ctx, routeMatch.itemId);
       }
 
       if (request.method === 'PATCH') {
-        return handleUpdate(request, ctx, routeMatch.itemId);
+        return await handleUpdate(request, ctx, routeMatch.itemId);
       }
 
       if (request.method === 'DELETE') {
-        return handleDelete(request, ctx, routeMatch.itemId);
+        return await handleDelete(request, ctx, routeMatch.itemId);
+      }
+
+      return errorJson(405, 'invalid_request', 'Methode für Umfragen nicht unterstützt.');
+    } catch (error) {
+      return handleRouteError(error);
+    }
+  });
+
+const handleFreeTextResponseRequest = async (
+  request: Request,
+  routeMatch: Extract<RouteMatch, { kind: 'freeTextResponse' }>
+): Promise<Response> =>
+  withAuthenticatedUser(request, async (ctx) => {
+    try {
+      if (request.method === 'PATCH') {
+        return await handleReleaseFreeTextResponse(request, ctx, routeMatch.surveyId, routeMatch.freeTextResponseId);
+      }
+
+      if (request.method === 'DELETE') {
+        return await handleDeleteFreeTextResponse(request, ctx, routeMatch.surveyId, routeMatch.freeTextResponseId);
       }
 
       return errorJson(405, 'invalid_request', 'Methode für Umfragen nicht unterstützt.');
@@ -313,7 +487,12 @@ export const dispatchSvaMainserverSurveysRequest = async (request: Request): Pro
     return null;
   }
 
-  return routeMatch.kind === 'collection'
-    ? handleCollectionRequest(request)
-    : handleItemRequest(request, routeMatch);
+  if (routeMatch.kind === 'collection') {
+    return handleCollectionRequest(request);
+  }
+  if (routeMatch.kind === 'item') {
+    return handleItemRequest(request, routeMatch);
+  }
+
+  return handleFreeTextResponseRequest(request, routeMatch);
 };

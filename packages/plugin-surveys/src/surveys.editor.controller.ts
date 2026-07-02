@@ -99,6 +99,10 @@ const createSurveyEditorSubmit = (input: {
         input.setStatus({ kind: 'error', text: input.pt('messages.missingContentId') });
         return;
       }
+      if (input.mode === 'edit' && !input.loadedItem) {
+        input.setStatus({ kind: 'error', text: input.pt('messages.loadError') });
+        return;
+      }
 
       const mutation = toSurveyMutationInput(values, input.loadedItem);
       const contentId = input.contentId;

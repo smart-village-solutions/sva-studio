@@ -31,7 +31,12 @@ const toLocalizedTextUpdate = (
 ) => {
   const localizedText = toLocalizedText(value);
   if (!localizedText) {
-    return null;
+    if (!existingLocales) {
+      return null;
+    }
+
+    const { de: _germanLocale, ...remainingLocales } = existingLocales;
+    return Object.keys(remainingLocales).length > 0 ? remainingLocales : null;
   }
 
   return { ...(existingLocales ?? {}), ...localizedText };

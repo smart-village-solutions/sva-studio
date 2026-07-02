@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   deleteSvaMainserverSurvey: vi.fn(),
   createSvaMainserverSurvey: vi.fn(),
   updateSvaMainserverSurvey: vi.fn(),
+  releaseSvaMainserverSurveyFreeTextResponse: vi.fn(),
   loggerInfo: vi.fn(),
   loggerWarn: vi.fn(),
   createSdkLogger: vi.fn(() => ({ info: state.loggerInfo, warn: state.loggerWarn })),
@@ -35,8 +36,10 @@ vi.mock('./service.js', () => ({
   deleteSvaMainserverSurvey: state.deleteSvaMainserverSurvey,
   createSvaMainserverSurvey: state.createSvaMainserverSurvey,
   updateSvaMainserverSurvey: state.updateSvaMainserverSurvey,
+  releaseSvaMainserverSurveyFreeTextResponse: state.releaseSvaMainserverSurveyFreeTextResponse,
 }));
 
+import { SvaMainserverError } from './errors.js';
 import { dispatchSvaMainserverSurveysRequest } from './surveys-route.js';
 
 const ctx = {
@@ -459,7 +462,13 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
 
   it('returns not_found for missing survey detail responses', async () => {
     mockAuthorizedRequest();
-    state.getSvaMainserverSurvey.mockResolvedValue(null);
+    state.getSvaMainserverSurvey.mockImplementation(async () => {
+      throw new SvaMainserverError({
+        code: 'not_found',
+        message: 'Die Umfrage wurde nicht gefunden.',
+        statusCode: 404,
+      });
+    });
 
     const response = await dispatchSvaMainserverSurveysRequest(
       createRequest('https://studio.test/api/v1/mainserver/surveys/survey-missing')
@@ -557,5 +566,82 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
       error: 'invalid_request',
     });
     expect(state.createSvaMainserverSurvey).not.toHaveBeenCalled();
+  });
+
+  it('rejects structurally invalid survey mutation bodies before hitting the service', async () => {
+    mockAuthorizedRequest();
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: { de: 'Test' },
+          targetAreaIds: 'district-1',
+          questions: {},
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'invalid_request',
+    });
+    expect(state.createSvaMainserverSurvey).not.toHaveBeenCalled();
+  });
+
+  it('releases free-text responses through the moderation endpoint', async () => {
+    mockAuthorizedRequest();
+    state.releaseSvaMainserverSurveyFreeTextResponse.mockResolvedValue({
+      success: true,
+      errors: [],
+      survey: { id: 'survey-1' },
+    });
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1/free-text-responses/response-1', {
+        method: 'PATCH',
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toEqual({
+      data: { id: 'response-1', status: 'PUBLIC' },
+    });
+    expect(state.releaseSvaMainserverSurveyFreeTextResponse).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      surveyId: 'survey-1',
+      freeTextResponseId: 'response-1',
+    });
+  });
+
+  it('deletes free-text responses through the moderation endpoint', async () => {
+    mockAuthorizedRequest();
+    state.updateSvaMainserverSurvey.mockResolvedValue({
+      success: true,
+      errors: [],
+      survey: { id: 'survey-1' },
+    });
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1/free-text-responses/response-1', {
+        method: 'DELETE',
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toEqual({
+      data: { id: 'response-1' },
+    });
+    expect(state.updateSvaMainserverSurvey).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      surveyId: 'survey-1',
+      survey: {
+        freeTextResponses: [{ id: 'response-1', delete: true }],
+      },
+    });
   });
 });

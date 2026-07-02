@@ -693,13 +693,8 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
     });
   });
 
-  it('deletes free-text responses through the moderation endpoint', async () => {
+  it('rejects free-text response deletes that are unsupported by the snapshot moderation schema', async () => {
     mockAuthorizedRequest();
-    state.updateSvaMainserverSurvey.mockResolvedValue({
-      success: true,
-      errors: [],
-      survey: { id: 'survey-1' },
-    });
 
     const response = await dispatchSvaMainserverSurveysRequest(
       createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1/free-text-responses/response-1', {
@@ -707,18 +702,11 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
       })
     );
 
-    expect(response?.status).toBe(200);
+    expect(response?.status).toBe(501);
     await expect(response?.json()).resolves.toEqual({
-      data: { id: 'response-1' },
+      error: 'unsupported_operation',
+      message: 'Freitext-Löschung wird vom aktuellen Mainserver-Schema nicht unterstützt.',
     });
-    expect(state.updateSvaMainserverSurvey).toHaveBeenCalledWith({
-      instanceId: 'de-musterhausen',
-      keycloakSubject: 'subject-1',
-      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
-      surveyId: 'survey-1',
-      survey: {
-        freeTextResponses: [{ id: 'response-1', delete: true }],
-      },
-    });
+    expect(state.updateSvaMainserverSurvey).not.toHaveBeenCalled();
   });
 });

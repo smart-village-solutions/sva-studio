@@ -73,6 +73,7 @@ export type SvaMainserverSurveyFragment = {
   readonly participationCount?: number | null;
   readonly submissionCount?: number | null;
   readonly results?: SvaMainserverSurveyResultsFragment | null;
+  readonly payload?: unknown;
   readonly createdAt?: string | null;
   readonly updatedAt?: string | null;
   readonly publishedAt?: string | null;
@@ -174,20 +175,15 @@ const surveyFields = `
   shortDescription
   description
   status
-  startAt
-  endAt
-  resultVisibility
   targetAreaIds
-  showResultsInApp
   isAnonymous
-  privacyNotice
-  transparencyNotice
   questions {
     ${surveyQuestionFields}
   }
   questionCount
   participationCount
   submissionCount
+  payload
   createdAt
   updatedAt
   publishedAt
@@ -200,17 +196,12 @@ const surveyListFields = `
   shortDescription
   description
   status
-  startAt
-  endAt
-  resultVisibility
   targetAreaIds
-  showResultsInApp
   isAnonymous
-  privacyNotice
-  transparencyNotice
   questionCount
   participationCount
   submissionCount
+  payload
   createdAt
   updatedAt
   publishedAt
@@ -232,24 +223,24 @@ const surveyMutationPayloadFields = `
 `;
 
 export const svaMainserverSurveysListDocument = `
-  query SvaMainserverSurveysList($filter: SurveyFilterInput) {
-    surveys(filter: $filter) {
+  query SvaMainserverSurveysList($ids: [ID!], $ongoing: Boolean, $archived: Boolean, $order: SurveyPollsOrder) {
+    surveys(ids: $ids, ongoing: $ongoing, archived: $archived, order: $order) {
       ${surveyListFields}
     }
   }
 `;
 
 export const svaMainserverSurveyDetailDocument = `
-  query SvaMainserverSurveyDetail($filter: SurveyFilterInput) {
-    surveys(filter: $filter) {
+  query SvaMainserverSurveyDetail($ids: [ID!], $archived: Boolean) {
+    surveys(ids: $ids, archived: $archived) {
       ${surveyFields}
     }
   }
 `;
 
 export const svaMainserverSurveyResultsDocument = `
-  query SvaMainserverSurveyResults($filter: SurveyFilterInput) {
-    surveys(filter: $filter) {
+  query SvaMainserverSurveyResults($ids: [ID!], $archived: Boolean) {
+    surveys(ids: $ids, archived: $archived) {
       id
       results {
         ${surveyResultsFields}

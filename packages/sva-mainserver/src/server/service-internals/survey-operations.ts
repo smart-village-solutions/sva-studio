@@ -33,19 +33,20 @@ import {
   type GraphqlExecutor,
 } from './shared.js';
 
-const buildSurveyFilter = (input: {
+const buildSurveySnapshotQueryVariables = (input: {
   readonly ids?: readonly string[];
-  readonly statuses?: readonly string[];
-  readonly targetAreaIds?: readonly string[];
   readonly includeArchived?: boolean;
   readonly ongoingOnly?: boolean;
+  readonly order?: 'updatedAt_DESC';
 }) => ({
   ...(input.ids && input.ids.length > 0 ? { ids: [...input.ids] } : {}),
-  ...(input.statuses && input.statuses.length > 0 ? { statuses: [...input.statuses] } : {}),
-  ...(input.targetAreaIds && input.targetAreaIds.length > 0 ? { targetAreaIds: [...input.targetAreaIds] } : {}),
-  ...(input.includeArchived === undefined ? {} : { includeArchived: input.includeArchived }),
-  ...(input.ongoingOnly === undefined ? {} : { ongoingOnly: input.ongoingOnly }),
+  ...(input.ongoingOnly === undefined ? {} : { ongoing: input.ongoingOnly }),
+  ...(input.includeArchived === undefined ? {} : { archived: input.includeArchived }),
+  ...(input.order === undefined ? {} : { order: input.order }),
 });
+
+const hasOwnField = <TKey extends PropertyKey>(value: object, key: TKey): boolean =>
+  Object.prototype.hasOwnProperty.call(value, key);
 
 const buildSurveyQuestionOptionInput = (
   option: NonNullable<NonNullable<SvaMainserverSurveyInput['questions']>[number]['options']>[number]
@@ -73,21 +74,47 @@ const buildSurveyCoreInput = (survey: SvaMainserverSurveyInput) => ({
   ...(survey.shortDescription !== undefined ? { shortDescription: survey.shortDescription } : {}),
   ...(survey.description !== undefined ? { description: survey.description } : {}),
   ...(survey.status ? { status: survey.status } : {}),
-  ...(survey.startAt === undefined ? {} : { startAt: survey.startAt }),
-  ...(survey.endAt === undefined ? {} : { endAt: survey.endAt }),
+  ...(() => {
+    const date: Record<string, string | null> = {};
+    if (hasOwnField(survey, 'startAt')) {
+      date.dateStart = survey.startAt ?? null;
+    }
+    if (hasOwnField(survey, 'endAt')) {
+      date.dateEnd = survey.endAt ?? null;
+    }
+    return Object.keys(date).length > 0 ? { date } : {};
+  })(),
 });
 
 const buildSurveyVisibilityInput = (survey: SvaMainserverSurveyInput) => ({
-  ...(survey.resultVisibility ? { resultVisibility: survey.resultVisibility } : {}),
   ...(survey.targetAreaIds !== undefined ? { targetAreaIds: [...survey.targetAreaIds] } : {}),
-  ...(survey.showResultsInApp === undefined ? {} : { showResultsInApp: survey.showResultsInApp }),
   ...(survey.isAnonymous === undefined ? {} : { isAnonymous: survey.isAnonymous }),
 });
 
-const buildSurveyNoticeInput = (survey: SvaMainserverSurveyInput) => ({
-  ...(survey.privacyNotice !== undefined ? { privacyNotice: survey.privacyNotice } : {}),
-  ...(survey.transparencyNotice !== undefined ? { transparencyNotice: survey.transparencyNotice } : {}),
-});
+const buildSurveyPayloadInput = (survey: SvaMainserverSurveyInput) => {
+  const payload: Record<string, unknown> = {};
+
+  if (hasOwnField(survey, 'startAt')) {
+    payload.startAt = survey.startAt ?? null;
+  }
+  if (hasOwnField(survey, 'endAt')) {
+    payload.endAt = survey.endAt ?? null;
+  }
+  if (hasOwnField(survey, 'resultVisibility')) {
+    payload.resultVisibility = survey.resultVisibility ?? null;
+  }
+  if (hasOwnField(survey, 'showResultsInApp')) {
+    payload.showResultsInApp = survey.showResultsInApp ?? null;
+  }
+  if (hasOwnField(survey, 'privacyNotice')) {
+    payload.privacyNotice = survey.privacyNotice ?? null;
+  }
+  if (hasOwnField(survey, 'transparencyNotice')) {
+    payload.transparencyNotice = survey.transparencyNotice ?? null;
+  }
+
+  return Object.keys(payload).length > 0 ? { payload } : {};
+};
 
 const buildSurveyQuestionsInput = (survey: SvaMainserverSurveyInput) => ({
   ...(survey.questions ? { questions: survey.questions.map(buildSurveyQuestionInput) } : {}),
@@ -114,7 +141,7 @@ const buildSurveyMutationInput = (input: {
   ...(input.delete === true ? { delete: true } : {}),
   ...buildSurveyCoreInput(input.survey),
   ...buildSurveyVisibilityInput(input.survey),
-  ...buildSurveyNoticeInput(input.survey),
+  ...buildSurveyPayloadInput(input.survey),
   ...buildSurveyQuestionsInput(input.survey),
   ...buildSurveyFreeTextResponsesInput(input.survey),
 });
@@ -168,13 +195,12 @@ const createListSurveysWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) 
       ...input,
       document: svaMainserverSurveysListDocument,
       operationName: 'SvaMainserverSurveysList',
-      variables: {
-        filter: buildSurveyFilter({
-          ...input,
-          includeArchived: input.includeArchived ?? false,
-          ongoingOnly: input.ongoingOnly ?? false,
-        }),
-      },
+      variables: buildSurveySnapshotQueryVariables({
+        ids: input.ids,
+        includeArchived: input.includeArchived ?? false,
+        ongoingOnly: input.ongoingOnly,
+        order: 'updatedAt_DESC',
+      }),
     },
     config
   );
@@ -214,7 +240,7 @@ const createGetSurveyWithConfig = (executeGraphqlWithConfig: GraphqlExecutor) =>
       ...input,
       document: svaMainserverSurveyDetailDocument,
       operationName: 'SvaMainserverSurveyDetail',
-      variables: { filter: buildSurveyFilter({ ids: [input.surveyId], includeArchived: true }) },
+      variables: buildSurveySnapshotQueryVariables({ ids: [input.surveyId], includeArchived: true }),
     },
     config
   );
@@ -231,7 +257,7 @@ const createGetSurveyResultsWithConfig = (executeGraphqlWithConfig: GraphqlExecu
       ...input,
       document: svaMainserverSurveyResultsDocument,
       operationName: 'SvaMainserverSurveyResults',
-      variables: { filter: buildSurveyFilter({ ids: [input.surveyId], includeArchived: true }) },
+      variables: buildSurveySnapshotQueryVariables({ ids: [input.surveyId], includeArchived: true }),
     },
     config
   );

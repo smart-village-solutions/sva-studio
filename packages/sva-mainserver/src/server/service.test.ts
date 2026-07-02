@@ -911,30 +911,50 @@ describe('createSvaMainserverService', () => {
       'SvaMainserverCreateOrUpdateSurvey',
     ]);
     expect(requestBodies[0]?.variables).toEqual({
-      filter: {
-        includeArchived: false,
-        ongoingOnly: false,
-      },
+      archived: false,
+      order: 'updatedAt_DESC',
     });
     expect(requestBodies[1]?.variables).toEqual({
-      filter: {
-        ids: ['survey-1'],
-        includeArchived: true,
-      },
+      archived: true,
+      ids: ['survey-1'],
+    });
+    expect(requestBodies[2]?.variables).toEqual({
+      archived: true,
+      ids: ['survey-1'],
     });
     expect(requestBodies[3]?.variables).toMatchObject({
       input: expect.objectContaining({
         title: { de: 'Stadtpark-Befragung' },
         status: 'ACTIVE',
-        resultVisibility: 'AFTER_SURVEY_END',
+        date: {
+          dateStart: '2026-07-01T08:00:00.000Z',
+        },
+        payload: {
+          startAt: '2026-07-01T08:00:00.000Z',
+          resultVisibility: 'AFTER_SURVEY_END',
+          showResultsInApp: true,
+          privacyNotice: { de: 'Teilnahme anonym.' },
+          transparencyNotice: { de: 'Ergebnisse intern auswertbar.' },
+        },
         isAnonymous: true,
       }),
     });
     expect(JSON.stringify(requestBodies[3]?.variables)).not.toContain('allowsMultipleSubmissionsPerDevice');
+    expect(JSON.stringify(requestBodies[3]?.variables)).not.toContain('"resultVisibility":"AFTER_SURVEY_END","targetAreaIds"');
     expect(requestBodies[4]?.variables).toMatchObject({
       input: expect.objectContaining({
         id: 'survey-1',
         status: 'ACTIVE',
+        date: {
+          dateStart: '2026-07-01T08:00:00.000Z',
+        },
+        payload: {
+          startAt: '2026-07-01T08:00:00.000Z',
+          resultVisibility: 'AFTER_SURVEY_END',
+          showResultsInApp: true,
+          privacyNotice: { de: 'Teilnahme anonym.' },
+          transparencyNotice: { de: 'Ergebnisse intern auswertbar.' },
+        },
       }),
     });
     expect(requestBodies[5]?.variables).toEqual({
@@ -948,6 +968,117 @@ describe('createSvaMainserverService', () => {
         id: 'survey-1',
         delete: true,
       },
+    });
+  });
+
+  it('carries survey payload fallback fields through list and detail queries', async () => {
+    const survey = {
+      id: 'survey-1',
+      title: { de: 'Stadtpark-Befragung' },
+      status: 'ACTIVE',
+      targetAreaIds: ['district-1'],
+      showResultsInApp: null,
+      isAnonymous: true,
+      questionCount: 0,
+      participationCount: 0,
+      submissionCount: 0,
+      questions: [],
+      payload: {
+        startAt: '2026-07-10T08:00:00.000Z',
+        resultVisibility: 'AFTER_SURVEY_END',
+        showResultsInApp: true,
+        privacyNotice: { de: 'Teilnahme anonym.' },
+        ignoredByContract: 'still-allowed',
+      },
+      createdAt: '2026-07-01T08:00:00.000Z',
+      updatedAt: '2026-07-01T08:30:00.000Z',
+    };
+
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys: [survey] } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys: [survey] } }));
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+
+    await expect(service.listSurveys({ ...connection, page: 1, pageSize: 25 })).resolves.toEqual({
+      data: [
+        expect.objectContaining({
+          id: 'survey-1',
+          startAt: '2026-07-10T08:00:00.000Z',
+          resultVisibility: 'AFTER_SURVEY_END',
+          showResultsInApp: true,
+          privacyNotice: { de: 'Teilnahme anonym.' },
+        }),
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
+    });
+    await expect(service.getSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
+      id: 'survey-1',
+      startAt: '2026-07-10T08:00:00.000Z',
+      resultVisibility: 'AFTER_SURVEY_END',
+      showResultsInApp: true,
+      privacyNotice: { de: 'Teilnahme anonym.' },
+    });
+
+    const requestBodies = fetchImpl.mock.calls
+      .slice(1)
+      .map(([, init]) => JSON.parse(init?.body as string) as { operationName: string; query?: string });
+    expect(requestBodies).toMatchObject([
+      { operationName: 'SvaMainserverSurveysList' },
+      { operationName: 'SvaMainserverSurveyDetail' },
+    ]);
+    expect(requestBodies[0]?.query).toContain('payload');
+    expect(requestBodies[1]?.query).toContain('payload');
+    expect(requestBodies[0]?.query).not.toContain('startAt');
+    expect(requestBodies[0]?.query).not.toContain('endAt');
+    expect(requestBodies[0]?.query).not.toContain('resultVisibility');
+    expect(requestBodies[0]?.query).not.toContain('showResultsInApp');
+    expect(requestBodies[0]?.query).not.toContain('privacyNotice');
+    expect(requestBodies[0]?.query).not.toContain('transparencyNotice');
+    expect(requestBodies[1]?.query).not.toContain('startAt');
+    expect(requestBodies[1]?.query).not.toContain('endAt');
+    expect(requestBodies[1]?.query).not.toContain('resultVisibility');
+    expect(requestBodies[1]?.query).not.toContain('showResultsInApp');
+    expect(requestBodies[1]?.query).not.toContain('privacyNotice');
+    expect(requestBodies[1]?.query).not.toContain('transparencyNotice');
+  });
+
+  it('queries surveys with snapshot-compatible arguments instead of SurveyFilterInput', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys: [] } }));
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await service.listSurveys({
+      instanceId: baseConfig.instanceId,
+      keycloakSubject: 'subject-1',
+      page: 1,
+      pageSize: 10,
+      includeArchived: true,
+    });
+
+    const requestBody = JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body ?? '{}')) as {
+      readonly operationName?: string;
+      readonly variables?: Record<string, unknown>;
+    };
+
+    expect(requestBody.operationName).toBe('SvaMainserverSurveysList');
+    expect(requestBody.variables).toEqual({
+      archived: true,
+      order: 'updatedAt_DESC',
     });
   });
 

@@ -75,6 +75,7 @@ Abhängigkeiten des aktuellen Systems.
   - kapselt zusätzlich den getypten Schreibpfad für Mainserver-Static-Content wie `wasteTypes` über `createOrUpdateStaticContent`, ohne Browser- oder Plugin-Code direkt an GraphQL zu koppeln
   - liest seine instanzbezogene Endpunktkonfiguration nicht mehr aus einer Mainserver-Spezialtabelle, sondern aus der zentralen External-Interface-Registry
   - hält `src/server/service.ts` bewusst als schlanke Fassade; Credentials, Token, GraphQL-Transport, Sichtbarkeits-Pagination, Mapper und ressourcenspezifische Operationen liegen in getrennten internen Modulen unter `src/server/service-internals/`
+  - hält für Surveys einen expliziten Adapter zwischen Studio-Domäne und Mainserver-`SurveyPoll`: Query-Argumente folgen dem Snapshot, Studio-only-Felder werden im Write-Pfad kontrolliert in `payload` serialisiert und im Read-Pfad daraus rekonstruiert
 11. Plugin News (`packages/plugin-news`)
    - produktives Fachplugin für Mainserver-News mit pluginnahem Modell `news.article`
    - eigene Listen- und Editor-Ansichten, plugin-beigestellte Admin-Ressourcen-Spezialisierungen, Navigation und Übersetzungen
@@ -88,6 +89,7 @@ Abhängigkeiten des aktuellen Systems.
    - nutzt einen stabilen Editor-Rahmen mit den Tabs `Basis`, `Inhalt`, `Moderation`, `Ergebnisse` und `Historie`
    - hält Survey-spezifische UI-Bausteine wie Frageneditor, Freitext-Moderation, Ergebnisansicht und Historie bewusst plugin-lokal, ohne neue shared UI-Abstraktionen oder Host-Bypässe einzuführen
    - spricht den Mainserver nicht direkt, sondern ausschließlich über hostgeführte HTTP-Fassaden und typed Adapter für Liste, Detail, Upsert, Moderation und Ergebnisse
+   - behält bewusst das Studio-Fachmodell im Plugin bei; Snapshot-Spezifika wie `SurveyPoll`, `date` oder `payload` enden an der Host-/Mainserver-Adaptergrenze
    - erzeugt Exportvarianten wie `CSV`, `JSON`, `Excel` und `XML` im Studio aus hostgeführten JSON-Ergebnissen statt über pluginseitige GraphQL- oder Direkt-Exportpfade
 12. Plugin Waste Management (`packages/plugin-waste-management`)
    - freies Fachplugin unter `/plugins/waste-management` für Waste-Stammdaten, Touren, Ausweichtermine, PDF-Stamminhalte, technische Werkzeuge und instanzbezogene Einstellungen
@@ -188,6 +190,7 @@ Abhängigkeiten des aktuellen Systems.
 - Der SVA-Mainserver bleibt fachliche Source of Truth für seine GraphQL-Daten; Studio hält nur Endpunktkonfiguration und kurzlebige Laufzeit-Caches für Credentials und Access-Tokens.
 - Für `/admin/content` ist `GET /api/v1/iam/contents` die einzige führende Listenquelle; Mainserver-News, -Events und -POI werden serverseitig in das persistierte Read-Model `iam.content_list_projection` projiziert und nicht mehr browserseitig vollgescannt.
 - Surveys folgen denselben Boundary-Regeln wie News, Events und POI: pluginseitige Browser-UI, hostgeführte HTTP-Fassade, typed Adapter in `@sva/sva-mainserver` und kein direkter GraphQL- oder Secret-Zugriff aus dem Plugin.
+- Survey-spezifische Snapshot-Drift wird innerhalb von `@sva/sva-mainserver` abgefangen: `SurveyPoll`-Reads bleiben snapshot-nah, während das Plugin weiterhin das stabile Studio-Modell inklusive `startAt`, `resultVisibility`, `showResultsInApp`, `privacyNotice` und `transparencyNotice` konsumiert.
 - Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.
 - `packages/iam-admin` hält zusätzlich die tenantseitige Governance-Trennung für Rollen und Permissions: Root-only-Rollen/-Permissions werden vor Admin-CRUD gefiltert oder abgewiesen, normale Tenant-Rollen werden DB-only gepflegt, während `system_admin` als geschützte technische Tenant-Sonderrolle in IAM und Keycloak erhalten bleibt.
 

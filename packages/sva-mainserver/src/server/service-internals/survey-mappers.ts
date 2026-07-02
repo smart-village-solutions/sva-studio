@@ -16,6 +16,12 @@ import type {
   SvaMainserverSurveyResultsFragment,
   SvaMainserverSurveyMutationPayloadFragment,
 } from '../../generated/surveys.js';
+import {
+  createEmptySurveyPayloadContract,
+  surveyPayloadContractFieldSchemas,
+  surveyPayloadContractSchema,
+  type SurveyPayloadContract,
+} from './survey-payload-contract.js';
 import { defined, optionalNumber, optionalString, toSvaMainserverError } from './shared.js';
 const localizedTextSchema = z.union([z.record(z.string(), z.string()), z.string()]);
 const surveyFreeTextStatusSchema = z.enum(['INTERNAL', 'PUBLIC']);
@@ -91,7 +97,7 @@ const surveySchema = z.object({
   status: surveyStatusSchema,
   startAt: z.string().nullish(),
   endAt: z.string().nullish(),
-  resultVisibility: surveyResultVisibilitySchema,
+  resultVisibility: surveyResultVisibilitySchema.nullish(),
   targetAreaIds: z.array(z.string()).nullish(),
   showResultsInApp: z.boolean().nullish(),
   isAnonymous: z.boolean().nullish(),
@@ -102,6 +108,7 @@ const surveySchema = z.object({
   participationCount: z.number().int().nullish(),
   submissionCount: z.number().int().nullish(),
   results: surveyResultsSchema.nullish(),
+  payload: z.unknown().nullish(),
   createdAt: z.string().nullish(),
   updatedAt: z.string().nullish(),
   publishedAt: z.string().nullish(),
@@ -195,18 +202,6 @@ const mapSurveyResults = (
   submissionCount: value.submissionCount ?? 0,
   questions: (value.questions ?? []).map((item) => mapQuestionResults(item, fallbackTimestamp)),
 });
-const buildSurveyContentFields = (survey: z.infer<typeof surveySchema>) => ({
-  ...optionalLocalizedField('shortDescription', survey.shortDescription),
-  ...optionalLocalizedField('description', survey.description),
-  ...optionalLocalizedField('privacyNotice', survey.privacyNotice),
-  ...optionalLocalizedField('transparencyNotice', survey.transparencyNotice),
-});
-const buildSurveyScheduleFields = (survey: z.infer<typeof surveySchema>) => ({
-  ...optionalTimestampField('startAt', survey.startAt),
-  ...optionalTimestampField('endAt', survey.endAt),
-  ...optionalTimestampField('publishedAt', survey.publishedAt),
-  ...optionalTimestampField('archivedAt', survey.archivedAt),
-});
 const buildSurveyResultFields = (
   survey: z.infer<typeof surveySchema>,
   fallbackTimestamp: string
@@ -215,6 +210,33 @@ const buildSurveyResultFields = (
   submissionCount: survey.submissionCount ?? survey.results?.submissionCount ?? 0,
   ...(survey.results ? { results: mapSurveyResults(survey.results, fallbackTimestamp) } : {}),
 });
+const parseSurveyPayloadContract = (payload: unknown): SurveyPayloadContract => {
+  if (payload === null || payload === undefined) {
+    return createEmptySurveyPayloadContract();
+  }
+
+  if (typeof payload !== 'object' || Array.isArray(payload)) {
+    return createEmptySurveyPayloadContract();
+  }
+
+  const parsed = surveyPayloadContractSchema.safeParse(payload);
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  const candidate = payload as Record<string, unknown>;
+  const fallback = createEmptySurveyPayloadContract();
+
+  for (const [key, schema] of Object.entries(surveyPayloadContractFieldSchemas)) {
+    const value = candidate[key];
+    const fieldParsed = schema.safeParse(value);
+    if (fieldParsed.success && fieldParsed.data !== undefined) {
+      fallback[key as keyof SurveyPayloadContract] = fieldParsed.data;
+    }
+  }
+
+  return fallback;
+};
 export const mapSurveyItem = (item: SvaMainserverSurveyFragment | null | undefined): SvaMainserverSurveyItem => {
   const parsed = surveySchema.safeParse(item);
   if (!parsed.success) {
@@ -230,16 +252,25 @@ export const mapSurveyItem = (item: SvaMainserverSurveyFragment | null | undefin
 // fallow-ignore-next-line complexity
 const mapParsedSurveyItem = (survey: z.infer<typeof surveySchema>): SvaMainserverSurveyItem => {
   const fallbackTimestamp = survey.createdAt ?? survey.updatedAt ?? new Date(0).toISOString();
+  const payload = parseSurveyPayloadContract(survey.payload);
+  const privacyNotice = survey.privacyNotice ?? payload.privacyNotice;
+  const transparencyNotice = survey.transparencyNotice ?? payload.transparencyNotice;
   return {
     id: survey.id,
     contentType: 'surveys.survey',
     title: mapLocalizedText(survey.title),
-    ...buildSurveyContentFields(survey),
+    ...optionalLocalizedField('shortDescription', survey.shortDescription),
+    ...optionalLocalizedField('description', survey.description),
+    ...optionalLocalizedField('privacyNotice', privacyNotice),
+    ...optionalLocalizedField('transparencyNotice', transparencyNotice),
     status: survey.status,
-    ...buildSurveyScheduleFields(survey),
-    resultVisibility: survey.resultVisibility,
+    ...optionalTimestampField('startAt', survey.startAt ?? payload.startAt),
+    ...optionalTimestampField('endAt', survey.endAt ?? payload.endAt),
+    ...optionalTimestampField('publishedAt', survey.publishedAt),
+    ...optionalTimestampField('archivedAt', survey.archivedAt),
+    resultVisibility: survey.resultVisibility ?? payload.resultVisibility ?? 'NONE',
     targetAreaIds: survey.targetAreaIds ?? [],
-    showResultsInApp: survey.showResultsInApp === true,
+    showResultsInApp: survey.showResultsInApp ?? payload.showResultsInApp ?? false,
     isAnonymous: survey.isAnonymous !== false,
     questions: (survey.questions ?? []).map((question) => mapQuestion(question, fallbackTimestamp)),
     questionCount: survey.questionCount ?? (survey.questions?.length ?? 0),

@@ -205,6 +205,156 @@ describe('survey-mappers', () => {
     });
   });
 
+  it('reads studio-only survey fields from payload when the GraphQL snapshot does not expose them natively', () => {
+    expect(
+      mapSurveyItem({
+        id: 'survey-1',
+        title: { de: 'Titel' },
+        shortDescription: { de: 'Kurz' },
+        description: { de: 'Lang' },
+        status: 'ACTIVE',
+        targetAreaIds: ['ta-1'],
+        isAnonymous: true,
+        questionCount: 0,
+        questions: [],
+        createdAt: '2026-07-01T10:00:00Z',
+        updatedAt: '2026-07-01T11:00:00Z',
+        payload: {
+          startAt: '2026-07-10T08:00:00Z',
+          endAt: '2026-07-20T18:00:00Z',
+          resultVisibility: 'AFTER_SURVEY_END',
+          showResultsInApp: true,
+          privacyNotice: { de: 'Datenschutz' },
+          transparencyNotice: { de: 'Transparenz' },
+        },
+      } as never)
+    ).toMatchObject({
+      startAt: '2026-07-10T08:00:00Z',
+      endAt: '2026-07-20T18:00:00Z',
+      resultVisibility: 'AFTER_SURVEY_END',
+      showResultsInApp: true,
+      privacyNotice: { de: 'Datenschutz' },
+      transparencyNotice: { de: 'Transparenz' },
+    });
+  });
+
+  it('tolerates extra payload keys while still reading known survey fallback fields', () => {
+    expect(
+      mapSurveyItem({
+        id: 'survey-1',
+        title: { de: 'Titel' },
+        status: 'ACTIVE',
+        targetAreaIds: ['ta-1'],
+        isAnonymous: true,
+        questionCount: 0,
+        questions: [],
+        createdAt: '2026-07-01T10:00:00Z',
+        updatedAt: '2026-07-01T11:00:00Z',
+        payload: {
+          startAt: '2026-07-10T08:00:00Z',
+          showResultsInApp: true,
+          ignoredByContract: 'keep-calm',
+          nestedUnknown: { any: 'value' },
+        },
+      } as never)
+    ).toMatchObject({
+      startAt: '2026-07-10T08:00:00Z',
+      showResultsInApp: true,
+    });
+  });
+
+  it('prefers native survey fields over payload fallback values', () => {
+    expect(
+      mapSurveyItem({
+        id: 'survey-1',
+        title: { de: 'Titel' },
+        status: 'ACTIVE',
+        startAt: '2026-07-15T08:00:00Z',
+        targetAreaIds: ['ta-1'],
+        isAnonymous: true,
+        questionCount: 0,
+        questions: [],
+        createdAt: '2026-07-01T10:00:00Z',
+        updatedAt: '2026-07-01T11:00:00Z',
+        payload: {
+          startAt: '2026-07-10T08:00:00Z',
+          showResultsInApp: true,
+        },
+      } as never)
+    ).toMatchObject({
+      startAt: '2026-07-15T08:00:00Z',
+    });
+  });
+
+  it('ignores stringified legacy payload values instead of rejecting the survey item', () => {
+    expect(
+      mapSurveyItem({
+        id: 'survey-1',
+        title: { de: 'Titel' },
+        status: 'ACTIVE',
+        targetAreaIds: ['ta-1'],
+        isAnonymous: true,
+        questionCount: 0,
+        questions: [],
+        createdAt: '2026-07-01T10:00:00Z',
+        updatedAt: '2026-07-01T11:00:00Z',
+        payload: JSON.stringify({
+          startAt: '2026-07-10T08:00:00Z',
+          showResultsInApp: true,
+        }),
+      } as never)
+    ).toMatchObject({
+      resultVisibility: 'NONE',
+      showResultsInApp: false,
+    });
+  });
+
+  it('ignores malformed object payload values instead of rejecting the survey item', () => {
+    expect(
+      mapSurveyItem({
+        id: 'survey-1',
+        title: { de: 'Titel' },
+        status: 'ACTIVE',
+        targetAreaIds: ['ta-1'],
+        isAnonymous: true,
+        questionCount: 0,
+        questions: [],
+        createdAt: '2026-07-01T10:00:00Z',
+        updatedAt: '2026-07-01T11:00:00Z',
+        payload: {
+          startAt: 42,
+          showResultsInApp: 'yes',
+        },
+      } as never)
+    ).toMatchObject({
+      resultVisibility: 'NONE',
+      showResultsInApp: false,
+    });
+  });
+
+  it('salvages valid payload fallback fields even when sibling payload fields are malformed', () => {
+    expect(
+      mapSurveyItem({
+        id: 'survey-1',
+        title: { de: 'Titel' },
+        status: 'ACTIVE',
+        targetAreaIds: ['ta-1'],
+        isAnonymous: true,
+        questionCount: 0,
+        questions: [],
+        createdAt: '2026-07-01T10:00:00Z',
+        updatedAt: '2026-07-01T11:00:00Z',
+        payload: {
+          startAt: 42,
+          showResultsInApp: true,
+        },
+      } as never)
+    ).toMatchObject({
+      resultVisibility: 'NONE',
+      showResultsInApp: true,
+    });
+  });
+
   it('rejects invalid mutation and results payloads deterministically', () => {
     expectInvalidResponseError(() => mapSurveyMutationPayload({ success: true, survey: { id: 42 } }), 'invalid_response');
 

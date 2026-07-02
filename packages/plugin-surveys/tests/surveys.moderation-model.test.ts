@@ -80,4 +80,35 @@ describe('mergeModerationGroups', () => {
       },
     ]);
   });
+
+  it('reuses fallback title groups for untitled draft questions', () => {
+    const result = mergeModerationGroups(
+      [
+        {
+          questionId: 'question-0',
+          questionTitle: 'labels.questionSection:1',
+          responses: [{ id: 'response-1', text: 'Alt', status: 'PUBLIC', createdAt: '2026-07-01T08:00:00.000Z' }],
+        },
+      ],
+      [
+        {
+          title: '',
+          description: '',
+          type: 'FREE_TEXT',
+          required: false,
+          position: 0,
+          options: [],
+        },
+      ],
+      (key, variables) => `${key}:${variables?.index ?? ''}`
+    );
+
+    expect(result).toEqual([
+      {
+        questionId: 'question-0',
+        questionTitle: 'labels.questionSection:1',
+        responses: [{ id: 'response-1', text: 'Alt', status: 'PUBLIC', createdAt: '2026-07-01T08:00:00.000Z' }],
+      },
+    ]);
+  });
 });

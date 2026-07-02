@@ -1,3 +1,4 @@
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { Button, Checkbox, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@sva/studio-ui-react';
 
 import { SurveyDetailCard } from './surveys.detail-card.js';
@@ -11,6 +12,8 @@ import {
 
 const resolveModerationGroupTitle = (group: SurveyModerationQuestionGroup): string =>
   group.questionTitle.trim().length > 0 ? group.questionTitle : group.questionId;
+
+const formatModerationDate = (value: string) => formatDateTimeInEditorTimeZone(value) ?? value;
 
 export function SurveyModerationPlaceholder({
   description,
@@ -72,7 +75,7 @@ export function SurveyModerationGroupCard({
                       {createExcerpt(response.text)}
                     </Button>
                   </td>
-                  <td className="px-3 py-3 align-top text-muted-foreground">{response.createdAt}</td>
+                  <td className="px-3 py-3 align-top text-muted-foreground">{formatModerationDate(response.createdAt)}</td>
                   <td className="px-3 py-3 align-top">
                     <div className="flex items-center gap-3">
                       <Checkbox
@@ -128,7 +131,7 @@ export function SurveyModerationResponseDialog({
             </div>
             <div className="space-y-1">
               <dt className="font-medium text-foreground">{pt('fields.freeTextOverlayCreatedAt')}</dt>
-              <dd className="text-muted-foreground">{selectedResponse.createdAt}</dd>
+              <dd className="text-muted-foreground">{formatModerationDate(selectedResponse.createdAt)}</dd>
             </div>
           </dl>
           <DialogFooter>

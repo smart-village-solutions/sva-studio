@@ -10,7 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join, posix, relative, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 type SyncImproveSkillSnapshotOptions = {
   repoRoot: string;
@@ -29,6 +29,7 @@ const IMPROVE_SOURCE_REVISION = '03369ee6d7cafbfcecc4346539b05b3dc0a603bb';
 const IMPROVE_SKILL_SOURCE_RELATIVE_PATH = posix.join('skills', 'improve');
 const TARGET_SKILL_RELATIVE_PATH = join('.agents', 'skills', 'improve');
 const UPSTREAM_METADATA_FILENAME = '.upstream.json';
+const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
 export const syncImproveSkillSnapshot = (
   options: SyncImproveSkillSnapshotOptions,
@@ -94,13 +95,13 @@ const runCli = (): void => {
 
   try {
     const result = syncImproveSkillSnapshot({
-      repoRoot: process.cwd(),
+      repoRoot: workspaceRoot,
       sourceDir,
       sourceRevision: IMPROVE_SOURCE_REVISION,
     });
 
     process.stdout.write(
-      `Synced improve skill ${result.sourceRevision} to ${relative(process.cwd(), result.targetDir) || '.'}\n`,
+      `Synced improve skill ${result.sourceRevision} to ${relative(workspaceRoot, result.targetDir) || '.'}\n`,
     );
   } finally {
     rmSync(checkoutRoot, { force: true, recursive: true });

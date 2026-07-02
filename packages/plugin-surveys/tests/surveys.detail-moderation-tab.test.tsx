@@ -1,6 +1,7 @@
 // fallow-ignore-file code-duplication
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 import { FormProvider, useForm } from 'react-hook-form';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -9,6 +10,10 @@ import {
   createDefaultSurveyDetailFormValues,
   type SurveyDetailFormValues,
 } from '../src/surveys.detail-form.js';
+
+vi.mock('@sva/plugin-sdk', () => ({
+  formatDateTimeInEditorTimeZone: (value: string) => `formatted:${value}`,
+}));
 
 const dictionary = {
   'cards.moderation.title': 'Moderations-Rahmen',
@@ -122,6 +127,7 @@ describe('SurveyDetailModerationTab', () => {
     expect(screen.getByRole('heading', { name: 'Was fehlt im Viertel?' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Welche Orte nutzen Sie am häufigsten?' })).toBeTruthy();
     expect(screen.getByText('Zu dieser Frage liegen derzeit keine Freitextantworten vor.')).toBeTruthy();
+    expect(screen.getByText('formatted:2026-07-01T08:00:00.000Z')).toBeTruthy();
 
     const visibilityToggle = screen.getByLabelText('Antwort 1 öffentlich sichtbar') as HTMLInputElement;
     expect(visibilityToggle.checked).toBe(false);
@@ -176,6 +182,7 @@ describe('SurveyDetailModerationTab', () => {
     expect(
       screen.getByText('Ein längerer Freitext mit konkreten Wünschen für den Stadtteil und zusätzlichen Details.')
     ).toBeTruthy();
+    expect(screen.getAllByText('formatted:2026-07-01T08:00:00.000Z')).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
     expect(screen.queryByText('Volltext')).toBeNull();

@@ -55,7 +55,7 @@ export const mergeModerationGroups = (
   for (const [questionIndex, question] of watchedQuestions.entries()) {
     const fallbackQuestionTitle = question.title || pt('labels.questionSection', { index: questionIndex + 1 });
     const derivedQuestionId = question.id || `question-${questionIndex}`;
-    const existingGroup = byQuestionId.get(derivedQuestionId) ?? byQuestionTitle.get(question.title);
+    const existingGroup = byQuestionId.get(derivedQuestionId) ?? byQuestionTitle.get(fallbackQuestionTitle);
 
     if (existingGroup) {
       if (existingGroup.questionId !== derivedQuestionId) {

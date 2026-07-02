@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -450,6 +450,8 @@ test('injected workspace sync copies dist into pnpm store package copies', () =>
     writeFileSync(resolve(sourcePackageDir, 'package.json'), JSON.stringify({ name: '@sva/demo-lib', type: 'module' }));
     writeFileSync(resolve(sourceDistDir, 'index.js'), 'export const synced = true;\n');
     writeFileSync(resolve(injectedPackageDir, 'package.json'), JSON.stringify({ name: '@sva/demo-lib', type: 'module' }));
+    mkdirSync(resolve(appDir, 'node_modules', '@sva'), { recursive: true });
+    symlinkSync(injectedPackageDir, resolve(appDir, 'node_modules', '@sva', 'demo-lib'), 'dir');
 
     execFileSync('bash', [workspaceNodeScriptPath, '--import', 'tsx', syncScriptPath, appDir], {
       cwd: resolve(testDirectory, '..', '..', '..'),

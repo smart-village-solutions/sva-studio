@@ -367,7 +367,9 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.doesNotMatch(patchRuntimeArtifact, /requireFromApp\.resolve/);
 
   assert.match(syncInjectedWorkspacePackages, /node_modules', '\.pnpm'/);
-  assert.match(syncInjectedWorkspacePackages, /await cp\(workspacePackage\.distDir, targetDistDir, \{ force: true, recursive: true \}\)/);
+  assert.match(syncInjectedWorkspacePackages, /const replaceInjectedDist = async \(sourceDistDir: string, injectedPackageDir: string\) =>/);
+  assert.match(syncInjectedWorkspacePackages, /await cp\(sourceDistDir, targetDistDir, \{ force: true, recursive: true \}\)/);
+  assert.match(syncInjectedWorkspacePackages, /await replaceInjectedDist\(liveSourceDistDir, injectedCopy\.dir\)/);
   assert.match(syncInjectedWorkspacePackages, /if \(injectedCopy\.realDir === workspacePackage\.realDir\)/);
 
   assert.match(

@@ -26,8 +26,8 @@
     "@sva/plugin-sdk": "workspace:*",
     "@sva/studio-ui-react": "workspace:*",
     "@tabler/icons-react": "^3.41.1",
-    "react-hook-form": "^7.80.0",
-    "xlsx": "^0.18.5"
+    "exceljs": "^4.4.0",
+    "react-hook-form": "^7.80.0"
   },
   "peerDependencies": {
     "@tanstack/react-router": "^1.170.8",

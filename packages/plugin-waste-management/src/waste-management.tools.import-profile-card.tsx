@@ -59,7 +59,7 @@ export const WasteToolsImportProfileCard = ({
         ))}
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={() => downloadImportTemplate(profile, sourceFormat)}>
+        <Button type="button" variant="outline" onClick={() => void downloadImportTemplate(profile, sourceFormat)}>
           {pt('tools.actions.downloadTemplate')}
         </Button>
         <Button type="button" variant="outline" onClick={() => document.getElementById(fileInputId)?.click()}>

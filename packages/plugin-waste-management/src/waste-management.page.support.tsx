@@ -20,9 +20,10 @@ import {
   StudioField,
   StudioFieldGroup,
 } from '@sva/studio-ui-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 import { WasteManagementApiError } from './waste-management.api.js';
+const { Workbook } = ExcelJS;
 
 export type StatusMessage = {
   readonly kind: 'success' | 'error' | 'warning';
@@ -88,22 +89,23 @@ const createImportTemplateCsv = (profile: WasteManagementImportProfileCatalogEnt
   return [headers.join(delimiter), ...sampleRows.map((row) => row.join(delimiter))].join('\n').concat('\n');
 };
 
-const createImportTemplateWorkbook = (profile: WasteManagementImportProfileCatalogEntry) => {
+const createImportTemplateWorkbookBuffer = async (profile: WasteManagementImportProfileCatalogEntry): Promise<ArrayBuffer> => {
   const headers = [...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.key);
   const sampleRow = [...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.example ?? '');
-  const sheet = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Import');
-  return workbook;
+  const workbook = new Workbook();
+  const worksheet = workbook.addWorksheet('Import');
+  worksheet.addRow(headers);
+  worksheet.addRow(sampleRow);
+  return await workbook.xlsx.writeBuffer();
 };
 
-export const downloadImportTemplate = (
+export const downloadImportTemplate = async (
   profile: WasteManagementImportProfileCatalogEntry,
   sourceFormat: WasteManagementImportSourceFormat
 ) => {
   const blob =
     sourceFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      ? new Blob([XLSX.write(createImportTemplateWorkbook(profile), { type: 'array', bookType: 'xlsx' })], {
+      ? new Blob([await createImportTemplateWorkbookBuffer(profile)], {
           type: sourceFormat,
         })
       : new Blob([createImportTemplateCsv(profile)], { type: 'text/csv;charset=utf-8' });

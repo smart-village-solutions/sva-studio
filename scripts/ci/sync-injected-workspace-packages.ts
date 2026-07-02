@@ -1,5 +1,6 @@
 import { cp, mkdir, readdir, readFile, realpath, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 type WorkspacePackage = {
   dir: string;
@@ -84,6 +85,88 @@ const collectWorkspacePackages = async (workspaceRoot: string) => {
   return workspacePackages;
 };
 
+const findReachableWorkspacePackageNames = async (
+  consumerDirPath: string,
+  workspacePackages: readonly WorkspacePackage[]
+): Promise<Set<string>> => {
+  const reachableWorkspacePackageNames = new Set<string>();
+  const workspacePackageNames = new Set(workspacePackages.map((workspacePackage) => workspacePackage.name));
+  const visitedNodeModulesDirs = new Set<string>();
+  const visitedPackageDirs = new Set<string>();
+
+  const inspectPackageDir = async (packageDir: string): Promise<void> => {
+    let resolvedPackageDir: string;
+    try {
+      resolvedPackageDir = await realpath(packageDir);
+    } catch {
+      return;
+    }
+
+    if (visitedPackageDirs.has(resolvedPackageDir)) {
+      return;
+    }
+    visitedPackageDirs.add(resolvedPackageDir);
+
+    const packageJsonPath = path.join(resolvedPackageDir, 'package.json');
+    if (!(await pathExists(packageJsonPath))) {
+      return;
+    }
+
+    const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as { name?: string };
+    if (packageJson.name && workspacePackageNames.has(packageJson.name)) {
+      reachableWorkspacePackageNames.add(packageJson.name);
+    }
+
+    await walkNodeModules(path.join(resolvedPackageDir, 'node_modules'));
+  };
+
+  const walkNodeModules = async (nodeModulesDir: string): Promise<void> => {
+    if (!(await pathExists(nodeModulesDir))) {
+      return;
+    }
+
+    let resolvedNodeModulesDir: string;
+    try {
+      resolvedNodeModulesDir = await realpath(nodeModulesDir);
+    } catch {
+      return;
+    }
+
+    if (visitedNodeModulesDirs.has(resolvedNodeModulesDir)) {
+      return;
+    }
+    visitedNodeModulesDirs.add(resolvedNodeModulesDir);
+
+    const entries = await readdir(resolvedNodeModulesDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) {
+        continue;
+      }
+
+      const entryPath = path.join(resolvedNodeModulesDir, entry.name);
+      if (entry.name.startsWith('@') && entry.isDirectory()) {
+        const scopeEntries = await readdir(entryPath, { withFileTypes: true });
+        for (const scopeEntry of scopeEntries) {
+          if (!scopeEntry.isDirectory() && !scopeEntry.isSymbolicLink()) {
+            continue;
+          }
+          await inspectPackageDir(path.join(entryPath, scopeEntry.name));
+        }
+        continue;
+      }
+
+      if (!entry.isDirectory() && !entry.isSymbolicLink()) {
+        continue;
+      }
+
+      await inspectPackageDir(entryPath);
+    }
+  };
+
+  await walkNodeModules(path.join(consumerDirPath, 'node_modules'));
+  return reachableWorkspacePackageNames;
+};
+
 const findInjectedCopies = async (workspaceRoot: string, packageName: string) => {
   const virtualStoreDir = path.join(workspaceRoot, 'node_modules', '.pnpm');
   if (!(await pathExists(virtualStoreDir))) {
@@ -148,9 +231,12 @@ const syncWorkspacePackage = async (workspaceRoot: string, workspacePackage: Wor
 const main = async () => {
   const workspaceRoot = await findWorkspaceRoot(consumerDir);
   const workspacePackages = await collectWorkspacePackages(workspaceRoot);
+  const reachableWorkspacePackageNames = await findReachableWorkspacePackageNames(consumerDir, workspacePackages);
 
   const results = await Promise.all(
-    workspacePackages.map(async (workspacePackage) => ({
+    workspacePackages
+      .filter((workspacePackage) => reachableWorkspacePackageNames.has(workspacePackage.name))
+      .map(async (workspacePackage) => ({
       name: workspacePackage.name,
       ...(await syncWorkspacePackage(workspaceRoot, workspacePackage)),
     }))
@@ -161,6 +247,7 @@ const main = async () => {
     `${JSON.stringify(
       {
         consumerDir,
+        reachableWorkspacePackages: [...reachableWorkspacePackageNames].sort(),
         updatedCopyCount: updatedPackages.reduce((total, result) => total + result.updatedCopies, 0),
         updatedPackages,
         workspaceRoot,
@@ -171,8 +258,12 @@ const main = async () => {
   );
 };
 
-main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  process.stderr.write(`${message}\n`);
-  process.exitCode = 1;
-});
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.stack ?? error.message : String(error);
+    process.stderr.write(`${message}\n`);
+    process.exitCode = 1;
+  });
+}
+
+export { collectWorkspacePackages, findReachableWorkspacePackageNames, findInjectedCopies, findWorkspaceRoot, syncWorkspacePackage };

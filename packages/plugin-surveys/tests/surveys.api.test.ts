@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type CrudClientOptions = {
+  errorFactory?: (code: string, message?: string) => Error;
   createBody?: (input: unknown) => unknown;
+  mapListResponse?: (input: unknown) => unknown;
   updateBody?: (input: unknown) => unknown;
 };
 
@@ -13,12 +15,8 @@ vi.mock('@sva/plugin-sdk', () => ({
 
     return {
       create: async (input: unknown) => options.createBody?.(input),
-      get: async () => {
-        throw new Error('not_implemented');
-      },
-      list: async () => {
-        throw new Error('not_implemented');
-      },
+      get: async (contentId: unknown) => contentId,
+      list: async (query: unknown) => options.mapListResponse?.(query),
       remove: async () => undefined,
       update: async (_contentId: string, input: unknown) => options.updateBody?.(input),
     };
@@ -186,6 +184,21 @@ describe('surveys api payload mapping', () => {
           options: [],
         },
       ],
+    });
+  });
+
+  it('keeps the list/get/delete wrappers and the custom surveys error contract wired through the CRUD client', async () => {
+    const { deleteSurvey, getSurvey, listSurveys } = await import('../src/surveys.api.js');
+
+    await expect(listSurveys({ page: 2, pageSize: 50 })).resolves.toEqual({ page: 2, pageSize: 50 });
+    await expect(getSurvey('survey-42')).resolves.toBe('survey-42');
+    await expect(deleteSurvey('survey-42')).resolves.toBeUndefined();
+
+    const error = capturedOptions?.errorFactory?.('validation_error', 'Titel fehlt.');
+    expect(error).toMatchObject({
+      code: 'validation_error',
+      message: 'Titel fehlt.',
+      name: 'SurveysApiError',
     });
   });
 });

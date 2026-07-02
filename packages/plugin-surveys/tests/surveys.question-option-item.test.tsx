@@ -92,4 +92,28 @@ describe('SurveyQuestionOptionItem', () => {
 
     expect(screen.queryByLabelText('Freitext erlauben')).toBeNull();
   });
+
+  it('falls back to empty option values when the addressed option slot is missing', () => {
+    render(
+      <SurveyQuestionOptionItem
+        pt={pt}
+        questionIndex={0}
+        optionIndex={1}
+        optionCount={2}
+        question={{
+          title: 'Frage',
+          description: '',
+          type: 'SINGLE_CHOICE_WITH_TEXT',
+          required: false,
+          position: 0,
+          options: [{ title: 'Option A', position: 0, enablesFreeText: true }],
+        }}
+        updateQuestion={vi.fn()}
+        requestDeleteOption={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText('Optionstitel')).toHaveProperty('value', '');
+    expect(screen.getByLabelText('Freitext erlauben')).toHaveProperty('checked', false);
+  });
 });

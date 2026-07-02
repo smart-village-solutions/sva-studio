@@ -139,4 +139,38 @@ describe('SurveyDetailResultsTab', () => {
     expect(onExport).toHaveBeenCalledWith({ kind: 'withoutFreeText', format: 'excel' });
     expect(onExport).toHaveBeenCalledWith({ kind: 'withFreeText', format: 'xml' });
   });
+
+  it('renders fallback percentages and clamps progress widths into the valid range', () => {
+    const view = render(
+      <SurveyDetailResultsTab
+        mode="edit"
+        pt={pt}
+        resultData={{
+          statusLabel: 'Aktiv',
+          participationCount: 5,
+          submissionCount: 4,
+          questionCount: 1,
+          questions: [
+            {
+              questionId: 'question-1',
+              questionTitle: 'Frage mit Rändern',
+              totalResponses: 4,
+              optionResults: [
+                { optionId: 'option-1', title: 'Ohne Prozent', votes: 1 },
+                { optionId: 'option-2', title: 'Über Maximum', votes: 3, percentage: 150 },
+              ],
+              freeTextResponses: [],
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.getByText((content) => content.includes('1 Stimmen | --'))).toBeTruthy();
+    expect(screen.getByText('Für diese Frage liegen keine Freitextantworten vor.')).toBeTruthy();
+
+    const bars = Array.from(view.container.querySelectorAll('.bg-primary'));
+    expect((bars[0] as HTMLElement | undefined)?.style.width).toBe('0%');
+    expect((bars[1] as HTMLElement | undefined)?.style.width).toBe('100%');
+  });
 });

@@ -8,6 +8,7 @@ const fetchIamContentHistoryMock = vi.fn();
 const getSurveyMock = vi.fn();
 const createSurveyMock = vi.fn();
 const updateSurveyMock = vi.fn();
+const useParamsMock = vi.fn(() => ({ contentId: 'survey-123' }));
 
 const surveyTranslate = (key: string, variables?: Readonly<Record<string, string | number>>): string => {
   const template = messages[`surveys.${key}` as keyof typeof messages] ?? key;
@@ -22,7 +23,7 @@ const surveyTranslate = (key: string, variables?: Readonly<Record<string, string
 };
 
 vi.mock('@tanstack/react-router', () => ({
-  useParams: () => ({ contentId: 'survey-123' }),
+  useParams: () => useParamsMock(),
   Link: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useNavigate: () => vi.fn(),
 }));
@@ -194,6 +195,7 @@ describe('survey editor pages', () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    useParamsMock.mockReturnValue({ contentId: 'survey-123' });
   });
 
   it('renders the shared editor frame with all survey tabs in create mode', () => {
@@ -257,6 +259,16 @@ describe('survey editor pages', () => {
 
     expect(scoped.getByText('Umfrage wird geladen.')).toBeTruthy();
     expect(scoped.queryByText('Historie wird geladen.')).toBeNull();
+  });
+
+  it('falls back to the legacy id route param in edit mode', () => {
+    useParamsMock.mockReturnValue({ id: 'survey-legacy-123' });
+
+    const view = render(<SurveyEditPage />);
+    const scoped = within(view.container);
+
+    expect(scoped.getByText('Umfrage wird geladen.')).toBeTruthy();
+    expect(getSurveyMock).toHaveBeenCalledWith('survey-legacy-123');
   });
 
 });

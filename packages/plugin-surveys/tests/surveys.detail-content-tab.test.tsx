@@ -119,6 +119,7 @@ describe('SurveyDetailContentTab', () => {
     fireEvent.change(screen.getByLabelText('Datenschutzhinweis'), { target: { value: 'Datenschutz' } });
     fireEvent.change(screen.getByLabelText('Transparenzhinweis'), { target: { value: 'Transparenz' } });
     fireEvent.click(screen.getByLabelText('Anonyme Teilnahme'));
+    fireEvent.click(screen.getByLabelText('Ergebnisse in der App anzeigen'));
     fireEvent.change(screen.getByLabelText('Ergebnisfreigabe'), {
       target: { value: 'AFTER_SURVEY_END' },
     });
@@ -129,6 +130,7 @@ describe('SurveyDetailContentTab', () => {
     expect(valuesRef.current?.content.privacyNotice).toBe('Datenschutz');
     expect(valuesRef.current?.content.transparencyNotice).toBe('Transparenz');
     expect(valuesRef.current?.content.isAnonymous).toBe(true);
+    expect(valuesRef.current?.content.showResultsInApp).toBe(true);
     expect(valuesRef.current?.content.resultVisibility).toBe('AFTER_SURVEY_END');
   });
 

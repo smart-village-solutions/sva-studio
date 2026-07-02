@@ -324,6 +324,48 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
     });
   });
 
+  it('creates, updates, and deletes surveys successfully across the route contract', async () => {
+    mockAuthorizedRequest();
+    state.createSvaMainserverSurvey.mockResolvedValue({
+      success: true,
+      errors: [],
+      survey: { id: 'survey-new', title: { de: 'Neu' } },
+    });
+    state.updateSvaMainserverSurvey.mockResolvedValue({
+      success: true,
+      errors: [],
+      survey: { id: 'survey-1', title: { de: 'Aktualisiert' } },
+    });
+    state.deleteSvaMainserverSurvey.mockResolvedValue({
+      success: true,
+      errors: [],
+      deletedSurveyId: 'survey-1',
+    });
+
+    const createResponse = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys', {
+        method: 'POST',
+        body: JSON.stringify({ title: { de: 'Neu' } }),
+      })
+    );
+    const updateResponse = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: { de: 'Aktualisiert' } }),
+      })
+    );
+    const deleteResponse = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1', { method: 'DELETE' })
+    );
+
+    expect(createResponse?.status).toBe(201);
+    await expect(createResponse?.json()).resolves.toEqual({ data: { id: 'survey-new', title: { de: 'Neu' } } });
+    expect(updateResponse?.status).toBe(200);
+    await expect(updateResponse?.json()).resolves.toEqual({ data: { id: 'survey-1', title: { de: 'Aktualisiert' } } });
+    expect(deleteResponse?.status).toBe(200);
+    await expect(deleteResponse?.json()).resolves.toEqual({ data: { id: 'survey-1' } });
+  });
+
   it('uses the authorized actor organization for list calls', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
@@ -439,5 +481,40 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
       error: 'survey_not_found',
       message: 'Nicht gefunden.',
     });
+  });
+
+  it('returns validation errors for missing instance context and malformed mutation bodies', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) =>
+      handler({
+        ...ctx,
+        user: {
+          ...ctx.user,
+          instanceId: undefined,
+        },
+      })
+    );
+
+    const missingInstanceResponse = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys')
+    );
+
+    expect(missingInstanceResponse?.status).toBe(400);
+    await expect(missingInstanceResponse?.json()).resolves.toMatchObject({
+      error: 'invalid_instance_id',
+    });
+
+    mockAuthorizedRequest();
+    const invalidBodyResponse = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys', {
+        method: 'POST',
+        body: JSON.stringify('not-an-object'),
+      })
+    );
+
+    expect(invalidBodyResponse?.status).toBe(400);
+    await expect(invalidBodyResponse?.json()).resolves.toMatchObject({
+      error: 'invalid_request',
+    });
+    expect(state.createSvaMainserverSurvey).not.toHaveBeenCalled();
   });
 });

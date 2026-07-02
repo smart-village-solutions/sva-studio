@@ -28,6 +28,7 @@ export default mergeConfig(
       maxWorkers: 1,
       coverage: {
         reportsDirectory: './coverage',
+        exclude: ['src/**/*.types.ts'],
       },
     },
   })

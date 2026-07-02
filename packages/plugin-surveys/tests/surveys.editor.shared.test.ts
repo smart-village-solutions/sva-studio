@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createSurveyEditorTabs,
+  getSurveyEditorErrorMessage,
   mapSurveyItemToFormValues,
   mapSurveyModerationGroups,
   mapSurveyResultsTabData,
   toSurveyMutationInput,
 } from '../src/surveys.editor.shared.js';
+import { reorderEntries } from '../src/surveys.question-editor.shared.js';
 import type { SurveyContentItem } from '../src/surveys.types.js';
 
 const surveyItem: SurveyContentItem = {
@@ -311,6 +313,180 @@ describe('survey editor shared mappings', () => {
           ]),
         },
       ],
+    });
+  });
+
+  it('returns null result data without survey results and deduplicates target-area tabs', () => {
+    const itemWithoutResults: SurveyContentItem = {
+      ...surveyItem,
+      targetAreaIds: ['district-1', 'district-1', 'district-2'],
+      results: undefined,
+    };
+
+    expect(mapSurveyResultsTabData(itemWithoutResults, (key) => key)).toBeNull();
+
+    const tabs = createSurveyEditorTabs((key) => key, 'edit', itemWithoutResults, 'survey-123');
+    const basisPanel = tabs[0]?.panel;
+
+    expect(basisPanel).toBeTruthy();
+    expect(mapSurveyModerationGroups(itemWithoutResults)).toEqual([]);
+  });
+
+  it('keeps blank strings empty, preserves empty descriptions, and falls back to the provided editor error text', () => {
+    const blankTitleItem: SurveyContentItem = {
+      ...surveyItem,
+      title: { de: '   ', fr: 'Bonjour' },
+      description: { de: '   ' },
+      questions: [
+        {
+          ...surveyItem.questions[0]!,
+          title: { de: '   ', en: 'Fallback title' },
+          description: { de: '   ' },
+        },
+      ],
+    };
+
+    expect(mapSurveyItemToFormValues(blankTitleItem)).toMatchObject({
+      title: 'Bonjour',
+      content: {
+        description: '',
+        questions: [{ title: 'Fallback title', description: '' }],
+      },
+    });
+
+    expect(getSurveyEditorErrorMessage(new Error('   '), 'Fallback')).toBe('Fallback');
+    expect(getSurveyEditorErrorMessage('plain string', 'Fallback')).toBe('Fallback');
+  });
+
+  it('returns the unchanged list when a reorder source index is missing', () => {
+    expect(reorderEntries(['A', 'B'], 5, 0)).toEqual(['A', 'B']);
+  });
+
+  it('maps draft questions without persisted ids and keeps optional create payload fields explicit', () => {
+    const draftItem: SurveyContentItem = {
+      ...surveyItem,
+      title: { fr: 'Bonjour' },
+      startAt: '2026-07-02T08:30:00.000Z',
+      endAt: '2026-07-03T09:45:00.000Z',
+      shortDescription: undefined,
+      description: undefined,
+      privacyNotice: undefined,
+      transparencyNotice: undefined,
+      questions: [
+        {
+          ...surveyItem.questions[0]!,
+          id: undefined,
+          title: { fr: 'Question brouillon' },
+          description: undefined,
+          position: undefined,
+          options: [
+            {
+              ...surveyItem.questions[0]!.options[0]!,
+              id: undefined,
+              title: { fr: 'Option brouillon' },
+              position: undefined,
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(mapSurveyItemToFormValues(draftItem)).toMatchObject({
+      title: 'Bonjour',
+      basis: {
+        startAt: '2026-07-02T10:30',
+        endAt: '2026-07-03T11:45',
+      },
+      content: {
+        shortDescription: '',
+        description: '',
+        privacyNotice: '',
+        transparencyNotice: '',
+        questions: [
+          {
+            clientId: 'question-0',
+            id: undefined,
+            title: 'Question brouillon',
+            description: '',
+            position: 0,
+            options: [
+              {
+                clientId: 'option-0-0',
+                id: undefined,
+                title: 'Option brouillon',
+                position: 0,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const values = mapSurveyItemToFormValues(draftItem);
+    values.content.shortDescription = 'Kurzfassung';
+    values.content.description = 'Beschreibung';
+    values.content.privacyNotice = 'Datenschutz';
+    values.content.transparencyNotice = 'Transparenz';
+    values.content.questions[0] = {
+      ...values.content.questions[0]!,
+      description: 'Fragetext',
+      position: undefined,
+      options: [
+        {
+          ...values.content.questions[0]!.options[0]!,
+          position: undefined,
+        },
+      ],
+    };
+
+    expect(toSurveyMutationInput(values)).toEqual({
+      title: 'Bonjour',
+      shortDescription: 'Kurzfassung',
+      description: 'Beschreibung',
+      status: 'ACTIVE',
+      startAt: '2026-07-02T08:30:00.000Z',
+      endAt: '2026-07-03T09:45:00.000Z',
+      resultVisibility: 'AFTER_SUBMISSION',
+      targetAreaIds: [],
+      showResultsInApp: true,
+      isAnonymous: false,
+      privacyNotice: 'Datenschutz',
+      transparencyNotice: 'Transparenz',
+      questions: [
+        {
+          title: 'Question brouillon',
+          description: 'Fragetext',
+          type: 'SINGLE_CHOICE_WITH_TEXT',
+          required: true,
+          position: 0,
+          options: [
+            {
+              title: 'Option brouillon',
+              position: 0,
+              enablesFreeText: true,
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('prefers non-empty error messages from thrown errors', () => {
+    expect(getSurveyEditorErrorMessage(new Error('Echte Fehlermeldung'), 'Fallback')).toBe('Echte Fehlermeldung');
+  });
+
+  it('emits delete markers when loaded survey questions are removed entirely', () => {
+    const values = mapSurveyItemToFormValues(surveyItem);
+    values.content.questions = [];
+
+    expect(toSurveyMutationInput(values, surveyItem)).toEqual({
+      title: 'Bestandsumfrage',
+      status: 'ACTIVE',
+      resultVisibility: 'AFTER_SUBMISSION',
+      targetAreaIds: [],
+      showResultsInApp: true,
+      isAnonymous: false,
+      questions: [{ id: 'question-1', delete: true }],
     });
   });
 

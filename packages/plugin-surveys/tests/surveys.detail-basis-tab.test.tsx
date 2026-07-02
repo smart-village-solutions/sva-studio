@@ -117,6 +117,28 @@ describe('SurveyDetailBasisTab', () => {
     expect(scoped.queryByRole('button', { name: 'Zielgebiet Innenstadt entfernen' })).toBeNull();
   });
 
+  it('updates status and ignores duplicate or empty target-area selections', () => {
+    const view = renderTab({
+      defaultValues: {
+        basis: {
+          ...createDefaultSurveyDetailFormValues().basis,
+          status: 'DRAFT',
+          targetAreaIds: ['area-1'],
+        },
+      },
+    });
+    const scoped = within(view.container);
+
+    fireEvent.change(scoped.getByLabelText('Status'), { target: { value: 'ARCHIVED' } });
+    expect((scoped.getByLabelText('Status') as HTMLSelectElement).value).toBe('ARCHIVED');
+
+    fireEvent.change(scoped.getByLabelText('Zielgebiet suchen'), { target: { value: 'area-1' } });
+    expect(scoped.getAllByRole('button', { name: 'Zielgebiet Innenstadt entfernen' })).toHaveLength(1);
+
+    fireEvent.change(scoped.getByLabelText('Zielgebiet suchen'), { target: { value: '' } });
+    expect(scoped.getAllByRole('button', { name: 'Zielgebiet Innenstadt entfernen' })).toHaveLength(1);
+  });
+
   it('shows a create hint instead of metadata values before the first save', () => {
     const view = renderTab();
     const scoped = within(view.container);
@@ -139,5 +161,6 @@ describe('SurveyDetailBasisTab', () => {
     expect(scoped.getByText('Erstellt')).toBeTruthy();
     expect(scoped.getByText('Aktualisiert')).toBeTruthy();
     expect(scoped.getByText('Veröffentlicht')).toBeTruthy();
+    expect(scoped.getAllByText('--.--.-- --:--').length).toBeGreaterThan(0);
   });
 });

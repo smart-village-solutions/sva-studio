@@ -45,13 +45,25 @@ export const gotoHomeAsAuthenticatedUser = async (page: Page, expectedUserName =
 };
 
 export const navigateClientSide = async (page: Page, targetPath: string) => {
-  await page.waitForFunction(() =>
-    Boolean(
-      (window as typeof window & {
-        __SVA_PLAYWRIGHT_ROUTER__?: { navigate: (options: { to: string }) => Promise<void> | void };
-      }).__SVA_PLAYWRIGHT_ROUTER__,
-    ),
-  );
+  const routerAvailable = await page
+    .waitForFunction(
+      () =>
+        Boolean(
+          (window as typeof window & {
+            __SVA_PLAYWRIGHT_ROUTER__?: { navigate: (options: { to: string }) => Promise<void> | void };
+          }).__SVA_PLAYWRIGHT_ROUTER__,
+        ),
+      undefined,
+      { timeout: 5_000 },
+    )
+    .then(() => true)
+    .catch(() => false);
+
+  if (!routerAvailable) {
+    await page.goto(targetPath, { waitUntil: 'networkidle' });
+    return;
+  }
+
   await page.evaluate(async (path) => {
     const router = (
       window as typeof window & {

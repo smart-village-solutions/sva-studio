@@ -10,8 +10,23 @@ const useAuthMock = vi.fn();
 const deleteNewsMock = vi.fn();
 const deleteEventMock = vi.fn();
 const deletePoiMock = vi.fn();
+const deleteSurveyMock = vi.fn();
 const navigateMock = vi.fn();
 let searchState: Record<string, unknown> = {};
+const DEFAULT_VISIBLE_TYPES = [
+  'generic',
+  'news.article',
+  'events.event-record',
+  'poi.point-of-interest',
+  'surveys.survey',
+] as const;
+const DEFAULT_QUERY = {
+  page: 1,
+  pageSize: 25,
+  sortBy: 'updatedAt',
+  sortDirection: 'desc',
+  visibleTypes: DEFAULT_VISIBLE_TYPES,
+} as const;
 const { mockedStudioContentTypes } = vi.hoisted(() => ({
   mockedStudioContentTypes: [
     {
@@ -45,6 +60,14 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
       requiredCreateAction: 'poi.create',
       createPath: '/admin/poi/new',
       detailPath: '/admin/poi/$contentId',
+    },
+    {
+      contentType: 'surveys.survey',
+      displayName: 'Umfragen',
+      requiredReadAction: 'surveys.read',
+      requiredCreateAction: 'surveys.create',
+      createPath: '/admin/surveys/new',
+      detailPath: '/admin/surveys/$contentId',
     },
   ] as const,
 }));
@@ -91,6 +114,10 @@ vi.mock('@sva/plugin-poi', () => ({
   deletePoi: (...args: unknown[]) => deletePoiMock(...args),
 }));
 
+vi.mock('@sva/plugin-surveys', () => ({
+  deleteSurvey: (...args: unknown[]) => deleteSurveyMock(...args),
+}));
+
 vi.mock('../../lib/plugins', () => ({
   studioContentTypes: mockedStudioContentTypes,
 }));
@@ -103,6 +130,7 @@ describe('ContentListPage', () => {
     deleteNewsMock.mockReset();
     deleteEventMock.mockReset();
     deletePoiMock.mockReset();
+    deleteSurveyMock.mockReset();
     navigateMock.mockReset();
     searchState = {};
     useAuthMock.mockReturnValue({
@@ -123,6 +151,9 @@ describe('ContentListPage', () => {
           'events.read',
           'events.create',
           'events.delete',
+          'surveys.read',
+          'surveys.create',
+          'surveys.delete',
         ],
       },
       isLoading: false,
@@ -150,6 +181,9 @@ describe('ContentListPage', () => {
         'events.read',
         'events.create',
         'events.delete',
+        'surveys.read',
+        'surveys.create',
+        'surveys.delete',
       ],
       isLoading: false,
       error: null,
@@ -175,6 +209,41 @@ describe('ContentListPage', () => {
     deleteContents: vi.fn(),
     ...overrides,
   });
+
+  const createPendingAccessResult = (isLoading = true) => ({
+    access: null,
+    permissionActions: [],
+    isLoading,
+    error: null,
+  });
+
+  const expectDisabledDefaultContentQuery = () => {
+    expect(useContentsMock).toHaveBeenCalledWith(DEFAULT_QUERY, { enabled: false });
+  };
+
+  const renderWithUnresolvedContentAccess = (isLoading = true) => {
+    useContentAccessMock.mockReturnValue(createPendingAccessResult(isLoading));
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+    expectDisabledDefaultContentQuery();
+  };
+
+  const renderWithStableQuerySearchState = () => {
+    searchState = {
+      filters: { status: 'all' },
+      sort: { field: 'updatedAt', direction: 'desc' },
+      page: 1,
+      pageSize: 25,
+    };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    const view = render(<ContentListPage />);
+    view.rerender(<ContentListPage />);
+
+    expect(useContentsMock).toHaveBeenCalledTimes(2);
+    expect(useContentsMock.mock.calls[0]?.[0]).toBe(useContentsMock.mock.calls[1]?.[0]);
+  };
 
   it('renders contents, filters them and links to create and edit routes', () => {
     useContentsMock.mockReturnValue(createContentsApiResult({
@@ -223,16 +292,7 @@ describe('ContentListPage', () => {
 
     const view = render(<ContentListPage />);
 
-    expect(useContentsMock).toHaveBeenCalledWith(
-      {
-        page: 1,
-        pageSize: 25,
-        sortBy: 'updatedAt',
-        sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
-      },
-      { enabled: true }
-    );
+    expect(useContentsMock).toHaveBeenCalledWith(DEFAULT_QUERY, { enabled: true });
     expect(screen.getByRole('heading', { name: 'Inhalte' })).toBeTruthy();
     expect(screen.queryByText(/Aktueller Zugriffsstatus:/)).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Inhaltsliste', level: 2 })).toBeNull();
@@ -285,7 +345,7 @@ describe('ContentListPage', () => {
         status: 'archived',
         sortBy: 'updatedAt',
         sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
+        visibleTypes: DEFAULT_VISIBLE_TYPES,
       },
       { enabled: true }
     );
@@ -293,26 +353,7 @@ describe('ContentListPage', () => {
   });
 
   it('does not load contents before content access has resolved', () => {
-    useContentAccessMock.mockReturnValue({
-      access: null,
-      permissionActions: [],
-      isLoading: true,
-      error: null,
-    });
-    useContentsMock.mockReturnValue(createContentsApiResult());
-
-    render(<ContentListPage />);
-
-    expect(useContentsMock).toHaveBeenCalledWith(
-      {
-        page: 1,
-        pageSize: 25,
-        sortBy: 'updatedAt',
-        sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
-      },
-      { enabled: false }
-    );
+    renderWithUnresolvedContentAccess();
   });
 
   it('deletes a mainserver content row when delete permission exists', async () => {
@@ -323,14 +364,14 @@ describe('ContentListPage', () => {
     useContentsMock.mockReturnValue(createContentsApiResult({
       contents: [
         {
-          id: 'content-1',
-          contentType: 'news.article',
-          title: 'Startseite',
+          id: 'survey-1',
+          contentType: 'surveys.survey',
+          title: 'Beteiligung',
           publishedAt: '2026-03-21T10:00:00.000Z',
           createdAt: '2026-03-20T10:00:00.000Z',
           updatedAt: '2026-03-21T11:00:00.000Z',
-          author: 'Editor',
-          payload: { hero: 'Willkommen' },
+          author: 'mainserver',
+          payload: { questionCount: 3 },
           status: 'published',
           access: {
             state: 'editable',
@@ -345,7 +386,7 @@ describe('ContentListPage', () => {
       pagination: { page: 1, pageSize: 25, total: 1 },
       refetch,
     }));
-    deleteNewsMock.mockResolvedValue(undefined);
+    deleteSurveyMock.mockResolvedValue(undefined);
 
     render(<ContentListPage />);
 
@@ -353,7 +394,7 @@ describe('ContentListPage', () => {
 
     expect(confirmMock).toHaveBeenCalledWith('Soll dieser Inhalt wirklich gelöscht werden?');
     await waitFor(() => {
-      expect(deleteNewsMock).toHaveBeenCalledWith('content-1');
+      expect(deleteSurveyMock).toHaveBeenCalledWith('survey-1');
     });
     await waitFor(() => {
       expect(refetch).toHaveBeenCalled();
@@ -593,20 +634,7 @@ describe('ContentListPage', () => {
   });
 
   it('keeps the content list query reference stable across rerenders without search changes', () => {
-    searchState = {
-      filters: { status: 'all' },
-      sort: { field: 'updatedAt', direction: 'desc' },
-      page: 1,
-      pageSize: 25,
-    };
-
-    useContentsMock.mockReturnValue(createContentsApiResult());
-
-    const view = render(<ContentListPage />);
-    view.rerender(<ContentListPage />);
-
-    expect(useContentsMock).toHaveBeenCalledTimes(2);
-    expect(useContentsMock.mock.calls[0]?.[0]).toBe(useContentsMock.mock.calls[1]?.[0]);
+    renderWithStableQuerySearchState();
   });
 
   it('keeps the content list query reference stable when content access finishes with the same readable types', () => {
@@ -618,12 +646,7 @@ describe('ContentListPage', () => {
     };
 
     useContentAccessMock
-      .mockReturnValueOnce({
-        access: null,
-        permissionActions: [],
-        isLoading: true,
-        error: null,
-      })
+      .mockReturnValueOnce(createPendingAccessResult())
       .mockReturnValue({
         access: {
           state: 'editable',
@@ -646,17 +669,12 @@ describe('ContentListPage', () => {
           'events.read',
           'events.create',
           'events.delete',
+          'surveys.read',
         ],
         isLoading: false,
         error: null,
       });
-    useContentsMock.mockReturnValue(createContentsApiResult());
-
-    const view = render(<ContentListPage />);
-    view.rerender(<ContentListPage />);
-
-    expect(useContentsMock).toHaveBeenCalledTimes(2);
-    expect(useContentsMock.mock.calls[0]?.[0]).toBe(useContentsMock.mock.calls[1]?.[0]);
+    renderWithStableQuerySearchState();
   });
 
   it('normalizes legacy query aliases from route search state into canonical list controls', () => {
@@ -703,7 +721,7 @@ describe('ContentListPage', () => {
         status: 'published',
         sortBy: 'updatedAt',
         sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
+        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
       },
       { enabled: true }
     );
@@ -820,49 +838,11 @@ describe('ContentListPage', () => {
   });
 
   it('waits for content access before requesting the content list while access is loading', () => {
-    useContentAccessMock.mockReturnValue({
-      access: null,
-      permissionActions: [],
-      isLoading: true,
-      error: null,
-    });
-    useContentsMock.mockReturnValue(createContentsApiResult());
-
-    render(<ContentListPage />);
-
-    expect(useContentsMock).toHaveBeenCalledWith(
-      {
-        page: 1,
-        pageSize: 25,
-        sortBy: 'updatedAt',
-        sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
-      },
-      { enabled: false }
-    );
+    renderWithUnresolvedContentAccess();
   });
 
   it('waits for content access before requesting the content list before the first load starts', () => {
-    useContentAccessMock.mockReturnValue({
-      access: null,
-      permissionActions: [],
-      isLoading: false,
-      error: null,
-    });
-    useContentsMock.mockReturnValue(createContentsApiResult());
-
-    render(<ContentListPage />);
-
-    expect(useContentsMock).toHaveBeenCalledWith(
-      {
-        page: 1,
-        pageSize: 25,
-        sortBy: 'updatedAt',
-        sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
-      },
-      { enabled: false }
-    );
+    renderWithUnresolvedContentAccess(false);
   });
 
   it('does not start the content list request before the auth session has resolved', () => {
@@ -909,7 +889,7 @@ describe('ContentListPage', () => {
         pageSize: 25,
         sortBy: 'title',
         sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest'],
+        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
       },
       { enabled: true }
     );

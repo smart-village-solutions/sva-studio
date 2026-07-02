@@ -14,6 +14,7 @@ import {
   listSvaMainserverEvents,
   listSvaMainserverNews,
   listSvaMainserverPoi,
+  listSvaMainserverSurveys,
 } from '@sva/sva-mainserver/server';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
@@ -28,13 +29,13 @@ import {
   buildProjectionReadVisibilityRules,
   type ProjectionReadVisibilityRule,
 } from './iam-content-list-visibility.js';
-import { mapEventItem, mapNewsItem, mapPoiItem } from './iam-content-list-mainserver.js';
+import { mapEventItem, mapNewsItem, mapPoiItem, mapSurveyItem } from './iam-content-list-mainserver.js';
 
 const MAIN_SERVER_SYNC_STALE_MS = 5 * 60 * 1000;
 const MAIN_SERVER_SYNC_POLL_INTERVAL_MS = 60 * 1000;
 const MAX_SYNC_ITEMS_PER_TYPE = 5_000;
 
-type MainserverContentType = 'news.article' | 'events.event-record' | 'poi.point-of-interest';
+type MainserverContentType = 'news.article' | 'events.event-record' | 'poi.point-of-interest' | 'surveys.survey';
 
 export type ProjectionRow = {
   id: string;
@@ -76,7 +77,7 @@ type ProjectionSyncStateRow = {
   projected_count: number;
 };
 
-export type ContentProjectionSyncState = Readonly<{
+type ContentProjectionSyncState = Readonly<{
   contentType: MainserverContentType;
   lastStartedAt?: string;
   lastSucceededAt?: string;
@@ -282,7 +283,8 @@ const toMainserverContentType = (value: string): MainserverContentType | null =>
   if (
     value === 'news.article' ||
     value === 'events.event-record' ||
-    value === 'poi.point-of-interest'
+    value === 'poi.point-of-interest' ||
+    value === 'surveys.survey'
   ) {
     return value;
   }
@@ -747,6 +749,7 @@ const refreshMainserverProjection = async (
       const result = await fetchAllPages((pageQuery) =>
         listSvaMainserverNews({
           ...connection,
+          includeInvisible: true,
           ...pageQuery,
         })
       );
@@ -765,6 +768,7 @@ const refreshMainserverProjection = async (
       const result = await fetchAllPages((pageQuery) =>
         listSvaMainserverEvents({
           ...connection,
+          includeInvisible: true,
           ...pageQuery,
         })
       );
@@ -783,6 +787,7 @@ const refreshMainserverProjection = async (
       const result = await fetchAllPages((pageQuery) =>
         listSvaMainserverPoi({
           ...connection,
+          includeInvisible: true,
           ...pageQuery,
         })
       );
@@ -795,6 +800,24 @@ const refreshMainserverProjection = async (
         ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
         credentialSource,
         sourceEntityType: 'poi.point-of-interest',
+        sourceEntityId: item.id,
+      }));
+    } else if (contentType === 'surveys.survey') {
+      const result = await listSvaMainserverSurveys({
+        ...connection,
+        includeArchived: true,
+        page: 1,
+        pageSize: MAX_SYNC_ITEMS_PER_TYPE,
+      });
+      const credentialSource = resolveMainserverProjectionCredentialSource(
+        result,
+        projectedOrganizationId
+      );
+      rows = result.data.map((item) => ({
+        ...mapSurveyItem(item, instanceId, []),
+        ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+        credentialSource,
+        sourceEntityType: 'surveys.survey',
         sourceEntityId: item.id,
       }));
     }

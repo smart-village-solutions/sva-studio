@@ -7,6 +7,7 @@ import {
 import { deleteEvent } from '@sva/plugin-events';
 import { deleteNews } from '@sva/plugin-news';
 import { deletePoi } from '@sva/plugin-poi';
+import { deleteSurvey } from '@sva/plugin-surveys';
 import { IconEdit, IconEye, IconTrash, IconXboxX } from '@tabler/icons-react';
 import { StudioDataTable, StudioListPageTemplate, type StudioBulkAction, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
@@ -60,6 +61,7 @@ const MAIN_SERVER_CONTENT_TYPES = new Set([
   'news.article',
   'events.event-record',
   'poi.point-of-interest',
+  'surveys.survey',
 ]);
 
 const contentAdminResource = appAdminResources.find((resource) => resource.resourceId === 'content');
@@ -305,6 +307,10 @@ const deleteMainserverItem = async (contentType: string, contentId: string): Pro
   }
   if (contentType === 'poi.point-of-interest') {
     await deletePoi(contentId);
+    return;
+  }
+  if (contentType === 'surveys.survey') {
+    await deleteSurvey(contentId);
   }
 };
 

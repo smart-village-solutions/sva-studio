@@ -1,0 +1,93 @@
+export type SurveyStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+
+export type SurveyLocalizedText = Readonly<Record<string, string>>;
+
+export type SurveyQuestionOption = Readonly<{
+  id: string;
+  questionId: string;
+  title: SurveyLocalizedText;
+  position: number;
+  enablesFreeText: boolean;
+}>;
+
+export type SurveyQuestion = Readonly<{
+  id: string;
+  surveyId: string;
+  title: SurveyLocalizedText;
+  description?: SurveyLocalizedText;
+  type: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'FREE_TEXT' | 'SINGLE_CHOICE_WITH_TEXT' | 'MULTIPLE_CHOICE_WITH_TEXT';
+  required: boolean;
+  position: number;
+  options: readonly SurveyQuestionOption[];
+}>;
+
+export type SurveyResultsFreeTextResponse = Readonly<{
+  id: string;
+  text: string;
+  status: 'INTERNAL' | 'PUBLIC';
+  createdAt: string;
+}>;
+
+export type SurveyResultsOptionResult = Readonly<{
+  optionId: string;
+  title: SurveyLocalizedText;
+  votes: number;
+  percentage?: number;
+  freeTextResponses: readonly SurveyResultsFreeTextResponse[];
+}>;
+
+export type SurveyResultsQuestionResult = Readonly<{
+  questionId: string;
+  type: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'FREE_TEXT' | 'SINGLE_CHOICE_WITH_TEXT' | 'MULTIPLE_CHOICE_WITH_TEXT';
+  totalResponses: number;
+  optionResults: readonly SurveyResultsOptionResult[];
+  freeTextResponses: readonly SurveyResultsFreeTextResponse[];
+}>;
+
+export type SurveyResults = Readonly<{
+  surveyId: string;
+  participationCount: number;
+  submissionCount: number;
+  questions: readonly SurveyResultsQuestionResult[];
+}>;
+
+export type SurveyContentItem = Readonly<{
+  id: string;
+  contentType: 'surveys.survey';
+  title: SurveyLocalizedText;
+  shortDescription?: SurveyLocalizedText;
+  description?: SurveyLocalizedText;
+  status: SurveyStatus;
+  startAt?: string;
+  endAt?: string;
+  resultVisibility: 'NONE' | 'AFTER_SUBMISSION' | 'AFTER_SURVEY_END';
+  targetAreaIds: readonly string[];
+  showResultsInApp: boolean;
+  isAnonymous: boolean;
+  privacyNotice?: SurveyLocalizedText;
+  transparencyNotice?: SurveyLocalizedText;
+  questions: readonly SurveyQuestion[];
+  questionCount: number;
+  participationCount: number;
+  submissionCount: number;
+  results?: SurveyResults;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
+  archivedAt?: string;
+}>;
+
+export type SurveyListQuery = Readonly<{
+  page: number;
+  pageSize: number;
+}>;
+
+export type SurveyListResult = Readonly<{
+  data: readonly SurveyContentItem[];
+  pagination: Readonly<{
+    page: number;
+    pageSize: number;
+    hasNextPage: boolean;
+    total?: number;
+  }>;
+}>;

@@ -9,7 +9,8 @@ import { refreshProjectedContentsForMainserverMutation } from './iam-content-lis
 type MainserverProjectionContentType =
   | 'news.article'
   | 'events.event-record'
-  | 'poi.point-of-interest';
+  | 'poi.point-of-interest'
+  | 'surveys.survey';
 
 const shouldRefreshProjectionForRequest = (request: Request, response: Response): boolean =>
   response.ok &&

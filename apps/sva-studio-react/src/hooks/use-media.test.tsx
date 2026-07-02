@@ -1122,7 +1122,9 @@ describe('useMediaDetail', () => {
       expect(screen.getByTestId('mutation-error').textContent).toBe('none');
     });
 
-    expect(getMediaDeliveryMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(getMediaDeliveryMock).toHaveBeenCalledTimes(1);
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'clear' }));
 

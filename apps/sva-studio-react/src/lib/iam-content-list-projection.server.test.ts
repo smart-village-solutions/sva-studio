@@ -24,6 +24,7 @@ const state = vi.hoisted(() => ({
   listSvaMainserverNews: vi.fn(),
   listSvaMainserverEvents: vi.fn(),
   listSvaMainserverPoi: vi.fn(),
+  listSvaMainserverSurveys: vi.fn(),
   getWorkspaceContext: vi.fn(),
 }));
 
@@ -81,6 +82,7 @@ vi.mock('@sva/sva-mainserver/server', () => ({
   listSvaMainserverNews: state.listSvaMainserverNews,
   listSvaMainserverEvents: state.listSvaMainserverEvents,
   listSvaMainserverPoi: state.listSvaMainserverPoi,
+  listSvaMainserverSurveys: state.listSvaMainserverSurveys,
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -238,6 +240,7 @@ describe('content list projection', () => {
     state.listSvaMainserverNews.mockReset();
     state.listSvaMainserverEvents.mockReset();
     state.listSvaMainserverPoi.mockReset();
+    state.listSvaMainserverSurveys.mockReset();
     state.getWorkspaceContext.mockReset();
     state.getWorkspaceContext.mockReturnValue({ requestId: 'req-1' });
 
@@ -266,6 +269,7 @@ describe('content list projection', () => {
         { action: 'news.read', resourceType: 'news' },
         { action: 'events.read', resourceType: 'events' },
         { action: 'poi.read', resourceType: 'poi' },
+        { action: 'surveys.read', resourceType: 'surveys' },
       ],
     });
     state.resolveActorAccountId.mockResolvedValue('account-1');
@@ -1495,6 +1499,68 @@ describe('content list projection', () => {
         source_system: 'mainserver',
       }),
     ]);
+  });
+
+  it('requests invisible mainserver records during projection refresh', async () => {
+    state.listSvaMainserverEvents.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['events.event-record'],
+      force: true,
+    });
+
+    expect(state.listSvaMainserverEvents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        includeInvisible: true,
+        page: 1,
+        pageSize: 100,
+      })
+    );
+  });
+
+  it('loads surveys once with the projection sync page size before replacing the projection snapshot', async () => {
+    state.listSvaMainserverSurveys.mockResolvedValue({
+      data: Array.from({ length: 101 }, (_, index) => ({
+        id: `survey-${index + 1}`,
+        contentType: 'surveys.survey' as const,
+        title: { de: `Umfrage ${index + 1}` },
+        status: 'ACTIVE' as const,
+        resultVisibility: 'NONE' as const,
+        targetAreaIds: [],
+        showResultsInApp: false,
+        isAnonymous: true,
+        questions: [],
+        questionCount: 0,
+        participationCount: 0,
+        submissionCount: 0,
+        createdAt: '2026-06-20T10:00:00.000Z',
+        updatedAt: '2026-06-21T10:00:00.000Z',
+      })),
+      pagination: { page: 1, pageSize: 5_000, hasNextPage: false },
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['surveys.survey'],
+      force: true,
+    });
+
+    expect(state.resolveEffectivePermissions).toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(state.listSvaMainserverSurveys).toHaveBeenCalledTimes(1);
+    expect(state.listSvaMainserverSurveys).toHaveBeenCalledWith(
+      expect.objectContaining({ includeArchived: true, page: 1, pageSize: 5_000 })
+    );
+    expect(projectionRows).toHaveLength(101);
+    expect(projectionRows.at(-1)).toEqual(
+      expect.objectContaining({
+        content_type: 'surveys.survey',
+        source_entity_id: 'survey-101',
+        source_system: 'mainserver',
+      })
+    );
   });
 
   it('accepts refresh requests without mainserver-backed visible types', async () => {

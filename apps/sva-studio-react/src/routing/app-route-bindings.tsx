@@ -4,6 +4,7 @@ import { CategoriesPage } from '@sva/plugin-categories';
 import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events';
 import { NewsDetailPage, NewsEditPage, type NewsAuthorControl } from '@sva/plugin-news';
 import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi';
+import { SurveyCreatePage, SurveyEditPage } from '@sva/plugin-surveys';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
@@ -204,6 +205,9 @@ type StudioAppRouteBindings = BaseAppRouteBindings & {
   readonly poiList: React.ComponentType;
   readonly poiDetail: React.ComponentType;
   readonly poiEditor: React.ComponentType;
+  readonly surveysList: React.ComponentType;
+  readonly surveysDetail: React.ComponentType;
+  readonly surveysEditor: React.ComponentType;
 };
 
 const renderLazyPage = <TProps extends object>(
@@ -389,6 +393,9 @@ export const appRouteBindings: StudioAppRouteBindings = {
   poiList: ContentListPage,
   poiDetail: PoiEditRoutePage,
   poiEditor: PoiCreateRoutePage,
+  surveysList: ContentListPage,
+  surveysDetail: SurveyEditPage,
+  surveysEditor: SurveyCreatePage,
   media: MediaPage,
   adminMedia: MediaPage,
   categories: CategoriesPage,

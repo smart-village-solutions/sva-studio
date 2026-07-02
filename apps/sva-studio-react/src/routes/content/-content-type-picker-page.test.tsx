@@ -38,6 +38,15 @@ vi.mock('../../lib/plugins', () => ({
       createPath: '/admin/events/new',
       detailPath: '/admin/events/$id',
     },
+    {
+      contentType: 'surveys.survey',
+      displayName: 'Umfragen',
+      description: 'Befragungen',
+      requiredReadAction: 'surveys.read',
+      requiredCreateAction: 'surveys.create',
+      createPath: '/admin/surveys/new',
+      detailPath: '/admin/surveys/$id',
+    },
   ],
 }));
 
@@ -60,7 +69,7 @@ describe('ContentTypePickerPage', () => {
         organizationIds: [],
         sourceKinds: [],
       },
-      permissionActions: ['news.read', 'news.create'],
+      permissionActions: ['news.read', 'news.create', 'surveys.read'],
       isLoading: false,
       error: null,
     });
@@ -73,6 +82,7 @@ describe('ContentTypePickerPage', () => {
     expect(screen.queryByText('Erstellungsseite öffnen')).toBeNull();
     expect(screen.queryByText('news.article')).toBeNull();
     expect(screen.queryByText('Events')).toBeNull();
+    expect(screen.queryByText('Umfragen')).toBeNull();
   });
 
   it('uses a better fallback description for unknown content types', () => {
@@ -94,6 +104,29 @@ describe('ContentTypePickerPage', () => {
 
     expect(screen.getByRole('link', { name: /Events/i }).getAttribute('href')).toBe('/admin/events/new');
     expect(screen.getByText('Veranstaltungen im gemeinsamen Inhaltsbereich anlegen und verwalten.')).toBeTruthy();
+  });
+
+  it('renders the survey card with the dedicated survey description and route', () => {
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: [],
+      },
+      permissionActions: ['surveys.read', 'surveys.create'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<ContentTypePickerPage />);
+
+    expect(screen.getByRole('link', { name: /Umfragen/i }).getAttribute('href')).toBe('/admin/surveys/new');
+    expect(
+      screen.getByText('Umfragen als weiteren Inhaltstyp anlegen, bearbeiten und in der internen Auswertung begleiten.')
+    ).toBeTruthy();
   });
 
   it('shows an empty state when no content type is creatable', () => {

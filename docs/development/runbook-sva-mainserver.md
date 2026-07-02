@@ -103,6 +103,28 @@ Der Event-Editor importiert das POI-Plugin nicht direkt. Die Auswahl nutzt aussc
 
 Rollback erfolgt wie bei News über `iam.instance_integrations.enabled = false`. Events und POI fallen dann nicht auf lokale IAM-Contents zurück.
 
+## Survey-Operationen
+
+Surveys folgen demselben Boundary-Muster wie News, Events und POI. Das Plugin erzeugt Exportdateien aus den JSON-Ergebnissen im Studio; der Mainserver liefert dafür den hostgeführten Survey-Vertrag.
+
+| Studio-Methode | Lokale Primitive | Mainserver-Operation | Hinweis |
+| --- | --- | --- | --- |
+| `GET /api/v1/mainserver/surveys` | `surveys.read` | `surveys` | Liefert die Mainserver-gestützte Survey-Liste für Inhaltsliste und Editor-Einstiege. |
+| `GET /api/v1/mainserver/surveys/$surveyId` | `surveys.read` | `survey(id)` | Liefert den Survey-Detailvertrag für den Editor; Ergebnisdaten werden nur zusätzlich geladen, wenn `surveys.moderate` oder `surveys.export` freigegeben ist. |
+| `POST /api/v1/mainserver/surveys` | `surveys.create` | `createOrUpdateSurvey` | Der Host mappt das vereinfachte Studio-Zielmodell auf den Mainserver-Vertrag. |
+| `PATCH /api/v1/mainserver/surveys/$surveyId` | `surveys.update` | `createOrUpdateSurvey(id)` | Updates bleiben hostgeführt und verwenden keinen Plugin-eigenen GraphQL-Pfad. |
+| `DELETE /api/v1/mainserver/surveys/$surveyId` | `surveys.delete` | `destroyRecord(id, recordType: "Survey")` oder Survey-spezifischer Delete-Pfad | Der konkrete Mainserver-Löschpfad bleibt im typed Adapter gekapselt. |
+
+Fachliche Regeln des Studio-Vertrags:
+
+- Statusmodell nur `DRAFT`, `ACTIVE`, `ARCHIVED`
+- zeitliche Wirkung über `startAt` und `endAt`
+- keine redaktionelle Option `allowsMultipleSubmissionsPerDevice`
+- Freitext-Freigabe und Freitext-Löschung sind getrennt von allgemeinem Bearbeiten absicherbar
+- Export mit und ohne Freitexte ist Studio-Funktionalitaet auf Basis des Ergebnis-JSON
+
+Rollback erfolgt wie bei den anderen Mainserver-Content-Typen über `iam.instance_integrations.enabled = false`. Surveys fallen nicht auf einen pluginseitigen Direkt- oder lokalen Fallback zurück.
+
 ## Credential-Rotation
 
 1. Betroffenen Benutzer in Keycloak identifizieren.

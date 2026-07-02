@@ -61,6 +61,9 @@ let dispatchMainserverEventsRequestPromise:
 let dispatchMainserverPoiRequestPromise:
   | Promise<typeof import('./lib/mainserver-poi-api.server')['dispatchMainserverPoiRequest']>
   | null = null;
+let dispatchMainserverSurveysRequestPromise:
+  | Promise<typeof import('./lib/mainserver-surveys-api.server')['dispatchMainserverSurveysRequest']>
+  | null = null;
 let dispatchMainserverCategoriesRequestPromise:
   | Promise<typeof import('./lib/mainserver-categories-api.server')['dispatchMainserverCategoriesRequest']>
   | null = null;
@@ -81,60 +84,57 @@ const getDispatchAuthRouteRequest = async () => {
   dispatchAuthRouteRequestPromise ??= import('@sva/routing/server').then((mod) => mod.dispatchAuthRouteRequest);
   return dispatchAuthRouteRequestPromise;
 };
-
 const getEnsureStudioJobWorkerStarted = async () => {
   ensureStudioJobWorkerStartedPromise ??= import('@sva/auth-runtime/server').then(
     (mod) => mod.ensureStudioJobWorkerStarted
   );
   return ensureStudioJobWorkerStartedPromise;
 };
-
 const getRegisterStudioPluginOperationHandlers = async () => {
   if (devRuntimeRefreshEnabled) {
     return (await import('./lib/plugin-operation-runtime.server')).registerStudioPluginOperationHandlers;
   }
-
   registerStudioPluginOperationHandlersPromise ??= import('./lib/plugin-operation-runtime.server').then(
     (mod) => mod.registerStudioPluginOperationHandlers
   );
   return registerStudioPluginOperationHandlersPromise;
 };
-
 const getDispatchMainserverNewsRequest = async () => {
   dispatchMainserverNewsRequestPromise ??= import('./lib/mainserver-news-api.server').then(
     (mod) => mod.dispatchMainserverNewsRequest
   );
   return dispatchMainserverNewsRequestPromise;
 };
-
 const getDispatchMainserverEventsRequest = async () => {
   dispatchMainserverEventsRequestPromise ??= import('./lib/mainserver-events-api.server').then(
     (mod) => mod.dispatchMainserverEventsRequest
   );
   return dispatchMainserverEventsRequestPromise;
 };
-
 const getDispatchMainserverPoiRequest = async () => {
   dispatchMainserverPoiRequestPromise ??= import('./lib/mainserver-poi-api.server').then(
     (mod) => mod.dispatchMainserverPoiRequest
   );
   return dispatchMainserverPoiRequestPromise;
 };
-
+const getDispatchMainserverSurveysRequest = async () => {
+  dispatchMainserverSurveysRequestPromise ??= import('./lib/mainserver-surveys-api.server').then(
+    (mod) => mod.dispatchMainserverSurveysRequest
+  );
+  return dispatchMainserverSurveysRequestPromise;
+};
 const getDispatchMainserverCategoriesRequest = async () => {
   dispatchMainserverCategoriesRequestPromise ??= import('./lib/mainserver-categories-api.server').then(
     (mod) => mod.dispatchMainserverCategoriesRequest
   );
   return dispatchMainserverCategoriesRequestPromise;
 };
-
 const getDispatchAggregatedContentListRequest = async () => {
   dispatchAggregatedContentListRequestPromise ??= import('./lib/iam-content-list-api.server').then(
     (mod) => mod.dispatchAggregatedContentListRequest
   );
   return dispatchAggregatedContentListRequestPromise;
 };
-
 const getDispatchMapGeocodingRequest = async () => {
   dispatchMapGeocodingRequestPromise ??= import('./lib/map-geocoding-api.server').then(
     (mod) => mod.dispatchMapGeocodingRequest
@@ -151,11 +151,9 @@ const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
       pluginOperationHandlerRegistrationPromise = null;
       registerStudioPluginOperationHandlersPromise = null;
     });
-
     await pluginOperationHandlerRegistrationPromise;
     return;
   }
-
   pluginOperationHandlerRegistrationPromise ??= (async () => {
     const registerPluginOperationHandlers = await getRegisterStudioPluginOperationHandlers();
     await registerPluginOperationHandlers();
@@ -263,6 +261,16 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       status: mainserverPoiResponse.status,
     });
     return mainserverPoiResponse;
+  }
+
+  const dispatchMainserverSurveysRequest = await getDispatchMainserverSurveysRequest();
+  const mainserverSurveysResponse = await dispatchMainserverSurveysRequest(request);
+
+  if (mainserverSurveysResponse) {
+    await logServerEntryDebug('Server entry mainserver surveys route dispatched', {
+      status: mainserverSurveysResponse.status,
+    });
+    return mainserverSurveysResponse;
   }
 
   const dispatchMainserverCategoriesRequest = await getDispatchMainserverCategoriesRequest();

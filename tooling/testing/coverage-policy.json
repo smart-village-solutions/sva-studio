@@ -121,6 +121,12 @@
       "functions": 58,
       "branches": 72
     },
+    "plugin-surveys": {
+      "lines": 97,
+      "statements": 97,
+      "functions": 99,
+      "branches": 88
+    },
     "plugin-sdk": {
       "lines": 92,
       "statements": 91,

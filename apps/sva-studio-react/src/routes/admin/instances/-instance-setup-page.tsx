@@ -28,6 +28,7 @@ const adminBootstrapModuleLabels = {
   events: 'admin.instances.adminBootstrap.modules.events',
   poi: 'admin.instances.adminBootstrap.modules.poi',
   media: 'admin.instances.adminBootstrap.modules.media',
+  surveys: 'admin.instances.adminBootstrap.modules.surveys',
   'waste-management': 'admin.instances.adminBootstrap.modules.wasteManagement',
 } as const;
 

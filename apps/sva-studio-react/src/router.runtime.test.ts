@@ -248,10 +248,9 @@ describe('router runtime helpers', () => {
     expect(await isMockAuthEnabled()).toBe(false);
   });
 
-  it('builds the runtime router from routing factories and exposes the Playwright hook when enabled', async () => {
-    const { getRouter } = await import('./router');
-
+  it('builds the runtime router from routing factories and exposes the Playwright hook only for Playwright runs', async () => {
     vi.stubEnv('VITE_PLAYWRIGHT_TEST', 'true');
+    const { getRouter } = await import('./router');
 
     const router = await getRouter();
 
@@ -287,6 +286,15 @@ describe('router runtime helpers', () => {
       })
     );
     expect((window as typeof window & { __SVA_PLAYWRIGHT_ROUTER__?: unknown }).__SVA_PLAYWRIGHT_ROUTER__).toBe(router);
+  });
+
+  it('does not expose the Playwright hook outside Playwright runs', async () => {
+    vi.stubEnv('VITE_PLAYWRIGHT_TEST', 'false');
+    const { getRouter } = await import('./router');
+
+    await getRouter();
+
+    expect((window as typeof window & { __SVA_PLAYWRIGHT_ROUTER__?: unknown }).__SVA_PLAYWRIGHT_ROUTER__).toBeUndefined();
   });
 
   it('resolves route-guard users on the client from /auth/me and handles non-ok and failure cases', async () => {

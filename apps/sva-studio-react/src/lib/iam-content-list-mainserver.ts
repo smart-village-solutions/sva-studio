@@ -57,9 +57,58 @@ type MainserverPoiItem = Readonly<{
   updatedAt: string;
 }>;
 
+type MainserverSurveyLocalizedText = Readonly<Record<string, string>>;
+
+type MainserverSurveyItem = Readonly<{
+  id: string;
+  contentType: string;
+  title: MainserverSurveyLocalizedText;
+  shortDescription?: MainserverSurveyLocalizedText;
+  description?: MainserverSurveyLocalizedText;
+  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  startAt?: string;
+  endAt?: string;
+  resultVisibility: string;
+  targetAreaIds: readonly string[];
+  showResultsInApp: boolean;
+  isAnonymous: boolean;
+  questionCount: number;
+  participationCount: number;
+  submissionCount: number;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
+  archivedAt?: string;
+}>;
+
 const normalizeTitle = (value: string | undefined, fallback: string): string => {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : fallback;
+};
+
+const resolveLocalizedText = (
+  value: MainserverSurveyLocalizedText | undefined,
+  fallback: string
+): string => {
+  if (!value) {
+    return fallback;
+  }
+
+  for (const key of ['de', 'de-DE', 'en', 'en-US']) {
+    const candidate = value[key]?.trim();
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  for (const candidate of Object.values(value)) {
+    const normalized = candidate.trim();
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return fallback;
 };
 
 const toContentJsonValue = (value: unknown): ContentJsonValue =>
@@ -196,5 +245,55 @@ export const mapPoiItem = (
   status: 'published',
   validationState: 'valid',
   historyRef: `mainserver:poi:${item.id}`,
+  access: createMainserverItemAccess(item.contentType, permissions),
+});
+
+const mapSurveyStatus = (
+  status: MainserverSurveyItem['status']
+): IamContentListItem['status'] => {
+  switch (status) {
+    case 'DRAFT':
+      return 'draft';
+    case 'ARCHIVED':
+      return 'archived';
+    default:
+      return 'published';
+  }
+};
+
+export const mapSurveyItem = (
+  item: MainserverSurveyItem,
+  instanceId: string,
+  permissions: readonly PermissionView[]
+): IamContentListItem => ({
+  id: item.id,
+  instanceId,
+  contentType: item.contentType,
+  title: resolveLocalizedText(item.title, item.id),
+  createdAt: item.createdAt,
+  createdBy: 'mainserver',
+  updatedAt: item.updatedAt,
+  updatedBy: 'mainserver',
+  authorDisplayMode: 'organization',
+  author: 'mainserver',
+  payload: toContentJsonValue({
+    shortDescription: item.shortDescription,
+    description: item.description,
+    startAt: item.startAt,
+    endAt: item.endAt,
+    resultVisibility: item.resultVisibility,
+    targetAreaIds: item.targetAreaIds,
+    showResultsInApp: item.showResultsInApp,
+    isAnonymous: item.isAnonymous,
+    questionCount: item.questionCount,
+    participationCount: item.participationCount,
+    submissionCount: item.submissionCount,
+  }),
+  status: mapSurveyStatus(item.status),
+  validationState: 'valid',
+  historyRef: `mainserver:surveys:${item.id}`,
+  ...(item.publishedAt ? { publishedAt: item.publishedAt } : {}),
+  ...(item.startAt ? { publishFrom: item.startAt } : {}),
+  ...(item.endAt ? { publishUntil: item.endAt } : {}),
   access: createMainserverItemAccess(item.contentType, permissions),
 });

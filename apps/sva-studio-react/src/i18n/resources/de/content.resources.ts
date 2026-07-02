@@ -93,6 +93,7 @@ export const contentDEResources = {
       news: 'Meldungen, Artikel und redaktionelle Beiträge für die App erstellen und pflegen.',
       events: 'Veranstaltungen im gemeinsamen Inhaltsbereich anlegen und verwalten.',
       poi: 'Orte und relevante Anlaufstellen für die App anlegen und pflegen.',
+      surveys: 'Umfragen als weiteren Inhaltstyp anlegen, bearbeiten und in der internen Auswertung begleiten.',
     },
     empty: {
       title: 'Keine anlegbaren Inhaltstypen',

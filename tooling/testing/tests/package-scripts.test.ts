@@ -118,7 +118,7 @@ describe('workspace package scripts', () => {
     const testPrScript = packageJson.scripts?.['test:pr'];
     const runPrGateScript = loadRunPrGateScript();
 
-    expect(testPrScript).toBe('tsx scripts/ci/run-pr-gate.ts');
+    expect(testPrScript).toBe('bash scripts/ci/run-workspace-node.sh --import tsx scripts/ci/run-pr-gate.ts');
     expect(runPrGateScript).toContain('pnpm patch-coverage-gate --base=${base}');
     expect(runPrGateScript).toContain('pnpm sonar-new-code-gate --base=${base}');
   });
@@ -236,6 +236,14 @@ describe('workspace package scripts', () => {
       'pnpm exec tsx scripts/ci/run-integration-gate.ts --mode affected --base ${{ github.event.pull_request.base.sha }}'
     );
     expect(runtimeWorkflow).toContain('Monitoring-Checks laufen separat im Workflow `Monitoring Stack`.');
+  });
+
+  it('cleans stale local studio serve processes before running app e2e', () => {
+    const packageJson = loadRootPackageJson();
+
+    expect(packageJson.scripts?.['test:e2e']).toBe(
+      'tsx scripts/ci/cleanup-e2e-webserver-conflicts.ts --port 3000 && env -u NO_COLOR nx run sva-studio-react:test:e2e'
+    );
   });
 
   it('keeps PR quality workflows on the shared pr-scope helper', () => {

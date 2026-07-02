@@ -69,7 +69,7 @@ export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor)
         operationName: 'SvaMainserverEventList',
         order: 'updatedAt_DESC',
         readItems: (response) => response.eventRecords ?? [],
-        isVisible: (item) => item.visible !== false,
+        isVisible: (item) => input.includeInvisible === true || item.visible !== false,
         mapItem: mapEventItem,
       }
     ),

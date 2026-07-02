@@ -1,0 +1,129 @@
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@sva/studio-ui-react';
+
+import { SurveyDetailCard } from './surveys.detail-card.js';
+import {
+  createExcerpt,
+  statusLabelKey,
+  type ModerationTranslate,
+  type SurveyModerationQuestionGroup,
+  type SurveyModerationResponse,
+} from './surveys.moderation-model.js';
+
+const resolveModerationGroupTitle = (group: SurveyModerationQuestionGroup): string =>
+  group.questionTitle.trim().length > 0 ? group.questionTitle : group.questionId;
+
+const formatModerationDate = (value: string) => formatDateTimeInEditorTimeZone(value) ?? value;
+
+export function SurveyModerationPlaceholder({
+  description,
+  message,
+  pt,
+}: Readonly<{
+  description: string;
+  message: string;
+  pt: ModerationTranslate;
+}>) {
+  return (
+    <SurveyDetailCard title={pt('cards.moderation.title')} description={description}>
+      <p className="text-sm text-muted-foreground">{message}</p>
+    </SurveyDetailCard>
+  );
+}
+
+export function SurveyModerationGroupCard({
+  group,
+  pt,
+  onOpenResponse,
+}: Readonly<{
+  group: SurveyModerationQuestionGroup;
+  pt: ModerationTranslate;
+  onOpenResponse: (response: SurveyModerationResponse) => void;
+}>) {
+  const groupTitle = resolveModerationGroupTitle(group);
+  const responses = group.responses.map((response) => ({
+    ...response,
+    excerpt: createExcerpt(response.text),
+  }));
+
+  return (
+    <SurveyDetailCard title={groupTitle} description={pt('cards.moderation.description')}>
+      {responses.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{pt('messages.moderationEmptyQuestion')}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full border-collapse text-sm" aria-label={groupTitle}>
+            <thead>
+              <tr className="border-b border-border text-left">
+                <th className="px-3 py-2 font-medium text-foreground">{pt('fields.freeTextExcerpt')}</th>
+                <th className="px-3 py-2 font-medium text-foreground">{pt('fields.freeTextCreatedAt')}</th>
+                <th className="px-3 py-2 font-medium text-foreground">{pt('fields.freeTextStatus')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {responses.map((response) => (
+                <tr key={response.id} className="border-b border-border/60 last:border-b-0">
+                  <td className="px-3 py-3 align-top">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-auto whitespace-normal p-0 text-left"
+                      aria-label={`${pt('fields.freeTextOpenOverlay')}: ${response.excerpt}`}
+                      onClick={() => onOpenResponse(response)}
+                    >
+                      {response.excerpt}
+                    </Button>
+                  </td>
+                  <td className="px-3 py-3 align-top text-muted-foreground">{formatModerationDate(response.createdAt)}</td>
+                  <td className="px-3 py-3 align-top">
+                    <span className="text-muted-foreground">
+                      {pt(statusLabelKey[response.status])}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </SurveyDetailCard>
+  );
+}
+
+export function SurveyModerationResponseDialog({
+  pt,
+  selectedResponse,
+  onClose,
+}: Readonly<{
+  pt: ModerationTranslate;
+  selectedResponse: SurveyModerationResponse | null;
+  onClose: () => void;
+}>) {
+  return (
+    <Dialog open={selectedResponse !== null} onOpenChange={(nextOpen) => (!nextOpen ? onClose() : undefined)}>
+      {selectedResponse ? (
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{pt('fields.freeTextOverlayText')}</DialogTitle>
+            <DialogDescription>{selectedResponse.text}</DialogDescription>
+          </DialogHeader>
+          <dl className="grid gap-4 text-sm sm:grid-cols-2">
+            <div className="space-y-1">
+              <dt className="font-medium text-foreground">{pt('fields.freeTextOverlayStatus')}</dt>
+              <dd className="text-muted-foreground">{pt(statusLabelKey[selectedResponse.status])}</dd>
+            </div>
+            <div className="space-y-1">
+              <dt className="font-medium text-foreground">{pt('fields.freeTextOverlayCreatedAt')}</dt>
+              <dd className="text-muted-foreground">{formatModerationDate(selectedResponse.createdAt)}</dd>
+            </div>
+          </dl>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              {pt('actions.closeOverlay')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      ) : null}
+    </Dialog>
+  );
+}

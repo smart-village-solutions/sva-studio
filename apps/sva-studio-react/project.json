@@ -304,18 +304,7 @@
       "executor": "@nx/playwright:playwright",
       "cache": true,
       "dependsOn": [
-        {
-          "projects": [
-            "core"
-          ],
-          "target": "build"
-        },
-        {
-          "projects": [
-            "waste-management-runtime"
-          ],
-          "target": "build"
-        }
+        "^build"
       ],
       "inputs": [
         "default",

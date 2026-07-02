@@ -114,6 +114,27 @@ describe('iam content list visibility', () => {
     ).toBe(false);
   });
 
+  it('uses surveys.read for projected survey rows instead of the generic content.read fallback', () => {
+    const [rule] = buildProjectionReadVisibilityRules(
+      ['surveys.survey'],
+      [
+        createPermission({
+          action: 'surveys.read',
+          resourceType: 'surveys',
+          organizationId: 'org-1',
+          accessScope: 'organization',
+        }),
+      ]
+    );
+
+    expect(rule).toEqual({
+      contentType: 'surveys.survey',
+      allowGlobal: false,
+      allowOrganizationIds: ['org-1'],
+      allowOwn: true,
+    });
+  });
+
   it('evaluates row visibility with own fallback', () => {
     const [rule] = buildProjectionReadVisibilityRules(
       ['generic'],

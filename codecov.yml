@@ -76,6 +76,7 @@ coverage:
         - packages/plugin-news/
         - packages/plugin-poi/
         - packages/plugin-sdk/
+        - packages/plugin-surveys/
         - packages/plugin-waste-management/
         - packages/waste-management-runtime/
         - packages/routing/

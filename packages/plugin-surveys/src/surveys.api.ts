@@ -1,6 +1,7 @@
 import { createMainserverCrudClient } from '@sva/plugin-sdk';
 
-import type { SurveyContentItem, SurveyListQuery, SurveyListResult, SurveyMutationInput } from './surveys.types.js';
+import type { SurveyMutationInput } from './surveys.mutation.types.js';
+import type { SurveyContentItem, SurveyListQuery, SurveyListResult } from './surveys.types.js';
 
 class SurveysApiError extends Error {
   public constructor(
@@ -19,6 +20,80 @@ const toLocalizedText = (value: string | undefined) => {
 
 const toLocalizedTextUpdate = (value: string | undefined) => toLocalizedText(value) ?? null;
 
+const optionalLocalizedField = (key: string, value: string | undefined) => {
+  const localizedText = toLocalizedText(value);
+  return localizedText ? { [key]: localizedText } : {};
+};
+
+const optionalScalarField = <TValue>(key: string, value: TValue | undefined) =>
+  value === undefined ? {} : { [key]: value };
+
+const mapCreateOption = (option: NonNullable<NonNullable<SurveyMutationInput['questions']>[number]['options']>[number]) => ({
+  ...optionalLocalizedField('title', option.title),
+  position: option.position,
+  enablesFreeText: option.enablesFreeText,
+});
+
+const mapUpdateOption = (option: NonNullable<NonNullable<SurveyMutationInput['questions']>[number]['options']>[number]) => ({
+  ...optionalScalarField('id', option.id),
+  ...(option.delete === true ? { delete: true } : {}),
+  ...optionalLocalizedField('title', option.title),
+  ...optionalScalarField('position', option.position),
+  ...optionalScalarField('enablesFreeText', option.enablesFreeText),
+});
+
+const mapCreateQuestion = (question: NonNullable<SurveyMutationInput['questions']>[number]) => ({
+  ...optionalLocalizedField('title', question.title),
+  ...optionalLocalizedField('description', question.description),
+  type: question.type,
+  required: question.required,
+  position: question.position,
+  options: (question.options ?? []).map(mapCreateOption),
+});
+
+const mapUpdateQuestion = (question: NonNullable<SurveyMutationInput['questions']>[number]) => ({
+  ...optionalScalarField('id', question.id),
+  ...(question.delete === true ? { delete: true } : {}),
+  ...optionalLocalizedField('title', question.title),
+  description: toLocalizedTextUpdate(question.description),
+  ...optionalScalarField('type', question.type),
+  ...optionalScalarField('required', question.required),
+  ...optionalScalarField('position', question.position),
+  options: (question.options ?? []).map(mapUpdateOption),
+});
+
+const buildCreateSurveyBody = (input: SurveyMutationInput) => ({
+  ...optionalLocalizedField('title', input.title),
+  ...optionalLocalizedField('shortDescription', input.shortDescription),
+  ...optionalLocalizedField('description', input.description),
+  status: input.status,
+  ...optionalScalarField('startAt', input.startAt),
+  ...optionalScalarField('endAt', input.endAt),
+  ...optionalScalarField('resultVisibility', input.resultVisibility),
+  ...optionalScalarField('targetAreaIds', input.targetAreaIds),
+  ...optionalScalarField('showResultsInApp', input.showResultsInApp),
+  isAnonymous: input.isAnonymous,
+  ...optionalLocalizedField('privacyNotice', input.privacyNotice),
+  ...optionalLocalizedField('transparencyNotice', input.transparencyNotice),
+  ...optionalScalarField('questions', input.questions?.map(mapCreateQuestion)),
+});
+
+const buildUpdateSurveyBody = (input: SurveyMutationInput) => ({
+  ...optionalLocalizedField('title', input.title),
+  shortDescription: toLocalizedTextUpdate(input.shortDescription),
+  description: toLocalizedTextUpdate(input.description),
+  status: input.status,
+  startAt: input.startAt ?? null,
+  endAt: input.endAt ?? null,
+  ...optionalScalarField('resultVisibility', input.resultVisibility),
+  targetAreaIds: input.targetAreaIds ?? [],
+  ...optionalScalarField('showResultsInApp', input.showResultsInApp),
+  isAnonymous: input.isAnonymous,
+  privacyNotice: toLocalizedTextUpdate(input.privacyNotice),
+  transparencyNotice: toLocalizedTextUpdate(input.transparencyNotice),
+  questions: (input.questions ?? []).map(mapUpdateQuestion),
+});
+
 const surveysClient = createMainserverCrudClient<
   SurveyContentItem,
   SurveyMutationInput,
@@ -28,68 +103,8 @@ const surveysClient = createMainserverCrudClient<
 >({
   basePath: '/api/v1/mainserver/surveys',
   errorFactory: (code, message) => new SurveysApiError(code, message),
-  createBody: (input) => ({
-    ...(toLocalizedText(input.title) ? { title: toLocalizedText(input.title) } : {}),
-    ...(toLocalizedText(input.shortDescription) ? { shortDescription: toLocalizedText(input.shortDescription) } : {}),
-    ...(toLocalizedText(input.description) ? { description: toLocalizedText(input.description) } : {}),
-    status: input.status,
-    ...(input.startAt ? { startAt: input.startAt } : {}),
-    ...(input.endAt ? { endAt: input.endAt } : {}),
-    ...(input.resultVisibility ? { resultVisibility: input.resultVisibility } : {}),
-    ...(input.targetAreaIds ? { targetAreaIds: input.targetAreaIds } : {}),
-    ...(input.showResultsInApp !== undefined ? { showResultsInApp: input.showResultsInApp } : {}),
-    isAnonymous: input.isAnonymous,
-    ...(toLocalizedText(input.privacyNotice) ? { privacyNotice: toLocalizedText(input.privacyNotice) } : {}),
-    ...(toLocalizedText(input.transparencyNotice)
-      ? { transparencyNotice: toLocalizedText(input.transparencyNotice) }
-      : {}),
-    ...(input.questions
-      ? {
-          questions: input.questions.map((question) => ({
-            ...(toLocalizedText(question.title) ? { title: toLocalizedText(question.title) } : {}),
-            ...(toLocalizedText(question.description) ? { description: toLocalizedText(question.description) } : {}),
-            type: question.type,
-            required: question.required,
-            position: question.position,
-            options: (question.options ?? []).map((option) => ({
-              ...(toLocalizedText(option.title) ? { title: toLocalizedText(option.title) } : {}),
-              position: option.position,
-              enablesFreeText: option.enablesFreeText,
-            })),
-          })),
-        }
-      : {}),
-  }),
-  updateBody: (input) => ({
-    ...(toLocalizedText(input.title) ? { title: toLocalizedText(input.title) } : {}),
-    shortDescription: toLocalizedTextUpdate(input.shortDescription),
-    description: toLocalizedTextUpdate(input.description),
-    status: input.status,
-    startAt: input.startAt ?? null,
-    endAt: input.endAt ?? null,
-    ...(input.resultVisibility ? { resultVisibility: input.resultVisibility } : {}),
-    targetAreaIds: input.targetAreaIds ?? [],
-    ...(input.showResultsInApp !== undefined ? { showResultsInApp: input.showResultsInApp } : {}),
-    isAnonymous: input.isAnonymous,
-    privacyNotice: toLocalizedTextUpdate(input.privacyNotice),
-    transparencyNotice: toLocalizedTextUpdate(input.transparencyNotice),
-    questions: (input.questions ?? []).map((question) => ({
-      ...(question.id ? { id: question.id } : {}),
-      ...(question.delete === true ? { delete: true } : {}),
-      ...(toLocalizedText(question.title) ? { title: toLocalizedText(question.title) } : {}),
-      description: toLocalizedTextUpdate(question.description),
-      ...(question.type ? { type: question.type } : {}),
-      ...(question.required === undefined ? {} : { required: question.required }),
-      ...(question.position === undefined ? {} : { position: question.position }),
-      options: (question.options ?? []).map((option) => ({
-        ...(option.id ? { id: option.id } : {}),
-        ...(option.delete === true ? { delete: true } : {}),
-        ...(toLocalizedText(option.title) ? { title: toLocalizedText(option.title) } : {}),
-        ...(option.position === undefined ? {} : { position: option.position }),
-        ...(option.enablesFreeText === undefined ? {} : { enablesFreeText: option.enablesFreeText }),
-      })),
-    })),
-  }),
+  createBody: buildCreateSurveyBody,
+  updateBody: buildUpdateSurveyBody,
   mapListResponse: (response) => response,
 });
 

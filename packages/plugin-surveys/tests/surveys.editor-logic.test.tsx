@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { useSurveyEditorController } from '../src/surveys.editor.controller.js';
+import { useSurveyEditorController } from '../src/surveys.editor-logic.js';
 import type { SurveyDetailFormValues } from '../src/surveys.detail-form.js';
 
 const createSurveyMock = vi.fn();

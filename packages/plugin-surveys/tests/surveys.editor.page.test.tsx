@@ -42,7 +42,7 @@ vi.mock('@sva/plugin-sdk', () => ({
     })[key] ?? key,
 }));
 
-vi.mock('../src/surveys.editor.controller.js', () => ({
+vi.mock('../src/surveys.editor-logic.js', () => ({
   useSurveyEditorController: ({ navigateToContentList }: { navigateToContentList: () => void }) => {
     submitMock.mockImplementation(() => {
       navigateToContentList();

@@ -6,7 +6,7 @@ import { StudioDetailPageTemplate, StudioDetailTabs, StudioFormSummary, StudioLo
 
 import { createDefaultSurveyDetailFormValues, type SurveyDetailFormValues } from './surveys.detail-form.js';
 import { SurveyEditorActions } from './surveys.editor.actions.js';
-import { useSurveyEditorController } from './surveys.editor.controller.js';
+import { useSurveyEditorController } from './surveys.editor-logic.js';
 import {
   createSurveyEditorTabs,
   type SurveyEditorMode,

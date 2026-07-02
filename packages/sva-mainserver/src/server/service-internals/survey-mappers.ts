@@ -133,7 +133,6 @@ const optionalTimestampField = <TKey extends string>(
   const timestamp = optionalString(value);
   return timestamp ? (Object.assign({}, { [key]: timestamp }) as Partial<Record<TKey, string>>) : {};
 };
-
 const mapFreeTextResult = (
   value: z.infer<typeof surveyFreeTextResultSchema>,
   fallbackTimestamp: string
@@ -143,7 +142,6 @@ const mapFreeTextResult = (
   status: value.status,
   createdAt: value.createdAt ?? fallbackTimestamp,
 });
-
 const mapOptionResult = (
   value: z.infer<typeof surveyOptionResultSchema>,
   fallbackTimestamp: string
@@ -154,7 +152,6 @@ const mapOptionResult = (
   ...(defined(optionalNumber(value.percentage)) ? { percentage: optionalNumber(value.percentage) } : {}),
   freeTextResponses: (value.freeTextResponses ?? []).map((item) => mapFreeTextResult(item, fallbackTimestamp)),
 });
-
 const mapQuestionResults = (
   value: z.infer<typeof surveyQuestionResultsSchema>,
   fallbackTimestamp: string
@@ -165,7 +162,6 @@ const mapQuestionResults = (
   optionResults: (value.optionResults ?? []).map((item) => mapOptionResult(item, fallbackTimestamp)),
   freeTextResponses: (value.freeTextResponses ?? []).map((item) => mapFreeTextResult(item, fallbackTimestamp)),
 });
-
 const mapQuestionOption = (
   value: z.infer<typeof surveyQuestionOptionSchema>
 ): SvaMainserverSurveyQuestionOption => ({
@@ -175,7 +171,6 @@ const mapQuestionOption = (
   position: value.position ?? 0,
   enablesFreeText: value.enablesFreeText === true,
 });
-
 const mapQuestion = (
   value: z.infer<typeof surveyQuestionSchema>,
   fallbackTimestamp: string
@@ -191,7 +186,6 @@ const mapQuestion = (
   updatedAt: value.updatedAt ?? value.createdAt ?? fallbackTimestamp,
   options: (value.options ?? []).map(mapQuestionOption),
 });
-
 const mapSurveyResults = (
   value: z.infer<typeof surveyResultsSchema>,
   fallbackTimestamp: string
@@ -201,21 +195,18 @@ const mapSurveyResults = (
   submissionCount: value.submissionCount ?? 0,
   questions: (value.questions ?? []).map((item) => mapQuestionResults(item, fallbackTimestamp)),
 });
-
 const buildSurveyContentFields = (survey: z.infer<typeof surveySchema>) => ({
   ...optionalLocalizedField('shortDescription', survey.shortDescription),
   ...optionalLocalizedField('description', survey.description),
   ...optionalLocalizedField('privacyNotice', survey.privacyNotice),
   ...optionalLocalizedField('transparencyNotice', survey.transparencyNotice),
 });
-
 const buildSurveyScheduleFields = (survey: z.infer<typeof surveySchema>) => ({
   ...optionalTimestampField('startAt', survey.startAt),
   ...optionalTimestampField('endAt', survey.endAt),
   ...optionalTimestampField('publishedAt', survey.publishedAt),
   ...optionalTimestampField('archivedAt', survey.archivedAt),
 });
-
 const buildSurveyResultFields = (
   survey: z.infer<typeof surveySchema>,
   fallbackTimestamp: string
@@ -224,7 +215,6 @@ const buildSurveyResultFields = (
   submissionCount: survey.submissionCount ?? survey.results?.submissionCount ?? 0,
   ...(survey.results ? { results: mapSurveyResults(survey.results, fallbackTimestamp) } : {}),
 });
-
 export const mapSurveyItem = (item: SvaMainserverSurveyFragment | null | undefined): SvaMainserverSurveyItem => {
   const parsed = surveySchema.safeParse(item);
   if (!parsed.success) {
@@ -237,7 +227,6 @@ export const mapSurveyItem = (item: SvaMainserverSurveyFragment | null | undefin
 
   return mapParsedSurveyItem(parsed.data);
 };
-
 // fallow-ignore-next-line complexity
 const mapParsedSurveyItem = (survey: z.infer<typeof surveySchema>): SvaMainserverSurveyItem => {
   const fallbackTimestamp = survey.createdAt ?? survey.updatedAt ?? new Date(0).toISOString();
@@ -259,7 +248,6 @@ const mapParsedSurveyItem = (survey: z.infer<typeof surveySchema>): SvaMainserve
     updatedAt: survey.updatedAt ?? survey.createdAt ?? fallbackTimestamp,
   };
 };
-
 export const mapOptionalSurveyItem = (item: SvaMainserverSurveyFragment | null | undefined): SvaMainserverSurveyItem => {
   if (!item) {
     throw toSvaMainserverError({
@@ -271,7 +259,6 @@ export const mapOptionalSurveyItem = (item: SvaMainserverSurveyFragment | null |
 
   return mapSurveyItem(item);
 };
-
 export const mapSurveyMutationPayload = (
   payload: SvaMainserverSurveyMutationPayloadFragment | null | undefined
 ): SvaMainserverSurveyMutationPayload => {
@@ -298,7 +285,6 @@ export const mapSurveyMutationPayload = (
     })),
   };
 };
-
 export const mapOptionalSurveyResults = (
   results: SvaMainserverSurveyResultsFragment | null | undefined,
   fallbackSurveyId: string
@@ -311,7 +297,6 @@ export const mapOptionalSurveyResults = (
       questions: [],
     };
   }
-
   const parsed = surveyResultsSchema.safeParse(results);
   if (!parsed.success) {
     throw toSvaMainserverError({
@@ -320,10 +305,8 @@ export const mapOptionalSurveyResults = (
       statusCode: 502,
     });
   }
-
   const fallbackTimestamp =
     parsed.data.questions?.flatMap((question) => question.freeTextResponses ?? []).find((item) => item.createdAt)?.createdAt ??
     new Date(0).toISOString();
-
   return mapSurveyResults(parsed.data, fallbackTimestamp);
 };

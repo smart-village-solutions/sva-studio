@@ -248,7 +248,7 @@ export const getRouter = async () => {
     defaultPreloadStaleTime: 0,
   });
 
-  if (typeof globalThis.window !== 'undefined' && import.meta.env.VITE_PLAYWRIGHT_TEST === 'true') {
+  if (typeof globalThis.window !== 'undefined') {
     (
       globalThis.window as typeof globalThis.window & {
         __SVA_PLAYWRIGHT_ROUTER__?: typeof router;

@@ -248,10 +248,8 @@ describe('router runtime helpers', () => {
     expect(await isMockAuthEnabled()).toBe(false);
   });
 
-  it('builds the runtime router from routing factories and exposes the Playwright hook when enabled', async () => {
+  it('builds the runtime router from routing factories and exposes the Playwright hook in the browser', async () => {
     const { getRouter } = await import('./router');
-
-    vi.stubEnv('VITE_PLAYWRIGHT_TEST', 'true');
 
     const router = await getRouter();
 

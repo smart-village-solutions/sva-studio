@@ -38,7 +38,6 @@ const deriveSurveyTargetAreaOptions = (item: SurveyContentItem | null): SurveyTa
   if (!item) {
     return [];
   }
-
   return [...new Set(item.targetAreaIds)].map((targetAreaId) => ({
     id: targetAreaId,
     label: targetAreaId,
@@ -71,7 +70,6 @@ export const mapSurveyResultsTabData = (
     questionCount: item.questionCount,
     questions: item.results.questions.map((questionResult) => {
       const matchingQuestion = item.questions.find((question) => question.id === questionResult.questionId);
-
       return {
         questionId: questionResult.questionId,
         questionTitle: resolveLocalizedText(matchingQuestion?.title),

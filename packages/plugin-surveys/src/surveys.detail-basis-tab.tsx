@@ -55,7 +55,6 @@ function SurveyIdentityCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
     </SurveyDetailCard>
   );
 }
-
 function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
   const { register } = useFormContext<SurveyDetailFormValues>();
 
@@ -73,7 +72,6 @@ function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
     </SurveyDetailCard>
   );
 }
-
 function SurveyTargetAreaCard({
   availableTargetAreas,
   pt,
@@ -102,57 +100,29 @@ function SurveyTargetAreaCard({
     setValue('basis.targetAreaIds', [...targetAreaIds, nextId], { shouldDirty: true });
     setPendingTargetAreaId('');
   };
+  const removeTargetArea = (targetAreaId: string) =>
+    setValue(
+      'basis.targetAreaIds',
+      targetAreaIds.filter((entry: string) => entry !== targetAreaId),
+      { shouldDirty: true }
+    );
 
   return (
     <SurveyDetailCard title={pt('cards.basis.targetArea.title')} description={pt('cards.basis.targetArea.description')}>
       <div className="space-y-4">
-        <StudioField id="survey-target-area-select" label={pt('fields.targetAreas')}>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              id="survey-target-area-select"
-              aria-label={pt('fields.targetAreasSearch')}
-              list="survey-target-area-options"
-              value={pendingTargetAreaId}
-              placeholder={pt('fields.targetAreasSearchPlaceholder')}
-              onChange={(event) => setPendingTargetAreaId(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  addTargetArea();
-                }
-              }}
-            />
-            <Button type="button" variant="outline" onClick={addTargetArea}>
-              {pt('actions.addTargetArea')}
-            </Button>
-          </div>
-          <datalist id="survey-target-area-options">
-            {availableTargetAreas.map((option) => (
-              <option key={option.id} value={option.id} label={option.label} />
-            ))}
-          </datalist>
-        </StudioField>
+        <SurveyTargetAreaInput
+          availableTargetAreas={availableTargetAreas}
+          pendingTargetAreaId={pendingTargetAreaId}
+          pt={pt}
+          onAddTargetArea={addTargetArea}
+          onPendingTargetAreaIdChange={setPendingTargetAreaId}
+        />
         {selectedTargetAreas.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {selectedTargetAreas.map((option: SurveyTargetAreaOption) => (
-              <Button
-                key={option.id}
-                type="button"
-                variant="outline"
-                size="sm"
-                aria-label={pt('actions.removeTargetArea', { name: option.label })}
-                onClick={() =>
-                  setValue(
-                    'basis.targetAreaIds',
-                    targetAreaIds.filter((entry: string) => entry !== option.id),
-                    { shouldDirty: true }
-                  )
-                }
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
+          <SelectedTargetAreas
+            selectedTargetAreas={selectedTargetAreas}
+            pt={pt}
+            onRemoveTargetArea={removeTargetArea}
+          />
         ) : (
           <p className="text-sm text-muted-foreground">{pt('messages.targetAreasEmpty')}</p>
         )}
@@ -160,7 +130,74 @@ function SurveyTargetAreaCard({
     </SurveyDetailCard>
   );
 }
-
+function SurveyTargetAreaInput({
+  availableTargetAreas,
+  pendingTargetAreaId,
+  pt,
+  onAddTargetArea,
+  onPendingTargetAreaIdChange,
+}: Readonly<{
+  availableTargetAreas: readonly SurveyTargetAreaOption[];
+  pendingTargetAreaId: string;
+  pt: SurveyContentTranslate;
+  onAddTargetArea: () => void;
+  onPendingTargetAreaIdChange: (value: string) => void;
+}>) {
+  return (
+    <StudioField id="survey-target-area-select" label={pt('fields.targetAreas')}>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
+          id="survey-target-area-select"
+          aria-label={pt('fields.targetAreasSearch')}
+          list="survey-target-area-options"
+          value={pendingTargetAreaId}
+          placeholder={pt('fields.targetAreasSearchPlaceholder')}
+          onChange={(event) => onPendingTargetAreaIdChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              onAddTargetArea();
+            }
+          }}
+        />
+        <Button type="button" variant="outline" onClick={onAddTargetArea}>
+          {pt('actions.addTargetArea')}
+        </Button>
+      </div>
+      <datalist id="survey-target-area-options">
+        {availableTargetAreas.map((option) => (
+          <option key={option.id} value={option.id} label={option.label} />
+        ))}
+      </datalist>
+    </StudioField>
+  );
+}
+function SelectedTargetAreas({
+  selectedTargetAreas,
+  pt,
+  onRemoveTargetArea,
+}: Readonly<{
+  selectedTargetAreas: readonly SurveyTargetAreaOption[];
+  pt: SurveyContentTranslate;
+  onRemoveTargetArea: (targetAreaId: string) => void;
+}>) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {selectedTargetAreas.map((option) => (
+        <Button
+          key={option.id}
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label={pt('actions.removeTargetArea', { name: option.label })}
+          onClick={() => onRemoveTargetArea(option.id)}
+        >
+          {option.label}
+        </Button>
+      ))}
+    </div>
+  );
+}
 function SurveyMetadataCard({
   mode,
   loadedItem,
@@ -197,7 +234,6 @@ function SurveyMetadataCard({
     </SurveyDetailCard>
   );
 }
-
 export function SurveyDetailBasisTab({
   mode,
   loadedItem,

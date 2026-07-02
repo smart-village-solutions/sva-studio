@@ -793,19 +793,6 @@ describe('createSvaMainserverService', () => {
           data: {
             createOrUpdateSurvey: {
               success: true,
-              action: 'UPDATED',
-              survey,
-              deletedSurveyId: null,
-              errors: [],
-            },
-          },
-        })
-      )
-      .mockResolvedValueOnce(
-        createJsonResponse(200, {
-          data: {
-            createOrUpdateSurvey: {
-              success: true,
               action: 'DELETED',
               survey: null,
               deletedSurveyId: 'survey-1',
@@ -865,7 +852,6 @@ describe('createSvaMainserverService', () => {
     });
     await expect(service.getSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
       id: 'survey-1',
-      results: expect.objectContaining({ participationCount: 7 }),
     });
     await expect(service.getSurveyResults({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
       surveyId: 'survey-1',
@@ -912,9 +898,9 @@ describe('createSvaMainserverService', () => {
         surveyId: 'survey-1',
         freeTextResponseId: 'free-text-1',
       })
-    ).resolves.toMatchObject({
-      success: true,
-      errors: [],
+    ).rejects.toMatchObject({
+      code: 'invalid_config',
+      statusCode: 501,
     });
     await expect(service.deleteSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
       success: true,
@@ -930,7 +916,6 @@ describe('createSvaMainserverService', () => {
       'SvaMainserverSurveysList',
       'SvaMainserverSurveyDetail',
       'SvaMainserverSurveyResults',
-      'SvaMainserverCreateOrUpdateSurvey',
       'SvaMainserverCreateOrUpdateSurvey',
       'SvaMainserverCreateOrUpdateSurvey',
       'SvaMainserverCreateOrUpdateSurvey',
@@ -970,12 +955,6 @@ describe('createSvaMainserverService', () => {
       },
     });
     expect(requestBodies[6]?.variables).toEqual({
-      input: {
-        id: 'survey-1',
-        freeTextResponses: [{ id: 'free-text-1', status: 'DELETED' }],
-      },
-    });
-    expect(requestBodies[7]?.variables).toEqual({
       input: {
         id: 'survey-1',
         delete: true,
@@ -1025,19 +1004,6 @@ describe('createSvaMainserverService', () => {
             createOrUpdateSurvey: {
               success: true,
               action: 'CREATED',
-              survey,
-              deletedSurveyId: null,
-              errors: [],
-            },
-          },
-        })
-      )
-      .mockResolvedValueOnce(
-        createJsonResponse(200, {
-          data: {
-            createOrUpdateSurvey: {
-              success: true,
-              action: 'UPDATED',
               survey,
               deletedSurveyId: null,
               errors: [],
@@ -1144,8 +1110,9 @@ describe('createSvaMainserverService', () => {
         surveyId: 'survey-1',
         freeTextResponseId: 'free-text-1',
       })
-    ).resolves.toMatchObject({
-      success: true,
+    ).rejects.toMatchObject({
+      code: 'invalid_config',
+      statusCode: 501,
     });
     await expect(deleteSvaMainserverSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
       success: true,

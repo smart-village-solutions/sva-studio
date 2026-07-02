@@ -45,6 +45,8 @@ const useSurveyEditorLoader = ({
 
     if (!contentId) {
       setStatus({ kind: 'error', text: pt('messages.missingContentId') });
+      setLoadedItem(null);
+      methods.reset(createDefaultSurveyDetailFormValues());
       setIsLoading(false);
       return;
     }

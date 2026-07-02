@@ -803,13 +803,12 @@ const refreshMainserverProjection = async (
         sourceEntityId: item.id,
       }));
     } else if (contentType === 'surveys.survey') {
-      const result = await fetchAllPages((pageQuery) =>
-        listSvaMainserverSurveys({
-          ...connection,
-          ...pageQuery,
-          includeArchived: true,
-        })
-      );
+      const result = await listSvaMainserverSurveys({
+        ...connection,
+        page: 1,
+        pageSize: MAX_SYNC_ITEMS_PER_TYPE,
+        includeArchived: true,
+      });
       const credentialSource = resolveMainserverProjectionCredentialSource(
         result,
         projectedOrganizationId

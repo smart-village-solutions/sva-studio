@@ -134,7 +134,9 @@ const syncWorkspacePackage = async (workspaceRoot: string, workspacePackage: Wor
 
     const liveSourceDistDir = await resolveExistingPath(sourceDistDir);
     if (!liveSourceDistDir) {
-      return { skipped: true, updatedCopies };
+      throw new Error(
+        `Workspace-Paket ${workspacePackage.name} verlor ${sourceDistDir} waehrend des Syncs nach ${updatedCopies} aktualisierten Injected-Copies.`
+      );
     }
     await replaceInjectedDist(liveSourceDistDir, injectedCopy.dir);
     updatedCopies += 1;

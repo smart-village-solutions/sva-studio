@@ -70,13 +70,18 @@ export const syncImproveSkillSnapshot = (
 const cloneImproveSkillSource = (): { checkoutRoot: string; sourceDir: string } => {
   const checkoutRoot = mkdtempSync(join(tmpdir(), 'improve-skill-sync-'));
 
-  execFileSync('git', ['clone', IMPROVE_REPOSITORY_URL, checkoutRoot], {
-    stdio: 'pipe',
-  });
-  execFileSync('git', ['checkout', IMPROVE_SOURCE_REVISION], {
-    cwd: checkoutRoot,
-    stdio: 'pipe',
-  });
+  try {
+    execFileSync('git', ['clone', IMPROVE_REPOSITORY_URL, checkoutRoot], {
+      stdio: 'pipe',
+    });
+    execFileSync('git', ['checkout', IMPROVE_SOURCE_REVISION], {
+      cwd: checkoutRoot,
+      stdio: 'pipe',
+    });
+  } catch (error) {
+    rmSync(checkoutRoot, { force: true, recursive: true });
+    throw error;
+  }
 
   return {
     checkoutRoot,

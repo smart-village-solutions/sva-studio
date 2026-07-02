@@ -11,6 +11,7 @@ import {
   createSvaMainserverSurvey,
   deleteSvaMainserverSurvey,
   getSvaMainserverSurvey,
+  getSvaMainserverSurveyResults,
   listSvaMainserverSurveys,
   updateSvaMainserverSurvey,
 } from './service.js';
@@ -191,7 +192,38 @@ const handleGetItem = async (
     ...actor,
     surveyId,
   });
-  return survey ? json({ data: survey }) : errorJson(404, 'not_found', 'Die Umfrage wurde nicht gefunden.');
+  if (!survey) {
+    return errorJson(404, 'not_found', 'Die Umfrage wurde nicht gefunden.');
+  }
+
+  const [moderationAccess, exportAccess] = await Promise.all([
+    authorizeContentPrimitiveForUser({
+      ctx,
+      action: 'surveys.moderate',
+      resource: {
+        contentType: SURVEYS_CONTENT_TYPE,
+        contentId: surveyId,
+      },
+    }),
+    authorizeContentPrimitiveForUser({
+      ctx,
+      action: 'surveys.export',
+      resource: {
+        contentType: SURVEYS_CONTENT_TYPE,
+        contentId: surveyId,
+      },
+    }),
+  ]);
+
+  if (!moderationAccess.ok && !exportAccess.ok) {
+    return json({ data: survey });
+  }
+
+  const results = await getSvaMainserverSurveyResults({
+    ...actor,
+    surveyId,
+  });
+  return json({ data: { ...survey, results } });
 };
 
 const handleUpdate = async (

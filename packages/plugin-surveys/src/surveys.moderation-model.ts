@@ -45,24 +45,40 @@ export const mergeModerationGroups = (
   pt: ModerationTranslate
 ): SurveyModerationQuestionGroup[] => {
   const byQuestionId = new Map<string, SurveyModerationQuestionGroup>();
+  const byQuestionTitle = new Map<string, SurveyModerationQuestionGroup>();
 
   for (const group of groups) {
     byQuestionId.set(group.questionId, group);
+    byQuestionTitle.set(group.questionTitle, group);
   }
 
   for (const [questionIndex, question] of watchedQuestions.entries()) {
-    const derivedQuestionId = `question-${questionIndex}`;
-    const alreadyExists =
-      byQuestionId.has(derivedQuestionId) ||
-      [...byQuestionId.values()].some((group) => group.questionTitle === question.title);
+    const fallbackQuestionTitle = question.title || pt('labels.questionSection', { index: questionIndex + 1 });
+    const derivedQuestionId = question.id || `question-${questionIndex}`;
+    const existingGroup = byQuestionId.get(derivedQuestionId) ?? byQuestionTitle.get(question.title);
 
-    if (!alreadyExists) {
-      byQuestionId.set(derivedQuestionId, {
+    if (existingGroup) {
+      if (existingGroup.questionId !== derivedQuestionId) {
+        byQuestionId.delete(existingGroup.questionId);
+      }
+
+      const normalizedGroup = {
+        ...existingGroup,
         questionId: derivedQuestionId,
-        questionTitle: question.title || pt('labels.questionSection', { index: questionIndex + 1 }),
-        responses: [],
-      });
+        questionTitle: fallbackQuestionTitle,
+      };
+      byQuestionId.set(derivedQuestionId, normalizedGroup);
+      byQuestionTitle.set(fallbackQuestionTitle, normalizedGroup);
+      continue;
     }
+
+    const nextGroup = {
+      questionId: derivedQuestionId,
+      questionTitle: fallbackQuestionTitle,
+      responses: [],
+    };
+    byQuestionId.set(derivedQuestionId, nextGroup);
+    byQuestionTitle.set(fallbackQuestionTitle, nextGroup);
   }
 
   return [...byQuestionId.values()];

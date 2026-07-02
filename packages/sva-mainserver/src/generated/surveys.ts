@@ -188,9 +188,6 @@ const surveyFields = `
   questionCount
   participationCount
   submissionCount
-  results {
-    ${surveyResultsFields}
-  }
   createdAt
   updatedAt
   publishedAt

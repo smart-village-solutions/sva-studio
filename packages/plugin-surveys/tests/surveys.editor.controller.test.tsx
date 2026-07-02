@@ -1,6 +1,6 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { useSurveyEditorController } from '../src/surveys.editor.controller.js';
 import type { SurveyDetailFormValues } from '../src/surveys.detail-form.js';
@@ -26,6 +26,10 @@ const pt = (key: string): string =>
   })[key] ?? key;
 
 describe('useSurveyEditorController', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('blocks edit submits without a content id before calling updateSurvey', async () => {
     const navigateToContentList = vi.fn(async () => undefined);
     const { result } = renderHook(() => {
@@ -66,5 +70,69 @@ describe('useSurveyEditorController', () => {
     expect(updateSurveyMock).not.toHaveBeenCalled();
     expect(result.current.status).toEqual({ kind: 'error', text: 'Keine Umfrage-ID vorhanden.' });
     expect(navigateToContentList).not.toHaveBeenCalled();
+  });
+
+  it('resets loaded form state when edit mode is missing a content id', async () => {
+    const navigateToContentList = vi.fn(async () => undefined);
+    let methodsRef: ReturnType<typeof useForm<SurveyDetailFormValues>> | undefined;
+
+    const { result } = renderHook(() => {
+      const methods = useForm<SurveyDetailFormValues>({
+        defaultValues: {
+          title: 'Vorherige Umfrage',
+          basis: {
+            status: 'ACTIVE',
+            startAt: '2026-07-01T08:00:00.000Z',
+            endAt: '',
+            targetAreaIds: ['district-1'],
+          },
+          content: {
+            shortDescription: 'Kurztext',
+            description: 'Detailtext',
+            isAnonymous: true,
+            showResultsInApp: true,
+            resultVisibility: 'AFTER_SUBMISSION',
+            privacyNotice: 'Datenschutz',
+            transparencyNotice: 'Transparenz',
+            questions: [],
+          },
+        },
+      });
+      methodsRef = methods;
+
+      return useSurveyEditorController({
+        mode: 'edit',
+        methods,
+        pt,
+        navigateToContentList,
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.loadedItem).toBeNull();
+      expect(result.current.status).toEqual({ kind: 'error', text: 'Keine Umfrage-ID vorhanden.' });
+    });
+
+    expect(methodsRef?.getValues()).toEqual({
+      title: '',
+      basis: {
+        status: 'DRAFT',
+        startAt: '',
+        endAt: '',
+        targetAreaIds: [],
+      },
+      content: {
+        shortDescription: '',
+        description: '',
+        isAnonymous: false,
+        showResultsInApp: false,
+        resultVisibility: 'NONE',
+        privacyNotice: '',
+        transparencyNotice: '',
+        questions: [],
+      },
+    });
+    expect(getSurveyMock).not.toHaveBeenCalled();
   });
 });

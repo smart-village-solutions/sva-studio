@@ -250,22 +250,14 @@ const createDeleteSurveyFreeTextResponseWithConfig = (executeGraphqlWithConfig: 
   },
   config: SvaMainserverInstanceConfig
 ): Promise<SvaMainserverSurveyMutationPayload> => {
-  const response = await executeGraphqlWithConfig<SvaMainserverCreateOrUpdateSurveyMutation>(
-    {
-      ...input,
-      document: svaMainserverCreateOrUpdateSurveyDocument,
-      operationName: 'SvaMainserverCreateOrUpdateSurvey',
-      variables: {
-        input: {
-          id: input.surveyId,
-          freeTextResponses: [{ id: input.freeTextResponseId, status: 'DELETED' }],
-        },
-      },
-    },
-    config
-  );
-
-  return mapSurveyMutationPayload(response.createOrUpdateSurvey);
+  void input;
+  void config;
+  throw toSvaMainserverError({
+    code: 'invalid_config',
+    message:
+      'Survey-Freitext-Löschungen werden vom dokumentierten Mainserver-Schema derzeit nicht unterstützt.',
+    statusCode: 501,
+  });
 };
 
 export const createSurveyOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({

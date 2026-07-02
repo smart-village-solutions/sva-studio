@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   validateCsrf: vi.fn(),
   listSvaMainserverSurveys: vi.fn(),
   getSvaMainserverSurvey: vi.fn(),
+  getSvaMainserverSurveyResults: vi.fn(),
   deleteSvaMainserverSurvey: vi.fn(),
   createSvaMainserverSurvey: vi.fn(),
   updateSvaMainserverSurvey: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock('@sva/server-runtime', () => ({
 vi.mock('./service.js', () => ({
   listSvaMainserverSurveys: state.listSvaMainserverSurveys,
   getSvaMainserverSurvey: state.getSvaMainserverSurvey,
+  getSvaMainserverSurveyResults: state.getSvaMainserverSurveyResults,
   deleteSvaMainserverSurvey: state.deleteSvaMainserverSurvey,
   createSvaMainserverSurvey: state.createSvaMainserverSurvey,
   updateSvaMainserverSurvey: state.updateSvaMainserverSurvey,
@@ -104,6 +106,112 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
       activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       page: 1,
       pageSize: 25,
+    });
+  });
+
+  it('does not fetch survey results for detail reads without moderation or export access', async () => {
+    mockAuthorizedRequest();
+    state.getSvaMainserverSurvey.mockResolvedValue({
+      id: 'survey-1',
+      title: { de: 'Bestandsumfrage' },
+    });
+    state.authorizeContentPrimitiveForUser
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'subject-1',
+          organizationId: '11111111-1111-1111-8111-111111111111',
+        },
+        permissions: [],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Moderation nicht erlaubt.',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Export nicht erlaubt.',
+      });
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1')
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toEqual({
+      data: {
+        id: 'survey-1',
+        title: { de: 'Bestandsumfrage' },
+      },
+    });
+    expect(state.getSvaMainserverSurveyResults).not.toHaveBeenCalled();
+  });
+
+  it('fetches survey results for detail reads with export access', async () => {
+    mockAuthorizedRequest();
+    state.getSvaMainserverSurvey.mockResolvedValue({
+      id: 'survey-1',
+      title: { de: 'Bestandsumfrage' },
+    });
+    state.getSvaMainserverSurveyResults.mockResolvedValue({
+      surveyId: 'survey-1',
+      participationCount: 4,
+      submissionCount: 3,
+      questions: [],
+    });
+    state.authorizeContentPrimitiveForUser
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'subject-1',
+          organizationId: '11111111-1111-1111-8111-111111111111',
+        },
+        permissions: [],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Moderation nicht erlaubt.',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'subject-1',
+          organizationId: '11111111-1111-1111-8111-111111111111',
+        },
+        permissions: [],
+      });
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1')
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toEqual({
+      data: {
+        id: 'survey-1',
+        title: { de: 'Bestandsumfrage' },
+        results: {
+          surveyId: 'survey-1',
+          participationCount: 4,
+          submissionCount: 3,
+          questions: [],
+        },
+      },
+    });
+    expect(state.getSvaMainserverSurveyResults).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      surveyId: 'survey-1',
     });
   });
 

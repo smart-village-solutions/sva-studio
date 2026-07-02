@@ -136,6 +136,40 @@ describe('useSurveyEditorController', () => {
     expect(getSurveyMock).not.toHaveBeenCalled();
   });
 
+  it('clears stale status when switching from edit to create mode', async () => {
+    const navigateToContentList = vi.fn(async () => undefined);
+    const { result, rerender } = renderHook(
+      ({ mode, contentId }: { mode: 'edit' | 'create'; contentId?: string }) => {
+        const methods = useForm<SurveyDetailFormValues>({
+          defaultValues: createEmptyFormValues(),
+        });
+
+        return useSurveyEditorController({
+          mode,
+          contentId,
+          methods,
+          pt,
+          navigateToContentList,
+        });
+      },
+      {
+        initialProps: { mode: 'edit' as const },
+      }
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toEqual({ kind: 'error', text: 'Keine Umfrage-ID vorhanden.' });
+    });
+
+    rerender({ mode: 'create' });
+
+    await waitFor(() => {
+      expect(result.current.status).toBeNull();
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.loadedItem).toBeNull();
+    });
+  });
+
   it('preserves loaded survey results after edit saves that return no results payload', async () => {
     const navigateToContentList = vi.fn(async () => undefined);
     getSurveyMock.mockResolvedValue({
@@ -230,3 +264,25 @@ describe('useSurveyEditorController', () => {
     expect(navigateToContentList).not.toHaveBeenCalled();
   });
 });
+
+function createEmptyFormValues(): SurveyDetailFormValues {
+  return {
+    title: '',
+    basis: {
+      status: 'DRAFT',
+      startAt: '',
+      endAt: '',
+      targetAreaIds: [],
+    },
+    content: {
+      shortDescription: '',
+      description: '',
+      isAnonymous: false,
+      showResultsInApp: false,
+      resultVisibility: 'NONE',
+      privacyNotice: '',
+      transparencyNotice: '',
+      questions: [],
+    },
+  };
+}

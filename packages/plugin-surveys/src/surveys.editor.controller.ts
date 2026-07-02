@@ -37,6 +37,7 @@ const useSurveyEditorLoader = ({
 }>) => {
   React.useEffect(() => {
     if (mode !== 'edit') {
+      setStatus(null);
       setIsLoading(false);
       setLoadedItem(null);
       methods.reset(createDefaultSurveyDetailFormValues());

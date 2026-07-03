@@ -1,0 +1,124 @@
+services:
+  app:
+    image: ghcr.io/smart-village-solutions/sva-studio:${TAG}
+    networks:
+      - network-node-005
+      - default
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 512M
+      labels:
+        - "traefik.swarm.network=public"
+        - "traefik.enable=true"
+        - "traefik.http.routers.studio-app.rule=Host(`studio-staging.smart-village.app`)"
+        - "traefik.http.routers.studio-app.tls=true"
+        - "traefik.http.services.studio-app.loadbalancer.server.port=3000"
+
+  provisioner:
+    image: ghcr.io/smart-village-solutions/sva-studio:${TAG}
+    networks:
+      - default
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 256M
+
+  migrate:
+    image: ghcr.io/smart-village-solutions/sva-studio:${TAG}
+    networks:
+      - default
+    deploy:
+      replicas: 0
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: none
+      resources:
+        reservations:
+          memory: 64M
+        limits:
+          memory: 256M
+
+  bootstrap:
+    image: ghcr.io/smart-village-solutions/sva-studio:${TAG}
+    networks:
+      - default
+    deploy:
+      replicas: 0
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: none
+      resources:
+        reservations:
+          memory: 64M
+        limits:
+          memory: 256M
+
+  redis:
+    networks:
+      - default
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 256M
+
+  postgres:
+    networks:
+      - default
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 1G
+
+networks:
+  default:
+  network-node-005:
+    external: true

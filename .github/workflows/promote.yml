@@ -1,0 +1,91 @@
+name: Promote
+run-name: Promote ${{ inputs.tag }} to ${{ inputs.environment }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options: [dev, staging, prod]
+      tag:
+        description: "Image tag (latest or commit SHA)"
+        required: true
+        default: latest
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      tag:
+        required: true
+        type: string
+
+concurrency:
+  group: promote-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy ${{ inputs.environment }}
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: validate inputs
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          case "${ENVIRONMENT}" in
+            dev|staging|prod) ;;
+            *)
+              echo "Invalid environment: ${ENVIRONMENT}. Expected one of: dev, staging, prod." >&2
+              exit 1
+              ;;
+          esac
+
+          if [ -z "${TAG}" ]; then
+            echo "'tag' must not be empty." >&2
+            exit 1
+          fi
+
+      - name: checkout
+        uses: actions/checkout@v6
+
+      - name: setup quantum-cli
+        uses: hostwithquantum/setup-quantum-cli@v2.0.0
+        with:
+          api-key: ${{ secrets.QUANTUM_API_KEY }}
+
+      - name: deploy
+        env:
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          TAG: ${{ inputs.tag }}
+          APP_CONFIG: ${{ secrets.APP_CONFIG }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${QUANTUM_ENDPOINT}" ]; then
+            echo "'QUANTUM_ENDPOINT' must not be empty." >&2
+            exit 1
+          fi
+
+          if [ -z "${APP_CONFIG}" ]; then
+            echo "'APP_CONFIG' must not be empty." >&2
+            exit 1
+          fi
+
+          printf '%s' "$APP_CONFIG" > .env
+          docker compose -f compose.yaml -f ./deploy/compose.${ENVIRONMENT}.yaml config --no-normalize > stack.yaml
+
+          # swarm compatibility
+          sed -i '/^name:/d' stack.yaml
+          if ! grep -q '^version:' stack.yaml; then
+            echo "version: '3.8'" >> stack.yaml
+          fi
+
+          quantum-cli stack deploy -f stack.yaml --stack "studio-${ENVIRONMENT}" --endpoint "${QUANTUM_ENDPOINT}"

@@ -23,7 +23,7 @@ export const surveyMutationErrorCodeSchema = z.enum([
 ]);
 export const surveyQuestionOptionSchema = z.object({
   id: z.string().min(1),
-  questionId: z.string().min(1),
+  questionId: z.string().min(1).nullish(),
   title: localizedTextSchema,
   position: z.number().int().nonnegative().nullish(),
   enablesFreeText: z.boolean().nullish(),

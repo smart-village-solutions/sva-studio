@@ -246,6 +246,44 @@ describe('authorizeContentPrimitiveForUser', () => {
     );
   });
 
+  it('ignores stale session organization scope for system_admin users', async () => {
+    getSessionMock.mockResolvedValueOnce({
+      id: 'session-1',
+      userId: 'user-1',
+      createdAt: Date.now(),
+      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    });
+
+    await expect(
+      authorizeContentPrimitiveForUser({
+        ctx: {
+          ...createCtx(),
+          user: {
+            ...createCtx().user,
+            roles: ['system_admin'],
+          },
+        },
+        action: 'news.read',
+        resource: {
+          contentType: 'news.article',
+        },
+      })
+    ).resolves.toEqual({
+      ok: true,
+      actor: {
+        instanceId: 'instance-1',
+        keycloakSubject: 'subject-1',
+      },
+      permissions: [permission],
+    });
+
+    expect(resolveEffectivePermissionsMock).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      keycloakSubject: 'subject-1',
+      organizationId: undefined,
+    });
+  });
+
   it('falls back to account-wide authorization when no organization context is available', async () => {
     resolveEffectivePermissionsMock.mockResolvedValueOnce({
       ok: true,

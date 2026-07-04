@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { hasSystemAdminRole, resolveOrganizationContextState } from './organization-context-policy.js';
+import {
+  hasSystemAdminRole,
+  resolveOrganizationContextState,
+  resolveSessionActiveOrganizationId,
+} from './organization-context-policy.js';
 
 describe('organization context policy', () => {
   describe('hasSystemAdminRole', () => {
@@ -8,6 +12,23 @@ describe('organization context policy', () => {
       expect(hasSystemAdminRole(['editor', 'system_admin'])).toBe(true);
       expect(hasSystemAdminRole([' editor ', ' viewer '])).toBe(false);
       expect(hasSystemAdminRole(undefined)).toBe(false);
+    });
+  });
+
+  describe('resolveSessionActiveOrganizationId', () => {
+    it('clears active organization scope for system_admin users and keeps it for other roles', () => {
+      expect(
+        resolveSessionActiveOrganizationId({
+          roleNames: ['system_admin'],
+          activeOrganizationId: 'org-1',
+        })
+      ).toBeUndefined();
+      expect(
+        resolveSessionActiveOrganizationId({
+          roleNames: ['editor'],
+          activeOrganizationId: 'org-1',
+        })
+      ).toBe('org-1');
     });
   });
 

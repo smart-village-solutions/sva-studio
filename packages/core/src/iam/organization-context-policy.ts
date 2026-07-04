@@ -11,6 +11,11 @@ const normalizeRoleNames = (roleNames: readonly string[] | undefined): readonly 
 export const hasSystemAdminRole = (roleNames: readonly string[] | undefined): boolean =>
   normalizeRoleNames(roleNames).includes(SYSTEM_ADMIN_ROLE);
 
+export const resolveSessionActiveOrganizationId = (input: {
+  readonly roleNames?: readonly string[];
+  readonly activeOrganizationId?: string;
+}): string | undefined => (hasSystemAdminRole(input.roleNames) ? undefined : input.activeOrganizationId);
+
 const defaultChooseActiveOrganizationId = <T extends OrganizationContextOptionLike>(input: {
   readonly storedActiveOrganizationId?: string;
   readonly activeOrganizations: readonly T[];

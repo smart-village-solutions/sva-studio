@@ -1,5 +1,9 @@
 export { extractRoles, resolveInstanceId, resolveUserName } from './claims.js';
-export { hasSystemAdminRole, resolveOrganizationContextState } from './organization-context-policy.js';
+export {
+  hasSystemAdminRole,
+  resolveOrganizationContextState,
+  resolveSessionActiveOrganizationId,
+} from './organization-context-policy.js';
 export { parseJwtPayload } from './token.js';
 export { resolveUserDisplayName, resolveUserInitials } from './user-display.js';
 export type {

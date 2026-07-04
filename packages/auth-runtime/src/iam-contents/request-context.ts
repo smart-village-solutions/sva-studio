@@ -1,4 +1,5 @@
 import {
+  resolveSessionActiveOrganizationId,
   summarizeContentAccess,
   type IamContentAccessSummary, type IamContentDomainCapability, type IamContentPrimitiveAction,
 } from '@sva/core';
@@ -310,7 +311,10 @@ export const resolveContentActor = async (
       actorDisplayName: ctx.user.id,
       requestId: actorResolution.actor.requestId,
       traceId: actorResolution.actor.traceId,
-      activeOrganizationId: session?.activeOrganizationId,
+      activeOrganizationId: resolveSessionActiveOrganizationId({
+        roleNames: ctx.user.roles,
+        activeOrganizationId: session?.activeOrganizationId,
+      }),
     },
   };
 };

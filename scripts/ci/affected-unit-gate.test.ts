@@ -59,6 +59,23 @@ describe('affected-unit-gate', () => {
     });
   });
 
+  it('skips the app run for infra-only non-app changes even when nx marks the app affected', () => {
+    expect(
+      planAppUnitExecution(
+        [
+          '.github/workflows/build.yml',
+          'compose.yaml',
+          'scripts/ci/monitoring-stack-ci.sh',
+        ],
+        ['tooling-testing', 'sva-studio-react']
+      )
+    ).toEqual({
+      mode: 'skip',
+      reason: 'non-app-infra-change',
+      slices: [],
+    });
+  });
+
   it('uses the aggregate app target when a file cannot be mapped to a safe slice', () => {
     expect(planAppUnitExecution(['apps/sva-studio-react/src/main.tsx'], ['sva-studio-react'])).toEqual({
       mode: 'aggregate',

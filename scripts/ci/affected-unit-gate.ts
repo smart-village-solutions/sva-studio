@@ -43,6 +43,7 @@ const APP_AGGREGATE_PATTERNS = [
   /^apps\/sva-studio-react\/(?:e2e|scripts)\//u,
   /^apps\/sva-studio-react\/src\/(?:main|routeTreeGen|router)\.(?:ts|tsx)$/u,
 ];
+const APP_DEPENDENCY_RELEVANT_NON_APP_PATTERNS = [/^packages\//u];
 
 const matchesAnyPattern = (filePath: string, patterns: readonly RegExp[]): boolean =>
   patterns.some((pattern) => pattern.test(filePath));
@@ -185,6 +186,18 @@ export const planAppUnitExecution = (
   const nonAppFiles = codeRelevantFiles.filter((filePath) => !filePath.startsWith('apps/sva-studio-react/'));
 
   if (nonAppFiles.length > 0) {
+    const dependencyRelevantNonAppFiles = nonAppFiles.filter((filePath) =>
+      matchesAnyPattern(filePath, APP_DEPENDENCY_RELEVANT_NON_APP_PATTERNS)
+    );
+
+    if (dependencyRelevantNonAppFiles.length === 0) {
+      return {
+        mode: 'skip',
+        reason: 'non-app-infra-change',
+        slices: [],
+      };
+    }
+
     return {
       mode: 'aggregate',
       reason: 'mixed-workspace-change',

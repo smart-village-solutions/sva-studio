@@ -622,7 +622,7 @@ describe('Header auth actions', () => {
     });
   });
 
-  it('rendert keinen fuehrenden Separator vor Mein Konto, wenn nur Organisationsmitgliedschaften angezeigt werden', async () => {
+  it('rendert keinen führenden Separator vor Mein Konto, wenn nur Organisationsmitgliedschaften angezeigt werden', async () => {
     useOrganizationContextMock.mockReturnValue({
       context: {
         activeOrganizationId: 'org-1',

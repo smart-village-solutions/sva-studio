@@ -60,9 +60,10 @@ const replaceInjectedDist = (sourceDistDir: string, injectedPackageDir: string):
 
   safeRemoveDirectory(stagedDistDir);
   safeRemoveDirectory(backupDistDir);
-  fs.cpSync(sourceDistDir, stagedDistDir, { force: true, recursive: true });
 
   try {
+    fs.cpSync(sourceDistDir, stagedDistDir, { force: true, recursive: true });
+
     if (fs.existsSync(targetDistDir)) {
       fs.renameSync(targetDistDir, backupDistDir);
     }

@@ -35,6 +35,51 @@ const isDirectory = (filePath: string): boolean => {
   }
 };
 
+const safeRemoveDirectory = (targetDir: string): void => {
+  try {
+    fs.rmSync(targetDir, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 25,
+    });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+  }
+};
+
+const replaceInjectedDist = (sourceDistDir: string, injectedPackageDir: string): void => {
+  fs.mkdirSync(injectedPackageDir, { recursive: true });
+
+  const targetDistDir = path.join(injectedPackageDir, 'dist');
+  const swapSuffix = `${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const stagedDistDir = path.join(injectedPackageDir, `.dist-sync-${swapSuffix}`);
+  const backupDistDir = path.join(injectedPackageDir, `.dist-backup-${swapSuffix}`);
+
+  safeRemoveDirectory(stagedDistDir);
+  safeRemoveDirectory(backupDistDir);
+  fs.cpSync(sourceDistDir, stagedDistDir, { force: true, recursive: true });
+
+  try {
+    if (fs.existsSync(targetDistDir)) {
+      fs.renameSync(targetDistDir, backupDistDir);
+    }
+    fs.renameSync(stagedDistDir, targetDistDir);
+  } catch (error) {
+    safeRemoveDirectory(stagedDistDir);
+
+    if (fs.existsSync(backupDistDir) && !fs.existsSync(targetDistDir)) {
+      fs.renameSync(backupDistDir, targetDistDir);
+    }
+
+    throw error;
+  }
+
+  safeRemoveDirectory(backupDistDir);
+};
+
 const walkFiles = (rootDir: string, predicate: (filePath: string) => boolean): string[] => {
   const results: string[] = [];
   const queue = [rootDir];
@@ -319,9 +364,7 @@ export const syncInjectedWorkspacePackageDists = (
         continue;
       }
 
-      const targetDistDir = path.join(injectedPackageDir, 'dist');
-      fs.rmSync(targetDistDir, { recursive: true, force: true });
-      fs.cpSync(sourceDistDir, targetDistDir, { force: true, recursive: true });
+      replaceInjectedDist(sourceDistDir, injectedPackageDir);
       updatedCopies += 1;
     }
   }

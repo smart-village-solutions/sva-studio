@@ -1,11 +1,12 @@
-import type {
+import {
+  resolveOrganizationContextState,
   IamOrganizationContext,
   IamOrganizationContextOption,
   IamOrganizationDetail,
   IamOrganizationListItem,
   IamOrganizationType,
+  type ApiErrorCode,
 } from '@sva/core';
-import type { ApiErrorCode } from '@sva/core';
 
 import type { QueryClient } from './query-client.js';
 
@@ -106,11 +107,6 @@ export type OrganizationReadHandlerDeps<TFeatureFlags = unknown> = {
     work: (client: QueryClient) => Promise<T>
   ) => Promise<T>;
 };
-
-const SYSTEM_ADMIN_ROLES = new Set(['system_admin']);
-
-const hasSystemAdminRole = (roles: readonly string[]): boolean =>
-  roles.some((role) => SYSTEM_ADMIN_ROLES.has(role));
 
 const createMissingOrganizationReadAuthorizerResponse = <TFeatureFlags>(
   deps: OrganizationReadHandlerDeps<TFeatureFlags>,
@@ -265,12 +261,17 @@ export const createOrganizationReadHandlers = <TFeatureFlags>(
         })
       );
       const session = await deps.getSession(ctx.sessionId);
-      const activeOrganizationId = hasSystemAdminRole(ctx.user.roles)
-        ? undefined
-        : deps.chooseActiveOrganizationId({
-            storedActiveOrganizationId: session?.activeOrganizationId,
-            organizations,
-          });
+      const organizationContextState = resolveOrganizationContextState({
+        roleNames: ctx.user.roles,
+        organizations,
+        storedActiveOrganizationId: session?.activeOrganizationId,
+        chooseActiveOrganizationId: ({ storedActiveOrganizationId, activeOrganizations }) =>
+          deps.chooseActiveOrganizationId({
+            storedActiveOrganizationId,
+            organizations: activeOrganizations,
+          }),
+      });
+      const activeOrganizationId = organizationContextState.activeOrganizationId;
 
       if (session && session.activeOrganizationId !== activeOrganizationId) {
         await deps.updateSession(ctx.sessionId, { activeOrganizationId });

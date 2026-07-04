@@ -1,14 +1,7 @@
 import { expect, type Page } from '@playwright/test';
+import { resolveUserInitials } from '@sva/core';
 
 const escapeForRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-const resolveInitials = (value: string) =>
-  value
-    .split(/[\s._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
 
 export const gotoShellRoot = async (page: Page, attempts = 5) => {
   let lastError: unknown;
@@ -35,7 +28,7 @@ export const gotoHomeAsAuthenticatedUser = async (page: Page, expectedUserName =
     (response) => response.request().method() === 'GET' && response.url().includes('/auth/me') && response.status() === 200
   );
   const expectedTriggerPattern = new RegExp(
-    `${escapeForRegex(expectedUserName)}|${escapeForRegex(resolveInitials(expectedUserName))}`
+    `${escapeForRegex(expectedUserName)}|${escapeForRegex(resolveUserInitials(expectedUserName))}`
   );
 
   await gotoShellRoot(page);

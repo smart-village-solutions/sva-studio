@@ -1,3 +1,5 @@
+import { hasSystemAdminRole as hasCoreSystemAdminRole } from '@sva/core';
+
 type UserWithRoles = {
   roles?: readonly string[];
   permissionActions?: readonly string[];
@@ -16,7 +18,6 @@ const IAM_GOVERNANCE_PERMISSIONS = new Set([
   'iam.dsr.read',
   'iam.deletionRules.read',
 ]);
-const SYSTEM_ADMIN_ROLES = new Set(['system_admin']);
 const ROOT_ADMIN_ROLES = new Set(['instance_registry_admin']);
 
 const readFlag = (value: string | undefined, fallback: boolean) => {
@@ -57,8 +58,7 @@ export const hasExperimentalAccess = (user: UserWithRoles | null | undefined) =>
 export const hasMonitoringAccess = (user: UserWithRoles | null | undefined) =>
   user?.permissionActions?.includes(MONITORING_PERMISSION) === true;
 
-export const hasProtectedTenantRole = (user: UserWithRoles | null | undefined) =>
-  Boolean(user?.roles?.some((role) => SYSTEM_ADMIN_ROLES.has(role)));
+export const hasSystemAdminRole = (user: UserWithRoles | null | undefined) => hasCoreSystemAdminRole(user?.roles);
 
 export const hasPlatformInstanceAdminAccess = (user: UserWithRoles | null | undefined) =>
   Boolean(user?.roles?.some((role) => ROOT_ADMIN_ROLES.has(role)));

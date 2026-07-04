@@ -1,4 +1,4 @@
-import type { ApiErrorCode } from '@sva/core';
+import { hasSystemAdminRole, type ApiErrorCode } from '@sva/core';
 
 import type { QueryClient } from './query-client.js';
 import { isRootOnlyRole } from './role-governance.js';
@@ -35,9 +35,6 @@ SELECT EXISTS (
 
 const normalizeRoleNames = (roleNames: readonly string[] | undefined): readonly string[] =>
   [...new Set(roleNames?.map((roleName) => roleName.trim()).filter((roleName) => roleName.length > 0) ?? [])];
-
-const hasSystemAdminRole = (roleNames: readonly string[] | undefined): boolean =>
-  normalizeRoleNames(roleNames).includes(SYSTEM_ADMIN_ROLE_KEY);
 
 export const resolveActorMaxRoleLevel = async (
   client: QueryClient,

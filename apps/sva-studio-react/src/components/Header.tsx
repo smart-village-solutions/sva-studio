@@ -7,6 +7,7 @@
 import { Bell, ChevronDown, Languages, Menu, MessageCircle, Moon, Search, SendHorizontal, Sun } from 'lucide-react';
 import React from 'react';
 import { Link, useRouterState } from '@tanstack/react-router';
+import { resolveOrganizationContextState, resolveUserDisplayName, resolveUserInitials } from '@sva/core';
 
 import { OrganizationContextSwitcher } from './OrganizationContextSwitcher';
 import { Button } from './ui/button';
@@ -15,7 +16,7 @@ import { t } from '../i18n';
 import { createAccountActionHref, createLoginHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
 import { clearClientLogoutState } from '../lib/auth-session-state';
 import { useOrganizationContext } from '../hooks/use-organization-context';
-import { hasExperimentalAccess, hasProtectedTenantRole } from '../lib/iam-admin-access';
+import { hasExperimentalAccess } from '../lib/iam-admin-access';
 import { cn } from '../lib/utils';
 import { useAuth } from '../providers/auth-provider';
 import { useLocale } from '../providers/locale-provider';
@@ -59,19 +60,6 @@ type HeaderAuthActionProps = Readonly<{
   displayName: string;
   initials: string;
 }>;
-
-const resolveUserDisplayName = (user: { readonly id: string }) => {
-  const candidate = user as { readonly name?: string; readonly displayName?: string };
-  return candidate.displayName?.trim() || candidate.name?.trim() || user.id;
-};
-
-const resolveUserInitials = (value: string) =>
-  value
-    .split(/[\s._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('') || value.slice(0, 2).toUpperCase();
 
 const HeaderSectionDivider = () => <hr className="my-1 border-border" />;
 
@@ -246,58 +234,39 @@ const HeaderPromptField = ({
   </div>
 );
 
-const HeaderAuthAction = ({
-  isHydrated,
-  isLoading,
-  isAuthLoading,
-  isAuthenticated,
-  showOrganizationContext,
-  isSystemAdmin,
-  isDevAuthAvailable = false,
+const renderUnauthenticatedHeaderAction = ({
   hideAnonymousLoginAction,
+  isDevAuthAvailable,
   loginHref,
   loginWithDevAuth,
-  logout,
-  user,
-  displayName,
-  initials,
-}: HeaderAuthActionProps): React.ReactNode => {
-  if (!isHydrated || isLoading || isAuthLoading) {
-    return (
-      <>
-        <span role="status" aria-live="polite" className="sr-only">
-          {t('shell.header.authLoading')}
-        </span>
-        <span aria-hidden="true" className="h-9 w-28 animate-skeleton rounded-full" />
-      </>
-    );
+}: Pick<
+  HeaderAuthActionProps,
+  'hideAnonymousLoginAction' | 'isDevAuthAvailable' | 'loginHref' | 'loginWithDevAuth'
+>): React.ReactNode => {
+  if (hideAnonymousLoginAction) {
+    return null;
   }
 
-  if (!isAuthenticated) {
-    if (hideAnonymousLoginAction) {
-      return null;
-    }
-
-    if (isDevAuthAvailable) {
-      return (
-        <Button type="button" variant="secondary" onClick={() => void loginWithDevAuth?.()}>
-          {t('shell.header.login')}
-        </Button>
-      );
-    }
-
+  if (isDevAuthAvailable) {
     return (
-      <Button asChild variant="secondary">
-        <a href={loginHref}>{t('shell.header.login')}</a>
+      <Button type="button" variant="secondary" onClick={() => void loginWithDevAuth?.()}>
+        {t('shell.header.login')}
       </Button>
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  return (
+    <Button asChild variant="secondary">
+      <a href={loginHref}>{t('shell.header.login')}</a>
+    </Button>
+  );
+};
 
-  const logoutItem: HeaderDropdownItem = isDevAuthAvailable
+const createLogoutMenuItem = ({
+  isDevAuthAvailable,
+  logout,
+}: Pick<HeaderAuthActionProps, 'isDevAuthAvailable' | 'logout'>): HeaderDropdownItem =>
+  isDevAuthAvailable
     ? {
         id: 'logout',
         label: t('shell.header.logout'),
@@ -324,46 +293,72 @@ const HeaderAuthAction = ({
         ),
       };
 
-  const accountMenuItems: readonly HeaderDropdownItem[] = [
-    ...(showOrganizationContext
-      ? ([
-          {
-            id: 'organization-context',
-            render: <OrganizationContextSwitcher variant="menu" readOnly={isSystemAdmin} />,
-          },
-          {
-            id: 'divider-organization-context',
-            render: <HeaderSectionDivider />,
-          },
-        ] satisfies readonly HeaderDropdownItem[])
-      : []),
-    { id: 'account', label: t('account.profile.title'), href: '/account' },
-    {
-      id: 'password',
-      label: t('shell.header.changePassword'),
-      href: createAccountActionHref('update-password'),
-      documentNavigation: true,
-    },
-    {
-      id: 'divider-privacy',
-      render: <HeaderSectionDivider />,
-    },
-    {
-      id: 'privacy',
-      label: t('account.privacy.navLabel'),
-      href: '/account/privacy',
-    },
-    {
-      id: 'rules',
-      label: t('account.rules.navLabel'),
-      href: '/account/rules',
-    },
-    {
-      id: 'divider-session',
-      render: <HeaderSectionDivider />,
-    },
+const createAccountMenuItems = ({
+  showOrganizationContext,
+  isSystemAdmin,
+  logoutItem,
+}: {
+  readonly showOrganizationContext: boolean;
+  readonly isSystemAdmin: boolean;
+  readonly logoutItem: HeaderDropdownItem;
+}): readonly HeaderDropdownItem[] => [
+  ...(showOrganizationContext
+    ? ([
+        {
+          id: 'organization-context',
+          render: <OrganizationContextSwitcher variant="menu" readOnly={isSystemAdmin} />,
+        },
+        {
+          id: 'divider-organization-context',
+          render: <HeaderSectionDivider />,
+        },
+      ] satisfies readonly HeaderDropdownItem[])
+    : []),
+  { id: 'account', label: t('account.profile.title'), href: '/account' },
+  {
+    id: 'password',
+    label: t('shell.header.changePassword'),
+    href: createAccountActionHref('update-password'),
+    documentNavigation: true,
+  },
+  {
+    id: 'divider-privacy',
+    render: <HeaderSectionDivider />,
+  },
+  {
+    id: 'privacy',
+    label: t('account.privacy.navLabel'),
+    href: '/account/privacy',
+  },
+  {
+    id: 'rules',
+    label: t('account.rules.navLabel'),
+    href: '/account/rules',
+  },
+  {
+    id: 'divider-session',
+    render: <HeaderSectionDivider />,
+  },
+  logoutItem,
+];
+
+const HeaderAuthenticatedAccountMenu = ({
+  showOrganizationContext,
+  isSystemAdmin,
+  isDevAuthAvailable = false,
+  logout,
+  displayName,
+  initials,
+}: Pick<
+  HeaderAuthActionProps,
+  'showOrganizationContext' | 'isSystemAdmin' | 'isDevAuthAvailable' | 'logout' | 'displayName' | 'initials'
+>) => {
+  const logoutItem = createLogoutMenuItem({ isDevAuthAvailable, logout });
+  const accountMenuItems = createAccountMenuItems({
+    showOrganizationContext,
+    isSystemAdmin,
     logoutItem,
-  ];
+  });
 
   return (
     <HeaderDropdownMenu
@@ -394,6 +389,58 @@ const HeaderAuthAction = ({
   );
 };
 
+const HeaderAuthAction = ({
+  isHydrated,
+  isLoading,
+  isAuthLoading,
+  isAuthenticated,
+  showOrganizationContext,
+  isSystemAdmin,
+  isDevAuthAvailable = false,
+  hideAnonymousLoginAction,
+  loginHref,
+  loginWithDevAuth,
+  logout,
+  user,
+  displayName,
+  initials,
+}: HeaderAuthActionProps): React.ReactNode => {
+  if (!isHydrated || isLoading || isAuthLoading) {
+    return (
+      <>
+        <span role="status" aria-live="polite" className="sr-only">
+          {t('shell.header.authLoading')}
+        </span>
+        <span aria-hidden="true" className="h-9 w-28 animate-skeleton rounded-full" />
+      </>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return renderUnauthenticatedHeaderAction({
+      hideAnonymousLoginAction,
+      isDevAuthAvailable,
+      loginHref,
+      loginWithDevAuth,
+    });
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <HeaderAuthenticatedAccountMenu
+      showOrganizationContext={showOrganizationContext}
+      isSystemAdmin={isSystemAdmin}
+      isDevAuthAvailable={isDevAuthAvailable}
+      logout={logout}
+      displayName={displayName}
+      initials={initials}
+    />
+  );
+};
+
 /**
  * Rendert die Kopfzeile mit globalen Aktionen.
  *
@@ -407,7 +454,12 @@ export default function Header({
 }: HeaderProps) {
   const { user, isAuthenticated, isLoading: isAuthLoading, isDevAuthAvailable, loginWithDevAuth, logout } = useAuth();
   const organizationContext = useOrganizationContext();
-  const isSystemAdmin = hasProtectedTenantRole(user);
+  const organizationContextState = resolveOrganizationContextState({
+    roleNames: user?.roles,
+    organizations: organizationContext.context?.organizations,
+    storedActiveOrganizationId: organizationContext.context?.activeOrganizationId,
+  });
+  const isSystemAdmin = organizationContextState.isReadOnly;
   const { locale, setLocale } = useLocale();
   const { mode, toggleMode } = useTheme();
   const currentPathname = useRouterState({
@@ -416,8 +468,6 @@ export default function Header({
   const [isHydrated, setIsHydrated] = React.useState(false);
   const resolvedMode = isHydrated ? mode : 'light';
   const loginHref = isHydrated ? createLoginHref(resolveCurrentReturnTo()) : '/auth/login';
-  const hasActiveOrganizations =
-    (organizationContext.context?.organizations.filter((organization) => organization.isActive).length ?? 0) > 0;
   const showOrganizationContext =
     isHydrated &&
     isAuthenticated &&
@@ -425,7 +475,7 @@ export default function Header({
     !isAuthLoading &&
     Boolean(user) &&
     !organizationContext.isLoading &&
-    hasActiveOrganizations;
+    organizationContextState.hasVisibleMemberships;
   const showAuthenticatedHeaderTools = isHydrated && isAuthenticated && !isLoading && !isAuthLoading;
   const showExperimentalHeaderTools = showAuthenticatedHeaderTools && hasExperimentalAccess(user);
   const hideAnonymousLoginAction = !isAuthenticated && currentPathname === '/';

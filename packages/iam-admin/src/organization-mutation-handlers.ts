@@ -1,4 +1,4 @@
-import type { ApiErrorCode } from '@sva/core';
+import { hasSystemAdminRole, type ApiErrorCode } from '@sva/core';
 import type { z } from 'zod';
 
 import type { OrganizationMainserverCredentialState } from './organization-mainserver-credentials.js';
@@ -54,11 +54,6 @@ type OrganizationRow = {
   readonly child_count: number;
   readonly membership_count: number;
 };
-
-const SYSTEM_ADMIN_ROLES = new Set(['system_admin']);
-
-const hasSystemAdminRole = (roles: readonly string[]): boolean =>
-  roles.some((role) => SYSTEM_ADMIN_ROLES.has(role));
 
 export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
   readonly asApiItem: (data: unknown, requestId?: string) => unknown;

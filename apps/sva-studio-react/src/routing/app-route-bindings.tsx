@@ -1,5 +1,5 @@
 import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
-import type { IamOrganizationContextOption, IamOrganizationDetail } from '@sva/core';
+import { resolveUserDisplayName, type IamOrganizationContextOption, type IamOrganizationDetail } from '@sva/core';
 import { CategoriesPage } from '@sva/plugin-categories';
 import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events';
 import { NewsDetailPage, NewsEditPage, type NewsAuthorControl } from '@sva/plugin-news';
@@ -44,11 +44,6 @@ import { PlaceholderPage } from '../routes/-placeholder-page';
 
 const readStringParam = (value: unknown, fallback = ''): string => {
   return typeof value === 'string' ? value : fallback;
-};
-
-const resolveUserDisplayName = (user: { readonly id: string }) => {
-  const candidate = user as { readonly name?: string; readonly displayName?: string };
-  return candidate.displayName?.trim() || candidate.name?.trim() || user.id;
 };
 
 const EMPTY_ORGANIZATIONS: readonly IamOrganizationContextOption[] = [];

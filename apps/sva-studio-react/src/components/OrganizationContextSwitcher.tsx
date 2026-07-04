@@ -1,4 +1,5 @@
 import React from 'react';
+import { resolveOrganizationContextState } from '@sva/core';
 
 import type { IamHttpError } from '../lib/iam-api';
 import { t } from '../i18n';
@@ -33,7 +34,11 @@ export const OrganizationContextSwitcher = ({
   readOnly = false,
 }: OrganizationContextSwitcherProps) => {
   const organizationContext = useOrganizationContext();
-  const options = organizationContext.context?.organizations.filter((organization) => organization.isActive) ?? [];
+  const organizationContextState = resolveOrganizationContextState({
+    organizations: organizationContext.context?.organizations,
+    storedActiveOrganizationId: organizationContext.context?.activeOrganizationId,
+  });
+  const options = organizationContextState.activeOrganizations;
   const activeOrganization = options.find(
     (organization) => organization.organizationId === organizationContext.context?.activeOrganizationId
   );
@@ -43,8 +48,8 @@ export const OrganizationContextSwitcher = ({
   const describedBy = [statusId, errorMessage ? errorId : null].filter(Boolean).join(' ') || undefined;
   const isMenuVariant = variant === 'menu';
 
-  const shouldRenderSelector = !readOnly && options.length > 1;
-  const shouldRenderMenuMemberships = isMenuVariant && options.length > 0;
+  const shouldRenderSelector = !readOnly && organizationContextState.canSwitch;
+  const shouldRenderMenuMemberships = isMenuVariant && organizationContextState.hasVisibleMemberships;
 
   if (organizationContext.isLoading || (!shouldRenderSelector && !shouldRenderMenuMemberships)) {
     return null;

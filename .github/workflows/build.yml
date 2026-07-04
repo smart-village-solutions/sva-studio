@@ -44,5 +44,9 @@ jobs:
     uses: ./.github/workflows/promote.yml
     secrets: inherit
     with:
+      bootstrap_mode: assert-none
+      change_base: ${{ github.event.before }}
+      change_head: ${{ github.sha }}
       environment: dev
+      migration_mode: assert-none
       tag: ${{ github.sha }}

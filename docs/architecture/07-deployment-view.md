@@ -116,6 +116,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 - **Release-Klassen:** Studio-Deploys unterscheiden `app-only` und `schema-and-app`; nur `schema-and-app` darf Migrationen auslösen.
 - **Gepinnter Goose-Pfad:** Schema-Rollouts laufen über einen repository-lokalen `goose`-Wrapper mit fixer Version innerhalb eines dedizierten Swarm-One-off-Jobs; Zielsysteme benötigen keine permanente `goose`-Vorinstallation.
 - **Dedizierte Job-Services:** Die Stack-Compose-Dateien führen zusätzlich die Services `migrate` und `bootstrap` mit `replicas: 0`. Remote-Deploys rendern daraus ein temporäres Quantum-Projekt, das genau den benoetigten One-off-Job gegen das bestehende Overlay-Netz `<stack>_internal` startet.
+- **Explizites Promote-Gate:** Der vereinfachte GitHub-Pfad `promote.yml` darf den `app`-Deploy erst starten, nachdem getrennte Gates fuer Migration und Bootstrap bestanden wurden. `assert-none` bedeutet dabei Risiko-Nachweis statt Skip; `run` bleibt ohne gehaerteten One-shot-Executor absichtlich blockierend.
 - **Gehärteter Live-Render:** Der für `quantum-cli stacks update` erzeugte Deploy-Render validiert vor dem Rollout die vollständige `app`-Service-Spec. Pflicht sind mindestens die Netzwerke `internal` und `public` sowie die ingressrelevanten Traefik-Labels.
 - **Prod-nahe Paritaet vor Mutationen:** Vor mutierenden `studio`-Rollouts prueft `image-smoke` Root-Host, Tenant-Hosts und OIDC-Verhalten gegen das Zielartefakt. Wenn dasselbe Digest bereits live laeuft, ist nur eine dokumentierte Live-Paritaets-Wiederverwendung fuer genau dieses Digest zulaessig.
 - **Strikte Stack-Trennung:** Temp-Job-Stacks für `migrate` und `bootstrap` enthalten keinen `app`-Service und dürfen keine Live-Service-Spec des eigentlichen Stacks ableiten oder überschreiben.
@@ -146,6 +147,7 @@ Betriebliche Einordnung:
 
 - App läuft als Node-/Nitro-Server aus dem TanStack-Start-Build.
 - Für spätere Updates bestehender Datenbanken bleiben Migrationen ein bewusster separater Betriebsschritt.
+- Auch der CI-Promote-Pfad erzwingt diesen Vertrag: Ohne erfolgreichen Nachweis fuer Migration und Bootstrap oder ohne sauberen No-Risk-Nachweis startet kein App-Deploy.
 - Der kanonische Migrationspfad nutzt ein einzelnes `goose`-SQL-File pro Version mit `Up` und `Down`; ein getrennter `up`/`down`-Dateibaum ist kein Sollzustand mehr.
 - Ein reiner Job-Lauf für `migrate` oder `bootstrap` darf keinen vollständigen Stack-Reconcile auf `sva-studio_app` auslösen; der Live-Stack wird erst im expliziten `deploy`-Schritt aktualisiert.
 

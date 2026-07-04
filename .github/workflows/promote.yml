@@ -13,6 +13,18 @@ on:
         description: "Image tag (latest or commit SHA)"
         required: true
         default: latest
+      migration_mode:
+        description: "Migration gate mode"
+        required: true
+        default: assert-none
+        type: choice
+        options: [assert-none, run]
+      bootstrap_mode:
+        description: "Bootstrap gate mode"
+        required: true
+        default: assert-none
+        type: choice
+        options: [assert-none, run]
   workflow_call:
     inputs:
       environment:
@@ -21,6 +33,22 @@ on:
       tag:
         required: true
         type: string
+      migration_mode:
+        required: false
+        type: string
+        default: assert-none
+      bootstrap_mode:
+        required: false
+        type: string
+        default: assert-none
+      change_base:
+        required: false
+        type: string
+        default: ""
+      change_head:
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: promote-${{ inputs.environment }}
@@ -36,6 +64,8 @@ jobs:
         env:
           ENVIRONMENT: ${{ inputs.environment }}
           TAG: ${{ inputs.tag }}
+          MIGRATION_MODE: ${{ inputs.migration_mode }}
+          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
         run: |
           set -euo pipefail
 
@@ -52,8 +82,98 @@ jobs:
             exit 1
           fi
 
+          case "${MIGRATION_MODE}" in
+            run|assert-none) ;;
+            *)
+              echo "Invalid migration_mode: ${MIGRATION_MODE}. Expected one of: run, assert-none." >&2
+              exit 1
+              ;;
+          esac
+
+          case "${BOOTSTRAP_MODE}" in
+            run|assert-none) ;;
+            *)
+              echo "Invalid bootstrap_mode: ${BOOTSTRAP_MODE}. Expected one of: run, assert-none." >&2
+              exit 1
+              ;;
+          esac
+
       - name: checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: fetch main reference
+        run: git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
+
+      - name: evaluate migration and bootstrap gates
+        id: gate_eval
+        env:
+          CHANGE_BASE: ${{ inputs.change_base }}
+          CHANGE_HEAD: ${{ inputs.change_head }}
+          MIGRATION_MODE: ${{ inputs.migration_mode }}
+          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
+          PROMOTE_MIGRATION_EXECUTOR: ${{ vars.PROMOTE_MIGRATION_EXECUTOR }}
+          PROMOTE_BOOTSTRAP_EXECUTOR: ${{ vars.PROMOTE_BOOTSTRAP_EXECUTOR }}
+        run: |
+          set -euo pipefail
+
+          BASE_REF="${CHANGE_BASE}"
+          if [ -z "${BASE_REF}" ]; then
+            if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+              BASE_REF="$(git rev-parse HEAD^)"
+            else
+              BASE_REF="origin/main"
+            fi
+          fi
+
+          HEAD_REF="${CHANGE_HEAD:-HEAD}"
+
+          migration_executor_configured=false
+          if [ -n "${PROMOTE_MIGRATION_EXECUTOR}" ]; then
+            migration_executor_configured=true
+          fi
+
+          bootstrap_executor_configured=false
+          if [ -n "${PROMOTE_BOOTSTRAP_EXECUTOR}" ]; then
+            bootstrap_executor_configured=true
+          fi
+
+          echo "Evaluating deploy gates against ${BASE_REF}..${HEAD_REF}"
+          pnpm exec tsx scripts/ci/promote-deploy-gates.ts \
+            --base "${BASE_REF}" \
+            --head "${HEAD_REF}" \
+            --migration-mode "${MIGRATION_MODE}" \
+            --bootstrap-mode "${BOOTSTRAP_MODE}" \
+            --migration-executor-configured "${migration_executor_configured}" \
+            --bootstrap-executor-configured "${bootstrap_executor_configured}"
+
+      - name: enforce migration and bootstrap gates
+        env:
+          MIGRATION_MODE: ${{ inputs.migration_mode }}
+          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
+          MIGRATION_GATE_OK: ${{ steps.gate_eval.outputs.migration_gate_ok }}
+          MIGRATION_GATE_RESULT: ${{ steps.gate_eval.outputs.migration_gate_result }}
+          MIGRATION_GATE_RISK_FILES: ${{ steps.gate_eval.outputs.migration_gate_risk_files }}
+          MIGRATION_GATE_MESSAGE: ${{ steps.gate_eval.outputs.migration_gate_message }}
+          BOOTSTRAP_GATE_OK: ${{ steps.gate_eval.outputs.bootstrap_gate_ok }}
+          BOOTSTRAP_GATE_RESULT: ${{ steps.gate_eval.outputs.bootstrap_gate_result }}
+          BOOTSTRAP_GATE_RISK_FILES: ${{ steps.gate_eval.outputs.bootstrap_gate_risk_files }}
+          BOOTSTRAP_GATE_MESSAGE: ${{ steps.gate_eval.outputs.bootstrap_gate_message }}
+        run: |
+          set -euo pipefail
+
+          if [ "${MIGRATION_GATE_OK}" != "true" ]; then
+            echo "::error::Migration gate failed (${MIGRATION_MODE}/${MIGRATION_GATE_RESULT}): ${MIGRATION_GATE_RISK_FILES}" >&2
+            echo "${MIGRATION_GATE_MESSAGE}" >&2
+            exit 1
+          fi
+
+          if [ "${BOOTSTRAP_GATE_OK}" != "true" ]; then
+            echo "::error::Bootstrap gate failed (${BOOTSTRAP_MODE}/${BOOTSTRAP_GATE_RESULT}): ${BOOTSTRAP_GATE_RISK_FILES}" >&2
+            echo "${BOOTSTRAP_GATE_MESSAGE}" >&2
+            exit 1
+          fi
 
       - name: setup quantum-cli
         uses: hostwithquantum/setup-quantum-cli@v2.0.0
@@ -61,6 +181,7 @@ jobs:
           api-key: ${{ secrets.QUANTUM_API_KEY }}
 
       - name: deploy
+        id: deploy
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
           ENVIRONMENT: ${{ inputs.environment }}
@@ -89,3 +210,41 @@ jobs:
           fi
 
           quantum-cli stack deploy -f stack.yaml --stack "studio-${ENVIRONMENT}" --endpoint "${QUANTUM_ENDPOINT}"
+
+      - name: write deploy summary
+        if: always()
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          TAG: ${{ inputs.tag }}
+          MIGRATION_MODE: ${{ inputs.migration_mode }}
+          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
+          MIGRATION_GATE_RESULT: ${{ steps.gate_eval.outputs.migration_gate_result }}
+          MIGRATION_GATE_RISK_FILES: ${{ steps.gate_eval.outputs.migration_gate_risk_files }}
+          BOOTSTRAP_GATE_RESULT: ${{ steps.gate_eval.outputs.bootstrap_gate_result }}
+          BOOTSTRAP_GATE_RISK_FILES: ${{ steps.gate_eval.outputs.bootstrap_gate_risk_files }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+        run: |
+          set -euo pipefail
+
+          deploy_started=no
+          if [ "${DEPLOY_OUTCOME}" != "" ] && [ "${DEPLOY_OUTCOME}" != "skipped" ]; then
+            deploy_started=yes
+          fi
+
+          {
+            echo "## Promote summary"
+            echo
+            echo "| field | value |"
+            echo "| --- | --- |"
+            echo "| environment | ${ENVIRONMENT} |"
+            echo "| image | ghcr.io/smart-village-solutions/sva-studio:${TAG} |"
+            echo "| tag | ${TAG} |"
+            echo "| digest | not-resolved-by-promote |"
+            echo "| migration_mode | ${MIGRATION_MODE} |"
+            echo "| migration_gate_result | ${MIGRATION_GATE_RESULT:-not-evaluated} |"
+            echo "| migration_risk_files | ${MIGRATION_GATE_RISK_FILES:-none} |"
+            echo "| bootstrap_mode | ${BOOTSTRAP_MODE} |"
+            echo "| bootstrap_gate_result | ${BOOTSTRAP_GATE_RESULT:-not-evaluated} |"
+            echo "| bootstrap_risk_files | ${BOOTSTRAP_GATE_RISK_FILES:-none} |"
+            echo "| app_deploy_started | ${deploy_started} |"
+          } >> "${GITHUB_STEP_SUMMARY}"

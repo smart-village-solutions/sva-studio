@@ -77,4 +77,4 @@ Referenzen:
 - `packages/sva-mainserver/src/server/service.ts`
 - `packages/data-repositories/src/integrations/instance-integrations.ts`
 - `docker-compose.yml`
-- `docker-compose.monitoring.yml`
+- `compose.monitoring.yaml`

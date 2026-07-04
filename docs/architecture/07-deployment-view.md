@@ -25,7 +25,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - Öffentliche App: `pnpm nx run public-waste-calendar-web:serve` auf `localhost:3002`
 - Postgres IAM-DB: `docker-compose.yml` (`5432`)
 - Redis: `docker-compose.yml` (`6379`, optional TLS `6380`)
-- Monitoring Stack: `docker-compose.monitoring.yml`
+- Monitoring Stack: `compose.monitoring.yaml`
   - Collector: `4317`, `4318`, `13133`
   - Loki: `3100`
   - Prometheus: `9090`
@@ -226,7 +226,7 @@ Referenzen:
 Referenzen:
 
 - `docker-compose.yml` (lokale Entwicklung)
-- `docker-compose.monitoring.yml`
+- `compose.monitoring.yaml`
 - `deploy/portainer/docker-compose.yml` (Swarm-Referenzprofil)
 - `docs/development/postgres-setup.md`
 - `docs/guides/swarm-deployment-runbook.md`

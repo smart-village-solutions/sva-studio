@@ -8,7 +8,7 @@
 
 ## 🎯 Was wurde implementiert
 
-### 1. ✅ Resource Limits (docker-compose.monitoring.yml)
+### 1. ✅ Resource Limits (compose.monitoring.yaml)
 
 Alle Services haben jetzt Memory/CPU Limits:
 
@@ -108,10 +108,10 @@ curl -X POST http://localhost:9093/api/v2/alerts -H "Content-Type: application/j
 cd "$(git rev-parse --show-toplevel)"
 
 # Stack mit neuen Services starten
-docker compose -f docker-compose.monitoring.yml up -d
+docker compose -f compose.monitoring.yaml up -d
 
 # Services prüfen
-docker compose -f docker-compose.monitoring.yml ps
+docker compose -f compose.monitoring.yaml ps
 ```
 
 **Erwartete Services:**
@@ -179,8 +179,8 @@ docker inspect sva-studio-prometheus | grep -A 5 "Memory"
 
 ### ✅ Checkliste vor Merge
 
-- [ ] **Docker Compose Syntax:** `docker compose -f docker-compose.monitoring.yml config`
-- [ ] **Alle Services starten:** `docker compose -f docker-compose.monitoring.yml up -d`
+- [ ] **Docker Compose Syntax:** `docker compose -f compose.monitoring.yaml config`
+- [ ] **Alle Services starten:** `docker compose -f compose.monitoring.yaml up -d`
 - [ ] **Health Checks grün:**
   ```bash
   docker ps --filter "name=sva-studio-*" --format "table {{.Names}}\t{{.Status}}"
@@ -214,7 +214,7 @@ docker inspect sva-studio-prometheus | grep -A 5 "Memory"
    ./dev/scripts/backup-monitoring.sh
 
    # 3. Stack löschen
-   docker compose -f docker-compose.monitoring.yml down -v
+   docker compose -f compose.monitoring.yaml down -v
 
    # 4. Restore
    ./dev/scripts/restore-monitoring.sh ./backups/monitoring-backup-*
@@ -278,7 +278,7 @@ docker inspect sva-studio-prometheus | grep -A 5 "Memory"
 
 **Common Issues:**
 - **AlertManager 404:** Prometheus Config nicht korrekt → Check `prometheus.yml` Zeile 4–11
-- **Backup schlägt fehl:** Prometheus Admin API nicht aktiviert → Check `docker-compose.monitoring.yml` Zeile 14
+- **Backup schlägt fehl:** Prometheus Admin API nicht aktiviert → Check `compose.monitoring.yaml` Zeile 14
 - **Container Memory Spike:** Limits zu eng → Check `docker stats` + adjust Limits
 
 ---

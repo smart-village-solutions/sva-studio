@@ -218,7 +218,7 @@ storage:
 
 c) **Redis Session Persistence:**
 ```yaml
-# docker-compose.monitoring.yml
+# compose.monitoring.yaml
 redis:
   # ← KEIN Redis-Service im Compose-File!
   # ← Sessions nur im Memory?
@@ -234,7 +234,7 @@ redis:
 ### 3. **Keine Container Resource Limits** (🔴 KRITISCH)
 
 ```yaml
-# docker-compose.monitoring.yml
+# compose.monitoring.yaml
 prometheus:
   image: prom/prometheus:v2.52.0
   # ← FEHLT: memory limits
@@ -358,7 +358,7 @@ docker logs sva-studio-otel-collector
 
 **Empfohlene Lösung:**
 ```yaml
-# dev/monitoring/docker-compose.monitoring.yml
+# dev/monitoring/compose.monitoring.yaml
 otel-collector:
   logging:
     driver: "json-file"
@@ -400,7 +400,7 @@ Aber: Sind Metrics tatsächlich fließen?
 ### 7. **Keine Graceful Shutdown-Strategie** (⚠️ MITTEL)
 
 ```yaml
-# docker-compose.monitoring.yml
+# compose.monitoring.yaml
 prometheus:
   # ← Fehlt: stop_grace_period
   # ← Fehlt: stop_signal
@@ -534,7 +534,7 @@ fi
 ### 3. **Setze Container Resource Limits** (P0)
 
 ```yaml
-# docker-compose.monitoring.yml (updated)
+# compose.monitoring.yaml (updated)
 version: '3.8'
 
 services:
@@ -618,7 +618,7 @@ docker compose ps prometheus
 ### 5. **Füge Prometheus Retention-Konfigurierbarkeit hinzu** (P1)
 
 ```yaml
-# docker-compose.monitoring.yml
+# compose.monitoring.yaml
 prometheus:
   environment:
     PROMETHEUS_RETENTION_TIME: "${PROMETHEUS_RETENTION_TIME:-7d}"
@@ -660,7 +660,7 @@ prometheus:
 ### 7. **Konfiguriere Graceful Shutdown** (P2)
 
 ```yaml
-# docker-compose.monitoring.yml
+# compose.monitoring.yaml
 prometheus:
   stop_grace_period: 30s
   stop_signal: SIGTERM

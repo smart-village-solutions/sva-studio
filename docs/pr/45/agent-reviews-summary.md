@@ -356,7 +356,7 @@ Before merging to `feat/logging`:
 - [ ] ADR references added to code comments (ADR #1, #2)
 
 ### Operations (SHOULD)
-- [ ] Redis service added to docker-compose.monitoring.yml
+- [ ] Redis service added to compose.monitoring.yaml
 - [ ] Health checks configured for all services (already done ✓)
 
 ### Documentation (MUST)

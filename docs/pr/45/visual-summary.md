@@ -249,7 +249,7 @@ SECURITY (MUST)
 
 OPERATIONS (SHOULD)
 ═════════════════════════════════════════════════════════════
-☐ [1 hour]  Add Redis service to docker-compose.monitoring.yml
+☐ [1 hour]  Add Redis service to compose.monitoring.yaml
 ☐ [5 min]   Verify all health checks still pass
 
 DOCUMENTATION (MUST)

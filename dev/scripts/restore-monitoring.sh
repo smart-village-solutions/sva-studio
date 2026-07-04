@@ -107,7 +107,7 @@ log "Docker Compose Verzeichnis: ${COMPOSE_DIR}"
 # 1. Monitoring Stack stoppen
 log "Stoppe Monitoring Stack..."
 cd "${COMPOSE_DIR}"
-docker compose -f docker-compose.monitoring.yml down
+docker compose -f compose.monitoring.yaml down
 
 # 2. Volumes löschen
 log "Lösche alte Daten..."
@@ -191,7 +191,7 @@ fi
 # 7. Monitoring Stack starten
 log "Starte Monitoring Stack..."
 cd "${COMPOSE_DIR}"
-docker compose -f docker-compose.monitoring.yml up -d
+docker compose -f compose.monitoring.yaml up -d
 
 # 8. Health Checks
 log "Warte auf Health Checks..."

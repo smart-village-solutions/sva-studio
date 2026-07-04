@@ -7,7 +7,7 @@ concurrency:
 on:
   pull_request:
     paths:
-      - "docker-compose.monitoring.yml"
+      - "compose.monitoring.yaml"
       - "dev/monitoring/**"
       - "packages/monitoring-client/**"
       - "scripts/ci/monitoring-stack-ci.sh"
@@ -16,7 +16,7 @@ on:
     branches:
       - main
     paths:
-      - "docker-compose.monitoring.yml"
+      - "compose.monitoring.yaml"
       - "dev/monitoring/**"
       - "packages/monitoring-client/**"
       - "scripts/ci/monitoring-stack-ci.sh"

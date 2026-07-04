@@ -1,4 +1,5 @@
 import { parse as parseCookie } from 'cookie-es';
+import { resolveSessionActiveOrganizationId } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { createApiError } from './api-error.js';
@@ -165,6 +166,10 @@ const createAuthenticatedContext = async (
     ? runtimeSessionUser
     : await enrichSessionUserWithEffectiveRoles(runtimeSessionUser);
   const runtimeSessionHydrationMs = performance.now() - runtimeSessionHydrationStartedAt;
+  const activeOrganizationId = resolveSessionActiveOrganizationId({
+    roleNames: effectiveSessionUser.roles,
+    activeOrganizationId: sessionResolution.activeOrganizationId,
+  });
 
   return {
     kind: 'authenticated',
@@ -172,7 +177,7 @@ const createAuthenticatedContext = async (
     storedSessionResolutionMs,
     runtimeSessionHydrationMs,
     freshReauthAt: sessionResolution.freshReauthAt,
-    activeOrganizationId: sessionResolution.activeOrganizationId,
+    activeOrganizationId,
     sessionId,
     sessionExpiresAt: sessionResolution.expiresAt,
     user: effectiveSessionUser,

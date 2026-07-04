@@ -381,4 +381,31 @@ describe('OrganizationContextSwitcher', () => {
     expect(screen.getByText('Alpha')).toBeTruthy();
     expect(screen.getByText('Beta')).toBeTruthy();
   });
+
+  it('does not announce a stale active organization in read-only mode', () => {
+    useOrganizationContextMock.mockReturnValue({
+      context: {
+        activeOrganizationId: 'org-1',
+        organizations: [
+          {
+            organizationId: 'org-1',
+            organizationKey: 'alpha',
+            displayName: 'Alpha',
+            organizationType: 'county',
+            isActive: true,
+            isDefaultContext: true,
+          },
+        ],
+      },
+      isLoading: false,
+      isUpdating: false,
+      error: null,
+      refetch: vi.fn(),
+      switchOrganization: vi.fn(),
+    });
+
+    render(<OrganizationContextSwitcher variant="menu" readOnly />);
+
+    expect(screen.getByRole('status').textContent).toBe('');
+  });
 });

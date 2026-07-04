@@ -229,15 +229,6 @@ describe('auth-runtime withAuthenticatedUser', () => {
     const request = new Request('http://localhost/auth/me', {
       headers: { cookie: 'sva_auth_session=session-2' },
     });
-    dbMocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolvePool, _instanceId, work) =>
-      work({
-        query: vi.fn(async () => ({
-          rowCount: 1,
-          rows: [{ role_key: 'system_admin' }],
-        })),
-      })
-    );
-
     const response = await withAuthenticatedUser(
       request,
       ({ sessionId, sessionExpiresAt, freshReauthAt, activeOrganizationId, user }) =>
@@ -258,13 +249,52 @@ describe('auth-runtime withAuthenticatedUser', () => {
       freshReauthAt: 1_700_000_000_000,
       activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       userId: 'user-1',
-      roles: ['system_admin'],
+      roles: [],
     });
     expect(authServerMocks.resolveSessionUser).toHaveBeenCalledWith(
       request,
       expect.objectContaining({ id: 'user-1' })
     );
     expect(dbMocks.withResolvedInstanceDb).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears stale active organization scope for system_admin users in the authenticated context', async () => {
+    getSessionUserMock.mockResolvedValue({
+      kind: 'authenticated',
+      user: {
+        id: 'user-1',
+        name: 'Max',
+        roles: ['editor'],
+        instanceId: 'de-musterhausen',
+      },
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+    });
+    const request = new Request('http://localhost/auth/me', {
+      headers: { cookie: 'sva_auth_session=session-2' },
+    });
+    dbMocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolvePool, _instanceId, work) =>
+      work({
+        query: vi.fn(async () => ({
+          rowCount: 1,
+          rows: [{ role_key: 'system_admin' }],
+        })),
+      })
+    );
+
+    const response = await withAuthenticatedUser(
+      request,
+      ({ activeOrganizationId, user }) =>
+        Response.json({
+          activeOrganizationId,
+          roles: user.roles,
+        })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      activeOrganizationId: undefined,
+      roles: ['system_admin'],
+    });
   });
 
   it('can skip effective role hydration for handlers that resolve permissions separately', async () => {

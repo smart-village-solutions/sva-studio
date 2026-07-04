@@ -39,9 +39,9 @@ export const OrganizationContextSwitcher = ({
     storedActiveOrganizationId: organizationContext.context?.activeOrganizationId,
   });
   const options = organizationContextState.activeOrganizations;
-  const activeOrganization = options.find(
-    (organization) => organization.organizationId === organizationContext.context?.activeOrganizationId
-  );
+  const activeOrganization = readOnly
+    ? undefined
+    : options.find((organization) => organization.organizationId === organizationContextState.activeOrganizationId);
   const errorMessage = organizationContextErrorMessage(organizationContext.error);
   const statusId = React.useId();
   const errorId = React.useId();
@@ -75,7 +75,7 @@ export const OrganizationContextSwitcher = ({
               id="organization-context-switcher"
               aria-label={t('shell.header.organizationContext')}
               aria-describedby={describedBy}
-              value={organizationContext.context?.activeOrganizationId ?? ''}
+              value={organizationContextState.activeOrganizationId ?? ''}
               onChange={(event) => {
                 if (!event.target.value) {
                   return;

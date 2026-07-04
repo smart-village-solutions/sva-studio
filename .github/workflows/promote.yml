@@ -10,7 +10,7 @@ on:
         type: choice
         options: [dev, staging, prod]
       tag:
-        description: "Image tag (latest or commit SHA)"
+        description: "Image tag, digest, or full image ref"
         required: true
         default: latest
       migration_mode:
@@ -63,7 +63,7 @@ jobs:
       - name: validate inputs
         env:
           ENVIRONMENT: ${{ inputs.environment }}
-          TAG: ${{ inputs.tag }}
+          IMAGE_INPUT: ${{ inputs.tag }}
           MIGRATION_MODE: ${{ inputs.migration_mode }}
           BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
         run: |
@@ -77,7 +77,7 @@ jobs:
               ;;
           esac
 
-          if [ -z "${TAG}" ]; then
+          if [ -z "${IMAGE_INPUT}" ]; then
             echo "'tag' must not be empty." >&2
             exit 1
           fi
@@ -102,6 +102,18 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - name: validate image contract
+        id: image_contract
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          IMAGE_INPUT: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          pnpm exec tsx scripts/ci/promote-image-contract.ts \
+            --environment "${ENVIRONMENT}" \
+            --image "${IMAGE_INPUT}"
 
       - name: fetch main reference
         run: git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
@@ -185,7 +197,8 @@ jobs:
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
           ENVIRONMENT: ${{ inputs.environment }}
-          TAG: ${{ inputs.tag }}
+          DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
+          DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
         run: |
           set -euo pipefail
@@ -201,6 +214,10 @@ jobs:
           fi
 
           printf '%s' "$APP_CONFIG" > .env
+          {
+            printf '\nIMAGE_REF=%s\n' "${DEPLOY_IMAGE_REF}"
+            printf 'SVA_DEPLOY_REVISION=%s\n' "${DEPLOY_REVISION}"
+          } >> .env
           docker compose -f compose.yaml -f ./deploy/compose.${ENVIRONMENT}.yaml config --no-normalize > stack.yaml
 
           # swarm compatibility
@@ -215,7 +232,10 @@ jobs:
         if: always()
         env:
           ENVIRONMENT: ${{ inputs.environment }}
-          TAG: ${{ inputs.tag }}
+          DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
+          DEPLOY_IMAGE_TAG: ${{ steps.image_contract.outputs.deploy_summary_tag }}
+          DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
           MIGRATION_MODE: ${{ inputs.migration_mode }}
           BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
           MIGRATION_GATE_RESULT: ${{ steps.gate_eval.outputs.migration_gate_result }}
@@ -237,9 +257,10 @@ jobs:
             echo "| field | value |"
             echo "| --- | --- |"
             echo "| environment | ${ENVIRONMENT} |"
-            echo "| image | ghcr.io/smart-village-solutions/sva-studio:${TAG} |"
-            echo "| tag | ${TAG} |"
-            echo "| digest | not-resolved-by-promote |"
+            echo "| image | ${DEPLOY_IMAGE_REF:-not-evaluated} |"
+            echo "| tag | ${DEPLOY_IMAGE_TAG:-not-evaluated} |"
+            echo "| digest | ${DEPLOY_IMAGE_DIGEST:-not-evaluated} |"
+            echo "| deploy_revision | ${DEPLOY_REVISION:-not-evaluated} |"
             echo "| migration_mode | ${MIGRATION_MODE} |"
             echo "| migration_gate_result | ${MIGRATION_GATE_RESULT:-not-evaluated} |"
             echo "| migration_risk_files | ${MIGRATION_GATE_RISK_FILES:-none} |"

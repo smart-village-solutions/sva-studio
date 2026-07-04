@@ -104,6 +104,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 - Der Build-Graph des Portainer-Images baut `sva-mainserver` explizit nach `auth` und vor `routing` sowie dem App-Build, damit die serverseitige Integrationsschicht im Deploy-Artefakt verlässlich vorhanden ist.
 
 - **Image-basiert:** Vorgebaute Images aus Container-Registry; für die App ist im Acceptance-Referenzpfad `SVA_IMAGE_REF` mit Digest verpflichtend, der Tag bleibt nur Metadatum. Kein `build:`-Block im Stack.
+- **Promote-Integrität:** `dev` darf weiter mutable Referenzen wie `latest` verwenden, aber `staging` blockiert `latest` und `prod` erfordert einen Digest. Der Deploy-Report hält den konkret aufgelösten Image-Ref plus `SVA_DEPLOY_REVISION` fest.
 - **Traefik-Labels:** Host-basiertes Routing über `HostRegexp` für Instanz-Subdomains unter `SVA_PARENT_DOMAIN`. TLS über Traefiks `certresolver`.
 - **Profilgrenze Traefik:** Das Referenzprofil verwendet Traefik v2+-Labels; das Demo-Profil bleibt bewusst bei Traefik-v1-kompatiblen Labels und ist deshalb kein 1:1-Abbild des Referenzbetriebs.
 - **Swarm Secrets:** Vertrauliche Werte als externe Docker-Swarm-Secrets mit Namenskonvention `sva_studio_<service>_<secret_name>`. Ein Shell-Entrypoint (`entrypoint.sh`) liest Secret-Dateien und exportiert sie als Env-Variablen.

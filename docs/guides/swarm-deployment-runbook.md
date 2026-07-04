@@ -281,6 +281,22 @@ Prod-Hinweis:
 - Für Produktion bleibt `run` an ein freigegebenes Wartungsfenster, dokumentierte Backup-/Restore-Readiness und eine explizite Betriebsfreigabe gebunden.
 - Vor produktiven Schema- oder Reconcile-Eingriffen müssen aktuelles Backup, Restore-Pfad und Rollback-Entscheidung vorliegen; ein grüner App-Build ersetzt diese Freigabe nicht.
 
+### Image-Versionierung im Promote-Pfad
+
+Der GitHub-Promote-Pfad akzeptiert für das Zielartefakt absichtlich nicht jede beliebige Referenz:
+
+- `dev`: darf weiterhin `latest`, Commit-SHA-Tag oder Digest verwenden
+- `staging`: blockiert `latest`; erlaubt mindestens Commit-SHA-Tag oder Digest
+- `prod`: blockiert mutable Tags und erfordert einen Digest
+
+Der Workflow schreibt den tatsächlich deployten Image-Ref sowie `SVA_DEPLOY_REVISION` explizit in den gerenderten Stack-Vertrag und in die Deploy-Summary. Damit bleiben Rollout, Audit und Incident-Analyse auf ein konkretes Artefakt zurückführbar.
+
+Rollback-Regel:
+
+- Rollback immer per vorherigem Commit-SHA-Tag oder besser per vorherigem Digest
+- nie per `latest`
+- für Produktion ist der Digest der führende Rollback-Schlüssel
+
 ### Empfohlene Reihenfolge
 
 ```bash

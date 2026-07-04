@@ -11,7 +11,9 @@ const useLocaleMock = vi.fn();
 const useThemeMock = vi.fn();
 const useOrganizationContextMock = vi.fn();
 const organizationContextSwitcherMock = vi.fn(
-  (_props?: { variant?: 'inline' | 'menu' }) => <div data-testid="organization-context-switcher">Organization Context</div>
+  (_props?: { variant?: 'inline' | 'menu'; readOnly?: boolean }) => (
+    <div data-testid="organization-context-switcher">Organization Context</div>
+  )
 );
 const localStorageState = new Map<string, string>();
 const sessionStorageState = new Map<string, string>();
@@ -286,11 +288,82 @@ describe('Header auth actions', () => {
     expect(
       screen.getByTestId('organization-context-switcher').compareDocumentPosition(screen.getByRole('menuitem', { name: 'Mein Konto' }))
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(organizationContextSwitcherMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'menu',
+        readOnly: false,
+      })
+    );
 
     const logoutForm = document.querySelector('form[action="/auth/logout"]');
     const logoutIntent = logoutForm?.querySelector('input[name="logoutIntent"]');
     expect(logoutForm?.getAttribute('method')).toBe('post');
     expect(logoutIntent?.getAttribute('value')).toBe('user');
+  });
+
+  it('zeigt Organisationsmitgliedschaften auch für system_admin im Kontomenü als read-only Bereich', async () => {
+    useOrganizationContextMock.mockReturnValue({
+      context: {
+        activeOrganizationId: 'org-1',
+        organizations: [
+          {
+            organizationId: 'org-1',
+            organizationKey: 'alpha',
+            displayName: 'Alpha',
+            organizationType: 'county',
+            isActive: true,
+            isDefaultContext: true,
+          },
+        ],
+      },
+      isLoading: false,
+      isUpdating: false,
+      error: null,
+      refetch: vi.fn(),
+      switchOrganization: vi.fn(),
+    });
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        roles: ['system_admin'],
+        permissionActions: ['experimental.read'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'dark',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
+
+    render(<Header />);
+
+    const accountTrigger = await screen.findByRole('button', { name: /Test User/ });
+    accountTrigger.click();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
+    });
+
+    expect(organizationContextSwitcherMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'menu',
+        readOnly: true,
+      })
+    );
   });
 
   it('räumt lokale Session-Marker vor dem Formular-Logout auf', async () => {
@@ -549,7 +622,7 @@ describe('Header auth actions', () => {
     });
   });
 
-  it('rendert keinen fuehrenden Separator, wenn der Organisationswechsler im Kontomenue ausfaellt', async () => {
+  it('rendert keinen fuehrenden Separator vor Mein Konto, wenn nur Organisationsmitgliedschaften angezeigt werden', async () => {
     useOrganizationContextMock.mockReturnValue({
       context: {
         activeOrganizationId: 'org-1',
@@ -606,8 +679,8 @@ describe('Header auth actions', () => {
       expect(screen.getByRole('menuitem', { name: 'Mein Konto' })).toBeTruthy();
     });
 
-    expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
-    expect(screen.getAllByRole('separator')).toHaveLength(2);
+    expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
+    expect(screen.getAllByRole('separator')).toHaveLength(3);
     expect(screen.getByRole('menuitem', { name: 'Mein Konto' }).previousElementSibling?.getAttribute('role')).not.toBe(
       'separator'
     );

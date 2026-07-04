@@ -314,4 +314,71 @@ describe('OrganizationContextSwitcher', () => {
     expect(select.className).toContain('rounded-lg');
     expect(screen.queryByText('beta · municipality · Default-Kontext')).toBeNull();
   });
+
+  it('renders organization memberships in the menu even when only one active organization exists', () => {
+    useOrganizationContextMock.mockReturnValue({
+      context: {
+        activeOrganizationId: 'org-1',
+        organizations: [
+          {
+            organizationId: 'org-1',
+            organizationKey: 'alpha',
+            displayName: 'Alpha',
+            organizationType: 'county',
+            isActive: true,
+            isDefaultContext: true,
+          },
+        ],
+      },
+      isLoading: false,
+      isUpdating: false,
+      error: null,
+      refetch: vi.fn(),
+      switchOrganization: vi.fn(),
+    });
+
+    render(<OrganizationContextSwitcher variant="menu" />);
+
+    expect(screen.getByText('Organisationsmitgliedschaften')).toBeTruthy();
+    expect(screen.getByText('Alpha')).toBeTruthy();
+  });
+
+  it('renders system_admin memberships as read-only without a selector', () => {
+    useOrganizationContextMock.mockReturnValue({
+      context: {
+        activeOrganizationId: undefined,
+        organizations: [
+          {
+            organizationId: 'org-1',
+            organizationKey: 'alpha',
+            displayName: 'Alpha',
+            organizationType: 'county',
+            isActive: true,
+            isDefaultContext: true,
+          },
+          {
+            organizationId: 'org-2',
+            organizationKey: 'beta',
+            displayName: 'Beta',
+            organizationType: 'municipality',
+            isActive: true,
+            isDefaultContext: false,
+          },
+        ],
+      },
+      isLoading: false,
+      isUpdating: false,
+      error: null,
+      refetch: vi.fn(),
+      switchOrganization: vi.fn(),
+    });
+
+    render(<OrganizationContextSwitcher variant="menu" readOnly />);
+
+    expect(screen.queryByLabelText('Aktive Organisation')).toBeNull();
+    expect(screen.getByText('Organisationsmitgliedschaften')).toBeTruthy();
+    expect(screen.getByText('Als Systemadmin arbeiten Sie instanzweit; Organisationsmitgliedschaften schränken Ihre Rechte nicht ein.')).toBeTruthy();
+    expect(screen.getByText('Alpha')).toBeTruthy();
+    expect(screen.getByText('Beta')).toBeTruthy();
+  });
 });

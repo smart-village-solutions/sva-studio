@@ -107,6 +107,11 @@ export type OrganizationReadHandlerDeps<TFeatureFlags = unknown> = {
   ) => Promise<T>;
 };
 
+const SYSTEM_ADMIN_ROLES = new Set(['system_admin']);
+
+const hasSystemAdminRole = (roles: readonly string[]): boolean =>
+  roles.some((role) => SYSTEM_ADMIN_ROLES.has(role));
+
 const createMissingOrganizationReadAuthorizerResponse = <TFeatureFlags>(
   deps: OrganizationReadHandlerDeps<TFeatureFlags>,
   requestId?: string
@@ -260,10 +265,12 @@ export const createOrganizationReadHandlers = <TFeatureFlags>(
         })
       );
       const session = await deps.getSession(ctx.sessionId);
-      const activeOrganizationId = deps.chooseActiveOrganizationId({
-        storedActiveOrganizationId: session?.activeOrganizationId,
-        organizations,
-      });
+      const activeOrganizationId = hasSystemAdminRole(ctx.user.roles)
+        ? undefined
+        : deps.chooseActiveOrganizationId({
+            storedActiveOrganizationId: session?.activeOrganizationId,
+            organizations,
+          });
 
       if (session && session.activeOrganizationId !== activeOrganizationId) {
         await deps.updateSession(ctx.sessionId, { activeOrganizationId });

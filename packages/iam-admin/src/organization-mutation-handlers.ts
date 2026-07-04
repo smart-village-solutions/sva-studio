@@ -55,6 +55,11 @@ type OrganizationRow = {
   readonly membership_count: number;
 };
 
+const SYSTEM_ADMIN_ROLES = new Set(['system_admin']);
+
+const hasSystemAdminRole = (roles: readonly string[]): boolean =>
+  roles.some((role) => SYSTEM_ADMIN_ROLES.has(role));
+
 export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
   readonly asApiItem: (data: unknown, requestId?: string) => unknown;
   readonly completeIdempotency: (input: {
@@ -1006,6 +1011,20 @@ WHERE membership.instance_id = $1
       const organizations = await deps.withInstanceScopedDb(actor.instanceId, (client) =>
         deps.loadContextOptions(client, { instanceId: actor.instanceId, accountId: actor.actorAccountId })
       );
+      if (hasSystemAdminRole(ctx.user.roles)) {
+        await deps.updateSession(ctx.sessionId, { activeOrganizationId: undefined });
+
+        return deps.jsonResponse(
+          200,
+          deps.asApiItem(
+            {
+              activeOrganizationId: undefined,
+              organizations,
+            },
+            actor.requestId
+          )
+        );
+      }
       const target = organizations.find((organization) => organization.organizationId === parsed.data.organizationId);
       if (!target) {
         return deps.createApiError(400, 'invalid_organization_id', 'Organisation gehört nicht zum Benutzerkontext.', actor.requestId);

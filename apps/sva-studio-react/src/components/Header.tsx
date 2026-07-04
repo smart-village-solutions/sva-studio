@@ -15,7 +15,7 @@ import { t } from '../i18n';
 import { createAccountActionHref, createLoginHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
 import { clearClientLogoutState } from '../lib/auth-session-state';
 import { useOrganizationContext } from '../hooks/use-organization-context';
-import { hasExperimentalAccess } from '../lib/iam-admin-access';
+import { hasExperimentalAccess, hasProtectedTenantRole } from '../lib/iam-admin-access';
 import { cn } from '../lib/utils';
 import { useAuth } from '../providers/auth-provider';
 import { useLocale } from '../providers/locale-provider';
@@ -49,6 +49,7 @@ type HeaderAuthActionProps = Readonly<{
   isAuthLoading: boolean;
   isAuthenticated: boolean;
   showOrganizationContext: boolean;
+  isSystemAdmin: boolean;
   isDevAuthAvailable?: boolean;
   hideAnonymousLoginAction: boolean;
   loginHref: string;
@@ -251,6 +252,7 @@ const HeaderAuthAction = ({
   isAuthLoading,
   isAuthenticated,
   showOrganizationContext,
+  isSystemAdmin,
   isDevAuthAvailable = false,
   hideAnonymousLoginAction,
   loginHref,
@@ -327,7 +329,7 @@ const HeaderAuthAction = ({
       ? ([
           {
             id: 'organization-context',
-            render: <OrganizationContextSwitcher variant="menu" />,
+            render: <OrganizationContextSwitcher variant="menu" readOnly={isSystemAdmin} />,
           },
           {
             id: 'divider-organization-context',
@@ -405,6 +407,7 @@ export default function Header({
 }: HeaderProps) {
   const { user, isAuthenticated, isLoading: isAuthLoading, isDevAuthAvailable, loginWithDevAuth, logout } = useAuth();
   const organizationContext = useOrganizationContext();
+  const isSystemAdmin = hasProtectedTenantRole(user);
   const { locale, setLocale } = useLocale();
   const { mode, toggleMode } = useTheme();
   const currentPathname = useRouterState({
@@ -413,8 +416,8 @@ export default function Header({
   const [isHydrated, setIsHydrated] = React.useState(false);
   const resolvedMode = isHydrated ? mode : 'light';
   const loginHref = isHydrated ? createLoginHref(resolveCurrentReturnTo()) : '/auth/login';
-  const hasMultipleActiveOrganizations =
-    (organizationContext.context?.organizations.filter((organization) => organization.isActive).length ?? 0) > 1;
+  const hasActiveOrganizations =
+    (organizationContext.context?.organizations.filter((organization) => organization.isActive).length ?? 0) > 0;
   const showOrganizationContext =
     isHydrated &&
     isAuthenticated &&
@@ -422,7 +425,7 @@ export default function Header({
     !isAuthLoading &&
     Boolean(user) &&
     !organizationContext.isLoading &&
-    hasMultipleActiveOrganizations;
+    hasActiveOrganizations;
   const showAuthenticatedHeaderTools = isHydrated && isAuthenticated && !isLoading && !isAuthLoading;
   const showExperimentalHeaderTools = showAuthenticatedHeaderTools && hasExperimentalAccess(user);
   const hideAnonymousLoginAction = !isAuthenticated && currentPathname === '/';
@@ -548,6 +551,7 @@ export default function Header({
             isAuthLoading={isAuthLoading}
             isAuthenticated={isAuthenticated}
             showOrganizationContext={showOrganizationContext}
+            isSystemAdmin={isSystemAdmin}
             isDevAuthAvailable={isDevAuthAvailable}
             hideAnonymousLoginAction={hideAnonymousLoginAction}
             loginHref={loginHref}

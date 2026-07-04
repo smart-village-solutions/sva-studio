@@ -74,5 +74,25 @@ describe('organization context policy', () => {
         isReadOnly: false,
       });
     });
+
+    it('keeps a stored active organization when it still belongs to the active memberships', () => {
+      const state = resolveOrganizationContextState({
+        roleNames: ['editor'],
+        organizations,
+        storedActiveOrganizationId: 'org-3',
+      });
+
+      expect(state.activeOrganizationId).toBe('org-3');
+    });
+
+    it('falls back to the first active organization when no stored context matches', () => {
+      const state = resolveOrganizationContextState({
+        roleNames: ['editor'],
+        organizations,
+        storedActiveOrganizationId: 'org-2',
+      });
+
+      expect(state.activeOrganizationId).toBe('org-1');
+    });
   });
 });

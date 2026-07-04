@@ -34,6 +34,7 @@ describe('user display helpers', () => {
       expect(resolveUserInitials('Ada Lovelace')).toBe('AL');
       expect(resolveUserInitials('john_doe')).toBe('JD');
       expect(resolveUserInitials('x')).toBe('X');
+      expect(resolveUserInitials('__')).toBe('__');
       expect(resolveUserInitials('  ')).toBe('');
     });
   });

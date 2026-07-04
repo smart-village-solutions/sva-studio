@@ -291,6 +291,8 @@ Der GitHub-Promote-Pfad akzeptiert für das Zielartefakt absichtlich nicht jede 
 
 Der Workflow schreibt den tatsächlich deployten Image-Ref sowie `SVA_DEPLOY_REVISION` explizit in den gerenderten Stack-Vertrag und in die Deploy-Summary. Damit bleiben Rollout, Audit und Incident-Analyse auf ein konkretes Artefakt zurückführbar.
 
+Der Workflow-Eingang dafür heißt `image_ref`, nicht mehr nur `tag`, weil staging/prod bewusst auch volle Digest-Referenzen akzeptieren und validieren.
+
 Rollback-Regel:
 
 - Rollback immer per vorherigem Commit-SHA-Tag oder besser per vorherigem Digest

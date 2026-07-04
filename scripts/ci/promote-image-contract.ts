@@ -11,6 +11,8 @@ export type PromoteImageType = 'digest' | 'tag';
 export interface PromoteImageContract {
   deployRevision: string;
   deploySummaryDigest: string;
+  deploySummaryImmutability: string;
+  deploySummaryRollbackHint: string;
   deploySummaryTag: string;
   environment: PromoteEnvironment;
   imageInput: string;
@@ -143,6 +145,8 @@ export const resolvePromoteImageContract = ({
     return {
       deployRevision: digest,
       deploySummaryDigest: digest,
+      deploySummaryImmutability: 'digest',
+      deploySummaryRollbackHint: 'Rollback ueber den vorherigen freigegebenen Digest ausfuehren.',
       deploySummaryTag: 'none',
       environment,
       imageInput: normalizedImageInput,
@@ -156,6 +160,11 @@ export const resolvePromoteImageContract = ({
   return {
     deployRevision: normalizedImageInput,
     deploySummaryDigest: 'not-pinned',
+    deploySummaryImmutability: environment === 'dev' && normalizedImageInput === 'latest' ? 'dev-latest-allowed' : 'commit-sha-tag',
+    deploySummaryRollbackHint:
+      environment === 'dev' && normalizedImageInput === 'latest'
+        ? 'Rollback nicht ueber latest, sondern ueber vorherigen SHA-Tag oder Digest ausfuehren.'
+        : 'Rollback ueber den vorherigen Commit-SHA-Tag oder einen bekannten Digest ausfuehren, nicht ueber latest.',
     deploySummaryTag: normalizedImageInput,
     environment,
     imageInput: normalizedImageInput,
@@ -176,6 +185,8 @@ const emitGithubOutputs = (contract: PromoteImageContract): void => {
     `deploy_revision=${contract.deployRevision}`,
     `deploy_summary_tag=${contract.deploySummaryTag}`,
     `deploy_summary_digest=${contract.deploySummaryDigest}`,
+    `deploy_summary_immutability=${contract.deploySummaryImmutability}`,
+    `deploy_summary_rollback_hint=${contract.deploySummaryRollbackHint}`,
   ];
 
   appendFileSync(githubOutput, `${lines.join('\n')}\n`, 'utf8');

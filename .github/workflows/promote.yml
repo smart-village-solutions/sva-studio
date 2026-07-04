@@ -1,5 +1,5 @@
 name: Promote
-run-name: Promote ${{ inputs.tag }} to ${{ inputs.environment }}
+run-name: Promote ${{ inputs.image_ref }} to ${{ inputs.environment }}
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
         required: true
         type: choice
         options: [dev, staging, prod]
-      tag:
+      image_ref:
         description: "Image tag, digest, or full image ref"
         required: true
         default: latest
@@ -30,7 +30,7 @@ on:
       environment:
         required: true
         type: string
-      tag:
+      image_ref:
         required: true
         type: string
       migration_mode:
@@ -63,7 +63,7 @@ jobs:
       - name: validate inputs
         env:
           ENVIRONMENT: ${{ inputs.environment }}
-          IMAGE_INPUT: ${{ inputs.tag }}
+          IMAGE_INPUT: ${{ inputs.image_ref }}
           MIGRATION_MODE: ${{ inputs.migration_mode }}
           BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
         run: |
@@ -78,7 +78,7 @@ jobs:
           esac
 
           if [ -z "${IMAGE_INPUT}" ]; then
-            echo "'tag' must not be empty." >&2
+            echo "'image_ref' must not be empty." >&2
             exit 1
           fi
 
@@ -107,7 +107,7 @@ jobs:
         id: image_contract
         env:
           ENVIRONMENT: ${{ inputs.environment }}
-          IMAGE_INPUT: ${{ inputs.tag }}
+          IMAGE_INPUT: ${{ inputs.image_ref }}
         run: |
           set -euo pipefail
 
@@ -235,6 +235,8 @@ jobs:
           DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           DEPLOY_IMAGE_TAG: ${{ steps.image_contract.outputs.deploy_summary_tag }}
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          DEPLOY_IMAGE_IMMUTABILITY: ${{ steps.image_contract.outputs.deploy_summary_immutability }}
+          DEPLOY_IMAGE_ROLLBACK_HINT: ${{ steps.image_contract.outputs.deploy_summary_rollback_hint }}
           DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
           MIGRATION_MODE: ${{ inputs.migration_mode }}
           BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
@@ -260,6 +262,7 @@ jobs:
             echo "| image | ${DEPLOY_IMAGE_REF:-not-evaluated} |"
             echo "| tag | ${DEPLOY_IMAGE_TAG:-not-evaluated} |"
             echo "| digest | ${DEPLOY_IMAGE_DIGEST:-not-evaluated} |"
+            echo "| immutability | ${DEPLOY_IMAGE_IMMUTABILITY:-not-evaluated} |"
             echo "| deploy_revision | ${DEPLOY_REVISION:-not-evaluated} |"
             echo "| migration_mode | ${MIGRATION_MODE} |"
             echo "| migration_gate_result | ${MIGRATION_GATE_RESULT:-not-evaluated} |"
@@ -268,4 +271,5 @@ jobs:
             echo "| bootstrap_gate_result | ${BOOTSTRAP_GATE_RESULT:-not-evaluated} |"
             echo "| bootstrap_risk_files | ${BOOTSTRAP_GATE_RISK_FILES:-none} |"
             echo "| app_deploy_started | ${deploy_started} |"
+            echo "| rollback_hint | ${DEPLOY_IMAGE_ROLLBACK_HINT:-not-evaluated} |"
           } >> "${GITHUB_STEP_SUMMARY}"

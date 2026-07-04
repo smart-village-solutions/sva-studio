@@ -15,6 +15,8 @@ describe('promote-image-contract', () => {
     expect(result).toMatchObject({
       deployRevision: 'latest',
       deploySummaryDigest: 'not-pinned',
+      deploySummaryImmutability: 'dev-latest-allowed',
+      deploySummaryRollbackHint: 'Rollback nicht ueber latest, sondern ueber vorherigen SHA-Tag oder Digest ausfuehren.',
       deploySummaryTag: 'latest',
       imageRef: 'ghcr.io/smart-village-solutions/sva-studio:latest',
       imageType: 'tag',
@@ -39,6 +41,9 @@ describe('promote-image-contract', () => {
     expect(result).toMatchObject({
       deployRevision: '5bdcfd1be7d7a72ba94c23ce16834bc1ebecc5de',
       deploySummaryDigest: 'not-pinned',
+      deploySummaryImmutability: 'commit-sha-tag',
+      deploySummaryRollbackHint:
+        'Rollback ueber den vorherigen Commit-SHA-Tag oder einen bekannten Digest ausfuehren, nicht ueber latest.',
       deploySummaryTag: '5bdcfd1be7d7a72ba94c23ce16834bc1ebecc5de',
       imageRef: 'ghcr.io/smart-village-solutions/sva-studio:5bdcfd1be7d7a72ba94c23ce16834bc1ebecc5de',
       imageType: 'tag',
@@ -74,6 +79,8 @@ describe('promote-image-contract', () => {
     expect(result).toMatchObject({
       deployRevision: digest,
       deploySummaryDigest: digest,
+      deploySummaryImmutability: 'digest',
+      deploySummaryRollbackHint: 'Rollback ueber den vorherigen freigegebenen Digest ausfuehren.',
       deploySummaryTag: 'none',
       imageRef: `ghcr.io/smart-village-solutions/sva-studio@${digest}`,
       imageType: 'digest',
@@ -91,6 +98,8 @@ describe('promote-image-contract', () => {
     expect(result).toMatchObject({
       deployRevision: digest,
       deploySummaryDigest: digest,
+      deploySummaryImmutability: 'digest',
+      deploySummaryRollbackHint: 'Rollback ueber den vorherigen freigegebenen Digest ausfuehren.',
       deploySummaryTag: 'none',
       imageRef: `ghcr.io/smart-village-solutions/sva-studio@${digest}`,
       imageType: 'digest',

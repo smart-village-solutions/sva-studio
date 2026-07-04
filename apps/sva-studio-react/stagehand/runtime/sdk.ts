@@ -1,8 +1,25 @@
-import { Stagehand } from '@browserbasehq/stagehand';
+import { createRequire } from 'node:module';
 
+import type { Stagehand } from '@browserbasehq/stagehand';
 import type { StagehandAdminConfig } from './types.js';
 
-type StagehandConstructorOptions = ConstructorParameters<typeof Stagehand>[0];
+type StagehandModule = typeof import('@browserbasehq/stagehand');
+type StagehandConstructor = StagehandModule['Stagehand'];
+type StagehandConstructorOptions = ConstructorParameters<StagehandConstructor>[0];
+
+const require = createRequire(import.meta.url);
+
+function loadStagehandConstructor(): StagehandConstructor {
+  try {
+    return (require('@browserbasehq/stagehand') as StagehandModule).Stagehand;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown Stagehand load failure';
+
+    throw new Error(`Failed to load @browserbasehq/stagehand for local admin runs: ${message}`, {
+      cause: error,
+    });
+  }
+}
 
 export interface StagehandLocalOptionsOverrides {
   readonly executablePath?: string;
@@ -41,5 +58,7 @@ export function createLocalStagehand(
   config: StagehandAdminConfig,
   overrides: StagehandLocalOptionsOverrides = {}
 ): Stagehand {
+  const Stagehand = loadStagehandConstructor();
+
   return new Stagehand(buildLocalStagehandOptions(config, overrides));
 }

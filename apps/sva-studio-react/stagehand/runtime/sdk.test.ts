@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildLocalStagehandOptions } from './sdk.ts';
 import type { StagehandAdminConfig } from './types.ts';
 
 function createConfig(): StagehandAdminConfig {
@@ -27,7 +26,16 @@ function createConfig(): StagehandAdminConfig {
 }
 
 describe('buildLocalStagehandOptions', () => {
-  it('builds deterministic local Stagehand defaults for the admin pilot', () => {
+  it('loads the local Stagehand option helpers without resolving the Stagehand runtime eagerly', async () => {
+    await expect(import('./sdk.ts')).resolves.toMatchObject({
+      buildLocalStagehandOptions: expect.any(Function),
+      createLocalStagehand: expect.any(Function),
+    });
+  });
+
+  it('builds deterministic local Stagehand defaults for the admin pilot', async () => {
+    const { buildLocalStagehandOptions } = await import('./sdk.ts');
+
     expect(buildLocalStagehandOptions(createConfig())).toEqual({
       env: 'LOCAL',
       localBrowserLaunchOptions: {
@@ -39,7 +47,9 @@ describe('buildLocalStagehandOptions', () => {
     });
   });
 
-  it('allows explicit local browser overrides without mutating core defaults', () => {
+  it('allows explicit local browser overrides without mutating core defaults', async () => {
+    const { buildLocalStagehandOptions } = await import('./sdk.ts');
+
     expect(
       buildLocalStagehandOptions(createConfig(), {
         headless: false,
@@ -57,7 +67,9 @@ describe('buildLocalStagehandOptions', () => {
     });
   });
 
-  it('uses the parsed local browser headless setting by default', () => {
+  it('uses the parsed local browser headless setting by default', async () => {
+    const { buildLocalStagehandOptions } = await import('./sdk.ts');
+
     expect(
       buildLocalStagehandOptions({
         ...createConfig(),

@@ -212,6 +212,7 @@ describe('mutation-request-context.shared', () => {
     expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith({
       ctx,
       action: 'iam.user.write',
+      instanceId: 'instance-1',
     });
     expect(state.requireRoles).not.toHaveBeenCalled();
   });
@@ -226,12 +227,20 @@ describe('mutation-request-context.shared', () => {
         roles: ['instance_registry_admin'],
       },
     } as never;
-    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-      error: 'missing_instance',
-      message: 'Kein Instanzkontext für diese Operation vorhanden.',
-    });
+    const missingInstance = new Response(
+      JSON.stringify({
+        error: {
+          code: 'invalid_instance_id',
+        },
+      }),
+      {
+        status: 400,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }
+    );
+    state.resolveActorInfo.mockResolvedValueOnce({ error: missingInstance });
 
     const result = await resolveMutationActorWithAccount(request, ctx, {
       allowedRoles: new Set(['system_admin']),
@@ -240,16 +249,62 @@ describe('mutation-request-context.shared', () => {
       scope: 'write',
     });
 
-    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith({
-      ctx,
-      action: 'iam.user.write',
+    expect(state.resolveActorInfo).toHaveBeenCalledWith(request, ctx, {
+      requireActorMembership: true,
+      provisionMissingActorMembership: undefined,
     });
-    expect(state.resolveActorInfo).not.toHaveBeenCalled();
-    expect(result).toMatchObject({ response: expect.any(Response) });
+    expect(state.authorizeInstancePermissionForUser).not.toHaveBeenCalled();
+    expect(result).toEqual({ response: missingInstance });
     await expect((result as { response: Response }).response.json()).resolves.toMatchObject({
       error: {
         code: 'invalid_instance_id',
       },
+    });
+  });
+
+  it('authorizes explicit mutation permissions against the resolved request tenant', async () => {
+    const request = new Request(
+      'http://localhost/api/v1/iam/users/123e4567-e89b-12d3-a456-426614174000?instanceId=instance-2',
+      {
+        method: 'DELETE',
+      }
+    );
+    const ctx = {
+      user: {
+        id: 'kc-user-1',
+        instanceId: 'instance-1',
+        roles: ['custom_role'],
+      },
+    } as never;
+    state.resolveActorInfo.mockResolvedValueOnce({
+      actor: {
+        instanceId: 'instance-2',
+        actorAccountId: 'actor-2',
+        requestId: 'req-2',
+        traceId: 'trace-2',
+      },
+    });
+
+    await expect(
+      resolveMutationActorWithAccount(request, ctx, {
+        allowedRoles: new Set(['system_admin']),
+        requiredPermissionAction: 'iam.accounts.delete',
+        feature: 'iam_admin',
+        scope: 'write',
+      })
+    ).resolves.toEqual({
+      actor: {
+        instanceId: 'instance-2',
+        actorAccountId: 'actor-2',
+        requestId: 'req-2',
+        traceId: 'trace-2',
+      },
+    });
+
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith({
+      ctx,
+      action: 'iam.accounts.delete',
+      instanceId: 'instance-2',
     });
   });
 

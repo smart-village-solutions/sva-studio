@@ -35,6 +35,8 @@ describe('reconcileOwnedContentForAccountDelete', () => {
     expect(String(query.mock.calls[1]?.[0])).toContain('author_account_id = CASE');
     expect(String(query.mock.calls[1]?.[0])).toContain('creator_account_id = CASE');
     expect(String(query.mock.calls[1]?.[0])).toContain('updater_account_id = CASE');
+    expect(String(query.mock.calls[1]?.[0])).toContain('owner_subject_id = CASE');
+    expect(String(query.mock.calls[1]?.[0])).toContain('owner_user_id = CASE');
     expect(String(query.mock.calls[1]?.[0])).not.toContain("deletion_lifecycle_state = 'deleted'");
   });
 
@@ -64,6 +66,10 @@ describe('reconcileOwnedContentForAccountDelete', () => {
     expect(String(query.mock.calls[1]?.[0])).toContain('WHEN author_account_id = $2::uuid THEN $3');
     expect(String(query.mock.calls[1]?.[0])).not.toContain("deletion_lifecycle_state IS DISTINCT FROM 'deleted'");
     expect(String(query.mock.calls[1]?.[0])).toContain('author_account_id = $2::uuid');
+    expect(String(query.mock.calls[1]?.[0])).toContain('owner_subject_id = CASE');
+    expect(String(query.mock.calls[1]?.[0])).toContain('owner_user_id = CASE');
+    expect(String(query.mock.calls[1]?.[0])).toContain('OR owner_subject_id = $2');
+    expect(String(query.mock.calls[1]?.[0])).toContain('OR owner_user_id = $2::uuid');
   });
 });
 
@@ -96,22 +102,42 @@ describe('hardDeleteAccount', () => {
       ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
     );
     expect(query).toHaveBeenNthCalledWith(
-      7,
-      expect.stringContaining('UPDATE iam.data_subject_export_jobs'),
+      6,
+      expect.stringContaining('DELETE FROM iam.legal_holds'),
       ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
     );
     expect(query).toHaveBeenNthCalledWith(
-      9,
-      expect.stringContaining('UPDATE iam.account_profile_corrections'),
+      7,
+      expect.stringContaining('UPDATE iam.legal_holds'),
+      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      8,
+      expect.stringContaining('UPDATE iam.legal_holds'),
       ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
     );
     expect(query).toHaveBeenNthCalledWith(
       10,
+      expect.stringContaining('UPDATE iam.data_subject_export_jobs'),
+      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      12,
+      expect.stringContaining('UPDATE iam.account_profile_corrections'),
+      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      13,
+      expect.stringContaining('UPDATE iam.data_subject_request_events'),
+      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      14,
       expect.stringContaining('DELETE FROM iam.data_subject_requests'),
       ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
     );
     expect(query).toHaveBeenNthCalledWith(
-      11,
+      15,
       expect.stringContaining('UPDATE iam.data_subject_requests'),
       ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
     );

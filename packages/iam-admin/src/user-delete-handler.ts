@@ -36,6 +36,7 @@ export type DeleteUserDeps = {
       readonly subjectId?: string;
       readonly eventType: 'user.deleted';
       readonly result: 'success';
+      readonly payload?: Record<string, unknown>;
       readonly requestId?: string;
       readonly traceId?: string;
     }
@@ -199,8 +200,13 @@ export const deleteUser = async (deps: DeleteUserDeps, input: DeleteUserInput): 
     await deps.emitActivityLog(client, {
       instanceId: input.actor.instanceId,
       accountId: input.actor.actorAccountId,
+      subjectId: input.userId,
       eventType: 'user.deleted',
       result: 'success',
+      payload: {
+        deleted_account_id: input.userId,
+        deleted_keycloak_subject: prepared.keycloakSubject,
+      },
       requestId: input.actor.requestId,
       traceId: input.actor.traceId,
     });

@@ -296,6 +296,22 @@ test('admin account hard-delete migration anonymizes retained content account re
   assert.match(sql, /RAISE EXCEPTION 'Cannot restore content account hard-delete constraints while anonymized rows exist\.'/);
 });
 
+test('activity log hard-delete compatibility migration removes immutable account foreign keys additively', () => {
+  const sql = readRepoFile('data/migrations/0068_iam_activity_log_account_hard_delete_compat.sql');
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
+
+  assert.match(sql, /ALTER TABLE iam\.activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS activity_logs_account_id_fkey,/);
+  assert.match(sql, /ALTER TABLE iam\.activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS activity_logs_subject_id_fkey;/);
+  assert.match(sql, /ALTER TABLE iam\.platform_activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS platform_activity_logs_account_id_fkey;/);
+  assert.match(
+    sql,
+    /RAISE EXCEPTION 'Cannot restore activity log account foreign keys while orphaned audit references exist\.';/
+  );
+  assert.doesNotMatch(schemaSnapshot, /activity_logs_account_id_fkey FOREIGN KEY/);
+  assert.doesNotMatch(schemaSnapshot, /activity_logs_subject_id_fkey FOREIGN KEY/);
+  assert.doesNotMatch(schemaSnapshot, /platform_activity_logs_account_id_fkey FOREIGN KEY/);
+});
+
 test('categories instance-module migration backfills additive module assignments for mainserver content tenants', () => {
   const sql = readRepoFile('data/migrations/0055_iam_categories_instance_modules.sql');
 

@@ -2999,15 +2999,6 @@ ALTER TABLE ONLY iam.accounts
     ADD CONSTRAINT accounts_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 
---
--- Name: activity_logs activity_logs_account_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.activity_logs
-    ADD CONSTRAINT activity_logs_account_id_fkey FOREIGN KEY (account_id) REFERENCES iam.accounts(id) ON DELETE SET NULL;
-
-
---
 -- Name: activity_logs_archive activity_logs_archive_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3023,15 +3014,6 @@ ALTER TABLE ONLY iam.activity_logs
     ADD CONSTRAINT activity_logs_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 
---
--- Name: activity_logs activity_logs_subject_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.activity_logs
-    ADD CONSTRAINT activity_logs_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES iam.accounts(id) ON DELETE SET NULL;
-
-
---
 -- Name: content_history content_history_actor_account_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3695,15 +3677,6 @@ ALTER TABLE ONLY iam.permissions
     ADD CONSTRAINT permissions_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 
---
--- Name: platform_activity_logs platform_activity_logs_account_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.platform_activity_logs
-    ADD CONSTRAINT platform_activity_logs_account_id_fkey FOREIGN KEY (account_id) REFERENCES iam.accounts(id) ON DELETE SET NULL;
-
-
---
 -- Name: role_permissions role_permissions_permission_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 

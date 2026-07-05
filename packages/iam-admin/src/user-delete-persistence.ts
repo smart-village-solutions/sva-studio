@@ -42,6 +42,27 @@ WHERE instance_id = $1
   AND account_id = $2::uuid;
 `,
   `
+DELETE FROM iam.legal_holds
+WHERE instance_id = $1
+  AND account_id = $2::uuid
+  AND NOT (
+    active = true
+    AND (hold_until IS NULL OR hold_until > NOW())
+  );
+`,
+  `
+UPDATE iam.legal_holds
+SET created_by_account_id = NULL
+WHERE instance_id = $1
+  AND created_by_account_id = $2::uuid;
+`,
+  `
+UPDATE iam.legal_holds
+SET lifted_by_account_id = NULL
+WHERE instance_id = $1
+  AND lifted_by_account_id = $2::uuid;
+`,
+  `
 DELETE FROM iam.data_subject_export_jobs
 WHERE instance_id = $1
   AND target_account_id = $2::uuid;
@@ -59,6 +80,12 @@ WHERE instance_id = $1
 `,
   `
 UPDATE iam.account_profile_corrections
+SET actor_account_id = NULL
+WHERE instance_id = $1
+  AND actor_account_id = $2::uuid;
+`,
+  `
+UPDATE iam.data_subject_request_events
 SET actor_account_id = NULL
 WHERE instance_id = $1
   AND actor_account_id = $2::uuid;
@@ -109,12 +136,22 @@ SET
     WHEN updater_account_id = $2::uuid THEN NULL
     ELSE updater_account_id
   END,
+  owner_subject_id = CASE
+    WHEN owner_subject_id = $2 THEN NULL
+    ELSE owner_subject_id
+  END,
+  owner_user_id = CASE
+    WHEN owner_user_id = $2::uuid THEN NULL
+    ELSE owner_user_id
+  END,
   updated_at = NOW()
 WHERE instance_id = $1
   AND (
     author_account_id = $2::uuid
     OR creator_account_id = $2::uuid
     OR updater_account_id = $2::uuid
+    OR owner_subject_id = $2
+    OR owner_user_id = $2::uuid
   );
 `,
     [input.instanceId, input.accountId, input.deletedLabel ?? IAM_DELETED_CONTENT_AUTHOR_TOKEN]
@@ -135,9 +172,21 @@ SET
   author_display_name = CASE
     WHEN author_account_id = $2::uuid THEN $3
     ELSE author_display_name
+  END,
+  owner_subject_id = CASE
+    WHEN owner_subject_id = $2 THEN NULL
+    ELSE owner_subject_id
+  END,
+  owner_user_id = CASE
+    WHEN owner_user_id = $2::uuid THEN NULL
+    ELSE owner_user_id
   END
 WHERE instance_id = $1
-  AND author_account_id = $2::uuid;
+  AND (
+    author_account_id = $2::uuid
+    OR owner_subject_id = $2
+    OR owner_user_id = $2::uuid
+  );
 `,
     [input.instanceId, input.accountId, input.deletedLabel ?? IAM_DELETED_CONTENT_AUTHOR_TOKEN]
   );

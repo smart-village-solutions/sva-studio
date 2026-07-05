@@ -173,8 +173,13 @@ describe('createDeleteUserHandlerInternal', () => {
       accountId: actor.actorAccountId,
       eventType: 'user.deleted',
       instanceId: actor.instanceId,
+      payload: {
+        deleted_account_id: userDetail.id,
+        deleted_keycloak_subject: userDetail.keycloakSubject,
+      },
       requestId: actor.requestId,
       result: 'success',
+      subjectId: userDetail.id,
       traceId: actor.traceId,
     });
     expect(deps.iamUserOperationsCounter.add).toHaveBeenCalledWith(1, {

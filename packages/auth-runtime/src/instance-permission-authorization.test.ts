@@ -236,6 +236,45 @@ describe('instance permission authorization', () => {
     );
   });
 
+  it('resolves permissions against an explicit tenant override when provided', async () => {
+    await expect(
+      authorizeInstancePermissionForUser({
+        ctx: {
+          sessionId: 'session-1',
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['custom_operator'],
+          },
+        } as never,
+        action: 'iam.accounts.delete',
+        instanceId: 'bb-guben',
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      actor: {
+        instanceId: 'bb-guben',
+        keycloakSubject: 'subject-1',
+      },
+    });
+
+    expect(resolveEffectivePermissionsMock).toHaveBeenCalledWith({
+      instanceId: 'bb-guben',
+      keycloakSubject: 'subject-1',
+    });
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'bb-guben',
+        action: 'iam.accounts.delete',
+        resource: expect.objectContaining({
+          type: 'iam',
+          id: 'bb-guben',
+        }),
+      }),
+      []
+    );
+  });
+
   it('fails closed for denied, missing-instance and unavailable permission resolution states', async () => {
     evaluateAuthorizeDecisionMock.mockReturnValueOnce({ allowed: false, reason: 'permission_missing' });
     await expect(

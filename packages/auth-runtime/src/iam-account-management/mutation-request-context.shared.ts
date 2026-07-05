@@ -35,9 +35,18 @@ export const resolveMutationActorWithAccount = async (
   }
 
   if (input.requiredPermissionAction) {
+    const actorResolution = await resolveActorInfo(request, ctx, {
+      requireActorMembership: true,
+      provisionMissingActorMembership: input.provisionMissingActorMembership,
+    });
+    if ('error' in actorResolution) {
+      return { response: actorResolution.error };
+    }
+
     const authorization = await authorizeInstancePermissionForUser({
       ctx,
       action: input.requiredPermissionAction,
+      instanceId: actorResolution.actor.instanceId,
     });
     if (!authorization.ok) {
       return {
@@ -49,11 +58,44 @@ export const resolveMutationActorWithAccount = async (
         ),
       };
     }
-  } else {
-    const roleCheck = requireRoles(ctx, input.allowedRoles, input.requestId);
-    if (roleCheck) {
-      return { response: roleCheck };
+    if (!actorResolution.actor.actorAccountId) {
+      return {
+        response: createApiError(
+          403,
+          'forbidden',
+          'Akteur-Account nicht gefunden.',
+          actorResolution.actor.requestId,
+          createActorResolutionDetails({
+            actorResolution: 'missing_actor_account',
+            instanceId: actorResolution.actor.instanceId,
+          })
+        ),
+      };
     }
+
+    const csrfError = validateCsrf(request, actorResolution.actor.requestId);
+    if (csrfError) {
+      return { response: csrfError };
+    }
+
+    const rateLimit = consumeRateLimit({
+      instanceId: actorResolution.actor.instanceId,
+      actorKeycloakSubject: ctx.user.id,
+      scope: input.scope,
+      requestId: actorResolution.actor.requestId,
+    });
+    if (rateLimit) {
+      return { response: rateLimit };
+    }
+
+    return {
+      actor: actorResolution.actor as MutationActorWithAccount,
+    };
+  }
+
+  const roleCheck = requireRoles(ctx, input.allowedRoles, input.requestId);
+  if (roleCheck) {
+    return { response: roleCheck };
   }
 
   const actorResolution = await resolveActorInfo(request, ctx, {

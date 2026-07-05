@@ -310,25 +310,25 @@ describe('waste-management-mainserver-sync.server', () => {
       expect.arrayContaining([
         expect.objectContaining({
           currentStepKey: 'load-studio-state',
-          currentStepLabel: 'load-studio-state',
+          currentStepLabel: 'Studio-Status laden',
           completedSteps: 1,
           totalSteps: 6,
         }),
         expect.objectContaining({
           currentStepKey: 'load-mainserver-snapshot',
-          currentStepLabel: 'load-mainserver-snapshot',
+          currentStepLabel: 'Mainserver-Snapshot laden',
           completedSteps: 2,
           totalSteps: 6,
         }),
         expect.objectContaining({
           currentStepKey: 'diff-sync-state',
-          currentStepLabel: 'diff-sync-state',
+          currentStepLabel: 'Abweichungen berechnen',
           completedSteps: 3,
           totalSteps: 6,
         }),
         expect.objectContaining({
           currentStepKey: 'create-batches',
-          currentStepLabel: 'create-batches',
+          currentStepLabel: 'Create-Batches 1/1',
           details: expect.objectContaining({
             operationMode: 'create',
             totalItemCount: 0,
@@ -338,7 +338,7 @@ describe('waste-management-mainserver-sync.server', () => {
         }),
         expect.objectContaining({
           currentStepKey: 'delete-batches',
-          currentStepLabel: 'delete-batches',
+          currentStepLabel: 'Delete-Batches 1/1',
           details: expect.objectContaining({
             operationMode: 'delete',
             totalItemCount: 0,
@@ -348,7 +348,7 @@ describe('waste-management-mainserver-sync.server', () => {
         }),
         expect.objectContaining({
           currentStepKey: 'complete-operation',
-          currentStepLabel: 'complete-operation',
+          currentStepLabel: 'Synchronisierung abgeschlossen',
           completedSteps: 6,
           totalSteps: 6,
         }),
@@ -775,10 +775,10 @@ describe('waste-management-mainserver-sync.server', () => {
       expect.arrayContaining([
         expect.objectContaining({
           currentStepKey: 'create-batches',
-          currentStepLabel: 'create-batches',
+          currentStepLabel: 'Create-Batches 1/2',
           details: expect.objectContaining({
             operationMode: 'create',
-            totalItemCount: 4,
+            totalItemCount: 3,
             totalBatchCount: 2,
             currentBatchIndex: 1,
             currentBatchSize: 2,
@@ -790,10 +790,10 @@ describe('waste-management-mainserver-sync.server', () => {
         }),
         expect.objectContaining({
           currentStepKey: 'create-batches',
-          currentStepLabel: 'create-batches',
+          currentStepLabel: 'Create-Batches 2/2',
           details: expect.objectContaining({
             operationMode: 'create',
-            totalItemCount: 4,
+            totalItemCount: 3,
             totalBatchCount: 2,
             currentBatchIndex: 2,
             currentBatchSize: 1,
@@ -804,10 +804,10 @@ describe('waste-management-mainserver-sync.server', () => {
         }),
         expect.objectContaining({
           currentStepKey: 'delete-batches',
-          currentStepLabel: 'delete-batches',
+          currentStepLabel: 'Delete-Batches 1/1',
           details: expect.objectContaining({
             operationMode: 'delete',
-            totalItemCount: 4,
+            totalItemCount: 1,
             totalBatchCount: 1,
             currentBatchIndex: 1,
             currentBatchSize: 1,
@@ -832,7 +832,7 @@ describe('waste-management-mainserver-sync.server', () => {
     });
   });
 
-  it('keeps global totals for empty follow-up phases and aligns create batch counts with the effective batch size', async () => {
+  it('reports zero totals for empty follow-up phases and aligns create batch counts with the effective batch size', async () => {
     const progressEvents: StudioJobProgress[] = [];
 
     const result = await runWasteManagementMainserverSync({
@@ -853,7 +853,7 @@ describe('waste-management-mainserver-sync.server', () => {
           completedSteps: details.operationMode === 'create' ? 4 : 5,
           totalSteps: 6,
           currentStepKey: details.operationMode === 'create' ? 'create-batches' : 'delete-batches',
-          currentStepLabel: details.operationMode === 'create' ? 'create-batches' : 'delete-batches',
+          currentStepLabel: details.operationMode === 'create' ? 'Create-Batches 1/1' : 'Delete-Batches 1/1',
           details,
         });
       },
@@ -865,7 +865,7 @@ describe('waste-management-mainserver-sync.server', () => {
         expect.objectContaining({
           currentStepKey: 'delete-batches',
           details: expect.objectContaining({
-            totalItemCount: 3,
+            totalItemCount: 0,
             totalBatchCount: 0,
             processedItemCount: 3,
           }),

@@ -91,6 +91,18 @@ describe('monitoring job event presentation', () => {
         },
       })
     ).toBe('Fortschritt aktualisiert: Studio-Status laden.');
+
+    expect(
+      formatMonitoringJobEventMessage({
+        ...baseEvent,
+        progress: {
+          completedSteps: 2,
+          totalSteps: 6,
+          currentStepKey: 'load-mainserver-snapshot',
+          currentStepLabel: 'Snapshot aus Backend laden',
+        },
+      })
+    ).toBe('Fortschritt aktualisiert: Snapshot aus Backend laden.');
   });
 
   it('falls back to tone and terminal metadata from the event type when the backend omits presentation details', () => {
@@ -141,6 +153,22 @@ describe('monitoring job event presentation', () => {
         currentStepLabel: 'load-studio-state',
       })
     ).toBe('Studio-Status laden');
+    expect(
+      getMonitoringJobCurrentStep({
+        completedSteps: 2,
+        totalSteps: 6,
+        currentStepKey: 'load-mainserver-snapshot',
+        currentStepLabel: 'Snapshot aus Backend laden',
+      })
+    ).toBe('Snapshot aus Backend laden');
+    expect(
+      getMonitoringJobCurrentStep({
+        completedSteps: 4,
+        totalSteps: 6,
+        currentStepKey: 'create-batches',
+        currentStepLabel: 'Create-Batches 2/7',
+      })
+    ).toBe('Create-Batches 2/7');
     expect(getMonitoringJobCurrentStep(undefined)).toBe('Nicht verfügbar');
   });
 

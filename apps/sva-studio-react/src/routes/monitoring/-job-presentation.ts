@@ -153,7 +153,16 @@ export const resolveMonitoringJobStepLabel = (progress?: StudioJobProgress): str
   }
 
   if (progress.currentStepKey === 'create-batches' || progress.currentStepKey === 'delete-batches') {
-    return formatMonitoringWasteLiveProgressSummary(resolveMonitoringWasteLiveProgressFromProgress(progress));
+    return (
+      formatMonitoringWasteLiveProgressSummary(resolveMonitoringWasteLiveProgressFromProgress(progress)) ??
+      progress.currentStepLabel ??
+      progress.currentStepKey ??
+      null
+    );
+  }
+
+  if (progress.currentStepLabel && progress.currentStepLabel !== progress.currentStepKey) {
+    return progress.currentStepLabel;
   }
 
   if (progress.currentStepKey && isMonitoringWasteStepKey(progress.currentStepKey)) {

@@ -22,7 +22,6 @@ INSERT INTO iam.permissions (
   action,
   resource_type,
   resource_id,
-  effect,
   scope,
   description
 )
@@ -33,7 +32,6 @@ SELECT
   permission_template.action,
   permission_template.resource_type,
   NULL,
-  'allow',
   '{}'::jsonb,
   permission_template.description
 FROM target_instances
@@ -43,7 +41,6 @@ SET
   action = EXCLUDED.action,
   resource_type = EXCLUDED.resource_type,
   resource_id = EXCLUDED.resource_id,
-  effect = EXCLUDED.effect,
   scope = EXCLUDED.scope,
   description = EXCLUDED.description,
   updated_at = NOW();

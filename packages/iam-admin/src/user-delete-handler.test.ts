@@ -157,8 +157,8 @@ describe('createDeleteUserHandlerInternal', () => {
       'keycloak:start',
       'delete-identity',
       'keycloak:end',
-      'hard-delete-user',
       'activity-log',
+      'hard-delete-user',
     ]);
     expect(deps.trackKeycloakCall).toHaveBeenCalledWith('delete_user', expect.any(Function));
     expect(deps.purgeAccountHardDeleteBlockers).toHaveBeenCalledWith(expect.anything(), {

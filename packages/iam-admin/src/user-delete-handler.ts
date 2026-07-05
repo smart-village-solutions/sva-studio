@@ -196,11 +196,6 @@ export const deleteUser = async (deps: DeleteUserDeps, input: DeleteUserInput): 
   await deps.trackKeycloakCall('delete_user', () => deps.deleteIdentityUser(prepared.keycloakSubject));
 
   await deps.withInstanceScopedDb(input.actor.instanceId, async (client) => {
-    await deps.hardDeleteUserRecord(client, {
-      instanceId: input.actor.instanceId,
-      accountId: input.userId,
-    });
-
     await deps.emitActivityLog(client, {
       instanceId: input.actor.instanceId,
       accountId: input.actor.actorAccountId,
@@ -209,6 +204,11 @@ export const deleteUser = async (deps: DeleteUserDeps, input: DeleteUserInput): 
       result: 'success',
       requestId: input.actor.requestId,
       traceId: input.actor.traceId,
+    });
+
+    await deps.hardDeleteUserRecord(client, {
+      instanceId: input.actor.instanceId,
+      accountId: input.userId,
     });
   });
 

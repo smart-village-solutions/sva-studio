@@ -22,6 +22,9 @@ describe('iam seed plan', () => {
     expect(iamSeedPlan.permissions.find((permission) => permission.key === 'experimental.read')?.resourceType).toBe(
       'experimental'
     );
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'iam.accounts.delete')?.resourceType).toBe(
+      'iam'
+    );
     expect(iamSeedPlan.permissions.find((permission) => permission.key === 'cockpit.read')?.resourceType).toBe(
       'cockpit'
     );
@@ -33,6 +36,7 @@ describe('iam seed plan', () => {
       roleLevel: 100,
       permissionKeys: expect.arrayContaining([
         'experimental.read',
+        'iam.accounts.delete',
         'app.read',
         'cockpit.read',
         'content.create',

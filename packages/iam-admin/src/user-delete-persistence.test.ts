@@ -79,12 +79,21 @@ describe('hardDeleteAccount', () => {
       accountId: '33333333-3333-4333-8333-333333333333',
     });
 
-    expect(query).toHaveBeenCalledWith(
+    expect(query).toHaveBeenNthCalledWith(
+      1,
       expect.stringContaining('DELETE FROM iam.permission_change_requests'),
       ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
     );
-    expect(String(query.mock.calls[0]?.[0])).toContain('DELETE FROM iam.legal_text_acceptances');
-    expect(String(query.mock.calls[0]?.[0])).toContain('DELETE FROM iam.data_subject_requests');
+    expect(query).toHaveBeenNthCalledWith(
+      4,
+      expect.stringContaining('DELETE FROM iam.legal_text_acceptances'),
+      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      8,
+      expect.stringContaining('DELETE FROM iam.data_subject_requests'),
+      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
+    );
   });
 
   it('deletes the scoped account row after content preparation succeeded', async () => {

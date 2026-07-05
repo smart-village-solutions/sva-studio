@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
--- Referenzpfade mit historischer Retention werden fuer privilegierten Admin-Hard-Delete NULL-vertraeglich.
+-- Referenzpfade mit historischer Retention werden für privilegierten Admin-Hard-Delete NULL-verträglich.
 ALTER TABLE iam.content_history
   ALTER COLUMN actor_account_id DROP NOT NULL;
 

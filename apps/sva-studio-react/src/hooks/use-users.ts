@@ -263,7 +263,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
     },
     deleteUser: async (userId) => {
       const response = await mutate(() => deleteUserRequest(userId), 'user_delete');
-      return Boolean(response);
+      return response !== null;
     },
     bulkDeactivate: async (userIds) => {
       const response = await mutate(() => bulkDeactivateUsers(userIds), 'user_bulk_deactivate');

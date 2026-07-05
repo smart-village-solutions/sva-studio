@@ -56,29 +56,13 @@ const createDeleteMutationErrorResponse = (input: {
 };
 
 const createRequestScopedDeleteUserHandler = (
-  resolved: Exclude<Awaited<ReturnType<typeof resolveDeleteRequestContext>>, Response>
+  resolved: Exclude<Awaited<ReturnType<typeof resolveDeleteRequestContext>>, Response>,
+  deleteIdentityUser: (keycloakSubject: string) => Promise<void>
 ) =>
   createDeleteUserHandlerInternal({
     createUnexpectedMutationErrorResponse,
     createUserMutationErrorResponse: createDeleteMutationErrorResponse,
-    deleteIdentityUser: async (keycloakSubject) => {
-      const identityProvider = await requireUserMutationIdentityProvider(
-        resolved.actor.instanceId,
-        resolved.actor.requestId
-      );
-      if (identityProvider instanceof Response) {
-        throw new Error('keycloak_unavailable:Tenant-Identity-Provider ist nicht verfügbar.');
-      }
-
-      try {
-        await identityProvider.provider.deleteUser(keycloakSubject);
-      } catch (error) {
-        if (error instanceof KeycloakAdminRequestError && error.statusCode === 404) {
-          return;
-        }
-        throw error;
-      }
-    },
+    deleteIdentityUser,
     emitActivityLog,
     ensureActorCanManageTarget,
     hardDeleteUserRecord: hardDeleteAccount,
@@ -108,5 +92,22 @@ export const deleteUserInternal = async (
     return resolved;
   }
 
-  return createRequestScopedDeleteUserHandler(resolved)(request, ctx);
+  const identityProvider = await requireUserMutationIdentityProvider(
+    resolved.actor.instanceId,
+    resolved.actor.requestId
+  );
+  if (identityProvider instanceof Response) {
+    return identityProvider;
+  }
+
+  return createRequestScopedDeleteUserHandler(resolved, async (keycloakSubject) => {
+    try {
+      await identityProvider.provider.deleteUser(keycloakSubject);
+    } catch (error) {
+      if (error instanceof KeycloakAdminRequestError && error.statusCode === 404) {
+        return;
+      }
+      throw error;
+    }
+  })(request, ctx);
 };

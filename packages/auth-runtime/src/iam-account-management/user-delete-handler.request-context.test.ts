@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  createDeleteUserHandlerInternal: vi.fn(),
   getWorkspaceContext: vi.fn(() => ({ requestId: 'req-1' })),
+  requireUserMutationIdentityProvider: vi.fn(),
   resolveUserMutationTargetActorContext: vi.fn(),
 }));
 
@@ -14,14 +16,14 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
 });
 
 vi.mock('@sva/iam-admin', () => ({
-  createDeleteUserHandlerInternal: vi.fn(),
+  createDeleteUserHandlerInternal: state.createDeleteUserHandlerInternal,
   hardDeleteAccount: vi.fn(),
   purgeAccountHardDeleteBlockers: vi.fn(),
   reconcileOwnedContentForAccountDelete: vi.fn(),
 }));
 
 vi.mock('./user-mutation-request-context.shared.js', () => ({
-  requireUserMutationIdentityProvider: vi.fn(),
+  requireUserMutationIdentityProvider: state.requireUserMutationIdentityProvider,
   resolveUserMutationTargetActorContext: state.resolveUserMutationTargetActorContext,
 }));
 
@@ -37,6 +39,12 @@ describe('resolveDeleteRequestContext', () => {
       },
       userId: 'user-1',
     });
+    state.requireUserMutationIdentityProvider.mockResolvedValue({
+      provider: {
+        deleteUser: vi.fn(async () => undefined),
+      },
+    });
+    state.createDeleteUserHandlerInternal.mockReturnValue(vi.fn(async () => new Response(null, { status: 204 })));
   });
 
   it('builds the delete context from the shared target helper without eager identity-provider resolution', async () => {
@@ -88,6 +96,24 @@ describe('resolveDeleteRequestContext', () => {
         },
       })
     ).resolves.toBe(forbidden);
+  });
 
+  it('returns the identity-provider response before local delete work starts', async () => {
+    const { deleteUserInternal } = await import('./user-delete-handler.js');
+    const idpUnavailable = new Response('idp-unavailable', { status: 409 });
+    state.requireUserMutationIdentityProvider.mockResolvedValueOnce(idpUnavailable);
+
+    await expect(
+      deleteUserInternal(new Request('http://localhost/api/v1/iam/users/user-1', { method: 'DELETE' }), {
+        sessionId: 'session-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'instance-1',
+          roles: ['system_admin'],
+        },
+      })
+    ).resolves.toBe(idpUnavailable);
+
+    expect(state.createDeleteUserHandlerInternal).not.toHaveBeenCalled();
   });
 });

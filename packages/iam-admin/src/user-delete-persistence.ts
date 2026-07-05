@@ -79,41 +79,71 @@ export const purgeAccountHardDeleteBlockers = async (
   client: QueryClient,
   input: { instanceId: string; accountId: string }
 ): Promise<void> => {
+  const params = [input.instanceId, input.accountId] as const;
+
   await client.query(
     `
 DELETE FROM iam.permission_change_requests
 WHERE instance_id = $1
   AND (requester_account_id = $2::uuid OR target_account_id = $2::uuid);
-
+`,
+    params
+  );
+  await client.query(
+    `
 DELETE FROM iam.delegations
 WHERE instance_id = $1
   AND (delegator_account_id = $2::uuid OR delegatee_account_id = $2::uuid);
-
+`,
+    params
+  );
+  await client.query(
+    `
 DELETE FROM iam.impersonation_sessions
 WHERE instance_id = $1
   AND (actor_account_id = $2::uuid OR target_account_id = $2::uuid);
-
+`,
+    params
+  );
+  await client.query(
+    `
 DELETE FROM iam.legal_text_acceptances
 WHERE instance_id = $1
   AND account_id = $2::uuid;
-
+`,
+    params
+  );
+  await client.query(
+    `
 DELETE FROM iam.data_subject_export_jobs
 WHERE instance_id = $1
   AND target_account_id = $2::uuid;
-
+`,
+    params
+  );
+  await client.query(
+    `
 DELETE FROM iam.legal_holds
 WHERE instance_id = $1
   AND account_id = $2::uuid;
-
+`,
+    params
+  );
+  await client.query(
+    `
 DELETE FROM iam.account_profile_corrections
 WHERE instance_id = $1
   AND account_id = $2::uuid;
-
+`,
+    params
+  );
+  await client.query(
+    `
 DELETE FROM iam.data_subject_requests
 WHERE instance_id = $1
   AND target_account_id = $2::uuid;
 `,
-    [input.instanceId, input.accountId]
+    params
   );
 };
 

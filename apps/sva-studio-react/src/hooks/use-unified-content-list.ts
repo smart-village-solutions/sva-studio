@@ -1,12 +1,13 @@
 import type { ApiPagination, IamContentListItem, IamContentListQuery } from '@sva/core';
 import { listEvents } from '@sva/plugin-events';
+import { listGenericItems } from '@sva/plugin-generic-items';
 import { listNews } from '@sva/plugin-news';
 import { listPoi } from '@sva/plugin-poi';
 import { listSurveys } from '@sva/plugin-surveys';
 import React from 'react';
 
 import type { IamHttpError } from '../lib/iam-api';
-import { mapEventItem, mapNewsItem, mapPoiItem, mapSurveyItem } from '../lib/iam-content-list-mainserver';
+import { mapEventItem, mapGenericItem, mapNewsItem, mapPoiItem, mapSurveyItem } from '../lib/iam-content-list-mainserver';
 
 type UnifiedContentListResult = {
   readonly contents: readonly IamContentListItem[];
@@ -22,6 +23,7 @@ const MAINSERVER_FETCH_PAGE_SIZE = 100;
 const studioContentTypeIds = [
   'news.article',
   'events.event-record',
+  'generic-items.generic-item',
   'poi.point-of-interest',
   'surveys.survey',
 ] as const;
@@ -134,6 +136,10 @@ const loadItemsForContentType = async (
     case 'events.event-record':
       return (await fetchAllPages(listEvents)).map((item) =>
         mapEventItem(item, instanceId, permissions)
+      );
+    case 'generic-items.generic-item':
+      return (await fetchAllPages(listGenericItems)).map((item) =>
+        mapGenericItem(item, instanceId, permissions)
       );
     case 'poi.point-of-interest':
       return (await fetchAllPages(listPoi)).map((item) =>

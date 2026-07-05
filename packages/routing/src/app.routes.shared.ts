@@ -32,6 +32,9 @@ export type AppRouteBindings = {
   readonly eventsList: RouteComponent;
   readonly eventsDetail: RouteComponent;
   readonly eventsEditor: RouteComponent;
+  readonly genericItemsList: RouteComponent;
+  readonly genericItemsDetail: RouteComponent;
+  readonly genericItemsEditor: RouteComponent;
   readonly poiList: RouteComponent;
   readonly poiDetail: RouteComponent;
   readonly poiEditor: RouteComponent;

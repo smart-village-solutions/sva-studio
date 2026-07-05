@@ -119,7 +119,7 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
 - `GET /api/v1/iam/contents`
   - Query: `page`, `pageSize`, `q`, `type`, `status`, `sortBy`, `sortDirection`, `visibleType`
   - `/admin/content` verwendet diese Route als einzige führende Listenquelle.
-  - Für Mainserver-gestützte Typen (`news.article`, `events.event-record`, `poi.point-of-interest`) antwortet der Host aus der persistierten Listenprojektion `iam.content_list_projection`; der Browser lädt dafür keine separaten Vollscans über `mainserver/news`, `mainserver/events` oder `mainserver/poi`.
+  - Für Mainserver-gestützte Typen (`news.article`, `events.event-record`, `poi.point-of-interest`, `generic-items.generic-item`) antwortet der Host aus der persistierten Listenprojektion `iam.content_list_projection`; der Browser lädt dafür keine separaten Vollscans über `mainserver/news`, `mainserver/events`, `mainserver/poi` oder `mainserver/generic-items`.
   - Gemischte Listen aus lokalen IAM-Inhalten und Mainserver-Projektionen werden serverseitig zusammengeführt, danach gemeinsam sortiert und paginiert.
   - Für Mainserver-Typen ist `status` in der Übersicht deterministisch auf `published` begrenzt; nicht unterstützte Statuswerte liefern für diese Teilmenge eine leere Liste statt eines endlosen Ladezustands.
   - Der Response kann zusätzliche Metadaten zur Projektionsfrische enthalten: `mainserverSyncStates`, `hasStaleMainserverContent`, `hasBlockingSyncGap`, `hasRunningMainserverSync`.

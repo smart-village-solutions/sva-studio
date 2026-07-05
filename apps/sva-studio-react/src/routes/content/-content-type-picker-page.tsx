@@ -18,6 +18,10 @@ const contentTypePresentationByNamespace = {
     icon: CalendarDays,
     descriptionKey: 'content.typePicker.typeDescriptions.events',
   },
+  'generic-items': {
+    icon: Shapes,
+    descriptionKey: 'content.typePicker.fallbackDescription',
+  },
   poi: {
     icon: MapPin,
     descriptionKey: 'content.typePicker.typeDescriptions.poi',
@@ -39,6 +43,12 @@ const resolveTypePresentation = (contentType: string): { icon: LucideIcon; descr
   const namespace = resolveContentTypeNamespace(contentType);
   if (isKnownContentTypeNamespace(namespace)) {
     const knownPresentation = contentTypePresentationByNamespace[namespace];
+    if (namespace === 'generic-items') {
+      return {
+        icon: knownPresentation.icon,
+        description: t('content.typePicker.fallbackDescription', { type: contentType }),
+      };
+    }
     return {
       icon: knownPresentation.icon,
       description: t(knownPresentation.descriptionKey),

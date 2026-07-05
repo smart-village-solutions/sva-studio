@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IamContentListQuery } from '@sva/core';
@@ -7,6 +9,7 @@ import { useUnifiedContentList } from './use-unified-content-list';
 
 const listNewsMock = vi.fn();
 const listEventsMock = vi.fn();
+const listGenericItemsMock = vi.fn();
 const listPoiMock = vi.fn();
 const listSurveysMock = vi.fn();
 
@@ -63,6 +66,17 @@ const createPoiItem = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const createGenericItem = (overrides: Record<string, unknown> = {}) => ({
+  id: 'generic-1',
+  title: 'Generic Item',
+  genericType: 'faq',
+  contentType: 'generic-items.generic-item',
+  status: 'published',
+  createdAt: '2026-05-01T07:30:00.000Z',
+  updatedAt: '2026-05-03T10:00:00.000Z',
+  ...overrides,
+});
+
 const createSurveyItem = (overrides: Record<string, unknown> = {}) => ({
   id: 'survey-1',
   title: { de: 'Survey' },
@@ -98,11 +112,13 @@ const renderUnifiedContentList = (
 const setMainserverSources = (input: {
   news?: ReturnType<typeof createListResult>;
   events?: ReturnType<typeof createListResult>;
+  genericItems?: ReturnType<typeof createListResult>;
   poi?: ReturnType<typeof createListResult>;
   surveys?: ReturnType<typeof createListResult>;
 }) => {
   listNewsMock.mockResolvedValue(input.news ?? createEmptyListResult());
   listEventsMock.mockResolvedValue(input.events ?? createEmptyListResult());
+  listGenericItemsMock.mockResolvedValue(input.genericItems ?? createEmptyListResult());
   listPoiMock.mockResolvedValue(input.poi ?? createEmptyListResult());
   listSurveysMock.mockResolvedValue(input.surveys ?? createEmptyListResult());
 };
@@ -113,6 +129,10 @@ vi.mock('@sva/plugin-news', () => ({
 
 vi.mock('@sva/plugin-events', () => ({
   listEvents: (...args: unknown[]) => listEventsMock(...args),
+}));
+
+vi.mock('@sva/plugin-generic-items', () => ({
+  listGenericItems: (...args: unknown[]) => listGenericItemsMock(...args),
 }));
 
 vi.mock('@sva/plugin-poi', () => ({
@@ -127,6 +147,7 @@ describe('useUnifiedContentList', () => {
   beforeEach(() => {
     listNewsMock.mockReset();
     listEventsMock.mockReset();
+    listGenericItemsMock.mockReset();
     listPoiMock.mockReset();
     listSurveysMock.mockReset();
   });
@@ -160,6 +181,13 @@ describe('useUnifiedContentList', () => {
         }),
       ])
     );
+    listGenericItemsMock.mockResolvedValue(
+      createListResult([
+        createGenericItem({
+          title: 'Atlas FAQ',
+        }),
+      ])
+    );
     listPoiMock.mockResolvedValue(
       createListResult([
         createPoiItem({
@@ -189,9 +217,9 @@ describe('useUnifiedContentList', () => {
         q: 'a',
         sortBy: 'title',
         sortDirection: 'asc',
-        visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
+        visibleTypes: ['news.article', 'events.event-record', 'generic-items.generic-item', 'poi.point-of-interest', 'surveys.survey'],
       },
-      visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
+      visibleTypes: ['news.article', 'events.event-record', 'generic-items.generic-item', 'poi.point-of-interest', 'surveys.survey'],
       instanceId: 'de-musterhausen',
     };
 
@@ -204,8 +232,8 @@ describe('useUnifiedContentList', () => {
 
     await waitForLoaded(result);
 
-    expect(result.current.contents.map((item) => item.id)).toEqual(['news-1', 'event-1']);
-    expect(result.current.pagination).toEqual({ page: 1, pageSize: 2, total: 5 });
+    expect(result.current.contents.map((item) => item.id)).toEqual(['news-1', 'generic-1']);
+    expect(result.current.pagination).toEqual({ page: 1, pageSize: 2, total: 6 });
 
     const updatedProps: HookProps = {
       query: {
@@ -213,9 +241,9 @@ describe('useUnifiedContentList', () => {
         pageSize: 2,
         sortBy: 'updatedAt',
         sortDirection: 'desc',
-        visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
+        visibleTypes: ['news.article', 'events.event-record', 'generic-items.generic-item', 'poi.point-of-interest', 'surveys.survey'],
       },
-      visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
+      visibleTypes: ['news.article', 'events.event-record', 'generic-items.generic-item', 'poi.point-of-interest', 'surveys.survey'],
       instanceId: 'de-musterhausen',
     };
 
@@ -223,9 +251,10 @@ describe('useUnifiedContentList', () => {
 
     await waitForLoaded(result);
 
-    expect(result.current.contents.map((item) => item.id)).toEqual(['news-2', 'news-1']);
+    expect(result.current.contents.map((item) => item.id)).toEqual(['news-2', 'generic-1']);
     expect(listNewsMock).toHaveBeenCalledTimes(1);
     expect(listEventsMock).toHaveBeenCalledTimes(1);
+    expect(listGenericItemsMock).toHaveBeenCalledTimes(1);
     expect(listPoiMock).toHaveBeenCalledTimes(1);
     expect(listSurveysMock).toHaveBeenCalledTimes(1);
   });

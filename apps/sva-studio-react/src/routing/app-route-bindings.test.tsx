@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -287,23 +289,20 @@ vi.mock('@sva/plugin-news', () => ({
   NewsEditPage: () => <div data-testid="news-edit-page" />,
 }));
 
-vi.mock('@sva/plugin-events', async () => {
-  const actual = await vi.importActual<object>('@sva/plugin-events');
-  return {
-    ...actual,
+vi.mock('@sva/plugin-events', () => ({
   EventsCreatePage: () => <div data-testid="events-create-page" />,
   EventsEditPage: () => <div data-testid="events-edit-page" />,
-  };
-});
+}));
 
-vi.mock('@sva/plugin-poi', async () => {
-  const actual = await vi.importActual<object>('@sva/plugin-poi');
-  return {
-    ...actual,
+vi.mock('@sva/plugin-generic-items', () => ({
+  GenericItemsCreatePage: () => <div data-testid="generic-items-create-page" />,
+  GenericItemsEditPage: () => <div data-testid="generic-items-edit-page" />,
+}));
+
+vi.mock('@sva/plugin-poi', () => ({
   PoiCreatePage: ({ instanceId }: { instanceId?: string }) => <div data-testid="poi-create-page">{instanceId ?? ''}</div>,
   PoiEditPage: ({ instanceId }: { instanceId?: string }) => <div data-testid="poi-edit-page">{instanceId ?? ''}</div>,
-  };
-});
+}));
 
 vi.mock('@sva/plugin-surveys', () => ({
   SurveyCreatePage: () => <div data-testid="surveys-create-page" />,
@@ -765,6 +764,18 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.eventsDetail />);
     expect(screen.getByTestId('events-edit-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.genericItemsList />);
+    expect(screen.getByTestId('content-list-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.genericItemsEditor />);
+    expect(screen.getByTestId('generic-items-create-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.genericItemsDetail />);
+    expect(screen.getByTestId('generic-items-edit-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.poiList />);

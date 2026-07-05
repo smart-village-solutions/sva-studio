@@ -24,6 +24,12 @@
     "sourceRef": "packages/plugin-poi"
   },
   {
+    "pluginId": "generic-items",
+    "sourceType": "workspace",
+    "enabled": true,
+    "sourceRef": "packages/plugin-generic-items"
+  },
+  {
     "pluginId": "surveys",
     "sourceType": "workspace",
     "enabled": true,

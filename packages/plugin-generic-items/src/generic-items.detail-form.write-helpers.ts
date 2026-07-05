@@ -24,7 +24,7 @@ export const parseOptionalJson = <T>(value: string): T | undefined => {
 };
 
 export const mapWebUrlsToInput = (webUrls: GenericItemsDetailFormValues['webUrls']) => {
-  const mapped = webUrls
+  return webUrls
     .map((webUrl) => ({
       url: sanitizeOptionalString(webUrl.url),
       description: sanitizeOptionalString(webUrl.description),
@@ -34,15 +34,12 @@ export const mapWebUrlsToInput = (webUrls: GenericItemsDetailFormValues['webUrls
       url: webUrl.url as string,
       ...(webUrl.description !== undefined ? { description: webUrl.description } : {}),
     }));
-
-  return mapped;
 };
 
 export const mapContactsToInput = (contacts: GenericItemsDetailFormValues['contacts']) => {
-  const mapped = contacts
+  return contacts
     .map((contact) => {
       const webUrls = mapWebUrlsToInput(contact.webUrls);
-
       return {
         firstName: sanitizeOptionalString(contact.firstName),
         lastName: sanitizeOptionalString(contact.lastName),
@@ -52,21 +49,14 @@ export const mapContactsToInput = (contacts: GenericItemsDetailFormValues['conta
         ...(webUrls.length > 0 ? { webUrls } : {}),
       };
     })
-    .filter((contact) =>
-      [contact.firstName, contact.lastName, contact.email, contact.phone, contact.fax, contact.webUrls].some(
-        (value) => value !== undefined
-      )
-    );
-
-  return mapped;
+    .filter((contact) => [contact.firstName, contact.lastName, contact.email, contact.phone, contact.fax, contact.webUrls].some((value) => value !== undefined));
 };
 
 export const mapAddressesToInput = (addresses: GenericItemsDetailFormValues['addresses']) => {
-  const mapped = addresses
+  return addresses
     .map((address) => {
       const latitude = parseOptionalNumber(address.latitude);
       const longitude = parseOptionalNumber(address.longitude);
-
       return {
         addition: sanitizeOptionalString(address.addition),
         street: sanitizeOptionalString(address.street),
@@ -81,8 +71,6 @@ export const mapAddressesToInput = (addresses: GenericItemsDetailFormValues['add
         (value) => value !== undefined
       )
     );
-
-  return mapped;
 };
 
 export const mapDatesToInput = (dates: GenericItemsDetailFormValues['dates']) => {

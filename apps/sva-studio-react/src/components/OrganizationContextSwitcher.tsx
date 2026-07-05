@@ -1,4 +1,5 @@
 import React from 'react';
+import { resolveOrganizationContextState } from '@sva/core';
 
 import type { IamHttpError } from '../lib/iam-api';
 import { t } from '../i18n';
@@ -25,24 +26,34 @@ const organizationContextErrorMessage = (error: IamHttpError | null) => {
 
 type OrganizationContextSwitcherProps = Readonly<{
   variant?: 'inline' | 'menu';
+  readOnly?: boolean;
 }>;
 
-export const OrganizationContextSwitcher = ({ variant = 'inline' }: OrganizationContextSwitcherProps) => {
+export const OrganizationContextSwitcher = ({
+  variant = 'inline',
+  readOnly = false,
+}: OrganizationContextSwitcherProps) => {
   const organizationContext = useOrganizationContext();
-  const options = organizationContext.context?.organizations.filter((organization) => organization.isActive) ?? [];
-  const activeOrganization = options.find(
-    (organization) => organization.organizationId === organizationContext.context?.activeOrganizationId
-  );
+  const organizationContextState = resolveOrganizationContextState({
+    organizations: organizationContext.context?.organizations,
+    storedActiveOrganizationId: organizationContext.context?.activeOrganizationId,
+  });
+  const options = organizationContextState.activeOrganizations;
+  const activeOrganization = readOnly
+    ? undefined
+    : options.find((organization) => organization.organizationId === organizationContextState.activeOrganizationId);
   const errorMessage = organizationContextErrorMessage(organizationContext.error);
   const statusId = React.useId();
   const errorId = React.useId();
   const describedBy = [statusId, errorMessage ? errorId : null].filter(Boolean).join(' ') || undefined;
+  const isMenuVariant = variant === 'menu';
 
-  if (organizationContext.isLoading || options.length <= 1) {
+  const shouldRenderSelector = !readOnly && organizationContextState.canSwitch;
+  const shouldRenderMenuMemberships = isMenuVariant && organizationContextState.hasVisibleMemberships;
+
+  if (organizationContext.isLoading || (!shouldRenderSelector && !shouldRenderMenuMemberships)) {
     return null;
   }
-
-  const isMenuVariant = variant === 'menu';
 
   return (
     <div
@@ -52,38 +63,59 @@ export const OrganizationContextSwitcher = ({ variant = 'inline' }: Organization
       )}
     >
       <div className={cn('field-group', isMenuVariant ? 'flex w-full flex-col gap-2' : 'flex items-center gap-2')}>
-        <Label
-          htmlFor="organization-context-switcher"
-          className={cn(isMenuVariant ? 'text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground' : undefined)}
-        >
-          {t('shell.header.organizationContext')}
-        </Label>
-        <Select
-          id="organization-context-switcher"
-          aria-label={t('shell.header.organizationContext')}
-          aria-describedby={describedBy}
-          value={organizationContext.context?.activeOrganizationId ?? ''}
-          onChange={(event) => {
-            if (!event.target.value) {
-              return;
-            }
-            void organizationContext.switchOrganization(event.target.value);
-          }}
-          className={cn(
-            'text-sm',
-            isMenuVariant
-              ? 'h-10 w-full rounded-lg border-border bg-background px-3 py-2 shadow-none'
-              : 'h-8 w-auto min-w-40 max-w-full px-2 py-1'
-          )}
-          disabled={organizationContext.isUpdating}
-        >
-          {options.map((organization) => (
-            <option key={organization.organizationId} value={organization.organizationId}>
-              {organization.displayName}
-            </option>
-          ))}
-        </Select>
+        {shouldRenderSelector ? (
+          <>
+            <Label
+              htmlFor="organization-context-switcher"
+              className={cn(isMenuVariant ? 'text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground' : undefined)}
+            >
+              {t('shell.header.organizationContext')}
+            </Label>
+            <Select
+              id="organization-context-switcher"
+              aria-label={t('shell.header.organizationContext')}
+              aria-describedby={describedBy}
+              value={organizationContextState.activeOrganizationId ?? ''}
+              onChange={(event) => {
+                if (!event.target.value) {
+                  return;
+                }
+                void organizationContext.switchOrganization(event.target.value);
+              }}
+              className={cn(
+                'text-sm',
+                isMenuVariant
+                  ? 'h-10 w-full rounded-lg border-border bg-background px-3 py-2 shadow-none'
+                  : 'h-8 w-auto min-w-40 max-w-full px-2 py-1'
+              )}
+              disabled={organizationContext.isUpdating}
+            >
+              {options.map((organization) => (
+                <option key={organization.organizationId} value={organization.organizationId}>
+                  {organization.displayName}
+                </option>
+              ))}
+            </Select>
+          </>
+        ) : null}
       </div>
+      {shouldRenderMenuMemberships ? (
+        <div className="flex w-full flex-col gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            {t('shell.header.organizationMemberships')}
+          </p>
+          {readOnly ? (
+            <p className="text-xs text-muted-foreground">
+              {t('shell.header.organizationMembershipsSystemAdminHint')}
+            </p>
+          ) : null}
+          <ul className="flex flex-col gap-1 text-sm text-foreground">
+            {options.map((organization) => (
+              <li key={organization.organizationId}>{organization.displayName}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <span id={statusId} role="status" aria-live="polite" className="sr-only">
         {organizationContext.isUpdating
           ? t('shell.header.organizationContextUpdating')

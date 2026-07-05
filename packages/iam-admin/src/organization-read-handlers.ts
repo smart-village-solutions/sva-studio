@@ -1,3 +1,7 @@
+import {
+  resolveOrganizationContextState,
+  type ApiErrorCode,
+} from '@sva/core';
 import type {
   IamOrganizationContext,
   IamOrganizationContextOption,
@@ -5,7 +9,6 @@ import type {
   IamOrganizationListItem,
   IamOrganizationType,
 } from '@sva/core';
-import type { ApiErrorCode } from '@sva/core';
 
 import type { QueryClient } from './query-client.js';
 
@@ -260,10 +263,17 @@ export const createOrganizationReadHandlers = <TFeatureFlags>(
         })
       );
       const session = await deps.getSession(ctx.sessionId);
-      const activeOrganizationId = deps.chooseActiveOrganizationId({
-        storedActiveOrganizationId: session?.activeOrganizationId,
+      const organizationContextState = resolveOrganizationContextState({
+        roleNames: ctx.user.roles,
         organizations,
+        storedActiveOrganizationId: session?.activeOrganizationId,
+        chooseActiveOrganizationId: ({ storedActiveOrganizationId, activeOrganizations }) =>
+          deps.chooseActiveOrganizationId({
+            storedActiveOrganizationId,
+            organizations: activeOrganizations,
+          }),
       });
+      const activeOrganizationId = organizationContextState.activeOrganizationId;
 
       if (session && session.activeOrganizationId !== activeOrganizationId) {
         await deps.updateSession(ctx.sessionId, { activeOrganizationId });

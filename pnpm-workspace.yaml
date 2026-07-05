@@ -22,6 +22,8 @@ allowBuilds:
   protobufjs: false
   sharp: true
 overrides:
+  # Keep @ai-sdk/provider-utils unpinned here: Stagehand 3.6.0 still resolves against
+  # the AI SDK v2/v3 provider graph, and the old 5.0.2 override forced an incompatible tree.
   "@tanstack/react-router": "1.170.8"
   "@tanstack/router-core": "1.171.6"
   "@tanstack/start-plugin-core": "1.171.6"
@@ -45,7 +47,6 @@ overrides:
   slow-redact: "0.3.1"
   tmp: "0.2.7"
   uuid: "11.1.1"
-  "@ai-sdk/provider-utils": "5.0.2"
   js-yaml: "4.2.0"
   "@opentelemetry/core": "2.8.0"
   "@actions/github>undici": "6.27.0"

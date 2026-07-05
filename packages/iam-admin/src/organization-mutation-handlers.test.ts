@@ -134,7 +134,7 @@ const ctx = {
   sessionId: 'session-1',
   user: {
     id: 'kc-1',
-    roles: ['system_admin'],
+    roles: ['editor'],
   },
 };
 
@@ -758,6 +758,28 @@ describe('organization mutation handlers', () => {
       expect.anything(),
       expect.objectContaining({ trigger: 'organization_context_switched' })
     );
+  });
+
+  it('keeps the organization context unset for system_admin actors', async () => {
+    const handlers = createOrganizationMutationHandlers(buildDeps());
+
+    const response = await handlers.updateMyOrganizationContextInternal(
+      new Request('http://localhost/api/v1/iam/me/organization-context', { method: 'PATCH' }),
+      {
+        ...ctx,
+        user: { ...ctx.user, roles: ['system_admin'] },
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateSession).toHaveBeenCalledWith('session-1', {
+      activeOrganizationId: undefined,
+    });
+    await expect(json(response)).resolves.toMatchObject({
+      data: {
+        organizations: [expect.objectContaining({ organizationId: '11111111-1111-1111-8111-111111111111' })],
+      },
+    });
   });
 
   it('rejects inactive organizations as new active context', async () => {

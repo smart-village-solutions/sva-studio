@@ -108,7 +108,7 @@ const ctx = {
   sessionId: 'session-1',
   user: {
     id: 'kc-1',
-    roles: ['system_admin'],
+    roles: ['editor'],
   },
 };
 
@@ -163,6 +163,28 @@ describe('organization read handlers', () => {
       expect.objectContaining({ search: 'Alpha', page: 1, pageSize: 20 })
     );
     await expect(json(response)).resolves.toMatchObject({ pagination: { total: 1 }, requestId: 'req-org' });
+  });
+
+  it('returns no active organization context for system_admin users and clears stale session context', async () => {
+    const deps = buildDeps();
+    state.session = { activeOrganizationId: '11111111-1111-1111-8111-111111111111' };
+    const handlers = createOrganizationReadHandlers(deps);
+
+    const response = await handlers.getMyOrganizationContextInternal(
+      new Request('http://localhost/api/v1/iam/me/context'),
+      {
+        ...ctx,
+        user: { ...ctx.user, roles: ['system_admin'] },
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateSession).toHaveBeenCalledWith('session-1', { activeOrganizationId: undefined });
+    await expect(json(response)).resolves.toMatchObject({
+      data: {
+        organizations: [expect.objectContaining({ organizationId: '11111111-1111-1111-8111-111111111111' })],
+      },
+    });
   });
 
   it('supports a custom access authorizer for permission-based tenant organization access', async () => {

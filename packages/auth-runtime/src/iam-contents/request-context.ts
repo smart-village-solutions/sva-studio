@@ -1,10 +1,10 @@
 import {
+  resolveSessionActiveOrganizationId,
   summarizeContentAccess,
   type IamContentAccessSummary, type IamContentDomainCapability, type IamContentPrimitiveAction,
 } from '@sva/core';
 import { evaluateAuthorizeDecision, type AuthorizeRequest, type EffectivePermission } from '@sva/iam-core';
 import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
-
 import { createApiError } from '../iam-account-management/api-helpers.js';
 import { ensureFeature, getFeatureFlags } from '../iam-account-management/feature-flags.js';
 import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
@@ -310,7 +310,10 @@ export const resolveContentActor = async (
       actorDisplayName: ctx.user.id,
       requestId: actorResolution.actor.requestId,
       traceId: actorResolution.actor.traceId,
-      activeOrganizationId: session?.activeOrganizationId,
+      activeOrganizationId: resolveSessionActiveOrganizationId({
+        roleNames: ctx.user.roles,
+        activeOrganizationId: session?.activeOrganizationId,
+      }),
     },
   };
 };

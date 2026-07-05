@@ -47,7 +47,7 @@ describe('iam-admin-access', () => {
     expect(access.hasMonitoringAccess(user)).toBe(true);
     expect(access.hasInterfacesAccess(user)).toBe(true);
     expect(access.hasExperimentalAccess(user)).toBe(true);
-    expect(access.hasProtectedTenantRole(user)).toBe(false);
+    expect(access.hasSystemAdminRole(user)).toBe(false);
     expect(access.hasPlatformInstanceAdminAccess(user)).toBe(true);
     expect(access.hasUserAdminAccess(null)).toBe(false);
   });

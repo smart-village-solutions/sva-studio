@@ -322,6 +322,10 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
     resolve(testDirectory, '..', '..', '..', 'scripts/ci/patch-runtime-artifact.ts'),
     'utf8'
   );
+  const checkServerPackageRuntime = readFileSync(
+    resolve(testDirectory, '..', '..', '..', 'scripts/ci/check-server-package-runtime.ts'),
+    'utf8'
+  );
   const syncInjectedWorkspacePackages = readFileSync(
     resolve(testDirectory, '..', '..', '..', 'scripts/ci/sync-injected-workspace-packages.ts'),
     'utf8'
@@ -371,6 +375,13 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(syncInjectedWorkspacePackages, /await cp\(sourceDistDir, targetDistDir, \{ force: true, recursive: true \}\)/);
   assert.match(syncInjectedWorkspacePackages, /await replaceInjectedDist\(liveSourceDistDir, injectedCopy\.dir\)/);
   assert.match(syncInjectedWorkspacePackages, /if \(injectedCopy\.realDir === workspacePackage\.realDir\)/);
+
+  assert.match(checkServerPackageRuntime, /const replaceInjectedDist = \(sourceDistDir: string, injectedPackageDir: string\): void =>/);
+  assert.match(checkServerPackageRuntime, /const backupDistDir = path\.join\(injectedPackageDir, `\.dist-backup-\$\{swapSuffix\}`\);/);
+  assert.match(checkServerPackageRuntime, /fs\.renameSync\(targetDistDir, backupDistDir\)/);
+  assert.match(checkServerPackageRuntime, /fs\.renameSync\(stagedDistDir, targetDistDir\)/);
+  assert.match(checkServerPackageRuntime, /maxRetries: 5/);
+  assert.doesNotMatch(checkServerPackageRuntime, /fs\.rmSync\(targetDistDir, \{ recursive: true, force: true \}\)/);
 
   assert.match(
     studioProjectJson,

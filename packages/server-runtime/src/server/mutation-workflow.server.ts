@@ -47,8 +47,8 @@ export type MutationWorkflowDefinition<
   TResult,
 > = {
   readonly prepare: MutationStep<MutationBaseState<TContext>, TPrepared>;
+  readonly csrf?: MutationStep<PreparedMutation<TContext, TPrepared>, EmptyState>;
   readonly authorize: MutationStep<PreparedMutation<TContext, TPrepared>, TAuthorized>;
-  readonly csrf?: MutationStep<PreparedMutation<TContext, TPrepared & TAuthorized>, EmptyState>;
   readonly idempotency?: MutationStep<PreparedMutation<TContext, TPrepared & TAuthorized>, TIdempotency>;
   readonly parse: MutationParseStep<PreparedMutation<TContext, TPrepared & TAuthorized & TIdempotency>, TInput>;
   readonly execute: MutationExecuteStep<PreparedMutation<TContext, TPrepared & TAuthorized & TIdempotency>, TInput, TResult>;
@@ -83,33 +83,40 @@ export const createMutationWorkflow = <
       return prepared;
     }
 
-    const preparedState = mergeStepState(initialState, prepared) as PreparedMutation<TContext, TPrepared>;
-    const authorized = await definition.authorize(preparedState);
-    if (isResponse(authorized)) {
-      return authorized;
-    }
-
-    const authorizedState = mergeStepState(preparedState, authorized) as PreparedMutation<
-      TContext,
-      TPrepared & TAuthorized
-    >;
-    const csrfResult = definition.csrf ? await definition.csrf(authorizedState) : undefined;
-    if (isResponse(csrfResult)) {
-      return csrfResult;
-    }
-
-    const csrfState = mergeStepState(authorizedState, csrfResult) as PreparedMutation<TContext, TPrepared & TAuthorized>;
-    const idempotencyResult = definition.idempotency ? await definition.idempotency(csrfState) : undefined;
-    if (isResponse(idempotencyResult)) {
-      return idempotencyResult;
-    }
-
-    const idempotentState = mergeStepState(csrfState, idempotencyResult) as PreparedMutation<
+    let currentState = mergeStepState(initialState, prepared) as PreparedMutation<
       TContext,
       TPrepared & TAuthorized & TIdempotency
     >;
 
     try {
+      const preparedState = currentState as PreparedMutation<TContext, TPrepared>;
+      const csrfResult = definition.csrf ? await definition.csrf(preparedState) : undefined;
+      if (isResponse(csrfResult)) {
+        return csrfResult;
+      }
+
+      const csrfState = mergeStepState(preparedState, csrfResult) as PreparedMutation<TContext, TPrepared>;
+      currentState = csrfState as PreparedMutation<TContext, TPrepared & TAuthorized & TIdempotency>;
+      const authorized = await definition.authorize(csrfState);
+      if (isResponse(authorized)) {
+        return authorized;
+      }
+
+      const authorizedState = mergeStepState(csrfState, authorized) as PreparedMutation<
+        TContext,
+        TPrepared & TAuthorized
+      >;
+      currentState = authorizedState as PreparedMutation<TContext, TPrepared & TAuthorized & TIdempotency>;
+      const idempotencyResult = definition.idempotency ? await definition.idempotency(authorizedState) : undefined;
+      if (isResponse(idempotencyResult)) {
+        return idempotencyResult;
+      }
+
+      const idempotentState = mergeStepState(authorizedState, idempotencyResult) as PreparedMutation<
+        TContext,
+        TPrepared & TAuthorized & TIdempotency
+      >;
+      currentState = idempotentState;
       const parsed = await definition.parse(idempotentState);
       if (isResponse(parsed)) {
         return parsed;
@@ -122,7 +129,7 @@ export const createMutationWorkflow = <
       const result = await definition.execute(parsedState);
       return definition.respond(result, idempotentState);
     } catch (error) {
-      return definition.mapError(error, idempotentState);
+      return definition.mapError(error, currentState);
     }
   };
 };

@@ -764,15 +764,6 @@ describe('mainserver content route contracts', () => {
   it('rejects mutation requests when CSRF validation fails', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(new Response('CSRF', { status: 403 }));
-    state.authorizeContentPrimitiveForUser.mockResolvedValue({
-      ok: true,
-      actor: {
-        instanceId: 'de-musterhausen',
-        keycloakSubject: 'subject-1',
-        organizationId: '11111111-1111-1111-8111-111111111111',
-      },
-      permissions: [],
-    });
 
     const response = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events', {
@@ -783,7 +774,7 @@ describe('mainserver content route contracts', () => {
 
     expect(response?.status).toBe(403);
     await expect(response?.json()).resolves.toMatchObject({ error: 'csrf_validation_failed' });
-    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledTimes(1);
+    expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
   });
 
   it('returns local authorization errors before calling GraphQL', async () => {

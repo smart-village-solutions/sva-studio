@@ -19,13 +19,13 @@ describe('mutation workflow', () => {
         steps.push('prepare');
         return { requestId: 'req-1', actorId: context.userId };
       },
+      csrf: () => {
+        steps.push('csrf');
+      },
       authorize: (state) => {
         steps.push('authorize');
         expect(state.actorId).toBe('u-1');
         return { scope: 'write' };
-      },
-      csrf: () => {
-        steps.push('csrf');
       },
       idempotency: () => {
         steps.push('idempotency');
@@ -66,7 +66,7 @@ describe('mutation workflow', () => {
       actorId: 'u-1',
       requestId: 'req-1',
     });
-    expect(steps).toEqual(['prepare', 'authorize', 'csrf', 'idempotency', 'parse', 'execute', 'respond']);
+    expect(steps).toEqual(['prepare', 'csrf', 'authorize', 'idempotency', 'parse', 'execute', 'respond']);
   });
 
   it('stops before parse when authorization returns a response', async () => {
@@ -81,10 +81,8 @@ describe('mutation workflow', () => {
       { ok: true }
     >({
       prepare: () => ({ requestId: 'req-2' }),
+      csrf: () => undefined,
       authorize: () => new Response('forbidden', { status: 403 }),
-      csrf: () => {
-        throw new Error('csrf should not run');
-      },
       idempotency: () => {
         throw new Error('idempotency should not run');
       },
@@ -127,5 +125,33 @@ describe('mutation workflow', () => {
 
     expect(response.status).toBe(409);
     expect(mapError).toHaveBeenCalledWith(expect.any(Error), expect.objectContaining({ requestId: 'req-3' }));
+  });
+
+  it('uses the mapped error response when idempotency throws', async () => {
+    const mapError = vi.fn(() => new Response('mapped-idempotency', { status: 503 }));
+    const handler = createMutationWorkflow<
+      { userId: string },
+      { requestId: string },
+      { scope: 'write' },
+      { idempotencyKey: string },
+      { enabled: boolean },
+      { ok: true }
+    >({
+      prepare: () => ({ requestId: 'req-4' }),
+      csrf: () => undefined,
+      authorize: () => ({ scope: 'write' }),
+      idempotency: () => {
+        throw new Error('idem-boom');
+      },
+      parse: async () => ({ enabled: true }),
+      execute: async () => ({ ok: true }),
+      mapError,
+      respond: () => new Response('ok'),
+    });
+
+    const response = await handler(new Request('http://localhost/mutations', { method: 'POST' }), { userId: 'u-4' });
+
+    expect(response.status).toBe(503);
+    expect(mapError).toHaveBeenCalledWith(expect.any(Error), expect.objectContaining({ requestId: 'req-4', scope: 'write' }));
   });
 });

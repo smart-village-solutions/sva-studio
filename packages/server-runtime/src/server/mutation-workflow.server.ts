@@ -7,7 +7,7 @@ type MutationBaseState<TContext> = {
 
 type EmptyState = Record<never, never>;
 
-type MutationStepResult<TAdded extends object> = TAdded | Response | void;
+type MutationStepResult<TAdded extends object> = keyof TAdded extends never ? TAdded | Response | void : TAdded | Response;
 
 type MutationStep<TState extends object, TAdded extends object> = (
   state: Readonly<TState>

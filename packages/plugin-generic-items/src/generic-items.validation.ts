@@ -30,6 +30,23 @@ const createOptionalNumberStringSchema = (message: string) =>
     }
   });
 
+const createOptionalHttpsUrlSchema = (message: string) =>
+  z.string().superRefine((value: string, ctx) => {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      return;
+    }
+
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.protocol !== 'https:') {
+        ctx.addIssue({ code: 'custom', message });
+      }
+    } catch {
+      ctx.addIssue({ code: 'custom', message });
+    }
+  });
+
 export const genericItemsDetailFormSchema = z.object({
   title: z.string().trim().min(1, 'Titel ist erforderlich.'),
   genericType: z.string().trim().min(1, 'Generic-Type ist erforderlich.'),
@@ -58,7 +75,7 @@ export const genericItemsDetailFormSchema = z.object({
   ),
   webUrls: z.array(
     z.object({
-      url: z.string(),
+      url: createOptionalHttpsUrlSchema('URLs müssen mit https:// beginnen.'),
       description: z.string(),
     })
   ),
@@ -99,7 +116,7 @@ export const genericItemsDetailFormSchema = z.object({
       height: z.string(),
       width: z.string(),
       sourceUrl: z.object({
-        url: z.string(),
+        url: createOptionalHttpsUrlSchema('URLs müssen mit https:// beginnen.'),
         description: z.string(),
       }),
     })
@@ -132,7 +149,7 @@ export const genericItemsDetailFormSchema = z.object({
       types: z.string(),
       urls: z.array(
         z.object({
-          url: z.string(),
+          url: createOptionalHttpsUrlSchema('URLs müssen mit https:// beginnen.'),
           description: z.string(),
         })
       ),

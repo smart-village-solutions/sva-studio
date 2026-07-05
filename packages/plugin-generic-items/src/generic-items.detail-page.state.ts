@@ -167,7 +167,7 @@ export const useGenericItemsDetailActions = ({
       await deleteGenericItem(contentId);
       await navigate({ to: '/admin/generic-items' });
     } catch (error) {
-      setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.saveError') });
+      setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.deleteError') });
     }
   }, [contentId, mode, navigate, pt, setStatus]);
 

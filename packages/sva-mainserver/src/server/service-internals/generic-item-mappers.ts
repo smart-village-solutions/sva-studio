@@ -41,7 +41,7 @@ const genericItemSchema = z.object({
   publicationDate: z.string().nullish(),
   publishedAt: z.string().nullish(),
   genericType: z.string().nullish(),
-  payload: z.unknown(),
+  payload: z.unknown().nullish(),
   visible: z.boolean().nullish(),
   categories: z.array(categorySchema).nullish(),
   contacts: z.array(contactSchema).nullish(),

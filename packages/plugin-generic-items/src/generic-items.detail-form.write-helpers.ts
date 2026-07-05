@@ -35,7 +35,7 @@ export const mapWebUrlsToInput = (webUrls: GenericItemsDetailFormValues['webUrls
       ...(webUrl.description !== undefined ? { description: webUrl.description } : {}),
     }));
 
-  return mapped.length > 0 ? mapped : undefined;
+  return mapped;
 };
 
 export const mapContactsToInput = (contacts: GenericItemsDetailFormValues['contacts']) => {
@@ -50,7 +50,7 @@ export const mapContactsToInput = (contacts: GenericItemsDetailFormValues['conta
       [contact.firstName, contact.lastName, contact.email, contact.phone].some((value) => typeof value === 'string')
     );
 
-  return mapped.length > 0 ? mapped : undefined;
+  return mapped;
 };
 
 export const mapAddressesToInput = (addresses: GenericItemsDetailFormValues['addresses']) => {
@@ -74,33 +74,36 @@ export const mapAddressesToInput = (addresses: GenericItemsDetailFormValues['add
       )
     );
 
-  return mapped.length > 0 ? mapped : undefined;
+  return mapped;
 };
 
 export const mapDatesToInput = (dates: GenericItemsDetailFormValues['dates']) => {
   const mapped = dates
-    .map((date) => ({
-      weekday: sanitizeOptionalString(date.weekday),
-      dateStart: sanitizeOptionalString(date.dateStart),
-      dateEnd: sanitizeOptionalString(date.dateEnd),
-      timeStart: sanitizeOptionalString(date.timeStart),
-      timeEnd: sanitizeOptionalString(date.timeEnd),
-      timeDescription: sanitizeOptionalString(date.timeDescription),
-      useOnlyTimeDescription: date.useOnlyTimeDescription || undefined,
-    }))
-    .filter((date) =>
-      [
-        date.weekday,
-        date.dateStart,
-        date.dateEnd,
-        date.timeStart,
-        date.timeEnd,
-        date.timeDescription,
-        date.useOnlyTimeDescription,
-      ].some((value) => value !== undefined)
-    );
+    .map((date) => {
+      const weekday = sanitizeOptionalString(date.weekday);
+      const dateStart = sanitizeOptionalString(date.dateStart);
+      const dateEnd = sanitizeOptionalString(date.dateEnd);
+      const timeStart = sanitizeOptionalString(date.timeStart);
+      const timeEnd = sanitizeOptionalString(date.timeEnd);
+      const timeDescription = sanitizeOptionalString(date.timeDescription);
+      const hasContent = [weekday, dateStart, dateEnd, timeStart, timeEnd, timeDescription].some(
+        (value) => value !== undefined
+      );
+      return hasContent
+        ? {
+            ...(weekday !== undefined ? { weekday } : {}),
+            ...(dateStart !== undefined ? { dateStart } : {}),
+            ...(dateEnd !== undefined ? { dateEnd } : {}),
+            ...(timeStart !== undefined ? { timeStart } : {}),
+            ...(timeEnd !== undefined ? { timeEnd } : {}),
+            ...(timeDescription !== undefined ? { timeDescription } : {}),
+            useOnlyTimeDescription: date.useOnlyTimeDescription,
+          }
+        : undefined;
+    })
+    .filter((date): date is NonNullable<typeof date> => date !== undefined);
 
-  return mapped.length > 0 ? mapped : undefined;
+  return mapped;
 };
 
 export const mapContentBlocksToInput = (contentBlocks: GenericItemsDetailFormValues['contentBlocks']) => {
@@ -112,33 +115,31 @@ export const mapContentBlocksToInput = (contentBlocks: GenericItemsDetailFormVal
     }))
     .filter((contentBlock) => [contentBlock.title, contentBlock.intro, contentBlock.body].some((value) => value !== undefined));
 
-  return mapped.length > 0 ? mapped : undefined;
+  return mapped;
 };
 
 export const mapOpeningHoursToInput = (openingHours: GenericItemsDetailFormValues['openingHours']) => {
   const mapped = openingHours
-    .map((openingHour) => ({
-      weekday: sanitizeOptionalString(openingHour.weekday),
-      dateFrom: sanitizeOptionalString(openingHour.dateFrom),
-      dateTo: sanitizeOptionalString(openingHour.dateTo),
-      timeFrom: sanitizeOptionalString(openingHour.timeFrom),
-      timeTo: sanitizeOptionalString(openingHour.timeTo),
-      description: sanitizeOptionalString(openingHour.description),
-      open: openingHour.open || undefined,
-    }))
-    .filter((openingHour) =>
-      [
-        openingHour.weekday,
-        openingHour.dateFrom,
-        openingHour.dateTo,
-        openingHour.timeFrom,
-        openingHour.timeTo,
-        openingHour.description,
-        openingHour.open,
-      ].some((value) => value !== undefined)
-    );
+    .map((openingHour) => {
+      const mappedOpeningHour = {
+        weekday: sanitizeOptionalString(openingHour.weekday),
+        dateFrom: sanitizeOptionalString(openingHour.dateFrom),
+        dateTo: sanitizeOptionalString(openingHour.dateTo),
+        timeFrom: sanitizeOptionalString(openingHour.timeFrom),
+        timeTo: sanitizeOptionalString(openingHour.timeTo),
+        description: sanitizeOptionalString(openingHour.description),
+      };
+      const hasContent = Object.values(mappedOpeningHour).some((value) => value !== undefined);
+      return hasContent
+        ? {
+            ...mappedOpeningHour,
+            open: openingHour.open,
+          }
+        : undefined;
+    })
+    .filter((openingHour): openingHour is NonNullable<typeof openingHour> => openingHour !== undefined);
 
-  return mapped.length > 0 ? mapped : undefined;
+  return mapped;
 };
 
 export const mapMediaContentsToInput = (mediaContents: GenericItemsDetailFormValues['mediaContents']) => {
@@ -168,7 +169,7 @@ export const mapMediaContentsToInput = (mediaContents: GenericItemsDetailFormVal
         .some((value) => value !== undefined)
     );
 
-  return mapped.length > 0 ? mapped : undefined;
+  return mapped;
 };
 
 export const mapLocationsToInput = (locations: GenericItemsDetailFormValues['locations']) => {
@@ -192,57 +193,58 @@ export const mapLocationsToInput = (locations: GenericItemsDetailFormValues['loc
       )
     );
 
-  return mapped.length > 0 ? mapped : undefined;
+  return mapped;
 };
 
 export const mapAccessibilityInformationsToInput = (
   accessibilityInformations: GenericItemsDetailFormValues['accessibilityInformations']
 ) => {
   const mapped = accessibilityInformations
-    .map((accessibilityInformation) => ({
-      description: sanitizeOptionalString(accessibilityInformation.description),
-      types: sanitizeOptionalString(accessibilityInformation.types),
-      urls: mapWebUrlsToInput(accessibilityInformation.urls),
-    }))
-    .filter((accessibilityInformation) =>
-      [accessibilityInformation.description, accessibilityInformation.types, accessibilityInformation.urls].some(
-        (value) => value !== undefined
-      )
+    .map((accessibilityInformation) => {
+      const description = sanitizeOptionalString(accessibilityInformation.description);
+      const types = sanitizeOptionalString(accessibilityInformation.types);
+      const urls = mapWebUrlsToInput(accessibilityInformation.urls);
+      const hasContent = description !== undefined || types !== undefined || urls.length > 0;
+
+      return hasContent
+        ? {
+            ...(description !== undefined ? { description } : {}),
+            ...(types !== undefined ? { types } : {}),
+            urls,
+          }
+        : undefined;
+    })
+    .filter((accessibilityInformation): accessibilityInformation is NonNullable<typeof accessibilityInformation> =>
+      accessibilityInformation !== undefined
     );
 
-  return mapped.length > 0 ? mapped : undefined;
+  return mapped;
 };
 
 export const mapPriceInformationsToInput = (priceInformations: GenericItemsDetailFormValues['priceInformations']) => {
   const mapped = priceInformations
-    .map((priceInformation) => ({
-      name: sanitizeOptionalString(priceInformation.name),
-      amount: parseOptionalNumber(priceInformation.amount),
-      groupPrice: priceInformation.groupPrice || undefined,
-      ageFrom: parseOptionalNumber(priceInformation.ageFrom),
-      ageTo: parseOptionalNumber(priceInformation.ageTo),
-      minAdultCount: parseOptionalNumber(priceInformation.minAdultCount),
-      maxAdultCount: parseOptionalNumber(priceInformation.maxAdultCount),
-      minChildrenCount: parseOptionalNumber(priceInformation.minChildrenCount),
-      maxChildrenCount: parseOptionalNumber(priceInformation.maxChildrenCount),
-      description: sanitizeOptionalString(priceInformation.description),
-      category: sanitizeOptionalString(priceInformation.category),
-    }))
-    .filter((priceInformation) =>
-      [
-        priceInformation.name,
-        priceInformation.amount,
-        priceInformation.groupPrice,
-        priceInformation.ageFrom,
-        priceInformation.ageTo,
-        priceInformation.minAdultCount,
-        priceInformation.maxAdultCount,
-        priceInformation.minChildrenCount,
-        priceInformation.maxChildrenCount,
-        priceInformation.description,
-        priceInformation.category,
-      ].some((value) => value !== undefined)
-    );
+    .map((priceInformation) => {
+      const mappedPriceInformation = {
+        name: sanitizeOptionalString(priceInformation.name),
+        amount: parseOptionalNumber(priceInformation.amount),
+        ageFrom: parseOptionalNumber(priceInformation.ageFrom),
+        ageTo: parseOptionalNumber(priceInformation.ageTo),
+        minAdultCount: parseOptionalNumber(priceInformation.minAdultCount),
+        maxAdultCount: parseOptionalNumber(priceInformation.maxAdultCount),
+        minChildrenCount: parseOptionalNumber(priceInformation.minChildrenCount),
+        maxChildrenCount: parseOptionalNumber(priceInformation.maxChildrenCount),
+        description: sanitizeOptionalString(priceInformation.description),
+        category: sanitizeOptionalString(priceInformation.category),
+      };
+      const hasContent = Object.values(mappedPriceInformation).some((value) => value !== undefined);
+      return hasContent
+        ? {
+            ...mappedPriceInformation,
+            groupPrice: priceInformation.groupPrice,
+          }
+        : undefined;
+    })
+    .filter((priceInformation): priceInformation is NonNullable<typeof priceInformation> => priceInformation !== undefined);
 
-  return mapped.length > 0 ? mapped : undefined;
+  return mapped;
 };

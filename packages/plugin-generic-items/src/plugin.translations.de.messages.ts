@@ -2,10 +2,13 @@ export const genericItemsTranslationsDeMessages = {
   content: {
     blockItem: 'Inhaltsblock',
     addressItem: 'Adresse',
+    contactItem: 'Kontakt',
+    linkItem: 'Link',
     openingHourItem: 'Öffnungszeit',
     locationItem: 'Ort',
     accessibilityInformationItem: 'Barrierefreiheitsangabe',
     priceInformationItem: 'Preiseintrag',
+    dateItem: 'Termin',
   },
   values: {
     notAvailable: 'Nicht verfügbar',
@@ -56,6 +59,7 @@ export const genericItemsTranslationsDeMessages = {
     loadError: 'Generic Items konnten nicht geladen werden.',
     missingContent: 'Das angeforderte Generic Item konnte nicht geladen werden.',
     saveError: 'Generic Item konnte nicht gespeichert werden.',
+    deleteError: 'Generic Item konnte nicht gelöscht werden.',
     createSuccess: 'Generic Item wurde erstellt.',
     updateSuccess: 'Generic Item wurde aktualisiert.',
     imagePickerEmpty: 'Keine passenden Bilder gefunden.',

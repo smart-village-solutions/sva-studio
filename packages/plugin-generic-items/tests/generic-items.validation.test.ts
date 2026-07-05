@@ -164,4 +164,69 @@ describe('generic items validation', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('rejects non-https urls in structured url fields', () => {
+    const result = genericItemsDetailFormSchema.safeParse({
+      title: 'Titel',
+      genericType: 'faq',
+      teaser: '',
+      visible: true,
+      author: '',
+      keywords: '',
+      externalId: '',
+      publicationDate: '',
+      publishedAt: '',
+      categories: [],
+      contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
+      webUrls: [{ url: 'http://example.org', description: '' }],
+      addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
+      contentBlocks: [{ title: '', intro: '', body: '' }],
+      openingHours: [
+        { weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false },
+      ],
+      mediaContents: [
+        {
+          captionText: '',
+          copyright: '',
+          contentType: '',
+          height: '',
+          width: '',
+          sourceUrl: { url: 'http://example.org/image.jpg', description: '' },
+        },
+      ],
+      locations: [{ name: '', department: '', district: '', regionName: '', state: '', latitude: '', longitude: '' }],
+      dates: [
+        {
+          weekday: '',
+          dateStart: '',
+          dateEnd: '',
+          timeStart: '',
+          timeEnd: '',
+          timeDescription: '',
+          useOnlyTimeDescription: false,
+        },
+      ],
+      accessibilityInformations: [
+        { description: '', types: '', urls: [{ url: 'http://example.org/accessibility', description: '' }] },
+      ],
+      priceInformations: [
+        {
+          name: '',
+          amount: '',
+          groupPrice: false,
+          ageFrom: '',
+          ageTo: '',
+          minAdultCount: '',
+          maxAdultCount: '',
+          minChildrenCount: '',
+          maxChildrenCount: '',
+          description: '',
+          category: '',
+        },
+      ],
+      payloadText: '{}',
+    });
+
+    expect(result.success).toBe(false);
+  });
 });

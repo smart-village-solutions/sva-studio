@@ -224,7 +224,9 @@ describe('generic items detail form mapping', () => {
         geoLocation: { latitude: 51.482, longitude: 7.2166 },
       },
     ]);
-    expect(result.dates).toEqual([{ weekday: 'Freitag', dateStart: '2026-07-10T09:00' }]);
+    expect(result.dates).toEqual([
+      { weekday: 'Freitag', dateStart: '2026-07-10T09:00', useOnlyTimeDescription: false },
+    ]);
     expect(result.contentBlocks).toEqual([{ title: 'Frage', intro: 'Kurzintro', body: '<p>Antwort</p>' }]);
     expect(result.accessibilityInformations).toEqual([
       {
@@ -248,5 +250,79 @@ describe('generic items detail form mapping', () => {
         category: 'Erwachsene',
       },
     ]);
+  });
+
+  it('preserves explicit false values and empty arrays so existing data can be cleared', () => {
+    const result = mapGenericItemsDetailFormValuesToInput({
+      title: 'Freier Eintrag',
+      genericType: 'faq',
+      teaser: '',
+      visible: false,
+      author: '',
+      keywords: '',
+      externalId: '',
+      publicationDate: '',
+      publishedAt: '',
+      categories: [],
+      contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
+      webUrls: [{ url: '', description: '' }],
+      addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
+      contentBlocks: [{ title: '', intro: '', body: '' }],
+      openingHours: [
+        { weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false },
+      ],
+      mediaContents: [
+        {
+          captionText: '',
+          copyright: '',
+          contentType: '',
+          height: '',
+          width: '',
+          sourceUrl: { url: '', description: '' },
+        },
+      ],
+      locations: [{ name: '', department: '', district: '', regionName: '', state: '', latitude: '', longitude: '' }],
+      dates: [
+        {
+          weekday: '',
+          dateStart: '',
+          dateEnd: '',
+          timeStart: '',
+          timeEnd: '',
+          timeDescription: '',
+          useOnlyTimeDescription: false,
+        },
+      ],
+      accessibilityInformations: [{ description: '', types: '', urls: [{ url: '', description: '' }] }],
+      priceInformations: [
+        {
+          name: '',
+          amount: '',
+          groupPrice: false,
+          ageFrom: '',
+          ageTo: '',
+          minAdultCount: '',
+          maxAdultCount: '',
+          minChildrenCount: '',
+          maxChildrenCount: '',
+          description: '',
+          category: '',
+        },
+      ],
+      payloadText: '{}',
+    });
+
+    expect(result.visible).toBe(false);
+    expect(result.categories).toEqual([]);
+    expect(result.webUrls).toEqual([]);
+    expect(result.contacts).toEqual([]);
+    expect(result.addresses).toEqual([]);
+    expect(result.contentBlocks).toEqual([]);
+    expect(result.openingHours).toEqual([]);
+    expect(result.mediaContents).toEqual([]);
+    expect(result.locations).toEqual([]);
+    expect(result.dates).toEqual([]);
+    expect(result.accessibilityInformations).toEqual([]);
+    expect(result.priceInformations).toEqual([]);
   });
 });

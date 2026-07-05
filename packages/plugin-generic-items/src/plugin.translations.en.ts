@@ -1,5 +1,3 @@
-export const genericItemsTranslationsEn = {
-  genericItems: {
-    navigation: { title: 'Generic Items' },
-  },
-} as const;
+import { genericItemsTranslationsDe } from './plugin.translations.de.js';
+
+export const genericItemsTranslationsEn = genericItemsTranslationsDe;

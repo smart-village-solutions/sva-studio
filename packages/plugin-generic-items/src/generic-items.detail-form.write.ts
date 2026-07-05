@@ -26,14 +26,10 @@ export const mapGenericItemsDetailFormValuesToInput = (
   externalId: values.externalId.trim() || undefined,
   publicationDate: values.publicationDate.trim() || undefined,
   publishedAt: values.publishedAt.trim() || undefined,
-  ...((values.categories ?? []).length > 0
-    ? {
-        categoryName: values.categories[0]?.trim(),
-        categories: Array.from(new Set((values.categories ?? []).map((entry) => entry.trim()).filter(Boolean))).map((name) => ({
-          name,
-        })),
-      }
-    : {}),
+  categoryName: values.categories[0]?.trim() || undefined,
+  categories: Array.from(new Set((values.categories ?? []).map((entry) => entry.trim()).filter(Boolean))).map((name) => ({
+    name,
+  })),
   contacts: mapContactsToInput(values.contacts),
   webUrls: mapWebUrlsToInput(values.webUrls),
   addresses: mapAddressesToInput(values.addresses),

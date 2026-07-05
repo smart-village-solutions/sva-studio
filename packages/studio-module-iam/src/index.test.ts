@@ -15,6 +15,7 @@ describe('@sva/studio-module-iam', () => {
       'news',
       'events',
       'poi',
+      'generic-items',
       'surveys',
       'waste-management',
     ]);
@@ -24,6 +25,7 @@ describe('@sva/studio-module-iam', () => {
       'news',
       'events',
       'poi',
+      'generic-items',
       'surveys',
       'waste-management',
       'media',
@@ -91,6 +93,28 @@ describe('@sva/studio-module-iam', () => {
         permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'],
       },
     ]);
+    expect(getStudioModuleIamContract('generic-items')).toMatchObject({
+      moduleId: 'generic-items',
+      namespace: 'generic-items',
+      ownerPluginId: 'generic-items',
+      permissionIds: [
+        'generic-items.read',
+        'generic-items.create',
+        'generic-items.update',
+        'generic-items.delete',
+      ],
+      tenantBootstrapRoles: [
+        {
+          roleName: 'system_admin',
+          permissionIds: [
+            'generic-items.read',
+            'generic-items.create',
+            'generic-items.update',
+            'generic-items.delete',
+          ],
+        },
+      ],
+    });
     expect(getStudioModuleIamContract('surveys')).toMatchObject({
       moduleId: 'surveys',
       namespace: 'surveys',

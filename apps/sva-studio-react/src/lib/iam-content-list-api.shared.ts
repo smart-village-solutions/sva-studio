@@ -8,6 +8,7 @@ const MAIN_SERVER_CONTENT_TYPES = new Set([
   'news.article',
   'events.event-record',
   'poi.point-of-interest',
+  'generic-items.generic-item',
   'surveys.survey',
 ]);
 export const EMPTY_VISIBLE_TYPE_SENTINEL = '__no_readable_content__';
@@ -15,6 +16,7 @@ export type MainserverContentType =
   | 'news.article'
   | 'events.event-record'
   | 'poi.point-of-interest'
+  | 'generic-items.generic-item'
   | 'surveys.survey';
 
 const API_ERROR_CODES = new Set<ApiErrorCode>([

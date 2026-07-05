@@ -12,6 +12,7 @@ import {
 } from '@sva/auth-runtime/server';
 import {
   listSvaMainserverEvents,
+  listSvaMainserverGenericItems,
   listSvaMainserverNews,
   listSvaMainserverPoi,
   listSvaMainserverSurveys,
@@ -30,7 +31,7 @@ import {
   buildProjectionReadVisibilityRules,
   type ProjectionReadVisibilityRule,
 } from './iam-content-list-visibility.js';
-import { mapEventItem, mapNewsItem, mapPoiItem, mapSurveyItem } from './iam-content-list-mainserver.js';
+import { mapEventItem, mapGenericItem, mapNewsItem, mapPoiItem, mapSurveyItem } from './iam-content-list-mainserver.js';
 
 const MAIN_SERVER_SYNC_STALE_MS = 5 * 60 * 1000;
 const MAIN_SERVER_SYNC_POLL_INTERVAL_MS = 60 * 1000;
@@ -283,6 +284,7 @@ const toMainserverContentType = (value: string): MainserverContentType | null =>
     value === 'news.article' ||
     value === 'events.event-record' ||
     value === 'poi.point-of-interest' ||
+    value === 'generic-items.generic-item' ||
     value === 'surveys.survey'
   ) {
     return value;
@@ -799,6 +801,24 @@ const refreshMainserverProjection = async (
         ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
         credentialSource,
         sourceEntityType: 'poi.point-of-interest',
+        sourceEntityId: item.id,
+      }));
+    } else if (contentType === 'generic-items.generic-item') {
+      const result = await fetchAllPages((pageQuery) =>
+        listSvaMainserverGenericItems({
+          ...connection,
+          ...pageQuery,
+        })
+      );
+      const credentialSource = resolveMainserverProjectionCredentialSource(
+        result,
+        projectedOrganizationId
+      );
+      rows = result.data.map((item) => ({
+        ...mapGenericItem(item, instanceId, []),
+        ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+        credentialSource,
+        sourceEntityType: 'generic-items.generic-item',
         sourceEntityId: item.id,
       }));
     } else if (contentType === 'surveys.survey') {

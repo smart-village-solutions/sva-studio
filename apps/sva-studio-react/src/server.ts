@@ -64,6 +64,9 @@ let dispatchMainserverPoiRequestPromise:
 let dispatchMainserverSurveysRequestPromise:
   | Promise<typeof import('./lib/mainserver-surveys-api.server')['dispatchMainserverSurveysRequest']>
   | null = null;
+let dispatchMainserverGenericItemsRequestPromise:
+  | Promise<typeof import('./lib/mainserver-generic-items-api.server')['dispatchMainserverGenericItemsRequest']>
+  | null = null;
 let dispatchMainserverCategoriesRequestPromise:
   | Promise<typeof import('./lib/mainserver-categories-api.server')['dispatchMainserverCategoriesRequest']>
   | null = null;
@@ -122,6 +125,12 @@ const getDispatchMainserverSurveysRequest = async () => {
     (mod) => mod.dispatchMainserverSurveysRequest
   );
   return dispatchMainserverSurveysRequestPromise;
+};
+const getDispatchMainserverGenericItemsRequest = async () => {
+  dispatchMainserverGenericItemsRequestPromise ??= import('./lib/mainserver-generic-items-api.server').then(
+    (mod) => mod.dispatchMainserverGenericItemsRequest
+  );
+  return dispatchMainserverGenericItemsRequestPromise;
 };
 const getDispatchMainserverCategoriesRequest = async () => {
   dispatchMainserverCategoriesRequestPromise ??= import('./lib/mainserver-categories-api.server').then(
@@ -271,6 +280,16 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       status: mainserverSurveysResponse.status,
     });
     return mainserverSurveysResponse;
+  }
+
+  const dispatchMainserverGenericItemsRequest = await getDispatchMainserverGenericItemsRequest();
+  const mainserverGenericItemsResponse = await dispatchMainserverGenericItemsRequest(request);
+
+  if (mainserverGenericItemsResponse) {
+    await logServerEntryDebug('Server entry mainserver generic items route dispatched', {
+      status: mainserverGenericItemsResponse.status,
+    });
+    return mainserverGenericItemsResponse;
   }
 
   const dispatchMainserverCategoriesRequest = await getDispatchMainserverCategoriesRequest();

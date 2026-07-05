@@ -25,17 +25,15 @@ const GenericItemsIdentityCard = ({
   availableCategories,
   categoryOptionsError,
   categoryOptionsLoading,
-  control,
   labels,
 }: Readonly<
   Pick<
     GenericItemsDetailBasisTabProps,
     'availableCategories' | 'categoryOptionsError' | 'categoryOptionsLoading' | 'labels'
-  > & {
-    control: ReturnType<typeof useFormContext<GenericItemsDetailFormValues>>['control'];
-  }
+  >
 >) => {
   const {
+    control,
     register,
     formState: { errors },
   } = useFormContext<GenericItemsDetailFormValues>();
@@ -50,22 +48,28 @@ const GenericItemsIdentityCard = ({
 
   return (
     <GenericItemsDetailCard title={labels.identityTitle} description={labels.identityDescription}>
-      <StudioField {...titleField} label={labels.title} description="Pflichtfeld für die redaktionelle Überschrift.">
+      <StudioField {...titleField} label={labels.title} description={labels.titleHelp}>
         <Input {...titleField.controlProps} {...register('title')} />
       </StudioField>
       <StudioField
         {...genericTypeField}
         label={labels.genericType}
-        description="Freitext-Marker für den inhaltlichen Typ, z. B. faq oder stellenanzeige."
+        description={labels.genericTypeHelp}
       >
         <Input {...genericTypeField.controlProps} {...register('genericType')} />
       </StudioField>
-      <StudioField
-        {...visibleField}
-        label={labels.visible}
-        description="Steuert, ob der Eintrag grundsätzlich sichtbar ausgeliefert werden darf."
-      >
-        <Checkbox checked={undefined} {...visibleField.controlProps} {...register('visible')} />
+      <StudioField {...visibleField} label={labels.visible} description={labels.visibleHelp}>
+        <Controller
+          name="visible"
+          control={control}
+          render={({ field }) => (
+            <Checkbox
+              {...visibleField.controlProps}
+              checked={Boolean(field.value)}
+              onChange={(event) => field.onChange(event.currentTarget.checked)}
+            />
+          )}
+        />
       </StudioField>
       <StudioField {...categoriesField} label={labels.categories} description={labels.categoriesHelp}>
         <Controller
@@ -116,7 +120,7 @@ const GenericItemsMetaCard = ({ labels }: Readonly<Pick<GenericItemsDetailBasisT
         <StudioField {...authorField} label={labels.author}>
           <Input {...authorField.controlProps} {...register('author')} />
         </StudioField>
-        <StudioField {...keywordsField} label={labels.keywords} description="Freitext oder kommagetrennte Schlagwörter.">
+        <StudioField {...keywordsField} label={labels.keywords} description={labels.keywordsHelp}>
           <Input {...keywordsField.controlProps} {...register('keywords')} />
         </StudioField>
       </StudioFieldGroup>
@@ -124,11 +128,11 @@ const GenericItemsMetaCard = ({ labels }: Readonly<Pick<GenericItemsDetailBasisT
         <StudioField {...externalIdField} label={labels.externalId}>
           <Input {...externalIdField.controlProps} {...register('externalId')} />
         </StudioField>
-        <StudioField {...publicationDateField} label={labels.publicationDate} description="ISO-Datum oder freier technischer Wert.">
+        <StudioField {...publicationDateField} label={labels.publicationDate} description={labels.publicationDateHelp}>
           <Input {...publicationDateField.controlProps} {...register('publicationDate')} />
         </StudioField>
       </StudioFieldGroup>
-      <StudioField {...publishedAtField} label={labels.publishedAt} description="Optionaler Zeitstempel für Veröffentlichungslogik.">
+      <StudioField {...publishedAtField} label={labels.publishedAt} description={labels.publishedAtHelp}>
         <Input {...publishedAtField.controlProps} {...register('publishedAt')} />
       </StudioField>
     </GenericItemsDetailCard>
@@ -141,14 +145,12 @@ export const GenericItemsDetailBasisTab = ({
   categoryOptionsLoading,
   labels,
 }: GenericItemsDetailBasisTabProps) => {
-  const { control } = useFormContext<GenericItemsDetailFormValues>();
   return (
     <div className="space-y-4">
       <GenericItemsIdentityCard
         availableCategories={availableCategories}
         categoryOptionsError={categoryOptionsError}
         categoryOptionsLoading={categoryOptionsLoading}
-        control={control}
         labels={labels}
       />
       <GenericItemsMetaCard labels={labels} />

@@ -26,7 +26,7 @@ export const GenericItemsDetailSettingsTab = ({
         <StudioField
           {...payloadField}
           label={labels.payload}
-          description="Freies JSON-Objekt für plugin-spezifische Zusatzdaten. Dieser Bereich bleibt absichtlich offen."
+          description={labels.payloadHelp}
         >
           <Textarea {...payloadField.controlProps} {...register('payloadText')} className="min-h-40 font-mono" />
         </StudioField>

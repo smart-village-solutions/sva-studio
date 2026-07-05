@@ -105,16 +105,14 @@ export const GenericItemsDetailContentTab = ({
   return (
     <div className="space-y-4">
       <GenericItemsDetailCard title={labels.textTitle} description={labels.textDescription}>
-        <StudioField {...teaserField} label={labels.teaser} description="Kurzer redaktioneller Anreißer für Listen und Vorschauen.">
+        <StudioField {...teaserField} label={labels.teaser} description={labels.teaserHelp}>
           <Textarea {...teaserField.controlProps} {...register('teaser')} />
         </StudioField>
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">{labels.contentBlocks}</p>
-              <p className="text-sm text-muted-foreground">
-                Strukturierte Redaktionsblöcke mit Titel, kurzem Intro und Richtext-Inhalt.
-              </p>
+              <p className="text-sm text-muted-foreground">{labels.contentBlocksHelp}</p>
             </div>
             <Button
               type="button"
@@ -198,9 +196,7 @@ export const GenericItemsDetailContentTab = ({
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">{labels.addresses}</p>
-              <p className="text-sm text-muted-foreground">
-                Postadressen als strukturierte Liste, optional mit Typ und Koordinaten.
-              </p>
+              <p className="text-sm text-muted-foreground">{labels.addressesHelp}</p>
             </div>
             <Button
               type="button"
@@ -277,9 +273,7 @@ export const GenericItemsDetailContentTab = ({
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">{labels.contacts}</p>
-              <p className="text-sm text-muted-foreground">
-                Ansprechpartner mit Namen, E-Mail und Telefon als bearbeitbare Liste.
-              </p>
+              <p className="text-sm text-muted-foreground">{labels.contactsHelp}</p>
             </div>
             <Button
               type="button"
@@ -342,9 +336,7 @@ export const GenericItemsDetailContentTab = ({
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">{labels.locations}</p>
-              <p className="text-sm text-muted-foreground">
-                Ortsbezüge mit Namen, Verwaltungsfeldern und optionalen Kartenkoordinaten.
-              </p>
+              <p className="text-sm text-muted-foreground">{labels.locationsHelp}</p>
             </div>
             <Button
               type="button"
@@ -464,7 +456,7 @@ export const GenericItemsDetailContentTab = ({
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">{labels.webUrls}</p>
-              <p className="text-sm text-muted-foreground">Externe Links mit optionaler Kurzbeschreibung.</p>
+              <p className="text-sm text-muted-foreground">{labels.webUrlsHelp}</p>
             </div>
             <Button
               type="button"
@@ -516,9 +508,7 @@ export const GenericItemsDetailContentTab = ({
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">{labels.accessibilityInformations}</p>
-              <p className="text-sm text-muted-foreground">
-                Hinweise zur Barrierefreiheit mit Freitext, Typen und optionalen Verweisen.
-              </p>
+              <p className="text-sm text-muted-foreground">{labels.accessibilityInformationsHelp}</p>
             </div>
             <Button
               type="button"
@@ -655,9 +645,7 @@ export const GenericItemsDetailContentTab = ({
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">{labels.priceInformations}</p>
-              <p className="text-sm text-muted-foreground">
-                Preise und Tariflogiken als strukturierte Liste mit optionalen Mengen- und Altersgrenzen.
-              </p>
+              <p className="text-sm text-muted-foreground">{labels.priceInformationsHelp}</p>
             </div>
             <Button
               type="button"
@@ -819,9 +807,7 @@ export const GenericItemsDetailContentTab = ({
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">{labels.openingHours}</p>
-              <p className="text-sm text-muted-foreground">
-                Mehrere Öffnungsfenster mit Datum, Uhrzeit, Wochentag und Freitext pflegen.
-              </p>
+              <p className="text-sm text-muted-foreground">{labels.openingHoursHelp}</p>
             </div>
             <Button
               type="button"
@@ -948,7 +934,7 @@ export const GenericItemsDetailContentTab = ({
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">{labels.dates}</p>
-              <p className="text-sm text-muted-foreground">Einzeltermine oder Zeiträume als bearbeitbare Liste.</p>
+              <p className="text-sm text-muted-foreground">{labels.datesHelp}</p>
             </div>
             <Button
               type="button"

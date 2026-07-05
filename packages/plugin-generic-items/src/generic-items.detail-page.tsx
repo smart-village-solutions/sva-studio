@@ -35,11 +35,13 @@ const createSummaryErrors = (errors: ReturnType<typeof useForm<GenericItemsDetai
 };
 
 const DetailPageActions = ({
+  disableActions,
   mode,
   onDelete,
   onSubmit,
   pt,
 }: Readonly<{
+  disableActions: boolean;
   mode: 'create' | 'edit';
   onDelete: () => Promise<void>;
   onSubmit: () => Promise<void>;
@@ -50,11 +52,11 @@ const DetailPageActions = ({
       <Link to="/admin/generic-items">{pt('actions.back')}</Link>
     </Button>
     {mode === 'edit' ? (
-      <Button type="button" variant="outline" onClick={() => void onDelete()}>
+      <Button type="button" variant="outline" disabled={disableActions} onClick={() => void onDelete()}>
         {pt('actions.delete')}
       </Button>
     ) : null}
-    <Button type="button" onClick={() => void onSubmit()}>
+    <Button type="button" disabled={disableActions} onClick={() => void onSubmit()}>
       {mode === 'create' ? pt('actions.create') : pt('actions.update')}
     </Button>
   </div>
@@ -97,7 +99,15 @@ export function GenericItemsDetailPage({
       <StudioDetailPageTemplate
         title={mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
         description={mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
-        actions={<DetailPageActions mode={mode} onDelete={handleDelete} onSubmit={onSubmit} pt={pt} />}
+        actions={
+          <DetailPageActions
+            disableActions={methods.formState.isSubmitting}
+            mode={mode}
+            onDelete={handleDelete}
+            onSubmit={onSubmit}
+            pt={pt}
+          />
+        }
       >
         <StudioFormSummaryErrors errors={summaryErrors} />
         {status ? (

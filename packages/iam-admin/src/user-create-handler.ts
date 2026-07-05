@@ -1,3 +1,9 @@
+import { createMutationWorkflow } from '@sva/server-runtime';
+import {
+  executeCreateUserMutation,
+  reserveCreateUserMutation,
+} from './user-create-handler-support.js';
+
 import type { IdempotencyReserveResult } from './types.js';
 
 export type CreateAuthenticatedRequestContext = {
@@ -59,6 +65,11 @@ export type ParsedCreateUserBody<TPayload extends CreateUserPayloadShape> =
   | { readonly ok: true; readonly data: TPayload; readonly rawBody: string }
   | { readonly ok: false };
 
+type ParsedCreateUserSuccess<TPayload extends CreateUserPayloadShape> = Extract<
+  ParsedCreateUserBody<TPayload>,
+  { readonly ok: true }
+>;
+
 export type CreateUserApiErrorCode = 'invalid_request' | 'idempotency_key_reuse';
 
 export type CreateUserHandlerDeps<
@@ -82,6 +93,9 @@ export type CreateUserHandlerDeps<
     message: string,
     requestId?: string
   ) => Response;
+  readonly logger: {
+    readonly error: (message: string, meta: Readonly<Record<string, unknown>>) => void;
+  };
   readonly createIdpUnavailableBody: (requestId?: string) => unknown;
   readonly executeCreateUser: (input: {
     readonly actor: CreateUserActor & { readonly actorRoles: readonly string[] };
@@ -116,40 +130,14 @@ export type CreateUserHandlerDeps<
   readonly toPayloadHash: (rawBody: string) => string;
 };
 
-const CREATE_USER_ENDPOINT = 'POST:/api/v1/iam/users';
-
-const resolveResponseBody = async (response: Response): Promise<unknown> => {
-  try {
-    return await response.clone().json();
-  } catch {
-    return {
-      error: {
-        code: 'internal_error',
-        message: 'Nutzer konnte nicht erstellt werden.',
-      },
-    };
-  }
+type PreparedCreateUserMutation = {
+  readonly actor: CreateUserActor;
+  readonly actorSubject: string;
 };
 
-const failCreateIdempotency = async (
-  deps: Pick<CreateUserHandlerDeps, 'completeIdempotency' | 'jsonResponse'>,
-  input: {
-    readonly actor: CreateUserActor;
-    readonly idempotencyKey: string;
-    readonly responseStatus: number;
-    readonly responseBody: unknown;
-  }
-): Promise<Response> => {
-  await deps.completeIdempotency({
-    instanceId: input.actor.instanceId,
-    actorAccountId: input.actor.actorAccountId,
-    endpoint: CREATE_USER_ENDPOINT,
-    idempotencyKey: input.idempotencyKey,
-    status: 'FAILED',
-    responseStatus: input.responseStatus,
-    responseBody: input.responseBody,
-  });
-  return deps.jsonResponse(input.responseStatus, input.responseBody);
+type ReservedCreateUserMutation<TPayload extends CreateUserPayloadShape> = {
+  readonly idempotencyKey: string;
+  readonly parsed: ParsedCreateUserSuccess<TPayload>;
 };
 
 export const createCreateUserHandlerInternal =
@@ -159,94 +147,45 @@ export const createCreateUserHandlerInternal =
     TResult,
   >(
     deps: CreateUserHandlerDeps<TPayload, TIdentityProvider, TResult>
-  ) =>
-  async (request: Request, ctx: CreateAuthenticatedRequestContext): Promise<Response> => {
-    const actorContext = await deps.resolveCreateUserActorContext(request, ctx);
-    if (actorContext instanceof Response) {
-      return actorContext;
-    }
+  ) => {
+    const workflow = createMutationWorkflow<
+      CreateAuthenticatedRequestContext,
+      PreparedCreateUserMutation,
+      Record<never, never>,
+      ReservedCreateUserMutation<TPayload>,
+      ParsedCreateUserSuccess<TPayload>,
+      Response
+    >({
+      prepare: async ({ request, context }) => {
+        const actorContext = await deps.resolveCreateUserActorContext(request, context);
+        if (actorContext instanceof Response) {
+          return actorContext;
+        }
 
-    const idempotencyKey = deps.requireIdempotencyKey(request, actorContext.actor.requestId);
-    if ('error' in idempotencyKey) {
-      return idempotencyKey.error;
-    }
-
-    const parsed = await deps.parseCreateUserBody(request);
-    if (!parsed.ok) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actorContext.actor.requestId);
-    }
-
-    const reserve = await deps.reserveIdempotency({
-      instanceId: actorContext.actor.instanceId,
-      actorAccountId: actorContext.actor.actorAccountId,
-      endpoint: CREATE_USER_ENDPOINT,
-      idempotencyKey: idempotencyKey.key,
-      payloadHash: deps.toPayloadHash(parsed.rawBody),
-    });
-    if (reserve.status === 'replay') {
-      return deps.jsonResponse(reserve.responseStatus, reserve.responseBody);
-    }
-    if (reserve.status === 'conflict') {
-      return deps.createApiError(409, 'idempotency_key_reuse', reserve.message, actorContext.actor.requestId);
-    }
-
-    const identityProvider = await deps.resolveIdentityProviderForInstance(actorContext.actor.instanceId, {
-      executionMode: 'tenant_admin',
-    });
-    if (!identityProvider) {
-      return failCreateIdempotency(deps, {
-        actor: actorContext.actor,
-        idempotencyKey: idempotencyKey.key,
-        responseStatus: 503,
-        responseBody: deps.createIdpUnavailableBody(actorContext.actor.requestId),
-      });
-    }
-
-    try {
-      const result = await deps.executeCreateUser({
-        actor: {
-          ...actorContext.actor,
-          actorRoles: ctx.user.roles,
-        },
-        actorSubject: actorContext.actorSubject,
-        identityProvider,
-        payload: parsed.data,
-      });
-      const responseBody = deps.asApiItem(result, actorContext.actor.requestId);
-      await deps.completeIdempotency({
-        instanceId: actorContext.actor.instanceId,
-        actorAccountId: actorContext.actor.actorAccountId,
-        endpoint: CREATE_USER_ENDPOINT,
-        idempotencyKey: idempotencyKey.key,
-        status: 'COMPLETED',
-        responseStatus: 201,
-        responseBody,
-      });
-      deps.iamUserOperationsCounter.add(1, { action: 'create_user', result: 'success' });
-      return deps.jsonResponse(201, responseBody);
-    } catch (error) {
-      if (error instanceof Response) {
-        const responseBody = await resolveResponseBody(error);
-        deps.iamUserOperationsCounter.add(1, { action: 'create_user', result: 'failure' });
-        return failCreateIdempotency(deps, {
-          actor: actorContext.actor,
-          idempotencyKey: idempotencyKey.key,
-          responseStatus: error.status,
-          responseBody,
-        });
-      }
-      deps.iamUserOperationsCounter.add(1, { action: 'create_user', result: 'failure' });
-      return failCreateIdempotency(deps, {
-        actor: actorContext.actor,
-        idempotencyKey: idempotencyKey.key,
-        responseStatus: 500,
-        responseBody: {
+        return actorContext;
+      },
+      authorize: async () => ({}),
+      idempotency: async ({ request, actor }) => await reserveCreateUserMutation(deps, { request, actor }),
+      parse: async ({ parsed }) => parsed,
+      execute: async ({ actor, actorSubject, context, idempotencyKey, input: parsed }) =>
+        await executeCreateUserMutation(deps, {
+          actor,
+          actorRoles: context.user.roles,
+          actorSubject,
+          idempotencyKey,
+          parsed,
+        }),
+      mapError: (_error, state) =>
+        deps.jsonResponse(500, {
           error: {
             code: 'internal_error',
             message: 'Nutzer konnte nicht erstellt werden.',
           },
-          ...(actorContext.actor.requestId ? { requestId: actorContext.actor.requestId } : {}),
-        },
-      });
-    }
+          ...(state.actor?.requestId ? { requestId: state.actor.requestId } : {}),
+        }),
+      respond: (response) => response,
+    });
+
+    return (request: Request, context: CreateAuthenticatedRequestContext): Promise<Response> =>
+      workflow(request, context);
   };

@@ -26,10 +26,14 @@ vi.mock('@sva/auth-runtime/server', () => ({
   validateCsrf: state.validateCsrf,
 }));
 
-vi.mock('@sva/server-runtime', () => ({
-  createSdkLogger: state.createSdkLogger,
-  getWorkspaceContext: state.getWorkspaceContext,
-}));
+vi.mock('@sva/server-runtime', async () => {
+  const actual = await vi.importActual<typeof import('@sva/server-runtime')>('@sva/server-runtime');
+  return {
+    ...actual,
+    createSdkLogger: state.createSdkLogger,
+    getWorkspaceContext: state.getWorkspaceContext,
+  };
+});
 
 vi.mock('./service.js', () => ({
   SvaMainserverError: class SvaMainserverError extends Error {
@@ -936,6 +940,34 @@ describe('mainserver content route contracts', () => {
       error: 'internal_error',
       message: 'Mainserver-Anfrage ist fehlgeschlagen.',
     });
+    expect(state.loggerWarn).toHaveBeenNthCalledWith(
+      1,
+      'Mainserver content route failed',
+      expect.objectContaining({
+        operation: 'mainserver_content_request',
+        request_id: 'req-1',
+        trace_id: 'trace-1',
+        actor_id: 'subject-1',
+        instance_id: 'de-musterhausen',
+        content_type: 'events.event-record',
+        method: 'GET',
+        error_code: 'forbidden',
+      })
+    );
+    expect(state.loggerWarn).toHaveBeenNthCalledWith(
+      2,
+      'Mainserver content route failed',
+      expect.objectContaining({
+        operation: 'mainserver_content_request',
+        request_id: 'req-1',
+        trace_id: 'trace-1',
+        actor_id: 'subject-1',
+        instance_id: 'de-musterhausen',
+        content_type: 'events.event-record',
+        method: 'GET',
+        error_code: 'internal_error',
+      })
+    );
   });
 
   it('keeps nested event category children when parsing mutations', async () => {

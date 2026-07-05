@@ -8,7 +8,7 @@ export const PLATFORM_ROLE_LEVEL_BY_NAME: Readonly<Record<string, number>> = {
 };
 export const PLATFORM_RATE_LIMIT_INSTANCE_ID = '__platform__';
 
-export const READ_RATE_LIMIT = 60;
-export const WRITE_RATE_LIMIT = 10;
-export const BULK_RATE_LIMIT = 3;
+export const READ_RATE_LIMIT = 600;
+export const WRITE_RATE_LIMIT = 100;
+export const BULK_RATE_LIMIT = 30;
 export const RATE_WINDOW_MS = 60_000;

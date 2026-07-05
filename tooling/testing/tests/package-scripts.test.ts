@@ -216,7 +216,7 @@ describe('workspace package scripts', () => {
     const packageJson = loadRootPackageJson();
 
     expect(packageJson.scripts?.['test:eslint:affected']).toBe(
-      'pnpm check:plugin-ui-boundary && pnpm check:plugin-architecture-boundary && env -u NO_COLOR nx affected --target=lint --base=${NX_BASE:-origin/main}'
+      'pnpm check:plugin-ui-boundary && pnpm check:plugin-architecture-boundary && pnpm check:boundaries:fallow && env -u NO_COLOR nx affected --target=lint --base=${NX_BASE:-origin/main}'
     );
     expect(packageJson.scripts?.['test:unit:affected']).toBe('tsx scripts/ci/affected-unit-gate.ts --base ${NX_BASE:-origin/main}');
     expect(packageJson.scripts?.['test:types:affected']).toBe(

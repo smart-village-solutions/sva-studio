@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   executeCreateUser: vi.fn(),
   iamUserOperationsCounterAdd: vi.fn(),
   jsonResponse: vi.fn(),
+  loggerError: vi.fn(),
   parseRequestBody: vi.fn(),
   requireIdempotencyKey: vi.fn(),
   reserveIdempotency: vi.fn(),
@@ -32,6 +33,9 @@ vi.mock('./shared.js', () => ({
   completeIdempotency: state.completeIdempotency,
   iamUserOperationsCounter: {
     add: state.iamUserOperationsCounterAdd,
+  },
+  logger: {
+    error: state.loggerError,
   },
   reserveIdempotency: state.reserveIdempotency,
   resolveIdentityProviderForInstance: state.resolveIdentityProviderForInstance,

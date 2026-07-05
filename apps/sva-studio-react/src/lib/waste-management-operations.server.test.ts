@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ExcelJS from 'exceljs';
 import type { ExternalInterfaceRecord } from '@sva/core';
-import { protectField } from '@sva/iam-admin/encryption';
+import { protectField } from '@sva/auth-runtime/server';
 import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
 import type { SqlClient, WasteOperationSqlPool } from './waste-management-operations.types.js';
 const { Workbook } = ExcelJS;

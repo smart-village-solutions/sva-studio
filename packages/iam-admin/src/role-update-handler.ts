@@ -1,4 +1,5 @@
 import type { IamRolePermissionAssignmentScope } from '@sva/iam-core';
+import { createMutationWorkflow } from '@sva/server-runtime';
 import { getRoleDisplayName, getRoleExternalName } from './role-audit.js';
 import { isTenantTechnicalKeycloakRole } from './role-governance.js';
 import {
@@ -62,6 +63,11 @@ const getKeycloakRoleNameForMutation = (role: MutableRoleShape): string =>
 export type ParsedUpdateRoleBody<TPayload extends UpdateRolePayloadShape> =
   | { readonly ok: true; readonly data: TPayload; readonly rawBody: string }
   | { readonly ok: false };
+
+type ParsedUpdateRoleSuccess<TPayload extends UpdateRolePayloadShape> = Extract<
+  ParsedUpdateRoleBody<TPayload>,
+  { readonly ok: true }
+>;
 
 export type UpdateRoleHandlerDeps<
   TPayload extends UpdateRolePayloadShape = UpdateRolePayloadShape,
@@ -150,36 +156,44 @@ export const createUpdateRoleHandlerInternal =
   >(
     deps: UpdateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole, TRoleItem>
   ) =>
-  async (request: Request, ctx: UpdateRoleAuthenticatedRequestContext): Promise<Response> => {
-    const resolvedActor = await deps.resolveRoleMutationActor(request, ctx);
-    if ('response' in resolvedActor) {
-      return resolvedActor.response;
-    }
+  createMutationWorkflow<
+    UpdateRoleAuthenticatedRequestContext,
+    {
+      readonly actor: UpdateRoleActor;
+      readonly roleId: string;
+    },
+    Record<never, never>,
+    Record<never, never>,
+    ParsedUpdateRoleSuccess<TPayload>,
+    Response
+  >({
+    prepare: async ({ request, context }) => {
+      const resolvedActor = await deps.resolveRoleMutationActor(request, context);
+      if ('response' in resolvedActor) {
+        return resolvedActor.response;
+      }
 
-    const { actor } = resolvedActor;
-    const roleId = deps.requireRoleId(request, actor.requestId);
-    if (roleId instanceof Response) {
-      return roleId;
-    }
+      const roleId = deps.requireRoleId(request, resolvedActor.actor.requestId);
+      return roleId instanceof Response ? roleId : { actor: resolvedActor.actor, roleId };
+    },
+    authorize: async () => ({}),
+    parse: async ({ request, actor }) => {
+      const parsed = await deps.parseUpdateRoleBody(request);
+      if (!parsed.ok) {
+        return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+      }
+      if (parsed.data.retrySync) {
+        return redirectRoleSyncRetryToReconcile(deps, actor.requestId);
+      }
 
-    const parsed = await deps.parseUpdateRoleBody(request);
-    if (!parsed.ok) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
-    }
-    if (parsed.data.retrySync) {
-      return redirectRoleSyncRetryToReconcile(deps, actor.requestId);
-    }
-
-    const permissionValidationResponse = await deps.validateRequestedPermissions?.({
-      actor,
-      permissionIds: parsed.data.permissionIds,
-      permissionAssignments: parsed.data.permissionAssignments,
-    });
-    if (permissionValidationResponse) {
-      return permissionValidationResponse;
-    }
-
-    try {
+      const permissionValidationResponse = await deps.validateRequestedPermissions?.({
+        actor,
+        permissionIds: parsed.data.permissionIds,
+        permissionAssignments: parsed.data.permissionAssignments,
+      });
+      return permissionValidationResponse ?? parsed;
+    },
+    execute: async ({ actor, roleId, input: parsed }) => {
       const existing = await deps.resolveMutableRole(actor, roleId);
       if (existing instanceof Response) {
         return existing;
@@ -198,10 +212,11 @@ export const createUpdateRoleHandlerInternal =
       } satisfies PreparedRoleUpdate<TPayload, TRole>;
 
       if (!isTenantTechnicalKeycloakRole(existing)) {
-        return await persistLocalRoleUpdate(deps, preparedUpdate);
+        return persistLocalRoleUpdate(deps, preparedUpdate);
       }
-      return await syncTechnicalRoleUpdate(deps, preparedUpdate);
-    } catch {
-      return deps.createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', actor.requestId);
-    }
-  };
+      return syncTechnicalRoleUpdate(deps, preparedUpdate);
+    },
+    mapError: (_error, state) =>
+      deps.createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', state.actor?.requestId),
+    respond: (response) => response,
+  });

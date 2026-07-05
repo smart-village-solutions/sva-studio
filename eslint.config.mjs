@@ -267,6 +267,10 @@ export default [
               message: 'Zielpackages dürfen nicht auf Auth-Subpaths zurückgreifen.',
             },
             {
+              group: ['@sva/auth-runtime/src/**', '@sva/sva-mainserver/src/**'],
+              message: 'Zielpackages verwenden nur öffentliche Package-Verträge statt interner src-Pfade.',
+            },
+            {
               group: ['@sva/data/*'],
               message: 'Zielpackages verwenden Data-Zielpackages statt @sva/data-Subpaths.',
             },
@@ -413,6 +417,10 @@ export default [
               message: 'sva-mainserver verwendet Zielpackages statt @sva/data-Subpaths.',
             },
             {
+              group: ['@sva/auth-runtime/src/**', '@sva/iam-admin/src/**', '@sva/instance-registry/src/**'],
+              message: 'sva-mainserver verwendet nur öffentliche Package-Verträge statt interner src-Pfade.',
+            },
+            {
               group: ['@sva/sdk/*'],
               message: 'sva-mainserver verwendet Zielpackages statt @sva/sdk-Subpaths.',
             },
@@ -482,8 +490,16 @@ export default [
               name: '@sva/sdk/server',
               message: 'Die App verwendet Server-Helfer über @sva/server-runtime.',
             },
+            {
+              name: '@sva/instance-registry/http-mutation-handlers',
+              message: 'Die App darf keine Registry-Mutations-Transporthandler direkt konsumieren.',
+            },
           ],
           patterns: [
+            {
+              group: ['@sva/auth-runtime/src/**', '@sva/iam-admin/src/**', '@sva/instance-registry/src/**', '@sva/sva-mainserver/src/**'],
+              message: 'Die App verwendet nur öffentliche Package-Verträge statt interner src-Pfade.',
+            },
             {
               group: ['@sva/sdk/*'],
               message: 'Die App nutzt Zielpackages statt @sva/sdk-Subpaths.',

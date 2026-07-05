@@ -139,6 +139,17 @@ describe('user-update-persistence', () => {
       expect.objectContaining({
         eventType: 'user.updated',
         subjectId: 'user-1',
+        payload: expect.objectContaining({
+          changed_fields: ['email', 'roles', 'groups'],
+          previous_role_ids: ['role-0'],
+          next_role_ids: ['role-1'],
+          added_role_ids: ['role-1'],
+          removed_role_ids: ['role-0'],
+          previous_group_ids: ['group-0'],
+          next_group_ids: ['group-1'],
+          added_group_ids: ['group-1'],
+          removed_group_ids: ['group-0'],
+        }),
       })
     );
     expect(deps.notifyPermissionInvalidation).toHaveBeenCalledWith(client, {

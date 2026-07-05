@@ -153,6 +153,45 @@ describe('createGroupMutationHandlers', () => {
     });
   });
 
+  it('rejects invalid csrf requests before actor resolution', async () => {
+    const deps = createDeps(undefined, {
+      validateCsrf: vi.fn(() => createJsonResponse(403, { error: { code: 'csrf_failed' } })),
+    });
+    const handlers = createGroupMutationHandlers(deps);
+
+    const response = await handlers.createGroupInternal(
+      new Request('http://localhost/api/v1/iam/inst-g/groups', { method: 'POST', body: '{}' }),
+      ctx
+    );
+
+    expect(response.status).toBe(403);
+    expect(deps.authorizeGroupMutationAccess).not.toHaveBeenCalled();
+    expect(deps.resolveActorInfo).not.toHaveBeenCalled();
+    expect(deps.withInstanceScopedDb).not.toHaveBeenCalled();
+  });
+
+  it('maps actor resolution failures with the prepared request id fallback', async () => {
+    const deps = createDeps(undefined, {
+      authorizeGroupMutationAccess: vi.fn(async () => {
+        throw new Error('authorizer unavailable');
+      }),
+    });
+    const handlers = createGroupMutationHandlers(deps);
+
+    const response = await handlers.createGroupInternal(
+      new Request('http://localhost/api/v1/iam/inst-g/groups', { method: 'POST', body: '{}' }),
+      ctx
+    );
+
+    expect(response.status).toBe(503);
+    expect(deps.createApiError).toHaveBeenCalledWith(
+      503,
+      'database_unavailable',
+      'Gruppe konnte nicht verarbeitet werden.',
+      'req-workspace'
+    );
+  });
+
   it('maps groups_type_chk violations to invalid_request', async () => {
     const deps = createDeps([], {
       withInstanceScopedDb: vi.fn(async () => {

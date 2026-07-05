@@ -268,4 +268,29 @@ describe('createDeleteRoleHandlerInternal', () => {
     expect(identityProvider.provider.assignRealmRoles).toHaveBeenNthCalledWith(1, 'kc-user-1', ['system_admin']);
     expect(identityProvider.provider.assignRealmRoles).toHaveBeenNthCalledWith(2, 'kc-user-2', ['system_admin']);
   });
+
+  it('preserves the provider method context when replaying direct role assignments during compensation', async () => {
+    const assignReceiversMatch: boolean[] = [];
+    const contextualIdentityProvider = {
+      provider: {
+        createRole: vi.fn(async () => undefined),
+        deleteRole: vi.fn(async () => undefined),
+        assignRealmRoles(this: unknown) {
+          assignReceiversMatch.push(this === contextualIdentityProvider.provider);
+          return Promise.resolve();
+        },
+      },
+    };
+    const deps = createDeps({
+      resolveDeletableRole: vi.fn(async () => systemAdminRole),
+      deleteRoleFromDatabase: vi.fn(rejectDbWrite),
+      listDirectRoleAssignmentSubjects: vi.fn(async () => ['kc-user-1']),
+      requireRoleIdentityProvider: vi.fn(async () => contextualIdentityProvider),
+    });
+
+    const response = await runDeleteRoleRequest(deps);
+
+    expect(response.status).toBe(500);
+    expect(assignReceiversMatch).toEqual([true]);
+  });
 });

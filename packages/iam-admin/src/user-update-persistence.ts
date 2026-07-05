@@ -2,6 +2,12 @@ import type { IamUserDetail } from '@sva/core';
 
 import { protectField } from './encryption.js';
 import type { QueryClient } from './query-client.js';
+import {
+  applyUpdatedUserSessionAction,
+  buildPersistedUserDetail,
+  buildUpdatedUserActivityPayload,
+  resolveUpdatedUserSessionAction,
+} from './user-update-persistence-support.js';
 
 export type UpdateUserPersistencePayload = {
   readonly email?: string;
@@ -157,22 +163,21 @@ const emitUpdatedUserActivity = async (
     readonly requestId?: string;
     readonly traceId?: string;
     readonly payload: UpdateUserPersistencePayload;
+    readonly existingRoleIds?: readonly string[];
+    readonly existingGroupIds?: readonly string[];
   }
-) =>
-  deps.emitActivityLog(input.client, {
+) => {
+  await deps.emitActivityLog(input.client, {
     instanceId: input.instanceId,
     accountId: input.actorAccountId,
     subjectId: input.userId,
     eventType: 'user.updated',
     result: 'success',
-    payload: {
-      status: input.payload.status,
-      role_update: Boolean(input.payload.roleIds),
-      group_update: Boolean(input.payload.groupIds),
-    },
+    payload: buildUpdatedUserActivityPayload(input),
     requestId: input.requestId,
     traceId: input.traceId,
   });
+};
 
 const invalidateUpdatedUserPermissions = async (
   deps: Pick<UserUpdatePersistenceDeps, 'notifyPermissionInvalidation'>,
@@ -206,8 +211,79 @@ const invalidateUpdatedUserPermissions = async (
   });
 };
 
-const resolveUpdatedUserSessionAction = (status: UpdateUserPersistencePayload['status']) =>
-  status === 'inactive' ? ('revoke' as const) : status === 'active' ? ('clear' as const) : undefined;
+const persistUpdatedUserInDatabase = async (
+  deps: UserUpdatePersistenceDeps,
+  input: {
+    readonly instanceId: string;
+    readonly requestId?: string;
+    readonly traceId?: string;
+    readonly actorAccountId: string;
+    readonly userId: string;
+    readonly keycloakSubject: string;
+    readonly existingRoleIds?: readonly string[];
+    readonly existingGroupIds?: readonly string[];
+    readonly payload: UpdateUserPersistencePayload;
+    readonly existingMainserverCredentialState?: UserMainserverCredentialState;
+    readonly nextMainserverCredentialState?: UserMainserverCredentialState;
+  }
+) =>
+  await deps.withInstanceScopedDb(input.instanceId, async (client) => {
+    if (input.payload.roleIds) {
+      await deps.assignRoles(client, {
+        instanceId: input.instanceId,
+        accountId: input.userId,
+        roleIds: input.payload.roleIds,
+        existingRoleIds: input.existingRoleIds,
+        assignedBy: input.actorAccountId,
+      });
+    }
+
+    if (input.payload.groupIds) {
+      await deps.assignGroups(client, {
+        instanceId: input.instanceId,
+        accountId: input.userId,
+        groupIds: input.payload.groupIds,
+        existingGroupIds: input.existingGroupIds,
+        origin: 'manual',
+      });
+    }
+
+    await updateUserAccountRecord({
+      client,
+      instanceId: input.instanceId,
+      userId: input.userId,
+      keycloakSubject: input.keycloakSubject,
+      payload: input.payload,
+    });
+    await emitUpdatedUserActivity(deps, {
+      client,
+      instanceId: input.instanceId,
+      actorAccountId: input.actorAccountId,
+      userId: input.userId,
+      requestId: input.requestId,
+      traceId: input.traceId,
+      payload: input.payload,
+      existingRoleIds: input.existingRoleIds,
+      existingGroupIds: input.existingGroupIds,
+    });
+    await invalidateUpdatedUserPermissions(deps, {
+      client,
+      instanceId: input.instanceId,
+      keycloakSubject: input.keycloakSubject,
+      payload: input.payload,
+    });
+
+    return {
+      detail: buildPersistedUserDetail(
+        await deps.resolveUserDetail(client, {
+          instanceId: input.instanceId,
+          userId: input.userId,
+        }),
+        input
+      ),
+      sessionAction: resolveUpdatedUserSessionAction(input.payload.status),
+    };
+  });
 
 export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => {
   const persistUpdatedUserDetail = async (input: {
@@ -223,84 +299,11 @@ export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => 
     readonly existingMainserverCredentialState?: UserMainserverCredentialState;
     readonly nextMainserverCredentialState?: UserMainserverCredentialState;
   }) => {
-    const persisted = await deps.withInstanceScopedDb(input.instanceId, async (client) => {
-      if (input.payload.roleIds) {
-        await deps.assignRoles(client, {
-          instanceId: input.instanceId,
-          accountId: input.userId,
-          roleIds: input.payload.roleIds,
-          existingRoleIds: input.existingRoleIds,
-          assignedBy: input.actorAccountId,
-        });
-      }
-
-      if (input.payload.groupIds) {
-        await deps.assignGroups(client, {
-          instanceId: input.instanceId,
-          accountId: input.userId,
-          groupIds: input.payload.groupIds,
-          existingGroupIds: input.existingGroupIds,
-          origin: 'manual',
-        });
-      }
-
-      await updateUserAccountRecord({
-        client,
-        instanceId: input.instanceId,
-        userId: input.userId,
-        keycloakSubject: input.keycloakSubject,
-        payload: input.payload,
-      });
-      await emitUpdatedUserActivity(deps, {
-        client,
-        instanceId: input.instanceId,
-        actorAccountId: input.actorAccountId,
-        userId: input.userId,
-        requestId: input.requestId,
-        traceId: input.traceId,
-        payload: input.payload,
-      });
-      await invalidateUpdatedUserPermissions(deps, {
-        client,
-        instanceId: input.instanceId,
-        keycloakSubject: input.keycloakSubject,
-        payload: input.payload,
-      });
-      const detail = await deps.resolveUserDetail(client, {
-        instanceId: input.instanceId,
-        userId: input.userId,
-      });
-      const sessionAction = resolveUpdatedUserSessionAction(input.payload.status);
-      if (!detail) {
-        return {
-          detail: undefined,
-          sessionAction,
-        };
-      }
-
-      const mainserverCredentialState =
-        input.nextMainserverCredentialState ?? input.existingMainserverCredentialState;
-
-      return {
-        detail: mainserverCredentialState
-          ? {
-              ...detail,
-              mainserverUserApplicationId: mainserverCredentialState.mainserverUserApplicationId,
-              mainserverUserApplicationSecretSet: mainserverCredentialState.mainserverUserApplicationSecretSet,
-            }
-          : detail,
-        sessionAction,
-      };
+    const persisted = await persistUpdatedUserInDatabase(deps, input);
+    await applyUpdatedUserSessionAction(deps, {
+      keycloakSubject: input.keycloakSubject,
+      sessionAction: persisted.sessionAction,
     });
-
-    if (persisted.sessionAction === 'revoke') {
-      await deps.revokeUserSessions({
-        keycloakSubject: input.keycloakSubject,
-        reason: 'user_status_inactivated',
-      });
-    } else if (persisted.sessionAction === 'clear') {
-      await deps.clearUserSessionLoginBlock(input.keycloakSubject);
-    }
 
     return persisted.detail;
   };

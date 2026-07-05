@@ -4,6 +4,7 @@ const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
   authorizeContentPrimitiveForUser: vi.fn(),
   completeIdempotency: vi.fn(),
+  emitAuthAuditEvent: vi.fn(),
   reserveIdempotency: vi.fn(),
   resolveActorInfo: vi.fn(),
   validateCsrf: vi.fn(),
@@ -13,16 +14,30 @@ const state = vi.hoisted(() => ({
   updateSvaMainserverNews: vi.fn(),
   changeSvaMainserverNewsVisibility: vi.fn(),
   deleteSvaMainserverNews: vi.fn(),
+  loggerInfo: vi.fn(),
+  loggerWarn: vi.fn(),
+  createSdkLogger: vi.fn(() => ({ info: state.loggerInfo, warn: state.loggerWarn })),
+  getWorkspaceContext: vi.fn(() => ({ requestId: 'req-news', traceId: 'trace-news' })),
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
   completeIdempotency: state.completeIdempotency,
+  emitAuthAuditEvent: state.emitAuthAuditEvent,
   reserveIdempotency: state.reserveIdempotency,
   resolveActorInfo: state.resolveActorInfo,
   validateCsrf: state.validateCsrf,
 }));
+
+vi.mock('@sva/server-runtime', async () => {
+  const actual = await vi.importActual<typeof import('@sva/server-runtime')>('@sva/server-runtime');
+  return {
+    ...actual,
+    createSdkLogger: state.createSdkLogger,
+    getWorkspaceContext: state.getWorkspaceContext,
+  };
+});
 
 vi.mock('./service.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./service.js')>();
@@ -270,6 +285,19 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       })
     );
     expect(state.completeIdempotency).toHaveBeenCalledWith(expect.objectContaining({ responseStatus: 201 }));
+    expect(state.emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'plugin_action_authorized',
+        pluginAction: expect.objectContaining({
+          actionId: 'news.create',
+          actionNamespace: 'news',
+          actionOwner: 'sva-mainserver',
+          resourceType: 'news',
+          resourceId: 'news-1',
+          result: 'success',
+        }),
+      })
+    );
     const createCall = state.createSvaMainserverNews.mock.calls[0]?.[0] as { news?: Record<string, unknown> } | undefined;
     expect(createCall?.news).toEqual(expect.objectContaining({ contentBlocks: newsInput.contentBlocks, pushNotification: true }));
     expect(createCall?.news).not.toHaveProperty('payload');
@@ -322,6 +350,16 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       expect.objectContaining({ action: 'news.update' })
     );
     await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1' } });
+    expect(state.emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'plugin_action_authorized',
+        pluginAction: expect.objectContaining({
+          actionId: 'news.update',
+          resourceId: 'news-1',
+          result: 'success',
+        }),
+      })
+    );
   });
 
   it('updates news and applies visibility changes without a second route authorization', async () => {
@@ -346,6 +384,43 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       expect.objectContaining({ newsId: 'news-1', visible: false })
     );
     expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs workflow-mapped update failures with request context', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.updateSvaMainserverNews.mockRejectedValue(
+      new SvaMainserverError({ code: 'graphql_error', message: 'GraphQL fehlgeschlagen.', statusCode: 502 })
+    );
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify(updateNewsInput),
+      })
+    );
+
+    expect(response?.status).toBe(502);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'graphql_error',
+      message: 'GraphQL fehlgeschlagen.',
+    });
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Mainserver News route failed',
+      expect.objectContaining({
+        operation: 'mainserver_news_update',
+        request_id: 'req-news',
+        trace_id: 'trace-news',
+        content_id: 'news-1',
+        method: 'PATCH',
+        error_code: 'graphql_error',
+      })
+    );
   });
 
   it('normalizes nested optional news input before updating', async () => {
@@ -445,6 +520,11 @@ describe('dispatchSvaMainserverNewsRequest', () => {
   it('rejects invalid full-model shapes before GraphQL', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
 
     const invalidBodies: readonly unknown[] = [
       [],
@@ -489,6 +569,11 @@ describe('dispatchSvaMainserverNewsRequest', () => {
   it('rejects legacy payload, invalid visibility, read-only fields and update push notifications before GraphQL', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
 
     const legacyPayload = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
@@ -548,6 +633,16 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       newsId: 'news-1',
     });
     await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1' } });
+    expect(state.emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'plugin_action_authorized',
+        pluginAction: expect.objectContaining({
+          actionId: 'news.delete',
+          resourceId: 'news-1',
+          result: 'success',
+        }),
+      })
+    );
   });
 
   it('handles PATCH /api/v1/mainserver/news/:id/visibility', async () => {
@@ -571,11 +666,26 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.changeSvaMainserverNewsVisibility).toHaveBeenCalledWith(
       expect.objectContaining({ newsId: 'news-1', visible: false })
     );
+    expect(state.emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'plugin_action_authorized',
+        pluginAction: expect.objectContaining({
+          actionId: 'news.visibility.update',
+          resourceId: 'news-1',
+          result: 'success',
+        }),
+      })
+    );
   });
 
   it('rejects mutating requests without CSRF and idempotency safeguards', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValueOnce(new Response('csrf', { status: 403 })).mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
 
     const csrf = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news/news-1', { method: 'DELETE' })
@@ -602,6 +712,11 @@ describe('dispatchSvaMainserverNewsRequest', () => {
   it('replays and rejects idempotent news create requests before GraphQL', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
     state.resolveActorInfo.mockResolvedValue({
       actor: { instanceId: 'de-musterhausen', actorAccountId: '00000000-0000-4000-8000-000000000001' },
     });
@@ -671,6 +786,25 @@ describe('dispatchSvaMainserverNewsRequest', () => {
         status: 'FAILED',
       })
     );
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Mainserver News create failed',
+      expect.objectContaining({
+        operation: 'mainserver_news_create',
+        request_id: 'req-news',
+        trace_id: 'trace-news',
+        error_code: 'graphql_error',
+      })
+    );
+    expect(state.emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'plugin_action_failed',
+        pluginAction: expect.objectContaining({
+          actionId: 'news.create',
+          reasonCode: 'graphql_error',
+          result: 'failure',
+        }),
+      })
+    );
   });
 
   it('maps local authorization and upstream errors to stable error responses', async () => {
@@ -709,6 +843,76 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       error: 'organization_mainserver_credentials_missing',
       message: 'Für die aktive Organisation fehlen Mainserver-Credentials.',
     });
+  });
+
+  it('rejects unauthorized news creates before actor resolution and idempotency work', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für diese Inhaltsoperation.',
+    });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'idem-denied' },
+        body: JSON.stringify(newsInput),
+      })
+    );
+
+    expect(response?.status).toBe(403);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'forbidden',
+      message: 'Keine Berechtigung für diese Inhaltsoperation.',
+    });
+    expect(state.resolveActorInfo).not.toHaveBeenCalled();
+    expect(state.reserveIdempotency).not.toHaveBeenCalled();
+    expect(state.completeIdempotency).not.toHaveBeenCalled();
+  });
+
+  it('logs and maps early create workflow failures before execute runs', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValueOnce({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        organizationId: '11111111-1111-1111-8111-111111111111',
+      },
+      permissions: [],
+    });
+    state.resolveActorInfo.mockResolvedValue({
+      actor: { instanceId: 'de-musterhausen', actorAccountId: '00000000-0000-4000-8000-000000000001' },
+    });
+    state.reserveIdempotency.mockRejectedValue(new Error('db down'));
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'idem-early-fail' },
+        body: JSON.stringify(newsInput),
+      })
+    );
+
+    expect(response?.status).toBe(500);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'internal_error',
+      message: 'Mainserver-News-Anfrage ist fehlgeschlagen.',
+    });
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Mainserver News route failed',
+      expect.objectContaining({
+        operation: 'mainserver_news_create',
+        request_id: 'req-news',
+        trace_id: 'trace-news',
+        method: 'POST',
+        error_code: 'internal_error',
+      })
+    );
+    expect(state.completeIdempotency).not.toHaveBeenCalled();
   });
 
   it('returns stable errors for missing instance context and unsupported methods', async () => {

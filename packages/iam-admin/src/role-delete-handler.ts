@@ -1,3 +1,4 @@
+import { createMutationWorkflow } from '@sva/server-runtime';
 import { getRoleDisplayName, getRoleExternalName } from './role-audit.js';
 import { buildDeletedRolePayloadFromRole, failLocalRoleDeleteDatabaseWrite } from './role-delete-support.js';
 import { isTenantTechnicalKeycloakRole } from './role-governance.js';
@@ -112,15 +113,24 @@ export const createDeleteRoleHandlerInternal =
   >(
     deps: DeleteRoleHandlerDeps<TAttributes, TIdentityProvider, TRole>
   ) =>
-  async (request: Request, ctx: DeleteRoleAuthenticatedRequestContext): Promise<Response> => {
-    const resolvedRequest = await resolveDeleteRoleRequest(deps, request, ctx);
-    if (resolvedRequest instanceof Response) {
-      return resolvedRequest;
-    }
-
-    const { actor, roleId } = resolvedRequest;
-
-    try {
+  createMutationWorkflow<
+    DeleteRoleAuthenticatedRequestContext,
+    {
+      readonly actor: DeleteRoleActor;
+      readonly roleId: string;
+    },
+    Record<never, never>,
+    Record<never, never>,
+    undefined,
+    Response
+  >({
+    prepare: async ({ request, context }) => {
+      const resolvedRequest = await resolveDeleteRoleRequest(deps, request, context);
+      return resolvedRequest instanceof Response ? resolvedRequest : resolvedRequest;
+    },
+    authorize: async () => ({}),
+    parse: async () => undefined,
+    execute: async ({ actor, roleId }) => {
       const existing = await deps.resolveDeletableRole(actor, roleId);
       if (existing instanceof Response) {
         return existing;
@@ -208,12 +218,13 @@ export const createDeleteRoleHandlerInternal =
             })
           );
           if (directAssignmentSubjects.length > 0) {
-            if (!identityProvider.provider.assignRealmRoles) {
+            const assignRealmRoles = identityProvider.provider.assignRealmRoles;
+            if (!assignRealmRoles) {
               throw new Error('assignRealmRoles provider capability unavailable');
             }
             await Promise.all(
               directAssignmentSubjects.map((subject) =>
-                identityProvider.provider.assignRealmRoles!(subject, [externalRoleName])
+                assignRealmRoles.call(identityProvider.provider, subject, [externalRoleName])
               )
             );
           }
@@ -266,7 +277,8 @@ export const createDeleteRoleHandlerInternal =
         200,
         deps.asApiItem(buildDeletedRolePayloadFromRole(roleId, existing, externalRoleName), actor.requestId)
       );
-    } catch {
-      return deps.createApiError(500, 'internal_error', 'Rolle konnte nicht gelöscht werden.', actor.requestId);
-    }
-  };
+    },
+    mapError: (_error, state) =>
+      deps.createApiError(500, 'internal_error', 'Rolle konnte nicht gelöscht werden.', state.actor?.requestId),
+    respond: (response) => response,
+  });

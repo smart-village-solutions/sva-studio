@@ -4,7 +4,7 @@ import {
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
-import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
+import { createMutationWorkflow, createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import {
   createSvaMainserverSurvey,
@@ -91,6 +91,44 @@ const authorizeMutation = async (request: Request, ctx: AuthenticatedRequestCont
   }
   return authorizeOrResponse(ctx, action, contentId);
 };
+
+const createSurveyMutationHandler = <TInput>(
+  input: {
+    readonly action: 'create' | 'update' | 'delete' | 'moderate';
+    readonly contentId?: string;
+    readonly parse: (request: Request) => Promise<TInput | Response>;
+    readonly execute: (actor: ContentActor, parsed: TInput) => Promise<Response>;
+  }
+) => {
+  const workflow = createMutationWorkflow<
+    AuthenticatedRequestContext,
+    {
+      readonly requestId?: string;
+      readonly contentId?: string;
+    },
+    {
+      readonly actor: ContentActor;
+    },
+    Record<never, never>,
+    TInput,
+    Response
+  >({
+    prepare: () => ({
+      requestId: getWorkspaceContext().requestId,
+      ...(input.contentId ? { contentId: input.contentId } : {}),
+    }),
+    authorize: async ({ request, context, contentId }) => {
+      const actor = await authorizeMutation(request, context, input.action, contentId);
+      return actor instanceof Response ? actor : { actor };
+    },
+    parse: ({ request }) => input.parse(request),
+    execute: ({ actor, input: parsed }) => input.execute(actor, parsed),
+    mapError: (error) => toSurveyRouteErrorResponse(error),
+    respond: (response) => response,
+  });
+
+  return (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => workflow(request, ctx);
+};
 const handleList = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
   const actor = await authorizeOrResponse(ctx, 'read');
   if (actor instanceof Response) {
@@ -106,23 +144,25 @@ const handleList = async (request: Request, ctx: AuthenticatedRequestContext): P
 };
 
 const handleCreate = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
-  const actor = await authorizeMutation(request, ctx, 'create');
-  if (actor instanceof Response) {
-    return actor;
-  }
-
-  const survey = await parseSurveyInput(request);
-  if (survey instanceof Response) {
-    return survey;
-  }
-  if (!hasRequiredSurveyTitle(survey.title)) {
-    return errorJson(400, 'invalid_request', 'Der Umfrage-Titel ist erforderlich.');
-  }
-  const created = await createSvaMainserverSurvey({ ...actor, survey });
-  if (!created.success || created.errors.length > 0 || !created.survey) {
-    return toSurveyMutationFailureResponse(created, 'Umfrage konnte nicht angelegt werden.');
-  }
-  return json({ data: created.survey ?? null }, 201);
+  return createSurveyMutationHandler({
+    action: 'create',
+    parse: async (inputRequest) => {
+      const survey = await parseSurveyInput(inputRequest);
+      if (survey instanceof Response) {
+        return survey;
+      }
+      return hasRequiredSurveyTitle(survey.title)
+        ? survey
+        : errorJson(400, 'invalid_request', 'Der Umfrage-Titel ist erforderlich.');
+    },
+    execute: async (actor, survey) => {
+      const created = await createSvaMainserverSurvey({ ...actor, survey });
+      if (!created.success || created.errors.length > 0 || !created.survey) {
+        return toSurveyMutationFailureResponse(created, 'Umfrage konnte nicht angelegt werden.');
+      }
+      return json({ data: created.survey ?? null }, 201);
+    },
+  })(request, ctx);
 };
 
 const handleGetItem = async (ctx: AuthenticatedRequestContext, surveyId: string): Promise<Response> => {
@@ -156,68 +196,69 @@ const handleGetItem = async (ctx: AuthenticatedRequestContext, surveyId: string)
 };
 
 const handleReleaseFreeTextResponse = async (request: Request, ctx: AuthenticatedRequestContext, surveyId: string, freeTextResponseId: string): Promise<Response> => {
-  const actor = await authorizeMutation(request, ctx, 'moderate', surveyId);
-  if (actor instanceof Response) {
-    return actor;
-  }
-
-  const released = await releaseSvaMainserverSurveyFreeTextResponse({
-    ...actor,
-    surveyId,
-    freeTextResponseId,
-  });
-  if (!released.success || released.errors.length > 0) {
-    return toSurveyMutationFailureResponse(released, 'Freitextantwort konnte nicht freigegeben werden.');
-  }
-  return json({ data: { id: freeTextResponseId, status: 'PUBLIC' } });
+  return createSurveyMutationHandler({
+    action: 'moderate',
+    contentId: surveyId,
+    parse: async () => ({ freeTextResponseId }),
+    execute: async (actor, parsed) => {
+      const released = await releaseSvaMainserverSurveyFreeTextResponse({
+        ...actor,
+        surveyId,
+        freeTextResponseId: parsed.freeTextResponseId,
+      });
+      if (!released.success || released.errors.length > 0) {
+        return toSurveyMutationFailureResponse(released, 'Freitextantwort konnte nicht freigegeben werden.');
+      }
+      return json({ data: { id: parsed.freeTextResponseId, status: 'PUBLIC' } });
+    },
+  })(request, ctx);
 };
 
 const handleDeleteFreeTextResponse = async (request: Request, ctx: AuthenticatedRequestContext, surveyId: string, freeTextResponseId: string): Promise<Response> => {
-  const actor = await authorizeMutation(request, ctx, 'moderate', surveyId);
-  if (actor instanceof Response) {
-    return actor;
-  }
-
-  void request;
-  void actor;
-  void freeTextResponseId;
-  return errorJson(
-    501,
-    'unsupported_operation',
-    'Freitext-Löschung wird vom aktuellen Mainserver-Schema nicht unterstützt.'
-  );
+  return createSurveyMutationHandler({
+    action: 'moderate',
+    contentId: surveyId,
+    parse: async () => ({ freeTextResponseId }),
+    execute: async () =>
+      errorJson(
+        501,
+        'unsupported_operation',
+        'Freitext-Löschung wird vom aktuellen Mainserver-Schema nicht unterstützt.'
+      ),
+  })(request, ctx);
 };
 
 const handleUpdate = async (request: Request, ctx: AuthenticatedRequestContext, surveyId: string): Promise<Response> => {
-  const actor = await authorizeMutation(request, ctx, 'update', surveyId);
-  if (actor instanceof Response) {
-    return actor;
-  }
-
-  const survey = await parseSurveyInput(request);
-  if (survey instanceof Response) {
-    return survey;
-  }
-  const updated = await updateSvaMainserverSurvey({ ...actor, surveyId, survey });
-  if (!updated.success || updated.errors.length > 0 || !updated.survey) {
-    return toSurveyMutationFailureResponse(updated, 'Umfrage konnte nicht gespeichert werden.');
-  }
-  return json({ data: updated.survey ?? null });
+  return createSurveyMutationHandler({
+    action: 'update',
+    contentId: surveyId,
+    parse: async (inputRequest) => await parseSurveyInput(inputRequest),
+    execute: async (actor, survey) => {
+      const updated = await updateSvaMainserverSurvey({ ...actor, surveyId, survey });
+      if (!updated.success || updated.errors.length > 0 || !updated.survey) {
+        return toSurveyMutationFailureResponse(updated, 'Umfrage konnte nicht gespeichert werden.');
+      }
+      return json({ data: updated.survey ?? null });
+    },
+  })(request, ctx);
 };
 
 const handleDelete = async (request: Request, ctx: AuthenticatedRequestContext, surveyId: string): Promise<Response> => {
-  const actor = await authorizeMutation(request, ctx, 'delete', surveyId);
-  if (actor instanceof Response) {
-    return actor;
-  }
-  const deleted = await deleteSvaMainserverSurvey({
-    ...actor,
-    surveyId,
-  });
-  if (!deleted.success || deleted.errors.length > 0 || !deleted.deletedSurveyId) {
-    return toSurveyMutationFailureResponse(deleted, 'Umfrage konnte nicht gelöscht werden.');
-  }
-  return json({ data: { id: deleted.deletedSurveyId ?? surveyId } });
+  return createSurveyMutationHandler({
+    action: 'delete',
+    contentId: surveyId,
+    parse: async () => ({ surveyId }),
+    execute: async (actor) => {
+      const deleted = await deleteSvaMainserverSurvey({
+        ...actor,
+        surveyId,
+      });
+      if (!deleted.success || deleted.errors.length > 0 || !deleted.deletedSurveyId) {
+        return toSurveyMutationFailureResponse(deleted, 'Umfrage konnte nicht gelöscht werden.');
+      }
+      return json({ data: { id: deleted.deletedSurveyId ?? surveyId } });
+    },
+  })(request, ctx);
 };
 
 const unsupportedMethodResponse = () => errorJson(405, 'invalid_request', 'Methode für Umfragen nicht unterstützt.');

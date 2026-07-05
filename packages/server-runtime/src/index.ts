@@ -70,6 +70,17 @@ export {
 export type { JsonErrorResponseOptions } from './server/json-error-response.server.js';
 export { toJsonErrorResponse } from './server/json-error-response.server.js';
 export type {
+  AuthorizedMutation,
+  IdempotentMutation,
+  MutationErrorState,
+  MutationExecutionResult,
+  MutationWorkflowContext,
+  MutationWorkflowDefinition,
+  ParsedMutation,
+  PreparedMutation,
+} from './server/mutation-workflow.server.js';
+export { createMutationWorkflow } from './server/mutation-workflow.server.js';
+export type {
   WorkspaceContext,
   WorkspaceMiddleware,
   WorkspaceMiddlewareOptions,

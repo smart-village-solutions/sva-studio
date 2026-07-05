@@ -137,6 +137,8 @@ VALUES ($1, $2::uuid, 'member')
 ON CONFLICT (instance_id, account_id) DO NOTHING;
 `;
 
+const toUniqueSortedIds = (values: readonly string[]): readonly string[] => [...new Set(values)].sort((left, right) => left.localeCompare(right));
+
 export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => {
   const persistCreatedUser = async (
     client: QueryClient,
@@ -207,6 +209,9 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
         target_keycloak_subject: externalId,
         role_count: payload.roleIds.length,
         group_count: payload.groupIds?.length ?? 0,
+        assigned_role_ids: toUniqueSortedIds(payload.roleIds),
+        assigned_group_ids: toUniqueSortedIds(payload.groupIds ?? []),
+        effective_role_ids: toUniqueSortedIds(assignedRoleIds),
       },
       requestId: actor.requestId,
       traceId: actor.traceId,

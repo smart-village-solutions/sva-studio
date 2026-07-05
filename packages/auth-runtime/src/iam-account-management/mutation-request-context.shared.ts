@@ -70,8 +70,7 @@ const resolveRequiredPermissionActor = async (
   }
 ): Promise<{ actor: ResolvedActor } | { response: Response }> => {
   const actorResolution = await resolveActorInfo(request, ctx, {
-    requireActorMembership: true,
-    provisionMissingActorMembership: input.provisionMissingActorMembership,
+    provisionMissingActorMembership: false,
   });
   if ('error' in actorResolution) {
     return { response: actorResolution.error };
@@ -93,7 +92,15 @@ const resolveRequiredPermissionActor = async (
     };
   }
 
-  return { actor: actorResolution.actor };
+  const authorizedActorResolution = await resolveActorInfo(request, ctx, {
+    requireActorMembership: true,
+    provisionMissingActorMembership: input.provisionMissingActorMembership,
+  });
+  if ('error' in authorizedActorResolution) {
+    return { response: authorizedActorResolution.error };
+  }
+
+  return { actor: authorizedActorResolution.actor };
 };
 
 export const resolveMutationActorWithAccount = async (

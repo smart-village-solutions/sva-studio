@@ -2,6 +2,7 @@ import { IAM_DELETED_CONTENT_AUTHOR_TOKEN } from '@sva/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  assertAccountHardDeletePreconditions,
   hardDeleteAccount,
   purgeAccountHardDeleteBlockers,
   reconcileOwnedContentForAccountDelete,
@@ -75,72 +76,30 @@ describe('reconcileOwnedContentForAccountDelete', () => {
 
 describe('hardDeleteAccount', () => {
   it('purges membership-bound blocker rows before the account row is deleted', async () => {
-    const query = vi
-      .fn()
-      .mockResolvedValueOnce({
-        rowCount: 0,
-        rows: [],
-      })
-      .mockResolvedValue({
-        rowCount: 0,
-        rows: [],
-      });
+    const query = vi.fn().mockResolvedValue({
+      rowCount: 0,
+      rows: [],
+    });
 
     await purgeAccountHardDeleteBlockers({ query }, {
       instanceId: 'de-musterhausen',
       accountId: '33333333-3333-4333-8333-333333333333',
     });
 
-    expect(query).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining('DELETE FROM iam.permission_change_requests'),
-      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
-    );
-    expect(query).toHaveBeenNthCalledWith(
-      5,
-      expect.stringContaining('DELETE FROM iam.legal_text_acceptances'),
-      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
-    );
-    expect(query).toHaveBeenNthCalledWith(
-      6,
-      expect.stringContaining('DELETE FROM iam.legal_holds'),
-      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
-    );
-    expect(query).toHaveBeenNthCalledWith(
-      7,
-      expect.stringContaining('UPDATE iam.legal_holds'),
-      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
-    );
-    expect(query).toHaveBeenNthCalledWith(
-      8,
-      expect.stringContaining('UPDATE iam.legal_holds'),
-      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
-    );
-    expect(query).toHaveBeenNthCalledWith(
-      10,
-      expect.stringContaining('UPDATE iam.data_subject_export_jobs'),
-      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
-    );
-    expect(query).toHaveBeenNthCalledWith(
-      12,
-      expect.stringContaining('UPDATE iam.account_profile_corrections'),
-      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
-    );
-    expect(query).toHaveBeenNthCalledWith(
-      13,
-      expect.stringContaining('UPDATE iam.data_subject_request_events'),
-      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
-    );
-    expect(query).toHaveBeenNthCalledWith(
-      14,
-      expect.stringContaining('DELETE FROM iam.data_subject_requests'),
-      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
-    );
-    expect(query).toHaveBeenNthCalledWith(
-      15,
-      expect.stringContaining('UPDATE iam.data_subject_requests'),
-      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
-    );
+    const executedStatements = query.mock.calls.map(([sql]) => String(sql));
+    const expectedParams = ['de-musterhausen', '33333333-3333-4333-8333-333333333333'];
+
+    expect(query).toHaveBeenCalledTimes(14);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM iam.permission_change_requests'), expectedParams);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM iam.legal_text_acceptances'), expectedParams);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM iam.legal_holds'), expectedParams);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('UPDATE iam.legal_holds'), expectedParams);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('UPDATE iam.data_subject_export_jobs'), expectedParams);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('UPDATE iam.account_profile_corrections'), expectedParams);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('UPDATE iam.data_subject_request_events'), expectedParams);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM iam.data_subject_requests'), expectedParams);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('UPDATE iam.data_subject_requests'), expectedParams);
+    expect(executedStatements[0]).toContain('DELETE FROM iam.permission_change_requests');
   });
 
   it('fails closed when the target account is under an active legal hold', async () => {
@@ -150,7 +109,7 @@ describe('hardDeleteAccount', () => {
     });
 
     await expect(
-      purgeAccountHardDeleteBlockers({ query }, {
+      assertAccountHardDeletePreconditions({ query }, {
         instanceId: 'de-musterhausen',
         accountId: '33333333-3333-4333-8333-333333333333',
       })

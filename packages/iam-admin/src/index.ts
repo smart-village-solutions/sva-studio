@@ -163,6 +163,7 @@ export {
   type DeleteUserResult,
 } from './user-delete-handler.js';
 export {
+  assertAccountHardDeletePreconditions,
   anonymizeRetainedOwnedContent,
   hardDeleteAccount,
   markOwnedContentDeletedForAccountRemoval,

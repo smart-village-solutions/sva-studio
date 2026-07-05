@@ -60,6 +60,13 @@ export type DeleteUserDeps = {
     client: QueryClient,
     input: { readonly instanceId: string; readonly accountId: string }
   ) => Promise<boolean>;
+  readonly assertAccountHardDeletePreconditions: (
+    client: QueryClient,
+    input: {
+      readonly instanceId: string;
+      readonly accountId: string;
+    }
+  ) => Promise<void>;
   readonly purgeAccountHardDeleteBlockers: (
     client: QueryClient,
     input: {
@@ -93,6 +100,7 @@ export type DeleteUserDeps = {
   readonly revokeUserSessions: (input: {
     readonly keycloakSubject: string;
     readonly reason: 'user_deleted';
+    readonly persistLoginBlock?: boolean;
   }) => Promise<void>;
   readonly trackKeycloakCall: <T>(operation: 'delete_user', work: () => Promise<T>) => Promise<T>;
   readonly withInstanceScopedDb: <T>(
@@ -171,11 +179,7 @@ export const deleteUser = async (deps: DeleteUserDeps, input: DeleteUserInput): 
       throw new Error('system_admin_delete_protection:system_admin muss vor der Löschung entzogen werden.');
     }
 
-    await deps.reconcileOwnedContentForAccountDelete(client, {
-      instanceId: input.actor.instanceId,
-      accountId: input.userId,
-    });
-    await deps.purgeAccountHardDeleteBlockers(client, {
+    await deps.assertAccountHardDeletePreconditions(client, {
       instanceId: input.actor.instanceId,
       accountId: input.userId,
     });
@@ -192,11 +196,20 @@ export const deleteUser = async (deps: DeleteUserDeps, input: DeleteUserInput): 
   await deps.revokeUserSessions({
     keycloakSubject: prepared.keycloakSubject,
     reason: 'user_deleted',
+    persistLoginBlock: false,
   });
 
   await deps.trackKeycloakCall('delete_user', () => deps.deleteIdentityUser(prepared.keycloakSubject));
 
   await deps.withInstanceScopedDb(input.actor.instanceId, async (client) => {
+    await deps.reconcileOwnedContentForAccountDelete(client, {
+      instanceId: input.actor.instanceId,
+      accountId: input.userId,
+    });
+    await deps.purgeAccountHardDeleteBlockers(client, {
+      instanceId: input.actor.instanceId,
+      accountId: input.userId,
+    });
     await deps.emitActivityLog(client, {
       instanceId: input.actor.instanceId,
       accountId: input.actor.actorAccountId,

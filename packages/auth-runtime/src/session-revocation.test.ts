@@ -89,6 +89,25 @@ describe('session-revocation', () => {
     );
   });
 
+  it('can revoke deleted-user sessions without persisting a login block during pre-delete cleanup', async () => {
+    const { revokeUserSessions } = await import('./session-revocation.js');
+
+    await revokeUserSessions({
+      keycloakSubject: 'kc-user-delete-preflight',
+      reason: 'user_deleted',
+      persistLoginBlock: false,
+    });
+
+    expect(revocationMocks.setSessionControlState).toHaveBeenCalledWith(
+      'kc-user-delete-preflight',
+      {
+        minimumSessionVersion: 2,
+        forcedReauthAt: 1_717_000_000_000,
+      },
+      undefined
+    );
+  });
+
   it('preserves an existing persistent login block when a later reactivatable revocation runs', async () => {
     revocationMocks.getSessionControlState.mockResolvedValue({
       minimumSessionVersion: 7,

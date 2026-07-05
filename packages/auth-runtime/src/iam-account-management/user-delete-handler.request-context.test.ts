@@ -16,6 +16,7 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
 });
 
 vi.mock('@sva/iam-admin', () => ({
+  assertAccountHardDeletePreconditions: vi.fn(),
   createDeleteUserHandlerInternal: state.createDeleteUserHandlerInternal,
   hardDeleteAccount: vi.fn(),
   purgeAccountHardDeleteBlockers: vi.fn(),

@@ -65,12 +65,16 @@ const isReactivatableLoginBlockReason = (
 export const revokeUserSessions = async (input: {
   readonly keycloakSubject: string;
   readonly reason: SessionRevocationReason;
+  readonly persistLoginBlock?: boolean;
 }): Promise<void> => {
   const currentState = await getSessionControlState(input.keycloakSubject);
   const blockingReason = toBlockingSessionRevocationReason(input.reason);
+  const shouldPersistLoginBlock = input.persistLoginBlock ?? shouldPersistSessionControlState(input.reason);
   const currentBlockingReason =
     currentState?.loginBlocked && currentState.loginBlockedReason ? currentState.loginBlockedReason : undefined;
-  const nextBlockingReason = isPersistentLoginBlockReason(currentBlockingReason)
+  const nextBlockingReason = !shouldPersistLoginBlock
+    ? undefined
+    : isPersistentLoginBlockReason(currentBlockingReason)
     ? currentBlockingReason
     : blockingReason ?? currentBlockingReason;
   const nextState = {
@@ -87,7 +91,7 @@ export const revokeUserSessions = async (input: {
   await setSessionControlState(
     input.keycloakSubject,
     nextState,
-    shouldPersistSessionControlState(input.reason) ? null : undefined
+    shouldPersistLoginBlock ? null : undefined
   );
 
   const sessionIds = await listUserSessionIds(input.keycloakSubject);

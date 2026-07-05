@@ -1,4 +1,5 @@
 import {
+  assertAccountHardDeletePreconditions,
   createDeleteUserHandlerInternal,
   hardDeleteAccount,
   purgeAccountHardDeleteBlockers,
@@ -78,6 +79,7 @@ const createRequestScopedDeleteUserHandler = (
     isSystemAdminAccount,
     logger,
     notFoundResponse: (requestId) => createApiError(404, 'not_found', 'Nutzer nicht gefunden.', requestId),
+    assertAccountHardDeletePreconditions,
     purgeAccountHardDeleteBlockers,
     reconcileOwnedContentForAccountDelete,
     resolveActorMaxRoleLevel,

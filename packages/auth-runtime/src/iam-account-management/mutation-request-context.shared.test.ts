@@ -214,7 +214,57 @@ describe('mutation-request-context.shared', () => {
       action: 'iam.user.write',
       instanceId: 'instance-1',
     });
+    expect(state.resolveActorInfo).toHaveBeenNthCalledWith(1, request, ctx, {
+      provisionMissingActorMembership: false,
+    });
+    expect(state.resolveActorInfo).toHaveBeenNthCalledWith(2, request, ctx, {
+      requireActorMembership: true,
+      provisionMissingActorMembership: undefined,
+    });
     expect(state.requireRoles).not.toHaveBeenCalled();
+  });
+
+  it('authorizes permission-gated mutations before provisioning missing actor membership', async () => {
+    const request = new Request('http://localhost/api/v1/iam/users/123e4567-e89b-12d3-a456-426614174000', {
+      method: 'DELETE',
+    });
+    const ctx = {
+      user: {
+        id: 'kc-user-1',
+        instanceId: 'instance-1',
+        roles: ['custom_role'],
+      },
+    } as never;
+
+    await expect(
+      resolveMutationActorWithAccount(request, ctx, {
+        allowedRoles: new Set(['system_admin']),
+        requiredPermissionAction: 'iam.accounts.delete',
+        feature: 'iam_admin',
+        scope: 'write',
+        provisionMissingActorMembership: true,
+      })
+    ).resolves.toEqual({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      },
+    });
+
+    expect(state.resolveActorInfo).toHaveBeenNthCalledWith(1, request, ctx, {
+      provisionMissingActorMembership: false,
+    });
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith({
+      ctx,
+      action: 'iam.accounts.delete',
+      instanceId: 'instance-1',
+    });
+    expect(state.resolveActorInfo).toHaveBeenNthCalledWith(2, request, ctx, {
+      requireActorMembership: true,
+      provisionMissingActorMembership: true,
+    });
   });
 
   it('rejects root-only platform admins for instance-scoped tenant mutations without an instance context', async () => {
@@ -250,8 +300,7 @@ describe('mutation-request-context.shared', () => {
     });
 
     expect(state.resolveActorInfo).toHaveBeenCalledWith(request, ctx, {
-      requireActorMembership: true,
-      provisionMissingActorMembership: undefined,
+      provisionMissingActorMembership: false,
     });
     expect(state.authorizeInstancePermissionForUser).not.toHaveBeenCalled();
     expect(result).toEqual({ response: missingInstance });
@@ -284,6 +333,14 @@ describe('mutation-request-context.shared', () => {
         traceId: 'trace-2',
       },
     });
+    state.resolveActorInfo.mockResolvedValueOnce({
+      actor: {
+        instanceId: 'instance-2',
+        actorAccountId: 'actor-2',
+        requestId: 'req-2',
+        traceId: 'trace-2',
+      },
+    });
 
     await expect(
       resolveMutationActorWithAccount(request, ctx, {
@@ -305,6 +362,13 @@ describe('mutation-request-context.shared', () => {
       ctx,
       action: 'iam.accounts.delete',
       instanceId: 'instance-2',
+    });
+    expect(state.resolveActorInfo).toHaveBeenNthCalledWith(1, request, ctx, {
+      provisionMissingActorMembership: false,
+    });
+    expect(state.resolveActorInfo).toHaveBeenNthCalledWith(2, request, ctx, {
+      requireActorMembership: true,
+      provisionMissingActorMembership: undefined,
     });
   });
 

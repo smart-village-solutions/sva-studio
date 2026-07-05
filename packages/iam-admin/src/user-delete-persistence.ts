@@ -211,11 +211,18 @@ export const purgeAccountHardDeleteBlockers = async (
   input: { instanceId: string; accountId: string }
 ): Promise<void> => {
   const params = [input.instanceId, input.accountId] as const;
+  await executeAccountDeleteBlockerStatements(client, params);
+};
+
+export const assertAccountHardDeletePreconditions = async (
+  client: QueryClient,
+  input: { instanceId: string; accountId: string }
+): Promise<void> => {
+  const params = [input.instanceId, input.accountId] as const;
   const activeLegalHoldResult = await readActiveLegalHold(client, params);
   if (activeLegalHoldResult.rowCount > 0) {
     throw new Error('legal_hold_delete_protection:Aktiver Legal Hold blockiert die Löschung.');
   }
-  await executeAccountDeleteBlockerStatements(client, params);
 };
 
 export const hardDeleteAccount = async (

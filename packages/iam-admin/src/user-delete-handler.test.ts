@@ -51,6 +51,7 @@ const createDeps = createTestDepsBuilder<DeleteUserHandlerDeps>(() => ({
     error: vi.fn(),
   },
   notFoundResponse: vi.fn((requestId) => createJsonResponse(404, { error: { code: 'not_found' }, requestId })),
+  assertAccountHardDeletePreconditions: vi.fn(async () => undefined),
   purgeAccountHardDeleteBlockers: vi.fn(async () => undefined),
   reconcileOwnedContentForAccountDelete: vi.fn(async () => undefined),
   resolveActorMaxRoleLevel: vi.fn(async () => 100),
@@ -117,7 +118,7 @@ describe('createDeleteUserHandlerInternal', () => {
     expect(deps.reconcileOwnedContentForAccountDelete).not.toHaveBeenCalled();
   });
 
-  it('runs content reconciliation, session revocation, identity delete, hard delete and activity log in order', async () => {
+  it('runs session revocation, identity delete, post-delete cleanup, hard delete and activity log in order', async () => {
     const events: string[] = [];
     const deps = createDeps({
       deleteIdentityUser: vi.fn(async () => {
@@ -151,15 +152,20 @@ describe('createDeleteUserHandlerInternal', () => {
 
     expect(response.status).toBe(204);
     expect(events).toEqual([
-      'content-reconcile',
-      'purge-delete-blockers',
       'revoke-sessions',
       'keycloak:start',
       'delete-identity',
       'keycloak:end',
+      'content-reconcile',
+      'purge-delete-blockers',
       'activity-log',
       'hard-delete-user',
     ]);
+    expect(deps.revokeUserSessions).toHaveBeenCalledWith({
+      keycloakSubject: userDetail.keycloakSubject,
+      reason: 'user_deleted',
+      persistLoginBlock: false,
+    });
     expect(deps.trackKeycloakCall).toHaveBeenCalledWith('delete_user', expect.any(Function));
     expect(deps.purgeAccountHardDeleteBlockers).toHaveBeenCalledWith(expect.anything(), {
       accountId: userDetail.id,
@@ -193,7 +199,7 @@ describe('createDeleteUserHandlerInternal', () => {
       createUserMutationErrorResponse: vi.fn(() =>
         createJsonResponse(409, { error: { code: 'legal_hold_delete_protection' } })
       ),
-      purgeAccountHardDeleteBlockers: vi.fn(async () => {
+      assertAccountHardDeletePreconditions: vi.fn(async () => {
         throw new Error('legal_hold_delete_protection:Aktiver Legal Hold blockiert die Löschung.');
       }),
     });
@@ -211,6 +217,7 @@ describe('createDeleteUserHandlerInternal', () => {
     });
     expect(deps.revokeUserSessions).not.toHaveBeenCalled();
     expect(deps.trackKeycloakCall).not.toHaveBeenCalled();
+    expect(deps.purgeAccountHardDeleteBlockers).not.toHaveBeenCalled();
   });
 
   it('returns not_found when the user record does not exist', async () => {

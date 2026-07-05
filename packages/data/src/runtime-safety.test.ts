@@ -312,6 +312,16 @@ test('activity log hard-delete compatibility migration removes immutable account
   assert.doesNotMatch(schemaSnapshot, /platform_activity_logs_account_id_fkey FOREIGN KEY/);
 });
 
+test('content projection deleted-account fallback migration keeps trigger inserts compatible with anonymized content rows', () => {
+  const sql = readRepoFile('data/migrations/0069_iam_content_projection_deleted_account_fallback.sql');
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
+
+  assert.match(sql, /COALESCE\(NEW\.creator_account_id::text, '__iam_author_deleted__'\)/);
+  assert.match(sql, /COALESCE\(NEW\.updater_account_id::text, '__iam_author_deleted__'\)/);
+  assert.match(schemaSnapshot, /COALESCE\(NEW\.creator_account_id::text, '__iam_author_deleted__'\)/);
+  assert.match(schemaSnapshot, /COALESCE\(NEW\.updater_account_id::text, '__iam_author_deleted__'\)/);
+});
+
 test('categories instance-module migration backfills additive module assignments for mainserver content tenants', () => {
   const sql = readRepoFile('data/migrations/0055_iam_categories_instance_modules.sql');
 

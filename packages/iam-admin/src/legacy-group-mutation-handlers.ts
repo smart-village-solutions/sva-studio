@@ -266,8 +266,8 @@ type LegacyGroupMutationInput<TPrepared extends object, TIdempotency extends obj
     state: Readonly<{
       request: Request;
       context: LegacyGroupMutationAuthenticatedRequestContext;
-      actor: LegacyGroupMutationPreparedActor;
-    } & TPrepared & TIdempotency>
+      actor?: LegacyGroupMutationPreparedActor;
+    } & Partial<TPrepared & TIdempotency>>
   ) => Response;
 };
 
@@ -319,7 +319,7 @@ const createLegacyGroupMutationHandler = <
     mapError: (error, state) =>
       input.mapError
         ? input.mapError(error, state as never)
-        : createDatabaseUnavailableError(deps, state.actor.requestId),
+        : createDatabaseUnavailableError(deps, state.actor?.requestId ?? deps.getWorkspaceContext().requestId),
     respond: (response) => response,
   });
 

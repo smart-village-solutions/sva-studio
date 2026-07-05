@@ -269,8 +269,9 @@ type GroupMutationWorkflowInput<TPrepared extends object, TInput> = {
     state: Readonly<{
       request: Request;
       context: GroupMutationAuthenticatedRequestContext;
-      actor: GroupMutationActor;
-    } & TPrepared>
+      requestId?: string;
+      actor?: GroupMutationActor;
+    } & Partial<TPrepared>>
   ) => Response;
 };
 
@@ -281,14 +282,21 @@ const createGroupMutationHandler = <TPrepared extends object = Record<never, nev
   const workflow = createMutationWorkflow<
     GroupMutationAuthenticatedRequestContext,
     {
+      readonly requestId?: string;
+    },
+    {
       readonly actor: GroupMutationActor;
     } & TPrepared,
-    Record<never, never>,
     Record<never, never>,
     TInput,
     Response
   >({
-    prepare: async ({ request, context }) => {
+    prepare: () => {
+      const requestContext = deps.getWorkspaceContext();
+      return { requestId: requestContext.requestId };
+    },
+    csrf: ({ request, requestId }) => deps.validateCsrf(request, requestId) ?? undefined,
+    authorize: async ({ request, context }) => {
       const resolved = await resolveGroupMutationActor(deps, request, context);
       if (resolved instanceof Response) {
         return resolved;
@@ -306,14 +314,17 @@ const createGroupMutationHandler = <TPrepared extends object = Record<never, nev
         ...prepared,
       } as { readonly actor: GroupMutationActor } & TPrepared;
     },
-    authorize: async () => ({}),
-    csrf: ({ request, actor }) => deps.validateCsrf(request, actor.requestId) ?? undefined,
     parse: async (state) => input.parse(state as never),
     execute: async (state) => input.execute(state as never),
     mapError: (error, state) =>
       input.mapError
         ? input.mapError(error, state as never)
-        : deps.createApiError(503, 'database_unavailable', 'Gruppe konnte nicht verarbeitet werden.', state.actor.requestId),
+        : deps.createApiError(
+            503,
+            'database_unavailable',
+            'Gruppe konnte nicht verarbeitet werden.',
+            state.actor?.requestId ?? state.requestId ?? deps.getWorkspaceContext().requestId
+          ),
     respond: (response) => response,
   });
 

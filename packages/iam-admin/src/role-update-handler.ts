@@ -217,6 +217,6 @@ export const createUpdateRoleHandlerInternal =
       return syncTechnicalRoleUpdate(deps, preparedUpdate);
     },
     mapError: (_error, state) =>
-      deps.createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', state.actor.requestId),
+      deps.createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', state.actor?.requestId),
     respond: (response) => response,
   });

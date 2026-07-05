@@ -242,6 +242,6 @@ export const createCreateRoleHandlerInternal =
         : persistLocalRoleCreate(deps, preparedCreate);
     },
     mapError: (_error, state) =>
-      deps.createApiError(500, 'internal_error', 'Rolle konnte nicht angelegt werden.', state.actor.requestId),
+      deps.createApiError(500, 'internal_error', 'Rolle konnte nicht angelegt werden.', state.actor?.requestId),
     respond: (response) => response,
   });

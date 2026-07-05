@@ -353,8 +353,8 @@ type OrganizationAdminMutationInput<TPrepared extends object, TIdempotency exten
     state: Readonly<{
       request: Request;
       context: OrganizationMutationAuthenticatedRequestContext;
-      actor: PreparedOrganizationMutationActor;
-    } & TPrepared & TIdempotency>
+      actor?: PreparedOrganizationMutationActor;
+    } & Partial<TPrepared & TIdempotency>>
   ) => Response;
 };
 
@@ -430,7 +430,12 @@ const createAdminMutationHandler = <
     mapError: (error, state) =>
       input.mapError
         ? input.mapError(error, state as never)
-        : deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', state.actor.requestId),
+        : deps.createApiError(
+            503,
+            'database_unavailable',
+            'IAM-Datenbank ist nicht erreichbar.',
+            state.actor?.requestId ?? deps.getWorkspaceContext().requestId
+          ),
     respond: (response) => response,
   });
 

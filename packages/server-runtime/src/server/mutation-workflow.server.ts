@@ -84,7 +84,7 @@ export const createMutationWorkflow = <
 ) => {
   return async (request: Request, context: TContext): Promise<Response> => {
     const initialState: MutationBaseState<TContext> = { request, context };
-    let currentState: MutationErrorState<TContext, TPrepared, TAuthorized, TIdempotency> = initialState;
+    let currentState = initialState as MutationErrorState<TContext, TPrepared, TAuthorized, TIdempotency>;
 
     try {
       const prepared = await definition.prepare(initialState);

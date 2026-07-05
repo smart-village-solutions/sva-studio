@@ -175,13 +175,13 @@ export const createCreateUserHandlerInternal =
           idempotencyKey,
           parsed,
         }),
-      mapError: (_error, { actor }) =>
+      mapError: (_error, state) =>
         deps.jsonResponse(500, {
           error: {
             code: 'internal_error',
             message: 'Nutzer konnte nicht erstellt werden.',
           },
-          ...(actor.requestId ? { requestId: actor.requestId } : {}),
+          ...(state.actor?.requestId ? { requestId: state.actor.requestId } : {}),
         }),
       respond: (response) => response,
     });

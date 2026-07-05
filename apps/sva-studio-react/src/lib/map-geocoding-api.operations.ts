@@ -103,7 +103,17 @@ const authorizeFirstAllowedAction = async (
   ctx: Parameters<
     Awaited<typeof import('@sva/auth-runtime/server')>['authorizeInstancePermissionForUser']
   >[0]['ctx'],
-  actions: readonly ('poi.read' | 'poi.create' | 'poi.update' | 'events.read' | 'events.create' | 'events.update')[],
+  actions: readonly (
+    | 'poi.read'
+    | 'poi.create'
+    | 'poi.update'
+    | 'events.read'
+    | 'events.create'
+    | 'events.update'
+    | 'generic-items.read'
+    | 'generic-items.create'
+    | 'generic-items.update'
+  )[],
 ) => {
   const { authorizeInstancePermissionForUser } = await import('@sva/auth-runtime/server');
   let lastResult:
@@ -123,7 +133,17 @@ const authorizeFirstAllowedAction = async (
 
 const withAuthenticatedMapUser = async <T>(
   request: Request,
-  actions: readonly ('poi.read' | 'poi.create' | 'poi.update' | 'events.read' | 'events.create' | 'events.update')[],
+  actions: readonly (
+    | 'poi.read'
+    | 'poi.create'
+    | 'poi.update'
+    | 'events.read'
+    | 'events.create'
+    | 'events.update'
+    | 'generic-items.read'
+    | 'generic-items.create'
+    | 'generic-items.update'
+  )[],
   run: (ctx: AuthenticatedMapGeocodingContext, diagnostics: MapGeocodingOperationDiagnostics) => Promise<T>,
 ): Promise<T> => {
   const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
@@ -183,7 +203,9 @@ const withGeocodingOperation = async <T>(
 ): Promise<T> =>
   withAuthenticatedMapUser(
     request,
-    operation === 'get_config' ? ['poi.read', 'events.read'] : ['poi.update', 'poi.create', 'events.update', 'events.create'],
+    operation === 'get_config'
+      ? ['poi.read', 'events.read', 'generic-items.read']
+      : ['poi.update', 'poi.create', 'events.update', 'events.create', 'generic-items.update', 'generic-items.create'],
     async (ctx, diagnostics) => {
       const operationStartedAt = now();
       const logger = await getLogger();

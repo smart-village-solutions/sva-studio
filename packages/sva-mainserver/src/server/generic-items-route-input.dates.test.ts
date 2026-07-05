@@ -35,7 +35,6 @@ describe('generic-items-route-input.dates', () => {
         timeDescription: 'ganztägig',
         useOnlyTimeDescription: true,
       },
-      {},
     ]);
   });
 

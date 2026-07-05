@@ -4,6 +4,56 @@ import { genericItemsDetailFormSchema } from '../src/generic-items.validation.js
 
 const emptyContact = { firstName: '', lastName: '', email: '', phone: '', fax: '', webUrls: [] };
 
+const createValidFormValues = () => ({
+  title: 'Titel',
+  genericType: 'faq',
+  teaser: '',
+  visible: true,
+  author: '',
+  keywords: '',
+  externalId: '',
+  publicationDate: '',
+  publishedAt: '',
+  categories: [],
+  contacts: [emptyContact],
+  webUrls: [{ url: 'https://example.org', description: '' }],
+  addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
+  contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
+  openingHours: [
+    { weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false },
+  ],
+  mediaContents: [],
+  locations: [{ name: '', department: '', district: '', regionName: '', state: '', latitude: '', longitude: '' }],
+  dates: [
+    {
+      weekday: '',
+      dateStart: '',
+      dateEnd: '',
+      timeStart: '',
+      timeEnd: '',
+      timeDescription: '',
+      useOnlyTimeDescription: false,
+    },
+  ],
+  accessibilityInformations: [{ description: '', types: '', urls: [{ url: 'https://example.org/a11y', description: '' }] }],
+  priceInformations: [
+    {
+      name: '',
+      amount: '',
+      groupPrice: false,
+      ageFrom: '',
+      ageTo: '',
+      minAdultCount: '',
+      maxAdultCount: '',
+      minChildrenCount: '',
+      maxChildrenCount: '',
+      description: '',
+      category: '',
+    },
+  ],
+  payloadText: '{}',
+});
+
 describe('generic items validation', () => {
   it('requires title and genericType', () => {
     const result = genericItemsDetailFormSchema.safeParse({
@@ -234,23 +284,7 @@ describe('generic items validation', () => {
 
   it('allows non-https media asset urls because they are host-provided', () => {
     const result = genericItemsDetailFormSchema.safeParse({
-      title: 'Titel',
-      genericType: 'faq',
-      teaser: '',
-      visible: true,
-      author: '',
-      keywords: '',
-      externalId: '',
-      publicationDate: '',
-      publishedAt: '',
-      categories: [],
-      contacts: [emptyContact],
-      webUrls: [{ url: 'https://example.org', description: '' }],
-      addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
-      contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
-      openingHours: [
-        { weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false },
-      ],
+      ...createValidFormValues(),
       mediaContents: [
         {
           captionText: 'Asset',
@@ -261,37 +295,26 @@ describe('generic items validation', () => {
           sourceUrl: { url: 'http://localhost:3000/uploads/image.jpg', description: '' },
         },
       ],
-      locations: [{ name: '', department: '', district: '', regionName: '', state: '', latitude: '', longitude: '' }],
-      dates: [
-        {
-          weekday: '',
-          dateStart: '',
-          dateEnd: '',
-          timeStart: '',
-          timeEnd: '',
-          timeDescription: '',
-          useOnlyTimeDescription: false,
-        },
-      ],
-      accessibilityInformations: [{ description: '', types: '', urls: [{ url: 'https://example.org/a11y', description: '' }] }],
-      priceInformations: [
-        {
-          name: '',
-          amount: '',
-          groupPrice: false,
-          ageFrom: '',
-          ageTo: '',
-          minAdultCount: '',
-          maxAdultCount: '',
-          minChildrenCount: '',
-          maxChildrenCount: '',
-          description: '',
-          category: '',
-        },
-      ],
-      payloadText: '{}',
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it('rejects addresses with only one coordinate', () => {
+    const result = genericItemsDetailFormSchema.safeParse({
+      ...createValidFormValues(),
+      addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '52.1', longitude: '' }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects locations with only one coordinate', () => {
+    const result = genericItemsDetailFormSchema.safeParse({
+      ...createValidFormValues(),
+      locations: [{ name: '', department: '', district: '', regionName: '', state: '', latitude: '', longitude: '13.4' }],
+    });
+
+    expect(result.success).toBe(false);
   });
 });

@@ -14,7 +14,7 @@ export const parseDates = (value: unknown): readonly SvaMainserverDateInput[] | 
     if (!isRecord(item)) {
       return errorJson(400, 'invalid_request', 'Termin-Einträge müssen Objekte sein.');
     }
-    dates.push({
+    const date = {
       ...(readString(item.weekday) ? { weekday: readString(item.weekday) } : {}),
       ...(readString(item.dateStart) ? { dateStart: readString(item.dateStart) } : {}),
       ...(readString(item.dateEnd) ? { dateEnd: readString(item.dateEnd) } : {}),
@@ -24,7 +24,10 @@ export const parseDates = (value: unknown): readonly SvaMainserverDateInput[] | 
       ...(readBoolean(item.useOnlyTimeDescription) !== undefined
         ? { useOnlyTimeDescription: readBoolean(item.useOnlyTimeDescription) }
         : {}),
-    });
+    };
+    if (Object.keys(date).length > 0) {
+      dates.push(date);
+    }
   }
 
   return dates;

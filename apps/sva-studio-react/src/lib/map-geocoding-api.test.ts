@@ -304,6 +304,59 @@ describe('map-geocoding-api', () => {
     );
   });
 
+  it('allows generic-item editors to use provider-backed geocoding when poi and event permissions are missing', async () => {
+    state.authorizeInstancePermissionForUser
+      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung für diese Instanzoperation.' })
+      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung für diese Instanzoperation.' })
+      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung für diese Instanzoperation.' })
+      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung für diese Instanzoperation.' })
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+        permissions: [],
+      });
+    state.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        features: [
+          {
+            properties: { formatted: 'Musterstraße 1, 12345 Musterstadt', lat: 52.52, lon: 13.405, country_code: 'de' },
+          },
+        ],
+      }),
+    });
+
+    const { suggestMapAddressesServerFn } = await import('./map-geocoding-api');
+
+    await expect(suggestMapAddressesServerFn({ data: { query: 'Musterstraße 1' } })).resolves.toMatchObject([
+      expect.objectContaining({ label: 'Musterstraße 1, 12345 Musterstadt' }),
+    ]);
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(5, expect.objectContaining({ action: 'generic-items.update' }));
+  });
+
+  it('allows generic-item editors to load public geocoding config when poi and event read permissions are missing', async () => {
+    state.authorizeInstancePermissionForUser
+      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung für diese Instanzoperation.' })
+      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung für diese Instanzoperation.' })
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+        permissions: [],
+      });
+
+    const { getMapGeocodingConfigServerFn } = await import('./map-geocoding-api');
+
+    await expect(getMapGeocodingConfigServerFn()).resolves.toEqual({
+      provider: 'geoapify',
+      styleUrl: 'https://tiles.example/styles/poi',
+      autocompleteEnabled: true,
+      geocodeEnabled: true,
+      reverseGeocodeEnabled: true,
+      killSwitchEnabled: false,
+    });
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(3, expect.objectContaining({ action: 'generic-items.read' }));
+  });
+
   it('rejects provider-backed geocoding calls without poi or event write permissions', async () => {
     state.authorizeInstancePermissionForUser
       .mockResolvedValueOnce({
@@ -325,11 +378,23 @@ describe('map-geocoding-api', () => {
         message: 'Keine Berechtigung für diese Instanzoperation.',
       })
       .mockResolvedValueOnce({
-      ok: false,
-      status: 403,
-      error: 'forbidden',
-      message: 'Keine Berechtigung für diese Instanzoperation.',
-    });
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      });
 
     const { suggestMapAddressesHandler } = await import('./map-geocoding-api');
 
@@ -347,6 +412,8 @@ describe('map-geocoding-api', () => {
       message: 'forbidden',
     });
     expect(state.fetch).not.toHaveBeenCalled();
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(5, expect.objectContaining({ action: 'generic-items.update' }));
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(6, expect.objectContaining({ action: 'generic-items.create' }));
   });
 
   it('requests Geoapify geocoding in geojson format so feature payloads are normalized correctly', async () => {

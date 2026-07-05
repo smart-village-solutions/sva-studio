@@ -60,6 +60,22 @@ const mediaContentFormValueSchema = z.object({
   }),
 });
 
+const geoPairFieldSchema = {
+  latitude: z.string(),
+  longitude: z.string(),
+};
+
+const validateGeoPair = (
+  value: { latitude: string; longitude: string },
+  ctx: z.RefinementCtx
+) => {
+  const latitudeFilled = value.latitude.trim().length > 0;
+  const longitudeFilled = value.longitude.trim().length > 0;
+  if (latitudeFilled !== longitudeFilled) {
+    ctx.addIssue({ code: 'custom', message: 'Koordinaten sind ungültig.' });
+  }
+};
+
 export const genericItemsDetailFormSchema = z.object({
   title: z.string().trim().min(1, 'Titel ist erforderlich.'),
   genericType: z.string().trim().min(1, 'Generic-Type ist erforderlich.'),
@@ -106,9 +122,8 @@ export const genericItemsDetailFormSchema = z.object({
       zip: z.string(),
       city: z.string(),
       kind: z.string(),
-      latitude: z.string(),
-      longitude: z.string(),
-    })
+      ...geoPairFieldSchema,
+    }).superRefine(validateGeoPair)
   ),
   contentBlocks: z.array(
     z.object({
@@ -137,9 +152,8 @@ export const genericItemsDetailFormSchema = z.object({
       district: z.string(),
       regionName: z.string(),
       state: z.string(),
-      latitude: z.string(),
-      longitude: z.string(),
-    })
+      ...geoPairFieldSchema,
+    }).superRefine(validateGeoPair)
   ),
   dates: z.array(
     z.object({

@@ -53,7 +53,7 @@ vi.mock('../../../lib/plugins', () => ({
       moduleId: 'generic-items',
       namespace: 'generic-items',
       ownerPluginId: 'generic-items',
-      descriptionKey: 'plugins.genericItems.description',
+      descriptionKey: 'plugins.generic-items.description',
       permissionIds: ['generic-items.read'],
       systemRoles: [],
     },

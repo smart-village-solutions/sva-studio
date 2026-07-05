@@ -4,52 +4,14 @@ import type { UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
 
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
 import {
-  isSupportedUploadFile,
   mediaContentFromAsset,
   type MediaUploadPhase,
   uploadPhaseMessageKey,
 } from './generic-items.detail-media.helpers.js';
-
-const useUploadChangeHandler = ({
-  appendMediaContent,
-  onUploadFile,
-  setUploadErrorKey,
-  setUploadPhase,
-}: Readonly<{
-  appendMediaContent: (asset: HostMediaAssetListItem) => boolean;
-  onUploadFile: (file: File) => Promise<HostMediaAssetListItem>;
-  setUploadErrorKey: (key: string | null) => void;
-  setUploadPhase: (phase: MediaUploadPhase) => void;
-}>) =>
-  React.useCallback(
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      event.target.value = '';
-      if (!file) {
-        return;
-      }
-      if (!isSupportedUploadFile(file)) {
-        setUploadPhase('error');
-        setUploadErrorKey('messages.mediaUploadUnsupportedType');
-        return;
-      }
-
-      setUploadPhase('initializing');
-      setUploadErrorKey(null);
-      try {
-        setUploadPhase('uploading');
-        const asset = await onUploadFile(file);
-        setUploadPhase('finalizing');
-        if (appendMediaContent(asset)) {
-          setUploadPhase('success');
-        }
-      } catch {
-        setUploadPhase('error');
-        setUploadErrorKey('messages.mediaUploadError');
-      }
-    },
-    [appendMediaContent, onUploadFile, setUploadErrorKey, setUploadPhase]
-  );
+import {
+  createEmptyMediaContent,
+  useGenericItemsUploadChangeHandler,
+} from './generic-items.detail-media-upload.js';
 
 export function useGenericItemsDetailMediaState({
   append,
@@ -91,6 +53,7 @@ export function useGenericItemsDetailMediaState({
         return false;
       }
       append({
+        ...createEmptyMediaContent(),
         captionText: mediaContent.captionText ?? '',
         copyright: mediaContent.copyright ?? '',
         contentType: mediaContent.contentType ?? '',
@@ -98,8 +61,6 @@ export function useGenericItemsDetailMediaState({
           url: mediaContent.sourceUrl?.url ?? '',
           description: mediaContent.sourceUrl?.description ?? '',
         },
-        height: '',
-        width: '',
       });
       resetUploadStatus();
       return true;
@@ -117,18 +78,16 @@ export function useGenericItemsDetailMediaState({
   }, [remove, resetUploadStatus]);
 
   const handleManualAdd = React.useCallback(() => {
-    append({
-      captionText: '',
-      copyright: '',
-      contentType: '',
-      sourceUrl: { url: '', description: '' },
-      height: '',
-      width: '',
-    });
+    append(createEmptyMediaContent());
     resetUploadStatus();
   }, [append, resetUploadStatus]);
 
-  const handleUploadChange = useUploadChangeHandler({ appendMediaContent, onUploadFile, setUploadErrorKey, setUploadPhase });
+  const handleUploadChange = useGenericItemsUploadChangeHandler({
+    appendMediaContent,
+    onUploadFile,
+    setUploadErrorKey,
+    setUploadPhase,
+  });
 
   return {
     closeDialog,

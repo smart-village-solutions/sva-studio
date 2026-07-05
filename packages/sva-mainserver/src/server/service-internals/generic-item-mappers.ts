@@ -73,6 +73,34 @@ const mapAccessibilityInformations = (
 ): readonly SvaMainserverAccessibilityInformation[] =>
   (values ?? []).map((value) => mapAccessibilityInformation(value)).filter(defined);
 
+const mapGenericItemScalarFields = (value: z.infer<typeof genericItemSchema>, createdAt: string) => ({
+  ...(optionalString(value.teaser) ? { teaser: optionalString(value.teaser) } : {}),
+  ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
+  ...(optionalString(value.author) ? { author: optionalString(value.author) } : {}),
+  ...(optionalString(value.keywords) ? { keywords: optionalString(value.keywords) } : {}),
+  ...(optionalString(value.externalId) ? { externalId: optionalString(value.externalId) } : {}),
+  ...(optionalString(value.publicationDate) ? { publicationDate: optionalString(value.publicationDate) } : {}),
+  ...(optionalString(value.publishedAt) ? { publishedAt: optionalString(value.publishedAt) } : {}),
+  ...(value.payload !== undefined && value.payload !== null ? { payload: value.payload } : {}),
+  visible: value.visible !== false,
+  createdAt,
+  updatedAt: value.updatedAt ?? createdAt,
+});
+
+const mapGenericItemRelationFields = (value: z.infer<typeof genericItemSchema>) => ({
+  categories: (value.categories ?? []).map(mapCategory).filter(defined),
+  contacts: (value.contacts ?? []).map(mapContact).filter(defined),
+  webUrls: (value.webUrls ?? []).map(mapWebUrl).filter(defined),
+  addresses: (value.addresses ?? []).map(mapAddress).filter(defined),
+  contentBlocks: (value.contentBlocks ?? []).map(mapContentBlock),
+  openingHours: (value.openingHours ?? []).map(mapOpeningHour),
+  mediaContents: (value.mediaContents ?? []).map(mapMediaContent),
+  locations: (value.locations ?? []).map(mapLocation).filter(defined),
+  dates: (value.dates ?? []).map(mapDate),
+  accessibilityInformations: mapAccessibilityInformations(value.accessibilityInformations),
+  priceInformations: (value.priceInformations ?? []).map(mapPrice),
+});
+
 export const mapGenericItem = (item: SvaMainserverGenericItemFragment | null | undefined): SvaMainserverGenericItem => {
   const parsed = genericItemSchema.safeParse(item);
   if (!parsed.success) {
@@ -91,28 +119,8 @@ export const mapGenericItem = (item: SvaMainserverGenericItemFragment | null | u
     contentType: 'generic-items.generic-item',
     status: 'published',
     genericType: parsed.data.genericType ?? '',
-    ...(optionalString(parsed.data.teaser) ? { teaser: optionalString(parsed.data.teaser) } : {}),
-    ...(optionalString(parsed.data.description) ? { description: optionalString(parsed.data.description) } : {}),
-    ...(optionalString(parsed.data.author) ? { author: optionalString(parsed.data.author) } : {}),
-    ...(optionalString(parsed.data.keywords) ? { keywords: optionalString(parsed.data.keywords) } : {}),
-    ...(optionalString(parsed.data.externalId) ? { externalId: optionalString(parsed.data.externalId) } : {}),
-    ...(optionalString(parsed.data.publicationDate) ? { publicationDate: optionalString(parsed.data.publicationDate) } : {}),
-    ...(optionalString(parsed.data.publishedAt) ? { publishedAt: optionalString(parsed.data.publishedAt) } : {}),
-    ...(parsed.data.payload !== undefined && parsed.data.payload !== null ? { payload: parsed.data.payload } : {}),
-    categories: (parsed.data.categories ?? []).map(mapCategory).filter(defined),
-    contacts: (parsed.data.contacts ?? []).map(mapContact).filter(defined),
-    webUrls: (parsed.data.webUrls ?? []).map(mapWebUrl).filter(defined),
-    addresses: (parsed.data.addresses ?? []).map(mapAddress).filter(defined),
-    contentBlocks: (parsed.data.contentBlocks ?? []).map(mapContentBlock),
-    openingHours: (parsed.data.openingHours ?? []).map(mapOpeningHour),
-    mediaContents: (parsed.data.mediaContents ?? []).map(mapMediaContent),
-    locations: (parsed.data.locations ?? []).map(mapLocation).filter(defined),
-    dates: (parsed.data.dates ?? []).map(mapDate),
-    accessibilityInformations: mapAccessibilityInformations(parsed.data.accessibilityInformations),
-    priceInformations: (parsed.data.priceInformations ?? []).map(mapPrice),
-    visible: parsed.data.visible !== false,
-    createdAt,
-    updatedAt: parsed.data.updatedAt ?? createdAt,
+    ...mapGenericItemScalarFields(parsed.data, createdAt),
+    ...mapGenericItemRelationFields(parsed.data),
   };
 };
 

@@ -1,6 +1,6 @@
 import type { HostMediaAssetListItem } from '@sva/plugin-sdk';
 
-import type { GenericItemMediaContent } from './generic-items.types.js';
+import type { GenericItemMediaContent } from './generic-items.content-types.js';
 import { normalizeMediaContentType } from './generic-items.detail-media-content-type.js';
 
 export type MediaUploadPhase = 'idle' | 'initializing' | 'uploading' | 'finalizing' | 'success' | 'error';

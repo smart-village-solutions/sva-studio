@@ -1,10 +1,10 @@
 import * as React from 'react';
-import { Alert, AlertDescription, Button, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import { Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
-import { GenericItemsLocationMap } from './generic-items.location-map.js';
+import { useGenericItemsGeocodingHandlers } from './generic-items.geo-field-handlers.js';
+import { GenericItemsGeoMapSection, useGenericItemsGeoFieldState } from './generic-items.geo-fields.shared.js';
 import { parseCoordinate } from './generic-items.location-map.shared.js';
 import { geocodeMapAddress, reverseMapCoordinates } from './generic-items.map-geocoding-client.js';
-import { resolveGenericItemsMapGeocodingMessageKey } from './generic-items.map-geocoding-messages.js';
 
 type Translator = (key: string) => string;
 
@@ -65,10 +65,6 @@ export function GenericItemsGeoLocationFields({
   onLatitudeChange: (value: string) => void;
   onLongitudeChange: (value: string) => void;
 }>) {
-  const [mapError, setMapError] = React.useState<string | null>(null);
-  const [geocodingError, setGeocodingError] = React.useState<string | null>(null);
-  const [isGeocoding, setIsGeocoding] = React.useState(false);
-  const [isReverseGeocoding, setIsReverseGeocoding] = React.useState(false);
   const hasGeocodingInput =
     name.trim().length > 0 ||
     department.trim().length > 0 ||
@@ -78,24 +74,17 @@ export function GenericItemsGeoLocationFields({
   const parsedLatitude = parseCoordinate(latitude);
   const parsedLongitude = parseCoordinate(longitude);
   const hasReverseGeocodingInput = parsedLatitude !== null && parsedLongitude !== null;
-
-  const handleGeocode = React.useCallback(async () => {
-    const address = {
-      query: name.trim() || undefined,
-      street: department.trim() || district.trim() || undefined,
-      city: regionName.trim() || state.trim() || undefined,
-      country: 'Deutschland',
-    };
-
-    if (!geocodingEnabled || !hasGeocodingInput) {
-      setGeocodingError(pt('messages.locationGeocodeDisabled'));
-      return;
-    }
-
-    setIsGeocoding(true);
-    setGeocodingError(null);
-    try {
-      const result = await geocodeMapAddress({ address });
+  const geoState = useGenericItemsGeoFieldState({
+    geocodingEnabled,
+    geocodeAddress: async () => {
+      const result = await geocodeMapAddress({
+        address: {
+          query: name.trim() || undefined,
+          street: department.trim() || district.trim() || undefined,
+          city: regionName.trim() || state.trim() || undefined,
+          country: 'Deutschland',
+        },
+      });
       onCoordinatesChange({
         latitude: String(result.coordinates.latitude),
         longitude: String(result.coordinates.longitude),
@@ -106,49 +95,23 @@ export function GenericItemsGeoLocationFields({
       if (regionName.trim().length === 0 && result.city) {
         onRegionNameChange(result.city);
       }
-      setMapError(null);
-    } catch (error) {
-      setGeocodingError(pt(resolveGenericItemsMapGeocodingMessageKey(error)));
-    } finally {
-      setIsGeocoding(false);
-    }
-  }, [
-    department,
-    district,
-    geocodingEnabled,
+    },
     hasGeocodingInput,
-    name,
-    onCoordinatesChange,
-    onNameChange,
-    onRegionNameChange,
+    hasReverseGeocodingInput,
     pt,
-    regionName,
-    state,
-  ]);
-
-  const handleReverseGeocode = React.useCallback(async () => {
-    if (!reverseGeocodingEnabled || parsedLatitude === null || parsedLongitude === null) {
-      setGeocodingError(pt('messages.locationGeocodeDisabled'));
-      return;
-    }
-
-    setIsReverseGeocoding(true);
-    setGeocodingError(null);
-    try {
+    reverseGeocodeAddress: async () => {
       const result = await reverseMapCoordinates({
-        latitude: parsedLatitude,
-        longitude: parsedLongitude,
+        latitude: parsedLatitude as number,
+        longitude: parsedLongitude as number,
       });
       onNameChange(result.label ?? '');
       onRegionNameChange(result.city ?? '');
       onStateChange(result.country ?? '');
-      setMapError(null);
-    } catch (error) {
-      setGeocodingError(pt(resolveGenericItemsMapGeocodingMessageKey(error)));
-    } finally {
-      setIsReverseGeocoding(false);
-    }
-  }, [onNameChange, onRegionNameChange, onStateChange, parsedLatitude, parsedLongitude, pt, reverseGeocodingEnabled]);
+    },
+    reverseGeocodingEnabled,
+  });
+
+  const { handleGeocode, handleReverseGeocode } = useGenericItemsGeocodingHandlers({ geoState, pt });
 
   return (
     <div className="space-y-4">
@@ -173,57 +136,27 @@ export function GenericItemsGeoLocationFields({
           <Input id={stateId} value={state} onChange={(event) => onStateChange(event.target.value)} />
         </StudioField>
       </StudioFieldGroup>
-
-      {hasGeocodingInput || hasReverseGeocodingInput ? (
-        <div className="flex flex-wrap gap-3">
-          <Button type="button" variant="outline" onClick={() => void handleGeocode()} disabled={isGeocoding}>
-            {isGeocoding ? pt('actions.geocodingAddress') : pt('actions.geocodeAddress')}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void handleReverseGeocode()}
-            disabled={isReverseGeocoding || !hasReverseGeocodingInput}
-          >
-            {isReverseGeocoding ? pt('actions.reverseGeocodingAddress') : pt('actions.reverseGeocodeAddress')}
-          </Button>
-        </div>
-      ) : null}
-
-      {geocodingError ? (
-        <Alert>
-          <AlertDescription>{geocodingError}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {mapEnabled && mapStyleUrl ? (
-        <GenericItemsLocationMap
-          styleUrl={mapStyleUrl}
-          latitude={latitude}
-          longitude={longitude}
-          onCoordinatesChange={onCoordinatesChange}
-          onError={(message) => setMapError(message === 'map_error' ? pt('messages.locationMapError') : null)}
-        />
-      ) : (
-        <Alert>
-          <AlertDescription>{pt('messages.locationMapUnavailable')}</AlertDescription>
-        </Alert>
-      )}
-
-      {mapError ? (
-        <Alert>
-          <AlertDescription>{mapError}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <StudioFieldGroup columns={2}>
-        <StudioField id={latitudeId} label={pt('fields.latitude')}>
-          <Input id={latitudeId} value={latitude} onChange={(event) => onLatitudeChange(event.target.value)} />
-        </StudioField>
-        <StudioField id={longitudeId} label={pt('fields.longitude')}>
-          <Input id={longitudeId} value={longitude} onChange={(event) => onLongitudeChange(event.target.value)} />
-        </StudioField>
-      </StudioFieldGroup>
+      <GenericItemsGeoMapSection
+        geocodingError={geoState.geocodingError}
+        hasGeocodingInput={hasGeocodingInput}
+        hasReverseGeocodingInput={hasReverseGeocodingInput}
+        isGeocoding={geoState.isGeocoding}
+        isReverseGeocoding={geoState.isReverseGeocoding}
+        latitude={latitude}
+        latitudeId={latitudeId}
+        longitude={longitude}
+        longitudeId={longitudeId}
+        mapEnabled={mapEnabled}
+        mapError={geoState.mapError}
+        mapStyleUrl={mapStyleUrl}
+        onCoordinatesChange={onCoordinatesChange}
+        onGeocode={handleGeocode}
+        onLatitudeChange={onLatitudeChange}
+        onLongitudeChange={onLongitudeChange}
+        onMapError={geoState.setMapError}
+        onReverseGeocode={handleReverseGeocode}
+        pt={pt}
+      />
     </div>
   );
 }

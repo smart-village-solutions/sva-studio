@@ -21,8 +21,15 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": ["packages/**/src/**/*.ts", "packages/**/src/**/*.tsx"],
-      "exclude": ["**/*.test.ts", "**/*.test.tsx", "packages/sva-mainserver/src/generated/**/*.ts"]
+      "include": [
+        "packages/**/src/**/*.ts",
+        "packages/**/src/**/*.tsx"
+      ],
+      "exclude": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "packages/sva-mainserver/src/generated/**/*.ts"
+      ]
     },
     {
       "id": "apps-default",
@@ -30,8 +37,14 @@
       "class": "zentral",
       "owner": "team-frontend",
       "reviewCadence": "pro-pr",
-      "include": ["apps/**/src/**/*.ts", "apps/**/src/**/*.tsx"],
-      "exclude": ["**/*.test.ts", "**/*.test.tsx"]
+      "include": [
+        "apps/**/src/**/*.ts",
+        "apps/**/src/**/*.tsx"
+      ],
+      "exclude": [
+        "**/*.test.ts",
+        "**/*.test.tsx"
+      ]
     },
     {
       "id": "scripts-default",
@@ -39,8 +52,12 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": ["scripts/**/*.ts"],
-      "exclude": ["**/*.test.ts"]
+      "include": [
+        "scripts/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ]
     },
     {
       "id": "routing",
@@ -48,8 +65,12 @@
       "class": "kritisch",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": ["packages/routing/src/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "packages/routing/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100
     },
     {
@@ -58,8 +79,12 @@
       "class": "kritisch",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": ["packages/core/src/security/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "packages/core/src/security/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100
     },
     {
@@ -68,8 +93,12 @@
       "class": "kritisch",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": ["packages/core/src/iam/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "packages/core/src/iam/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -84,8 +113,12 @@
       "class": "kritisch",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": ["packages/iam-core/src/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "packages/iam-core/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -100,8 +133,12 @@
       "class": "zentral",
       "owner": "team-iam",
       "reviewCadence": "sprintweise",
-      "include": ["packages/data/src/iam/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "packages/data/src/iam/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100
     },
     {
@@ -110,8 +147,12 @@
       "class": "kritisch",
       "owner": "team-data",
       "reviewCadence": "pro-pr",
-      "include": ["packages/data/src/instance-registry/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "packages/data/src/instance-registry/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100
     },
     {
@@ -120,8 +161,12 @@
       "class": "kritisch",
       "owner": "team-data",
       "reviewCadence": "pro-pr",
-      "include": ["packages/data-repositories/src/instance-registry/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "packages/data-repositories/src/instance-registry/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100
     },
     {
@@ -130,8 +175,12 @@
       "class": "kritisch",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": ["packages/auth-runtime/src/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "packages/auth-runtime/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -146,8 +195,12 @@
       "class": "kritisch",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": ["packages/iam-admin/src/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "packages/iam-admin/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -162,8 +215,12 @@
       "class": "zentral",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": ["packages/iam-governance/src/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "packages/iam-governance/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -178,8 +235,12 @@
       "class": "kritisch",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": ["packages/instance-registry/src/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "packages/instance-registry/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -194,8 +255,12 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": ["packages/plugin-sdk/src/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "packages/plugin-sdk/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -210,8 +275,14 @@
       "class": "zentral",
       "owner": "team-content",
       "reviewCadence": "pro-pr",
-      "include": ["packages/plugin-news/src/**/*.ts", "packages/plugin-news/src/**/*.tsx"],
-      "exclude": ["**/*.test.ts", "**/*.test.tsx"],
+      "include": [
+        "packages/plugin-news/src/**/*.ts",
+        "packages/plugin-news/src/**/*.tsx"
+      ],
+      "exclude": [
+        "**/*.test.ts",
+        "**/*.test.tsx"
+      ],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -226,8 +297,13 @@
       "class": "kritisch",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": ["packages/sva-mainserver/src/**/*.ts"],
-      "exclude": ["**/*.test.ts", "packages/sva-mainserver/src/generated/**/*.ts"],
+      "include": [
+        "packages/sva-mainserver/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts",
+        "packages/sva-mainserver/src/generated/**/*.ts"
+      ],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -242,8 +318,14 @@
       "class": "zentral",
       "owner": "team-frontend",
       "reviewCadence": "pro-pr",
-      "include": ["apps/sva-studio-react/src/**/*.ts", "apps/sva-studio-react/src/**/*.tsx"],
-      "exclude": ["**/*.test.ts", "**/*.test.tsx"],
+      "include": [
+        "apps/sva-studio-react/src/**/*.ts",
+        "apps/sva-studio-react/src/**/*.tsx"
+      ],
+      "exclude": [
+        "**/*.test.ts",
+        "**/*.test.tsx"
+      ],
       "priority": 100,
       "overrides": {
         "fileLines": 400,
@@ -258,8 +340,12 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": ["scripts/ci/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "scripts/ci/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -274,8 +360,12 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": ["scripts/ops/**/*.ts"],
-      "exclude": ["**/*.test.ts"],
+      "include": [
+        "scripts/ops/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
       "priority": 100,
       "overrides": {
         "fileLines": 400,
@@ -3327,6 +3417,78 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Tours-Shared-Exports in kleinere API-Segmente und Re-Export-Dateien aufteilen (packages/plugin-waste-management/src/waste-management.tours.shared.ts)"
+    },
+    "packages-default:packages/plugin-generic-items/src/generic-items.detail-content-tab.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Content-Tab-Verzweigungen in kleinere Karten- und Section-Module zerlegen (packages/plugin-generic-items/src/generic-items.detail-content-tab.tsx)"
+    },
+    "packages-default:packages/plugin-generic-items/src/generic-items.detail-content-tab.tsx:fileLines": {
+      "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Content-Tab-Datei in kleinere Text-, Relations-, Medien- und Terminmodule splitten (packages/plugin-generic-items/src/generic-items.detail-content-tab.tsx)"
+    },
+    "packages-default:packages/plugin-generic-items/src/generic-items.detail-content-tab.tsx:functionLines": {
+      "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Langen Content-Tab in kleinere Rendering- und Formsektionen aufteilen (packages/plugin-generic-items/src/generic-items.detail-content-tab.tsx)"
+    },
+    "packages-default:packages/plugin-generic-items/src/generic-items.detail-media-state.ts:functionLines": {
+      "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-005",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Media-State-Hook in Upload- und Dialog-Logik trennen (packages/plugin-generic-items/src/generic-items.detail-media-state.ts)"
+    },
+    "packages-default:packages/plugin-generic-items/src/generic-items.detail-page.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-006",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Detail-Page-Steuerlogik in kleinere State-, Tab- und Ladebausteine zerlegen (packages/plugin-generic-items/src/generic-items.detail-page.tsx)"
+    },
+    "packages-default:packages/plugin-generic-items/src/generic-items.detail-page.tsx:fileLines": {
+      "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-006",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Detail-Page-Datei in kleinere Labels-, Effects- und Layoutmodule splitten (packages/plugin-generic-items/src/generic-items.detail-page.tsx)"
+    },
+    "packages-default:packages/plugin-generic-items/src/generic-items.detail-page.tsx:functionLines": {
+      "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-006",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange Detail-Page-Komponente in kleinere Controller- und Presentational-Bausteine aufteilen (packages/plugin-generic-items/src/generic-items.detail-page.tsx)"
+    },
+    "packages-default:packages/plugin-generic-items/src/generic-items.geo-address-fields.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-007",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Adress-Geologik in gemeinsamen Geocode-/Map-Hook und schlanke Felder trennen (packages/plugin-generic-items/src/generic-items.geo-address-fields.tsx)"
+    },
+    "packages-default:packages/plugin-generic-items/src/generic-items.geo-address-fields.tsx:functionLines": {
+      "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-007",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Adress-Geofelder in kleinere Formular- und Kartenbausteine aufteilen (packages/plugin-generic-items/src/generic-items.geo-address-fields.tsx)"
+    },
+    "packages-default:packages/plugin-generic-items/src/generic-items.geo-location-fields.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-008",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Orts-Geologik in gemeinsamen Geocode-/Map-Hook und schlanke Felder trennen (packages/plugin-generic-items/src/generic-items.geo-location-fields.tsx)"
+    },
+    "packages-default:packages/plugin-generic-items/src/generic-items.geo-location-fields.tsx:functionLines": {
+      "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-008",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Orts-Geofelder in kleinere Formular- und Kartenbausteine aufteilen (packages/plugin-generic-items/src/generic-items.geo-location-fields.tsx)"
+    },
+    "packages-default:packages/plugin-generic-items/src/index.ts:publicExports": {
+      "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-011",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Barrel-Exports in kleinere Runtime- und Type-Segmente aufteilen (packages/plugin-generic-items/src/index.ts)"
     }
   }
 }

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Badge, Button, Input } from '@sva/studio-ui-react';
 
-import type { GenericItemCategoryOption } from './generic-items.types.js';
+import type { GenericItemCategoryOption } from './generic-items.api-types.js';
 
 export type GenericItemsCategoryMultiselectProps = Readonly<{
   availableCategories: readonly GenericItemCategoryOption[];
@@ -23,6 +23,99 @@ const normalizeName = (value: string) => value.trim();
 
 const dedupeCategoryNames = (values: readonly string[]) =>
   Array.from(new Set(values.map(normalizeName).filter((entry) => entry.length > 0)));
+
+const GenericItemsCategoryInput = ({
+  addCategory,
+  addLabel,
+  datalistId,
+  disabled,
+  draftValue,
+  errorMessage,
+  helpText,
+  inputId,
+  inputPlaceholder,
+  loading,
+  loadingText,
+  searchLabel,
+  setDraftValue,
+  suggestionNames,
+}: Readonly<{
+  addCategory: () => void;
+  addLabel: string;
+  datalistId: string;
+  disabled: boolean;
+  draftValue: string;
+  errorMessage?: string;
+  helpText: string;
+  inputId?: string;
+  inputPlaceholder: string;
+  loading: boolean;
+  loadingText: string;
+  searchLabel: string;
+  setDraftValue: (value: string) => void;
+  suggestionNames: readonly string[];
+}>) => (
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+    <div className="flex-1 space-y-2">
+      <Input
+        id={inputId}
+        aria-label={searchLabel}
+        list={datalistId}
+        disabled={disabled || loading}
+        placeholder={inputPlaceholder}
+        value={draftValue}
+        onChange={(event) => setDraftValue(event.currentTarget.value)}
+        onBlur={addCategory}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            addCategory();
+          }
+        }}
+      />
+      <datalist id={datalistId}>
+        {suggestionNames.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
+      <p className="text-sm text-foreground">{loading ? loadingText : helpText}</p>
+      {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+    </div>
+    <Button type="button" disabled={disabled || loading || draftValue.trim().length === 0} onClick={addCategory}>
+      {addLabel}
+    </Button>
+  </div>
+);
+
+const GenericItemsSelectedCategories = ({
+  disabled,
+  removeCategory,
+  removeLabel,
+  value,
+}: Readonly<{
+  disabled: boolean;
+  removeCategory: (categoryName: string) => void;
+  removeLabel: (name: string) => string;
+  value: readonly string[];
+}>) =>
+  value.length > 0 ? (
+    <div className="flex flex-wrap gap-2">
+      {value.map((name) => (
+        <Badge key={name} variant="outline" className="flex items-center gap-2 px-3 py-1">
+          <span>{name}</span>
+          <button
+            type="button"
+            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+            aria-label={removeLabel(name)}
+            disabled={disabled}
+            onClick={() => removeCategory(name)}
+          >
+            x
+          </button>
+        </Badge>
+      ))}
+    </div>
+  ) : null;
 
 export function GenericItemsCategoryMultiselect({
   availableCategories,
@@ -77,55 +170,28 @@ export function GenericItemsCategoryMultiselect({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <div className="flex-1 space-y-2">
-          <Input
-            id={inputId}
-            aria-label={searchLabel}
-            list={datalistId}
-            disabled={disabled || loading}
-            placeholder={inputPlaceholder}
-            value={draftValue}
-            onChange={(event) => setDraftValue(event.currentTarget.value)}
-            onBlur={() => addCategory()}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                addCategory();
-              }
-            }}
-          />
-          <datalist id={datalistId}>
-            {filteredSuggestionNames.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
-          <p className="text-sm text-foreground">{loading ? loadingText : helpText}</p>
-          {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-        </div>
-        <Button type="button" disabled={disabled || loading || draftValue.trim().length === 0} onClick={addCategory}>
-          {addLabel}
-        </Button>
-      </div>
-
-      {normalizedValue.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {normalizedValue.map((name) => (
-            <Badge key={name} variant="outline" className="flex items-center gap-2 px-3 py-1">
-              <span>{name}</span>
-              <button
-                type="button"
-                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                aria-label={removeLabel(name)}
-                disabled={disabled}
-                onClick={() => removeCategory(name)}
-              >
-                x
-              </button>
-            </Badge>
-          ))}
-        </div>
-      ) : null}
+      <GenericItemsCategoryInput
+        addCategory={addCategory}
+        addLabel={addLabel}
+        datalistId={datalistId}
+        disabled={disabled}
+        draftValue={draftValue}
+        errorMessage={errorMessage}
+        helpText={helpText}
+        inputId={inputId}
+        inputPlaceholder={inputPlaceholder}
+        loading={loading}
+        loadingText={loadingText}
+        searchLabel={searchLabel}
+        setDraftValue={setDraftValue}
+        suggestionNames={filteredSuggestionNames}
+      />
+      <GenericItemsSelectedCategories
+        disabled={disabled}
+        removeCategory={removeCategory}
+        removeLabel={removeLabel}
+        value={normalizedValue}
+      />
     </div>
   );
 }

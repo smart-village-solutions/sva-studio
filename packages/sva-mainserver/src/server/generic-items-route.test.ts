@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { SvaMainserverError } from './errors.js';
 
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
@@ -172,6 +173,21 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     );
   });
 
+  it('reads generic item details after item authorization', async () => {
+    mockAuthorizedMutation();
+    state.getSvaMainserverGenericItem.mockResolvedValue({ id: 'generic-1' });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items/generic-1')
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toEqual({ data: { id: 'generic-1' } });
+    expect(state.getSvaMainserverGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({ genericItemId: 'generic-1', instanceId: 'de-musterhausen' })
+    );
+  });
+
   it('deletes generic items', async () => {
     mockAuthorizedMutation();
     state.deleteSvaMainserverGenericItem.mockResolvedValue({ id: 'generic-1', deleted: true });
@@ -200,6 +216,119 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     await expect(response?.json()).resolves.toEqual({
       error: 'invalid_request',
       message: 'Der Titel ist erforderlich.',
+    });
+  });
+
+  it('rejects malformed nested payload sections before calling the service', async () => {
+    mockAuthorizedMutation();
+
+    const invalidContactsResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items', {
+        method: 'POST',
+        body: JSON.stringify({ title: 'Freier Eintrag', genericType: 'faq', contacts: 'invalid' }),
+      })
+    );
+    const invalidContentBlocksResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items', {
+        method: 'POST',
+        body: JSON.stringify({ title: 'Freier Eintrag', genericType: 'faq', contentBlocks: [{}] }),
+      })
+    );
+    const invalidLocationsResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items', {
+        method: 'POST',
+        body: JSON.stringify({ title: 'Freier Eintrag', genericType: 'faq', locations: ['invalid'] }),
+      })
+    );
+
+    expect(invalidContactsResponse?.status).toBe(400);
+    expect(invalidContentBlocksResponse?.status).toBe(400);
+    expect(invalidLocationsResponse?.status).toBe(400);
+    expect(state.createSvaMainserverGenericItem).not.toHaveBeenCalled();
+  });
+
+  it('rejects mutating requests when csrf validation fails', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue({ ok: false });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items', {
+        method: 'POST',
+        body: JSON.stringify({ title: 'Freier Eintrag', genericType: 'faq' }),
+      })
+    );
+
+    expect(response?.status).toBe(403);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'csrf_validation_failed',
+      message: 'Sicherheitsprüfung fehlgeschlagen.',
+    });
+    expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
+    expect(state.createSvaMainserverGenericItem).not.toHaveBeenCalled();
+  });
+
+  it('returns local authorization errors before calling the service', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Nicht erlaubt.',
+    });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items')
+    );
+
+    expect(response?.status).toBe(403);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'forbidden',
+      message: 'Nicht erlaubt.',
+    });
+    expect(state.listSvaMainserverGenericItems).not.toHaveBeenCalled();
+  });
+
+  it('returns method-not-allowed for unsupported route methods', async () => {
+    mockAuthorizedMutation();
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items/generic-1', { method: 'PUT' })
+    );
+
+    expect(response?.status).toBe(405);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'method_not_allowed',
+      message: 'Methode wird für diesen Mainserver-Inhalt nicht unterstützt.',
+    });
+  });
+
+  it('maps upstream and unexpected errors without leaking internal details', async () => {
+    mockAuthorizedMutation();
+    state.listSvaMainserverGenericItems.mockRejectedValueOnce(
+      new SvaMainserverError({
+        code: 'network_error',
+        message: 'Upstream fehlgeschlagen.',
+        statusCode: 502,
+      })
+    );
+    state.getSvaMainserverGenericItem.mockRejectedValueOnce(new Error('boom'));
+
+    const upstreamResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items')
+    );
+    const unexpectedResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items/generic-1')
+    );
+
+    expect(upstreamResponse?.status).toBe(502);
+    await expect(upstreamResponse?.json()).resolves.toEqual({
+      error: 'network_error',
+      message: 'Upstream fehlgeschlagen.',
+    });
+    expect(unexpectedResponse?.status).toBe(500);
+    await expect(unexpectedResponse?.json()).resolves.toEqual({
+      error: 'internal_error',
+      message: 'Mainserver-Anfrage ist fehlgeschlagen.',
     });
   });
 });

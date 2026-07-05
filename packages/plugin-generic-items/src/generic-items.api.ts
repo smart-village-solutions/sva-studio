@@ -6,7 +6,7 @@ import type {
   GenericItemFormInput,
   GenericItemListQuery,
   GenericItemListResult,
-} from './generic-items.types.js';
+} from './generic-items.api-types.js';
 
 export class GenericItemsApiError extends Error {
   public constructor(

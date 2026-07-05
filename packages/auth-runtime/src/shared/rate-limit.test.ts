@@ -26,40 +26,24 @@ describe('rate limit consumer', () => {
     const { createRateLimitConsumer } = await import('./rate-limit.js');
 
     const consume = createRateLimitConsumer();
-    expect(
-      consume({
-        instanceId: 'instance-1',
-        actorKeycloakSubject: 'actor-1',
-        scope: 'bulk',
-        requestId: 'req-1',
-        now: 10_000,
-      })
-    ).toBeNull();
-    expect(
-      consume({
-        instanceId: 'instance-1',
-        actorKeycloakSubject: 'actor-1',
-        scope: 'bulk',
-        requestId: 'req-1',
-        now: 10_001,
-      })
-    ).toBeNull();
-    expect(
-      consume({
-        instanceId: 'instance-1',
-        actorKeycloakSubject: 'actor-1',
-        scope: 'bulk',
-        requestId: 'req-1',
-        now: 10_002,
-      })
-    ).toBeNull();
+    for (let offset = 0; offset < 30; offset += 1) {
+      expect(
+        consume({
+          instanceId: 'instance-1',
+          actorKeycloakSubject: 'actor-1',
+          scope: 'bulk',
+          requestId: 'req-1',
+          now: 10_000 + offset,
+        })
+      ).toBeNull();
+    }
 
     const response = consume({
       instanceId: 'instance-1',
       actorKeycloakSubject: 'actor-1',
       scope: 'bulk',
       requestId: 'req-1',
-      now: 10_003,
+      now: 10_030,
     });
 
     expect(response?.status).toBe(429);
@@ -68,7 +52,7 @@ describe('rate limit consumer', () => {
         code: 'rate_limited',
         details: {
           scope: 'bulk',
-          limit: 3,
+          limit: 30,
           windowSeconds: 60,
         },
       },

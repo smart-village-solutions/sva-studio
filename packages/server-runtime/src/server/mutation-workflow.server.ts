@@ -29,6 +29,12 @@ export type AuthorizedMutation<TContext, TPrepared extends object, TAuthorized e
   TContext,
   TPrepared & TAuthorized
 >;
+export type MutationErrorState<
+  TContext,
+  TPrepared extends object,
+  TAuthorized extends object,
+  TIdempotency extends object,
+> = MutationBaseState<TContext> & Partial<TPrepared & TAuthorized & TIdempotency>;
 export type IdempotentMutation<
   TContext,
   TPrepared extends object,
@@ -52,7 +58,7 @@ export type MutationWorkflowDefinition<
   readonly idempotency?: MutationStep<PreparedMutation<TContext, TPrepared & TAuthorized>, TIdempotency>;
   readonly parse: MutationParseStep<PreparedMutation<TContext, TPrepared & TAuthorized & TIdempotency>, TInput>;
   readonly execute: MutationExecuteStep<PreparedMutation<TContext, TPrepared & TAuthorized & TIdempotency>, TInput, TResult>;
-  readonly mapError: MutationErrorMapper<PreparedMutation<TContext, TPrepared & TAuthorized & TIdempotency>>;
+  readonly mapError: MutationErrorMapper<MutationErrorState<TContext, TPrepared, TAuthorized, TIdempotency>>;
   readonly respond: MutationRespondStep<PreparedMutation<TContext, TPrepared & TAuthorized & TIdempotency>, TResult>;
 };
 
@@ -78,7 +84,7 @@ export const createMutationWorkflow = <
 ) => {
   return async (request: Request, context: TContext): Promise<Response> => {
     const initialState: MutationBaseState<TContext> = { request, context };
-    let currentState = initialState as PreparedMutation<TContext, TPrepared & TAuthorized & TIdempotency>;
+    let currentState: MutationErrorState<TContext, TPrepared, TAuthorized, TIdempotency> = initialState;
 
     try {
       const prepared = await definition.prepare(initialState);

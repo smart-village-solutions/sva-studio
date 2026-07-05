@@ -72,6 +72,7 @@ export { toJsonErrorResponse } from './server/json-error-response.server.js';
 export type {
   AuthorizedMutation,
   IdempotentMutation,
+  MutationErrorState,
   MutationExecutionResult,
   MutationWorkflowContext,
   MutationWorkflowDefinition,

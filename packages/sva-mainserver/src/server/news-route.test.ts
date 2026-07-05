@@ -872,6 +872,49 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.completeIdempotency).not.toHaveBeenCalled();
   });
 
+  it('logs and maps early create workflow failures before execute runs', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValueOnce({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        organizationId: '11111111-1111-1111-8111-111111111111',
+      },
+      permissions: [],
+    });
+    state.resolveActorInfo.mockResolvedValue({
+      actor: { instanceId: 'de-musterhausen', actorAccountId: '00000000-0000-4000-8000-000000000001' },
+    });
+    state.reserveIdempotency.mockRejectedValue(new Error('db down'));
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'idem-early-fail' },
+        body: JSON.stringify(newsInput),
+      })
+    );
+
+    expect(response?.status).toBe(500);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'internal_error',
+      message: 'Mainserver-News-Anfrage ist fehlgeschlagen.',
+    });
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Mainserver News route failed',
+      expect.objectContaining({
+        operation: 'mainserver_news_create',
+        request_id: 'req-news',
+        trace_id: 'trace-news',
+        method: 'POST',
+        error_code: 'internal_error',
+      })
+    );
+    expect(state.completeIdempotency).not.toHaveBeenCalled();
+  });
+
   it('returns stable errors for missing instance context and unsupported methods', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.authorizeContentPrimitiveForUser.mockResolvedValueOnce({

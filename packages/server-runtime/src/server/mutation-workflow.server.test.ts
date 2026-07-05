@@ -154,4 +154,38 @@ describe('mutation workflow', () => {
     expect(response.status).toBe(503);
     expect(mapError).toHaveBeenCalledWith(expect.any(Error), expect.objectContaining({ requestId: 'req-4', scope: 'write' }));
   });
+
+  it('uses the mapped error response when prepare throws', async () => {
+    const mapError = vi.fn(() => new Response('mapped-prepare', { status: 500 }));
+    const handler = createMutationWorkflow<
+      { userId: string },
+      { requestId: string },
+      { scope: 'write' },
+      { idempotencyKey: string },
+      { enabled: boolean },
+      { ok: true }
+    >({
+      prepare: () => {
+        throw new Error('prepare-boom');
+      },
+      csrf: () => undefined,
+      authorize: () => ({ scope: 'write' }),
+      idempotency: () => ({ idempotencyKey: 'idem-5' }),
+      parse: async () => ({ enabled: true }),
+      execute: async () => ({ ok: true }),
+      mapError,
+      respond: () => new Response('ok'),
+    });
+
+    const response = await handler(new Request('http://localhost/mutations', { method: 'POST' }), { userId: 'u-5' });
+
+    expect(response.status).toBe(500);
+    expect(mapError).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({
+        request: expect.any(Request),
+        context: { userId: 'u-5' },
+      })
+    );
+  });
 });

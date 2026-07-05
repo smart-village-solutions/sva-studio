@@ -78,17 +78,18 @@ export const createMutationWorkflow = <
 ) => {
   return async (request: Request, context: TContext): Promise<Response> => {
     const initialState: MutationBaseState<TContext> = { request, context };
-    const prepared = await definition.prepare(initialState);
-    if (isResponse(prepared)) {
-      return prepared;
-    }
-
-    let currentState = mergeStepState(initialState, prepared) as PreparedMutation<
-      TContext,
-      TPrepared & TAuthorized & TIdempotency
-    >;
+    let currentState = initialState as PreparedMutation<TContext, TPrepared & TAuthorized & TIdempotency>;
 
     try {
+      const prepared = await definition.prepare(initialState);
+      if (isResponse(prepared)) {
+        return prepared;
+      }
+
+      currentState = mergeStepState(initialState, prepared) as PreparedMutation<
+        TContext,
+        TPrepared & TAuthorized & TIdempotency
+      >;
       const preparedState = currentState as PreparedMutation<TContext, TPrepared>;
       const csrfResult = definition.csrf ? await definition.csrf(preparedState) : undefined;
       if (isResponse(csrfResult)) {

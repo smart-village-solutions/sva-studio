@@ -1,11 +1,11 @@
 ## ADDED Requirements
 
-### Requirement: Mainserver-Integration bleibt Adapter ueber oeffentliche Server-Vertraege
+### Requirement: Mainserver-Integration bleibt Adapter über öffentliche Server-Verträge
 
-Das System MUST `@sva/sva-mainserver` als Integrationsgrenze halten, die Auth-, Runtime- und Mainserver-Fachlogik nur ueber oeffentliche Package-Vertraege verbindet.
+Das System MUST `@sva/sva-mainserver` als Integrationsgrenze halten, die Auth-, Runtime- und Mainserver-Fachlogik nur über öffentliche Package-Verträge verbindet.
 
 #### Scenario: Mainserver-Code greift auf interne Fachimplementierungen zu
 
 - **WHEN** `@sva/sva-mainserver` einen internen `src`-Pfad aus `@sva/auth-runtime`, `@sva/iam-admin` oder `@sva/instance-registry` importiert
 - **THEN** schlagen die statischen Boundary-Gates fehl
-- **AND** die Integration muss ueber oeffentliche Adapter, Server-Vertraege oder neutrale Runtime-Helfer erfolgen
+- **AND** die Integration muss über öffentliche Adapter, Server-Verträge oder neutrale Runtime-Helfer erfolgen

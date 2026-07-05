@@ -658,7 +658,19 @@ const handleCollectionCreate = async (
         return response;
       }
     },
-    mapError: (error) => toMainserverErrorResponse(error, 'Mainserver-News-Anfrage ist fehlgeschlagen.'),
+    mapError: (error) => {
+      logger.warn('Mainserver News route failed', {
+        operation: 'mainserver_news_create',
+        request_id: requestId,
+        trace_id: getWorkspaceContext().traceId,
+        actor_id: ctx.user.id,
+        instance_id: ctx.user.instanceId,
+        content_type: NEWS_CONTENT_TYPE,
+        method: request.method,
+        error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',
+      });
+      return toMainserverErrorResponse(error, 'Mainserver-News-Anfrage ist fehlgeschlagen.');
+    },
     respond: (response) => response,
   });
 

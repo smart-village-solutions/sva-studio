@@ -339,7 +339,7 @@ describe('http mutation handlers', () => {
 
   it('assignModule uses the scoped registry service and maps thrown database errors', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleId: 'news' } });
-    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, _work) => {
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async () => {
       throw new Error('new row violates row-level security policy for table "permissions"');
     });
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);

@@ -386,6 +386,43 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledTimes(1);
   });
 
+  it('logs workflow-mapped update failures with request context', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.updateSvaMainserverNews.mockRejectedValue(
+      new SvaMainserverError({ code: 'graphql_error', message: 'GraphQL fehlgeschlagen.', statusCode: 502 })
+    );
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify(updateNewsInput),
+      })
+    );
+
+    expect(response?.status).toBe(502);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'graphql_error',
+      message: 'GraphQL fehlgeschlagen.',
+    });
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Mainserver News route failed',
+      expect.objectContaining({
+        operation: 'mainserver_news_update',
+        request_id: 'req-news',
+        trace_id: 'trace-news',
+        content_id: 'news-1',
+        method: 'PATCH',
+        error_code: 'graphql_error',
+      })
+    );
+  });
+
   it('normalizes nested optional news input before updating', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);

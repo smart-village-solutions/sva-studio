@@ -457,6 +457,12 @@ const createNewsItemMutationHandler = <TInput>(
     readonly execute: (actor: NewsMutationActor, parsed: TInput) => Promise<Response>;
   }
 ) => {
+  const operation =
+    input.route.kind === 'itemVisibility'
+      ? 'mainserver_news_visibility_update'
+      : input.action === 'news.delete'
+        ? 'mainserver_news_delete'
+        : 'mainserver_news_update';
   const workflow = createMutationWorkflow<
     AuthenticatedRequestContext,
     {
@@ -481,7 +487,20 @@ const createNewsItemMutationHandler = <TInput>(
     csrf: ({ request, requestId }) => validateMutationRequest(request, requestId) ?? undefined,
     parse: ({ request }) => input.parse(request),
     execute: async ({ actor, input: parsed }) => input.execute(actor, parsed),
-    mapError: (error) => toMainserverErrorResponse(error, 'Mainserver-News-Anfrage ist fehlgeschlagen.'),
+    mapError: (error, state) => {
+      logger.warn('Mainserver News route failed', {
+        operation,
+        request_id: state.requestId,
+        trace_id: getWorkspaceContext().traceId,
+        actor_id: state.context.user.id,
+        instance_id: state.context.user.instanceId,
+        content_type: NEWS_CONTENT_TYPE,
+        content_id: state.newsId,
+        method: state.request.method,
+        error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',
+      });
+      return toMainserverErrorResponse(error, 'Mainserver-News-Anfrage ist fehlgeschlagen.');
+    },
     respond: (response) => response,
   });
 

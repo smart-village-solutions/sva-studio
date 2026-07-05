@@ -2,15 +2,15 @@
 
 ## Why
 
-Die serverseitigen Mutationspfade duplizieren aktuell denselben Ablauf fuer Guards, Autorisierung, CSRF, Idempotency, Parsing, Ausfuehrung und Fehlermapping ueber mehrere Pakete. Diese Drift mischt Transportcode, Orchestrierung und Fachlogik, erschwert Reviews und unterlaeuft die Zielgrenzen zwischen `@sva/server-runtime`, `@sva/auth-runtime`, `@sva/iam-admin`, `@sva/instance-registry`, `@sva/sva-mainserver` und `apps/sva-studio-react`.
+Die serverseitigen Mutationspfade duplizieren aktuell denselben Ablauf für Guards, CSRF, Autorisierung, Idempotency, Parsing, Ausführung und Fehlermapping über mehrere Pakete. Diese Drift mischt Transportcode, Orchestrierung und Fachlogik, erschwert Reviews und unterläuft die Zielgrenzen zwischen `@sva/server-runtime`, `@sva/auth-runtime`, `@sva/iam-admin`, `@sva/instance-registry`, `@sva/sva-mainserver` und `apps/sva-studio-react`.
 
 ## What Changes
 
-- fuehrt in `@sva/server-runtime` einen framework-agnostischen, typsicheren Mutation-Workflow fuer `prepare -> authorize -> csrf -> idempotency -> parse -> execute -> mapError -> respond` ein
-- reduziert paketlokale Mutationshandler auf kleine Adapter ueber den gemeinsamen Workflow-Kern
-- startet die Migration in `@sva/instance-registry` als kanonischen Referenzschnitt fuer scoped Mutationen
-- haertet ESLint- und Fallow-Boundaries fuer App-, Integrations- und Serverpakete gegen interne `src`-Imports und unerwuenschte Transport-Handler-Abhaengigkeiten
-- verankert den neuen Ownership-Schnitt in den Specs fuer Monorepo-Struktur, IAM-Server-Modularisierung und Mainserver-Integration
+- führt in `@sva/server-runtime` einen framework-agnostischen, typsicheren Mutation-Workflow für `prepare -> csrf -> authorize -> idempotency -> parse -> execute -> mapError -> respond` ein
+- reduziert paketlokale Mutationshandler auf kleine Adapter über den gemeinsamen Workflow-Kern
+- startet die Migration in `@sva/instance-registry` als kanonischen Referenzschnitt für scoped Mutationen
+- härtet ESLint- und Fallow-Boundaries für App-, Integrations- und Serverpakete gegen interne `src`-Imports und unerwünschte Transport-Handler-Abhängigkeiten
+- verankert den neuen Ownership-Schnitt in den Specs für Monorepo-Struktur, IAM-Server-Modularisierung und Mainserver-Integration
 
 ## Impact
 

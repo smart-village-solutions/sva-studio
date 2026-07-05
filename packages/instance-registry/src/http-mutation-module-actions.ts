@@ -139,8 +139,8 @@ export const createMutateInstanceStatusHandler =
   <TContext>(
     deps: InstanceRegistryMutationHttpDeps<TContext>,
     mapMutationError: (error: unknown) => Response
-  ) =>
-  (request: Request, ctx: TContext, nextStatus: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>): Promise<Response> =>
+  ) => {
+  const createStatusMutationHandler = (nextStatus: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>) =>
     createScopedRegistryMutationHandler(deps, {
       parse: async (inputRequest) => {
         const payloadResult = await deps.parseRequestBody<{ status: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'> }>(
@@ -174,4 +174,14 @@ export const createMutateInstanceStatusHandler =
         return deps.jsonResponse(200, deps.asApiItem(result.instance, state.requestId));
       },
       mapMutationError,
-    })(request, ctx);
+    });
+
+  const handlers = {
+    active: createStatusMutationHandler('active'),
+    suspended: createStatusMutationHandler('suspended'),
+    archived: createStatusMutationHandler('archived'),
+  } satisfies Record<Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>, (request: Request, ctx: TContext) => Promise<Response>>;
+
+  return (request: Request, ctx: TContext, nextStatus: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>): Promise<Response> =>
+    handlers[nextStatus](request, ctx);
+};

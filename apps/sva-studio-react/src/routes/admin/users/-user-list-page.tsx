@@ -401,7 +401,7 @@ const UserListPaginationFooter = ({
 );
 
 const hasSystemAdminTargetRole = (user: UserListUser): boolean =>
-  user.roles.some((role) => role.roleName === 'system_admin');
+  user.roles.some((role) => role.roleKey === 'system_admin');
 
 const UserListRowActions = ({
   canDeleteUsers,

@@ -59,6 +59,13 @@ export type DeleteUserDeps = {
     client: QueryClient,
     input: { readonly instanceId: string; readonly accountId: string }
   ) => Promise<boolean>;
+  readonly purgeAccountHardDeleteBlockers: (
+    client: QueryClient,
+    input: {
+      readonly instanceId: string;
+      readonly accountId: string;
+    }
+  ) => Promise<void>;
   readonly reconcileOwnedContentForAccountDelete: (
     client: QueryClient,
     input: {
@@ -164,6 +171,10 @@ export const deleteUser = async (deps: DeleteUserDeps, input: DeleteUserInput): 
     }
 
     await deps.reconcileOwnedContentForAccountDelete(client, {
+      instanceId: input.actor.instanceId,
+      accountId: input.userId,
+    });
+    await deps.purgeAccountHardDeleteBlockers(client, {
       instanceId: input.actor.instanceId,
       accountId: input.userId,
     });

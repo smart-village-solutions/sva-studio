@@ -1,4 +1,9 @@
-import { createDeleteUserHandlerInternal, hardDeleteAccount, reconcileOwnedContentForAccountDelete } from '@sva/iam-admin';
+import {
+  createDeleteUserHandlerInternal,
+  hardDeleteAccount,
+  purgeAccountHardDeleteBlockers,
+  reconcileOwnedContentForAccountDelete,
+} from '@sva/iam-admin';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
@@ -22,6 +27,7 @@ export const resolveDeleteRequestContext = async (request: Request, ctx: Authent
   return resolveUserMutationTargetActorContext(request, ctx, {
     feature: 'iam_admin',
     scope: 'write',
+    requiredPermissionAction: 'iam.accounts.delete',
     requestId: requestContext.requestId,
   });
 };
@@ -80,6 +86,7 @@ const createRequestScopedDeleteUserHandler = (
     isSystemAdminAccount,
     logger,
     notFoundResponse: (requestId) => createApiError(404, 'not_found', 'Nutzer nicht gefunden.', requestId),
+    purgeAccountHardDeleteBlockers,
     reconcileOwnedContentForAccountDelete,
     resolveActorMaxRoleLevel,
     resolveDeleteRequestContext: async () => ({

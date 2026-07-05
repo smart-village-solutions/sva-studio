@@ -43,7 +43,7 @@ const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
       email: 'alice@example.com',
       status: 'active',
       lastLoginAt: '2026-03-04T10:00:00Z',
-      roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
+      roles: [{ roleId: 'role-1', roleKey: 'system_admin', roleName: 'system_admin', roleLevel: 90 }],
     },
   ],
   total: 1,
@@ -306,7 +306,7 @@ describe('UserListPage', () => {
             email: 'bob@example.com',
             status: 'active',
             lastLoginAt: '2026-03-04T10:00:00Z',
-            roles: [{ roleId: 'role-2', roleName: 'editor', roleLevel: 20 }],
+            roles: [{ roleId: 'role-2', roleKey: 'editor', roleName: 'editor', roleLevel: 20 }],
           },
         ],
       })
@@ -351,7 +351,7 @@ describe('UserListPage', () => {
             email: 'bob@example.com',
             status: 'active',
             lastLoginAt: '2026-03-04T10:00:00Z',
-            roles: [{ roleId: 'role-2', roleName: 'editor', roleLevel: 20 }],
+            roles: [{ roleId: 'role-2', roleKey: 'editor', roleName: 'editor', roleLevel: 20 }],
           },
         ],
       })
@@ -375,7 +375,7 @@ describe('UserListPage', () => {
             email: 'alice@example.com',
             status: 'inactive',
             lastLoginAt: '2026-03-04T10:00:00Z',
-            roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
+            roles: [{ roleId: 'role-1', roleKey: 'system_admin', roleName: 'system_admin', roleLevel: 90 }],
           },
         ],
       })

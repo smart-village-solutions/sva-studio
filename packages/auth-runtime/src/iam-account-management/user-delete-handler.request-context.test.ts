@@ -13,6 +13,13 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
   };
 });
 
+vi.mock('@sva/iam-admin', () => ({
+  createDeleteUserHandlerInternal: vi.fn(),
+  hardDeleteAccount: vi.fn(),
+  purgeAccountHardDeleteBlockers: vi.fn(),
+  reconcileOwnedContentForAccountDelete: vi.fn(),
+}));
+
 vi.mock('./user-mutation-request-context.shared.js', () => ({
   requireUserMutationIdentityProvider: vi.fn(),
   resolveUserMutationTargetActorContext: state.resolveUserMutationTargetActorContext,
@@ -61,6 +68,7 @@ describe('resolveDeleteRequestContext', () => {
     expect(state.resolveUserMutationTargetActorContext).toHaveBeenCalledWith(expect.any(Request), expect.anything(), {
       feature: 'iam_admin',
       scope: 'write',
+      requiredPermissionAction: 'iam.accounts.delete',
       requestId: 'req-1',
     });
   });

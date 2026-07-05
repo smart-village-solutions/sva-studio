@@ -125,7 +125,7 @@ describe('useUsers', () => {
       },
     });
     deactivateUserMock.mockResolvedValue({ data: { id: 'user-1' } });
-    deleteUserMock.mockResolvedValue({ data: { id: 'user-1' } });
+    deleteUserMock.mockResolvedValue(undefined);
     bulkDeactivateUsersMock.mockResolvedValue({ data: { deactivatedUserIds: ['user-1'], count: 1 } });
     syncUsersFromKeycloakMock.mockResolvedValue({
       data: {

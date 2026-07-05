@@ -12,6 +12,7 @@ export const resolveUserMutationActor = async (
   input: {
     feature: 'iam_admin' | 'iam_bulk';
     scope: 'write' | 'bulk';
+    requiredPermissionAction?: string;
     requestId?: string;
     provisionMissingActorMembership?: boolean;
   }
@@ -19,7 +20,7 @@ export const resolveUserMutationActor = async (
   return resolveMutationActorWithAccount(request, ctx, {
     ...input,
     allowedRoles: ADMIN_ROLES,
-    requiredPermissionAction: 'iam.user.write',
+    requiredPermissionAction: input.requiredPermissionAction ?? 'iam.user.write',
     provisionMissingActorMembership: input.provisionMissingActorMembership ?? true,
   });
 };

@@ -51,6 +51,7 @@ const createDeps = createTestDepsBuilder<DeleteUserHandlerDeps>(() => ({
     error: vi.fn(),
   },
   notFoundResponse: vi.fn((requestId) => createJsonResponse(404, { error: { code: 'not_found' }, requestId })),
+  purgeAccountHardDeleteBlockers: vi.fn(async () => undefined),
   reconcileOwnedContentForAccountDelete: vi.fn(async () => undefined),
   resolveActorMaxRoleLevel: vi.fn(async () => 100),
   resolveDeleteRequestContext: vi.fn(async () => ({
@@ -128,6 +129,9 @@ describe('createDeleteUserHandlerInternal', () => {
       hardDeleteUserRecord: vi.fn(async () => {
         events.push('hard-delete-user');
       }),
+      purgeAccountHardDeleteBlockers: vi.fn(async () => {
+        events.push('purge-delete-blockers');
+      }),
       reconcileOwnedContentForAccountDelete: vi.fn(async () => {
         events.push('content-reconcile');
       }),
@@ -148,6 +152,7 @@ describe('createDeleteUserHandlerInternal', () => {
     expect(response.status).toBe(204);
     expect(events).toEqual([
       'content-reconcile',
+      'purge-delete-blockers',
       'revoke-sessions',
       'keycloak:start',
       'delete-identity',
@@ -156,6 +161,10 @@ describe('createDeleteUserHandlerInternal', () => {
       'activity-log',
     ]);
     expect(deps.trackKeycloakCall).toHaveBeenCalledWith('delete_user', expect.any(Function));
+    expect(deps.purgeAccountHardDeleteBlockers).toHaveBeenCalledWith(expect.anything(), {
+      accountId: userDetail.id,
+      instanceId: actor.instanceId,
+    });
     expect(deps.hardDeleteUserRecord).toHaveBeenCalledWith(expect.anything(), {
       accountId: userDetail.id,
       instanceId: actor.instanceId,

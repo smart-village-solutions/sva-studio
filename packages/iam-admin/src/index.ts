@@ -166,6 +166,7 @@ export {
   anonymizeRetainedOwnedContent,
   hardDeleteAccount,
   markOwnedContentDeletedForAccountRemoval,
+  purgeAccountHardDeleteBlockers,
   reconcileOwnedContentForAccountDelete,
 } from './user-delete-persistence.js';
 

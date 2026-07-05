@@ -164,7 +164,6 @@ export const runWasteManagementMainserverSync = async (input: {
     .map(({ key: _key, ...row }) => row);
   const deleteByIdCount = deleteItems.filter((row) => Boolean(row.id?.trim())).length;
   const deleteByValueCount = deleteItems.length - deleteByIdCount;
-  const totalPlannedItemCount = createItems.length + deleteItems.length;
 
   if (!input.dryRun && createItems.length > 0 && !input.createItems) {
     throw new Error('waste_mainserver_sync_missing_create_writer');

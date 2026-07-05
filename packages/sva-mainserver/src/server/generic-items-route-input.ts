@@ -14,7 +14,6 @@ import type {
 } from '../types.js';
 import {
   errorJson,
-  isRecord,
   isResponse,
   parseJsonObjectBody,
   readString,

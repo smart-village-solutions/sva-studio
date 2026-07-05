@@ -9,7 +9,7 @@ describe('iam seed plan', () => {
   });
 
   it('keeps the canonical permission catalog in sync with the seed integration expectations', () => {
-    assert.equal(iamSeedPlan.permissions.length, 57);
+    assert.equal(iamSeedPlan.permissions.length, 58);
   });
 
   it('uses unique role slugs and keycloak subjects', () => {
@@ -78,6 +78,10 @@ describe('iam seed plan', () => {
     );
     assert.equal(
       iamSeedPlan.permissions.find((permission) => permission.key === 'iam.governance.export')?.resourceType,
+      'iam'
+    );
+    assert.equal(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'iam.accounts.delete')?.resourceType,
       'iam'
     );
   });

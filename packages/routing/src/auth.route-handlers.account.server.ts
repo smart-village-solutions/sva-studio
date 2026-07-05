@@ -29,7 +29,10 @@ export const accountAuthHandlerMap = {
   '/api/v1/iam/users/$userId': {
     GET: routeHandler(authRuntimeRoutes.getUserHandler),
     PATCH: routeHandler(authRuntimeRoutes.updateUserHandler),
-    DELETE: routeHandler(authRuntimeRoutes.deactivateUserHandler),
+    DELETE: routeHandler(authRuntimeRoutes.deleteUserHandler),
+  },
+  '/api/v1/iam/users/$userId/deactivate': {
+    POST: routeHandler(authRuntimeRoutes.deactivateUserHandler),
   },
   '/api/v1/iam/users/$userId/send-password-setup-email': {
     POST: routeHandler(authRuntimeRoutes.sendPasswordSetupEmailHandler),

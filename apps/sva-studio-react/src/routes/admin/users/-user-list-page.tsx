@@ -4,7 +4,7 @@ import type {
   IamKeycloakObjectEditability,
   IamUserImportSyncReport,
 } from '@sva/core';
-import { IconEdit } from '@tabler/icons-react';
+import { IconEdit, IconTrash } from '@tabler/icons-react';
 import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
@@ -20,7 +20,7 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { Switch } from '../../../components/ui/switch';
 import { useUsers } from '../../../hooks/use-users';
-import { hasPlatformInstanceAdminAccess, isIamBulkEnabled } from '../../../lib/iam-admin-access';
+import { hasPlatformInstanceAdminAccess, hasUserDeleteAccess, isIamBulkEnabled } from '../../../lib/iam-admin-access';
 import { useAuth } from '../../../providers/auth-provider';
 import { t } from '../../../i18n';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
@@ -400,34 +400,70 @@ const UserListPaginationFooter = ({
   </footer>
 );
 
-const UserListRowActions = ({ user }: { user: UserListUser }) =>
-  user.editability === 'blocked' ? (
-    <Button
-      type="button"
-      size="icon"
-      variant="outline"
-      disabled
-      aria-label={t('admin.users.actions.edit')}
-      title={t('admin.users.actions.edit')}
-    >
-      <IconEdit aria-hidden="true" className="h-4 w-4" />
-    </Button>
-  ) : (
-    <Button asChild type="button" size="icon" variant="outline">
-      <Link
-        to="/admin/users/$userId"
-        params={{ userId: user.id }}
-        aria-label={t('admin.users.actions.edit')}
-        title={t('admin.users.actions.edit')}
-      >
-        <IconEdit aria-hidden="true" className="h-4 w-4" />
-      </Link>
-    </Button>
+const hasSystemAdminTargetRole = (user: UserListUser): boolean =>
+  user.roles.some((role) => role.roleName === 'system_admin');
+
+const UserListRowActions = ({
+  canDeleteUsers,
+  onDeleteAction,
+  user,
+}: {
+  canDeleteUsers: boolean;
+  onDeleteAction: (userId: string) => void;
+  user: UserListUser;
+}) => {
+  const editBlocked = user.editability === 'blocked';
+  const deleteBlocked = editBlocked || user.editability === 'read_only' || hasSystemAdminTargetRole(user);
+  const deleteDisabledReason = hasSystemAdminTargetRole(user)
+    ? t('admin.users.confirm.deleteSystemAdminDisabled')
+    : t('admin.users.actions.delete');
+
+  return (
+    <>
+      {editBlocked ? (
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          disabled
+          aria-label={t('admin.users.actions.edit')}
+          title={t('admin.users.actions.edit')}
+        >
+          <IconEdit aria-hidden="true" className="h-4 w-4" />
+        </Button>
+      ) : (
+        <Button asChild type="button" size="icon" variant="outline">
+          <Link
+            to="/admin/users/$userId"
+            params={{ userId: user.id }}
+            aria-label={t('admin.users.actions.edit')}
+            title={t('admin.users.actions.edit')}
+          >
+            <IconEdit aria-hidden="true" className="h-4 w-4" />
+          </Link>
+        </Button>
+      )}
+      {canDeleteUsers ? (
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          disabled={deleteBlocked}
+          aria-label={t('admin.users.actions.delete')}
+          title={deleteBlocked ? deleteDisabledReason : t('admin.users.actions.delete')}
+          onClick={() => onDeleteAction(user.id)}
+        >
+          <IconTrash aria-hidden="true" className="h-4 w-4" />
+        </Button>
+      ) : null}
+    </>
   );
+};
 
 export const UserListPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const usersApi = useUsers();
+  const [deleteUserId, setDeleteUserId] = React.useState<string | null>(null);
   const {
     closeStatusActionDialog,
     onConfirmStatusAction,
@@ -442,6 +478,7 @@ export const UserListPage = () => {
   const { user } = useAuth();
   const isPlatformScope = user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
   const isAuthLoading = user === null;
+  const canDeleteUsers = !isPlatformScope && !isAuthLoading && hasUserDeleteAccess(user);
   const statusActionDialogKeys = getStatusActionDialogTranslationKeys(statusActionDialog);
 
   const pageCount = Math.max(1, Math.ceil(usersApi.total / usersApi.pageSize));
@@ -496,7 +533,17 @@ export const UserListPage = () => {
           }
           toolbarStart={<UserListToolbarStart usersApi={usersApi} />}
           toolbarEnd={<UserListToolbarEnd syncStatus={syncStatus} total={usersApi.total} onSyncUsers={onSyncUsers} />}
-          rowActions={isPlatformScope || isAuthLoading ? undefined : (user) => <UserListRowActions user={user} />}
+          rowActions={
+            isPlatformScope || isAuthLoading
+              ? undefined
+              : (user) => (
+                  <UserListRowActions
+                    canDeleteUsers={canDeleteUsers}
+                    onDeleteAction={setDeleteUserId}
+                    user={user}
+                  />
+                )
+          }
         />
       </StudioListPageTemplate>
 
@@ -519,6 +566,21 @@ export const UserListPage = () => {
         cancelLabel={t('account.actions.cancel')}
         onCancel={closeStatusActionDialog}
         onConfirm={() => void onConfirmStatusAction()}
+      />
+      <ConfirmDialog
+        open={Boolean(deleteUserId)}
+        title={t('admin.users.confirm.deleteTitle')}
+        description={t('admin.users.confirm.deleteDescription')}
+        confirmLabel={t('admin.users.actions.delete')}
+        cancelLabel={t('account.actions.cancel')}
+        onCancel={() => setDeleteUserId(null)}
+        onConfirm={async () => {
+          const userId = deleteUserId;
+          setDeleteUserId(null);
+          if (userId) {
+            await usersApi.deleteUser(userId);
+          }
+        }}
       />
     </section>
   );

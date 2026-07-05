@@ -74,6 +74,7 @@ export {
 
 export {
   ensureActorCanManageTarget,
+  ensureDeleteTargetIsAllowed,
   ensureTenantManageableRoleAssignments,
   ensureRoleAssignmentWithinActorLevel,
   isSystemAdminAccount,
@@ -151,6 +152,22 @@ export {
   type DeactivateAuthenticatedRequestContext,
   type DeactivateUserHandlerDeps,
 } from './user-deactivate-handler.js';
+
+export {
+  deleteUser,
+  createDeleteUserHandlerInternal,
+  type DeleteAuthenticatedRequestContext,
+  type DeleteUserDeps,
+  type DeleteUserHandlerDeps,
+  type DeleteUserInput,
+  type DeleteUserResult,
+} from './user-delete-handler.js';
+export {
+  anonymizeRetainedOwnedContent,
+  hardDeleteAccount,
+  markOwnedContentDeletedForAccountRemoval,
+  reconcileOwnedContentForAccountDelete,
+} from './user-delete-persistence.js';
 
 export {
   createUpdateUserHandlerInternal,

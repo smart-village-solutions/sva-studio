@@ -106,4 +106,13 @@ describe('iam seed sql contracts', () => {
     assert.match(defaultSeedSql, /\('de-musterhausen', 'categories'\)/);
     assert.match(bbGubenSeedSql, /\('bb-guben', 'categories'\)/);
   });
+
+  it('keeps deletion-rule seeds scoped to the existing retain lifecycle defaults', () => {
+    const seedSql = readSeed('0003_iam_deletion_rules_defaults.sql');
+
+    assert.match(seedSql, /\('de-musterhausen', 90, 180, 365, 'retain', false\)/);
+    assert.match(seedSql, /default_content_strategy = EXCLUDED\.default_content_strategy/);
+    assert.match(seedSql, /allow_content_preference_override = EXCLUDED\.allow_content_preference_override/);
+    assert.doesNotMatch(seedSql, /hard[_-]?delete/i);
+  });
 });

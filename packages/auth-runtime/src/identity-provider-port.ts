@@ -87,6 +87,7 @@ export interface IdentityProviderPort {
   executeActionsEmail?(externalId: string, input: ExecuteActionsEmailInput): Promise<void>;
   updateUser(externalId: string, input: UpdateIdentityUserInput): Promise<void>;
   deactivateUser(externalId: string): Promise<void>;
+  deleteUser(externalId: string): Promise<void>;
   listUsers(query?: IdentityUserListQuery): Promise<readonly IdentityListedUser[]>;
   getUserAttributes(externalId: string, attributeNames?: readonly string[]): Promise<IdentityUserAttributes>;
   syncRoles(externalId: string, roles: readonly string[]): Promise<void>;

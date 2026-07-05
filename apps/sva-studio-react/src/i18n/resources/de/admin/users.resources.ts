@@ -34,6 +34,7 @@ export const usersAdminDEResources = {
     create: 'Nutzer anlegen',
     creating: 'Nutzer wird angelegt ...',
     edit: 'Bearbeiten',
+    delete: 'Löschen',
     activate: 'Aktivieren',
     deactivate: 'Deaktivieren',
     bulkDeactivate: 'Auswahl deaktivieren',
@@ -77,6 +78,11 @@ export const usersAdminDEResources = {
     singleDescription: 'Die ausgewählte Person wird deaktiviert.',
     bulkTitle: 'Mehrere Nutzer deaktivieren',
     bulkDescription: 'Alle markierten Nutzer werden deaktiviert (maximal 50).',
+    deleteTitle: 'Nutzerkonto dauerhaft löschen',
+    deleteDescription:
+      'Das ausgewählte Tenant-Konto wird physisch in Studio und Keycloak gelöscht. Inhalte werden entsprechend der wirksamen Tenant- oder Konto-Regel behandelt.',
+    deleteSystemAdminDisabled:
+      'Konten mit aktiver Rolle System-Administrator können erst nach Entzug dieser Rolle gelöscht werden.',
   },
   edit: {
     title: 'Nutzer bearbeiten',
@@ -230,6 +236,8 @@ export const usersAdminDEResources = {
     lastAdminProtection:
       'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.',
     selfProtection: 'Das aktuell angemeldete Konto kann nicht auf diese Weise deaktiviert werden.',
+    systemAdminDeleteProtection:
+      'Konten mit aktiver Rolle System-Administrator können erst nach Entzug dieser Rolle gelöscht werden.',
     featureDisabled: 'Die Nutzerverwaltung ist derzeit deaktiviert.',
     unauthorized: 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',
     unexpectedHttp: 'Unerwartete Serverantwort (HTTP {{status}}).',

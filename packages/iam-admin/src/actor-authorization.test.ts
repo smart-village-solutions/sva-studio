@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   ensureActorCanManageTarget,
+  ensureDeleteTargetIsAllowed,
   ensureRoleAssignmentWithinActorLevel,
   isSystemAdminAccount,
   resolveActorMaxRoleLevel,
@@ -120,6 +121,18 @@ describe('actor-authorization', () => {
         targetRoles: [{ roleKey: 'editor', roleLevel: 20 }],
       })
     ).toEqual({ ok: true });
+  });
+
+  it('blocks deleting system_admin targets even for system_admin actors', () => {
+    expect(
+      ensureDeleteTargetIsAllowed({
+        targetRoles: [{ roleKey: 'system_admin', roleLevel: 100 }],
+      })
+    ).toEqual({
+      ok: false,
+      code: 'system_admin_delete_protection',
+      message: 'system_admin muss vor der Löschung entzogen werden.',
+    });
   });
 
   it('resolves system admin count and account state', async () => {

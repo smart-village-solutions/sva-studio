@@ -536,6 +536,13 @@ export const sendPasswordSetupEmail = async (
   );
 
 export const deactivateUser = async (userId: string): Promise<ApiItemResponse<{ id: string }>> =>
+  postJson<ApiItemResponse<{ id: string }>, Record<string, never>>(
+    `/api/v1/iam/users/${userId}/deactivate`,
+    {},
+    true
+  );
+
+export const deleteUser = async (userId: string): Promise<ApiItemResponse<{ id: string }>> =>
   requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/users/${userId}`, {
     method: 'DELETE',
     headers: IAM_HEADERS,

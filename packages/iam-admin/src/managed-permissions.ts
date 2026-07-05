@@ -56,6 +56,7 @@ const resolveManagedPermissionRuntimeScope = (permissionKey: string): IamPermiss
 const managedPermissionDescriptions = {
   'app.read': 'App-Link in der Sidebar anzeigen',
   'cockpit.read': 'Cockpit-Link in der Sidebar anzeigen',
+  'iam.accounts.delete': 'Tenant-Accounts löschen',
   'instance.registry.manage': INSTANCE_REGISTRY_PERMISSION_DESCRIPTION,
   'waste-management.read': 'Lesezugriff auf das Waste-Management-Modul',
   'waste-management.master-data.manage': 'Stammdaten im Waste-Management verwalten',
@@ -79,6 +80,12 @@ const managedPermissionMetadata = [
     moduleId: 'cockpit',
     description: managedPermissionDescriptions['cockpit.read'],
     runtimeScope: resolveManagedPermissionRuntimeScope('cockpit.read'),
+  },
+  {
+    permissionKey: 'iam.accounts.delete',
+    moduleId: 'iam',
+    description: managedPermissionDescriptions['iam.accounts.delete'],
+    runtimeScope: resolveManagedPermissionRuntimeScope('iam.accounts.delete'),
   },
   {
     permissionKey: 'instance.registry.manage',

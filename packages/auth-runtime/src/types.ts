@@ -76,6 +76,7 @@ export type SessionControlState = {
     | 'dsr_deletion_requested'
     | 'user_bulk_deactivated'
     | 'user_deactivated'
+    | 'user_deleted'
     | 'user_status_inactivated';
 };
 

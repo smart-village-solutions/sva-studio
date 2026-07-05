@@ -14,6 +14,7 @@ const listUsersMock = vi.fn();
 const createUserMock = vi.fn();
 const updateUserMock = vi.fn();
 const deactivateUserMock = vi.fn();
+const deleteUserMock = vi.fn();
 const bulkDeactivateUsersMock = vi.fn();
 const syncUsersFromKeycloakMock = vi.fn();
 const authMockValue = {
@@ -71,6 +72,7 @@ vi.mock('../lib/iam-api', () => ({
   createUser: (...args: unknown[]) => createUserMock(...args),
   updateUser: (...args: unknown[]) => updateUserMock(...args),
   deactivateUser: (...args: unknown[]) => deactivateUserMock(...args),
+  deleteUser: (...args: unknown[]) => deleteUserMock(...args),
   bulkDeactivateUsers: (...args: unknown[]) => bulkDeactivateUsersMock(...args),
   syncUsersFromKeycloak: (...args: unknown[]) => syncUsersFromKeycloakMock(...args),
 }));
@@ -123,6 +125,7 @@ describe('useUsers', () => {
       },
     });
     deactivateUserMock.mockResolvedValue({ data: { id: 'user-1' } });
+    deleteUserMock.mockResolvedValue({ data: { id: 'user-1' } });
     bulkDeactivateUsersMock.mockResolvedValue({ data: { deactivatedUserIds: ['user-1'], count: 1 } });
     syncUsersFromKeycloakMock.mockResolvedValue({
       data: {
@@ -147,12 +150,14 @@ describe('useUsers', () => {
     await act(async () => {
       await result.current.createUser({ email: 'second@example.com' });
       await result.current.deactivateUser('user-1');
+      await result.current.deleteUser('user-1');
       await result.current.bulkDeactivate(['user-1']);
       await result.current.syncUsersFromKeycloak();
     });
 
     expect(createUserMock).toHaveBeenCalledTimes(1);
     expect(deactivateUserMock).toHaveBeenCalledTimes(1);
+    expect(deleteUserMock).toHaveBeenCalledTimes(1);
     expect(bulkDeactivateUsersMock).toHaveBeenCalledTimes(1);
     expect(syncUsersFromKeycloakMock).toHaveBeenCalledTimes(1);
     expect(browserLoggerMock.info).toHaveBeenCalledWith(

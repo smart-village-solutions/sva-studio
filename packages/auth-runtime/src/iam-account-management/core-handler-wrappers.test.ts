@@ -6,6 +6,7 @@ const state = vi.hoisted(() => ({
     bulkDeactivateInternal: vi.fn(),
     createUserInternal: vi.fn(),
     deactivateUserInternal: vi.fn(),
+    deleteUserInternal: vi.fn(),
     getMyProfileInternal: vi.fn(),
     getUserInternal: vi.fn(),
     getUserTimelineInternal: vi.fn(),
@@ -37,6 +38,9 @@ vi.mock('./user-create-handler.js', () => ({
 }));
 vi.mock('./user-deactivate-handler.js', () => ({
   deactivateUserInternal: state.userHandlers.deactivateUserInternal,
+}));
+vi.mock('./user-delete-handler.js', () => ({
+  deleteUserInternal: state.userHandlers.deleteUserInternal,
 }));
 vi.mock('./user-import-sync-handler.js', () => ({
   syncUsersFromKeycloakInternal: state.userHandlers.syncUsersFromKeycloakInternal,
@@ -90,6 +94,7 @@ describe('IAM core handler wrappers', () => {
     await module.sendPasswordSetupEmailHandler(request);
     await module.updateUserHandler(request);
     await module.deactivateUserHandler(request);
+    await module.deleteUserHandler(request);
     await module.bulkDeactivateUsersHandler(request);
     await module.syncUsersFromKeycloakHandler(request);
     await module.updateMyProfileHandler(request);
@@ -103,6 +108,7 @@ describe('IAM core handler wrappers', () => {
       [request, state.userHandlers.sendPasswordSetupEmailInternal],
       [request, state.userHandlers.updateUserInternal],
       [request, state.userHandlers.deactivateUserInternal],
+      [request, state.userHandlers.deleteUserInternal],
       [request, state.userHandlers.bulkDeactivateInternal],
       [request, state.userHandlers.syncUsersFromKeycloakInternal],
       [request, state.userHandlers.updateMyProfileInternal],

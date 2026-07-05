@@ -481,7 +481,7 @@ CREATE TABLE iam.content_history (
     id uuid NOT NULL,
     instance_id text NOT NULL,
     content_id uuid NOT NULL,
-    actor_account_id uuid NOT NULL,
+    actor_account_id uuid,
     actor_display_name text NOT NULL,
     action text NOT NULL,
     changed_fields text[] DEFAULT ARRAY[]::text[] NOT NULL,
@@ -570,7 +570,7 @@ CREATE TABLE iam.contents (
     published_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    author_account_id uuid NOT NULL,
+    author_account_id uuid,
     author_display_name text NOT NULL,
     payload_json jsonb NOT NULL,
     status text NOT NULL,
@@ -579,8 +579,8 @@ CREATE TABLE iam.contents (
     validation_state text DEFAULT 'valid'::text NOT NULL,
     publish_from timestamp with time zone,
     publish_until timestamp with time zone,
-    creator_account_id uuid NOT NULL,
-    updater_account_id uuid NOT NULL,
+    creator_account_id uuid,
+    updater_account_id uuid,
     history_ref text NOT NULL,
     current_revision_ref text,
     last_audit_event_ref text,
@@ -3036,7 +3036,7 @@ ALTER TABLE ONLY iam.activity_logs
 --
 
 ALTER TABLE ONLY iam.content_history
-    ADD CONSTRAINT content_history_actor_account_id_fkey FOREIGN KEY (actor_account_id) REFERENCES iam.accounts(id);
+    ADD CONSTRAINT content_history_actor_account_id_fkey FOREIGN KEY (actor_account_id) REFERENCES iam.accounts(id) ON DELETE SET NULL;
 
 
 --
@@ -3052,7 +3052,7 @@ ALTER TABLE ONLY iam.content_history
 --
 
 ALTER TABLE ONLY iam.contents
-    ADD CONSTRAINT contents_author_account_id_fkey FOREIGN KEY (author_account_id) REFERENCES iam.accounts(id);
+    ADD CONSTRAINT contents_author_account_id_fkey FOREIGN KEY (author_account_id) REFERENCES iam.accounts(id) ON DELETE SET NULL;
 
 
 --
@@ -3060,7 +3060,7 @@ ALTER TABLE ONLY iam.contents
 --
 
 ALTER TABLE ONLY iam.contents
-    ADD CONSTRAINT contents_creator_account_id_fkey FOREIGN KEY (creator_account_id) REFERENCES iam.accounts(id);
+    ADD CONSTRAINT contents_creator_account_id_fkey FOREIGN KEY (creator_account_id) REFERENCES iam.accounts(id) ON DELETE SET NULL;
 
 
 --
@@ -3068,7 +3068,7 @@ ALTER TABLE ONLY iam.contents
 --
 
 ALTER TABLE ONLY iam.contents
-    ADD CONSTRAINT contents_updater_account_id_fkey FOREIGN KEY (updater_account_id) REFERENCES iam.accounts(id);
+    ADD CONSTRAINT contents_updater_account_id_fkey FOREIGN KEY (updater_account_id) REFERENCES iam.accounts(id) ON DELETE SET NULL;
 
 
 --

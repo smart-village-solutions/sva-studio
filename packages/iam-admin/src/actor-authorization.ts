@@ -114,6 +114,24 @@ export const ensureActorCanManageTarget = (input: {
   return { ok: true };
 };
 
+export const ensureDeleteTargetIsAllowed = (input: {
+  readonly targetRoles: readonly {
+    readonly roleKey: string;
+    readonly roleLevel: number;
+  }[];
+}): { ok: true } | { ok: false; code: 'system_admin_delete_protection'; message: string } => {
+  const targetHasSystemAdmin = input.targetRoles.some((role) => role.roleKey === SYSTEM_ADMIN_ROLE_KEY);
+  if (targetHasSystemAdmin) {
+    return {
+      ok: false,
+      code: 'system_admin_delete_protection',
+      message: 'system_admin muss vor der Löschung entzogen werden.',
+    };
+  }
+
+  return { ok: true };
+};
+
 export const resolveSystemAdminCount = async (client: QueryClient, instanceId: string): Promise<number> => {
   const result = await client.query<{ readonly admin_count: number }>(
     `

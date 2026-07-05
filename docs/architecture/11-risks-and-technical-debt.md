@@ -239,6 +239,11 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: dedizierte Installations-Smoke-Tests mit echten gepackten Artefakten und einem `installed-distribution`-Pfad außerhalb des Monorepos ergänzen
 
+41. Nicht-atomare Cross-System-Orchestrierung beim Tenant-Account-Hard-Delete
+   - Impact: hoch (Teil-Erfolge zwischen Inhaltsbereinigung, Session-Widerruf, Keycloak-Delete und Studio-Hard-Delete können temporär inkonsistente Zustände erzeugen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Delete-Pfad weiter in Richtung expliziter Kompensation oder retry-sicherer Abschlussprotokolle härten; Keycloak-404 ist bereits idempotent abgefangen, die Gesamttransaktion bleibt aber systemübergreifend nicht atomar
+
 41. Host-seitige Runtime-Auflösung ist bisher nur für Plugin-`jobs` generisch, nicht aber für `server`- oder `integrations`-Beiträge
    - Impact: mittel (der Job-Pfad ist entkoppelt, aber weitere pluginseitige Runtime-Beiträge würden noch einen separaten Folgechange benötigen)
    - Wahrscheinlichkeit: mittel

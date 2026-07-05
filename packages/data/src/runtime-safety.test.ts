@@ -235,7 +235,7 @@ test('content author display migration keeps existing personal content user-auth
 });
 
 test('admin account hard-delete migration anonymizes retained content account references only via set null', () => {
-  const sql = readRepoFile('data/migrations/0063_iam_admin_account_hard_delete.sql');
+  const sql = readRepoFile('data/migrations/0066_iam_admin_account_hard_delete.sql');
   const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
   const stillBlockingRestrictPaths = [
     'account_profile_corrections_account_membership_fk',

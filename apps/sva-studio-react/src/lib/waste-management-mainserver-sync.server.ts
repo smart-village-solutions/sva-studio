@@ -24,6 +24,7 @@ import {
 import {
   averageBatchDuration,
   buildSyncProgress,
+  formatBatchStepLabel,
   reportSyncProgress,
   type WasteSyncBatchProgressDetails,
   type WasteSyncProgressReporter,
@@ -365,7 +366,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
         buildSyncProgress({
           completedSteps: isCreate ? 4 : 5,
           currentStepKey,
-          currentStepLabel: currentStepKey,
+          currentStepLabel: formatBatchStepLabel(details),
           details,
         })
       );

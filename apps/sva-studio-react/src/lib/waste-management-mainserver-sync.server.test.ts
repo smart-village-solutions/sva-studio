@@ -328,7 +328,7 @@ describe('waste-management-mainserver-sync.server', () => {
         }),
         expect.objectContaining({
           currentStepKey: 'create-batches',
-          currentStepLabel: 'create-batches',
+          currentStepLabel: 'Create-Batches 1/1',
           details: expect.objectContaining({
             operationMode: 'create',
             totalItemCount: 0,
@@ -338,7 +338,7 @@ describe('waste-management-mainserver-sync.server', () => {
         }),
         expect.objectContaining({
           currentStepKey: 'delete-batches',
-          currentStepLabel: 'delete-batches',
+          currentStepLabel: 'Delete-Batches 1/1',
           details: expect.objectContaining({
             operationMode: 'delete',
             totalItemCount: 0,
@@ -775,7 +775,7 @@ describe('waste-management-mainserver-sync.server', () => {
       expect.arrayContaining([
         expect.objectContaining({
           currentStepKey: 'create-batches',
-          currentStepLabel: 'create-batches',
+          currentStepLabel: 'Create-Batches 1/2',
           details: expect.objectContaining({
             operationMode: 'create',
             totalItemCount: 4,
@@ -790,7 +790,7 @@ describe('waste-management-mainserver-sync.server', () => {
         }),
         expect.objectContaining({
           currentStepKey: 'create-batches',
-          currentStepLabel: 'create-batches',
+          currentStepLabel: 'Create-Batches 2/2',
           details: expect.objectContaining({
             operationMode: 'create',
             totalItemCount: 4,
@@ -804,7 +804,7 @@ describe('waste-management-mainserver-sync.server', () => {
         }),
         expect.objectContaining({
           currentStepKey: 'delete-batches',
-          currentStepLabel: 'delete-batches',
+          currentStepLabel: 'Delete-Batches 1/1',
           details: expect.objectContaining({
             operationMode: 'delete',
             totalItemCount: 4,
@@ -853,7 +853,7 @@ describe('waste-management-mainserver-sync.server', () => {
           completedSteps: details.operationMode === 'create' ? 4 : 5,
           totalSteps: 6,
           currentStepKey: details.operationMode === 'create' ? 'create-batches' : 'delete-batches',
-          currentStepLabel: details.operationMode === 'create' ? 'create-batches' : 'delete-batches',
+          currentStepLabel: details.operationMode === 'create' ? 'Create-Batches 1/1' : 'Delete-Batches 1/1',
           details,
         });
       },

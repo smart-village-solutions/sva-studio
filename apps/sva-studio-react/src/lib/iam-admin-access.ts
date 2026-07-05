@@ -8,6 +8,7 @@ type UserWithRoles = {
 const INTERFACES_PERMISSION = 'integration.manage';
 const EXPERIMENTAL_PERMISSION = 'experimental.read';
 const USER_ADMIN_PERMISSION = 'iam.user.read';
+const USER_DELETE_PERMISSION = 'iam.accounts.delete';
 const ORGANIZATION_ADMIN_PERMISSION = 'iam.org.read';
 const ROLE_ADMIN_PERMISSION = 'iam.role.read';
 const LEGAL_TEXT_ADMIN_PERMISSION = 'iam.legalText.read';
@@ -36,6 +37,9 @@ export const isIamBulkEnabled = () => isIamAdminEnabled() && readFlag(import.met
 
 export const hasUserAdminAccess = (user: UserWithRoles | null | undefined) =>
   user?.permissionActions?.includes(USER_ADMIN_PERMISSION) === true;
+
+export const hasUserDeleteAccess = (user: UserWithRoles | null | undefined) =>
+  user?.permissionActions?.includes(USER_DELETE_PERMISSION) === true;
 
 export const hasOrganizationAdminAccess = (user: UserWithRoles | null | undefined) =>
   user?.permissionActions?.includes(ORGANIZATION_ADMIN_PERMISSION) === true;

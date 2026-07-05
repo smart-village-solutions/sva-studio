@@ -40,6 +40,7 @@ describe('iam-admin-access', () => {
     };
 
     expect(access.hasUserAdminAccess(user)).toBe(true);
+    expect(access.hasUserDeleteAccess(user)).toBe(false);
     expect(access.hasOrganizationAdminAccess(user)).toBe(true);
     expect(access.hasRoleAdminAccess(user)).toBe(true);
     expect(access.hasLegalTextAdminAccess(user)).toBe(true);
@@ -60,6 +61,7 @@ describe('iam-admin-access', () => {
     };
 
     expect(access.hasUserAdminAccess(user)).toBe(false);
+    expect(access.hasUserDeleteAccess(user)).toBe(false);
     expect(access.hasRoleAdminAccess(user)).toBe(false);
     expect(access.hasIamGovernanceAccess(user)).toBe(false);
     expect(access.hasPlatformInstanceAdminAccess(user)).toBe(true);
@@ -73,6 +75,7 @@ describe('iam-admin-access', () => {
     };
 
     expect(access.hasUserAdminAccess(user)).toBe(false);
+    expect(access.hasUserDeleteAccess(user)).toBe(false);
     expect(access.hasOrganizationAdminAccess(user)).toBe(false);
     expect(access.hasRoleAdminAccess(user)).toBe(false);
     expect(access.hasLegalTextAdminAccess(user)).toBe(false);
@@ -98,5 +101,20 @@ describe('iam-admin-access', () => {
     };
 
     expect(access.hasExperimentalAccess(user)).toBe(false);
+  });
+
+  it('requires the explicit iam.accounts.delete permission for destructive user actions', async () => {
+    const access = await import('./iam-admin-access');
+    const deleteUser = {
+      roles: ['system_admin'],
+      permissionActions: ['iam.accounts.delete'],
+    };
+    const userAdminWithoutDelete = {
+      roles: ['system_admin'],
+      permissionActions: ['iam.user.read'],
+    };
+
+    expect(access.hasUserDeleteAccess(deleteUser)).toBe(true);
+    expect(access.hasUserDeleteAccess(userAdminWithoutDelete)).toBe(false);
   });
 });

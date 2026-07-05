@@ -96,6 +96,7 @@ const buildMissingInstanceResult = (): Extract<InstancePermissionAuthorizationRe
 
 const resolveAuthorizationPermissions = async (input: {
   readonly ctx: AuthenticatedRequestContext;
+  readonly instanceId: string;
   readonly action: string;
   readonly requestId?: string;
   readonly traceId?: string;
@@ -104,25 +105,20 @@ const resolveAuthorizationPermissions = async (input: {
   | Readonly<{ ok: true; permissions: readonly EffectivePermission[] }>
   | Readonly<{ ok: false; result: Extract<InstancePermissionAuthorizationResult, { ok: false }> }>
 > => {
-  const instanceId = input.ctx.user.instanceId;
-  if (!instanceId) {
-    return { ok: false, result: buildMissingInstanceResult() };
-  }
-
   if (input.permissions) {
     return { ok: true, permissions: input.permissions };
   }
 
   try {
     const resolved = await resolveEffectivePermissions({
-      instanceId,
+      instanceId: input.instanceId,
       keycloakSubject: input.ctx.user.id,
     });
 
     if (!resolved.ok) {
       accountLogger.error('Instance permission authorization resolution failed', {
         operation: 'instance_permission_authorize',
-        instance_id: instanceId,
+        instance_id: input.instanceId,
         request_id: input.requestId,
         trace_id: input.traceId,
         action: input.action,
@@ -139,7 +135,7 @@ const resolveAuthorizationPermissions = async (input: {
   } catch (error) {
     accountLogger.error('Instance permission authorization failed', {
       operation: 'instance_permission_authorize',
-      instance_id: instanceId,
+      instance_id: input.instanceId,
       request_id: input.requestId,
       trace_id: input.traceId,
       action: input.action,
@@ -156,9 +152,10 @@ const resolveAuthorizationPermissions = async (input: {
 export const authorizeInstancePermissionForUser = async (input: {
   readonly ctx: AuthenticatedRequestContext;
   readonly action: string;
+  readonly instanceId?: string;
   readonly permissions?: readonly EffectivePermission[];
 }): Promise<InstancePermissionAuthorizationResult> => {
-  const instanceId = input.ctx.user.instanceId;
+  const instanceId = input.instanceId ?? input.ctx.user.instanceId;
   if (!instanceId) {
     return buildMissingInstanceResult();
   }
@@ -177,6 +174,7 @@ export const authorizeInstancePermissionForUser = async (input: {
   const resourceType = deriveAuthorizationResourceType(action);
   const resolvedPermissions = await resolveAuthorizationPermissions({
     ctx: input.ctx,
+    instanceId,
     action,
     requestId: workspaceContext.requestId,
     traceId: workspaceContext.traceId,

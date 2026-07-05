@@ -507,6 +507,15 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     });
   }
 
+  async deleteUser(externalId: string): Promise<void> {
+    await this.assertWriteAvailability();
+    await this.executeWithResilience<void>({
+      method: 'DELETE',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}`,
+      operation: 'delete_user',
+    });
+  }
+
   async syncRoles(externalId: string, roles: readonly string[]): Promise<void> {
     await this.assertWriteAvailability();
     const expectedRoleNames = new Set(roles);

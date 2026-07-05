@@ -48,6 +48,7 @@ import {
   getMyDataSubjectRights,
   getMyDataSubjectRightsCase,
   deactivateOrganization,
+  deleteUser,
   getPluginOperationJob,
   getGroup,
   getOrganization,
@@ -190,6 +191,25 @@ describe('iam-api organization helpers', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({}),
+      })
+    );
+  });
+
+  it('treats user hard delete as a successful no-content mutation', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(null, {
+        status: 204,
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(deleteUser('user-1')).resolves.toBeUndefined();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/users/user-1',
+      expect.objectContaining({
+        credentials: 'include',
+        method: 'DELETE',
       })
     );
   });

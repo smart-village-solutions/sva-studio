@@ -112,6 +112,8 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Tenant-Scope darf nie auf Platform- oder globale Keycloak-Admin-Credentials zurückfallen
   - Keycloak-Count/Pagination für User und Rollen muss serverseitig testbar bleiben
   - read-only oder blockierte Aktionen müssen in UI und Serverprüfung konsistent deaktiviert beziehungsweise abgewiesen werden
+  - privilegierte Tenant-Account-Löschung muss nur mit effektiver Permission `iam.accounts.delete` verfügbar sein; Self-Delete und Ziele mit aktiver Rolle `system_admin` bleiben in UI und Runtime konsistent blockiert
+  - der Löschpfad muss Inhaltsbehandlung nach wirksamer Tenant-/Account-Regel, Session-Widerruf, Keycloak-Delete und Studio-Hard-Delete testgestützt in derselben fachlichen Reihenfolge absichern
 - IAM Redis-Betrieb:
   - Session-Store folgt dem Plattform-RTO `<= 2h`
   - Permission-Snapshots sind rekonstruierbar und müssen operativ innerhalb von `15 min` wieder in `ready|degraded` überführt werden

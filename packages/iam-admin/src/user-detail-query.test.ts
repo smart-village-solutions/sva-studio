@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { resolveUserDetail } from './user-detail-query.js';
+import { readEffectiveAccountDeletionContentStrategy } from './user-detail-query.sql.js';
 import { IamSchemaDriftError } from './runtime-errors.js';
 
 describe('resolveUserDetail', () => {
@@ -243,6 +244,43 @@ describe('resolveUserDetail', () => {
         userId: 'cccccccc-cccc-4111-8ccc-cccccccccccc',
       })
     ).resolves.toBeUndefined();
+  });
+
+  it('reads the effective account deletion content strategy from tenant default plus account override', async () => {
+    const query = vi.fn().mockResolvedValue({
+      rowCount: 1,
+      rows: [{ effective_content_strategy: 'with_owner_lifecycle' }],
+    });
+
+    await expect(
+      readEffectiveAccountDeletionContentStrategy({ query } as never, {
+        instanceId: 'de-musterhausen',
+        accountId: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
+      })
+    ).resolves.toBe('with_owner_lifecycle');
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('account_deletion_content_preferences'),
+      ['de-musterhausen', 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb']
+    );
+    expect(String(query.mock.calls[0]?.[0])).toContain('allow_content_preference_override');
+    expect(String(query.mock.calls[0]?.[0])).toContain('COALESCE(rules.allow_content_preference_override, false) = true');
+    expect(String(query.mock.calls[0]?.[0])).toContain('preference.content_strategy IS NOT NULL');
+    expect(String(query.mock.calls[0]?.[0])).toContain("COALESCE(rules.default_content_strategy, 'retain')");
+  });
+
+  it('falls back to retain when no tenant deletion rules row exists', async () => {
+    const query = vi.fn().mockResolvedValue({
+      rowCount: 0,
+      rows: [],
+    });
+
+    await expect(
+      readEffectiveAccountDeletionContentStrategy({ query } as never, {
+        instanceId: 'de-musterhausen',
+        accountId: 'cccccccc-cccc-4111-8ccc-cccccccccccc',
+      })
+    ).resolves.toBe('retain');
   });
 
   it('does not require the legacy account permissions table', async () => {

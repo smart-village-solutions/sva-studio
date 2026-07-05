@@ -25,6 +25,8 @@ vi.mock('../../../lib/iam-admin-access', async (importOriginal) => {
   return {
     ...actual,
     isIamBulkEnabled: () => isIamBulkEnabledMock(),
+    hasUserDeleteAccess: (user: { permissionActions?: readonly string[] } | null | undefined) =>
+      user?.permissionActions?.includes('iam.accounts.delete') === true,
   };
 });
 
@@ -41,7 +43,7 @@ const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
       email: 'alice@example.com',
       status: 'active',
       lastLoginAt: '2026-03-04T10:00:00Z',
-      roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
+      roles: [{ roleId: 'role-1', roleKey: 'system_admin', roleName: 'system_admin', roleLevel: 90 }],
     },
   ],
   total: 1,
@@ -64,6 +66,7 @@ const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
   createUser: vi.fn().mockResolvedValue(true),
   updateUser: vi.fn(),
   deactivateUser: vi.fn().mockResolvedValue(true),
+  deleteUser: vi.fn().mockResolvedValue(true),
   bulkDeactivate: vi.fn().mockResolvedValue(true),
   syncUsersFromKeycloak: vi.fn().mockResolvedValue({
     ok: true,
@@ -91,7 +94,14 @@ describe('UserListPage', () => {
     isIamBulkEnabledMock.mockReset();
     isIamBulkEnabledMock.mockReturnValue(true);
     useAuthMock.mockReset();
-    useAuthMock.mockReturnValue({ user: { id: 'user-admin', instanceId: 'de-musterhausen', roles: ['system_admin'] } });
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-admin',
+        instanceId: 'de-musterhausen',
+        roles: ['system_admin'],
+        permissionActions: ['iam.user.read', 'iam.accounts.delete'],
+      },
+    });
   });
 
   it('renders list actions and uses route links for create and edit', () => {
@@ -102,7 +112,7 @@ describe('UserListPage', () => {
     expect(screen.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Nutzer anlegen' }).getAttribute('href')).toBe('/admin/users/new');
     expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]!.getAttribute('href')).toBe('/admin/users/$userId');
-    expect(screen.queryAllByRole('button', { name: 'Deaktivieren' })).toHaveLength(0);
+    expect(screen.getAllByRole('button', { name: 'Löschen' }).length).toBeGreaterThan(0);
   });
 
   it('shows Keycloak mapping diagnostics and disables blocked row actions', () => {
@@ -135,6 +145,9 @@ describe('UserListPage', () => {
       .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
     screen
       .getAllByRole('switch', { name: 'Aktivstatus für Unmapped User' })
+      .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
+    screen
+      .getAllByRole('button', { name: 'Löschen' })
       .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
   });
 
@@ -280,6 +293,75 @@ describe('UserListPage', () => {
     await waitFor(() => expect(deactivateUser).toHaveBeenCalledWith('user-1'));
   });
 
+  it('confirms hard delete only for actors with the explicit delete permission', async () => {
+    const deleteUser = vi.fn().mockResolvedValue(true);
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        deleteUser,
+        users: [
+          {
+            id: 'user-2',
+            keycloakSubject: 'subject-2',
+            displayName: 'Bob',
+            email: 'bob@example.com',
+            status: 'active',
+            lastLoginAt: '2026-03-04T10:00:00Z',
+            roles: [{ roleId: 'role-2', roleKey: 'editor', roleName: 'editor', roleLevel: 20 }],
+          },
+        ],
+      })
+    );
+
+    render(<UserListPage />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    expect(screen.getByText(/physisch in Studio und Keycloak gelöscht/i)).toBeTruthy();
+
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => expect(deleteUser).toHaveBeenCalledWith('user-2'));
+  });
+
+  it('disables hard delete for targets with the system_admin role', () => {
+    useUsersMock.mockReturnValue(createUsersApiState());
+
+    render(<UserListPage />);
+
+    const deleteButton = screen.getAllByRole('button', { name: 'Löschen' })[0]!;
+    expect(deleteButton.hasAttribute('disabled')).toBe(true);
+    expect(deleteButton.getAttribute('title')).toContain('System-Administrator');
+  });
+
+  it('hides hard delete without the explicit delete permission', () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-admin',
+        instanceId: 'de-musterhausen',
+        roles: ['system_admin'],
+        permissionActions: ['iam.user.read'],
+      },
+    });
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        users: [
+          {
+            id: 'user-2',
+            keycloakSubject: 'subject-2',
+            displayName: 'Bob',
+            email: 'bob@example.com',
+            status: 'active',
+            lastLoginAt: '2026-03-04T10:00:00Z',
+            roles: [{ roleId: 'role-2', roleKey: 'editor', roleName: 'editor', roleLevel: 20 }],
+          },
+        ],
+      })
+    );
+
+    render(<UserListPage />);
+
+    expect(screen.queryByRole('button', { name: 'Löschen' })).toBeNull();
+  });
+
   it('shows an activation action for inactive users and confirms single-user activation', async () => {
     const updateUser = vi.fn().mockResolvedValue({ id: 'user-1', status: 'active' });
     useUsersMock.mockReturnValue(
@@ -293,7 +375,7 @@ describe('UserListPage', () => {
             email: 'alice@example.com',
             status: 'inactive',
             lastLoginAt: '2026-03-04T10:00:00Z',
-            roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
+            roles: [{ roleId: 'role-1', roleKey: 'system_admin', roleName: 'system_admin', roleLevel: 90 }],
           },
         ],
       })

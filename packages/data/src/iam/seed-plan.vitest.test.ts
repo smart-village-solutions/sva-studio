@@ -20,6 +20,7 @@ const granularContentPermissions = [
 ] as const;
 
 const pluginContentPermissions = [
+  'iam.accounts.delete',
   'iam.legalText.read',
   'iam.legalText.write',
   'iam.governance.read',
@@ -88,6 +89,7 @@ describe('iamSeedPlan content permissions', () => {
         'experimental.read',
         'app.read',
         'cockpit.read',
+        'iam.accounts.delete',
         'iam.legalText.read',
         'iam.governance.write',
         'iam.dsr.export',

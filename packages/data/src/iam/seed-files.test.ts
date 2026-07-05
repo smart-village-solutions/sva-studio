@@ -106,4 +106,23 @@ describe('iam seed sql contracts', () => {
     assert.match(defaultSeedSql, /\('de-musterhausen', 'categories'\)/);
     assert.match(bbGubenSeedSql, /\('bb-guben', 'categories'\)/);
   });
+
+  it('seeds iam.accounts.delete for fresh tenant bootstraps and grants it to system_admin', () => {
+    const defaultSeedSql = readSeed('0001_iam_personas.sql');
+    const bbGubenSeedSql = readSeed('0002_bb_guben_permissions.sql');
+
+    assert.match(defaultSeedSql, /'iam\.accounts\.delete', 'iam\.accounts\.delete', 'iam'/);
+    assert.match(defaultSeedSql, /\('system_admin', 'iam\.accounts\.delete'\)/);
+    assert.match(bbGubenSeedSql, /'iam\.accounts\.delete', 'iam\.accounts\.delete', 'iam'/);
+    assert.match(bbGubenSeedSql, /\('system_admin', 'iam\.accounts\.delete'\)/);
+  });
+
+  it('keeps deletion-rule seeds scoped to the existing retain lifecycle defaults', () => {
+    const seedSql = readSeed('0003_iam_deletion_rules_defaults.sql');
+
+    assert.match(seedSql, /\('de-musterhausen', 90, 180, 365, 'retain', false\)/);
+    assert.match(seedSql, /default_content_strategy = EXCLUDED\.default_content_strategy/);
+    assert.match(seedSql, /allow_content_preference_override = EXCLUDED\.allow_content_preference_override/);
+    assert.doesNotMatch(seedSql, /hard[_-]?delete/i);
+  });
 });

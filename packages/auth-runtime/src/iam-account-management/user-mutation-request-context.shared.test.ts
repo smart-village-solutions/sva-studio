@@ -152,4 +152,30 @@ describe('user-mutation-request-context.shared', () => {
       userId: 'user-1',
     });
   });
+
+  it('allows callers to override the required permission action', async () => {
+    const { resolveUserMutationActor } = await import('./user-mutation-request-context.shared.js');
+    const request = new Request('http://localhost/api/v1/iam/users/user-1', { method: 'DELETE' });
+    const ctx = {
+      user: {
+        id: 'kc-user-1',
+        instanceId: 'instance-1',
+        roles: ['system_admin'],
+      },
+    } as never;
+
+    await resolveUserMutationActor(request, ctx, {
+      feature: 'iam_admin',
+      scope: 'write',
+      requiredPermissionAction: 'iam.accounts.delete',
+    });
+
+    expect(state.resolveMutationActorWithAccount).toHaveBeenLastCalledWith(request, ctx, {
+      allowedRoles: new Set(['system_admin']),
+      feature: 'iam_admin',
+      provisionMissingActorMembership: true,
+      requiredPermissionAction: 'iam.accounts.delete',
+      scope: 'write',
+    });
+  });
 });

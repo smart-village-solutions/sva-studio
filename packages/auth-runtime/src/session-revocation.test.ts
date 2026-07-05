@@ -69,6 +69,45 @@ describe('session-revocation', () => {
     );
   });
 
+  it('persists a blocking login state for deleted users', async () => {
+    const { revokeUserSessions } = await import('./session-revocation.js');
+
+    await revokeUserSessions({
+      keycloakSubject: 'kc-user-deleted',
+      reason: 'user_deleted',
+    });
+
+    expect(revocationMocks.setSessionControlState).toHaveBeenCalledWith(
+      'kc-user-deleted',
+      {
+        minimumSessionVersion: 2,
+        forcedReauthAt: 1_717_000_000_000,
+        loginBlocked: true,
+        loginBlockedReason: 'user_deleted',
+      },
+      null
+    );
+  });
+
+  it('can revoke deleted-user sessions without persisting a login block during pre-delete cleanup', async () => {
+    const { revokeUserSessions } = await import('./session-revocation.js');
+
+    await revokeUserSessions({
+      keycloakSubject: 'kc-user-delete-preflight',
+      reason: 'user_deleted',
+      persistLoginBlock: false,
+    });
+
+    expect(revocationMocks.setSessionControlState).toHaveBeenCalledWith(
+      'kc-user-delete-preflight',
+      {
+        minimumSessionVersion: 2,
+        forcedReauthAt: 1_717_000_000_000,
+      },
+      undefined
+    );
+  });
+
   it('preserves an existing persistent login block when a later reactivatable revocation runs', async () => {
     revocationMocks.getSessionControlState.mockResolvedValue({
       minimumSessionVersion: 7,
@@ -90,6 +129,32 @@ describe('session-revocation', () => {
         forcedReauthAt: 1_717_000_000_000,
         loginBlocked: true,
         loginBlockedReason: 'account_lifecycle_blocked',
+      },
+      null
+    );
+  });
+
+  it('preserves a deleted-user login block when a later reactivatable revocation runs', async () => {
+    revocationMocks.getSessionControlState.mockResolvedValue({
+      minimumSessionVersion: 9,
+      forcedReauthAt: 1_716_999_999_000,
+      loginBlocked: true,
+      loginBlockedReason: 'user_deleted',
+    });
+    const { revokeUserSessions } = await import('./session-revocation.js');
+
+    await revokeUserSessions({
+      keycloakSubject: 'kc-user-deleted',
+      reason: 'user_deactivated',
+    });
+
+    expect(revocationMocks.setSessionControlState).toHaveBeenCalledWith(
+      'kc-user-deleted',
+      {
+        minimumSessionVersion: 10,
+        forcedReauthAt: 1_717_000_000_000,
+        loginBlocked: true,
+        loginBlockedReason: 'user_deleted',
       },
       null
     );

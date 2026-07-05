@@ -14,6 +14,7 @@ export type GroupMembershipOrigin = 'manual' | 'seed' | 'sync';
 export type GeoUnitType = 'country' | 'state' | 'county' | 'municipality' | 'district' | 'custom';
 
 export type PermissionKey =
+  | 'iam.accounts.delete'
   | 'iam.user.read'
   | 'iam.user.write'
   | 'iam.role.read'

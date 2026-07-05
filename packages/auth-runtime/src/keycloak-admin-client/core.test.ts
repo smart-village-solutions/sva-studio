@@ -140,6 +140,37 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it('deletes a keycloak user by external id', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    const client = await createClient(fetchImpl);
+
+    await expect(client.deleteUser('kc-user-1')).resolves.toBeUndefined();
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      'https://keycloak.example/admin/realms/demo/users/kc-user-1',
+      expect.objectContaining({
+        method: 'DELETE',
+      })
+    );
+  });
+
+  it('surfaces keycloak delete-user failures', async () => {
+    const { KeycloakAdminRequestError } = await import('./core.js');
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(500, { error: 'boom' }));
+
+    const client = await createClient(fetchImpl, { maxRetries: 0 });
+
+    await expect(client.deleteUser('kc-user-1')).rejects.toBeInstanceOf(KeycloakAdminRequestError);
+  });
+
   it('retries retryable request failures and then succeeds', async () => {
     const { KeycloakAdminClient } = await import('./core.js');
     const sleep = vi.fn(async () => undefined);

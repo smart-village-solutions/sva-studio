@@ -22,6 +22,7 @@ const staticErrorCodeMap: Record<string, () => string> = {
   database_unavailable: () => t('admin.users.errors.databaseUnavailable'),
   last_admin_protection: () => t('admin.users.errors.lastAdminProtection'),
   self_protection: () => t('admin.users.errors.selfProtection'),
+  system_admin_delete_protection: () => t('admin.users.errors.systemAdminDeleteProtection'),
   feature_disabled: () => t('admin.users.errors.featureDisabled'),
   unauthorized: () => t('admin.users.errors.unauthorized'),
 };

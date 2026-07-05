@@ -1,6 +1,7 @@
 import type { IamSeedPlan, PermissionKey, PersonaSeed } from './types.js';
 
 const permissions = [
+  ['40111111-1111-1111-1111-111111111168', 'iam.accounts.delete', 'Delete tenant accounts physically'],
   ['40111111-1111-1111-1111-111111111111', 'iam.user.read', 'Read account data'],
   ['40111111-1111-1111-1111-111111111112', 'iam.user.write', 'Modify account data'],
   ['40111111-1111-1111-1111-111111111113', 'iam.role.read', 'Read role assignments'],

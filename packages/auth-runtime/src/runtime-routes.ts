@@ -84,6 +84,7 @@ export {
   createRoleHandler,
   createUserHandler,
   deactivateUserHandler,
+  deleteUserHandler,
   deleteRoleHandler,
   getMyProfileHandler,
   getUserHandler,

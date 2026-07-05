@@ -101,6 +101,7 @@ const authServerMocks = vi.hoisted(() => {
     sendPasswordSetupEmailHandler: vi.fn(async () => response('sendPasswordSetupEmailHandler')),
     getUserTimelineHandler: vi.fn(async () => response('getUserTimelineHandler')),
     updateUserHandler: vi.fn(async () => response('updateUserHandler')),
+    deleteUserHandler: vi.fn(async () => response('deleteUserHandler')),
     deactivateUserHandler: vi.fn(async () => response('deactivateUserHandler')),
     sendPasswordSetupEmailHandler: vi.fn(async () => response('sendPasswordSetupEmailHandler')),
     bulkDeactivateUsersHandler: vi.fn(async () => response('bulkDeactivateUsersHandler')),
@@ -763,6 +764,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.listUsersHandler).toHaveBeenCalled();
     expect(authServerMocks.getUserHandler).toHaveBeenCalled();
     expect(authServerMocks.updateUserHandler).toHaveBeenCalled();
+    expect(authServerMocks.deactivateUserHandler).toHaveBeenCalled();
+    expect(authServerMocks.deleteUserHandler).toHaveBeenCalled();
     expect(authServerMocks.listGroupsHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteGroupHandler).toHaveBeenCalled();
     expect(authServerMocks.listOrganizationsHandler).toHaveBeenCalled();

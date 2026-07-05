@@ -3,6 +3,7 @@ type QueryResult<TRow> = { rows: TRow[] };
 type QueryClient = {
   query<TRow = unknown>(text: string, values?: readonly unknown[]): Promise<QueryResult<TRow>>;
 };
+import type { IamDeletionContentStrategy } from '@sva/core';
 import { IamSchemaDriftError } from './runtime-errors.js';
 
 import {
@@ -104,6 +105,24 @@ const buildUserDetailQuery = (includeDirectPermissions: boolean, includeStructur
   ].join('');
 
 const USER_DETAIL_QUERY = buildUserDetailQuery(false, true);
+const ACCOUNT_DELETION_CONTENT_STRATEGY_QUERY = `
+SELECT
+  CASE
+    WHEN COALESCE(rules.allow_content_preference_override, false) = true
+      AND preference.content_strategy IS NOT NULL
+      THEN preference.content_strategy
+    ELSE COALESCE(rules.default_content_strategy, 'retain')
+  END AS effective_content_strategy
+FROM iam.accounts account
+LEFT JOIN iam.instance_deletion_rules rules
+  ON rules.instance_id = account.instance_id
+LEFT JOIN iam.account_deletion_content_preferences preference
+  ON preference.instance_id = account.instance_id
+ AND preference.account_id = account.id
+WHERE account.instance_id = $1
+  AND account.id = $2::uuid
+LIMIT 1;
+`;
 const USER_DETAIL_SCHEMA_SUPPORT_QUERY = `
 SELECT
   false AS account_permissions_exists,
@@ -139,6 +158,18 @@ export const readUserDetailSchemaSupport = async (
       row?.permissions_resource_id_exists === true &&
       row?.permissions_scope_exists === true,
   };
+};
+
+export const readEffectiveAccountDeletionContentStrategy = async (
+  client: QueryClient,
+  input: { instanceId: string; accountId: string }
+): Promise<IamDeletionContentStrategy> => {
+  const result = await client.query<{ effective_content_strategy: IamDeletionContentStrategy }>(
+    ACCOUNT_DELETION_CONTENT_STRATEGY_QUERY,
+    [input.instanceId, input.accountId]
+  );
+
+  return result.rows[0]?.effective_content_strategy ?? 'retain';
 };
 
 export const selectUserDetailQuery = (schemaSupport: UserDetailSchemaSupport): string => {

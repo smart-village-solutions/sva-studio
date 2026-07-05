@@ -1,6 +1,7 @@
 import { bulkDeactivateInternal } from './user-bulk-deactivate-handler.js';
 import { createUserInternal } from './user-create-handler.js';
 import { deactivateUserInternal } from './user-deactivate-handler.js';
+import { deleteUserInternal } from './user-delete-handler.js';
 import { syncUsersFromKeycloakInternal } from './user-import-sync-handler.js';
 import { sendPasswordSetupEmailInternal } from './user-password-setup-email-handler.js';
 import { getMyProfileInternal, updateMyProfileInternal } from './profile-handlers.js';
@@ -33,6 +34,9 @@ export const updateUserHandler = async (request: Request): Promise<Response> =>
 
 export const deactivateUserHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, deactivateUserInternal);
+
+export const deleteUserHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, deleteUserInternal);
 
 export const bulkDeactivateUsersHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, bulkDeactivateInternal);

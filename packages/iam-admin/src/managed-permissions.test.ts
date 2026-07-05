@@ -20,6 +20,10 @@ describe('managed-permissions', () => {
           moduleId: 'cockpit',
         }),
         expect.objectContaining({
+          permissionKey: 'iam.accounts.delete',
+          moduleId: 'iam',
+        }),
+        expect.objectContaining({
           permissionKey: 'waste-management.read',
           moduleId: 'waste-management',
         }),
@@ -49,6 +53,12 @@ describe('managed-permissions', () => {
       permissionKey: 'app.read',
       moduleId: 'app',
       description: 'App-Link in der Sidebar anzeigen',
+      runtimeScope: 'instance',
+    });
+    expect(getManagedPermissionMetadata('iam.accounts.delete')).toEqual({
+      permissionKey: 'iam.accounts.delete',
+      moduleId: 'iam',
+      description: 'Tenant-Accounts löschen',
       runtimeScope: 'instance',
     });
     expect(getManagedPermissionMetadata('instance.registry.manage')).toEqual({

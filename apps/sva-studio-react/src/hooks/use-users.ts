@@ -6,6 +6,7 @@ import {
   bulkDeactivateUsers,
   createUser,
   deactivateUser,
+  deleteUser as deleteUserRequest,
   IamHttpError,
   listUsers,
   syncUsersFromKeycloak as syncUsersFromKeycloakRequest,
@@ -48,6 +49,7 @@ type UseUsersResult = {
   readonly createUser: (payload: CreateUserPayload) => Promise<IamCreateUserResult | null>;
   readonly updateUser: (userId: string, payload: UpdateUserPayload) => Promise<IamUserDetail | null>;
   readonly deactivateUser: (userId: string) => Promise<boolean>;
+  readonly deleteUser: (userId: string) => Promise<boolean>;
   readonly bulkDeactivate: (userIds: readonly string[]) => Promise<boolean>;
   readonly syncUsersFromKeycloak: () => Promise<
     | { readonly ok: true; readonly report: IamUserImportSyncReport }
@@ -258,6 +260,10 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
     deactivateUser: async (userId) => {
       const response = await mutate(() => deactivateUser(userId), 'user_deactivate');
       return Boolean(response);
+    },
+    deleteUser: async (userId) => {
+      const response = await mutate(() => deleteUserRequest(userId), 'user_delete');
+      return response !== null;
     },
     bulkDeactivate: async (userIds) => {
       const response = await mutate(() => bulkDeactivateUsers(userIds), 'user_bulk_deactivate');

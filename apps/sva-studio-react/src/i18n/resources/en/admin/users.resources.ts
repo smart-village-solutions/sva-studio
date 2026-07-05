@@ -34,6 +34,7 @@ export const usersAdminENResources = {
     create: 'Create user',
     creating: 'Creating user ...',
     edit: 'Edit',
+    delete: 'Delete',
     activate: 'Activate',
     deactivate: 'Deactivate',
     bulkDeactivate: 'Deactivate selection',
@@ -75,6 +76,11 @@ export const usersAdminENResources = {
     singleDescription: 'The selected user will be deactivated.',
     bulkTitle: 'Deactivate multiple users',
     bulkDescription: 'All selected users will be deactivated (max 50).',
+    deleteTitle: 'Delete user account permanently',
+    deleteDescription:
+      'The selected tenant account will be physically deleted in Studio and Keycloak. Owned content is handled according to the effective tenant or account rule.',
+    deleteSystemAdminDisabled:
+      'Accounts with an active system administrator role can only be deleted after that role has been removed.',
   },
   edit: {
     title: 'Edit user',
@@ -221,6 +227,8 @@ export const usersAdminENResources = {
     databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
     lastAdminProtection: 'The last active system administrator cannot be removed or deactivated.',
     selfProtection: 'The currently signed-in account cannot be deactivated this way.',
+    systemAdminDeleteProtection:
+      'Accounts with an active system administrator role can only be deleted after that role has been removed.',
     featureDisabled: 'User management is currently disabled.',
     unauthorized: 'Your session is no longer valid. Please sign in again.',
     unexpectedHttp: 'Unexpected server response (HTTP {{status}}).',

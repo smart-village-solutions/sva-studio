@@ -53,6 +53,7 @@ import {
   createMutationHeaders,
   createJsonMutationRequestInit,
   DEFAULT_IAM_REQUEST_TIMEOUT_MS,
+  fetchWithRequestTimeout,
   HEALTH_REQUEST_TIMEOUT_MS,
   HEAVY_IAM_REQUEST_TIMEOUT_MS,
   IAM_HEADERS,
@@ -61,6 +62,7 @@ import {
   patchJson,
   postJson,
   putJson,
+  readIamErrorResponse,
   requestJson,
   requestJsonOrText,
 } from './iam-http-client';
@@ -536,10 +538,25 @@ export const sendPasswordSetupEmail = async (
   );
 
 export const deactivateUser = async (userId: string): Promise<ApiItemResponse<{ id: string }>> =>
-  requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/users/${userId}`, {
+  postJson<ApiItemResponse<{ id: string }>, Record<string, never>>(
+    `/api/v1/iam/users/${userId}/deactivate`,
+    {},
+    true
+  );
+
+export const deleteUser = async (userId: string): Promise<void> => {
+  const response = await fetchWithRequestTimeout(`/api/v1/iam/users/${userId}`, {
     method: 'DELETE',
-    headers: IAM_HEADERS,
+    headers: {
+      Accept: 'application/json',
+      ...IAM_HEADERS,
+    },
   });
+
+  if (!response.ok) {
+    throw await readIamErrorResponse(response);
+  }
+};
 
 export const bulkDeactivateUsers = async (
   userIds: readonly string[]

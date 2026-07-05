@@ -86,6 +86,7 @@ gleichzeitig beeinflussen.
 - Credential-Self-Service im Studio bleibt bewusst delegierend: Sichtbar angeboten wird derzeit nur der Passwort-Wechsel über den serverseitigen Pfad `/auth/account-action`; das Studio speichert oder validiert Credential-nahe Daten nie selbst. Ein E-Mail-Wechsel wird erst nach Keycloak-seitiger Freischaltung von `UPDATE_EMAIL` wieder exponiert.
 - Deep-Links auf einzelne Datenschutzvorgänge laufen immer über einen expliziten `caseId`-Detailread; historische Fälle dürfen nicht aus begrenzten Overview-Listen rekonstruiert werden
 - Löschprozess zweistufig: Soft-Delete (SLA <= 48h) und finale Anonymisierung nach Retention
+- Davon getrennt existiert ein privilegierter Admin-Hard-Delete nur für Tenant-Accounts: Er verlangt ausschließlich die explizite Permission `iam.accounts.delete`, entfernt die Identität auch in Keycloak und bleibt für Zielaccounts mit `system_admin` gesperrt, bis diese Rolle zuvor entzogen wurde.
 - Legal Hold blockiert irreversible Löschschritte bis zur Freigabe
 - Art.-19-Nachweisdaten für Empfängerbenachrichtigung werden revisionssicher persistiert
 - Trust-Boundary-Validierung mit Zod in IAM-Endpoints (`authorize`, `governance`, `data-subject-rights`)
@@ -178,6 +179,7 @@ gleichzeitig beeinflussen.
 - Root-/Plattform-Zugriff umfasst Instanz-Lifecycle, Provisioning, Platform-User, Platform-Rollen, Platform-Sync und explizites Break-Glass; tenantlokale Daten bleiben davon getrennt
 - User-Identity-Änderungen folgen weiter dem Keycloak-Admin-Vertrag. Rollen- und Rollenzuordnungsänderungen für normale Tenant-Rollen sind DB-only; Keycloak-Sync ist auf `system_admin`, `instance_registry_admin` und explizit technische Realm-Artefakte begrenzt.
 - `system_admin` bleibt die einzige geschützte tenantlokale Defaultrolle; frühere Standardrollen wie `app_manager`, `designer` oder `editor` gehören nicht mehr zum tenantlokalen Sollmodell, werden nicht mehr als Systemrollen behandelt und sind höchstens noch historische Altartefakte für explizite Migrations- und Repair-Pfade.
+- Privilegierte Tenant-Account-Löschungen bleiben strikt permission-basiert: `system_admin` ist kein Rollen-Bypass, sondern nur deshalb zugelassen, weil die effektive Permission-Menge `iam.accounts.delete` enthält.
 - Tenant-Userlisten richten sich nach dem Tenant-Realm in Keycloak; ungemappte oder mehrdeutige Benutzer werden als `unmapped` beziehungsweise `manual_review` angezeigt.
 - Keycloak-Built-in-Rollen bleiben als Rollenobjekte read-only, werden aber in Listen nicht ausgeblendet.
 - Keycloak-Provisioning für Instanzen ist ein expliziter mehrstufiger Root-Host-Workflow aus Preflight, Plan, Ausführung und persistiertem Schrittprotokoll

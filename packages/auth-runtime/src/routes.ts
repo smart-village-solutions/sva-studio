@@ -17,6 +17,7 @@ export type AuthRoutePath =
   | '/api/v1/iam/users'
   | '/api/v1/iam/users/sync-keycloak'
   | '/api/v1/iam/users/$userId'
+  | '/api/v1/iam/users/$userId/deactivate'
   | '/api/v1/iam/users/$userId/send-password-setup-email'
   | '/api/v1/iam/users/$userId/timeline'
   | '/api/v1/iam/users/bulk-deactivate'
@@ -147,6 +148,7 @@ export const authRoutePaths = [
   '/api/v1/iam/users',
   '/api/v1/iam/users/sync-keycloak',
   '/api/v1/iam/users/$userId',
+  '/api/v1/iam/users/$userId/deactivate',
   '/api/v1/iam/users/$userId/send-password-setup-email',
   '/api/v1/iam/users/$userId/timeline',
   '/api/v1/iam/users/bulk-deactivate',

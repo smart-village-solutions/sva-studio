@@ -234,6 +234,94 @@ test('content author display migration keeps existing personal content user-auth
   );
 });
 
+test('admin account hard-delete migration anonymizes retained content account references only via set null', () => {
+  const sql = readRepoFile('data/migrations/0066_iam_admin_account_hard_delete.sql');
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
+  const stillBlockingRestrictPaths = [
+    'account_profile_corrections_account_membership_fk',
+    'data_subject_export_jobs_target_membership_fk',
+    'data_subject_requests_target_membership_fk',
+    'delegations_membership_delegatee_fk',
+    'delegations_membership_delegator_fk',
+    'impersonation_sessions_membership_actor_fk',
+    'impersonation_sessions_membership_target_fk',
+    'legal_holds_account_membership_fk',
+    'legal_text_acceptances_membership_fk',
+    'permission_change_requests_membership_requester_fk',
+    'permission_change_requests_membership_target_fk',
+  ];
+
+  assert.match(sql, /ALTER TABLE iam\.content_history\s+ALTER COLUMN actor_account_id DROP NOT NULL;/);
+  assert.match(sql, /ALTER TABLE iam\.contents\s+ALTER COLUMN author_account_id DROP NOT NULL,/);
+  assert.match(sql, /ALTER TABLE iam\.contents[\s\S]*ALTER COLUMN creator_account_id DROP NOT NULL,/);
+  assert.match(sql, /ALTER TABLE iam\.contents[\s\S]*ALTER COLUMN updater_account_id DROP NOT NULL;/);
+  assert.match(
+    sql,
+    /ALTER TABLE iam\.content_history[\s\S]*DROP CONSTRAINT IF EXISTS content_history_actor_account_id_fkey,[\s\S]*ADD CONSTRAINT content_history_actor_account_id_fkey[\s\S]*REFERENCES iam\.accounts\(id\) ON DELETE SET NULL;/
+  );
+  assert.match(
+    sql,
+    /ALTER TABLE iam\.contents[\s\S]*DROP CONSTRAINT IF EXISTS contents_author_account_id_fkey,[\s\S]*ADD CONSTRAINT contents_author_account_id_fkey[\s\S]*REFERENCES iam\.accounts\(id\) ON DELETE SET NULL;/
+  );
+  assert.match(
+    sql,
+    /ALTER TABLE iam\.contents[\s\S]*DROP CONSTRAINT IF EXISTS contents_creator_account_id_fkey,[\s\S]*ADD CONSTRAINT contents_creator_account_id_fkey[\s\S]*REFERENCES iam\.accounts\(id\) ON DELETE SET NULL;/
+  );
+  assert.match(
+    sql,
+    /ALTER TABLE iam\.contents[\s\S]*DROP CONSTRAINT IF EXISTS contents_updater_account_id_fkey,[\s\S]*ADD CONSTRAINT contents_updater_account_id_fkey[\s\S]*REFERENCES iam\.accounts\(id\) ON DELETE SET NULL;/
+  );
+  for (const constraintName of stillBlockingRestrictPaths) {
+    assert.doesNotMatch(sql, new RegExp(constraintName));
+    assert.match(schemaSnapshot, new RegExp(`${constraintName}[\\s\\S]*ON DELETE RESTRICT;`));
+  }
+  assert.match(schemaSnapshot, /CREATE TABLE iam\.content_history \([\s\S]*actor_account_id uuid,/);
+  assert.match(schemaSnapshot, /CREATE TABLE iam\.contents \([\s\S]*author_account_id uuid,[\s\S]*creator_account_id uuid,[\s\S]*updater_account_id uuid,/);
+  assert.match(
+    schemaSnapshot,
+    /content_history_actor_account_id_fkey FOREIGN KEY \(actor_account_id\) REFERENCES iam\.accounts\(id\) ON DELETE SET NULL;/
+  );
+  assert.match(
+    schemaSnapshot,
+    /contents_author_account_id_fkey FOREIGN KEY \(author_account_id\) REFERENCES iam\.accounts\(id\) ON DELETE SET NULL;/
+  );
+  assert.match(
+    schemaSnapshot,
+    /contents_creator_account_id_fkey FOREIGN KEY \(creator_account_id\) REFERENCES iam\.accounts\(id\) ON DELETE SET NULL;/
+  );
+  assert.match(
+    schemaSnapshot,
+    /contents_updater_account_id_fkey FOREIGN KEY \(updater_account_id\) REFERENCES iam\.accounts\(id\) ON DELETE SET NULL;/
+  );
+  assert.match(sql, /RAISE EXCEPTION 'Cannot restore content account hard-delete constraints while anonymized rows exist\.'/);
+});
+
+test('activity log hard-delete compatibility migration removes immutable account foreign keys additively', () => {
+  const sql = readRepoFile('data/migrations/0068_iam_activity_log_account_hard_delete_compat.sql');
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
+
+  assert.match(sql, /ALTER TABLE iam\.activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS activity_logs_account_id_fkey,/);
+  assert.match(sql, /ALTER TABLE iam\.activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS activity_logs_subject_id_fkey;/);
+  assert.match(sql, /ALTER TABLE iam\.platform_activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS platform_activity_logs_account_id_fkey;/);
+  assert.match(
+    sql,
+    /RAISE EXCEPTION 'Cannot restore activity log account foreign keys while orphaned audit references exist\.';/
+  );
+  assert.doesNotMatch(schemaSnapshot, /activity_logs_account_id_fkey FOREIGN KEY/);
+  assert.doesNotMatch(schemaSnapshot, /activity_logs_subject_id_fkey FOREIGN KEY/);
+  assert.doesNotMatch(schemaSnapshot, /platform_activity_logs_account_id_fkey FOREIGN KEY/);
+});
+
+test('content projection deleted-account fallback migration keeps trigger inserts compatible with anonymized content rows', () => {
+  const sql = readRepoFile('data/migrations/0069_iam_content_projection_deleted_account_fallback.sql');
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
+
+  assert.match(sql, /COALESCE\(NEW\.creator_account_id::text, '__iam_author_deleted__'\)/);
+  assert.match(sql, /COALESCE\(NEW\.updater_account_id::text, '__iam_author_deleted__'\)/);
+  assert.match(schemaSnapshot, /COALESCE\(NEW\.creator_account_id::text, '__iam_author_deleted__'\)/);
+  assert.match(schemaSnapshot, /COALESCE\(NEW\.updater_account_id::text, '__iam_author_deleted__'\)/);
+});
+
 test('categories instance-module migration backfills additive module assignments for mainserver content tenants', () => {
   const sql = readRepoFile('data/migrations/0055_iam_categories_instance_modules.sql');
 

@@ -77,8 +77,6 @@ export type IdentityUserAttributes = Readonly<Record<string, readonly string[]>>
 
 export interface IdentityProviderPort {
   createUser(input: CreateIdentityUserInput): Promise<IdentityUser>;
-  updateUser(externalId: string, input: UpdateIdentityUserInput): Promise<void>;
-  deactivateUser(externalId: string): Promise<void>;
   executeActionsEmail?(
     externalId: string,
     input: {
@@ -88,6 +86,9 @@ export interface IdentityProviderPort {
       readonly lifespan?: number;
     }
   ): Promise<void>;
+  updateUser(externalId: string, input: UpdateIdentityUserInput): Promise<void>;
+  deactivateUser(externalId: string): Promise<void>;
+  deleteUser(externalId: string): Promise<void>;
   listUsers(query?: IdentityUserListQuery): Promise<readonly IdentityListedUser[]>;
   getUserAttributes(externalId: string, attributeNames?: readonly string[]): Promise<IdentityUserAttributes>;
   syncRoles(externalId: string, roles: readonly string[]): Promise<void>;

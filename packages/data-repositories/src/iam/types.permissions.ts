@@ -15,6 +15,7 @@ type PermissionKey =
   | 'iam.dsr.export'
   | 'iam.deletionRules.read'
   | 'iam.deletionRules.write'
+  | 'iam.accounts.delete'
   | 'iam.monitoring.read'
   | 'iam.monitoring.write'
   | 'experimental.read'

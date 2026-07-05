@@ -188,4 +188,60 @@ describe('mutation workflow', () => {
       })
     );
   });
+
+  it('returns early when prepare already provides a response', async () => {
+    const authorize = vi.fn();
+    const handler = createMutationWorkflow<
+      { userId: string },
+      { requestId: string },
+      { scope: 'write' },
+      { idempotencyKey: string },
+      { enabled: boolean },
+      { ok: true }
+    >({
+      prepare: () => new Response('prepared', { status: 202 }),
+      csrf: () => {
+        throw new Error('csrf should not run');
+      },
+      authorize,
+      idempotency: () => {
+        throw new Error('idempotency should not run');
+      },
+      parse: async () => ({ enabled: true }),
+      execute: async () => ({ ok: true }),
+      mapError: (error) => new Response(`mapped:${String(error)}`, { status: 500 }),
+      respond: () => new Response('ok'),
+    });
+
+    const response = await handler(new Request('http://localhost/mutations', { method: 'POST' }), { userId: 'u-6' });
+
+    expect(response.status).toBe(202);
+    await expect(response.text()).resolves.toBe('prepared');
+    expect(authorize).not.toHaveBeenCalled();
+  });
+
+  it('returns early when parse rejects with a response', async () => {
+    const execute = vi.fn();
+    const handler = createMutationWorkflow<
+      { userId: string },
+      { requestId: string },
+      { scope: 'write' },
+      { idempotencyKey: string },
+      { enabled: boolean },
+      { ok: true }
+    >({
+      prepare: () => ({ requestId: 'req-6' }),
+      authorize: () => ({ scope: 'write' }),
+      parse: async () => new Response('invalid', { status: 422 }),
+      execute,
+      mapError: (error) => new Response(`mapped:${String(error)}`, { status: 500 }),
+      respond: () => new Response('ok'),
+    });
+
+    const response = await handler(new Request('http://localhost/mutations', { method: 'POST' }), { userId: 'u-7' });
+
+    expect(response.status).toBe(422);
+    await expect(response.text()).resolves.toBe('invalid');
+    expect(execute).not.toHaveBeenCalled();
+  });
 });

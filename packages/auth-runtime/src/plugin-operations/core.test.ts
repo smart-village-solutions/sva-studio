@@ -734,6 +734,46 @@ describe('plugin operations handlers', () => {
     expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
   });
 
+  it('rejects monitoring handlers without an actor instance id before touching repositories', async () => {
+    middlewareState.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
+      handler({
+        sessionId: 'session-1',
+        user: {
+          id: 'user-2',
+          instanceId: '   ',
+          roles: ['editor'],
+        },
+      })
+    );
+
+    const response = await listPluginOperationJobsHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs?view=active', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_instance_id',
+      },
+    });
+    expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
+  });
+
+  it('rejects unknown job status filters before querying the repository', async () => {
+    const response = await listPluginOperationJobsHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs?status=not-a-status', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        message: expect.stringContaining('Unbekannter Job-Statusfilter'),
+      },
+    });
+    expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
+  });
+
   it('rejects invalid parentJobId values before creating jobs', async () => {
     const response = await startPluginOperationJobHandler(
       new Request('https://studio.test/api/v1/plugin-operations/jobs', {
@@ -774,6 +814,105 @@ describe('plugin operations handlers', () => {
       },
     });
     expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
+  });
+
+  it('returns not_found when cancelling an unknown job', async () => {
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        requestJobCancellation: vi.fn(async () => null),
+      })
+    );
+
+    const response = await cancelPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel', {
+        method: 'POST',
+        headers: {
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'not_found',
+      },
+    });
+  });
+
+  it('maps cancellation repository failures to database_unavailable', async () => {
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        requestJobCancellation: vi.fn(async () => {
+          throw new Error('repo down');
+        }),
+      })
+    );
+
+    const response = await cancelPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel', {
+        method: 'POST',
+        headers: {
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+      },
+    });
+  });
+
+  it('returns not_found when deleting an unknown job', async () => {
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobDetail: vi.fn(async () => null),
+        deleteJob: vi.fn(async () => {
+          throw new Error('deleteJob should not run without an existing job');
+        }),
+      })
+    );
+
+    const response = await deletePluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111', {
+        method: 'DELETE',
+        headers: {
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'not_found',
+      },
+    });
+  });
+
+  it('maps plugin operation detail repository failures to database_unavailable', async () => {
+    repositoryState.withStudioJobRepository.mockImplementation(async () => {
+      throw new Error('repo down');
+    });
+
+    const response = await getPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111', {
+        method: 'GET',
+      })
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+      },
+    });
   });
 
 });

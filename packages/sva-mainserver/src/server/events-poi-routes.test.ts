@@ -764,6 +764,15 @@ describe('mainserver content route contracts', () => {
   it('rejects mutation requests when CSRF validation fails', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(new Response('CSRF', { status: 403 }));
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        organizationId: '11111111-1111-1111-8111-111111111111',
+      },
+      permissions: [],
+    });
 
     const response = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events', {
@@ -774,7 +783,7 @@ describe('mainserver content route contracts', () => {
 
     expect(response?.status).toBe(403);
     await expect(response?.json()).resolves.toMatchObject({ error: 'csrf_validation_failed' });
-    expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledTimes(1);
   });
 
   it('returns local authorization errors before calling GraphQL', async () => {
@@ -940,6 +949,34 @@ describe('mainserver content route contracts', () => {
       error: 'internal_error',
       message: 'Mainserver-Anfrage ist fehlgeschlagen.',
     });
+    expect(state.loggerWarn).toHaveBeenNthCalledWith(
+      1,
+      'Mainserver content route failed',
+      expect.objectContaining({
+        operation: 'mainserver_content_request',
+        request_id: 'req-1',
+        trace_id: 'trace-1',
+        actor_id: 'subject-1',
+        instance_id: 'de-musterhausen',
+        content_type: 'events.event-record',
+        method: 'GET',
+        error_code: 'forbidden',
+      })
+    );
+    expect(state.loggerWarn).toHaveBeenNthCalledWith(
+      2,
+      'Mainserver content route failed',
+      expect.objectContaining({
+        operation: 'mainserver_content_request',
+        request_id: 'req-1',
+        trace_id: 'trace-1',
+        actor_id: 'subject-1',
+        instance_id: 'de-musterhausen',
+        content_type: 'events.event-record',
+        method: 'GET',
+        error_code: 'internal_error',
+      })
+    );
   });
 
   it('keeps nested event category children when parsing mutations', async () => {

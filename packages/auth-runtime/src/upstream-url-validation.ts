@@ -31,7 +31,8 @@ const parseIpv4Octets = (hostname: string): Ipv4Octets | null => {
     return null;
   }
 
-  return [octets[0]!, octets[1]!, octets[2]!, octets[3]!];
+  const [first, second, third, fourth] = octets;
+  return [first, second, third, fourth];
 };
 
 const toIpv4Number = ([a, b, c, d]: Ipv4Octets): number => ((a * 256 + b) * 256 + c) * 256 + d;

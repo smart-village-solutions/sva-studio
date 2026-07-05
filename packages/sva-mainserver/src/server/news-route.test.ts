@@ -483,6 +483,11 @@ describe('dispatchSvaMainserverNewsRequest', () => {
   it('rejects invalid full-model shapes before GraphQL', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
 
     const invalidBodies: readonly unknown[] = [
       [],
@@ -527,6 +532,11 @@ describe('dispatchSvaMainserverNewsRequest', () => {
   it('rejects legacy payload, invalid visibility, read-only fields and update push notifications before GraphQL', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
 
     const legacyPayload = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
@@ -634,6 +644,11 @@ describe('dispatchSvaMainserverNewsRequest', () => {
   it('rejects mutating requests without CSRF and idempotency safeguards', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValueOnce(new Response('csrf', { status: 403 })).mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
 
     const csrf = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news/news-1', { method: 'DELETE' })
@@ -660,6 +675,11 @@ describe('dispatchSvaMainserverNewsRequest', () => {
   it('replays and rejects idempotent news create requests before GraphQL', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
     state.resolveActorInfo.mockResolvedValue({
       actor: { instanceId: 'de-musterhausen', actorAccountId: '00000000-0000-4000-8000-000000000001' },
     });
@@ -786,6 +806,33 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       error: 'organization_mainserver_credentials_missing',
       message: 'Für die aktive Organisation fehlen Mainserver-Credentials.',
     });
+  });
+
+  it('rejects unauthorized news creates before actor resolution and idempotency work', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für diese Inhaltsoperation.',
+    });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'idem-denied' },
+        body: JSON.stringify(newsInput),
+      })
+    );
+
+    expect(response?.status).toBe(403);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'forbidden',
+      message: 'Keine Berechtigung für diese Inhaltsoperation.',
+    });
+    expect(state.resolveActorInfo).not.toHaveBeenCalled();
+    expect(state.reserveIdempotency).not.toHaveBeenCalled();
+    expect(state.completeIdempotency).not.toHaveBeenCalled();
   });
 
   it('returns stable errors for missing instance context and unsupported methods', async () => {

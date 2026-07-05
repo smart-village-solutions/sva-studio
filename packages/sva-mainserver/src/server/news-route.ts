@@ -463,7 +463,9 @@ const createNewsItemMutationHandler = <TInput>(
       readonly newsId: string;
       readonly requestId?: string;
     },
-    Record<never, never>,
+    {
+      readonly actor: NewsMutationActor;
+    },
     Record<never, never>,
     TInput,
     Response
@@ -472,17 +474,13 @@ const createNewsItemMutationHandler = <TInput>(
       newsId: input.route.newsId,
       requestId: input.requestId,
     }),
-    authorize: async () => ({}),
+    authorize: async ({ context, newsId }) => {
+      const actor = await authorizeOrResponse(context, input.action, newsId);
+      return isResponse(actor) ? actor : { actor };
+    },
     csrf: ({ request, requestId }) => validateMutationRequest(request, requestId) ?? undefined,
     parse: ({ request }) => input.parse(request),
-    execute: async ({ context, newsId, input: parsed }) => {
-      const actor = await authorizeOrResponse(context, input.action, newsId);
-      if (isResponse(actor)) {
-        return actor;
-      }
-
-      return input.execute(actor, parsed);
-    },
+    execute: async ({ actor, input: parsed }) => input.execute(actor, parsed),
     mapError: (error) => toMainserverErrorResponse(error, 'Mainserver-News-Anfrage ist fehlgeschlagen.'),
     respond: (response) => response,
   });
@@ -529,13 +527,18 @@ const handleCollectionCreate = async (
   const workflow = createMutationWorkflow<
     AuthenticatedRequestContext,
     Record<never, never>,
-    Record<never, never>,
+    {
+      readonly actor: NewsMutationActor;
+    },
     CreateNewsReservedMutation,
     ParsedNewsInput,
     Response
   >({
     prepare: async () => ({}),
-    authorize: async () => ({}),
+    authorize: async ({ context }) => {
+      const actor = await authorizeOrResponse(context, 'news.create');
+      return isResponse(actor) ? actor : { actor };
+    },
     csrf: ({ request }) => validateMutationRequest(request, requestId) ?? undefined,
     idempotency: async ({ request, context }) => {
       const idempotencyKey = readIdempotencyKey(request);
@@ -579,22 +582,7 @@ const handleCollectionCreate = async (
       return { actorInfo: preparedActorInfo, idempotencyKey, parsed };
     },
     parse: async ({ parsed }) => parsed,
-    execute: async ({ context, actorInfo, idempotencyKey, input: parsed }) => {
-      const actor = await authorizeOrResponse(context, 'news.create');
-      if (isResponse(actor)) {
-        await completeNewsCreateIdempotency({
-          actorAccountId: actorInfo.actorAccountId,
-          instanceId: actorInfo.instanceId,
-          idempotencyKey,
-          responseBody: await readResponseBody(actor, {
-            error: 'forbidden',
-            message: 'Keine Berechtigung für diese Inhaltsoperation.',
-          }),
-          responseStatus: actor.status,
-        });
-        return actor;
-      }
-
+    execute: async ({ context, actor, actorInfo, idempotencyKey, input: parsed }) => {
       try {
         const data = await createSvaMainserverNews({ ...actor, news: parsed.news });
         if (parsed.visible === false) {

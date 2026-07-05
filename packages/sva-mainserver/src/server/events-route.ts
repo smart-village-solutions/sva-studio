@@ -302,20 +302,25 @@ const handleItemRead = async (
   return json({ data });
 };
 
-const authorizeMutation = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext,
-  contentKind: ContentKind,
-  actionName: 'create' | 'update' | 'delete',
-  requestId?: string,
-  contentId?: string
-): Promise<Response | ContentActor> => {
-  const csrfError = validateMutationRequest(request, requestId);
-  if (csrfError) {
-    return csrfError;
-  }
-
-  return authorizeOrResponse(ctx, contentKind, pluginActionFor(contentKind, actionName), contentId);
+const logMutationWorkflowFailure = (input: {
+  readonly request: Request;
+  readonly context: AuthenticatedRequestContext;
+  readonly contentKind: ContentKind;
+  readonly contentId?: string;
+  readonly requestId?: string;
+  readonly error: unknown;
+}) => {
+  logger.warn('Mainserver content route failed', {
+    operation: 'mainserver_content_request',
+    request_id: input.requestId,
+    trace_id: getWorkspaceContext().traceId,
+    actor_id: input.context.user.id,
+    instance_id: input.context.user.instanceId,
+    content_type: contentTypeFor(input.contentKind),
+    content_id: input.contentId,
+    method: input.request.method,
+    error_code: input.error instanceof SvaMainserverError ? input.error.code : 'internal_error',
+  });
 };
 
 const createContentMutationHandler = <TInput>(
@@ -344,13 +349,29 @@ const createContentMutationHandler = <TInput>(
       requestId: input.requestId,
       ...(input.route.kind === 'item' ? { contentId: input.route.itemId } : {}),
     }),
-    authorize: async ({ request, context, contentId }) => {
-      const actor = await authorizeMutation(request, context, input.route.contentKind, input.action, input.requestId, contentId);
+    authorize: async ({ context, contentId }) => {
+      const actor = await authorizeOrResponse(
+        context,
+        input.route.contentKind,
+        pluginActionFor(input.route.contentKind, input.action),
+        contentId
+      );
       return isResponse(actor) ? actor : { actor };
     },
+    csrf: ({ request, requestId }) => validateMutationRequest(request, requestId) ?? undefined,
     parse: ({ request }) => input.parse(request),
     execute: async ({ actor, input: parsed }) => input.execute(actor, parsed),
-    mapError: (error) => toMainserverErrorResponse(error, 'Mainserver-Anfrage ist fehlgeschlagen.'),
+    mapError: (error, state) => {
+      logMutationWorkflowFailure({
+        request: state.request,
+        context: state.context,
+        contentKind: input.route.contentKind,
+        contentId: state.contentId,
+        requestId: state.requestId,
+        error,
+      });
+      return toMainserverErrorResponse(error, 'Mainserver-Anfrage ist fehlgeschlagen.');
+    },
     respond: (response) => response,
   });
 

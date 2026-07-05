@@ -270,13 +270,13 @@ describe('createDeleteRoleHandlerInternal', () => {
   });
 
   it('preserves the provider method context when replaying direct role assignments during compensation', async () => {
-    const assignCalls: unknown[] = [];
+    const assignReceiversMatch: boolean[] = [];
     const contextualIdentityProvider = {
       provider: {
         createRole: vi.fn(async () => undefined),
         deleteRole: vi.fn(async () => undefined),
-        assignRealmRoles(this: unknown, _subject: string, _roles: readonly string[]) {
-          assignCalls.push(this);
+        assignRealmRoles(this: unknown) {
+          assignReceiversMatch.push(this === contextualIdentityProvider.provider);
           return Promise.resolve();
         },
       },
@@ -291,6 +291,6 @@ describe('createDeleteRoleHandlerInternal', () => {
     const response = await runDeleteRoleRequest(deps);
 
     expect(response.status).toBe(500);
-    expect(assignCalls).toEqual([contextualIdentityProvider.provider]);
+    expect(assignReceiversMatch).toEqual([true]);
   });
 });

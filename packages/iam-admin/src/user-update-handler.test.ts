@@ -348,16 +348,16 @@ describe('createUpdateUserHandlerInternal', () => {
   });
 
   it('preserves the provider method context when assigning technical role deltas', async () => {
-    let assignThis: unknown;
+    const assignReceiversMatch: boolean[] = [];
     const contextualIdentityProvider = {
       provider: {
         updateUser: vi.fn(async () => undefined),
         syncRoles: vi.fn(async () => undefined),
-        assignRealmRoles(this: unknown, _subject: string, _roles: readonly string[]) {
-          assignThis = this;
+        assignRealmRoles(this: unknown) {
+          assignReceiversMatch.push(this === contextualIdentityProvider.provider);
           return Promise.resolve();
         },
-        removeRealmRoles(this: unknown, _subject: string, _roles: readonly string[]) {
+        removeRealmRoles(this: unknown) {
           return Promise.resolve();
         },
       },
@@ -382,7 +382,7 @@ describe('createUpdateUserHandlerInternal', () => {
     const response = await handler(createUserUpdateRequest(), ctx);
 
     expect(response.status).toBe(200);
-    expect(assignThis).toBe(contextualIdentityProvider.provider);
+    expect(assignReceiversMatch).toEqual([true]);
     expect(deps.ensureManagedRealmRolesExist).toHaveBeenCalledWith(
       expect.objectContaining({
         identityProvider: contextualIdentityProvider,
@@ -392,14 +392,14 @@ describe('createUpdateUserHandlerInternal', () => {
   });
 
   it('preserves the provider method context when removing technical role deltas', async () => {
-    let removeThis: unknown;
+    const removeReceiversMatch: boolean[] = [];
     const contextualIdentityProvider = {
       provider: {
         updateUser: vi.fn(async () => undefined),
         syncRoles: vi.fn(async () => undefined),
         assignRealmRoles: vi.fn(async () => undefined),
-        removeRealmRoles(this: unknown, _subject: string, _roles: readonly string[]) {
-          removeThis = this;
+        removeRealmRoles(this: unknown) {
+          removeReceiversMatch.push(this === contextualIdentityProvider.provider);
           return Promise.resolve();
         },
       },
@@ -424,7 +424,7 @@ describe('createUpdateUserHandlerInternal', () => {
     const response = await handler(createUserUpdateRequest(), ctx);
 
     expect(response.status).toBe(200);
-    expect(removeThis).toBe(contextualIdentityProvider.provider);
+    expect(removeReceiversMatch).toEqual([true]);
   });
 
   it('returns the precondition response without update work', async () => {

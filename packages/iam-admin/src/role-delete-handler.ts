@@ -224,7 +224,7 @@ export const createDeleteRoleHandlerInternal =
             }
             await Promise.all(
               directAssignmentSubjects.map((subject) =>
-                identityProvider.provider.assignRealmRoles!(subject, [externalRoleName])
+                assignRealmRoles.call(identityProvider.provider, subject, [externalRoleName])
               )
             );
           }

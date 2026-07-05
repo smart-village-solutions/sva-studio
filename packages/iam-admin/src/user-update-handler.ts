@@ -309,7 +309,7 @@ const assignTechnicalRoles = async <
     throw new RoleMutationCapabilityUnavailableError('assignRealmRoles');
   }
   await deps.trackKeycloakCall('assign_realm_roles', () =>
-    input.identityProvider.provider.assignRealmRoles!(input.keycloakSubject, input.roleNames)
+    assignRealmRoles.call(input.identityProvider.provider, input.keycloakSubject, input.roleNames)
   );
 };
 
@@ -334,7 +334,7 @@ const removeTechnicalRoles = async <
     throw new RoleMutationCapabilityUnavailableError('removeRealmRoles');
   }
   await deps.trackKeycloakCall('remove_realm_roles', () =>
-    input.identityProvider.provider.removeRealmRoles!(input.keycloakSubject, input.roleNames)
+    removeRealmRoles.call(input.identityProvider.provider, input.keycloakSubject, input.roleNames)
   );
 };
 

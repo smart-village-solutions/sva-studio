@@ -3,6 +3,88 @@ import { IAM_DELETED_CONTENT_AUTHOR_TOKEN } from '@sva/core';
 import type { QueryClient } from './query-client.js';
 import { readEffectiveAccountDeletionContentStrategy } from './user-detail-query.sql.js';
 
+const readActiveLegalHold = async (
+  client: QueryClient,
+  params: readonly [string, string]
+): Promise<{ rowCount: number }> =>
+  client.query<{ id: string }>(
+    `
+SELECT id
+FROM iam.legal_holds
+WHERE instance_id = $1
+  AND account_id = $2::uuid
+  AND active = true
+  AND (hold_until IS NULL OR hold_until > NOW())
+LIMIT 1;
+`,
+    params
+  );
+
+const accountDeleteBlockerStatements = [
+  `
+DELETE FROM iam.permission_change_requests
+WHERE instance_id = $1
+  AND (requester_account_id = $2::uuid OR target_account_id = $2::uuid);
+`,
+  `
+DELETE FROM iam.delegations
+WHERE instance_id = $1
+  AND (delegator_account_id = $2::uuid OR delegatee_account_id = $2::uuid);
+`,
+  `
+DELETE FROM iam.impersonation_sessions
+WHERE instance_id = $1
+  AND (actor_account_id = $2::uuid OR target_account_id = $2::uuid);
+`,
+  `
+DELETE FROM iam.legal_text_acceptances
+WHERE instance_id = $1
+  AND account_id = $2::uuid;
+`,
+  `
+DELETE FROM iam.data_subject_export_jobs
+WHERE instance_id = $1
+  AND target_account_id = $2::uuid;
+`,
+  `
+UPDATE iam.data_subject_export_jobs
+SET requested_by_account_id = NULL
+WHERE instance_id = $1
+  AND requested_by_account_id = $2::uuid;
+`,
+  `
+DELETE FROM iam.account_profile_corrections
+WHERE instance_id = $1
+  AND account_id = $2::uuid;
+`,
+  `
+UPDATE iam.account_profile_corrections
+SET actor_account_id = NULL
+WHERE instance_id = $1
+  AND actor_account_id = $2::uuid;
+`,
+  `
+DELETE FROM iam.data_subject_requests
+WHERE instance_id = $1
+  AND target_account_id = $2::uuid;
+`,
+  `
+UPDATE iam.data_subject_requests
+SET requester_account_id = NULL
+WHERE instance_id = $1
+  AND requester_account_id = $2::uuid;
+`,
+] as const;
+
+const executeAccountDeleteBlockerStatements = async (
+  client: QueryClient,
+  params: readonly [string, string]
+): Promise<void> => {
+  for (const statement of accountDeleteBlockerStatements) {
+    await client.query(statement, params);
+  }
+};
+
 export const anonymizeRetainedOwnedContent = async (
   client: QueryClient,
   input: { instanceId: string; accountId: string; deletedLabel?: string }
@@ -80,106 +162,11 @@ export const purgeAccountHardDeleteBlockers = async (
   input: { instanceId: string; accountId: string }
 ): Promise<void> => {
   const params = [input.instanceId, input.accountId] as const;
-
-  const activeLegalHoldResult = await client.query<{ id: string }>(
-    `
-SELECT id
-FROM iam.legal_holds
-WHERE instance_id = $1
-  AND account_id = $2::uuid
-  AND active = true
-  AND (hold_until IS NULL OR hold_until > NOW())
-LIMIT 1;
-`,
-    params
-  );
+  const activeLegalHoldResult = await readActiveLegalHold(client, params);
   if (activeLegalHoldResult.rowCount > 0) {
     throw new Error('legal_hold_delete_protection:Aktiver Legal Hold blockiert die Löschung.');
   }
-
-  await client.query(
-    `
-DELETE FROM iam.permission_change_requests
-WHERE instance_id = $1
-  AND (requester_account_id = $2::uuid OR target_account_id = $2::uuid);
-`,
-    params
-  );
-  await client.query(
-    `
-DELETE FROM iam.delegations
-WHERE instance_id = $1
-  AND (delegator_account_id = $2::uuid OR delegatee_account_id = $2::uuid);
-`,
-    params
-  );
-  await client.query(
-    `
-DELETE FROM iam.impersonation_sessions
-WHERE instance_id = $1
-  AND (actor_account_id = $2::uuid OR target_account_id = $2::uuid);
-`,
-    params
-  );
-  await client.query(
-    `
-DELETE FROM iam.legal_text_acceptances
-WHERE instance_id = $1
-  AND account_id = $2::uuid;
-`,
-    params
-  );
-  await client.query(
-    `
-DELETE FROM iam.data_subject_export_jobs
-WHERE instance_id = $1
-  AND target_account_id = $2::uuid;
-`,
-    params
-  );
-  await client.query(
-    `
-UPDATE iam.data_subject_export_jobs
-SET requested_by_account_id = NULL
-WHERE instance_id = $1
-  AND requested_by_account_id = $2::uuid;
-`,
-    params
-  );
-  await client.query(
-    `
-DELETE FROM iam.account_profile_corrections
-WHERE instance_id = $1
-  AND account_id = $2::uuid;
-`,
-    params
-  );
-  await client.query(
-    `
-UPDATE iam.account_profile_corrections
-SET actor_account_id = NULL
-WHERE instance_id = $1
-  AND actor_account_id = $2::uuid;
-`,
-    params
-  );
-  await client.query(
-    `
-DELETE FROM iam.data_subject_requests
-WHERE instance_id = $1
-  AND target_account_id = $2::uuid;
-`,
-    params
-  );
-  await client.query(
-    `
-UPDATE iam.data_subject_requests
-SET requester_account_id = NULL
-WHERE instance_id = $1
-  AND requester_account_id = $2::uuid;
-`,
-    params
-  );
+  await executeAccountDeleteBlockerStatements(client, params);
 };
 
 export const hardDeleteAccount = async (

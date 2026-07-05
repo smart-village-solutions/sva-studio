@@ -1947,6 +1947,7 @@ describe('createSvaMainserverService', () => {
     expect(requestBodies[3]?.variables).toMatchObject({
       id: 'generic-1',
       forceCreate: false,
+      genericType: 'faq',
       visible: false,
       payload: { answer: '43' },
     });

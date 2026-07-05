@@ -23,6 +23,11 @@ import {
 import { GenericItemsDetailTabs } from './generic-items.detail-page.tabs.js';
 import { genericItemsDetailFormSchema, type GenericItemsDetailFormValues } from './generic-items.validation.js';
 
+const genericItemsListLink = {
+  to: '/admin/content',
+  search: { type: 'generic-items.generic-item' },
+} as const;
+
 const createSummaryErrors = (errors: ReturnType<typeof useForm<GenericItemsDetailFormValues>>['formState']['errors']) => {
   const entries = [
     errors.title ? { field: 'generic-item-title', message: String(errors.title.message) } : null,
@@ -51,7 +56,7 @@ const DetailPageActions = ({
 }>) => (
   <div className="flex gap-2">
     <Button asChild variant="outline">
-      <Link to="/admin/generic-items">{pt('actions.back')}</Link>
+      <Link {...genericItemsListLink}>{pt('actions.back')}</Link>
     </Button>
     {mode === 'edit' ? (
       <Button type="button" variant="outline" disabled={disableActions || deleting} onClick={() => void onDelete()}>

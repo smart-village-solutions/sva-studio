@@ -27,6 +27,7 @@ import {
   openingHourSchema,
   priceSchema,
   mapAccessibilityInformation,
+  webUrlSchema,
 } from './mappers-shared.js';
 import { defined, optionalString, toSvaMainserverError } from './shared.js';
 
@@ -45,7 +46,7 @@ const genericItemSchema = z.object({
   visible: z.boolean().nullish(),
   categories: z.array(categorySchema).nullish(),
   contacts: z.array(contactSchema).nullish(),
-  webUrls: z.array(z.object({ id: z.string().nullish(), url: z.string().nullish(), description: z.string().nullish() })).nullish(),
+  webUrls: z.array(webUrlSchema).nullish(),
   addresses: z.array(addressSchema).nullish(),
   contentBlocks: z.array(contentBlockSchema).nullish(),
   openingHours: z.array(openingHourSchema).nullish(),

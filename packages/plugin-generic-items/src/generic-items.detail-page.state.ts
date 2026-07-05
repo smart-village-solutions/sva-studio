@@ -24,6 +24,11 @@ export type StatusMessage = Readonly<{
   text: string;
 }>;
 
+const genericItemsListNavigationTarget = {
+  to: '/admin/content',
+  search: { type: 'generic-items.generic-item' },
+} as const;
+
 const errorMessage = (
   pt: ReturnType<typeof usePluginTranslation>,
   error: unknown,
@@ -169,7 +174,7 @@ export const useGenericItemsDetailActions = ({
 
     try {
       await deleteGenericItem(contentId);
-      await navigate({ to: '/admin/generic-items' });
+      await navigate(genericItemsListNavigationTarget);
     } catch (error) {
       setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.deleteError') });
     } finally {

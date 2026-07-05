@@ -1,20 +1,31 @@
 import type { SvaMainserverDateInput } from '../types.js';
-import { isRecord, readBoolean, readString } from './content-route-core.js';
+import { errorJson, isRecord, readBoolean, readString } from './content-route-core.js';
 
-export const parseDates = (value: unknown): readonly SvaMainserverDateInput[] | undefined =>
-  Array.isArray(value)
-    ? value
-        .filter(isRecord)
-        .map((date): SvaMainserverDateInput => ({
-          ...(readString(date.weekday) ? { weekday: readString(date.weekday) } : {}),
-          ...(readString(date.dateStart) ? { dateStart: readString(date.dateStart) } : {}),
-          ...(readString(date.dateEnd) ? { dateEnd: readString(date.dateEnd) } : {}),
-          ...(readString(date.timeStart) ? { timeStart: readString(date.timeStart) } : {}),
-          ...(readString(date.timeEnd) ? { timeEnd: readString(date.timeEnd) } : {}),
-          ...(readString(date.timeDescription) ? { timeDescription: readString(date.timeDescription) } : {}),
-          ...(readBoolean(date.useOnlyTimeDescription) !== undefined
-            ? { useOnlyTimeDescription: readBoolean(date.useOnlyTimeDescription) }
-            : {}),
-        }))
-        .filter((date) => Object.keys(date).length > 0)
-    : undefined;
+export const parseDates = (value: unknown): readonly SvaMainserverDateInput[] | Response | undefined => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    return errorJson(400, 'invalid_request', 'Termine müssen als Liste gesendet werden.');
+  }
+
+  const dates: SvaMainserverDateInput[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) {
+      return errorJson(400, 'invalid_request', 'Termin-Einträge müssen Objekte sein.');
+    }
+    dates.push({
+      ...(readString(item.weekday) ? { weekday: readString(item.weekday) } : {}),
+      ...(readString(item.dateStart) ? { dateStart: readString(item.dateStart) } : {}),
+      ...(readString(item.dateEnd) ? { dateEnd: readString(item.dateEnd) } : {}),
+      ...(readString(item.timeStart) ? { timeStart: readString(item.timeStart) } : {}),
+      ...(readString(item.timeEnd) ? { timeEnd: readString(item.timeEnd) } : {}),
+      ...(readString(item.timeDescription) ? { timeDescription: readString(item.timeDescription) } : {}),
+      ...(readBoolean(item.useOnlyTimeDescription) !== undefined
+        ? { useOnlyTimeDescription: readBoolean(item.useOnlyTimeDescription) }
+        : {}),
+    });
+  }
+
+  return dates;
+};

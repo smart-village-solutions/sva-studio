@@ -41,7 +41,7 @@ const buildGenericItemMutationVariables = (input: {
   ...includeTruthyField('author', input.genericItem.author),
   ...includeTruthyField('keywords', input.genericItem.keywords),
   ...includeTruthyField('teaser', input.genericItem.teaser),
-  ...includeTruthyField('genericType', input.genericItem.genericType),
+  genericType: input.genericItem.genericType,
   ...includeTruthyField('externalId', input.genericItem.externalId),
   ...includeTruthyField('publicationDate', input.genericItem.publicationDate),
   ...includeTruthyField('publishedAt', input.genericItem.publishedAt),

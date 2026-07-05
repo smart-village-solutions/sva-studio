@@ -6,6 +6,8 @@ import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { createGenericItem, deleteGenericItem, updateGenericItem } from '../src/generic-items.api.js';
 import { GenericItemsDetailPage } from '../src/generic-items.detail-page.js';
 
+const navigateMock = vi.fn();
+
 vi.mock('../src/generic-items.api.js', () => ({
   listGenericItems: vi.fn(),
   listGenericItemCategories: vi.fn(async () => [{ id: 'cat-1', name: 'Rathaus' }]),
@@ -38,8 +40,16 @@ vi.mock('../src/generic-items.api.js', () => ({
 }));
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-  useNavigate: () => vi.fn(),
+  Link: ({
+    children,
+    to,
+    search,
+  }: {
+    children: React.ReactNode;
+    to: string;
+    search?: Record<string, string>;
+  }) => <a href={search?.type ? `${to}?type=${encodeURIComponent(search.type)}` : to}>{children}</a>,
+  useNavigate: () => navigateMock,
 }));
 
 vi.mock('@sva/plugin-sdk', async () => {
@@ -54,6 +64,7 @@ vi.mock('@sva/plugin-sdk', async () => {
 describe('GenericItemsDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    navigateMock.mockReset();
     vi.stubGlobal('confirm', vi.fn(() => true));
     registerPluginTranslationResolver((key) => {
       const map: Record<string, string> = {
@@ -276,6 +287,10 @@ describe('GenericItemsDetailPage', () => {
   it('creates a generic item', async () => {
     render(<GenericItemsDetailPage mode="create" />);
 
+    expect(screen.getByRole('link', { name: 'Zurück' }).getAttribute('href')).toBe(
+      '/admin/content?type=generic-items.generic-item'
+    );
+
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Freier Eintrag' } });
     fireEvent.change(screen.getByLabelText('Generic-Type'), { target: { value: 'faq' } });
     fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
@@ -325,6 +340,13 @@ describe('GenericItemsDetailPage', () => {
 
     await waitFor(() => {
       expect(deleteGenericItem).toHaveBeenCalledWith('generic-1');
+    });
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/admin/content',
+        search: { type: 'generic-items.generic-item' },
+      });
     });
   });
 });

@@ -807,6 +807,7 @@ const refreshMainserverProjection = async (
       const result = await fetchAllPages((pageQuery) =>
         listSvaMainserverGenericItems({
           ...connection,
+          includeInvisible: true,
           ...pageQuery,
         })
       );

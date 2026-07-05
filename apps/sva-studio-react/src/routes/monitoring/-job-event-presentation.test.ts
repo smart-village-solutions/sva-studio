@@ -102,7 +102,7 @@ describe('monitoring job event presentation', () => {
           currentStepLabel: 'Snapshot aus Backend laden',
         },
       })
-    ).toBe('Fortschritt aktualisiert: Snapshot aus Backend laden.');
+    ).toBe('Fortschritt aktualisiert: Mainserver-Snapshot laden.');
   });
 
   it('falls back to tone and terminal metadata from the event type when the backend omits presentation details', () => {
@@ -160,7 +160,7 @@ describe('monitoring job event presentation', () => {
         currentStepKey: 'load-mainserver-snapshot',
         currentStepLabel: 'Snapshot aus Backend laden',
       })
-    ).toBe('Snapshot aus Backend laden');
+    ).toBe('Mainserver-Snapshot laden');
     expect(
       getMonitoringJobCurrentStep({
         completedSteps: 4,

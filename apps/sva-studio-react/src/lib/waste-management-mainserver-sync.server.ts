@@ -24,7 +24,7 @@ import {
 import {
   averageBatchDuration,
   buildSyncProgress,
-  createBatchStepLabel,
+  formatBatchStepLabel,
   reportSyncProgress,
   type WasteSyncBatchProgressDetails,
   type WasteSyncProgressReporter,
@@ -164,6 +164,7 @@ export const runWasteManagementMainserverSync = async (input: {
     .map(({ key: _key, ...row }) => row);
   const deleteByIdCount = deleteItems.filter((row) => Boolean(row.id?.trim())).length;
   const deleteByValueCount = deleteItems.length - deleteByIdCount;
+  const totalPlannedItemCount = createItems.length + deleteItems.length;
 
   if (!input.dryRun && createItems.length > 0 && !input.createItems) {
     throw new Error('waste_mainserver_sync_missing_create_writer');
@@ -188,7 +189,7 @@ export const runWasteManagementMainserverSync = async (input: {
     if (params.items.length === 0) {
       await input.onBatchProgress?.({
         operationMode: params.operationMode,
-        totalItemCount: 0,
+        totalItemCount: totalPlannedItemCount,
         totalBatchCount: 0,
         currentBatchIndex: 0,
         currentBatchSize: 0,
@@ -215,7 +216,7 @@ export const runWasteManagementMainserverSync = async (input: {
 
       await input.onBatchProgress?.({
         operationMode: params.operationMode,
-        totalItemCount: params.items.length,
+        totalItemCount: totalPlannedItemCount,
         totalBatchCount: batches.length,
         currentBatchIndex: batchIndex + 1,
         currentBatchSize: batch.length,
@@ -278,7 +279,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     buildSyncProgress({
       completedSteps: 1,
       currentStepKey: 'load-studio-state',
-      currentStepLabel: 'Studio-Status laden',
+      currentStepLabel: 'load-studio-state',
     })
   );
   const studioState = await withWasteClient(input.runtimeDeps ?? {}, input.instanceId, async ({ repository }) => ({
@@ -310,7 +311,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     buildSyncProgress({
       completedSteps: 2,
       currentStepKey: 'load-mainserver-snapshot',
-      currentStepLabel: 'Mainserver-Snapshot laden',
+      currentStepLabel: 'load-mainserver-snapshot',
       details: {
         studioSnapshotCount: studioRows.length,
       },
@@ -326,7 +327,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     buildSyncProgress({
       completedSteps: 3,
       currentStepKey: 'diff-sync-state',
-      currentStepLabel: 'Abweichungen berechnen',
+      currentStepLabel: 'diff-sync-state',
       details: {
         studioSnapshotCount: studioRows.length,
         mainserverSnapshotCount: mainserverRows.length,
@@ -365,7 +366,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
         buildSyncProgress({
           completedSteps: isCreate ? 4 : 5,
           currentStepKey,
-          currentStepLabel: createBatchStepLabel(details),
+          currentStepLabel: formatBatchStepLabel(details),
           details,
         })
       );
@@ -377,7 +378,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     buildSyncProgress({
       completedSteps: 6,
       currentStepKey: 'complete-operation',
-      currentStepLabel: 'Synchronisierung abgeschlossen',
+      currentStepLabel: 'complete-operation',
       details: {
         totalBatchCount: result.totalBatchCount,
         processedItemCount: result.processedItemCount,

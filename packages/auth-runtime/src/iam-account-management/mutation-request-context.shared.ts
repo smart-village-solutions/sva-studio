@@ -17,6 +17,85 @@ type ResolvedActor = Exclude<Awaited<ReturnType<typeof resolveActorInfo>>, { err
 
 export type MutationActorWithAccount = ResolvedActor & { actorAccountId: string };
 
+const finalizeResolvedMutationActor = (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  input: {
+    scope: 'write' | 'bulk';
+  },
+  actor: ResolvedActor
+): { actor: MutationActorWithAccount } | { response: Response } => {
+  if (!actor.actorAccountId) {
+    return {
+      response: createApiError(
+        403,
+        'forbidden',
+        'Akteur-Account nicht gefunden.',
+        actor.requestId,
+        createActorResolutionDetails({
+          actorResolution: 'missing_actor_account',
+          instanceId: actor.instanceId,
+        })
+      ),
+    };
+  }
+
+  const csrfError = validateCsrf(request, actor.requestId);
+  if (csrfError) {
+    return { response: csrfError };
+  }
+
+  const rateLimit = consumeRateLimit({
+    instanceId: actor.instanceId,
+    actorKeycloakSubject: ctx.user.id,
+    scope: input.scope,
+    requestId: actor.requestId,
+  });
+  if (rateLimit) {
+    return { response: rateLimit };
+  }
+
+  return {
+    actor: actor as MutationActorWithAccount,
+  };
+};
+
+const resolveRequiredPermissionActor = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  input: {
+    requiredPermissionAction: string;
+    provisionMissingActorMembership?: boolean;
+    requestId?: string;
+  }
+): Promise<{ actor: ResolvedActor } | { response: Response }> => {
+  const actorResolution = await resolveActorInfo(request, ctx, {
+    requireActorMembership: true,
+    provisionMissingActorMembership: input.provisionMissingActorMembership,
+  });
+  if ('error' in actorResolution) {
+    return { response: actorResolution.error };
+  }
+
+  const authorization = await authorizeInstancePermissionForUser({
+    ctx,
+    action: input.requiredPermissionAction,
+    instanceId: actorResolution.actor.instanceId,
+  });
+  if (!authorization.ok) {
+    return {
+      response: createApiError(
+        authorization.status,
+        toInstancePermissionApiErrorCode(authorization.error),
+        authorization.message,
+        input.requestId
+      ),
+    };
+  }
+
+  return { actor: actorResolution.actor };
+};
+
 export const resolveMutationActorWithAccount = async (
   request: Request,
   ctx: AuthenticatedRequestContext,
@@ -35,62 +114,15 @@ export const resolveMutationActorWithAccount = async (
   }
 
   if (input.requiredPermissionAction) {
-    const actorResolution = await resolveActorInfo(request, ctx, {
-      requireActorMembership: true,
+    const resolved = await resolveRequiredPermissionActor(request, ctx, {
+      requiredPermissionAction: input.requiredPermissionAction,
       provisionMissingActorMembership: input.provisionMissingActorMembership,
+      requestId: input.requestId,
     });
-    if ('error' in actorResolution) {
-      return { response: actorResolution.error };
+    if ('response' in resolved) {
+      return resolved;
     }
-
-    const authorization = await authorizeInstancePermissionForUser({
-      ctx,
-      action: input.requiredPermissionAction,
-      instanceId: actorResolution.actor.instanceId,
-    });
-    if (!authorization.ok) {
-      return {
-        response: createApiError(
-          authorization.status,
-          toInstancePermissionApiErrorCode(authorization.error),
-          authorization.message,
-          input.requestId
-        ),
-      };
-    }
-    if (!actorResolution.actor.actorAccountId) {
-      return {
-        response: createApiError(
-          403,
-          'forbidden',
-          'Akteur-Account nicht gefunden.',
-          actorResolution.actor.requestId,
-          createActorResolutionDetails({
-            actorResolution: 'missing_actor_account',
-            instanceId: actorResolution.actor.instanceId,
-          })
-        ),
-      };
-    }
-
-    const csrfError = validateCsrf(request, actorResolution.actor.requestId);
-    if (csrfError) {
-      return { response: csrfError };
-    }
-
-    const rateLimit = consumeRateLimit({
-      instanceId: actorResolution.actor.instanceId,
-      actorKeycloakSubject: ctx.user.id,
-      scope: input.scope,
-      requestId: actorResolution.actor.requestId,
-    });
-    if (rateLimit) {
-      return { response: rateLimit };
-    }
-
-    return {
-      actor: actorResolution.actor as MutationActorWithAccount,
-    };
+    return finalizeResolvedMutationActor(request, ctx, input, resolved.actor);
   }
 
   const roleCheck = requireRoles(ctx, input.allowedRoles, input.requestId);
@@ -106,39 +138,7 @@ export const resolveMutationActorWithAccount = async (
     return { response: actorResolution.error };
   }
 
-  if (!actorResolution.actor.actorAccountId) {
-    return {
-      response: createApiError(
-        403,
-        'forbidden',
-        'Akteur-Account nicht gefunden.',
-        actorResolution.actor.requestId,
-        createActorResolutionDetails({
-          actorResolution: 'missing_actor_account',
-          instanceId: actorResolution.actor.instanceId,
-        })
-      ),
-    };
-  }
-
-  const csrfError = validateCsrf(request, actorResolution.actor.requestId);
-  if (csrfError) {
-    return { response: csrfError };
-  }
-
-  const rateLimit = consumeRateLimit({
-    instanceId: actorResolution.actor.instanceId,
-    actorKeycloakSubject: ctx.user.id,
-    scope: input.scope,
-    requestId: actorResolution.actor.requestId,
-  });
-  if (rateLimit) {
-    return { response: rateLimit };
-  }
-
-  return {
-    actor: actorResolution.actor as MutationActorWithAccount,
-  };
+  return finalizeResolvedMutationActor(request, ctx, input, actorResolution.actor);
 };
 
 export const requireMutationPathId = (

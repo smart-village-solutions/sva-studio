@@ -116,7 +116,8 @@ export const genericItemsDetailFormSchema = z.object({
       height: z.string(),
       width: z.string(),
       sourceUrl: z.object({
-        url: createOptionalHttpsUrlSchema('URLs müssen mit https:// beginnen.'),
+        // Asset URLs are host-provided and can be non-https in local/editor environments.
+        url: z.string(),
         description: z.string(),
       }),
     })

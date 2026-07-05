@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 
-import { createGenericItem, updateGenericItem } from '../src/generic-items.api.js';
+import { createGenericItem, deleteGenericItem, updateGenericItem } from '../src/generic-items.api.js';
 import { GenericItemsDetailPage } from '../src/generic-items.detail-page.js';
 
 vi.mock('../src/generic-items.api.js', () => ({
@@ -300,6 +300,31 @@ describe('GenericItemsDetailPage', () => {
         'generic-1',
         expect.objectContaining({ title: 'Aktualisiert', genericType: 'faq' })
       );
+    });
+  });
+
+  it('disables delete while a delete request is in flight', async () => {
+    let resolveDelete: (() => void) | null = null;
+    vi.mocked(deleteGenericItem).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveDelete = resolve;
+        })
+    );
+
+    render(<GenericItemsDetailPage mode="edit" contentId="generic-1" />);
+
+    const deleteButton = await screen.findByRole('button', { name: 'Löschen' });
+    fireEvent.click(deleteButton);
+
+    await waitFor(() => {
+      expect(deleteButton).toHaveProperty('disabled', true);
+    });
+
+    resolveDelete?.();
+
+    await waitFor(() => {
+      expect(deleteGenericItem).toHaveBeenCalledWith('generic-1');
     });
   });
 });

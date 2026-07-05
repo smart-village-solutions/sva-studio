@@ -155,21 +155,27 @@ export const useGenericItemsDetailActions = ({
   pt: ReturnType<typeof usePluginTranslation>;
   setStatus: React.Dispatch<React.SetStateAction<StatusMessage | null>>;
 }>) => {
+  const [deleting, setDeleting] = React.useState(false);
+
   const handleDelete = React.useCallback(async () => {
-    if (!contentId || mode !== 'edit') {
+    if (!contentId || deleting || mode !== 'edit') {
       return;
     }
     if (globalThis.confirm(pt('actions.deleteConfirm')) === false) {
       return;
     }
 
+    setDeleting(true);
+
     try {
       await deleteGenericItem(contentId);
       await navigate({ to: '/admin/generic-items' });
     } catch (error) {
       setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.deleteError') });
+    } finally {
+      setDeleting(false);
     }
-  }, [contentId, mode, navigate, pt, setStatus]);
+  }, [contentId, deleting, mode, navigate, pt, setStatus]);
 
   const onSubmit = methods.handleSubmit(async (values) => {
     setStatus(null);
@@ -193,5 +199,5 @@ export const useGenericItemsDetailActions = ({
 
   const [activeTab, setActiveTab] = React.useState<GenericItemsDetailTabId>('basis');
 
-  return { activeTab, handleDelete, onSubmit, setActiveTab };
+  return { activeTab, deleting, handleDelete, onSubmit, setActiveTab };
 };

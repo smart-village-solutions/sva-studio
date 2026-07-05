@@ -37,11 +37,13 @@ const createSummaryErrors = (errors: ReturnType<typeof useForm<GenericItemsDetai
 const DetailPageActions = ({
   disableActions,
   mode,
+  deleting,
   onDelete,
   onSubmit,
   pt,
 }: Readonly<{
   disableActions: boolean;
+  deleting: boolean;
   mode: 'create' | 'edit';
   onDelete: () => Promise<void>;
   onSubmit: () => Promise<void>;
@@ -52,7 +54,7 @@ const DetailPageActions = ({
       <Link to="/admin/generic-items">{pt('actions.back')}</Link>
     </Button>
     {mode === 'edit' ? (
-      <Button type="button" variant="outline" disabled={disableActions} onClick={() => void onDelete()}>
+      <Button type="button" variant="outline" disabled={disableActions || deleting} onClick={() => void onDelete()}>
         {pt('actions.delete')}
       </Button>
     ) : null}
@@ -81,7 +83,7 @@ export function GenericItemsDetailPage({
   const { mediaAssets, uploadMediaFile } = useGenericItemsMediaAssets();
   const { categoryOptions, categoryOptionsError, categoryOptionsLoading } = useGenericItemsCategoryOptions(pt);
   const loading = useGenericItemsDetailLoader({ contentId, methods, mode, pt, setStatus });
-  const { activeTab, handleDelete, onSubmit, setActiveTab } = useGenericItemsDetailActions({
+  const { activeTab, deleting, handleDelete, onSubmit, setActiveTab } = useGenericItemsDetailActions({
     contentId,
     methods,
     mode,
@@ -102,6 +104,7 @@ export function GenericItemsDetailPage({
         actions={
           <DetailPageActions
             disableActions={methods.formState.isSubmitting}
+            deleting={deleting}
             mode={mode}
             onDelete={handleDelete}
             onSubmit={onSubmit}

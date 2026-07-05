@@ -56,6 +56,7 @@ export const createDefaultContentBlockFormValue = () => ({
   title: '',
   intro: '',
   body: '',
+  mediaContents: [],
 });
 
 export const createDefaultOpeningHourFormValue = () => ({

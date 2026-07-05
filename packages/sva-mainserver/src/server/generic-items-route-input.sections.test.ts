@@ -27,7 +27,6 @@ describe('generic-items-route-input sections', () => {
           state: ' SH ',
           geoLocation: { latitude: '52.5', longitude: 13.4 },
         },
-        { geoLocation: {} },
         {},
       ])
     ).toEqual([
@@ -39,13 +38,13 @@ describe('generic-items-route-input sections', () => {
         state: 'SH',
         geoLocation: { latitude: 52.5, longitude: 13.4 },
       },
-      { geoLocation: {} },
     ]);
   });
 
   it('rejects malformed locations payloads', async () => {
     await expectInvalidRequest(parseLocations('invalid') as Response, 'Orte müssen als Liste gesendet werden.');
     await expectInvalidRequest(parseLocations([null]) as Response, 'Orte müssen Objekte sein.');
+    await expectInvalidRequest(parseLocations([{ geoLocation: { latitude: '52.5' } }]) as Response, 'Geo-Koordinaten sind ungültig.');
   });
 
   it('parses content blocks with text-only and media-backed content', () => {

@@ -110,24 +110,22 @@ export const GenericItemsGeoCoordinateFields = ({
   onLongitudeChange: (value: string) => void;
   pt: Translator;
 }>) => {
-  const geoLocationError = latitudeError ?? longitudeError;
-
   return (
     <StudioFieldGroup columns={2}>
-      <StudioField id={latitudeId} label={pt('fields.latitude')} error={geoLocationError} errorId={`${latitudeId}-error`}>
+      <StudioField id={latitudeId} label={pt('fields.latitude')} error={latitudeError} errorId={`${latitudeId}-error`}>
         <Input
           id={latitudeId}
-          aria-describedby={geoLocationError ? `${latitudeId}-error` : undefined}
-          aria-invalid={geoLocationError ? true : undefined}
+          aria-describedby={latitudeError ? `${latitudeId}-error` : undefined}
+          aria-invalid={latitudeError ? true : undefined}
           value={latitude}
           onChange={(event) => onLatitudeChange(event.target.value)}
         />
       </StudioField>
-      <StudioField id={longitudeId} label={pt('fields.longitude')} error={geoLocationError} errorId={`${longitudeId}-error`}>
+      <StudioField id={longitudeId} label={pt('fields.longitude')} error={longitudeError} errorId={`${longitudeId}-error`}>
         <Input
           id={longitudeId}
-          aria-describedby={geoLocationError ? `${longitudeId}-error` : undefined}
-          aria-invalid={geoLocationError ? true : undefined}
+          aria-describedby={longitudeError ? `${longitudeId}-error` : undefined}
+          aria-invalid={longitudeError ? true : undefined}
           value={longitude}
           onChange={(event) => onLongitudeChange(event.target.value)}
         />

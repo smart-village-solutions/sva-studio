@@ -118,7 +118,7 @@ export const GenericItemsDetailContentTab = ({
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => contentBlocksArray.append({ title: '', intro: '', body: '' })}
+              onClick={() => contentBlocksArray.append({ title: '', intro: '', body: '', mediaContents: [] })}
             >
               {labels.addContentBlock}
             </Button>

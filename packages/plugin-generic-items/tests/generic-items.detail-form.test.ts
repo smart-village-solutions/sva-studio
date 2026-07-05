@@ -44,8 +44,25 @@ describe('generic items detail form mapping', () => {
         },
       ],
       contentBlocks: [
-        { title: 'Frage', intro: 'Kurzintro', body: '<p>Antwort</p>' },
-        { title: '', intro: '', body: '' },
+        {
+          title: 'Frage',
+          intro: 'Kurzintro',
+          body: '<p>Antwort</p>',
+          mediaContents: [
+            {
+              captionText: 'Blockbild',
+              copyright: '',
+              contentType: 'image',
+              height: '',
+              width: '',
+              sourceUrl: {
+                url: 'https://example.org/block-image.jpg',
+                description: 'block-image.jpg',
+              },
+            },
+          ],
+        },
+        { title: '', intro: '', body: '', mediaContents: [] },
       ],
       openingHours: [
         {
@@ -227,7 +244,20 @@ describe('generic items detail form mapping', () => {
     expect(result.dates).toEqual([
       { weekday: 'Freitag', dateStart: '2026-07-10T09:00', useOnlyTimeDescription: false },
     ]);
-    expect(result.contentBlocks).toEqual([{ title: 'Frage', intro: 'Kurzintro', body: '<p>Antwort</p>' }]);
+    expect(result.contentBlocks).toEqual([
+      {
+        title: 'Frage',
+        intro: 'Kurzintro',
+        body: '<p>Antwort</p>',
+        mediaContents: [
+          {
+            captionText: 'Blockbild',
+            contentType: 'image',
+            sourceUrl: { url: 'https://example.org/block-image.jpg', description: 'block-image.jpg' },
+          },
+        ],
+      },
+    ]);
     expect(result.accessibilityInformations).toEqual([
       {
         description: 'Stufenloser Zugang',
@@ -267,7 +297,7 @@ describe('generic items detail form mapping', () => {
       contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
       webUrls: [{ url: '', description: '' }],
       addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
-      contentBlocks: [{ title: '', intro: '', body: '' }],
+      contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
       openingHours: [
         { weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false },
       ],
@@ -350,6 +380,63 @@ describe('generic items detail form mapping', () => {
     expect(result.dates).toEqual([
       expect.objectContaining({ weekday: 'Freitag', useOnlyTimeDescription: false }),
       expect.objectContaining({ weekday: 'Samstag', useOnlyTimeDescription: true }),
+    ]);
+  });
+
+  it('preserves nested content block media when reading and writing existing generic items', () => {
+    const values = mapGenericItemToDetailFormValues({
+      id: 'generic-1',
+      title: 'Freier Eintrag',
+      genericType: 'faq',
+      visible: true,
+      contentBlocks: [
+        {
+          title: 'Frage',
+          intro: 'Kurzintro',
+          body: '<p>Antwort</p>',
+          mediaContents: [
+            {
+              captionText: 'Blockbild',
+              contentType: 'image',
+              sourceUrl: { url: 'https://example.org/block-image.jpg', description: 'block-image.jpg' },
+            },
+          ],
+        },
+      ],
+      payload: {},
+    });
+
+    expect(values.contentBlocks).toEqual([
+      {
+        title: 'Frage',
+        intro: 'Kurzintro',
+        body: '<p>Antwort</p>',
+        mediaContents: [
+          {
+            captionText: 'Blockbild',
+            copyright: '',
+            contentType: 'image',
+            height: '',
+            width: '',
+            sourceUrl: { url: 'https://example.org/block-image.jpg', description: 'block-image.jpg' },
+          },
+        ],
+      },
+    ]);
+
+    expect(mapGenericItemsDetailFormValuesToInput(values).contentBlocks).toEqual([
+      {
+        title: 'Frage',
+        intro: 'Kurzintro',
+        body: '<p>Antwort</p>',
+        mediaContents: [
+          {
+            captionText: 'Blockbild',
+            contentType: 'image',
+            sourceUrl: { url: 'https://example.org/block-image.jpg', description: 'block-image.jpg' },
+          },
+        ],
+      },
     ]);
   });
 });

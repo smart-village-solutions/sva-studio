@@ -18,7 +18,7 @@ describe('generic items validation', () => {
       contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
       webUrls: [{ url: '', description: '' }],
       addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
-      contentBlocks: [{ title: '', intro: '', body: '' }],
+      contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
       openingHours: [
         { weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false },
       ],
@@ -72,7 +72,7 @@ describe('generic items validation', () => {
       contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
       webUrls: [{ url: '', description: '' }],
       addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
-      contentBlocks: [{ title: '', intro: '', body: '' }],
+      contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
       openingHours: [
         { weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false },
       ],
@@ -126,7 +126,7 @@ describe('generic items validation', () => {
       contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
       webUrls: [{ url: '', description: '' }],
       addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
-      contentBlocks: [{ title: '', intro: '', body: '' }],
+      contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
       openingHours: [
         { weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false },
       ],
@@ -180,7 +180,7 @@ describe('generic items validation', () => {
       contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
       webUrls: [{ url: 'http://example.org', description: '' }],
       addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
-      contentBlocks: [{ title: '', intro: '', body: '' }],
+      contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
       openingHours: [
         { weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false },
       ],
@@ -245,7 +245,7 @@ describe('generic items validation', () => {
       contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
       webUrls: [{ url: 'https://example.org', description: '' }],
       addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
-      contentBlocks: [{ title: '', intro: '', body: '' }],
+      contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
       openingHours: [
         { weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false },
       ],

@@ -64,12 +64,27 @@ export const mapGenericItemAddresses = (item: GenericItemContentItem) =>
       }))
     : [createDefaultAddressFormValue()];
 
+const mapGenericItemMediaContent = (
+  mediaContent: NonNullable<NonNullable<GenericItemContentItem['mediaContents']>[number]>
+) => ({
+  captionText: mediaContent.captionText ?? '',
+  copyright: mediaContent.copyright ?? '',
+  contentType: mediaContent.contentType ?? '',
+  height: stringifyFiniteNumber(mediaContent.height),
+  width: stringifyFiniteNumber(mediaContent.width),
+  sourceUrl: {
+    url: mediaContent.sourceUrl?.url ?? '',
+    description: mediaContent.sourceUrl?.description ?? '',
+  },
+});
+
 export const mapGenericItemContentBlocks = (item: GenericItemContentItem) =>
   item.contentBlocks && item.contentBlocks.length > 0
     ? item.contentBlocks.map((contentBlock) => ({
         title: contentBlock.title ?? '',
         intro: contentBlock.intro ?? '',
         body: contentBlock.body ?? '',
+        mediaContents: contentBlock.mediaContents?.map(mapGenericItemMediaContent) ?? [],
       }))
     : [createDefaultContentBlockFormValue()];
 
@@ -88,17 +103,7 @@ export const mapGenericItemOpeningHours = (item: GenericItemContentItem) =>
 
 export const mapGenericItemMediaContents = (item: GenericItemContentItem) =>
   item.mediaContents && item.mediaContents.length > 0
-    ? item.mediaContents.map((mediaContent) => ({
-        captionText: mediaContent.captionText ?? '',
-        copyright: mediaContent.copyright ?? '',
-        contentType: mediaContent.contentType ?? '',
-        height: stringifyFiniteNumber(mediaContent.height),
-        width: stringifyFiniteNumber(mediaContent.width),
-        sourceUrl: {
-          url: mediaContent.sourceUrl?.url ?? '',
-          description: mediaContent.sourceUrl?.description ?? '',
-        },
-      }))
+    ? item.mediaContents.map(mapGenericItemMediaContent)
     : [];
 
 export const mapGenericItemLocations = (item: GenericItemContentItem) =>

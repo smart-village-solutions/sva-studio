@@ -108,12 +108,19 @@ export const mapDatesToInput = (dates: GenericItemsDetailFormValues['dates']) =>
 
 export const mapContentBlocksToInput = (contentBlocks: GenericItemsDetailFormValues['contentBlocks']) => {
   const mapped = contentBlocks
-    .map((contentBlock) => ({
-      title: sanitizeOptionalString(contentBlock.title),
-      intro: sanitizeOptionalString(contentBlock.intro),
-      body: sanitizeOptionalString(contentBlock.body),
-    }))
-    .filter((contentBlock) => [contentBlock.title, contentBlock.intro, contentBlock.body].some((value) => value !== undefined));
+    .map((contentBlock) => {
+      const mediaContents = mapMediaContentsToInput(contentBlock.mediaContents);
+
+      return {
+        title: sanitizeOptionalString(contentBlock.title),
+        intro: sanitizeOptionalString(contentBlock.intro),
+        body: sanitizeOptionalString(contentBlock.body),
+        ...(mediaContents.length > 0 ? { mediaContents } : {}),
+      };
+    })
+    .filter((contentBlock) =>
+      [contentBlock.title, contentBlock.intro, contentBlock.body, contentBlock.mediaContents].some((value) => value !== undefined)
+    );
 
   return mapped;
 };

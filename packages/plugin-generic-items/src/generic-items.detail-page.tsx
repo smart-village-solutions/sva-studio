@@ -28,12 +28,26 @@ const genericItemsListLink = {
   search: { type: 'generic-items.generic-item' },
 } as const;
 
+const getFieldErrorMessage = (error: unknown): string | undefined => {
+  if (typeof error !== 'object' || error === null || !('message' in error)) {
+    return undefined;
+  }
+
+  return typeof error.message === 'string' && error.message.length > 0 ? error.message : undefined;
+};
+
 const createSummaryErrors = (errors: ReturnType<typeof useForm<GenericItemsDetailFormValues>>['formState']['errors']) => {
   const entries = [
-    errors.title ? { field: 'generic-item-title', message: String(errors.title.message) } : null,
-    errors.genericType ? { field: 'generic-item-type', message: String(errors.genericType.message) } : null,
-    errors.categories ? { field: 'generic-item-categories', message: String(errors.categories.message) } : null,
-    errors.payloadText ? { field: 'generic-item-payload', message: String(errors.payloadText.message) } : null,
+    getFieldErrorMessage(errors.title) ? { field: 'generic-item-title', message: getFieldErrorMessage(errors.title) } : null,
+    getFieldErrorMessage(errors.genericType)
+      ? { field: 'generic-item-type', message: getFieldErrorMessage(errors.genericType) }
+      : null,
+    getFieldErrorMessage(errors.categories)
+      ? { field: 'generic-item-categories', message: getFieldErrorMessage(errors.categories) }
+      : null,
+    getFieldErrorMessage(errors.payloadText)
+      ? { field: 'generic-item-payload', message: getFieldErrorMessage(errors.payloadText) }
+      : null,
   ];
 
   return entries.filter((entry): entry is { field: string; message: string } => entry !== null);

@@ -1,5 +1,6 @@
 import type { SvaMainserverLocationInput } from '../types.js';
-import { errorJson, isRecord, readNumber, readString } from './content-route-core.js';
+import { errorJson, isRecord } from './content-route-core.js';
+import { parseLocation } from './content-route-parsers.js';
 
 export const parseLocations = (value: unknown): readonly SvaMainserverLocationInput[] | undefined | Response => {
   if (value === undefined || value === null) {
@@ -16,28 +17,12 @@ export const parseLocations = (value: unknown): readonly SvaMainserverLocationIn
       return errorJson(400, 'invalid_request', 'Orte müssen Objekte sein.');
     }
 
-    const location = {
-      ...(readString(item.name) ? { name: readString(item.name) } : {}),
-      ...(readString(item.department) ? { department: readString(item.department) } : {}),
-      ...(readString(item.district) ? { district: readString(item.district) } : {}),
-      ...(readString(item.regionName) ? { regionName: readString(item.regionName) } : {}),
-      ...(readString(item.state) ? { state: readString(item.state) } : {}),
-      ...(isRecord(item.geoLocation)
-        ? {
-            geoLocation: {
-              ...(readNumber(item.geoLocation.latitude) !== undefined
-                ? { latitude: readNumber(item.geoLocation.latitude) }
-                : {}),
-              ...(readNumber(item.geoLocation.longitude) !== undefined
-                ? { longitude: readNumber(item.geoLocation.longitude) }
-                : {}),
-            },
-          }
-        : {}),
-    };
-
-    if (Object.keys(location).length > 0) {
-      locations.push(location);
+    const parsed = parseLocation(item);
+    if (parsed instanceof Response) {
+      return parsed;
+    }
+    if (parsed && Object.keys(parsed).length > 0) {
+      locations.push(parsed);
     }
   }
 

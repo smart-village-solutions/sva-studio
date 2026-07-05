@@ -47,6 +47,19 @@ const createOptionalHttpsUrlSchema = (message: string) =>
     }
   });
 
+const mediaContentFormValueSchema = z.object({
+  captionText: z.string(),
+  copyright: z.string(),
+  contentType: z.string(),
+  height: z.string(),
+  width: z.string(),
+  sourceUrl: z.object({
+    // Asset URLs are host-provided and can be non-https in local/editor environments.
+    url: z.string(),
+    description: z.string(),
+  }),
+});
+
 export const genericItemsDetailFormSchema = z.object({
   title: z.string().trim().min(1, 'Titel ist erforderlich.'),
   genericType: z.string().trim().min(1, 'Generic-Type ist erforderlich.'),
@@ -95,6 +108,7 @@ export const genericItemsDetailFormSchema = z.object({
       title: z.string(),
       intro: z.string(),
       body: z.string(),
+      mediaContents: z.array(mediaContentFormValueSchema),
     })
   ),
   openingHours: z.array(
@@ -108,20 +122,7 @@ export const genericItemsDetailFormSchema = z.object({
       open: z.boolean(),
     })
   ),
-  mediaContents: z.array(
-    z.object({
-      captionText: z.string(),
-      copyright: z.string(),
-      contentType: z.string(),
-      height: z.string(),
-      width: z.string(),
-      sourceUrl: z.object({
-        // Asset URLs are host-provided and can be non-https in local/editor environments.
-        url: z.string(),
-        description: z.string(),
-      }),
-    })
-  ),
+  mediaContents: z.array(mediaContentFormValueSchema),
   locations: z.array(
     z.object({
       name: z.string(),

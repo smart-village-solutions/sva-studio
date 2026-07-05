@@ -25,6 +25,11 @@ type ServerTransportLogger = {
 };
 
 type ServerTransportComponent = 'server-entry-transport' | 'server-function-transport';
+type RouteDispatcher = (request: Request) => Promise<Response | null>;
+type RouteDispatchDescriptor = {
+  readonly label: string;
+  readonly getDispatcher: () => Promise<RouteDispatcher>;
+};
 
 type RequestContextSdk = {
   createSdkLogger: (options: {
@@ -151,6 +156,17 @@ const getDispatchMapGeocodingRequest = async () => {
   return dispatchMapGeocodingRequestPromise;
 };
 
+const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
+  { label: 'mainserver news', getDispatcher: getDispatchMainserverNewsRequest },
+  { label: 'mainserver events', getDispatcher: getDispatchMainserverEventsRequest },
+  { label: 'mainserver poi', getDispatcher: getDispatchMainserverPoiRequest },
+  { label: 'mainserver surveys', getDispatcher: getDispatchMainserverSurveysRequest },
+  { label: 'mainserver generic items', getDispatcher: getDispatchMainserverGenericItemsRequest },
+  { label: 'mainserver categories', getDispatcher: getDispatchMainserverCategoriesRequest },
+  { label: 'aggregated content list', getDispatcher: getDispatchAggregatedContentListRequest },
+  { label: 'map geocoding', getDispatcher: getDispatchMapGeocodingRequest },
+];
+
 const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
   if (devRuntimeRefreshEnabled) {
     pluginOperationHandlerRegistrationPromise ??= (async () => {
@@ -224,6 +240,39 @@ const getLogger = async (component: ServerTransportComponent): Promise<ServerTra
   return loggerPromise;
 };
 
+const dispatchServerEntryRoute = async (
+  request: Request,
+  logServerEntryDebug: (message: string, meta: Record<string, unknown>) => Promise<void>,
+  route: RouteDispatchDescriptor
+): Promise<Response | null> => {
+  const dispatch = await route.getDispatcher();
+  const response = await dispatch(request);
+
+  if (!response) {
+    return null;
+  }
+
+  await logServerEntryDebug(`Server entry ${route.label} route dispatched`, {
+    status: response.status,
+  });
+
+  return response;
+};
+
+const dispatchKnownServerEntryRoutes = async (
+  request: Request,
+  logServerEntryDebug: (message: string, meta: Record<string, unknown>) => Promise<void>
+): Promise<Response | null> => {
+  for (const route of serverEntryRouteDispatchers) {
+    const response = await dispatchServerEntryRoute(request, logServerEntryDebug, route);
+    if (response) {
+      return response;
+    }
+  }
+
+  return null;
+};
+
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   const [request, requestOptions] = args;
   startPluginOperationWorkerInBackground();
@@ -242,84 +291,10 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   };
 
   await logServerEntryDebug('Server entry request received', {});
-  const dispatchMainserverNewsRequest = await getDispatchMainserverNewsRequest();
-  const mainserverNewsResponse = await dispatchMainserverNewsRequest(request);
+  const routedResponse = await dispatchKnownServerEntryRoutes(request, logServerEntryDebug);
 
-  if (mainserverNewsResponse) {
-    await logServerEntryDebug('Server entry mainserver news route dispatched', {
-      status: mainserverNewsResponse.status,
-    });
-    return mainserverNewsResponse;
-  }
-
-  const dispatchMainserverEventsRequest = await getDispatchMainserverEventsRequest();
-  const mainserverEventsResponse = await dispatchMainserverEventsRequest(request);
-
-  if (mainserverEventsResponse) {
-    await logServerEntryDebug('Server entry mainserver events route dispatched', {
-      status: mainserverEventsResponse.status,
-    });
-    return mainserverEventsResponse;
-  }
-
-  const dispatchMainserverPoiRequest = await getDispatchMainserverPoiRequest();
-  const mainserverPoiResponse = await dispatchMainserverPoiRequest(request);
-
-  if (mainserverPoiResponse) {
-    await logServerEntryDebug('Server entry mainserver poi route dispatched', {
-      status: mainserverPoiResponse.status,
-    });
-    return mainserverPoiResponse;
-  }
-
-  const dispatchMainserverSurveysRequest = await getDispatchMainserverSurveysRequest();
-  const mainserverSurveysResponse = await dispatchMainserverSurveysRequest(request);
-
-  if (mainserverSurveysResponse) {
-    await logServerEntryDebug('Server entry mainserver surveys route dispatched', {
-      status: mainserverSurveysResponse.status,
-    });
-    return mainserverSurveysResponse;
-  }
-
-  const dispatchMainserverGenericItemsRequest = await getDispatchMainserverGenericItemsRequest();
-  const mainserverGenericItemsResponse = await dispatchMainserverGenericItemsRequest(request);
-
-  if (mainserverGenericItemsResponse) {
-    await logServerEntryDebug('Server entry mainserver generic items route dispatched', {
-      status: mainserverGenericItemsResponse.status,
-    });
-    return mainserverGenericItemsResponse;
-  }
-
-  const dispatchMainserverCategoriesRequest = await getDispatchMainserverCategoriesRequest();
-  const mainserverCategoriesResponse = await dispatchMainserverCategoriesRequest(request);
-
-  if (mainserverCategoriesResponse) {
-    await logServerEntryDebug('Server entry mainserver categories route dispatched', {
-      status: mainserverCategoriesResponse.status,
-    });
-    return mainserverCategoriesResponse;
-  }
-
-  const dispatchAggregatedContentListRequest = await getDispatchAggregatedContentListRequest();
-  const aggregatedContentListResponse = await dispatchAggregatedContentListRequest(request);
-
-  if (aggregatedContentListResponse) {
-    await logServerEntryDebug('Server entry aggregated content list route dispatched', {
-      status: aggregatedContentListResponse.status,
-    });
-    return aggregatedContentListResponse;
-  }
-
-  const dispatchMapGeocodingRequest = await getDispatchMapGeocodingRequest();
-  const mapGeocodingResponse = await dispatchMapGeocodingRequest(request);
-
-  if (mapGeocodingResponse) {
-    await logServerEntryDebug('Server entry map geocoding route dispatched', {
-      status: mapGeocodingResponse.status,
-    });
-    return mapGeocodingResponse;
+  if (routedResponse) {
+    return routedResponse;
   }
 
   if (studioJobWorkerEnabled) {

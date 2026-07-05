@@ -14,6 +14,14 @@ import {
 const stringifyFiniteNumber = (value: number | null | undefined): string =>
   typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
 
+const parseBooleanish = (value: boolean | string | null | undefined): boolean => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  return value === 'true';
+};
+
 export const stringifyJson = (value: unknown, fallback: '{}' | '[]'): string => {
   if (value === undefined) {
     return fallback;
@@ -115,7 +123,7 @@ export const mapGenericItemDates = (item: GenericItemContentItem) =>
         timeStart: date.timeStart ?? '',
         timeEnd: date.timeEnd ?? '',
         timeDescription: date.timeDescription ?? '',
-        useOnlyTimeDescription: date.useOnlyTimeDescription ?? false,
+        useOnlyTimeDescription: parseBooleanish(date.useOnlyTimeDescription),
       }))
     : [createDefaultDateFormValue()];
 

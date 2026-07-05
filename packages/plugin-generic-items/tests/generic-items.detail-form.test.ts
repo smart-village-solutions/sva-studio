@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapGenericItemsDetailFormValuesToInput } from '../src/generic-items.detail-form.js';
+import { mapGenericItemToDetailFormValues, mapGenericItemsDetailFormValuesToInput } from '../src/generic-items.detail-form.js';
 
 describe('generic items detail form mapping', () => {
   it('maps repeated links, contacts, addresses, media and dates into structured input arrays and drops empty rows', () => {
@@ -324,5 +324,32 @@ describe('generic items detail form mapping', () => {
     expect(result.dates).toEqual([]);
     expect(result.accessibilityInformations).toEqual([]);
     expect(result.priceInformations).toEqual([]);
+  });
+
+  it('normalizes boolean-like date flags from mainserver detail payloads', () => {
+    const result = mapGenericItemToDetailFormValues({
+      id: 'generic-1',
+      title: 'Freier Eintrag',
+      genericType: 'faq',
+      visible: true,
+      dates: [
+        {
+          weekday: 'Freitag',
+          dateStart: '2026-07-10',
+          useOnlyTimeDescription: 'false',
+        },
+        {
+          weekday: 'Samstag',
+          dateStart: '2026-07-11',
+          useOnlyTimeDescription: 'true',
+        },
+      ],
+      payload: {},
+    });
+
+    expect(result.dates).toEqual([
+      expect.objectContaining({ weekday: 'Freitag', useOnlyTimeDescription: false }),
+      expect.objectContaining({ weekday: 'Samstag', useOnlyTimeDescription: true }),
+    ]);
   });
 });

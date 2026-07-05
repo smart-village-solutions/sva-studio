@@ -120,7 +120,12 @@ const handleListRequest = async (
     return actor;
   }
 
-  const data = await listSvaMainserverGenericItems({ ...actor, ...parseMainserverListQuery(request) });
+  const includeInvisible = new URL(request.url).searchParams.get('includeInvisible') === 'true';
+  const data = await listSvaMainserverGenericItems({
+    ...actor,
+    ...parseMainserverListQuery(request),
+    includeInvisible,
+  });
   logSuccess('mainserver_generic-items_list');
   return json(data);
 };

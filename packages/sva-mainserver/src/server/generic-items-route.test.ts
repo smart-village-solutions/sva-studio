@@ -112,6 +112,23 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     );
   });
 
+  it('passes includeInvisible=true through the generic items list route', async () => {
+    mockAuthorizedMutation();
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      data: [{ id: 'generic-hidden', visible: false }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items?includeInvisible=true')
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.listSvaMainserverGenericItems).toHaveBeenCalledWith(
+      expect.objectContaining({ includeInvisible: true, page: 1, pageSize: 25 })
+    );
+  });
+
   it('creates generic items with normalized payload fields', async () => {
     mockAuthorizedMutation();
     state.createSvaMainserverGenericItem.mockResolvedValue({ id: 'generic-1' });

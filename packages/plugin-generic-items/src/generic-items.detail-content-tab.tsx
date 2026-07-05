@@ -279,7 +279,7 @@ export const GenericItemsDetailContentTab = ({
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => contactsArray.append({ firstName: '', lastName: '', email: '', phone: '' })}
+              onClick={() => contactsArray.append({ firstName: '', lastName: '', email: '', phone: '', fax: '', webUrls: [] })}
             >
               {labels.addContact}
             </Button>

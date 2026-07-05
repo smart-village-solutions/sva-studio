@@ -40,14 +40,22 @@ export const mapWebUrlsToInput = (webUrls: GenericItemsDetailFormValues['webUrls
 
 export const mapContactsToInput = (contacts: GenericItemsDetailFormValues['contacts']) => {
   const mapped = contacts
-    .map((contact) => ({
-      firstName: sanitizeOptionalString(contact.firstName),
-      lastName: sanitizeOptionalString(contact.lastName),
-      email: sanitizeOptionalString(contact.email),
-      phone: sanitizeOptionalString(contact.phone),
-    }))
+    .map((contact) => {
+      const webUrls = mapWebUrlsToInput(contact.webUrls);
+
+      return {
+        firstName: sanitizeOptionalString(contact.firstName),
+        lastName: sanitizeOptionalString(contact.lastName),
+        email: sanitizeOptionalString(contact.email),
+        phone: sanitizeOptionalString(contact.phone),
+        fax: sanitizeOptionalString(contact.fax),
+        ...(webUrls.length > 0 ? { webUrls } : {}),
+      };
+    })
     .filter((contact) =>
-      [contact.firstName, contact.lastName, contact.email, contact.phone].some((value) => typeof value === 'string')
+      [contact.firstName, contact.lastName, contact.email, contact.phone, contact.fax, contact.webUrls].some(
+        (value) => value !== undefined
+      )
     );
 
   return mapped;
@@ -65,7 +73,7 @@ export const mapAddressesToInput = (addresses: GenericItemsDetailFormValues['add
         zip: sanitizeOptionalString(address.zip),
         city: sanitizeOptionalString(address.city),
         kind: sanitizeOptionalString(address.kind),
-        geoLocation: latitude !== undefined || longitude !== undefined ? { latitude, longitude } : undefined,
+        geoLocation: latitude !== undefined && longitude !== undefined ? { latitude, longitude } : undefined,
       };
     })
     .filter((address) =>
@@ -191,7 +199,7 @@ export const mapLocationsToInput = (locations: GenericItemsDetailFormValues['loc
         district: sanitizeOptionalString(location.district),
         regionName: sanitizeOptionalString(location.regionName),
         state: sanitizeOptionalString(location.state),
-        geoLocation: latitude !== undefined || longitude !== undefined ? { latitude, longitude } : undefined,
+        geoLocation: latitude !== undefined && longitude !== undefined ? { latitude, longitude } : undefined,
       };
     })
     .filter((location) =>

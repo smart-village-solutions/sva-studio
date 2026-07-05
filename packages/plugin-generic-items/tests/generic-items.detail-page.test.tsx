@@ -298,6 +298,10 @@ describe('GenericItemsDetailPage', () => {
     await waitFor(() => {
       expect(createGenericItem).toHaveBeenCalledWith(expect.objectContaining({ title: 'Freier Eintrag', genericType: 'faq' }));
     });
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/generic-items/$id', params: { id: 'created' } });
+    });
   });
 
   it('updates a generic item', async () => {

@@ -188,8 +188,9 @@ export const useGenericItemsDetailActions = ({
     try {
       const input = mapGenericItemsDetailFormValuesToInput(values);
       if (mode === 'create') {
-        await createGenericItem(input);
+        const createdItem = await createGenericItem(input);
         setStatus({ kind: 'success', text: pt('messages.createSuccess') });
+        await navigate({ to: '/admin/generic-items/$id', params: { id: createdItem.id } });
         return;
       }
 

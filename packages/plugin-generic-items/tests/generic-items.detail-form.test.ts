@@ -16,8 +16,15 @@ describe('generic items detail form mapping', () => {
       publishedAt: '',
       categories: ['Rathaus', 'Service'],
       contacts: [
-        { firstName: 'Max', lastName: '', email: 'max@example.org', phone: '' },
-        { firstName: '', lastName: '', email: '', phone: '' },
+        {
+          firstName: 'Max',
+          lastName: '',
+          email: 'max@example.org',
+          phone: '',
+          fax: '0234 12345',
+          webUrls: [{ url: 'https://example.org/contact', description: 'Kontakt' }],
+        },
+        { firstName: '', lastName: '', email: '', phone: '', fax: '', webUrls: [] },
       ],
       webUrls: [
         { url: 'https://example.org/faq', description: 'FAQ' },
@@ -197,7 +204,14 @@ describe('generic items detail form mapping', () => {
     expect(result.webUrls).toEqual([{ url: 'https://example.org/faq', description: 'FAQ' }]);
     expect(result.categoryName).toBe('Rathaus');
     expect(result.categories).toEqual([{ name: 'Rathaus' }, { name: 'Service' }]);
-    expect(result.contacts).toEqual([{ firstName: 'Max', email: 'max@example.org' }]);
+    expect(result.contacts).toEqual([
+      {
+        firstName: 'Max',
+        email: 'max@example.org',
+        fax: '0234 12345',
+        webUrls: [{ url: 'https://example.org/contact', description: 'Kontakt' }],
+      },
+    ]);
     expect(result.addresses).toEqual([
       {
         addition: 'Rathaus',
@@ -294,7 +308,7 @@ describe('generic items detail form mapping', () => {
       publicationDate: '',
       publishedAt: '',
       categories: [],
-      contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
+      contacts: [{ firstName: '', lastName: '', email: '', phone: '', fax: '', webUrls: [] }],
       webUrls: [{ url: '', description: '' }],
       addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
       contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
@@ -381,6 +395,107 @@ describe('generic items detail form mapping', () => {
       expect.objectContaining({ weekday: 'Freitag', useOnlyTimeDescription: false }),
       expect.objectContaining({ weekday: 'Samstag', useOnlyTimeDescription: true }),
     ]);
+  });
+
+  it('preserves contact fields that are not editable in the current form UI', () => {
+    const values = mapGenericItemToDetailFormValues({
+      id: 'generic-1',
+      title: 'Freier Eintrag',
+      genericType: 'faq',
+      visible: true,
+      contacts: [
+        {
+          firstName: 'Max',
+          email: 'max@example.org',
+          fax: '0234 12345',
+          webUrls: [{ url: 'https://example.org/contact', description: 'Kontakt' }],
+        },
+      ],
+      payload: {},
+    });
+
+    expect(values.contacts).toEqual([
+      {
+        firstName: 'Max',
+        lastName: '',
+        email: 'max@example.org',
+        phone: '',
+        fax: '0234 12345',
+        webUrls: [{ url: 'https://example.org/contact', description: 'Kontakt' }],
+      },
+    ]);
+
+    expect(mapGenericItemsDetailFormValuesToInput(values).contacts).toEqual([
+      {
+        firstName: 'Max',
+        email: 'max@example.org',
+        fax: '0234 12345',
+        webUrls: [{ url: 'https://example.org/contact', description: 'Kontakt' }],
+      },
+    ]);
+  });
+
+  it('does not emit partial geo coordinates for addresses and locations', () => {
+    const result = mapGenericItemsDetailFormValuesToInput({
+      title: 'Freier Eintrag',
+      genericType: 'faq',
+      teaser: '',
+      visible: true,
+      author: '',
+      keywords: '',
+      externalId: '',
+      publicationDate: '',
+      publishedAt: '',
+      categories: [],
+      contacts: [{ firstName: '', lastName: '', email: '', phone: '', fax: '', webUrls: [] }],
+      webUrls: [{ url: '', description: '' }],
+      addresses: [
+        {
+          addition: '',
+          street: 'Markt 1',
+          zip: '',
+          city: '',
+          kind: '',
+          latitude: '51.5',
+          longitude: '',
+        },
+      ],
+      contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
+      openingHours: [{ weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false }],
+      mediaContents: [],
+      locations: [
+        {
+          name: 'Bürgerbüro',
+          department: '',
+          district: '',
+          regionName: '',
+          state: '',
+          latitude: '',
+          longitude: '7.2166',
+        },
+      ],
+      dates: [{ weekday: '', dateStart: '', dateEnd: '', timeStart: '', timeEnd: '', timeDescription: '', useOnlyTimeDescription: false }],
+      accessibilityInformations: [{ description: '', types: '', urls: [{ url: '', description: '' }] }],
+      priceInformations: [
+        {
+          name: '',
+          amount: '',
+          groupPrice: false,
+          ageFrom: '',
+          ageTo: '',
+          minAdultCount: '',
+          maxAdultCount: '',
+          minChildrenCount: '',
+          maxChildrenCount: '',
+          description: '',
+          category: '',
+        },
+      ],
+      payloadText: '{}',
+    });
+
+    expect(result.addresses).toEqual([{ street: 'Markt 1' }]);
+    expect(result.locations).toEqual([{ name: 'Bürgerbüro' }]);
   });
 
   it('preserves nested content block media when reading and writing existing generic items', () => {

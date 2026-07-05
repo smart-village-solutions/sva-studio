@@ -16,6 +16,8 @@ export const createDefaultContactFormValue = () => ({
   lastName: '',
   email: '',
   phone: '',
+  fax: '',
+  webUrls: [],
 });
 
 export const createDefaultAddressFormValue = () => ({

@@ -40,6 +40,11 @@ export const mapGenericItemContacts = (item: GenericItemContentItem) =>
         lastName: contact.lastName ?? '',
         email: contact.email ?? '',
         phone: contact.phone ?? '',
+        fax: contact.fax ?? '',
+        webUrls: contact.webUrls?.map((webUrl) => ({
+          url: webUrl.url,
+          description: webUrl.description ?? '',
+        })) ?? [],
       }))
     : [createDefaultContactFormValue()];
 

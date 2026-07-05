@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { genericItemsDetailFormSchema } from '../src/generic-items.validation.js';
 
+const emptyContact = { firstName: '', lastName: '', email: '', phone: '', fax: '', webUrls: [] };
+
 describe('generic items validation', () => {
   it('requires title and genericType', () => {
     const result = genericItemsDetailFormSchema.safeParse({
@@ -15,7 +17,7 @@ describe('generic items validation', () => {
       publicationDate: '',
       publishedAt: '',
       categories: [],
-      contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
+      contacts: [emptyContact],
       webUrls: [{ url: '', description: '' }],
       addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
       contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
@@ -69,7 +71,7 @@ describe('generic items validation', () => {
       publicationDate: '',
       publishedAt: '',
       categories: [''],
-      contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
+      contacts: [emptyContact],
       webUrls: [{ url: '', description: '' }],
       addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
       contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
@@ -123,7 +125,7 @@ describe('generic items validation', () => {
       publicationDate: '',
       publishedAt: '',
       categories: [],
-      contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
+      contacts: [emptyContact],
       webUrls: [{ url: '', description: '' }],
       addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
       contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
@@ -177,7 +179,7 @@ describe('generic items validation', () => {
       publicationDate: '',
       publishedAt: '',
       categories: [],
-      contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
+      contacts: [emptyContact],
       webUrls: [{ url: 'http://example.org', description: '' }],
       addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
       contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
@@ -242,7 +244,7 @@ describe('generic items validation', () => {
       publicationDate: '',
       publishedAt: '',
       categories: [],
-      contacts: [{ firstName: '', lastName: '', email: '', phone: '' }],
+      contacts: [emptyContact],
       webUrls: [{ url: 'https://example.org', description: '' }],
       addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
       contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],

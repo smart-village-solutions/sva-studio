@@ -84,6 +84,13 @@ export const genericItemsDetailFormSchema = z.object({
       lastName: z.string(),
       email: z.string(),
       phone: z.string(),
+      fax: z.string(),
+      webUrls: z.array(
+        z.object({
+          url: createOptionalHttpsUrlSchema('URLs müssen mit https:// beginnen.'),
+          description: z.string(),
+        })
+      ),
     })
   ),
   webUrls: z.array(

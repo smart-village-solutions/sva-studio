@@ -4,6 +4,7 @@ const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
   authorizeContentPrimitiveForUser: vi.fn(),
   completeIdempotency: vi.fn(),
+  emitAuthAuditEvent: vi.fn(),
   reserveIdempotency: vi.fn(),
   resolveActorInfo: vi.fn(),
   validateCsrf: vi.fn(),
@@ -13,16 +14,30 @@ const state = vi.hoisted(() => ({
   updateSvaMainserverNews: vi.fn(),
   changeSvaMainserverNewsVisibility: vi.fn(),
   deleteSvaMainserverNews: vi.fn(),
+  loggerInfo: vi.fn(),
+  loggerWarn: vi.fn(),
+  createSdkLogger: vi.fn(() => ({ info: state.loggerInfo, warn: state.loggerWarn })),
+  getWorkspaceContext: vi.fn(() => ({ requestId: 'req-news', traceId: 'trace-news' })),
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
   completeIdempotency: state.completeIdempotency,
+  emitAuthAuditEvent: state.emitAuthAuditEvent,
   reserveIdempotency: state.reserveIdempotency,
   resolveActorInfo: state.resolveActorInfo,
   validateCsrf: state.validateCsrf,
 }));
+
+vi.mock('@sva/server-runtime', async () => {
+  const actual = await vi.importActual<typeof import('@sva/server-runtime')>('@sva/server-runtime');
+  return {
+    ...actual,
+    createSdkLogger: state.createSdkLogger,
+    getWorkspaceContext: state.getWorkspaceContext,
+  };
+});
 
 vi.mock('./service.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./service.js')>();
@@ -270,6 +285,19 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       })
     );
     expect(state.completeIdempotency).toHaveBeenCalledWith(expect.objectContaining({ responseStatus: 201 }));
+    expect(state.emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'plugin_action_authorized',
+        pluginAction: expect.objectContaining({
+          actionId: 'news.create',
+          actionNamespace: 'news',
+          actionOwner: 'sva-mainserver',
+          resourceType: 'news',
+          resourceId: 'news-1',
+          result: 'success',
+        }),
+      })
+    );
     const createCall = state.createSvaMainserverNews.mock.calls[0]?.[0] as { news?: Record<string, unknown> } | undefined;
     expect(createCall?.news).toEqual(expect.objectContaining({ contentBlocks: newsInput.contentBlocks, pushNotification: true }));
     expect(createCall?.news).not.toHaveProperty('payload');
@@ -322,6 +350,16 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       expect.objectContaining({ action: 'news.update' })
     );
     await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1' } });
+    expect(state.emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'plugin_action_authorized',
+        pluginAction: expect.objectContaining({
+          actionId: 'news.update',
+          resourceId: 'news-1',
+          result: 'success',
+        }),
+      })
+    );
   });
 
   it('updates news and applies visibility changes without a second route authorization', async () => {
@@ -548,6 +586,16 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       newsId: 'news-1',
     });
     await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1' } });
+    expect(state.emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'plugin_action_authorized',
+        pluginAction: expect.objectContaining({
+          actionId: 'news.delete',
+          resourceId: 'news-1',
+          result: 'success',
+        }),
+      })
+    );
   });
 
   it('handles PATCH /api/v1/mainserver/news/:id/visibility', async () => {
@@ -570,6 +618,16 @@ describe('dispatchSvaMainserverNewsRequest', () => {
 
     expect(state.changeSvaMainserverNewsVisibility).toHaveBeenCalledWith(
       expect.objectContaining({ newsId: 'news-1', visible: false })
+    );
+    expect(state.emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'plugin_action_authorized',
+        pluginAction: expect.objectContaining({
+          actionId: 'news.visibility.update',
+          resourceId: 'news-1',
+          result: 'success',
+        }),
+      })
     );
   });
 
@@ -669,6 +727,25 @@ describe('dispatchSvaMainserverNewsRequest', () => {
         idempotencyKey: 'idem-failed',
         responseStatus: 502,
         status: 'FAILED',
+      })
+    );
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Mainserver News create failed',
+      expect.objectContaining({
+        operation: 'mainserver_news_create',
+        request_id: 'req-news',
+        trace_id: 'trace-news',
+        error_code: 'graphql_error',
+      })
+    );
+    expect(state.emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'plugin_action_failed',
+        pluginAction: expect.objectContaining({
+          actionId: 'news.create',
+          reasonCode: 'graphql_error',
+          result: 'failure',
+        }),
       })
     );
   });

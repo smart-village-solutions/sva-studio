@@ -21,7 +21,9 @@ const buildTraceOrganizationProjection = (
             ELSE NULL::text
           END`;
 
-export const buildPermissionRowsSql = (_includeDirectPermissions: boolean): string => `
+export const buildPermissionRowsSql = (includeDirectPermissions: boolean): string => {
+  void includeDirectPermissions;
+  return `
   COALESCE(
     (
       SELECT json_agg(
@@ -76,10 +78,14 @@ export const buildPermissionRowsSql = (_includeDirectPermissions: boolean): stri
     '[]'::json
   ) AS permission_rows,
 `;
+};
 
-export const buildDirectPermissionRowsSql = (_includeDirectPermissions: boolean): string => `
+export const buildDirectPermissionRowsSql = (includeDirectPermissions: boolean): string => {
+  void includeDirectPermissions;
+  return `
   '[]'::json AS direct_permission_rows,
 `;
+};
 
 const buildPermissionProjection = (includeStructuredPermissions: boolean) =>
   includeStructuredPermissions

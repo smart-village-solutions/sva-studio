@@ -46,6 +46,7 @@ const completeIdempotency = vi.fn();
 const emitActivityLog = vi.fn();
 const notifyPermissionInvalidation = vi.fn();
 const metricAdd = vi.fn();
+const loggerError = vi.fn();
 
 const json = async (response: Response) => response.json() as Promise<Record<string, unknown>>;
 
@@ -66,7 +67,7 @@ const buildDeps = (): LegacyGroupMutationHandlerDeps => ({
   isUuid: (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value),
   jsonResponse: (status, payload) =>
     new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json' } }),
-  logger: { error: vi.fn() },
+  logger: { error: loggerError },
   notifyPermissionInvalidation,
   parseRequestBody: vi.fn(async () => state.parseResult as never),
   readPathSegment: vi.fn(
@@ -152,6 +153,26 @@ describe('legacy group mutation handlers', () => {
     };
   });
 
+  it('logs unexpected create failures before returning a generic database error', async () => {
+    state.createInsertId = '';
+    const handlers = createLegacyGroupMutationHandlers(buildDeps());
+
+    const response = await handlers.createGroupInternal(
+      new Request('http://localhost/api/v1/iam/groups', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(503);
+    expect(loggerError).toHaveBeenCalledWith(
+      'IAM group create failed',
+      expect.objectContaining({
+        operation: 'create_group',
+        instance_id: 'de-musterhausen',
+        request_id: 'req-legacy-groups',
+      })
+    );
+  });
+
   it('creates legacy groups with idempotency and permission invalidation', async () => {
     const handlers = createLegacyGroupMutationHandlers(buildDeps());
 
@@ -191,6 +212,7 @@ describe('legacy group mutation handlers', () => {
     expect(response.status).toBe(400);
     await expect(json(response)).resolves.toMatchObject({ error: { code: 'invalid_request' } });
     expect(completeIdempotency).toHaveBeenCalledWith(expect.objectContaining({ status: 'FAILED', responseStatus: 400 }));
+    expect(loggerError).not.toHaveBeenCalled();
   });
 
   it('updates legacy groups and reloads the canonical group projection', async () => {
@@ -238,5 +260,30 @@ describe('legacy group mutation handlers', () => {
 
     expect(response.status).toBe(404);
     await expect(json(response)).resolves.toMatchObject({ error: { code: 'not_found' } });
+  });
+
+  it('logs unexpected delete failures before returning a generic database error', async () => {
+    const deps = buildDeps();
+    deps.withInstanceScopedDb = vi.fn(async () => {
+      throw new Error('delete failed');
+    });
+    const handlers = createLegacyGroupMutationHandlers(deps);
+
+    const response = await handlers.deleteGroupInternal(
+      new Request('http://localhost/api/v1/iam/groups/11111111-1111-1111-8111-111111111111', { method: 'DELETE' }),
+      ctx
+    );
+
+    expect(response.status).toBe(503);
+    expect(loggerError).toHaveBeenCalledWith(
+      'IAM group delete failed',
+      expect.objectContaining({
+        operation: 'delete_group',
+        instance_id: 'de-musterhausen',
+        group_id: '11111111-1111-1111-8111-111111111111',
+        request_id: 'req-legacy-groups',
+        error: 'delete failed',
+      })
+    );
   });
 });

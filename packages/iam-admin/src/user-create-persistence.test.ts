@@ -175,6 +175,11 @@ describe('user-create-persistence', () => {
       expect.objectContaining({
         eventType: 'user.created',
         subjectId: 'account-1',
+        payload: expect.objectContaining({
+          assigned_role_ids: ['role-1'],
+          assigned_group_ids: ['group-1'],
+          effective_role_ids: ['role-1'],
+        }),
       })
     );
     expect(deps.notifyPermissionInvalidation).toHaveBeenCalledWith(client, {

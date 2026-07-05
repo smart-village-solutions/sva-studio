@@ -26,10 +26,14 @@ vi.mock('@sva/auth-runtime/server', () => ({
   validateCsrf: state.validateCsrf,
 }));
 
-vi.mock('@sva/server-runtime', () => ({
-  createSdkLogger: state.createSdkLogger,
-  getWorkspaceContext: state.getWorkspaceContext,
-}));
+vi.mock('@sva/server-runtime', async () => {
+  const actual = await vi.importActual<typeof import('@sva/server-runtime')>('@sva/server-runtime');
+  return {
+    ...actual,
+    createSdkLogger: state.createSdkLogger,
+    getWorkspaceContext: state.getWorkspaceContext,
+  };
+});
 
 vi.mock('./service.js', () => ({
   SvaMainserverError: class SvaMainserverError extends Error {

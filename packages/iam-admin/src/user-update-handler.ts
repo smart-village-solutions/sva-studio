@@ -304,8 +304,12 @@ const assignTechnicalRoles = async <
     requestId: input.actor.requestId,
     traceId: input.actor.traceId,
   });
+  const assignRealmRoles = input.identityProvider.provider.assignRealmRoles;
+  if (!assignRealmRoles) {
+    throw new RoleMutationCapabilityUnavailableError('assignRealmRoles');
+  }
   await deps.trackKeycloakCall('assign_realm_roles', () =>
-    input.identityProvider.provider.assignRealmRoles!(input.keycloakSubject, input.roleNames)
+    assignRealmRoles(input.keycloakSubject, input.roleNames)
   );
 };
 
@@ -325,8 +329,12 @@ const removeTechnicalRoles = async <
   if (input.roleNames.length === 0) {
     return;
   }
+  const removeRealmRoles = input.identityProvider.provider.removeRealmRoles;
+  if (!removeRealmRoles) {
+    throw new RoleMutationCapabilityUnavailableError('removeRealmRoles');
+  }
   await deps.trackKeycloakCall('remove_realm_roles', () =>
-    input.identityProvider.provider.removeRealmRoles!(input.keycloakSubject, input.roleNames)
+    removeRealmRoles(input.keycloakSubject, input.roleNames)
   );
 };
 

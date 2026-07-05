@@ -1,4 +1,5 @@
 import type { ApiErrorCode } from '@sva/core';
+import { createMutationWorkflow } from '@sva/server-runtime';
 import type { z } from 'zod';
 
 import {
@@ -167,11 +168,6 @@ const resolveGroupMutationActor = async (
     return accessCheck;
   }
 
-  const csrfError = deps.validateCsrf(request, requestContext.requestId);
-  if (csrfError) {
-    return csrfError;
-  }
-
   const actorResolution = await deps.resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
     return actorResolution.error;
@@ -245,22 +241,96 @@ const mapGroupMutationError = (
   return undefined;
 };
 
+type GroupMutationWorkflowInput<TPrepared extends object, TInput> = {
+  readonly prepare?: (
+    state: Readonly<{
+      request: Request;
+      context: GroupMutationAuthenticatedRequestContext;
+      actor: GroupMutationActor;
+    }>
+  ) => Promise<TPrepared | Response> | TPrepared | Response;
+  readonly parse: (
+    state: Readonly<{
+      request: Request;
+      context: GroupMutationAuthenticatedRequestContext;
+      actor: GroupMutationActor;
+    } & TPrepared>
+  ) => Promise<TInput | Response>;
+  readonly execute: (
+    state: Readonly<{
+      request: Request;
+      context: GroupMutationAuthenticatedRequestContext;
+      actor: GroupMutationActor;
+      input: TInput;
+    } & TPrepared>
+  ) => Promise<Response>;
+  readonly mapError?: (
+    error: unknown,
+    state: Readonly<{
+      request: Request;
+      context: GroupMutationAuthenticatedRequestContext;
+      actor: GroupMutationActor;
+    } & TPrepared>
+  ) => Response;
+};
+
+const createGroupMutationHandler = <TPrepared extends object = Record<never, never>, TInput = void>(
+  deps: GroupMutationHandlerDeps,
+  input: GroupMutationWorkflowInput<TPrepared, TInput>
+) => {
+  const workflow = createMutationWorkflow<
+    GroupMutationAuthenticatedRequestContext,
+    {
+      readonly actor: GroupMutationActor;
+    } & TPrepared,
+    Record<never, never>,
+    Record<never, never>,
+    TInput,
+    Response
+  >({
+    prepare: async ({ request, context }) => {
+      const resolved = await resolveGroupMutationActor(deps, request, context);
+      if (resolved instanceof Response) {
+        return resolved;
+      }
+
+      const prepared = input.prepare
+        ? await input.prepare({ request, context, actor: resolved.actor })
+        : {};
+      if (prepared instanceof Response) {
+        return prepared;
+      }
+
+      return {
+        actor: resolved.actor,
+        ...prepared,
+      } as { readonly actor: GroupMutationActor } & TPrepared;
+    },
+    authorize: async () => ({}),
+    csrf: ({ request, actor }) => deps.validateCsrf(request, actor.requestId) ?? undefined,
+    parse: async (state) => input.parse(state as never),
+    execute: async (state) => input.execute(state as never),
+    mapError: (error, state) =>
+      input.mapError
+        ? input.mapError(error, state as never)
+        : deps.createApiError(503, 'database_unavailable', 'Gruppe konnte nicht verarbeitet werden.', state.actor.requestId),
+    respond: (response) => response,
+  });
+
+  return (request: Request, context: GroupMutationAuthenticatedRequestContext): Promise<Response> =>
+    workflow(request, context);
+};
+
 const createGroupInternal = (deps: GroupMutationHandlerDeps) =>
-  async (request: Request, ctx: GroupMutationAuthenticatedRequestContext): Promise<Response> => {
-    const resolved = await resolveGroupMutationActor(deps, request, ctx);
-    if (resolved instanceof Response) {
-      return resolved;
-    }
-    const { actor } = resolved;
-
-    const body = await deps.parseRequestBody<CreateGroupInput>(request, createGroupSchema);
-    if (!body.ok) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültige Eingabe', actor.requestId);
-    }
-
-    const groupId = deps.randomUUID();
-    try {
-      await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+  createGroupMutationHandler(deps, {
+    parse: async ({ request, actor }) => {
+      const body = await deps.parseRequestBody<CreateGroupInput>(request, createGroupSchema);
+      return body.ok ? body : deps.createApiError(400, 'invalid_request', 'Ungültige Eingabe', actor.requestId);
+    },
+    execute: async ({ actor, input: body }) => {
+      const groupId = deps.randomUUID();
+      try {
+        await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
         await client.query(
           `
 INSERT INTO iam.groups (id, instance_id, group_key, display_name, description, group_type, is_active)
@@ -298,63 +368,57 @@ VALUES ($1::uuid, $2, $3, $4, $5, $6, $7);
       });
 
       return deps.jsonResponse(201, deps.asApiItem({ id: groupId }, actor.requestId));
-    } catch (error) {
-      const mappedError = mapGroupMutationError(deps, error, actor.requestId);
-      if (mappedError) {
-        return mappedError;
+      } catch (error) {
+        const mappedError = mapGroupMutationError(deps, error, actor.requestId);
+        if (mappedError) {
+          return mappedError;
+        }
+        deps.logger.error('Group creation failed', {
+          operation: 'group_create',
+          workspace_id: actor.instanceId,
+          error: readErrorMessage(error),
+          request_id: actor.requestId,
+          trace_id: actor.traceId,
+        });
+        return deps.createApiError(503, 'database_unavailable', 'Gruppe konnte nicht angelegt werden.', actor.requestId);
       }
-      deps.logger.error('Group creation failed', {
-        operation: 'group_create',
-        workspace_id: actor.instanceId,
-        error: readErrorMessage(error),
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-      });
-      return deps.createApiError(503, 'database_unavailable', 'Gruppe konnte nicht angelegt werden.', actor.requestId);
-    }
-  };
+    },
+  });
 
 const updateGroupInternal = (deps: GroupMutationHandlerDeps) =>
-  async (request: Request, ctx: GroupMutationAuthenticatedRequestContext): Promise<Response> => {
-    const resolved = await resolveGroupMutationActor(deps, request, ctx);
-    if (resolved instanceof Response) {
-      return resolved;
-    }
-    const { actor } = resolved;
+  createGroupMutationHandler(deps, {
+    prepare: ({ request, actor }) => {
+      const groupId = readGroupIdOrError(deps, request, actor.requestId);
+      return groupId instanceof Response ? groupId : { groupId };
+    },
+    parse: async ({ request, actor }) => {
+      const body = await deps.parseRequestBody<UpdateGroupInput>(request, updateGroupSchema);
+      return body.ok ? body : deps.createApiError(400, 'invalid_request', 'Ungültige Eingabe', actor.requestId);
+    },
+    execute: async ({ actor, groupId, input: body }) => {
+      const updates: string[] = ['updated_at = now()'];
+      const params: unknown[] = [actor.instanceId, groupId];
+      let idx = 3;
 
-    const groupId = readGroupIdOrError(deps, request, actor.requestId);
-    if (groupId instanceof Response) {
-      return groupId;
-    }
+      if (body.data.displayName !== undefined) {
+        updates.push(`display_name = $${idx++}`);
+        params.push(body.data.displayName);
+      }
+      if ('description' in body.data) {
+        updates.push(`description = $${idx++}`);
+        params.push(body.data.description ?? null);
+      }
+      if (body.data.isActive !== undefined) {
+        updates.push(`is_active = $${idx}`);
+        params.push(body.data.isActive);
+      }
 
-    const body = await deps.parseRequestBody<UpdateGroupInput>(request, updateGroupSchema);
-    if (!body.ok) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültige Eingabe', actor.requestId);
-    }
+      if (updates.length === 1) {
+        return deps.createApiError(400, 'invalid_request', 'Keine Änderungen angegeben', actor.requestId);
+      }
 
-    const updates: string[] = ['updated_at = now()'];
-    const params: unknown[] = [actor.instanceId, groupId];
-    let idx = 3;
-
-    if (body.data.displayName !== undefined) {
-      updates.push(`display_name = $${idx++}`);
-      params.push(body.data.displayName);
-    }
-    if ('description' in body.data) {
-      updates.push(`description = $${idx++}`);
-      params.push(body.data.description ?? null);
-    }
-    if (body.data.isActive !== undefined) {
-      updates.push(`is_active = $${idx}`);
-      params.push(body.data.isActive);
-    }
-
-    if (updates.length === 1) {
-      return deps.createApiError(400, 'invalid_request', 'Keine Änderungen angegeben', actor.requestId);
-    }
-
-    try {
-      const found = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+      try {
+        const found = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
         const updateResult = await client.query(
           `UPDATE iam.groups SET ${updates.join(', ')} WHERE instance_id = $1 AND id = $2::uuid RETURNING id;`,
           params
@@ -386,34 +450,30 @@ const updateGroupInternal = (deps: GroupMutationHandlerDeps) =>
         request_id: actor.requestId,
       });
       return deps.jsonResponse(200, deps.asApiItem({ id: groupId }, actor.requestId));
-    } catch (error) {
-      deps.logger.error('Group update failed', {
-        operation: 'group_update',
-        workspace_id: actor.instanceId,
-        group_id: groupId,
-        error: error instanceof Error ? error.message : String(error),
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-      });
-      return deps.createApiError(503, 'database_unavailable', 'Gruppe konnte nicht aktualisiert werden.', actor.requestId);
-    }
-  };
+      } catch (error) {
+        deps.logger.error('Group update failed', {
+          operation: 'group_update',
+          workspace_id: actor.instanceId,
+          group_id: groupId,
+          error: error instanceof Error ? error.message : String(error),
+          request_id: actor.requestId,
+          trace_id: actor.traceId,
+        });
+        return deps.createApiError(503, 'database_unavailable', 'Gruppe konnte nicht aktualisiert werden.', actor.requestId);
+      }
+    },
+  });
 
 const deleteGroupInternal = (deps: GroupMutationHandlerDeps) =>
-  async (request: Request, ctx: GroupMutationAuthenticatedRequestContext): Promise<Response> => {
-    const resolved = await resolveGroupMutationActor(deps, request, ctx);
-    if (resolved instanceof Response) {
-      return resolved;
-    }
-    const { actor } = resolved;
-
-    const groupId = readGroupIdOrError(deps, request, actor.requestId);
-    if (groupId instanceof Response) {
-      return groupId;
-    }
-
-    try {
-      const deleted = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+  createGroupMutationHandler(deps, {
+    prepare: ({ request, actor }) => {
+      const groupId = readGroupIdOrError(deps, request, actor.requestId);
+      return groupId instanceof Response ? groupId : { groupId };
+    },
+    parse: async () => undefined,
+    execute: async ({ actor, groupId }) => {
+      try {
+        const deleted = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
         const membershipRows = await loadGroupMembershipRows(client, { instanceId: actor.instanceId, groupId });
 
         const deleteResult = await client.query(
@@ -467,39 +527,33 @@ RETURNING id;
         trace_id: actor.traceId,
       });
       return deps.jsonResponse(200, deps.asApiItem({ id: groupId }, actor.requestId));
-    } catch (error) {
-      deps.logger.error('Group deletion failed', {
-        operation: 'group_delete',
-        workspace_id: actor.instanceId,
-        group_id: groupId,
-        error: error instanceof Error ? error.message : String(error),
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-      });
-      return deps.createApiError(503, 'database_unavailable', 'Gruppe konnte nicht gelöscht werden.', actor.requestId);
-    }
-  };
+      } catch (error) {
+        deps.logger.error('Group deletion failed', {
+          operation: 'group_delete',
+          workspace_id: actor.instanceId,
+          group_id: groupId,
+          error: error instanceof Error ? error.message : String(error),
+          request_id: actor.requestId,
+          trace_id: actor.traceId,
+        });
+        return deps.createApiError(503, 'database_unavailable', 'Gruppe konnte nicht gelöscht werden.', actor.requestId);
+      }
+    },
+  });
 
 const assignGroupRoleInternal = (deps: GroupMutationHandlerDeps) =>
-  async (request: Request, ctx: GroupMutationAuthenticatedRequestContext): Promise<Response> => {
-    const resolved = await resolveGroupMutationActor(deps, request, ctx);
-    if (resolved instanceof Response) {
-      return resolved;
-    }
-    const { actor } = resolved;
-
-    const groupId = readGroupIdOrError(deps, request, actor.requestId);
-    if (groupId instanceof Response) {
-      return groupId;
-    }
-
-    const body = await deps.parseRequestBody<AssignGroupRoleInput>(request, assignGroupRoleSchema);
-    if (!body.ok) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültige Eingabe', actor.requestId);
-    }
-
-    try {
-      await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+  createGroupMutationHandler(deps, {
+    prepare: ({ request, actor }) => {
+      const groupId = readGroupIdOrError(deps, request, actor.requestId);
+      return groupId instanceof Response ? groupId : { groupId };
+    },
+    parse: async ({ request, actor }) => {
+      const body = await deps.parseRequestBody<AssignGroupRoleInput>(request, assignGroupRoleSchema);
+      return body.ok ? body : deps.createApiError(400, 'invalid_request', 'Ungültige Eingabe', actor.requestId);
+    },
+    execute: async ({ actor, groupId, input: body }) => {
+      try {
+        await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
         await client.query(
           `
 INSERT INTO iam.group_roles (instance_id, group_id, role_id)
@@ -536,39 +590,37 @@ ON CONFLICT DO NOTHING;
         request_id: actor.requestId,
       });
       return deps.jsonResponse(200, deps.asApiItem({ groupId, roleId: body.data.roleId }, actor.requestId));
-    } catch (error) {
-      deps.logger.error('Group role assignment failed', {
-        operation: 'group_role_assign',
-        workspace_id: actor.instanceId,
-        group_id: groupId,
-        error: error instanceof Error ? error.message : String(error),
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-      });
-      return deps.createApiError(503, 'database_unavailable', 'Rollenzuweisung fehlgeschlagen.', actor.requestId);
-    }
-  };
+      } catch (error) {
+        deps.logger.error('Group role assignment failed', {
+          operation: 'group_role_assign',
+          workspace_id: actor.instanceId,
+          group_id: groupId,
+          error: error instanceof Error ? error.message : String(error),
+          request_id: actor.requestId,
+          trace_id: actor.traceId,
+        });
+        return deps.createApiError(503, 'database_unavailable', 'Rollenzuweisung fehlgeschlagen.', actor.requestId);
+      }
+    },
+  });
 
 const removeGroupRoleInternal = (deps: GroupMutationHandlerDeps) =>
-  async (request: Request, ctx: GroupMutationAuthenticatedRequestContext): Promise<Response> => {
-    const resolved = await resolveGroupMutationActor(deps, request, ctx);
-    if (resolved instanceof Response) {
-      return resolved;
-    }
-    const { actor } = resolved;
-
-    const groupId = readGroupIdOrError(deps, request, actor.requestId);
-    if (groupId instanceof Response) {
-      return groupId;
-    }
-
-    const roleId = deps.readPathSegment(request, 6);
-    if (!roleId || !deps.isUuid(roleId)) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültige Rollen-ID', actor.requestId);
-    }
-
-    try {
-      await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+  createGroupMutationHandler(deps, {
+    prepare: ({ request, actor }) => {
+      const groupId = readGroupIdOrError(deps, request, actor.requestId);
+      if (groupId instanceof Response) {
+        return groupId;
+      }
+      const roleId = deps.readPathSegment(request, 6);
+      if (!roleId || !deps.isUuid(roleId)) {
+        return deps.createApiError(400, 'invalid_request', 'Ungültige Rollen-ID', actor.requestId);
+      }
+      return { groupId, roleId };
+    },
+    parse: async () => undefined,
+    execute: async ({ actor, groupId, roleId }) => {
+      try {
+        await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
         await client.query(
           `
 DELETE FROM iam.group_roles
@@ -606,39 +658,33 @@ WHERE instance_id = $1
         request_id: actor.requestId,
       });
       return deps.jsonResponse(200, deps.asApiItem({ groupId, roleId }, actor.requestId));
-    } catch (error) {
-      deps.logger.error('Group role removal failed', {
-        operation: 'group_role_remove',
-        workspace_id: actor.instanceId,
-        group_id: groupId,
-        error: error instanceof Error ? error.message : String(error),
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-      });
-      return deps.createApiError(503, 'database_unavailable', 'Rollenentfernung fehlgeschlagen.', actor.requestId);
-    }
-  };
+      } catch (error) {
+        deps.logger.error('Group role removal failed', {
+          operation: 'group_role_remove',
+          workspace_id: actor.instanceId,
+          group_id: groupId,
+          error: error instanceof Error ? error.message : String(error),
+          request_id: actor.requestId,
+          trace_id: actor.traceId,
+        });
+        return deps.createApiError(503, 'database_unavailable', 'Rollenentfernung fehlgeschlagen.', actor.requestId);
+      }
+    },
+  });
 
 const assignGroupMembershipInternal = (deps: GroupMutationHandlerDeps) =>
-  async (request: Request, ctx: GroupMutationAuthenticatedRequestContext): Promise<Response> => {
-    const resolved = await resolveGroupMutationActor(deps, request, ctx);
-    if (resolved instanceof Response) {
-      return resolved;
-    }
-    const { actor } = resolved;
-
-    const groupId = readGroupIdOrError(deps, request, actor.requestId);
-    if (groupId instanceof Response) {
-      return groupId;
-    }
-
-    const body = await deps.parseRequestBody<AssignGroupMembershipInput>(request, assignGroupMembershipSchema);
-    if (!body.ok) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültige Eingabe', actor.requestId);
-    }
-
-    try {
-      await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+  createGroupMutationHandler(deps, {
+    prepare: ({ request, actor }) => {
+      const groupId = readGroupIdOrError(deps, request, actor.requestId);
+      return groupId instanceof Response ? groupId : { groupId };
+    },
+    parse: async ({ request, actor }) => {
+      const body = await deps.parseRequestBody<AssignGroupMembershipInput>(request, assignGroupMembershipSchema);
+      return body.ok ? body : deps.createApiError(400, 'invalid_request', 'Ungültige Eingabe', actor.requestId);
+    },
+    execute: async ({ actor, groupId, input: body }) => {
+      try {
+        await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
         const accountId = await resolveAccountId(client, {
           instanceId: actor.instanceId,
           keycloakSubject: body.data.keycloakSubject,
@@ -698,47 +744,41 @@ ON CONFLICT (instance_id, account_id, group_id) DO UPDATE
         request_id: actor.requestId,
       });
       return deps.jsonResponse(200, deps.asApiItem({ groupId }, actor.requestId));
-    } catch (error) {
-      if (error instanceof Error && error.message === 'account_not_found') {
-        return deps.createApiError(404, 'invalid_request', 'Benutzer nicht gefunden', actor.requestId);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'account_not_found') {
+          return deps.createApiError(404, 'invalid_request', 'Benutzer nicht gefunden', actor.requestId);
+        }
+        deps.logger.error('Group membership assignment failed', {
+          operation: 'group_membership_add',
+          workspace_id: actor.instanceId,
+          group_id: groupId,
+          error: error instanceof Error ? error.message : String(error),
+          request_id: actor.requestId,
+          trace_id: actor.traceId,
+        });
+        return deps.createApiError(
+          503,
+          'database_unavailable',
+          'Mitgliedschaft konnte nicht zugewiesen werden.',
+          actor.requestId
+        );
       }
-      deps.logger.error('Group membership assignment failed', {
-        operation: 'group_membership_add',
-        workspace_id: actor.instanceId,
-        group_id: groupId,
-        error: error instanceof Error ? error.message : String(error),
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-      });
-      return deps.createApiError(
-        503,
-        'database_unavailable',
-        'Mitgliedschaft konnte nicht zugewiesen werden.',
-        actor.requestId
-      );
-    }
-  };
+    },
+  });
 
 const removeGroupMembershipInternal = (deps: GroupMutationHandlerDeps) =>
-  async (request: Request, ctx: GroupMutationAuthenticatedRequestContext): Promise<Response> => {
-    const resolved = await resolveGroupMutationActor(deps, request, ctx);
-    if (resolved instanceof Response) {
-      return resolved;
-    }
-    const { actor } = resolved;
-
-    const groupId = readGroupIdOrError(deps, request, actor.requestId);
-    if (groupId instanceof Response) {
-      return groupId;
-    }
-
-    const body = await deps.parseRequestBody<RemoveGroupMembershipInput>(request, removeGroupMembershipSchema);
-    if (!body.ok) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültige Eingabe', actor.requestId);
-    }
-
-    try {
-      await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+  createGroupMutationHandler(deps, {
+    prepare: ({ request, actor }) => {
+      const groupId = readGroupIdOrError(deps, request, actor.requestId);
+      return groupId instanceof Response ? groupId : { groupId };
+    },
+    parse: async ({ request, actor }) => {
+      const body = await deps.parseRequestBody<RemoveGroupMembershipInput>(request, removeGroupMembershipSchema);
+      return body.ok ? body : deps.createApiError(400, 'invalid_request', 'Ungültige Eingabe', actor.requestId);
+    },
+    execute: async ({ actor, groupId, input: body }) => {
+      try {
+        await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
         const accountId = await resolveAccountId(client, {
           instanceId: actor.instanceId,
           keycloakSubject: body.data.keycloakSubject,
@@ -788,23 +828,24 @@ WHERE instance_id = $1
         request_id: actor.requestId,
       });
       return deps.jsonResponse(200, deps.asApiItem({ groupId }, actor.requestId));
-    } catch (error) {
-      deps.logger.error('Group membership removal failed', {
-        operation: 'group_membership_remove',
-        workspace_id: actor.instanceId,
-        group_id: groupId,
-        error: error instanceof Error ? error.message : String(error),
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-      });
-      return deps.createApiError(
-        503,
-        'database_unavailable',
-        'Mitgliedschaft konnte nicht entfernt werden.',
-        actor.requestId
-      );
-    }
-  };
+      } catch (error) {
+        deps.logger.error('Group membership removal failed', {
+          operation: 'group_membership_remove',
+          workspace_id: actor.instanceId,
+          group_id: groupId,
+          error: error instanceof Error ? error.message : String(error),
+          request_id: actor.requestId,
+          trace_id: actor.traceId,
+        });
+        return deps.createApiError(
+          503,
+          'database_unavailable',
+          'Mitgliedschaft konnte nicht entfernt werden.',
+          actor.requestId
+        );
+      }
+    },
+  });
 
 export const createGroupMutationHandlers = (deps: GroupMutationHandlerDeps) => ({
   assignGroupMembershipInternal: assignGroupMembershipInternal(deps),

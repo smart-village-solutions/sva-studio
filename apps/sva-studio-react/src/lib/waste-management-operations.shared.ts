@@ -16,7 +16,7 @@ import type {
   WasteTourDateShiftFollowUpMode,
   WasteTourRecurrence,
 } from '@sva/core';
-import { revealField } from '@sva/iam-admin/encryption';
+import { revealField } from '@sva/auth-runtime/server';
 import {
   resolveWasteDataSource,
   type ResolvedWasteDataSource,

@@ -4,7 +4,7 @@ import {
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
-import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
+import { createMutationWorkflow, createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type {
   SvaMainserverAccessibilityInformationInput,
@@ -318,14 +318,43 @@ const authorizeMutation = async (
   return authorizeOrResponse(ctx, contentKind, pluginActionFor(contentKind, actionName), contentId);
 };
 
-const createEventsContent = async (request: Request, actor: ContentActor) => {
-  const parsed = await parseEventInput(request);
-  if (isResponse(parsed)) {
-    return parsed;
+const createContentMutationHandler = <TInput>(
+  input: {
+    readonly route: Extract<RouteMatch, { readonly kind: 'collection' | 'item' }>;
+    readonly action: 'create' | 'update' | 'delete';
+    readonly requestId?: string;
+    readonly parse: (request: Request) => Promise<TInput | Response>;
+    readonly execute: (actor: ContentActor, parsed: TInput) => Promise<Response>;
   }
+) => {
+  const workflow = createMutationWorkflow<
+    AuthenticatedRequestContext,
+    {
+      readonly requestId?: string;
+      readonly contentId?: string;
+    },
+    {
+      readonly actor: ContentActor;
+    },
+    Record<never, never>,
+    TInput,
+    Response
+  >({
+    prepare: () => ({
+      requestId: input.requestId,
+      ...(input.route.kind === 'item' ? { contentId: input.route.itemId } : {}),
+    }),
+    authorize: async ({ request, context, contentId }) => {
+      const actor = await authorizeMutation(request, context, input.route.contentKind, input.action, input.requestId, contentId);
+      return isResponse(actor) ? actor : { actor };
+    },
+    parse: ({ request }) => input.parse(request),
+    execute: async ({ actor, input: parsed }) => input.execute(actor, parsed),
+    mapError: (error) => toMainserverErrorResponse(error, 'Mainserver-Anfrage ist fehlgeschlagen.'),
+    respond: (response) => response,
+  });
 
-  const data = await createSvaMainserverEvent({ ...actor, event: parsed });
-  return { data };
+  return (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => workflow(request, ctx);
 };
 
 const handleCollectionCreate = async (
@@ -335,28 +364,17 @@ const handleCollectionCreate = async (
   requestId: string | undefined,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const actor = await authorizeMutation(request, ctx, route.contentKind, 'create', requestId);
-  if (isResponse(actor)) {
-    return actor;
-  }
-
-  const result = await createEventsContent(request, actor);
-  if (isResponse(result)) {
-    return result;
-  }
-
-  logSuccess(`mainserver_${route.contentKind}_create`, result.data.id);
-  return json(result, 201);
-};
-
-const updateEventsContent = async (request: Request, actor: ContentActor, itemId: string) => {
-  const parsed = await parseEventInput(request);
-  if (isResponse(parsed)) {
-    return parsed;
-  }
-
-  const data = await updateSvaMainserverEvent({ ...actor, eventId: itemId, event: parsed });
-  return { data };
+  return createContentMutationHandler({
+    route,
+    action: 'create',
+    requestId,
+    parse: async (inputRequest) => await parseEventInput(inputRequest),
+    execute: async (actor, parsed) => {
+      const result = await createSvaMainserverEvent({ ...actor, event: parsed });
+      logSuccess(`mainserver_${route.contentKind}_create`, result.id);
+      return json({ data: result }, 201);
+    },
+  })(request, ctx);
 };
 
 const handleItemUpdate = async (
@@ -366,18 +384,17 @@ const handleItemUpdate = async (
   requestId: string | undefined,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const actor = await authorizeMutation(request, ctx, route.contentKind, 'update', requestId, route.itemId);
-  if (isResponse(actor)) {
-    return actor;
-  }
-
-  const result = await updateEventsContent(request, actor, route.itemId);
-  if (isResponse(result)) {
-    return result;
-  }
-
-  logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
-  return json(result);
+  return createContentMutationHandler({
+    route,
+    action: 'update',
+    requestId,
+    parse: async (inputRequest) => await parseEventInput(inputRequest),
+    execute: async (actor, parsed) => {
+      const result = await updateSvaMainserverEvent({ ...actor, eventId: route.itemId, event: parsed });
+      logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
+      return json({ data: result });
+    },
+  })(request, ctx);
 };
 
 const handleItemDelete = async (
@@ -387,14 +404,17 @@ const handleItemDelete = async (
   requestId: string | undefined,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const actor = await authorizeMutation(request, ctx, route.contentKind, 'delete', requestId, route.itemId);
-  if (isResponse(actor)) {
-    return actor;
-  }
-
-  const data = await deleteSvaMainserverEvent({ ...actor, eventId: route.itemId });
-  logSuccess(`mainserver_${route.contentKind}_delete`, route.itemId);
-  return json({ data });
+  return createContentMutationHandler({
+    route,
+    action: 'delete',
+    requestId,
+    parse: async () => ({ itemId: route.itemId }),
+    execute: async (actor) => {
+      const data = await deleteSvaMainserverEvent({ ...actor, eventId: route.itemId });
+      logSuccess(`mainserver_${route.contentKind}_delete`, route.itemId);
+      return json({ data });
+    },
+  })(request, ctx);
 };
 
 const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: AuthenticatedRequestContext) => {

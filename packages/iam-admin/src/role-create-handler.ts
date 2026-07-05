@@ -1,4 +1,5 @@
 import type { IamRolePermissionAssignmentScope } from '@sva/iam-core';
+import { createMutationWorkflow } from '@sva/server-runtime';
 
 import { isTenantTechnicalKeycloakRole } from './role-governance.js';
 import { persistLocalRoleCreate, reserveCreateRoleIdempotency, syncTechnicalRoleCreate, type PreparedRoleCreate } from './role-create-sync.js';
@@ -184,50 +185,63 @@ export const createCreateRoleHandlerInternal =
   >(
     deps: CreateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole>
   ) =>
-  async (request: Request, ctx: CreateRoleAuthenticatedRequestContext): Promise<Response> => {
-    const resolvedActor = await deps.resolveRoleMutationActor(request, ctx);
-    if ('response' in resolvedActor) {
-      return resolvedActor.response;
-    }
+  createMutationWorkflow<
+    CreateRoleAuthenticatedRequestContext,
+    {
+      readonly actor: CreateRoleActor;
+    },
+    Record<never, never>,
+    {
+      readonly idempotencyKey: string;
+    },
+    ParsedCreateRoleSuccess<TPayload>,
+    Response
+  >({
+    prepare: async ({ request, context }) => {
+      const resolvedActor = await deps.resolveRoleMutationActor(request, context);
+      return 'response' in resolvedActor ? resolvedActor.response : { actor: resolvedActor.actor };
+    },
+    authorize: async () => ({}),
+    idempotency: ({ request, actor }) => {
+      const idempotencyKey = deps.requireIdempotencyKey(request, actor.requestId);
+      return 'error' in idempotencyKey ? idempotencyKey.error : { idempotencyKey: idempotencyKey.key };
+    },
+    parse: async ({ request, actor }) => {
+      const parsed = await parseCreateRoleRequest(deps, request, actor);
+      if (parsed instanceof Response) {
+        return parsed;
+      }
 
-    const { actor } = resolvedActor;
-    const idempotencyKey = deps.requireIdempotencyKey(request, actor.requestId);
-    if ('error' in idempotencyKey) {
-      return idempotencyKey.error;
-    }
+      const permissionValidationResponse = await validateCreateRolePermissions(deps, actor, parsed.data);
+      return permissionValidationResponse ?? parsed;
+    },
+    execute: async ({ actor, idempotencyKey, input: parsed }) => {
+      const reservedResponse = await reserveCreateRoleIdempotency(deps, {
+        actor,
+        idempotencyKey,
+        rawBody: parsed.rawBody,
+      });
+      if (reservedResponse) {
+        return reservedResponse;
+      }
 
-    const parsed = await parseCreateRoleRequest(deps, request, actor);
-    if (parsed instanceof Response) {
-      return parsed;
-    }
+      const roleKey = parsed.data.roleName;
+      const displayName = parsed.data.displayName?.trim() || roleKey;
+      const externalRoleName = roleKey;
+      const preparedCreate = {
+        actor,
+        data: parsed.data,
+        displayName,
+        externalRoleName,
+        idempotencyKey,
+        roleKey,
+      } satisfies PreparedRoleCreate<TPayload>;
 
-    const permissionValidationResponse = await validateCreateRolePermissions(deps, actor, parsed.data);
-    if (permissionValidationResponse) {
-      return permissionValidationResponse;
-    }
-
-    const reservedResponse = await reserveCreateRoleIdempotency(deps, {
-      actor,
-      idempotencyKey: idempotencyKey.key,
-      rawBody: parsed.rawBody,
-    });
-    if (reservedResponse) {
-      return reservedResponse;
-    }
-
-    const roleKey = parsed.data.roleName;
-    const displayName = parsed.data.displayName?.trim() || roleKey;
-    const externalRoleName = roleKey;
-    const preparedCreate = {
-      actor,
-      data: parsed.data,
-      displayName,
-      externalRoleName,
-      idempotencyKey: idempotencyKey.key,
-      roleKey,
-    } satisfies PreparedRoleCreate<TPayload>;
-
-    return isTenantTechnicalKeycloakRole({ role_key: roleKey, external_role_name: externalRoleName })
-      ? syncTechnicalRoleCreate(deps, preparedCreate)
-      : persistLocalRoleCreate(deps, preparedCreate);
-  };
+      return isTenantTechnicalKeycloakRole({ role_key: roleKey, external_role_name: externalRoleName })
+        ? syncTechnicalRoleCreate(deps, preparedCreate)
+        : persistLocalRoleCreate(deps, preparedCreate);
+    },
+    mapError: (_error, state) =>
+      deps.createApiError(500, 'internal_error', 'Rolle konnte nicht angelegt werden.', state.actor.requestId),
+    respond: (response) => response,
+  });

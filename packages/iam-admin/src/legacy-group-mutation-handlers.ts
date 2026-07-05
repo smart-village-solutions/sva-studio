@@ -1,4 +1,5 @@
 import type { ApiErrorCode } from '@sva/core';
+import { createMutationWorkflow } from '@sva/server-runtime';
 import type { z } from 'zod';
 
 import { loadLegacyGroupById } from './legacy-group-query.js';
@@ -228,60 +229,152 @@ const validateLegacyGroupRoleIds = async <TFeatureFlags>(
   return roles.length === uniqueRoleIds.length;
 };
 
+const readErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
+type LegacyGroupMutationInput<TPrepared extends object, TIdempotency extends object, TInput> = {
+  readonly prepare?: (
+    state: Readonly<{
+      request: Request;
+      context: LegacyGroupMutationAuthenticatedRequestContext;
+      actor: LegacyGroupMutationPreparedActor;
+    }>
+  ) => Promise<TPrepared | Response> | TPrepared | Response;
+  readonly idempotency?: (
+    state: Readonly<{
+      request: Request;
+      context: LegacyGroupMutationAuthenticatedRequestContext;
+      actor: LegacyGroupMutationPreparedActor;
+    } & TPrepared>
+  ) => Promise<TIdempotency | Response> | TIdempotency | Response;
+  readonly parse: (
+    state: Readonly<{
+      request: Request;
+      context: LegacyGroupMutationAuthenticatedRequestContext;
+      actor: LegacyGroupMutationPreparedActor;
+    } & TPrepared & TIdempotency>
+  ) => Promise<TInput | Response>;
+  readonly execute: (
+    state: Readonly<{
+      request: Request;
+      context: LegacyGroupMutationAuthenticatedRequestContext;
+      actor: LegacyGroupMutationPreparedActor;
+      input: TInput;
+    } & TPrepared & TIdempotency>
+  ) => Promise<Response>;
+  readonly mapError?: (
+    error: unknown,
+    state: Readonly<{
+      request: Request;
+      context: LegacyGroupMutationAuthenticatedRequestContext;
+      actor: LegacyGroupMutationPreparedActor;
+    } & TPrepared & TIdempotency>
+  ) => Response;
+};
+
+const createLegacyGroupMutationHandler = <
+  TFeatureFlags,
+  TPrepared extends object = Record<never, never>,
+  TIdempotency extends object = Record<never, never>,
+  TInput = void,
+>(
+  deps: LegacyGroupMutationHandlerDeps<TFeatureFlags>,
+  input: LegacyGroupMutationInput<TPrepared, TIdempotency, TInput>
+) => {
+  const runIdempotency = input.idempotency;
+  const workflow = createMutationWorkflow<
+    LegacyGroupMutationAuthenticatedRequestContext,
+    { readonly actor: LegacyGroupMutationPreparedActor } & TPrepared,
+    Record<never, never>,
+    TIdempotency,
+    TInput,
+    Response
+  >({
+    prepare: async ({ request, context }) => {
+      const actorResolution = await prepareLegacyGroupMutationRequest(deps, request, context);
+      if ('error' in actorResolution) {
+        return actorResolution.error;
+      }
+
+      const prepared = input.prepare
+        ? await input.prepare({
+            request,
+            context,
+            actor: actorResolution.actor,
+          })
+        : {};
+      if (prepared instanceof Response) {
+        return prepared;
+      }
+
+      return {
+        actor: actorResolution.actor,
+        ...prepared,
+      } as { readonly actor: LegacyGroupMutationPreparedActor } & TPrepared;
+    },
+    authorize: async () => ({}),
+    csrf: ({ request, actor }) => deps.validateCsrf(request, actor.requestId) ?? undefined,
+    idempotency: runIdempotency ? async (state) => runIdempotency(state as never) : undefined,
+    parse: async (state) => input.parse(state as never),
+    execute: async (state) => input.execute(state as never),
+    mapError: (error, state) =>
+      input.mapError
+        ? input.mapError(error, state as never)
+        : createDatabaseUnavailableError(deps, state.actor.requestId),
+    respond: (response) => response,
+  });
+
+  return (request: Request, context: LegacyGroupMutationAuthenticatedRequestContext): Promise<Response> =>
+    workflow(request, context);
+};
+
 export const createLegacyGroupMutationHandlers = <TFeatureFlags>(
   deps: LegacyGroupMutationHandlerDeps<TFeatureFlags>
 ) => {
-  const createGroupInternal = async (
-    request: Request,
-    ctx: LegacyGroupMutationAuthenticatedRequestContext
-  ): Promise<Response> => {
-    const actorResolution = await prepareLegacyGroupMutationRequest(deps, request, ctx);
-    if ('error' in actorResolution) {
-      return actorResolution.error;
-    }
-    const { actor } = actorResolution;
+  const createGroupInternal = createLegacyGroupMutationHandler(deps, {
+    idempotency: async ({ request, actor }) => {
+      const idempotencyKey = deps.requireIdempotencyKey(request, actor.requestId);
+      if ('error' in idempotencyKey) {
+        return idempotencyKey.error;
+      }
 
-    const csrfError = deps.validateCsrf(request, actor.requestId);
-    if (csrfError) {
-      return csrfError;
-    }
+      const parsed = await deps.parseRequestBody<CreateLegacyGroupInput>(request, createLegacyGroupSchema);
+      if (!parsed.ok) {
+        return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+      }
 
-    const idempotencyKey = deps.requireIdempotencyKey(request, actor.requestId);
-    if ('error' in idempotencyKey) {
-      return idempotencyKey.error;
-    }
+      const reserve = await deps.reserveIdempotency({
+        instanceId: actor.instanceId,
+        actorAccountId: actor.actorAccountId,
+        endpoint: CREATE_GROUP_ENDPOINT,
+        idempotencyKey: idempotencyKey.key,
+        payloadHash: deps.toPayloadHash(parsed.rawBody),
+      });
+      if (reserve.status === 'replay') {
+        return deps.jsonResponse(reserve.responseStatus, reserve.responseBody);
+      }
+      if (reserve.status === 'conflict') {
+        return deps.createApiError(409, 'idempotency_key_reuse', reserve.message, actor.requestId);
+      }
 
-    const parsed = await deps.parseRequestBody<CreateLegacyGroupInput>(request, createLegacyGroupSchema);
-    if (!parsed.ok) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
-    }
+      return {
+        idempotencyKey: idempotencyKey.key,
+        parsed,
+      };
+    },
+    parse: async ({ parsed }) => parsed,
+    execute: async ({ actor, idempotencyKey, input: parsed }) => {
+      try {
+        const responseBody = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+          const rolesValid = await validateLegacyGroupRoleIds(deps, client, {
+            instanceId: actor.instanceId,
+            roleIds: parsed.data.roleIds,
+          });
+          if (!rolesValid) {
+            throw new Error('invalid_request:Mindestens eine Rolle existiert nicht.');
+          }
 
-    const reserve = await deps.reserveIdempotency({
-      instanceId: actor.instanceId,
-      actorAccountId: actor.actorAccountId,
-      endpoint: CREATE_GROUP_ENDPOINT,
-      idempotencyKey: idempotencyKey.key,
-      payloadHash: deps.toPayloadHash(parsed.rawBody),
-    });
-    if (reserve.status === 'replay') {
-      return deps.jsonResponse(reserve.responseStatus, reserve.responseBody);
-    }
-    if (reserve.status === 'conflict') {
-      return deps.createApiError(409, 'idempotency_key_reuse', reserve.message, actor.requestId);
-    }
-
-    try {
-      const responseBody = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
-        const rolesValid = await validateLegacyGroupRoleIds(deps, client, {
-          instanceId: actor.instanceId,
-          roleIds: parsed.data.roleIds,
-        });
-        if (!rolesValid) {
-          throw new Error('invalid_request:Mindestens eine Rolle existiert nicht.');
-        }
-
-        const insertResult = await client.query<{ id: string }>(
-          `
+          const insertResult = await client.query<{ id: string }>(
+            `
 INSERT INTO iam.groups (
   instance_id,
   group_key,
@@ -293,121 +386,117 @@ INSERT INTO iam.groups (
 VALUES ($1, $2, $3, $4, 'role_bundle', true)
 RETURNING id;
 `,
-          [actor.instanceId, parsed.data.groupKey, parsed.data.displayName, parsed.data.description ?? null]
-        );
-        const groupId = insertResult.rows[0]?.id;
-        if (!groupId) {
-          throw new Error('database_unavailable:Gruppe konnte nicht angelegt werden.');
-        }
+            [actor.instanceId, parsed.data.groupKey, parsed.data.displayName, parsed.data.description ?? null]
+          );
+          const groupId = insertResult.rows[0]?.id;
+          if (!groupId) {
+            throw new Error('database_unavailable:Gruppe konnte nicht angelegt werden.');
+          }
 
-        await replaceLegacyGroupRoles(client, {
-          instanceId: actor.instanceId,
-          groupId,
-          roleIds: parsed.data.roleIds,
-        });
-
-        await deps.emitActivityLog(client, {
-          instanceId: actor.instanceId,
-          accountId: actor.actorAccountId,
-          eventType: 'group.created',
-          result: 'success',
-          payload: {
-            groupId,
-            roleCount: parsed.data.roleIds.length,
-            groupKey: parsed.data.groupKey,
-          },
-          requestId: actor.requestId,
-          traceId: actor.traceId,
-        });
-
-        await deps.notifyPermissionInvalidation(client, {
-          instanceId: actor.instanceId,
-          trigger: 'group_created',
-        });
-
-        const group = await loadLegacyGroupById(client, { instanceId: actor.instanceId, groupId });
-        if (!group) {
-          throw new Error('not_found:Gruppe nicht gefunden.');
-        }
-        return deps.asApiItem(group, actor.requestId);
-      });
-
-      await deps.completeIdempotency({
-        instanceId: actor.instanceId,
-        actorAccountId: actor.actorAccountId,
-        endpoint: CREATE_GROUP_ENDPOINT,
-        idempotencyKey: idempotencyKey.key,
-        status: 'COMPLETED',
-        responseStatus: 201,
-        responseBody,
-      });
-      deps.iamUserOperationsCounter.add(1, { action: 'create_group', result: 'success' });
-      return deps.jsonResponse(201, responseBody);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      let failureResponse: Response;
-      if (message.includes('groups_instance_key_uniq')) {
-        failureResponse = deps.createApiError(409, 'conflict', 'Gruppe mit diesem Schlüssel existiert bereits.', actor.requestId);
-      } else {
-        const [code, detail] = message.split(':', 2);
-        failureResponse =
-          code === 'invalid_request'
-            ? deps.createApiError(400, 'invalid_request', detail, actor.requestId)
-            : createDatabaseUnavailableError(deps, actor.requestId);
-      }
-
-      await deps.completeIdempotency({
-        instanceId: actor.instanceId,
-        actorAccountId: actor.actorAccountId,
-        endpoint: CREATE_GROUP_ENDPOINT,
-        idempotencyKey: idempotencyKey.key,
-        status: 'FAILED',
-        responseStatus: failureResponse.status,
-        responseBody: await failureResponse.clone().json(),
-      });
-      return failureResponse;
-    }
-  };
-
-  const updateGroupInternal = async (
-    request: Request,
-    ctx: LegacyGroupMutationAuthenticatedRequestContext
-  ): Promise<Response> => {
-    const actorResolution = await prepareLegacyGroupMutationRequest(deps, request, ctx);
-    if ('error' in actorResolution) {
-      return actorResolution.error;
-    }
-    const { actor } = actorResolution;
-
-    const groupId = readGroupIdOrError(deps, request, actor.requestId);
-    if ('error' in groupId) {
-      return groupId.error;
-    }
-
-    const csrfError = deps.validateCsrf(request, actor.requestId);
-    if (csrfError) {
-      return csrfError;
-    }
-
-    const parsed = await deps.parseRequestBody<UpdateLegacyGroupInput>(request, updateLegacyGroupSchema);
-    if (!parsed.ok) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
-    }
-
-    try {
-      const group = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
-        if (parsed.data.roleIds) {
-          const rolesValid = await validateLegacyGroupRoleIds(deps, client, {
+          await replaceLegacyGroupRoles(client, {
             instanceId: actor.instanceId,
+            groupId,
             roleIds: parsed.data.roleIds,
           });
-          if (!rolesValid) {
-            throw new Error('invalid_request:Mindestens eine Rolle existiert nicht.');
+
+          await deps.emitActivityLog(client, {
+            instanceId: actor.instanceId,
+            accountId: actor.actorAccountId,
+            eventType: 'group.created',
+            result: 'success',
+            payload: {
+              groupId,
+              roleCount: parsed.data.roleIds.length,
+              groupKey: parsed.data.groupKey,
+            },
+            requestId: actor.requestId,
+            traceId: actor.traceId,
+          });
+
+          await deps.notifyPermissionInvalidation(client, {
+            instanceId: actor.instanceId,
+            trigger: 'group_created',
+          });
+
+          const group = await loadLegacyGroupById(client, { instanceId: actor.instanceId, groupId });
+          if (!group) {
+            throw new Error('not_found:Gruppe nicht gefunden.');
           }
+          return deps.asApiItem(group, actor.requestId);
+        });
+
+        await deps.completeIdempotency({
+          instanceId: actor.instanceId,
+          actorAccountId: actor.actorAccountId,
+          endpoint: CREATE_GROUP_ENDPOINT,
+          idempotencyKey,
+          status: 'COMPLETED',
+          responseStatus: 201,
+          responseBody,
+        });
+        deps.iamUserOperationsCounter.add(1, { action: 'create_group', result: 'success' });
+        return deps.jsonResponse(201, responseBody);
+      } catch (error) {
+        const message = readErrorMessage(error);
+        let failureResponse: Response;
+        if (message.includes('groups_instance_key_uniq')) {
+          failureResponse = deps.createApiError(409, 'conflict', 'Gruppe mit diesem Schlüssel existiert bereits.', actor.requestId);
+        } else {
+          const [code, detail] = message.split(':', 2);
+          failureResponse =
+            code === 'invalid_request'
+              ? deps.createApiError(400, 'invalid_request', detail, actor.requestId)
+              : createDatabaseUnavailableError(deps, actor.requestId);
         }
 
-        const updated = await client.query<{ id: string }>(
-          `
+        if (failureResponse.status >= 500) {
+          deps.logger.error('IAM group create failed', {
+            operation: 'create_group',
+            instance_id: actor.instanceId,
+            request_id: actor.requestId,
+            trace_id: actor.traceId,
+            error: message,
+          });
+        }
+
+        await deps.completeIdempotency({
+          instanceId: actor.instanceId,
+          actorAccountId: actor.actorAccountId,
+          endpoint: CREATE_GROUP_ENDPOINT,
+          idempotencyKey,
+          status: 'FAILED',
+          responseStatus: failureResponse.status,
+          responseBody: await failureResponse.clone().json(),
+        });
+        return failureResponse;
+      }
+    },
+  });
+
+  const updateGroupInternal = createLegacyGroupMutationHandler(deps, {
+    prepare: ({ request, actor }) => {
+      const groupId = readGroupIdOrError(deps, request, actor.requestId);
+      return 'error' in groupId ? groupId.error : { groupId: groupId.groupId };
+    },
+    parse: async ({ request, actor }) => {
+      const parsed = await deps.parseRequestBody<UpdateLegacyGroupInput>(request, updateLegacyGroupSchema);
+      return parsed.ok ? parsed : deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+    },
+    execute: async ({ actor, groupId, input: parsed }) => {
+      try {
+        const group = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+          if (parsed.data.roleIds) {
+            const rolesValid = await validateLegacyGroupRoleIds(deps, client, {
+              instanceId: actor.instanceId,
+              roleIds: parsed.data.roleIds,
+            });
+            if (!rolesValid) {
+              throw new Error('invalid_request:Mindestens eine Rolle existiert nicht.');
+            }
+          }
+
+          const updated = await client.query<{ id: string }>(
+            `
 UPDATE iam.groups
 SET
   display_name = COALESCE($3, display_name),
@@ -418,136 +507,133 @@ WHERE instance_id = $1
   AND id = $2::uuid
 RETURNING id;
 `,
-          [
-            actor.instanceId,
-            groupId.groupId,
-            parsed.data.displayName ?? null,
-            parsed.data.description ?? null,
-            parsed.data.isActive ?? null,
-          ]
-        );
-        if (!updated.rows[0]?.id) {
-          return undefined;
-        }
+            [
+              actor.instanceId,
+              groupId,
+              parsed.data.displayName ?? null,
+              parsed.data.description ?? null,
+              parsed.data.isActive ?? null,
+            ]
+          );
+          if (!updated.rows[0]?.id) {
+            return undefined;
+          }
 
-        if (parsed.data.roleIds) {
-          await replaceLegacyGroupRoles(client, {
+          if (parsed.data.roleIds) {
+            await replaceLegacyGroupRoles(client, {
+              instanceId: actor.instanceId,
+              groupId,
+              roleIds: parsed.data.roleIds,
+            });
+          }
+
+          await deps.emitActivityLog(client, {
             instanceId: actor.instanceId,
-            groupId: groupId.groupId,
-            roleIds: parsed.data.roleIds,
+            accountId: actor.actorAccountId,
+            eventType: 'group.updated',
+            result: 'success',
+            payload: {
+              groupId,
+              roleUpdate: Boolean(parsed.data.roleIds),
+              isActive: parsed.data.isActive,
+            },
+            requestId: actor.requestId,
+            traceId: actor.traceId,
           });
+
+          await deps.notifyPermissionInvalidation(client, {
+            instanceId: actor.instanceId,
+            trigger: 'group_updated',
+          });
+
+          return loadLegacyGroupById(client, { instanceId: actor.instanceId, groupId });
+        });
+
+        if (!group) {
+          return deps.createApiError(404, 'not_found', 'Gruppe nicht gefunden.', actor.requestId);
         }
-
-        await deps.emitActivityLog(client, {
-          instanceId: actor.instanceId,
-          accountId: actor.actorAccountId,
-          eventType: 'group.updated',
-          result: 'success',
-          payload: {
-            groupId: groupId.groupId,
-            roleUpdate: Boolean(parsed.data.roleIds),
-            isActive: parsed.data.isActive,
-          },
-          requestId: actor.requestId,
-          traceId: actor.traceId,
+        deps.iamUserOperationsCounter.add(1, { action: 'update_group', result: 'success' });
+        return deps.jsonResponse(200, deps.asApiItem(group, actor.requestId));
+      } catch (error) {
+        const message = readErrorMessage(error);
+        const [code, detail] = message.split(':', 2);
+        if (code === 'invalid_request') {
+          return deps.createApiError(400, 'invalid_request', detail, actor.requestId);
+        }
+        deps.logger.error('IAM group update failed', {
+          operation: 'update_group',
+          instance_id: actor.instanceId,
+          group_id: groupId,
+          request_id: actor.requestId,
+          trace_id: actor.traceId,
+          error: message,
         });
-
-        await deps.notifyPermissionInvalidation(client, {
-          instanceId: actor.instanceId,
-          trigger: 'group_updated',
-        });
-
-        return loadLegacyGroupById(client, { instanceId: actor.instanceId, groupId: groupId.groupId });
-      });
-
-      if (!group) {
-        return deps.createApiError(404, 'not_found', 'Gruppe nicht gefunden.', actor.requestId);
+        return createDatabaseUnavailableError(deps, actor.requestId);
       }
-      deps.iamUserOperationsCounter.add(1, { action: 'update_group', result: 'success' });
-      return deps.jsonResponse(200, deps.asApiItem(group, actor.requestId));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const [code, detail] = message.split(':', 2);
-      if (code === 'invalid_request') {
-        return deps.createApiError(400, 'invalid_request', detail, actor.requestId);
-      }
-      deps.logger.error('IAM group update failed', {
-        operation: 'update_group',
-        instance_id: actor.instanceId,
-        group_id: groupId.groupId,
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-        error: message,
-      });
-      return createDatabaseUnavailableError(deps, actor.requestId);
-    }
-  };
+    },
+  });
 
-  const deleteGroupInternal = async (
-    request: Request,
-    ctx: LegacyGroupMutationAuthenticatedRequestContext
-  ): Promise<Response> => {
-    const actorResolution = await prepareLegacyGroupMutationRequest(deps, request, ctx);
-    if ('error' in actorResolution) {
-      return actorResolution.error;
-    }
-    const { actor } = actorResolution;
-
-    const groupId = readGroupIdOrError(deps, request, actor.requestId);
-    if ('error' in groupId) {
-      return groupId.error;
-    }
-
-    const csrfError = deps.validateCsrf(request, actor.requestId);
-    if (csrfError) {
-      return csrfError;
-    }
-
-    try {
-      const updated = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
-        const result = await client.query<{ id: string }>(
-          `
+  const deleteGroupInternal = createLegacyGroupMutationHandler(deps, {
+    prepare: ({ request, actor }) => {
+      const groupId = readGroupIdOrError(deps, request, actor.requestId);
+      return 'error' in groupId ? groupId.error : { groupId: groupId.groupId };
+    },
+    parse: async () => undefined,
+    execute: async ({ actor, groupId }) => {
+      try {
+        const updated = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+          const result = await client.query<{ id: string }>(
+            `
 UPDATE iam.groups
 SET is_active = false, updated_at = NOW()
 WHERE instance_id = $1
   AND id = $2::uuid
 RETURNING id;
 `,
-          [actor.instanceId, groupId.groupId]
-        );
-        if (!result.rows[0]?.id) {
-          return false;
+            [actor.instanceId, groupId]
+          );
+          if (!result.rows[0]?.id) {
+            return false;
+          }
+
+          await deps.emitActivityLog(client, {
+            instanceId: actor.instanceId,
+            accountId: actor.actorAccountId,
+            eventType: 'group.deleted',
+            result: 'success',
+            payload: {
+              groupId,
+            },
+            requestId: actor.requestId,
+            traceId: actor.traceId,
+          });
+
+          await deps.notifyPermissionInvalidation(client, {
+            instanceId: actor.instanceId,
+            trigger: 'group_deleted',
+          });
+
+          return true;
+        });
+
+        if (!updated) {
+          return deps.createApiError(404, 'not_found', 'Gruppe nicht gefunden.', actor.requestId);
         }
-
-        await deps.emitActivityLog(client, {
-          instanceId: actor.instanceId,
-          accountId: actor.actorAccountId,
-          eventType: 'group.deleted',
-          result: 'success',
-          payload: {
-            groupId: groupId.groupId,
-          },
-          requestId: actor.requestId,
-          traceId: actor.traceId,
+        deps.iamUserOperationsCounter.add(1, { action: 'delete_group', result: 'success' });
+        return deps.jsonResponse(200, deps.asApiItem({ id: groupId }, actor.requestId));
+      } catch (error) {
+        deps.logger.error('IAM group delete failed', {
+          operation: 'delete_group',
+          instance_id: actor.instanceId,
+          group_id: groupId,
+          request_id: actor.requestId,
+          trace_id: actor.traceId,
+          error: readErrorMessage(error),
         });
-
-        await deps.notifyPermissionInvalidation(client, {
-          instanceId: actor.instanceId,
-          trigger: 'group_deleted',
-        });
-
-        return true;
-      });
-
-      if (!updated) {
-        return deps.createApiError(404, 'not_found', 'Gruppe nicht gefunden.', actor.requestId);
+        return createDatabaseUnavailableError(deps, actor.requestId);
       }
-      deps.iamUserOperationsCounter.add(1, { action: 'delete_group', result: 'success' });
-      return deps.jsonResponse(200, deps.asApiItem({ id: groupId.groupId }, actor.requestId));
-    } catch {
-      return createDatabaseUnavailableError(deps, actor.requestId);
-    }
-  };
+    },
+  });
 
   return {
     createGroupInternal,

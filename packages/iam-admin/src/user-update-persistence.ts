@@ -157,9 +157,56 @@ const emitUpdatedUserActivity = async (
     readonly requestId?: string;
     readonly traceId?: string;
     readonly payload: UpdateUserPersistencePayload;
+    readonly existingRoleIds?: readonly string[];
+    readonly existingGroupIds?: readonly string[];
   }
-) =>
-  deps.emitActivityLog(input.client, {
+) => {
+  const previousRoleIds = input.payload.roleIds
+    ? [...new Set(input.existingRoleIds ?? [])].sort((left, right) => left.localeCompare(right))
+    : undefined;
+  const nextRoleIds = input.payload.roleIds
+    ? [...new Set(input.payload.roleIds)].sort((left, right) => left.localeCompare(right))
+    : undefined;
+  const previousGroupIds = input.payload.groupIds
+    ? [...new Set(input.existingGroupIds ?? [])].sort((left, right) => left.localeCompare(right))
+    : undefined;
+  const nextGroupIds = input.payload.groupIds
+    ? [...new Set(input.payload.groupIds)].sort((left, right) => left.localeCompare(right))
+    : undefined;
+  const addedRoleIds =
+    previousRoleIds && nextRoleIds
+      ? nextRoleIds.filter((roleId) => previousRoleIds.includes(roleId) === false)
+      : undefined;
+  const removedRoleIds =
+    previousRoleIds && nextRoleIds
+      ? previousRoleIds.filter((roleId) => nextRoleIds.includes(roleId) === false)
+      : undefined;
+  const addedGroupIds =
+    previousGroupIds && nextGroupIds
+      ? nextGroupIds.filter((groupId) => previousGroupIds.includes(groupId) === false)
+      : undefined;
+  const removedGroupIds =
+    previousGroupIds && nextGroupIds
+      ? previousGroupIds.filter((groupId) => nextGroupIds.includes(groupId) === false)
+      : undefined;
+  const changedFields = [
+    input.payload.email !== undefined ? 'email' : null,
+    input.payload.displayName !== undefined ? 'display_name' : null,
+    input.payload.firstName !== undefined ? 'first_name' : null,
+    input.payload.lastName !== undefined ? 'last_name' : null,
+    input.payload.phone !== undefined ? 'phone' : null,
+    input.payload.position !== undefined ? 'position' : null,
+    input.payload.department !== undefined ? 'department' : null,
+    input.payload.avatarUrl !== undefined ? 'avatar_url' : null,
+    input.payload.preferredLanguage !== undefined ? 'preferred_language' : null,
+    input.payload.timezone !== undefined ? 'timezone' : null,
+    input.payload.status !== undefined ? 'status' : null,
+    input.payload.notes !== undefined ? 'notes' : null,
+    input.payload.roleIds !== undefined ? 'roles' : null,
+    input.payload.groupIds !== undefined ? 'groups' : null,
+  ].filter((value): value is string => value !== null);
+
+  await deps.emitActivityLog(input.client, {
     instanceId: input.instanceId,
     accountId: input.actorAccountId,
     subjectId: input.userId,
@@ -169,10 +216,20 @@ const emitUpdatedUserActivity = async (
       status: input.payload.status,
       role_update: Boolean(input.payload.roleIds),
       group_update: Boolean(input.payload.groupIds),
+      changed_fields: changedFields,
+      previous_role_ids: previousRoleIds,
+      next_role_ids: nextRoleIds,
+      added_role_ids: addedRoleIds,
+      removed_role_ids: removedRoleIds,
+      previous_group_ids: previousGroupIds,
+      next_group_ids: nextGroupIds,
+      added_group_ids: addedGroupIds,
+      removed_group_ids: removedGroupIds,
     },
     requestId: input.requestId,
     traceId: input.traceId,
   });
+};
 
 const invalidateUpdatedUserPermissions = async (
   deps: Pick<UserUpdatePersistenceDeps, 'notifyPermissionInvalidation'>,
@@ -259,6 +316,8 @@ export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => 
         requestId: input.requestId,
         traceId: input.traceId,
         payload: input.payload,
+        existingRoleIds: input.existingRoleIds,
+        existingGroupIds: input.existingGroupIds,
       });
       await invalidateUpdatedUserPermissions(deps, {
         client,

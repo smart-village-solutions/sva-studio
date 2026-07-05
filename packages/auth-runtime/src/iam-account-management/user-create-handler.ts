@@ -19,6 +19,7 @@ import { createUserSchema } from './schemas.js';
 import {
   completeIdempotency,
   iamUserOperationsCounter,
+  logger,
   reserveIdempotency,
   resolveIdentityProviderForInstance,
 } from './shared.js';
@@ -112,6 +113,7 @@ export const createUserInternal = createCreateUserHandlerInternal({
   executeCreateUser: executeCreateUserWithKnownErrors,
   iamUserOperationsCounter,
   jsonResponse,
+  logger,
   parseCreateUserBody: (request) => parseRequestBody(request, createUserSchema),
   requireIdempotencyKey,
   reserveIdempotency,

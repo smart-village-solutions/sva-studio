@@ -45,6 +45,8 @@ const identityProvider = {
   },
 };
 
+const loggerError = vi.fn();
+
 const createJsonResponse = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
@@ -56,6 +58,9 @@ const createDeps = (
   createApiError: vi.fn((status, code, message, requestId) =>
     createJsonResponse(status, { error: { code, message }, requestId })
   ),
+  logger: {
+    error: loggerError,
+  },
   createIdpUnavailableBody: vi.fn((requestId) => ({
     error: {
       code: 'keycloak_unavailable',
@@ -94,6 +99,7 @@ describe('createCreateUserHandlerInternal', () => {
     vi.clearAllMocks();
     identityProvider.provider.createUser.mockClear();
     identityProvider.provider.syncRoles.mockClear();
+    loggerError.mockClear();
   });
 
   it('reserves idempotency, executes creation, completes the request and returns created item', async () => {
@@ -229,6 +235,15 @@ describe('createCreateUserHandlerInternal', () => {
       action: 'create_user',
       result: 'failure',
     });
+    expect(loggerError).toHaveBeenCalledWith(
+      'IAM create user failed',
+      expect.objectContaining({
+        operation: 'create_user',
+        instance_id: 'de-musterhausen',
+        request_id: 'req-create',
+        error: 'create failed',
+      })
+    );
   });
 
   it('returns known mutation responses thrown by the create operation and stores them as failed idempotency results', async () => {
@@ -271,6 +286,15 @@ describe('createCreateUserHandlerInternal', () => {
         requestId: 'req-create',
       },
     });
+    expect(loggerError).toHaveBeenCalledWith(
+      'IAM create user failed with known response',
+      expect.objectContaining({
+        operation: 'create_user',
+        instance_id: 'de-musterhausen',
+        request_id: 'req-create',
+        response_status: 400,
+      })
+    );
   });
 
   it('falls back to an internal error payload when a thrown response body is not valid json', async () => {

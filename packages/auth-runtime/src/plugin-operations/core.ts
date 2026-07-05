@@ -4,7 +4,7 @@ import {
   type StudioJobListQuery,
   type StudioPluginOperationStartRequest,
 } from '@sva/core';
-import { getWorkspaceContext } from '@sva/server-runtime';
+import { createMutationWorkflow, getWorkspaceContext } from '@sva/server-runtime';
 import { z } from 'zod';
 
 import {
@@ -97,58 +97,146 @@ const readJobListQuery = (request: Request): StudioJobListQuery | Response => {
   };
 };
 
-export const startPluginOperationJobHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedUser(request, async (ctx) => {
-    const authorizationError = await requireMonitoringAccess(ctx, MONITORING_WRITE_ACTION);
-    if (authorizationError) {
-      return authorizationError;
-    }
+type MonitoringMutationContext = {
+  readonly user: AuthenticatedRequestContext['user'];
+};
 
-    const instanceId = requireActorInstanceId(ctx.user.instanceId);
-    if (instanceId instanceof Response) {
-      return instanceId;
-    }
+const createMonitoringMutationHandler = <TInput>(
+  input: {
+    readonly parse: (request: Request, requestId?: string) => Promise<TInput | Response>;
+    readonly execute: (
+      state: Readonly<{
+        request: Request;
+        context: MonitoringMutationContext;
+        requestId?: string;
+        instanceId: string;
+      }>,
+      parsed: TInput
+    ) => Promise<Response>;
+  }
+) => {
+  const workflow = createMutationWorkflow<
+    MonitoringMutationContext,
+    {
+      readonly requestId?: string;
+      readonly instanceId: string;
+    },
+    Record<never, never>,
+    Record<never, never>,
+    TInput,
+    Response
+  >({
+    prepare: ({ context }) => {
+      const requestId = getRequestId();
+      const instanceId = requireActorInstanceId(context.user.instanceId);
+      if (instanceId instanceof Response) {
+        return instanceId;
+      }
 
-    const csrfError = validateCsrf(request, getRequestId());
-    if (csrfError) {
-      return csrfError;
-    }
-
-    const idempotency = requireIdempotencyKey(request, getRequestId());
-    if ('error' in idempotency) {
-      return idempotency.error;
-    }
-
-    const parsed = await parseRequestBody(request, startPluginOperationJobSchema);
-    if (!parsed.ok) {
-      return createApiError(400, 'invalid_request', parsed.message, getRequestId());
-    }
-
-    const validationError = validateStartRequestData(parsed.data, getRequestId());
-    if (validationError) {
-      return validationError;
-    }
-
-    const replayOrConflictResponse = await reserveStartIdempotency({
-      instanceId,
-      actorAccountId: ctx.user.id,
-      idempotencyKey: idempotency.key,
-      rawBody: parsed.rawBody,
-      requestId: getRequestId(),
-    });
-    if (replayOrConflictResponse) {
-      return replayOrConflictResponse;
-    }
-
-    return executeStartPluginOperationJob({
-      instanceId,
-      actorAccountId: ctx.user.id,
-      idempotencyKey: idempotency.key,
-      requestId: getRequestId(),
-      scheduledAt: new Date().toISOString(),
-      data: parsed.data,
-    });
+      return {
+        requestId,
+        instanceId,
+      };
+    },
+    authorize: async ({ context }) => (await requireMonitoringAccess(context as AuthenticatedRequestContext, MONITORING_WRITE_ACTION)) ?? {},
+    csrf: ({ request, requestId }) => validateCsrf(request, requestId) ?? undefined,
+    parse: ({ request, requestId }) => input.parse(request, requestId),
+    execute: async (state) => input.execute(state, state.input),
+    mapError: () =>
+      createApiError(
+        503,
+        'database_unavailable',
+        'Die Mutation für Plugin-Operations konnte nicht abgeschlossen werden.',
+        getRequestId()
+      ),
+    respond: (response) => response,
   });
+
+  return (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> =>
+    workflow(request, { user: ctx.user });
+};
+
+const parseJobId = async (request: Request): Promise<string | Response> => {
+  const jobId = readJobId(request);
+  return jobId instanceof Response ? jobId : jobId;
+};
+
+export const startPluginOperationJobHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedUser(request, (ctx) =>
+    createMutationWorkflow<
+      AuthenticatedRequestContext,
+      {
+        readonly requestId?: string;
+        readonly instanceId: string;
+        readonly actorAccountId: string;
+      },
+      Record<never, never>,
+      {
+        readonly idempotencyKey: string;
+      },
+      {
+        readonly data: StudioPluginOperationStartRequest;
+        readonly rawBody: string;
+      },
+      Response
+    >({
+      prepare: ({ context }) => {
+        const requestId = getRequestId();
+        const instanceId = requireActorInstanceId(context.user.instanceId);
+        if (instanceId instanceof Response) {
+          return instanceId;
+        }
+        return {
+          requestId,
+          instanceId,
+          actorAccountId: context.user.id,
+        };
+      },
+      authorize: async ({ context }) => (await requireMonitoringAccess(context, MONITORING_WRITE_ACTION)) ?? {},
+      csrf: ({ request, requestId }) => validateCsrf(request, requestId) ?? undefined,
+      idempotency: ({ request, requestId }) => {
+        const idempotency = requireIdempotencyKey(request, requestId);
+        return 'error' in idempotency ? idempotency.error : { idempotencyKey: idempotency.key };
+      },
+      parse: async ({ request, requestId }) => {
+        const parsed = await parseRequestBody(request, startPluginOperationJobSchema);
+        if (!parsed.ok) {
+          return createApiError(400, 'invalid_request', parsed.message, requestId);
+        }
+
+        const validationError = validateStartRequestData(parsed.data, requestId);
+        if (validationError) {
+          return validationError;
+        }
+
+        return parsed;
+      },
+      execute: async ({ instanceId, actorAccountId, idempotencyKey, requestId, input }) => {
+        const replayOrConflictResponse = await reserveStartIdempotency({
+          instanceId,
+          actorAccountId,
+          idempotencyKey,
+          rawBody: input.rawBody,
+          requestId,
+        });
+        if (replayOrConflictResponse) {
+          return replayOrConflictResponse;
+        }
+
+        return executeStartPluginOperationJob({
+          instanceId,
+          actorAccountId,
+          idempotencyKey,
+          requestId,
+          scheduledAt: new Date().toISOString(),
+          data: input.data,
+        });
+      },
+      mapError: (_error, state) =>
+        createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht angelegt werden.', state.requestId),
+      respond: (response) => response,
+    })(request, ctx)
+  );
 
 export const getPluginOperationJobHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
@@ -180,51 +268,42 @@ export const getPluginOperationJobHandler = async (request: Request): Promise<Re
   });
 
 export const deletePluginOperationJobHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedUser(request, async (ctx) => {
-    const requestId = getRequestId();
-    const authorizationError = await requireMonitoringAccess(ctx, MONITORING_WRITE_ACTION);
-    if (authorizationError) {
-      return authorizationError;
-    }
+  withAuthenticatedUser(
+    request,
+    (ctx) =>
+      createMonitoringMutationHandler({
+        parse: async (inputRequest) => parseJobId(inputRequest),
+        execute: async ({ instanceId, requestId }, jobId) => {
+          try {
+            const job = await withStudioJobRepository(instanceId, async (repository) => {
+              const existingJob = await repository.getJobDetail(instanceId, jobId);
+              if (!existingJob) {
+                return null;
+              }
+              if (!TERMINAL_JOB_STATUSES.has(existingJob.status)) {
+                throw new Error('job_not_terminal');
+              }
+              return repository.deleteJob(instanceId, jobId);
+            });
+            if (!job) {
+              return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', requestId);
+            }
 
-    const instanceId = requireActorInstanceId(ctx.user.instanceId);
-    if (instanceId instanceof Response) {
-      return instanceId;
-    }
-
-    const csrfError = validateCsrf(request, requestId);
-    if (csrfError) {
-      return csrfError;
-    }
-
-    const jobId = readJobId(request);
-    if (jobId instanceof Response) {
-      return jobId;
-    }
-
-    try {
-      const job = await withStudioJobRepository(instanceId, async (repository) => {
-        const existingJob = await repository.getJobDetail(instanceId, jobId);
-        if (!existingJob) {
-          return null;
-        }
-        if (!TERMINAL_JOB_STATUSES.has(existingJob.status)) {
-          throw new Error('job_not_terminal');
-        }
-        return repository.deleteJob(instanceId, jobId);
-      });
-      if (!job) {
-        return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', requestId);
-      }
-
-      return createJsonItemResponse(200, job, requestId);
-    } catch (error) {
-      if (error instanceof Error && error.message === 'job_not_terminal') {
-        return createApiError(409, 'conflict', 'Der Plugin-Job kann erst nach Abschluss oder Abbruch gelöscht werden.', requestId);
-      }
-      return createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht gelöscht werden.', requestId);
-    }
-  });
+            return createJsonItemResponse(200, job, requestId);
+          } catch (error) {
+            if (error instanceof Error && error.message === 'job_not_terminal') {
+              return createApiError(
+                409,
+                'conflict',
+                'Der Plugin-Job kann erst nach Abschluss oder Abbruch gelöscht werden.',
+                requestId
+              );
+            }
+            return createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht gelöscht werden.', requestId);
+          }
+        },
+      })(request, ctx)
+  );
 
 export const listPluginOperationJobsHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
@@ -269,44 +348,36 @@ export const listPluginOperationJobsHandler = async (request: Request): Promise<
   });
 
 export const cancelPluginOperationJobHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedUser(request, async (ctx) => {
-    const authorizationError = await requireMonitoringAccess(ctx, MONITORING_WRITE_ACTION);
-    if (authorizationError) {
-      return authorizationError;
-    }
+  withAuthenticatedUser(
+    request,
+    (ctx) =>
+      createMonitoringMutationHandler({
+        parse: async (inputRequest) => parseJobId(inputRequest),
+        execute: async ({ instanceId, requestId }, jobId) => {
+          try {
+            const job = await withStudioJobRepository(instanceId, (repository) =>
+              repository.requestJobCancellation({
+                jobId,
+                instanceId,
+                cancelRequestedAt: new Date().toISOString(),
+              })
+            );
+            if (!job) {
+              return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', requestId);
+            }
 
-    const instanceId = requireActorInstanceId(ctx.user.instanceId);
-    if (instanceId instanceof Response) {
-      return instanceId;
-    }
-
-    const csrfError = validateCsrf(request, getRequestId());
-    if (csrfError) {
-      return csrfError;
-    }
-
-    const jobId = readJobId(request);
-    if (jobId instanceof Response) {
-      return jobId;
-    }
-
-    try {
-      const job = await withStudioJobRepository(instanceId, (repository) =>
-        repository.requestJobCancellation({
-          jobId,
-          instanceId,
-          cancelRequestedAt: new Date().toISOString(),
-        })
-      );
-      if (!job) {
-        return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', getRequestId());
-      }
-
-      return new Response(JSON.stringify(asApiItem(job, getRequestId())), {
-        status: 202,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch {
-      return createApiError(503, 'database_unavailable', 'Die Abbruchanfrage fuer den Plugin-Job konnte nicht gespeichert werden.', getRequestId());
-    }
-  });
+            return new Response(JSON.stringify(asApiItem(job, requestId)), {
+              status: 202,
+              headers: { 'Content-Type': 'application/json' },
+            });
+          } catch {
+            return createApiError(
+              503,
+              'database_unavailable',
+              'Die Abbruchanfrage fuer den Plugin-Job konnte nicht gespeichert werden.',
+              requestId
+            );
+          }
+        },
+      })(request, ctx)
+  );

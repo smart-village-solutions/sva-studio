@@ -1,4 +1,5 @@
 import { hasSystemAdminRole, type ApiErrorCode } from '@sva/core';
+import { createMutationWorkflow } from '@sva/server-runtime';
 import type { z } from 'zod';
 
 import type { OrganizationMainserverCredentialState } from './organization-mainserver-credentials.js';
@@ -312,63 +313,178 @@ const completeFailedIdempotency = async <TFeatureFlags>(
   return deps.jsonResponse(input.responseStatus, input.responseBody);
 };
 
+type OrganizationAdminMutationState = {
+  readonly actor: PreparedOrganizationMutationActor;
+};
+
+type OrganizationAdminMutationInput<TPrepared extends object, TIdempotency extends object, TInput> = {
+  readonly prepare?: (
+    state: Readonly<{
+      request: Request;
+      context: OrganizationMutationAuthenticatedRequestContext;
+      actor: PreparedOrganizationMutationActor;
+    }>
+  ) => Promise<TPrepared | Response> | TPrepared | Response;
+  readonly requireRateLimit?: boolean;
+  readonly idempotency?: (
+    state: Readonly<{
+      request: Request;
+      context: OrganizationMutationAuthenticatedRequestContext;
+      actor: PreparedOrganizationMutationActor;
+    } & TPrepared>
+  ) => Promise<TIdempotency | Response> | TIdempotency | Response;
+  readonly parse: (
+    state: Readonly<{
+      request: Request;
+      context: OrganizationMutationAuthenticatedRequestContext;
+      actor: PreparedOrganizationMutationActor;
+    } & TPrepared & TIdempotency>
+  ) => Promise<TInput | Response>;
+  readonly execute: (
+    state: Readonly<{
+      request: Request;
+      context: OrganizationMutationAuthenticatedRequestContext;
+      actor: PreparedOrganizationMutationActor;
+      input: TInput;
+    } & TPrepared & TIdempotency>
+  ) => Promise<Response>;
+  readonly mapError?: (
+    error: unknown,
+    state: Readonly<{
+      request: Request;
+      context: OrganizationMutationAuthenticatedRequestContext;
+      actor: PreparedOrganizationMutationActor;
+    } & TPrepared & TIdempotency>
+  ) => Response;
+};
+
+const createAdminMutationHandler = <
+  TFeatureFlags,
+  TPrepared extends object = Record<never, never>,
+  TIdempotency extends object = Record<never, never>,
+  TInput = void,
+>(
+  deps: OrganizationMutationHandlerDeps<TFeatureFlags>,
+  input: OrganizationAdminMutationInput<TPrepared, TIdempotency, TInput>
+) => {
+  const runIdempotency = input.idempotency;
+  const workflow = createMutationWorkflow<
+    OrganizationMutationAuthenticatedRequestContext,
+    OrganizationAdminMutationState & TPrepared,
+    Record<never, never>,
+    TIdempotency,
+    TInput,
+    Response
+  >({
+    prepare: async ({ request, context }) => {
+      const prepared = await prepareAdminMutation(deps, request, context);
+      if ('error' in prepared) {
+        return prepared.error;
+      }
+
+      const preparedState = input.prepare
+        ? await input.prepare({
+            request,
+            context,
+            actor: prepared.actor,
+          })
+        : {};
+      if (preparedState instanceof Response) {
+        return preparedState;
+      }
+
+      return {
+        actor: prepared.actor,
+        ...preparedState,
+      } as OrganizationAdminMutationState & TPrepared;
+    },
+    authorize: async () => ({}),
+    csrf: ({ request, context, actor }) => {
+      const csrfError = deps.validateCsrf(request, actor.requestId);
+      if (csrfError) {
+        return csrfError;
+      }
+
+      if (input.requireRateLimit) {
+        const rateLimit = consumeWriteRateLimit(deps, actor, context);
+        if (rateLimit) {
+          return rateLimit;
+        }
+      }
+
+      return undefined;
+    },
+    idempotency: runIdempotency
+      ? async (state) => {
+          return runIdempotency(
+            state as Readonly<{
+              request: Request;
+              context: OrganizationMutationAuthenticatedRequestContext;
+              actor: PreparedOrganizationMutationActor;
+            } & TPrepared>
+          );
+        }
+      : undefined,
+    parse: async (state) => input.parse(state as never),
+    execute: async (state) => input.execute(state as never),
+    mapError: (error, state) =>
+      input.mapError
+        ? input.mapError(error, state as never)
+        : deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', state.actor.requestId),
+    respond: (response) => response,
+  });
+
+  return (request: Request, context: OrganizationMutationAuthenticatedRequestContext): Promise<Response> =>
+    workflow(request, context);
+};
+
 export const createOrganizationMutationHandlers = <TFeatureFlags>(
   deps: OrganizationMutationHandlerDeps<TFeatureFlags>
 ) => {
-  const createOrganizationInternal = async (
-    request: Request,
-    ctx: OrganizationMutationAuthenticatedRequestContext
-  ): Promise<Response> => {
-    const prepared = await prepareAdminMutation(deps, request, ctx);
-    if ('error' in prepared) {
-      return prepared.error;
-    }
-    const { actor } = prepared;
+  const createOrganizationInternal = createAdminMutationHandler(deps, {
+    requireRateLimit: true,
+    idempotency: ({ request, actor }) => {
+      const idempotency = deps.requireIdempotencyKey(request, actor.requestId);
+      return 'error' in idempotency
+        ? idempotency.error
+        : {
+            endpoint: CREATE_ORGANIZATION_ENDPOINT,
+            idempotencyKey: idempotency.key,
+          };
+    },
+    parse: async ({ request, actor }) => {
+      const parsed = await deps.parseRequestBody(request, createOrganizationSchema);
+      return parsed.ok
+        ? parsed
+        : deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+    },
+    execute: async ({ actor, input, endpoint, idempotencyKey }) => {
+      const reserve = await deps.reserveIdempotency({
+        instanceId: actor.instanceId,
+        actorAccountId: actor.actorAccountId,
+        endpoint,
+        idempotencyKey,
+        payloadHash: deps.toPayloadHash(input.rawBody),
+      });
+      if (reserve.status === 'replay') {
+        return deps.jsonResponse(reserve.responseStatus, reserve.responseBody);
+      }
+      if (reserve.status === 'conflict') {
+        return deps.createApiError(409, 'idempotency_key_reuse', reserve.message, actor.requestId);
+      }
 
-    const csrfError = deps.validateCsrf(request, actor.requestId);
-    if (csrfError) {
-      return csrfError;
-    }
-    const rateLimit = consumeWriteRateLimit(deps, actor, ctx);
-    if (rateLimit) {
-      return rateLimit;
-    }
+      try {
+        const created = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+          const hierarchy = await deps.resolveHierarchyFields(client, {
+            instanceId: actor.instanceId,
+            parentOrganizationId: input.data.parentOrganizationId,
+          });
+          if (!hierarchy.ok) {
+            throw hierarchy;
+          }
 
-    const idempotency = deps.requireIdempotencyKey(request, actor.requestId);
-    if ('error' in idempotency) {
-      return idempotency.error;
-    }
-    const parsed = await deps.parseRequestBody(request, createOrganizationSchema);
-    if (!parsed.ok) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
-    }
-
-    const reserve = await deps.reserveIdempotency({
-      instanceId: actor.instanceId,
-      actorAccountId: actor.actorAccountId,
-      endpoint: CREATE_ORGANIZATION_ENDPOINT,
-      idempotencyKey: idempotency.key,
-      payloadHash: deps.toPayloadHash(parsed.rawBody),
-    });
-    if (reserve.status === 'replay') {
-      return deps.jsonResponse(reserve.responseStatus, reserve.responseBody);
-    }
-    if (reserve.status === 'conflict') {
-      return deps.createApiError(409, 'idempotency_key_reuse', reserve.message, actor.requestId);
-    }
-
-    try {
-      const created = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
-        const hierarchy = await deps.resolveHierarchyFields(client, {
-          instanceId: actor.instanceId,
-          parentOrganizationId: parsed.data.parentOrganizationId,
-        });
-        if (!hierarchy.ok) {
-          throw hierarchy;
-        }
-
-        const organizationId = deps.randomUUID();
-        const inserted = await client.query<{ id: string }>(
+          const organizationId = deps.randomUUID();
+          const inserted = await client.query<{ id: string }>(
           `
 INSERT INTO iam.organizations (
   id,
@@ -386,160 +502,146 @@ INSERT INTO iam.organizations (
 VALUES ($1::uuid, $2, $3, $4, $5::jsonb, $6, $7, $8::uuid, $9::uuid[], $10::int, true)
 RETURNING id;
 `,
-          [
-            organizationId,
-            actor.instanceId,
-            parsed.data.organizationKey,
-            parsed.data.displayName,
-            JSON.stringify(parsed.data.metadata ?? {}),
-            parsed.data.organizationType,
-            parsed.data.contentAuthorPolicy,
-            parsed.data.parentOrganizationId ?? null,
-            hierarchy.hierarchyPath,
-            hierarchy.depth,
-          ]
-        );
+            [
+              organizationId,
+              actor.instanceId,
+              input.data.organizationKey,
+              input.data.displayName,
+              JSON.stringify(input.data.metadata ?? {}),
+              input.data.organizationType,
+              input.data.contentAuthorPolicy,
+              input.data.parentOrganizationId ?? null,
+              hierarchy.hierarchyPath,
+              hierarchy.depth,
+            ]
+          );
 
-        const createdOrganizationId = inserted.rows[0]?.id ?? organizationId;
-        await deps.upsertOrganizationMainserverCredentials(client, {
-          instanceId: actor.instanceId,
-          organizationId: createdOrganizationId,
-          actorAccountId: actor.actorAccountId,
-          mainserverApplicationId: parsed.data.mainserverApplicationId,
-          mainserverApplicationSecret: parsed.data.mainserverApplicationSecret,
-        });
-        await deps.emitActivityLog(client, {
-          instanceId: actor.instanceId,
-          accountId: actor.actorAccountId,
-          eventType: 'organization.created',
-          result: 'success',
-          payload: {
+          const createdOrganizationId = inserted.rows[0]?.id ?? organizationId;
+          await deps.upsertOrganizationMainserverCredentials(client, {
+            instanceId: actor.instanceId,
             organizationId: createdOrganizationId,
-            organizationKey: parsed.data.organizationKey,
-            organizationType: parsed.data.organizationType,
+            actorAccountId: actor.actorAccountId,
+            mainserverApplicationId: input.data.mainserverApplicationId,
+            mainserverApplicationSecret: input.data.mainserverApplicationSecret,
+          });
+          await deps.emitActivityLog(client, {
+            instanceId: actor.instanceId,
+            accountId: actor.actorAccountId,
+            eventType: 'organization.created',
+            result: 'success',
+            payload: {
+              organizationId: createdOrganizationId,
+              organizationKey: input.data.organizationKey,
+              organizationType: input.data.organizationType,
+            },
+            requestId: actor.requestId,
+            traceId: actor.traceId,
+          });
+
+          return deps.loadOrganizationDetail(client, {
+            instanceId: actor.instanceId,
+            organizationId: createdOrganizationId,
+          });
+        });
+
+        if (!created) {
+          throw new Error('organization_not_created');
+        }
+
+        deps.logger.info('Organization created', {
+          workspace_id: actor.instanceId,
+          request_id: actor.requestId,
+          trace_id: actor.traceId,
+          context: {
+            operation: 'organization_created',
+            organization_id: (created as { readonly id?: string }).id,
+            organization_key: (created as { readonly organizationKey?: string }).organizationKey,
           },
-          requestId: actor.requestId,
-          traceId: actor.traceId,
         });
 
-        return deps.loadOrganizationDetail(client, {
+        const responseBody = deps.asApiItem(created, actor.requestId);
+        await deps.completeIdempotency({
           instanceId: actor.instanceId,
-          organizationId: createdOrganizationId,
+          actorAccountId: actor.actorAccountId,
+          endpoint,
+          idempotencyKey,
+          status: 'COMPLETED',
+          responseStatus: 201,
+          responseBody,
         });
-      });
 
-      if (!created) {
-        throw new Error('organization_not_created');
-      }
+        return deps.jsonResponse(201, responseBody);
+      } catch (error) {
+        if (deps.isHierarchyError(error)) {
+          const responseBody = {
+            error: { code: error.code, message: error.message },
+            ...(actor.requestId ? { requestId: actor.requestId } : {}),
+          };
+          return completeFailedIdempotency(deps, {
+            actor,
+            endpoint,
+            idempotencyKey,
+            responseStatus: error.status,
+            responseBody,
+          });
+        }
 
-      deps.logger.info('Organization created', {
-        workspace_id: actor.instanceId,
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-        context: {
-          operation: 'organization_created',
-          organization_id: (created as { readonly id?: string }).id,
-          organization_key: (created as { readonly organizationKey?: string }).organizationKey,
-        },
-      });
-
-      const responseBody = deps.asApiItem(created, actor.requestId);
-      await deps.completeIdempotency({
-        instanceId: actor.instanceId,
-        actorAccountId: actor.actorAccountId,
-        endpoint: CREATE_ORGANIZATION_ENDPOINT,
-        idempotencyKey: idempotency.key,
-        status: 'COMPLETED',
-        responseStatus: 201,
-        responseBody,
-      });
-
-      return deps.jsonResponse(201, responseBody);
-    } catch (error) {
-      if (deps.isHierarchyError(error)) {
+        const message = error instanceof Error ? error.message : String(error);
+        deps.logger.error('IAM organization creation failed', {
+          workspace_id: actor.instanceId,
+          context: {
+            operation: 'create_organization',
+            instance_id: actor.instanceId,
+            request_id: actor.requestId,
+            trace_id: actor.traceId,
+            actor_account_id: actor.actorAccountId,
+            error: message,
+          },
+        });
+        const status = message.includes('organizations_instance_key_uniq') ? 409 : 503;
         const responseBody = {
-          error: { code: error.code, message: error.message },
+          error: {
+            code: status === 409 ? 'conflict' : 'database_unavailable',
+            message:
+              status === 409
+                ? 'Organisation mit diesem Schlüssel existiert bereits.'
+                : 'IAM-Datenbank ist nicht erreichbar.',
+          },
           ...(actor.requestId ? { requestId: actor.requestId } : {}),
         };
         return completeFailedIdempotency(deps, {
           actor,
-          endpoint: CREATE_ORGANIZATION_ENDPOINT,
-          idempotencyKey: idempotency.key,
-          responseStatus: error.status,
+          endpoint,
+          idempotencyKey,
+          responseStatus: status,
           responseBody,
         });
       }
+    },
+  });
 
-      const message = error instanceof Error ? error.message : String(error);
-      deps.logger.error('IAM organization creation failed', {
-        workspace_id: actor.instanceId,
-        context: {
-          operation: 'create_organization',
-          instance_id: actor.instanceId,
-          request_id: actor.requestId,
-          trace_id: actor.traceId,
-          actor_account_id: actor.actorAccountId,
-          error: message,
-        },
-      });
-      const status = message.includes('organizations_instance_key_uniq') ? 409 : 503;
-      const responseBody = {
-        error: {
-          code: status === 409 ? 'conflict' : 'database_unavailable',
-          message:
-            status === 409
-              ? 'Organisation mit diesem Schlüssel existiert bereits.'
-              : 'IAM-Datenbank ist nicht erreichbar.',
-        },
-        ...(actor.requestId ? { requestId: actor.requestId } : {}),
-      };
-      return completeFailedIdempotency(deps, {
-        actor,
-        endpoint: CREATE_ORGANIZATION_ENDPOINT,
-        idempotencyKey: idempotency.key,
-        responseStatus: status,
-        responseBody,
-      });
-    }
-  };
-
-  const updateOrganizationInternal = async (
-    request: Request,
-    ctx: OrganizationMutationAuthenticatedRequestContext
-  ): Promise<Response> => {
-    const prepared = await prepareAdminMutation(deps, request, ctx);
-    if ('error' in prepared) {
-      return prepared.error;
-    }
-    const { actor } = prepared;
-
-    const organizationId = readOrganizationId(deps, request, actor.requestId);
-    if (organizationId instanceof Response) {
-      return organizationId;
-    }
-    const csrfError = deps.validateCsrf(request, actor.requestId);
-    if (csrfError) {
-      return csrfError;
-    }
-    const rateLimit = consumeWriteRateLimit(deps, actor, ctx);
-    if (rateLimit) {
-      return rateLimit;
-    }
-
-    const parsed = await deps.parseRequestBody(request, updateOrganizationSchema);
-    if (!parsed.ok) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
-    }
-
-    try {
-      const updated = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+  const updateOrganizationInternal = createAdminMutationHandler(deps, {
+    requireRateLimit: true,
+    prepare: ({ request, actor }) => {
+      const organizationId = readOrganizationId(deps, request, actor.requestId);
+      return organizationId instanceof Response ? organizationId : { organizationId };
+    },
+    parse: async ({ request, actor }) => {
+      const parsed = await deps.parseRequestBody(request, updateOrganizationSchema);
+      return parsed.ok
+        ? parsed
+        : deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+    },
+    execute: async ({ actor, organizationId, input }) => {
+      try {
+        const updated = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
         const existing = await deps.loadOrganizationById(client, { instanceId: actor.instanceId, organizationId });
         if (!existing) {
           return undefined;
         }
 
         const nextParentOrganizationId =
-          parsed.data.parentOrganizationId === undefined ? existing.parent_organization_id : parsed.data.parentOrganizationId;
+          input.data.parentOrganizationId === undefined ? existing.parent_organization_id : input.data.parentOrganizationId;
         const hierarchy = await deps.resolveHierarchyFields(client, {
           instanceId: actor.instanceId,
           organizationId,
@@ -569,24 +671,24 @@ WHERE instance_id = $1
           [
             actor.instanceId,
             organizationId,
-            parsed.data.organizationKey ?? null,
-            parsed.data.displayName ?? null,
+            input.data.organizationKey ?? null,
+            input.data.displayName ?? null,
             nextParentOrganizationId ?? null,
-            parsed.data.organizationType ?? null,
-            parsed.data.contentAuthorPolicy ?? null,
-            parsed.data.isActive ?? null,
-            parsed.data.metadata ? JSON.stringify(parsed.data.metadata) : null,
+            input.data.organizationType ?? null,
+            input.data.contentAuthorPolicy ?? null,
+            input.data.isActive ?? null,
+            input.data.metadata ? JSON.stringify(input.data.metadata) : null,
             hierarchy.hierarchyPath,
             hierarchy.depth,
           ]
         );
-        if (hasMainserverCredentialPatch(parsed.data)) {
+        if (hasMainserverCredentialPatch(input.data)) {
           await deps.upsertOrganizationMainserverCredentials(client, {
             instanceId: actor.instanceId,
             organizationId,
             actorAccountId: actor.actorAccountId,
-            mainserverApplicationId: parsed.data.mainserverApplicationId,
-            mainserverApplicationSecret: parsed.data.mainserverApplicationSecret,
+            mainserverApplicationId: input.data.mainserverApplicationId,
+            mainserverApplicationSecret: input.data.mainserverApplicationSecret,
           });
         }
 
@@ -608,43 +710,29 @@ WHERE instance_id = $1
         return deps.createApiError(404, 'not_found', 'Organisation nicht gefunden.', actor.requestId);
       }
       return deps.jsonResponse(200, deps.asApiItem(updated, actor.requestId));
-    } catch (error) {
-      if (deps.isHierarchyError(error)) {
-        return deps.createApiError(error.status, error.code, error.message, actor.requestId);
+      } catch (error) {
+        if (deps.isHierarchyError(error)) {
+          return deps.createApiError(error.status, error.code, error.message, actor.requestId);
+        }
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes('organizations_instance_key_uniq')) {
+          return deps.createApiError(409, 'conflict', 'Organisation mit diesem Schlüssel existiert bereits.', actor.requestId);
+        }
+        return deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actor.requestId);
       }
-      const message = error instanceof Error ? error.message : String(error);
-      if (message.includes('organizations_instance_key_uniq')) {
-        return deps.createApiError(409, 'conflict', 'Organisation mit diesem Schlüssel existiert bereits.', actor.requestId);
-      }
-      return deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actor.requestId);
-    }
-  };
+    },
+  });
 
-  const deactivateOrganizationInternal = async (
-    request: Request,
-    ctx: OrganizationMutationAuthenticatedRequestContext
-  ): Promise<Response> => {
-    const prepared = await prepareAdminMutation(deps, request, ctx);
-    if ('error' in prepared) {
-      return prepared.error;
-    }
-    const { actor } = prepared;
-
-    const organizationId = readOrganizationId(deps, request, actor.requestId);
-    if (organizationId instanceof Response) {
-      return organizationId;
-    }
-    const csrfError = deps.validateCsrf(request, actor.requestId);
-    if (csrfError) {
-      return csrfError;
-    }
-    const rateLimit = consumeWriteRateLimit(deps, actor, ctx);
-    if (rateLimit) {
-      return rateLimit;
-    }
-
-    try {
-      const result = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+  const deactivateOrganizationInternal = createAdminMutationHandler(deps, {
+    requireRateLimit: true,
+    prepare: ({ request, actor }) => {
+      const organizationId = readOrganizationId(deps, request, actor.requestId);
+      return organizationId instanceof Response ? organizationId : { organizationId };
+    },
+    parse: async () => undefined,
+    execute: async ({ actor, organizationId }) => {
+      try {
+        const result = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
         const organization = await deps.loadOrganizationById(client, { instanceId: actor.instanceId, organizationId });
         if (!organization) {
           return { status: 'not_found' as const };
@@ -697,55 +785,49 @@ WHERE instance_id = $1
         );
       }
       return deps.jsonResponse(200, deps.asApiItem({ id: organizationId }, actor.requestId));
-    } catch {
-      return deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actor.requestId);
-    }
-  };
+      } catch {
+        return deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actor.requestId);
+      }
+    },
+  });
 
-  const assignOrganizationMembershipInternal = async (
-    request: Request,
-    ctx: OrganizationMutationAuthenticatedRequestContext
-  ): Promise<Response> => {
-    const prepared = await prepareAdminMutation(deps, request, ctx);
-    if ('error' in prepared) {
-      return prepared.error;
-    }
-    const { actor } = prepared;
+  const assignOrganizationMembershipInternal = createAdminMutationHandler(deps, {
+    prepare: ({ request, actor }) => {
+      const organizationId = readOrganizationId(deps, request, actor.requestId);
+      return organizationId instanceof Response ? organizationId : { organizationId };
+    },
+    idempotency: ({ request, actor }) => {
+      const idempotency = deps.requireIdempotencyKey(request, actor.requestId);
+      return 'error' in idempotency
+        ? idempotency.error
+        : {
+            endpoint: ASSIGN_MEMBERSHIP_ENDPOINT,
+            idempotencyKey: idempotency.key,
+          };
+    },
+    parse: async ({ request, actor }) => {
+      const parsed = await deps.parseRequestBody(request, assignOrganizationMembershipSchema);
+      return parsed.ok
+        ? parsed
+        : deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+    },
+    execute: async ({ actor, organizationId, input, endpoint, idempotencyKey }) => {
+      const reserve = await deps.reserveIdempotency({
+        instanceId: actor.instanceId,
+        actorAccountId: actor.actorAccountId,
+        endpoint,
+        idempotencyKey,
+        payloadHash: deps.toPayloadHash(input.rawBody),
+      });
+      if (reserve.status === 'replay') {
+        return deps.jsonResponse(reserve.responseStatus, reserve.responseBody);
+      }
+      if (reserve.status === 'conflict') {
+        return deps.createApiError(409, 'idempotency_key_reuse', reserve.message, actor.requestId);
+      }
 
-    const organizationId = readOrganizationId(deps, request, actor.requestId);
-    if (organizationId instanceof Response) {
-      return organizationId;
-    }
-    const csrfError = deps.validateCsrf(request, actor.requestId);
-    if (csrfError) {
-      return csrfError;
-    }
-
-    const idempotency = deps.requireIdempotencyKey(request, actor.requestId);
-    if ('error' in idempotency) {
-      return idempotency.error;
-    }
-    const parsed = await deps.parseRequestBody(request, assignOrganizationMembershipSchema);
-    if (!parsed.ok) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
-    }
-
-    const reserve = await deps.reserveIdempotency({
-      instanceId: actor.instanceId,
-      actorAccountId: actor.actorAccountId,
-      endpoint: ASSIGN_MEMBERSHIP_ENDPOINT,
-      idempotencyKey: idempotency.key,
-      payloadHash: deps.toPayloadHash(parsed.rawBody),
-    });
-    if (reserve.status === 'replay') {
-      return deps.jsonResponse(reserve.responseStatus, reserve.responseBody);
-    }
-    if (reserve.status === 'conflict') {
-      return deps.createApiError(409, 'idempotency_key_reuse', reserve.message, actor.requestId);
-    }
-
-    try {
-      const organization = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+      try {
+        const organization = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
         const org = await deps.loadOrganizationById(client, { instanceId: actor.instanceId, organizationId });
         if (!org) {
           return { status: 'not_found' as const };
@@ -762,13 +844,13 @@ WHERE id = $1::uuid
   AND instance_id = $2
 LIMIT 1;
 `,
-          [parsed.data.accountId, actor.instanceId]
+          [input.data.accountId, actor.instanceId]
         );
         if (membershipAccount.rowCount === 0) {
           return { status: 'invalid_account' as const };
         }
 
-        if (parsed.data.isDefaultContext) {
+        if (input.data.isDefaultContext) {
           await client.query(
             `
 UPDATE iam.account_organizations
@@ -776,7 +858,7 @@ SET is_default_context = false
 WHERE instance_id = $1
   AND account_id = $2::uuid;
 `,
-            [actor.instanceId, parsed.data.accountId]
+            [actor.instanceId, input.data.accountId]
           );
         }
 
@@ -789,9 +871,9 @@ WHERE instance_id = $1
   AND is_default_context = true
 LIMIT 1;
 `,
-          [actor.instanceId, parsed.data.accountId]
+          [actor.instanceId, input.data.accountId]
         );
-        const shouldUseDefault = parsed.data.isDefaultContext ?? existingDefault.rowCount === 0;
+        const shouldUseDefault = input.data.isDefaultContext ?? existingDefault.rowCount === 0;
 
         await client.query(
           `
@@ -808,7 +890,7 @@ SET
   is_default_context = EXCLUDED.is_default_context,
   membership_visibility = EXCLUDED.membership_visibility;
 `,
-          [actor.instanceId, parsed.data.accountId, organizationId, shouldUseDefault, parsed.data.visibility ?? 'internal']
+          [actor.instanceId, input.data.accountId, organizationId, shouldUseDefault, input.data.visibility ?? 'internal']
         );
 
         await deps.notifyPermissionInvalidation(client, {
@@ -818,10 +900,10 @@ SET
         await deps.emitActivityLog(client, {
           instanceId: actor.instanceId,
           accountId: actor.actorAccountId,
-          subjectId: parsed.data.accountId,
+          subjectId: input.data.accountId,
           eventType: 'organization.membership_assigned',
           result: 'success',
-          payload: { organizationId, accountId: parsed.data.accountId, isDefaultContext: shouldUseDefault },
+          payload: { organizationId, accountId: input.data.accountId, isDefaultContext: shouldUseDefault },
           requestId: actor.requestId,
           traceId: actor.traceId,
         });
@@ -844,8 +926,8 @@ SET
       await deps.completeIdempotency({
         instanceId: actor.instanceId,
         actorAccountId: actor.actorAccountId,
-        endpoint: ASSIGN_MEMBERSHIP_ENDPOINT,
-        idempotencyKey: idempotency.key,
+        endpoint,
+        idempotencyKey,
         status: 'COMPLETED',
         responseStatus: 200,
         responseBody,
@@ -858,43 +940,32 @@ SET
       };
       return completeFailedIdempotency(deps, {
         actor,
-        endpoint: ASSIGN_MEMBERSHIP_ENDPOINT,
-        idempotencyKey: idempotency.key,
+        endpoint,
+        idempotencyKey,
         responseStatus: 503,
         responseBody,
       });
-    }
-  };
+      }
+    },
+  });
 
-  const removeOrganizationMembershipInternal = async (
-    request: Request,
-    ctx: OrganizationMutationAuthenticatedRequestContext
-  ): Promise<Response> => {
-    const prepared = await prepareAdminMutation(deps, request, ctx);
-    if ('error' in prepared) {
-      return prepared.error;
-    }
-    const { actor } = prepared;
-
-    const organizationId = readOrganizationId(deps, request, actor.requestId);
-    if (organizationId instanceof Response) {
-      return organizationId;
-    }
-    const accountId = deps.readPathSegment(request, 6);
-    if (!accountId || !deps.isUuid(accountId)) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültige accountId.', actor.requestId);
-    }
-    const csrfError = deps.validateCsrf(request, actor.requestId);
-    if (csrfError) {
-      return csrfError;
-    }
-    const rateLimit = consumeWriteRateLimit(deps, actor, ctx);
-    if (rateLimit) {
-      return rateLimit;
-    }
-
-    try {
-      const result = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+  const removeOrganizationMembershipInternal = createAdminMutationHandler(deps, {
+    requireRateLimit: true,
+    prepare: ({ request, actor }) => {
+      const organizationId = readOrganizationId(deps, request, actor.requestId);
+      if (organizationId instanceof Response) {
+        return organizationId;
+      }
+      const accountId = deps.readPathSegment(request, 6);
+      if (!accountId || !deps.isUuid(accountId)) {
+        return deps.createApiError(400, 'invalid_request', 'Ungültige accountId.', actor.requestId);
+      }
+      return { organizationId, accountId };
+    },
+    parse: async () => undefined,
+    execute: async ({ actor, organizationId, accountId }) => {
+      try {
+        const result = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
         const current = await client.query<{ is_default_context: boolean }>(
           `
 SELECT is_default_context
@@ -965,10 +1036,11 @@ WHERE membership.instance_id = $1
         return deps.createApiError(404, 'not_found', 'Membership nicht gefunden.', actor.requestId);
       }
       return deps.jsonResponse(200, deps.asApiItem(result.detail, actor.requestId));
-    } catch {
-      return deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actor.requestId);
-    }
-  };
+      } catch {
+        return deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actor.requestId);
+      }
+    },
+  });
 
   const updateMyOrganizationContextInternal = async (
     request: Request,

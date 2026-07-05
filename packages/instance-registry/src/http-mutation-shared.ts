@@ -1,3 +1,4 @@
+import { createMutationWorkflow } from '@sva/server-runtime';
 import type { z } from 'zod';
 
 import { readDetailInstanceId } from './http-contracts.js';
@@ -45,6 +46,37 @@ export type InstanceRegistryMutationHttpDeps<TContext> = {
   ) => Promise<T>;
 };
 
+type ParsedRequestBody<TData> =
+  | { readonly ok: true; readonly data: TData }
+  | { readonly ok: false; readonly message: string };
+
+type ScopedRegistryMutationState<TContext> = {
+  readonly request: Request;
+  readonly context: TContext;
+  readonly requestId?: string;
+  readonly actorId: string;
+  readonly instanceId: string;
+  readonly idempotencyKey: string;
+};
+
+type ScopedRegistryMutationExecuteInput<TData> = {
+  readonly instanceId: string;
+  readonly payload: TData;
+  readonly actorId: string;
+  readonly idempotencyKey: string;
+  readonly requestId?: string;
+};
+
+type ScopedRegistryMutationHandlerOptions<TContext, TData, TResult> = {
+  readonly parse: (request: Request) => Promise<ParsedRequestBody<TData>>;
+  readonly execute: (
+    service: InstanceRegistryService,
+    input: ScopedRegistryMutationExecuteInput<TData>
+  ) => Promise<TResult>;
+  readonly respond: (result: TResult, state: ScopedRegistryMutationState<TContext>) => Response;
+  readonly mapMutationError: (error: unknown) => Response;
+};
+
 const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = {
   tenant_admin_client_not_configured:
     'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt.',
@@ -80,6 +112,95 @@ export const withScopedRegistryMutation = <TContext, TResult>(
   instanceId: string,
   work: (service: InstanceRegistryService) => Promise<TResult>
 ): Promise<TResult> => deps.withScopedRegistryService(instanceId, work);
+
+export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
+  deps: InstanceRegistryMutationHttpDeps<TContext>,
+  options: ScopedRegistryMutationHandlerOptions<TContext, TData, TResult>
+) => {
+  const workflow = createMutationWorkflow<
+    TContext,
+    {
+      readonly requestId?: string;
+      readonly actorId: string;
+      readonly instanceId: string;
+    },
+    Record<never, never>,
+    {
+      readonly idempotencyKey: string;
+    },
+    TData,
+    TResult
+  >({
+    prepare: ({ request, context }: { readonly request: Request; readonly context: TContext }) => {
+      const instanceId = readInstanceIdOrError(deps, request);
+      if (instanceId instanceof Response) {
+        return instanceId;
+      }
+
+      return {
+        requestId: deps.getRequestId(),
+        actorId: deps.getActor(context).id,
+        instanceId,
+      };
+    },
+    authorize: ({ request, context }: { readonly request: Request; readonly context: TContext }) =>
+      deps.ensurePlatformAccess(request, context) ?? {},
+    csrf: ({ request, requestId }: { readonly request: Request; readonly requestId?: string }) =>
+      deps.validateCsrf(request, requestId) ?? undefined,
+    idempotency: ({ request, requestId }: { readonly request: Request; readonly requestId?: string }) => {
+      const idempotencyResult = deps.requireIdempotencyKey(request, requestId);
+      return 'error' in idempotencyResult ? idempotencyResult.error : { idempotencyKey: idempotencyResult.key };
+    },
+    parse: async ({ request, requestId }: { readonly request: Request; readonly requestId?: string }) => {
+      const parsed = await options.parse(request);
+      return parsed.ok ? parsed.data : deps.createApiError(400, 'invalid_request', parsed.message, requestId);
+    },
+    execute: async ({
+      instanceId,
+      actorId,
+      idempotencyKey,
+      requestId,
+      input,
+    }: {
+      readonly instanceId: string;
+      readonly actorId: string;
+      readonly idempotencyKey: string;
+      readonly requestId?: string;
+      readonly input: TData;
+    }) =>
+      withScopedRegistryMutation(deps, instanceId, (service) =>
+        options.execute(service, {
+          instanceId,
+          payload: input,
+          actorId,
+          idempotencyKey,
+          requestId,
+        })
+      ),
+    mapError: options.mapMutationError,
+    respond: (
+      result: TResult,
+      state: {
+        readonly request: Request;
+        readonly context: TContext;
+        readonly requestId?: string;
+        readonly actorId: string;
+        readonly instanceId: string;
+        readonly idempotencyKey: string;
+      }
+    ) =>
+      options.respond(result, {
+        request: state.request,
+        context: state.context,
+        requestId: state.requestId,
+        actorId: state.actorId,
+        instanceId: state.instanceId,
+        idempotencyKey: state.idempotencyKey,
+      }),
+  });
+
+  return (request: Request, context: TContext): Promise<Response> => workflow(request, context);
+};
 
 export const requireMutationGuards = <TContext>(
   deps: InstanceRegistryMutationHttpDeps<TContext>,

@@ -32,5 +32,67 @@
     "deploy/keycloak/themes/**",
     "packages/plugin-example/**",
     "tooling/quality/**"
-  ]
+  ],
+  "boundaries": {
+    "zones": [
+      {
+        "name": "app",
+        "patterns": ["apps/sva-studio-react/src/**"]
+      },
+      {
+        "name": "routing",
+        "patterns": ["packages/routing/src/**"]
+      },
+      {
+        "name": "server-runtime",
+        "patterns": ["packages/server-runtime/src/**"]
+      },
+      {
+        "name": "auth-runtime",
+        "patterns": ["packages/auth-runtime/src/**"]
+      },
+      {
+        "name": "iam-admin",
+        "patterns": ["packages/iam-admin/src/**"]
+      },
+      {
+        "name": "instance-registry",
+        "patterns": ["packages/instance-registry/src/**"]
+      },
+      {
+        "name": "integration",
+        "patterns": ["packages/sva-mainserver/src/**"]
+      }
+    ],
+    "rules": [
+      {
+        "from": "server-runtime",
+        "allow": []
+      },
+      {
+        "from": "iam-admin",
+        "allow": ["server-runtime"]
+      },
+      {
+        "from": "instance-registry",
+        "allow": ["server-runtime"]
+      },
+      {
+        "from": "auth-runtime",
+        "allow": ["server-runtime", "iam-admin", "instance-registry"]
+      },
+      {
+        "from": "integration",
+        "allow": ["server-runtime", "auth-runtime"]
+      },
+      {
+        "from": "routing",
+        "allow": ["server-runtime", "auth-runtime"]
+      },
+      {
+        "from": "app",
+        "allow": ["server-runtime", "routing", "auth-runtime", "integration"]
+      }
+    ]
+  }
 }

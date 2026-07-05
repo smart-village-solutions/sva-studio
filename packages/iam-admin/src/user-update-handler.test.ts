@@ -347,6 +347,86 @@ describe('createUpdateUserHandlerInternal', () => {
     expect(deps.persistUpdatedUserDetail).not.toHaveBeenCalled();
   });
 
+  it('preserves the provider method context when assigning technical role deltas', async () => {
+    let assignThis: unknown;
+    const contextualIdentityProvider = {
+      provider: {
+        updateUser: vi.fn(async () => undefined),
+        syncRoles: vi.fn(async () => undefined),
+        assignRealmRoles(this: unknown, _subject: string, _roles: readonly string[]) {
+          assignThis = this;
+          return Promise.resolve();
+        },
+        removeRealmRoles(this: unknown, _subject: string, _roles: readonly string[]) {
+          return Promise.resolve();
+        },
+      },
+    };
+    const deps = createDeps({
+      resolveUpdateRequestContext: vi.fn(async () => ({
+        actor,
+        identityProvider: contextualIdentityProvider,
+        payload,
+        userId: updatedDetail.id,
+      })),
+      resolveUserUpdatePlan: vi.fn(async () =>
+        createPlan({
+          previousRoleNames: ['viewer'],
+          nextRoleNames: ['viewer', 'system_admin'],
+        })
+      ),
+      resolveUpdatedIdentityState: vi.fn(async () => ({})),
+    });
+    const handler = createUpdateUserHandlerInternal(deps);
+
+    const response = await handler(createUserUpdateRequest(), ctx);
+
+    expect(response.status).toBe(200);
+    expect(assignThis).toBe(contextualIdentityProvider.provider);
+    expect(deps.ensureManagedRealmRolesExist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identityProvider: contextualIdentityProvider,
+        roleKeys: ['system_admin'],
+      })
+    );
+  });
+
+  it('preserves the provider method context when removing technical role deltas', async () => {
+    let removeThis: unknown;
+    const contextualIdentityProvider = {
+      provider: {
+        updateUser: vi.fn(async () => undefined),
+        syncRoles: vi.fn(async () => undefined),
+        assignRealmRoles: vi.fn(async () => undefined),
+        removeRealmRoles(this: unknown, _subject: string, _roles: readonly string[]) {
+          removeThis = this;
+          return Promise.resolve();
+        },
+      },
+    };
+    const deps = createDeps({
+      resolveUpdateRequestContext: vi.fn(async () => ({
+        actor,
+        identityProvider: contextualIdentityProvider,
+        payload,
+        userId: updatedDetail.id,
+      })),
+      resolveUserUpdatePlan: vi.fn(async () =>
+        createPlan({
+          previousRoleNames: ['system_admin'],
+          nextRoleNames: ['viewer'],
+        })
+      ),
+      resolveUpdatedIdentityState: vi.fn(async () => ({})),
+    });
+    const handler = createUpdateUserHandlerInternal(deps);
+
+    const response = await handler(createUserUpdateRequest(), ctx);
+
+    expect(response.status).toBe(200);
+    expect(removeThis).toBe(contextualIdentityProvider.provider);
+  });
+
   it('returns the precondition response without update work', async () => {
     const preconditionResponse = createJsonResponse(400, { error: { code: 'invalid_request' } });
     const deps = createDeps({

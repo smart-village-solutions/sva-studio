@@ -223,7 +223,9 @@ export const createDeleteRoleHandlerInternal =
               throw new Error('assignRealmRoles provider capability unavailable');
             }
             await Promise.all(
-              directAssignmentSubjects.map((subject) => assignRealmRoles(subject, [externalRoleName]))
+              directAssignmentSubjects.map((subject) =>
+                identityProvider.provider.assignRealmRoles!(subject, [externalRoleName])
+              )
             );
           }
         } catch (compensationError) {

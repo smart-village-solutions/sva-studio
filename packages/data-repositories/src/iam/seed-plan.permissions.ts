@@ -20,7 +20,7 @@ export const iamSeedPermissions = [
   ['40111111-1111-1111-1111-111111111161', 'iam.monitoring.read', 'Read IAM monitoring and plugin operation status'],
   ['40111111-1111-1111-1111-111111111162', 'iam.monitoring.write', 'Run IAM monitoring and plugin operations'],
   ['40111111-1111-1111-1111-111111111163', 'experimental.read', 'Enable experimental shell features and placeholders'],
-  ['40111111-1111-1111-1111-111111111164', 'iam.accounts.delete', 'Delete tenant accounts physically'],
+  ['40111111-1111-1111-1111-111111111168', 'iam.accounts.delete', 'Delete tenant accounts physically'],
   ['40111111-1111-1111-1111-111111111117', 'content.read', 'Read content'],
   ['40111111-1111-1111-1111-111111111118', 'content.create', 'Create content'],
   ['40111111-1111-1111-1111-111111111119', 'content.updateMetadata', 'Update content metadata'],

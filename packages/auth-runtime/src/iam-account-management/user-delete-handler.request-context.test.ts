@@ -116,4 +116,32 @@ describe('resolveDeleteRequestContext', () => {
 
     expect(state.createDeleteUserHandlerInternal).not.toHaveBeenCalled();
   });
+
+  it('maps active legal hold delete blockers to a conflict response in the request-scoped handler deps', async () => {
+    const { deleteUserInternal } = await import('./user-delete-handler.js');
+
+    await deleteUserInternal(new Request('http://localhost/api/v1/iam/users/user-1', { method: 'DELETE' }), {
+      sessionId: 'session-1',
+      user: {
+        id: 'kc-actor-1',
+        instanceId: 'instance-1',
+        roles: ['system_admin'],
+      },
+    });
+
+    const deps = state.createDeleteUserHandlerInternal.mock.calls[0]?.[0];
+    expect(deps).toBeDefined();
+
+    const response = deps.createUserMutationErrorResponse({
+      error: new Error('legal_hold_delete_protection:Aktiver Legal Hold blockiert die Löschung.'),
+      requestId: 'req-2',
+      forbiddenFallbackMessage: 'unused',
+    });
+
+    expect(response?.status).toBe(409);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: { code: 'conflict', message: 'Aktiver Legal Hold blockiert die Löschung.' },
+      requestId: 'req-2',
+    });
+  });
 });

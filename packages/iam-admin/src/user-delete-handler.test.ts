@@ -175,13 +175,37 @@ describe('createDeleteUserHandlerInternal', () => {
       instanceId: actor.instanceId,
       requestId: actor.requestId,
       result: 'success',
-      subjectId: userDetail.id,
       traceId: actor.traceId,
     });
     expect(deps.iamUserOperationsCounter.add).toHaveBeenCalledWith(1, {
       action: 'delete_user',
       result: 'success',
     });
+  });
+
+  it('maps active legal holds to a conflict response before Keycloak deletion', async () => {
+    const deps = createDeps({
+      createUserMutationErrorResponse: vi.fn(() =>
+        createJsonResponse(409, { error: { code: 'legal_hold_delete_protection' } })
+      ),
+      purgeAccountHardDeleteBlockers: vi.fn(async () => {
+        throw new Error('legal_hold_delete_protection:Aktiver Legal Hold blockiert die Löschung.');
+      }),
+    });
+    const handler = createDeleteUserHandlerInternal(deps);
+
+    const response = await handler(new Request(`http://localhost/api/v1/iam/users/${userDetail.id}`), ctx);
+
+    expect(response.status).toBe(409);
+    expect(deps.createUserMutationErrorResponse).toHaveBeenCalledWith({
+      error: expect.objectContaining({
+        message: 'legal_hold_delete_protection:Aktiver Legal Hold blockiert die Löschung.',
+      }),
+      requestId: 'req-delete',
+      forbiddenFallbackMessage: 'Löschung dieses Nutzers ist nicht erlaubt.',
+    });
+    expect(deps.revokeUserSessions).not.toHaveBeenCalled();
+    expect(deps.trackKeycloakCall).not.toHaveBeenCalled();
   });
 
   it('returns not_found when the user record does not exist', async () => {

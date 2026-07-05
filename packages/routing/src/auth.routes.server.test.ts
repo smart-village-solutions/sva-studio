@@ -764,6 +764,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.listUsersHandler).toHaveBeenCalled();
     expect(authServerMocks.getUserHandler).toHaveBeenCalled();
     expect(authServerMocks.updateUserHandler).toHaveBeenCalled();
+    expect(authServerMocks.deactivateUserHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteUserHandler).toHaveBeenCalled();
     expect(authServerMocks.listGroupsHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteGroupHandler).toHaveBeenCalled();

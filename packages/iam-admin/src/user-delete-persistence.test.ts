@@ -69,10 +69,16 @@ describe('reconcileOwnedContentForAccountDelete', () => {
 
 describe('hardDeleteAccount', () => {
   it('purges membership-bound blocker rows before the account row is deleted', async () => {
-    const query = vi.fn().mockResolvedValue({
-      rowCount: 0,
-      rows: [],
-    });
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 0,
+        rows: [],
+      })
+      .mockResolvedValue({
+        rowCount: 0,
+        rows: [],
+      });
 
     await purgeAccountHardDeleteBlockers({ query }, {
       instanceId: 'de-musterhausen',
@@ -80,18 +86,53 @@ describe('hardDeleteAccount', () => {
     });
 
     expect(query).toHaveBeenNthCalledWith(
-      1,
+      2,
       expect.stringContaining('DELETE FROM iam.permission_change_requests'),
       ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
     );
     expect(query).toHaveBeenNthCalledWith(
-      4,
+      5,
       expect.stringContaining('DELETE FROM iam.legal_text_acceptances'),
       ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
     );
     expect(query).toHaveBeenNthCalledWith(
-      8,
+      7,
+      expect.stringContaining('UPDATE iam.data_subject_export_jobs'),
+      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      9,
+      expect.stringContaining('UPDATE iam.account_profile_corrections'),
+      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      10,
       expect.stringContaining('DELETE FROM iam.data_subject_requests'),
+      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      11,
+      expect.stringContaining('UPDATE iam.data_subject_requests'),
+      ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
+    );
+  });
+
+  it('fails closed when the target account is under an active legal hold', async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ id: 'hold-1' }],
+    });
+
+    await expect(
+      purgeAccountHardDeleteBlockers({ query }, {
+        instanceId: 'de-musterhausen',
+        accountId: '33333333-3333-4333-8333-333333333333',
+      })
+    ).rejects.toThrow('legal_hold_delete_protection:Aktiver Legal Hold blockiert die Löschung.');
+
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM iam.legal_holds'),
       ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
     );
   });

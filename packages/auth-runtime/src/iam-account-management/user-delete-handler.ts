@@ -51,6 +51,14 @@ const createDeleteMutationErrorResponse = (input: {
       input.requestId
     );
   }
+  if (code === 'legal_hold_delete_protection') {
+    return createApiError(
+      409,
+      'conflict',
+      'Aktiver Legal Hold blockiert die Löschung.',
+      input.requestId
+    );
+  }
 
   return createUserMutationErrorResponse(input);
 };

@@ -33,7 +33,7 @@ export type DeleteUserDeps = {
     input: {
       readonly instanceId: string;
       readonly accountId?: string;
-      readonly subjectId: string;
+      readonly subjectId?: string;
       readonly eventType: 'user.deleted';
       readonly result: 'success';
       readonly requestId?: string;
@@ -199,7 +199,6 @@ export const deleteUser = async (deps: DeleteUserDeps, input: DeleteUserInput): 
     await deps.emitActivityLog(client, {
       instanceId: input.actor.instanceId,
       accountId: input.actor.actorAccountId,
-      subjectId: input.userId,
       eventType: 'user.deleted',
       result: 'success',
       requestId: input.actor.requestId,

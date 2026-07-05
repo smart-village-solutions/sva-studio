@@ -165,10 +165,6 @@ export const resolveMonitoringJobStepLabel = (progress?: StudioJobProgress): str
     return t(monitoringWasteStepLabelKeyByValue[progress.currentStepKey]);
   }
 
-  if (progress.currentStepLabel && progress.currentStepLabel !== progress.currentStepKey) {
-    return progress.currentStepLabel;
-  }
-
   return progress.currentStepLabel ?? progress.currentStepKey ?? null;
 };
 

@@ -67,6 +67,6 @@ describe('instance registry mutation workflow', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(steps).toEqual(['authorize', 'csrf', 'idempotency', 'parse', 'execute']);
+    expect(steps).toEqual(['csrf', 'authorize', 'idempotency', 'parse', 'execute']);
   });
 });

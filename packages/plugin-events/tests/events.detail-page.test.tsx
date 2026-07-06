@@ -118,6 +118,7 @@ describe('EventsDetailPage', () => {
         'events.fields.categoriesSearchPlaceholder': 'Kategorie suchen oder auswählen',
         'events.fields.url': 'URL',
         'events.fields.dateStart': 'Startdatum',
+        'events.fields.dateEnd': 'Enddatum',
         'events.fields.repeat': 'Wiederholung',
         'events.fields.visible': 'Sichtbar',
         'events.fields.pushNotification': 'Push-Benachrichtigung',
@@ -239,6 +240,24 @@ describe('EventsDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue('Stadtfest')).toBeTruthy();
     });
+  });
+
+  it('normalizes loaded event dates to date-only inputs in edit mode', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1944005',
+      title: 'Sommerfest',
+      dates: [{ dateStart: '2026-06-11T10:00:00.000Z', dateEnd: '2026-06-12T18:00:00.000Z' }],
+    } as never);
+
+    render(<EventsDetailPage mode="edit" contentId="1944005" />);
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Startdatum') as HTMLInputElement).value).toBe('2026-06-11');
+    });
+
+    expect((screen.getByLabelText('Enddatum') as HTMLInputElement).value).toBe('2026-06-12');
   });
 
   it('blocks submission on invalid title, invalid date input, and non-https links', async () => {

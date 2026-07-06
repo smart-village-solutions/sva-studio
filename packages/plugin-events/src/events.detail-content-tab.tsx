@@ -167,7 +167,7 @@ export function EventsDetailContentTab({
               <StudioField id={index === 0 ? 'event-date-start' : `event-date-start-${index}`} label={pt('fields.dateStart')}>
                 <Input
                   id={index === 0 ? 'event-date-start' : `event-date-start-${index}`}
-                  type="datetime-local"
+                  type="date"
                   aria-invalid={index === 0 && dateInputsInvalid.dateStart ? true : undefined}
                   value={index === 0 ? dateStartInput : date.dateStart ?? ''}
                   onChange={(event) => {
@@ -182,7 +182,7 @@ export function EventsDetailContentTab({
               <StudioField id={index === 0 ? 'event-date-end' : `event-date-end-${index}`} label={pt('fields.dateEnd')}>
                 <Input
                   id={index === 0 ? 'event-date-end' : `event-date-end-${index}`}
-                  type="datetime-local"
+                  type="date"
                   aria-invalid={index === 0 && dateInputsInvalid.dateEnd ? true : undefined}
                   value={index === 0 ? dateEndInput : date.dateEnd ?? ''}
                   onChange={(event) => {

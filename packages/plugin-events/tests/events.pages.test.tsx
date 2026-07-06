@@ -225,7 +225,7 @@ describe('EventsListPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Live im Stadtpark' } });
-    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-04-14T09:30' } });
+    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-04-14' } });
     fireEvent.change(screen.getByLabelText('Web-URL'), { target: { value: 'https://example.com/events' } });
     fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
     await waitFor(() => {
@@ -239,6 +239,7 @@ describe('EventsListPage', () => {
         expect.objectContaining({
           title: 'Konzertabend',
           description: 'Live im Stadtpark',
+          dates: [{ dateStart: '2026-04-14' }],
           urls: [{ url: 'https://example.com/events' }],
         })
       );
@@ -252,7 +253,7 @@ describe('EventsListPage', () => {
     });
   });
 
-  it('keeps invalid DST-gap event dates visible and blocks submit', async () => {
+  it('ignores impossible date-only input values that browsers reject natively', async () => {
     render(<EventsCreatePage />);
 
     await waitFor(() => {
@@ -264,16 +265,20 @@ describe('EventsListPage', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Startdatum')).toBeTruthy();
     });
-    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-03-29T02:30' } });
+    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-03-40' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Bitte korrigieren Sie die markierten Felder.')).toBeTruthy();
+      expect(createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Konzertabend',
+          dates: [],
+        })
+      );
     });
 
-    expect(screen.getByLabelText('Startdatum').getAttribute('value')).toBe('2026-03-29T02:30');
-    expect(screen.getByLabelText('Startdatum').getAttribute('aria-invalid')).toBe('true');
-    expect(createEvent).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Startdatum').getAttribute('value')).toBe('');
+    expect(screen.getByLabelText('Startdatum').getAttribute('aria-invalid')).toBeNull();
   });
 
   it('loads existing host media references on edit and keeps the update flow stable', async () => {

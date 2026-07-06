@@ -52,6 +52,7 @@ describe('events.detail-form', () => {
         recurringWeekdays: ['MO'],
       },
       content: {
+        dates: [{ dateStart: '2026-06-11', timeDescription: 'ab 10 Uhr', weekday: 'Mittwoch' }],
         description: 'Innenstadt',
         addresses: [
           {

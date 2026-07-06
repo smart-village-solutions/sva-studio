@@ -208,6 +208,28 @@ describe('EventsListPage', () => {
     });
   });
 
+  it('renders stored date-only event values in the overview without an artificial time', async () => {
+    vi.mocked(listEvents).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'event-date-only',
+          title: 'Kalendereintrag',
+          categoryName: 'Kultur',
+          dates: [{ dateStart: '2026-04-14' }],
+        },
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    render(<EventsListPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('14.04.2026').length).toBeGreaterThan(1);
+    });
+
+    expect(screen.queryByText('14.04.2026, 02:00')).toBeNull();
+  });
+
   it('creates inline media contents in the event payload', async () => {
     render(<EventsCreatePage />);
 
@@ -223,7 +245,7 @@ describe('EventsListPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Live im Stadtpark' } });
-    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-04-14T09:30' } });
+    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-04-14' } });
     fireEvent.change(screen.getByLabelText('Web-URL'), { target: { value: 'https://example.com/events' } });
     fireEvent.click(screen.getByRole('button', { name: 'Manuell hinzufügen' }));
     fireEvent.change(screen.getByLabelText('Bildunterschrift'), { target: { value: 'Bühne' } });
@@ -238,6 +260,7 @@ describe('EventsListPage', () => {
         expect.objectContaining({
           title: 'Konzertabend',
           description: 'Live im Stadtpark',
+          dates: [{ dateStart: '2026-04-14' }],
           urls: [{ url: 'https://example.com/events' }],
           mediaContents: [
             expect.objectContaining({
@@ -271,6 +294,7 @@ describe('EventsListPage', () => {
       expect(createEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Konzertabend',
+          dates: [],
         })
       );
     });

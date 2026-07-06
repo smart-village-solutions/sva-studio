@@ -24,6 +24,15 @@ describe('validateEventForm', () => {
     ).toEqual(['urls']);
   });
 
+  it('rejects non-date-only event date values', () => {
+    expect(
+      validateEventForm({
+        title: 'Stadtfest',
+        dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }, { dateEnd: '2026-13-40' }],
+      })
+    ).toEqual(['dates']);
+  });
+
   it('rejects invalid nested contact urls and non-finite prices', () => {
     expect(
       validateEventForm({

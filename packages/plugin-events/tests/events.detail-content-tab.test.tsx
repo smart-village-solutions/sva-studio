@@ -413,6 +413,14 @@ describe('EventsDetailContentTab', () => {
     expect(screen.getByLabelText('Enddatum').getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('renders date-only inputs for event dates', async () => {
+    renderTab();
+    await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
+
+    expect(screen.getByLabelText('Startdatum').getAttribute('type')).toBe('date');
+    expect(screen.getByLabelText('Enddatum').getAttribute('type')).toBe('date');
+  });
+
   it('renders fallback values when optional arrays are initially missing', async () => {
     renderTab({
       content: {

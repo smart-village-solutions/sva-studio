@@ -210,6 +210,28 @@ describe('EventsListPage', () => {
     });
   });
 
+  it('renders stored date-only event values in the overview without an artificial time', async () => {
+    vi.mocked(listEvents).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'event-date-only',
+          title: 'Kalendereintrag',
+          categoryName: 'Kultur',
+          dates: [{ dateStart: '2026-04-14' }],
+        },
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    render(<EventsListPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('14.04.2026').length).toBeGreaterThan(1);
+    });
+
+    expect(screen.queryByText('14.04.2026, 02:00')).toBeNull();
+  });
+
   it('creates host media references alongside the legacy event payload without leaking storage artifacts', async () => {
     render(<EventsCreatePage />);
 

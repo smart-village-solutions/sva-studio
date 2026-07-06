@@ -1,4 +1,6 @@
 const dateOnlyPattern = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/;
+const isoDatePrefixPattern = /^(?<date>\d{4}-\d{2}-\d{2})(?:T|$)/;
+const defaultEditorLocale = 'de-DE';
 
 const editorDateFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Europe/Berlin',
@@ -31,6 +33,21 @@ const isValidDateOnlyParts = (year: number, month: number, day: number): boolean
     candidate.getUTCMonth() === month - 1 &&
     candidate.getUTCDate() === day
   );
+};
+
+const resolveDateOnlyLocale = (locale?: string): string => {
+  const candidate = locale?.trim() || globalThis.document?.documentElement.lang?.trim() || defaultEditorLocale;
+
+  try {
+    return Intl.DateTimeFormat.supportedLocalesOf(candidate)[0] ?? defaultEditorLocale;
+  } catch {
+    return defaultEditorLocale;
+  }
+};
+
+const extractIsoDatePrefix = (value: string): string => {
+  const match = isoDatePrefixPattern.exec(value);
+  return match?.groups?.date ?? '';
 };
 
 export const fromDateOnlyInputValue = (value: string): string => {
@@ -68,6 +85,27 @@ export const toDateOnlyInputValue = (value?: string): string => {
     return normalizedDateOnly;
   }
 
+  const normalizedIsoDatePrefix = fromDateOnlyInputValue(extractIsoDatePrefix(value));
+  if (normalizedIsoDatePrefix) {
+    return normalizedIsoDatePrefix;
+  }
+
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? '' : formatDateOnlyParts(parsed);
+};
+
+export const formatDateOnlyForEditor = (value?: string, locale?: string): string | undefined => {
+  const normalizedDateOnly = value ? fromDateOnlyInputValue(value) : '';
+  if (!normalizedDateOnly) {
+    return value;
+  }
+
+  const [year, month, day] = normalizedDateOnly.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return new Intl.DateTimeFormat(resolveDateOnlyLocale(locale), {
+    timeZone: 'UTC',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
 };

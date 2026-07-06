@@ -368,6 +368,25 @@ describe('events.detail-form', () => {
     });
   });
 
+  it('keeps the stored calendar day when legacy ISO timestamps are normalized to date-only values', () => {
+    expect(
+      mapEventItemToDetailFormValues({
+        id: 'event-legacy-late',
+        contentType: 'events.event-record',
+        status: 'published',
+        createdAt: '2026-06-11T10:00:00.000Z',
+        updatedAt: '2026-06-11T10:00:00.000Z',
+        title: 'Spättermin',
+        dates: [{ dateStart: '2026-06-11T23:30:00.000Z', dateEnd: '2026-06-12T23:45:00.000Z' }],
+      } satisfies EventContentItem).content.dates
+    ).toEqual([
+      expect.objectContaining({
+        dateStart: '2026-06-11',
+        dateEnd: '2026-06-12',
+      }),
+    ]);
+  });
+
   it('serializes defensively when optional collections are absent at runtime', () => {
     expect(
       mapEventsDetailFormValuesToInput({

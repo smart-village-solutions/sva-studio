@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   authorizeContentPrimitiveForUser: vi.fn(),
   validateCsrf: vi.fn(),
   createSvaMainserverEvent: vi.fn(),
+  changeSvaMainserverEventVisibility: vi.fn(),
   updateSvaMainserverEvent: vi.fn(),
   createSvaMainserverPoi: vi.fn(),
   updateSvaMainserverPoi: vi.fn(),
@@ -47,6 +48,7 @@ vi.mock('./service.js', () => ({
     }
   },
   createSvaMainserverEvent: state.createSvaMainserverEvent,
+  changeSvaMainserverEventVisibility: state.changeSvaMainserverEventVisibility,
   updateSvaMainserverEvent: state.updateSvaMainserverEvent,
   createSvaMainserverPoi: state.createSvaMainserverPoi,
   updateSvaMainserverPoi: state.updateSvaMainserverPoi,
@@ -264,13 +266,21 @@ describe('mainserver content route contracts', () => {
             webUrls: [{ url: 'https://example.invalid/contact', description: 'Kontakt' }],
           },
           urls: [{ url: 'https://example.invalid/event', description: 'Programm' }],
+          mediaContents: [
+            {
+              captionText: ' Titelbild ',
+              copyright: ' Stadt ',
+              contentType: 'image',
+              sourceUrl: { url: 'https://example.invalid/event.jpg', description: ' Bühnenfoto ' },
+            },
+          ],
           tags: [' draußen ', '', 7],
           recurring: 'weekly',
           recurringType: 'weekday',
           recurringInterval: '1',
           recurringWeekdays: [' sa ', '', 0],
           pointOfInterestId: 'poi-1',
-          pushNotification: true,
+          visible: false,
         }),
       })
     );
@@ -319,14 +329,27 @@ describe('mainserver content route contracts', () => {
             },
           ],
           urls: [{ url: 'https://example.invalid/event', description: 'Programm' }],
+          mediaContents: [
+            {
+              captionText: 'Titelbild',
+              copyright: 'Stadt',
+              contentType: 'image',
+              sourceUrl: { url: 'https://example.invalid/event.jpg', description: 'Bühnenfoto' },
+            },
+          ],
           tags: ['draußen'],
           recurring: 'weekly',
           recurringType: 'weekday',
           recurringInterval: '1',
           recurringWeekdays: ['sa'],
           pointOfInterestId: 'poi-1',
-          pushNotification: true,
         },
+      })
+    );
+    expect(state.changeSvaMainserverEventVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'event-1',
+        visible: false,
       })
     );
   });
@@ -361,13 +384,20 @@ describe('mainserver content route contracts', () => {
             webUrls: [{ url: 'https://example.invalid/markt', description: ' Details ' }],
           },
           urls: [{ url: 'https://example.invalid/programm', description: ' Programm ' }],
+          mediaContents: [
+            {
+              captionText: ' Marktbild ',
+              contentType: 'image',
+              sourceUrl: { url: 'https://example.invalid/markt.jpg', description: ' Abendstimmung ' },
+            },
+          ],
           tags: [' regional ', '', null],
           recurring: 'monthly',
           recurringType: 'date',
           recurringInterval: '2',
           recurringWeekdays: [' fr ', '', false],
           pointOfInterestId: 'poi-9',
-          pushNotification: false,
+          visible: false,
         }),
       })
     );
@@ -401,14 +431,26 @@ describe('mainserver content route contracts', () => {
             },
           ],
           urls: [{ url: 'https://example.invalid/programm', description: 'Programm' }],
+          mediaContents: [
+            {
+              captionText: 'Marktbild',
+              contentType: 'image',
+              sourceUrl: { url: 'https://example.invalid/markt.jpg', description: 'Abendstimmung' },
+            },
+          ],
           tags: ['regional'],
           recurring: 'monthly',
           recurringType: 'date',
           recurringInterval: '2',
           recurringWeekdays: ['fr'],
           pointOfInterestId: 'poi-9',
-          pushNotification: false,
         },
+      })
+    );
+    expect(state.changeSvaMainserverEventVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'event-1',
+        visible: false,
       })
     );
   });

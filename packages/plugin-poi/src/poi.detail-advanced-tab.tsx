@@ -27,6 +27,15 @@ export function PoiDetailAdvancedTab({ pt }: Readonly<{ pt: (key: string) => str
 
   return (
     <PoiDetailSectionCard title={pt('cards.advanced.payload.title')} description={pt('cards.advanced.payload.description')}>
+      <StudioFieldGroup columns={2}>
+        <StudioField id="poi-external-id" label={pt('fields.externalId')}>
+          <Input id="poi-external-id" {...register('settings.externalId')} />
+        </StudioField>
+        <StudioField id="poi-keywords" label={pt('fields.keywords')}>
+          <Input id="poi-keywords" {...register('settings.keywords')} />
+        </StudioField>
+      </StudioFieldGroup>
+
       <StudioField id="poi-tags" label={pt('fields.tags')}>
         <Input id="poi-tags" value={tagsText} onChange={(event) => setValue('content.tagsText', event.target.value, { shouldDirty: true })} />
       </StudioField>

@@ -57,7 +57,6 @@ export type EventsDetailFormValues = Readonly<{
     accessibilityInformation: EventAccessibilityInformation;
   };
   settings: {
-    pushNotification: boolean;
     visible: boolean;
     externalId: string;
     keywords: string;
@@ -143,7 +142,6 @@ export const createDefaultEventsDetailFormValues = (): EventsDetailFormValues =>
     accessibilityInformation: createDefaultAccessibilityInformation(),
   },
   settings: {
-    pushNotification: false,
     visible: true,
     externalId: '',
     keywords: '',
@@ -219,7 +217,6 @@ export const mapEventItemToDetailFormValues = (item: EventContentItem): EventsDe
     accessibilityInformation: item.accessibilityInformation ?? createDefaultAccessibilityInformation(),
   },
   settings: {
-    pushNotification: item.pushNotification ?? false,
     visible: item.visible ?? true,
     externalId: item.externalId ?? '',
     keywords: item.keywords ?? '',
@@ -403,7 +400,6 @@ export const mapEventsDetailFormValuesToInput = (values: EventsDetailFormValues)
     ...(compactString(values.settings.tags)
       ? { tags: values.settings.tags.split(',').map((entry) => entry.trim()).filter(Boolean) }
       : {}),
-    pushNotification: values.settings.pushNotification,
     visible: values.settings.visible,
   };
 };

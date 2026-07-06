@@ -40,6 +40,29 @@ describe('poi.detail-form', () => {
     });
   });
 
+  it('preserves externalId and keywords through poi form mapping', () => {
+    const values = mapPoiItemToDetailFormValues({
+      id: 'poi-meta-1',
+      contentType: 'poi.point-of-interest',
+      status: 'published',
+      createdAt: '2026-06-11T10:00:00.000Z',
+      updatedAt: '2026-06-11T10:00:00.000Z',
+      name: 'Buergerhaus',
+      externalId: 'poi-ext-7',
+      keywords: 'service,amt',
+    } satisfies PoiContentItem);
+
+    expect(values.settings).toMatchObject({
+      externalId: 'poi-ext-7',
+      keywords: 'service,amt',
+    });
+    expect(mapPoiDetailFormValuesToInput(values, {})).toMatchObject({
+      name: 'Buergerhaus',
+      externalId: 'poi-ext-7',
+      keywords: 'service,amt',
+    });
+  });
+
   it('maps extended structured poi fields into form values without collapsing lists', () => {
     const values = mapPoiItemToDetailFormValues({
         id: 'poi-2',

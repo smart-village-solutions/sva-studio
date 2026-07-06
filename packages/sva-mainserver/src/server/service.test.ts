@@ -1693,11 +1693,23 @@ describe('createSvaMainserverService', () => {
           recurringInterval: '2',
           recurringWeekdays: ['MO', 'FR'],
           pointOfInterestId: 'poi-1',
-          pushNotification: true,
         },
       })
     ).resolves.toMatchObject({ id: 'event-1' });
-    await expect(service.updateEvent({ ...connection, eventId: 'event-1', event: { title: 'Sommerfest', repeat: true, recurring: 'true', recurringType: '1', recurringInterval: '2', recurringWeekdays: ['MO'] } })).resolves.toMatchObject({ id: 'event-1' });
+    await expect(
+      service.updateEvent({
+        ...connection,
+        eventId: 'event-1',
+        event: {
+          title: 'Sommerfest',
+          repeat: true,
+          recurring: 'true',
+          recurringType: '1',
+          recurringInterval: '2',
+          recurringWeekdays: ['MO'],
+        },
+      })
+    ).resolves.toMatchObject({ id: 'event-1' });
     await expect(service.deleteEvent({ ...connection, eventId: 'event-1' })).resolves.toEqual({ id: 'event-1' });
 
     await expect(service.listPoi({ ...connection, page: 1, pageSize: 25 })).resolves.toEqual({
@@ -2522,6 +2534,40 @@ describe('createSvaMainserverService', () => {
       expect.objectContaining({
         method: 'POST',
         body: expect.stringContaining('"recordType":"NewsItem"'),
+      })
+    );
+  });
+
+  it('calls changeVisibility with recordType EventRecord', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            changeVisibility: { id: 1, status: 'ok', statusCode: 200 },
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await service.changeEventVisibility({
+      instanceId: 'instance-1',
+      keycloakSubject: 'user-1',
+      eventId: 'event-1',
+      visible: false,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"recordType":"EventRecord"'),
       })
     );
   });

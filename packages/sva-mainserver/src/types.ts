@@ -390,7 +390,6 @@ export type SvaMainserverEventInput = {
   readonly recurringType?: string;
   readonly recurringInterval?: string;
   readonly pointOfInterestId?: string;
-  readonly pushNotification?: boolean;
 };
 
 export type SvaMainserverEventItem = {

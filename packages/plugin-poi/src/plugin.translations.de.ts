@@ -62,6 +62,8 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     certificateName: 'Zertifikat',
     accessibilityDescription: 'Barrierefreiheit',
     accessibilityTypes: 'Barrierefreiheits-Typen',
+    externalId: 'Externe ID',
+    keywords: 'Schlagwörter',
     tags: 'Tags',
     payload: 'Payload JSON',
     actions: 'Aktionen',

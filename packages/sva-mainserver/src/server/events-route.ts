@@ -34,6 +34,7 @@ import {
   parseAddressList,
   parseCategories,
   parseContact,
+  parseMediaContents,
   parseOperatingCompany,
   parsePrices,
   parseTags,
@@ -43,6 +44,7 @@ import { SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
+  changeSvaMainserverEventVisibility,
   createSvaMainserverEvent,
   deleteSvaMainserverEvent,
   getSvaMainserverEvent,
@@ -90,6 +92,7 @@ const parseEventRelations = (
   readonly addresses: readonly SvaMainserverAddressInput[] | undefined;
   readonly contacts: readonly SvaMainserverContactInput[] | undefined;
   readonly urls: readonly SvaMainserverWebUrlInput[] | undefined;
+  readonly mediaContents: SvaMainserverEventInput['mediaContents'] | undefined;
   readonly tags: readonly string[] | undefined;
   readonly organizer: SvaMainserverOperatingCompanyInput | undefined;
   readonly priceInformations: readonly SvaMainserverPriceInput[] | undefined;
@@ -133,6 +136,11 @@ const parseEventRelations = (
     return urls;
   }
 
+  const mediaContents = parseMediaContents(body.mediaContents);
+  if (isResponse(mediaContents)) {
+    return mediaContents;
+  }
+
   const tags = parseTags(body.tags);
   if (isResponse(tags)) {
     return tags;
@@ -158,6 +166,7 @@ const parseEventRelations = (
     addresses,
     contacts,
     urls,
+    mediaContents,
     tags,
     organizer,
     priceInformations,
@@ -173,6 +182,7 @@ const buildEventInput = (
     readonly addresses: readonly SvaMainserverAddressInput[] | undefined;
     readonly contacts: readonly SvaMainserverContactInput[] | undefined;
     readonly urls: readonly SvaMainserverWebUrlInput[] | undefined;
+    readonly mediaContents: SvaMainserverEventInput['mediaContents'] | undefined;
     readonly tags: readonly string[] | undefined;
     readonly organizer: SvaMainserverOperatingCompanyInput | undefined;
     readonly priceInformations: readonly SvaMainserverPriceInput[] | undefined;
@@ -193,6 +203,7 @@ const buildEventInput = (
     ...(relations.addresses ? { addresses: relations.addresses } : {}),
     ...(relations.contacts ? { contacts: relations.contacts } : {}),
     ...(relations.urls ? { urls: relations.urls } : {}),
+    ...(relations.mediaContents ? { mediaContents: relations.mediaContents } : {}),
     ...(relations.organizer ? { organizer: relations.organizer } : {}),
     ...(relations.priceInformations ? { priceInformations: relations.priceInformations } : {}),
     ...(relations.accessibilityInformation ? { accessibilityInformation: relations.accessibilityInformation } : {}),
@@ -204,11 +215,12 @@ const buildEventInput = (
       ? { recurringWeekdays: body.recurringWeekdays.map(readString).filter((value): value is string => Boolean(value)) }
       : {}),
     ...(readString(body.pointOfInterestId) ? { pointOfInterestId: readString(body.pointOfInterestId) } : {}),
-    ...(readBoolean(body.pushNotification) !== undefined ? { pushNotification: readBoolean(body.pushNotification) } : {}),
   };
 };
 
-const parseEventInput = async (request: Request): Promise<SvaMainserverEventInput | Response> => {
+const parseEventInput = async (
+  request: Request
+): Promise<Readonly<{ event: SvaMainserverEventInput; visible?: boolean }> | Response> => {
   const body = await parseJsonObjectBody(request, 'Event-Daten müssen als Objekt gesendet werden.');
   if (isResponse(body)) {
     return body;
@@ -220,7 +232,19 @@ const parseEventInput = async (request: Request): Promise<SvaMainserverEventInpu
   }
 
   const relations = parseEventRelations(body);
-  return isResponse(relations) ? relations : buildEventInput(body, title, relations);
+  if (isResponse(relations)) {
+    return relations;
+  }
+
+  const visible = readBoolean(body.visible);
+  if (body.visible !== undefined && visible === undefined) {
+    return errorJson(400, 'invalid_request', 'Das Feld "visible" muss als Boolean gesendet werden.');
+  }
+
+  return {
+    event: buildEventInput(body, title, relations),
+    ...(visible !== undefined ? { visible } : {}),
+  };
 };
 
 const validateMutationRequest = (request: Request, requestId?: string): Response | null => {
@@ -391,9 +415,12 @@ const handleCollectionCreate = async (
     requestId,
     parse: async (inputRequest) => await parseEventInput(inputRequest),
     execute: async (actor, parsed) => {
-      const result = await createSvaMainserverEvent({ ...actor, event: parsed });
+      const result = await createSvaMainserverEvent({ ...actor, event: parsed.event });
+      if (parsed.visible === false) {
+        await changeSvaMainserverEventVisibility({ ...actor, eventId: result.id, visible: false });
+      }
       logSuccess(`mainserver_${route.contentKind}_create`, result.id);
-      return json({ data: result }, 201);
+      return json({ data: parsed.visible === undefined ? result : { ...result, visible: parsed.visible } }, 201);
     },
   })(request, ctx);
 };
@@ -411,9 +438,12 @@ const handleItemUpdate = async (
     requestId,
     parse: async (inputRequest) => await parseEventInput(inputRequest),
     execute: async (actor, parsed) => {
-      const result = await updateSvaMainserverEvent({ ...actor, eventId: route.itemId, event: parsed });
+      const result = await updateSvaMainserverEvent({ ...actor, eventId: route.itemId, event: parsed.event });
+      if (parsed.visible !== undefined) {
+        await changeSvaMainserverEventVisibility({ ...actor, eventId: route.itemId, visible: parsed.visible });
+      }
       logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
-      return json({ data: result });
+      return json({ data: parsed.visible === undefined ? result : { ...result, visible: parsed.visible } });
     },
   })(request, ctx);
 };

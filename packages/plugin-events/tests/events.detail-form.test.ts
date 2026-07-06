@@ -39,7 +39,6 @@ describe('events.detail-form', () => {
         repeat: true,
         recurringType: 'weekday',
         recurringWeekdays: ['MO'],
-        pushNotification: true,
         visible: false,
         tags: ['sommer', 'familie'],
       } satisfies EventContentItem)
@@ -74,7 +73,6 @@ describe('events.detail-form', () => {
       settings: {
         externalId: 'event-ext-1',
         keywords: 'stadt,fest',
-        pushNotification: true,
         visible: false,
         tags: 'sommer, familie',
       },
@@ -149,7 +147,6 @@ describe('events.detail-form', () => {
           },
         },
         settings: {
-          pushNotification: true,
           visible: false,
           externalId: ' ext-7 ',
           keywords: ' sommer ',
@@ -206,7 +203,6 @@ describe('events.detail-form', () => {
       recurringInterval: '2',
       recurringWeekdays: ['mo', 'di'],
       tags: ['familie', 'kultur'],
-      pushNotification: true,
       visible: false,
     });
   });
@@ -285,7 +281,6 @@ describe('events.detail-form', () => {
           },
         },
         settings: {
-          pushNotification: false,
           visible: true,
           externalId: '',
           keywords: '',
@@ -329,7 +324,6 @@ describe('events.detail-form', () => {
       priceInformations: [{ name: 'Regulär' }],
       repeat: false,
       recurringWeekdays: [],
-      pushNotification: false,
       visible: true,
     });
   });
@@ -383,7 +377,6 @@ describe('events.detail-form', () => {
         accessibilityInformation: { description: '', types: '', urls: [{ url: '', description: '' }] },
       },
       settings: {
-        pushNotification: false,
         visible: true,
         tags: '',
       },
@@ -434,7 +427,6 @@ describe('events.detail-form', () => {
           accessibilityInformation: { description: '', types: '', urls: undefined },
         },
         settings: {
-          pushNotification: false,
           visible: true,
           externalId: '',
           keywords: '',
@@ -447,7 +439,6 @@ describe('events.detail-form', () => {
       addresses: [],
       repeat: false,
       recurringWeekdays: [],
-      pushNotification: false,
       visible: true,
     });
   });

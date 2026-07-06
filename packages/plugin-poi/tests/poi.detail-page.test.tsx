@@ -127,6 +127,8 @@ describe('PoiDetailPage', () => {
         'poi.fields.mediaCaption': 'Medienbeschriftung',
         'poi.fields.mediaCopyright': 'Copyright',
         'poi.fields.mediaContentType': 'Medientyp',
+        'poi.fields.externalId': 'Externe ID',
+        'poi.fields.keywords': 'Schlagwörter',
         'poi.fields.payload': 'Payload',
         'poi.messages.validationError': 'Bitte Eingaben prüfen.',
         'poi.messages.categoryOptionsLoading': 'Kategorien werden geladen.',
@@ -643,6 +645,45 @@ describe('PoiDetailPage', () => {
         })
       );
       expect(screen.getByText('Ort aktualisiert.')).toBeTruthy();
+    });
+  });
+
+  it('preserves loaded externalId and keywords on save', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      externalId: 'poi-ext-7',
+      keywords: 'service,amt',
+      payload: {},
+    } as never);
+    vi.mocked(updatePoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+    } as never);
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
+    });
+
+    switchSection('settings');
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('poi-ext-7')).toBeTruthy();
+      expect(screen.getByDisplayValue('service,amt')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(updatePoi)).toHaveBeenCalledWith(
+        'poi-1',
+        expect.objectContaining({
+          externalId: 'poi-ext-7',
+          keywords: 'service,amt',
+        })
+      );
     });
   });
 

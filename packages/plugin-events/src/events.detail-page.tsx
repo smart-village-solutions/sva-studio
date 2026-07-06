@@ -3,11 +3,9 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
   findHostMediaReferenceAssetId,
-  fromDatetimeLocalValue,
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
   replaceHostMediaReferences,
-  toDatetimeLocalValue,
   toHostMediaFieldOptions,
   usePluginTranslation,
 } from '@sva/plugin-sdk';
@@ -43,6 +41,7 @@ import { EventsDetailContentTab } from './events.detail-content-tab.js';
 import { EventsDetailHistoryTab } from './events.detail-history-tab.js';
 import { EventsDetailSettingsTab } from './events.detail-settings-tab.js';
 import { createEventsDetailTabDefinitions, type EventsDetailTabId } from './events.detail-tabs.js';
+import { fromDateOnlyInputValue, toDateOnlyInputValue } from './events.date-only.js';
 import { pluginEventsMediaPickers } from './plugin.js';
 import type { EventCategoryOption, EventContentItem } from './events.types.js';
 import type { PoiSelectItem } from './events.types.js';
@@ -99,12 +98,12 @@ const eventsTabIconMap = {
 const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknown, fallbackKey: string) =>
   error instanceof EventsApiError ? error.message : pt(fallbackKey);
 
-const parseDatetimeLocalInput = (value: string, referenceValue?: string) => {
+const parseDateOnlyInput = (value: string) => {
   if (value.trim().length === 0) {
     return { isInvalid: false, normalizedValue: '' };
   }
 
-  const normalizedValue = fromDatetimeLocalValue(value, referenceValue);
+  const normalizedValue = fromDateOnlyInputValue(value);
   return {
     isInvalid: normalizedValue.length === 0,
     normalizedValue,
@@ -197,8 +196,8 @@ export function EventsDetailPage({
         const nextValues = mapEventItemToDetailFormValues(item);
         reset(nextValues);
         setLoadedItem(item);
-        setDateStartInput(toDatetimeLocalValue(nextValues.content.dates?.[0]?.dateStart));
-        setDateEndInput(toDatetimeLocalValue(nextValues.content.dates?.[0]?.dateEnd));
+        setDateStartInput(toDateOnlyInputValue(nextValues.content.dates?.[0]?.dateStart));
+        setDateEndInput(toDateOnlyInputValue(nextValues.content.dates?.[0]?.dateEnd));
         setInvalidDateInputs({ dateStart: false, dateEnd: false });
         setLoading(false);
         void listHostMediaReferencesByTarget({
@@ -249,8 +248,7 @@ export function EventsDetailPage({
   const updateDateField = React.useCallback(
     (field: 'dateStart' | 'dateEnd', nextValue: string) => {
       const currentDate = methods.getValues('content.dates.0') ?? {};
-      const referenceValue = currentDate[field];
-      const { isInvalid, normalizedValue } = parseDatetimeLocalInput(nextValue, referenceValue);
+      const { isInvalid, normalizedValue } = parseDateOnlyInput(nextValue);
       methods.setValue(
         'content.dates',
         [{ ...currentDate, [field]: normalizedValue }],

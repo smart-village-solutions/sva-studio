@@ -8,6 +8,7 @@ import type {
   EventPriceInformation,
   EventWebUrl,
 } from './events.types.js';
+import { toDateOnlyInputValue } from './events.date-only.js';
 
 export type EventsFormGeoLocationValue = Readonly<{
   latitude: string;
@@ -166,7 +167,13 @@ export const mapEventItemToDetailFormValues = (item: EventContentItem): EventsDe
   },
   content: {
     description: item.description ?? '',
-    dates: item.dates?.length ? item.dates : [createDefaultDate()],
+    dates: item.dates?.length
+      ? item.dates.map((entry) => ({
+          ...entry,
+          dateStart: toDateOnlyInputValue(entry.dateStart),
+          dateEnd: toDateOnlyInputValue(entry.dateEnd),
+        }))
+      : [createDefaultDate()],
     addresses: item.addresses?.length ? item.addresses.map(mapAddressToFormValue) : [createDefaultAddress()],
     urls: item.urls?.length ? item.urls : [createDefaultUrl()],
     contacts: item.contacts?.length ? item.contacts : [createDefaultContact()],

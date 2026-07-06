@@ -1,4 +1,5 @@
 import type { EventFormInput } from './events.types.js';
+import { isValidDateOnlyValue } from './events.date-only.js';
 
 const isHttpsUrl = (value: string): boolean => {
   try {
@@ -7,8 +8,6 @@ const isHttpsUrl = (value: string): boolean => {
     return false;
   }
 };
-
-const isValidDate = (value: string): boolean => Number.isNaN(new Date(value).getTime()) === false;
 
 const hasInvalidUrl = (value: string | undefined): boolean => value !== undefined && value.trim().length > 0 && isHttpsUrl(value) === false;
 
@@ -37,7 +36,7 @@ export const validateEventForm = (input: EventFormInput): readonly string[] => {
     errors.push('title');
   }
 
-  if ((input.dates ?? []).some((date) => date.dateStart && isValidDate(date.dateStart) === false)) {
+  if ((input.dates ?? []).some((date) => isValidDateOnlyValue(date.dateStart) === false || isValidDateOnlyValue(date.dateEnd) === false)) {
     errors.push('dates');
   }
 

@@ -1,4 +1,5 @@
 import { execFileSync, execSync } from 'node:child_process';
+import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import { performance } from 'node:perf_hooks';
 import path from 'node:path';
@@ -16,6 +17,7 @@ interface AffectedCoverageGateOptions {
 
 const APP_PROJECT = 'sva-studio-react';
 const APP_VITEST_CONFIG = 'apps/sva-studio-react/vitest.config.ts';
+const COVERAGE_WORKSPACE_ROOTS = ['apps', 'packages'] as const;
 const require = createRequire(import.meta.url);
 
 const parseCliOptions = (args: readonly string[]): AffectedCoverageGateOptions => {
@@ -80,10 +82,42 @@ const getAffectedCoverageProjects = (base: string, head: string): string[] => {
 export const buildAppCoverageCommand = (): string =>
   `pnpm exec vitest run --config ${APP_VITEST_CONFIG} --coverage --reporter=verbose`;
 
+const removeCoverageDirectoriesRecursively = (directoryPath: string): void => {
+  if (!fs.existsSync(directoryPath)) {
+    return;
+  }
+
+  for (const entry of fs.readdirSync(directoryPath, { withFileTypes: true })) {
+    const entryPath = path.join(directoryPath, entry.name);
+
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.nx') {
+      continue;
+    }
+
+    if (entry.name === 'coverage') {
+      fs.rmSync(entryPath, { recursive: true, force: true });
+      continue;
+    }
+
+    removeCoverageDirectoriesRecursively(entryPath);
+  }
+};
+
+export const clearWorkspaceCoverageOutputs = (rootDir = process.cwd()): void => {
+  for (const workspaceRoot of COVERAGE_WORKSPACE_ROOTS) {
+    removeCoverageDirectoriesRecursively(path.join(rootDir, workspaceRoot));
+  }
+};
+
 export const runAffectedCoverageGate = (
   options: AffectedCoverageGateOptions,
   reportDuration?: (entry: DurationEntry) => void
 ): DurationEntry[] => {
+  clearWorkspaceCoverageOutputs();
   const affectedProjects = getAffectedCoverageProjects(options.base, options.head);
   const durationEntries: DurationEntry[] = [];
   const nonAppProjects = affectedProjects.filter((project) => project !== APP_PROJECT);

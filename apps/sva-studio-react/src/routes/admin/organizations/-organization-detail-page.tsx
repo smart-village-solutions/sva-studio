@@ -73,7 +73,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
   const [membershipUsers, setMembershipUsers] = React.useState<readonly IamUserListItem[]>([]);
   const [membershipUsersLoading, setMembershipUsersLoading] = React.useState(true);
   const [membershipUsersError, setMembershipUsersError] = React.useState<IamHttpError | null>(null);
-  const [deactivateConfirmOpen, setDeactivateConfirmOpen] = React.useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [formValues, setFormValues] = React.useState(createOrganizationFormValues);
   const [parentOrganizations, setParentOrganizations] = React.useState<readonly OrganizationParentOption[]>(
     () => organizationsApi.organizations
@@ -217,7 +217,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
   const onConfirmDelete = async () => {
     const success = await organizationsApi.deleteOrganization(organizationId);
     if (success) {
-      setDeactivateConfirmOpen(false);
+      setDeleteConfirmOpen(false);
     }
   };
 
@@ -250,7 +250,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
             <Button
               type="button"
               variant="destructive"
-              onClick={() => setDeactivateConfirmOpen(true)}
+              onClick={() => setDeleteConfirmOpen(true)}
               disabled={!selectedOrganization.isActive}
             >
               {t('admin.organizations.actions.delete')}
@@ -516,13 +516,13 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
       </StudioDetailPageTemplate>
 
       <ConfirmDialog
-        open={deactivateConfirmOpen}
+        open={deleteConfirmOpen}
         title={t('admin.organizations.confirm.deleteTitle')}
         description={t('admin.organizations.confirm.deleteDescription')}
         confirmLabel={t('admin.organizations.actions.delete')}
         cancelLabel={t('account.actions.cancel')}
         onConfirm={() => void onConfirmDelete()}
-        onCancel={() => setDeactivateConfirmOpen(false)}
+        onCancel={() => setDeleteConfirmOpen(false)}
       />
     </section>
   );

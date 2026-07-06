@@ -53,7 +53,7 @@ export const OrganizationsPage = () => {
   const handleRefetch = React.useCallback(() => {
     Promise.resolve(organizationsApi.refetch()).catch(() => undefined);
   }, [organizationsApi]);
-  const handleConfirmDeactivate = React.useCallback(() => {
+  const handleConfirmDelete = React.useCallback(() => {
     Promise.resolve(onConfirmDelete()).catch(() => undefined);
   }, [onConfirmDelete]);
 
@@ -318,7 +318,7 @@ export const OrganizationsPage = () => {
         description={t('admin.organizations.confirm.deleteDescription')}
         confirmLabel={t('admin.organizations.actions.delete')}
         cancelLabel={t('account.actions.cancel')}
-        onConfirm={handleConfirmDeactivate}
+        onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteOrganizationId(null)}
       />
     </section>

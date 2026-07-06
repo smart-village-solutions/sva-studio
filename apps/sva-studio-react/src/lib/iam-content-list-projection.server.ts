@@ -1120,13 +1120,6 @@ const buildProjectionReadVisibilitySql = (
   return perTypeClauses.length > 0 ? `(${perTypeClauses.join(' OR ')})` : 'FALSE';
 };
 
-const listSortColumnByField = {
-  title: 'projection.title',
-  contentType: 'projection.content_type',
-  status: 'projection.status',
-  updatedAt: 'projection.updated_at',
-} as const satisfies Record<IamContentListQuery['sortBy'], string>;
-
 const loadProjectionPage = async (
   instanceId: string,
   query: IamContentListQuery,

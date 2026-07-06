@@ -514,6 +514,8 @@ describe('organization mutation handlers', () => {
       expect.stringContaining('UPDATE iam.contents'),
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
     );
+    expect(query.mock.calls[0]?.[0]).toContain('owner_organization_id = CASE');
+    expect(query.mock.calls[0]?.[0]).toContain("author_display_mode = CASE");
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('DELETE FROM iam.organizations'),
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
@@ -554,6 +556,10 @@ describe('organization mutation handlers', () => {
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('DELETE FROM iam.organizations'),
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
+    );
+    expect(notifyPermissionInvalidation).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ trigger: 'organization_membership_removed' })
     );
   });
 
@@ -602,6 +608,50 @@ describe('organization mutation handlers', () => {
       child_count: 1,
       membership_count: 0,
     }));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.deleteOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
+        method: 'DELETE',
+      }),
+      ctx
+    );
+
+    expect(response.status).toBe(409);
+    await expect(json(response)).resolves.toMatchObject({
+      error: { code: 'conflict', message: 'Organisation mit Children kann nicht gelöscht werden.' },
+    });
+  });
+
+  it('returns not_found when the organization disappears before the delete statement commits', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async (text: string) => {
+      if (text.includes('DELETE FROM iam.organizations')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 1, rows: [] };
+    });
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.deleteOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
+        method: 'DELETE',
+      }),
+      ctx
+    );
+
+    expect(response.status).toBe(404);
+    expect(emitActivityLog).not.toHaveBeenCalled();
+  });
+
+  it('maps delete foreign-key races to conflict instead of database_unavailable', async () => {
+    const deps = buildDeps();
+    deps.withInstanceScopedDb = vi.fn(async () => {
+      const error = new Error('fk violation') as Error & { code?: string };
+      error.code = '23503';
+      throw error;
+    });
     const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.deleteOrganizationInternal(

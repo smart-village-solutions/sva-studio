@@ -749,14 +749,19 @@ WHERE instance_id = $1
         await client.query(
           `
 UPDATE iam.contents
-SET organization_id = NULL,
+SET organization_id = CASE WHEN organization_id = $2::uuid THEN NULL ELSE organization_id END,
+    owner_organization_id = CASE WHEN owner_organization_id = $2::uuid THEN NULL ELSE owner_organization_id END,
+    author_display_mode = CASE
+      WHEN organization_id = $2::uuid AND author_display_mode = 'organization' THEN 'user'
+      ELSE author_display_mode
+    END,
     updated_at = NOW()
 WHERE instance_id = $1
-  AND organization_id = $2::uuid;
+  AND (organization_id = $2::uuid OR owner_organization_id = $2::uuid);
 `,
           [actor.instanceId, organizationId]
         );
-        await client.query(
+        const deleteResult = await client.query(
           `
 DELETE FROM iam.organizations
 WHERE instance_id = $1
@@ -764,6 +769,15 @@ WHERE instance_id = $1
 `,
           [actor.instanceId, organizationId]
         );
+        if (deleteResult.rowCount === 0) {
+          return { status: 'not_found' as const };
+        }
+        if (organization.membership_count > 0) {
+          await deps.notifyPermissionInvalidation(client, {
+            instanceId: actor.instanceId,
+            trigger: 'organization_membership_removed',
+          });
+        }
         await deps.emitActivityLog(client, {
           instanceId: actor.instanceId,
           accountId: actor.actorAccountId,
@@ -788,7 +802,15 @@ WHERE instance_id = $1
         );
       }
       return deps.jsonResponse(200, deps.asApiItem({ id: organizationId }, actor.requestId));
-      } catch {
+      } catch (error) {
+        if ((error as { code?: string } | null)?.code === '23503') {
+          return deps.createApiError(
+            409,
+            'conflict',
+            'Organisation mit Children kann nicht gelöscht werden.',
+            actor.requestId
+          );
+        }
         return deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actor.requestId);
       }
     },

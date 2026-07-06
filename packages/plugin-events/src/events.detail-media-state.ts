@@ -6,6 +6,41 @@ import type { EventsDetailFormValues } from './events.detail-form.js';
 import { mediaContentFromAsset, type MediaUploadPhase, uploadPhaseMessageKey } from './events.detail-media.helpers.js';
 import { createEmptyMediaContent, useEventsUploadChangeHandler } from './events.detail-media-upload.js';
 
+const useAppendMediaContent = ({
+  append,
+  resetUploadStatus,
+  setUploadErrorKey,
+  setUploadPhase,
+}: Readonly<{
+  append: UseFieldArrayAppend<EventsDetailFormValues, 'content.mediaContents'>;
+  resetUploadStatus: () => void;
+  setUploadErrorKey: React.Dispatch<React.SetStateAction<string | null>>;
+  setUploadPhase: React.Dispatch<React.SetStateAction<MediaUploadPhase>>;
+}>) =>
+  React.useCallback(
+    (asset: HostMediaAssetListItem) => {
+      const mediaContent = mediaContentFromAsset(asset);
+      if (!mediaContent) {
+        setUploadPhase('error');
+        setUploadErrorKey('messages.mediaUploadUnavailableUrl');
+        return false;
+      }
+      append({
+        ...createEmptyMediaContent(),
+        captionText: mediaContent.captionText ?? '',
+        copyright: mediaContent.copyright ?? '',
+        contentType: mediaContent.contentType ?? '',
+        sourceUrl: {
+          url: mediaContent.sourceUrl?.url ?? '',
+          description: mediaContent.sourceUrl?.description ?? '',
+        },
+      });
+      resetUploadStatus();
+      return true;
+    },
+    [append, resetUploadStatus, setUploadErrorKey, setUploadPhase]
+  );
+
 export function useEventsDetailMediaState({
   append,
   onUploadFile,
@@ -37,29 +72,12 @@ export function useEventsDetailMediaState({
     setDialogOpen(true);
   }, [resetUploadStatus]);
 
-  const appendMediaContent = React.useCallback(
-    (asset: HostMediaAssetListItem) => {
-      const mediaContent = mediaContentFromAsset(asset);
-      if (!mediaContent) {
-        setUploadPhase('error');
-        setUploadErrorKey('messages.mediaUploadUnavailableUrl');
-        return false;
-      }
-      append({
-        ...createEmptyMediaContent(),
-        captionText: mediaContent.captionText ?? '',
-        copyright: mediaContent.copyright ?? '',
-        contentType: mediaContent.contentType ?? '',
-        sourceUrl: {
-          url: mediaContent.sourceUrl?.url ?? '',
-          description: mediaContent.sourceUrl?.description ?? '',
-        },
-      });
-      resetUploadStatus();
-      return true;
-    },
-    [append, resetUploadStatus]
-  );
+  const appendMediaContent = useAppendMediaContent({
+    append,
+    resetUploadStatus,
+    setUploadErrorKey,
+    setUploadPhase,
+  });
 
   const handleSelectAsset = React.useCallback((asset: HostMediaAssetListItem) => {
     if (appendMediaContent(asset)) {

@@ -1,47 +1,25 @@
 import type { HostMediaAssetListItem } from '@sva/plugin-sdk';
 import React from 'react';
-import { useFieldArray, useFormContext, useWatch, type FieldError } from 'react-hook-form';
+import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button, Input, RichTextHtmlEditor, StudioField, StudioFormSummaryErrors, getStudioFormFieldProps } from '@sva/studio-ui-react';
 
 import { NewsDetailCard } from './news.detail-card.js';
+import {
+  collectSummaryErrors,
+  type ContentFieldBindings,
+  readNestedFieldError,
+  translateFieldError,
+} from './news.detail-content-tab.helpers.js';
 import { NewsDetailMediaLibraryDialog } from './news.detail-media-library-dialog.js';
 import { NewsDetailMediaList } from './news.detail-media-list.js';
 import { useNewsDetailMediaState } from './news.detail-media-state.js';
 import type { NewsDetailFormValues, NewsMediaContentFormValue } from './news.types.js';
-
-const collectSummaryErrors = (
-  fields: readonly ReturnType<typeof getStudioFormFieldProps>[]
-) => fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
-
-const translateFieldError = (
-  error: FieldError | undefined,
-  pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string
-): FieldError | undefined => {
-  if (!error || typeof error.message !== 'string') {
-    return error;
-  }
-
-  return {
-    ...error,
-    message: pt(`validation.${error.message}`),
-  };
-};
-
-const readNestedFieldError = (value: unknown): FieldError | undefined => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return undefined;
-  }
-
-  return 'message' in value || 'type' in value ? (value as FieldError) : undefined;
-};
 
 export type NewsDetailContentTabProps = Readonly<{
   mediaAssets: readonly HostMediaAssetListItem[];
   onUploadFile: (file: File) => Promise<HostMediaAssetListItem>;
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>;
-
-type ContentFieldBindings = ReturnType<typeof getStudioFormFieldProps>;
 
 type NewsContentTextSectionProps = Readonly<{
   pt: NewsDetailContentTabProps['pt'];

@@ -91,6 +91,3 @@ export const mediaContentFromAsset = (asset: HostMediaAssetListItem): EventMedia
     },
   };
 };
-
-export const mediaContentSourceKey = (media: { readonly sourceUrl?: { readonly url?: string } } | undefined): string =>
-  media?.sourceUrl?.url?.trim() ?? '';

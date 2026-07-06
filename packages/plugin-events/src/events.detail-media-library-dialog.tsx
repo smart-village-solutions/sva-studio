@@ -5,7 +5,6 @@ import type { EventsDetailFormValues } from './events.detail-form.js';
 import {
   getAssetPersistentUrl,
   matchesAssetSearch,
-  mediaContentSourceKey,
   normalizeSearchValue,
   readAssetFileName,
   readAssetTitle,
@@ -16,6 +15,10 @@ const isSelectableAsset = (asset: HostMediaAssetListItem, selectedUrls: Readonly
   const url = getAssetPersistentUrl(asset);
   return Boolean(url && !selectedUrls.has(url));
 };
+
+const selectedMediaSourceUrls = (
+  mediaContents: readonly ({ readonly sourceUrl?: { readonly url?: string } } | undefined)[]
+): ReadonlySet<string> => new Set(mediaContents.map((media) => media?.sourceUrl?.url?.trim() ?? '').filter((url) => url.length > 0));
 
 export function EventsDetailMediaLibraryDialog({
   mediaAssets,
@@ -36,7 +39,7 @@ export function EventsDetailMediaLibraryDialog({
   searchValue: string;
   setSearchValue: (value: string) => void;
 }>) {
-  const selectedUrls = new Set(mediaContents.map(mediaContentSourceKey).filter((url) => url.length > 0));
+  const selectedUrls = selectedMediaSourceUrls(mediaContents);
   const query = normalizeSearchValue(searchValue);
   const filteredAssets = mediaAssets.filter((asset) => matchesAssetSearch(asset, query) && isSelectableAsset(asset, selectedUrls));
 

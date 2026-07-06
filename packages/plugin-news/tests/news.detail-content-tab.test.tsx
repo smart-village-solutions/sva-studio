@@ -56,10 +56,33 @@ const pt = (key: string, variables?: Readonly<Record<string, string | number>>) 
       'fields.sourceUrlDescription': 'Quellbeschreibung',
       'fields.mediaUrl': 'Medien-URL',
       'fields.mediaCaption': 'Bildunterschrift',
+      'fields.mediaUrlDescription': 'Bildquelle',
+      'fields.mediaCopyright': 'Copyright',
+      'fields.mediaWidth': 'Breite',
+      'fields.mediaHeight': 'Höhe',
+      'fields.imageSearch': 'Bilder suchen',
       'fields.characterCount': `${variables?.count ?? 0} Zeichen`,
       'messages.validationSummary': 'Bitte prüfen Sie die folgenden Felder:',
-      'actions.addMedia': 'Medium hinzufügen',
+      'actions.addImage': 'Bild aus Mediathek',
+      'actions.uploadMedia': 'Bild hochladen',
+      'actions.uploadingMedia': 'Bild wird hochgeladen',
+      'actions.addMediaManual': 'Link manuell eintragen',
       'actions.remove': 'Entfernen',
+      'actions.removeImage': 'Bild entfernen',
+      'messages.imagePickerEmpty': 'Keine Bilder gefunden.',
+      'messages.mediaUploadInitializing': 'Upload wird vorbereitet.',
+      'messages.mediaUploadUploading': 'Bild wird hochgeladen.',
+      'messages.mediaUploadFinalizing': 'Bild wird verarbeitet.',
+      'messages.mediaUploadSuccess': 'Bild wurde hochgeladen.',
+      'messages.mediaUploadError': 'Bild konnte nicht hochgeladen werden.',
+      'messages.mediaUploadUnsupportedType': 'Dateityp wird nicht unterstützt.',
+      'messages.mediaUploadUnavailableUrl': 'Bild-URL konnte nicht ermittelt werden.',
+      'values.mediaContentTypes.image': 'Bild',
+      'values.mediaContentTypes.audio': 'Audio',
+      'values.mediaContentTypes.video': 'Video',
+      'values.mediaContentTypes.logo': 'Logo',
+      'values.mediaContentTypes.attachment': 'Anhang',
+      'values.mediaContentTypes.unspecified': 'Nicht angegeben',
       'richText.heading2': 'Überschrift 2',
       'richText.heading3': 'Überschrift 3',
       'richText.heading4': 'Überschrift 4',
@@ -79,6 +102,7 @@ const pt = (key: string, variables?: Readonly<Record<string, string | number>>) 
 
 function renderTab(defaultValues?: Partial<NewsDetailFormValues>) {
   const valuesRef: { current?: NewsDetailFormValues } = {};
+  const onUploadFile = vi.fn(async () => ({ id: 'asset-1', metadata: { title: 'Testbild' } }));
 
   const Wrapper = () => {
     const methods = useForm<NewsDetailFormValues>({
@@ -94,8 +118,6 @@ function renderTab(defaultValues?: Partial<NewsDetailFormValues>) {
         pushNotificationEnabled: false,
         publicationMode: 'draft',
         scheduledPublicationAt: '',
-        teaserImageAssetId: null,
-        headerImageAssetId: null,
         ...defaultValues,
       },
     });
@@ -104,7 +126,7 @@ function renderTab(defaultValues?: Partial<NewsDetailFormValues>) {
 
     return (
       <FormProvider {...methods}>
-        <NewsDetailContentTab pt={pt} />
+        <NewsDetailContentTab mediaAssets={[]} onUploadFile={onUploadFile} pt={pt} />
         <button type="button" onClick={() => (valuesRef.current = methods.getValues())}>
           Werte lesen
         </button>

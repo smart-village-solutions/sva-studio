@@ -1,6 +1,6 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { listHostMediaReferencesByTarget, registerPluginTranslationResolver } from '@sva/plugin-sdk';
+import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createEvent,
@@ -14,8 +14,6 @@ import {
 import { EventsDetailPage } from '../src/events.detail-page.js';
 
 const navigateMock = vi.fn();
-const replaceHostMediaReferencesMock = vi.fn(async (input: unknown) => input);
-
 vi.mock('../src/events.api.js', () => ({
   createEvent: vi.fn(),
   deleteEvent: vi.fn(),
@@ -32,9 +30,7 @@ vi.mock('@sva/plugin-sdk', async () => {
   return {
     ...actual,
     listHostMediaAssets: vi.fn(async () => []),
-    listHostMediaReferencesByTarget: vi.fn(async () => []),
-    replaceHostMediaReferences: (...args: Parameters<typeof replaceHostMediaReferencesMock>) =>
-      replaceHostMediaReferencesMock(...args),
+    uploadHostMediaFile: vi.fn(),
   };
 });
 
@@ -77,7 +73,6 @@ vi.mock('@tanstack/react-router', () => ({
 describe('EventsDetailPage', () => {
   beforeEach(() => {
     navigateMock.mockReset();
-    replaceHostMediaReferencesMock.mockClear();
     vi.mocked(createEvent).mockReset();
     vi.mocked(deleteEvent).mockReset();
     vi.mocked(getEvent).mockReset();
@@ -102,6 +97,7 @@ describe('EventsDetailPage', () => {
         'events.cards.basis.identity.title': 'Titel & Kategorie',
         'events.cards.basis.recurrence.title': 'Serien-Logik',
         'events.cards.basis.relations.title': 'Verknüpfungen',
+        'events.cards.content.media.title': 'Medien',
         'events.cards.content.dates.title': 'Termine',
         'events.cards.content.addresses.title': 'Veranstaltungsort',
         'events.cards.content.organizer.title': 'Veranstalter',
@@ -131,17 +127,32 @@ describe('EventsDetailPage', () => {
         'events.fields.recurringTypeOptions.weeks': 'Wochen',
         'events.fields.recurringTypeOptions.months': 'Monate',
         'events.fields.recurringTypeOptions.years': 'Jahre',
+        'events.fields.mediaCaption': 'Bildunterschrift',
+        'events.fields.mediaCopyright': 'Copyright',
+        'events.fields.mediaContentType': 'Medientyp',
+        'events.fields.mediaWidth': 'Breite',
+        'events.fields.mediaHeight': 'Höhe',
+        'events.fields.imageSearch': 'Bild suchen',
         'events.messages.validationError': 'Bitte Eingaben prüfen.',
         'events.messages.categoryOptionsLoading': 'Kategorien werden geladen.',
         'events.messages.poiOptionsLoading': 'POI werden geladen.',
         'events.messages.poiOptionsEmpty': 'Keine passenden POI gefunden.',
+        'events.messages.imagePickerEmpty': 'Keine passenden Medien gefunden.',
         'events.history.empty.title': 'Noch keine Historie verfügbar.',
         'events.messages.updateSuccess': 'Event aktualisiert.',
         'events.messages.deleteError': 'Event konnte nicht gelöscht werden.',
         'events.actions.deleteConfirm': 'Wirklich löschen?',
         'events.actions.addCategory': 'Kategorie hinzufügen',
+        'events.actions.addImage': 'Aus Mediathek auswählen',
+        'events.actions.uploadMedia': 'Medium hochladen',
+        'events.actions.uploadingMedia': 'Medium wird hochgeladen',
+        'events.actions.addMediaManual': 'Manuell hinzufügen',
+        'events.actions.selectImage': 'Auswählen',
+        'events.actions.removeImage': 'Medium entfernen',
         'events.actions.removeCategory': 'Kategorie {{name}} entfernen',
         'events.actions.clearPoiSelection': 'Auswahl löschen',
+        'events.values.mediaContentTypes.unspecified': 'Nicht gesetzt',
+        'events.values.mediaContentTypes.image': 'Bild',
       };
 
       return labels[key] ?? key;
@@ -221,7 +232,7 @@ describe('EventsDetailPage', () => {
     });
   });
 
-  it('renders the event editor after the core item loaded even when media references are still pending', async () => {
+  it('renders the event editor after the core item loaded', async () => {
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1944004',
       title: 'Stadtfest',
@@ -230,10 +241,6 @@ describe('EventsDetailPage', () => {
       addresses: [{ street: 'Marktplatz 1', city: 'Musterhausen' }],
       urls: [{ url: 'https://example.com/events' }],
     } as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockImplementationOnce(
-      () => new Promise(() => undefined)
-    );
-
     render(<EventsDetailPage mode="edit" contentId="1944004" />);
 
     await waitFor(() => {
@@ -282,22 +289,16 @@ describe('EventsDetailPage', () => {
     });
   });
 
-  it('updates events and preserves the loaded header image reference on save', async () => {
+  it('updates events with inline media contents on save', async () => {
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1',
       title: 'Stadtfest',
       description: 'Innenstadt',
+      mediaContents: [{ sourceUrl: { url: 'https://example.com/header.jpg', description: 'Header' }, captionText: 'Headerbild' }],
       dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
       addresses: [{ street: 'Marktplatz 1', city: 'Musterhausen' }],
       urls: [{ url: 'https://example.com/events' }],
     } as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
-      {
-        id: 'reference-1',
-        assetId: 'asset-1',
-        role: 'header_image',
-      },
-    ] as never);
     vi.mocked(updateEvent).mockResolvedValueOnce({
       id: 'event-1',
       title: 'Stadtfest',
@@ -313,23 +314,21 @@ describe('EventsDetailPage', () => {
 
     await waitFor(() => {
       expect(vi.mocked(updateEvent)).toHaveBeenCalledTimes(1);
-      expect(replaceHostMediaReferencesMock).toHaveBeenCalledWith({
-        fetch: expect.any(Function),
-        targetType: 'events',
-        targetId: 'event-1',
-        references: [
-          {
-            assetId: 'asset-1',
-            role: 'header_image',
-            sortOrder: 0,
-          },
-        ],
-      });
+      expect(vi.mocked(updateEvent)).toHaveBeenCalledWith(
+        'event-1',
+        expect.objectContaining({
+          mediaContents: [
+            expect.objectContaining({
+              sourceUrl: { url: 'https://example.com/header.jpg', description: 'Header' },
+            }),
+          ],
+        })
+      );
       expect(screen.getByText('Event aktualisiert.')).toBeTruthy();
     });
   });
 
-  it('creates events, skips media replacement without references, and navigates to the new detail page', async () => {
+  it('creates events and navigates to the new detail page', async () => {
     vi.mocked(createEvent).mockResolvedValueOnce({
       id: 'event-created',
       title: 'Neues Event',
@@ -364,7 +363,6 @@ describe('EventsDetailPage', () => {
           visible: true,
         })
       );
-      expect(replaceHostMediaReferencesMock).not.toHaveBeenCalled();
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/events/$id', params: { id: 'event-created' } });
     });
   });
@@ -434,13 +432,12 @@ describe('EventsDetailPage', () => {
     });
   });
 
-  it('falls back to zero existing media references when loading media links fails', async () => {
+  it('updates events even without media contents', async () => {
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1',
       title: 'Stadtfest',
       dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
     } as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockRejectedValueOnce(new Error('media boom'));
     vi.mocked(updateEvent).mockResolvedValueOnce({
       id: 'event-1',
       title: 'Stadtfest',
@@ -456,7 +453,6 @@ describe('EventsDetailPage', () => {
 
     await waitFor(() => {
       expect(vi.mocked(updateEvent)).toHaveBeenCalledTimes(1);
-      expect(replaceHostMediaReferencesMock).not.toHaveBeenCalled();
     });
   });
 

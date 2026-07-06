@@ -2,7 +2,6 @@ import React from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
-  listHostMediaReferencesByTarget,
   listHostMediaAssets,
   uploadHostMediaFile,
   usePluginTranslation,
@@ -33,7 +32,6 @@ import { PoiDetailContentTab } from './poi.detail-content-tab.js';
 import { PoiDetailHistoryTab } from './poi.detail-history-tab.js';
 import { createPoiDetailTabDefinitions, type PoiDetailTabId } from './poi.detail-tabs.js';
 import { PoiDetailSettingsTab } from './poi.detail-settings-tab.js';
-import { mapLegacyPoiMediaReferences } from './poi.legacy-media-references.js';
 import type { PoiCategoryOption, PoiContentItem } from './poi.types.js';
 import { isHttpsUrl, validatePoiForm } from './poi.validation.js';
 
@@ -131,30 +129,6 @@ export function PoiDetailPage({
     [instanceId, refreshMediaAssets]
   );
 
-  const mapLoadedItemToFormValues = React.useCallback(
-    async (item: PoiContentItem) => {
-      const formValues = mapPoiItemToDetailFormValues(item);
-      if (formValues.content.mediaContents.length > 0) {
-        return formValues;
-      }
-
-      try {
-        const references = await listHostMediaReferencesByTarget({
-          fetch: globalThis.fetch.bind(globalThis),
-          targetType: 'poi',
-          targetId: item.id,
-          instanceId,
-        });
-        const assets = await refreshMediaAssets();
-        const mediaContents = mapLegacyPoiMediaReferences(references, assets);
-        return mediaContents.length > 0 ? { ...formValues, content: { ...formValues.content, mediaContents } } : formValues;
-      } catch {
-        return formValues;
-      }
-    },
-    [instanceId, refreshMediaAssets]
-  );
-
   React.useEffect(() => {
     void listPoiCategories()
       .then((categories) => {
@@ -179,11 +153,11 @@ export function PoiDetailPage({
 
     let active = true;
     void getPoi(contentId)
-      .then(async (item) => {
+      .then((item) => {
         if (!active) {
           return;
         }
-        reset(await mapLoadedItemToFormValues(item));
+        reset(mapPoiItemToDetailFormValues(item));
         setLoadedItem(item);
         setLoading(false);
       })
@@ -197,7 +171,7 @@ export function PoiDetailPage({
     return () => {
       active = false;
     };
-  }, [contentId, mapLoadedItemToFormValues, mode, reset]);
+  }, [contentId, mode, reset]);
 
   const tabs = createPoiDetailTabDefinitions(pt);
 

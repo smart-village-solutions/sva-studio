@@ -328,9 +328,6 @@ describe('news.detail-form', () => {
       city: 'Musterstadt',
     };
     values.pointOfInterestId = 'poi-1';
-    values.teaserImageAssetId = 'teaser-1';
-    values.headerImageAssetId = 'header-1';
-
     const mutation = mapNewsDetailFormValuesToMutation(values, 'edit');
 
     expect(mutation).toMatchObject({

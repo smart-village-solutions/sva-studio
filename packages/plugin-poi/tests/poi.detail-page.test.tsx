@@ -1,6 +1,6 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { listHostMediaAssets, listHostMediaReferencesByTarget, registerPluginTranslationResolver, uploadHostMediaFile } from '@sva/plugin-sdk';
+import { listHostMediaAssets, registerPluginTranslationResolver, uploadHostMediaFile } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPoi, deletePoi, getPoi, listPoiCategories, updatePoi } from '../src/poi.api.js';
 
@@ -35,7 +35,6 @@ vi.mock('@sva/plugin-sdk', async () => {
       killSwitchEnabled: false,
     })),
     listHostMediaAssets: vi.fn(async () => []),
-    listHostMediaReferencesByTarget: vi.fn(async () => []),
     uploadHostMediaFile: vi.fn(async () => ({ assetId: 'uploaded-asset', uploadSessionId: 'upload-1' })),
   };
 });
@@ -60,8 +59,6 @@ describe('PoiDetailPage', () => {
     vi.mocked(updatePoi).mockReset();
     vi.mocked(listHostMediaAssets).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockReset();
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([] as never);
     vi.mocked(uploadHostMediaFile).mockReset();
     vi.mocked(uploadHostMediaFile).mockResolvedValue({ assetId: 'uploaded-asset', uploadSessionId: 'upload-1' } as never);
     vi.unstubAllGlobals();
@@ -352,36 +349,12 @@ describe('PoiDetailPage', () => {
     });
   });
 
-  it('migrates legacy poi image references into mediaContents during edit loading', async () => {
+  it('keeps edit loading stable when legacy host references are absent and graphQL mediaContents are empty', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',
       name: 'Rathaus',
       payload: {},
     } as never);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
-      { assetId: 'asset-teaser', role: 'teaser_image', sortOrder: 0 },
-      { assetId: 'asset-attachment', role: 'attachment_image', sortOrder: 1 },
-    ] as never);
-    vi.mocked(listHostMediaAssets)
-      .mockResolvedValueOnce([] as never)
-      .mockResolvedValueOnce([
-        {
-          id: 'asset-teaser',
-          fileName: 'teaser.jpg',
-          mimeType: 'image/jpeg',
-          previewUrl: 'https://cdn.example.test/teaser.jpg',
-          visibility: 'public',
-          metadata: { title: 'Teaser' },
-        },
-        {
-          id: 'asset-attachment',
-          fileName: 'anhang.jpg',
-          mimeType: 'image/jpeg',
-          previewUrl: 'https://cdn.example.test/anhang.jpg',
-          visibility: 'public',
-          metadata: { title: 'Anhang' },
-        },
-      ] as never);
 
     render(<PoiDetailPage mode="edit" contentId="poi-1" instanceId="de-musterhausen" />);
 
@@ -390,13 +363,9 @@ describe('PoiDetailPage', () => {
     });
 
     switchSection('content');
-    expect(await screen.findByDisplayValue('https://cdn.example.test/teaser.jpg')).toBeTruthy();
-    expect(screen.getByDisplayValue('https://cdn.example.test/anhang.jpg')).toBeTruthy();
-    expect(vi.mocked(listHostMediaReferencesByTarget)).toHaveBeenCalledWith({
-      fetch: expect.any(Function),
-      targetType: 'poi',
-      targetId: 'poi-1',
-      instanceId: 'de-musterhausen',
+    await waitFor(() => {
+      expect(screen.queryByDisplayValue('https://cdn.example.test/teaser.jpg')).toBeNull();
+      expect(screen.queryByDisplayValue('https://cdn.example.test/anhang.jpg')).toBeNull();
     });
   });
 

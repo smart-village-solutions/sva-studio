@@ -27,6 +27,7 @@ describe('events.detail-form', () => {
             geoLocation: { latitude: 51.4818, longitude: 7.2162 },
           },
         ],
+        mediaContents: [{ sourceUrl: { url: 'https://example.test/header.jpg', description: 'Headerdatei' }, captionText: 'Headerbild' }],
         contacts: [{ firstName: 'Erika', email: 'kontakt@example.test' }],
         organizer: {
           name: 'Stadt Bochum',
@@ -115,6 +116,17 @@ describe('events.detail-form', () => {
             { street: '' },
           ],
           urls: [{ url: 'https://example.test/event', description: ' Programm ' }, { url: '' }],
+          mediaContents: [
+            {
+              sourceUrl: { url: 'https://example.test/event.jpg', description: ' Titelbild ' },
+              captionText: ' Bühne ',
+              copyright: ' Stadt ',
+              contentType: 'image',
+              width: '1200',
+              height: '630',
+            },
+            { sourceUrl: { url: '', description: '' }, captionText: '', copyright: '', contentType: '', width: '', height: '' },
+          ],
           contacts: [
             { firstName: ' Erika ', email: 'event@example.test', webUrls: [{ url: 'https://example.test/kontakt' }] },
             { firstName: '' },
@@ -136,7 +148,6 @@ describe('events.detail-form', () => {
           },
         },
         settings: {
-          headerImageAssetId: 'asset-1',
           pushNotification: true,
           visible: false,
           externalId: ' ext-7 ',
@@ -161,6 +172,16 @@ describe('events.detail-form', () => {
         },
       ],
       urls: [{ url: 'https://example.test/event', description: 'Programm' }],
+      mediaContents: [
+        {
+          sourceUrl: { url: 'https://example.test/event.jpg', description: 'Titelbild' },
+          captionText: 'Bühne',
+          copyright: 'Stadt',
+          contentType: 'image',
+          width: 1200,
+          height: 630,
+        },
+      ],
       contacts: [{ firstName: 'Erika', email: 'event@example.test', webUrls: [{ url: 'https://example.test/kontakt' }] }],
       organizer: {
         name: 'Stadt Bochum',
@@ -226,6 +247,7 @@ describe('events.detail-form', () => {
             },
           ],
           urls: [],
+          mediaContents: [],
           contacts: [
             {
               firstName: '',
@@ -262,7 +284,6 @@ describe('events.detail-form', () => {
           },
         },
         settings: {
-          headerImageAssetId: '',
           pushNotification: false,
           visible: true,
           externalId: '',
@@ -350,6 +371,7 @@ describe('events.detail-form', () => {
           },
         ],
         urls: [{ url: '', description: '' }],
+        mediaContents: [],
         contacts: [{ firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [{ url: '', description: '' }] }],
         organizer: {
           address: {
@@ -385,13 +407,13 @@ describe('events.detail-form', () => {
           dates: undefined,
           addresses: undefined,
           urls: undefined,
+          mediaContents: undefined,
           contacts: undefined,
           organizer: {},
           priceInformations: undefined,
           accessibilityInformation: { description: '', types: '', urls: undefined },
         },
         settings: {
-          headerImageAssetId: '',
           pushNotification: false,
           visible: true,
           externalId: '',

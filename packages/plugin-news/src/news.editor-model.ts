@@ -132,8 +132,6 @@ const createLegacySnapshot = (item: NewsContentItem): NewsLegacyCompatibilitySna
     : undefined,
   pointOfInterestId: item.pointOfInterestId,
   pushNotificationsSentAt: item.pushNotificationsSentAt,
-  teaserImageAssetId: null,
-  headerImageAssetId: null,
   legacyContentBlocks: mapNewsItemContentBlocks(item),
 });
 

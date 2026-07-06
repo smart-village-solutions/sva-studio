@@ -86,6 +86,8 @@ const pt = (key: string) =>
   ({
     'cards.content.descriptions.title': 'Beschreibung',
     'cards.content.descriptions.description': 'Beschreibung des Events',
+    'cards.content.media.title': 'Medien',
+    'cards.content.media.description': 'Medien des Events',
     'cards.content.dates.title': 'Termine',
     'cards.content.dates.description': 'Datumsangaben',
     'cards.content.dates.itemTitle': 'Termin',
@@ -126,6 +128,12 @@ const pt = (key: string) =>
     'fields.phone': 'Telefon',
     'fields.url': 'URL',
     'fields.urlDescription': 'Link-Beschreibung',
+    'fields.mediaCaption': 'Bildunterschrift',
+    'fields.mediaCopyright': 'Copyright',
+    'fields.mediaContentType': 'Medientyp',
+    'fields.mediaWidth': 'Breite',
+    'fields.mediaHeight': 'Höhe',
+    'fields.imageSearch': 'Bild suchen',
     'fields.accessibilityDescription': 'Barrierefreiheitsbeschreibung',
     'fields.accessibilityTypes': 'Barrierefreiheitsarten',
     'fields.priceCategory': 'Preiskategorie',
@@ -136,6 +144,12 @@ const pt = (key: string) =>
     'actions.addContact': 'Kontakt hinzufügen',
     'actions.addLink': 'Link hinzufügen',
     'actions.addPrice': 'Preis hinzufügen',
+    'actions.addImage': 'Aus Mediathek auswählen',
+    'actions.uploadMedia': 'Medium hochladen',
+    'actions.uploadingMedia': 'Medium wird hochgeladen',
+    'actions.addMediaManual': 'Manuell hinzufügen',
+    'actions.selectImage': 'Auswählen',
+    'actions.removeImage': 'Medium entfernen',
     'actions.geocodeAddress': 'Geo-Koordinaten ermitteln',
     'actions.geocodingAddress': 'Geo-Koordinaten werden ermittelt',
     'actions.reverseGeocodeAddress': 'Adresse ermitteln',
@@ -150,7 +164,14 @@ const pt = (key: string) =>
     'messages.locationGeocodeUnauthorized': 'Geocoding-Sitzung abgelaufen.',
     'messages.locationMapUnavailable': 'Karte nicht verfügbar.',
     'messages.locationMapError': 'Karte konnte nicht geladen werden.',
+    'messages.imagePickerEmpty': 'Keine passenden Medien gefunden.',
     'validation.geoLocation': 'Koordinaten sind ungültig.',
+    'values.mediaContentTypes.unspecified': 'Nicht gesetzt',
+    'values.mediaContentTypes.image': 'Bild',
+    'values.mediaContentTypes.audio': 'Audio',
+    'values.mediaContentTypes.video': 'Video',
+    'values.mediaContentTypes.logo': 'Logo',
+    'values.mediaContentTypes.attachment': 'Anhang',
     'richText.heading2': 'Überschrift 2',
     'richText.heading3': 'Überschrift 3',
     'richText.heading4': 'Überschrift 4',
@@ -194,8 +215,12 @@ function renderTab(
           dateEndInput={options?.dateEndInput ?? ''}
           dateInputsInvalid={options?.dateInputsInvalid ?? { dateStart: false, dateEnd: false }}
           dateStartInput={options?.dateStartInput ?? ''}
+          mediaAssets={[]}
           onDateEndInputChange={onDateEndInputChange}
           onDateStartInputChange={onDateStartInputChange}
+          onUploadFile={async () => {
+            throw new Error('upload_not_used_in_test');
+          }}
           pt={pt}
         />
       </FormProvider>
@@ -395,6 +420,7 @@ describe('EventsDetailContentTab', () => {
         dates: [],
         addresses: [],
         urls: [],
+        mediaContents: [],
         contacts: [],
         organizer: { name: '' },
         priceInformations: [],

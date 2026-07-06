@@ -1,3 +1,4 @@
+import type { HostMediaAssetListItem } from '@sva/plugin-sdk';
 import { useEffect, useState } from 'react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button, Checkbox, Input, RichTextHtmlEditor, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
@@ -7,12 +8,16 @@ import {
   createDefaultAddress,
   createDefaultContact,
   createDefaultDate,
+  createDefaultMediaContent,
   createDefaultOrganizer,
   createDefaultPriceInformation,
   createDefaultUrl,
   type EventsDetailFormValues,
 } from './events.detail-form.js';
 import { EventsDetailCard } from './events.detail-card.js';
+import { EventsDetailMediaLibraryDialog } from './events.detail-media-library-dialog.js';
+import { EventsDetailMediaList } from './events.detail-media-list.js';
+import { useEventsDetailMediaState } from './events.detail-media-state.js';
 import { EventsGeoAddressFields } from './events.geo-address-fields.js';
 import { getMapGeocodingConfig } from './events.map-geocoding-client.js';
 type Translator = (key: string) => string;
@@ -37,26 +42,32 @@ export function EventsDetailContentTab({
   dateEndInput,
   dateInputsInvalid,
   dateStartInput,
+  mediaAssets,
   onDateEndInputChange,
   onDateStartInputChange,
+  onUploadFile,
   pt,
 }: Readonly<{
   dateEndInput: string;
   dateInputsInvalid: Readonly<{ dateStart: boolean; dateEnd: boolean }>;
   dateStartInput: string;
+  mediaAssets: readonly HostMediaAssetListItem[];
   onDateEndInputChange: (nextValue: string) => void;
   onDateStartInputChange: (nextValue: string) => void;
+  onUploadFile: (file: File) => Promise<HostMediaAssetListItem>;
   pt: Translator;
 }>) {
   const {
     control,
     formState: { errors },
+    register,
     setValue,
   } = useFormContext<EventsDetailFormValues>();
   const datesArray = useFieldArray({ control, name: 'content.dates' });
   const addressesArray = useFieldArray({ control, name: 'content.addresses' });
   const contactsArray = useFieldArray({ control, name: 'content.contacts' });
   const urlsArray = useFieldArray({ control, name: 'content.urls' });
+  const mediaContentsArray = useFieldArray({ control, name: 'content.mediaContents' });
   const pricesArray = useFieldArray({ control, name: 'content.priceInformations' });
 
   const description = useWatch({ control, name: 'content.description' }) ?? '';
@@ -64,6 +75,7 @@ export function EventsDetailContentTab({
   const addresses = useWatch({ control, name: 'content.addresses' }) ?? [];
   const contacts = useWatch({ control, name: 'content.contacts' }) ?? [];
   const urls = useWatch({ control, name: 'content.urls' }) ?? [];
+  const mediaContents = useWatch({ control, name: 'content.mediaContents' }) ?? [];
   const organizer = useWatch({ control, name: 'content.organizer' }) ?? createDefaultOrganizer();
   const prices = useWatch({ control, name: 'content.priceInformations' }) ?? [];
   const accessibility = useWatch({ control, name: 'content.accessibilityInformation' }) ?? createDefaultAccessibilityInformation();
@@ -79,6 +91,12 @@ export function EventsDetailContentTab({
   const [isReverseGeocodingEnabled, setIsReverseGeocodingEnabled] = useState(true);
   const [isMapEnabled, setIsMapEnabled] = useState(true);
   const [mapStyleUrl, setMapStyleUrl] = useState('');
+  const uploadInputRef = useState(() => ({ current: null as HTMLInputElement | null }))[0];
+  const mediaState = useEventsDetailMediaState({
+    append: mediaContentsArray.append,
+    onUploadFile,
+    remove: mediaContentsArray.remove,
+  });
   const blockTypeOptions = [
     { value: 'paragraph' as const, label: pt('richText.paragraph') },
     { value: 'heading-2' as const, label: pt('richText.heading2') },
@@ -139,6 +157,55 @@ export function EventsDetailContentTab({
             }}
           />
         </div>
+      </EventCardSection>
+
+      <EventCardSection title={pt('cards.content.media.title')} description={pt('cards.content.media.description')}>
+        <div className="space-y-5">
+          <EventsDetailMediaList
+            errors={errors}
+            fields={mediaContentsArray.fields}
+            mediaContents={mediaContents}
+            onRemove={mediaState.handleRemove}
+            pt={pt}
+            register={register}
+          />
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" variant="outline" onClick={mediaState.openDialog}>
+              {pt('actions.addImage')}
+            </Button>
+            <input
+              ref={(node) => {
+                uploadInputRef.current = node;
+              }}
+              aria-label={pt('actions.uploadMedia')}
+              className="sr-only"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(event) => void mediaState.handleUploadChange(event)}
+            />
+            <Button type="button" variant="outline" disabled={mediaState.uploadBusy} onClick={() => uploadInputRef.current?.click()}>
+              {mediaState.uploadBusy ? pt('actions.uploadingMedia') : pt('actions.uploadMedia')}
+            </Button>
+            <Button type="button" variant="outline" onClick={mediaState.handleManualAdd}>
+              {pt('actions.addMediaManual')}
+            </Button>
+          </div>
+          {mediaState.uploadMessageKey ? (
+            <p className={`text-sm font-medium ${mediaState.uploadPhase === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
+              {pt(mediaState.uploadMessageKey)}
+            </p>
+          ) : null}
+        </div>
+        <EventsDetailMediaLibraryDialog
+          mediaAssets={mediaAssets}
+          mediaContents={mediaContents}
+          onClose={mediaState.closeDialog}
+          onSelectAsset={mediaState.handleSelectAsset}
+          open={mediaState.dialogOpen}
+          pt={pt}
+          searchValue={mediaState.searchValue}
+          setSearchValue={mediaState.setSearchValue}
+        />
       </EventCardSection>
 
       <EventCardSection

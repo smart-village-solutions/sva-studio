@@ -34,6 +34,15 @@ export type EventWebUrl = {
   readonly description?: string;
 };
 
+export type EventMediaContent = {
+  readonly captionText?: string;
+  readonly copyright?: string;
+  readonly height?: number;
+  readonly width?: number;
+  readonly contentType?: string;
+  readonly sourceUrl?: EventWebUrl;
+};
+
 export type EventOrganizer = {
   readonly name?: string;
   readonly address?: EventAddress;
@@ -92,6 +101,7 @@ export type EventFormInput = {
   readonly addresses?: readonly EventAddress[];
   readonly contacts?: readonly EventContact[];
   readonly urls?: readonly EventWebUrl[];
+  readonly mediaContents?: readonly EventMediaContent[];
   readonly organizer?: EventOrganizer;
   readonly priceInformations?: readonly EventPriceInformation[];
   readonly accessibilityInformation?: EventAccessibilityInformation;

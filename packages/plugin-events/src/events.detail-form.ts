@@ -9,6 +9,7 @@ import type {
   EventPriceInformation,
   EventWebUrl,
 } from './events.types.js';
+import { toDateOnlyInputValue } from './events.date-only.js';
 import { normalizeMediaContentType } from './events.detail-media-content-type.js';
 
 export type EventsFormGeoLocationValue = Readonly<{
@@ -24,6 +25,13 @@ export type EventAddressFormValue = Omit<EventAddress, 'geoLocation'> &
 export type EventOrganizerFormValue = Omit<EventOrganizer, 'address'> &
   Readonly<{
     address?: EventAddressFormValue;
+  }>;
+
+export type EventMediaContentFormValue = Omit<EventMediaContent, 'height' | 'sourceUrl' | 'width'> &
+  Readonly<{
+    height: string;
+    width: string;
+    sourceUrl: { url: string; description: string };
   }>;
 
 export type EventsDetailFormValues = Readonly<{
@@ -42,11 +50,7 @@ export type EventsDetailFormValues = Readonly<{
     dates: EventFormInput['dates'];
     addresses: readonly EventAddressFormValue[];
     urls: EventFormInput['urls'];
-    mediaContents: readonly (EventMediaContent & Readonly<{
-      height: string;
-      width: string;
-      sourceUrl: { url: string; description: string };
-    }>)[]; 
+    mediaContents: readonly EventMediaContentFormValue[];
     contacts: readonly EventContact[];
     organizer: EventOrganizerFormValue;
     priceInformations: readonly EventPriceInformation[];
@@ -92,7 +96,7 @@ export const createDefaultContact = (): EventContact => ({
   webUrls: [{ url: '', description: '' }],
 });
 export const createDefaultUrl = (): EventWebUrl => ({ url: '', description: '' });
-export const createDefaultMediaContent = () => ({
+export const createDefaultMediaContent = (): EventMediaContentFormValue => ({
   captionText: '',
   copyright: '',
   contentType: '',
@@ -167,7 +171,7 @@ const mapAddressToFormValue = (address?: EventAddress): EventAddressFormValue =>
 
 const mapMediaContentToFormValue = (
   mediaContent: NonNullable<NonNullable<EventContentItem['mediaContents']>[number]>
-) => ({
+): EventMediaContentFormValue => ({
   captionText: mediaContent.captionText ?? '',
   copyright: mediaContent.copyright ?? '',
   contentType: mediaContent.contentType ?? '',
@@ -194,7 +198,13 @@ export const mapEventItemToDetailFormValues = (item: EventContentItem): EventsDe
   },
   content: {
     description: item.description ?? '',
-    dates: item.dates?.length ? item.dates : [createDefaultDate()],
+    dates: item.dates?.length
+      ? item.dates.map((entry) => ({
+          ...entry,
+          dateStart: toDateOnlyInputValue(entry.dateStart),
+          dateEnd: toDateOnlyInputValue(entry.dateEnd),
+        }))
+      : [createDefaultDate()],
     addresses: item.addresses?.length ? item.addresses.map(mapAddressToFormValue) : [createDefaultAddress()],
     urls: item.urls?.length ? item.urls : [createDefaultUrl()],
     mediaContents: item.mediaContents?.length ? item.mediaContents.map(mapMediaContentToFormValue) : [],

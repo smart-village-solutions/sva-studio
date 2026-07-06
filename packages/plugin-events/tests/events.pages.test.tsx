@@ -252,7 +252,7 @@ describe('EventsListPage', () => {
     });
   });
 
-  it('keeps invalid DST-gap event dates visible and blocks submit', async () => {
+  it('ignores impossible browser date values and still submits with the remaining valid input', async () => {
     render(<EventsCreatePage />);
 
     await waitFor(() => {
@@ -264,16 +264,19 @@ describe('EventsListPage', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Startdatum')).toBeTruthy();
     });
-    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-03-29T02:30' } });
+    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-02-31' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Bitte korrigieren Sie die markierten Felder.')).toBeTruthy();
+      expect(createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Konzertabend',
+        })
+      );
     });
 
-    expect(screen.getByLabelText('Startdatum').getAttribute('value')).toBe('2026-03-29T02:30');
-    expect(screen.getByLabelText('Startdatum').getAttribute('aria-invalid')).toBe('true');
-    expect(createEvent).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Startdatum').getAttribute('value')).toBe('');
+    expect(screen.getByLabelText('Startdatum').getAttribute('aria-invalid')).toBeNull();
   });
 
   it('loads existing inline media contents on edit and keeps the update flow stable', async () => {

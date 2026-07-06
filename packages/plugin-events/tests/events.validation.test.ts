@@ -15,6 +15,15 @@ describe('validateEventForm', () => {
     expect(validateEventForm({ title: '', urls: [{ url: 'http://example.test' }] })).toEqual(['title', 'urls']);
   });
 
+  it('rejects non-https media source urls', () => {
+    expect(
+      validateEventForm({
+        title: 'Stadtfest',
+        mediaContents: [{ sourceUrl: { url: 'http://example.test/image.jpg' } }],
+      })
+    ).toEqual(['urls']);
+  });
+
   it('rejects invalid nested contact urls and non-finite prices', () => {
     expect(
       validateEventForm({

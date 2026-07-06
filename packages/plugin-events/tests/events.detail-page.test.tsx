@@ -1,6 +1,6 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
+import { listHostMediaAssets, registerPluginTranslationResolver, uploadHostMediaFile } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createEvent,
@@ -81,6 +81,9 @@ describe('EventsDetailPage', () => {
     vi.mocked(listPoiForEventSelection).mockReset();
     vi.mocked(listPoiForEventSelection).mockResolvedValue([] as never);
     vi.mocked(updateEvent).mockReset();
+    vi.mocked(listHostMediaAssets).mockReset();
+    vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
+    vi.mocked(uploadHostMediaFile).mockReset();
     vi.unstubAllGlobals();
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
@@ -138,6 +141,13 @@ describe('EventsDetailPage', () => {
         'events.messages.poiOptionsLoading': 'POI werden geladen.',
         'events.messages.poiOptionsEmpty': 'Keine passenden POI gefunden.',
         'events.messages.imagePickerEmpty': 'Keine passenden Medien gefunden.',
+        'events.messages.mediaUploadInitializing': 'Upload wird vorbereitet.',
+        'events.messages.mediaUploadUploading': 'Medium wird hochgeladen.',
+        'events.messages.mediaUploadFinalizing': 'Medium wird verarbeitet.',
+        'events.messages.mediaUploadSuccess': 'Medium wurde hinzugefügt.',
+        'events.messages.mediaUploadError': 'Medium konnte nicht hochgeladen werden.',
+        'events.messages.mediaUploadUnsupportedType': 'Dateityp wird nicht unterstützt.',
+        'events.messages.mediaUploadUnavailableUrl': 'Bild-URL konnte nicht ermittelt werden.',
         'events.history.empty.title': 'Noch keine Historie verfügbar.',
         'events.messages.updateSuccess': 'Event aktualisiert.',
         'events.messages.deleteError': 'Event konnte nicht gelöscht werden.',
@@ -326,6 +336,41 @@ describe('EventsDetailPage', () => {
       );
       expect(screen.getByText('Event aktualisiert.')).toBeTruthy();
     });
+  });
+
+  it('uses the upload response url when the refreshed asset still has no preview url', async () => {
+    vi.mocked(uploadHostMediaFile).mockResolvedValueOnce({
+      assetId: 'asset-uploaded',
+      previewUrl: 'https://example.com/uploaded.jpg',
+      fileName: 'uploaded.jpg',
+      mimeType: 'image/jpeg',
+      visibility: 'public',
+    } as never);
+    vi.mocked(listHostMediaAssets)
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([
+        {
+          id: 'asset-uploaded',
+          fileName: 'uploaded.jpg',
+          mimeType: 'image/jpeg',
+          previewUrl: '',
+          visibility: 'public',
+        },
+      ] as never);
+
+    render(<EventsDetailPage mode="create" />);
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+    fireEvent.change(screen.getByLabelText('Medium hochladen'), {
+      target: {
+        files: [new File(['image'], 'uploaded.jpg', { type: 'image/jpeg' })],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('https://example.com/uploaded.jpg')).toBeTruthy();
+    });
+    expect(screen.queryByText('Bild-URL konnte nicht ermittelt werden.')).toBeNull();
   });
 
   it('creates events and navigates to the new detail page', async () => {

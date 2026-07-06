@@ -243,8 +243,8 @@ describe('EventsDetailContentTab', () => {
     await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
 
     fireEvent.change(screen.getByTestId('rich-text-editor'), { target: { value: '<p>Eventbeschreibung</p>' } });
-    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-06-12T10:15' } });
-    fireEvent.change(screen.getByLabelText('Enddatum'), { target: { value: '2026-06-12T12:30' } });
+    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-06-12' } });
+    fireEvent.change(screen.getByLabelText('Enddatum'), { target: { value: '2026-06-12' } });
     fireEvent.change(screen.getByLabelText('Startzeit'), { target: { value: '10:15' } });
     fireEvent.change(screen.getByLabelText('Endzeit'), { target: { value: '12:30' } });
     fireEvent.change(screen.getByLabelText('Institution/Firma'), { target: { value: 'Stadtwerke' } });
@@ -263,8 +263,8 @@ describe('EventsDetailContentTab', () => {
     fireEvent.change(screen.getByLabelText('Preis'), { target: { value: '12' } });
     fireEvent.change(screen.getByLabelText('Barrierefreiheitsbeschreibung'), { target: { value: 'Stufenlos' } });
 
-    expect(onDateStartInputChange).toHaveBeenCalledWith('2026-06-12T10:15');
-    expect(onDateEndInputChange).toHaveBeenCalledWith('2026-06-12T12:30');
+    expect(onDateStartInputChange).toHaveBeenCalledWith('2026-06-12');
+    expect(onDateEndInputChange).toHaveBeenCalledWith('2026-06-12');
     expect(getValues().content.description).toBe('<p>Eventbeschreibung</p>');
     expect(getValues().content.dates?.[0]).toMatchObject({ timeStart: '10:15', timeEnd: '12:30' });
     expect(getValues().content.addresses?.[0]).toMatchObject({ street: 'Marktplatz 1', city: 'Musterstadt' });
@@ -354,10 +354,10 @@ describe('EventsDetailContentTab', () => {
     await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
 
     fireEvent.change(screen.getByLabelText('Startdatum', { selector: '#event-date-start-1' }), {
-      target: { value: '2026-09-01T08:00' },
+      target: { value: '2026-09-01' },
     });
     fireEvent.change(screen.getByLabelText('Enddatum', { selector: '#event-date-end-1' }), {
-      target: { value: '2026-09-01T09:00' },
+      target: { value: '2026-09-01' },
     });
     fireEvent.click(screen.getByLabelText('Nur Zeit-Hinweis verwenden', { selector: '#event-only-time-description-0' }));
     fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street-1' }), {
@@ -379,8 +379,8 @@ describe('EventsDetailContentTab', () => {
     expect(onDateStartInputChange).not.toHaveBeenCalled();
     expect(onDateEndInputChange).not.toHaveBeenCalled();
     expect(getValues().content.dates?.[1]).toMatchObject({
-      dateStart: '2026-09-01T08:00',
-      dateEnd: '2026-09-01T09:00',
+      dateStart: '2026-09-01',
+      dateEnd: '2026-09-01',
     });
     expect(getValues().content.dates?.[0]?.useOnlyTimeDescription).toBe(true);
     expect(getValues().content.addresses?.[1]?.street).toBe('Zweite Straße 2');

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   listHostMediaAssets,
   registerPluginTranslationResolver,
+  uploadHostMediaFile,
 } from '@sva/plugin-sdk';
 
 import { listNewsCategories } from '../src/news.api.js';
@@ -59,6 +60,7 @@ vi.mock('@sva/plugin-sdk', async () => {
   return {
     ...actual,
     listHostMediaAssets: vi.fn(async () => []),
+    uploadHostMediaFile: vi.fn(),
   };
 });
 
@@ -179,6 +181,7 @@ describe('NewsDetailPage', () => {
     });
     vi.mocked(listNewsCategories).mockResolvedValue([]);
     vi.mocked(listHostMediaAssets).mockResolvedValue([]);
+    vi.mocked(uploadHostMediaFile).mockReset();
   });
 
   afterEach(() => {
@@ -193,6 +196,41 @@ describe('NewsDetailPage', () => {
     });
 
     expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(1);
+  });
+
+  it('uses the upload response url when the refreshed news asset still has no preview url', async () => {
+    vi.mocked(uploadHostMediaFile).mockResolvedValueOnce({
+      assetId: 'asset-uploaded',
+      previewUrl: 'https://example.com/uploaded.jpg',
+      fileName: 'uploaded.jpg',
+      mimeType: 'image/jpeg',
+      visibility: 'public',
+    } as never);
+    vi.mocked(listHostMediaAssets)
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([
+        {
+          id: 'asset-uploaded',
+          fileName: 'uploaded.jpg',
+          mimeType: 'image/jpeg',
+          previewUrl: '',
+          visibility: 'public',
+        },
+      ] as never);
+
+    render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
+
+    fireEvent.change(await screen.findByLabelText('Bereich auswählen'), { target: { value: 'content' } });
+    fireEvent.change(screen.getByLabelText('Bild hochladen'), {
+      target: {
+        files: [new File(['image'], 'uploaded.jpg', { type: 'image/jpeg' })],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('https://example.com/uploaded.jpg')).toBeTruthy();
+    });
+    expect(screen.queryByText('Bild-URL konnte nicht ermittelt werden.')).toBeNull();
   });
 
   it('renders the author as a fixed readonly field when authorship is fixed', async () => {

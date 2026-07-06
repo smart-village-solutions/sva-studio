@@ -2,10 +2,8 @@ import React from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
-  fromDatetimeLocalValue,
   listHostMediaAssets,
   uploadHostMediaFile,
-  toDatetimeLocalValue,
   usePluginTranslation,
   type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
@@ -30,6 +28,7 @@ import {
   listPoiForEventSelection,
   updateEvent,
 } from './events.api.js';
+import { fromDateOnlyInputValue, toDateOnlyInputValue } from './events.date-only.js';
 import {
   createDefaultEventsDetailFormValues,
   mapEventItemToDetailFormValues,
@@ -96,12 +95,12 @@ const eventsTabIconMap = {
 const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknown, fallbackKey: string) =>
   error instanceof EventsApiError ? error.message : pt(fallbackKey);
 
-const parseDatetimeLocalInput = (value: string, referenceValue?: string) => {
+const parseDateOnlyInput = (value: string) => {
   if (value.trim().length === 0) {
     return { isInvalid: false, normalizedValue: '' };
   }
 
-  const normalizedValue = fromDatetimeLocalValue(value, referenceValue);
+  const normalizedValue = fromDateOnlyInputValue(value);
   return {
     isInvalid: normalizedValue.length === 0,
     normalizedValue,
@@ -162,7 +161,11 @@ export function EventsDetailPage({
       if (!uploadedAsset) {
         throw new Error('events_media_uploaded_asset_not_found');
       }
-      return uploadedAsset;
+      const uploadedPreviewUrl =
+        'previewUrl' in uploaded && typeof uploaded.previewUrl === 'string' ? uploaded.previewUrl.trim() : '';
+      return uploadedAsset.previewUrl?.trim()
+        ? uploadedAsset
+        : { ...uploadedAsset, previewUrl: uploadedPreviewUrl || uploadedAsset.previewUrl };
     },
     [refreshMediaAssets]
   );
@@ -209,8 +212,8 @@ export function EventsDetailPage({
         const nextValues = mapEventItemToDetailFormValues(item);
         reset(nextValues);
         setLoadedItem(item);
-        setDateStartInput(toDatetimeLocalValue(nextValues.content.dates?.[0]?.dateStart));
-        setDateEndInput(toDatetimeLocalValue(nextValues.content.dates?.[0]?.dateEnd));
+        setDateStartInput(toDateOnlyInputValue(nextValues.content.dates?.[0]?.dateStart));
+        setDateEndInput(toDateOnlyInputValue(nextValues.content.dates?.[0]?.dateEnd));
         setInvalidDateInputs({ dateStart: false, dateEnd: false });
         setLoading(false);
       })
@@ -243,8 +246,7 @@ export function EventsDetailPage({
   const updateDateField = React.useCallback(
     (field: 'dateStart' | 'dateEnd', nextValue: string) => {
       const currentDate = methods.getValues('content.dates.0') ?? {};
-      const referenceValue = currentDate[field];
-      const { isInvalid, normalizedValue } = parseDatetimeLocalInput(nextValue, referenceValue);
+      const { isInvalid, normalizedValue } = parseDateOnlyInput(nextValue);
       methods.setValue(
         'content.dates',
         [{ ...currentDate, [field]: normalizedValue }],

@@ -1,8 +1,7 @@
 import type { HostMediaAssetListItem } from '@sva/plugin-sdk';
 import React from 'react';
-import type { UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
 
-import type { NewsDetailFormValues } from './news.types.js';
+import type { NewsDetailFormValues, NewsMediaContentFormValue } from './news.types.js';
 import { mediaContentFromAsset, type MediaUploadPhase, uploadPhaseMessageKey } from './news.detail-media.helpers.js';
 import { createEmptyMediaContent, useNewsUploadChangeHandler } from './news.detail-media-upload.js';
 
@@ -11,9 +10,9 @@ export function useNewsDetailMediaState({
   onUploadFile,
   remove,
 }: Readonly<{
-  append: UseFieldArrayAppend<NewsDetailFormValues, 'contentMedia'>;
+  append: (value: NewsMediaContentFormValue) => void;
   onUploadFile: (file: File) => Promise<HostMediaAssetListItem>;
-  remove: UseFieldArrayRemove;
+  remove: (index: number) => void;
 }>) {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState('');

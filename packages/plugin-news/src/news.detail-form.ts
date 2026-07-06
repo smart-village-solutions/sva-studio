@@ -601,16 +601,16 @@ const buildMediaContentMutation = (media: NewsMediaContentFormValue) => {
   const captionText = compactString(media.captionText);
   const copyright = compactString(media.copyright);
   const contentType = compactString(media.contentType);
-  const height = compactString(media.height);
-  const width = compactString(media.width);
+  const height = media.height.trim().length > 0 ? Number(media.height) : undefined;
+  const width = media.width.trim().length > 0 ? Number(media.width) : undefined;
   const sourceUrl = compactWebUrl(media.sourceUrl.url, media.sourceUrl.description);
 
   return {
     ...(captionText ? { captionText } : {}),
     ...(copyright ? { copyright } : {}),
     ...(contentType ? { contentType } : {}),
-    ...(height ? { height: Number(height) } : {}),
-    ...(width ? { width: Number(width) } : {}),
+    ...(Number.isFinite(height) ? { height } : {}),
+    ...(Number.isFinite(width) ? { width } : {}),
     ...(sourceUrl ? { sourceUrl } : {}),
   };
 };

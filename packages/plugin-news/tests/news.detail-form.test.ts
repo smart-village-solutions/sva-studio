@@ -389,6 +389,40 @@ describe('news.detail-form', () => {
     expect(scheduledValues.scheduledPublicationAt).toBe('2026-06-01T12:30');
   });
 
+  it('omits non-finite media dimensions from serialized mutations', () => {
+    const values = createDefaultNewsDetailFormValues('Redaktion');
+
+    values.title = 'Neue News';
+    values.contentTeaser = 'Teaser';
+    values.contentBody = '<p>Body</p>';
+    values.contentMedia = [
+      {
+        captionText: 'Bild',
+        copyright: '',
+        contentType: 'image',
+        height: 'auto',
+        width: '640',
+        sourceUrl: { url: 'https://example.org/image.jpg', description: 'Bildquelle' },
+      },
+    ];
+
+    expect(mapNewsDetailFormValuesToMutation(values, 'create')).toMatchObject({
+      contentBlocks: [
+        {
+          mediaContents: [
+            {
+              captionText: 'Bild',
+              contentType: 'image',
+              width: 640,
+              sourceUrl: { url: 'https://example.org/image.jpg', description: 'Bildquelle' },
+            },
+          ],
+        },
+      ],
+    });
+    expect(mapNewsDetailFormValuesToMutation(values, 'create').contentBlocks?.[0]?.mediaContents?.[0]).not.toHaveProperty('height');
+  });
+
   it('derives dirty tabs and character counts from simplified and compatibility-driven fields', () => {
     expect(
       deriveDirtyNewsDetailTabs({

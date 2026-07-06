@@ -11,6 +11,7 @@ import {
 } from '@sva/studio-ui-react';
 
 import { listEvents } from './events.api.js';
+import { formatDateOnlyForEditor, isValidDateOnlyValue } from './events.date-only.js';
 import { EventsDetailPage } from './events.detail-page.js';
 import { normalizeListSearch } from './list-pagination.js';
 import type { EventContentItem, EventListResult } from './events.types.js';
@@ -28,6 +29,9 @@ const updateListSearchPage = (
   page,
   pageSize,
 });
+
+const formatEventStartDate = (value?: string): string | undefined =>
+  isValidDateOnlyValue(value) ? formatDateOnlyForEditor(value) : formatDateTimeInEditorTimeZone(value);
 
 export function EventsListPage() {
   const pt = usePluginTranslation('events');
@@ -111,8 +115,7 @@ export function EventsListPage() {
               {
                 id: 'dateStart',
                 header: pt('fields.dateStart'),
-                cell: (item: EventContentItem) =>
-                  item.dates?.[0]?.dateStart ? formatDateTimeInEditorTimeZone(item.dates[0].dateStart) : '—',
+                cell: (item: EventContentItem) => (item.dates?.[0]?.dateStart ? formatEventStartDate(item.dates[0].dateStart) : '—'),
               },
             ]}
             rowActions={(item) => (

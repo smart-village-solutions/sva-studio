@@ -252,7 +252,11 @@ export const NewsDetailPage = ({
       if (!uploadedAsset) {
         throw new Error('news_media_uploaded_asset_not_found');
       }
-      return uploadedAsset;
+      const uploadedPreviewUrl =
+        'previewUrl' in uploaded && typeof uploaded.previewUrl === 'string' ? uploaded.previewUrl.trim() : '';
+      return uploadedAsset.previewUrl?.trim()
+        ? uploadedAsset
+        : { ...uploadedAsset, previewUrl: uploadedPreviewUrl || uploadedAsset.previewUrl };
     },
     [refreshMediaAssets]
   );

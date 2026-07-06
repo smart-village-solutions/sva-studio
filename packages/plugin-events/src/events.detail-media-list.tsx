@@ -1,5 +1,5 @@
 import { Button, Input, Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
-import type { FieldErrors, UseFormRegister } from 'react-hook-form';
+import type { UseFormRegister } from 'react-hook-form';
 
 import type { EventsDetailFormValues } from './events.detail-form.js';
 import { mediaContentTypeOptions } from './events.detail-media.helpers.js';
@@ -12,7 +12,6 @@ export function EventsDetailMediaList({
   pt,
   register,
 }: Readonly<{
-  errors: FieldErrors<EventsDetailFormValues>;
   fields: readonly { id: string }[];
   mediaContents: EventsDetailFormValues['content']['mediaContents'];
   onRemove: (index: number) => void;
@@ -56,10 +55,10 @@ export function EventsDetailMediaList({
                   </Select>
                 </StudioField>
                 <StudioField id={`event-media-width-${index}`} label={pt('fields.mediaWidth')}>
-                  <Input id={`event-media-width-${index}`} {...register(`content.mediaContents.${index}.width`)} />
+                  <Input id={`event-media-width-${index}`} type="number" {...register(`content.mediaContents.${index}.width`)} />
                 </StudioField>
                 <StudioField id={`event-media-height-${index}`} label={pt('fields.mediaHeight')}>
-                  <Input id={`event-media-height-${index}`} {...register(`content.mediaContents.${index}.height`)} />
+                  <Input id={`event-media-height-${index}`} type="number" {...register(`content.mediaContents.${index}.height`)} />
                 </StudioField>
               </StudioFieldGroup>
               <div className="flex justify-end">

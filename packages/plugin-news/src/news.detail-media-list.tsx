@@ -55,10 +55,10 @@ export function NewsDetailMediaList({
                   </Select>
                 </StudioField>
                 <StudioField id={`news-media-width-${index}`} label={pt('fields.mediaWidth')}>
-                  <Input id={`news-media-width-${index}`} {...register(`contentMedia.${index}.width`)} />
+                  <Input id={`news-media-width-${index}`} type="number" {...register(`contentMedia.${index}.width`)} />
                 </StudioField>
                 <StudioField id={`news-media-height-${index}`} label={pt('fields.mediaHeight')}>
-                  <Input id={`news-media-height-${index}`} {...register(`contentMedia.${index}.height`)} />
+                  <Input id={`news-media-height-${index}`} type="number" {...register(`contentMedia.${index}.height`)} />
                 </StudioField>
               </StudioFieldGroup>
               <div className="flex justify-end">

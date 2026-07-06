@@ -5,7 +5,7 @@ import {
   asIamError,
   assignOrganizationMembership,
   createOrganization,
-  deactivateOrganization,
+  deleteOrganization,
   getOrganization,
   IamHttpError,
   listOrganizations,
@@ -54,7 +54,7 @@ type UseOrganizationsResult = {
   readonly clearMutationError: () => void;
   readonly createOrganization: (payload: CreateOrganizationPayload) => Promise<IamOrganizationDetail | null>;
   readonly updateOrganization: (organizationId: string, payload: UpdateOrganizationPayload) => Promise<IamOrganizationDetail | null>;
-  readonly deactivateOrganization: (organizationId: string) => Promise<boolean>;
+  readonly deleteOrganization: (organizationId: string) => Promise<boolean>;
   readonly assignMembership: (
     organizationId: string,
     payload: AssignOrganizationMembershipPayload
@@ -305,8 +305,8 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
     createOrganization: async (payload) => mutate(() => createOrganization(payload)),
     updateOrganization: async (organizationId, payload) =>
       mutate(() => updateOrganization(organizationId, payload), { organizationId }),
-    deactivateOrganization: async (organizationId) => {
-      const response = await mutate(() => deactivateOrganization(organizationId));
+    deleteOrganization: async (organizationId) => {
+      const response = await mutate(() => deleteOrganization(organizationId));
       setSelectedOrganization((current) => (current?.id === organizationId ? null : current));
       return Boolean(response);
     },

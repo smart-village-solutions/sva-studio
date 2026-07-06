@@ -6,7 +6,7 @@ import { withAuthenticatedUser } from '../middleware.js';
 import {
   assignOrganizationMembershipInternal,
   createOrganizationInternal,
-  deactivateOrganizationInternal,
+  deleteOrganizationInternal,
   getMyOrganizationContextInternal,
   getOrganizationInternal,
   listOrganizationsInternal,
@@ -36,8 +36,8 @@ export const createOrganizationHandler = async (request: Request): Promise<Respo
 export const updateOrganizationHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedOrganizationsHandler(request, updateOrganizationInternal);
 
-export const deactivateOrganizationHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedOrganizationsHandler(request, deactivateOrganizationInternal);
+export const deleteOrganizationHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedOrganizationsHandler(request, deleteOrganizationInternal);
 
 export const assignOrganizationMembershipHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedOrganizationsHandler(request, assignOrganizationMembershipInternal);

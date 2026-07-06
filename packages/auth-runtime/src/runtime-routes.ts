@@ -27,7 +27,7 @@ export {
 export {
   assignOrganizationMembershipHandler,
   createOrganizationHandler,
-  deactivateOrganizationHandler,
+  deleteOrganizationHandler,
   getMyOrganizationContextHandler,
   getOrganizationHandler,
   listOrganizationsHandler,

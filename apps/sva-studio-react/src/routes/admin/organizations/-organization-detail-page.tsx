@@ -73,7 +73,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
   const [membershipUsers, setMembershipUsers] = React.useState<readonly IamUserListItem[]>([]);
   const [membershipUsersLoading, setMembershipUsersLoading] = React.useState(true);
   const [membershipUsersError, setMembershipUsersError] = React.useState<IamHttpError | null>(null);
-  const [deactivateConfirmOpen, setDeactivateConfirmOpen] = React.useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [formValues, setFormValues] = React.useState(createOrganizationFormValues);
   const [parentOrganizations, setParentOrganizations] = React.useState<readonly OrganizationParentOption[]>(
     () => organizationsApi.organizations
@@ -214,10 +214,10 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     setMembershipSearch('');
   };
 
-  const onConfirmDeactivate = async () => {
-    const success = await organizationsApi.deactivateOrganization(organizationId);
+  const onConfirmDelete = async () => {
+    const success = await organizationsApi.deleteOrganization(organizationId);
     if (success) {
-      setDeactivateConfirmOpen(false);
+      setDeleteConfirmOpen(false);
     }
   };
 
@@ -250,8 +250,8 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
             <Button
               type="button"
               variant="destructive"
-              onClick={() => setDeactivateConfirmOpen(true)}
-              disabled={!selectedOrganization.isActive}
+              onClick={() => setDeleteConfirmOpen(true)}
+              disabled={selectedOrganization.childCount > 0}
             >
               {t('admin.organizations.actions.delete')}
             </Button>
@@ -516,13 +516,13 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
       </StudioDetailPageTemplate>
 
       <ConfirmDialog
-        open={deactivateConfirmOpen}
-        title={t('admin.organizations.confirm.deactivateTitle')}
-        description={t('admin.organizations.confirm.deactivateDescription')}
+        open={deleteConfirmOpen}
+        title={t('admin.organizations.confirm.deleteTitle')}
+        description={t('admin.organizations.confirm.deleteDescription')}
         confirmLabel={t('admin.organizations.actions.delete')}
         cancelLabel={t('account.actions.cancel')}
-        onConfirm={() => void onConfirmDeactivate()}
-        onCancel={() => setDeactivateConfirmOpen(false)}
+        onConfirm={() => void onConfirmDelete()}
+        onCancel={() => setDeleteConfirmOpen(false)}
       />
     </section>
   );

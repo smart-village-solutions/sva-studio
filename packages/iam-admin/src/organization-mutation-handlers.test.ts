@@ -496,13 +496,13 @@ describe('organization mutation handlers', () => {
     });
   });
 
-  it('deactivates organizations without child organizations and clears content organization references', async () => {
+  it('deletes organizations without child organizations and clears content organization references', async () => {
     const deps = buildDeps();
     const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
     deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
     const handlers = createOrganizationMutationHandlers(deps);
 
-    const response = await handlers.deactivateOrganizationInternal(
+    const response = await handlers.deleteOrganizationInternal(
       new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
         method: 'DELETE',
       }),
@@ -514,20 +514,22 @@ describe('organization mutation handlers', () => {
       expect.stringContaining('UPDATE iam.contents'),
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
     );
+    expect(query.mock.calls[0]?.[0]).toContain('owner_organization_id = CASE');
+    expect(query.mock.calls[0]?.[0]).toContain("author_display_mode = CASE");
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE iam.organizations'),
+      expect.stringContaining('DELETE FROM iam.organizations'),
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
     );
     expect(emitActivityLog).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        eventType: 'organization.deactivated',
+        eventType: 'organization.deleted',
         payload: { organizationId: '11111111-1111-1111-8111-111111111111' },
       })
     );
   });
 
-  it('allows deactivation when the organization still has memberships', async () => {
+  it('deletes organizations when the organization still has memberships', async () => {
     const deps = buildDeps();
     const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
     deps.loadOrganizationById = vi.fn(async () => ({
@@ -543,7 +545,7 @@ describe('organization mutation handlers', () => {
     deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
     const handlers = createOrganizationMutationHandlers(deps);
 
-    const response = await handlers.deactivateOrganizationInternal(
+    const response = await handlers.deleteOrganizationInternal(
       new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
         method: 'DELETE',
       }),
@@ -552,8 +554,49 @@ describe('organization mutation handlers', () => {
 
     expect(response.status).toBe(200);
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE iam.organizations'),
+      expect.stringContaining('WITH deleted_memberships AS'),
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
+    );
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('DELETE FROM iam.organizations'),
+      ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
+    );
+    expect(notifyPermissionInvalidation).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ trigger: 'organization_membership_removed' })
+    );
+  });
+
+  it('deletes seeded organizations through the same hard-delete path', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
+    deps.loadOrganizationById = vi.fn(async () => ({
+      id: '22444444-4444-4444-4444-444444444444',
+      organization_key: 'seed-org-district',
+      is_active: true,
+      parent_organization_id: '22333333-3333-3333-3333-333333333333',
+      hierarchy_path: [
+        '22222222-2222-2222-2222-222222222222',
+        '22333333-3333-3333-3333-333333333333',
+      ],
+      depth: 2,
+      child_count: 0,
+      membership_count: 0,
+    }));
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.deleteOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations/22444444-4444-4444-4444-444444444444', {
+        method: 'DELETE',
+      }),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('DELETE FROM iam.organizations'),
+      ['de-musterhausen', '22444444-4444-4444-4444-444444444444']
     );
   });
 
@@ -571,7 +614,7 @@ describe('organization mutation handlers', () => {
     }));
     const handlers = createOrganizationMutationHandlers(deps);
 
-    const response = await handlers.deactivateOrganizationInternal(
+    const response = await handlers.deleteOrganizationInternal(
       new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
         method: 'DELETE',
       }),
@@ -580,7 +623,51 @@ describe('organization mutation handlers', () => {
 
     expect(response.status).toBe(409);
     await expect(json(response)).resolves.toMatchObject({
-      error: { code: 'conflict', message: 'Organisation mit Children kann nicht gelöscht werden.' },
+      error: { code: 'conflict', message: 'Organisation mit Kind-Organisationen kann nicht gelöscht werden.' },
+    });
+  });
+
+  it('returns not_found when the organization disappears before the delete statement commits', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async (text: string) => {
+      if (text.includes('DELETE FROM iam.organizations')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 1, rows: [] };
+    });
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.deleteOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
+        method: 'DELETE',
+      }),
+      ctx
+    );
+
+    expect(response.status).toBe(404);
+    expect(emitActivityLog).not.toHaveBeenCalled();
+  });
+
+  it('maps delete foreign-key races to conflict instead of database_unavailable', async () => {
+    const deps = buildDeps();
+    deps.withInstanceScopedDb = vi.fn(async () => {
+      const error = new Error('fk violation') as Error & { code?: string };
+      error.code = '23503';
+      throw error;
+    });
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.deleteOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
+        method: 'DELETE',
+      }),
+      ctx
+    );
+
+    expect(response.status).toBe(409);
+    await expect(json(response)).resolves.toMatchObject({
+      error: { code: 'conflict', message: 'Organisation mit Kind-Organisationen kann nicht gelöscht werden.' },
     });
   });
 

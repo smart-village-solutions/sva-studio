@@ -7,7 +7,7 @@ const listOrganizationsMock = vi.fn();
 const getOrganizationMock = vi.fn();
 const createOrganizationMock = vi.fn();
 const updateOrganizationMock = vi.fn();
-const deactivateOrganizationMock = vi.fn();
+const deleteOrganizationMock = vi.fn();
 const assignOrganizationMembershipMock = vi.fn();
 const removeOrganizationMembershipMock = vi.fn();
 const asIamErrorMock = vi.fn();
@@ -41,7 +41,7 @@ vi.mock('../lib/iam-api', () => ({
   getOrganization: (...args: unknown[]) => getOrganizationMock(...args),
   createOrganization: (...args: unknown[]) => createOrganizationMock(...args),
   updateOrganization: (...args: unknown[]) => updateOrganizationMock(...args),
-  deactivateOrganization: (...args: unknown[]) => deactivateOrganizationMock(...args),
+  deleteOrganization: (...args: unknown[]) => deleteOrganizationMock(...args),
   assignOrganizationMembership: (...args: unknown[]) => assignOrganizationMembershipMock(...args),
   removeOrganizationMembership: (...args: unknown[]) => removeOrganizationMembershipMock(...args),
 }));
@@ -302,7 +302,7 @@ describe('useOrganizations', () => {
     });
   });
 
-  it('clears the selected organization after deactivation', async () => {
+  it('clears the selected organization after deletion', async () => {
     listOrganizationsMock
       .mockResolvedValueOnce({
         data: [createOrganizationListItem()],
@@ -313,7 +313,7 @@ describe('useOrganizations', () => {
         pagination: { page: 1, pageSize: 25, total: 0 },
       });
     getOrganizationMock.mockResolvedValueOnce({ data: createOrganizationDetail() });
-    deactivateOrganizationMock.mockResolvedValue({ data: { id: 'org-1' } });
+    deleteOrganizationMock.mockResolvedValue({ data: { id: 'org-1' } });
 
     const { result } = renderHook(() => useOrganizations());
 
@@ -323,7 +323,7 @@ describe('useOrganizations', () => {
 
     await act(async () => {
       await result.current.loadOrganization('org-1');
-      await expect(result.current.deactivateOrganization('org-1')).resolves.toBe(true);
+      await expect(result.current.deleteOrganization('org-1')).resolves.toBe(true);
     });
 
     expect(result.current.organizations).toEqual([]);
@@ -472,7 +472,7 @@ describe('useOrganizations', () => {
       pagination: { page: 1, pageSize: 25, total: 0 },
     });
     getOrganizationMock.mockRejectedValueOnce(new Error('protected-detail'));
-    deactivateOrganizationMock.mockResolvedValue({ data: { id: 'org-1' } });
+    deleteOrganizationMock.mockResolvedValue({ data: { id: 'org-1' } });
 
     const { result } = renderHook(() => useOrganizations());
 

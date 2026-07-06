@@ -209,7 +209,7 @@ const authServerMocks = vi.hoisted(() => {
     createOrganizationHandler: vi.fn(async () => response('createOrganizationHandler')),
     getOrganizationHandler: vi.fn(async () => response('getOrganizationHandler')),
     updateOrganizationHandler: vi.fn(async () => response('updateOrganizationHandler')),
-    deactivateOrganizationHandler: vi.fn(async () => response('deactivateOrganizationHandler')),
+    deleteOrganizationHandler: vi.fn(async () => response('deleteOrganizationHandler')),
     assignOrganizationMembershipHandler: vi.fn(async () => response('assignOrganizationMembershipHandler')),
     removeOrganizationMembershipHandler: vi.fn(async () => response('removeOrganizationMembershipHandler')),
     getMyOrganizationContextHandler: vi.fn(async () => response('getMyOrganizationContextHandler')),

@@ -84,9 +84,9 @@ export const organizationsAdminENResources = {
     createdAt: 'Assigned on {{value}}',
   },
   confirm: {
-    deactivateTitle: 'Delete organization',
-    deactivateDescription:
-      'The organization is deleted permanently. Child organizations still block the deletion.',
+    deleteTitle: 'Delete organization',
+    deleteDescription:
+      'The organization is deleted permanently. Memberships and organization-scoped credentials are removed. Child organizations still block the deletion.',
   },
   form: {
     keyLabel: 'Technical key',

@@ -1136,7 +1136,7 @@ export const updateOrganization = async (
     payload
   );
 
-export const deactivateOrganization = async (
+export const deleteOrganization = async (
   organizationId: string
 ): Promise<ApiItemResponse<{ id: string }>> =>
   requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/organizations/${organizationId}`, {

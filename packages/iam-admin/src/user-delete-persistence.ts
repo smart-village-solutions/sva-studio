@@ -114,7 +114,7 @@ const executeAccountDeleteBlockerStatements = async (
 
 export const anonymizeRetainedOwnedContent = async (
   client: QueryClient,
-  input: { instanceId: string; accountId: string; deletedLabel?: string }
+  input: { instanceId: string; accountId: string; keycloakSubject: string; deletedLabel?: string }
 ): Promise<void> => {
   await client.query(
     `
@@ -137,7 +137,7 @@ SET
     ELSE updater_account_id
   END,
   owner_subject_id = CASE
-    WHEN owner_subject_id = $2 THEN NULL
+    WHEN owner_subject_id = $4 THEN NULL
     ELSE owner_subject_id
   END,
   owner_user_id = CASE
@@ -150,17 +150,17 @@ WHERE instance_id = $1
     author_account_id = $2::uuid
     OR creator_account_id = $2::uuid
     OR updater_account_id = $2::uuid
-    OR owner_subject_id = $2
+    OR owner_subject_id = $4
     OR owner_user_id = $2::uuid
   );
 `,
-    [input.instanceId, input.accountId, input.deletedLabel ?? IAM_DELETED_CONTENT_AUTHOR_TOKEN]
+    [input.instanceId, input.accountId, input.deletedLabel ?? IAM_DELETED_CONTENT_AUTHOR_TOKEN, input.keycloakSubject]
   );
 };
 
 export const markOwnedContentDeletedForAccountRemoval = async (
   client: QueryClient,
-  input: { instanceId: string; accountId: string; deletedLabel?: string }
+  input: { instanceId: string; accountId: string; keycloakSubject: string; deletedLabel?: string }
 ): Promise<void> => {
   await client.query(
     `
@@ -170,11 +170,11 @@ SET
   deletion_lifecycle_changed_at = NOW(),
   updated_at = NOW(),
   author_display_name = CASE
-    WHEN author_account_id = $2::uuid THEN $3
+    WHEN author_account_id = $2::uuid THEN $4
     ELSE author_display_name
   END,
   owner_subject_id = CASE
-    WHEN owner_subject_id = $2 THEN NULL
+    WHEN owner_subject_id = $3 THEN NULL
     ELSE owner_subject_id
   END,
   owner_user_id = CASE
@@ -184,17 +184,17 @@ SET
 WHERE instance_id = $1
   AND (
     author_account_id = $2::uuid
-    OR owner_subject_id = $2
+    OR owner_subject_id = $3
     OR owner_user_id = $2::uuid
   );
 `,
-    [input.instanceId, input.accountId, input.deletedLabel ?? IAM_DELETED_CONTENT_AUTHOR_TOKEN]
+    [input.instanceId, input.accountId, input.keycloakSubject, input.deletedLabel ?? IAM_DELETED_CONTENT_AUTHOR_TOKEN]
   );
 };
 
 export const reconcileOwnedContentForAccountDelete = async (
   client: QueryClient,
-  input: { instanceId: string; accountId: string }
+  input: { instanceId: string; accountId: string; keycloakSubject: string }
 ): Promise<void> => {
   const effectiveContentStrategy = await readEffectiveAccountDeletionContentStrategy(client, input);
 

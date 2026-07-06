@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG}}
+    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG:-latest}}
     networks:
       - network-node-005
       - default
@@ -20,14 +20,14 @@ services:
         limits:
           memory: 512M
       labels:
-        - "traefik.swarm.network=public"
+        - "traefik.swarm.network=network-node-005"
         - "traefik.enable=true"
-        - "traefik.http.routers.studio-app.rule=Host(`studio-dev.smart-village.app`)"
-        - "traefik.http.routers.studio-app.tls=true"
-        - "traefik.http.services.studio-app.loadbalancer.server.port=3000"
+        - "traefik.http.routers.studio-dev-app.rule=Host(`studio-dev.smart-village.app`)"
+        - "traefik.http.routers.studio-dev-app.tls=true"
+        - "traefik.http.services.studio-dev-app.loadbalancer.server.port=3000"
 
   provisioner:
-    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG}}
+    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG:-latest}}
     networks:
       - default
     deploy:
@@ -47,7 +47,7 @@ services:
           memory: 256M
 
   migrate:
-    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG}}
+    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG:-latest}}
     networks:
       - default
     deploy:
@@ -64,7 +64,7 @@ services:
           memory: 256M
 
   bootstrap:
-    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG}}
+    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG:-latest}}
     networks:
       - default
     deploy:

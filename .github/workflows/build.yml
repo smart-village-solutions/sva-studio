@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: build-main
+  cancel-in-progress: false
+
 permissions:
   contents: read
   packages: write

@@ -50,6 +50,9 @@ on:
         type: string
         default: ""
 
+permissions:
+  contents: read
+
 concurrency:
   group: promote-${{ inputs.environment }}
   cancel-in-progress: false

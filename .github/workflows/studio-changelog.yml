@@ -1,0 +1,53 @@
+name: Studio Changelog
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  changelog-gate:
+    name: Studio Changelog Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Validate pull request changelog entry
+        if: github.event_name == 'pull_request'
+        run: >
+          pnpm exec tsx scripts/ci/check-studio-changelog.ts
+          --mode pr
+          --base ${{ github.event.pull_request.base.sha }}
+          --head ${{ github.event.pull_request.head.sha }}
+          --pr-number ${{ github.event.pull_request.number }}
+
+      - name: Validate repository changelog catalog
+        if: github.event_name == 'push'
+        run: pnpm check:studio-changelog
+
+      - name: Publish changelog summary
+        if: always()
+        run: |
+          echo 'Studio-Changelog-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo 'Validierung: genau eine Datei unter `docs/changelog/entries/pr-<nummer>.json` mit nicht leerem Nutzertext.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Validierung: vollständiger Katalog unter `docs/changelog/entries/*.json` inklusive JSON- und Git-Metadaten-Prüfung.' >> "$GITHUB_STEP_SUMMARY"
+          fi

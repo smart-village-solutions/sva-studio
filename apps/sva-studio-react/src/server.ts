@@ -81,6 +81,9 @@ let dispatchAggregatedContentListRequestPromise:
 let dispatchMapGeocodingRequestPromise:
   | Promise<typeof import('./lib/map-geocoding-api.server')['dispatchMapGeocodingRequest']>
   | null = null;
+let dispatchStudioChangelogRequestPromise:
+  | Promise<typeof import('./lib/studio-changelog-api.server')['dispatchStudioChangelogRequest']>
+  | null = null;
 let pluginOperationHandlerRegistrationPromise: Promise<void> | null = null;
 let pluginOperationWorkerBootstrapPromise: Promise<void> | null = null;
 const getSdk = async (): Promise<RequestContextSdk> => {
@@ -155,6 +158,12 @@ const getDispatchMapGeocodingRequest = async () => {
   );
   return dispatchMapGeocodingRequestPromise;
 };
+const getDispatchStudioChangelogRequest = async () => {
+  dispatchStudioChangelogRequestPromise ??= import('./lib/studio-changelog-api.server').then(
+    (mod) => mod.dispatchStudioChangelogRequest
+  );
+  return dispatchStudioChangelogRequestPromise;
+};
 
 const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
   { label: 'mainserver news', getDispatcher: getDispatchMainserverNewsRequest },
@@ -165,6 +174,7 @@ const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
   { label: 'mainserver categories', getDispatcher: getDispatchMainserverCategoriesRequest },
   { label: 'aggregated content list', getDispatcher: getDispatchAggregatedContentListRequest },
   { label: 'map geocoding', getDispatcher: getDispatchMapGeocodingRequest },
+  { label: 'studio changelog', getDispatcher: getDispatchStudioChangelogRequest },
 ];
 
 const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {

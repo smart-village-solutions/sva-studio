@@ -1,0 +1,4 @@
+{
+  "prNumber": 680,
+  "body": "Tenant-Nutzerkonten können jetzt gezielt endgültig entfernt werden.\n\n- Neben der Deaktivierung steht nun auch eine vollständige Löschung zur Verfügung.\n- Dabei werden Studio- und Keycloak-Konten konsistent gemeinsam bereinigt.\n- Besonders geschützte Systemkonten bleiben weiterhin von dieser Aktion ausgenommen."
+}

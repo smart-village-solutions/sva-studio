@@ -1,0 +1,4 @@
+{
+  "prNumber": 677,
+  "body": "Der Organisationskontext für System-Admins wird jetzt konsistenter behandelt.\n\n- System-Admins bleiben im Studio organisationsübergreifend handlungsfähig.\n- Vorhandene Organisationsmitgliedschaften werden weiterhin sichtbar angezeigt.\n- Gleichzeitig werden unnötige Kontextwechsel vermieden, die zuvor zu inkonsistentem Verhalten führen konnten."
+}

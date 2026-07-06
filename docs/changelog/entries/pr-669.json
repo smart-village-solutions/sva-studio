@@ -1,0 +1,4 @@
+{
+  "prNumber": 669,
+  "body": "Die technischen Grundlagen für Routing und Entwicklungswerkzeuge des Studios wurden aktualisiert.\n\n- Interne Werkzeuge rund um Routing und Debugging wurden auf einen neueren Stand gebracht.\n- Das verbessert die Stabilität in lokalen Entwicklungsumgebungen und bei serverseitigen Laufzeiten.\n- Für Studio-Nutzer entsteht keine neue Oberfläche, aber die Grundlage für zuverlässigere Weiterentwicklung wurde gestärkt."
+}

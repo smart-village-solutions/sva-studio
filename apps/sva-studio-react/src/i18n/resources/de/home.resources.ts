@@ -40,6 +40,14 @@ export const homeDEResources = {
       action: 'Schnittstellen öffnen',
     },
   },
+  changelog: {
+    title: 'Letzte Änderungen',
+    description:
+      'Hier sehen Sie die zuletzt in das Studio übernommenen Verbesserungen und Korrekturen direkt nach dem Merge nach main.',
+    empty: 'Noch keine Änderungen verfügbar.',
+    error: 'Die letzten Änderungen konnten gerade nicht geladen werden.',
+    entryTitle: 'Änderung aus PR #{{prNumber}}',
+  },
   authError: {
     loginFailed: 'Login fehlgeschlagen. Bitte erneut versuchen.',
     stateExpired: 'Login abgebrochen oder abgelaufen. Bitte erneut anmelden.',

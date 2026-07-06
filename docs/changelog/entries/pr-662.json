@@ -1,0 +1,4 @@
+{
+  "prNumber": 662,
+  "body": "Die technische Verarbeitung der Studio-Styles wurde aktualisiert.\n\n- Die PostCSS-Anbindung für Tailwind wurde auf einen neueren Stand gebracht.\n- Dadurch werden Styles robuster verarbeitet und bekannte Fehler aus dem Tooling reduziert.\n- Das stärkt die Zuverlässigkeit der Build-Pipeline für bestehende Oberflächen."
+}

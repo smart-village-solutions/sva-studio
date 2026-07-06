@@ -1,0 +1,4 @@
+{
+  "prNumber": 687,
+  "body": "Nutzerkonten lassen sich jetzt robuster endgültig entfernen.\n\n- Zugehörige Inhalte und technische Verknüpfungen werden bei der Löschung konsistenter bereinigt.\n- Ein Fehler in der internen Zuordnung von Benutzerkennungen wurde behoben.\n- Dadurch schlägt der Löschvorgang deutlich seltener in einem unvollständigen Zustand fehl."
+}

@@ -5,6 +5,7 @@ import { Heart } from 'lucide-react';
 import { t } from '../i18n';
 import { readLatestAuthDiagnosticSnapshot } from '../lib/auth-diagnostics';
 import { createLoginHref, sanitizeReturnTo } from '../lib/auth-navigation';
+import { StudioChangelogMarkdown } from '../lib/studio-changelog-markdown';
 import { useAuth } from '../providers/auth-provider';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -17,6 +18,17 @@ type HomeRouteState = {
   readonly showDevLoginPrompt: boolean;
   readonly consumedAuthSearch: boolean;
 };
+
+type StudioChangelogEntry = {
+  readonly prNumber: number;
+  readonly body: string;
+  readonly mergedAt: string;
+};
+
+type StudioChangelogState =
+  | { readonly status: 'loading'; readonly entries: readonly StudioChangelogEntry[] }
+  | { readonly status: 'ready'; readonly entries: readonly StudioChangelogEntry[] }
+  | { readonly status: 'error'; readonly entries: readonly StudioChangelogEntry[] };
 
 const AUTH_STATE_ERROR_KEYS = {
   error: 'home.authError.loginFailed',
@@ -148,7 +160,58 @@ const HomeAuthErrorBanner = ({
   </div>
 );
 
-const AuthenticatedHomeOverview = () => (
+const formatMergedAt = (value: string): string =>
+  new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+
+const StudioChangelogSection = ({
+  changelogState,
+}: {
+  readonly changelogState: StudioChangelogState;
+}) => (
+  <section className="mt-10">
+    <div className="mb-6 flex flex-col gap-2">
+      <h2 className="text-2xl font-semibold tracking-tight">{t('home.changelog.title')}</h2>
+      <p className="max-w-3xl text-sm text-muted-foreground">{t('home.changelog.description')}</p>
+    </div>
+
+    {changelogState.status === 'error' ? (
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground">{t('home.changelog.error')}</p>
+        </CardContent>
+      </Card>
+    ) : changelogState.status === 'ready' && changelogState.entries.length === 0 ? (
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground">{t('home.changelog.empty')}</p>
+        </CardContent>
+      </Card>
+    ) : (
+      <div className="grid gap-4">
+        {changelogState.entries.map((entry) => (
+          <Card key={`${entry.prNumber}-${entry.mergedAt}`}>
+            <CardHeader>
+              <CardTitle>{t('home.changelog.entryTitle', { prNumber: entry.prNumber })}</CardTitle>
+              <CardDescription>{formatMergedAt(entry.mergedAt)}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <StudioChangelogMarkdown>{entry.body}</StudioChangelogMarkdown>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )}
+  </section>
+);
+
+const AuthenticatedHomeOverview = ({
+  changelogState,
+}: {
+  readonly changelogState: StudioChangelogState;
+}) => (
   <section className="mx-auto max-w-6xl px-6 py-12">
     <div className="mb-6 flex flex-col gap-2">
       <h2 className="text-2xl font-semibold tracking-tight">{t('home.sections.overviewTitle')}</h2>
@@ -192,6 +255,8 @@ const AuthenticatedHomeOverview = () => (
         </CardContent>
       </Card>
     </div>
+
+    <StudioChangelogSection changelogState={changelogState} />
   </section>
 );
 
@@ -243,6 +308,50 @@ export const HomePage = () => {
   const authErrorLoginHref = !isAuthenticated && authError ? createLoginHref(authReturnTo ?? undefined) : null;
   const heroLoginHref = createLoginHref(authReturnTo ?? undefined);
   const isAnonymousHome = !isAuthenticated;
+  const [changelogState, setChangelogState] = React.useState<StudioChangelogState>({
+    status: 'loading',
+    entries: [],
+  });
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      setChangelogState({ status: 'loading', entries: [] });
+      return;
+    }
+
+    let cancelled = false;
+    void fetch('/api/studio/changelog')
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`changelog fetch failed with ${response.status}`);
+        }
+
+        const payload = (await response.json()) as { entries?: unknown };
+        const entries = Array.isArray(payload.entries)
+          ? payload.entries.filter(
+              (entry): entry is StudioChangelogEntry =>
+                typeof entry === 'object' &&
+                entry !== null &&
+                typeof (entry as StudioChangelogEntry).prNumber === 'number' &&
+                typeof (entry as StudioChangelogEntry).body === 'string' &&
+                typeof (entry as StudioChangelogEntry).mergedAt === 'string'
+            )
+          : [];
+
+        if (!cancelled) {
+          setChangelogState({ status: 'ready', entries });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setChangelogState({ status: 'error', entries: [] });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -299,7 +408,7 @@ export const HomePage = () => {
           <p className="text-sm text-muted-foreground">{t('home.session.loading')}</p>
         </section>
       ) : isAuthenticated ? (
-        <AuthenticatedHomeOverview />
+        <AuthenticatedHomeOverview changelogState={changelogState} />
       ) : null}
     </div>
   );

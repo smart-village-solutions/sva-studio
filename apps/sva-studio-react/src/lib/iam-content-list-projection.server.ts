@@ -215,6 +215,69 @@ const mapProjectionRow = (row: ProjectionRow): IamContentListItem => ({
   historyRef: row.history_ref,
 });
 
+const projectionListCollator = new Intl.Collator('de', {
+  sensitivity: 'base',
+  numeric: true,
+});
+
+const resolveProjectionScopePriority = (row: ProjectionRow): number => {
+  if (row.organization_id || row.owner_organization_id) {
+    return 2;
+  }
+
+  if (row.owner_user_id) {
+    return 1;
+  }
+
+  return 0;
+};
+
+const buildProjectionDeduplicationKey = (row: ProjectionRow): string =>
+  row.source_system === 'mainserver'
+    ? ['mainserver', row.source_entity_type, row.source_entity_id].join('::')
+    : row.id;
+
+const comparePreferredProjectionRows = (
+  left: ProjectionRow,
+  right: ProjectionRow
+): number => {
+  const scopePriorityResult =
+    resolveProjectionScopePriority(right) - resolveProjectionScopePriority(left);
+  if (scopePriorityResult !== 0) {
+    return scopePriorityResult;
+  }
+
+  const updatedAtResult = right.updated_at.localeCompare(left.updated_at);
+  if (updatedAtResult !== 0) {
+    return updatedAtResult;
+  }
+
+  return right.id.localeCompare(left.id);
+};
+
+const compareProjectionRows = (
+  left: ProjectionRow,
+  right: ProjectionRow,
+  sortBy: IamContentListQuery['sortBy'],
+  sortDirection: IamContentListQuery['sortDirection']
+): number => {
+  const direction = sortDirection === 'asc' ? 1 : -1;
+
+  const primaryResult =
+    sortBy === 'contentType'
+      ? projectionListCollator.compare(left.content_type, right.content_type)
+      : sortBy === 'title'
+        ? projectionListCollator.compare(left.title, right.title)
+        : sortBy === 'status'
+          ? projectionListCollator.compare(left.status, right.status)
+          : projectionListCollator.compare(left.updated_at, right.updated_at);
+  if (primaryResult !== 0) {
+    return primaryResult * direction;
+  }
+
+  return comparePreferredProjectionRows(left, right);
+};
+
 const buildReadAction = (contentType: string): string =>
   isMainserverContentType(contentType)
     ? `${contentType.split('.')[0] ?? 'content'}.read`
@@ -1085,13 +1148,6 @@ const buildProjectionReadVisibilitySql = (
   return perTypeClauses.length > 0 ? `(${perTypeClauses.join(' OR ')})` : 'FALSE';
 };
 
-const listSortColumnByField = {
-  title: 'projection.title',
-  contentType: 'projection.content_type',
-  status: 'projection.status',
-  updatedAt: 'projection.updated_at',
-} as const satisfies Record<IamContentListQuery['sortBy'], string>;
-
 const loadProjectionPage = async (
   instanceId: string,
   query: IamContentListQuery,
@@ -1133,24 +1189,6 @@ const loadProjectionPage = async (
     );
 
     const whereClause = `WHERE ${conditions.join('\n  AND ')}`;
-    const orderByClause = `ORDER BY ${listSortColumnByField[query.sortBy]} ${
-      query.sortDirection === 'asc' ? 'ASC' : 'DESC'
-    }, projection.updated_at DESC, projection.id DESC`;
-
-    const totalResult = await client.query<{ total: string | number }>(
-      `
-SELECT COUNT(*)::int AS total
-FROM iam.content_list_projection AS projection
-${whereClause};
-      `,
-      params
-    );
-    const total = Number(totalResult.rows[0]?.total ?? 0);
-
-    params.push(query.pageSize);
-    const limitParam = `$${params.length}`;
-    params.push(Math.max(0, (query.page - 1) * query.pageSize));
-    const offsetParam = `$${params.length}`;
 
     const result = await client.query<ProjectionRow>(
       `
@@ -1184,17 +1222,31 @@ SELECT
   projection.source_entity_type,
   projection.source_entity_id
 FROM iam.content_list_projection AS projection
-${whereClause}
-${orderByClause}
-LIMIT ${limitParam}
-OFFSET ${offsetParam};
+${whereClause};
       `,
       params
     );
 
+    const dedupedRows = new Map<string, ProjectionRow>();
+    for (const row of result.rows) {
+      const deduplicationKey = buildProjectionDeduplicationKey(row);
+      const existingRow = dedupedRows.get(deduplicationKey);
+      if (
+        !existingRow ||
+        comparePreferredProjectionRows(row, existingRow) < 0
+      ) {
+        dedupedRows.set(deduplicationKey, row);
+      }
+    }
+    const filteredRows = [...dedupedRows.values()].sort((left, right) =>
+      compareProjectionRows(left, right, query.sortBy, query.sortDirection)
+    );
+    const offset = Math.max(0, (query.page - 1) * query.pageSize);
+    const paginatedRows = filteredRows.slice(offset, offset + query.pageSize);
+
     return {
-      items: result.rows.map(mapProjectionRow),
-      total,
+      items: paginatedRows.map(mapProjectionRow),
+      total: filteredRows.length,
     };
   });
 

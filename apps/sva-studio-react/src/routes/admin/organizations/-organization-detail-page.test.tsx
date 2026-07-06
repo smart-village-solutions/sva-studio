@@ -130,6 +130,10 @@ describe('OrganizationDetailPage', () => {
       const deleteOrganization = vi.fn().mockResolvedValue(true);
       useOrganizationsMock.mockReturnValue(
         createState({
+          selectedOrganization: {
+            ...organizationFixture,
+            childCount: 0,
+          },
           loadOrganization,
           updateOrganization,
           assignMembership,
@@ -271,6 +275,30 @@ describe('OrganizationDetailPage', () => {
     },
     15_000
   );
+
+  it('allows deleting inactive leaf organizations from the detail page', async () => {
+    const deleteOrganization = vi.fn().mockResolvedValue(true);
+    useOrganizationsMock.mockReturnValue(
+      createState({
+        selectedOrganization: {
+          ...organizationFixture,
+          isActive: false,
+          childCount: 0,
+        },
+        deleteOrganization,
+      })
+    );
+
+    render(<OrganizationDetailPage organizationId="org-1" />);
+
+    const deleteButton = screen.getByRole('button', { name: 'Löschen' });
+    expect((deleteButton as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(deleteButton);
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => expect(deleteOrganization).toHaveBeenCalledWith('org-1'));
+  });
 
   it('sorts membership users by their rendered label', () => {
     expect(

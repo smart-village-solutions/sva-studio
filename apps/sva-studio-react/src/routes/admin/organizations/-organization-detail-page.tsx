@@ -251,7 +251,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
               type="button"
               variant="destructive"
               onClick={() => setDeleteConfirmOpen(true)}
-              disabled={!selectedOrganization.isActive}
+              disabled={selectedOrganization.childCount > 0}
             >
               {t('admin.organizations.actions.delete')}
             </Button>

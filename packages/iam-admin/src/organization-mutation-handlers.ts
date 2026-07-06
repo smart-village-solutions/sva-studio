@@ -746,6 +746,37 @@ WHERE instance_id = $1
           return { status: 'conflict' as const };
         }
 
+        if (organization.membership_count > 0) {
+          await client.query(
+            `
+WITH deleted_memberships AS (
+  DELETE FROM iam.account_organizations
+  WHERE instance_id = $1
+    AND organization_id = $2::uuid
+  RETURNING account_id, is_default_context
+),
+fallback_memberships AS (
+  SELECT DISTINCT ON (membership.account_id)
+    membership.account_id,
+    membership.organization_id
+  FROM iam.account_organizations membership
+  JOIN deleted_memberships deleted
+    ON deleted.account_id = membership.account_id
+  WHERE membership.instance_id = $1
+    AND deleted.is_default_context = true
+  ORDER BY membership.account_id, membership.created_at ASC, membership.organization_id ASC
+)
+UPDATE iam.account_organizations membership
+SET is_default_context = true
+FROM fallback_memberships
+WHERE membership.instance_id = $1
+  AND membership.account_id = fallback_memberships.account_id
+  AND membership.organization_id = fallback_memberships.organization_id;
+`,
+            [actor.instanceId, organizationId]
+          );
+        }
+
         await client.query(
           `
 UPDATE iam.contents
@@ -797,7 +828,7 @@ WHERE instance_id = $1
         return deps.createApiError(
           409,
           'conflict',
-          'Organisation mit Children kann nicht gelöscht werden.',
+          'Organisation mit Kind-Organisationen kann nicht gelöscht werden.',
           actor.requestId
         );
       }
@@ -807,7 +838,7 @@ WHERE instance_id = $1
           return deps.createApiError(
             409,
             'conflict',
-            'Organisation mit Children kann nicht gelöscht werden.',
+            'Organisation mit Kind-Organisationen kann nicht gelöscht werden.',
             actor.requestId
           );
         }

@@ -554,6 +554,10 @@ describe('organization mutation handlers', () => {
 
     expect(response.status).toBe(200);
     expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('WITH deleted_memberships AS'),
+      ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
+    );
+    expect(query).toHaveBeenCalledWith(
       expect.stringContaining('DELETE FROM iam.organizations'),
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
     );
@@ -619,7 +623,7 @@ describe('organization mutation handlers', () => {
 
     expect(response.status).toBe(409);
     await expect(json(response)).resolves.toMatchObject({
-      error: { code: 'conflict', message: 'Organisation mit Children kann nicht gelöscht werden.' },
+      error: { code: 'conflict', message: 'Organisation mit Kind-Organisationen kann nicht gelöscht werden.' },
     });
   });
 
@@ -663,7 +667,7 @@ describe('organization mutation handlers', () => {
 
     expect(response.status).toBe(409);
     await expect(json(response)).resolves.toMatchObject({
-      error: { code: 'conflict', message: 'Organisation mit Children kann nicht gelöscht werden.' },
+      error: { code: 'conflict', message: 'Organisation mit Kind-Organisationen kann nicht gelöscht werden.' },
     });
   });
 

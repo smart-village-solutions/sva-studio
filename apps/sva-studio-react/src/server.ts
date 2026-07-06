@@ -16,13 +16,8 @@ const devRuntimeRefreshEnabled = diagnosticsEnabled;
 const serverFnBase = normalizeServerFnBase(process.env.TSS_SERVER_FN_BASE);
 const studioJobWorkerEnabled = process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED !== 'false';
 
-type WorkspaceContext = {
-  readonly requestId?: string | null;
-};
-
-type ServerTransportLogger = {
-  info: (message: string, meta: Record<string, unknown>) => void;
-};
+type WorkspaceContext = { readonly requestId?: string | null };
+type ServerTransportLogger = { info: (message: string, meta: Record<string, unknown>) => void };
 
 type ServerTransportComponent = 'server-entry-transport' | 'server-function-transport';
 type RouteDispatcher = (request: Request) => Promise<Response | null>;
@@ -164,7 +159,6 @@ const getDispatchStudioChangelogRequest = async () => {
   );
   return dispatchStudioChangelogRequestPromise;
 };
-
 const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
   { label: 'mainserver news', getDispatcher: getDispatchMainserverNewsRequest },
   { label: 'mainserver events', getDispatcher: getDispatchMainserverEventsRequest },

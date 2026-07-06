@@ -112,5 +112,8 @@ export const createDefaultPoiDetailFormValues = (): PoiDetailFormValues => ({
     tagsText: '',
     payloadText: '{}',
   },
-  settings: {},
+  settings: {
+    externalId: '',
+    keywords: '',
+  },
 });

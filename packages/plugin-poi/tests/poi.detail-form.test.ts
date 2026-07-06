@@ -40,6 +40,72 @@ describe('poi.detail-form', () => {
     });
   });
 
+  it('preserves externalId and keywords through poi form mapping', () => {
+    const values = mapPoiItemToDetailFormValues({
+      id: 'poi-meta-1',
+      contentType: 'poi.point-of-interest',
+      status: 'published',
+      createdAt: '2026-06-11T10:00:00.000Z',
+      updatedAt: '2026-06-11T10:00:00.000Z',
+      name: 'Buergerhaus',
+      externalId: 'poi-ext-7',
+      keywords: 'service,amt',
+    } satisfies PoiContentItem);
+
+    expect(values.settings).toMatchObject({
+      externalId: 'poi-ext-7',
+      keywords: 'service,amt',
+    });
+    expect(mapPoiDetailFormValuesToInput(values, {})).toMatchObject({
+      name: 'Buergerhaus',
+      externalId: 'poi-ext-7',
+      keywords: 'service,amt',
+    });
+  });
+
+  it('serializes explicit clears for externalId and keywords', () => {
+    expect(
+      mapPoiDetailFormValuesToInput(
+        {
+          name: 'Buergerhaus',
+          basis: {
+            categories: [],
+            active: true,
+          },
+          content: {
+            description: '',
+            mobileDescription: '',
+            addresses: [],
+            location: { name: '', department: '', district: '', regionName: '', state: '', geoLocation: { latitude: '', longitude: '' } },
+            contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            openingHours: [],
+            webUrls: [],
+            operator: {
+              name: '',
+              address: { addition: '', street: '', zip: '', city: '', kind: '', geoLocation: { latitude: '', longitude: '' } },
+              contact: { firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [] },
+            },
+            prices: [],
+            mediaContents: [],
+            certificates: [],
+            accessibilityInformation: { description: '', types: '', urls: [] },
+            tagsText: '',
+            payloadText: '{}',
+          },
+          settings: {
+            externalId: '   ',
+            keywords: '',
+          },
+        },
+        {}
+      )
+    ).toMatchObject({
+      name: 'Buergerhaus',
+      externalId: '',
+      keywords: '',
+    });
+  });
+
   it('maps extended structured poi fields into form values without collapsing lists', () => {
     const values = mapPoiItemToDetailFormValues({
         id: 'poi-2',
@@ -395,6 +461,8 @@ describe('poi.detail-form', () => {
       name: 'Test POI',
       mobileDescription: '',
       active: false,
+      externalId: '',
+      keywords: '',
       addresses: [{ geoLocation: { latitude: 52.5, longitude: undefined } }],
       openingHours: [{ weekday: 'MO', sortNumber: 0, open: false, useYear: false }],
       webUrls: [{ url: 'https://example.test', description: 'Start' }],

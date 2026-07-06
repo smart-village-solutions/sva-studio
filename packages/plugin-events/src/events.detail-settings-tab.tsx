@@ -10,7 +10,6 @@ export function EventsDetailSettingsTab({
   pt: (key: string) => string;
 }>) {
   const { control, setValue } = useFormContext<EventsDetailFormValues>();
-  const pushNotification = useWatch({ control, name: 'settings.pushNotification' }) ?? false;
   const visible = useWatch({ control, name: 'settings.visible' }) ?? true;
   const externalId = useWatch({ control, name: 'settings.externalId' }) ?? '';
   const keywords = useWatch({ control, name: 'settings.keywords' }) ?? '';
@@ -27,13 +26,6 @@ export function EventsDetailSettingsTab({
             id="event-visible"
             checked={visible}
             onChange={(event) => setValue('settings.visible', event.target.checked, { shouldDirty: true })}
-          />
-        </StudioField>
-        <StudioField id="event-push-notification" label={pt('fields.pushNotification')}>
-          <Checkbox
-            id="event-push-notification"
-            checked={pushNotification}
-            onChange={(event) => setValue('settings.pushNotification', event.target.checked, { shouldDirty: true })}
           />
         </StudioField>
       </EventsDetailCard>

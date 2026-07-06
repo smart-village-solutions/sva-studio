@@ -105,7 +105,10 @@ export const mapPoiItemToDetailFormValues = (item: PoiContentItem): PoiDetailFor
     active: item.active !== false,
   },
   content: mapPoiContentToFormValues(item),
-  settings: {},
+  settings: {
+    externalId: item.externalId ?? '',
+    keywords: item.keywords ?? '',
+  },
 });
 
 export const parsePoiPayloadText = (payloadText: string): Record<string, unknown> | null => {

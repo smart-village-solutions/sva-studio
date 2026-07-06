@@ -112,7 +112,6 @@ export type EventFormInput = {
   readonly recurringType?: string;
   readonly recurringInterval?: string;
   readonly recurringWeekdays?: readonly string[];
-  readonly pushNotification?: boolean;
   readonly visible?: boolean;
 };
 

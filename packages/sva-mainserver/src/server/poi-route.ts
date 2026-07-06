@@ -81,8 +81,8 @@ const buildPoiInput = (input: {
   ...(typeof input.body.mobileDescription === 'string'
     ? { mobileDescription: input.body.mobileDescription.trim() }
     : {}),
-  ...(readString(input.body.externalId) ? { externalId: readString(input.body.externalId) } : {}),
-  ...(readString(input.body.keywords) ? { keywords: readString(input.body.keywords) } : {}),
+  ...(typeof input.body.externalId === 'string' ? { externalId: input.body.externalId.trim() } : {}),
+  ...(typeof input.body.keywords === 'string' ? { keywords: input.body.keywords.trim() } : {}),
   ...(readBoolean(input.body.active) !== undefined ? { active: readBoolean(input.body.active) } : {}),
   ...(readString(input.body.categoryName) ? { categoryName: readString(input.body.categoryName) } : {}),
   ...(input.body.payload !== undefined ? { payload: input.body.payload } : {}),

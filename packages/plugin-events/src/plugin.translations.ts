@@ -30,7 +30,6 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     externalId: 'Externe ID',
     keywords: 'Schlagwörter',
     visible: 'Sichtbar',
-    pushNotification: 'Push-Benachrichtigung',
     dateStart: 'Startdatum',
     dateEnd: 'Enddatum',
     timeStart: 'Startzeit',
@@ -212,7 +211,7 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
       accessibility: { title: 'Barrierefreiheit', description: 'Hinweise zur Zugänglichkeit des Events.' },
     },
     settings: {
-      publication: { title: 'Sichtbarkeit & Benachrichtigung', description: 'Ausspielung und Push-Verhalten.' },
+      publication: { title: 'Sichtbarkeit', description: 'Ausspielung des Events.' },
       technical: { title: 'Technische Zusatzdaten', description: 'Externe IDs, Schlagwörter und Tags.' },
     },
   },
@@ -275,7 +274,6 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     externalId: 'External ID',
     keywords: 'Keywords',
     visible: 'Visible',
-    pushNotification: 'Push notification',
     dateStart: 'Start date',
     dateEnd: 'End date',
     timeStart: 'Start time',
@@ -457,7 +455,7 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
       accessibility: { title: 'Accessibility', description: 'Accessibility guidance for the event.' },
     },
     settings: {
-      publication: { title: 'Visibility & notification', description: 'Exposure and push behavior.' },
+      publication: { title: 'Visibility', description: 'Event exposure.' },
       technical: { title: 'Technical metadata', description: 'External IDs, keywords, and tags.' },
     },
   },

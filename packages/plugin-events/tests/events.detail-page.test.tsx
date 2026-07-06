@@ -108,7 +108,7 @@ describe('EventsDetailPage', () => {
         'events.cards.content.links.title': 'Links',
         'events.cards.content.prices.title': 'Preise',
         'events.cards.content.accessibility.title': 'Barrierefreiheit',
-        'events.cards.settings.publication.title': 'Sichtbarkeit & Benachrichtigung',
+        'events.cards.settings.publication.title': 'Sichtbarkeit',
         'events.cards.settings.technical.title': 'Technische Zusatzdaten',
         'events.fields.title': 'Titel',
         'events.fields.categories': 'Kategorien',
@@ -120,7 +120,6 @@ describe('EventsDetailPage', () => {
         'events.fields.dateEnd': 'Enddatum',
         'events.fields.repeat': 'Wiederholung',
         'events.fields.visible': 'Sichtbar',
-        'events.fields.pushNotification': 'Push-Benachrichtigung',
         'events.fields.externalId': 'Externe ID',
         'events.fields.pointOfInterestId': 'Zugehöriger POI',
         'events.fields.pointOfInterestSearch': 'POI suchen',
@@ -214,7 +213,7 @@ describe('EventsDetailPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Sichtbarkeit & Benachrichtigung')).toBeTruthy();
+      expect(screen.getByText('Sichtbarkeit')).toBeTruthy();
     });
     expect(screen.getByText('Technische Zusatzdaten')).toBeTruthy();
   });
@@ -410,7 +409,6 @@ describe('EventsDetailPage', () => {
     });
     fireEvent.click(screen.getByText('Rathaus').closest('button') as HTMLButtonElement);
     fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
-    fireEvent.click(await screen.findByLabelText('Push-Benachrichtigung'));
     fireEvent.change(screen.getByLabelText('Externe ID'), { target: { value: 'event-ext-1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
@@ -422,7 +420,6 @@ describe('EventsDetailPage', () => {
           categoryName: 'Kultur',
           categories: [{ name: 'Kultur' }],
           pointOfInterestId: 'poi-7',
-          pushNotification: true,
           externalId: 'event-ext-1',
           visible: true,
         })

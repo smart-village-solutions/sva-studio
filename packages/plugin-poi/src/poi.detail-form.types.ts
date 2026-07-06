@@ -74,5 +74,8 @@ export type PoiDetailFormValues = Readonly<{
     tagsText: string;
     payloadText: string;
   };
-  settings: Record<string, never>;
+  settings: {
+    externalId: string;
+    keywords: string;
+  };
 }>;

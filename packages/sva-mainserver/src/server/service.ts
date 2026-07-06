@@ -29,6 +29,7 @@ import { loadSvaMainserverInstanceConfig } from './config-store.js';
 import { createAccessTokenProvider } from './service-internals/access-token-provider.js';
 import { createCredentialProvider, createDefaultCredentialReader } from './service-internals/credentials.js';
 import { createEventOperations } from './service-internals/event-operations.js';
+import { createEventVisibilityOperations } from './service-internals/event-visibility-operations.js';
 import { createFetchWithRetry, createGraphqlExecutor } from './service-internals/graphql-client.js';
 import { createGenericItemOperations } from './service-internals/generic-item-operations.js';
 import { createNewsOperations } from './service-internals/news-operations.js';
@@ -224,6 +225,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   const newsOperations = createNewsOperations(executeGraphqlWithConfig);
   const newsVisibilityOperations = createNewsVisibilityOperations(executeGraphqlWithConfig);
   const eventOperations = createEventOperations(executeGraphqlWithConfig);
+  const eventVisibilityOperations = createEventVisibilityOperations(executeGraphqlWithConfig);
   const genericItemOperations = createGenericItemOperations(executeGraphqlWithConfig);
   const poiOperations = createPoiOperations(executeGraphqlWithConfig);
   const surveyOperations = createSurveyOperations(executeGraphqlWithConfig);
@@ -372,6 +374,13 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return eventOperations.writeEventWithConfig({ ...input, forceCreate: false }, config);
+  };
+
+  const changeEventVisibility = async (
+    input: SvaMainserverConnectionInput & { readonly eventId: string; readonly visible: boolean }
+  ) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    await eventVisibilityOperations.changeEventVisibilityWithConfig(input, config);
   };
 
   const deleteEvent = async (input: SvaMainserverConnectionInput & { readonly eventId: string }) => {
@@ -583,6 +592,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     createPoi,
     createSurvey,
     changeNewsVisibility,
+    changeEventVisibility,
     deleteEvent,
     deleteGenericItem,
     deleteNews,
@@ -672,6 +682,10 @@ export const createSvaMainserverEvent = (
 export const updateSvaMainserverEvent = (
   input: SvaMainserverConnectionInput & { readonly eventId: string; readonly event: SvaMainserverEventInput }
 ) => getDefaultService().updateEvent(input);
+
+export const changeSvaMainserverEventVisibility = (
+  input: SvaMainserverConnectionInput & { readonly eventId: string; readonly visible: boolean }
+) => getDefaultService().changeEventVisibility(input);
 
 export const deleteSvaMainserverEvent = (input: SvaMainserverConnectionInput & { readonly eventId: string }) =>
   getDefaultService().deleteEvent(input);

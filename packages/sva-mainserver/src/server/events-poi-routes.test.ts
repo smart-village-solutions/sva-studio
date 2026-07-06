@@ -455,6 +455,72 @@ describe('mainserver content route contracts', () => {
     );
   });
 
+  it('returns a partial-success error when event visibility fails after create', async () => {
+    mockAuthorizedMutation();
+    state.createSvaMainserverEvent.mockResolvedValue({ id: 'event-1', title: 'Sommerfest' });
+    state.changeSvaMainserverEventVisibility.mockRejectedValue(
+      new SvaMainserverError({
+        code: 'invalid_response',
+        message: 'Sichtbarkeit fehlgeschlagen',
+        statusCode: 502,
+      })
+    );
+
+    const response = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Sommerfest',
+          visible: false,
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(502);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'invalid_response',
+      partialSuccess: true,
+      data: {
+        id: 'event-1',
+        title: 'Sommerfest',
+        visible: false,
+      },
+    });
+  });
+
+  it('returns a partial-success error when event visibility fails after update', async () => {
+    mockAuthorizedMutation();
+    state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1', title: 'Feierabendmarkt' });
+    state.changeSvaMainserverEventVisibility.mockRejectedValue(
+      new SvaMainserverError({
+        code: 'invalid_response',
+        message: 'Sichtbarkeit fehlgeschlagen',
+        statusCode: 502,
+      })
+    );
+
+    const response = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/event-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: 'Feierabendmarkt',
+          visible: false,
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(502);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'invalid_response',
+      partialSuccess: true,
+      data: {
+        id: 'event-1',
+        title: 'Feierabendmarkt',
+        visible: false,
+      },
+    });
+  });
+
   it('accepts expanded event structures with contacts, organizer, prices and accessibility information', async () => {
     mockAuthorizedMutation();
     state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-9' });
@@ -613,6 +679,34 @@ describe('mainserver content route contracts', () => {
           webUrls: [{ url: 'https://example.invalid/poi' }],
           tags: ['amt'],
         },
+      })
+    );
+  });
+
+  it('preserves explicit empty externalId and keywords values during POI updates', async () => {
+    mockAuthorizedMutation();
+    state.updateSvaMainserverPoi.mockResolvedValue({ id: 'poi-1' });
+
+    const response = await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: ' Rathaus ',
+          externalId: '   ',
+          keywords: '',
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverPoi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        poiId: 'poi-1',
+        poi: expect.objectContaining({
+          name: 'Rathaus',
+          externalId: '',
+          keywords: '',
+        }),
       })
     );
   });

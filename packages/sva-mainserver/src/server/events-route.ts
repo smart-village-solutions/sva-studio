@@ -252,6 +252,28 @@ const validateMutationRequest = (request: Request, requestId?: string): Response
   return csrfError ? errorJson(403, 'csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen.') : null;
 };
 
+const toEventVisibilityPartialFailureResponse = (
+  error: unknown,
+  event: Record<string, unknown>,
+  operation: 'erstellt' | 'aktualisiert'
+): Response => {
+  const status = error instanceof SvaMainserverError ? error.statusCode : 502;
+  const message =
+    operation === 'erstellt'
+      ? 'Der Event wurde erstellt, aber die Sichtbarkeit konnte nicht aktualisiert werden. Erneutes Speichern kann zu Duplikaten führen.'
+      : 'Der Event wurde aktualisiert, aber die Sichtbarkeit konnte nicht aktualisiert werden. Erneutes Speichern kann zu abweichender Sichtbarkeit führen.';
+
+  return json(
+    {
+      error: 'invalid_response',
+      message,
+      partialSuccess: true,
+      data: event,
+    },
+    status,
+  );
+};
+
 const contentTypeFor = (_contentKind: ContentKind) => EVENTS_CONTENT_TYPE;
 const pluginActionFor = (
   contentKind: ContentKind,
@@ -417,7 +439,11 @@ const handleCollectionCreate = async (
     execute: async (actor, parsed) => {
       const result = await createSvaMainserverEvent({ ...actor, event: parsed.event });
       if (parsed.visible === false) {
-        await changeSvaMainserverEventVisibility({ ...actor, eventId: result.id, visible: false });
+        try {
+          await changeSvaMainserverEventVisibility({ ...actor, eventId: result.id, visible: false });
+        } catch (error) {
+          return toEventVisibilityPartialFailureResponse(error, { ...result, visible: false }, 'erstellt');
+        }
       }
       logSuccess(`mainserver_${route.contentKind}_create`, result.id);
       return json({ data: parsed.visible === undefined ? result : { ...result, visible: parsed.visible } }, 201);
@@ -440,7 +466,15 @@ const handleItemUpdate = async (
     execute: async (actor, parsed) => {
       const result = await updateSvaMainserverEvent({ ...actor, eventId: route.itemId, event: parsed.event });
       if (parsed.visible !== undefined) {
-        await changeSvaMainserverEventVisibility({ ...actor, eventId: route.itemId, visible: parsed.visible });
+        try {
+          await changeSvaMainserverEventVisibility({ ...actor, eventId: route.itemId, visible: parsed.visible });
+        } catch (error) {
+          return toEventVisibilityPartialFailureResponse(
+            error,
+            { ...result, visible: parsed.visible },
+            'aktualisiert'
+          );
+        }
       }
       logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
       return json({ data: parsed.visible === undefined ? result : { ...result, visible: parsed.visible } });

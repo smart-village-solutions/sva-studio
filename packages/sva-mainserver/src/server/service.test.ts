@@ -2563,13 +2563,16 @@ describe('createSvaMainserverService', () => {
       visible: false,
     });
 
-    expect(fetchImpl).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        method: 'POST',
-        body: expect.stringContaining('"recordType":"EventRecord"'),
-      })
-    );
+    const requestBody = JSON.parse(fetchImpl.mock.calls[1]?.[1]?.body as string) as {
+      operationName: string;
+      variables: Record<string, unknown>;
+    };
+
+    expect(requestBody.operationName).toBe('SvaMainserverChangeNewsVisibility');
+    expect(requestBody.variables).toMatchObject({
+      recordType: 'EventRecord',
+      visible: false,
+    });
   });
 
   it('rejects invalid changeVisibility responses', async () => {

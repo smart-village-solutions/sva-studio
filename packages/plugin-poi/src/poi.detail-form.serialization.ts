@@ -221,8 +221,8 @@ export const mapPoiDetailFormValuesToInput = (
     ...(compactString(values.content.description) ? { description: compactString(values.content.description) } : {}),
     mobileDescription: compactString(values.content.mobileDescription) ?? '',
     active: values.basis.active,
-    ...(compactString(values.settings.externalId) ? { externalId: compactString(values.settings.externalId) } : {}),
-    ...(compactString(values.settings.keywords) ? { keywords: compactString(values.settings.keywords) } : {}),
+    externalId: values.settings.externalId?.trim() ?? '',
+    keywords: values.settings.keywords?.trim() ?? '',
     ...(compactCategoryNames(values.basis.categories).length > 0
       ? {
           categoryName: compactCategoryNames(values.basis.categories)[0],

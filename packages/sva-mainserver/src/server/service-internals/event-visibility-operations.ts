@@ -15,7 +15,7 @@ export const createEventVisibilityOperations = (executeGraphqlWithConfig: Graphq
       {
         ...input,
         document: svaMainserverChangeNewsVisibilityDocument,
-        operationName: 'SvaMainserverChangeEventVisibility',
+        operationName: 'SvaMainserverChangeNewsVisibility',
         variables: { id: input.eventId, recordType: 'EventRecord', visible: input.visible },
       },
       config

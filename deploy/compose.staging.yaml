@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG:-latest}}
+    image: ${IMAGE_REF}
     networks:
       - network-node-005
       - default
@@ -27,7 +27,7 @@ services:
         - "traefik.http.services.studio-staging-app.loadbalancer.server.port=3000"
 
   provisioner:
-    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG:-latest}}
+    image: ${IMAGE_REF}
     networks:
       - default
     deploy:
@@ -47,7 +47,7 @@ services:
           memory: 256M
 
   migrate:
-    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG:-latest}}
+    image: ${IMAGE_REF}
     networks:
       - default
     deploy:
@@ -64,7 +64,7 @@ services:
           memory: 256M
 
   bootstrap:
-    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG:-latest}}
+    image: ${IMAGE_REF}
     networks:
       - default
     deploy:

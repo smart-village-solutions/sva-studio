@@ -761,6 +761,138 @@ describe('content list projection', () => {
     });
   });
 
+  it('deduplicates mainserver rows that are visible through own and organization scopes', async () => {
+    projectionRows = [
+      {
+        id: 'poi-org-1',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        owner_user_id: null,
+        owner_organization_id: 'org-1',
+        content_type: 'poi.point-of-interest',
+        title: 'Haus der Familie e.V.',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_name: 'Redaktion',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-poi-org',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'mainserver',
+        source_entity_type: 'poi.point-of-interest',
+        source_entity_id: 'poi-shared-1',
+      },
+      {
+        id: 'poi-own-1',
+        instance_id: 'de-musterhausen',
+        organization_id: null,
+        owner_subject_id: null,
+        owner_user_id: 'account-1',
+        owner_organization_id: null,
+        content_type: 'poi.point-of-interest',
+        title: 'Haus der Familie e.V.',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_name: 'Redaktion',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-poi-own',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'mainserver',
+        source_entity_type: 'poi.point-of-interest',
+        source_entity_id: 'poi-shared-1',
+      },
+    ];
+    syncStates.set('poi.point-of-interest', {
+      last_started_at: null,
+      last_succeeded_at: '2026-06-20T10:00:00.000Z',
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 2,
+    });
+    state.authorizeContentPrimitiveForUser.mockImplementation(
+      async ({ action }: { action: string }) =>
+        action === 'poi.read'
+          ? {
+              ok: true,
+              actor: {
+                instanceId: 'de-musterhausen',
+                keycloakSubject: 'kc-user-1',
+                organizationId: 'org-1',
+              },
+              permissions: [
+                {
+                  action,
+                  resourceType: 'poi',
+                  organizationId: 'org-1',
+                  accessScope: 'organization',
+                },
+                {
+                  action,
+                  resourceType: 'poi',
+                  accessScope: 'own',
+                },
+              ],
+            }
+          : {
+              ok: false,
+              status: 403,
+              error: 'forbidden',
+              message: 'forbidden',
+            }
+    );
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [
+        {
+          action: 'poi.read',
+          resourceType: 'poi',
+          organizationId: 'org-1',
+          accessScope: 'organization',
+        },
+        {
+          action: 'poi.read',
+          resourceType: 'poi',
+          accessScope: 'own',
+        },
+      ],
+    });
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['poi.point-of-interest'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    await expect(response.json()).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'poi-org-1', title: 'Haus der Familie e.V.' })],
+      pagination: {
+        page: 1,
+        pageSize: 25,
+        total: 1,
+      },
+      requestId: 'req-1',
+    });
+  });
+
   it('finds projected rows when the search term appears only in payload_json', async () => {
     projectionRows = [
       {

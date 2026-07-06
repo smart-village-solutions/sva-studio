@@ -1,7 +1,7 @@
 import type { HostMediaAssetListItem } from '@sva/plugin-sdk';
 import React from 'react';
 
-import type { NewsDetailFormValues, NewsMediaContentFormValue } from './news.types.js';
+import type { NewsMediaContentFormValue } from './news.types.js';
 import { mediaContentFromAsset, type MediaUploadPhase, uploadPhaseMessageKey } from './news.detail-media.helpers.js';
 import { createEmptyMediaContent, useNewsUploadChangeHandler } from './news.detail-media-upload.js';
 

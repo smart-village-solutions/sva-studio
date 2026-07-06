@@ -15,9 +15,10 @@ type LoadStudioChangelogEntriesInput = {
 };
 
 const resolveStudioChangelogCatalogPaths = (): readonly string[] => [
-  path.resolve(process.cwd(), '.output/public', STUDIO_CHANGELOG_ARTIFACT_RELATIVE_PATH),
-  path.resolve(process.cwd(), 'public', STUDIO_CHANGELOG_ARTIFACT_RELATIVE_PATH),
-  path.resolve(process.cwd(), 'apps/sva-studio-react/public', STUDIO_CHANGELOG_ARTIFACT_RELATIVE_PATH),
+  path.resolve(process.cwd(), '.output/server', STUDIO_CHANGELOG_ARTIFACT_RELATIVE_PATH),
+  path.resolve(process.cwd(), 'apps/sva-studio-react/.output/server', STUDIO_CHANGELOG_ARTIFACT_RELATIVE_PATH),
+  path.resolve(process.cwd(), '.generated/studio-changelog.json'),
+  path.resolve(process.cwd(), 'apps/sva-studio-react/.generated/studio-changelog.json'),
 ];
 
 const parseStudioChangelogCatalog = (filePath: string, source: string): readonly StudioChangelogEntry[] => {

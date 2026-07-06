@@ -7,7 +7,7 @@
     "builder:launch": "npx builder.io@latest launch -p 3000 -c \"pnpm nx run sva-studio-react:serve\" --no-open --workspace ./builder.workspace.json",
     "check:i18n": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/check-i18n-keys.ts",
     "check:account-ui-foundation": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/check-account-ui-foundation.ts",
-    "build": "pnpm exec tsx ../../scripts/ci/generate-studio-changelog-artifact.ts --output public/generated/studio-changelog.json && pnpm run check:i18n && pnpm run check:account-ui-foundation && vite build",
+    "build": "rm -rf public/generated .output/public/generated && pnpm exec tsx ../../scripts/ci/generate-studio-changelog-artifact.ts --output .generated/studio-changelog.json && pnpm run check:i18n && pnpm run check:account-ui-foundation && vite build && bash ../../scripts/ci/run-workspace-node.sh -e \"const fs=require('node:fs'); fs.mkdirSync('.output/server/generated',{recursive:true}); fs.copyFileSync('.generated/studio-changelog.json','.output/server/generated/studio-changelog.json')\"",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
     "test:a11y": "vitest run --config vitest.a11y.config.ts --passWithNoTests",

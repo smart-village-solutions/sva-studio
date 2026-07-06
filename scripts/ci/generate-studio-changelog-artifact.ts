@@ -28,7 +28,7 @@ const parseOutputPath = (args: readonly string[]): string => {
     }
   }
 
-  return path.join('apps/sva-studio-react/public', STUDIO_CHANGELOG_ARTIFACT_RELATIVE_PATH);
+  return path.join('apps/sva-studio-react/.generated', 'studio-changelog.json');
 };
 
 const listRepositoryEntryFiles = (repositoryRoot: string): readonly string[] => {

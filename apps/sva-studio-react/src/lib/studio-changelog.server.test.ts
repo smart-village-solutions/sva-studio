@@ -76,9 +76,9 @@ describe('studio-changelog.server', () => {
     ]);
   });
 
-  it('supports the app-root public fallback path', async () => {
+  it('supports the app-root generated fallback path', async () => {
     const result = await loadStudioChangelogEntries({
-      resolveCatalogPaths: () => ['/tmp/missing.json', '/tmp/public/generated/studio-changelog.json'],
+      resolveCatalogPaths: () => ['/tmp/missing.json', '/tmp/.generated/studio-changelog.json'],
       readCatalogFile: async (filePath) => {
         if (filePath.endsWith('missing.json')) {
           throw new Error('nicht gefunden');

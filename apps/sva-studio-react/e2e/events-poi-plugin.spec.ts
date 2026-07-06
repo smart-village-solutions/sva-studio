@@ -71,7 +71,7 @@ test.describe('events and POI plugins', () => {
     await page.getByRole('button', { name: /Rathaus\s*poi-1/ }).click();
     await page.getByRole('tab', { name: /Inhalt|events\.detailTabs\.content\.title/ }).click();
     await page.locator('#event-description').fill('Sommerfest in der Innenstadt');
-    await page.locator('#event-date-start').fill('2026-04-14T09:30');
+    await page.locator('#event-date-start').fill('2026-04-14');
     await page.locator('#event-street').fill('Marktplatz');
     await page.locator('#event-city').fill('Musterhausen');
     await page.locator('#event-contact-email').fill('events@example.com');

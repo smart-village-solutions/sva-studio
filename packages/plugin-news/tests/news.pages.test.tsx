@@ -4,9 +4,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   fetchIamContentHistory,
   listHostMediaAssets,
-  listHostMediaReferencesByTarget,
   registerPluginTranslationResolver,
-  replaceHostMediaReferences,
 } from '@sva/plugin-sdk';
 
 import { NewsCreatePage, NewsEditPage } from '../src/news.pages.js';
@@ -152,8 +150,6 @@ vi.mock('@sva/plugin-sdk', async () => {
     ...actual,
     fetchIamContentHistory: vi.fn(async () => []),
     listHostMediaAssets: vi.fn(async () => []),
-    listHostMediaReferencesByTarget: vi.fn(async () => []),
-    replaceHostMediaReferences: vi.fn(async (input: unknown) => input),
   };
 });
 
@@ -427,18 +423,23 @@ describe('News editor pages', () => {
         'news.publicationModes.scheduled.label': 'Zeitgesteuert',
         'news.publicationModes.scheduled.description': 'Wird mit Zeitpunkt gespeichert.',
         'news.actions.edit': 'Bearbeiten',
-        'news.actions.addMedia': 'Medium hinzufügen',
+        'news.actions.addImage': 'Bild aus Mediathek',
+        'news.actions.uploadMedia': 'Bild hochladen',
+        'news.actions.uploadingMedia': 'Bild wird hochgeladen',
+        'news.actions.addMediaManual': 'Link manuell eintragen',
         'news.actions.remove': 'Entfernen',
-        'news.actions.clearMedia': 'Medium entfernen',
+        'news.actions.removeImage': 'Bild entfernen',
         'news.validation.contentBlocks': 'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.',
         'news.validation.contentBody': 'Der Inhalt ist erforderlich.',
         'news.validation.sourceUrl': 'Die Quell-URL muss mit https:// beginnen.',
         'news.validation.publishedAt': 'Das Veröffentlichungsdatum ist erforderlich.',
         'news.validation.publicationDate': 'Das Publikationsdatum muss gültig sein.',
         'news.validation.scheduledPublicationAt': 'Der geplante Veröffentlichungszeitpunkt ist ungültig.',
-        'news.fields.teaserImage': 'Teaserbild',
-        'news.fields.headerImage': 'Headerbild',
-        'news.fields.mediaPlaceholder': 'Medium auswählen',
+        'news.fields.mediaUrlDescription': 'Bildquelle',
+        'news.fields.mediaCopyright': 'Copyright',
+        'news.fields.mediaWidth': 'Breite',
+        'news.fields.mediaHeight': 'Höhe',
+        'news.fields.imageSearch': 'Bilder suchen',
       };
       const template = labels[key] ?? key;
       return template.replace(/\{\{(\w+)\}\}/g, (_match, variableName: string) => {
@@ -450,12 +451,6 @@ describe('News editor pages', () => {
       { id: 'asset-hero', metadata: { title: 'Hero Asset' } },
       { id: 'asset-header', metadata: { title: 'Header Asset' } },
     ]);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
-    vi.mocked(replaceHostMediaReferences).mockResolvedValue({
-      targetType: 'news',
-      targetId: 'news-1',
-      references: [],
-    });
     vi.mocked(fetchIamContentHistory).mockResolvedValue([]);
   });
 
@@ -573,7 +568,7 @@ describe('News editor pages', () => {
     fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     fireEvent.change(screen.getByLabelText('Quell-URL'), { target: { value: 'https://example.com/news' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Link manuell eintragen' }));
     fireEvent.change(screen.getByLabelText('Medien-URL'), { target: { value: 'https://example.com/image.jpg' } });
     fireEvent.change(screen.getByLabelText('Bildunterschrift'), { target: { value: 'Bild' } });
     await openReleaseTab();
@@ -596,7 +591,6 @@ describe('News editor pages', () => {
       );
     });
 
-    expect(replaceHostMediaReferences).not.toHaveBeenCalled();
   });
 
   it('submits the simplified editorial model while preserving hidden legacy omissions on create', async () => {
@@ -621,7 +615,7 @@ describe('News editor pages', () => {
     fireEvent.change(screen.getByLabelText('Quellbeschreibung'), { target: { value: 'Quelle' } });
     fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Inhalt</p>' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Link manuell eintragen' }));
     fireEvent.change(screen.getByLabelText('Medien-URL'), { target: { value: 'https://example.com/image.jpg' } });
     fireEvent.change(screen.getByLabelText('Bildunterschrift'), { target: { value: 'Bild' } });
     clickPrimaryAction('News anlegen');
@@ -767,20 +761,12 @@ describe('News editor pages', () => {
   it('keeps the latest edit payload when an older content request resolves later', async () => {
     const firstNews = createDeferred<Awaited<ReturnType<typeof getNews>>>();
     const secondNews = createDeferred<Awaited<ReturnType<typeof getNews>>>();
-    const firstRefs = createDeferred<Awaited<ReturnType<typeof listHostMediaReferencesByTarget>>>();
-    const secondRefs = createDeferred<Awaited<ReturnType<typeof listHostMediaReferencesByTarget>>>();
 
     vi.mocked(getNews).mockImplementation((contentId: string) => {
       if (contentId === 'news-2') {
         return secondNews.promise;
       }
       return firstNews.promise;
-    });
-    vi.mocked(listHostMediaReferencesByTarget).mockImplementation(({ targetId }: { targetId: string }) => {
-      if (targetId === 'news-2') {
-        return secondRefs.promise;
-      }
-      return firstRefs.promise;
     });
 
     const { rerender } = render(<NewsEditPage />);
@@ -803,15 +789,6 @@ describe('News editor pages', () => {
       updatedAt: '2026-01-04T00:00:00.000Z',
       publishedAt: '2026-01-04T00:00:00.000Z',
     });
-    await actResolve(secondRefs, [
-      {
-        id: 'ref-2',
-        assetId: 'asset-hero',
-        role: 'teaser_image',
-        targetType: 'news',
-        targetId: 'news-2',
-      },
-    ]);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Neuere News')).toBeTruthy();
@@ -838,15 +815,6 @@ describe('News editor pages', () => {
       updatedAt: '2026-01-02T00:00:00.000Z',
       publishedAt: '2026-01-02T00:00:00.000Z',
     });
-    await actResolve(firstRefs, [
-      {
-        id: 'ref-1',
-        assetId: 'asset-header',
-        role: 'teaser_image',
-        targetType: 'news',
-        targetId: 'news-1',
-      },
-    ]);
 
     expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe('Neuere News');
     expect(screen.queryByDisplayValue('Alte News')).toBeNull();
@@ -1019,12 +987,7 @@ describe('News editor pages', () => {
     ).toBeNull();
   });
 
-  it('preserves existing host media references on edit saves even without dedicated image controls', async () => {
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
-      { id: 'ref-1', assetId: 'asset-hero', role: 'teaser_image', sortOrder: 0 },
-      { id: 'ref-2', assetId: 'asset-header', role: 'header_image', sortOrder: 1 },
-    ]);
-
+  it('updates existing news items without host media reference side effects', async () => {
     render(<NewsEditPage />);
 
     await waitFor(() => {
@@ -1040,15 +1003,6 @@ describe('News editor pages', () => {
           contentBlocks: [expect.objectContaining({ intro: 'Kurztext', body: '<p>Body</p>' })],
         })
       );
-      expect(replaceHostMediaReferences).toHaveBeenCalledWith({
-        fetch: expect.any(Function),
-        targetType: 'news',
-        targetId: 'news-1',
-        references: [
-          { assetId: 'asset-hero', role: 'teaser_image', sortOrder: 0 },
-          { assetId: 'asset-header', role: 'header_image', sortOrder: 1 },
-        ],
-      });
     });
   });
 

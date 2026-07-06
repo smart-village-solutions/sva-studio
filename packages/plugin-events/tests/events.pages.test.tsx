@@ -1,11 +1,6 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import {
-  listHostMediaAssets,
-  listHostMediaReferencesByTarget,
-  registerPluginTranslationResolver,
-  replaceHostMediaReferences,
-} from '@sva/plugin-sdk';
+import { listHostMediaAssets, registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEvent, getEvent, listEvents, updateEvent } from '../src/events.api.js';
 import { EventsCreatePage, EventsEditPage, EventsListPage } from '../src/events.pages.js';
@@ -68,8 +63,7 @@ vi.mock('@sva/plugin-sdk', async () => {
   return {
     ...actual,
     listHostMediaAssets: vi.fn(async () => []),
-    listHostMediaReferencesByTarget: vi.fn(async () => []),
-    replaceHostMediaReferences: vi.fn(async (input: unknown) => input),
+    uploadHostMediaFile: vi.fn(),
   };
 });
 
@@ -104,13 +98,22 @@ describe('EventsListPage', () => {
         'events.actions.create': 'Event anlegen',
         'events.actions.save': 'Speichern',
         'events.actions.update': 'Änderungen speichern',
-        'events.actions.clearMedia': 'Medium entfernen',
         'events.actions.back': 'Zurück zur Liste',
         'events.actions.delete': 'Löschen',
+        'events.actions.addImage': 'Aus Mediathek auswählen',
+        'events.actions.uploadMedia': 'Medium hochladen',
+        'events.actions.uploadingMedia': 'Medium wird hochgeladen',
+        'events.actions.addMediaManual': 'Manuell hinzufügen',
+        'events.actions.selectImage': 'Auswählen',
+        'events.actions.removeImage': 'Medium entfernen',
         'events.fields.actions': 'Aktionen',
         'events.fields.title': 'Titel',
         'events.fields.description': 'Beschreibung',
-        'events.fields.headerImage': 'Headerbild',
+        'events.fields.mediaCaption': 'Bildunterschrift',
+        'events.fields.mediaCopyright': 'Copyright',
+        'events.fields.mediaContentType': 'Medientyp',
+        'events.fields.mediaWidth': 'Breite',
+        'events.fields.mediaHeight': 'Höhe',
         'events.fields.categories': 'Kategorien',
         'events.fields.categoriesHelp': 'Mehrfachauswahl',
         'events.fields.categoriesSearch': 'Kategorien suchen',
@@ -122,7 +125,6 @@ describe('EventsListPage', () => {
         'events.fields.email': 'E-Mail',
         'events.fields.url': 'Web-URL',
         'events.fields.urlDescription': 'Link-Beschreibung',
-        'events.fields.mediaPlaceholder': 'Medium auswählen',
         'events.fields.pointOfInterestId': 'Zugehöriger POI',
         'events.fields.repeat': 'Wiederholung',
         'events.fields.phone': 'Telefon',
@@ -162,8 +164,8 @@ describe('EventsListPage', () => {
         'events.cards.content.recurrence.description': 'Wiederkehrende Durchführung des Events.',
         'events.cards.content.poi.title': 'POI-Verknüpfung',
         'events.cards.content.poi.description': 'Zuordnung zu einem bestehenden POI.',
-        'events.cards.settings.media.title': 'Medien',
-        'events.cards.settings.media.description': 'Headerbild für die Detailseite.',
+        'events.cards.content.media.title': 'Medien',
+        'events.cards.content.media.description': 'Galerie, Upload oder manuelle Medienangaben für das Event.',
         'events.history.empty.title': 'Noch keine Historie verfügbar.',
         'events.history.empty.description': 'Historienereignisse für Events werden in einem späteren Schritt angebunden.',
         'events.actions.addCategory': 'Kategorie hinzufügen',
@@ -176,16 +178,12 @@ describe('EventsListPage', () => {
         'events.validation.dates': 'Datumswerte müssen gültig sein.',
         'events.validation.urls': 'URLs müssen mit https:// beginnen.',
         'events.validation.categories': 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
+        'events.values.mediaContentTypes.unspecified': 'Nicht gesetzt',
+        'events.values.mediaContentTypes.image': 'Bild',
       };
       return labels[key] ?? key;
     });
     vi.mocked(listHostMediaAssets).mockResolvedValue([{ id: 'asset-header', metadata: { title: 'Header Asset' } }]);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
-    vi.mocked(replaceHostMediaReferences).mockResolvedValue({
-      targetType: 'events',
-      targetId: 'event-1',
-      references: [],
-    });
   });
 
   afterEach(() => {
@@ -232,7 +230,7 @@ describe('EventsListPage', () => {
     expect(screen.queryByText('14.04.2026, 02:00')).toBeNull();
   });
 
-  it('creates host media references alongside the legacy event payload without leaking storage artifacts', async () => {
+  it('creates inline media contents in the event payload', async () => {
     render(<EventsCreatePage />);
 
     await waitFor(() => {
@@ -249,11 +247,12 @@ describe('EventsListPage', () => {
     fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Live im Stadtpark' } });
     fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-04-14' } });
     fireEvent.change(screen.getByLabelText('Web-URL'), { target: { value: 'https://example.com/events' } });
-    fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
-    await waitFor(() => {
-      expect(screen.getByLabelText('Headerbild')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Manuell hinzufügen' }));
+    fireEvent.change(screen.getByLabelText('Bildunterschrift'), { target: { value: 'Bühne' } });
+    fireEvent.change(screen.getByLabelText('Copyright'), { target: { value: 'Stadt' } });
+    fireEvent.change(screen.getByLabelText('Web-URL', { selector: '#event-media-url-0' }), {
+      target: { value: 'https://example.com/event.jpg' },
     });
-    fireEvent.change(screen.getByLabelText('Headerbild'), { target: { value: 'asset-header' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
@@ -263,19 +262,20 @@ describe('EventsListPage', () => {
           description: 'Live im Stadtpark',
           dates: [{ dateStart: '2026-04-14' }],
           urls: [{ url: 'https://example.com/events' }],
+          mediaContents: [
+            expect.objectContaining({
+              captionText: 'Bühne',
+              copyright: 'Stadt',
+              sourceUrl: { url: 'https://example.com/event.jpg' },
+            }),
+          ],
         })
       );
-      expect(replaceHostMediaReferences).toHaveBeenCalledWith({
-        fetch: expect.any(Function),
-        targetType: 'events',
-        targetId: 'event-created',
-        references: [{ assetId: 'asset-header', role: 'header_image', sortOrder: 0 }],
-      });
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/events/$id', params: { id: 'event-created' } });
     });
   });
 
-  it('ignores impossible date-only input values that browsers reject natively', async () => {
+  it('ignores impossible browser date values and still submits with the remaining valid input', async () => {
     render(<EventsCreatePage />);
 
     await waitFor(() => {
@@ -287,7 +287,7 @@ describe('EventsListPage', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Startdatum')).toBeTruthy();
     });
-    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-03-40' } });
+    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-02-31' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
@@ -303,18 +303,17 @@ describe('EventsListPage', () => {
     expect(screen.getByLabelText('Startdatum').getAttribute('aria-invalid')).toBeNull();
   });
 
-  it('loads existing host media references on edit and keeps the update flow stable', async () => {
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([
-      {
-        id: 'ref-event-1',
-        assetId: 'asset-header',
-        targetType: 'events',
-        targetId: 'event-1',
-        role: 'header_image',
-        sortOrder: 0,
-      },
-    ]);
-
+  it('loads existing inline media contents on edit and keeps the update flow stable', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Bestehendes Event',
+      description: 'Beschreibung',
+      categoryName: 'Kultur',
+      mediaContents: [{ sourceUrl: { url: 'https://example.com/header.jpg', description: 'Header Asset' }, captionText: 'Header' }],
+      dates: [{ dateStart: '2026-04-14T09:30:00.000Z' }],
+      addresses: [{ street: 'Markt 1', city: 'Musterhausen' }],
+      urls: [{ url: 'https://example.com/events' }],
+    } as never);
     render(<EventsEditPage />);
 
     await waitFor(() => {
@@ -322,9 +321,9 @@ describe('EventsListPage', () => {
       expect(screen.getByDisplayValue('Bestehendes Event')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
     await waitFor(() => {
-      expect((screen.getByLabelText('Headerbild') as HTMLSelectElement).value).toBe('asset-header');
+      expect(screen.getByDisplayValue('Header')).toBeTruthy();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Medium entfernen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));

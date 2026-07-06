@@ -4,11 +4,13 @@ import type {
   EventContact,
   EventContentItem,
   EventFormInput,
+  EventMediaContent,
   EventOrganizer,
   EventPriceInformation,
   EventWebUrl,
 } from './events.types.js';
 import { toDateOnlyInputValue } from './events.date-only.js';
+import { normalizeMediaContentType } from './events.detail-media-content-type.js';
 
 export type EventsFormGeoLocationValue = Readonly<{
   latitude: string;
@@ -23,6 +25,13 @@ export type EventAddressFormValue = Omit<EventAddress, 'geoLocation'> &
 export type EventOrganizerFormValue = Omit<EventOrganizer, 'address'> &
   Readonly<{
     address?: EventAddressFormValue;
+  }>;
+
+export type EventMediaContentFormValue = Omit<EventMediaContent, 'height' | 'sourceUrl' | 'width'> &
+  Readonly<{
+    height: string;
+    width: string;
+    sourceUrl: { url: string; description: string };
   }>;
 
 export type EventsDetailFormValues = Readonly<{
@@ -41,13 +50,13 @@ export type EventsDetailFormValues = Readonly<{
     dates: EventFormInput['dates'];
     addresses: readonly EventAddressFormValue[];
     urls: EventFormInput['urls'];
+    mediaContents: readonly EventMediaContentFormValue[];
     contacts: readonly EventContact[];
     organizer: EventOrganizerFormValue;
     priceInformations: readonly EventPriceInformation[];
     accessibilityInformation: EventAccessibilityInformation;
   };
   settings: {
-    headerImageAssetId: string;
     pushNotification: boolean;
     visible: boolean;
     externalId: string;
@@ -87,6 +96,14 @@ export const createDefaultContact = (): EventContact => ({
   webUrls: [{ url: '', description: '' }],
 });
 export const createDefaultUrl = (): EventWebUrl => ({ url: '', description: '' });
+export const createDefaultMediaContent = (): EventMediaContentFormValue => ({
+  captionText: '',
+  copyright: '',
+  contentType: '',
+  sourceUrl: { url: '', description: '' },
+  height: '',
+  width: '',
+});
 export const createDefaultOrganizer = (): EventOrganizerFormValue => ({
   name: '',
   address: createDefaultAddress(),
@@ -119,13 +136,13 @@ export const createDefaultEventsDetailFormValues = (): EventsDetailFormValues =>
     dates: [createDefaultDate()],
     addresses: [createDefaultAddress()],
     urls: [createDefaultUrl()],
+    mediaContents: [],
     contacts: [createDefaultContact()],
     organizer: createDefaultOrganizer(),
     priceInformations: [createDefaultPriceInformation()],
     accessibilityInformation: createDefaultAccessibilityInformation(),
   },
   settings: {
-    headerImageAssetId: '',
     pushNotification: false,
     visible: true,
     externalId: '',
@@ -152,6 +169,20 @@ const mapAddressToFormValue = (address?: EventAddress): EventAddressFormValue =>
   geoLocation: mapGeoLocationToFormValue(address?.geoLocation),
 });
 
+const mapMediaContentToFormValue = (
+  mediaContent: NonNullable<NonNullable<EventContentItem['mediaContents']>[number]>
+): EventMediaContentFormValue => ({
+  captionText: mediaContent.captionText ?? '',
+  copyright: mediaContent.copyright ?? '',
+  contentType: mediaContent.contentType ?? '',
+  sourceUrl: {
+    url: mediaContent.sourceUrl?.url ?? '',
+    description: mediaContent.sourceUrl?.description ?? '',
+  },
+  height: mapNumberToString(mediaContent.height),
+  width: mapNumberToString(mediaContent.width),
+});
+
 export const mapEventItemToDetailFormValues = (item: EventContentItem): EventsDetailFormValues => ({
   title: item.title,
   basis: {
@@ -176,6 +207,7 @@ export const mapEventItemToDetailFormValues = (item: EventContentItem): EventsDe
       : [createDefaultDate()],
     addresses: item.addresses?.length ? item.addresses.map(mapAddressToFormValue) : [createDefaultAddress()],
     urls: item.urls?.length ? item.urls : [createDefaultUrl()],
+    mediaContents: item.mediaContents?.length ? item.mediaContents.map(mapMediaContentToFormValue) : [],
     contacts: item.contacts?.length ? item.contacts : [createDefaultContact()],
     organizer: item.organizer
       ? {
@@ -187,7 +219,6 @@ export const mapEventItemToDetailFormValues = (item: EventContentItem): EventsDe
     accessibilityInformation: item.accessibilityInformation ?? createDefaultAccessibilityInformation(),
   },
   settings: {
-    headerImageAssetId: '',
     pushNotification: item.pushNotification ?? false,
     visible: item.visible ?? true,
     externalId: item.externalId ?? '',
@@ -207,6 +238,18 @@ const compactValidatedNumber = (value?: string | null) => {
     return undefined;
   }
 
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const compactFiniteNumber = (value?: string | number | null) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
   const parsed = Number(trimmed);
   return Number.isFinite(parsed) ? parsed : undefined;
 };
@@ -292,6 +335,19 @@ export const mapEventsDetailFormValuesToInput = (values: EventsDetailFormValues)
       : {}),
   };
 
+  const mediaContents = (values.content.mediaContents ?? [])
+    .map((entry) => ({
+      ...(compactString(entry?.captionText) ? { captionText: compactString(entry?.captionText) } : {}),
+      ...(compactString(entry?.copyright) ? { copyright: compactString(entry?.copyright) } : {}),
+      ...(compactFiniteNumber(entry?.height) !== undefined ? { height: compactFiniteNumber(entry?.height) } : {}),
+      ...(compactFiniteNumber(entry?.width) !== undefined ? { width: compactFiniteNumber(entry?.width) } : {}),
+      ...(normalizeMediaContentType(entry?.contentType) ? { contentType: normalizeMediaContentType(entry?.contentType) } : {}),
+      ...(entry?.sourceUrl && compactWebUrls([entry.sourceUrl]).length > 0
+        ? { sourceUrl: compactWebUrls([entry.sourceUrl])[0] }
+        : {}),
+    }))
+    .filter((entry) => Object.keys(entry).length > 0);
+
   return {
     title: values.title.trim(),
     ...(compactString(values.content.description) ? { description: compactString(values.content.description) } : {}),
@@ -328,6 +384,7 @@ export const mapEventsDetailFormValuesToInput = (values: EventsDetailFormValues)
       .filter((entry) => Object.keys(entry).length > 0),
     ...(contacts.length > 0 ? { contacts } : {}),
     ...(compactWebUrls(values.content.urls).length > 0 ? { urls: compactWebUrls(values.content.urls) } : {}),
+    ...(mediaContents.length > 0 ? { mediaContents } : {}),
     ...(Object.keys(organizer).length > 0 ? { organizer } : {}),
     ...(prices.length > 0 ? { priceInformations: prices } : {}),
     ...(Object.keys(accessibility).length > 0 ? { accessibilityInformation: accessibility } : {}),

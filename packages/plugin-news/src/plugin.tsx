@@ -1,5 +1,4 @@
 import {
-  defineMediaPickerDefinition,
   createStandardContentPluginActionIds,
   createStandardContentPluginDefinition,
   createStandardContentPluginContribution,
@@ -33,19 +32,6 @@ const standardNewsContribution = createStandardContentPluginContribution({
 export const pluginNewsPermissionDefinitions = standardNewsContribution.permissions;
 
 export const pluginNewsActionDefinitions = standardNewsContribution.actions;
-
-export const pluginNewsMediaPickers = {
-  teaserImage: defineMediaPickerDefinition({
-    roles: ['teaser_image'],
-    allowedMediaTypes: ['image'],
-    presetKey: 'teaser',
-  }),
-  headerImage: defineMediaPickerDefinition({
-    roles: ['header_image'],
-    allowedMediaTypes: ['image'],
-    presetKey: 'hero',
-  }),
-} as const;
 
 export const getPluginNewsActionDefinition = (
   actionId: (typeof pluginNewsActionIds)[keyof typeof pluginNewsActionIds]

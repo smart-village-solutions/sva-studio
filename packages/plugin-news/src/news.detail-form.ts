@@ -37,8 +37,6 @@ type MutableLegacyCompatibilitySnapshot = {
   };
   pointOfInterestId?: string;
   pushNotificationsSentAt?: string;
-  teaserImageAssetId?: string | null;
-  headerImageAssetId?: string | null;
   legacyContentBlocks?: NewsContentBlockFormValue[];
 };
 
@@ -52,8 +50,6 @@ type CompatibilityFormValues = NewsDetailFormValues & {
   fullVersion?: boolean;
   showPublishDate?: boolean;
   pushNotification?: boolean;
-  teaserImageAssetId?: string | null;
-  headerImageAssetId?: string | null;
   contentBlocks?: NewsContentBlockFormValue[];
   address?: {
     street?: string;
@@ -184,8 +180,6 @@ const legacySnapshotSchema = z.object({
   }).optional(),
   pointOfInterestId: z.string().optional(),
   pushNotificationsSentAt: z.string().optional(),
-  teaserImageAssetId: z.string().nullable().optional(),
-  headerImageAssetId: z.string().nullable().optional(),
   legacyContentBlocks: z.array(z.object({
     title: z.string(),
     intro: z.string(),
@@ -479,24 +473,6 @@ const defineCompatibilityMetadataAliases = (
   defineCompatibilityAlias(
     compatibilityValues,
     values,
-    'teaserImageAssetId',
-    () => ensureLegacySnapshot(values).teaserImageAssetId ?? null,
-    (nextValue) => {
-      ensureLegacySnapshot(values).teaserImageAssetId = nextValue;
-    }
-  );
-  defineCompatibilityAlias(
-    compatibilityValues,
-    values,
-    'headerImageAssetId',
-    () => ensureLegacySnapshot(values).headerImageAssetId ?? null,
-    (nextValue) => {
-      ensureLegacySnapshot(values).headerImageAssetId = nextValue;
-    }
-  );
-  defineCompatibilityAlias(
-    compatibilityValues,
-    values,
     'pointOfInterestId',
     () => ensureLegacySnapshot(values).pointOfInterestId ?? '',
     (nextValue) => {
@@ -509,24 +485,6 @@ const defineCompatibilityContentAliases = (
   compatibilityValues: CompatibilityFormValues,
   values: NewsDetailEditorialFormValues
 ) => {
-  defineCompatibilityAlias(
-    compatibilityValues,
-    values,
-    'teaserImageAssetId',
-    () => ensureLegacySnapshot(values).teaserImageAssetId ?? null,
-    (nextValue) => {
-      ensureLegacySnapshot(values).teaserImageAssetId = nextValue;
-    }
-  );
-  defineCompatibilityAlias(
-    compatibilityValues,
-    values,
-    'headerImageAssetId',
-    () => ensureLegacySnapshot(values).headerImageAssetId ?? null,
-    (nextValue) => {
-      ensureLegacySnapshot(values).headerImageAssetId = nextValue;
-    }
-  );
   defineCompatibilityAlias(
     compatibilityValues,
     values,
@@ -643,16 +601,16 @@ const buildMediaContentMutation = (media: NewsMediaContentFormValue) => {
   const captionText = compactString(media.captionText);
   const copyright = compactString(media.copyright);
   const contentType = compactString(media.contentType);
-  const height = compactString(media.height);
-  const width = compactString(media.width);
+  const height = media.height.trim().length > 0 ? Number(media.height) : undefined;
+  const width = media.width.trim().length > 0 ? Number(media.width) : undefined;
   const sourceUrl = compactWebUrl(media.sourceUrl.url, media.sourceUrl.description);
 
   return {
     ...(captionText ? { captionText } : {}),
     ...(copyright ? { copyright } : {}),
     ...(contentType ? { contentType } : {}),
-    ...(height ? { height: Number(height) } : {}),
-    ...(width ? { width: Number(width) } : {}),
+    ...(Number.isFinite(height) ? { height } : {}),
+    ...(Number.isFinite(width) ? { width } : {}),
     ...(sourceUrl ? { sourceUrl } : {}),
   };
 };
@@ -739,12 +697,6 @@ const syncSnapshotFromCompatibilityValues = (values: NewsDetailFormValues) => {
   if (touched.pointOfInterestId && typeof compatibilityValues.pointOfInterestId === 'string') {
     snapshot.pointOfInterestId = compatibilityValues.pointOfInterestId;
   }
-  if (touched.teaserImageAssetId && compatibilityValues.teaserImageAssetId !== undefined) {
-    snapshot.teaserImageAssetId = compatibilityValues.teaserImageAssetId;
-  }
-  if (touched.headerImageAssetId && compatibilityValues.headerImageAssetId !== undefined) {
-    snapshot.headerImageAssetId = compatibilityValues.headerImageAssetId;
-  }
   if (touched.contentBlocks && Array.isArray(compatibilityValues.contentBlocks)) {
     snapshot.legacyContentBlocks = compatibilityValues.contentBlocks;
   }
@@ -807,8 +759,6 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
     ['categories'],
   ].some((path) => hasDirtyPath(dirtyFields, path)),
   content: [
-    ['teaserImageAssetId'],
-    ['headerImageAssetId'],
     ['contentBlocks'],
     ['contentTeaser'],
     ['contentBody'],

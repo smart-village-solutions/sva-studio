@@ -153,8 +153,6 @@ type NewsLegacyCompatibilitySnapshot = {
   };
   readonly pointOfInterestId?: string;
   readonly pushNotificationsSentAt?: string;
-  readonly teaserImageAssetId?: string | null;
-  readonly headerImageAssetId?: string | null;
   readonly legacyContentBlocks?: NewsContentBlockFormValue[];
 };
 
@@ -168,8 +166,6 @@ export type NewsDetailCompatibilityField =
   | 'fullVersion'
   | 'showPublishDate'
   | 'pushNotification'
-  | 'teaserImageAssetId'
-  | 'headerImageAssetId'
   | 'contentBlocks'
   | 'address'
   | 'pointOfInterestId';
@@ -206,8 +202,6 @@ type NewsDetailCompatibilityAliases = {
   readonly fullVersion?: boolean;
   readonly showPublishDate?: boolean;
   readonly pushNotification?: boolean;
-  readonly teaserImageAssetId: string | null;
-  readonly headerImageAssetId: string | null;
   readonly contentBlocks?: NewsContentBlockFormValue[];
   readonly address?: {
     readonly street?: string;

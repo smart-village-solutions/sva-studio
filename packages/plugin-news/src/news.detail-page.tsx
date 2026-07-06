@@ -2,12 +2,12 @@ import * as React from 'react';
 import { FormProvider, useForm, type FieldNamesMarkedBoolean } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
-  findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
-  listHostMediaReferencesByTarget,
-  replaceHostMediaReferences,
+  listHostMediaAssets,
   toDatetimeLocalValue,
   translatePluginKey,
+  uploadHostMediaFile,
+  type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
 import {
   Button,
@@ -41,7 +41,7 @@ import {
   newsDetailFormResolver,
 } from './news.detail-form.js';
 import { createNewsDetailTabDefinitions } from './news.detail-tabs.js';
-import { getPluginNewsActionDefinition, pluginNewsActionIds, pluginNewsMediaPickers } from './plugin.js';
+import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
 import type {
   NewsAuthorControl,
   NewsCategoryOption,
@@ -137,20 +137,6 @@ const parseDatetimeLocalInput = (value: string, referenceValue?: string) => {
   };
 };
 
-const buildNewsMediaReferences = (teaserImageAssetId: string | null, headerImageAssetId: string | null) => [
-  ...(teaserImageAssetId
-    ? [{ assetId: teaserImageAssetId, role: pluginNewsMediaPickers.teaserImage.roles[0], sortOrder: 0 }]
-    : []),
-  ...(headerImageAssetId
-    ? [{ assetId: headerImageAssetId, role: pluginNewsMediaPickers.headerImage.roles[0], sortOrder: 1 }]
-    : []),
-];
-
-const shouldSyncMediaReferences = (
-  existingMediaReferenceCount: number,
-  mediaReferences: ReturnType<typeof buildNewsMediaReferences>
-): boolean => mediaReferences.length > 0 || existingMediaReferenceCount > 0;
-
 const isDirtyFieldTree = (
   value: FieldNamesMarkedBoolean<NewsDetailFormValues> | undefined
 ): value is FieldNamesMarkedBoolean<NewsDetailFormValues> => Boolean(value);
@@ -226,7 +212,7 @@ export const NewsDetailPage = ({
   const [categoryOptions, setCategoryOptions] = React.useState<readonly NewsCategoryOption[]>([]);
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
-  const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
+  const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [visitedTabs, setVisitedTabs] = React.useState<readonly NewsDetailTabId[]>(['basis']);
   const editLoadRequestIdRef = React.useRef(0);
   const formId = React.useId();
@@ -241,6 +227,39 @@ export const NewsDetailPage = ({
     reset,
     setValue,
   } = methods;
+
+  const refreshMediaAssets = React.useCallback(async () => {
+    try {
+      const assets = await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), visibility: 'public' });
+      setMediaAssets(assets);
+      return assets;
+    } catch {
+      setMediaAssets([]);
+      return [];
+    }
+  }, []);
+
+  const uploadMediaFile = React.useCallback(
+    async (file: File): Promise<HostMediaAssetListItem> => {
+      const uploaded = await uploadHostMediaFile({
+        fetch: globalThis.fetch.bind(globalThis),
+        file,
+        mediaType: 'image',
+        visibility: 'public',
+      });
+      const assets = await refreshMediaAssets();
+      const uploadedAsset = assets.find((asset) => asset.id === uploaded.assetId);
+      if (!uploadedAsset) {
+        throw new Error('news_media_uploaded_asset_not_found');
+      }
+      const uploadedPreviewUrl =
+        'previewUrl' in uploaded && typeof uploaded.previewUrl === 'string' ? uploaded.previewUrl.trim() : '';
+      return uploadedAsset.previewUrl?.trim()
+        ? uploadedAsset
+        : { ...uploadedAsset, previewUrl: uploadedPreviewUrl || uploadedAsset.previewUrl };
+    },
+    [refreshMediaAssets]
+  );
 
   const dirtyTabs = React.useMemo(
     () =>
@@ -309,6 +328,10 @@ export const NewsDetailPage = ({
   }, [pt]);
 
   React.useEffect(() => {
+    void refreshMediaAssets();
+  }, [refreshMediaAssets]);
+
+  React.useEffect(() => {
     if (mode !== 'edit') {
       return;
     }
@@ -333,30 +356,6 @@ export const NewsDetailPage = ({
         setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
         setInvalidScheduledPublicationInput(false);
         setLoadedItem(item);
-
-        void listHostMediaReferencesByTarget({
-          fetch: globalThis.fetch.bind(globalThis),
-          targetType: 'news',
-          targetId: item.id,
-        })
-          .then((references) => {
-            if (!active || requestId !== editLoadRequestIdRef.current) {
-              return;
-            }
-
-            setExistingMediaReferenceCount(references.length);
-            setValue('teaserImageAssetId', findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.teaserImage.roles[0]));
-            setValue('headerImageAssetId', findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.headerImage.roles[0]));
-          })
-          .catch(() => {
-            if (!active || requestId !== editLoadRequestIdRef.current) {
-              return;
-            }
-
-            setExistingMediaReferenceCount(0);
-            setValue('teaserImageAssetId', null);
-            setValue('headerImageAssetId', null);
-          });
       })
       .catch((error: unknown) => {
         if (active && requestId === editLoadRequestIdRef.current) {
@@ -372,24 +371,7 @@ export const NewsDetailPage = ({
     return () => {
       active = false;
     };
-  }, [contentId, mode, pt, reset, setValue]);
-
-  const syncMediaReferences = React.useCallback(
-    async (values: NewsDetailFormValues, targetId: string) => {
-      const mediaReferences = buildNewsMediaReferences(values.teaserImageAssetId, values.headerImageAssetId);
-      if (!shouldSyncMediaReferences(existingMediaReferenceCount, mediaReferences)) {
-        return;
-      }
-
-      await replaceHostMediaReferences({
-        fetch: globalThis.fetch.bind(globalThis),
-        targetType: 'news',
-        targetId,
-        references: mediaReferences,
-      });
-    },
-    [existingMediaReferenceCount]
-  );
+  }, [contentId, mode, pt, reset]);
 
   const saveCurrentItem = methods.handleSubmit(async (values) => {
     setStatusMessage(null);
@@ -408,19 +390,13 @@ export const NewsDetailPage = ({
         createNews,
         updateNews,
       });
-      await syncMediaReferences(values, saved.id);
-      setExistingMediaReferenceCount(buildNewsMediaReferences(values.teaserImageAssetId, values.headerImageAssetId).length);
 
       if (mode === 'create') {
         await navigate({ to: '/admin/content' });
         return;
       }
 
-      const nextValues = {
-        ...mapNewsItemToDetailFormValues(saved),
-        teaserImageAssetId: values.teaserImageAssetId,
-        headerImageAssetId: values.headerImageAssetId,
-      };
+      const nextValues = mapNewsItemToDetailFormValues(saved);
       reset(nextValues);
       setLoadedItem(saved);
       setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
@@ -503,7 +479,7 @@ export const NewsDetailPage = ({
       description: pt('tabs.content.description'),
       hasChanges: dirtyTabs.content,
       changeLabel: pt('tabs.changeLabel'),
-      panel: <NewsDetailContentTab pt={pt} />,
+      panel: <NewsDetailContentTab mediaAssets={mediaAssets} onUploadFile={uploadMediaFile} pt={pt} />,
     },
     {
       id: 'settings',

@@ -56,6 +56,10 @@ export const validateEventForm = (input: EventFormInput): readonly string[] => {
     errors.push('urls');
   }
 
+  if ((input.mediaContents ?? []).some((media) => hasInvalidUrl(media.sourceUrl?.url))) {
+    errors.push('urls');
+  }
+
   if ((input.categories ?? []).some((category) => category.name.trim().length === 0 || category.name.length > 128)) {
     errors.push('categories');
   }

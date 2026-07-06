@@ -1,14 +1,12 @@
-import { Controller, useFormContext, useWatch } from 'react-hook-form';
-import { Checkbox, Input, MediaReferenceField, StudioField, Textarea } from '@sva/studio-ui-react';
+import { useFormContext, useWatch } from 'react-hook-form';
+import { Checkbox, Input, StudioField, Textarea } from '@sva/studio-ui-react';
 
 import type { EventsDetailFormValues } from './events.detail-form.js';
 import { EventsDetailCard } from './events.detail-card.js';
 
 export function EventsDetailSettingsTab({
-  mediaOptions,
   pt,
 }: Readonly<{
-  mediaOptions: readonly { assetId: string; label: string }[];
   pt: (key: string) => string;
 }>) {
   const { control, setValue } = useFormContext<EventsDetailFormValues>();
@@ -20,24 +18,6 @@ export function EventsDetailSettingsTab({
 
   return (
     <div className="space-y-6">
-      <EventsDetailCard title={pt('cards.settings.media.title')} description={pt('cards.settings.media.description')}>
-        <Controller
-          name="settings.headerImageAssetId"
-          control={control}
-          render={({ field }) => (
-            <MediaReferenceField
-              id="event-header-image"
-              label={pt('fields.headerImage')}
-              value={field.value || null}
-              options={mediaOptions}
-              onChange={(assetId) => field.onChange(assetId ?? '')}
-              placeholder={pt('fields.mediaPlaceholder')}
-              clearLabel={pt('actions.clearMedia')}
-            />
-          )}
-        />
-      </EventsDetailCard>
-
       <EventsDetailCard
         title={pt('cards.settings.publication.title')}
         description={pt('cards.settings.publication.description')}

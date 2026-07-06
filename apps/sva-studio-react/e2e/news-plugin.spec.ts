@@ -60,7 +60,7 @@ test.describe('news plugin', () => {
     await page.locator('#news-content-body').fill('<p>Inhalt</p>');
     await page.locator('#news-source-url').fill('https://example.com/news/source');
     await page.locator('#news-source-description').fill('Quellseite');
-    await page.getByRole('button', { name: /Medium hinzufügen|news\.actions\.addMedia/ }).click();
+    await page.getByRole('button', { name: /Manuell hinzufügen|news\.actions\.addMediaManual/ }).click();
     await page.locator('#news-media-url-0').fill('https://example.com/news/image.jpg');
     await page.locator('#news-media-caption-0').fill('Titelbild');
     await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);

@@ -1,52 +1,25 @@
-import { useFieldArray, useFormContext, useWatch, type FieldError } from 'react-hook-form';
+import type { HostMediaAssetListItem } from '@sva/plugin-sdk';
+import React from 'react';
+import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button, Input, RichTextHtmlEditor, StudioField, StudioFormSummaryErrors, getStudioFormFieldProps } from '@sva/studio-ui-react';
 
 import { NewsDetailCard } from './news.detail-card.js';
+import {
+  collectSummaryErrors,
+  type ContentFieldBindings,
+  readNestedFieldError,
+  translateFieldError,
+} from './news.detail-content-tab.helpers.js';
+import { NewsDetailMediaLibraryDialog } from './news.detail-media-library-dialog.js';
+import { NewsDetailMediaList } from './news.detail-media-list.js';
+import { useNewsDetailMediaState } from './news.detail-media-state.js';
 import type { NewsDetailFormValues, NewsMediaContentFormValue } from './news.types.js';
 
-const createDefaultMediaContent = (): NewsMediaContentFormValue => ({
-  captionText: '',
-  copyright: '',
-  contentType: 'image',
-  height: '',
-  width: '',
-  sourceUrl: {
-    url: '',
-    description: '',
-  },
-});
-
-const collectSummaryErrors = (
-  fields: readonly ReturnType<typeof getStudioFormFieldProps>[]
-) => fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
-
-const translateFieldError = (
-  error: FieldError | undefined,
-  pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string
-): FieldError | undefined => {
-  if (!error || typeof error.message !== 'string') {
-    return error;
-  }
-
-  return {
-    ...error,
-    message: pt(`validation.${error.message}`),
-  };
-};
-
-const readNestedFieldError = (value: unknown): FieldError | undefined => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return undefined;
-  }
-
-  return 'message' in value || 'type' in value ? (value as FieldError) : undefined;
-};
-
 export type NewsDetailContentTabProps = Readonly<{
+  mediaAssets: readonly HostMediaAssetListItem[];
+  onUploadFile: (file: File) => Promise<HostMediaAssetListItem>;
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>;
-
-type ContentFieldBindings = ReturnType<typeof getStudioFormFieldProps>;
 
 type NewsContentTextSectionProps = Readonly<{
   pt: NewsDetailContentTabProps['pt'];
@@ -150,63 +123,80 @@ function NewsContentTextSection({
 }
 
 type NewsContentMediaSectionProps = Readonly<{
+  mediaAssets: readonly HostMediaAssetListItem[];
   pt: NewsDetailContentTabProps['pt'];
   mediaField: ContentFieldBindings;
   fields: readonly { readonly id: string }[];
   append: (value: NewsMediaContentFormValue) => void;
   remove: (index: number) => void;
+  mediaContents: NewsDetailFormValues['contentMedia'];
+  onUploadFile: (file: File) => Promise<HostMediaAssetListItem>;
   register: ReturnType<typeof useFormContext<NewsDetailFormValues>>['register'];
 }>;
 
 function NewsContentMediaSection({
+  mediaAssets,
   pt,
   mediaField,
   fields,
   append,
   remove,
+  mediaContents,
+  onUploadFile,
   register,
 }: NewsContentMediaSectionProps) {
+  const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
+  const mediaState = useNewsDetailMediaState({ append, onUploadFile, remove });
+
   return (
     <NewsDetailCard
       title={pt('cards.content.media.title')}
       description={pt('cards.content.media.description')}
-      actions={
-        <Button type="button" variant="outline" size="sm" onClick={() => append(createDefaultMediaContent())}>
-          {pt('actions.addMedia')}
-        </Button>
-      }
     >
       <div id={mediaField.id} className="space-y-3">
-        {fields.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{pt('cards.content.media.empty')}</p>
+        {fields.length === 0 ? <p className="text-sm text-muted-foreground">{pt('cards.content.media.empty')}</p> : null}
+        <NewsDetailMediaList
+          fields={fields}
+          mediaContents={mediaContents}
+          onRemove={mediaState.handleRemove}
+          pt={pt}
+          register={register}
+        />
+        <div className="flex flex-wrap gap-3">
+          <Button type="button" variant="outline" onClick={mediaState.openDialog}>
+            {pt('actions.addImage')}
+          </Button>
+          <input
+            ref={uploadInputRef}
+            aria-label={pt('actions.uploadMedia')}
+            className="sr-only"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(event) => void mediaState.handleUploadChange(event)}
+          />
+          <Button type="button" variant="outline" disabled={mediaState.uploadBusy} onClick={() => uploadInputRef.current?.click()}>
+            {mediaState.uploadBusy ? pt('actions.uploadingMedia') : pt('actions.uploadMedia')}
+          </Button>
+          <Button type="button" variant="outline" onClick={mediaState.handleManualAdd}>
+            {pt('actions.addMediaManual')}
+          </Button>
+        </div>
+        {mediaState.uploadMessageKey ? (
+          <p className={`text-sm font-medium ${mediaState.uploadPhase === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
+            {pt(mediaState.uploadMessageKey)}
+          </p>
         ) : null}
-
-        {fields.map((field, mediaIndex) => (
-          <div key={field.id} className="space-y-3 rounded-xl border border-border/60 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-foreground">
-                {pt('cards.content.media.itemLabel', { index: mediaIndex + 1 })}
-              </p>
-              <Button type="button" variant="outline" size="sm" onClick={() => remove(mediaIndex)}>
-                {pt('actions.remove')}
-              </Button>
-            </div>
-            <StudioField id={`news-media-url-${mediaIndex}`} label={pt('fields.mediaUrl')}>
-              <Input
-                id={`news-media-url-${mediaIndex}`}
-                type="url"
-                {...register(`contentMedia.${mediaIndex}.sourceUrl.url`)}
-              />
-            </StudioField>
-            <StudioField id={`news-media-caption-${mediaIndex}`} label={pt('fields.mediaCaption')}>
-              <Input
-                id={`news-media-caption-${mediaIndex}`}
-                {...register(`contentMedia.${mediaIndex}.captionText`)}
-              />
-            </StudioField>
-          </div>
-        ))}
       </div>
+      <NewsDetailMediaLibraryDialog
+        mediaAssets={mediaAssets}
+        mediaContents={mediaContents}
+        onClose={mediaState.closeDialog}
+        onSelectAsset={mediaState.handleSelectAsset}
+        open={mediaState.dialogOpen}
+        pt={pt}
+        searchValue={mediaState.searchValue}
+        setSearchValue={mediaState.setSearchValue}
+      />
     </NewsDetailCard>
   );
 }
@@ -239,7 +229,7 @@ function NewsContentSourceSection({
   );
 }
 
-export function NewsDetailContentTab({ pt }: NewsDetailContentTabProps) {
+export function NewsDetailContentTab({ mediaAssets, onUploadFile, pt }: NewsDetailContentTabProps) {
   const {
     control,
     formState: { errors },
@@ -253,6 +243,7 @@ export function NewsDetailContentTab({ pt }: NewsDetailContentTabProps) {
   const title = useWatch({ control, name: 'title' }) ?? '';
   const teaser = useWatch({ control, name: 'contentTeaser' }) ?? '';
   const contentBody = useWatch({ control, name: 'contentBody' }) ?? '';
+  const mediaContents = useWatch({ control, name: 'contentMedia' }) ?? [];
 
   const teaserField = getStudioFormFieldProps({
     id: 'news-content-teaser',
@@ -295,11 +286,14 @@ export function NewsDetailContentTab({ pt }: NewsDetailContentTabProps) {
         setValue={setValue}
       />
       <NewsContentMediaSection
+        mediaAssets={mediaAssets}
         pt={pt}
         mediaField={mediaField}
         fields={fields}
         append={append}
         remove={remove}
+        mediaContents={mediaContents}
+        onUploadFile={onUploadFile}
         register={register}
       />
       <NewsContentSourceSection

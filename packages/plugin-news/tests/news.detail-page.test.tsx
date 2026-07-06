@@ -5,9 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  listHostMediaReferencesByTarget,
+  listHostMediaAssets,
   registerPluginTranslationResolver,
-  replaceHostMediaReferences,
+  uploadHostMediaFile,
 } from '@sva/plugin-sdk';
 
 import { listNewsCategories } from '../src/news.api.js';
@@ -59,8 +59,8 @@ vi.mock('@sva/plugin-sdk', async () => {
   const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
   return {
     ...actual,
-    listHostMediaReferencesByTarget: vi.fn(async () => []),
-    replaceHostMediaReferences: vi.fn(async (input: unknown) => input),
+    listHostMediaAssets: vi.fn(async () => []),
+    uploadHostMediaFile: vi.fn(),
   };
 });
 
@@ -99,6 +99,11 @@ describe('NewsDetailPage', () => {
         'news.fields.sourceUrlDescription': 'Quellbeschreibung',
         'news.fields.mediaUrl': 'Medien-URL',
         'news.fields.mediaCaption': 'Bildunterschrift',
+        'news.fields.mediaUrlDescription': 'Bildquelle',
+        'news.fields.mediaCopyright': 'Copyright',
+        'news.fields.mediaWidth': 'Breite',
+        'news.fields.mediaHeight': 'Höhe',
+        'news.fields.imageSearch': 'Bilder suchen',
         'news.fields.publicationMode': 'Veröffentlichungsmodus',
         'news.fields.scheduledPublicationAt': 'Zeitpunkt der Veröffentlichung',
         'news.fields.pushNotification': 'Push-Benachrichtigung senden',
@@ -151,18 +156,32 @@ describe('NewsDetailPage', () => {
         'news.actions.update': 'Änderungen speichern',
         'news.actions.save': 'Speichern',
         'news.actions.back': 'Zurück zur Liste',
-        'news.actions.addMedia': 'Medium hinzufügen',
+        'news.actions.addImage': 'Bild aus Mediathek',
+        'news.actions.uploadMedia': 'Bild hochladen',
+        'news.actions.uploadingMedia': 'Bild wird hochgeladen',
+        'news.actions.addMediaManual': 'Link manuell eintragen',
         'news.actions.remove': 'Entfernen',
+        'news.actions.removeImage': 'Bild entfernen',
+        'news.messages.imagePickerEmpty': 'Keine Bilder gefunden.',
+        'news.messages.mediaUploadInitializing': 'Upload wird vorbereitet.',
+        'news.messages.mediaUploadUploading': 'Bild wird hochgeladen.',
+        'news.messages.mediaUploadFinalizing': 'Bild wird verarbeitet.',
+        'news.messages.mediaUploadSuccess': 'Bild wurde hochgeladen.',
+        'news.messages.mediaUploadError': 'Bild konnte nicht hochgeladen werden.',
+        'news.messages.mediaUploadUnsupportedType': 'Dateityp wird nicht unterstützt.',
+        'news.messages.mediaUploadUnavailableUrl': 'Bild-URL konnte nicht ermittelt werden.',
+        'news.values.mediaContentTypes.image': 'Bild',
+        'news.values.mediaContentTypes.audio': 'Audio',
+        'news.values.mediaContentTypes.video': 'Video',
+        'news.values.mediaContentTypes.logo': 'Logo',
+        'news.values.mediaContentTypes.attachment': 'Anhang',
+        'news.values.mediaContentTypes.unspecified': 'Nicht angegeben',
       };
       return labels[key] ?? key;
     });
     vi.mocked(listNewsCategories).mockResolvedValue([]);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
-    vi.mocked(replaceHostMediaReferences).mockResolvedValue({
-      targetType: 'news',
-      targetId: 'news-1',
-      references: [],
-    });
+    vi.mocked(listHostMediaAssets).mockResolvedValue([]);
+    vi.mocked(uploadHostMediaFile).mockReset();
   });
 
   afterEach(() => {
@@ -177,6 +196,41 @@ describe('NewsDetailPage', () => {
     });
 
     expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(1);
+  });
+
+  it('uses the upload response url when the refreshed news asset still has no preview url', async () => {
+    vi.mocked(uploadHostMediaFile).mockResolvedValueOnce({
+      assetId: 'asset-uploaded',
+      previewUrl: 'https://example.com/uploaded.jpg',
+      fileName: 'uploaded.jpg',
+      mimeType: 'image/jpeg',
+      visibility: 'public',
+    } as never);
+    vi.mocked(listHostMediaAssets)
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([
+        {
+          id: 'asset-uploaded',
+          fileName: 'uploaded.jpg',
+          mimeType: 'image/jpeg',
+          previewUrl: '',
+          visibility: 'public',
+        },
+      ] as never);
+
+    render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
+
+    fireEvent.change(await screen.findByLabelText('Bereich auswählen'), { target: { value: 'content' } });
+    fireEvent.change(screen.getByLabelText('Bild hochladen'), {
+      target: {
+        files: [new File(['image'], 'uploaded.jpg', { type: 'image/jpeg' })],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('https://example.com/uploaded.jpg')).toBeTruthy();
+    });
+    expect(screen.queryByText('Bild-URL konnte nicht ermittelt werden.')).toBeNull();
   });
 
   it('renders the author as a fixed readonly field when authorship is fixed', async () => {

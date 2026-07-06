@@ -2,12 +2,10 @@ import React from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
-  findHostMediaReferenceAssetId,
   listHostMediaAssets,
-  listHostMediaReferencesByTarget,
-  replaceHostMediaReferences,
-  toHostMediaFieldOptions,
+  uploadHostMediaFile,
   usePluginTranslation,
+  type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
 import {
   Button,
@@ -30,6 +28,7 @@ import {
   listPoiForEventSelection,
   updateEvent,
 } from './events.api.js';
+import { fromDateOnlyInputValue, toDateOnlyInputValue } from './events.date-only.js';
 import {
   createDefaultEventsDetailFormValues,
   mapEventItemToDetailFormValues,
@@ -41,8 +40,6 @@ import { EventsDetailContentTab } from './events.detail-content-tab.js';
 import { EventsDetailHistoryTab } from './events.detail-history-tab.js';
 import { EventsDetailSettingsTab } from './events.detail-settings-tab.js';
 import { createEventsDetailTabDefinitions, type EventsDetailTabId } from './events.detail-tabs.js';
-import { fromDateOnlyInputValue, toDateOnlyInputValue } from './events.date-only.js';
-import { pluginEventsMediaPickers } from './plugin.js';
 import type { EventCategoryOption, EventContentItem } from './events.types.js';
 import type { PoiSelectItem } from './events.types.js';
 import { hasInvalidGeoLocation, validateEventForm } from './events.validation.js';
@@ -110,17 +107,6 @@ const parseDateOnlyInput = (value: string) => {
   };
 };
 
-const buildHeaderMediaReferences = (headerImageAssetId: string) =>
-  headerImageAssetId
-    ? [
-        {
-          assetId: headerImageAssetId,
-          role: pluginEventsMediaPickers.headerImage.roles[0],
-          sortOrder: 0,
-        },
-      ]
-    : [];
-
 export function EventsDetailPage({
   mode,
   contentId,
@@ -134,12 +120,11 @@ export function EventsDetailPage({
   const methods = useForm<EventsDetailFormValues>({
     defaultValues: createDefaultEventsDetailFormValues(),
   });
-  const { reset, setValue } = methods;
+  const { reset } = methods;
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<EventContentItem | null>(null);
-  const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
-  const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
+  const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [dateStartInput, setDateStartInput] = React.useState('');
   const [dateEndInput, setDateEndInput] = React.useState('');
   const [invalidDateInputs, setInvalidDateInputs] = React.useState({ dateStart: false, dateEnd: false });
@@ -151,6 +136,39 @@ export function EventsDetailPage({
   const [poiOptions, setPoiOptions] = React.useState<readonly PoiSelectItem[]>([]);
   const [poiOptionsLoading, setPoiOptionsLoading] = React.useState(true);
   const [poiOptionsError, setPoiOptionsError] = React.useState<string | null>(null);
+
+  const refreshMediaAssets = React.useCallback(async () => {
+    try {
+      const assets = await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), visibility: 'public' });
+      setMediaAssets(assets);
+      return assets;
+    } catch {
+      setMediaAssets([]);
+      return [];
+    }
+  }, []);
+
+  const uploadMediaFile = React.useCallback(
+    async (file: File): Promise<HostMediaAssetListItem> => {
+      const uploaded = await uploadHostMediaFile({
+        fetch: globalThis.fetch.bind(globalThis),
+        file,
+        mediaType: 'image',
+        visibility: 'public',
+      });
+      const assets = await refreshMediaAssets();
+      const uploadedAsset = assets.find((asset) => asset.id === uploaded.assetId);
+      if (!uploadedAsset) {
+        throw new Error('events_media_uploaded_asset_not_found');
+      }
+      const uploadedPreviewUrl =
+        'previewUrl' in uploaded && typeof uploaded.previewUrl === 'string' ? uploaded.previewUrl.trim() : '';
+      return uploadedAsset.previewUrl?.trim()
+        ? uploadedAsset
+        : { ...uploadedAsset, previewUrl: uploadedPreviewUrl || uploadedAsset.previewUrl };
+    },
+    [refreshMediaAssets]
+  );
 
   React.useEffect(() => {
     void listPoiForEventSelection()
@@ -177,10 +195,8 @@ export function EventsDetailPage({
       .finally(() => {
         setCategoryOptionsLoading(false);
       });
-    void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
-      .then((assets) => setMediaOptions(toHostMediaFieldOptions(assets)))
-      .catch(() => setMediaOptions([]));
-  }, [pt]);
+    void refreshMediaAssets();
+  }, [pt, refreshMediaAssets]);
 
   React.useEffect(() => {
     if (mode !== 'edit' || !contentId) {
@@ -200,24 +216,6 @@ export function EventsDetailPage({
         setDateEndInput(toDateOnlyInputValue(nextValues.content.dates?.[0]?.dateEnd));
         setInvalidDateInputs({ dateStart: false, dateEnd: false });
         setLoading(false);
-        void listHostMediaReferencesByTarget({
-          fetch: globalThis.fetch.bind(globalThis),
-          targetType: 'events',
-          targetId: item.id,
-        }).then((references) => {
-          if (!active) {
-            return;
-          }
-          setExistingMediaReferenceCount(references.length);
-          setValue(
-            'settings.headerImageAssetId',
-            findHostMediaReferenceAssetId(references, pluginEventsMediaPickers.headerImage.roles[0]) ?? ''
-          );
-        }).catch(() => {
-          if (active) {
-            setExistingMediaReferenceCount(0);
-          }
-        });
       })
       .catch((loadError) => {
         if (active) {
@@ -229,7 +227,7 @@ export function EventsDetailPage({
     return () => {
       active = false;
     };
-  }, [contentId, mode, reset, setValue]);
+  }, [contentId, mode, reset]);
 
   const tabs = createEventsDetailTabDefinitions(pt);
 
@@ -304,15 +302,6 @@ export function EventsDetailPage({
 
     try {
       const saved = mode === 'create' ? await createEvent(payload) : await updateEvent(contentId as string, payload);
-      const mediaReferences = buildHeaderMediaReferences(values.settings.headerImageAssetId);
-      if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
-        await replaceHostMediaReferences({
-          fetch: globalThis.fetch.bind(globalThis),
-          targetType: 'events',
-          targetId: saved.id,
-          references: mediaReferences,
-        });
-      }
       setStatus({ kind: 'success', text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess') });
       if (mode === 'create') {
         await navigate({ to: '/admin/events/$id', params: { id: saved.id } });
@@ -440,12 +429,14 @@ export function EventsDetailPage({
                         dateEndInput={dateEndInput}
                         dateInputsInvalid={invalidDateInputs}
                         dateStartInput={dateStartInput}
+                        mediaAssets={mediaAssets}
                         onDateEndInputChange={(nextValue) => updateDateField('dateEnd', nextValue)}
                         onDateStartInputChange={(nextValue) => updateDateField('dateStart', nextValue)}
+                        onUploadFile={uploadMediaFile}
                         pt={pt}
                       />
                     ) : null}
-                    {tab.id === 'settings' ? <EventsDetailSettingsTab mediaOptions={mediaOptions} pt={pt} /> : null}
+                    {tab.id === 'settings' ? <EventsDetailSettingsTab pt={pt} /> : null}
                     {tab.id === 'history' ? <EventsDetailHistoryTab pt={pt} /> : null}
                   </div>
                 </TabsContent>

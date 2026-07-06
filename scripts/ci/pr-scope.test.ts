@@ -220,6 +220,19 @@ describe('pr-scope', () => {
     });
   });
 
+  it('limits full coverage regression checks to projects with source changes', () => {
+    const decision = classifyPrScope([
+      '.github/workflows/runtime-gates.yml',
+      'apps/sva-studio-react/src/lib/studio-changelog.server.ts',
+      'packages/plugin-events/tests/events.pages.test.tsx',
+    ]);
+
+    expectDecision(decision, {
+      coverageMode: 'full',
+    });
+    expect(decision.coverageRegressionProjects).toEqual(['sva-studio-react']);
+  });
+
   it('keeps workflow-only changes on affected quality gates', () => {
     const decision = classifyPrScope(['.github/workflows/quality-gates.yml']);
 

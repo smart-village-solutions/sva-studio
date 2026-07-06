@@ -52,6 +52,7 @@ const createGithubOutputLines = (decision: PrScopeDecision, base: string, head: 
   `code_relevant=${decision.codeRelevant ? 'true' : 'false'}`,
   `quality_gate_mode=${decision.qualityGateMode}`,
   `coverage_mode=${decision.coverageMode}`,
+  `coverage_regression_projects=${decision.coverageRegressionProjects.join(',')}`,
   `integration_mode=${decision.integrationMode}`,
   `e2e_mode=${decision.e2eMode}`,
   `a11y_mode=${decision.a11yMode}`,

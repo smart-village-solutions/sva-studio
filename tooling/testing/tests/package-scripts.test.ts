@@ -157,6 +157,7 @@ describe('workspace package scripts', () => {
 
     expect(runtimeGatesWorkflow).toContain('if [ "${{ steps.scope.outputs.coverage_mode }}" = "full" ]; then');
     expect(runtimeGatesWorkflow).toContain("COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ steps.scope.outputs.coverage_mode == 'full' && '1' || '0' }}");
+    expect(runtimeGatesWorkflow).toContain("COVERAGE_GATE_PROJECT_FILTER: ${{ steps.scope.outputs.coverage_regression_projects }}");
   });
 
   it('exposes the Sonar LCOV preparation command', () => {

@@ -390,6 +390,62 @@ describe('coverage gate', () => {
     expect(result.errors.some((error) => error.includes('dropped by'))).toBe(false);
   });
 
+  it('enforces baseline regressions only for explicitly filtered projects', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      maxAllowedDropPctPoints: 0.5,
+      perProjectFloors: {
+        'server-runtime': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+        'sva-studio-react': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+      },
+    });
+    fs.writeFileSync(
+      path.join(rootDir, 'tooling/testing/coverage-baseline.json'),
+      JSON.stringify(
+        {
+          projects: {
+            'server-runtime': {
+              lines: 90,
+              statements: 90,
+              functions: 90,
+              branches: 90,
+            },
+            'sva-studio-react': {
+              lines: 90,
+              statements: 90,
+              functions: 90,
+              branches: 90,
+            },
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeCoverageSummary(rootDir, 80, 80, 80, 80, 'packages/server-runtime');
+    writeCoverageSummary(rootDir, 80, 80, 80, 80, 'apps/sva-studio-react');
+
+    const result = runCoverageGate({
+      rootDir,
+      requireSummaries: true,
+      regressionProjectFilter: ['sva-studio-react'],
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.errors.some((error) => error.includes('[sva-studio-react] lines dropped by'))).toBe(true);
+    expect(result.errors.some((error) => error.includes('[server-runtime] lines dropped by'))).toBe(false);
+  });
+
   it('enforces stricter minimum floors for critical projects', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir, {

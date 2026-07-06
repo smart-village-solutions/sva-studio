@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatDurationSummary } from './run-pr-gate.ts';
+import { buildCoverageGateCommand, formatDurationSummary } from './run-pr-gate.ts';
 
 describe('run-pr-gate', () => {
   it('formats a readable duration summary for gates and slices', () => {
@@ -13,5 +13,15 @@ describe('run-pr-gate', () => {
     ).toBe(
       ['- plugin-architecture-boundary: 0.98s', '- lint:affected: 1.23s', '- unit:app:routes: 12.50s'].join('\n')
     );
+  });
+
+  it('passes a scoped regression project filter to full coverage gates when source projects are known', () => {
+    expect(buildCoverageGateCommand('full', ['sva-studio-react', 'plugin-news'])).toBe(
+      'env COVERAGE_GATE_REQUIRE_SUMMARIES=1 COVERAGE_GATE_PROJECT_FILTER=sva-studio-react,plugin-news pnpm coverage-gate'
+    );
+  });
+
+  it('keeps full coverage gates unfiltered when no source project scope is known', () => {
+    expect(buildCoverageGateCommand('full', [])).toBe('env COVERAGE_GATE_REQUIRE_SUMMARIES=1 pnpm coverage-gate');
   });
 });

@@ -47,7 +47,7 @@ import {
   getLatestAuthorizePerformanceRun,
   getMyDataSubjectRights,
   getMyDataSubjectRightsCase,
-  deactivateOrganization,
+  deleteOrganization,
   deleteUser,
   getPluginOperationJob,
   getGroup,
@@ -356,7 +356,7 @@ describe('iam-api organization helpers', () => {
     await updateMyOrganizationContext('org-1');
     await getMyOrganizationContext();
     await getOrganization('org-1');
-    await deactivateOrganization('org-1');
+    await deleteOrganization('org-1');
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,

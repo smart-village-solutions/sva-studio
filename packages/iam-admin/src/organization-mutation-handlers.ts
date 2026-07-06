@@ -93,7 +93,7 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
       readonly eventType:
         | 'organization.created'
         | 'organization.updated'
-        | 'organization.deactivated'
+        | 'organization.deleted'
         | 'organization.membership_assigned'
         | 'organization.membership_removed'
         | 'organization.context_switched';
@@ -728,7 +728,7 @@ WHERE instance_id = $1
     },
   });
 
-  const deactivateOrganizationInternal = createAdminMutationHandler(deps, {
+  const deleteOrganizationInternal = createAdminMutationHandler(deps, {
     requireRateLimit: true,
     prepare: ({ request, actor }) => {
       const organizationId = readOrganizationId(deps, request, actor.requestId);
@@ -758,9 +758,7 @@ WHERE instance_id = $1
         );
         await client.query(
           `
-UPDATE iam.organizations
-SET is_active = false,
-    updated_at = NOW()
+DELETE FROM iam.organizations
 WHERE instance_id = $1
   AND id = $2::uuid;
 `,
@@ -769,7 +767,7 @@ WHERE instance_id = $1
         await deps.emitActivityLog(client, {
           instanceId: actor.instanceId,
           accountId: actor.actorAccountId,
-          eventType: 'organization.deactivated',
+          eventType: 'organization.deleted',
           result: 'success',
           payload: { organizationId },
           requestId: actor.requestId,
@@ -1151,7 +1149,7 @@ WHERE membership.instance_id = $1
   return {
     assignOrganizationMembershipInternal,
     createOrganizationInternal,
-    deactivateOrganizationInternal,
+    deleteOrganizationInternal,
     removeOrganizationMembershipInternal,
     updateMyOrganizationContextInternal,
     updateOrganizationInternal,

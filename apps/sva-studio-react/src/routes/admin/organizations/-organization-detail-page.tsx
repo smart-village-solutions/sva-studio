@@ -214,8 +214,8 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     setMembershipSearch('');
   };
 
-  const onConfirmDeactivate = async () => {
-    const success = await organizationsApi.deactivateOrganization(organizationId);
+  const onConfirmDelete = async () => {
+    const success = await organizationsApi.deleteOrganization(organizationId);
     if (success) {
       setDeactivateConfirmOpen(false);
     }
@@ -517,11 +517,11 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
 
       <ConfirmDialog
         open={deactivateConfirmOpen}
-        title={t('admin.organizations.confirm.deactivateTitle')}
-        description={t('admin.organizations.confirm.deactivateDescription')}
+        title={t('admin.organizations.confirm.deleteTitle')}
+        description={t('admin.organizations.confirm.deleteDescription')}
         confirmLabel={t('admin.organizations.actions.delete')}
         cancelLabel={t('account.actions.cancel')}
-        onConfirm={() => void onConfirmDeactivate()}
+        onConfirm={() => void onConfirmDelete()}
         onCancel={() => setDeactivateConfirmOpen(false)}
       />
     </section>

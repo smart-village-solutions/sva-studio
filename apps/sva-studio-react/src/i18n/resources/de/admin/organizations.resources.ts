@@ -84,9 +84,9 @@ export const organizationsAdminDEResources = {
     createdAt: 'Zugeordnet am {{value}}',
   },
   confirm: {
-    deactivateTitle: 'Organisation löschen',
-    deactivateDescription:
-      'Die Organisation wird endgültig gelöscht. Kind-Organisationen verhindern das Löschen weiterhin.',
+    deleteTitle: 'Organisation löschen',
+    deleteDescription:
+      'Die Organisation wird endgültig gelöscht. Zugehörigkeiten und organisationsgebundene Credentials werden entfernt. Kind-Organisationen verhindern das Löschen weiterhin.',
   },
   form: {
     keyLabel: 'Technischer Schlüssel',

@@ -56,7 +56,7 @@ const createState = (overrides: Record<string, unknown> = {}) => ({
   clearMutationError: vi.fn(),
   createOrganization: vi.fn().mockResolvedValue({ id: 'org-2' }),
   updateOrganization: vi.fn().mockResolvedValue(true),
-  deactivateOrganization: vi.fn().mockResolvedValue(true),
+  deleteOrganization: vi.fn().mockResolvedValue(true),
   assignMembership: vi.fn().mockResolvedValue(true),
   removeMembership: vi.fn().mockResolvedValue(true),
   ...overrides,

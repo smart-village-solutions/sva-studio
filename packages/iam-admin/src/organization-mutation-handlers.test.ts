@@ -496,13 +496,13 @@ describe('organization mutation handlers', () => {
     });
   });
 
-  it('deactivates organizations without child organizations and clears content organization references', async () => {
+  it('deletes organizations without child organizations and clears content organization references', async () => {
     const deps = buildDeps();
     const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
     deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
     const handlers = createOrganizationMutationHandlers(deps);
 
-    const response = await handlers.deactivateOrganizationInternal(
+    const response = await handlers.deleteOrganizationInternal(
       new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
         method: 'DELETE',
       }),
@@ -515,19 +515,19 @@ describe('organization mutation handlers', () => {
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
     );
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE iam.organizations'),
+      expect.stringContaining('DELETE FROM iam.organizations'),
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
     );
     expect(emitActivityLog).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        eventType: 'organization.deactivated',
+        eventType: 'organization.deleted',
         payload: { organizationId: '11111111-1111-1111-8111-111111111111' },
       })
     );
   });
 
-  it('allows deactivation when the organization still has memberships', async () => {
+  it('deletes organizations when the organization still has memberships', async () => {
     const deps = buildDeps();
     const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
     deps.loadOrganizationById = vi.fn(async () => ({
@@ -543,7 +543,7 @@ describe('organization mutation handlers', () => {
     deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
     const handlers = createOrganizationMutationHandlers(deps);
 
-    const response = await handlers.deactivateOrganizationInternal(
+    const response = await handlers.deleteOrganizationInternal(
       new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
         method: 'DELETE',
       }),
@@ -552,8 +552,41 @@ describe('organization mutation handlers', () => {
 
     expect(response.status).toBe(200);
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE iam.organizations'),
+      expect.stringContaining('DELETE FROM iam.organizations'),
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
+    );
+  });
+
+  it('deletes seeded organizations through the same hard-delete path', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
+    deps.loadOrganizationById = vi.fn(async () => ({
+      id: '22444444-4444-4444-4444-444444444444',
+      organization_key: 'seed-org-district',
+      is_active: true,
+      parent_organization_id: '22333333-3333-3333-3333-333333333333',
+      hierarchy_path: [
+        '22222222-2222-2222-2222-222222222222',
+        '22333333-3333-3333-3333-333333333333',
+      ],
+      depth: 2,
+      child_count: 0,
+      membership_count: 0,
+    }));
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.deleteOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations/22444444-4444-4444-4444-444444444444', {
+        method: 'DELETE',
+      }),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('DELETE FROM iam.organizations'),
+      ['de-musterhausen', '22444444-4444-4444-4444-444444444444']
     );
   });
 
@@ -571,7 +604,7 @@ describe('organization mutation handlers', () => {
     }));
     const handlers = createOrganizationMutationHandlers(deps);
 
-    const response = await handlers.deactivateOrganizationInternal(
+    const response = await handlers.deleteOrganizationInternal(
       new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
         method: 'DELETE',
       }),

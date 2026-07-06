@@ -92,7 +92,7 @@ const createState = (overrides: Record<string, unknown> = {}) => ({
   clearMutationError: vi.fn(),
   createOrganization: vi.fn().mockResolvedValue({ id: 'org-2' }),
   updateOrganization: vi.fn().mockResolvedValue(true),
-  deactivateOrganization: vi.fn().mockResolvedValue(true),
+  deleteOrganization: vi.fn().mockResolvedValue(true),
   assignMembership: vi.fn().mockResolvedValue(true),
   removeMembership: vi.fn().mockResolvedValue(true),
   ...overrides,
@@ -121,20 +121,20 @@ describe('OrganizationDetailPage', () => {
   });
 
   it(
-    'loads detail state, saves changes, manages memberships, and deactivates',
+    'loads detail state, saves changes, manages memberships, and deletes',
     async () => {
       const loadOrganization = vi.fn().mockResolvedValue(organizationFixture);
       const updateOrganization = vi.fn().mockResolvedValue(true);
       const assignMembership = vi.fn().mockResolvedValue(true);
       const removeMembership = vi.fn().mockResolvedValue(true);
-      const deactivateOrganization = vi.fn().mockResolvedValue(true);
+      const deleteOrganization = vi.fn().mockResolvedValue(true);
       useOrganizationsMock.mockReturnValue(
         createState({
           loadOrganization,
           updateOrganization,
           assignMembership,
           removeMembership,
-          deactivateOrganization,
+          deleteOrganization,
         })
       );
       const firstPageUsers = Array.from({ length: 100 }, (_, index) => ({
@@ -266,7 +266,7 @@ describe('OrganizationDetailPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
       await waitFor(() => {
-        expect(deactivateOrganization).toHaveBeenCalledWith('org-1');
+        expect(deleteOrganization).toHaveBeenCalledWith('org-1');
       });
     },
     15_000

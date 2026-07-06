@@ -61,7 +61,7 @@ const createOrganizationsApiState = (overrides: Record<string, unknown> = {}) =>
   clearMutationError: vi.fn(),
   createOrganization: vi.fn(),
   updateOrganization: vi.fn(),
-  deactivateOrganization: vi.fn().mockResolvedValue(true),
+  deleteOrganization: vi.fn().mockResolvedValue(true),
   assignMembership: vi.fn(),
   removeMembership: vi.fn(),
   ...overrides,
@@ -168,8 +168,8 @@ describe('OrganizationsPage', () => {
   });
 
   it('deletes organizations via the confirmation dialog', async () => {
-    const deactivateOrganization = vi.fn().mockResolvedValue(true);
-    useOrganizationsMock.mockReturnValue(createOrganizationsApiState({ deactivateOrganization }));
+    const deleteOrganization = vi.fn().mockResolvedValue(true);
+    useOrganizationsMock.mockReturnValue(createOrganizationsApiState({ deleteOrganization }));
 
     render(<OrganizationsPage />);
 
@@ -179,12 +179,12 @@ describe('OrganizationsPage', () => {
     });
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' }));
 
-    await waitFor(() => expect(deactivateOrganization).toHaveBeenCalledWith('org-1'));
+    await waitFor(() => expect(deleteOrganization).toHaveBeenCalledWith('org-1'));
   });
 
   it('closes the confirmation dialog after a failed deletion so the mutation error can be seen', async () => {
-    const deactivateOrganization = vi.fn().mockResolvedValue(false);
-    useOrganizationsMock.mockReturnValue(createOrganizationsApiState({ deactivateOrganization }));
+    const deleteOrganization = vi.fn().mockResolvedValue(false);
+    useOrganizationsMock.mockReturnValue(createOrganizationsApiState({ deleteOrganization }));
 
     render(<OrganizationsPage />);
 
@@ -194,7 +194,7 @@ describe('OrganizationsPage', () => {
     });
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' }));
 
-    await waitFor(() => expect(deactivateOrganization).toHaveBeenCalledWith('org-1'));
+    await waitFor(() => expect(deleteOrganization).toHaveBeenCalledWith('org-1'));
     await waitFor(() => {
       expect(screen.queryByRole('heading', { name: 'Organisation löschen' })).toBeNull();
     });

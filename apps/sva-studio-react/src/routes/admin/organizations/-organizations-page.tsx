@@ -24,17 +24,17 @@ import {
 export const OrganizationsPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const organizationsApi = useOrganizations();
-  const [deactivateOrganizationId, setDeactivateOrganizationId] = React.useState<string | null>(null);
+  const [deleteOrganizationId, setDeleteOrganizationId] = React.useState<string | null>(null);
   const [statusMutationOrganizationIds, setStatusMutationOrganizationIds] = React.useState<readonly string[]>([]);
 
   const pageCount = Math.max(1, Math.ceil(organizationsApi.total / organizationsApi.pageSize));
 
-  const onConfirmDeactivate = async () => {
-    if (!deactivateOrganizationId) {
+  const onConfirmDelete = async () => {
+    if (!deleteOrganizationId) {
       return;
     }
-    const success = await organizationsApi.deactivateOrganization(deactivateOrganizationId);
-    setDeactivateOrganizationId(null);
+    const success = await organizationsApi.deleteOrganization(deleteOrganizationId);
+    setDeleteOrganizationId(null);
     if (!success) {
       return;
     }
@@ -54,8 +54,8 @@ export const OrganizationsPage = () => {
     Promise.resolve(organizationsApi.refetch()).catch(() => undefined);
   }, [organizationsApi]);
   const handleConfirmDeactivate = React.useCallback(() => {
-    Promise.resolve(onConfirmDeactivate()).catch(() => undefined);
-  }, [onConfirmDeactivate]);
+    Promise.resolve(onConfirmDelete()).catch(() => undefined);
+  }, [onConfirmDelete]);
 
   const organizationColumns = React.useMemo<readonly StudioColumnDef<(typeof organizationsApi.organizations)[number]>[]>(
     () => [
@@ -265,7 +265,7 @@ export const OrganizationsPage = () => {
                 type="button"
                 size="icon"
                 variant="destructive"
-                onClick={() => setDeactivateOrganizationId(organization.id)}
+                onClick={() => setDeleteOrganizationId(organization.id)}
                 aria-label={t('admin.organizations.actions.delete')}
                 title={t('admin.organizations.actions.delete')}
               >
@@ -313,13 +313,13 @@ export const OrganizationsPage = () => {
       </StudioListPageTemplate>
 
       <ConfirmDialog
-        open={deactivateOrganizationId !== null}
-        title={t('admin.organizations.confirm.deactivateTitle')}
-        description={t('admin.organizations.confirm.deactivateDescription')}
+        open={deleteOrganizationId !== null}
+        title={t('admin.organizations.confirm.deleteTitle')}
+        description={t('admin.organizations.confirm.deleteDescription')}
         confirmLabel={t('admin.organizations.actions.delete')}
         cancelLabel={t('account.actions.cancel')}
         onConfirm={handleConfirmDeactivate}
-        onCancel={() => setDeactivateOrganizationId(null)}
+        onCancel={() => setDeleteOrganizationId(null)}
       />
     </section>
   );

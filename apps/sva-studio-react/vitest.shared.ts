@@ -83,6 +83,9 @@ export const sharedVitestConfig = defineConfig({
       '@sva/plugin-events': fileURLToPath(
         new URL('../../packages/plugin-events/src/index.ts', import.meta.url)
       ),
+      '@sva/plugin-generic-items': fileURLToPath(
+        new URL('../../packages/plugin-generic-items/src/index.ts', import.meta.url)
+      ),
       '@sva/plugin-news': fileURLToPath(
         new URL('../../packages/plugin-news/src/index.ts', import.meta.url)
       ),

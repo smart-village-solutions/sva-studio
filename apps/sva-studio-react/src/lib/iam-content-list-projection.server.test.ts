@@ -23,6 +23,7 @@ const state = vi.hoisted(() => ({
   withInstanceScopedDb: vi.fn(),
   listSvaMainserverNews: vi.fn(),
   listSvaMainserverEvents: vi.fn(),
+  listSvaMainserverGenericItems: vi.fn(),
   listSvaMainserverPoi: vi.fn(),
   listSvaMainserverSurveys: vi.fn(),
   getWorkspaceContext: vi.fn(),
@@ -81,6 +82,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
 vi.mock('@sva/sva-mainserver/server', () => ({
   listSvaMainserverNews: state.listSvaMainserverNews,
   listSvaMainserverEvents: state.listSvaMainserverEvents,
+  listSvaMainserverGenericItems: state.listSvaMainserverGenericItems,
   listSvaMainserverPoi: state.listSvaMainserverPoi,
   listSvaMainserverSurveys: state.listSvaMainserverSurveys,
 }));
@@ -239,6 +241,7 @@ describe('content list projection', () => {
     state.withInstanceScopedDb.mockReset();
     state.listSvaMainserverNews.mockReset();
     state.listSvaMainserverEvents.mockReset();
+    state.listSvaMainserverGenericItems.mockReset();
     state.listSvaMainserverPoi.mockReset();
     state.listSvaMainserverSurveys.mockReset();
     state.getWorkspaceContext.mockReset();
@@ -268,6 +271,7 @@ describe('content list projection', () => {
         { action: 'content.read', resourceType: 'content' },
         { action: 'news.read', resourceType: 'news' },
         { action: 'events.read', resourceType: 'events' },
+        { action: 'generic-items.read', resourceType: 'generic-items' },
         { action: 'poi.read', resourceType: 'poi' },
         { action: 'surveys.read', resourceType: 'surveys' },
       ],
@@ -1629,6 +1633,26 @@ describe('content list projection', () => {
     });
 
     expect(state.listSvaMainserverEvents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        includeInvisible: true,
+        page: 1,
+        pageSize: 100,
+      })
+    );
+  });
+
+  it('requests invisible generic items during projection refresh', async () => {
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['generic-items.generic-item'],
+      force: true,
+    });
+
+    expect(state.listSvaMainserverGenericItems).toHaveBeenCalledWith(
       expect.objectContaining({
         includeInvisible: true,
         page: 1,

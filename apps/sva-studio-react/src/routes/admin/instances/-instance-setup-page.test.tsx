@@ -50,6 +50,14 @@ vi.mock('../../../lib/plugins', () => ({
       systemRoles: [],
     },
     {
+      moduleId: 'generic-items',
+      namespace: 'generic-items',
+      ownerPluginId: 'generic-items',
+      descriptionKey: 'plugins.generic-items.description',
+      permissionIds: ['generic-items.read'],
+      systemRoles: [],
+    },
+    {
       moduleId: 'surveys',
       namespace: 'surveys',
       ownerPluginId: 'surveys',
@@ -209,6 +217,7 @@ describe('InstanceSetupPage', () => {
     expect(screen.getByRole('heading', { name: 'Setup abschließen' })).toBeTruthy();
     expect(screen.getByRole('checkbox', { name: /Kategorien/u })).toBeTruthy();
     expect(screen.getByRole('checkbox', { name: /Umfragen/u })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: /Generic Items/u })).toBeTruthy();
     expect(screen.getByText('Setup-Status')).toBeTruthy();
     expect(screen.getByText('Tenant-Admin-Struktur')).toBeTruthy();
     expect(screen.queryByRole('tab')).toBeNull();

@@ -10,6 +10,7 @@ type MainserverProjectionContentType =
   | 'news.article'
   | 'events.event-record'
   | 'poi.point-of-interest'
+  | 'generic-items.generic-item'
   | 'surveys.survey';
 
 const shouldRefreshProjectionForRequest = (request: Request, response: Response): boolean =>

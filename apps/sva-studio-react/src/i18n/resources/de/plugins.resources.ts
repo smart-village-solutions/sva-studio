@@ -8,6 +8,9 @@ export const pluginsDEResources = {
   poi: {
     description: 'Veröffentlicht Orte und zugehörige Standortinformationen für den Mandanten.',
   },
+  'generic-items': {
+    description: 'Veröffentlicht frei modellierbare Generic Items für den Mandanten.',
+  },
   categories: {
     description:
       'Stellt die Mainserver-Kategorien als redaktionelles Begleitmodul für News, Termine und Orte bereit.',

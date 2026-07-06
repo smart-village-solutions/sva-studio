@@ -64,26 +64,31 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
 import {
   createOrUpdateSvaMainserverStaticContent,
   createSvaMainserverEvent,
+  createSvaMainserverGenericItem,
   createSvaMainserverNews,
   createSvaMainserverPoi,
   createSvaMainserverSurvey,
   createSvaMainserverService,
   deleteSvaMainserverEvent,
+  deleteSvaMainserverGenericItem,
   deleteSvaMainserverNews,
   deleteSvaMainserverPoi,
   deleteSvaMainserverSurvey,
   getSvaMainserverEvent,
+  getSvaMainserverGenericItem,
   getSvaMainserverNews,
   getSvaMainserverPoi,
   getSvaMainserverSurvey,
   getSvaMainserverSurveyResults,
   listSvaMainserverEvents,
+  listSvaMainserverGenericItems,
   listSvaMainserverNews,
   listSvaMainserverPoi,
   listSvaMainserverSurveys,
   releaseSvaMainserverSurveyFreeTextResponse,
   resetSvaMainserverServiceState,
   updateSvaMainserverEvent,
+  updateSvaMainserverGenericItem,
   updateSvaMainserverNews,
   updateSvaMainserverPoi,
   updateSvaMainserverSurvey,
@@ -1816,6 +1821,187 @@ describe('createSvaMainserverService', () => {
       id: 'poi-1',
     });
     await expect(deleteSvaMainserverPoi({ ...connection, poiId: 'poi-1' })).resolves.toEqual({ id: 'poi-1' });
+  });
+
+  it('lists, reads, writes and deletes generic items with typed GraphQL variables', async () => {
+    const genericItem = {
+      id: 'generic-1',
+      title: 'Freier Eintrag',
+      genericType: 'faq',
+      teaser: 'Kurztext',
+      description: 'Lange Beschreibung',
+      author: 'Redaktion',
+      keywords: 'faq,service',
+      externalId: 'generic-ext-1',
+      publicationDate: '2026-07-01',
+      publishedAt: '2026-07-01T10:00:00.000Z',
+      payload: { answer: '42', tags: ['wichtig'] },
+      visible: true,
+      categories: [{ name: 'Service' }],
+      contacts: [{ firstName: 'Ada', email: 'faq@example.test' }],
+      webUrls: [{ url: 'https://example.test/faq', description: 'Details' }],
+      addresses: [{ street: 'Rathausplatz 1', city: 'Musterhausen' }],
+      contentBlocks: [{ body: '<p>Antwort</p>' }],
+      openingHours: [{ weekday: 'MO', timeFrom: '08:00', timeTo: '16:00', open: true }],
+      mediaContents: [{ captionText: 'Titelbild', sourceUrl: { url: 'https://example.test/faq.jpg' } }],
+      locations: [{ name: 'Rathaus', geoLocation: { latitude: '52.4', longitude: '13.4' } }],
+      dates: [{ dateStart: '2026-08-01', timeStart: '09:00' }],
+      accessibilityInformations: [{ description: 'Leicht lesbar', types: 'plain-language' }],
+      priceInformations: [{ name: 'Eintritt', amount: 0 }],
+      createdAt: '2026-06-01T10:00:00.000Z',
+      updatedAt: '2026-06-02T10:00:00.000Z',
+    };
+
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: { genericItems: [genericItem, { ...genericItem, id: 'generic-hidden', visible: false }] },
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 3, statusCode: 200 } } }));
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+
+    await expect(service.listGenericItems({ ...connection, page: 1, pageSize: 25 })).resolves.toEqual({
+      data: [
+        expect.objectContaining({
+          id: 'generic-1',
+          contentType: 'generic-items.generic-item',
+          genericType: 'faq',
+          payload: { answer: '42', tags: ['wichtig'] },
+        }),
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    await expect(service.getGenericItem({ ...connection, genericItemId: 'generic-1' })).resolves.toMatchObject({
+      id: 'generic-1',
+      genericType: 'faq',
+    });
+
+    await expect(
+      service.createGenericItem({
+        ...connection,
+        genericItem: {
+          title: 'Freier Eintrag',
+          genericType: 'faq',
+          teaser: genericItem.teaser,
+          author: genericItem.author,
+          keywords: genericItem.keywords,
+          externalId: genericItem.externalId,
+          publicationDate: genericItem.publicationDate,
+          publishedAt: genericItem.publishedAt,
+          payload: genericItem.payload,
+          categories: genericItem.categories,
+          contacts: genericItem.contacts,
+          webUrls: genericItem.webUrls,
+          addresses: genericItem.addresses,
+          contentBlocks: genericItem.contentBlocks,
+          openingHours: genericItem.openingHours,
+          mediaContents: genericItem.mediaContents,
+          locations: [{ name: 'Rathaus', geoLocation: { latitude: 52.4, longitude: 13.4 } }],
+          dates: genericItem.dates,
+          accessibilityInformations: genericItem.accessibilityInformations,
+          priceInformations: genericItem.priceInformations,
+        },
+      })
+    ).resolves.toMatchObject({ id: 'generic-1', payload: { answer: '42', tags: ['wichtig'] } });
+
+    await expect(
+      service.updateGenericItem({
+        ...connection,
+        genericItemId: 'generic-1',
+        genericItem: {
+          title: 'Freier Eintrag',
+          genericType: 'faq',
+          visible: false,
+          payload: { answer: '43' },
+        },
+      })
+    ).resolves.toMatchObject({ id: 'generic-1' });
+
+    await expect(service.deleteGenericItem({ ...connection, genericItemId: 'generic-1' })).resolves.toEqual({
+      id: 'generic-1',
+    });
+
+    const requestBodies = fetchImpl.mock.calls
+      .slice(1)
+      .map(([, init]) => JSON.parse(init?.body as string) as { operationName: string; variables?: Record<string, unknown> });
+    expect(requestBodies.map((body) => body.operationName)).toEqual([
+      'SvaMainserverGenericItemList',
+      'SvaMainserverGenericItemDetail',
+      'SvaMainserverCreateGenericItem',
+      'SvaMainserverCreateGenericItem',
+      'SvaMainserverDestroyRecord',
+    ]);
+    expect(requestBodies[3]?.variables).toMatchObject({
+      id: 'generic-1',
+      forceCreate: false,
+      genericType: 'faq',
+      visible: false,
+      payload: { answer: '43' },
+    });
+    expect(requestBodies[4]?.variables).toEqual({ id: 'generic-1', recordType: 'GenericItem' });
+  });
+
+  it('routes default generic item helpers through the default service', async () => {
+    const genericItem = {
+      id: 'generic-1',
+      title: 'Freier Eintrag',
+      genericType: 'faq',
+      payload: { answer: '42' },
+      visible: true,
+    };
+
+    state.loadSvaMainserverInstanceConfig.mockResolvedValue(baseConfig);
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'user',
+      credentials: { apiKey: 'key-1', apiSecret: 'secret-1' },
+    });
+
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItems: [genericItem] } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 4, statusCode: 200 } } }));
+    vi.stubGlobal('fetch', fetchImpl);
+
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+
+    await expect(listSvaMainserverGenericItems({ ...connection, page: 1, pageSize: 25 })).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'generic-1' })],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    await expect(getSvaMainserverGenericItem({ ...connection, genericItemId: 'generic-1' })).resolves.toMatchObject({
+      id: 'generic-1',
+    });
+    await expect(
+      createSvaMainserverGenericItem({ ...connection, genericItem: { title: 'Freier Eintrag', genericType: 'faq' } })
+    ).resolves.toMatchObject({ id: 'generic-1' });
+    await expect(
+      updateSvaMainserverGenericItem({
+        ...connection,
+        genericItemId: 'generic-1',
+        genericItem: { title: 'Freier Eintrag', genericType: 'faq' },
+      })
+    ).resolves.toMatchObject({ id: 'generic-1' });
+    await expect(deleteSvaMainserverGenericItem({ ...connection, genericItemId: 'generic-1' })).resolves.toEqual({
+      id: 'generic-1',
+    });
   });
 
   it('keeps explicit mobile description clearing values in POI update mutations', async () => {

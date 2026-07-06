@@ -53,6 +53,7 @@
       "@sva/plugin-events/events.pages": ["packages/plugin-events/src/events.pages.tsx"],
       "@sva/studio-module-iam": ["packages/studio-module-iam/src/index.ts"],
       "@sva/plugin-events": ["packages/plugin-events/src/index.ts"],
+      "@sva/plugin-generic-items": ["packages/plugin-generic-items/src/index.ts"],
       "@sva/plugin-waste-management": ["packages/plugin-waste-management/src/index.ts"],
       "@sva/plugin-waste-management/waste-management.job-definitions": [
         "packages/plugin-waste-management/src/waste-management.job-definitions.ts"

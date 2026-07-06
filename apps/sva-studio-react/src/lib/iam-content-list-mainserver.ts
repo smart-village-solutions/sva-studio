@@ -57,6 +57,31 @@ type MainserverPoiItem = Readonly<{
   updatedAt: string;
 }>;
 
+type MainserverGenericItem = Readonly<{
+  id: string;
+  contentType: string;
+  title?: string;
+  genericType?: string;
+  teaser?: string;
+  author?: string;
+  keywords?: string;
+  payload?: unknown;
+  categories?: unknown;
+  contacts?: unknown;
+  webUrls?: unknown;
+  addresses?: unknown;
+  contentBlocks?: unknown;
+  openingHours?: unknown;
+  mediaContents?: unknown;
+  locations?: unknown;
+  dates?: unknown;
+  accessibilityInformations?: unknown;
+  priceInformations?: unknown;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
+}>;
+
 type MainserverSurveyLocalizedText = Readonly<Record<string, string>>;
 
 type MainserverSurveyItem = Readonly<{
@@ -245,6 +270,45 @@ export const mapPoiItem = (
   status: 'published',
   validationState: 'valid',
   historyRef: `mainserver:poi:${item.id}`,
+  access: createMainserverItemAccess(item.contentType, permissions),
+});
+
+export const mapGenericItem = (
+  item: MainserverGenericItem,
+  instanceId: string,
+  permissions: readonly PermissionView[]
+): IamContentListItem => ({
+  id: item.id,
+  instanceId,
+  contentType: item.contentType,
+  title: normalizeTitle(item.title, item.id),
+  createdAt: item.createdAt,
+  createdBy: item.author ?? 'mainserver',
+  updatedAt: item.updatedAt,
+  updatedBy: item.author ?? 'mainserver',
+  authorDisplayMode: 'organization',
+  author: item.author ?? 'mainserver',
+  payload: toContentJsonValue({
+    genericType: item.genericType,
+    teaser: item.teaser,
+    keywords: item.keywords,
+    payload: item.payload,
+    categories: item.categories,
+    contacts: item.contacts,
+    webUrls: item.webUrls,
+    addresses: item.addresses,
+    contentBlocks: item.contentBlocks,
+    openingHours: item.openingHours,
+    mediaContents: item.mediaContents,
+    locations: item.locations,
+    dates: item.dates,
+    accessibilityInformations: item.accessibilityInformations,
+    priceInformations: item.priceInformations,
+  }),
+  status: 'published',
+  validationState: 'valid',
+  historyRef: `mainserver:generic-items:${item.id}`,
+  ...(item.publishedAt ? { publishedAt: item.publishedAt } : {}),
   access: createMainserverItemAccess(item.contentType, permissions),
 });
 

@@ -64,6 +64,23 @@ const bindings: AppRouteBindings = {
   contentDetail: () => 'contentDetail',
   media: () => 'media',
   adminMedia: () => 'adminMedia',
+  mediaUsage: () => 'mediaUsage',
+  newsList: () => 'newsList',
+  newsDetail: () => 'newsDetail',
+  newsEditor: () => 'newsEditor',
+  eventsList: () => 'eventsList',
+  eventsDetail: () => 'eventsDetail',
+  eventsEditor: () => 'eventsEditor',
+  genericItemsList: () => 'genericItemsList',
+  genericItemsDetail: () => 'genericItemsDetail',
+  genericItemsEditor: () => 'genericItemsEditor',
+  poiList: () => 'poiList',
+  poiDetail: () => 'poiDetail',
+  poiEditor: () => 'poiEditor',
+  accountPrivacyDetail: () => 'accountPrivacyDetail',
+  surveysList: () => 'surveysList',
+  surveysDetail: () => 'surveysDetail',
+  surveysEditor: () => 'surveysEditor',
   categories: () => 'categories',
   app: () => 'app',
   interfaces: () => 'interfaces',
@@ -95,12 +112,7 @@ const bindings: AppRouteBindings = {
   adminApiPhase1Test: () => 'adminApiPhase1Test',
 };
 
-const specializedBindings = {
-  ...bindings,
-  newsList: () => 'newsList',
-  newsDetail: () => 'newsDetail',
-  newsEditor: () => 'newsEditor',
-} as AppRouteBindings & Record<'newsList' | 'newsDetail' | 'newsEditor', () => string>;
+const specializedBindings = bindings;
 
 const readRouteOptions = (route: unknown): RouteOptionsUnderTest =>
   (route as { options: RouteOptionsUnderTest }).options;

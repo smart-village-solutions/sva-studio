@@ -126,6 +126,12 @@ Das Package ist damit ein realer Workspace-Baustein und kein reines Zielbild-Art
 
 Wie die anderen Fachplugins nutzt es die öffentliche Plugin-Grenze des Hosts, statt interne App- oder Core-Module direkt zu importieren.
 
+### `@sva/plugin-generic-items`
+
+`@sva/plugin-generic-items` ist das redaktionelle Plugin für freie `GenericItem`-Inhalte auf Basis des Mainserver-Typs `GenericItem`. Das Package deckt bewusst einen breiten Satz kanonischer `GenericItem`-Felder ab, führt `genericType` als Freitext und hält `payload` als freie Erweiterungsfläche offen.
+
+Architektonisch folgt es demselben Host-Fassadenmuster wie News, Events und POI: plugin-lokale UI, hostgeführte HTTP-CRUD-Pfade und die Mainserver-Integration ausschließlich über `@sva/sva-mainserver`.
+
 ### `@sva/plugin-waste-management`
 
 `@sva/plugin-waste-management` ist das fachlich breiteste Workspace-Plugin. Es bündelt administrative Oberflächen für Waste-Stammdaten, Touren, Terminverschiebungen, technische Import-/Seed-/Reset-Werkzeuge und instanzbezogene Einstellungen.

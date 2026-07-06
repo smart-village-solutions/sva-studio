@@ -5,6 +5,7 @@ import {
   type IamContentListQuery,
 } from '@sva/core';
 import { deleteEvent } from '@sva/plugin-events';
+import { deleteGenericItem } from '@sva/plugin-generic-items';
 import { deleteNews } from '@sva/plugin-news';
 import { deletePoi } from '@sva/plugin-poi';
 import { deleteSurvey } from '@sva/plugin-surveys';
@@ -62,6 +63,7 @@ const MAIN_SERVER_CONTENT_TYPES = new Set([
   'events.event-record',
   'poi.point-of-interest',
   'surveys.survey',
+  'generic-items.generic-item',
 ]);
 
 const contentAdminResource = appAdminResources.find((resource) => resource.resourceId === 'content');
@@ -311,6 +313,10 @@ const deleteMainserverItem = async (contentType: string, contentId: string): Pro
   }
   if (contentType === 'surveys.survey') {
     await deleteSurvey(contentId);
+    return;
+  }
+  if (contentType === 'generic-items.generic-item') {
+    await deleteGenericItem(contentId);
   }
 };
 

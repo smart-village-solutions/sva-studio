@@ -8,6 +8,9 @@ export const pluginsENResources = {
   poi: {
     description: 'Publishes places and related location information for the tenant.',
   },
+  'generic-items': {
+    description: 'Publishes flexible generic items for the tenant.',
+  },
   categories: {
     description:
       'Provides Mainserver categories as an editorial companion module for news, events, and places.',

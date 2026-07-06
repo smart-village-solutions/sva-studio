@@ -8,6 +8,7 @@ const dispatchMainserverNewsRequestMock = vi.fn();
 const dispatchMainserverEventsRequestMock = vi.fn();
 const dispatchMainserverPoiRequestMock = vi.fn();
 const dispatchMainserverSurveysRequestMock = vi.fn();
+const dispatchMainserverGenericItemsRequestMock = vi.fn();
 const dispatchMainserverCategoriesRequestMock = vi.fn();
 const dispatchAggregatedContentListRequestMock = vi.fn();
 const dispatchMapGeocodingRequestMock = vi.fn();
@@ -59,6 +60,10 @@ vi.mock('./lib/mainserver-surveys-api.server', () => ({
   dispatchMainserverSurveysRequest: dispatchMainserverSurveysRequestMock,
 }));
 
+vi.mock('./lib/mainserver-generic-items-api.server', () => ({
+  dispatchMainserverGenericItemsRequest: dispatchMainserverGenericItemsRequestMock,
+}));
+
 vi.mock('./lib/mainserver-categories-api.server', () => ({
   dispatchMainserverCategoriesRequest: dispatchMainserverCategoriesRequestMock,
 }));
@@ -93,6 +98,7 @@ describe('server transport', () => {
     dispatchMainserverEventsRequestMock.mockReset();
     dispatchMainserverPoiRequestMock.mockReset();
     dispatchMainserverSurveysRequestMock.mockReset();
+    dispatchMainserverGenericItemsRequestMock.mockReset();
     dispatchMainserverCategoriesRequestMock.mockReset();
     dispatchAggregatedContentListRequestMock.mockReset();
     dispatchMapGeocodingRequestMock.mockReset();
@@ -115,6 +121,7 @@ describe('server transport', () => {
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
+    dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
     dispatchMainserverCategoriesRequestMock.mockResolvedValue(null);
     dispatchAggregatedContentListRequestMock.mockResolvedValue(null);
     dispatchMapGeocodingRequestMock.mockResolvedValue(null);
@@ -139,6 +146,7 @@ describe('server transport', () => {
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
+    dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
 
@@ -160,6 +168,7 @@ describe('server transport', () => {
     dispatchMainserverEventsRequestMock.mockResolvedValue(new Response('events', { status: 200 }));
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
+    dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
 
@@ -183,6 +192,7 @@ describe('server transport', () => {
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(new Response('poi', { status: 200 }));
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
+    dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
 
@@ -206,6 +216,7 @@ describe('server transport', () => {
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(new Response('surveys', { status: 200 }));
+    dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
     dispatchMainserverCategoriesRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
@@ -217,10 +228,39 @@ describe('server transport', () => {
     expect(dispatchMainserverEventsRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverPoiRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverSurveysRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverGenericItemsRequestMock).not.toHaveBeenCalled();
     expect(dispatchMainserverCategoriesRequestMock).not.toHaveBeenCalled();
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
     expect(startFetch).not.toHaveBeenCalled();
     await expect(response.text()).resolves.toBe('surveys');
+  });
+
+  it('bypasses mainserver generic item requests before auth routing', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
+    dispatchMainserverGenericItemsRequestMock.mockResolvedValue(new Response('generic-items', { status: 200 }));
+    dispatchMainserverCategoriesRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(startFetch);
+
+    const mod = await import('./server');
+    const response = await mod.default.fetch(new Request('http://localhost:3000/api/v1/mainserver/generic-items'));
+
+    expect(dispatchMainserverNewsRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverEventsRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverPoiRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverSurveysRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverGenericItemsRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverCategoriesRequestMock).not.toHaveBeenCalled();
+    expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
+    expect(startFetch).not.toHaveBeenCalled();
+    await expect(response.text()).resolves.toBe('generic-items');
   });
 
   it('bypasses mainserver categories requests before auth routing', async () => {
@@ -232,6 +272,7 @@ describe('server transport', () => {
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
+    dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
     dispatchMainserverCategoriesRequestMock.mockResolvedValue(
       new Response('categories', { status: 200 })
     );
@@ -247,6 +288,8 @@ describe('server transport', () => {
     expect(dispatchMainserverNewsRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverEventsRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverPoiRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverSurveysRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverGenericItemsRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverCategoriesRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchAggregatedContentListRequestMock).not.toHaveBeenCalled();
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
@@ -263,6 +306,7 @@ describe('server transport', () => {
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
+    dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
     dispatchMainserverCategoriesRequestMock.mockResolvedValue(null);
     dispatchAggregatedContentListRequestMock
       .mockResolvedValueOnce(new Response('contents', { status: 200 }))
@@ -284,6 +328,8 @@ describe('server transport', () => {
     expect(dispatchMainserverNewsRequestMock).toHaveBeenCalledTimes(2);
     expect(dispatchMainserverEventsRequestMock).toHaveBeenCalledTimes(2);
     expect(dispatchMainserverPoiRequestMock).toHaveBeenCalledTimes(2);
+    expect(dispatchMainserverSurveysRequestMock).toHaveBeenCalledTimes(2);
+    expect(dispatchMainserverGenericItemsRequestMock).toHaveBeenCalledTimes(2);
     expect(dispatchMainserverCategoriesRequestMock).toHaveBeenCalledTimes(2);
     expect(dispatchMapGeocodingRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();

@@ -1,0 +1,557 @@
+import { describe, expect, it } from 'vitest';
+
+import { mapGenericItemToDetailFormValues, mapGenericItemsDetailFormValuesToInput } from '../src/generic-items.detail-form.js';
+
+describe('generic items detail form mapping', () => {
+  it('maps repeated links, contacts, addresses, media and dates into structured input arrays and drops empty rows', () => {
+    const result = mapGenericItemsDetailFormValuesToInput({
+      title: 'Freier Eintrag',
+      genericType: 'faq',
+      teaser: '',
+      visible: true,
+      author: '',
+      keywords: '',
+      externalId: '',
+      publicationDate: '',
+      publishedAt: '',
+      categories: ['Rathaus', 'Service'],
+      contacts: [
+        {
+          firstName: 'Max',
+          lastName: '',
+          email: 'max@example.org',
+          phone: '',
+          fax: '0234 12345',
+          webUrls: [{ url: 'https://example.org/contact', description: 'Kontakt' }],
+        },
+        { firstName: '', lastName: '', email: '', phone: '', fax: '', webUrls: [] },
+      ],
+      webUrls: [
+        { url: 'https://example.org/faq', description: 'FAQ' },
+        { url: '', description: '' },
+      ],
+      addresses: [
+        {
+          addition: 'Rathaus',
+          street: 'Markt 1',
+          zip: '12345',
+          city: 'Musterstadt',
+          kind: 'office',
+          latitude: '51.5',
+          longitude: '7.4',
+        },
+        {
+          addition: '',
+          street: '',
+          zip: '',
+          city: '',
+          kind: '',
+          latitude: '',
+          longitude: '',
+        },
+      ],
+      contentBlocks: [
+        {
+          title: 'Frage',
+          intro: 'Kurzintro',
+          body: '<p>Antwort</p>',
+          mediaContents: [
+            {
+              captionText: 'Blockbild',
+              copyright: '',
+              contentType: 'image',
+              height: '',
+              width: '',
+              sourceUrl: {
+                url: 'https://example.org/block-image.jpg',
+                description: 'block-image.jpg',
+              },
+            },
+          ],
+        },
+        { title: '', intro: '', body: '', mediaContents: [] },
+      ],
+      openingHours: [
+        {
+          weekday: 'MO',
+          dateFrom: '2026-07-01',
+          dateTo: '',
+          timeFrom: '08:00',
+          timeTo: '12:00',
+          description: 'Vormittags geöffnet',
+          open: true,
+        },
+        {
+          weekday: '',
+          dateFrom: '',
+          dateTo: '',
+          timeFrom: '',
+          timeTo: '',
+          description: '',
+          open: false,
+        },
+      ],
+      mediaContents: [
+        {
+          captionText: 'Hero',
+          copyright: 'Stadt',
+          contentType: 'image',
+          height: '1080',
+          width: '1920',
+          sourceUrl: {
+            url: 'https://example.org/image.jpg',
+            description: 'image.jpg',
+          },
+        },
+        {
+          captionText: '',
+          copyright: '',
+          contentType: '',
+          height: '',
+          width: '',
+          sourceUrl: {
+            url: '',
+            description: '',
+          },
+        },
+      ],
+      locations: [
+        {
+          name: 'Bürgerbüro',
+          department: 'Service',
+          district: 'Innenstadt',
+          regionName: 'Bochum',
+          state: 'Deutschland',
+          latitude: '51.482',
+          longitude: '7.2166',
+        },
+        {
+          name: '',
+          department: '',
+          district: '',
+          regionName: '',
+          state: '',
+          latitude: '',
+          longitude: '',
+        },
+      ],
+      dates: [
+        {
+          weekday: 'Freitag',
+          dateStart: '2026-07-10T09:00',
+          dateEnd: '',
+          timeStart: '',
+          timeEnd: '',
+          timeDescription: '',
+          useOnlyTimeDescription: false,
+        },
+        {
+          weekday: '',
+          dateStart: '',
+          dateEnd: '',
+          timeStart: '',
+          timeEnd: '',
+          timeDescription: '',
+          useOnlyTimeDescription: false,
+        },
+      ],
+      accessibilityInformations: [
+        {
+          description: 'Stufenloser Zugang',
+          types: 'wheelchair',
+          urls: [
+            { url: 'https://example.org/barrierefreiheit', description: 'Details' },
+            { url: '', description: '' },
+          ],
+        },
+        {
+          description: '',
+          types: '',
+          urls: [{ url: '', description: '' }],
+        },
+      ],
+      priceInformations: [
+        {
+          name: 'Regulär',
+          amount: '12.5',
+          groupPrice: true,
+          ageFrom: '18',
+          ageTo: '99',
+          minAdultCount: '2',
+          maxAdultCount: '10',
+          minChildrenCount: '0',
+          maxChildrenCount: '4',
+          description: 'Abendkasse',
+          category: 'Erwachsene',
+        },
+        {
+          name: '',
+          amount: '',
+          groupPrice: false,
+          ageFrom: '',
+          ageTo: '',
+          minAdultCount: '',
+          maxAdultCount: '',
+          minChildrenCount: '',
+          maxChildrenCount: '',
+          description: '',
+          category: '',
+        },
+      ],
+      payloadText: '{}',
+    });
+
+    expect(result.webUrls).toEqual([{ url: 'https://example.org/faq', description: 'FAQ' }]);
+    expect(result.categoryName).toBe('Rathaus');
+    expect(result.categories).toEqual([{ name: 'Rathaus' }, { name: 'Service' }]);
+    expect(result.contacts).toEqual([
+      {
+        firstName: 'Max',
+        email: 'max@example.org',
+        fax: '0234 12345',
+        webUrls: [{ url: 'https://example.org/contact', description: 'Kontakt' }],
+      },
+    ]);
+    expect(result.addresses).toEqual([
+      {
+        addition: 'Rathaus',
+        street: 'Markt 1',
+        zip: '12345',
+        city: 'Musterstadt',
+        kind: 'office',
+        geoLocation: { latitude: 51.5, longitude: 7.4 },
+      },
+    ]);
+    expect(result.openingHours).toEqual([
+      {
+        weekday: 'MO',
+        dateFrom: '2026-07-01',
+        timeFrom: '08:00',
+        timeTo: '12:00',
+        description: 'Vormittags geöffnet',
+        open: true,
+      },
+    ]);
+    expect(result.mediaContents).toEqual([
+      {
+        captionText: 'Hero',
+        copyright: 'Stadt',
+        contentType: 'image',
+        height: 1080,
+        width: 1920,
+        sourceUrl: {
+          url: 'https://example.org/image.jpg',
+          description: 'image.jpg',
+        },
+      },
+    ]);
+    expect(result.locations).toEqual([
+      {
+        name: 'Bürgerbüro',
+        department: 'Service',
+        district: 'Innenstadt',
+        regionName: 'Bochum',
+        state: 'Deutschland',
+        geoLocation: { latitude: 51.482, longitude: 7.2166 },
+      },
+    ]);
+    expect(result.dates).toEqual([
+      { weekday: 'Freitag', dateStart: '2026-07-10T09:00', useOnlyTimeDescription: false },
+    ]);
+    expect(result.contentBlocks).toEqual([
+      {
+        title: 'Frage',
+        intro: 'Kurzintro',
+        body: '<p>Antwort</p>',
+        mediaContents: [
+          {
+            captionText: 'Blockbild',
+            contentType: 'image',
+            sourceUrl: { url: 'https://example.org/block-image.jpg', description: 'block-image.jpg' },
+          },
+        ],
+      },
+    ]);
+    expect(result.accessibilityInformations).toEqual([
+      {
+        description: 'Stufenloser Zugang',
+        types: 'wheelchair',
+        urls: [{ url: 'https://example.org/barrierefreiheit', description: 'Details' }],
+      },
+    ]);
+    expect(result.priceInformations).toEqual([
+      {
+        name: 'Regulär',
+        amount: 12.5,
+        groupPrice: true,
+        ageFrom: 18,
+        ageTo: 99,
+        minAdultCount: 2,
+        maxAdultCount: 10,
+        minChildrenCount: 0,
+        maxChildrenCount: 4,
+        description: 'Abendkasse',
+        category: 'Erwachsene',
+      },
+    ]);
+  });
+
+  it('preserves explicit false values and empty arrays so existing data can be cleared', () => {
+    const result = mapGenericItemsDetailFormValuesToInput({
+      title: 'Freier Eintrag',
+      genericType: 'faq',
+      teaser: '',
+      visible: false,
+      author: '',
+      keywords: '',
+      externalId: '',
+      publicationDate: '',
+      publishedAt: '',
+      categories: [],
+      contacts: [{ firstName: '', lastName: '', email: '', phone: '', fax: '', webUrls: [] }],
+      webUrls: [{ url: '', description: '' }],
+      addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
+      contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
+      openingHours: [
+        { weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false },
+      ],
+      mediaContents: [
+        {
+          captionText: '',
+          copyright: '',
+          contentType: '',
+          height: '',
+          width: '',
+          sourceUrl: { url: '', description: '' },
+        },
+      ],
+      locations: [{ name: '', department: '', district: '', regionName: '', state: '', latitude: '', longitude: '' }],
+      dates: [
+        {
+          weekday: '',
+          dateStart: '',
+          dateEnd: '',
+          timeStart: '',
+          timeEnd: '',
+          timeDescription: '',
+          useOnlyTimeDescription: false,
+        },
+      ],
+      accessibilityInformations: [{ description: '', types: '', urls: [{ url: '', description: '' }] }],
+      priceInformations: [
+        {
+          name: '',
+          amount: '',
+          groupPrice: false,
+          ageFrom: '',
+          ageTo: '',
+          minAdultCount: '',
+          maxAdultCount: '',
+          minChildrenCount: '',
+          maxChildrenCount: '',
+          description: '',
+          category: '',
+        },
+      ],
+      payloadText: '{}',
+    });
+
+    expect(result.visible).toBe(false);
+    expect(result.categories).toEqual([]);
+    expect(result.webUrls).toEqual([]);
+    expect(result.contacts).toEqual([]);
+    expect(result.addresses).toEqual([]);
+    expect(result.contentBlocks).toEqual([]);
+    expect(result.openingHours).toEqual([]);
+    expect(result.mediaContents).toEqual([]);
+    expect(result.locations).toEqual([]);
+    expect(result.dates).toEqual([]);
+    expect(result.accessibilityInformations).toEqual([]);
+    expect(result.priceInformations).toEqual([]);
+  });
+
+  it('normalizes boolean-like date flags from mainserver detail payloads', () => {
+    const result = mapGenericItemToDetailFormValues({
+      id: 'generic-1',
+      title: 'Freier Eintrag',
+      genericType: 'faq',
+      visible: true,
+      dates: [
+        {
+          weekday: 'Freitag',
+          dateStart: '2026-07-10',
+          useOnlyTimeDescription: 'false',
+        },
+        {
+          weekday: 'Samstag',
+          dateStart: '2026-07-11',
+          useOnlyTimeDescription: 'true',
+        },
+      ],
+      payload: {},
+    });
+
+    expect(result.dates).toEqual([
+      expect.objectContaining({ weekday: 'Freitag', useOnlyTimeDescription: false }),
+      expect.objectContaining({ weekday: 'Samstag', useOnlyTimeDescription: true }),
+    ]);
+  });
+
+  it('preserves contact fields that are not editable in the current form UI', () => {
+    const values = mapGenericItemToDetailFormValues({
+      id: 'generic-1',
+      title: 'Freier Eintrag',
+      genericType: 'faq',
+      visible: true,
+      contacts: [
+        {
+          firstName: 'Max',
+          email: 'max@example.org',
+          fax: '0234 12345',
+          webUrls: [{ url: 'https://example.org/contact', description: 'Kontakt' }],
+        },
+      ],
+      payload: {},
+    });
+
+    expect(values.contacts).toEqual([
+      {
+        firstName: 'Max',
+        lastName: '',
+        email: 'max@example.org',
+        phone: '',
+        fax: '0234 12345',
+        webUrls: [{ url: 'https://example.org/contact', description: 'Kontakt' }],
+      },
+    ]);
+
+    expect(mapGenericItemsDetailFormValuesToInput(values).contacts).toEqual([
+      {
+        firstName: 'Max',
+        email: 'max@example.org',
+        fax: '0234 12345',
+        webUrls: [{ url: 'https://example.org/contact', description: 'Kontakt' }],
+      },
+    ]);
+  });
+
+  it('does not emit partial geo coordinates for addresses and locations', () => {
+    const result = mapGenericItemsDetailFormValuesToInput({
+      title: 'Freier Eintrag',
+      genericType: 'faq',
+      teaser: '',
+      visible: true,
+      author: '',
+      keywords: '',
+      externalId: '',
+      publicationDate: '',
+      publishedAt: '',
+      categories: [],
+      contacts: [{ firstName: '', lastName: '', email: '', phone: '', fax: '', webUrls: [] }],
+      webUrls: [{ url: '', description: '' }],
+      addresses: [
+        {
+          addition: '',
+          street: 'Markt 1',
+          zip: '',
+          city: '',
+          kind: '',
+          latitude: '51.5',
+          longitude: '',
+        },
+      ],
+      contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
+      openingHours: [{ weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false }],
+      mediaContents: [],
+      locations: [
+        {
+          name: 'Bürgerbüro',
+          department: '',
+          district: '',
+          regionName: '',
+          state: '',
+          latitude: '',
+          longitude: '7.2166',
+        },
+      ],
+      dates: [{ weekday: '', dateStart: '', dateEnd: '', timeStart: '', timeEnd: '', timeDescription: '', useOnlyTimeDescription: false }],
+      accessibilityInformations: [{ description: '', types: '', urls: [{ url: '', description: '' }] }],
+      priceInformations: [
+        {
+          name: '',
+          amount: '',
+          groupPrice: false,
+          ageFrom: '',
+          ageTo: '',
+          minAdultCount: '',
+          maxAdultCount: '',
+          minChildrenCount: '',
+          maxChildrenCount: '',
+          description: '',
+          category: '',
+        },
+      ],
+      payloadText: '{}',
+    });
+
+    expect(result.addresses).toEqual([{ street: 'Markt 1' }]);
+    expect(result.locations).toEqual([{ name: 'Bürgerbüro' }]);
+  });
+
+  it('preserves nested content block media when reading and writing existing generic items', () => {
+    const values = mapGenericItemToDetailFormValues({
+      id: 'generic-1',
+      title: 'Freier Eintrag',
+      genericType: 'faq',
+      visible: true,
+      contentBlocks: [
+        {
+          title: 'Frage',
+          intro: 'Kurzintro',
+          body: '<p>Antwort</p>',
+          mediaContents: [
+            {
+              captionText: 'Blockbild',
+              contentType: 'image',
+              sourceUrl: { url: 'https://example.org/block-image.jpg', description: 'block-image.jpg' },
+            },
+          ],
+        },
+      ],
+      payload: {},
+    });
+
+    expect(values.contentBlocks).toEqual([
+      {
+        title: 'Frage',
+        intro: 'Kurzintro',
+        body: '<p>Antwort</p>',
+        mediaContents: [
+          {
+            captionText: 'Blockbild',
+            copyright: '',
+            contentType: 'image',
+            height: '',
+            width: '',
+            sourceUrl: { url: 'https://example.org/block-image.jpg', description: 'block-image.jpg' },
+          },
+        ],
+      },
+    ]);
+
+    expect(mapGenericItemsDetailFormValuesToInput(values).contentBlocks).toEqual([
+      {
+        title: 'Frage',
+        intro: 'Kurzintro',
+        body: '<p>Antwort</p>',
+        mediaContents: [
+          {
+            captionText: 'Blockbild',
+            contentType: 'image',
+            sourceUrl: { url: 'https://example.org/block-image.jpg', description: 'block-image.jpg' },
+          },
+        ],
+      },
+    ]);
+  });
+});

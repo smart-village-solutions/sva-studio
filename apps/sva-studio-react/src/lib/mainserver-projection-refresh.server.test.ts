@@ -55,6 +55,22 @@ describe('mainserver projection refresh', () => {
     });
   });
 
+  it('accepts generic item projection refreshes', async () => {
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/generic-items', { method: 'POST' }),
+      new Response('{}', { status: 200 }),
+      'generic-items.generic-item'
+    );
+
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      contentType: 'generic-items.generic-item',
+      organizationId: 'org-1',
+    });
+  });
+
   it('skips projection refresh for read-only requests and failed responses', async () => {
     await refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/news', { method: 'GET' }),

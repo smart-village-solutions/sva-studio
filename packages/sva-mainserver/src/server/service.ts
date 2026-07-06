@@ -15,6 +15,7 @@ import type {
   SvaMainserverConnectionInput,
   SvaMainserverConnectionStatus,
   SvaMainserverEventInput,
+  SvaMainserverGenericItemInput,
   SvaMainserverInstanceConfig,
   SvaMainserverListQuery,
   SvaMainserverNewsListInput,
@@ -29,6 +30,7 @@ import { createAccessTokenProvider } from './service-internals/access-token-prov
 import { createCredentialProvider, createDefaultCredentialReader } from './service-internals/credentials.js';
 import { createEventOperations } from './service-internals/event-operations.js';
 import { createFetchWithRetry, createGraphqlExecutor } from './service-internals/graphql-client.js';
+import { createGenericItemOperations } from './service-internals/generic-item-operations.js';
 import { createNewsOperations } from './service-internals/news-operations.js';
 import { createNewsVisibilityOperations } from './service-internals/news-visibility-operations.js';
 import { buildLogContext, logger, withObservedHop } from './service-internals/observability.js';
@@ -222,6 +224,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   const newsOperations = createNewsOperations(executeGraphqlWithConfig);
   const newsVisibilityOperations = createNewsVisibilityOperations(executeGraphqlWithConfig);
   const eventOperations = createEventOperations(executeGraphqlWithConfig);
+  const genericItemOperations = createGenericItemOperations(executeGraphqlWithConfig);
   const poiOperations = createPoiOperations(executeGraphqlWithConfig);
   const surveyOperations = createSurveyOperations(executeGraphqlWithConfig);
   const staticContentOperations = createStaticContentOperations(executeGraphqlWithConfig);
@@ -385,6 +388,42 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     };
   };
 
+  const listGenericItems = async (input: SvaMainserverListInput) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    const credentialMetadata = await loadListCredentialMetadata(input);
+    return {
+      ...(await genericItemOperations.listGenericItemsWithConfig(input, config)),
+      ...credentialMetadata,
+    };
+  };
+
+  const getGenericItem = async (input: SvaMainserverConnectionInput & { readonly genericItemId: string }) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return genericItemOperations.getGenericItemWithConfig(input, config);
+  };
+
+  const createGenericItem = async (
+    input: SvaMainserverConnectionInput & { readonly genericItem: SvaMainserverGenericItemInput }
+  ) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return genericItemOperations.writeGenericItemWithConfig(input, config);
+  };
+
+  const updateGenericItem = async (
+    input: SvaMainserverConnectionInput & {
+      readonly genericItemId: string;
+      readonly genericItem: SvaMainserverGenericItemInput;
+    }
+  ) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return genericItemOperations.writeGenericItemWithConfig({ ...input, forceCreate: false }, config);
+  };
+
+  const deleteGenericItem = async (input: SvaMainserverConnectionInput & { readonly genericItemId: string }) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return genericItemOperations.destroyGenericItemWithConfig(input, config);
+  };
+
   const getPoi = async (input: SvaMainserverConnectionInput & { readonly poiId: string }) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return poiOperations.getPoiWithConfig(input, config);
@@ -539,16 +578,19 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   return {
     createOrUpdateStaticContent,
     createEvent,
+    createGenericItem,
     createNews,
     createPoi,
     createSurvey,
     changeNewsVisibility,
     deleteEvent,
+    deleteGenericItem,
     deleteNews,
     deletePoi,
     deleteSurvey,
     getConnectionStatus,
     getEvent,
+    getGenericItem,
     getMutationRootTypename,
     getNews,
     getPoi,
@@ -557,6 +599,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     getSurveyResults,
     listCategories,
     listEvents,
+    listGenericItems,
     listNews,
     listPoi,
     listSurveys,
@@ -565,6 +608,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     createWastePickupTimes,
     deleteWastePickupTimes,
     updateEvent,
+    updateGenericItem,
     updateNews,
     updatePoi,
     updateSurvey,
@@ -634,6 +678,27 @@ export const deleteSvaMainserverEvent = (input: SvaMainserverConnectionInput & {
 
 export const listSvaMainserverPoi = (input: SvaMainserverConnectionInput & SvaMainserverListQuery) =>
   getDefaultService().listPoi(input);
+
+export const listSvaMainserverGenericItems = (input: SvaMainserverConnectionInput & SvaMainserverListQuery) =>
+  getDefaultService().listGenericItems(input);
+
+export const getSvaMainserverGenericItem = (input: SvaMainserverConnectionInput & { readonly genericItemId: string }) =>
+  getDefaultService().getGenericItem(input);
+
+export const createSvaMainserverGenericItem = (
+  input: SvaMainserverConnectionInput & { readonly genericItem: SvaMainserverGenericItemInput }
+) => getDefaultService().createGenericItem(input);
+
+export const updateSvaMainserverGenericItem = (
+  input: SvaMainserverConnectionInput & {
+    readonly genericItemId: string;
+    readonly genericItem: SvaMainserverGenericItemInput;
+  }
+) => getDefaultService().updateGenericItem(input);
+
+export const deleteSvaMainserverGenericItem = (
+  input: SvaMainserverConnectionInput & { readonly genericItemId: string }
+) => getDefaultService().deleteGenericItem(input);
 
 export const getSvaMainserverPoi = (input: SvaMainserverConnectionInput & { readonly poiId: string }) =>
   getDefaultService().getPoi(input);

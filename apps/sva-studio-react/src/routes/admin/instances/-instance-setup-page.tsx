@@ -26,6 +26,7 @@ const adminBootstrapModuleLabels = {
   categories: 'admin.instances.adminBootstrap.modules.categories',
   news: 'admin.instances.adminBootstrap.modules.news',
   events: 'admin.instances.adminBootstrap.modules.events',
+  'generic-items': 'admin.instances.adminBootstrap.modules.genericItems',
   poi: 'admin.instances.adminBootstrap.modules.poi',
   media: 'admin.instances.adminBootstrap.modules.media',
   surveys: 'admin.instances.adminBootstrap.modules.surveys',

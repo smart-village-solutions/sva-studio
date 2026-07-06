@@ -200,7 +200,12 @@ export type CreateContentPayload = CreateIamContentInput;
 export type UpdateContentPayload = UpdateIamContentInput;
 
 export type IamContentProjectionSyncState = Readonly<{
-  contentType: 'news.article' | 'events.event-record' | 'poi.point-of-interest';
+  contentType:
+    | 'news.article'
+    | 'events.event-record'
+    | 'poi.point-of-interest'
+    | 'generic-items.generic-item'
+    | 'surveys.survey';
   lastStartedAt?: string;
   lastSucceededAt?: string;
   lastFailedAt?: string;

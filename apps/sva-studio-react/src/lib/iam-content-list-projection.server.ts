@@ -233,8 +233,26 @@ const resolveProjectionScopePriority = (row: ProjectionRow): number => {
 
 const buildProjectionDeduplicationKey = (row: ProjectionRow): string =>
   row.source_system === 'mainserver'
-    ? ['mainserver', row.content_type, row.source_entity_type, row.source_entity_id].join('::')
+    ? ['mainserver', row.source_entity_type, row.source_entity_id].join('::')
     : row.id;
+
+const comparePreferredProjectionRows = (
+  left: ProjectionRow,
+  right: ProjectionRow
+): number => {
+  const scopePriorityResult =
+    resolveProjectionScopePriority(right) - resolveProjectionScopePriority(left);
+  if (scopePriorityResult !== 0) {
+    return scopePriorityResult;
+  }
+
+  const updatedAtResult = right.updated_at.localeCompare(left.updated_at);
+  if (updatedAtResult !== 0) {
+    return updatedAtResult;
+  }
+
+  return right.id.localeCompare(left.id);
+};
 
 const compareProjectionRows = (
   left: ProjectionRow,
@@ -256,18 +274,7 @@ const compareProjectionRows = (
     return primaryResult * direction;
   }
 
-  const scopePriorityResult =
-    resolveProjectionScopePriority(right) - resolveProjectionScopePriority(left);
-  if (scopePriorityResult !== 0) {
-    return scopePriorityResult;
-  }
-
-  const updatedAtResult = right.updated_at.localeCompare(left.updated_at);
-  if (updatedAtResult !== 0) {
-    return updatedAtResult;
-  }
-
-  return right.id.localeCompare(left.id);
+  return comparePreferredProjectionRows(left, right);
 };
 
 const buildReadAction = (contentType: string): string =>
@@ -1199,17 +1206,20 @@ ${whereClause};
       params
     );
 
-    const sortedRows = [...result.rows].sort((left, right) =>
-      compareProjectionRows(left, right, query.sortBy, query.sortDirection)
-    );
     const dedupedRows = new Map<string, ProjectionRow>();
-    for (const row of sortedRows) {
+    for (const row of result.rows) {
       const deduplicationKey = buildProjectionDeduplicationKey(row);
-      if (!dedupedRows.has(deduplicationKey)) {
+      const existingRow = dedupedRows.get(deduplicationKey);
+      if (
+        !existingRow ||
+        comparePreferredProjectionRows(row, existingRow) < 0
+      ) {
         dedupedRows.set(deduplicationKey, row);
       }
     }
-    const filteredRows = [...dedupedRows.values()];
+    const filteredRows = [...dedupedRows.values()].sort((left, right) =>
+      compareProjectionRows(left, right, query.sortBy, query.sortDirection)
+    );
     const offset = Math.max(0, (query.page - 1) * query.pageSize);
     const paginatedRows = filteredRows.slice(offset, offset + query.pageSize);
 

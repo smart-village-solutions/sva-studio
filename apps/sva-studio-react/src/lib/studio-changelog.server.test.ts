@@ -75,4 +75,33 @@ describe('studio-changelog.server', () => {
       },
     ]);
   });
+
+  it('supports the app-root public fallback path', async () => {
+    const result = await loadStudioChangelogEntries({
+      resolveCatalogPaths: () => ['/tmp/missing.json', '/tmp/public/generated/studio-changelog.json'],
+      readCatalogFile: async (filePath) => {
+        if (filePath.endsWith('missing.json')) {
+          throw new Error('nicht gefunden');
+        }
+
+        return JSON.stringify({
+          entries: [
+            {
+              prNumber: 18,
+              body: 'Eintrag 18',
+              mergedAt: '2026-07-18T10:00:00.000Z',
+            },
+          ],
+        });
+      },
+    });
+
+    expect(result).toEqual([
+      {
+        prNumber: 18,
+        body: 'Eintrag 18',
+        mergedAt: '2026-07-18T10:00:00.000Z',
+      },
+    ]);
+  });
 });

@@ -112,6 +112,11 @@ export const validateStudioChangelogPullRequest = ({
 
   for (const entryPath of entryFiles) {
     const fileNamePrNumber = parseStudioChangelogEntryPathPrNumber(entryPath);
+    if (entryPath !== expectedEntryPath && fileNamePrNumber >= expectedPrNumber) {
+      throw new Error(
+        `Zusaetzliche Studio-Changelog-Dateien muessen aeltere PRs betreffen. ${entryPath} ist nicht aelter als PR ${expectedPrNumber}.`
+      );
+    }
     const entry = parseStudioChangelogEntryDocument(entryPath, readFile(entryPath));
     if (entry.prNumber !== fileNamePrNumber) {
       throw new Error(`Dateiname ${entryPath} und JSON-prNumber ${entry.prNumber} stimmen nicht ueberein.`);

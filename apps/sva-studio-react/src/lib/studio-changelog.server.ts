@@ -16,6 +16,7 @@ type LoadStudioChangelogEntriesInput = {
 
 const resolveStudioChangelogCatalogPaths = (): readonly string[] => [
   path.resolve(process.cwd(), '.output/public', STUDIO_CHANGELOG_ARTIFACT_RELATIVE_PATH),
+  path.resolve(process.cwd(), 'public', STUDIO_CHANGELOG_ARTIFACT_RELATIVE_PATH),
   path.resolve(process.cwd(), 'apps/sva-studio-react/public', STUDIO_CHANGELOG_ARTIFACT_RELATIVE_PATH),
 ];
 

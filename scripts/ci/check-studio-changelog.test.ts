@@ -101,7 +101,24 @@ describe('check-studio-changelog', () => {
             body: 'Allgemeine Verbesserungen',
           }),
       })
-    ).toThrow(/muss die Changelog-Datei docs\/changelog\/entries\/pr-412\.json enthalten/);
+    ).toThrow(/aeltere PRs/);
+  });
+
+  it('rejects additional changelog files for newer prs', () => {
+    expect(() =>
+      validateStudioChangelogPullRequest({
+        changedFiles: [
+          'docs/changelog/entries/pr-412.json',
+          'docs/changelog/entries/pr-999999.json',
+        ],
+        expectedPrNumber: 412,
+        readFile: (filePath) =>
+          JSON.stringify({
+            prNumber: Number(filePath.match(/pr-(\d+)\.json$/u)?.[1]),
+            body: 'Allgemeine Verbesserungen',
+          }),
+      })
+    ).toThrow(/aeltere PRs/);
   });
 
   it('rejects entries with an empty body', () => {
@@ -121,11 +138,11 @@ describe('check-studio-changelog', () => {
   it('rejects entries whose file name does not match the pr number', () => {
     expect(() =>
       validateStudioChangelogPullRequest({
-        changedFiles: ['docs/changelog/entries/pr-999.json'],
+        changedFiles: ['docs/changelog/entries/pr-412.json'],
         expectedPrNumber: 412,
         readFile: () =>
           JSON.stringify({
-            prNumber: 412,
+            prNumber: 999,
             body: 'Allgemeine Verbesserungen',
           }),
       })

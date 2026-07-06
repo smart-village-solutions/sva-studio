@@ -68,8 +68,11 @@
         "^production",
         "frontendTooling",
         "frontendEnvBuild",
+        "{workspaceRoot}/docs/changelog/entries/**/*.json",
+        "{workspaceRoot}/scripts/ci/generate-studio-changelog-artifact.ts",
         "{workspaceRoot}/scripts/ci/patch-runtime-artifact.ts",
-        "{workspaceRoot}/scripts/ci/run-workspace-node.sh"
+        "{workspaceRoot}/scripts/ci/run-workspace-node.sh",
+        "{projectRoot}/src/lib/studio-changelog.shared.ts"
       ],
       "outputs": [
         "{projectRoot}/.output"

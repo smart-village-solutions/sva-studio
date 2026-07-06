@@ -471,9 +471,16 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(checkServerPackageRuntime, /maxRetries: 5/);
   assert.doesNotMatch(checkServerPackageRuntime, /fs\.rmSync\(targetDistDir, \{ recursive: true, force: true \}\)/);
 
+  assert.match(studioProjectJson, /generate-studio-changelog-artifact\.ts --output \.generated\/studio-changelog\.json/);
+  assert.match(studioProjectJson, /run-workspace-node\.sh -e/);
+  assert.match(studioProjectJson, /fs\.mkdirSync\('\.output\/server\/generated',\{recursive:true\}\)/);
   assert.match(
     studioProjectJson,
-    /pnpm exec vite build && bash \.\.\/\.\.\/scripts\/ci\/run-workspace-node\.sh --import tsx \.\.\/\.\.\/scripts\/ci\/patch-runtime-artifact\.ts \./
+    /fs\.copyFileSync\('\.generated\/studio-changelog\.json','\.output\/server\/generated\/studio-changelog\.json'\)/
+  );
+  assert.match(
+    studioProjectJson,
+    /run-workspace-node\.sh --import tsx \.\.\/\.\.\/scripts\/ci\/patch-runtime-artifact\.ts \./
   );
   assert.doesNotMatch(
     studioProjectJson,

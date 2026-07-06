@@ -47,7 +47,7 @@ jobs:
         run: |
           echo 'Studio-Changelog-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo 'Validierung: genau eine Datei unter `docs/changelog/entries/pr-<nummer>.json` mit nicht leerem Nutzertext.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Validierung: die Datei `docs/changelog/entries/pr-<nummer>.json` fuer den aktuellen PR ist Pflicht; zusaetzliche Anpassungen an aelteren Eintraegen sind erlaubt.' >> "$GITHUB_STEP_SUMMARY"
           else
             echo 'Validierung: vollständiger Katalog unter `docs/changelog/entries/*.json` inklusive JSON- und Git-Metadaten-Prüfung.' >> "$GITHUB_STEP_SUMMARY"
           fi

@@ -2,8 +2,8 @@
 
 ## Ziel
 
-Jeder Pull Request muss genau einen nutzerverständlichen
-Studio-Changelog-Eintrag mitliefern. Dieser Eintrag wird nach dem
+Jeder Pull Request muss einen nutzerverständlichen
+Studio-Changelog-Eintrag für die eigene PR mitliefern. Dieser Eintrag wird nach dem
 Merge nach `main` direkt im Studio unter „Letzte Änderungen“
 angezeigt.
 
@@ -24,7 +24,8 @@ Beispiel:
 
 Verbindliche Regeln:
 
-- genau eine Changelog-Datei pro PR
+- die Datei `docs/changelog/entries/pr-<nummer>.json` für die aktuelle PR ist Pflicht
+- ältere Changelog-Dateien dürfen im selben PR zusätzlich ergänzt oder überarbeitet werden
 - `prNumber` muss zur PR-Nummer passen
 - `body` darf nicht leer sein
 - `body` ist ein Nutzertext, kein interner Technikvermerk
@@ -54,8 +55,9 @@ Minimaltext wie `Allgemeine Verbesserungen` zulässig.
 
 Ein dediziertes GitHub-Action-Gate prüft:
 
-- im PR: genau eine geänderte oder neue Datei unter
-  `docs/changelog/entries/pr-<nummer>.json`
+- im PR: die geänderte oder neue Datei
+  `docs/changelog/entries/pr-<nummer>.json` für die aktuelle PR;
+  zusätzliche Änderungen an älteren Einträgen sind erlaubt
 - auf `main`: den gesamten Eintragskatalog
 
 Lokal kann der Repository-Katalog mit folgendem Befehl geprüft werden:

@@ -7,7 +7,7 @@ import {
 } from './check-studio-changelog.ts';
 
 describe('check-studio-changelog', () => {
-  it('accepts a pull request with exactly one valid changelog entry', () => {
+  it('accepts a pull request with the current pr entry', () => {
     const changedFiles = [
       'docs/changelog/entries/pr-412.json',
       'apps/sva-studio-react/src/routes/-home-page.tsx',
@@ -37,6 +37,44 @@ describe('check-studio-changelog', () => {
     });
   });
 
+  it('accepts a pull request that also updates older changelog entries', () => {
+    const changedFiles = [
+      'docs/changelog/entries/pr-410.json',
+      'docs/changelog/entries/pr-412.json',
+      'apps/sva-studio-react/src/routes/-home-page.tsx',
+    ];
+
+    const result = validateStudioChangelogPullRequest({
+      changedFiles,
+      expectedPrNumber: 412,
+      readFile: (filePath) => {
+        if (filePath === 'docs/changelog/entries/pr-410.json') {
+          return JSON.stringify({
+            prNumber: 410,
+            body: 'Praezisierter Alttext',
+          });
+        }
+
+        if (filePath === 'docs/changelog/entries/pr-412.json') {
+          return JSON.stringify({
+            prNumber: 412,
+            body: 'Neuer Nutzertext fuer diesen PR',
+          });
+        }
+
+        throw new Error(`unexpected file read: ${filePath}`);
+      },
+    });
+
+    expect(result).toEqual({
+      entryPath: 'docs/changelog/entries/pr-412.json',
+      entry: {
+        prNumber: 412,
+        body: 'Neuer Nutzertext fuer diesen PR',
+      },
+    });
+  });
+
   it('rejects pull requests without a changelog entry', () => {
     expect(() =>
       validateStudioChangelogPullRequest({
@@ -46,24 +84,24 @@ describe('check-studio-changelog', () => {
           throw new Error('should not read files');
         },
       })
-    ).toThrow(/genau eine Changelog-Datei/);
+    ).toThrow(/muss eine Changelog-Datei/);
   });
 
-  it('rejects pull requests with more than one changelog entry', () => {
+  it('rejects pull requests that only change older changelog entries', () => {
     expect(() =>
       validateStudioChangelogPullRequest({
         changedFiles: [
-          'docs/changelog/entries/pr-412.json',
+          'docs/changelog/entries/pr-410.json',
           'docs/changelog/entries/pr-413.json',
         ],
         expectedPrNumber: 412,
-        readFile: () =>
+        readFile: (filePath) =>
           JSON.stringify({
-            prNumber: 412,
+            prNumber: Number(filePath.match(/pr-(\d+)\.json$/u)?.[1]),
             body: 'Allgemeine Verbesserungen',
           }),
       })
-    ).toThrow(/genau eine Changelog-Datei/);
+    ).toThrow(/muss die Changelog-Datei docs\/changelog\/entries\/pr-412\.json enthalten/);
   });
 
   it('rejects entries with an empty body', () => {
@@ -92,6 +130,23 @@ describe('check-studio-changelog', () => {
           }),
       })
     ).toThrow(/Dateiname/);
+  });
+
+  it('rejects older changelog entries whose file name and json pr number differ', () => {
+    expect(() =>
+      validateStudioChangelogPullRequest({
+        changedFiles: [
+          'docs/changelog/entries/pr-410.json',
+          'docs/changelog/entries/pr-412.json',
+        ],
+        expectedPrNumber: 412,
+        readFile: (filePath) =>
+          JSON.stringify({
+            prNumber: filePath.endsWith('pr-410.json') ? 999 : 412,
+            body: 'Allgemeine Verbesserungen',
+          }),
+      })
+    ).toThrow(/stimmen nicht ueberein/);
   });
 
   it('collects repository entries with deterministic merged timestamps', () => {

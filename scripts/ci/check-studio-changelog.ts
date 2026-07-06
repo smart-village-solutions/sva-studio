@@ -146,25 +146,36 @@ export const validateStudioChangelogPullRequest = ({
   readFile,
 }: PullRequestValidationInput): PullRequestValidationResult => {
   const entryFiles = [...new Set(changedFiles.filter((filePath) => CHANGELOG_ENTRY_PATTERN.test(filePath)))];
+  const expectedEntryPath = `docs/changelog/entries/pr-${expectedPrNumber}.json`;
 
-  if (entryFiles.length !== 1) {
-    throw new Error('Der Pull Request muss genau eine Changelog-Datei unter docs/changelog/entries/ aendern oder anlegen.');
-  }
-
-  const entryPath = entryFiles[0]!;
-  const fileNamePrNumber = parseEntryPathPrNumber(entryPath);
-  if (fileNamePrNumber !== expectedPrNumber) {
+  if (entryFiles.length === 0) {
     throw new Error(
-      `Dateiname ${entryPath} passt nicht zur erwarteten PR-Nummer ${expectedPrNumber}.`
+      `Der Pull Request muss eine Changelog-Datei unter ${expectedEntryPath} aendern oder anlegen.`
     );
   }
 
-  const entry = parseStudioChangelogEntry(entryPath, readFile(entryPath));
-  if (entry.prNumber !== expectedPrNumber) {
-    throw new Error(`Datei ${entryPath} enthaelt prNumber ${entry.prNumber}, erwartet war ${expectedPrNumber}.`);
+  for (const entryPath of entryFiles) {
+    const fileNamePrNumber = parseEntryPathPrNumber(entryPath);
+    const entry = parseStudioChangelogEntry(entryPath, readFile(entryPath));
+    if (entry.prNumber !== fileNamePrNumber) {
+      throw new Error(`Dateiname ${entryPath} und JSON-prNumber ${entry.prNumber} stimmen nicht ueberein.`);
+    }
   }
 
-  return { entryPath, entry };
+  if (!entryFiles.includes(expectedEntryPath)) {
+    throw new Error(
+      `Der Pull Request muss die Changelog-Datei ${expectedEntryPath} enthalten. Aeltere Eintraege duerfen zusaetzlich angepasst werden.`
+    );
+  }
+
+  const entry = parseStudioChangelogEntry(expectedEntryPath, readFile(expectedEntryPath));
+  if (entry.prNumber !== expectedPrNumber) {
+    throw new Error(
+      `Datei ${expectedEntryPath} enthaelt prNumber ${entry.prNumber}, erwartet war ${expectedPrNumber}.`
+    );
+  }
+
+  return { entryPath: expectedEntryPath, entry };
 };
 
 export const collectStudioChangelogEntries = ({

@@ -68,11 +68,13 @@ pnpm check:studio-changelog
 
 ## Studio-Anzeige
 
-Beim Studio-Build wird aus den letzten 20 gültigen Einträgen ein
-Artefakt unter
-`apps/sva-studio-react/public/generated/studio-changelog.json`
-erzeugt. Der serverseitige Endpoint liest im Runtime-Image genau dieses
-Artefakt und zeigt die Einträge auf der Startseite im Abschnitt
+Beim Studio-Build wird aus den letzten 20 gültigen Einträgen zunächst ein
+Zwischenartefakt unter
+`apps/sva-studio-react/.generated/studio-changelog.json`
+erzeugt. Dieses wird anschließend in das Runtime-Artefakt unter
+`apps/sva-studio-react/.output/server/generated/studio-changelog.json`
+kopiert. Der serverseitige Endpoint liest im Runtime-Image genau dieses
+serverseitige Artefakt und zeigt die Einträge auf der Startseite im Abschnitt
 „Letzte Änderungen“ an.
 
 Maßgeblich ist dabei immer der Stand von `main`. Ein gesonderter

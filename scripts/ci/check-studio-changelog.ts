@@ -56,7 +56,7 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
     if (argument === '--mode') {
       const value = args[index + 1];
       if (value !== 'pr' && value !== 'repo') {
-        throw new Error('Ungueltiger Wert fuer --mode. Erlaubt sind pr oder repo.');
+        throw new Error('Ungültiger Wert für --mode. Erlaubt sind pr oder repo.');
       }
       mode = value;
       index += 1;
@@ -66,7 +66,7 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
     if (argument === '--base') {
       const value = args[index + 1];
       if (!value) {
-        throw new Error('Fehlender Wert fuer --base');
+        throw new Error('Fehlender Wert für --base');
       }
       base = value;
       index += 1;
@@ -76,7 +76,7 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
     if (argument === '--head') {
       const value = args[index + 1];
       if (!value) {
-        throw new Error('Fehlender Wert fuer --head');
+        throw new Error('Fehlender Wert für --head');
       }
       head = value;
       index += 1;
@@ -86,7 +86,7 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
     if (argument === '--pr-number') {
       const value = Number(args[index + 1]);
       if (!Number.isInteger(value) || value <= 0) {
-        throw new Error('Fehlender oder ungueltiger Wert fuer --pr-number');
+        throw new Error('Fehlender oder ungültiger Wert für --pr-number');
       }
       prNumber = value;
       index += 1;
@@ -106,7 +106,7 @@ export const validateStudioChangelogPullRequest = ({
 
   if (entryFiles.length === 0) {
     throw new Error(
-      `Der Pull Request muss eine Changelog-Datei unter ${expectedEntryPath} aendern oder anlegen.`
+      `Der Pull Request muss eine Changelog-Datei unter ${expectedEntryPath} ändern oder anlegen.`
     );
   }
 
@@ -114,25 +114,25 @@ export const validateStudioChangelogPullRequest = ({
     const fileNamePrNumber = parseStudioChangelogEntryPathPrNumber(entryPath);
     if (entryPath !== expectedEntryPath && fileNamePrNumber >= expectedPrNumber) {
       throw new Error(
-        `Zusaetzliche Studio-Changelog-Dateien muessen aeltere PRs betreffen. ${entryPath} ist nicht aelter als PR ${expectedPrNumber}.`
+        `Zusätzliche Studio-Changelog-Dateien müssen ältere PRs betreffen. ${entryPath} ist nicht älter als PR ${expectedPrNumber}.`
       );
     }
     const entry = parseStudioChangelogEntryDocument(entryPath, readFile(entryPath));
     if (entry.prNumber !== fileNamePrNumber) {
-      throw new Error(`Dateiname ${entryPath} und JSON-prNumber ${entry.prNumber} stimmen nicht ueberein.`);
+      throw new Error(`Dateiname ${entryPath} und JSON-prNumber ${entry.prNumber} stimmen nicht überein.`);
     }
   }
 
   if (!entryFiles.includes(expectedEntryPath)) {
     throw new Error(
-      `Der Pull Request muss die Changelog-Datei ${expectedEntryPath} enthalten. Aeltere Eintraege duerfen zusaetzlich angepasst werden.`
+      `Der Pull Request muss die Changelog-Datei ${expectedEntryPath} enthalten. Ältere Einträge dürfen zusätzlich angepasst werden.`
     );
   }
 
   const entry = parseStudioChangelogEntryDocument(expectedEntryPath, readFile(expectedEntryPath));
   if (entry.prNumber !== expectedPrNumber) {
     throw new Error(
-      `Datei ${expectedEntryPath} enthaelt prNumber ${entry.prNumber}, erwartet war ${expectedPrNumber}.`
+      `Datei ${expectedEntryPath} enthält prNumber ${entry.prNumber}, erwartet war ${expectedPrNumber}.`
     );
   }
 
@@ -148,12 +148,12 @@ const normalizeStudioChangelogRepositoryEntries = ({
     const expectedPrNumber = parseStudioChangelogEntryPathPrNumber(entryPath);
     const entry = parseStudioChangelogEntryDocument(entryPath, readFile(entryPath));
     if (entry.prNumber !== expectedPrNumber) {
-      throw new Error(`Dateiname ${entryPath} und JSON-prNumber ${entry.prNumber} stimmen nicht ueberein.`);
+      throw new Error(`Dateiname ${entryPath} und JSON-prNumber ${entry.prNumber} stimmen nicht überein.`);
     }
 
     const mergedAt = readMergedAt(entryPath);
     if (Number.isNaN(Date.parse(mergedAt))) {
-      throw new Error(`Datei ${entryPath} liefert keinen gueltigen ISO-Zeitstempel fuer mergedAt.`);
+      throw new Error(`Datei ${entryPath} liefert keinen gültigen ISO-Zeitstempel für mergedAt.`);
     }
 
     return {
@@ -182,7 +182,7 @@ export const validateStudioChangelogRepository = (input: RepositoryValidationInp
 
   for (const entry of allEntries) {
     if (seenPrNumbers.has(entry.prNumber)) {
-      throw new Error(`Doppelter Studio-Changelog-Eintrag fuer PR ${entry.prNumber}.`);
+      throw new Error(`Doppelter Studio-Changelog-Eintrag für PR ${entry.prNumber}.`);
     }
     seenPrNumbers.add(entry.prNumber);
   }
@@ -201,9 +201,13 @@ const listRepositoryEntryFiles = (): string[] => {
 };
 
 const readMergedAtFromGit = (filePath: string): string => {
-  const mergedAt = execFileSync('git', ['log', '--diff-filter=A', '-1', '--format=%cI', '--', filePath], {
-    encoding: 'utf8',
-  }).trim();
+  const mergedAt = execFileSync(
+    'git',
+    ['log', '--first-parent', '--diff-filter=A', '-1', '--format=%cI', '--', filePath],
+    {
+      encoding: 'utf8',
+    }
+  ).trim();
 
   if (mergedAt.length > 0) {
     return mergedAt;
@@ -219,7 +223,7 @@ export const runStudioChangelogCheck = (args: readonly string[]): number => {
 
   if (options.mode === 'pr') {
     if (options.prNumber === null) {
-      throw new Error('PR-Modus erfordert --pr-number <nummer>.');
+      throw new Error('PR-Modus erfordert --pr-number <Nummer>.');
     }
 
     const changedFiles = resolveChangedFiles(options.base, options.head);

@@ -6,7 +6,6 @@ import {
   compareStudioChangelogEntriesDescending,
   parseStudioChangelogEntryDocument,
   parseStudioChangelogEntryPathPrNumber,
-  STUDIO_CHANGELOG_ARTIFACT_RELATIVE_PATH,
   STUDIO_CHANGELOG_ENTRY_DIRECTORY,
   STUDIO_CHANGELOG_ENTRY_LIMIT,
   type StudioChangelogEntry,
@@ -22,7 +21,7 @@ const parseOutputPath = (args: readonly string[]): string => {
     if (args[index] === '--output') {
       const value = args[index + 1];
       if (!value) {
-        throw new Error('Fehlender Wert fuer --output');
+        throw new Error('Fehlender Wert für --output');
       }
       return value;
     }
@@ -40,7 +39,17 @@ const listRepositoryEntryFiles = (repositoryRoot: string): readonly string[] => 
 };
 
 const readMergedAtFromGit = (repositoryRoot: string, filePath: string): string => {
-  const gitArguments = ['-C', repositoryRoot, 'log', '--diff-filter=A', '-1', '--format=%cI', '--', filePath];
+  const gitArguments = [
+    '-C',
+    repositoryRoot,
+    'log',
+    '--first-parent',
+    '--diff-filter=A',
+    '-1',
+    '--format=%cI',
+    '--',
+    filePath,
+  ];
   const mergedAt = execFileSync('git', gitArguments, { encoding: 'utf8' }).trim();
 
   if (mergedAt.length > 0) {
@@ -59,17 +68,17 @@ const collectEntries = (repositoryRoot: string): readonly StudioChangelogEntry[]
     const expectedPrNumber = parseStudioChangelogEntryPathPrNumber(filePath);
     const entry = parseStudioChangelogEntryDocument(filePath, readFileSync(path.join(repositoryRoot, filePath), 'utf8'));
     if (entry.prNumber !== expectedPrNumber) {
-      throw new Error(`Dateiname ${filePath} und JSON-prNumber ${entry.prNumber} stimmen nicht ueberein.`);
+      throw new Error(`Dateiname ${filePath} und JSON-prNumber ${entry.prNumber} stimmen nicht überein.`);
     }
     if (seenPrNumbers.has(entry.prNumber)) {
-      throw new Error(`Doppelter Studio-Changelog-Eintrag fuer PR ${entry.prNumber}.`);
+      throw new Error(`Doppelter Studio-Changelog-Eintrag für PR ${entry.prNumber}.`);
     }
 
     seenPrNumbers.add(entry.prNumber);
 
     const mergedAt = readMergedAtFromGit(repositoryRoot, filePath);
     if (Number.isNaN(Date.parse(mergedAt))) {
-      throw new Error(`Datei ${filePath} liefert keinen gueltigen ISO-Zeitstempel fuer mergedAt.`);
+      throw new Error(`Datei ${filePath} liefert keinen gültigen ISO-Zeitstempel für mergedAt.`);
     }
 
     return {

@@ -406,6 +406,7 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
     resolve(testDirectory, '..', '..', '..', 'deploy/portainer/Dockerfile'),
     'utf8'
   );
+  const dockerignore = readFileSync(resolve(testDirectory, '..', '..', '..', '.dockerignore'), 'utf8');
   const patchRuntimeArtifact = readFileSync(
     resolve(testDirectory, '..', '..', '..', 'scripts/ci/patch-runtime-artifact.ts'),
     'utf8'
@@ -449,6 +450,10 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(portainerDockerfile, /-exec grep -E -l 'jsxDEV\|jsx-dev-runtime' \{\} \+ \| grep -q \./);
   assert.doesNotMatch(portainerDockerfile, /--include='\*\.mjs'/);
   assert.doesNotMatch(portainerDockerfile, /--exclude-dir='node_modules'/);
+  assert.match(portainerDockerfile, /RUN apk add --no-cache bash git/);
+  assert.match(dockerignore, /^!docs\/changelog\/$/m);
+  assert.match(dockerignore, /^!docs\/changelog\/\*\*$/m);
+  assert.doesNotMatch(dockerignore, /^\.git$/m);
 
   assert.match(patchRuntimeArtifact, /findPnpmPackageDir/);
   assert.match(patchRuntimeArtifact, /path\.join\(pnpmDir, entry\.name, 'node_modules', \.\.\.packageSegments\)/);

@@ -34,11 +34,15 @@ describe('affected-coverage-gate', () => {
       rootDirectory,
       'packages/example-package/node_modules/ignored-dependency/coverage'
     );
+    const buildOutputCoverageDirectory = path.join(rootDirectory, 'apps/example-app/.output/server/coverage');
+    const generatedCoverageDirectory = path.join(rootDirectory, 'apps/example-app/.generated/coverage');
     const unrelatedDirectory = path.join(rootDirectory, 'apps/example-app/src');
 
     fs.mkdirSync(appCoverageDirectory, { recursive: true });
     fs.mkdirSync(packageCoverageDirectory, { recursive: true });
     fs.mkdirSync(nodeModulesCoverageDirectory, { recursive: true });
+    fs.mkdirSync(buildOutputCoverageDirectory, { recursive: true });
+    fs.mkdirSync(generatedCoverageDirectory, { recursive: true });
     fs.mkdirSync(unrelatedDirectory, { recursive: true });
 
     clearWorkspaceCoverageOutputs(rootDirectory);
@@ -46,6 +50,8 @@ describe('affected-coverage-gate', () => {
     expect(fs.existsSync(appCoverageDirectory)).toBe(false);
     expect(fs.existsSync(packageCoverageDirectory)).toBe(false);
     expect(fs.existsSync(nodeModulesCoverageDirectory)).toBe(true);
+    expect(fs.existsSync(buildOutputCoverageDirectory)).toBe(true);
+    expect(fs.existsSync(generatedCoverageDirectory)).toBe(true);
     expect(fs.existsSync(unrelatedDirectory)).toBe(true);
   });
 });

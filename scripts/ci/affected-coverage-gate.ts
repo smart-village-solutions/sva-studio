@@ -18,6 +18,7 @@ interface AffectedCoverageGateOptions {
 const APP_PROJECT = 'sva-studio-react';
 const APP_VITEST_CONFIG = 'apps/sva-studio-react/vitest.config.ts';
 const COVERAGE_WORKSPACE_ROOTS = ['apps', 'packages'] as const;
+const IGNORED_DIRECTORY_NAMES = new Set(['node_modules', '.git', '.nx', '.output', 'dist', 'build', '.generated']);
 const require = createRequire(import.meta.url);
 
 const parseCliOptions = (args: readonly string[]): AffectedCoverageGateOptions => {
@@ -94,7 +95,7 @@ const removeCoverageDirectoriesRecursively = (directoryPath: string): void => {
       continue;
     }
 
-    if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.nx') {
+    if (IGNORED_DIRECTORY_NAMES.has(entry.name)) {
       continue;
     }
 

@@ -44,7 +44,7 @@ describe('studio-changelog.server', () => {
             ],
           }),
       })
-    ).rejects.toThrow(/ungueltige Eintraege/u);
+    ).rejects.toThrow(/ungültige Einträge/u);
   });
 
   it('tries fallback catalog paths before failing', async () => {
@@ -52,7 +52,7 @@ describe('studio-changelog.server', () => {
       resolveCatalogPaths: () => ['/tmp/missing.json', '/tmp/studio-changelog.json'],
       readCatalogFile: async (filePath) => {
         if (filePath.endsWith('missing.json')) {
-          throw new Error('nicht gefunden');
+          throw Object.assign(new Error('nicht gefunden'), { code: 'ENOENT' });
         }
 
         return JSON.stringify({
@@ -81,7 +81,7 @@ describe('studio-changelog.server', () => {
       resolveCatalogPaths: () => ['/tmp/missing.json', '/tmp/.generated/studio-changelog.json'],
       readCatalogFile: async (filePath) => {
         if (filePath.endsWith('missing.json')) {
-          throw new Error('nicht gefunden');
+          throw Object.assign(new Error('nicht gefunden'), { code: 'ENOENT' });
         }
 
         return JSON.stringify({
@@ -103,5 +103,28 @@ describe('studio-changelog.server', () => {
         mergedAt: '2026-07-18T10:00:00.000Z',
       },
     ]);
+  });
+
+  it('fails closed when an earlier catalog path exists but is invalid', async () => {
+    await expect(
+      loadStudioChangelogEntries({
+        resolveCatalogPaths: () => ['/tmp/invalid.json', '/tmp/studio-changelog.json'],
+        readCatalogFile: async (filePath) => {
+          if (filePath.endsWith('invalid.json')) {
+            return '{"entries":[{"prNumber":1,"body":"","mergedAt":"2026-07-01T10:00:00.000Z"}]}';
+          }
+
+          return JSON.stringify({
+            entries: [
+              {
+                prNumber: 2,
+                body: 'Eintrag 2',
+                mergedAt: '2026-07-02T10:00:00.000Z',
+              },
+            ],
+          });
+        },
+      })
+    ).rejects.toThrow(/ungültige Einträge/u);
   });
 });

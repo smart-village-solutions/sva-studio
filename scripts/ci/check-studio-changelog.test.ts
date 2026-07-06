@@ -101,7 +101,7 @@ describe('check-studio-changelog', () => {
             body: 'Allgemeine Verbesserungen',
           }),
       })
-    ).toThrow(/aeltere PRs/);
+    ).toThrow(/ältere PRs/u);
   });
 
   it('rejects additional changelog files for newer prs', () => {
@@ -118,7 +118,7 @@ describe('check-studio-changelog', () => {
             body: 'Allgemeine Verbesserungen',
           }),
       })
-    ).toThrow(/aeltere PRs/);
+    ).toThrow(/ältere PRs/u);
   });
 
   it('rejects entries with an empty body', () => {
@@ -163,7 +163,7 @@ describe('check-studio-changelog', () => {
             body: 'Allgemeine Verbesserungen',
           }),
       })
-    ).toThrow(/stimmen nicht ueberein/);
+    ).toThrow(/stimmen nicht überein/u);
   });
 
   it('collects repository entries with deterministic merged timestamps', () => {

@@ -317,4 +317,22 @@ describe('generic items validation', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('rejects addresses with non-numeric coordinates', () => {
+    const result = genericItemsDetailFormSchema.safeParse({
+      ...createValidFormValues(),
+      addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: 'abc', longitude: '13.4' }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects locations with out-of-range coordinates', () => {
+    const result = genericItemsDetailFormSchema.safeParse({
+      ...createValidFormValues(),
+      locations: [{ name: '', department: '', district: '', regionName: '', state: '', latitude: '91', longitude: '13.4' }],
+    });
+
+    expect(result.success).toBe(false);
+  });
 });

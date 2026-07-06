@@ -73,6 +73,20 @@ const validateGeoPair = (
   const longitudeFilled = value.longitude.trim().length > 0;
   if (latitudeFilled !== longitudeFilled) {
     ctx.addIssue({ code: 'custom', message: 'Koordinaten sind ungültig.' });
+    return;
+  }
+
+  if (latitudeFilled === false) {
+    return;
+  }
+
+  const latitude = Number(value.latitude.trim());
+  const longitude = Number(value.longitude.trim());
+  const latitudeValid = Number.isFinite(latitude) && latitude >= -90 && latitude <= 90;
+  const longitudeValid = Number.isFinite(longitude) && longitude >= -180 && longitude <= 180;
+
+  if (latitudeValid === false || longitudeValid === false) {
+    ctx.addIssue({ code: 'custom', message: 'Koordinaten sind ungültig.' });
   }
 };
 

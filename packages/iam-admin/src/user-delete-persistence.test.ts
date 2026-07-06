@@ -24,12 +24,13 @@ describe('reconcileOwnedContentForAccountDelete', () => {
     await reconcileOwnedContentForAccountDelete({ query }, {
       instanceId: 'de-musterhausen',
       accountId: '11111111-1111-4111-8111-111111111111',
+      keycloakSubject: 'kc-user-1',
     });
 
     expect(String(query.mock.calls[0]?.[0])).toContain('account_deletion_content_preferences');
     expect(query.mock.calls[1]).toEqual([
       expect.stringContaining('UPDATE iam.contents'),
-      ['de-musterhausen', '11111111-1111-4111-8111-111111111111', IAM_DELETED_CONTENT_AUTHOR_TOKEN],
+      ['de-musterhausen', '11111111-1111-4111-8111-111111111111', IAM_DELETED_CONTENT_AUTHOR_TOKEN, 'kc-user-1'],
     ]);
     expect(String(query.mock.calls[1]?.[0])).toContain('WHEN author_account_id = $2::uuid THEN $3');
     expect(String(query.mock.calls[1]?.[0])).toContain('ELSE author_display_name');
@@ -38,6 +39,8 @@ describe('reconcileOwnedContentForAccountDelete', () => {
     expect(String(query.mock.calls[1]?.[0])).toContain('updater_account_id = CASE');
     expect(String(query.mock.calls[1]?.[0])).toContain('owner_subject_id = CASE');
     expect(String(query.mock.calls[1]?.[0])).toContain('owner_user_id = CASE');
+    expect(String(query.mock.calls[1]?.[0])).toContain('WHEN owner_subject_id = $4 THEN NULL');
+    expect(String(query.mock.calls[1]?.[0])).toContain('OR owner_subject_id = $4');
     expect(String(query.mock.calls[1]?.[0])).not.toContain("deletion_lifecycle_state = 'deleted'");
   });
 
@@ -56,20 +59,22 @@ describe('reconcileOwnedContentForAccountDelete', () => {
     await reconcileOwnedContentForAccountDelete({ query }, {
       instanceId: 'de-musterhausen',
       accountId: '22222222-2222-4222-8222-222222222222',
+      keycloakSubject: 'kc-user-2',
     });
 
     expect(query.mock.calls[1]).toEqual([
       expect.stringContaining('UPDATE iam.contents'),
-      ['de-musterhausen', '22222222-2222-4222-8222-222222222222', IAM_DELETED_CONTENT_AUTHOR_TOKEN],
+      ['de-musterhausen', '22222222-2222-4222-8222-222222222222', 'kc-user-2', IAM_DELETED_CONTENT_AUTHOR_TOKEN],
     ]);
     expect(String(query.mock.calls[1]?.[0])).toContain("deletion_lifecycle_state = 'deleted'");
     expect(String(query.mock.calls[1]?.[0])).toContain('deletion_lifecycle_changed_at = NOW()');
-    expect(String(query.mock.calls[1]?.[0])).toContain('WHEN author_account_id = $2::uuid THEN $3');
+    expect(String(query.mock.calls[1]?.[0])).toContain('WHEN author_account_id = $2::uuid THEN $4');
     expect(String(query.mock.calls[1]?.[0])).not.toContain("deletion_lifecycle_state IS DISTINCT FROM 'deleted'");
     expect(String(query.mock.calls[1]?.[0])).toContain('author_account_id = $2::uuid');
     expect(String(query.mock.calls[1]?.[0])).toContain('owner_subject_id = CASE');
     expect(String(query.mock.calls[1]?.[0])).toContain('owner_user_id = CASE');
-    expect(String(query.mock.calls[1]?.[0])).toContain('OR owner_subject_id = $2');
+    expect(String(query.mock.calls[1]?.[0])).toContain('WHEN owner_subject_id = $3 THEN NULL');
+    expect(String(query.mock.calls[1]?.[0])).toContain('OR owner_subject_id = $3');
     expect(String(query.mock.calls[1]?.[0])).toContain('OR owner_user_id = $2::uuid');
   });
 });

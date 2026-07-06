@@ -79,6 +79,7 @@ export type DeleteUserDeps = {
     input: {
       readonly instanceId: string;
       readonly accountId: string;
+      readonly keycloakSubject: string;
     }
   ) => Promise<void>;
   readonly resolveActorMaxRoleLevel: (
@@ -205,6 +206,7 @@ export const deleteUser = async (deps: DeleteUserDeps, input: DeleteUserInput): 
     await deps.reconcileOwnedContentForAccountDelete(client, {
       instanceId: input.actor.instanceId,
       accountId: input.userId,
+      keycloakSubject: prepared.keycloakSubject,
     });
     await deps.purgeAccountHardDeleteBlockers(client, {
       instanceId: input.actor.instanceId,

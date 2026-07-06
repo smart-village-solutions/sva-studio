@@ -47,7 +47,7 @@ describe('run-pr-gate order', () => {
       'pnpm test:coverage',
       'pnpm patch-coverage-gate --base=origin/main',
       'pnpm sonar-new-code-gate --base=origin/main',
-      'env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate',
+      'env COVERAGE_GATE_REQUIRE_SUMMARIES=1 pnpm coverage-gate',
       'pnpm complexity-gate',
       'pnpm test:eslint',
       'pnpm test:unit',

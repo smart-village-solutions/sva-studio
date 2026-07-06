@@ -152,6 +152,13 @@ describe('workspace package scripts', () => {
     expect(testCoveragePrScript).toContain('pnpm sonar-new-code-gate --base=${NX_BASE:-origin/main}');
   });
 
+  it('keeps full PR coverage regression checks enabled in runtime gates', () => {
+    const runtimeGatesWorkflow = loadRuntimeGatesWorkflow();
+
+    expect(runtimeGatesWorkflow).toContain('if [ "${{ steps.scope.outputs.coverage_mode }}" = "full" ]; then');
+    expect(runtimeGatesWorkflow).toContain("COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ steps.scope.outputs.coverage_mode == 'full' && '1' || '0' }}");
+  });
+
   it('exposes the Sonar LCOV preparation command', () => {
     const packageJson = loadRootPackageJson();
 

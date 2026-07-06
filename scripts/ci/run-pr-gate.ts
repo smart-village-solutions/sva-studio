@@ -80,7 +80,7 @@ const runCoverageGate = (base: string, mode: GateMode, durations: DurationEntry[
     recordDuration(durations, 'coverage', runCommand('pnpm test:coverage'));
     recordDuration(durations, 'patch-coverage', runCommand(`pnpm patch-coverage-gate --base=${base}`));
     recordDuration(durations, 'sonar-new-code', runCommand(`pnpm sonar-new-code-gate --base=${base}`));
-    recordDuration(durations, 'coverage-gate', runCommand('env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate'));
+    recordDuration(durations, 'coverage-gate', runCommand('env COVERAGE_GATE_REQUIRE_SUMMARIES=1 pnpm coverage-gate'));
     recordDuration(durations, 'complexity', runCommand('pnpm complexity-gate'));
     return;
   }

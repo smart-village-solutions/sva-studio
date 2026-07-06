@@ -76,7 +76,7 @@
       ],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "bash ../../scripts/ci/run-workspace-node.sh -e \"require('node:fs').mkdirSync('.output/server',{recursive:true})\" && pnpm exec vite build && bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/patch-runtime-artifact.ts ."
+        "command": "pnpm exec tsx ../../scripts/ci/generate-studio-changelog-artifact.ts --output public/generated/studio-changelog.json && bash ../../scripts/ci/run-workspace-node.sh -e \"require('node:fs').mkdirSync('.output/server',{recursive:true})\" && pnpm exec vite build && bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/patch-runtime-artifact.ts ."
       }
     },
     "check:toolchain-consistency": {

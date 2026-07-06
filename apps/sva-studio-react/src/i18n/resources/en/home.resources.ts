@@ -43,6 +43,7 @@ export const homeENResources = {
     title: 'Latest changes',
     description:
       'See the most recent Studio improvements and fixes here immediately after they are merged into main.',
+    loading: 'Latest changes are loading ...',
     empty: 'No changes are available yet.',
     error: 'The latest changes could not be loaded right now.',
     entryTitle: 'Change from PR #{{prNumber}}',

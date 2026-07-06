@@ -3,22 +3,17 @@ import { describe, expect, it } from 'vitest';
 import { loadStudioChangelogEntries } from './studio-changelog.server';
 
 describe('studio-changelog.server', () => {
-  it('loads the newest 20 changelog entries in reverse chronological order', async () => {
-    const entryFiles = Array.from({ length: 25 }, (_, index) => `docs/changelog/entries/pr-${index + 1}.json`);
-
+  it('loads the newest 20 changelog entries from the generated catalog', async () => {
     const result = await loadStudioChangelogEntries({
-      listEntryFiles: async () => entryFiles,
-      readEntryFile: async (filePath) => {
-        const prNumber = Number(filePath.match(/pr-(\d+)\.json$/u)?.[1]);
-        return JSON.stringify({
-          prNumber,
-          body: `Eintrag ${prNumber}`,
-        });
-      },
-      readMergedAt: async (filePath) => {
-        const prNumber = Number(filePath.match(/pr-(\d+)\.json$/u)?.[1]);
-        return `2026-07-${String(prNumber).padStart(2, '0')}T10:00:00.000Z`;
-      },
+      resolveCatalogPaths: () => ['/tmp/studio-changelog.json'],
+      readCatalogFile: async () =>
+        JSON.stringify({
+          entries: Array.from({ length: 25 }, (_, index) => ({
+            prNumber: index + 1,
+            body: `Eintrag ${index + 1}`,
+            mergedAt: `2026-07-${String(index + 1).padStart(2, '0')}T10:00:00.000Z`,
+          })),
+        }),
     });
 
     expect(result).toHaveLength(20);
@@ -34,17 +29,50 @@ describe('studio-changelog.server', () => {
     });
   });
 
-  it('fails closed when an entry contains raw html', async () => {
+  it('fails closed when the generated catalog contains invalid entries', async () => {
     await expect(
       loadStudioChangelogEntries({
-        listEntryFiles: async () => ['docs/changelog/entries/pr-12.json'],
-        readEntryFile: async () =>
+        resolveCatalogPaths: () => ['/tmp/studio-changelog.json'],
+        readCatalogFile: async () =>
           JSON.stringify({
-            prNumber: 12,
-            body: '<script>alert(1)</script>',
+            entries: [
+              {
+                prNumber: 12,
+                body: '',
+                mergedAt: '2026-07-12T10:00:00.000Z',
+              },
+            ],
           }),
-        readMergedAt: async () => '2026-07-12T10:00:00.000Z',
       })
-    ).rejects.toThrow(/raw html|HTML/u);
+    ).rejects.toThrow(/ungueltige Eintraege/u);
+  });
+
+  it('tries fallback catalog paths before failing', async () => {
+    const result = await loadStudioChangelogEntries({
+      resolveCatalogPaths: () => ['/tmp/missing.json', '/tmp/studio-changelog.json'],
+      readCatalogFile: async (filePath) => {
+        if (filePath.endsWith('missing.json')) {
+          throw new Error('nicht gefunden');
+        }
+
+        return JSON.stringify({
+          entries: [
+            {
+              prNumber: 12,
+              body: 'Eintrag 12',
+              mergedAt: '2026-07-12T10:00:00.000Z',
+            },
+          ],
+        });
+      },
+    });
+
+    expect(result).toEqual([
+      {
+        prNumber: 12,
+        body: 'Eintrag 12',
+        mergedAt: '2026-07-12T10:00:00.000Z',
+      },
+    ]);
   });
 });

@@ -1,12 +1,15 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
+import {
+  compareStudioChangelogEntriesDescending,
+  parseStudioChangelogEntryDocument,
+  parseStudioChangelogEntryPathPrNumber,
+  STUDIO_CHANGELOG_ENTRY_DIRECTORY,
+  STUDIO_CHANGELOG_ENTRY_LIMIT,
+  STUDIO_CHANGELOG_ENTRY_PATTERN,
+} from '../../apps/sva-studio-react/src/lib/studio-changelog.shared.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
-
-const CHANGELOG_ENTRY_DIRECTORY = 'docs/changelog/entries';
-const CHANGELOG_ENTRY_PATTERN = /^docs\/changelog\/entries\/pr-(\d+)\.json$/u;
-const RAW_HTML_PATTERN = /<([a-z][\w-]*)(?:\s[^>]*)?>/iu;
-const DEFAULT_LIMIT = 20;
 
 type StudioChangelogEntry = {
   prNumber: number;
@@ -93,59 +96,12 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
   return { mode, base, head, prNumber };
 };
 
-const parseEntryPathPrNumber = (filePath: string): number => {
-  const match = filePath.match(CHANGELOG_ENTRY_PATTERN);
-  if (!match) {
-    throw new Error(`Dateiname ${filePath} liegt nicht im erwarteten Format docs/changelog/entries/pr-<nummer>.json.`);
-  }
-
-  return Number(match[1]);
-};
-
-const isNonEmptyBody = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
-
-const assertNoRawHtml = (body: string): void => {
-  if (RAW_HTML_PATTERN.test(body)) {
-    throw new Error('body darf kein rohes HTML enthalten.');
-  }
-};
-
-const parseStudioChangelogEntry = (filePath: string, source: string): StudioChangelogEntry => {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(source);
-  } catch (error) {
-    throw new Error(
-      `Datei ${filePath} enthaelt kein gueltiges JSON: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error(`Datei ${filePath} muss ein JSON-Objekt enthalten.`);
-  }
-
-  const candidate = parsed as { prNumber?: unknown; body?: unknown };
-  if (!Number.isInteger(candidate.prNumber) || Number(candidate.prNumber) <= 0) {
-    throw new Error(`Datei ${filePath} muss ein positives Integer-Feld prNumber enthalten.`);
-  }
-  if (!isNonEmptyBody(candidate.body)) {
-    throw new Error(`Datei ${filePath} muss ein body-Feld enthalten, das nicht leer ist.`);
-  }
-
-  assertNoRawHtml(candidate.body);
-
-  return {
-    prNumber: Number(candidate.prNumber),
-    body: candidate.body.trim(),
-  };
-};
-
 export const validateStudioChangelogPullRequest = ({
   changedFiles,
   expectedPrNumber,
   readFile,
 }: PullRequestValidationInput): PullRequestValidationResult => {
-  const entryFiles = [...new Set(changedFiles.filter((filePath) => CHANGELOG_ENTRY_PATTERN.test(filePath)))];
+  const entryFiles = [...new Set(changedFiles.filter((filePath) => STUDIO_CHANGELOG_ENTRY_PATTERN.test(filePath)))];
   const expectedEntryPath = `docs/changelog/entries/pr-${expectedPrNumber}.json`;
 
   if (entryFiles.length === 0) {
@@ -155,8 +111,8 @@ export const validateStudioChangelogPullRequest = ({
   }
 
   for (const entryPath of entryFiles) {
-    const fileNamePrNumber = parseEntryPathPrNumber(entryPath);
-    const entry = parseStudioChangelogEntry(entryPath, readFile(entryPath));
+    const fileNamePrNumber = parseStudioChangelogEntryPathPrNumber(entryPath);
+    const entry = parseStudioChangelogEntryDocument(entryPath, readFile(entryPath));
     if (entry.prNumber !== fileNamePrNumber) {
       throw new Error(`Dateiname ${entryPath} und JSON-prNumber ${entry.prNumber} stimmen nicht ueberein.`);
     }
@@ -168,7 +124,7 @@ export const validateStudioChangelogPullRequest = ({
     );
   }
 
-  const entry = parseStudioChangelogEntry(expectedEntryPath, readFile(expectedEntryPath));
+  const entry = parseStudioChangelogEntryDocument(expectedEntryPath, readFile(expectedEntryPath));
   if (entry.prNumber !== expectedPrNumber) {
     throw new Error(
       `Datei ${expectedEntryPath} enthaelt prNumber ${entry.prNumber}, erwartet war ${expectedPrNumber}.`
@@ -178,67 +134,61 @@ export const validateStudioChangelogPullRequest = ({
   return { entryPath: expectedEntryPath, entry };
 };
 
+const normalizeStudioChangelogRepositoryEntries = ({
+  entryFiles,
+  readFile,
+  readMergedAt,
+}: RepositoryValidationInput): StudioChangelogRepositoryEntry[] =>
+  [...entryFiles].map((entryPath) => {
+    const expectedPrNumber = parseStudioChangelogEntryPathPrNumber(entryPath);
+    const entry = parseStudioChangelogEntryDocument(entryPath, readFile(entryPath));
+    if (entry.prNumber !== expectedPrNumber) {
+      throw new Error(`Dateiname ${entryPath} und JSON-prNumber ${entry.prNumber} stimmen nicht ueberein.`);
+    }
+
+    const mergedAt = readMergedAt(entryPath);
+    if (Number.isNaN(Date.parse(mergedAt))) {
+      throw new Error(`Datei ${entryPath} liefert keinen gueltigen ISO-Zeitstempel fuer mergedAt.`);
+    }
+
+    return {
+      ...entry,
+      mergedAt,
+    };
+  });
+
 export const collectStudioChangelogEntries = ({
   entryFiles,
   readFile,
   readMergedAt,
 }: RepositoryValidationInput): StudioChangelogRepositoryEntry[] => {
-  return [...entryFiles]
-    .map((entryPath) => {
-      const expectedPrNumber = parseEntryPathPrNumber(entryPath);
-      const entry = parseStudioChangelogEntry(entryPath, readFile(entryPath));
-      if (entry.prNumber !== expectedPrNumber) {
-        throw new Error(`Dateiname ${entryPath} und JSON-prNumber ${entry.prNumber} stimmen nicht ueberein.`);
-      }
-
-      const mergedAt = readMergedAt(entryPath);
-      if (Number.isNaN(Date.parse(mergedAt))) {
-        throw new Error(`Datei ${entryPath} liefert keinen gueltigen ISO-Zeitstempel fuer mergedAt.`);
-      }
-
-      return {
-        ...entry,
-        mergedAt,
-      };
-    })
-    .sort((left, right) => {
-      const mergedAtDiff = right.mergedAt.localeCompare(left.mergedAt);
-      return mergedAtDiff !== 0 ? mergedAtDiff : right.prNumber - left.prNumber;
-    })
-    .slice(0, DEFAULT_LIMIT);
+  return normalizeStudioChangelogRepositoryEntries({
+    entryFiles,
+    readFile,
+    readMergedAt,
+  })
+    .sort(compareStudioChangelogEntriesDescending)
+    .slice(0, STUDIO_CHANGELOG_ENTRY_LIMIT);
 };
 
 export const validateStudioChangelogRepository = (input: RepositoryValidationInput): StudioChangelogRepositoryEntry[] => {
-  const allEntries = input.entryFiles.map((entryPath) => {
-    const expectedPrNumber = parseEntryPathPrNumber(entryPath);
-    const entry = parseStudioChangelogEntry(entryPath, input.readFile(entryPath));
-    if (entry.prNumber !== expectedPrNumber) {
-      throw new Error(`Dateiname ${entryPath} und JSON-prNumber ${entry.prNumber} stimmen nicht ueberein.`);
-    }
-
-    const mergedAt = input.readMergedAt(entryPath);
-    if (Number.isNaN(Date.parse(mergedAt))) {
-      throw new Error(`Datei ${entryPath} liefert keinen gueltigen ISO-Zeitstempel fuer mergedAt.`);
-    }
-
-    return { ...entry, mergedAt };
-  });
+  const allEntries = normalizeStudioChangelogRepositoryEntries(input);
   const seenPrNumbers = new Set<number>();
 
   for (const entry of allEntries) {
     if (seenPrNumbers.has(entry.prNumber)) {
-      throw new Error(`Duplicate changelog entry for PR ${entry.prNumber}.`);
+      throw new Error(`Doppelter Studio-Changelog-Eintrag fuer PR ${entry.prNumber}.`);
     }
     seenPrNumbers.add(entry.prNumber);
   }
 
-  return collectStudioChangelogEntries(input);
+  return allEntries.sort(compareStudioChangelogEntriesDescending).slice(0, STUDIO_CHANGELOG_ENTRY_LIMIT);
 };
 
 const readEntryFile = (filePath: string): string => readFileSync(filePath, 'utf8');
 
 const listRepositoryEntryFiles = (): string[] => {
-  const output = execFileSync('git', ['ls-files', `${CHANGELOG_ENTRY_DIRECTORY}/*.json`], {
+  const output = execFileSync('git', ['ls-files', `${STUDIO_CHANGELOG_ENTRY_DIRECTORY}/*.json`], {
     encoding: 'utf8',
   }).trim();
 
@@ -246,7 +196,7 @@ const listRepositoryEntryFiles = (): string[] => {
 };
 
 const readMergedAtFromGit = (filePath: string): string => {
-  const mergedAt = execFileSync('git', ['log', '-1', '--format=%cI', '--', filePath], {
+  const mergedAt = execFileSync('git', ['log', '--diff-filter=A', '-1', '--format=%cI', '--', filePath], {
     encoding: 'utf8',
   }).trim();
 

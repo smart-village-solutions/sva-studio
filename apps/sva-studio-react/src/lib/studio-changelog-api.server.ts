@@ -1,3 +1,5 @@
+import { withAuthenticatedUser } from '@sva/auth-runtime/server';
+
 import { loadStudioChangelogEntries } from './studio-changelog.server';
 
 const CHANGELOG_PATH = '/api/studio/changelog';
@@ -12,16 +14,18 @@ export const dispatchStudioChangelogRequest = async (request: Request): Promise<
     return new Response(null, { status: 405 });
   }
 
-  try {
-    const entries = await loadStudioChangelogEntries();
-    return Response.json({ entries });
-  } catch {
-    return Response.json(
-      {
-        error: 'studio_changelog_unavailable',
-        message: 'Studio-Changelog konnte nicht geladen werden.',
-      },
-      { status: 500 }
-    );
-  }
+  return withAuthenticatedUser(request, async () => {
+    try {
+      const entries = await loadStudioChangelogEntries();
+      return Response.json({ entries });
+    } catch {
+      return Response.json(
+        {
+          error: 'studio_changelog_unavailable',
+          message: 'Studio-Changelog konnte nicht geladen werden.',
+        },
+        { status: 500 }
+      );
+    }
+  });
 };

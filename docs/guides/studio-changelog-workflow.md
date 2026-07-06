@@ -68,8 +68,12 @@ pnpm check:studio-changelog
 
 ## Studio-Anzeige
 
-Das Studio lädt die letzten 20 Einträge serverseitig und zeigt sie auf
-der Startseite im Abschnitt „Letzte Änderungen“ an.
+Beim Studio-Build wird aus den letzten 20 gültigen Einträgen ein
+Artefakt unter
+`apps/sva-studio-react/public/generated/studio-changelog.json`
+erzeugt. Der serverseitige Endpoint liest im Runtime-Image genau dieses
+Artefakt und zeigt die Einträge auf der Startseite im Abschnitt
+„Letzte Änderungen“ an.
 
 Maßgeblich ist dabei immer der Stand von `main`. Ein gesonderter
 Release-Schritt ist für die Sichtbarkeit des Changelogs nicht

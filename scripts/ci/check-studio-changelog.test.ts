@@ -212,6 +212,38 @@ describe('check-studio-changelog', () => {
           }),
         readMergedAt: () => '2026-07-06T10:00:00.000Z',
       })
-    ).toThrow(/Duplicate/);
+    ).toThrow(/Doppelter/);
+  });
+
+  it('rejects raw html in closing or self-closing tags', () => {
+    expect(() =>
+      validateStudioChangelogPullRequest({
+        changedFiles: ['docs/changelog/entries/pr-412.json'],
+        expectedPrNumber: 412,
+        readFile: () =>
+          JSON.stringify({
+            prNumber: 412,
+            body: 'Hinweis mit </p> und <br/>',
+          }),
+      })
+    ).toThrow(/rohes HTML/);
+  });
+
+  it('sorts repository entries by parsed instant instead of lexicographic order', () => {
+    const result = collectStudioChangelogEntries({
+      entryFiles: [
+        'docs/changelog/entries/pr-1.json',
+        'docs/changelog/entries/pr-2.json',
+      ],
+      readFile: (filePath) =>
+        JSON.stringify({
+          prNumber: filePath.endsWith('pr-1.json') ? 1 : 2,
+          body: `Eintrag fuer ${filePath}`,
+        }),
+      readMergedAt: (filePath) =>
+        filePath.endsWith('pr-1.json') ? '2026-07-06T15:30:00Z' : '2026-07-06T16:57:00+02:00',
+    });
+
+    expect(result.map((entry) => entry.prNumber)).toEqual([1, 2]);
   });
 });

@@ -709,8 +709,13 @@ function evaluateCriticalHotspots(
 function evaluateRegressions(
   policy: CoveragePolicy,
   baseline: CoverageBaseline,
-  projects: Record<string, MetricFloors>
+  projects: Record<string, MetricFloors>,
+  requireSummaries: boolean
 ): GateError[] {
+  if (!requireSummaries) {
+    return [];
+  }
+
   const exemptProjects = new Set<string>(policy.exemptProjects ?? []);
   const maxAllowedDrop = Number(policy.maxAllowedDropPctPoints ?? 0);
   const metrics = policy.metrics;
@@ -803,7 +808,7 @@ export function runCoverageGate(options: RunCoverageGateOptions = {}): RunCovera
 
   const floorErrors = evaluateFloors(policy, projects, requireSummaries);
   const hotspotErrors = evaluateCriticalHotspots(policy, projects, fileCoverageByProject, requireSummaries);
-  const regressionErrors = evaluateRegressions(policy, baseline, projects);
+  const regressionErrors = evaluateRegressions(policy, baseline, projects, requireSummaries);
   const errors = [...floorErrors, ...hotspotErrors, ...regressionErrors];
 
   const summaryBody = generateReport(policy, projects);

@@ -378,6 +378,18 @@ describe('coverage gate', () => {
     expect(result.errors.some((error) => error.includes('dropped by'))).toBe(true);
   });
 
+  it('does not enforce baseline regressions for partial affected coverage runs', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, { maxAllowedDropPctPoints: 0.5 });
+    writeBaseline(rootDir, 90, 90, 90, 90);
+    writeCoverageSummary(rootDir, 80, 80, 80, 80);
+
+    const result = runCoverageGate({ rootDir, requireSummaries: false });
+
+    expect(result.passed).toBe(true);
+    expect(result.errors.some((error) => error.includes('dropped by'))).toBe(false);
+  });
+
   it('enforces stricter minimum floors for critical projects', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir, {

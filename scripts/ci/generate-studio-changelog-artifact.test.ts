@@ -1,23 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
-import { assertRepositoryHistoryAvailable } from './generate-studio-changelog-artifact.ts';
+import { collectEntriesForArtifact } from './generate-studio-changelog-artifact.ts';
 
 describe('generate-studio-changelog-artifact', () => {
-  it('accepts repositories with full git history', () => {
-    expect(() =>
-      assertRepositoryHistoryAvailable('/repo', (args) => {
-        expect(args).toEqual(['-C', '/repo', 'rev-parse', '--is-shallow-repository']);
-        return 'false\n';
-      })
-    ).not.toThrow();
-  });
+  it('sorts artifact entries by descending pr number and limits them to 20', () => {
+    const result = collectEntriesForArtifact([
+      { prNumber: 2, body: 'Zwei' },
+      { prNumber: 25, body: 'Fuenfundzwanzig' },
+      { prNumber: 1, body: 'Eins' },
+      ...Array.from({ length: 22 }, (_, index) => ({
+        prNumber: index + 3,
+        body: `Eintrag ${index + 3}`,
+      })),
+    ]);
 
-  it('fails closed for shallow repositories', () => {
-    expect(() =>
-      assertRepositoryHistoryAvailable('/repo', (args) => {
-        expect(args).toEqual(['-C', '/repo', 'rev-parse', '--is-shallow-repository']);
-        return 'true\n';
-      })
-    ).toThrow(/vollständige Git-Historie/u);
+    expect(result).toHaveLength(20);
+    expect(result[0]).toEqual({ prNumber: 25, body: 'Fuenfundzwanzig' });
+    expect(result.at(-1)?.prNumber).toBe(6);
   });
 });

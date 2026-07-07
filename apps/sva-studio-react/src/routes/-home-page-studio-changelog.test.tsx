@@ -27,12 +27,10 @@ describe('home-page studio changelog', () => {
             {
               prNumber: 412,
               body: 'Eintrag\n\n- Stabilere Speicherung',
-              mergedAt: '2026-07-06T10:00:00.000Z',
             },
             {
               prNumber: 413,
-              body: 'Unparsebares Datum',
-              mergedAt: 'kaputt',
+              body: 'Weiterer Eintrag',
             },
           ],
         }}
@@ -41,7 +39,7 @@ describe('home-page studio changelog', () => {
 
     expect(screen.getByText('Änderung aus PR #412')).toBeTruthy();
     expect(screen.getByText('Stabilere Speicherung')).toBeTruthy();
-    expect(screen.getByText('kaputt')).toBeTruthy();
+    expect(screen.queryByText('kaputt')).toBeNull();
   });
 
   it('loads ready state from the api response', async () => {
@@ -50,7 +48,7 @@ describe('home-page studio changelog', () => {
       vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify({
-            entries: [{ prNumber: 412, body: 'Eintrag', mergedAt: '2026-07-06T10:00:00.000Z' }],
+            entries: [{ prNumber: 412, body: 'Eintrag' }],
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
         )
@@ -59,7 +57,7 @@ describe('home-page studio changelog', () => {
 
     await expect(loadStudioChangelogState()).resolves.toEqual({
       status: 'ready',
-      entries: [{ prNumber: 412, body: 'Eintrag', mergedAt: '2026-07-06T10:00:00.000Z' }],
+      entries: [{ prNumber: 412, body: 'Eintrag' }],
     });
   });
 

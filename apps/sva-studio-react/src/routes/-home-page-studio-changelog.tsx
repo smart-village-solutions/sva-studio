@@ -2,17 +2,7 @@ import { t } from '../i18n';
 import { parseStudioChangelogApiEntries, type StudioChangelogState } from '../lib/studio-changelog-state';
 import { StudioChangelogMarkdown } from '../lib/studio-changelog-markdown';
 import type { StudioChangelogEntry } from '../lib/studio-changelog.shared';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-
-const mergedAtFormatter = new Intl.DateTimeFormat(undefined, {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
-
-const formatMergedAt = (value: string): string => {
-  const parsedValue = Date.parse(value);
-  return Number.isNaN(parsedValue) ? value : mergedAtFormatter.format(new Date(parsedValue));
-};
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 
 export const loadStudioChangelogState = async (): Promise<StudioChangelogState> => {
   try {
@@ -40,10 +30,9 @@ const StudioChangelogCards = ({
 }) => (
   <div className="grid gap-4">
     {entries.map((entry) => (
-      <Card key={`${entry.prNumber}-${entry.mergedAt}`}>
+      <Card key={entry.prNumber}>
         <CardHeader>
           <CardTitle>{t('home.changelog.entryTitle', { prNumber: entry.prNumber })}</CardTitle>
-          <CardDescription>{formatMergedAt(entry.mergedAt)}</CardDescription>
         </CardHeader>
         <CardContent>
           <StudioChangelogMarkdown>{entry.body}</StudioChangelogMarkdown>

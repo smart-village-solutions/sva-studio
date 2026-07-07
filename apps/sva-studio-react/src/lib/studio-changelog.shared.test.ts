@@ -46,24 +46,20 @@ describe('studio-changelog.shared', () => {
     expect(() => parseStudioChangelogEntryDocument('entry.json', '{')).toThrow(/enthält kein gültiges JSON/u);
   });
 
-  it('sorts changelog entries by parsed merged timestamp and pr tie-breaker', () => {
+  it('sorts changelog entries by descending pr number', () => {
     const entries = [
-      { prNumber: 2, body: 'B', mergedAt: '2026-07-06T16:57:00+02:00' },
-      { prNumber: 1, body: 'A', mergedAt: '2026-07-06T15:30:00Z' },
-      { prNumber: 3, body: 'C', mergedAt: '2026-07-06T15:30:00Z' },
+      { prNumber: 2, body: 'B' },
+      { prNumber: 1, body: 'A' },
+      { prNumber: 3, body: 'C' },
     ];
 
-    expect(entries.sort(compareStudioChangelogEntriesDescending).map((entry) => entry.prNumber)).toEqual([3, 1, 2]);
+    expect(entries.sort(compareStudioChangelogEntriesDescending).map((entry) => entry.prNumber)).toEqual([3, 2, 1]);
   });
 
   it('recognizes valid catalog entries strictly', () => {
-    expect(isStudioChangelogEntry({ prNumber: 12, body: 'Eintrag', mergedAt: '2026-07-12T10:00:00.000Z' })).toBe(
-      true
-    );
-    expect(isStudioChangelogEntry({ prNumber: 0, body: 'Eintrag', mergedAt: '2026-07-12T10:00:00.000Z' })).toBe(
-      false
-    );
-    expect(isStudioChangelogEntry({ prNumber: 12, body: '', mergedAt: '2026-07-12T10:00:00.000Z' })).toBe(false);
+    expect(isStudioChangelogEntry({ prNumber: 12, body: 'Eintrag' })).toBe(true);
+    expect(isStudioChangelogEntry({ prNumber: 0, body: 'Eintrag' })).toBe(false);
+    expect(isStudioChangelogEntry({ prNumber: 12, body: '' })).toBe(false);
     expect(isStudioChangelogEntry({ prNumber: 12, body: 'Eintrag', mergedAt: 'kaputt' })).toBe(false);
   });
 });

@@ -206,7 +206,7 @@ describe('workspace package scripts', () => {
     const workflow = loadStudioImageBuildWorkflow();
     const dockerignore = loadDockerignore();
 
-    expect(workflow).toContain('fetch-depth: 0');
+    expect(workflow).not.toContain('fetch-depth: 0');
     expect(dockerignore).toContain('.git');
   });
 

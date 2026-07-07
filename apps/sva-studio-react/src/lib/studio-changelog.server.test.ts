@@ -11,7 +11,6 @@ describe('studio-changelog.server', () => {
           entries: Array.from({ length: 25 }, (_, index) => ({
             prNumber: index + 1,
             body: `Eintrag ${index + 1}`,
-            mergedAt: `2026-07-${String(index + 1).padStart(2, '0')}T10:00:00.000Z`,
           })),
         }),
     });
@@ -20,12 +19,10 @@ describe('studio-changelog.server', () => {
     expect(result[0]).toEqual({
       prNumber: 25,
       body: 'Eintrag 25',
-      mergedAt: '2026-07-25T10:00:00.000Z',
     });
     expect(result.at(-1)).toEqual({
       prNumber: 6,
       body: 'Eintrag 6',
-      mergedAt: '2026-07-06T10:00:00.000Z',
     });
   });
 
@@ -39,7 +36,6 @@ describe('studio-changelog.server', () => {
               {
                 prNumber: 12,
                 body: '',
-                mergedAt: '2026-07-12T10:00:00.000Z',
               },
             ],
           }),
@@ -60,7 +56,6 @@ describe('studio-changelog.server', () => {
             {
               prNumber: 12,
               body: 'Eintrag 12',
-              mergedAt: '2026-07-12T10:00:00.000Z',
             },
           ],
         });
@@ -71,7 +66,6 @@ describe('studio-changelog.server', () => {
       {
         prNumber: 12,
         body: 'Eintrag 12',
-        mergedAt: '2026-07-12T10:00:00.000Z',
       },
     ]);
   });
@@ -89,7 +83,6 @@ describe('studio-changelog.server', () => {
             {
               prNumber: 18,
               body: 'Eintrag 18',
-              mergedAt: '2026-07-18T10:00:00.000Z',
             },
           ],
         });
@@ -100,7 +93,6 @@ describe('studio-changelog.server', () => {
       {
         prNumber: 18,
         body: 'Eintrag 18',
-        mergedAt: '2026-07-18T10:00:00.000Z',
       },
     ]);
   });
@@ -111,7 +103,7 @@ describe('studio-changelog.server', () => {
         resolveCatalogPaths: () => ['/tmp/invalid.json', '/tmp/studio-changelog.json'],
         readCatalogFile: async (filePath) => {
           if (filePath.endsWith('invalid.json')) {
-            return '{"entries":[{"prNumber":1,"body":"","mergedAt":"2026-07-01T10:00:00.000Z"}]}';
+            return '{"entries":[{"prNumber":1,"body":""}]}';
           }
 
           return JSON.stringify({
@@ -119,7 +111,6 @@ describe('studio-changelog.server', () => {
               {
                 prNumber: 2,
                 body: 'Eintrag 2',
-                mergedAt: '2026-07-02T10:00:00.000Z',
               },
             ],
           });

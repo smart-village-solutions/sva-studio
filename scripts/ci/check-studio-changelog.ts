@@ -16,10 +16,6 @@ type StudioChangelogEntry = {
   body: string;
 };
 
-type StudioChangelogRepositoryEntry = StudioChangelogEntry & {
-  mergedAt: string;
-};
-
 type PullRequestValidationResult = {
   entryPath: string;
   entry: StudioChangelogEntry;
@@ -34,7 +30,6 @@ type PullRequestValidationInput = {
 type RepositoryValidationInput = {
   entryFiles: readonly string[];
   readFile: (filePath: string) => string;
-  readMergedAt: (filePath: string) => string;
 };
 
 type CliOptions = {
@@ -142,8 +137,7 @@ export const validateStudioChangelogPullRequest = ({
 const normalizeStudioChangelogRepositoryEntries = ({
   entryFiles,
   readFile,
-  readMergedAt,
-}: RepositoryValidationInput): StudioChangelogRepositoryEntry[] =>
+}: RepositoryValidationInput): StudioChangelogEntry[] =>
   [...entryFiles].map((entryPath) => {
     const expectedPrNumber = parseStudioChangelogEntryPathPrNumber(entryPath);
     const entry = parseStudioChangelogEntryDocument(entryPath, readFile(entryPath));
@@ -151,32 +145,22 @@ const normalizeStudioChangelogRepositoryEntries = ({
       throw new Error(`Dateiname ${entryPath} und JSON-prNumber ${entry.prNumber} stimmen nicht überein.`);
     }
 
-    const mergedAt = readMergedAt(entryPath);
-    if (Number.isNaN(Date.parse(mergedAt))) {
-      throw new Error(`Datei ${entryPath} liefert keinen gültigen ISO-Zeitstempel für mergedAt.`);
-    }
-
-    return {
-      ...entry,
-      mergedAt,
-    };
+    return entry;
   });
 
 export const collectStudioChangelogEntries = ({
   entryFiles,
   readFile,
-  readMergedAt,
-}: RepositoryValidationInput): StudioChangelogRepositoryEntry[] => {
+}: RepositoryValidationInput): StudioChangelogEntry[] => {
   return normalizeStudioChangelogRepositoryEntries({
     entryFiles,
     readFile,
-    readMergedAt,
   })
     .sort(compareStudioChangelogEntriesDescending)
     .slice(0, STUDIO_CHANGELOG_ENTRY_LIMIT);
 };
 
-export const validateStudioChangelogRepository = (input: RepositoryValidationInput): StudioChangelogRepositoryEntry[] => {
+export const validateStudioChangelogRepository = (input: RepositoryValidationInput): StudioChangelogEntry[] => {
   const allEntries = normalizeStudioChangelogRepositoryEntries(input);
   const seenPrNumbers = new Set<number>();
 
@@ -198,24 +182,6 @@ const listRepositoryEntryFiles = (): string[] => {
   }).trim();
 
   return output.length === 0 ? [] : output.split('\n').map((line) => line.trim()).filter(Boolean);
-};
-
-const readMergedAtFromGit = (filePath: string): string => {
-  const mergedAt = execFileSync(
-    'git',
-    ['log', '--first-parent', '--diff-filter=A', '-1', '--format=%cI', '--', filePath],
-    {
-      encoding: 'utf8',
-    }
-  ).trim();
-
-  if (mergedAt.length > 0) {
-    return mergedAt;
-  }
-
-  return execFileSync('git', ['log', '-1', '--format=%cI', 'HEAD'], {
-    encoding: 'utf8',
-  }).trim();
 };
 
 export const runStudioChangelogCheck = (args: readonly string[]): number => {
@@ -250,7 +216,6 @@ export const runStudioChangelogCheck = (args: readonly string[]): number => {
   const entries = validateStudioChangelogRepository({
     entryFiles: listRepositoryEntryFiles(),
     readFile: readEntryFile,
-    readMergedAt: readMergedAtFromGit,
   });
 
   console.log(

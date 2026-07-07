@@ -7,7 +7,6 @@ export const STUDIO_CHANGELOG_RAW_HTML_PATTERN = /<\/?[a-z][\w-]*(?:\s[^<>]*)?\s
 export type StudioChangelogEntry = {
   readonly prNumber: number;
   readonly body: string;
-  readonly mergedAt: string;
 };
 
 export type StudioChangelogEntryDocument = {
@@ -68,12 +67,9 @@ export const parseStudioChangelogEntryDocument = (
 };
 
 export const compareStudioChangelogEntriesDescending = (
-  left: Pick<StudioChangelogEntry, 'mergedAt' | 'prNumber'>,
-  right: Pick<StudioChangelogEntry, 'mergedAt' | 'prNumber'>
-): number => {
-  const mergedAtDiff = Date.parse(right.mergedAt) - Date.parse(left.mergedAt);
-  return mergedAtDiff !== 0 ? mergedAtDiff : right.prNumber - left.prNumber;
-};
+  left: Pick<StudioChangelogEntry, 'prNumber'>,
+  right: Pick<StudioChangelogEntry, 'prNumber'>
+): number => right.prNumber - left.prNumber;
 
 export const isStudioChangelogEntry = (value: unknown): value is StudioChangelogEntry => {
   if (typeof value !== 'object' || value === null) {
@@ -84,8 +80,6 @@ export const isStudioChangelogEntry = (value: unknown): value is StudioChangelog
   return (
     isPositiveInteger(candidate.prNumber) &&
     typeof candidate.body === 'string' &&
-    candidate.body.trim().length > 0 &&
-    typeof candidate.mergedAt === 'string' &&
-    Number.isNaN(Date.parse(candidate.mergedAt)) === false
+    candidate.body.trim().length > 0
   );
 };

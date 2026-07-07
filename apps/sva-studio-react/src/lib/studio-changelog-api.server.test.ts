@@ -22,7 +22,6 @@ describe('studio-changelog-api.server', () => {
       {
         prNumber: 412,
         body: 'Allgemeine Verbesserungen',
-        mergedAt: '2026-07-06T10:00:00.000Z',
       },
     ]);
 
@@ -36,7 +35,6 @@ describe('studio-changelog-api.server', () => {
         {
           prNumber: 412,
           body: 'Allgemeine Verbesserungen',
-          mergedAt: '2026-07-06T10:00:00.000Z',
         },
       ],
     });

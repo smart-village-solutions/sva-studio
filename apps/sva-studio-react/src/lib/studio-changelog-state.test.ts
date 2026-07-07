@@ -7,12 +7,12 @@ describe('studio-changelog-state', () => {
     expect(
       parseStudioChangelogApiEntries({
         entries: [
-          { prNumber: 12, body: 'Eintrag', mergedAt: '2026-07-12T10:00:00.000Z' },
-          { prNumber: 0, body: 'ungueltig', mergedAt: '2026-07-12T10:00:00.000Z' },
-          { prNumber: 13, body: '', mergedAt: '2026-07-12T10:00:00.000Z' },
+          { prNumber: 12, body: 'Eintrag' },
+          { prNumber: 0, body: 'ungueltig' },
+          { prNumber: 13, body: '' },
         ],
       })
-    ).toEqual([{ prNumber: 12, body: 'Eintrag', mergedAt: '2026-07-12T10:00:00.000Z' }]);
+    ).toEqual([{ prNumber: 12, body: 'Eintrag' }]);
   });
 
   it('returns an empty list for invalid payload shapes', () => {

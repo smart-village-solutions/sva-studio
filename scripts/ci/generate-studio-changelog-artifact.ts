@@ -12,32 +12,10 @@ import {
   type StudioChangelogEntry,
 } from '../../apps/sva-studio-react/src/lib/studio-changelog.shared.ts';
 
-type RunGitCommand = (args: readonly string[]) => string;
-
-const runGitCommand: RunGitCommand = (args) =>
-  execFileSync('git', args, {
+const resolveRepositoryRoot = (): string =>
+  execFileSync('git', ['rev-parse', '--show-toplevel'], {
     encoding: 'utf8',
   }).trim();
-
-const resolveRepositoryRoot = (): string => runGitCommand(['rev-parse', '--show-toplevel']);
-
-export const assertRepositoryHistoryAvailable = (
-  repositoryRoot: string,
-  executeGitCommand: RunGitCommand = runGitCommand
-): void => {
-  const isShallowRepository = executeGitCommand([
-    '-C',
-    repositoryRoot,
-    'rev-parse',
-    '--is-shallow-repository',
-  ]).trim();
-
-  if (isShallowRepository === 'true') {
-    throw new Error(
-      'Studio-Changelog-Artefakt benötigt eine vollständige Git-Historie. Bitte den Workflow-Checkout mit fetch-depth: 0 ausführen.'
-    );
-  }
-};
 
 const parseOutputPath = (args: readonly string[]): string => {
   for (let index = 0; index < args.length; index += 1) {
@@ -54,31 +32,20 @@ const parseOutputPath = (args: readonly string[]): string => {
 };
 
 const listRepositoryEntryFiles = (repositoryRoot: string): readonly string[] => {
-  const output = runGitCommand(['-C', repositoryRoot, 'ls-files', `${STUDIO_CHANGELOG_ENTRY_DIRECTORY}/*.json`]);
+  const output = execFileSync('git', ['-C', repositoryRoot, 'ls-files', `${STUDIO_CHANGELOG_ENTRY_DIRECTORY}/*.json`], {
+    encoding: 'utf8',
+  }).trim();
 
   return output.length === 0 ? [] : output.split('\n').map((line) => line.trim()).filter(Boolean);
 };
 
-const readMergedAtFromGit = (repositoryRoot: string, filePath: string): string => {
-  const gitArguments = [
-    '-C',
-    repositoryRoot,
-    'log',
-    '--first-parent',
-    '--diff-filter=A',
-    '-1',
-    '--format=%cI',
-    '--',
-    filePath,
-  ];
-  const mergedAt = runGitCommand(gitArguments);
-
-  if (mergedAt.length > 0) {
-    return mergedAt;
-  }
-
-  return runGitCommand(['-C', repositoryRoot, 'log', '-1', '--format=%cI', 'HEAD']);
-};
+export const collectEntriesForArtifact = (
+  entries: readonly StudioChangelogEntry[]
+): readonly StudioChangelogEntry[] =>
+  entries
+    .slice()
+    .sort(compareStudioChangelogEntriesDescending)
+    .slice(0, STUDIO_CHANGELOG_ENTRY_LIMIT);
 
 const collectEntries = (repositoryRoot: string): readonly StudioChangelogEntry[] => {
   const seenPrNumbers = new Set<number>();
@@ -94,25 +61,14 @@ const collectEntries = (repositoryRoot: string): readonly StudioChangelogEntry[]
     }
 
     seenPrNumbers.add(entry.prNumber);
-
-    const mergedAt = readMergedAtFromGit(repositoryRoot, filePath);
-    if (Number.isNaN(Date.parse(mergedAt))) {
-      throw new Error(`Datei ${filePath} liefert keinen gültigen ISO-Zeitstempel für mergedAt.`);
-    }
-
-    return {
-      prNumber: entry.prNumber,
-      body: entry.body,
-      mergedAt,
-    };
+    return entry;
   });
 
-  return entries.sort(compareStudioChangelogEntriesDescending).slice(0, STUDIO_CHANGELOG_ENTRY_LIMIT);
+  return collectEntriesForArtifact(entries);
 };
 
 const main = (): void => {
   const repositoryRoot = resolveRepositoryRoot();
-  assertRepositoryHistoryAvailable(repositoryRoot);
   const outputPath = path.resolve(process.cwd(), parseOutputPath(process.argv.slice(2)));
   mkdirSync(path.dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, `${JSON.stringify({ entries: collectEntries(repositoryRoot) }, null, 2)}\n`, 'utf8');

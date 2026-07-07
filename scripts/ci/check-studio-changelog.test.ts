@@ -166,7 +166,7 @@ describe('check-studio-changelog', () => {
     ).toThrow(/stimmen nicht überein/u);
   });
 
-  it('collects repository entries with deterministic merged timestamps', () => {
+  it('collects repository entries sorted by descending pr number', () => {
     const result = collectStudioChangelogEntries({
       entryFiles: [
         'docs/changelog/entries/pr-2.json',
@@ -177,20 +177,16 @@ describe('check-studio-changelog', () => {
           prNumber: filePath.endsWith('pr-2.json') ? 2 : 1,
           body: `Eintrag fuer ${filePath}`,
         }),
-      readMergedAt: (filePath) =>
-        filePath.endsWith('pr-2.json') ? '2026-07-07T10:00:00.000Z' : '2026-07-06T10:00:00.000Z',
     });
 
     expect(result).toEqual([
       {
         prNumber: 2,
         body: 'Eintrag fuer docs/changelog/entries/pr-2.json',
-        mergedAt: '2026-07-07T10:00:00.000Z',
       },
       {
         prNumber: 1,
         body: 'Eintrag fuer docs/changelog/entries/pr-1.json',
-        mergedAt: '2026-07-06T10:00:00.000Z',
       },
     ]);
   });
@@ -203,10 +199,6 @@ describe('check-studio-changelog', () => {
       readFile: (filePath) => {
         const prNumber = Number(filePath.match(/pr-(\d+)\.json$/u)?.[1]);
         return JSON.stringify({ prNumber, body: `Eintrag ${prNumber}` });
-      },
-      readMergedAt: (filePath) => {
-        const prNumber = Number(filePath.match(/pr-(\d+)\.json$/u)?.[1]);
-        return `2026-07-${String(prNumber).padStart(2, '0')}T10:00:00.000Z`;
       },
     });
 
@@ -227,7 +219,6 @@ describe('check-studio-changelog', () => {
             prNumber: 1,
             body: 'Allgemeine Verbesserungen',
           }),
-        readMergedAt: () => '2026-07-06T10:00:00.000Z',
       })
     ).toThrow(/Doppelter/);
   });
@@ -246,7 +237,7 @@ describe('check-studio-changelog', () => {
     ).toThrow(/rohes HTML/);
   });
 
-  it('sorts repository entries by parsed instant instead of lexicographic order', () => {
+  it('sorts repository entries only by descending pr number', () => {
     const result = collectStudioChangelogEntries({
       entryFiles: [
         'docs/changelog/entries/pr-1.json',
@@ -257,10 +248,8 @@ describe('check-studio-changelog', () => {
           prNumber: filePath.endsWith('pr-1.json') ? 1 : 2,
           body: `Eintrag fuer ${filePath}`,
         }),
-      readMergedAt: (filePath) =>
-        filePath.endsWith('pr-1.json') ? '2026-07-06T15:30:00Z' : '2026-07-06T16:57:00+02:00',
     });
 
-    expect(result.map((entry) => entry.prNumber)).toEqual([1, 2]);
+    expect(result.map((entry) => entry.prNumber)).toEqual([2, 1]);
   });
 });

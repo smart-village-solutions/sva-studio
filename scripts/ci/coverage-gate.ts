@@ -714,6 +714,9 @@ function evaluateRegressions(
   requireSummaries: boolean,
   regressionProjectFilter: readonly string[] = []
 ): GateError[] {
+  // Partial affected runs only generate a subset of project summaries. In that mode we
+  // skip baseline-drop checks entirely instead of reporting false regressions for every
+  // untouched project that intentionally has no coverage output in this invocation.
   if (!requireSummaries) {
     return [];
   }

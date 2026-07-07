@@ -83,34 +83,26 @@ const getAffectedCoverageProjects = (base: string, head: string): string[] => {
 export const buildAppCoverageCommand = (): string =>
   `pnpm exec vitest run --config ${APP_VITEST_CONFIG} --coverage --reporter=verbose`;
 
-const removeCoverageDirectoriesRecursively = (directoryPath: string): void => {
-  if (!fs.existsSync(directoryPath)) {
+const removeProjectRootCoverageDirectory = (workspaceRootPath: string): void => {
+  if (!fs.existsSync(workspaceRootPath)) {
     return;
   }
 
-  for (const entry of fs.readdirSync(directoryPath, { withFileTypes: true })) {
-    const entryPath = path.join(directoryPath, entry.name);
-
-    if (!entry.isDirectory()) {
+  for (const entry of fs.readdirSync(workspaceRootPath, { withFileTypes: true })) {
+    if (!entry.isDirectory() || IGNORED_DIRECTORY_NAMES.has(entry.name)) {
       continue;
     }
 
-    if (IGNORED_DIRECTORY_NAMES.has(entry.name)) {
-      continue;
+    const coverageDirectoryPath = path.join(workspaceRootPath, entry.name, 'coverage');
+    if (fs.existsSync(coverageDirectoryPath)) {
+      fs.rmSync(coverageDirectoryPath, { recursive: true, force: true });
     }
-
-    if (entry.name === 'coverage') {
-      fs.rmSync(entryPath, { recursive: true, force: true });
-      continue;
-    }
-
-    removeCoverageDirectoriesRecursively(entryPath);
   }
 };
 
 export const clearWorkspaceCoverageOutputs = (rootDir = process.cwd()): void => {
   for (const workspaceRoot of COVERAGE_WORKSPACE_ROOTS) {
-    removeCoverageDirectoriesRecursively(path.join(rootDir, workspaceRoot));
+    removeProjectRootCoverageDirectory(path.join(rootDir, workspaceRoot));
   }
 };
 

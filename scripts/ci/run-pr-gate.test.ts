@@ -15,13 +15,7 @@ describe('run-pr-gate', () => {
     );
   });
 
-  it('passes a scoped regression project filter to full coverage gates when source projects are known', () => {
-    expect(buildCoverageGateCommand('full', ['sva-studio-react', 'plugin-news'])).toBe(
-      'env COVERAGE_GATE_REQUIRE_SUMMARIES=1 COVERAGE_GATE_PROJECT_FILTER=sva-studio-react,plugin-news pnpm coverage-gate'
-    );
-  });
-
-  it('keeps full coverage gates unfiltered when no source project scope is known', () => {
-    expect(buildCoverageGateCommand('full', [])).toBe('env COVERAGE_GATE_REQUIRE_SUMMARIES=1 pnpm coverage-gate');
+  it('keeps full coverage regression checks unfiltered', () => {
+    expect(buildCoverageGateCommand('full')).toBe('env COVERAGE_GATE_REQUIRE_SUMMARIES=1 pnpm coverage-gate');
   });
 });

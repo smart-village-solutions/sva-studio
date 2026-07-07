@@ -59,19 +59,13 @@ const recordDuration = (durations: DurationEntry[], label: string, durationMs: n
 };
 
 export const buildCoverageGateCommand = (
-  mode: GateMode,
-  coverageRegressionProjects: readonly string[] = []
+  mode: GateMode
 ): string => {
   if (mode !== 'full') {
     return 'env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate';
   }
 
-  const scopedProjects = coverageRegressionProjects.join(',');
-  if (!scopedProjects) {
-    return 'env COVERAGE_GATE_REQUIRE_SUMMARIES=1 pnpm coverage-gate';
-  }
-
-  return `env COVERAGE_GATE_REQUIRE_SUMMARIES=1 COVERAGE_GATE_PROJECT_FILTER=${scopedProjects} pnpm coverage-gate`;
+  return 'env COVERAGE_GATE_REQUIRE_SUMMARIES=1 pnpm coverage-gate';
 };
 
 const runQualityGates = (base: string, head: string, mode: GateMode, durations: DurationEntry[]): void => {
@@ -94,14 +88,13 @@ const runQualityGates = (base: string, head: string, mode: GateMode, durations: 
 const runCoverageGate = (
   base: string,
   mode: GateMode,
-  coverageRegressionProjects: readonly string[],
   durations: DurationEntry[]
 ): void => {
   if (mode === 'full') {
     recordDuration(durations, 'coverage', runCommand('pnpm test:coverage'));
     recordDuration(durations, 'patch-coverage', runCommand(`pnpm patch-coverage-gate --base=${base}`));
     recordDuration(durations, 'sonar-new-code', runCommand(`pnpm sonar-new-code-gate --base=${base}`));
-    recordDuration(durations, 'coverage-gate', runCommand(buildCoverageGateCommand(mode, coverageRegressionProjects)));
+    recordDuration(durations, 'coverage-gate', runCommand(buildCoverageGateCommand(mode)));
     recordDuration(durations, 'complexity', runCommand('pnpm complexity-gate'));
     return;
   }
@@ -110,7 +103,7 @@ const runCoverageGate = (
     recordDuration(durations, 'coverage:affected', runAffectedCommand(base, 'pnpm test:coverage:affected'));
     recordDuration(durations, 'patch-coverage', runCommand(`pnpm patch-coverage-gate --base=${base}`));
     recordDuration(durations, 'sonar-new-code', runCommand(`pnpm sonar-new-code-gate --base=${base}`));
-    recordDuration(durations, 'coverage-gate', runCommand(buildCoverageGateCommand(mode, coverageRegressionProjects)));
+    recordDuration(durations, 'coverage-gate', runCommand(buildCoverageGateCommand(mode)));
     recordDuration(durations, 'complexity', runCommand('pnpm complexity-gate'));
     return;
   }
@@ -190,7 +183,7 @@ export const runPrGate = (args: readonly string[]): number => {
   recordDuration(durations, 'plugin-ui-boundary', runCommand('pnpm check:plugin-ui-boundary'));
   recordDuration(durations, 'plugin-architecture-boundary', runCommand('pnpm check:plugin-architecture-boundary'));
 
-  runCoverageGate(options.base, decision.coverageMode, decision.coverageRegressionProjects, durations);
+  runCoverageGate(options.base, decision.coverageMode, durations);
   runQualityGates(options.base, options.head, decision.qualityGateMode, durations);
   runIntegrationStage(options.base, decision.integrationMode, durations);
   runOpsGate(durations);

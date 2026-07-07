@@ -43,6 +43,7 @@ describe('studio-changelog.shared', () => {
       /positives Integer-Feld/
     );
     expect(() => parseStudioChangelogEntryDocument('entry.json', '[]')).toThrow(/JSON-Objekt/);
+    expect(() => parseStudioChangelogEntryDocument('entry.json', '{')).toThrow(/enthält kein gültiges JSON/u);
   });
 
   it('sorts changelog entries by parsed merged timestamp and pr tie-breaker', () => {

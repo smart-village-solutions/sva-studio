@@ -48,6 +48,16 @@ function loadStudioImageVerifyWorkflow(): string {
   return fs.readFileSync(path.join(rootDir, '.github/workflows/studio-image-verify.yml'), 'utf8');
 }
 
+function loadStudioImageBuildWorkflow(): string {
+  const rootDir = resolveRootDir();
+  return fs.readFileSync(path.join(rootDir, '.github/workflows/studio-image-build.yml'), 'utf8');
+}
+
+function loadDockerignore(): string {
+  const rootDir = resolveRootDir();
+  return fs.readFileSync(path.join(rootDir, '.dockerignore'), 'utf8');
+}
+
 function loadScriptsTsConfig(): TsConfigJson {
   const rootDir = resolveRootDir();
   return JSON.parse(fs.readFileSync(path.join(rootDir, 'tsconfig.scripts.json'), 'utf8')) as TsConfigJson;
@@ -157,7 +167,7 @@ describe('workspace package scripts', () => {
 
     expect(runtimeGatesWorkflow).toContain('if [ "${{ steps.scope.outputs.coverage_mode }}" = "full" ]; then');
     expect(runtimeGatesWorkflow).toContain("COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ steps.scope.outputs.coverage_mode == 'full' && '1' || '0' }}");
-    expect(runtimeGatesWorkflow).toContain("COVERAGE_GATE_PROJECT_FILTER: ${{ steps.scope.outputs.coverage_regression_projects }}");
+    expect(runtimeGatesWorkflow).not.toContain('COVERAGE_GATE_PROJECT_FILTER');
   });
 
   it('exposes the Sonar LCOV preparation command', () => {
@@ -190,6 +200,14 @@ describe('workspace package scripts', () => {
       "safe_tag=\"$(printf '%s' \"${IMAGE_TAG}\" | sed -E 's/[^[:alnum:]. _-]+/-/g; s/[[:space:]]+/-/g; s/-+/-/g; s/^-+//; s/-+$//')\""
     );
     expect(workflow).not.toContain("tr -cs '[:alnum:]._- ' '-'");
+  });
+
+  it('fetches full history before building the studio image and keeps git out of the docker context', () => {
+    const workflow = loadStudioImageBuildWorkflow();
+    const dockerignore = loadDockerignore();
+
+    expect(workflow).toContain('fetch-depth: 0');
+    expect(dockerignore).toContain('.git');
   });
 
   it('runs type gates through workspace-wide Nx targets instead of hard-coded project lists', () => {

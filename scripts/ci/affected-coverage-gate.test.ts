@@ -36,6 +36,7 @@ describe('affected-coverage-gate', () => {
     );
     const buildOutputCoverageDirectory = path.join(rootDirectory, 'apps/example-app/.output/server/coverage');
     const generatedCoverageDirectory = path.join(rootDirectory, 'apps/example-app/.generated/coverage');
+    const nestedSourceCoverageDirectory = path.join(rootDirectory, 'apps/example-app/src/coverage');
     const unrelatedDirectory = path.join(rootDirectory, 'apps/example-app/src');
 
     fs.mkdirSync(appCoverageDirectory, { recursive: true });
@@ -43,6 +44,7 @@ describe('affected-coverage-gate', () => {
     fs.mkdirSync(nodeModulesCoverageDirectory, { recursive: true });
     fs.mkdirSync(buildOutputCoverageDirectory, { recursive: true });
     fs.mkdirSync(generatedCoverageDirectory, { recursive: true });
+    fs.mkdirSync(nestedSourceCoverageDirectory, { recursive: true });
     fs.mkdirSync(unrelatedDirectory, { recursive: true });
 
     clearWorkspaceCoverageOutputs(rootDirectory);
@@ -52,6 +54,7 @@ describe('affected-coverage-gate', () => {
     expect(fs.existsSync(nodeModulesCoverageDirectory)).toBe(true);
     expect(fs.existsSync(buildOutputCoverageDirectory)).toBe(true);
     expect(fs.existsSync(generatedCoverageDirectory)).toBe(true);
+    expect(fs.existsSync(nestedSourceCoverageDirectory)).toBe(true);
     expect(fs.existsSync(unrelatedDirectory)).toBe(true);
   });
 });

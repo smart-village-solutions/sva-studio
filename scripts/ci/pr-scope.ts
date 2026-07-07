@@ -7,7 +7,6 @@ export interface PrScopeDecision {
   codeRelevant: boolean;
   qualityGateMode: GateMode;
   coverageMode: GateMode;
-  coverageRegressionProjects: string[];
   integrationMode: GateMode;
   e2eMode: GateMode;
   a11yMode: GateMode;
@@ -134,19 +133,8 @@ const appBuildEscalationPatterns = [
   /^\.github\/workflows\//u,
 ];
 
-const coverageRegressionProjectPathPattern =
-  /^(apps|packages)\/([^/]+)\/src\/.+\.(?:ts|tsx|js|jsx|mjs|cjs)$/u;
-
 const matchesAnyPattern = (filePath: string, patterns: readonly RegExp[]): boolean =>
   patterns.some((pattern) => pattern.test(filePath));
-
-const collectCoverageRegressionProjects = (changedFiles: readonly string[]): string[] =>
-  [...new Set(
-    changedFiles.flatMap((filePath) => {
-      const match = filePath.match(coverageRegressionProjectPathPattern);
-      return match ? [match[2]] : [];
-    })
-  )].sort((left, right) => left.localeCompare(right));
 
 export const isNonCodeRelevantPath = (filePath: string): boolean =>
   matchesAnyPattern(filePath, nonCodeRelevantPatterns);
@@ -164,7 +152,6 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
       codeRelevant: false,
       qualityGateMode: 'skip',
       coverageMode: 'skip',
-      coverageRegressionProjects: [],
       integrationMode: 'skip',
       e2eMode: 'skip',
       a11yMode: 'skip',
@@ -175,7 +162,6 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
   }
 
   const qualityGateMode: GateMode = escalationReasons.length > 0 ? 'full' : 'affected';
-  const coverageRegressionProjects = collectCoverageRegressionProjects(codeRelevantFiles);
   const coverageMode: GateMode = codeRelevantFiles.some((file) =>
     matchesAnyPattern(file, coverageFullEscalationPatterns)
   )
@@ -222,7 +208,6 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
     codeRelevant: true,
     qualityGateMode,
     coverageMode,
-    coverageRegressionProjects,
     integrationMode,
     e2eMode,
     a11yMode,

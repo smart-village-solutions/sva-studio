@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import {
   compareStudioChangelogEntriesDescending,
@@ -11,10 +12,32 @@ import {
   type StudioChangelogEntry,
 } from '../../apps/sva-studio-react/src/lib/studio-changelog.shared.ts';
 
-const resolveRepositoryRoot = (): string =>
-  execFileSync('git', ['rev-parse', '--show-toplevel'], {
+type RunGitCommand = (args: readonly string[]) => string;
+
+const runGitCommand: RunGitCommand = (args) =>
+  execFileSync('git', args, {
     encoding: 'utf8',
   }).trim();
+
+const resolveRepositoryRoot = (): string => runGitCommand(['rev-parse', '--show-toplevel']);
+
+export const assertRepositoryHistoryAvailable = (
+  repositoryRoot: string,
+  executeGitCommand: RunGitCommand = runGitCommand
+): void => {
+  const isShallowRepository = executeGitCommand([
+    '-C',
+    repositoryRoot,
+    'rev-parse',
+    '--is-shallow-repository',
+  ]).trim();
+
+  if (isShallowRepository === 'true') {
+    throw new Error(
+      'Studio-Changelog-Artefakt benötigt eine vollständige Git-Historie. Bitte den Workflow-Checkout mit fetch-depth: 0 ausführen.'
+    );
+  }
+};
 
 const parseOutputPath = (args: readonly string[]): string => {
   for (let index = 0; index < args.length; index += 1) {
@@ -31,9 +54,7 @@ const parseOutputPath = (args: readonly string[]): string => {
 };
 
 const listRepositoryEntryFiles = (repositoryRoot: string): readonly string[] => {
-  const output = execFileSync('git', ['-C', repositoryRoot, 'ls-files', `${STUDIO_CHANGELOG_ENTRY_DIRECTORY}/*.json`], {
-    encoding: 'utf8',
-  }).trim();
+  const output = runGitCommand(['-C', repositoryRoot, 'ls-files', `${STUDIO_CHANGELOG_ENTRY_DIRECTORY}/*.json`]);
 
   return output.length === 0 ? [] : output.split('\n').map((line) => line.trim()).filter(Boolean);
 };
@@ -50,15 +71,13 @@ const readMergedAtFromGit = (repositoryRoot: string, filePath: string): string =
     '--',
     filePath,
   ];
-  const mergedAt = execFileSync('git', gitArguments, { encoding: 'utf8' }).trim();
+  const mergedAt = runGitCommand(gitArguments);
 
   if (mergedAt.length > 0) {
     return mergedAt;
   }
 
-  return execFileSync('git', ['-C', repositoryRoot, 'log', '-1', '--format=%cI', 'HEAD'], {
-    encoding: 'utf8',
-  }).trim();
+  return runGitCommand(['-C', repositoryRoot, 'log', '-1', '--format=%cI', 'HEAD']);
 };
 
 const collectEntries = (repositoryRoot: string): readonly StudioChangelogEntry[] => {
@@ -93,10 +112,13 @@ const collectEntries = (repositoryRoot: string): readonly StudioChangelogEntry[]
 
 const main = (): void => {
   const repositoryRoot = resolveRepositoryRoot();
+  assertRepositoryHistoryAvailable(repositoryRoot);
   const outputPath = path.resolve(process.cwd(), parseOutputPath(process.argv.slice(2)));
   mkdirSync(path.dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, `${JSON.stringify({ entries: collectEntries(repositoryRoot) }, null, 2)}\n`, 'utf8');
   console.log(JSON.stringify({ outputPath }, null, 2));
 };
 
-main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  main();
+}

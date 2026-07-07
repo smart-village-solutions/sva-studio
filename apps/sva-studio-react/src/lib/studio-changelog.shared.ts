@@ -48,7 +48,7 @@ export const parseStudioChangelogEntryDocument = (
     parsed = JSON.parse(source);
   } catch (error) {
     throw new Error(
-      `Datei ${filePath} enthaelt kein gueltiges JSON: ${error instanceof Error ? error.message : String(error)}`
+      `Datei ${filePath} enthält kein gültiges JSON: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 

@@ -60,6 +60,6 @@ describe('studio-changelog.shared', () => {
     expect(isStudioChangelogEntry({ prNumber: 12, body: 'Eintrag' })).toBe(true);
     expect(isStudioChangelogEntry({ prNumber: 0, body: 'Eintrag' })).toBe(false);
     expect(isStudioChangelogEntry({ prNumber: 12, body: '' })).toBe(false);
-    expect(isStudioChangelogEntry({ prNumber: 12, body: 'Eintrag', mergedAt: 'kaputt' })).toBe(false);
+    expect(isStudioChangelogEntry({ prNumber: '12', body: 'Eintrag' })).toBe(false);
   });
 });

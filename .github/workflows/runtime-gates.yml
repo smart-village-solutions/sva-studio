@@ -282,6 +282,12 @@ jobs:
 
       - name: Run scoped integration tests
         if: steps.changes.outputs.relevant == 'true' && steps.scope.outputs.integration_mode != 'skip'
+        env:
+          POSTGRES_PASSWORD: test-postgres-password
+          APP_DB_USER: sva_app
+          APP_DB_PASSWORD: test-app-password
+          REDIS_PASSWORD: test-redis-password
+          SVA_RUNTIME_PROFILE: studio
         run: |
           if [ "${{ steps.scope.outputs.integration_mode }}" = "full" ]; then
             pnpm test:integration
@@ -320,6 +326,12 @@ jobs:
         uses: ./.github/actions/setup-pnpm-workspace
 
       - name: Run integration tests (required on main/schedule)
+        env:
+          POSTGRES_PASSWORD: test-postgres-password
+          APP_DB_USER: sva_app
+          APP_DB_PASSWORD: test-app-password
+          REDIS_PASSWORD: test-redis-password
+          SVA_RUNTIME_PROFILE: studio
         run: pnpm test:integration
 
       - name: Publish integration summary

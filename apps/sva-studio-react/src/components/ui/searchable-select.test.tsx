@@ -179,4 +179,29 @@ describe('SearchableSelect', () => {
 
     expect(screen.getByRole('button', { name: 'Organisation' }).textContent).toContain('Zweihundertstadt');
   });
+
+  it('prevents parent form submission when enter is pressed without matching options', () => {
+    const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault());
+
+    render(
+      <form onSubmit={onSubmit}>
+        <SearchableSelect
+          id="organization-select"
+          label="Organisation"
+          value=""
+          placeholder="Bitte wählen"
+          searchPlaceholder="Suchen"
+          emptyText="Keine Treffer"
+          options={[{ value: 'org-1', label: 'Musterstadt' }]}
+          onValueChange={vi.fn()}
+        />
+      </form>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation' }));
+    fireEvent.change(screen.getByPlaceholderText('Suchen'), { target: { value: 'zzzz' } });
+    fireEvent.keyDown(screen.getByPlaceholderText('Suchen'), { key: 'Enter' });
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });

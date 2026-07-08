@@ -211,6 +211,18 @@ const SearchableSelectPopover = ({
         return;
       }
 
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const activeOption = filteredOptions[activeIndex];
+        if (!activeOption) {
+          return;
+        }
+
+        onValueChange(activeOption.value);
+        close({ focusTrigger: true });
+        return;
+      }
+
       if (!filteredOptions.length) {
         return;
       }
@@ -227,16 +239,6 @@ const SearchableSelectPopover = ({
         return;
       }
 
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        const activeOption = filteredOptions[activeIndex];
-        if (!activeOption) {
-          return;
-        }
-
-        onValueChange(activeOption.value);
-        close({ focusTrigger: true });
-      }
     },
     [activeIndex, close, filteredOptions, onValueChange, setActiveIndex]
   );

@@ -34,6 +34,23 @@ const MEMBERSHIP_SEARCH_DEBOUNCE_MS = 300;
 const formatMembershipUserLabel = (user: IamUserListItem) =>
   user.email ? `${user.displayName} <${user.email}>` : `${user.displayName} <${user.keycloakSubject}>`;
 
+const membershipUserKeywords = (user: IamUserListItem) => [
+  user.displayName,
+  user.email ?? '',
+  user.keycloakSubject,
+  user.position ?? '',
+  user.department ?? '',
+];
+
+const matchesMembershipUserSearch = (user: IamUserListItem, searchValue: string) => {
+  const normalizedSearch = searchValue.trim().toLocaleLowerCase();
+  if (!normalizedSearch) {
+    return true;
+  }
+
+  return membershipUserKeywords(user).some((value) => value.toLocaleLowerCase().includes(normalizedSearch));
+};
+
 export const sortMembershipUsersByLabel = (users: readonly IamUserListItem[]): readonly IamUserListItem[] =>
   users
     .map((user) => ({
@@ -207,6 +224,10 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
   const availableMembershipUsers = React.useMemo(
     () => membershipUsers.filter((user) => !assignedMembershipAccountIds.has(user.id)),
     [assignedMembershipAccountIds, membershipUsers]
+  );
+  const visibleMembershipUsers = React.useMemo(
+    () => availableMembershipUsers.filter((user) => matchesMembershipUserSearch(user, membershipSearch)),
+    [availableMembershipUsers, membershipSearch]
   );
   const selectedMembershipUser = React.useMemo(
     () => availableMembershipUsers.find((user) => user.id === membershipForm.accountId) ?? null,
@@ -453,7 +474,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                     options={availableMembershipUsers.map((user) => ({
                       value: user.id,
                       label: formatMembershipUserLabel(user),
-                      keywords: [user.displayName, user.email ?? '', user.keycloakSubject],
+                      keywords: membershipUserKeywords(user),
                     }))}
                     selectedOption={selectedMembershipUserOption}
                     searchValue={membershipSearch}
@@ -478,9 +499,9 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                   ) : null}
                   {!membershipUsersLoading && !membershipUsersError ? (
                     <p className="text-xs text-muted-foreground">
-                      {availableMembershipUsers.length > 0
+                      {visibleMembershipUsers.length > 0
                         ? t('admin.organizations.membershipsDialog.availableCount', {
-                            count: String(availableMembershipUsers.length),
+                            count: String(visibleMembershipUsers.length),
                           })
                         : t('admin.organizations.membershipsDialog.emptySelection')}
                     </p>

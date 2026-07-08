@@ -57,7 +57,9 @@ export const SearchableSelectOptionList = ({
         );
       })
     ) : (
-      <li className="px-3 py-2 text-sm text-muted-foreground">{emptyText}</li>
+      <li role="presentation" className="px-3 py-2 text-sm text-muted-foreground">
+        {emptyText}
+      </li>
     )}
   </ul>
 );

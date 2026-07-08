@@ -20,7 +20,7 @@ AS $$
       concat_ws(
         '::',
         p_instance_id,
-        COALESCE(p_owner_user_id::text, 'missing-account:' || COALESCE(NULLIF(p_owner_subject_id, ''), 'unknown-subject')),
+        COALESCE(p_owner_user_id::text, 'no-owner-user'),
         COALESCE(p_owner_organization_id::text, p_organization_id::text, 'no-organization'),
         p_content_type
       )

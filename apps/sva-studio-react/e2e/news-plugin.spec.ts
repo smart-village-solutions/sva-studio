@@ -111,9 +111,11 @@ test.describe('news plugin', () => {
     );
     await page.route('**/api/v1/iam/contents**', async (route) => {
       const requestUrl = new URL(route.request().url());
-      if (route.request().method() === 'GET' && requestUrl.pathname === '/api/v1/iam/contents') {
-        contentListRequests.push(requestUrl.toString());
+      if (route.request().method() !== 'GET' || requestUrl.pathname !== '/api/v1/iam/contents') {
+        await route.fallback();
+        return;
       }
+      contentListRequests.push(requestUrl.toString());
       const pageParam = Number.parseInt(requestUrl.searchParams.get('page') ?? '1', 10);
       const items =
         pageParam === 1
@@ -180,6 +182,7 @@ test.describe('news plugin', () => {
     await navigateClientSide(page, '/admin/content');
     await expectContentOverviewReady(page);
     await expect.poll(() => contentListRequests.length).toBeGreaterThan(0);
+    expect(new URL(contentListRequests[0] ?? 'http://localhost').searchParams.get('page')).toBe('1');
     expect(
       contentListRequests.every((requestUrl) => /^\d+$/u.test(new URL(requestUrl).searchParams.get('page') ?? ''))
     ).toBe(true);

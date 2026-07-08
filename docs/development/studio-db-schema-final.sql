@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict njzg2qV7CaO3allit9vhRqhMM5wPi8gxkyaco1x8vB2jtuvdzRTJXVbXfcZdtXf
+\restrict 8k3Qjf9gY0vuevNTyGYZ0GdclXCgxTTra0CfwVS3aqEMQXokjbN82cujAGXToFs
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -51,7 +51,7 @@ CREATE FUNCTION iam.build_content_list_projection_scope_key(p_instance_id text, 
       concat_ws(
         '::',
         p_instance_id,
-        COALESCE(p_owner_user_id::text, 'missing-account:' || COALESCE(NULLIF(p_owner_subject_id, ''), 'unknown-subject')),
+        COALESCE(p_owner_user_id::text, 'no-owner-user'),
         COALESCE(p_owner_organization_id::text, p_organization_id::text, 'no-organization'),
         p_content_type
       )
@@ -4106,5 +4106,4 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict njzg2qV7CaO3allit9vhRqhMM5wPi8gxkyaco1x8vB2jtuvdzRTJXVbXfcZdtXf
-
+\unrestrict 8k3Qjf9gY0vuevNTyGYZ0GdclXCgxTTra0CfwVS3aqEMQXokjbN82cujAGXToFs

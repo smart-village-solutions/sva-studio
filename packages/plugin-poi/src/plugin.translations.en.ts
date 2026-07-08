@@ -217,12 +217,7 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
       media: { title: 'Images', description: 'Show, remove, and add POI images from the media library.' },
     },
   },
-  history: {
-    empty: {
-      title: 'No history available yet.',
-      description: 'POI history entries will be connected in a later step.',
-    },
-  },
+  history: { empty: { title: 'No history available yet.', description: 'POI history entries will be connected in a later step.' } },
   empty: { title: 'No POI yet', description: 'Create the first POI.' },
   pagination: {
     ariaLabel: 'POI pagination',

@@ -1,0 +1,4 @@
+{
+  "prNumber": 699,
+  "body": "Der Medien-Upload in der Content-Bearbeitung nutzt jetzt denselben kanonischen Ablauf wie die Medienverwaltung.\n\n- `Aus Medienverwaltung auswählen` und `Neu hochladen` öffnen einen gemeinsamen Overlay-Flow mit Bibliothek, Upload und Review.\n- Neu hochgeladene Medien werden erst nach Metadaten-Review und `Medium übernehmen` dem Inhalt zugeordnet.\n- News, Events, Orte und Generic Items verhalten sich beim Medien-Handling jetzt konsistent; der manuelle Weg bleibt weiterhin verfügbar."
+}

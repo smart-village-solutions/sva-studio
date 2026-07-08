@@ -217,12 +217,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
       media: { title: 'Bilder', description: 'Bilder des Ortes anzeigen, entfernen und aus der Medienbibliothek hinzufügen.' },
     },
   },
-  history: {
-    empty: {
-      title: 'Noch keine Historie verfügbar.',
-      description: 'Historienereignisse für Orte werden in einem späteren Schritt angebunden.',
-    },
-  },
+  history: { empty: { title: 'Noch keine Historie verfügbar.', description: 'Historienereignisse für Orte werden in einem späteren Schritt angebunden.' } },
   empty: { title: 'Noch keine Orte vorhanden', description: 'Legen Sie den ersten Ort an.' },
   pagination: {
     ariaLabel: 'Orte-Pagination',

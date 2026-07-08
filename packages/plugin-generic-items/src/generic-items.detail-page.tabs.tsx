@@ -7,7 +7,6 @@ import { GenericItemsDetailHistoryTab } from './generic-items.detail-history-tab
 import { GenericItemsDetailSettingsTab } from './generic-items.detail-settings-tab.js';
 import { genericItemsDetailTabIds, type GenericItemsDetailTabId } from './generic-items.detail-tabs.js';
 import type { GenericItemCategoryOption } from './generic-items.api-types.js';
-import type { HostMediaAssetListItem } from '@sva/plugin-sdk';
 
 const renderTabPanel = (title: string, description: string, panel: React.JSX.Element) => (
   <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
@@ -25,9 +24,8 @@ export const GenericItemsDetailTabs = ({
   categoryOptionsError,
   categoryOptionsLoading,
   labels,
-  mediaAssets,
+  onOpenMediaPicker,
   onTabChange,
-  onUploadFile,
   pt,
 }: Readonly<{
   activeTab: GenericItemsDetailTabId;
@@ -35,9 +33,8 @@ export const GenericItemsDetailTabs = ({
   categoryOptionsError: string | null;
   categoryOptionsLoading: boolean;
   labels: Record<string, string>;
-  mediaAssets: readonly HostMediaAssetListItem[];
+  onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onTabChange: (tabId: GenericItemsDetailTabId) => void;
-  onUploadFile: (file: File) => Promise<HostMediaAssetListItem>;
   pt: (key: string) => string;
 }>) => (
   <Tabs value={activeTab} onValueChange={(value: string) => onTabChange(value as GenericItemsDetailTabId)}>
@@ -65,7 +62,7 @@ export const GenericItemsDetailTabs = ({
       {renderTabPanel(
         pt('tabs.content.title'),
         pt('tabs.content.description'),
-        <GenericItemsDetailContentTab labels={labels} mediaAssets={mediaAssets} onUploadFile={onUploadFile} />
+        <GenericItemsDetailContentTab labels={labels} onOpenMediaPicker={onOpenMediaPicker} />
       )}
     </TabsContent>
     <TabsContent value="settings">

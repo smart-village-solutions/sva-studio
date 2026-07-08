@@ -100,8 +100,20 @@ export {
 } from './admin-resources.js';
 export type { MediaPickerDefinition, MediaPickerSelectionMode } from './media-picker.js';
 export { defineMediaPickerDefinition } from './media-picker.js';
-export type { HostMediaAssetListItem, HostMediaReferenceSelection } from './media-picker-client.js';
-export { listHostMediaAssets, listHostMediaReferencesByTarget, replaceHostMediaReferences } from './media-picker-client.js';
+export type {
+  HostMediaAssetDetail,
+  HostMediaAssetListItem,
+  HostMediaAssetMetadata,
+  HostMediaReferenceSelection,
+  UpdateHostMediaMetadataInput,
+} from './media-picker-client.js';
+export {
+  listHostMediaAssets,
+  getHostMediaAsset,
+  updateHostMediaAsset,
+  listHostMediaReferencesByTarget,
+  replaceHostMediaReferences,
+} from './media-picker-client.js';
 export type {
   CompleteHostMediaUploadResult,
   HostMediaUploadVisibility,

@@ -40,6 +40,7 @@ export {
   type MediaReferenceFieldOption,
   type MediaReferenceFieldProps,
 } from './media-reference-field.js';
+export { MediaIntakePanel, type MediaIntakePanelPhase, type MediaIntakePanelProps } from './media-intake-panel.js';
 export { Select } from './select.js';
 export { StudioFormSummaryErrors, getStudioFieldError, getStudioFormFieldProps } from './studio-form-bridge.js';
 export type {
@@ -107,5 +108,17 @@ export {
   type StudioDetailTabsProps,
 } from './studio-detail-tabs.js';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs.js';
+export {
+  StudioMediaPickerOverlay,
+  useStudioMediaPickerOverlay,
+  type StudioMediaPickerAssetDetail,
+  type StudioMediaPickerAssetSummary,
+  type StudioMediaPickerErrorCode,
+  type StudioMediaPickerMetadataDraft,
+  type StudioMediaPickerMode,
+  type StudioMediaPickerOverlayLabels,
+  type StudioMediaPickerReviewSource,
+  type StudioMediaPickerUploadPhase,
+} from './studio-media-picker-overlay.js';
 export { Textarea } from './textarea.js';
 export { cn } from './utils.js';

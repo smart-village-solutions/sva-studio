@@ -1,5 +1,3 @@
-import type { HostMediaAssetListItem } from '@sva/plugin-sdk';
-import React from 'react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button, Input, RichTextHtmlEditor, StudioField, StudioFormSummaryErrors, getStudioFormFieldProps } from '@sva/studio-ui-react';
 
@@ -10,14 +8,12 @@ import {
   readNestedFieldError,
   translateFieldError,
 } from './news.detail-content-tab.helpers.js';
-import { NewsDetailMediaLibraryDialog } from './news.detail-media-library-dialog.js';
 import { NewsDetailMediaList } from './news.detail-media-list.js';
-import { useNewsDetailMediaState } from './news.detail-media-state.js';
+import { createEmptyMediaContent } from './news.detail-media-upload.js';
 import type { NewsDetailFormValues, NewsMediaContentFormValue } from './news.types.js';
 
 export type NewsDetailContentTabProps = Readonly<{
-  mediaAssets: readonly HostMediaAssetListItem[];
-  onUploadFile: (file: File) => Promise<HostMediaAssetListItem>;
+  onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>;
 
@@ -122,31 +118,26 @@ function NewsContentTextSection({
 }
 
 type NewsContentMediaSectionProps = Readonly<{
-  mediaAssets: readonly HostMediaAssetListItem[];
   pt: NewsDetailContentTabProps['pt'];
   mediaField: ContentFieldBindings;
   fields: readonly { readonly id: string }[];
   append: (value: NewsMediaContentFormValue) => void;
   remove: (index: number) => void;
   mediaContents: NewsDetailFormValues['contentMedia'];
-  onUploadFile: (file: File) => Promise<HostMediaAssetListItem>;
+  onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   register: ReturnType<typeof useFormContext<NewsDetailFormValues>>['register'];
 }>;
 
 function NewsContentMediaSection({
-  mediaAssets,
   pt,
   mediaField,
   fields,
   append,
   remove,
   mediaContents,
-  onUploadFile,
+  onOpenMediaPicker,
   register,
 }: NewsContentMediaSectionProps) {
-  const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
-  const mediaState = useNewsDetailMediaState({ append, onUploadFile, remove });
-
   return (
     <NewsDetailCard
       title={pt('cards.content.media.title')}
@@ -157,45 +148,22 @@ function NewsContentMediaSection({
         <NewsDetailMediaList
           fields={fields}
           mediaContents={mediaContents}
-          onRemove={mediaState.handleRemove}
+          onRemove={remove}
           pt={pt}
           register={register}
         />
         <div className="flex flex-wrap gap-3">
-          <Button type="button" variant="outline" onClick={mediaState.openDialog}>
+          <Button type="button" variant="outline" onClick={() => onOpenMediaPicker('library')}>
             {pt('actions.addImage')}
           </Button>
-          <input
-            ref={uploadInputRef}
-            aria-label={pt('actions.uploadMedia')}
-            className="sr-only"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(event) => void mediaState.handleUploadChange(event)}
-          />
-          <Button type="button" variant="outline" disabled={mediaState.uploadBusy} onClick={() => uploadInputRef.current?.click()}>
-            {mediaState.uploadBusy ? pt('actions.uploadingMedia') : pt('actions.uploadMedia')}
+          <Button type="button" variant="outline" onClick={() => onOpenMediaPicker('upload')}>
+            {pt('actions.uploadMedia')}
           </Button>
-          <Button type="button" variant="outline" onClick={mediaState.handleManualAdd}>
+          <Button type="button" variant="outline" onClick={() => append(createEmptyMediaContent())}>
             {pt('actions.addMediaManual')}
           </Button>
         </div>
-        {mediaState.uploadMessageKey ? (
-          <p className={`text-sm font-medium ${mediaState.uploadPhase === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
-            {pt(mediaState.uploadMessageKey)}
-          </p>
-        ) : null}
       </div>
-      <NewsDetailMediaLibraryDialog
-        mediaAssets={mediaAssets}
-        mediaContents={mediaContents}
-        onClose={mediaState.closeDialog}
-        onSelectAsset={mediaState.handleSelectAsset}
-        open={mediaState.dialogOpen}
-        pt={pt}
-        searchValue={mediaState.searchValue}
-        setSearchValue={mediaState.setSearchValue}
-      />
     </NewsDetailCard>
   );
 }
@@ -228,7 +196,7 @@ function NewsContentSourceSection({
   );
 }
 
-export function NewsDetailContentTab({ mediaAssets, onUploadFile, pt }: NewsDetailContentTabProps) {
+export function NewsDetailContentTab({ onOpenMediaPicker, pt }: NewsDetailContentTabProps) {
   const {
     control,
     formState: { errors },
@@ -285,14 +253,13 @@ export function NewsDetailContentTab({ mediaAssets, onUploadFile, pt }: NewsDeta
         setValue={setValue}
       />
       <NewsContentMediaSection
-        mediaAssets={mediaAssets}
         pt={pt}
         mediaField={mediaField}
         fields={fields}
         append={append}
         remove={remove}
         mediaContents={mediaContents}
-        onUploadFile={onUploadFile}
+        onOpenMediaPicker={onOpenMediaPicker}
         register={register}
       />
       <NewsContentSourceSection

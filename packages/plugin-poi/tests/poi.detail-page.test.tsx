@@ -1,6 +1,12 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { listHostMediaAssets, registerPluginTranslationResolver, uploadHostMediaFile } from '@sva/plugin-sdk';
+import {
+  getHostMediaAsset,
+  listHostMediaAssets,
+  registerPluginTranslationResolver,
+  updateHostMediaAsset,
+  uploadHostMediaFile,
+} from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPoi, deletePoi, getPoi, listPoiCategories, updatePoi } from '../src/poi.api.js';
 
@@ -34,7 +40,50 @@ vi.mock('@sva/plugin-sdk', async () => {
       reverseGeocodeEnabled: true,
       killSwitchEnabled: false,
     })),
+    getHostMediaAsset: vi.fn(async ({ assetId }: { assetId: string }) => {
+      const asset = resolveMockMediaAsset(assetId);
+      return {
+        id: assetId,
+        instanceId: 'instance-1',
+        storageKey: `media/${asset.fileName}`,
+        mediaType: 'image',
+        mimeType: 'image/jpeg',
+        byteSize: 2048,
+        visibility: 'public',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: {
+          title: asset.title,
+          copyright: 'Stadt Musterhausen',
+        },
+        technical: {},
+        previewUrl: asset.previewUrl,
+      };
+    }),
     listHostMediaAssets: vi.fn(async () => []),
+    updateHostMediaAsset: vi.fn(async ({ assetId, metadata }: { assetId: string; metadata: Record<string, string> }) => {
+      const asset = resolveMockMediaAsset(assetId);
+      return {
+        id: assetId,
+        instanceId: 'instance-1',
+        storageKey: `media/${asset.fileName}`,
+        mediaType: 'image',
+        mimeType: 'image/jpeg',
+        byteSize: 2048,
+        visibility: 'public',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: {
+          title: metadata.title ?? asset.title,
+          altText: metadata.altText ?? '',
+          description: metadata.description ?? '',
+          copyright: metadata.copyright ?? 'Stadt Musterhausen',
+          license: metadata.license ?? '',
+        },
+        technical: {},
+        previewUrl: asset.previewUrl,
+      };
+    }),
     uploadHostMediaFile: vi.fn(async () => ({ assetId: 'uploaded-asset', uploadSessionId: 'upload-1' })),
   };
 });
@@ -43,6 +92,36 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
 }));
+
+const resolveMockMediaAsset = (assetId: string) => {
+  if (assetId === 'asset-2') {
+    return {
+      title: 'Stadtpark',
+      previewUrl: 'https://cdn.example.test/stadtpark.jpg',
+      fileName: 'stadtpark.jpg',
+    };
+  }
+  if (assetId === 'asset-3') {
+    return {
+      title: 'Neu',
+      previewUrl: 'https://cdn.example.test/neu.jpg',
+      fileName: 'neu.jpg',
+    };
+  }
+  if (assetId === 'asset-uploaded') {
+    return {
+      title: 'Upload Rathaus',
+      previewUrl: 'https://cdn.example.test/upload-rathaus.webp',
+      fileName: 'upload-rathaus.webp',
+    };
+  }
+
+  return {
+    title: 'Rathaus außen',
+    previewUrl: 'https://cdn.example.test/rathaus-aussen.jpg',
+    fileName: 'rathaus-aussen.jpg',
+  };
+};
 
 describe('PoiDetailPage', () => {
   const switchSection = (value: string) => {
@@ -59,6 +138,8 @@ describe('PoiDetailPage', () => {
     vi.mocked(updatePoi).mockReset();
     vi.mocked(listHostMediaAssets).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
+    vi.mocked(getHostMediaAsset).mockReset();
+    vi.mocked(updateHostMediaAsset).mockReset();
     vi.mocked(uploadHostMediaFile).mockReset();
     vi.mocked(uploadHostMediaFile).mockResolvedValue({ assetId: 'uploaded-asset', uploadSessionId: 'upload-1' } as never);
     vi.unstubAllGlobals();
@@ -151,6 +232,9 @@ describe('PoiDetailPage', () => {
         'poi.messages.mediaUploadError': 'Das Medium konnte nicht hochgeladen werden.',
         'poi.messages.mediaUploadUnsupportedType': 'Nur JPG, PNG und WebP können hochgeladen werden.',
         'poi.messages.mediaUploadUnavailableUrl': 'Für dieses Medium ist keine öffentliche URL verfügbar.',
+        'poi.messages.mediaPickerTitle': 'Medium hinzufügen',
+        'poi.messages.mediaPickerUseMedia': 'Medium übernehmen',
+        'poi.messages.mediaPickerAssetLoadError': 'Das Medium konnte nicht geladen werden.',
         'poi.actions.deleteConfirm': 'Wirklich löschen?',
         'poi.actions.geocodeAddress': 'Geo-Koordinaten ermitteln',
         'poi.actions.geocodingAddress': 'Geo-Koordinaten werden ermittelt',
@@ -300,6 +384,18 @@ describe('PoiDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Auswählen' }));
 
     await waitFor(() => {
+      expect(vi.mocked(getHostMediaAsset)).toHaveBeenCalledWith({
+        fetch: expect.any(Function),
+        assetId: 'asset-2',
+        instanceId: undefined,
+      });
+      expect(screen.getByRole('button', { name: 'Medium übernehmen' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(updateHostMediaAsset)).toHaveBeenCalled();
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(screen.getByDisplayValue('https://cdn.example.test/stadtpark.jpg')).toBeTruthy();
     });
@@ -308,7 +404,7 @@ describe('PoiDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeTruthy();
     });
-    expect(within(screen.getByRole('dialog')).queryByText('Stadtpark')).toBeNull();
+    expect(within(screen.getByRole('dialog')).getByText('Stadtpark')).toBeTruthy();
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();
@@ -740,6 +836,23 @@ describe('PoiDetailPage', () => {
       expect(screen.getByRole('dialog')).toBeTruthy();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Auswählen' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(getHostMediaAsset)).toHaveBeenCalledWith({
+        fetch: expect.any(Function),
+        assetId: 'asset-3',
+        instanceId: undefined,
+      });
+      expect(screen.getByRole('button', { name: 'Medium übernehmen' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(updateHostMediaAsset)).toHaveBeenCalled();
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
@@ -839,6 +952,18 @@ describe('PoiDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Auswählen' }));
 
     await waitFor(() => {
+      expect(vi.mocked(getHostMediaAsset)).toHaveBeenCalledWith({
+        fetch: expect.any(Function),
+        assetId: 'asset-rathaus',
+        instanceId: undefined,
+      });
+      expect(screen.getByRole('button', { name: 'Medium übernehmen' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(updateHostMediaAsset)).toHaveBeenCalled();
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(screen.getByDisplayValue('https://cdn.example.test/rathaus-aussen.jpg')).toBeTruthy();
     });
@@ -891,7 +1016,8 @@ describe('PoiDetailPage', () => {
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
-    fireEvent.change(screen.getByLabelText('Medium hochladen'), { target: { files: [uploadedFile] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hochladen' }));
+    fireEvent.change(screen.getByTestId('media-upload-input'), { target: { files: [uploadedFile] } });
 
     await waitFor(() => {
       expect(vi.mocked(uploadHostMediaFile)).toHaveBeenCalledWith({
@@ -901,7 +1027,12 @@ describe('PoiDetailPage', () => {
         visibility: 'public',
         instanceId: 'de-musterhausen',
       });
-      expect(screen.getByText('Medium wurde hochgeladen und zugeordnet.')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Medium übernehmen' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
+
+    await waitFor(() => {
       expect(screen.getByDisplayValue('https://cdn.example.test/upload-rathaus.webp')).toBeTruthy();
     });
 
@@ -935,7 +1066,8 @@ describe('PoiDetailPage', () => {
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
-    fireEvent.change(screen.getByLabelText('Medium hochladen'), { target: { files: [failedFile] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hochladen' }));
+    fireEvent.change(screen.getByTestId('media-upload-input'), { target: { files: [failedFile] } });
 
     await waitFor(() => {
       expect(screen.getByText('Das Medium konnte nicht hochgeladen werden.')).toBeTruthy();
@@ -951,16 +1083,17 @@ describe('PoiDetailPage', () => {
       assetId: 'asset-missing',
       uploadSessionId: 'upload-session-1',
     } as never);
-    vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
+    vi.mocked(getHostMediaAsset).mockRejectedValueOnce(new Error('missing asset'));
 
     render(<PoiDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
-    fireEvent.change(screen.getByLabelText('Medium hochladen'), { target: { files: [uploadedFile] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hochladen' }));
+    fireEvent.change(screen.getByTestId('media-upload-input'), { target: { files: [uploadedFile] } });
 
     await waitFor(() => {
-      expect(screen.getByText('Das Medium konnte nicht hochgeladen werden.')).toBeTruthy();
+      expect(screen.getByText('Das Medium konnte nicht geladen werden.')).toBeTruthy();
     });
 
     expect(screen.queryByDisplayValue('missing-rathaus.webp')).toBeNull();

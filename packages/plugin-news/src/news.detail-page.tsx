@@ -3,10 +3,13 @@ import { FormProvider, useForm, type FieldNamesMarkedBoolean } from 'react-hook-
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
   fromDatetimeLocalValue,
+  getHostMediaAsset,
   listHostMediaAssets,
   toDatetimeLocalValue,
   translatePluginKey,
+  updateHostMediaAsset,
   uploadHostMediaFile,
+  type HostMediaAssetDetail,
   type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
 import {
@@ -15,10 +18,17 @@ import {
   StudioDetailPageTemplate,
   StudioFormSummary,
   StudioLoadingState,
+  StudioMediaPickerOverlay,
+  type StudioMediaPickerAssetDetail,
+  type StudioMediaPickerAssetSummary,
+  type StudioMediaPickerErrorCode,
+  type StudioMediaPickerMetadataDraft,
+  type StudioMediaPickerOverlayLabels,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
+  useStudioMediaPickerOverlay,
 } from '@sva/studio-ui-react';
 
 import {
@@ -40,6 +50,14 @@ import {
   mapNewsItemToDetailFormValues,
   newsDetailFormResolver,
 } from './news.detail-form.js';
+import {
+  isSupportedUploadFile,
+  mediaContentFromAsset,
+  mediaContentSourceKey,
+  readAssetFileName,
+  readAssetTitle,
+  uploadPhaseMessageKey,
+} from './news.detail-media.helpers.js';
 import { createNewsDetailTabDefinitions } from './news.detail-tabs.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
 import type {
@@ -134,6 +152,119 @@ const parseDatetimeLocalInput = (value: string, referenceValue?: string) => {
   return {
     isInvalid: normalizedValue.length === 0,
     normalizedValue,
+  };
+};
+
+type NewsMediaPickerAsset = StudioMediaPickerAssetDetail;
+
+const readDetailFileName = (asset: Pick<HostMediaAssetDetail, 'id' | 'storageKey'>): string => {
+  const storageKeyParts = asset.storageKey.split('/');
+  const fileName = storageKeyParts[storageKeyParts.length - 1]?.trim();
+  return fileName && fileName.length > 0 ? fileName : asset.id;
+};
+
+const toNewsMediaPickerSummary = (asset: HostMediaAssetListItem): StudioMediaPickerAssetSummary => ({
+  id: asset.id,
+  title: readAssetTitle(asset),
+  fileName: readAssetFileName(asset),
+  previewUrl: asset.previewUrl,
+  mimeType: asset.mimeType,
+  visibility: asset.visibility,
+});
+
+const toNewsMediaPickerDetail = (
+  asset: HostMediaAssetDetail,
+  summary?: HostMediaAssetListItem
+): NewsMediaPickerAsset => {
+  const fileName = summary ? readAssetFileName(summary) : readDetailFileName(asset);
+  const title = asset.metadata.title?.trim() || (summary ? readAssetTitle(summary) : fileName);
+
+  return {
+    id: asset.id,
+    title,
+    fileName,
+    previewUrl: asset.previewUrl ?? summary?.previewUrl ?? null,
+    mimeType: asset.mimeType,
+    visibility: asset.visibility,
+    metadata: {
+      title,
+      altText: asset.metadata.altText?.trim() ?? '',
+      description: asset.metadata.description?.trim() ?? '',
+      copyright: asset.metadata.copyright?.trim() ?? '',
+      license: asset.metadata.license?.trim() ?? '',
+    },
+  };
+};
+
+const createNewsMediaPickerLabels = (pt: PluginTranslator): StudioMediaPickerOverlayLabels => ({
+  title: pt('messages.mediaPickerTitle'),
+  description: pt('messages.mediaPickerDescription'),
+  modes: {
+    library: pt('actions.addImage'),
+    upload: pt('actions.uploadMedia'),
+    review: pt('messages.mediaPickerReviewMode'),
+  },
+  library: {
+    searchLabel: pt('fields.imageSearch'),
+    empty: pt('messages.imagePickerEmpty'),
+    select: pt('actions.selectImage'),
+  },
+  upload: {
+    regionLabel: pt('messages.mediaPickerUploadRegionLabel'),
+    title: pt('messages.mediaPickerUploadTitle'),
+    description: pt('messages.mediaPickerUploadDescription'),
+    browseAction: pt('messages.mediaPickerSelectFile'),
+    supportLabel: pt('messages.mediaPickerUploadSupportLabel'),
+  },
+  review: {
+    title: pt('messages.mediaPickerReviewTitle'),
+    description: pt('messages.mediaPickerReviewDescription'),
+  },
+  fields: {
+    title: pt('fields.title'),
+    altText: pt('messages.mediaPickerAltText'),
+    description: pt('fields.description'),
+    copyright: pt('fields.mediaCopyright'),
+    license: pt('messages.mediaPickerLicense'),
+  },
+  actions: {
+    cancel: pt('actions.back'),
+    backToLibrary: pt('messages.mediaPickerBackToLibrary'),
+    backToUpload: pt('messages.mediaPickerBackToUpload'),
+    openMediaManagement: pt('messages.mediaPickerOpenMediaManagement'),
+    useMedia: pt('messages.mediaPickerUseMedia'),
+  },
+});
+
+const resolveNewsMediaPickerFeedback = (
+  pt: PluginTranslator,
+  errorCode: StudioMediaPickerErrorCode | null,
+  uploadPhase: Parameters<typeof uploadPhaseMessageKey>[0]
+) => {
+  if (errorCode === 'unsupported_upload_type') {
+    return { message: pt('messages.mediaUploadUnsupportedType'), tone: 'error' as const };
+  }
+  if (errorCode === 'upload_failed') {
+    return { message: pt('messages.mediaUploadError'), tone: 'error' as const };
+  }
+  if (errorCode === 'asset_load_failed') {
+    return { message: pt('messages.mediaPickerAssetLoadError'), tone: 'error' as const };
+  }
+  if (errorCode === 'asset_unavailable') {
+    return { message: pt('messages.mediaUploadUnavailableUrl'), tone: 'error' as const };
+  }
+  if (errorCode === 'metadata_save_failed') {
+    return { message: pt('messages.mediaPickerMetadataSaveError'), tone: 'error' as const };
+  }
+
+  const phaseKey = uploadPhaseMessageKey(uploadPhase);
+  if (!phaseKey) {
+    return { message: null, tone: 'default' as const };
+  }
+
+  return {
+    message: pt(phaseKey),
+    tone: uploadPhase === 'success' ? ('success' as const) : ('default' as const),
   };
 };
 
@@ -238,27 +369,75 @@ export const NewsDetailPage = ({
       return [];
     }
   }, []);
+  const mediaPickerLabels = React.useMemo(() => createNewsMediaPickerLabels(pt), [pt]);
 
-  const uploadMediaFile = React.useCallback(
-    async (file: File): Promise<HostMediaAssetListItem> => {
+  const isAssetSelectable = React.useCallback((asset: NewsMediaPickerAsset) => {
+    const nextMedia = mediaContentFromAsset({
+      id: asset.id,
+      fileName: asset.fileName,
+      metadata: asset.metadata,
+      visibility: asset.visibility,
+      mimeType: asset.mimeType,
+      previewUrl: asset.previewUrl,
+    });
+    if (!nextMedia) {
+      return false;
+    }
+
+    const existingSources = new Set((methods.getValues('contentMedia') ?? []).map(mediaContentSourceKey).filter(Boolean));
+    return existingSources.has(mediaContentSourceKey(nextMedia)) === false;
+  }, [methods]);
+
+  const mediaPicker = useStudioMediaPickerOverlay<NewsMediaPickerAsset>({
+    onAccept: (asset) => {
+      const nextMedia = mediaContentFromAsset({
+        id: asset.id,
+        fileName: asset.fileName,
+        metadata: asset.metadata,
+        visibility: asset.visibility,
+        mimeType: asset.mimeType,
+        previewUrl: asset.previewUrl,
+      });
+      if (!nextMedia) {
+        return;
+      }
+
+      const currentMedia = methods.getValues('contentMedia') ?? [];
+      methods.setValue('contentMedia', [...currentMedia, nextMedia], { shouldDirty: true });
+      void refreshMediaAssets();
+    },
+    canAcceptAsset: isAssetSelectable,
+    isSupportedUploadFile,
+    uploadAsset: async (file) => {
       const uploaded = await uploadHostMediaFile({
         fetch: globalThis.fetch.bind(globalThis),
         file,
         mediaType: 'image',
         visibility: 'public',
       });
-      const assets = await refreshMediaAssets();
-      const uploadedAsset = assets.find((asset) => asset.id === uploaded.assetId);
-      if (!uploadedAsset) {
-        throw new Error('news_media_uploaded_asset_not_found');
-      }
-      const uploadedPreviewUrl =
-        'previewUrl' in uploaded && typeof uploaded.previewUrl === 'string' ? uploaded.previewUrl.trim() : '';
-      return uploadedAsset.previewUrl?.trim()
-        ? uploadedAsset
-        : { ...uploadedAsset, previewUrl: uploadedPreviewUrl || uploadedAsset.previewUrl };
+      await refreshMediaAssets();
+      return { assetId: uploaded.assetId };
     },
-    [refreshMediaAssets]
+    loadAsset: async (assetId) => {
+      const detail = await getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId });
+      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      return toNewsMediaPickerDetail(detail, summary);
+    },
+    saveAssetMetadata: async (assetId, metadata) => {
+      const detail = await updateHostMediaAsset({
+        fetch: globalThis.fetch.bind(globalThis),
+        assetId,
+        visibility: 'public',
+        metadata,
+      });
+      await refreshMediaAssets();
+      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      return toNewsMediaPickerDetail(detail, summary);
+    },
+  });
+  const mediaPickerFeedback = React.useMemo(
+    () => resolveNewsMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
+    [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
   );
 
   const dirtyTabs = React.useMemo(
@@ -479,7 +658,14 @@ export const NewsDetailPage = ({
       description: pt('tabs.content.description'),
       hasChanges: dirtyTabs.content,
       changeLabel: pt('tabs.changeLabel'),
-      panel: <NewsDetailContentTab mediaAssets={mediaAssets} onUploadFile={uploadMediaFile} pt={pt} />,
+      panel: (
+        <NewsDetailContentTab
+          onOpenMediaPicker={(pickerMode) =>
+            pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
+          }
+          pt={pt}
+        />
+      ),
     },
     {
       id: 'settings',
@@ -539,6 +725,45 @@ export const NewsDetailPage = ({
       }
     >
       <FormProvider {...methods}>
+        <StudioMediaPickerOverlay
+          assets={mediaAssets.map(toNewsMediaPickerSummary)}
+          feedbackMessage={mediaPickerFeedback.message}
+          feedbackTone={mediaPickerFeedback.tone}
+          isAssetSelectable={(asset) =>
+            isAssetSelectable({
+              ...asset,
+              metadata: {
+                title: asset.title,
+                altText: '',
+                description: '',
+                copyright: '',
+                license: '',
+              },
+            })
+          }
+          isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
+          isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
+          isSupportedUploadFile={isSupportedUploadFile}
+          labels={mediaPickerLabels}
+          metadataDraft={mediaPicker.metadataDraft}
+          mode={mediaPicker.mode}
+          onBackFromReview={mediaPicker.goBackFromReview}
+          onChangeMode={(pickerMode) =>
+            pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
+          }
+          onClose={mediaPicker.close}
+          onConfirmSelection={() => void mediaPicker.confirmSelection()}
+          onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
+          onOpenMediaManagement={(assetId) => void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })}
+          onSearchValueChange={mediaPicker.setSearchValue}
+          onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
+          onUploadFile={(file) => void mediaPicker.uploadFile(file)}
+          open={mediaPicker.open}
+          reviewAsset={mediaPicker.reviewAsset}
+          reviewSource={mediaPicker.reviewSource}
+          searchValue={mediaPicker.searchValue}
+          uploadPhase={mediaPicker.uploadPhase}
+        />
         <form
           id={formId}
           onSubmit={(event) => {

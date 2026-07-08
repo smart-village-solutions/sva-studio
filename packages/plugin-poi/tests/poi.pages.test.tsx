@@ -1,6 +1,11 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { listHostMediaAssets, registerPluginTranslationResolver } from '@sva/plugin-sdk';
+import {
+  getHostMediaAsset,
+  listHostMediaAssets,
+  registerPluginTranslationResolver,
+  updateHostMediaAsset,
+} from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPoi, getPoi, listPoi, listPoiCategories, updatePoi } from '../src/poi.api.js';
 import { PoiCreatePage, PoiEditPage, PoiListPage } from '../src/poi.pages.js';
@@ -60,6 +65,40 @@ vi.mock('@sva/plugin-sdk', async () => {
   return {
     ...actual,
     listHostMediaAssets: vi.fn(async () => []),
+    getHostMediaAsset: vi.fn(async () => ({
+      id: 'asset-teaser',
+      instanceId: 'instance-1',
+      storageKey: 'media/teaser-asset.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 2048,
+      visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {
+        title: 'Teaser Asset',
+        copyright: 'Stadt Musterhausen',
+      },
+      technical: {},
+      previewUrl: 'https://cdn.example.test/teaser-asset.jpg',
+    })),
+    updateHostMediaAsset: vi.fn(async () => ({
+      id: 'asset-teaser',
+      instanceId: 'instance-1',
+      storageKey: 'media/teaser-asset.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 2048,
+      visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {
+        title: 'Teaser Asset',
+        copyright: 'Stadt Musterhausen',
+      },
+      technical: {},
+      previewUrl: 'https://cdn.example.test/teaser-asset.jpg',
+    })),
   };
 });
 
@@ -118,6 +157,7 @@ describe('PoiListPage', () => {
         'poi.actions.back': 'Zurück zur Liste',
         'poi.actions.delete': 'Löschen',
         'poi.actions.clearMedia': 'Medium entfernen',
+        'poi.messages.mediaPickerUseMedia': 'Medium übernehmen',
         'poi.fields.actions': 'Aktionen',
         'poi.fields.name': 'Name',
         'poi.fields.description': 'Beschreibung',
@@ -282,6 +322,26 @@ describe('PoiListPage', () => {
       expect(screen.getByRole('dialog')).toBeTruthy();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Auswählen' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(getHostMediaAsset)).toHaveBeenCalledWith({
+        fetch: expect.any(Function),
+        assetId: 'asset-teaser',
+        instanceId: undefined,
+      });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(updateHostMediaAsset)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assetId: 'asset-teaser',
+        })
+      );
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {

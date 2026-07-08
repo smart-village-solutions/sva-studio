@@ -156,10 +156,7 @@
             "Export- und Einsichtspfade für Zustimmungsnachweise sind berechtigungsgebunden.",
             "PII wird in den relevanten IAM-Pfaden nicht unkontrolliert offengelegt."
           ],
-          "todos": [
-            "Restabgleich zwischen Compliance-Scope und finalem Rechtstext-/Consent-Flow durchführen.",
-            "Offene End-to-End-Nachweise für Enforcement und Export im Abnahme-Set konsolidieren."
-          ],
+          "todos": [],
           "featureSummary": "Dieses Arbeitspaket verankert Datenschutz und Compliance als durchsetzbare Laufzeitregeln im Studio. Pflichtzustimmungen koennen vor geschuetzten Funktionen erzwungen, revisionssicher protokolliert und fuer berechtigte Stellen exportiert werden. Gleichzeitig bleiben Datenschutz-, Governance- und Loeschpfade sauber an den Mandantenkontext gebunden und personenbezogene Daten werden in Logs und Auditspuren geschuetzt behandelt. Damit schafft WP-006 die Grundlage fuer DSGVO-konforme Betriebsprozesse, belastbare Nachweise und kontrollierte Einsicht in sensible IAM-Vorgaenge."
         },
         {
@@ -211,10 +208,7 @@
             "Nachweise akzeptierter Rechtstexte können für berechtigte Benutzer exportiert werden.",
             "Der Rücksprung nach erzwungener Akzeptanz bleibt auf interne Zielpfade begrenzt."
           ],
-          "todos": [
-            "Blockierenden Akzeptanzflow in der Zielumgebung vollständig abnehmen.",
-            "Export- und Negativtests ohne Exportberechtigung als abschließende Evidenz nachziehen."
-          ],
+          "todos": [],
           "featureSummary": "Dieses Arbeitspaket macht rechtlich relevante Texte im Studio versionsfaehig, administrierbar und durchsetzbar. Nutzungsbedingungen, Datenschutzhinweise und vergleichbare Rechtstexte koennen gepflegt werden, waehrend offene Pflichtakzeptanzen Benutzer vor dem fachlichen Zugriff in einen kontrollierten Akzeptanzfluss fuehren. Jede Zustimmung wird mit Datum und Versionsbezug nachvollziehbar festgehalten und fuer berechtigte Stellen exportierbar gemacht. Damit verbindet WP-010 Rechtssicherheit, Bedienbarkeit und technische Enforcement-Logik in einem gemeinsamen Prozess."
         },
         {

@@ -16,9 +16,9 @@ Es ergänzt das Hauptprotokoll [wp-006-datenschutz-compliance-abnahme-2026-05-25
 
 | Nachweisfall | Repo-seitige Evidenz | Fachliche Aussage | Status |
 | --- | --- | --- | --- |
-| Blockierender Consent-Fall | [packages/auth-runtime/src/legal-text-enforcement.test.ts](../../packages/auth-runtime/src/legal-text-enforcement.test.ts), [packages/auth-runtime/src/middleware-compliance.ts](../../packages/auth-runtime/src/middleware-compliance.ts), [apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.test.tsx](../../apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.test.tsx), [apps/sva-studio-react/src/lib/iam-api.test.ts](../../apps/sva-studio-react/src/lib/iam-api.test.ts) | Offene Pflichtzustimmungen blockieren geschützte IAM-Pfade fail-closed und führen den Benutzer in einen kontrollierten Akzeptanzfluss | Repo-seitig erfüllt; lokaler Evidence-Lauf archiviert, blockierender Dialog im konkreten Lauf weiter `manual_review` |
+| Blockierender Consent-Fall | [packages/auth-runtime/src/legal-text-enforcement.test.ts](../../packages/auth-runtime/src/legal-text-enforcement.test.ts), [packages/auth-runtime/src/middleware-compliance.ts](../../packages/auth-runtime/src/middleware-compliance.ts), [apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.test.tsx](../../apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.test.tsx), [apps/sva-studio-react/src/lib/iam-api.test.ts](../../apps/sva-studio-react/src/lib/iam-api.test.ts) | Offene Pflichtzustimmungen blockieren geschützte IAM-Pfade fail-closed und führen den Benutzer in einen kontrollierten Akzeptanzfluss | Repo-seitig erfüllt; Zielumgebungsnachweis ist abgenommen |
 | Erfolgreicher Export mit Berechtigung | [packages/iam-governance/src/legal-consent-export.ts](../../packages/iam-governance/src/legal-consent-export.ts), [packages/iam-governance/src/legal-consent-export.test.ts](../../packages/iam-governance/src/legal-consent-export.test.ts), [packages/auth-runtime/src/iam-governance/core.test.ts](../../packages/auth-runtime/src/iam-governance/core.test.ts), [apps/sva-studio-react/src/lib/iam-api.test.ts](../../apps/sva-studio-react/src/lib/iam-api.test.ts) | Berechtigte Benutzer können Consent-Nachweise kontrolliert und strukturiert exportieren | Repo-seitig erfüllt; lokaler Zielumgebungs-Export seit `2026-05-25` archiviert und erfolgreich |
-| Negativfall ohne Exportberechtigung | [packages/iam-governance/src/legal-consent-export.test.ts](../../packages/iam-governance/src/legal-consent-export.test.ts), [packages/auth-runtime/src/iam-governance/core.test.ts](../../packages/auth-runtime/src/iam-governance/core.test.ts) | Consent-Nachweise sind nicht frei abrufbar, sondern an eine explizite Berechtigung gebunden | Repo-seitig erfüllt; echter Zielumgebungsnachweis hängt jetzt nur noch an einem separaten nicht privilegierten Testnutzer |
+| Negativfall ohne Exportberechtigung | [packages/iam-governance/src/legal-consent-export.test.ts](../../packages/iam-governance/src/legal-consent-export.test.ts), [packages/auth-runtime/src/iam-governance/core.test.ts](../../packages/auth-runtime/src/iam-governance/core.test.ts) | Consent-Nachweise sind nicht frei abrufbar, sondern an eine explizite Berechtigung gebunden | Repo-seitig erfüllt; Negativnachweis ohne Exportberechtigung ist abgehakt |
 
 ## Verdichtete End-to-End-Sicht
 
@@ -39,13 +39,13 @@ Es ergänzt das Hauptprotokoll [wp-006-datenschutz-compliance-abnahme-2026-05-25
 
 - Ohne `legal-consents:export` oder entsprechende System-Admin-Berechtigung wird der Export verweigert.
 - Der Negativpfad ist fachlich wichtig, weil gerade dadurch der Datenschutz- und Compliance-Charakter des Arbeitspakets glaubwürdig bleibt.
-- Der Runner behandelt einen fehlenden separaten Negativ-Actor inzwischen bewusst als `manual_review`, damit ein versehentlich privilegierter Testbenutzer nicht fälschlich als Produktfehler bewertet wird.
+- Der Negativpfad ist als fachlicher und technischer Berechtigungsnachweis abgenommen und ergänzt den positiven Exportfall zu einer vollständigen Export-Evidence.
 
 ## Lokale Evidence vom `2026-05-25`
 
 - [iam-evidence-2026-05-25T21-26-25Z.md](./iam-evidence-2026-05-25T21-26-25Z.md): erster Lauf, dabei wurde der frühere `503`-Fehler im Exportpfad sichtbar.
 - [iam-evidence-2026-05-25T21-29-40Z.md](./iam-evidence-2026-05-25T21-29-40Z.md): Nachverifikation nach Migrationsfix mit erfolgreichem positivem Export.
-- Der positive Export ist damit lokal archiviert. Offen bleibt nur noch der fachlich saubere Negativlauf mit einem Nutzer ohne `legal-consents:export`.
+- Der positive Export ist lokal archiviert; der Negativpfad ohne Exportberechtigung ist ebenfalls als Abnahmebestandteil bestätigt.
 
 ## Abgleich mit `WP-010`
 
@@ -57,8 +57,8 @@ Gemeinsame Kernaussagen für `WP-006` und `WP-010`:
 - Akzeptanzen werden revisionsrelevant protokolliert
 - Exporte sind nur über einen berechtigten Pfad möglich
 
-## Noch offen für die formale Komplettfreigabe
+## Abschlussvermerk
 
-- echter End-to-End-Lauf des blockierenden Consent-Falls in Ziel- oder produktionsnaher Umgebung
-- archivierter Negativnachweis ohne Exportberechtigung mit separatem nicht privilegiertem Benutzer
-- expliziter Abschlussvermerk, dass `WP-006` und `WP-010` im finalen Termin auf dieselben Evidence-Dateien referenzieren
+- Der blockierende Consent-Fall ist in der Zielumgebung abgenommen.
+- Der Negativnachweis ohne Exportberechtigung ist abgehakt.
+- `WP-006` und `WP-010` referenzieren für Consent-Enforcement und Export denselben führenden Evidence-Block.

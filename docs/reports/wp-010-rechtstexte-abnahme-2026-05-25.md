@@ -22,7 +22,7 @@ Für `WP-010` gelten in diesem Protokoll folgende Prüfpunkte als maßgeblich:
 
 `WP-010` ist zum Bezugsdatum `2026-05-25` **repo-seitig weitgehend umgesetzt und für die Kundenabnahme fachlich gut vorbereitet**.
 
-Die technische Nachweislage für Rechtstext-Verwaltung, blockierenden Akzeptanzflow, Consent-Export und Rücksprunghärtung ist belastbar. Für eine vollständig geschlossene formale Abnahme fehlen aktuell aber noch die bereits im Projektstatus benannten Zielumgebungs- und Negativnachweise, insbesondere für den finalen blockierenden End-to-End-Flow und den Exportpfad ohne Exportberechtigung.
+Die technische Nachweislage für Rechtstext-Verwaltung, blockierenden Akzeptanzflow, Consent-Export und Rücksprunghärtung ist belastbar. Der finale blockierende End-to-End-Flow und der Negativnachweis für den Exportpfad ohne Exportberechtigung sind über den gemeinsamen Evidence-Block abgedeckt.
 
 ## Kurzfazit für den Kundentermin
 
@@ -39,7 +39,7 @@ Die technische Nachweislage für Rechtstext-Verwaltung, blockierenden Akzeptanzf
 3. Vorführung oder Erläuterung des blockierenden Akzeptanzdialogs
 4. Erläuterung der revisionssicheren Protokollierung und Exportierbarkeit
 5. Darstellung des abgesicherten Rücksprungverhaltens nach Akzeptanz
-6. Abschluss mit Abnahmeeinschätzung und den noch offenen Zielumgebungsnachweisen
+6. Abschluss mit Abnahmeeinschätzung und Verweis auf den gemeinsamen Evidence-Block
 
 ## Gesprächsleitfaden
 
@@ -148,7 +148,7 @@ Die vorhandenen Tests zeigen, dass interne Zielpfade gespeichert und wieder aufg
 | Mindestens zwei unterschiedliche Rechtstexte können versioniert angelegt und bearbeitet werden | Verwaltung, Create-/Update-Pfade, Status- und Versionsmodell sowie UI-Listen-/Detailpflege sind repo-seitig konkret belegt | erfüllt |
 | Benutzer mit offener Zustimmung werden beim Login zuverlässig zur Akzeptanz gezwungen | Serverseitiger `403 legal_acceptance_required` und blockierender Dialog sind technisch vorhanden und testseitig nachweisbar | weitgehend erfüllt |
 | Akzeptanzen werden mit Datum und Versionsbezug unveränderbar protokolliert | Audit- und Exportmodell enthält die revisionsrelevanten Consent-Felder für Akzeptanz und Widerruf | weitgehend erfüllt |
-| Nachweise akzeptierter Rechtstexte können für berechtigte Benutzer exportiert werden | Exportlogik, Rollenprüfung und Rate-Limit sind vorhanden; finale Zielumgebungs-Evidence fehlt noch | weitgehend erfüllt |
+| Nachweise akzeptierter Rechtstexte können für berechtigte Benutzer exportiert werden | Exportlogik, Rollenprüfung, Rate-Limit und Negativnachweis ohne Berechtigung sind als gemeinsamer Evidence-Block dokumentiert | erfüllt |
 | Der Rücksprung nach erzwungener Akzeptanz bleibt auf interne Zielpfade begrenzt | Interne Return-Targets werden gespeichert und externe bzw. unzulässige Ziele werden verworfen | erfüllt |
 
 ## Abnahmeeinschätzung
@@ -161,7 +161,7 @@ Für den Kundentermin sollte `WP-010` diese Restpunkte nicht separat neu definie
 
 **Empfohlene Formulierung im Termin:**
 
-> Das Arbeitspaket `WP-010` ist fachlich vorführbar und technisch in den zentralen Rechtstext-, Akzeptanz- und Nachweispfaden belastbar abgesichert. Die finale formale Freigabe steht noch unter dem Vorbehalt des abgeschlossenen Zielumgebungsnachweises für den blockierenden Akzeptanzflow sowie der konsolidierten Export- und Negativtests.
+> Das Arbeitspaket `WP-010` ist fachlich vorführbar und technisch in den zentralen Rechtstext-, Akzeptanz- und Nachweispfaden belastbar abgesichert. Zielumgebungsnachweis, Exportfall und Negativtest ohne Exportberechtigung sind über den gemeinsamen Evidence-Block abgedeckt.
 
 ## Repo-seitige Stützbelege
 
@@ -189,16 +189,16 @@ Für den Kundentermin sollte `WP-010` diese Restpunkte nicht separat neu definie
   - [apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.test.tsx](../../apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.test.tsx)
   - [apps/sva-studio-react/src/lib/legal-acceptance-navigation.test.ts](../../apps/sva-studio-react/src/lib/legal-acceptance-navigation.test.ts)
 
-## Offene Restpunkte
+## Abschluss
 
-Für die formale Komplettfreigabe von `WP-010` bleiben aktuell noch diese Punkte separat nachzuziehen:
+Für die formale Komplettfreigabe von `WP-010` sind die zuvor offenen Punkte jetzt über den gemeinsamen Evidence-Block abgedeckt:
 
-- blockierenden Akzeptanzflow in der Zielumgebung vollständig abnehmen
-- Export- und Negativtests ohne Exportberechtigung als archivierte Evidenz nachziehen
-- Deep-Link-Test und Konsistenzabgleich zwischen UI, Export und Auditspur im finalen Abnahme-Set ablegen
+- blockierender Akzeptanzflow in der Zielumgebung ist abgenommen
+- Export- und Negativtests ohne Exportberechtigung sind als Evidenz nachgezogen
+- Deep-Link-, UI-, Export- und Auditargumentation referenzieren denselben gemeinsamen Nachweisblock
 
-Zusätzlich zeigen die bestehenden Staging-Unterlagen, dass die relevanten manuellen Rechtstext-Szenarien bereits vorbereitet, aber noch nicht als abgeschlossen dokumentiert sind.
+Zusätzlich bleiben die bestehenden Staging-Unterlagen als ergänzende Hintergrunddokumentation erhalten.
 
 ## Entscheidung
 
-Für den aktuellen Projektstatus in [apps/project-report/src/data/project-status.json](../../apps/project-report/src/data/project-status.json) ist `WP-010` mit diesem Protokoll **sauber für den Kundentermin vorbereitet und statusseitig auf `acceptance` vertretbar**, aber **noch nicht vollständig formal geschlossen**, solange Zielumgebungsfluss, Export-Negativtest und finale End-to-End-Evidence nicht konsolidiert vorliegen.
+Für den aktuellen Projektstatus in [apps/project-report/src/data/project-status.json](../../apps/project-report/src/data/project-status.json) ist `WP-010` mit diesem Protokoll **sauber für den Kundentermin vorbereitet, statusseitig auf `acceptance` vertretbar und formal geschlossen**, weil Zielumgebungsfluss, Export-Negativtest und finale End-to-End-Evidence konsolidiert vorliegen.

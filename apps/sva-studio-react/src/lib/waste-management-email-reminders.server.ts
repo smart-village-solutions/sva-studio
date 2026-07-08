@@ -8,9 +8,9 @@ import {
   withWasteClient,
 } from './waste-management-operations.shared.js';
 import {
-  loadMailTransportConfigs,
   loadWasteEmailReminderSettings,
 } from './waste-management-email-reminder-config.server.js';
+import { loadMailTransportConfigs } from './waste-management-email-reminder-transport.server.js';
 import {
   addDaysUtc,
   buildDispatchMessage,

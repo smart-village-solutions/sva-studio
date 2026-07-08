@@ -3238,6 +3238,12 @@
       "status": "open",
       "summary": "Waste-Operations-Runtime-Datei in kleinere Operation- und Helper-Module splitten (apps/sva-studio-react/src/lib/waste-management-operations.server.ts)"
     },
+    "frontend-app:apps/sva-studio-react/src/lib/iam-content-list-projection.server.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-IAM-CONTENT-LIST-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Content-List-Projektion in kleinere Query-, Sync- und Autorisierungs-Module splitten (apps/sva-studio-react/src/lib/iam-content-list-projection.server.ts)"
+    },
     "frontend-app:apps/sva-studio-react/src/lib/iam-content-list-projection.server.ts:fileLines": {
       "ticketId": "QUAL-IAM-CONTENT-LIST-001",
       "ticketSystem": "backlog",

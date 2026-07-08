@@ -120,6 +120,7 @@ export {
   toDatetimeLocalValue,
   toHostMediaFieldOptions,
 } from './content-ui-utils.js';
+export { readFieldError } from './form-errors.js';
 export type {
   MapGeocodingAddressInput,
   MapGeocodingCoordinates,

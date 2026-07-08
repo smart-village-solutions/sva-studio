@@ -10,6 +10,7 @@ import { Label } from '../../../components/ui/label';
 import { SearchableSelect } from '../../../components/ui/searchable-select';
 import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
+import type { IamUserPermissionTraceItem } from '@sva/core';
 import { t } from '../../../i18n';
 import { userErrorMessage } from './-user-error-message';
 import { useUserEditController } from './use-user-edit-controller';
@@ -33,6 +34,51 @@ type UserEditPageProps = {
   readonly invitationStatus?: 'failed';
   readonly invitationErrorMessage?: string;
 };
+
+type PermissionTraceEntryCardProps = {
+  readonly dashed?: boolean;
+  readonly detailLines: readonly string[];
+  readonly entry: IamUserPermissionTraceItem;
+  readonly runtimeScopeText: string | null;
+  readonly scopeText?: string | null;
+};
+
+const PermissionTraceEntryCard = ({
+  dashed = false,
+  detailLines,
+  entry,
+  runtimeScopeText,
+  scopeText,
+}: PermissionTraceEntryCardProps) => (
+  <li className={`rounded-lg border border-border bg-background p-3 ${dashed ? 'border-dashed' : ''}`}>
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <p className="font-medium text-foreground">{entry.permissionKey}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Badge variant="outline">{t(userEditTranslationKeys.permissionTraceStatus[entry.status])}</Badge>
+        {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
+      </div>
+    </div>
+    {scopeText !== undefined ? (
+      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+        <span>{t('admin.users.edit.permissionTrace.resourceType', { value: entry.resourceType })}</span>
+        {entry.organizationId ? (
+          <span>{t('admin.users.edit.permissionTrace.organization', { value: entry.organizationId })}</span>
+        ) : null}
+        {scopeText ? <span>{t('admin.users.edit.permissionTrace.scope', { value: scopeText })}</span> : null}
+      </div>
+    ) : null}
+    {detailLines.length > 0 ? (
+      <ul className="mt-3 grid gap-1 text-xs text-muted-foreground">
+        {detailLines.map((detail) => (
+          <li key={detail}>{detail}</li>
+        ))}
+      </ul>
+    ) : null}
+  </li>
+);
 
 export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage }: UserEditPageProps) => {
   const {
@@ -425,35 +471,13 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                   const detailLines = buildPermissionTraceDetails(entry);
                   const runtimeScopeText = describePermissionTraceRuntimeScope(entry);
                   return (
-                    <li
+                    <PermissionTraceEntryCard
                       key={`${entry.permissionKey}:${entry.sourceKind}:${entry.roleId ?? 'none'}:${entry.groupId ?? 'none'}:${index}`}
-                      className="rounded-lg border border-border bg-background p-3"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-foreground">{entry.permissionKey}</p>
-                          <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline">{t(userEditTranslationKeys.permissionTraceStatus[entry.status])}</Badge>
-                          {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
-                        </div>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                        <span>{t('admin.users.edit.permissionTrace.resourceType', { value: entry.resourceType })}</span>
-                        {entry.organizationId ? (
-                          <span>{t('admin.users.edit.permissionTrace.organization', { value: entry.organizationId })}</span>
-                        ) : null}
-                        {scopeText ? <span>{t('admin.users.edit.permissionTrace.scope', { value: scopeText })}</span> : null}
-                      </div>
-                      {detailLines.length > 0 ? (
-                        <ul className="mt-3 grid gap-1 text-xs text-muted-foreground">
-                          {detailLines.map((detail) => (
-                            <li key={detail}>{detail}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </li>
+                      detailLines={detailLines}
+                      entry={entry}
+                      runtimeScopeText={runtimeScopeText}
+                      scopeText={scopeText}
+                    />
                   );
                 })}
               </ul>
@@ -468,28 +492,13 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                   const detailLines = buildPermissionTraceDetails(entry);
                   const runtimeScopeText = describePermissionTraceRuntimeScope(entry);
                   return (
-                    <li
+                    <PermissionTraceEntryCard
                       key={`${entry.permissionKey}:${entry.sourceKind}:${entry.roleId ?? 'none'}:${entry.groupId ?? 'none'}:inactive:${index}`}
-                      className="rounded-lg border border-dashed border-border bg-background p-3"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-foreground">{entry.permissionKey}</p>
-                          <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline">{t(userEditTranslationKeys.permissionTraceStatus[entry.status])}</Badge>
-                          {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
-                        </div>
-                      </div>
-                      {detailLines.length > 0 ? (
-                        <ul className="mt-3 grid gap-1 text-xs text-muted-foreground">
-                          {detailLines.map((detail) => (
-                            <li key={detail}>{detail}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </li>
+                      dashed
+                      detailLines={detailLines}
+                      entry={entry}
+                      runtimeScopeText={runtimeScopeText}
+                    />
                   );
                 })}
               </ul>

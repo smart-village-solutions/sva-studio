@@ -1,18 +1,11 @@
+import { readFieldError } from '@sva/plugin-sdk';
 import { Checkbox, Input, StudioField, StudioFieldGroup, getStudioFormFieldProps } from '@sva/studio-ui-react';
-import { Controller, useFormContext, type FieldError } from 'react-hook-form';
+import { Controller, useFormContext } from 'react-hook-form';
 
 import { GenericItemsCategoryMultiselect } from './generic-items.category-multiselect.js';
 import type { GenericItemCategoryOption } from './generic-items.api-types.js';
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
 import { GenericItemsDetailCard } from './generic-items.detail-card.js';
-
-const readCategoryFieldError = (value: unknown): FieldError | undefined => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return undefined;
-  }
-
-  return 'message' in value || 'type' in value ? (value as FieldError) : undefined;
-};
 
 type GenericItemsDetailBasisTabProps = Readonly<{
   availableCategories: readonly GenericItemCategoryOption[];
@@ -42,7 +35,7 @@ const GenericItemsIdentityCard = ({
   const visibleField = getStudioFormFieldProps({ id: 'generic-item-visible', error: errors.visible });
   const categoriesField = getStudioFormFieldProps({
     id: 'generic-item-categories',
-    error: readCategoryFieldError(errors.categories),
+    error: readFieldError(errors.categories),
     hasDescription: true,
   });
 

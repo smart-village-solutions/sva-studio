@@ -1,5 +1,5 @@
 import type React from 'react';
-import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
+import { formatDateTimeInEditorTimeZone, readFieldError } from '@sva/plugin-sdk';
 import { Checkbox, Input, StudioField, StudioFormSummaryErrors, getStudioFormFieldProps } from '@sva/studio-ui-react';
 import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
 
@@ -37,14 +37,6 @@ const translateFieldError = (error: FieldError | undefined, pt: (key: string) =>
   };
 };
 
-const readCategoryFieldError = (value: unknown): FieldError | undefined => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return undefined;
-  }
-
-  return 'message' in value || 'type' in value ? (value as FieldError) : undefined;
-};
-
 export function PoiDetailBasisTab({
   availableCategories,
   categoryOptionsError,
@@ -73,7 +65,7 @@ export function PoiDetailBasisTab({
   });
   const categoryField = getStudioFormFieldProps({
     id: 'poi-categories',
-    error: translateFieldError(readCategoryFieldError(errors.basis?.categories), pt),
+    error: translateFieldError(readFieldError<FieldError>(errors.basis?.categories), pt),
     hasDescription: true,
   });
   const summaryErrors = collectSummaryErrors([nameField, categoryField]);

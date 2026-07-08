@@ -1544,16 +1544,6 @@ export const getDataExportStatus = async (
     timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
   });
 
-export const checkOptionalProcessing = async (): Promise<
-  | ApiItemResponse<{ status: 'ok'; executed: true }>
-  | { error: string; blockedByRestriction?: boolean; blockedByObjection?: boolean }
-> =>
-  requestJson('/iam/me/optional-processing/execute', {
-    method: 'POST',
-    headers: IAM_HEADERS,
-    body: JSON.stringify({}),
-  });
-
 export const listAdminDsrCases = async (
   query: DsrAdminCasesQuery,
   options?: IamRequestOptions

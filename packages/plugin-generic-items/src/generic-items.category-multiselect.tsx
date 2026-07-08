@@ -23,6 +23,89 @@ const normalizeName = (value: string) => value.trim();
 const dedupeCategoryNames = (values: readonly string[]) =>
   Array.from(new Set(values.map(normalizeName).filter((entry) => entry.length > 0)));
 
+const buildSuggestionNames = (availableCategories: readonly GenericItemCategoryOption[], normalizedValue: readonly string[]) =>
+  availableCategories
+    .map((category) => category.name.trim())
+    .filter((name) => name.length > 0 && normalizedValue.includes(name) === false);
+
+const filterSuggestionNames = (suggestionNames: readonly string[], draftValue: string) => {
+  const normalizedDraftValue = draftValue.trim().toLocaleLowerCase();
+  if (normalizedDraftValue.length === 0) {
+    return suggestionNames;
+  }
+
+  return suggestionNames.filter((name) => name.toLocaleLowerCase().includes(normalizedDraftValue));
+};
+
+const useGenericItemsCategorySelection = ({
+  availableCategories,
+  onChange,
+  value,
+}: Readonly<{
+  availableCategories: readonly GenericItemCategoryOption[];
+  onChange: (value: string[]) => void;
+  value: string[];
+}>) => {
+  const [draftValue, setDraftValue] = React.useState('');
+  const normalizedValue = dedupeCategoryNames(value);
+  const suggestionNames = React.useMemo(() => buildSuggestionNames(availableCategories, normalizedValue), [availableCategories, normalizedValue]);
+  const filteredSuggestionNames = React.useMemo(() => filterSuggestionNames(suggestionNames, draftValue), [draftValue, suggestionNames]);
+
+  const trySelectSuggestedCategory = React.useCallback(
+    (rawValue: string) => {
+      const nextName = normalizeName(rawValue);
+      if (nextName.length === 0) {
+        return false;
+      }
+
+      const matchingSuggestion = suggestionNames.find(
+        (name) => name.toLocaleLowerCase() === nextName.toLocaleLowerCase()
+      );
+      if (!matchingSuggestion) {
+        return false;
+      }
+
+      onChange(dedupeCategoryNames([...normalizedValue, matchingSuggestion]));
+      setDraftValue('');
+      return true;
+    },
+    [normalizedValue, onChange, suggestionNames]
+  );
+
+  const addCategory = React.useCallback(() => {
+    const nextName = normalizeName(draftValue);
+    if (nextName.length === 0) {
+      return;
+    }
+
+    const nextValue = dedupeCategoryNames([...normalizedValue, nextName]);
+    if (nextValue.length === normalizedValue.length) {
+      setDraftValue('');
+      return;
+    }
+
+    onChange(nextValue);
+    setDraftValue('');
+  }, [draftValue, normalizedValue, onChange]);
+
+  const removeCategory = React.useCallback(
+    (categoryName: string) => {
+      onChange(normalizedValue.filter((entry) => entry !== categoryName));
+    },
+    [normalizedValue, onChange]
+  );
+
+  return {
+    addCategory,
+    draftValue,
+    filteredSuggestionNames,
+    normalizedValue,
+    removeCategory,
+    setDraftValue,
+    trySelectSuggestedCategory,
+  };
+};
+
 const GenericItemsCategoryInput = ({
   addCategory,
   datalistId,
@@ -132,62 +215,9 @@ export function GenericItemsCategoryMultiselect({
   searchLabel,
   value,
 }: GenericItemsCategoryMultiselectProps) {
-  const [draftValue, setDraftValue] = React.useState('');
-  const normalizedValue = dedupeCategoryNames(value);
   const datalistId = React.useId();
-
-  const suggestionNames = availableCategories
-    .map((category) => category.name.trim())
-    .filter((name) => name.length > 0 && normalizedValue.includes(name) === false);
-
-  const filteredSuggestionNames =
-    draftValue.trim().length === 0
-      ? suggestionNames
-      : suggestionNames.filter((name) => name.toLocaleLowerCase().includes(draftValue.trim().toLocaleLowerCase()));
-
-  const trySelectSuggestedCategory = React.useCallback(
-    (rawValue: string) => {
-      const nextName = normalizeName(rawValue);
-      if (nextName.length === 0) {
-        return false;
-      }
-
-      const matchingSuggestion = suggestionNames.find(
-        (name) => name.toLocaleLowerCase() === nextName.toLocaleLowerCase()
-      );
-      if (!matchingSuggestion) {
-        return false;
-      }
-
-      onChange(dedupeCategoryNames([...normalizedValue, matchingSuggestion]));
-      setDraftValue('');
-      return true;
-    },
-    [normalizedValue, onChange, suggestionNames]
-  );
-
-  const addCategory = React.useCallback(() => {
-    const nextName = normalizeName(draftValue);
-    if (nextName.length === 0) {
-      return;
-    }
-
-    const nextValue = dedupeCategoryNames([...normalizedValue, nextName]);
-    if (nextValue.length === normalizedValue.length) {
-      setDraftValue('');
-      return;
-    }
-
-    onChange(nextValue);
-    setDraftValue('');
-  }, [draftValue, normalizedValue, onChange]);
-
-  const removeCategory = React.useCallback(
-    (categoryName: string) => {
-      onChange(normalizedValue.filter((entry) => entry !== categoryName));
-    },
-    [normalizedValue, onChange]
-  );
+  const { addCategory, draftValue, filteredSuggestionNames, normalizedValue, removeCategory, setDraftValue, trySelectSuggestedCategory } =
+    useGenericItemsCategorySelection({ availableCategories, onChange, value });
 
   return (
     <div className="space-y-3">

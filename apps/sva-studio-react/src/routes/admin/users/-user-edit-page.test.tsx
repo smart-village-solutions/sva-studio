@@ -652,13 +652,16 @@ describe('UserEditPage', () => {
       'Stadtwerke (stadtwerke)'
     );
 
+    fireEvent.change(screen.getByLabelText('Sichtbarkeit für neue Mitgliedschaft'), {
+      target: { value: 'external' },
+    });
     fireEvent.click(screen.getByLabelText('Als Default-Kontext setzen'));
     fireEvent.click(screen.getByRole('button', { name: 'Organisation zuweisen' }));
 
     await waitFor(() => {
       expect(assignMembership).toHaveBeenCalledWith('org-2', {
         accountId: 'user-1',
-        visibility: 'internal',
+        visibility: 'external',
         isDefaultContext: true,
       });
       expect(refetch).toHaveBeenCalled();
@@ -680,6 +683,65 @@ describe('UserEditPage', () => {
     await waitFor(() => {
       expect(removeMembership).toHaveBeenCalledWith('org-1', 'user-1');
     });
+  });
+
+  it('resets a pending organization assignment when the route is reused for another user', async () => {
+    const firstUser = baseUser;
+    const secondUser = {
+      ...baseUser,
+      id: 'user-2',
+      keycloakSubject: 'subject-2',
+      displayName: 'Bob Builder',
+      email: 'bob@example.com',
+      organizationMemberships: [],
+    };
+
+    useUserMock.mockReturnValue({
+      user: firstUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      save: vi.fn(),
+    });
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    const { rerender } = render(<UserEditPage userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Organisationen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation auswählen' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Stadtwerke (stadtwerke)' }));
+
+    expect(screen.getByRole('button', { name: 'Organisation auswählen' }).textContent).toContain('Stadtwerke');
+    expect((screen.getByRole('button', { name: 'Organisation zuweisen' }) as HTMLButtonElement).disabled).toBe(
+      false
+    );
+
+    useUserMock.mockReturnValue({
+      user: secondUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      save: vi.fn(),
+    });
+
+    rerender(<UserEditPage userId="user-2" />);
+
+    expect(screen.getByRole('button', { name: 'Organisation auswählen' }).textContent).toContain(
+      'Organisation für neue Zuordnung auswählen'
+    );
+    expect((screen.getByRole('button', { name: 'Organisation zuweisen' }) as HTMLButtonElement).disabled).toBe(
+      true
+    );
   });
 
   it('loads unified history entries and renders role validity windows', async () => {

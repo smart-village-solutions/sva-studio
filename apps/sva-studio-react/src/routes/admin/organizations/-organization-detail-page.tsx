@@ -52,6 +52,20 @@ type OrganizationMembershipDraft = {
   readonly isDefaultContext: boolean;
 };
 
+type MembershipAssignmentForm = {
+  readonly accountId: string;
+  readonly accountLabel: string;
+  readonly visibility: 'internal' | 'external';
+  readonly isDefaultContext: boolean;
+};
+
+const DEFAULT_MEMBERSHIP_FORM: MembershipAssignmentForm = {
+  accountId: '',
+  accountLabel: '',
+  visibility: 'internal',
+  isDefaultContext: false,
+};
+
 const buildMembershipDrafts = (
   memberships: NonNullable<ReturnType<typeof useOrganizations>['selectedOrganization']>['memberships']
 ): Record<string, OrganizationMembershipDraft> =>
@@ -68,10 +82,7 @@ const buildMembershipDrafts = (
 export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPageProps) => {
   const organizationsApi = useOrganizations();
   const { loadOrganization } = organizationsApi;
-  const [membershipForm, setMembershipForm] = React.useState({
-    accountId: '',
-    isDefaultContext: false,
-  });
+  const [membershipForm, setMembershipForm] = React.useState<MembershipAssignmentForm>(DEFAULT_MEMBERSHIP_FORM);
   const [membershipSearch, setMembershipSearch] = React.useState('');
   const [debouncedMembershipSearch, setDebouncedMembershipSearch] = React.useState('');
   const [membershipUsers, setMembershipUsers] = React.useState<readonly IamUserListItem[]>([]);
@@ -129,6 +140,12 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     setFormValues(toOrganizationFormValues(detail));
     setMembershipDrafts(buildMembershipDrafts(detail.memberships));
   }, [organizationId, organizationsApi.selectedOrganization]);
+
+  React.useEffect(() => {
+    setMembershipForm(DEFAULT_MEMBERSHIP_FORM);
+    setMembershipSearch('');
+    setDebouncedMembershipSearch('');
+  }, [organizationId]);
 
   const selectedOrganization =
     organizationsApi.selectedOrganization?.id === organizationId ? organizationsApi.selectedOrganization : null;
@@ -191,6 +208,29 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     () => membershipUsers.filter((user) => !assignedMembershipAccountIds.has(user.id)),
     [assignedMembershipAccountIds, membershipUsers]
   );
+  const selectedMembershipUser = React.useMemo(
+    () => availableMembershipUsers.find((user) => user.id === membershipForm.accountId) ?? null,
+    [availableMembershipUsers, membershipForm.accountId]
+  );
+  const selectedMembershipUserOption = React.useMemo(() => {
+    if (selectedMembershipUser) {
+      return {
+        value: selectedMembershipUser.id,
+        label: formatMembershipUserLabel(selectedMembershipUser),
+        keywords: [selectedMembershipUser.displayName, selectedMembershipUser.email ?? '', selectedMembershipUser.keycloakSubject],
+      };
+    }
+
+    if (!membershipForm.accountId || !membershipForm.accountLabel) {
+      return null;
+    }
+
+    return {
+      value: membershipForm.accountId,
+      label: membershipForm.accountLabel,
+      keywords: [membershipForm.accountLabel],
+    };
+  }, [membershipForm.accountId, membershipForm.accountLabel, selectedMembershipUser]);
 
   const onSubmitOrganization = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -205,14 +245,14 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
 
     const success = await organizationsApi.assignMembership(organizationId, {
       accountId: membershipForm.accountId,
-      visibility: 'internal',
+      visibility: membershipForm.visibility,
       isDefaultContext: membershipForm.isDefaultContext,
     });
     if (!success) {
       return;
     }
 
-    setMembershipForm({ accountId: '', isDefaultContext: false });
+    setMembershipForm(DEFAULT_MEMBERSHIP_FORM);
     setMembershipSearch('');
   };
 
@@ -415,10 +455,18 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                       label: formatMembershipUserLabel(user),
                       keywords: [user.displayName, user.email ?? '', user.keycloakSubject],
                     }))}
+                    selectedOption={selectedMembershipUserOption}
                     searchValue={membershipSearch}
                     onSearchValueChange={setMembershipSearch}
                     onValueChange={(accountId) =>
-                      setMembershipForm((current) => ({ ...current, accountId }))
+                      setMembershipForm((current) => {
+                        const selectedUser = availableMembershipUsers.find((user) => user.id === accountId);
+                        return {
+                          ...current,
+                          accountId,
+                          accountLabel: selectedUser ? formatMembershipUserLabel(selectedUser) : current.accountLabel,
+                        };
+                      })
                     }
                     disabled={membershipUsersLoading}
                   />
@@ -439,6 +487,24 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                   ) : null}
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-1 text-sm text-foreground">
+                    <Label htmlFor="membership-visibility">
+                      {t('admin.organizations.membershipsDialog.visibilityLabel')}
+                    </Label>
+                    <Select
+                      id="membership-visibility"
+                      value={membershipForm.visibility}
+                      onChange={(event) =>
+                        setMembershipForm((current) => ({
+                          ...current,
+                          visibility: event.target.value as 'internal' | 'external',
+                        }))
+                      }
+                    >
+                      <option value="internal">{t('admin.organizations.membershipsDialog.visibilityInternal')}</option>
+                      <option value="external">{t('admin.organizations.membershipsDialog.visibilityExternal')}</option>
+                    </Select>
+                  </div>
                   <Label htmlFor="membership-default" className="flex items-center gap-2 text-sm text-foreground">
                     <Checkbox
                       id="membership-default"
@@ -530,6 +596,9 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                               type="button"
                               size="sm"
                               variant="outline"
+                              aria-label={t('admin.organizations.membershipsDialog.saveMembershipLabel', {
+                                name: membership.displayName,
+                              })}
                               onClick={() => void saveMembership(membership.accountId)}
                             >
                               {t('admin.organizations.actions.save')}

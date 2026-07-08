@@ -10,7 +10,7 @@ import {
   type SearchableSelectOption,
 } from './searchable-select-option-list';
 
-type SearchableSelectProps = {
+type SearchableSelectBaseProps = {
   readonly id: string;
   readonly label: string;
   readonly value: string;
@@ -19,10 +19,22 @@ type SearchableSelectProps = {
   readonly emptyText: string;
   readonly options: readonly SearchableSelectOption[];
   readonly disabled?: boolean;
-  readonly searchValue?: string;
-  readonly onSearchValueChange?: (value: string) => void;
+  readonly selectedOption?: SearchableSelectOption | null;
   readonly onValueChange: (value: string) => void;
 };
+
+type SearchableSelectControlledSearchProps = {
+  readonly searchValue: string;
+  readonly onSearchValueChange: (value: string) => void;
+};
+
+type SearchableSelectUncontrolledSearchProps = {
+  readonly searchValue?: undefined;
+  readonly onSearchValueChange?: undefined;
+};
+
+type SearchableSelectProps = SearchableSelectBaseProps &
+  (SearchableSelectControlledSearchProps | SearchableSelectUncontrolledSearchProps);
 
 const normalizeSearch = (value: string) => value.trim().toLocaleLowerCase();
 const matchesOption = (option: SearchableSelectOption, search: string) => {
@@ -266,6 +278,7 @@ export const SearchableSelect = ({
   emptyText,
   options,
   disabled = false,
+  selectedOption,
   searchValue,
   onSearchValueChange,
   onValueChange,
@@ -276,7 +289,7 @@ export const SearchableSelect = ({
   const triggerRef = React.useRef<HTMLButtonElement | null>(null);
   const listboxId = `${id}-listbox`;
   const searchInputId = `${id}-search-input`;
-  const selectedOption = options.find((option) => option.value === value) ?? null;
+  const effectiveSelectedOption = selectedOption ?? options.find((option) => option.value === value) ?? null;
   const { activeIndex, close, effectiveSearchValue, filteredOptions, openWithActiveOption, setActiveIndex, setSearch } =
     useSearchableSelectState({ onSearchValueChange, options, searchValue, setOpen, value });
 
@@ -319,7 +332,7 @@ export const SearchableSelect = ({
         open={open}
         openWithActiveOption={openWithActiveOption}
         placeholder={placeholder}
-        selectedLabel={selectedOption?.label}
+        selectedLabel={effectiveSelectedOption?.label}
         triggerRef={triggerRef}
       />
 

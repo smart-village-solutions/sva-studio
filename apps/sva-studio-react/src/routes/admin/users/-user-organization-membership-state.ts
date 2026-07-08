@@ -13,12 +13,14 @@ type OrganizationMembershipDraft = {
 type OrganizationAssignment = {
   readonly organizationId: string;
   readonly organizationLabel: string;
+  readonly visibility: 'internal' | 'external';
   readonly isDefaultContext: boolean;
 };
 
 const DEFAULT_ORGANIZATION_ASSIGNMENT: OrganizationAssignment = {
   organizationId: '',
   organizationLabel: '',
+  visibility: 'internal',
   isDefaultContext: false,
 };
 
@@ -73,6 +75,12 @@ export const useUserOrganizationMembershipState = (input: {
     setOrganizationMembershipDrafts(buildOrganizationMembershipDrafts(input.user));
   }, [input.user]);
 
+  React.useEffect(() => {
+    setOrganizationAssignment(DEFAULT_ORGANIZATION_ASSIGNMENT);
+    setOrganizationSearchValue('');
+    organizationsApi.setSearch('');
+  }, [input.userId]);
+
   const assignedOrganizationIds = React.useMemo(() => buildAssignedOrganizationIds(input.user), [input.user]);
   const availableOrganizations = React.useMemo(
     () => filterAvailableOrganizations(organizationsApi.organizations, assignedOrganizationIds),
@@ -118,7 +126,7 @@ export const useUserOrganizationMembershipState = (input: {
 
     const updated = await organizationsApi.assignMembership(organizationAssignment.organizationId, {
       accountId: input.userId,
-      visibility: 'internal',
+      visibility: organizationAssignment.visibility,
       isDefaultContext: organizationAssignment.isDefaultContext,
     });
     if (!updated) {

@@ -136,4 +136,47 @@ describe('SearchableSelect', () => {
     expect(screen.queryByPlaceholderText('Suchen')).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
+
+  it('keeps showing a controlled remote selection after the search result resets', () => {
+    const onSearchValueChange = vi.fn();
+
+    const { rerender } = render(
+      <SearchableSelect
+        id="organization-select"
+        label="Organisation"
+        value="org-200"
+        placeholder="Bitte wählen"
+        searchPlaceholder="Suchen"
+        emptyText="Keine Treffer"
+        options={[{ value: 'org-200', label: 'Zweihundertstadt' }]}
+        selectedOption={{ value: 'org-200', label: 'Zweihundertstadt' }}
+        searchValue="zwei"
+        onSearchValueChange={onSearchValueChange}
+        onValueChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Zweihundertstadt' }));
+
+    expect(onSearchValueChange).toHaveBeenCalledWith('');
+
+    rerender(
+      <SearchableSelect
+        id="organization-select"
+        label="Organisation"
+        value="org-200"
+        placeholder="Bitte wählen"
+        searchPlaceholder="Suchen"
+        emptyText="Keine Treffer"
+        options={[]}
+        selectedOption={{ value: 'org-200', label: 'Zweihundertstadt' }}
+        searchValue=""
+        onSearchValueChange={onSearchValueChange}
+        onValueChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Organisation' }).textContent).toContain('Zweihundertstadt');
+  });
 });

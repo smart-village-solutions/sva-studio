@@ -165,6 +165,7 @@ export const usersAdminENResources = {
       searchPlaceholder: 'Filter by organization name or key',
       selectLabel: 'Select organization',
       selectPlaceholder: 'Select an organization to assign',
+      assignVisibilityLabel: 'Visibility for new membership',
       assignDefaultLabel: 'Set as default context',
       defaultContextLabel: 'Default context',
       membershipVisibilityLabel: 'Visibility for {{name}}',

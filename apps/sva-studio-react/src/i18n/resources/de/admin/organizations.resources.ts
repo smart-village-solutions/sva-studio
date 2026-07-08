@@ -79,6 +79,7 @@ export const organizationsAdminDEResources = {
     visibilityExternal: 'Extern',
     defaultLabel: 'Als Default-Kontext setzen',
     defaultBadge: 'Default',
+    saveMembershipLabel: 'Mitgliedschaft für {{name}} speichern',
     membersTitle: 'Zugeordnete Mitglieder',
     empty: 'Noch keine Mitgliedschaften vorhanden.',
     createdAt: 'Zugeordnet am {{value}}',

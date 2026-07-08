@@ -249,13 +249,17 @@ describe('OrganizationDetailPage', () => {
       });
 
       fireEvent.click(screen.getByRole('option', { name: 'Zoe Zebra <zoe@example.org>' }));
+      expect(screen.getByRole('button', { name: 'Account' }).textContent).toContain('Zoe Zebra <zoe@example.org>');
+      fireEvent.change(screen.getByLabelText('Sichtbarkeit', { selector: '#membership-visibility' }), {
+        target: { value: 'external' },
+      });
       fireEvent.click(document.getElementById('membership-default') as HTMLInputElement);
       fireEvent.click(screen.getByRole('button', { name: 'Mitglied zuweisen' }));
 
       await waitFor(() => {
         expect(assignMembership).toHaveBeenCalledWith('org-1', {
           accountId: 'user-101',
-          visibility: 'internal',
+          visibility: 'external',
           isDefaultContext: true,
         });
       });
@@ -264,7 +268,7 @@ describe('OrganizationDetailPage', () => {
         target: { value: 'external' },
       });
       fireEvent.click(document.getElementById('membership-default-user-1') as HTMLInputElement);
-      fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+      fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft für Anna Admin speichern' }));
 
       await waitFor(() => {
         expect(updateMembership).toHaveBeenCalledWith('org-1', 'user-1', {

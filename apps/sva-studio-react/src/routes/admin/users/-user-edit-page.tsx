@@ -126,35 +126,34 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
   } = useUserEditController({ userId });
 
   const mutationError = userApi.mutationError ?? organizationMutationError;
-  const organizationOptions = React.useMemo(() => {
-    const options = availableOrganizations.map((organization) => ({
-      value: organization.id,
-      label: `${organization.displayName} (${organization.organizationKey})`,
-      keywords: [organization.displayName, organization.organizationKey],
-    }));
-
-    if (
-      !organizationAssignment.organizationId ||
-      selectedAssignableOrganization ||
-      !organizationAssignment.organizationLabel
-    ) {
-      return options;
+  const organizationOptions = React.useMemo(
+    () =>
+      availableOrganizations.map((organization) => ({
+        value: organization.id,
+        label: `${organization.displayName} (${organization.organizationKey})`,
+        keywords: [organization.displayName, organization.organizationKey],
+      })),
+    [availableOrganizations]
+  );
+  const selectedOrganizationOption = React.useMemo(() => {
+    if (selectedAssignableOrganization) {
+      return {
+        value: selectedAssignableOrganization.id,
+        label: `${selectedAssignableOrganization.displayName} (${selectedAssignableOrganization.organizationKey})`,
+        keywords: [selectedAssignableOrganization.displayName, selectedAssignableOrganization.organizationKey],
+      };
     }
 
-    return [
-      {
-        value: organizationAssignment.organizationId,
-        label: organizationAssignment.organizationLabel,
-        keywords: [organizationAssignment.organizationLabel],
-      },
-      ...options,
-    ];
-  }, [
-    availableOrganizations,
-    organizationAssignment.organizationId,
-    organizationAssignment.organizationLabel,
-    selectedAssignableOrganization,
-  ]);
+    if (!organizationAssignment.organizationId || !organizationAssignment.organizationLabel) {
+      return null;
+    }
+
+    return {
+      value: organizationAssignment.organizationId,
+      label: organizationAssignment.organizationLabel,
+      keywords: [organizationAssignment.organizationLabel],
+    };
+  }, [organizationAssignment.organizationId, organizationAssignment.organizationLabel, selectedAssignableOrganization]);
 
   if (userApi.isLoading) {
     return (
@@ -582,10 +581,29 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                 searchPlaceholder={t('admin.users.edit.organizations.searchPlaceholder')}
                 emptyText={t('admin.users.edit.organizations.empty')}
                 options={organizationOptions}
+                selectedOption={selectedOrganizationOption}
                 searchValue={organizationSearchValue}
                 onSearchValueChange={setOrganizationSearchValue}
                 onValueChange={selectOrganizationAssignment}
               />
+            </div>
+            <div className="grid gap-1 text-sm text-foreground">
+              <Label htmlFor="user-organization-visibility">
+                {t('admin.users.edit.organizations.assignVisibilityLabel')}
+              </Label>
+              <Select
+                id="user-organization-visibility"
+                value={organizationAssignment.visibility}
+                onChange={(event) =>
+                  setOrganizationAssignment((current) => ({
+                    ...current,
+                    visibility: event.target.value as 'internal' | 'external',
+                  }))
+                }
+              >
+                <option value="internal">{t('admin.users.edit.organizations.visibility.internal')}</option>
+                <option value="external">{t('admin.users.edit.organizations.visibility.external')}</option>
+              </Select>
             </div>
             <Label htmlFor="user-organization-default" className="flex items-center gap-2 text-sm text-foreground">
               <Checkbox

@@ -21,6 +21,14 @@ const logger = createSdkLogger({
   level: 'info',
 });
 
+const mainserverCollectionSegments = new Set([
+  'news',
+  'events',
+  'poi',
+  'generic-items',
+  'surveys',
+]);
+
 const shouldRefreshProjectionForRequest = (request: Request, response: Response): boolean =>
   response.ok &&
   request.method !== 'GET' &&
@@ -41,7 +49,7 @@ const parseMutationOperation = (
 const parseEntityIdFromRequestPath = (request: Request): string | undefined => {
   const pathname = new URL(request.url).pathname;
   const lastSegment = pathname.split('/').filter((segment) => segment.length > 0).at(-1);
-  return lastSegment && lastSegment !== 'news' && lastSegment !== 'events' && lastSegment !== 'poi'
+  return lastSegment && !mainserverCollectionSegments.has(lastSegment)
     ? lastSegment
     : undefined;
 };

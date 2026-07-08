@@ -89,6 +89,32 @@ describe('mainserver projection refresh', () => {
     });
   });
 
+  it('does not treat generic-items and surveys collection paths as entity ids when the response has no item id', async () => {
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/generic-items', { method: 'POST' }),
+      new Response('created', { status: 200, headers: { 'content-type': 'text/plain' } }),
+      'generic-items.generic-item'
+    );
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/surveys', { method: 'POST' }),
+      new Response('created', { status: 200, headers: { 'content-type': 'text/plain' } }),
+      'surveys.survey'
+    );
+
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(
+      1,
+      expect.not.objectContaining({
+        entityId: 'generic-items',
+      })
+    );
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(
+      2,
+      expect.not.objectContaining({
+        entityId: 'surveys',
+      })
+    );
+  });
+
   it('derives delete refresh identity from the request path', async () => {
     await refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/events/event-9', { method: 'DELETE' }),

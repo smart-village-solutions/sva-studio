@@ -142,7 +142,10 @@ describe('content list projection', () => {
   >;
   let projectionInsertArgs: readonly unknown[] | null;
   let projectionInsertSql: string | null;
+  let projectionInsertPayloadSizes: number[];
   let simulateConcurrentProjectionConflict: boolean;
+  let syncScopeKeyColumnAvailable: boolean;
+  let projectionScopeKeyColumnAvailable: boolean;
 
   const buildScopeKey = (
     row: Pick<
@@ -254,7 +257,10 @@ describe('content list projection', () => {
     syncStates = new Map();
     projectionInsertArgs = null;
     projectionInsertSql = null;
+    projectionInsertPayloadSizes = [];
     simulateConcurrentProjectionConflict = false;
+    syncScopeKeyColumnAvailable = true;
+    projectionScopeKeyColumnAvailable = true;
     state.authorizeContentPrimitiveForUser.mockReset();
     state.resolveActorAccountId.mockReset();
     state.resolveEffectivePermissions.mockReset();
@@ -317,6 +323,19 @@ describe('content list projection', () => {
       ) =>
         work({
           query: async <TRow>(text: string, values?: readonly unknown[]) => {
+            if (text.includes('FROM information_schema.columns')) {
+              if (text.includes("column_name = 'projection_scope_key'")) {
+                return {
+                  rows: [{ has_projection_scope_key: projectionScopeKeyColumnAvailable }] as TRow[],
+                  rowCount: 1,
+                };
+              }
+              return {
+                rows: [{ has_sync_scope_key: syncScopeKeyColumnAvailable }] as TRow[],
+                rowCount: 1,
+              };
+            }
+
             if (text.includes('FROM iam.content_list_projection_sync_state')) {
               const contentType = String(values?.[1] ?? '');
               const syncScopeKey = String(values?.[2] ?? '');
@@ -340,7 +359,10 @@ describe('content list projection', () => {
 
             if (text.includes('INSERT INTO iam.content_list_projection_sync_state')) {
               const contentType = String(values?.[1] ?? '');
-              const syncScopeKey = String(values?.[2] ?? '');
+              const syncScopeKey =
+                typeof values?.[2] === 'string' && syncScopeKeyColumnAvailable
+                  ? values[2]
+                  : contentType;
               const syncStateKey = `${contentType}::${syncScopeKey}`;
               if ((values?.length ?? 0) === 5) {
                 const nextValue = {
@@ -403,30 +425,37 @@ describe('content list projection', () => {
             ) {
               const instanceId = String(values?.[0] ?? '');
               const contentType = String(values?.[1] ?? '');
-              const projectionScopeKey = String(values?.[2] ?? '');
+              const projectionScopeKey =
+                projectionScopeKeyColumnAvailable ? String(values?.[2] ?? '') : null;
               const total = projectionRows.filter(
                 (row) =>
                   row.instance_id === instanceId &&
                   row.source_system === 'mainserver' &&
                   row.content_type === contentType &&
-                  row.projection_scope_key === projectionScopeKey
+                  (projectionScopeKeyColumnAvailable
+                    ? row.projection_scope_key === projectionScopeKey
+                    : true)
               ).length;
               return { rows: [{ total }] as TRow[], rowCount: 1 };
             }
 
             if (text.includes('DELETE FROM iam.content_list_projection')) {
               const contentType = String(values?.[1] ?? '');
-              const projectionScopeKey = String(values?.[2] ?? '');
-              const sourceEntityId = typeof values?.[4] === 'string' ? values[4] : null;
-              const retainedEntityIds = Array.isArray(values?.[4])
-                ? values[4].filter((value): value is string => typeof value === 'string')
+              const projectionScopeKey =
+                projectionScopeKeyColumnAvailable ? String(values?.[2] ?? '') : null;
+              const entityValue = values?.[projectionScopeKeyColumnAvailable ? 4 : 3];
+              const sourceEntityId = typeof entityValue === 'string' ? entityValue : null;
+              const retainedEntityIds = Array.isArray(entityValue)
+                ? entityValue.filter((value): value is string => typeof value === 'string')
                 : null;
               projectionRows = projectionRows.filter(
                 (row) =>
                   !(
                     row.source_system === 'mainserver' &&
                     row.content_type === contentType &&
-                    row.projection_scope_key === projectionScopeKey &&
+                    (projectionScopeKeyColumnAvailable
+                      ? row.projection_scope_key === projectionScopeKey
+                      : true) &&
                     (
                       retainedEntityIds
                         ? !retainedEntityIds.includes(row.source_entity_id)
@@ -440,6 +469,9 @@ describe('content list projection', () => {
             if (text.includes('INSERT INTO iam.content_list_projection')) {
               projectionInsertArgs = values ?? null;
               projectionInsertSql = text;
+              projectionInsertPayloadSizes.push(
+                (JSON.parse(String(values?.[0] ?? '[]')) as unknown[]).length
+              );
               const rows = JSON.parse(String(values?.[0] ?? '[]')) as Array<
                 Record<string, unknown>
               >;
@@ -569,6 +601,129 @@ describe('content list projection', () => {
     );
     expect(syncStates.get('news.article')?.last_started_at).toBeTruthy();
     expect(projectionInsertArgs).toHaveLength(1);
+  });
+
+  it('falls back to the legacy sync-state schema when sync_scope_key is not available yet', async () => {
+    syncScopeKeyColumnAvailable = false;
+    projectionRows = [
+      {
+        id: 'news-1',
+        instance_id: 'de-musterhausen',
+        projection_scope_key: 'de-musterhausen::missing-account:kc-user-1::org-1::news.article',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        owner_user_id: null,
+        owner_organization_id: 'org-1',
+        content_type: 'news.article',
+        title: 'Legacy Snapshot',
+        published_at: '2026-06-21T09:00:00.000Z',
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_name: 'Redaktion',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-legacy-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'mainserver',
+        source_entity_type: 'news.article',
+        source_entity_id: 'news-1',
+      },
+    ];
+    syncStates.set('news.article', {
+      last_started_at: null,
+      last_succeeded_at: '2026-06-20T10:00:00.000Z',
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 1,
+    });
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['news.article'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    const payload = (await response.json()) as {
+      data: Array<{ id: string }>;
+      metadata: {
+        mainserverSyncStates: Array<{ contentType: string; hasSnapshot: boolean }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual([expect.objectContaining({ id: 'news-1' })]);
+    expect(
+      payload.metadata.mainserverSyncStates.some((entry) => entry.contentType === 'news.article')
+    ).toBe(true);
+  });
+
+  it('falls back to the legacy projection schema when projection_scope_key is not available yet', async () => {
+    syncScopeKeyColumnAvailable = false;
+    projectionScopeKeyColumnAvailable = false;
+    projectionRows = [
+      {
+        id: 'news-legacy-projection-1',
+        instance_id: 'de-musterhausen',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        owner_user_id: null,
+        owner_organization_id: 'org-1',
+        content_type: 'news.article',
+        title: 'Legacy Projektion',
+        published_at: '2026-06-21T09:00:00.000Z',
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_name: 'Redaktion',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-legacy-projection-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'mainserver',
+        source_entity_type: 'news.article',
+        source_entity_id: 'news-legacy-projection-1',
+      },
+    ];
+    syncStates.set('news.article', {
+      last_started_at: null,
+      last_succeeded_at: new Date().toISOString(),
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 1,
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['news.article'],
+      force: false,
+    });
+
+    await expect(response.json()).resolves.toEqual({
+      data: {
+        status: 'completed',
+        syncStates: [
+          expect.objectContaining({
+            contentType: 'news.article',
+            hasSnapshot: true,
+          }),
+        ],
+      },
+      requestId: 'req-1',
+    });
   });
 
   it('persists the resolved mainserver credential source for organization-scoped projections', async () => {
@@ -1960,6 +2115,70 @@ describe('content list projection', () => {
     );
   });
 
+  it('upserts only the latest loaded page during progressive batch refreshes', async () => {
+    state.listSvaMainserverEvents
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'event-page-1',
+            title: 'Seite 1',
+            contentType: 'events.event-record',
+            status: 'published',
+            dates: [],
+            recurringWeekdays: [],
+            categories: [],
+            addresses: [],
+            contacts: [],
+            urls: [],
+            mediaContents: [],
+            priceInformations: [],
+            tags: [],
+            visible: true,
+            createdAt: '2026-06-20T10:00:00.000Z',
+            updatedAt: '2026-06-21T10:00:00.000Z',
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, hasNextPage: true },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'event-page-2',
+            title: 'Seite 2',
+            contentType: 'events.event-record',
+            status: 'published',
+            dates: [],
+            recurringWeekdays: [],
+            categories: [],
+            addresses: [],
+            contacts: [],
+            urls: [],
+            mediaContents: [],
+            priceInformations: [],
+            tags: [],
+            visible: true,
+            createdAt: '2026-06-20T10:00:00.000Z',
+            updatedAt: '2026-06-21T10:00:00.000Z',
+          },
+        ],
+        pagination: { page: 2, pageSize: 25, hasNextPage: false },
+      });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['events.event-record'],
+      force: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect(projectionInsertPayloadSizes).toEqual([1, 1, 2]);
+    expect(projectionRows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source_entity_id: 'event-page-1' }),
+        expect.objectContaining({ source_entity_id: 'event-page-2' }),
+      ])
+    );
+  });
+
   it('loads surveys once with the projection sync page size before replacing the projection snapshot', async () => {
     state.listSvaMainserverSurveys.mockResolvedValue({
       data: Array.from({ length: 101 }, (_, index) => ({
@@ -2351,6 +2570,89 @@ describe('content list projection', () => {
         source_entity_id: 'poi-keep-1',
       }),
     ]);
+  });
+
+  it('serializes targeted mutation refreshes behind a running batch refresh for the same scope', async () => {
+    const releaseBatchList = { current: null as (() => void) | null };
+    const batchListStarted = new Promise<void>((resolve) => {
+      releaseBatchList.current = resolve;
+    });
+
+    state.listSvaMainserverPoi.mockImplementation(async () => {
+      await batchListStarted;
+      return {
+        data: [
+          {
+            id: 'poi-batch-1',
+            name: 'Batch POI',
+            contentType: 'poi.point-of-interest' as const,
+            status: 'published' as const,
+            active: true,
+            categories: [],
+            addresses: [],
+            priceInformations: [],
+            openingHours: [],
+            webUrls: [],
+            mediaContents: [],
+            certificates: [],
+            tags: [],
+            visible: true,
+            createdAt: '2026-06-20T10:00:00.000Z',
+            updatedAt: '2026-06-21T10:00:00.000Z',
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, hasNextPage: false },
+      };
+    });
+    state.getSvaMainserverPoi.mockResolvedValue({
+      id: 'poi-mutation-queued-1',
+      name: 'Mutation POI',
+      contentType: 'poi.point-of-interest',
+      status: 'published',
+      active: true,
+      categories: [],
+      addresses: [],
+      priceInformations: [],
+      openingHours: [],
+      webUrls: [],
+      mediaContents: [],
+      certificates: [],
+      tags: [],
+      visible: true,
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    });
+
+    const batchRefreshPromise = refreshProjectedContents(ctx, {
+      visibleTypes: ['poi.point-of-interest'],
+      force: true,
+    });
+
+    await Promise.resolve();
+
+    const mutationRefreshPromise = refreshProjectedContentsForMainserverMutation({
+      contentType: 'poi.point-of-interest',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      organizationId: 'org-1',
+      operation: 'update',
+      entityId: 'poi-mutation-queued-1',
+    });
+
+    await Promise.resolve();
+    expect(state.getSvaMainserverPoi).not.toHaveBeenCalled();
+
+    releaseBatchList.current?.();
+
+    await expect(batchRefreshPromise).resolves.toBeInstanceOf(Response);
+    await expect(mutationRefreshPromise).resolves.toBeUndefined();
+    expect(projectionRows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source_entity_id: 'poi-batch-1' }),
+        expect.objectContaining({ source_entity_id: 'poi-mutation-queued-1' }),
+      ])
+    );
   });
 
   it('keeps stale snapshots visible after a targeted mutation refresh fails and leaves reconciliation responsible', async () => {

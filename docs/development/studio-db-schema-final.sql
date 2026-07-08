@@ -109,6 +109,37 @@ $$;
 
 
 --
+-- Name: build_content_list_projection_scope_key(text, text, text, text, text, uuid, text, uuid, uuid); Type: FUNCTION; Schema: iam; Owner: -
+--
+
+CREATE FUNCTION iam.build_content_list_projection_scope_key(p_instance_id text, p_source_system text, p_source_entity_type text, p_source_entity_id text, p_content_type text, p_organization_id uuid, p_owner_subject_id text, p_owner_user_id uuid, p_owner_organization_id uuid) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT CASE
+    WHEN p_source_system = 'mainserver' THEN
+      concat_ws(
+        '::',
+        p_instance_id,
+        COALESCE(p_owner_user_id::text, 'missing-account:' || COALESCE(NULLIF(p_owner_subject_id, ''), 'unknown-subject')),
+        COALESCE(p_owner_organization_id::text, p_organization_id::text, 'no-organization'),
+        p_content_type
+      )
+    ELSE
+      concat_ws(
+        '::',
+        p_instance_id,
+        p_source_system,
+        p_source_entity_type,
+        p_source_entity_id,
+        COALESCE(p_organization_id::text, 'no-organization'),
+        COALESCE(p_owner_user_id::text, NULLIF(p_owner_subject_id, ''), 'no-owner-user'),
+        COALESCE(p_owner_organization_id::text, 'no-owner-organization')
+      )
+  END;
+$$;
+
+
+--
 -- Name: prevent_activity_logs_mutation(); Type: FUNCTION; Schema: iam; Owner: -
 --
 
@@ -159,6 +190,7 @@ BEGIN
       instance_id,
       source_system,
       content_type,
+      sync_scope_key,
       sync_mode,
       last_succeeded_at,
       projected_count,
@@ -168,16 +200,18 @@ BEGIN
       OLD.instance_id,
       'iam',
       OLD.content_type,
+      OLD.content_type,
       'full_refresh',
       NOW(),
       0,
       NOW()
     )
-    ON CONFLICT (instance_id, source_system, content_type)
+    ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
     DO UPDATE SET
       last_succeeded_at = EXCLUDED.last_succeeded_at,
       last_error_code = NULL,
       last_error_message = NULL,
+      projected_count = EXCLUDED.projected_count,
       updated_at = EXCLUDED.updated_at;
 
     RETURN OLD;
@@ -194,6 +228,7 @@ BEGIN
   INSERT INTO iam.content_list_projection (
     id,
     instance_id,
+    projection_scope_key,
     organization_id,
     owner_subject_id,
     owner_user_id,
@@ -223,6 +258,7 @@ BEGIN
   VALUES (
     NEW.id::text,
     NEW.instance_id,
+    iam.build_content_list_projection_scope_key(NEW.instance_id, 'iam', 'iam.contents', NEW.id::text, NEW.content_type, NEW.organization_id, NEW.owner_subject_id, NEW.owner_user_id, NEW.owner_organization_id),
     NEW.organization_id,
     NEW.owner_subject_id,
     NEW.owner_user_id,
@@ -252,6 +288,7 @@ BEGIN
   ON CONFLICT ON CONSTRAINT content_list_projection_scope_key
   DO UPDATE SET
     id = EXCLUDED.id,
+    projection_scope_key = EXCLUDED.projection_scope_key,
     organization_id = EXCLUDED.organization_id,
     owner_subject_id = EXCLUDED.owner_subject_id,
     owner_user_id = EXCLUDED.owner_user_id,
@@ -279,6 +316,7 @@ BEGIN
     instance_id,
     source_system,
     content_type,
+    sync_scope_key,
     sync_mode,
     last_succeeded_at,
     projected_count,
@@ -288,16 +326,18 @@ BEGIN
     NEW.instance_id,
     'iam',
     NEW.content_type,
+    NEW.content_type,
     'full_refresh',
     NOW(),
     1,
     NOW()
   )
-  ON CONFLICT (instance_id, source_system, content_type)
+  ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
   DO UPDATE SET
     last_succeeded_at = EXCLUDED.last_succeeded_at,
     last_error_code = NULL,
     last_error_message = NULL,
+    projected_count = EXCLUDED.projected_count,
     updated_at = EXCLUDED.updated_at;
 
   RETURN NEW;
@@ -501,6 +541,7 @@ CREATE TABLE iam.content_history (
 CREATE TABLE iam.content_list_projection (
     id text NOT NULL,
     instance_id text NOT NULL,
+    projection_scope_key text NOT NULL,
     organization_id uuid,
     owner_subject_id text,
     content_type text NOT NULL,
@@ -545,6 +586,7 @@ CREATE TABLE iam.content_list_projection_sync_state (
     instance_id text NOT NULL,
     source_system text NOT NULL,
     content_type text NOT NULL,
+    sync_scope_key text NOT NULL,
     sync_mode text DEFAULT 'full_refresh'::text NOT NULL,
     last_started_at timestamp with time zone,
     last_succeeded_at timestamp with time zone,
@@ -1695,7 +1737,7 @@ ALTER TABLE ONLY iam.content_history
 --
 
 ALTER TABLE ONLY iam.content_list_projection
-    ADD CONSTRAINT content_list_projection_scope_key UNIQUE NULLS NOT DISTINCT (instance_id, source_system, source_entity_type, source_entity_id, organization_id, owner_user_id, owner_organization_id);
+    ADD CONSTRAINT content_list_projection_scope_key UNIQUE NULLS NOT DISTINCT (instance_id, source_system, source_entity_type, source_entity_id, projection_scope_key);
 
 
 --
@@ -1703,7 +1745,7 @@ ALTER TABLE ONLY iam.content_list_projection
 --
 
 ALTER TABLE ONLY iam.content_list_projection_sync_state
-    ADD CONSTRAINT content_list_projection_sync_state_pkey PRIMARY KEY (instance_id, source_system, content_type);
+    ADD CONSTRAINT content_list_projection_sync_state_pkey PRIMARY KEY (instance_id, source_system, content_type, sync_scope_key);
 
 
 --
@@ -2221,6 +2263,13 @@ CREATE INDEX iam_content_history_instance_content_created_idx ON iam.content_his
 --
 
 CREATE INDEX iam_content_list_projection_instance_org_updated_idx ON iam.content_list_projection USING btree (instance_id, organization_id, updated_at DESC);
+
+
+--
+-- Name: iam_content_list_projection_mainserver_scope_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX iam_content_list_projection_mainserver_scope_idx ON iam.content_list_projection USING btree (instance_id, source_system, content_type, projection_scope_key);
 
 
 --

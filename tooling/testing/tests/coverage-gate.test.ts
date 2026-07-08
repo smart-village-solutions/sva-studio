@@ -3,7 +3,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { runCoverageGate } from '../../../scripts/ci/coverage-gate.ts';
+import {
+  findCoverageArtifacts,
+  findCoverageSummaries,
+  runCoverageGate,
+} from '../../../scripts/ci/coverage-gate.ts';
 
 const createdDirs: string[] = [];
 
@@ -155,6 +159,27 @@ afterEach(() => {
 });
 
 describe('coverage gate', () => {
+  it('reads coverage artifacts only from project-root coverage directories', () => {
+    const rootDir = createTempWorkspace();
+    ensureProjectManifest(rootDir, 'packages/server-runtime');
+
+    const projectCoverageDir = path.join(rootDir, 'packages/server-runtime/coverage');
+    const nestedCoverageDir = path.join(rootDir, 'packages/server-runtime/src/coverage');
+    fs.mkdirSync(projectCoverageDir, { recursive: true });
+    fs.mkdirSync(nestedCoverageDir, { recursive: true });
+    fs.writeFileSync(path.join(projectCoverageDir, 'coverage-summary.json'), '{}');
+    fs.writeFileSync(path.join(projectCoverageDir, 'lcov.info'), 'TN:\n');
+    fs.writeFileSync(path.join(nestedCoverageDir, 'coverage-summary.json'), '{}');
+    fs.writeFileSync(path.join(nestedCoverageDir, 'lcov.info'), 'TN:\n');
+
+    expect(findCoverageSummaries(path.join(rootDir, 'packages'))).toEqual([
+      path.join(rootDir, 'packages/server-runtime/coverage/coverage-summary.json'),
+    ]);
+    expect(findCoverageArtifacts(path.join(rootDir, 'packages'), 'lcov.info')).toEqual([
+      path.join(rootDir, 'packages/server-runtime/coverage/lcov.info'),
+    ]);
+  });
+
   it('fails when policy file is missing', () => {
     const rootDir = createTempWorkspace();
 

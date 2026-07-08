@@ -255,6 +255,14 @@ export function findCoverageSummaries(dir: string, results: string[] = []): stri
     return results;
   }
 
+  if (isWorkspaceProjectRoot(dir)) {
+    const summaryPath = path.join(dir, 'coverage', 'coverage-summary.json');
+    if (fs.existsSync(summaryPath)) {
+      results.push(summaryPath);
+    }
+    return results;
+  }
+
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     const entryPath = path.join(dir, entry.name);
@@ -281,6 +289,14 @@ export function findCoverageSummaries(dir: string, results: string[] = []): stri
 
 export function findCoverageArtifacts(dir: string, fileName: string, results: string[] = []): string[] {
   if (!fs.existsSync(dir)) {
+    return results;
+  }
+
+  if (isWorkspaceProjectRoot(dir)) {
+    const artifactPath = path.join(dir, 'coverage', fileName);
+    if (fs.existsSync(artifactPath)) {
+      results.push(artifactPath);
+    }
     return results;
   }
 

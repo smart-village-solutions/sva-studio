@@ -120,7 +120,7 @@ Der bevorzugte Ablauf ist:
 
 1. PR wird gemergt
 2. ein Workflow auf `main` sammelt alle Entry-Dateien ein
-3. die Einträge werden chronologisch in ein kanonisches JSON-Artefakt
+3. die Einträge werden nach absteigender PR-Nummer in ein kanonisches JSON-Artefakt
    überführt
 4. das Studio liest genau dieses Artefakt für die Anzeige
 
@@ -134,7 +134,7 @@ nach Merge nach `main`.
 
 ## Studio-Anzeige
 
-Im Studio wird eine einfache chronologische Liste der letzten
+Im Studio wird eine einfache Liste der letzten
 Änderungen angezeigt. Es gibt bewusst keine zusätzliche Kategorisierung
 und keine sichtbare Versionsnummer als primären Vertrag.
 
@@ -142,7 +142,7 @@ Wesentliche Anforderungen:
 
 - nur die neuesten Einträge anzeigen
 - Markdown sicher und eingeschränkt rendern
-- stabile Reihenfolge nach Merge-Zeitpunkt
+- stabile Reihenfolge nach PR-Nummer
 - direkte Lesbarkeit ohne GitHub-Kontext
 
 Ein sinnvoller erster Vertrag ist eine begrenzte Historie, etwa die

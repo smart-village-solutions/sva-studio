@@ -68,7 +68,7 @@ pnpm check:studio-changelog
 
 ## Studio-Anzeige
 
-Beim Studio-Build wird aus den letzten 20 gültigen Einträgen zunächst ein
+Beim Studio-Build wird aus den 20 höchsten gültigen PR-Nummern zunächst ein
 Zwischenartefakt unter
 `apps/sva-studio-react/.generated/studio-changelog.json`
 erzeugt. Dieses wird anschließend in das Runtime-Artefakt unter

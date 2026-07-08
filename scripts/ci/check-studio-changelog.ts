@@ -1,15 +1,17 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 import {
   compareStudioChangelogEntriesDescending,
   parseStudioChangelogEntryDocument,
   parseStudioChangelogEntryPathPrNumber,
-  STUDIO_CHANGELOG_ENTRY_DIRECTORY,
   STUDIO_CHANGELOG_ENTRY_LIMIT,
   STUDIO_CHANGELOG_ENTRY_PATTERN,
 } from '../../apps/sva-studio-react/src/lib/studio-changelog.shared.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
+import {
+  listStudioChangelogEntryFiles,
+  resolveStudioChangelogWorkspaceRoot,
+} from './studio-changelog-entry-files.ts';
 
 type StudioChangelogEntry = {
   prNumber: number;
@@ -176,14 +178,6 @@ export const validateStudioChangelogRepository = (input: RepositoryValidationInp
 
 const readEntryFile = (filePath: string): string => readFileSync(filePath, 'utf8');
 
-const listRepositoryEntryFiles = (): string[] => {
-  const output = execFileSync('git', ['ls-files', `${STUDIO_CHANGELOG_ENTRY_DIRECTORY}/*.json`], {
-    encoding: 'utf8',
-  }).trim();
-
-  return output.length === 0 ? [] : output.split('\n').map((line) => line.trim()).filter(Boolean);
-};
-
 export const runStudioChangelogCheck = (args: readonly string[]): number => {
   const options = parseCliOptions(args);
 
@@ -214,7 +208,7 @@ export const runStudioChangelogCheck = (args: readonly string[]): number => {
   }
 
   const entries = validateStudioChangelogRepository({
-    entryFiles: listRepositoryEntryFiles(),
+    entryFiles: listStudioChangelogEntryFiles(resolveStudioChangelogWorkspaceRoot()),
     readFile: readEntryFile,
   });
 

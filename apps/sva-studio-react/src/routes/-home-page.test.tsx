@@ -41,7 +41,6 @@ describe('HomePage', () => {
               {
                 prNumber: 412,
                 body: 'Allgemeine Verbesserungen\n\n- Stabilere Speicherung',
-                mergedAt: '2026-07-06T10:00:00.000Z',
               },
             ],
           }),

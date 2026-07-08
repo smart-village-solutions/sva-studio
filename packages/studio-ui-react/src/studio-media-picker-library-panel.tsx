@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { Button } from './button.js';
 import { Input } from './input.js';
 import {

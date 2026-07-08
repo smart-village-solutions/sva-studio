@@ -5,8 +5,8 @@ import {
   useStudioMediaPickerOverlayLifecycle,
   useStudioMediaPickerOverlayReviewActions,
   useStudioMediaPickerOverlayState,
-  useStudioMediaPickerOverlaySubmissionActions,
 } from './use-studio-media-picker-overlay.helpers.js';
+import { useStudioMediaPickerOverlaySubmissionActions } from './use-studio-media-picker-overlay.submission.js';
 
 type UseStudioMediaPickerOverlayOptions<TAssetDetail extends StudioMediaPickerAssetDetail> = Readonly<{
   onAccept: (asset: TAssetDetail) => void;

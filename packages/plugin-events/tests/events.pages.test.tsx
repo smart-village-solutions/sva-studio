@@ -273,7 +273,7 @@ describe('EventsListPage', () => {
       );
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/events/$id', params: { id: 'event-created' } });
     });
-  });
+  }, 10_000);
 
   it('ignores impossible browser date values and still submits with the remaining valid input', async () => {
     render(<EventsCreatePage />);

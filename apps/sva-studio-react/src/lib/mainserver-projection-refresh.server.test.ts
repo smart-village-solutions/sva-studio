@@ -89,6 +89,42 @@ describe('mainserver projection refresh', () => {
     });
   });
 
+  it('does not treat collection segments as entity ids when create responses omit data ids', async () => {
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/generic-items', { method: 'POST' }),
+      new Response(JSON.stringify({ data: {} }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+      'generic-items.generic-item'
+    );
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/surveys', { method: 'POST' }),
+      new Response(JSON.stringify({ data: {} }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+      'surveys.survey'
+    );
+
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(1, {
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      contentType: 'generic-items.generic-item',
+      organizationId: 'org-1',
+      operation: 'create',
+    });
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(2, {
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      contentType: 'surveys.survey',
+      organizationId: 'org-1',
+      operation: 'create',
+    });
+  });
+
   it('derives delete refresh identity from the request path', async () => {
     await refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/events/event-9', { method: 'DELETE' }),

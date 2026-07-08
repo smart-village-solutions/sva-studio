@@ -41,6 +41,7 @@ import { buildMainserverProjectionScopeKey } from './mainserver-projection-scope
 
 const MAIN_SERVER_SYNC_STALE_MS = 5 * 60 * 1000;
 const MAIN_SERVER_SYNC_POLL_INTERVAL_MS = 60 * 1000;
+const REGISTERED_PROJECTION_TARGET_TTL_MS = MAIN_SERVER_SYNC_STALE_MS;
 const MAX_SYNC_ITEMS_PER_TYPE = 5_000;
 const contentProjectionLogger = createSdkLogger({
   component: 'iam-content-list-projection',
@@ -358,7 +359,13 @@ const buildListAccessAuthorizeRequest = (input: {
 };
 
 const runningProjectionSyncs = new Map<string, Promise<Response | null>>();
-const registeredProjectionTargets = new Map<string, ContentProjectionSyncTarget>();
+const registeredProjectionTargets = new Map<
+  string,
+  Readonly<{
+    lastRegisteredAt: number;
+    target: ContentProjectionSyncTarget;
+  }>
+>();
 let contentProjectionSchedulerStarted = false;
 let contentProjectionSchedulerTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -1087,7 +1094,7 @@ const refreshMainserverProjectionBatch = async (
         target,
         keycloakSubject: target.keycloakSubject,
         actorAccountId: target.actorAccountId,
-        rows,
+        rows: latestPage,
         finalize: false,
       });
     },
@@ -1301,8 +1308,22 @@ const refreshMainserverProjectionForMutation = async (input: {
   }
 };
 
-const registerProjectionTarget = (target: ContentProjectionSyncTarget): void => {
-  registeredProjectionTargets.set(buildProjectionTargetKey(target), target);
+const registerProjectionTarget = (
+  target: ContentProjectionSyncTarget,
+  registeredAt = Date.now()
+): void => {
+  registeredProjectionTargets.set(buildProjectionTargetKey(target), {
+    target,
+    lastRegisteredAt: registeredAt,
+  });
+};
+
+const pruneRegisteredProjectionTargets = (now = Date.now()): void => {
+  for (const [targetKey, entry] of registeredProjectionTargets.entries()) {
+    if (now - entry.lastRegisteredAt >= REGISTERED_PROJECTION_TARGET_TTL_MS) {
+      registeredProjectionTargets.delete(targetKey);
+    }
+  }
 };
 
 const ensureContentProjectionSchedulerStarted = (): void => {
@@ -1312,7 +1333,8 @@ const ensureContentProjectionSchedulerStarted = (): void => {
 
   contentProjectionSchedulerStarted = true;
   contentProjectionSchedulerTimer = setInterval(() => {
-    const targets = [...registeredProjectionTargets.values()];
+    pruneRegisteredProjectionTargets();
+    const targets = [...registeredProjectionTargets.values()].map(({ target }) => target);
     if (targets.length === 0) {
       return;
     }
@@ -1392,8 +1414,10 @@ const triggerMainserverProjectionRefreshBatch = async (
     return { status: 'accepted', syncStates: [] };
   }
 
-  for (const target of targets) {
-    registerProjectionTarget(target);
+  if (options.trigger !== 'scheduler') {
+    for (const target of targets) {
+      registerProjectionTarget(target);
+    }
   }
   ensureContentProjectionSchedulerStarted();
 

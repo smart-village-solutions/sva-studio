@@ -141,6 +141,7 @@ describe('content list projection', () => {
     }
   >;
   let projectionInsertArgs: readonly unknown[] | null;
+  let projectionInsertPayloadHistory: Array<Array<Record<string, unknown>>>;
   let projectionInsertSql: string | null;
   let simulateConcurrentProjectionConflict: boolean;
 
@@ -253,6 +254,7 @@ describe('content list projection', () => {
     projectionRows = [];
     syncStates = new Map();
     projectionInsertArgs = null;
+    projectionInsertPayloadHistory = [];
     projectionInsertSql = null;
     simulateConcurrentProjectionConflict = false;
     state.authorizeContentPrimitiveForUser.mockReset();
@@ -443,6 +445,7 @@ describe('content list projection', () => {
               const rows = JSON.parse(String(values?.[0] ?? '[]')) as Array<
                 Record<string, unknown>
               >;
+              projectionInsertPayloadHistory.push(rows);
               const mappedRows = rows.map(mapInsertedProjectionRow);
 
               if (simulateConcurrentProjectionConflict && mappedRows.length > 0) {
@@ -2499,6 +2502,73 @@ describe('content list projection', () => {
         projection_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
       })
     );
+  });
+
+  it('persists only the latest mainserver page incrementally before the final reconciliation write', async () => {
+    state.listSvaMainserverNews.mockImplementation(async ({ page }: { page: number }) => ({
+      data: Array.from({ length: 25 }, (_, index) => {
+        const absoluteIndex = (page - 1) * 25 + index + 1;
+        return {
+          id: `news-page-${absoluteIndex}`,
+          title: `News ${absoluteIndex}`,
+          contentType: 'news.article',
+          payload: { teaser: `Teaser ${absoluteIndex}` },
+          status: 'published',
+          author: 'Redaktion',
+          publishedAt: '2026-06-21T09:00:00.000Z',
+          contentBlocks: [],
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: `2026-06-21T10:${String(index).padStart(2, '0')}:00.000Z`,
+        };
+      }),
+      pagination: { page, pageSize: 25, hasNextPage: page === 1 },
+    }));
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['news.article'],
+      force: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect(projectionInsertPayloadHistory.map((rows) => rows.length)).toEqual([25, 25, 50]);
+  });
+
+  it('evicts inactive registered projection targets so the scheduler does not refresh them repeatedly', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-08T10:00:00.000Z'));
+
+    try {
+      state.listSvaMainserverNews.mockResolvedValue({
+        data: [
+          {
+            id: 'news-scheduler-1',
+            title: 'Scheduler News',
+            contentType: 'news.article',
+            payload: { teaser: 'A' },
+            status: 'published',
+            author: 'Redaktion',
+            publishedAt: '2026-06-21T09:00:00.000Z',
+            contentBlocks: [],
+            createdAt: '2026-06-20T10:00:00.000Z',
+            updatedAt: '2026-06-21T10:00:00.000Z',
+          },
+        ],
+        pagination: { page: 1, pageSize: 100, hasNextPage: false },
+      });
+
+      await refreshProjectedContents(ctx, {
+        visibleTypes: ['news.article'],
+        force: true,
+      });
+
+      state.listSvaMainserverNews.mockClear();
+
+      await vi.advanceTimersByTimeAsync(12 * 60 * 1000);
+
+      expect(state.listSvaMainserverNews).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('stores the same mainserver entity separately for different projection scopes', async () => {

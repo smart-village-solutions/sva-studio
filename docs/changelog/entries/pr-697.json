@@ -1,0 +1,4 @@
+{
+  "prNumber": 697,
+  "body": "Die IAM-Abnahmedokumentation und der Projektstatus sind jetzt konsistent abgeschlossen.\n+\n+- Die offenen Nachweise für `WP-006` und `WP-010` sind im gemeinsamen Evidence-Block als erledigt dokumentiert.\n+- Der Projektstatus führt für diese beiden Arbeitspakete keine offenen Todos mehr.\n+- Die Änderungen betreffen nur Doku- und Statuspflege, nicht die Laufzeitlogik des Studios."
+}

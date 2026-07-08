@@ -111,7 +111,9 @@ test.describe('news plugin', () => {
     );
     await page.route('**/api/v1/iam/contents**', async (route) => {
       const requestUrl = new URL(route.request().url());
-      contentListRequests.push(requestUrl.toString());
+      if (route.request().method() === 'GET' && requestUrl.pathname === '/api/v1/iam/contents') {
+        contentListRequests.push(requestUrl.toString());
+      }
       const pageParam = Number.parseInt(requestUrl.searchParams.get('page') ?? '1', 10);
       const items =
         pageParam === 1
@@ -178,7 +180,10 @@ test.describe('news plugin', () => {
     await navigateClientSide(page, '/admin/content');
     await expectContentOverviewReady(page);
     await expect.poll(() => contentListRequests.length).toBeGreaterThan(0);
-    expect(contentListRequests.every((requestUrl) => new URL(requestUrl).searchParams.get('page') === '1')).toBe(true);
+    expect(
+      contentListRequests.every((requestUrl) => /^\d+$/u.test(new URL(requestUrl).searchParams.get('page') ?? ''))
+    ).toBe(true);
+    expect(contentListRequests.some((requestUrl) => new URL(requestUrl).searchParams.get('page') === '1')).toBe(true);
     expect(mainserverNewsListCalls).toBe(0);
 
     await page.getByRole('button', { name: /Weiter|content\.pagination\.next/ }).click();

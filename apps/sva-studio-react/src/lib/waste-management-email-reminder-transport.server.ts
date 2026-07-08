@@ -8,6 +8,21 @@ import type { WasteOperationRuntimeDeps } from './waste-management-operations.ty
 const toOptionalMailTransportNumber = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined;
 
+const readOptionalPublicConfigText = (record: ExternalInterfaceRecord, key: string): string | undefined =>
+  normalizeOptionalText(typeof record.publicConfig[key] === 'string' ? record.publicConfig[key] : undefined);
+
+const withOptionalTextField = <T extends object>(
+  target: T,
+  key: 'defaultFromEmail' | 'defaultFromName' | 'defaultReplyToEmail' | 'username',
+  value: string | undefined,
+): T & Partial<Record<typeof key, string>> => (value ? { ...target, [key]: value } : target);
+
+const withOptionalNumberField = <T extends object>(
+  target: T,
+  key: 'maxBatchSize' | 'rateLimitPerMinute',
+  value: number | undefined,
+): T & Partial<Record<typeof key, number>> => (value ? { ...target, [key]: value } : target);
+
 const parseInterfaceSecretConfig = (record: ExternalInterfaceRecord): Record<string, string> => {
   if (!record.secretConfigCiphertext) {
     return {};
@@ -25,14 +40,83 @@ const parseInterfaceSecretConfig = (record: ExternalInterfaceRecord): Record<str
   );
 };
 
+const buildMailTransportHealth = (
+  record: ExternalInterfaceRecord,
+): MailTransportConfig['health'] => ({
+  visibleStatus: record.visibleStatus,
+  ...(record.lastCheckedAt ? { lastCheckedAt: record.lastCheckedAt } : {}),
+  ...(record.lastCheckStatus ? { lastCheckStatus: record.lastCheckStatus } : {}),
+  ...(record.lastCheckErrorCode ? { lastCheckErrorCode: record.lastCheckErrorCode } : {}),
+  ...(record.lastCheckErrorMessage ? { lastCheckErrorMessage: record.lastCheckErrorMessage } : {}),
+});
+
+type SharedMailTransportConfig = Omit<MailTransportConfig, 'endpoint' | 'host' | 'mode' | 'port' | 'transportType'>;
+
+const buildSharedMailTransportConfig = (
+  record: ExternalInterfaceRecord,
+  transportId: string,
+  password: string | undefined,
+): SharedMailTransportConfig =>
+  withOptionalNumberField(
+    withOptionalNumberField(
+      withOptionalTextField(
+        withOptionalTextField(
+          withOptionalTextField(
+            withOptionalTextField(
+              {
+                transportId,
+                displayName: record.displayName,
+                securityMode: readOptionalPublicConfigText(record, 'securityMode') as MailTransportConfig['securityMode'],
+                authMode: readOptionalPublicConfigText(record, 'authMode') as MailTransportConfig['authMode'],
+                enabled: record.enabled,
+                ...(password ? { password } : {}),
+                health: buildMailTransportHealth(record),
+              },
+              'username',
+              readOptionalPublicConfigText(record, 'username'),
+            ),
+            'defaultFromEmail',
+            readOptionalPublicConfigText(record, 'defaultFromEmail'),
+          ),
+          'defaultFromName',
+          readOptionalPublicConfigText(record, 'defaultFromName'),
+        ),
+        'defaultReplyToEmail',
+        readOptionalPublicConfigText(record, 'defaultReplyToEmail'),
+      ),
+      'maxBatchSize',
+      toOptionalMailTransportNumber(record.publicConfig.maxBatchSize),
+    ),
+    'rateLimitPerMinute',
+    toOptionalMailTransportNumber(record.publicConfig.rateLimitPerMinute),
+  );
+
+const buildSmtpMailTransportConfig = (
+  record: ExternalInterfaceRecord,
+  shared: SharedMailTransportConfig,
+): MailTransportConfig | null => {
+  const host = readOptionalPublicConfigText(record, 'host');
+  const port = toOptionalMailTransportNumber(record.publicConfig.port);
+  return host && port ? { ...shared, transportType: 'smtp', host, port } : null;
+};
+
+const buildProviderApiMailTransportConfig = (
+  record: ExternalInterfaceRecord,
+  shared: SharedMailTransportConfig,
+): MailTransportConfig | null => {
+  const endpoint = readOptionalPublicConfigText(record, 'endpoint');
+  const mode = readOptionalPublicConfigText(record, 'mode');
+  return endpoint && mode ? { ...shared, transportType: 'provider_api', endpoint, mode } : null;
+};
+
 const readMailTransportConfigFromRecord = (record: ExternalInterfaceRecord): MailTransportConfig | null => {
   if (record.typeKey !== 'mail_transport') {
     return null;
   }
-  const transportId = normalizeOptionalText(typeof record.publicConfig.transportId === 'string' ? record.publicConfig.transportId : undefined);
-  const transportType = normalizeOptionalText(typeof record.publicConfig.transportType === 'string' ? record.publicConfig.transportType : undefined);
-  const securityMode = normalizeOptionalText(typeof record.publicConfig.securityMode === 'string' ? record.publicConfig.securityMode : undefined);
-  const authMode = normalizeOptionalText(typeof record.publicConfig.authMode === 'string' ? record.publicConfig.authMode : undefined);
+  const transportId = readOptionalPublicConfigText(record, 'transportId');
+  const transportType = readOptionalPublicConfigText(record, 'transportType');
+  const securityMode = readOptionalPublicConfigText(record, 'securityMode');
+  const authMode = readOptionalPublicConfigText(record, 'authMode');
   const password = normalizeOptionalText(parseInterfaceSecretConfig(record).password);
   if (!transportId || !transportType || !securityMode || !authMode) {
     return null;
@@ -40,49 +124,13 @@ const readMailTransportConfigFromRecord = (record: ExternalInterfaceRecord): Mai
   if (authMode === 'basic' && !password) {
     return null;
   }
-  const shared = {
-    transportId,
-    displayName: record.displayName,
-    securityMode: securityMode as MailTransportConfig['securityMode'],
-    authMode: authMode as MailTransportConfig['authMode'],
-    enabled: record.enabled,
-    ...(password ? { password } : {}),
-    ...(normalizeOptionalText(typeof record.publicConfig.username === 'string' ? record.publicConfig.username : undefined)
-      ? { username: normalizeOptionalText(typeof record.publicConfig.username === 'string' ? record.publicConfig.username : undefined)! }
-      : {}),
-    ...(normalizeOptionalText(typeof record.publicConfig.defaultFromEmail === 'string' ? record.publicConfig.defaultFromEmail : undefined)
-      ? { defaultFromEmail: normalizeOptionalText(typeof record.publicConfig.defaultFromEmail === 'string' ? record.publicConfig.defaultFromEmail : undefined)! }
-      : {}),
-    ...(normalizeOptionalText(typeof record.publicConfig.defaultFromName === 'string' ? record.publicConfig.defaultFromName : undefined)
-      ? { defaultFromName: normalizeOptionalText(typeof record.publicConfig.defaultFromName === 'string' ? record.publicConfig.defaultFromName : undefined)! }
-      : {}),
-    ...(normalizeOptionalText(typeof record.publicConfig.defaultReplyToEmail === 'string' ? record.publicConfig.defaultReplyToEmail : undefined)
-      ? { defaultReplyToEmail: normalizeOptionalText(typeof record.publicConfig.defaultReplyToEmail === 'string' ? record.publicConfig.defaultReplyToEmail : undefined)! }
-      : {}),
-    ...(toOptionalMailTransportNumber(record.publicConfig.maxBatchSize)
-      ? { maxBatchSize: toOptionalMailTransportNumber(record.publicConfig.maxBatchSize)! }
-      : {}),
-    ...(toOptionalMailTransportNumber(record.publicConfig.rateLimitPerMinute)
-      ? { rateLimitPerMinute: toOptionalMailTransportNumber(record.publicConfig.rateLimitPerMinute)! }
-      : {}),
-    health: {
-      visibleStatus: record.visibleStatus,
-      ...(record.lastCheckedAt ? { lastCheckedAt: record.lastCheckedAt } : {}),
-      ...(record.lastCheckStatus ? { lastCheckStatus: record.lastCheckStatus } : {}),
-      ...(record.lastCheckErrorCode ? { lastCheckErrorCode: record.lastCheckErrorCode } : {}),
-      ...(record.lastCheckErrorMessage ? { lastCheckErrorMessage: record.lastCheckErrorMessage } : {}),
-    },
-  } as const;
+  const shared = buildSharedMailTransportConfig(record, transportId, password);
 
   if (transportType === 'smtp') {
-    const host = normalizeOptionalText(typeof record.publicConfig.host === 'string' ? record.publicConfig.host : undefined);
-    const port = toOptionalMailTransportNumber(record.publicConfig.port);
-    return host && port ? { ...shared, transportType: 'smtp', host, port } : null;
+    return buildSmtpMailTransportConfig(record, shared);
   }
 
-  const endpoint = normalizeOptionalText(typeof record.publicConfig.endpoint === 'string' ? record.publicConfig.endpoint : undefined);
-  const mode = normalizeOptionalText(typeof record.publicConfig.mode === 'string' ? record.publicConfig.mode : undefined);
-  return endpoint && mode ? { ...shared, transportType: 'provider_api', endpoint, mode } : null;
+  return buildProviderApiMailTransportConfig(record, shared);
 };
 
 export const loadMailTransportConfigs = async (

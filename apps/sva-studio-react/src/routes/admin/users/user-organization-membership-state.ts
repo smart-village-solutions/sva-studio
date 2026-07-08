@@ -10,8 +10,15 @@ type OrganizationMembershipDraft = {
   readonly isDefaultContext: boolean;
 };
 
-const DEFAULT_ORGANIZATION_ASSIGNMENT = {
+type OrganizationAssignment = {
+  readonly organizationId: string;
+  readonly organizationLabel: string;
+  readonly isDefaultContext: boolean;
+};
+
+const DEFAULT_ORGANIZATION_ASSIGNMENT: OrganizationAssignment = {
   organizationId: '',
+  organizationLabel: '',
   isDefaultContext: false,
 };
 
@@ -46,13 +53,18 @@ const mergeOrganizationMembershipDraft = (
   },
 });
 
+const formatOrganizationAssignmentLabel = (organization: { displayName: string; organizationKey: string }) =>
+  `${organization.displayName} (${organization.organizationKey})`;
+
 export const useUserOrganizationMembershipState = (input: {
   readonly userId: string;
   readonly user: UserDetail;
   readonly refetchUser: () => Promise<void>;
 }) => {
   const organizationsApi = useOrganizations({ page: 1, pageSize: 100, status: 'active' });
-  const [organizationAssignment, setOrganizationAssignment] = React.useState(DEFAULT_ORGANIZATION_ASSIGNMENT);
+  const [organizationAssignment, setOrganizationAssignment] =
+    React.useState<OrganizationAssignment>(DEFAULT_ORGANIZATION_ASSIGNMENT);
+  const [organizationSearchValue, setOrganizationSearchValue] = React.useState('');
   const [organizationMembershipDrafts, setOrganizationMembershipDrafts] = React.useState<
     Record<string, OrganizationMembershipDraft>
   >(() => buildOrganizationMembershipDrafts(input.user));
@@ -67,11 +79,36 @@ export const useUserOrganizationMembershipState = (input: {
     [assignedOrganizationIds, organizationsApi.organizations]
   );
 
+  const selectedAssignableOrganization = React.useMemo(
+    () => availableOrganizations.find((organization) => organization.id === organizationAssignment.organizationId) ?? null,
+    [availableOrganizations, organizationAssignment.organizationId]
+  );
+
   const updateOrganizationMembershipDraft = React.useCallback(
     (organizationId: string, patch: Partial<OrganizationMembershipDraft>) => {
       setOrganizationMembershipDrafts((current) => mergeOrganizationMembershipDraft(current, organizationId, patch));
     },
     []
+  );
+
+  const updateOrganizationSearchValue = React.useCallback(
+    (value: string) => {
+      setOrganizationSearchValue(value);
+      organizationsApi.setSearch(value);
+    },
+    [organizationsApi]
+  );
+
+  const selectOrganizationAssignment = React.useCallback(
+    (organizationId: string) => {
+      const selectedOrganization = availableOrganizations.find((organization) => organization.id === organizationId);
+      setOrganizationAssignment((current) => ({
+        ...current,
+        organizationId,
+        organizationLabel: selectedOrganization ? formatOrganizationAssignmentLabel(selectedOrganization) : current.organizationLabel,
+      }));
+    },
+    [availableOrganizations]
   );
 
   const assignOrganizationMembership = React.useCallback(async () => {
@@ -89,9 +126,10 @@ export const useUserOrganizationMembershipState = (input: {
     }
 
     setOrganizationAssignment(DEFAULT_ORGANIZATION_ASSIGNMENT);
+    updateOrganizationSearchValue('');
     await input.refetchUser();
     return true;
-  }, [input, organizationAssignment, organizationsApi]);
+  }, [input, organizationAssignment, organizationsApi, updateOrganizationSearchValue]);
 
   const saveOrganizationMembership = React.useCallback(
     async (organizationId: string) => {
@@ -128,11 +166,15 @@ export const useUserOrganizationMembershipState = (input: {
     availableOrganizations,
     organizationAssignment,
     organizationMembershipDrafts,
+    organizationSearchValue,
     organizationMutationError: organizationsApi.mutationError,
     assignOrganizationMembership,
     removeOrganizationMembership,
     saveOrganizationMembership,
+    selectOrganizationAssignment,
     setOrganizationAssignment,
+    selectedAssignableOrganization,
+    setOrganizationSearchValue: updateOrganizationSearchValue,
     updateOrganizationMembershipDraft,
   };
 };

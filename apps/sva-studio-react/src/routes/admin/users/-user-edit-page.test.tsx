@@ -520,6 +520,7 @@ describe('UserEditPage', () => {
     const assignMembership = vi.fn(async () => ({ id: 'org-2' }));
     const updateMembership = vi.fn(async () => ({ id: 'org-1' }));
     const removeMembership = vi.fn(async () => ({ id: 'org-1' }));
+    const setSearch = vi.fn();
 
     useUserMock.mockReturnValue({
       user: baseUser,
@@ -574,7 +575,7 @@ describe('UserEditPage', () => {
       selectedOrganization: null,
       detailLoading: false,
       filters: { page: 1, pageSize: 100, search: '', organizationType: 'all', status: 'active' },
-      setSearch: vi.fn(),
+      setSearch,
       setOrganizationType: vi.fn(),
       setStatus: vi.fn(),
       setPage: vi.fn(),
@@ -590,7 +591,7 @@ describe('UserEditPage', () => {
       removeMembership,
     });
 
-    render(<UserEditPage userId="user-1" />);
+    const { rerender } = render(<UserEditPage userId="user-1" />);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Organisationen' }));
 
@@ -601,7 +602,56 @@ describe('UserEditPage', () => {
     fireEvent.change(screen.getByPlaceholderText('Nach Organisationsname oder Schlüssel filtern'), {
       target: { value: 'Stadtwerke' },
     });
+    expect(setSearch).toHaveBeenCalledWith('Stadtwerke');
     fireEvent.click(screen.getByRole('option', { name: 'Stadtwerke (stadtwerke)' }));
+    expect(setSearch).toHaveBeenLastCalledWith('');
+
+    useOrganizationsMock.mockReturnValue({
+      organizations: [
+        {
+          id: 'org-1',
+          organizationKey: 'musterstadt',
+          displayName: 'Musterstadt',
+          organizationType: 'municipality',
+          isActive: true,
+          depth: 0,
+          hierarchyPath: [],
+          childCount: 0,
+          membershipCount: 1,
+          contentAuthorPolicy: 'org_only',
+        },
+      ],
+      total: 101,
+      page: 1,
+      pageSize: 100,
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      selectedOrganization: null,
+      detailLoading: false,
+      filters: { page: 1, pageSize: 100, search: '', organizationType: 'all', status: 'active' },
+      setSearch,
+      setOrganizationType: vi.fn(),
+      setStatus: vi.fn(),
+      setPage: vi.fn(),
+      refetch: vi.fn(),
+      loadOrganization: vi.fn(),
+      clearSelectedOrganization: vi.fn(),
+      clearMutationError: vi.fn(),
+      createOrganization: vi.fn(),
+      updateOrganization: vi.fn(),
+      deleteOrganization: vi.fn(),
+      assignMembership,
+      updateMembership,
+      removeMembership,
+    });
+
+    rerender(<UserEditPage userId="user-1" />);
+
+    expect(screen.getByRole('button', { name: 'Organisation auswählen' }).textContent).toContain(
+      'Stadtwerke (stadtwerke)'
+    );
+
     fireEvent.click(screen.getByLabelText('Als Default-Kontext setzen'));
     fireEvent.click(screen.getByRole('button', { name: 'Organisation zuweisen' }));
 
@@ -613,6 +663,7 @@ describe('UserEditPage', () => {
       });
       expect(refetch).toHaveBeenCalled();
     });
+    expect(setSearch).toHaveBeenLastCalledWith('');
 
     fireEvent.change(screen.getByLabelText('Sichtbarkeit für Musterstadt'), { target: { value: 'external' } });
     fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft für Musterstadt aktualisieren' }));

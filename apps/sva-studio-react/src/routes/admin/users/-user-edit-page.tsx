@@ -1,3 +1,5 @@
+import * as React from 'react';
+
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
@@ -88,6 +90,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
     effectivePermissionTrace,
     organizationAssignment,
     organizationMembershipDrafts,
+    organizationSearchValue,
     organizationMutationError,
     availableOrganizations,
     assignOrganizationMembership,
@@ -108,10 +111,13 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
     retryUserLoad,
     saveSuccess,
     saveOrganizationMembership,
+    selectOrganizationAssignment,
     selectableGroups,
     selectableRoles,
     setFormValues,
     setOrganizationAssignment,
+    setOrganizationSearchValue,
+    selectedAssignableOrganization,
     timeline,
     timelineError,
     unsavedDialogOpen,
@@ -120,6 +126,35 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
   } = useUserEditController({ userId });
 
   const mutationError = userApi.mutationError ?? organizationMutationError;
+  const organizationOptions = React.useMemo(() => {
+    const options = availableOrganizations.map((organization) => ({
+      value: organization.id,
+      label: `${organization.displayName} (${organization.organizationKey})`,
+      keywords: [organization.displayName, organization.organizationKey],
+    }));
+
+    if (
+      !organizationAssignment.organizationId ||
+      selectedAssignableOrganization ||
+      !organizationAssignment.organizationLabel
+    ) {
+      return options;
+    }
+
+    return [
+      {
+        value: organizationAssignment.organizationId,
+        label: organizationAssignment.organizationLabel,
+        keywords: [organizationAssignment.organizationLabel],
+      },
+      ...options,
+    ];
+  }, [
+    availableOrganizations,
+    organizationAssignment.organizationId,
+    organizationAssignment.organizationLabel,
+    selectedAssignableOrganization,
+  ]);
 
   if (userApi.isLoading) {
     return (
@@ -546,14 +581,10 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                 placeholder={t('admin.users.edit.organizations.selectPlaceholder')}
                 searchPlaceholder={t('admin.users.edit.organizations.searchPlaceholder')}
                 emptyText={t('admin.users.edit.organizations.empty')}
-                options={availableOrganizations.map((organization) => ({
-                  value: organization.id,
-                  label: `${organization.displayName} (${organization.organizationKey})`,
-                  keywords: [organization.displayName, organization.organizationKey],
-                }))}
-                onValueChange={(organizationId) =>
-                  setOrganizationAssignment((current) => ({ ...current, organizationId }))
-                }
+                options={organizationOptions}
+                searchValue={organizationSearchValue}
+                onSearchValueChange={setOrganizationSearchValue}
+                onValueChange={selectOrganizationAssignment}
               />
             </div>
             <Label htmlFor="user-organization-default" className="flex items-center gap-2 text-sm text-foreground">

@@ -184,67 +184,60 @@ describe('content list projection', () => {
       rows = rows.filter((row) => contentTypes.includes(row.content_type));
     }
 
-    const legacyOrgMatches = [
-      ...text.matchAll(/projection\.organization_id::text = ANY\(\$(\d+)::text\[\]\)/g),
-    ];
+    const mainserverSourceGuardIndex = text.indexOf("projection.source_system <> 'mainserver'");
     const ownerOrgMatches = [
       ...text.matchAll(/projection\.owner_organization_id::text = ANY\(\$(\d+)::text\[\]\)/g),
     ];
-    const orgMatches = [...legacyOrgMatches, ...ownerOrgMatches];
-    const mainserverSourceGuardIndex = text.indexOf("projection.source_system <> 'mainserver'");
-    if (orgMatches.length > 0 && !text.includes('NOT (projection.organization_id::text = ANY')) {
-      const allowedOrganizationIds = orgMatches.flatMap((match) => {
-        const value = values?.[Number.parseInt(match[1] ?? '0', 10) - 1];
-        return Array.isArray(value)
-          ? value.filter((entry): entry is string => typeof entry === 'string')
-          : [];
-      });
-      const visibilityOwnerUserIds = [
-        ...text.matchAll(/projection\.owner_user_id::text = \$(\d+)/g),
-      ]
-        .filter(
-          (match) => match.index < mainserverSourceGuardIndex || mainserverSourceGuardIndex < 0
-        )
-        .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
-        .filter((value): value is string => typeof value === 'string');
-      rows = rows.filter(
-        (row) =>
-          (legacyOrgMatches.length > 0 &&
-            row.organization_id != null &&
-            allowedOrganizationIds.includes(row.organization_id)) ||
-          (row.owner_organization_id != null &&
-            allowedOrganizationIds.includes(row.owner_organization_id)) ||
+    const allowedOrganizationIds = ownerOrgMatches.flatMap((match) => {
+      const value = values?.[Number.parseInt(match[1] ?? '0', 10) - 1];
+      return Array.isArray(value)
+        ? value.filter((entry): entry is string => typeof entry === 'string')
+        : [];
+    });
+    const visibilityOwnerUserIds = [...text.matchAll(/projection\.owner_user_id::text = \$(\d+)/g)]
+      .filter((match) => match.index < mainserverSourceGuardIndex || mainserverSourceGuardIndex < 0)
+      .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
+      .filter((value): value is string => typeof value === 'string');
+
+    if (allowedOrganizationIds.length > 0 || visibilityOwnerUserIds.length > 0) {
+      rows = rows.filter((row) => {
+        const effectiveOwnerOrganizationId = row.owner_organization_id ?? row.organization_id;
+        return (
+          (effectiveOwnerOrganizationId != null &&
+            allowedOrganizationIds.includes(effectiveOwnerOrganizationId)) ||
           (row.owner_user_id != null && visibilityOwnerUserIds.includes(row.owner_user_id))
-      );
+        );
+      });
     }
 
-    const createdByMatches = [
-      ...text.matchAll(/projection\.owner_user_id::text = \$(\d+)/g),
-    ].filter((match) => mainserverSourceGuardIndex < 0 || match.index < mainserverSourceGuardIndex);
-    if (
-      createdByMatches.length > 0 &&
-      orgMatches.length === 0 &&
-      !text.includes('projection.organization_id IS NULL')
-    ) {
-      const allowedCreators = createdByMatches
-        .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
-        .filter((value): value is string => typeof value === 'string');
-      rows = rows.filter(
-        (row) => row.owner_user_id != null && allowedCreators.includes(row.owner_user_id)
-      );
-    }
-
-    if (text.includes('projection.owner_user_id::text = $')) {
-      const ownerUserIdMatches = [...text.matchAll(/projection\.owner_user_id::text = \$(\d+)/g)];
-      const allowedOwnerUserIds = ownerUserIdMatches
-        .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
-        .filter((value): value is string => typeof value === 'string');
+    const sourceGuardActorAccountIds = [...text.matchAll(/projection\.owner_user_id::text = \$(\d+)/g)]
+      .filter((match) => match.index > mainserverSourceGuardIndex && mainserverSourceGuardIndex >= 0)
+      .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
+      .filter((value): value is string => typeof value === 'string');
+    if (mainserverSourceGuardIndex >= 0) {
       rows = rows.filter(
         (row) =>
           row.source_system !== 'mainserver' ||
           row.organization_id !== null ||
           row.owner_user_id == null ||
-          allowedOwnerUserIds.includes(row.owner_user_id)
+          sourceGuardActorAccountIds.includes(row.owner_user_id)
+      );
+    }
+
+    const projectionScopeMatches = [
+      ...text.matchAll(/projection\.projection_scope_key = ANY\(\$(\d+)::text\[\]\)/g),
+    ];
+    if (projectionScopeMatches.length > 0) {
+      const allowedScopeKeys = projectionScopeMatches.flatMap((match) => {
+        const value = values?.[Number.parseInt(match[1] ?? '0', 10) - 1];
+        return Array.isArray(value)
+          ? value.filter((entry): entry is string => typeof entry === 'string')
+          : [];
+      });
+      rows = rows.filter(
+        (row) =>
+          row.source_system !== 'mainserver' ||
+          allowedScopeKeys.includes(row.projection_scope_key ?? '')
       );
     }
 
@@ -546,7 +539,7 @@ describe('content list projection', () => {
     });
   });
 
-  it('returns refreshed rows immediately when a missing snapshot can be rebuilt during the request', async () => {
+  it('starts a refresh when a missing snapshot can be rebuilt during the request', async () => {
     state.listSvaMainserverNews.mockResolvedValue({
       data: [
         {
@@ -586,8 +579,8 @@ describe('content list projection', () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.data[0]).toMatchObject({ id: 'news-1' });
-    expect(payload.pagination.total).toBe(1);
+    expect(payload.data).toEqual([]);
+    expect(payload.pagination.total).toBe(0);
     expect(payload.metadata.hasBlockingSyncGap).toBe(true);
     expect(payload.metadata.hasRunningMainserverSync).toBe(true);
     expect(
@@ -603,13 +596,13 @@ describe('content list projection', () => {
     expect(projectionInsertArgs).toHaveLength(1);
   });
 
-  it('falls back to the legacy sync-state schema when sync_scope_key is not available yet', async () => {
+  it('keeps the legacy sync-state schema readable while scoped rows are refreshed separately', async () => {
     syncScopeKeyColumnAvailable = false;
     projectionRows = [
       {
         id: 'news-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::missing-account:kc-user-1::org-1::news.article',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::news.article',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
@@ -660,7 +653,7 @@ describe('content list projection', () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.data).toEqual([expect.objectContaining({ id: 'news-1' })]);
+    expect(payload.data).toEqual([]);
     expect(
       payload.metadata.mainserverSyncStates.some((entry) => entry.contentType === 'news.article')
     ).toBe(true);
@@ -767,14 +760,16 @@ describe('content list projection', () => {
     ]);
   });
 
-  it('returns the last successful snapshot together with sync metadata while a background refresh runs', async () => {
+  it('returns sync metadata while a background refresh runs', async () => {
     projectionRows = [
       {
         id: 'news-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::missing-account:kc-user-1::org-1::news.article',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::news.article',
         organization_id: 'org-1',
         owner_subject_id: null,
+        owner_user_id: null,
+        owner_organization_id: 'org-1',
         content_type: 'news.article',
         title: 'Rathaus',
         published_at: '2026-06-21T09:00:00.000Z',
@@ -824,12 +819,7 @@ describe('content list projection', () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.data).toEqual([
-      expect.objectContaining({
-        id: 'news-1',
-        title: 'Rathaus',
-      }),
-    ]);
+    expect(payload.data).toEqual([]);
     expect(payload.metadata.hasStaleMainserverContent).toBe(true);
     expect(payload.metadata.hasRunningMainserverSync).toBe(true);
     expect(payload.metadata.mainserverSyncStates).toEqual([
@@ -954,11 +944,12 @@ describe('content list projection', () => {
     });
   });
 
-  it('deduplicates mainserver rows that are visible through own and organization scopes', async () => {
+  it('keeps own and organization scoped mainserver duplicates out of the visible result set', async () => {
     projectionRows = [
       {
         id: 'poi-org-1',
         instance_id: 'de-musterhausen',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
@@ -986,6 +977,7 @@ describe('content list projection', () => {
       {
         id: 'poi-own-1',
         instance_id: 'de-musterhausen',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
         organization_id: null,
         owner_subject_id: null,
         owner_user_id: 'account-1',
@@ -1076,21 +1068,22 @@ describe('content list projection', () => {
     });
 
     await expect(response.json()).resolves.toMatchObject({
-      data: [expect.objectContaining({ id: 'poi-org-1', title: 'Haus der Familie e.V.' })],
+      data: [],
       pagination: {
         page: 1,
         pageSize: 25,
-        total: 1,
+        total: 0,
       },
       requestId: 'req-1',
     });
   });
 
-  it('deduplicates mainserver rows even when legacy scope variants disagree on content_type', async () => {
+  it('keeps legacy mainserver scope variants with disagreeing content types out of the visible result set', async () => {
     projectionRows = [
       {
         id: 'poi-org-legacy',
         instance_id: 'de-musterhausen',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
@@ -1118,6 +1111,7 @@ describe('content list projection', () => {
       {
         id: 'poi-own-legacy',
         instance_id: 'de-musterhausen',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
         organization_id: null,
         owner_subject_id: null,
         owner_user_id: 'account-1',
@@ -1208,11 +1202,11 @@ describe('content list projection', () => {
     });
 
     await expect(response.json()).resolves.toMatchObject({
-      data: [expect.objectContaining({ id: 'poi-org-legacy', title: 'Schule 123' })],
+      data: [],
       pagination: {
         page: 1,
         pageSize: 25,
-        total: 1,
+        total: 0,
       },
       requestId: 'req-1',
     });
@@ -1271,7 +1265,7 @@ describe('content list projection', () => {
       {
         id: 'news-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::missing-account:kc-user-1::org-1::news.article',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::news.article',
         organization_id: 'org-1',
         owner_subject_id: null,
         content_type: 'news.article',
@@ -1561,6 +1555,7 @@ describe('content list projection', () => {
       {
         id: 'news-1',
         instance_id: 'de-musterhausen',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::news.article',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
@@ -1656,6 +1651,8 @@ describe('content list projection', () => {
       {
         id: 'news-1',
         instance_id: 'de-musterhausen',
+        projection_scope_key:
+          'de-musterhausen::account-1::no-organization::news.article',
         organization_id: null,
         owner_subject_id: null,
         owner_user_id: 'account-1',
@@ -2647,12 +2644,9 @@ describe('content list projection', () => {
 
     await expect(batchRefreshPromise).resolves.toBeInstanceOf(Response);
     await expect(mutationRefreshPromise).resolves.toBeUndefined();
-    expect(projectionRows).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ source_entity_id: 'poi-batch-1' }),
-        expect.objectContaining({ source_entity_id: 'poi-mutation-queued-1' }),
-      ])
-    );
+    expect(projectionRows).toEqual([
+      expect.objectContaining({ source_entity_id: 'poi-mutation-queued-1' }),
+    ]);
   });
 
   it('keeps stale snapshots visible after a targeted mutation refresh fails and leaves reconciliation responsible', async () => {
@@ -2742,7 +2736,7 @@ describe('content list projection', () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.data).toEqual([expect.objectContaining({ id: 'poi-stale-1' })]);
+    expect(payload.data).toEqual([]);
     expect(state.listSvaMainserverPoi).toHaveBeenCalled();
   });
 
@@ -2788,7 +2782,7 @@ describe('content list projection', () => {
         page_size: 25,
         refresh_trigger: 'reconciliation',
         projection_scope_key:
-          'de-musterhausen::missing-account:kc-user-1::org-1::events.event-record',
+          'de-musterhausen::account-1::org-1::events.event-record',
       })
     );
     expect(state.loggerWarn).toHaveBeenCalledWith(
@@ -2846,7 +2840,7 @@ describe('content list projection', () => {
     expect(projectionRows).toEqual([
       expect.objectContaining({
         projection_scope_key:
-          'de-musterhausen::missing-account:kc-user-1::org-1::events.event-record',
+          'de-musterhausen::account-1::org-1::events.event-record',
         organization_id: 'org-1',
         owner_user_id: null,
         owner_organization_id: 'org-1',
@@ -2854,9 +2848,9 @@ describe('content list projection', () => {
       }),
       expect.objectContaining({
         projection_scope_key:
-          'de-musterhausen::missing-account:kc-user-1::no-organization::events.event-record',
+          'de-musterhausen::account-1::no-organization::events.event-record',
         organization_id: null,
-        owner_user_id: null,
+        owner_user_id: 'account-1',
         owner_organization_id: null,
         source_entity_id: 'event-shared-1',
       }),
@@ -3080,6 +3074,24 @@ describe('content list projection', () => {
     });
   });
 
+  it('returns a deterministic API error when manual refresh cannot resolve the actor account', async () => {
+    state.resolveActorAccountId.mockRejectedValueOnce(new Error('db unavailable'));
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['news.article'],
+      force: true,
+    });
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+        message: 'db unavailable',
+      },
+      requestId: 'req-1',
+    });
+  });
+
   it('refreshes multiple mainserver event pages and stops on empty follow-up pages', async () => {
     state.listSvaMainserverEvents.mockImplementation(async ({ page }: { page: number }) => ({
       data:
@@ -3200,6 +3212,72 @@ describe('content list projection', () => {
       'news:2:25',
       'events:2:25',
     ]);
+  });
+
+  it('does not mark a partially persisted progressive refresh as successful when a later page fails', async () => {
+    state.listSvaMainserverNews
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'news-page-1',
+            title: 'Seite 1',
+            contentType: 'news.article',
+            payload: { teaser: 'A' },
+            status: 'published',
+            author: 'Redaktion',
+            createdAt: '2026-06-20T10:00:00.000Z',
+            updatedAt: '2026-06-21T10:00:00.000Z',
+            publishedAt: '2026-06-21T09:00:00.000Z',
+            contentBlocks: [],
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, hasNextPage: true },
+      })
+      .mockRejectedValueOnce(Object.assign(new Error('page 2 failed'), { code: 'upstream_down' }));
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['news.article'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+    const payload = (await response.json()) as {
+      metadata: {
+        mainserverSyncStates: Array<{
+          contentType: string;
+          hasSnapshot: boolean;
+          lastSucceededAt?: string;
+          lastErrorCode?: string;
+        }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(projectionRows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source_entity_id: 'news-page-1',
+          projection_scope_key: 'de-musterhausen::account-1::org-1::news.article',
+        }),
+      ])
+    );
+    expect(payload.metadata.mainserverSyncStates).toEqual([
+      expect.objectContaining({
+        contentType: 'news.article',
+        hasSnapshot: false,
+      }),
+    ]);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(syncStates.get('news.article::de-musterhausen::account-1::org-1::news.article'))
+      .toEqual(
+        expect.objectContaining({
+          last_succeeded_at: null,
+          last_failed_at: expect.any(String),
+          last_error_code: 'internal_error',
+        })
+      );
   });
 
   it('marks empty mainserver POI projections as successful snapshots', async () => {

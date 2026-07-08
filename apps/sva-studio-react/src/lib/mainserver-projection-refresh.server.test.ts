@@ -136,6 +136,26 @@ describe('mainserver projection refresh', () => {
     });
   });
 
+  it('derives the entity id from nested mutation paths like visibility updates', async () => {
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/news/news-42/visibility', {
+        method: 'PATCH',
+      }),
+      new Response(null, { status: 204 }),
+      'news.article'
+    );
+
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      contentType: 'news.article',
+      organizationId: 'org-1',
+      operation: 'update',
+      entityId: 'news-42',
+    });
+  });
+
   it('skips projection refresh for read-only requests and failed responses', async () => {
     await refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/news', { method: 'GET' }),

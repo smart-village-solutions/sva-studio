@@ -47,11 +47,21 @@ const parseMutationOperation = (
         : null;
 
 const parseEntityIdFromRequestPath = (request: Request): string | undefined => {
-  const pathname = new URL(request.url).pathname;
-  const lastSegment = pathname.split('/').filter((segment) => segment.length > 0).at(-1);
-  return lastSegment && !mainserverCollectionSegments.has(lastSegment)
-    ? lastSegment
-    : undefined;
+  const segments = new URL(request.url).pathname
+    .split('/')
+    .filter((segment) => segment.length > 0);
+  const mainserverIndex = segments.findIndex((segment) => segment === 'mainserver');
+  if (mainserverIndex < 0) {
+    return undefined;
+  }
+
+  const collectionSegment = segments[mainserverIndex + 1];
+  if (!collectionSegment || !mainserverCollectionSegments.has(collectionSegment)) {
+    return undefined;
+  }
+
+  const entityIdSegment = segments[mainserverIndex + 2];
+  return entityIdSegment && entityIdSegment.length > 0 ? entityIdSegment : undefined;
 };
 
 const parseEntityIdFromResponse = async (response: Response): Promise<string | undefined> => {

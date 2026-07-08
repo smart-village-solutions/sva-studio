@@ -7,10 +7,15 @@ export type MainserverProjectionScope = Readonly<{
 
 export const buildMainserverProjectionScopeKey = (
   scope: MainserverProjectionScope
-): string =>
-  [
+): string => {
+  if (scope.actorAccountId.trim().length === 0) {
+    throw new Error('mainserver_projection_scope_requires_actor_account_id');
+  }
+
+  return [
     scope.instanceId,
     scope.actorAccountId,
     scope.activeOrganizationId ?? 'no-organization',
     scope.contentType,
   ].join('::');
+};

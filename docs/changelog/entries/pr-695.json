@@ -1,0 +1,4 @@
+{
+  "prNumber": 695,
+  "body": "Die Inhaltsübersicht lädt Mainserver-Inhalte jetzt spürbar robuster und aktueller.\n\n- Nach dem Login werden neue Inhalte im Hintergrund schneller in die Listenansicht übernommen.\n- Änderungen an News, Veranstaltungen, Orten und freien Inhalten erscheinen nach dem Speichern gezielter in der Übersicht, ohne dass ganze Inhaltstypen komplett neu geladen werden müssen.\n- Die technische Trennung zwischen verschiedenen Benutzer- und Organisationskontexten wurde verbessert, damit gespeicherte Listenstände zuverlässiger zum aktuellen Zugriff passen."
+}

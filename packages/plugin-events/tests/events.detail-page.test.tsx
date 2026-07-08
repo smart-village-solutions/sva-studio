@@ -1,6 +1,12 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { listHostMediaAssets, registerPluginTranslationResolver, uploadHostMediaFile } from '@sva/plugin-sdk';
+import {
+  getHostMediaAsset,
+  listHostMediaAssets,
+  registerPluginTranslationResolver,
+  updateHostMediaAsset,
+  uploadHostMediaFile,
+} from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createEvent,
@@ -29,7 +35,9 @@ vi.mock('@sva/plugin-sdk', async () => {
   const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
   return {
     ...actual,
+    getHostMediaAsset: vi.fn(),
     listHostMediaAssets: vi.fn(async () => []),
+    updateHostMediaAsset: vi.fn(),
     uploadHostMediaFile: vi.fn(),
   };
 });
@@ -81,8 +89,10 @@ describe('EventsDetailPage', () => {
     vi.mocked(listPoiForEventSelection).mockReset();
     vi.mocked(listPoiForEventSelection).mockResolvedValue([] as never);
     vi.mocked(updateEvent).mockReset();
+    vi.mocked(getHostMediaAsset).mockReset();
     vi.mocked(listHostMediaAssets).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
+    vi.mocked(updateHostMediaAsset).mockReset();
     vi.mocked(uploadHostMediaFile).mockReset();
     vi.unstubAllGlobals();
     registerPluginTranslationResolver((key) => {
@@ -148,6 +158,20 @@ describe('EventsDetailPage', () => {
         'events.messages.mediaUploadError': 'Medium konnte nicht hochgeladen werden.',
         'events.messages.mediaUploadUnsupportedType': 'Dateityp wird nicht unterstützt.',
         'events.messages.mediaUploadUnavailableUrl': 'Bild-URL konnte nicht ermittelt werden.',
+        'events.messages.mediaPickerTitle': 'Medium hinzufügen',
+        'events.messages.mediaPickerDescription': 'Vorhandene Medien auswählen oder neue hochladen.',
+        'events.messages.mediaPickerReviewMode': 'Medium prüfen',
+        'events.messages.mediaPickerUploadRegionLabel': 'Uploadbereich',
+        'events.messages.mediaPickerUploadTitle': 'Neues Medium hochladen',
+        'events.messages.mediaPickerUploadDescription': 'Datei auswählen und Metadaten prüfen.',
+        'events.messages.mediaPickerSelectFile': 'Datei auswählen',
+        'events.messages.mediaPickerUploadSupportLabel': 'Unterstützte Formate',
+        'events.messages.mediaPickerAltText': 'Alternativtext',
+        'events.messages.mediaPickerLicense': 'Lizenz',
+        'events.messages.mediaPickerBackToLibrary': 'Zurück zur Mediathek',
+        'events.messages.mediaPickerBackToUpload': 'Zurück zum Upload',
+        'events.messages.mediaPickerOpenMediaManagement': 'In Medienverwaltung öffnen',
+        'events.messages.mediaPickerUseMedia': 'Medium übernehmen',
         'events.history.empty.title': 'Noch keine Historie verfügbar.',
         'events.messages.updateSuccess': 'Event aktualisiert.',
         'events.messages.deleteError': 'Event konnte nicht gelöscht werden.',
@@ -375,15 +399,45 @@ describe('EventsDetailPage', () => {
           visibility: 'public',
         },
       ] as never);
+    vi.mocked(getHostMediaAsset).mockResolvedValueOnce({
+      id: 'asset-uploaded',
+      fileName: 'uploaded.jpg',
+      mimeType: 'image/jpeg',
+      previewUrl: '',
+      visibility: 'public',
+      metadata: {
+        title: 'uploaded.jpg',
+        altText: '',
+        description: '',
+        copyright: '',
+        license: '',
+      },
+    } as never);
+    vi.mocked(updateHostMediaAsset).mockResolvedValueOnce({
+      id: 'asset-uploaded',
+      fileName: 'uploaded.jpg',
+      mimeType: 'image/jpeg',
+      previewUrl: '',
+      visibility: 'public',
+      metadata: {
+        title: 'uploaded.jpg',
+        altText: '',
+        description: '',
+        copyright: '',
+        license: '',
+      },
+    } as never);
 
     render(<EventsDetailPage mode="create" />);
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
-    fireEvent.change(screen.getByLabelText('Medium hochladen'), {
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hochladen' }));
+    fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: {
         files: [new File(['image'], 'uploaded.jpg', { type: 'image/jpeg' })],
       },
     });
+    fireEvent.click(await screen.findByRole('button', { name: 'Medium übernehmen' }));
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('https://example.com/uploaded.jpg')).toBeTruthy();

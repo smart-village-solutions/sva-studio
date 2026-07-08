@@ -132,6 +132,19 @@ const readDetailFileName = (asset: Pick<HostMediaAssetDetail, 'id' | 'storageKey
   return fileName && fileName.length > 0 ? fileName : asset.id;
 };
 
+const readPreferredPreviewUrl = (
+  detailPreviewUrl: string | null | undefined,
+  summaryPreviewUrl: string | null | undefined
+): string | null => {
+  const normalizedDetailPreviewUrl = detailPreviewUrl?.trim();
+  if (normalizedDetailPreviewUrl && normalizedDetailPreviewUrl.length > 0) {
+    return normalizedDetailPreviewUrl;
+  }
+
+  const normalizedSummaryPreviewUrl = summaryPreviewUrl?.trim();
+  return normalizedSummaryPreviewUrl && normalizedSummaryPreviewUrl.length > 0 ? normalizedSummaryPreviewUrl : null;
+};
+
 const toEventsMediaPickerSummary = (asset: HostMediaAssetListItem): StudioMediaPickerAssetSummary => ({
   id: asset.id,
   title: readAssetTitle(asset),
@@ -140,6 +153,49 @@ const toEventsMediaPickerSummary = (asset: HostMediaAssetListItem): StudioMediaP
   mimeType: asset.mimeType,
   visibility: asset.visibility,
 });
+
+const resolveEventsMediaPickerSummary = (
+  listedAsset: HostMediaAssetListItem | undefined,
+  uploadedFallback: HostMediaAssetListItem | undefined
+): HostMediaAssetListItem | undefined => {
+  if (!listedAsset) {
+    return uploadedFallback;
+  }
+
+  const listedPreviewUrl = listedAsset.previewUrl?.trim();
+  if (listedPreviewUrl && listedPreviewUrl.length > 0) {
+    return listedAsset;
+  }
+
+  return uploadedFallback ?? listedAsset;
+};
+
+const toUploadedEventsMediaFallback = (
+  uploadedAsset: { readonly assetId: string },
+  file: File
+): HostMediaAssetListItem => {
+  const runtimeUploadedAsset = uploadedAsset as {
+    readonly fileName?: string;
+    readonly mimeType?: string;
+    readonly previewUrl?: string | null;
+    readonly visibility?: HostMediaAssetListItem['visibility'];
+  };
+
+  return {
+    id: uploadedAsset.assetId,
+    fileName: runtimeUploadedAsset.fileName ?? file.name,
+    mimeType: runtimeUploadedAsset.mimeType ?? file.type,
+    previewUrl: runtimeUploadedAsset.previewUrl ?? null,
+    visibility: runtimeUploadedAsset.visibility ?? 'public',
+    metadata: {
+      title: runtimeUploadedAsset.fileName ?? file.name,
+      altText: '',
+      description: '',
+      copyright: '',
+      license: '',
+    },
+  };
+};
 
 const toEventsMediaPickerDetail = (
   asset: HostMediaAssetDetail,
@@ -152,7 +208,7 @@ const toEventsMediaPickerDetail = (
     id: asset.id,
     title,
     fileName,
-    previewUrl: asset.previewUrl ?? summary?.previewUrl ?? null,
+    previewUrl: readPreferredPreviewUrl(asset.previewUrl, summary?.previewUrl),
     mimeType: asset.mimeType,
     visibility: asset.visibility,
     metadata: {
@@ -257,6 +313,7 @@ export function EventsDetailPage({
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<EventContentItem | null>(null);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
+  const uploadedMediaFallbacksRef = React.useRef(new Map<string, HostMediaAssetListItem>());
   const [dateStartInput, setDateStartInput] = React.useState('');
   const [dateEndInput, setDateEndInput] = React.useState('');
   const [invalidDateInputs, setInvalidDateInputs] = React.useState({ dateStart: false, dateEnd: false });
@@ -346,12 +403,16 @@ export function EventsDetailPage({
         mediaType: 'image',
         visibility: 'public',
       });
+      uploadedMediaFallbacksRef.current.set(uploaded.assetId, toUploadedEventsMediaFallback(uploaded, file));
       await refreshMediaAssets();
       return { assetId: uploaded.assetId };
     },
     loadAsset: async (assetId) => {
       const detail = await getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId });
-      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      const summary = resolveEventsMediaPickerSummary(
+        mediaAssets.find((asset) => asset.id === assetId),
+        uploadedMediaFallbacksRef.current.get(assetId)
+      );
       return toEventsMediaPickerDetail(detail, summary);
     },
     saveAssetMetadata: async (assetId, metadata) => {
@@ -362,7 +423,10 @@ export function EventsDetailPage({
         metadata,
       });
       await refreshMediaAssets();
-      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      const summary = resolveEventsMediaPickerSummary(
+        mediaAssets.find((asset) => asset.id === assetId),
+        uploadedMediaFallbacksRef.current.get(assetId)
+      );
       return toEventsMediaPickerDetail(detail, summary);
     },
   });

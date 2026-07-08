@@ -162,6 +162,19 @@ const readDetailFileName = (asset: Pick<HostMediaAssetDetail, 'id' | 'storageKey
   return fileName && fileName.length > 0 ? fileName : asset.id;
 };
 
+const readPreferredPreviewUrl = (
+  detailPreviewUrl: string | null | undefined,
+  summaryPreviewUrl: string | null | undefined
+): string | null => {
+  const normalizedDetailPreviewUrl = detailPreviewUrl?.trim();
+  if (normalizedDetailPreviewUrl && normalizedDetailPreviewUrl.length > 0) {
+    return normalizedDetailPreviewUrl;
+  }
+
+  const normalizedSummaryPreviewUrl = summaryPreviewUrl?.trim();
+  return normalizedSummaryPreviewUrl && normalizedSummaryPreviewUrl.length > 0 ? normalizedSummaryPreviewUrl : null;
+};
+
 const toNewsMediaPickerSummary = (asset: HostMediaAssetListItem): StudioMediaPickerAssetSummary => ({
   id: asset.id,
   title: readAssetTitle(asset),
@@ -170,6 +183,49 @@ const toNewsMediaPickerSummary = (asset: HostMediaAssetListItem): StudioMediaPic
   mimeType: asset.mimeType,
   visibility: asset.visibility,
 });
+
+const resolveNewsMediaPickerSummary = (
+  listedAsset: HostMediaAssetListItem | undefined,
+  uploadedFallback: HostMediaAssetListItem | undefined
+): HostMediaAssetListItem | undefined => {
+  if (!listedAsset) {
+    return uploadedFallback;
+  }
+
+  const listedPreviewUrl = listedAsset.previewUrl?.trim();
+  if (listedPreviewUrl && listedPreviewUrl.length > 0) {
+    return listedAsset;
+  }
+
+  return uploadedFallback ?? listedAsset;
+};
+
+const toUploadedNewsMediaFallback = (
+  uploadedAsset: { readonly assetId: string },
+  file: File
+): HostMediaAssetListItem => {
+  const runtimeUploadedAsset = uploadedAsset as {
+    readonly fileName?: string;
+    readonly mimeType?: string;
+    readonly previewUrl?: string | null;
+    readonly visibility?: HostMediaAssetListItem['visibility'];
+  };
+
+  return {
+    id: uploadedAsset.assetId,
+    fileName: runtimeUploadedAsset.fileName ?? file.name,
+    mimeType: runtimeUploadedAsset.mimeType ?? file.type,
+    previewUrl: runtimeUploadedAsset.previewUrl ?? null,
+    visibility: runtimeUploadedAsset.visibility ?? 'public',
+    metadata: {
+      title: runtimeUploadedAsset.fileName ?? file.name,
+      altText: '',
+      description: '',
+      copyright: '',
+      license: '',
+    },
+  };
+};
 
 const toNewsMediaPickerDetail = (
   asset: HostMediaAssetDetail,
@@ -182,7 +238,7 @@ const toNewsMediaPickerDetail = (
     id: asset.id,
     title,
     fileName,
-    previewUrl: asset.previewUrl ?? summary?.previewUrl ?? null,
+    previewUrl: readPreferredPreviewUrl(asset.previewUrl, summary?.previewUrl),
     mimeType: asset.mimeType,
     visibility: asset.visibility,
     metadata: {
@@ -344,6 +400,7 @@ export const NewsDetailPage = ({
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [visitedTabs, setVisitedTabs] = React.useState<readonly NewsDetailTabId[]>(['basis']);
+  const uploadedMediaFallbacksRef = React.useRef(new Map<string, HostMediaAssetListItem>());
   const editLoadRequestIdRef = React.useRef(0);
   const formId = React.useId();
   const resolvedInitialAuthor = (authorControl?.value ?? initialAuthor ?? '').trim();
@@ -414,12 +471,16 @@ export const NewsDetailPage = ({
         mediaType: 'image',
         visibility: 'public',
       });
+      uploadedMediaFallbacksRef.current.set(uploaded.assetId, toUploadedNewsMediaFallback(uploaded, file));
       await refreshMediaAssets();
       return { assetId: uploaded.assetId };
     },
     loadAsset: async (assetId) => {
       const detail = await getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId });
-      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      const summary = resolveNewsMediaPickerSummary(
+        mediaAssets.find((asset) => asset.id === assetId),
+        uploadedMediaFallbacksRef.current.get(assetId)
+      );
       return toNewsMediaPickerDetail(detail, summary);
     },
     saveAssetMetadata: async (assetId, metadata) => {
@@ -430,7 +491,10 @@ export const NewsDetailPage = ({
         metadata,
       });
       await refreshMediaAssets();
-      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      const summary = resolveNewsMediaPickerSummary(
+        mediaAssets.find((asset) => asset.id === assetId),
+        uploadedMediaFallbacksRef.current.get(assetId)
+      );
       return toNewsMediaPickerDetail(detail, summary);
     },
   });

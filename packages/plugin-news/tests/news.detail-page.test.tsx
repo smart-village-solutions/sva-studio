@@ -5,8 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  getHostMediaAsset,
   listHostMediaAssets,
   registerPluginTranslationResolver,
+  updateHostMediaAsset,
   uploadHostMediaFile,
 } from '@sva/plugin-sdk';
 
@@ -59,7 +61,9 @@ vi.mock('@sva/plugin-sdk', async () => {
   const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
   return {
     ...actual,
+    getHostMediaAsset: vi.fn(),
     listHostMediaAssets: vi.fn(async () => []),
+    updateHostMediaAsset: vi.fn(),
     uploadHostMediaFile: vi.fn(),
   };
 });
@@ -170,6 +174,20 @@ describe('NewsDetailPage', () => {
         'news.messages.mediaUploadError': 'Bild konnte nicht hochgeladen werden.',
         'news.messages.mediaUploadUnsupportedType': 'Dateityp wird nicht unterstützt.',
         'news.messages.mediaUploadUnavailableUrl': 'Bild-URL konnte nicht ermittelt werden.',
+        'news.messages.mediaPickerTitle': 'Medium hinzufügen',
+        'news.messages.mediaPickerDescription': 'Vorhandene Medien auswählen oder neue hochladen.',
+        'news.messages.mediaPickerReviewMode': 'Medium prüfen',
+        'news.messages.mediaPickerUploadRegionLabel': 'Uploadbereich',
+        'news.messages.mediaPickerUploadTitle': 'Neues Medium hochladen',
+        'news.messages.mediaPickerUploadDescription': 'Datei auswählen und Metadaten prüfen.',
+        'news.messages.mediaPickerSelectFile': 'Datei auswählen',
+        'news.messages.mediaPickerUploadSupportLabel': 'Unterstützte Formate',
+        'news.messages.mediaPickerAltText': 'Alternativtext',
+        'news.messages.mediaPickerLicense': 'Lizenz',
+        'news.messages.mediaPickerBackToLibrary': 'Zurück zur Mediathek',
+        'news.messages.mediaPickerBackToUpload': 'Zurück zum Upload',
+        'news.messages.mediaPickerOpenMediaManagement': 'In Medienverwaltung öffnen',
+        'news.messages.mediaPickerUseMedia': 'Medium übernehmen',
         'news.values.mediaContentTypes.image': 'Bild',
         'news.values.mediaContentTypes.audio': 'Audio',
         'news.values.mediaContentTypes.video': 'Video',
@@ -180,7 +198,9 @@ describe('NewsDetailPage', () => {
       return labels[key] ?? key;
     });
     vi.mocked(listNewsCategories).mockResolvedValue([]);
+    vi.mocked(getHostMediaAsset).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([]);
+    vi.mocked(updateHostMediaAsset).mockReset();
     vi.mocked(uploadHostMediaFile).mockReset();
   });
 
@@ -217,15 +237,45 @@ describe('NewsDetailPage', () => {
           visibility: 'public',
         },
       ] as never);
+    vi.mocked(getHostMediaAsset).mockResolvedValueOnce({
+      id: 'asset-uploaded',
+      fileName: 'uploaded.jpg',
+      mimeType: 'image/jpeg',
+      previewUrl: '',
+      visibility: 'public',
+      metadata: {
+        title: 'uploaded.jpg',
+        altText: '',
+        description: '',
+        copyright: '',
+        license: '',
+      },
+    } as never);
+    vi.mocked(updateHostMediaAsset).mockResolvedValueOnce({
+      id: 'asset-uploaded',
+      fileName: 'uploaded.jpg',
+      mimeType: 'image/jpeg',
+      previewUrl: '',
+      visibility: 'public',
+      metadata: {
+        title: 'uploaded.jpg',
+        altText: '',
+        description: '',
+        copyright: '',
+        license: '',
+      },
+    } as never);
 
     render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
 
     fireEvent.change(await screen.findByLabelText('Bereich auswählen'), { target: { value: 'content' } });
-    fireEvent.change(screen.getByLabelText('Bild hochladen'), {
+    fireEvent.click(screen.getByRole('button', { name: 'Bild hochladen' }));
+    fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: {
         files: [new File(['image'], 'uploaded.jpg', { type: 'image/jpeg' })],
       },
     });
+    fireEvent.click(await screen.findByRole('button', { name: 'Medium übernehmen' }));
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('https://example.com/uploaded.jpg')).toBeTruthy();

@@ -22,7 +22,7 @@
     "lint": { "cache": true, "inputs": ["default", "^production", "lintTooling"] },
     "test:unit": { "cache": true, "inputs": ["default", "^production", "testing"] },
     "test:coverage": {
-      "cache": true,
+      "cache": false,
       "inputs": [
         "default",
         "^production",

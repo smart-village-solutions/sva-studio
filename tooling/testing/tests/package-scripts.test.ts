@@ -105,7 +105,11 @@ function loadScript(relativePath: string): string {
   return fs.readFileSync(path.join(rootDir, relativePath), 'utf8');
 }
 
-function loadNxJson(): { namedInputs?: Record<string, NamedInputValue[]> } {
+function loadNxJson(): {
+  namedInputs?: Record<string, NamedInputValue[]>;
+  nxCloudId?: string;
+  targetDefaults?: Record<string, { cache?: boolean }>;
+} {
   const rootDir = resolveRootDir();
   return JSON.parse(fs.readFileSync(path.join(rootDir, 'nx.json'), 'utf8')) as {
     namedInputs?: Record<string, NamedInputValue[]>;
@@ -366,6 +370,14 @@ describe('workspace package scripts', () => {
     expect(unitInputs).toContain('ciGateTooling');
     expect(unitInputs).toContain('toolingScripts');
     expect(coverageInputs).toContain('toolingScripts');
+  });
+
+  it('keeps coverage runs uncached when Nx Cloud is enabled', () => {
+    const nxJson = loadNxJson();
+    const coverageTarget = nxJson.targetDefaults?.['test:coverage'];
+
+    expect(nxJson.nxCloudId).toBeTruthy();
+    expect(coverageTarget?.cache).toBe(false);
   });
 
   it('keeps the affected unit gate app-slice-aware', () => {

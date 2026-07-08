@@ -1,0 +1,4 @@
+{
+  "prNumber": 689,
+  "body": "Die Entwicklungs- und Qualitätsprüfung im Studio läuft jetzt zuverlässiger.\n\n- Die Nx-Cloud-Anbindung für den Workspace ist eingerichtet.\n- Coverage-Prüfungen verwenden keine veralteten Cache-Ergebnisse mehr.\n- Veraltete Vergleichswerte für betroffene Plugins wurden bereinigt, damit Änderungen wieder konsistent geprüft werden."
+}

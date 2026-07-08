@@ -10,7 +10,7 @@ import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Label } from '../../../components/ui/label';
-import { SearchableSelect } from '../../../components/ui/searchable-select';
+import { filterSearchableSelectOptions, SearchableSelect } from '../../../components/ui/searchable-select';
 import { Select } from '../../../components/ui/select';
 import { useOrganizations } from '../../../hooks/use-organizations';
 import { t } from '../../../i18n';
@@ -41,15 +41,6 @@ const membershipUserKeywords = (user: IamUserListItem) => [
   user.position ?? '',
   user.department ?? '',
 ];
-
-const matchesMembershipUserSearch = (user: IamUserListItem, searchValue: string) => {
-  const normalizedSearch = searchValue.trim().toLocaleLowerCase();
-  if (!normalizedSearch) {
-    return true;
-  }
-
-  return membershipUserKeywords(user).some((value) => value.toLocaleLowerCase().includes(normalizedSearch));
-};
 
 export const sortMembershipUsersByLabel = (users: readonly IamUserListItem[]): readonly IamUserListItem[] =>
   users
@@ -226,7 +217,15 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     [assignedMembershipAccountIds, membershipUsers]
   );
   const visibleMembershipUsers = React.useMemo(
-    () => availableMembershipUsers.filter((user) => matchesMembershipUserSearch(user, membershipSearch)),
+    () =>
+      filterSearchableSelectOptions(
+        availableMembershipUsers.map((user) => ({
+          value: user.id,
+          label: formatMembershipUserLabel(user),
+          keywords: membershipUserKeywords(user),
+        })),
+        membershipSearch
+      ),
     [availableMembershipUsers, membershipSearch]
   );
   const selectedMembershipUser = React.useMemo(

@@ -204,4 +204,28 @@ describe('SearchableSelect', () => {
 
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  it('closes the popover when focus leaves the widget via keyboard navigation', () => {
+    render(
+      <div>
+        <SearchableSelect
+          id="organization-select"
+          label="Organisation"
+          value=""
+          placeholder="Bitte wählen"
+          searchPlaceholder="Suchen"
+          emptyText="Keine Treffer"
+          options={[{ value: 'org-1', label: 'Musterstadt' }]}
+          onValueChange={vi.fn()}
+        />
+        <button type="button">Weiter</button>
+      </div>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation' }));
+    const searchInput = screen.getByPlaceholderText('Suchen');
+    fireEvent.blur(searchInput, { relatedTarget: screen.getByRole('button', { name: 'Weiter' }) });
+
+    expect(screen.queryByPlaceholderText('Suchen')).toBeNull();
+  });
 });

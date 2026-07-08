@@ -1123,13 +1123,11 @@ WHERE membership.instance_id = $1
     execute: async ({ actor, organizationId, accountId, input }) => {
       try {
         const result = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
-          await client.query('BEGIN');
-          try {
-            const current = await client.query<{
-              membership_visibility: 'internal' | 'external';
-              is_default_context: boolean;
-            }>(
-              `
+          const current = await client.query<{
+            membership_visibility: 'internal' | 'external';
+            is_default_context: boolean;
+          }>(
+            `
 SELECT membership.membership_visibility, membership.is_default_context
 FROM iam.account_organizations membership
 WHERE membership.instance_id = $1
@@ -1137,21 +1135,20 @@ WHERE membership.instance_id = $1
   AND membership.organization_id = $3::uuid
 LIMIT 1;
 `,
-              [actor.instanceId, accountId, organizationId]
-            );
-            if (current.rowCount === 0) {
-              await client.query('ROLLBACK');
-              return { status: 'not_found' as const };
-            }
+            [actor.instanceId, accountId, organizationId]
+          );
+          if (current.rowCount === 0) {
+            return { status: 'not_found' as const };
+          }
 
-            const nextVisibility = input.data.visibility ?? current.rows[0]?.membership_visibility ?? 'internal';
-            const requestedDefaultContext = input.data.isDefaultContext ?? current.rows[0]?.is_default_context ?? false;
-            const requiresFallbackPromotion = input.data.isDefaultContext === false && current.rows[0]?.is_default_context;
-            let nextDefaultContext = requestedDefaultContext;
+          const nextVisibility = input.data.visibility ?? current.rows[0]?.membership_visibility ?? 'internal';
+          const requestedDefaultContext = input.data.isDefaultContext ?? current.rows[0]?.is_default_context ?? false;
+          const requiresFallbackPromotion = input.data.isDefaultContext === false && current.rows[0]?.is_default_context;
+          let nextDefaultContext = requestedDefaultContext;
 
-            if (requiresFallbackPromotion) {
-              const fallbackMembership = await client.query<{ organization_id: string }>(
-                `
+          if (requiresFallbackPromotion) {
+            const fallbackMembership = await client.query<{ organization_id: string }>(
+              `
 SELECT organization_id
 FROM iam.account_organizations
 WHERE instance_id = $1
@@ -1160,25 +1157,25 @@ WHERE instance_id = $1
 ORDER BY created_at ASC, organization_id ASC
 LIMIT 1;
 `,
-                [actor.instanceId, accountId, organizationId]
-              );
-              nextDefaultContext = fallbackMembership.rowCount === 0;
-            }
+              [actor.instanceId, accountId, organizationId]
+            );
+            nextDefaultContext = fallbackMembership.rowCount === 0;
+          }
 
-            if (input.data.isDefaultContext === true) {
-              await client.query(
-                `
+          if (input.data.isDefaultContext === true) {
+            await client.query(
+              `
 UPDATE iam.account_organizations
 SET is_default_context = false
 WHERE instance_id = $1
   AND account_id = $2::uuid;
 `,
-                [actor.instanceId, accountId]
-              );
-            }
+              [actor.instanceId, accountId]
+            );
+          }
 
-            await client.query(
-              `
+          await client.query(
+            `
 UPDATE iam.account_organizations
 SET
   membership_visibility = $4,
@@ -1187,12 +1184,12 @@ WHERE instance_id = $1
   AND account_id = $2::uuid
   AND organization_id = $3::uuid;
 `,
-              [actor.instanceId, accountId, organizationId, nextVisibility, nextDefaultContext]
-            );
+            [actor.instanceId, accountId, organizationId, nextVisibility, nextDefaultContext]
+          );
 
-            if (requiresFallbackPromotion && !nextDefaultContext) {
-              await client.query(
-                `
+          if (requiresFallbackPromotion && !nextDefaultContext) {
+            await client.query(
+              `
 WITH fallback_membership AS (
   SELECT organization_id
   FROM iam.account_organizations
@@ -1209,37 +1206,32 @@ WHERE membership.instance_id = $1
   AND membership.account_id = $2::uuid
   AND membership.organization_id = fallback_membership.organization_id;
 `,
-                [actor.instanceId, accountId, organizationId]
-              );
-            }
-
-            await deps.notifyPermissionInvalidation(client, {
-              instanceId: actor.instanceId,
-              trigger: 'organization_membership_updated',
-            });
-            await deps.emitActivityLog(client, {
-              instanceId: actor.instanceId,
-              accountId: actor.actorAccountId,
-              subjectId: accountId,
-              eventType: 'organization.membership_updated',
-              result: 'success',
-              payload: {
-                organizationId,
-                accountId,
-                visibility: nextVisibility,
-                isDefaultContext: nextDefaultContext,
-              },
-              requestId: actor.requestId,
-              traceId: actor.traceId,
-            });
-
-            const detail = await deps.loadOrganizationDetail(client, { instanceId: actor.instanceId, organizationId });
-            await client.query('COMMIT');
-            return { status: 'ok' as const, detail };
-          } catch (error) {
-            await client.query('ROLLBACK');
-            throw error;
+              [actor.instanceId, accountId, organizationId]
+            );
           }
+
+          await deps.notifyPermissionInvalidation(client, {
+            instanceId: actor.instanceId,
+            trigger: 'organization_membership_updated',
+          });
+          await deps.emitActivityLog(client, {
+            instanceId: actor.instanceId,
+            accountId: actor.actorAccountId,
+            subjectId: accountId,
+            eventType: 'organization.membership_updated',
+            result: 'success',
+            payload: {
+              organizationId,
+              accountId,
+              visibility: nextVisibility,
+              isDefaultContext: nextDefaultContext,
+            },
+            requestId: actor.requestId,
+            traceId: actor.traceId,
+          });
+
+          const detail = await deps.loadOrganizationDetail(client, { instanceId: actor.instanceId, organizationId });
+          return { status: 'ok' as const, detail };
         });
 
         if (result.status === 'not_found') {

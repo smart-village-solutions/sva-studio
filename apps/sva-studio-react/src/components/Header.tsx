@@ -217,6 +217,13 @@ const HeaderIconTooltip = ({
   readonly children: React.ReactNode;
 }) => {
   const [open, setOpen] = React.useState(false);
+  const tooltipId = React.useId();
+  const triggerChild =
+    React.isValidElement(children) && typeof children.type !== 'symbol'
+      ? React.cloneElement(children, {
+          'aria-describedby': open ? tooltipId : undefined,
+        } as Record<string, unknown>)
+      : children;
 
   return (
     <span
@@ -230,9 +237,10 @@ const HeaderIconTooltip = ({
         }
       }}
     >
-      {children}
+      {triggerChild}
       {open ? (
         <span
+          id={tooltipId}
           role="tooltip"
           className="pointer-events-none absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md"
         >

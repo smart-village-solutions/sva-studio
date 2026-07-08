@@ -37,7 +37,7 @@ type SearchableSelectProps = SearchableSelectBaseProps &
   (SearchableSelectControlledSearchProps | SearchableSelectUncontrolledSearchProps);
 
 const normalizeSearch = (value: string) => value.trim().toLocaleLowerCase();
-const matchesOption = (option: SearchableSelectOption, search: string) => {
+export const matchesSearchableSelectOption = (option: SearchableSelectOption, search: string) => {
   const normalizedSearch = normalizeSearch(search);
   if (!normalizedSearch) {
     return true;
@@ -48,8 +48,8 @@ const matchesOption = (option: SearchableSelectOption, search: string) => {
   );
 };
 
-const filterOptions = (options: readonly SearchableSelectOption[], searchValue: string) =>
-  options.filter((option) => matchesOption(option, searchValue));
+export const filterSearchableSelectOptions = (options: readonly SearchableSelectOption[], searchValue: string) =>
+  options.filter((option) => matchesSearchableSelectOption(option, searchValue));
 
 const SearchableSelectTrigger = ({
   close,
@@ -123,7 +123,10 @@ const useSearchableSelectState = ({
   const [internalSearchValue, setInternalSearchValue] = React.useState('');
   const [activeIndex, setActiveIndex] = React.useState(0);
   const effectiveSearchValue = searchValue ?? internalSearchValue;
-  const filteredOptions = React.useMemo(() => filterOptions(options, effectiveSearchValue), [effectiveSearchValue, options]);
+  const filteredOptions = React.useMemo(
+    () => filterSearchableSelectOptions(options, effectiveSearchValue),
+    [effectiveSearchValue, options]
+  );
 
   React.useEffect(() => {
     if (!filteredOptions.length) {
@@ -321,7 +324,15 @@ export const SearchableSelect = ({
   }, [close, open]);
 
   return (
-    <div ref={rootRef} className="relative grid gap-1 text-sm text-foreground">
+    <div
+      ref={rootRef}
+      className="relative grid gap-1 text-sm text-foreground"
+      onBlurCapture={(event) => {
+        if (!rootRef.current?.contains(event.relatedTarget as Node | null)) {
+          close();
+        }
+      }}
+    >
       <label htmlFor={id}>{label}</label>
       <SearchableSelectTrigger
         close={() => {

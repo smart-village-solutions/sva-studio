@@ -553,6 +553,9 @@ describe('Header auth actions', () => {
 
     fireEvent.focus(screen.getByRole('button', { name: 'Sprache wechseln' }));
     expect(screen.getByRole('tooltip', { name: 'Sprachen' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sprache wechseln' }).getAttribute('aria-describedby')).toBe(
+      screen.getByRole('tooltip', { name: 'Sprachen' }).getAttribute('id')
+    );
     fireEvent.blur(screen.getByRole('button', { name: 'Sprache wechseln' }));
     await waitFor(() => {
       expect(screen.queryByRole('tooltip', { name: 'Sprachen' })).toBeNull();

@@ -1946,6 +1946,30 @@ describe('content list projection', () => {
     });
   });
 
+  it('returns a blocking 503 when an explicitly requested mainserver type has no snapshot yet', async () => {
+    state.listSvaMainserverNews.mockRejectedValueOnce(
+      Object.assign(new Error('upstream down'), { code: 'database_unavailable' })
+    );
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      type: 'news.article',
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+        message:
+          'Für mindestens einen angefragten Mainserver-Inhaltstyp liegt noch kein synchronisierter Snapshot vor.',
+      },
+      requestId: 'req-1',
+    });
+  });
+
   it('treats the empty visible type sentinel as an empty list instead of forbidden', async () => {
     const response = await listProjectedContents(ctx, {
       page: 1,
@@ -2324,6 +2348,22 @@ describe('content list projection', () => {
         source_entity_id: 'poi-user-1',
       }),
     ]);
+  });
+
+  it('ignores direct mainserver mutation refreshes without an actor account id', async () => {
+    await expect(
+      refreshProjectedContentsForMainserverMutation({
+        contentType: 'news.article',
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+        operation: 'update',
+        entityId: 'news-1',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
+    expect(state.listSvaMainserverNews).not.toHaveBeenCalled();
+    expect(projectionRows).toEqual([]);
   });
 
   it('refreshes generic item projections after direct mainserver mutations', async () => {
@@ -3087,6 +3127,24 @@ describe('content list projection', () => {
       error: {
         code: 'database_unavailable',
         message: 'db unavailable',
+      },
+      requestId: 'req-1',
+    });
+  });
+
+  it('returns a deterministic API error when manual refresh gets no actor account for mainserver types', async () => {
+    state.resolveActorAccountId.mockResolvedValueOnce(undefined);
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['news.article'],
+      force: false,
+    });
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+        message: 'Der Akteurkontext fuer Mainserver-Inhalte konnte nicht geladen werden.',
       },
       requestId: 'req-1',
     });

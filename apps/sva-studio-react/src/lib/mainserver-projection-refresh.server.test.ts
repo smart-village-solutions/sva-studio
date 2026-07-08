@@ -156,6 +156,32 @@ describe('mainserver projection refresh', () => {
     });
   });
 
+  it('skips targeted entity id derivation when the request path is outside known mainserver collections', async () => {
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/other/news/news-42', {
+        method: 'PATCH',
+      }),
+      new Response(null, { status: 204 }),
+      'news.article'
+    );
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/unknown/news-42', {
+        method: 'PATCH',
+      }),
+      new Response(null, { status: 204 }),
+      'news.article'
+    );
+
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(
+      1,
+      expect.not.objectContaining({ entityId: 'news-42' })
+    );
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(
+      2,
+      expect.not.objectContaining({ entityId: 'news-42' })
+    );
+  });
+
   it('skips projection refresh for read-only requests and failed responses', async () => {
     await refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/news', { method: 'GET' }),
@@ -165,6 +191,28 @@ describe('mainserver projection refresh', () => {
     await refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/news', { method: 'POST' }),
       new Response('{}', { status: 503 }),
+      'news.article'
+    );
+
+    expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
+  });
+
+  it('skips projection refresh when the authenticated user has no instance context', async () => {
+    state.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({
+        activeOrganizationId: 'org-1',
+        user: {
+          id: 'kc-user-1',
+        },
+      })
+    );
+
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/news/news-1', { method: 'PATCH' }),
+      new Response(JSON.stringify({ data: { id: 'news-1' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
       'news.article'
     );
 
@@ -187,5 +235,31 @@ describe('mainserver projection refresh', () => {
 
     expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
     expect(state.loggerWarn).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips the mutation follow-up when actor account resolution returns no account', async () => {
+    state.resolveActorAccountId.mockResolvedValueOnce(undefined);
+
+    await expect(
+      refreshProjectionAfterMainserverMutation(
+        new Request('https://studio.test/api/v1/mainserver/poi', { method: 'POST' }),
+        new Response(JSON.stringify({ data: { id: 'poi-1' } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+        'poi.point-of-interest'
+      )
+    ).resolves.toBeUndefined();
+
+    expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Skipped mainserver mutation projection refresh because actor account resolution returned no account',
+      expect.objectContaining({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+        contentType: 'poi.point-of-interest',
+        method: 'POST',
+      })
+    );
   });
 });

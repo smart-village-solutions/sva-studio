@@ -144,6 +144,8 @@ describe('content list projection', () => {
   let projectionInsertSql: string | null;
   let projectionInsertPayloadSizes: number[];
   let simulateConcurrentProjectionConflict: boolean;
+  let simulateLegacyProjectionSchemaMismatchOnce: boolean;
+  let simulateLegacySyncStateSchemaMismatchOnce: boolean;
   let syncScopeKeyColumnAvailable: boolean;
   let projectionScopeKeyColumnAvailable: boolean;
 
@@ -252,6 +254,8 @@ describe('content list projection', () => {
     projectionInsertSql = null;
     projectionInsertPayloadSizes = [];
     simulateConcurrentProjectionConflict = false;
+    simulateLegacyProjectionSchemaMismatchOnce = false;
+    simulateLegacySyncStateSchemaMismatchOnce = false;
     syncScopeKeyColumnAvailable = true;
     projectionScopeKeyColumnAvailable = true;
     state.authorizeContentPrimitiveForUser.mockReset();
@@ -351,6 +355,20 @@ describe('content list projection', () => {
             }
 
             if (text.includes('INSERT INTO iam.content_list_projection_sync_state')) {
+              if (
+                simulateLegacySyncStateSchemaMismatchOnce &&
+                !text.includes('sync_scope_key') &&
+                syncScopeKeyColumnAvailable
+              ) {
+                simulateLegacySyncStateSchemaMismatchOnce = false;
+                const error = new Error(
+                  'duplicate key value violates unique constraint "content_list_projection_sync_state_pkey"'
+                ) as Error & { code?: string; constraint?: string };
+                error.code = '23505';
+                error.constraint = 'content_list_projection_sync_state_pkey';
+                throw error;
+              }
+
               const contentType = String(values?.[1] ?? '');
               const syncScopeKey =
                 typeof values?.[2] === 'string' && syncScopeKeyColumnAvailable
@@ -460,6 +478,20 @@ describe('content list projection', () => {
             }
 
             if (text.includes('INSERT INTO iam.content_list_projection')) {
+              if (
+                simulateLegacyProjectionSchemaMismatchOnce &&
+                !text.includes('ON CONFLICT ON CONSTRAINT content_list_projection_scope_key') &&
+                projectionScopeKeyColumnAvailable
+              ) {
+                simulateLegacyProjectionSchemaMismatchOnce = false;
+                const error = new Error(
+                  'duplicate key value violates unique constraint "content_list_projection_scope_key"'
+                ) as Error & { code?: string; constraint?: string };
+                error.code = '23505';
+                error.constraint = 'content_list_projection_scope_key';
+                throw error;
+              }
+
               projectionInsertArgs = values ?? null;
               projectionInsertSql = text;
               projectionInsertPayloadSizes.push(
@@ -717,6 +749,96 @@ describe('content list projection', () => {
       },
       requestId: 'req-1',
     });
+  });
+
+  it('re-detects the scoped projection schema after a cached legacy mode collides once', async () => {
+    projectionScopeKeyColumnAvailable = false;
+    syncScopeKeyColumnAvailable = false;
+
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['news.article'],
+      force: false,
+    });
+
+    projectionScopeKeyColumnAvailable = true;
+    syncScopeKeyColumnAvailable = true;
+    simulateLegacyProjectionSchemaMismatchOnce = true;
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [
+        {
+          id: 'news-schema-retry-1',
+          title: 'Schema Retry',
+          contentType: 'news.article',
+          payload: { teaser: 'A' },
+          status: 'published',
+          author: 'Redaktion',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          publishedAt: '2026-06-21T09:00:00.000Z',
+          contentBlocks: [],
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['news.article'],
+      force: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect(projectionInsertSql).toContain(
+      'ON CONFLICT ON CONSTRAINT content_list_projection_scope_key'
+    );
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        projection_scope_key: 'de-musterhausen::account-1::org-1::news.article',
+        source_entity_id: 'news-schema-retry-1',
+      }),
+    ]);
+  });
+
+  it('re-detects the scoped sync-state schema after a cached legacy mode collides once', async () => {
+    projectionScopeKeyColumnAvailable = false;
+    syncScopeKeyColumnAvailable = false;
+
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['news.article'],
+      force: false,
+    });
+
+    projectionScopeKeyColumnAvailable = true;
+    syncScopeKeyColumnAvailable = true;
+    simulateLegacySyncStateSchemaMismatchOnce = true;
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['news.article'],
+      force: true,
+    });
+    const payload = (await response.json()) as {
+      data: {
+        syncStates: Array<{ contentType: string; hasSnapshot: boolean }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.syncStates).toEqual([
+      expect.objectContaining({
+        contentType: 'news.article',
+        hasSnapshot: true,
+      }),
+    ]);
+    expect(
+      syncStates.get('news.article::de-musterhausen::account-1::org-1::news.article')
+    ).toEqual(
+      expect.objectContaining({
+        sync_scope_key: 'de-musterhausen::account-1::org-1::news.article',
+      })
+    );
   });
 
   it('persists the resolved mainserver credential source for organization-scoped projections', async () => {

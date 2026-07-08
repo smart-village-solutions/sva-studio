@@ -267,7 +267,6 @@ describe('PoiListPage', () => {
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Rathaus' } });
     fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Verwaltung' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Kategorie hinzufügen' }));
     switchSection('content');
     fireEvent.change(screen.getByLabelText('Beschreibung', { selector: 'textarea' }), {
       target: { value: 'Bürgerservice vor Ort' },

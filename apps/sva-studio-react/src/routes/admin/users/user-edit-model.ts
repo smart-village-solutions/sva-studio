@@ -5,7 +5,7 @@ import { pickInitials } from '../../../lib/display-name';
 import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import type { UpdateUserPayload } from '../../../lib/iam-api';
 
-export type UserEditTabKey = 'personal' | 'management' | 'permissions' | 'history';
+export type UserEditTabKey = 'personal' | 'management' | 'organizations' | 'permissions' | 'history';
 
 export type UserFormValues = {
   firstName: string;
@@ -28,10 +28,11 @@ export type UserFormValues = {
 
 export const USER_EDIT_TABS: ReadonlyArray<{
   key: UserEditTabKey;
-  labelKey: 'personal' | 'management' | 'permissions' | 'history';
+  labelKey: 'personal' | 'management' | 'organizations' | 'permissions' | 'history';
 }> = [
   { key: 'personal', labelKey: 'personal' },
   { key: 'management', labelKey: 'management' },
+  { key: 'organizations', labelKey: 'organizations' },
   { key: 'permissions', labelKey: 'permissions' },
   { key: 'history', labelKey: 'history' },
 ];
@@ -40,6 +41,7 @@ export const userEditTranslationKeys = {
   tab: {
     personal: 'admin.users.edit.tab.personal',
     management: 'admin.users.edit.tab.management',
+    organizations: 'admin.users.edit.tab.organizations',
     permissions: 'admin.users.edit.tab.permissions',
     history: 'admin.users.edit.tab.history',
   },

@@ -6,6 +6,7 @@ import type { OrganizationMainserverCredentialState } from './organization-mains
 import {
   assignOrganizationMembershipSchema,
   createOrganizationSchema,
+  updateOrganizationMembershipSchema,
   updateOrganizationContextSchema,
   updateOrganizationSchema,
 } from './organization-schemas.js';
@@ -96,6 +97,7 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
         | 'organization.deleted'
         | 'organization.membership_assigned'
         | 'organization.membership_removed'
+        | 'organization.membership_updated'
         | 'organization.context_switched';
       readonly result: 'success';
       readonly payload: Readonly<Record<string, unknown>>;
@@ -142,6 +144,7 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
       readonly trigger:
         | 'organization_membership_assigned'
         | 'organization_membership_removed'
+        | 'organization_membership_updated'
         | 'organization_context_switched';
     }
   ) => Promise<void>;
@@ -1098,6 +1101,131 @@ WHERE membership.instance_id = $1
     },
   });
 
+  const updateOrganizationMembershipInternal = createAdminMutationHandler(deps, {
+    requireRateLimit: true,
+    prepare: ({ request, actor }) => {
+      const organizationId = readOrganizationId(deps, request, actor.requestId);
+      if (organizationId instanceof Response) {
+        return organizationId;
+      }
+      const accountId = deps.readPathSegment(request, 6);
+      if (!accountId || !deps.isUuid(accountId)) {
+        return deps.createApiError(400, 'invalid_request', 'Ungültige accountId.', actor.requestId);
+      }
+      return { organizationId, accountId };
+    },
+    parse: async ({ request, actor }) => {
+      const parsed = await deps.parseRequestBody(request, updateOrganizationMembershipSchema);
+      return parsed.ok
+        ? parsed
+        : deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+    },
+    execute: async ({ actor, organizationId, accountId, input }) => {
+      try {
+        const result = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+          const current = await client.query<{
+            membership_visibility: 'internal' | 'external';
+            is_default_context: boolean;
+          }>(
+            `
+SELECT membership.membership_visibility, membership.is_default_context
+FROM iam.account_organizations membership
+WHERE membership.instance_id = $1
+  AND membership.account_id = $2::uuid
+  AND membership.organization_id = $3::uuid
+LIMIT 1;
+`,
+            [actor.instanceId, accountId, organizationId]
+          );
+          if (current.rowCount === 0) {
+            return { status: 'not_found' as const };
+          }
+
+          const nextVisibility = input.data.visibility ?? current.rows[0]?.membership_visibility ?? 'internal';
+          const nextDefaultContext = input.data.isDefaultContext ?? current.rows[0]?.is_default_context ?? false;
+
+          if (input.data.isDefaultContext === true) {
+            await client.query(
+              `
+UPDATE iam.account_organizations
+SET is_default_context = false
+WHERE instance_id = $1
+  AND account_id = $2::uuid;
+`,
+              [actor.instanceId, accountId]
+            );
+          }
+
+          await client.query(
+            `
+UPDATE iam.account_organizations
+SET
+  membership_visibility = $4,
+  is_default_context = $5::boolean
+WHERE instance_id = $1
+  AND account_id = $2::uuid
+  AND organization_id = $3::uuid;
+`,
+            [actor.instanceId, accountId, organizationId, nextVisibility, nextDefaultContext]
+          );
+
+          if (input.data.isDefaultContext === false && current.rows[0]?.is_default_context) {
+            await client.query(
+              `
+WITH fallback_membership AS (
+  SELECT organization_id
+  FROM iam.account_organizations
+  WHERE instance_id = $1
+    AND account_id = $2::uuid
+    AND organization_id <> $3::uuid
+  ORDER BY created_at ASC, organization_id ASC
+  LIMIT 1
+)
+UPDATE iam.account_organizations membership
+SET is_default_context = true
+FROM fallback_membership
+WHERE membership.instance_id = $1
+  AND membership.account_id = $2::uuid
+  AND membership.organization_id = fallback_membership.organization_id;
+`,
+              [actor.instanceId, accountId, organizationId]
+            );
+          }
+
+          await deps.notifyPermissionInvalidation(client, {
+            instanceId: actor.instanceId,
+            trigger: 'organization_membership_updated',
+          });
+          await deps.emitActivityLog(client, {
+            instanceId: actor.instanceId,
+            accountId: actor.actorAccountId,
+            subjectId: accountId,
+            eventType: 'organization.membership_updated',
+            result: 'success',
+            payload: {
+              organizationId,
+              accountId,
+              visibility: nextVisibility,
+              isDefaultContext: nextDefaultContext,
+            },
+            requestId: actor.requestId,
+            traceId: actor.traceId,
+          });
+
+          const detail = await deps.loadOrganizationDetail(client, { instanceId: actor.instanceId, organizationId });
+          return { status: 'ok' as const, detail };
+        });
+
+        if (result.status === 'not_found') {
+          return deps.createApiError(404, 'not_found', 'Membership nicht gefunden.', actor.requestId);
+        }
+        return deps.jsonResponse(200, deps.asApiItem(result.detail, actor.requestId));
+      } catch {
+        return deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actor.requestId);
+      }
+    },
+  });
+
   const updateMyOrganizationContextInternal = async (
     request: Request,
     ctx: OrganizationMutationAuthenticatedRequestContext
@@ -1204,6 +1332,7 @@ WHERE membership.instance_id = $1
     createOrganizationInternal,
     deleteOrganizationInternal,
     removeOrganizationMembershipInternal,
+    updateOrganizationMembershipInternal,
     updateMyOrganizationContextInternal,
     updateOrganizationInternal,
   };

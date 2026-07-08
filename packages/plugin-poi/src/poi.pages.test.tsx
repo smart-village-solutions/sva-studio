@@ -107,7 +107,6 @@ describe('PoiCreatePage', () => {
     fireEvent.change(screen.getByLabelText('fields.categoriesSearch'), {
       target: { value: 'x'.repeat(129) },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'actions.addCategory' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
 
@@ -115,7 +114,8 @@ describe('PoiCreatePage', () => {
       expect(screen.getAllByRole('alert').some((element) => element.textContent?.includes('validation.categories'))).toBe(true);
     });
 
-    expect(screen.getByRole('button', { name: 'actions.addCategory' }).closest('section')?.textContent).toContain('validation.categories');
+    expect(screen.queryByRole('button', { name: 'actions.addCategory' })).toBeNull();
+    expect(screen.getByLabelText('fields.categoriesSearch').closest('section')?.textContent).toContain('validation.categories');
     expect(createPoiMock).not.toHaveBeenCalled();
   });
 

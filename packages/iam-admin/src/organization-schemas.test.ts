@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assignOrganizationMembershipSchema,
   createOrganizationSchema,
+  updateOrganizationMembershipSchema,
   updateOrganizationContextSchema,
   updateOrganizationSchema,
 } from './organization-schemas.js';
@@ -69,6 +70,26 @@ describe('organization-schemas', () => {
       })
     ).toMatchObject({
       organizationId: '11111111-1111-4111-8111-111111111111',
+    });
+  });
+
+  it('requires at least one membership field on membership update', () => {
+    expect(() => updateOrganizationMembershipSchema.parse({})).toThrow('at_least_one_field_required');
+
+    expect(
+      updateOrganizationMembershipSchema.parse({
+        visibility: 'external',
+      })
+    ).toMatchObject({
+      visibility: 'external',
+    });
+
+    expect(
+      updateOrganizationMembershipSchema.parse({
+        isDefaultContext: true,
+      })
+    ).toMatchObject({
+      isDefaultContext: true,
     });
   });
 });

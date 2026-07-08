@@ -406,6 +406,11 @@ export type AssignOrganizationMembershipPayload = {
   readonly visibility?: IamOrganizationMembershipVisibility;
 };
 
+export type UpdateOrganizationMembershipPayload = {
+  readonly isDefaultContext?: boolean;
+  readonly visibility?: IamOrganizationMembershipVisibility;
+};
+
 export type GovernanceCasesQuery = {
   readonly page: number;
   readonly pageSize: number;
@@ -1164,6 +1169,16 @@ export const removeOrganizationMembership = async (
       method: 'DELETE',
       headers: IAM_HEADERS,
     }
+  );
+
+export const updateOrganizationMembership = async (
+  organizationId: string,
+  accountId: string,
+  payload: UpdateOrganizationMembershipPayload
+): Promise<ApiItemResponse<IamOrganizationDetail>> =>
+  patchJson<ApiItemResponse<IamOrganizationDetail>, UpdateOrganizationMembershipPayload>(
+    `/api/v1/iam/organizations/${organizationId}/memberships/${accountId}`,
+    payload
   );
 
 export const getMyOrganizationContext = async (): Promise<

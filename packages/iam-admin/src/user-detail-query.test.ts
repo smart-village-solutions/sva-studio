@@ -62,6 +62,18 @@ describe('resolveUserDetail', () => {
                 valid_to: null,
               },
             ],
+            organization_membership_rows: [
+              {
+                organization_id: 'org-1',
+                organization_key: 'musterstadt',
+                display_name: 'Musterstadt',
+                organization_type: 'municipality',
+                is_active: true,
+                membership_visibility: 'internal',
+                is_default_context: true,
+                created_at: '2026-03-04T09:00:00.000Z',
+              },
+            ],
             permission_rows: [{ permission_key: 'content.read' }],
             permission_trace_rows: [
               {
@@ -155,6 +167,7 @@ describe('resolveUserDetail', () => {
       expect.stringContaining('AS group_rows'),
       ['de-musterhausen', 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb'],
     ]);
+    expect(String(query.mock.calls[1]?.[0])).toContain('AS organization_membership_rows');
     expect(String(query.mock.calls[1]?.[0])).not.toContain('FROM iam.account_permissions');
     expect(String(query.mock.calls[1]?.[0])).toContain('WHERE ar.instance_id = $1');
     expect(String(query.mock.calls[1]?.[0])).toContain('AND ar.account_id = a.id');
@@ -215,6 +228,18 @@ describe('resolveUserDetail', () => {
           groupType: 'role_bundle',
           origin: 'manual',
           validFrom: '2026-03-05T10:00:00.000Z',
+        },
+      ],
+      organizationMemberships: [
+        {
+          organizationId: 'org-1',
+          organizationKey: 'musterstadt',
+          displayName: 'Musterstadt',
+          organizationType: 'municipality',
+          isActive: true,
+          visibility: 'internal',
+          isDefaultContext: true,
+          createdAt: '2026-03-04T09:00:00.000Z',
         },
       ],
       mainserverUserApplicationSecretSet: false,

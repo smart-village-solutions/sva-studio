@@ -510,6 +510,75 @@ describe('Header auth actions', () => {
     }
   });
 
+  it('zeigt Hover-Hinweise sofort auf den Header-Icons', async () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        roles: ['editor'],
+        permissionActions: ['experimental.read'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
+
+    const { rerender } = render(<Header />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Systemmeldungen' })).toBeTruthy();
+    });
+
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Systemmeldungen' }));
+    expect(screen.getByRole('tooltip', { name: 'Meldungen' })).toBeTruthy();
+    fireEvent.mouseLeave(screen.getByRole('button', { name: 'Systemmeldungen' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('tooltip', { name: 'Meldungen' })).toBeNull();
+    });
+
+    fireEvent.focus(screen.getByRole('button', { name: 'Sprache wechseln' }));
+    expect(screen.getByRole('tooltip', { name: 'Sprachen' })).toBeTruthy();
+    fireEvent.blur(screen.getByRole('button', { name: 'Sprache wechseln' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('tooltip', { name: 'Sprachen' })).toBeNull();
+    });
+
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }));
+    expect(screen.getByRole('tooltip', { name: 'Nacht-Modus' })).toBeTruthy();
+
+    useThemeMock.mockReturnValue({
+      mode: 'dark',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+
+    rerender(<Header />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Hellen Modus aktivieren' })).toBeTruthy();
+    });
+
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Hellen Modus aktivieren' }));
+    expect(screen.getByRole('tooltip', { name: 'Tag-Modus' })).toBeTruthy();
+  });
+
   it('zeigt auch für system_admin keine Navigationslinks im Header', async () => {
     useAuthMock.mockReturnValue({
       user: {

@@ -85,7 +85,6 @@ const GenericItemsIdentityCard = ({
               inputPlaceholder={labels.categoriesSearchPlaceholder}
               loadingText={labels.categoryOptionsLoading}
               searchLabel={labels.categoriesSearch}
-              addLabel={labels.addCategory}
               removeLabel={(name) => labels.removeCategory.replace('{{name}}', name)}
               value={field.value}
               onChange={field.onChange}

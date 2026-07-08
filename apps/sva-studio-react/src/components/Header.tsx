@@ -209,6 +209,40 @@ const LocaleFlag = ({ locale }: { readonly locale: 'de' | 'en' }) => {
   return <span aria-hidden="true">🇬🇧</span>;
 };
 
+const HeaderIconTooltip = ({
+  label,
+  children,
+}: {
+  readonly label: string;
+  readonly children: React.ReactNode;
+}) => {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <span
+      className="relative inline-flex"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocusCapture={() => setOpen(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setOpen(false);
+        }
+      }}
+    >
+      {children}
+      {open ? (
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md"
+        >
+          {label}
+        </span>
+      ) : null}
+    </span>
+  );
+};
+
 const HeaderPromptField = ({
   icon,
   label,
@@ -549,19 +583,21 @@ export default function Header({
               menuLabel={t('shell.header.notifications')}
               items={notificationItems}
               trigger={({ open, toggle, menuId }) => (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t('shell.header.notifications')}
-                  aria-haspopup="menu"
-                  aria-expanded={open}
-                  aria-controls={menuId}
-                  className={iconButtonClassName}
-                  onClick={toggle}
-                >
-                  <Bell className="h-4 w-4" />
-                </Button>
+                <HeaderIconTooltip label={t('shell.header.notificationsTooltip')}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t('shell.header.notifications')}
+                    aria-haspopup="menu"
+                    aria-expanded={open}
+                    aria-controls={menuId}
+                    className={iconButtonClassName}
+                    onClick={toggle}
+                  >
+                    <Bell className="h-4 w-4" />
+                  </Button>
+                </HeaderIconTooltip>
               )}
             />
           ) : null}
@@ -570,31 +606,35 @@ export default function Header({
             menuLabel={t('shell.header.languageSwitcher')}
             items={languageItems}
             trigger={({ open, toggle, menuId }) => (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={t('shell.header.languageSwitcher')}
-                aria-haspopup="menu"
-                aria-expanded={open}
-                aria-controls={menuId}
-                className={iconButtonClassName}
-                onClick={toggle}
-              >
-                <Languages className="h-4 w-4" />
-              </Button>
+              <HeaderIconTooltip label={t('shell.header.languageSwitcherTooltip')}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('shell.header.languageSwitcher')}
+                  aria-haspopup="menu"
+                  aria-expanded={open}
+                  aria-controls={menuId}
+                  className={iconButtonClassName}
+                  onClick={toggle}
+                >
+                  <Languages className="h-4 w-4" />
+                </Button>
+              </HeaderIconTooltip>
             )}
           />
-          <Button
-            type="button"
-            size="icon"
-            aria-label={resolvedMode === 'dark' ? t('shell.header.switchToLightMode') : t('shell.header.switchToDarkMode')}
-            onClick={toggleMode}
-            variant="ghost"
-            className={iconButtonClassName}
-          >
-            {resolvedMode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
+          <HeaderIconTooltip label={resolvedMode === 'dark' ? t('shell.header.lightModeTooltip') : t('shell.header.darkModeTooltip')}>
+            <Button
+              type="button"
+              size="icon"
+              aria-label={resolvedMode === 'dark' ? t('shell.header.switchToLightMode') : t('shell.header.switchToDarkMode')}
+              onClick={toggleMode}
+              variant="ghost"
+              className={iconButtonClassName}
+            >
+              {resolvedMode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+          </HeaderIconTooltip>
           <HeaderAuthAction
             isHydrated={isHydrated}
             isLoading={isLoading}

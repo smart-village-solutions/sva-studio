@@ -11,6 +11,7 @@ import {
   getOrganizationInternal,
   listOrganizationsInternal,
   removeOrganizationMembershipInternal,
+  updateOrganizationMembershipInternal,
   updateMyOrganizationContextInternal,
   updateOrganizationInternal,
 } from './handlers.js';
@@ -44,6 +45,9 @@ export const assignOrganizationMembershipHandler = async (request: Request): Pro
 
 export const removeOrganizationMembershipHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedOrganizationsHandler(request, removeOrganizationMembershipInternal);
+
+export const updateOrganizationMembershipHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedOrganizationsHandler(request, updateOrganizationMembershipInternal);
 
 export const getMyOrganizationContextHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedOrganizationsHandler(request, getMyOrganizationContextInternal);

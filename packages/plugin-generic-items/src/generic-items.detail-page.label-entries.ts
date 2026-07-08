@@ -113,7 +113,6 @@ export const genericItemsDetailLabelEntries = translationEntries([
   ['minChildrenCount', 'fields.minChildrenCount'],
   ['maxChildrenCount', 'fields.maxChildrenCount'],
   ['addContentBlock', 'actions.addContentBlock'],
-  ['addCategory', 'actions.addCategory'],
   ['addAddress', 'actions.addAddress'],
   ['addOpeningHour', 'actions.addOpeningHour'],
   ['addImage', 'actions.addImage'],

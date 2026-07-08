@@ -8,7 +8,7 @@ describe('NewsCategoryMultiselect', () => {
     cleanup();
   });
 
-  it('adds deduplicated categories, filters suggestions and removes selected entries', () => {
+  it('selects a suggested category immediately, filters suggestions and removes selected entries', () => {
     const onChange = vi.fn();
     const { container, rerender } = render(
       <NewsCategoryMultiselect
@@ -23,7 +23,6 @@ describe('NewsCategoryMultiselect', () => {
         loadingText="Kategorien werden geladen."
         onChange={onChange}
         removeLabel={(name) => `Kategorie ${name} entfernen`}
-        addLabel="Kategorie hinzufügen"
         searchLabel="Kategorien suchen"
         value={['Allgemein']}
       />
@@ -34,8 +33,8 @@ describe('NewsCategoryMultiselect', () => {
     const optionValues = Array.from(container.querySelectorAll('datalist option')).map((option) => option.getAttribute('value'));
     expect(optionValues).toEqual(['Rathaus']);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Kategorie hinzufügen' }));
-    expect(onChange).toHaveBeenCalledWith(['Allgemein', 'rat']);
+    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Rathaus' } });
+    expect(onChange).toHaveBeenCalledWith(['Allgemein', 'Rathaus']);
 
     rerender(
       <NewsCategoryMultiselect
@@ -50,7 +49,6 @@ describe('NewsCategoryMultiselect', () => {
         loadingText="Kategorien werden geladen."
         onChange={onChange}
         removeLabel={(name) => `Kategorie ${name} entfernen`}
-        addLabel="Kategorie hinzufügen"
         searchLabel="Kategorien suchen"
         value={['Allgemein', 'Rathaus']}
       />
@@ -73,7 +71,6 @@ describe('NewsCategoryMultiselect', () => {
         loadingText="Kategorien werden geladen."
         onChange={onChange}
         removeLabel={(name) => `Kategorie ${name} entfernen`}
-        addLabel="Kategorie hinzufügen"
         searchLabel="Kategorien suchen"
         value={[]}
       />
@@ -81,7 +78,6 @@ describe('NewsCategoryMultiselect', () => {
 
     expect(screen.getByText('Kategorien werden geladen.')).toBeTruthy();
     expect(screen.getByText('Die Kategorien konnten nicht geladen werden.')).toBeTruthy();
-    expect(screen.getAllByRole('button', { name: 'Kategorie hinzufügen' }).at(-1)?.hasAttribute('disabled')).toBe(true);
     expect(screen.getAllByLabelText('Kategorien suchen').at(-1)?.hasAttribute('disabled')).toBe(true);
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -98,7 +94,6 @@ describe('NewsCategoryMultiselect', () => {
         loadingText="Kategorien werden geladen."
         onChange={onChange}
         removeLabel={(name) => `Kategorie ${name} entfernen`}
-        addLabel="Kategorie hinzufügen"
         searchLabel="Kategorien suchen"
         value={[]}
       />

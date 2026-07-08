@@ -211,7 +211,7 @@ const openHistoryTab = async () => {
 const waitForCategoryControls = async () => {
   await waitFor(() => {
     expect(screen.getByLabelText('Kategorien suchen').hasAttribute('disabled')).toBe(false);
-    expect(screen.getByRole('button', { name: 'Kategorie hinzufügen' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Kategorie hinzufügen' })).toBeNull();
   });
 };
 
@@ -602,10 +602,8 @@ describe('News editor pages', () => {
     fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'basis' } });
     await waitForCategoryControls();
     fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Allgemein' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Kategorie hinzufügen' }));
     expect(screen.getByText('Allgemein')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Rathaus' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Kategorie hinzufügen' }));
     expect(screen.getByText('Rathaus')).toBeTruthy();
     await openReleaseTab();
     fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));

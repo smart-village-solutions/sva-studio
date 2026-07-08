@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Badge, Button, Input } from '@sva/studio-ui-react';
+import { Badge, Input } from '@sva/studio-ui-react';
 
 import type { EventCategoryOption } from './events.types.js';
 
@@ -14,7 +14,6 @@ export type EventsCategoryMultiselectProps = Readonly<{
   loadingText: string;
   onChange: (value: string[]) => void;
   removeLabel: (name: string) => string;
-  addLabel: string;
   searchLabel: string;
   value: string[];
 }>;
@@ -35,7 +34,6 @@ export function EventsCategoryMultiselect({
   loadingText,
   onChange,
   removeLabel,
-  addLabel,
   searchLabel,
   value,
 }: EventsCategoryMultiselectProps) {
@@ -51,6 +49,27 @@ export function EventsCategoryMultiselect({
     draftValue.trim().length === 0
       ? suggestionNames
       : suggestionNames.filter((name) => name.toLocaleLowerCase().includes(draftValue.trim().toLocaleLowerCase()));
+
+  const trySelectSuggestedCategory = React.useCallback(
+    (rawValue: string) => {
+      const nextName = normalizeName(rawValue);
+      if (nextName.length === 0) {
+        return false;
+      }
+
+      const matchingSuggestion = suggestionNames.find(
+        (name) => name.toLocaleLowerCase() === nextName.toLocaleLowerCase()
+      );
+      if (!matchingSuggestion) {
+        return false;
+      }
+
+      onChange(dedupeCategoryNames([...normalizedValue, matchingSuggestion]));
+      setDraftValue('');
+      return true;
+    },
+    [normalizedValue, onChange, suggestionNames]
+  );
 
   const addCategory = React.useCallback(() => {
     const nextName = normalizeName(draftValue);
@@ -77,35 +96,37 @@ export function EventsCategoryMultiselect({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <div className="flex-1 space-y-2">
-          <Input
-            id={inputId}
-            aria-label={searchLabel}
-            list={datalistId}
-            disabled={disabled || loading}
-            placeholder={inputPlaceholder}
-            value={draftValue}
-            onChange={(event) => setDraftValue(event.currentTarget.value)}
-            onBlur={() => addCategory()}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                addCategory();
-              }
-            }}
-          />
-          <datalist id={datalistId}>
-            {filteredSuggestionNames.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
-          <p className="text-sm text-foreground">{loading ? loadingText : helpText}</p>
-          {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-        </div>
-        <Button type="button" disabled={disabled || loading || draftValue.trim().length === 0} onClick={addCategory}>
-          {addLabel}
-        </Button>
+      <div className="space-y-2">
+        <Input
+          id={inputId}
+          aria-label={searchLabel}
+          list={datalistId}
+          disabled={disabled || loading}
+          placeholder={inputPlaceholder}
+          value={draftValue}
+          onChange={(event) => {
+            const nextValue = event.currentTarget.value;
+            if (trySelectSuggestedCategory(nextValue)) {
+              return;
+            }
+
+            setDraftValue(nextValue);
+          }}
+          onBlur={() => addCategory()}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              addCategory();
+            }
+          }}
+        />
+        <datalist id={datalistId}>
+          {filteredSuggestionNames.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+        <p className="text-sm text-foreground">{loading ? loadingText : helpText}</p>
+        {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
       </div>
 
       {normalizedValue.length > 0 ? (

@@ -24,6 +24,18 @@ describe('user-detail-query.mapping', () => {
       last_login_at: null,
       role_rows: [],
       group_rows: [],
+      organization_membership_rows: [
+        {
+          organization_id: '11111111-1111-4111-8111-111111111111',
+          organization_key: 'stadtwerke',
+          display_name: 'Stadtwerke Musterhausen',
+          organization_type: 'company',
+          is_active: true,
+          membership_visibility: 'external',
+          is_default_context: true,
+          created_at: '2026-03-06T10:00:00.000Z',
+        },
+      ],
       permission_rows: [],
       permission_trace_rows: [
         {
@@ -94,6 +106,18 @@ describe('user-detail-query.mapping', () => {
         runtimeScope: 'instance',
         organizationId: undefined,
       }),
+    ]);
+    expect(detail.organizationMemberships).toEqual([
+      {
+        organizationId: '11111111-1111-4111-8111-111111111111',
+        organizationKey: 'stadtwerke',
+        displayName: 'Stadtwerke Musterhausen',
+        organizationType: 'company',
+        isActive: true,
+        visibility: 'external',
+        isDefaultContext: true,
+        createdAt: '2026-03-06T10:00:00.000Z',
+      },
     ]);
   });
 });

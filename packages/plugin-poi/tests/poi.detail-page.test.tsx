@@ -410,7 +410,6 @@ describe('PoiDetailPage', () => {
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Verwaltung' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Kategorie hinzufügen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {

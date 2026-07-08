@@ -118,7 +118,6 @@ export function NewsDetailBasisTab({
                 inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
                 loadingText={pt('messages.categoryOptionsLoading')}
                 searchLabel={pt('fields.categoriesSearch')}
-                addLabel={pt('actions.addCategory')}
                 removeLabel={(name) => pt('actions.removeCategory', { name })}
                 value={field.value}
                 onChange={field.onChange}

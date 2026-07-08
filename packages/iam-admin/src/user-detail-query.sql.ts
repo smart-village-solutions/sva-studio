@@ -60,6 +60,29 @@ SELECT
     ) FILTER (WHERE g.id IS NOT NULL),
     '[]'::json
   ) AS group_rows,
+  COALESCE(
+    (
+      SELECT json_agg(
+        DISTINCT jsonb_build_object(
+          'organization_id', organization.id,
+          'organization_key', organization.organization_key,
+          'display_name', organization.display_name,
+          'organization_type', organization.organization_type,
+          'is_active', organization.is_active,
+          'membership_visibility', membership.membership_visibility,
+          'is_default_context', membership.is_default_context,
+          'created_at', membership.created_at::text
+        )
+      )
+      FROM iam.account_organizations membership
+      JOIN iam.organizations organization
+        ON organization.instance_id = membership.instance_id
+       AND organization.id = membership.organization_id
+      WHERE membership.instance_id = $1
+        AND membership.account_id = a.id
+    ),
+    '[]'::json
+  ) AS organization_membership_rows,
 `;
 
 const USER_DETAIL_FROM_SQL = `

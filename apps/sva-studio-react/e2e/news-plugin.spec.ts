@@ -52,9 +52,7 @@ test.describe('news plugin', () => {
     await expect(page.locator('#news-author')).toHaveValue('Editor One');
     const categorySearch = page.getByRole('combobox', { name: /Kategorien suchen|news\.fields\.categoriesSearch/ });
     await categorySearch.fill('Allgemein');
-    await page.getByRole('button', { name: /Kategorie hinzufügen|news\.actions\.addCategory/ }).click();
     await categorySearch.fill('Kultur');
-    await page.getByRole('button', { name: /Kategorie hinzufügen|news\.actions\.addCategory/ }).click();
     await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
     await page.locator('#news-content-teaser').fill('Kurztext');
     await page.locator('#news-content-body').fill('<p>Inhalt</p>');

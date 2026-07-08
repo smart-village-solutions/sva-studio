@@ -24,6 +24,17 @@ export type UserDetailGroupRow = {
   valid_to: string | null;
 };
 
+export type UserDetailOrganizationMembershipRow = {
+  organization_id: string;
+  organization_key: string;
+  display_name: string;
+  organization_type: 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
+  is_active: boolean;
+  membership_visibility: 'internal' | 'external';
+  is_default_context: boolean;
+  created_at: string;
+};
+
 export type UserDetailPermissionTraceRow = {
   permission_key: string;
   action: string;
@@ -70,6 +81,7 @@ export type UserDetailRow = {
   last_login_at: string | null;
   role_rows: UserDetailRoleRow[] | null;
   group_rows: UserDetailGroupRow[] | null;
+  organization_membership_rows: UserDetailOrganizationMembershipRow[] | null;
   permission_rows: Array<{ permission_key: string }> | null;
   permission_trace_rows: UserDetailPermissionTraceRow[] | null;
 };

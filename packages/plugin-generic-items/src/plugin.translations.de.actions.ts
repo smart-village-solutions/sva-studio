@@ -8,7 +8,6 @@ export const genericItemsTranslationsDeActions = {
     delete: 'Löschen',
     deleteConfirm: 'Soll dieses Generic Item wirklich gelöscht werden?',
     addContentBlock: 'Block hinzufügen',
-    addCategory: 'Kategorie hinzufügen',
     addAddress: 'Adresse hinzufügen',
     addOpeningHour: 'Öffnungszeit hinzufügen',
     addLink: 'Link hinzufügen',

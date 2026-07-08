@@ -1,0 +1,4 @@
+{
+  "prNumber": 678,
+  "body": "Die Fortschrittsanzeige bei Waste-Synchronisationen ist jetzt verständlicher.\n\n- Laufende Schritte werden mit klareren Bezeichnungen angezeigt.\n- Vorhandene Detailinformationen zur Synchronisation bleiben erhalten.\n- Dadurch lässt sich leichter erkennen, an welchem Verarbeitungsschritt ein Lauf gerade steht."
+}

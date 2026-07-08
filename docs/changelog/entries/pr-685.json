@@ -1,0 +1,4 @@
+{
+  "prNumber": 685,
+  "body": "Änderungen an Veranstaltungen und Orten werden jetzt zuverlässiger übernommen.\n\n- Sichtbarkeit und Medienzuordnungen von Veranstaltungen bleiben nach dem Speichern erhalten.\n- Bei Orten werden zusätzliche Angaben wie externe Kennungen und Schlagwörter nicht mehr unbeabsichtigt verworfen.\n- Überholte Benachrichtigungslogik für Veranstaltungen wurde entfernt, um Fehler beim Speichern zu vermeiden."
+}

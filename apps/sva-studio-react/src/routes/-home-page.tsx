@@ -5,9 +5,11 @@ import { Heart } from 'lucide-react';
 import { t } from '../i18n';
 import { readLatestAuthDiagnosticSnapshot } from '../lib/auth-diagnostics';
 import { createLoginHref, sanitizeReturnTo } from '../lib/auth-navigation';
+import { type StudioChangelogState } from '../lib/studio-changelog-state';
 import { useAuth } from '../providers/auth-provider';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { loadStudioChangelogState, StudioChangelogSection } from './-home-page-studio-changelog';
 
 type HomeRouteState = {
   readonly authStateError: string | null;
@@ -148,7 +150,11 @@ const HomeAuthErrorBanner = ({
   </div>
 );
 
-const AuthenticatedHomeOverview = () => (
+const AuthenticatedHomeOverview = ({
+  changelogState,
+}: {
+  readonly changelogState: StudioChangelogState;
+}) => (
   <section className="mx-auto max-w-6xl px-6 py-12">
     <div className="mb-6 flex flex-col gap-2">
       <h2 className="text-2xl font-semibold tracking-tight">{t('home.sections.overviewTitle')}</h2>
@@ -192,6 +198,8 @@ const AuthenticatedHomeOverview = () => (
         </CardContent>
       </Card>
     </div>
+
+    <StudioChangelogSection changelogState={changelogState} />
   </section>
 );
 
@@ -243,6 +251,28 @@ export const HomePage = () => {
   const authErrorLoginHref = !isAuthenticated && authError ? createLoginHref(authReturnTo ?? undefined) : null;
   const heroLoginHref = createLoginHref(authReturnTo ?? undefined);
   const isAnonymousHome = !isAuthenticated;
+  const [changelogState, setChangelogState] = React.useState<StudioChangelogState>({
+    status: 'loading',
+    entries: [],
+  });
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      setChangelogState({ status: 'loading', entries: [] });
+      return;
+    }
+
+    let cancelled = false;
+    void loadStudioChangelogState().then((nextState) => {
+      if (!cancelled) {
+        setChangelogState(nextState);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -299,7 +329,7 @@ export const HomePage = () => {
           <p className="text-sm text-muted-foreground">{t('home.session.loading')}</p>
         </section>
       ) : isAuthenticated ? (
-        <AuthenticatedHomeOverview />
+        <AuthenticatedHomeOverview changelogState={changelogState} />
       ) : null}
     </div>
   );

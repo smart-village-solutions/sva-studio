@@ -1,0 +1,4 @@
+{
+  "prNumber": 683,
+  "body": "Veranstaltungsdaten werden im Studio jetzt klarer und präziser bearbeitet.\n\n- Start- und Enddatum werden ohne Uhrzeit erfasst, wenn nur das Datum relevant ist.\n- Gespeicherte Werte werden intern einheitlich als Datum behandelt.\n- Dadurch sinkt das Risiko für unbeabsichtigte Zeitverschiebungen oder missverständliche Datumsangaben."
+}

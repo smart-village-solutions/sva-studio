@@ -406,6 +406,7 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
     resolve(testDirectory, '..', '..', '..', 'deploy/portainer/Dockerfile'),
     'utf8'
   );
+  const dockerignore = readFileSync(resolve(testDirectory, '..', '..', '..', '.dockerignore'), 'utf8');
   const patchRuntimeArtifact = readFileSync(
     resolve(testDirectory, '..', '..', '..', 'scripts/ci/patch-runtime-artifact.ts'),
     'utf8'
@@ -449,6 +450,10 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(portainerDockerfile, /-exec grep -E -l 'jsxDEV\|jsx-dev-runtime' \{\} \+ \| grep -q \./);
   assert.doesNotMatch(portainerDockerfile, /--include='\*\.mjs'/);
   assert.doesNotMatch(portainerDockerfile, /--exclude-dir='node_modules'/);
+  assert.match(portainerDockerfile, /RUN apk add --no-cache bash git/);
+  assert.match(dockerignore, /^!docs\/changelog\/$/m);
+  assert.match(dockerignore, /^!docs\/changelog\/\*\*$/m);
+  assert.match(dockerignore, /^\.git$/m);
 
   assert.match(patchRuntimeArtifact, /findPnpmPackageDir/);
   assert.match(patchRuntimeArtifact, /path\.join\(pnpmDir, entry\.name, 'node_modules', \.\.\.packageSegments\)/);
@@ -471,9 +476,16 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(checkServerPackageRuntime, /maxRetries: 5/);
   assert.doesNotMatch(checkServerPackageRuntime, /fs\.rmSync\(targetDistDir, \{ recursive: true, force: true \}\)/);
 
+  assert.match(studioProjectJson, /generate-studio-changelog-artifact\.ts --output \.generated\/studio-changelog\.json/);
+  assert.match(studioProjectJson, /run-workspace-node\.sh -e/);
+  assert.match(studioProjectJson, /fs\.mkdirSync\('\.output\/server\/generated',\{recursive:true\}\)/);
   assert.match(
     studioProjectJson,
-    /pnpm exec vite build && bash \.\.\/\.\.\/scripts\/ci\/run-workspace-node\.sh --import tsx \.\.\/\.\.\/scripts\/ci\/patch-runtime-artifact\.ts \./
+    /fs\.copyFileSync\('\.generated\/studio-changelog\.json','\.output\/server\/generated\/studio-changelog\.json'\)/
+  );
+  assert.match(
+    studioProjectJson,
+    /run-workspace-node\.sh --import tsx \.\.\/\.\.\/scripts\/ci\/patch-runtime-artifact\.ts \./
   );
   assert.doesNotMatch(
     studioProjectJson,

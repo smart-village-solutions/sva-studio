@@ -16,13 +16,8 @@ const devRuntimeRefreshEnabled = diagnosticsEnabled;
 const serverFnBase = normalizeServerFnBase(process.env.TSS_SERVER_FN_BASE);
 const studioJobWorkerEnabled = process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED !== 'false';
 
-type WorkspaceContext = {
-  readonly requestId?: string | null;
-};
-
-type ServerTransportLogger = {
-  info: (message: string, meta: Record<string, unknown>) => void;
-};
+type WorkspaceContext = { readonly requestId?: string | null };
+type ServerTransportLogger = { info: (message: string, meta: Record<string, unknown>) => void };
 
 type ServerTransportComponent = 'server-entry-transport' | 'server-function-transport';
 type RouteDispatcher = (request: Request) => Promise<Response | null>;
@@ -80,6 +75,9 @@ let dispatchAggregatedContentListRequestPromise:
   | null = null;
 let dispatchMapGeocodingRequestPromise:
   | Promise<typeof import('./lib/map-geocoding-api.server')['dispatchMapGeocodingRequest']>
+  | null = null;
+let dispatchStudioChangelogRequestPromise:
+  | Promise<typeof import('./lib/studio-changelog-api.server')['dispatchStudioChangelogRequest']>
   | null = null;
 let pluginOperationHandlerRegistrationPromise: Promise<void> | null = null;
 let pluginOperationWorkerBootstrapPromise: Promise<void> | null = null;
@@ -155,7 +153,12 @@ const getDispatchMapGeocodingRequest = async () => {
   );
   return dispatchMapGeocodingRequestPromise;
 };
-
+const getDispatchStudioChangelogRequest = async () => {
+  dispatchStudioChangelogRequestPromise ??= import('./lib/studio-changelog-api.server').then(
+    (mod) => mod.dispatchStudioChangelogRequest
+  );
+  return dispatchStudioChangelogRequestPromise;
+};
 const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
   { label: 'mainserver news', getDispatcher: getDispatchMainserverNewsRequest },
   { label: 'mainserver events', getDispatcher: getDispatchMainserverEventsRequest },
@@ -165,6 +168,7 @@ const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
   { label: 'mainserver categories', getDispatcher: getDispatchMainserverCategoriesRequest },
   { label: 'aggregated content list', getDispatcher: getDispatchAggregatedContentListRequest },
   { label: 'map geocoding', getDispatcher: getDispatchMapGeocodingRequest },
+  { label: 'studio changelog', getDispatcher: getDispatchStudioChangelogRequest },
 ];
 
 const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {

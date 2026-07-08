@@ -1,0 +1,4 @@
+{
+  "prNumber": 665,
+  "body": "Die Build-Anbindung für das Styling des Studios wurde aktualisiert.\n\n- Die Verarbeitung von Tailwind-Styles in der Entwicklungs- und Build-Pipeline wurde auf einen neueren Stand gebracht.\n- Mehrere Fehlerbehebungen aus dem Styling-Tooling sind damit im Studio enthalten.\n- Davon profitieren vor allem Stabilität und Wartbarkeit der Oberflächen im Hintergrund."
+}

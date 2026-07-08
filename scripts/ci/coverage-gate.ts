@@ -53,6 +53,7 @@ interface RunCoverageGateOptions {
   rootDir?: string;
   updateBaseline?: boolean;
   requireSummaries?: boolean;
+  regressionProjectFilter?: readonly string[];
   stepSummaryPath?: string | null;
 }
 
@@ -254,6 +255,14 @@ export function findCoverageSummaries(dir: string, results: string[] = []): stri
     return results;
   }
 
+  if (isWorkspaceProjectRoot(dir)) {
+    const summaryPath = path.join(dir, 'coverage', 'coverage-summary.json');
+    if (fs.existsSync(summaryPath)) {
+      results.push(summaryPath);
+    }
+    return results;
+  }
+
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     const entryPath = path.join(dir, entry.name);
@@ -280,6 +289,14 @@ export function findCoverageSummaries(dir: string, results: string[] = []): stri
 
 export function findCoverageArtifacts(dir: string, fileName: string, results: string[] = []): string[] {
   if (!fs.existsSync(dir)) {
+    return results;
+  }
+
+  if (isWorkspaceProjectRoot(dir)) {
+    const artifactPath = path.join(dir, 'coverage', fileName);
+    if (fs.existsSync(artifactPath)) {
+      results.push(artifactPath);
+    }
     return results;
   }
 
@@ -709,12 +726,33 @@ function evaluateCriticalHotspots(
 function evaluateRegressions(
   policy: CoveragePolicy,
   baseline: CoverageBaseline,
-  projects: Record<string, MetricFloors>
+  projects: Record<string, MetricFloors>,
+  requireSummaries: boolean,
+  regressionProjectFilter: readonly string[] = []
 ): GateError[] {
+  // Partial affected runs only generate a subset of project summaries. In that mode we
+  // skip baseline-drop checks entirely instead of reporting false regressions for every
+  // untouched project that intentionally has no coverage output in this invocation.
+  if (!requireSummaries) {
+    return [];
+  }
+
   const exemptProjects = new Set<string>(policy.exemptProjects ?? []);
+  const regressionProjects =
+    regressionProjectFilter.length > 0 ? new Set(regressionProjectFilter) : null;
   const maxAllowedDrop = Number(policy.maxAllowedDropPctPoints ?? 0);
   const metrics = policy.metrics;
-  const activeProjects = Object.entries(projects).filter(([name]) => !exemptProjects.has(name));
+  const activeProjects = Object.entries(projects).filter(([name]) => {
+    if (exemptProjects.has(name)) {
+      return false;
+    }
+
+    if (regressionProjects && !regressionProjects.has(name)) {
+      return false;
+    }
+
+    return true;
+  });
 
   return activeProjects.flatMap(([projectName, values]) => {
     const baselineValues = baseline.projects?.[projectName] ?? null;
@@ -770,6 +808,7 @@ export function runCoverageGate(options: RunCoverageGateOptions = {}): RunCovera
   const rootDir = options.rootDir ?? process.cwd();
   const updateBaseline = options.updateBaseline ?? false;
   const requireSummaries = options.requireSummaries ?? false;
+  const regressionProjectFilter = options.regressionProjectFilter ?? [];
   const stepSummaryPath = options.stepSummaryPath ?? process.env.GITHUB_STEP_SUMMARY ?? null;
 
   const loaded = loadCoverageData(rootDir);
@@ -803,7 +842,13 @@ export function runCoverageGate(options: RunCoverageGateOptions = {}): RunCovera
 
   const floorErrors = evaluateFloors(policy, projects, requireSummaries);
   const hotspotErrors = evaluateCriticalHotspots(policy, projects, fileCoverageByProject, requireSummaries);
-  const regressionErrors = evaluateRegressions(policy, baseline, projects);
+  const regressionErrors = evaluateRegressions(
+    policy,
+    baseline,
+    projects,
+    requireSummaries,
+    regressionProjectFilter
+  );
   const errors = [...floorErrors, ...hotspotErrors, ...regressionErrors];
 
   const summaryBody = generateReport(policy, projects);
@@ -829,12 +874,17 @@ export function main(): number {
   const rootDir = process.cwd();
   const updateBaseline = process.argv.includes('--update-baseline');
   const requireSummaries = process.env.COVERAGE_GATE_REQUIRE_SUMMARIES === '1';
+  const regressionProjectFilter = (process.env.COVERAGE_GATE_PROJECT_FILTER ?? '')
+    .split(',')
+    .map((projectName) => projectName.trim())
+    .filter(Boolean);
 
   try {
     const result = runCoverageGate({
       rootDir,
       updateBaseline,
       requireSummaries,
+      regressionProjectFilter,
       stepSummaryPath: process.env.GITHUB_STEP_SUMMARY ?? null,
     });
 

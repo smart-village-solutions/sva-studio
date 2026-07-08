@@ -233,24 +233,18 @@ describe('EventsListPage', () => {
   it('creates inline media contents in the event payload', async () => {
     render(<EventsCreatePage />);
 
-    await waitFor(() => {
-      expect(listHostMediaAssets).toHaveBeenCalled();
-    });
+    await screen.findByLabelText('Titel');
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Konzertabend' } });
-    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
 
-    await waitFor(() => {
-      expect(screen.getByLabelText('Beschreibung')).toBeTruthy();
-    });
-
-    fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Live im Stadtpark' } });
+    fireEvent.change(await screen.findByLabelText('Beschreibung'), { target: { value: 'Live im Stadtpark' } });
     fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-04-14' } });
     fireEvent.change(screen.getByLabelText('Web-URL'), { target: { value: 'https://example.com/events' } });
     fireEvent.click(screen.getByRole('button', { name: 'Manuell hinzufügen' }));
-    fireEvent.change(screen.getByLabelText('Bildunterschrift'), { target: { value: 'Bühne' } });
+    fireEvent.change(await screen.findByLabelText('Bildunterschrift'), { target: { value: 'Bühne' } });
     fireEvent.change(screen.getByLabelText('Copyright'), { target: { value: 'Stadt' } });
-    fireEvent.change(screen.getByLabelText('Web-URL', { selector: '#event-media-url-0' }), {
+    fireEvent.change(await screen.findByLabelText('Web-URL', { selector: '#event-media-url-0' }), {
       target: { value: 'https://example.com/event.jpg' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
@@ -271,8 +265,9 @@ describe('EventsListPage', () => {
           ],
         })
       );
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/events/$id', params: { id: 'event-created' } });
     });
+
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/events/$id', params: { id: 'event-created' } });
   }, 10_000);
 
   it('ignores impossible browser date values and still submits with the remaining valid input', async () => {

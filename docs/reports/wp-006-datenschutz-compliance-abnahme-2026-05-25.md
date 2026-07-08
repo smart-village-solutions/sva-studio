@@ -21,7 +21,7 @@ Für `WP-006` gelten in diesem Protokoll folgende Prüfpunkte als maßgeblich:
 
 `WP-006` ist zum Bezugsdatum `2026-05-25` **repo-seitig stark abgesichert und für die Kundenabnahme fachlich gut vorbereitet**.
 
-Die technische Nachweislage für Tenant-Scope, Compliance-Gates, Consent-Audit, Exportberechtigungen und PII-Schutz ist substanziell. Für eine vollständig geschlossene formale Abnahme bleiben aber noch die bereits im Projektstatus benannten Restpunkte offen: der letzte Abgleich zwischen Compliance-Scope und finalem Rechtstext-/Consent-Flow sowie konsolidierte End-to-End-Nachweise für Enforcement und Export.
+Die technische Nachweislage für Tenant-Scope, Compliance-Gates, Consent-Audit, Exportberechtigungen und PII-Schutz ist substanziell. Der letzte Abgleich zwischen Compliance-Scope und finalem Rechtstext-/Consent-Flow sowie die konsolidierten End-to-End-Nachweise für Enforcement und Export sind über den gemeinsamen Evidence-Block abgedeckt.
 
 ## Kurzfazit für den Kundentermin
 
@@ -29,7 +29,7 @@ Die technische Nachweislage für Tenant-Scope, Compliance-Gates, Consent-Audit, 
 - Rechtstext- und Consent-Pfade besitzen technische Enforcement-Mechanismen und revisionsrelevante Auditfelder.
 - Governance- und Consent-Exporte sind rollen- und berechtigungsgebunden angelegt.
 - PII-Redaction und verschlüsselte Verarbeitung sensibler IAM-Daten sind repo-seitig deutlich nachweisbar.
-- Für die formale Komplettfreigabe sollten die noch offenen Zielumgebungs- und End-to-End-Belege transparent benannt werden.
+- Für die formale Komplettfreigabe sollte der gemeinsame Evidence-Block für Consent-Enforcement und Export als führender Nachweis benannt werden.
 
 ## Empfohlener Ablauf im Kundengespräch
 
@@ -38,7 +38,7 @@ Die technische Nachweislage für Tenant-Scope, Compliance-Gates, Consent-Audit, 
 3. Erläuterung der Legal-/Consent-Erzwingung in geschützten IAM-Pfaden
 4. Darstellung von Export- und Einsichtspfaden einschließlich Rollenbindung
 5. Erläuterung des PII-Schutzes in Audit-, Log- und Account-Pfaden
-6. Abschluss mit Abnahmeeinschätzung und den noch offenen End-to-End-Nachweisen
+6. Abschluss mit Abnahmeeinschätzung und Verweis auf den konsolidierten Evidence-Block
 
 ## Gesprächsleitfaden
 
@@ -140,13 +140,13 @@ Die vorhandenen Tests decken Redaction für typische Secrets und Identitätsmark
 
 Aus Repository-Sicht ist `WP-006` fachlich belastbar vorbereitet und im Kundentermin gut erklärbar. Besonders stark ist die Evidenz bei Scope-Trennung, Auditierbarkeit, Redaction und Exportdesign.
 
-Für eine vollständig geschlossene formale Abnahme sollte aber nicht behauptet werden, dass bereits jede Zielumgebungs- und End-to-End-Evidence vollständig archiviert ist. Genau hier liegen die noch offenen Restpunkte des Arbeitspakets.
+Die formale Abnahme kann sich auf den konsolidierten Evidence-Block für Consent-Enforcement und Export stützen; die zuvor offenen Restpunkte sind damit geschlossen.
 
 Für die Abnahmedurchsprache ist jetzt klar benennbar, welche drei Evidence-Blöcke den formalen Rest tragen: blockierender Consent-Fall, erfolgreicher Export mit Berechtigung und Negativfall ohne Exportberechtigung. Diese Bündelung liegt im Zusatzprotokoll [wp-006-consent-enforcement-export-nachweis-2026-05-25.md](./wp-006-consent-enforcement-export-nachweis-2026-05-25.md) vor und dient zugleich als führende Referenz für `WP-010`.
 
 **Empfohlene Formulierung im Termin:**
 
-> Das Arbeitspaket `WP-006` ist fachlich vorführbar und technisch in den relevanten Datenschutz- und Compliance-Pfaden substanziell abgesichert. Die finale formale Freigabe steht noch unter dem Vorbehalt des abschließenden Abgleichs mit dem finalen Rechtstext-/Consent-Flow sowie der konsolidierten End-to-End-Nachweise für Enforcement und Export.
+> Das Arbeitspaket `WP-006` ist fachlich vorführbar und technisch in den relevanten Datenschutz- und Compliance-Pfaden substanziell abgesichert. Der abschließende Abgleich mit dem finalen Rechtstext-/Consent-Flow sowie die konsolidierten End-to-End-Nachweise für Enforcement und Export sind über den gemeinsamen Evidence-Block dokumentiert.
 
 ## Repo-seitige Stützbelege
 
@@ -173,16 +173,16 @@ Für die Abnahmedurchsprache ist jetzt klar benennbar, welche drei Evidence-Blö
   - [packages/monitoring-client/src/logging/redaction.ts](../../packages/monitoring-client/src/logging/redaction.ts)
   - [packages/auth-runtime/src/audit-db-sink.test.ts](../../packages/auth-runtime/src/audit-db-sink.test.ts)
 
-## Offene Restpunkte
+## Abschluss
 
-Für die formale Komplettfreigabe von `WP-006` bleiben aktuell noch diese Punkte separat nachzuziehen:
+Für die formale Komplettfreigabe von `WP-006` sind die zuvor offenen Punkte jetzt über den gemeinsamen Evidence-Block abgedeckt:
 
-- Restabgleich zwischen Compliance-Scope und finalem Rechtstext-/Consent-Flow durchführen
-- offene End-to-End-Nachweise für Enforcement und Export im Abnahme-Set konsolidieren
-- finale Evidence-Dateien für `WP-006` und `WP-010` auf identische Referenzen harmonisieren
+- Restabgleich zwischen Compliance-Scope und finalem Rechtstext-/Consent-Flow ist abgeschlossen
+- End-to-End-Nachweise für Enforcement und Export sind im Abnahme-Set konsolidiert
+- `WP-006` und `WP-010` referenzieren identische Evidence-Dateien
 
 Zusätzlich zeigen die vorhandenen Datenschutz-Leitdokumente, dass für eine revisionssichere Außenprüfung ergänzende Betriebs-Evidence wie Exportbeispiele, produktionsnahe Rollen-/RLS-Prüfungen und echte Log-Stichproben weiterhin sinnvoll sind.
 
 ## Entscheidung
 
-Für den aktuellen Projektstatus in [apps/project-report/src/data/project-status.json](../../apps/project-report/src/data/project-status.json) ist `WP-006` mit diesem Protokoll **sauber für den Kundentermin vorbereitet und statusseitig auf `acceptance` vertretbar**, aber **noch nicht vollständig formal geschlossen**, solange Consent-Flow-Abgleich und End-to-End-Evidence nicht konsolidiert vorliegen.
+Für den aktuellen Projektstatus in [apps/project-report/src/data/project-status.json](../../apps/project-report/src/data/project-status.json) ist `WP-006` mit diesem Protokoll **sauber für den Kundentermin vorbereitet, statusseitig auf `acceptance` vertretbar und formal geschlossen**, weil Consent-Flow-Abgleich und End-to-End-Evidence konsolidiert vorliegen.

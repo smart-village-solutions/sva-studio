@@ -100,6 +100,13 @@ const PRE_EXPIRY_REAUTH_LEAD_MS = 60_000;
 const PRE_EXPIRY_REAUTH_RETRY_SAFETY_MS = 1_000;
 const AUTH_DEBUG_ENABLED = !isProductionMode;
 const authLogger = createOperationLogger('auth-provider', AUTH_DEBUG_ENABLED ? 'debug' : 'info');
+const MAIN_SERVER_VISIBLE_TYPE_BY_READ_ACTION = new Map<string, string>([
+  ['news.read', 'news.article'],
+  ['events.read', 'events.event-record'],
+  ['poi.read', 'poi.point-of-interest'],
+  ['generic-items.read', 'generic-items.generic-item'],
+  ['surveys.read', 'surveys.survey'],
+]);
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
@@ -204,6 +211,22 @@ const computePreExpiryRetryDelayMs = (msUntilExpiry: number): number => {
   return msUntilExpiry - PRE_EXPIRY_REAUTH_RETRY_SAFETY_MS;
 };
 
+const resolveReadableMainserverVisibleTypes = (
+  permissionActions: readonly string[] | undefined
+): readonly string[] => {
+  if (!permissionActions || permissionActions.length === 0) {
+    return [];
+  }
+
+  const grantedActions = new Set(permissionActions);
+  return DEFAULT_MAINSERVER_VISIBLE_TYPES.filter((visibleType) =>
+    [...MAIN_SERVER_VISIBLE_TYPE_BY_READ_ACTION.entries()].some(
+      ([actionId, mappedVisibleType]) =>
+        mappedVisibleType === visibleType && grantedActions.has(actionId)
+    )
+  );
+};
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const devAuthAvailable = isDevAuthAvailable();
   const [user, setUser] = React.useState<SessionUser | null>(null);
@@ -265,10 +288,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const warmProjectedContentsAfterSessionLoad = React.useCallback(
     (silent: boolean, payload: SessionUser | null) => {
       const previousUser = confirmedUserRef.current;
+      const readableVisibleTypes = resolveReadableMainserverVisibleTypes(payload?.permissionActions);
       const isNewShift =
         !silent &&
         Boolean(payload?.instanceId) &&
-        (payload?.permissionActions?.length ?? 0) > 0 &&
+        readableVisibleTypes.length > 0 &&
         (!previousUser ||
           previousUser.id !== payload?.id ||
           previousUser.instanceId !== payload?.instanceId);
@@ -278,7 +302,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       void requestProjectedContentsRefresh({
-        visibleTypes: [...DEFAULT_MAINSERVER_VISIBLE_TYPES],
+        visibleTypes: [...readableVisibleTypes],
       }).catch((cause) => {
         const resolvedError = asIamError(cause);
         authLogger.warn('auth_projected_content_refresh_failed', {

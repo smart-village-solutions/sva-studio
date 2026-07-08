@@ -183,6 +183,9 @@ test.describe('news plugin', () => {
     await expectContentOverviewReady(page);
     await expect.poll(() => contentListRequests.length).toBeGreaterThan(0);
     expect(new URL(contentListRequests[0] ?? 'http://localhost').searchParams.get('page')).toBe('1');
+    expect(
+      contentListRequests.every((requestUrl) => /^\d+$/u.test(new URL(requestUrl).searchParams.get('page') ?? ''))
+    ).toBe(true);
     expect(contentListRequests.some((requestUrl) => new URL(requestUrl).searchParams.get('page') === '1')).toBe(true);
     expect(mainserverNewsListCalls).toBe(0);
 

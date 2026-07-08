@@ -91,16 +91,16 @@
       "branches": 91.36
     },
     "plugin-events": {
-      "lines": 86.57,
-      "statements": 86.32,
-      "functions": 77.82,
-      "branches": 83.9
+      "lines": 85.24,
+      "statements": 85,
+      "functions": 79.54,
+      "branches": 81.28
     },
     "plugin-news": {
-      "lines": 93.97,
-      "statements": 93.82,
-      "functions": 93.13,
-      "branches": 83.42
+      "lines": 91.21,
+      "statements": 91.25,
+      "functions": 91.99,
+      "branches": 80
     },
     "plugin-poi": {
       "lines": 89.67,

@@ -236,6 +236,9 @@ describe('AuthProvider', () => {
         2,
         '/api/v1/iam/contents/refresh',
         expect.objectContaining({
+          body: JSON.stringify({
+            visibleTypes: ['news.article', 'events.event-record'],
+          }),
           method: 'POST',
           credentials: 'include',
           signal: expect.any(AbortSignal),
@@ -245,6 +248,40 @@ describe('AuthProvider', () => {
 
     expect(screen.getByTestId('authenticated').textContent).toBe('yes');
     expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
+  });
+
+  it('does not start the projected content warm-up without readable mainserver permissions', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse(200, {
+        user: {
+          id: 'user-1',
+          roles: ['editor'],
+          instanceId: 'instance-1',
+          permissionActions: ['content.read', 'waste-management.read'],
+        },
+      })
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status').textContent).toBe('ready');
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/auth/me',
+      expect.objectContaining({
+        credentials: 'include',
+      })
+    );
   });
 
   it('refreshes the session shortly before cookie expiry', async () => {

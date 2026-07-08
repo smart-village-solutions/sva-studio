@@ -12,29 +12,17 @@
       "@nx/vitest": "23.0.1"
     }
   },
-  "workspaceLayout": {
-    "appsDir": "apps",
-    "libsDir": "packages"
-  },
+  "workspaceLayout": { "appsDir": "apps", "libsDir": "packages" },
   "targetDefaults": {
-    "build": {
-      "cache": true,
-      "inputs": ["production", "^production"]
-    },
+    "build": { "cache": true, "inputs": ["production", "^production"] },
     "check:runtime": {
       "cache": true,
       "inputs": ["production", "^production", "serverRuntimeTooling"]
     },
-    "lint": {
-      "cache": true,
-      "inputs": ["default", "^production", "lintTooling"]
-    },
-    "test:unit": {
-      "cache": true,
-      "inputs": ["default", "^production", "testing"]
-    },
+    "lint": { "cache": true, "inputs": ["default", "^production", "lintTooling"] },
+    "test:unit": { "cache": true, "inputs": ["default", "^production", "testing"] },
     "test:coverage": {
-      "cache": true,
+      "cache": false,
       "inputs": [
         "default",
         "^production",
@@ -44,14 +32,8 @@
       ],
       "outputs": ["{projectRoot}/coverage"]
     },
-    "test:integration": {
-      "cache": false,
-      "inputs": ["default", "^production", "testing"]
-    },
-    "typecheck": {
-      "cache": true,
-      "inputs": ["production", "^production", "frontendTooling"]
-    }
+    "test:integration": { "cache": false, "inputs": ["default", "^production", "testing"] },
+    "typecheck": { "cache": true, "inputs": ["production", "^production", "frontendTooling"] }
   },
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
@@ -76,9 +58,7 @@
       "{workspaceRoot}/.github/workflows/**/*.yml",
       "{workspaceRoot}/.github/workflows/**/*.yaml"
     ],
-    "toolingScripts": [
-      "{workspaceRoot}/scripts/**"
-    ],
+    "toolingScripts": ["{workspaceRoot}/scripts/**"],
     "frontendTooling": [
       "{projectRoot}/vite.config.ts",
       "{projectRoot}/vitest.config.ts",
@@ -89,24 +69,13 @@
       "{projectRoot}/tsconfig.json",
       "{projectRoot}/package.json"
     ],
-    "frontendEnvBuild": [
-      {
-        "env": "CODECOV_TOKEN"
-      }
-    ],
-    "frontendEnvServe": [
-      {
-        "env": "TSS_DEV_SERVER"
-      }
-    ],
-    "frontendEnvE2E": [
-      {
-        "env": "CI"
-      }
-    ],
+    "frontendEnvBuild": [{ "env": "CODECOV_TOKEN" }],
+    "frontendEnvServe": [{ "env": "TSS_DEV_SERVER" }],
+    "frontendEnvE2E": [{ "env": "CI" }],
     "lintTooling": ["{workspaceRoot}/eslint.config.mjs"],
     "serverRuntimeTooling": ["{workspaceRoot}/scripts/ci/check-server-package-runtime.ts"],
     "sharedGlobals": ["{workspaceRoot}/tsconfig.base.json", "{workspaceRoot}/pnpm-lock.yaml"]
   },
-  "analytics": false
+  "analytics": false,
+  "nxCloudId": "69e4e2584679d3b4b2845b37"
 }

@@ -1,0 +1,4 @@
+{
+  "prNumber": 696,
+  "body": "Allgemeine Verbesserungen\n\n- Interne Abläufe im Bereich Abfallwirtschaft wurden technisch bereinigt und stabilisiert.\n- Die zugrunde liegende Serverlogik für Importe und Erinnerungen ist jetzt wartungsärmer aufgebaut."
+}

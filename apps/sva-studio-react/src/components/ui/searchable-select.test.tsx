@@ -34,6 +34,53 @@ describe('SearchableSelect', () => {
     expect(onValueChange).toHaveBeenCalledWith('org-2');
   });
 
+  it('returns focus to the trigger after selecting an option with the mouse', () => {
+    render(
+      <SearchableSelect
+        id="organization-select"
+        label="Organisation"
+        value=""
+        placeholder="Bitte wählen"
+        searchPlaceholder="Suchen"
+        emptyText="Keine Treffer"
+        options={[
+          { value: 'org-1', label: 'Musterstadt' },
+          { value: 'org-2', label: 'Stadtwerke' },
+        ]}
+        onValueChange={vi.fn()}
+      />
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Organisation' });
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('option', { name: 'Stadtwerke' }));
+
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('renders the listbox options under presentation list items', () => {
+    render(
+      <SearchableSelect
+        id="organization-select"
+        label="Organisation"
+        value=""
+        placeholder="Bitte wählen"
+        searchPlaceholder="Suchen"
+        emptyText="Keine Treffer"
+        options={[
+          { value: 'org-1', label: 'Musterstadt' },
+          { value: 'org-2', label: 'Stadtwerke' },
+        ]}
+        onValueChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation' }));
+
+    const option = screen.getByRole('option', { name: 'Musterstadt' });
+    expect(option.parentElement?.getAttribute('role')).toBe('presentation');
+  });
+
   it('supports arrow navigation and enter selection from the search input', () => {
     const onValueChange = vi.fn();
 

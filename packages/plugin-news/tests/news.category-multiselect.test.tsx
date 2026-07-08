@@ -8,7 +8,7 @@ describe('NewsCategoryMultiselect', () => {
     cleanup();
   });
 
-  it('selects a suggested category immediately, filters suggestions and removes selected entries', () => {
+  it('filters suggestions, keeps exact matches while typing and removes selected entries', () => {
     const onChange = vi.fn();
     const { container, rerender } = render(
       <NewsCategoryMultiselect
@@ -34,7 +34,7 @@ describe('NewsCategoryMultiselect', () => {
     expect(optionValues).toEqual(['Rathaus']);
 
     fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Rathaus' } });
-    expect(onChange).toHaveBeenCalledWith(['Allgemein', 'Rathaus']);
+    expect(onChange).not.toHaveBeenCalled();
 
     rerender(
       <NewsCategoryMultiselect
@@ -104,5 +104,29 @@ describe('NewsCategoryMultiselect', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
 
     expect(onChange).toHaveBeenCalledWith(['Kultur']);
+  });
+
+  it('adds the current category on blur', () => {
+    const onChange = vi.fn();
+
+    render(
+      <NewsCategoryMultiselect
+        availableCategories={[{ id: 'cat-2', name: 'Rathaus' }]}
+        helpText="Waehlen Sie Kategorien aus."
+        inputPlaceholder="Kategorie suchen oder auswaehlen"
+        loading={false}
+        loadingText="Kategorien werden geladen."
+        onChange={onChange}
+        removeLabel={(name) => `Kategorie ${name} entfernen`}
+        searchLabel="Kategorien suchen"
+        value={[]}
+      />
+    );
+
+    const input = screen.getByLabelText('Kategorien suchen');
+    fireEvent.change(input, { target: { value: 'Rathaus' } });
+    fireEvent.blur(input);
+
+    expect(onChange).toHaveBeenCalledWith(['Rathaus']);
   });
 });

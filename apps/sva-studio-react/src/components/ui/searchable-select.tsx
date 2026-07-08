@@ -245,9 +245,7 @@ const SearchableSelectPopover = ({
       />
       <SearchableSelectOptionList
         activeIndex={activeIndex}
-        close={() => {
-          close();
-        }}
+        close={close}
         emptyText={emptyText}
         filteredOptions={filteredOptions}
         id={id}

@@ -21,7 +21,7 @@ export const SearchableSelectOptionList = ({
   selectedValue,
 }: Readonly<{
   activeIndex: number;
-  close: () => void;
+  close: (options?: { focusTrigger?: boolean }) => void;
   emptyText: string;
   filteredOptions: readonly SearchableSelectOption[];
   id: string;
@@ -36,7 +36,7 @@ export const SearchableSelectOptionList = ({
         const active = index === activeIndex;
 
         return (
-          <li key={option.value}>
+          <li key={option.value} role="presentation">
             <button
               id={toOptionId(id, index)}
               type="button"
@@ -48,7 +48,7 @@ export const SearchableSelectOptionList = ({
               )}
               onClick={() => {
                 onValueChange(option.value);
-                close();
+                close({ focusTrigger: true });
               }}
             >
               {option.label}

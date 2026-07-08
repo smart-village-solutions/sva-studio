@@ -50,27 +50,6 @@ export function PoiCategoryMultiselect({
       ? suggestionNames
       : suggestionNames.filter((name) => name.toLocaleLowerCase().includes(draftValue.trim().toLocaleLowerCase()));
 
-  const trySelectSuggestedCategory = React.useCallback(
-    (rawValue: string) => {
-      const nextName = normalizeName(rawValue);
-      if (nextName.length === 0) {
-        return false;
-      }
-
-      const matchingSuggestion = suggestionNames.find(
-        (name) => name.toLocaleLowerCase() === nextName.toLocaleLowerCase()
-      );
-      if (!matchingSuggestion) {
-        return false;
-      }
-
-      onChange(dedupeCategoryNames([...normalizedValue, matchingSuggestion]));
-      setDraftValue('');
-      return true;
-    },
-    [normalizedValue, onChange, suggestionNames]
-  );
-
   const addCategory = React.useCallback(() => {
     const nextName = normalizeName(draftValue);
     if (nextName.length === 0) {
@@ -104,14 +83,7 @@ export function PoiCategoryMultiselect({
           disabled={disabled || loading}
           placeholder={inputPlaceholder}
           value={draftValue}
-          onChange={(event) => {
-            const nextValue = event.currentTarget.value;
-            if (trySelectSuggestedCategory(nextValue)) {
-              return;
-            }
-
-            setDraftValue(nextValue);
-          }}
+          onChange={(event) => setDraftValue(event.currentTarget.value)}
           onBlur={() => addCategory()}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {

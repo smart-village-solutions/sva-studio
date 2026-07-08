@@ -49,7 +49,6 @@ const NewsCategoryInput = ({
   loadingText,
   searchLabel,
   setDraftValue,
-  trySelectSuggestedCategory,
 }: Readonly<{
   addCategory: () => void;
   datalistId: string;
@@ -63,7 +62,6 @@ const NewsCategoryInput = ({
   loadingText: string;
   searchLabel: string;
   setDraftValue: (value: string) => void;
-  trySelectSuggestedCategory: (value: string) => boolean;
 }>) => (
   <div className="space-y-2">
     <Input
@@ -72,14 +70,8 @@ const NewsCategoryInput = ({
       disabled={disabled || loading}
       placeholder={inputPlaceholder}
       value={draftValue}
-      onChange={(event) => {
-        const nextValue = event.currentTarget.value;
-        if (trySelectSuggestedCategory(nextValue)) {
-          return;
-        }
-
-        setDraftValue(nextValue);
-      }}
+      onChange={(event) => setDraftValue(event.currentTarget.value)}
+      onBlur={addCategory}
       onKeyDown={(event) => {
         if (event.key === 'Enter') {
           event.preventDefault();
@@ -153,27 +145,6 @@ export function NewsCategoryMultiselect({
     [draftValue, suggestionNames]
   );
 
-  const trySelectSuggestedCategory = React.useCallback(
-    (rawValue: string) => {
-      const nextName = normalizeName(rawValue);
-      if (nextName.length === 0) {
-        return false;
-      }
-
-      const matchingSuggestion = suggestionNames.find(
-        (name) => name.toLocaleLowerCase() === nextName.toLocaleLowerCase()
-      );
-      if (!matchingSuggestion) {
-        return false;
-      }
-
-      onChange(dedupeCategoryNames([...normalizedValue, matchingSuggestion]));
-      setDraftValue('');
-      return true;
-    },
-    [normalizedValue, onChange, suggestionNames]
-  );
-
   const addCategory = React.useCallback(() => {
     const nextName = normalizeName(draftValue);
     if (nextName.length === 0) {
@@ -212,7 +183,6 @@ export function NewsCategoryMultiselect({
         loadingText={loadingText}
         searchLabel={searchLabel}
         setDraftValue={setDraftValue}
-        trySelectSuggestedCategory={trySelectSuggestedCategory}
       />
       <NewsSelectedCategories
         disabled={disabled}

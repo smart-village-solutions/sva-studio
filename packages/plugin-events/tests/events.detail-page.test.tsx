@@ -407,6 +407,7 @@ describe('EventsDetailPage', () => {
       expect(categoryInput.hasAttribute('disabled')).toBe(false);
     });
     fireEvent.change(categoryInput, { target: { value: 'Kultur' } });
+    fireEvent.blur(categoryInput);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Kategorie Kultur entfernen' })).toBeTruthy();
     });

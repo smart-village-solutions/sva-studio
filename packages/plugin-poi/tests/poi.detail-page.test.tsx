@@ -409,7 +409,9 @@ describe('PoiDetailPage', () => {
     render(<PoiDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
-    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Verwaltung' } });
+    const categoryInput = screen.getByLabelText('Kategorien suchen');
+    fireEvent.change(categoryInput, { target: { value: 'Verwaltung' } });
+    fireEvent.blur(categoryInput);
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {

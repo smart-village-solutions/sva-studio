@@ -314,6 +314,7 @@ describe('GenericItemsDetailPage', () => {
       expect(categoryInput.hasAttribute('disabled')).toBe(false);
     });
     fireEvent.change(categoryInput, { target: { value: 'Rathaus' } });
+    fireEvent.blur(categoryInput);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Kategorie Rathaus entfernen' })).toBeTruthy();
     });

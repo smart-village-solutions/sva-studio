@@ -601,9 +601,12 @@ describe('News editor pages', () => {
     expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
     fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'basis' } });
     await waitForCategoryControls();
-    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Allgemein' } });
+    const categoryInput = screen.getByLabelText('Kategorien suchen');
+    fireEvent.change(categoryInput, { target: { value: 'Allgemein' } });
+    fireEvent.blur(categoryInput);
     expect(screen.getByText('Allgemein')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Rathaus' } });
+    fireEvent.change(categoryInput, { target: { value: 'Rathaus' } });
+    fireEvent.blur(categoryInput);
     expect(screen.getByText('Rathaus')).toBeTruthy();
     await openReleaseTab();
     fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));

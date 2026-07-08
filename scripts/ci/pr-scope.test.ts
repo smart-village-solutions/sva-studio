@@ -220,6 +220,18 @@ describe('pr-scope', () => {
     });
   });
 
+  it('keeps full coverage triggers independent from per-project regression scoping', () => {
+    const decision = classifyPrScope([
+      '.github/workflows/runtime-gates.yml',
+      'apps/sva-studio-react/src/lib/studio-changelog.server.ts',
+      'packages/plugin-events/tests/events.pages.test.tsx',
+    ]);
+
+    expectDecision(decision, {
+      coverageMode: 'full',
+    });
+  });
+
   it('keeps workflow-only changes on affected quality gates', () => {
     const decision = classifyPrScope(['.github/workflows/quality-gates.yml']);
 

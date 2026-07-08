@@ -1,0 +1,4 @@
+{
+  "prNumber": 679,
+  "body": "Mehrere serverseitige Änderungsabläufe im Studio wurden vereinheitlicht und robuster gemacht.\n\n- Speichern und Aktualisieren in verschiedenen Verwaltungs- und Inhaltsbereichen folgen jetzt einem konsistenteren technischen Ablauf.\n- Fehlerbehandlung, Berechtigungsprüfung und Nachvollziehbarkeit im Hintergrund wurden vereinheitlicht.\n- Das reduziert das Risiko uneinheitlicher Fehlersituationen bei Änderungen im Studio."
+}

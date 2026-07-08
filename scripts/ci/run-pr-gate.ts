@@ -58,6 +58,16 @@ const recordDuration = (durations: DurationEntry[], label: string, durationMs: n
   durations.push({ label, durationMs });
 };
 
+export const buildCoverageGateCommand = (
+  mode: GateMode
+): string => {
+  if (mode !== 'full') {
+    return 'env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate';
+  }
+
+  return 'env COVERAGE_GATE_REQUIRE_SUMMARIES=1 pnpm coverage-gate';
+};
+
 const runQualityGates = (base: string, head: string, mode: GateMode, durations: DurationEntry[]): void => {
   if (mode === 'full') {
     recordDuration(durations, 'lint', runCommand('pnpm test:eslint'));
@@ -75,12 +85,16 @@ const runQualityGates = (base: string, head: string, mode: GateMode, durations: 
   }
 };
 
-const runCoverageGate = (base: string, mode: GateMode, durations: DurationEntry[]): void => {
+const runCoverageGate = (
+  base: string,
+  mode: GateMode,
+  durations: DurationEntry[]
+): void => {
   if (mode === 'full') {
     recordDuration(durations, 'coverage', runCommand('pnpm test:coverage'));
     recordDuration(durations, 'patch-coverage', runCommand(`pnpm patch-coverage-gate --base=${base}`));
     recordDuration(durations, 'sonar-new-code', runCommand(`pnpm sonar-new-code-gate --base=${base}`));
-    recordDuration(durations, 'coverage-gate', runCommand('env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate'));
+    recordDuration(durations, 'coverage-gate', runCommand(buildCoverageGateCommand(mode)));
     recordDuration(durations, 'complexity', runCommand('pnpm complexity-gate'));
     return;
   }
@@ -89,7 +103,7 @@ const runCoverageGate = (base: string, mode: GateMode, durations: DurationEntry[
     recordDuration(durations, 'coverage:affected', runAffectedCommand(base, 'pnpm test:coverage:affected'));
     recordDuration(durations, 'patch-coverage', runCommand(`pnpm patch-coverage-gate --base=${base}`));
     recordDuration(durations, 'sonar-new-code', runCommand(`pnpm sonar-new-code-gate --base=${base}`));
-    recordDuration(durations, 'coverage-gate', runCommand('env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate'));
+    recordDuration(durations, 'coverage-gate', runCommand(buildCoverageGateCommand(mode)));
     recordDuration(durations, 'complexity', runCommand('pnpm complexity-gate'));
     return;
   }

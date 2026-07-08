@@ -3,7 +3,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { runCoverageGate } from '../../../scripts/ci/coverage-gate.ts';
+import {
+  findCoverageArtifacts,
+  findCoverageSummaries,
+  runCoverageGate,
+} from '../../../scripts/ci/coverage-gate.ts';
 
 const createdDirs: string[] = [];
 
@@ -155,6 +159,27 @@ afterEach(() => {
 });
 
 describe('coverage gate', () => {
+  it('reads coverage artifacts only from project-root coverage directories', () => {
+    const rootDir = createTempWorkspace();
+    ensureProjectManifest(rootDir, 'packages/server-runtime');
+
+    const projectCoverageDir = path.join(rootDir, 'packages/server-runtime/coverage');
+    const nestedCoverageDir = path.join(rootDir, 'packages/server-runtime/src/coverage');
+    fs.mkdirSync(projectCoverageDir, { recursive: true });
+    fs.mkdirSync(nestedCoverageDir, { recursive: true });
+    fs.writeFileSync(path.join(projectCoverageDir, 'coverage-summary.json'), '{}');
+    fs.writeFileSync(path.join(projectCoverageDir, 'lcov.info'), 'TN:\n');
+    fs.writeFileSync(path.join(nestedCoverageDir, 'coverage-summary.json'), '{}');
+    fs.writeFileSync(path.join(nestedCoverageDir, 'lcov.info'), 'TN:\n');
+
+    expect(findCoverageSummaries(path.join(rootDir, 'packages'))).toEqual([
+      path.join(rootDir, 'packages/server-runtime/coverage/coverage-summary.json'),
+    ]);
+    expect(findCoverageArtifacts(path.join(rootDir, 'packages'), 'lcov.info')).toEqual([
+      path.join(rootDir, 'packages/server-runtime/coverage/lcov.info'),
+    ]);
+  });
+
   it('fails when policy file is missing', () => {
     const rootDir = createTempWorkspace();
 
@@ -376,6 +401,74 @@ describe('coverage gate', () => {
 
     expect(result.passed).toBe(false);
     expect(result.errors.some((error) => error.includes('dropped by'))).toBe(true);
+  });
+
+  it('does not enforce baseline regressions for partial affected coverage runs', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, { maxAllowedDropPctPoints: 0.5 });
+    writeBaseline(rootDir, 90, 90, 90, 90);
+    writeCoverageSummary(rootDir, 80, 80, 80, 80);
+
+    const result = runCoverageGate({ rootDir, requireSummaries: false });
+
+    expect(result.passed).toBe(true);
+    expect(result.errors.some((error) => error.includes('dropped by'))).toBe(false);
+  });
+
+  it('enforces baseline regressions only for explicitly filtered projects', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      maxAllowedDropPctPoints: 0.5,
+      perProjectFloors: {
+        'server-runtime': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+        'sva-studio-react': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+      },
+    });
+    fs.writeFileSync(
+      path.join(rootDir, 'tooling/testing/coverage-baseline.json'),
+      JSON.stringify(
+        {
+          projects: {
+            'server-runtime': {
+              lines: 90,
+              statements: 90,
+              functions: 90,
+              branches: 90,
+            },
+            'sva-studio-react': {
+              lines: 90,
+              statements: 90,
+              functions: 90,
+              branches: 90,
+            },
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeCoverageSummary(rootDir, 80, 80, 80, 80, 'packages/server-runtime');
+    writeCoverageSummary(rootDir, 80, 80, 80, 80, 'apps/sva-studio-react');
+
+    const result = runCoverageGate({
+      rootDir,
+      requireSummaries: true,
+      regressionProjectFilter: ['sva-studio-react'],
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.errors.some((error) => error.includes('[sva-studio-react] lines dropped by'))).toBe(true);
+    expect(result.errors.some((error) => error.includes('[server-runtime] lines dropped by'))).toBe(false);
   });
 
   it('enforces stricter minimum floors for critical projects', () => {

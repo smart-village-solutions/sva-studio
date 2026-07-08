@@ -1,0 +1,4 @@
+{
+  "prNumber": 675,
+  "body": "Umfragen bleiben jetzt auch dann lesbar, wenn einzelne Antwortoptionen aus dem Backend unvollständig geliefert werden.\n\n- Ein fehlender interner Bezug zwischen Frage und Antwortoption führt nicht mehr sofort zum Abbruch.\n- Das Studio ergänzt diese Zuordnung im betroffenen Fall robuster im Hintergrund.\n- Dadurch lassen sich betroffene Umfragen weiterhin öffnen und bearbeiten."
+}

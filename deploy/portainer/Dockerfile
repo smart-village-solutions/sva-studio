@@ -8,7 +8,7 @@ ENV CI=true
 ENV NX_DAEMON=false
 ENV NX_ADD_PLUGINS=false
 
-RUN apk add --no-cache bash
+RUN apk add --no-cache bash git
 RUN npm install -g pnpm@11.3.0
 
 COPY . .

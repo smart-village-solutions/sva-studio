@@ -16,6 +16,8 @@ packages/*/dist
 **/*.tsbuildinfo
 
 docs
+!docs/changelog/
+!docs/changelog/**
 dev/monitoring
 
 .DS_Store

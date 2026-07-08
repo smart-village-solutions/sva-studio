@@ -88,7 +88,7 @@ jobs:
       - name: Run PR coverage gates
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true' && steps.scope.outputs.coverage_mode != 'skip'
         env:
-          COVERAGE_GATE_REQUIRE_SUMMARIES: 0
+          COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ steps.scope.outputs.coverage_mode == 'full' && '1' || '0' }}
         run: |
           pnpm patch-coverage-gate --base=${{ github.event.pull_request.base.sha }}
           pnpm sonar-new-code-gate --base=${{ github.event.pull_request.base.sha }}

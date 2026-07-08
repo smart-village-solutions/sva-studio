@@ -1,0 +1,4 @@
+{
+  "prNumber": 664,
+  "body": "Die Browser-Kompatibilität der Studio-Styles wurde im Hintergrund aktualisiert.\n\n- Die automatische Ergänzung von CSS-Browserpräfixen wurde auf einen neueren Stand gebracht.\n- Korrekturen für Layout- und Kompatibilitätsfälle fließen damit direkt in erzeugte Styles ein.\n- Das verbessert die technische Grundlage für eine konsistentere Darstellung in verschiedenen Browsern."
+}

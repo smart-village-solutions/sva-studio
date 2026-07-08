@@ -19,7 +19,7 @@ import {
   useGenericItemsDetailLoader,
   useGenericItemsMediaAssets,
   type StatusMessage,
-} from './generic-items.detail-page.state.js';
+} from './generic-items.detail-page.logic.js';
 import { GenericItemsDetailTabs } from './generic-items.detail-page.tabs.js';
 import { genericItemsDetailFormSchema, type GenericItemsDetailFormValues } from './generic-items.validation.js';
 

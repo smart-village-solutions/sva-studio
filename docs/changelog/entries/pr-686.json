@@ -1,0 +1,4 @@
+{
+  "prNumber": 686,
+  "body": "Organisationen ohne Unterbereiche lassen sich jetzt im Studio endgültig löschen.\n\n- Beim Löschen werden verknüpfte Zugänge und technische Zuordnungen konsistent entfernt.\n- Inhalte mit Bezug zur gelöschten Organisation bleiben nicht in einem fehlerhaften Zwischenzustand zurück.\n- Organisationen mit untergeordneten Bereichen bleiben weiterhin geschützt und können nicht versehentlich vollständig entfernt werden."
+}

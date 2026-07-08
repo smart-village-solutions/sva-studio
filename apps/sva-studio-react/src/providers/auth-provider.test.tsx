@@ -197,6 +197,56 @@ describe('AuthProvider', () => {
     });
   });
 
+  it('starts a non-blocking projected content refresh after a successful login session load', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+            permissionActions: ['news.read', 'events.read'],
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            status: 'accepted',
+            syncStates: [],
+          },
+        })
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status').textContent).toBe('ready');
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        '/api/v1/iam/contents/refresh',
+        expect.objectContaining({
+          method: 'POST',
+          credentials: 'include',
+          signal: expect.any(AbortSignal),
+        })
+      );
+    });
+
+    expect(screen.getByTestId('authenticated').textContent).toBe('yes');
+    expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
+  });
+
   it('refreshes the session shortly before cookie expiry', async () => {
     const now = new Date('2026-05-06T12:00:00.000Z');
     const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(now.getTime());

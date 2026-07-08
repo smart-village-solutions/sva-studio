@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 1ugJP7BDXFaPR9YgsKK3TZzQTddLwXFiJjir05XJfqbmkpA6OidoP927HKFo5do
+\restrict njzg2qV7CaO3allit9vhRqhMM5wPi8gxkyaco1x8vB2jtuvdzRTJXVbXfcZdtXf
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -37,6 +37,37 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 --
 
 COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
+
+
+--
+-- Name: build_content_list_projection_scope_key(text, text, text, text, text, uuid, text, uuid, uuid); Type: FUNCTION; Schema: iam; Owner: -
+--
+
+CREATE FUNCTION iam.build_content_list_projection_scope_key(p_instance_id text, p_source_system text, p_source_entity_type text, p_source_entity_id text, p_content_type text, p_organization_id uuid, p_owner_subject_id text, p_owner_user_id uuid, p_owner_organization_id uuid) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT CASE
+    WHEN p_source_system = 'mainserver' THEN
+      concat_ws(
+        '::',
+        p_instance_id,
+        COALESCE(p_owner_user_id::text, 'missing-account:' || COALESCE(NULLIF(p_owner_subject_id, ''), 'unknown-subject')),
+        COALESCE(p_owner_organization_id::text, p_organization_id::text, 'no-organization'),
+        p_content_type
+      )
+    ELSE
+      concat_ws(
+        '::',
+        p_instance_id,
+        p_source_system,
+        p_source_entity_type,
+        p_source_entity_id,
+        COALESCE(p_organization_id::text, 'no-organization'),
+        COALESCE(p_owner_user_id::text, NULLIF(p_owner_subject_id, ''), 'no-owner-user'),
+        COALESCE(p_owner_organization_id::text, 'no-owner-organization')
+      )
+  END;
+$$;
 
 
 --
@@ -159,6 +190,7 @@ BEGIN
       instance_id,
       source_system,
       content_type,
+      sync_scope_key,
       sync_mode,
       last_succeeded_at,
       projected_count,
@@ -168,16 +200,18 @@ BEGIN
       OLD.instance_id,
       'iam',
       OLD.content_type,
+      OLD.content_type,
       'full_refresh',
       NOW(),
       0,
       NOW()
     )
-    ON CONFLICT (instance_id, source_system, content_type)
+    ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
     DO UPDATE SET
       last_succeeded_at = EXCLUDED.last_succeeded_at,
       last_error_code = NULL,
       last_error_message = NULL,
+      projected_count = EXCLUDED.projected_count,
       updated_at = EXCLUDED.updated_at;
 
     RETURN OLD;
@@ -194,6 +228,7 @@ BEGIN
   INSERT INTO iam.content_list_projection (
     id,
     instance_id,
+    projection_scope_key,
     organization_id,
     owner_subject_id,
     owner_user_id,
@@ -223,6 +258,17 @@ BEGIN
   VALUES (
     NEW.id::text,
     NEW.instance_id,
+    iam.build_content_list_projection_scope_key(
+      NEW.instance_id,
+      'iam',
+      'iam.contents',
+      NEW.id::text,
+      NEW.content_type,
+      NEW.organization_id,
+      NEW.owner_subject_id,
+      NEW.owner_user_id,
+      NEW.owner_organization_id
+    ),
     NEW.organization_id,
     NEW.owner_subject_id,
     NEW.owner_user_id,
@@ -252,6 +298,7 @@ BEGIN
   ON CONFLICT ON CONSTRAINT content_list_projection_scope_key
   DO UPDATE SET
     id = EXCLUDED.id,
+    projection_scope_key = EXCLUDED.projection_scope_key,
     organization_id = EXCLUDED.organization_id,
     owner_subject_id = EXCLUDED.owner_subject_id,
     owner_user_id = EXCLUDED.owner_user_id,
@@ -279,6 +326,7 @@ BEGIN
     instance_id,
     source_system,
     content_type,
+    sync_scope_key,
     sync_mode,
     last_succeeded_at,
     projected_count,
@@ -288,16 +336,18 @@ BEGIN
     NEW.instance_id,
     'iam',
     NEW.content_type,
+    NEW.content_type,
     'full_refresh',
     NOW(),
     1,
     NOW()
   )
-  ON CONFLICT (instance_id, source_system, content_type)
+  ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
   DO UPDATE SET
     last_succeeded_at = EXCLUDED.last_succeeded_at,
     last_error_code = NULL,
     last_error_message = NULL,
+    projected_count = EXCLUDED.projected_count,
     updated_at = EXCLUDED.updated_at;
 
   RETURN NEW;
@@ -529,6 +579,7 @@ CREATE TABLE iam.content_list_projection (
     source_data_provider_id text,
     source_data_provider_name text,
     credential_source text,
+    projection_scope_key text NOT NULL,
     CONSTRAINT content_list_projection_author_display_mode_chk CHECK ((author_display_mode = ANY (ARRAY['organization'::text, 'user'::text]))),
     CONSTRAINT content_list_projection_credential_source_chk CHECK (((credential_source IS NULL) OR (credential_source = ANY (ARRAY['organization'::text, 'user'::text])))),
     CONSTRAINT content_list_projection_source_system_chk CHECK ((source_system = ANY (ARRAY['iam'::text, 'mainserver'::text]))),
@@ -553,6 +604,7 @@ CREATE TABLE iam.content_list_projection_sync_state (
     last_error_message text,
     projected_count integer DEFAULT 0 NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    sync_scope_key text NOT NULL,
     CONSTRAINT content_list_projection_sync_state_mode_chk CHECK ((sync_mode = 'full_refresh'::text)),
     CONSTRAINT content_list_projection_sync_state_source_system_chk CHECK ((source_system = ANY (ARRAY['iam'::text, 'mainserver'::text])))
 );
@@ -926,33 +978,6 @@ ALTER TABLE ONLY iam.instance_external_interfaces FORCE ROW LEVEL SECURITY;
 
 
 --
--- Name: instance_waste_data_sources; Type: TABLE; Schema: iam; Owner: -
---
-
-CREATE TABLE iam.instance_waste_data_sources (
-    instance_id text NOT NULL,
-    provider_key text NOT NULL,
-    project_url text NOT NULL,
-    schema_name text NOT NULL,
-    enabled boolean DEFAULT true NOT NULL,
-    database_url_ciphertext text,
-    service_role_key_ciphertext text,
-    visible_status text DEFAULT 'unknown'::text NOT NULL,
-    last_checked_at timestamp with time zone,
-    last_check_status text,
-    last_check_error_code text,
-    last_check_error_message text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT instance_waste_data_sources_last_check_status_chk CHECK (((last_check_status IS NULL) OR (last_check_status = ANY (ARRAY['succeeded'::text, 'failed'::text])))),
-    CONSTRAINT instance_waste_data_sources_visible_status_chk CHECK ((visible_status = ANY (ARRAY['not_configured'::text, 'unknown'::text, 'ok'::text, 'error'::text, 'disabled'::text])))
-);
-
-
-ALTER TABLE ONLY iam.instance_waste_data_sources FORCE ROW LEVEL SECURITY;
-
-
---
 -- Name: instance_hostnames; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -1070,6 +1095,32 @@ CREATE TABLE iam.instance_provisioning_runs (
     CONSTRAINT instance_provisioning_operation_chk CHECK ((operation = ANY (ARRAY['create'::text, 'activate'::text, 'suspend'::text, 'archive'::text]))),
     CONSTRAINT instance_provisioning_status_chk CHECK ((status = ANY (ARRAY['requested'::text, 'validated'::text, 'provisioning'::text, 'active'::text, 'failed'::text, 'suspended'::text, 'archived'::text])))
 );
+
+
+--
+-- Name: instance_waste_data_sources; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.instance_waste_data_sources (
+    instance_id text NOT NULL,
+    provider_key text NOT NULL,
+    project_url text NOT NULL,
+    schema_name text NOT NULL,
+    enabled boolean DEFAULT true NOT NULL,
+    database_url_ciphertext text,
+    service_role_key_ciphertext text,
+    visible_status text DEFAULT 'unknown'::text NOT NULL,
+    last_checked_at timestamp with time zone,
+    last_check_status text,
+    last_check_error_code text,
+    last_check_error_message text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT instance_waste_data_sources_last_check_status_chk CHECK (((last_check_status IS NULL) OR (last_check_status = ANY (ARRAY['succeeded'::text, 'failed'::text])))),
+    CONSTRAINT instance_waste_data_sources_visible_status_chk CHECK ((visible_status = ANY (ARRAY['not_configured'::text, 'unknown'::text, 'ok'::text, 'error'::text, 'disabled'::text])))
+);
+
+ALTER TABLE ONLY iam.instance_waste_data_sources FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1611,6 +1662,7 @@ CREATE TABLE public.waste_email_reminder_subscriptions (
 );
 
 
+--
 -- Name: account_deletion_content_preferences account_deletion_content_preferences_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -1695,7 +1747,7 @@ ALTER TABLE ONLY iam.content_history
 --
 
 ALTER TABLE ONLY iam.content_list_projection
-    ADD CONSTRAINT content_list_projection_scope_key UNIQUE NULLS NOT DISTINCT (instance_id, source_system, source_entity_type, source_entity_id, organization_id, owner_user_id, owner_organization_id);
+    ADD CONSTRAINT content_list_projection_scope_key UNIQUE NULLS NOT DISTINCT (instance_id, source_system, source_entity_type, source_entity_id, projection_scope_key);
 
 
 --
@@ -1703,7 +1755,7 @@ ALTER TABLE ONLY iam.content_list_projection
 --
 
 ALTER TABLE ONLY iam.content_list_projection_sync_state
-    ADD CONSTRAINT content_list_projection_sync_state_pkey PRIMARY KEY (instance_id, source_system, content_type);
+    ADD CONSTRAINT content_list_projection_sync_state_pkey PRIMARY KEY (instance_id, source_system, content_type, sync_scope_key);
 
 
 --
@@ -1931,19 +1983,19 @@ ALTER TABLE ONLY iam.instance_modules
 
 
 --
--- Name: instance_waste_data_sources instance_waste_data_sources_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.instance_waste_data_sources
-    ADD CONSTRAINT instance_waste_data_sources_pkey PRIMARY KEY (instance_id);
-
-
---
 -- Name: instance_provisioning_runs instance_provisioning_runs_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
 ALTER TABLE ONLY iam.instance_provisioning_runs
     ADD CONSTRAINT instance_provisioning_runs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: instance_waste_data_sources instance_waste_data_sources_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_waste_data_sources
+    ADD CONSTRAINT instance_waste_data_sources_pkey PRIMARY KEY (instance_id);
 
 
 --
@@ -2210,6 +2262,7 @@ ALTER TABLE ONLY public.waste_email_reminder_subscriptions
     ADD CONSTRAINT waste_email_reminder_subscriptions_unsubscribe_token_hash_uniqu UNIQUE (unsubscribe_token_hash);
 
 
+--
 -- Name: iam_content_history_instance_content_created_idx; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -2235,6 +2288,13 @@ CREATE INDEX iam_content_list_projection_instance_type_updated_idx ON iam.conten
 --
 
 CREATE INDEX iam_content_list_projection_instance_updated_idx ON iam.content_list_projection USING btree (instance_id, updated_at DESC);
+
+
+--
+-- Name: iam_content_list_projection_mainserver_scope_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX iam_content_list_projection_mainserver_scope_idx ON iam.content_list_projection USING btree (instance_id, source_system, content_type, projection_scope_key);
 
 
 --
@@ -2999,6 +3059,7 @@ ALTER TABLE ONLY iam.accounts
     ADD CONSTRAINT accounts_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 
+--
 -- Name: activity_logs_archive activity_logs_archive_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3014,6 +3075,7 @@ ALTER TABLE ONLY iam.activity_logs
     ADD CONSTRAINT activity_logs_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 
+--
 -- Name: content_history content_history_actor_account_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3398,19 +3460,19 @@ ALTER TABLE ONLY iam.instance_modules
 
 
 --
--- Name: instance_waste_data_sources instance_waste_data_sources_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.instance_waste_data_sources
-    ADD CONSTRAINT instance_waste_data_sources_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
-
-
---
 -- Name: instance_provisioning_runs instance_provisioning_runs_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
 ALTER TABLE ONLY iam.instance_provisioning_runs
     ADD CONSTRAINT instance_provisioning_runs_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: instance_waste_data_sources instance_waste_data_sources_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_waste_data_sources
+    ADD CONSTRAINT instance_waste_data_sources_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 
 --
@@ -3677,6 +3739,7 @@ ALTER TABLE ONLY iam.permissions
     ADD CONSTRAINT permissions_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 
+--
 -- Name: role_permissions role_permissions_permission_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3891,22 +3954,10 @@ CREATE POLICY instance_deletion_rules_isolation_policy ON iam.instance_deletion_
 ALTER TABLE iam.instance_external_interfaces ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: instance_waste_data_sources; Type: ROW SECURITY; Schema: iam; Owner: -
---
-
-ALTER TABLE iam.instance_waste_data_sources ENABLE ROW LEVEL SECURITY;
-
---
 -- Name: instance_external_interfaces instance_external_interfaces_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
 CREATE POLICY instance_external_interfaces_isolation_policy ON iam.instance_external_interfaces USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
-
---
--- Name: instance_waste_data_sources instance_waste_data_sources_isolation_policy; Type: POLICY; Schema: iam; Owner: -
---
-
-CREATE POLICY instance_waste_data_sources_isolation_policy ON iam.instance_waste_data_sources USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
 
 
 --
@@ -3921,6 +3972,19 @@ CREATE POLICY instance_integrations_isolation_policy ON iam.instance_integration
 --
 
 CREATE POLICY instance_memberships_isolation_policy ON iam.instance_memberships USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: instance_waste_data_sources; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.instance_waste_data_sources ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: instance_waste_data_sources instance_waste_data_sources_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY instance_waste_data_sources_isolation_policy ON iam.instance_waste_data_sources USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
 
 
 --
@@ -4042,4 +4106,5 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 1ugJP7BDXFaPR9YgsKK3TZzQTddLwXFiJjir05XJfqbmkpA6OidoP927HKFo5do
+\unrestrict njzg2qV7CaO3allit9vhRqhMM5wPi8gxkyaco1x8vB2jtuvdzRTJXVbXfcZdtXf
+

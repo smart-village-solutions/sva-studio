@@ -36,8 +36,10 @@ import {
 import {
   asIamError,
   fetchWithRequestTimeout,
+  refreshProjectedContents as requestProjectedContentsRefresh,
   type IamHttpError,
 } from '../lib/iam-api';
+import { DEFAULT_MAINSERVER_VISIBLE_TYPES } from '../lib/iam-content-list-api.shared';
 import {
   type AuthMeResult,
   fetchAuthMeSingleFlight,
@@ -260,6 +262,37 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return authFlowId;
   }, []);
 
+  const warmProjectedContentsAfterSessionLoad = React.useCallback(
+    (silent: boolean, payload: SessionUser | null) => {
+      const previousUser = confirmedUserRef.current;
+      const isNewShift =
+        !silent &&
+        Boolean(payload?.instanceId) &&
+        (payload?.permissionActions?.length ?? 0) > 0 &&
+        (!previousUser ||
+          previousUser.id !== payload?.id ||
+          previousUser.instanceId !== payload?.instanceId);
+
+      if (!isNewShift) {
+        return;
+      }
+
+      void requestProjectedContentsRefresh({
+        visibleTypes: [...DEFAULT_MAINSERVER_VISIBLE_TYPES],
+      }).catch((cause) => {
+        const resolvedError = asIamError(cause);
+        authLogger.warn('auth_projected_content_refresh_failed', {
+          auth_flow_id: authFlowIdRef.current,
+          attempt: authAttemptRef.current,
+          operation: 'warm_projected_contents',
+          status: resolvedError.status,
+          error_code: resolvedError.code,
+        });
+      });
+    },
+    []
+  );
+
   const nextAuthAttempt = React.useCallback(() => {
     authAttemptRef.current += 1;
     return authAttemptRef.current;
@@ -473,6 +506,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (payload) {
         markKnownSession();
       }
+      warmProjectedContentsAfterSessionLoad(silent, payload);
       logBrowserOperationSuccess(authLogger, 'auth_session_authenticated', {
         auth_flow_id: authFlowId,
         attempt: authAttemptRef.current,
@@ -484,7 +518,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         expires_at: expiresAt,
       });
     },
-    []
+    [warmProjectedContentsAfterSessionLoad]
   );
 
   const commitLoadUserFailure = React.useCallback(

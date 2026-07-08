@@ -4,20 +4,19 @@ import type {
   IamContentListQuery,
 } from '@sva/core';
 
-const MAIN_SERVER_CONTENT_TYPES = new Set([
+export const DEFAULT_MAINSERVER_VISIBLE_TYPES = [
   'news.article',
   'events.event-record',
   'poi.point-of-interest',
   'generic-items.generic-item',
   'surveys.survey',
-]);
+] as const;
+
+const MAIN_SERVER_CONTENT_TYPES = new Set<string>(DEFAULT_MAINSERVER_VISIBLE_TYPES);
+export const MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE = 25;
 export const EMPTY_VISIBLE_TYPE_SENTINEL = '__no_readable_content__';
 export type MainserverContentType =
-  | 'news.article'
-  | 'events.event-record'
-  | 'poi.point-of-interest'
-  | 'generic-items.generic-item'
-  | 'surveys.survey';
+  | (typeof DEFAULT_MAINSERVER_VISIBLE_TYPES)[number];
 
 const API_ERROR_CODES = new Set<ApiErrorCode>([
   'unauthorized',

@@ -110,7 +110,7 @@ export const createNewsOperations = (executeGraphqlWithConfig: GraphqlExecutor) 
       {
         document: svaMainserverNewsListDocument,
         operationName: 'SvaMainserverNewsList',
-        order: 'publishedAt_DESC',
+        order: input.orderBy ?? 'publishedAt_DESC',
         readItems: (response) => response.newsItems ?? [],
         isVisible: (item) => matchesNewsListFilters(item, input, nowIso),
         mapItem: mapNewsItem,

@@ -14,9 +14,6 @@ import {
 } from './waste-management-operations.schema.js';
 import { parseImportRows } from './waste-management-operations.import.js';
 import { resolveRuntimeDataSource } from './waste-management-operations.shared.js';
-import {
-  readPublicWasteUnsubscribeTokenSubscriptionId,
-} from '../../../public-waste-calendar-web/src/server/public-waste-unsubscribe-token.server.js';
 
 const createOrUpdateSvaMainserverStaticContentMock = vi.hoisted(() => vi.fn());
 const runWasteManagementMainserverSyncForInstanceMock = vi.hoisted(() => vi.fn());

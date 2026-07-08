@@ -1,19 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import ExcelJS from 'exceljs';
 import type { ExternalInterfaceRecord } from '@sva/core';
 import { protectField } from '@sva/auth-runtime/server';
 import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
 import type { SqlClient, WasteOperationSqlPool } from './waste-management-operations.types.js';
-const { Workbook } = ExcelJS;
-
-import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
-import {
-  applySchemaStatements,
-  buildWasteFractionShortLabelBackfillStatement,
-} from './waste-management-operations.schema.js';
-import { parseImportRows } from './waste-management-operations.import.js';
-import { resolveRuntimeDataSource } from './waste-management-operations.shared.js';
 import {
   readPublicWasteUnsubscribeTokenSubscriptionId,
   verifyPublicWasteUnsubscribeToken,
@@ -1745,22 +1735,6 @@ const createWasteEmailReminderConfig = () => ({
   unsubscribeTokenTtlDays: 365,
 } as const);
 
-const createToursWorkbookBytes = async (): Promise<Uint8Array> => {
-  return await createWorkbookBytes([
-    ['tour_id', 'tour_name', 'waste_fraction_ids', 'active', 'description', 'recurrence', 'first_date', 'end_date', 'custom_dates'],
-    ['tour-1', 'Restmüll Nord', 'rest|bio', 'yes', 'Standardtour Nord', 'weekly', '2026-01-10', '2026-12-31', '2026-01-10|2026-01-24'],
-  ]);
-};
-
-const createWorkbookBytes = async (rows: readonly (readonly string[])[]): Promise<Uint8Array> => {
-  const workbook = new Workbook();
-  const worksheet = workbook.addWorksheet('Import');
-  for (const row of rows) {
-    worksheet.addRow([...row]);
-  }
-  return new Uint8Array(await workbook.xlsx.writeBuffer());
-};
-
 const createInterfaceRecordWithEmailReminderConfig = (): ExternalInterfaceRecord => ({
   ...createInterfaceRecord(),
   publicConfig: {
@@ -1858,25 +1832,3 @@ const createRepositoryMockBase = () => ({
   upsertWasteTourDateShift: vi.fn(async () => undefined),
   upsertWasteGlobalDateShift: vi.fn(async () => undefined),
 });
-
-const createRuntimeWithRepositoryMock = async (
-  repository: ReturnType<typeof createRepositoryMock>,
-  workbookBytes?: Uint8Array,
-  query: SqlClient['query'] = vi.fn(async () => ({ rowCount: 0, rows: [] }))
-) => {
-  vi.doMock('@sva/data-repositories', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('@sva/data-repositories')>();
-    return {
-      ...actual,
-      createWasteMasterDataRepository: vi.fn(() => repository),
-    };
-  });
-
-  const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
-  return createRuntime({
-    loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
-    revealSecret: vi.fn(revealSupabaseSecretConfig),
-    createPool: vi.fn(() => createPoolMock(createSqlClientMock(query))),
-    readBinarySource: vi.fn(async () => workbookBytes ?? await createToursWorkbookBytes()),
-  });
-};

@@ -3,7 +3,6 @@ import { createRequire } from 'node:module';
 import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-
 import { isNonCodeRelevantPath, resolveChangedFiles } from './pr-scope.ts';
 
 export type AppUnitSlice = 'hooks' | 'routes' | 'server' | 'ui';
@@ -27,27 +26,18 @@ interface AffectedUnitGateOptions {
 const APP_PROJECT = 'sva-studio-react';
 const APP_VITEST_CONFIG = 'apps/sva-studio-react/vitest.config.ts';
 const require = createRequire(import.meta.url);
-
 const APP_UI_PATTERNS = [/^apps\/sva-studio-react\/src\/(?:components|providers|i18n)\//u];
 const APP_ROUTES_PATTERNS = [/^apps\/sva-studio-react\/src\/(?:routes|routing)\//u];
-const APP_SERVER_PATTERNS = [
-  /^apps\/sva-studio-react\/src\/server(?:\.test)?\.(?:ts|tsx)$/u,
-  /^apps\/sva-studio-react\/src\/lib\/.*(?:\.server|-server)(?:\.test)?\.(?:ts|tsx)$/u,
-];
-const APP_HOOKS_PATTERNS = [
-  /^apps\/sva-studio-react\/src\/hooks\//u,
-  /^apps\/sva-studio-react\/src\/lib\//u,
-];
+const APP_SERVER_PATTERNS = [/^apps\/sva-studio-react\/src\/server(?:\.test)?\.(?:ts|tsx)$/u, /^apps\/sva-studio-react\/src\/lib\/.*(?:\.server|-server)(?:\.test)?\.(?:ts|tsx)$/u];
+const APP_HOOKS_PATTERNS = [/^apps\/sva-studio-react\/src\/hooks\//u, /^apps\/sva-studio-react\/src\/lib\//u];
 const APP_AGGREGATE_PATTERNS = [
   /^apps\/sva-studio-react\/(?:package\.json|tsconfig\.json|vite\.config\.ts|vitest(?:\..+)?\.config\.ts|playwright\.config\.ts)$/u,
   /^apps\/sva-studio-react\/(?:e2e|scripts)\//u,
   /^apps\/sva-studio-react\/src\/(?:main|routeTreeGen|router)\.(?:ts|tsx)$/u,
 ];
 const APP_DEPENDENCY_RELEVANT_NON_APP_PATTERNS = [/^packages\//u];
-
 const matchesAnyPattern = (filePath: string, patterns: readonly RegExp[]): boolean =>
   patterns.some((pattern) => pattern.test(filePath));
-
 const parseCliOptions = (args: readonly string[]): AffectedUnitGateOptions => {
   let base = 'origin/main';
   let head = 'HEAD';

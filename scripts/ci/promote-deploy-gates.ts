@@ -1,17 +1,11 @@
 #!/usr/bin/env node
-
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-
 import { resolveChangedFiles } from './pr-scope.ts';
 
 export type DeployGateMode = 'assert-none' | 'run';
 export type DeployGateKind = 'bootstrap' | 'migration';
-export type DeployGateResultType =
-  | 'asserted-clean'
-  | 'blocked-missing-executor'
-  | 'blocked-risk'
-  | 'blocked-safe-run-required';
+export type DeployGateResultType = 'asserted-clean' | 'blocked-missing-executor' | 'blocked-risk' | 'blocked-safe-run-required';
 
 export interface DeployGateResult {
   kind: DeployGateKind;
@@ -107,7 +101,6 @@ export const evaluateDeployGate = ({
         riskFiles,
       };
     }
-
     return {
       kind,
       message: `${label}-Gate freigegeben: keine risikobehafteten Aenderungen fuer ${label.toLowerCase()} erkannt.`,
@@ -118,7 +111,6 @@ export const evaluateDeployGate = ({
       riskFiles,
     };
   }
-
   if (!executorConfigured) {
     return {
       kind,
@@ -130,7 +122,6 @@ export const evaluateDeployGate = ({
       riskFiles,
     };
   }
-
   return {
     kind,
     message: `${label}-Gate blockiert: Ein Executor ist konfiguriert, aber im Promote-Workflow nicht mit gehaerteter Exit-Code-/Log-Evidenz verdrahtet. Nutze den kanonischen Operator-Pfad statt Blindautomatisierung.`,
@@ -240,10 +231,8 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
       );
       continue;
     }
-
     throw new Error(`Unbekannte Option: ${argument}`);
   }
-
   return {
     base,
     bootstrapExecutorConfigured,
@@ -261,12 +250,10 @@ const resolveCliChangedFiles = ({ base, changedFiles, head }: Pick<CliOptions, '
 const emitEvaluationOutputs = (evaluation: PromoteDeployGateEvaluation): void => {
   const combinedOk = evaluation.migration.ok && evaluation.bootstrap.ok ? 'true' : 'false';
   const changedFilesSummary = evaluation.changedFiles.join(',');
-
   const githubOutput = process.env.GITHUB_OUTPUT?.trim();
   if (!githubOutput) {
     return;
   }
-
   const lines = [
     `changed_files=${changedFilesSummary}`,
     `combined_ok=${combinedOk}`,
@@ -298,7 +285,6 @@ export const executePromoteDeployGates = async (
     });
 
     emitEvaluationOutputs(evaluation);
-
     return {
       exitCode: 0,
       stderr: '',
@@ -322,7 +308,6 @@ export const runPromoteDeployGates = async (args: readonly string[]): Promise<nu
   if (result.stderr) {
     process.stderr.write(`${result.stderr}\n`);
   }
-
   return result.exitCode;
 };
 

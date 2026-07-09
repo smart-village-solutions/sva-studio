@@ -211,7 +211,7 @@ const openHistoryTab = async () => {
 const waitForCategoryControls = async () => {
   await waitFor(() => {
     expect(screen.getByLabelText('Kategorien suchen').hasAttribute('disabled')).toBe(false);
-    expect(screen.getByRole('button', { name: 'Kategorie hinzufügen' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Kategorie hinzufügen' })).toBeNull();
   });
 };
 
@@ -601,11 +601,12 @@ describe('News editor pages', () => {
     expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
     fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'basis' } });
     await waitForCategoryControls();
-    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Allgemein' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Kategorie hinzufügen' }));
+    const categoryInput = screen.getByLabelText('Kategorien suchen');
+    fireEvent.change(categoryInput, { target: { value: 'Allgemein' } });
+    fireEvent.blur(categoryInput);
     expect(screen.getByText('Allgemein')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Rathaus' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Kategorie hinzufügen' }));
+    fireEvent.change(categoryInput, { target: { value: 'Rathaus' } });
+    fireEvent.blur(categoryInput);
     expect(screen.getByText('Rathaus')).toBeTruthy();
     await openReleaseTab();
     fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));

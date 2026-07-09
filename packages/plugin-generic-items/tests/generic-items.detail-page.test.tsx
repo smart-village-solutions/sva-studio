@@ -304,6 +304,34 @@ describe('GenericItemsDetailPage', () => {
     });
   });
 
+  it('selects categories directly in the generic item create flow', async () => {
+    render(<GenericItemsDetailPage mode="create" />);
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Freier Eintrag' } });
+    fireEvent.change(screen.getByLabelText('Generic-Type'), { target: { value: 'faq' } });
+    const categoryInput = screen.getByLabelText('Kategorien suchen');
+    await waitFor(() => {
+      expect(categoryInput.hasAttribute('disabled')).toBe(false);
+    });
+    fireEvent.change(categoryInput, { target: { value: 'Rathaus' } });
+    fireEvent.blur(categoryInput);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Kategorie Rathaus entfernen' })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
+
+    await waitFor(() => {
+      expect(createGenericItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Freier Eintrag',
+          genericType: 'faq',
+          categoryName: 'Rathaus',
+          categories: [{ name: 'Rathaus' }],
+        })
+      );
+    });
+  });
+
   it('updates a generic item', async () => {
     render(<GenericItemsDetailPage mode="edit" contentId="generic-1" />);
 

@@ -1,4 +1,4 @@
-import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
+import { formatDateTimeInEditorTimeZone, readFieldError } from '@sva/plugin-sdk';
 import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
 import { getStudioFormFieldProps, StudioFormSummaryErrors } from '@sva/studio-ui-react';
 import { Input, Select, StudioField } from '@sva/studio-ui-react';
@@ -37,14 +37,6 @@ const translateFieldError = (
   };
 };
 
-const readCategoryFieldError = (value: unknown): FieldError | undefined => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return undefined;
-  }
-
-  return 'message' in value || 'type' in value ? (value as FieldError) : undefined;
-};
-
 const formatMetadataDate = (value?: string) => {
   if (!value) {
     return missingDateValue;
@@ -79,7 +71,7 @@ export function NewsDetailBasisTab({
   });
   const categoriesField = getStudioFormFieldProps({
     id: 'news-categories',
-    error: translateFieldError(readCategoryFieldError(errors.categories), pt),
+    error: translateFieldError(readFieldError<FieldError>(errors.categories), pt),
     hasDescription: true,
   });
   const summaryErrors = collectSummaryErrors([titleField, authorField, categoriesField]);
@@ -118,7 +110,6 @@ export function NewsDetailBasisTab({
                 inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
                 loadingText={pt('messages.categoryOptionsLoading')}
                 searchLabel={pt('fields.categoriesSearch')}
-                addLabel={pt('actions.addCategory')}
                 removeLabel={(name) => pt('actions.removeCategory', { name })}
                 value={field.value}
                 onChange={field.onChange}

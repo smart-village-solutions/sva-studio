@@ -49,6 +49,15 @@ export const assignOrganizationMembershipSchema = z.object({
   visibility: membershipVisibilitySchema.optional(),
 });
 
+export const updateOrganizationMembershipSchema = z
+  .object({
+    isDefaultContext: z.boolean().optional(),
+    visibility: membershipVisibilitySchema.optional(),
+  })
+  .refine((value) => value.isDefaultContext !== undefined || value.visibility !== undefined, {
+    message: 'at_least_one_field_required',
+  });
+
 export const updateOrganizationContextSchema = z.object({
   organizationId: z.string().uuid(),
 });

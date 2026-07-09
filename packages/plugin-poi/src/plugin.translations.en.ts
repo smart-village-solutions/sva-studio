@@ -106,7 +106,6 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     uploadMedia: 'Upload media',
     uploadingMedia: 'Uploading media',
     addImage: 'Select from media library',
-    addCategory: 'Add category',
     selectImage: 'Select',
     removeImage: 'Remove',
     closeImagePicker: 'Close',

@@ -13,6 +13,7 @@ import { userErrorMessage } from './-user-error-message';
 const useUserMock = vi.fn();
 const useRolesMock = vi.fn();
 const useGroupsMock = vi.fn();
+const useOrganizationsMock = vi.fn();
 const useRolePermissionsMock = vi.fn();
 const getUserTimelineMock = vi.fn();
 
@@ -26,6 +27,10 @@ vi.mock('../../../hooks/use-roles', () => ({
 
 vi.mock('../../../hooks/use-groups', () => ({
   useGroups: () => useGroupsMock(),
+}));
+
+vi.mock('../../../hooks/use-organizations', () => ({
+  useOrganizations: () => useOrganizationsMock(),
 }));
 
 vi.mock('../../../hooks/use-role-permissions', () => ({
@@ -54,6 +59,18 @@ describe('UserEditPage', () => {
     avatarUrl: 'https://example.com/avatar.png',
     roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
     groups: [{ groupId: 'group-1', groupKey: 'admins', displayName: 'Admins', groupType: 'role_bundle', origin: 'manual' as const }],
+    organizationMemberships: [
+      {
+        organizationId: 'org-1',
+        organizationKey: 'musterstadt',
+        displayName: 'Musterstadt',
+        organizationType: 'municipality' as const,
+        isActive: true,
+        visibility: 'internal' as const,
+        isDefaultContext: true,
+        createdAt: '2026-03-04T09:00:00.000Z',
+      },
+    ],
     permissions: ['content.read'],
     mainserverUserApplicationId: 'app-id-1',
     mainserverUserApplicationSecretSet: true,
@@ -63,6 +80,7 @@ describe('UserEditPage', () => {
     useUserMock.mockReset();
     useRolesMock.mockReset();
     useGroupsMock.mockReset();
+    useOrganizationsMock.mockReset();
     useRolePermissionsMock.mockReset();
     getUserTimelineMock.mockReset();
     getUserTimelineMock.mockResolvedValue({ data: [] });
@@ -76,6 +94,57 @@ describe('UserEditPage', () => {
       createGroup: vi.fn(),
       updateGroup: vi.fn(),
       deleteGroup: vi.fn(),
+    });
+    useOrganizationsMock.mockReturnValue({
+      organizations: [
+        {
+          id: 'org-1',
+          organizationKey: 'musterstadt',
+          displayName: 'Musterstadt',
+          organizationType: 'municipality',
+          isActive: true,
+          depth: 0,
+          hierarchyPath: [],
+          childCount: 0,
+          membershipCount: 1,
+          contentAuthorPolicy: 'org_only',
+        },
+        {
+          id: 'org-2',
+          organizationKey: 'stadtwerke',
+          displayName: 'Stadtwerke',
+          organizationType: 'company',
+          isActive: true,
+          depth: 0,
+          hierarchyPath: [],
+          childCount: 0,
+          membershipCount: 0,
+          contentAuthorPolicy: 'org_only',
+        },
+      ],
+      total: 2,
+      page: 1,
+      pageSize: 100,
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      selectedOrganization: null,
+      detailLoading: false,
+      filters: { page: 1, pageSize: 100, search: '', organizationType: 'all', status: 'active' },
+      setSearch: vi.fn(),
+      setOrganizationType: vi.fn(),
+      setStatus: vi.fn(),
+      setPage: vi.fn(),
+      refetch: vi.fn(),
+      loadOrganization: vi.fn(),
+      clearSelectedOrganization: vi.fn(),
+      clearMutationError: vi.fn(),
+      createOrganization: vi.fn(),
+      updateOrganization: vi.fn(),
+      deleteOrganization: vi.fn(),
+      assignMembership: vi.fn(),
+      updateMembership: vi.fn(),
+      removeMembership: vi.fn(),
     });
     useRolePermissionsMock.mockReturnValue({
       permissions: [
@@ -444,6 +513,235 @@ describe('UserEditPage', () => {
     expect(screen.getByText('datensatzbezogen')).toBeTruthy();
     expect(screen.getByText('instanzweit')).toBeTruthy();
     expect(screen.getByText(/Inaktivitätsgrund: Zuweisung abgelaufen/)).toBeTruthy();
+  });
+
+  it('renders and manages organization memberships in the dedicated tab', async () => {
+    const refetch = vi.fn();
+    const assignMembership = vi.fn(async () => ({ id: 'org-2' }));
+    const updateMembership = vi.fn(async () => ({ id: 'org-1' }));
+    const removeMembership = vi.fn(async () => ({ id: 'org-1' }));
+    const setSearch = vi.fn();
+
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      refetch,
+      clearMutationError: vi.fn(),
+      save: vi.fn(),
+    });
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+    useOrganizationsMock.mockReturnValue({
+      organizations: [
+        {
+          id: 'org-1',
+          organizationKey: 'musterstadt',
+          displayName: 'Musterstadt',
+          organizationType: 'municipality',
+          isActive: true,
+          depth: 0,
+          hierarchyPath: [],
+          childCount: 0,
+          membershipCount: 1,
+          contentAuthorPolicy: 'org_only',
+        },
+        {
+          id: 'org-2',
+          organizationKey: 'stadtwerke',
+          displayName: 'Stadtwerke',
+          organizationType: 'company',
+          isActive: true,
+          depth: 0,
+          hierarchyPath: [],
+          childCount: 0,
+          membershipCount: 0,
+          contentAuthorPolicy: 'org_only',
+        },
+      ],
+      total: 2,
+      page: 1,
+      pageSize: 100,
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      selectedOrganization: null,
+      detailLoading: false,
+      filters: { page: 1, pageSize: 100, search: '', organizationType: 'all', status: 'active' },
+      setSearch,
+      setOrganizationType: vi.fn(),
+      setStatus: vi.fn(),
+      setPage: vi.fn(),
+      refetch: vi.fn(),
+      loadOrganization: vi.fn(),
+      clearSelectedOrganization: vi.fn(),
+      clearMutationError: vi.fn(),
+      createOrganization: vi.fn(),
+      updateOrganization: vi.fn(),
+      deleteOrganization: vi.fn(),
+      assignMembership,
+      updateMembership,
+      removeMembership,
+    });
+
+    const { rerender } = render(<UserEditPage userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Organisationen' }));
+
+    expect(screen.getByText('Musterstadt')).toBeTruthy();
+    expect(screen.getByText('musterstadt')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation auswählen' }));
+    fireEvent.change(screen.getByPlaceholderText('Nach Organisationsname oder Schlüssel filtern'), {
+      target: { value: 'Stadtwerke' },
+    });
+    expect(setSearch).toHaveBeenCalledWith('Stadtwerke');
+    fireEvent.click(screen.getByRole('option', { name: 'Stadtwerke (stadtwerke)' }));
+    expect(setSearch).toHaveBeenLastCalledWith('');
+
+    useOrganizationsMock.mockReturnValue({
+      organizations: [
+        {
+          id: 'org-1',
+          organizationKey: 'musterstadt',
+          displayName: 'Musterstadt',
+          organizationType: 'municipality',
+          isActive: true,
+          depth: 0,
+          hierarchyPath: [],
+          childCount: 0,
+          membershipCount: 1,
+          contentAuthorPolicy: 'org_only',
+        },
+      ],
+      total: 101,
+      page: 1,
+      pageSize: 100,
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      selectedOrganization: null,
+      detailLoading: false,
+      filters: { page: 1, pageSize: 100, search: '', organizationType: 'all', status: 'active' },
+      setSearch,
+      setOrganizationType: vi.fn(),
+      setStatus: vi.fn(),
+      setPage: vi.fn(),
+      refetch: vi.fn(),
+      loadOrganization: vi.fn(),
+      clearSelectedOrganization: vi.fn(),
+      clearMutationError: vi.fn(),
+      createOrganization: vi.fn(),
+      updateOrganization: vi.fn(),
+      deleteOrganization: vi.fn(),
+      assignMembership,
+      updateMembership,
+      removeMembership,
+    });
+
+    rerender(<UserEditPage userId="user-1" />);
+
+    expect(screen.getByRole('button', { name: 'Organisation auswählen' }).textContent).toContain(
+      'Stadtwerke (stadtwerke)'
+    );
+
+    fireEvent.change(screen.getByLabelText('Sichtbarkeit für neue Mitgliedschaft'), {
+      target: { value: 'external' },
+    });
+    fireEvent.click(screen.getByLabelText('Als Default-Kontext setzen'));
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation zuweisen' }));
+
+    await waitFor(() => {
+      expect(assignMembership).toHaveBeenCalledWith('org-2', {
+        accountId: 'user-1',
+        visibility: 'external',
+        isDefaultContext: true,
+      });
+      expect(refetch).toHaveBeenCalled();
+    });
+    expect(setSearch).toHaveBeenLastCalledWith('');
+
+    fireEvent.change(screen.getByLabelText('Sichtbarkeit für Musterstadt'), { target: { value: 'external' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft für Musterstadt aktualisieren' }));
+
+    await waitFor(() => {
+      expect(updateMembership).toHaveBeenCalledWith('org-1', 'user-1', {
+        visibility: 'external',
+        isDefaultContext: true,
+      });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Musterstadt entfernen' }));
+
+    await waitFor(() => {
+      expect(removeMembership).toHaveBeenCalledWith('org-1', 'user-1');
+    });
+  });
+
+  it('resets a pending organization assignment when the route is reused for another user', async () => {
+    const firstUser = baseUser;
+    const secondUser = {
+      ...baseUser,
+      id: 'user-2',
+      keycloakSubject: 'subject-2',
+      displayName: 'Bob Builder',
+      email: 'bob@example.com',
+      organizationMemberships: [],
+    };
+
+    useUserMock.mockReturnValue({
+      user: firstUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      save: vi.fn(),
+    });
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    const { rerender } = render(<UserEditPage userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Organisationen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation auswählen' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Stadtwerke (stadtwerke)' }));
+
+    expect(screen.getByRole('button', { name: 'Organisation auswählen' }).textContent).toContain('Stadtwerke');
+    expect((screen.getByRole('button', { name: 'Organisation zuweisen' }) as HTMLButtonElement).disabled).toBe(
+      false
+    );
+
+    useUserMock.mockReturnValue({
+      user: secondUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      save: vi.fn(),
+    });
+
+    rerender(<UserEditPage userId="user-2" />);
+
+    expect(screen.getByRole('button', { name: 'Organisation auswählen' }).textContent).toContain(
+      'Organisation für neue Zuordnung auswählen'
+    );
+    expect((screen.getByRole('button', { name: 'Organisation zuweisen' }) as HTMLButtonElement).disabled).toBe(
+      true
+    );
   });
 
   it('loads unified history entries and renders role validity windows', async () => {

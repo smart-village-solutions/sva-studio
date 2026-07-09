@@ -32,7 +32,6 @@ const PluginTranslationProbe = () => {
       <span>{pt('fields.categories')}</span>
       <span>{pt('fields.categoriesSearchPlaceholder')}</span>
       <span>{pt('fields.categoriesHelp')}</span>
-      <span>{pt('actions.addCategory')}</span>
       <span>{pt('cards.basis.authorMeta.title')}</span>
       <span>{pt('cards.basis.authorMeta.description')}</span>
     </div>
@@ -131,7 +130,6 @@ describe('LocaleProvider', () => {
     expect(screen.getByText('Kategorien')).toBeTruthy();
     expect(screen.getByText('Kategorie suchen oder auswählen')).toBeTruthy();
     expect(screen.getAllByText('Wählen Sie keine, eine oder mehrere Kategorien aus.')).toHaveLength(1);
-    expect(screen.getByText('Kategorie hinzufügen')).toBeTruthy();
     expect(screen.getByText('Autor & Metadaten')).toBeTruthy();
     expect(screen.getByText('Autorenschaft und zeitliche Einordnung dieses News-Eintrags.')).toBeTruthy();
   });

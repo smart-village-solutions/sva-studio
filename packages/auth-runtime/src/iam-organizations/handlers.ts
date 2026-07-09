@@ -131,6 +131,8 @@ const { assignOrganizationMembershipInternal } = organizationMutationHandlers;
 
 const { removeOrganizationMembershipInternal } = organizationMutationHandlers;
 
+const { updateOrganizationMembershipInternal } = organizationMutationHandlers;
+
 const { getMyOrganizationContextInternal } = organizationReadHandlers;
 
 const { updateMyOrganizationContextInternal } = organizationMutationHandlers;
@@ -143,6 +145,7 @@ export {
   getOrganizationInternal,
   listOrganizationsInternal,
   removeOrganizationMembershipInternal,
+  updateOrganizationMembershipInternal,
   updateMyOrganizationContextInternal,
   updateOrganizationInternal,
 };

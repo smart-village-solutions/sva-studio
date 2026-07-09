@@ -7,6 +7,7 @@ import { revealField } from './encryption.js';
 import { mapUserRowToListItem } from './user-mapping.js';
 import type {
   UserDetailGroupRow,
+  UserDetailOrganizationMembershipRow,
   UserDetailPermissionTraceRow,
   UserDetailRoleRow,
   UserDetailRow,
@@ -37,6 +38,18 @@ const mapGroupRows = (groupRows: UserDetailGroupRow[] | null) =>
     origin: entry.origin,
     validFrom: entry.valid_from ?? undefined,
     validTo: entry.valid_to ?? undefined,
+  })) ?? [];
+
+const mapOrganizationMembershipRows = (organizationMembershipRows: UserDetailOrganizationMembershipRow[] | null) =>
+  organizationMembershipRows?.map((entry) => ({
+    organizationId: entry.organization_id,
+    organizationKey: entry.organization_key,
+    displayName: entry.display_name,
+    organizationType: entry.organization_type,
+    isActive: entry.is_active,
+    visibility: entry.membership_visibility,
+    isDefaultContext: entry.is_default_context,
+    createdAt: entry.created_at,
   })) ?? [];
 
 const mapRuntimeScope = (entry: UserDetailPermissionTraceRow) =>
@@ -122,6 +135,7 @@ export const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
     permissions: mapPermissionRows(row.permission_rows),
     permissionTrace: mapPermissionTraceRows(row.permission_trace_rows),
     groups: mapGroupRows(row.group_rows),
+    organizationMemberships: mapOrganizationMembershipRows(row.organization_membership_rows),
     mainserverUserApplicationSecretSet: false,
   };
 };

@@ -79,6 +79,7 @@ import {
   updateLegalText,
   updateMyProfile,
   updateMyOrganizationContext,
+  updateOrganizationMembership,
   updateGroup,
   updateOrganization,
   LEGAL_ACCEPTANCE_REQUIRED_EVENT,
@@ -352,6 +353,7 @@ describe('iam-api organization helpers', () => {
     });
     await updateOrganization('org-1', { displayName: 'Alpha 2' });
     await assignOrganizationMembership('org-1', { accountId: 'account-1', visibility: 'external' });
+    await updateOrganizationMembership('org-1', 'account-1', { visibility: 'internal', isDefaultContext: true });
     await removeOrganizationMembership('org-1', 'account-1');
     await updateMyOrganizationContext('org-1');
     await getMyOrganizationContext();
@@ -388,32 +390,39 @@ describe('iam-api organization helpers', () => {
       4,
       '/api/v1/iam/organizations/org-1/memberships/account-1',
       expect.objectContaining({
-        method: 'DELETE',
+        method: 'PATCH',
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       5,
-      '/api/v1/iam/me/context',
+      '/api/v1/iam/organizations/org-1/memberships/account-1',
       expect.objectContaining({
-        method: 'PUT',
+        method: 'DELETE',
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       6,
       '/api/v1/iam/me/context',
       expect.objectContaining({
-        credentials: 'include',
+        method: 'PUT',
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       7,
-      '/api/v1/iam/organizations/org-1',
+      '/api/v1/iam/me/context',
       expect.objectContaining({
         credentials: 'include',
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       8,
+      '/api/v1/iam/organizations/org-1',
+      expect.objectContaining({
+        credentials: 'include',
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      9,
       '/api/v1/iam/organizations/org-1',
       expect.objectContaining({
         method: 'DELETE',

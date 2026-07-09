@@ -829,6 +829,119 @@ describe('organization mutation handlers', () => {
     );
   });
 
+  it('updates organization membership attributes and keeps a single default context', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async (text: string) => {
+      if (text.includes('SELECT membership.membership_visibility')) {
+        return {
+          rowCount: 1,
+          rows: [{ membership_visibility: 'internal', is_default_context: false }],
+        };
+      }
+      return { rowCount: 1, rows: [] };
+    });
+    deps.parseRequestBody = vi.fn(async () => ({
+      ok: true as const,
+      data: {
+        visibility: 'external',
+        isDefaultContext: true,
+      },
+      rawBody: '{"visibility":"external","isDefaultContext":true}',
+    }));
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.updateOrganizationMembershipInternal(
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111/memberships/22222222-2222-2222-8222-222222222222',
+        { method: 'PATCH', body: '{}' }
+      ),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE iam.account_organizations'),
+      [
+        'de-musterhausen',
+        '22222222-2222-2222-8222-222222222222',
+        '11111111-1111-1111-8111-111111111111',
+        'external',
+        true,
+      ]
+    );
+    expect(notifyPermissionInvalidation).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ trigger: 'organization_membership_updated' })
+    );
+    expect(emitActivityLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventType: 'organization.membership_updated',
+        payload: {
+          organizationId: '11111111-1111-1111-8111-111111111111',
+          accountId: '22222222-2222-2222-8222-222222222222',
+          visibility: 'external',
+          isDefaultContext: true,
+        },
+      })
+    );
+  });
+
+  it('keeps the current membership as default when unsetting the last remaining default context', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async (text: string) => {
+      if (text.includes('SELECT membership.membership_visibility')) {
+        return {
+          rowCount: 1,
+          rows: [{ membership_visibility: 'internal', is_default_context: true }],
+        };
+      }
+      if (text.includes('SELECT organization_id')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 1, rows: [] };
+    });
+    deps.parseRequestBody = vi.fn(async () => ({
+      ok: true as const,
+      data: {
+        isDefaultContext: false,
+      },
+      rawBody: '{"isDefaultContext":false}',
+    }));
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.updateOrganizationMembershipInternal(
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111/memberships/22222222-2222-2222-8222-222222222222',
+        { method: 'PATCH', body: '{}' }
+      ),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE iam.account_organizations'),
+      [
+        'de-musterhausen',
+        '22222222-2222-2222-8222-222222222222',
+        '11111111-1111-1111-8111-111111111111',
+        'internal',
+        true,
+      ]
+    );
+    expect(query).not.toHaveBeenCalledWith(expect.stringContaining('WITH fallback_membership AS'), expect.any(Array));
+    expect(emitActivityLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          isDefaultContext: true,
+        }),
+      })
+    );
+  });
+
   it('switches the active organization context and invalidates permissions', async () => {
     const handlers = createOrganizationMutationHandlers(buildDeps());
 

@@ -245,6 +245,7 @@ export {
   mergePluginTranslations,
   pluginGuardrailViolationCodes,
   publishSessionAccessSnapshot,
+  readFieldError,
   readSessionAccessSnapshot,
   reverseGeocodeHostCoordinates,
   registerPluginTranslationResolver,

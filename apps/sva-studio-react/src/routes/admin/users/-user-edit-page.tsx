@@ -1,3 +1,5 @@
+import * as React from 'react';
+
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
@@ -7,8 +9,10 @@ import { Checkbox } from '../../../components/ui/checkbox';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
+import { SearchableSelect } from '../../../components/ui/searchable-select';
 import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
+import type { IamUserPermissionTraceItem } from '@sva/core';
 import { t } from '../../../i18n';
 import { userErrorMessage } from './-user-error-message';
 import { useUserEditController } from './use-user-edit-controller';
@@ -33,12 +37,63 @@ type UserEditPageProps = {
   readonly invitationErrorMessage?: string;
 };
 
+type PermissionTraceEntryCardProps = {
+  readonly dashed?: boolean;
+  readonly detailLines: readonly string[];
+  readonly entry: IamUserPermissionTraceItem;
+  readonly runtimeScopeText: string | null;
+  readonly scopeText?: string | null;
+};
+
+const PermissionTraceEntryCard = ({
+  dashed = false,
+  detailLines,
+  entry,
+  runtimeScopeText,
+  scopeText,
+}: PermissionTraceEntryCardProps) => (
+  <li className={`rounded-lg border border-border bg-background p-3 ${dashed ? 'border-dashed' : ''}`}>
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <p className="font-medium text-foreground">{entry.permissionKey}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Badge variant="outline">{t(userEditTranslationKeys.permissionTraceStatus[entry.status])}</Badge>
+        {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
+      </div>
+    </div>
+    {scopeText !== undefined ? (
+      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+        <span>{t('admin.users.edit.permissionTrace.resourceType', { value: entry.resourceType })}</span>
+        {entry.organizationId ? (
+          <span>{t('admin.users.edit.permissionTrace.organization', { value: entry.organizationId })}</span>
+        ) : null}
+        {scopeText ? <span>{t('admin.users.edit.permissionTrace.scope', { value: scopeText })}</span> : null}
+      </div>
+    ) : null}
+    {detailLines.length > 0 ? (
+      <ul className="mt-3 grid gap-1 text-xs text-muted-foreground">
+        {detailLines.map((detail) => (
+          <li key={detail}>{detail}</li>
+        ))}
+      </ul>
+    ) : null}
+  </li>
+);
+
 export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage }: UserEditPageProps) => {
   const {
     activeTab,
     closeUnsavedDialog,
     confirmPendingTab,
     effectivePermissionTrace,
+    organizationAssignment,
+    organizationMembershipDrafts,
+    organizationSearchValue,
+    organizationMutationError,
+    availableOrganizations,
+    assignOrganizationMembership,
     formValues,
     groupMembershipById,
     inactivePermissionTrace,
@@ -51,17 +106,54 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
     onTabKeyDown,
     passwordSetupEmailSuccess,
     reloadTimeline,
+    removeOrganizationMembership,
     resetFormValues,
     retryUserLoad,
     saveSuccess,
+    saveOrganizationMembership,
+    selectOrganizationAssignment,
     selectableGroups,
     selectableRoles,
     setFormValues,
+    setOrganizationAssignment,
+    setOrganizationSearchValue,
+    selectedAssignableOrganization,
     timeline,
     timelineError,
     unsavedDialogOpen,
+    updateOrganizationMembershipDraft,
     userApi,
   } = useUserEditController({ userId });
+
+  const mutationError = userApi.mutationError ?? organizationMutationError;
+  const organizationOptions = React.useMemo(
+    () =>
+      availableOrganizations.map((organization) => ({
+        value: organization.id,
+        label: `${organization.displayName} (${organization.organizationKey})`,
+        keywords: [organization.displayName, organization.organizationKey],
+      })),
+    [availableOrganizations]
+  );
+  const selectedOrganizationOption = React.useMemo(() => {
+    if (selectedAssignableOrganization) {
+      return {
+        value: selectedAssignableOrganization.id,
+        label: `${selectedAssignableOrganization.displayName} (${selectedAssignableOrganization.organizationKey})`,
+        keywords: [selectedAssignableOrganization.displayName, selectedAssignableOrganization.organizationKey],
+      };
+    }
+
+    if (!organizationAssignment.organizationId || !organizationAssignment.organizationLabel) {
+      return null;
+    }
+
+    return {
+      value: organizationAssignment.organizationId,
+      label: organizationAssignment.organizationLabel,
+      keywords: [organizationAssignment.organizationLabel],
+    };
+  }, [organizationAssignment.organizationId, organizationAssignment.organizationLabel, selectedAssignableOrganization]);
 
   if (userApi.isLoading) {
     return (
@@ -413,35 +505,13 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                   const detailLines = buildPermissionTraceDetails(entry);
                   const runtimeScopeText = describePermissionTraceRuntimeScope(entry);
                   return (
-                    <li
+                    <PermissionTraceEntryCard
                       key={`${entry.permissionKey}:${entry.sourceKind}:${entry.roleId ?? 'none'}:${entry.groupId ?? 'none'}:${index}`}
-                      className="rounded-lg border border-border bg-background p-3"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-foreground">{entry.permissionKey}</p>
-                          <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline">{t(userEditTranslationKeys.permissionTraceStatus[entry.status])}</Badge>
-                          {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
-                        </div>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                        <span>{t('admin.users.edit.permissionTrace.resourceType', { value: entry.resourceType })}</span>
-                        {entry.organizationId ? (
-                          <span>{t('admin.users.edit.permissionTrace.organization', { value: entry.organizationId })}</span>
-                        ) : null}
-                        {scopeText ? <span>{t('admin.users.edit.permissionTrace.scope', { value: scopeText })}</span> : null}
-                      </div>
-                      {detailLines.length > 0 ? (
-                        <ul className="mt-3 grid gap-1 text-xs text-muted-foreground">
-                          {detailLines.map((detail) => (
-                            <li key={detail}>{detail}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </li>
+                      detailLines={detailLines}
+                      entry={entry}
+                      runtimeScopeText={runtimeScopeText}
+                      scopeText={scopeText}
+                    />
                   );
                 })}
               </ul>
@@ -456,28 +526,13 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                   const detailLines = buildPermissionTraceDetails(entry);
                   const runtimeScopeText = describePermissionTraceRuntimeScope(entry);
                   return (
-                    <li
+                    <PermissionTraceEntryCard
                       key={`${entry.permissionKey}:${entry.sourceKind}:${entry.roleId ?? 'none'}:${entry.groupId ?? 'none'}:inactive:${index}`}
-                      className="rounded-lg border border-dashed border-border bg-background p-3"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-foreground">{entry.permissionKey}</p>
-                          <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline">{t(userEditTranslationKeys.permissionTraceStatus[entry.status])}</Badge>
-                          {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
-                        </div>
-                      </div>
-                      {detailLines.length > 0 ? (
-                        <ul className="mt-3 grid gap-1 text-xs text-muted-foreground">
-                          {detailLines.map((detail) => (
-                            <li key={detail}>{detail}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </li>
+                      dashed
+                      detailLines={detailLines}
+                      entry={entry}
+                      runtimeScopeText={runtimeScopeText}
+                    />
                   );
                 })}
               </ul>
@@ -502,6 +557,150 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
           (!userApi.user.permissions || userApi.user.permissions.length === 0) ? (
             <p className="text-sm text-muted-foreground">{t('admin.users.edit.permissionsEmpty')}</p>
           ) : null}
+        </section>
+
+        <section
+          id="user-edit-panel-organizations"
+          role="tabpanel"
+          aria-labelledby="user-edit-tab-organizations"
+          hidden={activeTab !== 'organizations'}
+          className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-shell"
+        >
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-foreground">{t('admin.users.edit.organizations.title')}</h2>
+            <p className="text-sm text-muted-foreground">{t('admin.users.edit.organizations.description')}</p>
+          </div>
+
+          <div className="grid gap-3 rounded-lg border border-border bg-background p-3 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <SearchableSelect
+                id="user-organization-select"
+                label={t('admin.users.edit.organizations.selectLabel')}
+                value={organizationAssignment.organizationId}
+                placeholder={t('admin.users.edit.organizations.selectPlaceholder')}
+                searchPlaceholder={t('admin.users.edit.organizations.searchPlaceholder')}
+                emptyText={t('admin.users.edit.organizations.empty')}
+                options={organizationOptions}
+                selectedOption={selectedOrganizationOption}
+                searchValue={organizationSearchValue}
+                onSearchValueChange={setOrganizationSearchValue}
+                onValueChange={selectOrganizationAssignment}
+              />
+            </div>
+            <div className="grid gap-1 text-sm text-foreground">
+              <Label htmlFor="user-organization-visibility">
+                {t('admin.users.edit.organizations.assignVisibilityLabel')}
+              </Label>
+              <Select
+                id="user-organization-visibility"
+                value={organizationAssignment.visibility}
+                onChange={(event) =>
+                  setOrganizationAssignment((current) => ({
+                    ...current,
+                    visibility: event.target.value as 'internal' | 'external',
+                  }))
+                }
+              >
+                <option value="internal">{t('admin.users.edit.organizations.visibility.internal')}</option>
+                <option value="external">{t('admin.users.edit.organizations.visibility.external')}</option>
+              </Select>
+            </div>
+            <Label htmlFor="user-organization-default" className="flex items-center gap-2 text-sm text-foreground">
+              <Checkbox
+                id="user-organization-default"
+                checked={organizationAssignment.isDefaultContext}
+                onChange={(event) =>
+                  setOrganizationAssignment((current) => ({ ...current, isDefaultContext: event.target.checked }))
+                }
+              />
+              <span>{t('admin.users.edit.organizations.assignDefaultLabel')}</span>
+            </Label>
+            <div className="md:col-span-2 flex justify-end">
+              <Button
+                type="button"
+                onClick={() => void assignOrganizationMembership()}
+                disabled={!organizationAssignment.organizationId}
+              >
+                {t('admin.users.edit.organizations.assignAction')}
+              </Button>
+            </div>
+          </div>
+
+          {userApi.user.organizationMemberships?.length ? (
+            <ul className="grid gap-3">
+              {userApi.user.organizationMemberships.map((membership) => {
+                const draft = organizationMembershipDrafts[membership.organizationId] ?? {
+                  visibility: membership.visibility,
+                  isDefaultContext: membership.isDefaultContext,
+                };
+
+                return (
+                  <li
+                    key={membership.organizationId}
+                    className="grid gap-3 rounded-lg border border-border bg-background p-3 md:grid-cols-2"
+                  >
+                    <div className="space-y-1 md:col-span-2">
+                      <p className="font-medium text-foreground">{membership.displayName}</p>
+                      <p className="text-xs text-muted-foreground">{membership.organizationKey}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t('admin.users.edit.organizations.createdAt', { value: formatDateTime(membership.createdAt) })}
+                      </p>
+                    </div>
+                    <div className="grid gap-1 text-sm text-foreground">
+                      <Label htmlFor={`organization-visibility-${membership.organizationId}`}>
+                        {t('admin.users.edit.organizations.membershipVisibilityLabel', { name: membership.displayName })}
+                      </Label>
+                      <Select
+                        id={`organization-visibility-${membership.organizationId}`}
+                        value={draft.visibility}
+                        onChange={(event) =>
+                          updateOrganizationMembershipDraft(membership.organizationId, {
+                            visibility: event.target.value as 'internal' | 'external',
+                          })
+                        }
+                      >
+                        <option value="internal">{t('admin.users.edit.organizations.visibility.internal')}</option>
+                        <option value="external">{t('admin.users.edit.organizations.visibility.external')}</option>
+                      </Select>
+                    </div>
+                    <Label
+                      htmlFor={`organization-default-${membership.organizationId}`}
+                      className="flex items-center gap-2 text-sm text-foreground"
+                    >
+                      <Checkbox
+                        id={`organization-default-${membership.organizationId}`}
+                        checked={draft.isDefaultContext}
+                        onChange={(event) =>
+                          updateOrganizationMembershipDraft(membership.organizationId, {
+                            isDefaultContext: event.target.checked,
+                          })
+                        }
+                      />
+                      <span>{t('admin.users.edit.organizations.defaultContextLabel')}</span>
+                    </Label>
+                    <div className="md:col-span-2 flex flex-wrap justify-end gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void saveOrganizationMembership(membership.organizationId)}
+                      >
+                        {t('admin.users.edit.organizations.updateAction', { name: membership.displayName })}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => void removeOrganizationMembership(membership.organizationId)}
+                      >
+                        {t('admin.users.edit.organizations.removeAction', { name: membership.displayName })}
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t('admin.users.edit.organizations.empty')}</p>
+          )}
         </section>
 
         <section
@@ -557,11 +756,11 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
           )}
         </section>
 
-        {userApi.mutationError ? (
+        {mutationError ? (
           <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
             <AlertDescription className="flex flex-col gap-3">
-              <span>{userErrorMessage(userApi.mutationError, 'mutation')}</span>
-              {userApi.mutationError ? <IamRuntimeDiagnosticDetails error={userApi.mutationError} /> : null}
+              <span>{userErrorMessage(mutationError, 'mutation')}</span>
+              <IamRuntimeDiagnosticDetails error={mutationError} />
             </AlertDescription>
           </Alert>
         ) : null}

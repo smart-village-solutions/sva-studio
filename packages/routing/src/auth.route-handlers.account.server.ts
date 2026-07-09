@@ -63,6 +63,7 @@ export const accountAuthHandlerMap = {
     POST: routeHandler(authRuntimeRoutes.assignOrganizationMembershipHandler),
   },
   '/api/v1/iam/organizations/$organizationId/memberships/$accountId': {
+    PATCH: routeHandler(authRuntimeRoutes.updateOrganizationMembershipHandler),
     DELETE: routeHandler(authRuntimeRoutes.removeOrganizationMembershipHandler),
   },
   '/api/v1/iam/me/context': {

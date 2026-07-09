@@ -14,6 +14,7 @@ import {
   type UserEditTabKey,
   type UserFormValues,
 } from './user-edit-model';
+import { useUserOrganizationMembershipState } from './-user-organization-membership-state';
 import { selectAssignableGroups, selectAssignableRoles } from './user-assignment-options';
 
 type UserEditControllerOptions = {
@@ -280,6 +281,25 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
     () => buildGroupMembershipById(userApi.user?.groups),
     [userApi.user?.groups]
   );
+  const {
+    availableOrganizations,
+    organizationAssignment,
+    organizationMembershipDrafts,
+    organizationSearchValue,
+    organizationMutationError,
+    assignOrganizationMembership,
+    removeOrganizationMembership,
+    saveOrganizationMembership,
+    selectOrganizationAssignment,
+    setOrganizationAssignment,
+    selectedAssignableOrganization,
+    setOrganizationSearchValue,
+    updateOrganizationMembershipDraft,
+  } = useUserOrganizationMembershipState({
+    userId,
+    user: userApi.user,
+    refetchUser: userApi.refetch,
+  });
 
   const resetFormValues = React.useCallback(() => {
     setFormValues(toUserFormValues(userApi.user));
@@ -318,21 +338,34 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
     isSaving,
     isSendingPasswordSetupEmail,
     onSave,
+    organizationAssignment,
+    organizationMembershipDrafts,
+    organizationSearchValue,
+    organizationMutationError,
+    assignOrganizationMembership,
     onSendPasswordSetupEmail,
     onTabIntent,
     onTabKeyDown,
     passwordSetupEmailSuccess,
     reloadTimeline,
+    removeOrganizationMembership,
     resetFormValues,
     retryUserLoad,
     rolesApi,
+    saveOrganizationMembership,
     saveSuccess,
+    availableOrganizations,
+    selectOrganizationAssignment,
     selectableGroups,
     selectableRoles,
     setFormValues,
+    setOrganizationAssignment,
+    setOrganizationSearchValue,
+    selectedAssignableOrganization,
     timeline,
     timelineError,
     unsavedDialogOpen,
+    updateOrganizationMembershipDraft,
     userApi,
   };
 };

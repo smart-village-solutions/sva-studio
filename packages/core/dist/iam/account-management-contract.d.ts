@@ -138,6 +138,7 @@ export type IamUserDetail = IamUserListItem & {
     readonly permissions?: readonly string[];
     readonly permissionTrace?: readonly IamUserPermissionTraceItem[];
     readonly groups?: readonly IamUserGroupAssignment[];
+    readonly organizationMemberships?: readonly IamUserOrganizationMembership[];
     readonly mainserverUserApplicationId?: string;
     readonly mainserverUserApplicationSecretSet: boolean;
     readonly fieldEditability?: IamKeycloakUserFieldEditability;
@@ -305,6 +306,16 @@ export type IamOrganizationMembership = {
     readonly keycloakSubject: string;
     readonly displayName: string;
     readonly email?: string;
+    readonly visibility: IamOrganizationMembershipVisibility;
+    readonly isDefaultContext: boolean;
+    readonly createdAt: string;
+};
+export type IamUserOrganizationMembership = {
+    readonly organizationId: IamUuid;
+    readonly organizationKey: string;
+    readonly displayName: string;
+    readonly organizationType: IamOrganizationType;
+    readonly isActive: boolean;
     readonly visibility: IamOrganizationMembershipVisibility;
     readonly isDefaultContext: boolean;
     readonly createdAt: string;

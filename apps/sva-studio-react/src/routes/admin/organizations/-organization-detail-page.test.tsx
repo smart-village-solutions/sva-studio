@@ -94,6 +94,7 @@ const createState = (overrides: Record<string, unknown> = {}) => ({
   updateOrganization: vi.fn().mockResolvedValue(true),
   deleteOrganization: vi.fn().mockResolvedValue(true),
   assignMembership: vi.fn().mockResolvedValue(true),
+  updateMembership: vi.fn().mockResolvedValue(true),
   removeMembership: vi.fn().mockResolvedValue(true),
   ...overrides,
 });
@@ -126,6 +127,7 @@ describe('OrganizationDetailPage', () => {
       const loadOrganization = vi.fn().mockResolvedValue(organizationFixture);
       const updateOrganization = vi.fn().mockResolvedValue(true);
       const assignMembership = vi.fn().mockResolvedValue(true);
+      const updateMembership = vi.fn().mockResolvedValue(true);
       const removeMembership = vi.fn().mockResolvedValue(true);
       const deleteOrganization = vi.fn().mockResolvedValue(true);
       useOrganizationsMock.mockReturnValue(
@@ -137,6 +139,7 @@ describe('OrganizationDetailPage', () => {
           loadOrganization,
           updateOrganization,
           assignMembership,
+          updateMembership,
           removeMembership,
           deleteOrganization,
         })
@@ -214,7 +217,7 @@ describe('OrganizationDetailPage', () => {
 
       expect(screen.getByText('Ein Secret ist bereits hinterlegt.')).toBeTruthy();
       expect(screen.getByText('Leer lassen, um das bestehende Secret unverändert zu lassen.')).toBeTruthy();
-      fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+      fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[0]!);
 
       await waitFor(() => {
         expect(updateOrganization).toHaveBeenCalledWith('org-1', {
@@ -229,7 +232,8 @@ describe('OrganizationDetailPage', () => {
       });
 
       expect(screen.queryByRole('option', { name: 'Anna Admin <anna@example.org>' })).toBeNull();
-      fireEvent.change(screen.getByLabelText('Mitglieder suchen', { selector: '#membership-account-search' }), {
+      fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+      fireEvent.change(screen.getByPlaceholderText('Nach Name, E-Mail oder Kennung suchen'), {
         target: { value: 'zoe' },
       });
       expect(listUsersMock).toHaveBeenCalledTimes(1);
@@ -244,9 +248,8 @@ describe('OrganizationDetailPage', () => {
         expect(screen.getByRole('option', { name: 'Zoe Zebra <zoe@example.org>' })).toBeTruthy();
       });
 
-      fireEvent.change(document.getElementById('membership-account') as HTMLSelectElement, {
-        target: { value: 'user-101' },
-      });
+      fireEvent.click(screen.getByRole('option', { name: 'Zoe Zebra <zoe@example.org>' }));
+      expect(screen.getByRole('button', { name: 'Account' }).textContent).toContain('Zoe Zebra <zoe@example.org>');
       fireEvent.change(screen.getByLabelText('Sichtbarkeit', { selector: '#membership-visibility' }), {
         target: { value: 'external' },
       });
@@ -258,6 +261,19 @@ describe('OrganizationDetailPage', () => {
           accountId: 'user-101',
           visibility: 'external',
           isDefaultContext: true,
+        });
+      });
+
+      fireEvent.change(screen.getByLabelText('Sichtbarkeit', { selector: '#membership-visibility-user-1' }), {
+        target: { value: 'external' },
+      });
+      fireEvent.click(document.getElementById('membership-default-user-1') as HTMLInputElement);
+      fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft für Anna Admin speichern' }));
+
+      await waitFor(() => {
+        expect(updateMembership).toHaveBeenCalledWith('org-1', 'user-1', {
+          visibility: 'external',
+          isDefaultContext: false,
         });
       });
 
@@ -398,7 +414,7 @@ describe('OrganizationDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Parent-Organisation', { selector: '#organization-parent' }), {
       target: { value: 'parent-2' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[0]!);
 
     await waitFor(() => {
       expect(updateOrganization).toHaveBeenCalledWith(

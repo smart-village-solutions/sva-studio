@@ -32,6 +32,7 @@ export {
   getOrganizationHandler,
   listOrganizationsHandler,
   removeOrganizationMembershipHandler,
+  updateOrganizationMembershipHandler,
   updateMyOrganizationContextHandler,
   updateOrganizationHandler,
 } from './iam-organizations/core.js';

@@ -406,6 +406,11 @@ export type AssignOrganizationMembershipPayload = {
   readonly visibility?: IamOrganizationMembershipVisibility;
 };
 
+export type UpdateOrganizationMembershipPayload = {
+  readonly isDefaultContext?: boolean;
+  readonly visibility?: IamOrganizationMembershipVisibility;
+};
+
 export type GovernanceCasesQuery = {
   readonly page: number;
   readonly pageSize: number;
@@ -1166,6 +1171,16 @@ export const removeOrganizationMembership = async (
     }
   );
 
+export const updateOrganizationMembership = async (
+  organizationId: string,
+  accountId: string,
+  payload: UpdateOrganizationMembershipPayload
+): Promise<ApiItemResponse<IamOrganizationDetail>> =>
+  patchJson<ApiItemResponse<IamOrganizationDetail>, UpdateOrganizationMembershipPayload>(
+    `/api/v1/iam/organizations/${organizationId}/memberships/${accountId}`,
+    payload
+  );
+
 export const getMyOrganizationContext = async (): Promise<
   ApiItemResponse<IamOrganizationContext>
 > =>
@@ -1535,8 +1550,6 @@ export const checkOptionalProcessing = async (): Promise<
 > =>
   requestJson('/iam/me/optional-processing/execute', {
     method: 'POST',
-    headers: IAM_HEADERS,
-    body: JSON.stringify({}),
   });
 
 export const listAdminDsrCases = async (

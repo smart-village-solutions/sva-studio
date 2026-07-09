@@ -396,13 +396,21 @@ describe('EventsDetailPage', () => {
       id: 'event-created',
       title: 'Neues Event',
     } as never);
+    vi.mocked(listEventCategories).mockResolvedValueOnce([{ id: 'cat-1', name: 'Kultur' }] as never);
     vi.mocked(listPoiForEventSelection).mockResolvedValue([{ id: 'poi-7', name: 'Rathaus' }] as never);
 
     render(<EventsDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Neues Event' } });
-    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Kultur' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Kategorie hinzufügen' }));
+    const categoryInput = screen.getByLabelText('Kategorien suchen');
+    await waitFor(() => {
+      expect(categoryInput.hasAttribute('disabled')).toBe(false);
+    });
+    fireEvent.change(categoryInput, { target: { value: 'Kultur' } });
+    fireEvent.blur(categoryInput);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Kategorie Kultur entfernen' })).toBeTruthy();
+    });
     fireEvent.change(screen.getByLabelText('POI suchen'), { target: { value: 'Rathaus' } });
     await waitFor(() => {
       expect(screen.getByText('Rathaus')).toBeTruthy();

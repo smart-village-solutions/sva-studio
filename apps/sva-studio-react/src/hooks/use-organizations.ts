@@ -10,9 +10,11 @@ import {
   IamHttpError,
   listOrganizations,
   removeOrganizationMembership,
+  updateOrganizationMembership,
   updateOrganization,
   type AssignOrganizationMembershipPayload,
   type CreateOrganizationPayload,
+  type UpdateOrganizationMembershipPayload,
   type UpdateOrganizationPayload,
 } from '../lib/iam-api';
 import {
@@ -58,6 +60,11 @@ type UseOrganizationsResult = {
   readonly assignMembership: (
     organizationId: string,
     payload: AssignOrganizationMembershipPayload
+  ) => Promise<IamOrganizationDetail | null>;
+  readonly updateMembership: (
+    organizationId: string,
+    accountId: string,
+    payload: UpdateOrganizationMembershipPayload
   ) => Promise<IamOrganizationDetail | null>;
   readonly removeMembership: (organizationId: string, accountId: string) => Promise<IamOrganizationDetail | null>;
 };
@@ -312,6 +319,8 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
     },
     assignMembership: async (organizationId, payload) =>
       mutate(() => assignOrganizationMembership(organizationId, payload), { organizationId }),
+    updateMembership: async (organizationId, accountId, payload) =>
+      mutate(() => updateOrganizationMembership(organizationId, accountId, payload), { organizationId }),
     removeMembership: async (organizationId, accountId) =>
       mutate(() => removeOrganizationMembership(organizationId, accountId), { organizationId }),
   };

@@ -79,7 +79,6 @@ export function EventsDetailBasisTab({
                 inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
                 loadingText={pt('messages.categoryOptionsLoading')}
                 searchLabel={pt('fields.categoriesSearch')}
-                addLabel={pt('actions.addCategory')}
                 removeLabel={(name) => pt('actions.removeCategory').replace('{{name}}', name)}
                 value={field.value}
                 onChange={field.onChange}

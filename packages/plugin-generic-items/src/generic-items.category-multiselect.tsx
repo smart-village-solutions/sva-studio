@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Badge, Button, Input } from '@sva/studio-ui-react';
+import { Badge, Input } from '@sva/studio-ui-react';
 
 import type { GenericItemCategoryOption } from './generic-items.api-types.js';
 
@@ -14,7 +14,6 @@ export type GenericItemsCategoryMultiselectProps = Readonly<{
   loadingText: string;
   onChange: (value: string[]) => void;
   removeLabel: (name: string) => string;
-  addLabel: string;
   searchLabel: string;
   value: string[];
 }>;
@@ -24,9 +23,69 @@ const normalizeName = (value: string) => value.trim();
 const dedupeCategoryNames = (values: readonly string[]) =>
   Array.from(new Set(values.map(normalizeName).filter((entry) => entry.length > 0)));
 
+const buildSuggestionNames = (availableCategories: readonly GenericItemCategoryOption[], normalizedValue: readonly string[]) =>
+  availableCategories
+    .map((category) => category.name.trim())
+    .filter((name) => name.length > 0 && normalizedValue.includes(name) === false);
+
+const filterSuggestionNames = (suggestionNames: readonly string[], draftValue: string) => {
+  const normalizedDraftValue = draftValue.trim().toLocaleLowerCase();
+  if (normalizedDraftValue.length === 0) {
+    return suggestionNames;
+  }
+
+  return suggestionNames.filter((name) => name.toLocaleLowerCase().includes(normalizedDraftValue));
+};
+
+const useGenericItemsCategorySelection = ({
+  availableCategories,
+  onChange,
+  value,
+}: Readonly<{
+  availableCategories: readonly GenericItemCategoryOption[];
+  onChange: (value: string[]) => void;
+  value: string[];
+}>) => {
+  const [draftValue, setDraftValue] = React.useState('');
+  const normalizedValue = dedupeCategoryNames(value);
+  const suggestionNames = React.useMemo(() => buildSuggestionNames(availableCategories, normalizedValue), [availableCategories, normalizedValue]);
+  const filteredSuggestionNames = React.useMemo(() => filterSuggestionNames(suggestionNames, draftValue), [draftValue, suggestionNames]);
+
+  const addCategory = React.useCallback(() => {
+    const nextName = normalizeName(draftValue);
+    if (nextName.length === 0) {
+      return;
+    }
+
+    const nextValue = dedupeCategoryNames([...normalizedValue, nextName]);
+    if (nextValue.length === normalizedValue.length) {
+      setDraftValue('');
+      return;
+    }
+
+    onChange(nextValue);
+    setDraftValue('');
+  }, [draftValue, normalizedValue, onChange]);
+
+  const removeCategory = React.useCallback(
+    (categoryName: string) => {
+      onChange(normalizedValue.filter((entry) => entry !== categoryName));
+    },
+    [normalizedValue, onChange]
+  );
+
+  return {
+    addCategory,
+    draftValue,
+    filteredSuggestionNames,
+    normalizedValue,
+    removeCategory,
+    setDraftValue,
+  };
+};
+
 const GenericItemsCategoryInput = ({
   addCategory,
-  addLabel,
   datalistId,
   disabled,
   draftValue,
@@ -41,7 +100,6 @@ const GenericItemsCategoryInput = ({
   suggestionNames,
 }: Readonly<{
   addCategory: () => void;
-  addLabel: string;
   datalistId: string;
   disabled: boolean;
   draftValue: string;
@@ -55,35 +113,30 @@ const GenericItemsCategoryInput = ({
   setDraftValue: (value: string) => void;
   suggestionNames: readonly string[];
 }>) => (
-  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-    <div className="flex-1 space-y-2">
-      <Input
-        id={inputId}
-        aria-label={searchLabel}
-        list={datalistId}
-        disabled={disabled || loading}
-        placeholder={inputPlaceholder}
-        value={draftValue}
-        onChange={(event) => setDraftValue(event.currentTarget.value)}
-        onBlur={addCategory}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            addCategory();
-          }
-        }}
-      />
-      <datalist id={datalistId}>
-        {suggestionNames.map((name) => (
-          <option key={name} value={name} />
-        ))}
-      </datalist>
-      <p className="text-sm text-foreground">{loading ? loadingText : helpText}</p>
-      {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-    </div>
-    <Button type="button" disabled={disabled || loading || draftValue.trim().length === 0} onClick={addCategory}>
-      {addLabel}
-    </Button>
+  <div className="space-y-2">
+    <Input
+      id={inputId}
+      aria-label={searchLabel}
+      list={datalistId}
+      disabled={disabled || loading}
+      placeholder={inputPlaceholder}
+      value={draftValue}
+      onChange={(event) => setDraftValue(event.currentTarget.value)}
+      onBlur={addCategory}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          addCategory();
+        }
+      }}
+    />
+    <datalist id={datalistId}>
+      {suggestionNames.map((name) => (
+        <option key={name} value={name} />
+      ))}
+    </datalist>
+    <p className="text-sm text-foreground">{loading ? loadingText : helpText}</p>
+    {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
   </div>
 );
 
@@ -128,51 +181,17 @@ export function GenericItemsCategoryMultiselect({
   loadingText,
   onChange,
   removeLabel,
-  addLabel,
   searchLabel,
   value,
 }: GenericItemsCategoryMultiselectProps) {
-  const [draftValue, setDraftValue] = React.useState('');
-  const normalizedValue = dedupeCategoryNames(value);
   const datalistId = React.useId();
-
-  const suggestionNames = availableCategories
-    .map((category) => category.name.trim())
-    .filter((name) => name.length > 0 && normalizedValue.includes(name) === false);
-
-  const filteredSuggestionNames =
-    draftValue.trim().length === 0
-      ? suggestionNames
-      : suggestionNames.filter((name) => name.toLocaleLowerCase().includes(draftValue.trim().toLocaleLowerCase()));
-
-  const addCategory = React.useCallback(() => {
-    const nextName = normalizeName(draftValue);
-    if (nextName.length === 0) {
-      return;
-    }
-
-    const nextValue = dedupeCategoryNames([...normalizedValue, nextName]);
-    if (nextValue.length === normalizedValue.length) {
-      setDraftValue('');
-      return;
-    }
-
-    onChange(nextValue);
-    setDraftValue('');
-  }, [draftValue, normalizedValue, onChange]);
-
-  const removeCategory = React.useCallback(
-    (categoryName: string) => {
-      onChange(normalizedValue.filter((entry) => entry !== categoryName));
-    },
-    [normalizedValue, onChange]
-  );
+  const { addCategory, draftValue, filteredSuggestionNames, normalizedValue, removeCategory, setDraftValue } =
+    useGenericItemsCategorySelection({ availableCategories, onChange, value });
 
   return (
     <div className="space-y-3">
       <GenericItemsCategoryInput
         addCategory={addCategory}
-        addLabel={addLabel}
         datalistId={datalistId}
         disabled={disabled}
         draftValue={draftValue}

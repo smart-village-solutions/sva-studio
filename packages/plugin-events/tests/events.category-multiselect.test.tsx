@@ -8,7 +8,7 @@ describe('EventsCategoryMultiselect', () => {
     cleanup();
   });
 
-  it('adds trimmed categories on blur through the stable input id', () => {
+  it('keeps typing stable when the current value exactly matches an existing category', () => {
     const onChange = vi.fn();
 
     render(
@@ -21,7 +21,6 @@ describe('EventsCategoryMultiselect', () => {
         loadingText="Kategorien werden geladen."
         onChange={onChange}
         removeLabel={(name) => `Kategorie ${name} entfernen`}
-        addLabel="Kategorie hinzufügen"
         searchLabel="Kategorien suchen"
         value={[]}
       />
@@ -30,7 +29,32 @@ describe('EventsCategoryMultiselect', () => {
     const input = screen.getByLabelText('Kategorien suchen');
     expect(input.getAttribute('id')).toBe('event-category');
 
-    fireEvent.change(input, { target: { value: '  Kultur  ' } });
+    fireEvent.change(input, { target: { value: 'Kultur' } });
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect((input as HTMLInputElement).value).toBe('Kultur');
+  });
+
+  it('adds the current category on blur', () => {
+    const onChange = vi.fn();
+
+    render(
+      <EventsCategoryMultiselect
+        availableCategories={[{ id: 'cat-1', name: 'Kultur' }]}
+        helpText="Waehlen Sie Kategorien aus."
+        inputId="event-category"
+        inputPlaceholder="Kategorie suchen oder auswaehlen"
+        loading={false}
+        loadingText="Kategorien werden geladen."
+        onChange={onChange}
+        removeLabel={(name) => `Kategorie ${name} entfernen`}
+        searchLabel="Kategorien suchen"
+        value={[]}
+      />
+    );
+
+    const input = screen.getByLabelText('Kategorien suchen');
+    fireEvent.change(input, { target: { value: 'Kultur' } });
     fireEvent.blur(input);
 
     expect(onChange).toHaveBeenCalledWith(['Kultur']);
@@ -49,7 +73,6 @@ describe('EventsCategoryMultiselect', () => {
         loadingText="Kategorien werden geladen."
         onChange={onChange}
         removeLabel={(name) => `Kategorie ${name} entfernen`}
-        addLabel="Kategorie hinzufügen"
         searchLabel="Kategorien suchen"
         value={[]}
       />
@@ -57,7 +80,7 @@ describe('EventsCategoryMultiselect', () => {
 
     expect(screen.getByText('Kategorien werden geladen.')).toBeTruthy();
     expect(screen.getByText('Die Kategorien konnten nicht geladen werden.')).toBeTruthy();
-    expect(screen.getAllByRole('button', { name: 'Kategorie hinzufügen' }).at(-1)?.hasAttribute('disabled')).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Kategorie hinzufügen' })).toBeNull();
     expect(screen.getAllByLabelText('Kategorien suchen').at(-1)?.hasAttribute('disabled')).toBe(true);
     expect(onChange).not.toHaveBeenCalled();
   });

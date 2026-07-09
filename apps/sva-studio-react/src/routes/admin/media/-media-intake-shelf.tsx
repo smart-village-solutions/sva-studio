@@ -8,10 +8,6 @@ type MediaIntakeShelfProps = {
   readonly onFileSelected: (file: File) => void;
 };
 
-const acceptedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
-
-const isSupportedUploadFile = (file: File) => acceptedMimeTypes.has(file.type);
-
 const uploadErrorMessage = (error: IamHttpError | Error | null) => {
   if (!error || !('code' in error) || typeof error.code !== 'string') {
     return t('media.library.upload.error');
@@ -52,7 +48,6 @@ export const MediaIntakeShelf = ({ phase, error, onFileSelected }: MediaIntakeSh
       browseActionLabel={t('media.actions.selectFiles')}
       description={t('media.library.quickIntake.description')}
       inputTestId="media-upload-input"
-      isSupportedUploadFile={isSupportedUploadFile}
       onFileSelected={onFileSelected}
       phase={phase}
       regionLabel={t('media.library.quickIntake.regionLabel')}

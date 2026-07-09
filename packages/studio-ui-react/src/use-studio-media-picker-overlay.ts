@@ -2,7 +2,6 @@ import React from 'react';
 
 import type {
   StudioMediaPickerAssetDetail,
-  StudioMediaPickerMetadataDraft,
   StudioMediaPickerMetadataSaveInput,
 } from './studio-media-picker-overlay.shared.js';
 import {

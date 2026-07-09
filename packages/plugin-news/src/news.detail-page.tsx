@@ -742,7 +742,6 @@ export const NewsDetailPage = ({
           }
           isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
           isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
-          isSupportedUploadFile={isSupportedUploadFile}
           labels={mediaPickerLabels}
           metadataDraft={mediaPicker.metadataDraft}
           mode={mediaPicker.mode}

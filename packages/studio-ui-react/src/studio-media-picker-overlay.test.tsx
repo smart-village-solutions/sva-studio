@@ -217,7 +217,6 @@ describe('useStudioMediaPickerOverlay', () => {
         assets={[]}
         isLoadingReviewAsset={false}
         isSavingReviewAsset
-        isSupportedUploadFile={() => true}
         labels={labels}
         metadataDraft={reviewAsset.metadata}
         mode="review"

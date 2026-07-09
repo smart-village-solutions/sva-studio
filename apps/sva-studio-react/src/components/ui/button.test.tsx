@@ -10,7 +10,7 @@ describe('Button tooltip behavior', () => {
 
   it('shows a hover tooltip for icon buttons using the aria-label', () => {
     render(
-      <Button type="button" size="icon" aria-label="Suche">
+      <Button type="button" size="icon" aria-label="Suche" tooltip="Suche">
         <span aria-hidden="true">S</span>
       </Button>
     );
@@ -24,7 +24,7 @@ describe('Button tooltip behavior', () => {
 
   it('shows a hover tooltip for icon links rendered via asChild using the child title', () => {
     render(
-      <Button asChild size="icon" type="button" variant="outline">
+      <Button asChild size="icon" type="button" variant="outline" tooltip="Datensatz bearbeiten">
         <a href="/foo" aria-label="Bearbeiten" title="Datensatz bearbeiten">
           <span aria-hidden="true">B</span>
         </a>
@@ -40,7 +40,14 @@ describe('Button tooltip behavior', () => {
 
   it('shows a hover tooltip for icon-only table action buttons that use size sm', () => {
     render(
-      <Button type="button" size="sm" variant="ghost" aria-label="Bearbeiten" className="h-8 w-8 px-0">
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        aria-label="Bearbeiten"
+        tooltip="Bearbeiten"
+        className="h-8 w-8 px-0"
+      >
         <svg aria-hidden="true" className="h-4 w-4" />
       </Button>
     );

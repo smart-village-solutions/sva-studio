@@ -595,10 +595,10 @@ export const bulkDeactivateUsers = async (
 export const bulkReprovisionMainserverUsers = async (
   userIds: readonly string[]
 ): Promise<ApiItemResponse<BulkReprovisionMainserverUsersResult>> =>
-  postJson<ApiItemResponse<BulkReprovisionMainserverUsersResult>, { userIds: readonly string[] }>(
+  requestJson<ApiItemResponse<BulkReprovisionMainserverUsersResult>>(
     '/api/v1/iam/users/bulk-reprovision-mainserver',
-    { userIds },
-    true
+    createJsonMutationRequestInit('POST', { userIds }, { idempotent: true }),
+    { timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS }
   );
 
 export const syncUsersFromKeycloak = async (): Promise<ApiItemResponse<IamUserImportSyncReport>> =>

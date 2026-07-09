@@ -1,4 +1,4 @@
-import type { NewsContentBlock, NewsContentItem, NewsFormInput } from './news.types.js';
+import type { NewsContentItem, NewsFormInput } from './news.types.js';
 
 const getVisibleTextLength = (value: string): number => {
   let inTag = false;
@@ -74,9 +74,6 @@ export const validateNewsPayload = (payload: NewsContentItem['payload']): readon
 
 const isValidDate = (value: string): boolean => Number.isNaN(new Date(value).getTime()) === false;
 
-const hasVisibleBlockBody = (block: NewsContentBlock): boolean =>
-  typeof block.body === 'string' && block.body.trim().length > 0 && getVisibleTextLength(block.body) > 0;
-
 export const validateNewsForm = (input: NewsFormInput): readonly string[] => {
   const errors: string[] = [];
 
@@ -109,8 +106,6 @@ export const validateNewsForm = (input: NewsFormInput): readonly string[] => {
 
   const contentBlocks = input.contentBlocks ?? [];
   if (contentBlocks.some((block) => (block.body?.length ?? 0) > 50_000)) {
-    errors.push('contentBlocks');
-  } else if (contentBlocks.length > 0 && contentBlocks.some(hasVisibleBlockBody) === false) {
     errors.push('contentBlocks');
   }
 

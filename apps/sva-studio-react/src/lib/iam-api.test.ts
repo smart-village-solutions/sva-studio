@@ -1409,6 +1409,9 @@ describe('iam-api profile helpers', () => {
         body: JSON.stringify({ userIds: ['user-1', 'user-2'] }),
       })
     );
+    expect(fetchMock.mock.calls[6]?.[1]).toMatchObject({
+      signal: expect.any(AbortSignal),
+    });
   });
 });
 

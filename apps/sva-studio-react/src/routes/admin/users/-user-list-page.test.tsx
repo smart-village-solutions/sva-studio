@@ -157,41 +157,6 @@ describe('UserListPage', () => {
       .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
   });
 
-  it('shows a warning icon with tooltip when mainserver credentials are missing', async () => {
-    useUsersMock.mockReturnValue(
-      createUsersApiState({
-        users: [
-          {
-            id: 'user-2',
-            keycloakSubject: 'subject-2',
-            displayName: 'Bob',
-            email: 'bob@example.com',
-            status: 'active',
-            lastLoginAt: '2026-03-04T10:00:00Z',
-            mainserverUserApplicationSecretSet: false,
-            roles: [{ roleId: 'role-2', roleKey: 'editor', roleName: 'editor', roleLevel: 20 }],
-          },
-        ],
-      })
-    );
-
-    render(<UserListPage />);
-
-    const warningTrigger = screen.getAllByRole('img', { name: 'Mainserver-Daten fehlen' })[0]!;
-    const warningIcon = warningTrigger.querySelector('svg');
-    expect(warningIcon?.getAttribute('class')).toContain('stroke-current');
-    expect(warningIcon?.getAttribute('class')).not.toContain('fill-current');
-    fireEvent.mouseEnter(warningTrigger);
-
-    expect(await screen.findByRole('tooltip', { name: 'Mainserver-Daten fehlen' })).toBeTruthy();
-
-    fireEvent.mouseLeave(warningTrigger);
-
-    await waitFor(() =>
-      expect(screen.queryByRole('tooltip', { name: 'Mainserver-Daten fehlen' })).toBeNull()
-    );
-  });
-
   it('updates filters and pagination controls', () => {
     const setSearch = vi.fn();
     const setStatus = vi.fn();

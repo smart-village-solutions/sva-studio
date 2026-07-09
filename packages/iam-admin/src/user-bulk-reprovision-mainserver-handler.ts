@@ -117,7 +117,7 @@ export const createBulkReprovisionMainserverHandlerInternal =
       return jsonResponse(500, {
         error: {
           code: 'internal_error',
-          message: error instanceof Error ? error.message : String(error),
+          message: 'Bulk-Reprovision der Mainserver-Daten fehlgeschlagen.',
         },
         ...(resolved.actor.requestId ? { requestId: resolved.actor.requestId } : {}),
       });

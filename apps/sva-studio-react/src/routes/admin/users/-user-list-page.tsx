@@ -4,7 +4,7 @@ import type {
   IamKeycloakObjectEditability,
   IamUserImportSyncReport,
 } from '@sva/core';
-import { IconAlertTriangle, IconEdit, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconTrash } from '@tabler/icons-react';
 import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
@@ -81,60 +81,6 @@ const renderDiagnosticCodes = (diagnostics: readonly IamKeycloakObjectDiagnostic
 
 type UserListUser = UsersApiState['users'][number];
 
-const InlineIconTooltip = ({ label, children }: { label: string; children: React.ReactNode }) => {
-  const [open, setOpen] = React.useState(false);
-  const tooltipId = React.useId();
-
-  return (
-    <span
-      className="relative inline-flex"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocusCapture={() => setOpen(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setOpen(false);
-        }
-      }}
-    >
-      {children}
-      {open ? (
-        <span
-          id={tooltipId}
-          role="tooltip"
-          aria-label={label}
-          className="pointer-events-none absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md"
-        >
-          {label}
-        </span>
-      ) : null}
-    </span>
-  );
-};
-
-const UserDisplayNameCell = ({ user }: { user: UserListUser }) => {
-  const missingMainserverCredentials = user.mainserverUserApplicationSecretSet === false;
-
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span>{user.displayName}</span>
-      {missingMainserverCredentials ? (
-        <InlineIconTooltip label={t('admin.users.messages.mainserverCredentialsMissing')}>
-          <span
-            role="img"
-            aria-label={t('admin.users.messages.mainserverCredentialsMissing')}
-            aria-describedby={undefined}
-            tabIndex={0}
-            className="inline-flex items-center text-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <IconAlertTriangle aria-hidden="true" className="h-4 w-4 stroke-current" />
-          </span>
-        </InlineIconTooltip>
-      ) : null}
-    </span>
-  );
-};
-
 const UserStatusCell = ({
   user,
   isAuthLoading,
@@ -194,7 +140,7 @@ const buildUserColumns = (
   {
     id: 'displayName',
     header: t('admin.users.table.headerName'),
-    cell: (user) => <UserDisplayNameCell user={user} />,
+    cell: (user) => user.displayName,
     sortable: true,
     sortValue: (user) => user.displayName.toLowerCase(),
   },

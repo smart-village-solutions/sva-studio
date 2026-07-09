@@ -200,16 +200,6 @@ describe('user projection', () => {
         external_role_name: 'news.editor',
       },
     ]);
-    state.resolveMainserverCredentialState
-      .mockReturnValueOnce({
-        mainserverUserApplicationId: 'app-1',
-        mainserverUserApplicationSecretSet: true,
-      })
-      .mockReturnValueOnce({
-        mainserverUserApplicationId: undefined,
-        mainserverUserApplicationSecretSet: false,
-      });
-
     const users = await applyCanonicalUserListProjection({
       instanceId: 'de-musterhausen',
       users: [
@@ -242,10 +232,9 @@ describe('user projection', () => {
       },
     ]);
     expect(users[0]?.keycloakRoles).toEqual(['news.editor']);
-    expect(users[0]?.mainserverUserApplicationSecretSet).toBe(true);
     expect(users[1]?.roles).toEqual([]);
     expect(users[1]?.keycloakRoles).toBeUndefined();
-    expect(users[1]?.mainserverUserApplicationSecretSet).toBe(false);
     expect(state.resolveRolesByExternalNames).not.toHaveBeenCalled();
+    expect(state.readIdentityUserAttributes).not.toHaveBeenCalled();
   });
 });

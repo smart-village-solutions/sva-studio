@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   getWorkspaceContext: vi.fn(() => ({ requestId: 'req-1' })),
+  requireIdempotencyKey: vi.fn(),
+  toPayloadHash: vi.fn(() => 'hash-1'),
+  reserveIdempotency: vi.fn(),
+  completeIdempotency: vi.fn(async () => undefined),
   resolveUserMutationTargetContext: vi.fn(),
   withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (client: object) => Promise<unknown>) => work({})),
   resolveUserDetail: vi.fn(),
@@ -47,6 +51,13 @@ vi.mock('./api-helpers.js', () => ({
         headers: { 'content-type': 'application/json' },
       }
     ),
+  requireIdempotencyKey: state.requireIdempotencyKey,
+  toPayloadHash: state.toPayloadHash,
+}));
+
+vi.mock('./shared-idempotency.js', () => ({
+  reserveIdempotency: state.reserveIdempotency,
+  completeIdempotency: state.completeIdempotency,
 }));
 
 vi.mock('./user-mutation-request-context.shared.js', () => ({
@@ -78,6 +89,8 @@ vi.mock('./mainserver-user-provisioning.js', () => ({
 describe('reprovisionMainserverUserInternal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.requireIdempotencyKey.mockReturnValue({ key: 'idem-1' });
+    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
     state.resolveUserMutationTargetContext.mockResolvedValue({
       actor: {
         instanceId: 'instance-1',
@@ -165,6 +178,14 @@ describe('reprovisionMainserverUserInternal', () => {
         result: 'success',
       })
     );
+    expect(state.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: 'POST:/api/v1/iam/users/$userId/reprovision-mainserver',
+        idempotencyKey: 'idem-1',
+        responseStatus: 200,
+        status: 'COMPLETED',
+      })
+    );
   });
 
   it('returns not_found when the target user does not exist', async () => {
@@ -230,6 +251,82 @@ describe('reprovisionMainserverUserInternal', () => {
           upstream_error_code: 'upstream_timeout',
         },
         message: 'Zeitüberschreitung beim Provisionieren des Mainserver-Benutzers.',
+      },
+      requestId: 'req-1',
+    });
+  });
+
+  it('replays stored idempotent responses before reprovisioning again', async () => {
+    state.reserveIdempotency.mockResolvedValueOnce({
+      status: 'replay',
+      responseStatus: 200,
+      responseBody: {
+        data: { status: 'updated' },
+        requestId: 'req-1',
+      },
+    });
+
+    const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+
+    const response = await reprovisionMainserverUserInternal(
+      new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
+        method: 'POST',
+        body: '{}',
+      }),
+      {
+        sessionId: 'session-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'instance-1',
+          roles: ['system_admin'],
+        },
+      }
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: { status: 'updated' },
+      requestId: 'req-1',
+    });
+    expect(state.provisionMainserverUserCredentials).not.toHaveBeenCalled();
+  });
+
+  it('maps unauthorized mainserver credentials to a non-auth conflict response', async () => {
+    const provisioningError = new Error('Mainserver-Zugangsdaten sind ungültig.') as Error & {
+      code: string;
+      statusCode: number;
+    };
+    provisioningError.name = 'MainserverUserProvisioningError';
+    provisioningError.code = 'unauthorized';
+    provisioningError.statusCode = 401;
+    state.provisionMainserverUserCredentials.mockRejectedValueOnce(provisioningError);
+
+    const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+
+    const response = await reprovisionMainserverUserInternal(
+      new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
+        method: 'POST',
+        body: '{}',
+      }),
+      {
+        sessionId: 'session-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'instance-1',
+          roles: ['system_admin'],
+        },
+      }
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'mainserver_credentials_invalid',
+        details: {
+          dependency: 'sva_mainserver',
+          reason_code: 'mainserver_token_unauthorized',
+        },
+        message: 'Mainserver-Zugangsdaten sind ungültig.',
       },
       requestId: 'req-1',
     });

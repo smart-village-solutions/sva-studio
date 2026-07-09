@@ -34,25 +34,6 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
     tooltip?: string;
   };
 
-const resolveStringProp = (value: unknown): string | undefined => (typeof value === 'string' && value.length > 0 ? value : undefined);
-const getElementStringProp = (element: React.ReactElement<Record<string, unknown>>, key: string): string | undefined =>
-  resolveStringProp(element.props[key]);
-const hasVisibleText = (node: React.ReactNode): boolean => {
-  if (typeof node === 'string') {
-    return node.trim().length > 0;
-  }
-  if (typeof node === 'number') {
-    return true;
-  }
-  if (Array.isArray(node)) {
-    return node.some(hasVisibleText);
-  }
-  if (React.isValidElement<Record<string, unknown>>(node)) {
-    return hasVisibleText(node.props.children as React.ReactNode);
-  }
-  return false;
-};
-
 const IconButtonTooltip = ({
   label,
   children,
@@ -98,30 +79,18 @@ const IconButtonTooltip = ({
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ children, className, variant, size, asChild = false, tooltip, title, ...props }, ref) => {
     const Comp = asChild ? Slot : 'button';
-    const childElement =
-      asChild && React.isValidElement<Record<string, unknown>>(children) ? children : null;
-    const childTitle = childElement ? getElementStringProp(childElement, 'title') : undefined;
-    const childAriaLabel = childElement ? getElementStringProp(childElement, 'aria-label') : undefined;
-    const childContent = childElement ? (childElement.props.children as React.ReactNode) : children;
-    const isIconOnlyButton = !hasVisibleText(childContent);
-    const tooltipLabel =
-      (size === 'icon' || isIconOnlyButton)
-        ? tooltip ?? resolveStringProp(title) ?? resolveStringProp(props['aria-label']) ?? childTitle ?? childAriaLabel
-        : undefined;
-    const normalizedChildren =
-      tooltipLabel && childElement ? React.cloneElement(childElement, { title: undefined }) : children;
     const buttonNode = (
       <Comp
         ref={ref}
         className={cn(buttonVariants({ variant, size, className }))}
-        title={tooltipLabel ? undefined : title}
+        title={tooltip ? undefined : title}
         {...props}
       >
-        {normalizedChildren}
+        {children}
       </Comp>
     );
 
-    return tooltipLabel ? <IconButtonTooltip label={tooltipLabel}>{buttonNode}</IconButtonTooltip> : buttonNode;
+    return tooltip ? <IconButtonTooltip label={tooltip}>{buttonNode}</IconButtonTooltip> : buttonNode;
   }
 );
 Button.displayName = 'Button';

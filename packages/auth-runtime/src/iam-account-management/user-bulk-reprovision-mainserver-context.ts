@@ -137,6 +137,16 @@ export const completeBulkReprovisionMainserverFailure = async (input: {
     forbiddenFallbackMessage: 'Bulk-Reprovision enthält nicht erlaubte Zielnutzer.',
   });
   if (knownError) {
+    const responseBody = await knownError.clone().json();
+    await completeIdempotency({
+      instanceId: input.actor.instanceId,
+      actorAccountId: input.actor.actorAccountId!,
+      endpoint: ENDPOINT,
+      idempotencyKey: input.idempotencyKey,
+      status: 'FAILED',
+      responseStatus: knownError.status,
+      responseBody,
+    });
     return knownError;
   }
 

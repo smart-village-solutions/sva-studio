@@ -16,10 +16,7 @@ import {
 } from './user-edit-model';
 import { useUserOrganizationMembershipState } from './-user-organization-membership-state';
 import { selectAssignableGroups, selectAssignableRoles } from './user-assignment-options';
-
-type UserEditControllerOptions = {
-  readonly userId: string;
-};
+type UserEditControllerOptions = { readonly userId: string };
 
 const useUserEditFormState = (user: ReturnType<typeof useUser>['user']) => {
   const [formValues, setFormValues] = React.useState<UserFormValues>(() => toUserFormValues(user));

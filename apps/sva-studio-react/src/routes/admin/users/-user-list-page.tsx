@@ -21,6 +21,7 @@ import { Select } from '../../../components/ui/select';
 import { Switch } from '../../../components/ui/switch';
 import { useUsers } from '../../../hooks/use-users';
 import { hasPlatformInstanceAdminAccess, hasUserDeleteAccess, isIamBulkEnabled } from '../../../lib/iam-admin-access';
+import { IamHttpError } from '../../../lib/iam-api';
 import { useAuth } from '../../../providers/auth-provider';
 import { t } from '../../../i18n';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
@@ -374,6 +375,20 @@ const UserListBulkReprovisionFeedback = ({
     return null;
   }
 
+  const renderFailureMessage = (failure: NonNullable<BulkReprovisionFeedbackState>['failures'][number]) => {
+    const localizedMessage = userErrorMessage(
+      new IamHttpError({
+        status: failure.code === 'not_found' ? 404 : failure.code === 'forbidden' ? 403 : 409,
+        code: failure.code,
+        message: failure.message,
+      }),
+      'mutation'
+    );
+    return localizedMessage === t('admin.users.messages.mutationError') && failure.message.trim().length > 0
+      ? failure.message
+      : localizedMessage;
+  };
+
   return (
     <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
       <AlertDescription className="flex flex-col gap-2">
@@ -386,7 +401,7 @@ const UserListBulkReprovisionFeedback = ({
                 {t('admin.users.messages.bulkReprovisionFailureItem', {
                   id: failure.id,
                   code: failure.code,
-                  message: failure.message,
+                  message: renderFailureMessage(failure),
                 })}
               </li>
             ))}

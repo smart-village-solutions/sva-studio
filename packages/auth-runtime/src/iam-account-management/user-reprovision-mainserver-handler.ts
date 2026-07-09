@@ -78,11 +78,20 @@ export const reprovisionMainserverUserInternal = async (
     return reserve.response;
   }
 
-  const resolvedTarget = await resolveTargetUser({
-    actor: targetContext.actor,
-    ctx,
-    userId: targetContext.userId,
-  });
+  let resolvedTarget: Awaited<ReturnType<typeof resolveTargetUser>>;
+  try {
+    resolvedTarget = await resolveTargetUser({
+      actor: targetContext.actor,
+      ctx,
+      userId: targetContext.userId,
+    });
+  } catch (error) {
+    return completeReprovisionIdempotency({
+      actor: targetContext.actor,
+      idempotencyKey: idempotencyKey.key,
+      response: buildProvisioningErrorResponse(requestId, error),
+    });
+  }
   if (resolvedTarget.kind === 'not_found') {
     return completeReprovisionIdempotency({
       actor: targetContext.actor,
@@ -107,7 +116,10 @@ export const reprovisionMainserverUserInternal = async (
 
   try {
     const result = await reprovisionMainserverCredentials({
-      actor: targetContext.actor,
+      actor: {
+        ...targetContext.actor,
+        activeOrganizationId: ctx.activeOrganizationId,
+      },
       actorSubject: ctx.user.id,
       identityProvider: targetContext.identityProvider.provider,
       requestId,

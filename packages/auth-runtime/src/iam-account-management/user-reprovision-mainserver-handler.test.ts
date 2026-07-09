@@ -95,6 +95,7 @@ describe('reprovisionMainserverUserInternal', () => {
       actor: {
         instanceId: 'instance-1',
         actorAccountId: 'actor-1',
+        activeOrganizationId: 'org-1',
         requestId: 'req-1',
         traceId: 'trace-1',
       },
@@ -132,6 +133,7 @@ describe('reprovisionMainserverUserInternal', () => {
       }),
       {
         sessionId: 'session-1',
+        activeOrganizationId: 'org-1',
         user: {
           id: 'kc-actor-1',
           instanceId: 'instance-1',
@@ -147,11 +149,12 @@ describe('reprovisionMainserverUserInternal', () => {
     });
     expect(state.provisionMainserverUserCredentials).toHaveBeenCalledWith({
       actor: {
-        instanceId: 'instance-1',
-        actorAccountId: 'actor-1',
-        requestId: 'req-1',
-        traceId: 'trace-1',
-      },
+          instanceId: 'instance-1',
+          actorAccountId: 'actor-1',
+          activeOrganizationId: 'org-1',
+          requestId: 'req-1',
+          traceId: 'trace-1',
+        },
       actorSubject: 'kc-actor-1',
       keycloakSubject: 'kc-user-1',
       payload: {
@@ -199,6 +202,7 @@ describe('reprovisionMainserverUserInternal', () => {
       }),
       {
         sessionId: 'session-1',
+        activeOrganizationId: 'org-1',
         user: {
           id: 'kc-actor-1',
           instanceId: 'instance-1',
@@ -233,6 +237,7 @@ describe('reprovisionMainserverUserInternal', () => {
       }),
       {
         sessionId: 'session-1',
+        activeOrganizationId: 'org-1',
         user: {
           id: 'kc-actor-1',
           instanceId: 'instance-1',
@@ -275,6 +280,7 @@ describe('reprovisionMainserverUserInternal', () => {
       }),
       {
         sessionId: 'session-1',
+        activeOrganizationId: 'org-1',
         user: {
           id: 'kc-actor-1',
           instanceId: 'instance-1',
@@ -310,6 +316,7 @@ describe('reprovisionMainserverUserInternal', () => {
       }),
       {
         sessionId: 'session-1',
+        activeOrganizationId: 'org-1',
         user: {
           id: 'kc-actor-1',
           instanceId: 'instance-1',
@@ -330,5 +337,41 @@ describe('reprovisionMainserverUserInternal', () => {
       },
       requestId: 'req-1',
     });
+  });
+
+  it('marks reserved idempotency keys as failed when target resolution throws before provisioning', async () => {
+    state.resolveUserDetail.mockRejectedValueOnce(new Error('db exploded'));
+    const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+
+    const response = await reprovisionMainserverUserInternal(
+      new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
+        method: 'POST',
+        body: '{}',
+      }),
+      {
+        sessionId: 'session-1',
+        activeOrganizationId: 'org-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'instance-1',
+          roles: ['system_admin'],
+        },
+      }
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'internal_error', message: 'Mainserver-Daten konnten nicht aktualisiert werden.' },
+      requestId: 'req-1',
+    });
+    expect(state.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: 'POST:/api/v1/iam/users/$userId/reprovision-mainserver',
+        idempotencyKey: 'idem-1',
+        responseStatus: 500,
+        status: 'FAILED',
+      })
+    );
+    expect(state.provisionMainserverUserCredentials).not.toHaveBeenCalled();
   });
 });

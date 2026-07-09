@@ -30,6 +30,23 @@ export type BulkReprovisionMainserverContext =
 
 const ENDPOINT = 'POST:/api/v1/iam/users/bulk-reprovision-mainserver';
 
+const completeReservedBulkReprovisionResponse = async (input: {
+  actor: UserMutationActor;
+  idempotencyKey: string;
+  response: Response;
+}) => {
+  await completeIdempotency({
+    instanceId: input.actor.instanceId,
+    actorAccountId: input.actor.actorAccountId!,
+    endpoint: ENDPOINT,
+    idempotencyKey: input.idempotencyKey,
+    status: 'FAILED',
+    responseStatus: input.response.status,
+    responseBody: await input.response.clone().json(),
+  });
+  return input.response;
+};
+
 const resolveBulkReprovisionPreconditions = async (
   request: Request,
   ctx: AuthenticatedRequestContext
@@ -86,7 +103,11 @@ export const resolveBulkReprovisionMainserverContext = async (
 
   const identityProvider = await requireUserMutationIdentityProvider(actor.instanceId, requestId);
   if (identityProvider instanceof Response) {
-    return identityProvider;
+    return completeReservedBulkReprovisionResponse({
+      actor,
+      idempotencyKey: idempotencyKey.key,
+      response: identityProvider,
+    });
   }
 
   return {

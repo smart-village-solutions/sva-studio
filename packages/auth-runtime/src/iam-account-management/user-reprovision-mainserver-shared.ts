@@ -16,6 +16,7 @@ export const REPROVISION_MAINSERVER_ENDPOINT = 'POST:/api/v1/iam/users/$userId/r
 export type MainserverReprovisionActor = {
   readonly instanceId: string;
   readonly actorAccountId: string;
+  readonly activeOrganizationId?: string;
   readonly requestId?: string;
   readonly traceId?: string;
 };

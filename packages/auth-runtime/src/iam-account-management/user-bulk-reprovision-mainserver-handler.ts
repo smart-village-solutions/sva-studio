@@ -23,10 +23,12 @@ type BulkReprovisionInput = {
   actor: {
     instanceId: string;
     actorAccountId: string;
+    activeOrganizationId?: string;
     requestId?: string;
     traceId?: string;
   };
   ctx: {
+    activeOrganizationId?: string;
     user: {
       id: string;
       roles: string[];
@@ -152,7 +154,10 @@ const reprovisionSingleUser = async (input: {
 
   try {
     const credentials = await provisionMainserverUserCredentials({
-      actor: input.actor,
+      actor: {
+        ...input.actor,
+        activeOrganizationId: input.ctx.activeOrganizationId,
+      },
       actorSubject: input.ctx.user.id,
       keycloakSubject: detail.keycloakSubject,
       payload: {

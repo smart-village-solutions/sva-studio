@@ -346,6 +346,9 @@ describe('UserListPage', () => {
     expect(screen.getByText('1 Nutzer erfolgreich aktualisiert.')).toBeTruthy();
     expect(screen.getByText('1 Nutzer konnten nicht aktualisiert werden.')).toBeTruthy();
     expect(screen.getByText(/user-2/)).toBeTruthy();
+    expect(
+      screen.getByText(/Die Nutzeränderung steht in Konflikt mit dem aktuellen Zustand/)
+    ).toBeTruthy();
   });
 
   it('confirms hard delete only for actors with the explicit delete permission', async () => {

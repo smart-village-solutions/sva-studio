@@ -56,7 +56,6 @@ const normalizeProviderRequestUrl = async (
   if (config.provider !== 'custom') {
     return url;
   }
-
   const { normalizeOutboundHttpUrl } = await import('@sva/auth-runtime/server');
   const normalized = await normalizeOutboundHttpUrl(url.toString(), {
     allowHttp: true,
@@ -68,7 +67,6 @@ const normalizeProviderRequestUrl = async (
       provider: config.provider,
     });
   }
-
   return new URL(normalized);
 };
 
@@ -109,7 +107,6 @@ const loadRuntimeConfig = async (instanceId: string): Promise<MapGeocodingRuntim
   if (!config || !config.enabled || config.killSwitchEnabled) {
     throw createClientError('disabled');
   }
-
   return {
     provider: config.provider,
     styleUrl: config.styleUrl,
@@ -154,7 +151,6 @@ const authorizeFirstAllowedAction = async (
     }
     lastResult = result;
   }
-
   return lastResult ?? { ok: false as const, status: 403, error: 'forbidden', message: 'forbidden' };
 };
 
@@ -196,7 +192,6 @@ const withAuthenticatedMapUser = async <T>(
       return createErrorResponse(readMapGeocodingErrorCode(error));
     }
   });
-
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as
       | { error?: string | { code?: string } }
@@ -211,7 +206,6 @@ const withAuthenticatedMapUser = async <T>(
             : 'invalid_config';
     throw createClientError(errorCode);
   }
-
   const payload = (await response.json().catch(() => null)) as T | { error?: string } | null;
   if (payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string') {
     throw createClientError(payload.error);
@@ -298,7 +292,6 @@ const withGeocodingOperation = async <T>(
       }
     },
   );
-
 export const withCurrentRequestGeocodingOperation = async <T>(
   operation: 'get_config' | 'suggest' | 'geocode' | 'reverse_geocode',
   run: (
@@ -334,12 +327,8 @@ export const executeProviderRequest = async (input: {
 };
 
 export const getPublicMapGeocodingConfig = (config: MapGeocodingRuntimeConfigWithSecrets): MapGeocodingRuntimeConfig => ({
-  provider: config.provider,
-  styleUrl: config.styleUrl,
-  autocompleteEnabled: config.autocompleteEnabled,
-  geocodeEnabled: config.geocodeEnabled,
-  reverseGeocodeEnabled: config.reverseGeocodeEnabled,
-  killSwitchEnabled: config.killSwitchEnabled,
+  provider: config.provider, styleUrl: config.styleUrl, autocompleteEnabled: config.autocompleteEnabled,
+  geocodeEnabled: config.geocodeEnabled, reverseGeocodeEnabled: config.reverseGeocodeEnabled, killSwitchEnabled: config.killSwitchEnabled,
 });
 
 export const executeSuggestOperation = async (
@@ -347,13 +336,9 @@ export const executeSuggestOperation = async (
   query: string,
   diagnostics?: MapGeocodingOperationDiagnostics,
 ): Promise<readonly MapGeocodingFeature[]> => {
-  if (!config.autocompleteEnabled) {
-    throw createClientError('disabled');
-  }
+  if (!config.autocompleteEnabled) throw createClientError('disabled');
   const result = await executeProviderRequest({ config, mode: 'suggest', query, diagnostics });
-  if (result.length === 0) {
-    throw createClientError('no_result');
-  }
+  if (result.length === 0) throw createClientError('no_result');
   return result;
 };
 
@@ -362,9 +347,7 @@ export const executeGeocodeOperation = async (
   input: MapGeocodingAddressInput,
   diagnostics?: MapGeocodingOperationDiagnostics,
 ): Promise<MapGeocodingFeature> => {
-  if (!config.geocodeEnabled) {
-    throw createClientError('disabled');
-  }
+  if (!config.geocodeEnabled) throw createClientError('disabled');
   const query = compactQuery(input);
   if (!query) {
     throw createClientError('invalid_input');
@@ -382,9 +365,7 @@ export const executeReverseGeocodeOperation = async (
   coordinates: MapGeocodingCoordinates,
   diagnostics?: MapGeocodingOperationDiagnostics,
 ): Promise<MapGeocodingFeature> => {
-  if (!config.reverseGeocodeEnabled) {
-    throw createClientError('disabled');
-  }
+  if (!config.reverseGeocodeEnabled) throw createClientError('disabled');
   if (!Number.isFinite(coordinates.latitude) || !Number.isFinite(coordinates.longitude)) {
     throw createClientError('invalid_input');
   }
@@ -400,19 +381,14 @@ export const runGetConfigOperation = (request: Request): Promise<MapGeocodingRun
   withGeocodingOperation(request, 'get_config', async (_ctx, config) => getPublicMapGeocodingConfig(config));
 
 export const runSuggestOperation = (request: Request, query: string): Promise<readonly MapGeocodingFeature[]> =>
-  withGeocodingOperation(request, 'suggest', async (_ctx, config, diagnostics) =>
-    executeSuggestOperation(config, query, diagnostics),
-  );
+  withGeocodingOperation(request, 'suggest', async (_ctx, config, diagnostics) => executeSuggestOperation(config, query, diagnostics));
 
 export const runGeocodeOperation = (request: Request, input: MapGeocodingAddressInput): Promise<MapGeocodingFeature> =>
-  withGeocodingOperation(request, 'geocode', async (_ctx, config, diagnostics) =>
-    executeGeocodeOperation(config, input, diagnostics),
-  );
+  withGeocodingOperation(request, 'geocode', async (_ctx, config, diagnostics) => executeGeocodeOperation(config, input, diagnostics));
 
 export const runReverseGeocodeOperation = (
   request: Request,
   coordinates: MapGeocodingCoordinates,
 ): Promise<MapGeocodingFeature> =>
   withGeocodingOperation(request, 'reverse_geocode', async (_ctx, config, diagnostics) =>
-    executeReverseGeocodeOperation(config, coordinates, diagnostics),
-  );
+    executeReverseGeocodeOperation(config, coordinates, diagnostics));

@@ -1,0 +1,4 @@
+{
+  "prNumber": 701,
+  "body": "Mehrere Sicherheits- und Härtungspfade für ausgehende Ziele, CI-Skripte und Disclosure-Dokumentation wurden vereinheitlicht.\n\n- Private oder lokale Datenbank-, S3- und Custom-Geocoding-Ziele werden in Healthchecks und Admin-Integrationen standardmäßig blockiert und nur noch per explizitem Opt-in zugelassen.\n- CI-Skripte für Path-Handling und Entrypoint-Erkennung nutzen jetzt gemeinsame Safety-Helper, damit Ausgabepfade und aufgerufene Dateien den erlaubten Workspace-Bereich nicht verlassen.\n- Das Repository veröffentlicht jetzt eine abgestimmte `SECURITY.md` und eine `.well-known/security.txt` für koordinierte Schwachstellenmeldungen."
+}

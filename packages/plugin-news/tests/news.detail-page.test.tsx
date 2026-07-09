@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import React from 'react';
 import { fileURLToPath } from 'node:url';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getHostMediaAsset,
@@ -188,6 +188,7 @@ describe('NewsDetailPage', () => {
         'news.messages.mediaPickerBackToUpload': 'Zurück zum Upload',
         'news.messages.mediaPickerOpenMediaManagement': 'In Medienverwaltung öffnen',
         'news.messages.mediaPickerUseMedia': 'Medium übernehmen',
+        'news.messages.updateSuccess': 'News aktualisiert.',
         'news.values.mediaContentTypes.image': 'Bild',
         'news.values.mediaContentTypes.audio': 'Audio',
         'news.values.mediaContentTypes.video': 'Video',
@@ -216,6 +217,23 @@ describe('NewsDetailPage', () => {
     });
 
     expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(1);
+  });
+
+  it('submits via the form, shows the validation summary, and warms tabs on pointer and focus interactions', async () => {
+    render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
+
+    const settingsTab = await screen.findByRole('tab', { name: 'Einstellungen' });
+    fireEvent.mouseEnter(settingsTab);
+    fireEvent.focus(settingsTab);
+
+    const submitButton = screen.getByRole('button', { name: 'Speichern' });
+    const formId = submitButton.getAttribute('form');
+    expect(formId).toBeTruthy();
+    fireEvent.submit(globalThis.document.getElementById(formId as string) as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(screen.getByText('news.messages.validationError')).toBeTruthy();
+    });
   });
 
   it('uses the refreshed asset detail preview url when the media list entry still has no preview url', async () => {
@@ -288,6 +306,89 @@ describe('NewsDetailPage', () => {
       expect(screen.getByDisplayValue('https://example.com/uploaded.jpg')).toBeTruthy();
     });
     expect(screen.queryByText('Bild-URL konnte nicht ermittelt werden.')).toBeNull();
+  });
+
+  it('supports review metadata changes and opening the selected asset in media management', async () => {
+    vi.mocked(listHostMediaAssets).mockResolvedValueOnce([
+      {
+        id: 'asset-library',
+        fileName: 'teaser.jpg',
+        mimeType: 'image/jpeg',
+        previewUrl: 'https://example.com/teaser.jpg',
+        visibility: 'public',
+        metadata: { title: 'Teaserbild' },
+      },
+    ] as never);
+    vi.mocked(getHostMediaAsset).mockResolvedValueOnce({
+      id: 'asset-library',
+      instanceId: 'de-test',
+      storageKey: 'de-test/originals/teaser.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      previewUrl: 'https://example.com/teaser.jpg',
+      visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {
+        title: 'Teaserbild',
+        altText: '',
+        description: '',
+        copyright: '',
+        license: '',
+      },
+    } as never);
+    vi.mocked(updateHostMediaAsset).mockResolvedValueOnce({
+      id: 'asset-library',
+      instanceId: 'de-test',
+      storageKey: 'de-test/originals/teaser.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      previewUrl: 'https://example.com/teaser.jpg',
+      visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {
+        title: 'Teaserbild',
+        altText: 'Beschreibendes Titelbild',
+        description: '',
+        copyright: '',
+        license: '',
+      },
+    } as never);
+
+    render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
+
+    fireEvent.change(await screen.findByLabelText('Bereich auswählen'), { target: { value: 'content' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Bild aus Mediathek' }));
+
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Bild hochladen' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Bild aus Mediathek' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'news.actions.selectImage' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Medium übernehmen' })).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Alternativtext'), {
+      target: { value: 'Beschreibendes Titelbild' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'In Medienverwaltung öffnen' }));
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/media/$mediaId', params: { mediaId: 'asset-library' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(updateHostMediaAsset)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assetId: 'asset-library',
+          metadata: expect.objectContaining({ altText: 'Beschreibendes Titelbild' }),
+        })
+      );
+      expect(screen.getByDisplayValue('https://example.com/teaser.jpg')).toBeTruthy();
+    });
   });
 
   it('renders the author as a fixed readonly field when authorship is fixed', async () => {
@@ -366,7 +467,10 @@ describe('NewsDetailPage', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: /Zeitgesteuert/ }));
 
-    expect(await screen.findByLabelText('Zeitpunkt der Veröffentlichung')).toBeTruthy();
+    const scheduledInput = await screen.findByLabelText('Zeitpunkt der Veröffentlichung');
+    expect(scheduledInput).toBeTruthy();
+    fireEvent.change(scheduledInput, { target: { value: '2026-08-03T10:15' } });
+    expect((scheduledInput as HTMLInputElement).value).toBe('2026-08-03T10:15');
 
     fireEvent.click(screen.getByRole('radio', { name: /Entwurf/ }));
 

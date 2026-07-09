@@ -300,6 +300,23 @@ describe('EventsDetailPage', () => {
     expect((screen.getByLabelText('Enddatum') as HTMLInputElement).value).toBe('2026-06-12');
   });
 
+  it('updates content dates and warms event tabs on pointer and focus interactions', async () => {
+    render(<EventsDetailPage mode="create" />);
+
+    const contentTab = await screen.findByRole('tab', { name: 'Inhalt' });
+    fireEvent.mouseEnter(contentTab);
+    fireEvent.focus(contentTab);
+    fireEvent.click(contentTab);
+
+    const startDateInput = await screen.findByLabelText('Startdatum');
+    const endDateInput = screen.getByLabelText('Enddatum');
+    fireEvent.change(startDateInput, { target: { value: '2026-08-01' } });
+    fireEvent.change(endDateInput, { target: { value: '2026-08-02' } });
+
+    expect((startDateInput as HTMLInputElement).value).toBe('2026-08-01');
+    expect((endDateInput as HTMLInputElement).value).toBe('2026-08-02');
+  });
+
   it('blocks submission on invalid title, invalid date input, and non-https links', async () => {
     render(<EventsDetailPage mode="create" />);
 

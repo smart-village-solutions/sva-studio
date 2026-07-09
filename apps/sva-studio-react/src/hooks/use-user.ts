@@ -5,6 +5,7 @@ import {
   asIamError,
   getUser,
   IamHttpError,
+  reprovisionMainserverUser,
   sendPasswordSetupEmail,
   updateUser,
   type UpdateUserPayload,
@@ -27,6 +28,7 @@ type UseUserResult = {
   readonly clearMutationError: () => void;
   readonly save: (payload: UpdateUserPayload) => Promise<IamUserDetail | null>;
   readonly resendPasswordSetupEmail?: () => Promise<boolean>;
+  readonly reprovisionMainserverData?: () => Promise<boolean>;
 };
 
 const userLogger = createOperationLogger('user-hook', 'debug');
@@ -157,6 +159,41 @@ export const useUser = (userId: string): UseUserResult => {
     }
   }, [invalidatePermissions, userId]);
 
+  const reprovisionMainserverDataAction = React.useCallback(async () => {
+    setMutationError(null);
+    logBrowserOperationStart(userLogger, 'user_mainserver_reprovision_started', {
+      operation: 'reprovision_mainserver_user',
+      user_id: userId,
+    });
+
+    try {
+      await reprovisionMainserverUser(userId);
+      await refetch();
+      logBrowserOperationSuccess(userLogger, 'user_mainserver_reprovision_succeeded', {
+        operation: 'reprovision_mainserver_user',
+        user_id: userId,
+      });
+      return true;
+    } catch (cause) {
+      const resolvedError = asIamError(cause);
+      if (resolvedError.status === 401 || resolvedError.status === 403) {
+        await invalidatePermissions();
+        userLogger.info(PERMISSION_INVALIDATED_EVENT, {
+          operation: 'reprovision_mainserver_user',
+          status: resolvedError.status,
+          error_code: resolvedError.code,
+          user_id: userId,
+        });
+      }
+      setMutationError(resolvedError);
+      logBrowserOperationFailure(userLogger, 'user_mainserver_reprovision_failed', resolvedError, {
+        operation: 'reprovision_mainserver_user',
+        user_id: userId,
+      });
+      return false;
+    }
+  }, [invalidatePermissions, refetch, userId]);
+
   return {
     user,
     isLoading,
@@ -166,5 +203,6 @@ export const useUser = (userId: string): UseUserResult => {
     clearMutationError: () => setMutationError(null),
     save,
     resendPasswordSetupEmail: resendPasswordSetupEmailAction,
+    reprovisionMainserverData: reprovisionMainserverDataAction,
   };
 };

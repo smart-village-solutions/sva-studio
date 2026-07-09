@@ -16,10 +16,7 @@ import {
 } from './user-edit-model';
 import { useUserOrganizationMembershipState } from './-user-organization-membership-state';
 import { selectAssignableGroups, selectAssignableRoles } from './user-assignment-options';
-
-type UserEditControllerOptions = {
-  readonly userId: string;
-};
+type UserEditControllerOptions = { readonly userId: string };
 
 const useUserEditFormState = (user: ReturnType<typeof useUser>['user']) => {
   const [formValues, setFormValues] = React.useState<UserFormValues>(() => toUserFormValues(user));
@@ -197,8 +194,10 @@ const useUserSaveActions = (
 ) => {
   const [isSaving, setIsSaving] = React.useState(false);
   const [isSendingPasswordSetupEmail, setIsSendingPasswordSetupEmail] = React.useState(false);
+  const [isReprovisioningMainserverData, setIsReprovisioningMainserverData] = React.useState(false);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const [passwordSetupEmailSuccess, setPasswordSetupEmailSuccess] = React.useState(false);
+  const [mainserverReprovisionSuccess, setMainserverReprovisionSuccess] = React.useState(false);
 
   const onSave = React.useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
@@ -206,6 +205,7 @@ const useUserSaveActions = (
       setIsSaving(true);
       setSaveSuccess(false);
       setPasswordSetupEmailSuccess(false);
+      setMainserverReprovisionSuccess(false);
 
       const result = await userApi.save(toUserUpdatePayload(formValues));
       if (result) {
@@ -226,6 +226,7 @@ const useUserSaveActions = (
     setIsSendingPasswordSetupEmail(true);
     setSaveSuccess(false);
     setPasswordSetupEmailSuccess(false);
+    setMainserverReprovisionSuccess(false);
 
     const sent = await userApi.resendPasswordSetupEmail();
     if (sent) {
@@ -235,9 +236,30 @@ const useUserSaveActions = (
     setIsSendingPasswordSetupEmail(false);
   }, [isSendingPasswordSetupEmail, userApi]);
 
+  const onReprovisionMainserverData = React.useCallback(async () => {
+    if (!userApi.reprovisionMainserverData || isReprovisioningMainserverData) {
+      return;
+    }
+
+    setIsReprovisioningMainserverData(true);
+    setSaveSuccess(false);
+    setPasswordSetupEmailSuccess(false);
+    setMainserverReprovisionSuccess(false);
+
+    const updated = await userApi.reprovisionMainserverData();
+    if (updated) {
+      setMainserverReprovisionSuccess(true);
+    }
+
+    setIsReprovisioningMainserverData(false);
+  }, [isReprovisioningMainserverData, userApi]);
+
   return {
+    isReprovisioningMainserverData,
     isSaving,
     isSendingPasswordSetupEmail,
+    mainserverReprovisionSuccess,
+    onReprovisionMainserverData,
     onSave,
     onSendPasswordSetupEmail,
     passwordSetupEmailSuccess,
@@ -268,7 +290,10 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
   const {
     isSaving,
     isSendingPasswordSetupEmail,
+    isReprovisioningMainserverData,
+    mainserverReprovisionSuccess,
     onSave,
+    onReprovisionMainserverData,
     onSendPasswordSetupEmail,
     passwordSetupEmailSuccess,
     saveSuccess,
@@ -335,8 +360,11 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
     hasUnsavedChanges,
     inactivePermissionTrace,
     isLoadingTimeline,
+    isReprovisioningMainserverData,
     isSaving,
     isSendingPasswordSetupEmail,
+    mainserverReprovisionSuccess,
+    onReprovisionMainserverData,
     onSave,
     organizationAssignment,
     organizationMembershipDrafts,

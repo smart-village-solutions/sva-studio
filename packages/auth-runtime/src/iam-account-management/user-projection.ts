@@ -139,7 +139,6 @@ export const applyCanonicalUserListProjection = async (input: {
         })
       )
     );
-
   return input.users.map((user) => {
     const keycloakRoleNames = keycloakRoleNamesBySubject.get(user.keycloakSubject) ?? null;
     if (keycloakRoleNames === null) {

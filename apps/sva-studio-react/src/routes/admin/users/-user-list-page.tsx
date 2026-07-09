@@ -21,6 +21,7 @@ import { Select } from '../../../components/ui/select';
 import { Switch } from '../../../components/ui/switch';
 import { useUsers } from '../../../hooks/use-users';
 import { hasPlatformInstanceAdminAccess, hasUserDeleteAccess, isIamBulkEnabled } from '../../../lib/iam-admin-access';
+import { IamHttpError } from '../../../lib/iam-api';
 import { useAuth } from '../../../providers/auth-provider';
 import { t } from '../../../i18n';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
@@ -28,6 +29,7 @@ import { userErrorMessage } from './-user-error-message';
 import { useUserListController } from './use-user-list-controller';
 import {
   getStatusActionDialogTranslationKeys,
+  type BulkReprovisionFeedbackState,
   type SyncStatusState,
   type UsersApiState,
 } from './user-list-model';
@@ -364,6 +366,52 @@ const UserListErrorAlert = ({
     </Alert>
   ) : null;
 
+const UserListBulkReprovisionFeedback = ({
+  feedback,
+}: {
+  feedback: BulkReprovisionFeedbackState;
+}) => {
+  if (!feedback) {
+    return null;
+  }
+
+  const renderFailureMessage = (failure: NonNullable<BulkReprovisionFeedbackState>['failures'][number]) => {
+    const localizedMessage = userErrorMessage(
+      new IamHttpError({
+        status: failure.code === 'not_found' ? 404 : failure.code === 'forbidden' ? 403 : 409,
+        code: failure.code,
+        message: failure.message,
+      }),
+      'mutation'
+    );
+    return localizedMessage === t('admin.users.messages.mutationError') && failure.message.trim().length > 0
+      ? failure.message
+      : localizedMessage;
+  };
+
+  return (
+    <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
+      <AlertDescription className="flex flex-col gap-2">
+        <span>{t('admin.users.messages.bulkReprovisionSuccessCount', { count: feedback.successCount })}</span>
+        <span>{t('admin.users.messages.bulkReprovisionFailureCount', { count: feedback.failureCount })}</span>
+        {feedback.failures.length > 0 ? (
+          <ul className="list-disc pl-5 text-xs text-muted-foreground" aria-label={t('admin.users.messages.bulkReprovisionFailuresLabel')}>
+            {feedback.failures.map((failure) => (
+              <li key={failure.id}>
+                {t('admin.users.messages.bulkReprovisionFailureItem', {
+                  id: failure.id,
+                  code: failure.code,
+                  message: renderFailureMessage(failure),
+                })}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </AlertDescription>
+    </Alert>
+  );
+};
+
 const UserListPaginationFooter = ({
   page,
   pageCount,
@@ -465,10 +513,12 @@ export const UserListPage = () => {
   const usersApi = useUsers();
   const [deleteUserId, setDeleteUserId] = React.useState<string | null>(null);
   const {
+    bulkReprovisionFeedback,
     closeStatusActionDialog,
     onConfirmStatusAction,
     onSyncUsers,
     openBulkDeactivate,
+    openBulkReprovisionMainserver,
     openSingleStatusAction,
     statusActionDialog,
     syncError,
@@ -528,6 +578,12 @@ export const UserListPage = () => {
                     variant: 'destructive',
                     onClick: ({ selectedRows }) => openBulkDeactivate(selectedRows.map((user) => user.id)),
                   },
+                  {
+                    id: 'bulk-reprovision-mainserver',
+                    label: t('admin.users.actions.reprovisionMainserverData'),
+                    onClick: ({ selectedRows }) =>
+                      openBulkReprovisionMainserver(selectedRows.map((user) => user.id)),
+                  },
                 ]
               : []
           }
@@ -553,6 +609,8 @@ export const UserListPage = () => {
         syncError={syncError}
         onRetry={onSyncUsers}
       />
+
+      <UserListBulkReprovisionFeedback feedback={bulkReprovisionFeedback} />
 
       <UserListErrorAlert error={usersApi.error} onRetry={() => void usersApi.refetch()} />
 

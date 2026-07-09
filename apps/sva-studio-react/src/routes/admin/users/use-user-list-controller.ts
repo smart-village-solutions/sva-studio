@@ -3,9 +3,10 @@ import React from 'react';
 
 import { userErrorMessage } from './-user-error-message';
 import {
+  type BulkReprovisionFeedbackState,
   executeStatusAction,
   resolveSyncStatus,
-  type StatusActionDialogState,
+  type UserMutationDialogState,
   type SyncStatusState,
   type UsersApiState,
 } from './user-list-model';
@@ -15,10 +16,11 @@ type UseUserListControllerOptions = {
 };
 
 export const useUserListController = ({ usersApi }: UseUserListControllerOptions) => {
-  const [statusActionDialog, setStatusActionDialog] = React.useState<StatusActionDialogState | null>(null);
+  const [statusActionDialog, setStatusActionDialog] = React.useState<UserMutationDialogState | null>(null);
   const [syncStatus, setSyncStatus] = React.useState<SyncStatusState>('idle');
   const [syncResult, setSyncResult] = React.useState<IamUserImportSyncReport | null>(null);
   const [syncError, setSyncError] = React.useState<Parameters<typeof userErrorMessage>[0]>(null);
+  const [bulkReprovisionFeedback, setBulkReprovisionFeedback] = React.useState<BulkReprovisionFeedbackState>(null);
 
   const onSyncUsers = React.useCallback(async () => {
     setSyncStatus('pending');
@@ -39,7 +41,12 @@ export const useUserListController = ({ usersApi }: UseUserListControllerOptions
   const onConfirmStatusAction = React.useCallback(async () => {
     const action = statusActionDialog;
     setStatusActionDialog(null);
-    await executeStatusAction(usersApi, action);
+    const result = await executeStatusAction(usersApi, action);
+    if (action?.action === 'reprovision-mainserver' && action.mode === 'bulk') {
+      setBulkReprovisionFeedback(result ?? null);
+    } else {
+      setBulkReprovisionFeedback(null);
+    }
   }, [statusActionDialog, usersApi]);
 
   const openSingleStatusAction = React.useCallback((action: 'activate' | 'deactivate', userId: string) => {
@@ -51,6 +58,7 @@ export const useUserListController = ({ usersApi }: UseUserListControllerOptions
   }, []);
 
   const openBulkDeactivate = React.useCallback((userIds: string[]) => {
+    setBulkReprovisionFeedback(null);
     setStatusActionDialog({
       action: 'deactivate',
       mode: 'bulk',
@@ -58,11 +66,22 @@ export const useUserListController = ({ usersApi }: UseUserListControllerOptions
     });
   }, []);
 
+  const openBulkReprovisionMainserver = React.useCallback((userIds: string[]) => {
+    setBulkReprovisionFeedback(null);
+    setStatusActionDialog({
+      action: 'reprovision-mainserver',
+      mode: 'bulk',
+      userIds,
+    });
+  }, []);
+
   return {
     closeStatusActionDialog: () => setStatusActionDialog(null),
+    bulkReprovisionFeedback,
     onConfirmStatusAction,
     onSyncUsers,
     openBulkDeactivate,
+    openBulkReprovisionMainserver,
     openSingleStatusAction,
     statusActionDialog,
     syncError,

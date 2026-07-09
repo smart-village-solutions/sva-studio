@@ -34,6 +34,9 @@ export const accountAuthHandlerMap = {
   '/api/v1/iam/users/$userId/deactivate': {
     POST: routeHandler(authRuntimeRoutes.deactivateUserHandler),
   },
+  '/api/v1/iam/users/$userId/reprovision-mainserver': {
+    POST: routeHandler(authRuntimeRoutes.reprovisionMainserverUserHandler),
+  },
   '/api/v1/iam/users/$userId/send-password-setup-email': {
     POST: routeHandler(authRuntimeRoutes.sendPasswordSetupEmailHandler),
   },
@@ -42,6 +45,9 @@ export const accountAuthHandlerMap = {
   },
   '/api/v1/iam/users/bulk-deactivate': {
     POST: routeHandler(authRuntimeRoutes.bulkDeactivateUsersHandler),
+  },
+  '/api/v1/iam/users/bulk-reprovision-mainserver': {
+    POST: routeHandler(authRuntimeRoutes.bulkReprovisionMainserverUsersHandler),
   },
   '/api/v1/iam/users/sync-keycloak': {
     POST: routeHandler(authRuntimeRoutes.syncUsersFromKeycloakHandler),

@@ -25,6 +25,7 @@ describe('tenant-keycloak-user-projection', () => {
       keycloakSubject: 'kc-1',
       displayName: 'Redaktion',
       email: 'm.mustermann@example.org',
+      mainserverUserApplicationSecretSet: false,
       status: 'active',
       mappingStatus: 'unmapped',
       editability: 'blocked',

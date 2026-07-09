@@ -98,6 +98,7 @@ const authServerMocks = vi.hoisted(() => {
     listUsersHandler: vi.fn(async () => response('listUsersHandler')),
     createUserHandler: vi.fn(async () => response('createUserHandler')),
     getUserHandler: vi.fn(async () => response('getUserHandler')),
+    reprovisionMainserverUserHandler: vi.fn(async () => response('reprovisionMainserverUserHandler')),
     sendPasswordSetupEmailHandler: vi.fn(async () => response('sendPasswordSetupEmailHandler')),
     getUserTimelineHandler: vi.fn(async () => response('getUserTimelineHandler')),
     updateUserHandler: vi.fn(async () => response('updateUserHandler')),
@@ -105,6 +106,9 @@ const authServerMocks = vi.hoisted(() => {
     deactivateUserHandler: vi.fn(async () => response('deactivateUserHandler')),
     sendPasswordSetupEmailHandler: vi.fn(async () => response('sendPasswordSetupEmailHandler')),
     bulkDeactivateUsersHandler: vi.fn(async () => response('bulkDeactivateUsersHandler')),
+    bulkReprovisionMainserverUsersHandler: vi.fn(async () =>
+      response('bulkReprovisionMainserverUsersHandler')
+    ),
     syncUsersFromKeycloakHandler: vi.fn(async () => response('syncUsersFromKeycloakHandler')),
     getMyProfileHandler: vi.fn(async () => response('getMyProfileHandler')),
     updateMyProfileHandler: vi.fn(async () => response('updateMyProfileHandler')),
@@ -764,9 +768,11 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.logoutHandler).toHaveBeenCalled();
     expect(authServerMocks.listUsersHandler).toHaveBeenCalled();
     expect(authServerMocks.getUserHandler).toHaveBeenCalled();
+    expect(authServerMocks.reprovisionMainserverUserHandler).toHaveBeenCalled();
     expect(authServerMocks.updateUserHandler).toHaveBeenCalled();
     expect(authServerMocks.deactivateUserHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteUserHandler).toHaveBeenCalled();
+    expect(authServerMocks.bulkReprovisionMainserverUsersHandler).toHaveBeenCalled();
     expect(authServerMocks.listGroupsHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteGroupHandler).toHaveBeenCalled();
     expect(authServerMocks.listOrganizationsHandler).toHaveBeenCalled();

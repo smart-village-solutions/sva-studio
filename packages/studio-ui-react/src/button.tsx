@@ -31,13 +31,66 @@ const buttonVariants = cva(
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
+    tooltip?: string;
   };
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button';
+const IconButtonTooltip = ({
+  label,
+  children,
+}: {
+  readonly label: string;
+  readonly children: React.ReactNode;
+}) => {
+  const [open, setOpen] = React.useState(false);
+  const tooltipId = React.useId();
+  const triggerChild =
+    React.isValidElement(children) && typeof children.type !== 'symbol'
+      ? React.cloneElement(children, {
+          'aria-describedby': open ? tooltipId : undefined,
+        } as Record<string, unknown>)
+      : children;
 
-    return <Comp ref={ref} className={cn(buttonVariants({ variant, size, className }))} {...props} />;
+  return (
+    <span
+      className="relative inline-flex"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocusCapture={() => setOpen(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setOpen(false);
+        }
+      }}
+    >
+      {triggerChild}
+      {open ? (
+        <span
+          id={tooltipId}
+          role="tooltip"
+          className="pointer-events-none absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md"
+        >
+          {label}
+        </span>
+      ) : null}
+    </span>
+  );
+};
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ children, className, variant, size, asChild = false, tooltip, title, ...props }, ref) => {
+    const Comp = asChild ? Slot : 'button';
+    const buttonNode = (
+      <Comp
+        ref={ref}
+        className={cn(buttonVariants({ variant, size, className }))}
+        title={tooltip ? undefined : title}
+        {...props}
+      >
+        {children}
+      </Comp>
+    );
+
+    return tooltip ? <IconButtonTooltip label={tooltip}>{buttonNode}</IconButtonTooltip> : buttonNode;
   }
 );
 Button.displayName = 'Button';

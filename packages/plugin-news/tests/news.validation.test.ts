@@ -86,7 +86,7 @@ describe('validateNewsForm', () => {
         title: 'Neue News',
         publishedAt: '2026-04-13T09:00:00.000Z',
       })
-    ).toEqual(['contentBlocks']);
+    ).toEqual([]);
   });
 
   it('rejects oversized content block bodies', () => {
@@ -97,5 +97,15 @@ describe('validateNewsForm', () => {
         contentBlocks: [{ body: `<p>${'x'.repeat(50_001)}</p>` }],
       })
     ).toEqual(['contentBlocks']);
+  });
+
+  it('accepts a news form without source url', () => {
+    expect(
+      validateNewsForm({
+        title: 'Neue News',
+        publishedAt: '2026-04-13T09:00:00.000Z',
+        sourceUrl: { url: '' },
+      })
+    ).toEqual([]);
   });
 });

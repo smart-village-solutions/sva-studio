@@ -325,6 +325,7 @@ describe('OrganizationDetailPage', () => {
           displayName: 'Zoe Zebra',
           email: 'zoe@example.org',
           status: 'active',
+          mainserverUserApplicationSecretSet: false,
           roles: [],
         },
         {
@@ -333,6 +334,7 @@ describe('OrganizationDetailPage', () => {
           displayName: 'Anna Admin',
           email: 'anna@example.org',
           status: 'active',
+          mainserverUserApplicationSecretSet: false,
           roles: [],
         },
       ])

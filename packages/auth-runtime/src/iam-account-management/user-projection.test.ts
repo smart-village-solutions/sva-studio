@@ -58,6 +58,7 @@ const listUser = (overrides: Partial<IamUserListItem> = {}): IamUserListItem => 
   email: 'max@example.com',
   status: 'active',
   roles: [],
+  mainserverUserApplicationSecretSet: false,
   ...overrides,
 });
 
@@ -199,7 +200,6 @@ describe('user projection', () => {
         external_role_name: 'news.editor',
       },
     ]);
-
     const users = await applyCanonicalUserListProjection({
       instanceId: 'de-musterhausen',
       users: [
@@ -235,5 +235,6 @@ describe('user projection', () => {
     expect(users[1]?.roles).toEqual([]);
     expect(users[1]?.keycloakRoles).toBeUndefined();
     expect(state.resolveRolesByExternalNames).not.toHaveBeenCalled();
+    expect(state.readIdentityUserAttributes).not.toHaveBeenCalled();
   });
 });

@@ -192,6 +192,25 @@ describe('deriveIamRuntimeDiagnostics', () => {
 
     expect(
       deriveIamRuntimeDiagnostics({
+        code: 'mainserver_provisioning_failed',
+        status: 502,
+        details: {
+          dependency: 'sva_mainserver',
+          reason_code: 'mainserver_upstream_failure',
+        },
+      })
+    ).toEqual({
+      classification: 'registry_or_provisioning_drift',
+      recommendedAction: 'provisioning_pruefen',
+      safeDetails: {
+        dependency: 'sva_mainserver',
+        reason_code: 'mainserver_upstream_failure',
+      },
+      status: 'degradiert',
+    });
+
+    expect(
+      deriveIamRuntimeDiagnostics({
         code: 'forbidden',
         status: 403,
         details: {

@@ -42,6 +42,8 @@ export const usersAdminDEResources = {
     syncing: 'Synchronisiert ...',
     sendPasswordSetupEmail: 'Passwort-Einladung erneut senden',
     sendingPasswordSetupEmail: 'Passwort-Einladung wird gesendet ...',
+    reprovisionMainserverData: 'Mainserver-Daten aktualisieren',
+    reprovisioningMainserverData: 'Mainserver-Daten werden aktualisiert ...',
     retry: 'Erneut versuchen',
   },
   filters: {
@@ -78,6 +80,9 @@ export const usersAdminDEResources = {
     singleDescription: 'Die ausgewählte Person wird deaktiviert.',
     bulkTitle: 'Mehrere Nutzer deaktivieren',
     bulkDescription: 'Alle markierten Nutzer werden deaktiviert (maximal 50).',
+    bulkReprovisionTitle: 'Mainserver-Daten mehrerer Nutzer aktualisieren',
+    bulkReprovisionDescription:
+      'Die Mainserver-Daten aller markierten Nutzer werden aktualisiert (maximal 50). Teil-Erfolge werden einzeln ausgewiesen.',
     deleteTitle: 'Nutzerkonto dauerhaft löschen',
     deleteDescription:
       'Das ausgewählte Tenant-Konto wird physisch in Studio und Keycloak gelöscht. Inhalte werden entsprechend der wirksamen Tenant- oder Konto-Regel behandelt.',
@@ -90,6 +95,7 @@ export const usersAdminDEResources = {
     save: 'Änderungen speichern',
     saveSuccess: 'Nutzerdaten wurden gespeichert.',
     passwordSetupEmailSuccess: 'Die Einladungs-E-Mail zum Passwort setzen wurde versendet.',
+    mainserverReprovisionSuccess: 'Die Mainserver-Daten wurden aktualisiert.',
     invitationWarning:
       'Der Nutzer wurde angelegt, aber die Einladungs-E-Mail zum Passwort setzen konnte nicht versendet werden.',
     mainserverApplicationIdLabel: 'Mainserver Application-ID',
@@ -213,8 +219,13 @@ export const usersAdminDEResources = {
     loading: 'Nutzer werden geladen ...',
     error: 'Nutzer konnten nicht geladen werden.',
     mutationError: 'Die Nutzeraktion konnte nicht abgeschlossen werden.',
+    bulkReprovisionSuccessCount: '{{count}} Nutzer erfolgreich aktualisiert.',
+    bulkReprovisionFailureCount: '{{count}} Nutzer konnten nicht aktualisiert werden.',
+    bulkReprovisionFailuresLabel: 'Fehlgeschlagene Mainserver-Aktualisierungen',
+    bulkReprovisionFailureItem: '{{id}}: {{code}} - {{message}}',
     resultCount: '{{count}} Nutzer gefunden.',
     statusSwitchLabel: 'Aktivstatus für {{name}}',
+    mainserverCredentialsMissing: 'Mainserver-Daten fehlen',
     syncRunning: 'Synchronisierung läuft ...',
     syncEmpty: 'Keine neuen oder geänderten Benutzer gefunden. {{skippedCount}} übersprungen.',
     syncResult:
@@ -255,6 +266,18 @@ export const usersAdminDEResources = {
       'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.',
     databaseUnavailable:
       'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
+    mainserverConfigurationIncomplete:
+      'Die Mainserver-Integration ist unvollständig konfiguriert. Bitte die Schnittstellen-Konfiguration prüfen.',
+    mainserverCredentialsMissing:
+      'Für die Mainserver-Aktualisierung fehlen die erforderlichen Mainserver-Credentials des ausführenden Kontos.',
+    mainserverCredentialsUnavailable:
+      'Die Mainserver-Credentials des ausführenden Kontos konnten derzeit nicht aufgelöst werden.',
+    mainserverCredentialsInvalid:
+      'Der Mainserver lehnt die hinterlegten Zugangsdaten für die Aktualisierung ab. Bitte die Mainserver-Credentials prüfen.',
+    mainserverUserConflict:
+      'Der Mainserver meldet einen Konflikt für dieses Benutzerkonto. Bitte den vorhandenen Mainserver-Benutzer prüfen.',
+    mainserverProvisioningFailed:
+      'Die Aktualisierung der Mainserver-Daten ist am Mainserver fehlgeschlagen. Bitte die Mainserver-Integration prüfen und erneut versuchen.',
     lastAdminProtection:
       'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.',
     selfProtection: 'Das aktuell angemeldete Konto kann nicht auf diese Weise deaktiviert werden.',

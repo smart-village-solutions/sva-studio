@@ -56,6 +56,7 @@ export const mapUnmappedKeycloakUser = (
     editability: 'blocked',
     diagnostics,
     roles: [],
+    mainserverUserApplicationSecretSet: false,
   };
 };
 

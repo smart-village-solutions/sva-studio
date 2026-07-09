@@ -25,6 +25,12 @@ export type ApiErrorCode =
   | 'tenant_admin_client_secret_missing'
   | 'encryption_not_configured'
   | 'database_unavailable'
+  | 'mainserver_configuration_incomplete'
+  | 'mainserver_credentials_missing'
+  | 'mainserver_credentials_unavailable'
+  | 'mainserver_credentials_invalid'
+  | 'mainserver_user_conflict'
+  | 'mainserver_provisioning_failed'
   | 'last_admin_protection'
   | 'self_protection'
   | 'feature_disabled'
@@ -219,6 +225,7 @@ export type IamUserListItem = {
   readonly lastLoginAt?: string;
   readonly roles: readonly IamUserRoleAssignment[];
   readonly keycloakRoles?: readonly string[];
+  readonly mainserverUserApplicationSecretSet: boolean;
 };
 
 export type IamUserDetail = IamUserListItem & {

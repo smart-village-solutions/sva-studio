@@ -454,7 +454,7 @@ describe('News editor pages', () => {
     vi.mocked(fetchIamContentHistory).mockResolvedValue([]);
   });
 
-  it('shows validation feedback before creating invalid news', async () => {
+  it('allows creating news without content body', async () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
@@ -465,13 +465,13 @@ describe('News editor pages', () => {
     clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
-      expect(screen.getByText('Bitte korrigieren Sie die markierten Felder.')).toBeTruthy();
-      expect(screen.getAllByText('Der Inhalt ist erforderlich.').length).toBeGreaterThan(0);
+      expect(createNews).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Neue News',
+          contentBlocks: [expect.objectContaining({ body: '' })],
+        })
+      );
     });
-
-    expect(screen.getByLabelText('Inhalt').getAttribute('aria-invalid')).toBe('true');
-
-    expect(createNews).not.toHaveBeenCalled();
   });
 
   it('prefills the author field for new entries when an initial author is provided', async () => {
@@ -482,7 +482,7 @@ describe('News editor pages', () => {
     });
   });
 
-  it('rejects HTML-only body content before creating a news entry', async () => {
+  it('allows creating news with html-only body content', async () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
@@ -494,10 +494,13 @@ describe('News editor pages', () => {
     clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
-      expect(screen.getAllByText('Der Inhalt ist erforderlich.').length).toBeGreaterThan(0);
+      expect(createNews).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Neue News',
+          contentBlocks: [expect.objectContaining({ intro: 'Kurztext', body: '<p><br></p>' })],
+        })
+      );
     });
-
-    expect(createNews).not.toHaveBeenCalled();
   });
 
   it('creates a draft by default when no publication mode is selected', async () => {

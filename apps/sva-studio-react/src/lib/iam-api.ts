@@ -123,6 +123,13 @@ export type UpdateMyProfilePayload = {
   readonly timezone?: string;
 };
 
+export type BulkReprovisionMainserverUsersResult = Readonly<{
+  successes: readonly { id: string }[];
+  failures: readonly { id: string; code: string; message: string }[];
+  successCount: number;
+  failureCount: number;
+}>;
+
 export type CreateRolePayload = {
   readonly roleName: string;
   readonly displayName?: string;
@@ -547,6 +554,15 @@ export const sendPasswordSetupEmail = async (
     true
   );
 
+export const reprovisionMainserverUser = async (
+  userId: string
+): Promise<ApiItemResponse<{ status: 'updated' }>> =>
+  postJson<ApiItemResponse<{ status: 'updated' }>, Record<string, never>>(
+    `/api/v1/iam/users/${userId}/reprovision-mainserver`,
+    {},
+    true
+  );
+
 export const deactivateUser = async (userId: string): Promise<ApiItemResponse<{ id: string }>> =>
   postJson<ApiItemResponse<{ id: string }>, Record<string, never>>(
     `/api/v1/iam/users/${userId}/deactivate`,
@@ -575,6 +591,15 @@ export const bulkDeactivateUsers = async (
     ApiItemResponse<{ deactivatedUserIds: readonly string[]; count: number }>,
     { userIds: readonly string[] }
   >('/api/v1/iam/users/bulk-deactivate', { userIds }, true);
+
+export const bulkReprovisionMainserverUsers = async (
+  userIds: readonly string[]
+): Promise<ApiItemResponse<BulkReprovisionMainserverUsersResult>> =>
+  requestJson<ApiItemResponse<BulkReprovisionMainserverUsersResult>>(
+    '/api/v1/iam/users/bulk-reprovision-mainserver',
+    createJsonMutationRequestInit('POST', { userIds }, { idempotent: true }),
+    { timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS }
+  );
 
 export const syncUsersFromKeycloak = async (): Promise<ApiItemResponse<IamUserImportSyncReport>> =>
   requestJson<ApiItemResponse<IamUserImportSyncReport>>(

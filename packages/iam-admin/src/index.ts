@@ -133,6 +133,14 @@ export {
   type BulkDeactivateAuthenticatedRequestContext,
   type BulkDeactivateHandlerDeps,
 } from './user-bulk-deactivate-handler.js';
+export {
+  createBulkReprovisionMainserverHandlerInternal,
+  type BulkReprovisionMainserverAuthenticatedRequestContext,
+  type BulkReprovisionMainserverActor,
+  type BulkReprovisionMainserverFailure,
+  type BulkReprovisionMainserverHandlerDeps,
+  type BulkReprovisionMainserverResult,
+} from './user-bulk-reprovision-mainserver-handler.js';
 
 export {
   createCreateUserHandlerInternal,

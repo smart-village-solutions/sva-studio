@@ -56,4 +56,24 @@ describe('userErrorMessage', () => {
       } as never)
     ).toBe(t('admin.users.errors.unexpectedClient', { message: 'connection reset' }));
   });
+
+  it('maps mainserver reprovisioning errors to dedicated user messages', () => {
+    expect(
+      userErrorMessage({
+        name: 'IamHttpError',
+        status: 409,
+        code: 'mainserver_user_conflict',
+        message: 'Conflict',
+      } as never)
+    ).toBe(t('admin.users.errors.mainserverUserConflict'));
+
+    expect(
+      userErrorMessage({
+        name: 'IamHttpError',
+        status: 504,
+        code: 'mainserver_provisioning_failed',
+        message: 'Timeout',
+      } as never)
+    ).toBe(t('admin.users.errors.mainserverProvisioningFailed'));
+  });
 });

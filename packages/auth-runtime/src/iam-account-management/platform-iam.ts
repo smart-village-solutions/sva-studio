@@ -104,6 +104,7 @@ const mapPlatformUser = (
   displayName: resolveDisplayName(user),
   email: user.email,
   status: mapUserStatus(user),
+  mainserverUserApplicationSecretSet: false,
   roles: [...new Set(roleNames.filter((roleName) => PLATFORM_PROFILE_ROLES.has(roleName)))].map((roleName) => ({
     roleId: `platform:${roleName}`,
     roleKey: roleName,

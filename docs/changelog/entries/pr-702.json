@@ -1,0 +1,4 @@
+{
+  "prNumber": 702,
+  "body": "Mehrere Verbesserungen in der Benutzer- und News-Verwaltung.\n\n- Mainserver-Daten können in der Nutzerverwaltung jetzt einzeln oder für mehrere markierte Konten aktualisiert werden. Fehlgeschlagene Aktualisierungen werden je Konto mit Grund angezeigt.\n- Fehlende Mainserver-Daten sind in der Nutzerliste direkt sichtbar.\n- Symbol-Schaltflächen zeigen jetzt verständliche Tooltips, und News können bei Bedarf auch ohne Inhaltstext angelegt werden."
+}

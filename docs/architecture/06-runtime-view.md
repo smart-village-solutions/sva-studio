@@ -589,14 +589,15 @@ Fehlerpfad:
 1. `system_admin` oder ein anderer tenantlokal berechtigter Admin öffnet `/admin/users`.
 2. Liste wird paginiert über `GET /api/v1/iam/users` geladen.
 3. Bearbeitung erfolgt in `/admin/users/$userId` per Tabs und `PATCH /api/v1/iam/users/$userId`.
-4. Rollen-Änderungen triggern Permission-Invalidierung über `pg_notify`.
-5. `system_admin` verwaltet Custom-Rollen auf `/admin/roles` mit `POST/PATCH/DELETE /api/v1/iam/roles`.
-6. Auf Tenant-Hosts löst der Backend-Service den Adminpfad strikt aus `iam.instances.authRealm` plus `tenantAdminClient.clientId` und tenantlokalem Admin-Secret auf und führt Rollen- und Nutzer-CRUD Keycloak-First innerhalb desselben Tenant-Realms aus.
-7. Root-/Plattform-Pfade verwenden einen separaten Plattform-Admin-Client nur für Instanz-Provisioning, Reconcile und explizites Break-Glass.
-8. Beim Löschen einer Custom-Rolle entfernt der Service nach erfolgreichem Tenant-Sync zuerst direkte Benutzer- und Gruppenzuordnungen der Rolle und danach das lokale IAM-Mapping.
-9. Die Admin-UI zeigt vor dem Bestätigen nur eine allgemeine Warnung an, dass damit auch bestehende Benutzer- und Gruppenzuordnungen entfernt werden.
-10. Bei Erfolg werden `role.sync_succeeded` und `role.created|updated|deleted` auditierbar protokolliert; der Löschpfad ergänzt dabei Zähler für entfernte Benutzer- und Gruppenzuordnungen.
-11. Bei Fehlern werden `sync_state`, `last_error_code`, Metriken und `role.sync_failed` aktualisiert.
+4. Von der Detailansicht aus können Admins zusätzlich Passwort-Einladungen erneut auslösen und Mainserver-Credentials über `POST /api/v1/iam/users/$userId/reprovision-mainserver` neu provisionieren.
+5. Rollen-Änderungen triggern Permission-Invalidierung über `pg_notify`.
+6. `system_admin` verwaltet Custom-Rollen auf `/admin/roles` mit `POST/PATCH/DELETE /api/v1/iam/roles`.
+7. Auf Tenant-Hosts löst der Backend-Service den Adminpfad strikt aus `iam.instances.authRealm` plus `tenantAdminClient.clientId` und tenantlokalem Admin-Secret auf und führt Rollen- und Nutzer-CRUD Keycloak-First innerhalb desselben Tenant-Realms aus.
+8. Root-/Plattform-Pfade verwenden einen separaten Plattform-Admin-Client nur für Instanz-Provisioning, Reconcile und explizites Break-Glass.
+9. Beim Löschen einer Custom-Rolle entfernt der Service nach erfolgreichem Tenant-Sync zuerst direkte Benutzer- und Gruppenzuordnungen der Rolle und danach das lokale IAM-Mapping.
+10. Die Admin-UI zeigt vor dem Bestätigen nur eine allgemeine Warnung an, dass damit auch bestehende Benutzer- und Gruppenzuordnungen entfernt werden.
+11. Bei Erfolg werden `role.sync_succeeded` und `role.created|updated|deleted` auditierbar protokolliert; der Löschpfad ergänzt dabei Zähler für entfernte Benutzer- und Gruppenzuordnungen.
+12. Bei Fehlern werden `sync_state`, `last_error_code`, Metriken und `role.sync_failed` aktualisiert.
 
 Fehlerpfad:
 

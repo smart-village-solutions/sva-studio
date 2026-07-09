@@ -98,8 +98,11 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
     groupMembershipById,
     inactivePermissionTrace,
     isLoadingTimeline,
+    isReprovisioningMainserverData,
     isSaving,
     isSendingPasswordSetupEmail,
+    mainserverReprovisionSuccess,
+    onReprovisionMainserverData,
     onSave,
     onSendPasswordSetupEmail,
     onTabIntent,
@@ -235,6 +238,16 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
             {isSendingPasswordSetupEmail
               ? t('admin.users.actions.sendingPasswordSetupEmail')
               : t('admin.users.actions.sendPasswordSetupEmail')}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void onReprovisionMainserverData()}
+            disabled={isReprovisioningMainserverData}
+          >
+            {isReprovisioningMainserverData
+              ? t('admin.users.actions.reprovisioningMainserverData')
+              : t('admin.users.actions.reprovisionMainserverData')}
           </Button>
           <Button type="button" variant="outline" onClick={retryUserLoad}>
             {t('admin.users.actions.retry')}
@@ -777,6 +790,11 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
         {passwordSetupEmailSuccess ? (
           <Alert className="border-primary/40 bg-primary/10 text-primary" role="status">
             <AlertDescription>{t('admin.users.edit.passwordSetupEmailSuccess')}</AlertDescription>
+          </Alert>
+        ) : null}
+        {mainserverReprovisionSuccess ? (
+          <Alert className="border-primary/40 bg-primary/10 text-primary" role="status">
+            <AlertDescription>{t('admin.users.edit.mainserverReprovisionSuccess')}</AlertDescription>
           </Alert>
         ) : null}
 

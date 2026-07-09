@@ -10,6 +10,7 @@ const userListItem = {
   email: 'alice@example.com',
   status: 'active',
   roles: [],
+  mainserverUserApplicationSecretSet: false,
 } satisfies IamUserListItem;
 
 const userDetail = {

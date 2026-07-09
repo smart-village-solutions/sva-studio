@@ -207,27 +207,6 @@ const isStrictlyValidCompatibilityDate = (value: string): boolean => {
   return isValidDateString(value);
 };
 
-const readCompatibilityContentBlocks = (values: Record<string, unknown>): NewsContentBlockFormValue[] => {
-  const rawValue = values.contentBlocks;
-  if (Array.isArray(rawValue) === false) {
-    return [];
-  }
-
-  return rawValue.filter((entry): entry is NewsContentBlockFormValue => {
-    if (!entry || typeof entry !== 'object') {
-      return false;
-    }
-
-    const candidate = entry as Record<string, unknown>;
-    return (
-      typeof candidate.title === 'string' &&
-      typeof candidate.intro === 'string' &&
-      typeof candidate.body === 'string' &&
-      Array.isArray(candidate.mediaContents)
-    );
-  });
-};
-
 const usesLegacyPageCompatibility = (values: Record<string, unknown>) =>
   'publishedAt' in values ||
   'publicationDate' in values ||
@@ -287,27 +266,6 @@ export const newsDetailFormSchema = z
         path: ['scheduledPublicationAt'],
         message: 'scheduledPublicationAt',
       });
-    }
-
-    if (getVisibleTextLength(values.contentBody) === 0) {
-      const compatibilityBlocks = readCompatibilityContentBlocks(values as Record<string, unknown>);
-      const fallbackBody = compatibilityBlocks[0]?.body ?? '';
-
-      if (getVisibleTextLength(fallbackBody) === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['contentBody'],
-          message: 'contentBody',
-        });
-
-        if (compatibilityMode) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['contentBlocks'],
-            message: 'contentBlocks',
-          });
-        }
-      }
     }
 
     const compatibilityPublishedAt = readCompatibilityString(values as Record<string, unknown>, 'publishedAt');

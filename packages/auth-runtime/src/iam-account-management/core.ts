@@ -1,9 +1,11 @@
 import { bulkDeactivateInternal } from './user-bulk-deactivate-handler.js';
+import { bulkReprovisionMainserverInternal } from './user-bulk-reprovision-mainserver-handler.js';
 import { createUserInternal } from './user-create-handler.js';
 import { deactivateUserInternal } from './user-deactivate-handler.js';
 import { deleteUserInternal } from './user-delete-handler.js';
 import { syncUsersFromKeycloakInternal } from './user-import-sync-handler.js';
 import { sendPasswordSetupEmailInternal } from './user-password-setup-email-handler.js';
+import { reprovisionMainserverUserInternal } from './user-reprovision-mainserver-handler.js';
 import { getMyProfileInternal, updateMyProfileInternal } from './profile-handlers.js';
 import { reconcilePlaceholderInternal } from './reconcile-handler.js';
 import { listPermissionsInternal, listRolesInternal } from './roles-handlers.js';
@@ -29,6 +31,9 @@ export const createUserHandler = async (request: Request): Promise<Response> =>
 export const sendPasswordSetupEmailHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, sendPasswordSetupEmailInternal);
 
+export const reprovisionMainserverUserHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, reprovisionMainserverUserInternal);
+
 export const updateUserHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, updateUserInternal);
 
@@ -40,6 +45,9 @@ export const deleteUserHandler = async (request: Request): Promise<Response> =>
 
 export const bulkDeactivateUsersHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, bulkDeactivateInternal);
+
+export const bulkReprovisionMainserverUsersHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, bulkReprovisionMainserverInternal);
 
 export const syncUsersFromKeycloakHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, syncUsersFromKeycloakInternal);

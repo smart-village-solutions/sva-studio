@@ -289,27 +289,6 @@ export const newsDetailFormSchema = z
       });
     }
 
-    if (getVisibleTextLength(values.contentBody) === 0) {
-      const compatibilityBlocks = readCompatibilityContentBlocks(values as Record<string, unknown>);
-      const fallbackBody = compatibilityBlocks[0]?.body ?? '';
-
-      if (getVisibleTextLength(fallbackBody) === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['contentBody'],
-          message: 'contentBody',
-        });
-
-        if (compatibilityMode) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['contentBlocks'],
-            message: 'contentBlocks',
-          });
-        }
-      }
-    }
-
     const compatibilityPublishedAt = readCompatibilityString(values as Record<string, unknown>, 'publishedAt');
     if (
       compatibilityPublishedAt &&

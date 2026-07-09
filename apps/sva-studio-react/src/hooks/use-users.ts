@@ -3,6 +3,7 @@ import React from 'react';
 
 import {
   asIamError,
+  bulkReprovisionMainserverUsers,
   bulkDeactivateUsers,
   createUser,
   deactivateUser,
@@ -51,6 +52,9 @@ type UseUsersResult = {
   readonly deactivateUser: (userId: string) => Promise<boolean>;
   readonly deleteUser: (userId: string) => Promise<boolean>;
   readonly bulkDeactivate: (userIds: readonly string[]) => Promise<boolean>;
+  readonly bulkReprovisionMainserver: (
+    userIds: readonly string[]
+  ) => Promise<import('../lib/iam-api').BulkReprovisionMainserverUsersResult | null>;
   readonly syncUsersFromKeycloak: () => Promise<
     | { readonly ok: true; readonly report: IamUserImportSyncReport }
     | { readonly ok: false; readonly error: IamHttpError }
@@ -268,6 +272,13 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
     bulkDeactivate: async (userIds) => {
       const response = await mutate(() => bulkDeactivateUsers(userIds), 'user_bulk_deactivate');
       return Boolean(response);
+    },
+    bulkReprovisionMainserver: async (userIds) => {
+      const response = await mutate(
+        () => bulkReprovisionMainserverUsers(userIds),
+        'user_bulk_reprovision_mainserver'
+      );
+      return response?.data ?? null;
     },
     syncUsersFromKeycloak: async () => {
       logBrowserOperationStart(usersLogger, 'user_sync_keycloak_started', {

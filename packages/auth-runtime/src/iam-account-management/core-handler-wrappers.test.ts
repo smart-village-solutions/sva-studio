@@ -4,6 +4,7 @@ const state = vi.hoisted(() => ({
   withAuthenticatedIamHandler: vi.fn(),
   userHandlers: {
     bulkDeactivateInternal: vi.fn(),
+    bulkReprovisionMainserverInternal: vi.fn(),
     createUserInternal: vi.fn(),
     deactivateUserInternal: vi.fn(),
     deleteUserInternal: vi.fn(),
@@ -11,6 +12,7 @@ const state = vi.hoisted(() => ({
     getUserInternal: vi.fn(),
     getUserTimelineInternal: vi.fn(),
     listUsersInternal: vi.fn(),
+    reprovisionMainserverUserInternal: vi.fn(),
     sendPasswordSetupEmailInternal: vi.fn(),
     syncUsersFromKeycloakInternal: vi.fn(),
     updateMyProfileInternal: vi.fn(),
@@ -33,6 +35,9 @@ vi.mock('./core-shared.js', () => ({
 vi.mock('./user-bulk-deactivate-handler.js', () => ({
   bulkDeactivateInternal: state.userHandlers.bulkDeactivateInternal,
 }));
+vi.mock('./user-bulk-reprovision-mainserver-handler.js', () => ({
+  bulkReprovisionMainserverInternal: state.userHandlers.bulkReprovisionMainserverInternal,
+}));
 vi.mock('./user-create-handler.js', () => ({
   createUserInternal: state.userHandlers.createUserInternal,
 }));
@@ -47,6 +52,9 @@ vi.mock('./user-import-sync-handler.js', () => ({
 }));
 vi.mock('./user-password-setup-email-handler.js', () => ({
   sendPasswordSetupEmailInternal: state.userHandlers.sendPasswordSetupEmailInternal,
+}));
+vi.mock('./user-reprovision-mainserver-handler.js', () => ({
+  reprovisionMainserverUserInternal: state.userHandlers.reprovisionMainserverUserInternal,
 }));
 vi.mock('./profile-handlers.js', () => ({
   getMyProfileInternal: state.userHandlers.getMyProfileInternal,
@@ -92,10 +100,12 @@ describe('IAM core handler wrappers', () => {
     await module.getUserTimelineHandler(request);
     await module.createUserHandler(request);
     await module.sendPasswordSetupEmailHandler(request);
+    await module.reprovisionMainserverUserHandler(request);
     await module.updateUserHandler(request);
     await module.deactivateUserHandler(request);
     await module.deleteUserHandler(request);
     await module.bulkDeactivateUsersHandler(request);
+    await module.bulkReprovisionMainserverUsersHandler(request);
     await module.syncUsersFromKeycloakHandler(request);
     await module.updateMyProfileHandler(request);
     await module.getMyProfileHandler(request);
@@ -106,10 +116,12 @@ describe('IAM core handler wrappers', () => {
       [request, state.userHandlers.getUserTimelineInternal],
       [request, state.userHandlers.createUserInternal],
       [request, state.userHandlers.sendPasswordSetupEmailInternal],
+      [request, state.userHandlers.reprovisionMainserverUserInternal],
       [request, state.userHandlers.updateUserInternal],
       [request, state.userHandlers.deactivateUserInternal],
       [request, state.userHandlers.deleteUserInternal],
       [request, state.userHandlers.bulkDeactivateInternal],
+      [request, state.userHandlers.bulkReprovisionMainserverInternal],
       [request, state.userHandlers.syncUsersFromKeycloakInternal],
       [request, state.userHandlers.updateMyProfileInternal],
       [request, state.userHandlers.getMyProfileInternal],

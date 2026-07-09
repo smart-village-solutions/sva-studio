@@ -272,6 +272,36 @@ describe('UserEditPage', () => {
     expect(screen.getByText('Die Einladungs-E-Mail zum Passwort setzen wurde versendet.')).toBeTruthy();
   });
 
+  it('reprovisions mainserver data and shows a success notice', async () => {
+    const reprovisionMainserverData = vi.fn(async () => true);
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+      resendPasswordSetupEmail: vi.fn(async () => true),
+      reprovisionMainserverData,
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Daten aktualisieren' }));
+
+    await waitFor(() => expect(reprovisionMainserverData).toHaveBeenCalledTimes(1));
+    expect(screen.getByText('Die Mainserver-Daten wurden aktualisiert.')).toBeTruthy();
+  });
+
   it('detects form changes without serializing the whole form', () => {
     const baseline = {
       firstName: 'Alice',
@@ -1243,6 +1273,30 @@ describe('UserEditPage', () => {
     ],
     ['keycloak_unavailable', 'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.'],
     ['database_unavailable', 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.'],
+    [
+      'mainserver_configuration_incomplete',
+      'Die Mainserver-Integration ist unvollständig konfiguriert. Bitte die Schnittstellen-Konfiguration prüfen.',
+    ],
+    [
+      'mainserver_credentials_missing',
+      'Für die Mainserver-Aktualisierung fehlen die erforderlichen Mainserver-Credentials des ausführenden Kontos.',
+    ],
+    [
+      'mainserver_credentials_unavailable',
+      'Die Mainserver-Credentials des ausführenden Kontos konnten derzeit nicht aufgelöst werden.',
+    ],
+    [
+      'mainserver_credentials_invalid',
+      'Der Mainserver lehnt die hinterlegten Zugangsdaten für die Aktualisierung ab. Bitte die Mainserver-Credentials prüfen.',
+    ],
+    [
+      'mainserver_user_conflict',
+      'Der Mainserver meldet einen Konflikt für dieses Benutzerkonto. Bitte den vorhandenen Mainserver-Benutzer prüfen.',
+    ],
+    [
+      'mainserver_provisioning_failed',
+      'Die Aktualisierung der Mainserver-Daten ist am Mainserver fehlgeschlagen. Bitte die Mainserver-Integration prüfen und erneut versuchen.',
+    ],
     ['last_admin_protection', 'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.'],
     ['self_protection', 'Das aktuell angemeldete Konto kann nicht auf diese Weise deaktiviert werden.'],
   ])('maps %s save errors to the localized alert message', (code, expectedMessage) => {

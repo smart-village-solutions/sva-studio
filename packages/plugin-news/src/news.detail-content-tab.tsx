@@ -97,7 +97,6 @@ function NewsContentTextSection({
       <div className="space-y-1">
         <label id={bodyLabelId} htmlFor={bodyField.id} className="text-sm font-medium">
           {pt('fields.contentBody')}
-          <span aria-hidden="true" className="ml-1 before:content-['*']" />
         </label>
         <RichTextHtmlEditor
           id={bodyField.id}

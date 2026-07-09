@@ -6,6 +6,7 @@ import { useUser } from './use-user';
 const getUserMock = vi.fn();
 const updateUserMock = vi.fn();
 const sendPasswordSetupEmailMock = vi.fn();
+const reprovisionMainserverUserMock = vi.fn();
 const asIamErrorMock = vi.fn();
 const authMockValue = {
   user: {
@@ -33,6 +34,7 @@ vi.mock('../lib/iam-api', () => ({
     }
   },
   getUser: (...args: unknown[]) => getUserMock(...args),
+  reprovisionMainserverUser: (...args: unknown[]) => reprovisionMainserverUserMock(...args),
   sendPasswordSetupEmail: (...args: unknown[]) => sendPasswordSetupEmailMock(...args),
   updateUser: (...args: unknown[]) => updateUserMock(...args),
   asIamError: (...args: unknown[]) => asIamErrorMock(...args),
@@ -47,6 +49,7 @@ describe('useUser', () => {
     getUserMock.mockReset();
     updateUserMock.mockReset();
     sendPasswordSetupEmailMock.mockReset();
+    reprovisionMainserverUserMock.mockReset();
     asIamErrorMock.mockReset();
     authMockValue.invalidatePermissions.mockReset();
   });
@@ -205,6 +208,54 @@ describe('useUser', () => {
     expect(sendPasswordSetupEmailMock).toHaveBeenCalledWith('user-4');
     expect(result.current.error).toBeNull();
     expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+  });
+
+  it('reprovisions mainserver data successfully and refetches the user', async () => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    getUserMock
+      .mockResolvedValueOnce({
+        data: {
+          id: 'user-44',
+          keycloakSubject: 'subject-44',
+          displayName: 'User Forty Four',
+          status: 'active',
+          roles: [],
+          mainserverUserApplicationSecretSet: false,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 'user-44',
+          keycloakSubject: 'subject-44',
+          displayName: 'User Forty Four',
+          status: 'active',
+          roles: [],
+          mainserverUserApplicationId: 'mainserver-app-44',
+          mainserverUserApplicationSecretSet: true,
+        },
+      });
+    reprovisionMainserverUserMock.mockResolvedValueOnce({
+      data: {
+        status: 'updated',
+      },
+    });
+
+    const { result } = renderHook(() => useUser('user-44'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.user?.mainserverUserApplicationSecretSet).toBe(false);
+    });
+
+    await act(async () => {
+      const updated = await result.current.reprovisionMainserverData?.();
+      expect(updated).toBe(true);
+    });
+
+    expect(reprovisionMainserverUserMock).toHaveBeenCalledWith('user-44');
+    expect(getUserMock).toHaveBeenCalledTimes(2);
+    expect(result.current.user?.mainserverUserApplicationId).toBe('mainserver-app-44');
+    expect(result.current.user?.mainserverUserApplicationSecretSet).toBe(true);
   });
 
   it.each([

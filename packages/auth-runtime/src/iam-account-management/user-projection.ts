@@ -139,15 +139,35 @@ export const applyCanonicalUserListProjection = async (input: {
         })
       )
     );
+  const mainserverCredentialStatesBySubject = new Map(
+    await Promise.all(
+      input.users.map(async (user) => {
+        try {
+          return [
+            user.keycloakSubject,
+            await resolveProjectedMainserverCredentialState(user.keycloakSubject, input.instanceId),
+          ] as const;
+        } catch {
+          return [user.keycloakSubject, DEFAULT_MAINSERVER_CREDENTIAL_STATE] as const;
+        }
+      })
+    )
+  );
 
   return input.users.map((user) => {
     const keycloakRoleNames = keycloakRoleNamesBySubject.get(user.keycloakSubject) ?? null;
+    const mainserverCredentialState =
+      mainserverCredentialStatesBySubject.get(user.keycloakSubject) ?? DEFAULT_MAINSERVER_CREDENTIAL_STATE;
+    const mergedUser = {
+      ...user,
+      mainserverUserApplicationSecretSet: mainserverCredentialState.mainserverUserApplicationSecretSet,
+    };
     if (keycloakRoleNames === null) {
-      return user;
+      return mergedUser;
     }
 
     return {
-      ...user,
+      ...mergedUser,
       keycloakRoles: [...keycloakRoleNames],
     };
   });

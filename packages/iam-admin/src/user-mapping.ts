@@ -83,5 +83,6 @@ export const mapUserRowToListItem = (row: {
     department: row.department ?? undefined,
     lastLoginAt: row.last_login_at ?? undefined,
     roles: mapRoles(row.roles),
+    mainserverUserApplicationSecretSet: false,
   };
 };

@@ -82,6 +82,7 @@ export {
 } from './iam-contents/core.js';
 export {
   bulkDeactivateUsersHandler,
+  bulkReprovisionMainserverUsersHandler,
   createRoleHandler,
   createUserHandler,
   deactivateUserHandler,
@@ -94,6 +95,7 @@ export {
   listRolesHandler,
   listUsersHandler,
   reconcileHandler,
+  reprovisionMainserverUserHandler,
   sendPasswordSetupEmailHandler,
   syncUsersFromKeycloakHandler,
   updateMyProfileHandler,

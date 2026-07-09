@@ -18,9 +18,11 @@ export type AuthRoutePath =
   | '/api/v1/iam/users/sync-keycloak'
   | '/api/v1/iam/users/$userId'
   | '/api/v1/iam/users/$userId/deactivate'
+  | '/api/v1/iam/users/$userId/reprovision-mainserver'
   | '/api/v1/iam/users/$userId/send-password-setup-email'
   | '/api/v1/iam/users/$userId/timeline'
   | '/api/v1/iam/users/bulk-deactivate'
+  | '/api/v1/iam/users/bulk-reprovision-mainserver'
   | '/api/v1/iam/users/me/profile'
   | '/api/v1/iam/organizations'
   | '/api/v1/iam/organizations/$organizationId'
@@ -149,9 +151,11 @@ export const authRoutePaths = [
   '/api/v1/iam/users/sync-keycloak',
   '/api/v1/iam/users/$userId',
   '/api/v1/iam/users/$userId/deactivate',
+  '/api/v1/iam/users/$userId/reprovision-mainserver',
   '/api/v1/iam/users/$userId/send-password-setup-email',
   '/api/v1/iam/users/$userId/timeline',
   '/api/v1/iam/users/bulk-deactivate',
+  '/api/v1/iam/users/bulk-reprovision-mainserver',
   '/api/v1/iam/users/me/profile',
   '/api/v1/iam/organizations',
   '/api/v1/iam/organizations/$organizationId',

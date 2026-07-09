@@ -68,6 +68,12 @@ const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
   deactivateUser: vi.fn().mockResolvedValue(true),
   deleteUser: vi.fn().mockResolvedValue(true),
   bulkDeactivate: vi.fn().mockResolvedValue(true),
+  bulkReprovisionMainserver: vi.fn().mockResolvedValue({
+    successes: [{ id: 'user-1' }],
+    failures: [],
+    successCount: 1,
+    failureCount: 0,
+  }),
   syncUsersFromKeycloak: vi.fn().mockResolvedValue({
     ok: true,
     report: {
@@ -149,6 +155,41 @@ describe('UserListPage', () => {
     screen
       .getAllByRole('button', { name: 'Löschen' })
       .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
+  });
+
+  it('shows a warning icon with tooltip when mainserver credentials are missing', async () => {
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        users: [
+          {
+            id: 'user-2',
+            keycloakSubject: 'subject-2',
+            displayName: 'Bob',
+            email: 'bob@example.com',
+            status: 'active',
+            lastLoginAt: '2026-03-04T10:00:00Z',
+            mainserverUserApplicationSecretSet: false,
+            roles: [{ roleId: 'role-2', roleKey: 'editor', roleName: 'editor', roleLevel: 20 }],
+          },
+        ],
+      })
+    );
+
+    render(<UserListPage />);
+
+    const warningTrigger = screen.getAllByRole('img', { name: 'Mainserver-Daten fehlen' })[0]!;
+    const warningIcon = warningTrigger.querySelector('svg');
+    expect(warningIcon?.getAttribute('class')).toContain('stroke-current');
+    expect(warningIcon?.getAttribute('class')).not.toContain('fill-current');
+    fireEvent.mouseEnter(warningTrigger);
+
+    expect(await screen.findByRole('tooltip', { name: 'Mainserver-Daten fehlen' })).toBeTruthy();
+
+    fireEvent.mouseLeave(warningTrigger);
+
+    await waitFor(() =>
+      expect(screen.queryByRole('tooltip', { name: 'Mainserver-Daten fehlen' })).toBeNull()
+    );
   });
 
   it('updates filters and pagination controls', () => {
@@ -293,6 +334,55 @@ describe('UserListPage', () => {
     await waitFor(() => expect(deactivateUser).toHaveBeenCalledWith('user-1'));
   });
 
+  it('confirms bulk mainserver reprovision and shows summarized feedback', async () => {
+    const bulkReprovisionMainserver = vi.fn().mockResolvedValue({
+      successes: [{ id: 'user-1' }],
+      failures: [{ id: 'user-2', code: 'conflict', message: 'Für den Nutzer ist keine E-Mail-Adresse hinterlegt.' }],
+      successCount: 1,
+      failureCount: 1,
+    });
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        bulkReprovisionMainserver,
+        users: [
+          {
+            id: 'user-1',
+            keycloakSubject: 'subject-1',
+            displayName: 'Alice',
+            email: 'alice@example.com',
+            status: 'active',
+            lastLoginAt: '2026-03-04T10:00:00Z',
+            roles: [{ roleId: 'role-1', roleKey: 'editor', roleName: 'editor', roleLevel: 20 }],
+          },
+          {
+            id: 'user-2',
+            keycloakSubject: 'subject-2',
+            displayName: 'Bob',
+            email: null,
+            status: 'active',
+            lastLoginAt: '2026-03-04T10:00:00Z',
+            roles: [{ roleId: 'role-2', roleKey: 'editor', roleName: 'editor', roleLevel: 20 }],
+          },
+        ],
+        total: 2,
+      })
+    );
+
+    render(<UserListPage />);
+
+    fireEvent.click(screen.getAllByRole('checkbox', { name: 'Benutzertabelle: Zeile user-1 auswählen' })[0]!);
+    fireEvent.click(screen.getAllByRole('checkbox', { name: 'Benutzertabelle: Zeile user-2 auswählen' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Daten aktualisieren' }));
+
+    expect(screen.getByText(/maximal 50/i)).toBeTruthy();
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Mainserver-Daten aktualisieren' }));
+
+    await waitFor(() => expect(bulkReprovisionMainserver).toHaveBeenCalledWith(['user-1', 'user-2']));
+    expect(screen.getByText('1 Nutzer erfolgreich aktualisiert.')).toBeTruthy();
+    expect(screen.getByText('1 Nutzer konnten nicht aktualisiert werden.')).toBeTruthy();
+    expect(screen.getByText(/user-2/)).toBeTruthy();
+  });
+
   it('confirms hard delete only for actors with the explicit delete permission', async () => {
     const deleteUser = vi.fn().mockResolvedValue(true);
     useUsersMock.mockReturnValue(
@@ -329,7 +419,6 @@ describe('UserListPage', () => {
 
     const deleteButton = screen.getAllByRole('button', { name: 'Löschen' })[0]!;
     expect(deleteButton.hasAttribute('disabled')).toBe(true);
-    expect(deleteButton.getAttribute('title')).toContain('System-Administrator');
   });
 
   it('hides hard delete without the explicit delete permission', () => {

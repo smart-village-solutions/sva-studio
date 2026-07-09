@@ -1,7 +1,7 @@
 import type { IamLegalTextTargeting, IamRolePermissionAssignmentScope, IamUuid } from '@sva/iam-core';
 import type { IamPermissionRuntimeScope } from './account-management.js';
 import type { WasteManagementSettingsRecord } from '../waste-management-contract.js';
-export type ApiErrorCode = 'unauthorized' | 'forbidden' | 'not_found' | 'invalid_request' | 'invalid_instance_id' | 'invalid_organization_id' | 'organization_inactive' | 'rate_limited' | 'csrf_validation_failed' | 'idempotency_key_required' | 'idempotency_key_reuse' | 'idempotency_in_progress' | 'keycloak_unavailable' | 'tenant_auth_client_secret_missing' | 'tenant_admin_client_not_configured' | 'tenant_admin_client_secret_missing' | 'encryption_not_configured' | 'database_unavailable' | 'last_admin_protection' | 'self_protection' | 'feature_disabled' | 'conflict' | 'legal_acceptance_required' | 'reauth_required' | 'internal_error';
+export type ApiErrorCode = 'unauthorized' | 'forbidden' | 'not_found' | 'invalid_request' | 'invalid_instance_id' | 'invalid_organization_id' | 'organization_inactive' | 'rate_limited' | 'csrf_validation_failed' | 'idempotency_key_required' | 'idempotency_key_reuse' | 'idempotency_in_progress' | 'keycloak_unavailable' | 'tenant_auth_client_secret_missing' | 'tenant_admin_client_not_configured' | 'tenant_admin_client_secret_missing' | 'encryption_not_configured' | 'database_unavailable' | 'mainserver_configuration_incomplete' | 'mainserver_credentials_missing' | 'mainserver_credentials_unavailable' | 'mainserver_credentials_invalid' | 'mainserver_user_conflict' | 'mainserver_provisioning_failed' | 'last_admin_protection' | 'self_protection' | 'feature_disabled' | 'conflict' | 'legal_acceptance_required' | 'reauth_required' | 'internal_error';
 export declare const iamRuntimeDiagnosticClassifications: readonly ["auth_resolution", "oidc_discovery_or_exchange", "tenant_host_validation", "session_store_or_session_hydration", "actor_resolution_or_membership", "keycloak_dependency", "database_or_schema_drift", "database_mapping_or_membership_inconsistency", "registry_or_provisioning_drift", "keycloak_reconcile", "frontend_state_or_permission_staleness", "legacy_workaround_or_regression", "unknown"];
 export type IamRuntimeDiagnosticClassification = (typeof iamRuntimeDiagnosticClassifications)[number];
 export declare const iamRuntimeDiagnosticStatuses: readonly ["gesund", "degradiert", "recovery_laeuft", "manuelle_pruefung_erforderlich"];
@@ -125,6 +125,7 @@ export type IamUserListItem = {
     readonly lastLoginAt?: string;
     readonly roles: readonly IamUserRoleAssignment[];
     readonly keycloakRoles?: readonly string[];
+    readonly mainserverUserApplicationSecretSet: boolean;
 };
 export type IamUserDetail = IamUserListItem & {
     readonly username?: string;

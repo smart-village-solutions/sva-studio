@@ -85,6 +85,12 @@ const REGISTRY_DRIFT_INPUT_CODES = new Set([
   'tenant_auth_client_secret_missing',
   'tenant_admin_client_not_configured',
   'tenant_admin_client_secret_missing',
+  'mainserver_configuration_incomplete',
+  'mainserver_credentials_missing',
+  'mainserver_credentials_unavailable',
+  'mainserver_credentials_invalid',
+  'mainserver_user_conflict',
+  'mainserver_provisioning_failed',
 ]);
 
 const SESSION_INPUT_CODES = new Set<ApiErrorCode>(['unauthorized', 'reauth_required']);

@@ -42,6 +42,8 @@ export const usersAdminENResources = {
     syncing: 'Syncing ...',
     sendPasswordSetupEmail: 'Resend password invitation',
     sendingPasswordSetupEmail: 'Sending password invitation ...',
+    reprovisionMainserverData: 'Refresh Mainserver data',
+    reprovisioningMainserverData: 'Refreshing Mainserver data ...',
     retry: 'Retry',
   },
   filters: {
@@ -76,6 +78,9 @@ export const usersAdminENResources = {
     singleDescription: 'The selected user will be deactivated.',
     bulkTitle: 'Deactivate multiple users',
     bulkDescription: 'All selected users will be deactivated (max 50).',
+    bulkReprovisionTitle: 'Refresh Mainserver data for multiple users',
+    bulkReprovisionDescription:
+      'The Mainserver data for all selected users will be refreshed (max 50). Partial successes are reported individually.',
     deleteTitle: 'Delete user account permanently',
     deleteDescription:
       'The selected tenant account will be physically deleted in Studio and Keycloak. Owned content is handled according to the effective tenant or account rule.',
@@ -88,6 +93,7 @@ export const usersAdminENResources = {
     save: 'Save changes',
     saveSuccess: 'User data has been saved.',
     passwordSetupEmailSuccess: 'The invitation email for setting the password has been sent.',
+    mainserverReprovisionSuccess: 'The Mainserver data has been refreshed.',
     invitationWarning:
       'The user was created, but the invitation email for setting the password could not be delivered.',
     mainserverApplicationIdLabel: 'Mainserver application ID',
@@ -210,8 +216,13 @@ export const usersAdminENResources = {
     loading: 'Loading users ...',
     error: 'Users could not be loaded.',
     mutationError: 'The user action could not be completed.',
+    bulkReprovisionSuccessCount: '{{count}} users refreshed successfully.',
+    bulkReprovisionFailureCount: '{{count}} users could not be refreshed.',
+    bulkReprovisionFailuresLabel: 'Failed Mainserver refreshes',
+    bulkReprovisionFailureItem: '{{id}}: {{code}} - {{message}}',
     resultCount: '{{count}} users found.',
     statusSwitchLabel: 'Active status for {{name}}',
+    mainserverCredentialsMissing: 'Mainserver data missing',
     syncRunning: 'Synchronization in progress ...',
     syncEmpty: 'No new or changed users found. {{skippedCount}} skipped.',
     syncResult:
@@ -247,6 +258,18 @@ export const usersAdminENResources = {
     keycloakUnavailable:
       'The connection to Keycloak is currently unavailable. Please try again later.',
     databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
+    mainserverConfigurationIncomplete:
+      'The Mainserver integration is configured incompletely. Check the interface configuration.',
+    mainserverCredentialsMissing:
+      'The Mainserver refresh is missing the required Mainserver credentials for the acting account.',
+    mainserverCredentialsUnavailable:
+      'The Mainserver credentials for the acting account could not be resolved right now.',
+    mainserverCredentialsInvalid:
+      'The Mainserver rejected the stored credentials for this refresh. Check the Mainserver credentials.',
+    mainserverUserConflict:
+      'The Mainserver reported a conflict for this user account. Check the existing Mainserver user.',
+    mainserverProvisioningFailed:
+      'Refreshing Mainserver data failed on the Mainserver side. Check the integration and try again.',
     lastAdminProtection: 'The last active system administrator cannot be removed or deactivated.',
     selfProtection: 'The currently signed-in account cannot be deactivated this way.',
     systemAdminDeleteProtection:

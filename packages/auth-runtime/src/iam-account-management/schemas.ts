@@ -82,6 +82,10 @@ export const bulkDeactivateSchema = z.object({
   userIds: z.array(uuidLikeString('Ungültige ID.')).min(1).max(50),
 });
 
+export const bulkReprovisionMainserverSchema = z.object({
+  userIds: uniqueUuidArray(50).min(1),
+});
+
 export const createRoleSchema = z.object({
   roleName: z
     .string()

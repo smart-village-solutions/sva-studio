@@ -143,6 +143,26 @@ describe('news.detail-form', () => {
     })).resolves.not.toHaveProperty('externalId');
   });
 
+  it('accepts news entries without content body and source url', async () => {
+    await expect(newsDetailFormSchema.parseAsync({
+      title: 'News title',
+      author: 'Redaktion',
+      categories: [],
+      contentTeaser: 'Teaser',
+      contentBody: '',
+      contentMedia: [],
+      sourceUrl: { url: '', description: '' },
+      sourceUrlDescription: '',
+      pushNotificationEnabled: false,
+      publicationMode: 'draft',
+      scheduledPublicationAt: '',
+    })).resolves.toMatchObject({
+      title: 'News title',
+      contentBody: '',
+      sourceUrl: { url: '', description: '' },
+    });
+  });
+
   it('omits untouched compatibility defaults from serialized mutations', () => {
     const values = createDefaultNewsDetailFormValues('Redaktion');
 

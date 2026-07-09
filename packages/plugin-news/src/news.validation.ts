@@ -108,9 +108,9 @@ export const validateNewsForm = (input: NewsFormInput): readonly string[] => {
   }
 
   const contentBlocks = input.contentBlocks ?? [];
-  if (contentBlocks.length === 0 || contentBlocks.some((block) => (block.body?.length ?? 0) > 50_000)) {
+  if (contentBlocks.some((block) => (block.body?.length ?? 0) > 50_000)) {
     errors.push('contentBlocks');
-  } else if (contentBlocks.some(hasVisibleBlockBody) === false) {
+  } else if (contentBlocks.length > 0 && contentBlocks.some(hasVisibleBlockBody) === false) {
     errors.push('contentBlocks');
   }
 

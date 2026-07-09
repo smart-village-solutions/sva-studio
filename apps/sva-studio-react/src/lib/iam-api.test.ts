@@ -22,6 +22,7 @@ import {
   archiveInstance,
   assignOrganizationMembership,
   bulkDeactivateUsers,
+  bulkReprovisionMainserverUsers,
   createUser,
   createLegalText,
   createInstance,
@@ -815,6 +816,33 @@ describe('iam-api organization helpers', () => {
     await expect(request).resolves.toMatchObject({ data: { userId: 'user-1' } });
   });
 
+  it('posts to the mainserver reprovisioning endpoint with csrf headers', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { status: 'updated' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { reprovisionMainserverUser } = await import('./iam-api');
+    await expect(reprovisionMainserverUser('user-77')).resolves.toMatchObject({
+      data: { status: 'updated' },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/users/user-77/reprovision-mainserver',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        }),
+        body: JSON.stringify({}),
+      })
+    );
+  });
+
   it('falls back to http status messages when json error payloads omit message and code', async () => {
     vi.stubEnv('NODE_ENV', 'development');
     vi.stubGlobal(
@@ -1283,7 +1311,7 @@ describe('iam-api profile helpers', () => {
     vi.stubEnv('NODE_ENV', 'test');
   });
 
-  it('uses the profile, legal text and bulk deactivate endpoints with the expected contracts', async () => {
+  it('uses the profile, legal text and bulk user endpoints with the expected contracts', async () => {
     const fetchMock = vi.fn().mockImplementation(async () =>
       new Response(JSON.stringify({ data: [] }), {
         status: 200,
@@ -1313,6 +1341,7 @@ describe('iam-api profile helpers', () => {
       targetGroupIds: ['cccccccc-cccc-cccc-cccc-cccccccccccc'],
     });
     await bulkDeactivateUsers(['user-1', 'user-2']);
+    await bulkReprovisionMainserverUsers(['user-1', 'user-2']);
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -1367,6 +1396,17 @@ describe('iam-api profile helpers', () => {
         headers: expect.objectContaining({
           'Idempotency-Key': 'uuid-user-op',
         }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      7,
+      '/api/v1/iam/users/bulk-reprovision-mainserver',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Idempotency-Key': 'uuid-user-op',
+        }),
+        body: JSON.stringify({ userIds: ['user-1', 'user-2'] }),
       })
     );
   });

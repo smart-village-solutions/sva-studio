@@ -16,6 +16,7 @@ const updateUserMock = vi.fn();
 const deactivateUserMock = vi.fn();
 const deleteUserMock = vi.fn();
 const bulkDeactivateUsersMock = vi.fn();
+const bulkReprovisionMainserverUsersMock = vi.fn();
 const syncUsersFromKeycloakMock = vi.fn();
 const authMockValue = {
   user: {
@@ -74,6 +75,7 @@ vi.mock('../lib/iam-api', () => ({
   deactivateUser: (...args: unknown[]) => deactivateUserMock(...args),
   deleteUser: (...args: unknown[]) => deleteUserMock(...args),
   bulkDeactivateUsers: (...args: unknown[]) => bulkDeactivateUsersMock(...args),
+  bulkReprovisionMainserverUsers: (...args: unknown[]) => bulkReprovisionMainserverUsersMock(...args),
   syncUsersFromKeycloak: (...args: unknown[]) => syncUsersFromKeycloakMock(...args),
 }));
 
@@ -127,6 +129,14 @@ describe('useUsers', () => {
     deactivateUserMock.mockResolvedValue({ data: { id: 'user-1' } });
     deleteUserMock.mockResolvedValue(undefined);
     bulkDeactivateUsersMock.mockResolvedValue({ data: { deactivatedUserIds: ['user-1'], count: 1 } });
+    bulkReprovisionMainserverUsersMock.mockResolvedValue({
+      data: {
+        successes: [{ id: 'user-1' }],
+        failures: [],
+        successCount: 1,
+        failureCount: 0,
+      },
+    });
     syncUsersFromKeycloakMock.mockResolvedValue({
       data: {
         outcome: 'success',
@@ -152,6 +162,7 @@ describe('useUsers', () => {
       await result.current.deactivateUser('user-1');
       await result.current.deleteUser('user-1');
       await result.current.bulkDeactivate(['user-1']);
+      await result.current.bulkReprovisionMainserver(['user-1']);
       await result.current.syncUsersFromKeycloak();
     });
 
@@ -159,11 +170,18 @@ describe('useUsers', () => {
     expect(deactivateUserMock).toHaveBeenCalledTimes(1);
     expect(deleteUserMock).toHaveBeenCalledTimes(1);
     expect(bulkDeactivateUsersMock).toHaveBeenCalledTimes(1);
+    expect(bulkReprovisionMainserverUsersMock).toHaveBeenCalledTimes(1);
     expect(syncUsersFromKeycloakMock).toHaveBeenCalledTimes(1);
     expect(browserLoggerMock.info).toHaveBeenCalledWith(
       'user_sync_keycloak_succeeded',
       expect.objectContaining({
         operation: 'user_sync_keycloak',
+      })
+    );
+    expect(browserLoggerMock.info).toHaveBeenCalledWith(
+      'user_bulk_reprovision_mainserver_succeeded',
+      expect.objectContaining({
+        operation: 'user_bulk_reprovision_mainserver',
       })
     );
   });

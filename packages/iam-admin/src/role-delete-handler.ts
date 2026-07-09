@@ -125,8 +125,7 @@ export const createDeleteRoleHandlerInternal =
     Response
   >({
     prepare: async ({ request, context }) => {
-      const resolvedRequest = await resolveDeleteRoleRequest(deps, request, context);
-      return resolvedRequest instanceof Response ? resolvedRequest : resolvedRequest;
+      return resolveDeleteRoleRequest(deps, request, context);
     },
     authorize: async () => ({}),
     parse: async () => undefined,

@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 const TEST_FILES_FLAG = '--testFiles';
+const OPTIONAL_VALUE_FLAGS = new Set(['--changed']);
 
 export const normalizeVitestRunArgs = (args: readonly string[]): string[] => {
   const passthroughArgs: string[] = [];
@@ -41,7 +42,14 @@ export const normalizeVitestRunArgs = (args: readonly string[]): string[] => {
     return passthroughArgs;
   }
 
-  return [...passthroughArgs, '--', ...testFileArgs];
+  const conflictingOptionalValueFlag = passthroughArgs.find((argument) => OPTIONAL_VALUE_FLAGS.has(argument));
+  if (conflictingOptionalValueFlag) {
+    throw new Error(
+      `${conflictingOptionalValueFlag} kann nicht mit --testFiles kombiniert werden. Verwende stattdessen direkte Vitest-Dateifilter ohne ${conflictingOptionalValueFlag}.`
+    );
+  }
+
+  return [...passthroughArgs, ...testFileArgs];
 };
 
 export const isRunVitestTargetEntrypoint = (

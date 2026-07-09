@@ -17,7 +17,6 @@ describe('run-vitest-target', () => {
       '--config',
       'vitest.config.ts',
       '--passWithNoTests',
-      '--',
       'src/runtime-health.test.ts',
     ]);
   });
@@ -34,7 +33,6 @@ describe('run-vitest-target', () => {
     ).toEqual([
       '--config',
       'vitest.config.ts',
-      '--',
       'src/runtime-health.test.ts',
       'src/runtime-auth.test.ts',
     ]);
@@ -56,15 +54,28 @@ describe('run-vitest-target', () => {
       '--reporter=verbose',
       '--config',
       'vitest.config.ts',
-      '--',
       'tests/foo.test.ts',
     ]);
   });
 
-  it('protects test file filters from options with optional values', () => {
-    expect(normalizeVitestRunArgs(['--changed', '--testFiles=src/runtime-health.test.ts'])).toEqual([
-      '--changed',
-      '--',
+  it('rejects combining test file filters with options that accept optional values', () => {
+    expect(() => normalizeVitestRunArgs(['--changed', '--testFiles=src/runtime-health.test.ts'])).toThrow(
+      '--changed kann nicht mit --testFiles kombiniert werden.'
+    );
+  });
+
+  it('keeps plain positional filters ahead of explicit test file filters', () => {
+    expect(
+      normalizeVitestRunArgs([
+        'src/server',
+        '--config',
+        'vitest.config.ts',
+        '--testFiles=src/runtime-health.test.ts',
+      ])
+    ).toEqual([
+      'src/server',
+      '--config',
+      'vitest.config.ts',
       'src/runtime-health.test.ts',
     ]);
   });

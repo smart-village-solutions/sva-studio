@@ -60,19 +60,12 @@ export const getRootHead = () => ({
       title: 'SVA Studio',
     },
   ],
-  links: import.meta.env.DEV
-    ? [
-        {
-          rel: 'stylesheet',
-          href: appCssHref,
-        },
-      ]
-    : [
-        {
-          rel: 'stylesheet',
-          href: appCssHref,
-        },
-      ],
+  links: [
+    {
+      rel: 'stylesheet',
+      href: appCssHref,
+    },
+  ],
 });
 
 export const Route = createRootRoute({

@@ -106,8 +106,7 @@ const authorizeMutation = async (
 };
 
 const parseGenericItemOrResponse = async (request: Request): Promise<SvaMainserverGenericItemInput | Response> => {
-  const genericItem = await parseGenericItemInput(request);
-  return isResponse(genericItem) ? genericItem : genericItem;
+  return parseGenericItemInput(request);
 };
 
 const handleListRequest = async (

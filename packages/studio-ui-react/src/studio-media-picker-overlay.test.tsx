@@ -68,6 +68,10 @@ describe('useStudioMediaPickerOverlay', () => {
 
     act(() => {
       result.current.updateMetadataField('title', 'Updated title');
+      result.current.updateMetadataField('altText', '   ');
+      result.current.updateMetadataField('description', '');
+      result.current.updateMetadataField('copyright', '  ');
+      result.current.updateMetadataField('license', '');
     });
 
     await act(async () => {
@@ -76,7 +80,13 @@ describe('useStudioMediaPickerOverlay', () => {
 
     expect(saveAssetMetadata).toHaveBeenCalledWith(
       asset.id,
-      expect.objectContaining({ title: 'Updated title' })
+      expect.objectContaining({
+        title: 'Updated title',
+        altText: null,
+        description: null,
+        copyright: null,
+        license: null,
+      })
     );
     expect(onAccept).toHaveBeenCalledWith(
       expect.objectContaining({

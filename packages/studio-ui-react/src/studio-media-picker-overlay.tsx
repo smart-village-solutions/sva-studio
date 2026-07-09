@@ -7,6 +7,7 @@ import type {
   StudioMediaPickerAssetDetail,
   StudioMediaPickerAssetSummary,
   StudioMediaPickerMetadataDraft,
+  StudioMediaPickerMetadataSaveInput,
   StudioMediaPickerMode,
   StudioMediaPickerOverlayLabels,
   StudioMediaPickerReviewSource,
@@ -17,6 +18,7 @@ export type {
   StudioMediaPickerAssetSummary,
   StudioMediaPickerErrorCode,
   StudioMediaPickerMetadataDraft,
+  StudioMediaPickerMetadataSaveInput,
   StudioMediaPickerMode,
   StudioMediaPickerOverlayLabels,
   StudioMediaPickerReviewSource,
@@ -117,7 +119,6 @@ const StudioMediaPickerOverlayBody = ({
         browseActionLabel={labels.upload.browseAction}
         description={labels.upload.description}
         inputTestId="media-upload-input"
-        isSupportedUploadFile={isSupportedUploadFile}
         onFileSelected={(file) => void onUploadFile(file)}
         phase={uploadPhase}
         regionLabel={labels.upload.regionLabel}

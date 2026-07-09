@@ -1,6 +1,10 @@
 import React from 'react';
 
-import type { StudioMediaPickerAssetDetail, StudioMediaPickerMetadataDraft } from './studio-media-picker-overlay.shared.js';
+import type {
+  StudioMediaPickerAssetDetail,
+  StudioMediaPickerMetadataDraft,
+  StudioMediaPickerMetadataSaveInput,
+} from './studio-media-picker-overlay.shared.js';
 import {
   useStudioMediaPickerOverlayLifecycle,
   useStudioMediaPickerOverlayReviewActions,
@@ -13,7 +17,7 @@ type UseStudioMediaPickerOverlayOptions<TAssetDetail extends StudioMediaPickerAs
   isSupportedUploadFile: (file: File) => boolean;
   uploadAsset: (file: File) => Promise<{ readonly assetId: string }>;
   loadAsset: (assetId: string) => Promise<TAssetDetail>;
-  saveAssetMetadata: (assetId: string, metadata: StudioMediaPickerMetadataDraft) => Promise<TAssetDetail>;
+  saveAssetMetadata: (assetId: string, metadata: StudioMediaPickerMetadataSaveInput) => Promise<TAssetDetail>;
   canAcceptAsset?: (asset: TAssetDetail) => boolean;
 }>;
 

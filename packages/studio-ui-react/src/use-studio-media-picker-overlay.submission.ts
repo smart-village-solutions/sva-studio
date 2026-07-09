@@ -1,6 +1,14 @@
 import React from 'react';
 
-import { createMetadataDraft, type StudioMediaPickerAssetDetail, type StudioMediaPickerErrorCode, type StudioMediaPickerMetadataDraft, type StudioMediaPickerReviewSource, type StudioMediaPickerUploadPhase } from './studio-media-picker-overlay.shared.js';
+import {
+  createMetadataDraft,
+  type StudioMediaPickerAssetDetail,
+  type StudioMediaPickerErrorCode,
+  type StudioMediaPickerMetadataDraft,
+  type StudioMediaPickerMetadataSaveInput,
+  type StudioMediaPickerReviewSource,
+  type StudioMediaPickerUploadPhase,
+} from './studio-media-picker-overlay.shared.js';
 
 type UseStudioMediaPickerOverlaySubmissionActionsOptions<TAssetDetail extends StudioMediaPickerAssetDetail> = Readonly<{
   canAcceptAsset?: (asset: TAssetDetail) => boolean;
@@ -10,7 +18,7 @@ type UseStudioMediaPickerOverlaySubmissionActionsOptions<TAssetDetail extends St
   metadataDraft: StudioMediaPickerMetadataDraft;
   onAccept: (asset: TAssetDetail) => void;
   reviewAsset: TAssetDetail | null;
-  saveAssetMetadata: (assetId: string, metadata: StudioMediaPickerMetadataDraft) => Promise<TAssetDetail>;
+  saveAssetMetadata: (assetId: string, metadata: StudioMediaPickerMetadataSaveInput) => Promise<TAssetDetail>;
   setErrorCode: React.Dispatch<React.SetStateAction<StudioMediaPickerErrorCode | null>>;
   setIsSavingReviewAsset: React.Dispatch<React.SetStateAction<boolean>>;
   setMetadataDraft: React.Dispatch<React.SetStateAction<StudioMediaPickerMetadataDraft>>;
@@ -18,6 +26,19 @@ type UseStudioMediaPickerOverlaySubmissionActionsOptions<TAssetDetail extends St
   setUploadPhase: React.Dispatch<React.SetStateAction<StudioMediaPickerUploadPhase>>;
   uploadAsset: (file: File) => Promise<{ readonly assetId: string }>;
 }>;
+
+const normalizeOptionalMetadataValue = (value: string) => {
+  const trimmedValue = value.trim();
+  return trimmedValue.length > 0 ? trimmedValue : null;
+};
+
+const createMetadataSaveInput = (metadataDraft: StudioMediaPickerMetadataDraft): StudioMediaPickerMetadataSaveInput => ({
+  title: metadataDraft.title.trim(),
+  altText: normalizeOptionalMetadataValue(metadataDraft.altText),
+  description: normalizeOptionalMetadataValue(metadataDraft.description),
+  copyright: normalizeOptionalMetadataValue(metadataDraft.copyright),
+  license: normalizeOptionalMetadataValue(metadataDraft.license),
+});
 
 const useStudioMediaPickerUploadAction = ({
   isSupportedUploadFile,
@@ -87,7 +108,7 @@ const useStudioMediaPickerConfirmSelectionAction = <TAssetDetail extends StudioM
     setErrorCode(null);
 
     try {
-      const updatedAsset = await saveAssetMetadata(reviewAsset.id, metadataDraft);
+      const updatedAsset = await saveAssetMetadata(reviewAsset.id, createMetadataSaveInput(metadataDraft));
       if (canAcceptAsset && !canAcceptAsset(updatedAsset)) {
         setReviewAsset(updatedAsset);
         setMetadataDraft(createMetadataDraft(updatedAsset));

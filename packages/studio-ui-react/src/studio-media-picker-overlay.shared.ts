@@ -16,6 +16,14 @@ export type StudioMediaPickerMetadataDraft = Readonly<{
   license: string;
 }>;
 
+export type StudioMediaPickerMetadataSaveInput = Readonly<{
+  title: string;
+  altText: string | null;
+  description: string | null;
+  copyright: string | null;
+  license: string | null;
+}>;
+
 export type StudioMediaPickerAssetSummary = Readonly<{
   id: string;
   title: string;

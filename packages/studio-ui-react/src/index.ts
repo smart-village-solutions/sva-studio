@@ -115,6 +115,7 @@ export {
   type StudioMediaPickerAssetSummary,
   type StudioMediaPickerErrorCode,
   type StudioMediaPickerMetadataDraft,
+  type StudioMediaPickerMetadataSaveInput,
   type StudioMediaPickerMode,
   type StudioMediaPickerOverlayLabels,
   type StudioMediaPickerReviewSource,

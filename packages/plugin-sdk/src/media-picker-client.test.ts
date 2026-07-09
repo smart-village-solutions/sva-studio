@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { listHostMediaAssets, listHostMediaReferencesByTarget, replaceHostMediaReferences } from './media-picker-client.js';
+import {
+  listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  replaceHostMediaReferences,
+  updateHostMediaAsset,
+} from './media-picker-client.js';
 
 describe('media picker client', () => {
   it('lists host media assets and references without leaking storage primitives into the request contract', async () => {
@@ -95,6 +100,47 @@ describe('media picker client', () => {
           targetType: 'events',
           targetId: 'event-1',
           references: [{ assetId: 'asset-1', role: 'header_image', sortOrder: 0 }],
+        }),
+      })
+    );
+  });
+
+  it('sends the instance id in the metadata update payload', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      return new Response(JSON.stringify({ data: JSON.parse(String(init?.body ?? '{}')) }), { status: 200 });
+    });
+
+    const response = await updateHostMediaAsset({
+      fetch: fetchMock as never,
+      assetId: 'asset-1',
+      instanceId: 'de-demo',
+      visibility: 'public',
+      metadata: {
+        title: 'Aktualisiert',
+        altText: null,
+      },
+    });
+
+    expect(response).toEqual({
+      instanceId: 'de-demo',
+      visibility: 'public',
+      metadata: {
+        title: 'Aktualisiert',
+        altText: null,
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/media/asset-1?instanceId=de-demo',
+      expect.objectContaining({
+        method: 'PATCH',
+        credentials: 'include',
+        body: JSON.stringify({
+          instanceId: 'de-demo',
+          visibility: 'public',
+          metadata: {
+            title: 'Aktualisiert',
+            altText: null,
+          },
         }),
       })
     );

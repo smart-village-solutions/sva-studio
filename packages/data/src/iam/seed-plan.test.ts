@@ -1,92 +1,83 @@
-import assert from 'node:assert/strict';
-import { describe, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { getPersonaSeed, iamSeedPlan, rootOnlySeedPermissionKeys, tenantBootstrapPermissionKeys } from './seed-plan';
 
 describe('iam seed plan', () => {
   it('contains exactly one tenant bootstrap persona', () => {
-    assert.equal(iamSeedPlan.personas.length, 1);
+    expect(iamSeedPlan.personas.length).toBe(1);
   });
 
   it('keeps the canonical permission catalog in sync with the seed integration expectations', () => {
-    assert.equal(iamSeedPlan.permissions.length, 58);
+    expect(iamSeedPlan.permissions.length).toBe(58);
   });
 
   it('uses unique role slugs and keycloak subjects', () => {
     const roleSlugs = new Set(iamSeedPlan.personas.map((persona) => persona.roleSlug));
     const subjects = new Set(iamSeedPlan.personas.map((persona) => persona.keycloakSubject));
 
-    assert.equal(roleSlugs.size, iamSeedPlan.personas.length);
-    assert.equal(subjects.size, iamSeedPlan.personas.length);
+    expect(roleSlugs.size).toBe(iamSeedPlan.personas.length);
+    expect(subjects.size).toBe(iamSeedPlan.personas.length);
   });
 
   it('defines role levels within range', () => {
     for (const persona of iamSeedPlan.personas) {
-      assert.ok(persona.roleLevel >= 0);
-      assert.ok(persona.roleLevel <= 100);
+      expect(persona.roleLevel).toBeGreaterThanOrEqual(0);
+      expect(persona.roleLevel).toBeLessThanOrEqual(100);
     }
   });
 
   it('resolves persona by stable key', () => {
     const systemAdmin = getPersonaSeed('system_admin');
 
-    assert.equal(systemAdmin.roleSlug, 'system_admin');
-    assert.equal(systemAdmin.roleLevel, 100);
-    assert.deepEqual(systemAdmin.permissionKeys, tenantBootstrapPermissionKeys);
+    expect(systemAdmin.roleSlug).toBe('system_admin');
+    expect(systemAdmin.roleLevel).toBe(100);
+    expect(systemAdmin.permissionKeys).toEqual(tenantBootstrapPermissionKeys);
   });
 
   it('does not expose a tenant-side instance_registry_admin persona anymore', () => {
-    assert.throws(() => getPersonaSeed('instance_registry_admin' as never), /Unknown persona key: instance_registry_admin/);
+    expect(() => getPersonaSeed('instance_registry_admin' as never)).toThrowError(
+      /Unknown persona key: instance_registry_admin/
+    );
   });
 
   it('keeps instance.registry.manage out of tenant bootstrap personas', () => {
-    assert.deepEqual(rootOnlySeedPermissionKeys, ['instance.registry.manage']);
-    assert.equal(tenantBootstrapPermissionKeys.includes('instance.registry.manage'), false);
-    assert.deepEqual(getPersonaSeed('system_admin').permissionKeys, tenantBootstrapPermissionKeys);
+    expect(rootOnlySeedPermissionKeys).toEqual(['instance.registry.manage']);
+    expect(tenantBootstrapPermissionKeys.includes('instance.registry.manage')).toBe(false);
+    expect(getPersonaSeed('system_admin').permissionKeys).toEqual(tenantBootstrapPermissionKeys);
     for (const persona of iamSeedPlan.personas) {
-      assert.equal(persona.permissionKeys.includes('instance.registry.manage'), false);
+      expect(persona.permissionKeys.includes('instance.registry.manage')).toBe(false);
     }
   });
 
   it('contains hierarchical organizations for context-switch scenarios', () => {
-    assert.equal(iamSeedPlan.organizations.length, 3);
-    assert.deepEqual(iamSeedPlan.organizations[0].hierarchyPath, []);
-    assert.equal(iamSeedPlan.organizations[1].parentOrganizationId, iamSeedPlan.organizations[0].id);
-    assert.equal(iamSeedPlan.organizations[2].depth, 2);
+    expect(iamSeedPlan.organizations.length).toBe(3);
+    expect(iamSeedPlan.organizations[0].hierarchyPath).toEqual([]);
+    expect(iamSeedPlan.organizations[1].parentOrganizationId).toBe(iamSeedPlan.organizations[0].id);
+    expect(iamSeedPlan.organizations[2].depth).toBe(2);
   });
 
   it('derives stable resource types from permission keys', () => {
-    assert.equal(
-      iamSeedPlan.permissions.find((permission) => permission.key === 'instance.registry.manage')?.resourceType,
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'instance.registry.manage')?.resourceType).toBe(
       'instance'
     );
-    assert.equal(
-      iamSeedPlan.permissions.find((permission) => permission.key === 'content.publish')?.resourceType,
-      'content'
-    );
-    assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'media.read')?.resourceType, 'media');
-    assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'news.update')?.resourceType, 'news');
-    assert.equal(
-      iamSeedPlan.permissions.find((permission) => permission.key === 'categories.read')?.resourceType,
-      'categories'
-    );
-    assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'app.read')?.resourceType, 'app');
-    assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'cockpit.read')?.resourceType, 'cockpit');
-    assert.equal(
-      iamSeedPlan.permissions.find((permission) => permission.key === 'experimental.read')?.resourceType,
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'content.publish')?.resourceType).toBe('content');
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'media.read')?.resourceType).toBe('media');
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'news.update')?.resourceType).toBe('news');
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'categories.read')?.resourceType).toBe('categories');
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'app.read')?.resourceType).toBe('app');
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'cockpit.read')?.resourceType).toBe('cockpit');
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'experimental.read')?.resourceType).toBe(
       'experimental'
     );
-    assert.equal(
-      iamSeedPlan.permissions.find((permission) => permission.key === 'iam.governance.export')?.resourceType,
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'iam.governance.export')?.resourceType).toBe(
       'iam'
     );
-    assert.equal(
-      iamSeedPlan.permissions.find((permission) => permission.key === 'iam.accounts.delete')?.resourceType,
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'iam.accounts.delete')?.resourceType).toBe(
       'iam'
     );
   });
 
   it('throws for unknown persona keys', () => {
-    assert.throws(() => getPersonaSeed('unknown' as never), /Unknown persona key: unknown/);
+    expect(() => getPersonaSeed('unknown' as never)).toThrowError(/Unknown persona key: unknown/);
   });
 });

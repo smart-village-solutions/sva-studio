@@ -6,7 +6,11 @@ vi.mock('node:dns/promises', () => ({
   lookup: dnsLookupMock,
 }));
 
-import { normalizePublicUpstreamUrl } from './upstream-url-validation.js';
+import {
+  normalizeDatabaseConnectionUrl,
+  normalizeOutboundHttpUrl,
+  normalizePublicUpstreamUrl,
+} from './upstream-url-validation.js';
 
 describe('normalizePublicUpstreamUrl', () => {
   beforeEach(() => {
@@ -61,5 +65,61 @@ describe('normalizePublicUpstreamUrl', () => {
 
     dnsLookupMock.mockRejectedValueOnce(new Error('dns unavailable'));
     await expect(normalizePublicUpstreamUrl('https://failing.example.invalid/graphql')).resolves.toBeNull();
+  });
+});
+
+describe('normalizeOutboundHttpUrl', () => {
+  beforeEach(() => {
+    dnsLookupMock.mockReset();
+    dnsLookupMock.mockResolvedValue([{ address: '8.8.8.8', family: 4 }]);
+  });
+
+  it('accepts public http and https urls when explicitly enabled', async () => {
+    await expect(
+      normalizeOutboundHttpUrl('http://public.example.invalid/geocode', { allowHttp: true }),
+    ).resolves.toBe('http://public.example.invalid/geocode');
+    await expect(normalizeOutboundHttpUrl('https://public.example.invalid/geocode')).resolves.toBe(
+      'https://public.example.invalid/geocode',
+    );
+    await expect(normalizeOutboundHttpUrl('https://[2606:4700:4700::1111]/geocode')).resolves.toBe(
+      'https://[2606:4700:4700::1111]/geocode',
+    );
+  });
+
+  it('rejects private targets by default and allows them with opt-in', async () => {
+    await expect(
+      normalizeOutboundHttpUrl('https://localhost/geocode', { allowHttp: true }),
+    ).resolves.toBeNull();
+    await expect(
+      normalizeOutboundHttpUrl('https://localhost/geocode', {
+        allowHttp: true,
+        allowPrivateHosts: true,
+      }),
+    ).resolves.toBe('https://localhost/geocode');
+  });
+});
+
+describe('normalizeDatabaseConnectionUrl', () => {
+  beforeEach(() => {
+    dnsLookupMock.mockReset();
+    dnsLookupMock.mockResolvedValue([{ address: '8.8.8.8', family: 4 }]);
+  });
+
+  it('accepts public postgres connection strings with credentials', async () => {
+    await expect(
+      normalizeDatabaseConnectionUrl('postgres://user:pass@db.example.invalid:5432/app'),
+    ).resolves.toBe('postgres://user:pass@db.example.invalid:5432/app');
+    await expect(
+      normalizeDatabaseConnectionUrl('postgres://user:pass@[2001:4860:4860::8888]:5432/app'),
+    ).resolves.toBe('postgres://user:pass@[2001:4860:4860::8888]:5432/app');
+  });
+
+  it('rejects private database hosts by default and allows them with opt-in', async () => {
+    await expect(normalizeDatabaseConnectionUrl('postgres://user:pass@localhost:5432/app')).resolves.toBeNull();
+    await expect(
+      normalizeDatabaseConnectionUrl('postgres://user:pass@localhost:5432/app', {
+        allowPrivateHosts: true,
+      }),
+    ).resolves.toBe('postgres://user:pass@localhost:5432/app');
   });
 });

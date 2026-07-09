@@ -1,7 +1,10 @@
+// fallow-ignore-file security-sink -- local CI script scans workspace-local plugin files; paths are derived from the repo root, not user-reachable runtime input.
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as ts from 'typescript';
+
+import { isCliEntrypoint } from './path-safety.js';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '../..');
@@ -290,7 +293,7 @@ const run = async (): Promise<void> => {
   console.info('Plugin-UI-Boundary-Check erfolgreich (keine App-UI-Imports oder Basiscontrol-Duplikate erkannt).');
 };
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isCliEntrypoint(import.meta.url, process.argv[1])) {
   void run().catch((error: unknown) => {
     console.error('Plugin-UI-Boundary-Check fehlgeschlagen (unerwarteter Fehler).');
     console.error(error instanceof Error ? error.message : String(error));

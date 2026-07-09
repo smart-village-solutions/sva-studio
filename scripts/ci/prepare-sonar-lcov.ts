@@ -1,6 +1,9 @@
+// fallow-ignore-file security-sink -- local CI script reads and writes coverage artifacts within the current workspace root only.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { isCliEntrypoint, resolvePathWithin } from './path-safety.js';
 
 const DEFAULT_OUTPUT_PATH = 'artifacts/sonar/lcov.info';
 const COVERAGE_REPORT_PATH = 'coverage/lcov.info';
@@ -107,7 +110,7 @@ export const prepareSonarLcov = ({
   rootDir,
   outputPath = DEFAULT_OUTPUT_PATH,
 }: PrepareSonarLcovOptions): PrepareSonarLcovResult => {
-  const absoluteOutputPath = path.resolve(rootDir, outputPath);
+  const absoluteOutputPath = resolvePathWithin(rootDir, outputPath);
   const reports = findCoverageReports(rootDir);
   const normalizedReports = reports.map((reportPath) => normalizeLcovContents(rootDir, reportPath));
   const sourceFiles = normalizedReports.reduce((sum, report) => sum + report.sourceFiles, 0);
@@ -130,7 +133,6 @@ const runCli = (): void => {
   );
 };
 
-const currentFilePath = fileURLToPath(import.meta.url);
-if (process.argv[1] !== undefined && path.resolve(process.argv[1]) === currentFilePath) {
+if (isCliEntrypoint(import.meta.url, process.argv[1])) {
   runCli();
 }

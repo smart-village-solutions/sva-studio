@@ -31,6 +31,14 @@ vi.mock('@tanstack/react-start/server', () => ({
 vi.mock('@sva/auth-runtime/server', () => ({
   authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
   withAuthenticatedUser: state.withAuthenticatedUser,
+  normalizeOutboundHttpUrl: vi.fn(async (value: string, options?: { allowPrivateHosts?: boolean }) => {
+    const url = new URL(value);
+    const isPrivateTarget = ['localhost', '127.0.0.1'].includes(url.hostname);
+    if (isPrivateTarget && options?.allowPrivateHosts !== true) {
+      return null;
+    }
+    return url.toString();
+  }),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -52,6 +60,7 @@ describe('map-geocoding-api', () => {
     state.logger.info.mockReset();
     state.logger.warn.mockReset();
     state.logger.error.mockReset();
+    delete process.env.SVA_ALLOW_PRIVATE_MAP_GEOCODING_TARGETS;
 
     state.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
       handler({
@@ -853,6 +862,39 @@ describe('map-geocoding-api', () => {
       'provider_error',
     );
 
+    await expect(
+      executeSuggestOperation(
+        {
+          ...config,
+          provider: 'custom',
+          suggestEndpoint: 'https://localhost/suggest',
+          geocodeEndpoint: 'https://custom.example/geocode',
+          reverseGeocodeEndpoint: 'https://custom.example/reverse',
+        },
+        'Musterstraße 1',
+      ),
+    ).rejects.toThrow('invalid_input');
+
+    state.fetch.mockResolvedValueOnce(
+      new Response(null, {
+        status: 302,
+        headers: { location: 'https://localhost/internal-geocode' },
+      }),
+    );
+    await expect(
+      executeProviderRequest({
+        config: {
+          ...config,
+          provider: 'custom',
+          suggestEndpoint: 'https://custom.example/suggest',
+          geocodeEndpoint: 'https://custom.example/geocode',
+          reverseGeocodeEndpoint: 'https://custom.example/reverse',
+        },
+        mode: 'suggest',
+        query: 'Musterstraße',
+      }),
+    ).rejects.toThrow('invalid_input');
+
     state.fetch.mockImplementationOnce(async (_url: URL, init?: RequestInit) => {
       init?.signal?.throwIfAborted?.();
       throw new DOMException('Timed out', 'AbortError');
@@ -864,6 +906,92 @@ describe('map-geocoding-api', () => {
         coordinates: { latitude: 52.52, longitude: 13.405 },
       }),
     ).rejects.toThrow('timeout');
+  });
+
+  it('allows private custom geocoding targets when the explicit opt-in is enabled', async () => {
+    process.env.SVA_ALLOW_PRIVATE_MAP_GEOCODING_TARGETS = 'true';
+
+    const { executeSuggestOperation } = await import('./map-geocoding-api.operations.js');
+
+    state.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        features: [
+          {
+            properties: {
+              formatted: 'Musterstraße 1, 12345 Musterstadt',
+              lat: 52.52,
+              lon: 13.405,
+            },
+          },
+        ],
+      }),
+    });
+
+    await expect(
+      executeSuggestOperation(
+        {
+          provider: 'custom',
+          styleUrl: 'https://tiles.example/styles/poi',
+          autocompleteEnabled: true,
+          geocodeEnabled: true,
+          reverseGeocodeEnabled: true,
+          killSwitchEnabled: false,
+          suggestEndpoint: 'https://localhost/suggest',
+          geocodeEndpoint: 'https://localhost/geocode',
+          reverseGeocodeEndpoint: 'https://localhost/reverse',
+          requestTimeoutMs: '3000',
+          rateLimitPerMinute: '60',
+        },
+        'Musterstraße 1',
+      ),
+    ).resolves.toHaveLength(1);
+  });
+
+  it('follows validated redirects for custom providers when the target stays public', async () => {
+    const { executeProviderRequest } = await import('./map-geocoding-api.operations.js');
+
+    state.fetch
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 302,
+          headers: { location: 'https://redirect.example/suggest' },
+        }),
+      )
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          features: [
+            {
+              properties: {
+                formatted: 'Musterstraße 1, 12345 Musterstadt',
+                lat: 52.52,
+                lon: 13.405,
+              },
+            },
+          ],
+        }),
+      });
+
+    await expect(
+      executeProviderRequest({
+        config: {
+          provider: 'custom',
+          styleUrl: 'https://tiles.example/styles/poi',
+          autocompleteEnabled: true,
+          geocodeEnabled: true,
+          reverseGeocodeEnabled: true,
+          killSwitchEnabled: false,
+          suggestEndpoint: 'https://custom.example/suggest',
+          geocodeEndpoint: 'https://custom.example/geocode',
+          reverseGeocodeEndpoint: 'https://custom.example/reverse',
+          requestTimeoutMs: '3000',
+          rateLimitPerMinute: '60',
+        },
+        mode: 'suggest',
+        query: 'Musterstraße 1',
+      }),
+    ).resolves.toHaveLength(1);
   });
 
   it('dispatches map geocoding requests only for supported routes and methods', async () => {

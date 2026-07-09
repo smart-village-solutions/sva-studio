@@ -19,6 +19,22 @@ vi.mock('@sva/data-repositories/server', () => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   revealField: state.revealField,
+  normalizeDatabaseConnectionUrl: vi.fn(async (value: string, options?: { allowPrivateHosts?: boolean }) => {
+    const url = new URL(value);
+    const isPrivateTarget = ['localhost', '127.0.0.1'].includes(url.hostname);
+    if (isPrivateTarget && options?.allowPrivateHosts !== true) {
+      return null;
+    }
+    return url.toString();
+  }),
+  normalizeOutboundHttpUrl: vi.fn(async (value: string, options?: { allowPrivateHosts?: boolean }) => {
+    const url = new URL(value);
+    const isPrivateTarget = ['localhost', '127.0.0.1'].includes(url.hostname);
+    if (isPrivateTarget && options?.allowPrivateHosts !== true) {
+      return null;
+    }
+    return url.toString();
+  }),
 }));
 
 vi.mock('pg', () => ({
@@ -56,6 +72,7 @@ describe('instance-interface-healthcheck.server', () => {
     state.fetch.mockReset();
     state.s3Send.mockReset();
     vi.stubGlobal('fetch', state.fetch);
+    delete process.env.SVA_ALLOW_PRIVATE_INTERFACE_HEALTHCHECK_TARGETS;
   });
 
   it('persists a failed connection check when the database rejects credentials', async () => {
@@ -457,6 +474,82 @@ describe('instance-interface-healthcheck.server', () => {
         checkStatus: 'failed',
         errorCode: 'connection_failed',
       })
+    );
+  });
+
+  it('blocks private supabase database hosts by default and allows them with explicit opt-in', async () => {
+    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+
+    state.loadExternalInterfaceRecordById.mockResolvedValueOnce({
+      id: 'supabase-private-db-host',
+      instanceId: 'de-test',
+      typeKey: 'supabase',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Waste Supabase',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'database',
+      baseUrl: 'https://tenant.supabase.co',
+      authMode: 'service_role',
+      statusCheckKind: 'supabase',
+      visibleStatus: 'unknown',
+      publicConfig: {
+        projectUrl: 'https://tenant.supabase.co',
+      },
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:supabase-private-db-host:{"databaseUrl":"postgres://user:pass@localhost:5432/wm","serviceRoleKey":"service-role-key"}',
+    });
+
+    await expect(
+      runStoredInterfaceHealthcheck({
+        instanceId: 'de-test',
+        interfaceId: 'supabase-private-db-host',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        checkStatus: 'failed',
+        errorCode: 'connection_failed',
+      }),
+    );
+    expect(state.poolQuery).not.toHaveBeenCalled();
+
+    process.env.SVA_ALLOW_PRIVATE_INTERFACE_HEALTHCHECK_TARGETS = 'true';
+    state.loadExternalInterfaceRecordById.mockResolvedValueOnce({
+      id: 'supabase-private-db-host-opt-in',
+      instanceId: 'de-test',
+      typeKey: 'supabase',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Waste Supabase',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'database',
+      baseUrl: 'https://tenant.supabase.co',
+      authMode: 'service_role',
+      statusCheckKind: 'supabase',
+      visibleStatus: 'unknown',
+      publicConfig: {
+        projectUrl: 'https://tenant.supabase.co',
+      },
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:supabase-private-db-host-opt-in:{"databaseUrl":"postgres://user:pass@localhost:5432/wm","serviceRoleKey":"service-role-key"}',
+    });
+    state.poolQuery.mockResolvedValueOnce({ rows: [{ schema_exists: true }] });
+    state.fetch.mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }));
+
+    await expect(
+      runStoredInterfaceHealthcheck({
+        instanceId: 'de-test',
+        interfaceId: 'supabase-private-db-host-opt-in',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        checkStatus: 'succeeded',
+        visibleStatus: 'ok',
+      }),
     );
   });
 
@@ -926,6 +1019,85 @@ describe('instance-interface-healthcheck.server', () => {
         checkStatus: 'failed',
         errorCode: 'connection_failed',
       })
+    );
+  });
+
+  it('blocks private s3 endpoints by default and allows them with explicit opt-in', async () => {
+    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+
+    state.loadExternalInterfaceRecordById.mockResolvedValueOnce({
+      id: 's3-private-endpoint',
+      instanceId: 'de-test',
+      typeKey: 's3',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Media S3',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'object_storage',
+      baseUrl: 'https://localhost',
+      authMode: 'access_key',
+      statusCheckKind: 's3',
+      visibleStatus: 'unknown',
+      publicConfig: {
+        endpoint: 'https://localhost',
+        bucket: 'media',
+        accessKeyId: 'key-1',
+      },
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:s3-private-endpoint:{"secretAccessKey":"secret-1"}',
+    });
+
+    await expect(
+      runStoredInterfaceHealthcheck({
+        instanceId: 'de-test',
+        interfaceId: 's3-private-endpoint',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        checkStatus: 'failed',
+        errorCode: 'connection_failed',
+      }),
+    );
+    expect(state.s3Send).not.toHaveBeenCalled();
+
+    process.env.SVA_ALLOW_PRIVATE_INTERFACE_HEALTHCHECK_TARGETS = 'true';
+    state.loadExternalInterfaceRecordById.mockResolvedValueOnce({
+      id: 's3-private-endpoint-opt-in',
+      instanceId: 'de-test',
+      typeKey: 's3',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Media S3',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'object_storage',
+      baseUrl: 'https://localhost',
+      authMode: 'access_key',
+      statusCheckKind: 's3',
+      visibleStatus: 'unknown',
+      publicConfig: {
+        endpoint: 'https://localhost',
+        bucket: 'media',
+        accessKeyId: 'key-1',
+      },
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:s3-private-endpoint-opt-in:{"secretAccessKey":"secret-1"}',
+    });
+    state.s3Send.mockResolvedValueOnce({});
+
+    await expect(
+      runStoredInterfaceHealthcheck({
+        instanceId: 'de-test',
+        interfaceId: 's3-private-endpoint-opt-in',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        checkStatus: 'succeeded',
+        visibleStatus: 'ok',
+      }),
     );
   });
 });

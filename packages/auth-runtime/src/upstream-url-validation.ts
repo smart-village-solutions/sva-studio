@@ -142,7 +142,7 @@ const isPrivateOrLocalHost = (hostname: string): boolean => {
 };
 
 const resolvesToPrivateOrLocalHost = async (hostname: string): Promise<boolean> => {
-  const normalized = hostname.trim().toLowerCase();
+  const normalized = unwrapBracketedHost(hostname.trim().toLowerCase());
   if (isIP(normalized) !== 0) {
     return false;
   }
@@ -162,20 +162,61 @@ const resolvesToPrivateOrLocalHost = async (hostname: string): Promise<boolean> 
   }
 };
 
-export const normalizePublicUpstreamUrl = async (value: string): Promise<string | null> => {
+type UpstreamUrlValidationOptions = Readonly<{
+  allowedProtocols?: readonly string[];
+  allowCredentials?: boolean;
+  allowPrivateHosts?: boolean;
+}>;
+
+const normalizeUpstreamUrl = async (
+  value: string,
+  {
+    allowedProtocols = ['https:'],
+    allowCredentials = false,
+    allowPrivateHosts = false,
+  }: UpstreamUrlValidationOptions = {},
+): Promise<string | null> => {
   const parsed = parseUpstreamUrl(value);
 
   if (
     !parsed ||
-    parsed.username ||
-    parsed.password ||
+    (!allowCredentials && (parsed.username || parsed.password)) ||
     parsed.hash ||
-    parsed.protocol !== 'https:' ||
-    isPrivateOrLocalHost(parsed.hostname) ||
-    (await resolvesToPrivateOrLocalHost(parsed.hostname))
+    !allowedProtocols.includes(parsed.protocol) ||
+    (!allowPrivateHosts &&
+      (isPrivateOrLocalHost(parsed.hostname) || (await resolvesToPrivateOrLocalHost(parsed.hostname))))
   ) {
     return null;
   }
 
   return parsed.toString();
 };
+
+export const normalizePublicUpstreamUrl = async (value: string): Promise<string | null> =>
+  normalizeUpstreamUrl(value);
+
+export const normalizeOutboundHttpUrl = async (
+  value: string,
+  options: Readonly<{
+    allowPrivateHosts?: boolean;
+    allowHttp?: boolean;
+    allowCredentials?: boolean;
+  }> = {},
+): Promise<string | null> =>
+  normalizeUpstreamUrl(value, {
+    allowedProtocols: options.allowHttp ? ['http:', 'https:'] : ['https:'],
+    allowCredentials: options.allowCredentials,
+    allowPrivateHosts: options.allowPrivateHosts,
+  });
+
+export const normalizeDatabaseConnectionUrl = async (
+  value: string,
+  options: Readonly<{
+    allowPrivateHosts?: boolean;
+  }> = {},
+): Promise<string | null> =>
+  normalizeUpstreamUrl(value, {
+    allowedProtocols: ['postgres:', 'postgresql:'],
+    allowCredentials: true,
+    allowPrivateHosts: options.allowPrivateHosts,
+  });

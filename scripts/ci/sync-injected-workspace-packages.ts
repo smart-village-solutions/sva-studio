@@ -1,6 +1,8 @@
+// fallow-ignore-file security-sink -- local workspace maintenance script traverses repo-managed package paths and injected copies, not user-reachable runtime input.
 import { cp, mkdir, readdir, readFile, realpath, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+
+import { isCliEntrypoint, resolvePathFromCwd } from './path-safety.js';
 
 type WorkspacePackage = {
   dir: string;
@@ -9,7 +11,7 @@ type WorkspacePackage = {
   realDir: string;
 };
 
-const consumerDir = path.resolve(process.argv[2] ?? process.cwd());
+const consumerDir = resolvePathFromCwd(process.argv[2] ?? '.');
 
 const pathExists = async (targetPath: string) => {
   try {
@@ -23,7 +25,6 @@ const pathExists = async (targetPath: string) => {
 const resolveExistingPath = async (targetPath: string): Promise<string | null> => {
   return (await pathExists(targetPath)) ? targetPath : null;
 };
-
 const readPackageName = async (packageJsonPath: string): Promise<string | null> => {
   try {
     const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as { name?: string };
@@ -308,12 +309,9 @@ const main = async () => {
   );
 };
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  main().catch((error: unknown) => {
-    const message = error instanceof Error ? error.stack ?? error.message : String(error);
-    process.stderr.write(`${message}\n`);
-    process.exitCode = 1;
-  });
-}
-
+if (isCliEntrypoint(import.meta.url, process.argv[1])) main().catch((error: unknown) => {
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  process.stderr.write(`${message}\n`);
+  process.exitCode = 1;
+});
 export { collectWorkspacePackages, findReachableWorkspacePackageNames, findInjectedCopies, findWorkspaceRoot, syncWorkspacePackage };

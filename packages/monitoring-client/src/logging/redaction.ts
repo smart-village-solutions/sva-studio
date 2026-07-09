@@ -28,18 +28,12 @@ const SENSITIVE_LOG_KEYS = new Set([
 ]);
 
 const jwtLikeRegex = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?\b/g;
-const querySecretRegexSource =
-  String.raw`([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)`;
-const inlineQuerySecretRegexSource =
-  String.raw`((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)[\w.-]{0,20}[=:]\s*)([^\s,)]+)`;
-const inlineSensitiveFieldRegexSource =
-  String.raw`((?:^|[\s,(])(?:password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)`;
 const urlSecretPatterns: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(authorization:\s*)(bearer\s+)?[^\s,]+/gi, '$1[REDACTED]'],
   [/\b(bearer\s+)(?!\[REDACTED(?:_JWT)?\])[^\s,]+/gi, '$1[REDACTED]'],
-  [new RegExp(querySecretRegexSource, 'gi'), '$1[REDACTED]'],
-  [new RegExp(inlineQuerySecretRegexSource, 'gi'), '$1[REDACTED]'],
-  [new RegExp(inlineSensitiveFieldRegexSource, 'gi'), '$1[REDACTED]'],
+  [/([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)/gi, '$1[REDACTED]'],
+  [/((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi, '$1[REDACTED]'],
+  [/((?:^|[\s,(])(?:password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi, '$1[REDACTED]'],
 ];
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {

@@ -100,7 +100,7 @@
 
 ## Repository File Placement (Enforced)
 
-- Root-Level Markdown ist gesperrt (Ausnahme: `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `DEBUGGING.md`, `DEVELOPMENT_RULES.md`, `AGENTS.md`)
+- Root-Level Markdown ist gesperrt (Ausnahme: `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `DEBUGGING.md`, `DEVELOPMENT_RULES.md`, `AGENTS.md`, `SECURITY.md`)
 - Debug-Skripte gehören ausschließlich nach `scripts/debug/auth/` oder `scripts/debug/otel/`
 - Operative Reports gehören nach `docs/reports/`
 - Staging-Dokumente gehören nach `docs/staging/YYYY-MM/`

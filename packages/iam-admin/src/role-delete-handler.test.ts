@@ -150,6 +150,22 @@ describe('createDeleteRoleHandlerInternal', () => {
     expect(identityProvider.provider.deleteRole).not.toHaveBeenCalled();
   });
 
+  it('returns actor resolution responses unchanged from prepare', async () => {
+    const unauthorizedResponse = createJsonResponse(403, {
+      error: { code: 'forbidden', message: 'Nicht erlaubt.' },
+      requestId: 'req-delete-role',
+    });
+    const deps = createDeps({
+      resolveRoleMutationActor: vi.fn(async () => ({ response: unauthorizedResponse })),
+    });
+
+    const response = await runDeleteRoleRequest(deps);
+
+    expect(response).toBe(unauthorizedResponse);
+    expect(deps.requireRoleId).not.toHaveBeenCalled();
+    expect(deps.resolveDeletableRole).not.toHaveBeenCalled();
+  });
+
   it('returns DB_WRITE_FAILED without Keycloak compensation when local deletion fails', async () => {
     const deps = createDeps({
       deleteRoleFromDatabase: vi.fn(rejectDbWrite),

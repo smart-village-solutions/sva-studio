@@ -264,6 +264,23 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     expect(state.createSvaMainserverGenericItem).not.toHaveBeenCalled();
   });
 
+  it('returns invalid JSON request errors before calling the create service', async () => {
+    mockAuthorizedMutation();
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items', {
+        method: 'POST',
+        body: '{invalid-json',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    expect(state.createSvaMainserverGenericItem).not.toHaveBeenCalled();
+  });
+
   it('rejects mutating requests when csrf validation fails', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue({ ok: false });

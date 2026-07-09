@@ -41,7 +41,7 @@ export const normalizeVitestRunArgs = (args: readonly string[]): string[] => {
     return passthroughArgs;
   }
 
-  return [...passthroughArgs, '--', ...testFileArgs];
+  return [...passthroughArgs, ...testFileArgs];
 };
 
 export const isRunVitestTargetEntrypoint = (

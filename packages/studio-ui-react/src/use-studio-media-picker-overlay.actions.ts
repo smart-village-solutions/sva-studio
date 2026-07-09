@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 
 import {
   createMetadataDraft,
@@ -63,7 +63,7 @@ const useReviewAssetLoader = <TAssetDetail extends StudioMediaPickerAssetDetail>
     [loadAsset, state]
   );
 
-const useUploadFileAction = <TAssetDetail extends StudioMediaPickerAssetDetail>(
+const useUploadFileAction = (
   state: ReturnType<typeof useStudioMediaPickerOverlayState>,
   isSupportedUploadFile: (file: File) => boolean,
   uploadAsset: (file: File) => Promise<StudioMediaPickerUploadAssetResult>,

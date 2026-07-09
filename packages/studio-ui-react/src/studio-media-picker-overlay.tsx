@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { Button } from './button.js';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './dialog.js';
 import { MediaIntakePanel } from './media-intake-panel.js';

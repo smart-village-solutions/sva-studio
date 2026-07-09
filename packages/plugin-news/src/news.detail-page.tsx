@@ -22,7 +22,6 @@ import {
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
   type StudioMediaPickerErrorCode,
-  type StudioMediaPickerMetadataDraft,
   type StudioMediaPickerOverlayLabels,
   Tabs,
   TabsContent,

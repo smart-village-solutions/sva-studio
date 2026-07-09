@@ -1,7 +1,6 @@
 // fallow-ignore-file security-sink -- local workspace maintenance script traverses repo-managed package paths and injected copies, not user-reachable runtime input.
 import { cp, mkdir, readdir, readFile, realpath, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { isCliEntrypoint, resolvePathFromCwd } from './path-safety.js';
 

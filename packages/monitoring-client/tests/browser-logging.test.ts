@@ -31,13 +31,15 @@ describe('browser logger', () => {
 
   it('redacts inline secrets, bearer tokens and jwt-like fragments in strings', () => {
     const redacted = redactLogString(
-      'authorization: Bearer token-123 password=secret access_token=abc.123 code=xyz eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.sig'
+      'authorization: Bearer token-123 password=secret access_token=abc.123 code=xyz ?token=foo https://idp.example/callback?code=bar eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.sig'
     );
 
     expect(redacted).toContain('authorization: [REDACTED]');
     expect(redacted).toContain('password=[REDACTED]');
     expect(redacted).toContain('access_token=[REDACTED]');
     expect(redacted).toContain('code=[REDACTED]');
+    expect(redacted).toContain('?token=[REDACTED]');
+    expect(redacted).toContain('https://idp.example/callback?code=[REDACTED]');
     expect(redacted).toContain('[REDACTED_JWT]');
   });
 

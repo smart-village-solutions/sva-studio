@@ -875,6 +875,26 @@ describe('map-geocoding-api', () => {
       ),
     ).rejects.toThrow('invalid_input');
 
+    state.fetch.mockResolvedValueOnce(
+      new Response(null, {
+        status: 302,
+        headers: { location: 'https://localhost/internal-geocode' },
+      }),
+    );
+    await expect(
+      executeProviderRequest({
+        config: {
+          ...config,
+          provider: 'custom',
+          suggestEndpoint: 'https://custom.example/suggest',
+          geocodeEndpoint: 'https://custom.example/geocode',
+          reverseGeocodeEndpoint: 'https://custom.example/reverse',
+        },
+        mode: 'suggest',
+        query: 'Musterstraße',
+      }),
+    ).rejects.toThrow('invalid_input');
+
     state.fetch.mockImplementationOnce(async (_url: URL, init?: RequestInit) => {
       init?.signal?.throwIfAborted?.();
       throw new DOMException('Timed out', 'AbortError');
@@ -925,6 +945,52 @@ describe('map-geocoding-api', () => {
         },
         'Musterstraße 1',
       ),
+    ).resolves.toHaveLength(1);
+  });
+
+  it('follows validated redirects for custom providers when the target stays public', async () => {
+    const { executeProviderRequest } = await import('./map-geocoding-api.operations.js');
+
+    state.fetch
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 302,
+          headers: { location: 'https://redirect.example/suggest' },
+        }),
+      )
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          features: [
+            {
+              properties: {
+                formatted: 'Musterstraße 1, 12345 Musterstadt',
+                lat: 52.52,
+                lon: 13.405,
+              },
+            },
+          ],
+        }),
+      });
+
+    await expect(
+      executeProviderRequest({
+        config: {
+          provider: 'custom',
+          styleUrl: 'https://tiles.example/styles/poi',
+          autocompleteEnabled: true,
+          geocodeEnabled: true,
+          reverseGeocodeEnabled: true,
+          killSwitchEnabled: false,
+          suggestEndpoint: 'https://custom.example/suggest',
+          geocodeEndpoint: 'https://custom.example/geocode',
+          reverseGeocodeEndpoint: 'https://custom.example/reverse',
+          requestTimeoutMs: '3000',
+          rateLimitPerMinute: '60',
+        },
+        mode: 'suggest',
+        query: 'Musterstraße 1',
+      }),
     ).resolves.toHaveLength(1);
   });
 

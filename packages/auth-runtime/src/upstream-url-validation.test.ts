@@ -81,6 +81,9 @@ describe('normalizeOutboundHttpUrl', () => {
     await expect(normalizeOutboundHttpUrl('https://public.example.invalid/geocode')).resolves.toBe(
       'https://public.example.invalid/geocode',
     );
+    await expect(normalizeOutboundHttpUrl('https://[2606:4700:4700::1111]/geocode')).resolves.toBe(
+      'https://[2606:4700:4700::1111]/geocode',
+    );
   });
 
   it('rejects private targets by default and allows them with opt-in', async () => {
@@ -106,6 +109,9 @@ describe('normalizeDatabaseConnectionUrl', () => {
     await expect(
       normalizeDatabaseConnectionUrl('postgres://user:pass@db.example.invalid:5432/app'),
     ).resolves.toBe('postgres://user:pass@db.example.invalid:5432/app');
+    await expect(
+      normalizeDatabaseConnectionUrl('postgres://user:pass@[2001:4860:4860::8888]:5432/app'),
+    ).resolves.toBe('postgres://user:pass@[2001:4860:4860::8888]:5432/app');
   });
 
   it('rejects private database hosts by default and allows them with opt-in', async () => {

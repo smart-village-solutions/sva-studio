@@ -13,7 +13,12 @@ describe('path-safety', () => {
 
   it('rejects paths that escape the allowed base directory', () => {
     const baseDir = path.join(os.tmpdir(), 'sva-path-safety-allowed');
-    expect(() => resolvePathWithin(baseDir, '../outside.txt')).toThrow('verlaesst den erlaubten Basisordner');
+    expect(() => resolvePathWithin(baseDir, '../outside.txt')).toThrow('verlässt den erlaubten Basisordner');
+  });
+
+  it('allows relative names that only start with two dots inside the base directory', () => {
+    const baseDir = path.join(os.tmpdir(), 'sva-path-safety-allowed');
+    expect(resolvePathWithin(baseDir, './..file.txt')).toBe(path.join(baseDir, '..file.txt'));
   });
 
   it('detects the current cli entrypoint for relative and absolute argv values', () => {

@@ -142,7 +142,7 @@ const isPrivateOrLocalHost = (hostname: string): boolean => {
 };
 
 const resolvesToPrivateOrLocalHost = async (hostname: string): Promise<boolean> => {
-  const normalized = hostname.trim().toLowerCase();
+  const normalized = unwrapBracketedHost(hostname.trim().toLowerCase());
   if (isIP(normalized) !== 0) {
     return false;
   }

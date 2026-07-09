@@ -7,20 +7,19 @@ import type {
 
 import {
   COMPONENT,
-  buildProviderUrl,
   compactQuery,
   createClientError,
   createErrorResponse,
   jsonResponse,
-  normalizeProviderFeatures,
-  parsePositiveInteger,
   readMapGeocodingErrorCode,
   readMapGeocodingErrorDiagnostics,
   type AuthenticatedMapGeocodingContext,
   type MapGeocodingLogger,
   type MapGeocodingRuntimeConfigWithSecrets,
-  type GeoapifyResponse,
 } from './map-geocoding-api.shared.js';
+import { executeProviderRequest, getPublicMapGeocodingConfig } from './map-geocoding-api.provider.js';
+
+export { executeProviderRequest, getPublicMapGeocodingConfig } from './map-geocoding-api.provider.js';
 
 let loggerPromise: Promise<MapGeocodingLogger> | null = null;
 
@@ -45,61 +44,6 @@ const getRequest = async (): Promise<Request> => {
 };
 
 const now = (): number => Date.now();
-
-const shouldAllowPrivateMapGeocodingTargets = (): boolean =>
-  process.env.SVA_ALLOW_PRIVATE_MAP_GEOCODING_TARGETS === 'true';
-
-const normalizeProviderRequestUrl = async (
-  config: MapGeocodingRuntimeConfigWithSecrets,
-  url: URL,
-): Promise<URL> => {
-  if (config.provider !== 'custom') {
-    return url;
-  }
-  const { normalizeOutboundHttpUrl } = await import('@sva/auth-runtime/server');
-  const normalized = await normalizeOutboundHttpUrl(url.toString(), {
-    allowHttp: true,
-    allowPrivateHosts: shouldAllowPrivateMapGeocodingTargets(),
-  });
-  if (!normalized) {
-    throw createClientError('invalid_input', {
-      endpoint: url.origin + url.pathname,
-      provider: config.provider,
-    });
-  }
-  return new URL(normalized);
-};
-
-const fetchJsonWithTimeout = async (url: URL, timeoutMs: number): Promise<GeoapifyResponse> => {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    // fallow-ignore-next-line security-sink -- custom provider URLs are normalized via normalizeProviderRequestUrl before fetch.
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) {
-      if (response.status === 429) {
-        throw createClientError('rate_limited', {
-          statusCode: response.status,
-          endpoint: url.origin + url.pathname,
-        });
-      }
-      throw createClientError('provider_error', {
-        statusCode: response.status,
-        endpoint: url.origin + url.pathname,
-      });
-    }
-    return (await response.json()) as GeoapifyResponse;
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw createClientError('timeout', {
-        endpoint: url.origin + url.pathname,
-      });
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
-};
 
 const loadRuntimeConfig = async (instanceId: string): Promise<MapGeocodingRuntimeConfigWithSecrets> => {
   const { loadStoredMapGeocodingRuntimeConfig } = await import('./instance-interfaces-server.js');
@@ -300,36 +244,6 @@ export const withCurrentRequestGeocodingOperation = async <T>(
     diagnostics: MapGeocodingOperationDiagnostics,
   ) => Promise<T>,
 ): Promise<T> => withGeocodingOperation(await getRequest(), operation, run);
-
-export const executeProviderRequest = async (input: {
-  config: MapGeocodingRuntimeConfigWithSecrets;
-  mode: 'suggest' | 'geocode' | 'reverse';
-  query?: string;
-  coordinates?: MapGeocodingCoordinates;
-  diagnostics?: MapGeocodingOperationDiagnostics;
-}): Promise<readonly MapGeocodingFeature[]> => {
-  const startedAt = now();
-  try {
-    const providerUrl = buildProviderUrl(input.config, input.mode, {
-      query: input.query,
-      coordinates: input.coordinates,
-    });
-    const payload = await fetchJsonWithTimeout(
-      await normalizeProviderRequestUrl(input.config, providerUrl),
-      parsePositiveInteger(input.config.requestTimeoutMs),
-    );
-    return normalizeProviderFeatures(payload, input.config.provider);
-  } finally {
-    if (input.diagnostics) {
-      input.diagnostics.providerRequestDurationMs = now() - startedAt;
-    }
-  }
-};
-
-export const getPublicMapGeocodingConfig = (config: MapGeocodingRuntimeConfigWithSecrets): MapGeocodingRuntimeConfig => ({
-  provider: config.provider, styleUrl: config.styleUrl, autocompleteEnabled: config.autocompleteEnabled,
-  geocodeEnabled: config.geocodeEnabled, reverseGeocodeEnabled: config.reverseGeocodeEnabled, killSwitchEnabled: config.killSwitchEnabled,
-});
 
 export const executeSuggestOperation = async (
   config: MapGeocodingRuntimeConfigWithSecrets,

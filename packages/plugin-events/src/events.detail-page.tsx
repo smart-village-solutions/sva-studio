@@ -152,7 +152,7 @@ const toEventsMediaPickerDetail = (
     id: asset.id,
     title,
     fileName,
-    previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
+    previewUrl: asset.previewUrl ?? summary?.previewUrl ?? null,
     mimeType: asset.mimeType,
     visibility: asset.visibility,
     metadata: {
@@ -268,14 +268,17 @@ export function EventsDetailPage({
   const [poiOptions, setPoiOptions] = React.useState<readonly PoiSelectItem[]>([]);
   const [poiOptionsLoading, setPoiOptionsLoading] = React.useState(true);
   const [poiOptionsError, setPoiOptionsError] = React.useState<string | null>(null);
+  const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
   const mediaPickerLabels = React.useMemo(() => createEventsMediaPickerLabels(pt), [pt]);
 
   const refreshMediaAssets = React.useCallback(async () => {
     try {
       const assets = await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), visibility: 'public' });
+      mediaAssetsRef.current = assets;
       setMediaAssets(assets);
       return assets;
     } catch {
+      mediaAssetsRef.current = [];
       setMediaAssets([]);
       return [];
     }
@@ -347,11 +350,11 @@ export function EventsDetailPage({
         visibility: 'public',
       });
       await refreshMediaAssets();
-      return { assetId: uploaded.assetId };
+      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
     loadAsset: async (assetId) => {
       const detail = await getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId });
-      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
       return toEventsMediaPickerDetail(detail, summary);
     },
     saveAssetMetadata: async (assetId, metadata) => {
@@ -362,7 +365,7 @@ export function EventsDetailPage({
         metadata,
       });
       await refreshMediaAssets();
-      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
       return toEventsMediaPickerDetail(detail, summary);
     },
   });
@@ -568,6 +571,7 @@ export function EventsDetailPage({
           }
           isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
           isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
+          isSupportedUploadFile={isSupportedUploadFile}
           labels={mediaPickerLabels}
           metadataDraft={mediaPicker.metadataDraft}
           mode={mediaPicker.mode}

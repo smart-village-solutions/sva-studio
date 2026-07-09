@@ -1,3 +1,5 @@
+import React from 'react';
+
 import { Button } from './button.js';
 import { Input } from './input.js';
 import {
@@ -20,15 +22,11 @@ export type StudioMediaPickerLibraryPanelProps = Readonly<{
   onSearchValueChange: (value: string) => void;
   onSelectAsset: (asset: StudioMediaPickerAssetSummary) => void | Promise<void>;
   isAssetSelectable?: (asset: StudioMediaPickerAssetSummary) => boolean;
-  feedbackMessage?: string | null;
-  feedbackTone?: 'default' | 'success' | 'error';
   labels: StudioMediaPickerOverlayLabels['library'];
 }>;
 
 export const StudioMediaPickerLibraryPanel = ({
   assets,
-  feedbackMessage,
-  feedbackTone = 'default',
   isAssetSelectable,
   labels,
   onSearchValueChange,
@@ -36,12 +34,6 @@ export const StudioMediaPickerLibraryPanel = ({
   searchValue,
 }: StudioMediaPickerLibraryPanelProps) => {
   const query = normalizeStudioMediaPickerSearchValue(searchValue);
-  const feedbackClassName =
-    feedbackTone === 'error'
-      ? 'text-destructive'
-      : feedbackTone === 'success'
-        ? 'text-foreground'
-        : 'text-muted-foreground';
   const filteredAssets = assets.filter((asset) => {
     if (query.length === 0) {
       return true;
@@ -64,11 +56,6 @@ export const StudioMediaPickerLibraryPanel = ({
           onChange={(event) => onSearchValueChange(event.target.value)}
         />
       </div>
-      {feedbackMessage ? (
-        <p aria-live="polite" className={`text-sm font-medium ${feedbackClassName}`} role="status">
-          {feedbackMessage}
-        </p>
-      ) : null}
       {filteredAssets.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredAssets.map((asset) => {

@@ -237,6 +237,7 @@ export function GenericItemsDetailPage({
   const summaryErrors = React.useMemo(() => createSummaryErrors(methods.formState.errors), [methods.formState.errors]);
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const { mediaAssets, refreshMediaAssets } = useGenericItemsMediaAssets();
+  const mediaAssetsRef = React.useRef(mediaAssets);
   const { categoryOptions, categoryOptionsError, categoryOptionsLoading } = useGenericItemsCategoryOptions(pt);
   const loading = useGenericItemsDetailLoader({ contentId, methods, mode, pt, setStatus });
   const { activeTab, deleting, handleDelete, onSubmit, setActiveTab } = useGenericItemsDetailActions({
@@ -312,11 +313,11 @@ export function GenericItemsDetailPage({
         visibility: 'public',
       });
       await refreshMediaAssets();
-      return { assetId: uploaded.assetId };
+      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
     loadAsset: async (assetId) => {
       const detail = await getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId });
-      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
       return toGenericItemsMediaPickerDetail(detail, summary);
     },
     saveAssetMetadata: async (assetId, metadata) => {
@@ -327,10 +328,14 @@ export function GenericItemsDetailPage({
         visibility: 'public',
       });
       await refreshMediaAssets();
-      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
       return toGenericItemsMediaPickerDetail(detail, summary);
     },
   });
+
+  React.useEffect(() => {
+    mediaAssetsRef.current = mediaAssets;
+  }, [mediaAssets]);
   const mediaPickerFeedback = React.useMemo(
     () => resolveGenericItemsMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
     [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
@@ -374,6 +379,7 @@ export function GenericItemsDetailPage({
           }
           isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
           isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
+          isSupportedUploadFile={isSupportedUploadFile}
           labels={mediaPickerLabels}
           metadataDraft={mediaPicker.metadataDraft}
           mode={mediaPicker.mode}

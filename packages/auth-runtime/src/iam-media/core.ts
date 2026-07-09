@@ -292,49 +292,23 @@ const enrichListItemWithPreviewUrl = async (input: {
   }
 
   try {
-    return await enrichRegisteredAssetWithPreviewUrl({
-      storagePort: input.storagePort,
-      asset: input.item,
-    });
-  } catch {
-    return input.item;
-  }
-};
-
-const enrichRegisteredAssetWithPreviewUrl = async <
-  TAsset extends Readonly<{
-    id: string;
-    instanceId: string;
-    storageKey: string;
-    visibility: string;
-    mimeType: string;
-  }>,
->(input: {
-  readonly storagePort: MediaStoragePort;
-  readonly asset: TAsset;
-}): Promise<TAsset & { readonly previewUrl?: string | null }> => {
-  if (input.asset.visibility !== 'public' || input.asset.mimeType.startsWith('image/') === false) {
-    return input.asset;
-  }
-
-  try {
     const delivery = await input.storagePort.resolveDelivery({
-      instanceId: input.asset.instanceId,
-      assetId: input.asset.id,
-      storageKey: input.asset.storageKey,
-      visibility: input.asset.visibility,
+      instanceId: input.item.instanceId,
+      assetId: input.item.id,
+      storageKey: input.item.storageKey,
+      visibility: input.item.visibility,
     });
 
     if (!delivery?.deliveryUrl || delivery.isPublicUrl !== true) {
-      return input.asset;
+      return input.item;
     }
 
     return {
-      ...input.asset,
+      ...input.item,
       previewUrl: delivery.deliveryUrl,
     };
   } catch {
-    return input.asset;
+    return input.item;
   }
 };
 
@@ -637,12 +611,6 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
     }
 
-    const storagePort = await resolveMediaStoragePort(deps, instanceId);
-    const assetWithPreviewUrl = await enrichRegisteredAssetWithPreviewUrl({
-      storagePort,
-      asset,
-    });
-
     await emitMediaAuditEvent({
       deps,
       ctx,
@@ -653,7 +621,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       resourceId: assetId,
     });
 
-    return jsonResponse(200, asApiItem(assetWithPreviewUrl, getRequestId()));
+    return jsonResponse(200, asApiItem(asset, getRequestId()));
   },
 
   async getMediaUsage(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
@@ -1009,12 +977,6 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       await service.upsertAsset(updatedAsset);
     });
 
-    const storagePort = await resolveMediaStoragePort(deps, instanceId);
-    const updatedAssetWithPreviewUrl = await enrichRegisteredAssetWithPreviewUrl({
-      storagePort,
-      asset: updatedAsset,
-    });
-
     await emitMediaAuditEvent({
       deps,
       ctx,
@@ -1031,7 +993,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       resourceId: assetId,
     });
 
-    return jsonResponse(200, asApiItem({ ...updatedAssetWithPreviewUrl, usageImpact }, getRequestId()));
+    return jsonResponse(200, asApiItem({ ...updatedAsset, usageImpact }, getRequestId()));
   },
 
   async completeUpload(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {

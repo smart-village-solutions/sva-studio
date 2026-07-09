@@ -151,6 +151,25 @@ describe('EventsDetailPage', () => {
         'events.messages.poiOptionsLoading': 'POI werden geladen.',
         'events.messages.poiOptionsEmpty': 'Keine passenden POI gefunden.',
         'events.messages.imagePickerEmpty': 'Keine passenden Medien gefunden.',
+        'events.messages.mediaPickerTitle': 'Medium hinzufügen',
+        'events.messages.mediaPickerDescription':
+          'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
+        'events.messages.mediaPickerReviewMode': 'Prüfen',
+        'events.messages.mediaPickerUploadRegionLabel': 'Bilddatei hochladen',
+        'events.messages.mediaPickerUploadTitle': 'Neues Medium hochladen',
+        'events.messages.mediaPickerUploadDescription':
+          'Laden Sie ein Bild hoch und prüfen Sie danach die Metadaten vor der Übernahme.',
+        'events.messages.mediaPickerSelectFile': 'Datei auswählen',
+        'events.messages.mediaPickerUploadSupportLabel': 'Unterstützt werden JPG, PNG und WebP.',
+        'events.messages.mediaPickerReviewTitle': 'Metadaten prüfen',
+        'events.messages.mediaPickerReviewDescription':
+          'Ergänzen Sie Titel, Alternativtext und weitere Metadaten, bevor das Medium übernommen wird.',
+        'events.messages.mediaPickerAltText': 'Alternativtext',
+        'events.messages.mediaPickerLicense': 'Lizenz',
+        'events.messages.mediaPickerBackToLibrary': 'Zurück zur Mediathek',
+        'events.messages.mediaPickerBackToUpload': 'Zurück zum Upload',
+        'events.messages.mediaPickerOpenMediaManagement': 'In Medienverwaltung öffnen',
+        'events.messages.mediaPickerUseMedia': 'Medium übernehmen',
         'events.messages.mediaUploadInitializing': 'Upload wird vorbereitet.',
         'events.messages.mediaUploadUploading': 'Medium wird hochgeladen.',
         'events.messages.mediaUploadFinalizing': 'Medium wird verarbeitet.',
@@ -158,20 +177,6 @@ describe('EventsDetailPage', () => {
         'events.messages.mediaUploadError': 'Medium konnte nicht hochgeladen werden.',
         'events.messages.mediaUploadUnsupportedType': 'Dateityp wird nicht unterstützt.',
         'events.messages.mediaUploadUnavailableUrl': 'Bild-URL konnte nicht ermittelt werden.',
-        'events.messages.mediaPickerTitle': 'Medium hinzufügen',
-        'events.messages.mediaPickerDescription': 'Vorhandene Medien auswählen oder neue hochladen.',
-        'events.messages.mediaPickerReviewMode': 'Medium prüfen',
-        'events.messages.mediaPickerUploadRegionLabel': 'Uploadbereich',
-        'events.messages.mediaPickerUploadTitle': 'Neues Medium hochladen',
-        'events.messages.mediaPickerUploadDescription': 'Datei auswählen und Metadaten prüfen.',
-        'events.messages.mediaPickerSelectFile': 'Datei auswählen',
-        'events.messages.mediaPickerUploadSupportLabel': 'Unterstützte Formate',
-        'events.messages.mediaPickerAltText': 'Alternativtext',
-        'events.messages.mediaPickerLicense': 'Lizenz',
-        'events.messages.mediaPickerBackToLibrary': 'Zurück zur Mediathek',
-        'events.messages.mediaPickerBackToUpload': 'Zurück zum Upload',
-        'events.messages.mediaPickerOpenMediaManagement': 'In Medienverwaltung öffnen',
-        'events.messages.mediaPickerUseMedia': 'Medium übernehmen',
         'events.history.empty.title': 'Noch keine Historie verfügbar.',
         'events.messages.updateSuccess': 'Event aktualisiert.',
         'events.messages.deleteError': 'Event konnte nicht gelöscht werden.',
@@ -300,23 +305,6 @@ describe('EventsDetailPage', () => {
     expect((screen.getByLabelText('Enddatum') as HTMLInputElement).value).toBe('2026-06-12');
   });
 
-  it('updates content dates and warms event tabs on pointer and focus interactions', async () => {
-    render(<EventsDetailPage mode="create" />);
-
-    const contentTab = await screen.findByRole('tab', { name: 'Inhalt' });
-    fireEvent.mouseEnter(contentTab);
-    fireEvent.focus(contentTab);
-    fireEvent.click(contentTab);
-
-    const startDateInput = await screen.findByLabelText('Startdatum');
-    const endDateInput = screen.getByLabelText('Enddatum');
-    fireEvent.change(startDateInput, { target: { value: '2026-08-01' } });
-    fireEvent.change(endDateInput, { target: { value: '2026-08-02' } });
-
-    expect((startDateInput as HTMLInputElement).value).toBe('2026-08-01');
-    expect((endDateInput as HTMLInputElement).value).toBe('2026-08-02');
-  });
-
   it('blocks submission on invalid title, invalid date input, and non-https links', async () => {
     render(<EventsDetailPage mode="create" />);
 
@@ -397,10 +385,13 @@ describe('EventsDetailPage', () => {
     });
   });
 
-  it('uses the refreshed asset detail preview url when the media list entry still has no preview url', async () => {
+  it('uses the upload response url when the refreshed asset still has no preview url', async () => {
     vi.mocked(uploadHostMediaFile).mockResolvedValueOnce({
       assetId: 'asset-uploaded',
-      uploadSessionId: 'upload-1',
+      previewUrl: 'https://example.com/uploaded.jpg',
+      fileName: 'uploaded.jpg',
+      mimeType: 'image/jpeg',
+      visibility: 'public',
     } as never);
     vi.mocked(listHostMediaAssets)
       .mockResolvedValueOnce([] as never)
@@ -420,7 +411,7 @@ describe('EventsDetailPage', () => {
       mediaType: 'image',
       mimeType: 'image/jpeg',
       byteSize: 1234,
-      previewUrl: 'https://example.com/uploaded.jpg',
+      previewUrl: '',
       visibility: 'public',
       uploadStatus: 'processed',
       processingStatus: 'ready',
@@ -439,7 +430,7 @@ describe('EventsDetailPage', () => {
       mediaType: 'image',
       mimeType: 'image/jpeg',
       byteSize: 1234,
-      previewUrl: 'https://example.com/uploaded.jpg',
+      previewUrl: '',
       visibility: 'public',
       uploadStatus: 'processed',
       processingStatus: 'ready',

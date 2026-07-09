@@ -119,7 +119,6 @@ export const updateHostMediaAsset = async (input: {
         'X-Requested-With': 'XMLHttpRequest',
       },
       body: JSON.stringify({
-        ...(input.instanceId ? { instanceId: input.instanceId } : {}),
         ...(input.visibility ? { visibility: input.visibility } : {}),
         metadata: input.metadata,
       }),

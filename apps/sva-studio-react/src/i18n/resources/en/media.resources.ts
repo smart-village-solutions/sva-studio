@@ -277,7 +277,6 @@ export const mediaENResources = {
     conflict: 'The media action could not be completed because of a conflict.',
     invalidMediaContent: 'The uploaded media could not be validated.',
     uploadSizeExceeded: 'The uploaded media exceeds the permitted size.',
-    unsupportedUploadType: 'Only JPEG, PNG, or WEBP images can be uploaded here.',
     activeReferences:
       'The media asset cannot be changed or deleted because it still has active references.',
   },

@@ -39,112 +39,6 @@ const ReviewField = ({ id, label, multiline = false, onChange, value }: ReviewFi
   </div>
 );
 
-const StudioMediaPickerReviewFields = ({
-  labels,
-  metadataDraft,
-  onMetadataChange,
-}: Readonly<{
-  labels: StudioMediaPickerReviewPanelProps['labels']['fields'];
-  metadataDraft: StudioMediaPickerMetadataDraft;
-  onMetadataChange: StudioMediaPickerReviewPanelProps['onMetadataChange'];
-}>) => (
-  <div className="space-y-4">
-    <ReviewField
-      id="studio-media-review-title"
-      label={labels.title}
-      value={metadataDraft.title}
-      onChange={(value) => onMetadataChange('title', value)}
-    />
-    <ReviewField
-      id="studio-media-review-alt-text"
-      label={labels.altText}
-      value={metadataDraft.altText}
-      onChange={(value) => onMetadataChange('altText', value)}
-    />
-    <ReviewField
-      id="studio-media-review-description"
-      label={labels.description}
-      multiline
-      value={metadataDraft.description}
-      onChange={(value) => onMetadataChange('description', value)}
-    />
-    <ReviewField
-      id="studio-media-review-copyright"
-      label={labels.copyright}
-      value={metadataDraft.copyright}
-      onChange={(value) => onMetadataChange('copyright', value)}
-    />
-    <ReviewField
-      id="studio-media-review-license"
-      label={labels.license}
-      value={metadataDraft.license}
-      onChange={(value) => onMetadataChange('license', value)}
-    />
-  </div>
-);
-
-const StudioMediaPickerReviewActions = ({
-  isLoadingReviewAsset,
-  isSavingReviewAsset,
-  labels,
-  onBackFromReview,
-  onClose,
-  onConfirmSelection,
-  onOpenMediaManagement,
-  reviewAsset,
-  reviewSource,
-}: Readonly<{
-  isLoadingReviewAsset: boolean;
-  isSavingReviewAsset: boolean;
-  labels: StudioMediaPickerReviewPanelProps['labels']['actions'];
-  onBackFromReview: () => void;
-  onClose: () => void;
-  onConfirmSelection: () => void | Promise<void>;
-  onOpenMediaManagement?: (assetId: string) => void | Promise<void>;
-  reviewAsset: StudioMediaPickerAssetDetail | null;
-  reviewSource: StudioMediaPickerReviewSource;
-}>) => (
-  <div className="flex flex-wrap justify-between gap-3 border-t border-border/60 pt-4">
-    <div className="flex flex-wrap gap-3">
-      <Button
-        type="button"
-        variant="outline"
-        disabled={isLoadingReviewAsset || isSavingReviewAsset}
-        onClick={onBackFromReview}
-      >
-        {reviewSource === 'library' ? labels.backToLibrary : labels.backToUpload}
-      </Button>
-      {reviewAsset && onOpenMediaManagement ? (
-        <Button
-          type="button"
-          variant="outline"
-          disabled={isLoadingReviewAsset || isSavingReviewAsset}
-          onClick={() => void onOpenMediaManagement(reviewAsset.id)}
-        >
-          {labels.openMediaManagement}
-        </Button>
-      ) : null}
-    </div>
-    <div className="flex flex-wrap gap-3">
-      <Button
-        type="button"
-        variant="outline"
-        disabled={isLoadingReviewAsset || isSavingReviewAsset}
-        onClick={onClose}
-      >
-        {labels.cancel}
-      </Button>
-      <Button
-        type="button"
-        disabled={isLoadingReviewAsset || isSavingReviewAsset || !reviewAsset}
-        onClick={() => void onConfirmSelection()}
-      >
-        {labels.useMedia}
-      </Button>
-    </div>
-  </div>
-);
-
 export type StudioMediaPickerReviewPanelProps = Readonly<{
   reviewSource: StudioMediaPickerReviewSource;
   reviewAsset: StudioMediaPickerAssetDetail | null;
@@ -182,8 +76,6 @@ export const StudioMediaPickerReviewPanel = ({
       : feedbackTone === 'success'
         ? 'text-foreground'
         : 'text-muted-foreground';
-  const reviewPreviewAlt =
-    metadataDraft.altText.trim() || metadataDraft.title.trim() || reviewAsset?.title || labels.review.title;
 
   return (
     <div className="space-y-5">
@@ -192,11 +84,7 @@ export const StudioMediaPickerReviewPanel = ({
         <p className="text-sm text-muted-foreground">{labels.review.description}</p>
       </div>
 
-      {feedbackMessage ? (
-        <p aria-live="polite" className={`text-sm font-medium ${feedbackClassName}`} role="status">
-          {feedbackMessage}
-        </p>
-      ) : null}
+      {feedbackMessage ? <p className={`text-sm font-medium ${feedbackClassName}`}>{feedbackMessage}</p> : null}
 
       {isLoadingReviewAsset || !reviewAsset ? (
         <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
@@ -206,31 +94,74 @@ export const StudioMediaPickerReviewPanel = ({
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
           <div className="space-y-4">
             <div className={studioMediaPickerPreviewClassName}>
-              <StudioMediaPreview alt={reviewPreviewAlt} url={reviewAsset.previewUrl} />
+              <StudioMediaPreview alt={reviewAsset.title} url={reviewAsset.previewUrl} />
             </div>
             <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-3">
               <p className="text-sm font-medium text-foreground">{reviewAsset.title}</p>
               <p className="text-xs text-muted-foreground">{reviewAsset.fileName}</p>
             </div>
           </div>
-          <StudioMediaPickerReviewFields
-            labels={labels.fields}
-            metadataDraft={metadataDraft}
-            onMetadataChange={onMetadataChange}
-          />
+
+          <div className="space-y-4">
+            <ReviewField
+              id="studio-media-review-title"
+              label={labels.fields.title}
+              value={metadataDraft.title}
+              onChange={(value) => onMetadataChange('title', value)}
+            />
+            <ReviewField
+              id="studio-media-review-alt-text"
+              label={labels.fields.altText}
+              value={metadataDraft.altText}
+              onChange={(value) => onMetadataChange('altText', value)}
+            />
+            <ReviewField
+              id="studio-media-review-description"
+              label={labels.fields.description}
+              multiline
+              value={metadataDraft.description}
+              onChange={(value) => onMetadataChange('description', value)}
+            />
+            <ReviewField
+              id="studio-media-review-copyright"
+              label={labels.fields.copyright}
+              value={metadataDraft.copyright}
+              onChange={(value) => onMetadataChange('copyright', value)}
+            />
+            <ReviewField
+              id="studio-media-review-license"
+              label={labels.fields.license}
+              value={metadataDraft.license}
+              onChange={(value) => onMetadataChange('license', value)}
+            />
+          </div>
         </div>
       )}
-      <StudioMediaPickerReviewActions
-        isLoadingReviewAsset={isLoadingReviewAsset}
-        isSavingReviewAsset={isSavingReviewAsset}
-        labels={labels.actions}
-        onBackFromReview={onBackFromReview}
-        onClose={onClose}
-        onConfirmSelection={onConfirmSelection}
-        onOpenMediaManagement={onOpenMediaManagement}
-        reviewAsset={reviewAsset}
-        reviewSource={reviewSource}
-      />
+
+      <div className="flex flex-wrap justify-between gap-3 border-t border-border/60 pt-4">
+        <div className="flex flex-wrap gap-3">
+          <Button type="button" variant="outline" onClick={onBackFromReview}>
+            {reviewSource === 'library' ? labels.actions.backToLibrary : labels.actions.backToUpload}
+          </Button>
+          {reviewAsset && onOpenMediaManagement ? (
+            <Button type="button" variant="outline" onClick={() => void onOpenMediaManagement(reviewAsset.id)}>
+              {labels.actions.openMediaManagement}
+            </Button>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Button type="button" variant="outline" onClick={onClose}>
+            {labels.actions.cancel}
+          </Button>
+          <Button
+            type="button"
+            disabled={isLoadingReviewAsset || isSavingReviewAsset || !reviewAsset}
+            onClick={() => void onConfirmSelection()}
+          >
+            {labels.actions.useMedia}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

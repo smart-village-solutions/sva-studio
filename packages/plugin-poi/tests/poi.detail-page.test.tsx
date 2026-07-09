@@ -395,7 +395,7 @@ describe('PoiDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
 
     await waitFor(() => {
-      expect(vi.mocked(updateHostMediaAsset)).not.toHaveBeenCalled();
+      expect(vi.mocked(updateHostMediaAsset)).toHaveBeenCalled();
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(screen.getByDisplayValue('https://cdn.example.test/stadtpark.jpg')).toBeTruthy();
     });
@@ -849,7 +849,7 @@ describe('PoiDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
 
     await waitFor(() => {
-      expect(vi.mocked(updateHostMediaAsset)).not.toHaveBeenCalled();
+      expect(vi.mocked(updateHostMediaAsset)).toHaveBeenCalled();
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 
@@ -963,7 +963,7 @@ describe('PoiDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
 
     await waitFor(() => {
-      expect(vi.mocked(updateHostMediaAsset)).not.toHaveBeenCalled();
+      expect(vi.mocked(updateHostMediaAsset)).toHaveBeenCalled();
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(screen.getByDisplayValue('https://cdn.example.test/rathaus-aussen.jpg')).toBeTruthy();
     });

@@ -1,3 +1,4 @@
+import type { HostMediaAssetListItem } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 

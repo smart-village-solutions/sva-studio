@@ -17,13 +17,18 @@ export type MediaIntakePanelProps = Readonly<{
   accept?: string;
   inputTestId?: string;
   onFileSelected: (file: File) => void;
+  isSupportedUploadFile?: (file: File) => boolean;
 }>;
+
+const defaultIsSupportedUploadFile = () => true;
 
 const useMediaIntakeInteraction = ({
   isBusy,
+  isSupportedUploadFile,
   onFileSelected,
 }: Readonly<{
   isBusy: boolean;
+  isSupportedUploadFile: (file: File) => boolean;
   onFileSelected: (file: File) => void;
 }>) => {
   const [isDragActive, setIsDragActive] = React.useState(false);
@@ -63,11 +68,11 @@ const useMediaIntakeInteraction = ({
         return;
       }
       const file = event.dataTransfer.files?.[0];
-      if (file) {
+      if (file && isSupportedUploadFile(file)) {
         onFileSelected(file);
       }
     },
-    [isBusy, onFileSelected]
+    [isBusy, isSupportedUploadFile, onFileSelected]
   );
 
   return {
@@ -86,6 +91,7 @@ const MediaIntakePanelBody = ({
   inputTestId,
   inputRef,
   isBusy,
+  isSupportedUploadFile,
   onFileSelected,
   statusClassName,
   statusMessage,
@@ -98,6 +104,7 @@ const MediaIntakePanelBody = ({
   inputTestId?: string;
   inputRef: React.RefObject<HTMLInputElement | null>;
   isBusy: boolean;
+  isSupportedUploadFile: (file: File) => boolean;
   onFileSelected: (file: File) => void;
   statusClassName: string;
   statusMessage?: string | null;
@@ -122,7 +129,7 @@ const MediaIntakePanelBody = ({
       type="file"
       onChange={(event) => {
         const file = event.currentTarget.files?.[0];
-        if (file) {
+        if (file && isSupportedUploadFile(file)) {
           onFileSelected(file);
         }
         event.currentTarget.value = '';
@@ -147,11 +154,7 @@ const MediaIntakePanelBody = ({
       </div>
     </div>
 
-    {statusMessage ? (
-      <p aria-live="polite" className={`text-sm font-medium ${statusClassName}`} role="status">
-        {statusMessage}
-      </p>
-    ) : null}
+    {statusMessage ? <p className={`text-sm font-medium ${statusClassName}`}>{statusMessage}</p> : null}
   </div>
 );
 
@@ -160,6 +163,7 @@ export const MediaIntakePanel = ({
   browseActionLabel,
   description,
   inputTestId,
+  isSupportedUploadFile = defaultIsSupportedUploadFile,
   onFileSelected,
   phase,
   regionLabel,
@@ -170,11 +174,11 @@ export const MediaIntakePanel = ({
 }: MediaIntakePanelProps) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const isBusy = phase === 'initializing' || phase === 'uploading' || phase === 'finalizing';
-  const { handleDragEnter, handleDragLeave, handleDragOver, handleDrop, isDragActive } =
-    useMediaIntakeInteraction({
-      isBusy,
-      onFileSelected,
-    });
+  const { handleDragEnter, handleDragLeave, handleDragOver, handleDrop, isDragActive } = useMediaIntakeInteraction({
+    isBusy,
+    isSupportedUploadFile,
+    onFileSelected,
+  });
 
   const statusClassName =
     statusTone === 'error'
@@ -202,6 +206,7 @@ export const MediaIntakePanel = ({
         inputRef={inputRef}
         inputTestId={inputTestId}
         isBusy={isBusy}
+        isSupportedUploadFile={isSupportedUploadFile}
         onFileSelected={onFileSelected}
         statusClassName={statusClassName}
         statusMessage={statusMessage}

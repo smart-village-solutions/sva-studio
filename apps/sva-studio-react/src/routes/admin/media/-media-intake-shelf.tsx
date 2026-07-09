@@ -4,11 +4,15 @@ import type { IamHttpError } from '../../../lib/iam-api';
 
 type MediaIntakeShelfProps = {
   readonly phase: 'idle' | 'initializing' | 'uploading' | 'finalizing' | 'success' | 'error';
-  readonly error: (IamHttpError | Error | { readonly code: 'unsupported_upload_type' }) | null;
+  readonly error: IamHttpError | Error | null;
   readonly onFileSelected: (file: File) => void;
 };
 
-const uploadErrorMessage = (error: MediaIntakeShelfProps['error']) => {
+const acceptedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+const isSupportedUploadFile = (file: File) => acceptedMimeTypes.has(file.type);
+
+const uploadErrorMessage = (error: IamHttpError | Error | null) => {
   if (!error || !('code' in error) || typeof error.code !== 'string') {
     return t('media.library.upload.error');
   }
@@ -22,8 +26,6 @@ const uploadErrorMessage = (error: MediaIntakeShelfProps['error']) => {
       return t('media.errors.invalidMediaContent');
     case 'upload_size_exceeded':
       return t('media.errors.uploadSizeExceeded');
-    case 'unsupported_upload_type':
-      return t('media.errors.unsupportedUploadType');
     default:
       return t('media.library.upload.error');
   }
@@ -50,6 +52,7 @@ export const MediaIntakeShelf = ({ phase, error, onFileSelected }: MediaIntakeSh
       browseActionLabel={t('media.actions.selectFiles')}
       description={t('media.library.quickIntake.description')}
       inputTestId="media-upload-input"
+      isSupportedUploadFile={isSupportedUploadFile}
       onFileSelected={onFileSelected}
       phase={phase}
       regionLabel={t('media.library.quickIntake.regionLabel')}

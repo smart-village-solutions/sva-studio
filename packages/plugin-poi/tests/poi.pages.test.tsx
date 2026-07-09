@@ -334,7 +334,11 @@ describe('PoiListPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
 
     await waitFor(() => {
-      expect(vi.mocked(updateHostMediaAsset)).not.toHaveBeenCalled();
+      expect(vi.mocked(updateHostMediaAsset)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assetId: 'asset-teaser',
+        })
+      );
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 

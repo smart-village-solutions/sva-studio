@@ -22,6 +22,7 @@ import {
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
   type StudioMediaPickerErrorCode,
+  type StudioMediaPickerMetadataDraft,
   type StudioMediaPickerOverlayLabels,
   Tabs,
   TabsContent,
@@ -182,7 +183,7 @@ const toNewsMediaPickerDetail = (
     id: asset.id,
     title,
     fileName,
-    previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
+    previewUrl: asset.previewUrl ?? summary?.previewUrl ?? null,
     mimeType: asset.mimeType,
     visibility: asset.visibility,
     metadata: {
@@ -343,6 +344,7 @@ export const NewsDetailPage = ({
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
+  const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
   const [visitedTabs, setVisitedTabs] = React.useState<readonly NewsDetailTabId[]>(['basis']);
   const editLoadRequestIdRef = React.useRef(0);
   const formId = React.useId();
@@ -361,9 +363,11 @@ export const NewsDetailPage = ({
   const refreshMediaAssets = React.useCallback(async () => {
     try {
       const assets = await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), visibility: 'public' });
+      mediaAssetsRef.current = assets;
       setMediaAssets(assets);
       return assets;
     } catch {
+      mediaAssetsRef.current = [];
       setMediaAssets([]);
       return [];
     }
@@ -415,11 +419,11 @@ export const NewsDetailPage = ({
         visibility: 'public',
       });
       await refreshMediaAssets();
-      return { assetId: uploaded.assetId };
+      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
     loadAsset: async (assetId) => {
       const detail = await getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId });
-      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
       return toNewsMediaPickerDetail(detail, summary);
     },
     saveAssetMetadata: async (assetId, metadata) => {
@@ -430,7 +434,7 @@ export const NewsDetailPage = ({
         metadata,
       });
       await refreshMediaAssets();
-      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
       return toNewsMediaPickerDetail(detail, summary);
     },
   });
@@ -742,6 +746,7 @@ export const NewsDetailPage = ({
           }
           isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
           isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
+          isSupportedUploadFile={isSupportedUploadFile}
           labels={mediaPickerLabels}
           metadataDraft={mediaPicker.metadataDraft}
           mode={mediaPicker.mode}

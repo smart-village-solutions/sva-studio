@@ -220,6 +220,7 @@ export function PoiDetailPage({
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<PoiContentItem | null>(null);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
+  const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
   const [activeTab, setActiveTab] = React.useState<PoiDetailTabId>('basis');
   const [visitedTabs, setVisitedTabs] = React.useState<readonly PoiDetailTabId[]>(['basis']);
   const [categoryOptions, setCategoryOptions] = React.useState<readonly PoiCategoryOption[]>([]);
@@ -235,9 +236,11 @@ export function PoiDetailPage({
   const refreshMediaAssets = React.useCallback(async () => {
     try {
       const assets = await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), instanceId, visibility: 'public' });
+      mediaAssetsRef.current = assets;
       setMediaAssets(assets);
       return assets;
     } catch {
+      mediaAssetsRef.current = [];
       setMediaAssets([]);
       return [];
     }
@@ -289,7 +292,7 @@ export function PoiDetailPage({
         instanceId,
       });
       await refreshMediaAssets();
-      return { assetId: uploaded.assetId };
+      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
     loadAsset: async (assetId) => {
       const detail = await getHostMediaAsset({
@@ -297,7 +300,7 @@ export function PoiDetailPage({
         assetId,
         instanceId,
       });
-      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
       return toPoiMediaPickerDetail(detail, summary);
     },
     saveAssetMetadata: async (assetId, metadata) => {
@@ -309,7 +312,7 @@ export function PoiDetailPage({
         instanceId,
       });
       await refreshMediaAssets();
-      const summary = mediaAssets.find((asset) => asset.id === assetId);
+      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
       return toPoiMediaPickerDetail(detail, summary);
     },
   });
@@ -558,6 +561,7 @@ export function PoiDetailPage({
           }
           isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
           isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
+          isSupportedUploadFile={isSupportedUploadFile}
           labels={mediaPickerLabels}
           metadataDraft={mediaPicker.metadataDraft}
           mode={mediaPicker.mode}

@@ -218,13 +218,10 @@ describe('NewsDetailPage', () => {
     expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(1);
   });
 
-  it('uses the upload response url when the refreshed news asset still has no preview url', async () => {
+  it('uses the refreshed asset detail preview url when the media list entry still has no preview url', async () => {
     vi.mocked(uploadHostMediaFile).mockResolvedValueOnce({
       assetId: 'asset-uploaded',
-      previewUrl: 'https://example.com/uploaded.jpg',
-      fileName: 'uploaded.jpg',
-      mimeType: 'image/jpeg',
-      visibility: 'public',
+      uploadSessionId: 'upload-1',
     } as never);
     vi.mocked(listHostMediaAssets)
       .mockResolvedValueOnce([] as never)
@@ -239,10 +236,15 @@ describe('NewsDetailPage', () => {
       ] as never);
     vi.mocked(getHostMediaAsset).mockResolvedValueOnce({
       id: 'asset-uploaded',
-      fileName: 'uploaded.jpg',
+      instanceId: 'de-test',
+      storageKey: 'de-test/originals/uploaded.jpg',
+      mediaType: 'image',
       mimeType: 'image/jpeg',
-      previewUrl: '',
+      byteSize: 1234,
+      previewUrl: 'https://example.com/uploaded.jpg',
       visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
       metadata: {
         title: 'uploaded.jpg',
         altText: '',
@@ -253,10 +255,15 @@ describe('NewsDetailPage', () => {
     } as never);
     vi.mocked(updateHostMediaAsset).mockResolvedValueOnce({
       id: 'asset-uploaded',
-      fileName: 'uploaded.jpg',
+      instanceId: 'de-test',
+      storageKey: 'de-test/originals/uploaded.jpg',
+      mediaType: 'image',
       mimeType: 'image/jpeg',
-      previewUrl: '',
+      byteSize: 1234,
+      previewUrl: 'https://example.com/uploaded.jpg',
       visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
       metadata: {
         title: 'uploaded.jpg',
         altText: '',

@@ -25,11 +25,13 @@ export type CompleteHostMediaUploadResult = Readonly<{
   assetId: string;
   uploadSessionId: string;
   status: string;
+  previewUrl?: string | null;
 }>;
 
 export type UploadHostMediaFileResult = Readonly<{
   assetId: string;
   uploadSessionId: string;
+  previewUrl?: string | null;
 }>;
 
 export const initializeHostMediaUpload = async (input: {
@@ -129,5 +131,6 @@ export const uploadHostMediaFile = async (input: {
   return {
     assetId: completed.assetId,
     uploadSessionId: completed.uploadSessionId,
+    previewUrl: completed.previewUrl,
   };
 };

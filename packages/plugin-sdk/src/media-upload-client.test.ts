@@ -102,6 +102,7 @@ describe('media upload client', () => {
               assetId: 'asset-2',
               uploadSessionId: 'upload-2',
               status: 'processed',
+              previewUrl: 'https://cdn.example.test/asset-2.png',
             },
           }),
           { status: 200 },
@@ -122,6 +123,7 @@ describe('media upload client', () => {
     ).resolves.toEqual({
       assetId: 'asset-2',
       uploadSessionId: 'upload-2',
+      previewUrl: 'https://cdn.example.test/asset-2.png',
     });
   });
 

@@ -106,17 +106,32 @@ const StudioMediaPickerReviewActions = ({
 }>) => (
   <div className="flex flex-wrap justify-between gap-3 border-t border-border/60 pt-4">
     <div className="flex flex-wrap gap-3">
-      <Button type="button" variant="outline" onClick={onBackFromReview}>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={isLoadingReviewAsset || isSavingReviewAsset}
+        onClick={onBackFromReview}
+      >
         {reviewSource === 'library' ? labels.backToLibrary : labels.backToUpload}
       </Button>
       {reviewAsset && onOpenMediaManagement ? (
-        <Button type="button" variant="outline" onClick={() => void onOpenMediaManagement(reviewAsset.id)}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isLoadingReviewAsset || isSavingReviewAsset}
+          onClick={() => void onOpenMediaManagement(reviewAsset.id)}
+        >
           {labels.openMediaManagement}
         </Button>
       ) : null}
     </div>
     <div className="flex flex-wrap gap-3">
-      <Button type="button" variant="outline" onClick={onClose}>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={isLoadingReviewAsset || isSavingReviewAsset}
+        onClick={onClose}
+      >
         {labels.cancel}
       </Button>
       <Button

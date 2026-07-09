@@ -1,7 +1,8 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  StudioMediaPickerOverlay,
   type StudioMediaPickerAssetDetail,
   useStudioMediaPickerOverlay,
 } from './studio-media-picker-overlay.js';
@@ -22,6 +23,46 @@ const createAsset = (overrides?: Partial<StudioMediaPickerAssetDetail>): StudioM
   },
   ...overrides,
 });
+
+const labels = {
+  title: 'Medien',
+  description: 'Overlay',
+  modes: {
+    library: 'Bibliothek',
+    upload: 'Upload',
+    review: 'Prüfen',
+  },
+  library: {
+    searchLabel: 'Suche',
+    empty: 'Leer',
+    select: 'Auswählen',
+  },
+  upload: {
+    regionLabel: 'Upload',
+    title: 'Upload',
+    description: 'Upload',
+    browseAction: 'Datei auswählen',
+    supportLabel: 'JPG',
+  },
+  review: {
+    title: 'Prüfen',
+    description: 'Prüfen',
+  },
+  fields: {
+    title: 'Titel',
+    altText: 'Alt',
+    description: 'Beschreibung',
+    copyright: 'Copyright',
+    license: 'Lizenz',
+  },
+  actions: {
+    cancel: 'Abbrechen',
+    backToLibrary: 'Zurück zur Bibliothek',
+    backToUpload: 'Zurück zum Upload',
+    openMediaManagement: 'In Medienverwaltung öffnen',
+    useMedia: 'Medium übernehmen',
+  },
+} as const;
 
 describe('useStudioMediaPickerOverlay', () => {
   it('starts in upload mode, uploads, switches to review, and only accepts after metadata save', async () => {
@@ -64,6 +105,7 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(loadAsset).toHaveBeenCalledWith(asset.id);
     expect(result.current.mode).toBe('review');
     expect(result.current.reviewAsset?.id).toBe(asset.id);
+    expect(result.current.uploadPhase).toBe('idle');
     expect(onAccept).not.toHaveBeenCalled();
 
     act(() => {
@@ -161,5 +203,61 @@ describe('useStudioMediaPickerOverlay', () => {
 
     expect(result.current.mode).toBe('library');
     expect(onAccept).not.toHaveBeenCalled();
+  });
+
+  it('disables review actions and mode switches while the overlay is busy', () => {
+    const onChangeMode = vi.fn();
+    const onBackFromReview = vi.fn();
+    const onClose = vi.fn();
+    const onOpenMediaManagement = vi.fn();
+    const reviewAsset = createAsset();
+
+    render(
+      <StudioMediaPickerOverlay
+        assets={[]}
+        isLoadingReviewAsset={false}
+        isSavingReviewAsset
+        isSupportedUploadFile={() => true}
+        labels={labels}
+        metadataDraft={reviewAsset.metadata}
+        mode="review"
+        onBackFromReview={onBackFromReview}
+        onChangeMode={onChangeMode}
+        onClose={onClose}
+        onConfirmSelection={vi.fn()}
+        onMetadataChange={vi.fn()}
+        onOpenMediaManagement={onOpenMediaManagement}
+        onSearchValueChange={vi.fn()}
+        onSelectAsset={vi.fn()}
+        onUploadFile={vi.fn()}
+        open
+        reviewAsset={reviewAsset}
+        reviewSource="upload"
+        searchValue=""
+        uploadPhase="idle"
+        feedbackMessage={null}
+      />
+    );
+
+    const libraryTab = screen.getByRole('button', { name: labels.modes.library });
+    const uploadTab = screen.getByRole('button', { name: labels.modes.upload });
+    const backButton = screen.getByRole('button', { name: labels.actions.backToUpload });
+    const openManagementButton = screen.getByRole('button', { name: labels.actions.openMediaManagement });
+    const cancelButton = screen.getByRole('button', { name: labels.actions.cancel });
+
+    expect(libraryTab.getAttribute('disabled')).not.toBeNull();
+    expect(uploadTab.getAttribute('disabled')).not.toBeNull();
+    expect(backButton.getAttribute('disabled')).not.toBeNull();
+    expect(openManagementButton.getAttribute('disabled')).not.toBeNull();
+    expect(cancelButton.getAttribute('disabled')).not.toBeNull();
+
+    fireEvent.click(cancelButton);
+    fireEvent.click(backButton);
+    fireEvent.click(openManagementButton);
+
+    expect(onChangeMode).not.toHaveBeenCalled();
+    expect(onBackFromReview).not.toHaveBeenCalled();
+    expect(onOpenMediaManagement).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

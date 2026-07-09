@@ -66,7 +66,7 @@ const useStudioMediaPickerUploadAction = ({
         const uploaded = await uploadAsset(file);
         setUploadPhase('finalizing');
         await loadReviewAsset(uploaded.assetId, 'upload');
-        setUploadPhase('success');
+        setUploadPhase('idle');
       } catch {
         setUploadPhase('error');
         setErrorCode('upload_failed');

@@ -54,19 +54,31 @@ type StudioMediaPickerOverlayProps = Readonly<{
 }>;
 
 const StudioMediaPickerModeTabs = ({
+  disabled = false,
   labels,
   mode,
   onChangeMode,
 }: Readonly<{
+  disabled?: boolean;
   labels: StudioMediaPickerOverlayLabels['modes'];
   mode: StudioMediaPickerMode;
   onChangeMode: (mode: 'library' | 'upload') => void;
 }>) => (
   <div className="flex flex-wrap gap-2 border-b border-border/60 pb-4">
-    <Button type="button" variant={mode === 'library' ? 'default' : 'outline'} onClick={() => onChangeMode('library')}>
+    <Button
+      type="button"
+      disabled={disabled}
+      variant={mode === 'library' ? 'default' : 'outline'}
+      onClick={() => onChangeMode('library')}
+    >
       {labels.library}
     </Button>
-    <Button type="button" variant={mode === 'upload' ? 'default' : 'outline'} onClick={() => onChangeMode('upload')}>
+    <Button
+      type="button"
+      disabled={disabled}
+      variant={mode === 'upload' ? 'default' : 'outline'}
+      onClick={() => onChangeMode('upload')}
+    >
       {labels.upload}
     </Button>
     {mode === 'review' ? (
@@ -175,15 +187,39 @@ export const StudioMediaPickerOverlay = ({
   searchValue,
   uploadPhase,
 }: StudioMediaPickerOverlayProps) => {
+  const isInteractionLocked =
+    uploadPhase === 'initializing' ||
+    uploadPhase === 'uploading' ||
+    uploadPhase === 'finalizing' ||
+    isLoadingReviewAsset ||
+    isSavingReviewAsset;
+
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => (!nextOpen ? onClose() : undefined)}>
-      <DialogContent className="max-h-[92vh] w-[min(96vw,1080px)] max-w-none overflow-hidden">
+    <Dialog open={open} onOpenChange={(nextOpen) => (!nextOpen && !isInteractionLocked ? onClose() : undefined)}>
+      <DialogContent
+        className="max-h-[92vh] w-[min(96vw,1080px)] max-w-none overflow-hidden"
+        onEscapeKeyDown={(event) => {
+          if (isInteractionLocked) {
+            event.preventDefault();
+          }
+        }}
+        onPointerDownOutside={(event) => {
+          if (isInteractionLocked) {
+            event.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{labels.title}</DialogTitle>
           <DialogDescription>{labels.description}</DialogDescription>
         </DialogHeader>
 
-        <StudioMediaPickerModeTabs labels={labels.modes} mode={mode} onChangeMode={onChangeMode} />
+        <StudioMediaPickerModeTabs
+          disabled={isInteractionLocked}
+          labels={labels.modes}
+          mode={mode}
+          onChangeMode={onChangeMode}
+        />
         <StudioMediaPickerOverlayBody
           assets={assets}
           feedbackMessage={feedbackMessage}

@@ -80,6 +80,8 @@ const StudioMediaPickerOverlayBody = ({
     {mode === 'library' ? (
       <StudioMediaPickerLibraryPanel
         assets={assets}
+        feedbackMessage={feedbackMessage}
+        feedbackTone={feedbackTone}
         isAssetSelectable={isAssetSelectable}
         labels={labels.library}
         onSearchValueChange={onSearchValueChange}

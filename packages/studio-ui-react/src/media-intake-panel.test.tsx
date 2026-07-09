@@ -45,4 +45,22 @@ describe('MediaIntakePanel', () => {
 
     expect(onFileSelected).toHaveBeenCalledWith(file);
   });
+
+  it('announces dynamic status text through a live region', () => {
+    render(
+      <MediaIntakePanel
+        browseActionLabel="Datei auswählen"
+        description="Beschreibung"
+        onFileSelected={vi.fn()}
+        phase="error"
+        regionLabel="Upload"
+        statusMessage="Upload fehlgeschlagen"
+        supportLabel="JPG, PNG, WebP"
+        title="Upload"
+      />
+    );
+
+    expect(screen.getByRole('status').getAttribute('aria-live')).toBe('polite');
+    expect(screen.getByRole('status').textContent).toContain('Upload fehlgeschlagen');
+  });
 });

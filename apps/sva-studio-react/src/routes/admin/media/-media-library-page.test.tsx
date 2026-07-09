@@ -243,7 +243,7 @@ describe('MediaLibraryPage', () => {
     expect(uploadFileMock).toHaveBeenCalledWith(file);
   });
 
-  it('forwards unsupported files dropped onto the intake shelf into the shared upload flow', () => {
+  it('blocks unsupported files in the library intake before the upload hook runs', () => {
     render(<MediaLibraryPage />);
 
     const file = new File(['%PDF'], 'manual.pdf', { type: 'application/pdf' });
@@ -253,7 +253,10 @@ describe('MediaLibraryPage', () => {
       },
     });
 
-    expect(uploadFileMock).toHaveBeenCalledWith(file);
+    expect(uploadFileMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('status').textContent).toContain(
+      'Nur JPEG-, PNG- oder WEBP-Bilder können hier hochgeladen werden.'
+    );
     expect(navigateMock).not.toHaveBeenCalled();
   });
 

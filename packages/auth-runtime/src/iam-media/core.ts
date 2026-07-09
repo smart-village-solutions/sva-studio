@@ -637,8 +637,9 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
     }
 
+    const storagePort = await resolveMediaStoragePort(deps, instanceId);
     const assetWithPreviewUrl = await enrichRegisteredAssetWithPreviewUrl({
-      storagePort: deps.storagePort,
+      storagePort,
       asset,
     });
 
@@ -1008,8 +1009,9 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       await service.upsertAsset(updatedAsset);
     });
 
+    const storagePort = await resolveMediaStoragePort(deps, instanceId);
     const updatedAssetWithPreviewUrl = await enrichRegisteredAssetWithPreviewUrl({
-      storagePort: deps.storagePort,
+      storagePort,
       asset: updatedAsset,
     });
 

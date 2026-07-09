@@ -182,6 +182,8 @@ export const StudioMediaPickerReviewPanel = ({
       : feedbackTone === 'success'
         ? 'text-foreground'
         : 'text-muted-foreground';
+  const reviewPreviewAlt =
+    metadataDraft.altText.trim() || metadataDraft.title.trim() || reviewAsset?.title || labels.review.title;
 
   return (
     <div className="space-y-5">
@@ -190,7 +192,11 @@ export const StudioMediaPickerReviewPanel = ({
         <p className="text-sm text-muted-foreground">{labels.review.description}</p>
       </div>
 
-      {feedbackMessage ? <p className={`text-sm font-medium ${feedbackClassName}`}>{feedbackMessage}</p> : null}
+      {feedbackMessage ? (
+        <p aria-live="polite" className={`text-sm font-medium ${feedbackClassName}`} role="status">
+          {feedbackMessage}
+        </p>
+      ) : null}
 
       {isLoadingReviewAsset || !reviewAsset ? (
         <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
@@ -200,7 +206,7 @@ export const StudioMediaPickerReviewPanel = ({
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
           <div className="space-y-4">
             <div className={studioMediaPickerPreviewClassName}>
-              <StudioMediaPreview alt={reviewAsset.title} url={reviewAsset.previewUrl} />
+              <StudioMediaPreview alt={reviewPreviewAlt} url={reviewAsset.previewUrl} />
             </div>
             <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-3">
               <p className="text-sm font-medium text-foreground">{reviewAsset.title}</p>

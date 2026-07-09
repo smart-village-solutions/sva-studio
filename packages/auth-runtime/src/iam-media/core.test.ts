@@ -265,6 +265,61 @@ describe('media http handlers', () => {
     });
   });
 
+  it('resolves the instance storage port for public image asset detail previews', async () => {
+    const service = createService();
+    service.getAssetById = vi.fn(async () => ({
+      id: 'asset-1',
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {},
+      technical: {},
+    }));
+    const resolvedStoragePort = {
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(async () => ({
+        deliveryUrl: 'https://cdn.example.test/resolved/asset-1.jpg',
+        expiresAt: '2099-01-01T00:00:00.000Z',
+        isPublicUrl: true,
+      })),
+    };
+    const resolveStoragePort = vi.fn(async () => resolvedStoragePort);
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: {} as never,
+      resolveStoragePort,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.getMedia(
+      new Request('http://localhost/api/v1/iam/media/asset-1?instanceId=tenant-a'),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    expect(resolveStoragePort).toHaveBeenCalledWith('tenant-a');
+    expect(resolvedStoragePort.resolveDelivery).toHaveBeenCalledWith({
+      assetId: 'asset-1',
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      visibility: 'public',
+    });
+    await expect(response.json()).resolves.toEqual({
+      data: expect.objectContaining({
+        id: 'asset-1',
+        previewUrl: 'https://cdn.example.test/resolved/asset-1.jpg',
+      }),
+    });
+  });
+
   it('lists registered and unregistered media with combined server-side paging', async () => {
     const service = createService();
     service.listAssets = vi.fn(async () => [
@@ -1440,6 +1495,68 @@ describe('media http handlers', () => {
         id: 'asset-1',
         visibility: 'public',
         previewUrl: 'https://cdn.example.test/tenant-a/originals/asset-1.jpg',
+      }),
+    });
+  });
+
+  it('resolves the instance storage port for updated media previews', async () => {
+    const service = createService();
+    service.getAssetById = vi.fn(async () => ({
+      id: 'asset-1',
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {},
+      technical: {},
+    }));
+    const resolvedStoragePort = {
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(async () => ({
+        deliveryUrl: 'https://cdn.example.test/resolved/asset-1.jpg',
+        expiresAt: '2099-01-01T00:00:00.000Z',
+        isPublicUrl: true,
+      })),
+    };
+    const resolveStoragePort = vi.fn(async () => resolvedStoragePort);
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: {} as never,
+      resolveStoragePort,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.updateMedia(
+      new Request('http://localhost/api/v1/iam/media/asset-1?instanceId=tenant-a', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          metadata: {
+            title: 'Rathaus',
+          },
+        }),
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    expect(resolveStoragePort).toHaveBeenCalledWith('tenant-a');
+    expect(resolvedStoragePort.resolveDelivery).toHaveBeenCalledWith({
+      assetId: 'asset-1',
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      visibility: 'public',
+    });
+    await expect(response.json()).resolves.toEqual({
+      data: expect.objectContaining({
+        id: 'asset-1',
+        previewUrl: 'https://cdn.example.test/resolved/asset-1.jpg',
       }),
     });
   });

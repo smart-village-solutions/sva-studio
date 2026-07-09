@@ -1,5 +1,3 @@
-import React from 'react';
-
 import type {
   StudioMediaPickerAssetDetail,
   StudioMediaPickerMetadataSaveInput,
@@ -33,14 +31,14 @@ export const useStudioMediaPickerOverlay = <TAssetDetail extends StudioMediaPick
     close,
     openLibrary,
     openUpload,
-  } = useStudioMediaPickerOverlayLifecycle({
+  } = useStudioMediaPickerOverlayLifecycle<TAssetDetail>({
     setErrorCode: state.setErrorCode,
     setIsLoadingReviewAsset: state.setIsLoadingReviewAsset,
     setIsSavingReviewAsset: state.setIsSavingReviewAsset,
     setMetadataDraft: state.setMetadataDraft,
     setMode: state.setMode,
     setOpen: state.setOpen,
-    setReviewAsset: state.setReviewAsset as React.Dispatch<React.SetStateAction<StudioMediaPickerAssetDetail | null>>,
+    setReviewAsset: state.setReviewAsset,
     setReviewSource: state.setReviewSource,
     setSearchValue: state.setSearchValue,
     setUploadPhase: state.setUploadPhase,

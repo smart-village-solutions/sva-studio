@@ -4,11 +4,11 @@ import type { IamHttpError } from '../../../lib/iam-api';
 
 type MediaIntakeShelfProps = {
   readonly phase: 'idle' | 'initializing' | 'uploading' | 'finalizing' | 'success' | 'error';
-  readonly error: IamHttpError | Error | null;
+  readonly error: (IamHttpError | Error | { readonly code: 'unsupported_upload_type' }) | null;
   readonly onFileSelected: (file: File) => void;
 };
 
-const uploadErrorMessage = (error: IamHttpError | Error | null) => {
+const uploadErrorMessage = (error: MediaIntakeShelfProps['error']) => {
   if (!error || !('code' in error) || typeof error.code !== 'string') {
     return t('media.library.upload.error');
   }
@@ -22,6 +22,8 @@ const uploadErrorMessage = (error: IamHttpError | Error | null) => {
       return t('media.errors.invalidMediaContent');
     case 'upload_size_exceeded':
       return t('media.errors.uploadSizeExceeded');
+    case 'unsupported_upload_type':
+      return t('media.errors.unsupportedUploadType');
     default:
       return t('media.library.upload.error');
   }

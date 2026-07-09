@@ -11,6 +11,9 @@ import { MediaAssetGrid } from './-media-asset-grid.js';
 import { MediaIntakeShelf } from './-media-intake-shelf.js';
 import { MediaLibraryToolbar } from './-media-library-toolbar.js';
 
+const isSupportedMediaLibraryUploadFile = (file: File) =>
+  file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp';
+
 const mediaErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {
     return t('media.messages.loadError');
@@ -30,12 +33,19 @@ export const MediaLibraryPage = () => {
   const navigate = useNavigate();
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(36);
+  const [clientUploadErrorCode, setClientUploadErrorCode] = React.useState<'unsupported_upload_type' | null>(null);
   const mediaApi = useMediaLibrary({ page, pageSize });
   const singleFileUpload = useSingleFileMediaUpload();
   const totalPages = Math.max(1, Math.ceil(mediaApi.total / Math.max(1, mediaApi.pageSize)));
 
   const handleFileSelected = React.useCallback(
     async (file: File) => {
+      if (!isSupportedMediaLibraryUploadFile(file)) {
+        setClientUploadErrorCode('unsupported_upload_type');
+        return;
+      }
+
+      setClientUploadErrorCode(null);
       const result = await singleFileUpload.uploadFile(file);
       if (!result) {
         return;
@@ -86,8 +96,8 @@ export const MediaLibraryPage = () => {
       </header>
 
       <MediaIntakeShelf
-        error={singleFileUpload.error}
-        phase={singleFileUpload.phase}
+        error={clientUploadErrorCode ? { code: clientUploadErrorCode } : singleFileUpload.error}
+        phase={clientUploadErrorCode ? 'error' : singleFileUpload.phase}
         onFileSelected={(file) => {
           void handleFileSelected(file);
         }}

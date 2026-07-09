@@ -281,6 +281,7 @@ export const mediaDEResources = {
     conflict: 'Die Medienaktion konnte wegen eines Konflikts nicht abgeschlossen werden.',
     invalidMediaContent: 'Das hochgeladene Medium konnte nicht validiert werden.',
     uploadSizeExceeded: 'Das hochgeladene Medium überschreitet die erlaubte Größe.',
+    unsupportedUploadType: 'Nur JPEG-, PNG- oder WEBP-Bilder können hier hochgeladen werden.',
     activeReferences:
       'Das Medium kann wegen aktiver Referenzen derzeit nicht geändert oder gelöscht werden.',
   },

@@ -55,7 +55,7 @@ export const useStudioMediaPickerOverlayState = <TAssetDetail extends StudioMedi
   } as const;
 };
 
-export const useStudioMediaPickerOverlayLifecycle = ({
+export const useStudioMediaPickerOverlayLifecycle = <TAssetDetail extends StudioMediaPickerAssetDetail>({
   setErrorCode,
   setIsLoadingReviewAsset,
   setIsSavingReviewAsset,
@@ -73,7 +73,7 @@ export const useStudioMediaPickerOverlayLifecycle = ({
   setMetadataDraft: React.Dispatch<React.SetStateAction<StudioMediaPickerMetadataDraft>>;
   setMode: React.Dispatch<React.SetStateAction<StudioMediaPickerMode>>;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  setReviewAsset: React.Dispatch<React.SetStateAction<StudioMediaPickerAssetDetail | null>>;
+  setReviewAsset: React.Dispatch<React.SetStateAction<TAssetDetail | null>>;
   setReviewSource: React.Dispatch<React.SetStateAction<StudioMediaPickerReviewSource>>;
   setSearchValue: React.Dispatch<React.SetStateAction<string>>;
   setUploadPhase: React.Dispatch<React.SetStateAction<StudioMediaPickerUploadPhase>>;
@@ -145,14 +145,18 @@ export const useStudioMediaPickerOverlayReviewActions = <TAssetDetail extends St
     async (assetId: string, source: StudioMediaPickerReviewSource) => {
       setIsLoadingReviewAsset(true);
       setErrorCode(null);
+      setReviewAsset(null);
+      setMetadataDraft(emptyMetadataDraft);
+      setReviewSource(source);
+      setMode('review');
       try {
         const asset = await loadAsset(assetId);
         setReviewAsset(asset);
         setMetadataDraft(createMetadataDraft(asset));
-        setReviewSource(source);
-        setMode('review');
+        return true;
       } catch {
         setErrorCode('asset_load_failed');
+        return false;
       } finally {
         setIsLoadingReviewAsset(false);
       }
@@ -162,7 +166,7 @@ export const useStudioMediaPickerOverlayReviewActions = <TAssetDetail extends St
 
   const selectAsset = React.useCallback(
     async (asset: StudioMediaPickerAssetSummary) => {
-      await loadReviewAsset(asset.id, 'library');
+      return await loadReviewAsset(asset.id, 'library');
     },
     [loadReviewAsset]
   );

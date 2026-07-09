@@ -205,6 +205,78 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(onAccept).not.toHaveBeenCalled();
   });
 
+  it('keeps the review mode visible when loading an asset from the library fails', async () => {
+    const { result } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        onAccept: vi.fn(),
+        isSupportedUploadFile: () => true,
+        uploadAsset: vi.fn(),
+        loadAsset: vi.fn(async () => {
+          throw new Error('boom');
+        }),
+        saveAssetMetadata: vi.fn(),
+      })
+    );
+
+    act(() => {
+      result.current.openLibrary();
+    });
+
+    await act(async () => {
+      await result.current.selectAsset({
+        id: 'asset-1',
+        title: 'Hero',
+        fileName: 'hero.jpg',
+        previewUrl: null,
+        mimeType: 'image/jpeg',
+        visibility: 'public',
+      });
+    });
+
+    expect(result.current.mode).toBe('review');
+    expect(result.current.errorCode).toBe('asset_load_failed');
+    expect(result.current.reviewAsset).toBeNull();
+  });
+
+  it('accepts an unchanged review asset without requiring a metadata save', async () => {
+    const asset = createAsset();
+    const onAccept = vi.fn();
+    const saveAssetMetadata = vi.fn();
+
+    const { result } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        onAccept,
+        isSupportedUploadFile: () => true,
+        uploadAsset: vi.fn(),
+        loadAsset: vi.fn(async () => asset),
+        saveAssetMetadata,
+      })
+    );
+
+    act(() => {
+      result.current.openLibrary();
+    });
+
+    await act(async () => {
+      await result.current.selectAsset({
+        id: asset.id,
+        title: asset.title,
+        fileName: asset.fileName,
+        previewUrl: asset.previewUrl,
+        mimeType: asset.mimeType,
+        visibility: asset.visibility,
+      });
+    });
+
+    await act(async () => {
+      await result.current.confirmSelection();
+    });
+
+    expect(saveAssetMetadata).not.toHaveBeenCalled();
+    expect(onAccept).toHaveBeenCalledWith(asset);
+    expect(result.current.open).toBe(false);
+  });
+
   it('disables review actions and mode switches while the overlay is busy', () => {
     const onChangeMode = vi.fn();
     const onBackFromReview = vi.fn();
@@ -258,5 +330,67 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(onBackFromReview).not.toHaveBeenCalled();
     expect(onOpenMediaManagement).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('renders feedback in library mode so asset load errors stay visible', () => {
+    render(
+      <StudioMediaPickerOverlay
+        assets={[]}
+        feedbackMessage="Asset konnte nicht geladen werden"
+        feedbackTone="error"
+        labels={labels}
+        metadataDraft={createAsset().metadata}
+        mode="library"
+        onBackFromReview={vi.fn()}
+        onChangeMode={vi.fn()}
+        onClose={vi.fn()}
+        onConfirmSelection={vi.fn()}
+        onMetadataChange={vi.fn()}
+        onSearchValueChange={vi.fn()}
+        onSelectAsset={vi.fn()}
+        onUploadFile={vi.fn()}
+        open
+        reviewAsset={null}
+        reviewSource="library"
+        searchValue=""
+        uploadPhase="idle"
+      />
+    );
+
+    expect(screen.getByRole('status').textContent).toContain('Asset konnte nicht geladen werden');
+  });
+
+  it('uses the edited alt text for the review preview image', () => {
+    const reviewAsset = createAsset();
+
+    render(
+      <StudioMediaPickerOverlay
+        assets={[]}
+        feedbackMessage="Metadaten prüfen"
+        labels={labels}
+        metadataDraft={{
+          ...reviewAsset.metadata,
+          title: 'Aktualisierter Titel',
+          altText: 'Aktualisierter Alternativtext',
+        }}
+        mode="review"
+        onBackFromReview={vi.fn()}
+        onChangeMode={vi.fn()}
+        onClose={vi.fn()}
+        onConfirmSelection={vi.fn()}
+        onMetadataChange={vi.fn()}
+        onOpenMediaManagement={vi.fn()}
+        onSearchValueChange={vi.fn()}
+        onSelectAsset={vi.fn()}
+        onUploadFile={vi.fn()}
+        open
+        reviewAsset={reviewAsset}
+        reviewSource="upload"
+        searchValue=""
+        uploadPhase="idle"
+      />
+    );
+
+    expect(screen.getByRole('img', { name: 'Aktualisierter Alternativtext' })).toBeTruthy();
   });
 });

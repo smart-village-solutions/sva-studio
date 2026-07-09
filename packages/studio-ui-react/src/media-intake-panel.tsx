@@ -147,7 +147,11 @@ const MediaIntakePanelBody = ({
       </div>
     </div>
 
-    {statusMessage ? <p className={`text-sm font-medium ${statusClassName}`}>{statusMessage}</p> : null}
+    {statusMessage ? (
+      <p aria-live="polite" className={`text-sm font-medium ${statusClassName}`} role="status">
+        {statusMessage}
+      </p>
+    ) : null}
   </div>
 );
 

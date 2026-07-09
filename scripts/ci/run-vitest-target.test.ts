@@ -58,11 +58,10 @@ describe('run-vitest-target', () => {
     ]);
   });
 
-  it('protects test file filters from options with optional values', () => {
-    expect(normalizeVitestRunArgs(['--changed', '--testFiles=src/runtime-health.test.ts'])).toEqual([
-      '--changed',
-      'src/runtime-health.test.ts',
-    ]);
+  it('rejects combining test file filters with options that accept optional values', () => {
+    expect(() => normalizeVitestRunArgs(['--changed', '--testFiles=src/runtime-health.test.ts'])).toThrow(
+      '--changed kann nicht mit --testFiles kombiniert werden.'
+    );
   });
 
   it('keeps plain positional filters ahead of explicit test file filters', () => {

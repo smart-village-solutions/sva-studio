@@ -1,0 +1,4 @@
+{
+  "prNumber": 700,
+  "body": "Mehrere redundante Bedingungen ohne Laufzeitnutzen wurden in Studio- und Serverpfaden entfernt.\n\n- Die Sonar-Hinweise in der Root-Route, im IAM-Rollen-Delete-Handler und in der Mainserver-Generic-Items-Route sind behoben.\n- Dateigefilterte Vitest-Läufe über den Nx-Wrapper greifen wieder präzise auf die angeforderten Testdateien, statt unnötig ganze Testsuiten auszuführen."
+}

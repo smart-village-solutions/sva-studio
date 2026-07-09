@@ -243,7 +243,7 @@ describe('MediaLibraryPage', () => {
     expect(uploadFileMock).toHaveBeenCalledWith(file);
   });
 
-  it('ignores unsupported files dropped onto the intake shelf', () => {
+  it('forwards unsupported files dropped onto the intake shelf into the shared upload flow', () => {
     render(<MediaLibraryPage />);
 
     const file = new File(['%PDF'], 'manual.pdf', { type: 'application/pdf' });
@@ -253,7 +253,8 @@ describe('MediaLibraryPage', () => {
       },
     });
 
-    expect(uploadFileMock).not.toHaveBeenCalled();
+    expect(uploadFileMock).toHaveBeenCalledWith(file);
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it('keeps the drag state while moving inside the shelf and clears it only after leaving the region', () => {

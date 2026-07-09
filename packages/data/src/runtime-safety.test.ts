@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { test } from 'vitest';
+import { expect, test } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const readRepoFile = (relativePath: string) => readFileSync(resolve(testDirectory, '..', '..', relativePath), 'utf8');
@@ -21,8 +21,7 @@ test('@sva/data stays a db-operations and compatibility package', () => {
   const packageJsonSource = readRepoFile('data/package.json');
   const projectJsonSource = readRepoFile('data/project.json');
 
-  assert.equal(
-    indexSource,
+  expect(indexSource).toBe(
     "export { createDataClient } from '@sva/data-client';\nexport type { DataClientOptions } from '@sva/data-client';\nexport * from '@sva/data-repositories';"
   );
   assert.equal(serverSource, "export * from '@sva/data-repositories/server';");
@@ -49,7 +48,7 @@ test('@sva/data stays a db-operations and compatibility package', () => {
 test('geo hierarchy migration validates only paths affected by the new edge', () => {
   const sql = readRepoFile('data/migrations/0016_iam_geo_hierarchy.sql');
 
-  assert.match(sql, /max_result_depth INTEGER/);
+  expect(sql).toMatch(/max_result_depth INTEGER/);
   assert.match(sql, /parent\.descendant_id = NEW\.ancestor_id/);
   assert.match(sql, /child\.ancestor_id = NEW\.descendant_id/);
   assert.doesNotMatch(sql, /WHERE h\.ancestor_id = NEW\.ancestor_id\s+OR h\.descendant_id = NEW\.descendant_id/);
@@ -58,7 +57,7 @@ test('geo hierarchy migration validates only paths affected by the new edge', ()
 test('bootstrap script validates usernames and uses identifier-safe grants', () => {
   const script = readRepoFile('data/scripts/bootstrap-app-user.sh');
 
-  assert.match(script, /IAM_DATABASE_URL username must match \^\[a-zA-Z0-9_\]\{1,63\}\$\./);
+  expect(script).toMatch(/IAM_DATABASE_URL username must match \^\[a-zA-Z0-9_\]\{1,63\}\$\./);
   assert.match(script, /POSTGRES_DB must match \^\[a-zA-Z0-9_\]\{1,63\}\$\./);
   assert.match(script, /-v postgres_db="\$\{POSTGRES_DB\}" -v app_user="\$\{app_user\}" -v app_password="\$\{app_password\}"/);
   assert.match(script, /GRANT CONNECT ON DATABASE :"postgres_db" TO :"app_user";/);
@@ -73,7 +72,7 @@ test('bootstrap script validates usernames and uses identifier-safe grants', () 
 test('migration script supports profile-specific postgres targets', () => {
   const script = readRepoFile('data/scripts/run-migrations.sh');
 
-  assert.match(script, /POSTGRES_SERVICE="\$\{POSTGRES_SERVICE:-postgres\}"/);
+  expect(script).toMatch(/POSTGRES_SERVICE="\$\{POSTGRES_SERVICE:-postgres\}"/);
   assert.match(script, /POSTGRES_PASSWORD="\$\{POSTGRES_PASSWORD:-sva_local_dev_password\}"/);
   assert.match(script, /SVA_LOCAL_POSTGRES_CONTAINER_NAME="\$\{SVA_LOCAL_POSTGRES_CONTAINER_NAME:-\}"/);
   assert.match(script, /GOOSE_WRAPPER="\$\{GOOSE_WRAPPER:-packages\/data\/scripts\/goosew\.sh\}"/);
@@ -88,7 +87,7 @@ test('destructive integration scripts isolate themselves from the default local 
   const encryptionScript = readRepoFile('data/scripts/test-encryption.sh');
 
   for (const script of [seedScript, rlsScript, encryptionScript]) {
-    assert.match(script, /PROTECTED_DB_NAMES_REGEX="\$\{PROTECTED_DB_NAMES_REGEX:-\^\(sva_studio\|postgres\)\$\}"/);
+    expect(script).toMatch(/PROTECTED_DB_NAMES_REGEX="\$\{PROTECTED_DB_NAMES_REGEX:-\^\(sva_studio\|postgres\)\$\}"/);
     assert.match(script, /TEST_DB_NAME="\$\{TEST_DB_NAME:-\$\{sanitized_db_name:0:63\}\}"/);
     assert.match(script, /Refusing to run .* against protected database/);
     assert.match(script, /DROP DATABASE IF EXISTS "\$\{TEST_DB_NAME\}";/);
@@ -109,7 +108,7 @@ test('destructive integration scripts isolate themselves from the default local 
 test('self-service permission change migration keeps admin inserts and rollback fail-closed', () => {
   const sql = readRepoFile('data/migrations/0042_iam_self_service_permission_change_requests.sql');
 
-  assert.match(sql, /ADD COLUMN IF NOT EXISTS request_origin TEXT NOT NULL DEFAULT 'admin'/);
+  expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS request_origin TEXT NOT NULL DEFAULT 'admin'/);
   assert.match(sql, /UPDATE iam\.permission_change_requests[\s\S]*SET request_note = COALESCE\(request_note, ''\)/);
   assert.match(sql, /IF EXISTS \(\s*SELECT 1[\s\S]*WHERE role_id IS NULL[\s\S]*RAISE EXCEPTION 'Cannot restore role_id NOT NULL/);
   assert.doesNotMatch(sql, /ALTER TABLE iam\.permission_change_requests\s+ALTER COLUMN role_id SET NOT NULL;[\s\S]*ALTER TABLE iam\.permission_change_requests\s+ALTER COLUMN request_note DROP NOT NULL/);
@@ -118,7 +117,7 @@ test('self-service permission change migration keeps admin inserts and rollback 
 test('sidebar application permission migration adds navigation permissions for existing roles', () => {
   const sql = readRepoFile('data/migrations/0046_iam_sidebar_application_permissions.sql');
 
-  assert.match(sql, /'app\.read', 'app\.read', 'app', 'Show the app link in the sidebar'/);
+  expect(sql).toMatch(/'app\.read', 'app\.read', 'app', 'Show the app link in the sidebar'/);
   assert.match(sql, /'cockpit\.read', 'cockpit\.read', 'cockpit', 'Show the cockpit link in the sidebar'/);
   assert.match(
     sql,
@@ -133,7 +132,7 @@ test('sidebar application permission migration adds navigation permissions for e
 test('sidebar application permission cache invalidation migration notifies affected instances', () => {
   const sql = readRepoFile('data/migrations/0047_iam_sidebar_application_permission_cache_invalidation.sql');
 
-  assert.match(sql, /iam_permission_snapshot_invalidation/);
+  expect(sql).toMatch(/iam_permission_snapshot_invalidation/);
   assert.match(sql, /json_build_object\(/);
   assert.match(sql, /'instanceId',\s*instance_id/);
   assert.match(sql, /'reason',\s*'sidebar_application_permissions_migrated'/);
@@ -145,7 +144,7 @@ test('platform tenant role split migration neutralizes tenant-side root role art
   const sql = readRepoFile('data/migrations/0050_iam_platform_tenant_role_split.sql');
   const touchedInstancesOccurrences = sql.match(/WITH touched_instances AS \(/g) ?? [];
 
-  assert.match(sql, /CREATE TEMP TABLE migration_0050_touched_instances ON COMMIT DROP AS/);
+  expect(sql).toMatch(/CREATE TEMP TABLE migration_0050_touched_instances ON COMMIT DROP AS/);
   assert.match(sql, /DELETE FROM iam\.account_roles/);
   assert.match(sql, /DELETE FROM iam\.group_roles/);
   assert.match(sql, /DELETE FROM iam\.role_permissions[\s\S]*permission_key = 'instance\.registry\.manage'/);
@@ -160,7 +159,7 @@ test('platform tenant role split migration neutralizes tenant-side root role art
 test('permission gate backfill migration seeds the new permission model for tenant governance paths', () => {
   const sql = readRepoFile('data/migrations/0051_iam_permission_gate_backfill.sql');
 
-  assert.match(sql, /'iam\.legalText\.read'/);
+  expect(sql).toMatch(/'iam\.legalText\.read'/);
   assert.match(sql, /'iam\.governance\.write'/);
   assert.match(sql, /'iam\.dsr\.export'/);
   assert.match(sql, /'iam\.deletionRules\.write'/);
@@ -178,7 +177,7 @@ test('permission gate backfill migration seeds the new permission model for tena
 test('experimental shell permission migration backfills the additive ui gate for existing roles', () => {
   const sql = readRepoFile('data/migrations/0052_iam_experimental_shell_permission.sql');
 
-  assert.match(sql, /'experimental\.read'/);
+  expect(sql).toMatch(/'experimental\.read'/);
   assert.match(sql, /'experimental',\s*NULL,\s*'allow'/);
   assert.match(sql, /permission_key IN \('app\.read', 'cockpit\.read', 'iam\.monitoring\.read', 'feature\.toggle'\)/);
   assert.match(sql, /grant_origin_kind,\s*access_scope/);
@@ -191,7 +190,7 @@ test('experimental shell permission migration backfills the additive ui gate for
 test('legacy standard role grant cleanup migration removes historical seed grants from deprecated tenant defaults', () => {
   const sql = readRepoFile('data/migrations/0053_iam_legacy_standard_role_grant_cleanup.sql');
 
-  assert.match(sql, /migration_0053_touched_instances/);
+  expect(sql).toMatch(/migration_0053_touched_instances/);
   assert.match(sql, /grant_origin_kind = 'seed'/);
   assert.match(sql, /role_key IN \(\s*'app_manager',\s*'feature-manager',\s*'interface-manager',\s*'designer',\s*'editor',\s*'moderator'\s*\)/);
   assert.match(sql, /permission_key IN \(\s*'app\.read',\s*'cockpit\.read',\s*'experimental\.read'/);
@@ -204,7 +203,7 @@ test('legacy standard role grant cleanup migration removes historical seed grant
 test('categories permission migration backfills additive plugin permissions without deleting existing tenant data', () => {
   const sql = readRepoFile('data/migrations/0054_iam_categories_permissions.sql');
 
-  assert.match(sql, /'categories\.read'/);
+  expect(sql).toMatch(/'categories\.read'/);
   assert.match(sql, /'categories\.create'/);
   assert.match(sql, /'categories\.update'/);
   assert.match(sql, /'categories\.delete'/);
@@ -223,7 +222,7 @@ test('categories permission migration backfills additive plugin permissions with
 test('content author display migration keeps existing personal content user-authored', () => {
   const sql = readRepoFile('data/migrations/0062_iam_content_author_display_mode.sql');
 
-  assert.match(sql, /UPDATE iam\.contents\s+SET author_display_mode = 'user'\s+WHERE organization_id IS NULL;/);
+  expect(sql).toMatch(/UPDATE iam\.contents\s+SET author_display_mode = 'user'\s+WHERE organization_id IS NULL;/);
   assert.match(
     sql,
     /UPDATE iam\.content_list_projection\s+SET author_display_mode = 'user'\s+WHERE source_system = 'iam'\s+AND organization_id IS NULL;/
@@ -251,7 +250,7 @@ test('admin account hard-delete migration anonymizes retained content account re
     'permission_change_requests_membership_target_fk',
   ];
 
-  assert.match(sql, /ALTER TABLE iam\.content_history\s+ALTER COLUMN actor_account_id DROP NOT NULL;/);
+  expect(sql).toMatch(/ALTER TABLE iam\.content_history\s+ALTER COLUMN actor_account_id DROP NOT NULL;/);
   assert.match(sql, /ALTER TABLE iam\.contents\s+ALTER COLUMN author_account_id DROP NOT NULL,/);
   assert.match(sql, /ALTER TABLE iam\.contents[\s\S]*ALTER COLUMN creator_account_id DROP NOT NULL,/);
   assert.match(sql, /ALTER TABLE iam\.contents[\s\S]*ALTER COLUMN updater_account_id DROP NOT NULL;/);
@@ -300,7 +299,7 @@ test('activity log hard-delete compatibility migration removes immutable account
   const sql = readRepoFile('data/migrations/0068_iam_activity_log_account_hard_delete_compat.sql');
   const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
 
-  assert.match(sql, /ALTER TABLE iam\.activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS activity_logs_account_id_fkey,/);
+  expect(sql).toMatch(/ALTER TABLE iam\.activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS activity_logs_account_id_fkey,/);
   assert.match(sql, /ALTER TABLE iam\.activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS activity_logs_subject_id_fkey;/);
   assert.match(sql, /ALTER TABLE iam\.platform_activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS platform_activity_logs_account_id_fkey;/);
   assert.match(
@@ -316,7 +315,7 @@ test('content projection deleted-account fallback migration keeps trigger insert
   const sql = readRepoFile('data/migrations/0069_iam_content_projection_deleted_account_fallback.sql');
   const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
 
-  assert.match(sql, /COALESCE\(NEW\.creator_account_id::text, '__iam_author_deleted__'\)/);
+  expect(sql).toMatch(/COALESCE\(NEW\.creator_account_id::text, '__iam_author_deleted__'\)/);
   assert.match(sql, /COALESCE\(NEW\.updater_account_id::text, '__iam_author_deleted__'\)/);
   assert.match(schemaSnapshot, /COALESCE\(NEW\.creator_account_id::text, '__iam_author_deleted__'\)/);
   assert.match(schemaSnapshot, /COALESCE\(NEW\.updater_account_id::text, '__iam_author_deleted__'\)/);
@@ -325,7 +324,7 @@ test('content projection deleted-account fallback migration keeps trigger insert
 test('categories instance-module migration backfills additive module assignments for mainserver content tenants', () => {
   const sql = readRepoFile('data/migrations/0055_iam_categories_instance_modules.sql');
 
-  assert.match(sql, /INSERT INTO iam\.instance_modules \(instance_id, module_id\)/);
+  expect(sql).toMatch(/INSERT INTO iam\.instance_modules \(instance_id, module_id\)/);
   assert.match(sql, /SELECT DISTINCT/);
   assert.match(sql, /'categories'/);
   assert.match(sql, /module_id IN \('news', 'events', 'poi'\)/);
@@ -337,7 +336,7 @@ test('categories instance-module migration backfills additive module assignments
 test('system admin core permission backfill migration restores missing tenant iam account-management grants additively', () => {
   const sql = readRepoFile('data/migrations/0056_iam_system_admin_core_permissions.sql');
 
-  assert.match(sql, /'iam\.user\.read'/);
+  expect(sql).toMatch(/'iam\.user\.read'/);
   assert.match(sql, /'iam\.user\.write'/);
   assert.match(sql, /'iam\.role\.read'/);
   assert.match(sql, /'iam\.role\.write'/);
@@ -358,7 +357,7 @@ test('system admin core permission backfill migration restores missing tenant ia
 test('iam ownership authorization model migration replaces legacy ownership, direct permissions and deny effects', () => {
   const sql = readRepoFile('data/migrations/0061_iam_content_ownership_authorization_model.sql');
 
-  assert.match(sql, /ADD COLUMN IF NOT EXISTS owner_user_id UUID NULL/);
+  expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS owner_user_id UUID NULL/);
   assert.match(sql, /ADD COLUMN IF NOT EXISTS owner_organization_id UUID NULL/);
   assert.doesNotMatch(sql, /owner_user_id = creator_account_id/);
   assert.doesNotMatch(sql, /owner_organization_id = organization_id/);
@@ -377,7 +376,7 @@ test('iam ownership authorization model migration replaces legacy ownership, dir
 test('content projection legacy primary key migration preserves scoped mainserver snapshots', () => {
   const sql = readRepoFile('data/migrations/0064_content_projection_legacy_primary_key.sql');
 
-  assert.match(sql, /DROP CONSTRAINT IF EXISTS content_list_projection_pkey/);
+  expect(sql).toMatch(/DROP CONSTRAINT IF EXISTS content_list_projection_pkey/);
   assert.match(sql, /content_list_projection_scope_key/);
   assert.match(sql, /Mainserver entity may be materialized for multiple organization\/user scopes/);
   assert.match(sql, /rollback is intentionally omitted/i);
@@ -388,7 +387,7 @@ test('content projection legacy primary key migration preserves scoped mainserve
 test('runtime artifact verification runs workspace node helper via bash', () => {
   const script = readFileSync(resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'), 'utf8');
 
-  assert.match(script, /bash "\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/);
+  expect(script).toMatch(/bash "\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/);
   assert.match(script, /KEYCLOAK_PORT="\$\{KEYCLOAK_PORT\}" bash "\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/);
   assert.doesNotMatch(script, /(^|[^[:alnum:]_])"\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/);
 });
@@ -421,7 +420,7 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   );
   const studioProjectJson = readFileSync(resolve(testDirectory, '..', '..', '..', 'apps/sva-studio-react/project.json'), 'utf8');
 
-  assert.match(imageVerifyScript, /docker pull "\$\{IMAGE_REF\}"/);
+  expect(imageVerifyScript).toMatch(/docker pull "\$\{IMAGE_REF\}"/);
   assert.doesNotMatch(imageVerifyScript, /skipped-local/);
   assert.doesNotMatch(imageVerifyScript, /docker image inspect "\$\{IMAGE_REF\}"/);
   assert.match(imageVerifyScript, /run_postgres_sql_with_retry\(\)/);
@@ -519,16 +518,14 @@ fi`;
       },
     });
 
-    assert.throws(
-      () =>
-        execFileSync('sh', ['-c', guardScript], {
-          env: {
-            ...process.env,
-            TARGET_DIR: matchDir,
-          },
-        }),
-      /Command failed/,
-    );
+    expect(() =>
+      execFileSync('sh', ['-c', guardScript], {
+        env: {
+          ...process.env,
+          TARGET_DIR: matchDir,
+        },
+      })
+    ).toThrowError(/Command failed/);
   } finally {
     rmSync(tempRoot, { force: true, recursive: true });
   }
@@ -569,7 +566,7 @@ test('injected workspace sync copies dist into pnpm store package copies', { tim
       stdio: 'pipe',
     });
 
-    assert.equal(readFileSync(resolve(injectedPackageDir, 'dist', 'index.js'), 'utf8'), 'export const synced = true;\n');
+    expect(readFileSync(resolve(injectedPackageDir, 'dist', 'index.js'), 'utf8')).toBe('export const synced = true;\n');
   } finally {
     rmSync(tempRoot, { force: true, recursive: true });
   }
@@ -585,8 +582,7 @@ test('public waste build syncs injected workspace packages before vite resolves 
     'utf8'
   );
 
-  assert.match(
-    publicWastePackageJson,
+  expect(publicWastePackageJson).toMatch(
     /pnpm exec tsx \.\.\/\.\.\/scripts\/ci\/sync-injected-workspace-packages\.ts \. && rm -rf dist && vite build --outDir dist\/client && pnpm exec tsc -p tsconfig\.server\.json/
   );
   assert.match(
@@ -598,7 +594,7 @@ test('public waste build syncs injected workspace packages before vite resolves 
 test('sva-studio-react vite SSR config resolves mail-runtime from workspace source', () => {
   const viteConfig = readRepoFile('../apps/sva-studio-react/vite.config.ts');
 
-  assert.match(viteConfig, /'@sva\/mail-runtime': resolveAppPath\('\.\.\/\.\.\/packages\/mail-runtime\/src\/index\.ts'\)/);
+  expect(viteConfig).toMatch(/'@sva\/mail-runtime': resolveAppPath\('\.\.\/\.\.\/packages\/mail-runtime\/src\/index\.ts'\)/);
   assert.match(viteConfig, /'@sva\/mail-runtime',/);
   assert.match(viteConfig, /'\.localhost'/);
   assert.doesNotMatch(viteConfig, /lvh\.me/);
@@ -607,8 +603,7 @@ test('sva-studio-react vite SSR config resolves mail-runtime from workspace sour
 test('sva-studio-react vitest shared config resolves mail-runtime from workspace source', () => {
   const vitestSharedConfig = readRepoFile('../apps/sva-studio-react/vitest.shared.ts');
 
-  assert.match(
-    vitestSharedConfig,
+  expect(vitestSharedConfig).toMatch(
     /'@sva\/mail-runtime': fileURLToPath\(\s*new URL\('\.\.\/\.\.\/packages\/mail-runtime\/src\/index\.ts', import\.meta\.url\)\s*\)/
   );
 });

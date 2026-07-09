@@ -1,6 +1,9 @@
+// fallow-ignore-file security-sink -- local workspace maintenance script traverses repo-managed package paths and injected copies, not user-reachable runtime input.
 import { cp, mkdir, readdir, readFile, realpath, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { isCliEntrypoint, resolvePathFromCwd } from './path-safety.js';
 
 type WorkspacePackage = {
   dir: string;
@@ -9,7 +12,7 @@ type WorkspacePackage = {
   realDir: string;
 };
 
-const consumerDir = path.resolve(process.argv[2] ?? process.cwd());
+const consumerDir = resolvePathFromCwd(process.argv[2] ?? '.');
 
 const pathExists = async (targetPath: string) => {
   try {
@@ -308,7 +311,7 @@ const main = async () => {
   );
 };
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+if (isCliEntrypoint(import.meta.url, process.argv[1])) {
   main().catch((error: unknown) => {
     const message = error instanceof Error ? error.stack ?? error.message : String(error);
     process.stderr.write(`${message}\n`);

@@ -46,10 +46,37 @@ const getRequest = async (): Promise<Request> => {
 
 const now = (): number => Date.now();
 
+const shouldAllowPrivateMapGeocodingTargets = (): boolean =>
+  process.env.SVA_ALLOW_PRIVATE_MAP_GEOCODING_TARGETS === 'true';
+
+const normalizeProviderRequestUrl = async (
+  config: MapGeocodingRuntimeConfigWithSecrets,
+  url: URL,
+): Promise<URL> => {
+  if (config.provider !== 'custom') {
+    return url;
+  }
+
+  const { normalizeOutboundHttpUrl } = await import('@sva/auth-runtime/server');
+  const normalized = await normalizeOutboundHttpUrl(url.toString(), {
+    allowHttp: true,
+    allowPrivateHosts: shouldAllowPrivateMapGeocodingTargets(),
+  });
+  if (!normalized) {
+    throw createClientError('invalid_input', {
+      endpoint: url.origin + url.pathname,
+      provider: config.provider,
+    });
+  }
+
+  return new URL(normalized);
+};
+
 const fetchJsonWithTimeout = async (url: URL, timeoutMs: number): Promise<GeoapifyResponse> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    // fallow-ignore-next-line security-sink -- custom provider URLs are normalized via normalizeProviderRequestUrl before fetch.
     const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) {
       if (response.status === 429) {
@@ -290,8 +317,12 @@ export const executeProviderRequest = async (input: {
 }): Promise<readonly MapGeocodingFeature[]> => {
   const startedAt = now();
   try {
+    const providerUrl = buildProviderUrl(input.config, input.mode, {
+      query: input.query,
+      coordinates: input.coordinates,
+    });
     const payload = await fetchJsonWithTimeout(
-      buildProviderUrl(input.config, input.mode, { query: input.query, coordinates: input.coordinates }),
+      await normalizeProviderRequestUrl(input.config, providerUrl),
       parsePositiveInteger(input.config.requestTimeoutMs),
     );
     return normalizeProviderFeatures(payload, input.config.provider);

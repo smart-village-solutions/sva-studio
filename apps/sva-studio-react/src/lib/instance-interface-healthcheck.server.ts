@@ -11,7 +11,11 @@ import {
   loadExternalInterfaceRecordById,
   saveExternalInterfaceConnectionCheck,
 } from '@sva/data-repositories/server';
-import { revealField } from '@sva/auth-runtime/server';
+import {
+  normalizeDatabaseConnectionUrl,
+  normalizeOutboundHttpUrl,
+  revealField,
+} from '@sva/auth-runtime/server';
 import {
   ExternalInterfaceRuntimeError,
   resolveExternalInterface,
@@ -19,6 +23,9 @@ import {
 } from '@sva/server-runtime';
 
 type PoolLike = Pick<Pool, 'query' | 'end'>;
+
+const shouldAllowPrivateInterfaceHealthcheckTargets = (): boolean =>
+  process.env.SVA_ALLOW_PRIVATE_INTERFACE_HEALTHCHECK_TARGETS === 'true';
 
 const createPool = (connectionString: string): PoolLike =>
   new Pool({
@@ -154,7 +161,18 @@ const verifySupabaseDatabase = async (
   }
 ): Promise<void> => {
   const { databaseUrl } = readSupabaseSecrets(resolvedInterface, resolvedInterface.instanceId);
-  const pool = (deps.createPool ?? createPool)(databaseUrl);
+  const normalizedDatabaseUrl = await normalizeDatabaseConnectionUrl(databaseUrl, {
+    allowPrivateHosts: shouldAllowPrivateInterfaceHealthcheckTargets(),
+  });
+  if (!normalizedDatabaseUrl) {
+    throw createRuntimeError(
+      'connection_failed',
+      resolvedInterface.instanceId,
+      'supabase',
+      'Die DB-URL zeigt auf einen privaten oder lokalen Host. Setze SVA_ALLOW_PRIVATE_INTERFACE_HEALTHCHECK_TARGETS=true nur für bewusst interne Admin-Ziele.'
+    );
+  }
+  const pool = (deps.createPool ?? createPool)(normalizedDatabaseUrl);
 
   try {
     const schemaName =
@@ -350,8 +368,20 @@ const resolveCheckedAt = (now?: () => Date | string): string => {
 
 const verifyS3Connection = async (resolvedInterface: ResolvedExternalInterface): Promise<void> => {
   const config = readS3Config(resolvedInterface);
+  const normalizedEndpoint = await normalizeOutboundHttpUrl(config.endpoint, {
+    allowHttp: true,
+    allowPrivateHosts: shouldAllowPrivateInterfaceHealthcheckTargets(),
+  });
+  if (!normalizedEndpoint) {
+    throw createRuntimeError(
+      'connection_failed',
+      resolvedInterface.instanceId,
+      's3',
+      'Der S3-Endpoint zeigt auf einen privaten oder lokalen Host. Setze SVA_ALLOW_PRIVATE_INTERFACE_HEALTHCHECK_TARGETS=true nur für bewusst interne Admin-Ziele.'
+    );
+  }
   const client = new S3Client({
-    endpoint: config.endpoint,
+    endpoint: normalizedEndpoint,
     region: config.region,
     forcePathStyle: config.forcePathStyle,
     credentials: {

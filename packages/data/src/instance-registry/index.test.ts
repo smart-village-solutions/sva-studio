@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import { describe, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   createInstanceRegistryRepository as createLeadingInstanceRegistryRepository,
@@ -13,7 +12,7 @@ import {
 
 describe('instance registry repository boundary', () => {
   it('re-exports the leading repository factory from @sva/data-repositories', () => {
-    assert.equal(createInstanceRegistryRepository, createLeadingInstanceRegistryRepository);
+    expect(createInstanceRegistryRepository).toBe(createLeadingInstanceRegistryRepository);
   });
 
   it('keeps the local repository types aligned with @sva/data-repositories', () => {
@@ -22,7 +21,7 @@ describe('instance registry repository boundary', () => {
     const repositoryTypeAligned: AssertAssignable<InstanceRegistryRepository, LeadingInstanceRegistryRepository> = true;
     const repositoryTypeAlignedReverse: AssertAssignable<LeadingInstanceRegistryRepository, InstanceRegistryRepository> = true;
 
-    assert.equal(repositoryTypeAligned, true);
-    assert.equal(repositoryTypeAlignedReverse, true);
+    expect(repositoryTypeAligned).toBe(true);
+    expect(repositoryTypeAlignedReverse).toBe(true);
   });
 });

@@ -32,6 +32,10 @@ RUN pnpm nx run data:build --skip-nx-cache
 RUN pnpm nx run auth-runtime:build --skip-nx-cache
 RUN pnpm nx run sva-mainserver:build --skip-nx-cache
 RUN pnpm nx run routing:build --skip-nx-cache
+# The app build must invoke Vite directly. The Nx Vite executor currently only
+# emits the client bundle for this TanStack Start app, while `vite build`
+# produces client, SSR service bundle and Nitro server output in one pass.
+RUN pnpm nx run sva-studio-react:build --skip-nx-cache
 # Fix ESM relative imports/exports: add .js extensions to extensionless local paths.
 # Some TypeScript emits extensionless ESM in dist/, which fails under Node ESM in runtime images.
 RUN node -e "\
@@ -75,10 +79,6 @@ const walk = (dir) => { \
   } \
 }; \
 for (const distRoot of distRoots) walk(distRoot);"
-# The app build must invoke Vite directly. The Nx Vite executor currently only
-# emits the client bundle for this TanStack Start app, while `vite build`
-# produces client, SSR service bundle and Nitro server output in one pass.
-RUN pnpm nx run sva-studio-react:build --skip-nx-cache
 RUN if find /workspace/apps/sva-studio-react/.output/server -type f \
       \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \) \
       ! -name '*.map' \

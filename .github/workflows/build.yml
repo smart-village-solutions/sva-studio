@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: build-main
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -23,7 +23,7 @@ jobs:
       image_digest: ${{ steps.build_image.outputs.digest }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Login to GHCR
         uses: docker/login-action@v4

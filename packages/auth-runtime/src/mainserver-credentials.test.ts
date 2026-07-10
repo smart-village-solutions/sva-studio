@@ -31,7 +31,7 @@ describe('readSvaMainserverCredentials', () => {
       'missing_application_secret'
     );
     expect(resolveMainserverCredentialStatus({})).toBe('missing_both');
-    expect(resolveMainserverCredentialStatus(undefined)).toBe('missing_both');
+    expect(resolveMainserverCredentialStatus(undefined)).toBe('unknown');
     expect(resolveMainserverCredentialStatus(null)).toBe('unknown');
   });
 

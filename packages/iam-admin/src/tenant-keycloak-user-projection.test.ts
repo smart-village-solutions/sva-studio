@@ -18,14 +18,16 @@ describe('tenant-keycloak-user-projection', () => {
           enabled: true,
           attributes: { displayName: ['Redaktion'], instanceId: ['de-musterhausen'] },
         },
-        []
+        [],
+        'complete'
       )
     ).toEqual({
       id: 'keycloak:kc-1',
       keycloakSubject: 'kc-1',
       displayName: 'Redaktion',
       email: 'm.mustermann@example.org',
-      mainserverUserApplicationSecretSet: false,
+      mainserverUserApplicationSecretSet: true,
+      mainserverCredentialStatus: 'complete',
       status: 'active',
       mappingStatus: 'unmapped',
       editability: 'blocked',
@@ -36,7 +38,7 @@ describe('tenant-keycloak-user-projection', () => {
 
   it('keeps unmapped users independent from deprecated instance attributes', () => {
     expect(
-      mapUnmappedKeycloakUser({ externalId: 'kc-1', attributes: {} }, null)
+      mapUnmappedKeycloakUser({ externalId: 'kc-1', attributes: {} }, null, 'missing_both')
     ).toEqual(
       expect.objectContaining({
         mappingStatus: 'unmapped',
@@ -50,7 +52,8 @@ describe('tenant-keycloak-user-projection', () => {
     expect(
       mapUnmappedKeycloakUser(
         { externalId: 'kc-2', attributes: { instanceId: ['de-altstadt'] } },
-        []
+        [],
+        'missing_both'
       )
     ).toEqual(
       expect.objectContaining({
@@ -81,7 +84,8 @@ describe('tenant-keycloak-user-projection', () => {
           email: 'max@example.org',
           enabled: false,
         },
-        null
+        null,
+        'unknown'
       )
     ).toEqual({
       ...mapped,
@@ -90,6 +94,8 @@ describe('tenant-keycloak-user-projection', () => {
       status: 'inactive',
       mappingStatus: 'manual_review',
       editability: 'blocked',
+      mainserverUserApplicationSecretSet: false,
+      mainserverCredentialStatus: 'unknown',
       diagnostics: [{ code: 'keycloak_projection_degraded', objectId: 'kc-1', objectType: 'user' }],
     });
   });

@@ -71,6 +71,7 @@ export type {
   IamRoleSyncState,
   InstanceStatus,
   IamCreateUserResult,
+  IamMainserverCredentialStatus,
   IamUserDetail,
   IamUserGroupAssignment,
   IamUserInvitationError,

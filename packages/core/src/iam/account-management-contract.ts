@@ -102,13 +102,7 @@ export type IamRuntimeDiagnostics = {
 };
 
 export type InstanceStatus =
-  | 'requested'
-  | 'validated'
-  | 'provisioning'
-  | 'active'
-  | 'failed'
-  | 'suspended'
-  | 'archived';
+  'requested' | 'validated' | 'provisioning' | 'active' | 'failed' | 'suspended' | 'archived';
 
 export type InstanceRealmMode = 'new' | 'existing';
 
@@ -211,6 +205,9 @@ export type IamUserPermissionTraceItem = {
   readonly validTo?: string;
 };
 
+export type IamMainserverCredentialStatus =
+  'complete' | 'missing_application_id' | 'missing_application_secret' | 'missing_both' | 'unknown';
+
 export type IamUserListItem = {
   readonly id: IamUuid;
   readonly keycloakSubject: string;
@@ -226,6 +223,7 @@ export type IamUserListItem = {
   readonly roles: readonly IamUserRoleAssignment[];
   readonly keycloakRoles?: readonly string[];
   readonly mainserverUserApplicationSecretSet: boolean;
+  readonly mainserverCredentialStatus?: IamMainserverCredentialStatus;
 };
 
 export type IamUserDetail = IamUserListItem & {
@@ -420,12 +418,7 @@ export type IamPendingLegalTextItem = {
 };
 
 export type IamOrganizationType =
-  | 'county'
-  | 'municipality'
-  | 'district'
-  | 'company'
-  | 'agency'
-  | 'other';
+  'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
 
 export type IamContentAuthorPolicy = 'org_only' | 'org_or_personal';
 
@@ -547,7 +540,13 @@ export const instanceAuditCheckStatuses = ['pass', 'fail', 'warn', 'skip'] as co
 
 export type InstanceAuditCheckStatus = (typeof instanceAuditCheckStatuses)[number];
 
-export const instanceAuditCheckScopes = ['instance', 'registry', 'keycloak', 'localIam', 'run'] as const;
+export const instanceAuditCheckScopes = [
+  'instance',
+  'registry',
+  'keycloak',
+  'localIam',
+  'run',
+] as const;
 
 export type InstanceAuditCheckScope = (typeof instanceAuditCheckScopes)[number];
 
@@ -623,10 +622,7 @@ export type IamInstanceKeycloakProvisioningRun = {
   readonly instanceId: string;
   readonly mode: InstanceRealmMode;
   readonly intent:
-    | 'provision'
-    | 'provision_admin_client'
-    | 'reset_tenant_admin'
-    | 'rotate_client_secret';
+    'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
   readonly overallStatus: 'planned' | 'running' | 'succeeded' | 'failed';
   readonly driftSummary: string;
   readonly requestId?: string;

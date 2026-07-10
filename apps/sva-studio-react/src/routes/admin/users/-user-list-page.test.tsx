@@ -9,7 +9,11 @@ const isIamBulkEnabledMock = vi.fn();
 const useAuthMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -43,7 +47,9 @@ const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
       email: 'alice@example.com',
       status: 'active',
       lastLoginAt: '2026-03-04T10:00:00Z',
-      roles: [{ roleId: 'role-1', roleKey: 'system_admin', roleName: 'system_admin', roleLevel: 90 }],
+      roles: [
+        { roleId: 'role-1', roleKey: 'system_admin', roleName: 'system_admin', roleLevel: 90 },
+      ],
     },
   ],
   total: 1,
@@ -116,8 +122,12 @@ describe('UserListPage', () => {
     render(<UserListPage />);
 
     expect(screen.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Nutzer anlegen' }).getAttribute('href')).toBe('/admin/users/new');
-    expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]!.getAttribute('href')).toBe('/admin/users/$userId');
+    expect(screen.getByRole('link', { name: 'Nutzer anlegen' }).getAttribute('href')).toBe(
+      '/admin/users/new'
+    );
+    expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]!.getAttribute('href')).toBe(
+      '/admin/users/$userId'
+    );
     expect(screen.getAllByRole('button', { name: 'Löschen' }).length).toBeGreaterThan(0);
   });
 
@@ -133,7 +143,13 @@ describe('UserListPage', () => {
             status: 'active',
             mappingStatus: 'manual_review',
             editability: 'blocked',
-            diagnostics: [{ code: 'missing_instance_attribute', objectId: 'subject-unmapped', objectType: 'user' }],
+            diagnostics: [
+              {
+                code: 'missing_instance_attribute',
+                objectId: 'subject-unmapped',
+                objectType: 'user',
+              },
+            ],
             roles: [],
           },
         ],
@@ -157,6 +173,58 @@ describe('UserListPage', () => {
       .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
   });
 
+  it.each([
+    ['missing_application_id', 'Mainserver Application-ID fehlt'],
+    ['missing_application_secret', 'Mainserver Application-Secret fehlt'],
+    ['missing_both', 'Mainserver-Daten fehlen'],
+  ] as const)(
+    'shows a precise warning for credential status %s',
+    (mainserverCredentialStatus, label) => {
+      useUsersMock.mockReturnValue(
+        createUsersApiState({
+          users: [
+            {
+              id: 'user-1',
+              keycloakSubject: 'subject-1',
+              displayName: 'Alice',
+              status: 'active',
+              roles: [],
+              mainserverCredentialStatus,
+            },
+          ],
+        })
+      );
+
+      render(<UserListPage />);
+
+      expect(screen.getAllByRole('img', { name: label }).length).toBeGreaterThan(0);
+    }
+  );
+
+  it.each(['complete', 'unknown'] as const)(
+    'does not show a credential warning for status %s',
+    (mainserverCredentialStatus) => {
+      useUsersMock.mockReturnValue(
+        createUsersApiState({
+          users: [
+            {
+              id: 'user-1',
+              keycloakSubject: 'subject-1',
+              displayName: 'Alice',
+              status: 'active',
+              roles: [],
+              mainserverCredentialStatus,
+            },
+          ],
+        })
+      );
+
+      render(<UserListPage />);
+
+      expect(screen.queryByRole('img')).toBeNull();
+    }
+  );
+
   it('updates filters and pagination controls', () => {
     const setSearch = vi.fn();
     const setStatus = vi.fn();
@@ -176,7 +244,9 @@ describe('UserListPage', () => {
 
     render(<UserListPage />);
 
-    fireEvent.change(screen.getByPlaceholderText('Nach Name oder E-Mail suchen'), { target: { value: 'bob' } });
+    fireEvent.change(screen.getByPlaceholderText('Nach Name oder E-Mail suchen'), {
+      target: { value: 'bob' },
+    });
     fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'inactive' } });
     fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
@@ -209,7 +279,9 @@ describe('UserListPage', () => {
           {
             keycloakSubject: 'subject-2',
             mappingStatus: 'manual_review',
-            diagnostics: [{ code: 'missing_instance_attribute', objectId: 'subject-2', objectType: 'user' }],
+            diagnostics: [
+              { code: 'missing_instance_attribute', objectId: 'subject-2', objectType: 'user' },
+            ],
           },
         ],
       },
@@ -230,13 +302,15 @@ describe('UserListPage', () => {
 
     expect(refetch).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(syncUsersFromKeycloak).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.getByText(/6 geprüft: 3 korrigiert, 1 manuell prüfen/i)).toBeTruthy());
     await waitFor(() =>
-      expect(
-        screen.getByText(/Realm de-musterhausen, Quelle Instanz-Realm\./i)
-      ).toBeTruthy()
+      expect(screen.getByText(/6 geprüft: 3 korrigiert, 1 manuell prüfen/i)).toBeTruthy()
     );
-    expect(screen.getByText('1 Benutzerobjekte mit Diagnose: missing_instance_attribute')).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByText(/Realm de-musterhausen, Quelle Instanz-Realm\./i)).toBeTruthy()
+    );
+    expect(
+      screen.getByText('1 Benutzerobjekte mit Diagnose: missing_instance_attribute')
+    ).toBeTruthy();
     expect(screen.getByText(/teilweisen Fehlern oder manuellem Nachlauf/i)).toBeTruthy();
   });
 
@@ -302,7 +376,13 @@ describe('UserListPage', () => {
   it('confirms bulk mainserver reprovision and shows summarized feedback', async () => {
     const bulkReprovisionMainserver = vi.fn().mockResolvedValue({
       successes: [{ id: 'user-1' }],
-      failures: [{ id: 'user-2', code: 'conflict', message: 'Für den Nutzer ist keine E-Mail-Adresse hinterlegt.' }],
+      failures: [
+        {
+          id: 'user-2',
+          code: 'conflict',
+          message: 'Für den Nutzer ist keine E-Mail-Adresse hinterlegt.',
+        },
+      ],
       successCount: 1,
       failureCount: 1,
     });
@@ -335,14 +415,24 @@ describe('UserListPage', () => {
 
     render(<UserListPage />);
 
-    fireEvent.click(screen.getAllByRole('checkbox', { name: 'Benutzertabelle: Zeile user-1 auswählen' })[0]!);
-    fireEvent.click(screen.getAllByRole('checkbox', { name: 'Benutzertabelle: Zeile user-2 auswählen' })[0]!);
+    fireEvent.click(
+      screen.getAllByRole('checkbox', { name: 'Benutzertabelle: Zeile user-1 auswählen' })[0]!
+    );
+    fireEvent.click(
+      screen.getAllByRole('checkbox', { name: 'Benutzertabelle: Zeile user-2 auswählen' })[0]!
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Daten aktualisieren' }));
 
     expect(screen.getByText(/maximal 50/i)).toBeTruthy();
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Mainserver-Daten aktualisieren' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Mainserver-Daten aktualisieren',
+      })
+    );
 
-    await waitFor(() => expect(bulkReprovisionMainserver).toHaveBeenCalledWith(['user-1', 'user-2']));
+    await waitFor(() =>
+      expect(bulkReprovisionMainserver).toHaveBeenCalledWith(['user-1', 'user-2'])
+    );
     expect(screen.getByText('1 Nutzer erfolgreich aktualisiert.')).toBeTruthy();
     expect(screen.getByText('1 Nutzer konnten nicht aktualisiert werden.')).toBeTruthy();
     expect(screen.getByText(/user-2/)).toBeTruthy();
@@ -375,7 +465,9 @@ describe('UserListPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
     expect(screen.getByText(/physisch in Studio und Keycloak gelöscht/i)).toBeTruthy();
 
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
+    );
 
     await waitFor(() => expect(deleteUser).toHaveBeenCalledWith('user-2'));
   });
@@ -432,7 +524,14 @@ describe('UserListPage', () => {
             email: 'alice@example.com',
             status: 'inactive',
             lastLoginAt: '2026-03-04T10:00:00Z',
-            roles: [{ roleId: 'role-1', roleKey: 'system_admin', roleName: 'system_admin', roleLevel: 90 }],
+            roles: [
+              {
+                roleId: 'role-1',
+                roleKey: 'system_admin',
+                roleName: 'system_admin',
+                roleLevel: 90,
+              },
+            ],
           },
         ],
       })
@@ -444,13 +543,17 @@ describe('UserListPage', () => {
 
     expect(screen.getByText('Die ausgewählte Person wird wieder aktiviert.')).toBeTruthy();
 
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Aktivieren' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Aktivieren' })
+    );
 
     await waitFor(() => expect(updateUser).toHaveBeenCalledWith('user-1', { status: 'active' }));
   });
 
   it('renders platform user management on root scope without tenant mutations', () => {
-    useAuthMock.mockReturnValue({ user: { id: 'platform-admin', roles: ['instance_registry_admin'] } });
+    useAuthMock.mockReturnValue({
+      user: { id: 'platform-admin', roles: ['instance_registry_admin'] },
+    });
     useUsersMock.mockReturnValue(createUsersApiState());
 
     render(<UserListPage />);

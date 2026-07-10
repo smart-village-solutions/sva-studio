@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   resolveIdentityProvider: vi.fn(),
   resolveIdentityProviderForInstance: vi.fn(),
-  trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) => execute()),
+  trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) =>
+    execute()
+  ),
 }));
 
 vi.mock('./keycloak-user-attributes.js', () => ({
@@ -13,6 +15,25 @@ vi.mock('./keycloak-user-attributes.js', () => ({
 }));
 
 describe('readSvaMainserverCredentials', () => {
+  it('classifies complete, partial, missing and unavailable credential states', async () => {
+    const { resolveMainserverCredentialStatus } = await import('./mainserver-credentials.js');
+
+    expect(
+      resolveMainserverCredentialStatus({
+        mainserverUserApplicationId: ['app-id'],
+        mainserverUserApplicationSecret: ['secret'],
+      })
+    ).toBe('complete');
+    expect(resolveMainserverCredentialStatus({ mainserverUserApplicationSecret: ['secret'] })).toBe(
+      'missing_application_id'
+    );
+    expect(resolveMainserverCredentialStatus({ mainserverUserApplicationId: ['app-id'] })).toBe(
+      'missing_application_secret'
+    );
+    expect(resolveMainserverCredentialStatus({})).toBe('missing_both');
+    expect(resolveMainserverCredentialStatus(undefined)).toBe('unknown');
+  });
+
   it('returns credentials from the current keycloak attributes', async () => {
     state.resolveIdentityProvider.mockReturnValue({
       provider: {
@@ -125,9 +146,8 @@ describe('readSvaMainserverCredentials', () => {
       },
     });
 
-    const { readIdentityUserAttributes, resolveMainserverCredentialState } = await import(
-      './mainserver-credentials.js'
-    );
+    const { readIdentityUserAttributes, resolveMainserverCredentialState } =
+      await import('./mainserver-credentials.js');
 
     const attributes = await readIdentityUserAttributes({ keycloakSubject: 'subject-1' });
     expect(resolveMainserverCredentialState(attributes)).toEqual({

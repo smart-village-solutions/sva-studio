@@ -62,8 +62,14 @@ export const mapUserRowToListItem = (row: {
     row.display_name_ciphertext,
     `iam.accounts.display_name:${row.keycloak_subject}`
   );
-  const firstName = revealField(row.first_name_ciphertext, `iam.accounts.first_name:${row.keycloak_subject}`);
-  const lastName = revealField(row.last_name_ciphertext, `iam.accounts.last_name:${row.keycloak_subject}`);
+  const firstName = revealField(
+    row.first_name_ciphertext,
+    `iam.accounts.first_name:${row.keycloak_subject}`
+  );
+  const lastName = revealField(
+    row.last_name_ciphertext,
+    `iam.accounts.last_name:${row.keycloak_subject}`
+  );
   const displayName = resolveUserDisplayName({
     decryptedDisplayName,
     firstName,
@@ -84,5 +90,6 @@ export const mapUserRowToListItem = (row: {
     lastLoginAt: row.last_login_at ?? undefined,
     roles: mapRoles(row.roles),
     mainserverUserApplicationSecretSet: false,
+    mainserverCredentialStatus: 'unknown',
   };
 };

@@ -4,8 +4,12 @@ import type {
   IamKeycloakObjectEditability,
   IamUserImportSyncReport,
 } from '@sva/core';
-import { IconEdit, IconTrash } from '@tabler/icons-react';
-import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
+import { IconAlertTriangle, IconEdit, IconTrash } from '@tabler/icons-react';
+import {
+  StudioDataTable,
+  StudioListPageTemplate,
+  type StudioColumnDef,
+} from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
@@ -20,7 +24,11 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { Switch } from '../../../components/ui/switch';
 import { useUsers } from '../../../hooks/use-users';
-import { hasPlatformInstanceAdminAccess, hasUserDeleteAccess, isIamBulkEnabled } from '../../../lib/iam-admin-access';
+import {
+  hasPlatformInstanceAdminAccess,
+  hasUserDeleteAccess,
+  isIamBulkEnabled,
+} from '../../../lib/iam-admin-access';
 import { IamHttpError } from '../../../lib/iam-api';
 import { useAuth } from '../../../providers/auth-provider';
 import { t } from '../../../i18n';
@@ -82,6 +90,41 @@ const renderDiagnosticCodes = (diagnostics: readonly IamKeycloakObjectDiagnostic
 
 type UserListUser = UsersApiState['users'][number];
 
+const mainserverCredentialWarningTranslationKey = {
+  missing_application_id: 'admin.users.messages.mainserverApplicationIdMissing',
+  missing_application_secret: 'admin.users.messages.mainserverApplicationSecretMissing',
+  missing_both: 'admin.users.messages.mainserverCredentialsMissing',
+} as const;
+
+const UserDisplayNameCell = ({ user }: { user: UserListUser }) => {
+  const status = user.mainserverCredentialStatus ?? 'unknown';
+  const warningTranslationKey =
+    status === 'missing_application_id' ||
+    status === 'missing_application_secret' ||
+    status === 'missing_both'
+      ? mainserverCredentialWarningTranslationKey[status]
+      : undefined;
+
+  if (!warningTranslationKey) {
+    return user.displayName;
+  }
+
+  const warningLabel = t(warningTranslationKey);
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span>{user.displayName}</span>
+      <span
+        role="img"
+        aria-label={warningLabel}
+        title={warningLabel}
+        className="inline-flex text-amber-600"
+      >
+        <IconAlertTriangle aria-hidden="true" className="h-4 w-4 stroke-current" />
+      </span>
+    </span>
+  );
+};
+
 const UserStatusCell = ({
   user,
   isAuthLoading,
@@ -136,12 +179,12 @@ const UserKeycloakCell = ({ user }: { user: UserListUser }) => {
 const buildUserColumns = (
   isAuthLoading: boolean,
   isPlatformScope: boolean,
-  onStatusAction: (action: 'activate' | 'deactivate', userId: string) => void,
+  onStatusAction: (action: 'activate' | 'deactivate', userId: string) => void
 ): readonly StudioColumnDef<UserListUser>[] => [
   {
     id: 'displayName',
     header: t('admin.users.table.headerName'),
-    cell: (user) => user.displayName,
+    cell: (user) => <UserDisplayNameCell user={user} />,
     sortable: true,
     sortValue: (user) => user.displayName.toLowerCase(),
   },
@@ -205,7 +248,9 @@ const UserListToolbarStart = ({ usersApi }: { usersApi: UsersApiState }) => (
       <Select
         id="users-status"
         value={usersApi.filters.status}
-        onChange={(event) => usersApi.setStatus(event.target.value as 'active' | 'inactive' | 'pending' | 'all')}
+        onChange={(event) =>
+          usersApi.setStatus(event.target.value as 'active' | 'inactive' | 'pending' | 'all')
+        }
       >
         <option value="all">{t('admin.users.filters.statusAll')}</option>
         <option value="active">{t('admin.users.filters.statusActive')}</option>
@@ -235,7 +280,9 @@ const UserListToolbarEnd = ({
       disabled={syncStatus === 'pending'}
       onClick={() => void onSyncUsers()}
     >
-      {syncStatus === 'pending' ? t('admin.users.actions.syncing') : t('admin.users.actions.syncKeycloak')}
+      {syncStatus === 'pending'
+        ? t('admin.users.actions.syncing')
+        : t('admin.users.actions.syncKeycloak')}
     </Button>
   </>
 );
@@ -375,7 +422,9 @@ const UserListBulkReprovisionFeedback = ({
     return null;
   }
 
-  const renderFailureMessage = (failure: NonNullable<BulkReprovisionFeedbackState>['failures'][number]) => {
+  const renderFailureMessage = (
+    failure: NonNullable<BulkReprovisionFeedbackState>['failures'][number]
+  ) => {
     const localizedMessage = userErrorMessage(
       new IamHttpError({
         status: failure.code === 'not_found' ? 404 : failure.code === 'forbidden' ? 403 : 409,
@@ -384,7 +433,8 @@ const UserListBulkReprovisionFeedback = ({
       }),
       'mutation'
     );
-    return localizedMessage === t('admin.users.messages.mutationError') && failure.message.trim().length > 0
+    return localizedMessage === t('admin.users.messages.mutationError') &&
+      failure.message.trim().length > 0
       ? failure.message
       : localizedMessage;
   };
@@ -392,10 +442,17 @@ const UserListBulkReprovisionFeedback = ({
   return (
     <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
       <AlertDescription className="flex flex-col gap-2">
-        <span>{t('admin.users.messages.bulkReprovisionSuccessCount', { count: feedback.successCount })}</span>
-        <span>{t('admin.users.messages.bulkReprovisionFailureCount', { count: feedback.failureCount })}</span>
+        <span>
+          {t('admin.users.messages.bulkReprovisionSuccessCount', { count: feedback.successCount })}
+        </span>
+        <span>
+          {t('admin.users.messages.bulkReprovisionFailureCount', { count: feedback.failureCount })}
+        </span>
         {feedback.failures.length > 0 ? (
-          <ul className="list-disc pl-5 text-xs text-muted-foreground" aria-label={t('admin.users.messages.bulkReprovisionFailuresLabel')}>
+          <ul
+            className="list-disc pl-5 text-xs text-muted-foreground"
+            aria-label={t('admin.users.messages.bulkReprovisionFailuresLabel')}
+          >
             {feedback.failures.map((failure) => (
               <li key={failure.id}>
                 {t('admin.users.messages.bulkReprovisionFailureItem', {
@@ -461,7 +518,8 @@ const UserListRowActions = ({
   user: UserListUser;
 }) => {
   const editBlocked = user.editability === 'blocked';
-  const deleteBlocked = editBlocked || user.editability === 'read_only' || hasSystemAdminTargetRole(user);
+  const deleteBlocked =
+    editBlocked || user.editability === 'read_only' || hasSystemAdminTargetRole(user);
   const deleteDisabledReason = hasSystemAdminTargetRole(user)
     ? t('admin.users.confirm.deleteSystemAdminDisabled')
     : t('admin.users.actions.delete');
@@ -541,7 +599,9 @@ export const UserListPage = () => {
     <section className="space-y-5" aria-busy={usersApi.isLoading}>
       <StudioListPageTemplate
         title={t(isPlatformScope ? 'admin.users.page.platformTitle' : 'admin.users.page.title')}
-        description={t(isPlatformScope ? 'admin.users.page.platformSubtitle' : 'admin.users.page.subtitle')}
+        description={t(
+          isPlatformScope ? 'admin.users.page.platformSubtitle' : 'admin.users.page.subtitle'
+        )}
         primaryAction={
           isPlatformScope || isAuthLoading
             ? undefined
@@ -556,16 +616,23 @@ export const UserListPage = () => {
         }
       >
         <StudioDataTable
-          ariaLabel={t(isPlatformScope ? 'admin.users.table.platformAriaLabel' : 'admin.users.table.ariaLabel')}
+          ariaLabel={t(
+            isPlatformScope ? 'admin.users.table.platformAriaLabel' : 'admin.users.table.ariaLabel'
+          )}
           labels={studioDataTableLabels}
-          caption={t(isPlatformScope ? 'admin.users.table.platformCaption' : 'admin.users.table.caption')}
+          caption={t(
+            isPlatformScope ? 'admin.users.table.platformCaption' : 'admin.users.table.caption'
+          )}
           data={usersApi.users}
           columns={userColumns}
           getRowId={(user) => user.id}
           isLoading={usersApi.isLoading}
           loadingState={t('content.messages.loading')}
           emptyState={
-            <Card className="border-none p-0 text-sm text-muted-foreground shadow-none" role="status">
+            <Card
+              className="border-none p-0 text-sm text-muted-foreground shadow-none"
+              role="status"
+            >
               {t('admin.users.messages.emptyState')}
             </Card>
           }
@@ -576,7 +643,8 @@ export const UserListPage = () => {
                     id: 'bulk-deactivate',
                     label: t('admin.users.actions.bulkDeactivate'),
                     variant: 'destructive',
-                    onClick: ({ selectedRows }) => openBulkDeactivate(selectedRows.map((user) => user.id)),
+                    onClick: ({ selectedRows }) =>
+                      openBulkDeactivate(selectedRows.map((user) => user.id)),
                   },
                   {
                     id: 'bulk-reprovision-mainserver',
@@ -588,7 +656,13 @@ export const UserListPage = () => {
               : []
           }
           toolbarStart={<UserListToolbarStart usersApi={usersApi} />}
-          toolbarEnd={<UserListToolbarEnd syncStatus={syncStatus} total={usersApi.total} onSyncUsers={onSyncUsers} />}
+          toolbarEnd={
+            <UserListToolbarEnd
+              syncStatus={syncStatus}
+              total={usersApi.total}
+              onSyncUsers={onSyncUsers}
+            />
+          }
           rowActions={
             isPlatformScope || isAuthLoading
               ? undefined
@@ -614,7 +688,11 @@ export const UserListPage = () => {
 
       <UserListErrorAlert error={usersApi.error} onRetry={() => void usersApi.refetch()} />
 
-      <UserListPaginationFooter page={usersApi.page} pageCount={pageCount} setPage={usersApi.setPage} />
+      <UserListPaginationFooter
+        page={usersApi.page}
+        pageCount={pageCount}
+        setPage={usersApi.setPage}
+      />
 
       <ConfirmDialog
         open={Boolean(statusActionDialog)}

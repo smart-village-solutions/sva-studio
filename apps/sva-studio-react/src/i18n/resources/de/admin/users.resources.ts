@@ -226,6 +226,8 @@ export const usersAdminDEResources = {
     resultCount: '{{count}} Nutzer gefunden.',
     statusSwitchLabel: 'Aktivstatus für {{name}}',
     mainserverCredentialsMissing: 'Mainserver-Daten fehlen',
+    mainserverApplicationIdMissing: 'Mainserver Application-ID fehlt',
+    mainserverApplicationSecretMissing: 'Mainserver Application-Secret fehlt',
     syncRunning: 'Synchronisierung läuft ...',
     syncEmpty: 'Keine neuen oder geänderten Benutzer gefunden. {{skippedCount}} übersprungen.',
     syncResult:

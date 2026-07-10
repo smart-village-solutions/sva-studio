@@ -11,9 +11,9 @@ set -eu
 
 require_env() {
   _name="$1"
-  eval "_value=\${$_name:-}"
+  _value="$(printenv "$_name" 2>/dev/null || true)"
   if [ -z "$_value" ]; then
-    echo "Required environment variable $_name is not set." >&2
+    echo "Erforderliche Umgebungsvariable $_name ist nicht gesetzt." >&2
     exit 1
   fi
 }
@@ -177,8 +177,9 @@ const delegatedServerCall = [
   '  }',
   '  const [{ readFile }, pathModule] = await Promise.all([import("node:fs/promises"), import("node:path")]);',
   '  const publicRoot = pathModule.join(process.cwd(), ".output", "public");',
-  '  const candidatePath = pathModule.normalize(pathModule.join(publicRoot, requestPathname));',
-  '  if (!candidatePath.startsWith(publicRoot)) {',
+  '  const relativeRequestPath = requestPathname.replace(/^\\/+/, "");',
+  '  const candidatePath = pathModule.normalize(pathModule.join(publicRoot, relativeRequestPath));',
+  '  if (candidatePath !== publicRoot && !candidatePath.startsWith(`${publicRoot}${pathModule.sep}`)) {',
   '    return new Response("Not found", { status: 404 });',
   '  }',
   '  try {',

@@ -5,26 +5,32 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment"
+        description: 'Target environment'
         required: true
         type: choice
         options: [dev, staging, prod]
       image_ref:
-        description: "Image tag, digest, or full image ref"
+        description: 'Image tag, digest, or full image ref'
         required: true
         default: latest
       migration_mode:
-        description: "Migration gate mode"
+        description: 'Migration gate mode'
         required: true
         default: assert-none
         type: choice
         options: [assert-none, run]
       bootstrap_mode:
-        description: "Bootstrap gate mode"
+        description: 'Bootstrap gate mode'
         required: true
         default: assert-none
         type: choice
         options: [assert-none, run]
+      change_base:
+        description: 'Git base ref represented by the promoted image'
+        required: true
+      change_head:
+        description: 'Git head ref represented by the promoted image'
+        required: true
   workflow_call:
     inputs:
       environment:
@@ -42,13 +48,11 @@ on:
         type: string
         default: assert-none
       change_base:
-        required: false
+        required: true
         type: string
-        default: ""
       change_head:
-        required: false
+        required: true
         type: string
-        default: ""
 
 permissions:
   contents: read
@@ -69,6 +73,8 @@ jobs:
           IMAGE_INPUT: ${{ inputs.image_ref }}
           MIGRATION_MODE: ${{ inputs.migration_mode }}
           BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
+          CHANGE_BASE: ${{ inputs.change_base }}
+          CHANGE_HEAD: ${{ inputs.change_head }}
         run: |
           set -euo pipefail
 
@@ -82,6 +88,11 @@ jobs:
 
           if [ -z "${IMAGE_INPUT}" ]; then
             echo "'image_ref' must not be empty." >&2
+            exit 1
+          fi
+
+          if [ -z "${CHANGE_BASE}" ] || [ -z "${CHANGE_HEAD}" ]; then
+            echo "'change_base' and 'change_head' must identify the exact image change range." >&2
             exit 1
           fi
 
@@ -105,6 +116,9 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - name: setup pnpm workspace
+        uses: ./.github/actions/setup-pnpm-workspace
 
       - name: validate image contract
         id: image_contract
@@ -134,15 +148,7 @@ jobs:
           set -euo pipefail
 
           BASE_REF="${CHANGE_BASE}"
-          if [ -z "${BASE_REF}" ]; then
-            if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
-              BASE_REF="$(git rev-parse HEAD^)"
-            else
-              BASE_REF="origin/main"
-            fi
-          fi
-
-          HEAD_REF="${CHANGE_HEAD:-HEAD}"
+          HEAD_REF="${CHANGE_HEAD}"
 
           migration_executor_configured=false
           if [ -n "${PROMOTE_MIGRATION_EXECUTOR}" ]; then
@@ -216,18 +222,13 @@ jobs:
             exit 1
           fi
 
-          printf '%s' "$APP_CONFIG" > .env
+          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
           {
             printf '\nIMAGE_REF=%s\n' "${DEPLOY_IMAGE_REF}"
             printf 'SVA_DEPLOY_REVISION=%s\n' "${DEPLOY_REVISION}"
           } >> .env
-          docker compose -f compose.yaml -f ./deploy/compose.${ENVIRONMENT}.yaml config --no-normalize > stack.yaml
-
-          # swarm compatibility
-          sed -i '/^name:/d' stack.yaml
-          if ! grep -q '^version:' stack.yaml; then
-            echo "version: '3.8'" >> stack.yaml
-          fi
+          docker compose -f compose.yaml -f ./deploy/compose.${ENVIRONMENT}.yaml config --no-normalize --format json > stack.json
+          pnpm exec tsx scripts/ci/render-quantum-stack.ts --input stack.json --output stack.yaml
 
           quantum-cli stack deploy -f stack.yaml --stack "studio-${ENVIRONMENT}" --endpoint "${QUANTUM_ENDPOINT}"
 

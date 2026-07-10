@@ -26,15 +26,17 @@ interface CliOptions {
 }
 
 const digestPattern = /^sha256:[a-f0-9]{64}$/u;
-const fullDigestRefPattern = new RegExp(`^${IMAGE_REPOSITORY.replaceAll('/', '\\/')}@(sha256:[a-f0-9]{64})$`, 'u');
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+const fullDigestRefPattern = new RegExp(`^${escapeRegExp(IMAGE_REPOSITORY)}@(sha256:[a-f0-9]{64})$`, 'u');
 const commitShaTagPattern = /^[a-f0-9]{40}$/u;
+const imageTagPattern = /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/u;
 
 const normalizeEnvironment = (value: string): PromoteEnvironment => {
   if (value === 'dev' || value === 'staging' || value === 'prod') {
     return value;
   }
 
-  throw new Error(`Ungueltige Umgebung: ${value}`);
+  throw new Error(`Ungültige Umgebung: ${value}`);
 };
 
 const normalizeImageInput = (value: string): string => {
@@ -54,7 +56,7 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
     const nextValue = (): string => {
       const value = args[index + 1];
       if (!value) {
-        throw new Error(`Fehlender Wert fuer ${argument}`);
+        throw new Error(`Fehlender Wert für ${argument}`);
       }
       index += 1;
       return value;
@@ -74,11 +76,11 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
   }
 
   if (!environment) {
-    throw new Error('Fehlender Wert fuer --environment');
+    throw new Error('Fehlender Wert für --environment');
   }
 
   if (!imageInput) {
-    throw new Error('Fehlender Wert fuer --image');
+    throw new Error('Fehlender Wert für --image');
   }
 
   return {
@@ -99,6 +101,17 @@ const extractDigest = (imageInput: string): string | null => {
   return fullDigestMatch?.[1] ?? null;
 };
 
+const extractTag = (imageInput: string): string => {
+  const qualifiedPrefix = `${IMAGE_REPOSITORY}:`;
+  const tag = imageInput.startsWith(qualifiedPrefix) ? imageInput.slice(qualifiedPrefix.length) : imageInput;
+
+  if (!imageTagPattern.test(tag)) {
+    throw new Error(`Ungültige Image-Tag-Referenz: ${imageInput}`);
+  }
+
+  return tag;
+};
+
 export const validatePromoteImageContract = ({
   environment,
   imageInput,
@@ -108,14 +121,15 @@ export const validatePromoteImageContract = ({
 }): void => {
   const normalizedImageInput = normalizeImageInput(imageInput);
   const isDigest = isDigestInput(normalizedImageInput);
-  const isCommitShaTag = commitShaTagPattern.test(normalizedImageInput);
+  const tag = isDigest ? null : extractTag(normalizedImageInput);
+  const isCommitShaTag = tag !== null && commitShaTagPattern.test(tag);
 
   if (environment === 'dev') {
     return;
   }
 
-  if (normalizedImageInput === 'latest') {
-    throw new Error(`Image-Referenz "latest" ist fuer ${environment} nicht zulaessig.`);
+  if (tag === 'latest') {
+    throw new Error(`Image-Referenz "latest" ist für ${environment} nicht zulässig.`);
   }
 
   if (environment === 'staging' && !isDigest && !isCommitShaTag) {
@@ -146,7 +160,7 @@ export const resolvePromoteImageContract = ({
       deployRevision: digest,
       deploySummaryDigest: digest,
       deploySummaryImmutability: 'digest',
-      deploySummaryRollbackHint: 'Rollback ueber den vorherigen freigegebenen Digest ausfuehren.',
+      deploySummaryRollbackHint: 'Rollback über den vorherigen freigegebenen Digest ausführen.',
       deploySummaryTag: 'none',
       environment,
       imageInput: normalizedImageInput,
@@ -157,18 +171,20 @@ export const resolvePromoteImageContract = ({
     };
   }
 
+  const tag = extractTag(normalizedImageInput);
+
   return {
-    deployRevision: normalizedImageInput,
+    deployRevision: tag,
     deploySummaryDigest: 'not-pinned',
-    deploySummaryImmutability: environment === 'dev' && normalizedImageInput === 'latest' ? 'dev-latest-allowed' : 'commit-sha-tag',
+    deploySummaryImmutability: environment === 'dev' && tag === 'latest' ? 'dev-latest-allowed' : 'commit-sha-tag',
     deploySummaryRollbackHint:
-      environment === 'dev' && normalizedImageInput === 'latest'
-        ? 'Rollback nicht ueber latest, sondern ueber vorherigen SHA-Tag oder Digest ausfuehren.'
-        : 'Rollback ueber den vorherigen Commit-SHA-Tag oder einen bekannten Digest ausfuehren, nicht ueber latest.',
-    deploySummaryTag: normalizedImageInput,
+      environment === 'dev' && tag === 'latest'
+        ? 'Rollback nicht über latest, sondern über vorherigen SHA-Tag oder Digest ausführen.'
+        : 'Rollback über den vorherigen Commit-SHA-Tag oder einen bekannten Digest ausführen, nicht über latest.',
+    deploySummaryTag: tag,
     environment,
     imageInput: normalizedImageInput,
-    imageRef: `${IMAGE_REPOSITORY}:${normalizedImageInput}`,
+    imageRef: `${IMAGE_REPOSITORY}:${tag}`,
     imageType: 'tag',
   };
 };

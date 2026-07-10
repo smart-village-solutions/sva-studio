@@ -32,7 +32,7 @@ pnpm exec playwright install --with-deps chromium
 1. Services starten:
 
 ```bash
-docker compose -f docker-compose.yml -f compose.monitoring.yaml up -d redis loki otel-collector promtail
+docker compose -f compose.yaml -f compose.monitoring.yaml up -d redis loki otel-collector promtail
 ```
 
 2. E2E-Smoketest via Nx ausführen:
@@ -44,7 +44,7 @@ pnpm nx run sva-studio-react:test:e2e
 3. Services wieder stoppen:
 
 ```bash
-docker compose -f docker-compose.yml -f compose.monitoring.yaml down
+docker compose -f compose.yaml -f compose.monitoring.yaml down
 ```
 
 ## Was wird geprüft

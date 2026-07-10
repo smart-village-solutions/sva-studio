@@ -23,8 +23,8 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 
 - App: `pnpm nx run sva-studio-react:serve` auf `localhost:3000`
 - Öffentliche App: `pnpm nx run public-waste-calendar-web:serve` auf `localhost:3002`
-- Postgres IAM-DB: `docker-compose.yml` (`5432`)
-- Redis: `docker-compose.yml` (`6379`, optional TLS `6380`)
+- Postgres IAM-DB: `compose.yaml` (`5432`)
+- Redis: `compose.yaml` (`6379`, optional TLS `6380`)
 - Monitoring Stack: `compose.monitoring.yaml`
   - Collector: `4317`, `4318`, `13133`
   - Loki: `3100`
@@ -228,7 +228,7 @@ Referenzen:
 
 Referenzen:
 
-- `docker-compose.yml` (lokale Entwicklung)
+- `compose.yaml` (lokale Entwicklung)
 - `compose.monitoring.yaml`
 - `deploy/portainer/docker-compose.yml` (Swarm-Referenzprofil)
 - `docs/development/postgres-setup.md`

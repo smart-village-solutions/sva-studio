@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildAppUnitCommand, normalizeRetryCount, planAppUnitExecution } from './affected-unit-gate.ts';
+import {
+  buildAppUnitCommand,
+  normalizeRetryCount,
+  planAppUnitExecution,
+} from './affected-unit-gate.ts';
 
 describe('affected-unit-gate', () => {
   it('skips app slicing when the app is not affected', () => {
@@ -28,7 +32,9 @@ describe('affected-unit-gate', () => {
   });
 
   it('routes non-server app lib changes to the hooks-lib slice', () => {
-    expect(planAppUnitExecution(['apps/sva-studio-react/src/lib/theme.ts'], ['sva-studio-react'])).toEqual({
+    expect(
+      planAppUnitExecution(['apps/sva-studio-react/src/lib/theme.ts'], ['sva-studio-react'])
+    ).toEqual({
       mode: 'slices',
       reason: 'app-only-sliceable-change',
       slices: ['hooks'],
@@ -36,7 +42,9 @@ describe('affected-unit-gate', () => {
   });
 
   it('uses the aggregate app target for app config changes', () => {
-    expect(planAppUnitExecution(['apps/sva-studio-react/vitest.config.ts'], ['sva-studio-react'])).toEqual({
+    expect(
+      planAppUnitExecution(['apps/sva-studio-react/vitest.config.ts'], ['sva-studio-react'])
+    ).toEqual({
       mode: 'aggregate',
       reason: 'aggregate-app-file',
       slices: [],
@@ -46,10 +54,7 @@ describe('affected-unit-gate', () => {
   it('uses the aggregate app target for mixed workspace changes', () => {
     expect(
       planAppUnitExecution(
-        [
-          'apps/sva-studio-react/src/routes/-index.tsx',
-          'packages/routing/src/index.ts',
-        ],
+        ['apps/sva-studio-react/src/routes/-index.tsx', 'packages/routing/src/index.ts'],
         ['routing', 'sva-studio-react']
       )
     ).toEqual({
@@ -62,11 +67,7 @@ describe('affected-unit-gate', () => {
   it('skips the app run for infra-only non-app changes even when nx marks the app affected', () => {
     expect(
       planAppUnitExecution(
-        [
-          '.github/workflows/build.yml',
-          'compose.yaml',
-          'scripts/ci/monitoring-stack-ci.sh',
-        ],
+        ['.github/workflows/build.yml', 'compose.yaml', 'scripts/ci/monitoring-stack-ci.sh'],
         ['tooling-testing', 'sva-studio-react']
       )
     ).toEqual({
@@ -76,8 +77,26 @@ describe('affected-unit-gate', () => {
     });
   });
 
+  it.each([
+    'package.json',
+    'pnpm-lock.yaml',
+    'tsconfig.base.json',
+    'tooling/testing/vitest.config.ts',
+  ])(
+    'uses the aggregate app target for dependency-relevant root or tooling change %s',
+    (filePath) => {
+      expect(planAppUnitExecution([filePath], ['tooling-testing', 'sva-studio-react'])).toEqual({
+        mode: 'aggregate',
+        reason: 'mixed-workspace-change',
+        slices: [],
+      });
+    }
+  );
+
   it('uses the aggregate app target when a file cannot be mapped to a safe slice', () => {
-    expect(planAppUnitExecution(['apps/sva-studio-react/src/main.tsx'], ['sva-studio-react'])).toEqual({
+    expect(
+      planAppUnitExecution(['apps/sva-studio-react/src/main.tsx'], ['sva-studio-react'])
+    ).toEqual({
       mode: 'aggregate',
       reason: 'aggregate-app-file',
       slices: [],

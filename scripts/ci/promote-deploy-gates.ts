@@ -58,6 +58,7 @@ const bootstrapRiskPatterns = [
   /^compose\.yaml$/u,
   /^deploy\/compose\.(?:dev|staging|prod)\.yaml$/u,
   /^bootstrap-entrypoint\.sh$/u,
+  /^deploy\/portainer\/bootstrap-entrypoint\.sh$/u,
   /^provisioner-entrypoint\.sh$/u,
   /^packages\/iam-[^/]+\//u,
   /^packages\/instance-registry\//u,
@@ -93,7 +94,7 @@ export const evaluateDeployGate = ({
     if (riskFiles.length > 0) {
       return {
         kind,
-        message: `${label}-Gate blockiert: Risiko erkannt (${formatRiskSummary(riskFiles)}). Verwende keinen impliziten Skip, sondern fuehre den Schritt bewusst ausserhalb dieses Promote-Laufs aus oder liefere einen separaten Nachweis.`,
+        message: `${label}-Gate blockiert: Risiko erkannt (${formatRiskSummary(riskFiles)}). Verwende keinen impliziten Skip, sondern führe den Schritt bewusst außerhalb dieses Promote-Laufs aus oder liefere einen separaten Nachweis.`,
         mode,
         ok: false,
         result: 'blocked-risk',
@@ -103,7 +104,7 @@ export const evaluateDeployGate = ({
     }
     return {
       kind,
-      message: `${label}-Gate freigegeben: keine risikobehafteten Aenderungen fuer ${label.toLowerCase()} erkannt.`,
+      message: `${label}-Gate freigegeben: keine risikobehafteten Änderungen für ${label.toLowerCase()} erkannt.`,
       mode,
       ok: true,
       result: 'asserted-clean',
@@ -114,7 +115,7 @@ export const evaluateDeployGate = ({
   if (!executorConfigured) {
     return {
       kind,
-      message: `${label}-Gate blockiert: Kein sicherer One-shot-Executor fuer Modus "run" konfiguriert. Promote fuehrt keine destruktiven Jobs blind aus.`,
+      message: `${label}-Gate blockiert: Kein sicherer One-shot-Executor für Modus "run" konfiguriert. Promote führt keine destruktiven Jobs blind aus.`,
       mode,
       ok: false,
       result: 'blocked-missing-executor',
@@ -124,7 +125,7 @@ export const evaluateDeployGate = ({
   }
   return {
     kind,
-    message: `${label}-Gate blockiert: Ein Executor ist konfiguriert, aber im Promote-Workflow nicht mit gehaerteter Exit-Code-/Log-Evidenz verdrahtet. Nutze den kanonischen Operator-Pfad statt Blindautomatisierung.`,
+    message: `${label}-Gate blockiert: Ein Executor ist konfiguriert, aber im Promote-Workflow nicht mit gehärteter Exit-Code-/Log-Evidenz verdrahtet. Nutze den kanonischen Operator-Pfad statt Blindautomatisierung.`,
     mode,
     ok: false,
     result: 'blocked-safe-run-required',
@@ -168,14 +169,14 @@ const parseBoolean = (value: string): boolean => {
   if (value === 'false') {
     return false;
   }
-  throw new Error(`Ungueltiger Boolean-Wert: ${value}`);
+  throw new Error(`Ungültiger Boolean-Wert: ${value}`);
 };
 
 const parseMode = (value: string, flag: string): DeployGateMode => {
   if (value === 'assert-none' || value === 'run') {
     return value;
   }
-  throw new Error(`Ungueltiger Wert fuer ${flag}: ${value}`);
+  throw new Error(`Ungültiger Wert für ${flag}: ${value}`);
 };
 
 const parseCliOptions = (args: readonly string[]): CliOptions => {
@@ -192,7 +193,7 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
     const nextValue = (): string => {
       const value = args[index + 1];
       if (!value) {
-        throw new Error(`Fehlender Wert fuer ${argument}`);
+        throw new Error(`Fehlender Wert für ${argument}`);
       }
       index += 1;
       return value;

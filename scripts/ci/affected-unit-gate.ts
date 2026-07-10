@@ -28,14 +28,27 @@ const APP_VITEST_CONFIG = 'apps/sva-studio-react/vitest.config.ts';
 const require = createRequire(import.meta.url);
 const APP_UI_PATTERNS = [/^apps\/sva-studio-react\/src\/(?:components|providers|i18n)\//u];
 const APP_ROUTES_PATTERNS = [/^apps\/sva-studio-react\/src\/(?:routes|routing)\//u];
-const APP_SERVER_PATTERNS = [/^apps\/sva-studio-react\/src\/server(?:\.test)?\.(?:ts|tsx)$/u, /^apps\/sva-studio-react\/src\/lib\/.*(?:\.server|-server)(?:\.test)?\.(?:ts|tsx)$/u];
-const APP_HOOKS_PATTERNS = [/^apps\/sva-studio-react\/src\/hooks\//u, /^apps\/sva-studio-react\/src\/lib\//u];
+const APP_SERVER_PATTERNS = [
+  /^apps\/sva-studio-react\/src\/server(?:\.test)?\.(?:ts|tsx)$/u,
+  /^apps\/sva-studio-react\/src\/lib\/.*(?:\.server|-server)(?:\.test)?\.(?:ts|tsx)$/u,
+];
+const APP_HOOKS_PATTERNS = [
+  /^apps\/sva-studio-react\/src\/hooks\//u,
+  /^apps\/sva-studio-react\/src\/lib\//u,
+];
 const APP_AGGREGATE_PATTERNS = [
   /^apps\/sva-studio-react\/(?:package\.json|tsconfig\.json|vite\.config\.ts|vitest(?:\..+)?\.config\.ts|playwright\.config\.ts)$/u,
   /^apps\/sva-studio-react\/(?:e2e|scripts)\//u,
   /^apps\/sva-studio-react\/src\/(?:main|routeTreeGen|router)\.(?:ts|tsx)$/u,
 ];
-const APP_DEPENDENCY_RELEVANT_NON_APP_PATTERNS = [/^packages\//u];
+const APP_INFRA_ONLY_NON_APP_PATTERNS = [
+  /^\.github\/(?:actions|workflows)\//u,
+  /^compose(?:\.[^/]+)?\.ya?ml$/u,
+  /^deploy\/compose\.(?:dev|staging|prod)\.yaml$/u,
+  /^docs\//u,
+  /^(?:Dockerfile|entrypoint\.sh|migrate-entrypoint\.sh|otel-bootstrap\.mjs|provisioner-entrypoint\.sh)$/u,
+  /^scripts\/ci\//u,
+];
 const matchesAnyPattern = (filePath: string, patterns: readonly RegExp[]): boolean =>
   patterns.some((pattern) => pattern.test(filePath));
 const parseCliOptions = (args: readonly string[]): AffectedUnitGateOptions => {
@@ -94,8 +107,10 @@ const runCommand = (
         throw error;
       }
 
-      const status = typeof error === 'object' && error !== null && 'status' in error ? error.status : 'unknown';
-      const signal = typeof error === 'object' && error !== null && 'signal' in error ? error.signal : 'unknown';
+      const status =
+        typeof error === 'object' && error !== null && 'status' in error ? error.status : 'unknown';
+      const signal =
+        typeof error === 'object' && error !== null && 'signal' in error ? error.signal : 'unknown';
       console.warn(
         `Command failed with status=${String(status)} signal=${String(signal)}. Retrying command (${attempt + 1}/${retries}).`
       );
@@ -118,7 +133,18 @@ const getAffectedUnitProjects = (base: string, head: string): string[] => {
   const nxEntrypoint = path.join(path.dirname(nxPackageJson), 'dist', 'bin', 'nx.js');
   const output = execFileSync(
     process.execPath,
-    [nxEntrypoint, 'show', 'projects', '--affected', '--withTarget=test:unit', '--base', base, '--head', head, '--json'],
+    [
+      nxEntrypoint,
+      'show',
+      'projects',
+      '--affected',
+      '--withTarget=test:unit',
+      '--base',
+      base,
+      '--head',
+      head,
+      '--json',
+    ],
     {
       encoding: 'utf8',
       env: process.env,
@@ -173,14 +199,14 @@ export const planAppUnitExecution = (
   }
 
   const codeRelevantFiles = changedFiles.filter((filePath) => !isNonCodeRelevantPath(filePath));
-  const nonAppFiles = codeRelevantFiles.filter((filePath) => !filePath.startsWith('apps/sva-studio-react/'));
+  const nonAppFiles = codeRelevantFiles.filter(
+    (filePath) => !filePath.startsWith('apps/sva-studio-react/')
+  );
 
   if (nonAppFiles.length > 0) {
-    const dependencyRelevantNonAppFiles = nonAppFiles.filter((filePath) =>
-      matchesAnyPattern(filePath, APP_DEPENDENCY_RELEVANT_NON_APP_PATTERNS)
-    );
-
-    if (dependencyRelevantNonAppFiles.length === 0) {
+    if (
+      nonAppFiles.every((filePath) => matchesAnyPattern(filePath, APP_INFRA_ONLY_NON_APP_PATTERNS))
+    ) {
       return {
         mode: 'skip',
         reason: 'non-app-infra-change',
@@ -195,7 +221,9 @@ export const planAppUnitExecution = (
     };
   }
 
-  const appFiles = codeRelevantFiles.filter((filePath) => filePath.startsWith('apps/sva-studio-react/'));
+  const appFiles = codeRelevantFiles.filter((filePath) =>
+    filePath.startsWith('apps/sva-studio-react/')
+  );
   if (appFiles.length === 0) {
     return {
       mode: 'aggregate',
@@ -205,7 +233,9 @@ export const planAppUnitExecution = (
   }
 
   const classifiedSlices = appFiles.map(classifyAppUnitSlice);
-  const slices = [...new Set(classifiedSlices)].filter((slice): slice is AppUnitSlice => slice !== null);
+  const slices = [...new Set(classifiedSlices)].filter(
+    (slice): slice is AppUnitSlice => slice !== null
+  );
 
   if (
     appFiles.some(

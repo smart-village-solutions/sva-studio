@@ -17,6 +17,7 @@ permissions:
 jobs:
   build:
     name: Build
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       image_digest: ${{ steps.build_image.outputs.digest }}
@@ -47,6 +48,7 @@ jobs:
 
   promote-dev:
     name: Promote dev
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
     needs: build
     uses: ./.github/workflows/promote.yml
     secrets: inherit

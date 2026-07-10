@@ -20,11 +20,14 @@ services:
         limits:
           memory: 512M
       labels:
-        - "traefik.swarm.network=network-node-005"
-        - "traefik.enable=true"
-        - "traefik.http.routers.studio-dev-app.rule=Host(`studio-dev.smart-village.app`)"
-        - "traefik.http.routers.studio-dev-app.tls=true"
-        - "traefik.http.services.studio-dev-app.loadbalancer.server.port=3000"
+        - 'traefik.docker.network=network-node-005'
+        - 'traefik.enable=true'
+        - 'traefik.frontend.passHostHeader=true'
+        - 'traefik.frontend.rule=Host:studio-dev.smart-village.app'
+        - 'traefik.port=3000'
+        - 'traefik.http.routers.studio-dev-app.rule=Host(`studio-dev.smart-village.app`)'
+        - 'traefik.http.routers.studio-dev-app.tls=true'
+        - 'traefik.http.services.studio-dev-app.loadbalancer.server.port=3000'
 
   provisioner:
     image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG:-latest}}

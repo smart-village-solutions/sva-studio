@@ -53,6 +53,17 @@ describe('promote-deploy-gates', () => {
     expect(result.bootstrap.riskFiles).toEqual(['packages/auth-runtime/src/bootstrap/reconcile.ts']);
   });
 
+  it('treats the deployed Portainer bootstrap entrypoint as bootstrap risk', () => {
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'assert-none',
+      changedFiles: ['deploy/portainer/bootstrap-entrypoint.sh'],
+      migrationMode: 'assert-none',
+    });
+
+    expect(result.bootstrap.riskFiles).toEqual(['deploy/portainer/bootstrap-entrypoint.sh']);
+    expect(result.bootstrap.ok).toBe(false);
+  });
+
   it('treats compose contract changes as migration and bootstrap risk', () => {
     const result = evaluatePromoteDeployGates({
       bootstrapMode: 'assert-none',
@@ -97,7 +108,7 @@ describe('promote-deploy-gates', () => {
       result: 'blocked-safe-run-required',
       riskDetected: true,
     });
-    expect(result.message).toContain('gehaerteter Exit-Code-/Log-Evidenz');
+    expect(result.message).toContain('gehärteter Exit-Code-/Log-Evidenz');
   });
 
   it('formats risk summaries deterministically', () => {

@@ -31,7 +31,8 @@ describe('readSvaMainserverCredentials', () => {
       'missing_application_secret'
     );
     expect(resolveMainserverCredentialStatus({})).toBe('missing_both');
-    expect(resolveMainserverCredentialStatus(undefined)).toBe('unknown');
+    expect(resolveMainserverCredentialStatus(undefined)).toBe('missing_both');
+    expect(resolveMainserverCredentialStatus(null)).toBe('unknown');
   });
 
   it('returns credentials from the current keycloak attributes', async () => {

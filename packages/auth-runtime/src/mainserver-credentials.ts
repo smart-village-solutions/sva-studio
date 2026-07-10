@@ -101,7 +101,7 @@ export const resolveMainserverCredentialState = (
 export const resolveMainserverCredentialStatus = (
   attributes: IdentityUserAttributes | null | undefined
 ): IamMainserverCredentialStatus => {
-  if (attributes === null || attributes === undefined) {
+  if (attributes === null) {
     return 'unknown';
   }
 

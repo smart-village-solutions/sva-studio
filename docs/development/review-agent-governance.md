@@ -70,7 +70,7 @@ Empfohlene Aufrufe:
 - Verhaltensänderungen oder Coverage-/Test-Themen: `Test Quality`
 - Aenderungen an `config/plugin-architecture-allowlist.json`, `docs/reports/plugin-architecture-boundary-baseline.md`, `scripts/ci/check-plugin-architecture-boundary.ts` oder plugin-oeffentlichen Host-Vertraegen: zusaetzlich `Architecture`
 - Wiederholte rote Test-/Coverage-Checks im PR-Verlauf: `Test Quality` mit expliziter Shift-left-Prozessbewertung
-- Relevante Bot-Kommentare von `Copilot` oder `chatgpt-codex-connector[bot]` muessen vor Merge einen gueltigen Bearbeitungsnachweis tragen
+- Relevante Bot-Kommentare von `Copilot` oder `chatgpt-codex-connector[bot]` werden vor dem Merge fachlich geprüft und über den normalen GitHub-Review-Prozess abgeschlossen
 - IAM, Rollen-Sync, ABAC/RBAC, Data-Subject-Rights oder andere architekturrelevante Security-/Domain-Änderungen: zusätzlich `Architecture` und `Security & Privacy`
 - weitere Fachreviewer trigger-basiert analog zu Proposal-Reviews
 

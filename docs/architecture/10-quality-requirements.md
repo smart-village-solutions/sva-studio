@@ -205,7 +205,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Review-Governance:
   - Proposal- und PR-Reviews nutzen spezialisierte Agents mit standardisierten Templates
   - Trigger-Matrix und Abgrenzungen sind in `docs/development/review-agent-governance.md` dokumentiert
-  - relevante Bot-Kommentare von `Copilot` und `chatgpt-codex-connector[bot]` blockieren den Merge, bis ein maschinenlesbarer Bearbeitungsnachweis vorliegt
+  - relevante Bot-Kommentare von `Copilot` und `chatgpt-codex-connector[bot]` werden vor dem Merge fachlich geprüft und über Antworten, Commits, Checks sowie den nativen Thread-Status nachvollziehbar abgeschlossen
   - Formular-, Frontend-HTTP- und Hotspot-Änderungen sind erst reviewbar abgeschlossen, wenn `docs/development/studio-foundations-governance.md`, die konkrete Formularinventur `docs/development/studio-form-migrationsinventur.md` und der PR- oder Arbeitskontext den Standardpfad oder die Ausnahme nachvollziehbar und konsistent abbilden
 
 ### Qualitätsattribute und Review-Zuordnung

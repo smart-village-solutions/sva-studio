@@ -646,12 +646,6 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/auth-runtime/src/server.ts)"
     },
-    "ci-scripts:scripts/ci/check-bot-comment-handling.ts:fileLines": {
-      "ticketId": "baseline-ci-check-bot-comment-handling-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/check-bot-comment-handling.ts)"
-    },
     "ci-scripts:scripts/ci/check-plugin-ui-boundary.ts:cyclomaticComplexity": {
       "ticketId": "baseline-ci-check-plugin-ui-boundary-ts",
       "ticketSystem": "policy-baseline",

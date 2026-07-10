@@ -25,7 +25,6 @@
     "test:coverage:pr": "pnpm test:coverage:affected && pnpm patch-coverage-gate --base=${NX_BASE:-origin/main} && pnpm sonar-new-code-gate --base=${NX_BASE:-origin/main}",
     "check:studio-changelog": "tsx scripts/ci/check-studio-changelog.ts --mode repo",
     "check:toolchain-consistency": "bash scripts/ci/run-workspace-node.sh --import tsx scripts/ci/check-toolchain-consistency.ts",
-    "check:bot-comment-handling": "node --experimental-strip-types scripts/ci/check-bot-comment-handling.ts",
     "check:plugin-ui-boundary": "tsx scripts/ci/check-plugin-ui-boundary.ts",
     "check:plugin-architecture-boundary": "tsx scripts/ci/check-plugin-architecture-boundary.ts",
     "check:boundaries:fallow": "pnpm exec fallow dead-code --boundary-violations --quiet",

@@ -63,16 +63,6 @@ pnpm 11 behandelt Buildskripte von Dependencies standardmäßig als unreviewed. 
 
 Neue Buildskripte dürfen nur nach expliziter Review in `allowBuilds` aufgenommen werden.
 
-## Governance-Workflow
-
-Der Workflow [`bot-comment-governance.yml`](../../.github/workflows/bot-comment-governance.yml) führt unter `pull_request_target` keine Workspace-Installation mehr aus. Die Prüflogik läuft direkt über Node-Type-Stripping auf [`scripts/ci/check-bot-comment-handling.ts`](../../scripts/ci/check-bot-comment-handling.ts) und benötigt nur:
-
-- `GITHUB_TOKEN`
-- Event-Payload aus GitHub Actions
-- GitHub REST/GraphQL
-
-Damit bleibt die fachliche Logik erhalten, während der riskante Installationspfad auf diesem sensiblen Trigger entfernt wurde.
-
 ## Operativer Hinweis
 
 Wenn ein frischer Install an `minimumReleaseAge`, `trustPolicy` oder `allowBuilds` scheitert, ist das zunächst ein gewollter Sicherheitsstopp und kein bloßes Tooling-Problem. Erst Resolver-Ursache, Version und Vertrauenssignal klären; erst danach gezielt nachsteuern.

@@ -2,7 +2,7 @@ export const STUDIO_CHANGELOG_ENTRY_DIRECTORY = 'docs/changelog/entries';
 export const STUDIO_CHANGELOG_ENTRY_PATTERN = /^docs\/changelog\/entries\/pr-(\d+)\.json$/u;
 export const STUDIO_CHANGELOG_ARTIFACT_RELATIVE_PATH = 'generated/studio-changelog.json';
 export const STUDIO_CHANGELOG_ENTRY_LIMIT = 20;
-export const STUDIO_CHANGELOG_RAW_HTML_PATTERN = /<\/?[a-z][\w-]*(?:\s[^<>]*)?\s*\/?>/iu;
+const STUDIO_CHANGELOG_RAW_HTML_PATTERN = /<\/?[a-z][\w-]*(?:\s[^<>]*)?\s*\/?>/iu;
 
 export type StudioChangelogEntry = {
   readonly prNumber: number;

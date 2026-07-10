@@ -2,7 +2,7 @@ import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/core';
 
 export const DEV_AUTH_LOGIN_ENDPOINT = '/auth/dev-login';
 export const DEV_AUTH_LOGOUT_ENDPOINT = '/auth/dev-logout';
-export const DEV_AUTH_COOKIE_NAME = 'sva_dev_auth';
+const DEV_AUTH_COOKIE_NAME = 'sva_dev_auth';
 
 const readCookieValue = (cookieHeader: string, name: string): string | null => {
   const cookieName = `${encodeURIComponent(name)}=`;

@@ -24,7 +24,7 @@ const createUnknownServices = (): RuntimeHealthResponse['checks']['services'] =>
     ])
   ) as RuntimeHealthResponse['checks']['services'];
 
-export const createUnknownRuntimeHealth = (): RuntimeHealthResponse => ({
+const createUnknownRuntimeHealth = (): RuntimeHealthResponse => ({
   checks: {
     authorizationCache: {
       coldStart: false,

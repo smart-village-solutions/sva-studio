@@ -88,7 +88,7 @@ Jeder Reviewer SHALL ein standardisiertes Output-Template unter `.github/agents/
 - **THEN** verwendet er ein separates konsolidiertes Report-Template
 - **AND** der Bericht enthält Reviewer-Auswahl, priorisierte Findings, Konflikte und offene Fragen
 
-### Requirement: Bot-Kommentare muessen vor Merge bearbeitet werden
+### Requirement: Bot-Kommentare müssen vor Merge bearbeitet werden
 Das Repository SHALL vor dem Merge fuer jeden relevanten PR-Kommentar von `Copilot` oder `chatgpt-codex-connector[bot]` einen nachvollziehbaren Bearbeitungsnachweis verlangen.
 
 #### Scenario: Review-Thread wurde umgesetzt und abgeschlossen
@@ -112,7 +112,7 @@ Das Repository SHALL vor dem Merge fuer jeden relevanten PR-Kommentar von `Copil
 - **THEN** gilt dieser Bot-Kommentar als unbearbeitet
 - **AND** der Pull Request darf das Bot-Kommentar-Gate nicht bestehen
 
-### Requirement: Bearbeitungsnachweise muessen standardisierte Abschlusszustaende tragen
+### Requirement: Bearbeitungsnachweise müssen standardisierte Abschlusszustände tragen
 Das Repository SHALL fuer relevante Bot-Kommentare standardisierte Abschlusszustaende verwenden, damit akzeptierte, abgelehnte und anderweitig erledigte Entscheidungen maschinell und menschlich nachvollziehbar bleiben.
 
 #### Scenario: Akzeptierter Kommentar ist maschinenlesbar markiert
@@ -146,4 +146,3 @@ Das Repository SHALL relevante Bot-Review-Threads und relevante normale Bot-PR-K
 - **GIVEN** ein Kommentar stammt nicht von `Copilot` und nicht von `chatgpt-codex-connector[bot]`
 - **WHEN** das Bot-Kommentar-Gate den Pull Request auswertet
 - **THEN** zaehlt dieser Kommentar nicht zum Pflichtumfang dieses Gates
-

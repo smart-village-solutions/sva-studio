@@ -1,12 +1,12 @@
 ## REMOVED Requirements
 
-### Requirement: Bot-Kommentare muessen vor Merge bearbeitet werden
+### Requirement: Bot-Kommentare müssen vor Merge bearbeitet werden
 
 **Reason**: Der native GitHub-Review-Prozess deckt die fachliche Bearbeitung und den Abschluss von Review-Threads ab; ein zusätzliches proprietäres Marker-Gate erzeugt doppelte Governance ohne verpflichtenden Merge-Schutz.
 
 **Migration**: Relevante Bot-Hinweise werden weiterhin vor dem Merge geprüft. Umgesetzte oder begründet abgelehnte Hinweise werden über Antworten und den nativen Thread-Status nachvollziehbar abgeschlossen.
 
-### Requirement: Bearbeitungsnachweise muessen standardisierte Abschlusszustaende tragen
+### Requirement: Bearbeitungsnachweise müssen standardisierte Abschlusszustände tragen
 
 **Reason**: Die HTML-Marker `accepted`, `rejected` und `resolved` werden ausschließlich vom entfernten Sonderworkflow benötigt.
 

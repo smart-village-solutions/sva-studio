@@ -1,8 +1,11 @@
 # account-ui Specification
 
 ## Purpose
+
 TBD - created by archiving change add-account-user-management-ui. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Auth-State-Provider
 
 Das System MUST einen zentralen React-Context (`AuthProvider` in `sva-studio-react`) bereitstellen, der den Authentifizierungs-State anwendungsweit verfügbar macht, verteilte `/auth/me`-Aufrufe durch einen einheitlichen `useAuth()`-Hook ersetzt und Auth-Unterbrechungen strukturiert diagnostizierbar macht.
@@ -334,6 +337,14 @@ Das System MUST serverseitige API-Endpunkte unter `/api/v1/iam/` für User-CRUD,
 - **DANN** enthält die Antwort `mainserverUserApplicationId`, falls in Keycloak gesetzt
 - **UND** die Antwort enthält einen booleschen Status, ob `mainserverUserApplicationSecret` vorhanden ist
 - **UND** der Klartext des Secrets wird nie an den Browser übertragen
+
+#### Scenario: Benutzertabelle warnt bei unvollständigen Mainserver-Credentials
+
+- **WENN** die bereits geladene Keycloak-Benutzerprojektion eine fehlende Mainserver Application-ID, ein fehlendes Mainserver Application-Secret oder vollständig fehlende Mainserver-Credentials enthält
+- **DANN** zeigt die Benutzertabelle am betroffenen Konto eine zugängliche, ursachenspezifische Warnung
+- **UND** ein nicht bestimmbarer Credential-Status wird nicht als fehlende Credentials dargestellt
+- **UND** die Prüfung erzeugt keine zusätzlichen Keycloak-Aufrufe pro Tabellenzeile
+- **UND** weder Application-ID noch Secret werden dafür an den Browser übertragen
 
 ### Requirement: Gruppenverwaltung im Admin-Bereich
 
@@ -913,60 +924,72 @@ Die Account-UI SHALL Packages fuer Admin-Ressourcen nur deklarative UI-Beitraege
 The Studio admin UI SHALL allow authorized platform and tenant admins to use Studio as an alternative UI for Keycloak user and role administration.
 
 #### Scenario: Complete user list with edit affordances
+
 - **WHEN** ein Admin `/admin/users` öffnet
 - **THEN** zeigt die UI alle im aktiven Scope relevanten Keycloak-User mit Such-, Status-, Rollen- und Mapping-Filtern
 - **AND** zeigt pro User, ob Bearbeitung, Deaktivierung und Rollenzuordnung möglich, read-only oder blockiert ist
 
 #### Scenario: Complete role list with edit affordances
+
 - **WHEN** ein Admin `/admin/roles` öffnet
 - **THEN** zeigt die UI alle im aktiven Scope relevanten Keycloak-Rollen mit Such-, Typ- und Bearbeitbarkeitsfiltern
 - **AND** unterscheidet Built-in-, externe und Studio-managed Rollen sichtbar
 
 #### Scenario: Sync diagnostics are actionable
+
 - **WHEN** ein Sync oder Reconcile `partial_failure`, `blocked` oder `failed` meldet
 - **THEN** zeigt die UI Zähler, Diagnosecodes und betroffene User/Rollen
 - **AND** bietet nur Aktionen an, die im aktiven Scope und laut Bearbeitbarkeitsmatrix erlaubt sind
 
 ### Requirement: Shared Studio UI React Package
+
 The system SHALL provide `@sva/studio-ui-react` as the shared React UI package for host pages and plugin custom views.
 
 #### Scenario: Host page uses shared UI
+
 - **GIVEN** a host-owned overview or detail page is implemented
 - **WHEN** the page needs reusable Studio layout, controls, actions, or state components
 - **THEN** it imports them from `@sva/studio-ui-react`
 - **AND** it does not import reusable Studio UI from app-internal component paths
 
 #### Scenario: Plugin custom view uses shared UI
+
 - **GIVEN** a plugin provides a custom React view
 - **WHEN** the view renders Studio page structure, form controls, actions, or feedback states
 - **THEN** it uses `@sva/studio-ui-react` components
 - **AND** it does not define a parallel basis control system for buttons, inputs, tables, tabs, dialogs, or alerts
 
 #### Scenario: Plugin uses domain wrapper around shared UI
+
 - **GIVEN** a plugin needs a domain-specific field, action, or status component
 - **WHEN** the component is implemented
 - **THEN** it composes primitives from `@sva/studio-ui-react`
 - **AND** it does not redefine shared visual variants, focus behavior, ARIA semantics, or design tokens
 
 ### Requirement: Studio UI React Overview and Detail Templates
+
 The system SHALL provide reusable overview and detail templates that encode the Studio page standards for headings, resource identity, actions, navigation, work surfaces, and state handling.
 
 #### Scenario: Overview page renders with standard structure
+
 - **GIVEN** a host or plugin overview page uses `StudioOverviewPageTemplate`
 - **WHEN** the page is rendered
 - **THEN** the visible structure contains page heading, optional primary action, toolbar slot, content slot, and pagination or result-state slot
 - **AND** loading, empty, error, and forbidden states are rendered through shared Studio state components
 
 #### Scenario: Detail page renders with standard structure
+
 - **GIVEN** a host or plugin detail page uses `StudioDetailPageTemplate`
 - **WHEN** the page is rendered
 - **THEN** the visible structure contains return or breadcrumb context, page heading, primary action slot, resource header slot, detail navigation slot, and active work surface
 - **AND** resource identity, status badges, metadata, and destructive actions follow shared Studio patterns
 
 ### Requirement: Studio UI React Form Controls
+
 The system SHALL provide form composition primitives that standardize labels, required markers, descriptions, validation states, and accessible field relationships.
 
 #### Scenario: Field with validation error
+
 - **GIVEN** a Studio form field has a validation error
 - **WHEN** the field is rendered
 - **THEN** the control exposes `aria-invalid`
@@ -974,26 +997,31 @@ The system SHALL provide form composition primitives that standardize labels, re
 - **AND** the visual state is consistent across host and plugin forms
 
 #### Scenario: Plugin form uses specialized field
+
 - **GIVEN** a plugin needs a specialized editor such as upload, rich text, media, color, icon, rating, or geo selection
 - **WHEN** the specialized editor is implemented
 - **THEN** it is wrapped as a Studio component or composed from `@sva/studio-ui-react` primitives
 - **AND** it preserves label, description, validation, disabled, and read-only semantics
 
 ### Requirement: Plugin Custom Views Preserve Studio UX Contracts
+
 The system SHALL allow plugin custom views only when they preserve Studio shell, layout, accessibility, action, and state contracts through `@sva/studio-ui-react`.
 
 #### Scenario: Plugin custom view is accepted
+
 - **GIVEN** a plugin registers or exports a custom admin view
 - **WHEN** the host validates or reviews the view integration
 - **THEN** the view uses `@sva/studio-ui-react` for common layout, controls, actions, and states
 - **AND** any deviation from shared Studio UI is documented as an architecture decision
 
 #### Scenario: Plugin custom view imports app internals
+
 - **GIVEN** a plugin custom view imports from `apps/sva-studio-react/src/components`
 - **WHEN** lint, boundary, or CI checks run
 - **THEN** the check fails with a message that directs the plugin to `@sva/studio-ui-react`
 
 #### Scenario: Plugin defines duplicate basis control
+
 - **GIVEN** a plugin defines or exports a reusable basis control that duplicates an available Studio UI component
 - **WHEN** lint, CI, or review checks run
 - **THEN** the contribution is rejected or changed to compose `@sva/studio-ui-react`
@@ -1228,22 +1256,27 @@ Das System MUST in der Organisationsverwaltung eine abgesicherte Pflege organisa
 - **UND** die Oberfläche sendet keinen leeren oder `null`-basierten Secret-Wert als impliziten Revoke-Request
 
 ### Requirement: Rollen-Detailseite pflegt Assignment-Scopes fuer scope-faehige Rechte
+
 Das System SHALL in der Rollen-Detailseite fuer scope-faehige Datensatzrechte neben der Zuweisung auch den Assignment-Scope pflegbar machen.
 
 #### Scenario: Scope-Selector erscheint nur fuer geeignete Rechte
+
 - **WHEN** ein Administrator den Permissions-Tab einer editierbaren Rolle oeffnet
 - **THEN** zeigt die UI fuer scope-faehige Rechte einen Selector fuer `all`, `own` und `organization`
 - **AND** nicht scope-faehige Rechte bleiben binaer zuweisbar
 
 #### Scenario: Speichern sendet strukturierte Permission-Assignments
+
 - **WHEN** ein Administrator Rechte- oder Scope-Aenderungen speichert
 - **THEN** sendet die UI `permissionAssignments[]` mit `permissionId` und `accessScope`
 - **AND** neu zugewiesene scope-faehige Rechte erhalten standardmaessig `all`
 
 ### Requirement: Nutzeransicht zeigt effektive Permission-Scopes transparent an
+
 Das System SHALL in der Nutzer-Berechtigungsansicht den effektiven Assignment-Scope rollen- oder gruppenvermittelter Datensatzrechte sichtbar machen.
 
 #### Scenario: Effektiver Scope wird im Permission Trace dargestellt
+
 - **WHEN** ein Administrator den Tab `Berechtigungen` einer Nutzerdetailseite betrachtet
 - **THEN** enthalten effektive Permission-Trace-Eintraege den wirksamen Assignment-Scope
 - **AND** die Darstellung bleibt read-only
@@ -1273,35 +1306,43 @@ Das System SHALL innerhalb des IAM-Bereichs eigenständige Detailseiten für Gov
 - **UND** die Rückkehr bleibt ohne manuelles Neuwählen des Fachbereichs verständlich und erwartbar
 
 ### Requirement: Tenant-Rollenverwaltung zeigt keine Root-Plattformrolle als tenantlokales Artefakt
+
 Das System SHALL in tenantlokalen Rollen- und Benutzerverwaltungsansichten die Plattformrolle `instance_registry_admin` nicht als zuweisbare Tenant-Rolle darstellen.
 
 #### Scenario: Tenant-Rollenliste blendet Root-Plattformrolle aus
+
 - **WHEN** ein Administrator die tenantlokale Rollenverwaltung unter `/admin/roles` öffnet
 - **THEN** erscheint `instance_registry_admin` dort nicht als tenantseitig verwaltbare Rolle
 - **AND** die Ansicht bleibt auf tenantlokale Rollen des aktiven Tenant-Realm beschränkt
 
 #### Scenario: Tenant-Benutzerbearbeitung bietet keine Root-Plattformrolle an
+
 - **WHEN** ein Administrator im Tenant-Realm Rollen für einen Benutzer bearbeitet
 - **THEN** ist `instance_registry_admin` nicht als auswählbare Rollenzuweisung verfügbar
 - **AND** die UI behandelt tenantlokale und Root-Rollen nicht als gemeinsamen Katalog
 
 ### Requirement: Tenant-Rollenverwaltung erlaubt individuelle Rechtezuschnitte ohne Standardrollenpflicht
+
 Das System SHALL in der tenantlokalen Rollenverwaltung die Zuordnung von Rechten zu individuellen Rollen unterstützen, ohne kanonische Standardrollen als Primärmodell vorauszusetzen.
 
 #### Scenario: Individuelle Rolle erhält modulbezogene Rechte
+
 - **WHEN** ein Administrator eine editierbare tenantlokale Rolle erstellt oder bearbeitet
 - **THEN** kann er modulbezogene und tenantlokale Rechte direkt über die Rollenverwaltung zuweisen
 - **AND** die UI verlangt dafür keine Auswahl oder Kopplung an Rollen wie `editor`, `designer` oder `app_manager`
 
 ### Requirement: UI-Gates behandeln system_admin als vollständigen Tenant-Vollzugriff
+
 Das System SHALL tenantlokale Navigations-, Aktions- und Verwaltungs-Gates so auswerten, dass ein Benutzer mit `system_admin` die vollständigen vorgesehenen Tenant-Admin-Funktionen nutzen kann, ohne zusätzliche versteckte Rollen- oder Gruppenabhängigkeiten.
 
 #### Scenario: Sidebar und Admin-Funktionen bleiben für system_admin sichtbar
+
 - **WHEN** ein Benutzer im Tenant-Realm ausschließlich `system_admin` besitzt
 - **THEN** bleiben die für Tenant-Administratoren vorgesehenen Navigationspunkte, Verwaltungsseiten und Aktionen sichtbar und nutzbar
 - **AND** ihre Verfügbarkeit hängt nicht zusätzlich von Gruppen wie `admins` oder Rollen wie `core_admin` ab
 
 ### Requirement: GUI-gestuetzter Authorize-Performance-Lauf im Monitoring
+
 Das System MUST im bestehenden Monitoring-Bereich unter `/monitoring` einen bedienbaren Bereich fuer einen sessiongebundenen Authorize-Performance-Lauf bereitstellen.
 
 #### Scenario: Berechtigter Administrator findet den Lauf im Monitoring-Menue
@@ -1437,4 +1478,3 @@ Das System MUST in den Account-/Privacy-Oberflächen die tenantweiten Löschrege
 - **DANN** zeigt die UI die tenantweite Default-Inhaltsstrategie als wirksamen Zustand
 - **UND** erklärt, dass nur eigene Inhalte im Scope `iam.contents` betroffen sind
 - **UND** bleibt die Oberfläche tastaturbedienbar, screenreader-tauglich und mit klaren Leer-, Lade- und Fehlerzuständen ausgestattet
-

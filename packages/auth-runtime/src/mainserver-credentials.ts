@@ -1,3 +1,5 @@
+import type { IamMainserverCredentialStatus } from '@sva/core';
+
 import type { IdentityUserAttributes } from './keycloak-user-attributes.js';
 import {
   resolveIdentityProvider,
@@ -81,13 +83,37 @@ const copyIdentityAttributes = (
 export const resolveMainserverCredentialState = (
   attributes: IdentityUserAttributes | null | undefined
 ): MainserverCredentialState => {
-  const applicationId = resolveAttributeFromCandidates(attributes, MAINSERVER_APPLICATION_ID_ATTRIBUTE_NAMES);
-  const applicationSecret = resolveAttributeFromCandidates(attributes, MAINSERVER_APPLICATION_SECRET_ATTRIBUTE_NAMES);
+  const applicationId = resolveAttributeFromCandidates(
+    attributes,
+    MAINSERVER_APPLICATION_ID_ATTRIBUTE_NAMES
+  );
+  const applicationSecret = resolveAttributeFromCandidates(
+    attributes,
+    MAINSERVER_APPLICATION_SECRET_ATTRIBUTE_NAMES
+  );
 
   return {
     mainserverUserApplicationId: applicationId ?? undefined,
     mainserverUserApplicationSecretSet: applicationSecret !== null,
   };
+};
+
+export const resolveMainserverCredentialStatus = (
+  attributes: IdentityUserAttributes | null | undefined
+): IamMainserverCredentialStatus => {
+  if (attributes === null || attributes === undefined) {
+    return 'unknown';
+  }
+
+  const state = resolveMainserverCredentialState(attributes);
+  const applicationIdSet = state.mainserverUserApplicationId !== undefined;
+  if (applicationIdSet && state.mainserverUserApplicationSecretSet) {
+    return 'complete';
+  }
+  if (!applicationIdSet && !state.mainserverUserApplicationSecretSet) {
+    return 'missing_both';
+  }
+  return applicationIdSet ? 'missing_application_secret' : 'missing_application_id';
 };
 
 export const buildMainserverIdentityAttributes = (input: {
@@ -97,7 +123,10 @@ export const buildMainserverIdentityAttributes = (input: {
 }): Record<string, readonly string[]> => {
   const attributes = copyIdentityAttributes(input.existingAttributes);
   const currentState = resolveMainserverCredentialState(attributes);
-  const preservedSecret = resolveAttributeFromCandidates(attributes, MAINSERVER_APPLICATION_SECRET_ATTRIBUTE_NAMES);
+  const preservedSecret = resolveAttributeFromCandidates(
+    attributes,
+    MAINSERVER_APPLICATION_SECRET_ATTRIBUTE_NAMES
+  );
 
   delete attributes[LEGACY_MAINSERVER_API_KEY_ATTRIBUTE];
   delete attributes[LEGACY_MAINSERVER_API_SECRET_ATTRIBUTE];
@@ -166,8 +195,14 @@ export const readSvaMainserverCredentialsWithStatus = async (
     };
   }
 
-  const apiKey = resolveAttributeFromCandidates(attributes, MAINSERVER_APPLICATION_ID_ATTRIBUTE_NAMES);
-  const apiSecret = resolveAttributeFromCandidates(attributes, MAINSERVER_APPLICATION_SECRET_ATTRIBUTE_NAMES);
+  const apiKey = resolveAttributeFromCandidates(
+    attributes,
+    MAINSERVER_APPLICATION_ID_ATTRIBUTE_NAMES
+  );
+  const apiSecret = resolveAttributeFromCandidates(
+    attributes,
+    MAINSERVER_APPLICATION_SECRET_ATTRIBUTE_NAMES
+  );
   if (!apiKey || !apiSecret) {
     return {
       status: 'missing_credentials',

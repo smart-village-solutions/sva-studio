@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   loadMappedUsersBySubject: vi.fn(),
   mapUnmappedKeycloakUser: vi.fn(),
   mergeMappedUserWithKeycloak: vi.fn(),
+  resolveMainserverCredentialStatus: vi.fn(),
 }));
 
 vi.mock('./shared-runtime.js', () => ({
@@ -18,6 +19,10 @@ vi.mock('./shared-runtime.js', () => ({
       listUserRoleNames: mocks.listUserRoleNames,
     },
   })),
+}));
+
+vi.mock('../mainserver-credentials.js', () => ({
+  resolveMainserverCredentialStatus: mocks.resolveMainserverCredentialStatus,
 }));
 
 vi.mock('@sva/iam-admin', () => ({
@@ -41,6 +46,7 @@ vi.mock('./shared-observability.js', () => ({
 describe('tenant keycloak users', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.resolveMainserverCredentialStatus.mockReturnValue('unknown');
   });
 
   it('maps unmapped keycloak users without leaking the tenant instance id into the projection', async () => {
@@ -71,7 +77,11 @@ describe('tenant keycloak users', () => {
     });
 
     expect(result.users).toEqual([projectedUser]);
-    expect(mocks.mapUnmappedKeycloakUser).toHaveBeenCalledWith(keycloakUser, ['tenant_admin']);
+    expect(mocks.mapUnmappedKeycloakUser).toHaveBeenCalledWith(
+      keycloakUser,
+      ['tenant_admin'],
+      'unknown'
+    );
   });
 
   it('uses the local query path for role-filtered listings instead of scanning all keycloak users', async () => {

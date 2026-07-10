@@ -1,0 +1,4 @@
+{
+  "prNumber": 704,
+  "body": "Die Benutzerverwaltung zeigt unvollständige persönliche Mainserver-Zugangsdaten wieder direkt in der Nutzerliste an.\n\n- Fehlende Application-ID, fehlendes Application-Secret und vollständig fehlende Zugangsdaten werden mit einer passenden Warnung unterschieden.\n- Die Prüfung verwendet die bereits geladene Keycloak-Benutzerprojektion und erzeugt keine zusätzlichen Keycloak-Aufrufe pro Tabellenzeile.\n- Ein vorübergehend nicht bestimmbarer Status bleibt neutral, damit technische Ausfälle nicht fälschlich als fehlende Zugangsdaten erscheinen."
+}

@@ -111,6 +111,7 @@ export type IamUserPermissionTraceItem = {
     readonly validFrom?: string;
     readonly validTo?: string;
 };
+export type IamMainserverCredentialStatus = 'complete' | 'missing_application_id' | 'missing_application_secret' | 'missing_both' | 'unknown';
 export type IamUserListItem = {
     readonly id: IamUuid;
     readonly keycloakSubject: string;
@@ -126,6 +127,7 @@ export type IamUserListItem = {
     readonly roles: readonly IamUserRoleAssignment[];
     readonly keycloakRoles?: readonly string[];
     readonly mainserverUserApplicationSecretSet: boolean;
+    readonly mainserverCredentialStatus?: IamMainserverCredentialStatus;
 };
 export type IamUserDetail = IamUserListItem & {
     readonly username?: string;

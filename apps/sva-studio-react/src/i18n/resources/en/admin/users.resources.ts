@@ -223,6 +223,8 @@ export const usersAdminENResources = {
     resultCount: '{{count}} users found.',
     statusSwitchLabel: 'Active status for {{name}}',
     mainserverCredentialsMissing: 'Mainserver data missing',
+    mainserverApplicationIdMissing: 'Mainserver application ID is missing',
+    mainserverApplicationSecretMissing: 'Mainserver application secret is missing',
     syncRunning: 'Synchronization in progress ...',
     syncEmpty: 'No new or changed users found. {{skippedCount}} skipped.',
     syncResult:

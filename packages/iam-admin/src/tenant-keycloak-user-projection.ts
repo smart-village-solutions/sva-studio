@@ -1,4 +1,8 @@
-import type { IamKeycloakObjectDiagnostic, IamUserListItem } from '@sva/core';
+import type {
+  IamKeycloakObjectDiagnostic,
+  IamMainserverCredentialStatus,
+  IamUserListItem,
+} from '@sva/core';
 
 type IdentityListedUser = {
   readonly externalId: string;
@@ -34,16 +38,25 @@ const resolveDisplayName = (user: IdentityListedUser): string => {
   return fullName || user.username || user.email || user.externalId;
 };
 
-const mapKeycloakUserStatus = (user: IdentityListedUser): UserStatus => (user.enabled === false ? 'inactive' : 'active');
+const mapKeycloakUserStatus = (user: IdentityListedUser): UserStatus =>
+  user.enabled === false ? 'inactive' : 'active';
+
+const isMainserverApplicationSecretSet = (status: IamMainserverCredentialStatus): boolean =>
+  status === 'complete' || status === 'missing_application_id';
 
 export const mapUnmappedKeycloakUser = (
   user: IdentityListedUser,
-  roleNames: readonly string[] | null
+  roleNames: readonly string[] | null,
+  mainserverCredentialStatus: IamMainserverCredentialStatus
 ): IamUserListItem => {
   const diagnostics: IamKeycloakObjectDiagnostic[] = [];
   diagnostics.push({ code: 'mapping_missing', objectId: user.externalId, objectType: 'user' });
   if (roleNames === null) {
-    diagnostics.push({ code: 'keycloak_projection_degraded', objectId: user.externalId, objectType: 'user' });
+    diagnostics.push({
+      code: 'keycloak_projection_degraded',
+      objectId: user.externalId,
+      objectType: 'user',
+    });
   }
 
   return {
@@ -56,14 +69,18 @@ export const mapUnmappedKeycloakUser = (
     editability: 'blocked',
     diagnostics,
     roles: [],
-    mainserverUserApplicationSecretSet: false,
+    mainserverUserApplicationSecretSet: isMainserverApplicationSecretSet(
+      mainserverCredentialStatus
+    ),
+    mainserverCredentialStatus,
   };
 };
 
 export const mergeMappedUserWithKeycloak = (
   mapped: IamUserListItem,
   user: IdentityListedUser,
-  roleNames: readonly string[] | null
+  roleNames: readonly string[] | null,
+  mainserverCredentialStatus: IamMainserverCredentialStatus
 ): IamUserListItem => ({
   ...mapped,
   displayName: mapped.displayName || resolveDisplayName(user),
@@ -71,6 +88,8 @@ export const mergeMappedUserWithKeycloak = (
   status: mapKeycloakUserStatus(user),
   mappingStatus: roleNames === null ? 'manual_review' : 'mapped',
   editability: roleNames === null ? 'blocked' : 'editable',
+  mainserverUserApplicationSecretSet: isMainserverApplicationSecretSet(mainserverCredentialStatus),
+  mainserverCredentialStatus,
   diagnostics:
     roleNames === null
       ? [{ code: 'keycloak_projection_degraded', objectId: user.externalId, objectType: 'user' }]

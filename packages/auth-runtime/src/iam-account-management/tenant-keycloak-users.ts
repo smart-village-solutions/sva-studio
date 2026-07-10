@@ -1,6 +1,10 @@
 import type { IamUserListItem } from '@sva/core';
 
-import type { IdentityListedUser, IdentityProviderPort, IdentityUserListQuery } from '../identity-provider-port.js';
+import type {
+  IdentityListedUser,
+  IdentityProviderPort,
+  IdentityUserListQuery,
+} from '../identity-provider-port.js';
 import {
   KeycloakAdminRequestError,
   KeycloakAdminUnavailableError,
@@ -10,8 +14,12 @@ import type { QueryClient } from '../db.js';
 import { resolveIdentityProviderForInstance } from './shared-runtime.js';
 import { logger, trackKeycloakCall } from './shared-observability.js';
 import { loadMappedUsersBySubject } from './tenant-keycloak-user-query.js';
-import { mapUnmappedKeycloakUser, mergeMappedUserWithKeycloak } from './tenant-keycloak-user-projection.js';
+import {
+  mapUnmappedKeycloakUser,
+  mergeMappedUserWithKeycloak,
+} from './tenant-keycloak-user-projection.js';
 import type { UserStatus } from './types.js';
+import { resolveMainserverCredentialStatus } from '../mainserver-credentials.js';
 
 const TENANT_USER_ROLE_PROJECTION_CONCURRENCY = 5;
 
@@ -55,7 +63,11 @@ const resolveRoleNamesForUsers = async (input: {
   const workers = Array.from(
     { length: Math.min(TENANT_USER_ROLE_PROJECTION_CONCURRENCY, input.users.length) },
     async (_, workerIndex) => {
-      for (let index = workerIndex; index < input.users.length; index += TENANT_USER_ROLE_PROJECTION_CONCURRENCY) {
+      for (
+        let index = workerIndex;
+        index < input.users.length;
+        index += TENANT_USER_ROLE_PROJECTION_CONCURRENCY
+      ) {
         const user = input.users[index];
         if (!user) {
           continue;
@@ -63,10 +75,15 @@ const resolveRoleNamesForUsers = async (input: {
         try {
           roleNamesBySubject.set(
             user.externalId,
-            await trackKeycloakCall('list_tenant_user_roles', () => input.provider.listUserRoleNames(user.externalId))
+            await trackKeycloakCall('list_tenant_user_roles', () =>
+              input.provider.listUserRoleNames(user.externalId)
+            )
           );
         } catch (error) {
-          if (!(error instanceof KeycloakAdminRequestError) && !(error instanceof KeycloakAdminUnavailableError)) {
+          if (
+            !(error instanceof KeycloakAdminRequestError) &&
+            !(error instanceof KeycloakAdminUnavailableError)
+          ) {
             throw error;
           }
           logger.warn('Tenant user role projection degraded', {
@@ -108,15 +125,14 @@ export const resolveTenantKeycloakUsersWithPagination = async (
       users: localResult.users,
       total: localResult.total,
       keycloakRoleNamesBySubject: new Map(
-        localResult.users.map((user) => [
-          user.keycloakSubject,
-          null,
-        ] as const)
+        localResult.users.map((user) => [user.keycloakSubject, null] as const)
       ),
     };
   }
 
-  const identityProvider = await resolveIdentityProviderForInstance(input.instanceId, { executionMode: 'tenant_admin' });
+  const identityProvider = await resolveIdentityProviderForInstance(input.instanceId, {
+    executionMode: 'tenant_admin',
+  });
   if (!identityProvider) {
     throw new Error('tenant_admin_client_not_configured');
   }
@@ -143,15 +159,19 @@ export const resolveTenantKeycloakUsersWithPagination = async (
   const users = visibleUsers.map((user) => {
     const roleNames = roleNamesBySubject.get(user.externalId) ?? null;
     const mapped = mappedUsersBySubject.get(user.externalId);
+    const mainserverCredentialStatus = resolveMainserverCredentialStatus(user.attributes);
     return mapped
-      ? mergeMappedUserWithKeycloak(mapped, user, roleNames)
-      : mapUnmappedKeycloakUser(user, roleNames);
+      ? mergeMappedUserWithKeycloak(mapped, user, roleNames, mainserverCredentialStatus)
+      : mapUnmappedKeycloakUser(user, roleNames, mainserverCredentialStatus);
   });
 
   const total = (await identityProvider.provider.countUsers?.(query)) ?? users.length;
 
   const visibleRoleNamesBySubject = new Map(
-    users.map((user) => [user.keycloakSubject, roleNamesBySubject.get(user.keycloakSubject) ?? null] as const)
+    users.map(
+      (user) =>
+        [user.keycloakSubject, roleNamesBySubject.get(user.keycloakSubject) ?? null] as const
+    )
   );
 
   return { users, total, keycloakRoleNamesBySubject: visibleRoleNamesBySubject };

@@ -42,7 +42,7 @@ type AccountUiRouteGuardDefinition = {
   readonly requiredAnyPermissions?: ProtectedRouteOptions['requiredAnyPermissions'];
 };
 
-export const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, AccountUiRouteGuardDefinition> = {
+const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, AccountUiRouteGuardDefinition> = {
   account: { kind: 'protected', route: uiRoutePaths.account },
   accountPrivacy: { kind: 'protected', route: uiRoutePaths.accountPrivacy },
   accountPrivacyDetail: { kind: 'protected', route: uiRoutePaths.accountPrivacyDetail },

@@ -35,7 +35,7 @@ export type StudioMediaPickerOverlayOptions<TAssetDetail extends StudioMediaPick
   canAcceptAsset?: (asset: TAssetDetail) => boolean;
 }>;
 
-export const withPreviewUrlFallback = <TAssetDetail extends StudioMediaPickerAssetDetail>(
+const withPreviewUrlFallback = <TAssetDetail extends StudioMediaPickerAssetDetail>(
   asset: TAssetDetail,
   previewUrlFallback?: string | null
 ): TAssetDetail => {

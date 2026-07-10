@@ -3,10 +3,13 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import { StatusNotice } from './waste-management.page.support.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
-import { WasteToursContentBody } from './waste-management.tours.content.body.js';
+import {
+  WasteToursContentBody,
+  type WasteToursFilterViewModel,
+  type WasteToursTableViewModel,
+} from './waste-management.tours.content.body.js';
 import {
   WasteToursDeleteDialogs,
-  type WasteToursContentProps,
   useWasteToursSelectionState,
 } from './waste-management.tours.content.parts.js';
 import { WasteToursEmptyState } from './waste-management.tours.empty-state.js';
@@ -17,44 +20,49 @@ import {
   sortWasteTours,
   updateWasteToursSorting,
 } from './waste-management.tours.content.helpers.js';
-import type { WasteToursSortDirection, WasteToursSortField } from './waste-management.tours.table.parts.js';
+import type {
+  WasteToursSortDirection,
+  WasteToursSortField,
+} from './waste-management.tours.table.parts.js';
+import type { WasteToursContentProps } from './waste-management.tours.view-model.js';
 
 export { WasteToursEmptyState };
 
-export const WasteToursContent = ({
-  assignmentContextLoading,
-  message,
-  tours,
-  fractions,
-  masterDataOverview,
-  schedulingOverview,
-  onOpenCreateDialog,
-  onOpenEditDialog,
-  onOpenDuplicateDialog,
-  onOpenCreateAssignmentsDialog,
-  onOpenEditAssignmentsDialog,
-  onOpenCalendar,
-  onToggleTourStatus,
-  onDeleteTour,
-  onDeleteTours,
-  canDuplicateTour = false,
-  saving = false,
-  page,
-  pageSize,
-  query,
-  status,
-  tourWasteFractionId,
-  firstDateFrom,
-  firstDateTo,
-  endDateFrom,
-  endDateTo,
-  onPageChange,
-  onSyncPageChange,
-  onPageSizeChange,
-  onQueryChange,
-  onStatusChange,
-  onFiltersChange,
-}: WasteToursContentProps) => {
+export const WasteToursContent = (props: WasteToursContentProps) => {
+  const {
+    assignmentContextLoading,
+    message,
+    tours,
+    fractions,
+    masterDataOverview,
+    schedulingOverview,
+    onOpenCreateDialog,
+    onOpenEditDialog,
+    onOpenDuplicateDialog,
+    onOpenCreateAssignmentsDialog,
+    onOpenEditAssignmentsDialog,
+    onOpenCalendar,
+    onToggleTourStatus,
+    onDeleteTour,
+    onDeleteTours,
+    canDuplicateTour = false,
+    saving = false,
+    page,
+    pageSize,
+    query,
+    status,
+    tourWasteFractionId,
+    firstDateFrom,
+    firstDateTo,
+    endDateFrom,
+    endDateTo,
+    onPageChange,
+    onSyncPageChange,
+    onPageSizeChange,
+    onQueryChange,
+    onStatusChange,
+    onFiltersChange,
+  } = props;
   const pt = usePluginTranslation('wasteManagement');
   const [sortField, setSortField] = useState<WasteToursSortField | null>(null);
   const [sortDirection, setSortDirection] = useState<WasteToursSortDirection>('asc');
@@ -64,11 +72,11 @@ export const WasteToursContent = ({
   } | null>(null);
   const locationCountByTourId = useMemo(
     () => createLocationCountByTourId(masterDataOverview?.locationTourLinks),
-    [masterDataOverview?.locationTourLinks],
+    [masterDataOverview?.locationTourLinks]
   );
   const sortedTours = useMemo(
     () => sortWasteTours({ tours, sortField, sortDirection, locationCountByTourId, pt }),
-    [locationCountByTourId, pt, sortDirection, sortField, tours],
+    [locationCountByTourId, pt, sortDirection, sortField, tours]
   );
   const {
     selectedTourIds,
@@ -114,85 +122,97 @@ export const WasteToursContent = ({
 
   useWasteTabPanelActions(null);
 
+  const filters: WasteToursFilterViewModel = {
+    filterDialogOpen,
+    query,
+    status,
+    tourWasteFractionId,
+    firstDateFrom,
+    firstDateTo,
+    endDateFrom,
+    endDateTo,
+    draftQuery,
+    draftStatus,
+    draftTourWasteFractionId,
+    draftFirstDateFrom,
+    draftFirstDateTo,
+    draftEndDateFrom,
+    draftEndDateTo,
+    hasActiveFilters,
+    onOpenFilterDialog: () => {
+      syncDraftFilters();
+      setFilterDialogOpen(true);
+    },
+    onFilterDialogOpenChange: setFilterDialogOpen,
+    onDraftQueryChange: setDraftQuery,
+    onDraftStatusChange: setDraftStatus,
+    onDraftTourWasteFractionIdChange: setDraftTourWasteFractionId,
+    onDraftFirstDateFromChange: setDraftFirstDateFrom,
+    onDraftFirstDateToChange: setDraftFirstDateTo,
+    onDraftEndDateFromChange: setDraftEndDateFrom,
+    onDraftEndDateToChange: setDraftEndDateTo,
+    onApplyFilters: () =>
+      applyWasteToursFilters({
+        onFiltersChange,
+        onQueryChange,
+        onStatusChange,
+        setFilterDialogOpen,
+        draftQuery,
+        draftStatus,
+        draftTourWasteFractionId,
+        draftFirstDateFrom,
+        draftFirstDateTo,
+        draftEndDateFrom,
+        draftEndDateTo,
+      }),
+    onResetFilters: () =>
+      resetWasteToursFilters({ onFiltersChange, onQueryChange, onStatusChange }),
+  };
+  const table: WasteToursTableViewModel = {
+    selectedTourIds,
+    tours: sortedTours,
+    masterDataOverview,
+    schedulingOverview,
+    assignmentContextLoading,
+    allVisibleSelected,
+    someVisibleSelected,
+    saving,
+    sortField,
+    sortDirection,
+    page,
+    pageSize,
+    onPageChange,
+    onSyncPageChange,
+    onPageSizeChange,
+    onSortChange: (field) =>
+      updateWasteToursSorting({ field, sortField, setSortField, setSortDirection }),
+    toggleSelectAllVisible,
+    toggleSelectedTour,
+    onOpenCalendar,
+    onOpenEditDialog,
+    onOpenDuplicateDialog,
+    onOpenCreateAssignmentsDialog,
+    onOpenEditAssignmentsDialog,
+    canDuplicateTour,
+    onToggleTourStatus: (tour, nextActive) => {
+      setTourPendingStatusChange({ tour, nextActive });
+      return Promise.resolve();
+    },
+    setTourPendingDelete,
+  };
+
   return (
     <div className="space-y-4">
       <StatusNotice message={message} />
       <WasteToursContentBody
-        filterDialogOpen={filterDialogOpen}
         setBulkDeleteOpen={setBulkDeleteOpen}
-        tours={sortedTours}
         fractions={fractions}
-        masterDataOverview={masterDataOverview}
-        schedulingOverview={schedulingOverview}
-        assignmentContextLoading={assignmentContextLoading}
-        selectedTourIds={selectedTourIds}
-        allVisibleSelected={allVisibleSelected}
-        someVisibleSelected={someVisibleSelected}
-        saving={saving}
-        sortField={sortField}
-        sortDirection={sortDirection}
-        page={page}
-        pageSize={pageSize}
-        query={query}
-        status={status}
-        tourWasteFractionId={tourWasteFractionId}
-        firstDateFrom={firstDateFrom}
-        firstDateTo={firstDateTo}
-        endDateFrom={endDateFrom}
-        endDateTo={endDateTo}
-        draftQuery={draftQuery}
-        draftStatus={draftStatus}
-        draftTourWasteFractionId={draftTourWasteFractionId}
-        draftFirstDateFrom={draftFirstDateFrom}
-        draftFirstDateTo={draftFirstDateTo}
-        draftEndDateFrom={draftEndDateFrom}
-        draftEndDateTo={draftEndDateTo}
-        hasActiveFilters={hasActiveFilters}
         onOpenCreateDialog={onOpenCreateDialog}
-        onOpenFilterDialog={() => {
-          syncDraftFilters();
-          setFilterDialogOpen(true);
-        }}
-        onFilterDialogOpenChange={setFilterDialogOpen}
-        onPageChange={onPageChange}
-        onSyncPageChange={onSyncPageChange}
-        onPageSizeChange={onPageSizeChange}
-        onSortChange={(field) => updateWasteToursSorting({ field, sortField, setSortField, setSortDirection })}
-        onDraftQueryChange={setDraftQuery}
-        onDraftStatusChange={setDraftStatus}
-        onDraftTourWasteFractionIdChange={setDraftTourWasteFractionId}
-        onDraftFirstDateFromChange={setDraftFirstDateFrom}
-        onDraftFirstDateToChange={setDraftFirstDateTo}
-        onDraftEndDateFromChange={setDraftEndDateFrom}
-        onDraftEndDateToChange={setDraftEndDateTo}
-        onApplyFilters={() =>
-          applyWasteToursFilters({
-            onFiltersChange,
-            onQueryChange,
-            onStatusChange,
-            setFilterDialogOpen,
-            draftQuery,
-            draftStatus,
-            draftTourWasteFractionId,
-            draftFirstDateFrom,
-            draftFirstDateTo,
-            draftEndDateFrom,
-            draftEndDateTo,
-          })}
-        onResetFilters={() => resetWasteToursFilters({ onFiltersChange, onQueryChange, onStatusChange })}
-        toggleSelectAllVisible={toggleSelectAllVisible}
-        toggleSelectedTour={toggleSelectedTour}
-        onOpenCalendar={onOpenCalendar}
-        onOpenEditDialog={onOpenEditDialog}
-        onOpenDuplicateDialog={onOpenDuplicateDialog}
-        onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
-        onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
-        canDuplicateTour={canDuplicateTour}
-        onToggleTourStatus={(tour, nextActive) => {
-          setTourPendingStatusChange({ tour, nextActive });
-          return Promise.resolve();
-        }}
-        setTourPendingDelete={setTourPendingDelete}
+        filters={filters}
+        table={table}
+        tours={table.tours}
+        onSortChange={table.onSortChange}
+        setTourPendingDelete={table.setTourPendingDelete}
       />
       <WasteToursDeleteDialogs
         tourPendingDelete={tourPendingDelete}
@@ -208,9 +228,9 @@ export const WasteToursContent = ({
             return Promise.resolve();
           }
 
-          return Promise.resolve(onToggleTourStatus(tourPendingStatusChange.tour, tourPendingStatusChange.nextActive)).finally(
-            () => setTourPendingStatusChange(null)
-          );
+          return Promise.resolve(
+            onToggleTourStatus(tourPendingStatusChange.tour, tourPendingStatusChange.nextActive)
+          ).finally(() => setTourPendingStatusChange(null));
         }}
         onDeleteTours={onDeleteTours}
         onAfterBulkDelete={() => {

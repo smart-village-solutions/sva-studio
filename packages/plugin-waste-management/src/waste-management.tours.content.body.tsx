@@ -1,28 +1,20 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 
-import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
+import type {
+  WasteManagementMasterDataOverview,
+  WasteManagementSchedulingOverview,
+} from './waste-management.api.js';
 import { WastePanelTableTopBar } from './waste-management.table-frame.js';
-import type { WasteToursSortDirection, WasteToursSortField } from './waste-management.tours.table.parts.js';
+import type {
+  WasteToursSortDirection,
+  WasteToursSortField,
+} from './waste-management.tours.table.parts.js';
 import { WasteToursTable } from './waste-management.tours.table.js';
 import { WasteToursToolbar } from './waste-management.tours.toolbar.js';
 
-type WasteToursContentBodyProps = {
+export type WasteToursFilterViewModel = {
   readonly filterDialogOpen: boolean;
-  readonly selectedTourIds: readonly string[];
-  readonly setBulkDeleteOpen: Dispatch<SetStateAction<boolean>>;
-  readonly tours: readonly WasteTourRecord[];
-  readonly fractions: readonly { readonly id: string; readonly name: string }[];
-  readonly masterDataOverview: WasteManagementMasterDataOverview | null;
-  readonly schedulingOverview: WasteManagementSchedulingOverview | null;
-  readonly assignmentContextLoading: boolean;
-  readonly allVisibleSelected: boolean;
-  readonly someVisibleSelected: boolean;
-  readonly saving: boolean;
-  readonly sortField: WasteToursSortField | null;
-  readonly sortDirection: WasteToursSortDirection;
-  readonly page: number;
-  readonly pageSize: number;
   readonly query: string;
   readonly status: 'all' | 'active' | 'inactive';
   readonly tourWasteFractionId: string | undefined;
@@ -38,13 +30,8 @@ type WasteToursContentBodyProps = {
   readonly draftEndDateFrom: string | undefined;
   readonly draftEndDateTo: string | undefined;
   readonly hasActiveFilters: boolean;
-  readonly onOpenCreateDialog: () => void;
   readonly onOpenFilterDialog: () => void;
   readonly onFilterDialogOpenChange: (open: boolean) => void;
-  readonly onPageChange: (page: number) => void;
-  readonly onSyncPageChange?: (page: number) => void;
-  readonly onPageSizeChange: (pageSize: number) => void;
-  readonly onSortChange: (field: WasteToursSortField) => void;
   readonly onDraftQueryChange: (value: string) => void;
   readonly onDraftStatusChange: (value: 'all' | 'active' | 'inactive') => void;
   readonly onDraftTourWasteFractionIdChange: (value: string | undefined) => void;
@@ -54,6 +41,25 @@ type WasteToursContentBodyProps = {
   readonly onDraftEndDateToChange: (value: string | undefined) => void;
   readonly onApplyFilters: () => void;
   readonly onResetFilters: () => void;
+};
+
+export type WasteToursTableViewModel = {
+  readonly selectedTourIds: readonly string[];
+  readonly tours: readonly WasteTourRecord[];
+  readonly masterDataOverview: WasteManagementMasterDataOverview | null;
+  readonly schedulingOverview: WasteManagementSchedulingOverview | null;
+  readonly assignmentContextLoading: boolean;
+  readonly allVisibleSelected: boolean;
+  readonly someVisibleSelected: boolean;
+  readonly saving: boolean;
+  readonly sortField: WasteToursSortField | null;
+  readonly sortDirection: WasteToursSortDirection;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly onPageChange: (page: number) => void;
+  readonly onSyncPageChange?: (page: number) => void;
+  readonly onPageSizeChange: (pageSize: number) => void;
+  readonly onSortChange: (field: WasteToursSortField) => void;
   readonly toggleSelectAllVisible: (checked: boolean) => void;
   readonly toggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
@@ -66,71 +72,67 @@ type WasteToursContentBodyProps = {
   readonly setTourPendingDelete: Dispatch<SetStateAction<WasteTourRecord | null>>;
 };
 
-export const WasteToursContentBody = (props: WasteToursContentBodyProps) => (
+type WasteToursContentBodyProps = {
+  readonly fractions: readonly { readonly id: string; readonly name: string }[];
+  readonly onOpenCreateDialog: () => void;
+  readonly setBulkDeleteOpen: Dispatch<SetStateAction<boolean>>;
+  readonly filters: WasteToursFilterViewModel;
+  readonly table: WasteToursTableViewModel;
+  /** Transitional compatibility for focused body consumers; production uses `table`. */
+  readonly tours?: readonly WasteTourRecord[];
+  readonly onSortChange?: (field: WasteToursSortField) => void;
+  readonly setTourPendingDelete?: Dispatch<SetStateAction<WasteTourRecord | null>>;
+};
+
+export const WasteToursContentBody = ({
+  fractions,
+  onOpenCreateDialog,
+  setBulkDeleteOpen,
+  filters,
+  table,
+}: WasteToursContentBodyProps) => (
   <section className="overflow-hidden rounded-none border-y border-border bg-card shadow-shell">
     <WastePanelTableTopBar>
       <WasteToursToolbar
-        filterDialogOpen={props.filterDialogOpen}
-        selectedCount={props.selectedTourIds.length}
-        query={props.query}
-        status={props.status}
-        fractions={props.fractions}
-        tourWasteFractionId={props.tourWasteFractionId}
-        firstDateFrom={props.firstDateFrom}
-        firstDateTo={props.firstDateTo}
-        endDateFrom={props.endDateFrom}
-        endDateTo={props.endDateTo}
-        draftQuery={props.draftQuery}
-        draftStatus={props.draftStatus}
-        draftTourWasteFractionId={props.draftTourWasteFractionId}
-        draftFirstDateFrom={props.draftFirstDateFrom}
-        draftFirstDateTo={props.draftFirstDateTo}
-        draftEndDateFrom={props.draftEndDateFrom}
-        draftEndDateTo={props.draftEndDateTo}
-        hasActiveFilters={props.hasActiveFilters}
-        onOpenCreateDialog={props.onOpenCreateDialog}
-        onOpenFilterDialog={props.onOpenFilterDialog}
-        onFilterDialogOpenChange={props.onFilterDialogOpenChange}
-        onOpenBulkDelete={() => props.setBulkDeleteOpen(true)}
-        onDraftQueryChange={props.onDraftQueryChange}
-        onDraftStatusChange={props.onDraftStatusChange}
-        onDraftTourWasteFractionIdChange={props.onDraftTourWasteFractionIdChange}
-        onDraftFirstDateFromChange={props.onDraftFirstDateFromChange}
-        onDraftFirstDateToChange={props.onDraftFirstDateToChange}
-        onDraftEndDateFromChange={props.onDraftEndDateFromChange}
-        onDraftEndDateToChange={props.onDraftEndDateToChange}
-        onApplyFilters={props.onApplyFilters}
-        onResetFilters={props.onResetFilters}
+        filterDialogOpen={filters.filterDialogOpen}
+        selectedCount={table.selectedTourIds.length}
+        query={filters.query}
+        status={filters.status}
+        fractions={fractions}
+        tourWasteFractionId={filters.tourWasteFractionId}
+        firstDateFrom={filters.firstDateFrom}
+        firstDateTo={filters.firstDateTo}
+        endDateFrom={filters.endDateFrom}
+        endDateTo={filters.endDateTo}
+        draftQuery={filters.draftQuery}
+        draftStatus={filters.draftStatus}
+        draftTourWasteFractionId={filters.draftTourWasteFractionId}
+        draftFirstDateFrom={filters.draftFirstDateFrom}
+        draftFirstDateTo={filters.draftFirstDateTo}
+        draftEndDateFrom={filters.draftEndDateFrom}
+        draftEndDateTo={filters.draftEndDateTo}
+        hasActiveFilters={filters.hasActiveFilters}
+        onOpenCreateDialog={onOpenCreateDialog}
+        onOpenFilterDialog={filters.onOpenFilterDialog}
+        onFilterDialogOpenChange={filters.onFilterDialogOpenChange}
+        onOpenBulkDelete={() => setBulkDeleteOpen(true)}
+        onDraftQueryChange={filters.onDraftQueryChange}
+        onDraftStatusChange={filters.onDraftStatusChange}
+        onDraftTourWasteFractionIdChange={filters.onDraftTourWasteFractionIdChange}
+        onDraftFirstDateFromChange={filters.onDraftFirstDateFromChange}
+        onDraftFirstDateToChange={filters.onDraftFirstDateToChange}
+        onDraftEndDateFromChange={filters.onDraftEndDateFromChange}
+        onDraftEndDateToChange={filters.onDraftEndDateToChange}
+        onApplyFilters={filters.onApplyFilters}
+        onResetFilters={filters.onResetFilters}
       />
     </WastePanelTableTopBar>
     <WasteToursTable
-      tours={props.tours}
-      fractions={props.fractions}
-      masterDataOverview={props.masterDataOverview}
-      schedulingOverview={props.schedulingOverview}
-      assignmentContextLoading={props.assignmentContextLoading}
-      selectedTourIds={props.selectedTourIds}
-      allVisibleSelected={props.allVisibleSelected}
-      someVisibleSelected={props.someVisibleSelected}
-      saving={props.saving}
-      sortField={props.sortField}
-      sortDirection={props.sortDirection}
-      page={props.page}
-      pageSize={props.pageSize}
-      onPageChange={props.onPageChange}
-      onSyncPageChange={props.onSyncPageChange}
-      onPageSizeChange={props.onPageSizeChange}
-      onSortChange={props.onSortChange}
-      onToggleSelectAllVisible={props.toggleSelectAllVisible}
-      onToggleSelectedTour={props.toggleSelectedTour}
-      onOpenCalendar={props.onOpenCalendar}
-      onOpenEditDialog={props.onOpenEditDialog}
-      onOpenDuplicateDialog={props.onOpenDuplicateDialog}
-      onOpenCreateAssignmentsDialog={props.onOpenCreateAssignmentsDialog}
-      onOpenEditAssignmentsDialog={props.onOpenEditAssignmentsDialog}
-      canDuplicateTour={props.canDuplicateTour}
-      onToggleTourStatus={props.onToggleTourStatus}
-      onRequestDeleteTour={props.setTourPendingDelete}
+      {...table}
+      fractions={fractions}
+      onToggleSelectAllVisible={table.toggleSelectAllVisible}
+      onToggleSelectedTour={table.toggleSelectedTour}
+      onRequestDeleteTour={table.setTourPendingDelete}
     />
   </section>
 );

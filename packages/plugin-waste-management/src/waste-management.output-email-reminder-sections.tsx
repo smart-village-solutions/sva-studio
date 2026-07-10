@@ -17,6 +17,7 @@ export type Field = {
   readonly area?: boolean;
   readonly optional?: boolean;
   readonly number?: boolean;
+  readonly defaultValue?: number;
 };
 export type SectionProps = {
   readonly value: WasteManagementEmailReminderConfig;
@@ -53,7 +54,7 @@ export const Fields = ({
 }: SectionProps & { readonly fields: readonly Field[] }) => (
   <div className="grid gap-4 md:grid-cols-2">
     {fields.map((field) => {
-      const fieldValue = value[field.key];
+      const fieldValue = value[field.key] ?? field.defaultValue;
       const label = translate(`output.emailReminder.fields.${field.key}`);
       const onChange = (next: string) =>
         patch(
@@ -100,6 +101,7 @@ const ActivationToggles = ({ patch, translate, value }: SectionProps) => (
     <StudioField
       id="waste-email-reminder-enabled"
       label={translate('output.emailReminder.fields.enabled')}
+      description={translate('output.emailReminder.fieldHints.enabled')}
     >
       <input
         id="waste-email-reminder-enabled"
@@ -111,6 +113,7 @@ const ActivationToggles = ({ patch, translate, value }: SectionProps) => (
     <StudioField
       id="waste-email-reminder-public-signup-enabled"
       label={translate('output.emailReminder.fields.publicSignupEnabled')}
+      description={translate('output.emailReminder.fieldHints.publicSignupEnabled')}
     >
       <input
         id="waste-email-reminder-public-signup-enabled"
@@ -141,6 +144,7 @@ export const ActivationAndTransportSection = ({
         <StudioField
           id="waste-email-reminder-transport-id"
           label={translate('output.emailReminder.fields.transportId')}
+          description={translate('output.emailReminder.fieldHints.transportId')}
         >
           <select
             id="waste-email-reminder-transport-id"

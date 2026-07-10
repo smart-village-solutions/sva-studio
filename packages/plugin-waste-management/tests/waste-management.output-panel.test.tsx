@@ -32,16 +32,21 @@ vi.mock('@sva/studio-ui-react', () => ({
   StudioField: ({
     id,
     label,
+    description,
     children,
   }: {
     readonly id: string;
     readonly label: string;
+    readonly description?: string;
     readonly children: React.ReactNode;
   }) => (
-    <label htmlFor={id}>
-      <span>{label}</span>
-      {children}
-    </label>
+    <>
+      <label htmlFor={id}>
+        <span>{label}</span>
+        {children}
+      </label>
+      {description ? <span>{description}</span> : null}
+    </>
   ),
   Alert: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   AlertTitle: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
@@ -879,6 +884,33 @@ describe('WasteOutputPanel', () => {
       screen.queryByLabelText('output.emailReminder.fields.unsubscribeSuccessPath')
     ).toBeNull();
     expect(screen.queryByLabelText('output.emailReminder.fields.invalidTokenPath')).toBeNull();
+    expect(screen.getByText('output.emailReminder.fieldHints.enabled')).toBeTruthy();
+    expect(screen.getByText('output.emailReminder.fieldHints.publicSignupEnabled')).toBeTruthy();
+    expect(screen.getByText('output.emailReminder.fieldHints.transportId')).toBeTruthy();
+  });
+
+  it('defaults the unsubscribe token TTL to 30 days when older settings omit it', () => {
+    const legacyValue = {
+      ...buildDefaultEmailReminderConfig({ transportOptions: [] }),
+      unsubscribeTokenTtlDays: undefined,
+    };
+
+    render(
+      <WasteEmailReminderConfigurationSection
+        hasMailTransportOptions={false}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        running={false}
+        transportOptions={[]}
+        translate={(key) => key}
+        value={legacyValue}
+      />
+    );
+
+    expect(
+      (screen.getByLabelText('output.emailReminder.fields.unsubscribeTokenTtlDays') as HTMLInputElement)
+        .value
+    ).toBe('30');
   });
 
   it('still allows saving a disabled reminder configuration when no mail transport remains', () => {

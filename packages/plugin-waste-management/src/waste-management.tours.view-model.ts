@@ -6,8 +6,9 @@ export const createTourAssignmentSelectionSummary = ({
   readonly selectedLocationIds: readonly string[];
 }) => {
   const visibleLocationIdSet = new Set(filteredLocationIds);
+  const selectedLocationIdSet = new Set(selectedLocationIds);
   const selectedVisibleCount = filteredLocationIds.filter((locationId) =>
-    selectedLocationIds.includes(locationId)
+    selectedLocationIdSet.has(locationId)
   ).length;
 
   return {

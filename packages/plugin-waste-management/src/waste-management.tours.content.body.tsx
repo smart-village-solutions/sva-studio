@@ -78,10 +78,6 @@ type WasteToursContentBodyProps = {
   readonly setBulkDeleteOpen: Dispatch<SetStateAction<boolean>>;
   readonly filters: WasteToursFilterViewModel;
   readonly table: WasteToursTableViewModel;
-  /** Transitional compatibility for focused body consumers; production uses `table`. */
-  readonly tours?: readonly WasteTourRecord[];
-  readonly onSortChange?: (field: WasteToursSortField) => void;
-  readonly setTourPendingDelete?: Dispatch<SetStateAction<WasteTourRecord | null>>;
 };
 
 export const WasteToursContentBody = ({

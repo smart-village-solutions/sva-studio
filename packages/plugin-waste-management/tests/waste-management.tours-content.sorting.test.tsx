@@ -103,22 +103,22 @@ vi.mock('../src/waste-management.tours.content.parts.js', () => ({
 
 vi.mock('../src/waste-management.tours.content.body.js', () => ({
   WasteToursContentBody: ({
-    tours,
-    onSortChange,
-    setTourPendingDelete,
     setBulkDeleteOpen,
+    table,
   }: {
-    readonly tours: Array<{ id: string; name: string }>;
-    readonly onSortChange: (field: 'locations') => void;
-    readonly setTourPendingDelete: (tour: { id: string; name: string }) => void;
     readonly setBulkDeleteOpen: (open: boolean) => void;
+    readonly table: {
+      readonly tours: Array<{ id: string; name: string }>;
+      readonly onSortChange: (field: 'locations') => void;
+      readonly setTourPendingDelete: (tour: { id: string; name: string }) => void;
+    };
   }) => (
     <div>
-      <button onClick={() => onSortChange('locations')}>sort-locations</button>
-      <button onClick={() => onSortChange('locations')}>sort-locations-again</button>
-      <button onClick={() => setTourPendingDelete(tours[0]!)}>open-single-delete</button>
+      <button onClick={() => table.onSortChange('locations')}>sort-locations</button>
+      <button onClick={() => table.onSortChange('locations')}>sort-locations-again</button>
+      <button onClick={() => table.setTourPendingDelete(table.tours[0]!)}>open-single-delete</button>
       <button onClick={() => setBulkDeleteOpen(true)}>open-bulk-delete</button>
-      <div data-testid="tour-order">{tours.map((tour) => tour.id).join(',')}</div>
+      <div data-testid="tour-order">{table.tours.map((tour) => tour.id).join(',')}</div>
     </div>
   ),
 }));

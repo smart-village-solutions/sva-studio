@@ -210,9 +210,6 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
         onOpenCreateDialog={onOpenCreateDialog}
         filters={filters}
         table={table}
-        tours={table.tours}
-        onSortChange={table.onSortChange}
-        setTourPendingDelete={table.setTourPendingDelete}
       />
       <WasteToursDeleteDialogs
         tourPendingDelete={tourPendingDelete}

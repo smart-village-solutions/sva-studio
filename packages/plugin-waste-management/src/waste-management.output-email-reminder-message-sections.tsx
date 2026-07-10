@@ -111,7 +111,7 @@ const guardrailFields: readonly Field[] = [
     key: 'unsubscribeTokenTtlDays',
     id: 'waste-email-reminder-unsubscribe-token-ttl-days',
     number: true,
-    optional: true,
+    defaultValue: 30,
   },
 ];
 

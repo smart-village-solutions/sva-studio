@@ -2,12 +2,9 @@ import * as React from 'react';
 
 import {
   createMetadataDraft,
-  metadataDraftsMatch,
-  toMetadataUpdate,
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
   type StudioMediaPickerMetadataDraft,
-  type StudioMediaPickerMetadataUpdate,
   type StudioMediaPickerReviewSource,
 } from './studio-media-picker-overlay.shared.js';
 import { useStudioMediaPickerOverlayState } from './use-studio-media-picker-overlay.state.js';
@@ -16,6 +13,18 @@ export type StudioMediaPickerUploadAssetResult = Readonly<{
   assetId: string;
   previewUrl?: string | null;
 }>;
+
+type StudioMediaPickerMetadataUpdate = Readonly<{
+  [Key in keyof StudioMediaPickerMetadataDraft]: string | null;
+}>;
+
+const metadataDraftsMatch = (left: StudioMediaPickerMetadataDraft, right: StudioMediaPickerMetadataDraft) =>
+  Object.keys(left).every((key) => left[key as keyof StudioMediaPickerMetadataDraft] === right[key as keyof StudioMediaPickerMetadataDraft]);
+
+const toMetadataUpdate = (draft: StudioMediaPickerMetadataDraft): StudioMediaPickerMetadataUpdate =>
+  Object.fromEntries(
+    Object.entries(draft).map(([key, value]) => [key, value.trim() || null])
+  ) as StudioMediaPickerMetadataUpdate;
 
 export type StudioMediaPickerOverlayOptions<TAssetDetail extends StudioMediaPickerAssetDetail> = Readonly<{
   onAccept: (asset: TAssetDetail) => void;

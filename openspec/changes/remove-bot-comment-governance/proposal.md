@@ -14,4 +14,4 @@ Der nicht verpflichtende Workflow ist technisch ung√ºltig und verlangt propriet√
 
 - Affected specs: `review-governance`
 - Affected code: `.github/workflows/`, `scripts/ci/`, `package.json`, `tooling/quality/`
-- Affected arc42 sections: `docs/architecture/10-quality-requirements.md`
+- Affected arc42 sections: `docs/architecture/08-cross-cutting-concepts.md`, `docs/architecture/10-quality-requirements.md`

@@ -1,4 +1,3 @@
-import type { HostMediaAssetListItem } from '@sva/plugin-sdk';
 import {
   GENERIC_ITEMS_OPENING_HOUR_WEEKDAYS,
 } from './generic-items.constants.js';
@@ -19,22 +18,17 @@ import * as React from 'react';
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
 import { GenericItemsDetailCard } from './generic-items.detail-card.js';
 import { GenericItemsGeoAddressFields } from './generic-items.geo-address-fields.js';
-import { GenericItemsDetailMediaLibraryDialog } from './generic-items.detail-media-library-dialog.js';
 import { GenericItemsDetailMediaList } from './generic-items.detail-media-list.js';
-import { useGenericItemsDetailMediaState } from './generic-items.detail-media-state.js';
 import { getMapGeocodingConfig } from './generic-items.map-geocoding-client.js';
 import { GenericItemsGeoLocationFields } from './generic-items.geo-location-fields.js';
+import { createEmptyMediaContent } from './generic-items.detail-media-upload.js';
 
 export const GenericItemsDetailContentTab = ({
   labels,
-  mediaAssets = [],
-  onUploadFile = async (): Promise<HostMediaAssetListItem> => {
-    throw new Error('generic_items_media_upload_unavailable');
-  },
+  onOpenMediaPicker,
 }: Readonly<{
   labels: Record<string, string>;
-  mediaAssets?: readonly HostMediaAssetListItem[];
-  onUploadFile?: (file: File) => Promise<HostMediaAssetListItem>;
+  onOpenMediaPicker: (mode: 'library' | 'upload') => void;
 }>) => {
   const {
     control,
@@ -68,12 +62,6 @@ export const GenericItemsDetailContentTab = ({
   const [mapStyleUrl, setMapStyleUrl] = React.useState('');
 
   const teaserField = getStudioFormFieldProps({ id: 'generic-item-teaser', error: errors.teaser });
-  const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
-  const mediaState = useGenericItemsDetailMediaState({
-    append: mediaContentsArray.append,
-    onUploadFile,
-    remove: mediaContentsArray.remove,
-  });
 
   React.useEffect(() => {
     let active = true;
@@ -413,45 +401,22 @@ export const GenericItemsDetailContentTab = ({
             errors={errors}
             fields={mediaContentsArray.fields}
             mediaContents={mediaContents}
-            onRemove={mediaState.handleRemove}
+            onRemove={mediaContentsArray.remove}
             labels={labels}
             register={register}
           />
           <div className="flex flex-wrap gap-3">
-            <Button type="button" variant="outline" onClick={mediaState.openDialog}>
+            <Button type="button" variant="outline" onClick={() => onOpenMediaPicker('library')}>
               {labels.addImage}
             </Button>
-            <input
-              ref={uploadInputRef}
-              aria-label={labels.uploadMedia}
-              className="sr-only"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => void mediaState.handleUploadChange(event)}
-            />
-            <Button type="button" variant="outline" disabled={mediaState.uploadBusy} onClick={() => uploadInputRef.current?.click()}>
-              {mediaState.uploadBusy ? labels.uploadingMedia : labels.uploadMedia}
+            <Button type="button" variant="outline" onClick={() => onOpenMediaPicker('upload')}>
+              {labels.uploadMedia}
             </Button>
-            <Button type="button" variant="outline" onClick={mediaState.handleManualAdd}>
+            <Button type="button" variant="outline" onClick={() => mediaContentsArray.append(createEmptyMediaContent())}>
               {labels.addMediaManual}
             </Button>
           </div>
-          {mediaState.uploadMessageKey ? (
-            <p className={`text-sm font-medium ${mediaState.uploadPhase === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
-              {labels[mediaState.uploadMessageKey] ?? mediaState.uploadMessageKey}
-            </p>
-          ) : null}
         </div>
-        <GenericItemsDetailMediaLibraryDialog
-          mediaAssets={mediaAssets}
-          mediaContents={mediaContents}
-          onClose={mediaState.closeDialog}
-          onSelectAsset={mediaState.handleSelectAsset}
-          open={mediaState.dialogOpen}
-          labels={labels}
-          searchValue={mediaState.searchValue}
-          setSearchValue={mediaState.setSearchValue}
-        />
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-1">

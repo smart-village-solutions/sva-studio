@@ -1,4 +1,3 @@
-import type { HostMediaAssetListItem } from '@sva/plugin-sdk';
 import { useEffect, useState } from 'react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button, Checkbox, Input, RichTextHtmlEditor, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
@@ -14,9 +13,8 @@ import {
   type EventsDetailFormValues,
 } from './events.detail-form.js';
 import { EventsDetailCard } from './events.detail-card.js';
-import { EventsDetailMediaLibraryDialog } from './events.detail-media-library-dialog.js';
 import { EventsDetailMediaList } from './events.detail-media-list.js';
-import { useEventsDetailMediaState } from './events.detail-media-state.js';
+import { createEmptyMediaContent } from './events.detail-media-upload.js';
 import { EventsGeoAddressFields } from './events.geo-address-fields.js';
 import { getMapGeocodingConfig } from './events.map-geocoding-client.js';
 type Translator = (key: string) => string;
@@ -41,19 +39,17 @@ export function EventsDetailContentTab({
   dateEndInput,
   dateInputsInvalid,
   dateStartInput,
-  mediaAssets,
+  onOpenMediaPicker,
   onDateEndInputChange,
   onDateStartInputChange,
-  onUploadFile,
   pt,
 }: Readonly<{
   dateEndInput: string;
   dateInputsInvalid: Readonly<{ dateStart: boolean; dateEnd: boolean }>;
   dateStartInput: string;
-  mediaAssets: readonly HostMediaAssetListItem[];
+  onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onDateEndInputChange: (nextValue: string) => void;
   onDateStartInputChange: (nextValue: string) => void;
-  onUploadFile: (file: File) => Promise<HostMediaAssetListItem>;
   pt: Translator;
 }>) {
   const {
@@ -90,12 +86,6 @@ export function EventsDetailContentTab({
   const [isReverseGeocodingEnabled, setIsReverseGeocodingEnabled] = useState(true);
   const [isMapEnabled, setIsMapEnabled] = useState(true);
   const [mapStyleUrl, setMapStyleUrl] = useState('');
-  const uploadInputRef = useState(() => ({ current: null as HTMLInputElement | null }))[0];
-  const mediaState = useEventsDetailMediaState({
-    append: mediaContentsArray.append,
-    onUploadFile,
-    remove: mediaContentsArray.remove,
-  });
   const blockTypeOptions = [
     { value: 'paragraph' as const, label: pt('richText.paragraph') },
     { value: 'heading-2' as const, label: pt('richText.heading2') },
@@ -163,47 +153,22 @@ export function EventsDetailContentTab({
           <EventsDetailMediaList
             fields={mediaContentsArray.fields}
             mediaContents={mediaContents}
-            onRemove={mediaState.handleRemove}
+            onRemove={mediaContentsArray.remove}
             pt={pt}
             register={register}
           />
           <div className="flex flex-wrap gap-3">
-            <Button type="button" variant="outline" onClick={mediaState.openDialog}>
+            <Button type="button" variant="outline" onClick={() => onOpenMediaPicker('library')}>
               {pt('actions.addImage')}
             </Button>
-            <input
-              ref={(node) => {
-                uploadInputRef.current = node;
-              }}
-              aria-label={pt('actions.uploadMedia')}
-              className="sr-only"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => void mediaState.handleUploadChange(event)}
-            />
-            <Button type="button" variant="outline" disabled={mediaState.uploadBusy} onClick={() => uploadInputRef.current?.click()}>
-              {mediaState.uploadBusy ? pt('actions.uploadingMedia') : pt('actions.uploadMedia')}
+            <Button type="button" variant="outline" onClick={() => onOpenMediaPicker('upload')}>
+              {pt('actions.uploadMedia')}
             </Button>
-            <Button type="button" variant="outline" onClick={mediaState.handleManualAdd}>
+            <Button type="button" variant="outline" onClick={() => mediaContentsArray.append(createEmptyMediaContent())}>
               {pt('actions.addMediaManual')}
             </Button>
           </div>
-          {mediaState.uploadMessageKey ? (
-            <p className={`text-sm font-medium ${mediaState.uploadPhase === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
-              {pt(mediaState.uploadMessageKey)}
-            </p>
-          ) : null}
         </div>
-        <EventsDetailMediaLibraryDialog
-          mediaAssets={mediaAssets}
-          mediaContents={mediaContents}
-          onClose={mediaState.closeDialog}
-          onSelectAsset={mediaState.handleSelectAsset}
-          open={mediaState.dialogOpen}
-          pt={pt}
-          searchValue={mediaState.searchValue}
-          setSearchValue={mediaState.setSearchValue}
-        />
       </EventCardSection>
 
       <EventCardSection

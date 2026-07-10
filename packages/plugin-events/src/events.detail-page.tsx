@@ -2,9 +2,13 @@ import React from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
+  getHostMediaAsset,
+  getHostMediaAssetFileName,
   listHostMediaAssets,
+  updateHostMediaAsset,
   uploadHostMediaFile,
   usePluginTranslation,
+  type HostMediaAssetDetail,
   type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
 import {
@@ -13,10 +17,16 @@ import {
   StudioDetailPageTemplate,
   StudioFormSummary,
   StudioLoadingState,
+  StudioMediaPickerOverlay,
+  type StudioMediaPickerAssetDetail,
+  type StudioMediaPickerAssetSummary,
+  type StudioMediaPickerErrorCode,
+  type StudioMediaPickerOverlayLabels,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
+  useStudioMediaPickerOverlay,
 } from '@sva/studio-ui-react';
 
 import {
@@ -30,6 +40,7 @@ import {
 } from './events.api.js';
 import { fromDateOnlyInputValue, toDateOnlyInputValue } from './events.date-only.js';
 import {
+  createDefaultMediaContent,
   createDefaultEventsDetailFormValues,
   mapEventItemToDetailFormValues,
   mapEventsDetailFormValuesToInput,
@@ -38,6 +49,13 @@ import {
 import { EventsDetailBasisTab } from './events.detail-basis-tab.js';
 import { EventsDetailContentTab } from './events.detail-content-tab.js';
 import { EventsDetailHistoryTab } from './events.detail-history-tab.js';
+import {
+  isSupportedUploadFile,
+  mediaContentFromAsset,
+  readAssetFileName,
+  readAssetTitle,
+  uploadPhaseMessageKey,
+} from './events.detail-media.helpers.js';
 import { EventsDetailSettingsTab } from './events.detail-settings-tab.js';
 import { createEventsDetailTabDefinitions, type EventsDetailTabId } from './events.detail-tabs.js';
 import type { EventCategoryOption, EventContentItem } from './events.types.js';
@@ -48,6 +66,8 @@ type StatusMessage = Readonly<{
   kind: 'success' | 'error';
   text: string;
 }>;
+
+type EventsMediaPickerAsset = StudioMediaPickerAssetDetail;
 
 type EventsTabIconProps = Readonly<{ className?: string }>;
 
@@ -107,6 +127,113 @@ const parseDateOnlyInput = (value: string) => {
   };
 };
 
+const toEventsMediaPickerSummary = (asset: HostMediaAssetListItem): StudioMediaPickerAssetSummary => ({
+  id: asset.id,
+  title: readAssetTitle(asset),
+  fileName: readAssetFileName(asset),
+  previewUrl: asset.previewUrl,
+  mimeType: asset.mimeType,
+  visibility: asset.visibility,
+});
+
+const toEventsMediaPickerDetail = (
+  asset: HostMediaAssetDetail,
+  summary?: HostMediaAssetListItem
+): EventsMediaPickerAsset => {
+  const fileName = summary ? readAssetFileName(summary) : getHostMediaAssetFileName(asset);
+  const title = asset.metadata.title?.trim() || (summary ? readAssetTitle(summary) : fileName);
+
+  return {
+    id: asset.id,
+    title,
+    fileName,
+    previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
+    mimeType: asset.mimeType,
+    visibility: asset.visibility,
+    metadata: {
+      title,
+      altText: asset.metadata.altText?.trim() ?? '',
+      description: asset.metadata.description?.trim() ?? '',
+      copyright: asset.metadata.copyright?.trim() ?? '',
+      license: asset.metadata.license?.trim() ?? '',
+    },
+  };
+};
+
+const createEventsMediaPickerLabels = (
+  pt: ReturnType<typeof usePluginTranslation>
+): StudioMediaPickerOverlayLabels => ({
+  title: pt('messages.mediaPickerTitle'),
+  description: pt('messages.mediaPickerDescription'),
+  modes: {
+    library: pt('actions.addImage'),
+    upload: pt('actions.uploadMedia'),
+    review: pt('messages.mediaPickerReviewMode'),
+  },
+  library: {
+    searchLabel: pt('fields.imageSearch'),
+    empty: pt('messages.imagePickerEmpty'),
+    select: pt('actions.selectImage'),
+  },
+  upload: {
+    regionLabel: pt('messages.mediaPickerUploadRegionLabel'),
+    title: pt('messages.mediaPickerUploadTitle'),
+    description: pt('messages.mediaPickerUploadDescription'),
+    browseAction: pt('messages.mediaPickerSelectFile'),
+    supportLabel: pt('messages.mediaPickerUploadSupportLabel'),
+  },
+  review: {
+    title: pt('messages.mediaPickerReviewTitle'),
+    description: pt('messages.mediaPickerReviewDescription'),
+  },
+  fields: {
+    title: pt('fields.title'),
+    altText: pt('messages.mediaPickerAltText'),
+    description: pt('fields.description'),
+    copyright: pt('fields.mediaCopyright'),
+    license: pt('messages.mediaPickerLicense'),
+  },
+  actions: {
+    cancel: pt('actions.back'),
+    backToLibrary: pt('messages.mediaPickerBackToLibrary'),
+    backToUpload: pt('messages.mediaPickerBackToUpload'),
+    openMediaManagement: pt('messages.mediaPickerOpenMediaManagement'),
+    useMedia: pt('messages.mediaPickerUseMedia'),
+  },
+});
+
+const resolveEventsMediaPickerFeedback = (
+  pt: ReturnType<typeof usePluginTranslation>,
+  errorCode: StudioMediaPickerErrorCode | null,
+  uploadPhase: Parameters<typeof uploadPhaseMessageKey>[0]
+) => {
+  if (errorCode === 'unsupported_upload_type') {
+    return { message: pt('messages.mediaUploadUnsupportedType'), tone: 'error' as const };
+  }
+  if (errorCode === 'upload_failed') {
+    return { message: pt('messages.mediaUploadError'), tone: 'error' as const };
+  }
+  if (errorCode === 'asset_load_failed') {
+    return { message: pt('messages.mediaPickerAssetLoadError'), tone: 'error' as const };
+  }
+  if (errorCode === 'asset_unavailable') {
+    return { message: pt('messages.mediaUploadUnavailableUrl'), tone: 'error' as const };
+  }
+  if (errorCode === 'metadata_save_failed') {
+    return { message: pt('messages.mediaPickerMetadataSaveError'), tone: 'error' as const };
+  }
+
+  const phaseKey = uploadPhaseMessageKey(uploadPhase);
+  if (!phaseKey) {
+    return { message: null, tone: 'default' as const };
+  }
+
+  return {
+    message: pt(phaseKey),
+    tone: uploadPhase === 'success' ? ('success' as const) : ('default' as const),
+  };
+};
+
 export function EventsDetailPage({
   mode,
   contentId,
@@ -136,20 +263,81 @@ export function EventsDetailPage({
   const [poiOptions, setPoiOptions] = React.useState<readonly PoiSelectItem[]>([]);
   const [poiOptionsLoading, setPoiOptionsLoading] = React.useState(true);
   const [poiOptionsError, setPoiOptionsError] = React.useState<string | null>(null);
+  const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
+  const mediaPickerLabels = React.useMemo(() => createEventsMediaPickerLabels(pt), [pt]);
 
   const refreshMediaAssets = React.useCallback(async () => {
     try {
       const assets = await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), visibility: 'public' });
+      mediaAssetsRef.current = assets;
       setMediaAssets(assets);
       return assets;
     } catch {
+      mediaAssetsRef.current = [];
       setMediaAssets([]);
       return [];
     }
   }, []);
 
-  const uploadMediaFile = React.useCallback(
-    async (file: File): Promise<HostMediaAssetListItem> => {
+  const isAssetSelectable = React.useCallback((asset: EventsMediaPickerAsset) => {
+    const nextMedia = mediaContentFromAsset({
+      id: asset.id,
+      fileName: asset.fileName,
+      metadata: asset.metadata,
+      visibility: asset.visibility,
+      mimeType: asset.mimeType,
+      previewUrl: asset.previewUrl,
+    });
+    if (!nextMedia) {
+      return false;
+    }
+
+    const existingUrls = new Set(
+      (methods.getValues('content.mediaContents') ?? [])
+        .map((entry) => entry.sourceUrl?.url?.trim() ?? '')
+        .filter((value) => value.length > 0)
+    );
+    const nextUrl = nextMedia.sourceUrl?.url?.trim() ?? '';
+    return existingUrls.has(nextUrl) === false;
+  }, [methods]);
+
+  const mediaPicker = useStudioMediaPickerOverlay<EventsMediaPickerAsset>({
+    onAccept: (asset) => {
+      const nextMedia = mediaContentFromAsset({
+        id: asset.id,
+        fileName: asset.fileName,
+        metadata: asset.metadata,
+        visibility: asset.visibility,
+        mimeType: asset.mimeType,
+        previewUrl: asset.previewUrl,
+      });
+      if (!nextMedia) {
+        return;
+      }
+
+      const currentMedia = methods.getValues('content.mediaContents') ?? [];
+      methods.setValue(
+        'content.mediaContents',
+        [
+          ...currentMedia,
+          {
+            ...createDefaultMediaContent(),
+            captionText: nextMedia.captionText ?? '',
+            copyright: nextMedia.copyright ?? '',
+            contentType: nextMedia.contentType ?? '',
+            sourceUrl: {
+              url: nextMedia.sourceUrl?.url ?? '',
+              description: nextMedia.sourceUrl?.description ?? '',
+            },
+          },
+        ],
+        { shouldDirty: true }
+      );
+      void refreshMediaAssets();
+    },
+    canAcceptAsset: isAssetSelectable,
+    isSupportedUploadFile,
+    uploadAsset: async (file) => {
       const uploaded = await uploadHostMediaFile({
         fetch: globalThis.fetch.bind(globalThis),
         file,
@@ -157,17 +345,30 @@ export function EventsDetailPage({
         visibility: 'public',
       });
       const assets = await refreshMediaAssets();
-      const uploadedAsset = assets.find((asset) => asset.id === uploaded.assetId);
-      if (!uploadedAsset) {
-        throw new Error('events_media_uploaded_asset_not_found');
-      }
-      const uploadedPreviewUrl =
-        'previewUrl' in uploaded && typeof uploaded.previewUrl === 'string' ? uploaded.previewUrl.trim() : '';
-      return uploadedAsset.previewUrl?.trim()
-        ? uploadedAsset
-        : { ...uploadedAsset, previewUrl: uploadedPreviewUrl || uploadedAsset.previewUrl };
+      mediaAssetsRef.current = assets;
+      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
-    [refreshMediaAssets]
+    loadAsset: async (assetId) => {
+      const detail = await getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId });
+      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
+      return toEventsMediaPickerDetail(detail, summary);
+    },
+    saveAssetMetadata: async (assetId, metadata) => {
+      const detail = await updateHostMediaAsset({
+        fetch: globalThis.fetch.bind(globalThis),
+        assetId,
+        visibility: 'public',
+        metadata,
+      });
+      const assets = await refreshMediaAssets();
+      mediaAssetsRef.current = assets;
+      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
+      return toEventsMediaPickerDetail(detail, summary);
+    },
+  });
+  const mediaPickerFeedback = React.useMemo(
+    () => resolveEventsMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
+    [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
   );
 
   React.useEffect(() => {
@@ -349,6 +550,44 @@ export function EventsDetailPage({
           </div>
         }
       >
+        <StudioMediaPickerOverlay
+          assets={mediaAssets.map(toEventsMediaPickerSummary)}
+          feedbackMessage={mediaPickerFeedback.message}
+          feedbackTone={mediaPickerFeedback.tone}
+          isAssetSelectable={(asset) =>
+            isAssetSelectable({
+              ...asset,
+              metadata: {
+                title: asset.title,
+                altText: '',
+                description: '',
+                copyright: '',
+                license: '',
+              },
+            })
+          }
+          isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
+          isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
+          labels={mediaPickerLabels}
+          metadataDraft={mediaPicker.metadataDraft}
+          mode={mediaPicker.mode}
+          onBackFromReview={mediaPicker.goBackFromReview}
+          onChangeMode={(pickerMode) =>
+            pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
+          }
+          onClose={mediaPicker.close}
+          onConfirmSelection={() => void mediaPicker.confirmSelection()}
+          onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
+          onOpenMediaManagement={(assetId) => void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })}
+          onSearchValueChange={mediaPicker.setSearchValue}
+          onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
+          onUploadFile={(file) => void mediaPicker.uploadFile(file)}
+          open={mediaPicker.open}
+          reviewAsset={mediaPicker.reviewAsset}
+          reviewSource={mediaPicker.reviewSource}
+          searchValue={mediaPicker.searchValue}
+          uploadPhase={mediaPicker.uploadPhase}
+        />
         <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5">
           {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
           <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as EventsDetailTabId)} className="space-y-0">
@@ -429,10 +668,11 @@ export function EventsDetailPage({
                         dateEndInput={dateEndInput}
                         dateInputsInvalid={invalidDateInputs}
                         dateStartInput={dateStartInput}
-                        mediaAssets={mediaAssets}
                         onDateEndInputChange={(nextValue) => updateDateField('dateEnd', nextValue)}
                         onDateStartInputChange={(nextValue) => updateDateField('dateStart', nextValue)}
-                        onUploadFile={uploadMediaFile}
+                        onOpenMediaPicker={(pickerMode) =>
+                          pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
+                        }
                         pt={pt}
                       />
                     ) : null}

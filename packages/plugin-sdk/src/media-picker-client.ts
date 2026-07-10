@@ -9,6 +9,45 @@ export type HostMediaAssetListItem = Readonly<{
   previewUrl?: string | null;
 }>;
 
+export type HostMediaAssetMetadata = Readonly<{
+  title?: string | null;
+  description?: string | null;
+  altText?: string | null;
+  copyright?: string | null;
+  license?: string | null;
+}>;
+
+export type HostMediaAssetDetail = Readonly<{
+  id: string;
+  instanceId: string;
+  storageKey: string;
+  mediaType: 'image';
+  mimeType: string;
+  byteSize: number;
+  visibility: 'public' | 'protected';
+  uploadStatus: string;
+  processingStatus: string;
+  metadata: HostMediaAssetMetadata;
+  technical: Readonly<Record<string, unknown>>;
+  createdAt?: string;
+  updatedAt?: string;
+  previewUrl?: string | null;
+}>;
+
+export const getHostMediaAssetFileName = (asset: Pick<HostMediaAssetDetail, 'id' | 'storageKey'>): string => {
+  const storageKeyParts = asset.storageKey.split('/');
+  const fileName = storageKeyParts[storageKeyParts.length - 1]?.trim();
+  return fileName || asset.id;
+};
+
+export type UpdateHostMediaMetadataInput = Readonly<{
+  title?: string | null;
+  description?: string | null;
+  altText?: string | null;
+  copyright?: string | null;
+  license?: string | null;
+}>;
+
 export type HostMediaReferenceSelection = Readonly<{
   id?: string;
   assetId: string;
@@ -37,6 +76,60 @@ export const listHostMediaAssets = async (input: {
     fetch: input.fetch,
     url: `/api/v1/iam/media${searchParams.size > 0 ? `?${searchParams.toString()}` : ''}`,
     errorFactory: (failingResponse) => new Error(`media_picker_http_${failingResponse.status}`),
+  });
+  return response.data;
+};
+
+export const getHostMediaAsset = async (input: {
+  readonly fetch: FetchLike;
+  readonly assetId: string;
+  readonly instanceId?: string;
+}): Promise<HostMediaAssetDetail> => {
+  const searchParams = new URLSearchParams();
+  if (input.instanceId) {
+    searchParams.set('instanceId', input.instanceId);
+  }
+
+  const response = await requestJson<{ data: HostMediaAssetDetail }>({
+    fetch: input.fetch,
+    url: `/api/v1/iam/media/${encodeURIComponent(input.assetId)}${
+      searchParams.size > 0 ? `?${searchParams.toString()}` : ''
+    }`,
+    errorFactory: (failingResponse) => new Error(`media_picker_http_${failingResponse.status}`),
+  });
+  return response.data;
+};
+
+export const updateHostMediaAsset = async (input: {
+  readonly fetch: FetchLike;
+  readonly assetId: string;
+  readonly metadata: UpdateHostMediaMetadataInput;
+  readonly visibility?: 'public' | 'protected';
+  readonly instanceId?: string;
+}): Promise<HostMediaAssetDetail> => {
+  const searchParams = new URLSearchParams();
+  if (input.instanceId) {
+    searchParams.set('instanceId', input.instanceId);
+  }
+
+  const response = await requestJson<{ data: HostMediaAssetDetail }>({
+    fetch: input.fetch,
+    url: `/api/v1/iam/media/${encodeURIComponent(input.assetId)}${
+      searchParams.size > 0 ? `?${searchParams.toString()}` : ''
+    }`,
+    errorFactory: (failingResponse) => new Error(`media_picker_http_${failingResponse.status}`),
+    init: {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify({
+        ...(input.instanceId ? { instanceId: input.instanceId } : {}),
+        ...(input.visibility ? { visibility: input.visibility } : {}),
+        metadata: input.metadata,
+      }),
+    },
   });
   return response.data;
 };

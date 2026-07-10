@@ -2,25 +2,36 @@ import React from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
+  getHostMediaAsset,
+  getHostMediaAssetFileName,
   listHostMediaAssets,
+  updateHostMediaAsset,
   uploadHostMediaFile,
   usePluginTranslation,
+  type HostMediaAssetDetail,
   type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
 import {
   Button,
+  Select,
   StudioDetailPageTemplate,
   StudioFormSummary,
   StudioLoadingState,
-  Select,
+  StudioMediaPickerOverlay,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
+  type StudioMediaPickerAssetDetail,
+  type StudioMediaPickerAssetSummary,
+  type StudioMediaPickerErrorCode,
+  type StudioMediaPickerOverlayLabels,
+  useStudioMediaPickerOverlay,
 } from '@sva/studio-ui-react';
 
 import { createPoi, deletePoi, getPoi, listPoiCategories, PoiApiError, updatePoi } from './poi.api.js';
 import { PoiDetailBasisTab } from './poi.detail-basis-tab.js';
+import { PoiDetailContentTab } from './poi.detail-content-tab.js';
 import {
   createDefaultPoiDetailFormValues,
   mapPoiDetailFormValuesToInput,
@@ -28,10 +39,17 @@ import {
   parsePoiPayloadText,
   type PoiDetailFormValues,
 } from './poi.detail-form.js';
-import { PoiDetailContentTab } from './poi.detail-content-tab.js';
 import { PoiDetailHistoryTab } from './poi.detail-history-tab.js';
-import { createPoiDetailTabDefinitions, type PoiDetailTabId } from './poi.detail-tabs.js';
+import {
+  isSupportedUploadFile,
+  mediaContentFromAsset,
+  mediaContentSourceKey,
+  readAssetFileName,
+  readAssetTitle,
+  uploadPhaseMessageKey,
+} from './poi.detail-media.helpers.js';
 import { PoiDetailSettingsTab } from './poi.detail-settings-tab.js';
+import { createPoiDetailTabDefinitions, type PoiDetailTabId } from './poi.detail-tabs.js';
 import type { PoiCategoryOption, PoiContentItem } from './poi.types.js';
 import { isHttpsUrl, validatePoiForm } from './poi.validation.js';
 
@@ -39,6 +57,8 @@ type StatusMessage = Readonly<{
   kind: 'success' | 'error';
   text: string;
 }>;
+
+type PoiMediaPickerAsset = StudioMediaPickerAssetDetail;
 
 const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknown, fallbackKey: string) =>
   error instanceof PoiApiError ? error.message : pt(fallbackKey);
@@ -68,6 +88,113 @@ const renderPoiTabPanel = ({
 
 const PoiTabTriggerLabel = ({ label }: Readonly<{ label: string }>) => <span>{label}</span>;
 
+const toPoiMediaPickerSummary = (asset: HostMediaAssetListItem): StudioMediaPickerAssetSummary => ({
+  id: asset.id,
+  title: readAssetTitle(asset),
+  fileName: readAssetFileName(asset),
+  previewUrl: asset.previewUrl,
+  mimeType: asset.mimeType,
+  visibility: asset.visibility,
+});
+
+const toPoiMediaPickerDetail = (
+  asset: HostMediaAssetDetail,
+  summary?: HostMediaAssetListItem
+): PoiMediaPickerAsset => {
+  const fileName = summary ? readAssetFileName(summary) : getHostMediaAssetFileName(asset);
+  const title = asset.metadata.title?.trim() || (summary ? readAssetTitle(summary) : fileName);
+
+  return {
+    id: asset.id,
+    title,
+    fileName,
+    previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
+    mimeType: asset.mimeType,
+    visibility: asset.visibility,
+    metadata: {
+      title,
+      altText: asset.metadata.altText?.trim() ?? '',
+      description: asset.metadata.description?.trim() ?? '',
+      copyright: asset.metadata.copyright?.trim() ?? '',
+      license: asset.metadata.license?.trim() ?? '',
+    },
+  };
+};
+
+const createPoiMediaPickerLabels = (
+  pt: ReturnType<typeof usePluginTranslation>
+): StudioMediaPickerOverlayLabels => ({
+  title: pt('messages.mediaPickerTitle'),
+  description: pt('messages.mediaPickerDescription'),
+  modes: {
+    library: pt('actions.addImage'),
+    upload: pt('actions.uploadMedia'),
+    review: pt('messages.mediaPickerReviewMode'),
+  },
+  library: {
+    searchLabel: pt('fields.imageSearch'),
+    empty: pt('messages.imagePickerEmpty'),
+    select: pt('actions.selectImage'),
+  },
+  upload: {
+    regionLabel: pt('messages.mediaPickerUploadRegionLabel'),
+    title: pt('messages.mediaPickerUploadTitle'),
+    description: pt('messages.mediaPickerUploadDescription'),
+    browseAction: pt('messages.mediaPickerSelectFile'),
+    supportLabel: pt('messages.mediaPickerUploadSupportLabel'),
+  },
+  review: {
+    title: pt('messages.mediaPickerReviewTitle'),
+    description: pt('messages.mediaPickerReviewDescription'),
+  },
+  fields: {
+    title: pt('fields.name'),
+    altText: pt('messages.mediaPickerAltText'),
+    description: pt('fields.description'),
+    copyright: pt('fields.mediaCopyright'),
+    license: pt('messages.mediaPickerLicense'),
+  },
+  actions: {
+    cancel: pt('actions.back'),
+    backToLibrary: pt('messages.mediaPickerBackToLibrary'),
+    backToUpload: pt('messages.mediaPickerBackToUpload'),
+    openMediaManagement: pt('messages.mediaPickerOpenMediaManagement'),
+    useMedia: pt('messages.mediaPickerUseMedia'),
+  },
+});
+
+const resolvePoiMediaPickerFeedback = (
+  pt: ReturnType<typeof usePluginTranslation>,
+  errorCode: StudioMediaPickerErrorCode | null,
+  uploadPhase: Parameters<typeof uploadPhaseMessageKey>[0]
+) => {
+  if (errorCode === 'unsupported_upload_type') {
+    return { message: pt('messages.mediaUploadUnsupportedType'), tone: 'error' as const };
+  }
+  if (errorCode === 'upload_failed') {
+    return { message: pt('messages.mediaUploadError'), tone: 'error' as const };
+  }
+  if (errorCode === 'asset_load_failed') {
+    return { message: pt('messages.mediaPickerAssetLoadError'), tone: 'error' as const };
+  }
+  if (errorCode === 'asset_unavailable') {
+    return { message: pt('messages.mediaUploadUnavailableUrl'), tone: 'error' as const };
+  }
+  if (errorCode === 'metadata_save_failed') {
+    return { message: pt('messages.mediaPickerMetadataSaveError'), tone: 'error' as const };
+  }
+
+  const phaseKey = uploadPhaseMessageKey(uploadPhase);
+  if (!phaseKey) {
+    return { message: null, tone: 'default' as const };
+  }
+
+  return {
+    message: pt(phaseKey),
+    tone: uploadPhase === 'success' ? ('success' as const) : ('default' as const),
+  };
+};
+
 export function PoiDetailPage({
   mode,
   contentId,
@@ -88,11 +215,13 @@ export function PoiDetailPage({
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<PoiContentItem | null>(null);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
+  const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
   const [activeTab, setActiveTab] = React.useState<PoiDetailTabId>('basis');
   const [visitedTabs, setVisitedTabs] = React.useState<readonly PoiDetailTabId[]>(['basis']);
   const [categoryOptions, setCategoryOptions] = React.useState<readonly PoiCategoryOption[]>([]);
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
+  const mediaPickerLabels = React.useMemo(() => createPoiMediaPickerLabels(pt), [pt]);
   const focusFieldById = React.useCallback((fieldId: string) => {
     globalThis.setTimeout(() => {
       globalThis.document.getElementById(fieldId)?.focus();
@@ -102,16 +231,54 @@ export function PoiDetailPage({
   const refreshMediaAssets = React.useCallback(async () => {
     try {
       const assets = await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), instanceId, visibility: 'public' });
+      mediaAssetsRef.current = assets;
       setMediaAssets(assets);
       return assets;
     } catch {
+      mediaAssetsRef.current = [];
       setMediaAssets([]);
       return [];
     }
   }, [instanceId]);
 
-  const uploadMediaFile = React.useCallback(
-    async (file: File): Promise<HostMediaAssetListItem> => {
+  const isAssetSelectable = React.useCallback((asset: PoiMediaPickerAsset) => {
+    const nextMedia = mediaContentFromAsset({
+      id: asset.id,
+      fileName: asset.fileName,
+      metadata: asset.metadata,
+      visibility: asset.visibility,
+      mimeType: asset.mimeType,
+      previewUrl: asset.previewUrl,
+    });
+    if (!nextMedia) {
+      return false;
+    }
+
+    const existingSources = new Set((methods.getValues('content.mediaContents') ?? []).map(mediaContentSourceKey).filter(Boolean));
+    return existingSources.has(mediaContentSourceKey(nextMedia)) === false;
+  }, [methods]);
+
+  const mediaPicker = useStudioMediaPickerOverlay<PoiMediaPickerAsset>({
+    onAccept: (asset) => {
+      const nextMedia = mediaContentFromAsset({
+        id: asset.id,
+        fileName: asset.fileName,
+        metadata: asset.metadata,
+        visibility: asset.visibility,
+        mimeType: asset.mimeType,
+        previewUrl: asset.previewUrl,
+      });
+      if (!nextMedia) {
+        return;
+      }
+
+      const currentMedia = methods.getValues('content.mediaContents') ?? [];
+      methods.setValue('content.mediaContents', [...currentMedia, nextMedia], { shouldDirty: true });
+      void refreshMediaAssets();
+    },
+    canAcceptAsset: isAssetSelectable,
+    isSupportedUploadFile,
+    uploadAsset: async (file) => {
       const uploaded = await uploadHostMediaFile({
         fetch: globalThis.fetch.bind(globalThis),
         file,
@@ -120,13 +287,35 @@ export function PoiDetailPage({
         instanceId,
       });
       const assets = await refreshMediaAssets();
-      const uploadedAsset = assets.find((asset) => asset.id === uploaded.assetId);
-      if (!uploadedAsset) {
-        throw new Error('poi_media_uploaded_asset_not_found');
-      }
-      return uploadedAsset;
+      mediaAssetsRef.current = assets;
+      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
-    [instanceId, refreshMediaAssets]
+    loadAsset: async (assetId) => {
+      const detail = await getHostMediaAsset({
+        fetch: globalThis.fetch.bind(globalThis),
+        assetId,
+        instanceId,
+      });
+      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
+      return toPoiMediaPickerDetail(detail, summary);
+    },
+    saveAssetMetadata: async (assetId, metadata) => {
+      const detail = await updateHostMediaAsset({
+        fetch: globalThis.fetch.bind(globalThis),
+        assetId,
+        metadata,
+        visibility: 'public',
+        instanceId,
+      });
+      const assets = await refreshMediaAssets();
+      mediaAssetsRef.current = assets;
+      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
+      return toPoiMediaPickerDetail(detail, summary);
+    },
+  });
+  const mediaPickerFeedback = React.useMemo(
+    () => resolvePoiMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
+    [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
   );
 
   React.useEffect(() => {
@@ -171,7 +360,7 @@ export function PoiDetailPage({
     return () => {
       active = false;
     };
-  }, [contentId, mode, reset]);
+  }, [contentId, mode, pt, reset]);
 
   const tabs = createPoiDetailTabDefinitions(pt);
 
@@ -318,7 +507,14 @@ export function PoiDetailPage({
         pt={pt}
       />
     ),
-    content: <PoiDetailContentTab mediaAssets={mediaAssets} onUploadFile={uploadMediaFile} pt={pt} />,
+    content: (
+      <PoiDetailContentTab
+        onOpenMediaPicker={(pickerMode) =>
+          pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
+        }
+        pt={pt}
+      />
+    ),
     settings: <PoiDetailSettingsTab pt={pt} />,
     history: <PoiDetailHistoryTab pt={pt} />,
   } as const satisfies Record<PoiDetailTabId, React.JSX.Element>;
@@ -344,6 +540,44 @@ export function PoiDetailPage({
           </div>
         }
       >
+        <StudioMediaPickerOverlay
+          assets={mediaAssets.map(toPoiMediaPickerSummary)}
+          feedbackMessage={mediaPickerFeedback.message}
+          feedbackTone={mediaPickerFeedback.tone}
+          isAssetSelectable={(asset) =>
+            isAssetSelectable({
+              ...asset,
+              metadata: {
+                title: asset.title,
+                altText: '',
+                description: '',
+                copyright: '',
+                license: '',
+              },
+            })
+          }
+          isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
+          isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
+          labels={mediaPickerLabels}
+          metadataDraft={mediaPicker.metadataDraft}
+          mode={mediaPicker.mode}
+          onBackFromReview={mediaPicker.goBackFromReview}
+          onChangeMode={(pickerMode) =>
+            pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
+          }
+          onClose={mediaPicker.close}
+          onConfirmSelection={() => void mediaPicker.confirmSelection()}
+          onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
+          onOpenMediaManagement={(assetId) => void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })}
+          onSearchValueChange={mediaPicker.setSearchValue}
+          onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
+          onUploadFile={(file) => void mediaPicker.uploadFile(file)}
+          open={mediaPicker.open}
+          reviewAsset={mediaPicker.reviewAsset}
+          reviewSource={mediaPicker.reviewSource}
+          searchValue={mediaPicker.searchValue}
+          uploadPhase={mediaPicker.uploadPhase}
+        />
         <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5" noValidate>
           {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
           <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as PoiDetailTabId)} className="space-y-0">

@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { listHostMediaAssets, listHostMediaReferencesByTarget, replaceHostMediaReferences } from './media-picker-client.js';
+import {
+  getHostMediaAsset,
+  listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  replaceHostMediaReferences,
+  updateHostMediaAsset,
+} from './media-picker-client.js';
 
 describe('media picker client', () => {
   it('lists host media assets and references without leaking storage primitives into the request contract', async () => {
@@ -95,6 +101,53 @@ describe('media picker client', () => {
           targetType: 'events',
           targetId: 'event-1',
           references: [{ assetId: 'asset-1', role: 'header_image', sortOrder: 0 }],
+        }),
+      })
+    );
+  });
+
+  it('gets and updates instance-scoped media assets with the complete request contract', async () => {
+    const asset = {
+      id: 'asset-1',
+      instanceId: 'de-demo',
+      storageKey: 'media/asset-1.jpg',
+      mediaType: 'image' as const,
+      mimeType: 'image/jpeg',
+      byteSize: 42,
+      visibility: 'public' as const,
+      uploadStatus: 'completed',
+      processingStatus: 'ready',
+      metadata: { title: 'Titel' },
+    };
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: asset }), { status: 200 }));
+
+    await expect(
+      getHostMediaAsset({ fetch: fetchMock as never, assetId: asset.id, instanceId: asset.instanceId })
+    ).resolves.toEqual(asset);
+    await expect(
+      updateHostMediaAsset({
+        fetch: fetchMock as never,
+        assetId: asset.id,
+        instanceId: asset.instanceId,
+        visibility: 'public',
+        metadata: { altText: 'Alternativtext' },
+      })
+    ).resolves.toEqual(asset);
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/iam/media/asset-1?instanceId=de-demo',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/iam/media/asset-1?instanceId=de-demo',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({
+          instanceId: 'de-demo',
+          visibility: 'public',
+          metadata: { altText: 'Alternativtext' },
         }),
       })
     );

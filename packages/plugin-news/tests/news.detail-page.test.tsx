@@ -5,8 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  getHostMediaAsset,
   listHostMediaAssets,
   registerPluginTranslationResolver,
+  updateHostMediaAsset,
   uploadHostMediaFile,
 } from '@sva/plugin-sdk';
 
@@ -59,7 +61,9 @@ vi.mock('@sva/plugin-sdk', async () => {
   const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
   return {
     ...actual,
+    getHostMediaAsset: vi.fn(),
     listHostMediaAssets: vi.fn(async () => []),
+    updateHostMediaAsset: vi.fn(),
     uploadHostMediaFile: vi.fn(),
   };
 });
@@ -163,6 +167,25 @@ describe('NewsDetailPage', () => {
         'news.actions.remove': 'Entfernen',
         'news.actions.removeImage': 'Bild entfernen',
         'news.messages.imagePickerEmpty': 'Keine Bilder gefunden.',
+        'news.messages.mediaPickerTitle': 'Medium hinzufügen',
+        'news.messages.mediaPickerDescription':
+          'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
+        'news.messages.mediaPickerReviewMode': 'Prüfen',
+        'news.messages.mediaPickerUploadRegionLabel': 'Bilddatei hochladen',
+        'news.messages.mediaPickerUploadTitle': 'Neues Medium hochladen',
+        'news.messages.mediaPickerUploadDescription':
+          'Laden Sie ein Bild hoch und prüfen Sie danach die Metadaten vor der Übernahme.',
+        'news.messages.mediaPickerSelectFile': 'Datei auswählen',
+        'news.messages.mediaPickerUploadSupportLabel': 'Unterstützt werden JPG, PNG und WebP.',
+        'news.messages.mediaPickerReviewTitle': 'Metadaten prüfen',
+        'news.messages.mediaPickerReviewDescription':
+          'Ergänzen Sie Titel, Alternativtext und weitere Metadaten, bevor das Medium übernommen wird.',
+        'news.messages.mediaPickerAltText': 'Alternativtext',
+        'news.messages.mediaPickerLicense': 'Lizenz',
+        'news.messages.mediaPickerBackToLibrary': 'Zurück zur Mediathek',
+        'news.messages.mediaPickerBackToUpload': 'Zurück zum Upload',
+        'news.messages.mediaPickerOpenMediaManagement': 'In Medienverwaltung öffnen',
+        'news.messages.mediaPickerUseMedia': 'Medium übernehmen',
         'news.messages.mediaUploadInitializing': 'Upload wird vorbereitet.',
         'news.messages.mediaUploadUploading': 'Bild wird hochgeladen.',
         'news.messages.mediaUploadFinalizing': 'Bild wird verarbeitet.',
@@ -180,7 +203,9 @@ describe('NewsDetailPage', () => {
       return labels[key] ?? key;
     });
     vi.mocked(listNewsCategories).mockResolvedValue([]);
+    vi.mocked(getHostMediaAsset).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([]);
+    vi.mocked(updateHostMediaAsset).mockReset();
     vi.mocked(uploadHostMediaFile).mockReset();
   });
 
@@ -217,15 +242,55 @@ describe('NewsDetailPage', () => {
           visibility: 'public',
         },
       ] as never);
+    vi.mocked(getHostMediaAsset).mockResolvedValueOnce({
+      id: 'asset-uploaded',
+      instanceId: 'de-test',
+      storageKey: 'de-test/originals/uploaded.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      previewUrl: '',
+      visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {
+        title: 'uploaded.jpg',
+        altText: '',
+        description: '',
+        copyright: '',
+        license: '',
+      },
+    } as never);
+    vi.mocked(updateHostMediaAsset).mockResolvedValueOnce({
+      id: 'asset-uploaded',
+      instanceId: 'de-test',
+      storageKey: 'de-test/originals/uploaded.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      previewUrl: '',
+      visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {
+        title: 'uploaded.jpg',
+        altText: '',
+        description: '',
+        copyright: '',
+        license: '',
+      },
+    } as never);
 
     render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
 
     fireEvent.change(await screen.findByLabelText('Bereich auswählen'), { target: { value: 'content' } });
-    fireEvent.change(screen.getByLabelText('Bild hochladen'), {
+    fireEvent.click(screen.getByRole('button', { name: 'Bild hochladen' }));
+    fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: {
         files: [new File(['image'], 'uploaded.jpg', { type: 'image/jpeg' })],
       },
     });
+    fireEvent.click(await screen.findByRole('button', { name: 'Medium übernehmen' }));
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('https://example.com/uploaded.jpg')).toBeTruthy();

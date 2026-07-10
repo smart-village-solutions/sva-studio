@@ -38,4 +38,11 @@ describe('deployment contracts', () => {
     expect(workflow).not.toContain('actions/checkout@v6');
     expect(workflow).toContain('actions/checkout@v7');
   });
+
+  it('protects and removes rendered deployment secret files', () => {
+    const workflow = load('.github/workflows/promote.yml');
+
+    expect(workflow).toContain('umask 077');
+    expect(workflow).toContain("trap 'rm -f .env stack.json stack.yaml' EXIT");
+  });
 });

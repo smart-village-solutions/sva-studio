@@ -211,6 +211,8 @@ jobs:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
         run: |
           set -euo pipefail
+          umask 077
+          trap 'rm -f .env stack.json stack.yaml' EXIT
 
           if [ -z "${QUANTUM_ENDPOINT}" ]; then
             echo "'QUANTUM_ENDPOINT' must not be empty." >&2

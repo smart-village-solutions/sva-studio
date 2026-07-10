@@ -3,7 +3,7 @@ import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import type {
   WasteManagementEmailReminderConfig,
-  WasteManagementSettingsInterfaceOption,
+  WasteManagementSettingsRecord,
 } from '@sva/plugin-sdk';
 
 import {
@@ -18,73 +18,43 @@ import {
 } from './waste-management.page.support.js';
 import { useWasteOutputPanelData } from './waste-management.output-panel.data.js';
 import { WasteEmailReminderConfigurationSection } from './waste-management.output-email-reminder-card.js';
-import { fixedWasteEmailReminderPaths, withFixedWasteEmailReminderPaths } from './waste-management.email-reminder-paths.js';
+import {
+  getMailTransportOptions,
+  normalizeEmailReminderConfig,
+} from './waste-management.output-email-reminder-config.js';
 import { WasteOutputConfigurationSection } from './waste-management.output-panel.parts.js';
 
-const buildDefaultEmailReminderConfig = ({
-  calendarWebUrl,
-  transportOptions,
+const persistEmailReminderSettings = async ({
+  settings,
+  emailReminderConfig,
+  brandingAssetUrl,
+  contactBlock,
 }: {
-  readonly calendarWebUrl?: string;
-  readonly transportOptions: readonly WasteManagementSettingsInterfaceOption[];
-}): WasteManagementEmailReminderConfig => ({
-  enabled: false,
-  publicSignupEnabled: false,
-  transportId: transportOptions[0]?.id ?? '',
-  publicBaseUrl: calendarWebUrl ?? 'https://demo.abfallkalender.example',
-  ...fixedWasteEmailReminderPaths,
-  fromName: 'Abfallwirtschaft',
-  fromEmail: 'abfall@example.org',
-  replyToEmail: 'abfall@example.org',
-  serviceLabel: 'Muelli',
-  privacyPolicyUrl: 'https://example.org/datenschutz',
-  imprintUrl: 'https://example.org/impressum',
-  consentLabel: 'Ich stimme der Verarbeitung meiner Daten zur Einrichtung der E-Mail-Erinnerung zu.',
-  consentVersion: 'v1',
-  dataControllerLabel: 'Abfallwirtschaft',
-  dataProtectionContactEmail: 'datenschutz@example.org',
-  doiSubjectTemplate: 'Bitte bestaetigen Sie Ihre E-Mail-Erinnerung fuer {{locationLabel}}',
-  doiPreheader: 'Bestaetigen Sie die Einrichtung Ihres Erinnerungsdienstes.',
-  doiIntroText:
-    'Bitte bestaetigen Sie die Einrichtung Ihrer E-Mail-Erinnerung fuer {{locationLabel}} ueber den folgenden Link.',
-  doiButtonLabel: 'E-Mail-Erinnerung aktivieren',
-  doiFallbackText: 'Falls der Button nicht funktioniert, nutzen Sie bitte den direkten Link.',
-  doiExpiryNoticeText: 'Der Aktivierungslink ist zeitlich begrenzt gueltig.',
-  doiSuccessHeadline: 'E-Mail-Erinnerung aktiviert',
-  doiSuccessBody: 'Der Dienst ist jetzt aktiv und informiert Sie kuenftig ueber anstehende Entsorgungstermine.',
-  doiErrorHeadline: 'Aktivierung nicht moeglich',
-  doiErrorBody: 'Der Aktivierungslink ist ungueltig oder bereits abgelaufen.',
-  reminderSubjectTemplate: 'Abfalltermin fuer {{locationLabel}} am {{pickupDate}}',
-  reminderIntroTemplate: 'Nicht vergessen: {{fractionName}} wird am {{pickupDate}} abgeholt.',
-  reminderListIntroTemplate: 'Folgende Abfallart steht als naechstes an:',
-  reminderOutroText: 'Sie koennen diese Erinnerung jederzeit wieder abbestellen.',
-  unsubscribeLinkLabel: 'E-Mail-Erinnerung abbestellen',
-  reminderReasonText: 'Sie erhalten diese Nachricht, weil Sie fuer {{locationLabel}} eine E-Mail-Erinnerung eingerichtet haben.',
-  unsubscribeSuccessHeadline: 'E-Mail-Erinnerung deaktiviert',
-  unsubscribeSuccessBody: 'Der Dienst wurde fuer diese Adresse erfolgreich deaktiviert.',
-  unsubscribeAlreadyDoneHeadline: 'E-Mail-Erinnerung bereits deaktiviert',
-  unsubscribeAlreadyDoneBody: 'Fuer diese Adresse ist bereits keine aktive Erinnerung mehr hinterlegt.',
-  unsubscribeErrorHeadline: 'Abmeldung nicht moeglich',
-  unsubscribeErrorBody: 'Der Abmeldelink ist ungueltig oder bereits abgelaufen.',
-  maxSubscriptionsPerEmailAndLocation: 5,
-  signupRateLimitPerIpPerHour: 20,
-  signupRateLimitPerEmailPerHour: 10,
-  doiTokenTtlHours: 48,
-  pendingSubscriptionTtlHours: 72,
-  materializationLookaheadDays: 7,
-  unsubscribeTokenTtlDays: 30,
-});
-
-const ensureTransportSelection = (
-  config: WasteManagementEmailReminderConfig,
-  transportOptions: readonly WasteManagementSettingsInterfaceOption[]
-): WasteManagementEmailReminderConfig =>
-  config.transportId || transportOptions.length === 0
-    ? config
-    : {
-        ...config,
-        transportId: transportOptions[0]!.id,
-      };
+  readonly settings: WasteManagementSettingsRecord;
+  readonly emailReminderConfig: WasteManagementEmailReminderConfig;
+  readonly brandingAssetUrl: string;
+  readonly contactBlock: string;
+}): Promise<WasteManagementSettingsRecord | null> => {
+  const result = await updateWasteManagementSettings({
+    provider: settings.provider,
+    projectUrl: settings.projectUrl,
+    schemaName: settings.schemaName,
+    enabled: settings.enabled,
+    selectedInterfaceId: settings.selectedInterfaceId,
+    calendarWebUrl: settings.calendarWebUrl,
+    pdfBrandingAssetUrl: compactOptionalString(brandingAssetUrl),
+    pdfContactBlock: compactOptionalString(contactBlock),
+    emailReminderConfig: normalizeEmailReminderConfig({
+      config: emailReminderConfig,
+      calendarWebUrl: settings.calendarWebUrl,
+      transportOptions: getMailTransportOptions(settings.availableInterfaces ?? []),
+    }),
+    holidayStateCode: settings.holidayStateCode,
+    customRecurrencePresets: settings.customRecurrencePresets ?? [],
+    deletedPresetFallbacks: {},
+  });
+  return result ?? getWasteManagementSettings();
+};
 
 export const WasteOutputPanel = () => {
   const pt = usePluginTranslation('wasteManagement');
@@ -98,25 +68,22 @@ export const WasteOutputPanel = () => {
   const [emailMessage, setEmailMessage] = useState<StatusMessage | null>(null);
   const [brandingAssetUrl, setBrandingAssetUrl] = useState('');
   const [contactBlock, setContactBlock] = useState('');
-  const [emailReminderConfig, setEmailReminderConfig] = useState<WasteManagementEmailReminderConfig | null>(null);
+  const [emailReminderConfig, setEmailReminderConfig] =
+    useState<WasteManagementEmailReminderConfig | null>(null);
 
-  const mailTransportOptions = (settings?.availableInterfaces ?? []).filter(
-    (option) => option.typeKey === 'mail_transport'
-  );
+  const mailTransportOptions = getMailTransportOptions(settings?.availableInterfaces ?? []);
 
   useEffect(() => {
-    const nextMailTransportOptions = (settings?.availableInterfaces ?? []).filter(
-      (option) => option.typeKey === 'mail_transport'
-    );
+    const nextMailTransportOptions = getMailTransportOptions(settings?.availableInterfaces ?? []);
     setBrandingAssetUrl(settings?.pdfBrandingAssetUrl ?? '');
     setContactBlock(settings?.pdfContactBlock ?? '');
-    const baseConfig =
-      settings?.emailReminderConfig ??
-      buildDefaultEmailReminderConfig({
+    setEmailReminderConfig(
+      normalizeEmailReminderConfig({
+        config: settings?.emailReminderConfig,
         calendarWebUrl: settings?.calendarWebUrl,
         transportOptions: nextMailTransportOptions,
-      });
-    setEmailReminderConfig(withFixedWasteEmailReminderPaths(ensureTransportSelection(baseConfig, nextMailTransportOptions)));
+      })
+    );
   }, [
     settings?.availableInterfaces,
     settings?.calendarWebUrl,
@@ -143,9 +110,6 @@ export const WasteOutputPanel = () => {
     setMessage(null);
 
     try {
-      const nextMailTransportOptions = (settings.availableInterfaces ?? []).filter(
-        (option) => option.typeKey === 'mail_transport'
-      );
       const result = await updateWasteManagementSettings({
         provider: settings.provider,
         projectUrl: settings.projectUrl,
@@ -169,7 +133,10 @@ export const WasteOutputPanel = () => {
       const code = resolveApiErrorCode(saveError);
       setMessage({
         kind: 'error',
-        text: code === 'forbidden' ? pt('output.pdf.messages.saveForbidden') : pt('output.pdf.messages.saveError'),
+        text:
+          code === 'forbidden'
+            ? pt('output.pdf.messages.saveForbidden')
+            : pt('output.pdf.messages.saveError'),
       });
     } finally {
       setRunning(false);
@@ -186,42 +153,19 @@ export const WasteOutputPanel = () => {
     setEmailMessage(null);
 
     try {
-      const nextMailTransportOptions = (settings.availableInterfaces ?? []).filter(
-        (option) => option.typeKey === 'mail_transport'
-      );
-      const result = await updateWasteManagementSettings({
-        provider: settings.provider,
-        projectUrl: settings.projectUrl,
-        schemaName: settings.schemaName,
-        enabled: settings.enabled,
-        selectedInterfaceId: settings.selectedInterfaceId,
-        calendarWebUrl: settings.calendarWebUrl,
-        pdfBrandingAssetUrl: compactOptionalString(brandingAssetUrl),
-        pdfContactBlock: compactOptionalString(contactBlock),
-        emailReminderConfig: withFixedWasteEmailReminderPaths(
-          ensureTransportSelection(emailReminderConfig, nextMailTransportOptions)
-        ),
-        holidayStateCode: settings.holidayStateCode,
-        customRecurrencePresets: settings.customRecurrencePresets ?? [],
-        deletedPresetFallbacks: {},
+      const nextSettings = await persistEmailReminderSettings({
+        settings,
+        emailReminderConfig,
+        brandingAssetUrl,
+        contactBlock,
       });
-      const nextSettings = result ?? (await getWasteManagementSettings());
       setSettings(nextSettings);
       setEmailReminderConfig(
-        withFixedWasteEmailReminderPaths(
-          ensureTransportSelection(
-            nextSettings?.emailReminderConfig ??
-              buildDefaultEmailReminderConfig({
-                calendarWebUrl: nextSettings?.calendarWebUrl,
-                transportOptions: (nextSettings?.availableInterfaces ?? []).filter(
-                  (option) => option.typeKey === 'mail_transport'
-                ),
-              }),
-            (nextSettings?.availableInterfaces ?? []).filter(
-              (option) => option.typeKey === 'mail_transport'
-            )
-          )
-        )
+        normalizeEmailReminderConfig({
+          config: nextSettings?.emailReminderConfig,
+          calendarWebUrl: nextSettings?.calendarWebUrl,
+          transportOptions: getMailTransportOptions(nextSettings?.availableInterfaces ?? []),
+        })
       );
       setEmailMessage({ kind: 'success', text: pt('output.emailReminder.messages.saveSuccess') });
     } catch (saveError) {

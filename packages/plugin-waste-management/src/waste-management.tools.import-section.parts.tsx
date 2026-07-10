@@ -1,5 +1,8 @@
 import type { ChangeEvent, ReactNode } from 'react';
-import type { WasteManagementCsvDelimiter, WasteManagementImportSourceFormat } from '@sva/plugin-sdk';
+import type {
+  WasteManagementCsvDelimiter,
+  WasteManagementImportSourceFormat,
+} from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Badge,
@@ -11,17 +14,22 @@ import {
   StudioField,
   StudioFieldGroup,
 } from '@sva/studio-ui-react';
+import type { PreviewWasteLocationTourPickupDateImportResult } from './waste-management.api.js';
+import type { WasteToolsWizardStepId } from './waste-management.tools.import-wizard-state.js';
 
-type ImportCatalogEntry = ReturnType<typeof import('./waste-management.api.js').getWasteManagementImportCatalog>[number];
-
-export type WasteToolsWizardStepId = 'profile' | 'upload' | 'validation' | 'preview' | 'result';
+type ImportCatalogEntry = ReturnType<
+  typeof import('./waste-management.api.js').getWasteManagementImportCatalog
+>[number];
 
 export const locationTourPickupDateProfileId = 'waste-management.ortsbezogene-tourtermine';
 
 export const resolveSelectedImportProfile = (
   importCatalog: readonly ImportCatalogEntry[],
   importProfileId: string
-) => importCatalog.find((profile) => profile.profileId === importProfileId) ?? importCatalog[0] ?? null;
+) =>
+  importCatalog.find((profile) => profile.profileId === importProfileId) ??
+  importCatalog[0] ??
+  null;
 
 export const resolveImportFileAccept = (importSourceFormat: WasteManagementImportSourceFormat) =>
   importSourceFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -31,33 +39,35 @@ export const resolveImportFileAccept = (importSourceFormat: WasteManagementImpor
 export const isPreviewRequiredImportProfile = (profile: ImportCatalogEntry | null) =>
   profile?.profileId === locationTourPickupDateProfileId;
 
-export const createImportFileChangeHandler = ({
-  onImportBlobRefChange,
-  readFileAsDataUrl,
-  onAfterChange,
-}: {
-  readonly onImportBlobRefChange: (value: string) => void;
-  readonly readFileAsDataUrl: (file: File) => Promise<string>;
-  readonly onAfterChange?: () => void;
-}) => (event: ChangeEvent<HTMLInputElement>) => {
-  const file = event.target.files?.[0] ?? null;
-  if (!file) {
-    onImportBlobRefChange('');
-    onAfterChange?.();
-    return;
-  }
-
-  void readFileAsDataUrl(file).then(
-    (value) => {
-      onImportBlobRefChange(value);
-      onAfterChange?.();
-    },
-    () => {
+export const createImportFileChangeHandler =
+  ({
+    onImportBlobRefChange,
+    readFileAsDataUrl,
+    onAfterChange,
+  }: {
+    readonly onImportBlobRefChange: (value: string) => void;
+    readonly readFileAsDataUrl: (file: File) => Promise<string>;
+    readonly onAfterChange?: () => void;
+  }) =>
+  (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) {
       onImportBlobRefChange('');
       onAfterChange?.();
+      return;
     }
-  );
-};
+
+    void readFileAsDataUrl(file).then(
+      (value) => {
+        onImportBlobRefChange(value);
+        onAfterChange?.();
+      },
+      () => {
+        onImportBlobRefChange('');
+        onAfterChange?.();
+      }
+    );
+  };
 
 const formatDelimiterLabel = (delimiter: string) => (delimiter === '\t' ? 'Tab' : delimiter);
 
@@ -71,7 +81,13 @@ export const WasteToolsWizardStepList = ({
   readonly onStepChange: (step: WasteToolsWizardStepId) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-  const steps: readonly WasteToolsWizardStepId[] = ['profile', 'upload', 'validation', 'preview', 'result'];
+  const steps: readonly WasteToolsWizardStepId[] = [
+    'profile',
+    'upload',
+    'validation',
+    'preview',
+    'result',
+  ];
   const reachableIndex = steps.indexOf(reachableStep);
   const activeIndex = steps.indexOf(activeStep);
 
@@ -98,13 +114,19 @@ export const WasteToolsWizardStepList = ({
           >
             <span
               className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                isActive ? 'bg-primary text-primary-foreground' : isDone ? 'bg-foreground text-background' : 'bg-muted'
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : isDone
+                    ? 'bg-foreground text-background'
+                    : 'bg-muted'
               }`}
             >
               {index + 1}
             </span>
             <span className="space-y-1">
-              <span className="block text-sm font-semibold">{pt(`tools.imports.wizard.steps.${step}.title`)}</span>
+              <span className="block text-sm font-semibold">
+                {pt(`tools.imports.wizard.steps.${step}.title`)}
+              </span>
               <span className="block text-xs text-muted-foreground">
                 {pt(`tools.imports.wizard.steps.${step}.description`)}
               </span>
@@ -133,7 +155,11 @@ export const WasteToolsWizardLayout = ({
 }) => (
   <StudioEditSurface className="rounded-2xl border-border/70 bg-background/80">
     <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start">
-      <WasteToolsWizardStepList activeStep={activeStep} reachableStep={reachableStep} onStepChange={onStepChange} />
+      <WasteToolsWizardStepList
+        activeStep={activeStep}
+        reachableStep={reachableStep}
+        onStepChange={onStepChange}
+      />
       <div className="space-y-5">
         <div className="space-y-1">
           <h3 className="text-lg font-semibold text-foreground">{title}</h3>
@@ -185,8 +211,12 @@ export const WasteToolsImportProfileChooser = ({
             onClick={() => onSelect(profile.profileId)}
           >
             <div className="flex flex-wrap items-center gap-2">
-              <h4 className={`text-sm font-semibold ${isPrimary ? 'text-base' : ''}`}>{profile.displayName}</h4>
-              {isPrimary ? <Badge variant="secondary">{pt('tools.imports.wizard.preferredBadge')}</Badge> : null}
+              <h4 className={`text-sm font-semibold ${isPrimary ? 'text-base' : ''}`}>
+                {profile.displayName}
+              </h4>
+              {isPrimary ? (
+                <Badge variant="secondary">{pt('tools.imports.wizard.preferredBadge')}</Badge>
+              ) : null}
             </div>
             <p className="mt-2 text-sm text-muted-foreground">{profile.description}</p>
           </button>
@@ -226,15 +256,21 @@ export const WasteToolsUploadFields = ({
   return (
     <StudioFieldGroup columns={showSourceFormatField ? 2 : 1}>
       {showSourceFormatField ? (
-        <StudioField id="waste-tools-import-source-format" label={pt('tools.imports.sourceFormatLabel')}>
+        <StudioField
+          id="waste-tools-import-source-format"
+          label={pt('tools.imports.sourceFormatLabel')}
+        >
           <Select
             aria-label={pt('tools.imports.sourceFormatLabel')}
             value={importSourceFormat}
-            onChange={(event) => onImportSourceFormatChange(event.target.value as WasteManagementImportSourceFormat)}
+            onChange={(event) =>
+              onImportSourceFormatChange(event.target.value as WasteManagementImportSourceFormat)
+            }
           >
             {selectedImportProfile.sourceFormats.map((sourceFormat) => (
               <option key={sourceFormat} value={sourceFormat}>
-                {sourceFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                {sourceFormat ===
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                   ? pt('tools.imports.sourceFormats.xlsx')
                   : pt('tools.imports.sourceFormats.csv')}
               </option>
@@ -245,7 +281,9 @@ export const WasteToolsUploadFields = ({
       <StudioField
         id="waste-tools-import-blob-ref"
         label={pt('tools.imports.blobRefLabel')}
-        description={importBlobRef.startsWith('data:') ? pt('tools.imports.wizard.fileReady') : undefined}
+        description={
+          importBlobRef.startsWith('data:') ? pt('tools.imports.wizard.fileReady') : undefined
+        }
       >
         <Input id={fileInputId} type="file" accept={fileAccept} onChange={onImportFileChange} />
       </StudioField>
@@ -259,14 +297,17 @@ export const WasteToolsUploadFields = ({
           <span>{pt('tools.imports.dryRunLabel')}</span>
         </label>
       </StudioField>
-      {isPreviewRequiredImportProfile(selectedImportProfile) && importSourceFormat === 'text/csv' ? (
+      {isPreviewRequiredImportProfile(selectedImportProfile) &&
+      importSourceFormat === 'text/csv' ? (
         <StudioField id="waste-tools-import-delimiter" label={pt('tools.imports.delimiterLabel')}>
           <Select
             aria-label={pt('tools.imports.delimiterLabel')}
             value={delimiterOverride ?? ''}
             onChange={(event) =>
               onDelimiterOverrideChange(
-                event.target.value === '' ? undefined : (event.target.value as WasteManagementCsvDelimiter)
+                event.target.value === ''
+                  ? undefined
+                  : (event.target.value as WasteManagementCsvDelimiter)
               )
             }
           >
@@ -299,16 +340,14 @@ export const WasteToolsImportRuleBox = () => {
   );
 };
 
-export const WasteToolsImportColumns = ({
-  profile,
-}: {
-  readonly profile: ImportCatalogEntry;
-}) => {
+export const WasteToolsImportColumns = ({ profile }: { readonly profile: ImportCatalogEntry }) => {
   const pt = usePluginTranslation('wasteManagement');
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{pt('tools.imports.templateColumns')}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {pt('tools.imports.templateColumns')}
+      </p>
       <div className="flex flex-wrap gap-2">
         {profile.requiredColumns.map((column) => (
           <Badge key={column.key} variant="secondary">
@@ -329,7 +368,11 @@ export const WasteToolsPreviewSummary = ({
   previewResult,
 }: {
   readonly previewResult: NonNullable<
-    Awaited<ReturnType<typeof import('./waste-management.api.js').previewWasteLocationTourPickupDateImport>>
+    Awaited<
+      ReturnType<
+        typeof import('./waste-management.api.js').previewWasteLocationTourPickupDateImport
+      >
+    >
   >;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -338,15 +381,21 @@ export const WasteToolsPreviewSummary = ({
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-xl border border-border/70 bg-muted/10 p-3">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{pt('tools.imports.wizard.metrics.validRows')}</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            {pt('tools.imports.wizard.metrics.validRows')}
+          </p>
           <p className="mt-1 text-2xl font-semibold">{previewResult.validRowCount}</p>
         </div>
         <div className="rounded-xl border border-border/70 bg-muted/10 p-3">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{pt('tools.imports.wizard.metrics.invalidRows')}</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            {pt('tools.imports.wizard.metrics.invalidRows')}
+          </p>
           <p className="mt-1 text-2xl font-semibold">{previewResult.invalidRowCount}</p>
         </div>
         <div className="rounded-xl border border-border/70 bg-muted/10 p-3">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{pt('tools.imports.wizard.metrics.createdTours')}</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            {pt('tools.imports.wizard.metrics.createdTours')}
+          </p>
           <p className="mt-1 text-2xl font-semibold">{previewResult.newTours.length}</p>
         </div>
         <div className="rounded-xl border border-border/70 bg-muted/10 p-3">
@@ -412,7 +461,10 @@ export const WasteToolsPreviewSummary = ({
         {previewResult.errors.length > 0 ? (
           <div className="space-y-2">
             {previewResult.errors.map((error, index) => (
-              <div key={`${error.rowNumber}-${error.column}-${index}`} className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+              <div
+                key={`${error.rowNumber}-${error.column}-${index}`}
+                className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"
+              >
                 <p className="font-medium">
                   {pt('tools.imports.wizard.errorLine', {
                     rowNumber: error.rowNumber,
@@ -446,14 +498,22 @@ export const WasteToolsResultSummary = ({
     <div className="space-y-4">
       <div className="rounded-xl border border-border/70 bg-muted/10 p-4">
         <p className="text-sm font-semibold">{pt('tools.imports.wizard.resultTitle')}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{pt('tools.imports.wizard.resultDescription')}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {pt('tools.imports.wizard.resultDescription')}
+        </p>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">{pt('tools.meta.jobStatusLabel')}</dt>
-            <dd className="mt-1 text-sm font-medium text-foreground">{status ?? pt('tools.meta.noJobStatus')}</dd>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+              {pt('tools.meta.jobStatusLabel')}
+            </dt>
+            <dd className="mt-1 text-sm font-medium text-foreground">
+              {status ?? pt('tools.meta.noJobStatus')}
+            </dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">{pt('tools.meta.jobIdLabel')}</dt>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+              {pt('tools.meta.jobIdLabel')}
+            </dt>
             <dd className="mt-1 break-all text-sm font-medium text-foreground">{jobId ?? '—'}</dd>
           </div>
         </dl>
@@ -491,3 +551,190 @@ export const WasteToolsWizardFooter = ({
     </div>
   );
 };
+
+export const WasteToolsProfileStep = ({
+  importCatalog,
+  selectedProfileId,
+  onSelect,
+  onContinue,
+}: {
+  readonly importCatalog: readonly ImportCatalogEntry[];
+  readonly selectedProfileId: string;
+  readonly onSelect: (profileId: string) => void;
+  readonly onContinue: () => void;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <div className="space-y-5">
+      <WasteToolsImportProfileChooser
+        importCatalog={importCatalog}
+        selectedProfileId={selectedProfileId}
+        onSelect={onSelect}
+      />
+      <WasteToolsWizardFooter
+        primaryAction={
+          <Button type="button" onClick={onContinue}>
+            {pt('tools.imports.wizard.actions.continue')}
+          </Button>
+        }
+      />
+    </div>
+  );
+};
+
+export const WasteToolsUploadStep = ({
+  profile,
+  importSourceFormat,
+  fileInputId,
+  importBlobRef,
+  importDryRun,
+  delimiterOverride,
+  canContinue,
+  onImportSourceFormatChange,
+  onImportDryRunChange,
+  onDelimiterOverrideChange,
+  onImportFileChange,
+  onDownloadTemplate,
+  onBack,
+  onContinue,
+}: {
+  readonly profile: ImportCatalogEntry;
+  readonly importSourceFormat: WasteManagementImportSourceFormat;
+  readonly fileInputId: string;
+  readonly importBlobRef: string;
+  readonly importDryRun: boolean;
+  readonly delimiterOverride?: WasteManagementCsvDelimiter;
+  readonly canContinue: boolean;
+  readonly onImportSourceFormatChange: (value: WasteManagementImportSourceFormat) => void;
+  readonly onImportDryRunChange: (value: boolean) => void;
+  readonly onDelimiterOverrideChange: (value: WasteManagementCsvDelimiter | undefined) => void;
+  readonly onImportFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  readonly onDownloadTemplate: () => void;
+  readonly onBack: () => void;
+  readonly onContinue: () => void;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <div className="space-y-5">
+      <WasteToolsUploadFields
+        selectedImportProfile={profile}
+        importSourceFormat={importSourceFormat}
+        fileInputId={fileInputId}
+        importBlobRef={importBlobRef}
+        importDryRun={importDryRun}
+        delimiterOverride={delimiterOverride}
+        onImportSourceFormatChange={onImportSourceFormatChange}
+        onImportDryRunChange={onImportDryRunChange}
+        onDelimiterOverrideChange={onDelimiterOverrideChange}
+        onImportFileChange={onImportFileChange}
+      />
+      <WasteToolsImportColumns profile={profile} />
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" onClick={onDownloadTemplate}>
+          {pt('tools.actions.downloadTemplate')}
+        </Button>
+      </div>
+      <WasteToolsWizardFooter
+        onBack={onBack}
+        primaryAction={
+          <Button type="button" disabled={!canContinue} onClick={onContinue}>
+            {pt('tools.imports.wizard.actions.continue')}
+          </Button>
+        }
+      />
+    </div>
+  );
+};
+
+export const WasteToolsValidationStep = ({
+  profile,
+  previewRequired,
+  running,
+  canContinue,
+  onBack,
+  onPreview,
+  onContinue,
+}: {
+  readonly profile: ImportCatalogEntry;
+  readonly previewRequired: boolean;
+  readonly running: boolean;
+  readonly canContinue: boolean;
+  readonly onBack: () => void;
+  readonly onPreview: () => void;
+  readonly onContinue: () => void;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const action = previewRequired ? (
+    <Button type="button" variant="outline" disabled={running || !canContinue} onClick={onPreview}>
+      {pt('tools.actions.previewImport')}
+    </Button>
+  ) : (
+    <Button type="button" disabled={!canContinue} onClick={onContinue}>
+      {pt('tools.imports.wizard.actions.continueToConfirmation')}
+    </Button>
+  );
+  return (
+    <div className="space-y-5">
+      {previewRequired ? <WasteToolsImportRuleBox /> : null}
+      <div className="rounded-xl border border-border/70 bg-muted/10 p-4">
+        <p className="text-sm font-medium text-foreground">{profile.displayName}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{profile.description}</p>
+      </div>
+      <WasteToolsWizardFooter onBack={onBack} primaryAction={action} />
+    </div>
+  );
+};
+
+export const WasteToolsPreviewStep = ({
+  profile,
+  previewRequired,
+  previewResult,
+  running,
+  canStartImport,
+  onBack,
+  onDownloadErrors,
+  onStartImport,
+}: {
+  readonly profile: ImportCatalogEntry;
+  readonly previewRequired: boolean;
+  readonly previewResult: PreviewWasteLocationTourPickupDateImportResult | null;
+  readonly running: boolean;
+  readonly canStartImport: boolean;
+  readonly onBack: () => void;
+  readonly onDownloadErrors: () => void;
+  readonly onStartImport: () => void;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <div className="space-y-5">
+      {previewRequired && previewResult ? (
+        <WasteToolsPreviewSummary previewResult={previewResult} />
+      ) : (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-border/70 bg-muted/10 p-4">
+            <p className="text-sm font-semibold">{pt('tools.imports.wizard.confirmTitle')}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{profile.description}</p>
+          </div>
+          <WasteToolsImportColumns profile={profile} />
+        </div>
+      )}
+      <WasteToolsWizardFooter
+        onBack={onBack}
+        primaryAction={
+          <>
+            {previewRequired && previewResult && previewResult.errors.length > 0 ? (
+              <Button type="button" variant="outline" onClick={onDownloadErrors}>
+                {pt('tools.actions.downloadErrorFile')}
+              </Button>
+            ) : null}
+            <Button type="button" disabled={running || !canStartImport} onClick={onStartImport}>
+              {running ? pt('tools.actions.starting') : pt('tools.actions.startImport')}
+            </Button>
+          </>
+        }
+      />
+    </div>
+  );
+};
+
+export const WasteToolsResultStep = WasteToolsResultSummary;

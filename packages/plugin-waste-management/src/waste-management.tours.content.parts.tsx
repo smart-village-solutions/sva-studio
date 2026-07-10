@@ -3,7 +3,6 @@ import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioConfirmDialog } from '@sva/studio-ui-react';
 
-import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
 import {
   type WasteToursFilterDate,
   type WasteToursFilterFraction,
@@ -11,48 +10,7 @@ import {
   useWasteToursDraftFiltersState,
 } from './waste-management.tours.filter-state.js';
 
-export type WasteToursContentProps = {
-  readonly assignmentContextLoading: boolean;
-  readonly message: import('./waste-management.page.support.js').StatusMessage | null;
-  readonly tours: readonly WasteTourRecord[];
-  readonly fractions: readonly { readonly id: string; readonly name: string }[];
-  readonly masterDataOverview: WasteManagementMasterDataOverview | null;
-  readonly schedulingOverview: WasteManagementSchedulingOverview | null;
-  readonly onOpenCreateDialog: () => void;
-  readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
-  readonly onOpenCalendar: (tour: WasteTourRecord) => void;
-  readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
-  readonly onDeleteTour: (tour: WasteTourRecord) => Promise<void>;
-  readonly onDeleteTours: (tourIds: readonly string[]) => Promise<void>;
-  readonly canDuplicateTour?: boolean;
-  readonly saving?: boolean;
-  readonly page: number;
-  readonly pageSize: number;
-  readonly query: string;
-  readonly status: WasteToursFilterStatus;
-  readonly tourWasteFractionId: WasteToursFilterFraction;
-  readonly firstDateFrom: WasteToursFilterDate;
-  readonly firstDateTo: WasteToursFilterDate;
-  readonly endDateFrom: WasteToursFilterDate;
-  readonly endDateTo: WasteToursFilterDate;
-  readonly onPageChange: (page: number) => void;
-  readonly onSyncPageChange?: (page: number) => void;
-  readonly onPageSizeChange: (pageSize: number) => void;
-  readonly onQueryChange: (value: string) => void;
-  readonly onStatusChange: (value: WasteToursFilterStatus) => void;
-  readonly onFiltersChange?: (
-    query: string,
-    status: WasteToursFilterStatus,
-    tourWasteFractionId: WasteToursFilterFraction,
-    firstDateFrom: WasteToursFilterDate,
-    firstDateTo: WasteToursFilterDate,
-    endDateFrom: WasteToursFilterDate,
-    endDateTo: WasteToursFilterDate,
-  ) => void;
-};
+export type { WasteToursContentProps } from './waste-management.tours.view-model.js';
 
 type UseWasteToursSelectionStateArgs = {
   readonly tours: readonly WasteTourRecord[];
@@ -75,9 +33,10 @@ const useWasteToursVisibleSelectionState = ({
   const [selectedTourIds, setSelectedTourIds] = useState<readonly string[]>([]);
   const visibleTourIds = useMemo(
     () => tours.slice((page - 1) * pageSize, page * pageSize).map((tour) => tour.id),
-    [page, pageSize, tours],
+    [page, pageSize, tours]
   );
-  const allVisibleSelected = visibleTourIds.length > 0 && visibleTourIds.every((tourId) => selectedTourIds.includes(tourId));
+  const allVisibleSelected =
+    visibleTourIds.length > 0 && visibleTourIds.every((tourId) => selectedTourIds.includes(tourId));
   const someVisibleSelected = visibleTourIds.some((tourId) => selectedTourIds.includes(tourId));
 
   useEffect(() => {
@@ -100,7 +59,11 @@ const useWasteToursVisibleSelectionState = ({
       }),
     toggleSelectedTour: (tourId: string, checked: boolean) =>
       setSelectedTourIds((current) =>
-        checked ? (current.includes(tourId) ? current : [...current, tourId]) : current.filter((value) => value !== tourId),
+        checked
+          ? current.includes(tourId)
+            ? current
+            : [...current, tourId]
+          : current.filter((value) => value !== tourId)
       ),
   };
 };

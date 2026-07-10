@@ -1,0 +1,4 @@
+{
+  "prNumber": 705,
+  "body": "Die Wartbarkeit des Waste-Management-Plugins wurde in drei komplexen UI-Bereichen verbessert.\n\n- Der Import-Wizard verwendet klar getrennte Schritte und eine reine Zustandsableitung.\n- Die Konfiguration der E-Mail-Erinnerungen trennt Normalisierung, Persistenzkoordination und Formularsektionen.\n- Die Touren-UI bündelt fachlich zusammengehörige View-Models und berechnet sichtbare sowie ausgeblendete Auswahlen testbar."
+}

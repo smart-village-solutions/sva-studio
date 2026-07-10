@@ -20,8 +20,10 @@ import {
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import type { LocationTourLinkFormState } from './waste-management.tours.types.js';
 import type { TourAssignmentLocationOption } from './waste-management.tours.locations.js';
+import { createTourAssignmentSelectionSummary } from './waste-management.tours.view-model.js';
 
-const matchesSearch = (value: string, query: string) => value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
+const matchesSearch = (value: string, query: string) =>
+  value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
 
 const renderLocationWorkspaceState = (
   loading: boolean,
@@ -31,11 +33,19 @@ const renderLocationWorkspaceState = (
   toggleSelectedLocation: (locationId: string, checked: boolean) => void
 ) => {
   if (loading) {
-    return <div className="p-4 text-sm text-muted-foreground">{pt('tours.table.loadingAssignments')}</div>;
+    return (
+      <div className="p-4 text-sm text-muted-foreground">
+        {pt('tours.table.loadingAssignments')}
+      </div>
+    );
   }
 
   if (filteredLocations.length === 0) {
-    return <div className="p-4 text-sm text-muted-foreground">{pt('tours.assignments.workspace.noLocations')}</div>;
+    return (
+      <div className="p-4 text-sm text-muted-foreground">
+        {pt('tours.assignments.workspace.noLocations')}
+      </div>
+    );
   }
 
   return (
@@ -43,13 +53,23 @@ const renderLocationWorkspaceState = (
       {filteredLocations.map((location) => {
         const selected = selectedLocationIds.includes(location.id);
         return (
-          <label key={location.id} className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-muted/20">
-            <Checkbox checked={selected} onChange={(event) => toggleSelectedLocation(location.id, event.currentTarget.checked)} />
+          <label
+            key={location.id}
+            className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-muted/20"
+          >
+            <Checkbox
+              checked={selected}
+              onChange={(event) => toggleSelectedLocation(location.id, event.currentTarget.checked)}
+            />
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{location.label}</span>
-                {location.assignedLinkId ? <Badge>{pt('tours.assignments.workspace.assigned')}</Badge> : null}
-                {!location.active ? <Badge variant="outline">{pt('filters.status.inactive')}</Badge> : null}
+                {location.assignedLinkId ? (
+                  <Badge>{pt('tours.assignments.workspace.assigned')}</Badge>
+                ) : null}
+                {!location.active ? (
+                  <Badge variant="outline">{pt('filters.status.inactive')}</Badge>
+                ) : null}
               </div>
               <p className="text-xs text-muted-foreground">
                 {[location.regionName, location.cityName, location.streetName]
@@ -89,7 +109,10 @@ export const TourAssignmentsDialog = ({
   readonly message: StatusMessage | null;
   readonly onOpenChange: (open: boolean) => void;
   readonly onChange: (patch: Partial<LocationTourLinkFormState>) => void;
-  readonly onSubmit: (event: FormEvent<HTMLFormElement>, selectedLocationIds: readonly string[]) => void;
+  readonly onSubmit: (
+    event: FormEvent<HTMLFormElement>,
+    selectedLocationIds: readonly string[]
+  ) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const [searchQuery, setSearchQuery] = useState('');
@@ -118,7 +141,9 @@ export const TourAssignmentsDialog = ({
 
   useEffect(() => {
     const availableLocationIds = new Set(locations.map((location) => location.id));
-    setSelectedLocationIds((current) => current.filter((locationId) => availableLocationIds.has(locationId)));
+    setSelectedLocationIds((current) =>
+      current.filter((locationId) => availableLocationIds.has(locationId))
+    );
   }, [locations]);
 
   const regionOptions = useMemo(
@@ -128,7 +153,7 @@ export const TourAssignmentsDialog = ({
           locations
             .filter((location) => location.regionId && location.regionName)
             .map((location) => [location.regionId, location.regionName] as const)
-        ),
+        )
       ),
     [locations]
   );
@@ -139,7 +164,7 @@ export const TourAssignmentsDialog = ({
           locations
             .filter((location) => !regionFilter || location.regionId === regionFilter)
             .map((location) => [location.cityId, location.cityName] as const)
-        ),
+        )
       ),
     [locations, regionFilter]
   );
@@ -148,9 +173,13 @@ export const TourAssignmentsDialog = ({
       Array.from(
         new Map(
           locations
-            .filter((location) => (!regionFilter || location.regionId === regionFilter) && (!cityFilter || location.cityId === cityFilter))
+            .filter(
+              (location) =>
+                (!regionFilter || location.regionId === regionFilter) &&
+                (!cityFilter || location.cityId === cityFilter)
+            )
             .map((location) => [location.streetId, location.streetName] as const)
-        ),
+        )
       ),
     [cityFilter, locations, regionFilter]
   );
@@ -178,11 +207,11 @@ export const TourAssignmentsDialog = ({
   );
 
   const visibleLocationIds = filteredLocations.map((location) => location.id);
-  const visibleLocationIdSet = new Set(visibleLocationIds);
-  const allVisibleSelected =
-    visibleLocationIds.length > 0 && visibleLocationIds.every((locationId) => selectedLocationIds.includes(locationId));
-  const someVisibleSelected = visibleLocationIds.some((locationId) => selectedLocationIds.includes(locationId));
-  const hiddenSelectedCount = selectedLocationIds.filter((locationId) => !visibleLocationIdSet.has(locationId)).length;
+  const { allVisibleSelected, someVisibleSelected, hiddenSelectedCount, visibleLocationIdSet } =
+    createTourAssignmentSelectionSummary({
+      filteredLocationIds: visibleLocationIds,
+      selectedLocationIds,
+    });
 
   const toggleSelectAllVisible = (checked: boolean) => {
     setSelectedLocationIds((current) => {
@@ -195,11 +224,17 @@ export const TourAssignmentsDialog = ({
 
   const toggleSelectedLocation = (locationId: string, checked: boolean) => {
     setSelectedLocationIds((current) =>
-      checked ? (current.includes(locationId) ? current : [...current, locationId]) : current.filter((value) => value !== locationId)
+      checked
+        ? current.includes(locationId)
+          ? current
+          : [...current, locationId]
+        : current.filter((value) => value !== locationId)
     );
   };
   const title =
-    mode === 'create' ? pt('tours.assignments.dialog.createTitle') : pt('tours.assignments.dialog.editTitle');
+    mode === 'create'
+      ? pt('tours.assignments.dialog.createTitle')
+      : pt('tours.assignments.dialog.editTitle');
   const description = tour
     ? pt('tours.assignments.dialog.description', { value: tour.name })
     : pt('tours.assignments.dialog.descriptionFallback');
@@ -220,12 +255,18 @@ export const TourAssignmentsDialog = ({
           </DialogHeader>
         </div>
 
-        <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => onSubmit(event, selectedLocationIds)}>
+        <form
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={(event) => onSubmit(event, selectedLocationIds)}
+        >
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5 rounded-2xl border border-border/70 bg-card/60">
             <StatusNotice message={message} />
 
             <div className="grid gap-4 md:grid-cols-2">
-              <StudioField id="waste-tour-assignment-start-date" label={pt('tours.assignments.fields.startDate')}>
+              <StudioField
+                id="waste-tour-assignment-start-date"
+                label={pt('tours.assignments.fields.startDate')}
+              >
                 <Input
                   id="waste-tour-assignment-start-date"
                   type="date"
@@ -233,7 +274,10 @@ export const TourAssignmentsDialog = ({
                   onChange={(event) => onChange({ startDate: event.target.value })}
                 />
               </StudioField>
-              <StudioField id="waste-tour-assignment-end-date" label={pt('tours.assignments.fields.endDate')}>
+              <StudioField
+                id="waste-tour-assignment-end-date"
+                label={pt('tours.assignments.fields.endDate')}
+              >
                 <Input
                   id="waste-tour-assignment-end-date"
                   type="date"
@@ -255,7 +299,10 @@ export const TourAssignmentsDialog = ({
                 </StudioField>
               </div>
               <div className="min-w-[180px]">
-                <StudioField id="waste-tour-assignment-region-filter" label={pt('masterData.collectionLocations.fields.regionId')}>
+                <StudioField
+                  id="waste-tour-assignment-region-filter"
+                  label={pt('masterData.collectionLocations.fields.regionId')}
+                >
                   <Select
                     id="waste-tour-assignment-region-filter"
                     value={regionFilter}
@@ -265,7 +312,9 @@ export const TourAssignmentsDialog = ({
                       setStreetFilter('');
                     }}
                   >
-                    <option value="">{pt('masterData.collectionLocations.fields.regionUnset')}</option>
+                    <option value="">
+                      {pt('masterData.collectionLocations.fields.regionUnset')}
+                    </option>
                     {regionOptions.map(([id, name]) => (
                       <option key={id} value={id}>
                         {name}
@@ -275,7 +324,10 @@ export const TourAssignmentsDialog = ({
                 </StudioField>
               </div>
               <div className="min-w-[180px]">
-                <StudioField id="waste-tour-assignment-city-filter" label={pt('masterData.collectionLocations.fields.cityId')}>
+                <StudioField
+                  id="waste-tour-assignment-city-filter"
+                  label={pt('masterData.collectionLocations.fields.cityId')}
+                >
                   <Select
                     id="waste-tour-assignment-city-filter"
                     value={cityFilter}
@@ -284,7 +336,9 @@ export const TourAssignmentsDialog = ({
                       setStreetFilter('');
                     }}
                   >
-                    <option value="">{pt('masterData.collectionLocations.fields.cityUnset')}</option>
+                    <option value="">
+                      {pt('masterData.collectionLocations.fields.cityUnset')}
+                    </option>
                     {cityOptions.map(([id, name]) => (
                       <option key={id} value={id}>
                         {name}
@@ -294,9 +348,18 @@ export const TourAssignmentsDialog = ({
                 </StudioField>
               </div>
               <div className="min-w-[180px]">
-                <StudioField id="waste-tour-assignment-street-filter" label={pt('masterData.collectionLocations.fields.streetId')}>
-                  <Select id="waste-tour-assignment-street-filter" value={streetFilter} onChange={(event) => setStreetFilter(event.target.value)}>
-                    <option value="">{pt('masterData.collectionLocations.fields.streetUnset')}</option>
+                <StudioField
+                  id="waste-tour-assignment-street-filter"
+                  label={pt('masterData.collectionLocations.fields.streetId')}
+                >
+                  <Select
+                    id="waste-tour-assignment-street-filter"
+                    value={streetFilter}
+                    onChange={(event) => setStreetFilter(event.target.value)}
+                  >
+                    <option value="">
+                      {pt('masterData.collectionLocations.fields.streetUnset')}
+                    </option>
                     {streetOptions.map(([id, name]) => (
                       <option key={id} value={id}>
                         {name}
@@ -310,24 +373,42 @@ export const TourAssignmentsDialog = ({
             <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/70 p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium">{pt('tours.assignments.workspace.availableTitle')}</p>
+                  <p className="text-sm font-medium">
+                    {pt('tours.assignments.workspace.availableTitle')}
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline">{pt('tours.assignments.workspace.selectedCount', { value: selectedLocationIds.length })}</Badge>
-                    <Badge variant="outline">{pt('tours.assignments.workspace.visibleCount', { value: filteredLocations.length })}</Badge>
+                    <Badge variant="outline">
+                      {pt('tours.assignments.workspace.selectedCount', {
+                        value: selectedLocationIds.length,
+                      })}
+                    </Badge>
+                    <Badge variant="outline">
+                      {pt('tours.assignments.workspace.visibleCount', {
+                        value: filteredLocations.length,
+                      })}
+                    </Badge>
                     {hiddenSelectedCount > 0 ? (
-                      <Badge variant="outline">{pt('tours.assignments.workspace.hiddenSelectedCount', { value: hiddenSelectedCount })}</Badge>
+                      <Badge variant="outline">
+                        {pt('tours.assignments.workspace.hiddenSelectedCount', {
+                          value: hiddenSelectedCount,
+                        })}
+                      </Badge>
                     ) : null}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox
-                      aria-label={pt('masterData.collectionLocations.bulk.actions.selectAllFiltered')}
+                      aria-label={pt(
+                        'masterData.collectionLocations.bulk.actions.selectAllFiltered'
+                      )}
                       checked={allVisibleSelected}
                       indeterminate={!allVisibleSelected && someVisibleSelected}
                       onChange={(event) => toggleSelectAllVisible(event.currentTarget.checked)}
                     />
-                    <span>{pt('masterData.collectionLocations.bulk.actions.selectAllFiltered')}</span>
+                    <span>
+                      {pt('masterData.collectionLocations.bulk.actions.selectAllFiltered')}
+                    </span>
                   </label>
                   <Button
                     type="button"
@@ -360,7 +441,10 @@ export const TourAssignmentsDialog = ({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {pt('tours.assignments.actions.cancel')}
             </Button>
-            <Button type="submit" disabled={saving || (!selectedLocationIds.length && assignedLocationIds.length === 0)}>
+            <Button
+              type="submit"
+              disabled={saving || (!selectedLocationIds.length && assignedLocationIds.length === 0)}
+            >
               {submitLabel}
             </Button>
           </DialogFooter>

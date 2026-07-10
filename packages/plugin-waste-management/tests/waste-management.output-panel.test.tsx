@@ -4,6 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteOutputPanel } from '../src/waste-management.output-panel.js';
 import { WasteEmailReminderConfigurationSection } from '../src/waste-management.output-email-reminder-card.js';
+import {
+  buildDefaultEmailReminderConfig,
+  ensureTransportSelection,
+  getMailTransportOptions,
+  normalizeEmailReminderConfig,
+} from '../src/waste-management.output-email-reminder-config.js';
 
 const apiMocks = vi.hoisted(() => ({
   getWasteManagementSettings: vi.fn(),
@@ -20,20 +26,27 @@ vi.mock('@sva/studio-ui-react', () => ({
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
   Textarea: (props: React.ComponentProps<'textarea'>) => <textarea {...props} />,
   StudioErrorState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
   StudioField: ({
     id,
     label,
+    description,
     children,
   }: {
     readonly id: string;
     readonly label: string;
+    readonly description?: string;
     readonly children: React.ReactNode;
   }) => (
-    <label htmlFor={id}>
-      <span>{label}</span>
-      {children}
-    </label>
+    <>
+      <label htmlFor={id}>
+        <span>{label}</span>
+        {children}
+      </label>
+      {description ? <span>{description}</span> : null}
+    </>
   ),
   Alert: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   AlertTitle: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
@@ -41,7 +54,9 @@ vi.mock('@sva/studio-ui-react', () => ({
 }));
 
 vi.mock('../src/waste-management.api.js', async () => {
-  const actual = await vi.importActual<typeof import('../src/waste-management.api.js')>('../src/waste-management.api.js');
+  const actual = await vi.importActual<typeof import('../src/waste-management.api.js')>(
+    '../src/waste-management.api.js'
+  );
   return {
     ...actual,
     ...apiMocks,
@@ -337,9 +352,12 @@ describe('WasteOutputPanel', () => {
     fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeLinkLabel'), {
       target: { value: 'Abmelden' },
     });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeSuccessHeadline'), {
-      target: { value: 'Abgemeldet' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('output.emailReminder.fields.unsubscribeSuccessHeadline'),
+      {
+        target: { value: 'Abgemeldet' },
+      }
+    );
     fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeSuccessBody'), {
       target: { value: 'Sie wurden abgemeldet.' },
     });
@@ -430,30 +448,37 @@ describe('WasteOutputPanel', () => {
           serviceLabel: 'Muelli',
           privacyPolicyUrl: 'https://example.org/datenschutz',
           imprintUrl: 'https://example.org/impressum',
-          consentLabel: 'Ich stimme der Verarbeitung meiner Daten zur Einrichtung der E-Mail-Erinnerung zu.',
+          consentLabel:
+            'Ich stimme der Verarbeitung meiner Daten zur Einrichtung der E-Mail-Erinnerung zu.',
           consentVersion: 'v1',
           dataControllerLabel: 'Abfallwirtschaft',
           dataProtectionContactEmail: 'datenschutz@example.org',
           doiSubjectTemplate: 'Bitte bestaetigen Sie Ihre E-Mail-Erinnerung fuer {{locationLabel}}',
           doiPreheader: 'Bestaetigen Sie die Einrichtung Ihres Erinnerungsdienstes.',
-          doiIntroText: 'Bitte bestaetigen Sie die Einrichtung Ihrer E-Mail-Erinnerung fuer {{locationLabel}} ueber den folgenden Link.',
+          doiIntroText:
+            'Bitte bestaetigen Sie die Einrichtung Ihrer E-Mail-Erinnerung fuer {{locationLabel}} ueber den folgenden Link.',
           doiButtonLabel: 'E-Mail-Erinnerung aktivieren',
-          doiFallbackText: 'Falls der Button nicht funktioniert, nutzen Sie bitte den direkten Link.',
+          doiFallbackText:
+            'Falls der Button nicht funktioniert, nutzen Sie bitte den direkten Link.',
           doiExpiryNoticeText: 'Der Aktivierungslink ist zeitlich begrenzt gueltig.',
           doiSuccessHeadline: 'E-Mail-Erinnerung aktiviert',
-          doiSuccessBody: 'Der Dienst ist jetzt aktiv und informiert Sie kuenftig ueber anstehende Entsorgungstermine.',
+          doiSuccessBody:
+            'Der Dienst ist jetzt aktiv und informiert Sie kuenftig ueber anstehende Entsorgungstermine.',
           doiErrorHeadline: 'Aktivierung nicht moeglich',
           doiErrorBody: 'Der Aktivierungslink ist ungueltig oder bereits abgelaufen.',
           reminderSubjectTemplate: 'Abfalltermin fuer {{locationLabel}} am {{pickupDate}}',
-          reminderIntroTemplate: 'Nicht vergessen: {{fractionName}} wird am {{pickupDate}} abgeholt.',
+          reminderIntroTemplate:
+            'Nicht vergessen: {{fractionName}} wird am {{pickupDate}} abgeholt.',
           reminderListIntroTemplate: 'Folgende Abfallart steht als naechstes an:',
           reminderOutroText: 'Sie koennen diese Erinnerung jederzeit wieder abbestellen.',
           unsubscribeLinkLabel: 'E-Mail-Erinnerung abbestellen',
-          reminderReasonText: 'Sie erhalten diese Nachricht, weil Sie fuer {{locationLabel}} eine E-Mail-Erinnerung eingerichtet haben.',
+          reminderReasonText:
+            'Sie erhalten diese Nachricht, weil Sie fuer {{locationLabel}} eine E-Mail-Erinnerung eingerichtet haben.',
           unsubscribeSuccessHeadline: 'E-Mail-Erinnerung deaktiviert',
           unsubscribeSuccessBody: 'Der Dienst wurde fuer diese Adresse erfolgreich deaktiviert.',
           unsubscribeAlreadyDoneHeadline: 'E-Mail-Erinnerung bereits deaktiviert',
-          unsubscribeAlreadyDoneBody: 'Fuer diese Adresse ist bereits keine aktive Erinnerung mehr hinterlegt.',
+          unsubscribeAlreadyDoneBody:
+            'Fuer diese Adresse ist bereits keine aktive Erinnerung mehr hinterlegt.',
           unsubscribeErrorHeadline: 'Abmeldung nicht moeglich',
           unsubscribeErrorBody: 'Der Abmeldelink ist ungueltig oder bereits abgelaufen.',
           maxSubscriptionsPerEmailAndLocation: 5,
@@ -474,9 +499,12 @@ describe('WasteOutputPanel', () => {
     render(<WasteOutputPanel />);
 
     expect(await screen.findByText('output.emailReminder.messages.noMailTransport')).toBeTruthy();
-    expect(String((screen.getByLabelText('output.emailReminder.fields.publicBaseUrl') as HTMLInputElement).value)).toContain(
-      'https://'
-    );
+    expect(
+      String(
+        (screen.getByLabelText('output.emailReminder.fields.publicBaseUrl') as HTMLInputElement)
+          .value
+      )
+    ).toContain('https://');
     fireEvent.click(screen.getByRole('button', { name: 'output.pdf.actions.save' }));
 
     await waitFor(() => {
@@ -485,7 +513,9 @@ describe('WasteOutputPanel', () => {
   });
 
   it('maps forbidden and generic save failures for pdf and email reminder settings', async () => {
-    apiMocks.updateWasteManagementSettings.mockRejectedValueOnce(new Error('forbidden')).mockRejectedValueOnce(new Error('boom'));
+    apiMocks.updateWasteManagementSettings
+      .mockRejectedValueOnce(new Error('forbidden'))
+      .mockRejectedValueOnce(new Error('boom'));
 
     render(<WasteOutputPanel />);
 
@@ -586,44 +616,131 @@ describe('WasteOutputPanel', () => {
 
     fireEvent.click(screen.getByLabelText('output.emailReminder.fields.enabled'));
     fireEvent.click(screen.getByLabelText('output.emailReminder.fields.publicSignupEnabled'));
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.transportId'), { target: { value: 'mail-transport-2' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.publicBaseUrl'), { target: { value: 'https://public.example.org' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.fromName'), { target: { value: 'Landkreis' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.fromEmail'), { target: { value: 'noreply@example.org' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.replyToEmail'), { target: { value: 'service@example.org' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.serviceLabel'), { target: { value: 'Service' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.privacyPolicyUrl'), { target: { value: 'https://example.org/ds' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.imprintUrl'), { target: { value: 'https://example.org/imprint-new' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.consentVersion'), { target: { value: 'v2' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.dataControllerLabel'), { target: { value: 'Controller' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.dataProtectionContactEmail'), { target: { value: 'privacy@example.org' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.consentLabel'), { target: { value: 'Neue Einwilligung' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiSubjectTemplate'), { target: { value: 'DOI Betreff' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiButtonLabel'), { target: { value: 'Bestaetigen' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiPreheader'), { target: { value: 'DOI Preheader' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiFallbackText'), { target: { value: 'DOI Fallback' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiIntroText'), { target: { value: 'DOI Intro' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiExpiryNoticeText'), { target: { value: '24h' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.reminderSubjectTemplate'), { target: { value: 'Reminder Betreff' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeLinkLabel'), { target: { value: 'Jetzt abmelden' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.reminderIntroTemplate'), { target: { value: 'Reminder Intro' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.reminderListIntroTemplate'), { target: { value: 'Reminder Liste' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.reminderOutroText'), { target: { value: 'Reminder Outro' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.reminderReasonText'), { target: { value: 'Reminder Grund' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeSuccessHeadline'), { target: { value: 'Success Headline' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeAlreadyDoneHeadline'), { target: { value: 'Already Headline' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeErrorHeadline'), { target: { value: 'Error Headline' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeSuccessBody'), { target: { value: 'Success Body' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeAlreadyDoneBody'), { target: { value: 'Already Body' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeErrorBody'), { target: { value: 'Error Body' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiTokenTtlHours'), { target: { value: '12' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.pendingSubscriptionTtlHours'), { target: { value: '36' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.materializationLookaheadDays'), { target: { value: '5' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.maxSubscriptionsPerEmailAndLocation'), { target: { value: '3' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.signupRateLimitPerIpPerHour'), { target: { value: '8' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.signupRateLimitPerEmailPerHour'), { target: { value: '4' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeTokenTtlDays'), { target: { value: '90' } });
-    fireEvent.submit(screen.getByRole('button', { name: 'output.emailReminder.actions.save' }).closest('form')!);
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.transportId'), {
+      target: { value: 'mail-transport-2' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.publicBaseUrl'), {
+      target: { value: 'https://public.example.org' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.fromName'), {
+      target: { value: 'Landkreis' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.fromEmail'), {
+      target: { value: 'noreply@example.org' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.replyToEmail'), {
+      target: { value: 'service@example.org' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.serviceLabel'), {
+      target: { value: 'Service' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.privacyPolicyUrl'), {
+      target: { value: 'https://example.org/ds' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.imprintUrl'), {
+      target: { value: 'https://example.org/imprint-new' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.consentVersion'), {
+      target: { value: 'v2' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.dataControllerLabel'), {
+      target: { value: 'Controller' },
+    });
+    fireEvent.change(
+      screen.getByLabelText('output.emailReminder.fields.dataProtectionContactEmail'),
+      { target: { value: 'privacy@example.org' } }
+    );
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.consentLabel'), {
+      target: { value: 'Neue Einwilligung' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiSubjectTemplate'), {
+      target: { value: 'DOI Betreff' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiButtonLabel'), {
+      target: { value: 'Bestaetigen' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiPreheader'), {
+      target: { value: 'DOI Preheader' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiFallbackText'), {
+      target: { value: 'DOI Fallback' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiIntroText'), {
+      target: { value: 'DOI Intro' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiExpiryNoticeText'), {
+      target: { value: '24h' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.reminderSubjectTemplate'), {
+      target: { value: 'Reminder Betreff' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeLinkLabel'), {
+      target: { value: 'Jetzt abmelden' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.reminderIntroTemplate'), {
+      target: { value: 'Reminder Intro' },
+    });
+    fireEvent.change(
+      screen.getByLabelText('output.emailReminder.fields.reminderListIntroTemplate'),
+      { target: { value: 'Reminder Liste' } }
+    );
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.reminderOutroText'), {
+      target: { value: 'Reminder Outro' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.reminderReasonText'), {
+      target: { value: 'Reminder Grund' },
+    });
+    fireEvent.change(
+      screen.getByLabelText('output.emailReminder.fields.unsubscribeSuccessHeadline'),
+      { target: { value: 'Success Headline' } }
+    );
+    fireEvent.change(
+      screen.getByLabelText('output.emailReminder.fields.unsubscribeAlreadyDoneHeadline'),
+      { target: { value: 'Already Headline' } }
+    );
+    fireEvent.change(
+      screen.getByLabelText('output.emailReminder.fields.unsubscribeErrorHeadline'),
+      { target: { value: 'Error Headline' } }
+    );
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeSuccessBody'), {
+      target: { value: 'Success Body' },
+    });
+    fireEvent.change(
+      screen.getByLabelText('output.emailReminder.fields.unsubscribeAlreadyDoneBody'),
+      { target: { value: 'Already Body' } }
+    );
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeErrorBody'), {
+      target: { value: 'Error Body' },
+    });
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiTokenTtlHours'), {
+      target: { value: '12' },
+    });
+    fireEvent.change(
+      screen.getByLabelText('output.emailReminder.fields.pendingSubscriptionTtlHours'),
+      { target: { value: '36' } }
+    );
+    fireEvent.change(
+      screen.getByLabelText('output.emailReminder.fields.materializationLookaheadDays'),
+      { target: { value: '5' } }
+    );
+    fireEvent.change(
+      screen.getByLabelText('output.emailReminder.fields.maxSubscriptionsPerEmailAndLocation'),
+      { target: { value: '3' } }
+    );
+    fireEvent.change(
+      screen.getByLabelText('output.emailReminder.fields.signupRateLimitPerIpPerHour'),
+      { target: { value: '8' } }
+    );
+    fireEvent.change(
+      screen.getByLabelText('output.emailReminder.fields.signupRateLimitPerEmailPerHour'),
+      { target: { value: '4' } }
+    );
+    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeTokenTtlDays'), {
+      target: { value: '90' },
+    });
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'output.emailReminder.actions.save' }).closest('form')!
+    );
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(screen.getByText('output.emailReminder.transportStatus.disabled')).toBeTruthy();
@@ -763,8 +880,37 @@ describe('WasteOutputPanel', () => {
     expect(screen.queryByLabelText('output.emailReminder.fields.unsubscribePath')).toBeNull();
     expect(screen.queryByLabelText('output.emailReminder.fields.signupSuccessPath')).toBeNull();
     expect(screen.queryByLabelText('output.emailReminder.fields.activationSuccessPath')).toBeNull();
-    expect(screen.queryByLabelText('output.emailReminder.fields.unsubscribeSuccessPath')).toBeNull();
+    expect(
+      screen.queryByLabelText('output.emailReminder.fields.unsubscribeSuccessPath')
+    ).toBeNull();
     expect(screen.queryByLabelText('output.emailReminder.fields.invalidTokenPath')).toBeNull();
+    expect(screen.getByText('output.emailReminder.fieldHints.enabled')).toBeTruthy();
+    expect(screen.getByText('output.emailReminder.fieldHints.publicSignupEnabled')).toBeTruthy();
+    expect(screen.getByText('output.emailReminder.fieldHints.transportId')).toBeTruthy();
+  });
+
+  it('defaults the unsubscribe token TTL to 30 days when older settings omit it', () => {
+    const legacyValue = {
+      ...buildDefaultEmailReminderConfig({ transportOptions: [] }),
+      unsubscribeTokenTtlDays: undefined,
+    };
+
+    render(
+      <WasteEmailReminderConfigurationSection
+        hasMailTransportOptions={false}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        running={false}
+        transportOptions={[]}
+        translate={(key) => key}
+        value={legacyValue}
+      />
+    );
+
+    expect(
+      (screen.getByLabelText('output.emailReminder.fields.unsubscribeTokenTtlDays') as HTMLInputElement)
+        .value
+    ).toBe('30');
   });
 
   it('still allows saving a disabled reminder configuration when no mail transport remains', () => {
@@ -833,7 +979,9 @@ describe('WasteOutputPanel', () => {
 
     render(<StatefulSection />);
 
-    const saveButton = screen.getByRole('button', { name: 'output.emailReminder.actions.save' }) as HTMLButtonElement;
+    const saveButton = screen.getByRole('button', {
+      name: 'output.emailReminder.actions.save',
+    }) as HTMLButtonElement;
     expect(saveButton.disabled).toBe(true);
 
     fireEvent.click(screen.getByLabelText('output.emailReminder.fields.enabled'));
@@ -841,5 +989,72 @@ describe('WasteOutputPanel', () => {
     expect(saveButton.disabled).toBe(false);
     fireEvent.submit(saveButton.closest('form')!);
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('email reminder configuration helpers', () => {
+  const interfaces = [
+    {
+      id: 'database-1',
+      name: 'Database',
+      typeKey: 'supabase',
+      enabled: true,
+      visibleStatus: 'ok' as const,
+      isSelected: true,
+    },
+    {
+      id: 'mail-1',
+      name: 'Primary mail',
+      typeKey: 'mail_transport',
+      enabled: true,
+      visibleStatus: 'ok' as const,
+      isSelected: false,
+    },
+  ];
+
+  it('filters transports and builds deterministic defaults', () => {
+    const transports = getMailTransportOptions(interfaces);
+    const config = buildDefaultEmailReminderConfig({
+      calendarWebUrl: 'https://calendar.example',
+      transportOptions: transports,
+    });
+
+    expect(transports).toEqual([interfaces[1]]);
+    expect(config).toMatchObject({
+      enabled: false,
+      transportId: 'mail-1',
+      publicBaseUrl: 'https://calendar.example',
+      invalidTokenPath: '/email-reminders/token-invalid',
+    });
+  });
+
+  it('falls back to the first transport and normalizes fixed paths', () => {
+    const transports = getMailTransportOptions(interfaces);
+    const config = buildDefaultEmailReminderConfig({ transportOptions: [] });
+    const withFallback = ensureTransportSelection(config, transports);
+    const normalized = normalizeEmailReminderConfig({
+      config: { ...withFallback, invalidTokenPath: '/editable-but-fixed' },
+      transportOptions: transports,
+    });
+
+    expect(withFallback.transportId).toBe('mail-1');
+    expect(normalized).toMatchObject({
+      transportId: 'mail-1',
+      invalidTokenPath: '/email-reminders/token-invalid',
+      doiConfirmPath: '/email-reminders/confirm',
+    });
+  });
+
+  it('creates normalized defaults when no persisted config exists', () => {
+    expect(
+      normalizeEmailReminderConfig({
+        calendarWebUrl: 'https://calendar.example',
+        transportOptions: [],
+      })
+    ).toMatchObject({
+      transportId: '',
+      publicBaseUrl: 'https://calendar.example',
+      unsubscribePath: '/email-reminders/unsubscribe',
+    });
   });
 });

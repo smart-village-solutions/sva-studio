@@ -1,59 +1,43 @@
 import type { StudioJobResponse, WasteManagementImportSourceFormat } from '@sva/plugin-sdk';
 import { usePluginTranslation, wasteManagementOperationsContract } from '@sva/plugin-sdk';
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Button } from '@sva/studio-ui-react';
 
-import type { PreviewWasteLocationTourPickupDateImportResult, StartWasteManagementImportInput } from './waste-management.api.js';
-import { downloadImportPreviewErrors, downloadImportTemplate, readFileAsDataUrl } from './waste-management.page.support.js';
+import type {
+  PreviewWasteLocationTourPickupDateImportResult,
+  StartWasteManagementImportInput,
+} from './waste-management.api.js';
+import {
+  downloadImportPreviewErrors,
+  downloadImportTemplate,
+  readFileAsDataUrl,
+} from './waste-management.page.support.js';
 import {
   createImportFileChangeHandler,
   isPreviewRequiredImportProfile,
   resolveSelectedImportProfile,
-  WasteToolsImportColumns,
-  WasteToolsImportProfileChooser,
-  WasteToolsImportRuleBox,
-  WasteToolsPreviewSummary,
-  WasteToolsResultSummary,
-  WasteToolsUploadFields,
-  WasteToolsWizardFooter,
+  WasteToolsPreviewStep,
+  WasteToolsProfileStep,
+  WasteToolsResultStep,
+  WasteToolsUploadStep,
+  WasteToolsValidationStep,
   WasteToolsWizardLayout,
-  type WasteToolsWizardStepId,
 } from './waste-management.tools.import-section.parts.js';
+import {
+  getReachableStep,
+  transitionToReachableStep,
+  type WasteToolsWizardStepId,
+} from './waste-management.tools.import-wizard-state.js';
 
-type ImportCatalogEntry = ReturnType<typeof import('./waste-management.api.js').getWasteManagementImportCatalog>[number];
-
-const getReachableStep = ({
-  selectedImportProfile,
-  importBlobRef,
-  previewReady,
-  hasImportResult,
-}: {
-  readonly selectedImportProfile: ImportCatalogEntry | null;
-  readonly importBlobRef: string;
-  readonly previewReady: boolean;
-  readonly hasImportResult: boolean;
-}): WasteToolsWizardStepId => {
-  if (hasImportResult) {
-    return 'result';
-  }
-  if (isPreviewRequiredImportProfile(selectedImportProfile) && previewReady) {
-    return 'preview';
-  }
-  if (!isPreviewRequiredImportProfile(selectedImportProfile) && importBlobRef.startsWith('data:')) {
-    return 'preview';
-  }
-  if (importBlobRef.startsWith('data:')) {
-    return 'validation';
-  }
-  if (selectedImportProfile) {
-    return 'upload';
-  }
-  return 'profile';
-};
-
-const getStepTitleKey = (step: WasteToolsWizardStepId) => `tools.imports.wizard.steps.${step}.title`;
-const getStepDescriptionKey = (step: WasteToolsWizardStepId) => `tools.imports.wizard.steps.${step}.description`;
-const isImportResultJob = (job: StudioJobResponse['data'] | null): job is StudioJobResponse['data'] =>
+type ImportCatalogEntry = ReturnType<
+  typeof import('./waste-management.api.js').getWasteManagementImportCatalog
+>[number];
+const getStepTitleKey = (step: WasteToolsWizardStepId) =>
+  `tools.imports.wizard.steps.${step}.title`;
+const getStepDescriptionKey = (step: WasteToolsWizardStepId) =>
+  `tools.imports.wizard.steps.${step}.description`;
+const isImportResultJob = (
+  job: StudioJobResponse['data'] | null
+): job is StudioJobResponse['data'] =>
   job?.jobTypeId === wasteManagementOperationsContract.jobTypeIds.importData;
 
 export const WasteToolsImportSection = ({
@@ -84,12 +68,16 @@ export const WasteToolsImportSection = ({
   readonly previewResult: PreviewWasteLocationTourPickupDateImportResult | null;
   readonly previewReady: boolean;
   readonly running: boolean;
-  readonly lastJob: StudioJobResponse['data'] | null;
-  readonly onImportProfileIdChange: (value: StartWasteManagementImportInput['importProfileId']) => void;
+  readonly lastJob?: StudioJobResponse['data'] | null;
+  readonly onImportProfileIdChange: (
+    value: StartWasteManagementImportInput['importProfileId']
+  ) => void;
   readonly onImportSourceFormatChange: (value: WasteManagementImportSourceFormat) => void;
   readonly onImportBlobRefChange: (value: string) => void;
   readonly onImportDryRunChange: (value: boolean) => void;
-  readonly onDelimiterOverrideChange: (value: StartWasteManagementImportInput['delimiterOverride']) => void;
+  readonly onDelimiterOverrideChange: (
+    value: StartWasteManagementImportInput['delimiterOverride']
+  ) => void;
   readonly onRunPreview: () => Promise<PreviewWasteLocationTourPickupDateImportResult | null>;
   readonly onStartImport: () => Promise<StudioJobResponse['data'] | null>;
 }) => {
@@ -97,50 +85,44 @@ export const WasteToolsImportSection = ({
   const fileInputId = useId();
   const [wizardStep, setWizardStep] = useState<WasteToolsWizardStepId>('profile');
   const [importResultJob, setImportResultJob] = useState<StudioJobResponse['data'] | null>(
-    isImportResultJob(lastJob) ? lastJob : null
+    isImportResultJob(lastJob ?? null) ? (lastJob ?? null) : null
   );
   const selectedImportProfile = resolveSelectedImportProfile(importCatalog, importProfileId);
   const previewRequired = isPreviewRequiredImportProfile(selectedImportProfile);
   const reachableStep = getReachableStep({
-    selectedImportProfile,
-    importBlobRef,
+    hasSelectedProfile: selectedImportProfile !== null,
+    hasReadyFile: importBlobRef.startsWith('data:'),
+    previewRequired,
     previewReady,
     hasImportResult: Boolean(importResultJob?.id),
   });
   const canContinueFromUpload = importBlobRef.startsWith('data:');
   const previewHasBlockingErrors = previewRequired && (previewResult?.errors.length ?? 0) > 0;
   const canStartImport =
-    importBlobRef.startsWith('data:') && (!previewRequired || (previewReady && !previewHasBlockingErrors));
+    canContinueFromUpload && (!previewRequired || (previewReady && !previewHasBlockingErrors));
 
   useEffect(() => {
-    if (previewReady) {
-      setWizardStep('preview');
-    }
+    if (previewReady) setWizardStep('preview');
   }, [previewReady]);
-
   useEffect(() => {
-    if (isImportResultJob(lastJob)) {
-      setImportResultJob(lastJob);
-    }
+    if (isImportResultJob(lastJob ?? null)) setImportResultJob(lastJob ?? null);
   }, [lastJob]);
-
-  const handleProfileSelection = (nextProfileId: StartWasteManagementImportInput['importProfileId']) => {
-    onImportProfileIdChange(nextProfileId);
+  const goTo = (step: WasteToolsWizardStepId) =>
+    setWizardStep((current) => transitionToReachableStep(current, step, reachableStep));
+  const handleProfileSelection = (value: StartWasteManagementImportInput['importProfileId']) => {
+    onImportProfileIdChange(value);
     setWizardStep('upload');
   };
-
-  const handleSourceFormatChange = (nextSourceFormat: WasteManagementImportSourceFormat) => {
-    onImportSourceFormatChange(nextSourceFormat);
+  const handleSourceFormatChange = (value: WasteManagementImportSourceFormat) => {
+    onImportSourceFormatChange(value);
     setWizardStep('upload');
   };
-
-  const handleDelimiterOverrideChange = (value: StartWasteManagementImportInput['delimiterOverride']) => {
+  const handleDelimiterOverrideChange = (
+    value: StartWasteManagementImportInput['delimiterOverride']
+  ) => {
     onDelimiterOverrideChange(value);
-    if (wizardStep === 'preview' || wizardStep === 'result') {
-      setWizardStep('validation');
-    }
+    if (wizardStep === 'preview' || wizardStep === 'result') setWizardStep('validation');
   };
-
   const handleImportFileChange = useMemo(
     () =>
       createImportFileChangeHandler({
@@ -150,14 +132,9 @@ export const WasteToolsImportSection = ({
       }),
     [onImportBlobRefChange]
   );
-
   const handleRunPreview = async () => {
-    const preview = await onRunPreview();
-    if (preview) {
-      setWizardStep('preview');
-    }
+    if (await onRunPreview()) setWizardStep('preview');
   };
-
   const handleStartImport = async () => {
     const job = await onStartImport();
     if (isImportResultJob(job)) {
@@ -165,7 +142,6 @@ export const WasteToolsImportSection = ({
       setWizardStep('result');
     }
   };
-
   const handleStartNewImport = () => {
     setImportResultJob(null);
     onImportBlobRefChange('');
@@ -173,133 +149,74 @@ export const WasteToolsImportSection = ({
     setWizardStep('profile');
   };
 
-  const renderStepContent = () => {
-    if (!selectedImportProfile) {
-      return null;
-    }
-
+  const renderStep = () => {
+    if (!selectedImportProfile) return null;
     switch (wizardStep) {
       case 'profile':
         return (
-          <div className="space-y-5">
-            <WasteToolsImportProfileChooser
-              importCatalog={importCatalog}
-              selectedProfileId={selectedImportProfile.profileId}
-              onSelect={handleProfileSelection}
-            />
-            <WasteToolsWizardFooter
-              primaryAction={
-                <Button type="button" onClick={() => setWizardStep('upload')}>
-                  {pt('tools.imports.wizard.actions.continue')}
-                </Button>
-              }
-            />
-          </div>
+          <WasteToolsProfileStep
+            importCatalog={importCatalog}
+            selectedProfileId={selectedImportProfile.profileId}
+            onSelect={handleProfileSelection}
+            onContinue={() => setWizardStep('upload')}
+          />
         );
       case 'upload':
         return (
-          <div className="space-y-5">
-            <WasteToolsUploadFields
-              selectedImportProfile={selectedImportProfile}
-              importSourceFormat={importSourceFormat}
-              fileInputId={fileInputId}
-              importBlobRef={importBlobRef}
-              importDryRun={importDryRun}
-              delimiterOverride={delimiterOverride}
-              onImportSourceFormatChange={handleSourceFormatChange}
-              onImportDryRunChange={onImportDryRunChange}
-              onDelimiterOverrideChange={handleDelimiterOverrideChange}
-              onImportFileChange={handleImportFileChange}
-            />
-            <WasteToolsImportColumns profile={selectedImportProfile} />
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void downloadImportTemplate(selectedImportProfile, importSourceFormat)}
-              >
-                {pt('tools.actions.downloadTemplate')}
-              </Button>
-            </div>
-            <WasteToolsWizardFooter
-              onBack={() => setWizardStep('profile')}
-              primaryAction={
-                <Button type="button" disabled={!canContinueFromUpload} onClick={() => setWizardStep('validation')}>
-                  {pt('tools.imports.wizard.actions.continue')}
-                </Button>
-              }
-            />
-          </div>
+          <WasteToolsUploadStep
+            profile={selectedImportProfile}
+            importSourceFormat={importSourceFormat}
+            fileInputId={fileInputId}
+            importBlobRef={importBlobRef}
+            importDryRun={importDryRun}
+            delimiterOverride={delimiterOverride}
+            canContinue={canContinueFromUpload}
+            onImportSourceFormatChange={handleSourceFormatChange}
+            onImportDryRunChange={onImportDryRunChange}
+            onDelimiterOverrideChange={handleDelimiterOverrideChange}
+            onImportFileChange={handleImportFileChange}
+            onDownloadTemplate={() =>
+              void downloadImportTemplate(selectedImportProfile, importSourceFormat)
+            }
+            onBack={() => setWizardStep('profile')}
+            onContinue={() => setWizardStep('validation')}
+          />
         );
       case 'validation':
         return (
-          <div className="space-y-5">
-            {previewRequired ? <WasteToolsImportRuleBox /> : null}
-            <div className="rounded-xl border border-border/70 bg-muted/10 p-4">
-              <p className="text-sm font-medium text-foreground">{selectedImportProfile.displayName}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{selectedImportProfile.description}</p>
-            </div>
-            <WasteToolsWizardFooter
-              onBack={() => setWizardStep('upload')}
-              primaryAction={
-                previewRequired ? (
-                  <Button type="button" variant="outline" disabled={running || !canContinueFromUpload} onClick={() => void handleRunPreview()}>
-                    {pt('tools.actions.previewImport')}
-                  </Button>
-                ) : (
-                  <Button type="button" disabled={!canContinueFromUpload} onClick={() => setWizardStep('preview')}>
-                    {pt('tools.imports.wizard.actions.continueToConfirmation')}
-                  </Button>
-                )
-              }
-            />
-          </div>
+          <WasteToolsValidationStep
+            profile={selectedImportProfile}
+            previewRequired={previewRequired}
+            running={running}
+            canContinue={canContinueFromUpload}
+            onBack={() => setWizardStep('upload')}
+            onPreview={() => void handleRunPreview()}
+            onContinue={() => setWizardStep('preview')}
+          />
         );
       case 'preview':
         return (
-          <div className="space-y-5">
-            {previewRequired && previewResult ? (
-              <WasteToolsPreviewSummary previewResult={previewResult} />
-            ) : (
-              <div className="space-y-4">
-                <div className="rounded-xl border border-border/70 bg-muted/10 p-4">
-                  <p className="text-sm font-semibold">{pt('tools.imports.wizard.confirmTitle')}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{selectedImportProfile.description}</p>
-                </div>
-                <WasteToolsImportColumns profile={selectedImportProfile} />
-              </div>
-            )}
-            <WasteToolsWizardFooter
-              onBack={() => setWizardStep('validation')}
-              primaryAction={
-                <>
-                  {previewRequired && previewResult && previewResult.errors.length > 0 ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => downloadImportPreviewErrors(previewResult)}
-                    >
-                      {pt('tools.actions.downloadErrorFile')}
-                    </Button>
-                  ) : null}
-                  <Button type="button" disabled={running || !canStartImport} onClick={() => void handleStartImport()}>
-                    {running ? pt('tools.actions.starting') : pt('tools.actions.startImport')}
-                  </Button>
-                </>
-              }
-            />
-          </div>
+          <WasteToolsPreviewStep
+            profile={selectedImportProfile}
+            previewRequired={previewRequired}
+            previewResult={previewResult}
+            running={running}
+            canStartImport={canStartImport}
+            onBack={() => setWizardStep('validation')}
+            onDownloadErrors={() => {
+              if (previewResult) downloadImportPreviewErrors(previewResult);
+            }}
+            onStartImport={() => void handleStartImport()}
+          />
         );
       case 'result':
         return (
-          <WasteToolsResultSummary
+          <WasteToolsResultStep
             jobId={importResultJob?.id}
             status={importResultJob?.status}
             onStartNewImport={handleStartNewImport}
           />
         );
-      default:
-        return null;
     }
   };
 
@@ -312,11 +229,11 @@ export const WasteToolsImportSection = ({
       <WasteToolsWizardLayout
         activeStep={wizardStep}
         reachableStep={reachableStep}
-        onStepChange={setWizardStep}
+        onStepChange={goTo}
         title={pt(getStepTitleKey(wizardStep))}
         description={pt(getStepDescriptionKey(wizardStep))}
       >
-        {renderStepContent()}
+        {renderStep()}
       </WasteToolsWizardLayout>
     </div>
   );

@@ -12,6 +12,10 @@ import {
   resolveSelectedImportProfile,
   WasteToolsWizardStepList,
 } from '../src/waste-management.tools.import-section.parts.js';
+import {
+  getReachableStep,
+  transitionToReachableStep,
+} from '../src/waste-management.tools.import-wizard-state.js';
 
 const { downloadImportTemplateMock, downloadImportPreviewErrorsMock } = vi.hoisted(() => ({
   downloadImportTemplateMock: vi.fn(),
@@ -57,7 +61,10 @@ const importCatalog = [
     profileId: 'waste-management.geografie-abholorte',
     displayName: 'Geografie und Abholorte',
     description: 'Importiert Geografie.',
-    sourceFormats: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    sourceFormats: [
+      'text/csv',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ],
     requiredColumns: [{ key: 'region_id', required: true, example: 'region-1' }],
     optionalColumns: [],
   },
@@ -95,14 +102,14 @@ const renderImportSection = () => {
     const [importProfileId, setImportProfileId] = React.useState<
       'waste-management.ortsbezogene-tourtermine' | 'waste-management.geografie-abholorte'
     >('waste-management.ortsbezogene-tourtermine');
-    const [importSourceFormat, setImportSourceFormat] = React.useState<'text/csv' | 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'>(
-      'text/csv'
-    );
+    const [importSourceFormat, setImportSourceFormat] = React.useState<
+      'text/csv' | 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    >('text/csv');
     const [importBlobRef, setImportBlobRef] = React.useState('');
     const [importDryRun, setImportDryRun] = React.useState(false);
-    const [delimiterOverride, setDelimiterOverride] = React.useState<undefined | ';' | ',' | '\t' | '|'>(
-      undefined
-    );
+    const [delimiterOverride, setDelimiterOverride] = React.useState<
+      undefined | ';' | ',' | '\t' | '|'
+    >(undefined);
     const [previewReady, setPreviewReady] = React.useState(false);
 
     return (
@@ -117,7 +124,9 @@ const renderImportSection = () => {
         previewReady={previewReady}
         running={false}
         onImportProfileIdChange={(value) => setImportProfileId(value as typeof importProfileId)}
-        onImportSourceFormatChange={(value) => setImportSourceFormat(value as typeof importSourceFormat)}
+        onImportSourceFormatChange={(value) =>
+          setImportSourceFormat(value as typeof importSourceFormat)
+        }
         onImportBlobRefChange={setImportBlobRef}
         onImportDryRunChange={setImportDryRun}
         onDelimiterOverrideChange={setDelimiterOverride}
@@ -144,7 +153,9 @@ describe('WasteToolsImportSection', () => {
   it('guides the tour-date import through a wizard and blocks the final import before preview', async () => {
     const { callbacks } = renderImportSection();
 
-    expect(screen.getAllByText('tools.imports.wizard.steps.profile.title').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('tools.imports.wizard.steps.profile.title').length).toBeGreaterThan(
+      0
+    );
     expect(screen.queryByRole('button', { name: 'tools.actions.startImport' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'tools.imports.wizard.actions.continue' }));
@@ -161,7 +172,9 @@ describe('WasteToolsImportSection', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText('tools.imports.wizard.steps.validation.title').length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText('tools.imports.wizard.steps.validation.title').length
+      ).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'tools.actions.previewImport' }));
@@ -178,7 +191,9 @@ describe('WasteToolsImportSection', () => {
     renderImportSection();
 
     fireEvent.click(screen.getByRole('button', { name: 'tools.imports.wizard.actions.continue' }));
-    const dryRunCheckbox = screen.getByRole('checkbox', { name: 'tools.imports.dryRunLabel' }) as HTMLInputElement;
+    const dryRunCheckbox = screen.getByRole('checkbox', {
+      name: 'tools.imports.dryRunLabel',
+    }) as HTMLInputElement;
     expect(dryRunCheckbox.checked).toBe(false);
 
     fireEvent.click(dryRunCheckbox);
@@ -217,9 +232,9 @@ describe('WasteToolsImportSection', () => {
       const [importProfileId, setImportProfileId] = React.useState<
         'waste-management.ortsbezogene-tourtermine' | 'waste-management.geografie-abholorte'
       >('waste-management.geografie-abholorte');
-      const [importSourceFormat, setImportSourceFormat] = React.useState<'text/csv' | 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'>(
-        'text/csv'
-      );
+      const [importSourceFormat, setImportSourceFormat] = React.useState<
+        'text/csv' | 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      >('text/csv');
       const [importBlobRef, setImportBlobRef] = React.useState('');
       const [lastJob, setLastJob] = React.useState<{ id: string; status: string } | null>(null);
 
@@ -236,14 +251,20 @@ describe('WasteToolsImportSection', () => {
           running={false}
           lastJob={lastJob as never}
           onImportProfileIdChange={(value) => setImportProfileId(value as typeof importProfileId)}
-          onImportSourceFormatChange={(value) => setImportSourceFormat(value as typeof importSourceFormat)}
+          onImportSourceFormatChange={(value) =>
+            setImportSourceFormat(value as typeof importSourceFormat)
+          }
           onImportBlobRefChange={setImportBlobRef}
           onImportDryRunChange={() => undefined}
           onDelimiterOverrideChange={() => undefined}
           onRunPreview={async () => null}
           onStartImport={async () => {
             callbacks.onStartImport();
-            const job = { id: 'job-77', status: 'queued', jobTypeId: 'waste-management.import-data' };
+            const job = {
+              id: 'job-77',
+              status: 'queued',
+              jobTypeId: 'waste-management.import-data',
+            };
             setLastJob(job);
             return job as never;
           }}
@@ -265,15 +286,23 @@ describe('WasteToolsImportSection', () => {
 
     fireEvent.change(fileInput, {
       target: {
-        files: [new File(['xlsx'], 'orte.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })],
+        files: [
+          new File(['xlsx'], 'orte.xlsx', {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          }),
+        ],
       },
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText('tools.imports.wizard.steps.validation.title').length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText('tools.imports.wizard.steps.validation.title').length
+      ).toBeGreaterThan(0);
     });
 
-    const confirmationButtons = screen.getAllByRole('button', { name: 'tools.imports.wizard.actions.continueToConfirmation' });
+    const confirmationButtons = screen.getAllByRole('button', {
+      name: 'tools.imports.wizard.actions.continueToConfirmation',
+    });
     const confirmationButton = confirmationButtons[0];
     expect(confirmationButton).toBeTruthy();
     if (!confirmationButton) {
@@ -296,7 +325,9 @@ describe('WasteToolsImportSection', () => {
     expect(screen.getByText('job-77')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'tools.imports.wizard.actions.startNew' }));
-    expect(screen.getAllByText('tools.imports.wizard.steps.profile.title').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('tools.imports.wizard.steps.profile.title').length).toBeGreaterThan(
+      0
+    );
   });
 
   it('downloads templates and preview error exports for preview-guided imports', async () => {
@@ -318,7 +349,9 @@ describe('WasteToolsImportSection', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText('tools.imports.wizard.steps.validation.title').length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText('tools.imports.wizard.steps.validation.title').length
+      ).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'tools.actions.previewImport' }));
@@ -348,7 +381,9 @@ describe('WasteToolsImportSection', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText('tools.imports.wizard.steps.validation.title').length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText('tools.imports.wizard.steps.validation.title').length
+      ).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'tools.actions.previewImport' }));
@@ -378,7 +413,9 @@ describe('WasteToolsImportSection', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText('tools.imports.wizard.steps.validation.title').length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText('tools.imports.wizard.steps.validation.title').length
+      ).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'tools.actions.previewImport' }));
@@ -387,12 +424,16 @@ describe('WasteToolsImportSection', () => {
       expect(callbacks.onRunPreview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /tools\.imports\.wizard\.steps\.upload\.title/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /tools\.imports\.wizard\.steps\.upload\.title/i })
+    );
     fireEvent.change(screen.getByLabelText('tools.imports.delimiterLabel'), {
       target: { value: ',' },
     });
 
-    expect(screen.getAllByText('tools.imports.wizard.steps.validation.title').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText('tools.imports.wizard.steps.validation.title').length
+    ).toBeGreaterThan(0);
     expect(screen.queryByText('tools.imports.previewTitle')).toBeNull();
   });
 
@@ -440,7 +481,9 @@ describe('WasteToolsImportSection', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText('tools.imports.wizard.steps.validation.title').length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText('tools.imports.wizard.steps.validation.title').length
+      ).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'tools.actions.previewImport' }));
@@ -449,14 +492,20 @@ describe('WasteToolsImportSection', () => {
       expect(onRunPreview).toHaveBeenCalledTimes(1);
     });
 
-    expect(screen.getAllByText('tools.imports.wizard.steps.validation.title').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText('tools.imports.wizard.steps.validation.title').length
+    ).toBeGreaterThan(0);
     expect(screen.queryByText('tools.imports.previewTitle')).toBeNull();
   });
 
   it('does not treat non-import jobs as import results', async () => {
     const Wrapper = () => {
       const [importBlobRef, setImportBlobRef] = React.useState('');
-      const [lastJob, setLastJob] = React.useState<{ id: string; status: string; jobTypeId: string } | null>(null);
+      const [lastJob, setLastJob] = React.useState<{
+        id: string;
+        status: string;
+        jobTypeId: string;
+      } | null>(null);
 
       return (
         <WasteToolsImportSection
@@ -477,7 +526,11 @@ describe('WasteToolsImportSection', () => {
           onDelimiterOverrideChange={() => undefined}
           onRunPreview={async () => null}
           onStartImport={async () => {
-            const job = { id: 'job-migration', status: 'succeeded', jobTypeId: 'waste-management.apply-migrations' };
+            const job = {
+              id: 'job-migration',
+              status: 'succeeded',
+              jobTypeId: 'waste-management.apply-migrations',
+            };
             setLastJob(job);
             return job as never;
           }}
@@ -500,10 +553,14 @@ describe('WasteToolsImportSection', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText('tools.imports.wizard.steps.validation.title').length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText('tools.imports.wizard.steps.validation.title').length
+      ).toBeGreaterThan(0);
     });
 
-    const confirmationButtons = screen.getAllByRole('button', { name: 'tools.imports.wizard.actions.continueToConfirmation' });
+    const confirmationButtons = screen.getAllByRole('button', {
+      name: 'tools.imports.wizard.actions.continueToConfirmation',
+    });
     const confirmationButton = confirmationButtons[0];
     expect(confirmationButton).toBeTruthy();
     if (!confirmationButton) {
@@ -530,9 +587,9 @@ describe('WasteToolsImportSection', () => {
     );
     expect(resolveSelectedImportProfile([], 'missing-profile')).toBeNull();
     expect(resolveImportFileAccept('text/csv')).toBe('.csv,text/csv');
-    expect(resolveImportFileAccept('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')).toBe(
-      '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
+    expect(
+      resolveImportFileAccept('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    ).toBe('.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     expect(isPreviewRequiredImportProfile(importCatalog[0])).toBe(true);
     expect(isPreviewRequiredImportProfile(importCatalog[1])).toBe(false);
     expect(isPreviewRequiredImportProfile(null)).toBe(false);
@@ -566,15 +623,87 @@ describe('WasteToolsImportSection', () => {
 
     const onStepChange = vi.fn();
     render(
-      <WasteToolsWizardStepList activeStep="upload" reachableStep="validation" onStepChange={onStepChange} />
+      <WasteToolsWizardStepList
+        activeStep="upload"
+        reachableStep="validation"
+        onStepChange={onStepChange}
+      />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /tools\.imports\.wizard\.steps\.profile\.title/i }));
-    expect(onStepChange).toHaveBeenCalledWith('profile');
-    expect(screen.getByRole('button', { name: /tools\.imports\.wizard\.steps\.preview\.title/i })).toHaveProperty(
-      'disabled',
-      true
+    fireEvent.click(
+      screen.getByRole('button', { name: /tools\.imports\.wizard\.steps\.profile\.title/i })
     );
+    expect(onStepChange).toHaveBeenCalledWith('profile');
+    expect(
+      screen.getByRole('button', { name: /tools\.imports\.wizard\.steps\.preview\.title/i })
+    ).toHaveProperty('disabled', true);
   });
 
+  it('keeps unreachable wizard transitions on the current step', () => {
+    const cases = [
+      [
+        {
+          hasSelectedProfile: true,
+          hasReadyFile: true,
+          previewRequired: true,
+          previewReady: true,
+          hasImportResult: true,
+        },
+        'result',
+      ],
+      [
+        {
+          hasSelectedProfile: true,
+          hasReadyFile: true,
+          previewRequired: true,
+          previewReady: true,
+          hasImportResult: false,
+        },
+        'preview',
+      ],
+      [
+        {
+          hasSelectedProfile: true,
+          hasReadyFile: true,
+          previewRequired: false,
+          previewReady: false,
+          hasImportResult: false,
+        },
+        'preview',
+      ],
+      [
+        {
+          hasSelectedProfile: true,
+          hasReadyFile: true,
+          previewRequired: true,
+          previewReady: false,
+          hasImportResult: false,
+        },
+        'validation',
+      ],
+      [
+        {
+          hasSelectedProfile: true,
+          hasReadyFile: false,
+          previewRequired: true,
+          previewReady: false,
+          hasImportResult: false,
+        },
+        'upload',
+      ],
+      [
+        {
+          hasSelectedProfile: false,
+          hasReadyFile: false,
+          previewRequired: false,
+          previewReady: false,
+          hasImportResult: false,
+        },
+        'profile',
+      ],
+    ] as const;
+    for (const [facts, expected] of cases) expect(getReachableStep(facts)).toBe(expected);
+    expect(transitionToReachableStep('upload', 'preview', 'validation')).toBe('upload');
+    expect(transitionToReachableStep('validation', 'profile', 'validation')).toBe('profile');
+  });
 });

@@ -248,6 +248,57 @@ Für den spezialisierten Rollout des separaten Tenant-Admin-Client-Vertrags gilt
 - `app-only`: reiner Image-/Konfigurationsrollout ohne Schemaänderung
 - `schema-and-app`: Migrationen plus nachgelagerter Stack-Rollout; erfordert ein dokumentiertes Wartungsfenster
 
+### Promote-Gate für Migration und Bootstrap
+
+Der GitHub-Workflow `promote.yml` deployt die App nicht mehr blind. Vor `quantum-cli stack deploy` prüft ein explizites Deployment-Gate zwei getrennte Verträge:
+
+- `migration_mode`
+- `bootstrap_mode`
+
+Erlaubte Werte:
+
+- `assert-none`: Kein impliziter Skip. Der Workflow prüft den Änderungsumfang auf Risiko und bricht ab, sobald Migrationen oder Bootstrap-/Reconcile-Artefakte betroffen sind.
+- `run`: Nur für einen dokumentierten, umgebungsspezifisch gehärteten One-shot-Executor gedacht. Ohne solchen Executor oder ohne belastbare Exit-Code-/Log-Evidenz blockiert der Workflow bewusst vor dem App-Deploy.
+
+Bewusste Nicht-Funktion:
+
+- Es gibt absichtlich keinen Modus `skip`.
+- `assert-none` ist nur erlaubt, wenn der Promote-Lauf belastbar zeigen kann, dass keine risikorelevanten Änderungen vorliegen.
+- `run` ist nur dann vertretbar, wenn der Zielpfad produktiv erprobt ist, Logs und Exit-Code sauber bewertet werden und keine halbautomatische Hochskalierung des Live-Stacks stattfindet.
+
+Risikodetektion:
+
+- Migrationsrisiko: z. B. `packages/**/migrations/**`, `**/migrations/**`, `migrate-entrypoint.sh`, `docs/development/studio-db-schema-final.sql`, `docs/development/studio-db-schema.md`, DB-nahe Runtime-/Repository-Pakete
+- Bootstrap-Risiko: z. B. `bootstrap-entrypoint.sh`, `provisioner-entrypoint.sh`, `packages/iam-*/**`, `packages/instance-registry/**`, `packages/auth-runtime/**`, `deploy/keycloak/**`, Runtime-/Provisioning-Konfigurationen
+
+Operator-Regel:
+
+- Solange im Promote-Workflow kein gehärteter One-shot-Executor hinterlegt ist, bleibt `assert-none` der sichere Standard.
+- Wenn Risiko erkannt wird, müssen Migration und/oder Bootstrap bewusst über den kanonischen Operator-Pfad ausgeführt und separat verifiziert werden, bevor ein weiterer Promote-Lauf stattfinden darf.
+
+Prod-Hinweis:
+
+- Für Produktion bleibt `run` an ein freigegebenes Wartungsfenster, dokumentierte Backup-/Restore-Readiness und eine explizite Betriebsfreigabe gebunden.
+- Vor produktiven Schema- oder Reconcile-Eingriffen müssen aktuelles Backup, Restore-Pfad und Rollback-Entscheidung vorliegen; ein grüner App-Build ersetzt diese Freigabe nicht.
+
+### Image-Versionierung im Promote-Pfad
+
+Der GitHub-Promote-Pfad akzeptiert für das Zielartefakt absichtlich nicht jede beliebige Referenz:
+
+- `dev`: darf weiterhin `latest`, Commit-SHA-Tag oder Digest verwenden
+- `staging`: blockiert `latest`; erlaubt mindestens Commit-SHA-Tag oder Digest
+- `prod`: blockiert mutable Tags und erfordert einen Digest
+
+Der Workflow schreibt den tatsächlich deployten Image-Ref sowie `SVA_DEPLOY_REVISION` explizit in den gerenderten Stack-Vertrag und in die Deploy-Summary. Damit bleiben Rollout, Audit und Incident-Analyse auf ein konkretes Artefakt zurückführbar.
+
+Der Workflow-Eingang dafür heißt `image_ref`, nicht mehr nur `tag`, weil staging/prod bewusst auch volle Digest-Referenzen akzeptieren und validieren.
+
+Rollback-Regel:
+
+- Rollback immer per vorherigem Commit-SHA-Tag oder besser per vorherigem Digest
+- nie per `latest`
+- für Produktion ist der Digest der führende Rollback-Schlüssel
+
 ### Empfohlene Reihenfolge
 
 ```bash

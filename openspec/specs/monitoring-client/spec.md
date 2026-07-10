@@ -7,7 +7,7 @@ TBD - created by archiving change add-docker-monitoring-dev-stack. Update Purpos
 Das System SHALL einen vollständigen Observability Stack für die Entwicklungsumgebung bereitstellen, der Prometheus, Loki, Grafana und OpenTelemetry Collector umfasst und via Docker Compose gestartet werden kann.
 
 #### Scenario: Entwickler startet Monitoring Stack
-- **WHEN** ein Entwickler `docker compose -f docker-compose.monitoring.yml up` ausführt
+- **WHEN** ein Entwickler `docker compose -f compose.monitoring.yaml up` ausführt
 - **THEN** starten alle Services (Prometheus, Loki, Grafana, OTEL Collector, Promtail) erfolgreich
 - **AND** Grafana ist unter `http://localhost:3001` erreichbar
 - **AND** alle Datasources (Prometheus, Loki) sind vorkonfiguriert
@@ -165,7 +165,7 @@ Der Monitoring Stack SHALL mit <2GB RAM auskommen, um Entwickler-Maschinen nicht
 
 #### Scenario: Optionaler Start für Entwickler
 - **WHEN** ein Entwickler nur das Backend testen möchte (ohne Monitoring)
-- **THEN** kann er `docker compose up` ohne `-f docker-compose.monitoring.yml` nutzen
+- **THEN** kann er `docker compose up` ohne `-f compose.monitoring.yaml` nutzen
 - **AND** die Applikation funktioniert trotzdem (Monitoring ist optional)
 - **AND** OTEL SDK loggt Warning, aber crashed nicht
 
@@ -306,7 +306,7 @@ Alle Monitoring Services SHALL Health-Check Endpoints bereitstellen und Readines
 - **AND** wird von Docker Compose überwacht (Restart bei Fehler)
 
 #### Scenario: Startup-Sequenz mit Health-Checks
-- **WHEN** `docker compose -f docker-compose.monitoring.yml up` ausgeführt wird
+- **WHEN** `docker compose -f compose.monitoring.yaml up` ausgeführt wird
 - **THEN** starten alle Services parallel
 - **AND** werden alle Health-Checks alle 30s geprüft
 - **AND** Grafana startet Dashboard-Auto-Import nur wenn Prometheus + Loki ready sind

@@ -1,28 +1,28 @@
 {
   "projects": {
     "project-report": {
-      "lines": 92.52,
-      "statements": 92.95,
+      "lines": 92.51,
+      "statements": 92.94,
       "functions": 95.77,
       "branches": 88.05
     },
     "sva-studio-react": {
-      "lines": 91.31,
-      "statements": 91.04,
-      "functions": 89.57,
-      "branches": 80.42
+      "lines": 91.53,
+      "statements": 91.27,
+      "functions": 89.7,
+      "branches": 81.14
     },
     "auth-runtime": {
-      "lines": 89.1,
-      "statements": 89.03,
-      "functions": 90.18,
-      "branches": 75.63
+      "lines": 88.92,
+      "statements": 88.86,
+      "functions": 89.98,
+      "branches": 75.7
     },
     "core": {
-      "lines": 97.02,
-      "statements": 97,
-      "functions": 98.25,
-      "branches": 88.96
+      "lines": 97.07,
+      "statements": 97.06,
+      "functions": 98.32,
+      "branches": 89.03
     },
     "data": {
       "lines": 100,
@@ -37,22 +37,22 @@
       "branches": 86.49
     },
     "data-repositories": {
-      "lines": 95.27,
-      "statements": 94.67,
-      "functions": 92.26,
-      "branches": 85.04
+      "lines": 95.31,
+      "statements": 94.72,
+      "functions": 92.36,
+      "branches": 85.02
     },
     "iam-admin": {
-      "lines": 88.07,
-      "statements": 88.09,
-      "functions": 94.67,
-      "branches": 70.76
+      "lines": 89.59,
+      "statements": 89.52,
+      "functions": 94.51,
+      "branches": 71.65
     },
     "iam-core": {
-      "lines": 95.28,
-      "statements": 95.44,
+      "lines": 97.85,
+      "statements": 97.93,
       "functions": 100,
-      "branches": 85.45
+      "branches": 89.18
     },
     "iam-governance": {
       "lines": 90.24,
@@ -61,10 +61,10 @@
       "branches": 81.03
     },
     "instance-registry": {
-      "lines": 93.08,
-      "statements": 93.07,
-      "functions": 96.27,
-      "branches": 80.64
+      "lines": 94.54,
+      "statements": 94.42,
+      "functions": 96.01,
+      "branches": 82.36
     },
     "mail-runtime": {
       "lines": 100,
@@ -79,8 +79,8 @@
       "branches": 87.5
     },
     "monitoring-client": {
-      "lines": 95.06,
-      "statements": 94.58,
+      "lines": 94.97,
+      "statements": 94.48,
       "functions": 93.55,
       "branches": 89.91
     },
@@ -91,32 +91,38 @@
       "branches": 91.36
     },
     "plugin-events": {
-      "lines": 85.24,
-      "statements": 85,
-      "functions": 79.54,
-      "branches": 81.28
+      "lines": 87.05,
+      "statements": 86.74,
+      "functions": 80.38,
+      "branches": 82.55
     },
     "plugin-news": {
-      "lines": 91.21,
-      "statements": 91.25,
-      "functions": 91.99,
-      "branches": 80
+      "lines": 93.97,
+      "statements": 93.82,
+      "functions": 93.2,
+      "branches": 83.21
     },
     "plugin-poi": {
-      "lines": 89.67,
-      "statements": 89.74,
-      "functions": 83.53,
-      "branches": 84.36
+      "lines": 89.7,
+      "statements": 89.67,
+      "functions": 83,
+      "branches": 85.53
     },
     "plugin-sdk": {
-      "lines": 92.84,
-      "statements": 93.16,
-      "functions": 96.81,
-      "branches": 86.27
+      "lines": 92.41,
+      "statements": 92.75,
+      "functions": 95.61,
+      "branches": 84.77
+    },
+    "plugin-surveys": {
+      "lines": 98.77,
+      "statements": 98.89,
+      "functions": 99.56,
+      "branches": 88.31
     },
     "plugin-waste-management": {
       "lines": 90.66,
-      "statements": 90.19,
+      "statements": 90.2,
       "functions": 87.67,
       "branches": 79
     },
@@ -127,10 +133,10 @@
       "branches": 97.31
     },
     "server-runtime": {
-      "lines": 95.41,
-      "statements": 94.91,
-      "functions": 97.85,
-      "branches": 81.98
+      "lines": 95.15,
+      "statements": 95.06,
+      "functions": 98.97,
+      "branches": 83.54
     },
     "studio-module-iam": {
       "lines": 100,
@@ -139,16 +145,16 @@
       "branches": 100
     },
     "studio-ui-react": {
-      "lines": 97.23,
-      "statements": 97.32,
-      "functions": 100,
-      "branches": 90.81
+      "lines": 85.96,
+      "statements": 86.07,
+      "functions": 82.38,
+      "branches": 74.68
     },
     "sva-mainserver": {
-      "lines": 92.15,
-      "statements": 92.22,
-      "functions": 94.66,
-      "branches": 82.8
+      "lines": 93.3,
+      "statements": 93.41,
+      "functions": 95.67,
+      "branches": 84.17
     },
     "waste-management-runtime": {
       "lines": 84.62,

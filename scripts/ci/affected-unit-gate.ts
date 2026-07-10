@@ -3,20 +3,12 @@ import { createRequire } from 'node:module';
 import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-
-import { isNonCodeRelevantPath, resolveChangedFiles } from './pr-scope.ts';
-
-export type AppUnitSlice = 'hooks' | 'routes' | 'server' | 'ui';
+import { buildAppUnitCommand, planAppUnitExecution } from './affected-unit-plan.ts';
+import { resolveChangedFiles } from './pr-scope.ts';
 
 export interface DurationEntry {
   label: string;
   durationMs: number;
-}
-
-export interface AppUnitExecutionPlan {
-  mode: 'aggregate' | 'skip' | 'slices';
-  reason: string;
-  slices: AppUnitSlice[];
 }
 
 interface AffectedUnitGateOptions {
@@ -25,28 +17,7 @@ interface AffectedUnitGateOptions {
 }
 
 const APP_PROJECT = 'sva-studio-react';
-const APP_VITEST_CONFIG = 'apps/sva-studio-react/vitest.config.ts';
 const require = createRequire(import.meta.url);
-
-const APP_UI_PATTERNS = [/^apps\/sva-studio-react\/src\/(?:components|providers|i18n)\//u];
-const APP_ROUTES_PATTERNS = [/^apps\/sva-studio-react\/src\/(?:routes|routing)\//u];
-const APP_SERVER_PATTERNS = [
-  /^apps\/sva-studio-react\/src\/server(?:\.test)?\.(?:ts|tsx)$/u,
-  /^apps\/sva-studio-react\/src\/lib\/.*(?:\.server|-server)(?:\.test)?\.(?:ts|tsx)$/u,
-];
-const APP_HOOKS_PATTERNS = [
-  /^apps\/sva-studio-react\/src\/hooks\//u,
-  /^apps\/sva-studio-react\/src\/lib\//u,
-];
-const APP_AGGREGATE_PATTERNS = [
-  /^apps\/sva-studio-react\/(?:package\.json|tsconfig\.json|vite\.config\.ts|vitest(?:\..+)?\.config\.ts|playwright\.config\.ts)$/u,
-  /^apps\/sva-studio-react\/(?:e2e|scripts)\//u,
-  /^apps\/sva-studio-react\/src\/(?:main|routeTreeGen|router)\.(?:ts|tsx)$/u,
-];
-
-const matchesAnyPattern = (filePath: string, patterns: readonly RegExp[]): boolean =>
-  patterns.some((pattern) => pattern.test(filePath));
-
 const parseCliOptions = (args: readonly string[]): AffectedUnitGateOptions => {
   let base = 'origin/main';
   let head = 'HEAD';
@@ -103,8 +74,10 @@ const runCommand = (
         throw error;
       }
 
-      const status = typeof error === 'object' && error !== null && 'status' in error ? error.status : 'unknown';
-      const signal = typeof error === 'object' && error !== null && 'signal' in error ? error.signal : 'unknown';
+      const status =
+        typeof error === 'object' && error !== null && 'status' in error ? error.status : 'unknown';
+      const signal =
+        typeof error === 'object' && error !== null && 'signal' in error ? error.signal : 'unknown';
       console.warn(
         `Command failed with status=${String(status)} signal=${String(signal)}. Retrying command (${attempt + 1}/${retries}).`
       );
@@ -127,7 +100,18 @@ const getAffectedUnitProjects = (base: string, head: string): string[] => {
   const nxEntrypoint = path.join(path.dirname(nxPackageJson), 'dist', 'bin', 'nx.js');
   const output = execFileSync(
     process.execPath,
-    [nxEntrypoint, 'show', 'projects', '--affected', '--withTarget=test:unit', '--base', base, '--head', head, '--json'],
+    [
+      nxEntrypoint,
+      'show',
+      'projects',
+      '--affected',
+      '--withTarget=test:unit',
+      '--base',
+      base,
+      '--head',
+      head,
+      '--json',
+    ],
     {
       encoding: 'utf8',
       env: process.env,
@@ -139,97 +123,6 @@ const getAffectedUnitProjects = (base: string, head: string): string[] => {
   }
 
   return JSON.parse(output) as string[];
-};
-
-const classifyAppUnitSlice = (filePath: string): AppUnitSlice | null => {
-  if (matchesAnyPattern(filePath, APP_UI_PATTERNS)) {
-    return 'ui';
-  }
-  if (matchesAnyPattern(filePath, APP_ROUTES_PATTERNS)) {
-    return 'routes';
-  }
-  if (matchesAnyPattern(filePath, APP_SERVER_PATTERNS)) {
-    return 'server';
-  }
-  if (matchesAnyPattern(filePath, APP_HOOKS_PATTERNS)) {
-    return 'hooks';
-  }
-  return null;
-};
-
-const APP_SLICE_CONFIG_FILES: Record<AppUnitSlice, string> = {
-  hooks: 'apps/sva-studio-react/vitest.hooks.config.ts',
-  routes: 'apps/sva-studio-react/vitest.routes.config.ts',
-  server: 'apps/sva-studio-react/vitest.server.config.ts',
-  ui: 'apps/sva-studio-react/vitest.ui.config.ts',
-};
-
-export const buildAppUnitCommand = (slice?: AppUnitSlice): string => {
-  const configFile = slice ? APP_SLICE_CONFIG_FILES[slice] : APP_VITEST_CONFIG;
-  return `pnpm exec vitest run --config ${configFile} --reporter=verbose`;
-};
-
-export const planAppUnitExecution = (
-  changedFiles: readonly string[],
-  affectedProjects: readonly string[]
-): AppUnitExecutionPlan => {
-  if (!affectedProjects.includes(APP_PROJECT)) {
-    return {
-      mode: 'skip',
-      reason: 'app-not-affected',
-      slices: [],
-    };
-  }
-
-  const codeRelevantFiles = changedFiles.filter((filePath) => !isNonCodeRelevantPath(filePath));
-  const nonAppFiles = codeRelevantFiles.filter((filePath) => !filePath.startsWith('apps/sva-studio-react/'));
-
-  if (nonAppFiles.length > 0) {
-    return {
-      mode: 'aggregate',
-      reason: 'mixed-workspace-change',
-      slices: [],
-    };
-  }
-
-  const appFiles = codeRelevantFiles.filter((filePath) => filePath.startsWith('apps/sva-studio-react/'));
-  if (appFiles.length === 0) {
-    return {
-      mode: 'aggregate',
-      reason: 'app-affected-via-dependency',
-      slices: [],
-    };
-  }
-
-  const classifiedSlices = appFiles.map(classifyAppUnitSlice);
-  const slices = [...new Set(classifiedSlices)].filter((slice): slice is AppUnitSlice => slice !== null);
-
-  if (
-    appFiles.some(
-      (filePath, index) =>
-        classifiedSlices[index] === null && matchesAnyPattern(filePath, APP_AGGREGATE_PATTERNS)
-    )
-  ) {
-    return {
-      mode: 'aggregate',
-      reason: 'aggregate-app-file',
-      slices: [],
-    };
-  }
-
-  if (slices.length === 0 || classifiedSlices.some((slice) => slice === null)) {
-    return {
-      mode: 'aggregate',
-      reason: 'unclear-app-slice',
-      slices: [],
-    };
-  }
-
-  return {
-    mode: 'slices',
-    reason: 'app-only-sliceable-change',
-    slices: slices.sort(),
-  };
 };
 
 export const runAffectedUnitGate = (

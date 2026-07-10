@@ -79,7 +79,7 @@ Damit werden Logs in async Workflows automatisch mit Kontext angereichert.
 - Stellt globalen Zugriff auf den OTEL LoggerProvider bereit.
 - `DirectOtelTransport` verwendet diesen Provider fuer direkte Log-Emission.
 
-### 6) Collector + Storage (`dev/monitoring/...`, `docker-compose.monitoring.yml`)
+### 6) Collector + Storage (`dev/monitoring/...`, `compose.monitoring.yaml`)
 
 - OTEL Collector:
   - Receives OTLP gRPC + HTTP
@@ -269,7 +269,7 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 
 ### Lokal
 
-1. Monitoring-Stack starten (`docker-compose.monitoring.yml`).
+1. Monitoring-Stack starten (`compose.monitoring.yaml`).
 2. App starten und Flows triggern.
 3. Optional OTEL lokal deaktivieren (`ENABLE_OTEL=false`), wenn nur Console-Logs genutzt werden sollen.
 4. In Grafana/Loki verifizieren:
@@ -293,7 +293,7 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 - `packages/monitoring-client/src/logger-provider.server.ts`
 - `dev/monitoring/otel-collector/otel-collector.yml`
 - `dev/monitoring/promtail/promtail-config.yml`
-- `docker-compose.monitoring.yml`
+- `compose.monitoring.yaml`
 - `docs/development/observability-best-practices.md`
 - `docs/development/monitoring-stack.md`
 - `docs/adr/README.md`

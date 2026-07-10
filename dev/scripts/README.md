@@ -73,7 +73,7 @@ Stellt den Monitoring Stack aus einem Backup wieder her.
 ### Erstes Backup erstellen
 ```bash
 # 1. Monitoring Stack sollte laufen
-docker compose -f docker-compose.monitoring.yml ps
+docker compose -f compose.monitoring.yaml ps
 
 # 2. Backup erstellen
 ./dev/scripts/backup-monitoring.sh
@@ -128,7 +128,7 @@ du -sh backups/
 
 **Lösung:**
 ```yaml
-# docker-compose.monitoring.yml
+# compose.monitoring.yaml
 prometheus:
   command:
     - "--web.enable-admin-api"  # ← muss gesetzt sein
@@ -136,7 +136,7 @@ prometheus:
 
 Neu starten:
 ```bash
-docker compose -f docker-compose.monitoring.yml restart prometheus
+docker compose -f compose.monitoring.yaml restart prometheus
 ```
 
 ---

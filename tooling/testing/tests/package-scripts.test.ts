@@ -15,6 +15,10 @@ interface CoveragePolicy {
     functions: number;
     branches: number;
   };
+  perProjectFloors: Record<
+    string,
+    { lines: number; statements: number; functions: number; branches: number }
+  >;
 }
 
 interface TsConfigJson {
@@ -66,7 +70,9 @@ function loadDockerignore(): string {
 
 function loadScriptsTsConfig(): TsConfigJson {
   const rootDir = resolveRootDir();
-  return JSON.parse(fs.readFileSync(path.join(rootDir, 'tsconfig.scripts.json'), 'utf8')) as TsConfigJson;
+  return JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'tsconfig.scripts.json'), 'utf8')
+  ) as TsConfigJson;
 }
 
 function loadToolingTestingProject(): NxProjectJson {
@@ -78,7 +84,9 @@ function loadToolingTestingProject(): NxProjectJson {
 
 function loadProjectJson(projectPath: string): NxProjectJson {
   const rootDir = resolveRootDir();
-  return JSON.parse(fs.readFileSync(path.join(rootDir, projectPath, 'project.json'), 'utf8')) as NxProjectJson;
+  return JSON.parse(
+    fs.readFileSync(path.join(rootDir, projectPath, 'project.json'), 'utf8')
+  ) as NxProjectJson;
 }
 
 function loadQualityGatesWorkflow(): string {
@@ -132,7 +140,9 @@ describe('workspace package scripts', () => {
     const testPrScript = packageJson.scripts?.['test:pr'];
     const runPrGateScript = loadRunPrGateScript();
 
-    expect(testPrScript).toBe('bash scripts/ci/run-workspace-node.sh --import tsx scripts/ci/run-pr-gate.ts');
+    expect(testPrScript).toBe(
+      'bash scripts/ci/run-workspace-node.sh --import tsx scripts/ci/run-pr-gate.ts'
+    );
     expect(runPrGateScript).toContain('pnpm patch-coverage-gate --base=${base}');
     expect(runPrGateScript).toContain('pnpm sonar-new-code-gate --base=${base}');
   });
@@ -148,12 +158,16 @@ describe('workspace package scripts', () => {
   it('keeps plugin boundary enforcement in PR and CI gates', () => {
     const packageJson = loadRootPackageJson();
 
-    expect(packageJson.scripts?.['check:plugin-ui-boundary']).toBe('tsx scripts/ci/check-plugin-ui-boundary.ts');
+    expect(packageJson.scripts?.['check:plugin-ui-boundary']).toBe(
+      'tsx scripts/ci/check-plugin-ui-boundary.ts'
+    );
     expect(packageJson.scripts?.['check:plugin-architecture-boundary']).toBe(
       'tsx scripts/ci/check-plugin-architecture-boundary.ts'
     );
     expect(packageJson.scripts?.['test:eslint']).toContain('pnpm check:plugin-ui-boundary');
-    expect(packageJson.scripts?.['test:eslint']).toContain('pnpm check:plugin-architecture-boundary');
+    expect(packageJson.scripts?.['test:eslint']).toContain(
+      'pnpm check:plugin-architecture-boundary'
+    );
     expect(packageJson.scripts?.['test:ci']).toContain('pnpm check:plugin-ui-boundary');
     expect(packageJson.scripts?.['test:ci']).toContain('pnpm check:plugin-architecture-boundary');
   });
@@ -162,22 +176,32 @@ describe('workspace package scripts', () => {
     const packageJson = loadRootPackageJson();
     const testCoveragePrScript = packageJson.scripts?.['test:coverage:pr'];
 
-    expect(testCoveragePrScript).toContain('pnpm patch-coverage-gate --base=${NX_BASE:-origin/main}');
-    expect(testCoveragePrScript).toContain('pnpm sonar-new-code-gate --base=${NX_BASE:-origin/main}');
+    expect(testCoveragePrScript).toContain(
+      'pnpm patch-coverage-gate --base=${NX_BASE:-origin/main}'
+    );
+    expect(testCoveragePrScript).toContain(
+      'pnpm sonar-new-code-gate --base=${NX_BASE:-origin/main}'
+    );
   });
 
   it('keeps full PR coverage regression checks enabled in runtime gates', () => {
     const runtimeGatesWorkflow = loadRuntimeGatesWorkflow();
 
-    expect(runtimeGatesWorkflow).toContain('if [ "${{ steps.scope.outputs.coverage_mode }}" = "full" ]; then');
-    expect(runtimeGatesWorkflow).toContain("COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ steps.scope.outputs.coverage_mode == 'full' && '1' || '0' }}");
+    expect(runtimeGatesWorkflow).toContain(
+      'if [ "${{ steps.scope.outputs.coverage_mode }}" = "full" ]; then'
+    );
+    expect(runtimeGatesWorkflow).toContain(
+      "COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ steps.scope.outputs.coverage_mode == 'full' && '1' || '0' }}"
+    );
     expect(runtimeGatesWorkflow).not.toContain('COVERAGE_GATE_PROJECT_FILTER');
   });
 
   it('exposes the Sonar LCOV preparation command', () => {
     const packageJson = loadRootPackageJson();
 
-    expect(packageJson.scripts?.['sonar:prepare-lcov']).toBe('tsx scripts/ci/prepare-sonar-lcov.ts');
+    expect(packageJson.scripts?.['sonar:prepare-lcov']).toBe(
+      'tsx scripts/ci/prepare-sonar-lcov.ts'
+    );
   });
 
   it('keeps global coverage floors at the project baseline', () => {
@@ -191,17 +215,30 @@ describe('workspace package scripts', () => {
     });
   });
 
+  it('keeps coverage floors for the expanded studio UI package binding', () => {
+    const policy = loadCoveragePolicy();
+
+    expect(policy.perProjectFloors['studio-ui-react']).toEqual({
+      lines: 85,
+      statements: 85,
+      functions: 82,
+      branches: 74,
+    });
+  });
+
   it('exposes a dedicated local studio release command', () => {
     const packageJson = loadRootPackageJson();
 
-    expect(packageJson.scripts?.['env:release:studio:local']).toBe('tsx scripts/ops/studio-release-local.ts');
+    expect(packageJson.scripts?.['env:release:studio:local']).toBe(
+      'tsx scripts/ops/studio-release-local.ts'
+    );
   });
 
   it('keeps studio image verify tag sanitizing portable on GitHub runners', () => {
     const workflow = loadStudioImageVerifyWorkflow();
 
     expect(workflow).toContain(
-      "safe_tag=\"$(printf '%s' \"${IMAGE_TAG}\" | sed -E 's/[^[:alnum:]. _-]+/-/g; s/[[:space:]]+/-/g; s/-+/-/g; s/^-+//; s/-+$//')\""
+      'safe_tag="$(printf \'%s\' "${IMAGE_TAG}" | sed -E \'s/[^[:alnum:]. _-]+/-/g; s/[[:space:]]+/-/g; s/-+/-/g; s/^-+//; s/-+$//\')"'
     );
     expect(workflow).not.toContain("tr -cs '[:alnum:]._- ' '-'");
   });
@@ -248,7 +285,9 @@ describe('workspace package scripts', () => {
     expect(packageJson.scripts?.['test:eslint:affected']).toBe(
       'pnpm check:plugin-ui-boundary && pnpm check:plugin-architecture-boundary && pnpm check:boundaries:fallow && env -u NO_COLOR nx affected --target=lint --base=${NX_BASE:-origin/main}'
     );
-    expect(packageJson.scripts?.['test:unit:affected']).toBe('tsx scripts/ci/affected-unit-gate.ts --base ${NX_BASE:-origin/main}');
+    expect(packageJson.scripts?.['test:unit:affected']).toBe(
+      'tsx scripts/ci/affected-unit-gate.ts --base ${NX_BASE:-origin/main}'
+    );
     expect(packageJson.scripts?.['test:types:affected']).toBe(
       'pnpm clean:generated-source-artifacts && env -u NO_COLOR nx affected --target=test:types --base=${NX_BASE:-origin/main} --parallel=1 && env -u NO_COLOR nx affected --target=typecheck --base=${NX_BASE:-origin/main} --parallel=1 && pnpm check:server-runtime:affected && pnpm exec tsc -p tsconfig.scripts.json --noEmit'
     );
@@ -261,11 +300,15 @@ describe('workspace package scripts', () => {
     const packageJson = loadRootPackageJson();
     const runtimeWorkflow = loadRuntimeGatesWorkflow();
 
-    expect(packageJson.scripts?.['test:integration']).toBe('tsx scripts/ci/run-integration-gate.ts --mode full');
+    expect(packageJson.scripts?.['test:integration']).toBe(
+      'tsx scripts/ci/run-integration-gate.ts --mode full'
+    );
     expect(runtimeWorkflow).toContain(
       'pnpm exec tsx scripts/ci/run-integration-gate.ts --mode affected --base ${{ github.event.pull_request.base.sha }}'
     );
-    expect(runtimeWorkflow).toContain('Monitoring-Checks laufen separat im Workflow `Monitoring Stack`.');
+    expect(runtimeWorkflow).toContain(
+      'Monitoring-Checks laufen separat im Workflow `Monitoring Stack`.'
+    );
   });
 
   it('cleans stale local studio serve processes before running app e2e', () => {
@@ -287,11 +330,15 @@ describe('workspace package scripts', () => {
     expect(qualityWorkflow).toContain(
       'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
-    expect(qualityWorkflow).not.toContain('tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output');
+    expect(qualityWorkflow).not.toContain(
+      'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
+    );
     expect(runtimeWorkflow).toContain(
       'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
-    expect(runtimeWorkflow).not.toContain('tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output');
+    expect(runtimeWorkflow).not.toContain(
+      'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
+    );
     expect(e2eWorkflow).toContain(
       'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
@@ -339,7 +386,7 @@ describe('workspace package scripts', () => {
   it('publishes App E2E summaries with the current workflow naming', () => {
     const e2eWorkflow = loadAppE2EWorkflow();
 
-    expect(e2eWorkflow).toContain("echo 'App E2E abgeschlossen.' >> \"$GITHUB_STEP_SUMMARY\"");
+    expect(e2eWorkflow).toContain('echo \'App E2E abgeschlossen.\' >> "$GITHUB_STEP_SUMMARY"');
     expect(e2eWorkflow).not.toContain('App-E2E-Smoke abgeschlossen.');
     expect(e2eWorkflow).toContain('Run app E2E tests');
     expect(e2eWorkflow).not.toContain('Run app E2E smoke tests');
@@ -349,10 +396,7 @@ describe('workspace package scripts', () => {
     const tsconfig = loadScriptsTsConfig();
 
     expect(tsconfig.include).toEqual(
-      expect.arrayContaining([
-        'scripts/ci/**/*.ts',
-        'scripts/ops/**/*.ts',
-      ])
+      expect.arrayContaining(['scripts/ci/**/*.ts', 'scripts/ops/**/*.ts'])
     );
   });
 
@@ -361,10 +405,7 @@ describe('workspace package scripts', () => {
     const lintPatterns = toolingTestingProject.targets?.lint?.options?.lintFilePatterns ?? [];
 
     expect(lintPatterns).toEqual(
-      expect.arrayContaining([
-        'tooling/testing/tests/**/*.{ts,tsx,js,jsx}',
-        'scripts/**/*.ts',
-      ])
+      expect.arrayContaining(['tooling/testing/tests/**/*.{ts,tsx,js,jsx}', 'scripts/**/*.ts'])
     );
   });
 
@@ -373,9 +414,14 @@ describe('workspace package scripts', () => {
     const toolingTestingProject = loadToolingTestingProject();
     const namedInput = nxJson.namedInputs?.['ciGateTooling'] ?? [];
     const toolingScriptsInput = nxJson.namedInputs?.['toolingScripts'] ?? [];
-    const lintInputs = (toolingTestingProject.targets?.lint as { inputs?: string[] } | undefined)?.inputs ?? [];
-    const unitInputs = (toolingTestingProject.targets?.['test:unit'] as { inputs?: string[] } | undefined)?.inputs ?? [];
-    const coverageInputs = (toolingTestingProject.targets?.['test:coverage'] as { inputs?: string[] } | undefined)?.inputs ?? [];
+    const lintInputs =
+      (toolingTestingProject.targets?.lint as { inputs?: string[] } | undefined)?.inputs ?? [];
+    const unitInputs =
+      (toolingTestingProject.targets?.['test:unit'] as { inputs?: string[] } | undefined)?.inputs ??
+      [];
+    const coverageInputs =
+      (toolingTestingProject.targets?.['test:coverage'] as { inputs?: string[] } | undefined)
+        ?.inputs ?? [];
 
     expect(namedInput).toEqual(
       expect.arrayContaining([
@@ -408,14 +454,24 @@ describe('workspace package scripts', () => {
 
   it('keeps the affected unit gate app-slice-aware', () => {
     const affectedUnitGate = loadAffectedUnitGateScript();
+    const affectedUnitPlan = loadScript('scripts/ci/affected-unit-plan.ts');
     const affectedCoverageGate = loadScript('scripts/ci/affected-coverage-gate.ts');
     const runPrGateScript = loadRunPrGateScript();
 
-    expect(affectedUnitGate).toContain("export type AppUnitSlice = 'hooks' | 'routes' | 'server' | 'ui'");
-    expect(affectedUnitGate).toContain("routes: 'apps/sva-studio-react/vitest.routes.config.ts'");
-    expect(affectedUnitGate).toContain('return `pnpm exec vitest run --config ${configFile} --reporter=verbose`;');
-    expect(affectedCoverageGate).toContain("const APP_VITEST_CONFIG = 'apps/sva-studio-react/vitest.config.ts';");
-    expect(affectedCoverageGate).toContain('`pnpm exec vitest run --config ${APP_VITEST_CONFIG} --coverage --reporter=verbose`');
+    expect(affectedUnitPlan).toContain(
+      "export type AppUnitSlice = 'hooks' | 'routes' | 'server' | 'ui'"
+    );
+    expect(affectedUnitPlan).toContain("routes: 'apps/sva-studio-react/vitest.routes.config.ts'");
+    expect(affectedUnitPlan).toContain(
+      'return `pnpm exec vitest run --config ${configFile} --reporter=verbose`;'
+    );
+    expect(affectedUnitGate).toContain("from './affected-unit-plan.ts'");
+    expect(affectedCoverageGate).toContain(
+      "const APP_VITEST_CONFIG = 'apps/sva-studio-react/vitest.config.ts';"
+    );
+    expect(affectedCoverageGate).toContain(
+      '`pnpm exec vitest run --config ${APP_VITEST_CONFIG} --coverage --reporter=verbose`'
+    );
     expect(runPrGateScript).toContain('formatDurationSummary');
     expect(runPrGateScript).toContain('for (const entry of runAffectedUnitGate({ base, head }))');
   });

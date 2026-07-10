@@ -66,8 +66,8 @@ const profile = rawProfile as RuntimeProfile | undefined;
 const cliOptions = parseRuntimeCliOptions(rawOptions);
 const jsonOutput = cliOptions.jsonOutput;
 
-const composeBaseArgs = ['compose', '-f', 'docker-compose.yml'];
-const composeWithMonitoringArgs = ['compose', '-f', 'docker-compose.yml', '-f', 'docker-compose.monitoring.yml'];
+const composeBaseArgs = ['compose', '-f', 'compose.yaml', '-f', 'compose.override.yaml'];
+const composeWithMonitoringArgs = [...composeBaseArgs, '-f', 'compose.monitoring.yaml'];
 const { isRemoteRuntimeProfile, requireRemoteRuntimeProfile } = createRemoteRuntimeProfileGuards(
   (runtimeProfile) => getRuntimeProfileDefinition(runtimeProfile).isLocal,
 );

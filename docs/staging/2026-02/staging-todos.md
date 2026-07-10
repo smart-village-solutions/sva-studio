@@ -41,7 +41,7 @@ receivers:
 2. Incoming Webhook aktivieren
 3. Webhook URL in `.env` setzen: `SLACK_WEBHOOK_URL=...`
 4. `alertmanager.yml` mit `${SLACK_WEBHOOK_URL}` anpassen
-5. AlertManager neu starten: `docker compose -f docker-compose.monitoring.yml restart alertmanager`
+5. AlertManager neu starten: `docker compose -f compose.monitoring.yaml restart alertmanager`
 
 **Test:**
 ```bash
@@ -253,7 +253,7 @@ docker compose -f docker-compose.monitoring-test.yml down
 
 ## 📊 Resource Monitoring
 
-**Status:** ✅ Implementiert (docker-compose.monitoring.yml)
+**Status:** ✅ Implementiert (compose.monitoring.yaml)
 
 ### Was funktioniert:
 - ✅ Memory Limits: Prometheus (1GB), Loki (512MB), Grafana (512MB)
@@ -265,7 +265,7 @@ docker compose -f docker-compose.monitoring-test.yml down
 #### TODO 8: cAdvisor Integration (Container Metriken)
 **Ziel:** Detaillierte Container-Resource-Metriken
 
-**Datei:** `docker-compose.monitoring.yml` (Service hinzufügen)
+**Datei:** `compose.monitoring.yaml` (Service hinzufügen)
 
 ```yaml
   cadvisor:

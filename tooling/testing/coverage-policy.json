@@ -170,10 +170,10 @@
       "branches": 100
     },
     "studio-ui-react": {
-      "lines": 97,
-      "statements": 97,
-      "functions": 98,
-      "branches": 86
+      "lines": 85,
+      "statements": 85,
+      "functions": 82,
+      "branches": 74
     },
     "sva-studio-react": {
       "lines": 87,

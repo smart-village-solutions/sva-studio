@@ -109,7 +109,7 @@ Internal packages use `workspace:*` protocol. Dependency direction: `core` → t
 docker-compose up -d redis postgres
 
 # Start monitoring stack (Prometheus, Loki, Grafana, OTEL Collector)
-docker-compose -f docker-compose.monitoring.yml up -d
+docker-compose -f compose.monitoring.yaml up -d
 
 # Generate Redis TLS certs (required before first Redis start)
 ./dev/generate-tls-certs.sh

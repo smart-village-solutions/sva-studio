@@ -23,9 +23,9 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 
 - App: `pnpm nx run sva-studio-react:serve` auf `localhost:3000`
 - Öffentliche App: `pnpm nx run public-waste-calendar-web:serve` auf `localhost:3002`
-- Postgres IAM-DB: `docker-compose.yml` (`5432`)
-- Redis: `docker-compose.yml` (`6379`, optional TLS `6380`)
-- Monitoring Stack: `docker-compose.monitoring.yml`
+- Postgres IAM-DB: `compose.yaml` (`5432`)
+- Redis: `compose.yaml` (`6379`, optional TLS `6380`)
+- Monitoring Stack: `compose.monitoring.yaml`
   - Collector: `4317`, `4318`, `13133`
   - Loki: `3100`
   - Prometheus: `9090`
@@ -104,6 +104,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 - Der Build-Graph des Portainer-Images baut `sva-mainserver` explizit nach `auth` und vor `routing` sowie dem App-Build, damit die serverseitige Integrationsschicht im Deploy-Artefakt verlässlich vorhanden ist.
 
 - **Image-basiert:** Vorgebaute Images aus Container-Registry; für die App ist im Acceptance-Referenzpfad `SVA_IMAGE_REF` mit Digest verpflichtend, der Tag bleibt nur Metadatum. Kein `build:`-Block im Stack.
+- **Promote-Integrität:** `dev` darf weiter mutable Referenzen wie `latest` verwenden, aber `staging` blockiert `latest` und `prod` erfordert einen Digest. Der Deploy-Report hält den konkret aufgelösten Image-Ref plus `SVA_DEPLOY_REVISION` fest.
 - **Traefik-Labels:** Host-basiertes Routing über `HostRegexp` für Instanz-Subdomains unter `SVA_PARENT_DOMAIN`. TLS über Traefiks `certresolver`.
 - **Profilgrenze Traefik:** Das Referenzprofil verwendet Traefik v2+-Labels; das Demo-Profil bleibt bewusst bei Traefik-v1-kompatiblen Labels und ist deshalb kein 1:1-Abbild des Referenzbetriebs.
 - **Swarm Secrets:** Vertrauliche Werte als externe Docker-Swarm-Secrets mit Namenskonvention `sva_studio_<service>_<secret_name>`. Ein Shell-Entrypoint (`entrypoint.sh`) liest Secret-Dateien und exportiert sie als Env-Variablen.
@@ -116,6 +117,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 - **Release-Klassen:** Studio-Deploys unterscheiden `app-only` und `schema-and-app`; nur `schema-and-app` darf Migrationen auslösen.
 - **Gepinnter Goose-Pfad:** Schema-Rollouts laufen über einen repository-lokalen `goose`-Wrapper mit fixer Version innerhalb eines dedizierten Swarm-One-off-Jobs; Zielsysteme benötigen keine permanente `goose`-Vorinstallation.
 - **Dedizierte Job-Services:** Die Stack-Compose-Dateien führen zusätzlich die Services `migrate` und `bootstrap` mit `replicas: 0`. Remote-Deploys rendern daraus ein temporäres Quantum-Projekt, das genau den benoetigten One-off-Job gegen das bestehende Overlay-Netz `<stack>_internal` startet.
+- **Explizites Promote-Gate:** Der vereinfachte GitHub-Pfad `promote.yml` darf den `app`-Deploy erst starten, nachdem getrennte Gates fuer Migration und Bootstrap bestanden wurden. `assert-none` bedeutet dabei Risiko-Nachweis statt Skip; `run` bleibt ohne gehaerteten One-shot-Executor absichtlich blockierend.
 - **Gehärteter Live-Render:** Der für `quantum-cli stacks update` erzeugte Deploy-Render validiert vor dem Rollout die vollständige `app`-Service-Spec. Pflicht sind mindestens die Netzwerke `internal` und `public` sowie die ingressrelevanten Traefik-Labels.
 - **Prod-nahe Paritaet vor Mutationen:** Vor mutierenden `studio`-Rollouts prueft `image-smoke` Root-Host, Tenant-Hosts und OIDC-Verhalten gegen das Zielartefakt. Wenn dasselbe Digest bereits live laeuft, ist nur eine dokumentierte Live-Paritaets-Wiederverwendung fuer genau dieses Digest zulaessig.
 - **Strikte Stack-Trennung:** Temp-Job-Stacks für `migrate` und `bootstrap` enthalten keinen `app`-Service und dürfen keine Live-Service-Spec des eigentlichen Stacks ableiten oder überschreiben.
@@ -146,6 +148,7 @@ Betriebliche Einordnung:
 
 - App läuft als Node-/Nitro-Server aus dem TanStack-Start-Build.
 - Für spätere Updates bestehender Datenbanken bleiben Migrationen ein bewusster separater Betriebsschritt.
+- Auch der CI-Promote-Pfad erzwingt diesen Vertrag: Ohne erfolgreichen Nachweis fuer Migration und Bootstrap oder ohne sauberen No-Risk-Nachweis startet kein App-Deploy.
 - Der kanonische Migrationspfad nutzt ein einzelnes `goose`-SQL-File pro Version mit `Up` und `Down`; ein getrennter `up`/`down`-Dateibaum ist kein Sollzustand mehr.
 - Ein reiner Job-Lauf für `migrate` oder `bootstrap` darf keinen vollständigen Stack-Reconcile auf `sva-studio_app` auslösen; der Live-Stack wird erst im expliziten `deploy`-Schritt aktualisiert.
 
@@ -225,8 +228,8 @@ Referenzen:
 
 Referenzen:
 
-- `docker-compose.yml` (lokale Entwicklung)
-- `docker-compose.monitoring.yml`
+- `compose.yaml` (lokale Entwicklung)
+- `compose.monitoring.yaml`
 - `deploy/portainer/docker-compose.yml` (Swarm-Referenzprofil)
 - `docs/development/postgres-setup.md`
 - `docs/guides/swarm-deployment-runbook.md`

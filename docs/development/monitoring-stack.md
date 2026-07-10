@@ -23,7 +23,7 @@ Alle Services sind **lokal** gebunden (localhost) und nutzen eine **7-Tage-Reten
 1. Optional: `.env` anlegen (siehe .env.example), z. B.:
    - `GF_SECURITY_ADMIN_PASSWORD=dev-admin`
 2. Start:
-   - Kombiniertes Setup: `docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d`
+   - Kombiniertes Setup: `docker compose -f compose.yaml -f compose.monitoring.yaml up -d`
 3. Health-Checks:
    - Prometheus: http://localhost:9090/-/healthy
    - Loki: http://localhost:3100/ready
@@ -169,7 +169,7 @@ Der CI-Lauf prüft:
 
 **Install**
 
-- `docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d`
+- `docker compose -f compose.yaml -f compose.monitoring.yaml up -d`
 
 **Update/Rollback**
 

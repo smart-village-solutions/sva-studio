@@ -182,7 +182,7 @@ docker compose exec prometheus \
 
 ### 1.2 Docker-Compose für Alert Rules updaten
 
-**File:** `docker-compose.monitoring.yml` (ändern)
+**File:** `compose.monitoring.yaml` (ändern)
 
 ```yaml
 prometheus:
@@ -269,7 +269,7 @@ inhibit_rules:
 ### 1.4 AlertManager zu Docker-Compose hinzufügen
 
 ```yaml
-# docker-compose.monitoring.yml
+# compose.monitoring.yaml
 
 alertmanager:
   image: prom/alertmanager:v0.26.0
@@ -359,7 +359,7 @@ curl -XPOST http://localhost:9093/api/v1/alerts \
 
 ### 2.1 Redis Service zu docker-compose
 
-**File:** `docker-compose.monitoring.yml` (ergänzen)
+**File:** `compose.monitoring.yaml` (ergänzen)
 
 ```yaml
 redis:
@@ -452,7 +452,7 @@ docker compose up -d redis
 ### 3.1 Update docker-compose mit Limits
 
 ```yaml
-# docker-compose.monitoring.yml
+# compose.monitoring.yaml
 
 prometheus:
   # ... existing config ...

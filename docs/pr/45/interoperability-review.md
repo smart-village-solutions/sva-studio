@@ -33,7 +33,7 @@ Die Observability-Architektur ist **stark auf offene Standards gebaut** (OTLP, P
 - **Format:** OpenMetrics/Prometheus (IETF-Standard)
 - **Export:** `GET /api/v1/query_range` liefert exportierbare Time-Series
 - **Vorteil:** Kann zu VictoriaMetrics, Thanos, InfluxDB etc. migriert werden
-- **Retention:** 7 Tage (konfigurierbar in [docker-compose.monitoring.yml#L15](../docker-compose.monitoring.yml#L15))
+- **Retention:** 7 Tage (konfigurierbar in [compose.monitoring.yaml#L15](../compose.monitoring.yaml#L15))
 
 ### 3. **Loki Logs (LogQL Export)**
 - **Endpoint:** `http://loki:3100/loki/api/v1/push` (OTLP Import)

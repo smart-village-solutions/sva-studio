@@ -1,0 +1,4 @@
+{
+  "prNumber": 676,
+  "body": "Der Deployment-Pfad des Studios wurde vereinheitlicht und gegen fehlerhafte oder unsichere Promotionen abgesichert.\n\n- Lokale Entwicklung, Monitoring und Deployments verwenden konsistente Compose-Dateien.\n- Images werden je Umgebung nachvollziehbar und mit verbindlichen Migrations- und Bootstrap-Prüfungen promotet.\n- Deployment-Konfigurationen, Secrets und Ingress-Regeln werden vor dem Rollout robuster validiert."
+}

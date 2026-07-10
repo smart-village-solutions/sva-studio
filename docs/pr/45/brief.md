@@ -65,7 +65,7 @@ SECURITY (MUST FIX):
 ☐ Encryption: Fail-fast on missing ENCRYPTION_KEY
 
 OPERATIONS (SHOULD FIX):
-☐ Add Redis to docker-compose.monitoring.yml
+☐ Add Redis to compose.monitoring.yaml
 ☐ Workspace context: Add guard clause + warning log
 
 DOCUMENTATION (SHOULD):

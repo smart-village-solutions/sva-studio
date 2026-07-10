@@ -1,0 +1,281 @@
+name: Promote
+run-name: Promote ${{ inputs.image_ref }} to ${{ inputs.environment }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [dev, staging, prod]
+      image_ref:
+        description: 'Image tag, digest, or full image ref'
+        required: true
+        default: latest
+      migration_mode:
+        description: 'Migration gate mode'
+        required: true
+        default: assert-none
+        type: choice
+        options: [assert-none, run]
+      bootstrap_mode:
+        description: 'Bootstrap gate mode'
+        required: true
+        default: assert-none
+        type: choice
+        options: [assert-none, run]
+      change_base:
+        description: 'Git base ref represented by the promoted image'
+        required: true
+      change_head:
+        description: 'Git head ref represented by the promoted image'
+        required: true
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      image_ref:
+        required: true
+        type: string
+      migration_mode:
+        required: false
+        type: string
+        default: assert-none
+      bootstrap_mode:
+        required: false
+        type: string
+        default: assert-none
+      change_base:
+        required: true
+        type: string
+      change_head:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: promote-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy ${{ inputs.environment }}
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: validate inputs
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          IMAGE_INPUT: ${{ inputs.image_ref }}
+          MIGRATION_MODE: ${{ inputs.migration_mode }}
+          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
+          CHANGE_BASE: ${{ inputs.change_base }}
+          CHANGE_HEAD: ${{ inputs.change_head }}
+        run: |
+          set -euo pipefail
+
+          case "${ENVIRONMENT}" in
+            dev|staging|prod) ;;
+            *)
+              echo "Invalid environment: ${ENVIRONMENT}. Expected one of: dev, staging, prod." >&2
+              exit 1
+              ;;
+          esac
+
+          if [ -z "${IMAGE_INPUT}" ]; then
+            echo "'image_ref' must not be empty." >&2
+            exit 1
+          fi
+
+          if [ -z "${CHANGE_BASE}" ] || [ -z "${CHANGE_HEAD}" ]; then
+            echo "'change_base' and 'change_head' must identify the exact image change range." >&2
+            exit 1
+          fi
+
+          case "${MIGRATION_MODE}" in
+            run|assert-none) ;;
+            *)
+              echo "Invalid migration_mode: ${MIGRATION_MODE}. Expected one of: run, assert-none." >&2
+              exit 1
+              ;;
+          esac
+
+          case "${BOOTSTRAP_MODE}" in
+            run|assert-none) ;;
+            *)
+              echo "Invalid bootstrap_mode: ${BOOTSTRAP_MODE}. Expected one of: run, assert-none." >&2
+              exit 1
+              ;;
+          esac
+
+      - name: checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: setup pnpm workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: validate image contract
+        id: image_contract
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          IMAGE_INPUT: ${{ inputs.image_ref }}
+        run: |
+          set -euo pipefail
+
+          pnpm exec tsx scripts/ci/promote-image-contract.ts \
+            --environment "${ENVIRONMENT}" \
+            --image "${IMAGE_INPUT}"
+
+      - name: fetch main reference
+        run: git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
+
+      - name: evaluate migration and bootstrap gates
+        id: gate_eval
+        env:
+          CHANGE_BASE: ${{ inputs.change_base }}
+          CHANGE_HEAD: ${{ inputs.change_head }}
+          MIGRATION_MODE: ${{ inputs.migration_mode }}
+          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
+          PROMOTE_MIGRATION_EXECUTOR: ${{ vars.PROMOTE_MIGRATION_EXECUTOR }}
+          PROMOTE_BOOTSTRAP_EXECUTOR: ${{ vars.PROMOTE_BOOTSTRAP_EXECUTOR }}
+        run: |
+          set -euo pipefail
+
+          BASE_REF="${CHANGE_BASE}"
+          HEAD_REF="${CHANGE_HEAD}"
+
+          migration_executor_configured=false
+          if [ -n "${PROMOTE_MIGRATION_EXECUTOR}" ]; then
+            migration_executor_configured=true
+          fi
+
+          bootstrap_executor_configured=false
+          if [ -n "${PROMOTE_BOOTSTRAP_EXECUTOR}" ]; then
+            bootstrap_executor_configured=true
+          fi
+
+          echo "Evaluating deploy gates against ${BASE_REF}..${HEAD_REF}"
+          pnpm exec tsx scripts/ci/promote-deploy-gates.ts \
+            --base "${BASE_REF}" \
+            --head "${HEAD_REF}" \
+            --migration-mode "${MIGRATION_MODE}" \
+            --bootstrap-mode "${BOOTSTRAP_MODE}" \
+            --migration-executor-configured "${migration_executor_configured}" \
+            --bootstrap-executor-configured "${bootstrap_executor_configured}"
+
+      - name: enforce migration and bootstrap gates
+        env:
+          MIGRATION_MODE: ${{ inputs.migration_mode }}
+          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
+          MIGRATION_GATE_OK: ${{ steps.gate_eval.outputs.migration_gate_ok }}
+          MIGRATION_GATE_RESULT: ${{ steps.gate_eval.outputs.migration_gate_result }}
+          MIGRATION_GATE_RISK_FILES: ${{ steps.gate_eval.outputs.migration_gate_risk_files }}
+          MIGRATION_GATE_MESSAGE: ${{ steps.gate_eval.outputs.migration_gate_message }}
+          BOOTSTRAP_GATE_OK: ${{ steps.gate_eval.outputs.bootstrap_gate_ok }}
+          BOOTSTRAP_GATE_RESULT: ${{ steps.gate_eval.outputs.bootstrap_gate_result }}
+          BOOTSTRAP_GATE_RISK_FILES: ${{ steps.gate_eval.outputs.bootstrap_gate_risk_files }}
+          BOOTSTRAP_GATE_MESSAGE: ${{ steps.gate_eval.outputs.bootstrap_gate_message }}
+        run: |
+          set -euo pipefail
+
+          if [ "${MIGRATION_GATE_OK}" != "true" ]; then
+            echo "::error::Migration gate failed (${MIGRATION_MODE}/${MIGRATION_GATE_RESULT}): ${MIGRATION_GATE_RISK_FILES}" >&2
+            echo "${MIGRATION_GATE_MESSAGE}" >&2
+            exit 1
+          fi
+
+          if [ "${BOOTSTRAP_GATE_OK}" != "true" ]; then
+            echo "::error::Bootstrap gate failed (${BOOTSTRAP_MODE}/${BOOTSTRAP_GATE_RESULT}): ${BOOTSTRAP_GATE_RISK_FILES}" >&2
+            echo "${BOOTSTRAP_GATE_MESSAGE}" >&2
+            exit 1
+          fi
+
+      - name: setup quantum-cli
+        uses: hostwithquantum/setup-quantum-cli@v2.0.0
+        with:
+          api-key: ${{ secrets.QUANTUM_API_KEY }}
+
+      - name: deploy
+        id: deploy
+        env:
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
+          DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
+          APP_CONFIG: ${{ secrets.APP_CONFIG }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f .env stack.json stack.yaml' EXIT
+
+          if [ -z "${QUANTUM_ENDPOINT}" ]; then
+            echo "'QUANTUM_ENDPOINT' must not be empty." >&2
+            exit 1
+          fi
+
+          if [ -z "${APP_CONFIG}" ]; then
+            echo "'APP_CONFIG' must not be empty." >&2
+            exit 1
+          fi
+
+          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          {
+            printf '\nIMAGE_REF=%s\n' "${DEPLOY_IMAGE_REF}"
+            printf 'SVA_DEPLOY_REVISION=%s\n' "${DEPLOY_REVISION}"
+          } >> .env
+          docker compose -f compose.yaml -f ./deploy/compose.${ENVIRONMENT}.yaml config --no-normalize --format json > stack.json
+          pnpm exec tsx scripts/ci/render-quantum-stack.ts --input stack.json --output stack.yaml
+
+          quantum-cli stack deploy -f stack.yaml --stack "studio-${ENVIRONMENT}" --endpoint "${QUANTUM_ENDPOINT}"
+
+      - name: write deploy summary
+        if: always()
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
+          DEPLOY_IMAGE_TAG: ${{ steps.image_contract.outputs.deploy_summary_tag }}
+          DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          DEPLOY_IMAGE_IMMUTABILITY: ${{ steps.image_contract.outputs.deploy_summary_immutability }}
+          DEPLOY_IMAGE_ROLLBACK_HINT: ${{ steps.image_contract.outputs.deploy_summary_rollback_hint }}
+          DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
+          MIGRATION_MODE: ${{ inputs.migration_mode }}
+          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
+          MIGRATION_GATE_RESULT: ${{ steps.gate_eval.outputs.migration_gate_result }}
+          MIGRATION_GATE_RISK_FILES: ${{ steps.gate_eval.outputs.migration_gate_risk_files }}
+          BOOTSTRAP_GATE_RESULT: ${{ steps.gate_eval.outputs.bootstrap_gate_result }}
+          BOOTSTRAP_GATE_RISK_FILES: ${{ steps.gate_eval.outputs.bootstrap_gate_risk_files }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+        run: |
+          set -euo pipefail
+
+          deploy_started=no
+          if [ "${DEPLOY_OUTCOME}" != "" ] && [ "${DEPLOY_OUTCOME}" != "skipped" ]; then
+            deploy_started=yes
+          fi
+
+          {
+            echo "## Promote summary"
+            echo
+            echo "| field | value |"
+            echo "| --- | --- |"
+            echo "| environment | ${ENVIRONMENT} |"
+            echo "| image | ${DEPLOY_IMAGE_REF:-not-evaluated} |"
+            echo "| tag | ${DEPLOY_IMAGE_TAG:-not-evaluated} |"
+            echo "| digest | ${DEPLOY_IMAGE_DIGEST:-not-evaluated} |"
+            echo "| immutability | ${DEPLOY_IMAGE_IMMUTABILITY:-not-evaluated} |"
+            echo "| deploy_revision | ${DEPLOY_REVISION:-not-evaluated} |"
+            echo "| migration_mode | ${MIGRATION_MODE} |"
+            echo "| migration_gate_result | ${MIGRATION_GATE_RESULT:-not-evaluated} |"
+            echo "| migration_risk_files | ${MIGRATION_GATE_RISK_FILES:-none} |"
+            echo "| bootstrap_mode | ${BOOTSTRAP_MODE} |"
+            echo "| bootstrap_gate_result | ${BOOTSTRAP_GATE_RESULT:-not-evaluated} |"
+            echo "| bootstrap_risk_files | ${BOOTSTRAP_GATE_RISK_FILES:-none} |"
+            echo "| app_deploy_started | ${deploy_started} |"
+            echo "| rollback_hint | ${DEPLOY_IMAGE_ROLLBACK_HINT:-not-evaluated} |"
+          } >> "${GITHUB_STEP_SUMMARY}"

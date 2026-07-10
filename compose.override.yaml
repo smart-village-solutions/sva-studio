@@ -1,0 +1,48 @@
+services:
+  app:
+    build: .
+    ports:
+      - '3000:3000'
+
+  provisioner:
+    build: .
+
+  migrate:
+    build: .
+
+  bootstrap:
+    build: .
+
+  redis:
+    ports:
+      - '6379:6379'
+      - '6380:6380'
+    volumes:
+      - redis-data:/data
+      - ./dev/redis-tls/redis.pem:/etc/redis/certs/redis.pem:ro
+      - ./dev/redis-tls/redis-key.pem:/etc/redis/certs/redis-key.pem:ro
+      - ./dev/redis-tls/ca.pem:/etc/redis/certs/ca.pem:ro
+    command: >-
+      redis-server --port 6379 --tls-port 6380
+      --tls-cert-file /etc/redis/certs/redis.pem
+      --tls-key-file /etc/redis/certs/redis-key.pem
+      --tls-ca-cert-file /etc/redis/certs/ca.pem
+      --tls-replication yes --appendonly yes
+      --maxmemory 256mb --maxmemory-policy allkeys-lru
+      --requirepass "$${REDIS_PASSWORD}"
+    healthcheck:
+      test: ['CMD-SHELL', 'REDISCLI_AUTH=$${REDIS_PASSWORD} redis-cli ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  postgres:
+    container_name: sva-studio-postgres
+    ports:
+      - '127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432'
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sva_studio}
+      POSTGRES_USER: ${POSTGRES_USER:-sva}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sva_local_dev_password}
+    restart: unless-stopped

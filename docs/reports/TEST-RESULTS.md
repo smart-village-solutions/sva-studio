@@ -8,7 +8,7 @@
 **Status:** ERFOLGREICH
 
 ```bash
-docker compose -f docker-compose.monitoring.yml up -d
+docker compose -f compose.monitoring.yaml up -d
 ```
 
 **Ergebnis:**

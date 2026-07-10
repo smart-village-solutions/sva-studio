@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-COMPOSE_FILE="${ROOT_DIR}/docker-compose.monitoring.yml"
+COMPOSE_FILE="${MONITORING_COMPOSE_FILE:-${ROOT_DIR}/compose.monitoring.yaml}"
 ARTIFACT_DIR="${ROOT_DIR}/artifacts/monitoring"
 
 SERVICES=(
@@ -22,6 +22,15 @@ trap cleanup EXIT
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "[monitoring-ci] Missing required command: $1" >&2
+    exit 1
+  fi
+}
+
+require_file() {
+  local path="$1"
+
+  if [[ ! -f "${path}" ]]; then
+    echo "[monitoring-ci] Missing required file: ${path}" >&2
     exit 1
   fi
 }
@@ -89,6 +98,7 @@ main() {
   require_command curl
   require_command grep
   require_command pnpm
+  require_file "${COMPOSE_FILE}"
 
   mkdir -p "${ARTIFACT_DIR}"
 

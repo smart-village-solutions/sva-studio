@@ -9,8 +9,10 @@ describe('render-compose-env', () => {
     );
   });
 
-  it('preserves equals signs, hashes, whitespace and escaped single quotes inside values', () => {
-    expect(renderComposeEnv("TOKEN= a=b#c \\ it's valid ")).toBe("TOKEN=' a=b#c \\ it\\'s valid '\n");
+  it('uses Compose-compatible double quotes for values containing apostrophes', () => {
+    expect(renderComposeEnv('TOKEN= a=b#c \\ it\'s "$VALID" ')).toBe(
+      'TOKEN=" a=b#c \\\\ it\'s \\\"$$VALID\\\" "\n'
+    );
   });
 
   it('ignores blank lines and comments but rejects malformed keys', () => {

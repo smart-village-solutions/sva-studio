@@ -74,6 +74,19 @@ describe('affected-unit-gate', () => {
     });
   });
 
+  it('does not skip app tests when app and infra files change together', () => {
+    expect(
+      planAppUnitExecution(
+        ['apps/sva-studio-react/src/routes/settings.tsx', '.github/workflows/build.yml'],
+        ['tooling-testing', 'sva-studio-react']
+      )
+    ).toEqual({
+      mode: 'slices',
+      reason: 'app-only-sliceable-change',
+      slices: ['routes'],
+    });
+  });
+
   it.each([
     'package.json',
     'pnpm-lock.yaml',

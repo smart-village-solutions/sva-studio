@@ -29,14 +29,16 @@ services:
       --tls-ca-cert-file /etc/redis/certs/ca.pem
       --tls-replication yes --appendonly yes
       --maxmemory 256mb --maxmemory-policy allkeys-lru
+      --requirepass "$${REDIS_PASSWORD}"
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ['CMD-SHELL', 'REDISCLI_AUTH=$${REDIS_PASSWORD} redis-cli ping']
       interval: 5s
       timeout: 3s
       retries: 5
     restart: unless-stopped
 
   postgres:
+    container_name: sva-studio-postgres
     ports:
       - '127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432'
     environment:

@@ -1,11 +1,25 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   evaluateDeployGate,
   evaluatePromoteDeployGates,
+  executePromoteDeployGates,
   formatRiskSummary,
   type DeployGateMode,
 } from './promote-deploy-gates.ts';
+
+const temporaryDirectories: string[] = [];
+
+afterEach(() => {
+  delete process.env.GITHUB_OUTPUT;
+  for (const directory of temporaryDirectories.splice(0)) {
+    rmSync(directory, { force: true, recursive: true });
+  }
+});
 
 describe('promote-deploy-gates', () => {
   it('treats docs-only changes as safe for assert-none', () => {
@@ -50,7 +64,9 @@ describe('promote-deploy-gates', () => {
       result: 'blocked-risk',
       riskDetected: true,
     });
-    expect(result.bootstrap.riskFiles).toEqual(['packages/auth-runtime/src/bootstrap/reconcile.ts']);
+    expect(result.bootstrap.riskFiles).toEqual([
+      'packages/auth-runtime/src/bootstrap/reconcile.ts',
+    ]);
   });
 
   it('treats the deployed Portainer bootstrap entrypoint as bootstrap risk', () => {
@@ -113,9 +129,30 @@ describe('promote-deploy-gates', () => {
 
   it('formats risk summaries deterministically', () => {
     expect(formatRiskSummary([])).toBe('none');
-    expect(formatRiskSummary(['packages/data/migrations/0010_add_role.sql', 'migrate-entrypoint.sh'])).toBe(
-      'migrate-entrypoint.sh, packages/data/migrations/0010_add_role.sql'
-    );
+    expect(
+      formatRiskSummary(['packages/data/migrations/0010_add_role.sql', 'migrate-entrypoint.sh'])
+    ).toBe('migrate-entrypoint.sh, packages/data/migrations/0010_add_role.sql');
+  });
+
+  it('writes gate messages as plain GitHub output values', async () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'promote-gates-'));
+    temporaryDirectories.push(directory);
+    const outputPath = path.join(directory, 'github-output.txt');
+    process.env.GITHUB_OUTPUT = outputPath;
+
+    const result = await executePromoteDeployGates([
+      '--migration-mode',
+      'assert-none',
+      '--bootstrap-mode',
+      'assert-none',
+      '--changed-files',
+      'docs/readme.md',
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    const output = readFileSync(outputPath, 'utf8');
+    expect(output).toMatch(/^migration_gate_message=[^"].+$/mu);
+    expect(output).toMatch(/^bootstrap_gate_message=[^"].+$/mu);
   });
 
   it.each<{

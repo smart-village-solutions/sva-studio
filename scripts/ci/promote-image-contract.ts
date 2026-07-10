@@ -27,7 +27,10 @@ interface CliOptions {
 
 const digestPattern = /^sha256:[a-f0-9]{64}$/u;
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
-const fullDigestRefPattern = new RegExp(`^${escapeRegExp(IMAGE_REPOSITORY)}@(sha256:[a-f0-9]{64})$`, 'u');
+const fullDigestRefPattern = new RegExp(
+  `^${escapeRegExp(IMAGE_REPOSITORY)}@(sha256:[a-f0-9]{64})$`,
+  'u'
+);
 const commitShaTagPattern = /^[a-f0-9]{40}$/u;
 const imageTagPattern = /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/u;
 
@@ -103,7 +106,9 @@ const extractDigest = (imageInput: string): string | null => {
 
 const extractTag = (imageInput: string): string => {
   const qualifiedPrefix = `${IMAGE_REPOSITORY}:`;
-  const tag = imageInput.startsWith(qualifiedPrefix) ? imageInput.slice(qualifiedPrefix.length) : imageInput;
+  const tag = imageInput.startsWith(qualifiedPrefix)
+    ? imageInput.slice(qualifiedPrefix.length)
+    : imageInput;
 
   if (!imageTagPattern.test(tag)) {
     throw new Error(`Ungültige Image-Tag-Referenz: ${imageInput}`);
@@ -172,15 +177,22 @@ export const resolvePromoteImageContract = ({
   }
 
   const tag = extractTag(normalizedImageInput);
+  const isCommitShaTag = commitShaTagPattern.test(tag);
+  const isLatestDevTag = environment === 'dev' && tag === 'latest';
 
   return {
     deployRevision: tag,
     deploySummaryDigest: 'not-pinned',
-    deploySummaryImmutability: environment === 'dev' && tag === 'latest' ? 'dev-latest-allowed' : 'commit-sha-tag',
-    deploySummaryRollbackHint:
-      environment === 'dev' && tag === 'latest'
-        ? 'Rollback nicht über latest, sondern über vorherigen SHA-Tag oder Digest ausführen.'
-        : 'Rollback über den vorherigen Commit-SHA-Tag oder einen bekannten Digest ausführen, nicht über latest.',
+    deploySummaryImmutability: isLatestDevTag
+      ? 'dev-latest-allowed'
+      : isCommitShaTag
+        ? 'commit-sha-tag'
+        : 'mutable-dev-tag',
+    deploySummaryRollbackHint: isLatestDevTag
+      ? 'Rollback nicht über latest, sondern über vorherigen SHA-Tag oder Digest ausführen.'
+      : isCommitShaTag
+        ? 'Rollback über den vorherigen Commit-SHA-Tag oder einen bekannten Digest ausführen, nicht über latest.'
+        : 'Rollback über einen vorherigen Commit-SHA-Tag oder bekannten Digest ausführen; der Dev-Tag ist veränderlich.',
     deploySummaryTag: tag,
     environment,
     imageInput: normalizedImageInput,

@@ -10,7 +10,7 @@ import {
 export const renderQuantumStack = (source: string): string => {
   const composeDocument = JSON.parse(source) as ComposeDocument;
   const normalized = buildQuantumDeployComposeDocument(composeDocument);
-  return `${JSON.stringify({ version: '3.8', ...normalized }, null, 2)}\n`;
+  return `${JSON.stringify({ ...normalized, version: '3.8' }, null, 2)}\n`;
 };
 
 export const runRenderQuantumStack = (args: readonly string[]): number => {

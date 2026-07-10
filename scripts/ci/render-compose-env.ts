@@ -5,7 +5,17 @@ import { pathToFileURL } from 'node:url';
 
 const ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/u;
 
-const quoteComposeEnvValue = (value: string): string => `'${value.replaceAll("'", "\\'")}'`;
+const quoteComposeEnvValue = (value: string): string => {
+  if (!value.includes("'")) {
+    return `'${value}'`;
+  }
+
+  const escaped = value
+    .replaceAll('\\', '\\\\')
+    .replaceAll('"', '\\"')
+    .replaceAll('$', () => '$$');
+  return `"${escaped}"`;
+};
 
 export const renderComposeEnv = (source: string): string => {
   const renderedLines = source.split(/\r?\n/u).flatMap((line, index) => {
@@ -35,7 +45,10 @@ export const renderComposeEnv = (source: string): string => {
   return `${renderedLines.join('\n')}\n`;
 };
 
-export const runRenderComposeEnv = (args: readonly string[], appConfig = process.env.APP_CONFIG ?? ''): number => {
+export const runRenderComposeEnv = (
+  args: readonly string[],
+  appConfig = process.env.APP_CONFIG ?? ''
+): number => {
   const outputIndex = args.indexOf('--output');
   const outputPath = outputIndex >= 0 ? args[outputIndex + 1] : undefined;
   if (!outputPath) {

@@ -65,20 +65,24 @@ export const planAppUnitExecution = (
   }
 
   const codeRelevantFiles = changedFiles.filter((filePath) => !isNonCodeRelevantPath(filePath));
+  const appFiles = codeRelevantFiles.filter((filePath) =>
+    filePath.startsWith('apps/sva-studio-react/')
+  );
   const nonAppFiles = codeRelevantFiles.filter(
     (filePath) => !filePath.startsWith('apps/sva-studio-react/')
   );
   if (nonAppFiles.length > 0) {
-    return nonAppFiles.every((filePath) =>
+    const hasOnlyInfraNonAppFiles = nonAppFiles.every((filePath) =>
       matchesAnyPattern(filePath, APP_INFRA_ONLY_NON_APP_PATTERNS)
-    )
-      ? { mode: 'skip', reason: 'non-app-infra-change', slices: [] }
-      : { mode: 'aggregate', reason: 'mixed-workspace-change', slices: [] };
+    );
+    if (!hasOnlyInfraNonAppFiles) {
+      return { mode: 'aggregate', reason: 'mixed-workspace-change', slices: [] };
+    }
+    if (appFiles.length === 0) {
+      return { mode: 'skip', reason: 'non-app-infra-change', slices: [] };
+    }
   }
 
-  const appFiles = codeRelevantFiles.filter((filePath) =>
-    filePath.startsWith('apps/sva-studio-react/')
-  );
   if (appFiles.length === 0) {
     return { mode: 'aggregate', reason: 'app-affected-via-dependency', slices: [] };
   }

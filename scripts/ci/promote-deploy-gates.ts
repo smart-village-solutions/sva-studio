@@ -2,10 +2,10 @@
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { resolveChangedFiles } from './pr-scope.ts';
-
 export type DeployGateMode = 'assert-none' | 'run';
 export type DeployGateKind = 'bootstrap' | 'migration';
-export type DeployGateResultType = 'asserted-clean' | 'blocked-missing-executor' | 'blocked-risk' | 'blocked-safe-run-required';
+export type DeployGateResultType =
+  'asserted-clean' | 'blocked-missing-executor' | 'blocked-risk' | 'blocked-safe-run-required';
 
 export interface DeployGateResult {
   kind: DeployGateKind;
@@ -42,7 +42,6 @@ interface CliOptions {
 
 const DEFAULT_BASE = 'origin/main';
 const DEFAULT_HEAD = 'HEAD';
-
 const migrationRiskPatterns = [
   /^compose\.yaml$/u,
   /^deploy\/compose\.(?:dev|staging|prod)\.yaml$/u,
@@ -53,7 +52,6 @@ const migrationRiskPatterns = [
   /^docs\/development\/studio-db-schema\.md$/u,
   /^packages\/(?:data|data-repositories|core|sva-mainserver)\/.+/u,
 ];
-
 const bootstrapRiskPatterns = [
   /^compose\.yaml$/u,
   /^deploy\/compose\.(?:dev|staging|prod)\.yaml$/u,
@@ -70,8 +68,8 @@ const bootstrapRiskPatterns = [
 
 const matchesAnyPattern = (filePath: string, patterns: readonly RegExp[]): boolean =>
   patterns.some((pattern) => pattern.test(filePath));
-
-const uniqueSorted = (values: readonly string[]): string[] => [...new Set(values.map((value) => value.trim()).filter(Boolean))].sort();
+const uniqueSorted = (values: readonly string[]): string[] =>
+  [...new Set(values.map((value) => value.trim()).filter(Boolean))].sort();
 
 export const formatRiskSummary = (riskFiles: readonly string[]): string =>
   riskFiles.length === 0 ? 'none' : uniqueSorted(riskFiles).join(', ');
@@ -245,7 +243,11 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
   };
 };
 
-const resolveCliChangedFiles = ({ base, changedFiles, head }: Pick<CliOptions, 'base' | 'changedFiles' | 'head'>): string[] =>
+const resolveCliChangedFiles = ({
+  base,
+  changedFiles,
+  head,
+}: Pick<CliOptions, 'base' | 'changedFiles' | 'head'>): string[] =>
   changedFiles ?? resolveChangedFiles(base, head);
 
 const emitEvaluationOutputs = (evaluation: PromoteDeployGateEvaluation): void => {
@@ -261,13 +263,12 @@ const emitEvaluationOutputs = (evaluation: PromoteDeployGateEvaluation): void =>
     `migration_gate_ok=${String(evaluation.migration.ok)}`,
     `migration_gate_result=${evaluation.migration.result}`,
     `migration_gate_risk_files=${evaluation.migration.riskFiles.join(',') || 'none'}`,
-    `migration_gate_message=${JSON.stringify(evaluation.migration.message)}`,
+    `migration_gate_message=${evaluation.migration.message}`,
     `bootstrap_gate_ok=${String(evaluation.bootstrap.ok)}`,
     `bootstrap_gate_result=${evaluation.bootstrap.result}`,
     `bootstrap_gate_risk_files=${evaluation.bootstrap.riskFiles.join(',') || 'none'}`,
-    `bootstrap_gate_message=${JSON.stringify(evaluation.bootstrap.message)}`,
+    `bootstrap_gate_message=${evaluation.bootstrap.message}`,
   ];
-
   appendFileSync(githubOutput, `${lines.join('\n')}\n`, 'utf8');
 };
 

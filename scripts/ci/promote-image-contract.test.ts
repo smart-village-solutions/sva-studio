@@ -16,7 +16,8 @@ describe('promote-image-contract', () => {
       deployRevision: 'latest',
       deploySummaryDigest: 'not-pinned',
       deploySummaryImmutability: 'dev-latest-allowed',
-      deploySummaryRollbackHint: 'Rollback nicht über latest, sondern über vorherigen SHA-Tag oder Digest ausführen.',
+      deploySummaryRollbackHint:
+        'Rollback nicht über latest, sondern über vorherigen SHA-Tag oder Digest ausführen.',
       deploySummaryTag: 'latest',
       imageRef: 'ghcr.io/smart-village-solutions/sva-studio:latest',
       imageType: 'tag',
@@ -45,7 +46,8 @@ describe('promote-image-contract', () => {
       deploySummaryRollbackHint:
         'Rollback über den vorherigen Commit-SHA-Tag oder einen bekannten Digest ausführen, nicht über latest.',
       deploySummaryTag: '5bdcfd1be7d7a72ba94c23ce16834bc1ebecc5de',
-      imageRef: 'ghcr.io/smart-village-solutions/sva-studio:5bdcfd1be7d7a72ba94c23ce16834bc1ebecc5de',
+      imageRef:
+        'ghcr.io/smart-village-solutions/sva-studio:5bdcfd1be7d7a72ba94c23ce16834bc1ebecc5de',
       imageType: 'tag',
     });
   });
@@ -82,6 +84,9 @@ describe('promote-image-contract', () => {
 
     expect(result).toMatchObject({
       deployRevision: 'preview',
+      deploySummaryImmutability: 'mutable-dev-tag',
+      deploySummaryRollbackHint:
+        'Rollback über einen vorherigen Commit-SHA-Tag oder bekannten Digest ausführen; der Dev-Tag ist veränderlich.',
       deploySummaryTag: 'preview',
       imageRef: 'ghcr.io/smart-village-solutions/sva-studio:preview',
     });

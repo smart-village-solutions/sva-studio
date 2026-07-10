@@ -4,15 +4,11 @@ import { createRequire } from 'node:module';
 import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cli-options.ts';
 
 export interface DurationEntry {
   label: string;
   durationMs: number;
-}
-
-interface AffectedCoverageGateOptions {
-  base: string;
-  head: string;
 }
 
 const APP_PROJECT = 'sva-studio-react';
@@ -20,36 +16,6 @@ const APP_VITEST_CONFIG = 'apps/sva-studio-react/vitest.config.ts';
 const COVERAGE_WORKSPACE_ROOTS = ['apps', 'packages'] as const;
 const IGNORED_DIRECTORY_NAMES = new Set(['node_modules', '.git', '.nx', '.output', 'dist', 'build', '.generated']);
 const require = createRequire(import.meta.url);
-
-const parseCliOptions = (args: readonly string[]): AffectedCoverageGateOptions => {
-  let base = 'origin/main';
-  let head = 'HEAD';
-
-  for (let index = 0; index < args.length; index += 1) {
-    const argument = args[index];
-
-    if (argument === '--base') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error('Fehlender Wert für --base');
-      }
-      base = value;
-      index += 1;
-      continue;
-    }
-
-    if (argument === '--head') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error('Fehlender Wert für --head');
-      }
-      head = value;
-      index += 1;
-    }
-  }
-
-  return { base, head };
-};
 
 const runCommand = (command: string): number => {
   console.log(`\n$ ${command}`);
@@ -107,7 +73,7 @@ export const clearWorkspaceCoverageOutputs = (rootDir = process.cwd()): void => 
 };
 
 export const runAffectedCoverageGate = (
-  options: AffectedCoverageGateOptions,
+  options: BaseHeadCliOptions,
   reportDuration?: (entry: DurationEntry) => void
 ): DurationEntry[] => {
   clearWorkspaceCoverageOutputs();
@@ -159,7 +125,7 @@ export const runAffectedCoverageGate = (
 const formatDuration = (durationMs: number): string => `${(durationMs / 1000).toFixed(2)}s`;
 
 export const runAffectedCoverageGateCli = (args: readonly string[]): number => {
-  const options = parseCliOptions(args);
+  const options = parseBaseHeadCliOptions(args);
   const durationEntries = runAffectedCoverageGate(options);
 
   if (durationEntries.length > 0) {

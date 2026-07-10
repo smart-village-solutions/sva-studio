@@ -34,6 +34,12 @@ export type HostMediaAssetDetail = Readonly<{
   previewUrl?: string | null;
 }>;
 
+export const getHostMediaAssetFileName = (asset: Pick<HostMediaAssetDetail, 'id' | 'storageKey'>): string => {
+  const storageKeyParts = asset.storageKey.split('/');
+  const fileName = storageKeyParts[storageKeyParts.length - 1]?.trim();
+  return fileName || asset.id;
+};
+
 export type UpdateHostMediaMetadataInput = Readonly<{
   title?: string | null;
   description?: string | null;
@@ -119,6 +125,7 @@ export const updateHostMediaAsset = async (input: {
         'X-Requested-With': 'XMLHttpRequest',
       },
       body: JSON.stringify({
+        ...(input.instanceId ? { instanceId: input.instanceId } : {}),
         ...(input.visibility ? { visibility: input.visibility } : {}),
         metadata: input.metadata,
       }),

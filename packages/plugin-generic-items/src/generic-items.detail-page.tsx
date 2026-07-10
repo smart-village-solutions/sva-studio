@@ -3,6 +3,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm } from 'react-hook-form';
 import {
   getHostMediaAsset,
+  getHostMediaAssetFileName,
   updateHostMediaAsset,
   uploadHostMediaFile,
   usePluginTranslation,
@@ -76,12 +77,6 @@ const createSummaryErrors = (errors: ReturnType<typeof useForm<GenericItemsDetai
 
 type GenericItemsMediaPickerAsset = StudioMediaPickerAssetDetail;
 
-const readDetailFileName = (asset: Pick<HostMediaAssetDetail, 'id' | 'storageKey'>): string => {
-  const storageKeyParts = asset.storageKey.split('/');
-  const fileName = storageKeyParts[storageKeyParts.length - 1]?.trim();
-  return fileName && fileName.length > 0 ? fileName : asset.id;
-};
-
 const toGenericItemsMediaPickerSummary = (asset: Parameters<typeof readAssetTitle>[0]): StudioMediaPickerAssetSummary => ({
   id: asset.id,
   title: readAssetTitle(asset),
@@ -95,14 +90,14 @@ const toGenericItemsMediaPickerDetail = (
   asset: HostMediaAssetDetail,
   summary?: Parameters<typeof readAssetTitle>[0]
 ): GenericItemsMediaPickerAsset => {
-  const fileName = summary ? readAssetFileName(summary) : readDetailFileName(asset);
+  const fileName = summary ? readAssetFileName(summary) : getHostMediaAssetFileName(asset);
   const title = asset.metadata.title?.trim() || (summary ? readAssetTitle(summary) : fileName);
 
   return {
     id: asset.id,
     title,
     fileName,
-    previewUrl: asset.previewUrl ?? summary?.previewUrl ?? null,
+    previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
     mimeType: asset.mimeType,
     visibility: asset.visibility,
     metadata: {
@@ -312,7 +307,8 @@ export function GenericItemsDetailPage({
         mediaType: 'image',
         visibility: 'public',
       });
-      await refreshMediaAssets();
+      const assets = await refreshMediaAssets();
+      mediaAssetsRef.current = assets;
       return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
     loadAsset: async (assetId) => {
@@ -327,7 +323,8 @@ export function GenericItemsDetailPage({
         metadata,
         visibility: 'public',
       });
-      await refreshMediaAssets();
+      const assets = await refreshMediaAssets();
+      mediaAssetsRef.current = assets;
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
       return toGenericItemsMediaPickerDetail(detail, summary);
     },
@@ -379,7 +376,6 @@ export function GenericItemsDetailPage({
           }
           isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
           isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
-          isSupportedUploadFile={isSupportedUploadFile}
           labels={mediaPickerLabels}
           metadataDraft={mediaPicker.metadataDraft}
           mode={mediaPicker.mode}

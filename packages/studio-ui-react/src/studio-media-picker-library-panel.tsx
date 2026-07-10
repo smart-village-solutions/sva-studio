@@ -20,12 +20,14 @@ export type StudioMediaPickerLibraryPanelProps = Readonly<{
   onSearchValueChange: (value: string) => void;
   onSelectAsset: (asset: StudioMediaPickerAssetSummary) => void | Promise<void>;
   isAssetSelectable?: (asset: StudioMediaPickerAssetSummary) => boolean;
+  isLoadingReviewAsset?: boolean;
   labels: StudioMediaPickerOverlayLabels['library'];
 }>;
 
 export const StudioMediaPickerLibraryPanel = ({
   assets,
   isAssetSelectable,
+  isLoadingReviewAsset = false,
   labels,
   onSearchValueChange,
   onSelectAsset,
@@ -68,7 +70,7 @@ export const StudioMediaPickerLibraryPanel = ({
                   <p className="line-clamp-1 text-xs text-muted-foreground">{asset.fileName}</p>
                 </div>
                 <div className="flex justify-end">
-                  <Button type="button" disabled={!selectable} onClick={() => void onSelectAsset(asset)}>
+                  <Button type="button" disabled={!selectable || isLoadingReviewAsset} onClick={() => void onSelectAsset(asset)}>
                     {labels.select}
                   </Button>
                 </div>

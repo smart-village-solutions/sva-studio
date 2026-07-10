@@ -3,6 +3,7 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
   getHostMediaAsset,
+  getHostMediaAssetFileName,
   listHostMediaAssets,
   updateHostMediaAsset,
   uploadHostMediaFile,
@@ -87,12 +88,6 @@ const renderPoiTabPanel = ({
 
 const PoiTabTriggerLabel = ({ label }: Readonly<{ label: string }>) => <span>{label}</span>;
 
-const readDetailFileName = (asset: Pick<HostMediaAssetDetail, 'id' | 'storageKey'>): string => {
-  const storageKeyParts = asset.storageKey.split('/');
-  const fileName = storageKeyParts[storageKeyParts.length - 1]?.trim();
-  return fileName && fileName.length > 0 ? fileName : asset.id;
-};
-
 const toPoiMediaPickerSummary = (asset: HostMediaAssetListItem): StudioMediaPickerAssetSummary => ({
   id: asset.id,
   title: readAssetTitle(asset),
@@ -106,14 +101,14 @@ const toPoiMediaPickerDetail = (
   asset: HostMediaAssetDetail,
   summary?: HostMediaAssetListItem
 ): PoiMediaPickerAsset => {
-  const fileName = summary ? readAssetFileName(summary) : readDetailFileName(asset);
+  const fileName = summary ? readAssetFileName(summary) : getHostMediaAssetFileName(asset);
   const title = asset.metadata.title?.trim() || (summary ? readAssetTitle(summary) : fileName);
 
   return {
     id: asset.id,
     title,
     fileName,
-    previewUrl: asset.previewUrl ?? summary?.previewUrl ?? null,
+    previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
     mimeType: asset.mimeType,
     visibility: asset.visibility,
     metadata: {
@@ -291,7 +286,8 @@ export function PoiDetailPage({
         visibility: 'public',
         instanceId,
       });
-      await refreshMediaAssets();
+      const assets = await refreshMediaAssets();
+      mediaAssetsRef.current = assets;
       return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
     loadAsset: async (assetId) => {
@@ -311,7 +307,8 @@ export function PoiDetailPage({
         visibility: 'public',
         instanceId,
       });
-      await refreshMediaAssets();
+      const assets = await refreshMediaAssets();
+      mediaAssetsRef.current = assets;
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
       return toPoiMediaPickerDetail(detail, summary);
     },
@@ -561,7 +558,6 @@ export function PoiDetailPage({
           }
           isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
           isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
-          isSupportedUploadFile={isSupportedUploadFile}
           labels={mediaPickerLabels}
           metadataDraft={mediaPicker.metadataDraft}
           mode={mediaPicker.mode}

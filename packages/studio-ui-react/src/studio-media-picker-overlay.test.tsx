@@ -149,6 +149,62 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(result.current.mode).toBe('upload');
   });
 
+  it('does not report an upload as successful when loading its review asset fails', async () => {
+    const { result } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        onAccept: vi.fn(),
+        isSupportedUploadFile: () => true,
+        uploadAsset: vi.fn(async () => ({ assetId: 'asset-1' })),
+        loadAsset: vi.fn(async () => {
+          throw new Error('asset unavailable');
+        }),
+        saveAssetMetadata: vi.fn(),
+      })
+    );
+
+    act(() => {
+      result.current.openUpload();
+    });
+
+    await act(async () => {
+      await result.current.uploadFile(new File(['binary'], 'hero.jpg', { type: 'image/jpeg' }));
+    });
+
+    expect(result.current.uploadPhase).toBe('error');
+    expect(result.current.errorCode).toBe('asset_load_failed');
+    expect(result.current.mode).toBe('review');
+  });
+
+  it('accepts unchanged selectable assets without requiring metadata update permission', async () => {
+    const asset = createAsset();
+    const onAccept = vi.fn();
+    const saveAssetMetadata = vi.fn();
+
+    const { result } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        onAccept,
+        isSupportedUploadFile: () => true,
+        uploadAsset: vi.fn(),
+        loadAsset: vi.fn(async () => asset),
+        saveAssetMetadata,
+        canAcceptAsset: () => true,
+      })
+    );
+
+    act(() => {
+      result.current.openLibrary();
+    });
+    await act(async () => {
+      await result.current.selectAsset(asset);
+    });
+    await act(async () => {
+      await result.current.confirmSelection();
+    });
+
+    expect(saveAssetMetadata).not.toHaveBeenCalled();
+    expect(onAccept).toHaveBeenCalledWith(asset);
+  });
+
   it('returns from review to the originating mode without mutating selection', async () => {
     const asset = createAsset();
     const onAccept = vi.fn();

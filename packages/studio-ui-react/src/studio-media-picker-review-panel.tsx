@@ -47,16 +47,18 @@ const feedbackToneClassName = (feedbackTone: 'default' | 'success' | 'error') =>
       : 'text-muted-foreground';
 
 const ReviewAssetPreview = ({
+  metadataDraft,
   reviewAsset,
 }: Readonly<{
+  metadataDraft: StudioMediaPickerMetadataDraft;
   reviewAsset: StudioMediaPickerAssetDetail;
 }>) => (
   <div className="space-y-4">
     <div className={studioMediaPickerPreviewClassName}>
-      <StudioMediaPreview alt={reviewAsset.title} url={reviewAsset.previewUrl} />
+      <StudioMediaPreview alt={metadataDraft.altText || metadataDraft.title || reviewAsset.title} url={reviewAsset.previewUrl} />
     </div>
     <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-3">
-      <p className="text-sm font-medium text-foreground">{reviewAsset.title}</p>
+      <p className="text-sm font-medium text-foreground">{metadataDraft.title || reviewAsset.title}</p>
       <p className="text-xs text-muted-foreground">{reviewAsset.fileName}</p>
     </div>
   </div>
@@ -126,20 +128,23 @@ const ReviewPanelActions = ({
   onOpenMediaManagement?: (assetId: string) => void | Promise<void>;
   reviewAsset: StudioMediaPickerAssetDetail | null;
   reviewSource: StudioMediaPickerReviewSource;
-}>) => (
+}>) => {
+  const isBusy = isLoadingReviewAsset || isSavingReviewAsset;
+
+  return (
   <div className="flex flex-wrap justify-between gap-3 border-t border-border/60 pt-4">
     <div className="flex flex-wrap gap-3">
-      <Button type="button" variant="outline" onClick={onBackFromReview}>
+      <Button type="button" disabled={isBusy} variant="outline" onClick={onBackFromReview}>
         {reviewSource === 'library' ? labels.actions.backToLibrary : labels.actions.backToUpload}
       </Button>
       {reviewAsset && onOpenMediaManagement ? (
-        <Button type="button" variant="outline" onClick={() => void onOpenMediaManagement(reviewAsset.id)}>
+        <Button type="button" disabled={isBusy} variant="outline" onClick={() => void onOpenMediaManagement(reviewAsset.id)}>
           {labels.actions.openMediaManagement}
         </Button>
       ) : null}
     </div>
     <div className="flex flex-wrap gap-3">
-      <Button type="button" variant="outline" onClick={onClose}>
+      <Button type="button" disabled={isBusy} variant="outline" onClick={onClose}>
         {labels.actions.cancel}
       </Button>
       <Button
@@ -151,7 +156,8 @@ const ReviewPanelActions = ({
       </Button>
     </div>
   </div>
-);
+  );
+};
 
 export type StudioMediaPickerReviewPanelProps = Readonly<{
   reviewSource: StudioMediaPickerReviewSource;
@@ -192,7 +198,7 @@ export const StudioMediaPickerReviewPanel = ({
       </div>
 
       {feedbackMessage ? (
-        <p className={`text-sm font-medium ${feedbackToneClassName(feedbackTone)}`}>{feedbackMessage}</p>
+        <p aria-live="polite" className={`text-sm font-medium ${feedbackToneClassName(feedbackTone)}`}>{feedbackMessage}</p>
       ) : null}
 
       {isLoadingReviewAsset || !reviewAsset ? (
@@ -201,7 +207,7 @@ export const StudioMediaPickerReviewPanel = ({
         </div>
       ) : (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-          <ReviewAssetPreview reviewAsset={reviewAsset} />
+          <ReviewAssetPreview metadataDraft={metadataDraft} reviewAsset={reviewAsset} />
           <ReviewMetadataFields labels={labels} metadataDraft={metadataDraft} onMetadataChange={onMetadataChange} />
         </div>
       )}

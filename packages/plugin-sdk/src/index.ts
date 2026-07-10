@@ -222,6 +222,7 @@ export {
   fromDatetimeLocalValue,
   listHostMediaAssets,
   getHostMediaAsset,
+  getHostMediaAssetFileName,
   updateHostMediaAsset,
   listHostMediaReferencesByTarget,
   replaceHostMediaReferences,

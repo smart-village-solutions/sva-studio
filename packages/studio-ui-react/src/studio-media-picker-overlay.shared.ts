@@ -16,6 +16,10 @@ export type StudioMediaPickerMetadataDraft = Readonly<{
   license: string;
 }>;
 
+export type StudioMediaPickerMetadataUpdate = Readonly<{
+  [Key in keyof StudioMediaPickerMetadataDraft]: string | null;
+}>;
+
 export type StudioMediaPickerAssetSummary = Readonly<{
   id: string;
   title: string;
@@ -78,6 +82,16 @@ export const createMetadataDraft = (
   copyright: asset.metadata.copyright || '',
   license: asset.metadata.license || '',
 });
+
+export const metadataDraftsMatch = (
+  left: StudioMediaPickerMetadataDraft,
+  right: StudioMediaPickerMetadataDraft
+) => Object.keys(left).every((key) => left[key as keyof StudioMediaPickerMetadataDraft] === right[key as keyof StudioMediaPickerMetadataDraft]);
+
+export const toMetadataUpdate = (draft: StudioMediaPickerMetadataDraft): StudioMediaPickerMetadataUpdate =>
+  Object.fromEntries(
+    Object.entries(draft).map(([key, value]) => [key, value.trim() || null])
+  ) as StudioMediaPickerMetadataUpdate;
 
 export const normalizeStudioMediaPickerSearchValue = (value: string) => value.trim().toLocaleLowerCase('de-DE');
 

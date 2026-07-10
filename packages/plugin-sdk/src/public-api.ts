@@ -110,6 +110,7 @@ export type {
 export {
   listHostMediaAssets,
   getHostMediaAsset,
+  getHostMediaAssetFileName,
   updateHostMediaAsset,
   listHostMediaReferencesByTarget,
   replaceHostMediaReferences,

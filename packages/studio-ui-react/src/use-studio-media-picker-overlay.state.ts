@@ -62,6 +62,24 @@ export const useStudioMediaPickerOverlayState = () => {
     setUploadPhase('idle');
   }, []);
 
+  const actions = React.useMemo(
+    () => ({
+      setSearchValue,
+      setUploadPhase,
+      setErrorCode,
+      setReviewAsset,
+      setMetadataDraft,
+      setIsLoadingReviewAsset,
+      setIsSavingReviewAsset,
+      close,
+      openLibrary,
+      openUpload,
+      setMode,
+      setReviewSource,
+    }),
+    [close, openLibrary, openUpload]
+  );
+
   return {
     open,
     mode,
@@ -85,5 +103,6 @@ export const useStudioMediaPickerOverlayState = () => {
     openUpload,
     setMode,
     setReviewSource,
+    actions,
   } as const;
 };

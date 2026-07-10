@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  buildAppUnitCommand,
-  normalizeRetryCount,
-  planAppUnitExecution,
-} from './affected-unit-gate.ts';
+import { normalizeRetryCount } from './affected-unit-gate.ts';
+import { buildAppUnitCommand, planAppUnitExecution } from './affected-unit-plan.ts';
 
 describe('affected-unit-gate', () => {
   it('skips app slicing when the app is not affected', () => {

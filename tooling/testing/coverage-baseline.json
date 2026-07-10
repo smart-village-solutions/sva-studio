@@ -133,10 +133,10 @@
       "branches": 97.31
     },
     "server-runtime": {
-      "lines": 95.71,
-      "statements": 95.61,
-      "functions": 100,
-      "branches": 84.04
+      "lines": 95.15,
+      "statements": 95.06,
+      "functions": 98.97,
+      "branches": 83.54
     },
     "studio-module-iam": {
       "lines": 100,

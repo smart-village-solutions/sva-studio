@@ -221,7 +221,9 @@ describe('UserListPage', () => {
 
       render(<UserListPage />);
 
-      expect(screen.queryByRole('img')).toBeNull();
+      expect(screen.queryByRole('img', { name: 'Mainserver Application-ID fehlt' })).toBeNull();
+      expect(screen.queryByRole('img', { name: 'Mainserver Application-Secret fehlt' })).toBeNull();
+      expect(screen.queryByRole('img', { name: 'Mainserver-Daten fehlen' })).toBeNull();
     }
   );
 

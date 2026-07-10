@@ -1,0 +1,4 @@
+{
+  "prNumber": 703,
+  "body": "Die nicht mehr verwendete Bot-Kommentar-Governance wurde entfernt.\n\n- Review-Threads werden weiterhin über den regulären GitHub-Review-Prozess bearbeitet und aufgelöst.\n- Der defekte, nicht verpflichtende Workflow sowie seine proprietäre Marker-Prüflogik wurden entfernt.\n- Aktive Entwicklungs- und Supply-Chain-Dokumentation beschreibt nur noch den tatsächlich verwendeten Prozess."
+}

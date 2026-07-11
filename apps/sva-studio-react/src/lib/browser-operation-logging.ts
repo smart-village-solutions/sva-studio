@@ -22,7 +22,7 @@ type ErrorWithMeta = {
 export const createOperationLogger = (component: string, level: BrowserLogLevel = 'info'): BrowserLogger =>
   createBrowserLogger({ component, level });
 
-export const buildBrowserErrorMeta = (
+const buildBrowserErrorMeta = (
   error: unknown,
   meta: BrowserOperationLogMeta = {}
 ): BrowserOperationLogMeta => {

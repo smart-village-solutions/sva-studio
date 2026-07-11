@@ -1,0 +1,4 @@
+{
+  "prNumber": 706,
+  "body": "Die Wartbarkeit und Qualitätssicherung des Studios wurden weiter verbessert.\n\n- Nachweislich ungenutzte interne Exporte und eine nicht mehr verwendete Typdatei wurden entfernt.\n- Wiederholtes Kommandozeilen-Parsing in den CI-Prüfungen verwendet jetzt eine gemeinsame, getestete Implementierung.\n- Die statisch gemessene Code-Duplikation und die Zahl der Fallow-Qualitätsbefunde wurden reduziert."
+}

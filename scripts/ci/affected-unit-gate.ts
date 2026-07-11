@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cli-options.ts';
 import { buildAppUnitCommand, planAppUnitExecution } from './affected-unit-plan.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
 
@@ -11,43 +12,8 @@ export interface DurationEntry {
   durationMs: number;
 }
 
-interface AffectedUnitGateOptions {
-  base: string;
-  head: string;
-}
-
 const APP_PROJECT = 'sva-studio-react';
 const require = createRequire(import.meta.url);
-const parseCliOptions = (args: readonly string[]): AffectedUnitGateOptions => {
-  let base = 'origin/main';
-  let head = 'HEAD';
-
-  for (let index = 0; index < args.length; index += 1) {
-    const argument = args[index];
-
-    if (argument === '--base') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error('Fehlender Wert für --base');
-      }
-      base = value;
-      index += 1;
-      continue;
-    }
-
-    if (argument === '--head') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error('Fehlender Wert für --head');
-      }
-      head = value;
-      index += 1;
-    }
-  }
-
-  return { base, head };
-};
-
 const runCommand = (
   command: string,
   options?: Readonly<{
@@ -126,7 +92,7 @@ const getAffectedUnitProjects = (base: string, head: string): string[] => {
 };
 
 export const runAffectedUnitGate = (
-  options: AffectedUnitGateOptions,
+  options: BaseHeadCliOptions,
   reportDuration?: (entry: DurationEntry) => void
 ): DurationEntry[] => {
   const changedFiles = resolveChangedFiles(options.base, options.head);
@@ -189,7 +155,7 @@ export const runAffectedUnitGate = (
 const formatDuration = (durationMs: number): string => `${(durationMs / 1000).toFixed(2)}s`;
 
 export const runAffectedUnitGateCli = (args: readonly string[]): number => {
-  const options = parseCliOptions(args);
+  const options = parseBaseHeadCliOptions(args);
   const durationEntries = runAffectedUnitGate(options);
 
   if (durationEntries.length > 0) {

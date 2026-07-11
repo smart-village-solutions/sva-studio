@@ -1,44 +1,11 @@
 import { execSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
+import { parseBaseHeadCliOptions } from './base-head-cli-options.ts';
 
 import { classifyPrScope, resolveChangedFiles, type GateMode } from './pr-scope.ts';
 import { runAffectedUnitGate, type DurationEntry } from './affected-unit-gate.ts';
 import { runIntegrationGate as runSelectedIntegrationGate } from './run-integration-gate.ts';
-
-interface RunPrGateOptions {
-  base: string;
-  head: string;
-}
-
-const parseCliOptions = (args: readonly string[]): RunPrGateOptions => {
-  let base = 'origin/main';
-  let head = 'HEAD';
-
-  for (let index = 0; index < args.length; index += 1) {
-    const argument = args[index];
-    if (argument === '--base') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error('Fehlender Wert für --base');
-      }
-      base = value;
-      index += 1;
-      continue;
-    }
-
-    if (argument === '--head') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error('Fehlender Wert für --head');
-      }
-      head = value;
-      index += 1;
-    }
-  }
-
-  return { base, head };
-};
 
 const runCommand = (command: string): number => {
   console.log(`\n$ ${command}`);
@@ -151,7 +118,7 @@ export const formatDurationSummary = (durations: readonly DurationEntry[]): stri
   durations.map((entry) => `- ${entry.label}: ${(entry.durationMs / 1000).toFixed(2)}s`).join('\n');
 
 export const runPrGate = (args: readonly string[]): number => {
-  const options = parseCliOptions(args);
+  const options = parseBaseHeadCliOptions(args);
   const changedFiles = resolveChangedFiles(options.base, options.head);
   const decision = classifyPrScope(changedFiles);
   const durations: DurationEntry[] = [];

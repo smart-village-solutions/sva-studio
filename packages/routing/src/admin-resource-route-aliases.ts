@@ -4,7 +4,7 @@ import { toAdminRoutePath } from './admin-resource-route-paths.js';
 
 export const LEGACY_CONTENT_ALIAS_PREFIX = '/content';
 
-export const coreContentAdminResource = {
+const coreContentAdminResource = {
   resourceId: 'content',
   basePath: 'content',
   titleKey: 'content.page.title',

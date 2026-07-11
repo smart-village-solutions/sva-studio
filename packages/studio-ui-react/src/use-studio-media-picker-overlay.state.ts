@@ -9,7 +9,7 @@ import {
   type StudioMediaPickerUploadPhase,
 } from './studio-media-picker-overlay.shared.js';
 
-export const emptyMetadataDraft: StudioMediaPickerMetadataDraft = {
+const emptyMetadataDraft: StudioMediaPickerMetadataDraft = {
   title: '',
   altText: '',
   description: '',

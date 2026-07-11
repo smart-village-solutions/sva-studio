@@ -10,7 +10,7 @@ const INSTANCE_THEME_MAP: Readonly<Record<string, AppThemeName>> = {
   '11111111-1111-1111-8111-111111111111': 'sva-forest',
 };
 
-export const isThemeMode = (value: string | null | undefined): value is ThemeMode => value === 'light' || value === 'dark';
+const isThemeMode = (value: string | null | undefined): value is ThemeMode => value === 'light' || value === 'dark';
 
 export const resolveThemeName = (instanceId?: string): AppThemeName => {
   if (!instanceId) {

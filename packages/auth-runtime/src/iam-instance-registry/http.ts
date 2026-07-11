@@ -5,20 +5,6 @@ import { createInstanceRegistryHttpGuards } from '@sva/instance-registry/http-gu
 
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { resolveEffectiveRequestHost } from '../request-hosts.js';
-export {
-  assignModuleSchema,
-  createInstanceSchema,
-  executeKeycloakProvisioningSchema,
-  listQuerySchema,
-  readDetailInstanceId,
-  readKeycloakRunId,
-  reconcileKeycloakSchema,
-  revokeModuleSchema,
-  seedIamBaselineSchema,
-  statusMutationSchema,
-  updateInstanceSchema,
-} from '@sva/instance-registry/http-contracts';
-
 const isRootHostRequest = (request: Request): boolean => isCanonicalAuthHost(resolveEffectiveRequestHost(request));
 
 const httpGuards = createInstanceRegistryHttpGuards<AuthenticatedRequestContext>({

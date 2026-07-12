@@ -9,9 +9,9 @@ import {
   evaluatePromoteDeployGates,
   executePromoteDeployGates,
   formatRiskSummary,
-  isTraefikOnlyComposeDiff,
   type DeployGateMode,
 } from './promote-deploy-gates.ts';
+import { isTraefikOnlyComposeDiff } from './traefik-compose-diff.ts';
 
 const temporaryDirectories: string[] = [];
 

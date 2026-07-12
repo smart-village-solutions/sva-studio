@@ -115,33 +115,46 @@ Das System SHALL für einen vollständig aufgelösten Standort drei komplementä
 
 ### Requirement: Öffentliche App erlaubt Fraktionsfilter auf geladenen Kalenderdaten
 
-Das System SHALL Benutzerinnen und Benutzern erlauben, die sichtbaren Abfallarten nach dem Laden des Kalenders zu filtern.
+Das System SHALL Benutzerinnen und Benutzern erlauben, die sichtbaren Abfallarten nach dem Laden des Kalenders in einem eigenständigen Kontextblock der vollständigen Standortansicht zu filtern.
 
-#### Scenario: Fraktionsfilter erfordert keine erneute Standortwahl
+#### Scenario: Fraktionsfilter erscheint rechts neben der Adresse
 
-- **WHEN** Benutzerinnen oder Benutzer die ausgewählten Abfallarten ändern
-- **THEN** wirkt der Filter auf den bereits geladenen Kalenderzustand
-- **AND** der aufgelöste Standort bleibt unverändert
+- **WHEN** der Standort vollständig aufgelöst ist
+- **THEN** zeigt die App die Adresse links und die auswählbaren Abfallfraktionen als vertikale Liste rechts daneben
+- **AND** Änderungen an den Fraktionen wirken auf Kalenderdarstellungen und globale Aktionen aus demselben geladenen Kalenderzustand
 - **AND** die Standortauswahl muss nicht erneut durchlaufen werden
 
 ### Requirement: Öffentliche App liefert PDF- und iCal-Aktionen konsistent zum Standort
 
-Das System SHALL globale PDF- und iCal-Aktionen aus demselben finalen Standortkontext ableiten wie die Kalenderansicht.
+Das System SHALL globale PDF-, iCal- und Erinnerungsaktionen aus demselben finalen Standortkontext und aus derselben aktiven Fraktionsauswahl ableiten wie die Kalenderansicht.
 
-#### Scenario: PDF-Aktion erzeugt das Dokument ad hoc
+#### Scenario: Aktionen erscheinen in einem gemeinsamen horizontalen Block
 
-- **WHEN** für einen vollständig aufgelösten Standort globale Aktionen angezeigt werden
-- **THEN** stellt die App eine PDF-Exportaktion für ein ausdrücklich gewähltes Jahr bereit
-- **AND** der Export wird serverseitig ad hoc erzeugt
-- **AND** die App ist selbst für die Auslieferung des PDFs verantwortlich
-- **AND** es werden keine stabilen, vorgenerierten PDF-URLs benötigt
+- **WHEN** der Standort vollständig aufgelöst ist
+- **THEN** zeigt die App unter Adresse und Fraktionsliste einen horizontalen Block mit den Aktionen `Kalenderexport`, `PDF-Download` und `E-Mail-Abo`
+- **AND** genau ein zugehöriges Optionspanel ist gleichzeitig geöffnet
+- **AND** ein erneuter Klick auf die aktive Aktion schließt deren Panel wieder
 
-#### Scenario: iCal-Feed liefert alle verfügbaren künftigen Termine
+#### Scenario: PDF-Aktion erzeugt das Dokument ad hoc in der öffentlichen Runtime
 
-- **WHEN** ein Benutzer oder ein Kalender-Client den iCal-Link eines vollständig aufgelösten Standorts aufruft
-- **THEN** liefert die App einen serverseitig erzeugten iCal-Feed
-- **AND** der Feed enthält alle verfügbaren künftigen Termine dieses Standorts
-- **AND** der Feed ist konsistent zu den in der App sichtbaren Kalenderdaten
+- **WHEN** Benutzerinnen oder Benutzer das Panel `PDF-Download` öffnen
+- **THEN** können sie dort das Jahr wählen und den Download für die aktuell aktiven Fraktionen auslösen
+- **AND** die öffentliche Runtime erzeugt das PDF serverseitig ad hoc
+- **AND** es wird kein persistentes PDF-Artefakt gespeichert
+
+#### Scenario: iCal-Feed nutzt verfügbare Standard-Reminder ohne zusätzliche Abfrage
+
+- **WHEN** Benutzerinnen oder Benutzer das Panel `Kalenderexport` öffnen
+- **THEN** können sie den Export für die aktuell aktiven Fraktionen direkt auslösen, ohne zuvor Reminder-Slots auswählen zu müssen
+- **AND** die App übernimmt verfügbare kalenderfähige Standard-Reminder automatisch
+- **AND** der serverseitig erzeugte iCal-Feed bleibt konsistent zu den in der App sichtbaren Kalenderdaten
+
+#### Scenario: Gemischte Fraktionsauswahl ohne gemeinsame Reminder-Fähigkeit bleibt fail-closed
+
+- **WHEN** die aktuell aktiven Fraktionen nicht für alle gewählten Fraktionen gültige kalender- oder e-mailfähige Reminder-Slots besitzen
+- **THEN** zeigt die App eine klare Hinweisnachricht im jeweiligen Aktionspanel
+- **AND** sie erzeugt keinen impliziten Reminder-Fallback
+- **AND** Nutzerinnen und Nutzer können die Fraktionsauswahl anpassen, um wieder gültige Reminder-Optionen zu erhalten
 
 ### Requirement: Öffentliche App ist für eingebettete Nutzung barrierearm und schlicht
 
@@ -160,13 +173,16 @@ Das System SHALL die öffentliche Abfallkalender-App als reduzierte, iFrame-taug
 - **AND** die Capability zielt mindestens auf WCAG 2.1 AA
 
 ### Requirement: Öffentliche App bietet einen E-Mail-Erinnerungseinstieg im finalen Standortkontext
-Das System SHALL in der öffentlichen Abfallkalender-App einen Einstieg zur Einrichtung von E-Mail-Erinnerungen bereitstellen, sobald der Standort vollständig aufgelöst wurde.
 
-#### Scenario: CTA erscheint erst nach vollständiger Standortauflösung
-- **WHEN** ein Benutzer den öffentlichen Kalender aufruft und Region, Ort, Straße sowie Hausnummerkontext vollständig bestimmt sind
-- **THEN** zeigt die App eine Aktion `E-Mail-Erinnerung einrichten`
-- **AND** die Aktion ist an genau den aktuell geladenen Standortkontext gebunden
-- **AND** der Benutzer muss den Standort für die Erinnerung nicht erneut eingeben
+Das System SHALL das öffentliche E-Mail-Abo im gemeinsamen Aktionsmodell bereitstellen und dabei die aktive Fraktionsauswahl als führende Quelle verwenden.
+
+#### Scenario: E-Mail-Abo nutzt aktive Fraktionen statt eigener Fraktionsauswahl
+
+- **WHEN** Benutzerinnen oder Benutzer das Panel `E-Mail-Abo` öffnen
+- **THEN** zeigt die App nur Felder für E-Mail-Adresse und Datenschutz-Einwilligung der aktuell aktiven Fraktionen
+- **AND** verfügbare Reminder-Slots der aktiven Fraktionen werden automatisch mit ihren Standardwerten verwendet
+- **AND** das Panel enthält keine zweite, davon getrennte Fraktionsauswahl
+- **AND** Erfolgs- und Fehlerzustände bleiben innerhalb desselben Aktionspanels sichtbar
 
 ### Requirement: Öffentliche App sammelt E-Mail-Erinnerungen formularbasiert mit fraktionsbezogenen Zeitslots
 Das System SHALL die Einrichtung der E-Mail-Erinnerung über ein Formular in derselben öffentlichen App abwickeln.
@@ -278,3 +294,40 @@ Das System SHALL beim PDF-Export alle wirksamen Termine des Standortkontexts ein
 - **AND** eine Tour nur dem übergeordneten Abholort `Perleberg (alle Straßen)` zugeordnet ist
 - **THEN** wird diese Tour trotzdem in den PDF-Export aufgenommen
 - **AND** erst danach greifen Jahres- und Fraktionsfilter
+
+### Requirement: Öffentliche Abfallkalender-App hat einen isolierten Releasepfad
+
+Das System SHALL für `web-waste-calendar` einen eigenen Releasepfad
+bereitstellen, der weder den `studio`-Stack noch den `studio`-Releaseworkflow
+mitverwendet.
+
+#### Scenario: Git-Tag triggert nur den öffentlichen Waste-Release
+
+- **WHEN** ein Git-Tag `waste-web-v1.2.3` gepusht wird
+- **THEN** baut und deployt das System nur die öffentliche Waste-Web-Runtime
+- **AND** der normale Studio-Releasepfad bleibt unberührt
+
+#### Scenario: Öffentliche Waste-Runtime nutzt eigenen Variablenraum
+
+- **WHEN** die öffentliche Waste-Web-Runtime produktiv gestartet wird
+- **THEN** liest sie ihre führende Konfiguration aus `PUBLIC_WASTE_*`-Variablen
+- **AND** greift nicht implizit auf `SVA_*`-Runtime-Variablen des normalen Studios zurück
+- **AND** ein JSON-basierter Konfigurationsblob bleibt höchstens ein lokaler oder kompatibler Fallback
+
+### Requirement: Öffentliche Abfallkalender-App liefert produktiven Health- und API-Vertrag
+
+Das System SHALL die öffentliche Waste-Web-App produktiv als eigene
+serverseitige Runtime mit statischen Assets, Health-Endpoint und bestehenden
+öffentlichen Read-Endpunkten ausliefern.
+
+#### Scenario: Produktionsruntime antwortet auf Health-Check
+
+- **WHEN** ein Operator oder Releaseworkflow `GET /health/live` gegen die öffentliche Waste-Web-Runtime ausführt
+- **THEN** liefert die Runtime einen expliziten erfolgreichen Health-Befund
+- **AND** dieser Befund ist unabhängig vom normalen Studio-Health-Pfad
+
+#### Scenario: Produktiver Release prüft einen öffentlichen Read-Pfad
+
+- **WHEN** ein Release der öffentlichen Waste-Web-Runtime abgeschlossen wird
+- **THEN** prüft der Smoke-Test neben der Startseite mindestens einen öffentlichen `/api/public-waste/*`-Pfad
+- **AND** bewertet damit nicht nur das Vorhandensein eines laufenden Containers, sondern den fachlichen Read-Vertrag

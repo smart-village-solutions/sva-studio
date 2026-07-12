@@ -30,7 +30,6 @@ import {
   type WasteSyncProgressReporter,
 } from './waste-management-mainserver-sync.progress.js';
 import {
-  buildWasteSyncKey,
   chunkWasteSyncItems,
   toWasteSyncRow,
   type WasteSyncRow,

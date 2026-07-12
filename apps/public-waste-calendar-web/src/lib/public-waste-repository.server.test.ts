@@ -294,7 +294,18 @@ describe('public waste repository', () => {
           },
         ],
       })
-      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            id: 'shift-1',
+            tour_id: 'tour-1',
+            original_date: '2026-05-19',
+            actual_date: '2026-05-20',
+            description: 'Verschoben',
+          },
+        ],
+      })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({
         rowCount: 1,
@@ -331,7 +342,7 @@ describe('public waste repository', () => {
     ).resolves.toContainEqual(
       expect.objectContaining({
         id: 'assignment-1:fraction-1',
-        date: '2026-05-19',
+        date: '2026-05-20',
         fractionId: 'fraction-1',
         fractionLabel: 'Restmuell',
         fractionShortLabel: 'RM',
@@ -351,6 +362,8 @@ describe('public waste repository', () => {
       'cl.house_number_id IS NULL OR cl.house_number_id = $5::uuid'
     );
     expect(assignmentQuery?.text).not.toContain('waste_location_tour_links');
+    const tourShiftQuery = execute.mock.calls[1]?.[0];
+    expect(tourShiftQuery?.text).not.toContain('ANY($1::text[])');
   });
 
   it('keeps multiple explicit assignments on one day and suppresses the matching calculated occurrence', async () => {
@@ -534,7 +547,23 @@ describe('public waste repository', () => {
       })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
-      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            assignment_id: 'assignment-1',
+            pickup_date: '2026-01-01',
+            tour_id: 'tour-1',
+            tour_name: 'Restmuell',
+            tour_description: 'Leerung fuer den Innenstadtbereich.',
+            fraction_id: 'fraction-1',
+            fraction_label: 'Restmuell',
+            fraction_pdf_short_label: 'RM',
+            fraction_color: '#111111',
+            note: 'Sondertermin',
+          },
+        ],
+      })
       .mockResolvedValueOnce({
         rowCount: 1,
         rows: [
@@ -570,8 +599,9 @@ describe('public waste repository', () => {
       })
     ).resolves.toContainEqual(
       expect.objectContaining({
-        id: 'tour-1:2026-01-02:fraction-1',
+        id: 'assignment-1:fraction-1',
         date: '2026-01-02',
+        note: 'Sondertermin',
       })
     );
   });

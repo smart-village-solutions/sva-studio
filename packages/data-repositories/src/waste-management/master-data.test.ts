@@ -57,11 +57,7 @@ describe('waste master data repository', () => {
     expect(statements[0]?.text).toContain(
       'matched_location.collection_location_id = ANY($3::uuid[])'
     );
-    expect(statements[0]?.values).toEqual([
-      'tour-1',
-      '2026-08-12',
-      { sqlType: 'uuid[]', values: ['location-2'] },
-    ]);
+    expect(statements[0]?.values).toEqual(['tour-1', '2026-08-12', ['location-2']]);
   });
 
   it('reads, atomically replaces locations for and deletes tour assignments', async () => {
@@ -101,7 +97,7 @@ describe('waste master data repository', () => {
       'tour-1',
       '2026-08-13',
       null,
-      { sqlType: 'uuid[]', values: ['location-2', 'location-3'] },
+      ['location-2', 'location-3'],
     ]);
     expect(statements[2]).toEqual({
       text: 'DELETE FROM waste_tour_assignments WHERE id = $1::uuid;',

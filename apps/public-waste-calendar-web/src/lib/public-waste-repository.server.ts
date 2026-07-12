@@ -10,7 +10,10 @@ import type {
   PublicWasteSelectionState,
   PublicWasteSelectionStep,
 } from './public-waste-contract.js';
-import { calculatePublicWasteCalendarEntries } from './public-waste-calendar-occurrences.js';
+import {
+  applyPublicWasteHolidayRulesToDate,
+  calculatePublicWasteCalendarEntries,
+} from './public-waste-calendar-occurrences.js';
 import { PUBLIC_WASTE_CATCH_ALL_STREET_ID } from './public-waste-contract.js';
 import {
   addYearsUtc,
@@ -426,8 +429,6 @@ export const createPublicWasteRepository = (input: {
           query.selection.houseNumberId ?? null,
         ],
       });
-      const tourIds = Array.from(new Set(linkedToursResult.rows.map((row) => row.tour_id)));
-
       const normalizedReferenceDate = normalizeDateOnly(query.referenceDate);
       const windowStart = normalizedReferenceDate
         ? startOfPreviousYearUtc(normalizedReferenceDate)
@@ -440,10 +441,8 @@ export const createPublicWasteRepository = (input: {
         tourAssignmentsResult,
         holidayRulesResult,
       ] = await Promise.all([
-        tourIds.length === 0
-          ? Promise.resolve({ rowCount: 0, rows: [] as readonly TourDateShiftRow[] })
-          : input.execute<TourDateShiftRow>({
-              text: `
+        input.execute<TourDateShiftRow>({
+          text: `
                 SELECT
                   id::text,
                   tour_id::text,
@@ -451,11 +450,9 @@ export const createPublicWasteRepository = (input: {
                   actual_date,
                   description
                 FROM ${schemaName}.waste_tour_date_shifts
-                WHERE tour_id::text = ANY($1::text[])
                 ORDER BY original_date ASC, actual_date ASC, id ASC;
               `,
-              values: [tourIds],
-            }),
+        }),
         input.execute<GlobalDateShiftRow>({
           text: `
             SELECT
@@ -707,6 +704,20 @@ export const createPublicWasteRepository = (input: {
       }
 
       const tourAssignmentRows = tourAssignmentsResult?.rows ?? [];
+      const holidayRules = holidayRulesResult.rows.map((row) => ({
+        id: row.id,
+        holidayDate: row.holiday_date,
+        holidayName: row.holiday_name,
+        year: row.holiday_year,
+        stateCode: row.state_code,
+        sourceStatus: row.source_status,
+        configurationStatus: row.configuration_status,
+        conflictStatus: row.conflict_status,
+        ...(row.scope ? { scope: row.scope } : {}),
+        ...(row.strategy ? { strategy: row.strategy } : {}),
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
 
       for (const row of tourAssignmentRows) {
         const pickupDate = normalizeDateOnly(row.pickup_date);
@@ -718,7 +729,10 @@ export const createPublicWasteRepository = (input: {
         const globalShift =
           scopedGlobalShiftMap.get(row.tour_id)?.get(pickupDate) ??
           sharedGlobalShiftMap.get(pickupDate);
-        const shiftedDate = tourShift?.actualDate ?? globalShift?.actualDate ?? pickupDate;
+        const shiftedDate = applyPublicWasteHolidayRulesToDate(
+          tourShift?.actualDate ?? globalShift?.actualDate ?? pickupDate,
+          holidayRules
+        );
         if (!isDateWithinRange(shiftedDate, windowStart, effectiveWindowEnd)) {
           continue;
         }

@@ -1,3 +1,15 @@
+import type { WasteTourRecord } from '@sva/plugin-sdk';
+
+import type {
+  WasteManagementMasterDataOverview,
+  WasteManagementSchedulingOverview,
+} from './waste-management.api.js';
+import type {
+  WasteToursFilterDate,
+  WasteToursFilterFraction,
+  WasteToursFilterStatus,
+} from './waste-management.tours.filter-state.js';
+
 export const createTourAssignmentSelectionSummary = ({
   filteredLocationIds,
   selectedLocationIds,
@@ -40,17 +52,6 @@ export const orderTourAssignmentLocations = <T extends { readonly id: string }>(
 
   return [...selectedLocations, ...unselectedLocations];
 };
-import type { WasteTourRecord } from '@sva/plugin-sdk';
-
-import type {
-  WasteManagementMasterDataOverview,
-  WasteManagementSchedulingOverview,
-} from './waste-management.api.js';
-import type {
-  WasteToursFilterDate,
-  WasteToursFilterFraction,
-  WasteToursFilterStatus,
-} from './waste-management.tours.filter-state.js';
 
 export type WasteToursDataProps = {
   readonly assignmentContextLoading: boolean;

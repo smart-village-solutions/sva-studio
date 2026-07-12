@@ -66,7 +66,7 @@ describe('deployment contracts', () => {
     const compose = load('deploy/compose.dev.yaml');
 
     expect(compose).toContain('traefik.http.routers.studio-dev-app.entrypoints=web,websecure');
-    expect(compose).toContain('traefik.http.routers.studio-dev-app.tls.certresolver=letsencrypt');
+    expect(compose).toContain('traefik.http.routers.studio-dev-app.tls.certresolver=default');
   });
 
   it('documents the active Traefik v3 ingress contract', () => {

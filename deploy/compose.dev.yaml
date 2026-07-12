@@ -28,7 +28,7 @@ services:
         - 'traefik.http.routers.studio-dev-app.rule=Host(`studio-dev.smart-village.app`)'
         - 'traefik.http.routers.studio-dev-app.entrypoints=web,websecure'
         - 'traefik.http.routers.studio-dev-app.tls=true'
-        - 'traefik.http.routers.studio-dev-app.tls.certresolver=letsencrypt'
+        - 'traefik.http.routers.studio-dev-app.tls.certresolver=default'
         - 'traefik.http.services.studio-dev-app.loadbalancer.server.port=3000'
 
   provisioner:

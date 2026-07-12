@@ -105,6 +105,8 @@ RUN find /workspace/.deploy/sva-studio-react/node_modules/.pnpm \
 
 FROM node:24.15.0-alpine AS runtime
 
+LABEL org.opencontainers.image.source="https://github.com/smart-village-solutions/sva-studio"
+
 WORKDIR /app
 
 ENV NODE_ENV=production

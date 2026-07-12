@@ -61,4 +61,11 @@ describe('deployment contracts', () => {
 
     expect(workflow).toContain('image_ref: ${{ github.sha }}');
   });
+
+  it('configures the Dev router for the Traefik ACME resolver', () => {
+    const compose = load('deploy/compose.dev.yaml');
+
+    expect(compose).toContain('traefik.http.routers.studio-dev-app.entrypoints=web,websecure');
+    expect(compose).toContain('traefik.http.routers.studio-dev-app.tls.certresolver=letsencrypt');
+  });
 });

@@ -1,11 +1,6 @@
 import type {
-  WasteCityRecord,
   WasteTourRecord,
-  WasteLocationTourLinkRecord,
-  WasteCollectionLocationRecord,
-  WasteFractionRecord,
   WasteLocationTourPickupDateRecord,
-  WasteStreetRecord,
 } from '@sva/core';
 import {
   addDays,
@@ -395,69 +390,4 @@ export const buildMaterializedLocationTourPickupDates = (
   return mergeMaterializedPickupDates(calculatedPickupDates, assignedPickupDates);
 };
 
-export const buildStudioRowsFromMaterialization = (input: {
-  readonly pickupDates: readonly MaterializedLocationTourPickupDateRecord[];
-  readonly tours: readonly WasteTourRecord[];
-  readonly fractions: readonly WasteFractionRecord[];
-  readonly links: readonly WasteLocationTourLinkRecord[];
-  readonly locations: readonly WasteCollectionLocationRecord[];
-  readonly cities: readonly WasteCityRecord[];
-  readonly streets: readonly WasteStreetRecord[];
-}): readonly {
-  readonly pickupDate: string;
-  readonly wasteType: string;
-  readonly street: string;
-  readonly zip?: string;
-  readonly city: string;
-  readonly note?: string;
-  readonly key: string;
-}[] => {
-  const tourById = new Map(input.tours.map((tour) => [tour.id, tour] as const));
-  const fractionById = new Map(input.fractions.map((fraction) => [fraction.id, fraction] as const));
-  const locationById = new Map(input.locations.map((location) => [location.id, location] as const));
-  const cityById = new Map(input.cities.map((city) => [city.id, city] as const));
-  const streetById = new Map(input.streets.map((street) => [street.id, street] as const));
-  return input.pickupDates.flatMap((pickupDate) => {
-    const tour = tourById.get(pickupDate.tourId);
-    const location = locationById.get(pickupDate.locationId);
-    if (!tour || !location || !location.active) {
-      return [];
-    }
-
-    const city = cityById.get(location.cityId)?.name?.trim();
-    if (!city) {
-      return [];
-    }
-
-    const street = location.streetId ? streetById.get(location.streetId)?.name?.trim() : undefined;
-    if (!street) {
-      return [];
-    }
-
-    return tour.wasteFractionIds.flatMap((fractionId) => {
-      const fraction = fractionById.get(fractionId);
-      const wasteType = fraction?.name?.trim();
-      if (!wasteType) {
-        return [];
-      }
-
-      const keyParts = [
-        pickupDate.pickupDate,
-        wasteType.toLocaleLowerCase('de-DE'),
-        street.toLocaleLowerCase('de-DE'),
-        city.toLocaleLowerCase('de-DE'),
-      ];
-
-      return [
-        {
-          pickupDate: pickupDate.pickupDate,
-          wasteType,
-          street,
-          city,
-          note: pickupDate.note ?? undefined,
-          key: keyParts.join('::'),
-        },
-      ];
-    });
-  });
-};
+export { buildStudioRowsFromMaterialization } from './waste-management-mainserver-sync.materialization.rows.js';

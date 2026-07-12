@@ -546,7 +546,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
     ]);
   });
 
-  it('skips links when no dates survive the initial range filter and deduplicates duplicate output rows', () => {
+  it('materializes links without validity ranges and deduplicates duplicate output rows', () => {
     const pickupDates = buildMaterializedLocationTourPickupDates({
       tours: [
         buildTour({
@@ -594,10 +594,15 @@ describe('waste-management-mainserver-sync.materialization', () => {
         tourId: 'tour-2',
         pickupDate: '2026-03-01',
       }),
+      expect.objectContaining({
+        locationId: 'location-9',
+        tourId: 'tour-1',
+        pickupDate: '2026-02-10',
+      }),
     ]);
   });
 
-  it('stops processing a link when a shift moves the remaining date out of the link range', () => {
+  it('keeps a shifted date because links no longer define validity ranges', () => {
     const pickupDates = buildMaterializedLocationTourPickupDates({
       tours: [
         buildTour({
@@ -632,7 +637,9 @@ describe('waste-management-mainserver-sync.materialization', () => {
       nextYear: 2027,
     });
 
-    expect(pickupDates).toEqual([]);
+    expect(pickupDates).toEqual([
+      expect.objectContaining({ pickupDate: '2026-04-16' }),
+    ]);
   });
 
   it('applies global shifts only to matching tours and prefers imported notes when dates are deduplicated', () => {

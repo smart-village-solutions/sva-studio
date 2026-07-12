@@ -45,12 +45,18 @@ describe('deployment contracts', () => {
     expect(workflow).toContain('if [ "${ENVIRONMENT}" = "dev" ]; then');
     expect(workflow).toContain('pre_pull_args=(--no-pre-pull)');
     expect(workflow).toContain('"${pre_pull_args[@]}"');
+    expect(workflow).toContain('quantum-cli stacks update --create --wait');
+    expect(workflow).toContain('--project "${quantum_project_dir}"');
+    expect(workflow).toContain("'compose: stack.yaml'");
   });
 
   it('protects and removes rendered deployment secret files', () => {
     const workflow = load('.github/workflows/promote.yml');
 
     expect(workflow).toContain('umask 077');
-    expect(workflow).toContain("trap 'rm -f .env stack.json stack.yaml' EXIT");
+    expect(workflow).toContain('quantum_project_dir="$(mktemp -d)"');
+    expect(workflow).toContain(
+      "trap 'rm -rf \"${quantum_project_dir}\"; rm -f .env stack.json stack.yaml' EXIT"
+    );
   });
 });

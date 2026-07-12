@@ -3,9 +3,7 @@
 ## Purpose
 
 TBD - created by archiving change add-account-user-management-ui. Update Purpose after archive.
-
 ## Requirements
-
 ### Requirement: Auth-State-Provider
 
 Das System MUST einen zentralen React-Context (`AuthProvider` in `sva-studio-react`) bereitstellen, der den Authentifizierungs-State anwendungsweit verfügbar macht, verteilte `/auth/me`-Aufrufe durch einen einheitlichen `useAuth()`-Hook ersetzt und Auth-Unterbrechungen strukturiert diagnostizierbar macht.
@@ -44,59 +42,45 @@ Das System MUST einen zentralen React-Context (`AuthProvider` in `sva-studio-rea
 - **UND** der Diagnosepfad enthält keine Tokens und keine PII
 
 ### Requirement: Protected-Route-Guard
-
-Das System MUST einen generischen Route-Guard bereitstellen, der Routen basierend auf Authentifizierungsstatus und Rollenzugehörigkeit schützt.
+Das System MUST einen generischen Route-Guard bereitstellen, der Routen basierend auf Authentifizierungsstatus und der kanonischen tenantseitigen Rollen- oder Permission-Sicht schützt. Rohe Keycloak-Rollen dürfen nur dort direkt ausgewertet werden, wo eine ausdrückliche technische Sonderrolle oder ein Plattform-Scope betroffen ist.
 
 #### Scenario: Unauthentifizierter Zugriff auf geschützte Route
+- **WHEN** ein nicht-authentifizierter Nutzer eine geschützte Route aufruft
+- **THEN** wird der Nutzer zur Login-Seite weitergeleitet
+- **AND** nach erfolgreicher Authentifizierung wird er zur ursprünglichen URL zurückgeleitet
 
-- **WENN** ein nicht-authentifizierter Nutzer eine geschützte Route aufruft
-- **DANN** wird der Nutzer zur Login-Seite weitergeleitet
-- **UND** nach erfolgreicher Authentifizierung wird er zur ursprünglichen URL zurückgeleitet
+#### Scenario: Authentifizierter Nutzer ohne ausreichende fachliche Autorisierung
+- **WHEN** ein authentifizierter Nutzer eine Route aufruft, für die eine bestimmte kanonische Rolle oder Permission erforderlich ist
+- **AND** der Nutzer diese fachliche Freigabe im IAM-Modell nicht besitzt
+- **THEN** wird der Nutzer auf die Startseite weitergeleitet
+- **AND** eine verständliche Fehlermeldung wird angezeigt (`t('auth.insufficientRole')`)
 
-#### Scenario: Authentifizierter Nutzer ohne ausreichende Rolle
-
-- **WENN** ein authentifizierter Nutzer eine Route aufruft, die eine bestimmte Rolle erfordert (z. B. `system_admin`)
-- **UND** der Nutzer diese Rolle nicht besitzt
-- **DANN** wird der Nutzer auf die Startseite weitergeleitet
-- **UND** eine verständliche Fehlermeldung wird angezeigt (`t('auth.insufficientRole')`)
-
-#### Scenario: Admin-Route-Schutz
-
-- **WENN** die Route `/admin/users` aufgerufen wird
-- **DANN** prüft der Guard über den `routerContext`, ob der Nutzer die Rolle `system_admin` oder `app_manager` besitzt
-- **UND** nur bei positiver Prüfung wird die Seite gerendert
+#### Scenario: Admin-Route-Schutz folgt kanonischer Tenant-Sicht
+- **WHEN** die Route `/admin/users` aufgerufen wird
+- **THEN** prüft der Guard über den `routerContext`, ob der Nutzer die dafür vorgesehene kanonische Tenant-Freigabe besitzt, etwa `system_admin` oder die entsprechende Verwaltungs-Permission
+- **AND** verlässt sich diese Entscheidung nicht auf rohe Legacy-Keycloak-Rollen wie `app_manager`
 
 ### Requirement: Account-Profilseite
-
 Das System MUST eine Account-Profilseite unter `/account` bereitstellen, auf der authentifizierte Nutzer ihre eigenen Basis-Daten einsehen und bearbeiten können.
 
 #### Scenario: Profil anzeigen
-
-- **WENN** ein authentifizierter Nutzer `/account` aufruft
-- **DANN** werden Benutzername, Name, E-Mail, Telefon, Position, Abteilung, Sprache und Zeitzone angezeigt
-- **UND** die aktuelle Rolle und der Account-Status sind sichtbar (read-only)
-- **UND** ein Avatar oder Platzhalter-Bild wird angezeigt
-- **UND** die Seite zeigt einen Loading-State (`aria-busy="true"`) während die Daten geladen werden
-- **UND** bei einem Ladefehler wird eine Fehlermeldung mit Retry-Button angezeigt
+- **WHEN** ein authentifizierter Nutzer `/account` aufruft
+- **THEN** werden Benutzername, Name, E-Mail, Telefon, Position, Abteilung, Sprache und Zeitzone angezeigt
+- **AND** die kanonischen Rollen und der Account-Status sind sichtbar (read-only)
+- **AND** eine getrennte technische Ansicht für rohe Keycloak-Rollen ist verfügbar
+- **AND** ein Avatar oder Platzhalter-Bild wird angezeigt
+- **AND** die Seite zeigt einen Loading-State (`aria-busy="true"`) während die Daten geladen werden
+- **AND** bei einem Ladefehler wird eine Fehlermeldung mit Retry-Button angezeigt
 
 #### Scenario: Basis-Daten bearbeiten
-
-- **WENN** ein Nutzer seine Basis-Daten (Benutzername, Name, E-Mail, Telefon, Position, Abteilung, Sprache, Zeitzone) ändert
-- **UND** das Formular absendet
-- **DANN** werden die Änderungen in der IAM-Datenbank und in Keycloak gespeichert
-- **UND** die Benutzerverwaltung zeigt bei der nächsten Datenladung den aktualisierten Anzeigenamen und die aktualisierte E-Mail
-- **UND** Änderungen an Vor- und Nachname aktualisieren den `displayName`, sofern kein abweichender benutzerdefinierter Anzeigename gepflegt wurde
-- **UND** eine Erfolgsbestätigung wird angezeigt (`role="status"`, `aria-live="polite"`)
-- **UND** der `AuthProvider`-State wird aktualisiert
-- **UND** der Fokus wird nach dem Speichern auf die Erfolgsbestätigung gesetzt
-
-#### Scenario: Validierungsfehler bei Profilbearbeitung
-
-- **WENN** ein Nutzer ungültige Daten eingibt (z. B. leerer Benutzername, leerer Name, ungültiges Telefonnummerformat oder ungültige E-Mail-Adresse)
-- **DANN** werden feldspezifische Fehlermeldungen angezeigt (`aria-invalid="true"`, `aria-describedby`)
-- **UND** eine Error-Summary wird am Formularanfang angezeigt
-- **UND** der Fokus wird auf das erste fehlerhafte Feld gesetzt
-- **UND** das Formular wird nicht abgesendet
+- **WHEN** ein Nutzer seine Basis-Daten (Benutzername, Name, E-Mail, Telefon, Position, Abteilung, Sprache, Zeitzone) ändert
+- **AND** das Formular absendet
+- **THEN** werden die identitätsbezogenen Änderungen in der IAM-Datenbank und in Keycloak gespeichert
+- **AND** die Benutzerverwaltung zeigt bei der nächsten Datenladung den aktualisierten Anzeigenamen und die aktualisierte E-Mail
+- **AND** Änderungen an Vor- und Nachname aktualisieren den `displayName`, sofern kein abweichender benutzerdefinierter Anzeigename gepflegt wurde
+- **AND** eine Erfolgsbestätigung wird angezeigt (`role="status"`, `aria-live="polite"`)
+- **AND** der `AuthProvider`-State wird aktualisiert
+- **AND** der Fokus wird nach dem Speichern auf die Erfolgsbestätigung gesetzt
 
 ### Requirement: User-Administrationsliste
 
@@ -1478,3 +1462,19 @@ Das System MUST in den Account-/Privacy-Oberflächen die tenantweiten Löschrege
 - **DANN** zeigt die UI die tenantweite Default-Inhaltsstrategie als wirksamen Zustand
 - **UND** erklärt, dass nur eigene Inhalte im Scope `iam.contents` betroffen sind
 - **UND** bleibt die Oberfläche tastaturbedienbar, screenreader-tauglich und mit klaren Leer-, Lade- und Fehlerzuständen ausgestattet
+
+### Requirement: Rollenanzeigen nutzen eine kanonische Fachsicht
+Das System SHALL in Profil-, Session- und Tenant-Admin-Ansichten eine kanonische Rollen- und Permission-Sicht verwenden, statt rohe Keycloak-Rollenlisten als primäre Benutzerdarstellung auszugeben.
+
+#### Scenario: Account-Seite zeigt fachlich kanonische Rollen
+- **WHEN** ein authentifizierter Tenant-Benutzer `/account` aufruft
+- **THEN** zeigt die Seite die kanonischen tenantlokalen Rollen aus dem IAM-Modell an
+- **AND** umfasst diese kanonische Sicht auch implizite Rollenwirkung aus Gruppenzuordnungen
+- **AND** zeigt die Seite rohe Keycloak-Rollen in einer getrennten technischen Ansicht
+- **AND** werden technische oder Legacy-Rollen nicht unkommentiert als normale Fachrollen dargestellt
+
+#### Scenario: Admin-Ansicht unterscheidet kanonische Rollen von Rohrollen
+- **WHEN** eine Benutzer- oder Rollenansicht Diagnosedaten zu Auth oder Sync einblendet
+- **THEN** sind kanonische Tenant-Rollen und rohe Keycloak-Rollen klar getrennt beschriftet
+- **AND** bleibt für Administratoren erkennbar, welche Sicht für Autorisierung normativ ist
+

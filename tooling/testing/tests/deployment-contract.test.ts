@@ -39,6 +39,14 @@ describe('deployment contracts', () => {
     expect(workflow).toContain('actions/checkout@v7');
   });
 
+  it('skips Quantum pre-pull only for the diagnostic dev deployment path', () => {
+    const workflow = load('.github/workflows/promote.yml');
+
+    expect(workflow).toContain('if [ "${ENVIRONMENT}" = "dev" ]; then');
+    expect(workflow).toContain('pre_pull_args=(--no-pre-pull)');
+    expect(workflow).toContain('"${pre_pull_args[@]}"');
+  });
+
   it('protects and removes rendered deployment secret files', () => {
     const workflow = load('.github/workflows/promote.yml');
 

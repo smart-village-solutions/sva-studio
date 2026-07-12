@@ -43,7 +43,7 @@ const buildSelectStatement = (
     conditions.push(`assignment.pickup_date = $${values.length}::date`);
   }
   if (filter.locationIds?.length) {
-    values.push({ sqlType: 'uuid[]', values: [...new Set(filter.locationIds)] });
+    values.push([...new Set(filter.locationIds)]);
     conditions.push(
       `EXISTS (
         SELECT 1
@@ -122,10 +122,7 @@ CROSS JOIN UNNEST($5::uuid[]) AS location_id;
     input.tourId,
     input.pickupDate,
     input.note,
-    {
-      sqlType: 'uuid[]',
-      values: normalizeLocationIds(input.locationIds),
-    },
+    normalizeLocationIds(input.locationIds),
   ],
 });
 

@@ -110,7 +110,8 @@ export const WasteTourExplicitAssignmentsList = ({
     (left, right) =>
       left.pickupDate.localeCompare(right.pickupDate) ||
       (tourLabels.get(left.tourId) ?? left.tourId ?? '').localeCompare(
-        tourLabels.get(right.tourId) ?? right.tourId ?? ''
+        tourLabels.get(right.tourId) ?? right.tourId ?? '',
+        'de'
       )
   );
   return (

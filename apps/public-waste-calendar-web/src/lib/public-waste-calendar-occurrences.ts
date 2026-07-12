@@ -194,6 +194,33 @@ const applyHolidayRule = (
     : (addDays(date, 1) ?? date);
 };
 
+export const applyPublicWasteHolidayRulesToDate = (
+  date: string,
+  holidayRules: readonly WasteHolidayRuleRecord[]
+): string =>
+  holidayRules
+    .map((rule) => ({
+      triggerDate: normalizeDateOnly(rule.holidayDate),
+      direction:
+        rule.strategy === 'advance' ? 'advance' : rule.strategy === 'postpone' ? 'postpone' : null,
+      coverage:
+        rule.scope === 'full-week'
+          ? 'rest_of_week'
+          : rule.scope === 'holiday-only'
+            ? 'single_pickup'
+            : null,
+    }))
+    .filter(
+      (
+        rule
+      ): rule is {
+        readonly triggerDate: string;
+        readonly direction: HolidayRuleDirection;
+        readonly coverage: HolidayRuleCoverage;
+      } => Boolean(rule.triggerDate && rule.direction && rule.coverage)
+    )
+    .reduce((currentDate, rule) => applyHolidayRule(currentDate, rule), date);
+
 const calculateTourOccurrences = (
   tour: PublicWasteLinkedTour['tour'],
   windowStart: string,

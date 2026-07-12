@@ -68,6 +68,63 @@ describe('waste-management-mainserver-sync.materialization', () => {
     ]);
   });
 
+  it('applies date-shift and holiday rules to explicit assignments', () => {
+    const result = buildMaterializedLocationTourPickupDates({
+      tours: [buildTour()],
+      links: [],
+      locationTourPickupDates: [],
+      tourAssignments: [
+        {
+          id: 'assignment-1',
+          tourId: 'tour-1',
+          pickupDate: '2026-01-01',
+          note: 'Sondertermin',
+          locationIds: ['location-1'],
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      tourDateShifts: [
+        {
+          id: 'shift-1',
+          tourId: 'tour-1',
+          originalDate: '2026-01-01',
+          actualDate: '2026-01-02',
+          hasYear: true,
+          followUpMode: 'none',
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      globalDateShifts: [],
+      holidayRules: [
+        {
+          id: 'holiday-1',
+          holidayDate: '2026-01-02',
+          holidayName: 'Folgefeiertag',
+          year: 2026,
+          stateCode: 'BB',
+          sourceStatus: 'confirmed',
+          configurationStatus: 'configured',
+          conflictStatus: 'none',
+          scope: 'holiday-only',
+          strategy: 'postpone',
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      currentYear: 2026,
+      nextYear: 2027,
+    });
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        pickupDate: '2026-01-03',
+        note: 'Sondertermin',
+      }),
+    ]);
+  });
+
   it('preserves multiple explicit assignments for the same tour, date, and location', () => {
     const result = buildMaterializedLocationTourPickupDates({
       tours: [buildTour()],
@@ -637,9 +694,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
       nextYear: 2027,
     });
 
-    expect(pickupDates).toEqual([
-      expect.objectContaining({ pickupDate: '2026-04-16' }),
-    ]);
+    expect(pickupDates).toEqual([expect.objectContaining({ pickupDate: '2026-04-16' })]);
   });
 
   it('applies global shifts only to matching tours and prefers imported notes when dates are deduplicated', () => {

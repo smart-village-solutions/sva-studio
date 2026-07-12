@@ -1,7 +1,4 @@
-import type {
-  WasteTourRecord,
-  WasteLocationTourPickupDateRecord,
-} from '@sva/core';
+import type { WasteTourRecord, WasteLocationTourPickupDateRecord } from '@sva/core';
 import {
   addDays,
   addDaysWithWeekendClampForAdvance,
@@ -322,21 +319,33 @@ const materializeLinkedPickupDates = (input: {
 const materializeAssignedPickupDates = (
   assignments: WasteMaterializationContext['tourAssignments'],
   tourById: ReadonlyMap<string, WasteTourRecord>,
-  syncYearSet: ReadonlySet<number>
+  syncYearSet: ReadonlySet<number>,
+  rules: readonly MaterializationRule[]
 ): readonly MaterializedLocationTourPickupDateRecord[] =>
   (assignments ?? []).flatMap((assignment) => {
-    const parsedDate = parseIsoDateUtc(assignment.pickupDate);
-    if (!tourById.get(assignment.tourId)?.active || !parsedDate) return [];
-    if (!syncYearSet.has(parsedDate.getUTCFullYear())) return [];
-    return assignment.locationIds.map((locationId) => ({
-      id: `assignment-${assignment.id}-${locationId}`,
-      locationId,
-      tourId: assignment.tourId,
-      pickupDate: assignment.pickupDate,
-      note: assignment.note,
-      createdAt: assignment.createdAt,
-      updatedAt: assignment.updatedAt,
-    }));
+    if (!tourById.get(assignment.tourId)?.active) return [];
+    let dates: readonly Pick<WasteLocationTourPickupDateRecord, 'pickupDate' | 'note'>[] = [
+      { pickupDate: assignment.pickupDate, note: assignment.note },
+    ];
+    for (const rule of rules) {
+      if (isRuleApplicableToTour(rule, assignment.tourId)) {
+        dates = applySingleRule(dates, rule);
+      }
+    }
+
+    return dates.flatMap((date) => {
+      const parsedDate = parseIsoDateUtc(date.pickupDate);
+      if (!parsedDate || !syncYearSet.has(parsedDate.getUTCFullYear())) return [];
+      return assignment.locationIds.map((locationId) => ({
+        id: `assignment-${assignment.id}-${locationId}`,
+        locationId,
+        tourId: assignment.tourId,
+        pickupDate: date.pickupDate,
+        note: date.note,
+        createdAt: assignment.createdAt,
+        updatedAt: assignment.updatedAt,
+      }));
+    });
   });
 
 export const buildMaterializedLocationTourPickupDates = (
@@ -384,7 +393,8 @@ export const buildMaterializedLocationTourPickupDates = (
   const assignedPickupDates = materializeAssignedPickupDates(
     input.tourAssignments,
     tourById,
-    syncYearSet
+    syncYearSet,
+    rules
   );
 
   return mergeMaterializedPickupDates(calculatedPickupDates, assignedPickupDates);

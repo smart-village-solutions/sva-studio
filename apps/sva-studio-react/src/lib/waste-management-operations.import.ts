@@ -490,8 +490,6 @@ const persistLocationTourPickupDateImportPlan = async (
       id: assignment.id,
       locationId: assignment.locationId,
       tourId: assignment.tourId,
-      startDate: assignment.startDate,
-      endDate: assignment.endDate,
     });
   });
   await persistStage(legacyPickupDates, async (pickupDate) => {

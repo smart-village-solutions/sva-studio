@@ -189,6 +189,7 @@ const repositoryMocks = vi.hoisted(() => ({
   listWasteCustomRecurrencePresets: vi.fn(async () => [{ id: 'preset-1' }]),
   listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1' }]),
   listWasteLocationTourLinksByTourId: vi.fn(async () => [{ id: 'link-1' }]),
+  listWasteTourAssignments: vi.fn(async () => []),
   listWasteLocationTourPickupDates: vi.fn(async () => [{ id: 'pickup-date-1' }]),
   listWasteHolidayRules: vi.fn(async () => [{ id: 'holiday-rule-1' }]),
   listWasteTours: vi.fn(async () => [{ id: 'tour-1' }]),
@@ -330,6 +331,7 @@ describe('waste-management server loaders', () => {
       customRecurrencePresets: [{ id: 'preset-1' }],
     });
     expect(schedulingOverview).toEqual({
+      tourAssignments: [],
       locationTourPickupDates: [{ id: 'pickup-date-1' }],
       tourDateShifts: [{ id: 'shift-1' }],
       globalDateShifts: [{ id: 'global-shift-1' }],

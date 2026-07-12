@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { appendFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { resolveChangedFiles } from './pr-scope.ts';
 export type DeployGateMode = 'assert-none' | 'run';
@@ -28,6 +29,7 @@ interface EvaluateDeployGateOptions {
   executorConfigured: boolean;
   kind: DeployGateKind;
   mode: DeployGateMode;
+  safeComposeFiles?: readonly string[];
 }
 
 interface CliOptions {
@@ -68,15 +70,36 @@ const bootstrapRiskPatterns = [
 
 const matchesAnyPattern = (filePath: string, patterns: readonly RegExp[]): boolean =>
   patterns.some((pattern) => pattern.test(filePath));
+
+export const isTraefikOnlyComposeDiff = (diff: string): boolean => {
+  const changedLines = diff
+    .split('\n')
+    .filter((line) => (line.startsWith('+') || line.startsWith('-')) && !line.startsWith('+++') && !line.startsWith('---'));
+
+  return changedLines.length > 0 && changedLines.every((line) => /^[-+]\s*-\s*['"]?traefik\./u.test(line));
+};
+
+const resolveTraefikOnlyComposeFiles = (
+  base: string,
+  head: string,
+  changedFiles: readonly string[],
+): string[] =>
+  changedFiles.filter((filePath) => /^deploy\/compose\.(?:dev|staging|prod)\.yaml$/u.test(filePath) && isTraefikOnlyComposeDiff(
+    execFileSync('git', ['diff', '--unified=0', `${base}...${head}`, '--', filePath], { encoding: 'utf8' })
+  ));
 const uniqueSorted = (values: readonly string[]): string[] =>
   [...new Set(values.map((value) => value.trim()).filter(Boolean))].sort();
 
 export const formatRiskSummary = (riskFiles: readonly string[]): string =>
   riskFiles.length === 0 ? 'none' : uniqueSorted(riskFiles).join(', ');
 
-export const findRiskFiles = (kind: DeployGateKind, changedFiles: readonly string[]): string[] => {
+export const findRiskFiles = (
+  kind: DeployGateKind,
+  changedFiles: readonly string[],
+  safeComposeFiles: readonly string[] = [],
+): string[] => {
   const patterns = kind === 'migration' ? migrationRiskPatterns : bootstrapRiskPatterns;
-  return uniqueSorted(changedFiles.filter((filePath) => matchesAnyPattern(filePath, patterns)));
+  return uniqueSorted(changedFiles.filter((filePath) => !safeComposeFiles.includes(filePath) && matchesAnyPattern(filePath, patterns)));
 };
 
 export const evaluateDeployGate = ({
@@ -85,7 +108,7 @@ export const evaluateDeployGate = ({
   kind,
   mode,
 }: EvaluateDeployGateOptions): DeployGateResult => {
-  const riskFiles = findRiskFiles(kind, changedFiles);
+  const riskFiles = findRiskFiles(kind, changedFiles, safeComposeFiles);
   const label = kind === 'migration' ? 'Migration' : 'Bootstrap';
 
   if (mode === 'assert-none') {
@@ -138,18 +161,21 @@ export const evaluatePromoteDeployGates = ({
   changedFiles,
   migrationExecutorConfigured = false,
   migrationMode,
+  safeComposeFiles = [],
 }: {
   bootstrapExecutorConfigured?: boolean;
   bootstrapMode: DeployGateMode;
   changedFiles: readonly string[];
   migrationExecutorConfigured?: boolean;
   migrationMode: DeployGateMode;
+  safeComposeFiles?: readonly string[];
 }): PromoteDeployGateEvaluation => ({
   bootstrap: evaluateDeployGate({
     changedFiles,
     executorConfigured: bootstrapExecutorConfigured,
     kind: 'bootstrap',
     mode: bootstrapMode,
+    safeComposeFiles,
   }),
   changedFiles: uniqueSorted(changedFiles),
   migration: evaluateDeployGate({
@@ -157,6 +183,7 @@ export const evaluatePromoteDeployGates = ({
     executorConfigured: migrationExecutorConfigured,
     kind: 'migration',
     mode: migrationMode,
+    safeComposeFiles,
   }),
 });
 
@@ -277,12 +304,14 @@ export const executePromoteDeployGates = async (
 ): Promise<{ exitCode: number; stderr: string; stdout: string }> => {
   try {
     const options = parseCliOptions(args);
+    const changedFiles = resolveCliChangedFiles(options);
     const evaluation = evaluatePromoteDeployGates({
       bootstrapExecutorConfigured: options.bootstrapExecutorConfigured,
       bootstrapMode: options.bootstrapMode,
-      changedFiles: resolveCliChangedFiles(options),
+      changedFiles,
       migrationExecutorConfigured: options.migrationExecutorConfigured,
       migrationMode: options.migrationMode,
+      safeComposeFiles: options.changedFiles ? [] : resolveTraefikOnlyComposeFiles(options.base, options.head, changedFiles),
     });
 
     emitEvaluationOutputs(evaluation);

@@ -1,30 +1,35 @@
-# Change: Refactor Waste Schedule Rules and Materialization
+# Change: Persistente Waste-Terminmaterialisierung auf Basis des bestehenden Regelmodells
 
 ## Why
-Die bisherige Übertragung zum Mainserver nutzt eine implizite und teils widersprüchliche Verschiebungslogik.
-In der Praxis werden auf Basis von Regeln häufig keine konkreten Termine materialisiert, wodurch Mainserver-Synchronisationen leer bleiben trotz vorhandener Tour- und Standortdaten.
+
+Der Mainserver-Sync materialisiert Tourtermine bereits deterministisch aus den bestehenden Tour-, globalen und Feiertagsverschiebungen. Die Berechnung deckt das laufende und folgende Jahr ab, behandelt `single_pickup` und `rest_of_week` und wird vor dem Transport ausgeführt.
+
+Das Ergebnis bleibt jedoch nur für den jeweiligen Sync-Lauf im Speicher. Für Betrieb, Diagnose und reproduzierbare Sync-Snapshots fehlt eine persistierte, instanzbezogene Sicht auf die tatsächlich übertragenen Termine.
 
 ## What Changes
-- Das bestehende Terminmodell wird auf ein explizites Regelmodell für Serienabweichungen umgestellt.
-- Es wird ein neuer fachlicher Rule-Layer eingeführt, der Abweichungen von Wiederkehrterminen als regulierte Entitäten abbildet.
-- Für den laufenden und den folgenden Jahrgang werden daraus konkrete Tour-Termine materialisiert und in einer persistenten Tabelle abgelegt.
-- Die Mainserver-Synchronisation verarbeitet ausschließlich materialisierte Termine.
-- Alte Felder- und Tabellenkonzepte für Verschiebungslogik, die nicht explizit abbildbar sind, werden ersetzt und migriert.
+
+- Das bestehende Regelmodell aus Tourverschiebungen, globalen Verschiebungen und Feiertagsregeln bleibt die fachliche Quelle; es wird kein zweites Regelmodell eingeführt und keine bestehende Regelpersistenz migriert.
+- Die vorhandene Materialisierung wird für das laufende und folgende Kalenderjahr als idempotent ersetzbarer Snapshot persistiert.
+- Der Mainserver-Sync aktualisiert den Snapshot vor dem Transport und liest die zu synchronisierenden Termine ausschließlich aus diesem Snapshot.
+- Monitoring und Diagnose machen Zeitpunkt, Fenster und Anzahl der materialisierten Termine sichtbar.
+- Die bestehende Berechnungssemantik und ihre Regressionstests bleiben erhalten; neue Tests sichern Persistenz, idempotente Ersetzung und die Snapshot-Nutzung im Sync.
 
 ## Impact
-- Affected specs: `waste-management`, bei Bedarf `plugin-operations-platform` für Job-Orchestrierung.
+
+- Affected specs: `waste-management`.
 - Affected code:
-  - `apps/sva-studio-react/src/lib/waste-management-*`
+  - `apps/sva-studio-react/src/lib/waste-management-mainserver-sync.*`
   - `packages/data-repositories/src/waste-management/*`
   - `packages/data/src/waste-management/*`
-  - Datenmigrationen im zentralen und instanzbezogenen Waste-DB-Schema
+  - Datenmigrationen sowie `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md`
 - Architektur-/Schnittstellenwirkung:
-  - Mainserver-Sync wird deterministisch vom Materialisierungsstand abhängig
-  - Alte und uneindeutige Terminabweichungskonzepte werden ersetzt
+  - Der Mainserver-Sync erhält einen reproduzierbaren, persistierten Eingabesnapshot.
+  - Die bestehende Regelableitung bleibt unverändert und wird nicht durch ein paralleles Regelmodell ersetzt.
 - Rollback:
-  - Alte Rules werden vor Migration vollständig in das neue Modell übernommen
-  - Bei Ausfällen kann der Sync vorübergehend deaktiviert und manuell auf historische Materialisierungstabelle zurückgestellt werden
+  - Bei einem Fehler der Snapshot-Persistenz wird kein Transport gestartet.
+  - Das Schema bleibt additiv; ein Rollback deaktiviert die Snapshot-Nutzung, ohne Tour- oder Verschiebungsdaten zu verändern.
 
 ## Scope
-- Nicht enthalten: neue fachliche Kalender-Features außerhalb Waste-Management.
-- Nicht enthalten: automatische Nachrechnung über mehr als ein Folgejahr hinaus.
+
+- Nicht enthalten: ein neues Regelmodell, die Migration von Shift-/Holiday-Tabellen oder eine Neuimplementierung der Regelbearbeitung in der UI.
+- Nicht enthalten: automatische Nachrechnung über das laufende und folgende Jahr hinaus.

@@ -29,6 +29,12 @@ import {
   type WasteSyncBatchProgressDetails,
   type WasteSyncProgressReporter,
 } from './waste-management-mainserver-sync.progress.js';
+import {
+  buildWasteSyncKey,
+  chunkWasteSyncItems,
+  toWasteSyncRow,
+  type WasteSyncRow,
+} from './waste-management-mainserver-sync.rows.js';
 
 import type { WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 import { withWasteClient } from './waste-management-operations.shared.js';
@@ -55,10 +61,8 @@ type WasteMaterializationSyncState = Omit<
   readonly links: readonly WasteLocationTourLinkRecord[];
 };
 
-export type WasteSyncRow = SvaMainserverWasteSyncItem &
-  Readonly<{
-    key: string;
-  }>;
+export { buildWasteSyncKey } from './waste-management-mainserver-sync.rows.js';
+export type { WasteSyncRow } from './waste-management-mainserver-sync.rows.js';
 
 export type WasteManagementMainserverSyncResult = Readonly<{
   studioItemCount: number;
@@ -82,43 +86,6 @@ export type WasteManagementMainserverSyncResult = Readonly<{
 }>;
 
 const DEFAULT_MAINSERVER_SYNC_BATCH_SIZE = 100;
-
-const normalizeKeyPart = (value: string | undefined): string =>
-  (value ?? '').trim().toLocaleLowerCase('de-DE');
-
-export const buildWasteSyncKey = (item: {
-  pickupDate: string;
-  wasteType: string;
-  street: string;
-  city?: string;
-}): string =>
-  [
-    item.pickupDate,
-    normalizeKeyPart(item.wasteType),
-    normalizeKeyPart(item.street),
-    normalizeKeyPart(item.city),
-  ].join('::');
-
-const toSyncRow = (item: SvaMainserverWasteSyncItem): WasteSyncRow => ({
-  ...item,
-  key: buildWasteSyncKey(item),
-});
-
-const chunkItems = <TItem>(
-  items: readonly TItem[],
-  batchSize: number
-): readonly (readonly TItem[])[] => {
-  if (items.length === 0) {
-    return [];
-  }
-
-  const normalizedBatchSize = Math.max(1, batchSize);
-  const batches: TItem[][] = [];
-  for (let index = 0; index < items.length; index += normalizedBatchSize) {
-    batches.push(items.slice(index, index + normalizedBatchSize));
-  }
-  return batches;
-};
 
 const filterSyncRowsToYearWindow = (
   rows: readonly WasteSyncRow[],
@@ -152,7 +119,7 @@ const buildStudioRowsFromSyncState = (
     locations: studioState.locations,
     cities: studioState.cities,
     streets: studioState.streets,
-  }).map(toSyncRow);
+  }).map(toWasteSyncRow);
 };
 
 export const runWasteManagementMainserverSync = async (input: {
@@ -196,7 +163,7 @@ export const runWasteManagementMainserverSync = async (input: {
     readonly operationMode: 'create' | 'delete';
     readonly writer?: (items: readonly SvaMainserverWasteSyncItem[]) => Promise<void>;
   }): Promise<void> => {
-    const batches = chunkItems(params.items, batchSize);
+    const batches = chunkWasteSyncItems(params.items, batchSize);
 
     if (params.items.length === 0) {
       await input.onBatchProgress?.({
@@ -334,7 +301,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     })
   );
   const mainserverRows = filterSyncRowsToYearWindow(
-    mainserverSnapshot.pickupTimes.map(toSyncRow),
+    mainserverSnapshot.pickupTimes.map(toWasteSyncRow),
     currentYear,
     nextYear
   );

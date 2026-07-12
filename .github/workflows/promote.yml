@@ -212,8 +212,7 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          quantum_project_dir="$(mktemp -d)"
-          trap 'rm -rf "${quantum_project_dir}"; rm -f .env stack.json stack.yaml' EXIT
+          trap 'rm -f .env stack.json stack.yaml' EXIT
 
           if [ -z "${QUANTUM_ENDPOINT}" ]; then
             echo "'QUANTUM_ENDPOINT' must not be empty." >&2
@@ -233,13 +232,7 @@ jobs:
           docker compose -f compose.yaml -f ./deploy/compose.${ENVIRONMENT}.yaml config --no-normalize --format json > stack.json
           pnpm exec tsx scripts/ci/render-quantum-stack.ts --input stack.json --output stack.yaml
 
-          pre_pull_args=()
-          if [ "${ENVIRONMENT}" = "dev" ]; then
-            pre_pull_args=(--no-pre-pull)
-          fi
-          printf '%s\n' 'version: "1.0"' 'compose: stack.yaml' > "${quantum_project_dir}/.quantum"
-          cp stack.yaml "${quantum_project_dir}/stack.yaml"
-          quantum-cli stacks update --create --wait --project "${quantum_project_dir}" --stack "studio-${ENVIRONMENT}" --endpoint "${QUANTUM_ENDPOINT}" "${pre_pull_args[@]}"
+          quantum-cli stacks deploy -f stack.yaml --stack "studio-${ENVIRONMENT}" --endpoint "${QUANTUM_ENDPOINT}"
 
       - name: write deploy summary
         if: always()

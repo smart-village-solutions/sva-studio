@@ -39,24 +39,26 @@ describe('deployment contracts', () => {
     expect(workflow).toContain('actions/checkout@v7');
   });
 
-  it('skips Quantum pre-pull only for the diagnostic dev deployment path', () => {
+  it('uses the Quantum CLI v3 stack deploy contract', () => {
     const workflow = load('.github/workflows/promote.yml');
 
-    expect(workflow).toContain('if [ "${ENVIRONMENT}" = "dev" ]; then');
-    expect(workflow).toContain('pre_pull_args=(--no-pre-pull)');
-    expect(workflow).toContain('"${pre_pull_args[@]}"');
-    expect(workflow).toContain('quantum-cli stacks update --create --wait');
-    expect(workflow).toContain('--project "${quantum_project_dir}"');
-    expect(workflow).toContain("'compose: stack.yaml'");
+    expect(workflow).toContain(
+      'quantum-cli stacks deploy -f stack.yaml --stack "studio-${ENVIRONMENT}" --endpoint "${QUANTUM_ENDPOINT}"'
+    );
+    expect(workflow).not.toContain('--no-pre-pull');
+    expect(workflow).not.toContain('quantum_project_dir');
   });
 
   it('protects and removes rendered deployment secret files', () => {
     const workflow = load('.github/workflows/promote.yml');
 
     expect(workflow).toContain('umask 077');
-    expect(workflow).toContain('quantum_project_dir="$(mktemp -d)"');
-    expect(workflow).toContain(
-      "trap 'rm -rf \"${quantum_project_dir}\"; rm -f .env stack.json stack.yaml' EXIT"
-    );
+    expect(workflow).toContain("trap 'rm -f .env stack.json stack.yaml' EXIT");
+  });
+
+  it('promotes Dev with the immutable build commit tag', () => {
+    const workflow = load('.github/workflows/build.yml');
+
+    expect(workflow).toContain('image_ref: ${{ github.sha }}');
   });
 });

@@ -1,0 +1,4 @@
+{
+  "prNumber": 712,
+  "body": "Der Dev-Promote verwendet jetzt den beim Build veröffentlichten Commit-Tag, damit der Swarm das neue Container-Image zuverlässig auflösen kann."
+}

@@ -314,13 +314,5 @@ export const runPromoteDeployGates = async (args: readonly string[]): Promise<nu
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  void runPromoteDeployGates(process.argv.slice(2)).then(
-    (exitCode) => {
-      process.exitCode = exitCode;
-    },
-    (error: unknown) => {
-      process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-      process.exitCode = 2;
-    }
-  );
+  void runPromoteDeployGates(process.argv.slice(2)).then(process.exit);
 }

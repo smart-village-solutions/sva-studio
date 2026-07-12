@@ -1,0 +1,4 @@
+{
+  "prNumber": 717,
+  "body": "Die Staging-Umgebung verwendet für ihren Studio-Ingress jetzt den Traefik-v3-TLS-Vertrag mit dem aktiven ACME-Resolver."
+}

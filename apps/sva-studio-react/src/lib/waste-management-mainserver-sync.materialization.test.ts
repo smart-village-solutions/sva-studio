@@ -19,6 +19,91 @@ const buildTour = (override: Partial<WasteTourRecord> = {}): WasteTourRecord =>
   }) as unknown as WasteTourRecord;
 
 describe('waste-management-mainserver-sync.materialization', () => {
+  it('materializes explicit assignments without a general location-tour link', () => {
+    const result = buildMaterializedLocationTourPickupDates({
+      tours: [
+        {
+          id: 'tour-1',
+          name: 'Schadstoffmobil',
+          wasteFractionIds: ['fraction-1'],
+          recurrence: null,
+          active: true,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      links: [],
+      locationTourPickupDates: [],
+      tourAssignments: [
+        {
+          id: 'assignment-1',
+          tourId: 'tour-1',
+          pickupDate: '2026-06-10',
+          note: '14–16 Uhr',
+          locationIds: ['location-1', 'location-2'],
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      tourDateShifts: [],
+      globalDateShifts: [],
+      holidayRules: [],
+      currentYear: 2026,
+      nextYear: 2027,
+    });
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        locationId: 'location-1',
+        tourId: 'tour-1',
+        pickupDate: '2026-06-10',
+        note: '14–16 Uhr',
+      }),
+      expect.objectContaining({
+        locationId: 'location-2',
+        tourId: 'tour-1',
+        pickupDate: '2026-06-10',
+        note: '14–16 Uhr',
+      }),
+    ]);
+  });
+
+  it('preserves multiple explicit assignments for the same tour, date, and location', () => {
+    const result = buildMaterializedLocationTourPickupDates({
+      tours: [buildTour()],
+      links: [],
+      locationTourPickupDates: [],
+      tourAssignments: [
+        {
+          id: 'assignment-1',
+          tourId: 'tour-1',
+          pickupDate: '2026-06-10',
+          note: 'Vormittags',
+          locationIds: ['location-1'],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'assignment-2',
+          tourId: 'tour-1',
+          pickupDate: '2026-06-10',
+          note: 'Nachmittags',
+          locationIds: ['location-1'],
+          createdAt: '2026-01-02T00:00:00.000Z',
+          updatedAt: '2026-01-02T00:00:00.000Z',
+        },
+      ],
+      tourDateShifts: [],
+      globalDateShifts: [],
+      holidayRules: [],
+      currentYear: 2026,
+      nextYear: 2027,
+    });
+
+    expect(result).toHaveLength(2);
+    expect(result.map((entry) => entry.note)).toEqual(['Vormittags', 'Nachmittags']);
+  });
+
   it('applies single pickup shift to exactly one original date', () => {
     const pickupDates = buildMaterializedLocationTourPickupDates({
       tours: [
@@ -60,7 +145,9 @@ describe('waste-management-mainserver-sync.materialization', () => {
         expect.objectContaining({ pickupDate: '2026-01-13' }),
       ])
     );
-    expect(pickupDates).not.toEqual(expect.arrayContaining([expect.objectContaining({ pickupDate: '2026-01-06' })]));
+    expect(pickupDates).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ pickupDate: '2026-01-06' })])
+    );
   });
 
   it('applies rest-of-week advance shifts for Monday shift fallback to Saturday', () => {

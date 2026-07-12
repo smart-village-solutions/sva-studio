@@ -1,5 +1,8 @@
 import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
-import { WasteSchedulingContent, WasteSchedulingEmptyState } from './waste-management.scheduling-content.js';
+import {
+  WasteSchedulingContent,
+  WasteSchedulingEmptyState,
+} from './waste-management.scheduling-content.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteSchedulingListNavigation } from './waste-management.scheduling-list-view.navigation.js';
 
@@ -13,30 +16,28 @@ export const WasteSchedulingListView = ({
   readonly search: WasteManagementSearchParams;
 }) => {
   const navigation = useWasteSchedulingListNavigation(controller, search);
-  const hasSchadstoffmobilSection = controller.schadstoffmobilTour !== null;
-
-  if (!controller.allSchedulingEntries.length && !hasSchadstoffmobilSection) {
-    return (
-      <WasteSchedulingEmptyState
-        onOpenCreateShiftDialog={navigation.openCreate}
-      />
-    );
+  if (
+    !controller.allSchedulingEntries.length &&
+    !controller.tourAssignments.length &&
+    !controller.availableTours.length
+  ) {
+    return <WasteSchedulingEmptyState onOpenCreateShiftDialog={navigation.openCreate} />;
   }
 
   return (
     <WasteSchedulingContent
       message={controller.message}
       schedulingEntries={controller.schedulingEntries}
-      schadstoffmobilTour={controller.schadstoffmobilTour}
-      schadstoffmobilAssignments={controller.schadstoffmobilAssignments}
-      schadstoffmobilLocationOptions={controller.schadstoffmobilLocationOptions}
+      tours={controller.availableTours}
+      tourAssignments={controller.tourAssignments}
+      assignmentLocationOptions={controller.assignmentLocationOptions}
       onOpenCreateShiftDialog={navigation.openCreate}
       onEditHolidayRule={navigation.openEditHoliday}
       onEditGlobalShiftDialog={navigation.openEditGlobal}
       onEditTourShiftDialog={navigation.openEditTour}
       onDeleteSchedulingRows={controller.onDeleteSchedulingRows}
-      onSaveLocationTourPickupDate={controller.onSaveLocationTourPickupDate}
-      onDeleteLocationTourPickupDate={controller.onDeleteLocationTourPickupDate}
+      onSaveTourAssignment={controller.onSaveTourAssignment}
+      onDeleteTourAssignment={controller.onDeleteTourAssignment}
       saving={controller.saving}
       page={search.page}
       pageSize={search.pageSize}

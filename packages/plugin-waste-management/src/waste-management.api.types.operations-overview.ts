@@ -5,6 +5,7 @@ import type {
   WasteLocationTourPickupDateRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
+  WasteTourAssignmentRecord,
 } from '@sva/plugin-sdk';
 
 export type WasteManagementToursOverview = Readonly<{
@@ -13,6 +14,7 @@ export type WasteManagementToursOverview = Readonly<{
 }>;
 
 export type WasteManagementSchedulingOverview = Readonly<{
+  tourAssignments?: readonly WasteTourAssignmentRecord[];
   locationTourPickupDates: readonly WasteLocationTourPickupDateRecord[];
   tourDateShifts: readonly WasteTourDateShiftRecord[];
   globalDateShifts: readonly WasteGlobalDateShiftRecord[];

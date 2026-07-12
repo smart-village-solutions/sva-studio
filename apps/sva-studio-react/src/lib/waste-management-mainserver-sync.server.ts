@@ -39,19 +39,26 @@ type WasteManagementSyncMainserverJobInput = {
   readonly activeOrganizationId?: string;
 };
 
-type WasteMaterializationSyncState = Omit<WasteMaterializationContext, 'currentYear' | 'nextYear'> & {
+type WasteMaterializationSyncState = Omit<
+  WasteMaterializationContext,
+  'currentYear' | 'nextYear'
+> & {
   readonly cities: readonly WasteCityRecord[];
   readonly fractions: readonly WasteFractionRecord[];
   readonly locations: readonly WasteCollectionLocationRecord[];
-  readonly locationTourPickupDates: NonNullable<WasteMaterializationContext['locationTourPickupDates']>;
+  readonly locationTourPickupDates: NonNullable<
+    WasteMaterializationContext['locationTourPickupDates']
+  >;
+  readonly tourAssignments?: NonNullable<WasteMaterializationContext['tourAssignments']>;
   readonly streets: readonly WasteStreetRecord[];
   readonly tours: readonly WasteTourRecord[];
   readonly links: readonly WasteLocationTourLinkRecord[];
 };
 
-export type WasteSyncRow = SvaMainserverWasteSyncItem & Readonly<{
-  key: string;
-}>;
+export type WasteSyncRow = SvaMainserverWasteSyncItem &
+  Readonly<{
+    key: string;
+  }>;
 
 export type WasteManagementMainserverSyncResult = Readonly<{
   studioItemCount: number;
@@ -76,7 +83,8 @@ export type WasteManagementMainserverSyncResult = Readonly<{
 
 const DEFAULT_MAINSERVER_SYNC_BATCH_SIZE = 100;
 
-const normalizeKeyPart = (value: string | undefined): string => (value ?? '').trim().toLocaleLowerCase('de-DE');
+const normalizeKeyPart = (value: string | undefined): string =>
+  (value ?? '').trim().toLocaleLowerCase('de-DE');
 
 export const buildWasteSyncKey = (item: {
   pickupDate: string;
@@ -96,7 +104,10 @@ const toSyncRow = (item: SvaMainserverWasteSyncItem): WasteSyncRow => ({
   key: buildWasteSyncKey(item),
 });
 
-const chunkItems = <TItem>(items: readonly TItem[], batchSize: number): readonly (readonly TItem[])[] => {
+const chunkItems = <TItem>(
+  items: readonly TItem[],
+  batchSize: number
+): readonly (readonly TItem[])[] => {
   if (items.length === 0) {
     return [];
   }
@@ -131,6 +142,7 @@ const buildStudioRowsFromSyncState = (
     pickupDates: buildMaterializedLocationTourPickupDates({
       ...studioState,
       locationTourPickupDates: studioState.locationTourPickupDates,
+      tourAssignments: studioState.tourAssignments,
       currentYear,
       nextYear,
     }),
@@ -253,8 +265,7 @@ export const runWasteManagementMainserverSync = async (input: {
     deleteByValueCount,
     errorCount: 0,
     totalBatchCount:
-      Math.ceil(createItems.length / batchSize) +
-      Math.ceil(deleteItems.length / batchSize),
+      Math.ceil(createItems.length / batchSize) + Math.ceil(deleteItems.length / batchSize),
     processedItemCount,
     finalCreateCount: input.dryRun ? createItems.length : createCount,
     finalDeleteCount: input.dryRun ? deleteItems.length : deleteCount,
@@ -282,18 +293,23 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
       currentStepLabel: 'load-studio-state',
     })
   );
-  const studioState = await withWasteClient(input.runtimeDeps ?? {}, input.instanceId, async ({ repository }) => ({
-    tours: await repository.listWasteTours(),
-    fractions: await repository.listWasteFractions(),
-    links: await repository.listWasteLocationTourLinks(),
-    locations: await repository.listWasteCollectionLocations(),
-    locationTourPickupDates: await repository.listWasteLocationTourPickupDates(),
-    cities: await repository.listWasteCities(),
-    streets: await repository.listWasteStreets(),
-    tourDateShifts: await repository.listWasteTourDateShifts(),
-    globalDateShifts: await repository.listWasteGlobalDateShifts(),
-    holidayRules: await repository.listWasteHolidayRules(),
-  }));
+  const studioState = await withWasteClient(
+    input.runtimeDeps ?? {},
+    input.instanceId,
+    async ({ repository }) => ({
+      tours: await repository.listWasteTours(),
+      fractions: await repository.listWasteFractions(),
+      links: await repository.listWasteLocationTourLinks(),
+      locations: await repository.listWasteCollectionLocations(),
+      locationTourPickupDates: await repository.listWasteLocationTourPickupDates(),
+      tourAssignments: await repository.listWasteTourAssignments(),
+      cities: await repository.listWasteCities(),
+      streets: await repository.listWasteStreets(),
+      tourDateShifts: await repository.listWasteTourDateShifts(),
+      globalDateShifts: await repository.listWasteGlobalDateShifts(),
+      holidayRules: await repository.listWasteHolidayRules(),
+    })
+  );
 
   const now = input.runtimeDeps?.now?.() ?? new Date();
   const currentYear = now.getUTCFullYear();

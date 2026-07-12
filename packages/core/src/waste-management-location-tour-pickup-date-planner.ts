@@ -385,8 +385,6 @@ const ensureAssignment = (state: PlannerState, locationId: string, tourId: strin
     id: state.createId(),
     locationId,
     tourId,
-    startDate: undefined,
-    endDate: undefined,
     createdAt: '',
     updatedAt: '',
   });

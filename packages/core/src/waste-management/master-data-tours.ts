@@ -1,4 +1,5 @@
-export type WasteTourRecurrence = 'weekly' | 'biweekly' | 'fourweekly' | 'yearly' | 'on-demand' | 'custom';
+export type WasteTourRecurrence =
+  'weekly' | 'biweekly' | 'fourweekly' | 'yearly' | 'on-demand' | 'custom';
 
 export type WasteCustomTourDate = {
   readonly date: string;
@@ -43,8 +44,6 @@ export type WasteLocationTourLinkRecord = {
   readonly id: string;
   readonly locationId: string;
   readonly tourId: string;
-  readonly startDate?: string;
-  readonly endDate?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
 };
@@ -57,8 +56,6 @@ export type WasteLocationTourLinkListFilter = {
 export type WasteLocationTourLinkBulkCreateInput = {
   readonly locationIds: readonly string[];
   readonly tourId: string;
-  readonly startDate?: string;
-  readonly endDate?: string;
 };
 
 export type WasteLocationTourLinkBulkCreateResult = {

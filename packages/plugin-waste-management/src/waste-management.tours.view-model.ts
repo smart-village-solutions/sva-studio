@@ -21,6 +21,25 @@ export const createTourAssignmentSelectionSummary = ({
     visibleLocationIdSet,
   };
 };
+
+export const orderTourAssignmentLocations = <T extends { readonly id: string }>(
+  locations: readonly T[],
+  selectedLocationIds: readonly string[]
+): readonly T[] => {
+  const selectedLocationIdSet = new Set(selectedLocationIds);
+  const selectedLocations: T[] = [];
+  const unselectedLocations: T[] = [];
+
+  for (const location of locations) {
+    if (selectedLocationIdSet.has(location.id)) {
+      selectedLocations.push(location);
+    } else {
+      unselectedLocations.push(location);
+    }
+  }
+
+  return [...selectedLocations, ...unselectedLocations];
+};
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 
 import type {

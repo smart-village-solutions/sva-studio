@@ -6,6 +6,7 @@ import {
   WasteMasterDataActiveTourBanner,
   WasteMasterDataLocationsTableToolbar,
   createLocationsTableMaps,
+  type WasteMasterDataLocationsTableMaps,
   type WasteMasterDataLocationsTableProps,
 } from './waste-management.master-data-locations-table.parts.js';
 import { useLocationsFiltersOpen } from './waste-management.master-data-locations-table.filters-state.js';
@@ -21,6 +22,25 @@ type WasteMasterDataLocationsTableContentProps = WasteMasterDataLocationsTablePr
   readonly onToggleFiltersOpen: () => void;
 };
 
+const getLocationSortValue = (
+  location: WasteCollectionLocationRecord,
+  field: WasteMasterDataLocationsSortField,
+  maps: WasteMasterDataLocationsTableMaps
+): string => {
+  const values: Record<WasteMasterDataLocationsSortField, () => string> = {
+    region: () => (location.regionId ? (maps.regionsById.get(location.regionId)?.name ?? '') : ''),
+    city: () => maps.citiesById.get(location.cityId)?.name ?? '',
+    street: () => (location.streetId ? (maps.streetsById.get(location.streetId)?.name ?? '') : ''),
+    houseNumbers: () =>
+      location.houseNumberId
+        ? (maps.houseNumbersById.get(location.houseNumberId)?.number ?? '')
+        : '',
+    tours: () => (maps.locationTourNamesByLocationId.get(location.id) ?? []).join('|'),
+    status: () => (location.active ? 'active' : 'inactive'),
+  };
+  return values[field]();
+};
+
 const WasteMasterDataLocationsTableContent = ({
   filtersOpen,
   onToggleFiltersOpen,
@@ -29,34 +49,19 @@ const WasteMasterDataLocationsTableContent = ({
   const pt = usePluginTranslation('wasteManagement');
   const maps = createLocationsTableMaps(props);
   const selectedTour = props.selectedTourId ? maps.toursById.get(props.selectedTourId) : undefined;
-  const [pendingDeleteLocation, setPendingDeleteLocation] = useState<WasteCollectionLocationRecord | null>(null);
+  const [pendingDeleteLocation, setPendingDeleteLocation] =
+    useState<WasteCollectionLocationRecord | null>(null);
   const [bulkDeleteRequested, setBulkDeleteRequested] = useState(false);
   const [sortField, setSortField] = useState<WasteMasterDataLocationsSortField>('region');
   const [sortDirection, setSortDirection] = useState<WasteMasterDataLocationsSortDirection>('asc');
   const sortedCollectionLocations = useMemo(() => {
-    const getSortValue = (location: WasteCollectionLocationRecord, field: WasteMasterDataLocationsSortField): string => {
-      switch (field) {
-        case 'region':
-          return location.regionId ? maps.regionsById.get(location.regionId)?.name ?? '' : '';
-        case 'city':
-          return maps.citiesById.get(location.cityId)?.name ?? '';
-        case 'street':
-          return location.streetId ? maps.streetsById.get(location.streetId)?.name ?? '' : '';
-        case 'houseNumbers':
-          return location.houseNumberId ? maps.houseNumbersById.get(location.houseNumberId)?.number ?? '' : '';
-        case 'tours':
-          return (maps.locationTourNamesByLocationId.get(location.id) ?? []).join('|');
-        case 'status':
-          return location.active ? 'active' : 'inactive';
-        default:
-          return '';
-      }
-    };
-
     return [...props.collectionLocations].sort((left, right) => {
-      const leftValue = getSortValue(left, sortField);
-      const rightValue = getSortValue(right, sortField);
-      const comparison = leftValue.localeCompare(rightValue, 'de', { numeric: true, sensitivity: 'base' });
+      const leftValue = getLocationSortValue(left, sortField, maps);
+      const rightValue = getLocationSortValue(right, sortField, maps);
+      const comparison = leftValue.localeCompare(rightValue, 'de', {
+        numeric: true,
+        sensitivity: 'base',
+      });
       return sortDirection === 'asc' ? comparison : comparison * -1;
     });
   }, [maps, props.collectionLocations, sortDirection, sortField]);
@@ -83,71 +88,46 @@ const WasteMasterDataLocationsTableContent = ({
             onToggleFiltersOpen={onToggleFiltersOpen}
           />
         </WastePanelTableTopBar>
-        <WasteMasterDataActiveTourBanner selectedTour={selectedTour} onTourFilterChange={props.onTourFilterChange} />
-        {props.collectionLocations.length ? (
-          <>
-            <WasteMasterDataLocationsTableSection
-              collectionLocations={sortedCollectionLocations}
-              allFilteredLocationsSelected={props.allFilteredLocationsSelected}
-              maps={maps}
-              selectedLocationIds={props.selectedLocationIds}
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSortChange={(field) => {
-                if (field === sortField) {
-                  setSortDirection((current: WasteMasterDataLocationsSortDirection) =>
-                    current === 'asc' ? 'desc' : 'asc'
-                  );
-                  return;
-                }
-                setSortField(field);
-                setSortDirection('asc');
-              }}
-              onToggleSelectAll={props.onToggleSelectAll}
-              onToggleLocation={props.onToggleLocation}
-              onCopyLocation={props.onCopyLocation}
-              onDeleteLocation={async (location) => {
-                setPendingDeleteLocation(location);
-              }}
-              onOpenEditLocation={props.onOpenEditLocation}
-            />
-            <WastePanelTableBottomBar
-              pt={pt}
-              page={props.page}
-              pageSize={props.pageSize}
-              pageCount={props.pageCount}
-              totalItems={props.totalItems}
-              onPageChange={props.onPageChange}
-              onPageSizeChange={props.onPageSizeChange}
-            />
-          </>
-        ) : (
-          <WasteMasterDataLocationsTableSection
-            collectionLocations={sortedCollectionLocations}
-            allFilteredLocationsSelected={props.allFilteredLocationsSelected}
-            maps={maps}
-            selectedLocationIds={props.selectedLocationIds}
-            sortField={sortField}
-            sortDirection={sortDirection}
-            onSortChange={(field) => {
-              if (field === sortField) {
-                setSortDirection((current: WasteMasterDataLocationsSortDirection) =>
-                  current === 'asc' ? 'desc' : 'asc'
-                );
-                return;
-              }
-              setSortField(field);
-              setSortDirection('asc');
-            }}
-            onToggleSelectAll={props.onToggleSelectAll}
-            onToggleLocation={props.onToggleLocation}
-            onCopyLocation={props.onCopyLocation}
-            onDeleteLocation={async (location) => {
-              setPendingDeleteLocation(location);
-            }}
-            onOpenEditLocation={props.onOpenEditLocation}
+        <WasteMasterDataActiveTourBanner
+          selectedTour={selectedTour}
+          onTourFilterChange={props.onTourFilterChange}
+        />
+        <WasteMasterDataLocationsTableSection
+          collectionLocations={sortedCollectionLocations}
+          allFilteredLocationsSelected={props.allFilteredLocationsSelected}
+          maps={maps}
+          selectedLocationIds={props.selectedLocationIds}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSortChange={(field) => {
+            if (field === sortField) {
+              setSortDirection((current: WasteMasterDataLocationsSortDirection) =>
+                current === 'asc' ? 'desc' : 'asc'
+              );
+              return;
+            }
+            setSortField(field);
+            setSortDirection('asc');
+          }}
+          onToggleSelectAll={props.onToggleSelectAll}
+          onToggleLocation={props.onToggleLocation}
+          onCopyLocation={props.onCopyLocation}
+          onDeleteLocation={async (location) => {
+            setPendingDeleteLocation(location);
+          }}
+          onOpenEditLocation={props.onOpenEditLocation}
+        />
+        {props.collectionLocations.length > 0 ? (
+          <WastePanelTableBottomBar
+            pt={pt}
+            page={props.page}
+            pageSize={props.pageSize}
+            pageCount={props.pageCount}
+            totalItems={props.totalItems}
+            onPageChange={props.onPageChange}
+            onPageSizeChange={props.onPageSizeChange}
           />
-        )}
+        ) : null}
       </section>
       <StudioConfirmDialog
         open={pendingDeleteLocation !== null}

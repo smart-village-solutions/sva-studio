@@ -28,7 +28,11 @@ import {
   createDefaultReminderChannels,
   normalizeFractionReminderConfig,
 } from './waste-management.master-data.fraction-reminder-config.js';
-import { compactOptionalString, createId, normalizeLocalizedTextRecord } from './waste-management.master-data.form-helpers.js';
+import {
+  compactOptionalString,
+  createId,
+  normalizeLocalizedTextRecord,
+} from './waste-management.master-data.form-helpers.js';
 
 export type FractionFormState = {
   readonly id: string;
@@ -43,9 +47,21 @@ export type FractionFormState = {
 };
 
 export type RegionFormState = { readonly id: string; readonly name: string };
-export type CityFormState = { readonly id: string; readonly name: string; readonly regionId: string };
-export type StreetFormState = { readonly id: string; readonly name: string; readonly cityId: string };
-export type HouseNumberFormState = { readonly id: string; readonly number: string; readonly streetId: string };
+export type CityFormState = {
+  readonly id: string;
+  readonly name: string;
+  readonly regionId: string;
+};
+export type StreetFormState = {
+  readonly id: string;
+  readonly name: string;
+  readonly cityId: string;
+};
+export type HouseNumberFormState = {
+  readonly id: string;
+  readonly number: string;
+  readonly streetId: string;
+};
 
 export type CollectionLocationFormState = {
   readonly id: string;
@@ -56,7 +72,7 @@ export type CollectionLocationFormState = {
   readonly active: boolean;
 };
 
-export type LocationTourLinkBulkFormState = { readonly tourId: string; readonly startDate: string; readonly endDate: string };
+export type LocationTourLinkBulkFormState = { readonly tourId: string };
 const normalizeFractionShortLabel = (value: string): string => value.trim().toUpperCase();
 
 export const wasteMasterDataFormDefaults = {
@@ -86,7 +102,7 @@ export const wasteMasterDataFormDefaults = {
     houseNumberId: '',
     active: true,
   }),
-  createBulkAssignments: (): LocationTourLinkBulkFormState => ({ tourId: '', startDate: '', endDate: '' }),
+  createBulkAssignments: (): LocationTourLinkBulkFormState => ({ tourId: '' }),
 };
 
 export const wasteMasterDataFormMappers = {
@@ -101,15 +117,28 @@ export const wasteMasterDataFormMappers = {
     active: fraction.active,
     reminderConfig: normalizeFractionReminderConfig(fraction.id, fraction.reminderConfig),
   }),
-  regionToForm: (region: WasteRegionRecord): RegionFormState => ({ id: region.id, name: region.name }),
-  cityToForm: (city: WasteCityRecord): CityFormState => ({ id: city.id, name: city.name, regionId: city.regionId ?? '' }),
-  streetToForm: (street: WasteStreetRecord): StreetFormState => ({ id: street.id, name: street.name, cityId: street.cityId }),
+  regionToForm: (region: WasteRegionRecord): RegionFormState => ({
+    id: region.id,
+    name: region.name,
+  }),
+  cityToForm: (city: WasteCityRecord): CityFormState => ({
+    id: city.id,
+    name: city.name,
+    regionId: city.regionId ?? '',
+  }),
+  streetToForm: (street: WasteStreetRecord): StreetFormState => ({
+    id: street.id,
+    name: street.name,
+    cityId: street.cityId,
+  }),
   houseNumberToForm: (houseNumber: WasteHouseNumberRecord): HouseNumberFormState => ({
     id: houseNumber.id,
     number: houseNumber.number,
     streetId: houseNumber.streetId,
   }),
-  collectionLocationToForm: (location: WasteCollectionLocationRecord): CollectionLocationFormState => ({
+  collectionLocationToForm: (
+    location: WasteCollectionLocationRecord
+  ): CollectionLocationFormState => ({
     id: location.id,
     regionId: location.regionId ?? '',
     cityId: location.cityId,
@@ -147,8 +176,13 @@ export const wasteMasterDataInputMappers = {
     active: form.active,
     ...toFractionReminderInput(form),
   }),
-  toCreateRegionInput: (form: RegionFormState): CreateWasteManagementRegionInput => ({ id: form.id, name: form.name.trim() }),
-  toUpdateRegionInput: (form: RegionFormState): UpdateWasteManagementRegionInput => ({ name: form.name.trim() }),
+  toCreateRegionInput: (form: RegionFormState): CreateWasteManagementRegionInput => ({
+    id: form.id,
+    name: form.name.trim(),
+  }),
+  toUpdateRegionInput: (form: RegionFormState): UpdateWasteManagementRegionInput => ({
+    name: form.name.trim(),
+  }),
   toCreateCityInput: (form: CityFormState): CreateWasteManagementCityInput => ({
     id: form.id,
     name: form.name.trim(),
@@ -167,16 +201,22 @@ export const wasteMasterDataInputMappers = {
     name: form.name.trim(),
     cityId: form.cityId.trim(),
   }),
-  toCreateHouseNumberInput: (form: HouseNumberFormState): CreateWasteManagementHouseNumberInput => ({
+  toCreateHouseNumberInput: (
+    form: HouseNumberFormState
+  ): CreateWasteManagementHouseNumberInput => ({
     id: form.id.trim(),
     number: form.number.trim(),
     streetId: form.streetId.trim(),
   }),
-  toUpdateHouseNumberInput: (form: HouseNumberFormState): UpdateWasteManagementHouseNumberInput => ({
+  toUpdateHouseNumberInput: (
+    form: HouseNumberFormState
+  ): UpdateWasteManagementHouseNumberInput => ({
     number: form.number.trim(),
     streetId: form.streetId.trim(),
   }),
-  toCreateCollectionLocationInput: (form: CollectionLocationFormState): CreateWasteManagementCollectionLocationInput => ({
+  toCreateCollectionLocationInput: (
+    form: CollectionLocationFormState
+  ): CreateWasteManagementCollectionLocationInput => ({
     id: form.id,
     regionId: compactOptionalString(form.regionId),
     cityId: form.cityId,
@@ -184,7 +224,9 @@ export const wasteMasterDataInputMappers = {
     houseNumberId: compactOptionalString(form.houseNumberId),
     active: form.active,
   }),
-  toUpdateCollectionLocationInput: (form: CollectionLocationFormState): UpdateWasteManagementCollectionLocationInput => ({
+  toUpdateCollectionLocationInput: (
+    form: CollectionLocationFormState
+  ): UpdateWasteManagementCollectionLocationInput => ({
     regionId: compactOptionalString(form.regionId),
     cityId: form.cityId,
     streetId: compactOptionalString(form.streetId),
@@ -197,13 +239,15 @@ export const wasteMasterDataInputMappers = {
   ): CreateWasteManagementLocationTourLinksBulkInput => ({
     locationIds,
     tourId: form.tourId,
-    startDate: compactOptionalString(form.startDate),
-    endDate: compactOptionalString(form.endDate),
   }),
   resolveSingleSelectValue: (form: HTMLFormElement, fieldName: string): string => {
     const field = form.elements.namedItem(fieldName);
     const values =
-      field instanceof HTMLSelectElement ? Array.from(field.options).map((option) => option.value.trim()).filter(Boolean) : [];
+      field instanceof HTMLSelectElement
+        ? Array.from(field.options)
+            .map((option) => option.value.trim())
+            .filter(Boolean)
+        : [];
     return values.length === 1 ? (values[0] ?? '') : '';
   },
 };

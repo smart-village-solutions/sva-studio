@@ -30,20 +30,14 @@ export type CreateWasteManagementLocationTourLinkInput = Readonly<{
   id: string;
   locationId: string;
   tourId: string;
-  startDate?: string;
-  endDate?: string;
 }>;
 
 export type UpdateWasteManagementLocationTourLinkInput = Readonly<{
   locationId: string;
   tourId: string;
-  startDate?: string;
-  endDate?: string;
 }>;
 
 export type CreateWasteManagementLocationTourLinksBulkInput = Readonly<{
   locationIds: readonly string[];
   tourId: string;
-  startDate?: string;
-  endDate?: string;
 }>;

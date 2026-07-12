@@ -4,7 +4,10 @@ import {
   type SqlExecutor,
   type SqlStatement,
 } from '@sva/data-repositories';
-import { listExternalInterfaceRecords, loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
+import {
+  listExternalInterfaceRecords,
+  loadDefaultExternalInterfaceRecord,
+} from '@sva/data-repositories/server';
 import {
   findSelectedWasteManagementInterfaceRecord,
   WasteCollectionLocationRecord,
@@ -25,16 +28,25 @@ import {
   WasteRegionRecord,
   WasteStreetRecord,
   WasteTourDateShiftRecord,
+  WasteTourAssignmentRecord,
   type WasteTourRecurrence,
   WasteTourRecord,
 } from '@sva/core';
 import { createSdkLogger, resolveWasteDataSource } from '@sva/server-runtime';
-import { listWasteManagementAuditRecords, listWasteManagementTechnicalAuditRecords } from '@sva/iam-governance';
+import {
+  listWasteManagementAuditRecords,
+  listWasteManagementTechnicalAuditRecords,
+} from '@sva/iam-governance';
 import { Pool } from 'pg';
 
 import { withInstanceDb } from '../db.js';
 import { revealField } from '../iam-account-management/encryption.js';
-import { buildWasteHolidayApiUrl, deriveHolidayRuleConfigurationStatus, normalizeWasteHolidayApiResponse, wasteHolidaySyncHorizonYears } from './core/holiday-sync.js';
+import {
+  buildWasteHolidayApiUrl,
+  deriveHolidayRuleConfigurationStatus,
+  normalizeWasteHolidayApiResponse,
+  wasteHolidaySyncHorizonYears,
+} from './core/holiday-sync.js';
 import type { SaveWasteCustomRecurrencePresetsInput } from './core/types.js';
 import { previewWasteLocationTourPickupDateImport as buildWasteLocationTourPickupDateImportPreview } from './import-preview.js';
 
@@ -50,7 +62,10 @@ const quoteIdentifier = (value: string): string => {
 
 const setWasteSearchPath = async (
   client: {
-    query: <TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) => Promise<{
+    query: <TRow = Record<string, unknown>>(
+      text: string,
+      values?: readonly unknown[]
+    ) => Promise<{
       readonly rowCount: number | null;
       readonly rows: readonly TRow[];
     }>;
@@ -60,15 +75,18 @@ const setWasteSearchPath = async (
   await client.query(`SET search_path TO ${quoteIdentifier(schemaName)}, public;`);
 };
 
-const createSqlExecutor = (
-  client: {
-    query: <TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) => Promise<{
-      readonly rowCount: number | null;
-      readonly rows: readonly TRow[];
-    }>;
-  }
-): SqlExecutor => ({
-  async execute<TRow = Record<string, unknown>>(statement: SqlStatement): Promise<SqlExecutionResult<TRow>> {
+const createSqlExecutor = (client: {
+  query: <TRow = Record<string, unknown>>(
+    text: string,
+    values?: readonly unknown[]
+  ) => Promise<{
+    readonly rowCount: number | null;
+    readonly rows: readonly TRow[];
+  }>;
+}): SqlExecutor => ({
+  async execute<TRow = Record<string, unknown>>(
+    statement: SqlStatement
+  ): Promise<SqlExecutionResult<TRow>> {
     const result = await client.query<TRow>(statement.text, statement.values);
     return {
       rowCount: result.rowCount ?? 0,
@@ -101,7 +119,8 @@ type WastePoolEntry = {
   lastUsedAt: number;
 };
 
-const toIsoTimestamp = (value: string | Date): string => (value instanceof Date ? value.toISOString() : value);
+const toIsoTimestamp = (value: string | Date): string =>
+  value instanceof Date ? value.toISOString() : value;
 
 const wastePoolCache = new Map<string, WastePoolEntry>();
 const WASTE_POOL_IDLE_TTL_MS = 5 * 60 * 1_000;
@@ -134,14 +153,21 @@ const measureWasteRepositoryStep = <T>(
 ): Promise<T> =>
   measureWasteStep(operation, `repository.${repositoryStep}`, { instance_id: instanceId }, work);
 
-const createWastePoolKey = (dataSource: WasteDataSource): string => `${dataSource.databaseUrl}::${dataSource.schemaName}`;
+const createWastePoolKey = (dataSource: WasteDataSource): string =>
+  `${dataSource.databaseUrl}::${dataSource.schemaName}`;
 
 const loadSelectedWasteInterfaceRecord = async (instanceId: string) => {
   const records = await listExternalInterfaceRecords(instanceId);
-  return findSelectedWasteManagementInterfaceRecord(records) ?? (await loadDefaultExternalInterfaceRecord(instanceId, 'supabase'));
+  return (
+    findSelectedWasteManagementInterfaceRecord(records) ??
+    (await loadDefaultExternalInterfaceRecord(instanceId, 'supabase'))
+  );
 };
 
-const resolveScopedWasteDataSource = (instanceId: string, operation: string): Promise<WasteDataSource> =>
+const resolveScopedWasteDataSource = (
+  instanceId: string,
+  operation: string
+): Promise<WasteDataSource> =>
   measureWasteStep(operation, 'resolve_data_source', { instance_id: instanceId }, async () =>
     resolveWasteDataSource({
       instanceId,
@@ -159,13 +185,16 @@ const closeWastePoolEntry = async (entry: WastePoolEntry): Promise<void> => {
 };
 
 const evictExpiredWastePoolEntries = async (now = Date.now()): Promise<void> => {
-  const expiredEntries = [...wastePoolCache.values()].filter((entry) => now - entry.lastUsedAt >= WASTE_POOL_IDLE_TTL_MS);
+  const expiredEntries = [...wastePoolCache.values()].filter(
+    (entry) => now - entry.lastUsedAt >= WASTE_POOL_IDLE_TTL_MS
+  );
   await Promise.all(expiredEntries.map(async (entry) => closeWastePoolEntry(entry)));
 };
 
 const evictLeastRecentlyUsedWastePoolEntry = async (): Promise<void> => {
   const oldestEntry = [...wastePoolCache.values()].reduce<WastePoolEntry | null>(
-    (oldest, candidate) => (oldest === null || candidate.lastUsedAt < oldest.lastUsedAt ? candidate : oldest),
+    (oldest, candidate) =>
+      oldest === null || candidate.lastUsedAt < oldest.lastUsedAt ? candidate : oldest,
     null
   );
   if (oldestEntry) {
@@ -173,7 +202,10 @@ const evictLeastRecentlyUsedWastePoolEntry = async (): Promise<void> => {
   }
 };
 
-const getOrCreateWastePoolEntry = async (dataSource: WasteDataSource, now = Date.now()): Promise<WastePoolEntry> => {
+const getOrCreateWastePoolEntry = async (
+  dataSource: WasteDataSource,
+  now = Date.now()
+): Promise<WastePoolEntry> => {
   await evictExpiredWastePoolEntries(now);
 
   const key = createWastePoolKey(dataSource);
@@ -212,7 +244,10 @@ const withWasteClient = async <T>(
   instanceId: string,
   operation: string,
   work: (client: {
-    query: <TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) => Promise<{
+    query: <TRow = Record<string, unknown>>(
+      text: string,
+      values?: readonly unknown[]
+    ) => Promise<{
       readonly rowCount: number | null;
       readonly rows: readonly TRow[];
     }>;
@@ -261,7 +296,9 @@ const withWasteRepository = async <T>(
   operation: string,
   work: (repository: WasteRepository) => Promise<T>
 ): Promise<T> =>
-  withWasteClient(instanceId, operation, async (client) => work(createWasteMasterDataRepository(createSqlExecutor(client))));
+  withWasteClient(instanceId, operation, async (client) =>
+    work(createWasteMasterDataRepository(createSqlExecutor(client)))
+  );
 
 const createLoader =
   <TArgs extends readonly unknown[], TResult>(
@@ -300,8 +337,12 @@ const assertDeletedPresetFallback = ({
   nextPresetMap,
 }: {
   readonly presetId: string;
-  readonly fallback: SaveWasteCustomRecurrencePresetsInput['deletedPresetFallbacks'][string] | undefined;
-  readonly nextPresetMap: ReadonlyMap<string, Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>>;
+  readonly fallback:
+    SaveWasteCustomRecurrencePresetsInput['deletedPresetFallbacks'][string] | undefined;
+  readonly nextPresetMap: ReadonlyMap<
+    string,
+    Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>
+  >;
 }): void => {
   if (!fallback) {
     throw new Error(`custom_recurrence_fallback_required:${presetId}`);
@@ -328,7 +369,10 @@ const validateDeletedPresetFallbacks = ({
   readonly tours: readonly WasteTourRecord[];
   readonly deletedPresetIds: readonly string[];
   readonly deletedPresetFallbacks: SaveWasteCustomRecurrencePresetsInput['deletedPresetFallbacks'];
-  readonly nextPresetMap: ReadonlyMap<string, Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>>;
+  readonly nextPresetMap: ReadonlyMap<
+    string,
+    Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>
+  >;
 }): void => {
   for (const presetId of deletedPresetIds) {
     const hasAffectedTours = tours.some((tour) => tour.customRecurrenceId === presetId);
@@ -355,9 +399,14 @@ const reassignToursToFallback = async ({
   readonly repository: WasteRepository;
   readonly instanceId: string;
   readonly presetId: string;
-  readonly fallback: NonNullable<SaveWasteCustomRecurrencePresetsInput['deletedPresetFallbacks'][string]>;
+  readonly fallback: NonNullable<
+    SaveWasteCustomRecurrencePresetsInput['deletedPresetFallbacks'][string]
+  >;
   readonly affectedTours: readonly WasteTourRecord[];
-  readonly nextPresetMap: ReadonlyMap<string, Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>>;
+  readonly nextPresetMap: ReadonlyMap<
+    string,
+    Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>
+  >;
 }): Promise<void> => {
   if (fallback.kind === 'preset') {
     const fallbackPreset = nextPresetMap.get(fallback.value);
@@ -416,7 +465,10 @@ const applyDeletedCustomRecurrencePresets = async ({
   readonly instanceId: string;
   readonly deletedPresetIds: readonly string[];
   readonly deletedPresetFallbacks: SaveWasteCustomRecurrencePresetsInput['deletedPresetFallbacks'];
-  readonly nextPresetMap: ReadonlyMap<string, Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>>;
+  readonly nextPresetMap: ReadonlyMap<
+    string,
+    Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>
+  >;
 }): Promise<void> => {
   if (deletedPresetIds.length === 0) {
     return;
@@ -460,10 +512,13 @@ const saveWasteCustomRecurrencePresets = async (
       () => repository.listWasteCustomRecurrencePresets()
     );
     const currentPresetIds = new Set(currentPresets.map((preset) => preset.id));
-    const nextPresetMap = new Map<string, Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>>(
-      input.nextItems.map((preset) => [preset.id, preset])
+    const nextPresetMap = new Map<
+      string,
+      Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>
+    >(input.nextItems.map((preset) => [preset.id, preset]));
+    const deletedPresetIds = [...currentPresetIds].filter(
+      (presetId) => !nextPresetMap.has(presetId)
     );
-    const deletedPresetIds = [...currentPresetIds].filter((presetId) => !nextPresetMap.has(presetId));
 
     if (deletedPresetIds.length > 0) {
       validateDeletedPresetFallbacks({
@@ -519,94 +574,148 @@ const mapJobTypeIdToTechnicalEventType = (
 
 const loadMasterDataOverview = (instanceId: string): Promise<WasteManagementMasterDataOverview> =>
   withWasteRepository(instanceId, 'load_master_data_overview', async (repository) =>
-    measureWasteStep('load_master_data_overview', 'query_overview', { instance_id: instanceId }, async () => {
-      const fractions = await measureWasteRepositoryStep(instanceId, 'load_master_data_overview', 'list_waste_fractions', () =>
-        repository.listWasteFractions()
-      );
-      const regions = await measureWasteRepositoryStep(instanceId, 'load_master_data_overview', 'list_waste_regions', () =>
-        repository.listWasteRegions()
-      );
-      const cities = await measureWasteRepositoryStep(instanceId, 'load_master_data_overview', 'list_waste_cities', () =>
-        repository.listWasteCities()
-      );
-      const streets = await measureWasteRepositoryStep(instanceId, 'load_master_data_overview', 'list_waste_streets', () =>
-        repository.listWasteStreets()
-      );
-      const houseNumbers = await measureWasteRepositoryStep(instanceId, 'load_master_data_overview', 'list_waste_house_numbers', () =>
-        repository.listWasteHouseNumbers()
-      );
-      const collectionLocations = await measureWasteRepositoryStep(
-        instanceId,
-        'load_master_data_overview',
-        'list_waste_collection_locations',
-        () => repository.listWasteCollectionLocations()
-      );
-      const locationTourLinks = await measureWasteRepositoryStep(
-        instanceId,
-        'load_master_data_overview',
-        'list_waste_location_tour_links',
-        () => repository.listWasteLocationTourLinks()
-      );
-      return { fractions, regions, cities, streets, houseNumbers, collectionLocations, locationTourLinks };
-    })
+    measureWasteStep(
+      'load_master_data_overview',
+      'query_overview',
+      { instance_id: instanceId },
+      async () => {
+        const fractions = await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_overview',
+          'list_waste_fractions',
+          () => repository.listWasteFractions()
+        );
+        const regions = await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_overview',
+          'list_waste_regions',
+          () => repository.listWasteRegions()
+        );
+        const cities = await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_overview',
+          'list_waste_cities',
+          () => repository.listWasteCities()
+        );
+        const streets = await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_overview',
+          'list_waste_streets',
+          () => repository.listWasteStreets()
+        );
+        const houseNumbers = await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_overview',
+          'list_waste_house_numbers',
+          () => repository.listWasteHouseNumbers()
+        );
+        const collectionLocations = await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_overview',
+          'list_waste_collection_locations',
+          () => repository.listWasteCollectionLocations()
+        );
+        const locationTourLinks = await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_overview',
+          'list_waste_location_tour_links',
+          () => repository.listWasteLocationTourLinks()
+        );
+        return {
+          fractions,
+          regions,
+          cities,
+          streets,
+          houseNumbers,
+          collectionLocations,
+          locationTourLinks,
+        };
+      }
+    )
   );
 
-const loadMasterDataFractionsOverview = (instanceId: string): Promise<WasteManagementMasterDataOverview> =>
+const loadMasterDataFractionsOverview = (
+  instanceId: string
+): Promise<WasteManagementMasterDataOverview> =>
   withWasteRepository(instanceId, 'load_master_data_fractions_overview', async (repository) =>
-    measureWasteStep('load_master_data_fractions_overview', 'query_overview', { instance_id: instanceId }, async () => ({
-      fractions: await measureWasteRepositoryStep(instanceId, 'load_master_data_fractions_overview', 'list_waste_fractions', () =>
-        repository.listWasteFractions()
-      ),
-      regions: [],
-      cities: [],
-      streets: [],
-      houseNumbers: [],
-      collectionLocations: [],
-      locationTourLinks: [],
-    }))
+    measureWasteStep(
+      'load_master_data_fractions_overview',
+      'query_overview',
+      { instance_id: instanceId },
+      async () => ({
+        fractions: await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_fractions_overview',
+          'list_waste_fractions',
+          () => repository.listWasteFractions()
+        ),
+        regions: [],
+        cities: [],
+        streets: [],
+        houseNumbers: [],
+        collectionLocations: [],
+        locationTourLinks: [],
+      })
+    )
   );
 
-const loadMasterDataLocationsOverview = (instanceId: string): Promise<WasteManagementMasterDataOverview> =>
+const loadMasterDataLocationsOverview = (
+  instanceId: string
+): Promise<WasteManagementMasterDataOverview> =>
   withWasteRepository(instanceId, 'load_master_data_locations_overview', async (repository) =>
-    measureWasteStep('load_master_data_locations_overview', 'query_overview', { instance_id: instanceId }, async () => {
-      const regions = await measureWasteRepositoryStep(instanceId, 'load_master_data_locations_overview', 'list_waste_regions', () =>
-        repository.listWasteRegions()
-      );
-      const cities = await measureWasteRepositoryStep(instanceId, 'load_master_data_locations_overview', 'list_waste_cities', () =>
-        repository.listWasteCities()
-      );
-      const streets = await measureWasteRepositoryStep(instanceId, 'load_master_data_locations_overview', 'list_waste_streets', () =>
-        repository.listWasteStreets()
-      );
-      const houseNumbers = await measureWasteRepositoryStep(
-        instanceId,
-        'load_master_data_locations_overview',
-        'list_waste_house_numbers',
-        () => repository.listWasteHouseNumbers()
-      );
-      const collectionLocations = await measureWasteRepositoryStep(
-        instanceId,
-        'load_master_data_locations_overview',
-        'list_waste_collection_locations',
-        () => repository.listWasteCollectionLocations()
-      );
-      const locationTourLinks = await measureWasteRepositoryStep(
-        instanceId,
-        'load_master_data_locations_overview',
-        'list_waste_location_tour_links',
-        () => repository.listWasteLocationTourLinks()
-      );
+    measureWasteStep(
+      'load_master_data_locations_overview',
+      'query_overview',
+      { instance_id: instanceId },
+      async () => {
+        const regions = await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_locations_overview',
+          'list_waste_regions',
+          () => repository.listWasteRegions()
+        );
+        const cities = await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_locations_overview',
+          'list_waste_cities',
+          () => repository.listWasteCities()
+        );
+        const streets = await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_locations_overview',
+          'list_waste_streets',
+          () => repository.listWasteStreets()
+        );
+        const houseNumbers = await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_locations_overview',
+          'list_waste_house_numbers',
+          () => repository.listWasteHouseNumbers()
+        );
+        const collectionLocations = await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_locations_overview',
+          'list_waste_collection_locations',
+          () => repository.listWasteCollectionLocations()
+        );
+        const locationTourLinks = await measureWasteRepositoryStep(
+          instanceId,
+          'load_master_data_locations_overview',
+          'list_waste_location_tour_links',
+          () => repository.listWasteLocationTourLinks()
+        );
 
-      return {
-        fractions: [],
-        regions,
-        cities,
-        streets,
-        houseNumbers,
-        collectionLocations,
-        locationTourLinks,
-      };
-    })
+        return {
+          fractions: [],
+          regions,
+          cities,
+          streets,
+          houseNumbers,
+          collectionLocations,
+          locationTourLinks,
+        };
+      }
+    )
   );
 
 const loadWasteHistoryOverview = async (query: {
@@ -615,7 +724,9 @@ const loadWasteHistoryOverview = async (query: {
   page: number;
   pageSize: number;
 }): Promise<WasteManagementHistoryOverview> => {
-  const audit = await withInstanceDb(query.instanceId, (client) => listWasteManagementAuditRecords(client, query));
+  const audit = await withInstanceDb(query.instanceId, (client) =>
+    listWasteManagementAuditRecords(client, query)
+  );
 
   const technicalOffset = (query.page - 1) * query.pageSize;
   const technicalLimit = technicalOffset + query.pageSize;
@@ -775,7 +886,9 @@ WHERE ${whereClause.clause}
             id: `job:${row.id}:${row.status}`,
             eventType,
             outcome: row.status === 'succeeded' ? 'success' : 'failure',
-            occurredAt: row.finished_at ? toIsoTimestamp(row.finished_at) : toIsoTimestamp(row.updated_at),
+            occurredAt: row.finished_at
+              ? toIsoTimestamp(row.finished_at)
+              : toIsoTimestamp(row.updated_at),
             source: 'job',
             jobId: row.id,
             jobTypeId: row.job_type_id,
@@ -792,10 +905,7 @@ WHERE ${whereClause.clause}
   const [
     { items: technicalJobItems, total: technicalJobTotal },
     { items: technicalAuditItems, total: technicalAuditTotal },
-  ] = await Promise.all([
-    loadTechnicalJobHistoryPage(),
-    loadTechnicalAuditHistoryPrefix(),
-  ]);
+  ] = await Promise.all([loadTechnicalJobHistoryPage(), loadTechnicalAuditHistoryPrefix()]);
 
   const mergedTechnicalItems = [...technicalAuditItems, ...technicalJobItems].sort((left, right) =>
     right.occurredAt.localeCompare(left.occurredAt)
@@ -812,48 +922,72 @@ WHERE ${whereClause.clause}
 
 const loadToursOverview = (instanceId: string): Promise<WasteManagementToursOverview> =>
   withWasteRepository(instanceId, 'load_tours_overview', async (repository) =>
-    measureWasteStep('load_tours_overview', 'query_overview', { instance_id: instanceId }, async () => ({
-      tours: await repository.listWasteTours(),
-      customRecurrencePresets: await repository.listWasteCustomRecurrencePresets(),
-    }))
+    measureWasteStep(
+      'load_tours_overview',
+      'query_overview',
+      { instance_id: instanceId },
+      async () => ({
+        tours: await repository.listWasteTours(),
+        customRecurrencePresets: await repository.listWasteCustomRecurrencePresets(),
+      })
+    )
   );
 
 const loadSchedulingOverview = (instanceId: string): Promise<WasteManagementSchedulingOverview> =>
   withWasteRepository(instanceId, 'load_scheduling_overview', async (repository) =>
-    measureWasteStep('load_scheduling_overview', 'query_overview', { instance_id: instanceId }, async () => {
-      const locationTourPickupDates = await measureWasteRepositoryStep(
-        instanceId,
-        'load_scheduling_overview',
-        'list_waste_location_tour_pickup_dates',
-        () => repository.listWasteLocationTourPickupDates()
-      );
-      const tourDateShifts = await measureWasteRepositoryStep(
-        instanceId,
-        'load_scheduling_overview',
-        'list_waste_tour_date_shifts',
-        () => repository.listWasteTourDateShifts()
-      );
-      const globalDateShifts = await measureWasteRepositoryStep(
-        instanceId,
-        'load_scheduling_overview',
-        'list_waste_global_date_shifts',
-        () => repository.listWasteGlobalDateShifts()
-      );
-      const holidayRules = await measureWasteRepositoryStep(
-        instanceId,
-        'load_scheduling_overview',
-        'list_waste_holiday_rules',
-        () => repository.listWasteHolidayRules()
-      );
-      return { locationTourPickupDates, tourDateShifts, globalDateShifts, holidayRules };
-    })
+    measureWasteStep(
+      'load_scheduling_overview',
+      'query_overview',
+      { instance_id: instanceId },
+      async () => {
+        const tourAssignments = await measureWasteRepositoryStep(
+          instanceId,
+          'load_scheduling_overview',
+          'list_waste_tour_assignments',
+          () => repository.listWasteTourAssignments()
+        );
+        const locationTourPickupDates = await measureWasteRepositoryStep(
+          instanceId,
+          'load_scheduling_overview',
+          'list_waste_location_tour_pickup_dates',
+          () => repository.listWasteLocationTourPickupDates()
+        );
+        const tourDateShifts = await measureWasteRepositoryStep(
+          instanceId,
+          'load_scheduling_overview',
+          'list_waste_tour_date_shifts',
+          () => repository.listWasteTourDateShifts()
+        );
+        const globalDateShifts = await measureWasteRepositoryStep(
+          instanceId,
+          'load_scheduling_overview',
+          'list_waste_global_date_shifts',
+          () => repository.listWasteGlobalDateShifts()
+        );
+        const holidayRules = await measureWasteRepositoryStep(
+          instanceId,
+          'load_scheduling_overview',
+          'list_waste_holiday_rules',
+          () => repository.listWasteHolidayRules()
+        );
+        return {
+          tourAssignments,
+          locationTourPickupDates,
+          tourDateShifts,
+          globalDateShifts,
+          holidayRules,
+        };
+      }
+    )
   );
 
 const hasManualHolidayConflict = (
   holidayDate: string,
   globalDateShifts: readonly WasteGlobalDateShiftRecord[]
 ): boolean =>
-  globalDateShifts.some((shift) => shift.originalDate === holidayDate || shift.actualDate === holidayDate);
+  globalDateShifts.some(
+    (shift) => shift.originalDate === holidayDate || shift.actualDate === holidayDate
+  );
 
 const syncWasteHolidayRules = async (
   instanceId: string,
@@ -861,7 +995,10 @@ const syncWasteHolidayRules = async (
 ): Promise<WasteHolidaySyncStatus> =>
   withWasteRepository(instanceId, 'sync_waste_holiday_rules', async (repository) => {
     const currentYear = new Date().getUTCFullYear();
-    const years = Array.from({ length: wasteHolidaySyncHorizonYears }, (_, index) => currentYear + index);
+    const years = Array.from(
+      { length: wasteHolidaySyncHorizonYears },
+      (_, index) => currentYear + index
+    );
     const existingRules = await measureWasteRepositoryStep(
       instanceId,
       'sync_waste_holiday_rules',
@@ -903,7 +1040,9 @@ const syncWasteHolidayRules = async (
             stateCode,
             sourceStatus: 'confirmed',
             configurationStatus: deriveHolidayRuleConfigurationStatus(existingRule ?? {}),
-            conflictStatus: hasManualHolidayConflict(entry.holidayDate, globalDateShifts) ? 'manual-global-rule' : 'none',
+            conflictStatus: hasManualHolidayConflict(entry.holidayDate, globalDateShifts)
+              ? 'manual-global-rule'
+              : 'none',
             scope: existingRule?.scope,
             strategy: existingRule?.strategy,
           };
@@ -920,7 +1059,9 @@ const syncWasteHolidayRules = async (
     }
 
     const notConfirmedRules = existingRules.filter(
-      (rule) => successfulYears.has(rule.year) && !confirmedRuleKeys.has(`${rule.holidayDate}::${rule.holidayName}`)
+      (rule) =>
+        successfulYears.has(rule.year) &&
+        !confirmedRuleKeys.has(`${rule.holidayDate}::${rule.holidayName}`)
     );
     for (const rule of notConfirmedRules) {
       await measureWasteRepositoryStep(
@@ -936,7 +1077,9 @@ const syncWasteHolidayRules = async (
             stateCode: rule.stateCode,
             sourceStatus: 'not-confirmed',
             configurationStatus: deriveHolidayRuleConfigurationStatus(rule),
-            conflictStatus: hasManualHolidayConflict(rule.holidayDate, globalDateShifts) ? 'manual-global-rule' : 'none',
+            conflictStatus: hasManualHolidayConflict(rule.holidayDate, globalDateShifts)
+              ? 'manual-global-rule'
+              : 'none',
             scope: rule.scope,
             strategy: rule.strategy,
           })
@@ -954,59 +1097,79 @@ const syncWasteHolidayRules = async (
 
 const previewWasteLocationTourPickupDateImport = (input: {
   readonly instanceId: string;
-  readonly sourceFormat: 'text/csv' | 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  readonly sourceFormat:
+    'text/csv' | 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   readonly blobRef: string;
   readonly delimiterOverride?: ';' | ',' | '\t' | '|';
 }) =>
-  withWasteRepository(input.instanceId, 'preview_location_tour_pickup_date_import', async (repository) =>
-    measureWasteStep(
-      'preview_location_tour_pickup_date_import',
-      'simulate_import',
-      { instance_id: input.instanceId },
-      async () =>
-        buildWasteLocationTourPickupDateImportPreview(repository, {
-          sourceFormat: input.sourceFormat,
-          blobRef: input.blobRef,
-          delimiterOverride: input.delimiterOverride,
-        })
-    )
+  withWasteRepository(
+    input.instanceId,
+    'preview_location_tour_pickup_date_import',
+    async (repository) =>
+      measureWasteStep(
+        'preview_location_tour_pickup_date_import',
+        'simulate_import',
+        { instance_id: input.instanceId },
+        async () =>
+          buildWasteLocationTourPickupDateImportPreview(repository, {
+            sourceFormat: input.sourceFormat,
+            blobRef: input.blobRef,
+            delimiterOverride: input.delimiterOverride,
+          })
+      )
   );
 
-const loadWasteFractionById = createLoader('load_waste_fraction_by_id', (repository, fractionId: string) =>
-  repository.getWasteFractionById(fractionId)
+const loadWasteFractionById = createLoader(
+  'load_waste_fraction_by_id',
+  (repository, fractionId: string) => repository.getWasteFractionById(fractionId)
 );
 const saveWasteFraction = createLoader(
   'save_waste_fraction',
-  (repository, input: Parameters<WasteRepository['upsertWasteFraction']>[0]) => repository.upsertWasteFraction(input)
+  (repository, input: Parameters<WasteRepository['upsertWasteFraction']>[0]) =>
+    repository.upsertWasteFraction(input)
 );
-const deleteWasteFraction = createLoader('delete_waste_fraction', (repository, fractionId: string) =>
-  repository.deleteWasteFraction(fractionId)
+const deleteWasteFraction = createLoader(
+  'delete_waste_fraction',
+  (repository, fractionId: string) => repository.deleteWasteFraction(fractionId)
 );
-const loadWasteRegionById = createLoader('load_waste_region_by_id', (repository, regionId: string) =>
-  repository.getWasteRegionById(regionId)
+const loadWasteRegionById = createLoader(
+  'load_waste_region_by_id',
+  (repository, regionId: string) => repository.getWasteRegionById(regionId)
 );
-const saveWasteRegion = createLoader('save_waste_region', (repository, input: Omit<WasteRegionRecord, 'createdAt' | 'updatedAt'>) =>
-  repository.upsertWasteRegion(input)
+const saveWasteRegion = createLoader(
+  'save_waste_region',
+  (repository, input: Omit<WasteRegionRecord, 'createdAt' | 'updatedAt'>) =>
+    repository.upsertWasteRegion(input)
 );
-const loadWasteCityById = createLoader('load_waste_city_by_id', (repository, cityId: string) => repository.getWasteCityById(cityId));
-const saveWasteCity = createLoader('save_waste_city', (repository, input: Parameters<WasteRepository['upsertWasteCity']>[0]) =>
-  repository.upsertWasteCity(input)
+const loadWasteCityById = createLoader('load_waste_city_by_id', (repository, cityId: string) =>
+  repository.getWasteCityById(cityId)
 );
-const loadWasteStreetById = createLoader('load_waste_street_by_id', (repository, streetId: string) =>
-  repository.getWasteStreetById(streetId)
+const saveWasteCity = createLoader(
+  'save_waste_city',
+  (repository, input: Parameters<WasteRepository['upsertWasteCity']>[0]) =>
+    repository.upsertWasteCity(input)
 );
-const saveWasteStreet = createLoader('save_waste_street', (repository, input: Omit<WasteStreetRecord, 'createdAt' | 'updatedAt'>) =>
-  repository.upsertWasteStreet(input)
+const loadWasteStreetById = createLoader(
+  'load_waste_street_by_id',
+  (repository, streetId: string) => repository.getWasteStreetById(streetId)
 );
-const loadWasteHouseNumberById = createLoader('load_waste_house_number_by_id', (repository, houseNumberId: string) =>
-  repository.getWasteHouseNumberById(houseNumberId)
+const saveWasteStreet = createLoader(
+  'save_waste_street',
+  (repository, input: Omit<WasteStreetRecord, 'createdAt' | 'updatedAt'>) =>
+    repository.upsertWasteStreet(input)
+);
+const loadWasteHouseNumberById = createLoader(
+  'load_waste_house_number_by_id',
+  (repository, houseNumberId: string) => repository.getWasteHouseNumberById(houseNumberId)
 );
 const saveWasteHouseNumber = createLoader(
   'save_waste_house_number',
-  (repository, input: Omit<WasteHouseNumberRecord, 'createdAt' | 'updatedAt'>) => repository.upsertWasteHouseNumber(input)
+  (repository, input: Omit<WasteHouseNumberRecord, 'createdAt' | 'updatedAt'>) =>
+    repository.upsertWasteHouseNumber(input)
 );
-const loadWasteCollectionLocationById = createLoader('load_waste_collection_location_by_id', (repository, locationId: string) =>
-  repository.getWasteCollectionLocationById(locationId)
+const loadWasteCollectionLocationById = createLoader(
+  'load_waste_collection_location_by_id',
+  (repository, locationId: string) => repository.getWasteCollectionLocationById(locationId)
 );
 const saveWasteCollectionLocation = createLoader(
   'save_waste_collection_location',
@@ -1017,8 +1180,9 @@ const deleteWasteCollectionLocation = createLoader(
   'delete_waste_collection_location',
   (repository, locationId: string) => repository.deleteWasteCollectionLocation(locationId)
 );
-const loadWasteLocationTourLinkById = createLoader('load_waste_location_tour_link_by_id', (repository, linkId: string) =>
-  repository.getWasteLocationTourLinkById(linkId)
+const loadWasteLocationTourLinkById = createLoader(
+  'load_waste_location_tour_link_by_id',
+  (repository, linkId: string) => repository.getWasteLocationTourLinkById(linkId)
 );
 const listWasteLocationTourLinksByTourId = createLoader(
   'list_waste_location_tour_links_by_tour_id',
@@ -1041,7 +1205,11 @@ const listWasteLocationTourPickupDates = createLoader(
   'list_waste_location_tour_pickup_dates',
   (
     repository,
-    filter?: { readonly locationId?: string; readonly tourId?: string; readonly pickupDate?: string }
+    filter?: {
+      readonly locationId?: string;
+      readonly tourId?: string;
+      readonly pickupDate?: string;
+    }
   ) => repository.listWasteLocationTourPickupDates(filter)
 );
 const saveWasteLocationTourPickupDate = createLoader(
@@ -1053,25 +1221,58 @@ const deleteWasteLocationTourPickupDate = createLoader(
   'delete_waste_location_tour_pickup_date',
   (repository, pickupDateId: string) => repository.deleteWasteLocationTourPickupDate(pickupDateId)
 );
+const loadWasteTourAssignmentById = createLoader(
+  'load_waste_tour_assignment_by_id',
+  (repository, assignmentId: string) => repository.getWasteTourAssignmentById(assignmentId)
+);
+const listWasteTourAssignments = createLoader(
+  'list_waste_tour_assignments',
+  (
+    repository,
+    filter?: {
+      readonly tourId?: string;
+      readonly pickupDate?: string;
+      readonly locationIds?: readonly string[];
+    }
+  ) => repository.listWasteTourAssignments(filter)
+);
+const saveWasteTourAssignment = createLoader(
+  'save_waste_tour_assignment',
+  (repository, input: Omit<WasteTourAssignmentRecord, 'createdAt' | 'updatedAt'>) =>
+    repository.upsertWasteTourAssignment(input)
+);
+const deleteWasteTourAssignment = createLoader(
+  'delete_waste_tour_assignment',
+  (repository, assignmentId: string) => repository.deleteWasteTourAssignment(assignmentId)
+);
 const loadWasteCustomRecurrencePresets = createLoader(
   'load_waste_custom_recurrence_presets',
   (repository) => repository.listWasteCustomRecurrencePresets()
 );
-const loadWastePdfStaticSettings = createLoader(
-  'load_waste_pdf_static_settings',
-  (repository) => repository.getWastePdfStaticSettings()
+const loadWastePdfStaticSettings = createLoader('load_waste_pdf_static_settings', (repository) =>
+  repository.getWastePdfStaticSettings()
 );
-const loadWasteHolidayRuleById = createLoader('load_waste_holiday_rule_by_id', async (repository, ruleId: string) => {
-  const rules = await repository.listWasteHolidayRules();
-  return rules.find((rule) => rule.id === ruleId) ?? null;
-});
-const loadWasteTourById = createLoader('load_waste_tour_by_id', (repository, tourId: string) => repository.getWasteTourById(tourId));
-const saveWasteTour = createLoader('save_waste_tour', (repository, input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) =>
-  repository.upsertWasteTour(input)
+const loadWasteHolidayRuleById = createLoader(
+  'load_waste_holiday_rule_by_id',
+  async (repository, ruleId: string) => {
+    const rules = await repository.listWasteHolidayRules();
+    return rules.find((rule) => rule.id === ruleId) ?? null;
+  }
 );
-const deleteWasteTour = createLoader('delete_waste_tour', (repository, tourId: string) => repository.deleteWasteTour(tourId));
-const loadWasteTourDateShiftById = createLoader('load_waste_tour_date_shift_by_id', (repository, shiftId: string) =>
-  repository.getWasteTourDateShiftById(shiftId)
+const loadWasteTourById = createLoader('load_waste_tour_by_id', (repository, tourId: string) =>
+  repository.getWasteTourById(tourId)
+);
+const saveWasteTour = createLoader(
+  'save_waste_tour',
+  (repository, input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) =>
+    repository.upsertWasteTour(input)
+);
+const deleteWasteTour = createLoader('delete_waste_tour', (repository, tourId: string) =>
+  repository.deleteWasteTour(tourId)
+);
+const loadWasteTourDateShiftById = createLoader(
+  'load_waste_tour_date_shift_by_id',
+  (repository, shiftId: string) => repository.getWasteTourDateShiftById(shiftId)
 );
 const listWasteTourDateShiftsByTourId = createLoader(
   'list_waste_tour_date_shifts_by_tour_id',
@@ -1083,10 +1284,12 @@ const deleteWasteTourDateShift = createLoader(
 );
 const saveWasteTourDateShift = createLoader(
   'save_waste_tour_date_shift',
-  (repository, input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>) => repository.upsertWasteTourDateShift(input)
+  (repository, input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>) =>
+    repository.upsertWasteTourDateShift(input)
 );
-const loadWasteGlobalDateShiftById = createLoader('load_waste_global_date_shift_by_id', (repository, shiftId: string) =>
-  repository.getWasteGlobalDateShiftById(shiftId)
+const loadWasteGlobalDateShiftById = createLoader(
+  'load_waste_global_date_shift_by_id',
+  (repository, shiftId: string) => repository.getWasteGlobalDateShiftById(shiftId)
 );
 const deleteWasteGlobalDateShift = createLoader(
   'delete_waste_global_date_shift',
@@ -1094,11 +1297,13 @@ const deleteWasteGlobalDateShift = createLoader(
 );
 const saveWasteGlobalDateShift = createLoader(
   'save_waste_global_date_shift',
-  (repository, input: Omit<WasteGlobalDateShiftRecord, 'createdAt' | 'updatedAt'>) => repository.upsertWasteGlobalDateShift(input)
+  (repository, input: Omit<WasteGlobalDateShiftRecord, 'createdAt' | 'updatedAt'>) =>
+    repository.upsertWasteGlobalDateShift(input)
 );
 const saveWasteHolidayRule = createLoader(
   'save_waste_holiday_rule',
-  (repository, input: Omit<WasteHolidayRuleRecord, 'createdAt' | 'updatedAt'>) => repository.upsertWasteHolidayRule(input)
+  (repository, input: Omit<WasteHolidayRuleRecord, 'createdAt' | 'updatedAt'>) =>
+    repository.upsertWasteHolidayRule(input)
 );
 const deleteWasteHolidayRule = createLoader(
   'delete_waste_holiday_rule',
@@ -1125,8 +1330,6 @@ const saveWasteLocationTourLinksBulk = async (
           id,
           locationId,
           tourId: input.tourId,
-          startDate: input.startDate,
-          endDate: input.endDate,
         });
 
         const saved = await repository.getWasteLocationTourLinkById(id);
@@ -1166,7 +1369,9 @@ export const wasteManagementEntityLoaders = {
   loadWasteCollectionLocationById,
   loadWasteLocationTourLinkById,
   loadWasteLocationTourPickupDateById,
+  loadWasteTourAssignmentById,
   listWasteLocationTourPickupDates,
+  listWasteTourAssignments,
   listWasteLocationTourLinksByTourId,
   loadWasteTourById,
   loadWasteTourDateShiftById,
@@ -1191,7 +1396,9 @@ export const wasteManagementEntitySavers = {
   saveWasteLocationTourLink,
   deleteWasteLocationTourLink,
   saveWasteLocationTourPickupDate,
+  saveWasteTourAssignment,
   deleteWasteLocationTourPickupDate,
+  deleteWasteTourAssignment,
   saveWasteLocationTourLinksBulk,
   saveWasteTour,
   deleteWasteTour,

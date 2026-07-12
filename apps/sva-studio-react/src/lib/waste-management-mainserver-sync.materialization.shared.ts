@@ -2,6 +2,7 @@ import type {
   WasteTourDateShiftFollowUpMode,
   WasteTourDateShiftRecord,
   WasteTourRecord,
+  WasteTourAssignmentRecord,
   WasteGlobalDateShiftRecord,
   WasteHolidayRuleRecord,
   WasteLocationTourLinkRecord,
@@ -30,6 +31,7 @@ export type WasteMaterializationContext = {
   readonly tours: readonly WasteTourRecord[];
   readonly links: readonly WasteLocationTourLinkRecord[];
   readonly locationTourPickupDates?: readonly WasteLocationTourPickupDateRecord[];
+  readonly tourAssignments?: readonly WasteTourAssignmentRecord[];
   readonly tourDateShifts: readonly WasteTourDateShiftRecord[];
   readonly globalDateShifts: readonly WasteGlobalDateShiftRecord[];
   readonly holidayRules: readonly WasteHolidayRuleRecord[];
@@ -74,7 +76,10 @@ export const addDays = (value: string, days: number): string | undefined => {
   return Number.isNaN(shiftedDate.getTime()) ? undefined : toIsoDate(shiftedDate);
 };
 
-export const addDaysWithWeekendClampForAdvance = (value: string, shiftDays: number): string | undefined => {
+export const addDaysWithWeekendClampForAdvance = (
+  value: string,
+  shiftDays: number
+): string | undefined => {
   const shiftedDate = addDays(value, shiftDays);
   if (!shiftedDate) {
     return undefined;
@@ -117,7 +122,8 @@ export const shiftDirection = (
 
 export const toCoverage = (
   followUpMode: WasteTourDateShiftFollowUpMode | undefined
-): MaterializationRuleCoverage => (followUpMode === 'propagate-series' ? 'rest_of_week' : 'single_pickup');
+): MaterializationRuleCoverage =>
+  followUpMode === 'propagate-series' ? 'rest_of_week' : 'single_pickup';
 
 export const toDirectionFromHolidayStrategy = (
   strategy: string | undefined
@@ -144,7 +150,11 @@ const resolveAdvanceDays = (
   if (recurrence === 'fourweekly') {
     return 28;
   }
-  if (recurrence === 'custom' && typeof customRecurrenceIntervalDays === 'number' && customRecurrenceIntervalDays > 0) {
+  if (
+    recurrence === 'custom' &&
+    typeof customRecurrenceIntervalDays === 'number' &&
+    customRecurrenceIntervalDays > 0
+  ) {
     return customRecurrenceIntervalDays;
   }
   return null;
@@ -171,8 +181,13 @@ const advanceRecurrenceDate = (
   return next;
 };
 
-export const getEffectiveYearWindow = (currentYear: number, nextYear: number): readonly number[] => {
-  const normalizedCurrentYear = Number.isInteger(currentYear) ? currentYear : new Date().getUTCFullYear();
+export const getEffectiveYearWindow = (
+  currentYear: number,
+  nextYear: number
+): readonly number[] => {
+  const normalizedCurrentYear = Number.isInteger(currentYear)
+    ? currentYear
+    : new Date().getUTCFullYear();
   const normalizedNextYear = Number.isInteger(nextYear)
     ? nextYear
     : normalizedCurrentYear + MATERIALIZATION_YEAR_OFFSET;
@@ -224,7 +239,9 @@ export const collectRecurrenceDates = (
     return [...dates];
   }
 
-  if (advanceRecurrenceDate(startDate, tour.recurrence, tour.customRecurrenceIntervalDays) === null) {
+  if (
+    advanceRecurrenceDate(startDate, tour.recurrence, tour.customRecurrenceIntervalDays) === null
+  ) {
     return [...dates];
   }
 
@@ -282,7 +299,8 @@ const getWeekStartIso = (value: string): string | undefined => {
   return toIsoDate(monday);
 };
 
-const isSameWeek = (left: string, right: string): boolean => getWeekStartIso(left) === getWeekStartIso(right);
+const isSameWeek = (left: string, right: string): boolean =>
+  getWeekStartIso(left) === getWeekStartIso(right);
 
 export const isDateAffectedByRule = (
   date: string,

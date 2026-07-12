@@ -104,16 +104,26 @@ describe('waste management operations runtime', () => {
   it('includes custom recurrence presets, holiday rules and tour preset references in schema statements', () => {
     const statements = applySchemaStatements('wm').join('\n');
     expect(statements).toContain('reminder_config JSONB');
-    expect(statements).toContain('CREATE TABLE IF NOT EXISTS "wm".waste_fractions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL');
-    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS reminder_config JSONB');
+    expect(statements).toContain(
+      'CREATE TABLE IF NOT EXISTS "wm".waste_fractions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL'
+    );
+    expect(statements).toContain(
+      'ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS reminder_config JSONB'
+    );
     expect(statements).toContain('UPDATE "wm".waste_fractions');
-    expect(statements).toContain("SET reminder_config = jsonb_strip_nulls");
-    expect(statements).toContain("WHERE reminder_config IS NULL");
+    expect(statements).toContain('SET reminder_config = jsonb_strip_nulls');
+    expect(statements).toContain('WHERE reminder_config IS NULL');
     expect(statements).toContain(`id::text || ':push:first'`);
     expect(statements).toContain('pdf_short_label TEXT');
-    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS pdf_short_label TEXT');
-    expect(statements).toContain(buildWasteFractionShortLabelBackfillStatement('"wm".waste_fractions'));
-    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ALTER COLUMN pdf_short_label SET NOT NULL');
+    expect(statements).toContain(
+      'ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS pdf_short_label TEXT'
+    );
+    expect(statements).toContain(
+      buildWasteFractionShortLabelBackfillStatement('"wm".waste_fractions')
+    );
+    expect(statements).toContain(
+      'ALTER TABLE "wm".waste_fractions ALTER COLUMN pdf_short_label SET NOT NULL'
+    );
     expect(statements).toContain('waste_custom_recurrence_presets');
     expect(statements).toContain('waste_holiday_rules');
     expect(statements).toContain('waste_settings');
@@ -125,21 +135,46 @@ describe('waste management operations runtime', () => {
     expect(statements).toContain('holiday_date DATE NOT NULL');
     expect(statements).toContain('idx_waste_holiday_rules_state_year');
     expect(statements).toContain('custom_recurrence_id UUID');
-    expect(statements).toContain('ALTER TABLE "wm".waste_tours ADD COLUMN IF NOT EXISTS custom_recurrence_id UUID');
+    expect(statements).toContain(
+      'ALTER TABLE "wm".waste_tours ADD COLUMN IF NOT EXISTS custom_recurrence_id UUID'
+    );
     expect(statements).toContain('waste_tours_custom_recurrence_id_fkey');
     expect(statements).toContain('idx_waste_tours_custom_recurrence_id');
     expect(statements).toContain("reminder_count TEXT NOT NULL DEFAULT 'none'");
-    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS reminder_count TEXT NOT NULL DEFAULT \'none\'');
-    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS first_reminder_max_lead_days INTEGER');
-    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS second_reminder_max_lead_days INTEGER');
-    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS reminder_channel_push_enabled BOOLEAN NOT NULL DEFAULT FALSE');
+    expect(statements).toContain(
+      'ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS reminder_count TEXT NOT NULL DEFAULT \'none\''
+    );
+    expect(statements).toContain(
+      'ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS first_reminder_max_lead_days INTEGER'
+    );
+    expect(statements).toContain(
+      'ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS second_reminder_max_lead_days INTEGER'
+    );
+    expect(statements).toContain(
+      'ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS reminder_channel_push_enabled BOOLEAN NOT NULL DEFAULT FALSE'
+    );
     expect(statements).toContain('waste_fractions_reminder_count_check');
     expect(statements).toContain('waste_location_tour_links_tour_id_fkey');
     expect(statements).toContain('waste_location_tour_pickup_dates_tour_id_fkey');
     expect(statements).toContain('waste_tour_date_shifts_tour_id_fkey');
-    expect(statements).toContain('DROP CONSTRAINT IF EXISTS waste_location_tour_links_tour_id_fkey');
-    expect(statements).toContain('DROP CONSTRAINT IF EXISTS waste_location_tour_pickup_dates_tour_id_fkey');
+    expect(statements).toContain(
+      'DROP CONSTRAINT IF EXISTS waste_location_tour_links_tour_id_fkey'
+    );
+    expect(statements).toContain(
+      'DROP CONSTRAINT IF EXISTS waste_location_tour_pickup_dates_tour_id_fkey'
+    );
     expect(statements).toContain('DROP CONSTRAINT IF EXISTS waste_tour_date_shifts_tour_id_fkey');
+    expect(statements).toContain('CREATE TABLE IF NOT EXISTS "wm".waste_tour_assignments');
+    expect(statements).toContain('CREATE TABLE IF NOT EXISTS "wm".waste_tour_assignment_locations');
+    expect(statements).toContain(
+      'INSERT INTO "wm".waste_tour_assignments (id, tour_id, pickup_date, note, created_at, updated_at)'
+    );
+    expect(statements).toContain('SELECT legacy_pickup.id, legacy_pickup.tour_id');
+    expect(statements).toContain('ON CONFLICT (id) DO NOTHING');
+    expect(statements).toContain(
+      'INSERT INTO "wm".waste_tour_assignment_locations (assignment_id, collection_location_id)'
+    );
+    expect(statements).toContain('ON CONFLICT (assignment_id, collection_location_id) DO NOTHING');
   });
 
   it('normalizes legacy reminders without active channels to none during reminder_config backfill', () => {
@@ -153,9 +188,7 @@ describe('waste management operations runtime', () => {
   });
 
   it('parses geography imports as a dry run from an xlsx workbook', async () => {
-    const query = vi
-      .fn()
-      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 0, rows: [] });
     const pool = {
       connect: vi.fn(async () => ({
         query,
@@ -189,11 +222,30 @@ describe('waste management operations runtime', () => {
   it('preserves column positions when xlsx headers contain interior gaps', async () => {
     const rows = await parseImportRows(
       {
-        readBinarySource: vi.fn(async () =>
-          await createWorkbookBytes([
-            ['region_id', 'region_name', 'city_id', 'city_name', 'location_id', '', 'active', 'street_name'],
-            ['region-nord', 'Nord', 'city-perleberg', 'Perleberg', 'loc-001', '', 'true', 'Ackerstraße'],
-          ])
+        readBinarySource: vi.fn(
+          async () =>
+            await createWorkbookBytes([
+              [
+                'region_id',
+                'region_name',
+                'city_id',
+                'city_name',
+                'location_id',
+                '',
+                'active',
+                'street_name',
+              ],
+              [
+                'region-nord',
+                'Nord',
+                'city-perleberg',
+                'Perleberg',
+                'loc-001',
+                '',
+                'true',
+                'Ackerstraße',
+              ],
+            ])
         ),
       },
       {
@@ -221,7 +273,10 @@ describe('waste management operations runtime', () => {
       {
         readBinarySource: vi.fn(async () =>
           new TextEncoder().encode(
-            ['region_id,region_name,city_id,city_name,location_id,active', 'region-nord,Nord,city-perleberg,Perleberg,loc-001,true'].join('\n')
+            [
+              'region_id,region_name,city_id,city_name,location_id,active',
+              'region-nord,Nord,city-perleberg,Perleberg,loc-001,true',
+            ].join('\n')
           )
         ),
       },
@@ -246,7 +301,8 @@ describe('waste management operations runtime', () => {
 
   it('fails closed for unknown import profile ids after row parsing succeeds', async () => {
     vi.doMock('./waste-management-operations.import.js', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('./waste-management-operations.import.js')>();
+      const actual =
+        await importOriginal<typeof import('./waste-management-operations.import.js')>();
       return {
         ...actual,
         parseImportRows: vi.fn(async () => []),
@@ -284,13 +340,17 @@ describe('waste management operations runtime', () => {
         }),
       end: vi.fn(async () => undefined),
     };
-    const runWasteConnectionCheck = vi.fn(async (input: { readonly probe: (resolved: { readonly databaseUrl: string }) => Promise<void> }) => {
-      await input.probe({ databaseUrl: 'postgres://waste:test@localhost:5432/waste' });
-      return {
-        status: 'succeeded',
-        checkedAt: '2026-05-10T10:05:00.000Z',
-      };
-    });
+    const runWasteConnectionCheck = vi.fn(
+      async (input: {
+        readonly probe: (resolved: { readonly databaseUrl: string }) => Promise<void>;
+      }) => {
+        await input.probe({ databaseUrl: 'postgres://waste:test@localhost:5432/waste' });
+        return {
+          status: 'succeeded',
+          checkedAt: '2026-05-10T10:05:00.000Z',
+        };
+      }
+    );
     const resolveWasteDataSource = vi.fn(async () => ({
       instanceId: 'instance-1',
       schemaName: 'wm',
@@ -309,7 +369,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       createPool: vi.fn(() => pool),
       now: () => new Date('2026-05-10T10:05:00.000Z'),
@@ -327,10 +388,10 @@ describe('waste management operations runtime', () => {
     );
     expect(runWasteConnectionCheck).toHaveBeenCalledTimes(1);
     expect(release).toHaveBeenCalledTimes(2);
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('information_schema.tables'),
-      ['wm', expect.any(Array)]
-    );
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('information_schema.tables'), [
+      'wm',
+      expect.any(Array),
+    ]);
     expect(result.details).toMatchObject({
       operation: 'initialize-data-source',
       mode: 'executed',
@@ -377,7 +438,11 @@ describe('waste management operations runtime', () => {
         },
       ]),
     });
-    const runtime = await createRuntimeWithRepositoryMock(repository, await createToursWorkbookBytes(), query);
+    const runtime = await createRuntimeWithRepositoryMock(
+      repository,
+      await createToursWorkbookBytes(),
+      query
+    );
 
     const result = await runtime.syncWasteTypes('instance-1', {
       operation: 'sync-waste-types',
@@ -421,7 +486,9 @@ describe('waste management operations runtime', () => {
       })
     );
     expect(query).toHaveBeenCalledWith('SET search_path TO "wm", public;');
-    expect(query).toHaveBeenCalledWith(buildWasteFractionShortLabelBackfillStatement('waste_fractions'));
+    expect(query).toHaveBeenCalledWith(
+      buildWasteFractionShortLabelBackfillStatement('waste_fractions')
+    );
     expect(result.details).toMatchObject({
       operation: 'sync-waste-types',
       mode: 'executed',
@@ -453,10 +520,13 @@ describe('waste management operations runtime', () => {
       deleteItems: [],
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime();
 
-    await expect(runtime.syncMainserver('de-musterhausen', { operation: 'sync-mainserver' })).resolves.toMatchObject({
+    await expect(
+      runtime.syncMainserver('de-musterhausen', { operation: 'sync-mainserver' })
+    ).resolves.toMatchObject({
       details: expect.objectContaining({
         operation: 'sync-mainserver',
         createCount: 2,
@@ -475,7 +545,6 @@ describe('waste management operations runtime', () => {
       progressReporter: undefined,
     });
   });
-
 
   it('resolves interface-based waste secrets with the shared default revealSecret path', async () => {
     const secretConfigCiphertext = protectField(
@@ -550,7 +619,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
       revealSecret: vi.fn(revealSupabaseSecretConfig),
@@ -591,7 +661,10 @@ describe('waste management operations runtime', () => {
 
   it('imports geography rows with optional street and house number fields through the real repository path', async () => {
     const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
-    const runtime = await createRuntimeWithRealRepository(await createExtendedGeographyWorkbookBytes(), query);
+    const runtime = await createRuntimeWithRealRepository(
+      await createExtendedGeographyWorkbookBytes(),
+      query
+    );
 
     const result = await runtime.importData('instance-1', {
       operation: 'import-data',
@@ -612,7 +685,10 @@ describe('waste management operations runtime', () => {
 
   it('imports global and tour date shifts in non-dry-run mode', async () => {
     const repository = createRepositoryMock();
-    const runtime = await createRuntimeWithRepositoryMock(repository, await createDateShiftWorkbookBytes());
+    const runtime = await createRuntimeWithRepositoryMock(
+      repository,
+      await createDateShiftWorkbookBytes()
+    );
 
     const result = await runtime.importData('instance-1', {
       operation: 'import-data',
@@ -682,7 +758,10 @@ describe('waste management operations runtime', () => {
         },
       ]),
     });
-    const runtime = await createRuntimeWithRepositoryMock(repository, createFractionAssignmentCsvBytes());
+    const runtime = await createRuntimeWithRepositoryMock(
+      repository,
+      createFractionAssignmentCsvBytes()
+    );
 
     const result = await runtime.importData('instance-1', {
       operation: 'import-data',
@@ -725,11 +804,13 @@ describe('waste management operations runtime', () => {
     const repository = createRepositoryMock();
     const runtime = await createRuntimeWithRepositoryMock(
       repository,
-      new TextEncoder().encode([
-        'Ort;Straße;Hausnummern;Abholdatum;Hinweis;Hausmüll;Papier;Gelbe Säcke;;;;',
-        'Perleberg;Ackerstraße;Alle Hausnummern;2026-02-03;  Schnee-Ersatztermin  ;HM.3.3;PPK.7.2;LVP.9.4;;;;',
-        'Bad Wilsnack;Alle Straßen;Alle Hausnummern;2026-02-10;   ;;PPK.7.2;;;;;',
-      ].join('\n'))
+      new TextEncoder().encode(
+        [
+          'Ort;Straße;Hausnummern;Abholdatum;Hinweis;Hausmüll;Papier;Gelbe Säcke;;;;',
+          'Perleberg;Ackerstraße;Alle Hausnummern;2026-02-03;  Schnee-Ersatztermin  ;HM.3.3;PPK.7.2;LVP.9.4;;;;',
+          'Bad Wilsnack;Alle Straßen;Alle Hausnummern;2026-02-10;   ;;PPK.7.2;;;;;',
+        ].join('\n')
+      )
     );
 
     await runtime.importData('instance-1', {
@@ -761,10 +842,12 @@ describe('waste management operations runtime', () => {
     const repository = createRepositoryMock();
     const runtime = await createRuntimeWithRepositoryMock(
       repository,
-      new TextEncoder().encode([
-        'Ort;Straße;Hausnummern;Abholdatum;Hinweis;Hausmüll;;;;;;',
-        'Perleberg;Ackerstraße;Alle Hausnummern;2026-02-03;Schnee-Ersatztermin;HM.3.3;;;;;;',
-      ].join('\n'))
+      new TextEncoder().encode(
+        [
+          'Ort;Straße;Hausnummern;Abholdatum;Hinweis;Hausmüll;;;;;;',
+          'Perleberg;Ackerstraße;Alle Hausnummern;2026-02-03;Schnee-Ersatztermin;HM.3.3;;;;;;',
+        ].join('\n')
+      )
     );
 
     const result = await runtime.importData('instance-1', {
@@ -787,7 +870,10 @@ describe('waste management operations runtime', () => {
   it('reports live block progress for location-based tour assignment imports', async () => {
     const repository = createRepositoryMock();
     const reportedProgress: Array<Record<string, unknown>> = [];
-    const runtime = await createRuntimeWithRepositoryMock(repository, createLargeFractionAssignmentCsvBytes());
+    const runtime = await createRuntimeWithRepositoryMock(
+      repository,
+      createLargeFractionAssignmentCsvBytes()
+    );
 
     const result = await runtime.importData(
       'instance-1',
@@ -890,10 +976,13 @@ describe('waste management operations runtime', () => {
   });
 
   it('rejects imports with missing columns and invalid boolean values', async () => {
-    const missingColumnRuntime = await createRuntimeWithRepositoryMock(createRepositoryMock(), await createWorkbookBytes([
-      ['tour_id', 'tour_name', 'active'],
-      ['tour-1', 'Incomplete Tour', 'true'],
-    ]));
+    const missingColumnRuntime = await createRuntimeWithRepositoryMock(
+      createRepositoryMock(),
+      await createWorkbookBytes([
+        ['tour_id', 'tour_name', 'active'],
+        ['tour-1', 'Incomplete Tour', 'true'],
+      ])
+    );
 
     await expect(
       missingColumnRuntime.importData('instance-1', {
@@ -905,10 +994,13 @@ describe('waste management operations runtime', () => {
       })
     ).rejects.toThrowError('missing_import_column:waste-management.touren:waste_fraction_ids');
 
-    const invalidBooleanRuntime = await createRuntimeWithRepositoryMock(createRepositoryMock(), await createWorkbookBytes([
-      ['region_id', 'region_name', 'city_id', 'city_name', 'location_id', 'active'],
-      ['region-1', 'Nord', 'city-1', 'Musterstadt', 'location-1', 'maybe'],
-    ]));
+    const invalidBooleanRuntime = await createRuntimeWithRepositoryMock(
+      createRepositoryMock(),
+      await createWorkbookBytes([
+        ['region_id', 'region_name', 'city_id', 'city_name', 'location_id', 'active'],
+        ['region-1', 'Nord', 'city-1', 'Musterstadt', 'location-1', 'maybe'],
+      ])
+    );
 
     await expect(
       invalidBooleanRuntime.importData('instance-1', {
@@ -922,10 +1014,13 @@ describe('waste management operations runtime', () => {
   });
 
   it('rejects invalid recurrence values in tour imports', async () => {
-    const runtime = await createRuntimeWithRepositoryMock(createRepositoryMock(), await createWorkbookBytes([
-      ['tour_id', 'tour_name', 'waste_fraction_ids', 'active', 'recurrence'],
-      ['tour-1', 'Restmüll Nord', 'rest|bio', 'true', 'monthly-ish'],
-    ]));
+    const runtime = await createRuntimeWithRepositoryMock(
+      createRepositoryMock(),
+      await createWorkbookBytes([
+        ['tour_id', 'tour_name', 'waste_fraction_ids', 'active', 'recurrence'],
+        ['tour-1', 'Restmüll Nord', 'rest|bio', 'true', 'monthly-ish'],
+      ])
+    );
 
     await expect(
       runtime.importData('instance-1', {
@@ -939,10 +1034,13 @@ describe('waste management operations runtime', () => {
   });
 
   it('rejects invalid date shift rows deterministically', async () => {
-    const invalidContextRuntime = await createRuntimeWithRepositoryMock(createRepositoryMock(), await createWorkbookBytes([
-      ['shift_id', 'shift_context', 'original_date', 'actual_date', 'has_year'],
-      ['shift-1', 'sideways', '2026-04-03', '2026-04-04', 'true'],
-    ]));
+    const invalidContextRuntime = await createRuntimeWithRepositoryMock(
+      createRepositoryMock(),
+      await createWorkbookBytes([
+        ['shift_id', 'shift_context', 'original_date', 'actual_date', 'has_year'],
+        ['shift-1', 'sideways', '2026-04-03', '2026-04-04', 'true'],
+      ])
+    );
     await expect(
       invalidContextRuntime.importData('instance-1', {
         operation: 'import-data',
@@ -953,10 +1051,13 @@ describe('waste management operations runtime', () => {
       })
     ).rejects.toThrowError('invalid_shift_context:sideways');
 
-    const missingTourRuntime = await createRuntimeWithRepositoryMock(createRepositoryMock(), await createWorkbookBytes([
-      ['shift_id', 'shift_context', 'original_date', 'actual_date', 'has_year', 'tour_id'],
-      ['shift-2', 'tour', '2026-04-03', '2026-04-04', 'true', ''],
-    ]));
+    const missingTourRuntime = await createRuntimeWithRepositoryMock(
+      createRepositoryMock(),
+      await createWorkbookBytes([
+        ['shift_id', 'shift_context', 'original_date', 'actual_date', 'has_year', 'tour_id'],
+        ['shift-2', 'tour', '2026-04-03', '2026-04-04', 'true', ''],
+      ])
+    );
     await expect(
       missingTourRuntime.importData('instance-1', {
         operation: 'import-data',
@@ -967,10 +1068,13 @@ describe('waste management operations runtime', () => {
       })
     ).rejects.toThrowError('missing_tour_id:shift-2');
 
-    const invalidReasonRuntime = await createRuntimeWithRepositoryMock(createRepositoryMock(), await createWorkbookBytes([
-      ['shift_id', 'shift_context', 'original_date', 'actual_date', 'has_year', 'reason_type'],
-      ['shift-3', 'global', '2026-12-25', '2026-12-24', 'true', 'mystery'],
-    ]));
+    const invalidReasonRuntime = await createRuntimeWithRepositoryMock(
+      createRepositoryMock(),
+      await createWorkbookBytes([
+        ['shift_id', 'shift_context', 'original_date', 'actual_date', 'has_year', 'reason_type'],
+        ['shift-3', 'global', '2026-12-25', '2026-12-24', 'true', 'mystery'],
+      ])
+    );
     await expect(
       invalidReasonRuntime.importData('instance-1', {
         operation: 'import-data',
@@ -981,10 +1085,21 @@ describe('waste management operations runtime', () => {
       })
     ).rejects.toThrowError('invalid_reason_type:mystery');
 
-    const invalidFollowUpRuntime = await createRuntimeWithRepositoryMock(createRepositoryMock(), await createWorkbookBytes([
-      ['shift_id', 'shift_context', 'original_date', 'actual_date', 'has_year', 'tour_id', 'follow_up_mode'],
-      ['shift-4', 'tour', '2026-04-03', '2026-04-04', 'true', 'tour-1', 'teleport-series'],
-    ]));
+    const invalidFollowUpRuntime = await createRuntimeWithRepositoryMock(
+      createRepositoryMock(),
+      await createWorkbookBytes([
+        [
+          'shift_id',
+          'shift_context',
+          'original_date',
+          'actual_date',
+          'has_year',
+          'tour_id',
+          'follow_up_mode',
+        ],
+        ['shift-4', 'tour', '2026-04-03', '2026-04-04', 'true', 'tour-1', 'teleport-series'],
+      ])
+    );
     await expect(
       invalidFollowUpRuntime.importData('instance-1', {
         operation: 'import-data',
@@ -1101,22 +1216,85 @@ const requiredTableRows = [
 const createImportWorkbookBytes = async (): Promise<Uint8Array> => {
   return await createWorkbookBytes([
     ['region_id', 'region_name', 'city_id', 'city_name', 'location_id', 'active'],
-    ['00000000-0000-4000-8000-000000000101', 'Nord', '00000000-0000-4000-8000-000000000102', 'Musterstadt', '00000000-0000-4000-8000-000000000103', 'true'],
+    [
+      '00000000-0000-4000-8000-000000000101',
+      'Nord',
+      '00000000-0000-4000-8000-000000000102',
+      'Musterstadt',
+      '00000000-0000-4000-8000-000000000103',
+      'true',
+    ],
   ]);
 };
 
 const createToursWorkbookBytes = async (): Promise<Uint8Array> => {
   return await createWorkbookBytes([
-    ['tour_id', 'tour_name', 'waste_fraction_ids', 'active', 'description', 'recurrence', 'first_date', 'end_date', 'custom_dates'],
-    ['tour-1', 'Restmüll Nord', 'rest|bio', 'yes', 'Standardtour Nord', 'weekly', '2026-01-10', '2026-12-31', '2026-01-10|2026-01-24'],
+    [
+      'tour_id',
+      'tour_name',
+      'waste_fraction_ids',
+      'active',
+      'description',
+      'recurrence',
+      'first_date',
+      'end_date',
+      'custom_dates',
+    ],
+    [
+      'tour-1',
+      'Restmüll Nord',
+      'rest|bio',
+      'yes',
+      'Standardtour Nord',
+      'weekly',
+      '2026-01-10',
+      '2026-12-31',
+      '2026-01-10|2026-01-24',
+    ],
   ]);
 };
 
 const createDateShiftWorkbookBytes = async (): Promise<Uint8Array> => {
   return await createWorkbookBytes([
-    ['shift_id', 'shift_context', 'original_date', 'actual_date', 'has_year', 'tour_id', 'description', 'tour_ids', 'reason_type', 'reason_key', 'follow_up_mode'],
-    ['shift-tour', 'tour', '2026-04-03', '2026-04-04', 'true', 'tour-1', 'Feiertagsverschiebung', '', 'holiday', 'good-friday', 'propagate-series'],
-    ['shift-global', 'global', '2026-12-25', '2026-12-24', '1', '', 'Globale Feiertagsverschiebung', 'tour-1|tour-2', 'holiday', 'christmas-day', ''],
+    [
+      'shift_id',
+      'shift_context',
+      'original_date',
+      'actual_date',
+      'has_year',
+      'tour_id',
+      'description',
+      'tour_ids',
+      'reason_type',
+      'reason_key',
+      'follow_up_mode',
+    ],
+    [
+      'shift-tour',
+      'tour',
+      '2026-04-03',
+      '2026-04-04',
+      'true',
+      'tour-1',
+      'Feiertagsverschiebung',
+      '',
+      'holiday',
+      'good-friday',
+      'propagate-series',
+    ],
+    [
+      'shift-global',
+      'global',
+      '2026-12-25',
+      '2026-12-24',
+      '1',
+      '',
+      'Globale Feiertagsverschiebung',
+      'tour-1|tour-2',
+      'holiday',
+      'christmas-day',
+      '',
+    ],
   ]);
 };
 
@@ -1129,26 +1307,52 @@ const createMinimalToursWorkbookBytes = async (): Promise<Uint8Array> => {
 
 const createExtendedGeographyWorkbookBytes = async (): Promise<Uint8Array> => {
   return await createWorkbookBytes([
-    ['region_id', 'region_name', 'city_id', 'city_name', 'location_id', 'active', 'street_id', 'street_name', 'house_number_id', 'house_number_value'],
-    ['region-extended', 'Nord', 'city-extended', 'Musterstadt', 'location-extended', '0', 'street-extended', 'Hauptstraße', 'house-extended', '42a'],
+    [
+      'region_id',
+      'region_name',
+      'city_id',
+      'city_name',
+      'location_id',
+      'active',
+      'street_id',
+      'street_name',
+      'house_number_id',
+      'house_number_value',
+    ],
+    [
+      'region-extended',
+      'Nord',
+      'city-extended',
+      'Musterstadt',
+      'location-extended',
+      '0',
+      'street-extended',
+      'Hauptstraße',
+      'house-extended',
+      '42a',
+    ],
   ]);
 };
 
 const createFractionAssignmentCsvBytes = (): Uint8Array =>
-  new TextEncoder().encode([
-    'Ort;Straße;Hausmüll;Papier;Gelbe Säcke;;;;',
-    'Perleberg;Ackerstraße;HM.3.3;PPK.7.2;LVP.9.4;;;;',
-    'Bad Wilsnack;;;PPK.7.2;;;;;',
-  ].join('\n'));
+  new TextEncoder().encode(
+    [
+      'Ort;Straße;Hausmüll;Papier;Gelbe Säcke;;;;',
+      'Perleberg;Ackerstraße;HM.3.3;PPK.7.2;LVP.9.4;;;;',
+      'Bad Wilsnack;;;PPK.7.2;;;;;',
+    ].join('\n')
+  );
 
 const createLargeFractionAssignmentCsvBytes = (): Uint8Array =>
-  new TextEncoder().encode([
-    'Ort;Straße;Hausmüll;Papier;;;;;',
-    ...Array.from(
-      { length: 30 },
-      (_, index) => `Ort ${index + 1};Straße ${index + 1};HM.${index + 1};PPK.${index + 1};;;;;`
-    ),
-  ].join('\n'));
+  new TextEncoder().encode(
+    [
+      'Ort;Straße;Hausmüll;Papier;;;;;',
+      ...Array.from(
+        { length: 30 },
+        (_, index) => `Ort ${index + 1};Straße ${index + 1};HM.${index + 1};PPK.${index + 1};;;;;`
+      ),
+    ].join('\n')
+  );
 
 const createWorkbookBytes = async (rows: readonly (readonly string[])[]): Promise<Uint8Array> => {
   const workbook = new Workbook();
@@ -1215,17 +1419,22 @@ const createRuntimeWithRepositoryMock = async (
     };
   });
 
-  const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+  const { createWasteManagementOperationRuntime: createRuntime } =
+    await import('./waste-management-operations.server.js');
   return createRuntime({
     loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
     revealSecret: vi.fn(revealSupabaseSecretConfig),
     createPool: vi.fn(() => createPoolMock(createSqlClientMock(query))),
-    readBinarySource: vi.fn(async () => workbookBytes ?? await createToursWorkbookBytes()),
+    readBinarySource: vi.fn(async () => workbookBytes ?? (await createToursWorkbookBytes())),
   });
 };
 
-const createRuntimeWithRealRepository = async (workbookBytes: Uint8Array, query: SqlClient['query']) => {
-  const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+const createRuntimeWithRealRepository = async (
+  workbookBytes: Uint8Array,
+  query: SqlClient['query']
+) => {
+  const { createWasteManagementOperationRuntime: createRuntime } =
+    await import('./waste-management-operations.server.js');
   return createRuntime({
     loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
     revealSecret: vi.fn(revealSupabaseSecretConfig),

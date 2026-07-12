@@ -7,6 +7,7 @@ import {
 } from './waste-management-location-tour-pickup-date-import.types.js';
 
 type ParsedHeaderLayout = {
+  readonly assignmentIdIndex?: number;
   readonly hasRegionColumn: boolean;
   readonly cityIndex: number;
   readonly streetIndex?: number;
@@ -14,6 +15,35 @@ type ParsedHeaderLayout = {
   readonly pickupDateIndex?: number;
   readonly noteIndex?: number;
   readonly fractionStartIndex: number;
+};
+
+type OptionalHeaderIndexes = Pick<
+  ParsedHeaderLayout,
+  'streetIndex' | 'houseNumbersIndex' | 'pickupDateIndex' | 'noteIndex'
+>;
+
+const consumeOptionalHeaders = (
+  header: readonly string[],
+  startIndex: number
+): OptionalHeaderIndexes & { readonly nextIndex: number } => {
+  const indexes: Partial<Record<keyof OptionalHeaderIndexes, number>> = {};
+  let cursor = startIndex;
+  const optionalHeaders = [
+    ['streetIndex', 'Straße'],
+    ['houseNumbersIndex', 'Hausnummern'],
+    ['pickupDateIndex', 'Abholdatum'],
+    ['noteIndex', 'Hinweis'],
+  ] as const;
+
+  for (const [property, label] of optionalHeaders) {
+    if ((header[cursor] ?? '').trim() !== label) {
+      continue;
+    }
+    indexes[property] = cursor;
+    cursor += 1;
+  }
+
+  return { ...indexes, nextIndex: cursor };
 };
 
 const splitCsvLine = (line: string, delimiter: WasteManagementCsvDelimiter): readonly string[] => {
@@ -44,7 +74,10 @@ const splitCsvLine = (line: string, delimiter: WasteManagementCsvDelimiter): rea
   return cells;
 };
 
-const countDelimiterOccurrences = (line: string, delimiter: WasteManagementCsvDelimiter): number => {
+const countDelimiterOccurrences = (
+  line: string,
+  delimiter: WasteManagementCsvDelimiter
+): number => {
   let count = 0;
   let inQuotes = false;
 
@@ -82,7 +115,10 @@ export const detectWasteImportCsvDelimiter = (headerLine: string): WasteManageme
   return ranking[0]?.count && ranking[0].count > 0 ? ranking[0].delimiter : ';';
 };
 
-const isEmptyRow = (cells: readonly string[]): boolean => cells.every((cell) => cell.trim().length === 0);
+const isEmptyRow = (cells: readonly string[]): boolean =>
+  cells.every((cell) => cell.trim().length === 0);
+const isUuid = (value: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 const isValidPickupDateValue = (value: string): boolean => {
   const normalized = value.trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
@@ -107,6 +143,10 @@ const parseHeaderLayout = (
   issues: WasteLocationTourPickupDateImportIssue[]
 ): ParsedHeaderLayout | null => {
   let cursor = 0;
+  const assignmentIdIndex = (header[cursor] ?? '').trim() === 'Einsatz-ID' ? cursor : undefined;
+  if (assignmentIdIndex !== undefined) {
+    cursor += 1;
+  }
   const hasRegionColumn = (header[cursor] ?? '').trim() === 'Region';
   if (hasRegionColumn) {
     cursor += 1;
@@ -124,42 +164,25 @@ const parseHeaderLayout = (
     issues.push({
       rowNumber: 1,
       column: 'Adressspalten',
-      message: 'Der Adressblock muss mit "Ort" beginnen und darf optional "Region", "Straße" und "Hausnummern" enthalten.',
+      message:
+        'Der Adressblock muss mit "Ort" beginnen und darf optional "Region", "Straße" und "Hausnummern" enthalten.',
     });
     return null;
   }
 
   const cityIndex = cursor;
   cursor += 1;
-
-  const streetIndex = (header[cursor] ?? '').trim() === 'Straße' ? cursor : undefined;
-  if (streetIndex !== undefined) {
-    cursor += 1;
-  }
-
-  const houseNumbersIndex = (header[cursor] ?? '').trim() === 'Hausnummern' ? cursor : undefined;
-  if (houseNumbersIndex !== undefined) {
-    cursor += 1;
-  }
-
-  const pickupDateIndex = (header[cursor] ?? '').trim() === 'Abholdatum' ? cursor : undefined;
-  if (pickupDateIndex !== undefined) {
-    cursor += 1;
-  }
-
-  const noteIndex = (header[cursor] ?? '').trim() === 'Hinweis' ? cursor : undefined;
-  if (noteIndex !== undefined) {
-    cursor += 1;
-  }
+  const optionalHeaders = consumeOptionalHeaders(header, cursor);
 
   return {
+    assignmentIdIndex,
     hasRegionColumn,
     cityIndex,
-    streetIndex,
-    houseNumbersIndex,
-    pickupDateIndex,
-    noteIndex,
-    fractionStartIndex: cursor,
+    streetIndex: optionalHeaders.streetIndex,
+    houseNumbersIndex: optionalHeaders.houseNumbersIndex,
+    pickupDateIndex: optionalHeaders.pickupDateIndex,
+    noteIndex: optionalHeaders.noteIndex,
+    fractionStartIndex: optionalHeaders.nextIndex,
   };
 };
 
@@ -172,8 +195,13 @@ const parseFractionNames = (
     return [];
   }
 
-  const fractionHeaders = header.slice(headerLayout.fractionStartIndex).map((value) => value.trim());
-  const lastNamedIndex = fractionHeaders.reduce((lastIndex, value, index) => (value.length > 0 ? index : lastIndex), -1);
+  const fractionHeaders = header
+    .slice(headerLayout.fractionStartIndex)
+    .map((value) => value.trim());
+  const lastNamedIndex = fractionHeaders.reduce(
+    (lastIndex, value, index) => (value.length > 0 ? index : lastIndex),
+    -1
+  );
   const fractionNames: string[] = [];
 
   for (const [index, fractionName] of fractionHeaders.entries()) {
@@ -199,16 +227,22 @@ const parseFractionNames = (
     });
   }
 
-  const fractionNamesByNormalizedKey = fractionNames.reduce<Map<string, Set<string>>>((groups, fractionName) => {
-    const normalizedKey = fractionName.toLocaleLowerCase('de-DE');
-    const values = groups.get(normalizedKey) ?? new Set<string>();
-    values.add(fractionName);
-    groups.set(normalizedKey, values);
-    return groups;
-  }, new Map());
+  const fractionNamesByNormalizedKey = fractionNames.reduce<Map<string, Set<string>>>(
+    (groups, fractionName) => {
+      const normalizedKey = fractionName.toLocaleLowerCase('de-DE');
+      const values = groups.get(normalizedKey) ?? new Set<string>();
+      values.add(fractionName);
+      groups.set(normalizedKey, values);
+      return groups;
+    },
+    new Map()
+  );
 
   for (const fractionNamesForKey of fractionNamesByNormalizedKey.values()) {
-    if (fractionNamesForKey.size < 2 && fractionNames.filter((fractionName) => fractionNamesForKey.has(fractionName)).length < 2) {
+    if (
+      fractionNamesForKey.size < 2 &&
+      fractionNames.filter((fractionName) => fractionNamesForKey.has(fractionName)).length < 2
+    ) {
       continue;
     }
     for (const fractionName of fractionNamesForKey) {
@@ -236,12 +270,26 @@ const parseDataRow = (input: {
     return null;
   }
 
-  const region = headerLayout.hasRegionColumn ? (cells[0]?.trim() ?? '') : '';
+  const assignmentId =
+    headerLayout.assignmentIdIndex === undefined
+      ? ''
+      : (cells[headerLayout.assignmentIdIndex]?.trim() ?? '');
+  const region = headerLayout.hasRegionColumn
+    ? (cells[headerLayout.assignmentIdIndex === undefined ? 0 : 1]?.trim() ?? '')
+    : '';
   const city = cells[headerLayout.cityIndex]?.trim() ?? '';
-  const rawStreet = headerLayout.streetIndex === undefined ? '' : (cells[headerLayout.streetIndex]?.trim() ?? '');
-  const rawHouseNumbers = headerLayout.houseNumbersIndex === undefined ? '' : (cells[headerLayout.houseNumbersIndex]?.trim() ?? '');
-  const pickupDate = headerLayout.pickupDateIndex === undefined ? '' : (cells[headerLayout.pickupDateIndex]?.trim() ?? '');
-  const note = headerLayout.noteIndex === undefined ? '' : (cells[headerLayout.noteIndex]?.trim() ?? '');
+  const rawStreet =
+    headerLayout.streetIndex === undefined ? '' : (cells[headerLayout.streetIndex]?.trim() ?? '');
+  const rawHouseNumbers =
+    headerLayout.houseNumbersIndex === undefined
+      ? ''
+      : (cells[headerLayout.houseNumbersIndex]?.trim() ?? '');
+  const pickupDate =
+    headerLayout.pickupDateIndex === undefined
+      ? ''
+      : (cells[headerLayout.pickupDateIndex]?.trim() ?? '');
+  const note =
+    headerLayout.noteIndex === undefined ? '' : (cells[headerLayout.noteIndex]?.trim() ?? '');
   const rowIssuesBefore = issues.length;
 
   if (!city) {
@@ -260,13 +308,31 @@ const parseDataRow = (input: {
       value: pickupDate,
     });
   }
+  if (assignmentId && !pickupDate) {
+    issues.push({
+      rowNumber,
+      column: 'Abholdatum',
+      message: 'Zeilen mit Einsatz-ID benötigen ein Abholdatum.',
+    });
+  }
+  if (assignmentId && !isUuid(assignmentId)) {
+    issues.push({
+      rowNumber,
+      column: 'Einsatz-ID',
+      message: 'Einsatz-ID muss eine gültige UUID sein.',
+      value: assignmentId,
+    });
+  }
 
   const tourNamesByFractionName = Object.fromEntries(
     fractionNames
-      .map((fractionName, fractionIndex) => [
-        fractionName,
-        cells[headerLayout.fractionStartIndex + fractionIndex]?.trim() ?? '',
-      ] as const)
+      .map(
+        (fractionName, fractionIndex) =>
+          [
+            fractionName,
+            cells[headerLayout.fractionStartIndex + fractionIndex]?.trim() ?? '',
+          ] as const
+      )
       .filter((entry) => entry[1].length > 0)
   );
 
@@ -284,6 +350,7 @@ const parseDataRow = (input: {
 
   return {
     rowNumber,
+    ...(assignmentId ? { assignmentId } : {}),
     region: region || undefined,
     city,
     street: rawStreet || wasteLocationTourPickupDateImportDefaults.allStreetsName,
@@ -298,8 +365,13 @@ export const parseWasteLocationTourPickupDateCsv = (input: {
   readonly text: string;
   readonly delimiterOverride?: WasteManagementCsvDelimiter;
 }): WasteLocationTourPickupDateImportParseResult => {
-  const normalizedText = input.text.replace(/^\uFEFF/, '').replaceAll('\r\n', '\n').replaceAll('\r', '\n');
-  const lines = normalizedText.split('\n').filter((line, index, source) => !(index === source.length - 1 && line === ''));
+  const normalizedText = input.text
+    .replace(/^\uFEFF/, '')
+    .replaceAll('\r\n', '\n')
+    .replaceAll('\r', '\n');
+  const lines = normalizedText
+    .split('\n')
+    .filter((line, index, source) => !(index === source.length - 1 && line === ''));
   if (lines.length === 0) {
     return {
       delimiter: input.delimiterOverride ?? ';',

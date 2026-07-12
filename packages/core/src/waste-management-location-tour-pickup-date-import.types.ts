@@ -11,7 +11,12 @@ import type {
 import type { WasteManagementCsvDelimiter } from './waste-management-operations-contract.js';
 
 const ADDRESS_HEADERS = ['Region', 'Ort', 'Straße', 'Hausnummern'] as const;
-const SUPPORTED_DELIMITERS = [';', ',', '\t', '|'] as const satisfies readonly WasteManagementCsvDelimiter[];
+const SUPPORTED_DELIMITERS = [
+  ';',
+  ',',
+  '\t',
+  '|',
+] as const satisfies readonly WasteManagementCsvDelimiter[];
 
 export const wasteLocationTourPickupDateImportDefaults = {
   allStreetsName: 'Alle Straßen',
@@ -30,6 +35,7 @@ export type WasteLocationTourPickupDateImportIssue = {
 
 export type WasteLocationTourPickupDateImportRow = {
   readonly rowNumber: number;
+  readonly assignmentId?: string;
   readonly region?: string;
   readonly city: string;
   readonly street: string;

@@ -15,8 +15,10 @@ import {
   createWasteManagementStreet,
   createWasteManagementTour,
   createWasteManagementTourDateShift,
+  createWasteManagementTourAssignment,
   deleteWasteManagementLocationTourLink,
   deleteWasteManagementLocationTourPickupDate,
+  deleteWasteManagementTourAssignment,
   getWasteManagementHistoryOverview,
   getWasteManagementImportCatalog,
   getWasteManagementJobDetail,
@@ -43,6 +45,7 @@ import {
   updateWasteManagementStreet,
   updateWasteManagementTour,
   updateWasteManagementTourDateShift,
+  updateWasteManagementTourAssignment,
   updateWasteManagementSettings,
   WasteManagementApiError,
 } from '../src/waste-management.api.js';
@@ -142,7 +145,9 @@ describe('waste-management api client', () => {
       )
     );
 
-    await expect(getWasteManagementHistoryOverview({ q: 'fraction', page: 2, pageSize: 10 })).resolves.toMatchObject({
+    await expect(
+      getWasteManagementHistoryOverview({ q: 'fraction', page: 2, pageSize: 10 })
+    ).resolves.toMatchObject({
       audit: {
         total: 1,
         items: [expect.objectContaining({ actionId: 'waste-management.fraction.created' })],
@@ -260,7 +265,9 @@ describe('waste-management api client', () => {
       )
     );
 
-    await expect(getWasteManagementMasterDataOverview({ scope: 'fractions' })).resolves.toMatchObject({
+    await expect(
+      getWasteManagementMasterDataOverview({ scope: 'fractions' })
+    ).resolves.toMatchObject({
       fractions: [expect.objectContaining({ id: 'fraction-1' })],
     });
 
@@ -290,7 +297,9 @@ describe('waste-management api client', () => {
       )
     );
 
-    await expect(getWasteManagementMasterDataOverview({ scope: 'locations' })).resolves.toMatchObject({
+    await expect(
+      getWasteManagementMasterDataOverview({ scope: 'locations' })
+    ).resolves.toMatchObject({
       regions: [expect.objectContaining({ id: 'region-1' })],
     });
 
@@ -1222,6 +1231,67 @@ describe('waste-management api client', () => {
       expect.objectContaining({
         method: 'DELETE',
       })
+    );
+  });
+
+  it('creates, updates and deletes generic tour assignments with multiple locations', async () => {
+    const assignment = {
+      id: 'assignment-1',
+      tourId: 'tour-1',
+      pickupDate: '2026-07-01',
+      note: null,
+      locationIds: ['city-1', 'street-1'],
+      createdAt: '',
+      updatedAt: '',
+    };
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: assignment }), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { ...assignment, note: 'Marktplatz' } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { id: assignment.id } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+    await createWasteManagementTourAssignment({
+      id: assignment.id,
+      tourId: assignment.tourId,
+      pickupDate: assignment.pickupDate,
+      locationIds: assignment.locationIds,
+    });
+    await updateWasteManagementTourAssignment(assignment.id, {
+      tourId: assignment.tourId,
+      pickupDate: assignment.pickupDate,
+      note: 'Marktplatz',
+      locationIds: assignment.locationIds,
+    });
+    await deleteWasteManagementTourAssignment(assignment.id);
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/waste-management/tour-assignments',
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/waste-management/tour-assignments/assignment-1',
+      expect.objectContaining({ method: 'PUT' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/waste-management/tour-assignments/assignment-1',
+      expect.objectContaining({ method: 'DELETE' })
     );
   });
 

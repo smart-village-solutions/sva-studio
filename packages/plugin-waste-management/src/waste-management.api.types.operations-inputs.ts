@@ -26,7 +26,10 @@ export type WasteManagementSettingsInput = Readonly<{
   holidayStateCode?: WasteHolidayStateCode;
   databaseUrl?: string;
   serviceRoleKey?: string;
-  customRecurrencePresets: readonly Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>[];
+  customRecurrencePresets: readonly Omit<
+    WasteCustomRecurrencePresetRecord,
+    'createdAt' | 'updatedAt'
+  >[];
   deletedPresetFallbacks: Readonly<
     Record<
       string,
@@ -113,6 +116,19 @@ export type UpdateWasteManagementLocationTourPickupDateInput = Readonly<{
   note?: string;
 }>;
 
+export type CreateWasteManagementTourAssignmentInput = Readonly<{
+  id: string;
+  tourId: string;
+  pickupDate: string;
+  note?: string;
+  locationIds: readonly string[];
+}>;
+
+export type UpdateWasteManagementTourAssignmentInput = Omit<
+  CreateWasteManagementTourAssignmentInput,
+  'id'
+>;
+
 export type UpdateWasteManagementGlobalDateShiftInput = Readonly<{
   originalDate: string;
   actualDate: string;
@@ -148,7 +164,8 @@ export type PreviewWasteLocationTourPickupDateImportInput = Readonly<{
   delimiterOverride?: WasteManagementCsvDelimiter;
 }>;
 
-export type PreviewWasteLocationTourPickupDateImportResult = WasteLocationTourPickupDateImportPreview;
+export type PreviewWasteLocationTourPickupDateImportResult =
+  WasteLocationTourPickupDateImportPreview;
 
 export type StartWasteManagementSeedInput = Readonly<{
   seedKey?: 'baseline';

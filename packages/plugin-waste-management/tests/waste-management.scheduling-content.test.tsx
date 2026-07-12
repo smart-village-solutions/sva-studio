@@ -2,7 +2,10 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { WasteSchedulingContent, WasteSchedulingEmptyState } from '../src/waste-management.scheduling-content.js';
+import {
+  WasteSchedulingContent,
+  WasteSchedulingEmptyState,
+} from '../src/waste-management.scheduling-content.js';
 
 const shiftsTableMock = vi.hoisted(() => vi.fn());
 
@@ -11,18 +14,15 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({
-  StatusNotice: ({ message }: { readonly message: { text: string } | null }) => (message ? <div>{message.text}</div> : null),
+  StatusNotice: ({ message }: { readonly message: { text: string } | null }) =>
+    message ? <div>{message.text}</div> : null,
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
-  Dialog: ({
-    open,
-    children,
-  }: {
-    readonly open: boolean;
-    readonly children: React.ReactNode;
-  }) => (open ? <div>{children}</div> : null),
+  Checkbox: (props: React.ComponentProps<'input'>) => <input type="checkbox" {...props} />,
+  Dialog: ({ open, children }: { readonly open: boolean; readonly children: React.ReactNode }) =>
+    open ? <div>{children}</div> : null,
   DialogContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <p>{children}</p>,
   DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
@@ -30,7 +30,9 @@ vi.mock('@sva/studio-ui-react', () => ({
   DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <h2>{children}</h2>,
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
   Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
-  StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="empty-state">{children}</div>,
+  StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => (
+    <div data-testid="empty-state">{children}</div>
+  ),
   StudioConfirmDialog: ({
     open,
     title,
@@ -130,51 +132,53 @@ describe('WasteSchedulingContent', () => {
     render(
       <WasteSchedulingContent
         message={{ tone: 'info', text: 'shift message' } as never}
-        schedulingEntries={[
-          {
-            id: 'holiday-rule-1',
-            entryType: 'holiday-rule',
-            kind: 'holiday',
-            originalDate: '2026-01-01',
-            actualDate: undefined,
-            contextLabel: 'Neujahr',
-            sortLabel: 'Neujahr',
-            canDelete: true,
-            rule: holidayRule,
-          },
-          {
-            id: 'global-1',
-            entryType: 'global-shift',
-            kind: 'global',
-            originalDate: '2026-01-01',
-            actualDate: '2026-01-02',
-            contextLabel: 'Restmüll Nord',
-            sortLabel: 'Restmüll Nord',
-            canDelete: true,
-            shift: globalShift,
-          },
-          {
-            id: 'tour-shift-1',
-            entryType: 'tour-shift',
-            kind: 'tour',
-            originalDate: '2026-02-01',
-            actualDate: '2026-02-03',
-            contextLabel: 'Restmüll Nord',
-            sortLabel: 'Restmüll Nord',
-            canDelete: true,
-            shift: tourShift,
-          },
-        ] as never}
-        schadstoffmobilTour={null}
-        schadstoffmobilAssignments={[]}
-        schadstoffmobilLocationOptions={[]}
+        schedulingEntries={
+          [
+            {
+              id: 'holiday-rule-1',
+              entryType: 'holiday-rule',
+              kind: 'holiday',
+              originalDate: '2026-01-01',
+              actualDate: undefined,
+              contextLabel: 'Neujahr',
+              sortLabel: 'Neujahr',
+              canDelete: true,
+              rule: holidayRule,
+            },
+            {
+              id: 'global-1',
+              entryType: 'global-shift',
+              kind: 'global',
+              originalDate: '2026-01-01',
+              actualDate: '2026-01-02',
+              contextLabel: 'Restmüll Nord',
+              sortLabel: 'Restmüll Nord',
+              canDelete: true,
+              shift: globalShift,
+            },
+            {
+              id: 'tour-shift-1',
+              entryType: 'tour-shift',
+              kind: 'tour',
+              originalDate: '2026-02-01',
+              actualDate: '2026-02-03',
+              contextLabel: 'Restmüll Nord',
+              sortLabel: 'Restmüll Nord',
+              canDelete: true,
+              shift: tourShift,
+            },
+          ] as never
+        }
+        tours={[]}
+        tourAssignments={[]}
+        assignmentLocationOptions={[]}
         onOpenCreateShiftDialog={vi.fn()}
         onEditHolidayRule={vi.fn()}
         onEditGlobalShiftDialog={vi.fn()}
         onEditTourShiftDialog={vi.fn()}
         onDeleteSchedulingRows={onDeleteSchedulingRows}
-        onSaveLocationTourPickupDate={vi.fn(async () => undefined)}
-        onDeleteLocationTourPickupDate={vi.fn(async () => undefined)}
+        onSaveTourAssignment={vi.fn(async () => undefined)}
+        onDeleteTourAssignment={vi.fn(async () => undefined)}
         saving={false}
         page={2}
         pageSize={25}
@@ -211,23 +215,25 @@ describe('WasteSchedulingContent', () => {
   });
 
   it('renders schadstoffmobil assignments and saves edited free text notes', async () => {
-    const onSaveLocationTourPickupDate = vi.fn(async () => undefined);
+    const onSaveTourAssignment = vi.fn(async () => undefined);
 
     render(
       <WasteSchedulingContent
         message={null}
         schedulingEntries={[]}
-        schadstoffmobilTour={{ id: 'tour-sm', name: 'Schadstoffmobil' } as never}
-        schadstoffmobilAssignments={[
-          {
-            id: 'pickup-1',
-            tourId: 'tour-sm',
-            locationId: 'location-1',
-            pickupDate: '2026-07-01',
-            note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
-          },
-        ] as never}
-        schadstoffmobilLocationOptions={[
+        tours={[{ id: 'tour-sm', name: 'Tour Nord' } as never]}
+        tourAssignments={
+          [
+            {
+              id: 'pickup-1',
+              tourId: 'tour-sm',
+              locationIds: ['location-1'],
+              pickupDate: '2026-07-01',
+              note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
+            },
+          ] as never
+        }
+        assignmentLocationOptions={[
           { id: 'location-1', label: 'Musterhausen / Mitte / Rathausplatz / alle Hausnummern' },
           { id: 'location-2', label: 'Musterhausen / Nord / Schulhof / alle Hausnummern' },
         ]}
@@ -236,8 +242,8 @@ describe('WasteSchedulingContent', () => {
         onEditGlobalShiftDialog={vi.fn()}
         onEditTourShiftDialog={vi.fn()}
         onDeleteSchedulingRows={vi.fn(async () => undefined)}
-        onSaveLocationTourPickupDate={onSaveLocationTourPickupDate}
-        onDeleteLocationTourPickupDate={vi.fn(async () => undefined)}
+        onSaveTourAssignment={onSaveTourAssignment}
+        onDeleteTourAssignment={vi.fn(async () => undefined)}
         saving={false}
         page={1}
         pageSize={25}
@@ -251,16 +257,16 @@ describe('WasteSchedulingContent', () => {
     expect(screen.getByText('Musterhausen / Mitte / Rathausplatz / alle Hausnummern')).toBeTruthy();
     expect(screen.getByText('Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.edit' }));
-    fireEvent.change(screen.getByLabelText('scheduling.schadstoffmobil.fields.note'), {
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.assignments.actions.edit' }));
+    fireEvent.change(screen.getByLabelText('scheduling.assignments.fields.note'), {
       target: { value: 'Mittwoch 10:00-12:00 Uhr, Parkplatz am Rathaus' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.assignments.actions.save' }));
 
-    expect(onSaveLocationTourPickupDate).toHaveBeenCalledWith(
+    expect(onSaveTourAssignment).toHaveBeenCalledWith(
       {
         id: 'pickup-1',
-        locationId: 'location-1',
+        locationIds: ['location-1'],
         tourId: 'tour-sm',
         pickupDate: '2026-07-01',
         note: 'Mittwoch 10:00-12:00 Uhr, Parkplatz am Rathaus',
@@ -269,25 +275,27 @@ describe('WasteSchedulingContent', () => {
     );
   });
 
-  it('blocks empty schadstoffmobil notes and confirms deletion', async () => {
-    const onDeleteLocationTourPickupDate = vi.fn(async () => undefined);
-    const onSaveLocationTourPickupDate = vi.fn(async () => undefined);
+  it('allows an empty optional note and confirms deletion', async () => {
+    const onDeleteTourAssignment = vi.fn(async () => undefined);
+    const onSaveTourAssignment = vi.fn(async () => undefined);
 
     render(
       <WasteSchedulingContent
         message={null}
         schedulingEntries={[]}
-        schadstoffmobilTour={{ id: 'tour-sm', name: 'Schadstoffmobil' } as never}
-        schadstoffmobilAssignments={[
-          {
-            id: 'pickup-1',
-            tourId: 'tour-sm',
-            locationId: 'location-1',
-            pickupDate: '2026-07-01',
-            note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
-          },
-        ] as never}
-        schadstoffmobilLocationOptions={[
+        tours={[{ id: 'tour-sm', name: 'Tour Nord' } as never]}
+        tourAssignments={
+          [
+            {
+              id: 'pickup-1',
+              tourId: 'tour-sm',
+              locationIds: ['location-1'],
+              pickupDate: '2026-07-01',
+              note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
+            },
+          ] as never
+        }
+        assignmentLocationOptions={[
           { id: 'location-1', label: 'Musterhausen / Mitte / Rathausplatz / alle Hausnummern' },
         ]}
         onOpenCreateShiftDialog={vi.fn()}
@@ -295,8 +303,8 @@ describe('WasteSchedulingContent', () => {
         onEditGlobalShiftDialog={vi.fn()}
         onEditTourShiftDialog={vi.fn()}
         onDeleteSchedulingRows={vi.fn(async () => undefined)}
-        onSaveLocationTourPickupDate={onSaveLocationTourPickupDate}
-        onDeleteLocationTourPickupDate={onDeleteLocationTourPickupDate}
+        onSaveTourAssignment={onSaveTourAssignment}
+        onDeleteTourAssignment={onDeleteTourAssignment}
         saving={false}
         page={1}
         pageSize={25}
@@ -306,44 +314,53 @@ describe('WasteSchedulingContent', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.openCreate' }));
-    fireEvent.change(screen.getByLabelText('scheduling.schadstoffmobil.fields.pickupDate'), {
+    fireEvent.click(
+      screen.getByRole('button', { name: 'scheduling.assignments.actions.openCreate' })
+    );
+    fireEvent.change(screen.getByLabelText('scheduling.assignments.fields.tour'), {
+      target: { value: 'tour-sm' },
+    });
+    fireEvent.change(screen.getByLabelText('scheduling.assignments.fields.pickupDate'), {
       target: { value: '2026-07-02' },
     });
-    fireEvent.change(screen.getByLabelText('scheduling.schadstoffmobil.fields.location'), {
-      target: { value: 'location-1' },
-    });
-    fireEvent.change(screen.getByLabelText('scheduling.schadstoffmobil.fields.note'), {
+    fireEvent.click(screen.getByRole('checkbox', { name: /Musterhausen/ }));
+    fireEvent.change(screen.getByLabelText('scheduling.assignments.fields.note'), {
       target: { value: '   ' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.create' }));
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.assignments.actions.create' }));
 
-    expect(screen.getByText('scheduling.schadstoffmobil.validation.noteRequired')).toBeTruthy();
-    expect(onSaveLocationTourPickupDate).not.toHaveBeenCalled();
+    expect(onSaveTourAssignment).toHaveBeenCalledWith(
+      expect.objectContaining({ note: '', locationIds: ['location-1'] }),
+      'create'
+    );
 
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.delete' }));
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.confirmDelete' }));
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.assignments.actions.delete' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'scheduling.assignments.actions.confirmDelete' })
+    );
 
-    expect(onDeleteLocationTourPickupDate).toHaveBeenCalledWith('pickup-1');
+    expect(onDeleteTourAssignment).toHaveBeenCalledWith('pickup-1');
   });
 
   it('creates schadstoffmobil assignments with trimmed notes and resets the dialog form after closing', async () => {
-    const onSaveLocationTourPickupDate = vi.fn(async () => undefined);
+    const onSaveTourAssignment = vi.fn(async () => undefined);
 
     render(
       <WasteSchedulingContent
         message={null}
         schedulingEntries={[]}
-        schadstoffmobilTour={{ id: 'tour-sm', name: 'Schadstoffmobil' } as never}
-        schadstoffmobilAssignments={[]}
-        schadstoffmobilLocationOptions={[{ id: 'location-1', label: 'Musterhausen / Mitte / Rathausplatz' }]}
+        tours={[{ id: 'tour-sm', name: 'Tour Nord' } as never]}
+        tourAssignments={[]}
+        assignmentLocationOptions={[
+          { id: 'location-1', label: 'Musterhausen / Mitte / Rathausplatz' },
+        ]}
         onOpenCreateShiftDialog={vi.fn()}
         onEditHolidayRule={vi.fn()}
         onEditGlobalShiftDialog={vi.fn()}
         onEditTourShiftDialog={vi.fn()}
         onDeleteSchedulingRows={vi.fn(async () => undefined)}
-        onSaveLocationTourPickupDate={onSaveLocationTourPickupDate}
-        onDeleteLocationTourPickupDate={vi.fn(async () => undefined)}
+        onSaveTourAssignment={onSaveTourAssignment}
+        onDeleteTourAssignment={vi.fn(async () => undefined)}
         saving={false}
         page={1}
         pageSize={25}
@@ -353,22 +370,25 @@ describe('WasteSchedulingContent', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.openCreate' }));
-    fireEvent.change(screen.getByLabelText('scheduling.schadstoffmobil.fields.pickupDate'), {
+    fireEvent.click(
+      screen.getByRole('button', { name: 'scheduling.assignments.actions.openCreate' })
+    );
+    fireEvent.change(screen.getByLabelText('scheduling.assignments.fields.tour'), {
+      target: { value: 'tour-sm' },
+    });
+    fireEvent.change(screen.getByLabelText('scheduling.assignments.fields.pickupDate'), {
       target: { value: '2026-07-03' },
     });
-    fireEvent.change(screen.getByLabelText('scheduling.schadstoffmobil.fields.location'), {
-      target: { value: 'location-1' },
-    });
-    fireEvent.change(screen.getByLabelText('scheduling.schadstoffmobil.fields.note'), {
+    fireEvent.click(screen.getByRole('checkbox', { name: /Musterhausen/ }));
+    fireEvent.change(screen.getByLabelText('scheduling.assignments.fields.note'), {
       target: { value: '  Freitag 09:00-11:00 Uhr  ' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.create' }));
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.assignments.actions.create' }));
 
-    expect(onSaveLocationTourPickupDate).toHaveBeenCalledWith(
+    expect(onSaveTourAssignment).toHaveBeenCalledWith(
       {
         id: expect.any(String),
-        locationId: 'location-1',
+        locationIds: ['location-1'],
         tourId: 'tour-sm',
         pickupDate: '2026-07-03',
         note: 'Freitag 09:00-11:00 Uhr',
@@ -376,11 +396,21 @@ describe('WasteSchedulingContent', () => {
       'create'
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.openCreate' }));
-    expect((screen.getByLabelText('scheduling.schadstoffmobil.fields.pickupDate') as HTMLInputElement).value).toBe('');
-    expect((screen.getByLabelText('scheduling.schadstoffmobil.fields.location') as HTMLSelectElement).value).toBe('');
-    expect((screen.getByLabelText('scheduling.schadstoffmobil.fields.note') as HTMLTextAreaElement).value).toBe('');
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.cancel' }));
-    expect(screen.queryByRole('button', { name: 'scheduling.schadstoffmobil.actions.create' })).toBeNull();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'scheduling.assignments.actions.openCreate' })
+    );
+    expect(
+      (screen.getByLabelText('scheduling.assignments.fields.pickupDate') as HTMLInputElement).value
+    ).toBe('');
+    expect(
+      (screen.getByRole('checkbox', { name: /Musterhausen/ }) as HTMLInputElement).checked
+    ).toBe(false);
+    expect(
+      (screen.getByLabelText('scheduling.assignments.fields.note') as HTMLTextAreaElement).value
+    ).toBe('');
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.assignments.actions.cancel' }));
+    expect(
+      screen.queryByRole('button', { name: 'scheduling.assignments.actions.create' })
+    ).toBeNull();
   });
 });

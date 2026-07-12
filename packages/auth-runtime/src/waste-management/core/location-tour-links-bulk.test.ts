@@ -66,14 +66,15 @@ describe('waste-management bulk location-tour-link handlers', () => {
   });
 
   it('rejects duplicate location ids during schema refinement', async () => {
-    const response = await wasteManagementLocationTourLinkBulkHandlers.createWasteManagementLocationTourLinksBulkInternal(
-      createRequest({
-        locationIds: ['location-1', ' location-1 '],
-        tourId: 'tour-1',
-      }),
-      actor,
-      createDeps()
-    );
+    const response =
+      await wasteManagementLocationTourLinkBulkHandlers.createWasteManagementLocationTourLinksBulkInternal(
+        createRequest({
+          locationIds: ['location-1', ' location-1 '],
+          tourId: 'tour-1',
+        }),
+        actor,
+        createDeps()
+      );
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
@@ -84,25 +85,24 @@ describe('waste-management bulk location-tour-link handlers', () => {
     });
   });
 
-  it('normalizes optional fields and updates visible status on success', async () => {
+  it('ignores legacy date fields and updates visible status on success', async () => {
     const deps = createDeps();
 
-    const response = await wasteManagementLocationTourLinkBulkHandlers.createWasteManagementLocationTourLinksBulkInternal(
-      createRequest({
-        locationIds: [' location-1 '],
-        tourId: 'tour-1',
-        startDate: ' 2026-05-01 ',
-      }),
-      actor,
-      deps
-    );
+    const response =
+      await wasteManagementLocationTourLinkBulkHandlers.createWasteManagementLocationTourLinksBulkInternal(
+        createRequest({
+          locationIds: [' location-1 '],
+          tourId: 'tour-1',
+          startDate: ' 2026-05-01 ',
+        }),
+        actor,
+        deps
+      );
 
     expect(response.status).toBe(201);
     expect(deps.saveWasteLocationTourLinksBulk).toHaveBeenCalledWith('tenant-a', {
       locationIds: ['location-1'],
       tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: undefined,
     });
     expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(deps, 'tenant-a', 'success');
   });
@@ -113,14 +113,15 @@ describe('waste-management bulk location-tour-link handlers', () => {
       throw new Error('db down');
     });
 
-    const response = await wasteManagementLocationTourLinkBulkHandlers.createWasteManagementLocationTourLinksBulkInternal(
-      createRequest({
-        locationIds: ['location-1'],
-        tourId: 'tour-1',
-      }),
-      actor,
-      deps
-    );
+    const response =
+      await wasteManagementLocationTourLinkBulkHandlers.createWasteManagementLocationTourLinksBulkInternal(
+        createRequest({
+          locationIds: ['location-1'],
+          tourId: 'tour-1',
+        }),
+        actor,
+        deps
+      );
 
     expect(response.status).toBe(503);
     expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(deps, 'tenant-a', 'revalidate');

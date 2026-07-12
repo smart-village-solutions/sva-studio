@@ -2,7 +2,7 @@ import type { WasteCustomRecurrencePresetRecord } from '@sva/plugin-sdk';
 
 import type { TourFormState } from './waste-management.tours.types.js';
 
-export const recurringTourRecurrences = new Set<NonNullable<TourFormState['recurrence']>>([
+const recurringTourRecurrences = new Set<NonNullable<TourFormState['recurrence']>>([
   'weekly',
   'biweekly',
   'fourweekly',
@@ -43,5 +43,8 @@ export const createCustomRecurrenceOptions = (
 ): readonly { readonly value: string; readonly label: string }[] =>
   presets.map((preset) => ({
     value: `preset:${preset.id}`,
-    label: pt('tours.meta.customRecurrenceOption', { name: preset.name, days: preset.intervalDays }),
+    label: pt('tours.meta.customRecurrenceOption', {
+      name: preset.name,
+      days: preset.intervalDays,
+    }),
   }));

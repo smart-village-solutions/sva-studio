@@ -30,7 +30,10 @@ vi.mock('@sva/plugin-sdk', () => ({
 vi.mock('@sva/studio-ui-react', () => ({
   Badge: ({ children }: { readonly children: React.ReactNode }) => <span>{children}</span>,
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
-  Checkbox: ({ indeterminate, ...props }: React.ComponentProps<'input'> & { readonly indeterminate?: boolean }) => {
+  Checkbox: ({
+    indeterminate,
+    ...props
+  }: React.ComponentProps<'input'> & { readonly indeterminate?: boolean }) => {
     void indeterminate;
     return <input type="checkbox" {...props} />;
   },
@@ -43,7 +46,9 @@ vi.mock('@sva/studio-ui-react', () => ({
     readonly onOpenChange?: (open: boolean) => void;
   }) => (open ? <div>{children}</div> : null),
   DialogContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { readonly children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
   DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
@@ -83,17 +88,26 @@ vi.mock('@sva/studio-ui-react', () => ({
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({
-  StatusNotice: ({ message }: { readonly message: { text: string } | null }) => (message ? <div>{message.text}</div> : null),
+  StatusNotice: ({ message }: { readonly message: { text: string } | null }) =>
+    message ? <div>{message.text}</div> : null,
 }));
 
 vi.mock('../src/waste-management.tours.dialogs.js', () => ({
   TourDialog: (props: Record<string, unknown>) => {
     dialogSpy.tour(props);
-    return props.open ? <button onClick={() => (props.onOpenChange as (open: boolean) => void)(false)}>close-tour</button> : null;
+    return props.open ? (
+      <button onClick={() => (props.onOpenChange as (open: boolean) => void)(false)}>
+        close-tour
+      </button>
+    ) : null;
   },
   TourAssignmentsDialog: (props: Record<string, unknown>) => {
     dialogSpy.assignments(props);
-    return props.open ? <button onClick={() => (props.onOpenChange as (open: boolean) => void)(false)}>close-assignments</button> : null;
+    return props.open ? (
+      <button onClick={() => (props.onOpenChange as (open: boolean) => void)(false)}>
+        close-assignments
+      </button>
+    ) : null;
   },
   TourYearCalendarDialog: (props: Record<string, unknown>) => {
     dialogSpy.calendar(props);
@@ -105,7 +119,10 @@ vi.mock('../src/waste-management.tours.fractions.js', () => ({
   WasteToursFractionSelection: (props: Record<string, unknown>) => {
     fractionSelectionSpy(props);
     return (
-      <button type="button" onClick={() => (props.onChange as (ids: string[]) => void)(['fraction-2'])}>
+      <button
+        type="button"
+        onClick={() => (props.onChange as (ids: string[]) => void)(['fraction-2'])}
+      >
         change-fractions
       </button>
     );
@@ -120,8 +137,22 @@ vi.mock('../src/waste-management.tours-custom-dates.js', () => ({
         type="button"
         onClick={() => {
           (props.onChange as (dates: Array<{ date: string }>) => void)([{ date: '2026-08-22' }]);
-          (props.onAssignmentsChange as (assignments: Array<{ id: string; pickupDate: string; locationId: string; note: string }>) => void)([
-            { id: 'assignment-1', pickupDate: '2026-08-22', locationId: 'location-1', note: '08:00' },
+          (
+            props.onAssignmentsChange as (
+              assignments: Array<{
+                id: string;
+                pickupDate: string;
+                locationId: string;
+                note: string;
+              }>
+            ) => void
+          )([
+            {
+              id: 'assignment-1',
+              pickupDate: '2026-08-22',
+              locationId: 'location-1',
+              note: '08:00',
+            },
           ]);
         }}
       >
@@ -132,10 +163,18 @@ vi.mock('../src/waste-management.tours-custom-dates.js', () => ({
 }));
 
 vi.mock('../src/waste-management.form-switch.js', () => ({
-  WasteManagementFormSwitch: (props: { readonly checked: boolean; readonly ariaLabel: string; readonly onChange: (checked: boolean) => void }) => {
+  WasteManagementFormSwitch: (props: {
+    readonly checked: boolean;
+    readonly ariaLabel: string;
+    readonly onChange: (checked: boolean) => void;
+  }) => {
     formSwitchSpy(props);
     return (
-      <button type="button" aria-label={props.ariaLabel} onClick={() => props.onChange(!props.checked)}>
+      <button
+        type="button"
+        aria-label={props.ariaLabel}
+        onClick={() => props.onChange(!props.checked)}
+      >
         {String(props.checked)}
       </button>
     );
@@ -206,7 +245,9 @@ describe('waste-management tours low coverage views', () => {
     fireEvent.click(screen.getByRole('button', { name: 'close-assignments' }));
 
     expect(controller.setDialogOpen).toHaveBeenCalledWith(false);
-    expect(controller.setTourForm).toHaveBeenCalledWith(expect.objectContaining({ id: expect.any(String) }));
+    expect(controller.setTourForm).toHaveBeenCalledWith(
+      expect.objectContaining({ id: expect.any(String) })
+    );
     expect(controller.setSelectedTour).toHaveBeenCalledWith(null);
     expect(controller.setAssignmentsDialogOpen).toHaveBeenCalledWith(false);
     expect(controller.setLinkForm).toHaveBeenCalledWith(
@@ -214,8 +255,6 @@ describe('waste-management tours low coverage views', () => {
         id: expect.any(String),
         locationId: '',
         tourId: '',
-        startDate: '',
-        endDate: '',
       })
     );
     expect(dialogSpy.calendar).toHaveBeenCalledWith(expect.objectContaining({ open: true }));
@@ -241,8 +280,6 @@ describe('waste-management tours low coverage views', () => {
       id: 'link-1',
       locationId: '',
       tourId: 'tour-1',
-      startDate: '',
-      endDate: '',
     });
 
     expect(nextTourForm).toEqual(expect.objectContaining({ name: 'Geaendert' }));
@@ -278,7 +315,11 @@ describe('waste-management tours low coverage views', () => {
     expect(controller.setMessage).toHaveBeenCalledWith(null);
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
-      search: expect.objectContaining({ toursView: 'list', tourId: undefined, duplicateFromTourId: undefined }),
+      search: expect.objectContaining({
+        toursView: 'list',
+        tourId: undefined,
+        duplicateFromTourId: undefined,
+      }),
     });
 
     const form = document.getElementById('waste-tour-form');
@@ -294,9 +335,10 @@ describe('waste-management tours low coverage views', () => {
       <TourAssignmentsDialog
         open
         mode="edit"
-        form={{ id: 'link-1', locationId: '', tourId: 'tour-1', startDate: '', endDate: '' } as never}
+        form={
+          { id: 'link-1', locationId: '', tourId: 'tour-1', startDate: '', endDate: '' } as never
+        }
         tour={null}
-        tours={[]}
         locations={[]}
         saving
         loading
@@ -309,7 +351,10 @@ describe('waste-management tours low coverage views', () => {
 
     expect(screen.getByText('tours.assignments.dialog.descriptionFallback')).toBeTruthy();
     expect(screen.getByText('tours.table.loadingAssignments')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'tours.assignments.actions.saving' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'tours.assignments.actions.saving' })).toHaveProperty(
+      'disabled',
+      true
+    );
   });
 
   it('filters assignment locations, tracks hidden selections, resets filters, and submits the selected ids', () => {
@@ -320,34 +365,37 @@ describe('waste-management tours low coverage views', () => {
       <TourAssignmentsDialog
         open
         mode="create"
-        form={{ id: 'link-1', locationId: '', tourId: 'tour-1', startDate: '', endDate: '' } as never}
+        form={
+          { id: 'link-1', locationId: '', tourId: 'tour-1', startDate: '', endDate: '' } as never
+        }
         tour={{ id: 'tour-1', name: 'Schadstoffmobil' } as never}
-        tours={[{ id: 'tour-1', name: 'Schadstoffmobil' } as never]}
-        locations={[
-          {
-            id: 'location-1',
-            label: 'Albertplatz',
-            regionId: 'region-1',
-            regionName: 'Prignitz',
-            cityId: 'city-1',
-            cityName: 'Perleberg',
-            streetId: 'street-1',
-            streetName: 'Ackerstrasse',
-            active: true,
-            assignedLinkId: 'link-old',
-          },
-          {
-            id: 'location-2',
-            label: 'Bahnhof',
-            regionId: 'region-2',
-            regionName: 'Ostprignitz',
-            cityId: 'city-2',
-            cityName: 'Wittenberge',
-            streetId: 'street-2',
-            streetName: 'Bahnweg',
-            active: false,
-          },
-        ] as never}
+        locations={
+          [
+            {
+              id: 'location-1',
+              label: 'Albertplatz',
+              regionId: 'region-1',
+              regionName: 'Prignitz',
+              cityId: 'city-1',
+              cityName: 'Perleberg',
+              streetId: 'street-1',
+              streetName: 'Ackerstrasse',
+              active: true,
+              assignedLinkId: 'link-old',
+            },
+            {
+              id: 'location-2',
+              label: 'Bahnhof',
+              regionId: 'region-2',
+              regionName: 'Ostprignitz',
+              cityId: 'city-2',
+              cityName: 'Wittenberge',
+              streetId: 'street-2',
+              streetName: 'Bahnweg',
+              active: false,
+            },
+          ] as never
+        }
         saving={false}
         message={null}
         onOpenChange={onOpenChange}
@@ -363,7 +411,9 @@ describe('waste-management tours low coverage views', () => {
     fireEvent.change(screen.getByLabelText('masterData.collectionLocations.fields.regionId'), {
       target: { value: 'region-2' },
     });
-    expect(screen.getByText('tours.assignments.workspace.hiddenSelectedCount:{"value":1}')).toBeTruthy();
+    expect(
+      screen.getByText('tours.assignments.workspace.hiddenSelectedCount:{"value":1}')
+    ).toBeTruthy();
     fireEvent.change(screen.getByLabelText('masterData.collectionLocations.fields.cityId'), {
       target: { value: 'city-2' },
     });
@@ -371,8 +421,12 @@ describe('waste-management tours low coverage views', () => {
       target: { value: 'street-2' },
     });
 
-    fireEvent.click(screen.getByLabelText('masterData.collectionLocations.bulk.actions.selectAllFiltered'));
-    fireEvent.submit(screen.getByRole('button', { name: 'tours.assignments.actions.create' }).closest('form')!);
+    fireEvent.click(
+      screen.getByLabelText('masterData.collectionLocations.bulk.actions.selectAllFiltered')
+    );
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'tours.assignments.actions.create' }).closest('form')!
+    );
     expect(onSubmit).toHaveBeenCalledWith(expect.anything(), ['location-1', 'location-2']);
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.assignments.actions.resetFilters' }));
@@ -407,7 +461,9 @@ describe('waste-management tours low coverage views', () => {
         }}
         fractions={[{ id: 'fraction-1', name: 'Restmüll' } as never]}
         locations={[{ id: 'location-1', label: 'Rathausplatz' }]}
-        customRecurrencePresets={[{ id: 'preset-1', label: 'Alle 10 Tage', intervalDays: 10 } as never]}
+        customRecurrencePresets={[
+          { id: 'preset-1', label: 'Alle 10 Tage', intervalDays: 10 } as never,
+        ]}
         pt={(key) => key}
         onChange={onChange}
       />
@@ -415,11 +471,17 @@ describe('waste-management tours low coverage views', () => {
 
     fireEvent.change(screen.getByLabelText('tours.fields.name'), { target: { value: 'Bio Nord' } });
     fireEvent.click(screen.getByRole('button', { name: 'tours.fields.wasteFractions' }));
-    fireEvent.change(screen.getByLabelText('tours.fields.description'), { target: { value: 'Neue Beschreibung' } });
+    fireEvent.change(screen.getByLabelText('tours.fields.description'), {
+      target: { value: 'Neue Beschreibung' },
+    });
     expect(screen.getByLabelText('tours.fields.firstDate')).toBeTruthy();
     expect(screen.getByLabelText('tours.fields.endDate')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('tours.fields.firstDate'), { target: { value: '2026-08-01' } });
-    fireEvent.change(screen.getByLabelText('tours.fields.endDate'), { target: { value: '2026-08-31' } });
+    fireEvent.change(screen.getByLabelText('tours.fields.firstDate'), {
+      target: { value: '2026-08-01' },
+    });
+    fireEvent.change(screen.getByLabelText('tours.fields.endDate'), {
+      target: { value: '2026-08-31' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'tours.fields.active' }));
 
     expect(onChange).toHaveBeenCalledWith({ name: 'Bio Nord' });
@@ -461,7 +523,9 @@ describe('waste-management tours low coverage views', () => {
     expect(customDatesSpy).toHaveBeenCalledWith(expect.objectContaining({ disabled: false }));
     expect(onChange).toHaveBeenCalledWith({ customDates: [{ date: '2026-08-22' }] });
     expect(onChange).toHaveBeenCalledWith({
-      dateLocationAssignments: [{ id: 'assignment-1', pickupDate: '2026-08-22', locationId: 'location-1', note: '08:00' }],
+      dateLocationAssignments: [
+        { id: 'assignment-1', pickupDate: '2026-08-22', locationId: 'location-1', note: '08:00' },
+      ],
     });
   });
 
@@ -474,33 +538,34 @@ describe('waste-management tours low coverage views', () => {
         mode="edit"
         form={{ id: 'link-1', tourId: 'tour-1' } as never}
         tour={{ id: 'tour-1', name: 'Schadstoffmobil' } as never}
-        tours={[]}
-        locations={[
-          {
-            id: 'location-1',
-            label: 'Rathausplatz',
-            regionId: 'region-1',
-            regionName: 'Prignitz',
-            cityId: 'city-1',
-            cityName: 'Perleberg',
-            streetId: 'street-1',
-            streetName: 'Mitte',
-            assignedLinkId: 'link-1',
-            active: true,
-          },
-          {
-            id: 'location-2',
-            label: 'Schulhof',
-            regionId: 'region-2',
-            regionName: 'Ostprignitz',
-            cityId: 'city-2',
-            cityName: 'Wittenberge',
-            streetId: 'street-2',
-            streetName: 'Nord',
-            assignedLinkId: undefined,
-            active: false,
-          },
-        ] as never}
+        locations={
+          [
+            {
+              id: 'location-1',
+              label: 'Rathausplatz',
+              regionId: 'region-1',
+              regionName: 'Prignitz',
+              cityId: 'city-1',
+              cityName: 'Perleberg',
+              streetId: 'street-1',
+              streetName: 'Mitte',
+              assignedLinkId: 'link-1',
+              active: true,
+            },
+            {
+              id: 'location-2',
+              label: 'Schulhof',
+              regionId: 'region-2',
+              regionName: 'Ostprignitz',
+              cityId: 'city-2',
+              cityName: 'Wittenberge',
+              streetId: 'street-2',
+              streetName: 'Nord',
+              assignedLinkId: undefined,
+              active: false,
+            },
+          ] as never
+        }
         saving={false}
         loading={false}
         message={{ kind: 'info', text: 'assignment-message' }}
@@ -512,11 +577,17 @@ describe('waste-management tours low coverage views', () => {
 
     expect(screen.getByText('assignment-message')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('filters.searchLabel'), { target: { value: 'Schul' } });
-    expect(screen.getByText('tours.assignments.workspace.hiddenSelectedCount:{"value":1}')).toBeTruthy();
-    fireEvent.click(screen.getByLabelText('masterData.collectionLocations.bulk.actions.selectAllFiltered'));
+    expect(
+      screen.getByText('tours.assignments.workspace.hiddenSelectedCount:{"value":1}')
+    ).toBeTruthy();
+    fireEvent.click(
+      screen.getByLabelText('masterData.collectionLocations.bulk.actions.selectAllFiltered')
+    );
     fireEvent.click(screen.getByRole('button', { name: 'tours.assignments.actions.resetFilters' }));
 
-    const form = screen.getByRole('button', { name: 'tours.assignments.actions.save' }).closest('form');
+    const form = screen
+      .getByRole('button', { name: 'tours.assignments.actions.save' })
+      .closest('form');
     if (!form) {
       throw new Error('missing assignments form');
     }

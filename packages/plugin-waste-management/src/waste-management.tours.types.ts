@@ -4,8 +4,6 @@ export type LocationTourLinkFormState = {
   readonly id: string;
   readonly locationId: string;
   readonly tourId: string;
-  readonly startDate: string;
-  readonly endDate: string;
 };
 
 export type TourFormState = {

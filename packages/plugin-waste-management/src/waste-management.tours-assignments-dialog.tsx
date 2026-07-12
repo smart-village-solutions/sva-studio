@@ -20,7 +20,10 @@ import {
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import type { LocationTourLinkFormState } from './waste-management.tours.types.js';
 import type { TourAssignmentLocationOption } from './waste-management.tours.locations.js';
-import { createTourAssignmentSelectionSummary } from './waste-management.tours.view-model.js';
+import {
+  createTourAssignmentSelectionSummary,
+  orderTourAssignmentLocations,
+} from './waste-management.tours.view-model.js';
 
 const matchesSearch = (value: string, query: string) =>
   value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
@@ -90,7 +93,6 @@ export const TourAssignmentsDialog = ({
   form,
   tour,
   locations,
-  tours,
   saving,
   loading = false,
   message,
@@ -103,7 +105,6 @@ export const TourAssignmentsDialog = ({
   readonly form: LocationTourLinkFormState;
   readonly tour: WasteTourRecord | null;
   readonly locations: readonly TourAssignmentLocationOption[];
-  readonly tours: readonly WasteTourRecord[];
   readonly saving: boolean;
   readonly loading?: boolean;
   readonly message: StatusMessage | null;
@@ -206,7 +207,12 @@ export const TourAssignmentsDialog = ({
     [cityFilter, locations, regionFilter, searchQuery, streetFilter]
   );
 
-  const visibleLocationIds = filteredLocations.map((location) => location.id);
+  const orderedFilteredLocations = useMemo(
+    () => orderTourAssignmentLocations(filteredLocations, selectedLocationIds),
+    [filteredLocations, selectedLocationIds]
+  );
+
+  const visibleLocationIds = orderedFilteredLocations.map((location) => location.id);
   const { allVisibleSelected, someVisibleSelected, hiddenSelectedCount, visibleLocationIdSet } =
     createTourAssignmentSelectionSummary({
       filteredLocationIds: visibleLocationIds,
@@ -261,31 +267,6 @@ export const TourAssignmentsDialog = ({
         >
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5 rounded-2xl border border-border/70 bg-card/60">
             <StatusNotice message={message} />
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <StudioField
-                id="waste-tour-assignment-start-date"
-                label={pt('tours.assignments.fields.startDate')}
-              >
-                <Input
-                  id="waste-tour-assignment-start-date"
-                  type="date"
-                  value={form.startDate ?? ''}
-                  onChange={(event) => onChange({ startDate: event.target.value })}
-                />
-              </StudioField>
-              <StudioField
-                id="waste-tour-assignment-end-date"
-                label={pt('tours.assignments.fields.endDate')}
-              >
-                <Input
-                  id="waste-tour-assignment-end-date"
-                  type="date"
-                  value={form.endDate ?? ''}
-                  onChange={(event) => onChange({ endDate: event.target.value })}
-                />
-              </StudioField>
-            </div>
 
             <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
               <div className="min-w-0 flex-1">
@@ -428,7 +409,7 @@ export const TourAssignmentsDialog = ({
               <div className="max-h-[420px] overflow-y-auto rounded-xl border border-border/60">
                 {renderLocationWorkspaceState(
                   loading,
-                  filteredLocations,
+                  orderedFilteredLocations,
                   pt,
                   selectedLocationIds,
                   toggleSelectedLocation

@@ -9,19 +9,26 @@ import type {
   WasteTourRecord,
 } from '@sva/plugin-sdk';
 
-const findRegionName = (regions: readonly WasteRegionRecord[], regionId?: string): string | undefined =>
+const findRegionName = (
+  regions: readonly WasteRegionRecord[],
+  regionId?: string
+): string | undefined =>
   regionId ? regions.find((region) => region.id === regionId)?.name : undefined;
 
 const findCityName = (cities: readonly WasteCityRecord[], cityId: string): string =>
   cities.find((city) => city.id === cityId)?.name ?? cityId;
 
-const findStreetName = (streets: readonly WasteStreetRecord[], streetId?: string): string | undefined =>
+const findStreetName = (
+  streets: readonly WasteStreetRecord[],
+  streetId?: string
+): string | undefined =>
   streetId ? streets.find((street) => street.id === streetId)?.name : undefined;
 
 const findHouseNumberValue = (
   houseNumbers: readonly WasteHouseNumberRecord[],
   houseNumberId?: string
-): string | undefined => (houseNumberId ? houseNumbers.find((entry) => entry.id === houseNumberId)?.number : undefined);
+): string | undefined =>
+  houseNumberId ? houseNumbers.find((entry) => entry.id === houseNumberId)?.number : undefined;
 
 export const formatCollectionLocationLabel = (
   pt: (key: string) => string,
@@ -31,8 +38,10 @@ export const formatCollectionLocationLabel = (
   const parts = [
     findRegionName(data.regions, location.regionId),
     findCityName(data.cities, location.cityId),
-    findStreetName(data.streets, location.streetId) ?? pt('masterData.collectionLocations.meta.allStreets'),
-    findHouseNumberValue(data.houseNumbers, location.houseNumberId) ?? pt('masterData.collectionLocations.meta.allHouseNumbers'),
+    findStreetName(data.streets, location.streetId) ??
+      pt('masterData.collectionLocations.meta.allStreets'),
+    findHouseNumberValue(data.houseNumbers, location.houseNumberId) ??
+      pt('masterData.collectionLocations.meta.allHouseNumbers'),
   ].filter((value): value is string => Boolean(value));
 
   return parts.join(' / ');
@@ -91,7 +100,9 @@ export const resolveTourAssignmentLocationOptions = (
     cityId: location.cityId,
     cityName: findCityName(data.cities, location.cityId),
     streetId: location.streetId ?? '',
-    streetName: findStreetName(data.streets, location.streetId) ?? pt('masterData.collectionLocations.meta.allStreets'),
+    streetName:
+      findStreetName(data.streets, location.streetId) ??
+      pt('masterData.collectionLocations.meta.allStreets'),
     assignedLinkId: assignedLinkIdByLocationId.get(location.id),
   }));
 };
@@ -103,8 +114,6 @@ export const resolveTourAssignmentItems = (
 ): readonly {
   id: string;
   label: string;
-  startDate?: string;
-  endDate?: string;
 }[] =>
   !data
     ? []
@@ -119,8 +128,6 @@ export const resolveTourAssignmentItems = (
             {
               id: link.id,
               label: formatCollectionLocationLabel(pt, data, location),
-              startDate: link.startDate,
-              endDate: link.endDate,
             },
           ];
         });

@@ -50,6 +50,12 @@ vi.mock('../src/waste-management.ui-access.js', () => ({
 }));
 
 const wasteManagementApiMocks = vi.hoisted(() => ({
+  createWasteManagementLocationTourPickupDate: vi.fn(async () => ({ id: 'pickup-date-1' })),
+  updateWasteManagementLocationTourPickupDate: vi.fn(async () => ({ id: 'pickup-date-1' })),
+  deleteWasteManagementLocationTourPickupDate: vi.fn(async () => ({ id: 'pickup-date-1' })),
+  createWasteManagementTourAssignment: vi.fn(async () => ({ id: 'assignment-1' })),
+  updateWasteManagementTourAssignment: vi.fn(async () => ({ id: 'assignment-1' })),
+  deleteWasteManagementTourAssignment: vi.fn(async () => ({ id: 'assignment-1' })),
   createWasteManagementCity: vi.fn(async () => ({
     id: 'city-3',
     name: 'Musterstadt West',

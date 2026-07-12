@@ -100,6 +100,71 @@ const resetToursFormState = (controller: WasteViewModel) => {
   controller.setLastOutcome(null);
 };
 
+type Navigate = ReturnType<typeof useNavigate>;
+
+const createToursFormNavigation = (
+  controller: WasteViewModel,
+  search: WasteManagementSearchParams,
+  navigate: Navigate
+) => ({
+  openCreate: () => {
+    controller.setDialogMode('create');
+    resetToursFormState(controller);
+    controller.setTourForm(createDefaultTourForm());
+    controller.setSelectedTour(null);
+    void navigate({ to: '/plugins/waste-management', search: toCreateTourSearch(search) });
+  },
+  openEdit: (tour: WasteTourRecord) => {
+    controller.setDialogMode('edit');
+    resetToursFormState(controller);
+    controller.setSelectedTour(tour);
+    controller.setTourForm(
+      mapTourWithPickupDatesToForm(
+        tour,
+        controller.schedulingOverview?.locationTourPickupDates ?? []
+      )
+    );
+    void navigate({ to: '/plugins/waste-management', search: toEditTourSearch(search, tour.id) });
+  },
+  toDuplicate: (tour: WasteTourRecord) => {
+    controller.setDialogMode('create');
+    resetToursFormState(controller);
+    controller.setSelectedTour(null);
+    controller.setTourForm({
+      ...mapTourWithPickupDatesToForm(tour, []),
+      id: createDefaultTourForm().id,
+      name: `${tour.name} (Kopie)`,
+    });
+    void navigate({
+      to: '/plugins/waste-management',
+      search: toDuplicateTourSearch(search, tour.id),
+    });
+  },
+});
+
+const createToursPagingNavigation = (search: WasteManagementSearchParams, navigate: Navigate) => ({
+  setPage: (page: number) =>
+    void navigate({ to: '/plugins/waste-management', search: toToursPageSearch(search, page) }),
+  syncPage: (page: number) =>
+    void navigate({
+      to: '/plugins/waste-management',
+      search: toToursPageSearch(search, page),
+      replace: true,
+    }),
+  setPageSize: (pageSize: number) =>
+    void navigate({
+      to: '/plugins/waste-management',
+      search: toToursPageSizeSearch(search, pageSize),
+    }),
+  setQuery: (q: string) =>
+    void navigate({ to: '/plugins/waste-management', search: toToursQuerySearch(search, q) }),
+  setStatus: (status: WasteManagementSearchParams['status']) =>
+    void navigate({
+      to: '/plugins/waste-management',
+      search: toToursStatusSearch(search, status),
+    }),
+});
+
 export const useWasteToursListNavigation = (
   controller: WasteViewModel,
   search: WasteManagementSearchParams
@@ -107,64 +172,8 @@ export const useWasteToursListNavigation = (
   const navigate = useNavigate();
 
   return {
-    openCreate: () => {
-      controller.setDialogMode('create');
-      resetToursFormState(controller);
-      controller.setTourForm(createDefaultTourForm());
-      controller.setSelectedTour(null);
-      void navigate({ to: '/plugins/waste-management', search: toCreateTourSearch(search) });
-    },
-    openEdit: (tour: WasteTourRecord) => {
-      controller.setDialogMode('edit');
-      resetToursFormState(controller);
-      controller.setSelectedTour(tour);
-      controller.setTourForm(
-        mapTourWithPickupDatesToForm(
-          tour,
-          controller.schedulingOverview?.locationTourPickupDates ?? []
-        )
-      );
-      void navigate({ to: '/plugins/waste-management', search: toEditTourSearch(search, tour.id) });
-    },
-    toDuplicate: (tour: WasteTourRecord) => {
-      controller.setDialogMode('create');
-      resetToursFormState(controller);
-      controller.setSelectedTour(null);
-      controller.setTourForm({
-        ...mapTourWithPickupDatesToForm(tour, []),
-        id: createDefaultTourForm().id,
-        name: `${tour.name} (Kopie)`,
-      });
-      void navigate({
-        to: '/plugins/waste-management',
-        search: toDuplicateTourSearch(search, tour.id),
-      });
-    },
-    setPage: (page: number) => {
-      void navigate({ to: '/plugins/waste-management', search: toToursPageSearch(search, page) });
-    },
-    syncPage: (page: number) => {
-      void navigate({
-        to: '/plugins/waste-management',
-        search: toToursPageSearch(search, page),
-        replace: true,
-      });
-    },
-    setPageSize: (pageSize: number) => {
-      void navigate({
-        to: '/plugins/waste-management',
-        search: toToursPageSizeSearch(search, pageSize),
-      });
-    },
-    setQuery: (q: string) => {
-      void navigate({ to: '/plugins/waste-management', search: toToursQuerySearch(search, q) });
-    },
-    setStatus: (status: WasteManagementSearchParams['status']) => {
-      void navigate({
-        to: '/plugins/waste-management',
-        search: toToursStatusSearch(search, status),
-      });
-    },
+    ...createToursFormNavigation(controller, search, navigate),
+    ...createToursPagingNavigation(search, navigate),
     setFilters: (
       q: string,
       status: WasteManagementSearchParams['status'],

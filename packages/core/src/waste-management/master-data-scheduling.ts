@@ -5,6 +5,11 @@ import type {
   WasteHolidayStateCode,
   WasteTourDateShiftFollowUpMode,
 } from './master-data-contract.js';
+import type {
+  WasteHolidayRuleConfigurationStatus,
+  WasteHolidayRuleConflictStatus,
+  WasteHolidayRuleSourceStatus,
+} from './master-data-holiday-rule-status.js';
 
 export type WasteTourDateShiftRecord = {
   readonly id: string;
@@ -74,10 +79,6 @@ export type WasteGlobalDateShiftListFilter = {
   readonly hasYear?: boolean;
   readonly appliesToTourId?: string;
 };
-
-export type WasteHolidayRuleSourceStatus = 'confirmed' | 'not-confirmed';
-export type WasteHolidayRuleConfigurationStatus = 'draft' | 'configured';
-export type WasteHolidayRuleConflictStatus = 'none' | 'manual-global-rule';
 
 export type WasteHolidayRuleRecord = {
   readonly id: string;

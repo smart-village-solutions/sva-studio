@@ -138,6 +138,9 @@ const isValidPickupDateValue = (value: string): boolean => {
   );
 };
 
+const readOptionalCell = (cells: readonly string[], index: number | undefined): string =>
+  index === undefined ? '' : (cells[index]?.trim() ?? '');
+
 const parseHeaderLayout = (
   header: readonly string[],
   issues: WasteLocationTourPickupDateImportIssue[]
@@ -258,48 +261,17 @@ const parseFractionNames = (
   return fractionNames;
 };
 
-const parseDataRow = (input: {
-  readonly cells: readonly string[];
+const validateDataRow = (input: {
+  readonly assignmentId: string;
+  readonly city: string;
+  readonly pickupDate: string;
   readonly rowNumber: number;
-  readonly headerLayout: ParsedHeaderLayout | null;
-  readonly fractionNames: readonly string[];
   readonly issues: WasteLocationTourPickupDateImportIssue[];
-}): WasteLocationTourPickupDateImportRow | null => {
-  const { cells, rowNumber, headerLayout, fractionNames, issues } = input;
-  if (!headerLayout) {
-    return null;
-  }
-
-  const assignmentId =
-    headerLayout.assignmentIdIndex === undefined
-      ? ''
-      : (cells[headerLayout.assignmentIdIndex]?.trim() ?? '');
-  const region = headerLayout.hasRegionColumn
-    ? (cells[headerLayout.assignmentIdIndex === undefined ? 0 : 1]?.trim() ?? '')
-    : '';
-  const city = cells[headerLayout.cityIndex]?.trim() ?? '';
-  const rawStreet =
-    headerLayout.streetIndex === undefined ? '' : (cells[headerLayout.streetIndex]?.trim() ?? '');
-  const rawHouseNumbers =
-    headerLayout.houseNumbersIndex === undefined
-      ? ''
-      : (cells[headerLayout.houseNumbersIndex]?.trim() ?? '');
-  const pickupDate =
-    headerLayout.pickupDateIndex === undefined
-      ? ''
-      : (cells[headerLayout.pickupDateIndex]?.trim() ?? '');
-  const note =
-    headerLayout.noteIndex === undefined ? '' : (cells[headerLayout.noteIndex]?.trim() ?? '');
-  const rowIssuesBefore = issues.length;
-
+}): void => {
+  const { assignmentId, city, pickupDate, rowNumber, issues } = input;
   if (!city) {
-    issues.push({
-      rowNumber,
-      column: 'Ort',
-      message: 'Ort ist ein Pflichtfeld.',
-    });
+    issues.push({ rowNumber, column: 'Ort', message: 'Ort ist ein Pflichtfeld.' });
   }
-
   if (pickupDate && !isValidPickupDateValue(pickupDate)) {
     issues.push({
       rowNumber,
@@ -323,8 +295,14 @@ const parseDataRow = (input: {
       value: assignmentId,
     });
   }
+};
 
-  const tourNamesByFractionName = Object.fromEntries(
+const buildTourNamesByFractionName = (
+  cells: readonly string[],
+  headerLayout: ParsedHeaderLayout,
+  fractionNames: readonly string[]
+): Readonly<Record<string, string>> =>
+  Object.fromEntries(
     fractionNames
       .map(
         (fractionName, fractionIndex) =>
@@ -335,6 +313,32 @@ const parseDataRow = (input: {
       )
       .filter((entry) => entry[1].length > 0)
   );
+
+const parseDataRow = (input: {
+  readonly cells: readonly string[];
+  readonly rowNumber: number;
+  readonly headerLayout: ParsedHeaderLayout | null;
+  readonly fractionNames: readonly string[];
+  readonly issues: WasteLocationTourPickupDateImportIssue[];
+}): WasteLocationTourPickupDateImportRow | null => {
+  const { cells, rowNumber, headerLayout, fractionNames, issues } = input;
+  if (!headerLayout) {
+    return null;
+  }
+
+  const assignmentId = readOptionalCell(cells, headerLayout.assignmentIdIndex);
+  const region = headerLayout.hasRegionColumn
+    ? (cells[headerLayout.assignmentIdIndex === undefined ? 0 : 1]?.trim() ?? '')
+    : '';
+  const city = cells[headerLayout.cityIndex]?.trim() ?? '';
+  const rawStreet = readOptionalCell(cells, headerLayout.streetIndex);
+  const rawHouseNumbers = readOptionalCell(cells, headerLayout.houseNumbersIndex);
+  const pickupDate = readOptionalCell(cells, headerLayout.pickupDateIndex);
+  const note = readOptionalCell(cells, headerLayout.noteIndex);
+  const rowIssuesBefore = issues.length;
+
+  validateDataRow({ assignmentId, city, pickupDate, rowNumber, issues });
+  const tourNamesByFractionName = buildTourNamesByFractionName(cells, headerLayout, fractionNames);
 
   if (Object.keys(tourNamesByFractionName).length === 0) {
     issues.push({

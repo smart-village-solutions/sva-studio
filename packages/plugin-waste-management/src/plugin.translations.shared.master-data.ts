@@ -6,6 +6,7 @@ import {
   type CrudDialogCopy,
   type CrudMessagesCopy,
 } from './plugin.translations.shared.base.js';
+import type { MasterDataFractionsCreateViewCopy } from './plugin.translations.shared.master-data.types.js';
 
 type MasterDataTabsCopy = Readonly<{
   ariaLabel: string;
@@ -55,60 +56,6 @@ type MasterDataFractionsCopy = Readonly<{
       deleteConflict: string;
     }
   >;
-}>;
-
-type MasterDataFractionsCreateViewCopy = Readonly<{
-  title: string;
-  description: string;
-  colorPickerLabel: string;
-  sections: Readonly<{
-    basics: string;
-    basicsHint: string;
-    presentation: string;
-    presentationHint: string;
-    visibility: string;
-    visibilityHint: string;
-  }>;
-  fieldHints: Readonly<{
-    name: string;
-    description: string;
-    translationDe: string;
-    translationEn: string;
-    pdfShortLabel: string;
-    containerSize: string;
-    color: string;
-    active: string;
-  }>;
-  statusHints: Readonly<{
-    active: string;
-    inactive: string;
-  }>;
-  validation: Readonly<{
-    nameRequired: string;
-    pdfShortLabelRequired: string;
-    colorRequired: string;
-  }>;
-  meta: Readonly<{
-    descriptionCounter: string;
-  }>;
-  actions: Readonly<{
-    backToList: string;
-    cancel: string;
-    savePrimary: string;
-  }>;
-  preview: Readonly<{
-    title: string;
-    description: string;
-    placeholderName: string;
-    placeholderDescription: string;
-    placeholderContainerSize: string;
-    tableTitle: string;
-    tableBody: string;
-  }>;
-  help: Readonly<{
-    title: string;
-    body: string;
-  }>;
 }>;
 
 type CollectionLocationsBulkCopy = Readonly<{

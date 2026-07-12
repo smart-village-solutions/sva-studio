@@ -1,6 +1,6 @@
 import type { WasteFractionRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconEdit, IconFilter, IconTrash } from '@tabler/icons-react';
+import { IconFilter } from '@tabler/icons-react';
 import {
   Button,
   Dialog,
@@ -19,6 +19,7 @@ import type {
   WasteManagementFractionSortField,
   WasteManagementStatusFilter,
 } from './search-params.js';
+export { FractionRowActions } from './waste-management.master-data-fraction-row-actions.js';
 
 type StudioTableSortingState = NonNullable<StudioDataTableProps<WasteFractionRecord>['sorting']>;
 
@@ -163,79 +164,67 @@ export const WasteFractionsFilterAction = ({
           {pt('masterData.fractions.filters.open')}
         </Button>
       </div>
-      <Dialog open={filterDialogOpen} onOpenChange={onFilterDialogOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{pt('masterData.fractions.filters.title')}</DialogTitle>
-            <DialogDescription>{pt('masterData.fractions.filters.description')}</DialogDescription>
-          </DialogHeader>
-          <label className="flex flex-col gap-2 text-sm">
-            <span className="text-muted-foreground">
-              {pt('masterData.fractions.filters.statusLabel')}
-            </span>
-            <Select
-              aria-label={pt('masterData.fractions.filters.statusLabel')}
-              className="h-10 rounded-lg"
-              value={draftFractionsStatus}
-              onChange={(event) =>
-                onDraftFractionsStatusChange(event.target.value as WasteManagementStatusFilter)
-              }
-            >
-              <option value="all">{pt('masterData.fractions.filters.status.all')}</option>
-              <option value="active">{pt('masterData.fractions.filters.status.active')}</option>
-              <option value="inactive">{pt('masterData.fractions.filters.status.inactive')}</option>
-            </Select>
-          </label>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onFilterDialogOpenChange(false)}>
-              {pt('masterData.fractions.filters.cancel')}
-            </Button>
-            <Button
-              type="button"
-              onClick={onApplyFractionsStatus}
-              disabled={draftFractionsStatus === fractionsStatus}
-            >
-              {pt('masterData.fractions.filters.apply')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <FractionsFilterDialog
+        open={filterDialogOpen}
+        status={fractionsStatus}
+        draftStatus={draftFractionsStatus}
+        onOpenChange={onFilterDialogOpenChange}
+        onDraftStatusChange={onDraftFractionsStatusChange}
+        onApply={onApplyFractionsStatus}
+      />
     </>
   );
 };
 
-export const FractionRowActions = ({
-  fraction,
-  onOpenEditFraction,
-  onRequestDeleteFraction,
+const FractionsFilterDialog = ({
+  open,
+  status,
+  draftStatus,
+  onOpenChange,
+  onDraftStatusChange,
+  onApply,
 }: {
-  readonly fraction: WasteFractionRecord;
-  readonly onOpenEditFraction: (fraction: WasteFractionRecord) => void;
-  readonly onRequestDeleteFraction: (fraction: WasteFractionRecord) => void;
+  readonly open: boolean;
+  readonly status: WasteManagementStatusFilter;
+  readonly draftStatus: WasteManagementStatusFilter;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly onDraftStatusChange: (status: WasteManagementStatusFilter) => void;
+  readonly onApply: () => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
-    <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-        aria-label={pt('masterData.fractions.actions.edit')}
-        onClick={() => onOpenEditFraction(fraction)}
-      >
-        <IconEdit aria-hidden="true" className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
-        aria-label={pt('masterData.fractions.actions.delete')}
-        onClick={() => onRequestDeleteFraction(fraction)}
-      >
-        <IconTrash aria-hidden="true" className="h-4 w-4 text-destructive" />
-      </Button>
-    </>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{pt('masterData.fractions.filters.title')}</DialogTitle>
+          <DialogDescription>{pt('masterData.fractions.filters.description')}</DialogDescription>
+        </DialogHeader>
+        <label className="flex flex-col gap-2 text-sm">
+          <span className="text-muted-foreground">
+            {pt('masterData.fractions.filters.statusLabel')}
+          </span>
+          <Select
+            aria-label={pt('masterData.fractions.filters.statusLabel')}
+            className="h-10 rounded-lg"
+            value={draftStatus}
+            onChange={(event) =>
+              onDraftStatusChange(event.target.value as WasteManagementStatusFilter)
+            }
+          >
+            <option value="all">{pt('masterData.fractions.filters.status.all')}</option>
+            <option value="active">{pt('masterData.fractions.filters.status.active')}</option>
+            <option value="inactive">{pt('masterData.fractions.filters.status.inactive')}</option>
+          </Select>
+        </label>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            {pt('masterData.fractions.filters.cancel')}
+          </Button>
+          <Button type="button" onClick={onApply} disabled={draftStatus === status}>
+            {pt('masterData.fractions.filters.apply')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

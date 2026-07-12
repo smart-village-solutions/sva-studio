@@ -17,6 +17,48 @@ export type WasteTourExplicitAssignmentFormState = Readonly<{
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
+const WasteTourAssignmentLocationsField = ({
+  locationIds,
+  locationOptions,
+  pt,
+  onChange,
+}: {
+  readonly locationIds: readonly string[];
+  readonly locationOptions: readonly { readonly id: string; readonly label: string }[];
+  readonly pt: Translate;
+  readonly onChange: (locationIds: readonly string[]) => void;
+}) => (
+  <fieldset className="space-y-2" aria-describedby="waste-tour-assignment-locations-hint">
+    <legend className="text-sm font-medium">{pt('scheduling.assignments.fields.locations')}</legend>
+    <p id="waste-tour-assignment-locations-hint" className="text-sm text-muted-foreground">
+      {pt('scheduling.assignments.fields.locationsHint')}
+    </p>
+    <div className="max-h-56 space-y-1 overflow-y-auto rounded-md border border-border p-2">
+      {locationOptions.map((option) => {
+        const checked = locationIds.includes(option.id);
+        return (
+          <label
+            key={option.id}
+            className="flex cursor-pointer items-start gap-2 rounded-sm px-2 py-1.5 hover:bg-muted/40"
+          >
+            <Checkbox
+              checked={checked}
+              onChange={(event) =>
+                onChange(
+                  event.currentTarget.checked
+                    ? [...locationIds, option.id]
+                    : locationIds.filter((id) => id !== option.id)
+                )
+              }
+            />
+            <span className="text-sm">{option.label}</span>
+          </label>
+        );
+      })}
+    </div>
+  </fieldset>
+);
+
 export const WasteTourExplicitAssignmentForm = ({
   form,
   tours,
@@ -58,37 +100,12 @@ export const WasteTourExplicitAssignmentForm = ({
         onChange={(event) => onChange({ pickupDate: event.target.value })}
       />
     </StudioField>
-    <fieldset className="space-y-2" aria-describedby="waste-tour-assignment-locations-hint">
-      <legend className="text-sm font-medium">
-        {pt('scheduling.assignments.fields.locations')}
-      </legend>
-      <p id="waste-tour-assignment-locations-hint" className="text-sm text-muted-foreground">
-        {pt('scheduling.assignments.fields.locationsHint')}
-      </p>
-      <div className="max-h-56 space-y-1 overflow-y-auto rounded-md border border-border p-2">
-        {locationOptions.map((option) => {
-          const checked = form.locationIds.includes(option.id);
-          return (
-            <label
-              key={option.id}
-              className="flex cursor-pointer items-start gap-2 rounded-sm px-2 py-1.5 hover:bg-muted/40"
-            >
-              <Checkbox
-                checked={checked}
-                onChange={(event) =>
-                  onChange({
-                    locationIds: event.currentTarget.checked
-                      ? [...form.locationIds, option.id]
-                      : form.locationIds.filter((id) => id !== option.id),
-                  })
-                }
-              />
-              <span className="text-sm">{option.label}</span>
-            </label>
-          );
-        })}
-      </div>
-    </fieldset>
+    <WasteTourAssignmentLocationsField
+      locationIds={form.locationIds}
+      locationOptions={locationOptions}
+      pt={pt}
+      onChange={(locationIds) => onChange({ locationIds })}
+    />
     <StudioField id="waste-tour-assignment-note" label={pt('scheduling.assignments.fields.note')}>
       <Textarea
         id="waste-tour-assignment-note"

@@ -61,4 +61,20 @@ describe('deployment contracts', () => {
 
     expect(workflow).toContain('image_ref: ${{ github.sha }}');
   });
+
+  it('configures the Dev router for the Traefik ACME resolver', () => {
+    const compose = load('deploy/compose.dev.yaml');
+
+    expect(compose).toContain('traefik.http.routers.studio-dev-app.entrypoints=web,websecure');
+    expect(compose).toContain('traefik.http.routers.studio-dev-app.tls.certresolver=letsencrypt');
+  });
+
+  it('documents the active Traefik v3 ingress contract', () => {
+    const overview = load('docs/guides/deployment-overview.md');
+    const rolloutAgent = load('.github/agents/rollout-operator.agent.md');
+
+    expect(overview).toContain('Traefik auf `sva` läuft derzeit v3.6');
+    expect(rolloutAgent).toContain('Auf dem Swarm-Server läuft Traefik `v3.6`');
+    expect(rolloutAgent).not.toContain('v1.7.34');
+  });
 });

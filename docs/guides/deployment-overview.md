@@ -47,7 +47,7 @@ Das Studio-Profil bildet einen separaten produktionsnahen Rollout-Pfad:
 - Runtime-Profil: `studio`
 - Stack typischerweise: `studio`
 - Quantum-Environment: `studio`
-- Traefik auf `sva` läuft derzeit v1.7.34; daher sind nur v1-kompatible Labels wirksam
+- Traefik auf `sva` läuft derzeit v3.6; Ingress-Router verwenden `traefik.http.*`-Labels und den konfigurierten TLS-Resolver
 
 Wichtig:
 

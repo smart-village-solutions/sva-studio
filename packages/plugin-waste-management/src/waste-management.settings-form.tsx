@@ -11,14 +11,9 @@ import {
   WasteHolidayStateSection,
   WasteInterfaceSelectionSection,
 } from './waste-management.settings-form.sections.js';
-import type {
-  CustomRecurrencePresetInputState,
-  DeletedPresetFallbackState,
-  SettingsFormState,
-} from './waste-management.settings.shared.js';
+import type { SettingsFormState } from './waste-management.settings.shared.js';
 export type {
   CustomRecurrencePresetInputState,
-  DeletedPresetFallbackState,
   SettingsFormState,
 } from './waste-management.settings.shared.js';
 
@@ -26,7 +21,9 @@ type WasteSettingsFormProps = {
   readonly form: SettingsFormState;
   readonly settings: WasteManagementSettingsRecord | null;
   readonly saving: boolean;
-  readonly onChange: (next: SettingsFormState | ((current: SettingsFormState) => SettingsFormState)) => void;
+  readonly onChange: (
+    next: SettingsFormState | ((current: SettingsFormState) => SettingsFormState)
+  ) => void;
   readonly onSubmit: () => void;
 };
 
@@ -42,7 +39,8 @@ export const WasteSettingsForm = ({
   const lastSuccessfulHolidaySyncAt = formatUpdatedAt(settings?.lastSuccessfulHolidaySyncAt);
   const persistedHolidayStateCode = settings?.holidayStateCode ?? '';
   const holidayStateDirty = form.holidayStateCode !== persistedHolidayStateCode;
-  const shouldWarnAboutHolidayOverwrite = holidayStateDirty && Boolean(settings?.lastSuccessfulHolidaySyncAt);
+  const shouldWarnAboutHolidayOverwrite =
+    holidayStateDirty && Boolean(settings?.lastSuccessfulHolidaySyncAt);
   const confirmHolidayOverwrite = () => {
     setHolidayOverwriteDialogOpen(false);
     onSubmit();
@@ -75,11 +73,7 @@ export const WasteSettingsForm = ({
           lastSuccessfulHolidaySyncAt={lastSuccessfulHolidaySyncAt}
           onChange={onChange}
         />
-        <WasteCalendarWebUrlSection
-          form={form}
-          saving={saving}
-          onChange={onChange}
-        />
+        <WasteCalendarWebUrlSection form={form} saving={saving} onChange={onChange} />
         <WasteInterfaceSelectionSection
           form={form}
           settings={settings}

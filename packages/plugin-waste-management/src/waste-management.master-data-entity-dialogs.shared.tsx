@@ -1,7 +1,5 @@
 import {
   Button,
-  Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -10,11 +8,7 @@ import {
   type StudioFormFieldError,
 } from '@sva/studio-ui-react';
 import React from 'react';
-import type {
-  FieldValues,
-  UseFormHandleSubmit,
-  UseFormReset,
-} from 'react-hook-form';
+import type { FieldValues, UseFormHandleSubmit, UseFormReset } from 'react-hook-form';
 
 import type { StatusMessage } from './waste-management.page.support.js';
 
@@ -32,7 +26,8 @@ export type BaseProps<TForm> = {
 
 export const collectSummaryErrors = (
   fields: readonly ReturnType<typeof getStudioFormFieldProps>[]
-): readonly StudioFormFieldError[] => fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
+): readonly StudioFormFieldError[] =>
+  fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
 
 export const createSubmitHandler =
   <TForm extends FieldValues>(
@@ -60,20 +55,6 @@ export const useResetOnFormContextChange = <TForm extends FieldValues>(
     reset(values);
   }, [reset, resetKey, values]);
 };
-
-export const MasterDataDialogShell = ({
-  children,
-  onOpenChange,
-  open,
-}: {
-  readonly children: React.ReactNode;
-  readonly onOpenChange: (open: boolean) => void;
-  readonly open: boolean;
-}) => (
-  <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent>{children}</DialogContent>
-  </Dialog>
-);
 
 export const MasterDataDialogHeader = ({
   createDescription,

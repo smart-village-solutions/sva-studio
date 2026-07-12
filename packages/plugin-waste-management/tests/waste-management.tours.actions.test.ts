@@ -23,8 +23,6 @@ describe('createWasteToursActions', () => {
             id: 'link-1',
             locationId: 'location-1',
             tourId: 'tour-1',
-            startDate: '2026-05-01',
-            endDate: '2026-06-01',
             createdAt: '2026-05-01T10:00:00.000Z',
             updatedAt: '2026-05-01T10:00:00.000Z',
           },
@@ -74,8 +72,6 @@ describe('createWasteToursActions', () => {
       id: 'link-1',
       locationId: 'location-1',
       tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: '2026-06-01',
     });
     expect(state.setSchedulingOverview).toHaveBeenCalledWith({ locationTourPickupDates: [] });
     expect(state.setCalendarOpen).toHaveBeenCalledWith(true);

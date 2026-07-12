@@ -1,11 +1,7 @@
 export const pluginSdkVersion = '0.0.1';
 
 export type PluginSdkPackageRole =
-  | 'plugin-contracts'
-  | 'plugin-platform'
-  | 'admin-resources'
-  | 'content-types'
-  | 'plugin-i18n';
+  'plugin-contracts' | 'plugin-platform' | 'admin-resources' | 'content-types' | 'plugin-i18n';
 
 export const pluginSdkPackageRoles = [
   'plugin-contracts',
@@ -167,6 +163,7 @@ export type {
   WasteStreetRecord,
   WasteTourDateShiftFollowUpMode,
   WasteTourDateShiftRecord,
+  WasteTourAssignmentRecord,
   WasteTourRecord,
   WasteTourRecurrence,
 } from './public-api.js';

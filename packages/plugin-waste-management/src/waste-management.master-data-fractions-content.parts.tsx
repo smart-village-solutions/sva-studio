@@ -14,8 +14,6 @@ import {
   type StudioDataTableLabels,
   type StudioDataTableProps,
 } from '@sva/studio-ui-react';
-import { useFractionColumns } from './waste-management.master-data-fractions-content.columns.js';
-
 import type {
   WasteManagementFractionSortDirection,
   WasteManagementFractionSortField,
@@ -33,7 +31,10 @@ export type WasteFractionsContentProps = {
   readonly onOpenEditFraction: (fraction: WasteFractionRecord) => void;
   readonly onOpenDeleteFraction: (fraction: WasteFractionRecord) => void | Promise<void>;
   readonly onDeleteFractions: (fractionIds: readonly string[]) => void | Promise<void>;
-  readonly onToggleFractionStatus: (fraction: WasteFractionRecord, active: boolean) => void | Promise<void>;
+  readonly onToggleFractionStatus: (
+    fraction: WasteFractionRecord,
+    active: boolean
+  ) => void | Promise<void>;
   readonly onFractionsSortChange: (
     sortBy: WasteManagementFractionSortField,
     sortDirection: WasteManagementFractionSortDirection
@@ -47,7 +48,7 @@ export type WasteFractionsContentProps = {
   readonly saving?: boolean;
 };
 
-export const columnIdBySortField: Record<WasteManagementFractionSortField, string> = {
+const columnIdBySortField: Record<WasteManagementFractionSortField, string> = {
   name: 'nameWithContainerSize',
   containerSize: 'nameWithContainerSize',
   color: 'color',
@@ -65,7 +66,9 @@ export const sortFieldByColumnId: Record<string, WasteManagementFractionSortFiel
 export const createFractionSorting = (
   fractionsSortBy: WasteManagementFractionSortField,
   fractionsSortDirection: WasteManagementFractionSortDirection
-): StudioTableSortingState => [{ id: columnIdBySortField[fractionsSortBy], desc: fractionsSortDirection === 'desc' }];
+): StudioTableSortingState => [
+  { id: columnIdBySortField[fractionsSortBy], desc: fractionsSortDirection === 'desc' },
+];
 
 export const useFractionTableLabels = () => {
   const pt = usePluginTranslation('wasteManagement');
@@ -103,9 +106,17 @@ export const useFractionBulkActions = ({
   return actions;
 };
 
-export const FractionPrimaryAction = ({ onOpenCreateFraction }: { readonly onOpenCreateFraction: () => void }) => {
+export const FractionPrimaryAction = ({
+  onOpenCreateFraction,
+}: {
+  readonly onOpenCreateFraction: () => void;
+}) => {
   const pt = usePluginTranslation('wasteManagement');
-  return <Button type="button" onClick={onOpenCreateFraction}>{pt('masterData.fractions.actions.openCreate')}</Button>;
+  return (
+    <Button type="button" onClick={onOpenCreateFraction}>
+      {pt('masterData.fractions.actions.openCreate')}
+    </Button>
+  );
 };
 
 export const WasteFractionsFilterAction = ({
@@ -159,12 +170,16 @@ export const WasteFractionsFilterAction = ({
             <DialogDescription>{pt('masterData.fractions.filters.description')}</DialogDescription>
           </DialogHeader>
           <label className="flex flex-col gap-2 text-sm">
-            <span className="text-muted-foreground">{pt('masterData.fractions.filters.statusLabel')}</span>
+            <span className="text-muted-foreground">
+              {pt('masterData.fractions.filters.statusLabel')}
+            </span>
             <Select
               aria-label={pt('masterData.fractions.filters.statusLabel')}
               className="h-10 rounded-lg"
               value={draftFractionsStatus}
-              onChange={(event) => onDraftFractionsStatusChange(event.target.value as WasteManagementStatusFilter)}
+              onChange={(event) =>
+                onDraftFractionsStatusChange(event.target.value as WasteManagementStatusFilter)
+              }
             >
               <option value="all">{pt('masterData.fractions.filters.status.all')}</option>
               <option value="active">{pt('masterData.fractions.filters.status.active')}</option>
@@ -175,7 +190,11 @@ export const WasteFractionsFilterAction = ({
             <Button type="button" variant="outline" onClick={() => onFilterDialogOpenChange(false)}>
               {pt('masterData.fractions.filters.cancel')}
             </Button>
-            <Button type="button" onClick={onApplyFractionsStatus} disabled={draftFractionsStatus === fractionsStatus}>
+            <Button
+              type="button"
+              onClick={onApplyFractionsStatus}
+              disabled={draftFractionsStatus === fractionsStatus}
+            >
               {pt('masterData.fractions.filters.apply')}
             </Button>
           </DialogFooter>

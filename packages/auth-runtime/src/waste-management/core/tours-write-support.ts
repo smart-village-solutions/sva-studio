@@ -41,7 +41,7 @@ export const createWasteTourWriteInput = ({
   name: name.trim(),
   description: normalizeOptionalString(description),
   wasteFractionIds: wasteFractionIds.map((value) => value.trim()),
-  recurrence: customRecurrenceId ? null : recurrence ?? undefined,
+  recurrence: customRecurrenceId ? null : (recurrence ?? undefined),
   customRecurrenceId,
   firstDate,
   endDate,
@@ -61,8 +61,14 @@ export const duplicateWasteTourDependencies = async ({
   readonly sourceTourId: string;
   readonly targetTourId: string;
 }): Promise<void> => {
-  const listLinks = requireDeps(deps.listWasteLocationTourLinksByTourId, 'listWasteLocationTourLinksByTourId');
-  const listShifts = requireDeps(deps.listWasteTourDateShiftsByTourId, 'listWasteTourDateShiftsByTourId');
+  const listLinks = requireDeps(
+    deps.listWasteLocationTourLinksByTourId,
+    'listWasteLocationTourLinksByTourId'
+  );
+  const listShifts = requireDeps(
+    deps.listWasteTourDateShiftsByTourId,
+    'listWasteTourDateShiftsByTourId'
+  );
   const saveLink = requireDeps(deps.saveWasteLocationTourLink, 'saveWasteLocationTourLink');
   const deleteTour = requireDeps(deps.deleteWasteTour, 'deleteWasteTour');
 
@@ -77,8 +83,6 @@ export const duplicateWasteTourDependencies = async ({
         id: crypto.randomUUID(),
         locationId: sourceLink.locationId,
         tourId: targetTourId,
-        startDate: sourceLink.startDate,
-        endDate: sourceLink.endDate,
       });
     }
 
@@ -113,11 +117,23 @@ export const deleteWasteTourDependencies = async ({
   readonly instanceId: string;
   readonly tourId: string;
 }): Promise<void> => {
-  const listLinks = requireDeps(deps.listWasteLocationTourLinksByTourId, 'listWasteLocationTourLinksByTourId');
-  const listPickupDates = requireDeps(deps.listWasteLocationTourPickupDates, 'listWasteLocationTourPickupDates');
-  const listShifts = requireDeps(deps.listWasteTourDateShiftsByTourId, 'listWasteTourDateShiftsByTourId');
+  const listLinks = requireDeps(
+    deps.listWasteLocationTourLinksByTourId,
+    'listWasteLocationTourLinksByTourId'
+  );
+  const listPickupDates = requireDeps(
+    deps.listWasteLocationTourPickupDates,
+    'listWasteLocationTourPickupDates'
+  );
+  const listShifts = requireDeps(
+    deps.listWasteTourDateShiftsByTourId,
+    'listWasteTourDateShiftsByTourId'
+  );
   const deleteLink = requireDeps(deps.deleteWasteLocationTourLink, 'deleteWasteLocationTourLink');
-  const deletePickupDate = requireDeps(deps.deleteWasteLocationTourPickupDate, 'deleteWasteLocationTourPickupDate');
+  const deletePickupDate = requireDeps(
+    deps.deleteWasteLocationTourPickupDate,
+    'deleteWasteLocationTourPickupDate'
+  );
   const deleteShift = requireDeps(deps.deleteWasteTourDateShift, 'deleteWasteTourDateShift');
 
   const [links, pickupDates, shifts] = await Promise.all([
@@ -169,7 +185,10 @@ export const createWasteManagementTourAfterValidation = async ({
     readonly duplicateFromTourId?: string;
   };
 }): Promise<Response> => {
-  await requireDeps(deps.saveWasteTour, 'saveWasteTour')(instanceId, createWasteTourWriteInput(input));
+  await requireDeps(deps.saveWasteTour, 'saveWasteTour')(
+    instanceId,
+    createWasteTourWriteInput(input)
+  );
 
   if (input.duplicateFromTourId) {
     await duplicateWasteTourDependencies({
@@ -180,7 +199,10 @@ export const createWasteManagementTourAfterValidation = async ({
     });
   }
 
-  const saved = await requireDeps(deps.loadWasteTourById, 'loadWasteTourById')(instanceId, input.id);
+  const saved = await requireDeps(deps.loadWasteTourById, 'loadWasteTourById')(
+    instanceId,
+    input.id
+  );
   if (!saved) {
     await emitWasteAuditEvent({
       deps,
@@ -192,7 +214,12 @@ export const createWasteManagementTourAfterValidation = async ({
       resourceType: 'waste_tour',
       resourceId: input.id,
     });
-    return createApiError(503, 'database_unavailable', 'Die Waste-Tour konnte nicht verifiziert werden.', requestId);
+    return createApiError(
+      503,
+      'database_unavailable',
+      'Die Waste-Tour konnte nicht verifiziert werden.',
+      requestId
+    );
   }
 
   await emitWasteAuditEvent({

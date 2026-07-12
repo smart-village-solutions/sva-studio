@@ -28,9 +28,13 @@ const createWasteToolsViewModelFromState = (input: {
   readonly importState: ReturnType<typeof useWasteImportState>;
   readonly maintenanceState: ReturnType<typeof useWasteMaintenanceState>;
   readonly technicalHistory: ReturnType<typeof useWasteTechnicalHistory>['technicalHistory'];
-  readonly selectedImportProfile: ReturnType<typeof useWasteToolsViewModelHelpers>['selectedImportProfile'];
+  readonly selectedImportProfile: ReturnType<
+    typeof useWasteToolsViewModelHelpers
+  >['selectedImportProfile'];
   readonly actions: ReturnType<typeof useWasteToolsViewModelHelpers>['actions'];
-  readonly runDeleteHistoryEntry: ReturnType<typeof useWasteToolsViewModelHelpers>['runDeleteHistoryEntry'];
+  readonly runDeleteHistoryEntry: ReturnType<
+    typeof useWasteToolsViewModelHelpers
+  >['runDeleteHistoryEntry'];
 }) => {
   const {
     importProfileId,
@@ -45,8 +49,6 @@ const createWasteToolsViewModelFromState = (input: {
     setImportBlobRef,
     setImportDryRun,
     setDelimiterOverride,
-    setPreviewResult,
-    setPreviewReady,
   } = input.importState;
   const {
     migrationSchema,
@@ -60,8 +62,6 @@ const createWasteToolsViewModelFromState = (input: {
     setMigrationVersion,
     setResetToken,
     setResetConfirmOpen,
-    setRunningAction,
-    setMessage,
   } = input.maintenanceState;
 
   return createWasteToolsViewModel({
@@ -97,7 +97,8 @@ const createWasteToolsViewModelFromState = (input: {
 };
 
 export const useWasteToolsViewModel = (pt: Translate) => {
-  const { importCatalog, importState, maintenanceState, technicalHistoryState } = useWasteToolStateBundles();
+  const { importCatalog, importState, maintenanceState, technicalHistoryState } =
+    useWasteToolStateBundles();
   const { setImportSourceFormat, setPreviewResult, setPreviewReady } = importState;
   const {
     migrationSchema,

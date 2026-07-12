@@ -2,10 +2,8 @@ import type {
   WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteHouseNumberRecord,
-  WasteLocationTourLinkRecord,
   WasteRegionRecord,
   WasteStreetRecord,
-  WasteTourRecord,
 } from '@sva/plugin-sdk';
 
 import { WasteMasterDataLocationsHierarchy } from './waste-management.master-data-locations-hierarchy.js';

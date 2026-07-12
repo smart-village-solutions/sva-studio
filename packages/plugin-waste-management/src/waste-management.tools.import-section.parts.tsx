@@ -171,7 +171,7 @@ export const WasteToolsWizardLayout = ({
   </StudioEditSurface>
 );
 
-export const WasteToolsImportProfileChooser = ({
+const WasteToolsImportProfileChooser = ({
   importCatalog,
   selectedProfileId,
   onSelect,
@@ -226,7 +226,7 @@ export const WasteToolsImportProfileChooser = ({
   );
 };
 
-export const WasteToolsUploadFields = ({
+const WasteToolsUploadFields = ({
   selectedImportProfile,
   importSourceFormat,
   fileInputId,
@@ -323,7 +323,7 @@ export const WasteToolsUploadFields = ({
   );
 };
 
-export const WasteToolsImportRuleBox = () => {
+const WasteToolsImportRuleBox = () => {
   const pt = usePluginTranslation('wasteManagement');
 
   return (
@@ -340,7 +340,7 @@ export const WasteToolsImportRuleBox = () => {
   );
 };
 
-export const WasteToolsImportColumns = ({ profile }: { readonly profile: ImportCatalogEntry }) => {
+const WasteToolsImportColumns = ({ profile }: { readonly profile: ImportCatalogEntry }) => {
   const pt = usePluginTranslation('wasteManagement');
 
   return (
@@ -364,7 +364,7 @@ export const WasteToolsImportColumns = ({ profile }: { readonly profile: ImportC
   );
 };
 
-export const WasteToolsPreviewSummary = ({
+const WasteToolsPreviewSummary = ({
   previewResult,
 }: {
   readonly previewResult: NonNullable<
@@ -483,7 +483,7 @@ export const WasteToolsPreviewSummary = ({
   );
 };
 
-export const WasteToolsResultSummary = ({
+const WasteToolsResultSummary = ({
   jobId,
   status,
   onStartNewImport,
@@ -527,7 +527,7 @@ export const WasteToolsResultSummary = ({
   );
 };
 
-export const WasteToolsWizardFooter = ({
+const WasteToolsWizardFooter = ({
   backDisabled = false,
   onBack,
   primaryAction,

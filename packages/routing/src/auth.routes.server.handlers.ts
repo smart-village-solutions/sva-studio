@@ -144,6 +144,13 @@ export const governanceAuthHandlerMap = {
     DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteLocationTourPickupDate),
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateLocationTourPickupDate),
   },
+  '/api/v1/waste-management/tour-assignments': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createTourAssignment),
+  },
+  '/api/v1/waste-management/tour-assignments/$assignmentId': {
+    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteTourAssignment),
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateTourAssignment),
+  },
   '/api/v1/waste-management/global-date-shifts': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createGlobalDateShift),
   },
@@ -184,7 +191,9 @@ export const governanceAuthHandlerMap = {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startImport),
   },
   '/api/v1/waste-management/tools/imports/preview': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.previewLocationTourPickupDateImport),
+    POST: routeHandler(
+      authRuntimeRoutes.wasteManagementHandlers.previewLocationTourPickupDateImport
+    ),
   },
   '/api/v1/waste-management/tools/migrations': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startMigrations),

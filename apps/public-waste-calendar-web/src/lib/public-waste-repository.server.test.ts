@@ -58,7 +58,7 @@ describe('public waste repository', () => {
 
     expect(execute).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        text: expect.stringContaining("SELECT DISTINCT *"),
+        text: expect.stringContaining('SELECT DISTINCT *'),
       })
     );
   });
@@ -72,8 +72,6 @@ describe('public waste repository', () => {
           {
             link_id: 'link-1',
             location_id: 'location-1',
-            link_start_date: '2026-01-01',
-            link_end_date: null,
             tour_id: 'tour-1',
             tour_name: 'Restmuell',
             tour_description: 'Leerung fuer den Innenstadtbereich.',
@@ -110,7 +108,9 @@ describe('public waste repository', () => {
 
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({
-        text: expect.stringContaining('cl.house_number_id IS NULL OR cl.house_number_id = $5::uuid'),
+        text: expect.stringContaining(
+          'cl.house_number_id IS NULL OR cl.house_number_id = $5::uuid'
+        ),
       })
     );
   });
@@ -124,8 +124,6 @@ describe('public waste repository', () => {
           {
             link_id: 'link-1',
             location_id: 'location-1',
-            link_start_date: '2026-01-01',
-            link_end_date: null,
             tour_id: 'tour-1',
             tour_name: 'Restmuell',
             tour_description: 'Leerung fuer den Innenstadtbereich.',
@@ -161,12 +159,12 @@ describe('public waste repository', () => {
 
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({
-        text: expect.stringContaining("cl.region_id IS NULL OR cl.region_id = $4::uuid"),
+        text: expect.stringContaining('cl.region_id IS NULL OR cl.region_id = $4::uuid'),
       })
     );
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({
-        text: expect.stringContaining("cl.street_id IS NULL OR cl.street_id = $3::uuid"),
+        text: expect.stringContaining('cl.street_id IS NULL OR cl.street_id = $3::uuid'),
       })
     );
   });
@@ -180,8 +178,6 @@ describe('public waste repository', () => {
           {
             link_id: 'link-1',
             location_id: 'location-1',
-            link_start_date: '2026-01-01',
-            link_end_date: null,
             tour_id: 'tour-1',
             tour_name: 'Restmuell',
             tour_description: 'Leerung fuer den Innenstadtbereich.',
@@ -233,8 +229,6 @@ describe('public waste repository', () => {
           {
             link_id: 'link-1',
             location_id: 'location-1',
-            link_start_date: '2025-01-01',
-            link_end_date: '2026-12-31',
             tour_id: 'tour-1',
             tour_name: 'Papiertour',
             tour_description: null,
@@ -276,7 +270,7 @@ describe('public waste repository', () => {
     );
   });
 
-  it('adds imported pickup dates when a tour has no reconstructable recurrence dates', async () => {
+  it('adds explicit tour assignments when a tour has no reconstructable recurrence dates', async () => {
     const execute = vi
       .fn()
       .mockResolvedValueOnce({
@@ -285,8 +279,6 @@ describe('public waste repository', () => {
           {
             link_id: 'link-1',
             location_id: 'location-1',
-            link_start_date: '2026-01-01',
-            link_end_date: null,
             tour_id: 'tour-1',
             tour_name: 'Restmuell',
             tour_description: 'Importierte Sammeltermine.',
@@ -308,7 +300,7 @@ describe('public waste repository', () => {
         rowCount: 1,
         rows: [
           {
-            location_id: 'location-1',
+            assignment_id: 'assignment-1',
             pickup_date: '2026-05-19',
             tour_id: 'tour-1',
             tour_name: 'Restmuell',
@@ -338,7 +330,7 @@ describe('public waste repository', () => {
       })
     ).resolves.toContainEqual(
       expect.objectContaining({
-        id: 'tour-1:2026-05-19:fraction-1',
+        id: 'assignment-1:fraction-1',
         date: '2026-05-19',
         fractionId: 'fraction-1',
         fractionLabel: 'Restmuell',
@@ -347,9 +339,21 @@ describe('public waste repository', () => {
         note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
       })
     );
+
+    const assignmentQuery = execute.mock.calls[3]?.[0];
+    expect(assignmentQuery).toEqual(
+      expect.objectContaining({
+        text: expect.stringContaining('waste_tour_assignment_locations'),
+      })
+    );
+    expect(assignmentQuery?.text).toContain('cl.street_id IS NULL OR cl.street_id = $3::uuid');
+    expect(assignmentQuery?.text).toContain(
+      'cl.house_number_id IS NULL OR cl.house_number_id = $5::uuid'
+    );
+    expect(assignmentQuery?.text).not.toContain('waste_location_tour_links');
   });
 
-  it('prefers imported pickup-date notes over shift descriptions for matching entries', async () => {
+  it('keeps multiple explicit assignments on one day and suppresses the matching calculated occurrence', async () => {
     const execute = vi
       .fn()
       .mockResolvedValueOnce({
@@ -358,8 +362,84 @@ describe('public waste repository', () => {
           {
             link_id: 'link-1',
             location_id: 'location-1',
-            link_start_date: '2026-01-01',
-            link_end_date: null,
+            tour_id: 'tour-1',
+            tour_name: 'Schadstoffmobil',
+            tour_description: 'Allgemeiner Tourhinweis',
+            tour_recurrence: 'custom',
+            tour_custom_recurrence_interval_days: null,
+            tour_first_date: null,
+            tour_end_date: null,
+            tour_custom_dates: [{ date: '2026-05-19' }],
+            fraction_id: 'fraction-hazardous',
+            fraction_label: 'Schadstoffmobil',
+            fraction_pdf_short_label: 'SM',
+            fraction_color: '#cc0000',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 2,
+        rows: [
+          {
+            assignment_id: 'assignment-morning',
+            pickup_date: '2026-05-19',
+            tour_id: 'tour-1',
+            tour_name: 'Schadstoffmobil',
+            tour_description: 'Allgemeiner Tourhinweis',
+            fraction_id: 'fraction-hazardous',
+            fraction_label: 'Schadstoffmobil',
+            fraction_pdf_short_label: 'SM',
+            fraction_color: '#cc0000',
+            note: '09:00–11:00 Uhr',
+          },
+          {
+            assignment_id: 'assignment-afternoon',
+            pickup_date: '2026-05-19',
+            tour_id: 'tour-1',
+            tour_name: 'Schadstoffmobil',
+            tour_description: 'Allgemeiner Tourhinweis',
+            fraction_id: 'fraction-hazardous',
+            fraction_label: 'Schadstoffmobil',
+            fraction_pdf_short_label: 'SM',
+            fraction_color: '#cc0000',
+            note: '14:00–16:00 Uhr',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+    const entries = await repository.loadCalendarEntries({
+      selection: { cityId: 'city-1', streetId: 'street-1' },
+      referenceDate: '2026-01-01',
+    });
+
+    expect(entries).toEqual([
+      expect.objectContaining({
+        id: 'assignment-morning:fraction-hazardous',
+        note: '09:00–11:00 Uhr',
+      }),
+      expect.objectContaining({
+        id: 'assignment-afternoon:fraction-hazardous',
+        note: '14:00–16:00 Uhr',
+      }),
+    ]);
+    expect(entries).not.toContainEqual(
+      expect.objectContaining({ id: 'tour-1:2026-05-19:fraction-hazardous' })
+    );
+  });
+
+  it('prefers explicit assignment notes over shift descriptions for matching entries', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            link_id: 'link-1',
+            location_id: 'location-1',
             tour_id: 'tour-1',
             tour_name: 'Restmuell',
             tour_description: 'Importierte Sammeltermine.',
@@ -392,7 +472,7 @@ describe('public waste repository', () => {
         rowCount: 1,
         rows: [
           {
-            location_id: 'location-1',
+            assignment_id: 'assignment-1',
             pickup_date: '2026-05-19',
             tour_id: 'tour-1',
             tour_name: 'Restmuell',
@@ -422,7 +502,7 @@ describe('public waste repository', () => {
       })
     ).resolves.toContainEqual(
       expect.objectContaining({
-        id: 'tour-1:2026-05-19:fraction-1',
+        id: 'assignment-1:fraction-1',
         note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
       })
     );
@@ -437,8 +517,6 @@ describe('public waste repository', () => {
           {
             link_id: 'link-1',
             location_id: 'location-1',
-            link_start_date: '2026-01-01',
-            link_end_date: '2026-12-31',
             tour_id: 'tour-1',
             tour_name: 'Restmuell',
             tour_description: 'Leerung fuer den Innenstadtbereich.',
@@ -498,7 +576,7 @@ describe('public waste repository', () => {
     );
   });
 
-  it('ignores imported pickup dates outside the location-tour link validity window', async () => {
+  it('loads explicit assignments independently of location-tour link validity windows', async () => {
     const execute = vi
       .fn()
       .mockResolvedValueOnce({
@@ -507,8 +585,6 @@ describe('public waste repository', () => {
           {
             link_id: 'link-1',
             location_id: 'location-1',
-            link_start_date: '2026-06-01',
-            link_end_date: '2026-06-30',
             tour_id: 'tour-1',
             tour_name: 'Restmuell',
             tour_description: 'Importierte Sammeltermine.',
@@ -530,7 +606,7 @@ describe('public waste repository', () => {
         rowCount: 2,
         rows: [
           {
-            location_id: 'location-1',
+            assignment_id: 'assignment-1',
             pickup_date: '2026-05-19',
             tour_id: 'tour-1',
             tour_name: 'Restmuell',
@@ -542,7 +618,7 @@ describe('public waste repository', () => {
             note: null,
           },
           {
-            location_id: 'location-1',
+            assignment_id: 'assignment-2',
             pickup_date: '2026-06-19',
             tour_id: 'tour-1',
             tour_name: 'Restmuell',
@@ -572,7 +648,11 @@ describe('public waste repository', () => {
       })
     ).resolves.toEqual([
       expect.objectContaining({
-        id: 'tour-1:2026-06-19:fraction-1',
+        id: 'assignment-1:fraction-1',
+        date: '2026-05-19',
+      }),
+      expect.objectContaining({
+        id: 'assignment-2:fraction-1',
         date: '2026-06-19',
       }),
     ]);

@@ -6,6 +6,7 @@ import type {
   WasteManagementSettingsRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
+  WasteTourAssignmentRecord,
 } from '@sva/plugin-sdk';
 
 import type {
@@ -13,6 +14,7 @@ import type {
   CreateWasteManagementLocationTourPickupDateInput,
   CreateWasteManagementTourDateShiftInput,
   CreateWasteManagementTourInput,
+  CreateWasteManagementTourAssignmentInput,
   PreviewWasteLocationTourPickupDateImportInput,
   PreviewWasteLocationTourPickupDateImportResult,
   StartWasteManagementImportInput,
@@ -25,6 +27,7 @@ import type {
   UpdateWasteManagementLocationTourPickupDateInput,
   UpdateWasteManagementTourDateShiftInput,
   UpdateWasteManagementTourInput,
+  UpdateWasteManagementTourAssignmentInput,
   WasteManagementSettingsInput,
 } from './waste-management.api.types.js';
 import {
@@ -33,17 +36,53 @@ import {
   requestWasteManagementMutation,
 } from './waste-management.api.shared.js';
 
-export const createWasteManagementTour = async (input: CreateWasteManagementTourInput): Promise<WasteTourRecord> =>
+export const createWasteManagementTour = async (
+  input: CreateWasteManagementTourInput
+): Promise<WasteTourRecord> =>
   requestWasteManagementMutation('/api/v1/waste-management/tours', input);
 
 export const updateWasteManagementTour = async (
   tourId: string,
   input: UpdateWasteManagementTourInput
 ): Promise<WasteTourRecord> =>
-  requestWasteManagementMutation(`/api/v1/waste-management/tours/${encodeURIComponent(tourId)}`, input, 'PUT');
+  requestWasteManagementMutation(
+    `/api/v1/waste-management/tours/${encodeURIComponent(tourId)}`,
+    input,
+    'PUT'
+  );
 
-export const deleteWasteManagementTour = async (tourId: string): Promise<Readonly<{ id: string }>> =>
-  requestWasteManagementMutation(`/api/v1/waste-management/tours/${encodeURIComponent(tourId)}`, undefined, 'DELETE');
+export const deleteWasteManagementTour = async (
+  tourId: string
+): Promise<Readonly<{ id: string }>> =>
+  requestWasteManagementMutation(
+    `/api/v1/waste-management/tours/${encodeURIComponent(tourId)}`,
+    undefined,
+    'DELETE'
+  );
+
+export const createWasteManagementTourAssignment = async (
+  input: CreateWasteManagementTourAssignmentInput
+): Promise<WasteTourAssignmentRecord> =>
+  requestWasteManagementMutation('/api/v1/waste-management/tour-assignments', input);
+
+export const updateWasteManagementTourAssignment = async (
+  assignmentId: string,
+  input: UpdateWasteManagementTourAssignmentInput
+): Promise<WasteTourAssignmentRecord> =>
+  requestWasteManagementMutation(
+    `/api/v1/waste-management/tour-assignments/${encodeURIComponent(assignmentId)}`,
+    input,
+    'PUT'
+  );
+
+export const deleteWasteManagementTourAssignment = async (
+  assignmentId: string
+): Promise<Readonly<{ id: string }>> =>
+  requestWasteManagementMutation(
+    `/api/v1/waste-management/tour-assignments/${encodeURIComponent(assignmentId)}`,
+    undefined,
+    'DELETE'
+  );
 
 export const createWasteManagementTourDateShift = async (
   input: CreateWasteManagementTourDateShiftInput
@@ -60,8 +99,14 @@ export const updateWasteManagementTourDateShift = async (
     'PUT'
   );
 
-export const deleteWasteManagementTourDateShift = async (shiftId: string): Promise<Readonly<{ id: string }>> =>
-  requestWasteManagementMutation(`/api/v1/waste-management/tour-date-shifts/${encodeURIComponent(shiftId)}`, undefined, 'DELETE');
+export const deleteWasteManagementTourDateShift = async (
+  shiftId: string
+): Promise<Readonly<{ id: string }>> =>
+  requestWasteManagementMutation(
+    `/api/v1/waste-management/tour-date-shifts/${encodeURIComponent(shiftId)}`,
+    undefined,
+    'DELETE'
+  );
 
 export const createWasteManagementGlobalDateShift = async (
   input: CreateWasteManagementGlobalDateShiftInput
@@ -83,8 +128,14 @@ export const updateWasteManagementGlobalDateShift = async (
     'PUT'
   );
 
-export const deleteWasteManagementGlobalDateShift = async (shiftId: string): Promise<Readonly<{ id: string }>> =>
-  requestWasteManagementMutation(`/api/v1/waste-management/global-date-shifts/${encodeURIComponent(shiftId)}`, undefined, 'DELETE');
+export const deleteWasteManagementGlobalDateShift = async (
+  shiftId: string
+): Promise<Readonly<{ id: string }>> =>
+  requestWasteManagementMutation(
+    `/api/v1/waste-management/global-date-shifts/${encodeURIComponent(shiftId)}`,
+    undefined,
+    'DELETE'
+  );
 
 export const updateWasteManagementLocationTourPickupDate = async (
   pickupDateId: string,
@@ -110,20 +161,32 @@ export const updateWasteManagementSettings = async (
 ): Promise<WasteManagementSettingsRecord | null> =>
   requestWasteManagementMutation('/api/v1/waste-management/settings', input, 'PUT');
 
-export const startWasteManagementHolidaySync = async (): Promise<WasteManagementSettingsRecord | null> =>
-  requestWasteManagementMutation('/api/v1/waste-management/settings/holiday-sync', {}, 'POST');
+export const startWasteManagementHolidaySync =
+  async (): Promise<WasteManagementSettingsRecord | null> =>
+    requestWasteManagementMutation('/api/v1/waste-management/settings/holiday-sync', {}, 'POST');
 
 export const updateWasteManagementHolidayRule = async (
   ruleId: string,
   input: UpdateWasteManagementHolidayRuleInput
 ): Promise<WasteHolidayRuleRecord> =>
-  requestWasteManagementMutation(`/api/v1/waste-management/holiday-rules/${encodeURIComponent(ruleId)}`, input, 'PUT');
+  requestWasteManagementMutation(
+    `/api/v1/waste-management/holiday-rules/${encodeURIComponent(ruleId)}`,
+    input,
+    'PUT'
+  );
 
-export const deleteWasteManagementHolidayRule = async (ruleId: string): Promise<Readonly<{ id: string }>> =>
-  requestWasteManagementMutation(`/api/v1/waste-management/holiday-rules/${encodeURIComponent(ruleId)}`, undefined, 'DELETE');
+export const deleteWasteManagementHolidayRule = async (
+  ruleId: string
+): Promise<Readonly<{ id: string }>> =>
+  requestWasteManagementMutation(
+    `/api/v1/waste-management/holiday-rules/${encodeURIComponent(ruleId)}`,
+    undefined,
+    'DELETE'
+  );
 
-export const startWasteManagementInitialize = async (input: Readonly<{ targetSchema?: string }> = {}) =>
-  requestWasteManagementJob('/api/v1/waste-management/tools/initialize', input);
+export const startWasteManagementInitialize = async (
+  input: Readonly<{ targetSchema?: string }> = {}
+) => requestWasteManagementJob('/api/v1/waste-management/tools/initialize', input);
 
 export const startWasteManagementMigrations = async (input: StartWasteManagementMigrationsInput) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/migrations', input);
@@ -141,8 +204,9 @@ export const startWasteManagementSeed = async (input: StartWasteManagementSeedIn
     seedKey: input.seedKey ?? 'baseline',
   });
 
-export const startWasteManagementMainserverSync = async (input: StartWasteManagementMainserverSyncInput = {}) =>
-  requestWasteManagementJob('/api/v1/waste-management/tools/mainserver-sync', input);
+export const startWasteManagementMainserverSync = async (
+  input: StartWasteManagementMainserverSyncInput = {}
+) => requestWasteManagementJob('/api/v1/waste-management/tools/mainserver-sync', input);
 
 export const startWasteManagementSyncWasteTypes = async () =>
   requestWasteManagementJob('/api/v1/waste-management/tools/sync-waste-types', {});
@@ -150,8 +214,14 @@ export const startWasteManagementSyncWasteTypes = async () =>
 export const startWasteManagementReset = async (input: StartWasteManagementResetInput) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/reset', input);
 
-export const deleteWasteManagementHistoryJob = async (jobId: string): Promise<Readonly<{ id: string }>> =>
-  requestWasteManagementMutation(`/api/v1/plugin-operations/jobs/${encodeURIComponent(jobId)}`, undefined, 'DELETE');
+export const deleteWasteManagementHistoryJob = async (
+  jobId: string
+): Promise<Readonly<{ id: string }>> =>
+  requestWasteManagementMutation(
+    `/api/v1/plugin-operations/jobs/${encodeURIComponent(jobId)}`,
+    undefined,
+    'DELETE'
+  );
 
 export const getWasteManagementJobDetail = async (
   jobId: string,

@@ -6,8 +6,12 @@ import type { WasteManagementSearchParams } from '../src/search-params.js';
 
 const useWasteSchedulingStateMock = vi.hoisted(() => vi.fn());
 const useWasteSchedulingOverviewMock = vi.hoisted(() => vi.fn());
-const schedulingActionsMock = vi.hoisted(() => vi.fn(() => ({ openCreateTourShiftDialog: vi.fn() })));
-const schedulingMutationsMock = vi.hoisted(() => vi.fn(() => ({ onDeleteSchedulingRows: vi.fn() })));
+const schedulingActionsMock = vi.hoisted(() =>
+  vi.fn(() => ({ openCreateTourShiftDialog: vi.fn() }))
+);
+const schedulingMutationsMock = vi.hoisted(() =>
+  vi.fn(() => ({ onDeleteSchedulingRows: vi.fn() }))
+);
 const schedulingTableEntriesMock = vi.hoisted(() => vi.fn(() => [{ id: 'row-1' }]));
 const filterSchedulingTableEntriesMock = vi.hoisted(() => vi.fn((entries: unknown) => entries));
 
@@ -28,9 +32,9 @@ vi.mock('../src/waste-management.scheduling-mutations.js', () => ({
 }));
 
 vi.mock('../src/waste-management.scheduling.shared.js', async () => {
-  const actual = await vi.importActual<typeof import('../src/waste-management.scheduling.shared.js')>(
-    '../src/waste-management.scheduling.shared.js'
-  );
+  const actual = await vi.importActual<
+    typeof import('../src/waste-management.scheduling.shared.js')
+  >('../src/waste-management.scheduling.shared.js');
 
   return {
     ...actual,
@@ -40,7 +44,11 @@ vi.mock('../src/waste-management.scheduling.shared.js', async () => {
 });
 
 vi.mock('../src/waste-management.tours.locations.js', () => ({
-  formatCollectionLocationLabel: (_pt: unknown, _overview: unknown, location: { id: string; name?: string }) => location.name ?? location.id,
+  formatCollectionLocationLabel: (
+    _pt: unknown,
+    _overview: unknown,
+    location: { id: string; name?: string }
+  ) => location.name ?? location.id,
 }));
 
 const search: WasteManagementSearchParams = {
@@ -65,15 +73,21 @@ describe('useWasteSchedulingViewModel', () => {
     useWasteSchedulingOverviewMock.mockReturnValue(vi.fn());
   });
 
-  it('resolves schadstoffmobil assignments and sorted location options from overview state', () => {
+  it('resolves generic tour assignments and all sorted location options from overview state', () => {
     const state = {
       overview: {
         holidayRules: [],
         globalDateShifts: [],
         tourDateShifts: [],
-        locationTourPickupDates: [
-          { id: 'pickup-1', tourId: 'tour-1', locationId: 'location-2', pickupDate: '2026-07-01', note: '08:00' },
-          { id: 'pickup-2', tourId: 'tour-2', locationId: 'location-1', pickupDate: '2026-07-02', note: '09:00' },
+        locationTourPickupDates: [],
+        tourAssignments: [
+          {
+            id: 'assignment-1',
+            tourId: 'tour-2',
+            locationIds: ['location-1', 'location-3'],
+            pickupDate: '2026-07-02',
+            note: null,
+          },
         ],
       },
       availableTours: [
@@ -97,12 +111,18 @@ describe('useWasteSchedulingViewModel', () => {
 
     const { result } = renderHook(() => useWasteSchedulingViewModel((key) => key, search));
 
-    expect(result.current.schadstoffmobilTour).toEqual({ id: 'tour-1', name: '  schadstoffmobil ' });
-    expect(result.current.schadstoffmobilAssignments).toEqual([
-      { id: 'pickup-1', tourId: 'tour-1', locationId: 'location-2', pickupDate: '2026-07-01', note: '08:00' },
+    expect(result.current.tourAssignments).toEqual([
+      {
+        id: 'assignment-1',
+        tourId: 'tour-2',
+        locationIds: ['location-1', 'location-3'],
+        pickupDate: '2026-07-02',
+        note: null,
+      },
     ]);
-    expect(result.current.schadstoffmobilLocationOptions).toEqual([
+    expect(result.current.assignmentLocationOptions).toEqual([
       { id: 'location-1', label: 'Albertplatz' },
+      { id: 'location-3', label: 'Ohne Link' },
       { id: 'location-2', label: 'Ziegelhof' },
     ]);
     expect(result.current.openCreateTourShiftDialog).toBeTypeOf('function');
@@ -110,7 +130,7 @@ describe('useWasteSchedulingViewModel', () => {
     expect(filterSchedulingTableEntriesMock).toHaveBeenCalledWith([{ id: 'row-1' }], search);
   });
 
-  it('returns empty schadstoffmobil collections when no matching tour or locations are present', () => {
+  it('returns empty generic assignment collections when overview or locations are absent', () => {
     const state = {
       overview: null,
       availableTours: [{ id: 'tour-2', name: 'Biotonne' }],
@@ -120,9 +140,8 @@ describe('useWasteSchedulingViewModel', () => {
 
     const { result } = renderHook(() => useWasteSchedulingViewModel((key) => key, search));
 
-    expect(result.current.schadstoffmobilTour).toBeNull();
-    expect(result.current.schadstoffmobilAssignments).toEqual([]);
-    expect(result.current.schadstoffmobilLocationOptions).toEqual([]);
+    expect(result.current.tourAssignments).toEqual([]);
+    expect(result.current.assignmentLocationOptions).toEqual([]);
     expect(schedulingTableEntriesMock).toHaveBeenCalledWith({
       holidayRules: [],
       globalDateShifts: [],

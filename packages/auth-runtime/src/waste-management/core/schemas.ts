@@ -1,7 +1,13 @@
-import { isPlausibleEmailAddress, wasteManagementMasterDataContract, type WasteTourRecurrence } from '@sva/core';
+import {
+  isPlausibleEmailAddress,
+  wasteManagementMasterDataContract,
+  type WasteTourRecurrence,
+} from '@sva/core';
 import { z } from 'zod';
 
-const wasteFractionReminderCountSchema = z.enum(wasteManagementMasterDataContract.fractionReminderCounts);
+const wasteFractionReminderCountSchema = z.enum(
+  wasteManagementMasterDataContract.fractionReminderCounts
+);
 const wasteFractionReminderLeadDaySchema = z
   .number()
   .int()
@@ -41,7 +47,8 @@ const wasteFractionReminderConfigSchema = z
     calendar: wasteFractionReminderChannelSchema.optional(),
   })
   .superRefine((value, ctx) => {
-    const requiredSlotCount = value.reminderCount === 'none' ? 0 : value.reminderCount === 'once' ? 1 : 2;
+    const requiredSlotCount =
+      value.reminderCount === 'none' ? 0 : value.reminderCount === 'once' ? 1 : 2;
     const channels: Array<keyof typeof value.channels> = ['push', 'email', 'calendar'];
 
     if (requiredSlotCount === 0) {
@@ -74,7 +81,11 @@ const withWasteFractionReminderValidation = <
       return;
     }
 
-    if (!value.reminderConfig.channels.push && !value.reminderConfig.channels.email && !value.reminderConfig.channels.calendar) {
+    if (
+      !value.reminderConfig.channels.push &&
+      !value.reminderConfig.channels.email &&
+      !value.reminderConfig.channels.calendar
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['reminderConfig', 'channels'],
@@ -89,7 +100,10 @@ const wasteFractionSchemaBase = z.object({
   pdfShortLabel: z.string().trim().min(1).max(12),
   translations: z.record(z.string().trim().min(1), z.string().trim().min(1)).optional(),
   containerSize: z.string().trim().min(1).optional(),
-  color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, 'Ungültiger Hex-Farbwert.'),
+  color: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/, 'Ungültiger Hex-Farbwert.'),
   description: z.string().trim().min(1).optional(),
   active: z.boolean(),
   reminderConfig: wasteFractionReminderConfigSchema,
@@ -97,7 +111,9 @@ const wasteFractionSchemaBase = z.object({
 
 const createWasteFractionSchema = withWasteFractionReminderValidation(wasteFractionSchemaBase);
 
-const updateWasteFractionSchema = withWasteFractionReminderValidation(wasteFractionSchemaBase.omit({ id: true }));
+const updateWasteFractionSchema = withWasteFractionReminderValidation(
+  wasteFractionSchemaBase.omit({ id: true })
+);
 
 const createWasteRegionSchema = z.object({
   id: z.string().trim().min(1),
@@ -141,9 +157,14 @@ const createWasteCollectionLocationSchema = z.object({
 
 const updateWasteCollectionLocationSchema = createWasteCollectionLocationSchema.omit({ id: true });
 
-const wasteTourRecurrenceSchema = z.enum(
-  ['weekly', 'biweekly', 'fourweekly', 'yearly', 'on-demand', 'custom'] satisfies readonly WasteTourRecurrence[]
-);
+const wasteTourRecurrenceSchema = z.enum([
+  'weekly',
+  'biweekly',
+  'fourweekly',
+  'yearly',
+  'on-demand',
+  'custom',
+] satisfies readonly WasteTourRecurrence[]);
 
 const wasteTourDateSchema = z
   .string()
@@ -161,11 +182,17 @@ const wasteHolidayStateCodeSchema = z.enum(wasteManagementMasterDataContract.hol
 const optionalWasteUrlSchema = z
   .string()
   .trim()
-  .refine((value) => value.length === 0 || z.string().url().safeParse(value).success, 'Ungültige URL.');
+  .refine(
+    (value) => value.length === 0 || z.string().url().safeParse(value).success,
+    'Ungültige URL.'
+  );
 const optionalEmailSchema = z
   .string()
   .trim()
-  .refine((value) => value.length === 0 || isPlausibleEmailAddress(value), 'Ungültige E-Mail-Adresse.');
+  .refine(
+    (value) => value.length === 0 || isPlausibleEmailAddress(value),
+    'Ungültige E-Mail-Adresse.'
+  );
 const optionalRelativePathSchema = z
   .string()
   .trim()
@@ -177,7 +204,10 @@ const requiredRelativePathSchema = z
   .string()
   .trim()
   .min(1)
-  .refine((value) => /^\/(?!\/)/.test(value) && !/^[a-z]+:/i.test(value), 'Ungültiger relativer Pfad.');
+  .refine(
+    (value) => /^\/(?!\/)/.test(value) && !/^[a-z]+:/i.test(value),
+    'Ungültiger relativer Pfad.'
+  );
 const wastePublicBaseUrlSchema = z
   .string()
   .trim()
@@ -280,8 +310,6 @@ const createWasteLocationTourLinkSchema = z.object({
   id: z.string().trim().min(1),
   locationId: z.string().trim().min(1),
   tourId: z.string().trim().min(1),
-  startDate: wasteTourDateSchema.optional(),
-  endDate: wasteTourDateSchema.optional(),
 });
 
 const updateWasteLocationTourLinkSchema = createWasteLocationTourLinkSchema.omit({ id: true });
@@ -294,13 +322,22 @@ const createWasteLocationTourPickupDateSchema = z.object({
   note: z.string().trim().min(1).optional(),
 });
 
-const updateWasteLocationTourPickupDateSchema = createWasteLocationTourPickupDateSchema.omit({ id: true });
+const updateWasteLocationTourPickupDateSchema = createWasteLocationTourPickupDateSchema.omit({
+  id: true,
+});
+
+const createWasteTourAssignmentSchema = z.object({
+  id: z.string().trim().min(1),
+  tourId: z.string().trim().min(1),
+  pickupDate: wasteTourDateSchema,
+  note: z.string().trim().min(1).optional(),
+  locationIds: z.array(z.string().trim().min(1)).min(1).max(100),
+});
+const updateWasteTourAssignmentSchema = createWasteTourAssignmentSchema.omit({ id: true });
 
 const createWasteLocationTourLinksBulkSchema = z.object({
   locationIds: z.array(z.string().trim().min(1)).min(1).max(100),
   tourId: z.string().trim().min(1),
-  startDate: wasteTourDateSchema.optional(),
-  endDate: wasteTourDateSchema.optional(),
 });
 
 const wasteCustomTourDateSchema = z.object({
@@ -383,6 +420,8 @@ export const wasteManagementTourSchemas = {
   updateWasteLocationTourLinkSchema,
   createWasteLocationTourPickupDateSchema,
   updateWasteLocationTourPickupDateSchema,
+  createWasteTourAssignmentSchema,
+  updateWasteTourAssignmentSchema,
   createWasteLocationTourLinksBulkSchema,
   createWasteTourSchema,
   updateWasteTourSchema,

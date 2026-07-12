@@ -8,7 +8,7 @@ import { authorizeWasteManagementAction, emitWasteAuditEvent } from './auth.js';
 import { wasteManagementTourSchemas } from './schemas.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
-import { getRequestId, normalizeOptionalString, requireActorInstanceId, requireDeps } from './utils.js';
+import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
 
 const { createWasteLocationTourLinksBulkSchema } = wasteManagementTourSchemas;
 
@@ -19,7 +19,12 @@ export const wasteManagementLocationTourLinkBulkHandlers = {
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
     const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.tours.manage', deps, requestId);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.tours.manage',
+      deps,
+      requestId
+    );
     if (authError) {
       return authError;
     }
@@ -52,11 +57,12 @@ export const wasteManagementLocationTourLinkBulkHandlers = {
     }
 
     try {
-      const items = await requireDeps(deps.saveWasteLocationTourLinksBulk, 'saveWasteLocationTourLinksBulk')(instanceId, {
+      const items = await requireDeps(
+        deps.saveWasteLocationTourLinksBulk,
+        'saveWasteLocationTourLinksBulk'
+      )(instanceId, {
         locationIds: parsed.data.locationIds.map((entry) => entry.trim()),
         tourId: parsed.data.tourId,
-        startDate: normalizeOptionalString(parsed.data.startDate),
-        endDate: normalizeOptionalString(parsed.data.endDate),
       });
 
       const result: WasteLocationTourLinkBulkCreateResult = {

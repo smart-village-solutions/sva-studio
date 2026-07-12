@@ -22,7 +22,7 @@ type WasteManagementSchedulingScopeCopy = Readonly<{
 type WasteManagementSchedulingCopy = Readonly<{
   global: WasteManagementSchedulingScopeCopy;
   tour: WasteManagementSchedulingScopeCopy;
-  schadstoffmobil?: Readonly<Record<string, unknown>>;
+  assignments?: Readonly<Record<string, unknown>>;
   holidayRules?: Readonly<Record<string, unknown>>;
   actions: Readonly<Record<string, string>>;
   create: Readonly<Record<string, string>>;
@@ -109,7 +109,9 @@ type WasteManagementToursCopy = Readonly<{
   yearCalendar?: WasteManagementToursYearCalendarCopy;
 }>;
 
-export const createSchedulingScopeTranslations = <const TCopy extends WasteManagementSchedulingScopeCopy>(copy: TCopy) =>
+const createSchedulingScopeTranslations = <const TCopy extends WasteManagementSchedulingScopeCopy>(
+  copy: TCopy
+) =>
   ({
     title: copy.title,
     description: copy.description,
@@ -121,7 +123,11 @@ export const createSchedulingScopeTranslations = <const TCopy extends WasteManag
     messages: createCrudMessages(copy.messages),
   }) as const;
 
-export const createToursAssignmentsTranslations = <const TCopy extends WasteManagementToursAssignmentsCopy>(copy: TCopy) =>
+export const createToursAssignmentsTranslations = <
+  const TCopy extends WasteManagementToursAssignmentsCopy,
+>(
+  copy: TCopy
+) =>
   ({
     title: copy.title,
     actions: createCrudActions(copy.actions),
@@ -132,7 +138,11 @@ export const createToursAssignmentsTranslations = <const TCopy extends WasteMana
     messages: createCrudMessages(copy.messages),
   }) as const;
 
-export const createToursYearCalendarTranslations = <const TCopy extends WasteManagementToursYearCalendarCopy>(copy: TCopy) =>
+export const createToursYearCalendarTranslations = <
+  const TCopy extends WasteManagementToursYearCalendarCopy,
+>(
+  copy: TCopy
+) =>
   ({
     title: copy.title,
     description: copy.description,
@@ -141,12 +151,16 @@ export const createToursYearCalendarTranslations = <const TCopy extends WasteMan
     meta: copy.meta,
   }) as const;
 
-export const createWasteManagementSchedulingTranslations = <const TCopy extends WasteManagementSchedulingCopy>(copy: TCopy) =>
+export const createWasteManagementSchedulingTranslations = <
+  const TCopy extends WasteManagementSchedulingCopy,
+>(
+  copy: TCopy
+) =>
   ({
     scheduling: {
       global: createSchedulingScopeTranslations(copy.global),
       tour: createSchedulingScopeTranslations(copy.tour),
-      schadstoffmobil: copy.schadstoffmobil,
+      assignments: copy.assignments,
       holidayRules: copy.holidayRules,
       actions: copy.actions,
       create: copy.create,
@@ -159,7 +173,11 @@ export const createWasteManagementSchedulingTranslations = <const TCopy extends 
     },
   }) as const;
 
-export const createWasteManagementToursTranslations = <const TCopy extends WasteManagementToursCopy>(copy: TCopy) =>
+export const createWasteManagementToursTranslations = <
+  const TCopy extends WasteManagementToursCopy,
+>(
+  copy: TCopy
+) =>
   ({
     tours: createOptionalSection(
       createOptionalSection(
@@ -181,9 +199,9 @@ export const createWasteManagementToursTranslations = <const TCopy extends Waste
           messages: copy.messages,
         } as const,
         'assignments',
-        copy.assignments,
+        copy.assignments
       ),
       'yearCalendar',
-      copy.yearCalendar,
+      copy.yearCalendar
     ),
   }) as const;

@@ -8,7 +8,9 @@ type Translate = (key: string, variables?: Readonly<Record<string, string | numb
 
 const updateManagedField =
   (
-    onChange: (next: SettingsFormState | ((current: SettingsFormState) => SettingsFormState)) => void
+    onChange: (
+      next: SettingsFormState | ((current: SettingsFormState) => SettingsFormState)
+    ) => void
   ) =>
   <Key extends keyof SettingsFormState>(key: Key, value: SettingsFormState[Key]) => {
     onChange((current) => ({ ...current, [key]: value }));
@@ -21,7 +23,9 @@ export const WasteSettingsTechnicalConfigFields = ({
 }: {
   readonly form: SettingsFormState;
   readonly pt: Translate;
-  readonly onChange: (next: SettingsFormState | ((current: SettingsFormState) => SettingsFormState)) => void;
+  readonly onChange: (
+    next: SettingsFormState | ((current: SettingsFormState) => SettingsFormState)
+  ) => void;
 }) => {
   const updateField = updateManagedField(onChange);
 
@@ -54,7 +58,10 @@ export const WasteSettingsTechnicalConfigFields = ({
           placeholder="postgresql://..."
         />
       </StudioField>
-      <StudioField id="waste-settings-service-role-key" label={pt('settings.fields.serviceRoleKey')}>
+      <StudioField
+        id="waste-settings-service-role-key"
+        label={pt('settings.fields.serviceRoleKey')}
+      >
         <Input
           id="waste-settings-service-role-key"
           value={form.serviceRoleKey}
@@ -69,7 +76,9 @@ export const WasteSettingsTechnicalConfigFields = ({
           ariaLabel={pt('settings.fields.enabled')}
           onChange={(enabled) => updateField('enabled', enabled)}
         />
-        <span className="text-sm text-muted-foreground">{form.enabled ? pt('common.active') : pt('common.inactive')}</span>
+        <span className="text-sm text-muted-foreground">
+          {form.enabled ? pt('common.active') : pt('common.inactive')}
+        </span>
       </div>
     </StudioFieldGroup>
   );
@@ -82,7 +91,9 @@ export const WasteSettingsContentFields = ({
 }: {
   readonly form: SettingsFormState;
   readonly pt: Translate;
-  readonly onChange: (next: SettingsFormState | ((current: SettingsFormState) => SettingsFormState)) => void;
+  readonly onChange: (
+    next: SettingsFormState | ((current: SettingsFormState) => SettingsFormState)
+  ) => void;
 }) => {
   const updateField = updateManagedField(onChange);
 
@@ -110,7 +121,9 @@ export const WasteSettingsContentFields = ({
           id="waste-settings-holiday-state-code"
           name="holidayStateCode"
           value={form.holidayStateCode}
-          onChange={(event) => updateField('holidayStateCode', event.currentTarget.value as WasteHolidayStateCode | '')}
+          onChange={(event) =>
+            updateField('holidayStateCode', event.currentTarget.value as WasteHolidayStateCode | '')
+          }
         >
           <option value="">{pt('settings.fields.holidayStateCodePlaceholder')}</option>
           {wasteManagementMasterDataContract.holidayStateCodes.map((stateCode) => (

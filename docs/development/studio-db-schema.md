@@ -234,19 +234,20 @@ Kernidee:
 
 ### 9. Externe Waste-Fachdatenbank
 
-Die instanzbezogene Waste-Fachdatenbank ist technisch von der zentralen IAM-/Governance-Persistenz getrennt. Der kanonische migrationsbasierte Studio-Snapshot unter `docs/development/studio-db-schema-final.sql` dokumentiert inzwischen den runtime-nahen Sollzustand für die bereits angebundenen `waste_*`-Tabellen.
+Die instanzbezogene Waste-Fachdatenbank ist technisch von der zentralen IAM-/Governance-Persistenz getrennt. Der kanonische migrationsbasierte Studio-Snapshot unter `docs/development/studio-db-schema-final.sql` dokumentiert ausschließlich die zentrale Studio-Datenbank. Das Runtime-Schema der externen Waste-Fachdatenbank wird separat in `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts` gepflegt.
 
 Kernidee:
 
-- Waste-Fachtabellen gelten nur dann als Teil des kanonischen Studio-Snapshots, wenn sie auch über `packages/data/migrations/*.sql` reproduzierbar erzeugt werden.
-- Fachliche oder externe Waste-Schemata außerhalb dieses Migrationspfads dürfen nicht stillschweigend im Soll-Snapshot oder in CI-Gates auftauchen.
-- Für den aktuellen Stand sind `waste_location_tour_pickup_dates` sowie die neuen Tabellen `waste_email_reminder_subscriptions`, `waste_email_reminder_subscription_items` und `waste_email_reminder_outbox` explizit in diesen migrationsbasierten Sollstand aufgenommen.
+- Fachliche Tabellen der externen Waste-Schemata dürfen nicht stillschweigend in den Soll-Snapshot der zentralen Studio-Datenbank aufgenommen werden.
+- Die zentral gespeicherten Tabellen `waste_email_reminder_subscriptions`, `waste_email_reminder_subscription_items` und `waste_email_reminder_outbox` sind über `packages/data/migrations/*.sql` reproduzierbar und deshalb Teil des kanonischen Studio-Snapshots.
+- `waste_location_tour_links`, `waste_location_tour_pickup_dates`, `waste_tour_assignments` und `waste_tour_assignment_locations` gehören dagegen zum externen, instanzbezogenen Waste-Schema und werden über den runtime-nahen Schema-Pfad reproduzierbar erzeugt. Die Zuordnungstabelle `waste_location_tour_links` enthält nur Ort und Tour; ihre Gültigkeit wird ausschließlich aus `waste_tours.first_date` und `waste_tours.end_date` abgeleitet.
 
 Für den aktuellen Waste-PDF-Export-Shift ist wichtig:
 
 - Das verpflichtende Fraktionskürzel `waste_fractions.pdf_short_label` gehört zur externen Waste-Fachdatenbank, nicht zur zentralen Studio-DB; Legacy-Daten werden im runtime-nahen Waste-Migrationspfad deterministisch aus Fraktionsname oder ID backfilled.
 - Die Reminder-Konfiguration der externen Tabelle `waste_fractions` verwendet dort `reminder_config JSONB` als Source of Truth; die früheren Flachspalten (`reminder_count`, `first_reminder_max_lead_days`, `second_reminder_max_lead_days`, `reminder_channel_*_enabled`) bleiben im runtime-nahen Schema nur als Migrationsquelle und Kompatibilitätsoberfläche erhalten.
 - Die externe Tabelle `waste_location_tour_pickup_dates` enthält zusätzlich das optionale Feld `note TEXT` für terminbezogene Hinweise; dieser Task führt dafür zunächst die Schema- und Typoberfläche ein, die Anbindung in Repository, Import und UI folgt in späteren Tasks desselben Plans.
+- Die externen Tabellen `waste_tour_assignments` und `waste_tour_assignment_locations` bilden explizite Tour-Einsätze mit einem optionalen gemeinsamen Hinweis und mehreren Abholorten ab. Beim Anwenden des Runtime-Schemas wird jeder Datensatz aus `waste_location_tour_pickup_dates` idempotent als eigener Einsatz mit genau einem Ort übernommen. Bestehende Einsätze werden dabei nicht überschrieben.
 - Die öffentlichen E-Mail-Erinnerungen persistieren Pending- und aktive Abonnements in `waste_email_reminder_subscriptions`, die Fraktions-/Zeitfenster-Zuordnung in `waste_email_reminder_subscription_items` und DOI-/Reminder-Versandaufträge ressourcenschonend in `waste_email_reminder_outbox`.
 - Der runtime-nahe Backfill in `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts` schreibt `reminder_config` deterministisch aus den Legacy-Spalten und überschreibt vorhandene JSON-Konfigurationen nicht.
 - Die zugehörige Schemaquelle liegt aktuell im runtime-nahen Waste-Migrationspfad unter `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts`.

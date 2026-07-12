@@ -6,7 +6,9 @@ import { createWasteMasterDataRepository, wasteMasterDataStatements } from './ma
 const createExecutor = (rows: readonly Record<string, unknown>[] = []) => {
   const statements: SqlStatement[] = [];
   const executor: SqlExecutor = {
-    async execute<TRow = Record<string, unknown>>(statement: SqlStatement): Promise<SqlExecutionResult<TRow>> {
+    async execute<TRow = Record<string, unknown>>(
+      statement: SqlStatement
+    ): Promise<SqlExecutionResult<TRow>> {
       statements.push(statement);
       return {
         rowCount: rows.length,
@@ -19,6 +21,109 @@ const createExecutor = (rows: readonly Record<string, unknown>[] = []) => {
 };
 
 describe('waste master data repository', () => {
+  it('lists tour assignments with normalized filters and maps their locations', async () => {
+    const { executor, statements } = createExecutor([
+      {
+        id: 'assignment-1',
+        tour_id: 'tour-1',
+        pickup_date: '2026-08-12',
+        note: '10–12 Uhr',
+        location_ids: ['location-1', 'location-2'],
+        created_at: '2026-07-12T10:00:00.000Z',
+        updated_at: '2026-07-12T11:00:00.000Z',
+      },
+    ]);
+
+    await expect(
+      createWasteMasterDataRepository(executor).listWasteTourAssignments({
+        tourId: 'tour-1',
+        pickupDate: '2026-08-12',
+        locationIds: ['location-2', 'location-2'],
+      })
+    ).resolves.toEqual([
+      {
+        id: 'assignment-1',
+        tourId: 'tour-1',
+        pickupDate: '2026-08-12',
+        note: '10–12 Uhr',
+        locationIds: ['location-1', 'location-2'],
+        createdAt: '2026-07-12T10:00:00.000Z',
+        updatedAt: '2026-07-12T11:00:00.000Z',
+      },
+    ]);
+
+    expect(statements[0]?.text).toContain('FROM waste_tour_assignments AS assignment');
+    expect(statements[0]?.text).toContain('INNER JOIN waste_tour_assignment_locations');
+    expect(statements[0]?.text).toContain(
+      'matched_location.collection_location_id = ANY($3::uuid[])'
+    );
+    expect(statements[0]?.values).toEqual([
+      'tour-1',
+      '2026-08-12',
+      { sqlType: 'uuid[]', values: ['location-2'] },
+    ]);
+  });
+
+  it('reads, atomically replaces locations for and deletes tour assignments', async () => {
+    const { executor, statements } = createExecutor([
+      {
+        id: 'assignment-1',
+        tour_id: 'tour-1',
+        pickup_date: '2026-08-12',
+        note: null,
+        location_ids: ['location-1'],
+        created_at: '2026-07-12T10:00:00.000Z',
+        updated_at: '2026-07-12T10:00:00.000Z',
+      },
+    ]);
+    const repository = createWasteMasterDataRepository(executor);
+
+    await expect(repository.getWasteTourAssignmentById('assignment-1')).resolves.toMatchObject({
+      id: 'assignment-1',
+      locationIds: ['location-1'],
+    });
+    await repository.upsertWasteTourAssignment({
+      id: 'assignment-1',
+      tourId: 'tour-1',
+      pickupDate: '2026-08-13',
+      note: null,
+      locationIds: [' location-2 ', 'location-3', 'location-2'],
+    });
+    await repository.deleteWasteTourAssignment('assignment-1');
+
+    expect(statements[0]?.text).toContain('assignment.id = $1::uuid');
+    expect(statements[0]?.values).toEqual(['assignment-1']);
+    expect(statements[1]?.text).toContain('WITH saved_assignment AS');
+    expect(statements[1]?.text).toContain('removed_locations AS');
+    expect(statements[1]?.text).toContain('CROSS JOIN UNNEST($5::uuid[])');
+    expect(statements[1]?.values).toEqual([
+      'assignment-1',
+      'tour-1',
+      '2026-08-13',
+      null,
+      { sqlType: 'uuid[]', values: ['location-2', 'location-3'] },
+    ]);
+    expect(statements[2]).toEqual({
+      text: 'DELETE FROM waste_tour_assignments WHERE id = $1::uuid;',
+      values: ['assignment-1'],
+    });
+  });
+
+  it('rejects tour assignments without a location before executing SQL', async () => {
+    const { executor, statements } = createExecutor();
+
+    await expect(
+      createWasteMasterDataRepository(executor).upsertWasteTourAssignment({
+        id: 'assignment-1',
+        tourId: 'tour-1',
+        pickupDate: '2026-08-13',
+        note: null,
+        locationIds: [' ', ''],
+      })
+    ).rejects.toThrow('waste_tour_assignment_requires_location');
+    expect(statements).toEqual([]);
+  });
+
   it('lists waste fractions with filters and maps nullable fields fail-closed', async () => {
     const { executor, statements } = createExecutor([
       {
@@ -212,7 +317,9 @@ describe('waste master data repository', () => {
     });
 
     const empty = createExecutor();
-    await expect(createWasteMasterDataRepository(empty.executor).getWasteFractionById('missing')).resolves.toBeNull();
+    await expect(
+      createWasteMasterDataRepository(empty.executor).getWasteFractionById('missing')
+    ).resolves.toBeNull();
 
     const write = createExecutor();
     await createWasteMasterDataRepository(write.executor).upsertWasteFraction({
@@ -321,7 +428,9 @@ describe('waste master data repository', () => {
       },
     ]);
 
-    await expect(createWasteMasterDataRepository(executor).getWasteFractionById('fraction-legacy')).resolves.toMatchObject({
+    await expect(
+      createWasteMasterDataRepository(executor).getWasteFractionById('fraction-legacy')
+    ).resolves.toMatchObject({
       id: 'fraction-legacy',
       reminderConfig: {
         reminderCount: 'none',
@@ -364,7 +473,9 @@ describe('waste master data repository', () => {
       },
     ]);
 
-    await expect(createWasteMasterDataRepository(executor).getWasteFractionById('fraction-json-no-channel')).resolves.toMatchObject({
+    await expect(
+      createWasteMasterDataRepository(executor).getWasteFractionById('fraction-json-no-channel')
+    ).resolves.toMatchObject({
       id: 'fraction-json-no-channel',
       reminderConfig: {
         reminderCount: 'none',
@@ -407,7 +518,9 @@ describe('waste master data repository', () => {
       },
     ]);
 
-    await expect(createWasteMasterDataRepository(executor).getWasteFractionById('fraction-stale-json')).resolves.toMatchObject({
+    await expect(
+      createWasteMasterDataRepository(executor).getWasteFractionById('fraction-stale-json')
+    ).resolves.toMatchObject({
       id: 'fraction-stale-json',
       reminderConfig: {
         reminderCount: 'once',
@@ -480,14 +593,16 @@ describe('waste master data repository', () => {
   });
 
   it('reads and upserts regions and cities with nullable region references', async () => {
-    const repository = createWasteMasterDataRepository(createExecutor([
-      {
-        id: 'region-1',
-        name: 'Süd',
-        created_at: '2026-05-09T10:00:00.000Z',
-        updated_at: '2026-05-09T11:00:00.000Z',
-      },
-    ]).executor);
+    const repository = createWasteMasterDataRepository(
+      createExecutor([
+        {
+          id: 'region-1',
+          name: 'Süd',
+          created_at: '2026-05-09T10:00:00.000Z',
+          updated_at: '2026-05-09T11:00:00.000Z',
+        },
+      ]).executor
+    );
 
     await expect(repository.getWasteRegionById('region-1')).resolves.toEqual({
       id: 'region-1',
@@ -505,7 +620,9 @@ describe('waste master data repository', () => {
         updated_at: '2026-05-09T11:00:00.000Z',
       },
     ]);
-    await expect(createWasteMasterDataRepository(city.executor).getWasteCityById('city-2')).resolves.toEqual({
+    await expect(
+      createWasteMasterDataRepository(city.executor).getWasteCityById('city-2')
+    ).resolves.toEqual({
       id: 'city-2',
       name: 'Freistadt',
       regionId: undefined,
@@ -527,11 +644,13 @@ describe('waste master data repository', () => {
 
     expect(write.statements[0]?.values).toEqual(['region-2', 'West']);
     expect(write.statements[1]?.values).toEqual(['city-3', 'Hafenstadt', null]);
-    expect(wasteMasterDataStatements.upsertWasteCity({ id: 'city-4', name: 'Oststadt', regionId: 'region-9' }).values).toEqual([
-      'city-4',
-      'Oststadt',
-      'region-9',
-    ]);
+    expect(
+      wasteMasterDataStatements.upsertWasteCity({
+        id: 'city-4',
+        name: 'Oststadt',
+        regionId: 'region-9',
+      }).values
+    ).toEqual(['city-4', 'Oststadt', 'region-9']);
   });
 
   it('lists streets and house numbers with parent filters and search', async () => {
@@ -597,15 +716,17 @@ describe('waste master data repository', () => {
   });
 
   it('reads and upserts streets and house numbers', async () => {
-    const repository = createWasteMasterDataRepository(createExecutor([
-      {
-        id: 'street-2',
-        name: 'Hauptstraße',
-        city_id: 'city-2',
-        created_at: '2026-05-09T10:00:00.000Z',
-        updated_at: '2026-05-09T11:00:00.000Z',
-      },
-    ]).executor);
+    const repository = createWasteMasterDataRepository(
+      createExecutor([
+        {
+          id: 'street-2',
+          name: 'Hauptstraße',
+          city_id: 'city-2',
+          created_at: '2026-05-09T10:00:00.000Z',
+          updated_at: '2026-05-09T11:00:00.000Z',
+        },
+      ]).executor
+    );
 
     await expect(repository.getWasteStreetById('street-2')).resolves.toEqual({
       id: 'street-2',
@@ -625,7 +746,9 @@ describe('waste master data repository', () => {
       },
     ]);
 
-    await expect(createWasteMasterDataRepository(houseNumber.executor).getWasteHouseNumberById('house-2')).resolves.toEqual({
+    await expect(
+      createWasteMasterDataRepository(houseNumber.executor).getWasteHouseNumberById('house-2')
+    ).resolves.toEqual({
       id: 'house-2',
       number: '7',
       streetId: 'street-2',
@@ -713,7 +836,9 @@ describe('waste master data repository', () => {
       },
     ]);
 
-    await expect(createWasteMasterDataRepository(single.executor).getWasteCollectionLocationById('location-2')).resolves.toEqual({
+    await expect(
+      createWasteMasterDataRepository(single.executor).getWasteCollectionLocationById('location-2')
+    ).resolves.toEqual({
       id: 'location-2',
       cityId: 'city-2',
       regionId: undefined,
@@ -734,7 +859,14 @@ describe('waste master data repository', () => {
       active: true,
     });
 
-    expect(write.statements[0]?.values).toEqual(['location-3', 'city-3', null, 'street-3', null, true]);
+    expect(write.statements[0]?.values).toEqual([
+      'location-3',
+      'city-3',
+      null,
+      'street-3',
+      null,
+      true,
+    ]);
     expect(
       wasteMasterDataStatements.upsertWasteCollectionLocation({
         id: 'location-4',
@@ -822,7 +954,9 @@ describe('waste master data repository', () => {
       },
     ]);
 
-    await expect(createWasteMasterDataRepository(single.executor).getWasteTourById('tour-2')).resolves.toEqual({
+    await expect(
+      createWasteMasterDataRepository(single.executor).getWasteTourById('tour-2')
+    ).resolves.toEqual({
       id: 'tour-2',
       name: 'Tour Süd',
       description: undefined,
@@ -883,7 +1017,9 @@ describe('waste master data repository', () => {
       },
     ]);
 
-    await expect(createWasteMasterDataRepository(list.executor).listWasteCustomRecurrencePresets()).resolves.toEqual([
+    await expect(
+      createWasteMasterDataRepository(list.executor).listWasteCustomRecurrencePresets()
+    ).resolves.toEqual([
       {
         id: 'preset-10',
         name: '10 Tage',
@@ -907,7 +1043,11 @@ describe('waste master data repository', () => {
       },
     ]);
 
-    await expect(createWasteMasterDataRepository(single.executor).getWasteCustomRecurrencePresetById('preset-14')).resolves.toEqual({
+    await expect(
+      createWasteMasterDataRepository(single.executor).getWasteCustomRecurrencePresetById(
+        'preset-14'
+      )
+    ).resolves.toEqual({
       id: 'preset-14',
       name: '14 Tage',
       description: undefined,
@@ -936,7 +1076,9 @@ describe('waste master data repository', () => {
       },
     ]);
 
-    await expect(createWasteMasterDataRepository(single.executor).getWastePdfStaticSettings()).resolves.toEqual({
+    await expect(
+      createWasteMasterDataRepository(single.executor).getWastePdfStaticSettings()
+    ).resolves.toEqual({
       pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
       pdfContactBlock: 'Abfallberatung 03395 / 1234',
       updatedAt: '2026-06-30T10:00:00.000Z',
@@ -962,17 +1104,17 @@ describe('waste master data repository', () => {
       },
     ]);
 
-    await expect(createWasteMasterDataRepository(single.executor).getWastePdfStaticSettings()).resolves.toBeNull();
+    await expect(
+      createWasteMasterDataRepository(single.executor).getWastePdfStaticSettings()
+    ).resolves.toBeNull();
   });
 
-  it('lists, reads and upserts location-tour links with optional date windows', async () => {
+  it('lists, reads and upserts location-tour links without date windows', async () => {
     const list = createExecutor([
       {
         id: 'link-1',
         location_id: 'location-1',
         tour_id: 'tour-1',
-        start_date: '2026-01-01',
-        end_date: null,
         created_at: '2026-05-09T10:00:00.000Z',
         updated_at: '2026-05-09T11:00:00.000Z',
       },
@@ -988,8 +1130,6 @@ describe('waste master data repository', () => {
         id: 'link-1',
         locationId: 'location-1',
         tourId: 'tour-1',
-        startDate: '2026-01-01',
-        endDate: undefined,
         createdAt: '2026-05-09T10:00:00.000Z',
         updatedAt: '2026-05-09T11:00:00.000Z',
       },
@@ -1003,19 +1143,17 @@ describe('waste master data repository', () => {
         id: 'link-2',
         location_id: 'location-2',
         tour_id: 'tour-2',
-        start_date: null,
-        end_date: '2026-12-31',
         created_at: '2026-05-09T10:00:00.000Z',
         updated_at: '2026-05-09T11:00:00.000Z',
       },
     ]);
 
-    await expect(createWasteMasterDataRepository(single.executor).getWasteLocationTourLinkById('link-2')).resolves.toEqual({
+    await expect(
+      createWasteMasterDataRepository(single.executor).getWasteLocationTourLinkById('link-2')
+    ).resolves.toEqual({
       id: 'link-2',
       locationId: 'location-2',
       tourId: 'tour-2',
-      startDate: undefined,
-      endDate: '2026-12-31',
       createdAt: '2026-05-09T10:00:00.000Z',
       updatedAt: '2026-05-09T11:00:00.000Z',
     });
@@ -1025,11 +1163,11 @@ describe('waste master data repository', () => {
       id: 'link-3',
       locationId: 'location-3',
       tourId: 'tour-3',
-      startDate: undefined,
-      endDate: '2026-08-31',
     });
 
-    expect(write.statements[0]?.values).toEqual(['link-3', 'location-3', 'tour-3', null, '2026-08-31']);
+    expect(write.statements[0]?.values).toEqual(['link-3', 'location-3', 'tour-3']);
+    expect(write.statements[0]?.text).not.toContain('start_date');
+    expect(write.statements[0]?.text).not.toContain('end_date');
   });
 
   it('lists, reads and upserts location-tour pickup dates idempotently by location, tour and pickup date', async () => {
@@ -1065,7 +1203,9 @@ describe('waste master data repository', () => {
 
     expect(list.statements[0]?.values).toEqual(['location-1', 'tour-1', '2026-01-10']);
     expect(list.statements[0]?.text).toContain('FROM waste_location_tour_pickup_dates');
-    expect(list.statements[0]?.text).toContain(`to_jsonb(waste_location_tour_pickup_dates)->>'note' AS note`);
+    expect(list.statements[0]?.text).toContain(
+      `to_jsonb(waste_location_tour_pickup_dates)->>'note' AS note`
+    );
 
     const single = createExecutor([
       {
@@ -1080,7 +1220,9 @@ describe('waste master data repository', () => {
     ]);
 
     await expect(
-      createWasteMasterDataRepository(single.executor).getWasteLocationTourPickupDateById('pickup-2')
+      createWasteMasterDataRepository(single.executor).getWasteLocationTourPickupDateById(
+        'pickup-2'
+      )
     ).resolves.toEqual({
       id: 'pickup-2',
       locationId: 'location-2',
@@ -1107,7 +1249,9 @@ describe('waste master data repository', () => {
       '2026-03-20',
       'Ersatztermin',
     ]);
-    expect(write.statements[0]?.text).toContain('ON CONFLICT (location_id, tour_id, pickup_date) DO UPDATE');
+    expect(write.statements[0]?.text).toContain(
+      'ON CONFLICT (location_id, tour_id, pickup_date) DO UPDATE'
+    );
     expect(write.statements[0]?.text).toContain('SET note = EXCLUDED.note');
   });
 
@@ -1205,7 +1349,9 @@ describe('waste master data repository', () => {
       },
     ]);
 
-    await expect(createWasteMasterDataRepository(single.executor).getWasteGlobalDateShiftById('global-2')).resolves.toEqual({
+    await expect(
+      createWasteMasterDataRepository(single.executor).getWasteGlobalDateShiftById('global-2')
+    ).resolves.toEqual({
       id: 'global-2',
       originalDate: '01-06',
       actualDate: '01-07',
@@ -1263,86 +1409,86 @@ describe('waste master data repository', () => {
       null,
       ['tour-3', 'tour-4'],
     ]);
-    });
+  });
+});
+
+it('lists, upserts, and deletes holiday rule records with scope and strategy filters', async () => {
+  const write = createExecutor();
+  const writeRepository = createWasteMasterDataRepository(write.executor);
+
+  await writeRepository.upsertWasteHolidayRule({
+    id: 'holiday-rule-1',
+    holidayDate: '2026-01-01',
+    holidayName: 'Neujahr',
+    year: 2026,
+    stateCode: 'NW',
+    sourceStatus: 'confirmed',
+    configurationStatus: 'draft',
+    conflictStatus: 'none',
+    scope: 'holiday-only',
+    strategy: 'advance',
+    createdAt: '2026-05-31T10:00:00.000Z',
+    updatedAt: '2026-05-31T10:00:00.000Z',
   });
 
-  it('lists, upserts, and deletes holiday rule records with scope and strategy filters', async () => {
-    const write = createExecutor();
-    const writeRepository = createWasteMasterDataRepository(write.executor);
+  expect(write.statements[0]?.text).toContain('waste_holiday_rules');
+  expect(write.statements[0]?.values).toEqual([
+    'holiday-rule-1',
+    '2026-01-01',
+    'Neujahr',
+    2026,
+    'NW',
+    'confirmed',
+    'draft',
+    'none',
+    'holiday-only',
+    'advance',
+  ]);
 
-    await writeRepository.upsertWasteHolidayRule({
+  await writeRepository.deleteWasteHolidayRule('holiday-rule-1');
+
+  expect(write.statements[1]?.text).toContain('DELETE FROM waste_holiday_rules');
+  expect(write.statements[1]?.values).toEqual(['holiday-rule-1']);
+
+  const list = createExecutor([
+    {
+      id: 'holiday-rule-1',
+      holiday_date: '2026-01-01',
+      holiday_name: 'Neujahr',
+      year: 2026,
+      state_code: 'NW',
+      source_status: 'confirmed',
+      configuration_status: 'configured',
+      conflict_status: 'manual-global-rule',
+      scope: 'full_week',
+      strategy: 'postpone',
+      created_at: '2026-05-31T10:00:00.000Z',
+      updated_at: '2026-05-31T11:00:00.000Z',
+    },
+  ]);
+
+  await expect(
+    createWasteMasterDataRepository(list.executor).listWasteHolidayRules({
+      stateCode: 'NW',
+      year: 2026,
+    })
+  ).resolves.toEqual([
+    {
       id: 'holiday-rule-1',
       holidayDate: '2026-01-01',
       holidayName: 'Neujahr',
       year: 2026,
       stateCode: 'NW',
       sourceStatus: 'confirmed',
-      configurationStatus: 'draft',
-      conflictStatus: 'none',
-      scope: 'holiday-only',
-      strategy: 'advance',
+      configurationStatus: 'configured',
+      conflictStatus: 'manual-global-rule',
+      scope: 'full-week',
+      strategy: 'postpone',
       createdAt: '2026-05-31T10:00:00.000Z',
-      updatedAt: '2026-05-31T10:00:00.000Z',
-    });
+      updatedAt: '2026-05-31T11:00:00.000Z',
+    },
+  ]);
 
-    expect(write.statements[0]?.text).toContain('waste_holiday_rules');
-    expect(write.statements[0]?.values).toEqual([
-      'holiday-rule-1',
-      '2026-01-01',
-      'Neujahr',
-      2026,
-      'NW',
-      'confirmed',
-      'draft',
-      'none',
-      'holiday-only',
-      'advance',
-    ]);
-
-    await writeRepository.deleteWasteHolidayRule('holiday-rule-1');
-
-    expect(write.statements[1]?.text).toContain('DELETE FROM waste_holiday_rules');
-    expect(write.statements[1]?.values).toEqual(['holiday-rule-1']);
-
-    const list = createExecutor([
-      {
-        id: 'holiday-rule-1',
-        holiday_date: '2026-01-01',
-        holiday_name: 'Neujahr',
-        year: 2026,
-        state_code: 'NW',
-        source_status: 'confirmed',
-        configuration_status: 'configured',
-        conflict_status: 'manual-global-rule',
-        scope: 'full_week',
-        strategy: 'postpone',
-        created_at: '2026-05-31T10:00:00.000Z',
-        updated_at: '2026-05-31T11:00:00.000Z',
-      },
-    ]);
-
-    await expect(
-      createWasteMasterDataRepository(list.executor).listWasteHolidayRules({
-        stateCode: 'NW',
-        year: 2026,
-      })
-    ).resolves.toEqual([
-      {
-        id: 'holiday-rule-1',
-        holidayDate: '2026-01-01',
-        holidayName: 'Neujahr',
-        year: 2026,
-        stateCode: 'NW',
-        sourceStatus: 'confirmed',
-        configurationStatus: 'configured',
-        conflictStatus: 'manual-global-rule',
-        scope: 'full-week',
-        strategy: 'postpone',
-        createdAt: '2026-05-31T10:00:00.000Z',
-        updatedAt: '2026-05-31T11:00:00.000Z',
-      },
-    ]);
-
-    expect(list.statements[0]?.text).toContain('FROM waste_holiday_rules');
-    expect(list.statements[0]?.values).toEqual(['NW', 2026]);
-  });
+  expect(list.statements[0]?.text).toContain('FROM waste_holiday_rules');
+  expect(list.statements[0]?.values).toEqual(['NW', 2026]);
+});

@@ -31,8 +31,6 @@ describe('waste-management.tours.shared', () => {
       id: 'link-default-id',
       locationId: '',
       tourId: '',
-      startDate: '',
-      endDate: '',
     });
 
     expect(createDefaultTourForm()).toEqual({
@@ -56,15 +54,11 @@ describe('waste-management.tours.shared', () => {
         id: 'link-1',
         locationId: 'location-1',
         tourId: 'tour-1',
-        startDate: null,
-        endDate: undefined,
       } as never)
     ).toEqual({
       id: 'link-1',
       locationId: 'location-1',
       tourId: 'tour-1',
-      startDate: '',
-      endDate: '',
     });
 
     expect(
@@ -133,15 +127,11 @@ describe('waste-management.tours.shared', () => {
         id: 'link-2',
         locationId: 'location-2',
         tourId: 'tour-2',
-        startDate: ' 2026-01-01 ',
-        endDate: '   ',
       })
     ).toEqual({
       id: 'link-2',
       locationId: 'location-2',
       tourId: 'tour-2',
-      startDate: '2026-01-01',
-      endDate: undefined,
     });
 
     expect(
@@ -149,14 +139,10 @@ describe('waste-management.tours.shared', () => {
         id: 'ignored',
         locationId: 'location-3',
         tourId: 'tour-3',
-        startDate: '',
-        endDate: '2026-12-31',
       })
     ).toEqual({
       locationId: 'location-3',
       tourId: 'tour-3',
-      startDate: undefined,
-      endDate: '2026-12-31',
     });
 
     const form = {

@@ -1,28 +1,7 @@
 import type {
-  WasteCollectionLocationRecord,
-  WasteHouseNumberRecord,
-  WasteStreetRecord,
-} from '@sva/plugin-sdk';
-
-import type { WasteMasterDataLocationsTableMaps, WasteMasterDataLocationsTableProps } from './waste-management.master-data-locations-table.types.js';
-
-export const formatAddressLine = ({
-  streetsById,
-  houseNumbersById,
-  location,
-  fallback,
-}: {
-  readonly streetsById: ReadonlyMap<string, WasteStreetRecord>;
-  readonly houseNumbersById: ReadonlyMap<string, WasteHouseNumberRecord>;
-  readonly location: WasteCollectionLocationRecord;
-  readonly fallback: string;
-}) => {
-  const street = location.streetId ? streetsById.get(location.streetId) : undefined;
-  const houseNumber = location.houseNumberId ? houseNumbersById.get(location.houseNumberId) : undefined;
-  const parts = [street?.name, houseNumber?.number].filter(Boolean);
-
-  return parts.length ? parts.join(' ') : fallback;
-};
+  WasteMasterDataLocationsTableMaps,
+  WasteMasterDataLocationsTableProps,
+} from './waste-management.master-data-locations-table.types.js';
 
 export const createLocationsTableMaps = ({
   regions,
@@ -61,7 +40,9 @@ export const createLocationsTableMaps = ({
     regionsById: new Map(regions.map((region) => [region.id, region] as const)),
     citiesById: new Map(cities.map((city) => [city.id, city] as const)),
     streetsById: new Map(streets.map((street) => [street.id, street] as const)),
-    houseNumbersById: new Map(houseNumbers.map((houseNumber) => [houseNumber.id, houseNumber] as const)),
+    houseNumbersById: new Map(
+      houseNumbers.map((houseNumber) => [houseNumber.id, houseNumber] as const)
+    ),
     toursById,
     locationTourNamesByLocationId,
   };

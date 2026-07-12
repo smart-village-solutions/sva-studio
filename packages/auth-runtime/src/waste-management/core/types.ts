@@ -69,11 +69,18 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     typeKey: string
   ) => Promise<ExternalInterfaceRecord | null>;
-  readonly listInterfaceRecords?: (instanceId: string) => Promise<readonly ExternalInterfaceRecord[]>;
+  readonly listInterfaceRecords?: (
+    instanceId: string
+  ) => Promise<readonly ExternalInterfaceRecord[]>;
   readonly saveExternalInterfaceRecord?: (record: ExternalInterfaceRecord) => Promise<void>;
-  readonly saveExternalInterfaceConnectionCheck?: (record: ExternalInterfaceConnectionCheckRecord) => Promise<void>;
+  readonly saveExternalInterfaceConnectionCheck?: (
+    record: ExternalInterfaceConnectionCheckRecord
+  ) => Promise<void>;
   readonly protectSecret?: (value: string, aad: string) => string | null | undefined;
-  readonly revealSecret?: (ciphertext: string | null | undefined, aad: string) => string | null | undefined;
+  readonly revealSecret?: (
+    ciphertext: string | null | undefined,
+    aad: string
+  ) => string | null | undefined;
   readonly runConnectionProbe?: (dataSource: ResolvedWasteDataSource) => Promise<void>;
   readonly resolvePermissions?: (input: {
     readonly instanceId: string;
@@ -103,13 +110,25 @@ export type WasteManagementHandlerDeps = {
     readonly data: StudioJobStartRequest;
   }) => Promise<Response>;
   readonly emitAuditEvent?: typeof emitAuthAuditEvent;
-  readonly loadWasteAuditOverview?: (query: WasteManagementAuditQuery) => Promise<WasteManagementAuditOverview>;
-  readonly loadWasteHistoryOverview?: (query: WasteManagementAuditQuery) => Promise<WasteManagementHistoryOverview>;
-  readonly loadMasterDataOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
-  readonly loadMasterDataFractionsOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
-  readonly loadMasterDataLocationsOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
+  readonly loadWasteAuditOverview?: (
+    query: WasteManagementAuditQuery
+  ) => Promise<WasteManagementAuditOverview>;
+  readonly loadWasteHistoryOverview?: (
+    query: WasteManagementAuditQuery
+  ) => Promise<WasteManagementHistoryOverview>;
+  readonly loadMasterDataOverview?: (
+    instanceId: string
+  ) => Promise<WasteManagementMasterDataOverview>;
+  readonly loadMasterDataFractionsOverview?: (
+    instanceId: string
+  ) => Promise<WasteManagementMasterDataOverview>;
+  readonly loadMasterDataLocationsOverview?: (
+    instanceId: string
+  ) => Promise<WasteManagementMasterDataOverview>;
   readonly loadToursOverview?: (instanceId: string) => Promise<WasteManagementToursOverview>;
-  readonly loadSchedulingOverview?: (instanceId: string) => Promise<WasteManagementSchedulingOverview>;
+  readonly loadSchedulingOverview?: (
+    instanceId: string
+  ) => Promise<WasteManagementSchedulingOverview>;
   readonly syncWasteHolidayRules?: (
     instanceId: string,
     stateCode: WasteHolidayStateCode
@@ -117,7 +136,9 @@ export type WasteManagementHandlerDeps = {
   readonly loadWasteCustomRecurrencePresets?: (
     instanceId: string
   ) => Promise<readonly WasteCustomRecurrencePresetRecord[]>;
-  readonly loadWastePdfStaticSettings?: (instanceId: string) => Promise<WastePdfStaticSettingsRecord | null>;
+  readonly loadWastePdfStaticSettings?: (
+    instanceId: string
+  ) => Promise<WastePdfStaticSettingsRecord | null>;
   readonly mapWasteSettingsInterfaceOptions?: (
     records: readonly ExternalInterfaceRecord[],
     selectedInterfaceId?: string
@@ -128,15 +149,39 @@ export type WasteManagementHandlerDeps = {
     readonly blobRef: string;
     readonly delimiterOverride?: WasteManagementCsvDelimiter;
   }) => Promise<WasteLocationTourPickupDateImportPreview>;
-  readonly saveWasteFraction?: (instanceId: string, input: Omit<WasteFractionRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
-  readonly loadWasteFractionById?: (instanceId: string, fractionId: string) => Promise<WasteFractionRecord | null>;
+  readonly saveWasteFraction?: (
+    instanceId: string,
+    input: Omit<WasteFractionRecord, 'createdAt' | 'updatedAt'>
+  ) => Promise<void>;
+  readonly loadWasteFractionById?: (
+    instanceId: string,
+    fractionId: string
+  ) => Promise<WasteFractionRecord | null>;
   readonly deleteWasteFraction?: (instanceId: string, fractionId: string) => Promise<void>;
-  readonly saveWasteRegion?: (instanceId: string, input: Omit<WasteRegionRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
-  readonly loadWasteRegionById?: (instanceId: string, regionId: string) => Promise<WasteRegionRecord | null>;
-  readonly saveWasteCity?: (instanceId: string, input: Omit<WasteCityRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
-  readonly loadWasteCityById?: (instanceId: string, cityId: string) => Promise<WasteCityRecord | null>;
-  readonly saveWasteStreet?: (instanceId: string, input: Omit<WasteStreetRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
-  readonly loadWasteStreetById?: (instanceId: string, streetId: string) => Promise<WasteStreetRecord | null>;
+  readonly saveWasteRegion?: (
+    instanceId: string,
+    input: Omit<WasteRegionRecord, 'createdAt' | 'updatedAt'>
+  ) => Promise<void>;
+  readonly loadWasteRegionById?: (
+    instanceId: string,
+    regionId: string
+  ) => Promise<WasteRegionRecord | null>;
+  readonly saveWasteCity?: (
+    instanceId: string,
+    input: Omit<WasteCityRecord, 'createdAt' | 'updatedAt'>
+  ) => Promise<void>;
+  readonly loadWasteCityById?: (
+    instanceId: string,
+    cityId: string
+  ) => Promise<WasteCityRecord | null>;
+  readonly saveWasteStreet?: (
+    instanceId: string,
+    input: Omit<WasteStreetRecord, 'createdAt' | 'updatedAt'>
+  ) => Promise<void>;
+  readonly loadWasteStreetById?: (
+    instanceId: string,
+    streetId: string
+  ) => Promise<WasteStreetRecord | null>;
   readonly saveWasteHouseNumber?: (
     instanceId: string,
     input: Omit<WasteHouseNumberRecord, 'createdAt' | 'updatedAt'>
@@ -153,7 +198,10 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     locationId: string
   ) => Promise<WasteCollectionLocationRecord | null>;
-  readonly deleteWasteCollectionLocation?: (instanceId: string, locationId: string) => Promise<void>;
+  readonly deleteWasteCollectionLocation?: (
+    instanceId: string,
+    locationId: string
+  ) => Promise<void>;
   readonly saveWasteLocationTourLink?: (
     instanceId: string,
     input: Omit<WasteLocationTourLinkRecord, 'createdAt' | 'updatedAt'>
@@ -183,15 +231,40 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     filter?: WasteLocationTourPickupDateListFilter
   ) => Promise<readonly WasteLocationTourPickupDateRecord[]>;
-  readonly deleteWasteLocationTourPickupDate?: (instanceId: string, pickupDateId: string) => Promise<void>;
-  readonly saveWasteTour?: (instanceId: string, input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
-  readonly loadWasteTourById?: (instanceId: string, tourId: string) => Promise<WasteTourRecord | null>;
+  readonly deleteWasteLocationTourPickupDate?: (
+    instanceId: string,
+    pickupDateId: string
+  ) => Promise<void>;
+  readonly saveWasteTourAssignment?: (
+    instanceId: string,
+    input: Omit<import('@sva/core').WasteTourAssignmentRecord, 'createdAt' | 'updatedAt'>
+  ) => Promise<void>;
+  readonly loadWasteTourAssignmentById?: (
+    instanceId: string,
+    assignmentId: string
+  ) => Promise<import('@sva/core').WasteTourAssignmentRecord | null>;
+  readonly listWasteTourAssignments?: (
+    instanceId: string,
+    filter?: import('@sva/core').WasteTourAssignmentListFilter
+  ) => Promise<readonly import('@sva/core').WasteTourAssignmentRecord[]>;
+  readonly deleteWasteTourAssignment?: (instanceId: string, assignmentId: string) => Promise<void>;
+  readonly saveWasteTour?: (
+    instanceId: string,
+    input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>
+  ) => Promise<void>;
+  readonly loadWasteTourById?: (
+    instanceId: string,
+    tourId: string
+  ) => Promise<WasteTourRecord | null>;
   readonly deleteWasteTour?: (instanceId: string, tourId: string) => Promise<void>;
   readonly saveWasteCustomRecurrencePresets?: (
     instanceId: string,
     input: SaveWasteCustomRecurrencePresetsInput
   ) => Promise<void>;
-  readonly saveWastePdfStaticSettings?: (instanceId: string, input: WastePdfStaticSettingsWriteInput) => Promise<void>;
+  readonly saveWastePdfStaticSettings?: (
+    instanceId: string,
+    input: WastePdfStaticSettingsWriteInput
+  ) => Promise<void>;
   readonly saveWasteTourDateShift?: (
     instanceId: string,
     input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>

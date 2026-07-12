@@ -2,27 +2,28 @@ import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import { createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction, getAuthorizedWasteManagementInstanceId } from './auth.js';
-import { runWasteCreateMutation, runWasteDeleteMutation, runWasteUpdateMutation } from './mutation-helpers.js';
+import {
+  runWasteCreateMutation,
+  runWasteDeleteMutation,
+  runWasteUpdateMutation,
+} from './mutation-helpers.js';
 import { wasteManagementTourSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
-import { getRequestId, normalizeOptionalString, requireDeps } from './utils.js';
+import { getRequestId, requireDeps } from './utils.js';
 
-const { createWasteLocationTourLinkSchema, updateWasteLocationTourLinkSchema } = wasteManagementTourSchemas;
+const { createWasteLocationTourLinkSchema, updateWasteLocationTourLinkSchema } =
+  wasteManagementTourSchemas;
 
 const toLocationTourLinkInput = (
   id: string,
   data: {
     locationId: string;
     tourId: string;
-    startDate?: string;
-    endDate?: string;
   }
 ) => ({
   id,
   locationId: data.locationId,
   tourId: data.tourId,
-  startDate: normalizeOptionalString(data.startDate),
-  endDate: normalizeOptionalString(data.endDate),
 });
 
 export const wasteManagementLocationTourLinkHandlers = {
@@ -32,7 +33,12 @@ export const wasteManagementLocationTourLinkHandlers = {
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
     const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.tours.manage', deps, requestId);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.tours.manage',
+      deps,
+      requestId
+    );
     if (authError) {
       return authError;
     }
@@ -69,7 +75,10 @@ export const wasteManagementLocationTourLinkHandlers = {
           toLocationTourLinkInput(parsed.data.id, parsed.data)
         ),
       loadSaved: () =>
-        requireDeps(deps.loadWasteLocationTourLinkById, 'loadWasteLocationTourLinkById')(instanceId, parsed.data.id),
+        requireDeps(deps.loadWasteLocationTourLinkById, 'loadWasteLocationTourLinkById')(
+          instanceId,
+          parsed.data.id
+        ),
     });
   },
   updateWasteManagementLocationTourLinkInternal: async (
@@ -78,7 +87,12 @@ export const wasteManagementLocationTourLinkHandlers = {
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
     const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.tours.manage', deps, requestId);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.tours.manage',
+      deps,
+      requestId
+    );
     if (authError) {
       return authError;
     }
@@ -100,8 +114,14 @@ export const wasteManagementLocationTourLinkHandlers = {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
 
-    const loadLocationTourLink = requireDeps(deps.loadWasteLocationTourLinkById, 'loadWasteLocationTourLinkById');
-    const saveLocationTourLink = requireDeps(deps.saveWasteLocationTourLink, 'saveWasteLocationTourLink');
+    const loadLocationTourLink = requireDeps(
+      deps.loadWasteLocationTourLinkById,
+      'loadWasteLocationTourLinkById'
+    );
+    const saveLocationTourLink = requireDeps(
+      deps.saveWasteLocationTourLink,
+      'saveWasteLocationTourLink'
+    );
 
     return runWasteUpdateMutation({
       deps,
@@ -129,7 +149,12 @@ export const wasteManagementLocationTourLinkHandlers = {
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
     const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.tours.manage', deps, requestId);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.tours.manage',
+      deps,
+      requestId
+    );
     if (authError) {
       return authError;
     }
@@ -145,8 +170,14 @@ export const wasteManagementLocationTourLinkHandlers = {
       return csrfError;
     }
 
-    const loadLocationTourLink = requireDeps(deps.loadWasteLocationTourLinkById, 'loadWasteLocationTourLinkById');
-    const deleteLocationTourLink = requireDeps(deps.deleteWasteLocationTourLink, 'deleteWasteLocationTourLink');
+    const loadLocationTourLink = requireDeps(
+      deps.loadWasteLocationTourLinkById,
+      'loadWasteLocationTourLinkById'
+    );
+    const deleteLocationTourLink = requireDeps(
+      deps.deleteWasteLocationTourLink,
+      'deleteWasteLocationTourLink'
+    );
 
     return runWasteDeleteMutation({
       deps,

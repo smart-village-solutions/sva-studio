@@ -2,8 +2,8 @@ import React from 'react';
 import { cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { WasteSchadstoffmobilAssignmentDialog } from '../src/waste-management.scheduling-schadstoffmobil-dialog.js';
-import { WasteSchadstoffmobilAssignmentsList } from '../src/waste-management.scheduling-schadstoffmobil-list.js';
+import { WasteTourExplicitAssignmentDialog } from '../src/waste-management.scheduling-assignment-dialog.js';
+import { WasteTourExplicitAssignmentsList } from '../src/waste-management.scheduling-assignment-list.js';
 import { useWasteSchedulingViewModel } from '../src/use-waste-scheduling-view-model.js';
 
 const apiMocks = vi.hoisted(() => ({
@@ -34,11 +34,16 @@ vi.mock('@sva/studio-ui-react', () => ({
     readonly onOpenChange?: (open: boolean) => void;
   }) => (open ? <div>{children}</div> : null),
   DialogContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { readonly children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
   DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  Checkbox: ({ indeterminate, ...props }: React.ComponentProps<'input'> & { readonly indeterminate?: boolean }) => {
+  Checkbox: ({
+    indeterminate,
+    ...props
+  }: React.ComponentProps<'input'> & { readonly indeterminate?: boolean }) => {
     void indeterminate;
     return <input type="checkbox" {...props} />;
   },
@@ -74,18 +79,24 @@ vi.mock('@sva/studio-ui-react', () => ({
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({
-  StatusNotice: ({ message }: { readonly message: { text: string } | null }) => (message ? <div>{message.text}</div> : null),
+  StatusNotice: ({ message }: { readonly message: { text: string } | null }) =>
+    message ? <div>{message.text}</div> : null,
   resolveApiErrorCode: (error: unknown) => (error instanceof Error ? error.message : null),
 }));
 
 vi.mock('../src/waste-management.api.js', () => apiMocks);
 
-vi.mock('../src/waste-management.scheduling-schadstoffmobil-form.js', () => ({
-  WasteSchadstoffmobilAssignmentForm: (props: Record<string, unknown>) => {
+vi.mock('../src/waste-management.scheduling-assignment-form.js', () => ({
+  WasteTourExplicitAssignmentForm: (props: Record<string, unknown>) => {
     assignmentFormSpy(props);
     return (
-      <button type="button" onClick={() => (props.onChange as (patch: Record<string, unknown>) => void)({ note: 'Aktualisiert' })}>
-        edit-schadstoff-form
+      <button
+        type="button"
+        onClick={() =>
+          (props.onChange as (patch: Record<string, unknown>) => void)({ note: 'Aktualisiert' })
+        }
+      >
+        edit-assignment-form
       </button>
     );
   },
@@ -113,7 +124,11 @@ vi.mock('../src/waste-management.scheduling.shared.js', () => ({
 }));
 
 vi.mock('../src/waste-management.tours.locations.js', () => ({
-  formatCollectionLocationLabel: (_pt: unknown, _overview: unknown, location: { id: string; name?: string }) => location.name ?? location.id,
+  formatCollectionLocationLabel: (
+    _pt: unknown,
+    _overview: unknown,
+    location: { id: string; name?: string }
+  ) => location.name ?? location.id,
 }));
 
 afterEach(() => {
@@ -134,10 +149,15 @@ describe('waste-management scheduling low coverage views', () => {
     const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault());
 
     const { rerender } = render(
-      <WasteSchadstoffmobilAssignmentDialog
+      <WasteTourExplicitAssignmentDialog
         open
         mode="create"
-        form={{ id: 'pickup-1', pickupDate: '2026-07-01', locationId: 'location-1', note: 'Dienstag' }}
+        form={{
+          id: 'pickup-1',
+          pickupDate: '2026-07-01',
+          locationId: 'location-1',
+          note: 'Dienstag',
+        }}
         locationOptions={[{ id: 'location-1', label: 'Rathausplatz' }]}
         saving={false}
         message={{ kind: 'info', text: 'dialog-message' }}
@@ -148,12 +168,14 @@ describe('waste-management scheduling low coverage views', () => {
       />
     );
 
-    expect(screen.getByText('scheduling.schadstoffmobil.dialog.createTitle')).toBeTruthy();
+    expect(screen.getByText('scheduling.assignments.dialog.createTitle')).toBeTruthy();
     expect(screen.getByText('dialog-message')).toBeTruthy();
     expect(screen.getByText('validation-error')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'edit-schadstoff-form' }));
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.cancel' }));
-    const form = screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.create' }).closest('form');
+    fireEvent.click(screen.getByRole('button', { name: 'edit-assignment-form' }));
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.assignments.actions.cancel' }));
+    const form = screen
+      .getByRole('button', { name: 'scheduling.assignments.actions.create' })
+      .closest('form');
     if (!form) {
       throw new Error('missing schadstoffmobil form');
     }
@@ -164,10 +186,15 @@ describe('waste-management scheduling low coverage views', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
 
     rerender(
-      <WasteSchadstoffmobilAssignmentDialog
+      <WasteTourExplicitAssignmentDialog
         open
         mode="edit"
-        form={{ id: 'pickup-1', pickupDate: '2026-07-01', locationId: 'location-1', note: 'Dienstag' }}
+        form={{
+          id: 'pickup-1',
+          pickupDate: '2026-07-01',
+          locationId: 'location-1',
+          note: 'Dienstag',
+        }}
         locationOptions={[{ id: 'location-1', label: 'Rathausplatz' }]}
         saving
         message={null}
@@ -178,25 +205,49 @@ describe('waste-management scheduling low coverage views', () => {
       />
     );
 
-    expect(screen.getByText('scheduling.schadstoffmobil.dialog.editTitle')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.save' })).toHaveProperty('disabled', true);
+    expect(screen.getByText('scheduling.assignments.dialog.editTitle')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'scheduling.assignments.actions.save' })
+    ).toHaveProperty('disabled', true);
   });
 
-  it('sorts schadstoffmobil list rows, opens create/edit flows, and confirms deletion', async () => {
+  it('sorts assignment list rows, opens create/edit flows, and confirms deletion', async () => {
     const onCreate = vi.fn();
     const onEdit = vi.fn();
     const onDelete = vi.fn(async () => undefined);
 
     render(
-      <WasteSchadstoffmobilAssignmentsList
-        entries={[
-          { id: 'pickup-2', pickupDate: '2026-07-01', locationId: 'location-2', note: 'B' },
-          { id: 'pickup-1', pickupDate: '2026-07-01', locationId: 'location-1', note: 'A' },
-        ] as never}
-        locationLabels={new Map([
-          ['location-1', 'Albertplatz'],
-          ['location-2', 'Ziegelhof'],
-        ])}
+      <WasteTourExplicitAssignmentsList
+        entries={
+          [
+            {
+              id: 'pickup-2',
+              tourId: 'tour-2',
+              pickupDate: '2026-07-01',
+              locationIds: ['location-2'],
+              note: 'B',
+            },
+            {
+              id: 'pickup-1',
+              tourId: 'tour-1',
+              pickupDate: '2026-07-01',
+              locationIds: ['location-1'],
+              note: 'A',
+            },
+          ] as never
+        }
+        tourLabels={
+          new Map([
+            ['tour-1', 'Tour A'],
+            ['tour-2', 'Tour Z'],
+          ])
+        }
+        locationLabels={
+          new Map([
+            ['location-1', 'Albertplatz'],
+            ['location-2', 'Ziegelhof'],
+          ])
+        }
         onCreate={onCreate}
         onEdit={onEdit}
         onDelete={onDelete}
@@ -205,13 +256,21 @@ describe('waste-management scheduling low coverage views', () => {
 
     const rows = screen.getAllByRole('row');
     expect(rows[1]?.textContent).toContain('Albertplatz');
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.openCreate' }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'scheduling.schadstoffmobil.actions.edit' })[0]!);
-    fireEvent.click(screen.getAllByRole('button', { name: 'scheduling.schadstoffmobil.actions.delete' })[0]!);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'scheduling.assignments.actions.openCreate' })
+    );
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'scheduling.assignments.actions.edit' })[0]!
+    );
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'scheduling.assignments.actions.delete' })[0]!
+    );
 
     expect(onCreate).toHaveBeenCalledTimes(1);
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'pickup-1' }));
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.confirmDelete' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'scheduling.assignments.actions.confirmDelete' })
+    );
     await waitFor(() => {
       expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 'pickup-1' }));
     });
@@ -221,11 +280,26 @@ describe('waste-management scheduling low coverage views', () => {
     const onDelete = vi.fn(async () => undefined);
 
     render(
-      <WasteSchadstoffmobilAssignmentsList
-        entries={[
-          { id: 'pickup-early', pickupDate: '2026-06-01', locationId: 'location-2', note: 'B' },
-          { id: 'pickup-late', pickupDate: '2026-07-01', locationId: 'location-1', note: 'A' },
-        ] as never}
+      <WasteTourExplicitAssignmentsList
+        entries={
+          [
+            {
+              id: 'pickup-early',
+              tourId: 'tour-1',
+              pickupDate: '2026-06-01',
+              locationIds: ['location-2'],
+              note: 'B',
+            },
+            {
+              id: 'pickup-late',
+              tourId: 'tour-1',
+              pickupDate: '2026-07-01',
+              locationIds: ['location-1'],
+              note: 'A',
+            },
+          ] as never
+        }
+        tourLabels={new Map([['tour-1', 'Tour A']])}
         locationLabels={new Map([['location-1', 'Albertplatz']])}
         onCreate={vi.fn()}
         onEdit={vi.fn()}
@@ -237,16 +311,19 @@ describe('waste-management scheduling low coverage views', () => {
     expect(rows[1]?.textContent).toContain('2026-06-01');
     expect(rows[1]?.textContent).toContain('location-2');
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'scheduling.schadstoffmobil.actions.delete' })[0]!);
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.cancel' }));
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'scheduling.assignments.actions.delete' })[0]!
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.assignments.actions.cancel' }));
 
     expect(onDelete).not.toHaveBeenCalled();
   });
 
   it('shows the empty schadstoffmobil list state', () => {
     render(
-      <WasteSchadstoffmobilAssignmentsList
+      <WasteTourExplicitAssignmentsList
         entries={[]}
+        tourLabels={new Map()}
         locationLabels={new Map()}
         onCreate={vi.fn()}
         onEdit={vi.fn()}
@@ -254,17 +331,24 @@ describe('waste-management scheduling low coverage views', () => {
       />
     );
 
-    expect(screen.getByText('scheduling.schadstoffmobil.empty')).toBeTruthy();
+    expect(screen.getByText('scheduling.assignments.empty')).toBeTruthy();
   });
 
   it('loads scheduling overview plus background tours and locations successfully', async () => {
-    const { useWasteSchedulingOverview: actualUseWasteSchedulingOverview } =
-      await vi.importActual<typeof import('../src/use-waste-scheduling-overview.js')>(
-        '../src/use-waste-scheduling-overview.js'
-      );
-    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValue({ holidayRules: [], globalDateShifts: [], tourDateShifts: [] });
-    apiMocks.getWasteManagementToursOverview.mockResolvedValue({ tours: [{ id: 'tour-1', name: 'Tour 1' }] });
-    apiMocks.getWasteManagementMasterDataOverview.mockResolvedValue({ collectionLocations: [{ id: 'location-1', name: 'Rathausplatz' }] });
+    const { useWasteSchedulingOverview: actualUseWasteSchedulingOverview } = await vi.importActual<
+      typeof import('../src/use-waste-scheduling-overview.js')
+    >('../src/use-waste-scheduling-overview.js');
+    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValue({
+      holidayRules: [],
+      globalDateShifts: [],
+      tourDateShifts: [],
+    });
+    apiMocks.getWasteManagementToursOverview.mockResolvedValue({
+      tours: [{ id: 'tour-1', name: 'Tour 1' }],
+    });
+    apiMocks.getWasteManagementMasterDataOverview.mockResolvedValue({
+      collectionLocations: [{ id: 'location-1', name: 'Rathausplatz' }],
+    });
 
     const state = {
       setAvailableTours: vi.fn(),
@@ -277,19 +361,24 @@ describe('waste-management scheduling low coverage views', () => {
     renderHook(() => actualUseWasteSchedulingOverview(state, (key) => key));
 
     await waitFor(() => {
-      expect(state.setOverview).toHaveBeenCalledWith({ holidayRules: [], globalDateShifts: [], tourDateShifts: [] });
+      expect(state.setOverview).toHaveBeenCalledWith({
+        holidayRules: [],
+        globalDateShifts: [],
+        tourDateShifts: [],
+      });
     });
     await waitFor(() => {
       expect(state.setAvailableTours).toHaveBeenCalledWith([{ id: 'tour-1', name: 'Tour 1' }]);
-      expect(state.setLocationOverview).toHaveBeenCalledWith({ collectionLocations: [{ id: 'location-1', name: 'Rathausplatz' }] });
+      expect(state.setLocationOverview).toHaveBeenCalledWith({
+        collectionLocations: [{ id: 'location-1', name: 'Rathausplatz' }],
+      });
     });
   });
 
   it('maps scheduling overview failures to translated errors and clears dependent state', async () => {
-    const { useWasteSchedulingOverview: actualUseWasteSchedulingOverview } =
-      await vi.importActual<typeof import('../src/use-waste-scheduling-overview.js')>(
-        '../src/use-waste-scheduling-overview.js'
-      );
+    const { useWasteSchedulingOverview: actualUseWasteSchedulingOverview } = await vi.importActual<
+      typeof import('../src/use-waste-scheduling-overview.js')
+    >('../src/use-waste-scheduling-overview.js');
     apiMocks.getWasteManagementSchedulingOverview.mockRejectedValue(new Error('forbidden'));
 
     const state = {
@@ -311,11 +400,14 @@ describe('waste-management scheduling low coverage views', () => {
   });
 
   it('falls back to empty tours and locations when the background Promise.allSettled step itself fails', async () => {
-    const { useWasteSchedulingOverview: actualUseWasteSchedulingOverview } =
-      await vi.importActual<typeof import('../src/use-waste-scheduling-overview.js')>(
-        '../src/use-waste-scheduling-overview.js'
-      );
-    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValue({ holidayRules: [], globalDateShifts: [], tourDateShifts: [] });
+    const { useWasteSchedulingOverview: actualUseWasteSchedulingOverview } = await vi.importActual<
+      typeof import('../src/use-waste-scheduling-overview.js')
+    >('../src/use-waste-scheduling-overview.js');
+    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValue({
+      holidayRules: [],
+      globalDateShifts: [],
+      tourDateShifts: [],
+    });
     const allSettledSpy = vi.spyOn(Promise, 'allSettled').mockRejectedValueOnce(new Error('boom'));
 
     const state = {
@@ -329,7 +421,11 @@ describe('waste-management scheduling low coverage views', () => {
     renderHook(() => actualUseWasteSchedulingOverview(state, (key) => key));
 
     await waitFor(() => {
-      expect(state.setOverview).toHaveBeenCalledWith({ holidayRules: [], globalDateShifts: [], tourDateShifts: [] });
+      expect(state.setOverview).toHaveBeenCalledWith({
+        holidayRules: [],
+        globalDateShifts: [],
+        tourDateShifts: [],
+      });
       expect(state.setAvailableTours).toHaveBeenCalledWith([]);
       expect(state.setLocationOverview).toHaveBeenCalledWith(null);
     });
@@ -343,9 +439,15 @@ describe('waste-management scheduling low coverage views', () => {
         holidayRules: [],
         globalDateShifts: [],
         tourDateShifts: [],
-        locationTourPickupDates: [
-          { id: 'pickup-1', tourId: 'tour-1', locationId: 'location-1', pickupDate: '2026-07-01', note: '08:00' },
-          { id: 'pickup-2', tourId: 'tour-2', locationId: 'location-2', pickupDate: '2026-07-02', note: '09:00' },
+        locationTourPickupDates: [],
+        tourAssignments: [
+          {
+            id: 'assignment-1',
+            tourId: 'tour-2',
+            locationIds: ['location-1', 'location-2'],
+            pickupDate: '2026-07-02',
+            note: null,
+          },
         ],
       },
       availableTours: [
@@ -384,11 +486,16 @@ describe('waste-management scheduling low coverage views', () => {
 
     const { result } = renderHook(() => useWasteSchedulingViewModel((key) => key, search));
 
-    expect(result.current.schadstoffmobilTour).toEqual({ id: 'tour-1', name: 'Schadstoffmobil' });
-    expect(result.current.schadstoffmobilAssignments).toEqual([
-      { id: 'pickup-1', tourId: 'tour-1', locationId: 'location-1', pickupDate: '2026-07-01', note: '08:00' },
+    expect(result.current.tourAssignments).toEqual([
+      {
+        id: 'assignment-1',
+        tourId: 'tour-2',
+        locationIds: ['location-1', 'location-2'],
+        pickupDate: '2026-07-02',
+        note: null,
+      },
     ]);
-    expect(result.current.schadstoffmobilLocationOptions).toEqual([
+    expect(result.current.assignmentLocationOptions).toEqual([
       { id: 'location-1', label: 'Albertplatz' },
       { id: 'location-2', label: 'Ziegelhof' },
     ]);

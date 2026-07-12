@@ -68,6 +68,8 @@ Fehlerpfad:
 10. Der Tab `Ausgabe` pflegt nur statische PDF-Inhalte wie Branding und Kontaktblock; operative PDF-Erzeugung gehört nicht mehr zum Studio-Laufzeitpfad.
 11. Technische Operationen wie Import, Migration, Seed, Reset und `sync-waste-types` starten als generische Plugin-Jobs über den gemeinsamen Host-Jobpfad; das Plugin zeigt nur die fachnahe Bedienhülle und Statusprojektion.
 12. Der Waste-CSV-Spezialimport veröffentlicht während des Commit-Pfads blockweise Fortschritt für gültige Zeilen, inklusive fachlicher Phasen `Vorbereitung`, `Importlauf` und `Abschluss`; die Plugin-UI pollt diesen aktiven Fall enger als die generische Historienansicht.
+13. Explizite Tour-Einsätze werden als eigenständige Datensätze mit Datum, optionalem gemeinsamen Hinweis und mindestens einem Abholort gepflegt; mehrere Orte werden atomar über eine Einsatz-Ort-Zuordnung gespeichert.
+14. Die Einsatzpflege verwendet die bestehende Scheduling-Aktion `waste-management.scheduling.manage`; Abfallfraktionen bleiben über die normale Tourzuordnung für Filter, Darstellung und Exporte maßgeblich.
 
 Fehlerpfad:
 
@@ -84,6 +86,8 @@ Fehlerpfad:
 4. Nach vollständiger Auswahl projiziert die App die bekannten Termine in Listenansicht, Fraktionsfilter, PDF-Export und iCal-URL.
 5. Ein Klick auf einen Termin öffnet ein Modal mit Datum, Fraktion und Hinweistext; die globalen Export-Aktionen bleiben außerhalb des Modals sichtbar.
 6. Ein Reload mit gültigem Cookie stellt denselben Standort wieder her und zeigt einen expliziten Hinweis auf die automatisch geladene Adresse.
+7. Die öffentliche Runtime ergänzt berechnete Tourtermine um explizite Einsätze. Dabei gelten Einsatzorte auch für hierarchisch untergeordnete Adressen, ohne dass ein allgemeiner Tour-Ort-Link erforderlich ist.
+8. Ein passender expliziter Einsatz verdrängt den sonst doppelten berechneten Termin; mehrere explizite Einsätze derselben Tour am selben Tag bleiben anhand ihrer Einsatz-ID getrennt.
 
 Erweiterter Reminder-Pfad:
 

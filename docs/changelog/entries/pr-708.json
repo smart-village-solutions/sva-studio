@@ -1,0 +1,4 @@
+{
+  "prNumber": 708,
+  "body": "Der Container-Build verknüpft das SVA-Studio-Image künftig eindeutig mit seinem GitHub-Repository. Dadurch kann GitHub Actions die erforderlichen GHCR-Schreibrechte für veröffentlichte Images korrekt übernehmen."
+}

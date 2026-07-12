@@ -76,8 +76,6 @@ export const seedWasteBaseline = async (repository: ReturnType<typeof createWast
     id: baselineIds.link,
     locationId: baselineIds.location,
     tourId: baselineIds.tour,
-    startDate: '2026-01-12',
-    endDate: undefined,
   });
   await repository.upsertWasteTourDateShift({
     id: baselineIds.tourShift,

@@ -152,8 +152,6 @@ describe('waste tour write support', () => {
       id: 'link-copy-id',
       locationId: 'location-1',
       tourId: 'target-tour',
-      startDate: '2026-01-01',
-      endDate: '2026-12-31',
     });
     expect(saveShift).toHaveBeenCalledWith('tenant-a', {
       id: 'shift-copy-id',

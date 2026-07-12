@@ -11,6 +11,7 @@ import {
   formatRiskSummary,
   type DeployGateMode,
 } from './promote-deploy-gates.ts';
+import { isTraefikOnlyComposeDiff } from './traefik-compose-diff.ts';
 
 const temporaryDirectories: string[] = [];
 
@@ -91,6 +92,23 @@ describe('promote-deploy-gates', () => {
     expect(result.bootstrap.riskFiles).toEqual(['compose.yaml', 'deploy/compose.prod.yaml']);
     expect(result.migration.ok).toBe(false);
     expect(result.bootstrap.ok).toBe(false);
+  });
+
+  it('allows Traefik-only compose label changes without suppressing other compose risks', () => {
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'assert-none',
+      changedFiles: ['deploy/compose.dev.yaml'],
+      migrationMode: 'assert-none',
+      safeComposeFiles: ['deploy/compose.dev.yaml'],
+    });
+
+    expect(result.migration.ok).toBe(true);
+    expect(result.bootstrap.ok).toBe(true);
+  });
+
+  it('recognizes only label-list changes as Traefik-only compose diffs', () => {
+    expect(isTraefikOnlyComposeDiff("-        - 'traefik.http.routers.app.tls=true'\n+        - 'traefik.http.routers.app.tls.certresolver=default'\n")).toBe(true);
+    expect(isTraefikOnlyComposeDiff('+  postgres:\n+    image: postgres:16-alpine\n')).toBe(false);
   });
 
   it('refuses run mode when no safe executor is configured', () => {

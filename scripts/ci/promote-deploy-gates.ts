@@ -2,11 +2,11 @@
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { resolveChangedFiles } from './pr-scope.ts';
+import { resolveTraefikOnlyComposeFiles } from './traefik-compose-diff.ts';
 export type DeployGateMode = 'assert-none' | 'run';
 export type DeployGateKind = 'bootstrap' | 'migration';
 export type DeployGateResultType =
   'asserted-clean' | 'blocked-missing-executor' | 'blocked-risk' | 'blocked-safe-run-required';
-
 export interface DeployGateResult {
   kind: DeployGateKind;
   message: string;
@@ -16,20 +16,18 @@ export interface DeployGateResult {
   riskDetected: boolean;
   riskFiles: string[];
 }
-
 export interface PromoteDeployGateEvaluation {
   bootstrap: DeployGateResult;
   changedFiles: string[];
   migration: DeployGateResult;
 }
-
 interface EvaluateDeployGateOptions {
   changedFiles: readonly string[];
   executorConfigured: boolean;
   kind: DeployGateKind;
   mode: DeployGateMode;
+  safeComposeFiles?: readonly string[];
 }
-
 interface CliOptions {
   base: string;
   bootstrapExecutorConfigured: boolean;
@@ -39,7 +37,6 @@ interface CliOptions {
   migrationExecutorConfigured: boolean;
   migrationMode: DeployGateMode;
 }
-
 const DEFAULT_BASE = 'origin/main';
 const DEFAULT_HEAD = 'HEAD';
 const migrationRiskPatterns = [
@@ -65,29 +62,29 @@ const bootstrapRiskPatterns = [
   /^config\/runtime\//u,
   /^scripts\/ops\/runtime\/bootstrap-job\.ts$/u,
 ];
-
 const matchesAnyPattern = (filePath: string, patterns: readonly RegExp[]): boolean =>
   patterns.some((pattern) => pattern.test(filePath));
 const uniqueSorted = (values: readonly string[]): string[] =>
   [...new Set(values.map((value) => value.trim()).filter(Boolean))].sort();
-
 export const formatRiskSummary = (riskFiles: readonly string[]): string =>
   riskFiles.length === 0 ? 'none' : uniqueSorted(riskFiles).join(', ');
-
-export const findRiskFiles = (kind: DeployGateKind, changedFiles: readonly string[]): string[] => {
+export const findRiskFiles = (
+  kind: DeployGateKind,
+  changedFiles: readonly string[],
+  safeComposeFiles: readonly string[] = [],
+): string[] => {
   const patterns = kind === 'migration' ? migrationRiskPatterns : bootstrapRiskPatterns;
-  return uniqueSorted(changedFiles.filter((filePath) => matchesAnyPattern(filePath, patterns)));
+  return uniqueSorted(changedFiles.filter((filePath) => !safeComposeFiles.includes(filePath) && matchesAnyPattern(filePath, patterns)));
 };
-
 export const evaluateDeployGate = ({
   changedFiles,
   executorConfigured,
   kind,
   mode,
+  safeComposeFiles,
 }: EvaluateDeployGateOptions): DeployGateResult => {
-  const riskFiles = findRiskFiles(kind, changedFiles);
+  const riskFiles = findRiskFiles(kind, changedFiles, safeComposeFiles);
   const label = kind === 'migration' ? 'Migration' : 'Bootstrap';
-
   if (mode === 'assert-none') {
     if (riskFiles.length > 0) {
       return {
@@ -131,25 +128,27 @@ export const evaluateDeployGate = ({
     riskFiles,
   };
 };
-
 export const evaluatePromoteDeployGates = ({
   bootstrapExecutorConfigured = false,
   bootstrapMode,
   changedFiles,
   migrationExecutorConfigured = false,
   migrationMode,
+  safeComposeFiles = [],
 }: {
   bootstrapExecutorConfigured?: boolean;
   bootstrapMode: DeployGateMode;
   changedFiles: readonly string[];
   migrationExecutorConfigured?: boolean;
   migrationMode: DeployGateMode;
+  safeComposeFiles?: readonly string[];
 }): PromoteDeployGateEvaluation => ({
   bootstrap: evaluateDeployGate({
     changedFiles,
     executorConfigured: bootstrapExecutorConfigured,
     kind: 'bootstrap',
     mode: bootstrapMode,
+    safeComposeFiles,
   }),
   changedFiles: uniqueSorted(changedFiles),
   migration: evaluateDeployGate({
@@ -157,9 +156,9 @@ export const evaluatePromoteDeployGates = ({
     executorConfigured: migrationExecutorConfigured,
     kind: 'migration',
     mode: migrationMode,
+    safeComposeFiles,
   }),
 });
-
 const parseBoolean = (value: string): boolean => {
   if (value === 'true') {
     return true;
@@ -169,7 +168,6 @@ const parseBoolean = (value: string): boolean => {
   }
   throw new Error(`Ungültiger Boolean-Wert: ${value}`);
 };
-
 const parseMode = (value: string, flag: string): DeployGateMode => {
   if (value === 'assert-none' || value === 'run') {
     return value;
@@ -185,7 +183,6 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
   let migrationExecutorConfigured = false;
   let bootstrapExecutorConfigured = false;
   let changedFiles: string[] | null = null;
-
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     const nextValue = (): string => {
@@ -196,7 +193,6 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
       index += 1;
       return value;
     };
-
     if (argument === '--base') {
       base = nextValue();
       continue;
@@ -277,12 +273,16 @@ export const executePromoteDeployGates = async (
 ): Promise<{ exitCode: number; stderr: string; stdout: string }> => {
   try {
     const options = parseCliOptions(args);
+    const changedFiles = resolveCliChangedFiles(options);
     const evaluation = evaluatePromoteDeployGates({
       bootstrapExecutorConfigured: options.bootstrapExecutorConfigured,
       bootstrapMode: options.bootstrapMode,
-      changedFiles: resolveCliChangedFiles(options),
+      changedFiles,
       migrationExecutorConfigured: options.migrationExecutorConfigured,
       migrationMode: options.migrationMode,
+      safeComposeFiles: options.changedFiles
+        ? []
+        : resolveTraefikOnlyComposeFiles(options.base, options.head, changedFiles),
     });
 
     emitEvaluationOutputs(evaluation);

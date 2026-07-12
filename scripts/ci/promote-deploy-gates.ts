@@ -277,11 +277,10 @@ export const executePromoteDeployGates = async (
 ): Promise<{ exitCode: number; stderr: string; stdout: string }> => {
   try {
     const options = parseCliOptions(args);
-    const changedFiles = resolveCliChangedFiles(options);
     const evaluation = evaluatePromoteDeployGates({
       bootstrapExecutorConfigured: options.bootstrapExecutorConfigured,
       bootstrapMode: options.bootstrapMode,
-      changedFiles,
+      changedFiles: resolveCliChangedFiles(options),
       migrationExecutorConfigured: options.migrationExecutorConfigured,
       migrationMode: options.migrationMode,
     });
@@ -303,17 +302,18 @@ export const executePromoteDeployGates = async (
 
 export const runPromoteDeployGates = async (args: readonly string[]): Promise<number> => {
   const result = await executePromoteDeployGates(args);
-
-  if (result.stdout) {
-    process.stdout.write(`${result.stdout}\n`);
-  }
-  if (result.stderr) {
-    process.stderr.write(`${result.stderr}\n`);
-  }
+  if (result.stdout) process.stdout.write(`${result.stdout}\n`);
+  if (result.stderr) process.stderr.write(`${result.stderr}\n`);
   return result.exitCode;
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const exitCode = await runPromoteDeployGates(process.argv.slice(2));
-  process.exit(exitCode);
+  void runPromoteDeployGates(process.argv.slice(2))
+    .then((exitCode) => (process.exitCode = exitCode))
+    .catch((error: unknown) => {
+      process.stderr.write(
+        `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`
+      );
+      process.exitCode = 2;
+    });
 }

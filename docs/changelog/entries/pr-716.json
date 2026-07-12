@@ -1,0 +1,4 @@
+{
+  "prNumber": 716,
+  "body": "Reine Traefik-Konfigurationsänderungen können den Dev-Release jetzt ausrollen, ohne fälschlich Migration und Bootstrap zu blockieren."
+}

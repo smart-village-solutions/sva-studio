@@ -1,0 +1,4 @@
+{
+  "prNumber": 715,
+  "body": "Der Dev-Router verwendet jetzt den auf dem Swarm konfigurierten Traefik-Resolver, damit ein gültiges Let's-Encrypt-Zertifikat bereitgestellt wird."
+}

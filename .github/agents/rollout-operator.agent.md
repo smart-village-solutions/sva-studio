@@ -46,7 +46,7 @@ Lies diese Dateien zu Beginn jedes Rollouts:
 - **Kein `--force`**: Docker Swarm Rollbacks nur über die dokumentierten Wege
 - **Strikte Stack-Grenze**: Niemals Ressourcen außerhalb des explizit zugewiesenen Stacks ändern; betroffen sind insbesondere andere Stacks, globale Swarm-Ressourcen, gemeinsame Netzwerke und Ingress-Komponenten
 - **Traefik bleibt unberührt**: Den Traefik-Stack, Traefik-Services, deren Labels, Routing-Regeln, Zertifikatsresolver, Netzwerke oder statische/dynamische Konfiguration niemals ändern, neu deployen, skalieren, restarten oder löschen
-- **Traefik-Version fest annehmen**: Auf dem Swarm-Server läuft Traefik `v1.7.34`; alle Ingress-Annahmen und Labels müssen dazu kompatibel sein
+- **Traefik-Version fest annehmen**: Auf dem Swarm-Server läuft Traefik `v3.6`; Ingress-Router verwenden die `traefik.http.*`-Labels und den konfigurierten TLS-Resolver
 - **Monitoring-Gates beachten**: Deploy erst als erfolgreich melden, wenn Health + Smoke grün sind
 - **Learnings pflegen**: Bei unerwarteten Fehlern oder Workarounds sofort `/memories/repo/rollout-learnings.md` aktualisieren
 
@@ -110,9 +110,9 @@ Kurz notiert:
 - Bei `401 Invalid JWT token` nicht nur den Server verdächtigen: ein lokales, veraltetes `QUANTUM_API_KEY` kann einen ansonsten funktionierenden Quantum-Kontext überschreiben. Einmal mit `env -u QUANTUM_API_KEY quantum-cli ...` gegenprüfen
 - Fuer `studio` koennen Shell-Overrides und einzelne Runtime-Variablen beim direkten `quantum-cli stacks update` verloren gehen; wenn Env-Propagation zweifelhaft ist, ein temporaeres Quantum-Projekt mit vorgerenderter Compose verwenden
 - `docker compose config` ist nicht 1:1 Portainer-kompatibel; beim Vorab-Rendering muessen mindestens das Top-Level-Feld `name:` entfernt und numerische `deploy.resources.limits.cpus` wieder als Strings serialisiert werden
-- Auf dem Endpoint `sva` läuft Traefik `v1.7.34`; daher nur Traefik-v1-Labels verwenden. `traefik.http.routers.*` wird ignoriert
+- Auf dem Endpoint `sva` läuft Traefik `v3.6`; für Ingress-Router sind `traefik.http.*`-Labels mit explizitem TLS-Resolver maßgeblich
 - Traefik ist als externe, nicht diesem Agenten zugeordnete Ingress-Komponente zu behandeln; Diagnosen sind erlaubt, Änderungen daran nicht
-- Für Let's Encrypt bei Instanz-Subdomains konkrete `Host:`-Einträge ergänzen; `HostRegexp` allein reicht auf Traefik v1 nicht für ACME
+- Für Let's Encrypt muss jeder Router einen konkreten Host-Regel-Ausdruck sowie den konfigurierten TLS-Resolver setzen
 - Fuer `studio` ist der kanonische Betriebsweg `Studio Image Build` -> `Studio Artifact Verify` -> `pnpm env:release:studio:local`
 - `studio` mutiert ausschliesslich den Stack `studio` auf Endpoint `sva`; direkte Service-Updates oder Portainer-Handedits sind nur dokumentierter Notfallpfad
 

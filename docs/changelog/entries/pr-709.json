@@ -1,0 +1,4 @@
+{
+  "prNumber": 709,
+  "body": "Der automatische Promote-Pfad kann seine Migrations- und Bootstrap-Gates wieder zuverlässig ausführen. Der CI-Skripteinstieg ist nun auch mit der CommonJS-Transformation des GitHub-Runners kompatibel."
+}

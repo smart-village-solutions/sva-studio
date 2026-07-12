@@ -1,0 +1,4 @@
+{
+  "prNumber": 710,
+  "body": "Der Dev-Releasepfad kann Container-Images jetzt über die bestehende Swarm-Registry-Konfiguration beziehen, wenn die vorgeschaltete Bereitstellungsprüfung nicht verfügbar ist."
+}

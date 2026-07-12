@@ -232,7 +232,11 @@ jobs:
           docker compose -f compose.yaml -f ./deploy/compose.${ENVIRONMENT}.yaml config --no-normalize --format json > stack.json
           pnpm exec tsx scripts/ci/render-quantum-stack.ts --input stack.json --output stack.yaml
 
-          quantum-cli stack deploy -f stack.yaml --stack "studio-${ENVIRONMENT}" --endpoint "${QUANTUM_ENDPOINT}"
+          pre_pull_args=()
+          if [ "${ENVIRONMENT}" = "dev" ]; then
+            pre_pull_args=(--no-pre-pull)
+          fi
+          quantum-cli stack deploy -f stack.yaml --stack "studio-${ENVIRONMENT}" --endpoint "${QUANTUM_ENDPOINT}" "${pre_pull_args[@]}"
 
       - name: write deploy summary
         if: always()

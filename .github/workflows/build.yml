@@ -57,5 +57,5 @@ jobs:
       change_base: ${{ github.event.before }}
       change_head: ${{ github.sha }}
       environment: dev
-      image_ref: ${{ needs.build.outputs.image_digest }}
+      image_ref: ${{ github.sha }}
       migration_mode: assert-none

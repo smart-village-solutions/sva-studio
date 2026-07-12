@@ -1,0 +1,4 @@
+{
+  "prNumber": 711,
+  "body": "Der Dev-Releasepfad verwendet für gerenderte Stacks nun den kompatiblen Quantum-CLI-Aufruf und kann die vorgeschaltete Image-Bereitstellung gezielt überspringen."
+}

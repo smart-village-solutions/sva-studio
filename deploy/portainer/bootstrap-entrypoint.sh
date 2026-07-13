@@ -72,6 +72,9 @@ BEGIN
 END
 $bootstrap$;`,
   `GRANT iam_app TO ${sqlIdentifier(appDbUser)};`,
+  `GRANT CONNECT ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} TO ${sqlIdentifier(appDbUser)};`,
+  `GRANT CREATE ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} TO ${sqlIdentifier(appDbUser)};`,
+  `GRANT USAGE, CREATE ON SCHEMA public TO ${sqlIdentifier(appDbUser)};`,
   `GRANT USAGE ON SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
   `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
   `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,

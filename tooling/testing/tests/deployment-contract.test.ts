@@ -69,6 +69,13 @@ describe('deployment contracts', () => {
     expect(compose).toContain('traefik.http.routers.studio-dev-app.tls.certresolver=default');
   });
 
+  it('configures the Staging router for the Traefik ACME resolver', () => {
+    const compose = load('deploy/compose.staging.yaml');
+
+    expect(compose).toContain('traefik.http.routers.studio-staging-app.entrypoints=web,websecure');
+    expect(compose).toContain('traefik.http.routers.studio-staging-app.tls.certresolver=default');
+  });
+
   it('documents the active Traefik v3 ingress contract', () => {
     const overview = load('docs/guides/deployment-overview.md');
     const rolloutAgent = load('.github/agents/rollout-operator.agent.md');

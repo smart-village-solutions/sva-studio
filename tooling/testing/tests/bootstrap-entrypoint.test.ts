@@ -65,6 +65,14 @@ cp "$sql_file" "$OUTPUT_SQL_PATH"
 };
 
 describe('bootstrap-entrypoint', () => {
+  it('grants the runtime database and schema privileges required by the job worker', () => {
+    const sql = renderBootstrapSql();
+
+    expect(sql).toContain('GRANT CONNECT ON DATABASE "sva_studio" TO "sva_app";');
+    expect(sql).toContain('GRANT CREATE ON DATABASE "sva_studio" TO "sva_app";');
+    expect(sql).toContain('GRANT USAGE, CREATE ON SCHEMA public TO "sva_app";');
+  });
+
   it('backfills tenant_admin_client_id in bootstrap instance reconciliation SQL', () => {
     const sql = renderBootstrapSql();
 

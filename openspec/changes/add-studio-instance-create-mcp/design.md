@@ -1,0 +1,111 @@
+## Context
+
+Die Instance Registry stellt bereits den idempotenten fachlichen Vertrag für die Anlage von Studio-Instanzen bereit. Die Studio-Control-Plane nutzt diesen Vertrag über einen gesicherten HTTP-Endpunkt. Für Codex und CLI fehlt ein lokaler MCP-Zugang, der auf eine bereits konfigurierte Studio-Umgebung zugreift.
+
+## Goals / Non-Goals
+
+### Goals
+
+- Instanzanlage über ein lokales stdio-MCP-Tool ermöglichen.
+- Studio als einzige Autorisierungs-, Audit- und Provisioning-Grenze erhalten.
+- Wiederholungen sicher und nachvollziehbar behandeln.
+- Geheimnisse auf dem Transportweg schützen und aus Tool-Ausgaben sowie Logs ausschließen.
+
+### Non-Goals
+
+- Keine direkte Datenbank-, Keycloak- oder interne Service-Anbindung aus dem MCP-Prozess.
+- Keine Lockerung der Browser-Session-, CSRF- oder Fresh-Reauth-Guards für interaktive Studio-Aufrufe.
+
+## Decisions
+
+### Decision: Lokaler MCP-Server ist ein dünner Studio-API-Client
+
+Ein neues Workspace-Package implementiert einen stdio-MCP-Server und das Tool `studio_instances_create`. Es validiert den bereits geltenden Create-Vertrag, erzeugt oder übernimmt Idempotenz- und Korrelationskennungen und ruft ausschließlich den bestehenden Studio-API-Pfad auf. Die Instance Registry und der Service `createProvisioningRequest` bleiben unverändert der einzige fachliche Schreibpfad.
+
+Alternativen:
+
+- Direkte Datenbank- oder Service-Anbindung: verworfen, da sie Autorisierung, Audit und Betriebsgrenzen umgehen würde.
+- MCP-Transport im `instance-registry`-Package: verworfen, da ein serverseitiges Domänenpackage keine lokalen Tool-Credentials oder Transportschicht besitzen soll.
+
+### Decision: Separater Service-Token-Pfad mit Least Privilege
+
+Studio akzeptiert für die MCP-Instanzanlage einen dedizierten Service-Token. Die serverseitige Prüfung bindet mindestens Aussteller, Zielumgebung (`aud`), Ablaufzeit und die Berechtigung für `instance.create` beziehungsweise die dedizierte Plattformrolle `instance_registry_admin`. Der Token-Subject wird als Maschinenakteur in Audit und strukturierter Korrelation gespeichert. Der Token ersetzt ausschließlich die für Browser-Interaktion konzipierten Session-, CSRF- und Fresh-Reauth-Nachweise dieses expliziten Maschinenpfads.
+
+Alternativen:
+
+- Browser-Session mit CSRF und Fresh-Reauth wiederverwenden: verworfen, weil sie für lokale Automatisierung nicht robust und nicht hinreichend maschinenidentifizierbar ist.
+- Unbeschränkter Plattformtoken: verworfen, weil er das Least-Privilege-Prinzip verletzt.
+
+### Decision: Konfiguration und Geheimnisse bleiben lokal und nicht persistiert
+
+Basis-URL und Token werden über Umgebungsvariablen oder einen OS-Keychain-Verweis bereitgestellt. Sie dürfen weder in Repository-Konfiguration, MCP-Tool-Antworten, Fehlerdetails noch in Logs erscheinen. Der MCP-Server redigiert Eingaben und Antworten, die Auth-Client- oder Tenant-Admin-Secrets enthalten können.
+
+### Decision: Maschinenlesbarer Fehlervertrag mit begrenzter Read-only-Diagnose
+
+Studio liefert für die Instanzanlage einen versionierten Fehlervertrag. Jedes fehlgeschlagene Ergebnis enthält mindestens einen stabilen `code`, eine `category`, `retryable`, `recommendedAction` sowie `requestId` und `idempotencyKey`. Verständliche Texte ergänzen die Codes, ersetzen sie aber nicht. Der Create-Handler und alle weiteren Mutationspfade verwenden dieselbe serverseitige Fehlerklassifikation; unbekannte Ausnahmen bleiben `internal_unclassified` und dürfen nicht als Keycloak-Fehler umgedeutet werden.
+
+Nach einem Create-Fehler führt der lokale MCP-Server eine begrenzte, zeitlich budgetierte Read-only-Diagnose aus. Sie prüft abhängig von der Fehlerklasse nur sinnvolle Evidenz, etwa eine bestehende Registry-Instanz, Registry-/Datenbank-Readiness oder einen Keycloak-Preflight für eine bereits existierende Instanz. Eine fehlgeschlagene Diagnose überschreibt nie die ursprüngliche Fehlerursache. Das Tool führt keine Wiederholung oder Reparatur selbsttätig aus; `retryable: true` erlaubt ausschließlich einen expliziten, begrenzten Wiederholungsversuch durch den Aufrufer.
+
+Die Fehlerklassen sind: Eingabe, Authentisierung, Autorisierung, Konflikt, Plattform-Readiness, Abhängigkeit und nicht klassifizierter interner Fehler. Diagnoseantworten enthalten keine Tokens, Passwörter, Client-Secrets, Connection-Strings, Stacktraces oder nicht für den Operator bestimmte Infrastrukturdetails.
+
+Alternativen:
+
+- Bestehende HTTP-Fehler unverändert durchreichen: verworfen, weil die heutige Klassifikation für automatisierte Diagnose zu grob ist.
+- Interne Exception-Details an MCP ausgeben: verworfen, weil dies Geheimnisse und Angriffsoberfläche preisgeben kann.
+
+### Decision: Dreistufige MCP-Control-Plane mit serverseitiger Risikopolicy
+
+Der MCP stellt die bereits fachlich vorhandene Instanzverwaltung vollständig als getrennte Tools bereit. Tool-Namen bleiben stabil und sprechend; ihre tatsächliche Berechtigung wird serverseitig über vollständig qualifizierte Action-IDs, nicht über den Tool-Namen selbst, erzwungen.
+
+| Risikostufe | Tools | Serverseitige Policy |
+| --- | --- | --- |
+| Lesen und Diagnose | `studio_instances_list`, `studio_instance_get`, `studio_instance_audit`, `studio_instances_audit`, `studio_instance_diagnose`, `studio_instance_provisioning_run_get` | Read-only-Action-Scope, keine Bestätigung |
+| Kontrollierte Mutation | `studio_instances_create`, `studio_instance_update`, `studio_instance_provisioning_plan`, `studio_instance_provisioning_execute`, `studio_instance_reconcile`, `studio_instance_module_assign`, `studio_instance_iam_baseline_seed`, `studio_instance_admin_bootstrap` | action-spezifischer Scope, Idempotenz und strukturierter Fehlervertrag |
+| Kritische Mutation | `studio_instance_activate`, `studio_instance_suspend`, `studio_instance_archive`, `studio_instance_module_revoke`, `studio_instance_secret_rotate` | action-spezifischer Scope, aktueller Vorab-Read oder Plan, Bestätigungs-Challenge, explizite Phrase, Idempotenz und append-only Audit |
+
+Die Action-IDs werden vollständig qualifiziert modelliert, beispielsweise `instance.create`, `instance.provision.execute`, `instance.status.activate`, `instance.module.revoke` und `instance.secret.rotate`. Sie werden minimal pro Service-Token vergeben; es gibt keinen MCP-Super-Token.
+
+Kritische Tools folgen einem serverseitig erzwungenen Zwei-Schritt-Vertrag:
+
+1. Ein Diagnose-, Detail- oder Plan-Aufruf gibt eine an Action, Instanz, relevanten aktuellen Zustand und Ablaufzeit gebundene `confirmationChallenge` zurück.
+2. Der kritische Tool-Aufruf muss die noch gültige Challenge, einen Idempotenz-Key und eine action-spezifische Bestätigungsphrase enthalten.
+3. Studio prüft Scope, Challenge, Ablauf, Instanzzustand/-version und Phrase atomar vor der Mutation. Bei veränderter Grundlage wird die Challenge abgelehnt und ein neuer Vorab-Read verlangt.
+
+Für besonders folgenreiche Aktionen enthält die Phrase die konkrete Wirkung, beispielsweise `ARCHIVE <instanceId>` oder `REVOKE <moduleId> FROM <instanceId>`. Secret-Rotation gibt niemals das erzeugte Geheimnis zurück, sondern ausschließlich sicheren Status, Run-ID und Korrelation.
+
+Alternativen:
+
+- Ein einziges generisches Mutations-Tool: verworfen, da Scope, Risiko, Bestätigung und Audit nicht hinreichend präzise erzwingbar wären.
+- Schutz ausschließlich durch Codex-Anweisungen: verworfen, da die Sicherheitsgrenze serverseitig durchsetzbar sein muss.
+
+## Data Flow
+
+1. Codex ruft ein lokales Instanz-Tool im stdio-MCP-Server auf.
+2. Der Server validiert die Eingabe, erstellt eine Korrelation und einen Idempotenz-Key und liest Basis-URL sowie Service-Token lokal.
+3. Bei kritischen Aktionen liest der Server zuerst Zustand oder Plan und erhält eine kurzlebige Bestätigungs-Challenge.
+4. Der Server sendet die Anfrage mit Token, Action-Kontext, Korrelation und gegebenenfalls Challenge an die konfigurierte Studio-API.
+5. Studio authentisiert und autorisiert den Service-Token-Pfad und ruft den bestehenden Registry-Service auf.
+6. Bei einem Fehler liefert Studio dessen stabilen Fehlervertrag; der MCP-Server liest abhängig von der Klasse begrenzte Diagnose-Evidenz.
+7. Studio speichert Audit-Ereignis und fachliche Artefakte; das Tool liefert ausschließlich die sichere Ergebnis- oder Diagnosezusammenfassung zurück.
+
+## Risks / Trade-offs
+
+- Token-Diebstahl ermöglicht Instanzanlage innerhalb des Token-Scopes. → Kurze Laufzeit, enger Audience-/Scope-Bindung, sichere lokale Ablage, Rotation und vollständiges Audit.
+- Der initiale Create-Vorgang beendet das technische Setup nicht. → Tool-Ergebnis weist klar auf Status `requested` und getrennte Folgeschritte hin.
+- Unterschiedliche API-Konfigurationen können Fehlbedienung verursachen. → Token-Audience muss die Zielumgebung binden und das Tool zeigt nur redigierte, handlungsfähige Fehler an.
+- Unvollständige oder falsche Diagnose kann zu Fehlreparaturen verleiten. → Primärfehler und Diagnose-Evidenz getrennt darstellen, Diagnosen budgetieren und automatische Reparaturen verbieten.
+- Wiederverwendete oder veraltete Bestätigungen könnten kritische Mutationen fehlleiten. → Challenge atomar an Action, Instanz und Zustands-/Versionswert binden, kurz befristen und einmalig verbrauchen.
+
+## Migration Plan
+
+1. Service-Token-Prüfung und Autorisierungsgrenze mit Tests ergänzen.
+2. Lokales MCP-Package und seine Codex-Konfiguration ergänzen.
+3. Dokumentation für Token-Ausstellung, Rotation und Tool-Aufruf bereitstellen.
+4. Nach erfolgreicher Verifikation kann das Tool für berechtigte lokale Operatoren aktiviert werden.
+
+Rollback: Die MCP-Konfiguration entfernen oder die Token-Ausstellung widerrufen; der bestehende Studio-UI- und API-Pfad bleibt unverändert nutzbar.
+
+## Open Questions
+
+- Welcher bestehende Identity Provider oder Token-Aussteller stellt die kurzlebigen Service-Tokens aus und wie erfolgt deren Rotation?
+- Soll die Berechtigung als neue Action-ID `instance.create` oder ausschließlich über `instance_registry_admin` modelliert werden?

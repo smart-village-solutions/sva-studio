@@ -351,8 +351,36 @@ Für das produktionsnahe Profil `studio` gilt derselbe Netzwerk-/Ingress-Vertrag
 - ein `app-only`-Reconcile dient als kanonischer, nicht destruktiver Recovery-Pfad für Netz-/Ingress-Drift
 - `env:migrate:studio` und `schema-and-app` duerfen nur die Temp-Job-Stacks `migrate` und `bootstrap` bewegen; Seiteneffekte auf `studio_app` ausserhalb des expliziten Deploy-Schritts sind kein akzeptierter Zustand
 - `precheck` und `doctor` muessen `app-db-principal` fuer `APP_DB_USER` als gesund bestaetigen; Superuser-only-Sicht ist kein Freigabenachweis
+- der Bootstrap-Job muss für `APP_DB_USER` neben den IAM-Schema-Rechten auch `CONNECT` und `CREATE` auf der Studio-Datenbank sowie `USAGE, CREATE` im Schema `public` abgleichen; diese Rechte werden vom Graphile-Job-Worker benötigt
 - wenn das Ziel-Digest bereits auf `studio_app` laeuft, darf `image-smoke` die Live-Paritaet nur wiederverwenden, wenn Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Runtime-Flags fuer genau dieses Digest gruen sind
 - eine erfolgreich gelaufene GitHub-Image-Verifikation fuer dasselbe Digest ist operativ massgeblich; lokale Operator-Warnungen wegen fehlender lokaler Verify-Artefakte sind nachrangig, bis der Artefakt-Lookup vereinheitlicht ist
+
+### Staging-Stacks und Wiederherstellung nach Konfigurationsdrift
+
+Der Quantum-Environment-Name und der Name eines laufenden Stacks sind keine austauschbaren Zielangaben. Insbesondere darf ein Staging-Stack nicht mit dem Compose- oder Runtime-Profil von `studio` aktualisiert werden: Dadurch können Ingress-Labels, Root-Host, OIDC-Redirect-URIs, Client-Secrets und Datenbankzugänge des Staging-Stacks überschrieben werden.
+
+Vor jeder Mutation sind deshalb immer diese drei Werte gemeinsam zu prüfen und im Deploy-Report festzuhalten:
+
+- Endpoint, Stackname und verwendete Compose-Quelle
+- Root-Host, `SVA_PARENT_DOMAIN` sowie die Traefik-Hostlabels
+- Realm, Client-ID, Callback-URL und Geheimnisse für `SVA_AUTH_*`, `KEYCLOAK_ADMIN_*` und `KEYCLOAK_PROVISIONER_*`
+
+Für eine Instanzanlage benötigt der Provisioner einen getrennten Client in `master` mit `create-realm`. Der reguläre IAM-Admin-Client einer Tenant- oder Plattform-Realm ist dafür absichtlich nicht ausreichend. Der Provisioner-Vertrag lautet:
+
+- `KEYCLOAK_PROVISIONER_REALM=master`
+- `KEYCLOAK_PROVISIONER_CLIENT_ID=sva-studio-provisioner`
+- `KEYCLOAK_PROVISIONER_CLIENT_SECRET` aus genau diesem Client
+
+Nach einem fehlgeschlagenen oder falschen Stack-Update ist kein weiterer Voll-Deploy mit einem geratenen Profil zulässig. Zuerst die effektive Service-Spec und die passende Staging-Compose-Quelle wiederherstellen; danach in dieser Reihenfolge prüfen: Root-Host, Login-Redirect, `APP_DB_USER`-Anmeldung, Instanz-Registry und erst zuletzt das Keycloak-Provisioning.
+
+Ein `404` während eines kontrollierten Swarm-Updates kann kurzzeitig auftreten. Bleibt er nach abgeschlossenem Service-Update bestehen oder wechselt zu `401`, `403`, `500` oder `502`, ist dies kein Settling mehr, sondern ein Konfigurationsdrift, der vor weiteren Provisioning-Versuchen behoben werden muss.
+
+Die GitHub-Environments `staging` und `dev` erhalten ihre gesamte Stack-Konfiguration als Secret `APP_CONFIG`. Die lokale, ignorierte Arbeitskopie liegt unter `config/runtime/staging.local.vars` beziehungsweise `config/runtime/dev.local.vars`; die commitbaren Verträge sind [staging.vars.example](../../config/runtime/staging.vars.example) und [dev.vars.example](../../config/runtime/dev.vars.example). Vor dem Upload müssen alle `__SET_`-Platzhalter ersetzt und die Keycloak-Realms, Clients sowie Callback-URLs gegen die Zielumgebung geprüft werden.
+
+```bash
+gh secret set APP_CONFIG --env staging < config/runtime/staging.local.vars
+gh secret set APP_CONFIG --env dev < config/runtime/dev.local.vars
+```
 
 ## Schritt 3a: Neue Instanz im Registry-Modell anlegen
 

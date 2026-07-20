@@ -14,6 +14,7 @@ Operatoren sollen neue Studio-Instanzen aus Codex oder einer CLI heraus kontroll
 - Nach einem fehlgeschlagenen Create-Aufruf ergänzt das MCP-Tool eine begrenzte, Read-only-Diagnose; deren Evidenz bleibt geheimnisfrei und verändert keinen Instanzzustand.
 - Der lokale MCP-Server stellt die vorhandene Instanz-Control-Plane als dreistufige Tool-Fläche für Lesen/Diagnose, kontrollierte Mutationen und kritische Mutationen bereit.
 - Kritische Mutationen wie Aktivierung, Suspendierung, Archivierung, Modulentzug und Secret-Rotation verlangen serverseitig gebundene, kurzlebige Bestätigungs-Challenges, einen engsten Action-Scope sowie einen aktuellen Vorab-Read oder Plan.
+- Die Create- und Provisioning-Prozesskette erhält einen einheitlichen, strukturierten und geheimnisfreien Fehlerkontext vom HTTP-Eingang bis zum Keycloak-Worker.
 
 ## Impact
 

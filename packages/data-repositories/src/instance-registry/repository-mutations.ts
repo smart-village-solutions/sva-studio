@@ -10,6 +10,25 @@ type MutationRepository = Pick<InstanceRegistryRepository, 'createInstance' | 'u
 
 const defaultActorId = (actorId: string | undefined): string => actorId ?? 'system';
 
+const runMutationStep = async <T>(stepKey: string, work: () => Promise<T>): Promise<T> => {
+  try {
+    return await work();
+  } catch (error) {
+    if (error !== null && typeof error === 'object') {
+      try {
+        Object.defineProperty(error, 'instanceRegistryStep', {
+          configurable: true,
+          enumerable: false,
+          value: stepKey,
+        });
+      } catch {
+        // Preserve non-extensible database errors without replacing their original identity.
+      }
+    }
+    throw error;
+  }
+};
+
 const upsertPrimaryHostname = async (
   executor: SqlExecutor,
   hostname: string,
@@ -70,7 +89,7 @@ const updateInstanceValues = (input: Parameters<MutationRepository['updateInstan
 ];
 
 const createInstance = async (executor: SqlExecutor, input: Parameters<MutationRepository['createInstance']>[0]) => {
-  const rows = await queryRows<InstanceListRow>(
+  const rows = await runMutationStep('registry_insert', () => queryRows<InstanceListRow>(
     executor,
     {
       text: `
@@ -87,11 +106,13 @@ ${buildInstanceSelectColumns()};
 `,
       values: createInstanceValues(input),
     }
-  );
+  ));
   if (!rows[0]) {
     return null;
   }
-  await upsertPrimaryHostname(executor, input.primaryHostname, input.instanceId, input.actorId);
+  await runMutationStep('primary_hostname_upsert', () =>
+    upsertPrimaryHostname(executor, input.primaryHostname, input.instanceId, input.actorId)
+  );
   return mapInstance(rows[0]);
 };
 

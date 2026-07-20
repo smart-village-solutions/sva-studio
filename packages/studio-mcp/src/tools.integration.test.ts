@@ -81,7 +81,11 @@ describe('Studio MCP tools', () => {
       instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'studio',
     } });
     expect(response.structuredContent).toMatchObject({ ok: true });
-    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST', idempotencyKey: expect.any(String) }));
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({
+      method: 'POST',
+      body: expect.objectContaining({ instanceId: 'demo' }),
+      idempotencyKey: expect.any(String),
+    }));
     await Promise.all([client.close(), server.close()]);
   });
 

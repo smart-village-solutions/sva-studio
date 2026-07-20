@@ -3,6 +3,7 @@ import type { z } from 'zod';
 
 import { readDetailInstanceId } from './http-contracts.js';
 import type { InstanceRegistryService } from './service-types.js';
+import type { InstanceRegistryMutationErrorMapper } from './observability.js';
 
 export type CreateApiError = (
   status: number,
@@ -41,7 +42,7 @@ export type InstanceRegistryHttpDeps<TContext> = {
   readonly asApiList: AsApiList;
   readonly parseRequestBody: ParseRequestBody;
   readonly requireIdempotencyKey: RequireIdempotencyKey;
-  readonly mapMutationError: (error: unknown) => Response;
+  readonly mapMutationError: InstanceRegistryMutationErrorMapper;
   readonly ensurePlatformAccess: (request: Request, ctx: TContext) => Response | null;
   readonly validateCsrf: (request: Request, requestId?: string) => Response | null;
   readonly requireFreshReauth: (request: Request, ctx: TContext) => Response | null;

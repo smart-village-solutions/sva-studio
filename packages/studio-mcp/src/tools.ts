@@ -44,12 +44,22 @@ const call = async (
   }
 };
 
-const mutation = (path: string, params: Record<string, unknown>, method: 'POST' | 'PATCH' = 'POST'): StudioApiRequest => {
+const mutation = (
+  path: string,
+  params: Record<string, unknown>,
+  method: 'POST' | 'PATCH' = 'POST',
+  includeInstanceId = false
+): StudioApiRequest => {
   const requestId = randomUUID();
   const idempotency = typeof params.idempotencyKey === 'string' ? params.idempotencyKey : randomUUID();
   return {
     method, path,
-    body: without(params, ['instanceId', 'idempotencyKey', 'challengeId', 'confirmationPhrase']),
+    body: without(params, [
+      ...(includeInstanceId ? [] : ['instanceId']),
+      'idempotencyKey',
+      'challengeId',
+      'confirmationPhrase',
+    ]),
     requestId,
     idempotencyKey: idempotency,
     ...(typeof params.challengeId === 'string' ? { confirmationChallengeId: params.challengeId } : {}),
@@ -94,7 +104,7 @@ export const registerStudioTools = (server: McpServer, client: StudioApiClient, 
     (p) => call(client, { path: `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/keycloak/runs/${encodeURIComponent(p.runId)}` }));
 
   register('studio_instances_create', 'Studio-Instanz erstellen', 'Erstellt idempotent eine Registry-Instanz; Provisionierung und Aktivierung bleiben getrennt.', schemas.create, writeAnnotations,
-    (p) => call(client, mutation('/api/v1/iam/instances', p), { instanceId: p.instanceId, timeoutMs: config.diagnosisTimeoutMs }));
+    (p) => call(client, mutation('/api/v1/iam/instances', p, 'POST', true), { instanceId: p.instanceId, timeoutMs: config.diagnosisTimeoutMs }));
   register('studio_instance_update', 'Studio-Instanz aktualisieren', 'Aktualisiert die Konfiguration einer vorhandenen Instanz idempotent.', schemas.update, writeAnnotations,
     (p) => call(client, mutation(`/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}`, p, 'PATCH'), { instanceId: p.instanceId, timeoutMs: config.diagnosisTimeoutMs }));
   register('studio_instance_provisioning_plan', 'Provisionierung planen', 'Erzeugt den serverseitigen Keycloak-Provisioning-Plan ohne ihn auszuführen.', schemas.plan, writeAnnotations,

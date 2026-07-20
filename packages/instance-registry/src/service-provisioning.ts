@@ -3,6 +3,7 @@ import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { CreateInstanceProvisioningInput } from './mutation-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { createAuditDetails } from './service-helpers.js';
+import { runInstanceRegistryStep } from './observability.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-provisioning', level: 'info' });
 
@@ -13,15 +14,15 @@ export const createProvisioningArtifacts = async (
   instance: CreatedInstanceRecord,
   input: CreateInstanceProvisioningInput
 ): Promise<void> => {
-  await repository.createProvisioningRun({
+  await runInstanceRegistryStep('provisioning_run_insert', () => repository.createProvisioningRun({
     instanceId: instance.instanceId,
     operation: 'create',
     status: 'requested',
     idempotencyKey: input.idempotencyKey,
     actorId: input.actorId,
     requestId: input.requestId,
-  });
-  await repository.appendAuditEvent({
+  }));
+  await runInstanceRegistryStep('audit_event_insert', () => repository.appendAuditEvent({
     instanceId: instance.instanceId,
     eventType: 'instance_requested',
     actorId: input.actorId,
@@ -30,7 +31,7 @@ export const createProvisioningArtifacts = async (
       parentDomain: instance.parentDomain,
       primaryHostname: instance.primaryHostname,
     }),
-  });
+  }));
 };
 
 export const provisionInstanceAuth = async (
@@ -115,7 +116,7 @@ export const provisionInstanceAuth = async (
       actorId: input.actorId,
       requestId: input.requestId,
       errorCode: 'keycloak_provisioning_failed',
-      errorMessage: error instanceof Error ? error.message : String(error),
+      errorMessage: 'Keycloak-Provisionierung fehlgeschlagen.',
     });
 
     logger.error('provisioning_step_failed', {
@@ -123,7 +124,10 @@ export const provisionInstanceAuth = async (
       step_key: 'keycloak',
       instance_id: failedInstance.instanceId,
       request_id: input.requestId,
-      error: error instanceof Error ? error.message : String(error),
+      result: 'failed',
+      dependency: 'keycloak',
+      error_type: error instanceof Error ? error.name : typeof error,
+      error_code: 'KEYCLOAK_PROVISIONING_FAILED',
     });
     return failedInstance;
   }

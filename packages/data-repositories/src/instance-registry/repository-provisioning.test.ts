@@ -279,6 +279,33 @@ describe('instance registry repository provisioning', () => {
     expect(statements[0]?.text).toContain('ON CONFLICT (id) DO NOTHING');
   });
 
+  it('annotates create and primary-hostname failures with their precise process step', async () => {
+    const insertError = new Error('sensitive insert diagnostics');
+    const insertRepository = createInstanceRegistryRepository({
+      execute: async () => { throw insertError; },
+    });
+    const input = {
+      instanceId: 'tenant-a', displayName: 'Tenant A', status: 'active' as const,
+      parentDomain: 'example.test', primaryHostname: 'tenant-a.example.test',
+      realmMode: 'shared' as const, authRealm: 'sva', authClientId: 'studio', actorId: 'actor-1',
+    };
+
+    await expect(insertRepository.createInstance(input)).rejects.toBe(insertError);
+    expect((insertError as Error & { instanceRegistryStep?: string }).instanceRegistryStep).toBe('registry_insert');
+
+    const hostnameError = new Error('sensitive hostname diagnostics');
+    let invocation = 0;
+    const hostnameRepository = createInstanceRegistryRepository({
+      execute: async <TRow>() => {
+        invocation += 1;
+        if (invocation === 1) return { rowCount: 1, rows: [instanceRow] as TRow[] };
+        throw hostnameError;
+      },
+    });
+    await expect(hostnameRepository.createInstance(input)).rejects.toBe(hostnameError);
+    expect((hostnameError as Error & { instanceRegistryStep?: string }).instanceRegistryStep).toBe('primary_hostname_upsert');
+  });
+
   it('returns null for empty mutations and maps created runs and steps', async () => {
     const { executor } = createQueuedExecutor([[], [], [provisioningRow], [keycloakRunRow], [], [keycloakRunRow], [stepRow], [stepRow]]);
     const repository = createInstanceRegistryRepository(executor);

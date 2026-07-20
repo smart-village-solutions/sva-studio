@@ -8,6 +8,7 @@ import { appendRunStep } from './service-keycloak-run-steps.js';
 import { buildProvisioningInput, completeRun, createQueuedRun, readQueuedTemporaryPassword, syncProvisionedClientSecretToRegistry, syncRotatedClientSecretToRegistry } from './service-keycloak-execution-shared.js';
 import { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
 import { buildProvisioningExecutionOptions, ensureReconcilePreconditions, resolveReconcileIntent } from './service-keycloak-reconcile-helpers.js';
+import { runInstanceRegistryStep } from './observability.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 
@@ -20,6 +21,8 @@ const loadClaimedRunInstance = async (deps: InstanceRegistryServiceDeps, run: In
     await failClaimedRun(deps, {
       runId: run.id,
       requestId: run.requestId,
+      instanceId: run.instanceId,
+      intent: run.intent,
       summary: 'Die Instanz konnte für den Provisioning-Lauf nicht mehr geladen werden.',
       details: { reason: 'instance_not_found' },
     });
@@ -118,8 +121,12 @@ const syncTenantAdminBootstrapAccountAfterProvisioning = async (
 };
 
 const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>, tenantAdminTemporaryPassword: string | undefined, provisioningInput: ReturnType<typeof buildProvisioningInput>) => {
-  const preflight = await appendPreflightSnapshot(deps, run, provisioningInput);
-  const plan = await appendPlanSnapshot(deps, run, provisioningInput);
+  const preflight = await runInstanceRegistryStep('worker_preflight', () =>
+    appendPreflightSnapshot(deps, run, provisioningInput)
+  );
+  const plan = await runInstanceRegistryStep('worker_plan', () =>
+    appendPlanSnapshot(deps, run, provisioningInput)
+  );
 
   if (run.mode === 'existing' && run.intent !== 'provision_admin_client' && !loaded.authClientSecret) {
     throw new Error('tenant_auth_client_secret_missing');
@@ -138,27 +145,31 @@ const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: Instanc
     throw new Error('dependency_missing_provisionInstanceAuth');
   }
 
-  await provisionInstanceAuth({
+  await runInstanceRegistryStep('keycloak_execution', () => provisionInstanceAuth({
     ...provisioningInput,
     tenantAdminTemporaryPassword,
     rotateClientSecret: run.intent === 'rotate_client_secret',
     ...buildProvisioningExecutionOptions(run.intent),
-  });
+  }));
 
-  await syncClientSecretAfterProvisioning(deps, run, loaded);
-  await syncTenantAdminBootstrapAccountAfterProvisioning(deps, run, loaded);
+  await runInstanceRegistryStep('secret_sync', () => syncClientSecretAfterProvisioning(deps, run, loaded));
+  await runInstanceRegistryStep('admin_bootstrap', () =>
+    syncTenantAdminBootstrapAccountAfterProvisioning(deps, run, loaded)
+  );
 
-  const finalRunStatus = await completeRun(deps, {
+  const finalRunStatus = await runInstanceRegistryStep('worker_complete', () => completeRun(deps, {
     loaded,
     runId: run.id,
     requestId: run.requestId,
     actorId: run.actorId,
     intent: run.intent,
     tenantAdminTemporaryPassword,
-  });
+  }));
 
   logger.info('keycloak_provisioning_completed', {
     operation: 'process_keycloak_provisioning_run',
+    result: 'completed',
+    step_key: 'worker_complete',
     instance_id: loaded.instance.instanceId,
     request_id: run.requestId,
     run_id: run.id,
@@ -180,6 +191,8 @@ export const processClaimedKeycloakProvisioningRun = async (
     await failClaimedRun(deps, {
       runId: run.id,
       requestId: run.requestId,
+      instanceId: run.instanceId,
+      intent: run.intent,
       summary: 'Provisioning-Worker ist unvollständig konfiguriert.',
       details: { reason: 'dependency_missing' },
     });
@@ -196,17 +209,25 @@ export const processClaimedKeycloakProvisioningRun = async (
   const provisioningInput = buildProvisioningInput(loaded);
 
   await appendWorkerRunningStep(deps, run);
+  logger.info('keycloak_provisioning_claimed', {
+    operation: 'process_keycloak_provisioning_run',
+    result: 'claimed',
+    request_id: run.requestId,
+    instance_id: run.instanceId,
+    run_id: run.id,
+    intent: run.intent,
+    step_key: 'worker_claim',
+  });
 
   try {
     return await executeClaimedRun(deps, run, loaded, tenantAdminTemporaryPassword, provisioningInput);
   } catch (error) {
-    await failRun(deps, { runId: run.id, requestId: run.requestId, error });
-    logger.error('keycloak_provisioning_failed', {
-      operation: 'process_keycloak_provisioning_run',
-      instance_id: run.instanceId,
-      request_id: run.requestId,
-      run_id: run.id,
-      error: error instanceof Error ? error.message : String(error),
+    await failRun(deps, {
+      runId: run.id,
+      requestId: run.requestId,
+      instanceId: run.instanceId,
+      intent: run.intent,
+      error,
     });
     return deps.repository.getKeycloakProvisioningRun(run.instanceId, run.id);
   }
@@ -227,6 +248,8 @@ export const createExecuteKeycloakProvisioningHandler =
   async (input: ExecuteInstanceKeycloakProvisioningInput) => {
     logger.info('keycloak_provisioning_enqueued', {
       operation: 'execute_keycloak_provisioning',
+      result: 'enqueued',
+      step_key: 'queue_enqueue',
       instance_id: input.instanceId,
       request_id: input.requestId,
       actor_id: input.actorId,

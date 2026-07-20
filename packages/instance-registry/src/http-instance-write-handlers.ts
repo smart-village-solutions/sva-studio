@@ -34,7 +34,11 @@ export const createCreateInstanceHandler =
         }))
       );
     } catch (error) {
-      return deps.mapMutationError(error);
+      return deps.mapMutationError(error, {
+        operation: 'create_instance',
+        requestId: deps.getRequestId(),
+        instanceId: payloadResult.data.instanceId,
+      });
     }
 
     if (!result.ok) {
@@ -82,6 +86,10 @@ export const createUpdateInstanceHandler =
 
       return deps.jsonResponse(200, deps.asApiItem(updated, deps.getRequestId()));
     } catch (error) {
-      return deps.mapMutationError(error);
+      return deps.mapMutationError(error, {
+        operation: 'update_instance',
+        requestId: deps.getRequestId(),
+        instanceId,
+      });
     }
   };

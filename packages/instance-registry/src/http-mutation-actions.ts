@@ -5,6 +5,7 @@ import {
 } from './http-contracts.js';
 import type { InstanceRegistryMutationHttpDeps } from './http-mutation-shared.js';
 import { createScopedRegistryMutationHandler } from './http-mutation-shared.js';
+import type { InstanceRegistryMutationErrorMapper } from './observability.js';
 import {
   buildExecuteInstanceKeycloakProvisioningInput,
   buildProbeTenantIamAccessInput,
@@ -15,8 +16,9 @@ import {
 } from './mutation-input-builders.js';
 
 export const createReconcileInstanceKeycloakHandler =
-  <TContext>(deps: InstanceRegistryMutationHttpDeps<TContext>, mapMutationError: (error: unknown) => Response) =>
+  <TContext>(deps: InstanceRegistryMutationHttpDeps<TContext>, mapMutationError: InstanceRegistryMutationErrorMapper) =>
   createScopedRegistryMutationHandler(deps, {
+    operation: 'reconcile_instance_keycloak',
     parse: (request) => deps.parseRequestBody<ReconcileKeycloakPayload>(request, reconcileKeycloakSchema),
     execute: (service, input) =>
       service.reconcileKeycloak(
@@ -36,10 +38,13 @@ export const createReconcileInstanceKeycloakHandler =
 export const createExecuteInstanceKeycloakProvisioningHandler =
   <TContext>(
     deps: InstanceRegistryMutationHttpDeps<TContext>,
-    mapMutationError: (error: unknown) => Response,
+    mapMutationError: InstanceRegistryMutationErrorMapper,
     options?: { readonly secretRotationOnly?: boolean }
   ) =>
   createScopedRegistryMutationHandler(deps, {
+    operation: options?.secretRotationOnly
+      ? 'rotate_instance_keycloak_secret'
+      : 'execute_instance_keycloak_provisioning',
     ...(options?.secretRotationOnly ? { criticalActionId: 'instance.secret.rotate' } : {}),
     parse: async (request) => {
       const parsed = await deps.parseRequestBody<ExecuteKeycloakProvisioningPayload>(request, executeKeycloakProvisioningSchema);
@@ -65,8 +70,9 @@ export const createExecuteInstanceKeycloakProvisioningHandler =
   });
 
 export const createProbeTenantIamAccessHandler =
-  <TContext>(deps: InstanceRegistryMutationHttpDeps<TContext>, mapMutationError: (error: unknown) => Response) =>
+  <TContext>(deps: InstanceRegistryMutationHttpDeps<TContext>, mapMutationError: InstanceRegistryMutationErrorMapper) =>
   createScopedRegistryMutationHandler(deps, {
+    operation: 'probe_tenant_iam_access',
     parse: (request) => deps.parseRequestBody<ProbeTenantIamAccessPayload>(request, probeTenantIamAccessSchema),
     execute: (service, input) =>
       service.probeTenantIamAccess(

@@ -113,6 +113,14 @@ Alternativen:
 6. Bei einem Fehler liefert Studio dessen stabilen Fehlervertrag; der MCP-Server liest abhängig von der Klasse begrenzte Diagnose-Evidenz.
 7. Studio speichert Audit-Ereignis und fachliche Artefakte; das Tool liefert ausschließlich die sichere Ergebnis- oder Diagnosezusammenfassung zurück.
 
+### Decision: Ein kanonisches Fehlerereignis mit stufengenauer Korrelation
+
+Die Instance Registry erzeugt pro fehlgeschlagener Mutation genau ein kanonisches Error-Event an der HTTP-Grenze. Interne Schritte annotieren den Fehler lediglich mit einem stabilen `step_key`; sie schreiben kein zweites Fehlerlog. Der typisierte Kontext enthält `operation`, `result`, `request_id` und, soweit vorhanden, `instance_id`, `run_id`, `intent`, `dependency`, `error_type`, `error_code`, `classification` und `http_status`.
+
+Für PostgreSQL werden ausschließlich SQLSTATE, Tabelle, Spalte und Constraint übernommen. Meldung, Detail, Hint, Query, Parameter und Stacktrace bleiben ausgeschlossen. Worker-Fehler verwenden denselben sicheren Kontext; `provisioning_run_failed` ist dort das kanonische Ereignis. Request-, Instanz- und Run-IDs bleiben Log-Felder und werden weder Loki-Labels noch Metrikdimensionen. Append-only Audit und technische Logs bleiben getrennt.
+
+Der lokale stdio-MCP schreibt keine Diagnose auf `stdout`, weil dieser Kanal dem MCP-Protokoll gehört. Seine strukturierte Tool-Antwort bleibt die lokale Diagnoseoberfläche; Tokens, Payloads und Secrets werden nicht geloggt.
+
 ## Risks / Trade-offs
 
 - Token-Diebstahl ermöglicht Instanzanlage innerhalb des Token-Scopes. → Kurze Laufzeit, enger Audience-/Scope-Bindung, sichere lokale Ablage, Rotation und vollständiges Audit.

@@ -50,32 +50,40 @@ export const resolveKeycloakStatus = async (
       });
       return { status, evidenceSource: 'keycloak_live' };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const reasonCode = 'KEYCLOAK_STATUS_UNAVAILABLE';
       logger.warn('instance_audit_keycloak_status_failed', {
+        operation: 'audit_instance_keycloak',
+        result: 'failed',
         instance_id: instanceId,
-        error: message,
+        dependency: 'keycloak',
+        error_type: error instanceof Error ? error.name : typeof error,
+        error_code: reasonCode,
       });
       try {
         const fallback = await createGetKeycloakStatusHandler(deps)(instanceId);
         return {
           status: null,
           evidenceSource: 'keycloak_live',
-          error: message,
+          error: reasonCode,
           fallbackStatus: fallback,
           fallbackEvidenceSource: 'keycloak_snapshot',
         };
       } catch (fallbackError) {
-        const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        const fallbackReasonCode = 'KEYCLOAK_SNAPSHOT_UNAVAILABLE';
         logger.warn('instance_audit_keycloak_fallback_failed', {
+          operation: 'audit_instance_keycloak',
+          result: 'failed',
           instance_id: instanceId,
-          error: fallbackMessage,
+          dependency: 'instance_registry',
+          error_type: fallbackError instanceof Error ? fallbackError.name : typeof fallbackError,
+          error_code: fallbackReasonCode,
         });
         return {
           status: null,
           evidenceSource: 'keycloak_live',
-          error: message,
+          error: reasonCode,
           fallbackEvidenceSource: 'keycloak_snapshot',
-          fallbackError: fallbackMessage,
+          fallbackError: fallbackReasonCode,
         };
       }
     }

@@ -73,8 +73,12 @@ describe('provisioning-worker', () => {
       'keycloak_provisioner_worker_iteration_failed',
       expect.objectContaining({
         operation: 'keycloak_provisioner_worker_loop',
-        error: 'boom',
+        result: 'failed',
+        step_key: 'worker_claim',
+        error_type: 'Error',
+        error_code: 'WORKER_ITERATION_FAILED',
       })
     );
+    expect(JSON.stringify(state.logger.error.mock.calls)).not.toContain('boom');
   });
 });

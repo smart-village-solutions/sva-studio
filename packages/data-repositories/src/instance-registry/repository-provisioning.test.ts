@@ -235,6 +235,8 @@ describe('instance registry repository provisioning', () => {
         realmMode: 'shared',
         authRealm: 'sva',
         authClientId: 'studio',
+        featureFlags: { preview: true },
+        mainserverConfigRef: 'mainserver-ref',
         actorId: 'actor-1',
       })
     ).resolves.toMatchObject({ instanceId: 'tenant-a' });
@@ -253,7 +255,9 @@ describe('instance registry repository provisioning', () => {
     ).resolves.toMatchObject({ instanceId: 'tenant-a' });
 
     expect(statements.filter((statement) => statement.text.includes('iam.instance_hostnames'))).toHaveLength(2);
-    expect(statements[0]?.values.at(17)).toBe('{}');
+    expect(statements[0]?.text).toContain('$18::jsonb, $19, $20, $20');
+    expect(statements[0]?.values.at(17)).toBe('{"preview":true}');
+    expect(statements[0]?.values.at(18)).toBe('mainserver-ref');
     expect(statements[2]?.values.at(8)).toBe(true);
     expect(statements[0]?.text).toContain('ON CONFLICT (id) DO NOTHING');
   });

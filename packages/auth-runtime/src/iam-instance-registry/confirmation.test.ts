@@ -142,6 +142,24 @@ describe('critical registry confirmation', () => {
     }
   });
 
+  it('does not write an audit event for a missing instance without confirmation headers', async () => {
+    const { confirmCriticalRegistryMutation } = await import('./confirmation.js');
+    const service = {
+      getInstanceDetail: vi.fn(async () => null),
+      recordConfirmationAttempt: vi.fn(async () => undefined),
+    };
+
+    const response = await confirmCriticalRegistryMutation({
+      service: service as never,
+      request: new Request('https://studio.example/api'),
+      context: { authKind: 'keycloak_service', user: { id: 'service', roles: [] } },
+      instanceId: 'missing', actorId: 'service', actionId: 'instance.status.archive',
+    });
+
+    expect(response?.status).toBe(403);
+    expect(service.recordConfirmationAttempt).not.toHaveBeenCalled();
+  });
+
   it('prepares a state-bound module revoke challenge for service callers', async () => {
     const service = {
       getInstanceDetail: vi.fn(async () => detail),

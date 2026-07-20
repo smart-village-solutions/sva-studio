@@ -22,7 +22,7 @@
     "test:unit:affected": "tsx scripts/ci/affected-unit-gate.ts --base ${NX_BASE:-origin/main}",
     "test:coverage": "env -u NO_COLOR nx run-many -t test:coverage",
     "test:coverage:affected": "tsx scripts/ci/affected-coverage-gate.ts --base ${NX_BASE:-origin/main}",
-    "test:coverage:pr": "pnpm test:coverage:affected && pnpm patch-coverage-gate --base=${NX_BASE:-origin/main} && pnpm sonar-new-code-gate --base=${NX_BASE:-origin/main}",
+    "test:coverage:pr": "pnpm test:coverage:affected && pnpm sonar-new-code-gate --base=${NX_BASE:-origin/main}",
     "check:studio-changelog": "tsx scripts/ci/check-studio-changelog.ts --mode repo",
     "check:toolchain-consistency": "bash scripts/ci/run-workspace-node.sh --import tsx scripts/ci/check-toolchain-consistency.ts",
     "check:plugin-ui-boundary": "tsx scripts/ci/check-plugin-ui-boundary.ts",

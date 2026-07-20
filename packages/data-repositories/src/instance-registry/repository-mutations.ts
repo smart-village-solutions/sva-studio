@@ -99,7 +99,7 @@ INSERT INTO iam.instances (
   tenant_admin_username, tenant_admin_email, tenant_admin_first_name, tenant_admin_last_name, theme_key,
   feature_flags, mainserver_config_ref, created_by, updated_by
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19::jsonb, $20, $20)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19, $20, $20)
 ON CONFLICT (id) DO NOTHING
 RETURNING
 ${buildInstanceSelectColumns()};

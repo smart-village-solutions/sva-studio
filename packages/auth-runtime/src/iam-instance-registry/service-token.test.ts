@@ -73,6 +73,20 @@ describe('registry service token authentication', () => {
     }
   });
 
+  it('treats non-network verifier failures as invalid service tokens', async () => {
+    process.env.SVA_STUDIO_MCP_ENABLED = 'true';
+    process.env.SVA_STUDIO_MCP_ISSUER = 'https://id.example/realms/studio';
+    const { authenticateRegistryServiceToken } = await import('./service-token.js');
+    const result = await authenticateRegistryServiceToken('token', 'instance.read', async () => {
+      throw new Error('signature rejected');
+    });
+    expect(result.kind).toBe('response');
+    if (result.kind === 'response') {
+      expect(result.response.status).toBe(401);
+      await expect(result.response.json()).resolves.toMatchObject({ error: { code: 'invalid_service_token' } });
+    }
+  });
+
   it('keeps the service-token path disabled by default', async () => {
     process.env.SVA_STUDIO_MCP_ISSUER = 'https://id.example/realms/studio';
     const { authenticateRegistryServiceToken } = await import('./service-token.js');

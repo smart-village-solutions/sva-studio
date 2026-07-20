@@ -155,4 +155,37 @@ describe('critical registry confirmation', () => {
     expect(response.status).toBe(400);
     expect(state.withScopedRegistryService).not.toHaveBeenCalled();
   });
+
+  it('rejects confirmation preparation without machine authentication or platform access', async () => {
+    const { prepareInstanceConfirmationInternal } = await import('./confirmation.js');
+    const sessionResponse = await prepareInstanceConfirmationInternal(
+      new Request('https://studio.example/api/v1/iam/instances/demo/actions/instance.status.archive/confirmation'),
+      { authKind: 'session', user: { id: 'admin', roles: [] } } as never
+    );
+    state.ensurePlatformAccess.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
+    const accessResponse = await prepareInstanceConfirmationInternal(
+      new Request('https://studio.example/api/v1/iam/instances/demo/actions/instance.status.archive/confirmation'),
+      { authKind: 'keycloak_service', user: { id: 'service', roles: [] } } as never
+    );
+    expect(sessionResponse.status).toBe(403);
+    expect(accessResponse.status).toBe(403);
+    expect(state.withScopedRegistryService).not.toHaveBeenCalled();
+  });
+
+  it('rejects unknown actions and missing instances during confirmation preparation', async () => {
+    const { prepareInstanceConfirmationInternal } = await import('./confirmation.js');
+    const invalidResponse = await prepareInstanceConfirmationInternal(
+      new Request('https://studio.example/api/v1/iam/instances/demo/actions/instance.unknown/confirmation'),
+      { authKind: 'keycloak_service', user: { id: 'service', roles: [] } } as never
+    );
+    state.withScopedRegistryService.mockImplementationOnce(async (_instanceId, callback) => callback({
+      getInstanceDetail: vi.fn(async () => null),
+    }));
+    const missingResponse = await prepareInstanceConfirmationInternal(
+      new Request('https://studio.example/api/v1/iam/instances/demo/actions/instance.status.archive/confirmation'),
+      { authKind: 'keycloak_service', user: { id: 'service', roles: [] } } as never
+    );
+    expect(invalidResponse.status).toBe(400);
+    expect(missingResponse.status).toBe(404);
+  });
 });

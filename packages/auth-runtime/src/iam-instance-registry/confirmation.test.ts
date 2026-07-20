@@ -129,7 +129,7 @@ describe('critical registry confirmation', () => {
       service: service as never,
       request: new Request('https://studio.example/api', { headers }),
       context: { authKind: 'keycloak_service', user: { id: 'service', roles: [] } },
-      instanceId: 'demo', actorId: 'service', actionId: 'instance.status.archive',
+      instanceId: 'demo', actorId: 'service', actionId: 'instance.module.revoke', moduleId: 'news',
     });
     expect(response?.status).toBe(status);
     expect(await response?.json()).toMatchObject({ error: { code } });
@@ -171,11 +171,13 @@ describe('critical registry confirmation', () => {
       service: service as never,
       request: new Request('https://studio.example/api', { headers: { 'x-confirmation-challenge-id': 'challenge-1' } }),
       context: { authKind: 'keycloak_service', user: { id: 'service', roles: [] } },
-      instanceId: 'demo', actorId: 'service', actionId: 'instance.status.archive',
+      instanceId: 'demo', actorId: 'service', actionId: 'instance.module.revoke', moduleId: 'news',
     });
 
     expect(response?.status).toBe(403);
-    expect(service.recordConfirmationAttempt).toHaveBeenCalledWith(expect.objectContaining({ reason: 'confirmation_required' }));
+    expect(service.recordConfirmationAttempt).toHaveBeenCalledWith(expect.objectContaining({
+      actionId: 'instance.module.revoke', moduleId: 'news', reason: 'confirmation_required',
+    }));
   });
 
   it('prepares a state-bound module revoke challenge for service callers', async () => {

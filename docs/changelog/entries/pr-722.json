@@ -1,0 +1,4 @@
+{
+  "prNumber": 722,
+  "body": "Fehler bei der MCP-gestützten Instanzanlage und anschließenden Keycloak-Provisionierung sind jetzt über stabile Prozessstufen und Request-Korrelation nachvollziehbar, ohne sensible Provider-, Datenbank- oder Nutzerdaten zu protokollieren."
+}

@@ -388,6 +388,33 @@ describe('http mutation handlers', () => {
     });
   });
 
+  it('consumes a critical confirmation inside the scoped service callback before mutation', async () => {
+    const calls: string[] = [];
+    const service = {
+      revokeModule: vi.fn(async () => {
+        calls.push('mutation');
+        return { ok: true, instance: { instanceId: 'inst-1', assignedModules: [] } };
+      }),
+    };
+    Object.assign(deps, { confirmCriticalMutation: vi.fn(async ({ service: scopedService, actionId, moduleId }: { service: unknown; actionId: string; moduleId?: string }) => {
+      expect(scopedService).toBe(service);
+      expect(actionId).toBe('instance.module.revoke');
+      expect(moduleId).toBe('news');
+      calls.push('confirmation');
+      return null;
+    }) });
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleId: 'news' } });
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) => work(service as never));
+
+    const response = await createInstanceRegistryMutationHttpHandlers(deps).revokeModule(
+      new Request('http://localhost/api/instances/inst-1/modules/revoke', { method: 'POST' }),
+      { userId: 'service-1' }
+    );
+
+    expect(response.status).toBe(200);
+    expect(calls).toEqual(['confirmation', 'mutation']);
+  });
+
   it('revokeModule maps not_found, unknown_module and conflict results', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValue({ ok: true, data: { moduleId: 'news', confirmation: 'REVOKE' } });
     vi.mocked(deps.withScopedRegistryService)

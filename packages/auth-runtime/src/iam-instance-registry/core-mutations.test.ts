@@ -83,7 +83,9 @@ describe('iam-instance-registry core mutations', () => {
     expect(config.parseRequestBody).toBe(state.parseRegistryRequestBody);
     expect(config.requireIdempotencyKey).toBe(state.requireIdempotencyKey);
     expect(config.ensurePlatformAccess).toBe(state.ensurePlatformAccess);
-    expect(config.validateCsrf).toBe(state.validateCsrf);
+    expect(config.validateCsrf).toEqual(expect.any(Function));
+    config.validateCsrf(new Request('https://studio.example/api'), 'req-csrf');
+    expect(state.validateCsrf).toHaveBeenCalledWith(expect.any(Request), 'req-csrf');
     expect(config.requireFreshReauth).toBe(state.requireFreshReauth);
     expect(config.withRegistryService).toBe(state.withRegistryService);
     expect(config.withScopedRegistryService).toBe(state.withScopedRegistryService);

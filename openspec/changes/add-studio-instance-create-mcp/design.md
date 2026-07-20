@@ -29,7 +29,7 @@ Alternativen:
 
 ### Decision: Separater Service-Token-Pfad mit Least Privilege
 
-Studio akzeptiert für die MCP-Instanzanlage einen dedizierten Service-Token. Die serverseitige Prüfung bindet mindestens Aussteller, Zielumgebung (`aud`), Ablaufzeit und die Berechtigung für `instance.create` beziehungsweise die dedizierte Plattformrolle `instance_registry_admin`. Der Token-Subject wird als Maschinenakteur in Audit und strukturierter Korrelation gespeichert. Der Token ersetzt ausschließlich die für Browser-Interaktion konzipierten Session-, CSRF- und Fresh-Reauth-Nachweise dieses expliziten Maschinenpfads.
+Studio akzeptiert für die MCP-Instanzanlage einen dedizierten Service-Token. Die serverseitige Prüfung bindet mindestens Aussteller, Zielumgebung (`aud`), Ablaufzeit und die Action `instance.create`. Der Token-Subject wird als Maschinenakteur in Audit und strukturierter Korrelation gespeichert. Der Token ersetzt ausschließlich die für Browser-Interaktion konzipierten Session-, CSRF- und Fresh-Reauth-Nachweise dieses expliziten Maschinenpfads. `instance_registry_admin` bleibt eine Plattformrolle für menschliche Root-Administratoren und autorisiert den Maschinenpfad nicht pauschal.
 
 Alternativen:
 
@@ -63,11 +63,36 @@ Der MCP stellt die bereits fachlich vorhandene Instanzverwaltung vollständig al
 | Kontrollierte Mutation | `studio_instances_create`, `studio_instance_update`, `studio_instance_provisioning_plan`, `studio_instance_provisioning_execute`, `studio_instance_reconcile`, `studio_instance_module_assign`, `studio_instance_iam_baseline_seed`, `studio_instance_admin_bootstrap` | action-spezifischer Scope, Idempotenz und strukturierter Fehlervertrag |
 | Kritische Mutation | `studio_instance_activate`, `studio_instance_suspend`, `studio_instance_archive`, `studio_instance_module_revoke`, `studio_instance_secret_rotate` | action-spezifischer Scope, aktueller Vorab-Read oder Plan, Bestätigungs-Challenge, explizite Phrase, Idempotenz und append-only Audit |
 
-Die Action-IDs werden vollständig qualifiziert modelliert, beispielsweise `instance.create`, `instance.provision.execute`, `instance.status.activate`, `instance.module.revoke` und `instance.secret.rotate`. Sie werden minimal pro Service-Token vergeben; es gibt keinen MCP-Super-Token.
+Die Action-IDs werden vollständig qualifiziert modelliert, beispielsweise `instance.create`, `instance.provision.execute`, `instance.status.activate`, `instance.module.revoke` und `instance.secret.rotate`. In der beschlossenen ersten Ausbaustufe trägt der eine Service Account je Umgebung alle Action-Rollen. Der erhöhte Credential-Schadensradius ist bewusst akzeptiert; Studio prüft dennoch an jeder Route die konkrete Action und bei kritischen Mutationen zusätzlich die Challenge.
+
+| Tool | Verbindliche Action-ID |
+| --- | --- |
+| `studio_instances_list` | `instance.list` |
+| `studio_instance_get` | `instance.read` |
+| `studio_instance_audit` | `instance.audit.read` |
+| `studio_instances_audit` | `instance.audit.read` |
+| `studio_instance_diagnose` | `instance.diagnose` |
+| `studio_instance_provisioning_run_get` | `instance.provision.run.read` |
+| `studio_instances_create` | `instance.create` |
+| `studio_instance_update` | `instance.update` |
+| `studio_instance_provisioning_plan` | `instance.provision.plan` |
+| `studio_instance_provisioning_execute` | `instance.provision.execute` |
+| `studio_instance_reconcile` | `instance.reconcile` |
+| `studio_instance_module_assign` | `instance.module.assign` |
+| `studio_instance_iam_baseline_seed` | `instance.iam.baseline.seed` |
+| `studio_instance_admin_bootstrap` | `instance.admin.bootstrap` |
+| `studio_instance_critical_action_prepare` | `instance.confirmation.prepare` |
+| `studio_instance_activate` | `instance.status.activate` |
+| `studio_instance_suspend` | `instance.status.suspend` |
+| `studio_instance_archive` | `instance.status.archive` |
+| `studio_instance_module_revoke` | `instance.module.revoke` |
+| `studio_instance_secret_rotate` | `instance.secret.rotate` |
+
+Diese Actions werden als Client-Rollen der Studio-API-Audience modelliert und vollständig dem jeweiligen Service Account zugeordnet. Zusätzlich verlangt Studio die Plattformrolle `instance_registry_admin`; sie ersetzt niemals die routenspezifische Action-Prüfung.
 
 Kritische Tools folgen einem serverseitig erzwungenen Zwei-Schritt-Vertrag:
 
-1. Ein Diagnose-, Detail- oder Plan-Aufruf gibt eine an Action, Instanz, relevanten aktuellen Zustand und Ablaufzeit gebundene `confirmationChallenge` zurück.
+1. `studio_instance_critical_action_prepare` gibt nach einem expliziten Read-/Plan-Schritt eine an Action, Instanz, relevanten aktuellen Zustand und Ablaufzeit gebundene `confirmationChallenge` zurück.
 2. Der kritische Tool-Aufruf muss die noch gültige Challenge, einen Idempotenz-Key und eine action-spezifische Bestätigungsphrase enthalten.
 3. Studio prüft Scope, Challenge, Ablauf, Instanzzustand/-version und Phrase atomar vor der Mutation. Bei veränderter Grundlage wird die Challenge abgelehnt und ein neuer Vorab-Read verlangt.
 
@@ -105,7 +130,20 @@ Alternativen:
 
 Rollback: Die MCP-Konfiguration entfernen oder die Token-Ausstellung widerrufen; der bestehende Studio-UI- und API-Pfad bleibt unverändert nutzbar.
 
-## Open Questions
+## Rollout und Verifikation
 
-- Welcher bestehende Identity Provider oder Token-Aussteller stellt die kurzlebigen Service-Tokens aus und wie erfolgt deren Rotation?
-- Soll die Berechtigung als neue Action-ID `instance.create` oder ausschließlich über `instance_registry_admin` modelliert werden?
+Der Token-Aussteller ist der zentrale Keycloak unter `keycloak.smart-village.app`. Die drei Root-Realms `studio-dev`, `studio-staging` und `sva-studio` verwenden jeweils einen getrennten vertraulichen Service-Account-Client `sva-studio-mcp`. Die Clients verwenden unterschiedliche Secrets, deaktivieren interaktive Flows, begrenzen Access Tokens auf 300 Sekunden und erhalten in der ersten Ausbaustufe alle MCP-Action-Rollen sowie `instance_registry_admin`. Die Plattformrolle ist eine zusätzliche Eingangsvoraussetzung und kein Ersatz für die routenspezifische Action-Scope-Prüfung.
+
+Die Client-Secrets werden ausschließlich lokal über OS-Keychain oder nicht versionierte Umgebungsvariablen bereitgestellt. Studio validiert Access Tokens über Issuer-Metadaten und JWKS und benötigt kein MCP-Client-Secret. Die Rotation erfolgt mit kurzer Überlappung: neues Secret ausstellen, lokalen Client umstellen und per Read-only-Smoke verifizieren, anschließend das alte Secret widerrufen.
+
+Der Rollout erfolgt nacheinander über `studio-dev`, `studio-staging` und `sva-studio`. Pro Stufe werden zuerst Read-/Diagnose-Tools, danach eine kontrollierte Mutation an einer eindeutig markierten Testinstanz und zuletzt eine einzelne Challenge-geschützte Mutation verifiziert. Ein serverseitiger Environment-Kill-Switch bleibt bis zur jeweiligen Freigabe deaktiviert.
+
+Die Verifikation umfasst:
+
+- Unit-, Type-, Lint-, Build- und Node-ESM-Runtime-Gates für alle betroffenen Nx-Projekte,
+- API-Integrationstests für Signatur, Issuer, Audience, Zeitbindung, Action-Scope und JWKS-Key-Rotation,
+- MCP-Vertragstests für stdio, Schemata, Idempotenz, Korrelation, Redaction, Diagnosebudget und Teilfehler,
+- End-to-End-Szenarien für Read, Create, Plan, Execute und Run-Status sowie Challenge-Ablauf, Replay, Race, Zustandsänderung und Bestätigungsphrase,
+- OTEL-Evidenz für Action, Risikostufe, Ergebnis, stabilen Fehlercode und Challenge-Ergebnis ohne hochkardinale oder geheime Labels.
+
+Rollback: Zuerst wird der MCP-Kill-Switch deaktiviert, anschließend werden die Clients oder betroffenen Credentials in allen freigegebenen Realms widerrufen und die lokale MCP-Konfiguration entfernt. Der Studio-UI-/Session-Pfad bleibt unverändert. Additive Challenge-Persistenz darf bei einem App-Rollback ungenutzt bestehen bleiben; es erfolgt keine riskante Down-Migration während eines Incidents.

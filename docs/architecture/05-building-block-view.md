@@ -110,6 +110,11 @@ Abhängigkeiten des aktuellen Systems.
    - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile
    - blockerrelevanter Drift aus Preflight, Provisioning-Plan oder fehlendem Tenant-Admin-Vertrag wird vor Reconcile-/Sync-Starts fail-closed durchgesetzt
    - HTTP-Handler, Service-Komposition und Keycloak-Ausführung sind intern entlang Read, Mutation, Payload/Sync/Finalize und Diagnose getrennt, damit Runtime-Consumer stabile Fassaden nutzen und fachliche Flows nicht wieder in Sammeldateien zusammenlaufen
+13a. Lokaler Studio-MCP (`packages/studio-mcp`)
+   - lokaler stdio-Server und dünner, typisierter Client der bestehenden Studio-HTTP-API
+   - hält Tool-Schemata, Korrelation, Idempotenz, Redaction und begrenzte Read-only-Diagnose, aber keine Registry-Fachlogik
+   - bezieht kurzlebige Keycloak-Tokens aus ausschließlich lokaler Secret-Konfiguration und besitzt weder Datenbank- noch Keycloak-Admin-Zugriff
+   - trennt Read-, kontrollierte und kritische Tools; Autorisierung und Confirmation-Challenges bleiben serverseitige Studio-Verantwortung
 14. Studio-Job-Hostpfad (`packages/auth-runtime`, `packages/routing`, `packages/data-repositories`, `packages/iam-governance`)
    - `@sva/auth-runtime` veröffentlicht die hostgeführten Start-, Status- und Worker-Integrationspfade für generische Studio-Jobs
    - `@sva/routing` führt die öffentlichen Plugin-Operation-Endpunkte weiterhin typsicher; die interne Worker-Ausführung läuft über den generischen Task `studio_job_execute`

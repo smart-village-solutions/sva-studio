@@ -1,5 +1,14 @@
 export const instanceRegistryVersion = '0.0.1';
 
+export {
+  createConsumeInstanceConfirmationChallenge,
+  createPrepareInstanceConfirmationChallenge,
+  hashInstanceConfirmationPhrase,
+  type ConsumeInstanceConfirmationChallengeInput,
+  type InstanceConfirmationChallenge,
+  type PrepareInstanceConfirmationChallengeInput,
+} from './confirmation-challenges.js';
+
 export type InstanceRegistryPackageRole = 'instances' | 'host-classification' | 'provisioning' | 'platform-admin-client';
 
 export const instanceRegistryPackageRoles = [

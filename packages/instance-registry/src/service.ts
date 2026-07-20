@@ -1,5 +1,9 @@
 import { isTrafficEnabledInstanceStatus } from '@sva/core';
 
+import {
+  createConsumeInstanceConfirmationChallenge,
+  createPrepareInstanceConfirmationChallenge,
+} from './confirmation-challenges.js';
 import { createGetInstanceDetail } from './service-detail.js';
 import {
   createChangeStatusHandler,
@@ -27,6 +31,8 @@ import { createProbeTenantIamAccessHandler } from './service-probe.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 
 export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps): InstanceRegistryService => ({
+  prepareConfirmationChallenge: createPrepareInstanceConfirmationChallenge(deps.repository),
+  consumeConfirmationChallenge: createConsumeInstanceConfirmationChallenge(deps.repository),
   listInstances: createListInstances(deps.repository),
   getInstanceDetail: createGetInstanceDetail(deps),
   createProvisioningRequest: createProvisioningRequestHandler(deps),

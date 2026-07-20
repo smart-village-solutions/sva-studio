@@ -8,6 +8,10 @@ import type { WasteManagementSettingsRecord } from '../waste-management-contract
 
 export type ApiErrorCode =
   | 'unauthorized'
+  | 'invalid_service_token'
+  | 'missing_platform_role'
+  | 'missing_action_scope'
+  | 'identity_provider_unavailable'
   | 'forbidden'
   | 'not_found'
   | 'invalid_request'
@@ -37,6 +41,9 @@ export type ApiErrorCode =
   | 'conflict'
   | 'legal_acceptance_required'
   | 'reauth_required'
+  | 'confirmation_required'
+  | 'invalid_confirmation'
+  | 'internal_unclassified'
   | 'internal_error';
 
 export const iamRuntimeDiagnosticClassifications = [

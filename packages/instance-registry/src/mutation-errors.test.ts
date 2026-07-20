@@ -57,10 +57,10 @@ describe('mutation-errors', () => {
     });
   });
 
-  it('classifies unknown failures as keycloak dependency failures', () => {
+  it('keeps unknown failures explicitly unclassified instead of claiming a Keycloak failure', () => {
     expect(classifyInstanceMutationError(new Error('boom'))).toEqual({
-      status: 502,
-      code: 'keycloak_unavailable',
+      status: 500,
+      code: 'internal_unclassified',
     });
   });
 });

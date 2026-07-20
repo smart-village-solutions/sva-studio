@@ -5,11 +5,14 @@ const state = vi.hoisted(() => ({
   withRequestContext: vi.fn(async (_input: unknown, work: () => Promise<Response>) => work()),
   getInstanceAuditRunInternal: vi.fn(async () => new Response('collection', { status: 200 })),
   getSingleInstanceAuditRunInternal: vi.fn(async () => new Response('detail', { status: 200 })),
+  authenticateRegistryServiceToken: vi.fn(),
+  markAuthenticatedRegistryServiceRequest: vi.fn(),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     error: vi.fn(),
+    info: vi.fn(),
   }),
   toJsonErrorResponse: vi.fn(
     (status: number, code: string, message?: string, options?: { requestId?: string }) =>
@@ -20,6 +23,16 @@ vi.mock('@sva/server-runtime', () => ({
 
 vi.mock('../middleware.js', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
+}));
+
+vi.mock('./service-token.js', () => ({
+  authenticateRegistryServiceToken: state.authenticateRegistryServiceToken,
+  markAuthenticatedRegistryServiceRequest: state.markAuthenticatedRegistryServiceRequest,
+  readBearerToken: (request: Request) => {
+    const value = request.headers.get('authorization');
+    if (value === null) return undefined;
+    return value.startsWith('Bearer ') ? value.slice(7) : null;
+  },
 }));
 
 vi.mock('../log-context.js', () => ({
@@ -50,6 +63,7 @@ vi.mock('./core-keycloak.js', () => ({
   planInstanceKeycloakProvisioningInternal: vi.fn(async () => new Response('plan', { status: 200 })),
   probeTenantIamAccessInternal: vi.fn(async () => new Response('probe', { status: 200 })),
   reconcileInstanceKeycloakInternal: vi.fn(async () => new Response('reconcile', { status: 200 })),
+  rotateInstanceSecretInternal: vi.fn(async () => new Response('rotate', { status: 200 })),
 }));
 
 describe('iam-instance-registry/server', () => {
@@ -58,6 +72,41 @@ describe('iam-instance-registry/server', () => {
     state.withAuthenticatedUser.mockImplementation(async (request: Request, work: (ctx: unknown) => Promise<Response>) =>
       work({ user: { id: 'admin-1' }, request } as never)
     );
+    state.authenticateRegistryServiceToken.mockResolvedValue({
+      kind: 'authenticated',
+      context: {
+        authKind: 'keycloak_service',
+        actionId: 'instance.create',
+        user: { id: 'service-1', roles: ['instance_registry_admin'] },
+      },
+    });
+  });
+
+  it('gives Bearer authentication precedence and binds the route action statically', async () => {
+    const { instanceRegistryHandlers } = await import('./server.js');
+    const request = new Request('https://studio.example.org/api/v1/iam/instances', {
+      method: 'POST',
+      headers: { authorization: 'Bearer signed-token', cookie: 'session=browser-session' },
+    });
+
+    const response = await instanceRegistryHandlers.createInstance(request);
+
+    expect(response.status).toBe(200);
+    expect(state.authenticateRegistryServiceToken).toHaveBeenCalledWith('signed-token', 'instance.create');
+    expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
+    expect(state.markAuthenticatedRegistryServiceRequest).toHaveBeenCalledWith(request);
+  });
+
+  it('never falls back to a browser session for malformed Authorization', async () => {
+    const { instanceRegistryHandlers } = await import('./server.js');
+    const request = new Request('https://studio.example.org/api/v1/iam/instances', {
+      headers: { authorization: 'Basic abc', cookie: 'session=browser-session' },
+    });
+
+    const response = await instanceRegistryHandlers.listInstances(request);
+
+    expect(response.status).toBe(401);
+    expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
   });
 
   it('routes audit requests through the authenticated registry handler', async () => {

@@ -497,3 +497,14 @@ Zuordnung:
 Zuordnung:
 
 - Abschnitt 04/05/06/08/09/10/11: ADR-036
+
+### Fortschreibung 2026-07: Lokale MCP-Control-Plane
+
+- `ADR-047-keycloak-service-accounts-fuer-lokale-mcp-control-plane.md`
+  - definiert Keycloak-Service-Accounts in den drei Root-Realms als Maschinenidentität
+  - legt action-spezifische Autorisierung, Risikostufen und serverseitige Confirmation-Challenges fest
+  - hält lokale Secret-Ablage, stufenweisen Rollout, Kill-Switch und Rollback fest
+
+Zuordnung:
+
+- Abschnitt 03/04/05/06/07/08/09/10: ADR-047

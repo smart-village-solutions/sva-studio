@@ -862,3 +862,13 @@ Fehlerpfad:
 3. Ein übernommener Treffer synchronisiert Adressfelder sowie Koordinaten; Geocoding-Fehler bleiben lokal im Bereich und blockieren den restlichen Editor nicht.
 4. Im Bereich `Medieninhalte` startet ein Upload den Host-Flow `initialize -> signed PUT -> complete`; danach wird die Asset-Liste neu geladen und das neue Bild als `mediaContents`-Eintrag übernommen.
 5. Beim Speichern persistiert der Editor den strukturierten POI-Write-Pfad inklusive `mediaContents` im Mainserver. Es werden keine zusätzlichen POI-Host-Media-Role-Referenzen geschrieben.
+
+### Ergänzung 2026-07: MCP-Instanzoperation
+
+1. Codex ruft ein lokales stdio-Tool auf; der MCP validiert Tool-Eingabe und lokale Zielumgebung.
+2. Der MCP bezieht per Client-Credentials-Flow ein kurzlebiges Access Token aus dem zur Umgebung gehörenden Root-Realm.
+3. Studio validiert Signatur, Issuer, Audience, Ablauf und Action-Scope fail-closed und ordnet das Token-Subject einem Maschinenakteur zu.
+4. Studio führt den bestehenden Instanz-Service aus und persistiert Audit sowie Korrelation. Bei kritischen Aktionen prüft und verbraucht es Challenge, Phrase und Zustandsversion atomar.
+5. Das Tool liefert ein redigiertes Ergebnis. Nach Fehlern darf es innerhalb eines festen Budgets Read-only-Evidenz ergänzen; der Primärfehler bleibt unverändert.
+
+Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine abgelaufene, wiederverwendete oder durch Zustandsänderung veraltete Challenge verlangt einen neuen Vorab-Read. Weder MCP noch Studio wiederholen Mutationen automatisch.

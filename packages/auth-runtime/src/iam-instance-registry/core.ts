@@ -1,11 +1,12 @@
 import { asApiItem, asApiList, createApiError, requireIdempotencyKey } from '../iam-account-management/api-helpers.js';
-import { validateCsrf } from '../iam-account-management/csrf.js';
+import { validateCsrf as validateSessionCsrf } from '../iam-account-management/csrf.js';
 import { jsonResponse } from '../db.js';
 import { buildLogContext } from '../log-context.js';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { createInstanceRegistryHttpHandlers } from '@sva/instance-registry/http-instance-handlers';
 
-import type { AuthenticatedRequestContext } from '../middleware.js';
+import type { RegistryRequestContext } from './auth-context.js';
+import { isAuthenticatedRegistryServiceRequest } from './service-token.js';
 import { ensurePlatformAccess, requireFreshReauth } from './http.js';
 import {
   assignInstanceModuleMutation,
@@ -20,7 +21,7 @@ import { withRegistryService } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry', level: 'info' });
 
-const instanceHttpHandlers = createInstanceRegistryHttpHandlers<AuthenticatedRequestContext>({
+const instanceHttpHandlers = createInstanceRegistryHttpHandlers<RegistryRequestContext>({
   getRequestId: () => getWorkspaceContext().requestId,
   getActor: (ctx) => ({ id: ctx.user.id }),
   createApiError: (status, code, message, requestId, details) =>
@@ -32,7 +33,8 @@ const instanceHttpHandlers = createInstanceRegistryHttpHandlers<AuthenticatedReq
   requireIdempotencyKey,
   mapMutationError: mapInstanceMutationError,
   ensurePlatformAccess,
-  validateCsrf,
+  validateCsrf: (request, requestId) =>
+    isAuthenticatedRegistryServiceRequest(request) ? null : validateSessionCsrf(request, requestId),
   requireFreshReauth,
   withRegistryService,
   onInstanceProvisioningRequested: ({ instanceId, primaryHostname, actorId }) => {
@@ -46,47 +48,47 @@ const instanceHttpHandlers = createInstanceRegistryHttpHandlers<AuthenticatedReq
   },
 });
 
-export const listInstancesInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
+export const listInstancesInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> => {
   return instanceHttpHandlers.listInstances(request, ctx);
 };
 
-export const getInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
+export const getInstanceInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> => {
   return instanceHttpHandlers.getInstance(request, ctx);
 };
 
-export const createInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
+export const createInstanceInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> => {
   return instanceHttpHandlers.createInstance(request, ctx);
 };
 
-export const updateInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
+export const updateInstanceInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> => {
   return instanceHttpHandlers.updateInstance(request, ctx);
 };
 
-export const activateInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> =>
+export const activateInstanceInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> =>
   mutateInstanceStatus(request, ctx, 'active');
 
-export const suspendInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> =>
+export const suspendInstanceInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> =>
   mutateInstanceStatus(request, ctx, 'suspended');
 
-export const archiveInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> =>
+export const archiveInstanceInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> =>
   mutateInstanceStatus(request, ctx, 'archived');
 
 export const assignInstanceModuleInternal = async (
   request: Request,
-  ctx: AuthenticatedRequestContext
+  ctx: RegistryRequestContext
 ): Promise<Response> => assignInstanceModuleMutation(request, ctx);
 
 export const bootstrapInstanceAdminStructureInternal = async (
   request: Request,
-  ctx: AuthenticatedRequestContext
+  ctx: RegistryRequestContext
 ): Promise<Response> => bootstrapInstanceAdminStructureMutation(request, ctx);
 
 export const revokeInstanceModuleInternal = async (
   request: Request,
-  ctx: AuthenticatedRequestContext
+  ctx: RegistryRequestContext
 ): Promise<Response> => revokeInstanceModuleMutation(request, ctx);
 
 export const seedInstanceIamBaselineInternal = async (
   request: Request,
-  ctx: AuthenticatedRequestContext
+  ctx: RegistryRequestContext
 ): Promise<Response> => seedInstanceIamBaselineMutation(request, ctx);

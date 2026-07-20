@@ -31,6 +31,11 @@ import type {
   ResolveRuntimeInstanceResult,
 } from './keycloak-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap } from './provisioning-auth-types.js';
+import type {
+  ConsumeInstanceConfirmationChallengeInput,
+  InstanceConfirmationChallenge,
+  PrepareInstanceConfirmationChallengeInput,
+} from './confirmation-challenges.js';
 
 export type InstanceModuleIamRegistryEntry = {
   readonly moduleId: string;
@@ -67,6 +72,10 @@ type KeycloakProvisioningContext = {
 };
 
 export type InstanceRegistryService = {
+  prepareConfirmationChallenge(
+    input: PrepareInstanceConfirmationChallengeInput
+  ): Promise<InstanceConfirmationChallenge>;
+  consumeConfirmationChallenge(input: ConsumeInstanceConfirmationChallengeInput): Promise<boolean>;
   listInstances(input?: { search?: string; status?: InstanceStatus }): Promise<readonly IamInstanceListItem[]>;
   getInstanceDetail(instanceId: string): Promise<IamInstanceDetail | null>;
   createProvisioningRequest(input: CreateInstanceProvisioningInput): Promise<CreateInstanceProvisioningResult>;

@@ -92,3 +92,16 @@ export type KeycloakProvisioningStepRow = {
   request_id: string | null;
   created_at: string;
 };
+export type InstanceConfirmationChallengeRow = {
+  id: string;
+  instance_id: string;
+  actor_id: string;
+  action_id: string;
+  module_id: string | null;
+  state_fingerprint: string;
+  phrase_hash: string;
+  expires_at: string;
+  consumed_at: string | null;
+  request_id: string | null;
+  created_at: string;
+};

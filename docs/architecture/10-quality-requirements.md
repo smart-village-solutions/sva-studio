@@ -332,3 +332,12 @@ Referenzen:
 - `plugin-poi` muss Roundtrip-Mapping, Bereichsvalidierung, Reverse-Geocode-Unterstützung und Host-Media-Referenzpersistenz über Unit-Tests explizit abdecken.
 - `plugin-sdk`-Clients für Geocoding und Media-Upload müssen deterministische HTTP- und Signed-Upload-Fehler stabil serialisieren.
 - Bei Vertragsänderungen bleiben `pnpm nx affected --target=test:types --base=origin/main` und `pnpm check:server-runtime` verpflichtende Gates.
+
+### Ergänzung 2026-07: Qualitätsziele lokaler Instanz-MCP
+
+- API-Integrationstests decken gültige und ungültige Signatur, Issuer, Audience, Zeitbindung, Action-Scope, JWKS-Key-Rotation und Keycloak-Ausfall ab.
+- MCP-Vertragstests decken stdio-Handshake, Tool-Schemata, Idempotenz, Korrelation, Redaction, Diagnosebudget und Teilfehler ab.
+- Jede kritische Action besitzt Negativtests für falsche Phrase, Ablauf, Replay, Race und veränderten Instanzzustand sowie einen erfolgreichen Einmalverbrauch.
+- End-to-End-Smokes dürfen destruktive Aktionen nur gegen eindeutig markierte kurzlebige Testinstanzen ausführen. Secret-Rotation prüft ausschließlich Status und Korrelation, niemals Secretwerte.
+- Vor PR-Freigabe ist `pnpm test:pr`, vor Studio-Rollout zusätzlich `pnpm test:release:studio` auszuführen. OpenSpec- und File-Placement-Gates bleiben verpflichtend.
+- Telemetrie und Betriebsberichte müssen nachweislich frei von Tokens, Client-/Tenant-Secrets und hochkardinalen Identitätslabels bleiben.

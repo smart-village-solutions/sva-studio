@@ -44,6 +44,15 @@ export type InstanceRegistryMutationHttpDeps<TContext> = {
     instanceId: string,
     work: (service: InstanceRegistryService) => Promise<T>
   ) => Promise<T>;
+  readonly confirmCriticalMutation?: (input: {
+    readonly service: InstanceRegistryService;
+    readonly request: Request;
+    readonly context: TContext;
+    readonly instanceId: string;
+    readonly actorId: string;
+    readonly actionId: string;
+    readonly moduleId?: string;
+  }) => Promise<Response | null>;
 };
 
 type ParsedRequestBody<TData> =
@@ -68,6 +77,8 @@ type ScopedRegistryMutationExecuteInput<TData> = {
 };
 
 type ScopedRegistryMutationHandlerOptions<TContext, TData, TResult> = {
+  readonly criticalActionId?: string;
+  readonly resolveCriticalModuleId?: (payload: TData) => string | undefined;
   readonly parse: (request: Request) => Promise<ParsedRequestBody<TData>>;
   readonly execute: (
     service: InstanceRegistryService,
@@ -92,6 +103,8 @@ const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = {
     'Die Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',
   keycloak_unavailable:
     'Keycloak konnte für diese Instanz nicht abgeglichen werden.',
+  internal_unclassified:
+    'Die Instanzverwaltung konnte nicht abgeschlossen werden. Bitte die Request-ID für die Diagnose verwenden.',
 };
 
 export const createInstanceMutationErrorMapper = (
@@ -113,6 +126,43 @@ export const withScopedRegistryMutation = <TContext, TResult>(
   work: (service: InstanceRegistryService) => Promise<TResult>
 ): Promise<TResult> => deps.withScopedRegistryService(instanceId, work);
 
+type ScopedExecutionState<TContext, TData> = {
+  readonly request: Request;
+  readonly context: TContext;
+  readonly instanceId: string;
+  readonly actorId: string;
+  readonly idempotencyKey: string;
+  readonly requestId?: string;
+  readonly input: TData;
+};
+
+const executeScopedMutation = <TContext, TData, TResult>(
+  deps: InstanceRegistryMutationHttpDeps<TContext>,
+  options: ScopedRegistryMutationHandlerOptions<TContext, TData, TResult>,
+  state: ScopedExecutionState<TContext, TData>
+): Promise<TResult | Response> => withScopedRegistryMutation(deps, state.instanceId, async (service) => {
+  if (options.criticalActionId && deps.confirmCriticalMutation) {
+    const moduleId = options.resolveCriticalModuleId?.(state.input);
+    const confirmationError = await deps.confirmCriticalMutation({
+      service,
+      request: state.request,
+      context: state.context,
+      instanceId: state.instanceId,
+      actorId: state.actorId,
+      actionId: options.criticalActionId,
+      ...(moduleId ? { moduleId } : {}),
+    });
+    if (confirmationError) return confirmationError;
+  }
+  return options.execute(service, {
+    instanceId: state.instanceId,
+    payload: state.input,
+    actorId: state.actorId,
+    idempotencyKey: state.idempotencyKey,
+    requestId: state.requestId,
+  });
+});
+
 export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
   deps: InstanceRegistryMutationHttpDeps<TContext>,
   options: ScopedRegistryMutationHandlerOptions<TContext, TData, TResult>
@@ -129,7 +179,7 @@ export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
       readonly idempotencyKey: string;
     },
     TData,
-    TResult
+    TResult | Response
   >({
     prepare: ({ request, context }: { readonly request: Request; readonly context: TContext }) => {
       const instanceId = readInstanceIdOrError(deps, request);
@@ -155,31 +205,10 @@ export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
       const parsed = await options.parse(request);
       return parsed.ok ? parsed.data : deps.createApiError(400, 'invalid_request', parsed.message, requestId);
     },
-    execute: async ({
-      instanceId,
-      actorId,
-      idempotencyKey,
-      requestId,
-      input,
-    }: {
-      readonly instanceId: string;
-      readonly actorId: string;
-      readonly idempotencyKey: string;
-      readonly requestId?: string;
-      readonly input: TData;
-    }) =>
-      withScopedRegistryMutation(deps, instanceId, (service) =>
-        options.execute(service, {
-          instanceId,
-          payload: input,
-          actorId,
-          idempotencyKey,
-          requestId,
-        })
-      ),
+    execute: (state: ScopedExecutionState<TContext, TData>) => executeScopedMutation(deps, options, state),
     mapError: options.mapMutationError,
     respond: (
-      result: TResult,
+      result: TResult | Response,
       state: {
         readonly request: Request;
         readonly context: TContext;
@@ -189,7 +218,7 @@ export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
         readonly idempotencyKey: string;
       }
     ) =>
-      options.respond(result, {
+      result instanceof Response ? result : options.respond(result, {
         request: state.request,
         context: state.context,
         requestId: state.requestId,

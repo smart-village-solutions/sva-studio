@@ -920,6 +920,28 @@ CREATE TABLE iam.instance_audit_events (
 
 
 --
+-- Name: instance_confirmation_challenges; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.instance_confirmation_challenges (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    instance_id text NOT NULL,
+    actor_id text NOT NULL,
+    action_id text NOT NULL,
+    module_id text,
+    state_fingerprint text NOT NULL,
+    phrase_hash text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    consumed_at timestamp with time zone,
+    request_id text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT instance_confirmation_challenges_consumed_chk CHECK (((consumed_at IS NULL) OR (consumed_at >= created_at))),
+    CONSTRAINT instance_confirmation_challenges_expiry_chk CHECK ((expires_at > created_at)),
+    CONSTRAINT instance_confirmation_challenges_phrase_hash_chk CHECK ((phrase_hash ~ '^[0-9a-f]{64}$'::text))
+);
+
+
+--
 -- Name: instance_deletion_rules; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -1911,6 +1933,14 @@ ALTER TABLE ONLY iam.instance_audit_events
 
 
 --
+-- Name: instance_confirmation_challenges instance_confirmation_challenges_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_confirmation_challenges
+    ADD CONSTRAINT instance_confirmation_challenges_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: instance_deletion_rules instance_deletion_rules_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -2526,6 +2556,20 @@ CREATE INDEX idx_impersonation_sessions_instance_actor_status ON iam.impersonati
 --
 
 CREATE INDEX idx_instance_audit_events_instance_created ON iam.instance_audit_events USING btree (instance_id, created_at DESC);
+
+
+--
+-- Name: idx_instance_confirmation_challenges_instance_actor; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_instance_confirmation_challenges_instance_actor ON iam.instance_confirmation_challenges USING btree (instance_id, actor_id, action_id, module_id, created_at DESC);
+
+
+--
+-- Name: idx_instance_confirmation_challenges_pending_expiry; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_instance_confirmation_challenges_pending_expiry ON iam.instance_confirmation_challenges USING btree (expires_at) WHERE (consumed_at IS NULL);
 
 
 --
@@ -3377,6 +3421,14 @@ ALTER TABLE ONLY iam.impersonation_sessions
 
 ALTER TABLE ONLY iam.instance_audit_events
     ADD CONSTRAINT instance_audit_events_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: instance_confirmation_challenges instance_confirmation_challenges_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_confirmation_challenges
+    ADD CONSTRAINT instance_confirmation_challenges_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 
 --

@@ -21,6 +21,7 @@
     },
     "test:unit": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "options": {
         "cwd": "packages/studio-mcp",
         "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.config.ts --passWithNoTests"
@@ -32,6 +33,7 @@
     },
     "test:coverage": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "options": {
         "cwd": "packages/studio-mcp",
         "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"

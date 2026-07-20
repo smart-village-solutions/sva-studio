@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   getSingleInstanceAuditRunInternal: vi.fn(async () => new Response('detail', { status: 200 })),
   authenticateRegistryServiceToken: vi.fn(),
   markAuthenticatedRegistryServiceRequest: vi.fn(),
+  prepareInstanceConfirmationInternal: vi.fn(async () => new Response('confirmation', { status: 200 })),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -33,6 +34,10 @@ vi.mock('./service-token.js', () => ({
     if (value === null) return undefined;
     return value.startsWith('Bearer ') ? value.slice(7) : null;
   },
+}));
+
+vi.mock('./confirmation.js', () => ({
+  prepareInstanceConfirmationInternal: state.prepareInstanceConfirmationInternal,
 }));
 
 vi.mock('../log-context.js', () => ({
@@ -129,5 +134,18 @@ describe('iam-instance-registry/server', () => {
       detailRequest,
       expect.objectContaining({ user: { id: 'admin-1' } })
     );
+  });
+
+  it('exposes every registry operation through the session-authenticated wrapper', async () => {
+    const { instanceRegistryHandlers } = await import('./server.js');
+    const handlers = Object.values(instanceRegistryHandlers);
+    const responses = await Promise.all(handlers.map((handler) =>
+      handler(new Request('https://studio.example.org/api/v1/iam/instances/demo'))
+    ));
+
+    expect(responses).toHaveLength(22);
+    expect(responses.every((response) => response.status === 200)).toBe(true);
+    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(22);
+    expect(state.prepareInstanceConfirmationInternal).toHaveBeenCalledOnce();
   });
 });

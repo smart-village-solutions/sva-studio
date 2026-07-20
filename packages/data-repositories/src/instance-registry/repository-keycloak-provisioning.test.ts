@@ -5,7 +5,7 @@ import { createQueuedExecutor, keycloakRunRow, provisioningRow, stepRow } from '
 
 describe('instance registry repository keycloak provisioning', () => {
   it('looks up an existing provisioning run by its idempotency scope', async () => {
-    const { executor, statements } = createQueuedExecutor([[{ exists: true }]]);
+    const { executor, statements } = createQueuedExecutor([[{ ...keycloakRunRow, intent: 'rotate_client_secret' }]]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(repository.hasKeycloakProvisioningRun({
@@ -13,8 +13,8 @@ describe('instance registry repository keycloak provisioning', () => {
     })).resolves.toBe(true);
 
     expect(statements[0]).toMatchObject({
-      text: expect.stringContaining('idempotency_key = $4'),
-      values: ['tenant-a', 'executeKeycloakProvisioning', 'rotate_client_secret', 'idem-rotate'],
+      text: expect.stringContaining('idempotency_key = $3'),
+      values: ['tenant-a', 'executeKeycloakProvisioning', 'idem-rotate'],
     });
   });
 

@@ -37,6 +37,7 @@ describe('Studio MCP tools', () => {
     const response = await client.callTool({ name: 'studio_instance_get', arguments: { instanceId: 'demo' } });
     expect(response.isError).not.toBe(true);
     expect(response.structuredContent).toMatchObject({ ok: false, error: { code: 'conflict' } });
+    expect(response.content).toEqual([{ type: 'text', text: 'Studio-Operation fehlgeschlagen. Strukturierte Diagnose verfügbar.' }]);
     expect(JSON.stringify(response)).not.toContain('leak');
     await Promise.all([client.close(), server.close()]);
   });

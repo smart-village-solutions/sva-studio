@@ -78,8 +78,7 @@ export const statusMutationSchema = z.object({
 
 export const reconcileKeycloakSchema = z.object({
   tenantAdminTemporaryPassword: z.string().min(1).optional(),
-  rotateClientSecret: z.boolean().optional(),
-});
+}).strict();
 
 export const executeKeycloakProvisioningSchema = z.object({
   intent: z.enum(['provision', 'provision_admin_client', 'reset_tenant_admin', 'rotate_client_secret']),

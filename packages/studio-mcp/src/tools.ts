@@ -14,7 +14,7 @@ type ToolResult = {
 };
 
 const result = (payload: Record<string, unknown>, isError = false): ToolResult => ({
-  content: [{ type: 'text', text: isError ? 'Studio-Operation fehlgeschlagen. Strukturierte Diagnose verfügbar.' : 'Studio-Operation erfolgreich.' }],
+  content: [{ type: 'text', text: isError || payload.ok === false ? 'Studio-Operation fehlgeschlagen. Strukturierte Diagnose verfügbar.' : 'Studio-Operation erfolgreich.' }],
   structuredContent: payload,
   ...(isError ? { isError: true } : {}),
 });

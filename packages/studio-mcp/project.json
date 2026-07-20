@@ -29,6 +29,7 @@
     },
     "test:types": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "options": { "command": "tsc -p packages/studio-mcp/tsconfig.lib.json --noEmit" }
     },
     "test:coverage": {

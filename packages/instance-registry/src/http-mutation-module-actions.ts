@@ -9,6 +9,7 @@ import {
 } from './http-contracts.js';
 import type { InstanceRegistryMutationHttpDeps } from './http-mutation-shared.js';
 import { createScopedRegistryMutationHandler } from './http-mutation-shared.js';
+import type { InstanceRegistryMutationErrorMapper } from './observability.js';
 import {
   buildAssignInstanceModuleInput,
   buildBootstrapAdminStructureInput,
@@ -23,9 +24,10 @@ import {
 export const createAssignModuleHandler =
   <TContext>(
     deps: InstanceRegistryMutationHttpDeps<TContext>,
-    mapMutationError: (error: unknown) => Response
+    mapMutationError: InstanceRegistryMutationErrorMapper
   ) =>
   createScopedRegistryMutationHandler(deps, {
+    operation: 'assign_instance_module',
     parse: (request) => deps.parseRequestBody<AssignInstanceModulePayload>(request, assignModuleSchema),
     execute: (service, input) =>
       service.assignModule(
@@ -54,9 +56,10 @@ export const createAssignModuleHandler =
 export const createBootstrapAdminStructureHandler =
   <TContext>(
     deps: InstanceRegistryMutationHttpDeps<TContext>,
-    mapMutationError: (error: unknown) => Response
+    mapMutationError: InstanceRegistryMutationErrorMapper
   ) =>
   createScopedRegistryMutationHandler(deps, {
+    operation: 'bootstrap_instance_admin_structure',
     parse: (request) => deps.parseRequestBody<BootstrapAdminStructurePayload>(request, bootstrapAdminStructureSchema),
     execute: (service, input) =>
       service.bootstrapAdminStructure(
@@ -85,9 +88,10 @@ export const createBootstrapAdminStructureHandler =
 export const createRevokeModuleHandler =
   <TContext>(
     deps: InstanceRegistryMutationHttpDeps<TContext>,
-    mapMutationError: (error: unknown) => Response
+    mapMutationError: InstanceRegistryMutationErrorMapper
   ) =>
   createScopedRegistryMutationHandler(deps, {
+    operation: 'revoke_instance_module',
     criticalActionId: 'instance.module.revoke',
     resolveCriticalModuleId: (payload: RevokeInstanceModulePayload) => payload.moduleId,
     parse: (request) => deps.parseRequestBody<RevokeInstanceModulePayload>(request, revokeModuleSchema),
@@ -118,9 +122,10 @@ export const createRevokeModuleHandler =
 export const createSeedIamBaselineHandler =
   <TContext>(
     deps: InstanceRegistryMutationHttpDeps<TContext>,
-    mapMutationError: (error: unknown) => Response
+    mapMutationError: InstanceRegistryMutationErrorMapper
   ) =>
   createScopedRegistryMutationHandler(deps, {
+    operation: 'seed_instance_iam_baseline',
     parse: (request) => deps.parseRequestBody<Record<string, never>>(request, seedIamBaselineSchema),
     execute: (service, input) =>
       service.seedIamBaseline(
@@ -140,10 +145,11 @@ export const createSeedIamBaselineHandler =
 export const createMutateInstanceStatusHandler =
   <TContext>(
     deps: InstanceRegistryMutationHttpDeps<TContext>,
-    mapMutationError: (error: unknown) => Response
+    mapMutationError: InstanceRegistryMutationErrorMapper
   ) => {
   const createStatusMutationHandler = (nextStatus: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>) =>
     createScopedRegistryMutationHandler(deps, {
+      operation: `change_instance_status_${nextStatus}`,
       criticalActionId: `instance.status.${nextStatus === 'active' ? 'activate' : nextStatus === 'suspended' ? 'suspend' : 'archive'}`,
       parse: async (inputRequest) => {
         const payloadResult = await deps.parseRequestBody<{ status: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'> }>(

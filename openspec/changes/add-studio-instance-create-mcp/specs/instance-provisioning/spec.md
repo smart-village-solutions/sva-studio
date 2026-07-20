@@ -69,3 +69,27 @@ Das System SHALL die vorhandenen Instanzverwaltungs- und Provisioning-Fähigkeit
 - **THEN** verlangt Studio einen action-spezifischen Scope, eine gültige aktuelle Bestätigungs-Challenge, einen Idempotenz-Key und eine explizite Bestätigungsphrase
 - **AND** lehnt Studio eine abgelaufene, wiederverwendete oder durch Zustandsänderung ungültig gewordene Challenge fail-closed ab
 - **AND** wird die Mutation einschließlich Bestätigung und Ergebnis append-only auditiert
+
+### Requirement: Durchgängig korrelierbares Prozessketten-Logging
+
+Das System SHALL die MCP-Create- und nachgelagerte Provisioning-/Keycloak-Kette mit stabilen Operationen, Ergebnissen und Prozessstufen strukturiert protokollieren. Pro Fehler SHALL genau ein kanonisches Error-Event entstehen. Freie Provider-, Datenbank- und Nutzereingaben dürfen nicht Bestandteil des Log-Ereignisses sein.
+
+#### Scenario: Create-Fehler benennt die konkrete Prozessstufe
+
+- **WHEN** Bestandsprüfung, Registry-Insert, Primary-Hostname-Upsert, Provisioning-Run, Audit-Ereignis oder Cache-Invalidierung fehlschlägt
+- **THEN** enthält das kanonische Error-Event `operation`, `result`, `request_id`, die verfügbare Instanzkorrelation sowie einen stabilen `step_key`
+- **AND** werden von PostgreSQL ausschließlich SQLSTATE, Tabelle, Spalte und Constraint übernommen
+- **AND** entstehen an Service- und HTTP-Grenze keine doppelten Error-Events
+
+#### Scenario: Worker-Fehler bleibt sicher und korrelierbar
+
+- **WHEN** Queue, Claim, Preflight, Plan, Keycloak-Ausführung, Secret-Synchronisierung, Admin-Bootstrap oder Abschluss fehlschlägt
+- **THEN** enthält `provisioning_run_failed` Request-, Instanz-, Run-, Intent-, Stufen- und Fehlerklassen-Kontext, soweit verfügbar
+- **AND** enthalten Log und persistierte Zusammenfassung keine Providerdetails, E-Mail-Adressen, Passwörter, Tokens, Connection-Strings, SQL-Werte oder Stacktraces
+- **AND** bleiben Request-, Instanz- und Run-IDs Log-Felder statt Loki-Labels oder Metrikdimensionen
+
+#### Scenario: Lokaler stdio-MCP schützt den Protokollkanal
+
+- **WHEN** das lokale MCP-Tool einen Erfolg oder Fehler verarbeitet
+- **THEN** bleibt `stdout` ausschließlich dem MCP-Protokoll vorbehalten
+- **AND** erfolgt die lokale Diagnose über die strukturierte Tool-Antwort ohne Token-, Payload- oder Secret-Logging

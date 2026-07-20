@@ -1,9 +1,15 @@
-import { createMutationWorkflow } from '@sva/server-runtime';
+import { createMutationWorkflow, createSdkLogger } from '@sva/server-runtime';
 import type { z } from 'zod';
 
 import { readDetailInstanceId } from './http-contracts.js';
 import { classifyInstanceMutationError, type InstanceMutationErrorCode } from './mutation-errors.js';
+import {
+  buildInstanceRegistryFailureLog,
+  type InstanceRegistryMutationErrorMapper,
+} from './observability.js';
 import type { InstanceRegistryService } from './service-types.js';
+
+const logger = createSdkLogger({ component: 'iam-instance-registry-http', level: 'info' });
 
 type CreateApiError = (
   status: number,
@@ -78,6 +84,7 @@ type ScopedRegistryMutationExecuteInput<TData> = {
 };
 
 type ScopedRegistryMutationHandlerOptions<TContext, TData, TResult> = {
+  readonly operation: string;
   readonly criticalActionId?: string;
   readonly resolveCriticalModuleId?: (payload: TData) => string | undefined;
   readonly parse: (request: Request) => Promise<ParsedRequestBody<TData>>;
@@ -86,7 +93,7 @@ type ScopedRegistryMutationHandlerOptions<TContext, TData, TResult> = {
     input: ScopedRegistryMutationExecuteInput<TData>
   ) => Promise<TResult>;
   readonly respond: (result: TResult, state: ScopedRegistryMutationState<TContext>) => Response;
-  readonly mapMutationError: (error: unknown) => Response;
+  readonly mapMutationError: InstanceRegistryMutationErrorMapper;
 };
 
 const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = {
@@ -110,8 +117,17 @@ const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = {
 
 export const createInstanceMutationErrorMapper = (
   deps: Pick<InstanceRegistryMutationHttpDeps<unknown>, 'createApiError' | 'getRequestId'>
-) => (error: unknown): Response => {
+): InstanceRegistryMutationErrorMapper => (error, context) => {
   const classification = classifyInstanceMutationError(error);
+  logger.error('Instance registry mutation failed', buildInstanceRegistryFailureLog(error, {
+    operation: context?.operation ?? 'instance_registry_mutation',
+    requestId: context?.requestId ?? deps.getRequestId(),
+    instanceId: context?.instanceId,
+    runId: context?.runId,
+    intent: context?.intent,
+    stepKey: context?.stepKey,
+    dependency: context?.dependency,
+  }, classification));
   return deps.createApiError(
     classification.status,
     classification.code,
@@ -211,7 +227,11 @@ export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
       return parsed.ok ? parsed.data : deps.createApiError(400, 'invalid_request', parsed.message, requestId);
     },
     execute: (state: ScopedExecutionState<TContext, TData>) => executeScopedMutation(deps, options, state),
-    mapError: options.mapMutationError,
+    mapError: (error, state) => options.mapMutationError(error, {
+      operation: options.operation,
+      requestId: state.requestId,
+      instanceId: state.instanceId,
+    }),
     respond: (
       result: TResult | Response,
       state: {

@@ -339,7 +339,7 @@ describe('instance registry service facade', () => {
         expect.objectContaining({
           checkId: 'keycloak.access.read',
           status: 'warn',
-          actual: 'keycloak unavailable',
+          actual: 'KEYCLOAK_STATUS_UNAVAILABLE',
           details: expect.objectContaining({
             primaryEvidenceSource: 'keycloak_live',
             secondaryEvidenceSource: 'keycloak_snapshot',
@@ -496,6 +496,36 @@ describe('instance registry service facade', () => {
       expect.objectContaining({ operation: 'create', status: 'requested' })
     );
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
+  });
+
+  it.each([
+    ['registry_lookup', { getInstanceById: vi.fn(async () => { throw new Error('lookup secret'); }) }, undefined],
+    ['registry_insert', {
+      getInstanceById: vi.fn(async () => null),
+      createInstance: vi.fn(async () => { throw new Error('insert secret'); }),
+    }, undefined],
+    ['provisioning_run_insert', {
+      getInstanceById: vi.fn(async () => null),
+      createProvisioningRun: vi.fn(async () => { throw new Error('run secret'); }),
+    }, undefined],
+    ['audit_event_insert', {
+      getInstanceById: vi.fn(async () => null),
+      appendAuditEvent: vi.fn(async () => { throw new Error('audit secret'); }),
+    }, undefined],
+    ['host_cache_invalidate', { getInstanceById: vi.fn(async () => null) }, vi.fn(() => {
+      throw new Error('cache secret');
+    })],
+  ] as const)('annotates create failures at %s', async (stepKey, overrides, invalidateHost) => {
+    const repository = createRepository(overrides);
+    const deps = createDeps(repository);
+    if (invalidateHost) deps.invalidateHost = invalidateHost;
+    const service = createInstanceRegistryService(deps);
+
+    const result = service.createProvisioningRequest({
+      instanceId: 'demo', displayName: 'Demo', parentDomain: 'studio.example.org',
+      realmMode: 'new', authRealm: 'demo', authClientId: 'studio-client', idempotencyKey: 'idem-errors',
+    });
+    await expect(result).rejects.toMatchObject({ instanceRegistryStep: stepKey });
   });
 
   it('does not persist legacy waste-management settings during create', async () => {

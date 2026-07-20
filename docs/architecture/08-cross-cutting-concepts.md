@@ -579,3 +579,6 @@ Referenzen:
 - Der versionierte Fehlervertrag trennt stabilen Code, Kategorie, Wiederholbarkeit, Folgeaktion und Korrelation. `internal_unclassified` bleibt eine eigene Klasse und wird nicht als Abhängigkeitsfehler geraten.
 - OTEL-Metriken verwenden nur Action, Risikostufe, Ergebnis und stabilen Fehlercode. Instanz-ID, Token-Subject, Idempotency-Key und freie Fehlertexte sind keine Labels.
 - Kritische Aktionen benötigen eine serverseitige, kurzlebige, einmalige und zustandsgebundene Challenge. Clientseitige Bestätigungsmarker allein sind wertlos.
+- Die MCP-Create-Prozesskette korreliert HTTP-Eingang, Registry-Schritte, Queue und Keycloak-Worker über Request-, Instanz- und Run-ID im Log-Body. Stabile `step_key`-Werte benennen die technische Fehlerstufe; pro Fehler entsteht genau ein kanonisches Error-Event.
+- PostgreSQL-Logs erlauben nur SQLSTATE, Tabelle, Spalte und Constraint. Rohe Meldungen, Details, Hints, Queries, Parameter, Stacktraces und Providerantworten bleiben ebenso ausgeschlossen wie E-Mail, Passwort, Token und Connection-String.
+- Audit-Ereignisse bleiben fachlich und append-only; technische Diagnosedetails werden nicht in den Audit-Pfad verschoben. Der lokale stdio-MCP hält `stdout` für das MCP-Protokoll frei.

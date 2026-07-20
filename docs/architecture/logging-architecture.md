@@ -142,6 +142,14 @@ Pseudonyme technische IDs bleiben dennoch personenbeziehbar und duerfen nur bei 
 - `debug` -> 5
 - `verbose` -> 1
 
+## MCP-Instanz-Prozesskettenvertrag
+
+Die Instanzanlage ist anhand der Request-ID vom Studio-HTTP-Eingang über Registry-Persistenz und Provisioning-Queue bis zum Keycloak-Worker korrelierbar. Kanonische Fehlerereignisse enthalten `operation`, `result`, `request_id`, `error_type`, `error_code` und `classification`; verfügbare Felder sind `instance_id`, `run_id`, `intent`, `step_key`, `dependency` und `http_status`.
+
+Für den Create-Pfad sind `registry_lookup`, `registry_insert`, `primary_hostname_upsert`, `provisioning_run_insert`, `audit_event_insert` und `host_cache_invalidate` stabile Stufen. Der Worker verwendet `queue_enqueue`, `worker_claim`, `worker_preflight`, `worker_plan`, `keycloak_execution`, `secret_sync`, `admin_bootstrap` und `worker_complete`. Interne Schichten annotieren Fehler nur; das kanonische Error-Event entsteht einmalig an der zuständigen Fehlergrenze.
+
+PostgreSQL-Diagnostik ist auf SQLSTATE, Tabelle, Spalte und Constraint begrenzt. Meldung, Detail, Hint, Query, Parameter, Stacktrace, Providerantworten, E-Mail-Adressen, Passwörter, Tokens und Connection-Strings sind ausgeschlossen. Request-, Instanz- und Run-IDs werden ausschließlich im Log-Body geführt. Der stdio-MCP verwendet kein Console-Logging, weil `stdout` dem Protokoll vorbehalten ist.
+
 ## Routing-Observability-Vertrag
 
 `@sva/routing` nutzt fuer routing-relevante Entscheidungen einen kleinen Diagnostics-Vertrag statt verteilter Logger-Zugriffe.

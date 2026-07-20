@@ -2,6 +2,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 
 import { appendRunStep } from './service-keycloak-run-steps.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
+import { readInstanceRegistryStepKey } from './observability.js';
 
 const logger = createSdkLogger({ component: 'keycloak-provisioning-failures', level: 'error' });
 
@@ -40,22 +41,36 @@ export const failRun = async (
   input: {
     runId: string;
     requestId?: string;
+    instanceId: string;
+    intent: string;
     error: unknown;
   }
 ) => {
   const { reasonCode, safeSummary } = classifyError(input.error);
+  const stepKey = readInstanceRegistryStepKey(input.error) ?? 'keycloak_execution';
+  const dependency = stepKey === 'keycloak_execution'
+    ? 'keycloak'
+    : stepKey === 'secret_sync' || stepKey === 'admin_bootstrap'
+      ? 'instance_registry'
+      : undefined;
 
-  // Log the detailed error for operators with structured context.
-  // rawErrorMessage is deliberately omitted to avoid leaking PII or secrets
-  // from upstream error messages (HTTP responses, Keycloak errors, etc.).
   logger.error('provisioning_run_failed', {
-    runId: input.runId,
-    reasonCode,
+    operation: 'process_keycloak_provisioning_run',
+    result: 'failed',
+    request_id: input.requestId,
+    instance_id: input.instanceId,
+    run_id: input.runId,
+    intent: input.intent,
+    step_key: stepKey,
+    ...(dependency ? { dependency } : {}),
+    error_type: input.error instanceof Error ? input.error.name : typeof input.error,
+    error_code: reasonCode,
+    classification: reasonCode,
   });
 
   await appendRunStep(deps, {
     runId: input.runId,
-    stepKey: 'execution',
+    stepKey,
     title: 'Provisioning ausführen',
     status: 'failed',
     summary: safeSummary,
@@ -74,10 +89,27 @@ export const failClaimedRun = async (
   input: {
     runId: string;
     requestId?: string;
+    instanceId: string;
+    intent: string;
     summary: string;
     details?: Readonly<Record<string, unknown>>;
   }
 ) => {
+  const reasonCode = typeof input.details?.reason === 'string'
+    ? input.details.reason.toUpperCase()
+    : 'WORKER_PRECONDITION_FAILED';
+  logger.error('provisioning_run_failed', {
+    operation: 'process_keycloak_provisioning_run',
+    result: 'failed',
+    request_id: input.requestId,
+    instance_id: input.instanceId,
+    run_id: input.runId,
+    intent: input.intent,
+    step_key: 'worker_preflight',
+    error_type: 'ProvisioningPreconditionError',
+    error_code: reasonCode,
+    classification: reasonCode,
+  });
   await appendRunStep(deps, {
     runId: input.runId,
     stepKey: 'worker',

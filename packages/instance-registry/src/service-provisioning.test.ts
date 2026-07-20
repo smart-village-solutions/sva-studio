@@ -155,7 +155,7 @@ describe('service-provisioning', () => {
       expect.objectContaining({
         status: 'failed',
         errorCode: 'keycloak_provisioning_failed',
-        errorMessage: 'keycloak down',
+        errorMessage: 'Keycloak-Provisionierung fehlgeschlagen.',
       })
     );
   });

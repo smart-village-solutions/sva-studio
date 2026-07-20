@@ -12,6 +12,7 @@ import {
   invalidateHostWithLog,
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
+import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
 
 export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
@@ -22,7 +23,9 @@ export const createProvisioningRequestHandler =
       request_id: input.requestId,
       actor_id: input.actorId,
     });
-    const existing = await deps.repository.getInstanceById(input.instanceId);
+    const existing = await runInstanceRegistryStep('registry_lookup', () =>
+      deps.repository.getInstanceById(input.instanceId)
+    );
     if (existing) {
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {
         operation: 'create_instance',
@@ -35,7 +38,7 @@ export const createProvisioningRequestHandler =
     const normalizedParentDomain = normalizeHost(input.parentDomain);
     const primaryHostname = buildPrimaryHostname(input.instanceId, normalizedParentDomain);
     const tenantAdminClient = input.tenantAdminClient ?? { clientId: DEFAULT_TENANT_ADMIN_CLIENT_ID };
-    const instance = await deps.repository.createInstance({
+    const instance = await runInstanceRegistryStep('registry_insert', () => deps.repository.createInstance({
       instanceId: input.instanceId,
       displayName: input.displayName,
       status: 'requested',
@@ -58,7 +61,7 @@ export const createProvisioningRequestHandler =
       themeKey: input.themeKey,
       featureFlags: input.featureFlags,
       mainserverConfigRef: input.mainserverConfigRef,
-    });
+    }));
     if (!instance) {
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {
         operation: 'create_instance',
@@ -69,7 +72,11 @@ export const createProvisioningRequestHandler =
     }
 
     await createProvisioningArtifacts(deps.repository, instance, input);
-    invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);
+    try {
+      invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);
+    } catch (error) {
+      throw annotateInstanceRegistryError(error, 'host_cache_invalidate');
+    }
     instanceRegistryServiceLogger.info('instance_create_completed', {
       operation: 'create_instance',
       instance_id: instance.instanceId,

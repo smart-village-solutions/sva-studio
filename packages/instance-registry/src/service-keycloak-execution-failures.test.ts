@@ -16,6 +16,8 @@ describe('service-keycloak-execution-failures', () => {
       {
         runId: 'run-1',
         requestId: 'req-1',
+        instanceId: 'demo',
+        intent: 'reconcile',
         error: new Error('boom'),
       }
     );
@@ -23,7 +25,7 @@ describe('service-keycloak-execution-failures', () => {
     expect(repository.appendKeycloakProvisioningStep).toHaveBeenCalledWith(
       expect.objectContaining({
         runId: 'run-1',
-        stepKey: 'execution',
+        stepKey: 'keycloak_execution',
         status: 'failed',
       })
     );
@@ -48,6 +50,8 @@ describe('service-keycloak-execution-failures', () => {
       {
         runId: 'run-2',
         requestId: 'req-2',
+        instanceId: 'demo',
+        intent: 'reconcile',
         summary: 'dependency missing',
         details: { reason: 'dependency_missing' },
       }

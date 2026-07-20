@@ -1,5 +1,6 @@
 import type { InstanceRegistryService } from './service-types.js';
 import { readDetailInstanceId, readKeycloakRunId } from './http-contracts.js';
+import type { InstanceRegistryMutationErrorMapper } from './observability.js';
 
 type CreateApiError = (
   status: number,
@@ -18,7 +19,7 @@ export type InstanceRegistryKeycloakHttpDeps<TContext> = {
   readonly createApiError: CreateApiError;
   readonly jsonResponse: JsonResponse;
   readonly asApiItem: AsApiItem;
-  readonly mapMutationError: (error: unknown) => Response;
+  readonly mapMutationError: InstanceRegistryMutationErrorMapper;
   readonly ensurePlatformAccess: (request: Request, ctx: TContext) => Response | null;
   readonly validateCsrf: (request: Request, requestId?: string) => Response | null;
   readonly requireFreshReauth: (request: Request, ctx: TContext) => Response | null;
@@ -58,6 +59,7 @@ const respondWithInstanceLookup = async <TContext, TValue>(
   ctx: TContext,
   work: (instanceId: string) => Promise<TValue | null>,
   notFoundMessage: string,
+  operation: string,
   requireMutationGuards = false
 ): Promise<Response> => {
   const guarded = guardKeycloakReadRequest(deps, request, ctx, requireMutationGuards);
@@ -72,7 +74,11 @@ const respondWithInstanceLookup = async <TContext, TValue>(
     }
     return deps.jsonResponse(200, deps.asApiItem(value, deps.getRequestId()));
   } catch (error) {
-    return deps.mapMutationError(error);
+    return deps.mapMutationError(error, {
+      operation,
+      requestId: deps.getRequestId(),
+      instanceId: guarded,
+    });
   }
 };
 
@@ -85,7 +91,8 @@ export const createInstanceRegistryKeycloakHttpHandlers = <TContext>(
       request,
       ctx,
       async (instanceId) => deps.withRegistryService((service) => service.getKeycloakStatus(instanceId)),
-      'Instanz wurde nicht gefunden.'
+      'Instanz wurde nicht gefunden.',
+      'get_instance_keycloak_status'
     ),
 
   getInstanceKeycloakPreflight: (request: Request, ctx: TContext): Promise<Response> =>
@@ -94,7 +101,8 @@ export const createInstanceRegistryKeycloakHttpHandlers = <TContext>(
       request,
       ctx,
       async (instanceId) => deps.withRegistryService((service) => service.getKeycloakPreflight(instanceId)),
-      'Instanz wurde nicht gefunden.'
+      'Instanz wurde nicht gefunden.',
+      'get_instance_keycloak_preflight'
     ),
 
   planInstanceKeycloakProvisioning: (request: Request, ctx: TContext): Promise<Response> =>
@@ -104,6 +112,7 @@ export const createInstanceRegistryKeycloakHttpHandlers = <TContext>(
       ctx,
       async (instanceId) => deps.withRegistryService((service) => service.planKeycloakProvisioning(instanceId)),
       'Instanz wurde nicht gefunden.',
+      'plan_instance_keycloak_provisioning',
       true
     ),
 
@@ -125,7 +134,12 @@ export const createInstanceRegistryKeycloakHttpHandlers = <TContext>(
       }
       return deps.jsonResponse(200, deps.asApiItem(run, deps.getRequestId()));
     } catch (error) {
-      return deps.mapMutationError(error);
+      return deps.mapMutationError(error, {
+        operation: 'get_instance_keycloak_provisioning_run',
+        requestId: deps.getRequestId(),
+        instanceId: guarded,
+        runId,
+      });
     }
   },
 });

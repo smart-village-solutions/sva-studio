@@ -132,7 +132,7 @@ describe('service-audit helpers', () => {
     expect(result).toMatchObject({
       status: null,
       evidenceSource: 'keycloak_live',
-      error: 'HTTP 403 Forbidden',
+      error: 'KEYCLOAK_STATUS_UNAVAILABLE',
       fallbackEvidenceSource: 'keycloak_snapshot',
     });
     expect(result.fallbackStatus).toBeTruthy();
@@ -168,9 +168,9 @@ describe('service-audit helpers', () => {
     expect(result).toMatchObject({
       status: null,
       evidenceSource: 'keycloak_live',
-      error: 'HTTP 403 Forbidden',
+      error: 'KEYCLOAK_STATUS_UNAVAILABLE',
       fallbackEvidenceSource: 'keycloak_snapshot',
-      fallbackError: 'snapshot unavailable',
+      fallbackError: 'KEYCLOAK_SNAPSHOT_UNAVAILABLE',
     });
     expect(result.fallbackStatus).toBeUndefined();
   });

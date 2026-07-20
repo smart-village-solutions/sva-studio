@@ -77,7 +77,10 @@ export const runKeycloakProvisioningWorkerLoop = async (
       } catch (error) {
         logger.error('keycloak_provisioner_worker_iteration_failed', {
           operation: 'keycloak_provisioner_worker_loop',
-          error: error instanceof Error ? error.message : String(error),
+          result: 'failed',
+          step_key: 'worker_claim',
+          error_type: error instanceof Error ? error.name : typeof error,
+          error_code: 'WORKER_ITERATION_FAILED',
         });
         await sleep(pollIntervalMs);
       }

@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const logger = vi.hoisted(() => ({ error: vi.fn() }));
+
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
+  createSdkLogger: () => logger,
+}));
+
 import {
   createInstanceMutationErrorMapper,
   createInstanceRegistryMutationHttpHandlers,
@@ -91,6 +98,29 @@ describe('http mutation handlers', () => {
     expect(body).toMatchObject({
       code: 'tenant_auth_client_secret_missing',
       requestId: 'req-test',
+    });
+  });
+
+  it('logs safe mutation error diagnostics with the request correlation', async () => {
+    const mapError = createInstanceMutationErrorMapper(deps);
+
+    mapError(Object.assign(new Error('duplicate value violates unique constraint'), {
+      code: '23505',
+      table: 'instances',
+      constraint: 'instances_pkey',
+    }));
+
+    expect(logger.error).toHaveBeenCalledWith('Instance registry mutation failed', {
+      operation: 'instance_registry_mutation',
+      result: 'failed',
+      error: 'internal_unclassified',
+      request_id: 'req-test',
+      error_type: 'Error',
+      error_code: '23505',
+      database_table: 'instances',
+      database_constraint: 'instances_pkey',
+      classification: 'internal_unclassified',
+      http_status: 500,
     });
   });
 

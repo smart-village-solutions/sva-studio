@@ -158,7 +158,9 @@ describe('http-instance-handlers', () => {
     );
 
     expect(response.status).toBe(502);
-    expect(deps.mapMutationError).toHaveBeenCalledWith(thrown);
+    expect(deps.mapMutationError).toHaveBeenCalledWith(thrown, {
+      operation: 'create_instance', requestId: 'req-1', instanceId: 'demo',
+    });
     expect(deps.onInstanceProvisioningRequested).not.toHaveBeenCalled();
   });
 
@@ -183,7 +185,9 @@ describe('http-instance-handlers', () => {
     );
 
     expect(response.status).toBe(502);
-    expect(deps.mapMutationError).toHaveBeenCalledWith(thrown);
+    expect(deps.mapMutationError).toHaveBeenCalledWith(thrown, {
+      operation: 'update_instance', requestId: 'req-1', instanceId: 'demo',
+    });
   });
 
   it('updates instances without requiring fresh reauthentication', async () => {

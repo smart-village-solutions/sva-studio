@@ -113,6 +113,11 @@ describe('http-keycloak-handlers', () => {
     );
 
     expect(response.status).toBe(502);
-    expect(deps.mapMutationError).toHaveBeenCalledWith(thrown);
+    expect(deps.mapMutationError).toHaveBeenCalledWith(thrown, {
+      operation: 'get_instance_keycloak_provisioning_run',
+      requestId: 'req-1',
+      instanceId: 'demo',
+      runId: 'run-1',
+    });
   });
 });

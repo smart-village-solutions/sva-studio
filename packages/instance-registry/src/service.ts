@@ -33,6 +33,20 @@ import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './ser
 export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps): InstanceRegistryService => ({
   prepareConfirmationChallenge: createPrepareInstanceConfirmationChallenge(deps.repository),
   consumeConfirmationChallenge: createConsumeInstanceConfirmationChallenge(deps.repository),
+  recordConfirmationAttempt: async (input) => {
+    await deps.repository.appendAuditEvent({
+      instanceId: input.instanceId,
+      eventType: input.outcome === 'accepted' ? 'instance_confirmation_accepted' : 'instance_confirmation_rejected',
+      actorId: input.actorId,
+      requestId: input.requestId,
+      details: {
+        actionId: input.actionId,
+        ...(input.moduleId ? { moduleId: input.moduleId } : {}),
+        outcome: input.outcome,
+        ...(input.reason ? { reason: input.reason } : {}),
+      },
+    });
+  },
   listInstances: createListInstances(deps.repository),
   getInstanceDetail: createGetInstanceDetail(deps),
   createProvisioningRequest: createProvisioningRequestHandler(deps),

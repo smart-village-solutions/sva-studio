@@ -202,6 +202,21 @@ const createDeps = (
 });
 
 describe('instance registry service facade', () => {
+  it('records confirmation attempts without confirmation secrets', async () => {
+    const repository = createRepository();
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await service.recordConfirmationAttempt({
+      instanceId: 'demo', actorId: 'service-account', actionId: 'instance.secret.rotate',
+      outcome: 'rejected', reason: 'invalid_confirmation', requestId: 'req-confirm',
+    });
+
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith({
+      instanceId: 'demo', eventType: 'instance_confirmation_rejected', actorId: 'service-account', requestId: 'req-confirm',
+      details: { actionId: 'instance.secret.rotate', outcome: 'rejected', reason: 'invalid_confirmation' },
+    });
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });

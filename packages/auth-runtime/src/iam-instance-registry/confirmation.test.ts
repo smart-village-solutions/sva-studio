@@ -70,6 +70,7 @@ describe('critical registry confirmation', () => {
     const service = {
       getInstanceDetail: vi.fn(async () => detail),
       consumeConfirmationChallenge: vi.fn(async () => true),
+      recordConfirmationAttempt: vi.fn(async () => undefined),
     };
     const response = await confirmCriticalRegistryMutation({
       service: service as never,
@@ -85,6 +86,10 @@ describe('critical registry confirmation', () => {
       challengeId: 'challenge-1', instanceId: 'demo', actorId: 'keycloak-service:mcp',
       actionId: 'instance.status.archive', confirmationPhrase: 'ARCHIVE demo',
     }));
+    expect(service.recordConfirmationAttempt).toHaveBeenCalledWith({
+      instanceId: 'demo', actorId: 'keycloak-service:mcp', actionId: 'instance.status.archive',
+      outcome: 'accepted', requestId: 'req-confirm',
+    });
   });
 
   it('rejects a challenge bound to a different validated module', async () => {
@@ -92,6 +97,7 @@ describe('critical registry confirmation', () => {
     const service = {
       getInstanceDetail: vi.fn(async () => detail),
       consumeConfirmationChallenge: vi.fn(async (input: { moduleId?: string }) => input.moduleId === 'news'),
+      recordConfirmationAttempt: vi.fn(async () => undefined),
     };
     const response = await confirmCriticalRegistryMutation({
       service: service as never,
@@ -103,6 +109,9 @@ describe('critical registry confirmation', () => {
     });
     expect(response?.status).toBe(409);
     expect(service.consumeConfirmationChallenge).toHaveBeenCalledWith(expect.objectContaining({ moduleId: 'events' }));
+    expect(service.recordConfirmationAttempt).toHaveBeenCalledWith(expect.objectContaining({
+      actionId: 'instance.module.revoke', moduleId: 'events', outcome: 'rejected', reason: 'invalid_confirmation',
+    }));
   });
 
   it.each([
@@ -114,6 +123,7 @@ describe('critical registry confirmation', () => {
     const service = {
       getInstanceDetail: vi.fn(async () => code === 'not_found' ? null : detail),
       consumeConfirmationChallenge: vi.fn(async () => false),
+      recordConfirmationAttempt: vi.fn(async () => undefined),
     };
     const response = await confirmCriticalRegistryMutation({
       service: service as never,
@@ -123,6 +133,13 @@ describe('critical registry confirmation', () => {
     });
     expect(response?.status).toBe(status);
     expect(await response?.json()).toMatchObject({ error: { code } });
+    if (code === 'not_found') {
+      expect(service.recordConfirmationAttempt).not.toHaveBeenCalled();
+    } else {
+      expect(service.recordConfirmationAttempt).toHaveBeenCalledWith(expect.objectContaining({
+        outcome: 'rejected', reason: code === 'confirmation_required' ? 'confirmation_required' : 'invalid_confirmation',
+      }));
+    }
   });
 
   it('prepares a state-bound module revoke challenge for service callers', async () => {

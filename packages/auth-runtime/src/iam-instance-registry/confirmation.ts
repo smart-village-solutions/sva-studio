@@ -79,10 +79,21 @@ export const confirmCriticalRegistryMutation = async (input: {
   const requestId = getWorkspaceContext().requestId;
   const challengeId = input.request.headers.get('x-confirmation-challenge-id');
   const confirmationPhrase = input.request.headers.get('x-confirmation-phrase');
+  const stateFingerprint = await loadFingerprint(input.service, input.instanceId);
   if (!challengeId || !confirmationPhrase) {
+    if (stateFingerprint) {
+      await input.service.recordConfirmationAttempt({
+        instanceId: input.instanceId,
+        actorId: input.actorId,
+        actionId: input.actionId,
+        ...(input.moduleId ? { moduleId: input.moduleId } : {}),
+        outcome: 'rejected',
+        reason: 'confirmation_required',
+        requestId,
+      });
+    }
     return createApiError(403, 'confirmation_required' as Parameters<typeof createApiError>[1], 'Bestätigung für kritische Aktion erforderlich.', requestId);
   }
-  const stateFingerprint = await loadFingerprint(input.service, input.instanceId);
   if (!stateFingerprint) return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', requestId);
   const consumed = await input.service.consumeConfirmationChallenge({
     challengeId,
@@ -92,6 +103,15 @@ export const confirmCriticalRegistryMutation = async (input: {
     ...(input.moduleId ? { moduleId: input.moduleId } : {}),
     stateFingerprint,
     confirmationPhrase,
+  });
+  await input.service.recordConfirmationAttempt({
+    instanceId: input.instanceId,
+    actorId: input.actorId,
+    actionId: input.actionId,
+    ...(input.moduleId ? { moduleId: input.moduleId } : {}),
+    outcome: consumed ? 'accepted' : 'rejected',
+    ...(!consumed ? { reason: 'invalid_confirmation' as const } : {}),
+    requestId,
   });
   return consumed ? null : createApiError(409, 'invalid_confirmation' as Parameters<typeof createApiError>[1], 'Bestätigung ist ungültig oder abgelaufen.', requestId);
 };

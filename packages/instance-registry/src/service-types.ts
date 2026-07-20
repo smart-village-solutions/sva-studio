@@ -76,6 +76,15 @@ export type InstanceRegistryService = {
     input: PrepareInstanceConfirmationChallengeInput
   ): Promise<InstanceConfirmationChallenge>;
   consumeConfirmationChallenge(input: ConsumeInstanceConfirmationChallengeInput): Promise<boolean>;
+  recordConfirmationAttempt(input: {
+    instanceId: string;
+    actorId: string;
+    actionId: string;
+    moduleId?: string;
+    outcome: 'accepted' | 'rejected';
+    reason?: 'confirmation_required' | 'invalid_confirmation';
+    requestId?: string;
+  }): Promise<void>;
   listInstances(input?: { search?: string; status?: InstanceStatus }): Promise<readonly IamInstanceListItem[]>;
   getInstanceDetail(instanceId: string): Promise<IamInstanceDetail | null>;
   createProvisioningRequest(input: CreateInstanceProvisioningInput): Promise<CreateInstanceProvisioningResult>;

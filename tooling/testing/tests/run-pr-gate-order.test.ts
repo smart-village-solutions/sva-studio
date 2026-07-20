@@ -45,7 +45,6 @@ describe('run-pr-gate order', () => {
       'pnpm check:plugin-ui-boundary',
       'pnpm check:plugin-architecture-boundary',
       'pnpm test:coverage',
-      'pnpm patch-coverage-gate --base=origin/main',
       'pnpm sonar-new-code-gate --base=origin/main',
       'env COVERAGE_GATE_REQUIRE_SUMMARIES=1 pnpm coverage-gate',
       'pnpm complexity-gate',

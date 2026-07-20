@@ -73,6 +73,12 @@
       "functions": 79,
       "branches": 70
     },
+    "studio-mcp": {
+      "lines": 89,
+      "statements": 83,
+      "functions": 62,
+      "branches": 75
+    },
     "mail-runtime": {
       "lines": 87,
       "statements": 82,

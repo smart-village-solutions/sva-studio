@@ -66,6 +66,12 @@
       "functions": 96.01,
       "branches": 82.36
     },
+    "studio-mcp": {
+      "lines": 89.16,
+      "statements": 83.98,
+      "functions": 62.5,
+      "branches": 75.89
+    },
     "mail-runtime": {
       "lines": 100,
       "statements": 95.35,

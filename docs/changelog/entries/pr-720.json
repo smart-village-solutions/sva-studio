@@ -1,0 +1,4 @@
+{
+  "prNumber": 720,
+  "body": "Die Studio-Control-Plane kann Instanzen jetzt über einen lokalen MCP-Server sicher lesen, diagnostizieren und verwalten. Service-Token, action-spezifische Berechtigungen und Bestätigungschallenges schützen dabei kritische Änderungen."
+}

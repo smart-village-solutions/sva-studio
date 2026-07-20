@@ -5,6 +5,7 @@ import {
   bootstrapAdminStructureSchema,
   createInstanceSchema,
   revokeModuleSchema,
+  reconcileKeycloakSchema,
   readDetailInstanceId,
   readKeycloakRunId,
   seedIamBaselineSchema,
@@ -134,6 +135,11 @@ describe('http-contracts', () => {
     const result = revokeModuleSchema.safeParse({ moduleId: 'news' });
 
     expect(result.success).toBe(false);
+  });
+
+  it('rejects secret rotation on the non-critical reconcile route', () => {
+    expect(reconcileKeycloakSchema.safeParse({ rotateClientSecret: true }).success).toBe(false);
+    expect(reconcileKeycloakSchema.safeParse({ tenantAdminTemporaryPassword: 'temporary-password' }).success).toBe(true);
   });
 
   it('accepts empty reseed payloads', () => {

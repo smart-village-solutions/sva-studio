@@ -132,6 +132,8 @@ const authServerMocks = vi.hoisted(() => {
       getInstanceKeycloakPreflight: vi.fn(async () => response('getInstanceKeycloakPreflightHandler')),
       planInstanceKeycloakProvisioning: vi.fn(async () => response('planInstanceKeycloakProvisioningHandler')),
       executeInstanceKeycloakProvisioning: vi.fn(async () => response('executeInstanceKeycloakProvisioningHandler')),
+      rotateInstanceSecret: vi.fn(async () => response('rotateInstanceSecretHandler')),
+      prepareInstanceConfirmation: vi.fn(async () => response('prepareInstanceConfirmationHandler')),
       getInstanceKeycloakProvisioningRun: vi.fn(async () => response('getInstanceKeycloakProvisioningRunHandler')),
       reconcileInstanceKeycloak: vi.fn(async () => response('reconcileInstanceKeycloakHandler')),
       probeTenantIamAccess: vi.fn(async () => response('probeTenantIamAccessHandler')),
@@ -801,6 +803,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakPreflight).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.planInstanceKeycloakProvisioning).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.executeInstanceKeycloakProvisioning).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.rotateInstanceSecret).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.prepareInstanceConfirmation).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakProvisioningRun).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.reconcileInstanceKeycloak).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.probeTenantIamAccess).toHaveBeenCalled();

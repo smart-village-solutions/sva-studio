@@ -41,8 +41,10 @@ source deploy/portainer/.env.demo.example
 set +a
 
 export QUANTUM_API_KEY=ptr_...
-quantum-cli stacks update --environment demo --endpoint sva --stack sva-studio --project . --wait --no-pre-pull
+quantum-cli stacks update --environment demo --endpoint sva --stack sva-studio --project . --wait
 ```
+
+`--no-pre-pull` ist kein Standardparameter. Er darf nur verwendet werden, wenn ein dokumentierter Registry- oder Prepull-Fehler vorliegt und die Image-Referenz bereits vorab verifiziert wurde.
 
 ### Demo-Deploy mit Portainer
 

@@ -203,6 +203,8 @@ Zusatz für Portainer/Quantum:
 
 - Top-Level-`name:` kann im vorgerenderten Compose stören
 - numerische `deploy.resources.limits.cpus` müssen ggf. als Strings serialisiert werden
+- Stackname und Quantum-Environment dürfen nicht aus verschiedenen Profilen kombiniert werden. Ein Staging-Stack braucht seine eigene Compose-Quelle und seine eigenen Runtime-Werte; ein Update mit dem `studio`-Profil überschreibt sonst Ingress-, OIDC- und Datenbankkonfiguration.
+- Nach einem Stack-Update zuerst Root-Host, Login-Redirect und die Anmeldung von `APP_DB_USER` prüfen. `404`, `auth=error` oder `password authentication failed for user "sva_app"` sind Konfigurationsdrift und kein Grund, das Tenant-Provisioning erneut auszulösen.
 
 ### 11. App ist öffentlich erreichbar, Monitoring aber versehentlich ebenfalls
 

@@ -156,7 +156,7 @@ importers:
         version: link:../../packages/core
       '@sva/data-repositories':
         specifier: workspace:*
-        version: file:packages/data-repositories(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+        version: link:../../packages/data-repositories
       '@tabler/icons-react':
         specifier: ^3.41.1
         version: 3.44.0(react@19.2.6)
@@ -244,10 +244,10 @@ importers:
         version: link:../../packages/core
       '@sva/data-repositories':
         specifier: workspace:*
-        version: link:../../packages/data-repositories
+        version: file:packages/data-repositories(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/iam-admin':
         specifier: workspace:*
-        version: link:../../packages/iam-admin
+        version: file:packages/iam-admin(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/iam-core':
         specifier: workspace:*
         version: link:../../packages/iam-core
@@ -283,7 +283,7 @@ importers:
         version: link:../../packages/plugin-surveys
       '@sva/routing':
         specifier: workspace:*
-        version: link:../../packages/routing
+        version: file:packages/routing(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3)
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../../packages/server-runtime
@@ -295,7 +295,7 @@ importers:
         version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
       '@sva/sva-mainserver':
         specifier: workspace:*
-        version: link:../../packages/sva-mainserver
+        version: file:packages/sva-mainserver(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(typescript@6.0.3)
       '@sva/waste-management-runtime':
         specifier: workspace:*
         version: file:packages/waste-management-runtime(@tanstack/react-router@1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -455,7 +455,7 @@ importers:
         version: link:../plugin-sdk
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/studio-module-iam':
         specifier: workspace:*
         version: link:../studio-module-iam
@@ -471,6 +471,9 @@ importers:
       ioredis:
         specifier: ^5.10.1
         version: 5.11.0
+      jose:
+        specifier: ^6.1.3
+        version: 6.2.3
       openid-client:
         specifier: ^6.8.4
         version: 6.8.4
@@ -526,7 +529,7 @@ importers:
         version: link:../data-repositories
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       pg:
         specifier: ^8.22.0
         version: 8.22.0
@@ -567,7 +570,7 @@ importers:
         version: link:../core
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       pg:
         specifier: ^8.22.0
         version: 8.22.0
@@ -592,7 +595,7 @@ importers:
         version: link:../iam-core
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/studio-module-iam':
         specifier: workspace:*
         version: link:../studio-module-iam
@@ -626,7 +629,7 @@ importers:
         version: link:../iam-core
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       postcss:
         specifier: 8.5.11
         version: 8.5.11
@@ -657,7 +660,7 @@ importers:
         version: link:../data-repositories
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -1079,7 +1082,7 @@ importers:
         version: link:../plugin-sdk
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -1117,6 +1120,28 @@ importers:
       winston-transport:
         specifier: ^4.9.0
         version: 4.9.0
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.9
+        version: 4.1.9(vitest@4.1.9)
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.6(bufferutil@4.1.0))(jsdom@29.1.1)(msw@2.14.6(@types/node@25.9.1)(typescript@6.0.3))(vite@8.1.2(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+
+  packages/studio-mcp:
+    dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.29.0
+        version: 1.29.0(zod@4.4.3)
+      '@sva/instance-registry':
+        specifier: workspace:*
+        version: link:../instance-registry
+      undici:
+        specifier: ^7.28.0
+        version: 7.28.0
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.9
@@ -1217,7 +1242,7 @@ importers:
         version: link:../data-repositories
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -5000,6 +5025,9 @@ packages:
       react: ^19.2.0
       react-dom: ^19.2.0
 
+  '@sva/routing@file:packages/routing':
+    resolution: {directory: packages/routing, type: directory}
+
   '@sva/server-runtime@file:packages/server-runtime':
     resolution: {directory: packages/server-runtime, type: directory}
 
@@ -5012,6 +5040,9 @@ packages:
       react: ^19.2.0
       react-dom: ^19.2.0
       react-hook-form: ^7.80.0
+
+  '@sva/sva-mainserver@file:packages/sva-mainserver':
+    resolution: {directory: packages/sva-mainserver, type: directory}
 
   '@sva/waste-management-runtime@file:packages/waste-management-runtime':
     resolution: {directory: packages/waste-management-runtime, type: directory}
@@ -10914,6 +10945,28 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@modelcontextprotocol/sdk@1.29.0(zod@4.4.3)':
+    dependencies:
+      '@hono/node-server': 1.19.14(hono@4.12.26)
+      ajv: 8.20.0
+      ajv-formats: 3.0.1(ajv@8.20.0)
+      content-type: 1.0.5
+      cors: 2.8.6
+      cross-spawn: 7.0.6
+      eventsource: 3.0.7
+      eventsource-parser: 3.1.0
+      express: 5.2.1
+      express-rate-limit: 8.5.2(express@5.2.1)
+      hono: 4.12.26
+      jose: 6.2.3
+      json-schema-typed: 8.0.2
+      pkce-challenge: 5.0.1
+      raw-body: 3.0.2
+      zod: 4.4.3
+      zod-to-json-schema: 3.25.2(zod@4.4.3)
+    transitivePeerDependencies:
+      - supports-color
+
   '@mswjs/interceptors@0.41.9':
     dependencies:
       '@open-draft/deferred-promise': 2.2.0
@@ -12987,6 +13040,7 @@ snapshots:
       file-type: 22.0.1
       graphile-worker: 0.16.6(typescript@6.0.3)
       ioredis: 5.11.1
+      jose: 6.2.3
       openid-client: 6.8.4
       pg: 8.22.0
       postcss: 8.5.11
@@ -13094,6 +13148,20 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
+  '@sva/routing@file:packages/routing(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3)':
+    dependencies:
+      '@sva/auth-runtime': file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(typescript@6.0.3)
+      '@sva/plugin-sdk': file:packages/plugin-sdk
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+      '@tanstack/react-router': 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - pg-native
+      - react
+      - react-dom
+      - supports-color
+      - typescript
+
   '@sva/server-runtime@file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))':
     dependencies:
       '@opentelemetry/api': 1.9.1
@@ -13131,6 +13199,20 @@ snapshots:
       - '@tiptap/pm'
       - '@types/react'
       - '@types/react-dom'
+
+  '@sva/sva-mainserver@file:packages/sva-mainserver(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(typescript@6.0.3)':
+    dependencies:
+      '@opentelemetry/api': 1.9.1
+      '@sva/auth-runtime': file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(typescript@6.0.3)
+      '@sva/core': file:packages/core
+      '@sva/data-repositories': file:packages/data-repositories(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - pg-native
+      - supports-color
+      - typescript
 
   '@sva/waste-management-runtime@file:packages/waste-management-runtime(@tanstack/react-router@1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
@@ -17401,6 +17483,10 @@ snapshots:
   zod-to-json-schema@3.25.2(zod@3.25.76):
     dependencies:
       zod: 3.25.76
+
+  zod-to-json-schema@3.25.2(zod@4.4.3):
+    dependencies:
+      zod: 4.4.3
 
   zod@3.25.76: {}
 

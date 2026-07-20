@@ -56,6 +56,10 @@ Der aktuelle Repo-Ist-Stand ist kein reines Fundament mehr: Neben Routing, Auth,
 
 Konzept-Referenz (Kontext): `concepts/konzeption-cms-v2/01_Einleitung/Einleitung.md`
 
+### Ergänzung 2026-07: Lokale MCP-Control-Plane
+
+Der lokale stdio-MCP-Server ist ein externer Operator-Client der Studio-API. Er darf Instanzen lesen, diagnostizieren und abhängig vom Action-Scope mutieren, besitzt aber keine direkte Datenbank- oder Keycloak-Admin-Anbindung. Keycloak stellt in den Root-Realms `studio-dev`, `studio-staging` und `sva-studio` getrennte Maschinenidentitäten bereit. Studio bleibt die einzige Autorisierungs-, Audit-, Idempotenz- und Fehlergrenze. Lokale Credential-Ablage und der Codex-Prozess liegen außerhalb des Studio-Deployments; ihr sicherer Betrieb ist im [MCP-Betriebsleitfaden](../guides/studio-instance-mcp-betrieb.md) beschrieben.
+
 ### Verantwortungsgrenzen
 
 - Repo verantwortet App-, Routing-, Auth-, IAM-, Instanz-, Plugin-, Mainserver-, Waste- und Doku-Logik

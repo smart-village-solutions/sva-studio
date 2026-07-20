@@ -571,3 +571,11 @@ Referenzen:
 - Tenantkonfiguration für Karten/Geocoding liegt ausschließlich im Interface-Typ `mapGeocoding`; Browser-Code erhält nur normalisierte Laufzeitflags und eine Style-URL.
 - Host-Observability für Geocoding loggt nur normierte Outcomes wie `success`, `no_result`, `provider_error`, `timeout` oder `rate_limited`; Roh-Providerpayloads, Secrets und unredigierte Volladressen bleiben aus Logs ausgeschlossen.
 - Der POI-Editor behandelt Geocoding- und Upload-Probleme als lokale, nicht blockierende Teilfehler; manuelle Felder und der übrige Save-Pfad bleiben nutzbar.
+
+### Ergänzung 2026-07: MCP-Maschinenidentität, Fehler und Observability
+
+- Maschinenidentitäten werden per Keycloak-Service-Account und vollständig qualifizierten Action-IDs autorisiert; ein Tool-Name ist keine Sicherheitsentscheidung.
+- Service-Tokens, Client-Secrets, Tenant-Secrets, Authorization-Header, Connection-Strings und Stacktraces werden zentral aus Antworten, stderr, Logs und Diagnose-Evidenz redigiert.
+- Der versionierte Fehlervertrag trennt stabilen Code, Kategorie, Wiederholbarkeit, Folgeaktion und Korrelation. `internal_unclassified` bleibt eine eigene Klasse und wird nicht als Abhängigkeitsfehler geraten.
+- OTEL-Metriken verwenden nur Action, Risikostufe, Ergebnis und stabilen Fehlercode. Instanz-ID, Token-Subject, Idempotency-Key und freie Fehlertexte sind keine Labels.
+- Kritische Aktionen benötigen eine serverseitige, kurzlebige, einmalige und zustandsgebundene Challenge. Clientseitige Bestätigungsmarker allein sind wertlos.

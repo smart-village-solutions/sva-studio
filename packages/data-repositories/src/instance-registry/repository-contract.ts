@@ -14,6 +14,33 @@ export type CreateKeycloakProvisioningRunResult = {
   readonly created: boolean;
 };
 
+export type InstanceConfirmationChallengeRecord = {
+  readonly challengeId: string;
+  readonly instanceId: string;
+  readonly actorId: string;
+  readonly actionId: string;
+  readonly moduleId?: string;
+  readonly stateFingerprint: string;
+  readonly expiresAt: string;
+  readonly requestId?: string;
+  readonly createdAt: string;
+};
+
+export type PrepareInstanceConfirmationChallengeInput = Omit<
+  InstanceConfirmationChallengeRecord,
+  'challengeId' | 'createdAt'
+> & { readonly phraseHash: string };
+
+export type ConsumeInstanceConfirmationChallengeInput = {
+  readonly challengeId: string;
+  readonly instanceId: string;
+  readonly actorId: string;
+  readonly actionId: string;
+  readonly moduleId?: string;
+  readonly stateFingerprint: string;
+  readonly phraseHash: string;
+};
+
 export type InstanceModuleIamContractRecord = {
   readonly moduleId: string;
   readonly permissionIds: readonly string[];
@@ -39,6 +66,10 @@ export type ProtectedSystemRolePermissionBundleRecord = {
 };
 
 export type InstanceRegistryRepository = {
+  readonly prepareConfirmationChallenge: (
+    input: PrepareInstanceConfirmationChallengeInput
+  ) => Promise<InstanceConfirmationChallengeRecord>;
+  readonly consumeConfirmationChallenge: (input: ConsumeInstanceConfirmationChallengeInput) => Promise<boolean>;
   readonly listInstances: (input?: {
     search?: string;
     status?: InstanceStatus;
@@ -87,6 +118,12 @@ export type InstanceRegistryRepository = {
     instanceId: string,
     runId: string
   ) => Promise<InstanceKeycloakProvisioningRun | null>;
+  readonly hasKeycloakProvisioningRun: (input: {
+    instanceId: string;
+    mutation: NonNullable<InstanceKeycloakProvisioningRun['mutation']>;
+    intent: InstanceKeycloakProvisioningRun['intent'];
+    idempotencyKey: string;
+  }) => Promise<boolean>;
   readonly claimNextKeycloakProvisioningRun: (input?: {
     createdAtOrAfter?: string;
   }) => Promise<InstanceKeycloakProvisioningRun | null>;

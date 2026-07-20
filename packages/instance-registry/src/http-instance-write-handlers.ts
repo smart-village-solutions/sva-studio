@@ -3,6 +3,7 @@ import { buildPrimaryHostname, normalizeHost } from '@sva/core';
 import { createInstanceSchema, updateInstanceSchema } from './http-contracts.js';
 import { buildCreateInstanceProvisioningInput, buildUpdateInstanceInput, type CreateInstancePayload, type UpdateInstancePayload } from './mutation-input-builders.js';
 import { readInstanceIdOrError, requireMutationGuards, type InstanceRegistryHttpDeps } from './http-instance-shared.js';
+import type { InstanceRegistryService } from './service-types.js';
 
 export const createCreateInstanceHandler =
   <TContext>(deps: InstanceRegistryHttpDeps<TContext>) =>
@@ -23,13 +24,18 @@ export const createCreateInstanceHandler =
     }
 
     const actor = deps.getActor(ctx);
-    const result = await deps.withRegistryService((service) =>
-      service.createProvisioningRequest(buildCreateInstanceProvisioningInput(payloadResult.data, {
-        idempotencyKey: idempotencyResult.key,
-        actorId: actor.id,
-        requestId: deps.getRequestId(),
-      }))
-    );
+    let result: Awaited<ReturnType<InstanceRegistryService['createProvisioningRequest']>>;
+    try {
+      result = await deps.withRegistryService((service) =>
+        service.createProvisioningRequest(buildCreateInstanceProvisioningInput(payloadResult.data, {
+          idempotencyKey: idempotencyResult.key,
+          actorId: actor.id,
+          requestId: deps.getRequestId(),
+        }))
+      );
+    } catch (error) {
+      return deps.mapMutationError(error);
+    }
 
     if (!result.ok) {
       return deps.createApiError(409, 'conflict', 'Instanz-ID ist bereits vergeben.', deps.getRequestId());

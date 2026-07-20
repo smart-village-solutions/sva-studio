@@ -17,6 +17,7 @@ const getInstanceKeycloakPreflightMock = vi.fn();
 const getInstanceKeycloakProvisioningRunMock = vi.fn();
 const planInstanceKeycloakProvisioningMock = vi.fn();
 const executeInstanceKeycloakProvisioningMock = vi.fn();
+const rotateInstanceSecretMock = vi.fn();
 const probeTenantIamAccessMock = vi.fn();
 const assignInstanceModuleMock = vi.fn();
 const bootstrapInstanceAdminStructureMock = vi.fn();
@@ -84,6 +85,7 @@ vi.mock('../lib/iam-api', () => ({
   getSingleInstanceAuditRun: (...args: unknown[]) => getSingleInstanceAuditRunMock(...args),
   planInstanceKeycloakProvisioning: (...args: unknown[]) => planInstanceKeycloakProvisioningMock(...args),
   executeInstanceKeycloakProvisioning: (...args: unknown[]) => executeInstanceKeycloakProvisioningMock(...args),
+  rotateInstanceSecret: (...args: unknown[]) => rotateInstanceSecretMock(...args),
   probeTenantIamAccess: (...args: unknown[]) => probeTenantIamAccessMock(...args),
   assignInstanceModule: (...args: unknown[]) => assignInstanceModuleMock(...args),
   bootstrapInstanceAdminStructure: (...args: unknown[]) => bootstrapInstanceAdminStructureMock(...args),
@@ -353,7 +355,7 @@ describe('useInstances', () => {
         authClientId: 'sva-studio',
       });
       await result.current.probeTenantIamAccess('demo');
-      await result.current.reconcileKeycloak('demo', { rotateClientSecret: true });
+      await result.current.reconcileKeycloak('demo', {});
       await result.current.bootstrapAdminStructure('demo', ['news']);
       await result.current.activateInstance('demo');
       await result.current.suspendInstance('demo');
@@ -719,7 +721,7 @@ describe('useInstances', () => {
     expect(result.current.selectedInstance?.keycloakProvisioningRuns?.[0]).toEqual(finishedRun);
 
     await act(async () => {
-      const reconciled = await result.current.reconcileKeycloak('demo', { rotateClientSecret: true });
+      const reconciled = await result.current.reconcileKeycloak('demo', {});
       expect(reconciled).toEqual(
         expect.objectContaining({
           clientExists: true,
@@ -727,6 +729,25 @@ describe('useInstances', () => {
         })
       );
     });
+  });
+
+  it('uses the dedicated secret rotation API for the critical provisioning intent', async () => {
+    const { result } = renderHook(() => useInstances());
+    const queuedRun = {
+      id: 'run-rotate', intent: 'rotate_client_secret', mode: 'existing', overallStatus: 'planned',
+      driftSummary: 'queued', requestId: 'req-rotate', steps: [],
+    };
+    rotateInstanceSecretMock.mockResolvedValueOnce({ data: queuedRun });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    await act(async () => {
+      await expect(result.current.executeKeycloakProvisioning('demo', { intent: 'rotate_client_secret' })).resolves.toEqual(queuedRun);
+    });
+
+    expect(rotateInstanceSecretMock).toHaveBeenCalledWith('demo');
+    expect(executeInstanceKeycloakProvisioningMock).not.toHaveBeenCalled();
   });
 
   it('keeps selected instance unchanged when provisioning updates target a different instance', async () => {

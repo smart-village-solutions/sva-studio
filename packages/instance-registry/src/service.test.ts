@@ -78,6 +78,17 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     listKeycloakProvisioningRuns: vi.fn(async () => []),
     getKeycloakProvisioningRun: vi.fn(async () => null),
     claimNextKeycloakProvisioningRun: vi.fn(async () => null),
+    prepareConfirmationChallenge: vi.fn(async () => ({
+      challengeId: 'challenge-1',
+      instanceId: 'demo',
+      actorId: 'actor-1',
+      actionId: 'instance.status.archive',
+      moduleId: undefined,
+      stateFingerprint: 'state-1',
+      expiresAt: '2026-01-01T00:05:00.000Z',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    })),
+    consumeConfirmationChallenge: vi.fn(async () => true),
     createInstance: vi.fn(async () => baseInstance),
     updateInstance: vi.fn(async () => ({ ...baseInstance, displayName: 'Updated' })),
     setInstanceStatus: vi.fn(async () => ({ ...baseInstance, status: 'active' as const })),
@@ -191,6 +202,21 @@ const createDeps = (
 });
 
 describe('instance registry service facade', () => {
+  it('records confirmation attempts without confirmation secrets', async () => {
+    const repository = createRepository();
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await service.recordConfirmationAttempt({
+      instanceId: 'demo', actorId: 'service-account', actionId: 'instance.secret.rotate',
+      outcome: 'rejected', reason: 'invalid_confirmation', requestId: 'req-confirm',
+    });
+
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith({
+      instanceId: 'demo', eventType: 'instance_confirmation_rejected', actorId: 'service-account', requestId: 'req-confirm',
+      details: { actionId: 'instance.secret.rotate', outcome: 'rejected', reason: 'invalid_confirmation' },
+    });
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });

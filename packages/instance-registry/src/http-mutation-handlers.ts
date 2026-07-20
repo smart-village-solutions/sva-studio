@@ -29,6 +29,7 @@ export const createInstanceRegistryMutationHttpHandlers = <TContext>(
   return {
     reconcileInstanceKeycloak: createReconcileInstanceKeycloakHandler(deps, mapMutationError),
     executeInstanceKeycloakProvisioning: createExecuteInstanceKeycloakProvisioningHandler(deps, mapMutationError),
+    rotateInstanceSecret: createExecuteInstanceKeycloakProvisioningHandler(deps, mapMutationError, { secretRotationOnly: true }),
     probeTenantIamAccess: createProbeTenantIamAccessHandler(deps, mapMutationError),
     assignModule: createAssignModuleHandler(deps, mapMutationError),
     bootstrapAdminStructure: createBootstrapAdminStructureHandler(deps, mapMutationError),

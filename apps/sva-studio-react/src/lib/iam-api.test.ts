@@ -33,6 +33,7 @@ import {
   createOrganization,
   deleteGroup,
   executeInstanceKeycloakProvisioning,
+  rotateInstanceSecret,
   fetchWithRequestTimeout,
   getMyPendingLegalTexts,
   getMyProfile,
@@ -1082,6 +1083,21 @@ describe('iam-api group helpers', () => {
 });
 
 describe('iam-api instance helpers', () => {
+  it('routes secret rotation through the dedicated critical endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ data: { id: 'run-rotate' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await rotateInstanceSecret('demo');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/instances/demo/keycloak/rotate-secret',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ intent: 'rotate_client_secret' }),
+      })
+    );
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
@@ -1135,7 +1151,6 @@ describe('iam-api instance helpers', () => {
     await getInstanceKeycloakProvisioningRun('demo', 'run-1');
     await reconcileInstanceKeycloak('demo', {
       tenantAdminTemporaryPassword: 'test-temp-password',
-      rotateClientSecret: true,
     });
     await probeTenantIamAccess('demo');
     await activateInstance('demo');

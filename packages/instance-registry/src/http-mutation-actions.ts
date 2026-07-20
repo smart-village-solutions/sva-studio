@@ -34,9 +34,21 @@ export const createReconcileInstanceKeycloakHandler =
   });
 
 export const createExecuteInstanceKeycloakProvisioningHandler =
-  <TContext>(deps: InstanceRegistryMutationHttpDeps<TContext>, mapMutationError: (error: unknown) => Response) =>
+  <TContext>(
+    deps: InstanceRegistryMutationHttpDeps<TContext>,
+    mapMutationError: (error: unknown) => Response,
+    options?: { readonly secretRotationOnly?: boolean }
+  ) =>
   createScopedRegistryMutationHandler(deps, {
-    parse: (request) => deps.parseRequestBody<ExecuteKeycloakProvisioningPayload>(request, executeKeycloakProvisioningSchema),
+    ...(options?.secretRotationOnly ? { criticalActionId: 'instance.secret.rotate' } : {}),
+    parse: async (request) => {
+      const parsed = await deps.parseRequestBody<ExecuteKeycloakProvisioningPayload>(request, executeKeycloakProvisioningSchema);
+      if (!parsed.ok) return parsed;
+      const isRotation = parsed.data.intent === 'rotate_client_secret';
+      return isRotation === Boolean(options?.secretRotationOnly)
+        ? parsed
+        : { ok: false, message: 'Ungültige Provisioning-Aktion für diesen Endpunkt.' } as const;
+    },
     execute: (service, input) =>
       service.executeKeycloakProvisioning(
         buildExecuteInstanceKeycloakProvisioningInput(input.instanceId, input.payload, {

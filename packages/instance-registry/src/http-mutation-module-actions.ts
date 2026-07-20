@@ -88,6 +88,8 @@ export const createRevokeModuleHandler =
     mapMutationError: (error: unknown) => Response
   ) =>
   createScopedRegistryMutationHandler(deps, {
+    criticalActionId: 'instance.module.revoke',
+    resolveCriticalModuleId: (payload: RevokeInstanceModulePayload) => payload.moduleId,
     parse: (request) => deps.parseRequestBody<RevokeInstanceModulePayload>(request, revokeModuleSchema),
     execute: (service, input) =>
       service.revokeModule(
@@ -142,6 +144,7 @@ export const createMutateInstanceStatusHandler =
   ) => {
   const createStatusMutationHandler = (nextStatus: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>) =>
     createScopedRegistryMutationHandler(deps, {
+      criticalActionId: `instance.status.${nextStatus === 'active' ? 'activate' : nextStatus === 'suspended' ? 'suspend' : 'archive'}`,
       parse: async (inputRequest) => {
         const payloadResult = await deps.parseRequestBody<{ status: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'> }>(
           inputRequest,

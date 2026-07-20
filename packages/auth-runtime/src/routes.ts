@@ -45,6 +45,7 @@ export type AuthRoutePath =
   | '/api/v1/iam/instances/$instanceId/keycloak/preflight'
   | '/api/v1/iam/instances/$instanceId/keycloak/plan'
   | '/api/v1/iam/instances/$instanceId/keycloak/execute'
+  | '/api/v1/iam/instances/$instanceId/keycloak/rotate-secret'
   | '/api/v1/iam/instances/$instanceId/keycloak/runs/$runId'
   | '/api/v1/iam/instances/$instanceId/keycloak/reconcile'
   | '/api/v1/iam/instances/$instanceId/tenant-iam/access-probe'
@@ -55,6 +56,7 @@ export type AuthRoutePath =
   | '/api/v1/iam/instances/$instanceId/activate'
   | '/api/v1/iam/instances/$instanceId/suspend'
   | '/api/v1/iam/instances/$instanceId/archive'
+  | '/api/v1/iam/instances/$instanceId/actions/$actionId/confirmation'
   | '/api/v1/iam/contents'
   | '/api/v1/iam/contents/$contentId'
   | '/api/v1/iam/contents/$contentId/history'
@@ -178,6 +180,7 @@ export const authRoutePaths = [
   '/api/v1/iam/instances/$instanceId/keycloak/preflight',
   '/api/v1/iam/instances/$instanceId/keycloak/plan',
   '/api/v1/iam/instances/$instanceId/keycloak/execute',
+  '/api/v1/iam/instances/$instanceId/keycloak/rotate-secret',
   '/api/v1/iam/instances/$instanceId/keycloak/runs/$runId',
   '/api/v1/iam/instances/$instanceId/keycloak/reconcile',
   '/api/v1/iam/instances/$instanceId/tenant-iam/access-probe',
@@ -188,6 +191,7 @@ export const authRoutePaths = [
   '/api/v1/iam/instances/$instanceId/activate',
   '/api/v1/iam/instances/$instanceId/suspend',
   '/api/v1/iam/instances/$instanceId/archive',
+  '/api/v1/iam/instances/$instanceId/actions/$actionId/confirmation',
   '/api/v1/iam/contents',
   '/api/v1/iam/contents/$contentId',
   '/api/v1/iam/contents/$contentId/history',

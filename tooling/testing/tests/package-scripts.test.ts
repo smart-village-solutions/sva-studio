@@ -135,7 +135,7 @@ function loadNxJson(): NxJson {
 }
 
 describe('workspace package scripts', () => {
-  it('keeps patch coverage enforcement in the standard PR gate', () => {
+  it('keeps branch-weighted new-code coverage enforcement in the standard PR gate', () => {
     const packageJson = loadRootPackageJson();
     const testPrScript = packageJson.scripts?.['test:pr'];
     const runPrGateScript = loadRunPrGateScript();
@@ -143,8 +143,8 @@ describe('workspace package scripts', () => {
     expect(testPrScript).toBe(
       'bash scripts/ci/run-workspace-node.sh --import tsx scripts/ci/run-pr-gate.ts'
     );
-    expect(runPrGateScript).toContain('pnpm patch-coverage-gate --base=${base}');
     expect(runPrGateScript).toContain('pnpm sonar-new-code-gate --base=${base}');
+    expect(runPrGateScript).not.toContain('pnpm patch-coverage-gate --base=${base}');
   });
 
   it('keeps studio release verification outside the standard PR gate', () => {
@@ -172,16 +172,14 @@ describe('workspace package scripts', () => {
     expect(packageJson.scripts?.['test:ci']).toContain('pnpm check:plugin-architecture-boundary');
   });
 
-  it('keeps the dedicated PR coverage command aligned with the patch gate', () => {
+  it('keeps the dedicated PR coverage command aligned with the branch-weighted gate', () => {
     const packageJson = loadRootPackageJson();
     const testCoveragePrScript = packageJson.scripts?.['test:coverage:pr'];
 
     expect(testCoveragePrScript).toContain(
-      'pnpm patch-coverage-gate --base=${NX_BASE:-origin/main}'
-    );
-    expect(testCoveragePrScript).toContain(
       'pnpm sonar-new-code-gate --base=${NX_BASE:-origin/main}'
     );
+    expect(testCoveragePrScript).not.toContain('pnpm patch-coverage-gate');
   });
 
   it('keeps full PR coverage regression checks enabled in runtime gates', () => {

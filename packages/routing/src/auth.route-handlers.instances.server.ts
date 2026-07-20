@@ -34,6 +34,9 @@ export const instanceAuthHandlerMap = {
   '/api/v1/iam/instances/$instanceId/keycloak/execute': {
     POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.executeInstanceKeycloakProvisioning),
   },
+  '/api/v1/iam/instances/$instanceId/keycloak/rotate-secret': {
+    POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.rotateInstanceSecret),
+  },
   '/api/v1/iam/instances/$instanceId/keycloak/runs/$runId': {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstanceKeycloakProvisioningRun),
   },
@@ -63,6 +66,9 @@ export const instanceAuthHandlerMap = {
   },
   '/api/v1/iam/instances/$instanceId/archive': {
     POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.archiveInstance),
+  },
+  '/api/v1/iam/instances/$instanceId/actions/$actionId/confirmation': {
+    POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.prepareInstanceConfirmation),
   },
   '/api/v1/iam/contents': {
     GET: routeHandler(authRuntimeRoutes.listContentsHandler),

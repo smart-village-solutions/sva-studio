@@ -31,6 +31,11 @@ import type {
   ResolveRuntimeInstanceResult,
 } from './keycloak-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap } from './provisioning-auth-types.js';
+import type {
+  ConsumeInstanceConfirmationChallengeInput,
+  InstanceConfirmationChallenge,
+  PrepareInstanceConfirmationChallengeInput,
+} from './confirmation-challenges.js';
 
 export type InstanceModuleIamRegistryEntry = {
   readonly moduleId: string;
@@ -67,6 +72,19 @@ type KeycloakProvisioningContext = {
 };
 
 export type InstanceRegistryService = {
+  prepareConfirmationChallenge(
+    input: PrepareInstanceConfirmationChallengeInput
+  ): Promise<InstanceConfirmationChallenge>;
+  consumeConfirmationChallenge(input: ConsumeInstanceConfirmationChallengeInput): Promise<boolean>;
+  recordConfirmationAttempt(input: {
+    instanceId: string;
+    actorId: string;
+    actionId: string;
+    moduleId?: string;
+    outcome: 'accepted' | 'rejected';
+    reason?: 'confirmation_required' | 'invalid_confirmation';
+    requestId?: string;
+  }): Promise<void>;
   listInstances(input?: { search?: string; status?: InstanceStatus }): Promise<readonly IamInstanceListItem[]>;
   getInstanceDetail(instanceId: string): Promise<IamInstanceDetail | null>;
   createProvisioningRequest(input: CreateInstanceProvisioningInput): Promise<CreateInstanceProvisioningResult>;
@@ -87,6 +105,12 @@ export type InstanceRegistryService = {
     requestId?: string;
   }): Promise<IamTenantIamStatus | null>;
   getKeycloakProvisioningRun(instanceId: string, runId: string): Promise<KeycloakTenantProvisioningRun | null>;
+  hasKeycloakProvisioningRun(input: {
+    instanceId: string;
+    mutation: 'executeKeycloakProvisioning';
+    intent: 'rotate_client_secret';
+    idempotencyKey: string;
+  }): Promise<boolean>;
   reconcileKeycloak(input: ReconcileInstanceKeycloakInput): Promise<KeycloakTenantStatus | null>;
   runInstanceAudit(input?: {
     instanceIds?: readonly string[];

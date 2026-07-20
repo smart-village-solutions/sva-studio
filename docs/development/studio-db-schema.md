@@ -173,6 +173,7 @@ Tabellen für Instanzkonfiguration, Hostnames und technische Provisionierung:
 - `iam.instance_hostnames`
 - `iam.instance_provisioning_runs`
 - `iam.instance_audit_events`
+- `iam.instance_confirmation_challenges`
 - `iam.instance_keycloak_provisioning_runs`
 - `iam.instance_keycloak_provisioning_steps`
 
@@ -182,6 +183,7 @@ Kernidee:
 - Externe Schnittstellen werden hostgeführt über einen zentralen Typkatalog und instanzbezogene Konfigurationsdatensätze mit verschlüsselten Secret-Blöcken verwaltet.
 - Die instanzspezifische Waste-Datenquelle bleibt als eigener technischer Datensatz im IAM-Schema modelliert und folgt demselben `instance_id`-basierten Isolationvertrag.
 - Keycloak-bezogene Zustände sind explizit persistiert und auditierbar.
+- Kritische Maschinenaktionen verwenden kurzlebige Einmal-Challenges, die atomar an Instanz, Akteur, Action, optionales Modul und Zustandsfingerprint gebunden sind, höchstens einmal verbraucht werden und ausschließlich den Phrase-Hash speichern.
 
 ### 6. Content-Management
 

@@ -4,6 +4,20 @@ import { createInstanceRegistryRepository } from './index.js';
 import { createQueuedExecutor, keycloakRunRow, provisioningRow, stepRow } from './test-support.js';
 
 describe('instance registry repository keycloak provisioning', () => {
+  it('looks up an existing provisioning run by its idempotency scope', async () => {
+    const { executor, statements } = createQueuedExecutor([[{ ...keycloakRunRow, intent: 'rotate_client_secret' }]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.hasKeycloakProvisioningRun({
+      instanceId: 'tenant-a', mutation: 'executeKeycloakProvisioning', intent: 'rotate_client_secret', idempotencyKey: 'idem-rotate',
+    })).resolves.toBe(true);
+
+    expect(statements[0]).toMatchObject({
+      text: expect.stringContaining('idempotency_key = $3'),
+      values: ['tenant-a', 'executeKeycloakProvisioning', 'idem-rotate'],
+    });
+  });
+
   it('loads an existing keycloak provisioning run by id with mapped steps', async () => {
     const { executor } = createQueuedExecutor([[keycloakRunRow], [stepRow]]);
     const repository = createInstanceRegistryRepository(executor);

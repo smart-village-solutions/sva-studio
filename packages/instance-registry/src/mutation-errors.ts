@@ -8,10 +8,11 @@ export type InstanceMutationErrorCode =
   | 'idempotency_key_reuse'
   | 'database_unavailable'
   | 'encryption_not_configured'
-  | 'keycloak_unavailable';
+  | 'keycloak_unavailable'
+  | 'internal_unclassified';
 
 export type InstanceMutationErrorClassification = {
-  readonly status: 409 | 502 | 503;
+  readonly status: 409 | 500 | 502 | 503;
   readonly code: InstanceMutationErrorCode;
   readonly details?: {
     readonly dependency: 'keycloak';
@@ -94,7 +95,7 @@ export const classifyInstanceMutationError = (error: unknown): InstanceMutationE
     };
   }
   return {
-    status: 502,
-    code: 'keycloak_unavailable',
+    status: 500,
+    code: 'internal_unclassified',
   };
 };

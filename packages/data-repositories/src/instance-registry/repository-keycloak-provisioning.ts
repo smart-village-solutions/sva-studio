@@ -18,6 +18,7 @@ type KeycloakProvisioningRepository = Pick<
   InstanceRegistryRepository,
   | 'listKeycloakProvisioningRuns'
   | 'getKeycloakProvisioningRun'
+  | 'hasKeycloakProvisioningRun'
   | 'claimNextKeycloakProvisioningRun'
   | 'createKeycloakProvisioningRun'
   | 'updateKeycloakProvisioningRun'
@@ -232,6 +233,8 @@ RETURNING
 export const createKeycloakProvisioningRepository = (executor: SqlExecutor): KeycloakProvisioningRepository => ({
   listKeycloakProvisioningRuns: (instanceId) => listKeycloakProvisioningRuns(executor, instanceId),
   getKeycloakProvisioningRun: (instanceId, runId) => getKeycloakProvisioningRun(executor, instanceId, runId),
+  hasKeycloakProvisioningRun: async (input) =>
+    (await loadConflictingRun(executor, input.instanceId, input.mutation, input.idempotencyKey))?.intent === input.intent,
   claimNextKeycloakProvisioningRun: (input) => claimNextKeycloakProvisioningRun(executor, input),
   createKeycloakProvisioningRun: (input) => createKeycloakProvisioningRun(executor, input),
   updateKeycloakProvisioningRun: (input) => updateKeycloakProvisioningRun(executor, input),

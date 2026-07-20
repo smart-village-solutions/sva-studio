@@ -72,6 +72,8 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 042 | Externe Schnittstellen als host-owned Registry | ✅ | 2026-05-12 | Integration / Secrets / Runtime |
 | 043 | Formular-Foundation mit react-hook-form und zodResolver | ✅ | 2026-05-22 | Frontend / Formulare / Governance |
 | 044 | Frontend-Test-Foundation mit MSW und selektivem fast-check | ✅ | 2026-05-22 | Frontend / Testing / Governance |
+| 046 | Plattform- vs. Tenant-Rollenmodell und Legacy-Standardrollen | ✅ | 2026-07-12 | IAM / Authorization |
+| 047 | Keycloak-Service-Accounts für die lokale MCP-Control-Plane | ✅ | 2026-07-13 | MCP / IAM / Security / Betrieb |
 
 ### Kanonischer Ablageort
 

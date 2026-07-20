@@ -208,3 +208,6 @@ Referenzen:
 - Der POI-Editor folgt strategisch nicht mehr einem reduzierten CRUD-Minimum, sondern einem festen redaktionsorientierten Bereichsmodell mit RHF-basierter Formularorchestrierung.
 - Karten- und Geocoding-Funktionen bleiben host-owned: Browser-Plugins sprechen ausschließlich normierte IAM-Endpunkte und kennen weder Providerdetails noch Secret-Referenzen.
 - Medienreferenzen und Uploads folgen ebenfalls einem host-owned Vertrag über IAM-Media-Endpunkte; das Plugin speichert Referenzen, aber kein Storage- oder Signaturwissen.
+### Ergänzung 2026-07: Policy-gesteuerter MCP-Zugang
+
+Die Instanz-Control-Plane wird über einen dünnen lokalen MCP-Adapter wiederverwendet. Keycloak-Service-Tokens werden serverseitig gegen Issuer, Audience, Zeitbindung und vollständig qualifizierte Action-IDs geprüft. Lesen, kontrollierte Mutationen und kritische Mutationen bilden drei feste Risikostufen. Kritische Aktionen verwenden einen serverseitig erzwungenen Zwei-Schritt-Vertrag aus aktuellem Read/Plan und einer kurzlebigen, einmaligen, zustandsgebundenen Confirmation-Challenge. Der MCP führt keine automatische Reparatur aus und reicht ausschließlich redigierte strukturierte Ergebnisse weiter.

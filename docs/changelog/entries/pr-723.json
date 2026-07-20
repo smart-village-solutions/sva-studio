@@ -1,0 +1,4 @@
+{
+  "prNumber": 723,
+  "body": "Neue Studio-Instanzen mit hinterlegter Mainserver-Referenz können wieder zuverlässig angelegt werden; die Feature-Flags werden beim Speichern korrekt verarbeitet."
+}

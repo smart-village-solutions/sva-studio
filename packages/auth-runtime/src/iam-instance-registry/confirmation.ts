@@ -42,7 +42,7 @@ export const fingerprintInstanceConfirmationState = (instance: {
     instanceId: instance.instanceId,
     updatedAt: instance.updatedAt,
     status: instance.status,
-    assignedModules: [...instance.assignedModules].sort(),
+    assignedModules: [...instance.assignedModules].sort((left, right) => left.localeCompare(right)),
     featureFlags,
     realmMode: instance.realmMode,
     authRealm: instance.authRealm,

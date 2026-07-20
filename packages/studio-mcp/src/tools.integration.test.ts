@@ -66,4 +66,27 @@ describe('Studio MCP tools', () => {
     expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST', idempotencyKey: expect.any(String) }));
     await Promise.all([client.close(), server.close()]);
   });
+
+  it('prepares and executes critical actions with the required confirmation data', async () => {
+    const request = vi.fn().mockResolvedValue({ data: { accepted: true } });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    await client.callTool({ name: 'studio_instance_critical_action_prepare', arguments: {
+      instanceId: 'demo', actionId: 'instance.status.archive',
+    } });
+    const response = await client.callTool({ name: 'studio_instance_archive', arguments: {
+      instanceId: 'demo', challengeId: 'challenge-1', confirmationPhrase: 'ARCHIVE demo', idempotencyKey: 'request-1',
+    } });
+    expect(response.structuredContent).toMatchObject({ ok: true });
+    expect(request).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      path: '/api/v1/iam/instances/demo/actions/instance.status.archive/confirmation', method: 'POST',
+    }));
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      path: '/api/v1/iam/instances/demo/archive', method: 'POST', idempotencyKey: 'request-1',
+      confirmationChallengeId: 'challenge-1', confirmationPhrase: 'ARCHIVE demo', body: { status: 'archived' },
+    }));
+    await Promise.all([client.close(), server.close()]);
+  });
 });

@@ -160,6 +160,24 @@ describe('critical registry confirmation', () => {
     expect(service.recordConfirmationAttempt).not.toHaveBeenCalled();
   });
 
+  it('audits a confirmation request with a missing phrase', async () => {
+    const { confirmCriticalRegistryMutation } = await import('./confirmation.js');
+    const service = {
+      getInstanceDetail: vi.fn(async () => detail),
+      recordConfirmationAttempt: vi.fn(async () => undefined),
+    };
+
+    const response = await confirmCriticalRegistryMutation({
+      service: service as never,
+      request: new Request('https://studio.example/api', { headers: { 'x-confirmation-challenge-id': 'challenge-1' } }),
+      context: { authKind: 'keycloak_service', user: { id: 'service', roles: [] } },
+      instanceId: 'demo', actorId: 'service', actionId: 'instance.status.archive',
+    });
+
+    expect(response?.status).toBe(403);
+    expect(service.recordConfirmationAttempt).toHaveBeenCalledWith(expect.objectContaining({ reason: 'confirmation_required' }));
+  });
+
   it('prepares a state-bound module revoke challenge for service callers', async () => {
     const service = {
       getInstanceDetail: vi.fn(async () => detail),

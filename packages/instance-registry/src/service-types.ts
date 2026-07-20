@@ -105,6 +105,12 @@ export type InstanceRegistryService = {
     requestId?: string;
   }): Promise<IamTenantIamStatus | null>;
   getKeycloakProvisioningRun(instanceId: string, runId: string): Promise<KeycloakTenantProvisioningRun | null>;
+  hasKeycloakProvisioningRun(input: {
+    instanceId: string;
+    mutation: 'executeKeycloakProvisioning';
+    intent: 'rotate_client_secret';
+    idempotencyKey: string;
+  }): Promise<boolean>;
   reconcileKeycloak(input: ReconcileInstanceKeycloakInput): Promise<KeycloakTenantStatus | null>;
   runInstanceAudit(input?: {
     instanceIds?: readonly string[];

@@ -488,7 +488,6 @@ export type UpdateInstancePayload = {
 
 export type ReconcileInstanceKeycloakPayload = {
   readonly tenantAdminTemporaryPassword?: string;
-  readonly rotateClientSecret?: boolean;
 };
 
 export type ExecuteInstanceKeycloakProvisioningPayload = {
@@ -901,6 +900,14 @@ export const executeInstanceKeycloakProvisioning = async (
     ApiItemResponse<IamInstanceDetail['latestKeycloakProvisioningRun']>,
     ExecuteInstanceKeycloakProvisioningPayload
   >(`/api/v1/iam/instances/${instanceId}/keycloak/execute`, payload, true);
+
+export const rotateInstanceSecret = async (
+  instanceId: string
+): Promise<ApiItemResponse<IamInstanceDetail['latestKeycloakProvisioningRun']>> =>
+  postJson<
+    ApiItemResponse<IamInstanceDetail['latestKeycloakProvisioningRun']>,
+    Pick<ExecuteInstanceKeycloakProvisioningPayload, 'intent'>
+  >(`/api/v1/iam/instances/${instanceId}/keycloak/rotate-secret`, { intent: 'rotate_client_secret' }, true);
 
 export const getInstanceKeycloakProvisioningRun = async (
   instanceId: string,

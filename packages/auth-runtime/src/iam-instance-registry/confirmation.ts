@@ -66,12 +66,22 @@ const loadFingerprint = async (service: InstanceRegistryService, instanceId: str
   return instance ? fingerprintInstanceConfirmationState(instance) : null;
 };
 
+const decodePathParameter = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return undefined;
+  }
+};
+
 export const confirmCriticalRegistryMutation = async (input: {
   readonly service: InstanceRegistryService;
   readonly request: Request;
   readonly context: RegistryRequestContext;
   readonly instanceId: string;
   readonly actorId: string;
+  readonly idempotencyKey?: string;
   readonly actionId: string;
   readonly moduleId?: string;
 }): Promise<Response | null> => {
@@ -95,6 +105,15 @@ export const confirmCriticalRegistryMutation = async (input: {
     return createApiError(403, 'confirmation_required' as Parameters<typeof createApiError>[1], 'Bestätigung für kritische Aktion erforderlich.', requestId);
   }
   if (!stateFingerprint) return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', requestId);
+  if (input.actionId === 'instance.secret.rotate' && input.idempotencyKey) {
+    const replayExists = await input.service.hasKeycloakProvisioningRun({
+      instanceId: input.instanceId,
+      mutation: 'executeKeycloakProvisioning',
+      intent: 'rotate_client_secret',
+      idempotencyKey: input.idempotencyKey,
+    });
+    if (replayExists) return null;
+  }
   const consumed = await input.service.consumeConfirmationChallenge({
     challengeId,
     instanceId: input.instanceId,
@@ -128,8 +147,8 @@ export const prepareInstanceConfirmationInternal = async (
   if (accessError) return accessError;
   const url = new URL(request.url);
   const match = /\/instances\/([^/]+)\/actions\/([^/]+)\/confirmation$/u.exec(url.pathname);
-  const instanceId = match?.[1] ? decodeURIComponent(match[1]) : undefined;
-  const actionId = match?.[2] ? decodeURIComponent(match[2]) : undefined;
+  const instanceId = decodePathParameter(match?.[1]);
+  const actionId = decodePathParameter(match?.[2]);
   if (!instanceId || !actionId || !criticalActions.has(actionId)) {
     return createApiError(400, 'invalid_request', 'Ungültige kritische Aktion.', requestId);
   }

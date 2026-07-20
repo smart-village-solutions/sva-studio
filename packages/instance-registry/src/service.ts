@@ -61,6 +61,7 @@ export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps)
   seedIamBaseline: createSeedIamBaselineHandler(deps),
   probeTenantIamAccess: createProbeTenantIamAccessHandler(deps),
   getKeycloakProvisioningRun: createGetKeycloakProvisioningRunHandler(deps),
+  hasKeycloakProvisioningRun: (input) => deps.repository.hasKeycloakProvisioningRun(input),
   getKeycloakStatus: createGetKeycloakStatusHandler(deps),
   reconcileKeycloak: createReconcileKeycloakHandler(deps),
   runInstanceAudit: createRunInstanceAuditHandler(deps),

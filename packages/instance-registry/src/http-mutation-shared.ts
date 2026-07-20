@@ -50,6 +50,7 @@ export type InstanceRegistryMutationHttpDeps<TContext> = {
     readonly context: TContext;
     readonly instanceId: string;
     readonly actorId: string;
+    readonly idempotencyKey: string;
     readonly actionId: string;
     readonly moduleId?: string;
   }) => Promise<Response | null>;
@@ -152,6 +153,7 @@ const executeScopedMutation = <TContext, TData, TResult>(
       context: state.context,
       instanceId: state.instanceId,
       actorId: state.actorId,
+      idempotencyKey: state.idempotencyKey,
       actionId: options.criticalActionId,
       ...(moduleId ? { moduleId } : {}),
     });

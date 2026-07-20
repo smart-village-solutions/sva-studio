@@ -54,6 +54,23 @@ describe('Studio MCP tools', () => {
     await Promise.all([client.close(), server.close()]);
   });
 
+  it('returns transport failures through the structured MCP error contract', async () => {
+    const server = createStudioMcpServer({ request: vi.fn().mockRejectedValue(new TypeError('network unavailable')) }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({ name: 'studio_instance_get', arguments: { instanceId: 'demo' } });
+
+    expect(response.isError).not.toBe(true);
+    expect(response.content).toEqual([{ type: 'text', text: 'Studio-Operation fehlgeschlagen. Details stehen im Fehlervertrag.' }]);
+    expect(response.structuredContent).toMatchObject({
+      ok: false,
+      error: { code: 'internal_unclassified', category: 'internal', retryable: false },
+    });
+    await Promise.all([client.close(), server.close()]);
+  });
+
   it('calls create with idempotency and returns structured content', async () => {
     const request = vi.fn().mockResolvedValue({ data: { instanceId: 'demo' } });
     const server = createStudioMcpServer({ request }, config);

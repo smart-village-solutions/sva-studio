@@ -118,6 +118,12 @@ export type InstanceRegistryRepository = {
     instanceId: string,
     runId: string
   ) => Promise<InstanceKeycloakProvisioningRun | null>;
+  readonly hasKeycloakProvisioningRun: (input: {
+    instanceId: string;
+    mutation: NonNullable<InstanceKeycloakProvisioningRun['mutation']>;
+    intent: InstanceKeycloakProvisioningRun['intent'];
+    idempotencyKey: string;
+  }) => Promise<boolean>;
   readonly claimNextKeycloakProvisioningRun: (input?: {
     createdAtOrAfter?: string;
   }) => Promise<InstanceKeycloakProvisioningRun | null>;

@@ -92,6 +92,32 @@ describe('critical registry confirmation', () => {
     });
   });
 
+  it('preserves an idempotent secret-rotation replay before consuming its challenge', async () => {
+    const { confirmCriticalRegistryMutation } = await import('./confirmation.js');
+    const service = {
+      getInstanceDetail: vi.fn(async () => detail),
+      hasKeycloakProvisioningRun: vi.fn(async () => true),
+      consumeConfirmationChallenge: vi.fn(async () => true),
+      recordConfirmationAttempt: vi.fn(async () => undefined),
+    };
+
+    const response = await confirmCriticalRegistryMutation({
+      service: service as never,
+      request: new Request('https://studio.example/api', { headers: {
+        'x-confirmation-challenge-id': 'challenge-1', 'x-confirmation-phrase': 'ROTATE SECRET FOR demo',
+      } }),
+      context: { authKind: 'keycloak_service', user: { id: 'service', roles: [] } },
+      instanceId: 'demo', actorId: 'service', actionId: 'instance.secret.rotate', idempotencyKey: 'idem-rotate',
+    });
+
+    expect(response).toBeNull();
+    expect(service.hasKeycloakProvisioningRun).toHaveBeenCalledWith({
+      instanceId: 'demo', mutation: 'executeKeycloakProvisioning', intent: 'rotate_client_secret', idempotencyKey: 'idem-rotate',
+    });
+    expect(service.consumeConfirmationChallenge).not.toHaveBeenCalled();
+    expect(service.recordConfirmationAttempt).not.toHaveBeenCalled();
+  });
+
   it('rejects a challenge bound to a different validated module', async () => {
     const { confirmCriticalRegistryMutation } = await import('./confirmation.js');
     const service = {
@@ -229,6 +255,18 @@ describe('critical registry confirmation', () => {
       { authKind: 'keycloak_service', user: { id: 'service', roles: [] } } as never
     );
     expect(response.status).toBe(400);
+    expect(state.withScopedRegistryService).not.toHaveBeenCalled();
+  });
+
+  it('returns invalid_request for malformed percent-encoding in a preparation route', async () => {
+    const { prepareInstanceConfirmationInternal } = await import('./confirmation.js');
+    const response = await prepareInstanceConfirmationInternal(
+      new Request('https://studio.example/api/v1/iam/instances/demo/actions/instance.status.%/confirmation'),
+      { authKind: 'keycloak_service', user: { id: 'service', roles: [] } } as never
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'invalid_request' } });
     expect(state.withScopedRegistryService).not.toHaveBeenCalled();
   });
 

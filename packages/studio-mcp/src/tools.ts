@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { StudioApiError, type StudioApiClient, type StudioApiRequest } from './api-client.js';
+import { UpstreamSchemaError, type StudioApiClient, type StudioApiRequest } from './api-client.js';
 import type { StudioMcpConfig } from './config.js';
 import { schemas } from './contracts.js';
 import { diagnoseInstance } from './diagnostics.js';
@@ -35,7 +35,7 @@ const call = async (
     const data = await client.request(correlatedRequest);
     return result({ ok: true, data, meta: { requestId, ...(request.idempotencyKey ? { idempotencyKey: request.idempotencyKey } : {}) } });
   } catch (caught) {
-    if (!(caught instanceof StudioApiError)) throw caught;
+    if (caught instanceof UpstreamSchemaError) throw caught;
     const error = normalizeError(caught);
     const diagnostics = diagnosis
       ? await diagnoseInstance(client, diagnosis.instanceId, diagnosis.timeoutMs, error).catch(() => undefined)

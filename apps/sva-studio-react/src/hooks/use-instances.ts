@@ -20,6 +20,7 @@ import {
   planInstanceKeycloakProvisioning,
   probeTenantIamAccess,
   reconcileInstanceKeycloak,
+  rotateInstanceSecret,
   revokeInstanceModule,
   seedInstanceIamBaseline,
   suspendInstance,
@@ -494,7 +495,9 @@ export const useInstances = () => {
     executeKeycloakProvisioning: async (instanceId: string, payload: ExecuteInstanceKeycloakProvisioningPayload) =>
       mutate(
         async () => {
-          const response = await executeInstanceKeycloakProvisioning(instanceId, payload);
+          const response = payload.intent === 'rotate_client_secret'
+            ? await rotateInstanceSecret(instanceId)
+            : await executeInstanceKeycloakProvisioning(instanceId, payload);
           updateSelectedForInstance(instanceId, (current) => {
             const keycloakProvisioningRuns = mergeProvisioningRuns(
               current.keycloakProvisioningRuns,

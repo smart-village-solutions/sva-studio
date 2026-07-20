@@ -18,6 +18,7 @@ type KeycloakProvisioningRepository = Pick<
   InstanceRegistryRepository,
   | 'listKeycloakProvisioningRuns'
   | 'getKeycloakProvisioningRun'
+  | 'hasKeycloakProvisioningRun'
   | 'claimNextKeycloakProvisioningRun'
   | 'createKeycloakProvisioningRun'
   | 'updateKeycloakProvisioningRun'
@@ -64,6 +65,29 @@ LIMIT 1;
   }
   const stepsByRunId = await listKeycloakProvisioningStepRows(executor, [row.id]);
   return mapKeycloakProvisioningRun(row, stepsByRunId[row.id] ?? []);
+};
+
+const hasKeycloakProvisioningRun = async (
+  executor: SqlExecutor,
+  input: Parameters<KeycloakProvisioningRepository['hasKeycloakProvisioningRun']>[0]
+): Promise<boolean> => {
+  const rows = await queryRows<{ exists: boolean }>(
+    executor,
+    statement(
+      `
+SELECT EXISTS (
+  SELECT 1
+  FROM iam.instance_keycloak_provisioning_runs
+  WHERE instance_id = $1
+    AND mutation = $2
+    AND intent = $3
+    AND idempotency_key = $4
+) AS exists;
+`,
+      [input.instanceId, input.mutation, input.intent, input.idempotencyKey]
+    )
+  );
+  return rows[0]?.exists === true;
 };
 
 const claimNextKeycloakProvisioningRun = async (
@@ -232,6 +256,7 @@ RETURNING
 export const createKeycloakProvisioningRepository = (executor: SqlExecutor): KeycloakProvisioningRepository => ({
   listKeycloakProvisioningRuns: (instanceId) => listKeycloakProvisioningRuns(executor, instanceId),
   getKeycloakProvisioningRun: (instanceId, runId) => getKeycloakProvisioningRun(executor, instanceId, runId),
+  hasKeycloakProvisioningRun: (input) => hasKeycloakProvisioningRun(executor, input),
   claimNextKeycloakProvisioningRun: (input) => claimNextKeycloakProvisioningRun(executor, input),
   createKeycloakProvisioningRun: (input) => createKeycloakProvisioningRun(executor, input),
   updateKeycloakProvisioningRun: (input) => updateKeycloakProvisioningRun(executor, input),

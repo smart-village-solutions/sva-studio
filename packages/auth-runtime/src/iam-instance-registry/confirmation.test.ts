@@ -146,6 +146,27 @@ describe('critical registry confirmation', () => {
     }));
   });
 
+  it.each([
+    ['instance.status.archive', 'ARCHIVE demo'],
+    ['instance.status.suspend', 'SUSPEND demo'],
+    ['instance.secret.rotate', 'ROTATE SECRET FOR demo'],
+  ])('prepares the required confirmation phrase for %s', async (actionId, confirmationPhrase) => {
+    const service = {
+      getInstanceDetail: vi.fn(async () => detail),
+      prepareConfirmationChallenge: vi.fn(async () => ({ challengeId: 'challenge-1' })),
+    };
+    state.withScopedRegistryService.mockImplementation(async (_instanceId, callback) => callback(service));
+    const { prepareInstanceConfirmationInternal } = await import('./confirmation.js');
+    const response = await prepareInstanceConfirmationInternal(
+      new Request(`https://studio.example/api/v1/iam/instances/demo/actions/${actionId}/confirmation`),
+      { authKind: 'keycloak_service', user: { id: 'service', roles: [] } } as never
+    );
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({ data: { actionId, confirmationPhrase } });
+    expect(service.prepareConfirmationChallenge).toHaveBeenCalledWith(expect.objectContaining({ actionId, confirmationPhrase }));
+  });
+
   it('rejects invalid preparation requests before accessing the registry', async () => {
     const { prepareInstanceConfirmationInternal } = await import('./confirmation.js');
     const response = await prepareInstanceConfirmationInternal(

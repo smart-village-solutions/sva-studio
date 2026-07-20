@@ -183,8 +183,7 @@ Kernidee:
 - Externe Schnittstellen werden hostgeführt über einen zentralen Typkatalog und instanzbezogene Konfigurationsdatensätze mit verschlüsselten Secret-Blöcken verwaltet.
 - Die instanzspezifische Waste-Datenquelle bleibt als eigener technischer Datensatz im IAM-Schema modelliert und folgt demselben `instance_id`-basierten Isolationvertrag.
 - Keycloak-bezogene Zustände sind explizit persistiert und auditierbar.
-- Kritische Maschinenaktionen verwenden kurzlebige Einmal-Challenges, die an Akteur, Action, Instanzzustand und beim Modulentzug zusätzlich an die konkrete `module_id` gebunden sind; gespeichert wird ausschließlich der Phrase-Hash.
-- Kritische Maschinenaktionen verwenden kurzlebige Confirmation-Challenges, die atomar an Instanz, Akteur, Action, optionales Modul, Zustandsfingerprint und Phrase-Hash gebunden und höchstens einmal verbraucht werden.
+- Kritische Maschinenaktionen verwenden kurzlebige Einmal-Challenges, die atomar an Instanz, Akteur, Action, optionales Modul und Zustandsfingerprint gebunden sind, höchstens einmal verbraucht werden und ausschließlich den Phrase-Hash speichern.
 
 ### 6. Content-Management
 

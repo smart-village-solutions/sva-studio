@@ -27,14 +27,16 @@ const call = async (
   request: StudioApiRequest,
   diagnosis?: { instanceId: string; timeoutMs: number }
 ): Promise<ToolResult> => {
+  const requestId = request.requestId ?? randomUUID();
+  const correlatedRequest = { ...request, requestId };
   try {
-    const data = await client.request(request);
-    return result({ ok: true, data, meta: { requestId: request.requestId, ...(request.idempotencyKey ? { idempotencyKey: request.idempotencyKey } : {}) } });
+    const data = await client.request(correlatedRequest);
+    return result({ ok: true, data, meta: { requestId, ...(request.idempotencyKey ? { idempotencyKey: request.idempotencyKey } : {}) } });
   } catch (caught) {
     if (!(caught instanceof StudioApiError)) throw caught;
     const error = normalizeError(caught);
     const diagnostics = diagnosis
-      ? await diagnoseInstance(client, diagnosis.instanceId, diagnosis.timeoutMs, error)
+      ? await diagnoseInstance(client, diagnosis.instanceId, diagnosis.timeoutMs, error).catch(() => undefined)
       : undefined;
     return result({ ok: false, error, ...(diagnostics ? { diagnostics } : {}), meta: { requestId: error.requestId } });
   }
@@ -55,6 +57,7 @@ const mutation = (path: string, params: Record<string, unknown>, method: 'POST' 
 
 const readAnnotations = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const;
 const writeAnnotations = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const;
+const nonIdempotentWriteAnnotations = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true } as const;
 const criticalAnnotations = { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true } as const;
 const outputShape = {
   ok: z.boolean(),
@@ -67,7 +70,7 @@ const outputShape = {
 export const registerStudioTools = (server: McpServer, client: StudioApiClient, config: StudioMcpConfig): void => {
   const register = <S extends z.ZodObject<z.ZodRawShape>>(
     name: string, title: string, description: string, schema: S,
-    annotations: typeof readAnnotations | typeof writeAnnotations | typeof criticalAnnotations,
+    annotations: typeof readAnnotations | typeof writeAnnotations | typeof nonIdempotentWriteAnnotations | typeof criticalAnnotations,
     handler: (params: z.infer<S>) => Promise<ToolResult>
   ) => server.registerTool(
     name,
@@ -82,7 +85,7 @@ export const registerStudioTools = (server: McpServer, client: StudioApiClient, 
   register('studio_instance_audit', 'Instanz-Audit lesen', 'Liest den Audit-Lauf einer Instanz.', schemas.instance, readAnnotations,
     (p) => call(client, { path: `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/audit` }));
   register('studio_instances_audit', 'Instanzbestand auditieren', 'Führt den read-only Audit für ausgewählte oder aktive Instanzen aus.', schemas.auditAll, readAnnotations,
-    (p) => call(client, { path: '/api/v1/iam/instances/audit', query: p }));
+    (p) => call(client, { path: '/api/v1/iam/instances/audit', query: { instanceId: p.instanceIds, includeOnlyActive: p.includeOnlyActive } }));
   register('studio_instance_diagnose', 'Studio-Instanz diagnostizieren', 'Aggregiert Detail-, Keycloak-Preflight- und Status-Evidenz ohne Änderungen.', schemas.diagnose, readAnnotations,
     async (p) => result({ ok: true, data: await diagnoseInstance(client, p.instanceId, config.diagnosisTimeoutMs), meta: {} }));
   register('studio_instance_provisioning_run_get', 'Provisioning-Lauf lesen', 'Liest einen bestimmten Keycloak-Provisioning-Lauf.', schemas.run, readAnnotations,
@@ -104,7 +107,7 @@ export const registerStudioTools = (server: McpServer, client: StudioApiClient, 
     (p) => call(client, mutation(`/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/modules/seed-iam-baseline`, p)));
   register('studio_instance_admin_bootstrap', 'Admin-Struktur bootstrappen', 'Erzeugt die Admin-Struktur für ausgewählte Module.', schemas.bootstrap, writeAnnotations,
     (p) => call(client, mutation(`/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/modules/bootstrap-admin-structure`, p)));
-  register('studio_instance_critical_action_prepare', 'Kritische Aktion vorbereiten', 'Erzeugt eine kurzlebige, zustandsgebundene Bestätigungs-Challenge; führt die Aktion nicht aus.', schemas.prepareCritical, writeAnnotations,
+  register('studio_instance_critical_action_prepare', 'Kritische Aktion vorbereiten', 'Erzeugt eine kurzlebige, zustandsgebundene Bestätigungs-Challenge; führt die Aktion nicht aus.', schemas.prepareCritical, nonIdempotentWriteAnnotations,
     (p) => call(client, {
       method: 'POST',
       path: `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/actions/${encodeURIComponent(p.actionId)}/confirmation`,
@@ -122,5 +125,5 @@ export const registerStudioTools = (server: McpServer, client: StudioApiClient, 
   critical('studio_instance_archive', 'Instanz archivieren', 'instance.status.archive', (p) => `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/archive`, { status: 'archived' });
   register('studio_instance_module_revoke', 'Modul entziehen', 'Entzieht ein Modul nach serverseitiger Challenge und exakter Phrase.', schemas.revoke, criticalAnnotations,
     (p) => call(client, mutation(`/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/modules/revoke`, { ...p, confirmation: 'REVOKE' })));
-  critical('studio_instance_secret_rotate', 'Client-Secret rotieren', 'instance.secret.rotate', (p) => `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/keycloak/rotate-secret`);
+  critical('studio_instance_secret_rotate', 'Client-Secret rotieren', 'instance.secret.rotate', (p) => `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/keycloak/rotate-secret`, { intent: 'rotate_client_secret' });
 };

@@ -36,7 +36,7 @@ export const schemas = {
       intent: z.enum(['provision', 'provision_admin_client', 'reset_tenant_admin']),
       ...mutationMeta,
     }).strict(),
-  reconcile: reconcileKeycloakSchema.extend({ instanceId, ...mutationMeta }).strict(),
+  reconcile: reconcileKeycloakSchema.omit({ rotateClientSecret: true }).extend({ instanceId, ...mutationMeta }).strict(),
   assignModule: assignModuleSchema.extend({ instanceId, ...mutationMeta }).strict(),
   bootstrap: bootstrapAdminStructureSchema.extend({ instanceId, ...mutationMeta }).strict(),
   seed: instanceMutationInput,

@@ -19,6 +19,8 @@ const mapChallenge = (row: InstanceConfirmationChallengeRow): InstanceConfirmati
   createdAt: row.created_at,
 });
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
 export const createConfirmationChallengeRepository = (executor: SqlExecutor) => ({
   async prepareConfirmationChallenge(
     input: PrepareInstanceConfirmationChallengeInput
@@ -49,6 +51,7 @@ RETURNING id::text, instance_id, actor_id, action_id, module_id, state_fingerpri
   },
 
   async consumeConfirmationChallenge(input: ConsumeInstanceConfirmationChallengeInput): Promise<boolean> {
+    if (!uuidPattern.test(input.challengeId)) return false;
     const result = await executor.execute<{ id: string }>({
       text: `
 UPDATE iam.instance_confirmation_challenges

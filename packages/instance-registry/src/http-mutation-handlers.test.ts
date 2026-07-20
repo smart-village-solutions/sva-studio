@@ -37,6 +37,7 @@ const createDeps = (): InstanceRegistryMutationHttpDeps<TestContext> => ({
   ensurePlatformAccess: vi.fn(() => null),
   validateCsrf: vi.fn(() => null),
   requireFreshReauth: vi.fn(() => null),
+  confirmCriticalMutation: vi.fn(async () => null),
   withScopedRegistryService: vi.fn(async (_instanceId, work) =>
     work({
       reconcileKeycloak: vi.fn(async () => ({ realmExists: true })),
@@ -413,6 +414,17 @@ describe('http mutation handlers', () => {
 
     expect(response.status).toBe(200);
     expect(calls).toEqual(['confirmation', 'mutation']);
+  });
+
+  it('fails closed when a critical handler has no confirmation dependency', async () => {
+    Object.assign(deps, { confirmCriticalMutation: undefined });
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleId: 'news', confirmation: 'REVOKE' } });
+    const response = await createInstanceRegistryMutationHttpHandlers(deps).revokeModule(
+      new Request('http://localhost/api/instances/inst-1/modules/revoke', { method: 'POST' }),
+      { userId: 'service-1' }
+    );
+    expect(response.status).toBe(500);
+    await expect(readBody(response)).resolves.toMatchObject({ code: 'internal_error' });
   });
 
   it('revokeModule maps not_found, unknown_module and conflict results', async () => {

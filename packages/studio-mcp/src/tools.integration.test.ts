@@ -89,4 +89,26 @@ describe('Studio MCP tools', () => {
     }));
     await Promise.all([client.close(), server.close()]);
   });
+
+  it('maps audit filters, prevents reconcile rotation, and executes dedicated secret rotation', async () => {
+    const request = vi.fn().mockResolvedValue({ data: { accepted: true } });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    await client.callTool({ name: 'studio_instances_audit', arguments: { instanceIds: ['first', 'second'] } });
+    await client.callTool({ name: 'studio_instance_reconcile', arguments: { instanceId: 'demo', rotateClientSecret: true } });
+    await client.callTool({ name: 'studio_instance_secret_rotate', arguments: {
+      instanceId: 'demo', challengeId: 'challenge-1', confirmationPhrase: 'ROTATE SECRET FOR demo', idempotencyKey: 'request-1',
+    } });
+    expect(request).toHaveBeenCalledTimes(3);
+    expect(request).toHaveBeenNthCalledWith(1, expect.objectContaining({ query: { instanceId: ['first', 'second'], includeOnlyActive: undefined } }));
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      path: '/api/v1/iam/instances/demo/keycloak/reconcile', body: {},
+    }));
+    expect(request).toHaveBeenNthCalledWith(3, expect.objectContaining({
+      path: '/api/v1/iam/instances/demo/keycloak/rotate-secret', body: { intent: 'rotate_client_secret' },
+    }));
+    await Promise.all([client.close(), server.close()]);
+  });
 });

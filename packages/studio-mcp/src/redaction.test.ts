@@ -15,4 +15,16 @@ describe('redaction', () => {
       'x-confirmation-phrase': '[REDACTED]',
     });
   });
+
+  it('preserves confirmation phrases and configured-state booleans in API payloads', () => {
+    expect(redact({
+      confirmationPhrase: 'ARCHIVE demo',
+      authClientSecretConfigured: true,
+      tenantAdminClient: { secretConfigured: false, secret: 'actual-secret' },
+    })).toEqual({
+      confirmationPhrase: 'ARCHIVE demo',
+      authClientSecretConfigured: true,
+      tenantAdminClient: { secretConfigured: false, secret: '[REDACTED]' },
+    });
+  });
 });

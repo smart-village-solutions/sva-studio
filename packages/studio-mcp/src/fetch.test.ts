@@ -33,6 +33,6 @@ describe('createStudioFetch', () => {
     expect(response).toBe(expected);
     expect(state.readFile).toHaveBeenCalledWith('/certs/studio-ca.pem', 'utf8');
     expect(state.agentOptions).toHaveBeenCalledWith({ connect: { ca: 'test-ca', rejectUnauthorized: true } });
-    expect(state.undiciFetch).toHaveBeenCalledWith('https://studio.example/api', expect.objectContaining({ method: 'POST', dispatcher: expect.anything() }));
+    expect(state.undiciFetch).toHaveBeenCalledWith(expect.any(Request), expect.objectContaining({ method: 'POST', dispatcher: expect.anything() }));
   });
 });

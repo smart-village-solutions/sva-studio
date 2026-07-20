@@ -6,8 +6,7 @@ export const createStudioFetch = async (caFilePath?: string): Promise<typeof fet
   const ca = await readFile(caFilePath, 'utf8');
   const dispatcher = new Agent({ connect: { ca, rejectUnauthorized: true } });
   return ((input: string | URL | globalThis.Request, init?: RequestInit) => {
-    const target = input instanceof globalThis.Request ? input.url : input;
     const undiciInit = Object.assign({}, init, { dispatcher }) as Parameters<typeof undiciFetch>[1];
-    return undiciFetch(target, undiciInit) as unknown as Promise<Response>;
+    return undiciFetch(input as Parameters<typeof undiciFetch>[0], undiciInit) as unknown as Promise<Response>;
   }) as typeof fetch;
 };

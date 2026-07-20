@@ -89,4 +89,14 @@ describe('instance confirmation challenge repository', () => {
     expect(statements[0]?.values?.[4]).toBe('events');
     expect(statements[0]?.text).toContain('module_id IS NOT DISTINCT FROM $5');
   });
+
+  it('treats malformed challenge ids as an unconsumed challenge without querying PostgreSQL', async () => {
+    const { executor, statements } = createQueuedExecutor([]);
+    const repository = createInstanceRegistryRepository(executor);
+    await expect(repository.consumeConfirmationChallenge({
+      challengeId: 'not-a-uuid', instanceId: 'demo', actorId: 'actor-1', actionId: 'instance.status.archive',
+      stateFingerprint: 'state-v1', phraseHash: 'a'.repeat(64),
+    })).resolves.toBe(false);
+    expect(statements).toHaveLength(0);
+  });
 });

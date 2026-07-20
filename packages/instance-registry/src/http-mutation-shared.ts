@@ -141,7 +141,10 @@ const executeScopedMutation = <TContext, TData, TResult>(
   options: ScopedRegistryMutationHandlerOptions<TContext, TData, TResult>,
   state: ScopedExecutionState<TContext, TData>
 ): Promise<TResult | Response> => withScopedRegistryMutation(deps, state.instanceId, async (service) => {
-  if (options.criticalActionId && deps.confirmCriticalMutation) {
+  if (options.criticalActionId) {
+    if (!deps.confirmCriticalMutation) {
+      return deps.createApiError(500, 'internal_error', 'Bestätigungsprüfung für kritische Aktion ist nicht verfügbar.', state.requestId);
+    }
     const moduleId = options.resolveCriticalModuleId?.(state.input);
     const confirmationError = await deps.confirmCriticalMutation({
       service,

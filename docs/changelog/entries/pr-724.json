@@ -1,0 +1,4 @@
+{
+  "prNumber": 724,
+  "body": "Der lokale SVA-Studio-MCP kann Instanzen jetzt über einen geführten Gesamtprozess anlegen, reparieren und anpassen. Der Prozess kombiniert die bestehenden Studio-Verträge für Provisioning, IAM-Rechteprobe und Doctor-Abnahme, meldet einen Abschluss nur bei aktivem, vollständig bereitem Tenant und belässt die Aktivierung als explizite, challenge-geschützte Aktion."
+}

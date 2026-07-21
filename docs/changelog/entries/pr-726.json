@@ -1,0 +1,4 @@
+{
+  "prNumber": 726,
+  "body": "Der automatische Dev-Promote erkennt die fest definierte MCP-Service-Token-Konfiguration jetzt als sicheren reinen App-Konfigurationswechsel. Andere Compose-, Migrations- oder Bootstrap-Änderungen bleiben weiterhin durch die bestehenden Gates geschützt."
+}

@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
   getWorkspaceContext: () => ({ requestId: 'req-1' }),
 }));
 
@@ -53,6 +54,10 @@ vi.mock('./core-mutations.js', () => ({
   mapInstanceMutationError: vi.fn((error: unknown) => new Response(String(error), { status: 500 })),
   probeTenantIamAccessMutation: vi.fn(async () => new Response('probe', { status: 200 })),
   reconcileInstanceKeycloakMutation: vi.fn(async () => new Response('reconcile', { status: 200 })),
+}));
+
+vi.mock('./role-reconcile.js', () => ({
+  reconcileInstanceIamRolesInternal: vi.fn(async () => new Response('roles-reconcile', { status: 200 })),
 }));
 
 describe('iam-instance-registry/core-keycloak', () => {

@@ -118,6 +118,10 @@ export const registerStudioTools = (server: McpServer, client: StudioApiClient, 
     (p) => call(client, { path: '/api/v1/iam/instances/audit', query: { instanceId: p.instanceIds, includeOnlyActive: p.includeOnlyActive } }));
   register('studio_instance_diagnose', 'Studio-Instanz diagnostizieren', 'Aggregiert Detail-, Keycloak-Preflight- und Status-Evidenz ohne Änderungen.', schemas.diagnose, readAnnotations,
     async (p) => result({ ok: true, data: await diagnoseInstance(client, p.instanceId, config.diagnosisTimeoutMs), meta: {} }));
+  register('studio_instance_keycloak_status', 'Keycloak-Status lesen', 'Liest den aktuellen Keycloak-Status einer Studio-Instanz.', schemas.instance, readAnnotations,
+    (p) => call(client, { path: `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/keycloak/status` }));
+  register('studio_instance_keycloak_preflight', 'Keycloak-Preflight lesen', 'Liest die aktuelle Provisioning-Vorabprüfung einer Studio-Instanz.', schemas.instance, readAnnotations,
+    (p) => call(client, { path: `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/keycloak/preflight` }));
   register('studio_instance_process', 'Studio-Instanzprozess ausführen', 'Orchestriert Anlage, Reparatur oder Anpassung ausschließlich über bestehende Studio-Verträge. Kritische Aktivierung bleibt eine separate, challenge-geschützte Aktion.', schemas.process, writeAnnotations,
     (p) => callProcess(client, p, config.processTimeoutMs, config.diagnosisTimeoutMs));
   register('studio_instance_provisioning_run_get', 'Provisioning-Lauf lesen', 'Liest einen bestimmten Keycloak-Provisioning-Lauf.', schemas.run, readAnnotations,
@@ -137,6 +141,10 @@ export const registerStudioTools = (server: McpServer, client: StudioApiClient, 
     (p) => call(client, mutation(`/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/modules/assign`, p)));
   register('studio_instance_iam_baseline_seed', 'IAM-Baseline seeden', 'Seedet die IAM-Baseline der zugewiesenen Module.', schemas.seed, writeAnnotations,
     (p) => call(client, mutation(`/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/modules/seed-iam-baseline`, p)));
+  register('studio_instance_tenant_iam_access_probe', 'Tenant-IAM-Zugriff prüfen', 'Prüft die tenantlokale IAM-Zugriffsverbindung einer Instanz.', schemas.accessProbe, writeAnnotations,
+    (p) => call(client, mutation(`/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/tenant-iam/access-probe`, p)));
+  register('studio_instance_iam_roles_reconcile', 'Tenant-Rollen abgleichen', 'Gleicht den Rollen-Katalog einer Instanz kontrolliert ab.', schemas.roleReconcile, writeAnnotations,
+    (p) => call(client, mutation(`/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/tenant-iam/roles/reconcile`, p)));
   register('studio_instance_admin_bootstrap', 'Admin-Struktur bootstrappen', 'Erzeugt die Admin-Struktur für ausgewählte Module.', schemas.bootstrap, writeAnnotations,
     (p) => call(client, mutation(`/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/modules/bootstrap-admin-structure`, p)));
   register('studio_instance_critical_action_prepare', 'Kritische Aktion vorbereiten', 'Erzeugt eine kurzlebige, zustandsgebundene Bestätigungs-Challenge; führt die Aktion nicht aus.', schemas.prepareCritical, nonIdempotentWriteAnnotations,

@@ -18,6 +18,7 @@ import {
   rotateInstanceSecretMutation,
 } from './core-mutations.js';
 import { withRegistryService } from './repository.js';
+import { reconcileInstanceIamRolesInternal as reconcileRoles } from './role-reconcile.js';
 
 const keycloakHttpHandlers = createInstanceRegistryKeycloakHttpHandlers<RegistryRequestContext>({
   getRequestId: () => getWorkspaceContext().requestId,
@@ -94,3 +95,8 @@ export const probeTenantIamAccessInternal = async (
   request: Request,
   ctx: RegistryRequestContext
 ): Promise<Response> => probeTenantIamAccessMutation(request, ctx);
+
+export const reconcileInstanceIamRolesInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => reconcileRoles(request, ctx);

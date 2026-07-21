@@ -1,8 +1,54 @@
-# Lokalen Instanz-MCP sicher betreiben
+# SVA Studio MCP einrichten und nutzen
 
 ## Zweck
 
 Der lokale stdio-MCP-Server stellt Codex und CLI-Clients die Studio-Instanz-Control-Plane bereit. Er spricht ausschließlich die konfigurierte Studio-API. Direkte Zugriffe auf Studio-Datenbank oder Keycloak-Admin-API gehören nicht zum Betriebsvertrag.
+
+## Schnellstart
+
+### Voraussetzungen
+
+- Node.js und pnpm entsprechend der Workspace-Vorgaben,
+- Zugriff auf die Zielumgebung und einen dafür ausgestellten Keycloak-Service-Account,
+- eine lokale, nicht versionierte Ablage für das Client-Secret, vorzugsweise die OS-Keychain,
+- ein gebautes MCP-Package:
+
+```bash
+pnpm install
+pnpm nx run studio-mcp:build
+```
+
+### Secret lokal ablegen
+
+Das Secret wird nur lokal unter einem eindeutigen Account- und Service-Namen abgelegt. Die verdeckte Eingabe verhindert, dass der Geheimwert als Shell-Argument oder in der History landet.
+
+```bash
+read -r -s -p "Client-Secret: " sva_mcp_secret
+printf '\n'
+security add-generic-password -U \
+  -a "sva-studio-mcp" \
+  -s "sva-studio-mcp-studio-dev" \
+  -w "$sva_mcp_secret"
+unset sva_mcp_secret
+```
+
+### Codex konfigurieren
+
+Die folgende Konfiguration gehört in die lokale Codex-Konfiguration. Sie startet den gebauten Workspace-Binary über pnpm; ein global installiertes Binary ist nicht erforderlich.
+
+```toml
+[mcp_servers.sva-studio-dev]
+command = "pnpm"
+args = ["exec", "sva-studio-mcp"]
+
+[mcp_servers.sva-studio-dev.env]
+SVA_STUDIO_MCP_BASE_URL = "https://studio-dev.smart-village.app"
+SVA_STUDIO_MCP_TOKEN_URL = "https://keycloak.smart-village.app/realms/studio-dev/protocol/openid-connect/token"
+SVA_STUDIO_MCP_CLIENT_ID = "sva-studio-mcp"
+SVA_STUDIO_MCP_CLIENT_SECRET_COMMAND = '["security","find-generic-password","-a","sva-studio-mcp","-s","sva-studio-mcp-studio-dev","-w"]'
+```
+
+Codex nach der Änderung neu starten oder die MCP-Serverkonfiguration neu laden. Der erste sichere Smoke-Test ist ein read-only Aufruf von `studio_instances_list` oder `studio_instance_diagnose` gegen eine bekannte Testinstanz. Bei einem Startfehler gibt der Prozess absichtlich keine Konfigurations- oder Secret-Details aus.
 
 ## Umgebungen und Keycloak
 
@@ -28,18 +74,7 @@ Die drei Clients verwenden unterschiedliche Secrets. Ein Credential darf nie zwi
 
 Studio-Basis-URL, Realm, Client-ID und Client-Secret werden über OS-Keychain oder eine nicht versionierte lokale Umgebungskonfiguration an den MCP-Prozess gegeben. Secrets gehören nicht in `.codex/config.toml`, Shell-History, Repository-Dateien, Screenshots oder Betriebsberichte.
 
-Beispiel für einen lokal verfügbaren `sva-studio-mcp`-Binary in der Codex-Konfiguration:
-
-```toml
-[mcp_servers.sva-studio-dev]
-command = "sva-studio-mcp"
-
-[mcp_servers.sva-studio-dev.env]
-SVA_STUDIO_MCP_BASE_URL = "https://studio-dev.smart-village.app"
-SVA_STUDIO_MCP_TOKEN_URL = "https://keycloak.smart-village.app/realms/studio-dev/protocol/openid-connect/token"
-SVA_STUDIO_MCP_CLIENT_ID = "sva-studio-mcp"
-SVA_STUDIO_MCP_CLIENT_SECRET_COMMAND = '["security","find-generic-password","-a","sva-studio-mcp","-s","sva-studio-mcp-studio-dev","-w"]'
-```
+Falls ein `sva-studio-mcp`-Binary außerhalb des Workspace installiert ist, kann die oben gezeigte `command`-/`args`-Kombination durch `command = "sva-studio-mcp"` ersetzt werden. Die Umgebungsvariablen bleiben unverändert:
 
 Der Secret-Resolver ist ein JSON-Array aus Programm und Argumenten und wird ohne Shell ausgeführt. Alternativ ist `SVA_STUDIO_MCP_CLIENT_SECRET` nur als lokaler Fallback vorgesehen. Zeitgrenzen können über `SVA_STUDIO_MCP_READ_TIMEOUT_MS`, `SVA_STUDIO_MCP_MUTATION_TIMEOUT_MS`, `SVA_STUDIO_MCP_PROCESS_TIMEOUT_MS`, `SVA_STUDIO_MCP_TOKEN_TIMEOUT_MS` und `SVA_STUDIO_MCP_DIAGNOSIS_TIMEOUT_MS` angepasst werden. `SVA_STUDIO_MCP_PROCESS_TIMEOUT_MS` begrenzt ausschließlich das Warten auf einen asynchronen Keycloak-Run und ist standardmäßig länger als ein einzelner Mutationsrequest. `SVA_STUDIO_MCP_CA_FILE` ergänzt bei interner PKI eine CA-Datei; die TLS-Prüfung bleibt immer aktiv.
 
@@ -53,14 +88,52 @@ Der MCP-Prozess holt kurzlebige Access Tokens per Client-Credentials-Flow. Studi
 
 Der MCP wiederholt oder repariert Mutationen nicht selbstständig. `retryable: true` ist ein Hinweis für einen explizit ausgelösten, begrenzten Retry. Der Primärfehler bleibt auch dann maßgeblich, wenn eine nachgelagerte Diagnose fehlschlägt.
 
+Für gezielte Betriebsprüfungen stehen neben der aggregierten Diagnose eigenständige Tools für den aktuellen Keycloak-Status (`studio_instance_keycloak_status`), den Keycloak-Preflight (`studio_instance_keycloak_preflight`) und die tenantlokale IAM-Zugriffsprobe (`studio_instance_tenant_iam_access_probe`) bereit. Die ersten beiden sind Read-only; die Rechteprobe ist eine kontrollierte, auditierte Mutation mit der bestehenden Action `instance.diagnose`.
+
+## Tool-Übersicht und benötigte Actions
+
+| Bereich | MCP-Tools | Erforderliche Studio-Action |
+| --- | --- | --- |
+| Bestand und Evidenz | `studio_instances_list`, `studio_instance_get`, `studio_instance_audit`, `studio_instances_audit` | `instance.list`, `instance.read`, `instance.audit.read` |
+| Diagnose | `studio_instance_diagnose`, `studio_instance_keycloak_status`, `studio_instance_keycloak_preflight` | `instance.diagnose` |
+| Provisioning | `studio_instance_provisioning_plan`, `studio_instance_provisioning_execute`, `studio_instance_provisioning_run_get`, `studio_instance_reconcile` | `instance.provision.plan`, `instance.provision.execute`, `instance.provision.run.read`, `instance.reconcile` |
+| Konfiguration und Module | `studio_instances_create`, `studio_instance_update`, `studio_instance_module_assign`, `studio_instance_iam_baseline_seed`, `studio_instance_admin_bootstrap` | `instance.create`, `instance.update`, `instance.module.assign`, `instance.iam.baseline.seed`, `instance.admin.bootstrap` |
+| Tenant-IAM | `studio_instance_tenant_iam_access_probe`, `studio_instance_iam_roles_reconcile` | `instance.diagnose`, `instance.iam.roles.reconcile` |
+| Kritische Aktionen | `studio_instance_activate`, `studio_instance_suspend`, `studio_instance_archive`, `studio_instance_module_revoke`, `studio_instance_secret_rotate` | jeweilige Action plus `instance.confirmation.prepare` |
+| Geführter Ablauf | `studio_instance_process` | Kombination der für die gewählte Aktion benötigten Actions |
+
+Die Tools mit kritischer Aktion verlangen immer zuerst `studio_instance_critical_action_prepare`. Dessen `challengeId` und die zurückgegebene Bestätigungsphrase werden unverändert an das eigentliche Tool übergeben. Challenges sind kurzlebig, zustandsgebunden und nur einmal verwendbar.
+
+## Häufige Abläufe
+
+### Tenant sicher anlegen
+
+1. Mit `studio_instance_process` im Modus `create` den vollständigen Registry-Vertrag einschließlich Tenant-Admin-Profil und der gewünschten `moduleIds` übergeben.
+2. Bei `status: awaiting_human_action` zuerst den aktuellen Zustand mit `studio_instance_get` prüfen.
+3. `instance.status.activate` über `studio_instance_critical_action_prepare` vorbereiten und anschließend mit `studio_instance_activate` bestätigen.
+4. Mit `studio_instance_diagnose` oder den gezielten Status- und Preflight-Tools die Abnahme dokumentieren.
+
+### Fehlerhaften Tenant reparieren
+
+1. Mit `studio_instance_diagnose`, `studio_instance_keycloak_status` und `studio_instance_keycloak_preflight` die aktuelle Evidenz lesen.
+2. Bei Rollen- oder Zugriffsproblemen `studio_instance_iam_roles_reconcile` und anschließend `studio_instance_tenant_iam_access_probe` ausführen.
+3. Bei Keycloak-Drift `studio_instance_process` im Modus `repair` verwenden; laufende oder fehlgeschlagene Runs mit `studio_instance_provisioning_run_get` verfolgen.
+4. Erst bei grünem Doctor und notwendiger menschlicher Freigabe aktivieren.
+
+### Modul ergänzen oder entziehen
+
+1. Neue Module über `studio_instance_process` im Modus `adapt` oder gezielt über Zuweisung, IAM-Basis und Admin-Bootstrap ergänzen.
+2. Für einen Modulentzug immer zuerst eine Challenge vorbereiten und dann `studio_instance_module_revoke` mit der exakten Phrase ausführen.
+3. Anschließend Detail, Audit und Tenant-IAM-Zugriffsprobe kontrollieren.
+
 ## Geführter Instanzprozess
 
-Der MCP-Server `sva-studio-mcp` stellt ergänzend zu den Einzeltools das Tool `studio_instance_process` bereit. Es verwendet die Modi `create`, `repair` und `adapt` und ruft dabei ausschließlich die bestehenden Studio-API-Verträge für Registry, Modulzuweisung, IAM-Basis, Admin-Struktur, Keycloak-Provisioning, Rechteprobe und Detaildiagnose auf.
+Der MCP-Server `sva-studio-mcp` stellt ergänzend zu den Einzeltools das Tool `studio_instance_process` bereit. Es verwendet die Modi `create`, `repair` und `adapt` und ruft dabei ausschließlich die bestehenden Studio-API-Verträge für Registry, Modulzuweisung, IAM-Basis, Admin-Struktur, Keycloak-Provisioning, instanzgebundenen Rollenabgleich, Rechteprobe und Detaildiagnose auf. Der Rollenabgleich verwendet die dedizierte Action `instance.iam.roles.reconcile`; eine Browser-Session oder eine pauschale IAM-Admin-Berechtigung ist dafür nicht erforderlich.
 
 - `create` verlangt zusätzlich den bestehenden Create-Vertrag und legt die Registry-Instanz idempotent an.
 - `repair` arbeitet auf einer vorhandenen Instanz über den bestehenden Reconcile-Vertrag; `adapt` ergänzt nur fehlende Module einschließlich ihrer IAM-Basis und Admin-Struktur.
 - Der Prozess verfolgt den gestarteten Keycloak-Run nur innerhalb seines lokalen Zeitbudgets mit gedrosseltem Backoff und gibt bei noch laufendem oder fehlgeschlagenem Run einen handlungsfähigen Zwischen- beziehungsweise Blockierungszustand zurück.
-- Nach einem erfolgreichen Run führt er eine tenantlokale Rechteprobe aus und liest den aktuellen Detail-/Doctor-Zustand. Historische Preflight-Evidenz ist kein Abschlussnachweis.
+- Nach einem erfolgreichen Run gleicht er zuerst den instanzgebundenen Rollen-Katalog ab, führt dann eine tenantlokale Rechteprobe aus und liest den aktuellen Detail-/Doctor-Zustand. Historische Preflight-Evidenz ist kein Abschlussnachweis.
 - Der Keycloak-Worker persistiert den nach der Mutation gelesenen Status als `status_snapshot` im Provisioning-Run. Dieser Postflight ist von seinem historischen `worker_preflight_snapshot` getrennt; der MCP bewertet den Abschluss zusätzlich anhand des aktuellen Detail-Reads.
 - `completed: true` bedeutet ausschließlich, dass die Instanz `active` ist und die abgenommenen Doctor-Achsen bereit sind. Ein technisch fertiger Tenant im Status `requested` liefert stattdessen `awaiting_human_action`, `completed: false` und die nächste Action `instance.status.activate`.
 

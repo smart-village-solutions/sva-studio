@@ -40,6 +40,8 @@ export const schemas = {
   assignModule: assignModuleSchema.extend({ instanceId, ...mutationMeta }).strict(),
   bootstrap: bootstrapAdminStructureSchema.extend({ instanceId, ...mutationMeta }).strict(),
   seed: instanceMutationInput,
+  accessProbe: instanceMutationInput,
+  roleReconcile: instanceMutationInput,
   prepareCritical: z.object({
     instanceId,
     actionId: z.enum([

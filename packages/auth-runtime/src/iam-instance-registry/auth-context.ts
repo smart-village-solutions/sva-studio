@@ -5,6 +5,7 @@ export const REGISTRY_ACTIONS = {
   provisionRunRead: 'instance.provision.run.read', create: 'instance.create', update: 'instance.update',
   provisionPlan: 'instance.provision.plan', provisionExecute: 'instance.provision.execute', reconcile: 'instance.reconcile',
   moduleAssign: 'instance.module.assign', moduleRevoke: 'instance.module.revoke', iamBaselineSeed: 'instance.iam.baseline.seed',
+  iamRolesReconcile: 'instance.iam.roles.reconcile',
   adminBootstrap: 'instance.admin.bootstrap', statusActivate: 'instance.status.activate', statusSuspend: 'instance.status.suspend',
   statusArchive: 'instance.status.archive', secretRotate: 'instance.secret.rotate', confirmationPrepare: 'instance.confirmation.prepare',
 } as const;

@@ -68,6 +68,7 @@ vi.mock('./core-keycloak.js', () => ({
   planInstanceKeycloakProvisioningInternal: vi.fn(async () => new Response('plan', { status: 200 })),
   probeTenantIamAccessInternal: vi.fn(async () => new Response('probe', { status: 200 })),
   reconcileInstanceKeycloakInternal: vi.fn(async () => new Response('reconcile', { status: 200 })),
+  reconcileInstanceIamRolesInternal: vi.fn(async () => new Response('roles-reconcile', { status: 200 })),
   rotateInstanceSecretInternal: vi.fn(async () => new Response('rotate', { status: 200 })),
 }));
 
@@ -143,9 +144,9 @@ describe('iam-instance-registry/server', () => {
       handler(new Request('https://studio.example.org/api/v1/iam/instances/demo'))
     ));
 
-    expect(responses).toHaveLength(22);
+    expect(responses).toHaveLength(23);
     expect(responses.every((response) => response.status === 200)).toBe(true);
-    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(22);
+    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(23);
     expect(state.prepareInstanceConfirmationInternal).toHaveBeenCalledOnce();
   });
 });

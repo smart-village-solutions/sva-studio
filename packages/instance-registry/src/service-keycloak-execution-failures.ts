@@ -1,8 +1,8 @@
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { appendRunStep } from './service-keycloak-run-steps.js';
+import { buildInstanceRegistryFailureLog, readInstanceRegistryStepKey } from './observability.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
-import { readInstanceRegistryStepKey } from './observability.js';
 
 const logger = createSdkLogger({ component: 'keycloak-provisioning-failures', level: 'error' });
 
@@ -54,19 +54,18 @@ export const failRun = async (
       ? 'instance_registry'
       : undefined;
 
-  logger.error('provisioning_run_failed', {
+  logger.error('provisioning_run_failed', buildInstanceRegistryFailureLog(input.error, {
     operation: 'process_keycloak_provisioning_run',
-    result: 'failed',
-    request_id: input.requestId,
-    instance_id: input.instanceId,
-    run_id: input.runId,
+    requestId: input.requestId,
+    instanceId: input.instanceId,
+    runId: input.runId,
     intent: input.intent,
-    step_key: stepKey,
-    ...(dependency ? { dependency } : {}),
-    error_type: input.error instanceof Error ? input.error.name : typeof input.error,
-    error_code: reasonCode,
-    classification: reasonCode,
-  });
+    stepKey,
+    dependency,
+  }, {
+    code: 'internal_unclassified',
+    status: 500,
+  }));
 
   await appendRunStep(deps, {
     runId: input.runId,

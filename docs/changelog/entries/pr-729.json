@@ -1,0 +1,4 @@
+{
+  "prNumber": 729,
+  "body": "Fehlgeschlagene Keycloak-Provisioning-Läufe protokollieren zusätzlich sichere strukturierte Fehler-Metadaten wie Datenbank-Code, Tabelle, Spalte und Constraint. So lassen sich Betriebsfehler gezielt diagnostizieren, ohne Secrets oder Fehlermeldungstexte in Logs abzulegen."
+}

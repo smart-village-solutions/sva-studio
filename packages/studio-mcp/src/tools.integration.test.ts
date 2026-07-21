@@ -6,7 +6,7 @@ import { createStudioMcpServer } from './index.js';
 
 const config = {
   baseUrl: 'https://studio.example', tokenUrl: 'https://id.example/token', clientId: 'mcp', clientSecret: 'secret',
-  readTimeoutMs: 1_000, mutationTimeoutMs: 1_000, tokenTimeoutMs: 1_000, diagnosisTimeoutMs: 1_000,
+  readTimeoutMs: 1_000, mutationTimeoutMs: 1_000, processTimeoutMs: 1_000, tokenTimeoutMs: 1_000, diagnosisTimeoutMs: 1_000,
 };
 
 describe('Studio MCP tools', () => {
@@ -92,6 +92,7 @@ describe('Studio MCP tools', () => {
   it('orchestrates a create process and stops before challenge-protected activation', async () => {
     const request = vi.fn()
       .mockResolvedValueOnce({ data: { instanceId: 'demo' } })
+      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
@@ -115,9 +116,10 @@ describe('Studio MCP tools', () => {
       ok: true,
       data: { completed: false, status: 'awaiting_human_action', nextAction: { actionId: 'instance.status.activate' } },
     });
-    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/execute' }));
-    expect(request).toHaveBeenNthCalledWith(4, expect.objectContaining({ path: '/api/v1/iam/instances/demo/tenant-iam/access-probe' }));
-    expect(request).toHaveBeenNthCalledWith(5, expect.objectContaining({ path: '/api/v1/iam/instances/demo' }));
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/iam/instances/demo' }));
+    expect(request).toHaveBeenNthCalledWith(3, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/execute' }));
+    expect(request).toHaveBeenNthCalledWith(5, expect.objectContaining({ path: '/api/v1/iam/instances/demo/tenant-iam/access-probe' }));
+    expect(request).toHaveBeenNthCalledWith(6, expect.objectContaining({ path: '/api/v1/iam/instances/demo' }));
     await Promise.all([client.close(), server.close()]);
   });
 
@@ -142,6 +144,7 @@ describe('Studio MCP tools', () => {
 
   it('adapts modules and only reports completion for an active, ready instance', async () => {
     const request = vi.fn()
+      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
       .mockResolvedValueOnce({ data: { assigned: true } })
       .mockResolvedValueOnce({ data: { seeded: true } })
       .mockResolvedValueOnce({ data: { bootstrapped: true } })
@@ -160,12 +163,57 @@ describe('Studio MCP tools', () => {
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
 
     const response = await client.callTool({ name: 'studio_instance_process', arguments: {
-      mode: 'adapt', instanceId: 'demo', moduleIds: ['news'],
+      mode: 'adapt', instanceId: 'demo', moduleIds: ['news'], idempotencyKey: 'x'.repeat(200),
     } });
 
     expect(response.structuredContent).toMatchObject({ ok: true, data: { completed: true, status: 'completed' } });
-    expect(request).toHaveBeenNthCalledWith(1, expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/assign' }));
-    expect(request).toHaveBeenNthCalledWith(3, expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/bootstrap-admin-structure' }));
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/assign' }));
+    expect(request).toHaveBeenNthCalledWith(4, expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/bootstrap-admin-structure' }));
+    expect(request.mock.calls.map(([input]) => input.idempotencyKey).filter(Boolean).every((key) => key.length <= 200)).toBe(true);
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it('uses reconcile and the resulting run for repairs', async () => {
+    const request = vi.fn()
+      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: ['news'] } })
+      .mockResolvedValueOnce({ data: { overallStatus: 'planned' } })
+      .mockResolvedValueOnce({ data: { latestKeycloakProvisioningRun: { id: 'run-1' } } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
+      .mockResolvedValueOnce({ data: {
+        instanceId: 'demo', status: 'requested', keycloakStatus: { realmExists: true, clientExists: true },
+        tenantIamStatus: { overall: { status: 'ready' } }, moduleIamStatus: { overall: { status: 'ready' } },
+      } });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({ name: 'studio_instance_process', arguments: { mode: 'repair', instanceId: 'demo' } });
+
+    expect(response.structuredContent).toMatchObject({ ok: true, data: { status: 'awaiting_human_action' } });
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/reconcile' }));
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it('blocks completion when a present module-IAM status is malformed', async () => {
+    const request = vi.fn()
+      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: ['news'] } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
+      .mockResolvedValueOnce({ data: {
+        instanceId: 'demo', status: 'active', keycloakStatus: { realmExists: true, clientExists: true },
+        tenantIamStatus: { overall: { status: 'ready' } }, moduleIamStatus: {},
+      } });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({ name: 'studio_instance_process', arguments: { mode: 'adapt', instanceId: 'demo' } });
+
+    expect(response.structuredContent).toMatchObject({ ok: true, data: { completed: false, status: 'blocked' } });
     await Promise.all([client.close(), server.close()]);
   });
 

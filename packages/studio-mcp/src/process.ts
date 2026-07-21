@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { z } from 'zod';
 import type { StudioApiClient, StudioApiRequest } from './api-client.js';
 import type { schemas } from './contracts.js';
@@ -34,7 +34,29 @@ const isDoctorReady = (detail: Record<string, unknown>): boolean => {
     && status.clientExists === true
     && tenantIam.overall !== undefined
     && unwrap(tenantIam.overall).status === 'ready'
-    && (moduleIam.overall === undefined || unwrap(moduleIam.overall).status === 'ready');
+    && (detail.moduleIamStatus === undefined || unwrap(moduleIam.overall).status === 'ready');
+};
+
+const readAssignedModuleIds = (detail: Record<string, unknown>): ReadonlySet<string> =>
+  new Set((Array.isArray(detail.assignedModules) ? detail.assignedModules : []).flatMap((value) => {
+    if (typeof value === 'string') return [value];
+    const record = unwrap(value);
+    return typeof record.moduleId === 'string' ? [record.moduleId] : [];
+  }));
+
+const deriveIdempotencyKey = (base: string, suffix: string): string => {
+  const candidate = `${base}:${suffix}`;
+  return candidate.length <= 200
+    ? candidate
+    : createHash('sha256').update(candidate).digest('hex');
+};
+
+const readRunId = (detail: Record<string, unknown>): string | undefined => {
+  const latestRun = unwrap(detail.latestKeycloakProvisioningRun);
+  if (typeof latestRun.id === 'string') return latestRun.id;
+  const runs = Array.isArray(detail.keycloakProvisioningRuns) ? detail.keycloakProvisioningRuns : [];
+  const firstRun = unwrap(runs[0]);
+  return typeof firstRun.id === 'string' ? firstRun.id : undefined;
 };
 
 const request = (client: StudioApiClient, input: StudioApiRequest) => client.request(input);
@@ -52,9 +74,11 @@ const waitForRun = async (
 ): Promise<Record<string, unknown>> => {
   const deadline = Date.now() + timeoutMs;
   let run = unwrap(await request(client, { path: `/api/v1/iam/instances/${encodeURIComponent(instanceId)}/keycloak/runs/${encodeURIComponent(runId)}`, requestId }));
+  let delayMs = 1_000;
   while (!isTerminalRun(run) && Date.now() < deadline) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+    await new Promise<void>((resolve) => setTimeout(resolve, Math.min(delayMs, Math.max(0, deadline - Date.now()))));
     run = unwrap(await request(client, { path: `/api/v1/iam/instances/${encodeURIComponent(instanceId)}/keycloak/runs/${encodeURIComponent(runId)}`, requestId }));
+    delayMs = Math.min(delayMs * 2, 5_000);
   }
   return run;
 };
@@ -75,17 +99,27 @@ export const runStudioInstanceProcess = async (
     completedSteps.push('registry_created');
   }
 
-  for (const moduleId of input.moduleIds ?? []) {
-    await request(client, mutation(`${basePath}/modules/assign`, { moduleId }, requestId, `${idempotencyKey}:module:${moduleId}`));
+  const detailBeforeModules = unwrap(await request(client, { path: basePath, requestId }));
+  const requestedModuleIds = [...new Set(input.moduleIds ?? [])];
+  const assignedModuleIds = readAssignedModuleIds(detailBeforeModules);
+  const missingModuleIds = requestedModuleIds.filter((moduleId) => !assignedModuleIds.has(moduleId));
+  for (const moduleId of missingModuleIds) {
+    await request(client, mutation(`${basePath}/modules/assign`, { moduleId }, requestId, deriveIdempotencyKey(idempotencyKey, `module:${moduleId}`)));
   }
-  if ((input.moduleIds?.length ?? 0) > 0) {
-    await request(client, mutation(`${basePath}/modules/seed-iam-baseline`, {}, requestId, `${idempotencyKey}:iam-baseline`));
-    await request(client, mutation(`${basePath}/modules/bootstrap-admin-structure`, { moduleIds: input.moduleIds }, requestId, `${idempotencyKey}:admin-bootstrap`));
+  if (missingModuleIds.length > 0) {
+    await request(client, mutation(`${basePath}/modules/seed-iam-baseline`, {}, requestId, deriveIdempotencyKey(idempotencyKey, 'iam-baseline')));
+    await request(client, mutation(`${basePath}/modules/bootstrap-admin-structure`, { moduleIds: missingModuleIds }, requestId, deriveIdempotencyKey(idempotencyKey, 'admin-bootstrap')));
     completedSteps.push('modules_and_iam_ready');
   }
 
-  const execute = unwrap(await request(client, mutation(`${basePath}/keycloak/execute`, { intent: 'provision' }, requestId, `${idempotencyKey}:provision`)));
-  const runId = typeof execute.id === 'string' ? execute.id : undefined;
+  let runId: string | undefined;
+  if (input.mode === 'repair') {
+    await request(client, mutation(`${basePath}/keycloak/reconcile`, {}, requestId, deriveIdempotencyKey(idempotencyKey, 'reconcile')));
+    runId = readRunId(unwrap(await request(client, { path: basePath, requestId })));
+  } else {
+    const execute = unwrap(await request(client, mutation(`${basePath}/keycloak/execute`, { intent: 'provision' }, requestId, deriveIdempotencyKey(idempotencyKey, 'provision'))));
+    runId = typeof execute.id === 'string' ? execute.id : undefined;
+  }
   if (!runId) {
     return {
       completed: false, status: 'blocked', instanceId: input.instanceId, currentStep: 'keycloak_provisioning',
@@ -103,7 +137,7 @@ export const runStudioInstanceProcess = async (
   }
   completedSteps.push('keycloak_provisioned');
 
-  await request(client, mutation(`${basePath}/tenant-iam/access-probe`, {}, requestId, `${idempotencyKey}:access-probe`));
+  await request(client, mutation(`${basePath}/tenant-iam/access-probe`, {}, requestId, deriveIdempotencyKey(idempotencyKey, 'access-probe')));
   completedSteps.push('tenant_iam_access_probed');
   const detail = unwrap(await request(client, { path: basePath, requestId }));
   const doctor = {

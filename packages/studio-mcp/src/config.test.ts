@@ -9,7 +9,7 @@ describe('Studio MCP configuration', () => {
       SVA_STUDIO_MCP_CLIENT_SECRET: 'direct-secret',
     });
     expect(config.clientSecret).toBe('direct-secret');
-    expect(config).toMatchObject({ readTimeoutMs: 10_000, mutationTimeoutMs: 30_000, tokenTimeoutMs: 10_000 });
+    expect(config).toMatchObject({ readTimeoutMs: 10_000, mutationTimeoutMs: 30_000, processTimeoutMs: 120_000, tokenTimeoutMs: 10_000 });
   });
 
   it('resolves a secret with an argv command without shell interpretation', async () => {

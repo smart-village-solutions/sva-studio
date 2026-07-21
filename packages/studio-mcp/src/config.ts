@@ -12,6 +12,7 @@ const sourceSchema = z.object({
   clientSecretCommand: z.array(z.string().min(1)).min(1).optional(),
   readTimeoutMs: z.number().int().positive().default(10_000),
   mutationTimeoutMs: z.number().int().positive().default(30_000),
+  processTimeoutMs: z.number().int().positive().default(120_000),
   tokenTimeoutMs: z.number().int().positive().default(10_000),
   diagnosisTimeoutMs: z.number().int().positive().default(15_000),
   caFilePath: z.string().trim().min(1).optional(),
@@ -40,6 +41,9 @@ export const readStudioMcpConfig = async (env: NodeJS.ProcessEnv = process.env):
     mutationTimeoutMs: env.SVA_STUDIO_MCP_MUTATION_TIMEOUT_MS
       ? Number(env.SVA_STUDIO_MCP_MUTATION_TIMEOUT_MS)
       : undefined,
+    processTimeoutMs: env.SVA_STUDIO_MCP_PROCESS_TIMEOUT_MS
+      ? Number(env.SVA_STUDIO_MCP_PROCESS_TIMEOUT_MS)
+      : undefined,
     tokenTimeoutMs: env.SVA_STUDIO_MCP_TOKEN_TIMEOUT_MS
       ? Number(env.SVA_STUDIO_MCP_TOKEN_TIMEOUT_MS)
       : undefined,
@@ -63,6 +67,7 @@ export const readStudioMcpConfig = async (env: NodeJS.ProcessEnv = process.env):
     clientId: source.clientId,
     readTimeoutMs: source.readTimeoutMs,
     mutationTimeoutMs: source.mutationTimeoutMs,
+    processTimeoutMs: source.processTimeoutMs,
     tokenTimeoutMs: source.tokenTimeoutMs,
     diagnosisTimeoutMs: source.diagnosisTimeoutMs,
     caFilePath: source.caFilePath,

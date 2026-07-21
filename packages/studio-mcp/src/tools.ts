@@ -48,15 +48,16 @@ const call = async (
 const callProcess = async (
   client: StudioApiClient,
   params: z.infer<typeof schemas.process>,
-  timeoutMs: number
+  processTimeoutMs: number,
+  diagnosisTimeoutMs: number
 ): Promise<ToolResult> => {
   try {
-    const data = await runStudioInstanceProcess(client, params, { timeoutMs });
+    const data = await runStudioInstanceProcess(client, params, { timeoutMs: processTimeoutMs });
     return result({ ok: true, data, meta: { requestId: data.requestId } });
   } catch (caught) {
     if (caught instanceof UpstreamSchemaError) throw caught;
     const error = normalizeError(caught);
-    const diagnostics = await diagnoseInstance(client, params.instanceId, timeoutMs, error).catch(() => undefined);
+    const diagnostics = await diagnoseInstance(client, params.instanceId, diagnosisTimeoutMs, error).catch(() => undefined);
     return result({ ok: false, error, ...(diagnostics ? { diagnostics } : {}), meta: { requestId: error.requestId } });
   }
 };
@@ -118,7 +119,7 @@ export const registerStudioTools = (server: McpServer, client: StudioApiClient, 
   register('studio_instance_diagnose', 'Studio-Instanz diagnostizieren', 'Aggregiert Detail-, Keycloak-Preflight- und Status-Evidenz ohne Änderungen.', schemas.diagnose, readAnnotations,
     async (p) => result({ ok: true, data: await diagnoseInstance(client, p.instanceId, config.diagnosisTimeoutMs), meta: {} }));
   register('studio_instance_process', 'Studio-Instanzprozess ausführen', 'Orchestriert Anlage, Reparatur oder Anpassung ausschließlich über bestehende Studio-Verträge. Kritische Aktivierung bleibt eine separate, challenge-geschützte Aktion.', schemas.process, writeAnnotations,
-    (p) => callProcess(client, p, config.mutationTimeoutMs));
+    (p) => callProcess(client, p, config.processTimeoutMs, config.diagnosisTimeoutMs));
   register('studio_instance_provisioning_run_get', 'Provisioning-Lauf lesen', 'Liest einen bestimmten Keycloak-Provisioning-Lauf.', schemas.run, readAnnotations,
     (p) => call(client, { path: `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/keycloak/runs/${encodeURIComponent(p.runId)}` }));
 

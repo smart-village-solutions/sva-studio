@@ -93,3 +93,42 @@ Das System SHALL die MCP-Create- und nachgelagerte Provisioning-/Keycloak-Kette 
 - **WHEN** das lokale MCP-Tool einen Erfolg oder Fehler verarbeitet
 - **THEN** bleibt `stdout` ausschließlich dem MCP-Protokoll vorbehalten
 - **AND** erfolgt die lokale Diagnose über die strukturierte Tool-Antwort ohne Token-, Payload- oder Secret-Logging
+
+### Requirement: Modularer MCP-Instanzprozess mit Doctor-Abnahme
+
+Das System SHALL berechtigten MCP-Operatoren einen modularen Gesamtprozess für die Neuanlage, Reparatur und Anpassung von Studio-Instanzen bereitstellen. Der Prozess SHALL die vorhandenen fachlichen Registry-, Modul-, Keycloak- und IAM-Verträge orchestrieren, ohne einen parallelen Provisioning-Pfad einzuführen.
+
+#### Scenario: Neue Instanz wird erst nach vollständiger Abnahme als abgeschlossen gemeldet
+
+- **WHEN** ein MCP-Operator den Gesamtprozess im Modus `create` für eine neue Instanz ausführt
+- **THEN** legt das System Registry, angeforderte Module, IAM-Basis und Keycloak-Artefakte über die bestehenden Verträge an
+- **AND** wartet es auf das terminale Ergebnis des Keycloak-Workers
+- **AND** führt es einen aktuellen Postflight, einen Rollenabgleich und eine tenantlokale Rechteprobe aus
+- **AND** meldet es `completed: true` nur, wenn die Instanz aktiv ist und alle für den Auftrag erforderlichen Doctor-Achsen `ready` sind
+
+#### Scenario: Kritische Aktivierung bleibt Human-in-the-Loop
+
+- **WHEN** die technische Abnahme erfolgreich ist, die Instanz aber noch nicht aktiviert wurde
+- **THEN** meldet der Gesamtprozess `awaiting_human_action` und `completed: false`
+- **AND** erklärt die Antwort verständlich, dass die Aktivierung noch aussteht und warum sie nicht automatisch ausgeführt wurde
+- **AND** nennt sie die konkrete nächste Action und die erforderliche serverseitige Bestätigungs-Challenge
+
+#### Scenario: Bestehende Instanz wird gezielt repariert oder angepasst
+
+- **WHEN** ein MCP-Operator den Gesamtprozess im Modus `repair` oder `adapt` aufruft, beispielsweise um ein Modul hinzuzufügen
+- **THEN** ermittelt das System den aktuellen Zustand und führt nur erforderliche, idempotente Schritte aus
+- **AND** ergänzt für neue Module deren IAM-Basis und Admin-Struktur über die gemeinsame Modul-IAM-Vertragsquelle
+- **AND** liefert es nach dem Postflight eine verständliche Beschreibung der erledigten, offenen und blockierten Schritte
+
+#### Scenario: Historischer Preflight übersteuert keinen aktuellen erfolgreichen Zustand
+
+- **WHEN** ein Keycloak-Worker vor der Mutation einen Preflight gespeichert und die Mutation anschließend erfolgreich abgeschlossen hat
+- **THEN** persistiert der Worker einen separaten aktuellen Postflight
+- **AND** verwenden Doctor, Instanzdetail und MCP für die Abschlussbewertung den aktuellen Status oder den Postflight statt des historischen Preflights
+
+#### Scenario: Prozessantwort bleibt verständlich und handlungsfähig
+
+- **WHEN** ein Gesamtprozess abgeschlossen, blockiert oder auf menschliche Bestätigung wartet
+- **THEN** enthält die MCP-Antwort den aktuellen Schritt, erledigte und offene Schritte, Doctor-Zusammenfassung, Korrelation und eine konkrete nächste Aktion
+- **AND** ergänzt sie stabile technische Codes nur als Diagnosehilfe
+- **AND** enthält sie keine Secrets, Tokens, Passwörter oder unnötigen Providerdetails

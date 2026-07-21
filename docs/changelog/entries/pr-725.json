@@ -1,0 +1,4 @@
+{
+  "prNumber": 725,
+  "body": "Die Dev-Umgebung aktiviert den SVA-Studio-MCP jetzt verbindlich im versionierten Compose-Overlay. Der Service-Token-Pfad bleibt damit auch dann verfügbar, wenn die extern hinterlegte Laufzeitkonfiguration diese nicht geheimen MCP-Werte nicht enthält."
+}

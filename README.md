@@ -45,7 +45,7 @@ Das bestehende Redaktionssystem ist umständlich, schwer erweiterbar und limitie
 **SVA Studio versteht sich als echtes Open-Source-Projekt.** Das bedeutet für uns:
 
 - **Offene Governance:** Transparente Entscheidungsprozesse, Community-Beteiligung bei der Weiterentwicklung
-- **Klare Lizenzstrategie:** Favorit ist die [EUPL](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12) (European Union Public License) – die finale Entscheidung wird in [Issue #2](https://github.com/smart-village-solutions/sva-studio/issues/2) dokumentiert
+- **Klare Lizenz:** SVA Studio steht unter der [EUPL v1.2](LICENSE) (European Union Public Licence).
 - **Community-Contributions:** Aktive Einbindung von Entwickler:innen, Designer:innen und Anwender:innen
 - **Nachhaltiger Betrieb:** Organisation und Finanzierung über die Förderphase hinaus sicherstellen
 - **Standards & Compliance:** IT-Sicherheits-Leitlinie, BSI-Grundschutz, BITV, Föderale IT-Architekturrichtlinien, DSGVO, Open-Source-Vorgaben (MPSC), relevante Datenstandards (xZuFi, OParl, Open311, schema.org, ...)

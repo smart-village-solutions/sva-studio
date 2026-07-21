@@ -4,6 +4,7 @@ import { getWorkspaceContext } from '@sva/server-runtime';
 import { asApiItem, createApiError, requireIdempotencyKey } from '../iam-account-management/api-helpers.js';
 import { validateCsrf as validateSessionCsrf } from '../iam-account-management/csrf.js';
 import { runRoleCatalogReconciliation } from '../iam-account-management/reconcile-core.js';
+import { mapRoleSyncErrorCode } from '../iam-account-management/role-audit.js';
 import { jsonResponse } from '../db.js';
 import type { RegistryRequestContext } from './auth-context.js';
 import { isAuthenticatedRegistryServiceRequest } from './service-token.js';
@@ -30,12 +31,18 @@ export const reconcileInstanceIamRolesInternal = async (
   try {
     const report = await runRoleCatalogReconciliation({ instanceId, requestId });
     return jsonResponse(200, asApiItem(report, requestId));
-  } catch {
+  } catch (error) {
     return createApiError(
       503,
       'keycloak_unavailable',
       'Rollen-Reconciliation konnte nicht ausgeführt werden.',
-      requestId
+      requestId,
+      {
+        syncState: 'failed',
+        syncError: { code: mapRoleSyncErrorCode(error) },
+        scope_kind: 'instance',
+        instanceId,
+      }
     );
   }
 };

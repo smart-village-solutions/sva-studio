@@ -23,7 +23,7 @@ pnpm nx run studio-mcp:build
 Das Secret wird nur lokal unter einem eindeutigen Account- und Service-Namen abgelegt. Die verdeckte Eingabe verhindert, dass der Geheimwert als Shell-Argument oder in der History landet.
 
 ```bash
-read -rs "sva_mcp_secret?Client-Secret: "
+read -r -s -p "Client-Secret: " sva_mcp_secret
 printf '\n'
 security add-generic-password -U \
   -a "sva-studio-mcp" \
@@ -115,7 +115,7 @@ Die Tools mit kritischer Aktion verlangen immer zuerst `studio_instance_critical
 
 ### Fehlerhaften Tenant reparieren
 
-1. Mit `studio_instance_diagnose`, `studio_instance_keycloak_status` und `studio_instance_keycloak_preflight die aktuelle Evidenz lesen.
+1. Mit `studio_instance_diagnose`, `studio_instance_keycloak_status` und `studio_instance_keycloak_preflight` die aktuelle Evidenz lesen.
 2. Bei Rollen- oder Zugriffsproblemen `studio_instance_iam_roles_reconcile` und anschließend `studio_instance_tenant_iam_access_probe` ausführen.
 3. Bei Keycloak-Drift `studio_instance_process` im Modus `repair` verwenden; laufende oder fehlgeschlagene Runs mit `studio_instance_provisioning_run_get` verfolgen.
 4. Erst bei grünem Doctor und notwendiger menschlicher Freigabe aktivieren.

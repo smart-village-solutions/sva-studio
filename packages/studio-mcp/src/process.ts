@@ -152,7 +152,14 @@ export const runStudioInstanceProcess = async (
   }
   completedSteps.push('keycloak_provisioned');
 
-  await request(client, mutation(`${basePath}/tenant-iam/roles/reconcile`, {}, requestId, deriveIdempotencyKey(idempotencyKey, 'roles-reconcile')));
+  const roleReconcile = unwrap(await request(client, mutation(`${basePath}/tenant-iam/roles/reconcile`, {}, requestId, deriveIdempotencyKey(idempotencyKey, 'roles-reconcile'))));
+  if (roleReconcile.outcome !== 'success') {
+    return {
+      completed: false, status: 'blocked', instanceId: input.instanceId, currentStep: 'tenant_iam_roles_reconcile',
+      completedSteps, openSteps: ['tenant_iam_roles_reconcile'], doctor: roleReconcile,
+      nextAction: { actionId: 'instance.iam.roles.reconcile', summary: 'Der Rollenabgleich ist nicht vollständig erfolgreich; Ergebnis prüfen.' }, requestId,
+    };
+  }
   completedSteps.push('tenant_iam_roles_reconciled');
   await request(client, mutation(`${basePath}/tenant-iam/access-probe`, {}, requestId, deriveIdempotencyKey(idempotencyKey, 'access-probe')));
   completedSteps.push('tenant_iam_access_probed');

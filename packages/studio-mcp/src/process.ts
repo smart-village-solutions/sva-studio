@@ -102,6 +102,38 @@ const assignMissingModules = async (input: {
   return true;
 };
 
+const evaluateDoctor = (input: {
+  detail: Record<string, unknown>;
+  instanceId: string;
+  completedSteps: readonly string[];
+  requestId: string;
+}): StudioInstanceProcessResult => {
+  const doctor = {
+    keycloakStatus: input.detail.keycloakStatus,
+    tenantIamStatus: input.detail.tenantIamStatus,
+    moduleIamStatus: input.detail.moduleIamStatus,
+  };
+  if (input.detail.status !== 'active') {
+    return {
+      completed: false, status: 'awaiting_human_action', instanceId: input.instanceId, currentStep: 'activation',
+      completedSteps: input.completedSteps, openSteps: ['activation'], doctor,
+      nextAction: { actionId: 'instance.status.activate', summary: 'Die technische Abnahme ist abgeschlossen; Aktivierung verlangt eine serverseitige Bestätigungs-Challenge.' }, requestId: input.requestId,
+    };
+  }
+  if (!isDoctorReady(input.detail)) {
+    return {
+      completed: false, status: 'blocked', instanceId: input.instanceId, currentStep: 'doctor_validation',
+      completedSteps: input.completedSteps, openSteps: ['doctor_validation'], doctor,
+      nextAction: { actionId: 'instance.diagnose', summary: 'Die aktuelle Doctor-Abnahme ist nicht vollständig bereit.' }, requestId: input.requestId,
+    };
+  }
+  return {
+    completed: true, status: 'completed', instanceId: input.instanceId, currentStep: 'completed', completedSteps: input.completedSteps,
+    openSteps: [], doctor,
+    nextAction: { actionId: 'instance.read', summary: 'Die Instanz ist aktiv und vollständig abgenommen.' }, requestId: input.requestId,
+  };
+};
+
 export const runStudioInstanceProcess = async (
   client: StudioApiClient,
   input: ProcessInput,
@@ -164,28 +196,5 @@ export const runStudioInstanceProcess = async (
   await request(client, mutation(`${basePath}/tenant-iam/access-probe`, {}, requestId, deriveIdempotencyKey(idempotencyKey, 'access-probe')));
   completedSteps.push('tenant_iam_access_probed');
   const detail = unwrap(await request(client, { path: basePath, requestId }));
-  const doctor = {
-    keycloakStatus: detail.keycloakStatus,
-    tenantIamStatus: detail.tenantIamStatus,
-    moduleIamStatus: detail.moduleIamStatus,
-  };
-  if (detail.status !== 'active') {
-    return {
-      completed: false, status: 'awaiting_human_action', instanceId: input.instanceId, currentStep: 'activation',
-      completedSteps, openSteps: ['activation'], doctor,
-      nextAction: { actionId: 'instance.status.activate', summary: 'Die technische Abnahme ist abgeschlossen; Aktivierung verlangt eine serverseitige Bestätigungs-Challenge.' }, requestId,
-    };
-  }
-  if (!isDoctorReady(detail)) {
-    return {
-      completed: false, status: 'blocked', instanceId: input.instanceId, currentStep: 'doctor_validation',
-      completedSteps, openSteps: ['doctor_validation'], doctor,
-      nextAction: { actionId: 'instance.diagnose', summary: 'Die aktuelle Doctor-Abnahme ist nicht vollständig bereit.' }, requestId,
-    };
-  }
-  return {
-    completed: true, status: 'completed', instanceId: input.instanceId, currentStep: 'completed', completedSteps,
-    openSteps, doctor,
-    nextAction: { actionId: 'instance.read', summary: 'Die Instanz ist aktiv und vollständig abgenommen.' }, requestId,
-  };
+  return evaluateDoctor({ detail, instanceId: input.instanceId, completedSteps, requestId });
 };

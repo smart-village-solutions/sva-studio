@@ -41,7 +41,7 @@ SVA_STUDIO_MCP_CLIENT_ID = "sva-studio-mcp"
 SVA_STUDIO_MCP_CLIENT_SECRET_COMMAND = '["security","find-generic-password","-a","sva-studio-mcp","-s","sva-studio-mcp-studio-dev","-w"]'
 ```
 
-Der Secret-Resolver ist ein JSON-Array aus Programm und Argumenten und wird ohne Shell ausgeführt. Alternativ ist `SVA_STUDIO_MCP_CLIENT_SECRET` nur als lokaler Fallback vorgesehen. Zeitgrenzen können über `SVA_STUDIO_MCP_READ_TIMEOUT_MS`, `SVA_STUDIO_MCP_MUTATION_TIMEOUT_MS`, `SVA_STUDIO_MCP_TOKEN_TIMEOUT_MS` und `SVA_STUDIO_MCP_DIAGNOSIS_TIMEOUT_MS` angepasst werden. `SVA_STUDIO_MCP_CA_FILE` ergänzt bei interner PKI eine CA-Datei; die TLS-Prüfung bleibt immer aktiv.
+Der Secret-Resolver ist ein JSON-Array aus Programm und Argumenten und wird ohne Shell ausgeführt. Alternativ ist `SVA_STUDIO_MCP_CLIENT_SECRET` nur als lokaler Fallback vorgesehen. Zeitgrenzen können über `SVA_STUDIO_MCP_READ_TIMEOUT_MS`, `SVA_STUDIO_MCP_MUTATION_TIMEOUT_MS`, `SVA_STUDIO_MCP_PROCESS_TIMEOUT_MS`, `SVA_STUDIO_MCP_TOKEN_TIMEOUT_MS` und `SVA_STUDIO_MCP_DIAGNOSIS_TIMEOUT_MS` angepasst werden. `SVA_STUDIO_MCP_PROCESS_TIMEOUT_MS` begrenzt ausschließlich das Warten auf einen asynchronen Keycloak-Run und ist standardmäßig länger als ein einzelner Mutationsrequest. `SVA_STUDIO_MCP_CA_FILE` ergänzt bei interner PKI eine CA-Datei; die TLS-Prüfung bleibt immer aktiv.
 
 Der MCP-Prozess holt kurzlebige Access Tokens per Client-Credentials-Flow. Studio validiert diese über OIDC-Metadaten und JWKS; das MCP-Client-Secret wird nicht in den Studio-Stack kopiert. Fehlerausgaben müssen Authorization-Header, Tokens, Client-Secrets, Tenant-Secrets, Connection-Strings und Stacktraces redigieren.
 
@@ -58,8 +58,8 @@ Der MCP wiederholt oder repariert Mutationen nicht selbstständig. `retryable: t
 Der MCP-Server `sva-studio-mcp` stellt ergänzend zu den Einzeltools das Tool `studio_instance_process` bereit. Es verwendet die Modi `create`, `repair` und `adapt` und ruft dabei ausschließlich die bestehenden Studio-API-Verträge für Registry, Modulzuweisung, IAM-Basis, Admin-Struktur, Keycloak-Provisioning, Rechteprobe und Detaildiagnose auf.
 
 - `create` verlangt zusätzlich den bestehenden Create-Vertrag und legt die Registry-Instanz idempotent an.
-- `repair` und `adapt` arbeiten auf einer vorhandenen Instanz; `moduleIds` ergänzt gezielt Module einschließlich ihrer IAM-Basis und Admin-Struktur.
-- Der Prozess verfolgt den gestarteten Keycloak-Run nur innerhalb seines lokalen Zeitbudgets und gibt bei noch laufendem oder fehlgeschlagenem Run einen handlungsfähigen Zwischen- beziehungsweise Blockierungszustand zurück.
+- `repair` arbeitet auf einer vorhandenen Instanz über den bestehenden Reconcile-Vertrag; `adapt` ergänzt nur fehlende Module einschließlich ihrer IAM-Basis und Admin-Struktur.
+- Der Prozess verfolgt den gestarteten Keycloak-Run nur innerhalb seines lokalen Zeitbudgets mit gedrosseltem Backoff und gibt bei noch laufendem oder fehlgeschlagenem Run einen handlungsfähigen Zwischen- beziehungsweise Blockierungszustand zurück.
 - Nach einem erfolgreichen Run führt er eine tenantlokale Rechteprobe aus und liest den aktuellen Detail-/Doctor-Zustand. Historische Preflight-Evidenz ist kein Abschlussnachweis.
 - Der Keycloak-Worker persistiert den nach der Mutation gelesenen Status als `status_snapshot` im Provisioning-Run. Dieser Postflight ist von seinem historischen `worker_preflight_snapshot` getrennt; der MCP bewertet den Abschluss zusätzlich anhand des aktuellen Detail-Reads.
 - `completed: true` bedeutet ausschließlich, dass die Instanz `active` ist und die abgenommenen Doctor-Achsen bereit sind. Ein technisch fertiger Tenant im Status `requested` liefert stattdessen `awaiting_human_action`, `completed: false` und die nächste Action `instance.status.activate`.

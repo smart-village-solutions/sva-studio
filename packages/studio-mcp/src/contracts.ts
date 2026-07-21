@@ -75,6 +75,12 @@ export const schemas = {
     if (value.mode === 'create' && !value.create) {
       ctx.addIssue({ code: 'custom', path: ['create'], message: 'create ist für den Modus create erforderlich.' });
     }
+    if (value.mode !== 'create' && value.create) {
+      ctx.addIssue({ code: 'custom', path: ['create'], message: 'create ist nur für den Modus create erlaubt.' });
+    }
+    if (value.mode === 'repair' && (value.moduleIds?.length ?? 0) > 0) {
+      ctx.addIssue({ code: 'custom', path: ['moduleIds'], message: 'moduleIds ist nur für create oder adapt erlaubt.' });
+    }
     if (value.create && value.create.instanceId !== value.instanceId) {
       ctx.addIssue({ code: 'custom', path: ['create', 'instanceId'], message: 'create.instanceId muss instanceId entsprechen.' });
     }

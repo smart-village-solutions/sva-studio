@@ -96,8 +96,8 @@ const assignMissingModules = async (input: {
   for (const moduleId of missingModuleIds) {
     await request(input.client, mutation(`${input.basePath}/modules/assign`, { moduleId }, input.requestId, deriveIdempotencyKey(input.idempotencyKey, `module:${moduleId}`)));
   }
-  if (requestedModuleIds.length === 0) return false;
   await request(input.client, mutation(`${input.basePath}/modules/seed-iam-baseline`, {}, input.requestId, deriveIdempotencyKey(input.idempotencyKey, 'iam-baseline')));
+  if (requestedModuleIds.length === 0) return false;
   await request(input.client, mutation(`${input.basePath}/modules/bootstrap-admin-structure`, { moduleIds: requestedModuleIds }, input.requestId, deriveIdempotencyKey(input.idempotencyKey, 'admin-bootstrap')));
   return true;
 };

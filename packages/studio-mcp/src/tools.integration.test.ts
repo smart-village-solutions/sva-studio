@@ -94,6 +94,7 @@ describe('Studio MCP tools', () => {
     const request = vi.fn()
       .mockResolvedValueOnce({ data: { instanceId: 'demo' } })
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
+      .mockResolvedValueOnce({ data: { seeded: true } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { outcome: 'success' } })
@@ -119,10 +120,11 @@ describe('Studio MCP tools', () => {
       data: { completed: false, status: 'awaiting_human_action', nextAction: { actionId: 'instance.status.activate' } },
     });
     expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/iam/instances/demo' }));
-    expect(request).toHaveBeenNthCalledWith(3, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/execute' }));
-    expect(request).toHaveBeenNthCalledWith(5, expect.objectContaining({ path: '/api/v1/iam/instances/demo/tenant-iam/roles/reconcile' }));
-    expect(request).toHaveBeenNthCalledWith(6, expect.objectContaining({ path: '/api/v1/iam/instances/demo/tenant-iam/access-probe' }));
-    expect(request).toHaveBeenNthCalledWith(7, expect.objectContaining({ path: '/api/v1/iam/instances/demo' }));
+    expect(request).toHaveBeenNthCalledWith(3, expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/seed-iam-baseline' }));
+    expect(request).toHaveBeenNthCalledWith(4, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/execute' }));
+    expect(request).toHaveBeenNthCalledWith(6, expect.objectContaining({ path: '/api/v1/iam/instances/demo/tenant-iam/roles/reconcile' }));
+    expect(request).toHaveBeenNthCalledWith(7, expect.objectContaining({ path: '/api/v1/iam/instances/demo/tenant-iam/access-probe' }));
+    expect(request).toHaveBeenNthCalledWith(8, expect.objectContaining({ path: '/api/v1/iam/instances/demo' }));
     await Promise.all([client.close(), server.close()]);
   });
 
@@ -130,6 +132,7 @@ describe('Studio MCP tools', () => {
     const request = vi.fn()
       .mockRejectedValueOnce(new StudioApiError(409, { code: 'conflict' }, 'req-1'))
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
+      .mockResolvedValueOnce({ data: { seeded: true } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { outcome: 'success' } })
@@ -208,6 +211,7 @@ describe('Studio MCP tools', () => {
   it('uses reconcile and the resulting run for repairs', async () => {
     const request = vi.fn()
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: ['news'] } })
+      .mockResolvedValueOnce({ data: { seeded: true } })
       .mockResolvedValueOnce({ data: { overallStatus: 'planned' } })
       .mockResolvedValueOnce({ data: { latestKeycloakProvisioningRun: { id: 'run-1' } } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
@@ -225,13 +229,15 @@ describe('Studio MCP tools', () => {
     const response = await client.callTool({ name: 'studio_instance_process', arguments: { mode: 'repair', instanceId: 'demo' } });
 
     expect(response.structuredContent).toMatchObject({ ok: true, data: { status: 'awaiting_human_action' } });
-    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/reconcile' }));
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/seed-iam-baseline' }));
+    expect(request).toHaveBeenNthCalledWith(3, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/reconcile' }));
     await Promise.all([client.close(), server.close()]);
   });
 
   it('blocks completion when a present module-IAM status is malformed', async () => {
     const request = vi.fn()
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: ['news'] } })
+      .mockResolvedValueOnce({ data: { seeded: true } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { outcome: 'success' } })
@@ -254,6 +260,7 @@ describe('Studio MCP tools', () => {
   it('does not require module IAM readiness when no modules are assigned', async () => {
     const request = vi.fn()
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
+      .mockResolvedValueOnce({ data: { seeded: true } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { outcome: 'success' } })
@@ -270,6 +277,7 @@ describe('Studio MCP tools', () => {
     const response = await client.callTool({ name: 'studio_instance_process', arguments: { mode: 'adapt', instanceId: 'demo' } });
 
     expect(response.structuredContent).toMatchObject({ ok: true, data: { completed: true, status: 'completed' } });
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/seed-iam-baseline' }));
     await Promise.all([client.close(), server.close()]);
   });
 

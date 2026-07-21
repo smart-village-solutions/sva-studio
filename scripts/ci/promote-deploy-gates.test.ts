@@ -11,7 +11,7 @@ import {
   formatRiskSummary,
   type DeployGateMode,
 } from './promote-deploy-gates.ts';
-import { isTraefikOnlyComposeDiff } from './traefik-compose-diff.ts';
+import { isDevMcpOnlyComposeDiff, isTraefikOnlyComposeDiff } from './traefik-compose-diff.ts';
 
 const temporaryDirectories: string[] = [];
 
@@ -109,6 +109,17 @@ describe('promote-deploy-gates', () => {
   it('recognizes only label-list changes as Traefik-only compose diffs', () => {
     expect(isTraefikOnlyComposeDiff("-        - 'traefik.http.routers.app.tls=true'\n+        - 'traefik.http.routers.app.tls.certresolver=default'\n")).toBe(true);
     expect(isTraefikOnlyComposeDiff('+  postgres:\n+    image: postgres:16-alpine\n')).toBe(false);
+  });
+
+  it('recognizes only the fixed Dev MCP service-token configuration as safe', () => {
+    expect(isDevMcpOnlyComposeDiff([
+      '+    environment:',
+      '+      SVA_STUDIO_MCP_ENABLED: "true"',
+      '+      SVA_STUDIO_MCP_ISSUER: "https://keycloak.smart-village.app/realms/studio-dev"',
+      '+      SVA_STUDIO_MCP_AUDIENCE: "sva-studio-mcp"',
+      '+      SVA_STUDIO_MCP_CLIENT_ID: "sva-studio-mcp"',
+    ].join('\n'))).toBe(true);
+    expect(isDevMcpOnlyComposeDiff('+      SVA_STUDIO_MCP_ENABLED: "false"')).toBe(false);
   });
 
   it('refuses run mode when no safe executor is configured', () => {

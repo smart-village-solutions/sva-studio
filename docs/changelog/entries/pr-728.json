@@ -1,4 +1,4 @@
 {
   "prNumber": 728,
-  "body": "Der MCP-Instanzprozess gleicht den Rollen-Katalog eines Tenants nun über die dedizierte, instanzgebundene Action instance.iam.roles.reconcile ab. Damit können aktive Tenants nach erfolgreichem Keycloak-Abgleich, Rollenabgleich und Rechteprobe vollständig grün abgenommen werden."
+  "body": "Der MCP-Instanzprozess gleicht den Rollen-Katalog eines Tenants nun über die dedizierte, instanzgebundene Action instance.iam.roles.reconcile ab. Damit können aktive Tenants nach erfolgreichem Keycloak-Abgleich, Rollenabgleich und Rechteprobe vollständig grün abgenommen werden. Zusätzlich stellt der MCP Keycloak-Status, Keycloak-Preflight und die tenantlokale IAM-Rechteprobe als gezielte Betriebsaktionen bereit."
 }

@@ -18,7 +18,7 @@ describe('Studio MCP tools', () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
     const tools = await client.listTools();
-    expect(tools.tools).toHaveLength(22);
+    expect(tools.tools).toHaveLength(25);
     expect(tools.tools.find((tool) => tool.name === 'studio_instances_list')?.annotations?.readOnlyHint).toBe(true);
     expect(tools.tools.find((tool) => tool.name === 'studio_instance_archive')?.annotations?.destructiveHint).toBe(true);
     expect(tools.tools.find((tool) => tool.name === 'studio_instance_critical_action_prepare')?.annotations?.destructiveHint).toBe(false);
@@ -362,7 +362,7 @@ describe('Studio MCP tools', () => {
     await Promise.all([client.close(), server.close()]);
   });
 
-  it('maps the remaining audit, provisioning, module, and update tools to their API contracts', async () => {
+  it('maps the remaining audit, provisioning, diagnostic, module, and update tools to their API contracts', async () => {
     const request = vi.fn().mockResolvedValue({ data: { accepted: true } });
     const server = createStudioMcpServer({ request }, config);
     const client = new Client({ name: 'test-client', version: '1' });
@@ -371,6 +371,8 @@ describe('Studio MCP tools', () => {
 
     await client.callTool({ name: 'studio_instances_list', arguments: { status: 'active' } });
     await client.callTool({ name: 'studio_instance_audit', arguments: { instanceId: 'demo' } });
+    await client.callTool({ name: 'studio_instance_keycloak_status', arguments: { instanceId: 'demo' } });
+    await client.callTool({ name: 'studio_instance_keycloak_preflight', arguments: { instanceId: 'demo' } });
     await client.callTool({ name: 'studio_instance_provisioning_run_get', arguments: { instanceId: 'demo', runId: 'run-1' } });
     await client.callTool({ name: 'studio_instance_update', arguments: {
       instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'studio',
@@ -379,18 +381,22 @@ describe('Studio MCP tools', () => {
     await client.callTool({ name: 'studio_instance_provisioning_execute', arguments: { instanceId: 'demo', intent: 'provision' } });
     await client.callTool({ name: 'studio_instance_module_assign', arguments: { instanceId: 'demo', moduleId: 'news' } });
     await client.callTool({ name: 'studio_instance_iam_baseline_seed', arguments: { instanceId: 'demo' } });
+    await client.callTool({ name: 'studio_instance_tenant_iam_access_probe', arguments: { instanceId: 'demo' } });
     await client.callTool({ name: 'studio_instance_admin_bootstrap', arguments: { instanceId: 'demo', moduleIds: ['news'] } });
     await client.callTool({ name: 'studio_instance_module_revoke', arguments: {
       instanceId: 'demo', moduleId: 'news', challengeId: 'challenge-1', confirmationPhrase: 'REVOKE news FROM demo', idempotencyKey: 'request-1',
     } });
 
-    expect(request).toHaveBeenCalledTimes(10);
+    expect(request).toHaveBeenCalledTimes(13);
     expect(request).toHaveBeenNthCalledWith(1, expect.objectContaining({ path: '/api/v1/iam/instances', query: { status: 'active' } }));
-    expect(request).toHaveBeenNthCalledWith(3, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/runs/run-1' }));
-    expect(request).toHaveBeenNthCalledWith(4, expect.objectContaining({ method: 'PATCH', path: '/api/v1/iam/instances/demo', body: expect.not.objectContaining({ instanceId: 'demo' }) }));
-    expect(request).toHaveBeenNthCalledWith(6, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/execute', body: { intent: 'provision' } }));
-    expect(request).toHaveBeenNthCalledWith(7, expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/assign', body: { moduleId: 'news' } }));
-    expect(request).toHaveBeenNthCalledWith(10, expect.objectContaining({
+    expect(request).toHaveBeenNthCalledWith(3, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/status' }));
+    expect(request).toHaveBeenNthCalledWith(4, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/preflight' }));
+    expect(request).toHaveBeenNthCalledWith(5, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/runs/run-1' }));
+    expect(request).toHaveBeenNthCalledWith(6, expect.objectContaining({ method: 'PATCH', path: '/api/v1/iam/instances/demo', body: expect.not.objectContaining({ instanceId: 'demo' }) }));
+    expect(request).toHaveBeenNthCalledWith(8, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/execute', body: { intent: 'provision' } }));
+    expect(request).toHaveBeenNthCalledWith(9, expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/assign', body: { moduleId: 'news' } }));
+    expect(request).toHaveBeenNthCalledWith(11, expect.objectContaining({ path: '/api/v1/iam/instances/demo/tenant-iam/access-probe', body: {} }));
+    expect(request).toHaveBeenNthCalledWith(13, expect.objectContaining({
       path: '/api/v1/iam/instances/demo/modules/revoke', body: { moduleId: 'news', confirmation: 'REVOKE' },
       confirmationChallengeId: 'challenge-1', confirmationPhrase: 'REVOKE news FROM demo',
     }));

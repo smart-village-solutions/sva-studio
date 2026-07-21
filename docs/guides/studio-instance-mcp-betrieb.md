@@ -53,6 +53,8 @@ Der MCP-Prozess holt kurzlebige Access Tokens per Client-Credentials-Flow. Studi
 
 Der MCP wiederholt oder repariert Mutationen nicht selbstständig. `retryable: true` ist ein Hinweis für einen explizit ausgelösten, begrenzten Retry. Der Primärfehler bleibt auch dann maßgeblich, wenn eine nachgelagerte Diagnose fehlschlägt.
 
+Für gezielte Betriebsprüfungen stehen neben der aggregierten Diagnose eigenständige Tools für den aktuellen Keycloak-Status (`studio_instance_keycloak_status`), den Keycloak-Preflight (`studio_instance_keycloak_preflight`) und die tenantlokale IAM-Zugriffsprobe (`studio_instance_tenant_iam_access_probe`) bereit. Die ersten beiden sind Read-only; die Rechteprobe ist eine kontrollierte, auditierte Mutation mit der bestehenden Action `instance.diagnose`.
+
 ## Geführter Instanzprozess
 
 Der MCP-Server `sva-studio-mcp` stellt ergänzend zu den Einzeltools das Tool `studio_instance_process` bereit. Es verwendet die Modi `create`, `repair` und `adapt` und ruft dabei ausschließlich die bestehenden Studio-API-Verträge für Registry, Modulzuweisung, IAM-Basis, Admin-Struktur, Keycloak-Provisioning, instanzgebundenen Rollenabgleich, Rechteprobe und Detaildiagnose auf. Der Rollenabgleich verwendet die dedizierte Action `instance.iam.roles.reconcile`; eine Browser-Session oder eine pauschale IAM-Admin-Berechtigung ist dafür nicht erforderlich.

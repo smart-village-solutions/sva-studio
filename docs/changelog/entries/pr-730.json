@@ -1,0 +1,4 @@
+{
+  "prNumber": 730,
+  "body": "Die gezielte Tenant-Client-Secret-Rotation kann nun einen fehlenden Registry-Eintrag wiederherstellen, sofern keine weiteren Keycloak- oder Tenant-Blocker vorliegen."
+}

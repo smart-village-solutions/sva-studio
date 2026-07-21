@@ -6,6 +6,7 @@ import type { StudioMcpConfig } from './config.js';
 import { schemas } from './contracts.js';
 import { diagnoseInstance } from './diagnostics.js';
 import { normalizeError } from './errors.js';
+import { runStudioInstanceProcess } from './process.js';
 
 type ToolResult = {
   content: [{ type: 'text'; text: string }];
@@ -40,6 +41,22 @@ const call = async (
     const diagnostics = diagnosis
       ? await diagnoseInstance(client, diagnosis.instanceId, diagnosis.timeoutMs, error).catch(() => undefined)
       : undefined;
+    return result({ ok: false, error, ...(diagnostics ? { diagnostics } : {}), meta: { requestId: error.requestId } });
+  }
+};
+
+const callProcess = async (
+  client: StudioApiClient,
+  params: z.infer<typeof schemas.process>,
+  timeoutMs: number
+): Promise<ToolResult> => {
+  try {
+    const data = await runStudioInstanceProcess(client, params, { timeoutMs });
+    return result({ ok: true, data, meta: { requestId: data.requestId } });
+  } catch (caught) {
+    if (caught instanceof UpstreamSchemaError) throw caught;
+    const error = normalizeError(caught);
+    const diagnostics = await diagnoseInstance(client, params.instanceId, timeoutMs, error).catch(() => undefined);
     return result({ ok: false, error, ...(diagnostics ? { diagnostics } : {}), meta: { requestId: error.requestId } });
   }
 };
@@ -100,6 +117,8 @@ export const registerStudioTools = (server: McpServer, client: StudioApiClient, 
     (p) => call(client, { path: '/api/v1/iam/instances/audit', query: { instanceId: p.instanceIds, includeOnlyActive: p.includeOnlyActive } }));
   register('studio_instance_diagnose', 'Studio-Instanz diagnostizieren', 'Aggregiert Detail-, Keycloak-Preflight- und Status-Evidenz ohne Änderungen.', schemas.diagnose, readAnnotations,
     async (p) => result({ ok: true, data: await diagnoseInstance(client, p.instanceId, config.diagnosisTimeoutMs), meta: {} }));
+  register('studio_instance_process', 'Studio-Instanzprozess ausführen', 'Orchestriert Anlage, Reparatur oder Anpassung ausschließlich über bestehende Studio-Verträge. Kritische Aktivierung bleibt eine separate, challenge-geschützte Aktion.', schemas.process, writeAnnotations,
+    (p) => callProcess(client, p, config.mutationTimeoutMs));
   register('studio_instance_provisioning_run_get', 'Provisioning-Lauf lesen', 'Liest einen bestimmten Keycloak-Provisioning-Lauf.', schemas.run, readAnnotations,
     (p) => call(client, { path: `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/keycloak/runs/${encodeURIComponent(p.runId)}` }));
 

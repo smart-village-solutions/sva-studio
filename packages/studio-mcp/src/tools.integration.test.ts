@@ -17,7 +17,7 @@ describe('Studio MCP tools', () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
     const tools = await client.listTools();
-    expect(tools.tools).toHaveLength(20);
+    expect(tools.tools).toHaveLength(21);
     expect(tools.tools.find((tool) => tool.name === 'studio_instances_list')?.annotations?.readOnlyHint).toBe(true);
     expect(tools.tools.find((tool) => tool.name === 'studio_instance_archive')?.annotations?.destructiveHint).toBe(true);
     expect(tools.tools.find((tool) => tool.name === 'studio_instance_critical_action_prepare')?.annotations?.destructiveHint).toBe(false);
@@ -86,6 +86,86 @@ describe('Studio MCP tools', () => {
       body: expect.objectContaining({ instanceId: 'demo' }),
       idempotencyKey: expect.any(String),
     }));
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it('orchestrates a create process and stops before challenge-protected activation', async () => {
+    const request = vi.fn()
+      .mockResolvedValueOnce({ data: { instanceId: 'demo' } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
+      .mockResolvedValueOnce({ data: {
+        instanceId: 'demo', status: 'requested',
+        keycloakStatus: { realmExists: true, clientExists: true },
+        tenantIamStatus: { overall: { status: 'ready' } },
+      } });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({ name: 'studio_instance_process', arguments: {
+      mode: 'create', instanceId: 'demo', create: {
+        instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'studio',
+      },
+    } });
+
+    expect(response.structuredContent).toMatchObject({
+      ok: true,
+      data: { completed: false, status: 'awaiting_human_action', nextAction: { actionId: 'instance.status.activate' } },
+    });
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/execute' }));
+    expect(request).toHaveBeenNthCalledWith(4, expect.objectContaining({ path: '/api/v1/iam/instances/demo/tenant-iam/access-probe' }));
+    expect(request).toHaveBeenNthCalledWith(5, expect.objectContaining({ path: '/api/v1/iam/instances/demo' }));
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it('returns process failures through the structured error contract', async () => {
+    const { StudioApiError } = await import('./api-client.js');
+    const request = vi.fn().mockRejectedValue(new StudioApiError(409, { code: 'conflict' }, 'req-1', 'idem-1'));
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({ name: 'studio_instance_process', arguments: {
+      mode: 'create', instanceId: 'demo', create: {
+        instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'studio',
+      },
+    } });
+
+    expect(response.isError).not.toBe(true);
+    expect(response.structuredContent).toMatchObject({ ok: false, error: { code: 'conflict' } });
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it('adapts modules and only reports completion for an active, ready instance', async () => {
+    const request = vi.fn()
+      .mockResolvedValueOnce({ data: { assigned: true } })
+      .mockResolvedValueOnce({ data: { seeded: true } })
+      .mockResolvedValueOnce({ data: { bootstrapped: true } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
+      .mockResolvedValueOnce({ data: {
+        instanceId: 'demo', status: 'active',
+        keycloakStatus: { realmExists: true, clientExists: true },
+        tenantIamStatus: { overall: { status: 'ready' } },
+        moduleIamStatus: { overall: { status: 'ready' } },
+      } });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({ name: 'studio_instance_process', arguments: {
+      mode: 'adapt', instanceId: 'demo', moduleIds: ['news'],
+    } });
+
+    expect(response.structuredContent).toMatchObject({ ok: true, data: { completed: true, status: 'completed' } });
+    expect(request).toHaveBeenNthCalledWith(1, expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/assign' }));
+    expect(request).toHaveBeenNthCalledWith(3, expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/bootstrap-admin-structure' }));
     await Promise.all([client.close(), server.close()]);
   });
 

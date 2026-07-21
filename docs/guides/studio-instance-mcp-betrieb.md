@@ -53,6 +53,19 @@ Der MCP-Prozess holt kurzlebige Access Tokens per Client-Credentials-Flow. Studi
 
 Der MCP wiederholt oder repariert Mutationen nicht selbstständig. `retryable: true` ist ein Hinweis für einen explizit ausgelösten, begrenzten Retry. Der Primärfehler bleibt auch dann maßgeblich, wenn eine nachgelagerte Diagnose fehlschlägt.
 
+## Geführter Instanzprozess
+
+Der MCP-Server `sva-studio-mcp` stellt ergänzend zu den Einzeltools das Tool `studio_instance_process` bereit. Es verwendet die Modi `create`, `repair` und `adapt` und ruft dabei ausschließlich die bestehenden Studio-API-Verträge für Registry, Modulzuweisung, IAM-Basis, Admin-Struktur, Keycloak-Provisioning, Rechteprobe und Detaildiagnose auf.
+
+- `create` verlangt zusätzlich den bestehenden Create-Vertrag und legt die Registry-Instanz idempotent an.
+- `repair` und `adapt` arbeiten auf einer vorhandenen Instanz; `moduleIds` ergänzt gezielt Module einschließlich ihrer IAM-Basis und Admin-Struktur.
+- Der Prozess verfolgt den gestarteten Keycloak-Run nur innerhalb seines lokalen Zeitbudgets und gibt bei noch laufendem oder fehlgeschlagenem Run einen handlungsfähigen Zwischen- beziehungsweise Blockierungszustand zurück.
+- Nach einem erfolgreichen Run führt er eine tenantlokale Rechteprobe aus und liest den aktuellen Detail-/Doctor-Zustand. Historische Preflight-Evidenz ist kein Abschlussnachweis.
+- Der Keycloak-Worker persistiert den nach der Mutation gelesenen Status als `status_snapshot` im Provisioning-Run. Dieser Postflight ist von seinem historischen `worker_preflight_snapshot` getrennt; der MCP bewertet den Abschluss zusätzlich anhand des aktuellen Detail-Reads.
+- `completed: true` bedeutet ausschließlich, dass die Instanz `active` ist und die abgenommenen Doctor-Achsen bereit sind. Ein technisch fertiger Tenant im Status `requested` liefert stattdessen `awaiting_human_action`, `completed: false` und die nächste Action `instance.status.activate`.
+
+Die Aktivierung führt der Prozess nie selbst aus. Sie bleibt eine separate kritische Mutation mit aktuellem Vorab-Read, serverseitiger Challenge, Bestätigungsphrase, Idempotenz und Audit.
+
 ## Verifikation vor Freigabe
 
 Die Freigabe erfolgt nacheinander für Entwicklung, Staging und Produktion. Pro Umgebung:

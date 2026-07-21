@@ -121,6 +121,30 @@ Für PostgreSQL werden ausschließlich SQLSTATE, Tabelle, Spalte und Constraint 
 
 Der lokale stdio-MCP schreibt keine Diagnose auf `stdout`, weil dieser Kanal dem MCP-Protokoll gehört. Seine strukturierte Tool-Antwort bleibt die lokale Diagnoseoberfläche; Tokens, Payloads und Secrets werden nicht geloggt.
 
+### Decision: Modularer Gesamtprozess mit ehrlichem Abschlussvertrag
+
+Die bestehenden MCP-Einzeltools bleiben für gezielte Diagnose, Reparatur und Betrieb erhalten. Ergänzend erhält der MCP einen orchestrierten Instanzprozess mit den Modi `create`, `repair` und `adapt`. Der Prozess verwendet ausschließlich die bestehenden Studio-API-Verträge; er umgeht weder Registry, Worker, Audit noch die serverseitige Risikopolicy.
+
+Der Prozess ermittelt vor jeder Mutation den aktuellen Instanz- und Doctor-Zustand und führt nur die für den angeforderten Modus erforderlichen, idempotenten Schritte aus:
+
+1. Registry-Konfiguration anlegen oder lesen.
+2. Module zuweisen oder ihre IAM-Basis und Admin-Struktur ergänzen.
+3. Keycloak-Provisioning oder -Reconcile anfordern und bis zum terminalen Worker-Ergebnis verfolgen.
+4. Einen aktuellen Postflight aus Keycloak-Status, Rollenabgleich und tenantlokaler Rechteprobe bilden und persistieren.
+5. Den Doctor-Zustand erneut lesen und einen verständlichen, strukturierten Fortschrittsbericht zurückgeben.
+
+Der technische Prozessstatus ist vom Instanz-Lifecycle getrennt. `completed` bedeutet ausschließlich: Die Instanz ist aktiv und alle für den Auftrag erforderlichen Doctor-Achsen sind `ready`. Ein technisch fertiger, aber noch nicht aktivierter Tenant erhält stattdessen `awaiting_human_action` mit `completed: false`, der konkreten Action `instance.status.activate`, einer verständlichen Begründung und den Informationen für die reguläre Bestätigungs-Challenge. Kritische Aktionen bleiben immer explizit und serverseitig challenge-geschützt.
+
+Die Prozessantwort enthält mindestens den lesbaren aktuellen Schritt, erledigte und offene Schritte, Doctor-Zusammenfassung, Korrelation, eine sichere Folgeaktion und einen eindeutigen Abschlusswert. Sie benennt verständlich, ob etwas automatisch fortgesetzt werden kann, eine Human-in-the-Loop-Bestätigung erfordert oder durch einen konkreten Befund blockiert ist. Technische Codes ergänzen diese Erklärung, ersetzen sie aber nicht.
+
+Ein Worker-Preflight ist historische Vorbedingungs-Evidenz und darf nach einer erfolgreichen Mutation nicht als aktueller Doctor-Zustand interpretiert werden. Der Worker persistiert daher einen eigenen Postflight-Snapshot. Detailansicht, Diagnose und MCP verwenden für die Abschlussbewertung ausschließlich den aktuellen Status beziehungsweise diesen Postflight.
+
+Alternativen:
+
+- Einzeltools ohne Gesamtprozess: verworfen, da Operatoren Abschluss und notwendige Reihenfolge selbst erraten müssten.
+- Automatische Aktivierung: verworfen, da sie die bewusste Human-in-the-Loop-Grenze für kritische Mutationen umgehen würde.
+- Erfolg nach Worker-Abschluss: verworfen, da dies fehlende Rechteprobe, Rollen-Backlog oder Aktivierung verschleiern würde.
+
 ## Risks / Trade-offs
 
 - Token-Diebstahl ermöglicht Instanzanlage innerhalb des Token-Scopes. → Kurze Laufzeit, enger Audience-/Scope-Bindung, sichere lokale Ablage, Rotation und vollständiges Audit.

@@ -36,7 +36,6 @@
 - [x] 4.6 Deutsche Betriebsdokumentation für Token-Ausstellung, Rotation, lokale Konfiguration, Tool-Aufruf, Fehlercodes und kritische Bestätigungen ergänzen.
 - [x] 4.7 Relevante Nx-Unit-, Type-, Runtime- und Sicherheits-Gates ausführen.
 - [x] 4.8 Rolloutreihenfolge `studio-dev` → `studio-staging` → `sva-studio`, Secret-Rotation, OTEL-Abnahmekriterien und Kill-Switch-Rollback dokumentieren.
-- [ ] 4.9 Pro Zielrealm einen Read-only-Smoke, eine kontrollierte Testmutation und eine Challenge-geschützte Testmutation mit Audit- und Telemetrie-Evidenz abnehmen.
 
 ## 5. Prozessketten-Logging
 
@@ -44,4 +43,13 @@
 - [x] 5.2 Create-Schritte vom Lookup bis zur Cache-Invalidierung stufengenau und ohne doppelte Error-Events korrelieren.
 - [x] 5.3 Queue und Worker mit stabilen Stufen für Claim, Preflight, Plan, Keycloak, Secret-Sync, Admin-Bootstrap und Abschluss vereinheitlichen.
 - [x] 5.4 Rohe Provider- und Fehlermeldungen aus Provisioning-, Audit- und Worker-Logs entfernen und Redaction-Verträge testen.
-- [ ] 5.5 Relevante Unit-, Type-, Runtime- und OpenSpec-Gates ausführen sowie den Dev-Smoke in Loki anhand der Request-ID abnehmen.
+
+## 6. Modularer MCP-Instanzprozess und Doctor-Abnahme
+
+- [x] 6.1 Den Prozessvertrag für `create`, `repair` und `adapt` mit verständlichen Schritt-, Ergebnis- und Folgeaktionsmodellen implementieren.
+- [x] 6.2 Den Worker um einen persistierten Keycloak-Postflight erweitern und verhindern, dass historische Preflight-Evidenz den aktuellen Doctor-Zustand übersteuert.
+- [x] 6.3 Tenant-IAM-Rechteprobe und instanzbezogenen Rollenabgleich als sichere, korrelierte Prozessschritte verfügbar machen.
+- [x] 6.4 Das MCP-Tool für den Gesamtprozess sowie gezielte Diagnose- und Folgeaktionen ergänzen; Erfolg nur bei aktivem, vollständig grünem Doctor melden.
+- [x] 6.5 Human-in-the-Loop-Zustände mit verständlicher Erklärung, konkreter nächster Action und weiterhin challenge-geschützter Aktivierung ausgeben.
+- [x] 6.6 Unit-, API- und MCP-Vertragstests für Neuanlage, Reparatur, Modulerweiterung, Teilfehler, Postflight und Human-in-the-Loop-Abschluss ergänzen.
+- [x] 6.7 Architektur-, Betriebs- und MCP-Dokumentation für den Gesamtprozess sowie seine sicheren Folgeaktionen aktualisieren.

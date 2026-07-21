@@ -65,6 +65,20 @@ export const schemas = {
     confirmationPhrase: z.string().min(1),
     idempotencyKey: z.string().trim().min(8).max(200),
   }).strict(),
+  process: z.object({
+    mode: z.enum(['create', 'repair', 'adapt']),
+    instanceId,
+    create: createInstanceSchema.optional(),
+    moduleIds: z.array(z.string().trim().min(1)).max(100).optional(),
+    idempotencyKey,
+  }).strict().superRefine((value, ctx) => {
+    if (value.mode === 'create' && !value.create) {
+      ctx.addIssue({ code: 'custom', path: ['create'], message: 'create ist für den Modus create erforderlich.' });
+    }
+    if (value.create && value.create.instanceId !== value.instanceId) {
+      ctx.addIssue({ code: 'custom', path: ['create', 'instanceId'], message: 'create.instanceId muss instanceId entsprechen.' });
+    }
+  }),
 } as const;
 
 export type ErrorCategory =

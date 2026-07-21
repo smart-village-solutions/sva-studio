@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { z } from 'zod';
-import type { StudioApiClient, StudioApiRequest } from './api-client.js';
+import { StudioApiError, type StudioApiClient, type StudioApiRequest } from './api-client.js';
 import type { schemas } from './contracts.js';
 
 type ProcessInput = z.infer<typeof schemas.process>;
@@ -34,7 +34,7 @@ const isDoctorReady = (detail: Record<string, unknown>): boolean => {
     && status.clientExists === true
     && tenantIam.overall !== undefined
     && unwrap(tenantIam.overall).status === 'ready'
-    && (detail.moduleIamStatus === undefined || unwrap(moduleIam.overall).status === 'ready');
+    && (readAssignedModuleIds(detail).size === 0 || unwrap(moduleIam.overall).status === 'ready');
 };
 
 const readAssignedModuleIds = (detail: Record<string, unknown>): ReadonlySet<string> =>
@@ -91,13 +91,14 @@ const assignMissingModules = async (input: {
   idempotencyKey: string;
 }): Promise<boolean> => {
   const detail = unwrap(await request(input.client, { path: input.basePath, requestId: input.requestId }));
-  const missingModuleIds = [...new Set(input.moduleIds)].filter((moduleId) => !readAssignedModuleIds(detail).has(moduleId));
+  const requestedModuleIds = [...new Set(input.moduleIds)];
+  const missingModuleIds = requestedModuleIds.filter((moduleId) => !readAssignedModuleIds(detail).has(moduleId));
   for (const moduleId of missingModuleIds) {
     await request(input.client, mutation(`${input.basePath}/modules/assign`, { moduleId }, input.requestId, deriveIdempotencyKey(input.idempotencyKey, `module:${moduleId}`)));
   }
-  if (missingModuleIds.length === 0) return false;
+  if (requestedModuleIds.length === 0) return false;
   await request(input.client, mutation(`${input.basePath}/modules/seed-iam-baseline`, {}, input.requestId, deriveIdempotencyKey(input.idempotencyKey, 'iam-baseline')));
-  await request(input.client, mutation(`${input.basePath}/modules/bootstrap-admin-structure`, { moduleIds: missingModuleIds }, input.requestId, deriveIdempotencyKey(input.idempotencyKey, 'admin-bootstrap')));
+  await request(input.client, mutation(`${input.basePath}/modules/bootstrap-admin-structure`, { moduleIds: requestedModuleIds }, input.requestId, deriveIdempotencyKey(input.idempotencyKey, 'admin-bootstrap')));
   return true;
 };
 
@@ -113,8 +114,13 @@ export const runStudioInstanceProcess = async (
   const openSteps: string[] = [];
 
   if (input.mode === 'create') {
-    await request(client, mutation('/api/v1/iam/instances', input.create, requestId, idempotencyKey));
-    completedSteps.push('registry_created');
+    try {
+      await request(client, mutation('/api/v1/iam/instances', input.create, requestId, idempotencyKey));
+      completedSteps.push('registry_created');
+    } catch (caught) {
+      if (!(caught instanceof StudioApiError && caught.status === 409)) throw caught;
+      completedSteps.push('registry_reused');
+    }
   }
 
   if (await assignMissingModules({ client, basePath, moduleIds: input.moduleIds ?? [], requestId, idempotencyKey })) {

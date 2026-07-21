@@ -136,6 +136,7 @@ const authServerMocks = vi.hoisted(() => {
       prepareInstanceConfirmation: vi.fn(async () => response('prepareInstanceConfirmationHandler')),
       getInstanceKeycloakProvisioningRun: vi.fn(async () => response('getInstanceKeycloakProvisioningRunHandler')),
       reconcileInstanceKeycloak: vi.fn(async () => response('reconcileInstanceKeycloakHandler')),
+      reconcileInstanceIamRoles: vi.fn(async () => response('reconcileInstanceIamRolesHandler')),
       probeTenantIamAccess: vi.fn(async () => response('probeTenantIamAccessHandler')),
       assignInstanceModule: vi.fn(async () => response('assignInstanceModuleHandler')),
       bootstrapInstanceAdminStructure: vi.fn(async () => response('bootstrapInstanceAdminStructureHandler')),
@@ -807,6 +808,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.instanceRegistryHandlers.prepareInstanceConfirmation).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakProvisioningRun).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.reconcileInstanceKeycloak).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.reconcileInstanceIamRoles).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.probeTenantIamAccess).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.assignInstanceModule).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.bootstrapInstanceAdminStructure).toHaveBeenCalled();

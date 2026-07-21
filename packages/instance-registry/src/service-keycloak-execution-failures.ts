@@ -63,7 +63,7 @@ export const failRun = async (
     stepKey,
     dependency,
   }, {
-    code: reasonCode,
+    code: 'internal_unclassified',
     status: 500,
   }));
 

@@ -68,7 +68,7 @@ export const schemas = {
   process: z.object({
     mode: z.enum(['create', 'repair', 'adapt']),
     instanceId,
-    create: createInstanceSchema.optional(),
+    create: createInstanceSchema.strict().optional(),
     moduleIds: z.array(z.string().trim().min(1)).max(100).optional(),
     idempotencyKey,
   }).strict().superRefine((value, ctx) => {

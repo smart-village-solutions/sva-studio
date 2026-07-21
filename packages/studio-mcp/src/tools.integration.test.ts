@@ -1,7 +1,8 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { describe, expect, it, vi } from 'vitest';
-import type { StudioApiClient } from './api-client.js';
+import { StudioApiError, type StudioApiClient } from './api-client.js';
+import { schemas } from './contracts.js';
 import { createStudioMcpServer } from './index.js';
 
 const config = {
@@ -123,6 +124,33 @@ describe('Studio MCP tools', () => {
     await Promise.all([client.close(), server.close()]);
   });
 
+  it('continues a create process after a conflict from an earlier attempt', async () => {
+    const request = vi.fn()
+      .mockRejectedValueOnce(new StudioApiError(409, { code: 'conflict' }, 'req-1'))
+      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
+      .mockResolvedValueOnce({ data: {
+        instanceId: 'demo', status: 'active', assignedModules: [], keycloakStatus: { realmExists: true, clientExists: true },
+        tenantIamStatus: { overall: { status: 'ready' } }, moduleIamStatus: { overall: { status: 'unknown' } },
+      } });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({ name: 'studio_instance_process', arguments: {
+      mode: 'create', instanceId: 'demo', create: {
+        instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'studio',
+      },
+    } });
+
+    expect(response.structuredContent).toMatchObject({ ok: true, data: { completed: true, status: 'completed' } });
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/iam/instances/demo' }));
+    await Promise.all([client.close(), server.close()]);
+  });
+
   it('returns process failures through the structured error contract', async () => {
     const { StudioApiError } = await import('./api-client.js');
     const request = vi.fn().mockRejectedValue(new StudioApiError(409, { code: 'conflict' }, 'req-1', 'idem-1'));
@@ -203,7 +231,7 @@ describe('Studio MCP tools', () => {
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
       .mockResolvedValueOnce({ data: {
-        instanceId: 'demo', status: 'active', keycloakStatus: { realmExists: true, clientExists: true },
+        instanceId: 'demo', status: 'active', assignedModules: ['news'], keycloakStatus: { realmExists: true, clientExists: true },
         tenantIamStatus: { overall: { status: 'ready' } }, moduleIamStatus: {},
       } });
     const server = createStudioMcpServer({ request }, config);
@@ -215,6 +243,62 @@ describe('Studio MCP tools', () => {
 
     expect(response.structuredContent).toMatchObject({ ok: true, data: { completed: false, status: 'blocked' } });
     await Promise.all([client.close(), server.close()]);
+  });
+
+  it('does not require module IAM readiness when no modules are assigned', async () => {
+    const request = vi.fn()
+      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
+      .mockResolvedValueOnce({ data: {
+        instanceId: 'demo', status: 'active', keycloakStatus: { realmExists: true, clientExists: true },
+        tenantIamStatus: { overall: { status: 'ready' } }, moduleIamStatus: { overall: { status: 'unknown' } },
+      } });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({ name: 'studio_instance_process', arguments: { mode: 'adapt', instanceId: 'demo' } });
+
+    expect(response.structuredContent).toMatchObject({ ok: true, data: { completed: true, status: 'completed' } });
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it('repeats module IAM steps after modules were assigned by an earlier attempt', async () => {
+    const request = vi.fn()
+      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: ['news'] } })
+      .mockResolvedValueOnce({ data: { seeded: true } })
+      .mockResolvedValueOnce({ data: { bootstrapped: true } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
+      .mockResolvedValueOnce({ data: {
+        instanceId: 'demo', status: 'active', keycloakStatus: { realmExists: true, clientExists: true },
+        tenantIamStatus: { overall: { status: 'ready' } }, moduleIamStatus: { overall: { status: 'ready' } },
+      } });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({ name: 'studio_instance_process', arguments: {
+      mode: 'adapt', instanceId: 'demo', moduleIds: ['news'],
+    } });
+
+    expect(response.structuredContent).toMatchObject({ ok: true, data: { completed: true, status: 'completed' } });
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/seed-iam-baseline' }));
+    expect(request).toHaveBeenNthCalledWith(3, expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/bootstrap-admin-structure', body: { moduleIds: ['news'] } }));
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it('rejects unknown fields in a process create payload', () => {
+    expect(schemas.process.safeParse({
+      mode: 'create', instanceId: 'demo', create: {
+        instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'studio', unexpected: true,
+      },
+    }).success).toBe(false);
   });
 
   it('prepares and executes critical actions with the required confirmation data', async () => {

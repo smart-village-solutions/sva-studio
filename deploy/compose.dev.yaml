@@ -1,5 +1,10 @@
 services:
   app:
+    environment:
+      SVA_STUDIO_MCP_ENABLED: "true"
+      SVA_STUDIO_MCP_ISSUER: "https://keycloak.smart-village.app/realms/studio-dev"
+      SVA_STUDIO_MCP_AUDIENCE: "sva-studio-mcp"
+      SVA_STUDIO_MCP_CLIENT_ID: "sva-studio-mcp"
     image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG:-latest}}
     networks:
       - network-node-005

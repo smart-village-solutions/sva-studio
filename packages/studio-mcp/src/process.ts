@@ -83,6 +83,24 @@ const waitForRun = async (
   return run;
 };
 
+const assignMissingModules = async (input: {
+  client: StudioApiClient;
+  basePath: string;
+  moduleIds: readonly string[];
+  requestId: string;
+  idempotencyKey: string;
+}): Promise<boolean> => {
+  const detail = unwrap(await request(input.client, { path: input.basePath, requestId: input.requestId }));
+  const missingModuleIds = [...new Set(input.moduleIds)].filter((moduleId) => !readAssignedModuleIds(detail).has(moduleId));
+  for (const moduleId of missingModuleIds) {
+    await request(input.client, mutation(`${input.basePath}/modules/assign`, { moduleId }, input.requestId, deriveIdempotencyKey(input.idempotencyKey, `module:${moduleId}`)));
+  }
+  if (missingModuleIds.length === 0) return false;
+  await request(input.client, mutation(`${input.basePath}/modules/seed-iam-baseline`, {}, input.requestId, deriveIdempotencyKey(input.idempotencyKey, 'iam-baseline')));
+  await request(input.client, mutation(`${input.basePath}/modules/bootstrap-admin-structure`, { moduleIds: missingModuleIds }, input.requestId, deriveIdempotencyKey(input.idempotencyKey, 'admin-bootstrap')));
+  return true;
+};
+
 export const runStudioInstanceProcess = async (
   client: StudioApiClient,
   input: ProcessInput,
@@ -99,16 +117,7 @@ export const runStudioInstanceProcess = async (
     completedSteps.push('registry_created');
   }
 
-  const detailBeforeModules = unwrap(await request(client, { path: basePath, requestId }));
-  const requestedModuleIds = [...new Set(input.moduleIds ?? [])];
-  const assignedModuleIds = readAssignedModuleIds(detailBeforeModules);
-  const missingModuleIds = requestedModuleIds.filter((moduleId) => !assignedModuleIds.has(moduleId));
-  for (const moduleId of missingModuleIds) {
-    await request(client, mutation(`${basePath}/modules/assign`, { moduleId }, requestId, deriveIdempotencyKey(idempotencyKey, `module:${moduleId}`)));
-  }
-  if (missingModuleIds.length > 0) {
-    await request(client, mutation(`${basePath}/modules/seed-iam-baseline`, {}, requestId, deriveIdempotencyKey(idempotencyKey, 'iam-baseline')));
-    await request(client, mutation(`${basePath}/modules/bootstrap-admin-structure`, { moduleIds: missingModuleIds }, requestId, deriveIdempotencyKey(idempotencyKey, 'admin-bootstrap')));
+  if (await assignMissingModules({ client, basePath, moduleIds: input.moduleIds ?? [], requestId, idempotencyKey })) {
     completedSteps.push('modules_and_iam_ready');
   }
 

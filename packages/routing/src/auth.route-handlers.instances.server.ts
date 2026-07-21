@@ -46,6 +46,9 @@ export const instanceAuthHandlerMap = {
   '/api/v1/iam/instances/$instanceId/tenant-iam/access-probe': {
     POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.probeTenantIamAccess),
   },
+  '/api/v1/iam/instances/$instanceId/tenant-iam/roles/reconcile': {
+    POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.reconcileInstanceIamRoles),
+  },
   '/api/v1/iam/instances/$instanceId/modules/assign': {
     POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.assignInstanceModule),
   },

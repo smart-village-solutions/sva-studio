@@ -137,6 +137,8 @@ export const registerStudioTools = (server: McpServer, client: StudioApiClient, 
     (p) => call(client, mutation(`/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/modules/assign`, p)));
   register('studio_instance_iam_baseline_seed', 'IAM-Baseline seeden', 'Seedet die IAM-Baseline der zugewiesenen Module.', schemas.seed, writeAnnotations,
     (p) => call(client, mutation(`/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/modules/seed-iam-baseline`, p)));
+  register('studio_instance_iam_roles_reconcile', 'Tenant-Rollen abgleichen', 'Gleicht den Rollen-Katalog einer Instanz kontrolliert ab.', schemas.roleReconcile, writeAnnotations,
+    (p) => call(client, mutation(`/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/tenant-iam/roles/reconcile`, p)));
   register('studio_instance_admin_bootstrap', 'Admin-Struktur bootstrappen', 'Erzeugt die Admin-Struktur für ausgewählte Module.', schemas.bootstrap, writeAnnotations,
     (p) => call(client, mutation(`/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/modules/bootstrap-admin-structure`, p)));
   register('studio_instance_critical_action_prepare', 'Kritische Aktion vorbereiten', 'Erzeugt eine kurzlebige, zustandsgebundene Bestätigungs-Challenge; führt die Aktion nicht aus.', schemas.prepareCritical, nonIdempotentWriteAnnotations,

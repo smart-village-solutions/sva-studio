@@ -18,7 +18,7 @@ describe('Studio MCP tools', () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
     const tools = await client.listTools();
-    expect(tools.tools).toHaveLength(21);
+    expect(tools.tools).toHaveLength(22);
     expect(tools.tools.find((tool) => tool.name === 'studio_instances_list')?.annotations?.readOnlyHint).toBe(true);
     expect(tools.tools.find((tool) => tool.name === 'studio_instance_archive')?.annotations?.destructiveHint).toBe(true);
     expect(tools.tools.find((tool) => tool.name === 'studio_instance_critical_action_prepare')?.annotations?.destructiveHint).toBe(false);
@@ -96,6 +96,7 @@ describe('Studio MCP tools', () => {
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { outcome: 'success' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
       .mockResolvedValueOnce({ data: {
         instanceId: 'demo', status: 'requested',
@@ -119,8 +120,9 @@ describe('Studio MCP tools', () => {
     });
     expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/iam/instances/demo' }));
     expect(request).toHaveBeenNthCalledWith(3, expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/execute' }));
-    expect(request).toHaveBeenNthCalledWith(5, expect.objectContaining({ path: '/api/v1/iam/instances/demo/tenant-iam/access-probe' }));
-    expect(request).toHaveBeenNthCalledWith(6, expect.objectContaining({ path: '/api/v1/iam/instances/demo' }));
+    expect(request).toHaveBeenNthCalledWith(5, expect.objectContaining({ path: '/api/v1/iam/instances/demo/tenant-iam/roles/reconcile' }));
+    expect(request).toHaveBeenNthCalledWith(6, expect.objectContaining({ path: '/api/v1/iam/instances/demo/tenant-iam/access-probe' }));
+    expect(request).toHaveBeenNthCalledWith(7, expect.objectContaining({ path: '/api/v1/iam/instances/demo' }));
     await Promise.all([client.close(), server.close()]);
   });
 
@@ -130,6 +132,7 @@ describe('Studio MCP tools', () => {
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { outcome: 'success' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
       .mockResolvedValueOnce({ data: {
         instanceId: 'demo', status: 'active', assignedModules: [], keycloakStatus: { realmExists: true, clientExists: true },
@@ -178,6 +181,7 @@ describe('Studio MCP tools', () => {
       .mockResolvedValueOnce({ data: { bootstrapped: true } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { outcome: 'success' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
       .mockResolvedValueOnce({ data: {
         instanceId: 'demo', status: 'active',
@@ -207,6 +211,7 @@ describe('Studio MCP tools', () => {
       .mockResolvedValueOnce({ data: { overallStatus: 'planned' } })
       .mockResolvedValueOnce({ data: { latestKeycloakProvisioningRun: { id: 'run-1' } } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { outcome: 'success' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
       .mockResolvedValueOnce({ data: {
         instanceId: 'demo', status: 'requested', keycloakStatus: { realmExists: true, clientExists: true },
@@ -229,6 +234,7 @@ describe('Studio MCP tools', () => {
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: ['news'] } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { outcome: 'success' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
       .mockResolvedValueOnce({ data: {
         instanceId: 'demo', status: 'active', assignedModules: ['news'], keycloakStatus: { realmExists: true, clientExists: true },
@@ -250,6 +256,7 @@ describe('Studio MCP tools', () => {
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { outcome: 'success' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
       .mockResolvedValueOnce({ data: {
         instanceId: 'demo', status: 'active', keycloakStatus: { realmExists: true, clientExists: true },
@@ -273,6 +280,7 @@ describe('Studio MCP tools', () => {
       .mockResolvedValueOnce({ data: { bootstrapped: true } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { outcome: 'success' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
       .mockResolvedValueOnce({ data: {
         instanceId: 'demo', status: 'active', keycloakStatus: { realmExists: true, clientExists: true },

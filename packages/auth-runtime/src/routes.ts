@@ -49,6 +49,7 @@ export type AuthRoutePath =
   | '/api/v1/iam/instances/$instanceId/keycloak/runs/$runId'
   | '/api/v1/iam/instances/$instanceId/keycloak/reconcile'
   | '/api/v1/iam/instances/$instanceId/tenant-iam/access-probe'
+  | '/api/v1/iam/instances/$instanceId/tenant-iam/roles/reconcile'
   | '/api/v1/iam/instances/$instanceId/modules/assign'
   | '/api/v1/iam/instances/$instanceId/modules/bootstrap-admin-structure'
   | '/api/v1/iam/instances/$instanceId/modules/revoke'

@@ -152,6 +152,8 @@ export const runStudioInstanceProcess = async (
   }
   completedSteps.push('keycloak_provisioned');
 
+  await request(client, mutation(`${basePath}/tenant-iam/roles/reconcile`, {}, requestId, deriveIdempotencyKey(idempotencyKey, 'roles-reconcile')));
+  completedSteps.push('tenant_iam_roles_reconciled');
   await request(client, mutation(`${basePath}/tenant-iam/access-probe`, {}, requestId, deriveIdempotencyKey(idempotencyKey, 'access-probe')));
   completedSteps.push('tenant_iam_access_probed');
   const detail = unwrap(await request(client, { path: basePath, requestId }));

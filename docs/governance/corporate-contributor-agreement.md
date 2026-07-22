@@ -1,4 +1,4 @@
-# Corporate Contributor Agreement
+# Vereinbarung für beitragende Organisationen (Corporate Contributor Agreement)
 
 > **Muster, Stand Juli 2026:** Dieses Dokument ist eine Vorlage für Organisationen. Vor dem Einsatz als verbindliche Vereinbarung ist es rechtlich prüfen zu lassen.
 
@@ -21,7 +21,7 @@ Die Organisation sichert zu, dass:
 
 ## 3. Einräumung von Nutzungsrechten
 
-Die Organisation räumt der SVS an jedem Beitrag ein weltweites, zeitlich, räumlich und inhaltlich unbeschränktes, unwiderrufliches, übertragbares, unterlizenzierbares und ausschließliches Nutzungsrecht für alle bekannten Nutzungsarten ein.
+Die Organisation räumt der SVS an jedem Beitrag ein weltweites, zeitlich, räumlich und inhaltlich unbeschränktes, unwiderrufliches, übertragbares, unterlizenzierbares und nicht ausschließliches Nutzungsrecht für alle bekannten Nutzungsarten ein.
 
 Dieses Recht umfasst insbesondere das Recht, Beiträge zu vervielfältigen, zu bearbeiten, umzugestalten, zu übersetzen, mit anderen Werken zu verbinden, zu veröffentlichen, öffentlich zugänglich zu machen, zu verbreiten, zu vermieten, zu verkaufen sowie in Quell- und Objektcode zu nutzen.
 

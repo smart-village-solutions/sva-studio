@@ -10,7 +10,7 @@ import { pluginNews } from '@sva/plugin-news';
 import { mergeI18nResources } from '../i18n';
 import Sidebar from './Sidebar';
 
-const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio/issues/2';
+const LICENSE_URL = 'https://github.com/smart-village-solutions/sva-studio/blob/main/LICENSE';
 const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-studio/discussions';
 const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
 const COCKPIT_URL = 'https://cockpit.guben.de';
@@ -317,7 +317,7 @@ describe('Sidebar', () => {
       SUPPORT_ISSUES_URL
     );
     expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(
-      LICENSE_ISSUE_URL
+      LICENSE_URL
     );
   });
 
@@ -383,7 +383,7 @@ describe('Sidebar', () => {
       SUPPORT_ISSUES_URL
     );
     expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(
-      LICENSE_ISSUE_URL
+      LICENSE_URL
     );
     expect(screen.queryByRole('button', { name: 'Benutzer' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
@@ -423,7 +423,7 @@ describe('Sidebar', () => {
       SUPPORT_ISSUES_URL
     );
     expect(within(navigation).getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(
-      LICENSE_ISSUE_URL
+      LICENSE_URL
     );
   });
 
@@ -688,7 +688,7 @@ describe('Sidebar', () => {
 
     expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(HELP_DISCUSSIONS_URL);
     expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(SUPPORT_ISSUES_URL);
-    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(LICENSE_ISSUE_URL);
+    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(LICENSE_URL);
     expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Monitoring' })).toBeNull();

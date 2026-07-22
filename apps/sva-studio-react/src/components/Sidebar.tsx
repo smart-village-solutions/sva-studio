@@ -116,7 +116,7 @@ const sidebarSkeletonKeys = [
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sva-studio-sidebar-collapsed';
 const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-studio/discussions';
 const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
-const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio/issues/2';
+const LICENSE_URL = 'https://github.com/smart-village-solutions/sva-studio/blob/main/LICENSE';
 const COCKPIT_URL = 'https://cockpit.guben.de';
 const APP_LINK_PERMISSION = 'app.read';
 const COCKPIT_LINK_PERMISSION = 'cockpit.read';
@@ -1119,7 +1119,7 @@ export default function Sidebar({
             {
               kind: 'link' as const,
               id: 'license',
-              href: LICENSE_ISSUE_URL,
+              href: LICENSE_URL,
               label: t('shell.sidebar.license'),
               icon: IconCertificate,
             },

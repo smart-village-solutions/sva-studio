@@ -91,12 +91,12 @@ Vor dem Öffnen eines PRs prüfen:
 - Breaking Changes sind im PR klar benannt.
 - Sicherheitsrelevante Änderungen dokumentieren Validierung, Risiko und ggf. Folgemaßnahmen.
 
-## Contributor Agreements
+## Vereinbarungen für Beitragende
 
-Für Beiträge von Personen und Organisationen stehen einfache Contributor Agreements bereit:
+Für Beiträge von Personen und Organisationen stehen einfache Vereinbarungen für Beitragende bereit:
 
-- [Individual Contributor Agreement](./docs/governance/individual-contributor-agreement.md) für Beiträge im eigenen Namen
-- [Corporate Contributor Agreement](./docs/governance/corporate-contributor-agreement.md) für Beiträge im Namen eines Unternehmens
+- [Vereinbarung für individuelle Beitragende](./docs/governance/individual-contributor-agreement.md) für Beiträge im eigenen Namen
+- [Vereinbarung für beitragende Organisationen](./docs/governance/corporate-contributor-agreement.md) für Beiträge im Namen eines Unternehmens
 
 Die Vereinbarungen stellen sicher, dass Smart Village Solutions SVS GmbH Beiträge weiterhin unter der EUPL, anderen Open-Source-Lizenzen, parallel unter mehreren Lizenzen oder proprietär lizenzieren kann. Eine Vereinbarung wird vor der Annahme eines entsprechend erfassten externen Beitrags abgeschlossen und revisionssicher dokumentiert.
 

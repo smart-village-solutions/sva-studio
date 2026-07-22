@@ -1,0 +1,4 @@
+{
+  "prNumber": 734,
+  "body": "Der Dev-Bootstrap-Executor verwendet für seinen temporären Quantum-Stack nun den unterstützten Create-Befehl. Damit kann der One-shot-Bootstrap vor dem Dev-Deploy tatsächlich ausgeführt werden."
+}

@@ -30,6 +30,12 @@
     "sourceRef": "packages/plugin-generic-items"
   },
   {
+    "pluginId": "faq",
+    "sourceType": "workspace",
+    "enabled": true,
+    "sourceRef": "packages/plugin-faq"
+  },
+  {
     "pluginId": "surveys",
     "sourceType": "workspace",
     "enabled": true,

@@ -2258,6 +2258,83 @@ describe('content list projection', () => {
     );
   });
 
+  it('keeps projection paging on the unfiltered generic-item upstream result', async () => {
+    state.listSvaMainserverGenericItems
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'faq-1',
+            title: 'FAQ',
+            contentType: 'generic-items.generic-item',
+            genericType: 'FAQ',
+            teaser: null,
+            keywords: [],
+            payload: { languageCode: 'de', sortWeight: 0 },
+            categories: [],
+            contacts: [],
+            webUrls: [],
+            addresses: [],
+            contentBlocks: [{ body: 'Antwort' }],
+            openingHours: [],
+            mediaContents: [],
+            locations: [],
+            dates: [],
+            accessibilityInformations: [],
+            priceInformations: [],
+            visible: true,
+            author: null,
+            createdAt: '2026-06-20T10:00:00.000Z',
+            updatedAt: '2026-06-21T10:00:00.000Z',
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, hasNextPage: true },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'generic-2',
+            title: 'Später Generic',
+            contentType: 'generic-items.generic-item',
+            genericType: 'INFO',
+            teaser: null,
+            keywords: [],
+            payload: {},
+            categories: [],
+            contacts: [],
+            webUrls: [],
+            addresses: [],
+            contentBlocks: [],
+            openingHours: [],
+            mediaContents: [],
+            locations: [],
+            dates: [],
+            accessibilityInformations: [],
+            priceInformations: [],
+            visible: true,
+            author: null,
+            createdAt: '2026-06-20T10:00:00.000Z',
+            updatedAt: '2026-06-21T10:00:00.000Z',
+          },
+        ],
+        pagination: { page: 2, pageSize: 25, hasNextPage: false },
+      });
+
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['generic-items.generic-item'],
+      force: true,
+    });
+
+    expect(state.listSvaMainserverGenericItems).toHaveBeenCalledTimes(2);
+    expect(projectionRows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          content_type: 'generic-items.generic-item',
+          source_entity_id: 'generic-2',
+        }),
+      ])
+    );
+  });
+
   it('upserts only the latest loaded page during progressive batch refreshes', async () => {
     state.listSvaMainserverEvents
       .mockResolvedValueOnce({

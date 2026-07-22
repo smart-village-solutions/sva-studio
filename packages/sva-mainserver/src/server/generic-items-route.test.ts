@@ -112,6 +112,180 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     );
   });
 
+  it('filters FAQ reads and authorizes them with the FAQ action', async () => {
+    mockAuthorizedMutation();
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      data: [{ id: 'faq-1', genericType: 'FAQ' }, { id: 'generic-1', genericType: 'INFO' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
+    });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs')
+    );
+
+    await expect(response?.json()).resolves.toEqual({
+      data: [{ id: 'faq-1', genericType: 'FAQ' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
+    });
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'faq.read', resource: { contentType: 'faq.faq' } })
+    );
+  });
+
+  it('collects and deterministically paginates FAQ records across upstream pages', async () => {
+    mockAuthorizedMutation();
+    state.listSvaMainserverGenericItems
+      .mockResolvedValueOnce({
+        data: [
+          { id: 'generic-1', genericType: 'INFO', title: 'Allgemein' },
+          { id: 'faq-2', genericType: 'FAQ', title: 'Zweite', payload: { languageCode: 'de', sortWeight: 2 } },
+        ],
+        pagination: { page: 1, pageSize: 100, hasNextPage: true },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          { id: 'faq-3', genericType: 'FAQ', title: 'Erste', payload: { languageCode: 'de', sortWeight: 1 } },
+          { id: 'faq-1', genericType: 'FAQ', title: 'English', payload: { languageCode: 'en', sortWeight: 1 } },
+        ],
+        pagination: { page: 2, pageSize: 100, hasNextPage: false },
+      });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs?page=1&pageSize=25')
+    );
+
+    await expect(response?.json()).resolves.toEqual({
+      data: [
+        { id: 'faq-3', genericType: 'FAQ', title: 'Erste', payload: { languageCode: 'de', sortWeight: 1 } },
+        { id: 'faq-2', genericType: 'FAQ', title: 'Zweite', payload: { languageCode: 'de', sortWeight: 2 } },
+        { id: 'faq-1', genericType: 'FAQ', title: 'English', payload: { languageCode: 'en', sortWeight: 1 } },
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 3 },
+    });
+    expect(state.listSvaMainserverGenericItems).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ page: 1, pageSize: 100 })
+    );
+    expect(state.listSvaMainserverGenericItems).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ page: 2, pageSize: 100 })
+    );
+  });
+
+  it('enforces the FAQ discriminator on writes', async () => {
+    mockAuthorizedMutation();
+    state.createSvaMainserverGenericItem.mockResolvedValue({ id: 'faq-1' });
+
+    await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'INFO',
+          contentBlocks: [{ body: 'Antwort ohne HTML' }],
+          payload: { languageCode: 'de', sortWeight: 0 },
+        }),
+      })
+    );
+
+    expect(state.createSvaMainserverGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({ genericItem: expect.objectContaining({ genericType: 'FAQ' }) })
+    );
+  });
+
+  it('rejects faq writes with html in the answer body before calling the service', async () => {
+    mockAuthorizedMutation();
+
+    const createResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'FAQ',
+          contentBlocks: [{ body: '<p>Antwort</p>' }],
+        }),
+      })
+    );
+    const updateResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs/faq-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'FAQ',
+          contentBlocks: [{ body: '<script>alert(1)</script>' }],
+        }),
+      })
+    );
+
+    expect(createResponse?.status).toBe(400);
+    await expect(createResponse?.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'HTML in der FAQ-Antwort ist nicht erlaubt.',
+    });
+    expect(updateResponse?.status).toBe(400);
+    await expect(updateResponse?.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'HTML in der FAQ-Antwort ist nicht erlaubt.',
+    });
+    expect(state.createSvaMainserverGenericItem).not.toHaveBeenCalled();
+    expect(state.updateSvaMainserverGenericItem).not.toHaveBeenCalled();
+  });
+
+  it('rejects faq writes without a single plain-text answer and controlled payload fields', async () => {
+    mockAuthorizedMutation();
+
+    const missingAnswerResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'FAQ',
+          payload: { languageCode: 'de', sortWeight: 0 },
+        }),
+      })
+    );
+    const invalidPayloadResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'FAQ',
+          contentBlocks: [{ body: 'Antwort' }],
+          payload: { languageCode: 'invalid locale', sortWeight: 1.5 },
+        }),
+      })
+    );
+    const unsupportedFieldsResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'FAQ',
+          contentBlocks: [{ body: 'Antwort' }],
+          payload: { languageCode: 'de', sortWeight: 0 },
+          categories: [{ name: 'Service' }],
+        }),
+      })
+    );
+
+    expect(missingAnswerResponse?.status).toBe(400);
+    await expect(missingAnswerResponse?.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'Die FAQ-Antwort ist erforderlich.',
+    });
+    expect(invalidPayloadResponse?.status).toBe(400);
+    await expect(invalidPayloadResponse?.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'Der FAQ-Sprachcode ist ungültig.',
+    });
+    expect(unsupportedFieldsResponse?.status).toBe(400);
+    await expect(unsupportedFieldsResponse?.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'FAQ unterstützt nur Frage, Antwort und kontrollierten Payload.',
+    });
+    expect(state.createSvaMainserverGenericItem).not.toHaveBeenCalled();
+  });
+
   it('passes includeInvisible=true through the generic items list route', async () => {
     mockAuthorizedMutation();
     state.listSvaMainserverGenericItems.mockResolvedValue({
@@ -190,6 +364,45 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     );
   });
 
+  it('merges existing faq payload fields during updates and logs faq content type', async () => {
+    mockAuthorizedMutation();
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'faq-1',
+      genericType: 'FAQ',
+      payload: { languageCode: 'de', sortWeight: 2, legacy: 'keep' },
+    });
+    state.updateSvaMainserverGenericItem.mockResolvedValue({ id: 'faq-1' });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs/faq-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'FAQ',
+          contentBlocks: [{ body: 'Antwort' }],
+          payload: { languageCode: 'fr', sortWeight: 3 },
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        genericItemId: 'faq-1',
+        genericItem: expect.objectContaining({
+          genericType: 'FAQ',
+          payload: { languageCode: 'fr', sortWeight: 3, legacy: 'keep' },
+        }),
+      })
+    );
+    expect(state.loggerInfo).toHaveBeenCalledWith(
+      'Mainserver generic items route succeeded',
+      expect.objectContaining({
+        content_type: 'faq.faq',
+      })
+    );
+  });
+
   it('reads generic item details after item authorization', async () => {
     mockAuthorizedMutation();
     state.getSvaMainserverGenericItem.mockResolvedValue({ id: 'generic-1' });
@@ -205,6 +418,24 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     );
   });
 
+  it('returns not found when a faq detail request resolves to a non-faq generic item', async () => {
+    mockAuthorizedMutation();
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'generic-1',
+      genericType: 'INFO',
+    });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs/generic-1')
+    );
+
+    expect(response?.status).toBe(404);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'not_found',
+      message: 'FAQ wurde nicht gefunden.',
+    });
+  });
+
   it('deletes generic items', async () => {
     mockAuthorizedMutation();
     state.deleteSvaMainserverGenericItem.mockResolvedValue({ id: 'generic-1', deleted: true });
@@ -217,6 +448,39 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     expect(state.deleteSvaMainserverGenericItem).toHaveBeenCalledWith(
       expect.objectContaining({ genericItemId: 'generic-1' })
     );
+  });
+
+  it('returns not found when faq update or delete targets a non-faq generic item', async () => {
+    mockAuthorizedMutation();
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'generic-1',
+      genericType: 'INFO',
+    });
+
+    const updateResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs/generic-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Aktualisiert', genericType: 'FAQ' }),
+      })
+    );
+    const deleteResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs/generic-1', {
+        method: 'DELETE',
+      })
+    );
+
+    expect(updateResponse?.status).toBe(404);
+    await expect(updateResponse?.json()).resolves.toEqual({
+      error: 'not_found',
+      message: 'FAQ wurde nicht gefunden.',
+    });
+    expect(deleteResponse?.status).toBe(404);
+    await expect(deleteResponse?.json()).resolves.toEqual({
+      error: 'not_found',
+      message: 'FAQ wurde nicht gefunden.',
+    });
+    expect(state.updateSvaMainserverGenericItem).not.toHaveBeenCalled();
+    expect(state.deleteSvaMainserverGenericItem).not.toHaveBeenCalled();
   });
 
   it('rejects missing required fields', async () => {

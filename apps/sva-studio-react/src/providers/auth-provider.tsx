@@ -105,6 +105,7 @@ const MAIN_SERVER_VISIBLE_TYPE_BY_READ_ACTION = new Map<string, string>([
   ['events.read', 'events.event-record'],
   ['poi.read', 'poi.point-of-interest'],
   ['generic-items.read', 'generic-items.generic-item'],
+  ['faq.read', 'faq.faq'],
   ['surveys.read', 'surveys.survey'],
 ]);
 

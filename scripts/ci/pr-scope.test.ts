@@ -96,6 +96,21 @@ describe('pr-scope', () => {
     });
   });
 
+  it('keeps faq translation-only changes out of the e2e gate', () => {
+    const decision = classifyPrScope([
+      'packages/plugin-faq/src/plugin.translations.ts',
+    ]);
+
+    expectDecision(decision, {
+      codeRelevant: true,
+      qualityGateMode: 'affected',
+      coverageMode: 'skip',
+      integrationMode: 'skip',
+      e2eMode: 'skip',
+      appBuildMode: 'affected',
+    });
+  });
+
   it('keeps docs-only pull requests as full no-op', () => {
     const decision = classifyPrScope([
       'docs/development/testing-coverage.md',

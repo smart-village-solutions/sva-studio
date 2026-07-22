@@ -109,6 +109,12 @@
       "functions": 59,
       "branches": 72
     },
+    "plugin-faq": {
+      "lines": 90,
+      "statements": 85,
+      "functions": 70,
+      "branches": 75
+    },
     "routing": {
       "lines": 99,
       "statements": 99,

@@ -9,6 +9,7 @@ export const DEFAULT_MAINSERVER_VISIBLE_TYPES = [
   'events.event-record',
   'poi.point-of-interest',
   'generic-items.generic-item',
+  'faq.faq',
   'surveys.survey',
 ] as const;
 

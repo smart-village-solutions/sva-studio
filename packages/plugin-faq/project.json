@@ -1,0 +1,15 @@
+{
+  "name": "plugin-faq",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/plugin-faq/src",
+  "projectType": "library",
+  "targets": {
+    "build": { "executor": "nx:run-commands", "dependsOn": ["^build"], "outputs": ["{projectRoot}/dist"], "options": { "command": "tsc -p packages/plugin-faq/tsconfig.lib.json" } },
+    "lint": { "executor": "@nx/eslint:lint", "options": { "lintFilePatterns": ["packages/plugin-faq/src/**/*.{ts,tsx}", "packages/plugin-faq/tests/**/*.{ts,tsx}"] } },
+    "test:unit": { "executor": "nx:run-commands", "options": { "cwd": "packages/plugin-faq", "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts tests --reporter=verbose --config vitest.config.ts --passWithNoTests" } },
+    "test:types": { "executor": "nx:run-commands", "dependsOn": ["^build"], "options": { "command": "tsc -p packages/plugin-faq/tsconfig.lib.json --noEmit" } },
+    "test:coverage": { "executor": "nx:run-commands", "options": { "cwd": "packages/plugin-faq", "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts tests --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests" } },
+    "test:integration": { "executor": "nx:run-commands", "options": { "command": "node -e \"console.log('no integration tests configured for @sva/plugin-faq')\"" } }
+  },
+  "tags": ["scope:plugin", "type:lib"]
+}

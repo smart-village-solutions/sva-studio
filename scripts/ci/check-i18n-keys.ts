@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { DEFAULT_LOCALE, i18nResources } from '../../apps/sva-studio-react/src/i18n/resources';
 import { pluginEventsTranslations } from '../../packages/plugin-events/src/plugin.translations';
+import { pluginFaqTranslations } from '../../packages/plugin-faq/src/plugin.translations';
 import { pluginNewsTranslations } from '../../packages/plugin-news/src/plugin.translations';
 import { pluginPoiTranslations } from '../../packages/plugin-poi/src/plugin.translations';
 import { wasteManagementPluginTranslations } from '../../packages/plugin-waste-management/src/plugin.translations';
@@ -17,6 +18,7 @@ export const SOURCE_ROOTS = [
   'apps/sva-studio-react/src',
   'packages/plugin-news/src',
   'packages/plugin-events/src',
+  'packages/plugin-faq/src',
   'packages/plugin-poi/src',
   'packages/plugin-waste-management/src',
 ] as const;
@@ -25,6 +27,7 @@ const SOURCE_ROOT_CONFIGS = [
   { relativeRoot: 'apps/sva-studio-react/src', namespace: null },
   { relativeRoot: 'packages/plugin-news/src', namespace: 'news' },
   { relativeRoot: 'packages/plugin-events/src', namespace: 'events' },
+  { relativeRoot: 'packages/plugin-faq/src', namespace: 'faq' },
   { relativeRoot: 'packages/plugin-poi/src', namespace: 'poi' },
   { relativeRoot: 'packages/plugin-waste-management/src', namespace: 'wasteManagement' },
 ] as const;
@@ -32,6 +35,7 @@ const SOURCE_ROOT_CONFIGS = [
 const pluginTranslationResources = [
   pluginNewsTranslations,
   pluginEventsTranslations,
+  pluginFaqTranslations,
   pluginPoiTranslations,
   wasteManagementPluginTranslations,
 ] as const;

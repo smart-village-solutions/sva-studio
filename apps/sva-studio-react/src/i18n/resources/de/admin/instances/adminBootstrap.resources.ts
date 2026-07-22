@@ -18,6 +18,7 @@ export const adminBootstrapInstancesAdminDEResources = {
     news: 'News',
     events: 'Events',
     genericItems: 'Generic Items',
+    faq: 'FAQ',
     poi: 'POI',
     media: 'Medien',
     surveys: 'Umfragen',

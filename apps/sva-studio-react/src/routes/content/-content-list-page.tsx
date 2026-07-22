@@ -5,6 +5,7 @@ import {
   type IamContentListQuery,
 } from '@sva/core';
 import { deleteEvent } from '@sva/plugin-events';
+import { deleteFaq } from '@sva/plugin-faq';
 import { deleteGenericItem } from '@sva/plugin-generic-items';
 import { deleteNews } from '@sva/plugin-news';
 import { deletePoi } from '@sva/plugin-poi';
@@ -313,6 +314,10 @@ const deleteMainserverItem = async (contentType: string, contentId: string): Pro
   }
   if (contentType === 'surveys.survey') {
     await deleteSurvey(contentId);
+    return;
+  }
+  if (contentType === 'faq.faq') {
+    await deleteFaq(contentId);
     return;
   }
   if (contentType === 'generic-items.generic-item') {

@@ -16,6 +16,7 @@ describe('@sva/studio-module-iam', () => {
       'events',
       'poi',
       'generic-items',
+      'faq',
       'surveys',
       'waste-management',
     ]);
@@ -26,6 +27,7 @@ describe('@sva/studio-module-iam', () => {
       'events',
       'poi',
       'generic-items',
+      'faq',
       'surveys',
       'waste-management',
       'media',
@@ -114,6 +116,12 @@ describe('@sva/studio-module-iam', () => {
           ],
         },
       ],
+    });
+    expect(getStudioModuleIamContract('faq')).toMatchObject({
+      moduleId: 'faq',
+      namespace: 'faq',
+      ownerPluginId: 'faq',
+      permissionIds: ['faq.read', 'faq.create', 'faq.update', 'faq.delete'],
     });
     expect(getStudioModuleIamContract('surveys')).toMatchObject({
       moduleId: 'surveys',

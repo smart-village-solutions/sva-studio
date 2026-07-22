@@ -83,6 +83,10 @@ Abhängigkeiten des aktuellen Systems.
    - verwendet in der Bearbeitung card-basierte Tabpanels mit globalem Speichern, während Legacy-Felder außerhalb der vereinfachten Oberfläche bei Updates aus dem geladenen Datensatz erhalten bleiben
    - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
    - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an; die Studio-Liste lädt Entwürfe ausdrücklich mit `includeInvisible=true`
+11a. Plugin FAQ (`packages/plugin-faq`)
+   - Standard-Content-Plugin mit dem Content-Type `faq.faq`; die fachlichen Datensätze bleiben Mainserver-`GenericItem`s mit dem festen Discriminator `genericType: "FAQ"`
+   - kapselt Frage, reine Textantwort, BCP-47-Sprachcode und Sortiergewicht; unbekannte `payload`-Schlüssel bleiben bei Updates erhalten
+   - nutzt ausschließlich die hostgeführte Fassade `/api/v1/mainserver/faqs`; diese trennt FAQ- und sonstige GenericItem-IDs, erzwingt `faq.*`-Rechte und lädt für korrekte Filter-Pagination sämtliche Upstream-Seiten
 11a. Plugin Surveys (`packages/plugin-surveys`)
    - produktives Fachplugin für Mainserver-gestützte Umfragen mit pluginnahem Modell `surveys.survey`
    - registriert sich als normales Standard-Content-Plugin über `createStandardContentPluginContribution(...)` und erweitert dieses Muster nur um die Rechte `surveys.moderate` und `surveys.export`

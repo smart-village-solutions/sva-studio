@@ -11,6 +11,9 @@ export const pluginsDEResources = {
   'generic-items': {
     description: 'Veröffentlicht frei modellierbare Generic Items für den Mandanten.',
   },
+  faq: {
+    description: 'Veröffentlicht mehrsprachige Fragen und Antworten für den Mandanten.',
+  },
   categories: {
     description:
       'Stellt die Mainserver-Kategorien als redaktionelles Begleitmodul für News, Termine und Orte bereit.',

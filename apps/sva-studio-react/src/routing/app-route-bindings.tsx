@@ -2,6 +2,7 @@ import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings as BaseA
 import { resolveUserDisplayName, type IamOrganizationContextOption, type IamOrganizationDetail } from '@sva/core';
 import { CategoriesPage } from '@sva/plugin-categories';
 import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events';
+import { FaqCreatePage, FaqEditPage, FaqListPage } from '@sva/plugin-faq';
 import { GenericItemsCreatePage, GenericItemsEditPage } from '@sva/plugin-generic-items';
 import { NewsDetailPage, NewsEditPage, type NewsAuthorControl } from '@sva/plugin-news';
 import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi';
@@ -200,6 +201,9 @@ type StudioAppRouteBindings = BaseAppRouteBindings & {
   readonly eventsEditor: React.ComponentType;
   readonly genericItemsList: React.ComponentType;
   readonly genericItemsDetail: React.ComponentType;
+  readonly faqList: React.ComponentType;
+  readonly faqDetail: React.ComponentType;
+  readonly faqEditor: React.ComponentType;
   readonly genericItemsEditor: React.ComponentType;
   readonly poiList: React.ComponentType;
   readonly poiDetail: React.ComponentType;
@@ -392,6 +396,9 @@ export const appRouteBindings: StudioAppRouteBindings = {
   genericItemsList: ContentListPage,
   genericItemsDetail: GenericItemsEditPage,
   genericItemsEditor: GenericItemsCreatePage,
+  faqList: FaqListPage,
+  faqDetail: FaqEditPage,
+  faqEditor: FaqCreatePage,
   poiList: ContentListPage,
   poiDetail: PoiEditRoutePage,
   poiEditor: PoiCreateRoutePage,

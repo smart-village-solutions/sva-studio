@@ -13,12 +13,14 @@ export const buildWasteSyncKey = (item: {
   wasteType: string;
   street: string;
   city?: string;
+  note?: string;
 }): string =>
   [
     item.pickupDate,
     normalizeKeyPart(item.wasteType),
     normalizeKeyPart(item.street),
     normalizeKeyPart(item.city),
+    ...(normalizeKeyPart(item.note) ? [normalizeKeyPart(item.note)] : []),
   ].join('::');
 
 export const toWasteSyncRow = (item: SvaMainserverWasteSyncItem): WasteSyncRow => ({

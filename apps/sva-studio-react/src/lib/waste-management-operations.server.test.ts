@@ -800,7 +800,7 @@ describe('waste management operations runtime', () => {
     });
   });
 
-  it('carries pickup-date notes through the ortsbezogene-tourtermine runtime import path', async () => {
+  it('carries pickup-date notes through the ortsbezogene-tourtermine assignment import path', async () => {
     const repository = createRepositoryMock();
     const runtime = await createRuntimeWithRepositoryMock(
       repository,
@@ -821,15 +821,15 @@ describe('waste management operations runtime', () => {
       blobRef: 'fixture.csv',
     });
 
-    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenCalledTimes(4);
-    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenNthCalledWith(
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledTimes(4);
+    expect(repository.upsertWasteTourAssignment).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
         pickupDate: '2026-02-03',
         note: 'Schnee-Ersatztermin',
       })
     );
-    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenNthCalledWith(
+    expect(repository.upsertWasteTourAssignment).toHaveBeenNthCalledWith(
       4,
       expect.objectContaining({
         pickupDate: '2026-02-10',
@@ -1210,6 +1210,8 @@ const requiredTableRows = [
   { table_name: 'waste_settings' },
   { table_name: 'waste_streets' },
   { table_name: 'waste_tour_date_shifts' },
+  { table_name: 'waste_tour_assignment_locations' },
+  { table_name: 'waste_tour_assignments' },
   { table_name: 'waste_tours' },
 ];
 
@@ -1390,6 +1392,7 @@ const createRepositoryMockBase = () => ({
   listWasteTours: vi.fn(async (): Promise<unknown[]> => []),
   listWasteLocationTourLinks: vi.fn(async (): Promise<unknown[]> => []),
   listWasteLocationTourPickupDates: vi.fn(async (): Promise<unknown[]> => []),
+  listWasteTourAssignments: vi.fn(async (): Promise<unknown[]> => []),
   listWasteTourDateShifts: vi.fn(async (): Promise<unknown[]> => []),
   listWasteGlobalDateShifts: vi.fn(async (): Promise<unknown[]> => []),
   listWasteHolidayRules: vi.fn(async (): Promise<unknown[]> => []),
@@ -1402,6 +1405,7 @@ const createRepositoryMockBase = () => ({
   upsertWasteTour: vi.fn(async () => undefined),
   upsertWasteLocationTourLink: vi.fn(async () => undefined),
   upsertWasteLocationTourPickupDate: vi.fn(async () => undefined),
+  upsertWasteTourAssignment: vi.fn(async () => undefined),
   upsertWasteTourDateShift: vi.fn(async () => undefined),
   upsertWasteGlobalDateShift: vi.fn(async () => undefined),
 });

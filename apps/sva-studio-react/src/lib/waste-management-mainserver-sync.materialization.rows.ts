@@ -2,12 +2,12 @@ import type {
   WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteFractionRecord,
-  WasteLocationTourLinkRecord,
   WasteStreetRecord,
   WasteTourRecord,
 } from '@sva/core';
 
 import type { MaterializedLocationTourPickupDateRecord } from './waste-management-mainserver-sync.materialization.js';
+import { buildWasteSyncKey } from './waste-management-mainserver-sync.rows.js';
 
 export type StudioMaterializedWasteRow = Readonly<{
   pickupDate: string;
@@ -23,7 +23,6 @@ type StudioRowMaterializationInput = Readonly<{
   pickupDates: readonly MaterializedLocationTourPickupDateRecord[];
   tours: readonly WasteTourRecord[];
   fractions: readonly WasteFractionRecord[];
-  links: readonly WasteLocationTourLinkRecord[];
   locations: readonly WasteCollectionLocationRecord[];
   cities: readonly WasteCityRecord[];
   streets: readonly WasteStreetRecord[];
@@ -57,9 +56,13 @@ export const buildStudioRowsFromMaterialization = (
         street,
         city,
         note: pickupDate.note ?? undefined,
-        key: [pickupDate.pickupDate, wasteType, street, city]
-          .map((value) => value.toLocaleLowerCase('de-DE'))
-          .join('::'),
+        key: buildWasteSyncKey({
+          pickupDate: pickupDate.pickupDate,
+          wasteType,
+          street,
+          city,
+          note: pickupDate.note ?? undefined,
+        }),
       }];
     });
   });

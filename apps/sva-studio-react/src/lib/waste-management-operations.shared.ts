@@ -43,6 +43,8 @@ export const requiredWasteTables = [
   'waste_tours',
   'waste_location_tour_links',
   'waste_location_tour_pickup_dates',
+  'waste_tour_assignments',
+  'waste_tour_assignment_locations',
   'waste_email_reminder_subscriptions',
   'waste_email_reminder_subscription_items',
   'waste_email_reminder_outbox',

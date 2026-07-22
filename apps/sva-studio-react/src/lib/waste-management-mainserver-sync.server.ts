@@ -54,7 +54,7 @@ type WasteMaterializationSyncState = Omit<
   readonly locationTourPickupDates: NonNullable<
     WasteMaterializationContext['locationTourPickupDates']
   >;
-  readonly tourAssignments?: NonNullable<WasteMaterializationContext['tourAssignments']>;
+  readonly tourAssignments: NonNullable<WasteMaterializationContext['tourAssignments']>;
   readonly streets: readonly WasteStreetRecord[];
   readonly tours: readonly WasteTourRecord[];
   readonly links: readonly WasteLocationTourLinkRecord[];
@@ -114,7 +114,6 @@ const buildStudioRowsFromSyncState = (
     }),
     tours: studioState.tours,
     fractions: studioState.fractions,
-    links: studioState.links,
     locations: studioState.locations,
     cities: studioState.cities,
     streets: studioState.streets,

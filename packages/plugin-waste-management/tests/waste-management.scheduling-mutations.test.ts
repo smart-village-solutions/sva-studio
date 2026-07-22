@@ -201,7 +201,7 @@ describe('createWasteSchedulingMutationHandlers', () => {
         locationIds: ['location-1', 'location-parent'],
         tourId: 'tour-1',
         pickupDate: '2026-07-01',
-        note: '08:00',
+        note: ' 08:00 ',
       },
       'create'
     );

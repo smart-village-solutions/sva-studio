@@ -305,15 +305,6 @@ describe('waste-management-mainserver-sync.materialization', () => {
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
       ],
-      links: [
-        {
-          id: 'link-1',
-          locationId: 'location-1',
-          tourId: 'tour-1',
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-        },
-      ],
       locations: [
         {
           id: 'location-1',
@@ -391,22 +382,6 @@ describe('waste-management-mainserver-sync.materialization', () => {
               calendar: false,
             },
           },
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-        },
-      ],
-      links: [
-        {
-          id: 'link-1',
-          locationId: 'location-inactive',
-          tourId: 'tour-1',
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-        },
-        {
-          id: 'link-2',
-          locationId: 'location-without-street',
-          tourId: 'tour-1',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -1004,22 +979,6 @@ describe('waste-management-mainserver-sync.materialization', () => {
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
       ],
-      links: [
-        {
-          id: 'link-1',
-          locationId: 'location-1',
-          tourId: 'tour-1',
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-        },
-        {
-          id: 'link-2',
-          locationId: 'location-missing-city',
-          tourId: 'tour-1',
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-        },
-      ],
       locations: [
         {
           id: 'location-1',
@@ -1062,7 +1021,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
         pickupDate: '2026-01-05',
         wasteType: 'Restmüll',
         note: 'Schnee-Ersatztermin',
-        key: '2026-01-05::restmüll::hauptstraße::musterhausen',
+        key: '2026-01-05::restmüll::hauptstraße::musterhausen::schnee-ersatztermin',
       }),
     ]);
   });

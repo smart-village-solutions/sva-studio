@@ -610,6 +610,21 @@ export const createPublicWasteRepository = (input: {
         }, new Map())
       ).map(([, entry]) => entry);
 
+      const holidayRules = holidayRulesResult.rows.map((row) => ({
+        id: row.id,
+        holidayDate: row.holiday_date,
+        holidayName: row.holiday_name,
+        year: row.holiday_year,
+        stateCode: row.state_code,
+        sourceStatus: row.source_status,
+        configurationStatus: row.configuration_status,
+        conflictStatus: row.conflict_status,
+        ...(row.scope ? { scope: row.scope } : {}),
+        ...(row.strategy ? { strategy: row.strategy } : {}),
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+
       const calculatedEntries = calculatePublicWasteCalendarEntries({
         referenceDate: query.referenceDate,
         selection: query.selection,
@@ -628,20 +643,7 @@ export const createPublicWasteRepository = (input: {
           ...(row.description ? { description: row.description } : {}),
           ...(row.tour_ids ? { tourIds: row.tour_ids } : {}),
         })),
-        holidayRules: holidayRulesResult.rows.map((row) => ({
-          id: row.id,
-          holidayDate: row.holiday_date,
-          holidayName: row.holiday_name,
-          year: row.holiday_year,
-          stateCode: row.state_code,
-          sourceStatus: row.source_status,
-          configurationStatus: row.configuration_status,
-          conflictStatus: row.conflict_status,
-          ...(row.scope ? { scope: row.scope } : {}),
-          ...(row.strategy ? { strategy: row.strategy } : {}),
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-        })),
+        holidayRules,
       });
 
       if (!windowStart) {
@@ -710,21 +712,6 @@ export const createPublicWasteRepository = (input: {
       }
 
       const tourAssignmentRows = tourAssignmentsResult?.rows ?? [];
-      const holidayRules = holidayRulesResult.rows.map((row) => ({
-        id: row.id,
-        holidayDate: row.holiday_date,
-        holidayName: row.holiday_name,
-        year: row.holiday_year,
-        stateCode: row.state_code,
-        sourceStatus: row.source_status,
-        configurationStatus: row.configuration_status,
-        conflictStatus: row.conflict_status,
-        ...(row.scope ? { scope: row.scope } : {}),
-        ...(row.strategy ? { strategy: row.strategy } : {}),
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      }));
-
       for (const row of tourAssignmentRows) {
         const pickupDate = normalizeDateOnly(row.pickup_date);
         if (!pickupDate || !row.fraction_id || !row.fraction_label) {

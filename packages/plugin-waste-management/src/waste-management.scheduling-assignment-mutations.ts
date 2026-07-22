@@ -90,7 +90,7 @@ const createSaveTourAssignmentHandler =
       const payload = {
         tourId: input.tourId,
         pickupDate: input.pickupDate,
-        note: input.note || undefined,
+        note: input.note.trim() || undefined,
         locationIds: input.locationIds,
       };
       if (mode === 'create')

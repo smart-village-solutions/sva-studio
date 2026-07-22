@@ -52,7 +52,7 @@ export const createMaterializeEmailRemindersOperation = (
   const details = await withWasteClient(deps, instanceId, async ({ client, repository, dataSource }) => {
     const unsubscribeSigningSecret = reminderSettings.unsubscribeSigningSecret ?? dataSource.databaseUrl;
     const reminderRepository = createWasteEmailReminderRepository(createSqlExecutor(client));
-    const [subscriptions, fractions, tours, links, locations, pickupDates, tourDateShifts, globalDateShifts, holidayRules] =
+    const [subscriptions, fractions, tours, links, locations, pickupDates, tourAssignments, tourDateShifts, globalDateShifts, holidayRules] =
       await Promise.all([
         reminderRepository.listActiveSubscriptions(),
         repository.listWasteFractions({ active: true }),
@@ -60,6 +60,7 @@ export const createMaterializeEmailRemindersOperation = (
         repository.listWasteLocationTourLinks(),
         repository.listWasteCollectionLocations({ active: true }),
         repository.listWasteLocationTourPickupDates(),
+        repository.listWasteTourAssignments(),
         repository.listWasteTourDateShifts(),
         repository.listWasteGlobalDateShifts(),
         repository.listWasteHolidayRules(),
@@ -70,6 +71,7 @@ export const createMaterializeEmailRemindersOperation = (
       tours,
       links,
       locationTourPickupDates: pickupDates,
+      tourAssignments,
       tourDateShifts,
       globalDateShifts,
       holidayRules,

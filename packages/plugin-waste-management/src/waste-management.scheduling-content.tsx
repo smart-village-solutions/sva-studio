@@ -130,8 +130,12 @@ export const WasteSchedulingContent = ({
       setValidationMessage(pt('scheduling.assignments.validation.required'));
       return;
     }
-    await onSaveTourAssignment({ ...form, note: form.note.trim() }, dialogMode);
-    close(false);
+    try {
+      await onSaveTourAssignment({ ...form, note: form.note.trim() }, dialogMode);
+      close(false);
+    } catch {
+      // The mutation handler has already recorded a translated error message.
+    }
   };
   return (
     <div className="space-y-4">

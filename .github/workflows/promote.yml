@@ -201,6 +201,7 @@ jobs:
         uses: hostwithquantum/setup-quantum-cli@v2.0.0
         with:
           api-key: ${{ secrets.QUANTUM_API_KEY }}
+          version: 3.2.1
 
       - name: run dev bootstrap job
         if: ${{ inputs.environment == 'dev' && inputs.bootstrap_mode == 'run' }}
@@ -213,16 +214,27 @@ jobs:
           set -euo pipefail
           umask 077
           job_stack="studio-dev-bootstrap-${GITHUB_RUN_ID}"
-          trap 'quantum-cli stacks remove --force --endpoint "${QUANTUM_ENDPOINT}" --stack "${job_stack}" || true; rm -f .env stack.json bootstrap-stack.json .quantum' EXIT
+          trap 'quantum-cli stacks remove --force --endpoint "${QUANTUM_ENDPOINT}" --stack "${job_stack}" || true; rm -f .env stack.json bootstrap-stack.json' EXIT
           pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
           printf '\nIMAGE_REF=%s\nSVA_DEPLOY_REVISION=%s\n' "${DEPLOY_IMAGE_REF}" "${DEPLOY_REVISION}" >> .env
           docker compose -f compose.yaml -f ./deploy/compose.dev.yaml config --format json > stack.json
           jq --arg host 'studio-dev_postgres' --arg job "${job_stack}" '{version:"3.8",services:{bootstrap:(.services.bootstrap | .networks=["internal"] | .environment.POSTGRES_HOST=$host | .environment.SVA_BOOTSTRAP_JOB_STACK=$job | .environment.SVA_BOOTSTRAP_TARGET_STACK="studio-dev" | .deploy.replicas=1 | .deploy.restart_policy.condition="none")},networks:{internal:{external:true,name:"studio-dev_default"}}}' stack.json > bootstrap-stack.json
-          printf '%s\n' '---' 'version: "1.0"' 'compose: bootstrap-stack.json' > .quantum
-          quantum-cli stacks create --endpoint "${QUANTUM_ENDPOINT}" --stack "${job_stack}" --wait
-          task_json="$(quantum-cli ps --endpoint "${QUANTUM_ENDPOINT}" --stack "${job_stack}" --all -o json)"
-          exit_code="$(printf '%s' "${task_json}" | jq -r '.. | objects | select(.Status?.ContainerStatus?.ExitCode? != null) | .Status.ContainerStatus.ExitCode' | tail -n1)"
-          test "${exit_code}" = "0"
+          quantum-cli stacks deploy --endpoint "${QUANTUM_ENDPOINT}" --stack "${job_stack}" --file bootstrap-stack.json
+
+          for attempt in $(seq 1 60); do
+            if task_json="$(quantum-cli ps --endpoint "${QUANTUM_ENDPOINT}" --stack "${job_stack}" --all -o json)"; then
+              exit_code="$(printf '%s' "${task_json}" | jq -r '.. | objects | select(.Status?.ContainerStatus?.ExitCode? != null) | .Status.ContainerStatus.ExitCode' | tail -n1)"
+              if test -n "${exit_code}" && test "${exit_code}" != "null"; then
+                test "${exit_code}" = "0"
+                exit 0
+              fi
+            fi
+
+            sleep 5
+          done
+
+          echo "Bootstrap task did not finish within five minutes." >&2
+          exit 1
 
       - name: deploy
         id: deploy

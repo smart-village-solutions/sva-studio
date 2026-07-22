@@ -19,7 +19,12 @@ export const wasteManagementLocationTourLinkBulkHandlers = {
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
     const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.tours.manage', deps, requestId);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.tours.manage',
+      deps,
+      requestId
+    );
     if (authError) {
       return authError;
     }
@@ -52,7 +57,10 @@ export const wasteManagementLocationTourLinkBulkHandlers = {
     }
 
     try {
-      const items = await requireDeps(deps.saveWasteLocationTourLinksBulk, 'saveWasteLocationTourLinksBulk')(instanceId, {
+      const items = await requireDeps(
+        deps.saveWasteLocationTourLinksBulk,
+        'saveWasteLocationTourLinksBulk'
+      )(instanceId, {
         locationIds: parsed.data.locationIds.map((entry) => entry.trim()),
         tourId: parsed.data.tourId,
         startDate: normalizeOptionalString(parsed.data.startDate),

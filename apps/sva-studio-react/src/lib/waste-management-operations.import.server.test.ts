@@ -28,15 +28,35 @@ const createRepositoryMock = () => ({
       updatedAt: '',
     },
   ]),
-  listWasteRegions: vi.fn(async () => [{ id: 'region-prignitz', name: 'Prignitz', createdAt: '', updatedAt: '' }]),
+  listWasteRegions: vi.fn(async () => [
+    { id: 'region-prignitz', name: 'Prignitz', createdAt: '', updatedAt: '' },
+  ]),
   listWasteCities: vi.fn(async () => [
-    { id: 'city-perleberg', name: 'Perleberg', regionId: 'region-prignitz', createdAt: '', updatedAt: '' },
+    {
+      id: 'city-perleberg',
+      name: 'Perleberg',
+      regionId: 'region-prignitz',
+      createdAt: '',
+      updatedAt: '',
+    },
   ]),
   listWasteStreets: vi.fn(async () => [
-    { id: 'street-acker', name: 'Ackerstraße', cityId: 'city-perleberg', createdAt: '', updatedAt: '' },
+    {
+      id: 'street-acker',
+      name: 'Ackerstraße',
+      cityId: 'city-perleberg',
+      createdAt: '',
+      updatedAt: '',
+    },
   ]),
   listWasteHouseNumbers: vi.fn(async () => [
-    { id: 'house-all', number: 'Alle Hausnummern', streetId: 'street-acker', createdAt: '', updatedAt: '' },
+    {
+      id: 'house-all',
+      number: 'Alle Hausnummern',
+      streetId: 'street-acker',
+      createdAt: '',
+      updatedAt: '',
+    },
   ]),
   listWasteCollectionLocations: vi.fn(async () => [
     {
@@ -86,6 +106,7 @@ const createRepositoryMock = () => ({
   upsertWasteTour: vi.fn(async () => undefined),
   upsertWasteLocationTourLink: vi.fn(async () => undefined),
   upsertWasteLocationTourPickupDate: vi.fn(async () => undefined),
+  upsertWasteTourAssignment: vi.fn(async () => undefined),
   upsertWasteTourDateShift: vi.fn(async () => undefined),
   upsertWasteGlobalDateShift: vi.fn(async () => undefined),
 });
@@ -124,10 +145,127 @@ const parsedLocationTourPickupDates = {
 } as const;
 
 describe('waste-management-operations.import', () => {
+  it('groups multiple location rows with one assignment id into a single assignment write', async () => {
+    const repository = createRepositoryMock();
+    repository.listWasteHouseNumbers.mockResolvedValue([
+      {
+        id: 'house-all',
+        number: 'Alle Hausnummern',
+        streetId: 'street-acker',
+        createdAt: '',
+        updatedAt: '',
+      },
+      { id: 'house-12', number: '12', streetId: 'street-acker', createdAt: '', updatedAt: '' },
+    ]);
+    repository.listWasteCollectionLocations.mockResolvedValue([
+      {
+        id: 'location-perleberg',
+        regionId: 'region-prignitz',
+        cityId: 'city-perleberg',
+        streetId: 'street-acker',
+        houseNumberId: 'house-all',
+        active: true,
+        createdAt: '',
+        updatedAt: '',
+      },
+      {
+        id: 'location-perleberg-12',
+        regionId: 'region-prignitz',
+        cityId: 'city-perleberg',
+        streetId: 'street-acker',
+        houseNumberId: 'house-12',
+        active: true,
+        createdAt: '',
+        updatedAt: '',
+      },
+    ]);
+    const assignmentId = '73d06a46-9a54-4db3-8a41-b67c3ec9d88d';
+    const parsed = {
+      delimiter: ';' as const,
+      detectedDelimiter: ';' as const,
+      header: [
+        'Einsatz-ID',
+        'Region',
+        'Ort',
+        'Straße',
+        'Hausnummern',
+        'Abholdatum',
+        'Hinweis',
+        'Papier',
+      ],
+      fractionNames: ['Papier'],
+      rows: ['Alle Hausnummern', '12'].map((houseNumbers, index) => ({
+        rowNumber: index + 2,
+        assignmentId,
+        region: 'Prignitz',
+        city: 'Perleberg',
+        street: 'Ackerstraße',
+        houseNumbers,
+        pickupDate: '2026-06-10',
+        note: undefined,
+        tourNamesByFractionName: { Papier: 'PPK.7.2' },
+      })),
+      validRowCount: 2,
+      invalidRowCount: 0,
+      issues: [],
+    };
+
+    await executeImport(repository, {
+      profileId: 'waste-management.ortsbezogene-tourtermine',
+      parsedLocationTourPickupDates: parsed,
+    });
+
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledTimes(1);
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledWith({
+      id: assignmentId,
+      tourId: 'tour-paper',
+      pickupDate: '2026-06-10',
+      note: null,
+      locationIds: ['location-perleberg', 'location-perleberg-12'],
+    });
+    expect(repository.upsertWasteLocationTourPickupDate).not.toHaveBeenCalled();
+  });
+
+  it('rejects inconsistent assignment groups before persisting any import entity', async () => {
+    const repository = createRepositoryMock();
+    const assignmentId = '73d06a46-9a54-4db3-8a41-b67c3ec9d88d';
+    const parsed = {
+      delimiter: ';' as const,
+      detectedDelimiter: ';' as const,
+      header: ['Einsatz-ID', 'Ort', 'Abholdatum', 'Hinweis', 'Papier'],
+      fractionNames: ['Papier'],
+      rows: ['Erster Hinweis', 'Anderer Hinweis'].map((note, index) => ({
+        rowNumber: index + 2,
+        assignmentId,
+        region: 'Prignitz',
+        city: 'Perleberg',
+        street: 'Ackerstraße',
+        houseNumbers: 'Alle Hausnummern',
+        pickupDate: '2026-06-10',
+        note,
+        tourNamesByFractionName: { Papier: 'PPK.7.2' },
+      })),
+      validRowCount: 2,
+      invalidRowCount: 0,
+      issues: [],
+    };
+
+    await expect(
+      executeImport(repository, {
+        profileId: 'waste-management.ortsbezogene-tourtermine',
+        parsedLocationTourPickupDates: parsed,
+      })
+    ).rejects.toThrow(`inconsistent_tour_assignment_group:${assignmentId}`);
+    expect(repository.upsertWasteRegion).not.toHaveBeenCalled();
+    expect(repository.upsertWasteTourAssignment).not.toHaveBeenCalled();
+  });
+
   it('parses location-based pickup date csv imports from binary sources', async () => {
     const parsed = await parseLocationTourPickupDateImport(
       {
-        readBinarySource: vi.fn(async () => new TextEncoder().encode('Ort;Papier\nPerleberg;PPK.7.2\n')),
+        readBinarySource: vi.fn(async () =>
+          new TextEncoder().encode('Ort;Papier\nPerleberg;PPK.7.2\n')
+        ),
       },
       {
         sourceFormat: 'text/csv',
@@ -147,7 +285,9 @@ describe('waste-management-operations.import', () => {
   it('reports invalid pickup-date values as parser issues', async () => {
     const parsed = await parseLocationTourPickupDateImport(
       {
-        readBinarySource: vi.fn(async () => new TextEncoder().encode('Ort;Abholdatum;Papier\nPerleberg;2026-02-30;PPK.7.2\n')),
+        readBinarySource: vi.fn(async () =>
+          new TextEncoder().encode('Ort;Abholdatum;Papier\nPerleberg;2026-02-30;PPK.7.2\n')
+        ),
       },
       {
         sourceFormat: 'text/csv',
@@ -191,13 +331,18 @@ describe('waste-management-operations.import', () => {
           blobRef: 'fixture.xlsx',
         }
       )
-    ).rejects.toThrowError('unsupported_import_source_format:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    ).rejects.toThrowError(
+      'unsupported_import_source_format:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
   });
 
   it('previews location-based pickup date imports without persisting changes', async () => {
     const repository = createRepositoryMock();
 
-    const preview = await previewLocationTourPickupDateImport(repository, parsedLocationTourPickupDates);
+    const preview = await previewLocationTourPickupDateImport(
+      repository,
+      parsedLocationTourPickupDates
+    );
 
     expect(preview).toMatchObject({
       profileId: 'waste-management.ortsbezogene-tourtermine',
@@ -304,7 +449,7 @@ describe('waste-management-operations.import', () => {
     );
   });
 
-  it('persists imported pickup dates with normalized optional notes fail-closed', async () => {
+  it('persists legacy CSV rows as single-location assignments with normalized optional notes', async () => {
     const repository = createRepositoryMock();
 
     await executeImport(repository, {
@@ -326,18 +471,17 @@ describe('waste-management-operations.import', () => {
       },
     });
 
-    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenCalledTimes(3);
-    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenNthCalledWith(
-      1,
+    expect(repository.upsertWasteLocationTourPickupDate).not.toHaveBeenCalled();
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledTimes(3);
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledWith(
       expect.objectContaining({
-        locationId: 'location-perleberg',
+        locationIds: ['location-perleberg'],
         tourId: 'tour-paper',
         pickupDate: '2026-02-03',
         note: 'Schnee-Ersatztermin',
       })
     );
-    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenNthCalledWith(
-      3,
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledWith(
       expect.objectContaining({
         pickupDate: '2026-02-10',
         note: null,
@@ -373,10 +517,11 @@ describe('waste-management-operations.import', () => {
       },
     });
 
-    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenCalledTimes(1);
-    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenCalledWith(
+    expect(repository.upsertWasteLocationTourPickupDate).not.toHaveBeenCalled();
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledTimes(1);
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledWith(
       expect.objectContaining({
-        locationId: 'location-perleberg',
+        locationIds: ['location-perleberg'],
         tourId: 'tour-paper',
         pickupDate: '2026-02-03',
         note: 'Hinweis',

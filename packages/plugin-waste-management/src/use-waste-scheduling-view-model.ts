@@ -11,9 +11,6 @@ import type { WasteManagementSearchParams } from './search-params.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
-const isSchadstoffmobilTour = (tourName: string): boolean =>
-  tourName.trim().localeCompare('Schadstoffmobil', 'de', { sensitivity: 'base' }) === 0;
-
 export const useWasteSchedulingViewModel = (pt: Translate, search: WasteManagementSearchParams) => {
   const state = useWasteSchedulingState();
   const loadOverview = useWasteSchedulingOverview(state, pt);
@@ -26,25 +23,12 @@ export const useWasteSchedulingViewModel = (pt: Translate, search: WasteManageme
     availableTours: state.availableTours,
     pt,
   });
-  const schadstoffmobilTour = state.availableTours.find((tour) => isSchadstoffmobilTour(tour.name)) ?? null;
-  const schadstoffmobilAssignments = schadstoffmobilTour
-    ? (state.overview?.locationTourPickupDates ?? []).filter(
-        (assignment) => assignment.tourId === schadstoffmobilTour.id
-      )
-    : [];
-  const schadstoffmobilLinkedLocationIds = new Set(
-    schadstoffmobilTour
-      ? (state.locationOverview?.locationTourLinks ?? [])
-          .filter((link) => link.tourId === schadstoffmobilTour.id)
-          .map((link) => link.locationId)
-      : []
-  );
-  const schadstoffmobilLocationOptions = state.locationOverview
-    ? state.locationOverview.collectionLocations
-        .filter((location) => !schadstoffmobilTour || schadstoffmobilLinkedLocationIds.has(location.id))
+  const locationOverview = state.locationOverview;
+  const assignmentLocationOptions = locationOverview
+    ? locationOverview.collectionLocations
         .map((location) => ({
           id: location.id,
-          label: formatCollectionLocationLabel(pt, state.locationOverview!, location),
+          label: formatCollectionLocationLabel(pt, locationOverview, location),
         }))
         .sort((left, right) => left.label.localeCompare(right.label, 'de'))
     : [];
@@ -54,9 +38,8 @@ export const useWasteSchedulingViewModel = (pt: Translate, search: WasteManageme
     holidayRules: state.overview?.holidayRules ?? [],
     allSchedulingEntries,
     schedulingEntries: filterSchedulingTableEntries(allSchedulingEntries, search),
-    schadstoffmobilTour,
-    schadstoffmobilAssignments,
-    schadstoffmobilLocationOptions,
+    tourAssignments: state.overview?.tourAssignments ?? [],
+    assignmentLocationOptions,
     ...actions,
     ...mutations,
   };

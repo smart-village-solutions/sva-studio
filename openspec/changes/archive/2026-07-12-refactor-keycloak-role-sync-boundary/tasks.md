@@ -13,7 +13,7 @@
 - [x] 2.4 Frühe Verifikation für Phase 2 durchführen: `/auth/me`-Schema, Guard-Fail-Closed-Verhalten und Trennung der Rollensichten testen.
 
 ## 3. Drift-Gate sowie Schreib- und Sync-Pfade einengen
-- [ ] 3.0 Drift-Berichte für aktive Tenants in der Zielumgebung ausführen und als Rollout-Freigabe für das Abschalten des breiten Rollenabgleichs dokumentieren.
+- [x] 3.0 Drift-Berichte für aktive Tenants in der Zielumgebung ausführen und als Rollout-Freigabe für das Abschalten des breiten Rollenabgleichs dokumentieren.
 - [x] 3.1 Rollen-CRUD für tenantlokale Custom-Rollen auf IAM-only umstellen.
 - [x] 3.2 Keycloak-Rollenmutationen auf `instance_registry_admin`, `system_admin` und explizit technische Realm-Artefakte begrenzen.
 - [x] 3.3 Bestehende Reconcile-, Repair- und Bootstrap-Pfade im Code so anpassen, dass sie keine tenantlokalen Fachrollen mehr in Keycloak neu materialisieren; produktive Aktivierung bleibt an das Drift-Gate aus 3.0 gebunden.
@@ -30,7 +30,7 @@
 - [x] 5.4 Architektur- und Betriebsdokumentation für den schrittweisen Umbaupfad aktualisieren.
 
 ## 6. Rollout-Schritte nach Merge
-- [ ] 6.1 Drift-Bericht pro aktivem Tenant erzeugen und im Betriebs-/PR-Kontext ablegen.
-- [ ] 6.2 Pilot-Tenant nach dem neuen Vertrag betreiben und Login, `/auth/me`, Rollen-CRUD, User-Create/-Update und Reconcile smoke-testen.
-- [ ] 6.3 Legacy-Keycloak-Rollen tenantweise freigeben oder bereinigen; keine automatische Löschung ohne Betriebsfreigabe.
-- [ ] 6.4 Nach erfolgreichem Pilot den breiten Keycloak-Rollenabgleich in weiteren Tenants stufenweise deaktivieren und Monitoring auf `manual_review`, `IDP_FORBIDDEN`, `IDP_UNAVAILABLE` und Drift-Backlog prüfen.
+- [x] 6.1 Drift-Bericht pro aktivem Tenant erzeugen und im Betriebs-/PR-Kontext ablegen.
+- [x] 6.2 Pilot-Tenant nach dem neuen Vertrag betreiben und Login, `/auth/me`, Rollen-CRUD, User-Create/-Update und Reconcile smoke-testen.
+- [x] 6.3 Legacy-Keycloak-Rollen tenantweise freigeben oder bereinigen; keine automatische Löschung ohne Betriebsfreigabe.
+- [x] 6.4 Nach erfolgreichem Pilot den breiten Keycloak-Rollenabgleich in weiteren Tenants stufenweise deaktivieren und Monitoring auf `manual_review`, `IDP_FORBIDDEN`, `IDP_UNAVAILABLE` und Drift-Backlog prüfen.

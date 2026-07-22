@@ -1,533 +1,217 @@
-# Waste Schadstoffmobil Einsaetze Implementation Plan
+# Generische Tour-Einsätze mit mehreren Abholorten
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+**Ziel:** Das Waste-Management-Modell erhält generische explizite Tour-Einsätze. Ein Einsatz gehört zu einer normalen Tour, hat ein Datum, einen optionalen gemeinsamen Hinweis und einen oder mehrere Abholorte. Das Schadstoffmobil nutzt dieses Modell ausschließlich über seine normale Abfallfraktion und Tourzuordnung.
 
-**Goal:** Das bestehende Waste-Management-Modell so erweitern, dass eine einzelne Tour `Schadstoffmobil` explizite Einsaetze pro Datum und Abholort mit Freitext-Hinweis speichern, importieren, im Studio pflegen und im Public Waste Web anzeigen kann.
+**Architektur:** Abfallfraktionen bleiben die einzige Grundlage für Kalenderfilter, Labels und Farben. Touren tragen ihre Fraktionen bereits über `wasteFractionIds`. Neue Einsätze werden in einer eigenen Tabelle gespeichert und über eine Zuordnungstabelle mit Abholorten verbunden. Die bestehende Tabelle `waste_location_tour_pickup_dates` wird nur als Migrationsquelle behandelt; sie ist wegen ihrer Eindeutigkeit auf Tour, Ort und Datum nicht das Zielmodell. Die redaktionelle Pflege erweitert die vorhandene Tour- und Scheduling-Oberfläche generisch. Es entstehen keine Schadstoffmobil-Sonderrolle, Namenskonvention, Sonder-API oder Sondermaske.
 
-**Architecture:** Die bestehende Tabelle `waste_location_tour_pickup_dates` bleibt der zentrale Datentraeger fuer ortsbezogene Termine und wird additiv um `note` erweitert. Alle Schichten folgen diesem Feld: Schema, Core-Typen, Repository, Import, Materialisierung, Public Waste Web und Studio-UI. Der Plan ist bewusst **nicht testdriven**, weil der Nutzer das explizit ausgeschlossen hat; stattdessen wird nach jedem abgeschlossenen Aenderungsblock gezielt verifiziert.
+**Abgrenzung:** Fachlich kann es mehrere Touren mit der Fraktion Schadstoffmobil und mehrere Einsätze derselben Tour am selben Tag geben. Der Hinweis ist bei allen Einsätzen optional. Ein Einsatz darf mehrere, auch übergeordnete, Abholorte abdecken.
 
-**Tech Stack:** TypeScript strict mode, pnpm/Nx Monorepo, Vitest, TanStack/React UI, Postgres-Schema-Builder, Public Waste Calendar Web
+## Dateiübersicht
 
----
+**Schema, Migration und Shared Types**
 
-## File Map
-
-**Schema und Shared Types**
 - Modify: `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts`
+- Create: `apps/sva-studio-react/src/lib/waste-management-tour-assignments.migration.ts`
+- Create: `apps/sva-studio-react/src/lib/waste-management-tour-assignments.migration.server.test.ts`
 - Modify: `packages/core/src/waste-management/master-data-scheduling.ts`
-- Modify: `packages/core/src/index.ts` (nur falls Exportkette angepasst werden muss)
-- Modify: `packages/data-repositories/src/index.ts` (falls Exportkette betroffen)
-
-**Repository und Runtime**
-- Modify: `packages/data-repositories/src/waste-management/master-data.location-tour-pickup-dates.ts`
-- Modify: `packages/data-repositories/src/waste-management/master-data.test.ts`
-- Modify: `packages/data-repositories/src/waste-management/master-data.contract.ts` (nur falls Signaturen nachgezogen werden muessen)
-- Modify: `packages/auth-runtime/src/waste-management/server-loaders.ts` (nur wenn API-Shape explizit transformiert wird)
-
-**Import und Materialisierung**
-- Modify: `apps/sva-studio-react/src/lib/waste-management-operations.import.ts`
-- Modify: `apps/sva-studio-react/src/lib/waste-management-operations.import.server.test.ts`
-- Modify: `apps/sva-studio-react/src/lib/waste-management-operations.server.test.ts`
-- Modify: `apps/sva-studio-react/src/lib/waste-management-mainserver-sync.materialization.ts`
-- Modify: `apps/sva-studio-react/src/lib/waste-management-mainserver-sync.server.test.ts`
-
-**Public Waste Web**
-- Modify: `apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts`
-- Modify: `apps/public-waste-calendar-web/src/lib/public-waste-repository.server.test.ts`
-- Modify: `apps/public-waste-calendar-web/src/lib/public-waste-calendar-occurrences.ts` (nur falls Note-Prioritaet angepasst werden muss)
-- Modify: `apps/public-waste-calendar-web/src/components/public-waste-event-dialog.tsx` (nur falls Darstellung des Einsatz-Hinweises angepasst werden muss)
-
-**Studio-UI**
-- Modify: `packages/plugin-waste-management/src/waste-management.api.types.operations-overview.ts`
-- Create or Modify: `packages/plugin-waste-management/src/waste-management.scheduling-schadstoffmobil-*.tsx` (neue kleine Einheiten fuer Einsatzliste und Dialog)
-- Modify: `packages/plugin-waste-management/src/waste-management.scheduling-panel.tsx`
-- Modify: `packages/plugin-waste-management/src/waste-management.scheduling-content.tsx`
-- Modify: `packages/plugin-waste-management/src/plugin.translations.de.scheduling.ts`
-- Modify: `packages/plugin-waste-management/src/plugin.translations.en.scheduling.ts`
-- Modify: `packages/plugin-waste-management/tests/waste-management.scheduling-panel.test.tsx`
-- Modify or Create: `packages/plugin-waste-management/tests/waste-management.scheduling-content.test.tsx`
-
-**Dokumentation**
-- Modify: `docs/development/studio-db-schema-final.sql`
-- Modify: `docs/development/studio-db-schema.md` (falls Snapshot-Erlaeuterung angepasst werden muss)
-
-## Task 1: Schema, Snapshot und Core-Typen erweitern
-
-**Files:**
-- Modify: `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts`
-- Modify: `packages/core/src/waste-management/master-data-scheduling.ts`
+- Modify: `packages/core/src/index.ts` (falls Exporte ergänzt werden)
 - Modify: `docs/development/studio-db-schema-final.sql`
 - Modify: `docs/development/studio-db-schema.md`
 
-- [ ] **Step 1: `note` im Runtime-Schema und im Snapshot ergaenzen**
+**Repository und geschützte API**
 
-Fuege das Feld additiv in die Tabelle `waste_location_tour_pickup_dates` ein.
+- Create: `packages/data-repositories/src/waste-management/master-data.tour-assignments.ts`
+- Modify: `packages/data-repositories/src/waste-management/master-data.contract.ts`
+- Modify: `packages/data-repositories/src/waste-management/master-data.test.ts`
+- Modify: `packages/data-repositories/src/index.ts`
+- Create: `packages/auth-runtime/src/waste-management/core/tour-assignments.ts`
+- Create: `packages/auth-runtime/src/waste-management/core/tour-assignments.direct.test.ts`
+- Modify: `packages/auth-runtime/src/waste-management/core/schemas.ts`
+- Modify: `packages/auth-runtime/src/waste-management/core/types.ts`
+- Modify: `packages/auth-runtime/src/waste-management/server-loaders.ts`
 
-```ts
-`CREATE TABLE IF NOT EXISTS ${schema}.waste_location_tour_pickup_dates (
+**Import, Materialisierung und öffentliche Ausgabe**
+
+- Modify: `apps/sva-studio-react/src/lib/waste-management-operations.import.ts`
+- Modify: `apps/sva-studio-react/src/lib/waste-management-operations.import.server.test.ts`
+- Modify: `apps/sva-studio-react/src/lib/waste-management-mainserver-sync.materialization.ts`
+- Modify: `apps/sva-studio-react/src/lib/waste-management-mainserver-sync.materialization.test.ts`
+- Modify: `apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts`
+- Modify: `apps/public-waste-calendar-web/src/lib/public-waste-repository.server.test.ts`
+- Modify: `apps/public-waste-calendar-web/src/lib/public-waste-calendar-occurrences.ts` (falls die Zusammenführung dort liegt)
+
+**Studio-UI**
+
+- Modify: `packages/plugin-waste-management/src/waste-management.api.types.operations-overview.ts`
+- Modify: `packages/plugin-waste-management/src/waste-management.scheduling-panel.tsx`
+- Modify: `packages/plugin-waste-management/src/waste-management.scheduling-content.tsx`
+- Create: `packages/plugin-waste-management/src/waste-management.scheduling-assignment-list.tsx`
+- Create: `packages/plugin-waste-management/src/waste-management.scheduling-assignment-dialog.tsx`
+- Create: `packages/plugin-waste-management/src/waste-management.scheduling-assignment-form.tsx`
+- Modify: `packages/plugin-waste-management/src/plugin.translations.de.scheduling.ts`
+- Modify: `packages/plugin-waste-management/src/plugin.translations.en.scheduling.ts`
+- Modify: `packages/plugin-waste-management/tests/waste-management.scheduling-content.test.tsx`
+
+## Task 1: Schema und additive Migration
+
+- [x] **Step 1: Einsatz- und Einsatzorttabellen ergänzen**
+
+Lege zwei neue Tabellen an:
+
+```sql
+CREATE TABLE waste_tour_assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  location_id UUID NOT NULL REFERENCES ${schema}.waste_collection_locations(id) ON DELETE CASCADE,
-  tour_id UUID NOT NULL REFERENCES ${schema}.waste_tours(id) ON DELETE CASCADE,
+  tour_id UUID NOT NULL REFERENCES waste_tours(id) ON DELETE CASCADE,
   pickup_date DATE NOT NULL,
   note TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT waste_location_tour_pickup_dates_location_tour_date_unique UNIQUE (location_id, tour_id, pickup_date)
-);`,
-`ALTER TABLE ${schema}.waste_location_tour_pickup_dates ADD COLUMN IF NOT EXISTS note TEXT;`,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE waste_tour_assignment_locations (
+  assignment_id UUID NOT NULL REFERENCES waste_tour_assignments(id) ON DELETE CASCADE,
+  collection_location_id UUID NOT NULL REFERENCES waste_collection_locations(id) ON DELETE CASCADE,
+  PRIMARY KEY (assignment_id, collection_location_id)
+);
 ```
 
-Uebernehme dieselbe Spalte in `docs/development/studio-db-schema-final.sql`.
+Es gibt ausdrücklich keinen Unique-Constraint auf `tour_id` und `pickup_date`. Ergänze sinnvolle Indizes für `tour_id, pickup_date` und `collection_location_id`. Übernimm die Tabellen, Constraints und Indizes in den Schema-Snapshot.
 
-- [ ] **Step 2: Core-Typ fuer pickup dates um `note` erweitern**
+- [x] **Step 2: Bestehende Einzeltermine migrieren**
 
-```ts
-export type WasteLocationTourPickupDateRecord = {
-  readonly id: string;
-  readonly locationId: string;
-  readonly tourId: string;
-  readonly pickupDate: string;
-  readonly note?: string;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-};
-```
+Erstelle eine idempotente, transaktionale Migration. Jeder Datensatz aus `waste_location_tour_pickup_dates` wird zu einem `waste_tour_assignments`-Datensatz mit exakt einer `waste_tour_assignment_locations`-Zeile. Übernimm Tour, Datum und Hinweis unverändert. Verwende eine nachvollziehbare, persistierte Zuordnung oder einen deterministischen Schutz gegen erneutes Importieren derselben Altzeile.
 
-In `docs/development/studio-db-schema.md` kurz dokumentieren, dass ortsbezogene Tourtermine jetzt optional einen Freitext-Hinweis fuer Schadstoffmobil-Einsaetze tragen.
+Die alten Tabellen und Leser werden in diesem Change nicht gelöscht. Die Migration muss einen Dry-Run beziehungsweise einen überprüfbaren Zähler für gelesene, erzeugte und übersprungene Datensätze liefern.
 
-- [ ] **Step 3: Relevante Typ-Checks fuer diesen Block ausfuehren**
-
-Run:
+- [x] **Step 3: Tests und Server-Runtime-Gate ausführen**
 
 ```bash
+pnpm nx run sva-studio-react:test:unit --testFiles=src/lib/waste-management-tour-assignments.migration.server.test.ts
 pnpm check:server-runtime
-pnpm nx run plugin-waste-management:test:types
 ```
 
-Expected:
-- `check:server-runtime` gruen
-- `plugin-waste-management:test:types` gruen oder nur bereits bekannte, nicht von diesem Block verursachte Fehler
+Erwartung: Eine Wiederholung der Migration erzeugt keine zusätzlichen Einsätze; leere Hinweise bleiben erhalten; alle Server-Runtime-Imports sind ESM-konform.
 
-- [ ] **Step 4: Block committen**
+## Task 2: Typen, Repository und geschützte Einsatz-API
 
-```bash
-git add apps/sva-studio-react/src/lib/waste-management-operations.schema.ts \
-  packages/core/src/waste-management/master-data-scheduling.ts \
-  docs/development/studio-db-schema-final.sql \
-  docs/development/studio-db-schema.md
-git commit -m "feat: add note to waste pickup dates"
-```
+- [x] **Step 1: Framework-agnostische Typen und Verträge definieren**
 
-## Task 2: Repository, Contracts und Scheduling-Overview nachziehen
+Füge zentrale Typen für `WasteTourAssignmentRecord` und `WasteTourAssignmentLocationRecord` in `packages/core` hinzu. Das Einsatzobjekt liefert seine Orte als `locationIds` oder über einen klar benannten Untertyp. Verwende keine Schadstoffmobil-spezifischen Typen oder Felder.
 
-**Files:**
-- Modify: `packages/data-repositories/src/waste-management/master-data.location-tour-pickup-dates.ts`
-- Modify: `packages/data-repositories/src/waste-management/master-data.test.ts`
-- Modify: `packages/data-repositories/src/waste-management/master-data.contract.ts` (falls erforderlich)
-- Modify: `packages/auth-runtime/src/waste-management/server-loaders.ts` (nur wenn Mapping explizit ist)
-- Modify: `packages/plugin-waste-management/src/waste-management.api.types.operations-overview.ts`
+- [x] **Step 2: Repository-Operationen implementieren**
 
-- [ ] **Step 1: Repository-Selects und Upsert um `note` erweitern**
+Das Repository braucht mindestens:
 
-```ts
-type WasteLocationTourPickupDateRow = {
-  readonly id: string;
-  readonly location_id: string;
-  readonly tour_id: string;
-  readonly pickup_date: string;
-  readonly note: string | null;
-  readonly created_at: string;
-  readonly updated_at: string;
-};
+- Einsätze nach Tour und nach Ortsmenge listen,
+- Einsatz einschließlich seiner Orte laden,
+- Einsatz mit vollständiger Ortsmenge atomar speichern,
+- Einsatz löschen.
 
-const mapWasteLocationTourPickupDateRow = (
-  row: WasteLocationTourPickupDateRow
-): WasteLocationTourPickupDateRecord => ({
-  id: row.id,
-  locationId: row.location_id,
-  tourId: row.tour_id,
-  pickupDate: row.pickup_date,
-  ...(row.note?.trim() ? { note: row.note } : {}),
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-});
-```
+Beim Aktualisieren ersetzt die übergebene Ortsmenge die bisherige Menge in einer Transaktion. Mindestens ein Ort ist Pflicht; doppelte Orte innerhalb eines Einsatzes werden vor dem Schreiben entfernt oder als Validierungsfehler behandelt. Derselbe Ort in unterschiedlichen Einsätzen bleibt zulässig.
 
-Das Upsert muss `note` mitschreiben und bei Konflikten aktualisieren:
+- [x] **Step 3: Bestehende Autorisierung wiederverwenden**
 
-```ts
-INSERT INTO waste_location_tour_pickup_dates (
-  id,
-  location_id,
-  tour_id,
-  pickup_date,
-  note
-)
-VALUES ($1::uuid, $2::uuid, $3::uuid, $4::date, $5::text)
-ON CONFLICT (location_id, tour_id, pickup_date) DO UPDATE
-SET note = EXCLUDED.note,
-    updated_at = NOW();
-```
+Ergänze Create-, Update- und Delete-Handler unter der vorhandenen Action-ID `waste-management.scheduling.manage`. Die Payload validiert Tour-ID, ISO-Datum, optionalen Hinweis und eine nicht-leere Menge gültiger Orts-IDs. Behalte CSRF-Schutz, Mandantentrennung, Audit-Logging und Fehlerformat der bestehenden Scheduling-Handler bei.
 
-- [ ] **Step 2: Repository-Test auf neues Feld erweitern**
-
-Ergaenze die bestehende Pickup-Date-Repository-Story in `packages/data-repositories/src/waste-management/master-data.test.ts` so, dass `note` gelesen und geschrieben wird.
-
-```ts
-await expect(
-  createWasteMasterDataRepository(list.executor).listWasteLocationTourPickupDates({
-    tourId: 'tour-1',
-  })
-).resolves.toEqual([
-  {
-    id: 'pickup-1',
-    locationId: 'location-1',
-    tourId: 'tour-1',
-    pickupDate: '2026-01-10',
-    note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
-    createdAt: '2026-01-01T10:00:00.000Z',
-    updatedAt: '2026-01-01T11:00:00.000Z',
-  },
-]);
-```
-
-- [ ] **Step 3: Scheduling-Overview-Typen auf Additivitaet pruefen**
-
-Stelle sicher, dass `WasteManagementSchedulingOverview` im Plugin und die Runtime-Loader das Feld ohne Sondermapping transportieren koennen. Wenn kein zusaetzlicher Code noetig ist, dokumentiere das im Commit durch den angepassten Typ in `packages/plugin-waste-management/src/waste-management.api.types.operations-overview.ts`.
-
-- [ ] **Step 4: Kleinsten relevanten Unit-Run fuer diesen Block ausfuehren**
-
-Run:
+- [x] **Step 4: Repository- und API-Tests ausführen**
 
 ```bash
 pnpm nx run data-repositories:test:unit --testFiles=src/waste-management/master-data.test.ts
+pnpm nx run auth-runtime:test:unit --testFiles=src/waste-management/core/tour-assignments.direct.test.ts
+pnpm check:server-runtime
 ```
 
-Fallback, falls das Nx-Target keine Dateifilter sauber annimmt:
+Erwartung: Mehrere Einsätze am selben Tag sowie derselbe Ort in unterschiedlichen Einsätzen funktionieren; Einsätze ohne Ort werden mit `400` abgewiesen; unberechtigte Aufrufe mit `403`.
+
+## Task 3: Import und Materialisierung
+
+- [x] **Step 1: Importprofil um stabile Einsatzkennung erweitern**
+
+Das Importprofil für ortsbezogene Termine erhält eine Spalte `assignment_id` (oder einen eindeutig dokumentierten fachlichen Schlüssel). Zeilen mit gleicher Einsatzkennung bilden einen Einsatz; ihre Ortsdaten bilden dessen Ortsmenge. `tour`, `pickup_date` und `note` müssen innerhalb einer Einsatzgruppe konsistent sein. Der Hinweis bleibt optional.
+
+- [x] **Step 2: Preview und Persistierung absichern**
+
+Das Preview markiert Gruppen als ungültig, wenn sie keinen auflösbaren Ort haben oder wenn Tour, Datum oder Hinweis innerhalb einer Gruppe widersprüchlich sind. Es darf keine Teilpersistierung einer ungültigen Gruppe geben. Mehrere Gruppen mit gleichem Datum, Tour und Ort sind zulässig.
+
+- [x] **Step 3: Materialisierung additiv erweitern**
+
+Ergänze den Mainserver-Sync so, dass Einsätze und ihre Orte ohne Verlust transportiert werden. Entferne alte `locationTourPickupDates` erst in einem späteren, separaten Kompatibilitätschange.
+
+- [x] **Step 4: Gezielte Tests ausführen**
 
 ```bash
-cd packages/data-repositories && pnpm exec vitest run src/waste-management/master-data.test.ts
+pnpm nx run sva-studio-react:test:unit --testFiles=src/lib/waste-management-operations.import.server.test.ts --testFiles=src/lib/waste-management-mainserver-sync.materialization.test.ts
 ```
 
-Expected:
-- Pickup-Date-Repository-Test gruen
+Erwartung: Zwei Ortszeilen derselben Einsatzkennung erzeugen einen Einsatz mit zwei Orten; zwei Einsatzkennungen am selben Tag bleiben getrennt.
 
-- [ ] **Step 5: Block committen**
+## Task 4: Generische Einsatzpflege im Studio
+
+- [x] **Step 1: Vorhandene Scheduling-Oberfläche generisch erweitern**
+
+Baue eine Einsatzliste und einen Dialog innerhalb der bestehenden Tour-/Scheduling-Pflege. Der Dialog enthält Datum, optionalen Hinweis und eine zugängliche Mehrfachauswahl für Abholorte. Wiederverwende vorhandene Design-System-Komponenten und Ortsauswahlmuster. Es gibt keinen Branch auf Tourname oder Fraktionsname.
+
+- [x] **Step 2: Übergeordnete Abholorte klar kennzeichnen**
+
+Zeige in der Mehrfachauswahl die vollständige Ortsbezeichnung und Hierarchie, etwa `Perleberg (alle Straßen)` gegenüber `Perleberg / Ackerstraße`. Die Auswahl darf konkrete und übergeordnete Orte kombinieren. Der Formularfehler für eine leere Auswahl muss mit dem Feld programmatisch verknüpft sein.
+
+- [x] **Step 3: Übersetzungen und Statusmeldungen ergänzen**
+
+Ergänze nur generische Schlüssel wie `scheduling.assignments.*`; keine sichtbaren Schadstoffmobil-Texte. Decke Lade-, Speicher-, Berechtigungs-, Validierungs- und Löschfehler ab.
+
+- [x] **Step 4: UI-Tests ausführen**
 
 ```bash
-git add packages/data-repositories/src/waste-management/master-data.location-tour-pickup-dates.ts \
-  packages/data-repositories/src/waste-management/master-data.test.ts \
-  packages/data-repositories/src/waste-management/master-data.contract.ts \
-  packages/plugin-waste-management/src/waste-management.api.types.operations-overview.ts \
-  packages/auth-runtime/src/waste-management/server-loaders.ts
-git commit -m "feat: carry pickup date notes through repository"
+pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.scheduling-content.test.tsx
 ```
 
-## Task 3: Import und Materialisierung fuer `note` erweitern
+Erwartung: Ein Einsatz mit mehreren Orten lässt sich anlegen, bearbeiten und löschen; der Hinweis darf leer sein; eine leere Ortsmenge blockiert das Speichern.
 
-**Files:**
-- Modify: `apps/sva-studio-react/src/lib/waste-management-operations.import.ts`
-- Modify: `apps/sva-studio-react/src/lib/waste-management-operations.import.server.test.ts`
-- Modify: `apps/sva-studio-react/src/lib/waste-management-operations.server.test.ts`
-- Modify: `apps/sva-studio-react/src/lib/waste-management-mainserver-sync.materialization.ts`
-- Modify: `apps/sva-studio-react/src/lib/waste-management-mainserver-sync.server.test.ts`
+## Task 5: Öffentliche Kalenderausgabe und Fraktionsfilter
 
-- [ ] **Step 1: Importprofil `ortsbezogene-tourtermine` um `note` erweitern**
+- [x] **Step 1: Hierarchische Ortsmenge bestimmen**
 
-Fuehre in der CSV-/Persistenzlogik ein optionales Feld `note` ein und trimme es fail-closed.
+Ermittle für die angefragte Adresse den konkreten Abholort sowie seine vorhandenen Vorfahren. Diese Menge ist die einzige Ortsvoraussetzung für explizite Einsätze; `waste_location_tour_links` wird hierfür nicht gejoint oder als Filter verwendet.
 
-```ts
-const normalizeOptionalText = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-};
-```
+- [x] **Step 2: Einsätze mit Tour-Fraktionen laden**
 
-Beim Persistieren:
+Lade Einsätze, deren Einsatzorte in der ermittelten Ortsmenge liegen, zusammen mit Tour und den über die vorhandene Tour–Fraktion-Beziehung zugeordneten Fraktionen. Die Ausgabe behält Einsatz-ID, Tour-ID und Fraktions-ID, damit mehrere Einsätze gleicher Tour am selben Datum nicht zusammenfallen.
 
-```ts
-await repository.upsertWasteLocationTourPickupDate({
-  id: row.locationTourPickupDateId,
-  locationId: row.locationId,
-  tourId: row.tourId,
-  pickupDate: row.pickupDate,
-  note: normalizeOptionalText(row.note),
-});
-```
+- [x] **Step 3: Wiederholungstermine mit Einsätzen zusammenführen**
 
-- [ ] **Step 2: Import- und Servertests mit `note` ergaenzen**
+Ein expliziter Einsatz für dieselbe Tour, dasselbe Datum und einen passenden abgefragten Ort ersetzt den sonst identischen generischen Wiederholungstermin. Mehrere explizite Einsätze bleiben eigenständige Einträge. Sein Hinweis hat Vorrang vor einem allgemeinen Tour- oder Verschiebungshinweis.
 
-Passe die ortsbezogenen Importtests so an, dass eine Beispielzeile `note` enthaelt und der persistierte Datensatz sie weitertraegt.
+- [x] **Step 4: Public-Tests ausführen**
 
-```ts
-expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenCalledWith(
-  expect.objectContaining({
-    pickupDate: '2026-05-19',
-    note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
-  })
-);
-```
-
-- [ ] **Step 3: Mainserver-/Materialisierungspfad additiv halten**
-
-In `apps/sva-studio-react/src/lib/waste-management-mainserver-sync.materialization.ts` und zugehoerigen Tests sicherstellen, dass `note` bei `locationTourPickupDates` erhalten bleibt. Keine neue Ableitungslogik; nur additiver Durchtransport.
-
-- [ ] **Step 4: Relevante Tests dieses Blocks ausfuehren**
-
-Run:
+Das Nx-Unit-Target der Public-App ist deaktiviert. Nutze daher den package-lokalen Vitest-Runner:
 
 ```bash
-pnpm nx run sva-studio-react:test:unit --testFiles=src/lib/waste-management-operations.import.server.test.ts --testFiles=src/lib/waste-management-operations.server.test.ts --testFiles=src/lib/waste-management-mainserver-sync.server.test.ts
+cd apps/public-waste-calendar-web && pnpm exec vitest run src/lib/public-waste-repository.server.test.ts
 ```
 
-Expected:
-- Import- und Materialisierungstests fuer pickup dates gruen
+Erwartung:
 
-- [ ] **Step 5: Block committen**
+- Auswahl der Fraktion Schadstoffmobil zeigt die zugehörigen Einsätze.
+- Andere Fraktionen blenden sie aus.
+- Ein Einsatz am Ort `Perleberg (alle Straßen)` erscheint für eine konkrete Straße in Perleberg.
+- Mehrere Einsätze am selben Tag bleiben getrennt.
+- Ein passender Wiederholungstermin wird nicht doppelt ausgegeben.
+
+## Task 6: Dokumentation und Abschlussgates
+
+- [x] **Step 1: Fach- und Schemasnapshot aktualisieren**
+
+Halte die neue Einsatzentität, Mehrfachorte, Ortsvererbung, Importgruppierung und Migrationsstrategie in der Fachspezifikation sowie im Datenbankschema-Snapshot fest. Verweise in den betroffenen arc42-Abschnitten auf die neue öffentliche Datenflussregel, wenn sich deren Schnittstellenbeschreibung ändert.
+
+- [x] **Step 2: Kleinsten relevanten Gesamt-Gate-Pfad messen und ausführen**
+
+Zuerst Scope messen:
 
 ```bash
-git add apps/sva-studio-react/src/lib/waste-management-operations.import.ts \
-  apps/sva-studio-react/src/lib/waste-management-operations.import.server.test.ts \
-  apps/sva-studio-react/src/lib/waste-management-operations.server.test.ts \
-  apps/sva-studio-react/src/lib/waste-management-mainserver-sync.materialization.ts \
-  apps/sva-studio-react/src/lib/waste-management-mainserver-sync.server.test.ts
-git commit -m "feat: import pickup date notes"
+pnpm nx show projects --affected --withTarget=test:unit --base=origin/main
 ```
 
-## Task 4: Public Waste Web auf Einsatz-Hinweis ausrichten
-
-**Files:**
-- Modify: `apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts`
-- Modify: `apps/public-waste-calendar-web/src/lib/public-waste-repository.server.test.ts`
-- Modify: `apps/public-waste-calendar-web/src/lib/public-waste-calendar-occurrences.ts` (falls Note-Priorisierung noetig ist)
-- Modify: `apps/public-waste-calendar-web/src/components/public-waste-event-dialog.tsx` (nur falls Darstellung geklaert werden muss)
-
-- [ ] **Step 1: Query fuer importierte pickup dates um `p.note` erweitern**
-
-```ts
-type ImportedPickupDateRow = {
-  readonly location_id: string;
-  readonly pickup_date: string;
-  readonly tour_id: string;
-  readonly tour_name: string;
-  readonly tour_description: string | null;
-  readonly fraction_id: string | null;
-  readonly fraction_label: string | null;
-  readonly fraction_pdf_short_label: string | null;
-  readonly fraction_color: string | null;
-  readonly note: string | null;
-};
-```
-
-Im SQL:
-
-```sql
-SELECT
-  p.location_id::text AS location_id,
-  p.pickup_date::text AS pickup_date,
-  ...
-  f.color AS fraction_color,
-  p.note AS note
-FROM ...
-```
-
-- [ ] **Step 2: Projektion so anpassen, dass explizite pickup-date-notes angezeigt werden**
-
-Wenn bisher nur Shift-Beschreibungen oder Occurrence-Notes verwendet werden, setze die Prioritaet fuer explizite pickup-date-notes passend zum Spec-Ziel.
-
-Empfohlene Prioritaet:
-
-```ts
-const note =
-  importedPickupDate.note?.trim() ??
-  tourShift?.description ??
-  globalShift?.description ??
-  occurrence.note ??
-  null;
-```
-
-Falls bestehendes Verhalten bewusst Shift-Beschreibungen bevorzugt, pruefe dies gegen die Spec und entscheide explizit. Fuer Schadstoffmobil-Einsaetze soll der explizite Hinweis sichtbar sein.
-
-- [ ] **Step 3: Public-Tests fuer Datum+Ort+Hinweis ergaenzen**
-
-Erweitere `apps/public-waste-calendar-web/src/lib/public-waste-repository.server.test.ts` um einen Fall mit importiertem pickup date und `note`.
-
-```ts
-expect(entries).toContainEqual(
-  expect.objectContaining({
-    date: '2026-05-19',
-    note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
-  })
-);
-```
-
-- [ ] **Step 4: Kleinsten relevanten Testlauf ausfuehren**
-
-Run:
-
-```bash
-pnpm nx run public-waste-calendar-web:test:unit --testFiles=src/lib/public-waste-repository.server.test.ts --testFiles=src/lib/public-waste-calendar-occurrences.test.ts --testFiles=src/components/public-waste-event-dialog.test.tsx
-```
-
-Expected:
-- Public Waste Web zeigt explizite pickup-date-notes korrekt an
-
-- [ ] **Step 5: Block committen**
-
-```bash
-git add apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts \
-  apps/public-waste-calendar-web/src/lib/public-waste-repository.server.test.ts \
-  apps/public-waste-calendar-web/src/lib/public-waste-calendar-occurrences.ts \
-  apps/public-waste-calendar-web/src/components/public-waste-event-dialog.tsx
-git commit -m "feat: expose schadstoffmobil pickup notes publicly"
-```
-
-## Task 5: Studio-UI fuer Schadstoffmobil-Einsatzliste bauen
-
-**Files:**
-- Modify: `packages/plugin-waste-management/src/waste-management.scheduling-panel.tsx`
-- Modify: `packages/plugin-waste-management/src/waste-management.scheduling-content.tsx`
-- Create: `packages/plugin-waste-management/src/waste-management.scheduling-schadstoffmobil-list.tsx`
-- Create: `packages/plugin-waste-management/src/waste-management.scheduling-schadstoffmobil-dialog.tsx`
-- Create: `packages/plugin-waste-management/src/waste-management.scheduling-schadstoffmobil-form.tsx`
-- Modify: `packages/plugin-waste-management/src/plugin.translations.de.scheduling.ts`
-- Modify: `packages/plugin-waste-management/src/plugin.translations.en.scheduling.ts`
-- Modify or Create: `packages/plugin-waste-management/tests/waste-management.scheduling-content.test.tsx`
-- Modify: `packages/plugin-waste-management/tests/waste-management.scheduling-panel.test.tsx`
-
-- [ ] **Step 1: UI-Schnitt sauber schneiden**
-
-Baue keine Grosskomponente direkt in `waste-management.scheduling-content.tsx`. Zerlege in:
-
-```tsx
-// waste-management.scheduling-schadstoffmobil-list.tsx
-export const WasteSchadstoffmobilAssignmentsList = ({ entries, tours, locations, onCreate, onEdit, onDelete }) => { ... };
-
-// waste-management.scheduling-schadstoffmobil-dialog.tsx
-export const WasteSchadstoffmobilAssignmentDialog = ({ open, mode, form, locations, onChange, onSubmit, onClose }) => { ... };
-```
-
-Die Listenzeile braucht nur:
-- Datum
-- Abholort-Label
-- Hinweis
-- Aktionen
-
-- [ ] **Step 2: Nur fuer die Tour `Schadstoffmobil` eine einsatzbezogene Pflege anbieten**
-
-Die fachliche Regel muss im UI-Fluss verankert werden, nicht global fuer alle pickup dates. Nutze eine explizite Erkennung ueber den Tournamen oder eine spaetere dedizierte Markierung, falls schon vorhanden.
-
-Minimaler Einstieg:
-
-```ts
-const isSchadstoffmobilTour = (tourName: string): boolean =>
-  tourName.trim().localeCompare('Schadstoffmobil', 'de', { sensitivity: 'base' }) === 0;
-```
-
-Wenn das Projekt bereits einen robusteren Marker kennt, verwende diesen stattdessen.
-
-- [ ] **Step 3: Dialogvalidierung fuer Pflicht-Hinweis bauen**
-
-Der Hinweis ist fuer Schadstoffmobil-Einsaetze im Studio Pflicht.
-
-```ts
-const trimmedNote = form.note.trim();
-if (trimmedNote.length === 0) {
-  setError('note', 'wasteManagement.scheduling.schadstoffmobil.validation.noteRequired');
-  return;
-}
-```
-
-Der Dialog schreibt auf `WasteLocationTourPickupDateRecord.note`.
-
-- [ ] **Step 4: Uebersetzungen in DE/EN ergaenzen**
-
-Ergaenze nur die konkret benoetigten Keys, z. B.:
-
-```ts
-schadstoffmobil: {
-  title: 'Schadstoffmobil-Einsaetze',
-  create: 'Einsatz anlegen',
-  fields: {
-    pickupDate: 'Datum',
-    location: 'Abholort',
-    note: 'Hinweis',
-  },
-  validation: {
-    noteRequired: 'Der Hinweis ist fuer Schadstoffmobil-Einsaetze erforderlich.',
-  },
-}
-```
-
-- [ ] **Step 5: UI-Tests fuer Anlegen/Bearbeiten/Loeschen nachziehen**
-
-Mindestens ein Testfall muss pruefen:
-- Liste rendert Datum, Ort und Hinweis
-- Dialog blockt leeren Hinweis
-- Speichern traegt `note` durch
-
-Beispielassertion:
-
-```ts
-expect(screen.getByText('Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus')).toBeTruthy();
-expect(screen.getByText('Der Hinweis ist fuer Schadstoffmobil-Einsaetze erforderlich.')).toBeTruthy();
-```
-
-- [ ] **Step 6: Kleinsten relevanten UI-Testlauf ausfuehren**
-
-Run:
-
-```bash
-pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.scheduling-content.test.tsx --testFiles=tests/waste-management.scheduling-panel.test.tsx
-```
-
-Expected:
-- Schadstoffmobil-Einsatzliste und Dialog-Flow gruen
-
-- [ ] **Step 7: Block committen**
-
-```bash
-git add packages/plugin-waste-management/src/waste-management.scheduling-panel.tsx \
-  packages/plugin-waste-management/src/waste-management.scheduling-content.tsx \
-  packages/plugin-waste-management/src/waste-management.scheduling-schadstoffmobil-list.tsx \
-  packages/plugin-waste-management/src/waste-management.scheduling-schadstoffmobil-dialog.tsx \
-  packages/plugin-waste-management/src/waste-management.scheduling-schadstoffmobil-form.tsx \
-  packages/plugin-waste-management/src/plugin.translations.de.scheduling.ts \
-  packages/plugin-waste-management/src/plugin.translations.en.scheduling.ts \
-  packages/plugin-waste-management/tests/waste-management.scheduling-content.test.tsx \
-  packages/plugin-waste-management/tests/waste-management.scheduling-panel.test.tsx
-git commit -m "feat: manage schadstoffmobil assignments in studio"
-```
-
-## Task 6: Abschlussverifikation und PR-Gate
-
-**Files:**
-- No new code by default
-- Review: alle in den Tasks 1-5 genannten Dateien
-
-- [ ] **Step 1: Diff auf ungewollte Seiteneffekte pruefen**
-
-Run:
-
-```bash
-git diff --stat
-git diff -- apps/sva-studio-react/src/lib/waste-management-operations.schema.ts \
-  packages/core/src/waste-management/master-data-scheduling.ts \
-  packages/data-repositories/src/waste-management/master-data.location-tour-pickup-dates.ts \
-  apps/sva-studio-react/src/lib/waste-management-operations.import.ts \
-  apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts \
-  packages/plugin-waste-management/src/waste-management.scheduling-content.tsx
-```
-
-Expected:
-- Nur die geplanten Schadstoffmobil-/pickup-date-note-Aenderungen sind sichtbar
-
-- [ ] **Step 2: Kleinsten echten Gate-Pfad fuer den Gesamtumfang ausfuehren**
-
-Run:
+Ist der Scope klein, ausführen:
 
 ```bash
 pnpm nx affected --target=test:unit --base=origin/main
@@ -535,35 +219,12 @@ pnpm nx affected --target=test:types --base=origin/main
 pnpm check:server-runtime
 ```
 
-Expected:
-- Affected Unit und Types gruen
-- Server-Runtime-Guard gruen
+Ist der Scope breit, dokumentiere die Abweichung und führe stattdessen die Tests aus Task 1 bis 5 sowie die betroffenen Type-Targets aus.
 
-- [ ] **Step 3: Wenn die Affected-Gates zu breit oder instabil sind, die Abweichung transparent dokumentieren**
+## Selbstprüfung
 
-Dokumentiere im Arbeitsprotokoll oder in der Abschlussnotiz:
-- welcher Nx-Target gelaufen ist
-- welcher Lauf wegen bestehender Fremdfehler nicht voll verwertbar war
-- welche direkt betroffenen Tests gruen sind
-
-- [ ] **Step 4: Final commit fuer Restarbeiten**
-
-```bash
-git add -A
-git commit -m "feat: support schadstoffmobil assignment notes"
-```
-
-## Self-Review
-
-- Spec coverage:
-  - Datenmodell `note` auf pickup dates: Task 1-2
-  - Importpfad `ortsbezogene-tourtermine`: Task 3
-  - Public-Ausgabe Datum+Ort+Hinweis: Task 4
-  - Studio-Pflege fuer Schadstoffmobil-Einsaetze: Task 5
-  - Snapshot/Dokumentation/Gates: Task 1 und Task 6
-- Placeholder scan:
-  - Keine `TODO`-/`TBD`-Marker im Plan
-  - Jede Aenderungsgruppe nennt konkrete Dateien und konkrete Commands
-- Type consistency:
-  - Ueberall derselbe Feldname `note`
-  - `WasteLocationTourPickupDateRecord` ist die zentrale Typquelle fuer alle nachgelagerten Schichten
+- Keine Schadstoffmobil-spezifische Rolle, API, UI oder Namenserkennung ergänzt.
+- Abfallfraktionen steuern weiterhin allein Kalenderfilter und Darstellung.
+- Einsätze unterstützen mehrere Orte, übergeordnete Ortsvererbung und mehrere Einsätze pro Tour und Tag.
+- Hinweis ist optional und wird pro Einsatz, nicht pro Ort, gespeichert.
+- Bestehende Einzeltermine werden verlustfrei und idempotent migriert.

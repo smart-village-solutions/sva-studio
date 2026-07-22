@@ -3,11 +3,16 @@ import { useNavigate } from '@tanstack/react-router';
 
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteToursViewModel } from './use-waste-tours-view-model.js';
-import { createDefaultTourForm, mapTourWithPickupDatesToForm } from './waste-management.tours.shared.js';
+import {
+  createDefaultTourForm,
+  mapTourWithPickupDatesToForm,
+} from './waste-management.tours.shared.js';
 
 type WasteViewModel = ReturnType<typeof useWasteToursViewModel>;
 
-export const toCreateTourSearch = (search: WasteManagementSearchParams): WasteManagementSearchParams => ({
+export const toCreateTourSearch = (
+  search: WasteManagementSearchParams
+): WasteManagementSearchParams => ({
   ...search,
   toursView: 'create',
   tourId: undefined,
@@ -16,7 +21,7 @@ export const toCreateTourSearch = (search: WasteManagementSearchParams): WasteMa
 
 export const toEditTourSearch = (
   search: WasteManagementSearchParams,
-  tourId: string,
+  tourId: string
 ): WasteManagementSearchParams => ({
   ...search,
   toursView: 'edit',
@@ -24,9 +29,9 @@ export const toEditTourSearch = (
   duplicateFromTourId: undefined,
 });
 
-export const toDuplicateTourSearch = (
+const toDuplicateTourSearch = (
   search: WasteManagementSearchParams,
-  duplicateFromTourId: string,
+  duplicateFromTourId: string
 ): WasteManagementSearchParams => ({
   ...search,
   toursView: 'create',
@@ -36,7 +41,7 @@ export const toDuplicateTourSearch = (
 
 export const toToursPageSearch = (
   search: WasteManagementSearchParams,
-  page: number,
+  page: number
 ): WasteManagementSearchParams => ({
   ...search,
   page,
@@ -44,7 +49,7 @@ export const toToursPageSearch = (
 
 export const toToursPageSizeSearch = (
   search: WasteManagementSearchParams,
-  pageSize: number,
+  pageSize: number
 ): WasteManagementSearchParams => ({
   ...search,
   page: 1,
@@ -53,7 +58,7 @@ export const toToursPageSizeSearch = (
 
 export const toToursQuerySearch = (
   search: WasteManagementSearchParams,
-  q: string,
+  q: string
 ): WasteManagementSearchParams => ({
   ...search,
   q,
@@ -62,7 +67,7 @@ export const toToursQuerySearch = (
 
 export const toToursStatusSearch = (
   search: WasteManagementSearchParams,
-  status: WasteManagementSearchParams['status'],
+  status: WasteManagementSearchParams['status']
 ): WasteManagementSearchParams => ({
   ...search,
   status,
@@ -77,7 +82,7 @@ export const toToursFiltersSearch = (
   firstDateFrom: WasteManagementSearchParams['firstDateFrom'],
   firstDateTo: WasteManagementSearchParams['firstDateTo'],
   endDateFrom: WasteManagementSearchParams['endDateFrom'],
-  endDateTo: WasteManagementSearchParams['endDateTo'],
+  endDateTo: WasteManagementSearchParams['endDateTo']
 ): WasteManagementSearchParams => ({
   ...search,
   q,
@@ -95,55 +100,80 @@ const resetToursFormState = (controller: WasteViewModel) => {
   controller.setLastOutcome(null);
 };
 
-export const useWasteToursListNavigation = (
+type Navigate = ReturnType<typeof useNavigate>;
+
+const createToursFormNavigation = (
   controller: WasteViewModel,
   search: WasteManagementSearchParams,
+  navigate: Navigate
+) => ({
+  openCreate: () => {
+    controller.setDialogMode('create');
+    resetToursFormState(controller);
+    controller.setTourForm(createDefaultTourForm());
+    controller.setSelectedTour(null);
+    void navigate({ to: '/plugins/waste-management', search: toCreateTourSearch(search) });
+  },
+  openEdit: (tour: WasteTourRecord) => {
+    controller.setDialogMode('edit');
+    resetToursFormState(controller);
+    controller.setSelectedTour(tour);
+    controller.setTourForm(
+      mapTourWithPickupDatesToForm(
+        tour,
+        controller.schedulingOverview?.locationTourPickupDates ?? []
+      )
+    );
+    void navigate({ to: '/plugins/waste-management', search: toEditTourSearch(search, tour.id) });
+  },
+  toDuplicate: (tour: WasteTourRecord) => {
+    controller.setDialogMode('create');
+    resetToursFormState(controller);
+    controller.setSelectedTour(null);
+    controller.setTourForm({
+      ...mapTourWithPickupDatesToForm(tour, []),
+      id: createDefaultTourForm().id,
+      name: `${tour.name} (Kopie)`,
+    });
+    void navigate({
+      to: '/plugins/waste-management',
+      search: toDuplicateTourSearch(search, tour.id),
+    });
+  },
+});
+
+const createToursPagingNavigation = (search: WasteManagementSearchParams, navigate: Navigate) => ({
+  setPage: (page: number) =>
+    void navigate({ to: '/plugins/waste-management', search: toToursPageSearch(search, page) }),
+  syncPage: (page: number) =>
+    void navigate({
+      to: '/plugins/waste-management',
+      search: toToursPageSearch(search, page),
+      replace: true,
+    }),
+  setPageSize: (pageSize: number) =>
+    void navigate({
+      to: '/plugins/waste-management',
+      search: toToursPageSizeSearch(search, pageSize),
+    }),
+  setQuery: (q: string) =>
+    void navigate({ to: '/plugins/waste-management', search: toToursQuerySearch(search, q) }),
+  setStatus: (status: WasteManagementSearchParams['status']) =>
+    void navigate({
+      to: '/plugins/waste-management',
+      search: toToursStatusSearch(search, status),
+    }),
+});
+
+export const useWasteToursListNavigation = (
+  controller: WasteViewModel,
+  search: WasteManagementSearchParams
 ) => {
   const navigate = useNavigate();
 
   return {
-    openCreate: () => {
-      controller.setDialogMode('create');
-      resetToursFormState(controller);
-      controller.setTourForm(createDefaultTourForm());
-      controller.setSelectedTour(null);
-      void navigate({ to: '/plugins/waste-management', search: toCreateTourSearch(search) });
-    },
-    openEdit: (tour: WasteTourRecord) => {
-      controller.setDialogMode('edit');
-      resetToursFormState(controller);
-      controller.setSelectedTour(tour);
-      controller.setTourForm(
-        mapTourWithPickupDatesToForm(tour, controller.schedulingOverview?.locationTourPickupDates ?? [])
-      );
-      void navigate({ to: '/plugins/waste-management', search: toEditTourSearch(search, tour.id) });
-    },
-    toDuplicate: (tour: WasteTourRecord) => {
-      controller.setDialogMode('create');
-      resetToursFormState(controller);
-      controller.setSelectedTour(null);
-      controller.setTourForm({
-        ...mapTourWithPickupDatesToForm(tour, []),
-        id: createDefaultTourForm().id,
-        name: `${tour.name} (Kopie)`,
-      });
-      void navigate({ to: '/plugins/waste-management', search: toDuplicateTourSearch(search, tour.id) });
-    },
-    setPage: (page: number) => {
-      void navigate({ to: '/plugins/waste-management', search: toToursPageSearch(search, page) });
-    },
-    syncPage: (page: number) => {
-      void navigate({ to: '/plugins/waste-management', search: toToursPageSearch(search, page), replace: true });
-    },
-    setPageSize: (pageSize: number) => {
-      void navigate({ to: '/plugins/waste-management', search: toToursPageSizeSearch(search, pageSize) });
-    },
-    setQuery: (q: string) => {
-      void navigate({ to: '/plugins/waste-management', search: toToursQuerySearch(search, q) });
-    },
-    setStatus: (status: WasteManagementSearchParams['status']) => {
-      void navigate({ to: '/plugins/waste-management', search: toToursStatusSearch(search, status) });
-    },
+    ...createToursFormNavigation(controller, search, navigate),
+    ...createToursPagingNavigation(search, navigate),
     setFilters: (
       q: string,
       status: WasteManagementSearchParams['status'],
@@ -151,7 +181,7 @@ export const useWasteToursListNavigation = (
       firstDateFrom: WasteManagementSearchParams['firstDateFrom'],
       firstDateTo: WasteManagementSearchParams['firstDateTo'],
       endDateFrom: WasteManagementSearchParams['endDateFrom'],
-      endDateTo: WasteManagementSearchParams['endDateTo'],
+      endDateTo: WasteManagementSearchParams['endDateTo']
     ) => {
       void navigate({
         to: '/plugins/waste-management',
@@ -163,7 +193,7 @@ export const useWasteToursListNavigation = (
           firstDateFrom,
           firstDateTo,
           endDateFrom,
-          endDateTo,
+          endDateTo
         ),
       });
     },

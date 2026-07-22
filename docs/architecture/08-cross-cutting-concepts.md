@@ -322,6 +322,13 @@ gleichzeitig beeinflussen.
 - Der Termin-Dialog nutzt `role="dialog"` plus `aria-modal="true"` und trägt seinen Titel über `aria-labelledby`.
 - Der öffentliche Präferenzspeicher bleibt auf genau einen stabilen Standortschlüssel begrenzt; ungültige Cookies werden verworfen statt heuristisch repariert.
 
+### Explizite Waste-Einsätze und Ortsvererbung
+
+- Ein expliziter Einsatz gehört zu einer normalen Tour und besitzt ein Datum, einen optionalen gemeinsamen Hinweis sowie mindestens einen Abholort.
+- Abfallfraktionen werden nicht am Einsatz dupliziert, sondern aus der Tourzuordnung übernommen; dadurch verwenden Kalenderansicht, PDF, iCal und Erinnerungen denselben Fraktionsvertrag.
+- Bei öffentlichen Abfragen gilt ein übergeordneter Einsatzort für seine konkreteren Straßen- und Adresskontexte. Die Auflösung erfolgt von der konkreten Auswahl zu ihren Vorfahren, nicht umgekehrt.
+- Allgemeine `waste_location_tour_links` bleiben Eigentümer der Wiederholungslogik, sind aber keine Sichtbarkeitsvoraussetzung für explizite Einsätze.
+
 ### Fortschreibung 2026-04: IAM-Diagnostik als Cross-Cutting-Konzept
 
 - Der heutige Bestand liefert bereits gute Einzelbausteine für `requestId`, `reason_code`, Schema-Drift und Provisioning-Drift.

@@ -24,13 +24,15 @@ ORDER BY table_name ASC;
 const wasteFractionShortLabelBackfillExpression =
   "COALESCE(NULLIF(UPPER(LEFT(REGEXP_REPLACE(name, '[^[:alnum:]]+', '', 'g'), 3)), ''), UPPER(LEFT(REPLACE(id::text, '-', ''), 3)))";
 
-export const buildWasteFractionShortLabelBackfillStatement = (tableReference: string): string => `
+export const buildWasteFractionShortLabelBackfillStatement = (tableReference: string): string =>
+  `
 UPDATE ${tableReference}
 SET pdf_short_label = ${wasteFractionShortLabelBackfillExpression}
 WHERE pdf_short_label IS NULL OR BTRIM(pdf_short_label) = '';
 `.trim();
 
-const buildWasteFractionReminderConfigBackfillStatement = (tableReference: string): string => `
+const buildWasteFractionReminderConfigBackfillStatement = (tableReference: string): string =>
+  `
 UPDATE ${tableReference}
 SET reminder_config = jsonb_strip_nulls(
   jsonb_build_object(
@@ -109,8 +111,7 @@ SET reminder_config = jsonb_strip_nulls(
 WHERE reminder_config IS NULL;
 `.trim();
 
-const defaultWasteFractionReminderConfigJson =
-  `'{"reminder_count":"none","channels":{"push":false,"email":false,"calendar":false}}'::jsonb`;
+const defaultWasteFractionReminderConfigJson = `'{"reminder_count":"none","channels":{"push":false,"email":false,"calendar":false}}'::jsonb`;
 
 const buildWasteTourCascadeConstraintStatement = ({
   schema,
@@ -119,8 +120,13 @@ const buildWasteTourCascadeConstraintStatement = ({
 }: {
   readonly schema: string;
   readonly schemaName: string;
-  readonly tableName: 'waste_location_tour_links' | 'waste_location_tour_pickup_dates' | 'waste_tour_date_shifts';
-}): string => `
+  readonly tableName:
+    | 'waste_location_tour_links'
+    | 'waste_location_tour_pickup_dates'
+    | 'waste_tour_assignments'
+    | 'waste_tour_date_shifts';
+}): string =>
+  `
 DO $$
 BEGIN
   IF EXISTS (
@@ -172,10 +178,30 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `ALTER TABLE ${schema}.waste_tours ADD COLUMN IF NOT EXISTS custom_recurrence_id UUID;`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_tours_custom_recurrence_id_fkey' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_tours') THEN ALTER TABLE ${schema}.waste_tours ADD CONSTRAINT waste_tours_custom_recurrence_id_fkey FOREIGN KEY (custom_recurrence_id) REFERENCES ${schema}.waste_custom_recurrence_presets(id) ON DELETE SET NULL; END IF; END $$;`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_location_tour_links (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), location_id UUID NOT NULL REFERENCES ${schema}.waste_collection_locations(id) ON DELETE CASCADE, tour_id UUID NOT NULL REFERENCES ${schema}.waste_tours(id) ON DELETE CASCADE, start_date DATE, end_date DATE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
-    buildWasteTourCascadeConstraintStatement({ schema, schemaName, tableName: 'waste_location_tour_links' }),
+    `ALTER TABLE ${schema}.waste_location_tour_links ADD COLUMN IF NOT EXISTS start_date DATE, ADD COLUMN IF NOT EXISTS end_date DATE;`,
+    buildWasteTourCascadeConstraintStatement({
+      schema,
+      schemaName,
+      tableName: 'waste_location_tour_links',
+    }),
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_location_tour_pickup_dates (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), location_id UUID NOT NULL REFERENCES ${schema}.waste_collection_locations(id) ON DELETE CASCADE, tour_id UUID NOT NULL REFERENCES ${schema}.waste_tours(id) ON DELETE CASCADE, pickup_date DATE NOT NULL, note TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT waste_location_tour_pickup_dates_location_tour_date_unique UNIQUE (location_id, tour_id, pickup_date));`,
-    buildWasteTourCascadeConstraintStatement({ schema, schemaName, tableName: 'waste_location_tour_pickup_dates' }),
+    buildWasteTourCascadeConstraintStatement({
+      schema,
+      schemaName,
+      tableName: 'waste_location_tour_pickup_dates',
+    }),
     `ALTER TABLE ${schema}.waste_location_tour_pickup_dates ADD COLUMN IF NOT EXISTS note TEXT;`,
+    `CREATE TABLE IF NOT EXISTS ${schema}.waste_tour_assignments (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), tour_id UUID NOT NULL REFERENCES ${schema}.waste_tours(id) ON DELETE CASCADE, pickup_date DATE NOT NULL, note TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
+    buildWasteTourCascadeConstraintStatement({
+      schema,
+      schemaName,
+      tableName: 'waste_tour_assignments',
+    }),
+    `CREATE INDEX IF NOT EXISTS idx_waste_tour_assignments_tour_date ON ${schema}.waste_tour_assignments (tour_id, pickup_date);`,
+    `CREATE TABLE IF NOT EXISTS ${schema}.waste_tour_assignment_locations (assignment_id UUID NOT NULL REFERENCES ${schema}.waste_tour_assignments(id) ON DELETE CASCADE, collection_location_id UUID NOT NULL REFERENCES ${schema}.waste_collection_locations(id) ON DELETE CASCADE, PRIMARY KEY (assignment_id, collection_location_id));`,
+    `CREATE INDEX IF NOT EXISTS idx_waste_tour_assignment_locations_location ON ${schema}.waste_tour_assignment_locations (collection_location_id);`,
+    `INSERT INTO ${schema}.waste_tour_assignments (id, tour_id, pickup_date, note, created_at, updated_at) SELECT legacy_pickup.id, legacy_pickup.tour_id, legacy_pickup.pickup_date, legacy_pickup.note, legacy_pickup.created_at, legacy_pickup.updated_at FROM ${schema}.waste_location_tour_pickup_dates AS legacy_pickup ON CONFLICT (id) DO NOTHING;`,
+    `INSERT INTO ${schema}.waste_tour_assignment_locations (assignment_id, collection_location_id) SELECT assignment.id, legacy_pickup.location_id FROM ${schema}.waste_location_tour_pickup_dates AS legacy_pickup INNER JOIN ${schema}.waste_tour_assignments AS assignment ON assignment.id = legacy_pickup.id AND assignment.tour_id = legacy_pickup.tour_id AND assignment.pickup_date = legacy_pickup.pickup_date ON CONFLICT (assignment_id, collection_location_id) DO NOTHING;`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_email_reminder_subscriptions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email TEXT NOT NULL, email_hash TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', region_id UUID REFERENCES ${schema}.waste_regions(id) ON DELETE SET NULL, city_id UUID NOT NULL REFERENCES ${schema}.waste_cities(id) ON DELETE RESTRICT, street_id TEXT NOT NULL, house_number_id UUID REFERENCES ${schema}.waste_house_numbers(id) ON DELETE SET NULL, location_label TEXT NOT NULL, consent_version TEXT NOT NULL, consent_accepted_at TIMESTAMPTZ NOT NULL, doi_token_hash TEXT NOT NULL, unsubscribe_token_hash TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL, activated_at TIMESTAMPTZ, unsubscribed_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT waste_email_reminder_subscriptions_status_check CHECK (status IN ('pending', 'active', 'unsubscribed', 'expired')), CONSTRAINT waste_email_reminder_subscriptions_doi_token_hash_unique UNIQUE (doi_token_hash), CONSTRAINT waste_email_reminder_subscriptions_unsubscribe_token_hash_unique UNIQUE (unsubscribe_token_hash));`,
     `CREATE INDEX IF NOT EXISTS idx_waste_email_reminder_subscriptions_email_location_status ON ${schema}.waste_email_reminder_subscriptions (email_hash, city_id, street_id, house_number_id, status);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_email_reminder_subscriptions_status_expires_at ON ${schema}.waste_email_reminder_subscriptions (status, expires_at);`,
@@ -185,7 +211,11 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `CREATE INDEX IF NOT EXISTS idx_waste_email_reminder_outbox_status_send_at ON ${schema}.waste_email_reminder_outbox (status, send_at);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_email_reminder_outbox_subscription_id ON ${schema}.waste_email_reminder_outbox (subscription_id);`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_tour_date_shifts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), tour_id UUID NOT NULL REFERENCES ${schema}.waste_tours(id) ON DELETE CASCADE, original_date TEXT NOT NULL, actual_date TEXT NOT NULL, has_year BOOLEAN NOT NULL DEFAULT TRUE, reason_type TEXT, reason_key TEXT, follow_up_mode TEXT, description TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
-    buildWasteTourCascadeConstraintStatement({ schema, schemaName, tableName: 'waste_tour_date_shifts' }),
+    buildWasteTourCascadeConstraintStatement({
+      schema,
+      schemaName,
+      tableName: 'waste_tour_date_shifts',
+    }),
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_global_date_shifts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), original_date TEXT NOT NULL, actual_date TEXT NOT NULL, has_year BOOLEAN NOT NULL DEFAULT TRUE, reason_type TEXT, reason_key TEXT, description TEXT, tour_ids TEXT[], created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_holiday_rules (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), holiday_date DATE NOT NULL, holiday_name TEXT NOT NULL, year INTEGER NOT NULL, state_code TEXT NOT NULL, source_status TEXT NOT NULL CHECK (source_status IN ('confirmed', 'not-confirmed')), configuration_status TEXT NOT NULL CHECK (configuration_status IN ('draft', 'configured')), conflict_status TEXT NOT NULL CHECK (conflict_status IN ('none', 'manual-global-rule')), scope TEXT CHECK (scope IN ('holiday-only', 'full-week')), strategy TEXT CHECK (strategy IN ('advance', 'postpone')), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT waste_holiday_rules_state_date_name_unique UNIQUE (state_code, holiday_date, holiday_name));`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_settings (id BOOLEAN PRIMARY KEY DEFAULT TRUE, pdf_branding_asset_url TEXT, pdf_contact_block TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT waste_settings_singleton_check CHECK (id = TRUE));`,

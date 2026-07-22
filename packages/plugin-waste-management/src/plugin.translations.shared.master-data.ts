@@ -6,6 +6,7 @@ import {
   type CrudDialogCopy,
   type CrudMessagesCopy,
 } from './plugin.translations.shared.base.js';
+import type { MasterDataFractionsCreateViewCopy } from './plugin.translations.shared.master-data.types.js';
 
 type MasterDataTabsCopy = Readonly<{
   ariaLabel: string;
@@ -57,60 +58,6 @@ type MasterDataFractionsCopy = Readonly<{
   >;
 }>;
 
-type MasterDataFractionsCreateViewCopy = Readonly<{
-  title: string;
-  description: string;
-  colorPickerLabel: string;
-  sections: Readonly<{
-    basics: string;
-    basicsHint: string;
-    presentation: string;
-    presentationHint: string;
-    visibility: string;
-    visibilityHint: string;
-  }>;
-  fieldHints: Readonly<{
-    name: string;
-    description: string;
-    translationDe: string;
-    translationEn: string;
-    pdfShortLabel: string;
-    containerSize: string;
-    color: string;
-    active: string;
-  }>;
-  statusHints: Readonly<{
-    active: string;
-    inactive: string;
-  }>;
-  validation: Readonly<{
-    nameRequired: string;
-    pdfShortLabelRequired: string;
-    colorRequired: string;
-  }>;
-  meta: Readonly<{
-    descriptionCounter: string;
-  }>;
-  actions: Readonly<{
-    backToList: string;
-    cancel: string;
-    savePrimary: string;
-  }>;
-  preview: Readonly<{
-    title: string;
-    description: string;
-    placeholderName: string;
-    placeholderDescription: string;
-    placeholderContainerSize: string;
-    tableTitle: string;
-    tableBody: string;
-  }>;
-  help: Readonly<{
-    title: string;
-    body: string;
-  }>;
-}>;
-
 type CollectionLocationsBulkCopy = Readonly<{
   actions: Readonly<{
     openAssign: string;
@@ -143,7 +90,12 @@ type CollectionLocationsCopy = Readonly<{
   dialog: CrudDialogCopy;
   meta: Readonly<Record<string, string>>;
   messages: Readonly<
-    CrudMessagesCopy & { deleteSuccess: string; deleteError: string; deleteForbidden: string; deleteConflict: string }
+    CrudMessagesCopy & {
+      deleteSuccess: string;
+      deleteError: string;
+      deleteForbidden: string;
+      deleteConflict: string;
+    }
   >;
   assignmentEditor: CollectionLocationsAssignmentEditorCopy;
   bulk: CollectionLocationsBulkCopy;
@@ -169,7 +121,9 @@ export const createMasterDataTabs = (ariaLabel: string, fractions: string, locat
     locations,
   }) as const;
 
-export const createMasterDataEntityTranslations = <const TCopy extends MasterDataEntityCopy>(copy: TCopy) =>
+export const createMasterDataEntityTranslations = <const TCopy extends MasterDataEntityCopy>(
+  copy: TCopy
+) =>
   ({
     title: copy.title,
     description: copy.description,
@@ -180,7 +134,9 @@ export const createMasterDataEntityTranslations = <const TCopy extends MasterDat
     ...(copy.meta ?? {}),
   }) as const;
 
-export const createMasterDataFractionsTranslations = <const TCopy extends MasterDataFractionsCopy>(copy: TCopy) =>
+const createMasterDataFractionsTranslations = <const TCopy extends MasterDataFractionsCopy>(
+  copy: TCopy
+) =>
   ({
     title: copy.title,
     description: copy.description,
@@ -198,7 +154,9 @@ export const createMasterDataFractionsTranslations = <const TCopy extends Master
     messages: copy.messages,
   }) as const;
 
-export const createCollectionLocationsBulkTranslations = <const TCopy extends CollectionLocationsBulkCopy>(copy: TCopy) =>
+const createCollectionLocationsBulkTranslations = <const TCopy extends CollectionLocationsBulkCopy>(
+  copy: TCopy
+) =>
   ({
     actions: copy.actions,
     fields: copy.fields,
@@ -208,10 +166,10 @@ export const createCollectionLocationsBulkTranslations = <const TCopy extends Co
     messages: copy.messages,
   }) as const;
 
-export const createCollectionLocationsAssignmentEditorTranslations = <
+const createCollectionLocationsAssignmentEditorTranslations = <
   const TCopy extends CollectionLocationsAssignmentEditorCopy,
 >(
-  copy: TCopy,
+  copy: TCopy
 ) =>
   ({
     title: copy.title,
@@ -222,7 +180,9 @@ export const createCollectionLocationsAssignmentEditorTranslations = <
     messages: copy.messages,
   }) as const;
 
-export const createCollectionLocationsTranslations = <const TCopy extends CollectionLocationsCopy>(copy: TCopy) =>
+const createCollectionLocationsTranslations = <const TCopy extends CollectionLocationsCopy>(
+  copy: TCopy
+) =>
   ({
     title: copy.title,
     description: copy.description,
@@ -239,7 +199,7 @@ export const createWasteManagementMasterDataTranslations = <
   const TLocationsWorkspace,
   const TCopy extends WasteManagementMasterDataCopy<TLocationsWorkspace>,
 >(
-  copy: TCopy,
+  copy: TCopy
 ) =>
   ({
     masterData: {

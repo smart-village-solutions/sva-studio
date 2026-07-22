@@ -1,5 +1,8 @@
 import { wasteManagementCoreHandlers } from './core.js';
-import { sharedWasteManagementDeps, withAuthenticatedWasteManagementHandler } from './server-context.js';
+import {
+  sharedWasteManagementDeps,
+  withAuthenticatedWasteManagementHandler,
+} from './server-context.js';
 import {
   wasteManagementEntityLoaders,
   wasteManagementEntitySavers,
@@ -26,8 +29,10 @@ const {
   deleteWasteManagementLocationTourPickupDateInternal,
   deleteWasteManagementTourDateShiftInternal,
   createWasteManagementTourDateShiftInternal,
+  createWasteManagementTourAssignmentInternal,
   createWasteManagementTourInternal,
   deleteWasteManagementTourInternal,
+  deleteWasteManagementTourAssignmentInternal,
   getWasteManagementHistoryInternal,
   getWasteManagementMasterDataOverviewInternal,
   getWasteManagementSchedulingOverviewInternal,
@@ -54,6 +59,7 @@ const {
   updateWasteManagementStreetInternal,
   updateWasteManagementTourDateShiftInternal,
   updateWasteManagementTourInternal,
+  updateWasteManagementTourAssignmentInternal,
 } = wasteManagementCoreHandlers;
 
 const {
@@ -81,6 +87,7 @@ const {
   loadWasteRegionById,
   loadWasteStreetById,
   loadWasteTourById,
+  loadWasteTourAssignmentById,
   loadWasteTourDateShiftById,
   listWasteTourDateShiftsByTourId,
 } = wasteManagementEntityLoaders;
@@ -106,7 +113,9 @@ const {
   saveWasteRegion,
   saveWasteStreet,
   saveWasteTour,
+  saveWasteTourAssignment,
   deleteWasteTour,
+  deleteWasteTourAssignment,
   deleteWasteTourDateShift,
   saveWasteTourDateShift,
 } = wasteManagementEntitySavers;
@@ -340,6 +349,30 @@ export const wasteManagementHandlers = {
         ...sharedWasteManagementDeps,
         deleteWasteLocationTourPickupDate,
         loadWasteLocationTourPickupDateById,
+      })
+    ),
+  createTourAssignment: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      createWasteManagementTourAssignmentInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        saveWasteTourAssignment,
+        loadWasteTourAssignmentById,
+      })
+    ),
+  updateTourAssignment: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      updateWasteManagementTourAssignmentInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        saveWasteTourAssignment,
+        loadWasteTourAssignmentById,
+      })
+    ),
+  deleteTourAssignment: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      deleteWasteManagementTourAssignmentInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        deleteWasteTourAssignment,
+        loadWasteTourAssignmentById,
       })
     ),
   createTour: (request: Request): Promise<Response> =>

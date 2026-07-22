@@ -29,6 +29,11 @@ import {
   type WasteSyncBatchProgressDetails,
   type WasteSyncProgressReporter,
 } from './waste-management-mainserver-sync.progress.js';
+import {
+  chunkWasteSyncItems,
+  toWasteSyncRow,
+  type WasteSyncRow,
+} from './waste-management-mainserver-sync.rows.js';
 
 import type { WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 import { withWasteClient } from './waste-management-operations.shared.js';
@@ -39,19 +44,24 @@ type WasteManagementSyncMainserverJobInput = {
   readonly activeOrganizationId?: string;
 };
 
-type WasteMaterializationSyncState = Omit<WasteMaterializationContext, 'currentYear' | 'nextYear'> & {
+type WasteMaterializationSyncState = Omit<
+  WasteMaterializationContext,
+  'currentYear' | 'nextYear'
+> & {
   readonly cities: readonly WasteCityRecord[];
   readonly fractions: readonly WasteFractionRecord[];
   readonly locations: readonly WasteCollectionLocationRecord[];
-  readonly locationTourPickupDates: NonNullable<WasteMaterializationContext['locationTourPickupDates']>;
+  readonly locationTourPickupDates: NonNullable<
+    WasteMaterializationContext['locationTourPickupDates']
+  >;
+  readonly tourAssignments: NonNullable<WasteMaterializationContext['tourAssignments']>;
   readonly streets: readonly WasteStreetRecord[];
   readonly tours: readonly WasteTourRecord[];
   readonly links: readonly WasteLocationTourLinkRecord[];
 };
 
-export type WasteSyncRow = SvaMainserverWasteSyncItem & Readonly<{
-  key: string;
-}>;
+export { buildWasteSyncKey } from './waste-management-mainserver-sync.rows.js';
+export type { WasteSyncRow } from './waste-management-mainserver-sync.rows.js';
 
 export type WasteManagementMainserverSyncResult = Readonly<{
   studioItemCount: number;
@@ -76,39 +86,6 @@ export type WasteManagementMainserverSyncResult = Readonly<{
 
 const DEFAULT_MAINSERVER_SYNC_BATCH_SIZE = 100;
 
-const normalizeKeyPart = (value: string | undefined): string => (value ?? '').trim().toLocaleLowerCase('de-DE');
-
-export const buildWasteSyncKey = (item: {
-  pickupDate: string;
-  wasteType: string;
-  street: string;
-  city?: string;
-}): string =>
-  [
-    item.pickupDate,
-    normalizeKeyPart(item.wasteType),
-    normalizeKeyPart(item.street),
-    normalizeKeyPart(item.city),
-  ].join('::');
-
-const toSyncRow = (item: SvaMainserverWasteSyncItem): WasteSyncRow => ({
-  ...item,
-  key: buildWasteSyncKey(item),
-});
-
-const chunkItems = <TItem>(items: readonly TItem[], batchSize: number): readonly (readonly TItem[])[] => {
-  if (items.length === 0) {
-    return [];
-  }
-
-  const normalizedBatchSize = Math.max(1, batchSize);
-  const batches: TItem[][] = [];
-  for (let index = 0; index < items.length; index += normalizedBatchSize) {
-    batches.push(items.slice(index, index + normalizedBatchSize));
-  }
-  return batches;
-};
-
 const filterSyncRowsToYearWindow = (
   rows: readonly WasteSyncRow[],
   currentYear: number,
@@ -131,16 +108,16 @@ const buildStudioRowsFromSyncState = (
     pickupDates: buildMaterializedLocationTourPickupDates({
       ...studioState,
       locationTourPickupDates: studioState.locationTourPickupDates,
+      tourAssignments: studioState.tourAssignments,
       currentYear,
       nextYear,
     }),
     tours: studioState.tours,
     fractions: studioState.fractions,
-    links: studioState.links,
     locations: studioState.locations,
     cities: studioState.cities,
     streets: studioState.streets,
-  }).map(toSyncRow);
+  }).map(toWasteSyncRow);
 };
 
 export const runWasteManagementMainserverSync = async (input: {
@@ -184,7 +161,7 @@ export const runWasteManagementMainserverSync = async (input: {
     readonly operationMode: 'create' | 'delete';
     readonly writer?: (items: readonly SvaMainserverWasteSyncItem[]) => Promise<void>;
   }): Promise<void> => {
-    const batches = chunkItems(params.items, batchSize);
+    const batches = chunkWasteSyncItems(params.items, batchSize);
 
     if (params.items.length === 0) {
       await input.onBatchProgress?.({
@@ -253,8 +230,7 @@ export const runWasteManagementMainserverSync = async (input: {
     deleteByValueCount,
     errorCount: 0,
     totalBatchCount:
-      Math.ceil(createItems.length / batchSize) +
-      Math.ceil(deleteItems.length / batchSize),
+      Math.ceil(createItems.length / batchSize) + Math.ceil(deleteItems.length / batchSize),
     processedItemCount,
     finalCreateCount: input.dryRun ? createItems.length : createCount,
     finalDeleteCount: input.dryRun ? deleteItems.length : deleteCount,
@@ -282,18 +258,23 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
       currentStepLabel: 'load-studio-state',
     })
   );
-  const studioState = await withWasteClient(input.runtimeDeps ?? {}, input.instanceId, async ({ repository }) => ({
-    tours: await repository.listWasteTours(),
-    fractions: await repository.listWasteFractions(),
-    links: await repository.listWasteLocationTourLinks(),
-    locations: await repository.listWasteCollectionLocations(),
-    locationTourPickupDates: await repository.listWasteLocationTourPickupDates(),
-    cities: await repository.listWasteCities(),
-    streets: await repository.listWasteStreets(),
-    tourDateShifts: await repository.listWasteTourDateShifts(),
-    globalDateShifts: await repository.listWasteGlobalDateShifts(),
-    holidayRules: await repository.listWasteHolidayRules(),
-  }));
+  const studioState = await withWasteClient(
+    input.runtimeDeps ?? {},
+    input.instanceId,
+    async ({ repository }) => ({
+      tours: await repository.listWasteTours(),
+      fractions: await repository.listWasteFractions(),
+      links: await repository.listWasteLocationTourLinks(),
+      locations: await repository.listWasteCollectionLocations(),
+      locationTourPickupDates: await repository.listWasteLocationTourPickupDates(),
+      tourAssignments: await repository.listWasteTourAssignments(),
+      cities: await repository.listWasteCities(),
+      streets: await repository.listWasteStreets(),
+      tourDateShifts: await repository.listWasteTourDateShifts(),
+      globalDateShifts: await repository.listWasteGlobalDateShifts(),
+      holidayRules: await repository.listWasteHolidayRules(),
+    })
+  );
 
   const now = input.runtimeDeps?.now?.() ?? new Date();
   const currentYear = now.getUTCFullYear();
@@ -318,7 +299,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     })
   );
   const mainserverRows = filterSyncRowsToYearWindow(
-    mainserverSnapshot.pickupTimes.map(toSyncRow),
+    mainserverSnapshot.pickupTimes.map(toWasteSyncRow),
     currentYear,
     nextYear
   );

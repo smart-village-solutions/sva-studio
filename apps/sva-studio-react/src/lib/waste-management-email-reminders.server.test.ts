@@ -574,7 +574,7 @@ describe('waste management operations runtime', () => {
     });
   });
 
-  it('materializes reminders for existing subscribers even when public signup is disabled', async () => {
+  it('materializes reminders for explicit assignments even when public signup is disabled', async () => {
     const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
     const reminderRepository = {
       listActiveSubscriptions: vi.fn(async () => [
@@ -622,7 +622,7 @@ describe('waste management operations runtime', () => {
           active: true,
         },
       ]),
-      listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true }]),
+      listWasteLocationTourLinks: vi.fn(async () => []),
       listWasteCollectionLocations: vi.fn(async () => [
         {
           id: 'location-1',
@@ -633,7 +633,16 @@ describe('waste management operations runtime', () => {
           active: true,
         },
       ]),
-      listWasteLocationTourPickupDates: vi.fn(async () => [{ id: 'pickup-1', locationId: 'location-1', tourId: 'tour-1', pickupDate: '2026-06-16' }]),
+      listWasteLocationTourPickupDates: vi.fn(async () => []),
+      listWasteTourAssignments: vi.fn(async () => [
+        {
+          id: 'assignment-1',
+          tourId: 'tour-1',
+          pickupDate: '2026-06-16',
+          locationIds: ['location-1'],
+          note: undefined,
+        },
+      ]),
       listWasteTourDateShifts: vi.fn(async () => []),
       listWasteGlobalDateShifts: vi.fn(async () => []),
       listWasteHolidayRules: vi.fn(async () => []),
@@ -1817,6 +1826,7 @@ const createRepositoryMockBase = () => ({
   listWasteTours: vi.fn(async (): Promise<unknown[]> => []),
   listWasteLocationTourLinks: vi.fn(async (): Promise<unknown[]> => []),
   listWasteLocationTourPickupDates: vi.fn(async (): Promise<unknown[]> => []),
+  listWasteTourAssignments: vi.fn(async (): Promise<unknown[]> => []),
   listWasteTourDateShifts: vi.fn(async (): Promise<unknown[]> => []),
   listWasteGlobalDateShifts: vi.fn(async (): Promise<unknown[]> => []),
   listWasteHolidayRules: vi.fn(async (): Promise<unknown[]> => []),

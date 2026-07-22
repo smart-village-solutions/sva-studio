@@ -4,13 +4,25 @@ const deleteWasteManagementGlobalDateShiftMock = vi.hoisted(() => vi.fn(async ()
 const deleteWasteManagementTourDateShiftMock = vi.hoisted(() => vi.fn(async () => undefined));
 const deleteWasteManagementHolidayRuleMock = vi.hoisted(() => vi.fn(async () => undefined));
 const updateWasteManagementHolidayRuleMock = vi.hoisted(() => vi.fn(async () => undefined));
-const createWasteManagementLocationTourPickupDateMock = vi.hoisted(() => vi.fn(async () => undefined));
-const updateWasteManagementLocationTourPickupDateMock = vi.hoisted(() => vi.fn(async () => undefined));
-const deleteWasteManagementLocationTourPickupDateMock = vi.hoisted(() => vi.fn(async () => undefined));
+const createWasteManagementLocationTourPickupDateMock = vi.hoisted(() =>
+  vi.fn(async () => undefined)
+);
+const updateWasteManagementLocationTourPickupDateMock = vi.hoisted(() =>
+  vi.fn(async () => undefined)
+);
+const deleteWasteManagementLocationTourPickupDateMock = vi.hoisted(() =>
+  vi.fn(async () => undefined)
+);
+const createWasteManagementTourAssignmentMock = vi.hoisted(() => vi.fn(async () => undefined));
+const updateWasteManagementTourAssignmentMock = vi.hoisted(() => vi.fn(async () => undefined));
+const deleteWasteManagementTourAssignmentMock = vi.hoisted(() => vi.fn(async () => undefined));
 const WasteManagementApiErrorMock = vi.hoisted(
   () =>
     class WasteManagementApiError extends Error {
-      public constructor(public readonly code: string, message = code) {
+      public constructor(
+        public readonly code: string,
+        message = code
+      ) {
         super(message);
       }
     }
@@ -24,6 +36,9 @@ vi.mock('../src/waste-management.api.js', () => ({
   createWasteManagementLocationTourPickupDate: createWasteManagementLocationTourPickupDateMock,
   updateWasteManagementLocationTourPickupDate: updateWasteManagementLocationTourPickupDateMock,
   deleteWasteManagementLocationTourPickupDate: deleteWasteManagementLocationTourPickupDateMock,
+  createWasteManagementTourAssignment: createWasteManagementTourAssignmentMock,
+  updateWasteManagementTourAssignment: updateWasteManagementTourAssignmentMock,
+  deleteWasteManagementTourAssignment: deleteWasteManagementTourAssignmentMock,
   deleteWasteManagementTourDateShift: deleteWasteManagementTourDateShiftMock,
   updateWasteManagementHolidayRule: updateWasteManagementHolidayRuleMock,
   WasteManagementApiError: WasteManagementApiErrorMock,
@@ -137,21 +152,24 @@ describe('createWasteSchedulingMutationHandlers', () => {
       loadOverview,
     });
 
-    await handlers.onSaveHolidayRule({
-      id: 'holiday-rule-1',
-      holidayDate: '2026-01-01',
-      holidayName: 'Neujahr',
-      year: 2026,
-      stateCode: 'NW',
-      sourceStatus: 'confirmed',
-      configurationStatus: 'draft',
-      conflictStatus: 'none',
-      createdAt: '2026-05-10T10:00:00.000Z',
-      updatedAt: '2026-05-10T10:00:00.000Z',
-    } as never, {
-      scope: 'holiday-only',
-      strategy: 'advance',
-    });
+    await handlers.onSaveHolidayRule(
+      {
+        id: 'holiday-rule-1',
+        holidayDate: '2026-01-01',
+        holidayName: 'Neujahr',
+        year: 2026,
+        stateCode: 'NW',
+        sourceStatus: 'confirmed',
+        configurationStatus: 'draft',
+        conflictStatus: 'none',
+        createdAt: '2026-05-10T10:00:00.000Z',
+        updatedAt: '2026-05-10T10:00:00.000Z',
+      } as never,
+      {
+        scope: 'holiday-only',
+        strategy: 'advance',
+      }
+    );
 
     expect(updateWasteManagementHolidayRuleMock).toHaveBeenCalledWith('holiday-rule-1', {
       scope: 'holiday-only',
@@ -164,7 +182,7 @@ describe('createWasteSchedulingMutationHandlers', () => {
     });
   });
 
-  it('creates and updates schadstoffmobil pickup dates with dedicated success messages', async () => {
+  it('creates and updates generic tour assignments with multiple locations', async () => {
     const state = {
       setSaving: vi.fn(),
       setMessage: vi.fn(),
@@ -177,20 +195,20 @@ describe('createWasteSchedulingMutationHandlers', () => {
       loadOverview,
     });
 
-    await handlers.onSaveLocationTourPickupDate(
+    await handlers.onSaveTourAssignment(
       {
         id: 'pickup-1',
-        locationId: 'location-1',
+        locationIds: ['location-1', 'location-parent'],
         tourId: 'tour-1',
         pickupDate: '2026-07-01',
-        note: '08:00',
+        note: ' 08:00 ',
       },
       'create'
     );
-    await handlers.onSaveLocationTourPickupDate(
+    await handlers.onSaveTourAssignment(
       {
         id: 'pickup-1',
-        locationId: 'location-1',
+        locationIds: ['location-1'],
         tourId: 'tour-1',
         pickupDate: '2026-07-02',
         note: '09:00',
@@ -198,15 +216,15 @@ describe('createWasteSchedulingMutationHandlers', () => {
       'edit'
     );
 
-    expect(createWasteManagementLocationTourPickupDateMock).toHaveBeenCalledWith({
+    expect(createWasteManagementTourAssignmentMock).toHaveBeenCalledWith({
       id: 'pickup-1',
-      locationId: 'location-1',
+      locationIds: ['location-1', 'location-parent'],
       tourId: 'tour-1',
       pickupDate: '2026-07-01',
       note: '08:00',
     });
-    expect(updateWasteManagementLocationTourPickupDateMock).toHaveBeenCalledWith('pickup-1', {
-      locationId: 'location-1',
+    expect(updateWasteManagementTourAssignmentMock).toHaveBeenCalledWith('pickup-1', {
+      locationIds: ['location-1'],
       tourId: 'tour-1',
       pickupDate: '2026-07-02',
       note: '09:00',
@@ -214,19 +232,19 @@ describe('createWasteSchedulingMutationHandlers', () => {
     expect(loadOverview).toHaveBeenCalledTimes(2);
     expect(state.setMessage).toHaveBeenNthCalledWith(2, {
       kind: 'success',
-      text: 'scheduling.schadstoffmobil.messages.createSuccess',
+      text: 'scheduling.assignments.messages.createSuccess',
     });
     expect(state.setMessage).toHaveBeenNthCalledWith(4, {
       kind: 'success',
-      text: 'scheduling.schadstoffmobil.messages.updateSuccess',
+      text: 'scheduling.assignments.messages.updateSuccess',
     });
   });
 
-  it('maps schadstoffmobil delete and save failures to dedicated messages', async () => {
-    createWasteManagementLocationTourPickupDateMock.mockRejectedValueOnce(
+  it('maps generic tour-assignment delete and save failures to dedicated messages', async () => {
+    createWasteManagementTourAssignmentMock.mockRejectedValueOnce(
       new WasteManagementApiErrorMock('forbidden')
     );
-    deleteWasteManagementLocationTourPickupDateMock.mockRejectedValueOnce(
+    deleteWasteManagementTourAssignmentMock.mockRejectedValueOnce(
       new WasteManagementApiErrorMock('other')
     );
 
@@ -242,10 +260,10 @@ describe('createWasteSchedulingMutationHandlers', () => {
     });
 
     await expect(
-      handlers.onSaveLocationTourPickupDate(
+      handlers.onSaveTourAssignment(
         {
           id: 'pickup-1',
-          locationId: 'location-1',
+          locationIds: ['location-1'],
           tourId: 'tour-1',
           pickupDate: '2026-07-01',
           note: '08:00',
@@ -254,15 +272,15 @@ describe('createWasteSchedulingMutationHandlers', () => {
       )
     ).rejects.toThrow('forbidden');
 
-    await expect(handlers.onDeleteLocationTourPickupDate('pickup-1')).rejects.toThrow('other');
+    await expect(handlers.onDeleteTourAssignment('pickup-1')).rejects.toThrow('other');
 
     expect(state.setMessage).toHaveBeenCalledWith({
       kind: 'error',
-      text: 'scheduling.schadstoffmobil.messages.saveForbidden',
+      text: 'scheduling.assignments.messages.saveForbidden',
     });
     expect(state.setMessage).toHaveBeenCalledWith({
       kind: 'error',
-      text: 'scheduling.schadstoffmobil.messages.deleteError',
+      text: 'scheduling.assignments.messages.deleteError',
     });
   });
 });

@@ -114,6 +114,8 @@ export type AuthRoutePath =
   | '/api/v1/waste-management/scheduling'
   | '/api/v1/waste-management/location-tour-pickup-dates'
   | '/api/v1/waste-management/location-tour-pickup-dates/$pickupDateId'
+  | '/api/v1/waste-management/tour-assignments'
+  | '/api/v1/waste-management/tour-assignments/$assignmentId'
   | '/api/v1/waste-management/global-date-shifts'
   | '/api/v1/waste-management/global-date-shifts/$shiftId'
   | '/api/v1/waste-management/holiday-rules/$holidayRuleId'
@@ -250,6 +252,8 @@ export const authRoutePaths = [
   '/api/v1/waste-management/scheduling',
   '/api/v1/waste-management/location-tour-pickup-dates',
   '/api/v1/waste-management/location-tour-pickup-dates/$pickupDateId',
+  '/api/v1/waste-management/tour-assignments',
+  '/api/v1/waste-management/tour-assignments/$assignmentId',
   '/api/v1/waste-management/global-date-shifts',
   '/api/v1/waste-management/global-date-shifts/$shiftId',
   '/api/v1/waste-management/holiday-rules/$holidayRuleId',

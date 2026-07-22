@@ -1,6 +1,11 @@
-import type { WasteCityRecord, WasteHouseNumberRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/plugin-sdk';
+import type {
+  WasteCityRecord,
+  WasteHouseNumberRecord,
+  WasteRegionRecord,
+  WasteStreetRecord,
+} from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import { Select, StudioField } from '@sva/studio-ui-react';
 
 import type { CollectionLocationFormState } from './waste-management.master-data.forms.js';
 
@@ -21,12 +26,17 @@ export const LocationRegionCityFields = ({
 
   return (
     <>
-      <StudioField id="waste-location-region-id" label={pt('masterData.collectionLocations.fields.regionId')}>
+      <StudioField
+        id="waste-location-region-id"
+        label={pt('masterData.collectionLocations.fields.regionId')}
+      >
         <Select
           id="waste-location-region-id"
           name="regionId"
           value={form.regionId}
-          onChange={(event) => onChange({ regionId: event.target.value, cityId: '', streetId: '', houseNumberId: '' })}
+          onChange={(event) =>
+            onChange({ regionId: event.target.value, cityId: '', streetId: '', houseNumberId: '' })
+          }
         >
           <option value="">{pt('masterData.collectionLocations.fields.regionUnset')}</option>
           {regions.map((region) => (
@@ -36,12 +46,19 @@ export const LocationRegionCityFields = ({
           ))}
         </Select>
       </StudioField>
-      <StudioField id="waste-location-city-id" label={pt('masterData.collectionLocations.fields.cityId')} error={cityError} required>
+      <StudioField
+        id="waste-location-city-id"
+        label={pt('masterData.collectionLocations.fields.cityId')}
+        error={cityError}
+        required
+      >
         <Select
           id="waste-location-city-id"
           name="cityId"
           value={form.cityId}
-          onChange={(event) => onChange({ cityId: event.target.value, streetId: '', houseNumberId: '' })}
+          onChange={(event) =>
+            onChange({ cityId: event.target.value, streetId: '', houseNumberId: '' })
+          }
         >
           <option value="">{pt('masterData.collectionLocations.fields.cityUnset')}</option>
           {filteredCities.map((city) => (
@@ -70,7 +87,10 @@ export const LocationStreetHouseNumberFields = ({
 
   return (
     <>
-      <StudioField id="waste-location-street-id" label={pt('masterData.collectionLocations.fields.streetId')}>
+      <StudioField
+        id="waste-location-street-id"
+        label={pt('masterData.collectionLocations.fields.streetId')}
+      >
         <Select
           id="waste-location-street-id"
           name="streetId"
@@ -85,7 +105,10 @@ export const LocationStreetHouseNumberFields = ({
           ))}
         </Select>
       </StudioField>
-      <StudioField id="waste-location-house-number-id" label={pt('masterData.collectionLocations.fields.houseNumberId')}>
+      <StudioField
+        id="waste-location-house-number-id"
+        label={pt('masterData.collectionLocations.fields.houseNumberId')}
+      >
         <Select
           id="waste-location-house-number-id"
           name="houseNumberId"

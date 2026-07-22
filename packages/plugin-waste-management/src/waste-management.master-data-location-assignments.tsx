@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { WasteFractionRecord, WasteLocationTourLinkRecord, WasteTourRecord } from '@sva/plugin-sdk';
+import type {
+  WasteFractionRecord,
+  WasteLocationTourLinkRecord,
+  WasteTourRecord,
+} from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Checkbox } from '@sva/studio-ui-react';
 
@@ -7,7 +11,11 @@ import {
   createWasteManagementLocationTourLink,
   deleteWasteManagementLocationTourLink,
 } from './waste-management.api.js';
-import { StatusNotice, compactOptionalString, resolveApiErrorCode, type StatusMessage } from './waste-management.page.support.js';
+import {
+  StatusNotice,
+  resolveApiErrorCode,
+  type StatusMessage,
+} from './waste-management.page.support.js';
 import { formatTourRecurrence } from './waste-management.tours.presentation.js';
 import { WasteToursRowFractionCell } from './waste-management.tours.table-row.parts.js';
 
@@ -39,13 +47,17 @@ export const LocationAssignmentsSection = ({
   }, [links, locationId]);
 
   const sortedTours = useMemo(
-    () => [...tours].sort((left, right) => left.name.localeCompare(right.name, 'de', { sensitivity: 'base' })),
+    () =>
+      [...tours].sort((left, right) =>
+        left.name.localeCompare(right.name, 'de', { sensitivity: 'base' })
+      ),
     [tours]
   );
   const selectedTourIdSet = useMemo(() => new Set(selectedTourIds), [selectedTourIds]);
   const linkedTourIdSet = useMemo(() => new Set(links.map((link) => link.tourId)), [links]);
   const fractionNamesById = useMemo(() => createFractionNameMap(fractions), [fractions]);
-  const allVisibleSelected = sortedTours.length > 0 && sortedTours.every((tour) => selectedTourIdSet.has(tour.id));
+  const allVisibleSelected =
+    sortedTours.length > 0 && sortedTours.every((tour) => selectedTourIdSet.has(tour.id));
   const someVisibleSelected = sortedTours.some((tour) => selectedTourIdSet.has(tour.id));
 
   const toggleSelectedTour = (tourId: string, checked: boolean) => {
@@ -63,7 +75,10 @@ export const LocationAssignmentsSection = ({
     const linksToDelete = links.filter((link) => !selectedTourIdSet.has(link.tourId));
 
     if (toursToCreate.length === 0 && linksToDelete.length === 0) {
-      setMessage({ kind: 'success', text: pt('masterData.collectionLocations.assignmentEditor.messages.saveSuccess') });
+      setMessage({
+        kind: 'success',
+        text: pt('masterData.collectionLocations.assignmentEditor.messages.saveSuccess'),
+      });
       return;
     }
 
@@ -77,15 +92,16 @@ export const LocationAssignmentsSection = ({
             id: crypto.randomUUID(),
             locationId,
             tourId,
-            startDate: compactOptionalString(''),
-            endDate: compactOptionalString(''),
           })
         ),
         ...linksToDelete.map((link) => deleteWasteManagementLocationTourLink(link.id)),
       ]);
 
       await onReload();
-      setMessage({ kind: 'success', text: pt('masterData.collectionLocations.assignmentEditor.messages.saveSuccess') });
+      setMessage({
+        kind: 'success',
+        text: pt('masterData.collectionLocations.assignmentEditor.messages.saveSuccess'),
+      });
     } catch (error) {
       const code = resolveApiErrorCode(error);
       setMessage({
@@ -104,15 +120,23 @@ export const LocationAssignmentsSection = ({
     <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-foreground">{pt('masterData.collectionLocations.assignmentEditor.title')}</p>
-          <p className="text-sm text-muted-foreground">{pt('masterData.collectionLocations.assignmentEditor.description')}</p>
+          <p className="text-sm font-semibold text-foreground">
+            {pt('masterData.collectionLocations.assignmentEditor.title')}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {pt('masterData.collectionLocations.assignmentEditor.description')}
+          </p>
           <p className="text-xs text-muted-foreground">
             {pt('masterData.collectionLocations.assignmentEditor.meta.selectedCount', {
               value: String(selectedTourIds.length),
             })}
           </p>
         </div>
-        <Button type="button" disabled={disabled || saving || sortedTours.length === 0} onClick={() => void handleSave()}>
+        <Button
+          type="button"
+          disabled={disabled || saving || sortedTours.length === 0}
+          onClick={() => void handleSave()}
+        >
           {saving
             ? pt('masterData.collectionLocations.assignmentEditor.actions.saving')
             : pt('masterData.collectionLocations.assignmentEditor.actions.save')}
@@ -122,11 +146,16 @@ export const LocationAssignmentsSection = ({
       <StatusNotice message={message} />
 
       {sortedTours.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{pt('masterData.collectionLocations.assignmentEditor.empty')}</p>
+        <p className="text-sm text-muted-foreground">
+          {pt('masterData.collectionLocations.assignmentEditor.empty')}
+        </p>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/70">
           <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse" aria-label={pt('masterData.collectionLocations.assignmentEditor.title')}>
+            <table
+              className="min-w-full border-collapse"
+              aria-label={pt('masterData.collectionLocations.assignmentEditor.title')}
+            >
               <thead className="bg-muted/20 text-left text-[13px] text-foreground">
                 <tr className="border-b border-border/70">
                   <th scope="col" className="w-11 px-3 py-3">
@@ -136,7 +165,9 @@ export const LocationAssignmentsSection = ({
                       indeterminate={someVisibleSelected && !allVisibleSelected}
                       disabled={disabled || saving}
                       onChange={(event) => {
-                        setSelectedTourIds(event.currentTarget.checked ? sortedTours.map((tour) => tour.id) : []);
+                        setSelectedTourIds(
+                          event.currentTarget.checked ? sortedTours.map((tour) => tour.id) : []
+                        );
                       }}
                     />
                   </th>
@@ -158,13 +189,18 @@ export const LocationAssignmentsSection = ({
                     .filter((value: string | undefined): value is string => Boolean(value));
 
                   return (
-                    <tr key={tour.id} className="border-b border-border/50 align-top last:border-b-0">
+                    <tr
+                      key={tour.id}
+                      className="border-b border-border/50 align-top last:border-b-0"
+                    >
                       <td className="px-3 py-3">
                         <Checkbox
                           aria-label={pt('tours.table.selectRow', { value: tour.name })}
                           checked={selectedTourIdSet.has(tour.id)}
                           disabled={disabled || saving}
-                          onChange={(event) => toggleSelectedTour(tour.id, event.currentTarget.checked)}
+                          onChange={(event) =>
+                            toggleSelectedTour(tour.id, event.currentTarget.checked)
+                          }
                         />
                       </td>
                       <td className="px-3 py-3">

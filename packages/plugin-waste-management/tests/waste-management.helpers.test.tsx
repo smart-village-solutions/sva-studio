@@ -484,16 +484,12 @@ describe('waste management helper modules', () => {
       wasteMasterDataInputMappers.toCreateLocationTourLinksBulkInput(
         {
           tourId: 'tour-1',
-          startDate: ' 2026-05-01 ',
-          endDate: ' ',
         },
         ['location-1', 'location-2']
       )
     ).toEqual({
       locationIds: ['location-1', 'location-2'],
       tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: undefined,
     });
 
     const form = document.createElement('form');
@@ -679,8 +675,6 @@ describe('waste management helper modules', () => {
             id: 'link-1',
             locationId: 'location-1',
             tourId: 'tour-1',
-            startDate: '2026-05-01',
-            endDate: '2026-06-01',
             createdAt: '2026-05-01T10:00:00.000Z',
             updatedAt: '2026-05-01T10:00:00.000Z',
           },
@@ -730,8 +724,6 @@ describe('waste management helper modules', () => {
       id: 'link-1',
       locationId: 'location-1',
       tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: '2026-06-01',
     });
     expect(state.setCalendarOpen).toHaveBeenCalledWith(true);
   });
@@ -926,8 +918,6 @@ describe('waste management helper modules', () => {
         id: 'link-1',
         locationId: 'location-1',
         tourId: 'tour-1',
-        startDate: '2026-05-01',
-        endDate: '2026-12-31',
       },
       selectedTour: { id: 'tour-1' },
       setSaving: vi.fn(),
@@ -959,8 +949,6 @@ describe('waste management helper modules', () => {
     expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenCalledWith({
       locationIds: ['location-3'],
       tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: '2026-12-31',
     });
     expect(deleteWasteManagementLocationTourLinkMock).toHaveBeenCalledWith('link-1');
 
@@ -987,8 +975,6 @@ describe('waste management helper modules', () => {
     expect(updateWasteManagementLocationTourLinkMock).toHaveBeenLastCalledWith('link-1', {
       locationId: 'location-1',
       tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: '2026-12-31',
     });
     expect(editState.setMessage).toHaveBeenCalledWith({
       kind: 'success',
@@ -1007,8 +993,6 @@ describe('waste management helper modules', () => {
         id: 'link-1',
         locationId: '',
         tourId: 'tour-1',
-        startDate: '2026-05-01',
-        endDate: '',
       },
       selectedTour: { id: 'tour-1' },
       masterDataOverview: {
@@ -1033,20 +1017,14 @@ describe('waste management helper modules', () => {
     expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenNthCalledWith(1, {
       locationIds: selectedLocationIds.slice(0, 100),
       tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: undefined,
     });
     expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenNthCalledWith(2, {
       locationIds: selectedLocationIds.slice(100, 200),
       tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: undefined,
     });
     expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenNthCalledWith(3, {
       locationIds: selectedLocationIds.slice(200),
       tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: undefined,
     });
     expect(loadOverview).toHaveBeenCalledWith(true);
     expect(chunkingState.setAssignmentsDialogOpen).toHaveBeenCalledWith(false);

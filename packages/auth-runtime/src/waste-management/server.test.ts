@@ -19,49 +19,94 @@ const withAuthenticatedWasteManagementHandlerMock = vi.hoisted(() =>
 
 const coreHandlerMocks = vi.hoisted(() => ({
   createWasteManagementCityInternal: vi.fn(async () => new Response('create-city')),
-  createWasteManagementCollectionLocationInternal: vi.fn(async () => new Response('create-location')),
+  createWasteManagementCollectionLocationInternal: vi.fn(
+    async () => new Response('create-location')
+  ),
   createWasteManagementFractionInternal: vi.fn(async () => new Response('create-fraction')),
-  deleteWasteManagementCollectionLocationInternal: vi.fn(async () => new Response('delete-location')),
+  deleteWasteManagementCollectionLocationInternal: vi.fn(
+    async () => new Response('delete-location')
+  ),
   deleteWasteManagementFractionInternal: vi.fn(async () => new Response('delete-fraction')),
-  deleteWasteManagementGlobalDateShiftInternal: vi.fn(async () => new Response('delete-global-shift')),
+  deleteWasteManagementGlobalDateShiftInternal: vi.fn(
+    async () => new Response('delete-global-shift')
+  ),
   deleteWasteManagementHolidayRuleInternal: vi.fn(async () => new Response('delete-holiday-rule')),
-  createWasteManagementGlobalDateShiftInternal: vi.fn(async () => new Response('create-global-shift')),
+  createWasteManagementGlobalDateShiftInternal: vi.fn(
+    async () => new Response('create-global-shift')
+  ),
   updateWasteManagementHolidayRuleInternal: vi.fn(async () => new Response('update-holiday-rule')),
   createWasteManagementHouseNumberInternal: vi.fn(async () => new Response('create-house-number')),
-  createWasteManagementLocationTourLinkInternal: vi.fn(async () => new Response('create-location-tour-link')),
-  createWasteManagementLocationTourLinksBulkInternal: vi.fn(async () => new Response('create-location-tour-links-bulk')),
+  createWasteManagementLocationTourLinkInternal: vi.fn(
+    async () => new Response('create-location-tour-link')
+  ),
+  createWasteManagementLocationTourLinksBulkInternal: vi.fn(
+    async () => new Response('create-location-tour-links-bulk')
+  ),
   createWasteManagementRegionInternal: vi.fn(async () => new Response('create-region')),
   createWasteManagementStreetInternal: vi.fn(async () => new Response('create-street')),
-  deleteWasteManagementLocationTourLinkInternal: vi.fn(async () => new Response('delete-location-tour-link')),
-  deleteWasteManagementTourDateShiftInternal: vi.fn(async () => new Response('delete-tour-date-shift')),
-  createWasteManagementTourDateShiftInternal: vi.fn(async () => new Response('create-tour-date-shift')),
+  deleteWasteManagementLocationTourLinkInternal: vi.fn(
+    async () => new Response('delete-location-tour-link')
+  ),
+  deleteWasteManagementTourDateShiftInternal: vi.fn(
+    async () => new Response('delete-tour-date-shift')
+  ),
+  createWasteManagementTourDateShiftInternal: vi.fn(
+    async () => new Response('create-tour-date-shift')
+  ),
   createWasteManagementTourInternal: vi.fn(async () => new Response('create-tour')),
+  createWasteManagementTourAssignmentInternal: vi.fn(
+    async () => new Response('create-tour-assignment')
+  ),
   deleteWasteManagementTourInternal: vi.fn(async () => new Response('delete-tour')),
+  deleteWasteManagementTourAssignmentInternal: vi.fn(
+    async () => new Response('delete-tour-assignment')
+  ),
   getWasteManagementHistoryInternal: vi.fn(async () => new Response('get-history')),
-  getWasteManagementMasterDataOverviewInternal: vi.fn(async () => new Response('get-master-data-overview')),
-  getWasteManagementSchedulingOverviewInternal: vi.fn(async () => new Response('get-scheduling-overview')),
+  getWasteManagementMasterDataOverviewInternal: vi.fn(
+    async () => new Response('get-master-data-overview')
+  ),
+  getWasteManagementSchedulingOverviewInternal: vi.fn(
+    async () => new Response('get-scheduling-overview')
+  ),
   getWasteManagementSettingsInternal: vi.fn(async () => new Response('get-settings')),
   getWasteManagementToursOverviewInternal: vi.fn(async () => new Response('get-tours-overview')),
   runWasteManagementHolidaySyncInternal: vi.fn(async () => new Response('run-holiday-sync')),
-  previewWasteManagementLocationTourPickupDateImportInternal: vi.fn(async () => new Response('preview-import')),
+  previewWasteManagementLocationTourPickupDateImportInternal: vi.fn(
+    async () => new Response('preview-import')
+  ),
   startWasteManagementInitializeInternal: vi.fn(async () => new Response('start-initialize')),
   startWasteManagementImportInternal: vi.fn(async () => new Response('start-import')),
   startWasteManagementMigrationsInternal: vi.fn(async () => new Response('start-migrations')),
-  startWasteManagementMainserverSyncInternal: vi.fn(async () => new Response('start-mainserver-sync')),
+  startWasteManagementMainserverSyncInternal: vi.fn(
+    async () => new Response('start-mainserver-sync')
+  ),
   startWasteManagementResetInternal: vi.fn(async () => new Response('start-reset')),
   startWasteManagementSeedInternal: vi.fn(async () => new Response('start-seed')),
-  startWasteManagementSyncWasteTypesInternal: vi.fn(async () => new Response('start-sync-waste-types')),
+  startWasteManagementSyncWasteTypesInternal: vi.fn(
+    async () => new Response('start-sync-waste-types')
+  ),
   updateWasteManagementCityInternal: vi.fn(async () => new Response('update-city')),
-  updateWasteManagementCollectionLocationInternal: vi.fn(async () => new Response('update-location')),
+  updateWasteManagementCollectionLocationInternal: vi.fn(
+    async () => new Response('update-location')
+  ),
   updateWasteManagementFractionInternal: vi.fn(async () => new Response('update-fraction')),
-  updateWasteManagementGlobalDateShiftInternal: vi.fn(async () => new Response('update-global-shift')),
+  updateWasteManagementGlobalDateShiftInternal: vi.fn(
+    async () => new Response('update-global-shift')
+  ),
   updateWasteManagementHouseNumberInternal: vi.fn(async () => new Response('update-house-number')),
-  updateWasteManagementLocationTourLinkInternal: vi.fn(async () => new Response('update-location-tour-link')),
+  updateWasteManagementLocationTourLinkInternal: vi.fn(
+    async () => new Response('update-location-tour-link')
+  ),
   updateWasteManagementRegionInternal: vi.fn(async () => new Response('update-region')),
   updateWasteManagementSettingsInternal: vi.fn(async () => new Response('update-settings')),
   updateWasteManagementStreetInternal: vi.fn(async () => new Response('update-street')),
-  updateWasteManagementTourDateShiftInternal: vi.fn(async () => new Response('update-tour-date-shift')),
+  updateWasteManagementTourDateShiftInternal: vi.fn(
+    async () => new Response('update-tour-date-shift')
+  ),
   updateWasteManagementTourInternal: vi.fn(async () => new Response('update-tour')),
+  updateWasteManagementTourAssignmentInternal: vi.fn(
+    async () => new Response('update-tour-assignment')
+  ),
 }));
 
 const loaderMocks = vi.hoisted(() => ({
@@ -83,6 +128,7 @@ const loaderMocks = vi.hoisted(() => ({
   loadWasteRegionById: vi.fn(async () => null),
   loadWasteStreetById: vi.fn(async () => null),
   loadWasteTourById: vi.fn(async () => null),
+  loadWasteTourAssignmentById: vi.fn(async () => null),
   loadWasteTourDateShiftById: vi.fn(async () => null),
   listWasteTourDateShiftsByTourId: vi.fn(async () => []),
   previewWasteLocationTourPickupDateImport: vi.fn(async () => null),
@@ -108,7 +154,9 @@ const saverMocks = vi.hoisted(() => ({
   saveWasteRegion: vi.fn(async () => null),
   saveWasteStreet: vi.fn(async () => null),
   saveWasteTour: vi.fn(async () => null),
+  saveWasteTourAssignment: vi.fn(async () => null),
   deleteWasteTour: vi.fn(async () => null),
+  deleteWasteTourAssignment: vi.fn(async () => null),
   deleteWasteTourDateShift: vi.fn(async () => null),
   saveWasteTourDateShift: vi.fn(async () => null),
 }));
@@ -145,6 +193,7 @@ vi.mock('./server-loaders.js', () => ({
     loadWasteRegionById: loaderMocks.loadWasteRegionById,
     loadWasteStreetById: loaderMocks.loadWasteStreetById,
     loadWasteTourById: loaderMocks.loadWasteTourById,
+    loadWasteTourAssignmentById: loaderMocks.loadWasteTourAssignmentById,
     loadWasteTourDateShiftById: loaderMocks.loadWasteTourDateShiftById,
     listWasteTourDateShiftsByTourId: loaderMocks.listWasteTourDateShiftsByTourId,
   },
@@ -168,7 +217,9 @@ vi.mock('./server-loaders.js', () => ({
     saveWasteRegion: saverMocks.saveWasteRegion,
     saveWasteStreet: saverMocks.saveWasteStreet,
     saveWasteTour: saverMocks.saveWasteTour,
+    saveWasteTourAssignment: saverMocks.saveWasteTourAssignment,
     deleteWasteTour: saverMocks.deleteWasteTour,
+    deleteWasteTourAssignment: saverMocks.deleteWasteTourAssignment,
     deleteWasteTourDateShift: saverMocks.deleteWasteTourDateShift,
     saveWasteTourDateShift: saverMocks.saveWasteTourDateShift,
   },
@@ -187,7 +238,10 @@ describe('wasteManagementHandlers', () => {
       {
         handlerKey: 'getHistory',
         internal: coreHandlerMocks.getWasteManagementHistoryInternal,
-        deps: { ...sharedWasteManagementDepsMock, loadWasteHistoryOverview: loaderMocks.loadWasteHistoryOverview },
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          loadWasteHistoryOverview: loaderMocks.loadWasteHistoryOverview,
+        },
       },
       {
         handlerKey: 'getMasterDataOverview',
@@ -202,12 +256,18 @@ describe('wasteManagementHandlers', () => {
       {
         handlerKey: 'getToursOverview',
         internal: coreHandlerMocks.getWasteManagementToursOverviewInternal,
-        deps: { ...sharedWasteManagementDepsMock, loadToursOverview: loaderMocks.loadToursOverview },
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          loadToursOverview: loaderMocks.loadToursOverview,
+        },
       },
       {
         handlerKey: 'getSchedulingOverview',
         internal: coreHandlerMocks.getWasteManagementSchedulingOverviewInternal,
-        deps: { ...sharedWasteManagementDepsMock, loadSchedulingOverview: loaderMocks.loadSchedulingOverview },
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          loadSchedulingOverview: loaderMocks.loadSchedulingOverview,
+        },
       },
       {
         handlerKey: 'getSettings',
@@ -442,6 +502,33 @@ describe('wasteManagementHandlers', () => {
         },
       },
       {
+        handlerKey: 'createTourAssignment',
+        internal: coreHandlerMocks.createWasteManagementTourAssignmentInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          saveWasteTourAssignment: saverMocks.saveWasteTourAssignment,
+          loadWasteTourAssignmentById: loaderMocks.loadWasteTourAssignmentById,
+        },
+      },
+      {
+        handlerKey: 'updateTourAssignment',
+        internal: coreHandlerMocks.updateWasteManagementTourAssignmentInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          saveWasteTourAssignment: saverMocks.saveWasteTourAssignment,
+          loadWasteTourAssignmentById: loaderMocks.loadWasteTourAssignmentById,
+        },
+      },
+      {
+        handlerKey: 'deleteTourAssignment',
+        internal: coreHandlerMocks.deleteWasteManagementTourAssignmentInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          deleteWasteTourAssignment: saverMocks.deleteWasteTourAssignment,
+          loadWasteTourAssignmentById: loaderMocks.loadWasteTourAssignmentById,
+        },
+      },
+      {
         handlerKey: 'createTourDateShift',
         internal: coreHandlerMocks.createWasteManagementTourDateShiftInternal,
         deps: {
@@ -530,7 +617,8 @@ describe('wasteManagementHandlers', () => {
         internal: coreHandlerMocks.previewWasteManagementLocationTourPickupDateImportInternal,
         deps: {
           ...sharedWasteManagementDepsMock,
-          previewWasteLocationTourPickupDateImport: loaderMocks.previewWasteLocationTourPickupDateImport,
+          previewWasteLocationTourPickupDateImport:
+            loaderMocks.previewWasteLocationTourPickupDateImport,
         },
       },
       {
@@ -554,7 +642,10 @@ describe('wasteManagementHandlers', () => {
     for (const entry of cases) {
       const response = await wasteManagementHandlers[entry.handlerKey](request);
 
-      expect(withAuthenticatedWasteManagementHandlerMock).toHaveBeenLastCalledWith(request, expect.any(Function));
+      expect(withAuthenticatedWasteManagementHandlerMock).toHaveBeenLastCalledWith(
+        request,
+        expect.any(Function)
+      );
       expect(entry.internal).toHaveBeenCalledTimes(1);
       if ('deps' in entry) {
         expect(entry.internal).toHaveBeenCalledWith(request, requestContextMock, entry.deps);

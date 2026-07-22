@@ -1,3 +1,15 @@
+import type { WasteTourRecord } from '@sva/plugin-sdk';
+
+import type {
+  WasteManagementMasterDataOverview,
+  WasteManagementSchedulingOverview,
+} from './waste-management.api.js';
+import type {
+  WasteToursFilterDate,
+  WasteToursFilterFraction,
+  WasteToursFilterStatus,
+} from './waste-management.tours.filter-state.js';
+
 export const createTourAssignmentSelectionSummary = ({
   filteredLocationIds,
   selectedLocationIds,
@@ -21,17 +33,25 @@ export const createTourAssignmentSelectionSummary = ({
     visibleLocationIdSet,
   };
 };
-import type { WasteTourRecord } from '@sva/plugin-sdk';
 
-import type {
-  WasteManagementMasterDataOverview,
-  WasteManagementSchedulingOverview,
-} from './waste-management.api.js';
-import type {
-  WasteToursFilterDate,
-  WasteToursFilterFraction,
-  WasteToursFilterStatus,
-} from './waste-management.tours.filter-state.js';
+export const orderTourAssignmentLocations = <T extends { readonly id: string }>(
+  locations: readonly T[],
+  selectedLocationIds: readonly string[]
+): readonly T[] => {
+  const selectedLocationIdSet = new Set(selectedLocationIds);
+  const selectedLocations: T[] = [];
+  const unselectedLocations: T[] = [];
+
+  for (const location of locations) {
+    if (selectedLocationIdSet.has(location.id)) {
+      selectedLocations.push(location);
+    } else {
+      unselectedLocations.push(location);
+    }
+  }
+
+  return [...selectedLocations, ...unselectedLocations];
+};
 
 export type WasteToursDataProps = {
   readonly assignmentContextLoading: boolean;

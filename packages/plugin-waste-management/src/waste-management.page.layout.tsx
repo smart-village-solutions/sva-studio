@@ -1,8 +1,15 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Tabs } from '@sva/studio-ui-react';
 
-import { type WasteManagementSearchParams, type WasteManagementTabId, wasteManagementTabIds } from './search-params.js';
-import { deriveWasteManagementUiAccess, type WasteManagementUiAccess } from './waste-management.ui-access.js';
+import {
+  type WasteManagementSearchParams,
+  type WasteManagementTabId,
+  wasteManagementTabIds,
+} from './search-params.js';
+import {
+  deriveWasteManagementUiAccess,
+  type WasteManagementUiAccess,
+} from './waste-management.ui-access.js';
 import {
   createWasteManagementTabContentMap,
   WasteManagementTabContent,
@@ -32,11 +39,15 @@ export const WasteManagementPageTabs = ({
   readonly onTabChange: (value: WasteManagementTabId) => void;
 }) => {
   const content = createWasteManagementTabContentMap(search, access);
-  const activeTab = visibleTabIds.includes(search.tab) ? search.tab : visibleTabIds[0] ?? search.tab;
+  const activeTab = visibleTabIds.includes(search.tab)
+    ? search.tab
+    : (visibleTabIds[0] ?? search.tab);
   const [visitedTabIds, setVisitedTabIds] = useState<readonly WasteManagementTabId[]>([activeTab]);
 
   useEffect(() => {
-    setVisitedTabIds((current) => (current.includes(activeTab) ? current : [...current, activeTab]));
+    setVisitedTabIds((current) =>
+      current.includes(activeTab) ? current : [...current, activeTab]
+    );
   }, [activeTab]);
 
   const warmTab = useCallback((tabId: WasteManagementTabId) => {
@@ -45,7 +56,11 @@ export const WasteManagementPageTabs = ({
 
   return (
     <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={(value) => onTabChange(value as WasteManagementTabId)} className="space-y-0">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => onTabChange(value as WasteManagementTabId)}
+        className="space-y-0"
+      >
         <WasteManagementTabsList
           pt={pt}
           activeTab={activeTab}

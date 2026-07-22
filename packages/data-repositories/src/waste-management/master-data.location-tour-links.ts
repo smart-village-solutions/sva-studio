@@ -1,7 +1,4 @@
-import type {
-  WasteLocationTourLinkListFilter,
-  WasteLocationTourLinkRecord,
-} from '@sva/core';
+import type { WasteLocationTourLinkListFilter, WasteLocationTourLinkRecord } from '@sva/core';
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
@@ -16,7 +13,9 @@ type WasteLocationTourLinkRow = {
   readonly updated_at: string;
 };
 
-const mapWasteLocationTourLinkRow = (row: WasteLocationTourLinkRow): WasteLocationTourLinkRecord => ({
+const mapWasteLocationTourLinkRow = (
+  row: WasteLocationTourLinkRow
+): WasteLocationTourLinkRecord => ({
   id: row.id,
   locationId: row.location_id,
   tourId: row.tour_id,
@@ -26,7 +25,9 @@ const mapWasteLocationTourLinkRow = (row: WasteLocationTourLinkRow): WasteLocati
   updatedAt: row.updated_at,
 });
 
-const buildLocationTourLinkListStatement = (filter: WasteLocationTourLinkListFilter = {}): SqlStatement => {
+const buildLocationTourLinkListStatement = (
+  filter: WasteLocationTourLinkListFilter = {}
+): SqlStatement => {
   const values: SqlPrimitive[] = [];
   const conditions: string[] = [];
 
@@ -116,15 +117,21 @@ export const createWasteLocationTourLinkRepositoryPart = (
   | 'deleteWasteLocationTourLink'
 > => ({
   async listWasteLocationTourLinks(filter) {
-    const result = await executor.execute<WasteLocationTourLinkRow>(buildLocationTourLinkListStatement(filter));
+    const result = await executor.execute<WasteLocationTourLinkRow>(
+      buildLocationTourLinkListStatement(filter)
+    );
     return result.rows.map(mapWasteLocationTourLinkRow);
   },
   async listWasteLocationTourLinksByTourId(tourId) {
-    const result = await executor.execute<WasteLocationTourLinkRow>(buildLocationTourLinkListStatement({ tourId }));
+    const result = await executor.execute<WasteLocationTourLinkRow>(
+      buildLocationTourLinkListStatement({ tourId })
+    );
     return result.rows.map(mapWasteLocationTourLinkRow);
   },
   async getWasteLocationTourLinkById(id) {
-    const result = await executor.execute<WasteLocationTourLinkRow>(buildLocationTourLinkSelectStatement(id));
+    const result = await executor.execute<WasteLocationTourLinkRow>(
+      buildLocationTourLinkSelectStatement(id)
+    );
     return result.rows[0] ? mapWasteLocationTourLinkRow(result.rows[0]) : null;
   },
   async upsertWasteLocationTourLink(input) {

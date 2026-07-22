@@ -232,23 +232,19 @@ Das bestehende IAM-Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`
 - **UND** die Tabelle ist nach `created_at` partitioniert (monatlich) für effiziente Archivierung – wird als separater Follow-up-Change umgesetzt
 
 ### Requirement: Keycloak Admin API Integration
+Das System MUST über dedizierte Service-Accounts mit der Keycloak Admin REST API kommunizieren, um Benutzer, Identitätsattribute, technische Realm-Artefakte und die wenigen normativ verbleibenden Sonderrollen im jeweiligen Platform- oder Tenant-Scope zu verwalten. Keycloak bleibt System of Record für Identitäten, Login und technische Realm-Zugänge; tenantlokale Fachrollen und deren Permissions werden normativ im Studio-IAM-Modell verwaltet.
 
-Das System MUST über dedizierte Service-Accounts mit der Keycloak Admin REST API kommunizieren, um Benutzer, Identitätsattribute, technische Realm-Artefakte und die ausdrücklich verbleibenden Sonderrollen im jeweiligen Platform- oder Tenant-Scope vollständig listen, bearbeiten und synchronisieren zu können. Keycloak bleibt System of Record für Identitäten, Login und technische Realm-Zugänge; tenantlokale Fachrollen und deren Permissions werden normativ im Studio-IAM-Modell verwaltet.
+#### Scenario: Keycloak-first user mutation
+- **WHEN** ein berechtigter Admin einen User im Studio erstellt, deaktiviert oder Identitäts-/Profilfelder ändert
+- **THEN** führt das System die identitätsbezogene Mutation zuerst gegen Keycloak aus
+- **AND** synchronisiert anschließend das Studio-Read-Model
+- **AND** direkte fachliche Tenant-Rollen werden dabei nicht als allgemeiner Keycloak-Rollenkatalog vorausgesetzt
+- **AND** bei nachgelagertem Sync-Fehler bleibt der Keycloak-Zustand sichtbar und wird als Drift gemeldet
 
-#### Scenario: Benutzerupdate erhält fachlich unveränderte Rollen- und Gruppenzuweisungen
-
-- **WHEN** ein berechtigter Admin einen bestehenden Benutzer aktualisiert und eine bereits vorhandene Rollen- oder Gruppenzuordnung fachlich unverändert bestehen bleibt
-- **THEN** ersetzt das System diese Zuordnung nicht blind durch Löschen und Neuanlegen
-- **AND** bleiben vorhandene Assignment-Metadaten wie Ursprung und Gültigkeitsfenster erhalten
-- **AND** setzt dies keine allgemeine Keycloak-Realm-Rollenmutation für tenantlokale Fachrollen voraus
-
-#### Scenario: Benutzerupdate schreibt nur die fachliche Differenz
-
-- **WHEN** ein berechtigter Admin bei einem bestehenden Benutzer Rollen oder Gruppen gezielt hinzufügt, entfernt oder ändert
-- **THEN** persistiert das System nur die fachliche Differenz der betroffenen Zuordnungen
-- **AND** bleiben nicht geänderte Zuordnungen unverändert bestehen
-- **AND** werden nachgelagerte Invalidierungen und Synchronisationsschritte nur für den betroffenen Benutzerkontext ausgelöst
-- **AND** bleiben Autorisierungsentscheidungen auf die kanonische IAM-Sicht beschränkt
+#### Scenario: Tenant-Rollenmutation bleibt fachlich im IAM-Modell
+- **WHEN** ein berechtigter Tenant-Admin eine fachliche Rolle oder deren Permissions ändert
+- **THEN** führt das System die fachliche Mutation im IAM-Rollenmodell aus
+- **AND** ein technischer Keycloak-Call ist nur dann erforderlich, wenn ausdrücklich eine verbleibende Sonderrolle betroffen ist
 
 ### Requirement: Instanz-Registry speichert Auth-Metadaten pro Instanz
 
@@ -382,85 +378,6 @@ Alle IAM-Datenfelder MUST nach PII-Stufe klassifiziert und entsprechend behandel
 - **DANN** werden `email`, `display_name`, `first_name`, `last_name`, `phone` als `*_ciphertext` verschlüsselt (ADR-010)
 - **UND** Service-Account-Tokens werden niemals persistiert oder geloggt
 - **UND** `account_id` (UUID) dient als Pseudonym in Logs und Audit-Events
-
-### Requirement: Studio-Rollen-Lebenszyklus mit Keycloak-Synchronisierung
-
-Das System MUST Rollen-CRUD für tenantlokale Custom-Rollen im Studio-IAM-Modell ausführen. Allgemeine Custom-Rollen werden nicht als Keycloak Realm Roles materialisiert; Keycloak-Abgleich bleibt auf technische Sonderrollen und Realm-Zugangskontrakte begrenzt.
-
-#### Scenario: Custom-Rolle erstellen
-
-- **WHEN** ein `system_admin` eine neue Custom-Rolle im Studio erstellt
-- **THEN** wird die Rolle in `iam.roles` persistiert
-- **AND** führt das System dafür keine allgemeine Keycloak-Realm-Rollenmutation aus
-- **AND** behandelt es eine fehlende korrespondierende Keycloak-Rolle nicht als Drift des Sollmodells
-
-#### Scenario: Custom-Rolle aktualisieren
-
-- **WHEN** ein `system_admin` eine bestehende Custom-Rolle aktualisiert
-- **THEN** werden die relevanten Metadaten im IAM-Rollenmodell konsistent aktualisiert
-- **AND** ein technischer Keycloak-Call erfolgt nur, wenn ausdrücklich eine verbleibende Sonderrolle betroffen ist
-
-#### Scenario: Custom-Rolle löschen
-
-- **WHEN** ein `system_admin` eine löschbare Custom-Rolle entfernt
-- **THEN** werden vor dem eigentlichen Rollen-Delete alle direkten Benutzerzuordnungen in `iam.account_roles` dieser Rolle entfernt
-- **AND** werden vor dem eigentlichen Rollen-Delete alle Gruppenzuordnungen in `iam.group_roles` dieser Rolle entfernt
-- **AND** wird die Rolle aus dem IAM-Speicher gelöscht
-- **AND** wird keine allgemeine Keycloak-Realm-Rolle für diese Custom-Rolle erwartet oder entfernt
-
-### Requirement: Deterministisches Role-Mapping und Sync-Status
-
-Das System SHALL pro studioverwalteter Rolle ein eindeutiges externes Mapping und einen nachvollziehbaren Synchronisierungsstatus führen.
-
-#### Scenario: Mapping bei erfolgreicher Synchronisierung
-
-- **WHEN** eine Rolle erfolgreich nach Keycloak synchronisiert wird
-- **THEN** speichert das System das Mapping zwischen interner Rolle und externer Keycloak-Rolle
-- **AND** aktualisiert `lastSyncedAt` auf den erfolgreichen Zeitstempel
-- **AND** setzt `syncState` auf `synced`
-
-#### Scenario: Keycloak-Fehler bei Rollenoperation
-
-- **WHEN** eine Keycloak-Operation für eine Rolle fehlschlägt
-- **THEN** bleibt kein inkonsistenter Teilerfolg ohne Kennzeichnung zurück
-- **AND** `syncState` wird auf `failed` gesetzt
-- **AND** ein maschinenlesbarer Fehlercode wird gespeichert
-
-#### Scenario: Keycloak ist nicht erreichbar
-
-- **WHEN** Keycloak für Rollen-CRUD nicht erreichbar ist (Timeout/5xx)
-- **THEN** antwortet die API deterministisch mit Fehler (`503` + Fehlercode `IDP_UNAVAILABLE`)
-- **AND** es bleibt kein unmarkierter Teilerfolg bestehen
-- **AND** `syncState` wird auf `failed` gesetzt
-
-### Requirement: Reconciliation für Rollen-Drift
-
-Das System MUST eine Reconciliation-Funktion bereitstellen, die Drift zwischen IAM-Rollenbestand und Keycloak-Rollenbestand erkennt und im Managed-Scope behebt.
-
-#### Scenario: Fehlende Keycloak-Rolle wird erkannt
-
-- **WHEN** eine studioverwaltete Rolle in der IAM-Datenbank existiert, aber in Keycloak fehlt
-- **THEN** markiert der Reconcile-Lauf den Zustand als Drift
-- **AND** erstellt die fehlende Keycloak-Rolle neu
-- **AND** protokolliert das Ergebnis als Audit-Ereignis
-
-#### Scenario: Manuelle Reconcile-Ausführung
-
-- **WHEN** ein `system_admin` `POST /api/v1/iam/admin/reconcile` ausführt
-- **THEN** liefert das System einen strukturierten Bericht mit Anzahl geprüfter, korrigierter und fehlgeschlagener Rollen
-- **AND** unbehebbare Abweichungen werden mit klarer Fehlerursache zurückgegeben
-
-#### Scenario: Unberechtigter Reconcile-Aufruf
-
-- **WHEN** ein Nutzer ohne `system_admin` `POST /api/v1/iam/admin/reconcile` ausführt
-- **THEN** antwortet das System mit `403 Forbidden`
-- **AND** es erfolgt keine Reconcile-Ausführung
-
-#### Scenario: Orphaned, studio-verwaltete Keycloak-Rolle
-
-- **WHEN** eine studio-verwaltete Keycloak-Rolle ohne korrespondierende IAM-Rolle erkannt wird
-- **THEN** markiert der Reconcile-Lauf die Abweichung als `requires_manual_action`
-- **AND** die Rolle wird im Standardmodus nicht automatisch gelöscht
 
 ### Requirement: Auditierbares und datensparsames Logging
 
@@ -1050,13 +967,12 @@ IAM Account Management SHALL resolve each authenticated IAM-v1 request as either
 - **AND** it ignores platform-role information from the Root-Realm
 
 ### Requirement: Keycloak User Synchronization Scope
+The system SHALL run Keycloak user synchronization as a reconciliation flow that explains differences between Keycloak and Studio instead of hiding unmapped or partially failed objects. The synchronization scope focuses on identities, scope resolution, technical realm access markers, and explicitly managed Sonderrollen rather than treating arbitrary Keycloak role catalogs as the normative source of tenant authorization.
 
-The system SHALL run Keycloak user synchronization as a reconciliation flow that explains differences between Keycloak and Studio instead of hiding unmapped or partially failed objects.
-
-#### Scenario: Sync reports unmapped users
-- **WHEN** ein User-Sync Keycloak-User findet, die nicht sauber einem Studio-Kontext zugeordnet werden können
-- **THEN** enthält der Sync-Report die Anzahl und Diagnosecodes dieser User
-- **AND** die betroffenen User bleiben in der Studio-UI sichtbar, sofern der aktive Scope dies erlaubt
+#### Scenario: Sync reports legacy role drift without reintroducing it
+- **WHEN** ein User-Sync Keycloak-Rollen findet, die außerhalb des normativen Sonderrollenschnitts liegen
+- **THEN** enthält der Sync-Report diese Rollen als Legacy-, Interop- oder Driftbefund
+- **AND** das System projiziert sie nicht automatisch als kanonische tenantlokale Fachrollen
 
 #### Scenario: Partial failure remains actionable
 - **WHEN** ein Sync mit `partial_failure` endet
@@ -1298,4 +1214,39 @@ Das System SHALL frühere tenantlokale Standardrollen wie `app_manager`, `featur
 - **WHEN** eine Bestandsinstanz noch frühere tenantlokale Standardrollen enthält
 - **THEN** dürfen Cleanup- oder Upgrade-Pfade diese Rollen als historischen Altbestand markieren, neutralisieren oder manuell ersetzbar machen
 - **AND** das System behandelt sie nicht mehr als normative Quelle tenantlokaler Verwaltungs- oder Modulrechte
+
+### Requirement: Keycloak-Rollenabgleich ist auf technische Sonderrollen begrenzt
+Das System SHALL Keycloak-Rollen nur noch dort normativ verwalten oder abgleichen, wo sie für Plattform-Scope, Tenant-Bootstrap oder technische Realm-Verträge erforderlich sind. Tenantlokale Fachrollen werden nicht mehr allgemein als Keycloak-Realm-Rollen materialisiert oder gepflegt.
+
+#### Scenario: Tenant-Custom-Rolle bleibt IAM-lokal
+- **WHEN** ein `system_admin` im Tenant-Realm eine editierbare Custom-Rolle erstellt, ändert oder löscht
+- **THEN** persistiert das System diese Mutation im tenantlokalen IAM-Rollenmodell
+- **AND** führt dafür keine allgemeine Keycloak-Realm-Rollenmutation aus
+- **AND** behandelt eine fehlende korrespondierende Keycloak-Rolle nicht als Drift des Sollmodells
+
+#### Scenario: Technische Sonderrolle bleibt synchronisierbar
+- **WHEN** der Bootstrap-, Repair- oder Schutzpfad die tenantlokale Sonderrolle `system_admin` oder die Plattformrolle `instance_registry_admin` prüft
+- **THEN** darf das System diese technische Sonderrolle weiterhin gezielt in Keycloak abgleichen
+- **AND** bleibt dieser Abgleich auf den jeweils zuständigen Realm-Scope beschränkt
+
+### Requirement: Kanonische Session-Projektion trennt technische und fachliche Rollen
+Das System SHALL für Session-, `/auth/me`- und Profilprojektionen zwischen rohen Keycloak-Rollen und der kanonischen fachlichen Rollen- und Permission-Sicht unterscheiden. Die kanonische Sicht umfasst direkte IAM-Rollen sowie implizite Rollenwirkung aus Gruppenzuordnungen.
+
+#### Scenario: Tenant-Session nutzt kanonische Fachsicht
+- **WHEN** ein Benutzer sich in einem Tenant-Realm erfolgreich anmeldet
+- **THEN** enthält die fachliche Session-Projektion die kanonischen tenantlokalen Rollen und Permissions aus IAM
+- **AND** enthält diese kanonische Sicht auch implizite Rollenwirkung aus IAM-Gruppenzuordnungen
+- **AND** werden rohe Keycloak-Rollen in einem getrennten Rollenfeld bereitgestellt
+- **AND** dienen rohe Keycloak-Rollen nicht direkt als normative Quelle für Tenant-UI oder Tenant-Gates
+
+#### Scenario: `/auth/me` liefert beide Rollensichten explizit getrennt
+- **WHEN** ein authentifizierter Tenant-Benutzer `/auth/me` aufruft
+- **THEN** liefert die Antwort eine kanonische IAM-Rollensicht inklusive gruppenabgeleiteter Rollenwirkung
+- **AND** liefert die Antwort zusätzlich die rohe Keycloak-Rollensicht als technische Interop- und Diagnoseinformation
+- **AND** bleiben Autorisierungsentscheidungen auf die kanonische IAM-Sicht beschränkt
+
+#### Scenario: Legacy-Keycloak-Rollen bleiben diagnostisch sichtbar
+- **WHEN** ein Tenant-Benutzer noch historische Keycloak-Rollen besitzt, die nicht mehr Teil des Sollmodells sind
+- **THEN** kann die Session- oder Diagnoseprojektion diese Rollen als Legacy- oder Rohdaten sichtbar machen
+- **AND** wertet das System sie nicht automatisch als wirksame fachliche Tenant-Rollen
 

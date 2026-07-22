@@ -23,7 +23,7 @@ import type { WasteManagementUiAccess } from './waste-management.ui-access.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
-export const wasteManagementTabTranslationKeyMap = {
+const wasteManagementTabTranslationKeyMap = {
   fractions: 'fractions',
   tours: 'tours',
   locations: 'locations',
@@ -72,12 +72,12 @@ export const WasteManagementTabsList = ({
   <>
     <label className="block md:hidden">
       <span className="sr-only">{pt('tabs.ariaLabel')}</span>
-        <Select
-          aria-label={pt('tabs.ariaLabel')}
-          className="h-11 rounded-xl border-border/70 bg-card"
-          value={activeTab}
-          onChange={(event) => onTabChange(event.target.value as WasteManagementTabId)}
-        >
+      <Select
+        aria-label={pt('tabs.ariaLabel')}
+        className="h-11 rounded-xl border-border/70 bg-card"
+        value={activeTab}
+        onChange={(event) => onTabChange(event.target.value as WasteManagementTabId)}
+      >
         {visibleTabIds.map((tabId) => {
           const tabKey = wasteManagementTabTranslationKeyMap[tabId];
 
@@ -90,25 +90,32 @@ export const WasteManagementTabsList = ({
       </Select>
     </label>
     <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] hidden gap-10 md:flex">
-    {visibleTabIds.map((tabId) => {
-      const tabKey = wasteManagementTabTranslationKeyMap[tabId];
-      const TabIcon = wasteManagementTabIconMap[tabId];
-      const isActive = tabId === activeTab;
-      return (
-        <TabsTrigger
-          key={tabId}
-          value={tabId}
-          onMouseEnter={() => onWarmTab(tabId)}
-          onFocus={() => onWarmTab(tabId)}
-          className={`relative z-10 gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
-            isActive ? 'mb-[-1px] border-primary text-primary' : 'border-transparent text-muted-foreground'
-          }`}
-        >
-          <span className="inline-flex items-center gap-2">
-            <TabIcon aria-hidden="true" className="h-4 w-4 shrink-0" stroke={1.8} data-icon-library="tabler" />
-            <span>{pt(`tabs.${tabKey}.title`)}</span>
-          </span>
-        </TabsTrigger>
+      {visibleTabIds.map((tabId) => {
+        const tabKey = wasteManagementTabTranslationKeyMap[tabId];
+        const TabIcon = wasteManagementTabIconMap[tabId];
+        const isActive = tabId === activeTab;
+        return (
+          <TabsTrigger
+            key={tabId}
+            value={tabId}
+            onMouseEnter={() => onWarmTab(tabId)}
+            onFocus={() => onWarmTab(tabId)}
+            className={`relative z-10 gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
+              isActive
+                ? 'mb-[-1px] border-primary text-primary'
+                : 'border-transparent text-muted-foreground'
+            }`}
+          >
+            <span className="inline-flex items-center gap-2">
+              <TabIcon
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0"
+                stroke={1.8}
+                data-icon-library="tabler"
+              />
+              <span>{pt(`tabs.${tabKey}.title`)}</span>
+            </span>
+          </TabsTrigger>
         );
       })}
     </TabsList>
@@ -146,10 +153,18 @@ export const WasteManagementTabContent = ({
               className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
             >
               <div className="space-y-1">
-                <h2 className="text-base font-semibold text-foreground">{pt(`tabs.${tabKey}.title`)}</h2>
-                <p className="text-sm leading-relaxed text-muted-foreground">{pt(`tabs.${tabKey}.body`)}</p>
+                <h2 className="text-base font-semibold text-foreground">
+                  {pt(`tabs.${tabKey}.title`)}
+                </h2>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {pt(`tabs.${tabKey}.body`)}
+                </p>
               </div>
-              {actions ? <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">{actions}</div> : null}
+              {actions ? (
+                <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">
+                  {actions}
+                </div>
+              ) : null}
             </section>
             {content[tabId] ?? (
               <StudioEmptyState>

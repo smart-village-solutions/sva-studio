@@ -1465,8 +1465,6 @@ describe('waste-management auth runtime handlers', () => {
       id: 'link-new',
       locationId: 'location-1',
       tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: '2026-12-31',
       createdAt: '2026-05-09T12:00:00.000Z',
       updatedAt: '2026-05-09T12:30:00.000Z',
     };
@@ -1810,8 +1808,6 @@ describe('waste-management auth runtime handlers', () => {
       expect.objectContaining({
         locationId: 'location-1',
         tourId: 'tour-copy-1',
-        startDate: '2026-05-01',
-        endDate: '2026-12-31',
       })
     );
     expect(listWasteTourDateShiftsByTourId).toHaveBeenCalledWith('tenant-a', 'tour-source-1');

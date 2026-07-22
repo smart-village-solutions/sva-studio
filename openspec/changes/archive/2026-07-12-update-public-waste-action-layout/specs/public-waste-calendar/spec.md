@@ -42,7 +42,7 @@ Das System SHALL globale PDF-, iCal- und Erinnerungsaktionen aus demselben final
 - **AND** sie erzeugt keinen impliziten Reminder-Fallback
 - **AND** Nutzerinnen und Nutzer können die Fraktionsauswahl anpassen, um wieder gültige Reminder-Optionen zu erhalten
 
-### Requirement: Öffentliche App bietet ein kontextbezogenes E-Mail-Abo für aktive Fraktionen
+### Requirement: Öffentliche App bietet einen E-Mail-Erinnerungseinstieg im finalen Standortkontext
 
 Das System SHALL das öffentliche E-Mail-Abo im gemeinsamen Aktionsmodell bereitstellen und dabei die aktive Fraktionsauswahl als führende Quelle verwenden.
 

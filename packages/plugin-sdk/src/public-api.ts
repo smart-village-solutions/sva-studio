@@ -56,20 +56,13 @@ export type {
   WasteStreetRecord,
   WasteTourDateShiftFollowUpMode,
   WasteTourDateShiftRecord,
+  WasteTourAssignmentRecord,
   WasteTourRecord,
   WasteTourRecurrence,
 } from '@sva/core';
-export type {
-  BuildTimeRegistry,
-  BuildTimeRegistryInput,
-} from './build-time-registry.js';
-export {
-  createBuildTimeRegistry,
-} from './build-time-registry.js';
-export type {
-  PluginGuardrailViolationCode,
-  PluginGuardrailViolationInput,
-} from './guardrails.js';
+export type { BuildTimeRegistry, BuildTimeRegistryInput } from './build-time-registry.js';
+export { createBuildTimeRegistry } from './build-time-registry.js';
+export type { PluginGuardrailViolationCode, PluginGuardrailViolationInput } from './guardrails.js';
 export {
   assertPluginContributionAllowedKeys,
   assertPluginRoutePathAllowed,
@@ -122,7 +115,11 @@ export type {
   InitializeHostMediaUploadResult,
   UploadHostMediaFileResult,
 } from './media-upload-client.js';
-export { completeHostMediaUpload, initializeHostMediaUpload, uploadHostMediaFile } from './media-upload-client.js';
+export {
+  completeHostMediaUpload,
+  initializeHostMediaUpload,
+  uploadHostMediaFile,
+} from './media-upload-client.js';
 export type { HostMediaFieldOption } from './content-ui-utils.js';
 export {
   compactOptionalString,
@@ -243,10 +240,7 @@ export {
   definePluginExecutionContextCapabilities,
   definePluginManifest,
 } from './plugin-platform-contracts.js';
-export {
-  resolvePluginCatalog,
-  resolvePluginCatalogAsync,
-} from './plugin-platform-resolution.js';
+export { resolvePluginCatalog, resolvePluginCatalogAsync } from './plugin-platform-resolution.js';
 export type {
   PluginCatalogIssue,
   PluginCatalogIssueCode,

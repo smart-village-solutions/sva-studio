@@ -57,10 +57,73 @@ export {
   studioJobRuntimeContract,
   studioPluginOperationErrorContract,
 } from './plugin-operations-contract.js';
-export { externalInterfaceContract, mailDispatchContract, mailTransportContract } from './external-interfaces-contract.js';
-export { isUuid, readBoolean, readNumber, readNumberLike, readObject, readString } from './input-readers.js';
-export type { ExternalInterfaceCategory, ExternalInterfaceCheckStatus, ExternalInterfaceConnectionCheckRecord, ExternalInterfaceOwnerKind, ExternalInterfaceRecord, ExternalInterfaceRuntimeErrorCode, ExternalInterfaceSettingsRecord, ExternalInterfaceStatusCheckKind, ExternalInterfaceTypeDefinition, ExternalInterfaceTypeKey, ExternalInterfaceVisibleStatus, MailDispatchAddress, MailDispatchAddressKind, MailDispatchMessageKind, MailDispatchPayload, MailTransportAuthMode, MailTransportConfig, MailTransportHealth, MailTransportProviderApiConfig, MailTransportSecurityMode, MailTransportSmtpConfig, MailTransportType, ResolvedExternalInterface } from './external-interfaces-contract.js';
-export type { StudioJobCancellationRequestInput, StudioJobCreateInput, StudioJobDetail, StudioJobDetailResponse, StudioJobError, StudioJobEventCreateInput, StudioJobEventDetails, StudioJobEventHostDetails, StudioJobEventPresentation, StudioJobEventRecord, StudioJobHeartbeatInput, StudioJobListItem, StudioJobListQuery, StudioJobListResponse, StudioJobProgressUpdateInput, StudioJobResponse, StudioJobProgress, StudioJobResult, StudioJobResultSummary, StudioJobRecord, StudioJobRuntimeDiagnostics, StudioJobSource, StudioJobStartRequest, StudioPluginOperationApiError, StudioPluginOperationStartRequest, StudioPluginOperationApiErrorResponse, StudioJobUpdateInput } from './plugin-operations-contract.js';
+export {
+  externalInterfaceContract,
+  mailDispatchContract,
+  mailTransportContract,
+} from './external-interfaces-contract.js';
+export {
+  isUuid,
+  readBoolean,
+  readNumber,
+  readNumberLike,
+  readObject,
+  readString,
+} from './input-readers.js';
+export type {
+  ExternalInterfaceCategory,
+  ExternalInterfaceCheckStatus,
+  ExternalInterfaceConnectionCheckRecord,
+  ExternalInterfaceOwnerKind,
+  ExternalInterfaceRecord,
+  ExternalInterfaceRuntimeErrorCode,
+  ExternalInterfaceSettingsRecord,
+  ExternalInterfaceStatusCheckKind,
+  ExternalInterfaceTypeDefinition,
+  ExternalInterfaceTypeKey,
+  ExternalInterfaceVisibleStatus,
+  MailDispatchAddress,
+  MailDispatchAddressKind,
+  MailDispatchMessageKind,
+  MailDispatchPayload,
+  MailTransportAuthMode,
+  MailTransportConfig,
+  MailTransportHealth,
+  MailTransportProviderApiConfig,
+  MailTransportSecurityMode,
+  MailTransportSmtpConfig,
+  MailTransportType,
+  ResolvedExternalInterface,
+} from './external-interfaces-contract.js';
+export type {
+  StudioJobCancellationRequestInput,
+  StudioJobCreateInput,
+  StudioJobDetail,
+  StudioJobDetailResponse,
+  StudioJobError,
+  StudioJobEventCreateInput,
+  StudioJobEventDetails,
+  StudioJobEventHostDetails,
+  StudioJobEventPresentation,
+  StudioJobEventRecord,
+  StudioJobHeartbeatInput,
+  StudioJobListItem,
+  StudioJobListQuery,
+  StudioJobListResponse,
+  StudioJobProgressUpdateInput,
+  StudioJobResponse,
+  StudioJobProgress,
+  StudioJobResult,
+  StudioJobResultSummary,
+  StudioJobRecord,
+  StudioJobRuntimeDiagnostics,
+  StudioJobSource,
+  StudioJobStartRequest,
+  StudioPluginOperationApiError,
+  StudioPluginOperationStartRequest,
+  StudioPluginOperationApiErrorResponse,
+  StudioJobUpdateInput,
+} from './plugin-operations-contract.js';
 export { wasteManagementDataSourceContract } from './waste-management-contract.js';
 export {
   buildWasteManagementPublicConfig,
@@ -100,7 +163,10 @@ export type {
   WasteManagementTechnicalEventType,
 } from './waste-management-contract.js';
 export { wasteManagementOperationsContract } from './waste-management-operations-contract.js';
-export { getWasteManagementImportCatalogEntry, wasteManagementImportCatalog } from './waste-management-import-catalog.js';
+export {
+  getWasteManagementImportCatalogEntry,
+  wasteManagementImportCatalog,
+} from './waste-management-import-catalog.js';
 export {
   detectWasteImportCsvDelimiter,
   normalizeWasteImportPickupDate,
@@ -174,6 +240,8 @@ export type {
   WasteManagementMasterDataOverview,
   WasteManagementSchedulingOverview,
   WasteManagementToursOverview,
+  WasteTourAssignmentListFilter,
+  WasteTourAssignmentRecord,
   WasteLocationTourPickupDateListFilter,
   WasteLocationTourPickupDateRecord,
   WasteLocationTourLinkListFilter,
@@ -190,12 +258,21 @@ export type {
   WasteTourRecord,
 } from './waste-management-master-data.js';
 export { wasteManagementMasterDataContract } from './waste-management-master-data.js';
-export { buildWasteCalendarPdfDocument, renderWasteCalendarPdf } from './waste-management-output.js';
+export {
+  buildWasteCalendarPdfDocument,
+  renderWasteCalendarPdf,
+} from './waste-management-output.js';
 export type {
-  WasteCalendarPdfBrandingImage, WasteCalendarPdfDocument, WasteOutputPickupEntry, WasteOutputFraction,
+  WasteCalendarPdfBrandingImage,
+  WasteCalendarPdfDocument,
+  WasteOutputPickupEntry,
+  WasteOutputFraction,
 } from './waste-management-output.types.js';
 export { buildWasteTypesStaticContent } from './waste-management-static-content.js';
-export type { WasteTypeStaticContentEntry, WasteTypesStaticContentArtifact } from './waste-management-static-content.js';
+export type {
+  WasteTypeStaticContentEntry,
+  WasteTypesStaticContentArtifact,
+} from './waste-management-static-content.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';
 export {
@@ -211,7 +288,11 @@ export {
   normalizeHost,
   trafficEnabledInstanceStatuses,
 } from './instances/registry.js';
-export { areAllInstanceKeycloakRequirementsSatisfied, INSTANCE_KEYCLOAK_REQUIREMENTS, isInstanceKeycloakRequirementSatisfied } from './instances/keycloak-checklist.js';
+export {
+  areAllInstanceKeycloakRequirementsSatisfied,
+  INSTANCE_KEYCLOAK_REQUIREMENTS,
+  isInstanceKeycloakRequirementSatisfied,
+} from './instances/keycloak-checklist.js';
 export type {
   HostClassification,
   InstanceAuditEvent,
@@ -230,7 +311,10 @@ export type {
   InstanceStatus,
   TrafficEnabledInstanceStatus,
 } from './instances/registry.js';
-export type { InstanceKeycloakRequirement, InstanceKeycloakRequirementKey } from './instances/keycloak-checklist.js';
+export type {
+  InstanceKeycloakRequirement,
+  InstanceKeycloakRequirementKey,
+} from './instances/keycloak-checklist.js';
 export { maskEmailAddresses } from './security/email-redaction.js';
 export type {
   RuntimeProfile,

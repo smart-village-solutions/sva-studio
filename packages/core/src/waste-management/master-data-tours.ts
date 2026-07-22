@@ -1,4 +1,5 @@
-export type WasteTourRecurrence = 'weekly' | 'biweekly' | 'fourweekly' | 'yearly' | 'on-demand' | 'custom';
+export type WasteTourRecurrence =
+  'weekly' | 'biweekly' | 'fourweekly' | 'yearly' | 'on-demand' | 'custom';
 
 export type WasteCustomTourDate = {
   readonly date: string;

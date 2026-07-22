@@ -43,6 +43,7 @@ type WasteRepository = Pick<
   | 'listWasteTours'
   | 'listWasteLocationTourLinks'
   | 'upsertWasteLocationTourPickupDate'
+  | 'upsertWasteTourAssignment'
   | 'upsertWasteRegion'
   | 'upsertWasteCity'
   | 'upsertWasteStreet'
@@ -56,15 +57,20 @@ type WasteRepository = Pick<
 >;
 
 const wasteImportProgressBatchSize = 25;
-const normalizeKeyPart = (value: string | undefined): string => (value ?? '').trim().toLocaleLowerCase('de-DE');
+const normalizeKeyPart = (value: string | undefined): string =>
+  (value ?? '').trim().toLocaleLowerCase('de-DE');
 const toArrayBuffer = (source: Uint8Array): ArrayBuffer => {
-  const slicedBuffer = source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
+  const slicedBuffer = source.buffer.slice(
+    source.byteOffset,
+    source.byteOffset + source.byteLength
+  );
   return slicedBuffer instanceof ArrayBuffer ? slicedBuffer : new ArrayBuffer(0);
 };
 const { Workbook } = ExcelJS;
 
 type ImportedLocationTourPickupDateRecord = Readonly<{
   readonly id: string;
+  readonly assignmentId?: string;
   readonly locationId: string;
   readonly tourId: string;
   readonly pickupDate: string;
@@ -109,7 +115,9 @@ const readWorkbookWorksheet = async (
   throw new Error(`unsupported_import_source_format:${sourceFormat}`);
 };
 
-const parseImportWorksheetRows = (worksheet: ExcelJS.Worksheet | undefined): readonly GenericImportRow[] => {
+const parseImportWorksheetRows = (
+  worksheet: ExcelJS.Worksheet | undefined
+): readonly GenericImportRow[] => {
   if (!worksheet) return [];
 
   const headerRow = worksheet.getRow(1);
@@ -130,9 +138,7 @@ const parseImportWorksheetRows = (worksheet: ExcelJS.Worksheet | undefined): rea
     if (cells.every((value) => value.length === 0)) {
       continue;
     }
-    rows.push(
-      Object.fromEntries(headers.map(({ key }, index) => [key, cells[index] ?? '']))
-    );
+    rows.push(Object.fromEntries(headers.map(({ key }, index) => [key, cells[index] ?? ''])));
   }
 
   return rows;
@@ -183,16 +189,17 @@ export const parseLocationTourPickupDateImport = async (
 const loadPlanningSnapshot = async (
   repository: WasteRepository
 ): Promise<WasteLocationTourPickupDateImportPlanningSnapshot> => {
-  const [fractions, regions, cities, streets, houseNumbers, locations, tours, assignments] = await Promise.all([
-    repository.listWasteFractions(),
-    repository.listWasteRegions(),
-    repository.listWasteCities(),
-    repository.listWasteStreets(),
-    repository.listWasteHouseNumbers(),
-    repository.listWasteCollectionLocations(),
-    repository.listWasteTours(),
-    repository.listWasteLocationTourLinks(),
-  ]);
+  const [fractions, regions, cities, streets, houseNumbers, locations, tours, assignments] =
+    await Promise.all([
+      repository.listWasteFractions(),
+      repository.listWasteRegions(),
+      repository.listWasteCities(),
+      repository.listWasteStreets(),
+      repository.listWasteHouseNumbers(),
+      repository.listWasteCollectionLocations(),
+      repository.listWasteTours(),
+      repository.listWasteLocationTourLinks(),
+    ]);
 
   return {
     fractions,
@@ -229,14 +236,61 @@ const mergeUniqueById = <T extends { readonly id: string }>(
   return [...merged.values()];
 };
 
+type ImportPlanningCity = WasteLocationTourPickupDateImportPlanningSnapshot['cities'][number];
+type ImportResolutionIndexes = Readonly<{
+  regionIdByName: ReadonlyMap<string, string>;
+  cityByRegionAndName: ReadonlyMap<string, ImportPlanningCity>;
+  cityByName: ReadonlyMap<string, readonly ImportPlanningCity[]>;
+  streetByCityAndName: ReadonlyMap<string, { readonly id: string }>;
+  houseNumberByStreetAndValue: ReadonlyMap<string, { readonly id: string }>;
+  locationByScope: ReadonlyMap<string, { readonly id: string }>;
+  tourIdByName: ReadonlyMap<string, string>;
+}>;
+
+const resolveImportedLocationId = (
+  row: WasteLocationTourPickupDateImportParseResult['rows'][number],
+  indexes: ImportResolutionIndexes
+): string | undefined => {
+  const regionId = row.region
+    ? indexes.regionIdByName.get(normalizeKeyPart(row.region))
+    : undefined;
+  const normalizedCityName = normalizeKeyPart(row.city);
+  const citiesWithName = indexes.cityByName.get(normalizedCityName) ?? [];
+  const city = regionId
+    ? indexes.cityByRegionAndName.get(`${regionId}::${normalizedCityName}`)
+    : citiesWithName.length === 1
+      ? citiesWithName[0]
+      : undefined;
+  if (!city) return undefined;
+
+  const street = indexes.streetByCityAndName.get(`${city.id}::${normalizeKeyPart(row.street)}`);
+  if (!street) return undefined;
+  const houseNumber = indexes.houseNumberByStreetAndValue.get(
+    `${street.id}::${normalizeKeyPart(row.houseNumbers)}`
+  );
+  if (!houseNumber) return undefined;
+
+  return (
+    indexes.locationByScope.get(
+      `${regionId ?? city.regionId ?? ''}::${city.id}::${street.id}::${houseNumber.id}`
+    ) ??
+    indexes.locationByScope.get(
+      `${city.regionId ?? ''}::${city.id}::${street.id}::${houseNumber.id}`
+    )
+  )?.id;
+};
+
 const buildImportedLocationTourPickupDateRecords = async (
   repository: WasteRepository,
   plan: WasteLocationTourPickupDateImportPlan,
   parsed: WasteLocationTourPickupDateImportParseResult
 ): Promise<readonly ImportedLocationTourPickupDateRecord[]> => {
   const rowsWithPickupDates = parsed.rows.filter(
-    (row): row is WasteLocationTourPickupDateImportParseResult['rows'][number] & { readonly pickupDate: string } =>
-      typeof row.pickupDate === 'string'
+    (
+      row
+    ): row is WasteLocationTourPickupDateImportParseResult['rows'][number] & {
+      readonly pickupDate: string;
+    } => typeof row.pickupDate === 'string'
   );
   if (rowsWithPickupDates.length === 0) {
     return [];
@@ -250,11 +304,15 @@ const buildImportedLocationTourPickupDateRecords = async (
   const locations = mergeUniqueById(snapshot.locations, plan.upserts.locations);
   const tours = mergeUniqueById(snapshot.tours, plan.upserts.tours);
 
-  const regionIdByName = new Map(regions.map((region) => [normalizeKeyPart(region.name), region.id] as const));
+  const regionIdByName = new Map(
+    regions.map((region) => [normalizeKeyPart(region.name), region.id] as const)
+  );
   const cityByRegionAndName = new Map(
     cities.map((city) => [`${city.regionId ?? ''}::${normalizeKeyPart(city.name)}`, city] as const)
   );
-  const cityByName = cities.reduce<Map<string, WasteLocationTourPickupDateImportPlanningSnapshot['cities']>>((byName, city) => {
+  const cityByName = cities.reduce<
+    Map<string, WasteLocationTourPickupDateImportPlanningSnapshot['cities']>
+  >((byName, city) => {
     const key = normalizeKeyPart(city.name);
     const existing = byName.get(key) ?? [];
     byName.set(key, [...existing, city]);
@@ -264,7 +322,10 @@ const buildImportedLocationTourPickupDateRecords = async (
     streets.map((street) => [`${street.cityId}::${normalizeKeyPart(street.name)}`, street] as const)
   );
   const houseNumberByStreetAndValue = new Map(
-    houseNumbers.map((houseNumber) => [`${houseNumber.streetId}::${normalizeKeyPart(houseNumber.number)}`, houseNumber] as const)
+    houseNumbers.map(
+      (houseNumber) =>
+        [`${houseNumber.streetId}::${normalizeKeyPart(houseNumber.number)}`, houseNumber] as const
+    )
   );
   const locationByScope = new Map(
     locations.map(
@@ -275,8 +336,19 @@ const buildImportedLocationTourPickupDateRecords = async (
         ] as const
     )
   );
-  const tourIdByName = new Map(tours.map((tour) => [normalizeKeyPart(tour.name), tour.id] as const));
+  const tourIdByName = new Map(
+    tours.map((tour) => [normalizeKeyPart(tour.name), tour.id] as const)
+  );
 
+  const indexes: ImportResolutionIndexes = {
+    regionIdByName,
+    cityByRegionAndName,
+    cityByName,
+    streetByCityAndName,
+    houseNumberByStreetAndValue,
+    locationByScope,
+    tourIdByName,
+  };
   const importedPickupDates: ImportedLocationTourPickupDateRecord[] = [];
   const importedPickupDateKeys = new Set<string>();
   for (const row of rowsWithPickupDates) {
@@ -286,32 +358,8 @@ const buildImportedLocationTourPickupDateRecords = async (
     }
 
     const normalizedNote = normalizeOptionalText(row.note) ?? null;
-    const regionId = row.region ? regionIdByName.get(normalizeKeyPart(row.region)) : undefined;
-    const normalizedCityName = normalizeKeyPart(row.city);
-    const city =
-      (regionId ? cityByRegionAndName.get(`${regionId}::${normalizedCityName}`) : undefined) ??
-      (() => {
-        const matches = cityByName.get(normalizedCityName) ?? [];
-        return matches.length === 1 ? matches[0] : undefined;
-      })();
-    if (!city) {
-      continue;
-    }
-
-    const street = streetByCityAndName.get(`${city.id}::${normalizeKeyPart(row.street)}`);
-    if (!street) {
-      continue;
-    }
-
-    const houseNumber = houseNumberByStreetAndValue.get(`${street.id}::${normalizeKeyPart(row.houseNumbers)}`);
-    if (!houseNumber) {
-      continue;
-    }
-
-    const location =
-      locationByScope.get(`${regionId ?? city.regionId ?? ''}::${city.id}::${street.id}::${houseNumber.id}`) ??
-      locationByScope.get(`${city.regionId ?? ''}::${city.id}::${street.id}::${houseNumber.id}`);
-    if (!location) {
+    const locationId = resolveImportedLocationId(row, indexes);
+    if (!locationId) {
       continue;
     }
 
@@ -320,14 +368,17 @@ const buildImportedLocationTourPickupDateRecords = async (
       if (!tourId) {
         continue;
       }
-      const importedPickupDateKey = `${location.id}::${tourId}::${pickupDate}`;
+      const importedPickupDateKey = row.assignmentId
+        ? `${row.assignmentId}::${row.rowNumber}::${tourId}`
+        : `legacy::${locationId}::${tourId}::${pickupDate}`;
       if (importedPickupDateKeys.has(importedPickupDateKey)) {
         continue;
       }
       importedPickupDateKeys.add(importedPickupDateKey);
       importedPickupDates.push({
-        id: randomUUID(),
-        locationId: location.id,
+        id: row.assignmentId ?? randomUUID(),
+        assignmentId: row.assignmentId,
+        locationId,
         tourId,
         pickupDate,
         note: normalizedNote,
@@ -343,6 +394,36 @@ const persistLocationTourPickupDateImportPlan = async (
   plan: WasteLocationTourPickupDateImportPlan,
   importedPickupDates: readonly ImportedLocationTourPickupDateRecord[]
 ) => {
+  const assignmentGroups = new Map<string, ImportedLocationTourPickupDateRecord[]>();
+  for (const pickupDate of importedPickupDates) {
+    const assignmentId = pickupDate.assignmentId ?? pickupDate.id;
+    const group = assignmentGroups.get(assignmentId) ?? [];
+    group.push(pickupDate);
+    assignmentGroups.set(assignmentId, group);
+  }
+  // Validate every group before the first write so malformed imports cannot be partially persisted.
+  const assignments = [...assignmentGroups.entries()].map(([assignmentId, entries]) => {
+    const first = entries[0];
+    if (!first) throw new Error(`empty_tour_assignment_group:${assignmentId}`);
+    if (
+      !entries.every(
+        (entry) =>
+          entry.tourId === first.tourId &&
+          entry.pickupDate === first.pickupDate &&
+          entry.note === first.note
+      )
+    ) {
+      throw new Error(`inconsistent_tour_assignment_group:${assignmentId}`);
+    }
+    return {
+      id: assignmentId,
+      tourId: first.tourId,
+      pickupDate: first.pickupDate,
+      note: first.note,
+      locationIds: [...new Set(entries.map((entry) => entry.locationId))],
+    };
+  });
+
   const persistStage = async <T>(
     items: readonly T[],
     persistItem: (item: T) => Promise<void>
@@ -408,18 +489,10 @@ const persistLocationTourPickupDateImportPlan = async (
       id: assignment.id,
       locationId: assignment.locationId,
       tourId: assignment.tourId,
-      startDate: assignment.startDate,
-      endDate: assignment.endDate,
     });
   });
-  await persistStage(importedPickupDates, async (pickupDate) => {
-    await repository.upsertWasteLocationTourPickupDate({
-      id: pickupDate.id,
-      locationId: pickupDate.locationId,
-      tourId: pickupDate.tourId,
-      pickupDate: pickupDate.pickupDate,
-      note: pickupDate.note,
-    });
+  await persistStage(assignments, async (assignment) => {
+    await repository.upsertWasteTourAssignment(assignment);
   });
 };
 
@@ -434,11 +507,15 @@ const planLocationTourPickupDateImport = async (
   const totalRows = input.parsed.validRowCount;
   let processedRows = 0;
 
-  const plan = planWasteLocationTourPickupDateImport(await loadPlanningSnapshot(repository), {
-    rows: input.parsed.rows,
-  }, {
-    createId: () => randomUUID(),
-  });
+  const plan = planWasteLocationTourPickupDateImport(
+    await loadPlanningSnapshot(repository),
+    {
+      rows: input.parsed.rows,
+    },
+    {
+      createId: () => randomUUID(),
+    }
+  );
   const importedPickupDates = input.persist
     ? await buildImportedLocationTourPickupDateRecords(repository, plan, input.parsed)
     : [];
@@ -541,10 +618,18 @@ const executeGeographyImport = async (
 ) => {
   for (const row of rows) {
     await repository.upsertWasteRegion({ id: row.region_id, name: row.region_name });
-    await repository.upsertWasteCity({ id: row.city_id, name: row.city_name, regionId: row.region_id });
+    await repository.upsertWasteCity({
+      id: row.city_id,
+      name: row.city_name,
+      regionId: row.region_id,
+    });
     counts.upserts += 2;
     if (normalizeOptionalText(row.street_id) && normalizeOptionalText(row.street_name)) {
-      await repository.upsertWasteStreet({ id: row.street_id, name: row.street_name, cityId: row.city_id });
+      await repository.upsertWasteStreet({
+        id: row.street_id,
+        name: row.street_name,
+        cityId: row.city_id,
+      });
       counts.upserts += 1;
     }
     if (
@@ -552,7 +637,11 @@ const executeGeographyImport = async (
       normalizeOptionalText(row.house_number_value) &&
       normalizeOptionalText(row.street_id)
     ) {
-      await repository.upsertWasteHouseNumber({ id: row.house_number_id, number: row.house_number_value, streetId: row.street_id });
+      await repository.upsertWasteHouseNumber({
+        id: row.house_number_id,
+        number: row.house_number_value,
+        streetId: row.street_id,
+      });
       counts.upserts += 1;
     }
     await repository.upsertWasteCollectionLocation({

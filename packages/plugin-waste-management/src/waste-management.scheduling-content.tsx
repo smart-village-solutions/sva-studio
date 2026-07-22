@@ -1,26 +1,42 @@
-import type { WasteLocationTourPickupDateRecord, WasteTourRecord } from '@sva/plugin-sdk';
+import type {
+  WasteHolidayRuleRecord,
+  WasteTourAssignmentRecord,
+  WasteTourRecord,
+  WasteGlobalDateShiftRecord,
+  WasteTourDateShiftRecord,
+} from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioEmptyState } from '@sva/studio-ui-react';
 import { type FormEvent, useState } from 'react';
-
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
-import {
-  WasteSchadstoffmobilAssignmentDialog,
-} from './waste-management.scheduling-schadstoffmobil-dialog.js';
-import type { WasteSchadstoffmobilAssignmentFormState } from './waste-management.scheduling-schadstoffmobil-form.js';
-import { WasteSchadstoffmobilAssignmentsList } from './waste-management.scheduling-schadstoffmobil-list.js';
+import { WasteTourExplicitAssignmentDialog } from './waste-management.scheduling-assignment-dialog.js';
+import type { WasteTourExplicitAssignmentFormState } from './waste-management.scheduling-assignment-form.js';
+import { WasteTourExplicitAssignmentsList } from './waste-management.scheduling-assignment-list.js';
 import { WasteSchedulingShiftsTable } from './waste-management.scheduling-shifts-table.js';
 import type { WasteSchedulingTableEntry } from './waste-management.scheduling.shared.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
 
-const createSchadstoffmobilForm = (
-  entry?: Pick<WasteLocationTourPickupDateRecord, 'id' | 'pickupDate' | 'locationId' | 'note'>
-): WasteSchadstoffmobilAssignmentFormState => ({
-  id: entry?.id ?? crypto.randomUUID(),
-  pickupDate: entry?.pickupDate ?? '',
-  locationId: entry?.locationId ?? '',
-  note: entry?.note ?? '',
-});
+const createAssignmentForm = (
+  entry?: WasteTourAssignmentRecord
+): WasteTourExplicitAssignmentFormState => {
+  if (!entry) {
+    return {
+      id: crypto.randomUUID(),
+      tourId: '',
+      pickupDate: '',
+      locationIds: [],
+      note: '',
+    };
+  }
+
+  return {
+    id: entry.id,
+    tourId: entry.tourId,
+    pickupDate: entry.pickupDate,
+    locationIds: entry.locationIds,
+    note: entry.note ?? '',
+  };
+};
 
 export const WasteSchedulingEmptyState = ({
   onOpenCreateShiftDialog,
@@ -28,7 +44,6 @@ export const WasteSchedulingEmptyState = ({
   readonly onOpenCreateShiftDialog: () => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-
   return (
     <StudioEmptyState>
       <div className="space-y-2 text-left">
@@ -47,16 +62,16 @@ export const WasteSchedulingEmptyState = ({
 export const WasteSchedulingContent = ({
   message,
   schedulingEntries,
-  schadstoffmobilTour,
-  schadstoffmobilAssignments,
-  schadstoffmobilLocationOptions,
+  tours,
+  tourAssignments,
+  assignmentLocationOptions,
   onOpenCreateShiftDialog,
   onEditHolidayRule,
   onEditGlobalShiftDialog,
   onEditTourShiftDialog,
   onDeleteSchedulingRows,
-  onSaveLocationTourPickupDate,
-  onDeleteLocationTourPickupDate,
+  onSaveTourAssignment,
+  onDeleteTourAssignment,
   saving,
   page,
   pageSize,
@@ -66,118 +81,97 @@ export const WasteSchedulingContent = ({
 }: {
   readonly message: StatusMessage | null;
   readonly schedulingEntries: readonly WasteSchedulingTableEntry[];
-  readonly schadstoffmobilTour: WasteTourRecord | null;
-  readonly schadstoffmobilAssignments: readonly WasteLocationTourPickupDateRecord[];
-  readonly schadstoffmobilLocationOptions: readonly { readonly id: string; readonly label: string }[];
+  readonly tours: readonly WasteTourRecord[];
+  readonly tourAssignments: readonly WasteTourAssignmentRecord[];
+  readonly assignmentLocationOptions: readonly { readonly id: string; readonly label: string }[];
   readonly onOpenCreateShiftDialog: () => void;
-  readonly onEditHolidayRule: (rule: import('@sva/plugin-sdk').WasteHolidayRuleRecord) => void;
-  readonly onEditGlobalShiftDialog: (shift: import('@sva/plugin-sdk').WasteGlobalDateShiftRecord) => void;
-  readonly onEditTourShiftDialog: (shift: import('@sva/plugin-sdk').WasteTourDateShiftRecord) => void;
+  readonly onEditHolidayRule: (rule: WasteHolidayRuleRecord) => void;
+  readonly onEditGlobalShiftDialog: (shift: WasteGlobalDateShiftRecord) => void;
+  readonly onEditTourShiftDialog: (shift: WasteTourDateShiftRecord) => void;
   readonly onDeleteSchedulingRows: (rows: readonly WasteSchedulingTableEntry[]) => Promise<void>;
-  readonly onSaveLocationTourPickupDate: (
+  readonly onSaveTourAssignment: (
     input: {
       readonly id: string;
-      readonly locationId: string;
       readonly tourId: string;
       readonly pickupDate: string;
+      readonly locationIds: readonly string[];
       readonly note: string;
     },
     mode: 'create' | 'edit'
   ) => Promise<void>;
-  readonly onDeleteLocationTourPickupDate: (pickupDateId: string) => Promise<void>;
+  readonly onDeleteTourAssignment: (id: string) => Promise<void>;
   readonly saving: boolean;
   readonly page: number;
   readonly pageSize: number;
   readonly onPageChange: (page: number) => void;
   readonly onSyncPageChange?: (page: number) => void;
-  readonly onPageSizeChange: (pageSize: number) => void;
+  readonly onPageSizeChange: (size: number) => void;
 }) => {
   useWasteTabPanelActions(null);
   const pt = usePluginTranslation('wasteManagement');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
-  const [dialogForm, setDialogForm] = useState<WasteSchadstoffmobilAssignmentFormState>(() => createSchadstoffmobilForm());
+  const [form, setForm] = useState(createAssignmentForm);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
-  const schadstoffmobilLocationLabels = new Map(
-    schadstoffmobilLocationOptions.map((option) => [option.id, option.label] as const)
+  const locationLabels = new Map(
+    assignmentLocationOptions.map((option) => [option.id, option.label] as const)
   );
-
-  const openCreateSchadstoffmobilDialog = () => {
-    setDialogMode('create');
-    setDialogForm(createSchadstoffmobilForm());
-    setValidationMessage(null);
-    setDialogOpen(true);
-  };
-
-  const openEditSchadstoffmobilDialog = (entry: WasteLocationTourPickupDateRecord) => {
-    setDialogMode('edit');
-    setDialogForm(createSchadstoffmobilForm(entry));
-    setValidationMessage(null);
-    setDialogOpen(true);
-  };
-
-  const closeSchadstoffmobilDialog = (open: boolean) => {
+  const tourLabels = new Map(tours.map((tour) => [tour.id, tour.name] as const));
+  const close = (open: boolean) => {
     setDialogOpen(open);
     if (!open) {
+      setForm(createAssignmentForm());
       setValidationMessage(null);
-      setDialogForm(createSchadstoffmobilForm());
     }
   };
-
-  const handleSubmitSchadstoffmobilAssignment = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!schadstoffmobilTour) {
+    if (!form.tourId || !form.pickupDate || form.locationIds.length === 0) {
+      setValidationMessage(pt('scheduling.assignments.validation.required'));
       return;
     }
-    const trimmedNote = dialogForm.note.trim();
-    if (trimmedNote.length === 0) {
-      setValidationMessage(pt('scheduling.schadstoffmobil.validation.noteRequired'));
-      return;
+    try {
+      await onSaveTourAssignment({ ...form, note: form.note.trim() }, dialogMode);
+      close(false);
+    } catch {
+      // The mutation handler has already recorded a translated error message.
     }
-    setValidationMessage(null);
-    await onSaveLocationTourPickupDate(
-      {
-        id: dialogForm.id,
-        locationId: dialogForm.locationId,
-        tourId: schadstoffmobilTour.id,
-        pickupDate: dialogForm.pickupDate,
-        note: trimmedNote,
-      },
-      dialogMode
-    );
-    setDialogOpen(false);
-    setDialogForm(createSchadstoffmobilForm());
   };
-
   return (
     <div className="space-y-4">
       <StatusNotice message={message} />
-      {schadstoffmobilTour ? (
-        <>
-          <WasteSchadstoffmobilAssignmentsList
-            entries={schadstoffmobilAssignments}
-            locationLabels={schadstoffmobilLocationLabels}
-            onCreate={openCreateSchadstoffmobilDialog}
-            onEdit={openEditSchadstoffmobilDialog}
-            onDelete={(entry) => onDeleteLocationTourPickupDate(entry.id)}
-          />
-          <WasteSchadstoffmobilAssignmentDialog
-            open={dialogOpen}
-            mode={dialogMode}
-            form={dialogForm}
-            locationOptions={schadstoffmobilLocationOptions}
-            saving={saving}
-            message={dialogOpen ? message : null}
-            validationMessage={validationMessage}
-            onOpenChange={closeSchadstoffmobilDialog}
-            onChange={(patch) => {
-              setValidationMessage(null);
-              setDialogForm((current) => ({ ...current, ...patch }));
-            }}
-            onSubmit={handleSubmitSchadstoffmobilAssignment}
-          />
-        </>
-      ) : null}
+      <WasteTourExplicitAssignmentsList
+        entries={tourAssignments}
+        tourLabels={tourLabels}
+        locationLabels={locationLabels}
+        onCreate={() => {
+          setDialogMode('create');
+          setForm(createAssignmentForm());
+          setDialogOpen(true);
+        }}
+        onEdit={(entry) => {
+          setDialogMode('edit');
+          setForm(createAssignmentForm(entry));
+          setDialogOpen(true);
+        }}
+        onDelete={(entry) => onDeleteTourAssignment(entry.id)}
+      />
+      <WasteTourExplicitAssignmentDialog
+        open={dialogOpen}
+        mode={dialogMode}
+        form={form}
+        tours={tours}
+        locationOptions={assignmentLocationOptions}
+        saving={saving}
+        message={dialogOpen ? message : null}
+        validationMessage={validationMessage}
+        onOpenChange={close}
+        onChange={(patch) => {
+          setValidationMessage(null);
+          setForm((current) => ({ ...current, ...patch }));
+        }}
+        onSubmit={submit}
+      />
       <WasteSchedulingShiftsTable
         entries={schedulingEntries}
         onOpenCreateShiftDialog={onOpenCreateShiftDialog}

@@ -38,13 +38,15 @@ const createTemplates = (
   {
     templateId: `${profileId}.canonical-csv-v1`,
     displayName: 'Canonical CSV v1',
-    description: 'Uses the shared canonical waste CSV column layout without plugin-local persistence.',
+    description:
+      'Uses the shared canonical waste CSV column layout without plugin-local persistence.',
     sourceFormat: 'text/csv',
   },
   {
     templateId: `${profileId}.canonical-xlsx-v1`,
     displayName: 'Canonical XLSX v1',
-    description: 'Uses the shared canonical waste XLSX workbook layout without plugin-local persistence.',
+    description:
+      'Uses the shared canonical waste XLSX workbook layout without plugin-local persistence.',
     sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   },
 ];
@@ -69,13 +71,11 @@ const importTemplate = (input: {
   sourceFormats: input.sourceFormats ?? importSourceFormats,
   requiredColumns: input.requiredColumns,
   optionalColumns: input.optionalColumns,
-  validationRules:
-    input.validationRules ??
-    [
-      'Header rows must match the canonical column keys exactly.',
-      'Required columns must be present on every row.',
-      'Referenced ids must be stable across repeated imports.',
-    ],
+  validationRules: input.validationRules ?? [
+    'Header rows must match the canonical column keys exactly.',
+    'Required columns must be present on every row.',
+    'Referenced ids must be stable across repeated imports.',
+  ],
   mappingTemplates: createTemplates(input.profileId),
   templateDelimiter: input.templateDelimiter,
   templateHeaders: input.templateHeaders,
@@ -148,6 +148,7 @@ export const wasteManagementImportCatalog = [
     sourceFormats: ['text/csv'],
     requiredColumns: [{ key: 'Ort', required: true, example: 'Musterstadt' }],
     optionalColumns: [
+      { key: 'Einsatz-ID', required: false, example: '73d06a46-9a54-4db3-8a41-b67c3ec9d88d' },
       { key: 'Region', required: false, example: 'Nord' },
       { key: 'Straße', required: false, example: 'Hauptstraße' },
       { key: 'Hausnummern', required: false, example: '42a' },
@@ -155,6 +156,7 @@ export const wasteManagementImportCatalog = [
     ],
     validationRules: [
       'A header row is required.',
+      'Rows with the same Einsatz-ID are grouped into one assignment and must use the same tour, date and note.',
       'The address block starts with Ort and may optionally contain Region, Straße and Hausnummern in that order.',
       'Each additional column header becomes a waste fraction name.',
       'Each filled fraction cell must contain the name of the assigned waste tour.',

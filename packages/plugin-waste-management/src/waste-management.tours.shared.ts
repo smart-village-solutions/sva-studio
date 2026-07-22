@@ -27,8 +27,6 @@ export const createDefaultLocationTourLinkForm = (): LocationTourLinkFormState =
   id: createId(),
   locationId: '',
   tourId: '',
-  startDate: '',
-  endDate: '',
 });
 
 export const createDefaultTourForm = (): TourFormState => ({
@@ -45,12 +43,12 @@ export const createDefaultTourForm = (): TourFormState => ({
   active: true,
 });
 
-export const mapLocationTourLinkToForm = (link: WasteLocationTourLinkRecord): LocationTourLinkFormState => ({
+export const mapLocationTourLinkToForm = (
+  link: WasteLocationTourLinkRecord
+): LocationTourLinkFormState => ({
   id: link.id,
   locationId: link.locationId,
   tourId: link.tourId,
-  startDate: link.startDate ?? '',
-  endDate: link.endDate ?? '',
 });
 
 export const mapTourToForm = (tour: WasteTourRecord): TourFormState => ({
@@ -62,7 +60,9 @@ export const mapTourToForm = (tour: WasteTourRecord): TourFormState => ({
   customRecurrenceId: tour.customRecurrenceId ?? '',
   firstDate: tour.firstDate ?? '',
   endDate: tour.endDate ?? '',
-  customDates: [...(tour.customDates ?? [])].sort((left, right) => left.date.localeCompare(right.date)),
+  customDates: [...(tour.customDates ?? [])].sort((left, right) =>
+    left.date.localeCompare(right.date)
+  ),
   dateLocationAssignments: [],
   active: tour.active,
 });
@@ -80,7 +80,8 @@ const normalizeAssignmentNote = (value: string): string => compactOptionalString
 export const createTourDateLocationAssignmentKey = ({
   pickupDate,
   locationId,
-}: Pick<TourDateLocationAssignmentFormState, 'pickupDate' | 'locationId'>) => `${pickupDate.trim()}::${locationId.trim()}`;
+}: Pick<TourDateLocationAssignmentFormState, 'pickupDate' | 'locationId'>) =>
+  `${pickupDate.trim()}::${locationId.trim()}`;
 
 export const sortTourDateLocationAssignments = (
   assignments: readonly TourDateLocationAssignmentFormState[]
@@ -142,22 +143,24 @@ export const normalizeTourDateLocationAssignments = (
   return sortTourDateLocationAssignments([...byKey.values()]);
 };
 
-export const toCreateLocationTourLinkInput = (form: LocationTourLinkFormState): CreateWasteManagementLocationTourLinkInput => ({
+export const toCreateLocationTourLinkInput = (
+  form: LocationTourLinkFormState
+): CreateWasteManagementLocationTourLinkInput => ({
   id: form.id,
   locationId: form.locationId,
   tourId: form.tourId,
-  startDate: compactOptionalString(form.startDate),
-  endDate: compactOptionalString(form.endDate),
 });
 
-export const toUpdateLocationTourLinkInput = (form: LocationTourLinkFormState): UpdateWasteManagementLocationTourLinkInput => ({
+export const toUpdateLocationTourLinkInput = (
+  form: LocationTourLinkFormState
+): UpdateWasteManagementLocationTourLinkInput => ({
   locationId: form.locationId,
   tourId: form.tourId,
-  startDate: compactOptionalString(form.startDate),
-  endDate: compactOptionalString(form.endDate),
 });
 
-const normalizeCustomDates = (value: TourFormState['customDates']): CreateWasteManagementTourInput['customDates'] => {
+const normalizeCustomDates = (
+  value: TourFormState['customDates']
+): CreateWasteManagementTourInput['customDates'] => {
   const entries = [...value]
     .filter((entry) => entry.date.trim().length > 0)
     .sort((left, right) => left.date.localeCompare(right.date))
@@ -169,14 +172,21 @@ const normalizeCustomDates = (value: TourFormState['customDates']): CreateWasteM
   return entries.length > 0 ? entries : undefined;
 };
 
-const recurringTourRecurrences = new Set<NonNullable<WasteTourRecord['recurrence']>>(['weekly', 'biweekly', 'fourweekly', 'yearly']);
+const recurringTourRecurrences = new Set<NonNullable<WasteTourRecord['recurrence']>>([
+  'weekly',
+  'biweekly',
+  'fourweekly',
+  'yearly',
+]);
 const customDatesRecurrences = new Set<NonNullable<WasteTourRecord['recurrence']>>(['custom']);
 const isRecurringTourRecurrence = (
   recurrence: TourFormState['recurrence']
-): recurrence is NonNullable<WasteTourRecord['recurrence']> => recurringTourRecurrences.has(recurrence as NonNullable<WasteTourRecord['recurrence']>);
+): recurrence is NonNullable<WasteTourRecord['recurrence']> =>
+  recurringTourRecurrences.has(recurrence as NonNullable<WasteTourRecord['recurrence']>);
 export const isCustomDatesRecurrence = (
   recurrence: TourFormState['recurrence']
-): recurrence is NonNullable<WasteTourRecord['recurrence']> => customDatesRecurrences.has(recurrence as NonNullable<WasteTourRecord['recurrence']>);
+): recurrence is NonNullable<WasteTourRecord['recurrence']> =>
+  customDatesRecurrences.has(recurrence as NonNullable<WasteTourRecord['recurrence']>);
 
 const resolveRecurringDates = (form: TourFormState) =>
   form.customRecurrenceId || isRecurringTourRecurrence(form.recurrence)
@@ -190,15 +200,20 @@ const resolveRecurringDates = (form: TourFormState) =>
       };
 
 const resolveCustomDates = (form: TourFormState) =>
-  !form.customRecurrenceId && isCustomDatesRecurrence(form.recurrence) ? normalizeCustomDates(form.customDates) : undefined;
+  !form.customRecurrenceId && isCustomDatesRecurrence(form.recurrence)
+    ? normalizeCustomDates(form.customDates)
+    : undefined;
 
-export const toCreateTourInput = (form: TourFormState, duplicateFromTourId?: string): CreateWasteManagementTourInput => ({
+export const toCreateTourInput = (
+  form: TourFormState,
+  duplicateFromTourId?: string
+): CreateWasteManagementTourInput => ({
   id: form.id,
   name: form.name.trim(),
   description: compactOptionalString(form.description),
   wasteFractionIds: form.wasteFractionIds,
   duplicateFromTourId: duplicateFromTourId ? compactOptionalString(duplicateFromTourId) : undefined,
-  recurrence: form.customRecurrenceId ? undefined : (form.recurrence || undefined),
+  recurrence: form.customRecurrenceId ? undefined : form.recurrence || undefined,
   customRecurrenceId: compactOptionalString(form.customRecurrenceId),
   ...resolveRecurringDates(form),
   customDates: resolveCustomDates(form),
@@ -209,7 +224,7 @@ export const toUpdateTourInput = (form: TourFormState): UpdateWasteManagementTou
   name: form.name.trim(),
   description: compactOptionalString(form.description),
   wasteFractionIds: form.wasteFractionIds,
-  recurrence: form.customRecurrenceId ? undefined : (form.recurrence || undefined),
+  recurrence: form.customRecurrenceId ? undefined : form.recurrence || undefined,
   customRecurrenceId: compactOptionalString(form.customRecurrenceId),
   ...resolveRecurringDates(form),
   customDates: resolveCustomDates(form),
@@ -219,25 +234,36 @@ export const toUpdateTourInput = (form: TourFormState): UpdateWasteManagementTou
 export const resolveCustomRecurrencePreset = (
   presets: readonly WasteCustomRecurrencePresetRecord[],
   customRecurrenceId: string
-): WasteCustomRecurrencePresetRecord | undefined => presets.find((preset) => preset.id === customRecurrenceId);
+): WasteCustomRecurrencePresetRecord | undefined =>
+  presets.find((preset) => preset.id === customRecurrenceId);
 
-const matchesSearch = (value: string, query: string) => value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
+const matchesSearch = (value: string, query: string) =>
+  value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
 
-const matchesStatusFilter = (status: WasteManagementSearchParams['status'], active: boolean | undefined): boolean => {
+const matchesStatusFilter = (
+  status: WasteManagementSearchParams['status'],
+  active: boolean | undefined
+): boolean => {
   if (status === 'all' || active === undefined) {
     return true;
   }
   return status === 'active' ? active : !active;
 };
 
-const matchesDateLowerBound = (value: string | null | undefined, lowerBound: string | undefined): boolean => {
+const matchesDateLowerBound = (
+  value: string | null | undefined,
+  lowerBound: string | undefined
+): boolean => {
   if (!lowerBound) {
     return true;
   }
   return typeof value === 'string' && value >= lowerBound;
 };
 
-const matchesDateUpperBound = (value: string | null | undefined, upperBound: string | undefined): boolean => {
+const matchesDateUpperBound = (
+  value: string | null | undefined,
+  upperBound: string | undefined
+): boolean => {
   if (!upperBound) {
     return true;
   }

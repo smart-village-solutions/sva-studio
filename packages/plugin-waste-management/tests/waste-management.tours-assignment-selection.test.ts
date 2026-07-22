@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { createTourAssignmentSelectionSummary } from '../src/waste-management.tours.view-model.js';
+import {
+  createTourAssignmentSelectionSummary,
+  orderTourAssignmentLocations,
+} from '../src/waste-management.tours.view-model.js';
 
 describe('createTourAssignmentSelectionSummary', () => {
   it.each([
@@ -26,4 +29,25 @@ describe('createTourAssignmentSelectionSummary', () => {
       });
     }
   );
+});
+
+describe('orderTourAssignmentLocations', () => {
+  it('places selected locations first while preserving each group order', () => {
+    expect(
+      orderTourAssignmentLocations(
+        [
+          { id: 'one', label: 'One' },
+          { id: 'two', label: 'Two' },
+          { id: 'three', label: 'Three' },
+          { id: 'four', label: 'Four' },
+        ],
+        ['three', 'one']
+      )
+    ).toEqual([
+      { id: 'one', label: 'One' },
+      { id: 'three', label: 'Three' },
+      { id: 'two', label: 'Two' },
+      { id: 'four', label: 'Four' },
+    ]);
+  });
 });

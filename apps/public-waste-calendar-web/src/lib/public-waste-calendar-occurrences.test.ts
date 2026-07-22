@@ -15,8 +15,6 @@ describe('public waste calendar occurrences', () => {
         {
           linkId: 'link-1',
           locationId: 'loc-1',
-          startDate: '2026-01-01',
-          endDate: '2026-12-31',
           tour: {
             id: 'tour-bio',
             name: 'Biotour',
@@ -31,8 +29,6 @@ describe('public waste calendar occurrences', () => {
         {
           linkId: 'link-2',
           locationId: 'loc-1',
-          startDate: '2026-01-01',
-          endDate: '2026-12-31',
           tour: {
             id: 'tour-paper',
             name: 'Papiertour',
@@ -47,8 +43,6 @@ describe('public waste calendar occurrences', () => {
         {
           linkId: 'link-3',
           locationId: 'loc-1',
-          startDate: '2026-01-01',
-          endDate: '2026-12-31',
           tour: {
             id: 'tour-custom-preset',
             name: 'Ferientour',
@@ -187,8 +181,6 @@ describe('public waste calendar occurrences', () => {
         {
           linkId: 'link-1',
           locationId: 'loc-1',
-          startDate: '2025-01-01',
-          endDate: '2026-12-31',
           tour: {
             id: 'tour-rest',
             name: 'Restmüll',
@@ -235,8 +227,6 @@ describe('public waste calendar occurrences', () => {
         {
           linkId: 'link-1',
           locationId: 'loc-1',
-          startDate: '2025-01-01',
-          endDate: '2026-12-31',
           tour: {
             id: 'tour-paper',
             name: 'Papiertour',
@@ -274,8 +264,6 @@ describe('public waste calendar occurrences', () => {
         {
           linkId: 'link-1',
           locationId: 'loc-1',
-          startDate: '2026-01-01',
-          endDate: '2026-12-31',
           tour: {
             id: 'tour-rest',
             name: 'Restmüll',

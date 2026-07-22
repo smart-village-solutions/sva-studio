@@ -10,7 +10,10 @@ import type {
   PublicWasteSelectionState,
   PublicWasteSelectionStep,
 } from './public-waste-contract.js';
-import { calculatePublicWasteCalendarEntries } from './public-waste-calendar-occurrences.js';
+import {
+  applyPublicWasteHolidayRulesToDate,
+  calculatePublicWasteCalendarEntries,
+} from './public-waste-calendar-occurrences.js';
 import { PUBLIC_WASTE_CATCH_ALL_STREET_ID } from './public-waste-contract.js';
 import {
   addYearsUtc,
@@ -39,16 +42,18 @@ type SelectionRow = {
 type CalendarEntryRow = {
   readonly link_id: string;
   readonly location_id: string;
-  readonly link_start_date: string | null;
-  readonly link_end_date: string | null;
+  readonly link_start_date?: string | null;
+  readonly link_end_date?: string | null;
   readonly tour_id: string;
   readonly tour_name: string;
   readonly tour_description: string | null;
-  readonly tour_recurrence: 'weekly' | 'biweekly' | 'fourweekly' | 'yearly' | 'on-demand' | 'custom' | null;
+  readonly tour_recurrence:
+    'weekly' | 'biweekly' | 'fourweekly' | 'yearly' | 'on-demand' | 'custom' | null;
   readonly tour_custom_recurrence_interval_days: number | null;
   readonly tour_first_date: string | null;
   readonly tour_end_date: string | null;
-  readonly tour_custom_dates: readonly { readonly date?: unknown; readonly description?: unknown }[] | null;
+  readonly tour_custom_dates:
+    readonly { readonly date?: unknown; readonly description?: unknown }[] | null;
   readonly fraction_id: string;
   readonly fraction_label: string;
   readonly fraction_description: string | null;
@@ -72,8 +77,8 @@ type GlobalDateShiftRow = {
   readonly tour_ids: readonly string[] | null;
 };
 
-type ImportedPickupDateRow = {
-  readonly location_id: string;
+type TourAssignmentRow = {
+  readonly assignment_id: string;
   readonly pickup_date: string;
   readonly tour_id: string;
   readonly tour_name: string;
@@ -139,7 +144,9 @@ const mapOptions = (rows: readonly SelectionRow[]): readonly PublicWasteSelectab
     label: row.label,
   }));
 
-const isCatchAllStreetSelection = (streetId: string | undefined): streetId is typeof PUBLIC_WASTE_CATCH_ALL_STREET_ID =>
+const isCatchAllStreetSelection = (
+  streetId: string | undefined
+): streetId is typeof PUBLIC_WASTE_CATCH_ALL_STREET_ID =>
   streetId === PUBLIC_WASTE_CATCH_ALL_STREET_ID;
 
 const createStreetSelectionFilter = (streetId: PublicWasteResolvedSelection['streetId']) => ({
@@ -172,11 +179,17 @@ const normalizeCustomDates = (
           : {}),
       };
     })
-    .filter((entry): entry is { readonly date: string; readonly description?: string } => entry !== null);
+    .filter(
+      (entry): entry is { readonly date: string; readonly description?: string } => entry !== null
+    );
 };
 
-const compareCalendarEntries = (left: PublicWasteCalendarEntry, right: PublicWasteCalendarEntry): number =>
-  left.date.localeCompare(right.date) || left.fractionLabel.localeCompare(right.fractionLabel, 'de');
+const compareCalendarEntries = (
+  left: PublicWasteCalendarEntry,
+  right: PublicWasteCalendarEntry
+): number =>
+  left.date.localeCompare(right.date) ||
+  left.fractionLabel.localeCompare(right.fractionLabel, 'de');
 
 const normalizeShiftDescription = (value: string | null): string | null => {
   const normalized = value?.trim();
@@ -265,9 +278,7 @@ export const createPublicWasteRepository = (input: {
   const schemaName = quoteIdentifier(input.schemaName);
 
   return {
-    async listSelectionOptions(query: {
-      readonly selection: PublicWasteSelectionState;
-    }): Promise<{
+    async listSelectionOptions(query: { readonly selection: PublicWasteSelectionState }): Promise<{
       readonly step: Exclude<PublicWasteSelectionStep, 'complete'>;
       readonly options: readonly PublicWasteSelectableEntry[];
     }> {
@@ -422,17 +433,20 @@ export const createPublicWasteRepository = (input: {
           query.selection.houseNumberId ?? null,
         ],
       });
-      const tourIds = Array.from(new Set(linkedToursResult.rows.map((row) => row.tour_id)));
-
       const normalizedReferenceDate = normalizeDateOnly(query.referenceDate);
-      const windowStart = normalizedReferenceDate ? startOfPreviousYearUtc(normalizedReferenceDate) : null;
+      const windowStart = normalizedReferenceDate
+        ? startOfPreviousYearUtc(normalizedReferenceDate)
+        : null;
       const windowEnd = normalizedReferenceDate ? addYearsUtc(normalizedReferenceDate, 1) : null;
 
-      const [tourDateShiftsResult, globalDateShiftsResult, importedPickupDatesResult, holidayRulesResult] = await Promise.all([
-        tourIds.length === 0
-          ? Promise.resolve({ rowCount: 0, rows: [] as readonly TourDateShiftRow[] })
-          : input.execute<TourDateShiftRow>({
-              text: `
+      const [
+        tourDateShiftsResult,
+        globalDateShiftsResult,
+        tourAssignmentsResult,
+        holidayRulesResult,
+      ] = await Promise.all([
+        input.execute<TourDateShiftRow>({
+          text: `
                 SELECT
                   id::text,
                   tour_id::text,
@@ -440,11 +454,9 @@ export const createPublicWasteRepository = (input: {
                   actual_date,
                   description
                 FROM ${schemaName}.waste_tour_date_shifts
-                WHERE tour_id::text = ANY($1::text[])
                 ORDER BY original_date ASC, actual_date ASC, id ASC;
               `,
-              values: [tourIds],
-            }),
+        }),
         input.execute<GlobalDateShiftRow>({
           text: `
             SELECT
@@ -457,11 +469,11 @@ export const createPublicWasteRepository = (input: {
             ORDER BY original_date ASC, actual_date ASC, id ASC;
           `,
         }),
-        input.execute<ImportedPickupDateRow>({
+        input.execute<TourAssignmentRow>({
           text: `
-            SELECT
-              p.location_id::text AS location_id,
-              p.pickup_date::text AS pickup_date,
+            SELECT DISTINCT
+              assignment.id::text AS assignment_id,
+              assignment.pickup_date::text AS pickup_date,
               t.id::text AS tour_id,
               t.name AS tour_name,
               t.description AS tour_description,
@@ -470,13 +482,13 @@ export const createPublicWasteRepository = (input: {
               f.description AS fraction_description,
               f.pdf_short_label AS fraction_pdf_short_label,
               f.color AS fraction_color,
-              p.note AS note
-            FROM ${schemaName}.waste_collection_locations cl
-            INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
-            INNER JOIN ${schemaName}.waste_location_tour_pickup_dates p
-              ON p.location_id = ltl.location_id
-             AND p.tour_id = ltl.tour_id
-            INNER JOIN ${schemaName}.waste_tours t ON t.id = p.tour_id
+              assignment.note AS note
+            FROM ${schemaName}.waste_tour_assignments assignment
+            INNER JOIN ${schemaName}.waste_tour_assignment_locations assignment_location
+              ON assignment_location.assignment_id = assignment.id
+            INNER JOIN ${schemaName}.waste_collection_locations cl
+              ON cl.id = assignment_location.collection_location_id
+            INNER JOIN ${schemaName}.waste_tours t ON t.id = assignment.tour_id
             LEFT JOIN ${schemaName}.waste_fractions f ON f.id::text = ANY(t.waste_fraction_ids)
             WHERE cl.active = true
               AND t.active = true
@@ -484,9 +496,7 @@ export const createPublicWasteRepository = (input: {
               ${streetSelectionFilter.text}
               AND ($4::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $4::uuid)
               AND ($5::uuid IS NULL OR cl.house_number_id IS NULL OR cl.house_number_id = $5::uuid)
-              AND (ltl.start_date IS NULL OR p.pickup_date >= ltl.start_date)
-              AND (ltl.end_date IS NULL OR p.pickup_date <= ltl.end_date)
-            ORDER BY p.pickup_date ASC, t.name ASC, f.name ASC;
+            ORDER BY assignment.pickup_date ASC, t.name ASC, f.name ASC, assignment.id ASC;
           `,
           values: [
             query.selection.cityId,
@@ -533,14 +543,17 @@ export const createPublicWasteRepository = (input: {
               readonly startDate?: string;
               readonly endDate?: string;
               readonly tour: {
-              readonly id: string;
-              readonly name: string;
-              readonly description?: string;
-              readonly recurrence: CalendarEntryRow['tour_recurrence'];
-              readonly customRecurrenceIntervalDays?: number;
-              readonly firstDate?: string;
-              readonly endDate?: string;
-                readonly customDates: readonly { readonly date: string; readonly description?: string }[];
+                readonly id: string;
+                readonly name: string;
+                readonly description?: string;
+                readonly recurrence: CalendarEntryRow['tour_recurrence'];
+                readonly customRecurrenceIntervalDays?: number;
+                readonly firstDate?: string;
+                readonly endDate?: string;
+                readonly customDates: readonly {
+                  readonly date: string;
+                  readonly description?: string;
+                }[];
                 readonly fractions: {
                   id: string;
                   label: string;
@@ -557,8 +570,12 @@ export const createPublicWasteRepository = (input: {
             ? {
                 id: row.fraction_id,
                 label: row.fraction_label,
-                ...(row.fraction_description?.trim() ? { description: row.fraction_description.trim() } : {}),
-                ...(row.fraction_pdf_short_label ? { shortLabel: row.fraction_pdf_short_label } : {}),
+                ...(row.fraction_description?.trim()
+                  ? { description: row.fraction_description.trim() }
+                  : {}),
+                ...(row.fraction_pdf_short_label
+                  ? { shortLabel: row.fraction_pdf_short_label }
+                  : {}),
                 ...(row.fraction_color ? { color: row.fraction_color } : {}),
               }
             : null;
@@ -593,6 +610,21 @@ export const createPublicWasteRepository = (input: {
         }, new Map())
       ).map(([, entry]) => entry);
 
+      const holidayRules = holidayRulesResult.rows.map((row) => ({
+        id: row.id,
+        holidayDate: row.holiday_date,
+        holidayName: row.holiday_name,
+        year: row.holiday_year,
+        stateCode: row.state_code,
+        sourceStatus: row.source_status,
+        configurationStatus: row.configuration_status,
+        conflictStatus: row.conflict_status,
+        ...(row.scope ? { scope: row.scope } : {}),
+        ...(row.strategy ? { strategy: row.strategy } : {}),
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+
       const calculatedEntries = calculatePublicWasteCalendarEntries({
         referenceDate: query.referenceDate,
         selection: query.selection,
@@ -611,20 +643,7 @@ export const createPublicWasteRepository = (input: {
           ...(row.description ? { description: row.description } : {}),
           ...(row.tour_ids ? { tourIds: row.tour_ids } : {}),
         })),
-        holidayRules: holidayRulesResult.rows.map((row) => ({
-          id: row.id,
-          holidayDate: row.holiday_date,
-          holidayName: row.holiday_name,
-          year: row.holiday_year,
-          stateCode: row.state_code,
-          sourceStatus: row.source_status,
-          configurationStatus: row.configuration_status,
-          conflictStatus: row.conflict_status,
-          ...(row.scope ? { scope: row.scope } : {}),
-          ...(row.strategy ? { strategy: row.strategy } : {}),
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-        })),
+        holidayRules,
       });
 
       if (!windowStart) {
@@ -660,7 +679,10 @@ export const createPublicWasteRepository = (input: {
       }
 
       const tourShiftMap = new Map(tourShiftEntries);
-      const sharedGlobalShiftMap = new Map<string, { readonly actualDate: string; readonly description: string | null }>();
+      const sharedGlobalShiftMap = new Map<
+        string,
+        { readonly actualDate: string; readonly description: string | null }
+      >();
       const scopedGlobalShiftMap = new Map<
         string,
         Map<string, { readonly actualDate: string; readonly description: string | null }>
@@ -689,65 +711,46 @@ export const createPublicWasteRepository = (input: {
         }
       }
 
-      const importedPickupDateRows = importedPickupDatesResult?.rows ?? [];
-
-      for (const row of importedPickupDateRows) {
+      const tourAssignmentRows = tourAssignmentsResult?.rows ?? [];
+      for (const row of tourAssignmentRows) {
         const pickupDate = normalizeDateOnly(row.pickup_date);
         if (!pickupDate || !row.fraction_id || !row.fraction_label) {
           continue;
         }
 
-        const hasValidLinkAssignment = linkedTours.some((linkedTour) => {
-          if (linkedTour.locationId !== row.location_id || linkedTour.tour.id !== row.tour_id) {
-            return false;
-          }
-
-          if (linkedTour.startDate && pickupDate < linkedTour.startDate) {
-            return false;
-          }
-
-          if (linkedTour.endDate && pickupDate > linkedTour.endDate) {
-            return false;
-          }
-
-          return true;
-        });
-        if (!hasValidLinkAssignment) {
-          continue;
-        }
-
         const tourShift = tourShiftMap.get(`${row.tour_id}:${pickupDate}`);
-        const globalShift = scopedGlobalShiftMap.get(row.tour_id)?.get(pickupDate) ?? sharedGlobalShiftMap.get(pickupDate);
-        const shiftedDate = tourShift?.actualDate ?? globalShift?.actualDate ?? pickupDate;
+        const globalShift =
+          scopedGlobalShiftMap.get(row.tour_id)?.get(pickupDate) ??
+          sharedGlobalShiftMap.get(pickupDate);
+        const shiftedDate = applyPublicWasteHolidayRulesToDate(
+          tourShift?.actualDate ?? globalShift?.actualDate ?? pickupDate,
+          holidayRules
+        );
         if (!isDateWithinRange(shiftedDate, windowStart, effectiveWindowEnd)) {
           continue;
         }
 
-        const entryId = `${row.tour_id}:${shiftedDate}:${row.fraction_id}`;
-        const importedPickupDateNote = row.note?.trim() || null;
-        const note =
-          importedPickupDateNote ??
-          tourShift?.description ??
-          globalShift?.description ??
-          null;
-        const existingEntry = mergedEntries.get(entryId);
-        if (existingEntry) {
-          if (note && note !== existingEntry.note) {
-            mergedEntries.set(entryId, {
-              ...existingEntry,
-              note,
-            });
-          }
-          continue;
-        }
+        const calculatedEntryId = `${row.tour_id}:${shiftedDate}:${row.fraction_id}`;
+        const entryId = `${row.assignment_id}:${row.fraction_id}`;
+        const assignmentNote = row.note?.trim() || null;
+        const note = assignmentNote ?? tourShift?.description ?? globalShift?.description ?? null;
+
+        // A concrete assignment is the authoritative occurrence for this tour,
+        // date, fraction and selected location. Other assignments intentionally
+        // keep their own IDs so multiple deployments on one day remain visible.
+        mergedEntries.delete(calculatedEntryId);
 
         mergedEntries.set(entryId, {
           id: entryId,
           date: shiftedDate,
           fractionId: row.fraction_id,
           fractionLabel: row.fraction_label,
-          ...(row.fraction_description?.trim() ? { fractionDescription: row.fraction_description.trim() } : {}),
-          ...(row.fraction_pdf_short_label ? { fractionShortLabel: row.fraction_pdf_short_label } : {}),
+          ...(row.fraction_description?.trim()
+            ? { fractionDescription: row.fraction_description.trim() }
+            : {}),
+          ...(row.fraction_pdf_short_label
+            ? { fractionShortLabel: row.fraction_pdf_short_label }
+            : {}),
           ...(row.fraction_color ? { fractionColor: row.fraction_color } : {}),
           ...(row.tour_name.trim() ? { tourName: row.tour_name.trim() } : {}),
           ...(row.tour_description?.trim() ? { tourDescription: row.tour_description.trim() } : {}),
@@ -799,7 +802,9 @@ export const createPublicWasteRepository = (input: {
         return [
           query.selection.cityId,
           [
-            isCatchAllStreetSelection(query.selection.streetId) ? 'Alle Straßen' : query.selection.streetId,
+            isCatchAllStreetSelection(query.selection.streetId)
+              ? 'Alle Straßen'
+              : query.selection.streetId,
             query.selection.houseNumberId,
           ]
             .filter(Boolean)
@@ -809,7 +814,9 @@ export const createPublicWasteRepository = (input: {
           .join(', ');
       }
 
-      return [row.city_label, [row.street_label, row.house_number_label].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+      return [row.city_label, [row.street_label, row.house_number_label].filter(Boolean).join(' ')]
+        .filter(Boolean)
+        .join(', ');
     },
 
     async loadReminderOptions(query: {

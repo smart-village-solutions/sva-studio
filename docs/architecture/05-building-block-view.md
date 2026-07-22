@@ -286,6 +286,7 @@ Abhängigkeiten des aktuellen Systems.
    - erweitert diese Runtime um den öffentlichen Reminder-Flow mit CTA im finalen Standortkontext, Formularabsendung, Double-Opt-In-Bestätigung und Abmeldeseiten unter derselben App-URL
    - persistiert Pending- und aktive Reminder-Abos sowie DOI-Aufträge über gemeinsame Waste-Repositories, ohne selbst technische Mail-Credentials zu kennen
    - wird betrieblich über ein dediziertes Image, einen dedizierten Portainer-Stack `web-waste-calendar` und einen separaten Git-Tag-Releasepfad `waste-web-vX.Y.Z` ausgerollt, ohne den normalen Studio-Releasevertrag mitzubenutzen
+   - liest explizite Tour-Einsätze mit mehreren Abholorten direkt aus der Waste-Fachdatenbank, löst übergeordnete Abholorte hierarchisch auf und übernimmt Fraktionen ausschließlich aus der normalen Tourzuordnung
 
 17. Waste-Reminder-Operationspfad (`apps/sva-studio-react` + `packages/waste-management-runtime`)
    - erweitert die bestehende Waste-Operations-Runtime um zwei technische Jobs: Materialisierung fraktions- und slotbezogener Reminder-Outbox-Einträge sowie inkrementelle Batch-Verarbeitung fälliger Outbox-Elemente

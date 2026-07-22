@@ -14,11 +14,14 @@ const latestFourDigitUtcDate = new Date(Date.UTC(9999, 11, 31, 23, 59, 59, 999))
 describe('waste location tour assignment import parser', () => {
   it('keeps canonical pickup dates stable for arbitrary UTC calendar dates', () => {
     fc.assert(
-      fc.property(fc.date({ min: earliestFourDigitUtcDate, max: latestFourDigitUtcDate }), (value) => {
-        const canonicalDate = formatUtcDate(value);
+      fc.property(
+        fc.date({ min: earliestFourDigitUtcDate, max: latestFourDigitUtcDate }),
+        (value) => {
+          const canonicalDate = formatUtcDate(value);
 
-        expect(normalizeWasteImportPickupDate(canonicalDate)).toBe(canonicalDate);
-      })
+          expect(normalizeWasteImportPickupDate(canonicalDate)).toBe(canonicalDate);
+        }
+      )
     );
   });
 
@@ -122,10 +125,7 @@ describe('waste location tour assignment import parser', () => {
 
   it('keeps delimiters inside quoted cells and reports duplicate fraction columns', () => {
     const result = parseWasteLocationTourPickupDateCsv({
-      text: [
-        'Ort;Papier;Papier',
-        '"Perleberg; Süd";"PPK;1";PPK.2',
-      ].join('\n'),
+      text: ['Ort;Papier;Papier', '"Perleberg; Süd";"PPK;1";PPK.2'].join('\n'),
     });
 
     expect(result.header).toEqual(['Ort', 'Papier', 'Papier']);
@@ -155,10 +155,7 @@ describe('waste location tour assignment import parser', () => {
 
   it('rejects duplicate fraction columns case-insensitively', () => {
     const result = parseWasteLocationTourPickupDateCsv({
-      text: [
-        'Ort;Bio;bio',
-        'Perleberg;BIO.1;BIO.2',
-      ].join('\n'),
+      text: ['Ort;Bio;bio', 'Perleberg;BIO.1;BIO.2'].join('\n'),
     });
 
     expect(result.issues).toEqual([
@@ -235,10 +232,7 @@ describe('waste location tour assignment import parser', () => {
 
   it('reports empty fraction headers between named columns and keeps escaped quotes inside cells', () => {
     const result = parseWasteLocationTourPickupDateCsv({
-      text: [
-        'Ort;Restmüll;;Papier',
-        '"Perleberg ""Nord""";HM.1;;PPK.2',
-      ].join('\n'),
+      text: ['Ort;Restmüll;;Papier', '"Perleberg ""Nord""";HM.1;;PPK.2'].join('\n'),
     });
 
     expect(result.validRowCount).toBe(1);
@@ -255,7 +249,11 @@ describe('waste location tour assignment import parser', () => {
 
   it('handles optional region, street and house number columns while skipping empty rows', () => {
     const result = parseWasteLocationTourPickupDateCsv({
-      text: ['Region;Ort;Straße;Hausnummern;Papier', '', 'Nord;Musterstadt;Hauptstraße;12;PPK.7.2'].join('\n'),
+      text: [
+        'Region;Ort;Straße;Hausnummern;Papier',
+        '',
+        'Nord;Musterstadt;Hauptstraße;12;PPK.7.2',
+      ].join('\n'),
     });
 
     expect(result.issues).toEqual([]);
@@ -299,12 +297,42 @@ describe('waste location tour assignment import parser', () => {
     ]);
   });
 
-  it('rejects invalid pickup-date values instead of dropping them silently', () => {
+  it('parses a stable assignment id before the address columns', () => {
     const result = parseWasteLocationTourPickupDateCsv({
       text: [
-        'Ort;Abholdatum;Papier',
-        'Perleberg;2026-02-30;PPK.7.2',
+        'Einsatz-ID;Ort;Straße;Abholdatum;Hinweis;Schadstoffmobil',
+        '73d06a46-9a54-4db3-8a41-b67c3ec9d88d;Perleberg;;2026-06-10;;SM.1',
       ].join('\n'),
+    });
+
+    expect(result.issues).toEqual([]);
+    expect(result.rows[0]).toMatchObject({
+      assignmentId: '73d06a46-9a54-4db3-8a41-b67c3ec9d88d',
+      city: 'Perleberg',
+      pickupDate: '2026-06-10',
+      note: undefined,
+    });
+  });
+
+  it('requires a pickup date for assignment rows while keeping legacy rows compatible', () => {
+    const result = parseWasteLocationTourPickupDateCsv({
+      text: [
+        'Einsatz-ID;Ort;Schadstoffmobil',
+        '73d06a46-9a54-4db3-8a41-b67c3ec9d88d;Perleberg;SM.1',
+      ].join('\n'),
+    });
+
+    expect(result.validRowCount).toBe(0);
+    expect(result.issues).toContainEqual({
+      rowNumber: 2,
+      column: 'Abholdatum',
+      message: 'Zeilen mit Einsatz-ID benötigen ein Abholdatum.',
+    });
+  });
+
+  it('rejects invalid pickup-date values instead of dropping them silently', () => {
+    const result = parseWasteLocationTourPickupDateCsv({
+      text: ['Ort;Abholdatum;Papier', 'Perleberg;2026-02-30;PPK.7.2'].join('\n'),
     });
 
     expect(result.validRowCount).toBe(0);

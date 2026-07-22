@@ -183,6 +183,7 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
           title: 'Frage',
           genericType: 'INFO',
           contentBlocks: [{ body: 'Antwort ohne HTML' }],
+          payload: { languageCode: 'de', sortWeight: 0 },
         }),
       })
     );
@@ -228,6 +229,61 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     });
     expect(state.createSvaMainserverGenericItem).not.toHaveBeenCalled();
     expect(state.updateSvaMainserverGenericItem).not.toHaveBeenCalled();
+  });
+
+  it('rejects faq writes without a single plain-text answer and controlled payload fields', async () => {
+    mockAuthorizedMutation();
+
+    const missingAnswerResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'FAQ',
+          payload: { languageCode: 'de', sortWeight: 0 },
+        }),
+      })
+    );
+    const invalidPayloadResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'FAQ',
+          contentBlocks: [{ body: 'Antwort' }],
+          payload: { languageCode: 'invalid locale', sortWeight: 1.5 },
+        }),
+      })
+    );
+    const unsupportedFieldsResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'FAQ',
+          contentBlocks: [{ body: 'Antwort' }],
+          payload: { languageCode: 'de', sortWeight: 0 },
+          categories: [{ name: 'Service' }],
+        }),
+      })
+    );
+
+    expect(missingAnswerResponse?.status).toBe(400);
+    await expect(missingAnswerResponse?.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'Die FAQ-Antwort ist erforderlich.',
+    });
+    expect(invalidPayloadResponse?.status).toBe(400);
+    await expect(invalidPayloadResponse?.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'Der FAQ-Sprachcode ist ungültig.',
+    });
+    expect(unsupportedFieldsResponse?.status).toBe(400);
+    await expect(unsupportedFieldsResponse?.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'FAQ unterstützt nur Frage, Antwort und kontrollierten Payload.',
+    });
+    expect(state.createSvaMainserverGenericItem).not.toHaveBeenCalled();
   });
 
   it('passes includeInvisible=true through the generic items list route', async () => {

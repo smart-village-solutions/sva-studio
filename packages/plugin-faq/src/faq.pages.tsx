@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useParams } from '@tanstack/react-router';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
@@ -33,6 +33,9 @@ const resolveSaveErrorMessage = (error: unknown, pt: ReturnType<typeof usePlugin
     ? pt('messages.saveErrorWithReason', { reason: error.message })
     : pt('messages.saveError');
 
+const resolveEditContentId = (mode: 'create' | 'edit', contentId?: string): string | null =>
+  mode === 'edit' ? contentId ?? null : null;
+
 const FaqEditorForm = ({ form, onSubmit, pt }: Readonly<{ form: ReturnType<typeof useForm<FaqFormValues>>; onSubmit: (values: FaqFormValues) => void; pt: ReturnType<typeof usePluginTranslation> }>) => (
   <form className="space-y-4" noValidate onSubmit={form.handleSubmit(onSubmit)}>
     <label className="grid gap-1 text-sm font-medium" htmlFor="faq-question">{pt('fields.question')}<input id="faq-question" className="rounded-md border px-3 py-2" {...form.register('question')} />{form.formState.errors.question ? <span className="text-destructive">{pt('validation.required')}</span> : null}</label>
@@ -46,18 +49,25 @@ const FaqEditorForm = ({ form, onSubmit, pt }: Readonly<{ form: ReturnType<typeo
 
 const FaqEditorPage = ({ mode, contentId }: Readonly<{ readonly mode: 'create' | 'edit'; readonly contentId?: string }>) => {
   const pt = usePluginTranslation('faq');
+  const navigate = useNavigate();
   const [existingPayload, setExistingPayload] = React.useState<unknown>();
   const [loadError, setLoadError] = React.useState(false);
   const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(mode === 'edit');
   const form = useForm<FaqFormValues>({ defaultValues, resolver: zodResolver(faqFormSchema) });
+  const editContentId = resolveEditContentId(mode, contentId);
 
   React.useEffect(() => {
-    if (mode !== 'edit' || !contentId) {
+    if (mode !== 'edit') {
+      return;
+    }
+    if (!editContentId) {
+      setLoadError(true);
+      setLoading(false);
       return;
     }
     let active = true;
-    void getFaq(contentId)
+    void getFaq(editContentId)
       .then((item) => {
         if (!active) return;
         form.reset(mapGenericItemToFaqFormValues(item));
@@ -66,14 +76,22 @@ const FaqEditorPage = ({ mode, contentId }: Readonly<{ readonly mode: 'create' |
       .catch(() => active && setLoadError(true))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [contentId, form, mode]);
+  }, [editContentId, form, mode]);
 
   const onSubmit = async (values: FaqFormValues) => {
     setSaveErrorMessage(null);
     const input = mapFaqFormValuesToGenericItemInput(values, existingPayload);
-    const request = mode === 'create' ? createFaq(input) : updateFaq(contentId ?? '', input);
     try {
-      await request;
+      if (mode === 'create') {
+        const createdItem = await createFaq(input);
+        await navigate({ to: '/admin/faq/$id', params: { id: createdItem.id } });
+        return;
+      }
+      if (!editContentId) {
+        setSaveErrorMessage(pt('messages.loadError'));
+        return;
+      }
+      await updateFaq(editContentId, input);
     } catch (error) {
       setSaveErrorMessage(resolveSaveErrorMessage(error, pt));
     }

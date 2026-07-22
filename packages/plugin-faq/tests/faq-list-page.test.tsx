@@ -36,7 +36,7 @@ describe('FaqListPage', () => {
 
     render(<FaqListPage />);
     await screen.findAllByText('Deutsch');
-    fireEvent.change(screen.getByLabelText('faq.fields.languageCode'), { target: { value: 'en' } });
+    fireEvent.change(screen.getByLabelText('faq.fields.languageCode'), { target: { value: 'EN' } });
     await waitFor(() => expect(screen.queryAllByText('Deutsch')).toHaveLength(0));
     expect(screen.getAllByText('English')).not.toHaveLength(0);
   });

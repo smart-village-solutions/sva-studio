@@ -9,6 +9,7 @@ const useContentAccessMock = vi.fn();
 const useAuthMock = vi.fn();
 const deleteNewsMock = vi.fn();
 const deleteEventMock = vi.fn();
+const deleteFaqMock = vi.fn();
 const deletePoiMock = vi.fn();
 const deleteSurveyMock = vi.fn();
 const navigateMock = vi.fn();
@@ -17,6 +18,7 @@ const DEFAULT_VISIBLE_TYPES = [
   'generic',
   'news.article',
   'events.event-record',
+  'faq.faq',
   'poi.point-of-interest',
   'surveys.survey',
 ] as const;
@@ -52,6 +54,14 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
       requiredCreateAction: 'events.create',
       createPath: '/admin/events/new',
       detailPath: '/admin/events/$contentId',
+    },
+    {
+      contentType: 'faq.faq',
+      displayName: 'FAQ',
+      requiredReadAction: 'faq.read',
+      requiredCreateAction: 'faq.create',
+      createPath: '/admin/faq/new',
+      detailPath: '/admin/faq/$id',
     },
     {
       contentType: 'poi.point-of-interest',
@@ -110,6 +120,10 @@ vi.mock('@sva/plugin-events', () => ({
   deleteEvent: (...args: unknown[]) => deleteEventMock(...args),
 }));
 
+vi.mock('@sva/plugin-faq', () => ({
+  deleteFaq: (...args: unknown[]) => deleteFaqMock(...args),
+}));
+
 vi.mock('@sva/plugin-poi', () => ({
   deletePoi: (...args: unknown[]) => deletePoiMock(...args),
 }));
@@ -129,6 +143,7 @@ describe('ContentListPage', () => {
     useAuthMock.mockReset();
     deleteNewsMock.mockReset();
     deleteEventMock.mockReset();
+    deleteFaqMock.mockReset();
     deletePoiMock.mockReset();
     deleteSurveyMock.mockReset();
     navigateMock.mockReset();
@@ -141,6 +156,8 @@ describe('ContentListPage', () => {
         permissionActions: [
           'content.read',
           'content.create',
+          'faq.read',
+          'faq.delete',
           'news.read',
           'news.create',
           'news.update',
@@ -171,6 +188,8 @@ describe('ContentListPage', () => {
       permissionActions: [
         'content.read',
         'content.create',
+        'faq.read',
+        'faq.delete',
         'news.read',
         'news.create',
         'news.update',
@@ -395,6 +414,50 @@ describe('ContentListPage', () => {
     expect(confirmMock).toHaveBeenCalledWith('Soll dieser Inhalt wirklich gelöscht werden?');
     await waitFor(() => {
       expect(deleteSurveyMock).toHaveBeenCalledWith('survey-1');
+    });
+    await waitFor(() => {
+      expect(refetch).toHaveBeenCalled();
+    });
+  });
+
+  it('routes faq deletion through the faq client', async () => {
+    const refetch = vi.fn(async () => undefined);
+    const confirmMock = vi.fn(() => true);
+    Object.defineProperty(window, 'confirm', { configurable: true, writable: true, value: confirmMock });
+
+    useContentsMock.mockReturnValue(createContentsApiResult({
+      contents: [
+        {
+          id: 'faq-1',
+          contentType: 'faq.faq',
+          title: 'FAQ',
+          publishedAt: '2026-03-21T10:00:00.000Z',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-21T11:00:00.000Z',
+          author: 'mainserver',
+          payload: { languageCode: 'de', sortWeight: 0 },
+          status: 'published',
+          access: {
+            state: 'editable',
+            canRead: true,
+            canCreate: true,
+            canUpdate: true,
+            organizationIds: ['org-1'],
+            sourceKinds: ['direct_role'],
+          },
+        },
+      ],
+      pagination: { page: 1, pageSize: 25, total: 1 },
+      refetch,
+    }));
+    deleteFaqMock.mockResolvedValue(undefined);
+
+    render(<ContentListPage />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+
+    await waitFor(() => {
+      expect(deleteFaqMock).toHaveBeenCalledWith('faq-1');
     });
     await waitFor(() => {
       expect(refetch).toHaveBeenCalled();
@@ -659,6 +722,8 @@ describe('ContentListPage', () => {
         permissionActions: [
           'content.read',
           'content.create',
+          'faq.read',
+          'faq.delete',
           'news.read',
           'news.create',
           'news.update',
@@ -721,7 +786,7 @@ describe('ContentListPage', () => {
         status: 'published',
         sortBy: 'updatedAt',
         sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
+        visibleTypes: ['generic', 'news.article', 'events.event-record', 'faq.faq', 'poi.point-of-interest', 'surveys.survey'],
       },
       { enabled: true }
     );
@@ -889,7 +954,7 @@ describe('ContentListPage', () => {
         pageSize: 25,
         sortBy: 'title',
         sortDirection: 'desc',
-        visibleTypes: ['generic', 'news.article', 'events.event-record', 'poi.point-of-interest', 'surveys.survey'],
+        visibleTypes: ['generic', 'news.article', 'events.event-record', 'faq.faq', 'poi.point-of-interest', 'surveys.survey'],
       },
       { enabled: true }
     );

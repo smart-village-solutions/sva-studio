@@ -33,6 +33,7 @@ export const pluginFaqTranslations = {
       },
       fields: {
         question: 'Frage',
+        actions: 'Aktionen',
         answer: 'Antwort',
         languageCode: 'Sprachcode',
         sortWeight: 'Sortiergewicht',
@@ -83,6 +84,7 @@ export const pluginFaqTranslations = {
       },
       fields: {
         question: 'Question',
+        actions: 'Actions',
         answer: 'Answer',
         languageCode: 'Language code',
         sortWeight: 'Sort weight',

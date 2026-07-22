@@ -11,12 +11,12 @@
 - [x] 2.1 `@sva/plugin-faq` mit Manifest, Projektkonfiguration, Übersetzungen und öffentlichem API-Vertrag erstellen.
 - [x] 2.2 Fachmodell, Zod-Validierung und Mapper für Frage, Nur-Text-Antwort, BCP-47-Sprachcode, `sortWeight`, Sichtbarkeit und Veröffentlichungszeitpunkt implementieren; HTML in der Antwort abweisen.
 - [x] 2.3 Den FAQ-Payload mit den kontrollierten Schlüsseln `languageCode` und `sortWeight` schreiben, unbekannte historische Payload-Schlüssel erhalten und `contentBlocks` beim Speichern auf genau einen Antwortblock normieren.
-- [ ] 2.4 Fachliste mit Sprachfilter, Sprachcode-Anzeige und vollständiger deterministischer Sortierung sowie Create-/Edit-Seiten mit bestehenden Studio-UI-Bausteinen umsetzen.
+- [x] 2.4 Fachliste mit Sprachfilter, Sprachcode-Anzeige und vollständiger deterministischer Sortierung sowie Create-/Edit-Seiten mit bestehenden Studio-UI-Bausteinen umsetzen.
 - [x] 2.5 Zugänglichkeit, Fehlerzustände und Lade-/Empty-States nach bestehendem Plugin-Muster absichern.
 
 ## 3. Qualität und Dokumentation
 
-- [ ] 3.1 Unit-, Komponenten- und Host-Tests für Mapper, BCP-47-/HTML-Validierung, Payload- und ContentBlock-Normalisierung, Berechtigungen, Fremdtyp-Abgrenzung, Klassifikation, vollständiges Paging, Sortierung, Auffindbarkeit in der Inhaltsübersicht, ausgeblendete direkte FAQ-Navigation sowie CRUD ergänzen.
+- [x] 3.1 Unit-, Komponenten- und Host-Tests für Mapper, BCP-47-/HTML-Validierung, Payload- und ContentBlock-Normalisierung, Berechtigungen, Fremdtyp-Abgrenzung, Klassifikation, vollständiges Paging, Sortierung, Auffindbarkeit in der Inhaltsübersicht, ausgeblendete direkte FAQ-Navigation sowie CRUD ergänzen.
 - [x] 3.2 Nach jedem abgeschlossenen Änderungsblock die kleinsten relevanten Nx-Unit- und Type-Gates ausführen; für die Host-/Serveränderung früh `pnpm check:server-runtime` ausführen. Auf bekannt rotem Teststand nicht weiterimplementieren.
 - [x] 3.3 Vor der PR-Erstellung `pnpm test:pr` erfolgreich ausführen. Falls der Lauf nachweislich nicht möglich ist, den kleinsten relevanten Gate-Pfad einschließlich `pnpm test:coverage`, `pnpm coverage-gate` und `pnpm complexity-gate` erfolgreich ausführen und die Abweichung im PR begründen.
 - [x] 3.4 Sicherstellen, dass neue produktive Dateien die Coverage-Floors erfüllen und `pnpm complexity-gate` keine neue Überschreitung meldet. Eine unvermeidbare neue Überschreitung nur mit dokumentiertem Refactoring-Ticket gemäß `tooling/quality/complexity-policy.json` und Team-Freigabe zulassen.

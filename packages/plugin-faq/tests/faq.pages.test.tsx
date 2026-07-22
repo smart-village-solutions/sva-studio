@@ -6,6 +6,8 @@ const state = vi.hoisted(() => ({
   createFaqMock: vi.fn(),
   getFaqMock: vi.fn(),
   updateFaqMock: vi.fn(),
+  navigateMock: vi.fn(),
+  params: { id: 'faq-1' } as { id?: string; contentId?: string },
 }));
 
 vi.mock('../src/faq.api.js', () => ({
@@ -27,7 +29,10 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('@tanstack/react-router', () => ({
-  useParams: () => ({ id: 'faq-1' }),
+  useParams: () => state.params,
+  useNavigate: () => state.navigateMock,
+  Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  useSearch: () => ({ page: 1, pageSize: 25 }),
 }));
 
 describe('faq editor pages', () => {
@@ -35,6 +40,8 @@ describe('faq editor pages', () => {
     state.createFaqMock.mockReset();
     state.getFaqMock.mockReset();
     state.updateFaqMock.mockReset();
+    state.navigateMock.mockReset();
+    state.params = { id: 'faq-1' };
   });
 
   it('creates a faq entry with normalized payload fields', async () => {
@@ -56,6 +63,12 @@ describe('faq editor pages', () => {
         contentBlocks: [{ body: 'Eine Antwort' }],
         payload: { languageCode: 'en-US', sortWeight: 7 },
         visible: true,
+      })
+    );
+    await waitFor(() =>
+      expect(state.navigateMock).toHaveBeenCalledWith({
+        to: '/admin/faq/$id',
+        params: { id: 'faq-new' },
       })
     );
   });
@@ -138,5 +151,14 @@ describe('faq editor pages', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'actions.save' }).hasAttribute('disabled')).toBe(false)
     );
+  });
+
+  it('shows a load error when the edit route is missing its content id', async () => {
+    state.params = {};
+    const { FaqEditPage } = await import('../src/faq.pages.js');
+
+    render(<FaqEditPage />);
+
+    await screen.findByText('messages.loadError');
   });
 });

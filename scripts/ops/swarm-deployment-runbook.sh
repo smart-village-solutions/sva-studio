@@ -1,6 +1,8 @@
 #!/bin/bash
 # SVA Studio – Docker Swarm Deployment Runbook
 # Dieses Skript registriert Secrets und deployed den sva-studio Stack auf Planetary Quantum
+# DEPRECATED: Dieser Legacy-Pfad wird nicht weiterentwickelt. Für reguläre
+# Studio-Rollouts den kanonischen lokalen Operator-Pfad aus der Deployment-Doku nutzen.
 
 set -euo pipefail
 
@@ -16,6 +18,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${YELLOW}=== SVA Studio Docker Swarm Setup ===${NC}"
+echo -e "${YELLOW}⚠ DEPRECATED: Legacy-Skript. Nicht für reguläre Studio-Rollouts verwenden.${NC}"
+echo -e "${YELLOW}  Kanonischer Pfad: pnpm env:release:studio:local${NC}"
 
 # Step 1: Secrets validieren
 echo -e "\n${YELLOW}Step 1: Validating secrets...${NC}"
@@ -77,8 +81,4 @@ echo "ssh node-005.sva 'rm -rf \"\$REMOTE_TMP\"'  # Clean up after secret regist
 echo ""
 echo -e "${YELLOW}Step 4: After secrets are registered, deploy stack:${NC}"
 echo "cd $REPO_ROOT"
-echo "quantum-cli stacks update --endpoint $ENDPOINT --stack $STACK_NAME --wait --project ."
-
-echo ""
-echo -e "${YELLOW}Or run this entire setup automatically (if you have SSH/SCP configured):${NC}"
-echo "bash $REPO_ROOT/scripts/ops/deploy-sva-studio.sh"
+echo "pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=app-only --rollback-hint=\"Initialer Rollout\""

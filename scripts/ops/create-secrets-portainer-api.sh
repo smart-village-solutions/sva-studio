@@ -2,6 +2,8 @@
 # SVA Studio – Docker Secrets via Portainer API
 # Erstellt alle erforderlichen Secrets auf dem sva-Endpoint (ID 64) über die Portainer REST API
 # Keine SSH erforderlich!
+# DEPRECATED: Dieser Legacy-Pfad wird nicht weiterentwickelt. Für reguläre
+# Studio-Rollouts den kanonischen lokalen Operator-Pfad aus der Deployment-Doku nutzen.
 
 set -euo pipefail
 
@@ -19,6 +21,8 @@ NC='\033[0m'
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║  SVA Studio – Create Secrets via Portainer API             ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+echo -e "${YELLOW}⚠ DEPRECATED: Legacy-Skript. Nicht für reguläre Studio-Rollouts verwenden.${NC}"
+echo -e "${YELLOW}  Kanonischer Pfad: pnpm env:release:studio:local${NC}"
 
 # Step 1: Portainer Token prüfen/erzeugen
 echo -e "\n${YELLOW}Step 1: Portainer Authentication${NC}"
@@ -129,5 +133,4 @@ echo -e "${GREEN}✓ Found $secrets_list sva_studio secrets in Portainer${NC}"
 echo -e "\n${GREEN}=== SUCCESS ===${NC}"
 echo -e "All secrets created! You can now deploy the stack:\n"
 echo -e "  cd $(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-echo -e "  export QUANTUM_API_KEY=ptr_..."
-echo -e "  quantum-cli stacks update --endpoint sva --stack sva-studio --wait --project .\n"
+echo -e "  pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=app-only --rollback-hint=\"Initialer Rollout\"\n"

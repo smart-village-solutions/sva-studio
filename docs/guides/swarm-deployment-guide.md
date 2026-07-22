@@ -86,7 +86,10 @@ Alle Secrets sind in `~/sva-secrets/` vorhanden:
 
 ### Secrets hochladen & registrieren
 
-#### **Option 1: Portainer REST API (empfohlen – kein SSH erforderlich)** ⭐
+#### **Option 1: Portainer REST API (Legacy, deprecated)**
+
+> [!WARNING]
+> Das Skript `scripts/ops/create-secrets-portainer-api.sh` ist deprecated und darf nicht für reguläre Studio-Rollouts verwendet werden. Der kanonische Rollout läuft über `pnpm env:release:studio:local`.
 
 Scenario: Kein SSH-Zugang zu node-005.sva, aber Zugang zur Portainer Web-UI unter https://console.planetary-quantum.com/#!/64/docker/swarm
 
@@ -188,7 +191,7 @@ EOF
 Für das aktuelle Demo-Profil sind Docker-Secrets nicht erforderlich.
 
 Das alternative Referenzprofil `swarm-secrets` benötigt Secrets über eines der folgenden Verfahren:
-- **Portainer REST API** (empfohlen – `scripts/ops/create-secrets-portainer-api.sh`)
+- **Portainer REST API** (Legacy, deprecated – `scripts/ops/create-secrets-portainer-api.sh`)
 - **Docker CLI** (SSH zu node-005.sva erforderlich)
 - **Portainer Web-UI** (manuell, unter https://console.planetary-quantum.com/#!/64/docker/swarm)
 

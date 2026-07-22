@@ -58,7 +58,11 @@ export const completeRun = async (
       ? 'succeeded'
       : 'failed';
 
-  if (finalRunStatus === 'succeeded' && input.loaded.instance.realmMode === 'new') {
+  if (
+    finalRunStatus === 'succeeded' &&
+    input.intent !== 'reset_tenant_admin' &&
+    input.loaded.instance.realmMode === 'new'
+  ) {
     await deps.repository.setInstanceRealmMode({
       instanceId: input.loaded.instance.instanceId,
       realmMode: 'existing',

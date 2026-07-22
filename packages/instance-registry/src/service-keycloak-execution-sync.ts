@@ -50,7 +50,11 @@ const encryptTenantAdminClientSecret = (
 const hasRequiredProvisionedSecrets = (
   state: Awaited<ReturnType<NonNullable<InstanceRegistryServiceDeps['readKeycloakStateViaProvisioner']>>>,
   tenantAdminClientConfigured: boolean
-): boolean => Boolean(state.keycloakClientSecret) && (!tenantAdminClientConfigured || Boolean(state.tenantAdminClientSecret));
+): boolean => {
+  const authClientSecretPresent = Boolean(state.keycloakClientSecret?.trim());
+  const tenantAdminClientSecretPresent = Boolean(state.tenantAdminClientSecret?.trim());
+  return authClientSecretPresent && (!tenantAdminClientConfigured || tenantAdminClientSecretPresent);
+};
 
 const readProvisionedSecrets = async (
   deps: InstanceRegistryServiceDeps,
@@ -61,13 +65,14 @@ const readProvisionedSecrets = async (
     throw new Error('dependency_missing_readKeycloakStateViaProvisioner');
   }
 
-  let state = await deps.readKeycloakStateViaProvisioner(buildProvisioningInput(input));
+  const provisioningInput = buildProvisioningInput(input);
+  let state = await deps.readKeycloakStateViaProvisioner(provisioningInput);
   for (const delayMs of provisionedSecretReadDelaysMs) {
     if (hasRequiredProvisionedSecrets(state, tenantAdminClientConfigured)) {
       return state;
     }
     await waitForProvisionedSecretRead(deps, delayMs);
-    state = await deps.readKeycloakStateViaProvisioner(buildProvisioningInput(input));
+    state = await deps.readKeycloakStateViaProvisioner(provisioningInput);
   }
   return state;
 };
@@ -96,7 +101,7 @@ const assertProvisionedSecretsAvailable = (
   if (realmMode !== 'new') {
     return;
   }
-  if (provisionedSecret && (!tenantAdminClientConfigured || provisionedTenantAdminSecret)) {
+  if (provisionedSecret?.trim() && (!tenantAdminClientConfigured || provisionedTenantAdminSecret?.trim())) {
     return;
   }
   throw new Error('tenant_client_secrets_missing_after_provisioning');

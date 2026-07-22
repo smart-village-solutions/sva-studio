@@ -32,7 +32,7 @@ Vor einer Mutation validiert der Workflow, dass `change_base` und `change_head` 
 
 ### Isolierte One-shot-Jobs
 
-Migration und Bootstrap starten jeweils mit einem eindeutigen Namen aus Run-ID und Attempt. Sie verwenden ausschließlich das externe interne Overlay-Netzwerk des Zielstacks und dessen Datenbank-Hostname. Ihre gerenderten Compose-Dokumente enthalten keinen `app`-, `postgres`- oder `redis`-Service. Der Executor verfolgt Tasks bis zu einem eindeutigen Terminalzustand, sammelt Task-ID, Exit-Code und redigierten Log-Tail und entfernt die temporären Ressourcen im `finally`-Pfad.
+Migration und Bootstrap starten jeweils mit einem eindeutigen Namen aus Run-ID und Attempt. Sie verwenden ausschließlich das vorhandene interne Overlay-Netzwerk des Zielstacks und dessen Datenbank-Hostname. Ihre gerenderten Compose-Dokumente enthalten keinen `app`-, `postgres`- oder `redis`-Service. Der Executor verfolgt Tasks bis zu einem eindeutigen Terminalzustand, sammelt Task-ID, Exit-Code und redigierten Log-Tail und entfernt die temporären Ressourcen im `finally`-Pfad.
 
 ### Kontrollfluss und Fehlerverhalten
 

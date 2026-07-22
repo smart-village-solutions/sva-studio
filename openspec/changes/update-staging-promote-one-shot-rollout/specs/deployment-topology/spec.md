@@ -1,26 +1,40 @@
 ## MODIFIED Requirements
 
-### Requirement: Studio-Release wird in Vorbereitung und lokalen Final-Deploy getrennt
-
-Das System SHALL für `studio` zwischen Artefaktverifikation, kanonischem Staging-Rollout und lokalen Diagnose-/Recovery-Operationen unterscheiden.
-
-#### Scenario: GitHub Actions rollt Staging kanonisch aus
-
-- **WHEN** ein freigegebener `Promote`-Lauf ein verifiziertes Studio-Image nach `staging` ausrollt
-- **THEN** validiert der Workflow Environment, konkreten Git-Änderungsbereich, ausgecheckten Executor-Code und unveränderliches Ziel-Digest vor jeder Mutation
-- **AND** führt er bei angeforderten `run`-Modi Migration, optional Bootstrap und deren Postconditions vor dem App-Deploy aus
-- **AND** verifiziert er anschließend Servicezustand, Ziel-Digest sowie interne und externe Staging-Smokes
-- **AND** gilt GitHub Actions für diesen Staging-Pfad als kanonischer mutierender Deploymentkanal
-
-#### Scenario: Lokaler Operatorpfad bleibt Diagnose und Recovery
-
-- **WHEN** ein Operator für `studio` Status, Doctor, Precheck, Diagnose oder Recovery benötigt
-- **THEN** stehen die dokumentierten lokalen Operator-Einstiege weiterhin zur Verfügung
-- **AND** gelten sie nicht als konkurrierender Standardpfad für einen normalen Staging-Rollout
-
 ### Requirement: Minimaler Betriebsvertrag für stateful Swarm-Services
 
 Das System SHALL stateful Services, Secrets, Configs, Migrationen, Bootstrap und Rollback im Swarm-Referenzprofil so betreiben und dokumentieren, dass temporäre Jobs vom Live-Stack isoliert, nachvollziehbar und sicher bereinigt bleiben.
+
+#### Scenario: Klassifizierung von Secrets und Configs
+
+- **WHEN** ein Team die Runtime-Konfiguration des Swarm-Stacks dokumentiert
+- **THEN** trennt die Dokumentation sensitive Secrets von nicht sensitiven Configs
+- **AND** hält fest, dass sensitive Werte nicht in allgemeinen Stack-Variablen oder Stack-Dateien abgelegt werden
+- **AND** stellt eine verbindliche Klassifizierungstabelle bereit, die jede Runtime-Variable als Secret oder Config einordnet
+
+#### Scenario: Persistenz und Placement für stateful Services
+
+- **WHEN** das Zielbild für Postgres und Redis beschrieben wird
+- **THEN** benennt die Dokumentation persistente Volumes und Placement-Annahmen für stateful Services
+- **AND** beschreibt einen Restore-Pfad für diese Services
+
+#### Scenario: Kompatibles Rollback-Fenster
+
+- **WHEN** ein Team Rollout und Rollback des Swarm-Stacks dokumentiert
+- **THEN** beschreibt die Dokumentation ein kompatibles Rollback-Fenster für App- und Schema-Änderungen
+- **AND** grenzt destruktive oder nicht rückwärtskompatible Migrationen aus diesem Change aus
+
+#### Scenario: Temp-Job-Stack verändert den Live-Stack nicht
+
+- **WHEN** `migrate` oder `bootstrap` für `studio` in einem temporären Job-Stack ausgeführt werden
+- **THEN** enthält der temporäre Stack keinen `app`-Service
+- **AND** reconciled der Job-Lauf nicht den Live-Stack mit `app`, `postgres` oder `redis`
+- **AND** nutzt der Job-Stack nur das vorhandene Overlay-Netz `<stack>_internal`
+
+#### Scenario: Recovery-Pfad für Netzwerk- oder Ingress-Drift ist dokumentiert
+
+- **WHEN** ein Live-Rollout zu einem Zustand `app 1/1`, aber externem `502` oder fehlendem Ingress-Netz führt
+- **THEN** beschreibt die Betriebsdokumentation einen kanonischen Recovery-Pfad aus Diagnose, gezieltem App-Reconcile und nachgelagerter Verifikation
+- **AND** behandelt sie direkte Portainer-API-Eingriffe nur als Incident-Recovery und nicht als Standardpfad
 
 #### Scenario: Staging-One-shot-Jobs sind isoliert und nachweisbar
 
@@ -55,6 +69,24 @@ Das System SHALL mutierende Remote-Operationen in einem deterministischen, umgeb
 - **AND** nennt die Evidenz den separaten Folgebedarf für Staging-Parität, Production-Freigabe, Backup-/Restore-Readiness und production-spezifische Postconditions
 
 ## ADDED Requirements
+
+### Requirement: Studio-Release wird in Vorbereitung und lokalen Final-Deploy getrennt
+
+Das System SHALL für `studio` zwischen Artefaktverifikation, kanonischem Staging-Rollout und lokalen Diagnose-/Recovery-Operationen unterscheiden.
+
+#### Scenario: GitHub Actions rollt Staging kanonisch aus
+
+- **WHEN** ein freigegebener `Promote`-Lauf ein verifiziertes Studio-Image nach `staging` ausrollt
+- **THEN** validiert der Workflow Environment, konkreten Git-Änderungsbereich, ausgecheckten Executor-Code und unveränderliches Ziel-Digest vor jeder Mutation
+- **AND** führt er bei angeforderten `run`-Modi Migration, optional Bootstrap und deren Postconditions vor dem App-Deploy aus
+- **AND** verifiziert er anschließend Servicezustand, Ziel-Digest sowie interne und externe Staging-Smokes
+- **AND** gilt GitHub Actions für diesen Staging-Pfad als kanonischer mutierender Deploymentkanal
+
+#### Scenario: Lokaler Operatorpfad bleibt Diagnose und Recovery
+
+- **WHEN** ein Operator für `studio` Status, Doctor, Precheck, Diagnose oder Recovery benötigt
+- **THEN** stehen die dokumentierten lokalen Operator-Einstiege weiterhin zur Verfügung
+- **AND** gelten sie nicht als konkurrierender Standardpfad für einen normalen Staging-Rollout
 
 ### Requirement: Promote liefert redigierte Rollout-Evidenz
 

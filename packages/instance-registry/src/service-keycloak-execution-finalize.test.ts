@@ -200,6 +200,7 @@ describe('service-keycloak-execution-finalize', () => {
       tenantAdminExists: true,
     };
     const repository = {
+      setInstanceRealmMode: vi.fn().mockResolvedValue(undefined),
       setInstanceStatus: vi.fn().mockResolvedValue(undefined),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
     };
@@ -244,6 +245,7 @@ describe('service-keycloak-execution-finalize', () => {
           instance: {
             instanceId: 'instance-3',
             status: 'draft',
+            realmMode: 'new',
           },
         } as never,
         runId: 'run-3',
@@ -261,6 +263,7 @@ describe('service-keycloak-execution-finalize', () => {
       actorId: 'actor-3',
       requestId: 'request-3',
     });
+    expect(repository.setInstanceRealmMode).not.toHaveBeenCalled();
     expect(repository.updateKeycloakProvisioningRun).toHaveBeenCalledWith({
       runId: 'run-3',
       overallStatus: 'succeeded',

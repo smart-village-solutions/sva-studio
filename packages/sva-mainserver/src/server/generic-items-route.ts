@@ -6,9 +6,7 @@ import {
 } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
-import type {
-  SvaMainserverGenericItemInput,
-} from '../types.js';
+import type { SvaMainserverGenericItemInput } from '../types.js';
 import {
   errorJson,
   isResponse,
@@ -128,6 +126,10 @@ const validateFaqItemOrResponse = (genericItem: SvaMainserverGenericItemInput): 
     : null;
 };
 
+const validateFaqWriteOrResponse = async (request: Request): Promise<SvaMainserverGenericItemInput | Response> => {
+  const genericItem = await parseGenericItemOrResponse(request);
+  return isResponse(genericItem) ? genericItem : validateFaqItemOrResponse(genericItem) ?? genericItem;
+};
 
 const handleListRequest = async (
   request: Request,
@@ -194,16 +196,10 @@ const handleCreateRequest = async (
     return actor;
   }
 
-  const genericItem = await parseGenericItemOrResponse(request);
-  if (isResponse(genericItem)) {
-    return genericItem;
-  }
-  if (contentKind === 'faq') {
-    const faqValidationError = validateFaqItemOrResponse(genericItem);
-    if (faqValidationError) {
-      return faqValidationError;
-    }
-  }
+  const genericItem = contentKind === 'faq'
+    ? await validateFaqWriteOrResponse(request)
+    : await parseGenericItemOrResponse(request);
+  if (isResponse(genericItem)) return genericItem;
 
   const data = await createSvaMainserverGenericItem({ ...actor, genericItem: contentKind === 'faq' ? { ...genericItem, genericType: 'FAQ' } : genericItem });
   logSuccess('mainserver_generic-items_create', data.id);
@@ -227,16 +223,10 @@ const handleUpdateRequest = async (
   if (existingItem && existingItem.genericType !== 'FAQ') {
     return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
   }
-  const genericItem = await parseGenericItemOrResponse(request);
-  if (isResponse(genericItem)) {
-    return genericItem;
-  }
-  if (contentKind === 'faq') {
-    const faqValidationError = validateFaqItemOrResponse(genericItem);
-    if (faqValidationError) {
-      return faqValidationError;
-    }
-  }
+  const genericItem = contentKind === 'faq'
+    ? await validateFaqWriteOrResponse(request)
+    : await parseGenericItemOrResponse(request);
+  if (isResponse(genericItem)) return genericItem;
 
   const data = await updateSvaMainserverGenericItem({ ...actor, genericItemId: itemId, genericItem: contentKind === 'faq' ? { ...genericItem, genericType: 'FAQ' } : genericItem });
   logSuccess('mainserver_generic-items_update', itemId);

@@ -28,6 +28,11 @@ const defaultValues: FaqFormValues = {
   visible: true,
 };
 
+const resolveSaveErrorMessage = (error: unknown, pt: ReturnType<typeof usePluginTranslation>): string =>
+  error instanceof FaqApiError && error.message.trim().length > 0
+    ? pt('messages.saveErrorWithReason', { reason: error.message })
+    : pt('messages.saveError');
+
 const FaqEditorForm = ({ form, onSubmit, pt }: Readonly<{ form: ReturnType<typeof useForm<FaqFormValues>>; onSubmit: (values: FaqFormValues) => void; pt: ReturnType<typeof usePluginTranslation> }>) => (
   <form className="space-y-4" noValidate onSubmit={form.handleSubmit(onSubmit)}>
     <label className="grid gap-1 text-sm font-medium" htmlFor="faq-question">{pt('fields.question')}<input id="faq-question" className="rounded-md border px-3 py-2" {...form.register('question')} />{form.formState.errors.question ? <span className="text-destructive">{pt('validation.required')}</span> : null}</label>
@@ -70,11 +75,7 @@ const FaqEditorPage = ({ mode, contentId }: Readonly<{ readonly mode: 'create' |
     try {
       await request;
     } catch (error) {
-      if (error instanceof FaqApiError && error.message.trim().length > 0) {
-        setSaveErrorMessage(pt('messages.saveErrorWithReason', { reason: error.message }));
-        return;
-      }
-      setSaveErrorMessage(pt('messages.saveError'));
+      setSaveErrorMessage(resolveSaveErrorMessage(error, pt));
     }
   };
 

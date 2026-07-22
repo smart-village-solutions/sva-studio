@@ -1255,9 +1255,6 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     if (!input.rotateClientSecret) {
       return;
     }
-    if (!input.clientSecret) {
-      return;
-    }
     const resolvedClient = existing ?? (await this.getOidcClientByClientId(input.clientId));
     if (!resolvedClient) {
       throw new KeycloakAdminRequestError({
@@ -1279,7 +1276,10 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         method: 'POST',
         path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(resolvedClient.id)}/client-secret`,
         operation: 'rotate_client_secret',
-        body: JSON.stringify({ type: 'secret', value: input.clientSecret }),
+        body: JSON.stringify({
+          type: 'secret',
+          ...(input.clientSecret !== undefined ? { value: input.clientSecret } : {}),
+        }),
       });
       logKeycloakWriteSuccess(logEvent, { operation: 'rotate_client_secret', realm: this.realm, client_id: input.clientId });
     } catch (error) {

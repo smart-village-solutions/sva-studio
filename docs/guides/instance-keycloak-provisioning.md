@@ -242,6 +242,7 @@ Optional und weiter diagnostizierbar:
 - Bei `existing` schreibt Provisioning den gespeicherten Secret-Wert nach Keycloak oder gleicht ihn dagegen ab.
 - Bei `new` liest Provisioning das neu erzeugte Secret aus Keycloak zurück und speichert es anschließend verschlüsselt in der Registry.
 - Secret-Rotation ist eine bewusste Aktion mit eigenem Intent und kein Nebeneffekt eines normalen Speichervorgangs.
+- Fehlt bei `existing` ausschließlich der verschlüsselte Registry-Wert, erzeugt nur der explizite Intent `Client-Secret rotieren` einen neuen Keycloak-Secret-Wert und schreibt ihn anschließend verschlüsselt zurück. Ein normaler Abgleich erzeugt oder löscht kein Secret.
 
 ## Fehler- und Retry-Verhalten
 

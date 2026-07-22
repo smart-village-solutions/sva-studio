@@ -32,6 +32,11 @@ const hasUnsupportedFaqScalarFields = (genericItem: SvaMainserverGenericItemInpu
 const readFaqPayloadRecord = (payload: unknown): Record<string, unknown> =>
   payload && typeof payload === 'object' && !Array.isArray(payload) ? (payload as Record<string, unknown>) : {};
 
+export const mergeFaqPayload = (existingPayload: unknown, nextPayload: unknown): Record<string, unknown> => ({
+  ...readFaqPayloadRecord(existingPayload),
+  ...readFaqPayloadRecord(nextPayload),
+});
+
 const validateFaqAnswer = (genericItem: SvaMainserverGenericItemInput): Response | null => {
   const contentBlocks = genericItem.contentBlocks ?? [];
   const answerBody = contentBlocks[0]?.body?.trim() ?? '';

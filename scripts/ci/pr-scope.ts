@@ -74,7 +74,7 @@ const pluginUiA11yRelevantPatterns = [
 const pluginUiE2eRelevantPatterns = [
   /^packages\/plugin-news\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
   /^packages\/plugin-events\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
-  /^packages\/plugin-faq\/src\/(?!index\.ts$).*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-faq\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
   /^packages\/plugin-poi\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
   /^packages\/plugin-waste-management\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
 ];

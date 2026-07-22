@@ -37,7 +37,9 @@ describe('pluginFaq contract', () => {
     ]);
     expect(pluginFaqTranslations.de.faq.fields.languageCode).toBe('Sprachcode');
     expect(pluginFaqTranslations.de.faq.fields.actions).toBe('Aktionen');
+    expect(pluginFaqTranslations.de.faq.validation.sortWeight).toBeTruthy();
     expect(pluginFaqTranslations.en.faq.messages.saveError).toBe('Could not save FAQ.');
     expect(pluginFaqTranslations.en.faq.fields.actions).toBe('Actions');
+    expect(pluginFaqTranslations.en.faq.validation.sortWeight).toBeTruthy();
   });
 });

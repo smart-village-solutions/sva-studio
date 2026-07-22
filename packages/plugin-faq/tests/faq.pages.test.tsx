@@ -161,4 +161,18 @@ describe('faq editor pages', () => {
 
     await screen.findByText('messages.loadError');
   });
+
+  it('shows a validation error when sort weight is not an integer', async () => {
+    const { FaqCreatePage } = await import('../src/faq.pages.js');
+
+    render(<FaqCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('fields.question'), { target: { value: 'Neue Frage' } });
+    fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Eine Antwort' } });
+    fireEvent.change(screen.getByLabelText('fields.sortWeight'), { target: { value: '1.5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+
+    await screen.findByText('validation.sortWeight');
+    expect(state.createFaqMock).not.toHaveBeenCalled();
+  });
 });

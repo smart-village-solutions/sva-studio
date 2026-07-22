@@ -364,6 +364,45 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     );
   });
 
+  it('merges existing faq payload fields during updates and logs faq content type', async () => {
+    mockAuthorizedMutation();
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'faq-1',
+      genericType: 'FAQ',
+      payload: { languageCode: 'de', sortWeight: 2, legacy: 'keep' },
+    });
+    state.updateSvaMainserverGenericItem.mockResolvedValue({ id: 'faq-1' });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs/faq-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'FAQ',
+          contentBlocks: [{ body: 'Antwort' }],
+          payload: { languageCode: 'fr', sortWeight: 3 },
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        genericItemId: 'faq-1',
+        genericItem: expect.objectContaining({
+          genericType: 'FAQ',
+          payload: { languageCode: 'fr', sortWeight: 3, legacy: 'keep' },
+        }),
+      })
+    );
+    expect(state.loggerInfo).toHaveBeenCalledWith(
+      'Mainserver generic items route succeeded',
+      expect.objectContaining({
+        content_type: 'faq.faq',
+      })
+    );
+  });
+
   it('reads generic item details after item authorization', async () => {
     mockAuthorizedMutation();
     state.getSvaMainserverGenericItem.mockResolvedValue({ id: 'generic-1' });

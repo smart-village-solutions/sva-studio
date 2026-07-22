@@ -15,7 +15,7 @@ import {
   type RouteMatch as SharedRouteMatch,
 } from './content-route-core.js';
 import { SvaMainserverError } from './errors.js';
-import { validateFaqWriteOrResponse } from './generic-items-route-faq.js';
+import { mergeFaqPayload, validateFaqWriteOrResponse } from './generic-items-route-faq.js';
 import { parseGenericItemInput } from './generic-items-route-input.js';
 import { listFaqItems } from './faq-listing.js';
 import { parseMainserverListQuery } from './list-pagination.js';
@@ -148,7 +148,7 @@ const handleListRequest = async (
       duration_ms: Date.now() - startedAt,
     });
   }
-  logSuccess('mainserver_generic-items_list');
+  logSuccess(contentKind === 'faq' ? 'mainserver_faq_list' : 'mainserver_generic-items_list');
   return json(data);
 };
 
@@ -215,7 +215,18 @@ const handleUpdateRequest = async (
     : await parseGenericItemOrResponse(request);
   if (isResponse(genericItem)) return genericItem;
 
-  const data = await updateSvaMainserverGenericItem({ ...actor, genericItemId: itemId, genericItem: contentKind === 'faq' ? { ...genericItem, genericType: 'FAQ' } : genericItem });
+  const data = await updateSvaMainserverGenericItem({
+    ...actor,
+    genericItemId: itemId,
+    genericItem:
+      contentKind === 'faq'
+        ? {
+            ...genericItem,
+            genericType: 'FAQ',
+            payload: mergeFaqPayload(existingItem?.payload, genericItem.payload),
+          }
+        : genericItem,
+  });
   logSuccess('mainserver_generic-items_update', itemId);
   return json({ data });
 };
@@ -244,6 +255,7 @@ const handleDeleteRequest = async (
 
 const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: AuthenticatedRequestContext) => {
   const workspaceContext = getWorkspaceContext();
+  const routeContentType = contentTypeFor(route.contentKind);
   const logSuccess = (operation: string, contentId?: string) => {
     logger.info('Mainserver generic items route succeeded', {
       operation,
@@ -251,7 +263,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       trace_id: workspaceContext.traceId,
       actor_id: ctx.user.id,
       instance_id: ctx.user.instanceId,
-      content_type: GENERIC_ITEMS_CONTENT_TYPE,
+      content_type: routeContentType,
       content_id: contentId,
       method: request.method,
     });
@@ -286,7 +298,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       trace_id: workspaceContext.traceId,
       actor_id: ctx.user.id,
       instance_id: ctx.user.instanceId,
-      content_type: GENERIC_ITEMS_CONTENT_TYPE,
+      content_type: routeContentType,
       content_id: route.kind === 'item' ? route.itemId : undefined,
       method: request.method,
       error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',

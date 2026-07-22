@@ -235,6 +235,41 @@ describe('service-keycloak-execution', () => {
     expect(state.completeRun).toHaveBeenCalled();
   });
 
+  it('recovers a missing tenant secret even when the derived plan remains blocked', async () => {
+    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
+    const repository = {
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
+    };
+    state.loadInstanceWithSecret.mockResolvedValue({ ...createLoaded(), authClientSecret: undefined });
+
+    await expect(
+      processClaimedKeycloakProvisioningRun(
+        {
+          repository: repository as never,
+          provisionInstanceAuth,
+          getKeycloakStatus: vi.fn(),
+          getKeycloakPreflight: vi.fn().mockResolvedValue({
+            overallStatus: 'blocked',
+            checks: [{ checkKey: 'tenant_secret', status: 'blocked' }],
+          }),
+          planKeycloakProvisioning: vi.fn().mockResolvedValue({
+            overallStatus: 'blocked',
+            driftSummary: 'blocked',
+            steps: [
+              { stepKey: 'realm', status: 'blocked' },
+              { stepKey: 'secret', status: 'blocked' },
+            ],
+          }),
+        } as never,
+        createRun({ intent: 'rotate_client_secret', mode: 'existing' })
+      )
+    ).resolves.toEqual({ id: 'run-1', overallStatus: 'succeeded' });
+
+    expect(provisionInstanceAuth).toHaveBeenCalledWith(expect.objectContaining({ rotateClientSecret: true }));
+    expect(state.syncRotatedClientSecretToRegistry).toHaveBeenCalled();
+  });
+
   it('limits reset_tenant_admin runs to tenant-admin user reconciliation', async () => {
     const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
     const repository = {

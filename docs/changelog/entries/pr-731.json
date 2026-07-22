@@ -1,0 +1,4 @@
+{
+  "prNumber": 731,
+  "body": "Die Rotation eines fehlenden Tenant-Client-Secrets führt den gezielten Recovery-Lauf nun auch aus, wenn der abgeleitete Provisioning-Plan den ursprünglichen Preflight-Blocker weiterführt."
+}

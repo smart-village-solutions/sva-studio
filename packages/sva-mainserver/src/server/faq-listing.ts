@@ -33,7 +33,7 @@ export const listFaqItems = async (
   while (hasNextPage) {
     if (page > MAX_FAQ_UPSTREAM_PAGES) {
       throw new SvaMainserverError({
-        code: 'internal_error',
+        code: 'invalid_response',
         message: 'FAQ-Auflistung überschreitet das erlaubte Upstream-Seitenlimit.',
         statusCode: 502,
       });

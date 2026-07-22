@@ -122,7 +122,7 @@ const parseGenericItemOrResponse = async (request: Request): Promise<SvaMainserv
 const faqAnswerHtmlPattern = /<\/?[a-z][^>]*>/i;
 
 const validateFaqItemOrResponse = (genericItem: SvaMainserverGenericItemInput): Response | null => {
-  const answerBody = genericItem.contentBlocks[0]?.body ?? '';
+  const answerBody = genericItem.contentBlocks?.[0]?.body ?? '';
   return faqAnswerHtmlPattern.test(answerBody)
     ? errorJson(400, 'invalid_request', 'HTML in der FAQ-Antwort ist nicht erlaubt.')
     : null;

@@ -1278,7 +1278,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         operation: 'rotate_client_secret',
         body: JSON.stringify({
           type: 'secret',
-          ...(input.clientSecret ? { value: input.clientSecret } : {}),
+          ...(input.clientSecret !== undefined ? { value: input.clientSecret } : {}),
         }),
       });
       logKeycloakWriteSuccess(logEvent, { operation: 'rotate_client_secret', realm: this.realm, client_id: input.clientId });

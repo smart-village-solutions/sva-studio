@@ -555,12 +555,23 @@ describe('Keycloak admin client', () => {
     expect(String(rotateCall?.[0])).toContain('/clients/client-1/client-secret');
   });
 
-  it('generates a Keycloak secret during explicit recovery rotation without a registry secret', async () => {
+  it('sends an explicit recovery rotation request without a secret value when the registry secret is missing', async () => {
+    const existingClient = {
+      id: 'client-1',
+      clientId: 'web-app',
+      rootUrl: 'https://tenant.example',
+      redirectUris: ['https://tenant.example/callback'],
+      webOrigins: ['https://tenant.example'],
+      attributes: { 'post.logout.redirect.uris': 'https://tenant.example/logout' },
+      standardFlowEnabled: true,
+      publicClient: false,
+      directAccessGrantsEnabled: false,
+    };
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
-      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'client-1', clientId: 'web-app' }]))
-      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'client-1', clientId: 'web-app' }]))
+      .mockResolvedValueOnce(createJsonResponse(200, [existingClient]))
+      .mockResolvedValueOnce(createJsonResponse(200, [existingClient]))
       .mockResolvedValueOnce(createJsonResponse(200, { value: 'old-secret' }))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
     const client = await createClient(fetchImpl);

@@ -214,11 +214,12 @@ jobs:
           set -euo pipefail
           umask 077
           job_stack="studio-dev-bootstrap-${GITHUB_RUN_ID}"
-          trap 'quantum-cli stacks remove --force --endpoint "${QUANTUM_ENDPOINT}" --stack "${job_stack}" || true; rm -f .env stack.json bootstrap-stack.json' EXIT
+          trap 'quantum-cli stacks remove --force --endpoint "${QUANTUM_ENDPOINT}" --stack "${job_stack}" || true; rm -f .env stack.json quantum-stack.json bootstrap-stack.json' EXIT
           pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
           printf '\nIMAGE_REF=%s\nSVA_DEPLOY_REVISION=%s\n' "${DEPLOY_IMAGE_REF}" "${DEPLOY_REVISION}" >> .env
           docker compose -f compose.yaml -f ./deploy/compose.dev.yaml config --format json > stack.json
-          jq --arg host 'studio-dev_postgres' --arg job "${job_stack}" '{version:"3.8",services:{bootstrap:(.services.bootstrap | .networks=["internal"] | .environment.POSTGRES_HOST=$host | .environment.SVA_BOOTSTRAP_JOB_STACK=$job | .environment.SVA_BOOTSTRAP_TARGET_STACK="studio-dev" | .deploy.replicas=1 | .deploy.restart_policy.condition="none")},networks:{internal:{external:true,name:"studio-dev_default"}}}' stack.json > bootstrap-stack.json
+          pnpm exec tsx scripts/ci/render-quantum-stack.ts --input stack.json --output quantum-stack.json
+          jq --arg host 'studio-dev_postgres' --arg job "${job_stack}" '{version:"3.8",services:{bootstrap:(.services.bootstrap | .networks=["internal"] | .environment.POSTGRES_HOST=$host | .environment.SVA_BOOTSTRAP_JOB_STACK=$job | .environment.SVA_BOOTSTRAP_TARGET_STACK="studio-dev" | .deploy.replicas=1 | .deploy.restart_policy.condition="none")},networks:{internal:{external:true,name:"studio-dev_default"}}}' quantum-stack.json > bootstrap-stack.json
           quantum-cli stacks deploy --endpoint "${QUANTUM_ENDPOINT}" --stack "${job_stack}" --file bootstrap-stack.json
 
           for attempt in $(seq 1 60); do

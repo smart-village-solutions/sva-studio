@@ -1,3 +1,4 @@
+import { createMainserverCrudClient } from '@sva/plugin-sdk';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const listMock = vi.fn();
@@ -53,7 +54,6 @@ describe('faq api wrapper', () => {
   });
 
   it('creates stable faq api errors through the configured error factory', async () => {
-    const { createMainserverCrudClient } = await import('@sva/plugin-sdk');
     await import('../src/faq.api.js');
 
     const factory = vi.mocked(createMainserverCrudClient).mock.calls[0]?.[0].errorFactory;

@@ -555,6 +555,32 @@ describe('Keycloak admin client', () => {
     expect(String(rotateCall?.[0])).toContain('/clients/client-1/client-secret');
   });
 
+  it('generates a Keycloak secret during explicit recovery rotation without a registry secret', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'client-1', clientId: 'web-app' }]))
+      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'client-1', clientId: 'web-app' }]))
+      .mockResolvedValueOnce(createJsonResponse(200, { value: 'old-secret' }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl);
+
+    await client.ensureOidcClient({
+      clientId: 'web-app',
+      redirectUris: ['https://tenant.example/callback'],
+      postLogoutRedirectUris: ['https://tenant.example/logout'],
+      webOrigins: ['https://tenant.example'],
+      rootUrl: 'https://tenant.example',
+      rotateClientSecret: true,
+    });
+
+    const rotateCall = fetchImpl.mock.calls.find((call) =>
+      String(call[0]).includes('/clients/client-1/client-secret') && call[1]?.method === 'POST'
+    );
+    expect(rotateCall).toBeDefined();
+    expect(rotateCall?.[1]?.body).toBe(JSON.stringify({ type: 'secret' }));
+  });
+
   it('preserves existing OIDC client access settings when adding missing redirect and origin entries', async () => {
     const fetchImpl = vi
       .fn()

@@ -242,7 +242,7 @@ Kernidee:
 
 - Fachliche Tabellen der externen Waste-Schemata dürfen nicht stillschweigend in den Soll-Snapshot der zentralen Studio-Datenbank aufgenommen werden.
 - Die zentral gespeicherten Tabellen `waste_email_reminder_subscriptions`, `waste_email_reminder_subscription_items` und `waste_email_reminder_outbox` sind über `packages/data/migrations/*.sql` reproduzierbar und deshalb Teil des kanonischen Studio-Snapshots.
-- `waste_location_tour_links`, `waste_location_tour_pickup_dates`, `waste_tour_assignments` und `waste_tour_assignment_locations` gehören dagegen zum externen, instanzbezogenen Waste-Schema und werden über den runtime-nahen Schema-Pfad reproduzierbar erzeugt. Die Zuordnungstabelle `waste_location_tour_links` enthält nur Ort und Tour; ihre Gültigkeit wird ausschließlich aus `waste_tours.first_date` und `waste_tours.end_date` abgeleitet.
+- `waste_location_tour_links`, `waste_location_tour_pickup_dates`, `waste_tour_assignments` und `waste_tour_assignment_locations` gehören dagegen zum externen, instanzbezogenen Waste-Schema und werden über den runtime-nahen Schema-Pfad reproduzierbar erzeugt. Die Zuordnungstabelle `waste_location_tour_links` enthält Ort, Tour und optionale standortbezogene Gültigkeitsfenster `start_date` und `end_date`; diese begrenzen die Terminmaterialisierung zusätzlich zu den Tourdaten.
 
 Für den aktuellen Waste-PDF-Export-Shift ist wichtig:
 

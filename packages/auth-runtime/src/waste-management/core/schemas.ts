@@ -310,6 +310,8 @@ const createWasteLocationTourLinkSchema = z.object({
   id: z.string().trim().min(1),
   locationId: z.string().trim().min(1),
   tourId: z.string().trim().min(1),
+  startDate: wasteTourDateSchema.optional(),
+  endDate: wasteTourDateSchema.optional(),
 });
 
 const updateWasteLocationTourLinkSchema = createWasteLocationTourLinkSchema.omit({ id: true });
@@ -338,6 +340,8 @@ const updateWasteTourAssignmentSchema = createWasteTourAssignmentSchema.omit({ i
 const createWasteLocationTourLinksBulkSchema = z.object({
   locationIds: z.array(z.string().trim().min(1)).min(1).max(100),
   tourId: z.string().trim().min(1),
+  startDate: wasteTourDateSchema.optional(),
+  endDate: wasteTourDateSchema.optional(),
 });
 
 const wasteCustomTourDateSchema = z.object({

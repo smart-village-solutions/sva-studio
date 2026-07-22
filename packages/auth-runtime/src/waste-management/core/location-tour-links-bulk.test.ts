@@ -85,7 +85,7 @@ describe('waste-management bulk location-tour-link handlers', () => {
     });
   });
 
-  it('ignores legacy date fields and updates visible status on success', async () => {
+  it('preserves location-specific date windows and updates visible status on success', async () => {
     const deps = createDeps();
 
     const response =
@@ -103,6 +103,8 @@ describe('waste-management bulk location-tour-link handlers', () => {
     expect(deps.saveWasteLocationTourLinksBulk).toHaveBeenCalledWith('tenant-a', {
       locationIds: ['location-1'],
       tourId: 'tour-1',
+      startDate: '2026-05-01',
+      endDate: undefined,
     });
     expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(deps, 'tenant-a', 'success');
   });

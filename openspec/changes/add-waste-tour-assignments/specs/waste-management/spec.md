@@ -24,3 +24,18 @@ Das System SHALL bestehende ortsbezogene Tourtermine idempotent in das Einsatzmo
 - **WHEN** ein bisheriger Einzeltermin migriert wird
 - **THEN** entsteht ein Einsatz mit derselben Tour, demselben Datum, demselben Hinweis und genau einem Abholort
 - **AND** eine wiederholte Migration erzeugt keinen zweiten Einsatz
+
+#### Scenario: CSV ohne Einsatz-ID erzeugt einen Einzel-Einsatz
+
+- **WHEN** ein gültiger CSV-Import für ortsbezogene Tourtermine keine `Einsatz-ID` enthält
+- **THEN** erzeugt das System pro importiertem Einzeltermin einen Einsatz mit genau einem Abholort
+- **AND** es schreibt keinen neuen Termin ausschließlich in das Legacy-Modell
+
+### Requirement: Standortbezogene Tour-Gültigkeitsfenster bleiben wirksam
+
+Das System SHALL optionale Gültigkeitsfenster einer Standort–Tour-Zuordnung dauerhaft speichern und bei der Terminmaterialisierung anwenden.
+
+#### Scenario: Termin außerhalb des Standortfensters wird nicht materialisiert
+
+- **WHEN** die Zuordnung einer Tour zu einem Abholort ein `start_date` oder `end_date` enthält
+- **THEN** erzeugt das System für diesen Ort außerhalb dieses Zeitfensters keine berechneten Abholtermine

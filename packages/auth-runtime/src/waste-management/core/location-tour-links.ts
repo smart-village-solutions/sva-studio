@@ -9,7 +9,7 @@ import {
 } from './mutation-helpers.js';
 import { wasteManagementTourSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
-import { getRequestId, requireDeps } from './utils.js';
+import { getRequestId, normalizeOptionalString, requireDeps } from './utils.js';
 
 const { createWasteLocationTourLinkSchema, updateWasteLocationTourLinkSchema } =
   wasteManagementTourSchemas;
@@ -19,11 +19,15 @@ const toLocationTourLinkInput = (
   data: {
     locationId: string;
     tourId: string;
+    startDate?: string;
+    endDate?: string;
   }
 ) => ({
   id,
   locationId: data.locationId,
   tourId: data.tourId,
+  startDate: normalizeOptionalString(data.startDate),
+  endDate: normalizeOptionalString(data.endDate),
 });
 
 export const wasteManagementLocationTourLinkHandlers = {

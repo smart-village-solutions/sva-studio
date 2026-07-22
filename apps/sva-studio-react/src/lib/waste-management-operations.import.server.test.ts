@@ -449,7 +449,7 @@ describe('waste-management-operations.import', () => {
     );
   });
 
-  it('persists imported pickup dates with normalized optional notes fail-closed', async () => {
+  it('persists legacy CSV rows as single-location assignments with normalized optional notes', async () => {
     const repository = createRepositoryMock();
 
     await executeImport(repository, {
@@ -471,18 +471,17 @@ describe('waste-management-operations.import', () => {
       },
     });
 
-    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenCalledTimes(3);
-    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenNthCalledWith(
-      1,
+    expect(repository.upsertWasteLocationTourPickupDate).not.toHaveBeenCalled();
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledTimes(3);
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledWith(
       expect.objectContaining({
-        locationId: 'location-perleberg',
+        locationIds: ['location-perleberg'],
         tourId: 'tour-paper',
         pickupDate: '2026-02-03',
         note: 'Schnee-Ersatztermin',
       })
     );
-    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenNthCalledWith(
-      3,
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledWith(
       expect.objectContaining({
         pickupDate: '2026-02-10',
         note: null,
@@ -518,10 +517,11 @@ describe('waste-management-operations.import', () => {
       },
     });
 
-    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenCalledTimes(1);
-    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenCalledWith(
+    expect(repository.upsertWasteLocationTourPickupDate).not.toHaveBeenCalled();
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledTimes(1);
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledWith(
       expect.objectContaining({
-        locationId: 'location-perleberg',
+        locationIds: ['location-perleberg'],
         tourId: 'tour-paper',
         pickupDate: '2026-02-03',
         note: 'Hinweis',

@@ -394,13 +394,12 @@ const persistLocationTourPickupDateImportPlan = async (
   plan: WasteLocationTourPickupDateImportPlan,
   importedPickupDates: readonly ImportedLocationTourPickupDateRecord[]
 ) => {
-  const legacyPickupDates = importedPickupDates.filter((pickupDate) => !pickupDate.assignmentId);
   const assignmentGroups = new Map<string, ImportedLocationTourPickupDateRecord[]>();
   for (const pickupDate of importedPickupDates) {
-    if (!pickupDate.assignmentId) continue;
-    const group = assignmentGroups.get(pickupDate.assignmentId) ?? [];
+    const assignmentId = pickupDate.assignmentId ?? pickupDate.id;
+    const group = assignmentGroups.get(assignmentId) ?? [];
     group.push(pickupDate);
-    assignmentGroups.set(pickupDate.assignmentId, group);
+    assignmentGroups.set(assignmentId, group);
   }
   // Validate every group before the first write so malformed imports cannot be partially persisted.
   const assignments = [...assignmentGroups.entries()].map(([assignmentId, entries]) => {
@@ -490,15 +489,6 @@ const persistLocationTourPickupDateImportPlan = async (
       id: assignment.id,
       locationId: assignment.locationId,
       tourId: assignment.tourId,
-    });
-  });
-  await persistStage(legacyPickupDates, async (pickupDate) => {
-    await repository.upsertWasteLocationTourPickupDate({
-      id: pickupDate.id,
-      locationId: pickupDate.locationId,
-      tourId: pickupDate.tourId,
-      pickupDate: pickupDate.pickupDate,
-      note: pickupDate.note,
     });
   });
   await persistStage(assignments, async (assignment) => {

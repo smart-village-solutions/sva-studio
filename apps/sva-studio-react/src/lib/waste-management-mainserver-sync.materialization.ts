@@ -252,7 +252,7 @@ const materializeLinkedPickupDates = (input: {
       note: null,
     })),
     ...(input.importedByLocationTourKey.get(locationTourKey) ?? []),
-  ].filter((entry) => isDateInRange(entry.pickupDate, tour.firstDate, tour.endDate));
+  ].filter((entry) => isDateInRange(entry.pickupDate, link.startDate, link.endDate));
   dates = [
     ...dates
       .reduce((deduplicated, entry) => {
@@ -268,7 +268,7 @@ const materializeLinkedPickupDates = (input: {
   for (const rule of input.rules) {
     if (!isRuleApplicableToTour(rule, link.tourId)) continue;
     dates = applySingleRule(dates, rule).filter((entry) =>
-      isDateInRange(entry.pickupDate, tour.firstDate, tour.endDate)
+      isDateInRange(entry.pickupDate, link.startDate, link.endDate)
     );
     if (dates.length === 0) break;
   }

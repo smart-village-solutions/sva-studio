@@ -11,7 +11,7 @@ import {
 import React from 'react';
 import { useForm } from 'react-hook-form';
 
-import { createFaq, getFaq, updateFaq } from './faq.api.js';
+import { createFaq, FaqApiError, getFaq, updateFaq } from './faq.api.js';
 import { FaqListPage } from './faq-list-page.js';
 import {
   faqFormSchema,
@@ -43,7 +43,7 @@ const FaqEditorPage = ({ mode, contentId }: Readonly<{ readonly mode: 'create' |
   const pt = usePluginTranslation('faq');
   const [existingPayload, setExistingPayload] = React.useState<unknown>();
   const [loadError, setLoadError] = React.useState(false);
-  const [saveError, setSaveError] = React.useState(false);
+  const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(mode === 'edit');
   const form = useForm<FaqFormValues>({ defaultValues, resolver: zodResolver(faqFormSchema) });
 
@@ -63,18 +63,26 @@ const FaqEditorPage = ({ mode, contentId }: Readonly<{ readonly mode: 'create' |
     return () => { active = false; };
   }, [contentId, form, mode]);
 
-  const onSubmit = (values: FaqFormValues) => {
-    setSaveError(false);
+  const onSubmit = async (values: FaqFormValues) => {
+    setSaveErrorMessage(null);
     const input = mapFaqFormValuesToGenericItemInput(values, existingPayload);
     const request = mode === 'create' ? createFaq(input) : updateFaq(contentId ?? '', input);
-    void request.catch(() => setSaveError(true));
+    try {
+      await request;
+    } catch (error) {
+      if (error instanceof FaqApiError && error.message.trim().length > 0) {
+        setSaveErrorMessage(pt('messages.saveErrorWithReason', { reason: error.message }));
+        return;
+      }
+      setSaveErrorMessage(pt('messages.saveError'));
+    }
   };
 
   return (
     <StudioOverviewPageTemplate title={pt(mode === 'create' ? 'editor.createTitle' : 'editor.editTitle')}>
       {loading ? <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState> : null}
       {loadError ? <StudioErrorState>{pt('messages.loadError')}</StudioErrorState> : null}
-      {!loading && !loadError ? <>{saveError ? <StudioFormSummary kind="error">{pt('messages.saveError')}</StudioFormSummary> : null}<FaqEditorForm form={form} onSubmit={onSubmit} pt={pt} /></> : null}
+      {!loading && !loadError ? <>{saveErrorMessage ? <StudioFormSummary kind="error">{saveErrorMessage}</StudioFormSummary> : null}<FaqEditorForm form={form} onSubmit={onSubmit} pt={pt} /></> : null}
     </StudioOverviewPageTemplate>
   );
 };

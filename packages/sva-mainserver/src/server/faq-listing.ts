@@ -1,6 +1,8 @@
 import type { listSvaMainserverGenericItems } from './service.js';
+import { SvaMainserverError } from './errors.js';
 
 const faqTitleCollator = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
+const MAX_FAQ_UPSTREAM_PAGES = 500;
 
 type GenericItem = Awaited<ReturnType<typeof listSvaMainserverGenericItems>>['data'][number];
 
@@ -29,6 +31,13 @@ export const listFaqItems = async (
   let page = 1;
   let hasNextPage = true;
   while (hasNextPage) {
+    if (page > MAX_FAQ_UPSTREAM_PAGES) {
+      throw new SvaMainserverError({
+        code: 'internal_error',
+        message: 'FAQ-Auflistung überschreitet das erlaubte Upstream-Seitenlimit.',
+        statusCode: 502,
+      });
+    }
     const result = await listItems({ ...input, page, pageSize: 100 });
     items.push(...result.data.filter((item) => item.genericType === 'FAQ'));
     hasNextPage = result.pagination.hasNextPage;

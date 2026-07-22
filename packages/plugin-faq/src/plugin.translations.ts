@@ -42,6 +42,7 @@ export const pluginFaqTranslations = {
         loading: 'FAQ wird geladen.',
         loadError: 'FAQ konnte nicht geladen werden.',
         saveError: 'FAQ konnte nicht gespeichert werden.',
+        saveErrorWithReason: 'FAQ konnte nicht gespeichert werden: {{reason}}',
       },
       validation: {
         required: 'Dieses Feld ist erforderlich.',
@@ -91,6 +92,7 @@ export const pluginFaqTranslations = {
         loading: 'Loading FAQ.',
         loadError: 'Could not load FAQ.',
         saveError: 'Could not save FAQ.',
+        saveErrorWithReason: 'Could not save FAQ: {{reason}}',
       },
       validation: {
         required: 'This field is required.',

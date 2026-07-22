@@ -56,4 +56,28 @@ describe('faq listing', () => {
       expect.objectContaining({ page: 2, pageSize: 100 })
     );
   });
+
+  it('fails fast when upstream pagination never terminates', async () => {
+    const listItems = vi.fn().mockResolvedValue({
+      data: [{ id: 'faq-1', title: 'Frage', genericType: 'FAQ', payload: { languageCode: 'de', sortWeight: 0 } }],
+      pagination: { page: 1, pageSize: 100, hasNextPage: true },
+    });
+
+    await expect(
+      listFaqItems(
+        {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'subject-1',
+          page: 1,
+          pageSize: 25,
+        },
+        listItems
+      )
+    ).rejects.toMatchObject({
+      code: 'internal_error',
+      statusCode: 502,
+      message: 'FAQ-Auflistung überschreitet das erlaubte Upstream-Seitenlimit.',
+    });
+    expect(listItems).toHaveBeenCalledTimes(500);
+  });
 });

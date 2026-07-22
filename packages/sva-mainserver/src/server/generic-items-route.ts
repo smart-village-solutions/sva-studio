@@ -119,6 +119,15 @@ const parseGenericItemOrResponse = async (request: Request): Promise<SvaMainserv
   return parseGenericItemInput(request);
 };
 
+const faqAnswerHtmlPattern = /<\/?[a-z][^>]*>/i;
+
+const validateFaqItemOrResponse = (genericItem: SvaMainserverGenericItemInput): Response | null => {
+  const answerBody = genericItem.contentBlocks[0]?.body ?? '';
+  return faqAnswerHtmlPattern.test(answerBody)
+    ? errorJson(400, 'invalid_request', 'HTML in der FAQ-Antwort ist nicht erlaubt.')
+    : null;
+};
+
 
 const handleListRequest = async (
   request: Request,
@@ -189,6 +198,12 @@ const handleCreateRequest = async (
   if (isResponse(genericItem)) {
     return genericItem;
   }
+  if (contentKind === 'faq') {
+    const faqValidationError = validateFaqItemOrResponse(genericItem);
+    if (faqValidationError) {
+      return faqValidationError;
+    }
+  }
 
   const data = await createSvaMainserverGenericItem({ ...actor, genericItem: contentKind === 'faq' ? { ...genericItem, genericType: 'FAQ' } : genericItem });
   logSuccess('mainserver_generic-items_create', data.id);
@@ -215,6 +230,12 @@ const handleUpdateRequest = async (
   const genericItem = await parseGenericItemOrResponse(request);
   if (isResponse(genericItem)) {
     return genericItem;
+  }
+  if (contentKind === 'faq') {
+    const faqValidationError = validateFaqItemOrResponse(genericItem);
+    if (faqValidationError) {
+      return faqValidationError;
+    }
   }
 
   const data = await updateSvaMainserverGenericItem({ ...actor, genericItemId: itemId, genericItem: contentKind === 'faq' ? { ...genericItem, genericType: 'FAQ' } : genericItem });

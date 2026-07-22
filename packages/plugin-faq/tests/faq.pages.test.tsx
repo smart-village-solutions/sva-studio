@@ -2,14 +2,22 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const createFaqMock = vi.fn();
-const getFaqMock = vi.fn();
-const updateFaqMock = vi.fn();
+const state = vi.hoisted(() => ({
+  createFaqMock: vi.fn(),
+  getFaqMock: vi.fn(),
+  updateFaqMock: vi.fn(),
+}));
 
 vi.mock('../src/faq.api.js', () => ({
-  createFaq: createFaqMock,
-  getFaq: getFaqMock,
-  updateFaq: updateFaqMock,
+  createFaq: state.createFaqMock,
+  getFaq: state.getFaqMock,
+  updateFaq: state.updateFaqMock,
+  FaqApiError: class FaqApiError extends Error {
+    public constructor(public readonly code: string, message = code) {
+      super(message);
+      this.name = 'FaqApiError';
+    }
+  },
 }));
 
 vi.mock('@sva/plugin-sdk', () => ({
@@ -24,13 +32,13 @@ vi.mock('@tanstack/react-router', () => ({
 
 describe('faq editor pages', () => {
   beforeEach(() => {
-    createFaqMock.mockReset();
-    getFaqMock.mockReset();
-    updateFaqMock.mockReset();
+    state.createFaqMock.mockReset();
+    state.getFaqMock.mockReset();
+    state.updateFaqMock.mockReset();
   });
 
   it('creates a faq entry with normalized payload fields', async () => {
-    createFaqMock.mockResolvedValue({ id: 'faq-new' });
+    state.createFaqMock.mockResolvedValue({ id: 'faq-new' });
     const { FaqCreatePage } = await import('../src/faq.pages.js');
 
     render(<FaqCreatePage />);
@@ -42,7 +50,7 @@ describe('faq editor pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
 
     await waitFor(() =>
-      expect(createFaqMock).toHaveBeenCalledWith({
+      expect(state.createFaqMock).toHaveBeenCalledWith({
         title: 'Neue Frage',
         genericType: 'FAQ',
         contentBlocks: [{ body: 'Eine Antwort' }],
@@ -53,7 +61,7 @@ describe('faq editor pages', () => {
   });
 
   it('loads an existing faq entry and updates it while preserving existing payload fields', async () => {
-    getFaqMock.mockResolvedValue({
+    state.getFaqMock.mockResolvedValue({
       id: 'faq-1',
       title: 'Bestehende Frage',
       genericType: 'FAQ',
@@ -64,7 +72,7 @@ describe('faq editor pages', () => {
       createdAt: '',
       updatedAt: '',
     });
-    updateFaqMock.mockResolvedValue({ id: 'faq-1' });
+    state.updateFaqMock.mockResolvedValue({ id: 'faq-1' });
     const { FaqEditPage } = await import('../src/faq.pages.js');
 
     render(<FaqEditPage />);
@@ -75,8 +83,8 @@ describe('faq editor pages', () => {
     fireEvent.click(screen.getByLabelText('fields.visible'));
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
 
-    await waitFor(() => expect(updateFaqMock).toHaveBeenCalledTimes(1));
-    expect(updateFaqMock).toHaveBeenCalledWith('faq-1', {
+    await waitFor(() => expect(state.updateFaqMock).toHaveBeenCalledTimes(1));
+    expect(state.updateFaqMock).toHaveBeenCalledWith('faq-1', {
       title: 'Bestehende Frage',
       genericType: 'FAQ',
       contentBlocks: [{ body: 'Aktualisierte Antwort' }],
@@ -87,20 +95,48 @@ describe('faq editor pages', () => {
   });
 
   it('renders load and save errors for the edit page', async () => {
-    getFaqMock.mockRejectedValueOnce(new Error('load failed'));
-    updateFaqMock.mockRejectedValueOnce(new Error('save failed'));
+    state.getFaqMock.mockRejectedValueOnce(new Error('load failed'));
     const { FaqCreatePage, FaqEditPage } = await import('../src/faq.pages.js');
 
     render(<FaqEditPage />);
     await screen.findByText('messages.loadError');
 
     render(<FaqCreatePage />);
-    createFaqMock.mockRejectedValueOnce(new Error('save failed'));
+    state.createFaqMock.mockRejectedValueOnce(new Error('save failed'));
     fireEvent.change(screen.getByLabelText('fields.question'), { target: { value: 'Neue Frage' } });
     fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Eine Antwort' } });
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
 
-    await waitFor(() => expect(updateFaqMock).not.toHaveBeenCalled());
+    await waitFor(() => expect(state.updateFaqMock).not.toHaveBeenCalled());
     await screen.findByText('messages.saveError');
+  });
+
+  it('keeps save disabled during the pending request and surfaces api error details', async () => {
+    let rejectRequest: ((reason?: unknown) => void) | null = null;
+    state.createFaqMock.mockImplementation(
+      () =>
+        new Promise((_, reject) => {
+          rejectRequest = reject;
+        })
+    );
+    const { FaqCreatePage } = await import('../src/faq.pages.js');
+    const { FaqApiError } = await import('../src/faq.api.js');
+
+    render(<FaqCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('fields.question'), { target: { value: 'Neue Frage' } });
+    fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Eine Antwort' } });
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'actions.save' }).hasAttribute('disabled')).toBe(true)
+    );
+
+    rejectRequest?.(new FaqApiError('forbidden', 'Nicht erlaubt.'));
+
+    await screen.findByText('messages.saveErrorWithReason');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'actions.save' }).hasAttribute('disabled')).toBe(false)
+    );
   });
 });

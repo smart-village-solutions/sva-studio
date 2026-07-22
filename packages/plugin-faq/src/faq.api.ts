@@ -25,3 +25,4 @@ export const getFaq = (id: string) => client.get(id);
 export const createFaq = (input: GenericItemFaqInput) => client.create(input);
 export const updateFaq = (id: string, input: GenericItemFaqInput) => client.update(id, input);
 export const deleteFaq = (id: string) => client.remove(id);
+export { FaqApiError };

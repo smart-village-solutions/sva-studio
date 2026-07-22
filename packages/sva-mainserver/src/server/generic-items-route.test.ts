@@ -179,13 +179,55 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     await dispatchSvaMainserverGenericItemsRequest(
       createRequest('https://studio.test/api/v1/mainserver/faqs', {
         method: 'POST',
-        body: JSON.stringify({ title: 'Frage', genericType: 'INFO' }),
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'INFO',
+          contentBlocks: [{ body: 'Antwort ohne HTML' }],
+        }),
       })
     );
 
     expect(state.createSvaMainserverGenericItem).toHaveBeenCalledWith(
       expect.objectContaining({ genericItem: expect.objectContaining({ genericType: 'FAQ' }) })
     );
+  });
+
+  it('rejects faq writes with html in the answer body before calling the service', async () => {
+    mockAuthorizedMutation();
+
+    const createResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'FAQ',
+          contentBlocks: [{ body: '<p>Antwort</p>' }],
+        }),
+      })
+    );
+    const updateResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs/faq-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: 'Frage',
+          genericType: 'FAQ',
+          contentBlocks: [{ body: '<script>alert(1)</script>' }],
+        }),
+      })
+    );
+
+    expect(createResponse?.status).toBe(400);
+    await expect(createResponse?.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'HTML in der FAQ-Antwort ist nicht erlaubt.',
+    });
+    expect(updateResponse?.status).toBe(400);
+    await expect(updateResponse?.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'HTML in der FAQ-Antwort ist nicht erlaubt.',
+    });
+    expect(state.createSvaMainserverGenericItem).not.toHaveBeenCalled();
+    expect(state.updateSvaMainserverGenericItem).not.toHaveBeenCalled();
   });
 
   it('passes includeInvisible=true through the generic items list route', async () => {

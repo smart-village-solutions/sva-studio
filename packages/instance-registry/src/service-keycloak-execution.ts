@@ -133,8 +133,7 @@ const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: Instanc
     throw new Error('tenant_auth_client_secret_missing');
   }
   const secretRotationRecovery = rotatingMissingTenantSecret &&
-    preflight.checks.every((check) => check.checkKey === 'tenant_secret' || check.status !== 'blocked') &&
-    plan.steps.every((step) => step.stepKey === 'secret' || step.stepKey === 'tenant_admin_client_secret' || step.status !== 'blocked');
+    preflight.checks.every((check) => check.checkKey === 'tenant_secret' || check.status !== 'blocked');
   if (!secretRotationRecovery && (preflight.overallStatus === 'blocked' || plan.overallStatus === 'blocked')) {
     await deps.repository.updateKeycloakProvisioningRun({
       runId: run.id,

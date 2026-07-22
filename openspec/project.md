@@ -61,7 +61,7 @@ SVA Studio (ehemals "CMS 2.0") modernisiert das Redaktionssystem der Smart Villa
 - **Barrierefreiheit:** BITV (Barrierefreie-Informationstechnik-Verordnung)
 - **Architektur:** Föderale IT-Architekturrichtlinien
 - **Standards:** xZuFi, OParl, Open311, schema.org (Kompatibilität erforderlich)
-- **Open Source:** Echtes Open-Source-Projekt; offene Governance, Community-Beteiligung; Lizenz EUPL favorisiert (Issue #2)
+- **Open Source:** Echtes Open-Source-Projekt; offene Governance, Community-Beteiligung; Lizenz EUPL-1.2
 - **Abhängigkeiten:** Externe Pakete nur nach gründlicher Prüfung (Mehrwert, Qualität, Lizenz, SBOM)
 
 ## External Dependencies

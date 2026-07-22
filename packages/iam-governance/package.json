@@ -1,5 +1,6 @@
 {
   "name": "@sva/iam-governance",
+  "license": "EUPL-1.2",
   "version": "0.0.1",
   "type": "module",
   "main": "dist/index.js",

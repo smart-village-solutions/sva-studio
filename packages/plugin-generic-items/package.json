@@ -1,5 +1,6 @@
 {
   "name": "@sva/plugin-generic-items",
+  "license": "EUPL-1.2",
   "version": "0.0.1",
   "type": "module",
   "files": ["dist", "plugin.manifest.json"],

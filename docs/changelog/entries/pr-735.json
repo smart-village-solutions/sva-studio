@@ -1,0 +1,4 @@
+{
+  "prNumber": 735,
+  "body": "Der Dev-Bootstrap-Executor ist mit der in CI verwendeten Quantum-CLI 3.2.1 kompatibel und kann den temporären One-shot-Stack wieder starten."
+}

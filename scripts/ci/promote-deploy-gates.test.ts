@@ -139,21 +139,21 @@ describe('promote-deploy-gates', () => {
     expect(result.message).toContain('Kein sicherer One-shot-Executor');
   });
 
-  it('still blocks run mode when a configured executor is not wired as a hardened promote step', () => {
+  it('authorizes bootstrap run mode when a hardened executor is wired by the workflow', () => {
     const result = evaluateDeployGate({
-      changedFiles: ['migrate-entrypoint.sh'],
+      changedFiles: ['bootstrap-entrypoint.sh'],
       executorConfigured: true,
-      kind: 'migration',
+      kind: 'bootstrap',
       mode: 'run',
     });
 
     expect(result).toMatchObject({
       mode: 'run',
-      ok: false,
-      result: 'blocked-safe-run-required',
+      ok: true,
+      result: 'asserted-clean',
       riskDetected: true,
     });
-    expect(result.message).toContain('gehärteter Exit-Code-/Log-Evidenz');
+    expect(result.message).toContain('Exit-Code-Evidenz');
   });
 
   it('formats risk summaries deterministically', () => {

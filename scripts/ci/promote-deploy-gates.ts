@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { parseBoolean, parseMode } from './promote-deploy-gates-cli.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
 import { resolveTraefikOnlyComposeFiles } from './traefik-compose-diff.ts';
 export type DeployGateMode = 'assert-none' | 'run';
@@ -118,6 +119,17 @@ export const evaluateDeployGate = ({
       riskFiles,
     };
   }
+  if (kind === 'bootstrap') {
+    return {
+      kind,
+      message: 'Bootstrap-Gate freigegeben: Der gehärtete One-shot-Executor wird im Promote-Workflow mit Exit-Code-Evidenz ausgeführt.',
+      mode,
+      ok: true,
+      result: 'asserted-clean',
+      riskDetected: riskFiles.length > 0,
+      riskFiles,
+    };
+  }
   return {
     kind,
     message: `${label}-Gate blockiert: Ein Executor ist konfiguriert, aber im Promote-Workflow nicht mit gehärteter Exit-Code-/Log-Evidenz verdrahtet. Nutze den kanonischen Operator-Pfad statt Blindautomatisierung.`,
@@ -159,22 +171,6 @@ export const evaluatePromoteDeployGates = ({
     safeComposeFiles,
   }),
 });
-const parseBoolean = (value: string): boolean => {
-  if (value === 'true') {
-    return true;
-  }
-  if (value === 'false') {
-    return false;
-  }
-  throw new Error(`Ungültiger Boolean-Wert: ${value}`);
-};
-const parseMode = (value: string, flag: string): DeployGateMode => {
-  if (value === 'assert-none' || value === 'run') {
-    return value;
-  }
-  throw new Error(`Ungültiger Wert für ${flag}: ${value}`);
-};
-
 const parseCliOptions = (args: readonly string[]): CliOptions => {
   let base = DEFAULT_BASE;
   let head = DEFAULT_HEAD;

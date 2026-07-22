@@ -1,0 +1,4 @@
+{
+  "prNumber": 733,
+  "body": "Der Dev-Promote-Workflow führt Bootstrap-Runs nun über einen gehärteten One-shot-Executor mit Exit-Code-Evidenz aus. Dadurch kann das Bootstrap-Gate bei passenden Änderungen sicher abgeschlossen werden."
+}

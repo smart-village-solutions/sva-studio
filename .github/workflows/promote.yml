@@ -219,7 +219,7 @@ jobs:
           docker compose -f compose.yaml -f ./deploy/compose.dev.yaml config --format json > stack.json
           jq --arg host 'studio-dev_postgres' --arg job "${job_stack}" '{version:"3.8",services:{bootstrap:(.services.bootstrap | .networks=["internal"] | .environment.POSTGRES_HOST=$host | .environment.SVA_BOOTSTRAP_JOB_STACK=$job | .environment.SVA_BOOTSTRAP_TARGET_STACK="studio-dev" | .deploy.replicas=1 | .deploy.restart_policy.condition="none")},networks:{internal:{external:true,name:"studio-dev_default"}}}' stack.json > bootstrap-stack.json
           printf '%s\n' '---' 'version: "1.0"' 'compose: bootstrap-stack.json' > .quantum
-          quantum-cli stacks create --endpoint "${QUANTUM_ENDPOINT}" --stack "${job_stack}" --project . --wait
+          quantum-cli stacks create --endpoint "${QUANTUM_ENDPOINT}" --stack "${job_stack}" --wait
           task_json="$(quantum-cli ps --endpoint "${QUANTUM_ENDPOINT}" --stack "${job_stack}" --all -o json)"
           exit_code="$(printf '%s' "${task_json}" | jq -r '.. | objects | select(.Status?.ContainerStatus?.ExitCode? != null) | .Status.ContainerStatus.ExitCode' | tail -n1)"
           test "${exit_code}" = "0"

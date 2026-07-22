@@ -1105,12 +1105,14 @@ describe('waste master data repository', () => {
     ).resolves.toBeNull();
   });
 
-  it('lists, reads and upserts location-tour links without date windows', async () => {
+  it('lists, reads and upserts location-tour links with date windows', async () => {
     const list = createExecutor([
       {
         id: 'link-1',
         location_id: 'location-1',
         tour_id: 'tour-1',
+        start_date: '2026-05-01',
+        end_date: '2026-12-31',
         created_at: '2026-05-09T10:00:00.000Z',
         updated_at: '2026-05-09T11:00:00.000Z',
       },
@@ -1126,6 +1128,8 @@ describe('waste master data repository', () => {
         id: 'link-1',
         locationId: 'location-1',
         tourId: 'tour-1',
+        startDate: '2026-05-01',
+        endDate: '2026-12-31',
         createdAt: '2026-05-09T10:00:00.000Z',
         updatedAt: '2026-05-09T11:00:00.000Z',
       },
@@ -1139,6 +1143,8 @@ describe('waste master data repository', () => {
         id: 'link-2',
         location_id: 'location-2',
         tour_id: 'tour-2',
+        start_date: '2026-06-01',
+        end_date: null,
         created_at: '2026-05-09T10:00:00.000Z',
         updated_at: '2026-05-09T11:00:00.000Z',
       },
@@ -1150,6 +1156,7 @@ describe('waste master data repository', () => {
       id: 'link-2',
       locationId: 'location-2',
       tourId: 'tour-2',
+      startDate: '2026-06-01',
       createdAt: '2026-05-09T10:00:00.000Z',
       updatedAt: '2026-05-09T11:00:00.000Z',
     });
@@ -1159,11 +1166,19 @@ describe('waste master data repository', () => {
       id: 'link-3',
       locationId: 'location-3',
       tourId: 'tour-3',
+      startDate: '2026-07-01',
+      endDate: '2026-12-31',
     });
 
-    expect(write.statements[0]?.values).toEqual(['link-3', 'location-3', 'tour-3']);
-    expect(write.statements[0]?.text).not.toContain('start_date');
-    expect(write.statements[0]?.text).not.toContain('end_date');
+    expect(write.statements[0]?.values).toEqual([
+      'link-3',
+      'location-3',
+      'tour-3',
+      '2026-07-01',
+      '2026-12-31',
+    ]);
+    expect(write.statements[0]?.text).toContain('start_date');
+    expect(write.statements[0]?.text).toContain('end_date');
   });
 
   it('lists, reads and upserts location-tour pickup dates idempotently by location, tour and pickup date', async () => {

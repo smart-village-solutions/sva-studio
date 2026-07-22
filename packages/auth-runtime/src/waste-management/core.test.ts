@@ -1504,6 +1504,8 @@ describe('waste-management auth runtime handlers', () => {
       id: 'link-new',
       locationId: 'location-1',
       tourId: 'tour-1',
+      startDate: '2026-05-01',
+      endDate: '2026-12-31',
     });
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({
@@ -1567,6 +1569,8 @@ describe('waste-management auth runtime handlers', () => {
       id: 'link-1',
       locationId: 'location-1',
       tourId: 'tour-1',
+      startDate: '2026-05-01',
+      endDate: '2026-12-31',
     });
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
@@ -2917,6 +2921,8 @@ describe('waste-management auth runtime handlers', () => {
     expect(saveWasteLocationTourLinksBulk).toHaveBeenCalledWith('tenant-a', {
       locationIds: ['location-1', 'location-2'],
       tourId: 'tour-1',
+      startDate: '2026-05-01',
+      endDate: undefined,
     });
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({

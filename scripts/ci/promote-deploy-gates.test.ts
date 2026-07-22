@@ -142,6 +142,7 @@ describe('promote-deploy-gates', () => {
   it('authorizes bootstrap run mode when a hardened executor is wired by the workflow', () => {
     const result = evaluateDeployGate({
       changedFiles: ['bootstrap-entrypoint.sh'],
+      environment: 'staging',
       executorConfigured: true,
       kind: 'bootstrap',
       mode: 'run',
@@ -177,6 +178,15 @@ describe('promote-deploy-gates', () => {
       kind: 'migration',
       mode: 'run',
     })).toMatchObject({ ok: true, result: 'asserted-clean' });
+  });
+
+  it('keeps run mode fail-closed when the environment is missing', () => {
+    expect(evaluateDeployGate({
+      changedFiles: [],
+      executorConfigured: true,
+      kind: 'migration',
+      mode: 'run',
+    })).toMatchObject({ ok: false, result: 'blocked-safe-run-required' });
   });
 
   it('formats risk summaries deterministically', () => {

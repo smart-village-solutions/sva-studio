@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { commandExists, runCapture } from '../ops/runtime/process.ts';
 import { inspectRemoteServiceContract } from '../ops/runtime/remote-service-spec.ts';
@@ -12,6 +13,11 @@ const required = (value: string | undefined, label: string) => {
   if (!trimmed) throw new Error(`${label} darf nicht leer sein.`);
   return trimmed;
 };
+
+const digestSuffixPattern = /@sha256:[a-f0-9]{64}$/u;
+
+export const matchesExpectedLiveImage = (expectedImage: string, liveImage: string): boolean =>
+  liveImage === expectedImage || liveImage === `${expectedImage}${liveImage.match(digestSuffixPattern)?.[0] ?? ''}`;
 
 const main = async () => {
   const environment = process.argv[2];
@@ -31,7 +37,7 @@ const main = async () => {
   );
   const image = contract?.image?.trim();
   if (!image) throw new Error(`Der laufende App-Digest für ${stackName} konnte nicht aus der Remote-Service-Spec gelesen werden.`);
-  if (expectedImage && image !== expectedImage) {
+  if (expectedImage && !matchesExpectedLiveImage(expectedImage, image)) {
     throw new Error(`Der laufende App-Image-Ref stimmt nicht mit dem Zielartefakt überein: erwartet ${expectedImage}, erhalten ${image}.`);
   }
 
@@ -40,7 +46,9 @@ const main = async () => {
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `previous_live_image=${image}\nevidence_path=${evidencePath}\n`);
 };
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
+}

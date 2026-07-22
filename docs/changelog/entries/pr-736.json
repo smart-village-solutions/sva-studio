@@ -1,0 +1,4 @@
+{
+  "prNumber": 736,
+  "body": "Der Dev-Bootstrap verwendet nun eine fest definierte Quantum-CLI-Version und prüft den Exit-Code seines temporären One-shot-Tasks zuverlässig."
+}

@@ -55,6 +55,7 @@ describe('service-keycloak-execution-finalize', () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const status = { realmExists: true };
     const repository = {
+      setInstanceRealmMode: vi.fn().mockResolvedValue(undefined),
       setInstanceStatus: vi.fn().mockResolvedValue(undefined),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
     };
@@ -82,6 +83,7 @@ describe('service-keycloak-execution-finalize', () => {
           instance: {
             instanceId: 'instance-1',
             status: 'draft',
+            realmMode: 'new',
           },
         } as never,
         runId: 'run-1',
@@ -112,6 +114,12 @@ describe('service-keycloak-execution-finalize', () => {
     expect(repository.setInstanceStatus).toHaveBeenCalledWith({
       instanceId: 'instance-1',
       status: 'provisioning',
+      actorId: 'actor-1',
+      requestId: 'request-1',
+    });
+    expect(repository.setInstanceRealmMode).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      realmMode: 'existing',
       actorId: 'actor-1',
       requestId: 'request-1',
     });

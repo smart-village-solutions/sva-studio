@@ -71,4 +71,28 @@ describe('service-keycloak-execution-failures', () => {
       })
     );
   });
+
+  it('classifies missing initial tenant secrets without exposing secret data', async () => {
+    const repository = {
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await failRun(
+      { repository: repository as never } as never,
+      {
+        runId: 'run-3',
+        instanceId: 'demo',
+        intent: 'provision',
+        error: new Error('tenant_client_secrets_missing_after_provisioning'),
+      }
+    );
+
+    expect(repository.appendKeycloakProvisioningStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: { reasonCode: 'TENANT_CLIENT_SECRETS_MISSING' },
+        summary: 'Die nach dem Provisioning erwarteten Tenant-Client-Secrets sind nicht lesbar.',
+      })
+    );
+  });
 });

@@ -283,6 +283,26 @@ describe('instance registry repository provisioning', () => {
     expect(statements[0]?.text).toContain('ON CONFLICT (id) DO NOTHING');
   });
 
+  it('updates only the realm mode after a newly provisioned realm is finalized', async () => {
+    const { executor, statements } = createQueuedExecutor([[instanceRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.setInstanceRealmMode({
+        instanceId: 'tenant-a',
+        realmMode: 'existing',
+        actorId: 'worker-1',
+        requestId: 'request-1',
+      })
+    ).resolves.toMatchObject({ instanceId: 'tenant-a' });
+
+    expect(statements[0]).toMatchObject({
+      values: ['tenant-a', 'existing', 'worker-1'],
+    });
+    expect(statements[0]?.text).toContain('SET\n  realm_mode = $2');
+    expect(statements[0]?.text).not.toContain('auth_client_secret_ciphertext =');
+  });
+
   it('annotates create and primary-hostname failures with their precise process step', async () => {
     const insertError = new Error('sensitive insert diagnostics');
     const insertRepository = createInstanceRegistryRepository({

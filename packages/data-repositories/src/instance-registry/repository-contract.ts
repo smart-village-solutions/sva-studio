@@ -188,6 +188,12 @@ export type InstanceRegistryRepository = {
     actorId?: string;
     requestId?: string;
   }) => Promise<InstanceRegistryRecord | null>;
+  readonly setInstanceRealmMode: (input: {
+    instanceId: string;
+    realmMode: InstanceRealmMode;
+    actorId?: string;
+    requestId?: string;
+  }) => Promise<InstanceRegistryRecord | null>;
   readonly createProvisioningRun: (input: {
     instanceId: string;
     operation: InstanceProvisioningOperation;

@@ -10,6 +10,12 @@ const classifyError = (error: unknown): { reasonCode: string; safeSummary: strin
   if (error instanceof Error) {
     const message = error.message || '';
 
+    if (message.includes('tenant_client_secrets_missing_after_provisioning')) {
+      return {
+        reasonCode: 'TENANT_CLIENT_SECRETS_MISSING',
+        safeSummary: 'Die nach dem Provisioning erwarteten Tenant-Client-Secrets sind nicht lesbar.',
+      };
+    }
     if (message.includes('Keycloak') || message.includes('keycloak')) {
       return {
         reasonCode: 'KEYCLOAK_EXECUTION_FAILED',

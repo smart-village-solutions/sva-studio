@@ -6,7 +6,10 @@ import { mapInstance } from './repository-mappers.js';
 import { queryRows, statement } from './repository-shared.js';
 import type { InstanceListRow } from './repository-types.js';
 
-type MutationRepository = Pick<InstanceRegistryRepository, 'createInstance' | 'updateInstance' | 'setInstanceStatus'>;
+type MutationRepository = Pick<
+  InstanceRegistryRepository,
+  'createInstance' | 'updateInstance' | 'setInstanceStatus' | 'setInstanceRealmMode'
+>;
 
 const defaultActorId = (actorId: string | undefined): string => actorId ?? 'system';
 
@@ -179,8 +182,32 @@ ${buildInstanceSelectColumns()};
   return rows[0] ? mapInstance(rows[0]) : null;
 };
 
+const setInstanceRealmMode = async (
+  executor: SqlExecutor,
+  input: Parameters<MutationRepository['setInstanceRealmMode']>[0]
+) => {
+  const rows = await queryRows<InstanceListRow>(
+    executor,
+    statement(
+      `
+UPDATE iam.instances
+SET
+  realm_mode = $2,
+  updated_by = $3,
+  updated_at = NOW()
+WHERE id = $1
+RETURNING
+${buildInstanceSelectColumns()};
+`,
+      [input.instanceId, input.realmMode, defaultActorId(input.actorId)]
+    )
+  );
+  return rows[0] ? mapInstance(rows[0]) : null;
+};
+
 export const createMutationRepository = (executor: SqlExecutor): MutationRepository => ({
   createInstance: (input) => createInstance(executor, input),
   updateInstance: (input) => updateInstance(executor, input),
   setInstanceStatus: (input) => setInstanceStatus(executor, input),
+  setInstanceRealmMode: (input) => setInstanceRealmMode(executor, input),
 });

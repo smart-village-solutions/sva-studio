@@ -134,6 +134,7 @@ export type InstanceRegistryServiceDeps = {
   }) => Promise<void>;
   readonly protectSecret?: (value: string | undefined, aad: string) => string | null;
   readonly revealSecret?: (value: string | null | undefined, aad: string) => string | undefined;
+  readonly waitForProvisionedSecretRead?: (delayMs: number) => Promise<void>;
   readonly readKeycloakStateViaProvisioner?: (input: KeycloakProvisioningInput) => Promise<KeycloakReadState>;
   readonly provisionInstanceAuth?: (input: {
     instanceId: string;

@@ -230,6 +230,53 @@ describe('service-keycloak-execution-shared', () => {
     expect(repository.updateInstance).not.toHaveBeenCalled();
   });
 
+  it('rejects a new realm when Keycloak secrets cannot be read after provisioning', async () => {
+    const loaded = createLoaded();
+    loaded.instance.realmMode = 'new';
+    const repository = { updateInstance: vi.fn(async () => undefined) };
+
+    await expect(
+      syncProvisionedClientSecretToRegistry(
+        {
+          repository: repository as never,
+          readKeycloakStateViaProvisioner: vi.fn(async () => ({})),
+          waitForProvisionedSecretRead: vi.fn(async () => undefined),
+          protectSecret: vi.fn(),
+        } as never,
+        { loaded: loaded as never }
+      )
+    ).rejects.toThrow('tenant_client_secrets_missing_after_provisioning');
+
+    expect(repository.updateInstance).not.toHaveBeenCalled();
+  });
+
+  it('retries reading newly provisioned secrets before persisting them', async () => {
+    const loaded = createLoaded();
+    loaded.instance.realmMode = 'new';
+    loaded.authClientSecret = undefined;
+    loaded.tenantAdminClientSecret = undefined;
+    const repository = { updateInstance: vi.fn(async () => undefined) };
+    const readKeycloakStateViaProvisioner = vi
+      .fn()
+      .mockResolvedValueOnce({})
+      .mockResolvedValue({ keycloakClientSecret: 'actual-auth-secret', tenantAdminClientSecret: 'actual-tenant-admin-secret' });
+    const waitForProvisionedSecretRead = vi.fn(async () => undefined);
+
+    await syncProvisionedClientSecretToRegistry(
+      {
+        repository: repository as never,
+        readKeycloakStateViaProvisioner,
+        waitForProvisionedSecretRead,
+        protectSecret: vi.fn((value: string) => `protected:${value}`),
+      } as never,
+      { loaded: loaded as never }
+    );
+
+    expect(readKeycloakStateViaProvisioner).toHaveBeenCalledTimes(2);
+    expect(waitForProvisionedSecretRead).toHaveBeenCalledWith(100);
+    expect(repository.updateInstance).toHaveBeenCalledTimes(1);
+  });
+
   it('syncs rotated client secrets back into the registry', async () => {
     const loaded = createLoaded() as never;
     const repository = {

@@ -58,6 +58,19 @@ export const completeRun = async (
       ? 'succeeded'
       : 'failed';
 
+  if (
+    finalRunStatus === 'succeeded' &&
+    input.intent !== 'reset_tenant_admin' &&
+    input.loaded.instance.realmMode === 'new'
+  ) {
+    await deps.repository.setInstanceRealmMode({
+      instanceId: input.loaded.instance.instanceId,
+      realmMode: 'existing',
+      actorId: input.actorId,
+      requestId: input.requestId,
+    });
+  }
+
   if (finalRunStatus === 'succeeded' && input.loaded.instance.status !== 'active') {
     await deps.repository.setInstanceStatus({
       instanceId: input.loaded.instance.instanceId,

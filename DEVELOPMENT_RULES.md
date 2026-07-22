@@ -730,6 +730,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 - Keep one topic per branch and keep branches/PRs small and focused
 - Rebase (or merge) main into your branch before opening a PR to resolve drift early
 - Require green CI and at least one review before merge; prefer squash merges to keep history clean
+- Jeder PR MUSS einen verständlich formulierten Text für das Studio-Changelog enthalten. Der Eintrag ist unter `docs/changelog/entries/pr-<nummer>.json` anzulegen und vor dem Merge mit `pnpm check:studio-changelog` zu prüfen.
 
 ### Base Branch Decision Tree
 - Frage 1: Ist die geplante Änderung unabhängig von ungemergten Änderungen?
@@ -781,6 +782,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 - [ ] Sind Abhängigkeiten zu Vorgänger-Branches im PR-Text dokumentiert?
 - [ ] Ist bei Stacks die PR-/Merge-Reihenfolge eindeutig festgelegt?
 - [ ] Wurde nach Merge eines Vorgänger-PRs korrekt retargeted und synchronisiert?
+- [ ] Enthält die PR einen verständlich formulierten Studio-Changelog-Eintrag unter `docs/changelog/entries/pr-<nummer>.json`?
 
 ---
 

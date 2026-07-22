@@ -40,6 +40,14 @@ describe('critical registry confirmation', () => {
     expect(changed).not.toBe(first);
   });
 
+  it('fingerprints assigned modules independently of their input order', async () => {
+    const { fingerprintInstanceConfirmationState } = await import('./confirmation.js');
+    const first = fingerprintInstanceConfirmationState({ ...detail, assignedModules: ['news', 'events'] });
+    const second = fingerprintInstanceConfirmationState({ ...detail, assignedModules: ['events', 'news'] });
+
+    expect(first).toBe(second);
+  });
+
   it('keeps all five critical actions static and requires a module for revoke prepare', async () => {
     const { CRITICAL_REGISTRY_ACTIONS, validateConfirmationModuleId } = await import('./confirmation.js');
     expect(CRITICAL_REGISTRY_ACTIONS).toEqual([

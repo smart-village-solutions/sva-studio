@@ -1,7 +1,6 @@
 import { accountENResources } from './en/account.resources.js';
 import { adminENResources } from './en/admin.resources.js';
 import { contentENResources } from './en/content.resources.js';
-import { faqENResources } from './en/faq.resources.js';
 import { homeENResources } from './en/home.resources.js';
 import { hostENResources } from './en/host.resources.js';
 import { interfacesENResources } from './en/interfaces.resources.js';
@@ -17,7 +16,6 @@ export const enResources = {
   account: accountENResources,
   admin: adminENResources,
   content: contentENResources,
-  faq: faqENResources,
   home: homeENResources,
   host: hostENResources,
   interfaces: interfacesENResources,

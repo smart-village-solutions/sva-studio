@@ -20,4 +20,16 @@ describe('render-quantum-stack', () => {
     });
     expect(result).not.toHaveProperty('name');
   });
+
+  it('removes null service properties rejected by Quantum', () => {
+    const result = JSON.parse(
+      renderQuantumStack(
+        JSON.stringify({
+          services: { bootstrap: { command: null, image: 'example/bootstrap:1' } },
+        })
+      )
+    ) as { services: { bootstrap: Record<string, unknown> } };
+
+    expect(result.services.bootstrap).toEqual({ image: 'example/bootstrap:1' });
+  });
 });

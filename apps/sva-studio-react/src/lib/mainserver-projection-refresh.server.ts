@@ -12,6 +12,7 @@ type MainserverProjectionContentType =
   | 'events.event-record'
   | 'poi.point-of-interest'
   | 'generic-items.generic-item'
+  | 'faq.faq'
   | 'surveys.survey';
 
 type MainserverProjectionMutationOperation = 'create' | 'update' | 'delete';
@@ -26,6 +27,7 @@ const mainserverCollectionSegments = new Set([
   'events',
   'poi',
   'generic-items',
+  'faqs',
   'surveys',
 ]);
 

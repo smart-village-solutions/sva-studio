@@ -54,6 +54,14 @@ Fehlerpfad:
 - Retries dürfen terminale Exporte nicht doppelt erzeugen; der Host-Handler bleibt idempotent.
 - Der DSR-Maintenance-Endpunkt ist für Exportverarbeitung nicht mehr verantwortlich; er deckt nur übrige Housekeeping-Läufe ab.
 
+### FAQ: GenericItem-basierte Fachansicht
+
+1. Ein Benutzer öffnet die FAQ-Ressource oder wählt einen FAQ-Eintrag aus der gemeinsamen Inhaltsübersicht.
+2. Die hostmaterialisierte Route prüft Modulfreigabe und `faq.*`-Berechtigung; die direkte Navigation bleibt wie bei News und Events außerhalb der Hauptnavigation.
+3. Das Plugin ruft ausschließlich `/api/v1/mainserver/faqs` auf. Die Host-Fassade authentisiert den Request, prüft CSRF für Mutationen und delegiert mit instanzbezogenen Mainserver-Credentials.
+4. Beim Lesen lädt die Fassade alle GenericItem-Upstream-Seiten, filtert `genericType: "FAQ"`, sortiert nach Sprachcode, Sortiergewicht, Frage und ID und paginiert erst anschließend.
+5. Beim Schreiben erzwingt die Fassade den FAQ-Discriminator; Detail-, Update- und Delete-Zugriffe auf Nicht-FAQ-IDs enden als nicht gefunden. Die Inhaltsprojektion führt FAQ als `faq.faq` und blendet sie aus der generischen GenericItem-Projektion aus.
+
 ### Waste-Management: Settings, CRUD, PDF-Stamminhalte und technische Tools
 
 1. Ein berechtigter Instanzbenutzer öffnet `/plugins/waste-management`.

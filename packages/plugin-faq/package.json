@@ -1,0 +1,32 @@
+{
+  "name": "@sva/plugin-faq",
+  "version": "0.0.1",
+  "type": "module",
+  "files": ["dist", "plugin.manifest.json"],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./plugin.manifest.json": { "default": "./plugin.manifest.json" }
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.10.0",
+    "@sva/plugin-sdk": "workspace:*",
+    "@sva/studio-ui-react": "workspace:*",
+    "react-hook-form": "^7.80.0",
+    "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "@tanstack/react-router": "^1.170.8",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.2.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitest/coverage-v8": "^4.1.9",
+    "jsdom": "^29.1.0",
+    "vitest": "^4.1.9"
+  }
+}

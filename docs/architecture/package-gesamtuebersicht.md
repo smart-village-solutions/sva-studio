@@ -14,6 +14,10 @@ Wenn ein Paket fachliche Regeln braucht, die nicht an React, HTTP, Datenbank ode
 
 Plugins sollen Host-Funktionen nicht direkt aus App-Code oder aus `@sva/core` beziehen, sondern nur über die abstrahierten Verträge aus diesem Package.
 
+### `@sva/plugin-faq`
+
+`@sva/plugin-faq` ist das Fachplugin für mehrsprachige FAQs. Es modelliert eine FAQ als spezialisierte Mainserver-`GenericItem`-Sicht mit festem `genericType: "FAQ"`, Klartextantwort, BCP-47-Sprachcode und Sortiergewicht. Das Plugin verwendet den Standard-Content-Plugin-Vertrag, Studio-UI-Bausteine und ausschließlich die hostgeführte HTTP-Fassade; es kennt weder Mainserver-Secrets noch direkte GraphQL-Zugriffe.
+
 ## 2. Server-Runtime und technische Querschnittsfunktionen
 
 ### `@sva/monitoring-client`

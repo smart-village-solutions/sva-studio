@@ -112,6 +112,82 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     );
   });
 
+  it('filters FAQ reads and authorizes them with the FAQ action', async () => {
+    mockAuthorizedMutation();
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      data: [{ id: 'faq-1', genericType: 'FAQ' }, { id: 'generic-1', genericType: 'INFO' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
+    });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs')
+    );
+
+    await expect(response?.json()).resolves.toEqual({
+      data: [{ id: 'faq-1', genericType: 'FAQ' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
+    });
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'faq.read', resource: { contentType: 'faq.faq' } })
+    );
+  });
+
+  it('collects and deterministically paginates FAQ records across upstream pages', async () => {
+    mockAuthorizedMutation();
+    state.listSvaMainserverGenericItems
+      .mockResolvedValueOnce({
+        data: [
+          { id: 'generic-1', genericType: 'INFO', title: 'Allgemein' },
+          { id: 'faq-2', genericType: 'FAQ', title: 'Zweite', payload: { languageCode: 'de', sortWeight: 2 } },
+        ],
+        pagination: { page: 1, pageSize: 100, hasNextPage: true },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          { id: 'faq-3', genericType: 'FAQ', title: 'Erste', payload: { languageCode: 'de', sortWeight: 1 } },
+          { id: 'faq-1', genericType: 'FAQ', title: 'English', payload: { languageCode: 'en', sortWeight: 1 } },
+        ],
+        pagination: { page: 2, pageSize: 100, hasNextPage: false },
+      });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs?page=1&pageSize=25')
+    );
+
+    await expect(response?.json()).resolves.toEqual({
+      data: [
+        { id: 'faq-3', genericType: 'FAQ', title: 'Erste', payload: { languageCode: 'de', sortWeight: 1 } },
+        { id: 'faq-2', genericType: 'FAQ', title: 'Zweite', payload: { languageCode: 'de', sortWeight: 2 } },
+        { id: 'faq-1', genericType: 'FAQ', title: 'English', payload: { languageCode: 'en', sortWeight: 1 } },
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 3 },
+    });
+    expect(state.listSvaMainserverGenericItems).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ page: 1, pageSize: 100 })
+    );
+    expect(state.listSvaMainserverGenericItems).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ page: 2, pageSize: 100 })
+    );
+  });
+
+  it('enforces the FAQ discriminator on writes', async () => {
+    mockAuthorizedMutation();
+    state.createSvaMainserverGenericItem.mockResolvedValue({ id: 'faq-1' });
+
+    await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs', {
+        method: 'POST',
+        body: JSON.stringify({ title: 'Frage', genericType: 'INFO' }),
+      })
+    );
+
+    expect(state.createSvaMainserverGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({ genericItem: expect.objectContaining({ genericType: 'FAQ' }) })
+    );
+  });
+
   it('passes includeInvisible=true through the generic items list route', async () => {
     mockAuthorizedMutation();
     state.listSvaMainserverGenericItems.mockResolvedValue({

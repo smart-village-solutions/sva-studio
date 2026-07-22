@@ -121,7 +121,8 @@ type TargetedMutationContentType =
   | 'news.article'
   | 'events.event-record'
   | 'poi.point-of-interest'
-  | 'generic-items.generic-item';
+  | 'generic-items.generic-item'
+  | 'faq.faq';
 type ProjectionRefreshTrigger =
   | 'manual'
   | 'mutation_follow_up'
@@ -551,6 +552,7 @@ const toMainserverContentType = (value: string): MainserverContentType | null =>
     value === 'events.event-record' ||
     value === 'poi.point-of-interest' ||
     value === 'generic-items.generic-item' ||
+    value === 'faq.faq' ||
     value === 'surveys.survey'
   ) {
     return value;
@@ -1429,13 +1431,33 @@ const mainserverProjectionPageLoaders: Record<
         activeOrganizationId: target.organizationId,
         includeInvisible: true,
         ...pageQuery,
-      }),
+      }).then((result) => ({ ...result, data: result.data.filter((item) => item.genericType !== 'FAQ') })),
       pageQuery,
       mapRow: (item, credentialSource) => ({
         ...mapGenericItem(item, target.instanceId, []),
         ...(target.organizationId ? { organizationId: target.organizationId } : {}),
         credentialSource,
         sourceEntityType: 'generic-items.generic-item',
+        sourceEntityId: item.id,
+      }),
+      projectedOrganizationId: target.organizationId,
+    }),
+  'faq.faq': async ({ target, pageQuery }) =>
+    buildLoadedProjectionPage({
+      result: await listSvaMainserverGenericItems({
+        instanceId: target.instanceId,
+        keycloakSubject: target.keycloakSubject,
+        activeOrganizationId: target.organizationId,
+        includeInvisible: true,
+        ...pageQuery,
+      }).then((result) => ({ ...result, data: result.data.filter((item) => item.genericType === 'FAQ') })),
+      pageQuery,
+      mapRow: (item, credentialSource) => ({
+        ...mapGenericItem(item, target.instanceId, []),
+        contentType: 'faq.faq',
+        ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+        credentialSource,
+        sourceEntityType: 'faq.faq',
         sourceEntityId: item.id,
       }),
       projectedOrganizationId: target.organizationId,
@@ -1653,6 +1675,22 @@ const mainserverMutationProjectionLoaders: Record<
       ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
       credentialSource,
       sourceEntityType: 'generic-items.generic-item',
+      sourceEntityId: item.id,
+    };
+  },
+  'faq.faq': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
+    const item = await getSvaMainserverGenericItem({
+      activeOrganizationId: target.organizationId,
+      genericItemId: entityId,
+      instanceId: target.instanceId,
+      keycloakSubject: target.keycloakSubject,
+    });
+    return {
+      ...mapGenericItem(item, target.instanceId, []),
+      contentType: 'faq.faq',
+      ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+      credentialSource,
+      sourceEntityType: 'faq.faq',
       sourceEntityId: item.id,
     };
   },

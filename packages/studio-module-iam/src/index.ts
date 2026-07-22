@@ -55,6 +55,7 @@ const genericItemsModuleIamContract = createStandardContentContract(
   'generic-items',
   'plugins.generic-items.description'
 );
+const faqModuleIamContract = createStandardContentContract('faq', 'plugins.faq.description');
 const surveysTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[] = [
   {
     roleName: 'system_admin',
@@ -160,6 +161,7 @@ export const studioPluginModuleIamContracts = [
   eventsModuleIamContract,
   poiModuleIamContract,
   genericItemsModuleIamContract,
+  faqModuleIamContract,
   surveysModuleIamContract,
   wasteManagementModuleIamContract,
 ] as const satisfies readonly StudioModuleIamContract[];

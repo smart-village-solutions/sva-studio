@@ -5,7 +5,10 @@ import { refreshProjectionAfterMainserverMutation } from './mainserver-projectio
 export const dispatchMainserverGenericItemsRequest = async (request: Request): Promise<Response | null> => {
   const response = await dispatchSvaMainserverGenericItemsRequest(request);
   if (response) {
-    await refreshProjectionAfterMainserverMutation(request, response, 'generic-items.generic-item');
+    const contentType = new URL(request.url).pathname.startsWith('/api/v1/mainserver/faqs')
+      ? 'faq.faq'
+      : 'generic-items.generic-item';
+    await refreshProjectionAfterMainserverMutation(request, response, contentType);
   }
   return response;
 };

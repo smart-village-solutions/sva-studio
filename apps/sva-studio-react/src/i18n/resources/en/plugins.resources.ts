@@ -11,6 +11,9 @@ export const pluginsENResources = {
   'generic-items': {
     description: 'Publishes flexible generic items for the tenant.',
   },
+  faq: {
+    description: 'Publishes multilingual questions and answers for the tenant.',
+  },
   categories: {
     description:
       'Provides Mainserver categories as an editorial companion module for news, events, and places.',

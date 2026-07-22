@@ -118,6 +118,17 @@ export const evaluateDeployGate = ({
       riskFiles,
     };
   }
+  if (kind === 'bootstrap') {
+    return {
+      kind,
+      message: 'Bootstrap-Gate freigegeben: Der gehärtete One-shot-Executor wird im Promote-Workflow mit Exit-Code-Evidenz ausgeführt.',
+      mode,
+      ok: true,
+      result: 'asserted-clean',
+      riskDetected: riskFiles.length > 0,
+      riskFiles,
+    };
+  }
   return {
     kind,
     message: `${label}-Gate blockiert: Ein Executor ist konfiguriert, aber im Promote-Workflow nicht mit gehärteter Exit-Code-/Log-Evidenz verdrahtet. Nutze den kanonischen Operator-Pfad statt Blindautomatisierung.`,

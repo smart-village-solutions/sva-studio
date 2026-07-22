@@ -31,5 +31,7 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('upload redacted one-shot evidence');
     expect(workflow).toContain('if-no-files-found: ignore');
     expect(workflow).toContain('previous_live_image');
+    expect(workflow).toContain('packages: read');
+    expect(workflow).toContain('--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"');
   });
 });

@@ -9,10 +9,11 @@ PR #676 hat mit `Promote` bereits einen gemeinsamen, imagegebundenen Deploymentv
 - `Promote` bleibt der einzige GitHub-Actions-Deploymentworkflow; es wird kein zweiter Workflow und kein neuer lokaler Standardbedienpfad eingeführt.
 - Für `staging` führt `migration_mode=run` einen gehärteten temporären Migrations-Stack aus; ein angeforderter Bootstrap läuft danach ausschließlich bei erfolgreicher Migration.
 - Die vorhandenen Executor-Bausteine `scripts/ops/runtime/migration-job.ts` und `scripts/ops/runtime/bootstrap-job.ts` erhalten einen CI-tauglichen Einstieg. Die bisher inline implementierte Dev-Bootstrap-Ausführung verwendet denselben Einstieg.
-- Der Staging-Ablauf bindet validierten Git-Head, gerenderten Job-Stack und unveränderliches Image-Digest zusammen und erzwingt die Reihenfolge: Preflight → Migration → optional Bootstrap → Postconditions → App-Deploy → interne und externe Verifikation.
+- Der Staging-Ablauf löst die zulässige Image-Eingabe zu einem Digest auf, prüft dessen OCI-Revision gegen den validierten Git-Head und bindet diesen Nachweis mit dem gerenderten Job-Stack zusammen. Er erzwingt die Reihenfolge: Preflight → Migration → optional Bootstrap → Postconditions → App-Deploy → interne und externe Verifikation.
 - Der Workflow erhält `maintenance_window`. Für Staging-Migrationen mit `run` ist ein nicht-sensitiver, revisionsfähiger Wartungsfenster-Verweis Pflicht.
 - `promote-deploy-gates.ts` gibt `run` nur frei, wenn der jeweils angeforderte Executor tatsächlich im Workflow verdrahtet ist. Production bleibt für beide `run`-Modi fail-closed.
 - Der Workflow erfasst redigierte Job-Evidenz, Preflight- und Postflight-Ergebnisse, Cleanup sowie den vor dem App-Deploy tatsächlich laufenden App-Digest als Rollback-Hinweis.
+- Das GitHub-Environment `staging` wird als externe Merge-Voraussetzung mit Required Reviewers geschützt; mutierende Credentials liegen ausschließlich dort.
 - Bei Fehlschlag einer Migration, eines Bootstrap-Jobs, einer Postcondition oder einer Verifikation wird der App-Deploy nicht fortgesetzt. Für diesen Change wird kein automatisches DB-Rollback eingeführt.
 
 ## Non-Goals

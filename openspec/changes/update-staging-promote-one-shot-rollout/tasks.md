@@ -8,7 +8,7 @@
 ## 2. Promote-Workflow für Staging
 
 - [x] 2.1 `maintenance_window` für `workflow_dispatch` und `workflow_call` ergänzen; für Staging-Migrationen mit `run` format- und präsenzvalidieren.
-- [x] 2.2 Git-Base/-Head, Checkout des Executor-Codes und verifiziertes Ziel-Digest vor jeder Mutation verbindlich zusammenführen.
+- [x] 2.2 Git-Base/-Head, Checkout des Executor-Codes sowie zu Digest aufgelöstes und per OCI-Revision gegen `change_head` verifiziertes Zielartefakt vor jeder Mutation verbindlich zusammenführen.
 - [x] 2.3 Temporäre Migration- und Bootstrap-Stacks mit eindeutigen Namen, Zielnetzwerk, Ziel-Datenbankhost und demselben Digest ausführen.
 - [x] 2.4 Terminalzustand, Timeout, fehlende oder unlesbare Task-Information, Exit-Code, redigierte Logs und Cleanup als fail-closed behandeln.
 - [x] 2.5 Schema- und Bootstrap-Postconditions vor dem App-Deploy ausführen.
@@ -17,7 +17,7 @@
 
 ## 3. Tests und Qualitätsgates
 
-- [ ] 3.1 Unit-Tests für Job-Compose-Dokumente, Netzwerkbindung, Datenbankhost, eindeutige Namen, Task-Status, Timeout, Logredaktion und Cleanup-Fehler ergänzen.
+- [x] 3.1 Unit-Tests für Job-Compose-Dokumente, Netzwerkbindung, Datenbankhost, eindeutige Namen, Task-Status, Timeout, Logredaktion, Cleanup-Fehler sowie Digest-/OCI-Revision-Bindung ergänzen.
 - [x] 3.2 Workflow-Vertrag testen: `migration → bootstrap → postconditions → deploy → verify`, einschließlich dass Fehler den App-Deploy verhindern.
 - [x] 3.3 Staging-Compose und beide One-shot-Dokumente lokal rendern und nachweisen, dass sie keinen `app`-, `postgres`- oder `redis`-Service enthalten.
 - [ ] 3.4 Betroffene Unit-, TypeScript-, Server-Runtime-, Workflow- und File-Placement-Gates ausführen; anschließend `pnpm test:pr` ausführen.

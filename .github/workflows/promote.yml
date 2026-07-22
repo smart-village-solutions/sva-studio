@@ -63,6 +63,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: promote-${{ inputs.environment }}
@@ -153,6 +154,7 @@ jobs:
       - name: validate image contract
         id: image_contract
         env:
+          CHANGE_HEAD: ${{ inputs.change_head }}
           ENVIRONMENT: ${{ inputs.environment }}
           IMAGE_INPUT: ${{ inputs.image_ref }}
         run: |
@@ -160,7 +162,8 @@ jobs:
 
           pnpm exec tsx scripts/ci/promote-image-contract.ts \
             --environment "${ENVIRONMENT}" \
-            --image "${IMAGE_INPUT}"
+            --image "${IMAGE_INPUT}" \
+            --expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
 
       - name: evaluate migration and bootstrap gates
         id: gate_eval

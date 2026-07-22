@@ -274,6 +274,7 @@ Risikodetektion:
 Operator-Regel:
 
 - Für Staging-Migrationen mit `run` ist ein nicht-sensitiver, revisionsfähiger Wartungsfenster-Verweis Pflicht. GitHub Actions ist dort der kanonische mutierende Kanal.
+- Vor einem Merge muss das GitHub-Environment `staging` mit Required Reviewers geschützt sein; `QUANTUM_API_KEY` und weitere mutierende Credentials dürfen ausschließlich als Environment-Secrets vorliegen.
 - Lokale Befehle bleiben für `status`, `doctor`, `precheck`, Diagnose und Recovery zulässig, aber nicht der konkurrierende Standardweg für Staging-Rollouts.
 
 Prod-Hinweis:
@@ -286,10 +287,10 @@ Prod-Hinweis:
 Der GitHub-Promote-Pfad akzeptiert für das Zielartefakt absichtlich nicht jede beliebige Referenz:
 
 - `dev`: darf weiterhin `latest`, Commit-SHA-Tag oder Digest verwenden
-- `staging`: blockiert `latest`; erlaubt mindestens Commit-SHA-Tag oder Digest
+- `staging`: blockiert `latest`; akzeptiert Commit-SHA-Tag oder Digest nur als Eingabe, löst ihn vor der Mutation zu einem Digest auf und prüft die OCI-Revision gegen `change_head`
 - `prod`: blockiert mutable Tags und erfordert einen Digest
 
-Der Workflow schreibt den tatsächlich deployten Image-Ref sowie `SVA_DEPLOY_REVISION` explizit in den gerenderten Stack-Vertrag und in die Deploy-Summary. Damit bleiben Rollout, Audit und Incident-Analyse auf ein konkretes Artefakt zurückführbar.
+Der Workflow schreibt den tatsächlich deployten Digest sowie `SVA_DEPLOY_REVISION` explizit in den gerenderten Stack-Vertrag und in die Deploy-Summary. Damit bleiben Rollout, Audit und Incident-Analyse auf ein konkretes Artefakt zurückführbar.
 
 Der Workflow-Eingang dafür heißt `image_ref`, nicht mehr nur `tag`, weil staging/prod bewusst auch volle Digest-Referenzen akzeptieren und validieren.
 

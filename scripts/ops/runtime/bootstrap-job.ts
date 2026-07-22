@@ -325,8 +325,6 @@ export const runBootstrapJobAgainstAcceptance = async (
           cleanup: async () => {
             try {
               removeQuantumStack(deps, env, input.quantumEndpoint, quantumProject.jobStackName);
-            } catch {
-              // Cleanup is best-effort; the temporary stack can still be removed manually if needed.
             } finally {
               quantumProject.cleanup();
             }
@@ -374,12 +372,19 @@ export const runBootstrapJobAgainstAcceptance = async (
       await deps.wait(pollIntervalMs);
     }
   } catch (error) {
+    let cleanupError: unknown;
     try {
       removeQuantumStack(deps, env, input.quantumEndpoint, quantumProject.jobStackName);
-    } catch {
-      // Best-effort cleanup; primary error should remain visible.
+    } catch (cleanupFailure) {
+      cleanupError = cleanupFailure;
     }
     quantumProject.cleanup();
+    if (cleanupError) {
+      throw new Error(
+        `Swarm-Bootstrap-Job ist fehlgeschlagen und der temporäre Stack konnte nicht bereinigt werden: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+        { cause: error },
+      );
+    }
     throw error;
   }
 };

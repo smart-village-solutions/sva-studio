@@ -6,6 +6,7 @@ import { resolveChangedFiles } from './pr-scope.ts';
 import { resolveTraefikOnlyComposeFiles } from './traefik-compose-diff.ts';
 export type DeployGateMode = 'assert-none' | 'run';
 export type DeployGateKind = 'bootstrap' | 'migration';
+export type PromoteEnvironment = 'dev' | 'staging' | 'prod';
 export type DeployGateResultType =
   'asserted-clean' | 'blocked-missing-executor' | 'blocked-risk' | 'blocked-safe-run-required';
 export interface DeployGateResult {
@@ -24,6 +25,7 @@ export interface PromoteDeployGateEvaluation {
 }
 interface EvaluateDeployGateOptions {
   changedFiles: readonly string[];
+  environment?: PromoteEnvironment;
   executorConfigured: boolean;
   kind: DeployGateKind;
   mode: DeployGateMode;
@@ -34,6 +36,7 @@ interface CliOptions {
   bootstrapExecutorConfigured: boolean;
   bootstrapMode: DeployGateMode;
   changedFiles: string[] | null;
+  environment: PromoteEnvironment | undefined;
   head: string;
   migrationExecutorConfigured: boolean;
   migrationMode: DeployGateMode;
@@ -79,6 +82,7 @@ export const findRiskFiles = (
 };
 export const evaluateDeployGate = ({
   changedFiles,
+  environment,
   executorConfigured,
   kind,
   mode,
@@ -119,7 +123,18 @@ export const evaluateDeployGate = ({
       riskFiles,
     };
   }
-  if (kind === 'bootstrap') {
+  if (environment === 'prod') {
+    return {
+      kind,
+      message: `${label}-Gate blockiert: Production erlaubt One-shot-Jobs im Modus "run" noch nicht. Erforderlich sind Staging-Paritaet, Production-Freigabe, Backup-/Restore-Readiness und spezifische Postconditions.`,
+      mode,
+      ok: false,
+      result: 'blocked-safe-run-required',
+      riskDetected: riskFiles.length > 0,
+      riskFiles,
+    };
+  }
+  if (kind === 'bootstrap' || environment === 'dev' || environment === 'staging') {
     return {
       kind,
       message: 'Bootstrap-Gate freigegeben: Der gehärtete One-shot-Executor wird im Promote-Workflow mit Exit-Code-Evidenz ausgeführt.',
@@ -144,6 +159,7 @@ export const evaluatePromoteDeployGates = ({
   bootstrapExecutorConfigured = false,
   bootstrapMode,
   changedFiles,
+  environment,
   migrationExecutorConfigured = false,
   migrationMode,
   safeComposeFiles = [],
@@ -151,12 +167,14 @@ export const evaluatePromoteDeployGates = ({
   bootstrapExecutorConfigured?: boolean;
   bootstrapMode: DeployGateMode;
   changedFiles: readonly string[];
+  environment?: PromoteEnvironment;
   migrationExecutorConfigured?: boolean;
   migrationMode: DeployGateMode;
   safeComposeFiles?: readonly string[];
 }): PromoteDeployGateEvaluation => ({
   bootstrap: evaluateDeployGate({
     changedFiles,
+    environment,
     executorConfigured: bootstrapExecutorConfigured,
     kind: 'bootstrap',
     mode: bootstrapMode,
@@ -165,6 +183,7 @@ export const evaluatePromoteDeployGates = ({
   changedFiles: uniqueSorted(changedFiles),
   migration: evaluateDeployGate({
     changedFiles,
+    environment,
     executorConfigured: migrationExecutorConfigured,
     kind: 'migration',
     mode: migrationMode,
@@ -179,6 +198,7 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
   let migrationExecutorConfigured = false;
   let bootstrapExecutorConfigured = false;
   let changedFiles: string[] | null = null;
+  let environment: PromoteEnvironment | undefined;
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     const nextValue = (): string => {
@@ -199,6 +219,12 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
     }
     if (argument === '--migration-mode') {
       migrationMode = parseMode(nextValue(), '--migration-mode');
+      continue;
+    }
+    if (argument === '--environment') {
+      const value = nextValue();
+      if (value !== 'dev' && value !== 'staging' && value !== 'prod') throw new Error(`Ungültige Umgebung: ${value}`);
+      environment = value;
       continue;
     }
     if (argument === '--bootstrap-mode') {
@@ -229,6 +255,7 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
     bootstrapExecutorConfigured,
     bootstrapMode,
     changedFiles,
+    environment,
     head,
     migrationExecutorConfigured,
     migrationMode,
@@ -274,6 +301,7 @@ export const executePromoteDeployGates = async (
       bootstrapExecutorConfigured: options.bootstrapExecutorConfigured,
       bootstrapMode: options.bootstrapMode,
       changedFiles,
+      environment: options.environment,
       migrationExecutorConfigured: options.migrationExecutorConfigured,
       migrationMode: options.migrationMode,
       safeComposeFiles: options.changedFiles

@@ -180,6 +180,11 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: degradierte und recovery-nahe Zustände explizit modellieren und UI-/Ops-seitig sichtbar machen, statt nur Endzustände zu berichten; tenantgebundene Sessions ohne `instanceId` sind jetzt fail-closed und werden nicht mehr still aus dem Host rekonstruiert, verbleibende Recovery-Pfade bleiben Folgearbeit
 
+43. Staging-One-shot-Rollout ohne automatisches Datenbank-Rollback
+   - Impact: hoch
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: `Promote` stoppt vor dem App-Deploy bei fehlerhafter Migration, Bootstrap-Phase, Postcondition oder Verifikation und hält redigierte Evidenz sowie den vorherigen App-Digest fest. Datenbankmigrationen werden bewusst nicht automatisch zurückgerollt; nicht rückwärtskompatible Änderungen erfordern einen separaten Restore-Plan.
+
 34. Offener Live-Triage-Befund für IAM-Diagnostik
    - Impact: mittel bis hoch (Repo-Analyse deckt reale Host-, Cookie-, Keycloak- und Datenzustandsprobleme nur teilweise ab)
    - Wahrscheinlichkeit: hoch

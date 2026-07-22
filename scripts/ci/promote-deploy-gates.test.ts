@@ -156,6 +156,29 @@ describe('promote-deploy-gates', () => {
     expect(result.message).toContain('Exit-Code-Evidenz');
   });
 
+  it.each(['migration', 'bootstrap'] as const)('keeps production %s run fail-closed', (kind) => {
+    const result = evaluateDeployGate({
+      changedFiles: [],
+      environment: 'prod',
+      executorConfigured: true,
+      kind,
+      mode: 'run',
+    });
+
+    expect(result).toMatchObject({ ok: false, result: 'blocked-safe-run-required' });
+    expect(result.message).toContain('Production erlaubt One-shot-Jobs');
+  });
+
+  it('authorizes a wired staging migration executor', () => {
+    expect(evaluateDeployGate({
+      changedFiles: ['packages/data/migrations/0010_add_role.sql'],
+      environment: 'staging',
+      executorConfigured: true,
+      kind: 'migration',
+      mode: 'run',
+    })).toMatchObject({ ok: true, result: 'asserted-clean' });
+  });
+
   it('formats risk summaries deterministically', () => {
     expect(formatRiskSummary([])).toBe('none');
     expect(

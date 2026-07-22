@@ -281,6 +281,24 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     );
   });
 
+  it('returns not found when a faq detail request resolves to a non-faq generic item', async () => {
+    mockAuthorizedMutation();
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'generic-1',
+      genericType: 'INFO',
+    });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs/generic-1')
+    );
+
+    expect(response?.status).toBe(404);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'not_found',
+      message: 'FAQ wurde nicht gefunden.',
+    });
+  });
+
   it('deletes generic items', async () => {
     mockAuthorizedMutation();
     state.deleteSvaMainserverGenericItem.mockResolvedValue({ id: 'generic-1', deleted: true });
@@ -293,6 +311,39 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     expect(state.deleteSvaMainserverGenericItem).toHaveBeenCalledWith(
       expect.objectContaining({ genericItemId: 'generic-1' })
     );
+  });
+
+  it('returns not found when faq update or delete targets a non-faq generic item', async () => {
+    mockAuthorizedMutation();
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'generic-1',
+      genericType: 'INFO',
+    });
+
+    const updateResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs/generic-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Aktualisiert', genericType: 'FAQ' }),
+      })
+    );
+    const deleteResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/faqs/generic-1', {
+        method: 'DELETE',
+      })
+    );
+
+    expect(updateResponse?.status).toBe(404);
+    await expect(updateResponse?.json()).resolves.toEqual({
+      error: 'not_found',
+      message: 'FAQ wurde nicht gefunden.',
+    });
+    expect(deleteResponse?.status).toBe(404);
+    await expect(deleteResponse?.json()).resolves.toEqual({
+      error: 'not_found',
+      message: 'FAQ wurde nicht gefunden.',
+    });
+    expect(state.updateSvaMainserverGenericItem).not.toHaveBeenCalled();
+    expect(state.deleteSvaMainserverGenericItem).not.toHaveBeenCalled();
   });
 
   it('rejects missing required fields', async () => {

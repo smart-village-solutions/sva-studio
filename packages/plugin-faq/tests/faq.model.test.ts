@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   compareFaqRecords,
   faqFormSchema,
+  isFaqGenericItem,
   mapFaqFormValuesToGenericItemInput,
+  mapGenericItemToFaqFormValues,
   readFaqPayload,
 } from '../src/faq.model.js';
 
@@ -49,5 +51,33 @@ describe('FAQ model', () => {
     ];
 
     expect(records.toSorted(compareFaqRecords).map((record) => record.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('maps publicationDate from an existing faq item into form values', () => {
+    expect(
+      mapGenericItemToFaqFormValues({
+        id: 'faq-1',
+        title: 'Frage',
+        genericType: 'FAQ',
+        contentBlocks: [{ body: 'Antwort' }],
+        payload: { languageCode: 'de', sortWeight: 1 },
+        visible: false,
+        publicationDate: '2026-07-21T10:00:00.000Z',
+        createdAt: '',
+        updatedAt: '',
+      })
+    ).toEqual({
+      question: 'Frage',
+      answer: 'Antwort',
+      languageCode: 'de',
+      sortWeight: 1,
+      visible: false,
+      publicationDate: '2026-07-21T10:00:00.000Z',
+    });
+  });
+
+  it('recognizes faq generic items by discriminator', () => {
+    expect(isFaqGenericItem({ genericType: 'FAQ' })).toBe(true);
+    expect(isFaqGenericItem({ genericType: 'INFO' })).toBe(false);
   });
 });

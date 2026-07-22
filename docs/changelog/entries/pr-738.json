@@ -1,0 +1,4 @@
+{
+  "prNumber": 738,
+  "body": "Der Dev-Bootstrap-Stack wird nun vor dem Quantum-Deploy bereinigt gerendert, sodass nicht unterstützte leere Compose-Werte keinen Start mehr blockieren."
+}

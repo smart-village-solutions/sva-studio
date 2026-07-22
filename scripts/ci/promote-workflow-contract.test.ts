@@ -13,7 +13,7 @@ describe('Promote workflow contract', () => {
       'run bootstrap one-shot job',
       'run staging one-shot postconditions',
       'capture previous staging app digest',
-      '- name: deploy\n        id: deploy',
+      '- name: deploy',
       'verify deployed staging runtime',
       'verify deployed staging image digest',
     ];
@@ -21,6 +21,7 @@ describe('Promote workflow contract', () => {
 
     expect(offsets.every((offset) => offset >= 0)).toBe(true);
     expect(offsets).toEqual([...offsets].sort((left, right) => left - right));
+    expect(workflow).toMatch(/- name: deploy\s+id: deploy/u);
   });
 
   it('requires a maintenance reference and keeps production one-shot runs fail-closed', () => {

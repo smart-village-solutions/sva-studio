@@ -3,8 +3,10 @@ import { appendFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { runBootstrapJobAgainstAcceptance } from '../ops/runtime/bootstrap-job.ts';
+import { pickInternalNetworkName } from '../ops/runtime/internal-network.ts';
 import { runMigrationJobAgainstAcceptance } from '../ops/runtime/migration-job.ts';
 import { commandExists, run, runCapture, runCaptureDetailed, spawnBackground, wait } from '../ops/runtime/process.ts';
+import { inspectRemoteServiceContract } from '../ops/runtime/remote-service-spec.ts';
 
 type JobKind = 'bootstrap' | 'migration';
 type PromoteEnvironment = 'dev' | 'staging';
@@ -52,10 +54,20 @@ const main = async () => {
   const env: NodeJS.ProcessEnv = { ...process.env, QUANTUM_ENVIRONMENT: environment };
   delete env.SVA_MIGRATION_JOB_KEEP_FAILED_STACK;
   const deps = { commandExists, rootDir, run, runCapture, runCaptureDetailed, spawnBackground, wait };
+  const liveAppContract = await inspectRemoteServiceContract(
+    {
+      commandExists: (command) => commandExists(rootDir, command),
+      runCapture: (command, args, requestEnv) => runCapture(rootDir, command, args, requestEnv),
+    },
+    env,
+    { quantumEndpoint, serviceName: 'app', stackName: sourceStackName },
+  );
+  const internalNetworkName = pickInternalNetworkName(liveAppContract?.networkNames);
+  if (!internalNetworkName) throw new Error(`Das interne Live-Netz für ${sourceStackName} konnte nicht ermittelt werden.`);
   const input = {
-    internalNetworkName: `${sourceStackName}_internal`,
+    internalNetworkName,
     quantumEndpoint,
-    remoteComposeFile: `deploy/compose.${environment}.yaml`,
+    remoteComposeFiles: ['compose.yaml', `deploy/compose.${environment}.yaml`],
     reportId,
     runtimeProfile: 'studio' as const,
     sourceStackName,
@@ -88,7 +100,10 @@ const main = async () => {
     };
     writeFileSync(resultPath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `evidence_path=${resultPath}\n`);
-    if (cleanupError) throw cleanupError;
+    if (cleanupError) {
+      if (failure) throw new AggregateError([failure, cleanupError], 'One-shot-Job und Cleanup sind fehlgeschlagen.');
+      throw cleanupError;
+    }
   }
   if (failure) throw failure;
 };

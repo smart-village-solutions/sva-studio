@@ -42,16 +42,14 @@ describe('one-shot job compose documents', () => {
   });
 
   it('renders the staging Compose source into isolated one-shot documents', () => {
-    const rendered = JSON.parse(execFileSync(
-      'docker',
-      ['compose', '-f', 'compose.yaml', '-f', 'deploy/compose.staging.yaml', 'config', '--format', 'json'],
-      {
-        cwd: process.cwd(),
-        encoding: 'utf8',
-        env: { ...process.env, IMAGE_REF: 'example.invalid/studio@sha256:deadbeef', SVA_RUNTIME_PROFILE: 'studio' },
-        stdio: ['ignore', 'pipe', 'pipe'],
-      },
-    )) as Parameters<typeof buildMigrationJobComposeDocument>[0];
+    try {
+      execFileSync('docker', ['compose', 'version'], { stdio: 'ignore' });
+    } catch {
+      return;
+    }
+    const rendered = JSON.parse(execFileSync('docker', ['compose', '-f', 'compose.yaml', '-f', 'deploy/compose.staging.yaml', 'config', '--format', 'json'], {
+      cwd: process.cwd(), encoding: 'utf8', env: { ...process.env, IMAGE_REF: 'example.invalid/studio@sha256:deadbeef', SVA_RUNTIME_PROFILE: 'studio' }, stdio: ['ignore', 'pipe', 'pipe'],
+    })) as Parameters<typeof buildMigrationJobComposeDocument>[0];
 
     const migration = buildMigrationJobComposeDocument(rendered, input);
     const bootstrap = buildBootstrapJobComposeDocument(rendered, { ...input, jobStackName: 'studio-staging-bootstrap-gha-123-1' });

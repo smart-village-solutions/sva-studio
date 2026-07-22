@@ -161,12 +161,14 @@ const authServerMocks = vi.hoisted(() => {
       createRegion: vi.fn(async () => response('createWasteManagementRegionHandler')),
       createStreet: vi.fn(async () => response('createWasteManagementStreetHandler')),
       createTour: vi.fn(async () => response('createWasteManagementTourHandler')),
+      createTourAssignment: vi.fn(async () => response('createWasteManagementTourAssignmentHandler')),
       createTourDateShift: vi.fn(async () => response('createWasteManagementTourDateShiftHandler')),
       deleteGlobalDateShift: vi.fn(async () => response('deleteWasteManagementGlobalDateShiftHandler')),
       deleteHolidayRule: vi.fn(async () => response('deleteWasteManagementHolidayRuleHandler')),
       deleteLocationTourLink: vi.fn(async () => response('deleteWasteManagementLocationTourLinkHandler')),
       deleteLocationTourPickupDate: vi.fn(async () => response('deleteWasteManagementLocationTourPickupDateHandler')),
       deleteTourDateShift: vi.fn(async () => response('deleteWasteManagementTourDateShiftHandler')),
+      deleteTourAssignment: vi.fn(async () => response('deleteWasteManagementTourAssignmentHandler')),
       getMasterDataOverview: vi.fn(async () => response('getWasteManagementMasterDataOverviewHandler')),
       getSchedulingOverview: vi.fn(async () => response('getWasteManagementSchedulingOverviewHandler')),
       getToursOverview: vi.fn(async () => response('getWasteManagementToursOverviewHandler')),
@@ -186,6 +188,7 @@ const authServerMocks = vi.hoisted(() => {
       updateRegion: vi.fn(async () => response('updateWasteManagementRegionHandler')),
       updateStreet: vi.fn(async () => response('updateWasteManagementStreetHandler')),
       updateTour: vi.fn(async () => response('updateWasteManagementTourHandler')),
+      updateTourAssignment: vi.fn(async () => response('updateWasteManagementTourAssignmentHandler')),
       updateTourDateShift: vi.fn(async () => response('updateWasteManagementTourDateShiftHandler')),
       startMigrations: vi.fn(async () => response('startWasteManagementMigrationsHandler')),
       startImport: vi.fn(async () => response('startWasteManagementImportHandler')),
@@ -482,6 +485,10 @@ describe('auth.routes.server', () => {
       '/api/v1/waste-management/location-tour-links/$linkId'
     );
     const schedulingHandlers = resolveAuthHandlers('/api/v1/waste-management/scheduling');
+    const tourAssignmentHandlers = resolveAuthHandlers('/api/v1/waste-management/tour-assignments');
+    const tourAssignmentDetailHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/tour-assignments/$assignmentId'
+    );
     const locationTourPickupDateHandlers = resolveAuthHandlers('/api/v1/waste-management/location-tour-pickup-dates');
     const locationTourPickupDateDetailHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/location-tour-pickup-dates/$pickupDateId'
@@ -518,6 +525,9 @@ describe('auth.routes.server', () => {
     expect(locationTourLinkDetailHandlers?.DELETE).toBeDefined();
     expect(locationTourLinkDetailHandlers?.PUT).toBeDefined();
     expect(schedulingHandlers?.GET).toBeDefined();
+    expect(tourAssignmentHandlers?.POST).toBeDefined();
+    expect(tourAssignmentDetailHandlers?.PUT).toBeDefined();
+    expect(tourAssignmentDetailHandlers?.DELETE).toBeDefined();
     expect(locationTourPickupDateHandlers?.POST).toBeDefined();
     expect(locationTourPickupDateDetailHandlers?.PUT).toBeDefined();
     expect(locationTourPickupDateDetailHandlers?.DELETE).toBeDefined();
@@ -596,6 +606,21 @@ describe('auth.routes.server', () => {
     });
     await schedulingHandlers.GET?.({
       request: new Request('http://localhost/api/v1/waste-management/scheduling', { method: 'GET' }),
+    });
+    await tourAssignmentHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tour-assignments', {
+        method: 'POST',
+      }),
+    });
+    await tourAssignmentDetailHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/tour-assignments/assignment-1', {
+        method: 'PUT',
+      }),
+    });
+    await tourAssignmentDetailHandlers.DELETE?.({
+      request: new Request('http://localhost/api/v1/waste-management/tour-assignments/assignment-1', {
+        method: 'DELETE',
+      }),
     });
     await locationTourPickupDateHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/location-tour-pickup-dates', { method: 'POST' }),
@@ -698,6 +723,9 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.deleteLocationTourLink).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateLocationTourLink).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.getSchedulingOverview).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createTourAssignment).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateTourAssignment).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.deleteTourAssignment).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createLocationTourPickupDate).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateLocationTourPickupDate).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.deleteLocationTourPickupDate).toHaveBeenCalled();

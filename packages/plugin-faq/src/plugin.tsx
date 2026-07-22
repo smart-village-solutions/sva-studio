@@ -5,6 +5,7 @@ import {
 } from '@sva/plugin-sdk';
 
 import { FAQ_CONTENT_TYPE } from './faq.constants.js';
+import { pluginFaqTranslations } from './plugin.translations.js';
 
 const contribution = createStandardContentPluginContribution({
   pluginId: 'faq',
@@ -20,10 +21,7 @@ export const pluginFaq: PluginDefinition = createStandardContentPluginDefinition
   pluginId: 'faq',
   displayName: 'FAQ',
   contribution,
-  translations: {
-    de: { faq: { navigation: { title: 'FAQ' }, actions: { create: 'FAQ anlegen', edit: 'FAQ bearbeiten', update: 'FAQ speichern', delete: 'FAQ löschen', save: 'Speichern' }, permissions: { read: 'FAQ lesen', create: 'FAQ anlegen', update: 'FAQ bearbeiten', delete: 'FAQ löschen' }, editor: { createTitle: 'FAQ anlegen', editTitle: 'FAQ bearbeiten' }, list: { title: 'FAQ', empty: 'Keine FAQ vorhanden.' }, pagination: { ariaLabel: 'FAQ-Paginierung', pageLabel: 'Seite {{page}}', previous: 'Zurück', next: 'Weiter' }, fields: { question: 'Frage', answer: 'Antwort', languageCode: 'Sprachcode', sortWeight: 'Sortiergewicht', visible: 'Sichtbar' }, messages: { loading: 'FAQ wird geladen.', loadError: 'FAQ konnte nicht geladen werden.', saveError: 'FAQ konnte nicht gespeichert werden.' }, validation: { required: 'Dieses Feld ist erforderlich.', answer: 'Bitte eine gültige Textantwort eingeben.', languageCode: 'Bitte einen gültigen BCP-47-Sprachcode eingeben.' } } },
-    en: { faq: { navigation: { title: 'FAQ' }, actions: { create: 'Create FAQ', edit: 'Edit FAQ', update: 'Save FAQ', delete: 'Delete FAQ', save: 'Save' }, permissions: { read: 'Read FAQ', create: 'Create FAQ', update: 'Edit FAQ', delete: 'Delete FAQ' }, editor: { createTitle: 'Create FAQ', editTitle: 'Edit FAQ' }, list: { title: 'FAQ', empty: 'No FAQ available.' }, pagination: { ariaLabel: 'FAQ pagination', pageLabel: 'Page {{page}}', previous: 'Previous', next: 'Next' }, fields: { question: 'Question', answer: 'Answer', languageCode: 'Language code', sortWeight: 'Sort weight', visible: 'Visible' }, messages: { loading: 'Loading FAQ.', loadError: 'Could not load FAQ.', saveError: 'Could not save FAQ.' }, validation: { required: 'This field is required.', answer: 'Enter a valid text answer.', languageCode: 'Enter a valid BCP-47 language code.' } } },
-  },
+  translations: pluginFaqTranslations,
 });
 
 export const pluginFaqPermissionDefinitions = contribution.permissions;

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { DEFAULT_LOCALE, i18nResources } from '../../apps/sva-studio-react/src/i18n/resources';
 import { pluginEventsTranslations } from '../../packages/plugin-events/src/plugin.translations';
+import { pluginFaqTranslations } from '../../packages/plugin-faq/src/plugin.translations';
 import { pluginNewsTranslations } from '../../packages/plugin-news/src/plugin.translations';
 import { pluginPoiTranslations } from '../../packages/plugin-poi/src/plugin.translations';
 import { wasteManagementPluginTranslations } from '../../packages/plugin-waste-management/src/plugin.translations';
@@ -34,6 +35,7 @@ const SOURCE_ROOT_CONFIGS = [
 const pluginTranslationResources = [
   pluginNewsTranslations,
   pluginEventsTranslations,
+  pluginFaqTranslations,
   pluginPoiTranslations,
   wasteManagementPluginTranslations,
 ] as const;

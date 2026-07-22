@@ -1,4 +1,4 @@
 {
   "prNumber": 740,
-  "body": "Die Instance Registry behandelt neu provisionierte Realms nach erfolgreichem Abschluss nun als Bestands-Realm und liest erwartete Keycloak-Secrets mit Retry nach. Zusätzlich dokumentieren OpenSpec und Betriebsdoku den gehärteten Staging-Promote-Pfad mit One-shot-Migration und Bootstrap präziser."
+  "body": "Neue Studio-Instanzen werden nach erfolgreicher Einrichtung verlässlicher weiterverarbeitet, und der Staging-Rollout mit Migration und Bootstrap ist klarer dokumentiert."
 }

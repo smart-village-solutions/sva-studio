@@ -182,9 +182,6 @@ export const syncProvisionedClientSecretToRegistry = async (
     actorId?: string;
   }
 ) => {
-  if (!deps.readKeycloakStateViaProvisioner) {
-    throw new Error('dependency_missing_readKeycloakStateViaProvisioner');
-  }
   const { loaded } = input;
   const tenantAdminClientConfigured = Boolean(loaded.instance.tenantAdminClient?.clientId);
   const state = await readStateForRegistrySync(

@@ -17,6 +17,7 @@ export const SOURCE_ROOTS = [
   'apps/sva-studio-react/src',
   'packages/plugin-news/src',
   'packages/plugin-events/src',
+  'packages/plugin-faq/src',
   'packages/plugin-poi/src',
   'packages/plugin-waste-management/src',
 ] as const;
@@ -25,6 +26,7 @@ const SOURCE_ROOT_CONFIGS = [
   { relativeRoot: 'apps/sva-studio-react/src', namespace: null },
   { relativeRoot: 'packages/plugin-news/src', namespace: 'news' },
   { relativeRoot: 'packages/plugin-events/src', namespace: 'events' },
+  { relativeRoot: 'packages/plugin-faq/src', namespace: 'faq' },
   { relativeRoot: 'packages/plugin-poi/src', namespace: 'poi' },
   { relativeRoot: 'packages/plugin-waste-management/src', namespace: 'wasteManagement' },
 ] as const;

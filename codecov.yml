@@ -74,6 +74,7 @@ coverage:
         - packages/monitoring-client/
         - packages/plugin-categories/
         - packages/plugin-events/
+        - packages/plugin-faq/
         - packages/plugin-news/
         - packages/plugin-poi/
         - packages/plugin-sdk/

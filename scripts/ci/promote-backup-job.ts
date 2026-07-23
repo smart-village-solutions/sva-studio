@@ -150,7 +150,8 @@ const main = async () => {
       await wait(2_000);
     }
   } finally {
-    try { run(rootDir, 'quantum-cli', ['stacks', 'remove', '--force', '--endpoint', quantumEndpoint, '--stack', jobStack], withoutDebugEnv(env)); } finally { run(rootDir, 'rm', ['-rf', projectDir]); }
+    try { run(rootDir, 'quantum-cli', ['stacks', 'remove', '--force', '--endpoint', quantumEndpoint, '--stack', jobStack], withoutDebugEnv(env)); } catch { /* Cleanup darf den Primärfehler nicht überschreiben. */ }
+    try { run(rootDir, 'rm', ['-rf', projectDir]); } catch { /* Cleanup darf den Primärfehler nicht überschreiben. */ }
   }
 };
 

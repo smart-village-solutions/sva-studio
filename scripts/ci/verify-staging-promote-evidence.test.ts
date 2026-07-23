@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   buildArtifactDownloadArgs,
   isSuccessfulPromoteWorkflowRun,
   listArtifacts,
   matchesSuccessfulStagingEvidence,
+  selectEvidenceJsonFile,
 } from './verify-staging-promote-evidence.ts';
 
 describe('staging parity evidence', () => {
@@ -24,6 +25,19 @@ describe('staging parity evidence', () => {
 
     expect(artifacts).toHaveLength(101);
     expect(artifacts.at(-1)).toMatchObject({ name: 'promote-staging-parity-101' });
+  });
+
+  it('limits artifact pagination to ten pages', () => {
+    const readPage = vi.fn(() => ({ artifacts: Array.from({ length: 100 }, () => ({})), total_count: 2_000 }));
+
+    expect(listArtifacts(readPage)).toHaveLength(1_000);
+    expect(readPage).toHaveBeenCalledTimes(10);
+  });
+
+  it('selects exactly one JSON evidence file from an artifact archive', () => {
+    expect(selectEvidenceJsonFile('evidence.json\n')).toBe('evidence.json');
+    expect(selectEvidenceJsonFile('evidence.json\nmetadata.json\n')).toBeUndefined();
+    expect(selectEvidenceJsonFile('README.md\n')).toBeUndefined();
   });
 
   it('downloads parity artifacts through gh api without unsupported output flags', () => {

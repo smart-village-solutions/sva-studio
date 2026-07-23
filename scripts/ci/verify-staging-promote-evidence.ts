@@ -15,18 +15,12 @@ export const matchesSuccessfulStagingEvidence = (evidence: StagingEvidence, targ
 
 export const listArtifacts = (readPage: (page: number) => ArtifactPage): Artifact[] => {
   const artifacts: Artifact[] = [];
-  let page = 1;
-  let totalCount = Number.POSITIVE_INFINITY;
-
-  while (artifacts.length < totalCount) {
+  for (let page = 1; page <= 10; page += 1) {
     const payload = readPage(page);
     const pageArtifacts = payload.artifacts ?? [];
     artifacts.push(...pageArtifacts);
-    totalCount = payload.total_count ?? artifacts.length;
-    if (pageArtifacts.length === 0) break;
-    page += 1;
+    if (pageArtifacts.length < 100 || artifacts.length >= (payload.total_count ?? artifacts.length)) break;
   }
-
   return artifacts;
 };
 
@@ -37,6 +31,11 @@ export const buildArtifactDownloadArgs = (repo: string, artifactId: number) => [
 
 export const isSuccessfulPromoteWorkflowRun = (workflowRun: WorkflowRun) =>
   workflowRun.conclusion === 'success' && workflowRun.path === '.github/workflows/promote.yml';
+
+export const selectEvidenceJsonFile = (archiveEntries: string) => {
+  const files = archiveEntries.split('\n').filter((entry) => entry.endsWith('.json'));
+  return files.length === 1 ? files[0] : undefined;
+};
 const required = (value: string | undefined, name: string) => {
   const trimmed = value?.trim();
   if (!trimmed) throw new Error(`${name} darf nicht leer sein.`);
@@ -60,7 +59,9 @@ const main = () => {
       writeFileSync(zipPath, execFileSync('gh', buildArtifactDownloadArgs(repo, artifactId), {
         env: { ...process.env, GH_TOKEN: required(process.env.GITHUB_TOKEN, 'GITHUB_TOKEN') },
       }));
-      const evidence = JSON.parse(execFileSync('unzip', ['-p', zipPath], { encoding: 'utf8' })) as StagingEvidence;
+      const evidenceFile = selectEvidenceJsonFile(execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' }));
+      if (!evidenceFile) continue;
+      const evidence = JSON.parse(execFileSync('unzip', ['-p', zipPath, evidenceFile], { encoding: 'utf8' })) as StagingEvidence;
       if (matchesSuccessfulStagingEvidence(evidence, targetDigest)) return;
     }
     throw new Error(`Kein erfolgreicher Staging-Paritätsnachweis für ${targetDigest} gefunden.`);

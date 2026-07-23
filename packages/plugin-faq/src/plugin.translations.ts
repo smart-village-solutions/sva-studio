@@ -5,6 +5,7 @@ export const pluginFaqTranslations = {
     faq: {
       navigation: { title: 'FAQ' },
       actions: {
+        back: 'Zurück',
         create: 'FAQ anlegen',
         edit: 'FAQ bearbeiten',
         update: 'FAQ speichern',
@@ -60,6 +61,7 @@ export const pluginFaqTranslations = {
     faq: {
       navigation: { title: 'FAQ' },
       actions: {
+        back: 'Back',
         create: 'Create FAQ',
         edit: 'Edit FAQ',
         update: 'Save FAQ',

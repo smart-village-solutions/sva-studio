@@ -71,6 +71,7 @@ export const backupCommand = [
   'aws --endpoint-url "$S3_ENDPOINT" s3 cp "$checksum" "s3://$S3_BUCKET/$S3_OBJECT_KEY.sha256" --only-show-errors',
   'aws --endpoint-url "$S3_ENDPOINT" s3 cp "s3://$S3_BUCKET/$S3_OBJECT_KEY" "$download" --only-show-errors',
   'test -s "$download"',
+  'test "$(wc -c < "$dump")" -eq "$(wc -c < "$download")"',
   'printf "%s  %s\\n" "$(cut -d " " -f1 "$checksum")" "$download" | sha256sum -c -',
   'pg_restore --list "$download" >/dev/null',
   'printf "backup_object=%s\\n" "$S3_OBJECT_KEY"',

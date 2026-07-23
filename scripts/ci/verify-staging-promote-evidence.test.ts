@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { listArtifacts, matchesSuccessfulStagingEvidence } from './verify-staging-promote-evidence.ts';
+import { buildArtifactDownloadArgs, listArtifacts, matchesSuccessfulStagingEvidence } from './verify-staging-promote-evidence.ts';
 
 describe('staging parity evidence', () => {
   it('accepts only successful staging evidence for the exact target digest', () => {
@@ -19,5 +19,12 @@ describe('staging parity evidence', () => {
 
     expect(artifacts).toHaveLength(101);
     expect(artifacts.at(-1)).toMatchObject({ name: 'promote-staging-parity-101' });
+  });
+
+  it('downloads parity artifacts through gh api without unsupported output flags', () => {
+    expect(buildArtifactDownloadArgs('smart-village-solutions/sva-studio', 42)).toEqual([
+      'api',
+      'repos/smart-village-solutions/sva-studio/actions/artifacts/42/zip',
+    ]);
   });
 });

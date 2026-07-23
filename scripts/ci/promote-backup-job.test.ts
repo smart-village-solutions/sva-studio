@@ -43,6 +43,8 @@ describe('promote backup job', () => {
     expect(backupCommand).toContain('export PGPASSWORD="$POSTGRES_PASSWORD"');
     expect(backupCommand.indexOf('export PGPASSWORD="$POSTGRES_PASSWORD"')).toBeLessThan(backupCommand.indexOf('pg_dump'));
     expect(backupCommand).toContain('sha256sum -c -');
+    expect(backupCommand).toContain('test "$(wc -c < "$dump")" -eq "$(wc -c < "$download")"');
+    expect(backupCommand.indexOf('test "$(wc -c < "$dump")" -eq "$(wc -c < "$download")"')).toBeLessThan(backupCommand.indexOf('sha256sum -c -'));
     expect(backupCommand).toContain('pg_restore --list');
     expect(backupCommand).not.toContain('S3_SECRET_ACCESS_KEY=');
   });

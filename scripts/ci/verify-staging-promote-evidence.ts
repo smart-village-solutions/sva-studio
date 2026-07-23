@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -28,6 +28,11 @@ export const listArtifacts = (readPage: (page: number) => ArtifactPage): Artifac
 
   return artifacts;
 };
+
+export const buildArtifactDownloadArgs = (repo: string, artifactId: number) => [
+  'api',
+  `repos/${repo}/actions/artifacts/${artifactId}/zip`,
+];
 const required = (value: string | undefined, name: string) => {
   const trimmed = value?.trim();
   if (!trimmed) throw new Error(`${name} darf nicht leer sein.`);
@@ -42,8 +47,12 @@ const main = () => {
   const workdir = mkdtempSync(resolve(tmpdir(), 'sva-staging-parity-'));
   try {
     for (const artifact of candidates) {
-      const zipPath = resolve(workdir, `${artifact.id}.zip`);
-      execFileSync('gh', ['api', `repos/${repo}/actions/artifacts/${artifact.id}/zip`, '--output', zipPath], { env: { ...process.env, GH_TOKEN: required(process.env.GITHUB_TOKEN, 'GITHUB_TOKEN') } });
+      const artifactId = artifact.id;
+      if (!artifactId) continue;
+      const zipPath = resolve(workdir, `${artifactId}.zip`);
+      writeFileSync(zipPath, execFileSync('gh', buildArtifactDownloadArgs(repo, artifactId), {
+        env: { ...process.env, GH_TOKEN: required(process.env.GITHUB_TOKEN, 'GITHUB_TOKEN') },
+      }));
       const evidence = JSON.parse(execFileSync('unzip', ['-p', zipPath], { encoding: 'utf8' })) as StagingEvidence;
       if (matchesSuccessfulStagingEvidence(evidence, targetDigest)) return;
     }

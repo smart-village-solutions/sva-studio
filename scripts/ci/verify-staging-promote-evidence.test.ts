@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildArtifactDownloadArgs, listArtifacts, matchesSuccessfulStagingEvidence } from './verify-staging-promote-evidence.ts';
+import {
+  buildArtifactDownloadArgs,
+  isSuccessfulPromoteWorkflowRun,
+  listArtifacts,
+  matchesSuccessfulStagingEvidence,
+} from './verify-staging-promote-evidence.ts';
 
 describe('staging parity evidence', () => {
   it('accepts only successful staging evidence for the exact target digest', () => {
@@ -26,5 +31,20 @@ describe('staging parity evidence', () => {
       'api',
       'repos/smart-village-solutions/sva-studio/actions/artifacts/42/zip',
     ]);
+  });
+
+  it('accepts artifacts only from successful Promote workflow runs', () => {
+    expect(isSuccessfulPromoteWorkflowRun({
+      conclusion: 'success',
+      path: '.github/workflows/promote.yml@refs/heads/main',
+    })).toBe(true);
+    expect(isSuccessfulPromoteWorkflowRun({
+      conclusion: 'failure',
+      path: '.github/workflows/promote.yml@refs/heads/main',
+    })).toBe(false);
+    expect(isSuccessfulPromoteWorkflowRun({
+      conclusion: 'success',
+      path: '.github/workflows/build.yml@refs/heads/main',
+    })).toBe(false);
   });
 });

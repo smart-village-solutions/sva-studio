@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 type Artifact = { expired?: boolean; id?: number; name?: string; workflow_run?: { id?: number } };
 type ArtifactPage = { artifacts?: Artifact[]; total_count?: number };
 type StagingEvidence = { digest?: string; environment?: string; mutation?: string; postflight?: string };
+type WorkflowRun = { conclusion?: string; path?: string };
 
 export const matchesSuccessfulStagingEvidence = (evidence: StagingEvidence, targetDigest: string) =>
   evidence.environment === 'staging' && evidence.mutation === 'completed' && evidence.postflight === 'passed' && evidence.digest === targetDigest;
@@ -33,6 +34,9 @@ export const buildArtifactDownloadArgs = (repo: string, artifactId: number) => [
   'api',
   `repos/${repo}/actions/artifacts/${artifactId}/zip`,
 ];
+
+export const isSuccessfulPromoteWorkflowRun = (workflowRun: WorkflowRun) =>
+  workflowRun.conclusion === 'success' && workflowRun.path?.startsWith('.github/workflows/promote.yml@') === true;
 const required = (value: string | undefined, name: string) => {
   const trimmed = value?.trim();
   if (!trimmed) throw new Error(`${name} darf nicht leer sein.`);
@@ -48,7 +52,10 @@ const main = () => {
   try {
     for (const artifact of candidates) {
       const artifactId = artifact.id;
-      if (!artifactId) continue;
+      const workflowRunId = artifact.workflow_run?.id;
+      if (!artifactId || !workflowRunId) continue;
+      const workflowRun = JSON.parse(api(`repos/${repo}/actions/runs/${workflowRunId}`)) as WorkflowRun;
+      if (!isSuccessfulPromoteWorkflowRun(workflowRun)) continue;
       const zipPath = resolve(workdir, `${artifactId}.zip`);
       writeFileSync(zipPath, execFileSync('gh', buildArtifactDownloadArgs(repo, artifactId), {
         env: { ...process.env, GH_TOKEN: required(process.env.GITHUB_TOKEN, 'GITHUB_TOKEN') },

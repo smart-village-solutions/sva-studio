@@ -13,6 +13,7 @@
 - [x] 2.3 Den FAQ-Payload mit den kontrollierten Schlüsseln `languageCode` und `sortWeight` schreiben, unbekannte historische Payload-Schlüssel erhalten und `contentBlocks` beim Speichern auf genau einen Antwortblock normieren.
 - [x] 2.4 Fachliste mit Sprachfilter, Sprachcode-Anzeige und vollständiger deterministischer Sortierung sowie Create-/Edit-Seiten mit bestehenden Studio-UI-Bausteinen umsetzen.
 - [x] 2.5 Zugänglichkeit, Fehlerzustände und Lade-/Empty-States nach bestehendem Plugin-Muster absichern.
+- [ ] 2.6 Den FAQ-Editor als Standard-Content-Workspace mit den Tabs `Basis`, `Inhalt`, `Einstellungen` und `Historie` umsetzen; die Nur-Text-Antwort ausschließlich im Tab `Inhalt` platzieren und keine fachfremden Eingabebereiche ergänzen.
 
 ## 3. Qualität und Dokumentation
 
@@ -23,3 +24,4 @@
 - [ ] 3.5 Sonar- und Codecov-PR-Checks bewerten; rote Checks oder genehmigte Ausnahmen mit Ursache, Risiko und Folgemaßnahme im PR dokumentieren.
 - [x] 3.6 [arc42 Abschnitte 05, 06 und 08](../../../docs/architecture/README.md) sowie die Package-Gesamtübersicht aktualisieren und bei einer neuen ADR Abschnitt 09 nachziehen.
 - [x] 3.7 Den OpenSpec-Change mit `openspec validate add-faq-generic-item-plugin --strict` validieren.
+- [ ] 3.8 Unit- und Komponenten-Tests für Tab-Reihenfolge, Antwortfeld im Tab `Inhalt`, responsive Tab-Navigation, Kopfaktionen sowie Lade-, Fehler- und Leerzustände der Historie ergänzen oder anpassen.

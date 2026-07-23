@@ -47,6 +47,32 @@ Das System MUST für FAQ ausschließlich Frage, Nur-Text-Antwort, Sprachcode, So
 - **THEN** weist das System die Speicherung mit einer feldbezogenen Validierungsmeldung ab
 - **AND** verändert keinen bestehenden Datensatz
 
+### Requirement: FAQ-Editor folgt dem Standard-Content-Workspace
+
+Das System MUST den FAQ-Editor mit dem etablierten Detail-Workspace der redaktionellen Content-Plugins darstellen. Für eine gespeicherte FAQ MUST der Workspace die Tabs `Basis`, `Inhalt`, `Einstellungen` und `Historie` in dieser Reihenfolge anbieten. Der Tab `Basis` MUST Frage und Sprachcode enthalten; der Tab `Inhalt` MUST ausschließlich die fachliche Nur-Text-Antwort enthalten; der Tab `Einstellungen` MUST Sichtbarkeit, Veröffentlichungszeitpunkt und Sortiergewicht enthalten. Der Tab `Historie` MUST die hostgeführte Inhaltshistorie lesbar darstellen. Medien, Kategorien, Orte, Kontakte und weitere nicht zum FAQ-Fachmodell gehörende Bereiche dürfen nicht ergänzt werden.
+
+#### Scenario: Antwort wird im Inhalts-Tab bearbeitet
+
+- **GIVEN** ein Benutzer öffnet eine bestehende FAQ zum Bearbeiten
+- **WHEN** er den Tab `Inhalt` auswählt
+- **THEN** kann er dort die Nur-Text-Antwort lesen und bearbeiten
+- **AND** ist das Antwortfeld nicht im Tab `Basis` oder `Einstellungen` sichtbar
+
+#### Scenario: Neue FAQ zeigt nur passende Fachbereiche
+
+- **WHEN** ein Benutzer eine FAQ anlegt
+- **THEN** zeigt das System die Tabs `Basis`, `Inhalt` und `Einstellungen`
+- **AND** zeigt es keinen Historie-Tab, bevor eine Inhalts-ID existiert
+- **AND** zeigt es keine Medien-, Kategorien-, Orts- oder Kontakt-Tabs
+
+#### Scenario: Historie einer gespeicherten FAQ wird angezeigt
+
+- **GIVEN** eine gespeicherte FAQ und ein Benutzer mit Leseberechtigung
+- **WHEN** er den Tab `Historie` öffnet
+- **THEN** lädt das System die hostgeführte Inhaltshistorie für die FAQ-ID
+- **AND** zeigt Zeitpunkt, Aktion, Actor und Zusammenfassung je vorhandenem Eintrag
+- **AND** zeigt es bei fehlenden Einträgen einen verständlichen Leerzustand
+
 #### Scenario: Sprachfassungen werden als eigene FAQ gespeichert
 
 - **GIVEN** eine gespeicherte FAQ mit Sprachcode `de`

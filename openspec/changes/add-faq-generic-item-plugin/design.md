@@ -42,16 +42,24 @@ Die Fachliste zeigt den Sprachcode und kann danach filtern. Ihre vollständige S
 
 Der Mainserver bietet aktuell keinen vertraglich garantierten `genericType`-Listenfilter. Der FAQ-Adapter ruft deshalb jede verfügbare Upstream-Seite ab, filtert ausschließlich `genericType === 'FAQ'`, sortiert die gesamte gefilterte Menge und wendet danach die vom Client angefragte Pagination an. `totalCount` und leere Seiten beziehen sich auf diese gefilterte Menge, nicht auf die GenericItem-Gesamtmenge. Ein künftiger serverseitiger Filter darf diese Strategie nur ersetzen, wenn er dieselben Filter-, Sortier- und Zählsemantiken garantiert.
 
-## Risiken und Maßnahmen
+### Editor-Workspace
+
+Der Editor verwendet `StudioDetailPageTemplate` sowie die vorhandenen Tabs-Primitives und Detail-Panel-Konventionen der Standard-Content-Plugins. Die feste Tab-Reihenfolge lautet `Basis`, `Inhalt`, `Einstellungen`, `Historie`. Für neue FAQ fehlt der Tab `Historie`, da noch keine Inhalts-ID vorliegt. Frage und Sprachcode gehören nach `Basis`, die fachliche Nur-Text-Antwort ausschließlich nach `Inhalt` und Sichtbarkeit, Veröffentlichungszeitpunkt sowie Sortiergewicht nach `Einstellungen`.
+
+Die Historie nutzt `fetchIamContentHistory` und die bestehenden SDK-/UI-Muster aus den anderen Content-Plugins. Sie lädt erst bei Tab-Besuch und behandelt Lade-, Fehler- und Leerzustände explizit. Speichern, Zurück-Navigation und Löschen werden als Kopfaktionen des Detail-Templates umgesetzt; die bestehende Formularvalidierung und API bleiben unverändert. Medien, Kategorien, Orte, Kontakte und weitere nicht zum FAQ-Fachmodell gehörende Bereiche werden nicht ergänzt.
+
+## Risiken und Abwägungen
 
 - Das vollständige Einlesen ohne Upstream-Typfilter kann bei großen GenericItem-Mengen teuer werden. Der Adapter muss dafür beobachtbare Seitenzahl, gelesene Datensatzanzahl und Laufzeit ohne Inhaltsdaten protokollieren; die korrekte fachliche Pagination hat Vorrang vor einer unvollständigen Seite.
 - Bestehende `GenericItem`-Projektionen kennen derzeit nur `generic-items.generic-item`. Die Änderung erfordert atomische Anpassungen von Registry, IAM, Projektion und Delete-/Detail-Routing, damit FAQ nicht falsch klassifiziert oder doppelt angezeigt werden.
 - Detail, Update und Delete müssen nach erfolgreicher Autorisierung zunächst das GenericItem laden und `genericType === 'FAQ'` verifizieren. Für eine Fremdtyp-ID liefern sie dieselbe Nichtgefunden-Klassifikation wie für eine unbekannte ID und rufen keine mutierende Mainserver-Operation auf.
+- Der zusätzliche Workspace-Tab erhöht die Navigation bei einem kleinen Fachmodell. Der Gewinn an konsistenter Orientierung und der unmittelbare Zugang zur Historie überwiegt dies.
 
 ## Teststrategie
 
 - Unit-Tests für Einlesen, Schreiben, Defaults und Validierung von `languageCode`/`sortWeight`, die Pflichtfelder Frage/Antwort sowie die HTML-Ablehnung.
-- Komponenten-Tests für die reduzierte Oberfläche und Feldfehler.
+- Komponenten-Tests für die Tab-Reihenfolge, Feldzuordnung, mobile Tab-Auswahl, Kopfaktionen, die Ausblendung der Historie beim Anlegen sowie Feldfehler.
+- Tests für den Historie-Tab prüfen Laden, Fehler, leeren Verlauf und gerenderte Einträge.
 - Host-Tests für Berechtigungen, vollständiges Paging mit fremden GenericItems zwischen FAQ, `genericType`-Filter, Projektionsklassifikation, Fremdtyp-Detail-/Delete-Pfade und die Vermeidung doppelter Inhaltseinträge.
 - Tests für die Erhaltung unbekannter Payload-Schlüssel, das Ersetzen mehrerer historischer Content-Blöcke sowie die vollständige Sortierung einschließlich gleicher Fragen.
 - Ein Integrations- oder E2E-Test für Anlegen, Bearbeiten und Löschen einer FAQ in mindestens zwei unterschiedlichen Sprachen.

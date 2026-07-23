@@ -21,6 +21,8 @@ export const pluginFaqTranslations = {
         createTitle: 'FAQ anlegen',
         editTitle: 'FAQ bearbeiten',
       },
+      tabs: { ariaLabel: 'FAQ-Bereiche', mobileLabel: 'FAQ-Bereich auswählen', basis: { label: 'Basis', title: 'Basis' }, content: { label: 'Inhalt', title: 'Inhalt' }, settings: { label: 'Einstellungen', title: 'Einstellungen' }, history: { label: 'Historie', title: 'Historie' } },
+      history: { empty: 'Noch keine Historie verfügbar.', loading: 'Historie wird geladen.', tableLabel: 'FAQ-Historie', changedFields: 'Geändert: {{fields}}', emptySummary: 'Keine Detailangaben.', actions: { created: 'Angelegt', updated: 'Aktualisiert', statusChanged: 'Status geändert' }, columns: { time: 'Zeitpunkt', action: 'Aktion', actor: 'Bearbeitet von', summary: 'Zusammenfassung' }, errors: { load: 'Historie konnte nicht geladen werden.' } },
       list: {
         title: 'FAQ',
         empty: 'Keine FAQ vorhanden.',
@@ -38,6 +40,7 @@ export const pluginFaqTranslations = {
         languageCode: 'Sprachcode',
         sortWeight: 'Sortiergewicht',
         visible: 'Sichtbar',
+        publicationDate: 'Veröffentlichungszeitpunkt',
       },
       messages: {
         loading: 'FAQ wird geladen.',
@@ -73,6 +76,8 @@ export const pluginFaqTranslations = {
         createTitle: 'Create FAQ',
         editTitle: 'Edit FAQ',
       },
+      tabs: { ariaLabel: 'FAQ sections', mobileLabel: 'Select FAQ section', basis: { label: 'Basics', title: 'Basics' }, content: { label: 'Content', title: 'Content' }, settings: { label: 'Settings', title: 'Settings' }, history: { label: 'History', title: 'History' } },
+      history: { empty: 'No history available yet.', loading: 'Loading history.', tableLabel: 'FAQ history', changedFields: 'Changed: {{fields}}', emptySummary: 'No details.', actions: { created: 'Created', updated: 'Updated', statusChanged: 'Status changed' }, columns: { time: 'Time', action: 'Action', actor: 'Actor', summary: 'Summary' }, errors: { load: 'Could not load history.' } },
       list: {
         title: 'FAQ',
         empty: 'No FAQ available.',
@@ -90,6 +95,7 @@ export const pluginFaqTranslations = {
         languageCode: 'Language code',
         sortWeight: 'Sort weight',
         visible: 'Visible',
+        publicationDate: 'Publication date',
       },
       messages: {
         loading: 'Loading FAQ.',

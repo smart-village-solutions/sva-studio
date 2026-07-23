@@ -1,0 +1,4 @@
+{
+  "prNumber": 758,
+  "body": "Der Main-Image-Build übergibt die Commit-Revision nun an das OCI-Image, sodass Staging die Bildherkunft zuverlässig prüfen kann."
+}

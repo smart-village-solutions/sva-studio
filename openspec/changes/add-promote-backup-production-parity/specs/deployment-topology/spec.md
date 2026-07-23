@@ -28,7 +28,7 @@ Das System SHALL stateful Services, Secrets, Configs, Migrationen, Bootstrap, Ba
 - **WHEN** `migrate`, `bootstrap` oder `backup` für `studio` in einem temporären Job-Stack ausgeführt werden
 - **THEN** enthält der temporäre Stack keinen `app`-Service
 - **AND** reconciled der Job-Lauf nicht den Live-Stack mit `app`, `postgres` oder `redis`
-- **AND** nutzt der Job-Stack nur das vorhandene Overlay-Netz `<stack>_internal`
+- **AND** nutzt der Job-Stack nur das aus der Live-Service-Spec ermittelte vorhandene interne Overlay-Netz
 
 #### Scenario: Recovery-Pfad für Netzwerk- oder Ingress-Drift ist dokumentiert
 

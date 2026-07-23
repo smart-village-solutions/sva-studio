@@ -12,7 +12,7 @@ export const evaluateEnvironmentRunGate = (input: {
   }
 
   return {
-    message: `${input.label}-Gate blockiert: Die Zielumgebung fehlt oder ist ungültig.`,
+    message: `${input.label}-Gate blockiert: Zielumgebung ${input.environment ?? 'fehlend'} ist ungültig; erlaubt sind dev, staging oder prod.`,
     ok: false,
   };
 };

@@ -253,12 +253,13 @@ Das System SHALL mutierende Remote-Operationen in einem deterministischen, umgeb
 - **AND** enthält `maintenance_window` einen nicht-sensitiven revisionsfähigen Wartungsfenster-Verweis
 - **AND** dürfen die benötigten mutierenden Credentials nur aus diesem Environment bezogen werden
 
-#### Scenario: Production-Run bleibt gesperrt
+#### Scenario: Production-Run verwendet den Staging-erprobten Ablauf
 
 - **WHEN** `Promote` für `prod` mit `migration_mode=run` oder `bootstrap_mode=run` aufgerufen wird
-- **THEN** blockiert das Gate den Lauf vor jeder Mutation
+- **THEN** verwendet der Workflow dieselbe Reihenfolge und dieselben gehärteten One-shot-Executors wie Staging
+- **AND** erfordert er vor der Mutation ein erfolgreiches Artifact eines abgeschlossenen mutierenden Staging-Pfads für exakt dasselbe Digest, ein revisionsfähiges Wartungsfenster und ein erfolgreiches Backup
+- **AND** blockiert er den App-Deploy bei Backup-, One-shot-, Postcondition- oder Verify-Fehlern
 - **AND** bleibt der vorhandene Production-App-only-Deploy mit unveränderlichem Digest unverändert verfügbar
-- **AND** nennt die Evidenz den separaten Folgebedarf für Staging-Parität, Production-Freigabe, Backup-/Restore-Readiness und production-spezifische Postconditions
 
 #### Scenario: Automatischer Modus bleibt auf Dev begrenzt
 

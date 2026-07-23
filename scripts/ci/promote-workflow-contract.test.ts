@@ -62,6 +62,7 @@ describe('Promote workflow contract', () => {
     expect(buildWorkflow).toContain('bootstrap_mode: auto');
     expect(buildWorkflow).toContain('migration_mode: auto');
     expect(buildWorkflow).toContain('actions: read');
+    expect(buildWorkflow).toContain('SVA_IMAGE_REVISION=${{ github.sha }}');
     expect(workflow).toContain('migration_should_run');
     expect(workflow).toContain('bootstrap_should_run');
   });

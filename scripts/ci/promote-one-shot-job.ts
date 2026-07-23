@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { runBootstrapJobAgainstAcceptance } from '../ops/runtime/bootstrap-job.ts';
 import { pickInternalNetworkName } from '../ops/runtime/internal-network.ts';
@@ -9,7 +10,7 @@ import { commandExists, run, runCapture, runCaptureDetailed, spawnBackground, wa
 import { inspectRemoteServiceContract } from '../ops/runtime/remote-service-spec.ts';
 
 type JobKind = 'bootstrap' | 'migration';
-type PromoteEnvironment = 'dev' | 'staging';
+type PromoteEnvironment = 'dev' | 'prod' | 'staging';
 
 const rootDir = resolve(import.meta.dirname, '../..');
 
@@ -19,19 +20,19 @@ const required = (value: string | undefined, label: string) => {
   return trimmed;
 };
 
-const parseArgs = (args: readonly string[]) => {
+export const parseArgs = (args: readonly string[]) => {
   const values = new Map<string, string>();
   for (let index = 0; index < args.length; index += 1) {
     const flag = args[index];
     const value = args[index + 1];
-    if (!flag?.startsWith('--') || !value) throw new Error('Erwartet: --kind <migration|bootstrap> --environment <dev|staging>.');
+    if (!flag?.startsWith('--') || !value) throw new Error('Erwartet: --kind <migration|bootstrap> --environment <dev|staging|prod>.');
     values.set(flag, value);
     index += 1;
   }
   const kind = values.get('--kind');
   const environment = values.get('--environment');
   if (kind !== 'migration' && kind !== 'bootstrap') throw new Error('Ungültiger --kind.');
-  if (environment !== 'dev' && environment !== 'staging') throw new Error('Ungültiges --environment.');
+  if (environment !== 'dev' && environment !== 'staging' && environment !== 'prod') throw new Error('Ungültiges --environment.');
   return { environment, kind } as { environment: PromoteEnvironment; kind: JobKind };
 };
 
@@ -111,7 +112,9 @@ const main = async () => {
   if (failure) throw failure;
 };
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? redact(error.message) : redact(String(error)));
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error: unknown) => {
+    console.error(error instanceof Error ? redact(error.message) : redact(String(error)));
+    process.exitCode = 1;
+  });
+}

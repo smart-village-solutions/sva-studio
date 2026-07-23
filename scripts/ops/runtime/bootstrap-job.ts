@@ -191,45 +191,28 @@ const createQuantumProject = (
   const renderedComposeJson = JSON.stringify(jobCompose, null, 2);
   const projectDir = mkdtempSync(resolve(tmpdir(), `sva-studio-${input.runtimeProfile}-bootstrap-`));
   const renderedComposePath = resolve(projectDir, 'docker-compose.rendered.json');
-  const quantumProjectPath = resolve(projectDir, '.quantum');
 
   writeFileSync(renderedComposePath, `${renderedComposeJson}\n`, 'utf8');
-  writeFileSync(
-    quantumProjectPath,
-    [
-      '---',
-      'version: "1.0"',
-      'compose: docker-compose.rendered.json',
-      'environments:',
-      `  - name: ${input.runtimeProfile}`,
-      '    compose: docker-compose.rendered.json',
-      '',
-    ].join('\n'),
-    'utf8',
-  );
 
   return {
     jobStackName,
     projectDir,
+    renderedComposePath,
     cleanup: () => {
       rmSync(projectDir, { force: true, recursive: true });
     },
   };
 };
 
-const buildQuantumCreateArgs = (endpoint: string, stackName: string, projectDir: string, env: NodeJS.ProcessEnv) => [
+export const buildQuantumDeployArgs = (endpoint: string, stackName: string, composePath: string) => [
   'stacks',
-  'update',
-  '--create',
-  ...(env.QUANTUM_ENVIRONMENT?.trim() ? ['--environment', env.QUANTUM_ENVIRONMENT.trim()] : []),
-  '--endpoint',
-  endpoint,
+  'deploy',
+  '-f',
+  composePath,
   '--stack',
   stackName,
-  '--wait',
-  '--no-pre-pull',
-  '--project',
-  projectDir,
+  '--endpoint',
+  endpoint,
 ];
 
 const buildQuantumRemoveArgs = (endpoint: string, stackName: string) => [
@@ -310,7 +293,7 @@ export const runBootstrapJobAgainstAcceptance = async (
     deps.run(
       deps.rootDir,
       'quantum-cli',
-      buildQuantumCreateArgs(input.quantumEndpoint, quantumProject.jobStackName, quantumProject.projectDir, env),
+      buildQuantumDeployArgs(input.quantumEndpoint, quantumProject.jobStackName, quantumProject.renderedComposePath),
       withoutDebugEnv(env),
     );
 

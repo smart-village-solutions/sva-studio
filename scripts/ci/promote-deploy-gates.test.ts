@@ -201,7 +201,7 @@ describe('promote-deploy-gates', () => {
     expect(result.message).toContain('Exit-Code-Evidenz');
   });
 
-  it.each(['migration', 'bootstrap'] as const)('keeps production %s run fail-closed', (kind) => {
+  it.each(['migration', 'bootstrap'] as const)('authorizes production %s run for the workflow-level parity gate', (kind) => {
     const result = evaluateDeployGate({
       changedFiles: [],
       environment: 'prod',
@@ -210,8 +210,7 @@ describe('promote-deploy-gates', () => {
       mode: 'run',
     });
 
-    expect(result).toMatchObject({ ok: false, result: 'blocked-safe-run-required' });
-    expect(result.message).toContain('Production erlaubt One-shot-Jobs');
+    expect(result).toMatchObject({ ok: true, result: 'asserted-clean', shouldRun: true });
   });
 
   it('authorizes a wired staging migration executor', () => {

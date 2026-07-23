@@ -143,7 +143,7 @@ Das System SHALL im lokalen und staging-nahen Betrieb tenant-spezifische Auth-Se
 
 ### Requirement: Minimaler Betriebsvertrag für stateful Swarm-Services
 
-Das System SHALL dokumentieren, wie stateful Services, Secrets, Configs, Migrationen und Rollback im Swarm-Referenzprofil minimal belastbar betrieben werden.
+Das System SHALL stateful Services, Secrets, Configs, Migrationen, Bootstrap und Rollback im Swarm-Referenzprofil so betreiben und dokumentieren, dass temporäre Jobs vom Live-Stack isoliert, nachvollziehbar und sicher bereinigt bleiben.
 
 #### Scenario: Klassifizierung von Secrets und Configs
 
@@ -169,13 +169,35 @@ Das System SHALL dokumentieren, wie stateful Services, Secrets, Configs, Migrati
 - **WHEN** `migrate` oder `bootstrap` für `studio` in einem temporären Job-Stack ausgeführt werden
 - **THEN** enthält der temporäre Stack keinen `app`-Service
 - **AND** reconciled der Job-Lauf nicht den Live-Stack mit `app`, `postgres` oder `redis`
-- **AND** nutzt der Job-Stack nur das vorhandene Overlay-Netz `<stack>_internal`
+- **AND** nutzt der Job-Stack nur das aus der Live-Service-Spec ermittelte vorhandene interne Overlay-Netz
 
 #### Scenario: Recovery-Pfad für Netzwerk- oder Ingress-Drift ist dokumentiert
 
 - **WHEN** ein Live-Rollout zu einem Zustand `app 1/1`, aber externem `502` oder fehlendem Ingress-Netz führt
 - **THEN** beschreibt die Betriebsdokumentation einen kanonischen Recovery-Pfad aus Diagnose, gezieltem App-Reconcile und nachgelagerter Verifikation
 - **AND** behandelt sie direkte Portainer-API-Eingriffe nur als Incident-Recovery und nicht als Standardpfad
+
+#### Scenario: Staging-One-shot-Jobs sind isoliert und nachweisbar
+
+- **WHEN** ein Staging-`Promote` Migration oder Bootstrap im Modus `run` ausführt
+- **THEN** startet jeder Job in einem eindeutigen temporären Stack gegen ausschließlich das aus der Live-Service-Spec ermittelte interne Overlay-Netz und den Datenbankhost des Zielstacks
+- **AND** enthalten die Job-Dokumente keinen `app`-, `postgres`- oder `redis`-Service
+- **AND** erfasst der Workflow Task-ID, Terminalzustand, Exit-Code und redigierte Diagnose vor dem Cleanup
+- **AND** entfernt er temporäre Stacks und lokale Secret-Dateien auch im Fehlerpfad
+
+#### Scenario: Fehlerhafte One-shot-Phase stoppt den Live-Deploy
+
+- **WHEN** ein One-shot-Job keinen lesbaren Task liefert, timeoutet, nicht-terminal bleibt, mit Exit-Code ungleich null endet oder eine Postcondition verletzt
+- **THEN** beendet der Workflow den Lauf fail-closed vor dem App-Deploy
+- **AND** dokumentiert er den Cleanup- und Recovery-Status ohne Secrets oder personenbezogene Daten
+
+#### Scenario: Main-Push hält Dev mit bedarfsgesteuerten Jobs aktuell
+
+- **WHEN** ein Merge einen Push nach `main` auslöst und `Promote` für `dev` im Modus `auto` startet
+- **THEN** klassifiziert der Workflow Migration und Bootstrap anhand des konkreten Commit-Diffs unabhängig
+- **AND** führt er jeden erforderlichen One-shot-Job vor dem App-Deploy aus
+- **AND** überspringt er nicht erforderliche Jobs
+- **AND** aktualisiert er den Dev-App-Stack nur, wenn alle erforderlichen Jobs und der Build erfolgreich sind
 
 ### Requirement: Dokumentierte Grenzen für dynamische Multi-Host-OIDC-Redirects
 
@@ -222,14 +244,28 @@ Das System SHALL `quantum-cli` im Regelbetrieb auf mutierende Rollout- und Job-P
 
 ### Requirement: Mutationen laufen in einem deterministischen Operator-Kontext
 
-Das System SHALL mutierende Remote-Operationen in einem deterministischen Operator-Kontext ausfuehren.
+Das System SHALL mutierende Remote-Operationen in einem deterministischen, umgebungsgebundenen Kontext ausführen.
 
-#### Scenario: Lokaler Operator-Deploy bleibt auf verifizierte Digests begrenzt
+#### Scenario: Staging-Run erfordert explizite Freigabe und Wartungsfenster
 
-- **WHEN** ein mutierender Rollout fuer `studio` ausgefuehrt wird
-- **THEN** erfolgt die technische Freigabe zuvor ueber GitHub Build- und Verify-Gates fuer genau ein Digest-Artefakt
-- **AND** der mutierende Schritt laeuft lokal nur ueber den dokumentierten Operator-Einstieg `env:release:studio:local`
-- **AND** beliebige lokale Shell-Overlays wie `~/.config/quantum/env` gelten nicht als primaere Quelle der technischen Freigabe
+- **WHEN** `Promote` für `staging` mit `migration_mode=run` ausgeführt wird
+- **THEN** ist das GitHub-Environment `staging` freigegeben
+- **AND** enthält `maintenance_window` einen nicht-sensitiven revisionsfähigen Wartungsfenster-Verweis
+- **AND** dürfen die benötigten mutierenden Credentials nur aus diesem Environment bezogen werden
+
+#### Scenario: Production-Run verwendet den Staging-erprobten Ablauf
+
+- **WHEN** `Promote` für `prod` mit `migration_mode=run` oder `bootstrap_mode=run` aufgerufen wird
+- **THEN** verwendet der Workflow dieselbe Reihenfolge und dieselben gehärteten One-shot-Executors wie Staging
+- **AND** erfordert er vor der Mutation ein erfolgreiches Artifact eines abgeschlossenen mutierenden Staging-Pfads für exakt dasselbe Digest, ein revisionsfähiges Wartungsfenster und ein erfolgreiches Backup
+- **AND** blockiert er den App-Deploy bei Backup-, One-shot-, Postcondition- oder Verify-Fehlern
+- **AND** bleibt der vorhandene Production-App-only-Deploy mit unveränderlichem Digest unverändert verfügbar
+
+#### Scenario: Automatischer Modus bleibt auf Dev begrenzt
+
+- **WHEN** `Promote` für `staging` oder `prod` mit `migration_mode=auto` oder `bootstrap_mode=auto` aufgerufen wird
+- **THEN** blockiert das Gate den Lauf vor jeder Mutation
+- **AND** bleiben für diese Umgebungen nur die expliziten Modi `assert-none` und `run` gemäß ihren jeweiligen Freigaberegeln zulässig
 
 ### Requirement: Prod-nahes Parity-Gate vor mutierenden Remote-Rollouts
 
@@ -553,3 +589,38 @@ eigene Runtime-Variablen routen.
 - **THEN** leitet die Compose-Datei den öffentlichen Host aus `PUBLIC_WASTE_PUBLIC_HOST` ab
 - **AND** die Runtime nutzt `PUBLIC_WASTE_BASE_URL` als kanonische Base-URL
 - **AND** weder Host noch Base-URL werden aus `SVA_PARENT_DOMAIN` oder `SVA_PUBLIC_BASE_URL` des Studios abgeleitet
+
+### Requirement: Studio-Release wird in Vorbereitung und lokalen Final-Deploy getrennt
+
+Das System SHALL für `studio` zwischen Artefaktverifikation, kanonischem Staging-Rollout und lokalen Diagnose-/Recovery-Operationen unterscheiden.
+
+#### Scenario: GitHub Actions rollt Staging kanonisch aus
+
+- **WHEN** ein freigegebener `Promote`-Lauf ein verifiziertes Studio-Image nach `staging` ausrollt
+- **THEN** validiert der Workflow Environment, konkreten Git-Änderungsbereich und ausgecheckten Executor-Code; für Staging löst er das Zielartefakt zu einem Digest auf und prüft dessen OCI-Revision gegen `change_head` vor jeder Mutation
+- **AND** führt er bei angeforderten `run`-Modi Migration, optional Bootstrap und deren Postconditions vor dem App-Deploy aus
+- **AND** verifiziert er anschließend Servicezustand, Ziel-Digest sowie interne und externe Staging-Smokes
+- **AND** gilt GitHub Actions für diesen Staging-Pfad als kanonischer mutierender Deploymentkanal
+
+#### Scenario: Lokaler Operatorpfad bleibt Diagnose und Recovery
+
+- **WHEN** ein Operator für `studio` Status, Doctor, Precheck, Diagnose oder Recovery benötigt
+- **THEN** stehen die dokumentierten lokalen Operator-Einstiege weiterhin zur Verfügung
+- **AND** gelten sie nicht als konkurrierender Standardpfad für einen normalen Staging-Rollout
+
+### Requirement: Promote liefert redigierte Rollout-Evidenz
+
+Das System SHALL für jeden mutierenden Staging-Promote redigierte, menschen- und maschinenlesbare Evidenz bereitstellen.
+
+#### Scenario: Evidenz verknüpft Zielartefakt und Phasen
+
+- **WHEN** ein Staging-Promote endet, unabhängig von Erfolg oder Fehlschlag
+- **THEN** enthalten Step Summary und maschinenlesbare Artefakte Commit, Ziel-Digest, vorherigen Live-Digest, Wartungsfenster-Verweis, Phasenstatus, Job-/Task-IDs, Cleanup, Postflight und Recovery-Hinweis
+- **AND** enthalten sie weder `.env`-Inhalte, `APP_CONFIG`, Secrets, unredigierte Remote-Logs noch personenbezogene Daten
+
+#### Scenario: Datenbankmigration wird nicht automatisch zurückgerollt
+
+- **WHEN** eine Staging-Migration erfolgreich war, der nachfolgende App-Deploy oder Postflight aber fehlschlägt
+- **THEN** startet der Workflow kein automatisches Datenbank-Rollback
+- **AND** hält er den vorigen App-Digest und einen dokumentierten Recovery-Hinweis fest
+- **AND** erfordert eine nicht rückwärtskompatible Migration weiterhin einen separaten Restore-Plan

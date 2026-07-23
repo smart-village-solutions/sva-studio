@@ -62,6 +62,7 @@ on:
         default: ''
 
 permissions:
+  actions: read
   contents: read
   packages: read
 
@@ -121,9 +122,9 @@ jobs:
               ;;
           esac
 
-          if [ "${ENVIRONMENT}" = "staging" ] && [ "${MIGRATION_MODE}" = "run" ]; then
+          if { [ "${ENVIRONMENT}" = "staging" ] && [ "${MIGRATION_MODE}" = "run" ]; } || { [ "${ENVIRONMENT}" = "prod" ] && { [ "${MIGRATION_MODE}" = "run" ] || [ "${BOOTSTRAP_MODE}" = "run" ]; }; }; then
             if ! printf '%s' "${MAINTENANCE_WINDOW}" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._:/# -]{2,159}$'; then
-              echo "'maintenance_window' must be a non-sensitive, revisionable reference for staging migrations." >&2
+              echo "'maintenance_window' must be a non-sensitive, revisionable reference for the requested mutation." >&2
               exit 1
             fi
           fi
@@ -225,12 +226,37 @@ jobs:
           api-key: ${{ secrets.QUANTUM_API_KEY }}
           version: 3.2.1
 
-      - name: capture previous staging app digest
+      - name: capture previous live app digest
         id: previous_live_image
-        if: ${{ inputs.environment == 'staging' }}
+        if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-        run: pnpm exec tsx scripts/ci/promote-live-digest.ts staging
+        run: pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}"
+
+      - name: require successful staging parity for production mutation
+        if: ${{ inputs.environment == 'prod' && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true') }}
+        env:
+          DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: pnpm exec tsx scripts/ci/verify-staging-promote-evidence.ts
+
+      - name: create database backup before one-shot jobs
+        id: backup_job
+        if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true') }}
+        env:
+          APP_CONFIG: ${{ secrets.APP_CONFIG }}
+          DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_ENDPOINT: https://fileserver.smart-village.app
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f .env' EXIT
+          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
+          pnpm exec tsx scripts/ci/promote-backup-job.ts "${{ inputs.environment }}"
 
       - name: run migration one-shot job
         id: migration_job
@@ -262,8 +288,8 @@ jobs:
           printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
           pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind bootstrap --environment "${{ inputs.environment }}"
 
-      - name: run staging one-shot postconditions
-        if: ${{ inputs.environment == 'staging' && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true') }}
+      - name: run one-shot postconditions
+        if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true') }}
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
         run: |
@@ -306,8 +332,8 @@ jobs:
 
           quantum-cli stacks deploy -f stack.yaml --stack "studio-${ENVIRONMENT}" --endpoint "${QUANTUM_ENDPOINT}"
 
-      - name: verify deployed staging runtime
-        if: ${{ inputs.environment == 'staging' }}
+      - name: verify deployed runtime
+        if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
         run: |
@@ -317,11 +343,26 @@ jobs:
           pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
           pnpm exec tsx scripts/ops/runtime-env.ts smoke studio
 
-      - name: verify deployed staging image digest
-        if: ${{ inputs.environment == 'staging' }}
+      - name: verify deployed runtime image digest
+        if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-        run: pnpm exec tsx scripts/ci/promote-live-digest.ts staging --expected "${{ steps.image_contract.outputs.deploy_image_ref }}"
+        run: pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}" --expected "${{ steps.image_contract.outputs.deploy_image_ref }}"
+
+      - name: write staging parity evidence
+        if: ${{ inputs.environment == 'staging' && success() }}
+        env:
+          DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true' }}
+        run: pnpm exec tsx scripts/ci/write-staging-promote-evidence.ts
+
+      - name: upload staging parity evidence
+        if: ${{ inputs.environment == 'staging' && success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: promote-staging-parity-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/promote-staging-parity-${{ github.run_id }}.json
+          retention-days: 14
 
       - name: upload redacted one-shot evidence
         if: always()

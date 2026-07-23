@@ -116,7 +116,7 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 
-RUN apk add --no-cache bash curl ca-certificates postgresql-client
+RUN apk add --no-cache aws-cli bash curl ca-certificates postgresql-client
 RUN mkdir -p artifacts/tools/goose packages/data/scripts packages/data/migrations
 
 COPY --from=build --chown=node:node /workspace/.deploy/sva-studio-react/node_modules ./node_modules

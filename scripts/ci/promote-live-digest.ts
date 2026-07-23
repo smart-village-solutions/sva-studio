@@ -21,7 +21,7 @@ export const matchesExpectedLiveImage = (expectedImage: string, liveImage: strin
 
 const main = async () => {
   const environment = process.argv[2];
-  if (environment !== 'staging') throw new Error('Der Live-Digest-Nachweis ist nur für staging zulässig.');
+  if (environment !== 'staging' && environment !== 'prod') throw new Error('Der Live-Digest-Nachweis ist nur für staging oder prod zulässig.');
   const expectedFlagIndex = process.argv.indexOf('--expected');
   const expectedImage = expectedFlagIndex === -1 ? undefined : required(process.argv[expectedFlagIndex + 1], '--expected');
 

@@ -1,0 +1,4 @@
+{
+  "prNumber": 750,
+  "body": "Staging- und Production-Promotes authentifizieren die Bildvertragsprüfung jetzt bei GHCR, sodass private Images vor dem Deployment zuverlässig verifiziert werden."
+}

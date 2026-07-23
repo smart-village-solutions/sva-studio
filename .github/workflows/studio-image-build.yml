@@ -70,13 +70,15 @@ jobs:
           set -euo pipefail
           image_tag="${IMAGE_TAG_INPUT}"
           if [ -z "${image_tag}" ]; then
-            image_tag="$(git rev-parse --short=12 HEAD)"
+            image_tag="$(git rev-parse HEAD)"
           fi
           image_name="ghcr.io/smart-village-solutions/sva-studio:${image_tag}"
           echo "image_tag=${image_tag}" >> "${GITHUB_OUTPUT}"
           echo "image_name=${image_name}" >> "${GITHUB_OUTPUT}"
 
       - name: Build and push studio image
+        env:
+          BUILD_REVISION: ${{ github.sha }}
         run: |
           set -euo pipefail
           docker buildx build \
@@ -85,6 +87,7 @@ jobs:
             --provenance=false \
             --sbom=false \
             -f deploy/portainer/Dockerfile \
+            --build-arg "SVA_IMAGE_REVISION=${BUILD_REVISION}" \
             -t "${{ steps.meta.outputs.image_name }}" \
             --push \
             .

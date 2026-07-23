@@ -105,7 +105,10 @@ RUN find /workspace/.deploy/sva-studio-react/node_modules/.pnpm \
 
 FROM node:24.15.0-alpine AS runtime
 
+ARG SVA_IMAGE_REVISION
+
 LABEL org.opencontainers.image.source="https://github.com/smart-village-solutions/sva-studio"
+LABEL org.opencontainers.image.revision="${SVA_IMAGE_REVISION}"
 
 WORKDIR /app
 

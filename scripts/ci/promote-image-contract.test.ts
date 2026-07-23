@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   resolvePromoteImageContract,
+  resolveVerifiedStagingImageContract,
   validatePromoteImageContract,
 } from './promote-image-contract.ts';
+import { verifyStagingImageProvenance } from './promote-image-provenance.ts';
 
 describe('promote-image-contract', () => {
   it('allows latest in dev and resolves a tag-based image ref', () => {
@@ -146,5 +148,36 @@ describe('promote-image-contract', () => {
       imageRef: `ghcr.io/smart-village-solutions/sva-studio@${digest}`,
       imageType: 'digest',
     });
+  });
+
+  it('pins an attested staging tag to its registry digest', () => {
+    const revision = '5bdcfd1be7d7a72ba94c23ce16834bc1ebecc5de';
+    const digest = 'sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+    const contract = resolveVerifiedStagingImageContract({
+      contract: resolvePromoteImageContract({ environment: 'staging', imageInput: revision }),
+      expectedRevision: revision,
+      inspection: {
+        image: { config: { Labels: { 'org.opencontainers.image.revision': revision } } },
+        manifest: { digest },
+      },
+    });
+
+    expect(contract).toMatchObject({
+      deployRevision: revision,
+      deploySummaryDigest: digest,
+      deploySummaryImmutability: 'digest-and-revision-attested',
+      imageRef: `ghcr.io/smart-village-solutions/sva-studio@${digest}`,
+      imageType: 'digest',
+    });
+  });
+
+  it('fails closed when the staging image does not attest change_head', () => {
+    expect(() => verifyStagingImageProvenance({
+      expectedRevision: '5bdcfd1be7d7a72ba94c23ce16834bc1ebecc5de',
+      inspection: {
+        image: { config: { Labels: { 'org.opencontainers.image.revision': 'c0d7e5113c90568fcb1d087975070d7f9e14a418' } } },
+        manifest: { digest: 'sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' },
+      },
+    })).toThrow(/OCI-Image-Revision/u);
   });
 });

@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { parseBoolean, parseMode } from './promote-deploy-gates-cli.ts';
+import { parsePromoteDeployGateCliOptions, type PromoteDeployGateCliOptions } from './promote-deploy-gates-cli.ts';
+import { evaluateEnvironmentRunGate, type PromoteEnvironment } from './promote-environment-gate.ts';
+import { emitPromoteDeployGateOutputs } from './promote-deploy-gate-output.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
 import { resolveTraefikOnlyComposeFiles } from './traefik-compose-diff.ts';
-export type DeployGateMode = 'assert-none' | 'run';
+export type DeployGateMode = 'assert-none' | 'auto' | 'run';
 export type DeployGateKind = 'bootstrap' | 'migration';
+export type { PromoteEnvironment } from './promote-environment-gate.ts';
 export type DeployGateResultType =
   'asserted-clean' | 'blocked-missing-executor' | 'blocked-risk' | 'blocked-safe-run-required';
 export interface DeployGateResult {
@@ -16,6 +18,7 @@ export interface DeployGateResult {
   result: DeployGateResultType;
   riskDetected: boolean;
   riskFiles: string[];
+  shouldRun: boolean;
 }
 export interface PromoteDeployGateEvaluation {
   bootstrap: DeployGateResult;
@@ -24,22 +27,12 @@ export interface PromoteDeployGateEvaluation {
 }
 interface EvaluateDeployGateOptions {
   changedFiles: readonly string[];
+  environment?: PromoteEnvironment;
   executorConfigured: boolean;
   kind: DeployGateKind;
   mode: DeployGateMode;
   safeComposeFiles?: readonly string[];
 }
-interface CliOptions {
-  base: string;
-  bootstrapExecutorConfigured: boolean;
-  bootstrapMode: DeployGateMode;
-  changedFiles: string[] | null;
-  head: string;
-  migrationExecutorConfigured: boolean;
-  migrationMode: DeployGateMode;
-}
-const DEFAULT_BASE = 'origin/main';
-const DEFAULT_HEAD = 'HEAD';
 const migrationRiskPatterns = [
   /^compose\.yaml$/u,
   /^deploy\/compose\.(?:dev|staging|prod)\.yaml$/u,
@@ -79,6 +72,7 @@ export const findRiskFiles = (
 };
 export const evaluateDeployGate = ({
   changedFiles,
+  environment,
   executorConfigured,
   kind,
   mode,
@@ -96,6 +90,7 @@ export const evaluateDeployGate = ({
         result: 'blocked-risk',
         riskDetected: true,
         riskFiles,
+        shouldRun: false,
       };
     }
     return {
@@ -106,6 +101,32 @@ export const evaluateDeployGate = ({
       result: 'asserted-clean',
       riskDetected: false,
       riskFiles,
+      shouldRun: false,
+    };
+  }
+  if (mode === 'auto' && environment !== 'dev') {
+    return {
+      kind,
+      message: `${label}-Gate blockiert: Modus "auto" ist ausschließlich für den automatischen Dev-Promote zulässig.`,
+      mode,
+      ok: false,
+      result: 'blocked-safe-run-required',
+      riskDetected: true,
+      riskFiles,
+      shouldRun: false,
+    };
+  }
+  const shouldRun = mode === 'run' || riskFiles.length > 0;
+  if (!shouldRun) {
+    return {
+      kind,
+      message: `${label}-Gate automatisch übersprungen: keine risikobehafteten Änderungen erkannt.`,
+      mode,
+      ok: true,
+      result: 'asserted-clean',
+      riskDetected: false,
+      riskFiles,
+      shouldRun: false,
     };
   }
   if (!executorConfigured) {
@@ -117,33 +138,38 @@ export const evaluateDeployGate = ({
       result: 'blocked-missing-executor',
       riskDetected: riskFiles.length > 0,
       riskFiles,
+      shouldRun: false,
     };
   }
-  if (kind === 'bootstrap') {
+  const environmentGate = evaluateEnvironmentRunGate({ environment, label });
+  if (!environmentGate.ok) {
     return {
       kind,
-      message: 'Bootstrap-Gate freigegeben: Der gehärtete One-shot-Executor wird im Promote-Workflow mit Exit-Code-Evidenz ausgeführt.',
+      message: environmentGate.message,
       mode,
-      ok: true,
-      result: 'asserted-clean',
+      ok: false,
+      result: 'blocked-safe-run-required',
       riskDetected: riskFiles.length > 0,
       riskFiles,
+      shouldRun: false,
     };
   }
   return {
     kind,
-    message: `${label}-Gate blockiert: Ein Executor ist konfiguriert, aber im Promote-Workflow nicht mit gehärteter Exit-Code-/Log-Evidenz verdrahtet. Nutze den kanonischen Operator-Pfad statt Blindautomatisierung.`,
+    message: environmentGate.message,
     mode,
-    ok: false,
-    result: 'blocked-safe-run-required',
+    ok: true,
+    result: 'asserted-clean',
     riskDetected: riskFiles.length > 0,
     riskFiles,
+    shouldRun: true,
   };
 };
 export const evaluatePromoteDeployGates = ({
   bootstrapExecutorConfigured = false,
   bootstrapMode,
   changedFiles,
+  environment,
   migrationExecutorConfigured = false,
   migrationMode,
   safeComposeFiles = [],
@@ -151,12 +177,14 @@ export const evaluatePromoteDeployGates = ({
   bootstrapExecutorConfigured?: boolean;
   bootstrapMode: DeployGateMode;
   changedFiles: readonly string[];
+  environment?: PromoteEnvironment;
   migrationExecutorConfigured?: boolean;
   migrationMode: DeployGateMode;
   safeComposeFiles?: readonly string[];
 }): PromoteDeployGateEvaluation => ({
   bootstrap: evaluateDeployGate({
     changedFiles,
+    environment,
     executorConfigured: bootstrapExecutorConfigured,
     kind: 'bootstrap',
     mode: bootstrapMode,
@@ -165,115 +193,31 @@ export const evaluatePromoteDeployGates = ({
   changedFiles: uniqueSorted(changedFiles),
   migration: evaluateDeployGate({
     changedFiles,
+    environment,
     executorConfigured: migrationExecutorConfigured,
     kind: 'migration',
     mode: migrationMode,
     safeComposeFiles,
   }),
 });
-const parseCliOptions = (args: readonly string[]): CliOptions => {
-  let base = DEFAULT_BASE;
-  let head = DEFAULT_HEAD;
-  let migrationMode: DeployGateMode = 'assert-none';
-  let bootstrapMode: DeployGateMode = 'assert-none';
-  let migrationExecutorConfigured = false;
-  let bootstrapExecutorConfigured = false;
-  let changedFiles: string[] | null = null;
-  for (let index = 0; index < args.length; index += 1) {
-    const argument = args[index];
-    const nextValue = (): string => {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error(`Fehlender Wert für ${argument}`);
-      }
-      index += 1;
-      return value;
-    };
-    if (argument === '--base') {
-      base = nextValue();
-      continue;
-    }
-    if (argument === '--head') {
-      head = nextValue();
-      continue;
-    }
-    if (argument === '--migration-mode') {
-      migrationMode = parseMode(nextValue(), '--migration-mode');
-      continue;
-    }
-    if (argument === '--bootstrap-mode') {
-      bootstrapMode = parseMode(nextValue(), '--bootstrap-mode');
-      continue;
-    }
-    if (argument === '--migration-executor-configured') {
-      migrationExecutorConfigured = parseBoolean(nextValue());
-      continue;
-    }
-    if (argument === '--bootstrap-executor-configured') {
-      bootstrapExecutorConfigured = parseBoolean(nextValue());
-      continue;
-    }
-    if (argument === '--changed-files') {
-      changedFiles = uniqueSorted(
-        nextValue()
-          .split(',')
-          .map((value) => value.trim())
-          .filter(Boolean)
-      );
-      continue;
-    }
-    throw new Error(`Unbekannte Option: ${argument}`);
-  }
-  return {
-    base,
-    bootstrapExecutorConfigured,
-    bootstrapMode,
-    changedFiles,
-    head,
-    migrationExecutorConfigured,
-    migrationMode,
-  };
-};
-
 const resolveCliChangedFiles = ({
   base,
   changedFiles,
   head,
-}: Pick<CliOptions, 'base' | 'changedFiles' | 'head'>): string[] =>
+}: Pick<PromoteDeployGateCliOptions, 'base' | 'changedFiles' | 'head'>): string[] =>
   changedFiles ?? resolveChangedFiles(base, head);
-
-const emitEvaluationOutputs = (evaluation: PromoteDeployGateEvaluation): void => {
-  const combinedOk = evaluation.migration.ok && evaluation.bootstrap.ok ? 'true' : 'false';
-  const changedFilesSummary = evaluation.changedFiles.join(',');
-  const githubOutput = process.env.GITHUB_OUTPUT?.trim();
-  if (!githubOutput) {
-    return;
-  }
-  const lines = [
-    `changed_files=${changedFilesSummary}`,
-    `combined_ok=${combinedOk}`,
-    `migration_gate_ok=${String(evaluation.migration.ok)}`,
-    `migration_gate_result=${evaluation.migration.result}`,
-    `migration_gate_risk_files=${evaluation.migration.riskFiles.join(',') || 'none'}`,
-    `migration_gate_message=${evaluation.migration.message}`,
-    `bootstrap_gate_ok=${String(evaluation.bootstrap.ok)}`,
-    `bootstrap_gate_result=${evaluation.bootstrap.result}`,
-    `bootstrap_gate_risk_files=${evaluation.bootstrap.riskFiles.join(',') || 'none'}`,
-    `bootstrap_gate_message=${evaluation.bootstrap.message}`,
-  ];
-  appendFileSync(githubOutput, `${lines.join('\n')}\n`, 'utf8');
-};
 
 export const executePromoteDeployGates = async (
   args: readonly string[]
 ): Promise<{ exitCode: number; stderr: string; stdout: string }> => {
   try {
-    const options = parseCliOptions(args);
+    const options = parsePromoteDeployGateCliOptions(args);
     const changedFiles = resolveCliChangedFiles(options);
     const evaluation = evaluatePromoteDeployGates({
       bootstrapExecutorConfigured: options.bootstrapExecutorConfigured,
       bootstrapMode: options.bootstrapMode,
       changedFiles,
+      environment: options.environment,
       migrationExecutorConfigured: options.migrationExecutorConfigured,
       migrationMode: options.migrationMode,
       safeComposeFiles: options.changedFiles
@@ -281,7 +225,7 @@ export const executePromoteDeployGates = async (
         : resolveTraefikOnlyComposeFiles(options.base, options.head, changedFiles),
     });
 
-    emitEvaluationOutputs(evaluation);
+    emitPromoteDeployGateOutputs(evaluation);
     return {
       exitCode: 0,
       stderr: '',

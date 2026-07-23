@@ -64,10 +64,13 @@ export type BootstrapJobResult = {
   taskMessage?: string;
 };
 
-export type RunBootstrapJobInput = {
+type RemoteComposeInput =
+  | { remoteComposeFile: string; remoteComposeFiles?: never }
+  | { remoteComposeFile?: never; remoteComposeFiles: readonly [string, ...string[]] };
+
+export type RunBootstrapJobInput = RemoteComposeInput & {
   internalNetworkName: string;
   quantumEndpoint: string;
-  remoteComposeFile: string;
   reportId: string;
   runtimeProfile: string;
   sourceStackName: string;
@@ -164,11 +167,12 @@ const createQuantumProject = (
   input: RunBootstrapJobInput,
 ) => {
   const jobStackName = toTemporaryJobStackName(input.sourceStackName, 'bootstrap', input.reportId);
+  const remoteComposeFiles = input.remoteComposeFiles ?? [input.remoteComposeFile];
   const renderedComposeDocument = JSON.parse(
     deps.runCapture(
       deps.rootDir,
       'docker',
-      ['compose', '-f', resolve(deps.rootDir, input.remoteComposeFile), 'config', '--format', 'json'],
+      ['compose', ...remoteComposeFiles.flatMap((filePath) => ['-f', resolve(deps.rootDir, filePath)]), 'config', '--format', 'json'],
       {
         ...env,
         SVA_BOOTSTRAP_REPLICAS: '1',
@@ -325,8 +329,6 @@ export const runBootstrapJobAgainstAcceptance = async (
           cleanup: async () => {
             try {
               removeQuantumStack(deps, env, input.quantumEndpoint, quantumProject.jobStackName);
-            } catch {
-              // Cleanup is best-effort; the temporary stack can still be removed manually if needed.
             } finally {
               quantumProject.cleanup();
             }
@@ -374,12 +376,19 @@ export const runBootstrapJobAgainstAcceptance = async (
       await deps.wait(pollIntervalMs);
     }
   } catch (error) {
+    let cleanupError: unknown;
     try {
       removeQuantumStack(deps, env, input.quantumEndpoint, quantumProject.jobStackName);
-    } catch {
-      // Best-effort cleanup; primary error should remain visible.
+    } catch (cleanupFailure) {
+      cleanupError = cleanupFailure;
     }
     quantumProject.cleanup();
+    if (cleanupError) {
+      throw new Error(
+        `Swarm-Bootstrap-Job ist fehlgeschlagen und der temporäre Stack konnte nicht bereinigt werden: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+        { cause: error },
+      );
+    }
     throw error;
   }
 };

@@ -258,7 +258,8 @@ Der GitHub-Workflow `promote.yml` deployt die App nicht mehr blind. Vor `quantum
 Erlaubte Werte:
 
 - `assert-none`: Kein impliziter Skip. Der Workflow prüft den Änderungsumfang auf Risiko und bricht ab, sobald Migrationen oder Bootstrap-/Reconcile-Artefakte betroffen sind.
-- `run`: Nur für einen dokumentierten, umgebungsspezifisch gehärteten One-shot-Executor gedacht. Ohne solchen Executor oder ohne belastbare Exit-Code-/Log-Evidenz blockiert der Workflow bewusst vor dem App-Deploy.
+- `run`: In `dev` und `staging` nutzt `Promote` den gehärteten, temporären One-shot-Executor. Der Ablauf ist verbindlich: Preflight, Migration, optional Bootstrap, Postconditions, App-Deploy, interne und externe Smokes. Bei Job-, Postcondition- oder Verify-Fehlern erfolgt kein App-Deploy.
+- `auto`: Nur für den durch einen Merge nach `main` ausgelösten Dev-Promote. Der Workflow erkennt Migration und Bootstrap unabhängig am Commit-Diff, führt nur erforderliche One-shot-Jobs aus und aktualisiert `studio-dev` ausschließlich nach erfolgreichem Build und erfolgreichen benötigten Jobs. Für `staging` und `prod` blockiert dieser Modus vor jeder Mutation.
 
 Bewusste Nicht-Funktion:
 
@@ -273,12 +274,13 @@ Risikodetektion:
 
 Operator-Regel:
 
-- Solange im Promote-Workflow kein gehärteter One-shot-Executor hinterlegt ist, bleibt `assert-none` der sichere Standard.
-- Wenn Risiko erkannt wird, müssen Migration und/oder Bootstrap bewusst über den kanonischen Operator-Pfad ausgeführt und separat verifiziert werden, bevor ein weiterer Promote-Lauf stattfinden darf.
+- Für Staging-Migrationen mit `run` ist ein nicht-sensitiver, revisionsfähiger Wartungsfenster-Verweis Pflicht. GitHub Actions ist dort der kanonische mutierende Kanal.
+- Vor einem Merge muss das GitHub-Environment `staging` mit Required Reviewers geschützt sein; `QUANTUM_API_KEY` und weitere mutierende Credentials dürfen ausschließlich als Environment-Secrets vorliegen.
+- Lokale Befehle bleiben für `status`, `doctor`, `precheck`, Diagnose und Recovery zulässig, aber nicht der konkurrierende Standardweg für Staging-Rollouts.
 
 Prod-Hinweis:
 
-- Für Produktion bleibt `run` an ein freigegebenes Wartungsfenster, dokumentierte Backup-/Restore-Readiness und eine explizite Betriebsfreigabe gebunden.
+- Für Produktion blockiert `Promote` beide `run`-Modi derzeit fail-closed. Ein Folgechange benötigt nachgewiesene Staging-Parität, Production-Freigabe, Backup-/Restore-Readiness und production-spezifische Postconditions.
 - Vor produktiven Schema- oder Reconcile-Eingriffen müssen aktuelles Backup, Restore-Pfad und Rollback-Entscheidung vorliegen; ein grüner App-Build ersetzt diese Freigabe nicht.
 
 ### Image-Versionierung im Promote-Pfad
@@ -286,10 +288,10 @@ Prod-Hinweis:
 Der GitHub-Promote-Pfad akzeptiert für das Zielartefakt absichtlich nicht jede beliebige Referenz:
 
 - `dev`: darf weiterhin `latest`, Commit-SHA-Tag oder Digest verwenden
-- `staging`: blockiert `latest`; erlaubt mindestens Commit-SHA-Tag oder Digest
+- `staging`: blockiert `latest`; akzeptiert Commit-SHA-Tag oder Digest nur als Eingabe, löst ihn vor der Mutation zu einem Digest auf und prüft die OCI-Revision gegen `change_head`
 - `prod`: blockiert mutable Tags und erfordert einen Digest
 
-Der Workflow schreibt den tatsächlich deployten Image-Ref sowie `SVA_DEPLOY_REVISION` explizit in den gerenderten Stack-Vertrag und in die Deploy-Summary. Damit bleiben Rollout, Audit und Incident-Analyse auf ein konkretes Artefakt zurückführbar.
+Der Workflow schreibt den tatsächlich deployten Digest sowie `SVA_DEPLOY_REVISION` explizit in den gerenderten Stack-Vertrag und in die Deploy-Summary. Damit bleiben Rollout, Audit und Incident-Analyse auf ein konkretes Artefakt zurückführbar.
 
 Der Workflow-Eingang dafür heißt `image_ref`, nicht mehr nur `tag`, weil staging/prod bewusst auch volle Digest-Referenzen akzeptieren und validieren.
 

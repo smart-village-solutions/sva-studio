@@ -3,6 +3,8 @@
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
+import { inspectRegistryImage, verifyStagingImageProvenance, type RegistryImageInspection } from './promote-image-provenance.ts';
+
 const IMAGE_REPOSITORY = 'ghcr.io/smart-village-solutions/sva-studio';
 
 export type PromoteEnvironment = 'dev' | 'prod' | 'staging';
@@ -22,6 +24,7 @@ export interface PromoteImageContract {
 
 interface CliOptions {
   environment: PromoteEnvironment;
+  expectedRevision?: string;
   imageInput: string;
 }
 
@@ -52,6 +55,7 @@ const normalizeImageInput = (value: string): string => {
 
 const parseCliOptions = (args: readonly string[]): CliOptions => {
   let environment: PromoteEnvironment | null = null;
+  let expectedRevision: string | undefined;
   let imageInput: string | null = null;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -75,6 +79,15 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
       continue;
     }
 
+    if (argument === '--expected-revision') {
+      const value = nextValue();
+      if (!commitShaTagPattern.test(value)) {
+        throw new Error('--expected-revision muss ein vollständiger Commit-SHA sein.');
+      }
+      expectedRevision = value;
+      continue;
+    }
+
     throw new Error(`Unbekannte Option: ${argument}`);
   }
 
@@ -88,6 +101,7 @@ const parseCliOptions = (args: readonly string[]): CliOptions => {
 
   return {
     environment,
+    expectedRevision,
     imageInput,
   };
 };
@@ -201,6 +215,31 @@ export const resolvePromoteImageContract = ({
   };
 };
 
+export const resolveVerifiedStagingImageContract = ({
+  contract,
+  expectedRevision,
+  inspection,
+}: {
+  contract: PromoteImageContract;
+  expectedRevision: string;
+  inspection: RegistryImageInspection;
+}): PromoteImageContract => {
+  if (contract.environment !== 'staging') {
+    return contract;
+  }
+  const digest = verifyStagingImageProvenance({ expectedRevision, inspection });
+
+  return {
+    ...contract,
+    deployRevision: expectedRevision,
+    deploySummaryDigest: digest,
+    deploySummaryImmutability: 'digest-and-revision-attested',
+    deploySummaryRollbackHint: 'Rollback über den vorherigen freigegebenen Digest ausführen.',
+    imageRef: `${IMAGE_REPOSITORY}@${digest}`,
+    imageType: 'digest',
+  };
+};
+
 const emitGithubOutputs = (contract: PromoteImageContract): void => {
   const githubOutput = process.env.GITHUB_OUTPUT?.trim();
   if (!githubOutput) {
@@ -225,7 +264,18 @@ export const executePromoteImageContract = (
 ): { exitCode: number; stderr: string; stdout: string } => {
   try {
     const options = parseCliOptions(args);
-    const contract = resolvePromoteImageContract(options);
+    const initialContract = resolvePromoteImageContract(options);
+    if (options.environment === 'staging' && !options.expectedRevision) {
+      throw new Error('Staging erfordert --expected-revision.');
+    }
+    const expectedRevision = options.expectedRevision;
+    const contract = options.environment === 'staging'
+      ? resolveVerifiedStagingImageContract({
+        contract: initialContract,
+        expectedRevision: expectedRevision as string,
+        inspection: inspectRegistryImage(initialContract.imageRef),
+      })
+      : initialContract;
     emitGithubOutputs(contract);
 
     return {

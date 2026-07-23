@@ -28,7 +28,7 @@ Das System SHALL stateful Services, Secrets, Configs, Migrationen, Bootstrap und
 - **WHEN** `migrate` oder `bootstrap` für `studio` in einem temporären Job-Stack ausgeführt werden
 - **THEN** enthält der temporäre Stack keinen `app`-Service
 - **AND** reconciled der Job-Lauf nicht den Live-Stack mit `app`, `postgres` oder `redis`
-- **AND** nutzt der Job-Stack nur das vorhandene Overlay-Netz `<stack>_internal`
+- **AND** nutzt der Job-Stack nur das aus der Live-Service-Spec ermittelte vorhandene interne Overlay-Netz
 
 #### Scenario: Recovery-Pfad für Netzwerk- oder Ingress-Drift ist dokumentiert
 
@@ -39,7 +39,7 @@ Das System SHALL stateful Services, Secrets, Configs, Migrationen, Bootstrap und
 #### Scenario: Staging-One-shot-Jobs sind isoliert und nachweisbar
 
 - **WHEN** ein Staging-`Promote` Migration oder Bootstrap im Modus `run` ausführt
-- **THEN** startet jeder Job in einem eindeutigen temporären Stack gegen ausschließlich das vorhandene Overlay-Netz `<stack>_internal` und den Datenbankhost des Zielstacks
+- **THEN** startet jeder Job in einem eindeutigen temporären Stack gegen ausschließlich das aus der Live-Service-Spec ermittelte interne Overlay-Netz und den Datenbankhost des Zielstacks
 - **AND** enthalten die Job-Dokumente keinen `app`-, `postgres`- oder `redis`-Service
 - **AND** erfasst der Workflow Task-ID, Terminalzustand, Exit-Code und redigierte Diagnose vor dem Cleanup
 - **AND** entfernt er temporäre Stacks und lokale Secret-Dateien auch im Fehlerpfad
@@ -49,6 +49,14 @@ Das System SHALL stateful Services, Secrets, Configs, Migrationen, Bootstrap und
 - **WHEN** ein One-shot-Job keinen lesbaren Task liefert, timeoutet, nicht-terminal bleibt, mit Exit-Code ungleich null endet oder eine Postcondition verletzt
 - **THEN** beendet der Workflow den Lauf fail-closed vor dem App-Deploy
 - **AND** dokumentiert er den Cleanup- und Recovery-Status ohne Secrets oder personenbezogene Daten
+
+#### Scenario: Main-Push hält Dev mit bedarfsgesteuerten Jobs aktuell
+
+- **WHEN** ein Merge einen Push nach `main` auslöst und `Promote` für `dev` im Modus `auto` startet
+- **THEN** klassifiziert der Workflow Migration und Bootstrap anhand des konkreten Commit-Diffs unabhängig
+- **AND** führt er jeden erforderlichen One-shot-Job vor dem App-Deploy aus
+- **AND** überspringt er nicht erforderliche Jobs
+- **AND** aktualisiert er den Dev-App-Stack nur, wenn alle erforderlichen Jobs und der Build erfolgreich sind
 
 ### Requirement: Mutationen laufen in einem deterministischen Operator-Kontext
 
@@ -68,6 +76,12 @@ Das System SHALL mutierende Remote-Operationen in einem deterministischen, umgeb
 - **AND** bleibt der vorhandene Production-App-only-Deploy mit unveränderlichem Digest unverändert verfügbar
 - **AND** nennt die Evidenz den separaten Folgebedarf für Staging-Parität, Production-Freigabe, Backup-/Restore-Readiness und production-spezifische Postconditions
 
+#### Scenario: Automatischer Modus bleibt auf Dev begrenzt
+
+- **WHEN** `Promote` für `staging` oder `prod` mit `migration_mode=auto` oder `bootstrap_mode=auto` aufgerufen wird
+- **THEN** blockiert das Gate den Lauf vor jeder Mutation
+- **AND** bleiben für diese Umgebungen nur die expliziten Modi `assert-none` und `run` gemäß ihren jeweiligen Freigaberegeln zulässig
+
 ## ADDED Requirements
 
 ### Requirement: Studio-Release wird in Vorbereitung und lokalen Final-Deploy getrennt
@@ -77,7 +91,7 @@ Das System SHALL für `studio` zwischen Artefaktverifikation, kanonischem Stagin
 #### Scenario: GitHub Actions rollt Staging kanonisch aus
 
 - **WHEN** ein freigegebener `Promote`-Lauf ein verifiziertes Studio-Image nach `staging` ausrollt
-- **THEN** validiert der Workflow Environment, konkreten Git-Änderungsbereich, ausgecheckten Executor-Code und unveränderliches Ziel-Digest vor jeder Mutation
+- **THEN** validiert der Workflow Environment, konkreten Git-Änderungsbereich und ausgecheckten Executor-Code; für Staging löst er das Zielartefakt zu einem Digest auf und prüft dessen OCI-Revision gegen `change_head` vor jeder Mutation
 - **AND** führt er bei angeforderten `run`-Modi Migration, optional Bootstrap und deren Postconditions vor dem App-Deploy aus
 - **AND** verifiziert er anschließend Servicezustand, Ziel-Digest sowie interne und externe Staging-Smokes
 - **AND** gilt GitHub Actions für diesen Staging-Pfad als kanonischer mutierender Deploymentkanal

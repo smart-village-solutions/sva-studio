@@ -1,0 +1,4 @@
+{
+  "prNumber": 747,
+  "body": "Das FAQ-Plugin verwendet jetzt den einheitlichen Editoraufbau der Content-Module mit Bereichen für Basisdaten, Inhalt, Einstellungen und Historie. Außerdem wurde das Speichern von FAQ-Einträgen an die unterstützte Generic-Item-GraphQL-Schnittstelle angepasst."
+}

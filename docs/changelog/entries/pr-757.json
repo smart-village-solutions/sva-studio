@@ -1,0 +1,4 @@
+{
+  "prNumber": 757,
+  "body": "Der temporäre Datenbank-Backup-Job übergibt sein Shell-Skript nun als ein Compose-Argument, sodass Dump, MinIO-Upload und Integritätsprüfung tatsächlich ausgeführt werden."
+}

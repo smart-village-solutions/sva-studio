@@ -86,7 +86,7 @@ export const buildBackupComposeDocument = (
   services: {
     backup: {
       ...migrate,
-      command: backupCommand,
+      command: [backupCommand],
       entrypoint: ['sh', '-ec'],
       environment: { ...(migrate.environment as Record<string, unknown>), AWS_ACCESS_KEY_ID: input.accessKey, AWS_SECRET_ACCESS_KEY: input.secretKey, AWS_EC2_METADATA_DISABLED: 'true', S3_BUCKET: input.bucket, S3_ENDPOINT: input.endpoint, S3_OBJECT_KEY: input.objectKey, POSTGRES_HOST: `${input.sourceStack}_postgres` },
       networks: ['internal'],

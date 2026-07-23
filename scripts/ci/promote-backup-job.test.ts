@@ -1,11 +1,34 @@
 import { describe, expect, it } from 'vitest';
 
-import { backupBucketFor, backupCommand, buildBackupComposeDocument } from './promote-backup-job.ts';
+import {
+  backupBucketFor,
+  backupCommand,
+  buildBackupComposeDocument,
+  buildBackupObjectKey,
+  redactBackupError,
+} from './promote-backup-job.ts';
 
 describe('promote backup job', () => {
   it('uses environment-separated backup buckets', () => {
     expect(backupBucketFor('staging')).toBe('studio-db-backup-staging');
     expect(backupBucketFor('prod')).toBe('studio-db-backup-production');
+  });
+
+  it('uses a deterministic environment, digest and run-scoped backup object key', () => {
+    expect(buildBackupObjectKey({
+      attempt: '2',
+      deployImageDigest: 'sha256:abc123',
+      environment: 'staging',
+      runId: '456',
+      timestamp: new Date('2026-07-23T08:45:12.345Z'),
+    })).toBe('staging/2026-07-23T08-45-12-345Z/abc123/456-2.dump');
+  });
+
+  it('redacts backup credentials from propagated errors', () => {
+    expect(redactBackupError(
+      'Upload to https://fileserver.smart-village.app failed for access-key/secret-key',
+      ['access-key', 'secret-key'],
+    )).toBe('Upload to https://fileserver.smart-village.app failed for [REDACTED]/[REDACTED]');
   });
 
   it('renders an isolated job with upload, download and archive validation', () => {
@@ -19,5 +42,6 @@ describe('promote backup job', () => {
     expect(backupCommand).toContain('aws --endpoint-url "$S3_ENDPOINT" s3 cp "$dump"');
     expect(backupCommand).toContain('sha256sum -c -');
     expect(backupCommand).toContain('pg_restore --list');
+    expect(backupCommand).not.toContain('S3_SECRET_ACCESS_KEY=');
   });
 });

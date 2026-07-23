@@ -10,6 +10,7 @@ describe('Promote workflow contract', () => {
     const phases = [
       'bind executor source to promoted change head',
       'capture previous live app digest',
+      'create database backup before one-shot jobs',
       'run migration one-shot job',
       'run bootstrap one-shot job',
       'run one-shot postconditions',
@@ -36,6 +37,15 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('require successful staging parity for production mutation');
     expect(workflow).toContain('create database backup before one-shot jobs');
     expect(workflow).toContain('--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"');
+  });
+
+  it('runs backups only for staging or production mutations and blocks production deploys behind parity', () => {
+    expect(workflow).toContain("inputs.environment == 'staging' || inputs.environment == 'prod'");
+    expect(workflow).toContain("inputs.environment == 'prod' && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true')");
+    expect(workflow).toContain('require successful staging parity for production mutation');
+    expect(workflow.indexOf('require successful staging parity for production mutation')).toBeLessThan(
+      workflow.indexOf('create database backup before one-shot jobs'),
+    );
   });
 
   it('uses automatic diff-based one-shot execution for main-to-Dev promotion', () => {

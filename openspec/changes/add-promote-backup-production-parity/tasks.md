@@ -15,8 +15,8 @@
 
 ## 3. Tests und Qualitätsgates
 
-- [ ] 3.1 Unit-Tests für Bucket-Auswahl, Objektpfad, SHA-256-Vergleich nach Download, Archivvalidierung, Geheimnisredaktion und Fehlerfälle ergänzen.
-- [ ] 3.2 Workflow-Vertrag für Staging und Production einschließlich Backup-Reihenfolge, exakt passender Staging-Digest-Evidenz, Wartungsfenster für beide Production-Modi und App-Deploy-Blockade testen.
+- [x] 3.1 Unit-Tests für Bucket-Auswahl, Objektpfad, SHA-256-Vergleich nach Download, Archivvalidierung, Geheimnisredaktion und Fehlerfälle ergänzen.
+- [x] 3.2 Workflow-Vertrag für Staging und Production einschließlich Backup-Reihenfolge, exakt passender Staging-Digest-Evidenz, Wartungsfenster für beide Production-Modi und App-Deploy-Blockade testen.
 - [x] 3.3 Compose-Rendering nachweisen: Backup-Job enthält keinen Live-App-, Postgres- oder Redis-Service und nutzt ausschließlich das Ziel-Overlay-Netz.
 - [x] 3.4 Relevante Unit-, TypeScript-, Server-Runtime-, Workflow- und File-Placement-Gates ausführen.
 

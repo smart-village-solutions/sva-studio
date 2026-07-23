@@ -26,6 +26,25 @@ const parseEnvironment = (value: string | undefined): PromoteEnvironment => {
 export const backupBucketFor = (environment: PromoteEnvironment) =>
   environment === 'staging' ? 'studio-db-backup-staging' : 'studio-db-backup-production';
 
+export const buildBackupObjectKey = ({
+  attempt,
+  deployImageDigest,
+  environment,
+  runId,
+  timestamp,
+}: {
+  attempt: string;
+  deployImageDigest: string;
+  environment: PromoteEnvironment;
+  runId: string;
+  timestamp: Date;
+}) => `${environment}/${timestamp.toISOString().replace(/[:.]/gu, '-')}/${deployImageDigest.replace(/^sha256:/u, '')}/${runId}-${attempt}.dump`;
+
+export const redactBackupError = (value: string, sensitiveValues: readonly string[]) =>
+  sensitiveValues
+    .filter((sensitiveValue) => sensitiveValue.trim().length > 0)
+    .reduce((redacted, sensitiveValue) => redacted.replaceAll(sensitiveValue, '[REDACTED]'), value);
+
 export const buildQuantumBackupDeployArgs = (endpoint: string, stackName: string, composePath: string) => [
   'stacks',
   'deploy',
@@ -82,7 +101,13 @@ const main = async () => {
   const quantumEndpoint = required(process.env.QUANTUM_ENDPOINT, 'QUANTUM_ENDPOINT');
   const sourceStack = `studio-${environment}`;
   const bucket = backupBucketFor(environment);
-  const objectKey = `${environment}/${new Date().toISOString().replace(/[:.]/gu, '-')}/${required(process.env.DEPLOY_IMAGE_DIGEST, 'DEPLOY_IMAGE_DIGEST').replace(/^sha256:/u, '')}/${runId}-${attempt}.dump`;
+  const objectKey = buildBackupObjectKey({
+    attempt,
+    deployImageDigest: required(process.env.DEPLOY_IMAGE_DIGEST, 'DEPLOY_IMAGE_DIGEST'),
+    environment,
+    runId,
+    timestamp: new Date(),
+  });
   const resultPath = resolve(process.env.RUNNER_TEMP ?? rootDir, `promote-backup-${runId}-${attempt}.json`);
   const projectDir = resolve(process.env.RUNNER_TEMP ?? rootDir, `promote-backup-${runId}-${attempt}`);
   const composePath = resolve(projectDir, 'docker-compose.json');
@@ -127,5 +152,12 @@ const main = async () => {
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((error: unknown) => { console.error(error instanceof Error ? error.message : String(error)); process.exitCode = 1; });
+  main().catch((error: unknown) => {
+    console.error(redactBackupError(error instanceof Error ? error.message : String(error), [
+      process.env.APP_CONFIG ?? '',
+      process.env.S3_ACCESS_KEY_ID ?? '',
+      process.env.S3_SECRET_ACCESS_KEY ?? '',
+    ]));
+    process.exitCode = 1;
+  });
 }

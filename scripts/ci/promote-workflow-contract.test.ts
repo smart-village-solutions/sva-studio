@@ -26,6 +26,8 @@ describe('Promote workflow contract', () => {
     expect(workflow.indexOf('Login to GHCR')).toBeLessThan(workflow.indexOf('validate image contract'));
     expect(workflow).toContain("trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT");
     expect(workflow.match(/printf '%s\\n' "\$\{APP_CONFIG\}" > config\/runtime\/base\.vars/gu)).toHaveLength(2);
+    expect(workflow.match(/QUANTUM_ENDPOINT: \$\{\{ vars\.QUANTUM_ENDPOINT \}\}/gu)).toHaveLength(8);
+    expect(workflow.match(/SVA_STACK_NAME: studio-\$\{\{ inputs\.environment \}\}/gu)).toHaveLength(2);
   });
 
   it('requires a maintenance reference and guards production mutations with staging parity', () => {

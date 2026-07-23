@@ -1,0 +1,4 @@
+{
+  "prNumber": 753,
+  "body": "Staging- und Production-Promotes übergeben den Ziel-Stack und Quantum-Endpunkt nun auch an die Runtime-Postcondition-Checks."
+}

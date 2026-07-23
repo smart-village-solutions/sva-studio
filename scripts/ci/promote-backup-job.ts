@@ -97,6 +97,7 @@ export const buildBackupComposeDocument = (
 });
 
 const main = async () => {
+  process.umask(0o077);
   const environment = parseEnvironment(process.argv[2]);
   const runId = required(process.env.GITHUB_RUN_ID, 'GITHUB_RUN_ID');
   const attempt = required(process.env.GITHUB_RUN_ATTEMPT, 'GITHUB_RUN_ATTEMPT');

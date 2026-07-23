@@ -36,15 +36,15 @@ describe('staging parity evidence', () => {
   it('accepts artifacts only from successful Promote workflow runs', () => {
     expect(isSuccessfulPromoteWorkflowRun({
       conclusion: 'success',
-      path: '.github/workflows/promote.yml@refs/heads/main',
+      path: '.github/workflows/promote.yml',
     })).toBe(true);
     expect(isSuccessfulPromoteWorkflowRun({
       conclusion: 'failure',
-      path: '.github/workflows/promote.yml@refs/heads/main',
+      path: '.github/workflows/promote.yml',
     })).toBe(false);
     expect(isSuccessfulPromoteWorkflowRun({
       conclusion: 'success',
-      path: '.github/workflows/build.yml@refs/heads/main',
+      path: '.github/workflows/build.yml',
     })).toBe(false);
   });
 });

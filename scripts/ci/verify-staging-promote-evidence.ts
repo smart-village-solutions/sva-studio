@@ -36,7 +36,7 @@ export const buildArtifactDownloadArgs = (repo: string, artifactId: number) => [
 ];
 
 export const isSuccessfulPromoteWorkflowRun = (workflowRun: WorkflowRun) =>
-  workflowRun.conclusion === 'success' && workflowRun.path?.startsWith('.github/workflows/promote.yml@') === true;
+  workflowRun.conclusion === 'success' && workflowRun.path === '.github/workflows/promote.yml';
 const required = (value: string | undefined, name: string) => {
   const trimmed = value?.trim();
   if (!trimmed) throw new Error(`${name} darf nicht leer sein.`);

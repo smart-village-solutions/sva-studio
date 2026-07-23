@@ -55,6 +55,7 @@ describe('Promote workflow contract', () => {
 
     expect(buildWorkflow).toContain('bootstrap_mode: auto');
     expect(buildWorkflow).toContain('migration_mode: auto');
+    expect(buildWorkflow).toContain('actions: read');
     expect(workflow).toContain('migration_should_run');
     expect(workflow).toContain('bootstrap_should_run');
   });

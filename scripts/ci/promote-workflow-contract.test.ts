@@ -37,6 +37,7 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('require successful staging parity for production mutation');
     expect(workflow).toContain('create database backup before one-shot jobs');
     expect(workflow).toContain('STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == \'true\' || steps.gate_eval.outputs.bootstrap_should_run == \'true\' }}');
+    expect(workflow).toContain('name: promote-staging-parity-${{ github.run_id }}-${{ github.run_attempt }}');
     expect(workflow).toContain('--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"');
   });
 

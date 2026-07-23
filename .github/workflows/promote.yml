@@ -360,7 +360,7 @@ jobs:
         if: ${{ inputs.environment == 'staging' && success() }}
         uses: actions/upload-artifact@v4
         with:
-          name: promote-staging-parity-${{ github.run_id }}
+          name: promote-staging-parity-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/promote-staging-parity-${{ github.run_id }}.json
           retention-days: 14
 

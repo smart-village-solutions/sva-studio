@@ -960,6 +960,11 @@ describe('mainserver content route contracts', () => {
       },
     ],
     ['invalid event contact', 'events', { method: 'POST', body: JSON.stringify({ title: 'Stadtfest', contact: 'Team' }) }],
+    [
+      'invalid event time',
+      'events',
+      { method: 'POST', body: JSON.stringify({ title: 'Stadtfest', dates: [{ timeStart: '19 Uhr' }] }) },
+    ],
     ['invalid event tags', 'events', { method: 'POST', body: JSON.stringify({ title: 'Stadtfest', tags: 'sommer' }) }],
     [
       'invalid category item',

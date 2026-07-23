@@ -19,7 +19,9 @@ import type {
 } from '../types.js';
 import {
   errorJson,
+  isRecord,
   isResponse,
+  isTimeOfDay,
   json,
   matchRequestRoute,
   parseJsonObjectBody,
@@ -28,7 +30,6 @@ import {
   type ParsedValue,
   type RouteMatch as SharedRouteMatch,
 } from './content-route-core.js';
-import { parseDates } from './generic-items-route-input.dates.js';
 import {
   parseAccessibilityInformation,
   parseAddressList,
@@ -67,6 +68,36 @@ type ContentActor = {
 };
 
 const matchRoute = (request: Request): RouteMatch | null => matchRequestRoute(request, EVENTS_COLLECTION_PATH, 'events');
+
+const parseEventDates = (value: unknown): readonly SvaMainserverDateInput[] | Response | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const dates: SvaMainserverDateInput[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) {
+      continue;
+    }
+    const timeStart = readString(item.timeStart);
+    const timeEnd = readString(item.timeEnd);
+    if ((timeStart && !isTimeOfDay(timeStart)) || (timeEnd && !isTimeOfDay(timeEnd))) {
+      return errorJson(400, 'invalid_request', 'Termine müssen Uhrzeiten im Format HH:MM enthalten.');
+    }
+    dates.push({
+      ...(readString(item.weekday) ? { weekday: readString(item.weekday) } : {}),
+      ...(readString(item.dateStart) ? { dateStart: readString(item.dateStart) } : {}),
+      ...(readString(item.dateEnd) ? { dateEnd: readString(item.dateEnd) } : {}),
+      ...(timeStart ? { timeStart } : {}),
+      ...(timeEnd ? { timeEnd } : {}),
+      ...(readString(item.timeDescription) ? { timeDescription: readString(item.timeDescription) } : {}),
+      ...(readBoolean(item.useOnlyTimeDescription) !== undefined
+        ? { useOnlyTimeDescription: readBoolean(item.useOnlyTimeDescription) }
+        : {}),
+    });
+  }
+  return dates;
+};
 
 const parseEventRelations = (
   body: Record<string, unknown>
@@ -218,7 +249,7 @@ const parseEventInput = async (
     return relations;
   }
 
-  const dates = parseDates(body.dates);
+  const dates = parseEventDates(body.dates);
   if (isResponse(dates)) {
     return dates;
   }

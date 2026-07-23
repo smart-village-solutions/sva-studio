@@ -302,8 +302,11 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          trap 'rm -f .env' EXIT
+          trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT
           pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          mkdir -p config/runtime
+          printf '%s\n' "${APP_CONFIG}" > config/runtime/base.vars
+          : > config/runtime/studio.vars
           pnpm exec tsx scripts/ops/runtime-env.ts doctor studio
 
       - name: deploy
@@ -346,8 +349,11 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          trap 'rm -f .env' EXIT
+          trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT
           pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          mkdir -p config/runtime
+          printf '%s\n' "${APP_CONFIG}" > config/runtime/base.vars
+          : > config/runtime/studio.vars
           pnpm exec tsx scripts/ops/runtime-env.ts smoke studio
 
       - name: verify deployed runtime image digest

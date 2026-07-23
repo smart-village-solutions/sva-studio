@@ -8,7 +8,7 @@ describe('Quantum CLI v3 deploy contract', () => {
   const expectedArgs = [
     'stacks',
     'deploy',
-    '--file',
+    '-f',
     '/tmp/one-shot-compose.json',
     '--stack',
     'studio-staging-job',

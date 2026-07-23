@@ -48,7 +48,7 @@ export const redactBackupError = (value: string, sensitiveValues: readonly strin
 export const buildQuantumBackupDeployArgs = (endpoint: string, stackName: string, composePath: string) => [
   'stacks',
   'deploy',
-  '--file',
+  '-f',
   composePath,
   '--stack',
   stackName,
@@ -63,6 +63,7 @@ export const backupCommand = [
   'dump="$workdir/backup.dump"',
   'download="$workdir/backup.download"',
   'checksum="$workdir/backup.sha256"',
+  'export PGPASSWORD="$POSTGRES_PASSWORD"',
   'pg_dump --format=custom --no-owner --no-privileges --host "$POSTGRES_HOST" --port "$POSTGRES_PORT" --username "$POSTGRES_USER" --file "$dump" "$POSTGRES_DB"',
   'test -s "$dump"',
   'sha256sum "$dump" > "$checksum"',

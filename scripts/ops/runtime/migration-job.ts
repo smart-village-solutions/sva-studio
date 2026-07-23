@@ -379,7 +379,7 @@ const createQuantumProject = (
 export const buildQuantumDeployArgs = (endpoint: string, stackName: string, composePath: string) => [
   'stacks',
   'deploy',
-  '--file',
+  '-f',
   composePath,
   '--stack',
   stackName,

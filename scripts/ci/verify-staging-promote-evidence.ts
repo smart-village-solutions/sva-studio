@@ -6,10 +6,10 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 type Artifact = { expired?: boolean; id?: number; name?: string; workflow_run?: { id?: number } };
-type StagingEvidence = { digest?: string; environment?: string; postflight?: string };
+type StagingEvidence = { digest?: string; environment?: string; mutation?: string; postflight?: string };
 
 export const matchesSuccessfulStagingEvidence = (evidence: StagingEvidence, targetDigest: string) =>
-  evidence.environment === 'staging' && evidence.postflight === 'passed' && evidence.digest === targetDigest;
+  evidence.environment === 'staging' && evidence.mutation === 'completed' && evidence.postflight === 'passed' && evidence.digest === targetDigest;
 const required = (value: string | undefined, name: string) => {
   const trimmed = value?.trim();
   if (!trimmed) throw new Error(`${name} darf nicht leer sein.`);

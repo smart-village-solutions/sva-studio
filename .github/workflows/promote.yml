@@ -353,6 +353,7 @@ jobs:
         if: ${{ inputs.environment == 'staging' && success() }}
         env:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true' }}
         run: pnpm exec tsx scripts/ci/write-staging-promote-evidence.ts
 
       - name: upload staging parity evidence

@@ -12,7 +12,7 @@ Staging kann Migrationen und Bootstrap bereits über gehärtete One-shot-Jobs au
 - Das Backup-Protokoll enthält ausschließlich sichere Metadaten wie Bucket, Objektpfad, Zeit, Größe, Prüfsumme und Prüfergebnis; Zugangsdaten und Datenbankinhalte bleiben ausgeschlossen.
 - Production erhält dieselben expliziten One-shot-Modi wie Staging: Migration → optional Bootstrap → Postconditions → App-Deploy → interne und externe Verifikation.
 - Production-Migrationen und -Bootstraps erfordern weiterhin einen nicht-sensitiven, revisionsfähigen Wartungsfenster-Verweis. Der Production-Digest muss zuvor in Staging erfolgreich verifiziert worden sein.
-- Der erfolgreiche Staging-Promote schreibt dafür eine redigierte Digest-Evidenz; Production verwendet ausschließlich diese Evidenz als Paritätsnachweis.
+- Ein erfolgreicher mutierender Staging-Promote schreibt dafür eine redigierte Digest-Evidenz; Production verwendet ausschließlich diese Evidenz als Paritätsnachweis.
 - Vor der Betriebsabnahme wird für beide Backup-Buckets eine dokumentierte Lifecycle-Regel konfiguriert. Ein Restore-Drill bleibt ausdrücklich außerhalb dieses Changes.
 
 ## Non-Goals

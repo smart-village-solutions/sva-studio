@@ -40,7 +40,7 @@ Der Objektpfad enthält mindestens Umgebung, UTC-Zeitpunkt, Ziel-Digest und eind
 
 ### Schlanker Nachweis der Staging-Parität
 
-Ein erfolgreich abgeschlossener Staging-Promote schreibt eine redigierte maschinenlesbare Evidenz mit Ziel-Digest, Staging-Workflow-Run-ID, Abschlusszeit und bestandenem Postflight als GitHub-Actions-Artefakt. Der Production-Workflow erhält dafür ausschließlich die Berechtigung `actions: read` und akzeptiert die Evidenz nur, wenn das Ziel-Digest exakt übereinstimmt. Fehlt die Evidenz, ist sie nicht erfolgreich oder ist das Digest abweichend, bleibt Production vor Backup und jeder Mutation fail-closed.
+Ein erfolgreich abgeschlossener mutierender Staging-Promote schreibt eine redigierte maschinenlesbare Evidenz mit Ziel-Digest, Staging-Workflow-Run-ID, Abschlusszeit, bestandenem Postflight und abgeschlossenem One-shot-Pfad als GitHub-Actions-Artefakt. Der Production-Workflow erhält dafür ausschließlich die Berechtigung `actions: read` und akzeptiert die Evidenz nur, wenn das Ziel-Digest exakt übereinstimmt und der mutierende Staging-Pfad abgeschlossen wurde. Fehlt die Evidenz, ist sie nicht erfolgreich, betrifft sie nur einen App-Deploy oder ist das Digest abweichend, bleibt Production vor Backup und jeder Mutation fail-closed.
 
 ### Bucket-Lifecycle als Betriebsprämisse
 

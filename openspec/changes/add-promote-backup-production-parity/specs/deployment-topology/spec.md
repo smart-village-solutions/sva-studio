@@ -61,6 +61,6 @@ Das System SHALL mutierende Remote-Operationen in einem deterministischen, umgeb
 - **WHEN** `Promote` für `prod` mit `migration_mode=run` oder `bootstrap_mode=run` ausgeführt wird
 - **THEN** verwendet der Workflow dieselbe Reihenfolge und dieselben gehärteten One-shot-Executors wie Staging
 - **AND** bestätigt er vor der Mutation, dass genau der Ziel-Digest zuvor erfolgreich in Staging verifiziert wurde
-- **AND** liest er für den identischen Ziel-Digest eine erfolgreiche, redigierte Staging-Promote-Evidenz
+- **AND** liest er für den identischen Ziel-Digest eine erfolgreiche, redigierte Evidenz eines abgeschlossenen mutierenden Staging-Promotes
 - **AND** erfordert jede Production-Migration oder jeden Production-Bootstrap einen nicht-sensitiven revisionsfähigen Wartungsfenster-Verweis
 - **AND** blockiert er den App-Deploy bei Backup-, One-shot-, Postcondition- oder Verify-Fehlern

@@ -11,6 +11,7 @@ describe('Promote workflow contract', () => {
       'bind executor source to promoted change head',
       'capture previous live app digest',
       'create database backup before one-shot jobs',
+      'verify database backup object',
       'run migration one-shot job',
       'run bootstrap one-shot job',
       'run one-shot postconditions',
@@ -39,6 +40,8 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('actions: read');
     expect(workflow).toContain('require successful staging parity for production mutation');
     expect(workflow).toContain('create database backup before one-shot jobs');
+    expect(workflow).toContain('verify database backup object');
+    expect(workflow).toContain('S3_OBJECT_KEY: ${{ steps.backup_job.outputs.backup_object }}');
     expect(workflow).toContain('STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == \'true\' || steps.gate_eval.outputs.bootstrap_should_run == \'true\' }}');
     expect(workflow).toContain('name: promote-staging-parity-${{ github.run_id }}-${{ github.run_attempt }}');
     expect(workflow).toContain('--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"');

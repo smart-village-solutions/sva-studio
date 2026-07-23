@@ -1,0 +1,4 @@
+{
+  "prNumber": 755,
+  "body": "Die externe Datenbank-Backup-Prüfung verwendet nun den im Workspace etablierten MinIO-kompatiblen S3-Client statt einer nicht garantierten Runner-AWS-CLI."
+}

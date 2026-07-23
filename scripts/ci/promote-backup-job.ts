@@ -26,6 +26,17 @@ const parseEnvironment = (value: string | undefined): PromoteEnvironment => {
 export const backupBucketFor = (environment: PromoteEnvironment) =>
   environment === 'staging' ? 'studio-db-backup-staging' : 'studio-db-backup-production';
 
+export const buildQuantumBackupDeployArgs = (endpoint: string, stackName: string, composePath: string) => [
+  'stacks',
+  'deploy',
+  '--file',
+  composePath,
+  '--stack',
+  stackName,
+  '--endpoint',
+  endpoint,
+];
+
 export const backupCommand = [
   'set -eu',
   'workdir="$(mktemp -d)"',
@@ -75,9 +86,8 @@ const main = async () => {
   const resultPath = resolve(process.env.RUNNER_TEMP ?? rootDir, `promote-backup-${runId}-${attempt}.json`);
   const projectDir = resolve(process.env.RUNNER_TEMP ?? rootDir, `promote-backup-${runId}-${attempt}`);
   const composePath = resolve(projectDir, 'docker-compose.json');
-  const quantumPath = resolve(projectDir, '.quantum');
   const jobStack = `${sourceStack}-backup-gha-${runId}-${attempt}`.replace(/[^a-zA-Z0-9_.-]/gu, '-');
-  const env = { ...process.env, QUANTUM_ENVIRONMENT: 'studio' };
+  const env = { ...process.env };
 
   required(process.env.S3_ACCESS_KEY_ID, 'S3_ACCESS_KEY_ID');
   required(process.env.S3_SECRET_ACCESS_KEY, 'S3_SECRET_ACCESS_KEY');
@@ -95,8 +105,7 @@ const main = async () => {
     if (!migrate) throw new Error('Render-Compose enthält keinen migrate-Service als Basis für den Backup-Job.');
     const backupCompose = buildBackupComposeDocument(migrate, { accessKey: required(process.env.S3_ACCESS_KEY_ID, 'S3_ACCESS_KEY_ID'), bucket, endpoint: required(process.env.S3_ENDPOINT, 'S3_ENDPOINT'), internalNetwork, objectKey, secretKey: required(process.env.S3_SECRET_ACCESS_KEY, 'S3_SECRET_ACCESS_KEY'), sourceStack });
     writeFileSync(composePath, `${JSON.stringify({ ...backupCompose, version: compose.version ?? backupCompose.version }, null, 2)}\n`);
-    writeFileSync(quantumPath, `---\nversion: "1.0"\ncompose: docker-compose.json\nenvironments:\n  - name: studio\n    compose: docker-compose.json\n`);
-    run(rootDir, 'quantum-cli', ['stacks', 'update', '--create', '--environment', 'studio', '--endpoint', quantumEndpoint, '--stack', jobStack, '--wait', '--no-pre-pull', '--project', projectDir], withoutDebugEnv(env));
+    run(rootDir, 'quantum-cli', buildQuantumBackupDeployArgs(quantumEndpoint, jobStack, composePath), withoutDebugEnv(env));
     const deadline = Date.now() + Number(process.env.SVA_BACKUP_JOB_TIMEOUT_MS ?? '900000');
     for (;;) {
       const snapshot = runCaptureDetailed(rootDir, 'quantum-cli', ['ps', '--endpoint', quantumEndpoint, '--stack', jobStack, '--service', 'backup', '--all', '-o', 'json'], withoutDebugEnv(env));

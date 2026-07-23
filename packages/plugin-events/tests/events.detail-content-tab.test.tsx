@@ -421,6 +421,14 @@ describe('EventsDetailContentTab', () => {
     expect(screen.getByLabelText('Enddatum').getAttribute('type')).toBe('date');
   });
 
+  it('renders time inputs for event times', async () => {
+    renderTab();
+    await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
+
+    expect(screen.getByLabelText('Startzeit').getAttribute('type')).toBe('time');
+    expect(screen.getByLabelText('Endzeit').getAttribute('type')).toBe('time');
+  });
+
   it('renders fallback values when optional arrays are initially missing', async () => {
     renderTab({
       content: {

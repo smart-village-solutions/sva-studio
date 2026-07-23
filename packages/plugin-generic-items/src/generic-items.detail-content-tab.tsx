@@ -955,6 +955,7 @@ export const GenericItemsDetailContentTab = ({
                 <StudioField id={`generic-item-time-start-${index}`} label={labels.timeStart}>
                   <Input
                     id={`generic-item-time-start-${index}`}
+                    type="time"
                     value={date.timeStart}
                     onChange={(event) => setValue(`dates.${index}.timeStart`, event.target.value, { shouldDirty: true })}
                   />
@@ -962,6 +963,7 @@ export const GenericItemsDetailContentTab = ({
                 <StudioField id={`generic-item-time-end-${index}`} label={labels.timeEnd}>
                   <Input
                     id={`generic-item-time-end-${index}`}
+                    type="time"
                     value={date.timeEnd}
                     onChange={(event) => setValue(`dates.${index}.timeEnd`, event.target.value, { shouldDirty: true })}
                   />

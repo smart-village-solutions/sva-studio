@@ -83,6 +83,8 @@ describe('content-route-parsers-poi', () => {
   it('returns validation errors for malformed opening hours and prices', async () => {
     await expectInvalidRequest(parseOpeningHours('no-array') as Response);
     await expectInvalidRequest(parseOpeningHours([null]) as Response);
+    await expectInvalidRequest(parseOpeningHours([{ timeFrom: '19 Uhr' }]) as Response);
+    await expectInvalidRequest(parseOpeningHours([{ timeTo: '24:00' }]) as Response);
     await expectInvalidRequest(parsePrices('no-array') as Response);
     await expectInvalidRequest(parsePrices([null]) as Response);
   });

@@ -52,6 +52,8 @@ export const isResponse = <T>(value: ParsedValue<T>): value is Response => value
 export const readString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 
+export const isTimeOfDay = (value: string): boolean => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+
 export const readBoolean = (value: unknown): boolean | undefined => (typeof value === 'boolean' ? value : undefined);
 
 export const readNumber = (value: unknown): number | undefined => {

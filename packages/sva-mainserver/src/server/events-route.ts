@@ -19,7 +19,6 @@ import type {
 } from '../types.js';
 import {
   errorJson,
-  isRecord,
   isResponse,
   json,
   matchRequestRoute,
@@ -29,6 +28,7 @@ import {
   type ParsedValue,
   type RouteMatch as SharedRouteMatch,
 } from './content-route-core.js';
+import { parseDates } from './generic-items-route-input.dates.js';
 import {
   parseAccessibilityInformation,
   parseAddressList,
@@ -67,23 +67,6 @@ type ContentActor = {
 };
 
 const matchRoute = (request: Request): RouteMatch | null => matchRequestRoute(request, EVENTS_COLLECTION_PATH, 'events');
-
-const parseEventDates = (value: unknown): readonly SvaMainserverDateInput[] | undefined =>
-  Array.isArray(value)
-    ? value
-        .filter(isRecord)
-        .map((date): SvaMainserverDateInput => ({
-          ...(readString(date.weekday) ? { weekday: readString(date.weekday) } : {}),
-          ...(readString(date.dateStart) ? { dateStart: readString(date.dateStart) } : {}),
-          ...(readString(date.dateEnd) ? { dateEnd: readString(date.dateEnd) } : {}),
-          ...(readString(date.timeStart) ? { timeStart: readString(date.timeStart) } : {}),
-          ...(readString(date.timeEnd) ? { timeEnd: readString(date.timeEnd) } : {}),
-          ...(readString(date.timeDescription) ? { timeDescription: readString(date.timeDescription) } : {}),
-          ...(readBoolean(date.useOnlyTimeDescription) !== undefined
-            ? { useOnlyTimeDescription: readBoolean(date.useOnlyTimeDescription) }
-            : {}),
-        }))
-    : undefined;
 
 const parseEventRelations = (
   body: Record<string, unknown>
@@ -177,6 +160,7 @@ const parseEventRelations = (
 const buildEventInput = (
   body: Record<string, unknown>,
   title: string,
+  dates: readonly SvaMainserverDateInput[] | undefined,
   relations: {
     readonly categories: readonly SvaMainserverCategoryInput[] | undefined;
     readonly addresses: readonly SvaMainserverAddressInput[] | undefined;
@@ -189,8 +173,6 @@ const buildEventInput = (
     readonly accessibilityInformation: SvaMainserverAccessibilityInformationInput | undefined;
   }
 ): SvaMainserverEventInput => {
-  const dates = parseEventDates(body.dates);
-
   return {
     title,
     ...(readString(body.description) ? { description: readString(body.description) } : {}),
@@ -236,13 +218,18 @@ const parseEventInput = async (
     return relations;
   }
 
+  const dates = parseDates(body.dates);
+  if (isResponse(dates)) {
+    return dates;
+  }
+
   const visible = readBoolean(body.visible);
   if (body.visible !== undefined && visible === undefined) {
     return errorJson(400, 'invalid_request', 'Das Feld "visible" muss als Boolean gesendet werden.');
   }
 
   return {
-    event: buildEventInput(body, title, relations),
+    event: buildEventInput(body, title, dates, relations),
     ...(visible !== undefined ? { visible } : {}),
   };
 };

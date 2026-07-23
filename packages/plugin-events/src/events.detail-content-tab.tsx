@@ -229,6 +229,7 @@ export function EventsDetailContentTab({
               <StudioField id={index === 0 ? 'event-time-start' : `event-time-start-${index}`} label={pt('fields.timeStart')}>
                 <Input
                   id={index === 0 ? 'event-time-start' : `event-time-start-${index}`}
+                  type="time"
                   value={date.timeStart ?? ''}
                   onChange={(event) => setValue(`content.dates.${index}.timeStart`, event.target.value, { shouldDirty: true })}
                 />
@@ -236,6 +237,7 @@ export function EventsDetailContentTab({
               <StudioField id={index === 0 ? 'event-time-end' : `event-time-end-${index}`} label={pt('fields.timeEnd')}>
                 <Input
                   id={index === 0 ? 'event-time-end' : `event-time-end-${index}`}
+                  type="time"
                   value={date.timeEnd ?? ''}
                   onChange={(event) => setValue(`content.dates.${index}.timeEnd`, event.target.value, { shouldDirty: true })}
                 />

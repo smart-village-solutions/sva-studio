@@ -260,6 +260,14 @@ function renderTab(defaultValues?: Partial<GenericItemsDetailFormValues>) {
 }
 
 describe('GenericItemsDetailContentTab', () => {
+  it('renders time inputs for date times', async () => {
+    renderTab();
+    await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
+
+    expect(screen.getByLabelText('Beginn').getAttribute('type')).toBe('time');
+    expect(screen.getByLabelText('Ende Uhrzeit').getAttribute('type')).toBe('time');
+  });
+
   it('updates structured accessibility and price information rows', async () => {
     const { getValues } = renderTab();
 

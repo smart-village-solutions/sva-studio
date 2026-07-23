@@ -24,6 +24,8 @@ describe('Promote workflow contract', () => {
     expect(offsets).toEqual([...offsets].sort((left, right) => left - right));
     expect(workflow).toMatch(/- name: deploy\s+id: deploy/u);
     expect(workflow.indexOf('Login to GHCR')).toBeLessThan(workflow.indexOf('validate image contract'));
+    expect(workflow).toContain("trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT");
+    expect(workflow.match(/printf '%s\\n' "\$\{APP_CONFIG\}" > config\/runtime\/base\.vars/gu)).toHaveLength(2);
   });
 
   it('requires a maintenance reference and guards production mutations with staging parity', () => {

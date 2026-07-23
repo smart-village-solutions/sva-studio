@@ -1,0 +1,4 @@
+{
+  "prNumber": 751,
+  "body": "Staging- und Production-Promotes stellen APP_CONFIG für Runtime-Smoke- und Doctor-Checks nun geschützt im GitHub-Runner bereit."
+}

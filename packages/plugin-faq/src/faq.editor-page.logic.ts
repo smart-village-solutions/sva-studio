@@ -46,10 +46,9 @@ export const useFaqEditorLoader = ({ contentId, form, mode }: Readonly<{
   return { existingPayload, loadError, loading };
 };
 
-export const useFaqEditorActions = ({ contentId, existingPayload, form, mode, navigate, pt, setSaveErrorMessage }: Readonly<{
+export const useFaqEditorActions = ({ contentId, existingPayload, mode, navigate, pt, setSaveErrorMessage }: Readonly<{
   contentId?: string;
   existingPayload: unknown;
-  form: UseFormReturn<FaqFormValues>;
   mode: 'create' | 'edit';
   navigate: Navigate;
   pt: Translation;

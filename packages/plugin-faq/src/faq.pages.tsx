@@ -42,7 +42,7 @@ const FaqEditorPage = ({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
   const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
   const { existingPayload, loadError, loading } = useFaqEditorLoader({ contentId, form, mode });
   const { deletePending, onDelete, onSubmit } = useFaqEditorActions({
-    contentId, existingPayload, form, mode, navigate, pt, setSaveErrorMessage,
+    contentId, existingPayload, mode, navigate, pt, setSaveErrorMessage,
   });
 
   if (loading) return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;

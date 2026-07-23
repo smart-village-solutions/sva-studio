@@ -48,6 +48,9 @@ export const pluginFaqTranslations = {
         loadError: 'FAQ konnte nicht geladen werden.',
         saveError: 'FAQ konnte nicht gespeichert werden.',
         saveErrorWithReason: 'FAQ konnte nicht gespeichert werden: {{reason}}',
+        deleteError: 'FAQ konnte nicht gelöscht werden.',
+        deleteErrorWithReason: 'FAQ konnte nicht gelöscht werden: {{reason}}',
+        validationError: 'Bitte prüfe die markierten Felder.',
       },
       validation: {
         required: 'Dieses Feld ist erforderlich.',
@@ -104,6 +107,9 @@ export const pluginFaqTranslations = {
         loadError: 'Could not load FAQ.',
         saveError: 'Could not save FAQ.',
         saveErrorWithReason: 'Could not save FAQ: {{reason}}',
+        deleteError: 'Could not delete FAQ.',
+        deleteErrorWithReason: 'Could not delete FAQ: {{reason}}',
+        validationError: 'Please check the highlighted fields.',
       },
       validation: {
         required: 'This field is required.',

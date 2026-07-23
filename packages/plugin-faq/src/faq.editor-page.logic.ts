@@ -14,6 +14,11 @@ const resolveSaveErrorMessage = (error: unknown, pt: Translation) =>
     ? pt('messages.saveErrorWithReason', { reason: error.message })
     : pt('messages.saveError');
 
+const resolveDeleteErrorMessage = (error: unknown, pt: Translation) =>
+  error instanceof FaqApiError && error.message.trim()
+    ? pt('messages.deleteErrorWithReason', { reason: error.message })
+    : pt('messages.deleteError');
+
 export const useFaqEditorLoader = ({ contentId, form, mode }: Readonly<{
   contentId?: string;
   form: UseFormReturn<FaqFormValues>;
@@ -25,6 +30,9 @@ export const useFaqEditorLoader = ({ contentId, form, mode }: Readonly<{
 
   React.useEffect(() => {
     if (mode !== 'edit') return;
+    setExistingPayload(undefined);
+    setLoadError(false);
+    setLoading(true);
     if (!contentId) {
       setLoadError(true);
       setLoading(false);
@@ -78,7 +86,7 @@ export const useFaqEditorActions = ({ contentId, existingPayload, mode, navigate
       await deleteFaq(contentId);
       await navigate({ to: '/admin/content' });
     } catch (error) {
-      setSaveErrorMessage(resolveSaveErrorMessage(error, pt));
+      setSaveErrorMessage(resolveDeleteErrorMessage(error, pt));
     } finally {
       setDeletePending(false);
     }

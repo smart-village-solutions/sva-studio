@@ -40,6 +40,7 @@ const FaqEditorPage = ({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
   const form = useForm<FaqFormValues>({ defaultValues, resolver: zodResolver(faqFormSchema) });
   const [activeTab, setActiveTab] = React.useState<FaqTab>('basis');
   const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
+  const onInvalid = () => setSaveErrorMessage(pt('messages.validationError'));
   const { existingPayload, loadError, loading } = useFaqEditorLoader({ contentId, form, mode });
   const { deletePending, onDelete, onSubmit } = useFaqEditorActions({
     contentId, existingPayload, mode, navigate, pt, setSaveErrorMessage,
@@ -51,7 +52,7 @@ const FaqEditorPage = ({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
   return (
     <StudioDetailPageTemplate
       title={pt(mode === 'create' ? 'editor.createTitle' : 'editor.editTitle')}
-      actions={<FaqEditorActions deletePending={deletePending} mode={mode} onDelete={onDelete} onSave={form.handleSubmit(onSubmit)} pt={pt} saving={form.formState.isSubmitting} />}
+      actions={<FaqEditorActions deletePending={deletePending} mode={mode} onDelete={onDelete} onSave={form.handleSubmit(onSubmit, onInvalid)} pt={pt} saving={form.formState.isSubmitting} />}
     >
       <FormProvider {...form}>
         {saveErrorMessage ? <StudioFormSummary kind="error">{saveErrorMessage}</StudioFormSummary> : null}

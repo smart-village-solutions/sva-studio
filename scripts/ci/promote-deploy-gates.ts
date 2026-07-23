@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { pathToFileURL } from 'node:url';
-import { parseBoolean, parseMode } from './promote-deploy-gates-cli.ts';
+import { parsePromoteDeployGateCliOptions, type PromoteDeployGateCliOptions } from './promote-deploy-gates-cli.ts';
 import { evaluateEnvironmentRunGate, type PromoteEnvironment } from './promote-environment-gate.ts';
 import { emitPromoteDeployGateOutputs } from './promote-deploy-gate-output.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
@@ -33,18 +33,6 @@ interface EvaluateDeployGateOptions {
   mode: DeployGateMode;
   safeComposeFiles?: readonly string[];
 }
-interface CliOptions {
-  base: string;
-  bootstrapExecutorConfigured: boolean;
-  bootstrapMode: DeployGateMode;
-  changedFiles: string[] | null;
-  environment: PromoteEnvironment | undefined;
-  head: string;
-  migrationExecutorConfigured: boolean;
-  migrationMode: DeployGateMode;
-}
-const DEFAULT_BASE = 'origin/main';
-const DEFAULT_HEAD = 'HEAD';
 const migrationRiskPatterns = [
   /^compose\.yaml$/u,
   /^deploy\/compose\.(?:dev|staging|prod)\.yaml$/u,
@@ -212,90 +200,18 @@ export const evaluatePromoteDeployGates = ({
     safeComposeFiles,
   }),
 });
-const parseCliOptions = (args: readonly string[]): CliOptions => {
-  let base = DEFAULT_BASE;
-  let head = DEFAULT_HEAD;
-  let migrationMode: DeployGateMode = 'assert-none';
-  let bootstrapMode: DeployGateMode = 'assert-none';
-  let migrationExecutorConfigured = false;
-  let bootstrapExecutorConfigured = false;
-  let changedFiles: string[] | null = null;
-  let environment: PromoteEnvironment | undefined;
-  for (let index = 0; index < args.length; index += 1) {
-    const argument = args[index];
-    const nextValue = (): string => {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error(`Fehlender Wert für ${argument}`);
-      }
-      index += 1;
-      return value;
-    };
-    if (argument === '--base') {
-      base = nextValue();
-      continue;
-    }
-    if (argument === '--head') {
-      head = nextValue();
-      continue;
-    }
-    if (argument === '--migration-mode') {
-      migrationMode = parseMode(nextValue(), '--migration-mode');
-      continue;
-    }
-    if (argument === '--environment') {
-      const value = nextValue();
-      if (value !== 'dev' && value !== 'staging' && value !== 'prod') throw new Error(`Ungültige Umgebung: ${value}`);
-      environment = value;
-      continue;
-    }
-    if (argument === '--bootstrap-mode') {
-      bootstrapMode = parseMode(nextValue(), '--bootstrap-mode');
-      continue;
-    }
-    if (argument === '--migration-executor-configured') {
-      migrationExecutorConfigured = parseBoolean(nextValue());
-      continue;
-    }
-    if (argument === '--bootstrap-executor-configured') {
-      bootstrapExecutorConfigured = parseBoolean(nextValue());
-      continue;
-    }
-    if (argument === '--changed-files') {
-      changedFiles = uniqueSorted(
-        nextValue()
-          .split(',')
-          .map((value) => value.trim())
-          .filter(Boolean)
-      );
-      continue;
-    }
-    throw new Error(`Unbekannte Option: ${argument}`);
-  }
-  return {
-    base,
-    bootstrapExecutorConfigured,
-    bootstrapMode,
-    changedFiles,
-    environment,
-    head,
-    migrationExecutorConfigured,
-    migrationMode,
-  };
-};
-
 const resolveCliChangedFiles = ({
   base,
   changedFiles,
   head,
-}: Pick<CliOptions, 'base' | 'changedFiles' | 'head'>): string[] =>
+}: Pick<PromoteDeployGateCliOptions, 'base' | 'changedFiles' | 'head'>): string[] =>
   changedFiles ?? resolveChangedFiles(base, head);
 
 export const executePromoteDeployGates = async (
   args: readonly string[]
 ): Promise<{ exitCode: number; stderr: string; stdout: string }> => {
   try {
-    const options = parseCliOptions(args);
+    const options = parsePromoteDeployGateCliOptions(args);
     const changedFiles = resolveCliChangedFiles(options);
     const evaluation = evaluatePromoteDeployGates({
       bootstrapExecutorConfigured: options.bootstrapExecutorConfigured,

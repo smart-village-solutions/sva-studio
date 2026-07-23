@@ -7,6 +7,6 @@ export const parseBoolean = (value: string): boolean => {
 };
 
 export const parseMode = (value: string, flag: string): DeployGateMode => {
-  if (value === 'assert-none' || value === 'run') return value;
+  if (value === 'assert-none' || value === 'auto' || value === 'run') return value;
   throw new Error(`Ungültiger Wert für ${flag}: ${value}`);
 };

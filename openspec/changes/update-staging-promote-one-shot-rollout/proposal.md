@@ -12,6 +12,7 @@ PR #676 hat mit `Promote` bereits einen gemeinsamen, imagegebundenen Deploymentv
 - Der Staging-Ablauf löst die zulässige Image-Eingabe zu einem Digest auf, prüft dessen OCI-Revision gegen den validierten Git-Head und bindet diesen Nachweis mit dem gerenderten Job-Stack zusammen. Er erzwingt die Reihenfolge: Preflight → Migration → optional Bootstrap → Postconditions → App-Deploy → interne und externe Verifikation.
 - Der Workflow erhält `maintenance_window`. Für Staging-Migrationen mit `run` ist ein nicht-sensitiver, revisionsfähiger Wartungsfenster-Verweis Pflicht.
 - `promote-deploy-gates.ts` gibt `run` nur frei, wenn der jeweils angeforderte Executor tatsächlich im Workflow verdrahtet ist. Production bleibt für beide `run`-Modi fail-closed.
+- Der automatische `main`-Promote für `dev` verwendet den neuen Modus `auto`: Er führt Migration oder Bootstrap nur bei erkanntem Änderungsrisiko aus und rollt die App ausschließlich nach erfolgreichen benötigten One-shot-Jobs aus.
 - Der Workflow erfasst redigierte Job-Evidenz, Preflight- und Postflight-Ergebnisse, Cleanup sowie den vor dem App-Deploy tatsächlich laufenden App-Digest als Rollback-Hinweis.
 - Das GitHub-Environment `staging` wird als externe Merge-Voraussetzung mit Required Reviewers geschützt; mutierende Credentials liegen ausschließlich dort.
 - Bei Fehlschlag einer Migration, eines Bootstrap-Jobs, einer Postcondition oder einer Verifikation wird der App-Deploy nicht fortgesetzt. Für diesen Change wird kein automatisches DB-Rollback eingeführt.

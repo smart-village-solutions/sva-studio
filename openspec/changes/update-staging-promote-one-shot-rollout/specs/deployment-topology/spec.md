@@ -50,6 +50,14 @@ Das System SHALL stateful Services, Secrets, Configs, Migrationen, Bootstrap und
 - **THEN** beendet der Workflow den Lauf fail-closed vor dem App-Deploy
 - **AND** dokumentiert er den Cleanup- und Recovery-Status ohne Secrets oder personenbezogene Daten
 
+#### Scenario: Main-Push hält Dev mit bedarfsgesteuerten Jobs aktuell
+
+- **WHEN** ein Merge einen Push nach `main` auslöst und `Promote` für `dev` im Modus `auto` startet
+- **THEN** klassifiziert der Workflow Migration und Bootstrap anhand des konkreten Commit-Diffs unabhängig
+- **AND** führt er jeden erforderlichen One-shot-Job vor dem App-Deploy aus
+- **AND** überspringt er nicht erforderliche Jobs
+- **AND** aktualisiert er den Dev-App-Stack nur, wenn alle erforderlichen Jobs und der Build erfolgreich sind
+
 ### Requirement: Mutationen laufen in einem deterministischen Operator-Kontext
 
 Das System SHALL mutierende Remote-Operationen in einem deterministischen, umgebungsgebundenen Kontext ausführen.
@@ -67,6 +75,12 @@ Das System SHALL mutierende Remote-Operationen in einem deterministischen, umgeb
 - **THEN** blockiert das Gate den Lauf vor jeder Mutation
 - **AND** bleibt der vorhandene Production-App-only-Deploy mit unveränderlichem Digest unverändert verfügbar
 - **AND** nennt die Evidenz den separaten Folgebedarf für Staging-Parität, Production-Freigabe, Backup-/Restore-Readiness und production-spezifische Postconditions
+
+#### Scenario: Automatischer Modus bleibt auf Dev begrenzt
+
+- **WHEN** `Promote` für `staging` oder `prod` mit `migration_mode=auto` oder `bootstrap_mode=auto` aufgerufen wird
+- **THEN** blockiert das Gate den Lauf vor jeder Mutation
+- **AND** bleiben für diese Umgebungen nur die expliziten Modi `assert-none` und `run` gemäß ihren jeweiligen Freigaberegeln zulässig
 
 ## ADDED Requirements
 

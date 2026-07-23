@@ -34,4 +34,13 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('packages: read');
     expect(workflow).toContain('--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"');
   });
+
+  it('uses automatic diff-based one-shot execution for main-to-Dev promotion', () => {
+    const buildWorkflow = readFileSync(resolve(import.meta.dirname, '../../.github/workflows/build.yml'), 'utf8');
+
+    expect(buildWorkflow).toContain('bootstrap_mode: auto');
+    expect(buildWorkflow).toContain('migration_mode: auto');
+    expect(workflow).toContain('migration_should_run');
+    expect(workflow).toContain('bootstrap_should_run');
+  });
 });

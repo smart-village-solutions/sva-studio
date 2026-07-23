@@ -18,13 +18,13 @@ on:
         required: true
         default: assert-none
         type: choice
-        options: [assert-none, run]
+        options: [assert-none, auto, run]
       bootstrap_mode:
         description: 'Bootstrap gate mode'
         required: true
         default: assert-none
         type: choice
-        options: [assert-none, run]
+        options: [assert-none, auto, run]
       change_base:
         description: 'Git base ref represented by the promoted image'
         required: true
@@ -106,17 +106,17 @@ jobs:
           fi
 
           case "${MIGRATION_MODE}" in
-            run|assert-none) ;;
+            run|assert-none|auto) ;;
             *)
-              echo "Invalid migration_mode: ${MIGRATION_MODE}. Expected one of: run, assert-none." >&2
+              echo "Invalid migration_mode: ${MIGRATION_MODE}. Expected one of: run, assert-none, auto." >&2
               exit 1
               ;;
           esac
 
           case "${BOOTSTRAP_MODE}" in
-            run|assert-none) ;;
+            run|assert-none|auto) ;;
             *)
-              echo "Invalid bootstrap_mode: ${BOOTSTRAP_MODE}. Expected one of: run, assert-none." >&2
+              echo "Invalid bootstrap_mode: ${BOOTSTRAP_MODE}. Expected one of: run, assert-none, auto." >&2
               exit 1
               ;;
           esac
@@ -234,7 +234,7 @@ jobs:
 
       - name: run migration one-shot job
         id: migration_job
-        if: ${{ inputs.migration_mode == 'run' }}
+        if: ${{ steps.gate_eval.outputs.migration_should_run == 'true' }}
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
@@ -249,7 +249,7 @@ jobs:
 
       - name: run bootstrap one-shot job
         id: bootstrap_job
-        if: ${{ inputs.bootstrap_mode == 'run' }}
+        if: ${{ steps.gate_eval.outputs.bootstrap_should_run == 'true' }}
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
@@ -263,7 +263,7 @@ jobs:
           pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind bootstrap --environment "${{ inputs.environment }}"
 
       - name: run staging one-shot postconditions
-        if: ${{ inputs.environment == 'staging' && (inputs.migration_mode == 'run' || inputs.bootstrap_mode == 'run') }}
+        if: ${{ inputs.environment == 'staging' && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true') }}
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
         run: |

@@ -5,7 +5,7 @@ import { evaluateEnvironmentRunGate, type PromoteEnvironment } from './promote-e
 import { emitPromoteDeployGateOutputs } from './promote-deploy-gate-output.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
 import { resolveTraefikOnlyComposeFiles } from './traefik-compose-diff.ts';
-export type DeployGateMode = 'assert-none' | 'run';
+export type DeployGateMode = 'assert-none' | 'auto' | 'run';
 export type DeployGateKind = 'bootstrap' | 'migration';
 export type { PromoteEnvironment } from './promote-environment-gate.ts';
 export type DeployGateResultType =
@@ -18,6 +18,7 @@ export interface DeployGateResult {
   result: DeployGateResultType;
   riskDetected: boolean;
   riskFiles: string[];
+  shouldRun: boolean;
 }
 export interface PromoteDeployGateEvaluation {
   bootstrap: DeployGateResult;
@@ -101,6 +102,7 @@ export const evaluateDeployGate = ({
         result: 'blocked-risk',
         riskDetected: true,
         riskFiles,
+        shouldRun: false,
       };
     }
     return {
@@ -111,6 +113,32 @@ export const evaluateDeployGate = ({
       result: 'asserted-clean',
       riskDetected: false,
       riskFiles,
+      shouldRun: false,
+    };
+  }
+  if (mode === 'auto' && environment !== 'dev') {
+    return {
+      kind,
+      message: `${label}-Gate blockiert: Modus "auto" ist ausschließlich für den automatischen Dev-Promote zulässig.`,
+      mode,
+      ok: false,
+      result: 'blocked-safe-run-required',
+      riskDetected: true,
+      riskFiles,
+      shouldRun: false,
+    };
+  }
+  const shouldRun = mode === 'run' || riskFiles.length > 0;
+  if (!shouldRun) {
+    return {
+      kind,
+      message: `${label}-Gate automatisch übersprungen: keine risikobehafteten Änderungen erkannt.`,
+      mode,
+      ok: true,
+      result: 'asserted-clean',
+      riskDetected: false,
+      riskFiles,
+      shouldRun: false,
     };
   }
   if (!executorConfigured) {
@@ -122,6 +150,7 @@ export const evaluateDeployGate = ({
       result: 'blocked-missing-executor',
       riskDetected: riskFiles.length > 0,
       riskFiles,
+      shouldRun: false,
     };
   }
   const environmentGate = evaluateEnvironmentRunGate({ environment, label });
@@ -134,6 +163,7 @@ export const evaluateDeployGate = ({
       result: 'blocked-safe-run-required',
       riskDetected: riskFiles.length > 0,
       riskFiles,
+      shouldRun: false,
     };
   }
   return {
@@ -144,6 +174,7 @@ export const evaluateDeployGate = ({
     result: 'asserted-clean',
     riskDetected: riskFiles.length > 0,
     riskFiles,
+    shouldRun: true,
   };
 };
 export const evaluatePromoteDeployGates = ({

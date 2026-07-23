@@ -259,6 +259,7 @@ Erlaubte Werte:
 
 - `assert-none`: Kein impliziter Skip. Der Workflow prüft den Änderungsumfang auf Risiko und bricht ab, sobald Migrationen oder Bootstrap-/Reconcile-Artefakte betroffen sind.
 - `run`: In `dev` und `staging` nutzt `Promote` den gehärteten, temporären One-shot-Executor. Der Ablauf ist verbindlich: Preflight, Migration, optional Bootstrap, Postconditions, App-Deploy, interne und externe Smokes. Bei Job-, Postcondition- oder Verify-Fehlern erfolgt kein App-Deploy.
+- `auto`: Nur für den durch einen Merge nach `main` ausgelösten Dev-Promote. Der Workflow erkennt Migration und Bootstrap unabhängig am Commit-Diff, führt nur erforderliche One-shot-Jobs aus und aktualisiert `studio-dev` ausschließlich nach erfolgreichem Build und erfolgreichen benötigten Jobs. Für `staging` und `prod` blockiert dieser Modus vor jeder Mutation.
 
 Bewusste Nicht-Funktion:
 

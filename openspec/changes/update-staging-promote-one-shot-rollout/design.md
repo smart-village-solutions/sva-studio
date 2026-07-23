@@ -26,6 +26,8 @@
 | `staging` | erlaubt | erlaubt nach Environment-Freigabe und Wartungsfenster |
 | `prod` | erlaubt, App-only | fail-closed; spätere Aktivierung ist ein separater Change |
 
+Für den automatisch durch `main` ausgelösten Dev-Promote ergänzt `auto` die expliziten Modi `assert-none` und `run`: Der Workflow klassifiziert den Commit-Diff anhand derselben Risiko-Regeln. Ohne Risiko wird der betreffende Job übersprungen; bei Migrations- oder Bootstrap-Risiko wird der zugehörige gehärtete One-shot-Job ausgeführt. `auto` ist ausschließlich für `dev` zulässig. Fehler in einem benötigten Job verhindern den App-Deploy und lassen den vorherigen Dev-Stand aktiv.
+
 ### Artefaktbindung vor Mutation
 
 Vor einer Mutation validiert der Workflow, dass `change_base` und `change_head` konkrete Git-Commits bilden und der ausgecheckte Executor-Code `change_head` entspricht. Für Staging löst er die Image-Eingabe in der Registry zu einem Manifest-Digest auf und prüft das OCI-Label `org.opencontainers.image.revision` gegen `change_head`. Job- und App-Stack erhalten exakt dieselbe aufgelöste Digest-Referenz.

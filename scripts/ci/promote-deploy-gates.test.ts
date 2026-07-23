@@ -139,6 +139,50 @@ describe('promote-deploy-gates', () => {
     expect(result.message).toContain('Kein sicherer One-shot-Executor');
   });
 
+  it('automatically runs only the required Dev one-shot job', () => {
+    const migration = evaluateDeployGate({
+      changedFiles: ['packages/data/migrations/0010_add_role.sql'],
+      environment: 'dev',
+      executorConfigured: true,
+      kind: 'migration',
+      mode: 'auto',
+    });
+    const bootstrap = evaluateDeployGate({
+      changedFiles: ['docs/guides/swarm-deployment-runbook.md'],
+      environment: 'dev',
+      executorConfigured: true,
+      kind: 'bootstrap',
+      mode: 'auto',
+    });
+
+    expect(migration).toMatchObject({ ok: true, riskDetected: true, shouldRun: true });
+    expect(bootstrap).toMatchObject({ ok: true, riskDetected: false, shouldRun: false });
+  });
+
+  it('keeps automatic mode restricted to Dev', () => {
+    const result = evaluateDeployGate({
+      changedFiles: ['packages/data/migrations/0010_add_role.sql'],
+      environment: 'staging',
+      executorConfigured: true,
+      kind: 'migration',
+      mode: 'auto',
+    });
+
+    expect(result).toMatchObject({ ok: false, result: 'blocked-safe-run-required', shouldRun: false });
+  });
+
+  it('rejects automatic mode outside Dev even when no job would be required', () => {
+    const result = evaluateDeployGate({
+      changedFiles: ['docs/guides/swarm-deployment-runbook.md'],
+      environment: 'staging',
+      executorConfigured: true,
+      kind: 'migration',
+      mode: 'auto',
+    });
+
+    expect(result).toMatchObject({ ok: false, result: 'blocked-safe-run-required', shouldRun: false });
+  });
+
   it('authorizes bootstrap run mode when a hardened executor is wired by the workflow', () => {
     const result = evaluateDeployGate({
       changedFiles: ['bootstrap-entrypoint.sh'],
@@ -222,8 +266,10 @@ describe('promote-deploy-gates', () => {
     mode: DeployGateMode;
   }>([
     { kind: 'migration', mode: 'assert-none' },
+    { kind: 'migration', mode: 'auto' },
     { kind: 'migration', mode: 'run' },
     { kind: 'bootstrap', mode: 'assert-none' },
+    { kind: 'bootstrap', mode: 'auto' },
     { kind: 'bootstrap', mode: 'run' },
   ])('keeps mode and kind stable for %s/%s', ({ kind, mode }) => {
     const result = evaluateDeployGate({

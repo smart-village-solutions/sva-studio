@@ -4,6 +4,7 @@
 - [x] 1.2 Den inline implementierten Dev-Bootstrap auf diesen Einstieg umstellen.
 - [x] 1.3 `promote-deploy-gates.ts` um umgebungsbezogene Executor-Freigaben erweitern: Dev und Staging nur bei real verdrahtetem Executor, Production immer fail-closed.
 - [x] 1.4 Unit-Tests für Gate-Freigaben und Production-Fail-Closed ergänzen.
+- [x] 1.5 Den automatischen Main-zu-Dev-Promote auf den diff-basierten Modus `auto` umstellen; erforderliche Migrationen und Bootstrap-Jobs vor dem App-Deploy ausführen, nicht erforderliche überspringen und Staging/Production weiterhin sperren.
 
 ## 2. Promote-Workflow für Staging
 

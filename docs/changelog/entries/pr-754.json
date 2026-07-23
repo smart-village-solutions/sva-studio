@@ -1,0 +1,4 @@
+{
+  "prNumber": 754,
+  "body": "Promotes prüfen das erzeugte Datenbank-Backup nun nach dem Quantum-Job unabhängig per S3-Head-Object und brechen bei fehlendem Objekt ab."
+}

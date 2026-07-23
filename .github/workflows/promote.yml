@@ -225,6 +225,13 @@ jobs:
           api-key: ${{ secrets.QUANTUM_API_KEY }}
           version: 3.2.1
 
+      - name: capture previous staging app digest
+        id: previous_live_image
+        if: ${{ inputs.environment == 'staging' }}
+        env:
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+        run: pnpm exec tsx scripts/ci/promote-live-digest.ts staging
+
       - name: run migration one-shot job
         id: migration_job
         if: ${{ inputs.migration_mode == 'run' }}
@@ -265,13 +272,6 @@ jobs:
           trap 'rm -f .env' EXIT
           pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
           pnpm exec tsx scripts/ops/runtime-env.ts doctor studio
-
-      - name: capture previous staging app digest
-        id: previous_live_image
-        if: ${{ inputs.environment == 'staging' }}
-        env:
-          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-        run: pnpm exec tsx scripts/ci/promote-live-digest.ts staging
 
       - name: deploy
         id: deploy

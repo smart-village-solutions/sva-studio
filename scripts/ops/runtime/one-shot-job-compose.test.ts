@@ -48,7 +48,7 @@ describe('one-shot job compose documents', () => {
       return;
     }
     const rendered = JSON.parse(execFileSync('docker', ['compose', '-f', 'compose.yaml', '-f', 'deploy/compose.staging.yaml', 'config', '--format', 'json'], {
-      cwd: process.cwd(), encoding: 'utf8', env: { ...process.env, IMAGE_REF: 'example.invalid/studio@sha256:deadbeef', SVA_RUNTIME_PROFILE: 'studio' }, stdio: ['ignore', 'pipe', 'pipe'],
+      cwd: process.cwd(), encoding: 'utf8', env: { ...process.env, IMAGE_REF: 'example.invalid/studio@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', SVA_RUNTIME_PROFILE: 'studio' }, stdio: ['ignore', 'pipe', 'pipe'],
     })) as Parameters<typeof buildMigrationJobComposeDocument>[0];
 
     const migration = buildMigrationJobComposeDocument(rendered, input);

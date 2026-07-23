@@ -9,10 +9,10 @@ describe('Promote workflow contract', () => {
   it('runs staging phases in the required fail-closed order', () => {
     const phases = [
       'bind executor source to promoted change head',
+      'capture previous staging app digest',
       'run migration one-shot job',
       'run bootstrap one-shot job',
       'run staging one-shot postconditions',
-      'capture previous staging app digest',
       '- name: deploy',
       'verify deployed staging runtime',
       'verify deployed staging image digest',

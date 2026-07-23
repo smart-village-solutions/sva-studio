@@ -64,11 +64,13 @@ export type BootstrapJobResult = {
   taskMessage?: string;
 };
 
-export type RunBootstrapJobInput = {
+type RemoteComposeInput =
+  | { remoteComposeFile: string; remoteComposeFiles?: never }
+  | { remoteComposeFile?: never; remoteComposeFiles: readonly [string, ...string[]] };
+
+export type RunBootstrapJobInput = RemoteComposeInput & {
   internalNetworkName: string;
   quantumEndpoint: string;
-  remoteComposeFile?: string;
-  remoteComposeFiles?: readonly string[];
   reportId: string;
   runtimeProfile: string;
   sourceStackName: string;
@@ -165,8 +167,7 @@ const createQuantumProject = (
   input: RunBootstrapJobInput,
 ) => {
   const jobStackName = toTemporaryJobStackName(input.sourceStackName, 'bootstrap', input.reportId);
-  const remoteComposeFiles = input.remoteComposeFiles ?? (input.remoteComposeFile ? [input.remoteComposeFile] : []);
-  if (remoteComposeFiles.length === 0) throw new Error('Für den Bootstrap-Job fehlt eine gerenderte Compose-Quelle.');
+  const remoteComposeFiles = input.remoteComposeFiles ?? [input.remoteComposeFile];
   const renderedComposeDocument = JSON.parse(
     deps.runCapture(
       deps.rootDir,

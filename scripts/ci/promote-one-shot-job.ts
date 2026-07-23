@@ -39,6 +39,9 @@ const redact = (value: string | undefined) => {
   const appConfig = process.env.APP_CONFIG?.trim();
   const withoutAppConfig = appConfig ? (value ?? '').replaceAll(appConfig, '[REDACTED]') : (value ?? '');
   return withoutAppConfig
+    .replace(/((?:["']?(?:password|token|secret|authorization)["']?\s*[:=]\s*)")[^"]*(")/giu, '$1[REDACTED]$2')
+    .replace(/((?:["']?(?:password|token|secret|authorization)["']?\s*[:=]\s*)')[^']*(')/giu, '$1[REDACTED]$2')
+    .replace(/(\bpassword\s+')[^']*(')/giu, '$1[REDACTED]$2')
     .replace(/((?:password|token|secret|authorization)\s*[=:]\s*)[^\s]+/giu, '$1[REDACTED]')
     .slice(-8_000);
 };
@@ -51,7 +54,7 @@ const main = async () => {
   const sourceStackName = `studio-${environment}`;
   const resultPath = resolve(process.env.RUNNER_TEMP ?? rootDir, `promote-${kind}-${runId}-${attempt}.json`);
   const reportId = `gha-${runId}-${attempt}`;
-  const env: NodeJS.ProcessEnv = { ...process.env, QUANTUM_ENVIRONMENT: environment };
+  const env: NodeJS.ProcessEnv = { ...process.env, QUANTUM_ENVIRONMENT: 'studio' };
   delete env.SVA_MIGRATION_JOB_KEEP_FAILED_STACK;
   const deps = { commandExists, rootDir, run, runCapture, runCaptureDetailed, spawnBackground, wait };
   const liveAppContract = await inspectRemoteServiceContract(
@@ -67,7 +70,7 @@ const main = async () => {
   const input = {
     internalNetworkName,
     quantumEndpoint,
-    remoteComposeFiles: ['compose.yaml', `deploy/compose.${environment}.yaml`],
+    remoteComposeFiles: ['compose.yaml', `deploy/compose.${environment}.yaml`] as const,
     reportId,
     runtimeProfile: 'studio' as const,
     sourceStackName,

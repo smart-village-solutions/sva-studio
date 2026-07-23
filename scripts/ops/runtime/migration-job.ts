@@ -75,11 +75,13 @@ export type MigrationJobResult = {
   taskMessage?: string;
 };
 
-export type RunMigrationJobInput = {
+type RemoteComposeInput =
+  | { remoteComposeFile: string; remoteComposeFiles?: never }
+  | { remoteComposeFile?: never; remoteComposeFiles: readonly [string, ...string[]] };
+
+export type RunMigrationJobInput = RemoteComposeInput & {
   internalNetworkName: string;
   quantumEndpoint: string;
-  remoteComposeFile?: string;
-  remoteComposeFiles?: readonly string[];
   reportId: string;
   runtimeProfile: string;
   sourceStackName: string;
@@ -337,8 +339,7 @@ const createQuantumProject = (
   input: RunMigrationJobInput,
 ) => {
   const jobStackName = toTemporaryJobStackName(input.sourceStackName, 'migrate', input.reportId);
-  const remoteComposeFiles = input.remoteComposeFiles ?? (input.remoteComposeFile ? [input.remoteComposeFile] : []);
-  if (remoteComposeFiles.length === 0) throw new Error('Für den Migrationsjob fehlt eine gerenderte Compose-Quelle.');
+  const remoteComposeFiles = input.remoteComposeFiles ?? [input.remoteComposeFile];
   const renderedComposeDocument = JSON.parse(
     deps.runCapture(
       deps.rootDir,

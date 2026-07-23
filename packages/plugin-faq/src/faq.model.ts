@@ -12,7 +12,7 @@ export const faqFormSchema = z.object({
   languageCode: z.string().trim().regex(languageCodePattern, 'invalid_language_code'),
   sortWeight: z.number().int().finite(),
   visible: z.boolean(),
-  publicationDate: z.string().trim().min(1).optional(),
+  publicationDate: z.string().trim().min(1).optional().or(z.literal('')),
 });
 
 const normalizeLanguageCode = (value: string): string => {

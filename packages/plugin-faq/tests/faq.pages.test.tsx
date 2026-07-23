@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   createFaqMock: vi.fn(),
+  deleteFaqMock: vi.fn(),
   getFaqMock: vi.fn(),
   updateFaqMock: vi.fn(),
   navigateMock: vi.fn(),
@@ -12,6 +13,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock('../src/faq.api.js', () => ({
   createFaq: state.createFaqMock,
+  deleteFaq: state.deleteFaqMock,
   getFaq: state.getFaqMock,
   updateFaq: state.updateFaqMock,
   FaqApiError: class FaqApiError extends Error {
@@ -38,6 +40,7 @@ vi.mock('@tanstack/react-router', () => ({
 describe('faq editor pages', () => {
   beforeEach(() => {
     state.createFaqMock.mockReset();
+    state.deleteFaqMock.mockReset();
     state.getFaqMock.mockReset();
     state.updateFaqMock.mockReset();
     state.navigateMock.mockReset();
@@ -160,6 +163,17 @@ describe('faq editor pages', () => {
     render(<FaqEditPage />);
 
     await screen.findByText('messages.loadError');
+  });
+
+  it('deletes an existing faq and returns to the content overview', async () => {
+    state.getFaqMock.mockResolvedValue({ id: 'faq-1', title: 'Frage', genericType: 'FAQ', contentBlocks: [{ body: 'Antwort' }], payload: { languageCode: 'de', sortWeight: 0 }, visible: true, createdAt: '', updatedAt: '' });
+    state.deleteFaqMock.mockResolvedValue(undefined);
+    const { FaqEditPage } = await import('../src/faq.pages.js');
+    render(<FaqEditPage />);
+    await screen.findByDisplayValue('Frage');
+    fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
+    await waitFor(() => expect(state.deleteFaqMock).toHaveBeenCalledWith('faq-1'));
+    expect(state.navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
   });
 
   it('shows a validation error when sort weight is not an integer', async () => {

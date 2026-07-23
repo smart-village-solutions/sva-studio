@@ -362,7 +362,6 @@ export const svaMainserverCreateGenericItemDocument = /* GraphQL */ `
     $author: String
     $keywords: String
     $title: String!
-    $teaser: String
     $genericType: String
     $externalId: String
     $publicationDate: String
@@ -380,7 +379,6 @@ export const svaMainserverCreateGenericItemDocument = /* GraphQL */ `
     $locations: [LocationInput!]
     $dates: [DateInput!]
     $accessibilityInformations: [AccessibilityInformationInput!]
-    $visible: Boolean
   ) {
     createGenericItem(
       id: $id
@@ -389,7 +387,6 @@ export const svaMainserverCreateGenericItemDocument = /* GraphQL */ `
       author: $author
       keywords: $keywords
       title: $title
-      teaser: $teaser
       genericType: $genericType
       externalId: $externalId
       publicationDate: $publicationDate
@@ -407,7 +404,6 @@ export const svaMainserverCreateGenericItemDocument = /* GraphQL */ `
       locations: $locations
       dates: $dates
       accessibilityInformations: $accessibilityInformations
-      visible: $visible
     ) {
       ${genericItemFields}
     }

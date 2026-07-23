@@ -23,6 +23,7 @@ describe('Promote workflow contract', () => {
     expect(offsets.every((offset) => offset >= 0)).toBe(true);
     expect(offsets).toEqual([...offsets].sort((left, right) => left - right));
     expect(workflow).toMatch(/- name: deploy\s+id: deploy/u);
+    expect(workflow.indexOf('Login to GHCR')).toBeLessThan(workflow.indexOf('validate image contract'));
   });
 
   it('requires a maintenance reference and guards production mutations with staging parity', () => {

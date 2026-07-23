@@ -39,6 +39,8 @@ describe('promote backup job', () => {
     expect(document.networks.internal).toEqual({ external: true, name: 'studio-staging_default' });
     expect(document.services.backup.networks).toEqual(['internal']);
     expect(document.services.backup.environment).toMatchObject({ POSTGRES_HOST: 'studio-staging_postgres', S3_BUCKET: 'studio-db-backup-staging' });
+    expect(document.services.backup.command).toEqual([backupCommand]);
+    expect(document.services.backup.entrypoint).toEqual(['sh', '-ec']);
     expect(backupCommand).toContain('aws --endpoint-url "$S3_ENDPOINT" s3 cp "$dump"');
     expect(backupCommand).toContain('export PGPASSWORD="$POSTGRES_PASSWORD"');
     expect(backupCommand.indexOf('export PGPASSWORD="$POSTGRES_PASSWORD"')).toBeLessThan(backupCommand.indexOf('pg_dump'));

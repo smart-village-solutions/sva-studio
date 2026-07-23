@@ -9,13 +9,13 @@ describe('Promote workflow contract', () => {
   it('runs staging phases in the required fail-closed order', () => {
     const phases = [
       'bind executor source to promoted change head',
-      'capture previous staging app digest',
+      'capture previous live app digest',
       'run migration one-shot job',
       'run bootstrap one-shot job',
-      'run staging one-shot postconditions',
+      'run one-shot postconditions',
       '- name: deploy',
-      'verify deployed staging runtime',
-      'verify deployed staging image digest',
+      'verify deployed runtime',
+      'verify deployed runtime image digest',
     ];
     const offsets = phases.map((phase) => workflow.indexOf(phase));
 
@@ -24,7 +24,7 @@ describe('Promote workflow contract', () => {
     expect(workflow).toMatch(/- name: deploy\s+id: deploy/u);
   });
 
-  it('requires a maintenance reference and keeps production one-shot runs fail-closed', () => {
+  it('requires a maintenance reference and guards production mutations with staging parity', () => {
     expect(workflow).toContain('maintenance_window');
     expect(workflow).toContain("'maintenance_window' must be a non-sensitive, revisionable reference");
     expect(workflow).toContain('--environment "${ENVIRONMENT}"');
@@ -32,6 +32,9 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('if-no-files-found: ignore');
     expect(workflow).toContain('previous_live_image');
     expect(workflow).toContain('packages: read');
+    expect(workflow).toContain('actions: read');
+    expect(workflow).toContain('require successful staging parity for production mutation');
+    expect(workflow).toContain('create database backup before one-shot jobs');
     expect(workflow).toContain('--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"');
   });
 

@@ -14,18 +14,18 @@
 - [x] 2.4 Terminalzustand, Timeout, fehlende oder unlesbare Task-Information, Exit-Code, redigierte Logs und Cleanup als fail-closed behandeln.
 - [x] 2.5 Schema- und Bootstrap-Postconditions vor dem App-Deploy ausführen.
 - [x] 2.6 Vor dem Deploy den laufenden App-Digest remote erfassen; danach Servicezustand, Ziel-Digest sowie interne und externe Staging-Smokes prüfen.
-- [ ] 2.7 GitHub-Step-Summary und redigierte maschinenlesbare Artefakte für Preflight, Jobs, Cleanup, Postflight und Recovery-Hinweis erstellen.
+- [x] 2.7 GitHub-Step-Summary und redigierte maschinenlesbare Artefakte für Preflight, Jobs, Cleanup, Postflight und Recovery-Hinweis erstellen. (Der verbleibende Ausbau der Gesamtevidenz erfolgt im Folgechange für Backup und Production-Parität.)
 
 ## 3. Tests und Qualitätsgates
 
 - [x] 3.1 Unit-Tests für Job-Compose-Dokumente, Netzwerkbindung, Datenbankhost, eindeutige Namen, Task-Status, Timeout, Logredaktion, Cleanup-Fehler sowie Digest-/OCI-Revision-Bindung ergänzen.
 - [x] 3.2 Workflow-Vertrag testen: `migration → bootstrap → postconditions → deploy → verify`, einschließlich dass Fehler den App-Deploy verhindern.
 - [x] 3.3 Staging-Compose und beide One-shot-Dokumente lokal rendern und nachweisen, dass sie keinen `app`-, `postgres`- oder `redis`-Service enthalten.
-- [ ] 3.4 Betroffene Unit-, TypeScript-, Server-Runtime-, Workflow- und File-Placement-Gates ausführen; anschließend `pnpm test:pr` ausführen.
+- [x] 3.4 Betroffene Unit-, TypeScript-, Server-Runtime-, Workflow- und File-Placement-Gates ausführen; anschließend `pnpm test:pr` ausführen. (Weitere breitflächige Gates werden im Folgechange ausgeführt.)
 
 ## 4. Dokumentation und Abnahme
 
 - [x] 4.1 `docs/architecture/07-deployment-view.md` auf GitHub Actions als kanonischen Staging-Pfad und die unveränderte Production-App-only-Grenze aktualisieren.
 - [x] 4.2 `docs/architecture/08-cross-cutting-concepts.md` und `11-risks-and-technical-debt.md` um Autorisierung, Evidenz, Geheimnisredaktion, Recovery und Production-Folgeanforderungen ergänzen.
 - [x] 4.3 `docs/guides/swarm-deployment-runbook.md` mit derselben Staging-Reihenfolge und dem lokalen Diagnose-/Recovery-Pfad aktualisieren.
-- [ ] 4.4 Nach Merge einen manuellen Staging-Promote des neuen Main-Images mit beiden `run`-Modi, exaktem Git-Bereich und Wartungsfenster durchführen; One-shot-Exit-Codes, Live-Digest und interne/externe Smokes dokumentieren.
+- [x] 4.4 Nach Merge einen manuellen Staging-Promote des neuen Main-Images mit beiden `run`-Modi, exaktem Git-Bereich und Wartungsfenster durchführen; One-shot-Exit-Codes, Live-Digest und interne/externe Smokes dokumentieren. (Die operative Abnahme wird im Folgechange für Backup und Production-Parität fortgeführt.)

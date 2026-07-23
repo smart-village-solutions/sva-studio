@@ -258,7 +258,7 @@ Der GitHub-Workflow `promote.yml` deployt die App nicht mehr blind. Vor `quantum
 Erlaubte Werte:
 
 - `assert-none`: Kein impliziter Skip. Der Workflow prüft den Änderungsumfang auf Risiko und bricht ab, sobald Migrationen oder Bootstrap-/Reconcile-Artefakte betroffen sind.
-- `run`: In `dev` und `staging` nutzt `Promote` den gehärteten, temporären One-shot-Executor. Der Ablauf ist verbindlich: Preflight, Migration, optional Bootstrap, Postconditions, App-Deploy, interne und externe Smokes. Bei Job-, Postcondition- oder Verify-Fehlern erfolgt kein App-Deploy.
+- `run`: In `dev`, `staging` und unter Production-Freigabe auch in `prod` nutzt `Promote` den gehärteten, temporären One-shot-Executor. Für Staging und Production lautet der Ablauf verbindlich: Preflight, Backup, Migration, optional Bootstrap, Postconditions, App-Deploy, interne und externe Smokes. Bei Backup-, Job-, Postcondition- oder Verify-Fehlern erfolgt kein App-Deploy.
 - `auto`: Nur für den durch einen Merge nach `main` ausgelösten Dev-Promote. Der Workflow erkennt Migration und Bootstrap unabhängig am Commit-Diff, führt nur erforderliche One-shot-Jobs aus und aktualisiert `studio-dev` ausschließlich nach erfolgreichem Build und erfolgreichen benötigten Jobs. Für `staging` und `prod` blockiert dieser Modus vor jeder Mutation.
 
 Bewusste Nicht-Funktion:
@@ -280,7 +280,7 @@ Operator-Regel:
 
 Prod-Hinweis:
 
-- Für Produktion blockiert `Promote` beide `run`-Modi derzeit fail-closed. Ein Folgechange benötigt nachgewiesene Staging-Parität, Production-Freigabe, Backup-/Restore-Readiness und production-spezifische Postconditions.
+- Für Produktion verlangt `Promote` bei beiden `run`-Modi ein revisionsfähiges Wartungsfenster sowie ein erfolgreiches Staging-Paritäts-Artifact für exakt dasselbe Image-Digest. Fehlt einer dieser Nachweise, blockiert der Lauf vor Backup und Mutation.
 - Vor produktiven Schema- oder Reconcile-Eingriffen müssen aktuelles Backup, Restore-Pfad und Rollback-Entscheidung vorliegen; ein grüner App-Build ersetzt diese Freigabe nicht.
 
 ### Image-Versionierung im Promote-Pfad
@@ -593,7 +593,7 @@ Der Monitoring-Block bleibt intern:
 ### Bekannte Lücken
 
 - **Alertmanager-Receiver nicht konfiguriert:** Der `default`-Receiver in `alertmanager.yml` hat kein reales Ziel (Webhook, E-Mail, Slack). Alle Alert-Rules werden evaluiert, aber nicht zugestellt. Für den Produktivbetrieb muss ein Receiver konfiguriert werden.
-- **Kein automatisiertes Postgres-Backup:** Aktuell ist nur manuelles `pg_dump` dokumentiert. Für den dauerhaften Betrieb wird ein automatisierter Backup-Cronjob mit Retention-Policy und Off-Site-Sicherung benötigt.
+- **Promote-Backup und Aufbewahrung:** Vor Staging- und Production-One-shots erstellt `Promote` einen PostgreSQL-Custom-Dump und speichert ihn in `studio-db-backup-staging` beziehungsweise `studio-db-backup-production` auf `https://fileserver.smart-village.app`. Für beide Buckets gilt eine Lifecycle-Aufbewahrung von 180 Tagen; der Storage-Betrieb verantwortet ihre Durchsetzung. Ein regelmäßiger Restore-Drill ist separate Folgearbeit.
 - **Single-Node-Pinning:** Alle Services sind auf `node-005.sva` gepinnt. Bei Ausfall dieses Nodes ist der gesamte Stack nicht verfügbar. Für HA-Betrieb ist eine Multi-Node-Strategie erforderlich.
 
 ## Instanz-Routing

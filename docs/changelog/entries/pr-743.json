@@ -1,0 +1,4 @@
+{
+  "prNumber": 743,
+  "body": "Staging- und Production-Promotes sichern die Datenbank vor Migrations- oder Bootstrap-Schritten jetzt automatisiert mit einem geprüften Backup. Production setzt zusätzlich ein dokumentiertes Wartungsfenster und einen erfolgreichen Staging-Lauf mit demselben Softwarestand voraus."
+}

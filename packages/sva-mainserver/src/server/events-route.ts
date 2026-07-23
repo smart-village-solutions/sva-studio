@@ -21,6 +21,7 @@ import {
   errorJson,
   isRecord,
   isResponse,
+  isTimeOfDay,
   json,
   matchRequestRoute,
   parseJsonObjectBody,
@@ -68,22 +69,35 @@ type ContentActor = {
 
 const matchRoute = (request: Request): RouteMatch | null => matchRequestRoute(request, EVENTS_COLLECTION_PATH, 'events');
 
-const parseEventDates = (value: unknown): readonly SvaMainserverDateInput[] | undefined =>
-  Array.isArray(value)
-    ? value
-        .filter(isRecord)
-        .map((date): SvaMainserverDateInput => ({
-          ...(readString(date.weekday) ? { weekday: readString(date.weekday) } : {}),
-          ...(readString(date.dateStart) ? { dateStart: readString(date.dateStart) } : {}),
-          ...(readString(date.dateEnd) ? { dateEnd: readString(date.dateEnd) } : {}),
-          ...(readString(date.timeStart) ? { timeStart: readString(date.timeStart) } : {}),
-          ...(readString(date.timeEnd) ? { timeEnd: readString(date.timeEnd) } : {}),
-          ...(readString(date.timeDescription) ? { timeDescription: readString(date.timeDescription) } : {}),
-          ...(readBoolean(date.useOnlyTimeDescription) !== undefined
-            ? { useOnlyTimeDescription: readBoolean(date.useOnlyTimeDescription) }
-            : {}),
-        }))
-    : undefined;
+const parseEventDates = (value: unknown): readonly SvaMainserverDateInput[] | Response | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const dates: SvaMainserverDateInput[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) {
+      continue;
+    }
+    const timeStart = readString(item.timeStart);
+    const timeEnd = readString(item.timeEnd);
+    if ((timeStart && !isTimeOfDay(timeStart)) || (timeEnd && !isTimeOfDay(timeEnd))) {
+      return errorJson(400, 'invalid_request', 'Termine müssen Uhrzeiten im Format HH:MM enthalten.');
+    }
+    dates.push({
+      ...(readString(item.weekday) ? { weekday: readString(item.weekday) } : {}),
+      ...(readString(item.dateStart) ? { dateStart: readString(item.dateStart) } : {}),
+      ...(readString(item.dateEnd) ? { dateEnd: readString(item.dateEnd) } : {}),
+      ...(timeStart ? { timeStart } : {}),
+      ...(timeEnd ? { timeEnd } : {}),
+      ...(readString(item.timeDescription) ? { timeDescription: readString(item.timeDescription) } : {}),
+      ...(readBoolean(item.useOnlyTimeDescription) !== undefined
+        ? { useOnlyTimeDescription: readBoolean(item.useOnlyTimeDescription) }
+        : {}),
+    });
+  }
+  return dates;
+};
 
 const parseEventRelations = (
   body: Record<string, unknown>
@@ -177,6 +191,7 @@ const parseEventRelations = (
 const buildEventInput = (
   body: Record<string, unknown>,
   title: string,
+  dates: readonly SvaMainserverDateInput[] | undefined,
   relations: {
     readonly categories: readonly SvaMainserverCategoryInput[] | undefined;
     readonly addresses: readonly SvaMainserverAddressInput[] | undefined;
@@ -189,8 +204,6 @@ const buildEventInput = (
     readonly accessibilityInformation: SvaMainserverAccessibilityInformationInput | undefined;
   }
 ): SvaMainserverEventInput => {
-  const dates = parseEventDates(body.dates);
-
   return {
     title,
     ...(readString(body.description) ? { description: readString(body.description) } : {}),
@@ -236,13 +249,18 @@ const parseEventInput = async (
     return relations;
   }
 
+  const dates = parseEventDates(body.dates);
+  if (isResponse(dates)) {
+    return dates;
+  }
+
   const visible = readBoolean(body.visible);
   if (body.visible !== undefined && visible === undefined) {
     return errorJson(400, 'invalid_request', 'Das Feld "visible" muss als Boolean gesendet werden.');
   }
 
   return {
-    event: buildEventInput(body, title, relations),
+    event: buildEventInput(body, title, dates, relations),
     ...(visible !== undefined ? { visible } : {}),
   };
 };

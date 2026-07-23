@@ -41,5 +41,7 @@ describe('generic-items-route-input.dates', () => {
   it('returns validation errors for malformed date payloads', async () => {
     await expectInvalidRequest(parseDates('not-an-array') as Response);
     await expectInvalidRequest(parseDates([null]) as Response);
+    await expectInvalidRequest(parseDates([{ timeStart: '19 Uhr' }]) as Response);
+    await expectInvalidRequest(parseDates([{ timeEnd: '24:00' }]) as Response);
   });
 });

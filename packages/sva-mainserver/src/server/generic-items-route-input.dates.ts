@@ -1,5 +1,5 @@
 import type { SvaMainserverDateInput } from '../types.js';
-import { errorJson, isRecord, readBoolean, readString } from './content-route-core.js';
+import { errorJson, isRecord, isTimeOfDay, readBoolean, readString } from './content-route-core.js';
 
 export const parseDates = (value: unknown): readonly SvaMainserverDateInput[] | Response | undefined => {
   if (value === undefined || value === null) {
@@ -14,12 +14,17 @@ export const parseDates = (value: unknown): readonly SvaMainserverDateInput[] | 
     if (!isRecord(item)) {
       return errorJson(400, 'invalid_request', 'Termin-Einträge müssen Objekte sein.');
     }
+    const timeStart = readString(item.timeStart);
+    const timeEnd = readString(item.timeEnd);
+    if ((timeStart && !isTimeOfDay(timeStart)) || (timeEnd && !isTimeOfDay(timeEnd))) {
+      return errorJson(400, 'invalid_request', 'Termine müssen Uhrzeiten im Format HH:MM enthalten.');
+    }
     const date = {
       ...(readString(item.weekday) ? { weekday: readString(item.weekday) } : {}),
       ...(readString(item.dateStart) ? { dateStart: readString(item.dateStart) } : {}),
       ...(readString(item.dateEnd) ? { dateEnd: readString(item.dateEnd) } : {}),
-      ...(readString(item.timeStart) ? { timeStart: readString(item.timeStart) } : {}),
-      ...(readString(item.timeEnd) ? { timeEnd: readString(item.timeEnd) } : {}),
+      ...(timeStart ? { timeStart } : {}),
+      ...(timeEnd ? { timeEnd } : {}),
       ...(readString(item.timeDescription) ? { timeDescription: readString(item.timeDescription) } : {}),
       ...(readBoolean(item.useOnlyTimeDescription) !== undefined
         ? { useOnlyTimeDescription: readBoolean(item.useOnlyTimeDescription) }

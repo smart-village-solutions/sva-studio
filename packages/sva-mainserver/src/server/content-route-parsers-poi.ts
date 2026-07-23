@@ -6,7 +6,7 @@ import type {
   SvaMainserverOperatingCompanyInput,
   SvaMainserverPriceInput,
 } from '../types.js';
-import { errorJson, isRecord, readBoolean, readNumber, readString } from './content-route-core.js';
+import { errorJson, isRecord, isTimeOfDay, readBoolean, readNumber, readString } from './content-route-core.js';
 import { parseAddress, parseContact, parseWebUrl, parseWebUrls } from './content-route-parsers.shared.js';
 
 export const parseOpeningHours = (value: unknown): readonly SvaMainserverOpeningHourInput[] | Response | undefined => {
@@ -22,12 +22,17 @@ export const parseOpeningHours = (value: unknown): readonly SvaMainserverOpening
     if (!isRecord(item)) {
       return errorJson(400, 'invalid_request', 'Öffnungszeiten-Einträge müssen Objekte sein.');
     }
+    const timeFrom = readString(item.timeFrom);
+    const timeTo = readString(item.timeTo);
+    if ((timeFrom && !isTimeOfDay(timeFrom)) || (timeTo && !isTimeOfDay(timeTo))) {
+      return errorJson(400, 'invalid_request', 'Öffnungszeiten müssen im Format HH:MM angegeben werden.');
+    }
     openingHours.push({
       ...(readString(item.weekday) ? { weekday: readString(item.weekday) } : {}),
       ...(readString(item.dateFrom) ? { dateFrom: readString(item.dateFrom) } : {}),
       ...(readString(item.dateTo) ? { dateTo: readString(item.dateTo) } : {}),
-      ...(readString(item.timeFrom) ? { timeFrom: readString(item.timeFrom) } : {}),
-      ...(readString(item.timeTo) ? { timeTo: readString(item.timeTo) } : {}),
+      ...(timeFrom ? { timeFrom } : {}),
+      ...(timeTo ? { timeTo } : {}),
       ...(readNumber(item.sortNumber) !== undefined ? { sortNumber: readNumber(item.sortNumber) } : {}),
       ...(readBoolean(item.open) !== undefined ? { open: readBoolean(item.open) } : {}),
       ...(readBoolean(item.useYear) !== undefined ? { useYear: readBoolean(item.useYear) } : {}),

@@ -108,6 +108,7 @@
   },
   "homepage": "https://github.com/smart-village-solutions/sva-studio#readme",
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1073.0",
     "@eslint/js": "^10.0.1",
     "@nx/eslint": "^23.0.1",
     "@nx/eslint-plugin": "^23.0.1",

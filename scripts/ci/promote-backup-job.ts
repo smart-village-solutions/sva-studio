@@ -50,7 +50,7 @@ export const redactBackupError = (value: string, sensitiveValues: readonly strin
   sensitiveValues
     .filter((sensitiveValue) => sensitiveValue.trim().length > 0)
     .reduce((redacted, sensitiveValue) => redacted.replaceAll(sensitiveValue, '[REDACTED]'), value)
-    .replace(/((?:password|token|secret|authorization)\s*[=:]\s*)[^\s]+/giu, '$1[REDACTED]')
+    .replace(/((?:password|token|secret)\s*[=:]\s*|authorization\s*[=:]\s*(?:bearer\s+)?)[^\s]+/giu, '$1[REDACTED]')
     .slice(-8_000);
 
 export const buildQuantumBackupDeployArgs = (endpoint: string, stackName: string, composePath: string) => [

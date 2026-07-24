@@ -32,6 +32,10 @@ describe('promote backup job', () => {
     )).toBe('Upload to https://fileserver.smart-village.app failed for [REDACTED]/[REDACTED]');
   });
 
+  it('redacts bearer tokens in propagated authorization headers', () => {
+    expect(redactBackupError('Authorization: Bearer sensitive-token', [])).toBe('Authorization: Bearer [REDACTED]');
+  });
+
   it('writes safe failure evidence with the terminal task and log tail', () => {
     expect(buildBackupEvidence({
       bucket: 'studio-db-backup-staging',

@@ -148,6 +148,47 @@ export const buildBackupEvidence = ({
     : undefined,
 });
 
+class BackupJobFailure extends Error {
+  constructor(
+    message: string,
+    readonly task: MigrationJobTaskSnapshot | null,
+    readonly timedOut: boolean,
+  ) {
+    super(message);
+  }
+}
+
+const readLatestBackupTask = (
+  env: NodeJS.ProcessEnv,
+  jobStack: string,
+  quantumEndpoint: string,
+) => {
+  const snapshot = runCaptureDetailed(rootDir, 'quantum-cli', ['ps', '--endpoint', quantumEndpoint, '--stack', jobStack, '--service', 'backup', '--all', '-o', 'json'], withoutDebugEnv(env));
+  const payload = extractQuantumJsonPayload(`${snapshot.stdout}\n${snapshot.stderr}`.split('\n'));
+  return payload ? selectLatestMigrationTask(collectQuantumTaskSnapshots(JSON.parse(payload) as unknown)) : null;
+};
+
+const waitForBackupTask = async ({
+  deadline,
+  env,
+  jobStack,
+  quantumEndpoint,
+}: {
+  deadline: number;
+  env: NodeJS.ProcessEnv;
+  jobStack: string;
+  quantumEndpoint: string;
+}) => {
+  for (;;) {
+    const task = readLatestBackupTask(env, jobStack, quantumEndpoint);
+    const state = getMigrationJobTerminalState(task);
+    if (state === 'succeeded') return task;
+    if (state === 'failed') throw new BackupJobFailure(`Backup-Job ${jobStack} ist fehlgeschlagen (exitCode=${String(task?.exitCode)}).`, task, false);
+    if (Date.now() >= deadline) throw new BackupJobFailure(`Backup-Job ${jobStack} hat das Timeout erreicht.`, task, true);
+    await wait(2_000);
+  }
+};
+
 const main = async () => {
   process.umask(0o077);
   const environment = parseEnvironment(process.argv[2]);
@@ -173,7 +214,6 @@ const main = async () => {
     process.env.S3_ACCESS_KEY_ID ?? '',
     process.env.S3_SECRET_ACCESS_KEY ?? '',
   ];
-  let latestTask: MigrationJobTaskSnapshot | null = null;
 
   required(process.env.S3_ACCESS_KEY_ID, 'S3_ACCESS_KEY_ID');
   required(process.env.S3_SECRET_ACCESS_KEY, 'S3_SECRET_ACCESS_KEY');
@@ -192,29 +232,23 @@ const main = async () => {
     const backupCompose = buildBackupComposeDocument(migrate, { accessKey: required(process.env.S3_ACCESS_KEY_ID, 'S3_ACCESS_KEY_ID'), bucket, endpoint: required(process.env.S3_ENDPOINT, 'S3_ENDPOINT'), internalNetwork, objectKey, secretKey: required(process.env.S3_SECRET_ACCESS_KEY, 'S3_SECRET_ACCESS_KEY'), sourceStack });
     writeFileSync(composePath, `${JSON.stringify({ ...backupCompose, version: compose.version ?? backupCompose.version }, null, 2)}\n`);
     run(rootDir, 'quantum-cli', buildQuantumBackupDeployArgs(quantumEndpoint, jobStack, composePath), withoutDebugEnv(env));
-    const deadline = Date.now() + Number(process.env.SVA_BACKUP_JOB_TIMEOUT_MS ?? '900000');
-    for (;;) {
-      const snapshot = runCaptureDetailed(rootDir, 'quantum-cli', ['ps', '--endpoint', quantumEndpoint, '--stack', jobStack, '--service', 'backup', '--all', '-o', 'json'], withoutDebugEnv(env));
-      const payload = extractQuantumJsonPayload(`${snapshot.stdout}\n${snapshot.stderr}`.split('\n'));
-      latestTask = payload ? selectLatestMigrationTask(collectQuantumTaskSnapshots(JSON.parse(payload) as unknown)) : null;
-      const state = getMigrationJobTerminalState(latestTask);
-      if (state === 'succeeded') {
-        writeFileSync(resultPath, `${JSON.stringify(buildBackupEvidence({ bucket, environment, objectKey, status: 'ok', task: latestTask }), null, 2)}\n`);
-        if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `backup_bucket=${bucket}\nbackup_object=${objectKey}\nbackup_evidence_path=${resultPath}\n`);
-        return;
-      }
-      if (state === 'failed') throw new Error(`Backup-Job ${jobStack} ist fehlgeschlagen (exitCode=${String(latestTask?.exitCode)}).`);
-      if (Date.now() >= deadline) throw new Error(`Backup-Job ${jobStack} hat das Timeout erreicht.`);
-      await wait(2_000);
-    }
+    const task = await waitForBackupTask({
+      deadline: Date.now() + Number(process.env.SVA_BACKUP_JOB_TIMEOUT_MS ?? '900000'),
+      env,
+      jobStack,
+      quantumEndpoint,
+    });
+    writeFileSync(resultPath, `${JSON.stringify(buildBackupEvidence({ bucket, environment, objectKey, status: 'ok', task }), null, 2)}\n`);
+    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `backup_bucket=${bucket}\nbackup_object=${objectKey}\nbackup_evidence_path=${resultPath}\n`);
   } catch (error) {
+    const failedJob = error instanceof BackupJobFailure ? error : undefined;
     const remoteLogTail = await readRemoteJobLogTail(
       { commandExists, rootDir, runCapture },
       env,
       {
-        containerId: latestTask?.containerId,
+        containerId: failedJob?.task?.containerId,
         quantumEndpoint,
-        serviceId: latestTask?.serviceId,
+        serviceId: failedJob?.task?.serviceId,
       },
     );
     const errorText = redactBackupError(error instanceof Error ? error.message : String(error), sensitiveValues);
@@ -224,8 +258,8 @@ const main = async () => {
       error: errorText,
       logTail: redactBackupError(remoteLogTail, sensitiveValues),
       objectKey,
-      status: errorText.includes('Timeout') ? 'timed_out' : 'failed',
-      task: latestTask,
+      status: failedJob?.timedOut ? 'timed_out' : 'failed',
+      task: failedJob?.task,
     }), null, 2)}\n`);
     throw error;
   } finally {

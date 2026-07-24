@@ -1,0 +1,4 @@
+{
+  "prNumber": 759,
+  "body": "Datenbank-Backup-Jobs protokollieren ihre einzelnen Schritte nun nachvollziehbar und sichern bei Fehlern redigierte Task-Logs vor dem Cleanup."
+}

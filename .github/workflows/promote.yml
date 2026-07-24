@@ -309,6 +309,8 @@ jobs:
         if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true') }}
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+          SVA_STACK_NAME: studio-${{ inputs.environment }}
         run: |
           set -euo pipefail
           umask 077
@@ -356,6 +358,8 @@ jobs:
         if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+          SVA_STACK_NAME: studio-${{ inputs.environment }}
         run: |
           set -euo pipefail
           umask 077

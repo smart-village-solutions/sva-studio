@@ -74,7 +74,7 @@ networks:
     name: studio-staging_default
   production:
     external: true
-    name: studio-prod_default
+    name: portainer_internal
 
 secrets:
   backup_staging_postgres_password:

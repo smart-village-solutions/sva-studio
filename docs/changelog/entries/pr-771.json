@@ -1,0 +1,4 @@
+{
+  "prNumber": 771,
+  "body": "Der zentrale Backup-Agent verwendet nun die verifizierten Swarm-Netzwerke für Staging, Produktion und Traefik."
+}

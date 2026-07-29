@@ -1,0 +1,134 @@
+services:
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${INTEGRATION_S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${INTEGRATION_S3_SECRET_KEY}
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  staging-db:
+    image: postgres:16.9-alpine
+    environment:
+      POSTGRES_DB: sva_studio
+      POSTGRES_PASSWORD: ${INTEGRATION_STAGING_POSTGRES_PASSWORD}
+      POSTGRES_USER: sva
+    networks:
+      default:
+        aliases: [studio-staging_postgres]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sva -d sva_studio']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  production-db:
+    image: postgres:16.9-alpine
+    environment:
+      POSTGRES_DB: sva_studio
+      POSTGRES_PASSWORD: ${INTEGRATION_PRODUCTION_POSTGRES_PASSWORD}
+      POSTGRES_USER: sva
+    networks:
+      default:
+        aliases: [studio-prod_postgres]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sva -d sva_studio']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ['/bin/sh', '-ec']
+    command:
+      - |
+        mc alias set local http://minio:9000 ${INTEGRATION_S3_ACCESS_KEY} ${INTEGRATION_S3_SECRET_KEY}
+        mc mb --ignore-existing local/studio-db-backup-staging
+        mc mb --ignore-existing local/studio-db-backup-production
+
+  staging-agent-run:
+    build:
+      context: ../..
+      dockerfile: deploy/backup-agent/Dockerfile
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+      staging-db:
+        condition: service_healthy
+    entrypoint: ['node', '--input-type=module', '--eval']
+    command:
+      - |
+        process.env.BACKUP_AGENT_IMAGE_REF='integration';
+        process.env.BACKUP_AGENT_TOOL_VERSIONS='{"aws":"integration","pgDump":"integration","pgRestore":"integration"}';
+        const { executeBackupForIntegration } = await import('/app/agent.mjs');
+        await executeBackupForIntegration({version:1,action:'backup-and-verify',requestId:'integration-staging',environment:'staging',deployImageDigest:'sha256:${INTEGRATION_DIGEST}',expiresAt:'2099-01-01T00:00:00.000Z'});
+    environment: &agent-environment
+      BACKUP_S3_ENDPOINT: http://minio:9000
+      BACKUP_STAGING_POSTGRES_PASSWORD_FILE: /run/secrets/staging_postgres_password
+      BACKUP_STAGING_S3_ACCESS_KEY_FILE: /run/secrets/s3_access_key
+      BACKUP_STAGING_S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
+      BACKUP_PROD_POSTGRES_PASSWORD_FILE: /run/secrets/production_postgres_password
+      BACKUP_PROD_S3_ACCESS_KEY_FILE: /run/secrets/s3_access_key
+      BACKUP_PROD_S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
+    secrets: &agent-secrets
+      - staging_postgres_password
+      - production_postgres_password
+      - s3_access_key
+      - s3_secret_key
+
+  production-agent-run:
+    build:
+      context: ../..
+      dockerfile: deploy/backup-agent/Dockerfile
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+      production-db:
+        condition: service_healthy
+      staging-agent-run:
+        condition: service_completed_successfully
+    entrypoint: ['node', '--input-type=module', '--eval']
+    command:
+      - |
+        process.env.BACKUP_AGENT_IMAGE_REF='integration';
+        process.env.BACKUP_AGENT_TOOL_VERSIONS='{"aws":"integration","pgDump":"integration","pgRestore":"integration"}';
+        const { executeBackupForIntegration } = await import('/app/agent.mjs');
+        await executeBackupForIntegration({version:1,action:'backup-and-verify',requestId:'integration-production',environment:'prod',deployImageDigest:'sha256:${INTEGRATION_DIGEST}',expiresAt:'2099-01-01T00:00:00.000Z',maintenanceWindowReference:'integration-test'});
+    environment: *agent-environment
+    secrets: *agent-secrets
+
+  verify:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      production-agent-run:
+        condition: service_completed_successfully
+    entrypoint: ['/bin/sh', '-ec']
+    command:
+      - |
+        mc alias set local http://minio:9000 ${INTEGRATION_S3_ACCESS_KEY} ${INTEGRATION_S3_SECRET_KEY}
+        staging_result="$(mc cat local/studio-db-backup-staging/control/results/integration-staging.json)"
+        production_result="$(mc cat local/studio-db-backup-production/control/results/integration-production.json)"
+        case "$$staging_result" in *'"status":"succeeded"'*) ;; *) exit 1 ;; esac
+        case "$$production_result" in *'"status":"succeeded"'*) ;; *) exit 1 ;; esac
+        ! mc stat local/studio-db-backup-production/control/results/integration-staging.json
+        ! mc stat local/studio-db-backup-staging/control/results/integration-production.json
+
+networks:
+  default:
+
+secrets:
+  staging_postgres_password:
+    environment: INTEGRATION_STAGING_POSTGRES_PASSWORD
+  production_postgres_password:
+    environment: INTEGRATION_PRODUCTION_POSTGRES_PASSWORD
+  s3_access_key:
+    environment: INTEGRATION_S3_ACCESS_KEY
+  s3_secret_key:
+    environment: INTEGRATION_S3_SECRET_KEY

@@ -445,3 +445,8 @@ Referenzen:
    - Impact: mittel (Marker-Interaktion bleibt lokal funktionsfähig, aber die Kartenansicht kann visuell degradiert sein)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Host-seitige Kill-Switch- und Observability-Pfade aktiv halten, Style-Endpoint überwachen und UI-Fallback auf manuelle Koordinatenpflege beibehalten
+
+34. Erweiterter Blast Radius des zentralen Backup-Agenten
+   - Impact: hoch (der Dienst besitzt getrennten Zugriff auf beide Datenbanken und Backup-Buckets)
+   - Wahrscheinlichkeit: niedrig
+   - Maßnahme: eine Replica, globale Serialisierung, keine allgemeine Kommandoausführung, getrennte Secrets, feste Umgebungsableitung, OIDC- und HMAC-Prüfung sowie dauerhafte MinIO-Evidenz. Bis zum erfolgreichen Staging- und Production-Nachweis bleibt der temporäre Backup-Stack als expliziter Fallback erhalten.

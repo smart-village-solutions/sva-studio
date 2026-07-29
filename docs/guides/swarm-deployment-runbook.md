@@ -278,9 +278,29 @@ Operator-Regel:
 - Vor einem Merge muss das GitHub-Environment `staging` mit Required Reviewers geschützt sein; `QUANTUM_API_KEY` und weitere mutierende Credentials dürfen ausschließlich als Environment-Secrets vorliegen.
 - Lokale Befehle bleiben für `status`, `doctor`, `precheck`, Diagnose und Recovery zulässig, aber nicht der konkurrierende Standardweg für Staging-Rollouts.
 
+### Zentralen Backup-Agenten bereitstellen
+
+Vor dem Deploy müssen die acht externen Swarm-Secrets aus getrennten, nicht ausgegebenen Quellen angelegt sein:
+
+- je Umgebung PostgreSQL-Passwort, S3-Access-Key, S3-Secret-Key und HMAC-Signaturschlüssel
+- in den GitHub-Environments `staging` und `prod` jeweils das passende Secret `BACKUP_AGENT_SIGNING_KEY`
+- Repository- bzw. Environment-Variable `BACKUP_EXECUTOR=temporary` nur für den kontrollierten Rückfall
+
+Der Stack wird mit einer unveränderlichen Image-Referenz gerendert und ausgerollt:
+
+```bash
+IMAGE_REF='ghcr.io/smart-village-solutions/sva-studio-backup-agent@sha256:<digest>' \
+  quantum-cli stacks deploy \
+  -f deploy/backup-agent-stack.yaml \
+  --stack studio-backup-agent \
+  --endpoint sva
+```
+
+Danach müssen genau eine gesunde Replica, keine veröffentlichten Ports, alle drei Netze und die beiden exakten Traefik-Router nachgewiesen werden. Ein kontrollierter Neustart erfolgt über einen erneuten Deploy desselben Digests. Bei Störung wird `BACKUP_EXECUTOR=temporary` gesetzt; der Promote bleibt trotzdem fail-closed und führt niemals beide Executor-Pfade aus.
+
 ### Staging-Backup-Drill
 
-Der manuelle GitHub-Workflow **Staging Backup Drill** prüft den Backup-Pfad ohne Migration, Bootstrap oder App-Deployment. Er akzeptiert ausschließlich eine unveränderliche Image-Referenz und die dazugehörige Commit-Revision. Der Workflow startet einen kurzlebigen Backup-Stack im Staging-Overlay, validiert Dump, Download, Prüfsumme und Archiv und entfernt den Stack anschließend wieder.
+Der manuelle GitHub-Workflow **Staging Backup Drill** prüft den Agentenpfad ohne Migration, Bootstrap oder App-Deployment. Er akzeptiert ausschließlich eine unveränderliche Image-Referenz und die dazugehörige Commit-Revision. Der Workflow sendet einen OIDC-authentisierten und signierten Auftrag, wartet auf das passende MinIO-Ergebnis und validiert Dump, Download, Prüfsumme und Archiv. Nur mit `BACKUP_EXECUTOR=temporary` verwendet er den bisherigen kurzlebigen Stack.
 
 Ein erfolgreicher Drill hinterlässt im Bucket `studio-db-backup-staging`:
 

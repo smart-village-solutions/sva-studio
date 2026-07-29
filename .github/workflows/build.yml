@@ -21,6 +21,7 @@ jobs:
     if: github.event_name == 'push' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
+      backup_agent_image_digest: ${{ steps.build_backup_agent_image.outputs.digest }}
       image_digest: ${{ steps.build_image.outputs.digest }}
     steps:
       - name: Checkout
@@ -48,6 +49,19 @@ jobs:
           tags: |
             ghcr.io/smart-village-solutions/sva-studio:${{ github.sha }}
             ghcr.io/smart-village-solutions/sva-studio:latest
+
+      - name: Build and push backup agent image
+        id: build_backup_agent_image
+        uses: docker/build-push-action@v5
+        with:
+          build-args: |
+            SVA_IMAGE_REVISION=${{ github.sha }}
+          context: .
+          file: ./deploy/backup-agent/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/smart-village-solutions/sva-studio-backup-agent:${{ github.sha }}
+            ghcr.io/smart-village-solutions/sva-studio-backup-agent:latest
 
   promote-dev:
     name: Promote dev

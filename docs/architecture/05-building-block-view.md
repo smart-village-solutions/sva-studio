@@ -642,3 +642,7 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - binden tenantkonfiguriertes `mapGeocoding` an normierte Host-Endpunkte unter `/api/v1/iam/map-geocoding/*`.
 3. `packages/plugin-poi/src/poi.detail-page.tsx`, `poi.detail-location-tab.tsx`, `poi.detail-media-tab.tsx`
    - orchestrieren den vollständigen POI-Editor mit Bereichs-Tabs, Geocoding-Feldern, Reverse-Geocode-Unterstützung und Host-Media-Referenzierung.
+
+## Zentraler Backup-Agent
+
+Der `studio-backup-agent` ist ein eigenständiger operativer Baustein außerhalb der App-Stacks. Sein HTTP-Port wird nicht veröffentlicht; Traefik leitet ausschließlich die beiden exakten Backup-Request-Pfade an ihn weiter. Der Baustein besitzt getrennte Staging-/Production-Secrets und leitet Datenbankhost, Bucket und Objektpräfix ausschließlich aus der validierten Zielumgebung ab.

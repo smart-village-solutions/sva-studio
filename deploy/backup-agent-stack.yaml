@@ -25,7 +25,8 @@ services:
       - staging
       - production
     secrets:
-      - backup_staging_postgres_password
+      - source: backup_staging_postgres_password_v3
+        target: backup_staging_postgres_password
       - backup_staging_s3_access_key
       - backup_staging_s3_secret_key
       - backup_staging_signing_key
@@ -71,7 +72,7 @@ networks:
     name: portainer_internal
 
 secrets:
-  backup_staging_postgres_password:
+  backup_staging_postgres_password_v3:
     external: true
   backup_staging_s3_access_key:
     external: true

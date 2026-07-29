@@ -29,6 +29,6 @@
 ## 5. Dokumentation und kontrollierter Rollout
 
 - [x] 5.1 Arc42-Abschnitte 05, 06, 07, 08, 09 und 11 sowie das Swarm-Runbook aktualisieren; eine ADR für die zentrale Vertrauenszone und den gehärteten HTTPS-Kontrollkanal erstellen.
-- [ ] 5.2 Staging-Agent bereitstellen, Health-/Tool-Vertrag sowie einen erfolgreichen Backup-Drill mit Dump, Prüfsumme und Evidenz in MinIO nachweisen.
+- [x] 5.2 Staging-Agent bereitstellen, Health-/Tool-Vertrag sowie einen erfolgreichen Backup-Drill mit Dump, Prüfsumme und Evidenz in MinIO nachweisen.
 - [ ] 5.3 Nach expliziter Production-Freigabe den Production-Agentenpfad mit demselben Nachweis abnehmen.
 - [ ] 5.4 Erst nach 5.2 und 5.3 Task 4.3 von `add-promote-backup-production-parity` schließen.

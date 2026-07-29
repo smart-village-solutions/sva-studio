@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const workflow = readFileSync(resolve(import.meta.dirname, '../../.github/workflows/promote.yml'), 'utf8');
+const backupDrillWorkflow = readFileSync(resolve(import.meta.dirname, '../../.github/workflows/staging-backup-drill.yml'), 'utf8');
 
 describe('Promote workflow contract', () => {
   it('runs staging phases in the required fail-closed order', () => {
@@ -67,5 +68,15 @@ describe('Promote workflow contract', () => {
     expect(buildWorkflow).toContain('SVA_IMAGE_REVISION=${{ github.sha }}');
     expect(workflow).toContain('migration_should_run');
     expect(workflow).toContain('bootstrap_should_run');
+  });
+
+  it('offers a staging-only backup drill without application mutation', () => {
+    expect(backupDrillWorkflow).toContain('name: Staging Backup Drill');
+    expect(backupDrillWorkflow).toContain('environment: staging');
+    expect(backupDrillWorkflow).toContain('promote-backup-job.ts staging');
+    expect(backupDrillWorkflow).toContain('verify-promote-backup.ts');
+    expect(backupDrillWorkflow).toContain('staging-backup-drill-${{ github.run_id }}-${{ github.run_attempt }}');
+    expect(backupDrillWorkflow).not.toContain('promote-one-shot-job.ts');
+    expect(backupDrillWorkflow).not.toContain('quantum-cli stacks deploy');
   });
 });

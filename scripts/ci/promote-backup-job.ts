@@ -46,6 +46,8 @@ export const buildBackupObjectKey = ({
   timestamp: Date;
 }) => `${environment}/${timestamp.toISOString().replace(/[:.]/gu, '-')}/${deployImageDigest.replace(/^sha256:/u, '')}/${runId}-${attempt}.dump`;
 
+export const buildBackupDiagnosticObjectKey = (objectKey: string) => `${objectKey}.diagnostic.ndjson`;
+
 export const redactBackupError = (value: string, sensitiveValues: readonly string[]) =>
   sensitiveValues
     .filter((sensitiveValue) => sensitiveValue.trim().length > 0)
@@ -66,26 +68,34 @@ export const buildQuantumBackupDeployArgs = (endpoint: string, stackName: string
 
 export const backupCommand = [
   'set -eu',
+  'workdir="$(mktemp -d)"',
+  'diagnostic="$workdir/backup-diagnostic.ndjson"',
+  'diagnostic_object="$S3_OBJECT_KEY.diagnostic.ndjson"',
+  'backup_event() { printf "{\\"step\\":\\"%s\\",\\"state\\":\\"%s\\",\\"exitCode\\":%s,\\"bytes\\":%s}\\n" "$1" "$2" "$3" "${4:-null}" >> "$diagnostic"; }',
+  'upload_diagnostic() { aws --endpoint-url "$S3_ENDPOINT" s3 cp "$diagnostic" "s3://$S3_BUCKET/$diagnostic_object" --only-show-errors; }',
+  'on_exit() { status="$?"; if [ "$status" -eq 0 ]; then backup_event job succeeded 0; else backup_event job failed "$status"; fi; upload_diagnostic || printf "backup.diagnostic_upload state=failed\\n" >&2; rm -rf "$workdir"; exit "$status"; }',
+  'trap on_exit EXIT',
   'backup_step() {',
   '  step="$1"',
   '  shift',
   '  printf "backup.step=%s state=started\\n" "$step"',
   '  if "$@"; then',
   '    printf "backup.step=%s state=succeeded\\n" "$step"',
+  '    backup_event "$step" succeeded 0',
   '  else',
   '    status="$?"',
   '    printf "backup.step=%s state=failed exit_code=%s\\n" "$step" "$status" >&2',
+  '    backup_event "$step" failed "$status"',
   '    return "$status"',
   '  fi',
   '}',
-  'workdir="$(mktemp -d)"',
-  'trap "rm -rf \"$workdir\"" EXIT',
   'dump="$workdir/backup.dump"',
   'download="$workdir/backup.download"',
   'checksum="$workdir/backup.sha256"',
   'export PGPASSWORD="$POSTGRES_PASSWORD"',
   'backup_step pg_dump pg_dump --format=custom --no-owner --no-privileges --host "$POSTGRES_HOST" --port "$POSTGRES_PORT" --username "$POSTGRES_USER" --file "$dump" "$POSTGRES_DB"',
   'backup_step dump_nonempty test -s "$dump"',
+  'backup_event dump_bytes succeeded 0 "$(wc -c < "$dump")"',
   "backup_step checksum_create sh -c 'sha256sum \"$1\" > \"$2\"' -- \"$dump\" \"$checksum\"",
   'backup_step minio_upload_dump aws --endpoint-url "$S3_ENDPOINT" s3 cp "$dump" "s3://$S3_BUCKET/$S3_OBJECT_KEY" --only-show-errors',
   'backup_step minio_upload_checksum aws --endpoint-url "$S3_ENDPOINT" s3 cp "$checksum" "s3://$S3_BUCKET/$S3_OBJECT_KEY.sha256" --only-show-errors',
@@ -95,6 +105,7 @@ export const backupCommand = [
   "backup_step checksum_verify sh -c 'printf \"%s  %s\\n\" \"$(cut -d \" \" -f1 \"$1\")\" \"$2\" | sha256sum -c -' -- \"$checksum\" \"$download\"",
   "backup_step archive_validate sh -c 'pg_restore --list \"$1\" >/dev/null' -- \"$download\"",
   'printf "backup_object=%s\\n" "$S3_OBJECT_KEY"',
+  'printf "backup_diagnostic_object=%s\\n" "$diagnostic_object"',
   'printf "backup_sha256=%s\\n" "$(cut -d " " -f1 "$checksum")"',
 ].join('\n');
 
@@ -118,6 +129,7 @@ export const buildBackupComposeDocument = (
 
 export const buildBackupEvidence = ({
   bucket,
+  diagnosticObjectKey,
   environment,
   error,
   logTail,
@@ -126,6 +138,7 @@ export const buildBackupEvidence = ({
   task,
 }: {
   bucket: string;
+  diagnosticObjectKey: string;
   environment: PromoteEnvironment;
   error?: string;
   logTail?: string;
@@ -134,6 +147,7 @@ export const buildBackupEvidence = ({
   task?: MigrationJobTaskSnapshot | null;
 }) => ({
   bucket,
+  diagnosticObjectKey,
   environment,
   error,
   logTail,
@@ -204,6 +218,7 @@ const main = async () => {
     runId,
     timestamp: new Date(),
   });
+  const diagnosticObjectKey = buildBackupDiagnosticObjectKey(objectKey);
   const resultPath = resolve(process.env.RUNNER_TEMP ?? rootDir, `promote-backup-${runId}-${attempt}.json`);
   const projectDir = resolve(process.env.RUNNER_TEMP ?? rootDir, `promote-backup-${runId}-${attempt}`);
   const composePath = resolve(projectDir, 'docker-compose.json');
@@ -238,8 +253,8 @@ const main = async () => {
       jobStack,
       quantumEndpoint,
     });
-    writeFileSync(resultPath, `${JSON.stringify(buildBackupEvidence({ bucket, environment, objectKey, status: 'ok', task }), null, 2)}\n`);
-    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `backup_bucket=${bucket}\nbackup_object=${objectKey}\nbackup_evidence_path=${resultPath}\n`);
+    writeFileSync(resultPath, `${JSON.stringify(buildBackupEvidence({ bucket, diagnosticObjectKey, environment, objectKey, status: 'ok', task }), null, 2)}\n`);
+    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `backup_bucket=${bucket}\nbackup_object=${objectKey}\nbackup_diagnostic_object=${diagnosticObjectKey}\nbackup_evidence_path=${resultPath}\n`);
   } catch (error) {
     const failedJob = error instanceof BackupJobFailure ? error : undefined;
     const remoteLogTail = await readRemoteJobLogTail(
@@ -254,6 +269,7 @@ const main = async () => {
     const errorText = redactBackupError(error instanceof Error ? error.message : String(error), sensitiveValues);
     writeFileSync(resultPath, `${JSON.stringify(buildBackupEvidence({
       bucket,
+      diagnosticObjectKey,
       environment,
       error: errorText,
       logTail: redactBackupError(remoteLogTail, sensitiveValues),

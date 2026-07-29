@@ -4,6 +4,7 @@ import {
   backupBucketFor,
   backupCommand,
   buildBackupComposeDocument,
+  buildBackupDiagnosticObjectKey,
   buildBackupEvidence,
   buildBackupObjectKey,
   redactBackupError,
@@ -25,6 +26,10 @@ describe('promote backup job', () => {
     })).toBe('staging/2026-07-23T08-45-12-345Z/abc123/456-2.dump');
   });
 
+  it('stores redacted step diagnostics next to the backup object', () => {
+    expect(buildBackupDiagnosticObjectKey('staging/example.dump')).toBe('staging/example.dump.diagnostic.ndjson');
+  });
+
   it('redacts backup credentials from propagated errors', () => {
     expect(redactBackupError(
       'Upload to https://fileserver.smart-village.app failed for access-key/secret-key',
@@ -39,6 +44,7 @@ describe('promote backup job', () => {
   it('writes safe failure evidence with the terminal task and log tail', () => {
     expect(buildBackupEvidence({
       bucket: 'studio-db-backup-staging',
+      diagnosticObjectKey: 'staging/example.dump.diagnostic.ndjson',
       environment: 'staging',
       error: 'Backup failed',
       logTail: 'backup.step=minio_upload_dump state=failed exit_code=1',
@@ -47,6 +53,7 @@ describe('promote backup job', () => {
       task: { exitCode: 1, state: 'complete', taskId: 'task-1' },
     })).toEqual({
       bucket: 'studio-db-backup-staging',
+      diagnosticObjectKey: 'staging/example.dump.diagnostic.ndjson',
       environment: 'staging',
       error: 'Backup failed',
       logTail: 'backup.step=minio_upload_dump state=failed exit_code=1',
@@ -69,6 +76,10 @@ describe('promote backup job', () => {
     expect(backupCommand).toContain('aws --endpoint-url "$S3_ENDPOINT" s3 cp "$dump"');
     expect(backupCommand).toContain('backup.step=%s state=started');
     expect(backupCommand).toContain('backup.step=%s state=failed exit_code=%s');
+    expect(backupCommand).toContain('backup-diagnostic.ndjson');
+    expect(backupCommand).toContain('backup_event "$step" failed "$status"');
+    expect(backupCommand).toContain('upload_diagnostic || printf "backup.diagnostic_upload state=failed');
+    expect(backupCommand).toContain('backup_event dump_bytes succeeded 0');
     expect(backupCommand).toContain('backup_step minio_upload_dump');
     expect(backupCommand).toContain('export PGPASSWORD="$POSTGRES_PASSWORD"');
     expect(backupCommand.indexOf('export PGPASSWORD="$POSTGRES_PASSWORD"')).toBeLessThan(backupCommand.indexOf('pg_dump'));

@@ -1,0 +1,103 @@
+name: Staging Backup Drill
+run-name: Staging backup drill ${{ inputs.image_ref }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_ref:
+        description: 'Immutable Studio image reference to run for the backup job'
+        required: true
+        type: string
+      change_head:
+        description: 'Commit revision represented by the immutable image'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  backup:
+    name: backup staging database
+    environment: staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: bind executor source to image revision
+        env:
+          CHANGE_HEAD: ${{ inputs.change_head }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
+          head="$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
+          git merge-base --is-ancestor "${head}" origin/main
+          git checkout --detach "${head}"
+
+      - name: setup pnpm workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: validate image contract
+        id: image_contract
+        env:
+          IMAGE_INPUT: ${{ inputs.image_ref }}
+          CHANGE_HEAD: ${{ inputs.change_head }}
+        run: |
+          set -euo pipefail
+          pnpm exec tsx scripts/ci/promote-image-contract.ts \
+            --environment staging \
+            --image "${IMAGE_INPUT}" \
+            --expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
+
+      - name: setup quantum-cli
+        uses: hostwithquantum/setup-quantum-cli@v2.0.0
+        with:
+          api-key: ${{ secrets.QUANTUM_API_KEY }}
+          version: 3.2.1
+
+      - name: create and verify database backup
+        id: backup_job
+        env:
+          APP_CONFIG: ${{ secrets.APP_CONFIG }}
+          DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_ENDPOINT: https://fileserver.smart-village.app
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f .env' EXIT
+          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
+          pnpm exec tsx scripts/ci/promote-backup-job.ts staging
+
+      - name: verify database backup object
+        if: success()
+        env:
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_BUCKET: ${{ steps.backup_job.outputs.backup_bucket }}
+          S3_ENDPOINT: https://fileserver.smart-village.app
+          S3_OBJECT_KEY: ${{ steps.backup_job.outputs.backup_object }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+        run: pnpm exec tsx scripts/ci/verify-promote-backup.ts
+
+      - name: upload backup drill evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-backup-drill-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/promote-backup-*.json
+          if-no-files-found: warn
+          retention-days: 14

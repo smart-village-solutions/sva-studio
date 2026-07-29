@@ -10,6 +10,10 @@ describe('backup agent stack', () => {
     expect(source).not.toMatch(/^\s+ports:/mu);
     expect(source).toContain("replicas: 1");
     expect(source).toContain("      - ingress\n      - staging\n      - production");
+    expect(source).toContain('name: network-node-005');
+    expect(source).toContain('name: studio-staging_default');
+    expect(source).toContain('name: portainer_internal');
+    expect(source).not.toContain('name: studio-prod_default');
   });
 
   it('uses the application database principal from both live Studio stacks', () => {

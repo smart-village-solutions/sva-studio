@@ -10,7 +10,7 @@ Der bisherige Promote-Pfad erzeugt pro Backup einen temporären Swarm-Stack. Der
 
 ## Entscheidung
 
-Ein einzelner `studio-backup-agent` wird als bewusst breite Vertrauenszone betrieben. Er ist mit den internen Staging- und Production-Netzen sowie dem bestehenden Traefik-Netz verbunden. Zwei exakte HTTPS-`POST`-Routen auf den vorhandenen Hosts lösen ausschließlich `backup-and-verify` aus.
+Ein einzelner `studio-backup-agent` wird als bewusst breite Vertrauenszone betrieben. Er ist mit den internen Staging- und Production-Netzen sowie dem bestehenden Traefik-Netz verbunden. Zwei dedizierte Backup-Subdomains führen über eine exakte HTTPS-`POST`-Route ausschließlich `backup-and-verify` aus.
 
 GitHub authentisiert sich mit einem kurzlebigen OIDC-Token. Der Agent bindet dessen Claims an Repository, Environment und eine Allowlist der Workflows auf `main`. Zusätzlich signieren getrennte HMAC-Schlüssel die Requests für Staging und Production. Datenbankziele, Buckets und Credentials stammen ausschließlich aus der internen Umgebungs-Allowlist.
 

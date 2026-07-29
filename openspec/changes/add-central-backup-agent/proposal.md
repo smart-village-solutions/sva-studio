@@ -7,7 +7,7 @@ Der aktuelle Promote-Pfad startet für jedes benötigte Backup einen kurzlebigen
 ## What Changes
 
 - Ein einmalig betriebener, zentraler `studio-backup-agent` führt PostgreSQL-Backups für die explizit angeforderten Ziele `staging` und `prod` aus.
-- Der Agent verwendet einen signierten, ereignisgetriggerten Auftrags- und Ergebnisvertrag. GitHub übergibt Aufträge über einen dedizierten, gehärteten HTTPS-Endpoint auf den bestehenden Staging- beziehungsweise Production-Hosts; terminale Evidenz bleibt in MinIO. Der Agent akzeptiert keine beliebigen Shell-Kommandos.
+- Der Agent verwendet einen signierten, ereignisgetriggerten Auftrags- und Ergebnisvertrag. GitHub übergibt Aufträge über dedizierte, gehärtete Backup-Subdomains für Staging und Production; terminale Evidenz bleibt in MinIO. Der Agent akzeptiert keine beliebigen Shell-Kommandos.
 - Jeder Auftrag ist an genau eine Umgebung, eine Request-ID und einen unveränderlichen Ziel-Digest gebunden. Der Agent wählt Datenbankzugang, Bucket und Credentials ausschließlich aus dieser validierten Umgebung.
 - Der Agent erzeugt weiterhin Custom-Dumps, `.sha256`-Objekte und redigierte Schritt-Evidenz; GitHub wartet auf das Ergebnisobjekt und blockiert Migration, Bootstrap und Deploy bei jedem nicht erfolgreichen Nachweis.
 - Production-Aufträge benötigen zusätzlich den bestehenden revisionsfähigen Wartungsfenster-Verweis sowie die Freigabe des GitHub-Production-Environments.

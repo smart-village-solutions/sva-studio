@@ -1,0 +1,4 @@
+{
+  "prNumber": 773,
+  "body": "Der zentrale Backup-Agent verwendet nun dedizierte, TLS-abgesicherte Subdomains für Staging und Produktion."
+}

@@ -68,6 +68,12 @@ export const buildQuantumBackupDeployArgs = (endpoint: string, stackName: string
 
 export const backupCommand = [
   'set -eu',
+  'require_command() { command -v "$1" >/dev/null 2>&1 || exit "$2"; }',
+  'require_command aws 81',
+  'require_command pg_dump 82',
+  'require_command pg_restore 83',
+  'require_command sha256sum 84',
+  'require_command mktemp 85',
   'workdir="$(mktemp -d)"',
   'diagnostic="$workdir/backup-diagnostic.ndjson"',
   'diagnostic_object="$S3_OBJECT_KEY.diagnostic.ndjson"',

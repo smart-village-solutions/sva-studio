@@ -15,12 +15,12 @@ export type BackupRequest = Readonly<{
 const environments = {
   staging: {
     bucket: 'studio-db-backup-staging',
-    endpoint: 'https://studio-staging.smart-village.app/_ops/backup/v1/requests',
+    endpoint: 'https://backup-studio-staging.smart-village.app/_ops/backup/v1/requests',
     objectPrefix: 'staging',
   },
   prod: {
     bucket: 'studio-db-backup-production',
-    endpoint: 'https://studio.smart-village.app/_ops/backup/v1/requests',
+    endpoint: 'https://backup-studio.smart-village.app/_ops/backup/v1/requests',
     objectPrefix: 'prod',
   },
 } as const;

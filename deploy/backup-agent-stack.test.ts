@@ -24,12 +24,14 @@ describe('backup agent stack', () => {
   });
 
   it('routes only the exact POST endpoint on the existing hosts', () => {
-    expect(source).toContain('Host(`studio-staging.smart-village.app`) && Path(`/_ops/backup/v1/requests`) && Method(`POST`)');
-    expect(source).toContain('Host(`studio.smart-village.app`) && Path(`/_ops/backup/v1/requests`) && Method(`POST`)');
+    expect(source).toContain(
+      '(Host(`backup-studio-staging.smart-village.app`) || Host(`backup-studio.smart-village.app`)) && Path(`/_ops/backup/v1/requests`) && Method(`POST`)',
+    );
     expect(source).toContain('backup-agent-rate-limit.ratelimit.average=2');
-    expect(source).toContain('traefik.http.routers.backup-agent-staging.tls.certresolver=default');
-    expect(source).toContain('traefik.http.routers.backup-agent-prod.tls.certresolver=default');
-    expect(source).not.toContain('traefik.http.routers.backup-agent-prod.entrypoints=web,');
+    expect(source).toContain('traefik.http.routers.backup-agent.priority=1000');
+    expect(source).toContain('traefik.http.routers.backup-agent.tls.certresolver=default');
+    expect(source).not.toContain('traefik.http.routers.backup-agent-prod.');
+    expect(source).not.toContain('traefik.http.routers.backup-agent-staging.');
   });
 
   it('uses a minimal dedicated image with required backup tools', () => {

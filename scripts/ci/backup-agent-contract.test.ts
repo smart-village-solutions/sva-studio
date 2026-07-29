@@ -13,8 +13,16 @@ const stagingRequest: BackupRequest = {
 
 describe('backup agent contract', () => {
   it('derives endpoints and buckets only from the accepted environment', () => {
-    expect(backupEnvironmentConfig('staging')).toEqual({ bucket: 'studio-db-backup-staging', endpoint: 'https://studio-staging.smart-village.app/_ops/backup/v1/requests', objectPrefix: 'staging' });
-    expect(backupEnvironmentConfig('prod').bucket).toBe('studio-db-backup-production');
+    expect(backupEnvironmentConfig('staging')).toEqual({
+      bucket: 'studio-db-backup-staging',
+      endpoint: 'https://backup-studio-staging.smart-village.app/_ops/backup/v1/requests',
+      objectPrefix: 'staging',
+    });
+    expect(backupEnvironmentConfig('prod')).toEqual({
+      bucket: 'studio-db-backup-production',
+      endpoint: 'https://backup-studio.smart-village.app/_ops/backup/v1/requests',
+      objectPrefix: 'prod',
+    });
   });
 
   it('accepts valid signed requests and rejects signature changes', () => {

@@ -9,13 +9,13 @@ services:
       BACKUP_AGENT_PORT: '3080'
       BACKUP_S3_ENDPOINT: https://fileserver.smart-village.app
       BACKUP_STAGING_POSTGRES_DB: sva_studio
-      BACKUP_STAGING_POSTGRES_USER: sva_app
+      BACKUP_STAGING_POSTGRES_USER: sva
       BACKUP_STAGING_POSTGRES_PASSWORD_FILE: /run/secrets/backup_staging_postgres_password
       BACKUP_STAGING_S3_ACCESS_KEY_FILE: /run/secrets/backup_staging_s3_access_key
       BACKUP_STAGING_S3_SECRET_KEY_FILE: /run/secrets/backup_staging_s3_secret_key
       BACKUP_STAGING_SIGNING_KEY_FILE: /run/secrets/backup_staging_signing_key
       BACKUP_PROD_POSTGRES_DB: sva_studio
-      BACKUP_PROD_POSTGRES_USER: sva_app
+      BACKUP_PROD_POSTGRES_USER: sva
       BACKUP_PROD_POSTGRES_PASSWORD_FILE: /run/secrets/backup_prod_postgres_password
       BACKUP_PROD_S3_ACCESS_KEY_FILE: /run/secrets/backup_prod_s3_access_key
       BACKUP_PROD_S3_SECRET_KEY_FILE: /run/secrets/backup_prod_s3_secret_key

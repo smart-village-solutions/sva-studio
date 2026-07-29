@@ -273,3 +273,5 @@ Der Rollout erfolgt `studio-dev` → `studio-staging` → `sva-studio`. Pro Stuf
 ## Zentraler Backup-Agent im Swarm
 
 `deploy/backup-agent-stack.yaml` definiert eine Replica auf `node-005.sva`. Der Service hängt an den gegen den laufenden Swarm verifizierten Netzen `network-node-005`, `studio-staging_default` und `portainer_internal`, veröffentlicht aber keinen Port. Traefik routet nur `POST /_ops/backup/v1/requests` für `backup-studio-staging.smart-village.app` und `backup-studio.smart-village.app` auf Port 3080. Alle acht Runtime-Secrets sind externe Swarm-Secrets.
+
+Für S3-Uploads setzt der Agent die AWS-CLI-Prüfsummenberechnung und -validierung auf `when_required`. Das verhindert mit aktuellen AWS-CLI-Versionen inkompatible optionale Prüfsummen-Header am bestehenden MinIO-Endpunkt; die eigene SHA-256-Prüfung des Backup-Artefakts bleibt davon unberührt.

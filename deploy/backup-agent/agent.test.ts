@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { canonicalRequest, controlKeysFor, runCommand, safeErrorCode, validateOidcClaims, validRequest, validRequestHost } from './agent.mjs';
+import { canonicalRequest, controlKeysFor, minioAwsCompatibilityEnv, runCommand, safeErrorCode, validateOidcClaims, validRequest, validRequestHost } from './agent.mjs';
 
 const request = {
   version: 1,
@@ -62,6 +62,13 @@ describe('backup agent runtime contract', () => {
     expect(controlKeysFor('gha-12345678')).toEqual({
       request: 'control/requests/gha-12345678.json',
       result: 'control/results/gha-12345678.json',
+    });
+  });
+
+  it('uses checksum settings compatible with the deployed MinIO endpoint', () => {
+    expect(minioAwsCompatibilityEnv).toEqual({
+      AWS_REQUEST_CHECKSUM_CALCULATION: 'when_required',
+      AWS_RESPONSE_CHECKSUM_VALIDATION: 'when_required',
     });
   });
 

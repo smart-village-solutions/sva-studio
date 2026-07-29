@@ -11,6 +11,7 @@ const oidcIssuer = 'https://token.actions.githubusercontent.com';
 const jwksUrl = `${oidcIssuer}/.well-known/jwks`;
 const maxBodyBytes = 16_384;
 const maxRequestLifetimeMs = 10 * 60_000;
+const acceptanceCommandTimeoutMs = 10_000;
 
 const required = (value, name) => {
   const result = value?.trim();
@@ -116,12 +117,27 @@ const verifyOidc = async (token, environment) => {
   validateOidcClaims(claims, environment);
 };
 
-const run = (command, args, options = {}) => new Promise((resolve, reject) => {
-  const child = spawn(command, args, { ...options, stdio: ['ignore', 'ignore', 'pipe'] });
+export const runCommand = (command, args, options = {}) => new Promise((resolve, reject) => {
+  const { timeoutMs, ...spawnOptions } = options;
+  const child = spawn(command, args, { ...spawnOptions, stdio: ['ignore', 'ignore', 'pipe'] });
   let stderr = '';
+  let settled = false;
+  const finish = (callback) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeoutTimer);
+    callback();
+  };
+  const timeoutTimer = timeoutMs
+    ? setTimeout(() => {
+      child.kill('SIGTERM');
+      setTimeout(() => child.kill('SIGKILL'), 1_000).unref();
+      finish(() => reject(new Error(`${command}_timeout`)));
+    }, timeoutMs)
+    : undefined;
   child.stderr.on('data', (chunk) => { stderr = `${stderr}${chunk}`.slice(-2_000); });
-  child.once('error', reject);
-  child.once('exit', (code) => code === 0 ? resolve() : reject(new Error(`${command}_failed_${String(code)}:${stderr.replaceAll(/\s+/gu, ' ')}`)));
+  child.once('error', (error) => finish(() => reject(error)));
+  child.once('exit', (code) => finish(() => code === 0 ? resolve() : reject(new Error(`${command}_failed_${String(code)}:${stderr.replaceAll(/\s+/gu, ' ')}`))));
 });
 
 const runCapture = (command, args) => new Promise((resolve, reject) => {
@@ -140,24 +156,27 @@ const s3Env = async (target) => ({
   AWS_SECRET_ACCESS_KEY: await readSecret(target.s3SecretKeyFile),
   AWS_EC2_METADATA_DISABLED: 'true',
   AWS_DEFAULT_REGION: 'us-east-1',
+  AWS_MAX_ATTEMPTS: '2',
+  AWS_RETRY_MODE: 'standard',
 });
 
 const uploadJson = async (target, key, value) => {
   const path = join(tmpdir(), `backup-agent-${randomUUID()}.json`);
   await writeFile(path, `${JSON.stringify(value)}\n`, { mode: 0o600 });
   try {
-    await run('aws', ['--endpoint-url', required(process.env.BACKUP_S3_ENDPOINT, 'BACKUP_S3_ENDPOINT'), 's3', 'cp', path, `s3://${target.bucket}/${key}`, '--only-show-errors'], { env: await s3Env(target) });
+    await runCommand('aws', ['--endpoint-url', required(process.env.BACKUP_S3_ENDPOINT, 'BACKUP_S3_ENDPOINT'), 's3', 'cp', path, `s3://${target.bucket}/${key}`, '--only-show-errors'], { env: await s3Env(target), timeoutMs: acceptanceCommandTimeoutMs });
   } finally {
-    await run('rm', ['-f', path]);
+    await runCommand('rm', ['-f', path]);
   }
 };
 
 const objectExists = async (target, key) => {
   try {
-    await run('aws', ['--endpoint-url', required(process.env.BACKUP_S3_ENDPOINT, 'BACKUP_S3_ENDPOINT'), 's3api', 'head-object', '--bucket', target.bucket, '--key', key], { env: await s3Env(target) });
+    await runCommand('aws', ['--endpoint-url', required(process.env.BACKUP_S3_ENDPOINT, 'BACKUP_S3_ENDPOINT'), 's3api', 'head-object', '--bucket', target.bucket, '--key', key], { env: await s3Env(target), timeoutMs: acceptanceCommandTimeoutMs });
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('aws_failed_254:')) return false;
+    throw error;
   }
 };
 
@@ -198,23 +217,23 @@ export const executeBackupForIntegration = async (request) => {
     tools: JSON.parse(required(process.env.BACKUP_AGENT_TOOL_VERSIONS, 'BACKUP_AGENT_TOOL_VERSIONS')),
   };
   try {
-    await run('mkdir', ['-p', workdir]);
+    await runCommand('mkdir', ['-p', workdir]);
     const pgEnv = { ...process.env, PGPASSWORD: await readSecret(target.postgresPasswordFile) };
-    await run('pg_dump', ['--format=custom', '--no-owner', '--no-privileges', '--host', target.postgresHost, '--port', '5432', '--username', target.postgresUser, '--file', dump, target.postgresDatabase], { env: pgEnv });
+    await runCommand('pg_dump', ['--format=custom', '--no-owner', '--no-privileges', '--host', target.postgresHost, '--port', '5432', '--username', target.postgresUser, '--file', dump, target.postgresDatabase], { env: pgEnv });
     complete('pg_dump');
     const env = await s3Env(target);
     const endpoint = required(process.env.BACKUP_S3_ENDPOINT, 'BACKUP_S3_ENDPOINT');
-    await run('aws', ['--endpoint-url', endpoint, 's3', 'cp', dump, `s3://${target.bucket}/${objectKey}`, '--only-show-errors'], { env });
+    await runCommand('aws', ['--endpoint-url', endpoint, 's3', 'cp', dump, `s3://${target.bucket}/${objectKey}`, '--only-show-errors'], { env });
     complete('upload');
-    await run('aws', ['--endpoint-url', endpoint, 's3', 'cp', `s3://${target.bucket}/${objectKey}`, downloaded, '--only-show-errors'], { env });
+    await runCommand('aws', ['--endpoint-url', endpoint, 's3', 'cp', `s3://${target.bucket}/${objectKey}`, downloaded, '--only-show-errors'], { env });
     complete('download');
     const dumpDigest = await sha256(dump);
     if (dumpDigest !== await sha256(downloaded)) throw new Error('checksum_mismatch');
     const bytes = (await readFile(dump)).byteLength;
     complete('size-and-checksum-verify', { bytes, sha256: dumpDigest });
     await writeFile(`${dump}.sha256`, `${dumpDigest}  backup.dump\n`, { mode: 0o600 });
-    await run('aws', ['--endpoint-url', endpoint, 's3', 'cp', `${dump}.sha256`, `s3://${target.bucket}/${objectKey}.sha256`, '--only-show-errors'], { env });
-    await run('pg_restore', ['--list', downloaded]);
+    await runCommand('aws', ['--endpoint-url', endpoint, 's3', 'cp', `${dump}.sha256`, `s3://${target.bucket}/${objectKey}.sha256`, '--only-show-errors'], { env });
+    await runCommand('pg_restore', ['--list', downloaded]);
     complete('archive-validate');
     await uploadJson(target, resultKey, { ...evidence, status: 'succeeded', objectKey, bytes, sha256: dumpDigest, steps, completedAt: new Date().toISOString() });
   } catch (error) {
@@ -222,7 +241,7 @@ export const executeBackupForIntegration = async (request) => {
   } finally {
     terminalRequests.add(request.requestId);
     active = false;
-    await run('rm', ['-rf', workdir]);
+    await runCommand('rm', ['-rf', workdir]);
   }
 };
 

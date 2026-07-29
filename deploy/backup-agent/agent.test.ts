@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { canonicalRequest, controlKeysFor, safeErrorCode, validateOidcClaims, validRequest, validRequestHost } from './agent.mjs';
+import { canonicalRequest, controlKeysFor, runCommand, safeErrorCode, validateOidcClaims, validRequest, validRequestHost } from './agent.mjs';
 
 const request = {
   version: 1,
@@ -68,5 +68,13 @@ describe('backup agent runtime contract', () => {
   it('never propagates credentials or shell traces into terminal error codes', () => {
     expect(safeErrorCode(new Error('aws_failed_1:https://access:secret@minio/upload shell trace'))).toBe('aws_failed_1');
     expect(safeErrorCode(new Error('password=secret'))).toBe('backup_failed');
+  });
+
+  it('terminates an external command after its explicit deadline', async () => {
+    await expect(runCommand(
+      process.execPath,
+      ['-e', 'setTimeout(() => {}, 60_000)'],
+      { timeoutMs: 25 },
+    )).rejects.toThrow(`${process.execPath}_timeout`);
   });
 });

@@ -1,0 +1,4 @@
+{
+  "prNumber": 776,
+  "body": "Der zentrale Datenbank-Backup-Dienst reagiert bei vorübergehenden Verbindungsproblemen jetzt kontrolliert und verhindert dadurch blockierte Backup-Aufträge."
+}

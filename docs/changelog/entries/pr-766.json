@@ -1,0 +1,4 @@
+{
+  "prNumber": 766,
+  "body": "Staging-Backups unterscheiden nun zwischen fehlender AWS CLI und einem fehlenden AWS-Pfad."
+}

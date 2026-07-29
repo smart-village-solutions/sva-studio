@@ -278,6 +278,18 @@ Operator-Regel:
 - Vor einem Merge muss das GitHub-Environment `staging` mit Required Reviewers geschützt sein; `QUANTUM_API_KEY` und weitere mutierende Credentials dürfen ausschließlich als Environment-Secrets vorliegen.
 - Lokale Befehle bleiben für `status`, `doctor`, `precheck`, Diagnose und Recovery zulässig, aber nicht der konkurrierende Standardweg für Staging-Rollouts.
 
+### Staging-Backup-Drill
+
+Der manuelle GitHub-Workflow **Staging Backup Drill** prüft den Backup-Pfad ohne Migration, Bootstrap oder App-Deployment. Er akzeptiert ausschließlich eine unveränderliche Image-Referenz und die dazugehörige Commit-Revision. Der Workflow startet einen kurzlebigen Backup-Stack im Staging-Overlay, validiert Dump, Download, Prüfsumme und Archiv und entfernt den Stack anschließend wieder.
+
+Ein erfolgreicher Drill hinterlässt im Bucket `studio-db-backup-staging`:
+
+- `<objektpfad>.dump` und `<objektpfad>.dump.sha256`
+- `<objektpfad>.dump.diagnostic.ndjson` mit redigierten Schritt-Ereignissen
+- ein GitHub-Artifact mit der redigierten Runner-Evidenz
+
+Bei einem Fehler ist zuerst die Diagnosedatei in MinIO auszuwerten. Fehlt sie wegen eines Storage-Fehlers, ist das GitHub-Artifact die maßgebliche Fallback-Evidenz. Ohne erfolgreiche Dump-, Prüfsummen- und Archivprüfung darf kein mutierender Staging-Promote gestartet werden.
+
 Prod-Hinweis:
 
 - Für Produktion verlangt `Promote` bei beiden `run`-Modi ein revisionsfähiges Wartungsfenster sowie ein erfolgreiches Artifact eines abgeschlossenen mutierenden Staging-Pfads für exakt dasselbe Image-Digest. Ein App-only-Staging-Deploy genügt nicht. Fehlt einer dieser Nachweise, blockiert der Lauf vor Backup und Mutation.

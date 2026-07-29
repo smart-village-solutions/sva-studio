@@ -44,7 +44,10 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('require successful staging parity for production mutation');
     expect(workflow).toContain('create database backup before one-shot jobs');
     expect(workflow).toContain('verify database backup object');
-    expect(workflow).toContain('S3_OBJECT_KEY: ${{ steps.backup_job.outputs.backup_object }}');
+    expect(workflow).toContain('S3_OBJECT_KEY: ${{ steps.backup_job.outputs.backup_object || steps.backup_fallback_job.outputs.backup_object }}');
+    expect(workflow).toContain('id-token: write');
+    expect(workflow).toContain('submit-backup-agent-request.ts "${{ inputs.environment }}"');
+    expect(workflow).toContain("vars.BACKUP_EXECUTOR == 'temporary'");
     expect(workflow).toContain('STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == \'true\' || steps.gate_eval.outputs.bootstrap_should_run == \'true\' }}');
     expect(workflow).toContain('name: promote-staging-parity-${{ github.run_id }}-${{ github.run_attempt }}');
     expect(workflow).toContain('--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"');
@@ -66,6 +69,8 @@ describe('Promote workflow contract', () => {
     expect(buildWorkflow).toContain('migration_mode: auto');
     expect(buildWorkflow).toContain('actions: read');
     expect(buildWorkflow).toContain('SVA_IMAGE_REVISION=${{ github.sha }}');
+    expect(buildWorkflow).toContain('file: ./deploy/backup-agent/Dockerfile');
+    expect(buildWorkflow).toContain('ghcr.io/smart-village-solutions/sva-studio-backup-agent:${{ github.sha }}');
     expect(workflow).toContain('migration_should_run');
     expect(workflow).toContain('bootstrap_should_run');
   });
@@ -73,6 +78,7 @@ describe('Promote workflow contract', () => {
   it('offers a staging-only backup drill without application mutation', () => {
     expect(backupDrillWorkflow).toContain('name: Staging Backup Drill');
     expect(backupDrillWorkflow).toContain('environment: staging');
+    expect(backupDrillWorkflow).toContain('submit-backup-agent-request.ts staging');
     expect(backupDrillWorkflow).toContain('promote-backup-job.ts staging');
     expect(backupDrillWorkflow).toContain('verify-promote-backup.ts');
     expect(backupDrillWorkflow).toContain('staging-backup-drill-${{ github.run_id }}-${{ github.run_attempt }}');

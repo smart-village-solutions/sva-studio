@@ -50,6 +50,7 @@ mit Bezug auf die arc42-Abschnitte.
 - [ADR-044 frontend-test-foundation mit MSW und selektivem fast-check](../adr/ADR-044-frontend-test-foundation-mit-msw-und-selektivem-fast-check.md)
 - [ADR-045 organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation](../adr/ADR-045-organisationsgebundene-mainserver-credentials-und-policy-gesteuerte-delegation.md)
 - [ADR-046 Plattform- vs. Tenant-Rollenmodell und Legacy-Standardrollen](../adr/ADR-046-plattform-vs-tenant-rollenmodell-und-legacy-standardrollen.md)
+- [ADR-048 zentraler Backup-Agent mit gehärtetem HTTPS-Trigger](../adr/ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md)
 
 ### Zuordnung zu arc42-Abschnitten
 

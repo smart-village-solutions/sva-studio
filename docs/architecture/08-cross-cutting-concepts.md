@@ -600,3 +600,7 @@ Referenzen:
 - Die MCP-Create-Prozesskette korreliert HTTP-Eingang, Registry-Schritte, Queue und Keycloak-Worker über Request-, Instanz- und Run-ID im Log-Body. Stabile `step_key`-Werte benennen die technische Fehlerstufe; pro Fehler entsteht genau ein kanonisches Error-Event.
 - PostgreSQL-Logs erlauben nur SQLSTATE, Tabelle, Spalte und Constraint. Rohe Meldungen, Details, Hints, Queries, Parameter, Stacktraces und Providerantworten bleiben ebenso ausgeschlossen wie E-Mail, Passwort, Token und Connection-String.
 - Audit-Ereignisse bleiben fachlich und append-only; technische Diagnosedetails werden nicht in den Audit-Pfad verschoben. Der lokale stdio-MCP hält `stdout` für das MCP-Protokoll frei.
+
+## Backup-Sicherheitsvertrag
+
+Der Backup-Agent kombiniert GitHub-OIDC mit umgebungsspezifischen HMAC-Signaturen. OIDC ist auf Repository, Environment und freigegebene Workflows auf `main` gebunden. Requests sind höchstens zehn Minuten gültig und über ihre persistierte Request-ID vor Replay geschützt. HTTP-Antworten und terminale Fehler enthalten nur stabile Fehlercodes; Credentials, Connection-Strings, Datenbankinhalte und Shell-Traces werden nicht ausgegeben.

@@ -269,3 +269,7 @@ Rollout-Reihenfolge:
 Der MCP-Prozess läuft lokal beim Operator und ist kein Dienst im Studio-Swarm. Jeder Root-Realm (`studio-dev`, `studio-staging`, `sva-studio`) hält einen eigenen Client `sva-studio-mcp` mit eigenem Secret und eigener Ziel-Audience. Secrets werden nur lokal per OS-Keychain oder nicht versionierter Konfiguration verteilt; Studio validiert JWTs über OIDC/JWKS und benötigt kein MCP-Client-Secret.
 
 Der Rollout erfolgt `studio-dev` → `studio-staging` → `sva-studio`. Pro Stufe werden Read-only-Smoke, kontrollierte Testmutation, Challenge-geschützte Testmutation, Audit und OTEL geprüft. Ein Environment-Kill-Switch bleibt bis zur Freigabe aus. Rollback deaktiviert zuerst den Kill-Switch und widerruft Client/Credential; ein App-Rollback verwendet den vorherigen freigegebenen Image-Digest. Details stehen im [MCP-Betriebsleitfaden](../guides/studio-instance-mcp-betrieb.md).
+
+## Zentraler Backup-Agent im Swarm
+
+`deploy/backup-agent-stack.yaml` definiert eine Replica auf `node-005.sva`. Der Service hängt an `network-node-005`, `studio-staging_default` und `studio-prod_default`, veröffentlicht aber keinen Port. Traefik routet nur `POST /_ops/backup/v1/requests` für `studio-staging.smart-village.app` und `studio.smart-village.app` auf Port 3080. Alle acht Runtime-Secrets sind externe Swarm-Secrets.

@@ -884,3 +884,11 @@ Fehlerpfad:
 5. Das Tool liefert ein redigiertes Ergebnis. Nach Fehlern darf es innerhalb eines festen Budgets Read-only-Evidenz ergänzen; der Primärfehler bleibt unverändert.
 
 Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine abgelaufene, wiederverwendete oder durch Zustandsänderung veraltete Challenge verlangt einen neuen Vorab-Read. Weder MCP noch Studio wiederholen Mutationen automatisch.
+
+## Backup-Agent-Laufzeit
+
+1. `Promote` bezieht ein GitHub-OIDC-Token, signiert den kurzlebigen Auftrag und sendet ihn an den Zielhost.
+2. Der Agent prüft Host, OIDC-Claims, HMAC, Schema, Ablaufzeit, Request-ID, Digest und Production-Wartungsfenster.
+3. Vor `202 Accepted` persistiert er den Auftrag unter `control/requests/`.
+4. Der einzelne Worker erzeugt einen Custom-Dump, lädt ihn hoch und wieder herunter, vergleicht Größe und SHA-256 und führt `pg_restore --list` aus.
+5. Das terminale Ergebnis unter `control/results/` entscheidet fail-closed, ob Migration, Bootstrap und Deploy fortgesetzt werden.

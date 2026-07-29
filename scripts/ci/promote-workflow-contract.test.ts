@@ -68,6 +68,7 @@ describe('Promote workflow contract', () => {
     expect(buildWorkflow).toContain('bootstrap_mode: auto');
     expect(buildWorkflow).toContain('migration_mode: auto');
     expect(buildWorkflow).toContain('actions: read');
+    expect(buildWorkflow).toContain('id-token: write');
     expect(buildWorkflow).toContain('SVA_IMAGE_REVISION=${{ github.sha }}');
     expect(buildWorkflow).toContain('file: ./deploy/backup-agent/Dockerfile');
     expect(buildWorkflow).toContain('ghcr.io/smart-village-solutions/sva-studio-backup-agent:${{ github.sha }}');

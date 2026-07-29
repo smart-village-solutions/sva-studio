@@ -17,8 +17,8 @@ describe('backup agent stack', () => {
   });
 
   it('uses the application database principal from both live Studio stacks', () => {
-    expect(source).toContain('BACKUP_STAGING_POSTGRES_USER: sva_app');
-    expect(source).toContain('BACKUP_PROD_POSTGRES_USER: sva_app');
+    expect(source).toContain('BACKUP_STAGING_POSTGRES_USER: sva');
+    expect(source).toContain('BACKUP_PROD_POSTGRES_USER: sva');
     expect(source).toContain('BACKUP_STAGING_POSTGRES_DB: sva_studio');
     expect(source).toContain('BACKUP_PROD_POSTGRES_DB: sva_studio');
   });

@@ -1,0 +1,4 @@
+{
+  "prNumber": 772,
+  "body": "Der zentrale Backup-Agent ist nun auch unter dem vorhandenen Produktions-DNS-Namen über den abgesicherten HTTPS-Endpunkt erreichbar."
+}

@@ -60,6 +60,7 @@ services:
         - 'traefik.http.routers.backup-agent-prod.priority=200'
         - 'traefik.http.routers.backup-agent-prod.middlewares=backup-agent-rate-limit'
         - 'traefik.http.routers.backup-agent-prod.tls=true'
+        - 'traefik.http.routers.backup-agent-prod.tls.certresolver=default'
         - 'traefik.http.routers.backup-agent-prod.service=backup-agent'
         - 'traefik.http.services.backup-agent.loadbalancer.server.port=3080'
         - 'traefik.http.middlewares.backup-agent-rate-limit.ratelimit.average=2'

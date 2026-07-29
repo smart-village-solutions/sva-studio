@@ -1,0 +1,4 @@
+{
+  "prNumber": 763,
+  "body": "Staging-Datenbank-Backups liefern nun redigierte Diagnosen in MinIO; ein separater Drill prüft sie ohne die Staging-Anwendung zu verändern."
+}

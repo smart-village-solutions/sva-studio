@@ -1,0 +1,4 @@
+{
+  "prNumber": 774,
+  "body": "Der zentrale Backup-Agent akzeptiert signierte Aufträge nun ausschließlich über die neuen, umgebungsspezifischen Backup-Subdomains."
+}

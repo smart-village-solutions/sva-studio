@@ -1,0 +1,4 @@
+{
+  "prNumber": 770,
+  "body": "Der zentrale Backup-Agent verwendet nun den tatsächlichen Anwendungs-Datenbankbenutzer der Staging- und Produktionsumgebung."
+}

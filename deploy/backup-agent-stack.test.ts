@@ -12,6 +12,13 @@ describe('backup agent stack', () => {
     expect(source).toContain("      - ingress\n      - staging\n      - production");
   });
 
+  it('uses the application database principal from both live Studio stacks', () => {
+    expect(source).toContain('BACKUP_STAGING_POSTGRES_USER: sva_app');
+    expect(source).toContain('BACKUP_PROD_POSTGRES_USER: sva_app');
+    expect(source).toContain('BACKUP_STAGING_POSTGRES_DB: sva_studio');
+    expect(source).toContain('BACKUP_PROD_POSTGRES_DB: sva_studio');
+  });
+
   it('routes only the exact POST endpoint on the existing hosts', () => {
     expect(source).toContain('Host(`studio-staging.smart-village.app`) && Path(`/_ops/backup/v1/requests`) && Method(`POST`)');
     expect(source).toContain('Host(`studio.smart-village.app`) && Path(`/_ops/backup/v1/requests`) && Method(`POST`)');

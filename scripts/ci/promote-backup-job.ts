@@ -69,7 +69,8 @@ export const buildQuantumBackupDeployArgs = (endpoint: string, stackName: string
 export const backupCommand = [
   'set -eu',
   'require_command() { command -v "$1" >/dev/null 2>&1 || exit "$2"; }',
-  'require_command aws 81',
+  'require_aws() { if command -v aws >/dev/null 2>&1; then return 0; fi; if [ -x /usr/bin/aws ]; then exit 86; fi; exit 81; }',
+  'require_aws',
   'require_command pg_dump 82',
   'require_command pg_restore 83',
   'require_command sha256sum 84',

@@ -80,7 +80,8 @@ describe('promote backup job', () => {
     expect(backupCommand).toContain('backup.step=%s state=started');
     expect(backupCommand).toContain('backup.step=%s state=failed exit_code=%s');
     expect(backupCommand).toContain('require_command() { command -v "$1" >/dev/null 2>&1 || exit "$2"; }');
-    expect(backupCommand).toContain('require_command aws 81');
+    expect(backupCommand).toContain('require_aws() { if command -v aws >/dev/null 2>&1; then return 0; fi; if [ -x /usr/bin/aws ]; then exit 86; fi; exit 81; }');
+    expect(backupCommand).toContain('require_aws');
     expect(backupCommand).toContain('require_command pg_dump 82');
     expect(backupCommand).toContain('require_command pg_restore 83');
     expect(backupCommand).toContain('require_command sha256sum 84');

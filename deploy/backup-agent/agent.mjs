@@ -22,7 +22,7 @@ const readSecret = async (name) => (await readFile(required(process.env[name], n
 
 const targets = {
   staging: {
-    host: 'studio-staging.smart-village.app',
+    host: 'backup-studio-staging.smart-village.app',
     bucket: 'studio-db-backup-staging',
     prefix: 'staging',
     postgresHost: 'studio-staging_postgres',
@@ -34,7 +34,7 @@ const targets = {
     signingKeyFile: 'BACKUP_STAGING_SIGNING_KEY_FILE',
   },
   prod: {
-    host: 'studio.smart-village.app',
+    host: 'backup-studio.smart-village.app',
     bucket: 'studio-db-backup-production',
     prefix: 'prod',
     postgresHost: 'studio-prod_postgres',
@@ -46,6 +46,8 @@ const targets = {
     signingKeyFile: 'BACKUP_PROD_SIGNING_KEY_FILE',
   },
 };
+
+export const validRequestHost = (environment, host) => targets[environment]?.host === host;
 
 export const canonicalRequest = (request) => JSON.stringify({
   action: request.action,
@@ -246,7 +248,7 @@ export const createBackupAgentServer = () => createServer(async (incoming, respo
   try {
     const request = await readBody(incoming);
     if (!validRequest(request)) return respond(response, 400, { error: 'invalid_request' });
-    if (incoming.headers.host !== targets[request.environment].host) return respond(response, 400, { error: 'invalid_request' });
+    if (!validRequestHost(request.environment, incoming.headers.host)) return respond(response, 400, { error: 'invalid_request' });
     const auth = incoming.headers.authorization;
     if (typeof auth !== 'string' || !auth.startsWith('Bearer ')) return respond(response, 401, { error: 'unauthorized' });
     await verifyOidc(auth.slice('Bearer '.length), request.environment);

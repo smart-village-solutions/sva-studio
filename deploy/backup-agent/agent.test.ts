@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { canonicalRequest, controlKeysFor, safeErrorCode, validateOidcClaims, validRequest } from './agent.mjs';
+import { canonicalRequest, controlKeysFor, safeErrorCode, validateOidcClaims, validRequest, validRequestHost } from './agent.mjs';
 
 const request = {
   version: 1,
@@ -48,6 +48,13 @@ describe('backup agent runtime contract', () => {
     expect(canonicalRequest(request)).not.toContain('bucket');
     expect(canonicalRequest(request)).not.toContain('postgresHost');
     expect(validRequest({ ...request, bucket: 'studio-db-backup-production' }, Date.parse('2026-07-30T10:00:00.000Z'))).toBe(false);
+  });
+
+  it('accepts only the dedicated host of the requested environment', () => {
+    expect(validRequestHost('staging', 'backup-studio-staging.smart-village.app')).toBe(true);
+    expect(validRequestHost('prod', 'backup-studio.smart-village.app')).toBe(true);
+    expect(validRequestHost('staging', 'backup-studio.smart-village.app')).toBe(false);
+    expect(validRequestHost('prod', 'studio.smart-village.app')).toBe(false);
   });
 
   it('uses persistent MinIO control keys for replay and terminal evidence', () => {

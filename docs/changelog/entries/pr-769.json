@@ -1,0 +1,4 @@
+{
+  "prNumber": 769,
+  "body": "Der zentrale Backup-Agent kann nun im Main-Build mit der erforderlichen OIDC-Berechtigung gebaut und für Deployments vorbereitet werden."
+}

@@ -27,6 +27,8 @@ describe('backup agent stack', () => {
     expect(source).toContain('Host(`studio-staging.smart-village.app`) && Path(`/_ops/backup/v1/requests`) && Method(`POST`)');
     expect(source).toContain('Host(`studio.smart-village.app`) && Path(`/_ops/backup/v1/requests`) && Method(`POST`)');
     expect(source).toContain('backup-agent-rate-limit.ratelimit.average=2');
+    expect(source).toContain('traefik.http.routers.backup-agent-staging.tls.certresolver=default');
+    expect(source).toContain('traefik.http.routers.backup-agent-prod.tls.certresolver=default');
     expect(source).not.toContain('traefik.http.routers.backup-agent-prod.entrypoints=web,');
   });
 

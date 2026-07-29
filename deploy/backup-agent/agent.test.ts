@@ -55,6 +55,7 @@ describe('backup agent runtime contract', () => {
     expect(validRequestHost('prod', 'backup-studio.smart-village.app')).toBe(true);
     expect(validRequestHost('staging', 'backup-studio.smart-village.app')).toBe(false);
     expect(validRequestHost('prod', 'studio.smart-village.app')).toBe(false);
+    expect(validRequestHost('unknown', 'backup-studio-staging.smart-village.app')).toBe(false);
   });
 
   it('uses persistent MinIO control keys for replay and terminal evidence', () => {

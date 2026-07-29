@@ -23,6 +23,8 @@ describe('backup agent contract', () => {
       endpoint: 'https://backup-studio.smart-village.app/_ops/backup/v1/requests',
       objectPrefix: 'prod',
     });
+    expect(backupEnvironmentConfig('staging').endpoint).not.toContain('://studio-staging.');
+    expect(backupEnvironmentConfig('prod').endpoint).not.toContain('://studio.');
   });
 
   it('accepts valid signed requests and rejects signature changes', () => {

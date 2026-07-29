@@ -16,12 +16,12 @@ services:
     environment:
       POSTGRES_DB: sva_studio
       POSTGRES_PASSWORD: ${INTEGRATION_STAGING_POSTGRES_PASSWORD}
-      POSTGRES_USER: sva
+      POSTGRES_USER: sva_app
     networks:
       default:
         aliases: [studio-staging_postgres]
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U sva -d sva_studio']
+      test: ['CMD-SHELL', 'pg_isready -U sva_app -d sva_studio']
       interval: 2s
       timeout: 2s
       retries: 30
@@ -31,12 +31,12 @@ services:
     environment:
       POSTGRES_DB: sva_studio
       POSTGRES_PASSWORD: ${INTEGRATION_PRODUCTION_POSTGRES_PASSWORD}
-      POSTGRES_USER: sva
+      POSTGRES_USER: sva_app
     networks:
       default:
         aliases: [studio-prod_postgres]
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U sva -d sva_studio']
+      test: ['CMD-SHELL', 'pg_isready -U sva_app -d sva_studio']
       interval: 2s
       timeout: 2s
       retries: 30

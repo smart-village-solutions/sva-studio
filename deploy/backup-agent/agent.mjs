@@ -12,6 +12,10 @@ const jwksUrl = `${oidcIssuer}/.well-known/jwks`;
 const maxBodyBytes = 16_384;
 const maxRequestLifetimeMs = 10 * 60_000;
 const acceptanceCommandTimeoutMs = 10_000;
+export const minioAwsCompatibilityEnv = {
+  AWS_REQUEST_CHECKSUM_CALCULATION: 'when_required',
+  AWS_RESPONSE_CHECKSUM_VALIDATION: 'when_required',
+};
 
 const required = (value, name) => {
   const result = value?.trim();
@@ -158,6 +162,7 @@ const s3Env = async (target) => ({
   AWS_DEFAULT_REGION: 'us-east-1',
   AWS_MAX_ATTEMPTS: '2',
   AWS_RETRY_MODE: 'standard',
+  ...minioAwsCompatibilityEnv,
 });
 
 const uploadJson = async (target, key, value) => {

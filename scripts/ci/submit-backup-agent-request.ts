@@ -18,6 +18,8 @@ const environment = (value: string | undefined): BackupEnvironment => {
   throw new Error('Der Backup-Agent akzeptiert nur staging oder prod.');
 };
 
+export const backupAgentAcceptanceTimeoutMs = 60_000;
+
 export const buildBackupAgentRequest = (input: {
   deployImageDigest: string;
   environment: BackupEnvironment;
@@ -115,7 +117,7 @@ const main = async () => {
       'x-backup-request-signature': signature,
     },
     body: JSON.stringify(request),
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(backupAgentAcceptanceTimeoutMs),
   });
   if (response.status !== 202) throw new Error(`Der Backup-Agent hat den Auftrag nicht akzeptiert (HTTP ${response.status}).`);
   const accepted = await response.json() as { requestId?: unknown };

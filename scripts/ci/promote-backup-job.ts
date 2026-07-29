@@ -117,7 +117,9 @@ export const buildBackupComposeDocument = (
   services: {
     backup: {
       ...migrate,
-      command: [backupCommand],
+      // Compose interprets `$` before the container starts. Preserve the shell
+      // command by escaping every dollar sign in the Compose representation.
+      command: [backupCommand.replaceAll('$', () => '$$')],
       entrypoint: ['sh', '-ec'],
       environment: { ...(migrate.environment as Record<string, unknown>), AWS_ACCESS_KEY_ID: input.accessKey, AWS_EC2_METADATA_DISABLED: 'true', AWS_REQUEST_CHECKSUM_CALCULATION: 'when_required', AWS_SECRET_ACCESS_KEY: input.secretKey, S3_BUCKET: input.bucket, S3_ENDPOINT: input.endpoint, S3_OBJECT_KEY: input.objectKey, POSTGRES_HOST: `${input.sourceStack}_postgres` },
       networks: ['internal'],

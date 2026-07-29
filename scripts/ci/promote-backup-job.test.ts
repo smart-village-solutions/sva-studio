@@ -71,8 +71,11 @@ describe('promote backup job', () => {
     expect(document.networks.internal).toEqual({ external: true, name: 'studio-staging_default' });
     expect(document.services.backup.networks).toEqual(['internal']);
     expect(document.services.backup.environment).toMatchObject({ AWS_REQUEST_CHECKSUM_CALCULATION: 'when_required', POSTGRES_HOST: 'studio-staging_postgres', S3_BUCKET: 'studio-db-backup-staging' });
-    expect(document.services.backup.command).toEqual([backupCommand]);
     expect(document.services.backup.entrypoint).toEqual(['sh', '-ec']);
+    expect(document.services.backup.command).toEqual([backupCommand.replaceAll('$', () => '$$')]);
+    expect(document.services.backup.command[0]).toContain('$$(mktemp -d)');
+    expect(document.services.backup.command[0]).toContain('$${4:-null}');
+    expect(document.services.backup.command[0]).not.toMatch(/(?<!\$)\$(?!\$)/u);
     expect(backupCommand).toContain('aws --endpoint-url "$S3_ENDPOINT" s3 cp "$dump"');
     expect(backupCommand).toContain('backup.step=%s state=started');
     expect(backupCommand).toContain('backup.step=%s state=failed exit_code=%s');

@@ -1,0 +1,4 @@
+{
+  "prNumber": 764,
+  "body": "Der Staging-Backup-Drill schützt Shell-Variablen nun korrekt vor der Compose-Interpolation."
+}

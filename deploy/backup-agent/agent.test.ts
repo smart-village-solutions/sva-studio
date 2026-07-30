@@ -6,6 +6,7 @@ import {
   minioAwsCompatibilityEnv,
   runCommand,
   safeErrorCode,
+  targets,
   validateOidcClaims,
   validRequest,
   validRequestHost,
@@ -115,6 +116,11 @@ describe('backup agent runtime contract', () => {
     expect(validRequestHost('staging', 'backup-studio.smart-village.app')).toBe(false);
     expect(validRequestHost('prod', 'studio.smart-village.app')).toBe(false);
     expect(validRequestHost('unknown', 'backup-studio-staging.smart-village.app')).toBe(false);
+  });
+
+  it('uses the verified Swarm DNS names for both database stacks', () => {
+    expect(targets.staging.postgresHost).toBe('studio-staging_postgres');
+    expect(targets.prod.postgresHost).toBe('studio_postgres');
   });
 
   it('uses persistent MinIO control keys for replay and terminal evidence', () => {

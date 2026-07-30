@@ -1,0 +1,4 @@
+{
+  "prNumber": 780,
+  "body": "Ein neuer, freigabegeschützter Production-Backup-Drill sichert und verifiziert die Produktionsdatenbank ohne Migration, Bootstrap oder App-Deployment."
+}

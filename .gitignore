@@ -113,3 +113,5 @@ apps/**/test-results/
 playwright-report/
 apps/public-waste-calendar-web/public-waste-config.local.json
 apps/sva-studio-react/.generated/studio-changelog.json
+
+.claude/worktrees

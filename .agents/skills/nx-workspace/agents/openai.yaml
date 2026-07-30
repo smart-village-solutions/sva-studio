@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nx Workspace"
+  short_description: "Arbeite sicher in diesem Nx-Workspace."
+  default_prompt: "Nutze $nx-workspace, um diesen Nx-Workspace zu analysieren und eine Aufgabe sicher auszuführen."

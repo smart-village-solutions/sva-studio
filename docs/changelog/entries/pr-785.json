@@ -1,0 +1,4 @@
+{
+  "prNumber": 785,
+  "body": "Der zentrale Backup-Agent verwendet für Production nun das verifizierte, versionierte Datenbank-Secret; die erfolgreiche Production-Abnahme ist dokumentiert."
+}

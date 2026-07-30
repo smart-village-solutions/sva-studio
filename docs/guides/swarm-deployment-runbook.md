@@ -23,20 +23,20 @@ Der Stack besteht aus:
 
 ### Zielwerte
 
-| Bereich | Zielwert |
-|---|---|
-| App + Monitoring | `RTO <= 2h` |
+| Bereich               | Zielwert     |
+| --------------------- | ------------ |
+| App + Monitoring      | `RTO <= 2h`  |
 | IAM-Daten in Postgres | `RPO <= 24h` |
 
 Die Zielwerte sind bewusst als operative Mindestziele formuliert. Sie ersetzen kein vollständiges Backup- oder HA-Konzept, sondern definieren den erwarteten Wiederanlauf- und Datenverlustrahmen für das aktuelle Referenzprofil.
 
 ### Eskalationspfad
 
-| Fall | Primärer Kanal | Zusätzlicher Kanal |
-|---|---|---|
-| Betriebsstörung ohne Sensitive Data | `operations@smart-village.app` | GitHub Issue für Nachverfolgung |
-| Sicherheitsvorfall oder DSGVO-Bezug | `security@smart-village.app` | `operations@smart-village.app` |
-| Reine Produkt-/Doku-Nacharbeit ohne Sensitivität | GitHub Issue | - |
+| Fall                                             | Primärer Kanal                 | Zusätzlicher Kanal              |
+| ------------------------------------------------ | ------------------------------ | ------------------------------- |
+| Betriebsstörung ohne Sensitive Data              | `operations@smart-village.app` | GitHub Issue für Nachverfolgung |
+| Sicherheitsvorfall oder DSGVO-Bezug              | `security@smart-village.app`   | `operations@smart-village.app`  |
+| Reine Produkt-/Doku-Nacharbeit ohne Sensitivität | GitHub Issue                   | -                               |
 
 Regel:
 
@@ -57,15 +57,15 @@ Regel:
 
 ## Dateien
 
-| Datei | Zweck |
-|---|---|
-| `deploy/portainer/docker-compose.yml` | Swarm-Stack-Definition |
-| `deploy/portainer/Dockerfile` | Build-Definition für das App-Image |
-| `deploy/portainer/entrypoint.sh` | Validiert und normalisiert Runtime-Variablen vor dem App-Start |
-| `deploy/portainer/otel-bootstrap.mjs` | Initialisiert OTEL vor dem Nitro-Entry im Node-Prozess |
-| `deploy/portainer/monitoring/` | Swarm-spezifische Monitoring-Konfigurationen |
+| Datei                                      | Zweck                                                                                |
+| ------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `deploy/portainer/docker-compose.yml`      | Swarm-Stack-Definition                                                               |
+| `deploy/portainer/Dockerfile`              | Build-Definition für das App-Image                                                   |
+| `deploy/portainer/entrypoint.sh`           | Validiert und normalisiert Runtime-Variablen vor dem App-Start                       |
+| `deploy/portainer/otel-bootstrap.mjs`      | Initialisiert OTEL vor dem Nitro-Entry im Node-Prozess                               |
+| `deploy/portainer/monitoring/`             | Swarm-spezifische Monitoring-Konfigurationen                                         |
 | `deploy/portainer/monitoring-config-init/` | Build-Kontext für das Init-Image, das Monitoring-Konfigurationen in Volumes schreibt |
-| `deploy/portainer/.env.example` | Referenz aller Konfigurationsvariablen |
+| `deploy/portainer/.env.example`            | Referenz aller Konfigurationsvariablen                                               |
 
 ## Schritt 1: Stack-Variablen konfigurieren
 
@@ -73,48 +73,48 @@ Das Referenzprofil `studio` wird env-only betrieben. Sowohl nicht-sensitive als 
 
 ### Pflicht-Variablen
 
-| Variable | Beispiel |
-|---|---|
-| `POSTGRES_PASSWORD` | `***` |
-| `APP_DB_PASSWORD` | `***` |
-| `REDIS_PASSWORD` | `***` |
-| `SVA_AUTH_CLIENT_SECRET` | `***` |
-| `SVA_AUTH_STATE_SECRET` | `***` |
-| `KEYCLOAK_ADMIN_CLIENT_SECRET` | `***` |
-| `ENCRYPTION_KEY` | `***` |
-| `IAM_PII_KEYRING_JSON` | `{"k1":"***"}` |
-| `SVA_PUBLIC_BASE_URL` | `https://studio.smart-village.app` |
-| `SVA_PUBLIC_HOST` | `studio.smart-village.app` |
-| `SVA_DB_ADMIN_HOST` | `studio-db.smart-village.app` |
-| `SVA_AUTH_REDIRECT_URI` | `https://studio.smart-village.app/auth/callback` |
-| `SVA_AUTH_POST_LOGOUT_REDIRECT_URI` | `https://studio.smart-village.app/` |
-| `SVA_PARENT_DOMAIN` | `studio.smart-village.app` |
-| `IAM_CSRF_ALLOWED_ORIGINS` | `https://studio.smart-village.app` |
+| Variable                            | Beispiel                                         |
+| ----------------------------------- | ------------------------------------------------ |
+| `POSTGRES_PASSWORD`                 | `***`                                            |
+| `APP_DB_PASSWORD`                   | `***`                                            |
+| `REDIS_PASSWORD`                    | `***`                                            |
+| `SVA_AUTH_CLIENT_SECRET`            | `***`                                            |
+| `SVA_AUTH_STATE_SECRET`             | `***`                                            |
+| `KEYCLOAK_ADMIN_CLIENT_SECRET`      | `***`                                            |
+| `ENCRYPTION_KEY`                    | `***`                                            |
+| `IAM_PII_KEYRING_JSON`              | `{"k1":"***"}`                                   |
+| `SVA_PUBLIC_BASE_URL`               | `https://studio.smart-village.app`               |
+| `SVA_PUBLIC_HOST`                   | `studio.smart-village.app`                       |
+| `SVA_DB_ADMIN_HOST`                 | `studio-db.smart-village.app`                    |
+| `SVA_AUTH_REDIRECT_URI`             | `https://studio.smart-village.app/auth/callback` |
+| `SVA_AUTH_POST_LOGOUT_REDIRECT_URI` | `https://studio.smart-village.app/`              |
+| `SVA_PARENT_DOMAIN`                 | `studio.smart-village.app`                       |
+| `IAM_CSRF_ALLOWED_ORIGINS`          | `https://studio.smart-village.app`               |
 
 ### Optionale Variablen
 
-| Variable | Default | Beschreibung |
-|---|---|---|
-| `SVA_REGISTRY` | `ghcr.io/smart-village-solutions` | Container-Registry für das App-Image |
-| `SVA_IMAGE_REPOSITORY` | `sva-studio` | Repository-Name des App-Images |
-| `SVA_MONITORING_REGISTRY` | `ghcr.io/smart-village-solutions` | Container-Registry für das Monitoring-Init-Image |
-| `SVA_IMAGE_TAG` | `0.0.0-dev` | Image-Tag oder Digest; für Produktion Digest oder unveränderlichen Tag verwenden |
-| `SVA_IMAGE_DIGEST` | kein Default | Verbindlicher SHA256-Digest für produktionsnahe Releases |
-| `SVA_IMAGE_REF` | kein Default | Vollständige Image-Referenz `${SVA_REGISTRY}/${SVA_IMAGE_REPOSITORY}@${SVA_IMAGE_DIGEST}` |
-| `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` | `0.0.0-dev` | Image-Tag des Monitoring-Init-Images; für Produktion Digest oder unveränderlichen Tag verwenden |
-| `SVA_ALLOWED_INSTANCE_IDS` | leer | Nur lokaler oder migrierender Fallback; im Registry-Betrieb keine führende Freigabequelle |
-| `SVA_TENANT_SCOPE_INSTANCE_IDS` | leer | Optionaler Override für Tenant-Smokes und Doctor-Scopes; ohne Wert werden Remote-Scopes aus der Registry abgeleitet |
-| `ENABLE_OTEL` | `true` | OpenTelemetry für lokale Deaktivierungsfälle in Development; im produktionsnahen Betrieb bleibt OTEL verpflichtend |
-| `OTEL_SERVICE_NAME` | `sva-studio` | Service-Name für OTEL Resource Attributes |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | Interner OTLP-HTTP-Endpoint |
-| `GF_SECURITY_ADMIN_PASSWORD` | kein Default | Pflichtwert für den internen Grafana-Login |
-| `IAM_UI_ENABLED` | `false` | IAM-Account-UI |
-| `IAM_ADMIN_ENABLED` | `false` | IAM-Admin-UI |
-| `IAM_BULK_ENABLED` | `false` | IAM-Bulk-Operationen |
-| `SVA_DOCTOR_KEYCLOAK_SUBJECT` | leer | optionaler Actor-Override für `env:doctor:studio` |
-| `SVA_DOCTOR_INSTANCE_ID` | kein Default | überschreibt die Zielinstanz für den Doctor-Lauf; für tiefe Actor-Diagnose explizit setzen |
-| `SVA_DOCTOR_SESSION_ROLES` | leer | kommagetrennte Session-Rollen für Rollen-Diagnose |
-| `SVA_DB_ADMIN_BASIC_AUTH` | kein Default | htpasswd-String für vorgeschalteten Adminer-Basic-Auth |
+| Variable                               | Default                           | Beschreibung                                                                                                        |
+| -------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `SVA_REGISTRY`                         | `ghcr.io/smart-village-solutions` | Container-Registry für das App-Image                                                                                |
+| `SVA_IMAGE_REPOSITORY`                 | `sva-studio`                      | Repository-Name des App-Images                                                                                      |
+| `SVA_MONITORING_REGISTRY`              | `ghcr.io/smart-village-solutions` | Container-Registry für das Monitoring-Init-Image                                                                    |
+| `SVA_IMAGE_TAG`                        | `0.0.0-dev`                       | Image-Tag oder Digest; für Produktion Digest oder unveränderlichen Tag verwenden                                    |
+| `SVA_IMAGE_DIGEST`                     | kein Default                      | Verbindlicher SHA256-Digest für produktionsnahe Releases                                                            |
+| `SVA_IMAGE_REF`                        | kein Default                      | Vollständige Image-Referenz `${SVA_REGISTRY}/${SVA_IMAGE_REPOSITORY}@${SVA_IMAGE_DIGEST}`                           |
+| `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` | `0.0.0-dev`                       | Image-Tag des Monitoring-Init-Images; für Produktion Digest oder unveränderlichen Tag verwenden                     |
+| `SVA_ALLOWED_INSTANCE_IDS`             | leer                              | Nur lokaler oder migrierender Fallback; im Registry-Betrieb keine führende Freigabequelle                           |
+| `SVA_TENANT_SCOPE_INSTANCE_IDS`        | leer                              | Optionaler Override für Tenant-Smokes und Doctor-Scopes; ohne Wert werden Remote-Scopes aus der Registry abgeleitet |
+| `ENABLE_OTEL`                          | `true`                            | OpenTelemetry für lokale Deaktivierungsfälle in Development; im produktionsnahen Betrieb bleibt OTEL verpflichtend  |
+| `OTEL_SERVICE_NAME`                    | `sva-studio`                      | Service-Name für OTEL Resource Attributes                                                                           |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`          | `http://otel-collector:4318`      | Interner OTLP-HTTP-Endpoint                                                                                         |
+| `GF_SECURITY_ADMIN_PASSWORD`           | kein Default                      | Pflichtwert für den internen Grafana-Login                                                                          |
+| `IAM_UI_ENABLED`                       | `false`                           | IAM-Account-UI                                                                                                      |
+| `IAM_ADMIN_ENABLED`                    | `false`                           | IAM-Admin-UI                                                                                                        |
+| `IAM_BULK_ENABLED`                     | `false`                           | IAM-Bulk-Operationen                                                                                                |
+| `SVA_DOCTOR_KEYCLOAK_SUBJECT`          | leer                              | optionaler Actor-Override für `env:doctor:studio`                                                                   |
+| `SVA_DOCTOR_INSTANCE_ID`               | kein Default                      | überschreibt die Zielinstanz für den Doctor-Lauf; für tiefe Actor-Diagnose explizit setzen                          |
+| `SVA_DOCTOR_SESSION_ROLES`             | leer                              | kommagetrennte Session-Rollen für Rollen-Diagnose                                                                   |
+| `SVA_DB_ADMIN_BASIC_AUTH`              | kein Default                      | htpasswd-String für vorgeschalteten Adminer-Basic-Auth                                                              |
 
 Die vollständige Variablenliste inklusive Keycloak-Admin- und Rollenabgleich-Optionen steht in `deploy/portainer/.env.example`.
 Für produktionsnahe Acceptance-Deployments ist `SVA_IMAGE_DIGEST` verpflichtend; `SVA_IMAGE_REF` muss auf genau dieses Artefakt zeigen. `SVA_IMAGE_TAG` bleibt nur ergänzende Metadaten für Lesbarkeit und Rückverfolgung. Wenn App- und Monitoring-Image aus unterschiedlichen Registries bezogen werden, müssen `SVA_REGISTRY` und `SVA_MONITORING_REGISTRY` konsistent gesetzt sein.
@@ -171,18 +171,18 @@ curl -I https://hb-meinquartier.studio.smart-village.app
 
 ### Ressourcenlimits des Referenzprofils
 
-| Service | CPU-Limit |
-|---|---|
-| `app` | `1.0` |
-| `postgres` | `0.5` |
-| `redis` | `0.25` |
-| `monitoring-config-init` | `0.10` |
-| `otel-collector` | `0.25` |
-| `loki` | `0.75` |
-| `prometheus` | `1.0` |
-| `grafana` | `0.5` |
-| `promtail` | `0.25` |
-| `alertmanager` | `0.25` |
+| Service                  | CPU-Limit |
+| ------------------------ | --------- |
+| `app`                    | `1.0`     |
+| `postgres`               | `0.5`     |
+| `redis`                  | `0.25`    |
+| `monitoring-config-init` | `0.10`    |
+| `otel-collector`         | `0.25`    |
+| `loki`                   | `0.75`    |
+| `prometheus`             | `1.0`     |
+| `grafana`                | `0.5`     |
+| `promtail`               | `0.25`    |
+| `alertmanager`           | `0.25`    |
 
 ## Schritt 2: Datenbank initialisieren
 
@@ -313,6 +313,7 @@ Bei einem Fehler ist zuerst die Diagnosedatei in MinIO auszuwerten. Fehlt sie we
 Prod-Hinweis:
 
 - Für Produktion verlangt `Promote` bei beiden `run`-Modi ein revisionsfähiges Wartungsfenster sowie ein erfolgreiches Artifact eines abgeschlossenen mutierenden Staging-Pfads für exakt dasselbe Image-Digest. Ein App-only-Staging-Deploy genügt nicht. Fehlt einer dieser Nachweise, blockiert der Lauf vor Backup und Mutation.
+- Der manuelle Workflow `Production Backup Drill` führt ausschließlich ein Production-Backup ohne Migration, Bootstrap oder App-Deployment aus. Er läuft im geschützten GitHub-Environment `prod`, verlangt einen nicht-sensitiven Wartungsfenster-Verweis und akzeptiert nur einen erfolgreichen `Staging Backup Drill` für exakt dasselbe Image-Digest als Paritätsnachweis.
 - Vor produktiven Schema- oder Reconcile-Eingriffen müssen aktuelles Backup, Restore-Pfad und Rollback-Entscheidung vorliegen; ein grüner App-Build ersetzt diese Freigabe nicht.
 
 ### Image-Versionierung im Promote-Pfad
@@ -370,6 +371,7 @@ Interpretationshilfe:
 - in diesem Fall zuerst Live-Service und Smokes als Wahrheitsebene prüfen, dann den Reportpfad debuggen
 - wenn `migrate` grün ist, `bootstrap` aber rot, zuerst den Bootstrap-SQL-Vertrag gegen die zuletzt eingezogenen Schema-Pflichtfelder prüfen; ein pauschaler Retry des Gesamtdeploys hilft dann meist nicht
 - wenn der Cutover technisch durch ist, aber die ersten externen Health-/Tenant-Probes kurz `404` liefern, ist das zuerst als mögliche Post-Cutover-Settling-Phase zu behandeln und nicht sofort als belastbare Regression
+
 8. Schreiben eines Deploy-Reports unter `artifacts/runtime/deployments/`
 
 Read-only Betriebsregel:
@@ -523,17 +525,17 @@ Stabile Diagnosecodes umfassen unter anderem:
 - `database_connection_failed`
 - `keycloak_dependency_failed`
 
-| Prüfung | Erwartung |
-|---|---|
-| `GET https://<SVA_PARENT_DOMAIN>/health/live` | HTTP 200 |
-| `GET https://<SVA_PARENT_DOMAIN>/health/ready` | HTTP 200, Redis + DB + Keycloak bereit |
-| `GET https://<SVA_PARENT_DOMAIN>/auth/login` | Redirect zum OIDC-Provider |
-| `GET https://<aktive-instance>.<SVA_PARENT_DOMAIN>/` | HTTP 200 ohne neues Deployment |
-| `GET https://unknown.<SVA_PARENT_DOMAIN>/` | fail-closed, ohne tenant-spezifische Detailoffenlegung |
-| `GET https://<suspendierte-instance>.<SVA_PARENT_DOMAIN>/auth/me` | gleiches fail-closed-Verhalten wie unbekannter Host |
-| App in Portainer | Status: `healthy` |
-| Monitoring-Services in Portainer | `otel-collector`, `loki`, `prometheus`, `grafana`, `promtail`, `alertmanager` laufen |
-| `app-db-principal` in `doctor`/`precheck` | `ok`, `APP_DB_USER` sieht `db=true`, `redis=true`, `keycloak=true` |
+| Prüfung                                                           | Erwartung                                                                            |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `GET https://<SVA_PARENT_DOMAIN>/health/live`                     | HTTP 200                                                                             |
+| `GET https://<SVA_PARENT_DOMAIN>/health/ready`                    | HTTP 200, Redis + DB + Keycloak bereit                                               |
+| `GET https://<SVA_PARENT_DOMAIN>/auth/login`                      | Redirect zum OIDC-Provider                                                           |
+| `GET https://<aktive-instance>.<SVA_PARENT_DOMAIN>/`              | HTTP 200 ohne neues Deployment                                                       |
+| `GET https://unknown.<SVA_PARENT_DOMAIN>/`                        | fail-closed, ohne tenant-spezifische Detailoffenlegung                               |
+| `GET https://<suspendierte-instance>.<SVA_PARENT_DOMAIN>/auth/me` | gleiches fail-closed-Verhalten wie unbekannter Host                                  |
+| App in Portainer                                                  | Status: `healthy`                                                                    |
+| Monitoring-Services in Portainer                                  | `otel-collector`, `loki`, `prometheus`, `grafana`, `promtail`, `alertmanager` laufen |
+| `app-db-principal` in `doctor`/`precheck`                         | `ok`, `APP_DB_USER` sieht `db=true`, `redis=true`, `keycloak=true`                   |
 
 Für IAM-Abnahmen zusätzlich:
 
@@ -591,10 +593,10 @@ Direkte Portainer-Eingriffe bleiben Incident-Recovery und sind nicht der kanonis
 
 ## Persistenz
 
-| Service | Volume | Placement |
-|---|---|---|
+| Service  | Volume          | Placement              |
+| -------- | --------------- | ---------------------- |
 | Postgres | `postgres-data` | `node.role == manager` |
-| Redis | `redis-data` | `node.role == manager` |
+| Redis    | `redis-data`    | `node.role == manager` |
 
 Die Placement-Constraints stellen sicher, dass Volumes auf demselben Node bleiben. Bei Cluster-Erweiterung müssen die Constraints ggf. angepasst werden.
 

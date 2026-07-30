@@ -313,6 +313,7 @@ Bei einem Fehler ist zuerst die Diagnosedatei in MinIO auszuwerten. Fehlt sie we
 Prod-Hinweis:
 
 - Für Produktion verlangt `Promote` bei beiden `run`-Modi ein revisionsfähiges Wartungsfenster sowie ein erfolgreiches Artifact eines abgeschlossenen mutierenden Staging-Pfads für exakt dasselbe Image-Digest. Ein App-only-Staging-Deploy genügt nicht. Fehlt einer dieser Nachweise, blockiert der Lauf vor Backup und Mutation.
+- Der manuelle Workflow `Production Backup Drill` führt ausschließlich ein Production-Backup ohne Migration, Bootstrap oder App-Deployment aus. Er läuft im geschützten GitHub-Environment `prod`, verlangt einen nicht-sensitiven Wartungsfenster-Verweis und akzeptiert nur einen erfolgreichen `Staging Backup Drill` für exakt dasselbe Image-Digest als Paritätsnachweis.
 - Vor produktiven Schema- oder Reconcile-Eingriffen müssen aktuelles Backup, Restore-Pfad und Rollback-Entscheidung vorliegen; ein grüner App-Build ersetzt diese Freigabe nicht.
 
 ### Image-Versionierung im Promote-Pfad

@@ -8,6 +8,7 @@ import {
   matchesSuccessfulStagingBackupEvidence,
   matchesSuccessfulStagingEvidence,
   selectEvidenceJsonFile,
+  selectStagingBackupEvidenceJsonFile,
 } from './verify-staging-promote-evidence.ts';
 
 describe('staging parity evidence', () => {
@@ -123,6 +124,22 @@ describe('staging parity evidence', () => {
     expect(selectEvidenceJsonFile('evidence.json\n')).toBe('evidence.json');
     expect(selectEvidenceJsonFile('evidence.json\nmetadata.json\n')).toBeUndefined();
     expect(selectEvidenceJsonFile('README.md\n')).toBeUndefined();
+  });
+
+  it('selects the unique agent result when a staging drill artifact contains verification evidence', () => {
+    const archiveEntries = [
+      'promote-backup-agent-gha-30512741172-1.json',
+      'promote-backup-verification-30512741172-1.json',
+    ].join('\n');
+
+    expect(selectStagingBackupEvidenceJsonFile(archiveEntries)).toBe(
+      'promote-backup-agent-gha-30512741172-1.json'
+    );
+    expect(
+      selectStagingBackupEvidenceJsonFile(
+        `${archiveEntries}\npromote-backup-agent-gha-duplicate.json\n`
+      )
+    ).toBeUndefined();
   });
 
   it('downloads parity artifacts through gh api without unsupported output flags', () => {

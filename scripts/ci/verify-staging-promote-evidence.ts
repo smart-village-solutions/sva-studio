@@ -59,6 +59,13 @@ export const selectEvidenceJsonFile = (archiveEntries: string) => {
   const files = archiveEntries.split('\n').filter((entry) => entry.endsWith('.json'));
   return files.length === 1 ? files[0] : undefined;
 };
+
+export const selectStagingBackupEvidenceJsonFile = (archiveEntries: string) => {
+  const files = archiveEntries
+    .split('\n')
+    .filter((entry) => /(^|\/)promote-backup-agent-[^/]+\.json$/u.test(entry));
+  return files.length === 1 ? files[0] : undefined;
+};
 const required = (value: string | undefined, name: string) => {
   const trimmed = value?.trim();
   if (!trimmed) throw new Error(`${name} darf nicht leer sein.`);
@@ -109,9 +116,11 @@ const main = () => {
           env: { ...process.env, GH_TOKEN: required(process.env.GITHUB_TOKEN, 'GITHUB_TOKEN') },
         })
       );
-      const evidenceFile = selectEvidenceJsonFile(
-        execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' })
-      );
+      const archiveEntries = execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' });
+      const evidenceFile =
+        evidenceKind === 'promote'
+          ? selectEvidenceJsonFile(archiveEntries)
+          : selectStagingBackupEvidenceJsonFile(archiveEntries);
       if (!evidenceFile) continue;
       const evidence = JSON.parse(
         execFileSync('unzip', ['-p', zipPath, evidenceFile], { encoding: 'utf8' })

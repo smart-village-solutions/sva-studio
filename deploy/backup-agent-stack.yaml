@@ -2,7 +2,7 @@ services:
   backup-agent:
     image: ${IMAGE_REF}
     environment:
-      BACKUP_AGENT_ALLOWED_WORKFLOWS: promote.yml,staging-backup-drill.yml
+      BACKUP_AGENT_ALLOWED_WORKFLOWS: promote.yml,staging-backup-drill.yml,production-backup-drill.yml
       BACKUP_AGENT_GITHUB_REPOSITORY: smart-village-solutions/sva-studio
       BACKUP_AGENT_IMAGE_REF: ${IMAGE_REF}
       BACKUP_AGENT_OIDC_AUDIENCE: studio-backup-agent

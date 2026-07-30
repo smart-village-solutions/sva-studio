@@ -61,5 +61,7 @@ Für die reale Umgebung waren drei Abweichungen zu korrigieren:
   Ausgabe als versioniertes Swarm-Secret
   `backup_staging_postgres_password_v3` gebunden.
 
-Production wurde weder gesichert noch anderweitig mutiert. Die
-Production-Abnahme bleibt bis zu einer expliziten Freigabe offen.
+Die Production-Abnahme wurde nach der expliziten Freigabe separat durchgeführt
+und ist unter
+[Production-Abnahme des zentralen Backup-Agenten](../../reports/central-backup-agent-production-acceptance.md)
+dokumentiert.

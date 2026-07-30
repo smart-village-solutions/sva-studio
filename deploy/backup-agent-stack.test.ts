@@ -21,6 +21,7 @@ describe('backup agent stack', () => {
     expect(source).toContain('BACKUP_PROD_POSTGRES_USER: sva');
     expect(source).toContain('BACKUP_STAGING_POSTGRES_DB: sva_studio');
     expect(source).toContain('source: backup_staging_postgres_password_v3');
+    expect(source).toContain('source: backup_prod_postgres_password_v2');
     expect(source).toContain('target: backup_staging_postgres_password');
     expect(source).toContain('BACKUP_PROD_POSTGRES_DB: sva_studio');
   });

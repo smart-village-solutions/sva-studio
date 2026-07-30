@@ -25,7 +25,7 @@ const required = (value, name) => {
 
 const readSecret = async (name) => (await readFile(required(process.env[name], name), 'utf8')).trim();
 
-const targets = {
+export const targets = {
   staging: {
     host: 'backup-studio-staging.smart-village.app',
     bucket: 'studio-db-backup-staging',
@@ -42,7 +42,7 @@ const targets = {
     host: 'backup-studio.smart-village.app',
     bucket: 'studio-db-backup-production',
     prefix: 'prod',
-    postgresHost: 'studio-prod_postgres',
+    postgresHost: 'studio_postgres',
     postgresDatabase: process.env.BACKUP_PROD_POSTGRES_DB || 'sva_studio',
     postgresUser: process.env.BACKUP_PROD_POSTGRES_USER || 'sva',
     postgresPasswordFile: 'BACKUP_PROD_POSTGRES_PASSWORD_FILE',

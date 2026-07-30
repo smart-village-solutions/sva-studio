@@ -3,8 +3,18 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const workflow = readFileSync(resolve(import.meta.dirname, '../../.github/workflows/promote.yml'), 'utf8');
-const backupDrillWorkflow = readFileSync(resolve(import.meta.dirname, '../../.github/workflows/staging-backup-drill.yml'), 'utf8');
+const workflow = readFileSync(
+  resolve(import.meta.dirname, '../../.github/workflows/promote.yml'),
+  'utf8'
+);
+const backupDrillWorkflow = readFileSync(
+  resolve(import.meta.dirname, '../../.github/workflows/staging-backup-drill.yml'),
+  'utf8'
+);
+const productionBackupDrillWorkflow = readFileSync(
+  resolve(import.meta.dirname, '../../.github/workflows/production-backup-drill.yml'),
+  'utf8'
+);
 
 describe('Promote workflow contract', () => {
   it('runs staging phases in the required fail-closed order', () => {
@@ -25,16 +35,24 @@ describe('Promote workflow contract', () => {
     expect(offsets.every((offset) => offset >= 0)).toBe(true);
     expect(offsets).toEqual([...offsets].sort((left, right) => left - right));
     expect(workflow).toMatch(/- name: deploy\s+id: deploy/u);
-    expect(workflow.indexOf('Login to GHCR')).toBeLessThan(workflow.indexOf('validate image contract'));
-    expect(workflow).toContain("trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT");
-    expect(workflow.match(/printf '%s\\n' "\$\{APP_CONFIG\}" > config\/runtime\/base\.vars/gu)).toHaveLength(2);
+    expect(workflow.indexOf('Login to GHCR')).toBeLessThan(
+      workflow.indexOf('validate image contract')
+    );
+    expect(workflow).toContain(
+      "trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT"
+    );
+    expect(
+      workflow.match(/printf '%s\\n' "\$\{APP_CONFIG\}" > config\/runtime\/base\.vars/gu)
+    ).toHaveLength(2);
     expect(workflow).toContain('SVA_STACK_NAME: studio-${{ inputs.environment }}');
     expect(workflow).toContain('QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}');
   });
 
   it('requires a maintenance reference and guards production mutations with staging parity', () => {
     expect(workflow).toContain('maintenance_window');
-    expect(workflow).toContain("'maintenance_window' must be a non-sensitive, revisionable reference");
+    expect(workflow).toContain(
+      "'maintenance_window' must be a non-sensitive, revisionable reference"
+    );
     expect(workflow).toContain('--environment "${ENVIRONMENT}"');
     expect(workflow).toContain('upload redacted one-shot evidence');
     expect(workflow).toContain('if-no-files-found: ignore');
@@ -44,26 +62,39 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('require successful staging parity for production mutation');
     expect(workflow).toContain('create database backup before one-shot jobs');
     expect(workflow).toContain('verify database backup object');
-    expect(workflow).toContain('S3_OBJECT_KEY: ${{ steps.backup_job.outputs.backup_object || steps.backup_fallback_job.outputs.backup_object }}');
+    expect(workflow).toContain(
+      'S3_OBJECT_KEY: ${{ steps.backup_job.outputs.backup_object || steps.backup_fallback_job.outputs.backup_object }}'
+    );
     expect(workflow).toContain('id-token: write');
     expect(workflow).toContain('submit-backup-agent-request.ts "${{ inputs.environment }}"');
     expect(workflow).toContain("vars.BACKUP_EXECUTOR == 'temporary'");
-    expect(workflow).toContain('STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == \'true\' || steps.gate_eval.outputs.bootstrap_should_run == \'true\' }}');
-    expect(workflow).toContain('name: promote-staging-parity-${{ github.run_id }}-${{ github.run_attempt }}');
-    expect(workflow).toContain('--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"');
+    expect(workflow).toContain(
+      "STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true' }}"
+    );
+    expect(workflow).toContain(
+      'name: promote-staging-parity-${{ github.run_id }}-${{ github.run_attempt }}'
+    );
+    expect(workflow).toContain(
+      '--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"'
+    );
   });
 
   it('runs backups only for staging or production mutations and blocks production deploys behind parity', () => {
     expect(workflow).toContain("inputs.environment == 'staging' || inputs.environment == 'prod'");
-    expect(workflow).toContain("inputs.environment == 'prod' && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true')");
-    expect(workflow).toContain('require successful staging parity for production mutation');
-    expect(workflow.indexOf('require successful staging parity for production mutation')).toBeLessThan(
-      workflow.indexOf('create database backup before one-shot jobs'),
+    expect(workflow).toContain(
+      "inputs.environment == 'prod' && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true')"
     );
+    expect(workflow).toContain('require successful staging parity for production mutation');
+    expect(
+      workflow.indexOf('require successful staging parity for production mutation')
+    ).toBeLessThan(workflow.indexOf('create database backup before one-shot jobs'));
   });
 
   it('uses automatic diff-based one-shot execution for main-to-Dev promotion', () => {
-    const buildWorkflow = readFileSync(resolve(import.meta.dirname, '../../.github/workflows/build.yml'), 'utf8');
+    const buildWorkflow = readFileSync(
+      resolve(import.meta.dirname, '../../.github/workflows/build.yml'),
+      'utf8'
+    );
 
     expect(buildWorkflow).toContain('bootstrap_mode: auto');
     expect(buildWorkflow).toContain('migration_mode: auto');
@@ -71,7 +102,9 @@ describe('Promote workflow contract', () => {
     expect(buildWorkflow).toContain('id-token: write');
     expect(buildWorkflow).toContain('SVA_IMAGE_REVISION=${{ github.sha }}');
     expect(buildWorkflow).toContain('file: ./deploy/backup-agent/Dockerfile');
-    expect(buildWorkflow).toContain('ghcr.io/smart-village-solutions/sva-studio-backup-agent:${{ github.sha }}');
+    expect(buildWorkflow).toContain(
+      'ghcr.io/smart-village-solutions/sva-studio-backup-agent:${{ github.sha }}'
+    );
     expect(workflow).toContain('migration_should_run');
     expect(workflow).toContain('bootstrap_should_run');
   });
@@ -82,8 +115,24 @@ describe('Promote workflow contract', () => {
     expect(backupDrillWorkflow).toContain('submit-backup-agent-request.ts staging');
     expect(backupDrillWorkflow).toContain('promote-backup-job.ts staging');
     expect(backupDrillWorkflow).toContain('verify-promote-backup.ts');
-    expect(backupDrillWorkflow).toContain('staging-backup-drill-${{ github.run_id }}-${{ github.run_attempt }}');
+    expect(backupDrillWorkflow).toContain(
+      'staging-backup-drill-${{ github.run_id }}-${{ github.run_attempt }}'
+    );
     expect(backupDrillWorkflow).not.toContain('promote-one-shot-job.ts');
     expect(backupDrillWorkflow).not.toContain('quantum-cli stacks deploy');
+  });
+
+  it('offers an approved production backup drill without application mutation', () => {
+    expect(productionBackupDrillWorkflow).toContain('name: Production Backup Drill');
+    expect(productionBackupDrillWorkflow).toContain('environment: prod');
+    expect(productionBackupDrillWorkflow).toContain('maintenance_window');
+    expect(productionBackupDrillWorkflow).toContain('require successful staging backup parity');
+    expect(productionBackupDrillWorkflow).toContain(
+      'verify-staging-promote-evidence.ts backup-drill'
+    );
+    expect(productionBackupDrillWorkflow).toContain('submit-backup-agent-request.ts prod');
+    expect(productionBackupDrillWorkflow).toContain('verify-promote-backup.ts');
+    expect(productionBackupDrillWorkflow).not.toContain('promote-one-shot-job.ts');
+    expect(productionBackupDrillWorkflow).not.toContain('quantum-cli stacks deploy');
   });
 });

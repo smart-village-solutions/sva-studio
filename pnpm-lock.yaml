@@ -18,7 +18,7 @@ overrides:
   form-data: 4.0.6
   follow-redirects: 1.16.0
   launch-editor: 2.14.1
-  postcss: 8.5.11
+  postcss: 8.5.18
   protobufjs: 7.6.3
   rollup: 4.59.0
   srvx: 0.11.15
@@ -74,7 +74,7 @@ importers:
         version: 4.1.9(vitest@4.1.9)
       autoprefixer:
         specifier: 10.5.2
-        version: 10.5.2(postcss@8.5.11)
+        version: 10.5.2(postcss@8.5.18)
       eslint:
         specifier: ^10.6.0
         version: 10.6.0(jiti@2.7.0)
@@ -91,8 +91,8 @@ importers:
         specifier: 23.0.1
         version: 23.0.1
       postcss:
-        specifier: 8.5.11
-        version: 8.5.11
+        specifier: 8.5.18
+        version: 8.5.18
       prettier:
         specifier: ^3.9.4
         version: 3.9.4
@@ -339,8 +339,8 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       postcss:
-        specifier: 8.5.11
-        version: 8.5.11
+        specifier: 8.5.18
+        version: 8.5.18
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
@@ -487,8 +487,8 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       postcss:
-        specifier: 8.5.11
-        version: 8.5.11
+        specifier: 8.5.18
+        version: 8.5.18
       sanitize-html:
         specifier: ^2.17.4
         version: 2.17.4
@@ -637,8 +637,8 @@ importers:
         specifier: workspace:*
         version: link:../server-runtime
       postcss:
-        specifier: 8.5.11
-        version: 8.5.11
+        specifier: 8.5.18
+        version: 8.5.18
       sanitize-html:
         specifier: ^2.17.4
         version: 2.17.4
@@ -5954,7 +5954,7 @@ packages:
     engines: {node: ^10 || ^12 || >=14}
     hasBin: true
     peerDependencies:
-      postcss: 8.5.11
+      postcss: 8.5.18
 
   aws4fetch@1.0.20:
     resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
@@ -7826,8 +7826,8 @@ packages:
   postcss-value-parser@4.2.0:
     resolution: {integrity: sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==}
 
-  postcss@8.5.11:
-    resolution: {integrity: sha512-5dDj8+lmvA8XB78SmzGI8NlQoksv7IfutGWeVZxiixHbO+p4LDPT3wuG/D9sM/wrjZZ9I+Siy/e117vbFPxSZg==}
+  postcss@8.5.18:
+    resolution: {integrity: sha512-xdB1oSLHbz1vRWgCDalrCqEFTWzFlhqFC5tIHLMOSUIjhm3XXQ1qrFy8S/ESr1JYRRXqM3c1QFiMZUJdUTqyMQ==}
     engines: {node: ^10 || ^12 || >=14}
 
   postgres-array@2.0.0:
@@ -13089,7 +13089,7 @@ snapshots:
       jose: 6.2.3
       openid-client: 6.8.4
       pg: 8.22.0
-      postcss: 8.5.11
+      postcss: 8.5.18
       sanitize-html: 2.17.5
       sharp: 0.35.2
       zod: 4.4.3
@@ -13131,7 +13131,7 @@ snapshots:
       '@sva/core': file:packages/core
       '@sva/iam-core': file:packages/iam-core
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
-      postcss: 8.5.11
+      postcss: 8.5.18
       sanitize-html: 2.17.5
       zod: 4.4.3
     transitivePeerDependencies:
@@ -13319,7 +13319,7 @@ snapshots:
       '@alloc/quick-lru': 5.2.0
       '@tailwindcss/node': 4.3.2
       '@tailwindcss/oxide': 4.3.2
-      postcss: 8.5.11
+      postcss: 8.5.18
       tailwindcss: 4.3.2
 
   '@tailwindcss/vite@4.3.2(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))':
@@ -14266,13 +14266,13 @@ snapshots:
 
   atomic-sleep@1.0.0: {}
 
-  autoprefixer@10.5.2(postcss@8.5.11):
+  autoprefixer@10.5.2(postcss@8.5.18):
     dependencies:
       browserslist: 4.28.4
       caniuse-lite: 1.0.30001800
       fraction.js: 5.3.4
       picocolors: 1.1.1
-      postcss: 8.5.11
+      postcss: 8.5.18
       postcss-value-parser: 4.2.0
 
   aws4fetch@1.0.20:
@@ -16369,7 +16369,7 @@ snapshots:
 
   postcss-value-parser@4.2.0: {}
 
-  postcss@8.5.11:
+  postcss@8.5.18:
     dependencies:
       nanoid: 3.3.12
       picocolors: 1.1.1
@@ -16789,7 +16789,7 @@ snapshots:
       is-plain-object: 5.0.0
       launder: 1.7.1
       parse-srcset: 1.0.2
-      postcss: 8.5.11
+      postcss: 8.5.18
 
   sanitize-html@2.17.5:
     dependencies:
@@ -16799,7 +16799,7 @@ snapshots:
       is-plain-object: 5.0.0
       launder: 1.7.1
       parse-srcset: 1.0.2
-      postcss: 8.5.11
+      postcss: 8.5.18
 
   saxes@5.0.1:
     dependencies:
@@ -17238,7 +17238,7 @@ snapshots:
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.4
-      postcss: 8.5.11
+      postcss: 8.5.18
       rolldown: 1.0.3
       tinyglobby: 0.2.17
     optionalDependencies:
@@ -17253,7 +17253,7 @@ snapshots:
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.4
-      postcss: 8.5.11
+      postcss: 8.5.18
       rolldown: 1.1.3
       tinyglobby: 0.2.17
     optionalDependencies:

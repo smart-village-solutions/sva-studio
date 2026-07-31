@@ -1,0 +1,4 @@
+{
+  "prNumber": 760,
+  "body": "Aktualisiert PostCSS workspaceweit auf Version 8.5.18 und stellt sicher, dass der zentrale pnpm-Override den Sicherheits-Bump nicht mehr auf 8.5.11 zurücksetzt."
+}

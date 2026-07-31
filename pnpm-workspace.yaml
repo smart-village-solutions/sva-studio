@@ -36,7 +36,7 @@ overrides:
   form-data: "4.0.6"
   follow-redirects: "1.16.0"
   launch-editor: "2.14.1"
-  postcss: "8.5.11"
+  postcss: "8.5.18"
   protobufjs: "7.6.3"
   rollup: "4.59.0"
   srvx: "0.11.15"

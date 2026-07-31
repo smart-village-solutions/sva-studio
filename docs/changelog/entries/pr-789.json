@@ -1,0 +1,4 @@
+{
+  "prNumber": 789,
+  "body": "Der Live-Runtime-Check vergleicht optionale Flags nur noch, wenn dafür ein expliziter Sollwert konfiguriert ist."
+}

@@ -39,6 +39,8 @@ describe('initializeOtelSdk', () => {
     processOnMock.mockClear();
     processExitMock.mockClear();
     process.env = { ...originalEnv };
+    delete process.env.ENABLE_OTEL;
+    delete process.env.SVA_ENABLE_SERVER_CONSOLE_LOGS;
   });
 
   afterEach(() => {

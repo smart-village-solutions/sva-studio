@@ -6,6 +6,8 @@ describe('logging runtime config', () => {
   beforeEach(async () => {
     vi.resetModules();
     process.env = { ...originalEnv };
+    delete process.env.ENABLE_OTEL;
+    delete process.env.SVA_ENABLE_SERVER_CONSOLE_LOGS;
     const runtime = await import('../src/logger/logging-runtime.server');
     runtime.resetLoggingRuntimeForTests();
   });

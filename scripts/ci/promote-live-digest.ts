@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 
 import { commandExists, runCapture } from '../ops/runtime/process.ts';
 import { inspectRemoteServiceContract } from '../ops/runtime/remote-service-spec.ts';
+import { stackNameForEnvironment } from './promote-target.ts';
 
 const rootDir = resolve(import.meta.dirname, '../..');
 
@@ -26,7 +27,7 @@ const main = async () => {
   const expectedImage = expectedFlagIndex === -1 ? undefined : required(process.argv[expectedFlagIndex + 1], '--expected');
 
   const quantumEndpoint = required(process.env.QUANTUM_ENDPOINT, 'QUANTUM_ENDPOINT');
-  const stackName = `studio-${environment}`;
+  const stackName = stackNameForEnvironment(environment);
   const contract = await inspectRemoteServiceContract(
     {
       commandExists: (command) => commandExists(rootDir, command),

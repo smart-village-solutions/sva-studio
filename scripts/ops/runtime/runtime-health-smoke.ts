@@ -143,8 +143,8 @@ const assertBasicHealth = async (deps: RuntimeHealthDeps, env: NodeJS.ProcessEnv
 };
 
 const smokeRuntime = async (deps: RuntimeHealthDeps, runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
-  deps.assertRuntimeEnv(runtimeProfile, env);
   const isLocalProfile = deps.getRuntimeProfileDefinition(runtimeProfile).isLocal;
+  if (isLocalProfile) deps.assertRuntimeEnv(runtimeProfile, env);
   if (!isLocalProfile) await deps.waitForRemoteSmokeWarmup(env, { runtimeProfile });
 
   await assertBasicHealth(deps, env);

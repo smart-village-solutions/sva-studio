@@ -15,6 +15,68 @@ afterEach(() => {
 });
 
 describe('runtime-health helpers', () => {
+  it('requires complete local runtime variables before a local smoke', async () => {
+    const assertRuntimeEnv = vi.fn(() => {
+      throw new Error('missing local runtime variables');
+    });
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv,
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(),
+      getRemoteAppServiceName: vi.fn(),
+      getRuntimeProfileDefinition: vi.fn(() => ({ isLocal: true })),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn(),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    await expect(ops.smokeRuntime('local-builder', {})).rejects.toThrow('missing local runtime variables');
+    expect(assertRuntimeEnv).toHaveBeenCalledWith('local-builder', {});
+  });
+
+  it('does not require local secret copies for a remote smoke', async () => {
+    const assertRuntimeEnv = vi.fn();
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv,
+      checkHttpHealth: vi.fn(async () => ({ response: { ok: false, status: 503 } })),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(),
+      getRemoteAppServiceName: vi.fn(),
+      getRuntimeProfileDefinition: vi.fn(() => ({ isLocal: false })),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn(),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(async () => []),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    await expect(
+      ops.smokeRuntime('studio', { SVA_PUBLIC_BASE_URL: 'https://studio.example.test' }),
+    ).rejects.toThrow('Live-Healthcheck fehlgeschlagen: 503');
+    expect(assertRuntimeEnv).not.toHaveBeenCalled();
+  });
+
   it('compares only explicitly configured optional live runtime flags', () => {
     expect(buildExpectedLiveRuntimeFlags('studio', {})).toEqual({
       SVA_RUNTIME_PROFILE: 'studio',

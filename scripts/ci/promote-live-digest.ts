@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 
 import { commandExists, runCapture } from '../ops/runtime/process.ts';
 import { inspectRemoteServiceContract } from '../ops/runtime/remote-service-spec.ts';
-import { stackNameForEnvironment } from './promote-target.ts';
+import { stackNameForEnvironment, type PromoteEnvironment } from './promote-target.ts';
 
 const rootDir = resolve(import.meta.dirname, '../..');
 
@@ -20,9 +20,15 @@ const digestSuffixPattern = /@sha256:[a-f0-9]{64}$/u;
 export const matchesExpectedLiveImage = (expectedImage: string, liveImage: string): boolean =>
   liveImage === expectedImage || liveImage === `${expectedImage}${liveImage.match(digestSuffixPattern)?.[0] ?? ''}`;
 
+export const parseLiveDigestEnvironment = (value: string | undefined): PromoteEnvironment => {
+  if (value !== 'dev' && value !== 'staging' && value !== 'prod') {
+    throw new Error('Der Live-Digest-Nachweis ist nur für dev, staging oder prod zulässig.');
+  }
+  return value;
+};
+
 const main = async () => {
-  const environment = process.argv[2];
-  if (environment !== 'staging' && environment !== 'prod') throw new Error('Der Live-Digest-Nachweis ist nur für staging oder prod zulässig.');
+  const environment = parseLiveDigestEnvironment(process.argv[2]);
   const expectedFlagIndex = process.argv.indexOf('--expected');
   const expectedImage = expectedFlagIndex === -1 ? undefined : required(process.argv[expectedFlagIndex + 1], '--expected');
 

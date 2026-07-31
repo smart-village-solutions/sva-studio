@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+// eslint-disable-next-line @nx/enforce-module-boundaries -- contract test for the repository-level CI script
 import {
   checkRolloutDocumentation,
   type RolloutDocument,

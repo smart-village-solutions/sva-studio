@@ -18,6 +18,44 @@ const createCheck = (status: DoctorCheck['status'], message: string): DoctorChec
 });
 
 describe('createAcceptanceCommandRunner', () => {
+  it('runs a remote smoke without requiring local copies of runtime secrets', async () => {
+    const env = { SVA_PUBLIC_BASE_URL: 'https://studio.example.test', SVA_STACK_NAME: 'studio' };
+    const assertRuntimeEnv = vi.fn();
+    const smokeRuntime = vi.fn();
+    const runAcceptanceCommand = createAcceptanceCommandRunner({
+      applyCliOptionEnvOverrides: vi.fn((profileEnv) => profileEnv),
+      assertDangerousOperationApproved: vi.fn(),
+      assertDeterministicRemoteMutationContext: vi.fn(),
+      assertRuntimeEnv,
+      buildProfileEnv: vi.fn(() => env),
+      cliOptions: {},
+      doctorRuntime: vi.fn(async () => createDoctorReport()),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRuntimeStatusExecutionMode: () => 'remote',
+      migrateAcceptance: vi.fn(),
+      precheckAcceptance: vi.fn(async () => createDoctorReport()),
+      printDoctorReport: vi.fn(),
+      readRemoteStackEvidence: vi.fn(async () => ({ summary: 'ok' })),
+      resetAcceptance: vi.fn(),
+      resolveRemoteDangerousApprovalRequirement: vi.fn(),
+      rootDir: '/repo',
+      run: vi.fn(),
+      runAcceptanceDeploy: vi.fn(),
+      runSchemaGuard: vi.fn(() => ({ ok: true })),
+      runtimeDoctorDbCheckOps: {
+        buildInstanceHostnameMappingCheck: vi.fn(),
+        runSchemaGuard: vi.fn(() => ({ ok: true })),
+      },
+      smokeRuntime,
+      summarizeSchemaGuardFailures: vi.fn(),
+    });
+
+    await runAcceptanceCommand('studio', 'smoke');
+
+    expect(smokeRuntime).toHaveBeenCalledWith('studio', env);
+    expect(assertRuntimeEnv).not.toHaveBeenCalled();
+  });
+
   it('verifies hostname mappings after reset before reporting success', async () => {
     const buildInstanceHostnameMappingCheck = vi.fn(async () => createCheck('ok', 'ok'));
     const runSchemaGuard = vi.fn(() => ({ ok: true }));

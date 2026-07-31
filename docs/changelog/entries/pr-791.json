@@ -1,0 +1,4 @@
+{
+  "prNumber": 791,
+  "body": "Der Remote-Command-Dispatcher führt Smoke-Checks ohne lokale Kopien der Runtime-Secrets aus."
+}

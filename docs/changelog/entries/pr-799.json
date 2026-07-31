@@ -1,0 +1,4 @@
+{
+  "prNumber": 799,
+  "body": "Push-Benachrichtigungen können für bestehende News nachträglich aktiviert werden, solange noch kein Push versendet wurde. Beim Speichern wird die vollständige News mit dem Push-Flag an den Mainserver übertragen."
+}

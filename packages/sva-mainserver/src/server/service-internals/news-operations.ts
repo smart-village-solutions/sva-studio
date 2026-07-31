@@ -74,7 +74,7 @@ const buildNewsMutationVariables = (input: {
   ...(input.newsId ? { id: input.newsId } : {}),
   ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
   title: input.news.title,
-  ...(input.newsId ? {} : { pushNotification: input.news.pushNotification ?? false }),
+  ...(input.news.pushNotification === undefined ? {} : { pushNotification: input.news.pushNotification }),
   ...(input.news.author ? { author: input.news.author } : {}),
   ...(input.news.keywords ? { keywords: input.news.keywords } : {}),
   ...(input.news.externalId ? { externalId: input.news.externalId } : {}),

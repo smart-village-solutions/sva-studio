@@ -506,6 +506,7 @@ describe('createSvaMainserverService', () => {
       publishedAt: item.publishedAt,
       categoryName: 'Allgemein',
       contentBlocks: [{ intro: 'Kurztext', body: '<p>Body</p>' }],
+      pushNotification: true,
     };
 
     await expect(service.listNews({ ...connection, page: 1, pageSize: 25 })).resolves.toEqual({
@@ -527,7 +528,15 @@ describe('createSvaMainserverService', () => {
     });
     expect(requestBodies[2]).toMatchObject({
       operationName: 'SvaMainserverCreateNews',
-      variables: { id: 'news-1', forceCreate: false, categoryName: 'Allgemein' },
+      variables: {
+        id: 'news-1',
+        forceCreate: false,
+        title: 'News',
+        publishedAt: '2026-04-14T09:30:00.000Z',
+        categoryName: 'Allgemein',
+        contentBlocks: [{ intro: 'Kurztext', body: '<p>Body</p>' }],
+        pushNotification: true,
+      },
     });
     expect(requestBodies[3]).toMatchObject({
       operationName: 'SvaMainserverDestroyNews',

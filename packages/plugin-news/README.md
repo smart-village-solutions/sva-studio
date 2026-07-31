@@ -38,6 +38,7 @@ Fachlich deckt das Paket derzeit insbesondere folgende Integrationspunkte ab:
 - zweckgebundene Media-Picker für Teaser- und Header-Bilder
 - CRUD-Zugriffe auf `/api/v1/mainserver/news`
 - formularnahe Validierung für Datumswerte, Kategorien, HTTPS-URLs und Inhaltsblöcke
+- einmalige Push-Benachrichtigung beim Erstellen oder bei einer späteren vollständigen Aktualisierung, solange noch kein Push versendet wurde
 
 ## Projektstruktur
 

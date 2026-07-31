@@ -204,7 +204,11 @@ describe('news api', () => {
       '/api/v1/mainserver/news/news-1',
       expect.objectContaining({ method: 'PATCH' })
     );
-    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]?.[1]?.body as string)).not.toHaveProperty('pushNotification');
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]?.[1]?.body as string)).toEqual(
+      expect.objectContaining({
+        pushNotification: true,
+      })
+    );
     expect(fetch).toHaveBeenNthCalledWith(
       2,
       '/api/v1/mainserver/news/news-1',

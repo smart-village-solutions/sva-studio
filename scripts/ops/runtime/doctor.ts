@@ -181,7 +181,11 @@ const doctorRuntime = async (
   env: NodeJS.ProcessEnv,
 ): Promise<DoctorReport> => {
   const checks: DoctorCheck[] = [];
-  addRuntimeEnvCheck(deps, checks, runtimeProfile, env, 'Runtime-Profil ist nicht vollstaendig konfiguriert.');
+  if (deps.isRemoteRuntimeProfile(runtimeProfile)) {
+    checks.push(await deps.buildLiveRuntimeEnvCheck(runtimeProfile, env));
+  } else {
+    addRuntimeEnvCheck(deps, checks, runtimeProfile, env, 'Runtime-Profil ist nicht vollstaendig konfiguriert.');
+  }
   checks.push(deps.buildLocalProvisioningWorkerCheck(runtimeProfile, deps.readLocalWorkerState(deps.localWorkerStateFile)));
   await addEndpointChecks(deps, checks, env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000');
   await addAuthChecks(deps, checks, runtimeProfile, env);

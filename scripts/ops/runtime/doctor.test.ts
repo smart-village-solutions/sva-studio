@@ -108,6 +108,8 @@ describe('createRuntimeDoctorOps', () => {
     } satisfies AcceptanceDeployOptions);
 
     expect(remoteReport.checks.map((check) => check.name)).toContain('acceptance-service');
+    expect(remoteReport.checks.map((check) => check.name)).toContain('runtime-env-live');
+    expect(remoteReport.checks.map((check) => check.name)).not.toContain('runtime-env');
     expect(remoteReport.checks.map((check) => check.name)).not.toContain('otel');
     expect(localBuilderReport.checks.map((check) => check.name)).toContain('otel');
     expect(localKeycloakReport.checks.map((check) => check.name)).toContain('actor-diagnosis');

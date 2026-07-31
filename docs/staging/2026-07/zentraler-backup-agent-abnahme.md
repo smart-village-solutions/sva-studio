@@ -1,5 +1,7 @@
 # Abnahme des zentralen Backup-Agenten in Staging
 
+> **Historischer Staging-Nachweis:** Die vollständige Abnahme einschließlich Production wurde am 31. Juli 2026 abgeschlossen. Aktueller Betriebsvertrag ist der [kanonische Studio-Rollout](../../guides/studio-rollout-process.md); der [finale Abnahmenachweis](../../reports/backup-agent-rollout-abnahme-2026-07-31.md) dokumentiert den Abschluss.
+
 ## Ergebnis
 
 Der zentrale Backup-Agent wurde am 29. Juli 2026 auf dem Quantum-Endpoint `sva`

@@ -18,7 +18,7 @@ Schulden auf IST-Basis.
 1. Drift zwischen Intermediate-SSR-Output und finaler Runtime
    - Impact: hoch (ein scheinbar grüner Build kann im finalen `.output/server/**` dennoch einen anderen Server-Entry oder Dispatch-Pfad ausliefern)
    - Wahrscheinlichkeit: hoch
-   - Maßnahme: finalen Runtime-Vertrag über `verify:runtime-artifact`, `test:release:studio`, runner-basiertes Image-Verify und Precheck-Evidenz zum Ziel-Digest erzwingen; `.nitro/vite/services/ssr/**` nur noch als Diagnosematerial behandeln
+   - Maßnahme: finalen Runtime-Vertrag im einzigen Main-Workflow `Build` über `verify:runtime-artifact` erzwingen, den erzeugten Digest direkt an Dev übergeben und in `Promote` an OCI-Revision sowie Runtime-Verifikation binden; `.nitro/vite/services/ssr/**` nur noch als Diagnosematerial behandeln
 
 2. Geheimnisse in lokalen Env-Dateien
    - Impact: hoch (Credential Leak Risiko)
@@ -449,4 +449,4 @@ Referenzen:
 34. Erweiterter Blast Radius des zentralen Backup-Agenten
    - Impact: hoch (der Dienst besitzt getrennten Zugriff auf beide Datenbanken und Backup-Buckets)
    - Wahrscheinlichkeit: niedrig
-   - Maßnahme: eine Replica, globale Serialisierung, keine allgemeine Kommandoausführung, getrennte Secrets, feste Umgebungsableitung, OIDC- und HMAC-Prüfung sowie dauerhafte MinIO-Evidenz. Bis zum erfolgreichen Staging- und Production-Nachweis bleibt der temporäre Backup-Stack als expliziter Fallback erhalten.
+   - Maßnahme: eine Replica, globale Serialisierung, keine allgemeine Kommandoausführung, getrennte Secrets, feste Umgebungsableitung, OIDC- und HMAC-Prüfung sowie dauerhafte MinIO-Evidenz. Nach erfolgreichem Staging- und Production-Nachweis ist der zentrale Agent der Standard; der noch vorhandene temporäre Executor ist ausschließlich Incident-Fallback und soll in einem separaten Change entfernt werden.

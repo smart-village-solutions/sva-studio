@@ -16,7 +16,7 @@ SVA Studio (ehemals "CMS 2.0") modernisiert das Redaktionssystem der Smart Villa
 - **Backend:** Node.js, GraphQL API (externe Smart Village App Backend, wird punktuell erweitert)
 - **Testing:** (noch festzulegen; Anforderung: hohe Test-Coverage für neue Logik)
 - **Code Quality:** Prettier (aktiviert), Linter/Type-Checks (noch zu konfigurieren)
-- **Deployment:** (noch offen; Cloud/On-Premise hybrid möglich)
+- **Deployment:** Docker Swarm auf Planetary Quantum; kanonische Promotion über GitHub Actions von Dev nach Staging und Production mit immutable Image-Digests und zentralem Backup-Agenten
 
 ## Project Conventions
 
@@ -35,6 +35,7 @@ SVA Studio (ehemals "CMS 2.0") modernisiert das Redaktionssystem der Smart Villa
 - **Separation of Concerns:** Backend/Frontend klar getrennt; API als zentrale Schnittstelle
 - **OpenSpec:** Strukturierte Change-Proposals und Specs in `openspec/` für Architektur-Entscheidungen
 - **Architekturdoku (arc42):** Architektur-/Systemdoku unter `docs/architecture/README.md` mit Abschnitten 1-12; bei Architekturwirkung muessen betroffene Abschnitte in OpenSpec-Changes referenziert werden
+- **Rollout:** `docs/guides/studio-rollout-process.md` ist die einzige normative Bedienanleitung für Dev, Staging und Production; lokale Operatorpfade sind Diagnose und Recovery
 
 ### Testing Strategy
 - **Pflicht:** Neue Logik benötigt Tests; Bugfixes benötigen Repro-Tests

@@ -472,18 +472,18 @@ Fehlerpfad:
 
 ### Szenario 3b: Prod-naher Studio-Deploy mit Drift-Gates
 
-1. Ein Operator startet `pnpm env:release:studio:local` fuer einen konkreten Digest.
-2. `environment-precheck` liest den Live-Stack bevorzugt ueber die Portainer-API und vergleicht Soll-/Ist-Drift fuer `app`.
-3. `image-smoke` prueft Root-Host, Tenant-Hosts und OIDC-Verhalten prod-nah gegen das Zielartefakt.
-4. Wenn derselbe Digest bereits live laeuft, darf der Gate-Schritt die Live-Paritaet nur wiederverwenden, wenn Ingress-Konsistenz, Tenant-Auth-Proof, Runtime-Flags und `app-db-principal` fuer genau dieses Digest gruen sind.
-5. Erst danach folgen optional `migrate` und `bootstrap`, dann der eigentliche Live-Rollout.
-6. `internal-verify`, `smoke` und `precheck` bestaetigen den Zustand erneut aus Sicht der laufenden App.
+1. GitHub Actions `Promote` bindet Zielumgebung, Git-Änderungsbereich und Image-Digest aneinander.
+2. Der Workflow liest den Live-Stack und vergleicht Soll-/Ist-Drift für `app`.
+3. Bei Migration oder Bootstrap fordert er für Staging oder Production vor jeder Datenmutation ein umgebungsgebundenes Backup an und verifiziert das Dump-Objekt unabhängig.
+4. Für Production muss derselbe Digest zuvor einen abgeschlossenen mutierenden Staging-Pfad bestanden haben.
+5. Erst danach folgen Migration, Bootstrap, Postconditions und der Live-Rollout.
+6. Runtime-Smoke, aktive Tenant-Logins und Live-Digest bestätigen den Zustand erneut aus Sicht der laufenden App.
 
 Fehlerpfad:
 
 - Weicht der Root-/Tenant-/OIDC-Vertrag ab, blockiert der Rollout vor jeder Live-Mutation.
 - Ist `/health/ready` aus Sicht von `APP_DB_USER` nicht stabil, gilt der Stack auch bei gruener Superuser-Sicht als nicht freigegeben.
-- Manueller Incident-Recovery ueber Portainer oder Quantum bleibt temporaer; abgeschlossen ist der Fall erst nach kanonischem `app-only`-Reconcile und erneut gruener Verifikation.
+- Manueller Incident-Recovery ueber Portainer oder Quantum bleibt temporär; abgeschlossen ist der Fall erst nach Reconcile gegen den kanonischen Promote-Vertrag und erneut grüner Verifikation.
 
 ### Szenario 4: Initialer Shell-Ladezustand mit Skeleton UI
 
@@ -693,13 +693,13 @@ Fehlerpfad:
 
 ### Ergänzung 2026-03: Produktionsnahe Release-Validierung
 
-1. Ein Release-Workflow baut genau ein `linux/amd64`-Image und ermittelt den Manifest-Digest.
-2. `Studio Image Verify` startet exakt dieses Image isoliert im Runner und prüft `/health/live`, `/health/ready` und `/`.
-3. Der lokale Operator-Einstieg `env:release:studio:local` fuehrt danach `env:precheck:studio`, `env:deploy:studio` und `env:smoke:studio` gegen denselben Digest aus; `env:precheck:studio` dokumentiert zusätzlich, ob ein passendes `Studio Image Verify`-Artefakt fuer diesen Digest vorliegt.
-4. Nach optionaler Migration wird der Stack aktualisiert.
-5. `internal-verify` kombiniert interne HTTP-Probes gegen den App-Service mit `doctor`-Diagnostik.
-6. `external-smoke` prüft öffentliche URL, Health-Pfade, Auth-Entry und IAM-Kontext.
-7. Erst danach wird eine technische `release-decision` erzeugt und als Artefakt persistiert.
+1. `Build` baut genau ein `linux/amd64`-Image und ermittelt den Manifest-Digest.
+2. Der Main-Push ruft `Promote` für Dev im diff-basierten Modus `auto` auf.
+3. Ein manueller Staging-Promote prüft denselben Digest inklusive OCI-Revision, One-shot-Gates, Runtime und Tenant-Hosts.
+4. Ein mutierender Staging-Lauf persistiert die Digest- und Phasenevidenz.
+5. Production akzeptiert bei Migration oder Bootstrap nur genau diesen Staging-Digest, ein Wartungsfenster, die Environment-Freigabe und ein frisches verifiziertes Production-Backup.
+6. Der Workflow aktualisiert den Stack erst nach erfolgreichen Postconditions.
+7. Runtime-Smoke und Live-Digest-Prüfung erzeugen die abschließende Release-Evidenz.
 
 Fehlerpfad:
 

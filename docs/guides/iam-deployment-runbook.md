@@ -18,7 +18,7 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
    - `0004_iam_account_profile.sql`
    - `0005_iam_idempotency_keys.sql`
    - `0006_iam_activity_log_archive.sql`
-   - produktionsnahe Remote-Profile fuehren diese Migrationen ueber `pnpm env:migrate:studio` oder den lokalen Operator-Pfad `pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=schema-and-app --maintenance-window="..." --rollback-hint="..."` als dedizierten Swarm-Migrationsjob aus
+   - produktionsnahe Remote-Profile führen diese Migrationen ausschließlich über GitHub Actions `Promote` mit `migration_mode=run` aus; Reihenfolge, Backup und Wartungsfenster stehen im [kanonischen Studio-Rollout](./studio-rollout-process.md)
 2. **Migration validieren**
    - `pnpm nx run data:db:migrate:validate`
    - im Remote-Report zusätzlich den Artefaktblock `*.migration-job.json` auf Job-Exit-Code, Task-State und Task-ID prüfen

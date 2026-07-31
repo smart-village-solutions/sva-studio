@@ -1,75 +1,7 @@
-# Runbook: Tenant-Admin-Client Rollout auf Swarm
+# Historischer Tenant-Admin-Client-Cutover
 
-## Ziel
+Status: **abgeschlossen – keine Betriebsanweisung**
 
-Dieses Runbook beschreibt den operativen Rollout des separaten `tenantAdminClient`-Vertrags auf dem Swarm-Profil `studio`.
+Dieses Dokument bleibt nur als stabiler Verweis auf den einmaligen Cutover der Migrationen `0030` und `0031` erhalten. Die früheren manuellen Migrations-, Backfill- und Deploy-Kommandos wurden entfernt, weil sie nicht auf heutige Umgebungen übertragen werden dürfen.
 
-## Voraussetzungen
-
-- Zielsystem nutzt den kanonischen Deploy-Pfad aus `./swarm-deployment-runbook.md`.
-- Das App-Image mit `tenantAdminClient`-Support ist gebaut und als Digest verfügbar.
-- Datenbank- und Keycloak-Zugriff für Migration, Backfill und Verifikation sind vorhanden.
-
-## Rollout-Reihenfolge
-
-1. **Migration ausführen**
-   - zuerst nur bis zur additiven Vertragsmigration:
-     `pnpm env:migrate:studio -- --up-to 0030`
-   - Erwartung: `0030_iam_tenant_admin_client_contract.sql` ist erfolgreich angewendet.
-2. **Backfill ausführen**
-   - `pnpm ops instance-registry backfill-admin-client`
-   - Erwartung: alle aktiven Instanzen ohne `tenantAdminClient` erhalten einen separaten Tenant-Admin-Client inklusive Secret.
-3. **NOT-NULL-Verstärkung nachziehen**
-   - `pnpm env:migrate:studio`
-   - Erwartung: `0031_iam_tenant_admin_client_not_null.sql` laeuft jetzt ohne Guard-Fehler durch.
-4. **Datenbankzustand verifizieren**
-   - `SELECT id, tenant_admin_client_id FROM iam.instances WHERE status = 'active';`
-   - Erwartung: keine `NULL`-Werte in `tenant_admin_client_id`.
-5. **Drift vor App-Deploy prüfen**
-   - `pnpm env:precheck:studio`
-   - Erwartung:
-     - kein `tenant_admin_client_cutover_blocked`
-     - keine aktive Instanz ohne Tenant-Admin-Client
-     - `sva_instance_admin_client_drift` ist für alle aktiven Instanzen `0`
-6. **App deployen**
-   - `pnpm env:release:studio:local -- --image-digest=<sha256-digest> --release-mode=app-only --rollback-hint="vorherigen Digest erneut deployen"`
-7. **Doctor ausführen**
-   - `pnpm env:doctor:studio`
-   - Erwartung:
-     - Login- und Tenant-Admin-Pfad sind getrennt sichtbar
-     - keine fail-closed-Diagnose wegen fehlendem Admin-Client
-     - Runtime nutzt den Tenant-Admin-Client statt impliziter Fallbacks
-
-## Zusätzliche Verifikation
-
-- Root-Host: `/admin/instances`
-  - aktive Instanzen öffnen
-  - Keycloak-Status prüfen
-  - Reconcile nur dann ausführen, wenn Drift oder Secret-Abweichung sichtbar ist
-- Monitoring:
-  - Prometheus-Query: `max by (instance_id) (sva_instance_admin_client_drift)`
-  - Erwartung: alle aktiven Instanzen liefern `0`
-  - Alerts `TenantAdminClientDriftDetected` und `TenantAdminClientDriftCritical` bleiben `inactive`
-
-## Troubleshooting
-
-- Wenn der Backfill einzelne Instanzen auslässt:
-  - Status und Registry-Datensatz der Instanz prüfen
-  - betroffene Instanz manuell über Reconcile auf `provision_admin_client` bringen
-- Wenn `0031_iam_tenant_admin_client_not_null.sql` mit einem Guard-Fehler abbricht:
-  - Backfill fuer alle aktiven Instanzen abschliessen
-  - `SELECT id FROM iam.instances WHERE status = 'active' AND NULLIF(BTRIM(tenant_admin_client_id), '') IS NULL;`
-  - danach die Migration erneut ausfuehren
-- Wenn `env:precheck:studio` blockiert:
-  - fehlende `tenant_admin_client_id` oder fehlendes Secret in `iam.instances` identifizieren
-  - danach Backfill oder Reconcile erneut ausführen
-- Wenn `sva_instance_admin_client_drift` trotz Backfill `1` bleibt:
-  - Instanzdetail und Keycloak-Status öffnen
-  - prüfen, ob `tenantAdminClient.clientId` oder dessen Secret im Registry-Datensatz fehlt
-
-## Referenzen
-
-- `./swarm-deployment-runbook.md`
-- `./instance-keycloak-provisioning.md`
-- `../development/runtime-profile-betrieb.md`
-- `openspec/changes/refactor-tenant-admin-client-contract/design.md`
+Neue Änderungen am Tenant-Admin-Client werden als normale Migration beziehungsweise Bootstrap-Risiken klassifiziert und ausschließlich nach dem [kanonischen Studio-Rollout](./studio-rollout-process.md) erst nach Staging und anschließend mit demselben Digest nach Production befördert.

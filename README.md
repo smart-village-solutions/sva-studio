@@ -58,13 +58,13 @@ Für eine punktuelle Dead-Code- und Dependency-Analyse steht `pnpm knip:scan` be
 
 ## Betriebsprofile
 
-Die drei offiziellen Laufzeitprofile werden zentral über `SVA_RUNTIME_PROFILE` und die Kommandos `pnpm env:*:<profil>` gesteuert:
+Die drei offiziellen Laufzeitprofile werden zentral über `SVA_RUNTIME_PROFILE` beschrieben:
 
 - `local-keycloak` für lokalen Betrieb auf `http://localhost:3000` mit Test-Realm
 - `local-builder` für lokalen Builder.io-Betrieb mit Mock-User
 - `studio` für den produktionsnahen Serverbetrieb auf `https://studio.smart-village.app`
 
-Kanonische Profildefinitionen liegen unter `config/runtime/`. Projektweite Start-, Stop-, Update-, Smoke- und Migrationskommandos sind in `docs/development/runtime-profile-betrieb.md` dokumentiert.
+Kanonische Profildefinitionen liegen unter `config/runtime/`. Lokale Start-, Stop-, Update-, Smoke- und Migrationskommandos sowie read-only Studio-Diagnose sind in `docs/development/runtime-profile-betrieb.md` dokumentiert. Reguläre Remote-Rollouts für Dev, Staging und Production laufen ausschließlich über GitHub Actions nach dem [kanonischen Studio-Rollout](docs/guides/studio-rollout-process.md); lokale Studio-Mutationen sind Incident-Recovery.
 
 ## Entwicklung: Node.js Version
 

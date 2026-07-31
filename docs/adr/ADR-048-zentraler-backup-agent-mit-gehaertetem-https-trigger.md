@@ -14,7 +14,7 @@ Ein einzelner `studio-backup-agent` wird als bewusst breite Vertrauenszone betri
 
 GitHub authentisiert sich mit einem kurzlebigen OIDC-Token. Der Agent bindet dessen Claims an Repository, Environment und eine Allowlist der Workflows auf `main`. Zusätzlich signieren getrennte HMAC-Schlüssel die Requests für Staging und Production. Datenbankziele, Buckets und Credentials stammen ausschließlich aus der internen Umgebungs-Allowlist.
 
-Der Agent persistiert den Request vor `202 Accepted`, verarbeitet global genau einen Auftrag und schreibt das terminale Ergebnis nach MinIO. Request-ID, Ablaufzeit, Digest und Production-Wartungsfenster werden fail-closed geprüft. Der bisherige temporäre Stack bleibt bis zur Betriebsabnahme über `BACKUP_EXECUTOR=temporary` verfügbar.
+Der Agent persistiert den Request vor `202 Accepted`, verarbeitet global genau einen Auftrag und schreibt das terminale Ergebnis nach MinIO. Request-ID, Ablaufzeit, Digest und Production-Wartungsfenster werden fail-closed geprüft. Nach der erfolgreichen Betriebsabnahme am 31. Juli 2026 ist der Agent der Standard. Der noch vorhandene Schalter `BACKUP_EXECUTOR=temporary` ist ausschließlich Incident-Fallback und kein regulärer Betriebsmodus; seine Entfernung bleibt ein separater Folgechange.
 
 ## Konsequenzen
 

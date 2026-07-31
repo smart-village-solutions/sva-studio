@@ -55,7 +55,7 @@ Dieses Dokument bündelt typische Störungen und schnelle Diagnosepfade für lok
 
 **Pruefen:**
 
-- ob `pnpm env:migrate:studio` `0027_iam_instance_keycloak_bootstrap.sql` bereits angewendet hat
+- ob die Promote-Migrationsevidenz bestätigt, dass `0027_iam_instance_keycloak_bootstrap.sql` angewendet wurde
 - ob `iam.instances.auth_client_secret_ciphertext` fuer den betroffenen Tenant gesetzt ist
 - in Loki nach `tenant_auth_resolution_summary` suchen und auf diese Felder achten:
   - `secret_source`
@@ -247,9 +247,9 @@ Praxisbeweis fuer `studio`:
 - der Logging-Pfad gilt erst dann als wirklich brauchbar, wenn nach frischen Tenant-Probes sowohl `observability_ready` als auch `tenant_auth_resolution_summary` fuer `bb-guben` und `de-musterhausen` in Loki auftauchen
 - nur allgemeine Startup-Logs reichen nicht als Auth-Diagnose
 
-### 11c. Deploy-Report ist rot, obwohl der Stack faktisch gesund ist
+### 11c. Lokaler Recovery-Report ist rot, obwohl der Stack faktisch gesund ist
 
-**Symptom:** Report unter `artifacts/runtime/deployments/` endet auf `error`, aber Service-Spec, Tasks und externe Smokes sind grün.
+**Symptom:** Ein Report eines lokalen Incident-Recovery-Laufs unter `artifacts/runtime/deployments/` endet auf `error`, aber Service-Spec, Tasks und externe Smokes sind grün. Reguläre Rollouts werden dagegen im GitHub-`Promote`-Run bewertet.
 
 **Prüfen:**
 
@@ -258,7 +258,7 @@ Praxisbeweis fuer `studio`:
 - externe Health- und Login-Smokes
 - bekannte `quantum-cli exec`-/Websocket-Flakes
 
-**Typische Ursache:** False-Negative im Verify-/Transportpfad, nicht zwingend ein fehlgeschlagener Rollout.
+**Typische Ursache:** False-Negative im lokalen Verify-/Transportpfad. Ein roter GitHub-`Promote`-Run bleibt unabhängig davon fehlgeschlagen.
 
 ### 12. E2E-Smoke-Test bricht vor dem eigentlichen Browserlauf ab
 

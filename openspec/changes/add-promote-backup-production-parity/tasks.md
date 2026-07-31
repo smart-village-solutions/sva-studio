@@ -24,4 +24,4 @@
 
 - [x] 4.1 arc42-Abschnitte 07, 08 und 11 sowie das Swarm-Runbook mit Backup-, Recovery- und Production-Paritätsvertrag aktualisieren.
 - [x] 4.2 MinIO-Bucket-Lifecycle vor der Abnahme konfigurieren sowie Aufbewahrungszeit und Verantwortlichkeit im Runbook dokumentieren. (Für beide Buckets ist die Regel `expire-promote-backups-after-180-days` aktiv.)
-- [ ] 4.3 Einen Staging- und anschließend einen Production-Promote mit demselben Digest, Backup-Nachweis und Smoke-Evidenz durchführen.
+- [x] 4.3 Einen Staging- und anschließend einen Production-Promote mit demselben Digest, Backup-Nachweis und Smoke-Evidenz durchführen. (Production wurde mit der ausdrücklich akzeptierten Tenant-Ausnahme `hb-meinquartier` abgenommen; Details stehen im Rollout-Nachweis.)

@@ -1,457 +1,66 @@
 ---
 name: nx-workspace-patterns
-description: Configure and optimize Nx monorepo workspaces. Use when setting up Nx, configuring project boundaries, optimizing build caching, or implementing affected commands.
+description: Konfiguriere, überprüfe und optimiere Nx-23-Workspaces mit pnpm. Verwende diesen Skill bei Änderungen an nx.json, Projekt-Targets, Caching, Inputs, Abhängigkeitsgrenzen, Vite/Vitest/Playwright-Integration oder affected-Workflows.
 ---
 
 # Nx Workspace Patterns
 
-Production patterns for Nx monorepo management.
+## Vorgehen
 
-## When to Use This Skill
+1. Lies `nx.json`, das betroffene `project.json` bzw. `package.json` und die Root-Skripte.
+2. Ermittle vor einer Änderung die vorhandenen Projekte, Targets und Abhängigkeiten:
 
-- Setting up new Nx workspaces
-- Configuring project boundaries
-- Optimizing CI with affected commands
-- Implementing remote caching
-- Managing dependencies between projects
-- Migrating to Nx
+   ```bash
+   pnpm nx show projects
+   pnpm nx show project <projekt>
+   pnpm nx graph --file=tmp/nx-graph.html
+   ```
 
-## Core Concepts
+3. Verwende die vorhandenen Plugins und Executors. Prüfe bei unbekannten Optionen zuerst `pnpm nx <befehl> --help` oder die Version-23-Dokumentation.
+4. Begrenze Validierungen auf das veränderte Target. Prüfe vor breiten affected-Läufen zuerst dessen Umfang.
 
-### 1. Nx Architecture
+## Workspace-Konventionen
 
-```
-workspace/
-├── apps/              # Deployable applications
-│   ├── web/
-│   └── api/
-├── libs/              # Shared libraries
-│   ├── shared/
-│   │   ├── ui/
-│   │   └── utils/
-│   └── feature/
-│       ├── auth/
-│       └── dashboard/
-├── tools/             # Custom executors/generators
-├── nx.json            # Nx configuration
-└── workspace.json     # Project configuration
-```
+- Nutze `pnpm nx`, nie eine globale Nx-Installation oder `npx nx`.
+- Der Workspace verwendet `apps/` und `packages/`, pnpm und Nx 23.
+- Relevante Targets sind unter anderem `build`, `lint`, `test:unit`, `test:coverage`, `test:integration`, `test:types`, `typecheck` und `check:runtime`.
+- Dateifilter für Vitest-Targets immer als `--testFiles=<pfad>` übergeben.
+- Behalte die deklarativen `targetDefaults`, `namedInputs` und `outputs` in `nx.json` konsistent. Caching nur aktivieren, wenn der Target-Lauf vollständig deterministisch ist.
+- Nutze `workspace:*` für interne Paketabhängigkeiten. Halte die Projektgraph-Grenzen über ESLint und vorhandene Repository-Checks ein.
 
-### 2. Library Types
-
-| Type            | Purpose                          | Example             |
-| --------------- | -------------------------------- | ------------------- |
-| **feature**     | Smart components, business logic | `feature-auth`      |
-| **ui**          | Presentational components        | `ui-buttons`        |
-| **data-access** | API calls, state management      | `data-access-users` |
-| **util**        | Pure functions, helpers          | `util-formatting`   |
-| **shell**       | App bootstrapping                | `shell-web`         |
-
-## Templates
-
-### Template 1: nx.json Configuration
-
-```json
-{
-  "$schema": "./node_modules/nx/schemas/nx-schema.json",
-  "npmScope": "myorg",
-  "affected": {
-    "defaultBase": "main"
-  },
-  "tasksRunnerOptions": {
-    "default": {
-      "runner": "nx/tasks-runners/default",
-      "options": {
-        "cacheableOperations": [
-          "build",
-          "lint",
-          "test",
-          "e2e",
-          "build-storybook"
-        ],
-        "parallel": 3
-      }
-    }
-  },
-  "targetDefaults": {
-    "build": {
-      "dependsOn": ["^build"],
-      "inputs": ["production", "^production"],
-      "cache": true
-    },
-    "test": {
-      "inputs": ["default", "^production", "{workspaceRoot}/jest.preset.js"],
-      "cache": true
-    },
-    "lint": {
-      "inputs": ["default", "{workspaceRoot}/.eslintrc.json"],
-      "cache": true
-    },
-    "e2e": {
-      "inputs": ["default", "^production"],
-      "cache": true
-    }
-  },
-  "namedInputs": {
-    "default": ["{projectRoot}/**/*", "sharedGlobals"],
-    "production": [
-      "default",
-      "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
-      "!{projectRoot}/tsconfig.spec.json",
-      "!{projectRoot}/jest.config.[jt]s",
-      "!{projectRoot}/.eslintrc.json"
-    ],
-    "sharedGlobals": [
-      "{workspaceRoot}/babel.config.json",
-      "{workspaceRoot}/tsconfig.base.json"
-    ]
-  },
-  "generators": {
-    "@nx/react": {
-      "application": {
-        "style": "css",
-        "linter": "eslint",
-        "bundler": "webpack"
-      },
-      "library": {
-        "style": "css",
-        "linter": "eslint"
-      },
-      "component": {
-        "style": "css"
-      }
-    }
-  }
-}
-```
-
-### Template 2: Project Configuration
-
-```json
-// apps/web/project.json
-{
-  "name": "web",
-  "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "apps/web/src",
-  "projectType": "application",
-  "tags": ["type:app", "scope:web"],
-  "targets": {
-    "build": {
-      "executor": "@nx/webpack:webpack",
-      "outputs": ["{options.outputPath}"],
-      "defaultConfiguration": "production",
-      "options": {
-        "compiler": "babel",
-        "outputPath": "dist/apps/web",
-        "index": "apps/web/src/index.html",
-        "main": "apps/web/src/main.tsx",
-        "tsConfig": "apps/web/tsconfig.app.json",
-        "assets": ["apps/web/src/assets"],
-        "styles": ["apps/web/src/styles.css"]
-      },
-      "configurations": {
-        "development": {
-          "extractLicenses": false,
-          "optimization": false,
-          "sourceMap": true
-        },
-        "production": {
-          "optimization": true,
-          "outputHashing": "all",
-          "sourceMap": false,
-          "extractLicenses": true
-        }
-      }
-    },
-    "serve": {
-      "executor": "@nx/webpack:dev-server",
-      "defaultConfiguration": "development",
-      "options": {
-        "buildTarget": "web:build"
-      },
-      "configurations": {
-        "development": {
-          "buildTarget": "web:build:development"
-        },
-        "production": {
-          "buildTarget": "web:build:production"
-        }
-      }
-    },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
-      "options": {
-        "jestConfig": "apps/web/jest.config.ts",
-        "passWithNoTests": true
-      }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "outputs": ["{options.outputFile}"],
-      "options": {
-        "lintFilePatterns": ["apps/web/**/*.{ts,tsx,js,jsx}"]
-      }
-    }
-  }
-}
-```
-
-### Template 3: Module Boundary Rules
-
-```json
-// .eslintrc.json
-{
-  "root": true,
-  "ignorePatterns": ["**/*"],
-  "plugins": ["@nx"],
-  "overrides": [
-    {
-      "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
-      "rules": {
-        "@nx/enforce-module-boundaries": [
-          "error",
-          {
-            "enforceBuildableLibDependency": true,
-            "allow": [],
-            "depConstraints": [
-              {
-                "sourceTag": "type:app",
-                "onlyDependOnLibsWithTags": [
-                  "type:feature",
-                  "type:ui",
-                  "type:data-access",
-                  "type:util"
-                ]
-              },
-              {
-                "sourceTag": "type:feature",
-                "onlyDependOnLibsWithTags": [
-                  "type:ui",
-                  "type:data-access",
-                  "type:util"
-                ]
-              },
-              {
-                "sourceTag": "type:ui",
-                "onlyDependOnLibsWithTags": ["type:ui", "type:util"]
-              },
-              {
-                "sourceTag": "type:data-access",
-                "onlyDependOnLibsWithTags": ["type:data-access", "type:util"]
-              },
-              {
-                "sourceTag": "type:util",
-                "onlyDependOnLibsWithTags": ["type:util"]
-              },
-              {
-                "sourceTag": "scope:web",
-                "onlyDependOnLibsWithTags": ["scope:web", "scope:shared"]
-              },
-              {
-                "sourceTag": "scope:api",
-                "onlyDependOnLibsWithTags": ["scope:api", "scope:shared"]
-              },
-              {
-                "sourceTag": "scope:shared",
-                "onlyDependOnLibsWithTags": ["scope:shared"]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  ]
-}
-```
-
-### Template 4: Custom Generator
-
-```typescript
-// tools/generators/feature-lib/index.ts
-import {
-  Tree,
-  formatFiles,
-  generateFiles,
-  joinPathFragments,
-  names,
-  readProjectConfiguration,
-} from "@nx/devkit";
-import { libraryGenerator } from "@nx/react";
-
-interface FeatureLibraryGeneratorSchema {
-  name: string;
-  scope: string;
-  directory?: string;
-}
-
-export default async function featureLibraryGenerator(
-  tree: Tree,
-  options: FeatureLibraryGeneratorSchema,
-) {
-  const { name, scope, directory } = options;
-  const projectDirectory = directory
-    ? `${directory}/${name}`
-    : `libs/${scope}/feature-${name}`;
-
-  // Generate base library
-  await libraryGenerator(tree, {
-    name: `feature-${name}`,
-    directory: projectDirectory,
-    tags: `type:feature,scope:${scope}`,
-    style: "css",
-    skipTsConfig: false,
-    skipFormat: true,
-    unitTestRunner: "jest",
-    linter: "eslint",
-  });
-
-  // Add custom files
-  const projectConfig = readProjectConfiguration(
-    tree,
-    `${scope}-feature-${name}`,
-  );
-  const projectNames = names(name);
-
-  generateFiles(
-    tree,
-    joinPathFragments(__dirname, "files"),
-    projectConfig.sourceRoot,
-    {
-      ...projectNames,
-      scope,
-      tmpl: "",
-    },
-  );
-
-  await formatFiles(tree);
-}
-```
-
-### Template 5: CI Configuration with Affected
-
-```yaml
-# .github/workflows/ci.yml
-name: CI
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-env:
-  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
-
-jobs:
-  main:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Derive SHAs for affected commands
-        uses: nrwl/nx-set-shas@v4
-
-      - name: Run affected lint
-        run: npx nx affected -t lint --parallel=3
-
-      - name: Run affected test
-        run: npx nx affected -t test --parallel=3 --configuration=ci
-
-      - name: Run affected build
-        run: npx nx affected -t build --parallel=3
-
-      - name: Run affected e2e
-        run: npx nx affected -t e2e --parallel=1
-```
-
-### Template 6: Remote Caching Setup
-
-```typescript
-// nx.json with Nx Cloud
-{
-  "tasksRunnerOptions": {
-    "default": {
-      "runner": "nx-cloud",
-      "options": {
-        "cacheableOperations": ["build", "lint", "test", "e2e"],
-        "accessToken": "your-nx-cloud-token",
-        "parallel": 3,
-        "cacheDirectory": ".nx/cache"
-      }
-    }
-  },
-  "nxCloudAccessToken": "your-nx-cloud-token"
-}
-
-// Self-hosted cache with S3
-{
-  "tasksRunnerOptions": {
-    "default": {
-      "runner": "@nx-aws-cache/nx-aws-cache",
-      "options": {
-        "cacheableOperations": ["build", "lint", "test"],
-        "awsRegion": "us-east-1",
-        "awsBucket": "my-nx-cache-bucket",
-        "awsProfile": "default"
-      }
-    }
-  }
-}
-```
-
-## Common Commands
+## Affected und CI
 
 ```bash
-# Generate new library
-nx g @nx/react:lib feature-auth --directory=libs/web --tags=type:feature,scope:web
-
-# Run affected tests
-nx affected -t test --base=main
-
-# View dependency graph
-nx graph
-
-# Run specific project
-nx build web --configuration=production
-
-# Reset cache
-nx reset
-
-# Run migrations
-nx migrate latest
-nx migrate --run-migrations
+pnpm nx show projects --affected --withTarget=test:unit --base=origin/main
+pnpm nx affected --target=test:unit --base=origin/main
+pnpm nx affected --target=typecheck --base=origin/main
 ```
 
-## Best Practices
+- Setze in CI immer einen verlässlichen Base- und Head-SHA; ein flacher Checkout verfälscht affected-Ergebnisse.
+- Nutze lokale, gezielte Tests während der Entwicklung. Einen breiten affected-Lauf nur ausführen, wenn sein gemessener Umfang klein oder explizit gewünscht ist.
+- Verwende `pnpm nx reset` nur zur Fehlerdiagnose bei einem offensichtlich veralteten Nx-Daemon- oder Cache-Zustand; erkläre den Grund im Ergebnis.
 
-### Do's
+## Moderne Konfiguration
 
-- **Use tags consistently** - Enforce with module boundaries
-- **Enable caching early** - Significant CI savings
-- **Keep libs focused** - Single responsibility
-- **Use generators** - Ensure consistency
-- **Document boundaries** - Help new developers
+- Bevorzuge Plugin-inferenzierte Targets und projektspezifische `project.json`-Konfiguration gegenüber veralteten `workspace.json`- und `tasksRunnerOptions`-Mustern.
+- Für Vite, Vitest und Playwright die installierten Plugins `@nx/vite`, `@nx/vitest` und `@nx/playwright` verwenden.
+- Modellieren von Task-Abhängigkeiten mit `dependsOn`; Hashing mit präzisen `inputs` und `namedInputs`.
+- `cache: false` für E2E-, Coverage- und andere Läufe, deren Ergebnisse nicht sicher wiederverwendbar sind.
+- Nx Cloud nur konfigurieren oder ändern, wenn die Aufgabe dies verlangt. Keine Zugangsdaten in `nx.json` eintragen.
 
-### Don'ts
+## Prüfung
 
-- **Don't create circular deps** - Graph should be acyclic
-- **Don't skip affected** - Test only what changed
-- **Don't ignore boundaries** - Tech debt accumulates
-- **Don't over-granularize** - Balance lib count
+Nach Änderungen an Nx-Konfiguration mindestens das betroffene Target und eine Konfigurationsabfrage ausführen:
 
-## Resources
+```bash
+pnpm nx show project <projekt>
+pnpm nx run <projekt>:<target>
+```
 
-- [Nx Documentation](https://nx.dev/getting-started/intro)
-- [Module Boundaries](https://nx.dev/core-features/enforce-module-boundaries)
-- [Nx Cloud](https://nx.app/)
+Bei Änderungen an Tests oder Type-Targets zusätzlich den kleinsten passenden Test- bzw. Type-Gate ausführen. Bei serverseitigen Paketen früh `pnpm check:server-runtime` ausführen.
+
+## Quellen
+
+- https://nx.dev/docs/reference/nx-json
+- https://nx.dev/docs/features/ci-features/affected
+- https://nx.dev/docs/features/cache-task-results

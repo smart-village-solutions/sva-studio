@@ -136,14 +136,14 @@ See `docs/development/postgres-setup.md` and `docs/development/monitoring-stack.
 
 Only these markdown files are allowed at repo root: `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `DEBUGGING.md`, `DEVELOPMENT_RULES.md`, `AGENTS.md`, `CLAUDE.md`.
 
-| Content type      | Location                               |
-|-------------------|----------------------------------------|
+| Content type      | Location                                       |
+| ----------------- | ---------------------------------------------- |
 | Debug scripts     | `scripts/debug/auth/` or `scripts/debug/otel/` |
-| Staging docs      | `docs/staging/YYYY-MM/`               |
-| PR docs           | `docs/pr/<number>/`                   |
-| Operative reports | `docs/reports/`                        |
-| Architecture docs | `docs/architecture/` (arc42)          |
-| ADRs              | `docs/adr/`                           |
+| Staging docs      | `docs/staging/YYYY-MM/`                        |
+| PR docs           | `docs/pr/<number>/`                            |
+| Operative reports | `docs/reports/`                                |
+| Architecture docs | `docs/architecture/` (arc42)                   |
+| ADRs              | `docs/adr/`                                    |
 
 All documentation must be written in **German** (with correct Umlaute: ä, ö, ü, ß).
 
@@ -153,23 +153,23 @@ All documentation must be written in **German** (with correct Umlaute: ä, ö, �
 
 Für PR-Reviews und Code-Analysen stehen Claude-Varianten der Copilot-Agents unter `.claude/agents/` bereit. Der Orchestrator koordiniert die passenden Fachreviewer parallel.
 
-| Agent | Datei | Trigger |
-|-------|-------|---------|
-| **PR Orchestrator** | `pr-review-orchestrator.md` | Einstiegspunkt für jeden PR-Review |
-| **PR Fixer** | `pr-fixer.agent.md` | Iterativer Fix-Loop: Threads, Tests, Quality Gates |
-| **Rollout Operator** | `rollout-operator.agent.md` | Deployments, Image-Build, Quantum, Keycloak |
-| **Code Quality** | `code-quality.md` | Jede Codeänderung |
-| **Documentation** | `documentation.md` | Jede PR |
-| **Test Quality** | `test-quality.md` | Neue Logik, Verhaltensänderungen |
-| **Security & Privacy** | `security-privacy.md` | Auth, Sessions, PII, Secrets |
-| **UX & Accessibility** | `ux-accessibility.md` | UI, Formulare, Navigation |
-| **i18n & Content** | `i18n-content.md` | user-facing Texte, i18n-Keys |
-| **User Journey** | `user-journey-usability.md` | UI-Flows, Onboarding |
-| **Operations** | `operations-reliability.md` | Infra, Deployments, Monitoring |
-| **Interoperability** | `interoperability-data.md` | APIs, Datenformate, Migrationen |
-| **Logging** | `logging.md` | Server-Code, Fehlerpfade |
-| **Performance** | `performance.md` | Rendering, Caching, Bundle |
-| **Architecture** | `architecture.md` | Modulgrenzen, ADRs, FIT |
+| Agent                  | Datei                       | Trigger                                            |
+| ---------------------- | --------------------------- | -------------------------------------------------- |
+| **PR Orchestrator**    | `pr-review-orchestrator.md` | Einstiegspunkt für jeden PR-Review                 |
+| **PR Fixer**           | `pr-fixer.agent.md`         | Iterativer Fix-Loop: Threads, Tests, Quality Gates |
+| **Rollout Operator**   | `rollout-operator.agent.md` | Deployments, Image-Build, Quantum, Keycloak        |
+| **Code Quality**       | `code-quality.md`           | Jede Codeänderung                                  |
+| **Documentation**      | `documentation.md`          | Jede PR                                            |
+| **Test Quality**       | `test-quality.md`           | Neue Logik, Verhaltensänderungen                   |
+| **Security & Privacy** | `security-privacy.md`       | Auth, Sessions, PII, Secrets                       |
+| **UX & Accessibility** | `ux-accessibility.md`       | UI, Formulare, Navigation                          |
+| **i18n & Content**     | `i18n-content.md`           | user-facing Texte, i18n-Keys                       |
+| **User Journey**       | `user-journey-usability.md` | UI-Flows, Onboarding                               |
+| **Operations**         | `operations-reliability.md` | Infra, Deployments, Monitoring                     |
+| **Interoperability**   | `interoperability-data.md`  | APIs, Datenformate, Migrationen                    |
+| **Logging**            | `logging.md`                | Server-Code, Fehlerpfade                           |
+| **Performance**        | `performance.md`            | Rendering, Caching, Bundle                         |
+| **Architecture**       | `architecture.md`           | Modulgrenzen, ADRs, FIT                            |
 
 **Nutzung**: Starte den Orchestrator, gib Branch/PR-Kontext mit. Er wählt die richtigen Fachreviewer und startet sie parallel via Agent-Tool. Output-Templates liegen in `.github/agents/templates/`.
 
@@ -182,3 +182,27 @@ Before opening a PR: `pnpm test:unit && pnpm test:types && pnpm test:eslint && p
 For architecture/IAM/security changes, update the relevant arc42 sections (`docs/architecture/`) and create an ADR under `docs/adr/`. Reference affected arc42 sections in the PR description.
 
 See `docs/reports/PR_CHECKLIST.md` for the full checklist.
+
+<!-- nx configuration start-->
+<!-- Leave the start & end comments to automatically receive updates. -->
+
+## General Guidelines for working with Nx
+
+- For navigating/exploring the workspace, invoke the `nx-workspace` skill first - it has patterns for querying projects, targets, and dependencies
+- When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
+- Prefix nx commands with the workspace's package manager (e.g., `pnpm nx build`, `npm exec nx test`) - avoids using globally installed CLI
+- You have access to the Nx MCP server and its tools, use them to help the user
+- For Nx plugin best practices, check `node_modules/@nx/<plugin>/PLUGIN.md`. Not all plugins have this file - proceed without it if unavailable.
+- NEVER guess CLI flags - always check nx_docs or `--help` first when unsure
+
+## Scaffolding & Generators
+
+- For scaffolding tasks (creating apps, libs, project structure, setup), ALWAYS invoke the `nx-generate` skill FIRST before exploring or calling MCP tools
+
+## When to use nx_docs
+
+- USE for: advanced config options, unfamiliar flags, migration guides, plugin configuration, edge cases
+- DON'T USE for: basic generator syntax (`nx g @nx/react:app`), standard commands, things you already know
+- The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
+
+<!-- nx configuration end-->

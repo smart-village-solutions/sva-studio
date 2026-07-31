@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nx Generate"
+  short_description: "Erzeuge Nx-Projekte und Code sicher."
+  default_prompt: "Nutze $nx-generate, um die passende Nx-Generierung zu planen und auszuführen."

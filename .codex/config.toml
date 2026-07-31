@@ -1,18 +1,10 @@
 [mcp_servers.nx-mcp]
 command = "npx"
-args = [ "nx-mcp@latest", "--minimal" ]
+args = [ "nx", "mcp", "--minimal" ]
 
 [mcp_servers.chrome-devtools]
 command = "npx"
-args = [
-  "-y",
-  "chrome-devtools-mcp@latest",
-  "--isolated",
-  "--acceptInsecureCerts",
-  "--viewport",
-  "1440x900",
-  "--no-usage-statistics",
-]
+args = [ "-y", "chrome-devtools-mcp@latest", "--isolated", "--acceptInsecureCerts", "--viewport", "1440x900", "--no-usage-statistics" ]
 
 [mcp_servers.fallow]
 command = "pnpm"
@@ -21,14 +13,16 @@ args = [ "exec", "fallow-mcp" ]
 [mcp_servers.sonarcloud]
 url = "https://api.sonarcloud.io/mcp"
 bearer_token_env_var = "SONARCLOUD_TOKEN"
-http_headers = { "SONARQUBE_ORG" = "smart-village-app" }
+
+[mcp_servers.sonarcloud.http_headers]
+SONARQUBE_ORG = "smart-village-app"
 
 [features]
 multi_agent = true
 
 [agents.ci-monitor-subagent]
-description = "Polls Nx Cloud CI pipeline and self-healing status. Returns structured state when actionable. Spawned by /monitor-ci command to monitor CI Attempt status."
-config_file = ".codex/agents/ci-monitor-subagent.toml"
+description = "CI helper for /monitor-ci. Fetches CI status, retrieves fix details, or updates self-healing fixes. Executes one MCP tool call and returns the result."
+config_file = "agents/ci-monitor-subagent.toml"
 
 [agents.architecture]
 description = "Prüft Architekturentscheidungen und föderale IT-Konformität."

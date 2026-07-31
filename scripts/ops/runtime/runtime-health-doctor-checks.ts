@@ -66,6 +66,17 @@ const probeOidcClientSecret = async (probe: OidcClientSecretProbe): Promise<Oidc
   return evaluateOidcClientSecretProbeResponse(probe, response, await readJsonResponse(response));
 };
 
+export const buildExpectedLiveRuntimeFlags = (
+  runtimeProfile: RemoteRuntimeProfile,
+  env: NodeJS.ProcessEnv,
+): Partial<LiveRuntimeFlags> => ({
+  ...(env.ENABLE_OTEL?.trim() ? { ENABLE_OTEL: env.ENABLE_OTEL.trim() } : {}),
+  ...(env.SVA_ENABLE_SERVER_CONSOLE_LOGS?.trim()
+    ? { SVA_ENABLE_SERVER_CONSOLE_LOGS: env.SVA_ENABLE_SERVER_CONSOLE_LOGS.trim() }
+    : {}),
+  SVA_RUNTIME_PROFILE: runtimeProfile,
+});
+
 const buildLiveRuntimeEnvCheck = async (
   deps: RuntimeHealthDeps,
   runtimeProfile: RemoteRuntimeProfile,
@@ -73,11 +84,7 @@ const buildLiveRuntimeEnvCheck = async (
 ): Promise<DoctorCheck> => {
   try {
     const liveFlags = await readLiveRuntimeFlags(deps, env);
-    const expectedFlags = {
-      ENABLE_OTEL: env.ENABLE_OTEL?.trim() || '',
-      SVA_ENABLE_SERVER_CONSOLE_LOGS: env.SVA_ENABLE_SERVER_CONSOLE_LOGS?.trim() || '',
-      SVA_RUNTIME_PROFILE: runtimeProfile,
-    };
+    const expectedFlags = buildExpectedLiveRuntimeFlags(runtimeProfile, env);
     const mismatches = Object.entries(expectedFlags)
       .filter(([key, expectedValue]) => liveFlags[key as keyof LiveRuntimeFlags] !== expectedValue)
       .map(([key, expectedValue]) => ({ actual: liveFlags[key as keyof LiveRuntimeFlags], expected: expectedValue, key }));

@@ -8,12 +8,27 @@ import {
   resolveRemoteShortServiceName,
   resolveRemoteStackServiceName,
 } from './runtime-health.ts';
+import { buildExpectedLiveRuntimeFlags } from './runtime-health-doctor-checks.ts';
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe('runtime-health helpers', () => {
+  it('compares only explicitly configured optional live runtime flags', () => {
+    expect(buildExpectedLiveRuntimeFlags('studio', {})).toEqual({
+      SVA_RUNTIME_PROFILE: 'studio',
+    });
+    expect(buildExpectedLiveRuntimeFlags('studio', {
+      ENABLE_OTEL: 'false',
+      SVA_ENABLE_SERVER_CONSOLE_LOGS: 'true',
+    })).toEqual({
+      ENABLE_OTEL: 'false',
+      SVA_ENABLE_SERVER_CONSOLE_LOGS: 'true',
+      SVA_RUNTIME_PROFILE: 'studio',
+    });
+  });
+
   it('builds all configured oidc client-secret probes', () => {
     expect(
       buildOidcClientSecretProbes({

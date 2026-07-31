@@ -566,7 +566,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.updateSvaMainserverNews).not.toHaveBeenCalled();
   });
 
-  it('rejects legacy payload, invalid visibility, read-only fields and update push notifications before GraphQL', async () => {
+  it('rejects legacy payload, invalid visibility and read-only fields before GraphQL', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
     state.authorizeContentPrimitiveForUser.mockResolvedValue({
@@ -599,14 +599,21 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     );
     expect(invalidVisibility?.status).toBe(400);
 
+    state.updateSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
+
     const pushOnUpdate = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
         method: 'PATCH',
         body: JSON.stringify(newsInput),
       })
     );
-    expect(pushOnUpdate?.status).toBe(400);
-    expect(state.updateSvaMainserverNews).not.toHaveBeenCalled();
+    expect(pushOnUpdate?.status).toBe(200);
+    expect(state.updateSvaMainserverNews).toHaveBeenCalledWith(
+      expect.objectContaining({
+        newsId: 'news-1',
+        news: expect.objectContaining(newsInput),
+      })
+    );
   });
 
   it('deletes news via mainserver hard delete', async () => {

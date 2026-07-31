@@ -688,7 +688,7 @@ const handleItemUpdate = async (
     route,
     action: 'news.update',
     requestId,
-    parse: async (inputRequest) => await parseNewsInput(inputRequest, { allowPushNotification: false }),
+    parse: async (inputRequest) => await parseNewsInput(inputRequest, { allowPushNotification: true }),
     execute: async (actor, parsed) => {
       let response: Response;
       try {

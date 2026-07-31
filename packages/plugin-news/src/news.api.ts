@@ -56,7 +56,7 @@ const newsClient = createMainserverCrudClient<NewsContentItem, NewsFormInput, Ne
     pagination: response.pagination,
   }),
   createBody: (input) => toMutationBody(input, { includePushNotification: true }),
-  updateBody: (input) => toMutationBody(input, { includePushNotification: false }),
+  updateBody: (input) => toMutationBody(input, { includePushNotification: true }),
   createHeaders: () =>
     createMainserverJsonRequestHeaders({
       'Idempotency-Key': createIdempotencyKey(),

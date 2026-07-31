@@ -341,4 +341,53 @@ describe('runtime-health helpers', () => {
     expect(hasRunningService).toHaveBeenCalledWith('postgres');
     expect(hasRunningService).toHaveBeenCalledWith('otel-collector');
   });
+
+  it('derives the expected observability service from the live app contract', async () => {
+    const hasRunningService = vi.fn(() => true);
+    const inspectRemoteServiceContract = vi.fn(async () => ({
+      env: { ENABLE_OTEL: 'false' },
+      image: 'ghcr.io/test/studio@sha256:digest',
+      labels: {},
+      networkNames: ['internal', 'public'],
+      serviceName: 'studio-staging_studio-app',
+    }));
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(() => false),
+      getConfiguredQuantumEndpoint: vi.fn(() => 'sva'),
+      getConfiguredStackName: vi.fn(() => 'studio-staging'),
+      getRemoteAppServiceName: vi.fn(() => 'studio-app'),
+      getRuntimeProfileDefinition: vi.fn(() => ({ isLocal: false })),
+      inspectRemoteServiceContract,
+      isExpectedOidcRedirect: vi.fn(() => true),
+      isMainserverCheckRequired: vi.fn(() => false),
+      isMockAuthRuntimeProfile: vi.fn(() => false),
+      readRemoteStackEvidence: vi.fn(async () => ({
+        channel: 'portainer-api' as const,
+        hasRunningService,
+        summary: 'ok',
+      })),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn(),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn((runtimeEnv) => runtimeEnv),
+    });
+
+    await ops.assertAcceptanceContainerHealth({});
+
+    expect(inspectRemoteServiceContract).toHaveBeenCalledWith({}, {
+      quantumEndpoint: 'sva',
+      serviceName: 'studio-app',
+      stackName: 'studio-staging',
+    });
+    expect(hasRunningService).toHaveBeenCalledWith('studio-app');
+    expect(hasRunningService).toHaveBeenCalledWith('redis');
+    expect(hasRunningService).toHaveBeenCalledWith('postgres');
+    expect(hasRunningService).not.toHaveBeenCalledWith('otel-collector');
+  });
 });

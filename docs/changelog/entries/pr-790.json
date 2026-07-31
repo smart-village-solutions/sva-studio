@@ -1,0 +1,4 @@
+{
+  "prNumber": 790,
+  "body": "Remote-Smoke-Checks prüfen die laufende Umgebung, ohne lokale Kopien der Runtime-Secrets vorauszusetzen."
+}

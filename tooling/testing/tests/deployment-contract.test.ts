@@ -43,7 +43,7 @@ describe('deployment contracts', () => {
     const workflow = load('.github/workflows/promote.yml');
 
     expect(workflow).toContain(
-      'quantum-cli stacks deploy -f stack.yaml --stack "studio-${ENVIRONMENT}" --endpoint "${QUANTUM_ENDPOINT}"'
+      'quantum-cli stacks deploy -f stack.yaml --stack "${{ steps.target.outputs.stack_name }}" --endpoint "${QUANTUM_ENDPOINT}"'
     );
     expect(workflow).not.toContain('--no-pre-pull');
     expect(workflow).not.toContain('quantum_project_dir');

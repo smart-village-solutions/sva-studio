@@ -4,15 +4,15 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const workflow = readFileSync(
-  resolve(import.meta.dirname, '../../.github/workflows/promote.yml'),
+  resolve(import.meta.dirname, '../../../.github/workflows/promote.yml'),
   'utf8'
 );
 const backupDrillWorkflow = readFileSync(
-  resolve(import.meta.dirname, '../../.github/workflows/staging-backup-drill.yml'),
+  resolve(import.meta.dirname, '../../../.github/workflows/staging-backup-drill.yml'),
   'utf8'
 );
 const productionBackupDrillWorkflow = readFileSync(
-  resolve(import.meta.dirname, '../../.github/workflows/production-backup-drill.yml'),
+  resolve(import.meta.dirname, '../../../.github/workflows/production-backup-drill.yml'),
   'utf8'
 );
 
@@ -100,7 +100,7 @@ describe('Promote workflow contract', () => {
 
   it('uses automatic diff-based one-shot execution for main-to-Dev promotion', () => {
     const buildWorkflow = readFileSync(
-      resolve(import.meta.dirname, '../../.github/workflows/build.yml'),
+      resolve(import.meta.dirname, '../../../.github/workflows/build.yml'),
       'utf8'
     );
 
@@ -116,6 +116,11 @@ describe('Promote workflow contract', () => {
     );
     expect(workflow).toContain('migration_should_run');
     expect(workflow).toContain('bootstrap_should_run');
+  });
+
+  it('verifies runtime health and the live digest after every environment deploy', () => {
+    expect(workflow).toMatch(/- name: verify deployed runtime\n\s+env:/u);
+    expect(workflow).toMatch(/- name: verify deployed runtime image digest\n\s+env:/u);
   });
 
   it('offers a staging-only backup drill without application mutation', () => {

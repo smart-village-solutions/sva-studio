@@ -373,7 +373,6 @@ jobs:
           quantum-cli stacks deploy -f stack.yaml --stack "${{ steps.target.outputs.stack_name }}" --endpoint "${QUANTUM_ENDPOINT}"
 
       - name: verify deployed runtime
-        if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
@@ -390,7 +389,6 @@ jobs:
           pnpm exec tsx scripts/ops/runtime-env.ts smoke studio
 
       - name: verify deployed runtime image digest
-        if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
         run: pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}" --expected "${{ steps.image_contract.outputs.deploy_image_ref }}"

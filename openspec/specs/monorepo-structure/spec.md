@@ -423,20 +423,20 @@ Das System SHALL für jedes kanonische Runtime-Profil ein offizielles `doctor`-K
 - **THEN** enthält die Diagnose einen separaten Check für `goose`-Verfügbarkeit und Migrationsstatus
 - **AND** `details` enthalten mindestens die verwendete `goose`-Version oder den Remote-Status
 
-### Requirement: Kanonischer Studio-Deploypfad
+### Requirement: Lokale Studio-Runtime-Werkzeuge bleiben Diagnose und Recovery
 
-Das System SHALL für das Runtime-Profil `studio` einen offiziellen zweigeteilten Releasepfad bereitstellen, der GitHub-basiertes Build/Verify und einen lokalen Operator-Deploy in fixer Reihenfolge verbindet.
+Das System SHALL für das Runtime-Profil `studio` lokale Diagnose- und Recovery-Werkzeuge bereitstellen, ohne daraus einen konkurrierenden Standardpfad zum GitHub-basierten `Build`- und `Promote`-Rollout zu machen.
 
 #### Scenario: Root-Scripts bilden den Studio-Releasepfad ab
 
 - **WHEN** `package.json` im Repository geprüft wird
-- **THEN** existieren `env:precheck:studio`, `env:deploy:studio` und `env:release:studio:local`
-- **AND** `env:release:studio:local` delegiert an dieselbe gemeinsame `runtime-env`-Implementierung für `precheck`, `deploy`, `smoke` und `feedback`
-- **AND** GitHub-Workflows `studio-image-build.yml`, `studio-artifact-verify.yml` und optional `studio-release.yml` bilden den vorbereitenden, nicht mutierenden Teil des Releasepfads ab
+- **THEN** existieren `env:status:studio`, `env:doctor:studio`, `env:precheck:studio` und `env:smoke:studio`
+- **AND** lokale mutierende Runtime-Einstiege sind ausschließlich als Incident-Recovery klassifiziert
+- **AND** GitHub-Workflows `build.yml` und `promote.yml` bilden den einzigen regulären Rolloutpfad ab
 
 #### Scenario: Schemaänderung erfordert Wartungsfenster
 
-- **WHEN** `env:release:studio:local` mit `--release-mode=schema-and-app` ausgeführt wird
+- **WHEN** ein Incident-Recovery-Pfad lokale Schema- und App-Mutationen benötigt
 - **THEN** verlangt das System ein dokumentiertes Wartungsfenster
 - **AND** startet ohne dieses Wartungsfenster keinen Rollout
 
@@ -444,9 +444,9 @@ Das System SHALL für das Runtime-Profil `studio` einen offiziellen zweigeteilte
 
 Das System SHALL für jeden orchestrierten Studio-Deploy maschinenlesbare und menschenlesbare Evidenz erzeugen.
 
-#### Scenario: Lokaler Operator-Deploy schreibt Evidenz-Artefakte
+#### Scenario: Lokale Incident-Recovery schreibt Evidenz-Artefakte
 
-- **WHEN** `env:release:studio:local` ausgeführt wird
+- **WHEN** ein lokaler mutierender Incident-Recovery-Pfad ausgeführt wird
 - **THEN** schreibt das System JSON- und Markdown-Artefakte unter `artifacts/runtime/deployments/`
 - **AND** die Artefakte enthalten mindestens Image-Referenz, Actor, Workflow, Release-Modus, Schrittstatus und Stack-Zusammenfassung
 - **AND** die Artefakte enthalten keine Secrets oder PII
@@ -465,7 +465,7 @@ Das System SHALL direkte Serverdeploys für `studio` über die Kommandos `up` un
 
 - **WHEN** `runtime-env.ts up studio` oder `runtime-env.ts update studio` ausgeführt wird
 - **THEN** beendet das System den Lauf mit einer klaren Fehlermeldung
-- **AND** verweist auf `env:release:studio:local` als einzigen dokumentierten produktionsnahen Einstiegspunkt
+- **AND** verweist auf GitHub Actions `Promote` als einzigen regulären produktionsnahen Einstiegspunkt
 
 ### Requirement: Einheitliche Runtime-Profile für Entwicklungs- und Betriebsmodi
 
@@ -545,14 +545,14 @@ Das System SHALL vor dem produktionsnahen Runtime-Verify pruefen, ob lokale Tool
 - **AND** installierte Build-Tooling-Pakete von `pnpm-lock.yaml` abweichen
 - **THEN** bricht der Check vor dem eigentlichen App-Build mit einer klaren Aufforderung zu `pnpm install --frozen-lockfile` ab
 
-### Requirement: Root-Scripts bilden den Studio-Releasepfad ab
+### Requirement: Root-Scripts kapseln Studio-Diagnose und Incident-Recovery
 
-Das System SHALL fuer `studio` einen Root-Skript-Einstieg bereitstellen, der den lokalen Operator-Schritt fuer produktionsnahe Mutationen kapselt.
+Das System SHALL fuer `studio` Root-Skript-Einstiege bereitstellen, die Diagnose und ausdrücklich genehmigte Incident-Recovery kapseln, ohne den GitHub-Promote als Standard zu ersetzen.
 
-#### Scenario: Lokaler Studio-Release ist als Root-Skript verfuegbar
+#### Scenario: Lokale Studio-Recovery ist als Root-Skript verfuegbar
 
-- **WHEN** ein Operator den finalen `studio`-Deploy aus dem Repository heraus starten will
-- **THEN** existiert ein dediziertes Root-Skript fuer den lokalen Release-Einstieg
+- **WHEN** ein Operator im ausdrücklich genehmigten Incident einen lokalen `studio`-Recovery-Lauf starten muss
+- **THEN** existiert ein dediziertes Root-Skript fuer den lokalen Recovery-Einstieg
 - **AND** dieses Skript verlangt explizit `image_digest`, `release_mode` und `rollback_hint`
 - **AND** es fuehrt `env:precheck:studio`, `env:deploy:studio`, `env:smoke:studio` und `env:feedback:studio` in fester Reihenfolge aus
 

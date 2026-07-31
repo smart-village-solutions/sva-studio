@@ -1,5 +1,7 @@
 # Production-Abnahme des zentralen Backup-Agenten
 
+> **Historischer Zwischenstand:** Die hier noch als offen bezeichnete vollständige Promote-Abnahme wurde am 31. Juli 2026 abgeschlossen. Maßgeblich sind der [finale Rollout-Nachweis](./backup-agent-rollout-abnahme-2026-07-31.md) und der [kanonische Studio-Rollout](../guides/studio-rollout-process.md).
+
 ## Ergebnis
 
 Der zentrale Backup-Agent wurde am 31. Juli 2026 nach expliziter

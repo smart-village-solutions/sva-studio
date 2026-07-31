@@ -84,6 +84,14 @@
 - Für jede Code-Änderung Tests hinzufügen oder anpassen
 - Interne Doku-Links relativ zum Ordner `docs/` schreiben (z. B. `./guide/data-loading`)
 
+## Verbindlicher Rollout-Prozess
+
+- Für reguläre Rollouts nach Dev, Staging und Production ist ausschließlich `docs/guides/studio-rollout-process.md` maßgeblich.
+- Der Standardpfad ist GitHub Actions `Build` → automatisches Dev → manuelles Staging → manuell freigegebenes Production mit demselben Image-Digest.
+- Lokale `env:release:*`-/`env:deploy:*`-Mutationen, direkte Portainer-/Docker-Eingriffe und rohe `quantum-cli stacks deploy/update`-Aufrufe sind Diagnose beziehungsweise Incident-Recovery, aber kein konkurrierender Standardpfad.
+- Rollout-Dokumentation darf keinen zweiten „kanonischen“, „offiziellen“ oder „empfohlenen“ Studio-Deploypfad definieren.
+- Historische Reports, Staging-/PR-Unterlagen, Pläne und archivierte OpenSpec-Changes sind nicht normativ.
+
 ## Review-Agents
 
 - Die Agent-Definitionen unter `.github/agents/` bleiben die kanonische Quelle und sind zusätzlich als Codex-Agents über `.codex/config.toml` registriert.

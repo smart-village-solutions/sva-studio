@@ -1,650 +1,145 @@
-# Swarm-Deployment-Runbook
+# Swarm-Betriebsrunbook für SVA Studio
 
-## Ziel
+## Zweck und Grenze
 
-Diese Anleitung beschreibt den Rollout von SVA Studio auf einem Server mit Docker Swarm und Traefik, verwaltet über Portainer. Sie ersetzt den früheren Nicht-Swarm-Stack und folgt dem Referenz-Betriebsprofil aus [ADR-019](../adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md).
+Dieses Runbook beschreibt Infrastrukturprüfung, Diagnose, Restore und Incident-Recovery für die Studio-Swarm-Stacks. Der reguläre Rollout nach Dev, Staging und Production ist ausschließlich im [kanonischen Studio-Rollout](./studio-rollout-process.md) definiert und wird durch GitHub Actions ausgeführt.
 
-Im vereinheitlichten Betriebsmodell entspricht dieses Runbook dem Profil `studio`. Die übergeordnete Bedienlogik für `precheck`, `deploy`, `down`, `status`, `smoke` und `migrate` ist unter `../development/runtime-profile-betrieb.md` dokumentiert.
+Direkte Portainer-, Docker- oder Quantum-Mutationen aus diesem Runbook sind keine alternative Releaseprozedur. Sie benötigen einen dokumentierten Incident, ein explizites Ziel und eine anschließende Verifikation gegen den kanonischen Vertrag.
 
-Der Stack besteht aus:
+## Zieltopologie
 
-- `app` (TanStack Start / Nitro Node-Server, über Traefik exponiert)
-- `adminer` (geschützte DB-Admin-Oberfläche für Studio-Troubleshooting)
-- `postgres` (IAM Core Data Layer)
-- `redis` (Session-/Cache-Store)
-- `otel-collector` (OTLP Hub für Logs und Metriken)
-- `loki` (Log-Storage)
-- `prometheus` (Metrik-Storage und Alert Rules)
-- `grafana` (interne Auswertung)
-- `promtail` (Node-/Container-Log-Shipping)
-- `alertmanager` (Alert-Routing)
+| Umgebung | Stack | Root-Host | internes Netz |
+| --- | --- | --- | --- |
+| Dev | `studio-dev` | `studio-dev.smart-village.app` | `studio-dev_default` |
+| Staging | `studio-staging` | `studio-staging.smart-village.app` | `studio-staging_default` |
+| Production | `studio` | `studio.smart-village.app` | `studio_default` |
 
-## Betriebsziele und Eskalation
+Jeder Stack enthält mindestens App, PostgreSQL und Redis. Traefik routet Root- und Tenant-Hosts über das öffentliche Overlay-Netz. Konkrete Docker-Netzwerk-IDs sind flüchtig und dürfen nicht dokumentiert oder wiederverwendet werden; vor jeder netzbezogenen Reparatur ist die aktuelle ID anhand des Namens live aufzulösen.
 
-### Zielwerte
+## Betriebsziele
 
-| Bereich               | Zielwert     |
-| --------------------- | ------------ |
-| App + Monitoring      | `RTO <= 2h`  |
-| IAM-Daten in Postgres | `RPO <= 24h` |
+| Bereich | Zielwert |
+| --- | --- |
+| App und Monitoring | `RTO <= 2h` |
+| IAM-Daten in PostgreSQL | `RPO <= 24h` |
 
-Die Zielwerte sind bewusst als operative Mindestziele formuliert. Sie ersetzen kein vollständiges Backup- oder HA-Konzept, sondern definieren den erwarteten Wiederanlauf- und Datenverlustrahmen für das aktuelle Referenzprofil.
+Das vor mutierenden Promotes erzeugte PostgreSQL-Backup verbessert den Recovery-Punkt, ist aber kein vollständiger Snapshot aller externen Systeme.
 
-### Eskalationspfad
+## Read-only Diagnose
 
-| Fall                                             | Primärer Kanal                 | Zusätzlicher Kanal              |
-| ------------------------------------------------ | ------------------------------ | ------------------------------- |
-| Betriebsstörung ohne Sensitive Data              | `operations@smart-village.app` | GitHub Issue für Nachverfolgung |
-| Sicherheitsvorfall oder DSGVO-Bezug              | `security@smart-village.app`   | `operations@smart-village.app`  |
-| Reine Produkt-/Doku-Nacharbeit ohne Sensitivität | GitHub Issue                   | -                               |
-
-Regel:
-
-- Keine sensiblen Details in öffentliche GitHub Issues schreiben.
-- Für Sicherheits- oder Datenschutzvorfälle zuerst per E-Mail eskalieren und GitHub nur für später bereinigte Folgetasks nutzen.
-
-## Voraussetzungen
-
-- Docker Swarm ist initialisiert (`docker swarm init`)
-- Traefik läuft als Ingress-Proxy im selben Swarm und lauscht auf dem `public`-Overlay-Netzwerk
-- Das externe Overlay-Netzwerk `public` existiert:
-  ```
-  docker network create -d overlay public
-  ```
-- Das App-Image ist vorgebaut und in einer Container-Registry verfügbar
-- DNS-Einträge für `SVA_PARENT_DOMAIN` und `*.SVA_PARENT_DOMAIN` zeigen auf den Swarm-Ingress
-- TLS deckt `SVA_PARENT_DOMAIN` und `*.SVA_PARENT_DOMAIN` über denselben Ingress-Vertrag ab
-
-## Dateien
-
-| Datei                                      | Zweck                                                                                |
-| ------------------------------------------ | ------------------------------------------------------------------------------------ |
-| `deploy/portainer/docker-compose.yml`      | Swarm-Stack-Definition                                                               |
-| `deploy/portainer/Dockerfile`              | Build-Definition für das App-Image                                                   |
-| `deploy/portainer/entrypoint.sh`           | Validiert und normalisiert Runtime-Variablen vor dem App-Start                       |
-| `deploy/portainer/otel-bootstrap.mjs`      | Initialisiert OTEL vor dem Nitro-Entry im Node-Prozess                               |
-| `deploy/portainer/monitoring/`             | Swarm-spezifische Monitoring-Konfigurationen                                         |
-| `deploy/portainer/monitoring-config-init/` | Build-Kontext für das Init-Image, das Monitoring-Konfigurationen in Volumes schreibt |
-| `deploy/portainer/.env.example`            | Referenz aller Konfigurationsvariablen                                               |
-
-## Schritt 1: Stack-Variablen konfigurieren
-
-Das Referenzprofil `studio` wird env-only betrieben. Sowohl nicht-sensitive als auch vertrauliche Werte werden als Stack-Umgebungsvariablen im CI-Environment und im Zielstack gepflegt. Referenzwerte: `config/runtime/studio.vars.example`.
-
-### Pflicht-Variablen
-
-| Variable                            | Beispiel                                         |
-| ----------------------------------- | ------------------------------------------------ |
-| `POSTGRES_PASSWORD`                 | `***`                                            |
-| `APP_DB_PASSWORD`                   | `***`                                            |
-| `REDIS_PASSWORD`                    | `***`                                            |
-| `SVA_AUTH_CLIENT_SECRET`            | `***`                                            |
-| `SVA_AUTH_STATE_SECRET`             | `***`                                            |
-| `KEYCLOAK_ADMIN_CLIENT_SECRET`      | `***`                                            |
-| `ENCRYPTION_KEY`                    | `***`                                            |
-| `IAM_PII_KEYRING_JSON`              | `{"k1":"***"}`                                   |
-| `SVA_PUBLIC_BASE_URL`               | `https://studio.smart-village.app`               |
-| `SVA_PUBLIC_HOST`                   | `studio.smart-village.app`                       |
-| `SVA_DB_ADMIN_HOST`                 | `studio-db.smart-village.app`                    |
-| `SVA_AUTH_REDIRECT_URI`             | `https://studio.smart-village.app/auth/callback` |
-| `SVA_AUTH_POST_LOGOUT_REDIRECT_URI` | `https://studio.smart-village.app/`              |
-| `SVA_PARENT_DOMAIN`                 | `studio.smart-village.app`                       |
-| `IAM_CSRF_ALLOWED_ORIGINS`          | `https://studio.smart-village.app`               |
-
-### Optionale Variablen
-
-| Variable                               | Default                           | Beschreibung                                                                                                        |
-| -------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `SVA_REGISTRY`                         | `ghcr.io/smart-village-solutions` | Container-Registry für das App-Image                                                                                |
-| `SVA_IMAGE_REPOSITORY`                 | `sva-studio`                      | Repository-Name des App-Images                                                                                      |
-| `SVA_MONITORING_REGISTRY`              | `ghcr.io/smart-village-solutions` | Container-Registry für das Monitoring-Init-Image                                                                    |
-| `SVA_IMAGE_TAG`                        | `0.0.0-dev`                       | Image-Tag oder Digest; für Produktion Digest oder unveränderlichen Tag verwenden                                    |
-| `SVA_IMAGE_DIGEST`                     | kein Default                      | Verbindlicher SHA256-Digest für produktionsnahe Releases                                                            |
-| `SVA_IMAGE_REF`                        | kein Default                      | Vollständige Image-Referenz `${SVA_REGISTRY}/${SVA_IMAGE_REPOSITORY}@${SVA_IMAGE_DIGEST}`                           |
-| `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` | `0.0.0-dev`                       | Image-Tag des Monitoring-Init-Images; für Produktion Digest oder unveränderlichen Tag verwenden                     |
-| `SVA_ALLOWED_INSTANCE_IDS`             | leer                              | Nur lokaler oder migrierender Fallback; im Registry-Betrieb keine führende Freigabequelle                           |
-| `SVA_TENANT_SCOPE_INSTANCE_IDS`        | leer                              | Optionaler Override für Tenant-Smokes und Doctor-Scopes; ohne Wert werden Remote-Scopes aus der Registry abgeleitet |
-| `ENABLE_OTEL`                          | `true`                            | OpenTelemetry für lokale Deaktivierungsfälle in Development; im produktionsnahen Betrieb bleibt OTEL verpflichtend  |
-| `OTEL_SERVICE_NAME`                    | `sva-studio`                      | Service-Name für OTEL Resource Attributes                                                                           |
-| `OTEL_EXPORTER_OTLP_ENDPOINT`          | `http://otel-collector:4318`      | Interner OTLP-HTTP-Endpoint                                                                                         |
-| `GF_SECURITY_ADMIN_PASSWORD`           | kein Default                      | Pflichtwert für den internen Grafana-Login                                                                          |
-| `IAM_UI_ENABLED`                       | `false`                           | IAM-Account-UI                                                                                                      |
-| `IAM_ADMIN_ENABLED`                    | `false`                           | IAM-Admin-UI                                                                                                        |
-| `IAM_BULK_ENABLED`                     | `false`                           | IAM-Bulk-Operationen                                                                                                |
-| `SVA_DOCTOR_KEYCLOAK_SUBJECT`          | leer                              | optionaler Actor-Override für `env:doctor:studio`                                                                   |
-| `SVA_DOCTOR_INSTANCE_ID`               | kein Default                      | überschreibt die Zielinstanz für den Doctor-Lauf; für tiefe Actor-Diagnose explizit setzen                          |
-| `SVA_DOCTOR_SESSION_ROLES`             | leer                              | kommagetrennte Session-Rollen für Rollen-Diagnose                                                                   |
-| `SVA_DB_ADMIN_BASIC_AUTH`              | kein Default                      | htpasswd-String für vorgeschalteten Adminer-Basic-Auth                                                              |
-
-Die vollständige Variablenliste inklusive Keycloak-Admin- und Rollenabgleich-Optionen steht in `deploy/portainer/.env.example`.
-Für produktionsnahe Acceptance-Deployments ist `SVA_IMAGE_DIGEST` verpflichtend; `SVA_IMAGE_REF` muss auf genau dieses Artefakt zeigen. `SVA_IMAGE_TAG` bleibt nur ergänzende Metadaten für Lesbarkeit und Rückverfolgung. Wenn App- und Monitoring-Image aus unterschiedlichen Registries bezogen werden, müssen `SVA_REGISTRY` und `SVA_MONITORING_REGISTRY` konsistent gesetzt sein.
-
-Für tenant-spezifisches Auth-Routing gilt zusätzlich:
-
-- `authRealm` und `authClientId` müssen für jede aktive Instanz in der Registry gesetzt sein.
-- Neue Instanzen sind erst nach erfolgreichem Keycloak-Provisioning traffic-fähig.
-- `SVA_AUTH_ISSUER` und `SVA_AUTH_CLIENT_ID` sind im Acceptance-/Swarm-Betrieb keine führenden Variablen mehr.
-- Der Keycloak-Sollzustand pro Tenant-Realm, inklusive `instanceId`-Claim, Client-Mappern und minimalen Admin-Rollen, ist unter [Keycloak-Tenant-Realm-Bootstrap für Studio](./keycloak-tenant-realm-bootstrap.md) beschrieben.
-
-Pragmatische Betriebsregeln aus den letzten Rollouts:
-
-- bei Quantum-`401` immer auch die lokale Shell-Umgebung prüfen; ein veraltetes `QUANTUM_API_KEY` kann den funktionierenden Kontext übersteuern
-- wenn Runtime-Overrides im Live-Stack fehlen, nicht blind denselben `quantum-cli stacks update` wiederholen, sondern den kanonischen Runtime-Pfad mit vorgerenderter Compose nutzen
-- ein grüner Stack ersetzt nicht die Laufzeitprüfung des App-DB-Users; `sva_app` muss real existieren und sich anmelden können
-- für Tenant-Debugging externe und interne Host-Requests trennen, bevor Ingress-Komponenten verdächtigt werden
-- für `studio` ist ein lokaler Kandidatencontainer nur Hilfssignal; Root-/Tenant-/Ingress-Parität bleibt ein Remote-Vertrag
-- wenn das Ziel-Digest bereits live läuft, darf derselbe Digest nur über dokumentierte Live-Parität wiederverwendet werden, nicht über eine weaker lokale Ersatzprobe
-
-### Adminer für Studio
-
-Für DB-Diagnose auf `studio` wird Adminer intern über Traefik veröffentlicht:
-
-- eigener Host über `SVA_DB_ADMIN_HOST`
-- zusätzliche Basic-Auth über `SVA_DB_ADMIN_BASIC_AUTH`
-- Adminer selbst nutzt danach weiterhin die normalen Postgres-Zugangsdaten
-
-Beispiel zum Erzeugen des Basic-Auth-Hashes:
+Die bevorzugte Wahrheitsebene ist die Portainer-/Docker-API über den fest zugewiesenen Quantum-Endpoint. Zulässige CLI-Abfragen sind:
 
 ```bash
-htpasswd -nbB admin '<starkes-passwort>'
+quantum-cli endpoints ls
+quantum-cli stacks ls --endpoint sva
+quantum-cli ps --endpoint sva --stack <studio-dev|studio-staging|studio> --all
 ```
 
-Der komplette Output muss unverändert als `SVA_DB_ADMIN_BASIC_AUTH` gesetzt werden.
-
-## Schritt 1a: DNS- und TLS-Vertrag prüfen
-
-Vor jedem Studio-Rollout und vor jeder neuen Instanzfreigabe muss der gemeinsame Plattformvertrag für Root- und Tenant-Hosts erfüllt sein:
-
-- `studio.smart-village.app` zeigt auf den gemeinsamen Swarm-/Traefik-Ingress
-- `*.studio.smart-village.app` zeigt auf denselben Ingress
-- das Zertifikat deckt Root-Domain und Wildcard ab
-- Root-Host und Tenant-Hosts landen auf demselben App-Service
-
-Stichproben:
+Zusätzlich stehen die lokalen read-only Runtime-Befehle zur Verfügung:
 
 ```bash
-dig +short studio.smart-village.app
-dig +short hb-meinquartier.studio.smart-village.app
-curl -I https://studio.smart-village.app
-curl -I https://hb-meinquartier.studio.smart-village.app
-```
-
-### Ressourcenlimits des Referenzprofils
-
-| Service                  | CPU-Limit |
-| ------------------------ | --------- |
-| `app`                    | `1.0`     |
-| `postgres`               | `0.5`     |
-| `redis`                  | `0.25`    |
-| `monitoring-config-init` | `0.10`    |
-| `otel-collector`         | `0.25`    |
-| `loki`                   | `0.75`    |
-| `prometheus`             | `1.0`     |
-| `grafana`                | `0.5`     |
-| `promtail`               | `0.25`    |
-| `alertmanager`           | `0.25`    |
-
-## Schritt 2: Datenbank initialisieren
-
-Im Swarm-Stack sind keine automatischen DB-Initialisierungsskripte enthalten. Beim ersten Deploy auf ein leeres Postgres-Volume muss die Datenbank manuell initialisiert werden.
-
-### Migrationen ausführen
-
-Die SQL-Dateien müssen als Artefakt bereitgestellt werden (z. B. CI-Artefakt, Release-Asset oder separates Migrationsbundle). Ein Repository-Checkout auf dem Swarm-Node ist nicht erforderlich.
-
-Bevorzugter Betriebsweg aus dem Repository heraus:
-
-```bash
-cd "$(git rev-parse --show-toplevel)"
-pnpm env:migrate:studio
-```
-
-Der Befehl wendet die kanonischen `goose`-Migrationen aus `packages/data/migrations/*.sql` gegen den laufenden Studio-Postgres an:
-
-- bevorzugt remote via `quantum-cli exec --endpoint sva --stack sva-studio --service postgres`
-- nur als Fallback lokal via `docker exec`, wenn der Swarm-Postgres auf demselben Docker-Daemon sichtbar ist
-- `goose` wird mit gepinnter Version temporär bereitgestellt; eine permanente Installation auf dem Zielsystem ist nicht erforderlich
-- nach erfolgreichem Migrationslauf validiert ein kritischer IAM-Schema-Guard automatisch Tabellen, Spalten, Indizes und RLS-Policies
-- bei Drift endet der Befehl mit einem maschinenlesbaren Fehlerbild statt mit einem stillschweigend unvollständigen Zustand
-
-Damit ist kein manuelles Paste-in-`psql` mehr erforderlich.
-
-Das Fallback über manuelle `psql`-Schleifen bleibt nur für Recovery-Sonderfälle reserviert; der kanonische Betriebsweg ist `pnpm env:migrate:studio`.
-
-### Runtime-User anlegen
-
-```bash
-docker exec <CONTAINER_ID> psql -v ON_ERROR_STOP=1 -U sva -d sva_studio -c "
-DO \$\$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sva_app') THEN
-    CREATE ROLE sva_app LOGIN PASSWORD '<APP_DB_PASSWORD>'
-      NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
-  END IF;
-END
-\$\$;
-GRANT iam_app TO sva_app;
-"
-```
-
-`<APP_DB_PASSWORD>` muss dem Wert der Stack-Variable `APP_DB_PASSWORD` entsprechen.
-
-Zusatz für den Betrieb:
-
-- nach dem Anlegen nicht nur Grants prüfen, sondern den Login des Laufzeit-Users aktiv verifizieren
-- wenn `Auth audit DB sink failed` oder `password authentication failed for user "sva_app"` auftaucht, zuerst diesen Pfad reparieren, bevor Auth-/Realm-Fehler an anderer Stelle vermutet werden
-
-## Schritt 3: Kanonischen Studio-Deploy ausführen
-
-Der reguläre Serverdeploy für `studio` ist jetzt zweigeteilt: GitHub baut und verifiziert den Ziel-Digest, der finale mutierende Rollout läuft lokal über `pnpm env:release:studio:local`. Direkte Redeploys über `up`/`update`, Portainer-Klickpfade oder Ad-hoc-`docker stack deploy` sind nicht mehr der verbindliche Standard.
-
-Für den spezialisierten Rollout des separaten Tenant-Admin-Client-Vertrags gilt ergänzend:
-
-- Rollout: `./tenant-admin-client-swarm-rollout-runbook.md`
-- Rollback: `./tenant-admin-client-swarm-rollback-runbook.md`
-
-### Release-Klassen
-
-- `app-only`: reiner Image-/Konfigurationsrollout ohne Schemaänderung
-- `schema-and-app`: Migrationen plus nachgelagerter Stack-Rollout; erfordert ein dokumentiertes Wartungsfenster
-
-### Promote-Gate für Migration und Bootstrap
-
-Der GitHub-Workflow `promote.yml` deployt die App nicht mehr blind. Vor `quantum-cli stack deploy` prüft ein explizites Deployment-Gate zwei getrennte Verträge:
-
-- `migration_mode`
-- `bootstrap_mode`
-
-Erlaubte Werte:
-
-- `assert-none`: Kein impliziter Skip. Der Workflow prüft den Änderungsumfang auf Risiko und bricht ab, sobald Migrationen oder Bootstrap-/Reconcile-Artefakte betroffen sind.
-- `run`: In `dev`, `staging` und unter Production-Freigabe auch in `prod` nutzt `Promote` den gehärteten, temporären One-shot-Executor. Für Staging und Production lautet der Ablauf verbindlich: Preflight, Backup, Migration, optional Bootstrap, Postconditions, App-Deploy, interne und externe Smokes. Bei Backup-, Job-, Postcondition- oder Verify-Fehlern erfolgt kein App-Deploy.
-- `auto`: Nur für den durch einen Merge nach `main` ausgelösten Dev-Promote. Der Workflow erkennt Migration und Bootstrap unabhängig am Commit-Diff, führt nur erforderliche One-shot-Jobs aus und aktualisiert `studio-dev` ausschließlich nach erfolgreichem Build und erfolgreichen benötigten Jobs. Für `staging` und `prod` blockiert dieser Modus vor jeder Mutation.
-
-Bewusste Nicht-Funktion:
-
-- Es gibt absichtlich keinen Modus `skip`.
-- `assert-none` ist nur erlaubt, wenn der Promote-Lauf belastbar zeigen kann, dass keine risikorelevanten Änderungen vorliegen.
-- `run` ist nur dann vertretbar, wenn der Zielpfad produktiv erprobt ist, Logs und Exit-Code sauber bewertet werden und keine halbautomatische Hochskalierung des Live-Stacks stattfindet.
-
-Risikodetektion:
-
-- Migrationsrisiko: z. B. `packages/**/migrations/**`, `**/migrations/**`, `migrate-entrypoint.sh`, `docs/development/studio-db-schema-final.sql`, `docs/development/studio-db-schema.md`, DB-nahe Runtime-/Repository-Pakete
-- Bootstrap-Risiko: z. B. `bootstrap-entrypoint.sh`, `provisioner-entrypoint.sh`, `packages/iam-*/**`, `packages/instance-registry/**`, `packages/auth-runtime/**`, `deploy/keycloak/**`, Runtime-/Provisioning-Konfigurationen
-
-Operator-Regel:
-
-- Für Staging-Migrationen mit `run` ist ein nicht-sensitiver, revisionsfähiger Wartungsfenster-Verweis Pflicht. GitHub Actions ist dort der kanonische mutierende Kanal.
-- Vor einem Merge muss das GitHub-Environment `staging` mit Required Reviewers geschützt sein; `QUANTUM_API_KEY` und weitere mutierende Credentials dürfen ausschließlich als Environment-Secrets vorliegen.
-- Lokale Befehle bleiben für `status`, `doctor`, `precheck`, Diagnose und Recovery zulässig, aber nicht der konkurrierende Standardweg für Staging-Rollouts.
-
-### Zentralen Backup-Agenten bereitstellen
-
-Vor dem Deploy müssen die acht externen Swarm-Secrets aus getrennten, nicht ausgegebenen Quellen angelegt sein:
-
-- je Umgebung PostgreSQL-Passwort, S3-Access-Key, S3-Secret-Key und HMAC-Signaturschlüssel
-- in den GitHub-Environments `staging` und `prod` jeweils das passende Secret `BACKUP_AGENT_SIGNING_KEY`
-- Repository- bzw. Environment-Variable `BACKUP_EXECUTOR=temporary` nur für den kontrollierten Rückfall
-
-Der Stack wird mit einer unveränderlichen Image-Referenz gerendert und ausgerollt:
-
-```bash
-IMAGE_REF='ghcr.io/smart-village-solutions/sva-studio-backup-agent@sha256:<digest>' \
-  quantum-cli stacks deploy \
-  -f deploy/backup-agent-stack.yaml \
-  --stack studio-backup-agent \
-  --endpoint sva
-```
-
-Danach müssen genau eine gesunde Replica, keine veröffentlichten Ports, alle drei Netze und die beiden exakten Traefik-Router nachgewiesen werden. Ein kontrollierter Neustart erfolgt über einen erneuten Deploy desselben Digests. Bei Störung wird `BACKUP_EXECUTOR=temporary` gesetzt; der Promote bleibt trotzdem fail-closed und führt niemals beide Executor-Pfade aus.
-
-### Staging-Backup-Drill
-
-Der manuelle GitHub-Workflow **Staging Backup Drill** prüft den Agentenpfad ohne Migration, Bootstrap oder App-Deployment. Er akzeptiert ausschließlich eine unveränderliche Image-Referenz und die dazugehörige Commit-Revision. Der Workflow sendet einen OIDC-authentisierten und signierten Auftrag, wartet auf das passende MinIO-Ergebnis und validiert Dump, Download, Prüfsumme und Archiv. Nur mit `BACKUP_EXECUTOR=temporary` verwendet er den bisherigen kurzlebigen Stack.
-
-Ein erfolgreicher Drill hinterlässt im Bucket `studio-db-backup-staging`:
-
-- `<objektpfad>.dump` und `<objektpfad>.dump.sha256`
-- `<objektpfad>.dump.diagnostic.ndjson` mit redigierten Schritt-Ereignissen
-- ein GitHub-Artifact mit der redigierten Runner-Evidenz
-
-Bei einem Fehler ist zuerst die Diagnosedatei in MinIO auszuwerten. Fehlt sie wegen eines Storage-Fehlers, ist das GitHub-Artifact die maßgebliche Fallback-Evidenz. Ohne erfolgreiche Dump-, Prüfsummen- und Archivprüfung darf kein mutierender Staging-Promote gestartet werden.
-
-Prod-Hinweis:
-
-- Für Produktion verlangt `Promote` bei beiden `run`-Modi ein revisionsfähiges Wartungsfenster sowie ein erfolgreiches Artifact eines abgeschlossenen mutierenden Staging-Pfads für exakt dasselbe Image-Digest. Ein App-only-Staging-Deploy genügt nicht. Fehlt einer dieser Nachweise, blockiert der Lauf vor Backup und Mutation.
-- Der manuelle Workflow `Production Backup Drill` führt ausschließlich ein Production-Backup ohne Migration, Bootstrap oder App-Deployment aus. Er läuft im geschützten GitHub-Environment `prod`, verlangt einen nicht-sensitiven Wartungsfenster-Verweis und akzeptiert nur einen erfolgreichen `Staging Backup Drill` für exakt dasselbe Image-Digest als Paritätsnachweis.
-- Vor produktiven Schema- oder Reconcile-Eingriffen müssen aktuelles Backup, Restore-Pfad und Rollback-Entscheidung vorliegen; ein grüner App-Build ersetzt diese Freigabe nicht.
-
-### Image-Versionierung im Promote-Pfad
-
-Der GitHub-Promote-Pfad akzeptiert für das Zielartefakt absichtlich nicht jede beliebige Referenz:
-
-- `dev`: darf weiterhin `latest`, Commit-SHA-Tag oder Digest verwenden
-- `staging`: blockiert `latest`; akzeptiert Commit-SHA-Tag oder Digest nur als Eingabe, löst ihn vor der Mutation zu einem Digest auf und prüft die OCI-Revision gegen `change_head`
-- `prod`: blockiert mutable Tags und erfordert einen Digest
-
-Der Workflow schreibt den tatsächlich deployten Digest sowie `SVA_DEPLOY_REVISION` explizit in den gerenderten Stack-Vertrag und in die Deploy-Summary. Damit bleiben Rollout, Audit und Incident-Analyse auf ein konkretes Artefakt zurückführbar.
-
-Der Workflow-Eingang dafür heißt `image_ref`, nicht mehr nur `tag`, weil staging/prod bewusst auch volle Digest-Referenzen akzeptieren und validieren.
-
-Rollback-Regel:
-
-- Rollback immer per vorherigem Commit-SHA-Tag oder besser per vorherigem Digest
-- nie per `latest`
-- für Produktion ist der Digest der führende Rollback-Schlüssel
-
-### Empfohlene Reihenfolge
-
-```bash
-cd "$(git rev-parse --show-toplevel)"
-
-pnpm env:release:studio:local -- --image-digest=<sha256-digest> --release-mode=app-only --rollback-hint="Vorherigen Digest erneut deployen"
-```
-
-Für Schemaänderungen:
-
-```bash
-cd "$(git rev-parse --show-toplevel)"
-
-pnpm env:release:studio:local -- \
-  --release-mode=schema-and-app \
-  --maintenance-window="2026-03-20 19:00-19:15 CET" \
-  --image-digest=<sha256-digest> \
-  --rollback-hint="Vorherigen Digest erneut deployen"
-```
-
-Der Deploypfad führt verbindlich aus:
-
-1. `environment-precheck` inklusive Pflichtvariablen, Schema-Guard und Live-Spec-Drift
-2. `image-smoke` gegen das Digest-Artefakt inklusive Root-Host-, Tenant-Host- und OIDC-Parität
-3. `migrate` bei `schema-and-app`
-4. `bootstrap` bei `schema-and-app`
-5. Stack-Rollout via `quantum-cli stacks update` oder `docker stack deploy`
-6. `internal-verify` mit `doctor`, Swarm-Task-Sicht und App-Principal-Evidenz
-7. `external-smoke`
-8. `release-decision`
-
-Interpretationshilfe:
-
-- wenn der Deploy-Report rot ist, aber Service-Spec, laufende Tasks und externe Smokes grün sind, liegt wahrscheinlich ein False-Negative im Verify-/Transportpfad vor
-- in diesem Fall zuerst Live-Service und Smokes als Wahrheitsebene prüfen, dann den Reportpfad debuggen
-- wenn `migrate` grün ist, `bootstrap` aber rot, zuerst den Bootstrap-SQL-Vertrag gegen die zuletzt eingezogenen Schema-Pflichtfelder prüfen; ein pauschaler Retry des Gesamtdeploys hilft dann meist nicht
-- wenn der Cutover technisch durch ist, aber die ersten externen Health-/Tenant-Probes kurz `404` liefern, ist das zuerst als mögliche Post-Cutover-Settling-Phase zu behandeln und nicht sofort als belastbare Regression
-
-8. Schreiben eines Deploy-Reports unter `artifacts/runtime/deployments/`
-
-Read-only Betriebsregel:
-
-- `status`, `doctor` und `precheck` nutzen bevorzugt die Portainer-API mit `QUANTUM_API_KEY` und `QUANTUM_ENDPOINT_ID`
-- lokales `quantum-cli` ist für diese Pfade nicht mehr der primäre Wahrheitskanal
-- `quantum-cli` bleibt für Mutationen wie `stacks update` sowie für dedizierte Job-Stacks der kanonische Operator-Pfad
-- mutierende Remote-Kommandos für `studio` laufen regulär über den expliziten lokalen Operator-Einstieg mit verifiziertem Digest
-
-Für das produktionsnahe Profil `studio` gilt derselbe Netzwerk-/Ingress-Vertrag zusätzlich gegen `config/runtime/studio.local.vars`:
-
-- `SVA_IMAGE_REF`, `SVA_IMAGE_DIGEST` und `SVA_IMAGE_TAG` in dieser lokalen Operator-Datei müssen den bewusst freigegebenen Zielstand repräsentieren
-- ein `app-only`-Reconcile dient als kanonischer, nicht destruktiver Recovery-Pfad für Netz-/Ingress-Drift
-- `env:migrate:studio` und `schema-and-app` duerfen nur die Temp-Job-Stacks `migrate` und `bootstrap` bewegen; Seiteneffekte auf `studio_app` ausserhalb des expliziten Deploy-Schritts sind kein akzeptierter Zustand
-- `precheck` und `doctor` muessen `app-db-principal` fuer `APP_DB_USER` als gesund bestaetigen; Superuser-only-Sicht ist kein Freigabenachweis
-- der Bootstrap-Job muss für `APP_DB_USER` neben den IAM-Schema-Rechten auch `CONNECT` und `CREATE` auf der Studio-Datenbank sowie `USAGE, CREATE` im Schema `public` abgleichen; diese Rechte werden vom Graphile-Job-Worker benötigt
-- wenn das Ziel-Digest bereits auf `studio_app` laeuft, darf `image-smoke` die Live-Paritaet nur wiederverwenden, wenn Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Runtime-Flags fuer genau dieses Digest gruen sind
-- eine erfolgreich gelaufene GitHub-Image-Verifikation fuer dasselbe Digest ist operativ massgeblich; lokale Operator-Warnungen wegen fehlender lokaler Verify-Artefakte sind nachrangig, bis der Artefakt-Lookup vereinheitlicht ist
-
-### Staging-Stacks und Wiederherstellung nach Konfigurationsdrift
-
-Der Quantum-Environment-Name und der Name eines laufenden Stacks sind keine austauschbaren Zielangaben. Insbesondere darf ein Staging-Stack nicht mit dem Compose- oder Runtime-Profil von `studio` aktualisiert werden: Dadurch können Ingress-Labels, Root-Host, OIDC-Redirect-URIs, Client-Secrets und Datenbankzugänge des Staging-Stacks überschrieben werden.
-
-Vor jeder Mutation sind deshalb immer diese drei Werte gemeinsam zu prüfen und im Deploy-Report festzuhalten:
-
-- Endpoint, Stackname und verwendete Compose-Quelle
-- Root-Host, `SVA_PARENT_DOMAIN` sowie die Traefik-Hostlabels
-- Realm, Client-ID, Callback-URL und Geheimnisse für `SVA_AUTH_*`, `KEYCLOAK_ADMIN_*` und `KEYCLOAK_PROVISIONER_*`
-
-Für eine Instanzanlage benötigt der Provisioner einen getrennten Client in `master` mit `create-realm`. Der reguläre IAM-Admin-Client einer Tenant- oder Plattform-Realm ist dafür absichtlich nicht ausreichend. Der Provisioner-Vertrag lautet:
-
-- `KEYCLOAK_PROVISIONER_REALM=master`
-- `KEYCLOAK_PROVISIONER_CLIENT_ID=sva-studio-provisioner`
-- `KEYCLOAK_PROVISIONER_CLIENT_SECRET` aus genau diesem Client
-
-Nach einem fehlgeschlagenen oder falschen Stack-Update ist kein weiterer Voll-Deploy mit einem geratenen Profil zulässig. Zuerst die effektive Service-Spec und die passende Staging-Compose-Quelle wiederherstellen; danach in dieser Reihenfolge prüfen: Root-Host, Login-Redirect, `APP_DB_USER`-Anmeldung, Instanz-Registry und erst zuletzt das Keycloak-Provisioning.
-
-Ein `404` während eines kontrollierten Swarm-Updates kann kurzzeitig auftreten. Bleibt er nach abgeschlossenem Service-Update bestehen oder wechselt zu `401`, `403`, `500` oder `502`, ist dies kein Settling mehr, sondern ein Konfigurationsdrift, der vor weiteren Provisioning-Versuchen behoben werden muss.
-
-Die GitHub-Environments `staging` und `dev` erhalten ihre gesamte Stack-Konfiguration als Secret `APP_CONFIG`. Die lokale, ignorierte Arbeitskopie liegt unter `config/runtime/staging.local.vars` beziehungsweise `config/runtime/dev.local.vars`; die commitbaren Verträge sind [staging.vars.example](../../config/runtime/staging.vars.example) und [dev.vars.example](../../config/runtime/dev.vars.example). Vor dem Upload müssen alle `__SET_`-Platzhalter ersetzt und die Keycloak-Realms, Clients sowie Callback-URLs gegen die Zielumgebung geprüft werden.
-
-```bash
-gh secret set APP_CONFIG --env staging < config/runtime/staging.local.vars
-gh secret set APP_CONFIG --env dev < config/runtime/dev.local.vars
-```
-
-## Schritt 3a: Neue Instanz im Registry-Modell anlegen
-
-Neue Instanzen werden nicht mehr über `SVA_ALLOWED_INSTANCE_IDS`, neue Stacks oder neue Runtime-Profile freigeschaltet. Der verbindliche Pfad läuft über die zentrale Instanz-Registry.
-
-Zulässige Einstiege:
-
-- Studio-Control-Plane auf dem Root-Host unter `/admin/instances`
-- nicht-interaktive CLI unter `scripts/ops/instance-registry.ts`
-
-Der CLI-Pfad bleibt absichtlich stabil. Die interne Umsetzung ist in Command- und Kontextmodule zerlegt, damit lokale Ops-Automatisierung und spätere Erweiterungen an derselben öffentlichen Einstiegskante hängen bleiben.
-
-Beispiel:
-
-```bash
-pnpm exec tsx scripts/ops/instance-registry.ts create \
-  --instance-id hb-neu \
-  --display-name "HB Neu" \
-  --parent-domain studio.smart-village.app \
-  --auth-realm hb-neu \
-  --auth-client-id sva-studio \
-  --actor-id release-operator
-pnpm exec tsx scripts/ops/instance-registry.ts activate \
-  --instance-id hb-neu \
-  --actor-id release-operator
-```
-
-Prüfkriterien:
-
-- Registry-Eintrag existiert
-- `primaryHostname` entspricht `<instanceId>.studio.smart-village.app`
-- Status ist nach Freigabe `active`
-- kein neues App-Deployment und kein neues Runtime-Profil wurden benötigt
-- Realm-Basisdaten werden am Root-Host unter `/admin/instances` gepflegt:
-  - `authRealm`
-  - `authClientId`
-  - optional `authIssuerUrl`
-  - tenant-spezifisches OIDC-Client-Secret
-  - initialer Tenant-Admin-Bootstrap
-- Keycloak-Status und Reconcile laufen über dieselbe Root-Host-Instanzverwaltung; direkte Keycloak-Handedits sind nur Fallback
-
-### Fallback über Portainer oder CLI
-
-Dieser Pfad bleibt nur Fallback für Ausnahmefälle oder die initiale Stack-Anlage. Danach muss die Verifikation immer wieder über `pnpm env:doctor:studio` und `pnpm env:smoke:studio` abgesichert werden.
-
-#### Über Portainer
-
-1. Neuen Stack anlegen (Typ: Swarm)
-2. Compose-Pfad: `deploy/portainer/docker-compose.yml`
-3. Umgebungsvariablen aus Schritt 2 eintragen
-4. Deploy auslösen
-
-#### Über CLI
-
-```bash
-cd "$(git rev-parse --show-toplevel)"
-quantum-cli stacks update --environment swarm-secrets --endpoint sva --stack sva-studio --project . --wait
-```
-
-## Schritt 4: Diagnose, Smoke und Evidenz
-
-Verbindliche Reihenfolge nach jedem Studio-Deploy:
-
-```bash
+pnpm env:status:studio
 pnpm env:doctor:studio
+pnpm env:precheck:studio
 pnpm env:smoke:studio
 ```
 
-Der kanonische Deploypfad erzeugt zusätzlich pro Lauf Artefakte unter `artifacts/runtime/deployments/`:
+Diese Befehle sind Diagnosewerkzeuge und starten keinen regulären Rollout.
 
-- JSON-Report für CI-Weiterverarbeitung
-- Markdown-Report für Menschen
-- Release-Manifest mit Commit, Digest, Image-Ref, Actor und Workflow
-- Ergebnis von `environment-precheck`, `image-smoke`, `migrate`, `bootstrap`, `deploy`, `internal-verify`, `external-smoke` und `release-decision`
-- separate JSON-Artefakte für Phasenstatus, Migration, interne Probes und externe Probes
-- referenzierbaren Stack-Status und optionale Grafana-/Loki-Links
+## Verifikation nach einem Rollout
 
-Unmittelbar danach:
+GitHub Actions führt die regulären Prüfungen aus. Für eine unabhängige Incident-Verifikation gelten mindestens:
 
-```bash
-pnpm env:feedback:studio
-```
+| Prüfung | Erwartung |
+| --- | --- |
+| `GET /health/live` | HTTP 200 |
+| `GET /health/ready` | HTTP 200 |
+| Root-Login | HTTP 302 zum korrekten Root-Realm |
+| jeder aktive Tenant-Login | HTTP 302 zum jeweiligen Tenant-Realm |
+| Live-Service-Image | exakt erwarteter SHA-256-Digest |
+| App-Task | gewünschter Zustand `running` |
+| Netzwerke | internes Zielnetz und öffentliches Traefik-Netz vorhanden |
+| Traefik-Labels | Root- und Wildcard-Router entsprechen der Zielumgebung |
 
-Der Befehl erzeugt:
+Ein Swarm-Service darf nach einem Update bis zu fünf Minuten konvergieren. Vor Ablauf dieses Fensters wird kein zusätzlicher mutierender Reparaturversuch gestartet. Bleibt ein Fehler danach bestehen, gilt der Rollout als fehlgeschlagen.
 
-- `release-feedback-summary.json` und `release-feedback-summary.md` als Verlaufssicht
-- `<reportId>.review.md` als Review-Entwurf für den jüngsten Deploy
+## Backup-Agent
 
-Wenn der Deploy fehlgeschlagen ist oder nur mit manueller Nacharbeit stabil wurde, wird der Review-Entwurf nach `docs/reports/` übernommen und dort verbindlich vervollständigt.
+Der zentrale Service `studio-backup-agent` ist mit den aktuellen internen Netzen von Staging und Production sowie dem öffentlichen Traefik-Netz verbunden. Er veröffentlicht keinen Docker-Port. Traefik akzeptiert ausschließlich:
 
-`doctor` ergänzt die Betriebsprüfung um:
+- `POST https://backup-studio-staging.smart-village.app/_ops/backup/v1/requests`
+- `POST https://backup-studio.smart-village.app/_ops/backup/v1/requests`
 
-- Schema-Drift-Erkennung für kritische IAM-Artefakte
-- Actor-/Membership-Diagnose über `SVA_DOCTOR_*`
-- nicht-sensitive `reason_code`s für DB-, Redis-, Keycloak- und IAM-Pfade
-- Remote-Service-Status und Live-Service-Spec bevorzugt via Portainer-API
-- `quantum-cli exec` nur noch als dokumentierter Fallback für Sonderdiagnosen
+Ein erfolgreicher Auftrag erzeugt dauerhaft in MinIO:
 
-Stabile Diagnosecodes umfassen unter anderem:
+- das Request-Objekt unter `control/requests/`,
+- das terminale Ergebnis unter `control/results/`,
+- einen PostgreSQL-Custom-Dump im umgebungsgebundenen Präfix,
+- redigierte Diagnose- und Prüfsummenevidenz.
 
-- `missing_table`
-- `missing_column`
-- `missing_actor_account`
-- `missing_instance_membership`
-- `schema_drift`
-- `database_connection_failed`
-- `keycloak_dependency_failed`
+Der Promote-Workflow akzeptiert das Backup nur, wenn Request-ID, Umgebung, Digest und Terminalstatus passen und das Dump-Objekt anschließend unabhängig verifiziert wurde. Der historische temporäre Backup-Executor ist nur Incident-Fallback und darf nicht als reguläre Variable aktiviert werden.
 
-| Prüfung                                                           | Erwartung                                                                            |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `GET https://<SVA_PARENT_DOMAIN>/health/live`                     | HTTP 200                                                                             |
-| `GET https://<SVA_PARENT_DOMAIN>/health/ready`                    | HTTP 200, Redis + DB + Keycloak bereit                                               |
-| `GET https://<SVA_PARENT_DOMAIN>/auth/login`                      | Redirect zum OIDC-Provider                                                           |
-| `GET https://<aktive-instance>.<SVA_PARENT_DOMAIN>/`              | HTTP 200 ohne neues Deployment                                                       |
-| `GET https://unknown.<SVA_PARENT_DOMAIN>/`                        | fail-closed, ohne tenant-spezifische Detailoffenlegung                               |
-| `GET https://<suspendierte-instance>.<SVA_PARENT_DOMAIN>/auth/me` | gleiches fail-closed-Verhalten wie unbekannter Host                                  |
-| App in Portainer                                                  | Status: `healthy`                                                                    |
-| Monitoring-Services in Portainer                                  | `otel-collector`, `loki`, `prometheus`, `grafana`, `promtail`, `alertmanager` laufen |
-| `app-db-principal` in `doctor`/`precheck`                         | `ok`, `APP_DB_USER` sieht `db=true`, `redis=true`, `keycloak=true`                   |
+## Backup-Drills
 
-Für IAM-Abnahmen zusätzlich:
+Die Workflows **Staging Backup Drill** und **Production Backup Drill** testen den Agenten ohne App-Deployment. Production benötigt die Freigabe des Environments `prod`, einen Wartungsfenster-Verweis und den passenden Staging-Nachweis. Ein Drill ersetzt weder Staging-Promotion noch Production-Promotion.
 
-- `/api/v1/iam/me/context` liefert keinen generischen `403` ohne diagnostischen `reason_code`
-- `/api/v1/iam/users/me/profile` liefert keinen generischen `500` ohne diagnostischen Kontext
-- OTEL-Spans für IAM-Requests enthalten korrelierbare Diagnoseattribute zu Dependency-Status, Actor-Auflösung und Schema-Guard
+## Incident-Recovery
 
-### Hinweis zum Monitoring-Bootstrap
+### App- oder Ingress-Fehler
 
-`monitoring-config-init` ist als One-shot-Service ausgelegt. Er schreibt die versionierten Konfigurationsdateien in die benannten Volumes, setzt die benötigten Rechte und beendet sich danach erfolgreich. Das ist beabsichtigt und kein Fehlerzustand.
+1. Zielstack, erwarteten Digest und Zeitpunkt festhalten.
+2. Service-Spec, Taskzustände, Netzwerke und Traefik-Labels read-only prüfen.
+3. Bis zu fünf Minuten Konvergenzzeit ab dem abgeschlossenen Service-Update berücksichtigen.
+4. Root- und Tenant-Probes erneut ausführen.
+5. Bei anhaltendem Fehler den vorherigen Digest als Recovery-Ziel festlegen.
+6. Eine notwendige direkte Mutation auf genau den App-Service des Zielstacks begrenzen.
+7. Danach vollständige Health-, Tenant-, Digest- und Netzprüfung wiederholen und einen Incident-Report unter `docs/reports/` anlegen.
 
-## Update eines bestehenden Stacks
+Direkte Änderungen an Traefik, gemeinsamen Netzwerken oder fremden Stacks sind außerhalb eines explizit erweiterten Incident-Scopes verboten.
 
-Für ein reines App-Update ohne Schemaänderungen:
+### Datenbankfehler nach Migration
 
-1. Neues Image mit unveränderlichem Tag oder Digest bereitstellen
-2. `pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=app-only --rollback-hint="<hinweis>"` ausführen
-3. Deploy-Report prüfen und archivieren
+- Keine automatische Down-Migration ausführen.
+- Zuerst feststellen, ob App-Rollback und neue Datenbankversion kompatibel sind.
+- Dump, SHA-256, Archivlesbarkeit und Zielumgebung des Promote-Backups prüfen.
+- Restore ausschließlich in einem kontrollierten Wartungsfenster und nach expliziter Freigabe durchführen.
+- Vor Umschalten der App Schema-Guard, App-DB-Principal und Tenant-Registry prüfen.
 
-Für `studio` gilt derselbe Pfad mit dem Unterschied, dass der Ziel-Digest vorab über `config/runtime/studio.local.vars` konvergiert und anschließend mit `pnpm env:status:studio`, `pnpm env:smoke:studio` und `pnpm env:precheck:studio` bestätigt wird.
+### Restore-Grundvertrag
 
-Für Schemaänderungen:
+Ein Restore verwendet `pg_restore` gegen eine explizit benannte Zieldatenbank. Vorher werden Bucket, Objektpfad, Prüfsumme, Quellumgebung und Zielumgebung überprüft. Zugangsdaten werden über den Secret-Store injiziert und niemals auf der Kommandozeile oder im Report ausgegeben.
 
-1. Wartungsfenster definieren
-2. `pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=schema-and-app --maintenance-window=... --rollback-hint="<hinweis>"` ausführen
-3. Deploy-Report auf `migrate`, `internal-verify`, `external-smoke` und `release-decision` prüfen
+Nach dem Restore sind mindestens erforderlich:
 
-## Rollback
+1. `goose`-Versionsstand prüfen,
+2. kritischen IAM-Schema-Guard ausführen,
+3. App-DB-Principal validieren,
+4. Registry- und Tenant-Secrets prüfen,
+5. `health/live`, `health/ready` und alle aktiven Tenant-Logins prüfen.
 
-### App-Rollback (ohne Schemaänderung)
+## DNS- und TLS-Prüfung
 
-```bash
-pnpm env:release:studio:local -- --image-digest=<vorheriger-sha256-digest> --release-mode=app-only --rollback-hint="<hinweis>"
-```
+Root- und Wildcard-DNS jeder Umgebung müssen auf denselben vorgesehenen Swarm-Ingress zeigen. Die Backup-Hosts müssen denselben verifizierten Ingress erreichen. DNS- oder TLS-Abweichungen werden diagnostiziert, aber nicht durch spontane Traefik-Änderungen im App-Rollout behoben.
 
-### Bei Schemaänderungen
+## Secrets und Evidenz
 
-Ein Rollback über eine destruktive Migration hinweg erfordert einen DB-Restore oder einen bewusst dokumentierten Rückweg. Für die aktuelle Development-Phase mit frischen Instanzen ist der einfachste Weg:
+- Keine vollständigen Service-Environments, `.env`-Dateien oder Secret-Inhalte ausgeben.
+- Reports enthalten nur Digest, Stack, Service-/Task-ID, Status, Zeitpunkte und redigierte Fehlerklassen.
+- Lokale `*.local.vars` bleiben ignoriert.
+- MinIO-ETags sind keine kryptografischen Prüfsummen; maßgeblich ist die separat berechnete SHA-256-Prüfung nach erneutem Download.
 
-1. Postgres-Volume löschen
-2. Stack frisch deployen
-3. Datenbank neu initialisieren (Schritt 3)
+## Eskalation
 
-### Recovery bei Netzwerk-/Ingress-Drift
+| Fall | Primärer Kanal | Zusätzlicher Kanal |
+| --- | --- | --- |
+| Betriebsstörung ohne sensitive Daten | `operations@smart-village.app` | bereinigtes GitHub Issue |
+| Sicherheits- oder DSGVO-Vorfall | `security@smart-village.app` | `operations@smart-village.app` |
 
-Wenn `app` in Swarm gesund wirkt (`1/1`), extern aber `502` oder fehlendes Routing beobachtet wird, gilt folgende Reihenfolge:
+## Referenzen
 
-1. gerendertes Compose und erwartete `app`-Spec prüfen
-2. Live-Service-Spec über Portainer-/Swarm-Daten gegen Netzwerke `internal`, `public` und Traefik-Labels vergleichen
-3. kontrollierten `app-only`-Reconcile gegen denselben Digest ausführen
-4. danach `status`, `smoke` und `precheck` erneut laufen lassen
-5. Incident erst schließen, wenn der kanonische Soll-/Ist-Abgleich wieder grün ist
-
-Direkte Portainer-Eingriffe bleiben Incident-Recovery und sind nicht der kanonische Standardpfad.
-
-## Persistenz
-
-| Service  | Volume          | Placement              |
-| -------- | --------------- | ---------------------- |
-| Postgres | `postgres-data` | `node.role == manager` |
-| Redis    | `redis-data`    | `node.role == manager` |
-
-Die Placement-Constraints stellen sicher, dass Volumes auf demselben Node bleiben. Bei Cluster-Erweiterung müssen die Constraints ggf. angepasst werden.
-
-### Restore-Pfad
-
-Postgres:
-
-```bash
-# Backup
-docker exec <CONTAINER_ID> pg_dump -U sva -d sva_studio > backup.sql
-
-# Restore in neues Volume
-docker exec -i <CONTAINER_ID> psql -U sva -d sva_studio < backup.sql
-```
-
-## Betrieb mit integriertem Monitoring
-
-Das Referenzprofil aktiviert OTEL standardmäßig. Die App initialisiert das SDK direkt beim Prozessstart über `node --import ./otel-bootstrap.mjs .output/server/index.mjs`, damit Logs und Metriken nicht vom ersten Root-Request abhängen.
-
-Die Monitoring-Konfigurationen werden nicht mehr als langes Inline-Compose-Kommando ausgerollt. Stattdessen schreibt ein eigenes `monitoring-config-init`-Image die versionierten Dateien aus `deploy/portainer/monitoring/` in die dafür vorgesehenen Named Volumes.
-
-Der Monitoring-Block bleibt intern:
-
-- `grafana`, `prometheus`, `loki`, `otel-collector`, `promtail` und `alertmanager` hängen nur am `internal`-Overlay.
-- Nur `app` ist über Traefik öffentlich exponiert.
-- Für externen Grafana-Zugriff ist eine separate Zugangsschicht erforderlich (z. B. VPN, Forward-Proxy oder dedizierter interner Ingress).
-
-### Bekannte Lücken
-
-- **Alertmanager-Receiver nicht konfiguriert:** Der `default`-Receiver in `alertmanager.yml` hat kein reales Ziel (Webhook, E-Mail, Slack). Alle Alert-Rules werden evaluiert, aber nicht zugestellt. Für den Produktivbetrieb muss ein Receiver konfiguriert werden.
-- **Promote-Backup und Aufbewahrung:** Vor Staging- und Production-One-shots erstellt `Promote` einen PostgreSQL-Custom-Dump und speichert ihn in `studio-db-backup-staging` beziehungsweise `studio-db-backup-production` auf `https://fileserver.smart-village.app`. Für beide Buckets gilt eine Lifecycle-Aufbewahrung von 180 Tagen; der Storage-Betrieb verantwortet ihre Durchsetzung. Ein regelmäßiger Restore-Drill ist separate Folgearbeit.
-- **Single-Node-Pinning:** Alle Services sind auf `node-005.sva` gepinnt. Bei Ausfall dieses Nodes ist der gesamte Stack nicht verfügbar. Für HA-Betrieb ist eine Multi-Node-Strategie erforderlich.
-
-## Instanz-Routing
-
-### Modell
-
-Instanzen werden über Subdomains adressiert: `<instanceId>.<SVA_PARENT_DOMAIN>`.
-
-- `foo.studio.smart-village.app` → `instanceId = "foo"`
-- Die Registry ist die führende Quelle für gültige Instanzen und Hostnamen
-- `SVA_ALLOWED_INSTANCE_IDS` bleibt nur lokaler oder migrierender Fallback
-- Root-Domain (`studio.smart-village.app`) ist der kanonische Auth-Host
-- OIDC-Login/Logout-Flows laufen ausschließlich über den kanonischen Auth-Host
-
-### Restriktionen
-
-- Genau ein DNS-Label links der Parent-Domain erlaubt
-- Nur `[a-z0-9]` und `-`, maximal 63 Zeichen, kein Punycode (`xn--`)
-- Unbekannte, ungültige oder Root-Domain-Hosts erhalten identische 403-Antwort
-- Die Allowlist ist für ≤ 50 Instanzen ausgelegt; bei Wachstum darüber hinaus ist eine DB-gestützte Registry geplant
+- Regulärer Rollout: [`studio-rollout-process.md`](./studio-rollout-process.md)
+- Deployment-Überblick: [`deployment-overview.md`](./deployment-overview.md)
+- Architektur: [`07-deployment-view.md`](../architecture/07-deployment-view.md)
+- Backup-ADR: [`ADR-048`](../adr/ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md)
+- Monitoring: [`monitoring-stack.md`](../development/monitoring-stack.md)
+- Incident Response: [`incident-response.md`](./incident-response.md)

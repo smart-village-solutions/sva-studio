@@ -28,6 +28,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Verify final runtime artifact
+        run: pnpm nx run sva-studio-react:verify:runtime-artifact
+
       - name: Login to GHCR
         uses: docker/login-action@v4
         with:
@@ -46,6 +52,7 @@ jobs:
             SVA_IMAGE_REVISION=${{ github.sha }}
           context: .
           file: ./Dockerfile
+          platforms: linux/amd64
           push: true
           tags: |
             ghcr.io/smart-village-solutions/sva-studio:${{ github.sha }}
@@ -59,6 +66,7 @@ jobs:
             SVA_IMAGE_REVISION=${{ github.sha }}
           context: .
           file: ./deploy/backup-agent/Dockerfile
+          platforms: linux/amd64
           push: true
           tags: |
             ghcr.io/smart-village-solutions/sva-studio-backup-agent:${{ github.sha }}
@@ -75,5 +83,5 @@ jobs:
       change_base: ${{ github.event.before }}
       change_head: ${{ github.sha }}
       environment: dev
-      image_ref: ${{ github.sha }}
+      image_ref: ${{ needs.build.outputs.image_digest }}
       migration_mode: auto

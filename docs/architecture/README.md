@@ -20,6 +20,8 @@ Alle Architekturinformationen werden arc42-konform in den Abschnitten 1-12 gepfl
 | 11. Risiken und technische Schulden | `./11-risks-and-technical-debt.md` | Architektur-Risiken, Schulden, Gegenmaßnahmen | Neue Risiken, geänderte Risikobewertung |
 | 12. Glossar | `./12-glossary.md` | Einheitliche Begriffe, Abkürzungen, Definitionen | Neue zentrale Begriffe oder uneinheitliche Terminologie |
 
+Der einzige normative Bedienablauf für Studio-Rollouts nach Dev, Staging und Production ist der [kanonische Studio-Rollout](../guides/studio-rollout-process.md). Die arc42-Abschnitte erklären Architektur und Begründung, definieren aber keinen zweiten Operatorpfad.
+
 ## Pflege-Regeln
 
 - Architektur- oder Systemänderungen in PRs müssen die betroffenen arc42-Abschnitte aktualisieren oder eine begründete Abweichung dokumentieren.

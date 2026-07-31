@@ -56,10 +56,21 @@ describe('deployment contracts', () => {
     expect(workflow).toContain("trap 'rm -f .env stack.json stack.yaml' EXIT");
   });
 
-  it('promotes Dev with the immutable build commit tag', () => {
+  it('promotes Dev with the exact digest produced by the canonical build', () => {
     const workflow = load('.github/workflows/build.yml');
 
-    expect(workflow).toContain('image_ref: ${{ github.sha }}');
+    expect(workflow).toContain('pnpm nx run sva-studio-react:verify:runtime-artifact');
+    expect(workflow).toContain('platforms: linux/amd64');
+    expect(workflow).toContain('image_ref: ${{ needs.build.outputs.image_digest }}');
+  });
+
+  it('has no competing Studio image build or release-preparation workflow', () => {
+    expect(fs.existsSync(path.join(rootDir, '.github/workflows/studio-image-build.yml'))).toBe(
+      false
+    );
+    expect(
+      fs.existsSync(path.join(rootDir, '.github/workflows/studio-release-preparation.yml'))
+    ).toBe(false);
   });
 
   it('configures the Dev router for the Traefik ACME resolver', () => {

@@ -58,11 +58,6 @@ function loadStudioImageVerifyWorkflow(): string {
   return fs.readFileSync(path.join(rootDir, '.github/workflows/studio-image-verify.yml'), 'utf8');
 }
 
-function loadStudioImageBuildWorkflow(): string {
-  const rootDir = resolveRootDir();
-  return fs.readFileSync(path.join(rootDir, '.github/workflows/studio-image-build.yml'), 'utf8');
-}
-
 function loadDockerignore(): string {
   const rootDir = resolveRootDir();
   return fs.readFileSync(path.join(rootDir, '.dockerignore'), 'utf8');
@@ -241,12 +236,8 @@ describe('workspace package scripts', () => {
     expect(workflow).not.toContain("tr -cs '[:alnum:]._- ' '-'");
   });
 
-  it('fetches full history before building the studio image and keeps git out of the docker context', () => {
-    const workflow = loadStudioImageBuildWorkflow();
-    const dockerignore = loadDockerignore();
-
-    expect(workflow).not.toContain('fetch-depth: 0');
-    expect(dockerignore).toContain('.git');
+  it('keeps git out of the Docker build context', () => {
+    expect(loadDockerignore()).toContain('.git');
   });
 
   it('runs type gates through workspace-wide Nx targets instead of hard-coded project lists', () => {

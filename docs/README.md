@@ -8,8 +8,8 @@ Diese Übersicht ist der zentrale Einstiegspunkt für die Projekt-Dokumentation 
 | --- | --- | --- |
 | das System verstehen willst | `./architecture/README.md` | `./adr/README.md`, `./monorepo.md` |
 | lokal entwickeln oder testen willst | `./development/runtime-profile-betrieb.md` | `./development/playbook.md`, `./development/testing-coverage.md` |
-| Deployment oder Betrieb vorbereitest | `./guides/swarm-deployment-guide.md` | `./guides/swarm-deployment-runbook.md`, `./development/monitoring-stack.md` |
-| einen kanonischen Deployment-Einstieg suchst | `./guides/deployment-overview.md` | `./guides/swarm-deployment-guide.md`, `./guides/swarm-deployment-runbook.md` |
+| Dev, Staging oder Production ausrollen willst | `./guides/studio-rollout-process.md` | `./guides/deployment-overview.md`, `./guides/swarm-deployment-runbook.md` |
+| Swarm-Infrastruktur oder einen Incident bearbeitest | `./guides/swarm-deployment-runbook.md` | `./guides/swarm-deployment-guide.md`, `./development/monitoring-stack.md` |
 | Security oder Incident-Prozesse prüfen willst | `./guides/security-policy.md` | `./guides/incident-response.md`, `./guides/troubleshooting.md` |
 | IAM-spezifische Abläufe suchst | `./guides/iam-service-api-dokumentation.md` | `./guides/iam-deployment-runbook.md`, `./architecture/iam-service-architektur.md` |
 | Architekturentscheidungen nachvollziehen willst | `./adr/README.md` | `./architecture/09-architecture-decisions.md` |
@@ -24,9 +24,9 @@ Diese Übersicht ist der zentrale Einstiegspunkt für die Projekt-Dokumentation 
 | `development/` | Entwicklungsrichtlinien, Testing, Monitoring, lokale Setups | `./development/playbook.md` |
 | `guides/` | Runbooks, Betriebs- und Fachleitfäden | `./guides/` |
 | `api/` | API-Spezifikationen | `./api/iam-v1.yaml` |
-| `reports/` | operative Reports, Checklisten und Verifikationen | `./reports/` |
-| `staging/` | zeitlich abgelegte Zwischenstände und Analyse-Dokumente | `./staging/` |
-| `pr/` | PR-bezogene Begleitdokumente | `./pr/` |
+| `reports/` | zeitgebundene Evidenz und Verifikationen; nicht normativ | `./reports/` |
+| `staging/` | zeitlich abgelegte Zwischenstände; nicht normativ | `./staging/` |
+| `pr/` | PR-bezogene Begleitdokumente; nicht normativ | `./pr/` |
 
 ## Aktueller Workspace-Bezug
 
@@ -46,7 +46,8 @@ Für die technische Einordnung dieser Projekte sind folgende Dokumente die prim�
 
 Die folgenden Dokumente sind die primären Einstiege für übergreifende Governance- und Betriebsfragen:
 
-- Deployment: `./guides/deployment-overview.md`
+- Studio-Rollout: `./guides/studio-rollout-process.md`
+- Deployment-Profile: `./guides/deployment-overview.md`
 - Runtime-Profile und Betriebsmodi: `./development/runtime-profile-betrieb.md`
 - Security Policy: `./guides/security-policy.md`
 - Incident Response: `./guides/incident-response.md`
@@ -61,3 +62,4 @@ Die folgenden Dokumente sind die primären Einstiege für übergreifende Governa
 - Architektur- oder Systemänderungen müssen die betroffenen arc42-Abschnitte unter `./architecture/` aktualisieren.
 - Neue oder geänderte Architekturentscheidungen werden unter `./adr/` dokumentiert und in `./architecture/09-architecture-decisions.md` referenziert.
 - Historische ADR-Dateien unter `./architecture/decisions/` gehören zu einer älteren Serie mit überschneidenden Nummern; neue oder aktualisierte Referenzen müssen auf `./adr/` zeigen.
+- Historische Reports, Staging-/PR-Unterlagen, Pläne und archivierte OpenSpec-Changes sind keine Bedienanleitungen. Für Dev, Staging und Production gilt ausschließlich `./guides/studio-rollout-process.md` zusammen mit den versionierten Workflows.

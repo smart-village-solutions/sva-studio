@@ -72,7 +72,7 @@ Traefik (Ingress, TLS, HostRegexp-Routing)
   │  Overlay-Netzwerk „public"
   ▼
 ┌──────────────────────────────────────────────────────────────┐
-│  Swarm-Stack „sva-studio"                                    │
+│  Swarm-Stack „studio-dev | studio-staging | studio"          │
 │                                                              │
 │  app ←──── internes Overlay ────→ redis                      │
 │   │                                     │                    │
@@ -101,27 +101,27 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 #### Deployment-Muster
 
-- Der Build-Graph des Portainer-Images baut `sva-mainserver` explizit nach `auth` und vor `routing` sowie dem App-Build, damit die serverseitige Integrationsschicht im Deploy-Artefakt verlässlich vorhanden ist.
+- Der Build-Graph des vom kanonischen Workflow verwendeten Root-`Dockerfile` baut `sva-mainserver` explizit nach `auth` und vor `routing` sowie dem App-Build, damit die serverseitige Integrationsschicht im Deploy-Artefakt verlässlich vorhanden ist.
 
 - **Image-basiert:** Vorgebaute Images aus Container-Registry; für die App ist im Acceptance-Referenzpfad `SVA_IMAGE_REF` mit Digest verpflichtend, der Tag bleibt nur Metadatum. Kein `build:`-Block im Stack.
-- **Promote-Integrität:** `dev` darf weiter mutable Referenzen wie `latest` verwenden. `staging` löst jede zulässige Eingabe vor der Mutation zu einem Digest auf und prüft dessen OCI-Revision gegen den Git-Head; `prod` erfordert einen Digest. Der Deploy-Report hält den konkret aufgelösten Image-Ref plus `SVA_DEPLOY_REVISION` fest.
+- **Promote-Integrität:** Der Main-Build übergibt `dev` direkt den von ihm erzeugten Digest. `staging` löst jede zulässige Eingabe vor der Mutation zu einem Digest auf und prüft dessen OCI-Revision gegen den Git-Head; `prod` erfordert einen Digest. Der Deploy-Report hält den konkret aufgelösten Image-Ref plus `SVA_DEPLOY_REVISION` fest.
 - **Traefik-Labels:** Host-basiertes Routing über `HostRegexp` für Instanz-Subdomains unter `SVA_PARENT_DOMAIN`. TLS über Traefiks `certresolver`.
 - **Profilgrenze Traefik:** Das Referenzprofil verwendet Traefik v2+-Labels; das Demo-Profil bleibt bewusst bei Traefik-v1-kompatiblen Labels und ist deshalb kein 1:1-Abbild des Referenzbetriebs.
 - **Swarm Secrets:** Vertrauliche Werte als externe Docker-Swarm-Secrets mit Namenskonvention `sva_studio_<service>_<secret_name>`. Ein Shell-Entrypoint (`entrypoint.sh`) liest Secret-Dateien und exportiert sie als Env-Variablen.
 - **Versionierte Monitoring-Konfigurationen:** Prometheus-, Loki-, Grafana-, Promtail- und Alertmanager-Konfigurationen liegen versioniert im Repository und werden über ein dediziertes `monitoring-config-init`-Image einmalig in die Swarm-Volumes geschrieben.
 - **Rolling Updates:** `start-first` für Updates, `stop-first` für Rollbacks.
-- **Kanonischer Studio-Releasepfad:** Für `staging` und für freigegebene schema- oder bootstraprelevante Production-Rollouts ist GitHub Actions `Promote` der einzige mutierende Standardpfad: `Preflight -> Backup -> Migration -> optional Bootstrap -> Postconditions -> App-Deploy -> interne und externe Verifikation`. Der lokale Operatorpfad bleibt Diagnose und Recovery. Production akzeptiert einen One-shot-Run nur mit Wartungsfenster und einem erfolgreichen Nachweis desselben abgeschlossenen mutierenden Staging-Pfads für exakt dasselbe Digest.
+- **Kanonischer Studio-Releasepfad:** GitHub Actions `Build` und `Promote` sind für Dev, Staging und Production der einzige mutierende Standardpfad. Derselbe Digest läuft durch `main -> Dev -> Staging -> Production`. Bei Staging-/Production-One-shots gilt `Preflight -> Backup -> Migration -> optional Bootstrap -> Postconditions -> App-Deploy -> interne und externe Verifikation`. Der lokale Operatorpfad bleibt Diagnose und Incident-Recovery. Production akzeptiert einen One-shot-Run nur mit Freigabe, Wartungsfenster und einem erfolgreichen Nachweis desselben abgeschlossenen mutierenden Staging-Pfads für exakt dasselbe Digest.
 - **Finales Runtime-Artefakt als Release-Wahrheit:** Vor jedem Image-Build prueft der CI-Pfad den gebauten Node-Output `apps/sva-studio-react/.output/server/**` direkt. Intermediate-SSR-Artefakte unter `.nitro/vite/services/ssr/**` sind nur Diagnosematerial und kein Freigabenachweis.
-- **Release-Gate-Bündel:** `pnpm test:release:studio` verbindet das normale PR-Gate mit `verify:runtime-artifact`; `test:pr` bleibt bewusst leichter und enthält den Runtime-Verify nicht.
-- **Image-Verify-Evidenz:** `env:precheck:studio` weist fuer den Ziel-Digest aus, ob unter `artifacts/runtime/image-verify/` ein erfolgreiches Studio-Image-Verify-Artefakt vorhanden ist.
-- **Release-Klassen:** Studio-Deploys unterscheiden `app-only` und `schema-and-app`; nur `schema-and-app` darf Migrationen auslösen.
+- **Build-Gate:** Der einzige Main-Workflow `Build` führt `verify:runtime-artifact` aus, baut genau ein App-Image für `linux/amd64` und übergibt dessen Digest unmittelbar an Dev. `pnpm test:release:studio` bleibt lediglich eine lokale vollständige Vorprüfung und ist kein zusätzlicher Rolloutpfad.
+- **Lokale Recovery-Evidenz:** `env:precheck:studio` kann für einen genehmigten Incident-Recovery-Lauf ergänzend lokale oder historische Image-Verify-Evidenz auswerten; diese ersetzt nie die GitHub-Promote-Gates.
+- **Recovery-Klassen:** Nur der lokale Incident-Recovery-Pfad unterscheidet `app-only` und `schema-and-app`; der reguläre Promote-Vertrag verwendet `migration_mode` und `bootstrap_mode`.
 - **Gepinnter Goose-Pfad:** Schema-Rollouts laufen über einen repository-lokalen `goose`-Wrapper mit fixer Version innerhalb eines dedizierten Swarm-One-off-Jobs; Zielsysteme benötigen keine permanente `goose`-Vorinstallation.
 - **Dedizierte Job-Services:** Die Stack-Compose-Dateien führen zusätzlich die Services `migrate` und `bootstrap` mit `replicas: 0`. Remote-Deploys rendern daraus ein temporäres Quantum-Projekt, das genau den benötigten One-off-Job gegen das aus der Live-Service-Spec ermittelte interne Overlay-Netz startet.
-- **Explizites Promote-Gate:** `promote.yml` bindet Git-Base/-Head, ausgecheckten Executor-Code und für Staging/Production einen durch OCI-Revision attestierten Image-Digest vor jeder Mutation. Ein Main-Push verwendet für `dev` den diff-basierten Modus `auto`: Er führt nur benötigte Migration- und Bootstrap-One-shot-Jobs aus und aktualisiert die App erst nach deren Erfolg. Vor jedem Staging- oder Production-One-shot erstellt ein isolierter Stack einen PostgreSQL-Custom-Dump im getrennten MinIO-Bucket, prüft Download, SHA-256 und `pg_restore --list`. `auto` ist außerhalb von Dev gesperrt.
-- **Gehärteter Live-Render:** Der für `quantum-cli stacks update` erzeugte Deploy-Render validiert vor dem Rollout die vollständige `app`-Service-Spec. Pflicht sind mindestens die Netzwerke `internal` und `public` sowie die ingressrelevanten Traefik-Labels.
-- **Prod-nahe Paritaet vor Mutationen:** Vor mutierenden `studio`-Rollouts prueft `image-smoke` Root-Host, Tenant-Hosts und OIDC-Verhalten gegen das Zielartefakt. Wenn dasselbe Digest bereits live laeuft, ist nur eine dokumentierte Live-Paritaets-Wiederverwendung fuer genau dieses Digest zulaessig.
+- **Explizites Promote-Gate:** `promote.yml` bindet Git-Base/-Head, ausgecheckten Executor-Code und für Staging/Production einen durch OCI-Revision attestierten Image-Digest vor jeder Mutation. Ein Main-Push verwendet für `dev` den diff-basierten Modus `auto`: Er führt nur benötigte Migration- und Bootstrap-One-shot-Jobs aus und aktualisiert die App erst nach deren Erfolg. Vor jedem Staging- oder Production-One-shot fordert der zentrale Backup-Agent einen PostgreSQL-Custom-Dump im getrennten MinIO-Bucket an, prüft Download, SHA-256 und `pg_restore --list`; GitHub verifiziert das Objekt zusätzlich. `auto` ist außerhalb von Dev gesperrt.
+- **Gehärteter Live-Render:** Der für `quantum-cli stacks deploy` erzeugte Deploy-Render validiert vor dem Rollout die vollständige `app`-Service-Spec. Pflicht sind mindestens die Netzwerke `internal` und `public` sowie die ingressrelevanten Traefik-Labels.
+- **Production-Parität vor Mutationen:** Vor mutierenden Production-Rollouts verlangt `Promote` eine erfolgreiche mutierende Staging-Evidenz für exakt denselben Digest. Lokale Recovery-Smokes gegen Root-Host, Tenant-Hosts und OIDC sind zusätzliche Incident-Nachweise, kein Ersatz für diese Evidenz.
 - **Strikte Stack-Trennung:** Temp-Job-Stacks für `migrate` und `bootstrap` enthalten keinen `app`-Service und dürfen keine Live-Service-Spec des eigentlichen Stacks ableiten oder überschreiben.
-- **Deploy-Evidenz:** Jeder Studio-Deploy schreibt redigierte JSON- und Markdown-Artefakte mit Image-, Actor-, Workflow-, Stack- und Verifikationsdaten. Weder `.env`, `APP_CONFIG` noch unredigierte Remote-Logs oder personenbezogene Daten gehören in Evidenz oder Step Summary; der vorherige App-Digest bleibt Recovery-Hinweis. Datenbank-Rollback ist nicht automatisiert.
+- **Deploy-Evidenz:** Reguläre Promotes schreiben redigierte GitHub-Step-Summaries und Action-Artefakte; lokale Incident-Recovery schreibt redigierte JSON- und Markdown-Reports unter `artifacts/runtime/deployments/`. Weder `.env`, `APP_CONFIG` noch unredigierte Remote-Logs oder personenbezogene Daten gehören in Evidenz; der vorherige App-Digest bleibt Recovery-Hinweis. Datenbank-Rollback ist nicht automatisiert.
 - **Health-Modell:** `live` bleibt prozessnah und ohne schwere optionale Abhängigkeiten; `ready` bildet nur minimale Traffic-Voraussetzungen ab; öffentliche Freigabe erfolgt erst über externe Smoke-Probes.
 - **Tenant-Login als Readiness-Bestandteil:** Für aktive Instanzen bewertet `ready` zusätzlich den Tenant-Login-Vertrag aus Registry-Grunddaten und lesbarem tenant-spezifischem Auth-Secret; ein Plattform-Secret-Fallback zählt dafür nicht als bereit.
 - **Recovery-Patch ist Legacy:** `deploy/portainer/entrypoint.sh` darf Build-Artefakte nur noch unter explizitem Recovery-Flag `SVA_ENABLE_RUNTIME_RECOVERY_PATCH=1` umschreiben. Der Standardbetrieb nutzt den finalen Build-Output unverändert.
@@ -142,7 +142,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 #### DB-Initialisierung
 
-Im Swarm-Stack sind keine automatischen Initialisierungsskripte enthalten. Die DB-Einrichtung bleibt ein bewusster Betriebsschritt und wird fuer `studio` ueber den offiziellen `env:migrate:studio`-/`env:release:studio:local`-Pfad mit dediziertem Swarm-Migrationsjob und nachgelagertem Bootstrap-Job statt ueber ad-hoc SQL, `quantum-cli exec`-Streaming oder implizite Redeploys gesteuert. Details im [Swarm-Deployment-Runbook](../guides/swarm-deployment-runbook.md).
+Im Swarm-Stack sind keine automatischen Initialisierungsskripte enthalten. Die DB-Einrichtung bleibt ein bewusster Betriebsschritt und wird im regulären Betrieb über GitHub Actions `Promote` mit dediziertem Swarm-Migrationsjob und nachgelagertem Bootstrap-Job statt über ad-hoc SQL, `quantum-cli exec`-Streaming oder implizite Redeploys gesteuert. Details stehen im [kanonischen Studio-Rollout](../guides/studio-rollout-process.md).
 
 Betriebliche Einordnung:
 
@@ -150,7 +150,7 @@ Betriebliche Einordnung:
 - Für spätere Updates bestehender Datenbanken bleiben Migrationen ein bewusster separater Betriebsschritt.
 - Auch der CI-Promote-Pfad erzwingt diesen Vertrag: Ohne erfolgreichen Nachweis fuer Migration und Bootstrap oder ohne sauberen No-Risk-Nachweis startet kein App-Deploy.
 - Der kanonische Migrationspfad nutzt ein einzelnes `goose`-SQL-File pro Version mit `Up` und `Down`; ein getrennter `up`/`down`-Dateibaum ist kein Sollzustand mehr.
-- Ein reiner Job-Lauf für `migrate` oder `bootstrap` darf keinen vollständigen Stack-Reconcile auf `sva-studio_app` auslösen; der Live-Stack wird erst im expliziten `deploy`-Schritt aktualisiert.
+- Ein reiner Job-Lauf für `migrate` oder `bootstrap` darf keinen vollständigen Stack-Reconcile auf `<zielstack>_app` auslösen; der Live-Stack wird erst im expliziten `deploy`-Schritt aktualisiert.
 
 #### Rollout-Hardening und Recovery
 
@@ -161,7 +161,7 @@ Betriebliche Einordnung:
 - Die Vertragsgrenze zwischen lokalem Development und `studio` bleibt hart: lokale Docker-Kandidaten koennen Private-DNS-, Swarm- und Ingress-Vertraege nur teilweise abbilden und sind deshalb kein alleiniger Freigabenachweis.
 - Der kanonische Recovery-Pfad lautet:
   1. Ziel-Digest, Render-Compose und Live-Service-Spec verifizieren.
-  2. Kontrollierten `app-only`-Reconcile gegen denselben Ziel-Digest ausführen.
+  2. Falls der Incident-Scope eine direkte Mutation genehmigt, einen kontrollierten `app-only`-Reconcile gegen denselben Ziel-Digest ausführen.
   3. Danach `status`, `smoke` und `precheck` erneut pruefen.
   4. Direkte Portainer-API-Eingriffe bleiben Incident-Recovery und sind kein Standardweg.
 
@@ -193,7 +193,7 @@ Referenzen:
 - Swarm-Stack: Root-Host rendert die globale Instanzverwaltung, Tenant-Hosts nicht
 - Swarm-Stack: Monitoring-UI und Storage bleiben intern; keine öffentliche Exponierung ohne zusätzliche Zugangskontrolle
 - Swarm-Stack: `monitoring-config-init` ist ein One-shot-Initialisierer und soll nach erfolgreicher Volume-Befüllung beendet sein
-- Swarm-Stack: `postgres-schema-bootstrap` ist nur noch ein Legacy-Übergangspfad; der regulaere Schemarollout erfolgt ueber `pnpm env:migrate:studio` bzw. `pnpm env:release:studio:local -- --release-mode=schema-and-app` mit `migrate`- und `bootstrap`-Job
+- Swarm-Stack: `postgres-schema-bootstrap` ist nur noch ein Legacy-Übergangspfad; der reguläre Schemarollout erfolgt über GitHub Actions `Promote` mit `migration_mode=run` und bei Bedarf `bootstrap_mode=run`
 - Operative Zielwerte für das Referenzprofil: `RTO <= 2h` für App/Monitoring und Session-Store, `RTO <= 15 min` für den rekonstruierbaren Permission-Cache, `RPO <= 24h` für IAM-Daten in Postgres
 - Primäre betriebliche Eskalation via `operations@smart-village.app`, Sicherheits-/DSGVO-Eskalation via `security@smart-village.app`
 
@@ -272,7 +272,7 @@ Der Rollout erfolgt `studio-dev` → `studio-staging` → `sva-studio`. Pro Stuf
 
 ## Zentraler Backup-Agent im Swarm
 
-`deploy/backup-agent-stack.yaml` definiert eine Replica auf `node-005.sva`. Der Service hängt an den gegen den laufenden Swarm verifizierten Netzen `network-node-005`, `studio-staging_default` und `portainer_internal`, veröffentlicht aber keinen Port. Traefik routet nur `POST /_ops/backup/v1/requests` für `backup-studio-staging.smart-village.app` und `backup-studio.smart-village.app` auf Port 3080. Alle acht Runtime-Secrets sind externe Swarm-Secrets.
+`deploy/backup-agent-stack.yaml` definiert eine Replica mit deterministischem Placement. Der Service hängt an den jeweils live verifizierten internen Netzen von Staging und Production sowie am öffentlichen Traefik-Netz, veröffentlicht aber keinen Port. Konkrete Netzwerk-IDs sind flüchtig und keine Konfiguration. Traefik routet nur `POST /_ops/backup/v1/requests` für `backup-studio-staging.smart-village.app` und `backup-studio.smart-village.app` auf Port 3080. Alle acht Runtime-Secrets sind externe Swarm-Secrets.
 
 Für S3-Uploads setzt der Agent die AWS-CLI-Prüfsummenberechnung und -validierung auf `when_required`. Das verhindert mit aktuellen AWS-CLI-Versionen inkompatible optionale Prüfsummen-Header am bestehenden MinIO-Endpunkt; die eigene SHA-256-Prüfung des Backup-Artefakts bleibt davon unberührt.
 

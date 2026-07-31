@@ -74,7 +74,7 @@ tooling/
   quality/              # complexity-policy.json
   testing/              # coverage-policy.json
 deploy/
-  portainer/            # Docker Swarm production deployment
+  portainer/            # Docker-Swarm-Definitionen; regulärer Rollout über GitHub Actions Promote
 scripts/                # CI and ops scripts (tsx)
 openspec/               # OpenSpec change proposals
 docs/                   # arc42 architecture docs, ADRs, guides (German)

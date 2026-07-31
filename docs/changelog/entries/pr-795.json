@@ -1,0 +1,4 @@
+{
+  "prNumber": 795,
+  "body": "Verankert GitHub Actions Build und Promote als einzigen kanonischen Rolloutprozess für Dev, Staging und Production, entfernt konkurrierende Image-Builds und schützt den Vertrag mit automatischen Konsistenz-Gates."
+}

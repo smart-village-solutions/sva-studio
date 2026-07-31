@@ -31,11 +31,14 @@ jobs:
       - name: Validate file placement
         run: pnpm check:file-placement
 
+      - name: Validate canonical rollout documentation
+        run: pnpm check:rollout-docs
+
       - name: Publish file placement summary
         if: always()
         run: |
           echo 'File-Placement-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Validierung: `pnpm check:file-placement`.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Validierung: `pnpm check:file-placement` und `pnpm check:rollout-docs`.' >> "$GITHUB_STEP_SUMMARY"
 
   check-db-schema-snapshot:
     name: DB Schema Snapshot

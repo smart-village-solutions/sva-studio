@@ -594,7 +594,7 @@ Das System MUST vor Acceptance-Smoke und nach Migrationen den kritischen IAM-Sol
 
 #### Scenario: Migration validiert den Sollstand
 
-- **WHEN** `env:migrate:studio` erfolgreich alle SQL-Dateien angewendet hat
+- **WHEN** `Promote` oder ein ausdrücklich genehmigtes Incident-Recovery über `env:migrate:studio` erfolgreich alle SQL-Dateien angewendet hat
 - **THEN** validiert ein Schema-Guard kritische Tabellen, Spalten, Indizes und RLS-Policies
 - **AND** der Befehl endet nicht erfolgreich, solange kritische Drift verbleibt
 
@@ -1249,4 +1249,3 @@ Das System SHALL für Session-, `/auth/me`- und Profilprojektionen zwischen rohe
 - **WHEN** ein Tenant-Benutzer noch historische Keycloak-Rollen besitzt, die nicht mehr Teil des Sollmodells sind
 - **THEN** kann die Session- oder Diagnoseprojektion diese Rollen als Legacy- oder Rohdaten sichtbar machen
 - **AND** wertet das System sie nicht automatisch als wirksame fachliche Tenant-Rollen
-

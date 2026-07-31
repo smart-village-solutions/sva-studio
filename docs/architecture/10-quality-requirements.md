@@ -52,19 +52,15 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Bericht mit JSON- und Markdown-Artefakt wird unter `docs/reports/` geschrieben
   - `/health/ready` sowie Login-, JIT-, Organisations- und Membership-Nachweise müssen im Bericht als `passed` erscheinen
 - Produktionsnahe Release-Validierung:
-  - `Main Build / App Build` fuehrt `pnpm verify:runtime-artifact` nur fuer runtime-kritische Pull Requests aus; regulaere UI- oder Content-PRs bleiben bewusst auf dem leichteren Build-Pfad
-  - `Studio Image Build` muss genau einen Manifest-Digest für `linux/amd64` liefern
-  - `Studio Image Verify` muss denselben Digest gegen `/health/live`, `/health/ready` und `/` erfolgreich pruefen
-  - `pnpm test:release:studio` muss `pnpm test:pr` und `pnpm verify:runtime-artifact` in dieser Reihenfolge ausführen
-  - `pnpm env:release:studio:local` ist nur mit `--image-digest=sha256:...` gueltig
-  - `env:precheck:studio` muss Image-Digest und passende Image-Verify-Evidenz als eigenen Check dokumentieren; fehlende Evidenz ist mindestens `warn`
-  - `environment-precheck`, `image-smoke`, `internal-verify`, `external-smoke` und `release-decision` müssen im Deploy-Report als `ok` erscheinen
-  - öffentliche Smoke-Probes gegen `/`, `/health/live`, `/health/ready`, `/auth/login` und `/api/v1/iam/me/context` dürfen keinen Timeout und keinen generischen HTML-Fehlerpfad liefern
-  - Release-Evidenz unter `artifacts/runtime/deployments/` muss Report, Release-Manifest und Probe-Artefakte enthalten
-  - Migrations-Evidenz muss zusätzlich `goose`-Status und die verwendete `goose`-Version enthalten
-  - `pnpm env:feedback:studio` muss nach jedem Lauf eine Trend-Zusammenfassung und einen Review-Entwurf erzeugen
-  - fuer `studio` muessen `doctor` und `precheck` zusaetzlich `app-db-principal` als `ok` ausweisen; `db`, `redis` und `keycloak` muessen dabei aus Sicht des laufenden `APP_DB_USER` bereit sein
-  - wenn ein Rollout ein bereits live laufendes Ziel-Digest wiederverwendet, muss der Deploy-Report diese Live-Paritaet fuer dasselbe Digest explizit ausweisen
+  - Der einzige Main-Workflow `Build` muss `verify:runtime-artifact` ausführen, genau ein App-Image für `linux/amd64` veröffentlichen und dessen Digest an Dev übergeben.
+  - `Promote` muss Git-Änderungsbereich, Executor-Revision, Image-Digest, OCI-Revision und die unabhängigen Migration-/Bootstrap-Gates vor jeder Mutation prüfen.
+  - Staging und Production dürfen nur `assert-none` oder `run` verwenden; `auto` bleibt auf den automatischen Dev-Promote begrenzt.
+  - Vor jeder Staging-/Production-Migration oder jedem Bootstrap muss das umgebungsgebundene PostgreSQL-Backup erfolgreich und das MinIO-Objekt unabhängig verifiziert sein.
+  - Mutierende Production-Läufe müssen Environment-Freigabe, Wartungsfenster und erfolgreiche mutierende Staging-Parität exakt desselben Digests nachweisen.
+  - Migration, Bootstrap, Postconditions, App-Deploy, Runtime-Smoke und Digest-Prüfung müssen fail-closed in dieser Reihenfolge laufen.
+  - Öffentliche Smoke-Probes gegen `/health/live`, `/health/ready`, Root-Login und alle aktiven Tenant-Logins dürfen nach bis zu fünf Minuten Swarm-Konvergenz keinen stabilen Fehler liefern.
+  - GitHub-Step-Summary und Action-Artefakte müssen Digest, Stack, Phasenstatus, Backup-Referenz, Jobstatus und Verifikation redigiert dokumentieren; Secrets, `.env`, `APP_CONFIG`, PII und unredigierte Remote-Logs bleiben ausgeschlossen.
+  - Lokale `artifacts/runtime/deployments/`-Reports und `env:feedback:studio` gehören ausschließlich zum genehmigten Incident-Recovery-Pfad.
 - Lokale Runtime-Drift-Reparatur:
   - `pnpm env:up:local-keycloak` bleibt read-only und darf bestehende lokale Instanz-Identitaet oder tenant-spezifische Secrets nicht still ueberschreiben
   - `pnpm env:doctor:local-keycloak --json` liefert fuer lokale Driftklassen stabile `reasonCode`-, `repairable`- und `recommendedAction`-Felder
@@ -339,5 +335,5 @@ Referenzen:
 - MCP-Vertragstests decken stdio-Handshake, Tool-Schemata, Idempotenz, Korrelation, Redaction, Diagnosebudget und Teilfehler ab.
 - Jede kritische Action besitzt Negativtests für falsche Phrase, Ablauf, Replay, Race und veränderten Instanzzustand sowie einen erfolgreichen Einmalverbrauch.
 - End-to-End-Smokes dürfen destruktive Aktionen nur gegen eindeutig markierte kurzlebige Testinstanzen ausführen. Secret-Rotation prüft ausschließlich Status und Korrelation, niemals Secretwerte.
-- Vor PR-Freigabe ist `pnpm test:pr`, vor Studio-Rollout zusätzlich `pnpm test:release:studio` auszuführen. OpenSpec- und File-Placement-Gates bleiben verpflichtend.
+- Vor PR-Freigabe ist `pnpm test:pr` auszuführen. Der reguläre Studio-Rollout läuft ausschließlich über `Build` und `Promote`; `pnpm test:release:studio` ist eine optionale lokale Vollprüfung. OpenSpec- und File-Placement-Gates bleiben verpflichtend.
 - Telemetrie und Betriebsberichte müssen nachweislich frei von Tokens, Client-/Tenant-Secrets und hochkardinalen Identitätslabels bleiben.

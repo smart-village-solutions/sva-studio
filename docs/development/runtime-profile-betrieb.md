@@ -10,6 +10,8 @@ Dieses Runbook definiert die offiziellen Betriebsprofile für SVA Studio und ver
 
 Die kanonischen Profildefinitionen liegen unter `config/runtime/`. Sensible oder standortspezifische Werte werden optional in `config/runtime/<profil>.local.vars` übersteuert.
 
+Dieses Dokument definiert Runtime- und Diagnosewerkzeuge. Der einzige reguläre Rolloutprozess für Dev, Staging und Production steht unter [`studio-rollout-process.md`](../guides/studio-rollout-process.md); lokale Remote-Mutationen sind ausschließlich Incident-Recovery.
+
 ## Konfigurationsmodell
 
 ### Kanonische Quellen
@@ -212,28 +214,13 @@ pnpm env:down:local-builder
 ### Studio (Remote)
 
 ```bash
-pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=app-only --rollback-hint="Vorherigen Digest erneut deployen"
-pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=schema-and-app --maintenance-window="2026-03-20 19:00-19:15 CET" --rollback-hint="Vorherigen Digest erneut deployen"
 pnpm env:status:studio
 pnpm env:doctor:studio
-pnpm env:migrate:studio
-pnpm env:down:studio
+pnpm env:precheck:studio
+pnpm env:smoke:studio
 ```
 
-Gefaehrliche Remote-Mutationen benoetigen zusaetzlich einen passenden Approval-Token, zum Beispiel:
-
-```bash
-pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=app-only --rollback-hint="Vorherigen Digest erneut deployen" --approve-dangerous=studio:deploy:app-only
-pnpm env:migrate:studio -- --approve-dangerous=studio:migrate
-pnpm env:down:studio -- --approve-dangerous=studio:down
-```
-
-Der kanonische Pfad für `studio` ist jetzt geteilt:
-
-- GitHub Actions bereiten Digest und Verify vor
-- `pnpm env:release:studio:local` führt lokal `precheck`, `deploy`, `smoke` und `feedback` für genau diesen Digest aus
-
-Direkte lokale Aufrufe von `env:deploy:studio` bleiben ein Low-Level-Pfad; der dokumentierte produktionsnahe Einstieg ist `env:release:studio:local`.
+Diese Befehle sind read-only Diagnose. Reguläre Remote-Mutationen laufen über GitHub Actions `Promote`. Technisch vorhandene lokale Befehle wie `env:deploy:studio`, `env:migrate:studio`, `env:down:studio` oder `env:release:studio:local` dürfen nur im ausdrücklich genehmigten Incident-Recovery-Scope verwendet werden und benötigen weiterhin ihren passenden Approval-Token.
 
 Der Container-Entrypoint kennt zusätzlich nur noch einen expliziten Legacy-Recovery-Pfad:
 
@@ -248,13 +235,13 @@ Der Container-Entrypoint kennt zusätzlich nur noch einen expliziten Legacy-Reco
 - lokale Profile starten zusätzlich Adminer auf `http://127.0.0.1:8080`
 - lokale Profile führen dabei nur einen read-only Drift-Check auf der Instanz-Registry aus; schreibende Registry-Reconcile ist kein Teil des Regelbetriebs mehr
 - lokale Profile starten danach den Dev-Server für `sva-studio-react`
-- Remote-Profile (`studio`) nutzen stattdessen den kanonischen Releasepfad `deploy`; direkte Remote-Deploys über `up` sind gesperrt
+- Remote-Profile (`studio`) nutzen stattdessen GitHub Actions `Promote`; direkte Remote-Deploys über `up` sind gesperrt
 
 ### `update`
 
 - lokale Profile ziehen Compose-Images neu, starten Infrastruktur erneut und starten den Dev-Server kontrolliert neu
 - lokale Profile führen dabei nur einen read-only Drift-Check auf der Instanz-Registry aus; schreibende Registry-Reconcile ist kein Teil des Regelbetriebs mehr
-- Remote-Profile (`studio`) nutzen stattdessen den kanonischen Releasepfad `deploy`; direkte Remote-Redeploys über `update` sind gesperrt
+- Remote-Profile (`studio`) nutzen stattdessen GitHub Actions `Promote`; direkte Remote-Redeploys über `update` sind gesperrt
 
 ### `reconcile`
 
@@ -290,15 +277,15 @@ Der Container-Entrypoint kennt zusätzlich nur noch einen expliziten Legacy-Reco
 ### `deploy`
 
 - nur für Remote-Profile (`studio`)
-- ist der kanonische Release-Einstiegspunkt für Serverdeploys
-- Remote-Mutationen sind für `studio` entweder im expliziten lokalen Operator-Kontext oder im dokumentierten Legacy-CI-Fallback zulässig
-- der dokumentierte Standardweg setzt `SVA_REMOTE_OPERATOR_CONTEXT=local-operator` nur über `env:release:studio:local`
+- ist ein Low-Level-Werkzeug für ausdrücklich genehmigte Incident-Recovery, nicht der reguläre Release-Einstieg
+- reguläre Remote-Mutationen für Dev, Staging und Production laufen ausschließlich über GitHub Actions `Promote`
+- ein lokaler Recovery-Lauf muss `SVA_REMOTE_OPERATOR_CONTEXT=local-operator`, Zielstack, Digest und Approval-Token explizit binden
 - Orchestrierung in fixer Reihenfolge:
   1. `environment-precheck` inklusive Soll-/Live-Spec-Drift und Pflichtvariablen
   2. `image-smoke` gegen das auszurollende Digest-Artefakt mit Root-Host-, Tenant-Host- und OIDC-Parität
   3. optional `migrate` bei `--release-mode=schema-and-app` als dedizierter Swarm-One-off-Job
   4. optional `bootstrap` bei `--release-mode=schema-and-app` als dedizierter Swarm-One-off-Job für App-User, Grants und Instanz-Seeding
-  5. gehärteter Live-Rollout des echten Ziel-Stacks via `quantum-cli stacks update` oder `docker stack deploy`
+  5. gehärteter Live-Reconcile des echten Ziel-Stacks
   6. `internal-verify` über externe Healthchecks, `doctor`-Diagnostik und Swarm-Task-/Service-Status
   7. `external-smoke` gegen die öffentliche URL
   8. `release-decision` auf Basis der technischen Gates
@@ -320,7 +307,7 @@ Der Container-Entrypoint kennt zusätzlich nur noch einen expliziten Legacy-Reco
 - Wenn das Ziel-Digest bereits live auf `app` läuft, darf das Parity-Gate die Live-Evidenz desselben Digests wiederverwenden. Voraussetzung sind grüne Nachweise für Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Live-Runtime-Flags.
 - Ein lokaler Kandidatencontainer ersetzt fuer `studio` keinen echten Swarm-/Ingress-/Private-DNS-Nachweis. Kann der Remote-Hostvertrag lokal nicht realistisch abgebildet werden, bleibt nur die dokumentierte Live-Paritaet desselben Digests oder ein echter Remote-Rollout im kanonischen Pfad.
 - Erkenntnis aus dem Studio-Release vom 28. April 2026: `migrate` und `bootstrap` bleiben harte Freigabegates, weil Schema-Pflichtfelder und Bootstrap-Reconcile gemeinsam betrachtet werden müssen.
-- Erkenntnis aus dem Studio-Release vom 28. April 2026: externe Health- und Tenant-Probes direkt nach dem Stack-Cutover koennen kurzzeitige `404` liefern, obwohl der neue Task wenige Sekunden spaeter gesund ist; Release-Wrapper sollen diesen Zeitraum mit bounded Retries statt mit einem Sofort-Abbruch behandeln.
+- Erkenntnis aus realen Studio-Rollouts: externe Health- und Tenant-Probes direkt nach dem Stack-Cutover können kurzzeitige Fehler liefern; der kanonische Prozess berücksichtigt bis zu fünf Minuten Konvergenzzeit, bevor ein stabiler Fehler bewertet wird.
 - Erkenntnis aus dem Studio-Release vom 28. April 2026: eine erfolgreich in GitHub gelaufene `Studio Image Verify`-Evidenz ist fachlich gleichwertig zu lokal erzeugten Verify-Artefakten; ein reiner Lookup auf `artifacts/runtime/image-verify` erzeugt sonst Warnrauschen.
 
 ### `smoke`
@@ -350,7 +337,7 @@ Zusatzprüfungen:
 - Remote: zusätzlich `/api/v1/iam/instances`
 - Remote: mindestens ein aktiver Tenant-Host und ein negativer Host-Fall gegen dieselbe App-Instanz
 - Remote: `doctor` und `precheck` muessen `app-db-principal` fuer denselben Runtime-User wie die laufende App als `ok` ausweisen
-- Remote: wenn die erste externe Probe direkt nach einem `app-only`-Rollout fehlschlaegt, ist mindestens ein kurzer Retry-Zeitraum verpflichtend, bevor der gesamte Release als `health`-Fehler gewertet wird
+- Lokale Remote-Recovery: Wenn die erste externe Probe direkt nach einem `app-only`-Reconcile fehlschlägt, gilt dieselbe Konvergenzzeit von bis zu fünf Minuten wie im kanonischen Rollout, bevor ein stabiler `health`-Fehler gewertet wird
 
 Im Profil `studio` prüfen die externen Smokes zusätzlich tenant-spezifische OIDC-Redirects. Der Scope kommt bevorzugt aus der Instanz-Registry; `SVA_ALLOWED_INSTANCE_IDS` bleibt nur lokaler oder migrationsbezogener Fallback, und `SVA_TENANT_SCOPE_INSTANCE_IDS` kann den Scope für gezielte Operator-Läufe explizit übersteuern.
 
@@ -428,7 +415,7 @@ Beispiele für `details`:
 
 ## Deploy-Reports
 
-Deploy-Reports unter `artifacts/runtime/deployments/` sind die primäre Diagnosequelle für `studio`. Sie enthalten mindestens:
+Deploy-Reports unter `artifacts/runtime/deployments/` sind die primäre Diagnosequelle für lokale Incident-Recovery-Läufe. Reguläre Rollout-Evidenz liegt als redigierte Step-Summary und Action-Artefakte im jeweiligen GitHub-`Promote`-Run. Lokale Reports enthalten mindestens:
 
 - Commit-SHA
 - Image-Ref und Digest
@@ -460,9 +447,9 @@ Wichtig für die Interpretation:
 ## Rollback und Betriebsregeln
 
 - Schemaänderungen bleiben ein separater, bewusster Schritt und sind nie Teil von `up`
-- Remote-Deploys laufen nur noch über `pnpm env:deploy:<profil>`
-- vor einem Remote-Release mit `--release-mode=schema-and-app` ist ein dokumentiertes Wartungsfenster Pflicht
-- für `studio` gilt in der frühen Testphase: erst Runtime-/Tenant-/DB-Vertrag stabilisieren, dann weitere Automatisierungsgates verschärfen
+- Reguläre Remote-Deploys laufen ausschließlich über GitHub Actions `Promote`
+- Production- und Staging-Wartungsfenster folgen dem umgebungsabhängigen Vertrag aus `../guides/studio-rollout-process.md`
+- lokale Mutationsbefehle sind Incident-Recovery und müssen danach gegen den Promote-Vertrag verifiziert werden
 
 ## Observability und Live-Diagnose
 
@@ -470,24 +457,23 @@ Für den produktionsnahen `studio`-Betrieb gilt:
 
 - Grafana/Loki-Zugaenge können lokal über `~/.config/quantum/env` hinterlegt werden (`SVA_GRAFANA_URL`, `SVA_LOKI_URL`, `SVA_GRAFANA_TOKEN`)
 - Read-only Remote-Diagnostik nutzt bevorzugt die Portainer-API mit `QUANTUM_API_KEY` und fester `QUANTUM_ENDPOINT_ID`
-- `quantum-cli` bleibt im Regelbetrieb auf mutierende Rollouts (`stacks update`) sowie dedizierte Job-Stacks (`migrate`, `bootstrap`) begrenzt
+- `quantum-cli` wird im regulären Mutationspfad ausschließlich intern durch GitHub Actions gekapselt; lokale Nutzung bleibt read-only Diagnose oder Incident-Recovery
 - Logs müssen weiterhin PII- und Secret-arm bleiben; Diagnostik nutzt den SDK-Logger
 - Wenn in Loki keine verwertbaren App-Diagnoselogs erscheinen, zuerst prüfen:
   - ob die aktuelle App-Version wirklich deployt ist
   - ob Runtime-Flags für Console-/Transport-Verhalten im Live-Service angekommen sind
   - ob der Log-Stream neue Container-Ausgaben überhaupt aufnimmt
-- `schema-and-app` führt Migrationen nur innerhalb des orchestrierten Deploypfads oder bewusst separat über `pnpm env:migrate:<profil>` aus
-- `env:migrate:<profil>` nutzt für Remote-Profile denselben Pfad `migrate-job -> bootstrap-job -> schema-guard` wie `schema-and-app`
-- `env:migrate:<profil>` und `schema-and-app` laufen für Remote-Profile in separaten Temp-Stacks; diese Jobs dürfen den Live-Stack `app`, `postgres` und `redis` nicht reconciliieren
-- jeder Remote-Deploy erzeugt einen maschinenlesbaren und menschenlesbaren Bericht unter `artifacts/runtime/deployments/`
-- jeder Remote-Deploy erzeugt zusätzlich Release-Manifest, Phasenreport, Migrationsreport, interne Probe-Ergebnisse und externe Probe-Ergebnisse als eigene JSON-Artefakte
-- nach jedem `studio`-Deploy folgt `pnpm env:feedback:studio` für den Review- und Feedback-Loop
+- Reguläre Remote-Migrationen laufen nur innerhalb von GitHub Actions `Promote`; `env:migrate:<profil>` ist Incident-Recovery
+- Migrations- und Bootstrap-Jobs laufen in separaten Temp-Stacks und dürfen den Live-Stack `app`, `postgres` und `redis` nicht reconciliieren
+- jeder lokale Remote-Recovery-Deploy erzeugt einen maschinenlesbaren und menschenlesbaren Bericht unter `artifacts/runtime/deployments/`
+- jeder lokale Remote-Recovery-Deploy erzeugt zusätzlich Release-Manifest, Phasenreport, Migrationsreport, interne Probe-Ergebnisse und externe Probe-Ergebnisse als eigene JSON-Artefakte
+- nach manuellem Incident-Recovery folgt `pnpm env:feedback:studio` für den Review- und Feedback-Loop
 - fehlgeschlagene oder manuell stabilisierte Deploys müssen zusätzlich als Review unter `docs/reports/` festgehalten werden
 - vor einer tieferen Fehlersuche immer zuerst `pnpm env:doctor:<profil>` ausführen; manuelles `psql` und Browser-Netzwerk sind nur Fallback
 - bei lokalen Profilwechseln nie zwei Profile parallel auf Port `3000` betreiben
 - für serverseitige Details, Secrets und Portainer-Bedienung bleibt `../guides/swarm-deployment-runbook.md` die Referenz
-- für `studio` ist `config/runtime/studio.local.vars` die bewusst freigegebene lokale Operator-Quelle für Ziel-Digest und Image-Ref; vor jedem `app-only`- oder `schema-and-app`-Rollout muss dieser Stand mit der beabsichtigten Live-Version konvergieren
-- Der kanonische Recovery-Pfad für `app 1/1`, aber externen `502`, lautet: Render-Compose prüfen, Live-Service-Spec prüfen, kontrollierten `app-only`-Reconcile ausführen, danach `status`, `smoke` und `precheck` wiederholen. Direkte Portainer-API-Eingriffe gelten nur als Incident-Recovery.
+- `config/runtime/studio.local.vars` ist ausschließlich lokale Diagnose-/Recovery-Konfiguration und keine Quelle für GitHub-Environment-Secrets
+- Der Recovery-Pfad für `app 1/1`, aber externen `502`, lautet: Render-Compose prüfen, Live-Service-Spec prüfen, bis zu fünf Minuten Konvergenz berücksichtigen, bei Bedarf kontrollierten App-Reconcile ausführen und danach `status`, `smoke` und `precheck` wiederholen.
 
 ## Typische Fehlerbilder
 

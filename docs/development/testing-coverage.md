@@ -65,7 +65,7 @@ Das Kommando bildet den blockierenden GitHub-PR-Pfad für lokale Vorprüfung wei
 - `complexity-gate`
 - `affected`, `full` oder No-op für die allgemeinen echten Integrationsziele via `test:integration`
 - relevanten React-App-Build und relevanten `App E2E`
-- `pnpm verify:runtime-artifact` bleibt bewusst außerhalb von `pnpm test:pr`; der schwere Runtime-Pfad läuft nur im GitHub-Job `App Build` für runtime-kritische Pull Requests und weiterhin voll im Release-Pfad `pnpm test:release:studio`
+- `pnpm verify:runtime-artifact` bleibt bewusst außerhalb von `pnpm test:pr`; der schwere Runtime-Pfad läuft im GitHub-Job `App Build` für runtime-kritische Pull Requests und verpflichtend im einzigen Main-Workflow `Build`. `pnpm test:release:studio` bleibt eine lokale vollständige Vorprüfung, kein Deploymentpfad.
   - lokaler Benchmark am `2. Juni 2026`: `pnpm verify:runtime-artifact` trotz `21/23` Nx-Cache-Treffern bei ca. `220.98s` und damit oberhalb der internen Aktivierungsgrenze für generische PR-Gates
 - i18n für `apps/sva-studio-react` und Plugin-UI läuft bewusst über den vorhandenen Build-Vorcheck `sva-studio-react:check:i18n`; es gibt dafür absichtlich keinen zweiten parallelen PR-Job, um denselben Signaltyp nicht doppelt auszuführen
 - das selektive GitHub-Gate `Quality Gates / A11y` bleibt ein eigener UI-spezifischer Signalpfad; lokal wird es bei UI-relevanten PRs gezielt mit `pnpm test:a11y` vorgeprüft, statt jeden `test:pr`-Lauf pauschal zu verlängern

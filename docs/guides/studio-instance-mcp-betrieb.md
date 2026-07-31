@@ -184,7 +184,7 @@ Secretwerte werden bei keinem Schritt ausgegeben oder in einen Bericht übernomm
 2. Kompromittierte Credentials widerrufen oder den Client deaktivieren.
 3. Lokale MCP-Konfiguration entfernen beziehungsweise stoppen.
 4. Audit und OTEL anhand der letzten bekannten Korrelationen untersuchen.
-5. Bei einem Runtime-Problem den vorherigen freigegebenen Studio-Image-Digest deployen.
+5. Bei einem Runtime-Problem den vorherigen freigegebenen Studio-Image-Digest nach dem Recovery-Vertrag des [kanonischen Studio-Rollouts](./studio-rollout-process.md) wiederherstellen.
 
 Browser-Session, CSRF und Fresh-Reauth bleiben von diesem Rollback unberührt. Additive Challenge-Daten können ungenutzt bestehen bleiben; während eines Incidents wird keine Down-Migration erzwungen.
 
@@ -193,5 +193,5 @@ Browser-Session, CSRF und Fresh-Reauth bleiben von diesem Rollback unberührt. A
 - Package-nahe Unit- und Type-Tests zuerst über die jeweiligen Nx-Targets ausführen.
 - Für serverseitig geladene Packages zusätzlich das jeweilige `check:runtime`-Target ausführen.
 - Vor affected Unit-Runs den Scope mit `pnpm nx show projects --affected --withTarget=test:unit --base=origin/main` messen.
-- Vor PR-Freigabe `pnpm test:pr`, vor einem Studio-Rollout zusätzlich `pnpm test:release:studio` ausführen.
+- Vor PR-Freigabe `pnpm test:pr` ausführen. Der reguläre Umgebungsrollout folgt ausschließlich dem [kanonischen Studio-Rollout](./studio-rollout-process.md); `pnpm test:release:studio` ist nur eine optionale lokale Vollprüfung.
 - OpenSpec mit `openspec validate add-studio-instance-create-mcp --strict` und die Ablage mit `pnpm check:file-placement` prüfen.

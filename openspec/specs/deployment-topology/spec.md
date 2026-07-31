@@ -1,7 +1,7 @@
 # deployment-topology Specification
 
 ## Purpose
-TBD - created by archiving change add-swarm-portainer-deployment. Update Purpose after archive.
+Definiert die verbindliche Swarm-Topologie sowie den GitHub-Actions-Promote-Vertrag für Dev, Staging und Production einschließlich immutable Digests, One-shot-Gates, Backups, Freigaben und Verifikation.
 ## Requirements
 ### Requirement: Swarm-kompatibler Portainer-Stack
 
@@ -16,7 +16,7 @@ Das System SHALL einen Portainer-Stack bereitstellen, der für Docker Swarm mit 
 
 #### Scenario: Live-Rollout validiert vollständige App-Netzwerke
 
-- **WHEN** der Live-Stack für `studio` für `app-only` oder `schema-and-app` gerendert wird
+- **WHEN** `Promote` oder ein ausdrücklich genehmigter Incident-Recovery-Pfad den Live-Stack rendert
 - **THEN** validiert der Deploypfad vor dem Stack-Update, dass der Service `app` weiterhin die Netzwerke `internal` und `public` enthält
 - **AND** verwirft der Rollout den Renderpfad, wenn diese Netzwerke oder ingressrelevante Labels fehlen
 
@@ -238,7 +238,7 @@ Das System SHALL `quantum-cli` im Regelbetrieb auf mutierende Rollout- und Job-P
 #### Scenario: Mutierender Rollout verwendet weiterhin Quantum
 
 - **WHEN** ein Operator einen Remote-Deploy oder einen dedizierten Migrations- oder Bootstrap-Job startet
-- **THEN** darf der kanonische Pfad weiterhin `quantum-cli stacks update` oder Quantum-basierte Temp-Job-Stacks verwenden
+- **THEN** darf der intern gekapselte kanonische GitHub-Workflow weiterhin `quantum-cli stacks deploy` oder Quantum-basierte Temp-Job-Stacks verwenden
 - **AND** dieser mutierende Pfad bleibt klar von read-only Diagnostik getrennt
 - **AND** die Dokumentation bezeichnet Quantum fuer diese Faelle als verbleibenden Orchestrierungsweg statt als universellen Betriebszugang
 
@@ -325,21 +325,20 @@ Das System SHALL den lokalen Entwicklungsbetrieb in einen deterministischen `loc
 
 ### Requirement: Kanonischer Studio-Rollout-Pfad
 
-Das System SHALL fuer das Runtime-Profil `studio` genau einen offiziellen Rollout-Pfad ueber verifizierte Digests und einen expliziten lokalen Operator-Schritt bereitstellen.
+Das System SHALL genau einen offiziellen Rollout-Pfad über GitHub Actions `Build` und `Promote` bereitstellen, der denselben verifizierten Digest von Dev über Staging nach Production befördert.
 
-#### Scenario: Studio-Release wird in Vorbereitung und lokalen Final-Deploy getrennt
+#### Scenario: Main-Build aktualisiert Dev automatisch
 
-- **WHEN** ein Operator `studio` ausrollen moechte
-- **THEN** liefern GitHub Actions nur `Final Runtime Artifact Verify`, `Studio Image Build` und `Studio Artifact Verify`
-- **AND** der finale mutierende Rollout laeuft lokal ueber einen expliziten Operator-Einstieg mit `env:precheck:studio`, `env:deploy:studio`, `env:smoke:studio` und `env:feedback:studio`
-- **AND** GitHub-Deployworkflows gelten hoechstens als dokumentierter Legacy-Fallback und nicht mehr als offizieller Standardpfad
+- **WHEN** ein erfolgreicher Push nach `main` ein verifiziertes Image erzeugt
+- **THEN** ruft der Build `Promote` für `dev` mit `migration_mode=auto` und `bootstrap_mode=auto` auf
+- **AND** wird `studio-dev` nur nach allen erforderlichen erfolgreichen One-shot-Jobs aktualisiert
 
-#### Scenario: Lokaler Operator-Deploy verwendet einen expliziten Digest
+#### Scenario: Staging und Production verwenden denselben Digest
 
-- **WHEN** der lokale `studio`-Release-Einstieg aufgerufen wird
-- **THEN** ist `--image-digest=sha256:...` verpflichtend
-- **AND** der Einstieg loest keinen Digest still aus GitHub-Runs, Branches oder Tags auf
-- **AND** `schema-and-app` erfordert weiterhin ein explizites Wartungsfenster
+- **WHEN** ein Operator ein Release nach Staging und Production befördert
+- **THEN** läuft jede Mutation über GitHub Actions `Promote`
+- **AND** verwendet Production denselben zuvor erfolgreich in Staging verifizierten Digest
+- **AND** bleiben lokale Operator-Einstiege auf read-only Diagnose und dokumentierte Incident-Recovery begrenzt
 
 ### Requirement: Pragmaticher Runtime-Contract fuer Studio
 
@@ -358,24 +357,24 @@ Das System SHALL fuer `studio` einen kleinen, expliziten Runtime-Contract bereit
 - **THEN** verwendet der Runtime-Pfad den konfigurierten `SVA_STACK_NAME`, `QUANTUM_ENDPOINT` und `SVA_RUNTIME_PROFILE`
 - **AND** er faellt fuer Remote-Operationen nicht still auf andere Profile oder Stack-Namen zurueck
 
-### Requirement: Diagnostischer Deploy-Report fuer Studio
+### Requirement: Diagnostischer Recovery-Report für Studio
 
-Das System SHALL fuer `studio` einen belastbaren Deploy-Report mit technischen Gates und Rollout-Kontext erzeugen.
+Das System SHALL für lokale `studio`-Incident-Recovery einen belastbaren Deploy-Report mit technischen Gates und Rollout-Kontext erzeugen; reguläre Rollout-Evidenz entsteht ausschließlich im GitHub-`Promote`-Run.
 
-#### Scenario: Studio-Deploy-Report wird erzeugt
+#### Scenario: Lokaler Recovery-Report wird erzeugt
 
-- **WHEN** ein `studio`-Deploy oder Precheck ausgefuehrt wird
+- **WHEN** ein lokaler `studio`-Recovery-Deploy oder Precheck ausgeführt wird
 - **THEN** enthalten die Artefakte mindestens Commit-SHA, Image-Ref/Digest, Stack, Endpoint, Runtime-Profil und Gate-Ergebnisse
 - **AND** Fehler werden mit stabilen Codes und menschenlesbaren Kurzbeschreibungen dokumentiert
 - **AND** die Artefakte liegen unter `artifacts/runtime/deployments/`
 
 ### Requirement: Studio-Drift- und Tenant-Gates
 
-Das System SHALL fuer `studio` vor und nach dem Rollout minimale Drift- und Tenant-Gates auswerten.
+Das System SHALL in `Promote` vor und nach dem regulären Rollout sowie in lokalen read-only Diagnosepfaden minimale Drift- und Tenant-Gates auswerten.
 
 #### Scenario: Drift-Check fuer Live-Service und Runtime-Contract
 
-- **WHEN** `env:precheck:studio` oder `env:deploy:studio` laeuft
+- **WHEN** `Promote`, `env:precheck:studio` oder ein ausdrücklich genehmigtes `env:deploy:studio` läuft
 - **THEN** prueft der Prozess mindestens den Ziel-Digest gegen den Live-Service
 - **AND** er prueft den effektiven Runtime-Kontext fuer den App-Service ohne Secrets offenzulegen
 - **AND** er meldet Abweichungen als deterministische Diagnose statt als stillen Best-Effort-Fallback
@@ -387,20 +386,20 @@ Das System SHALL fuer `studio` vor und nach dem Rollout minimale Drift- und Tena
 - **AND** sie validieren, dass `/auth/login` tenant-spezifische Redirects erzeugt
 - **AND** sie pruefen, dass IAM-API-Pfade keine HTML-Fallback-Antworten liefern
 
-### Requirement: Pragmaticher Migrations- und Bootstrap-Pfad fuer Studio
+### Requirement: Migrations- und Bootstrap-Pfad für Studio
 
-Das System SHALL fuer `studio` einen fruehphasen-tauglichen Migrations- und Bootstrap-Pfad fuer Schema und Hostname-Bestand bereitstellen.
+Das System SHALL für reguläre Studio-Rollouts Migration und Bootstrap ausschließlich über die `Promote`-Modi sowie für genehmigte Incident-Recovery über den lokalen Recovery-Vertrag bereitstellen.
 
-#### Scenario: Schema-and-App-Deploy fuer Studio
+#### Scenario: Regulärer Promote führt angeforderte One-shots aus
 
-- **WHEN** ein `studio`-Deploy im Modus `schema-and-app` ausgefuehrt wird
-- **THEN** laufen Migrationen kontrolliert vor dem App-Rollout oder innerhalb des dokumentierten Flow
-- **AND** der Deploy-Report dokumentiert den Modus und das Wartungsfenster
-- **AND** Rollback bleibt fuer das Schema pragmatisch auf dokumentierten Roll-forward oder App-Digest-Rollback beschraenkt
+- **WHEN** `Promote` für Staging oder Production Migration oder Bootstrap im Modus `run` ausführt
+- **THEN** laufen Backup, Migration, Bootstrap und Postconditions kontrolliert vor dem App-Deploy
+- **AND** dokumentiert die GitHub-Evidenz Modi und vorgeschriebene Wartungsfenster-Referenz
+- **AND** bleibt Schema-Recovery auf dokumentierten Roll-forward, kompatiblen App-Digest-Rollback oder explizit freigegebenen Restore beschränkt
 
 #### Scenario: Hostname-Bootstrap fuer erlaubte Testinstanzen
 
-- **WHEN** der Reset- oder Bootstrap-Pfad fuer `studio` laeuft
+- **WHEN** `Promote` oder ein genehmigter lokaler Recovery-Pfad Bootstrap ausführt
 - **THEN** werden erlaubte Testinstanzen und ihre primaeren Hostnames idempotent sichergestellt
 - **AND** fehlende Hostname-Mappings werden als Diagnose sichtbar
 

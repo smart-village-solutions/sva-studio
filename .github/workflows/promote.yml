@@ -327,6 +327,7 @@ jobs:
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+          SVA_PUBLIC_BASE_URL: ${{ steps.target.outputs.public_base_url }}
           SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}
         run: |
           set -euo pipefail
@@ -376,6 +377,7 @@ jobs:
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+          SVA_PUBLIC_BASE_URL: ${{ steps.target.outputs.public_base_url }}
           SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}
         run: |
           set -euo pipefail

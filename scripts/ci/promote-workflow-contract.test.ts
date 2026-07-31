@@ -47,6 +47,9 @@ describe('Promote workflow contract', () => {
     expect(
       workflow.match(/SVA_STACK_NAME: \$\{\{ steps\.target\.outputs\.stack_name \}\}/gu)
     ).toHaveLength(2);
+    expect(
+      workflow.match(/SVA_PUBLIC_BASE_URL: \$\{\{ steps\.target\.outputs\.public_base_url \}\}/gu)
+    ).toHaveLength(2);
     expect(workflow).toContain('pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"');
     expect(workflow).toContain('SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}');
     expect(workflow).toContain('--stack "${{ steps.target.outputs.stack_name }}"');

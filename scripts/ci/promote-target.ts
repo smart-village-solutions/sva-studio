@@ -7,6 +7,9 @@ export type PromoteEnvironment = 'dev' | 'prod' | 'staging';
 export const stackNameForEnvironment = (environment: PromoteEnvironment): string =>
   environment === 'prod' ? 'studio' : `studio-${environment}`;
 
+export const publicBaseUrlForEnvironment = (environment: PromoteEnvironment): string =>
+  `https://${environment === 'prod' ? 'studio' : `studio-${environment}`}.smart-village.app`;
+
 const main = () => {
   const environment = process.argv[2];
   if (environment !== 'dev' && environment !== 'staging' && environment !== 'prod') {
@@ -14,10 +17,12 @@ const main = () => {
   }
 
   const stackName = stackNameForEnvironment(environment);
+  const publicBaseUrl = publicBaseUrlForEnvironment(environment);
   if (process.env.GITHUB_OUTPUT) {
     appendFileSync(process.env.GITHUB_OUTPUT, `stack_name=${stackName}\n`);
+    appendFileSync(process.env.GITHUB_OUTPUT, `public_base_url=${publicBaseUrl}\n`);
   } else {
-    process.stdout.write(`${stackName}\n`);
+    process.stdout.write(`${JSON.stringify({ publicBaseUrl, stackName })}\n`);
   }
 };
 

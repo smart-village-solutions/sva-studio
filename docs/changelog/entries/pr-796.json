@@ -1,0 +1,4 @@
+{
+  "prNumber": 796,
+  "body": "Prüft nach jedem Studio-Deployment in Dev, Staging und Production verbindlich die Runtime-Gesundheit und den tatsächlich laufenden Image-Digest."
+}

@@ -112,7 +112,21 @@ const assertRemoteEvidenceHasServices = async (deps: RuntimeHealthDeps, env: Nod
 const assertAcceptanceContainerHealth = async (deps: RuntimeHealthDeps, env: NodeJS.ProcessEnv) => {
   const stackName = deps.getConfiguredStackName(env);
   const appServiceName = resolveRemoteShortServiceName(stackName, deps.getRemoteAppServiceName(env));
-  const services = resolveAcceptanceContainerServices(env, appServiceName);
+  let serviceExpectationEnv = env;
+  try {
+    const contract = await deps.inspectRemoteServiceContract(env, {
+      quantumEndpoint: deps.getConfiguredQuantumEndpoint(env),
+      serviceName: appServiceName,
+      stackName,
+    });
+    const liveOtelFlag = contract?.env.ENABLE_OTEL;
+    if (liveOtelFlag !== undefined) {
+      serviceExpectationEnv = { ...env, ENABLE_OTEL: liveOtelFlag };
+    }
+  } catch {
+    // Existing evidence fallbacks below remain available when the live contract API is unavailable.
+  }
+  const services = resolveAcceptanceContainerServices(serviceExpectationEnv, appServiceName);
 
   try {
     await assertRemoteEvidenceHasServices(deps, env, services);

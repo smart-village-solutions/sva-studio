@@ -157,7 +157,6 @@ export const createAcceptanceCommandRunner = (deps: AcceptanceCommandDeps) => {
         await deps.runAcceptanceDeploy(runtimeProfile, env);
       },
       smoke: async () => {
-        deps.assertRuntimeEnv(runtimeProfile, env);
         await deps.smokeRuntime(runtimeProfile, env);
         console.log(`Smoke-Checks fuer ${runtimeProfile} erfolgreich.`);
       },

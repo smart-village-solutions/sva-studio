@@ -8,6 +8,7 @@ import { pickInternalNetworkName } from '../ops/runtime/internal-network.ts';
 import { runMigrationJobAgainstAcceptance } from '../ops/runtime/migration-job.ts';
 import { commandExists, run, runCapture, runCaptureDetailed, spawnBackground, wait } from '../ops/runtime/process.ts';
 import { inspectRemoteServiceContract } from '../ops/runtime/remote-service-spec.ts';
+import { stackNameForEnvironment } from './promote-target.ts';
 
 type JobKind = 'bootstrap' | 'migration';
 type PromoteEnvironment = 'dev' | 'prod' | 'staging';
@@ -52,7 +53,7 @@ const main = async () => {
   const quantumEndpoint = required(process.env.QUANTUM_ENDPOINT, 'QUANTUM_ENDPOINT');
   const runId = required(process.env.GITHUB_RUN_ID, 'GITHUB_RUN_ID');
   const attempt = required(process.env.GITHUB_RUN_ATTEMPT, 'GITHUB_RUN_ATTEMPT');
-  const sourceStackName = `studio-${environment}`;
+  const sourceStackName = stackNameForEnvironment(environment);
   const resultPath = resolve(process.env.RUNNER_TEMP ?? rootDir, `promote-${kind}-${runId}-${attempt}.json`);
   const reportId = `gha-${runId}-${attempt}`;
   const env: NodeJS.ProcessEnv = { ...process.env, QUANTUM_ENVIRONMENT: 'studio' };

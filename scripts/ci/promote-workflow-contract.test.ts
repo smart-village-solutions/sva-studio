@@ -44,7 +44,9 @@ describe('Promote workflow contract', () => {
     expect(
       workflow.match(/printf '%s\\n' "\$\{APP_CONFIG\}" > config\/runtime\/base\.vars/gu)
     ).toHaveLength(2);
-    expect(workflow).toContain('SVA_STACK_NAME: studio-${{ inputs.environment }}');
+    expect(workflow).toContain('pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"');
+    expect(workflow).toContain('SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}');
+    expect(workflow).toContain('--stack "${{ steps.target.outputs.stack_name }}"');
     expect(workflow).toContain('QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}');
   });
 

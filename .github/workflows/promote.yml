@@ -234,6 +234,10 @@ jobs:
           api-key: ${{ secrets.QUANTUM_API_KEY }}
           version: 3.2.1
 
+      - name: resolve deployment target
+        id: target
+        run: pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"
+
       - name: capture previous live app digest
         id: previous_live_image
         if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
@@ -363,14 +367,14 @@ jobs:
           docker compose -f compose.yaml -f ./deploy/compose.${ENVIRONMENT}.yaml config --no-normalize --format json > stack.json
           pnpm exec tsx scripts/ci/render-quantum-stack.ts --input stack.json --output stack.yaml
 
-          quantum-cli stacks deploy -f stack.yaml --stack "studio-${ENVIRONMENT}" --endpoint "${QUANTUM_ENDPOINT}"
+          quantum-cli stacks deploy -f stack.yaml --stack "${{ steps.target.outputs.stack_name }}" --endpoint "${QUANTUM_ENDPOINT}"
 
       - name: verify deployed runtime
         if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-          SVA_STACK_NAME: studio-${{ inputs.environment }}
+          SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}
         run: |
           set -euo pipefail
           umask 077

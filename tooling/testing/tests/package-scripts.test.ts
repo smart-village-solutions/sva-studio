@@ -28,7 +28,10 @@ interface TsConfigJson {
 type NamedInputValue = string | { env: string };
 
 interface NxProjectJson {
-  targets?: Record<string, { options?: { command?: string; lintFilePatterns?: string[] } }>;
+  targets?: Record<
+    string,
+    { dependsOn?: string[]; options?: { command?: string; lintFilePatterns?: string[] } }
+  >;
 }
 
 interface NxJson {
@@ -411,6 +414,17 @@ describe('workspace package scripts', () => {
     expect(coverageCommand).toContain('--config vitest.config.ts');
     expect(coverageCommand).not.toContain(' tests ');
     expect(coverageCommand).not.toContain('../../scripts/');
+  });
+
+  it('builds the auth runtime before executing tooling runtime tests', () => {
+    const toolingTestingProject = loadToolingTestingProject();
+
+    expect(toolingTestingProject.targets?.['test:unit']?.dependsOn).toContain(
+      'auth-runtime:build'
+    );
+    expect(toolingTestingProject.targets?.['test:coverage']?.dependsOn).toContain(
+      'auth-runtime:build'
+    );
   });
 
   it('marks tooling-testing affected for workflow and CI-gate changes', () => {

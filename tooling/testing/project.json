@@ -17,6 +17,7 @@
     },
     "test:unit": {
       "executor": "nx:run-commands",
+      "dependsOn": ["auth-runtime:build"],
       "inputs": ["default", "^production", "testing", "ciGateTooling", "toolingScripts"],
       "options": {
         "command": "pnpm exec tsx scripts/ci/run-vitest-target.ts --root tooling/testing --reporter=verbose --config vitest.config.ts --passWithNoTests"
@@ -24,6 +25,7 @@
     },
     "test:coverage": {
       "executor": "nx:run-commands",
+      "dependsOn": ["auth-runtime:build"],
       "inputs": ["default", "^production", "testing", "ciGateTooling", "toolingScripts"],
       "options": {
         "command": "pnpm exec tsx scripts/ci/run-vitest-target.ts --root tooling/testing --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"

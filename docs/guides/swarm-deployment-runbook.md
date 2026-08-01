@@ -72,6 +72,8 @@ Der zentrale Service `studio-backup-agent` ist mit den aktuellen internen Netzen
 - `POST https://backup-studio-staging.smart-village.app/_ops/restore/v1/requests`
 - `POST https://backup-studio.smart-village.app/_ops/restore/v1/requests`
 
+Da der Agent beide Umgebungen bedient, erfolgt sein Image-Rollout ausschließlich über den manuell gestarteten Workflow **Backup Agent Rollout** und das geschützte GitHub Environment `prod`. Der Workflow akzeptiert nur den unveränderlichen Digest des Backup-Agent-Images, bindet ihn an dessen Git-Revision und aktualisiert ausschließlich den Stack `studio-backup-agent`. Ein erfolgreicher Staging-Backup-Drill weist anschließend den tatsächlich laufenden Agent-Digest nach.
+
 Ein erfolgreicher Auftrag erzeugt dauerhaft in MinIO:
 
 - das Request-Objekt unter `control/requests/`,

@@ -50,6 +50,7 @@ describe('controlled database restore workflow', () => {
     expect(workflow).toContain('restore-stack-stopped.yaml');
     expect(workflow).toContain('/health/live');
     expect(workflow).toContain('/health/ready');
+    expect(workflow).toContain('--retry 60 --retry-delay 5 --retry-all-errors');
     expect(workflow).toContain('runtime-env.ts smoke studio');
   });
 

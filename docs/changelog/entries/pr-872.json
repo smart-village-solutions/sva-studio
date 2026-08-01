@@ -1,0 +1,4 @@
+{
+  "prNumber": 872,
+  "body": "Interne Verbesserung\n\n- Der kontrollierte Datenbank-Restore berücksichtigt bei den abschließenden Health-Prüfungen das zulässige Konvergenzfenster des Swarm-Services."
+}

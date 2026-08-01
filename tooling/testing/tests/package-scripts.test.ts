@@ -398,6 +398,21 @@ describe('workspace package scripts', () => {
     );
   });
 
+  it('uses the shared Vitest wrapper so Nx test-file filters work for tooling tests', () => {
+    const toolingTestingProject = loadToolingTestingProject();
+    const unitCommand = toolingTestingProject.targets?.['test:unit']?.options?.command;
+    const coverageCommand = toolingTestingProject.targets?.['test:coverage']?.options?.command;
+
+    expect(unitCommand).toContain('scripts/ci/run-vitest-target.ts');
+    expect(unitCommand).toContain('--config vitest.config.ts');
+    expect(unitCommand).not.toContain(' tests ');
+    expect(unitCommand).not.toContain('../../scripts/');
+    expect(coverageCommand).toContain('scripts/ci/run-vitest-target.ts');
+    expect(coverageCommand).toContain('--config vitest.config.ts');
+    expect(coverageCommand).not.toContain(' tests ');
+    expect(coverageCommand).not.toContain('../../scripts/');
+  });
+
   it('marks tooling-testing affected for workflow and CI-gate changes', () => {
     const nxJson = loadNxJson();
     const toolingTestingProject = loadToolingTestingProject();

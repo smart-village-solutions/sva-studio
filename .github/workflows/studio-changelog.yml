@@ -30,7 +30,7 @@ jobs:
         uses: ./.github/actions/setup-pnpm-workspace
 
       - name: Validate pull request changelog entry
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
         run: >
           pnpm exec tsx scripts/ci/check-studio-changelog.ts
           --mode pr
@@ -47,7 +47,11 @@ jobs:
         run: |
           echo 'Studio-Changelog-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo 'Validierung: die Datei `docs/changelog/entries/pr-<nummer>.json` für den aktuellen PR ist Pflicht; zusätzliche Anpassungen an älteren Einträgen sind erlaubt.' >> "$GITHUB_STEP_SUMMARY"
+            if [ "${{ github.event.pull_request.user.login }}" = 'dependabot[bot]' ]; then
+              echo 'Validierung: Dependabot-PR – Changelog-Eintrag ist nicht erforderlich.' >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo 'Validierung: die Datei `docs/changelog/entries/pr-<nummer>.json` für den aktuellen PR ist Pflicht; zusätzliche Anpassungen an älteren Einträgen sind erlaubt.' >> "$GITHUB_STEP_SUMMARY"
+            fi
           else
             echo 'Validierung: vollständiger Katalog unter `docs/changelog/entries/*.json` inklusive JSON- und Git-Metadaten-Prüfung.' >> "$GITHUB_STEP_SUMMARY"
           fi

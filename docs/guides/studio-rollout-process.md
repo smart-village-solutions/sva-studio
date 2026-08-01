@@ -25,6 +25,16 @@ Dieses Dokument ist die einzige normative Bedienanleitung für reguläre Studio-
 | Staging | `studio-staging` | `https://studio-staging.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `staging` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
 | Production | `studio` | `https://studio.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `prod` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
 
+## Explizite Tenant-Hostfreigabe
+
+Die Registry-Aktivierung allein veröffentlicht keinen Tenant. Bis zu einer separat freigegebenen Wildcard-TLS-Lösung müssen drei unabhängige Gates erfüllt sein:
+
+1. Der vollständige Tenant-Host steht explizit in der Traefik-v1- und Traefik-v2+-Regel der Compose-Datei der Zielumgebung.
+2. Die Änderung läuft mit dem regulären `Build`-/`Promote`-Pfad aus; der Tenant-Erstellungsprozess verändert Traefik nicht direkt.
+3. Der Post-Deploy-Smoke weist HTTPS mit einem für den konkreten Host gültigen Einzelzertifikat sowie einen Login-Redirect mit demselben Rückkehr-Host nach.
+
+Dev veröffentlicht zusätzlich `de-teststadt-dev.studio-dev.smart-village.app`, Staging zusätzlich `de-studio-sandbox.studio-staging.smart-village.app`. Die Production-Liste ist versioniert in `deploy/compose.prod.yaml`. Ergänzungen und Entfernungen an dieser Liste sind normale Konfigurationsänderungen und dürfen erst nach erfolgreichem Promote und Smoke in der Registry als extern betriebsbereit behandelt werden. Wildcard-DNS ist kein Freigabenachweis.
+
 Die Backup-Endpunkte und Buckets sind fest an die Zielumgebung gebunden:
 
 | Umgebung | Endpoint | Bucket |
@@ -70,7 +80,7 @@ Die Reihenfolge ist unveränderlich; nicht angeforderte One-shot-Jobs und deren 
 6. Bootstrap ausführen, falls angefordert.
 7. Postconditions gegen Datenbank und aktuellen Runtime-Vertrag prüfen.
 8. App-Stack `studio-staging` aktualisieren.
-9. Runtime-Smoke, Tenant-Logins und Live-Digest verifizieren.
+9. Runtime-Smoke für Root-Host, alle expliziten Tenant-Hosts, deren konkrete TLS-Zertifikate und einen unbekannten Host sowie den Live-Digest verifizieren.
 10. Redigierte Staging-Paritätsevidenz für genau diesen Digest schreiben.
 
 Nur ein insgesamt erfolgreicher mutierender Staging-Lauf erzeugt die für eine mutierende Production-Promotion gültige Paritätsevidenz.

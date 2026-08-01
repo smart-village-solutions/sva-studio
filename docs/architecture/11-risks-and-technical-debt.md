@@ -168,6 +168,12 @@ Schulden auf IST-Basis.
 - Wahrscheinlichkeit: hoch
 - Maßnahme: prod-nahe Freigaben an Remote-Parität binden, identische Live-Digests nur über dokumentierte Live-Evidenz wiederverwenden und lokale Kandidaten explizit als Hilfssignal behandeln
 
+27a. Skalierungsgrenze der expliziten Production-Tenant-Hostliste
+
+- Impact: mittel (jeder neue Production-Tenant benötigt Compose-Review, Promote und eine konkrete ACME-Ausstellung)
+- Wahrscheinlichkeit: hoch bei wachsender Tenant-Zahl
+- Maßnahme: Hostliste deterministisch, duplikatfrei und durch Compose-/Smoke-Gates absichern; eine Umstellung auf `HostRegexp` und Wildcard-TLS erst in einem separaten Change mit geklärter DNS-01-, AutoDNS- und Traefik-Ownership vornehmen
+
 28. Generische IAM-Rechte ohne Content-Type-Qualifier
 
 - Impact: mittel bis hoch (Plugins mit unterschiedlichen Content-Typen teilen sich denselben Rechtekanon und können nur begrenzt separat freigeschaltet werden)

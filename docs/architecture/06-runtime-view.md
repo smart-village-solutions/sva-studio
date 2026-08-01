@@ -1,5 +1,15 @@
 # 06 Laufzeitsicht
 
+## Tenant-Aktivierung über Registry, Ingress und TLS
+
+1. Eine Instanz wird mit primärem Host und Auth-Kontext in der Registry vorbereitet.
+2. Der vollständige Host wird in der Compose-Datei der Zielumgebung explizit für Traefik v1 und v2+ freigegeben und über den kanonischen `Build`-/`Promote`-Pfad ausgerollt.
+3. Traefik leitet aus dem konkreten `Host(...)`-Matcher die ACME-Domain ab und verwaltet über den vorhandenen Resolver ein Einzelzertifikat.
+4. Der externe Smoke prüft Root-Host, jeden expliziten Tenant-Host, Zertifikatsgültigkeit, hosttreuen Login-Redirect und einen unbekannten Host.
+5. Erst nach erfolgreicher externer Verifikation gilt der Tenant als betriebsbereit. Die Anwendung autorisiert jeden Request weiterhin unabhängig davon exakt gegen einen aktiven Registry-Eintrag und lehnt unbekannte oder inaktive Hosts fail-closed ab.
+
+Der Tenant-Erstellungsprozess mutiert weder Traefik noch DNS. Wildcard-DNS allein überführt eine Registry-Instanz nicht in den betriebsbereiten Zustand.
+
 ## Zweck
 
 Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.

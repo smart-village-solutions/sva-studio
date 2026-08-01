@@ -14,39 +14,55 @@ import { inspectRealmAndClients } from './keycloak.ts';
 import { inspectLocalStudioIam } from './local-iam.ts';
 import { renderStudioInstanceAuditHtml } from './render-html.ts';
 import { writeStudioInstanceAuditReport } from './write-report.ts';
+import { resolveStudioIngressContract } from '../runtime/tenant-ingress-hosts.ts';
 
-const buildRegistryChecks = (target: AuditRegistryTarget): readonly AuditCheckResult[] => [
-  {
-    checkId: 'registry.instance.active',
-    status: target.status === 'active' ? 'pass' : 'fail',
-    summary: target.status,
-    title: 'Registry-Status ist betriebsrelevant',
-  },
-  {
-    checkId: 'registry.fields.present',
-    status:
-      target.instanceId
-      && target.primaryHostname
-      && target.parentDomain
-      && target.authRealm
-      && target.authClientId
-      && target.tenantAdminClientId
-        ? 'pass'
-        : 'fail',
-    summary: `${target.instanceId} -> ${target.primaryHostname}`,
-    title: 'Registry-Felder sind gesetzt',
-  },
-  {
-    checkId: 'registry.secrets.configured',
-    details: {
-      authClientSecretConfigured: target.authClientSecretConfigured,
-      tenantAdminClientSecretConfigured: target.tenantAdminClientSecretConfigured,
+export const buildRegistryChecks = (target: AuditRegistryTarget): readonly AuditCheckResult[] => {
+  const ingressContract = resolveStudioIngressContract(`https://${target.parentDomain}`);
+  const explicitlyReleased = ingressContract?.hosts.includes(target.primaryHostname) ?? false;
+
+  return [
+    {
+      checkId: 'registry.instance.active',
+      status: target.status === 'active' ? 'pass' : 'fail',
+      summary: target.status,
+      title: 'Registry-Status ist betriebsrelevant',
     },
-    status: target.authClientSecretConfigured && target.tenantAdminClientSecretConfigured ? 'pass' : 'fail',
-    summary: `${target.authClientSecretConfigured ? 'login' : 'login-missing'} / ${target.tenantAdminClientSecretConfigured ? 'tenant-admin' : 'tenant-admin-missing'}`,
-    title: 'Registry markiert beide Client-Secrets als konfiguriert',
-  },
-];
+    {
+      checkId: 'registry.fields.present',
+      status:
+        target.instanceId
+        && target.primaryHostname
+        && target.parentDomain
+        && target.authRealm
+        && target.authClientId
+        && target.tenantAdminClientId
+          ? 'pass'
+          : 'fail',
+      summary: `${target.instanceId} -> ${target.primaryHostname}`,
+      title: 'Registry-Felder sind gesetzt',
+    },
+    {
+      checkId: 'registry.secrets.configured',
+      details: {
+        authClientSecretConfigured: target.authClientSecretConfigured,
+        tenantAdminClientSecretConfigured: target.tenantAdminClientSecretConfigured,
+      },
+      status: target.authClientSecretConfigured && target.tenantAdminClientSecretConfigured ? 'pass' : 'fail',
+      summary: `${target.authClientSecretConfigured ? 'login' : 'login-missing'} / ${target.tenantAdminClientSecretConfigured ? 'tenant-admin' : 'tenant-admin-missing'}`,
+      title: 'Registry markiert beide Client-Secrets als konfiguriert',
+    },
+    {
+      checkId: 'ingress.host.explicit',
+      details: {
+        environment: ingressContract?.environment ?? null,
+        primaryHostname: target.primaryHostname,
+      },
+      status: explicitlyReleased ? 'pass' : 'fail',
+      summary: explicitlyReleased ? 'Host ist versioniert freigegeben.' : 'Host fehlt in der expliziten Ingress-Freigabe.',
+      title: 'Tenant-Host ist im Studio-Ingress explizit freigegeben',
+    },
+  ];
+};
 
 const toFailureCheck = (checkId: string, title: string, error: unknown): AuditCheckResult => ({
   checkId,

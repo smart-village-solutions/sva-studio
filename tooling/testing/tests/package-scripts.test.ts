@@ -416,14 +416,14 @@ describe('workspace package scripts', () => {
     expect(coverageCommand).not.toContain('../../scripts/');
   });
 
-  it('builds the server runtime before executing tooling runtime tests', () => {
+  it('builds the auth runtime before executing tooling runtime tests', () => {
     const toolingTestingProject = loadToolingTestingProject();
 
     expect(toolingTestingProject.targets?.['test:unit']?.dependsOn).toContain(
-      'server-runtime:build'
+      'auth-runtime:build'
     );
     expect(toolingTestingProject.targets?.['test:coverage']?.dependsOn).toContain(
-      'server-runtime:build'
+      'auth-runtime:build'
     );
   });
 

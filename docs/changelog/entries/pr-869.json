@@ -1,4 +1,4 @@
 {
-  "prNumber": 868,
+  "prNumber": 869,
   "body": "Interne Verbesserung\n\n- Der zentrale Datenbank-Backup-Agent verwendet beim geschützten Rollout das tatsächlich vorhandene Produktionsnetz."
 }

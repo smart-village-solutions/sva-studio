@@ -19,6 +19,12 @@ export type RestoreWorkflowEvidence = Readonly<{
   completedAt: string;
 }>;
 
+const hasPassedRuntimeChecks = (evidence: Partial<RestoreWorkflowEvidence>): boolean =>
+  evidence.healthLive === 'passed' &&
+  evidence.healthReady === 'passed' &&
+  evidence.tenantLogin === 'passed' &&
+  evidence.authenticatedIam === 'passed';
+
 export const isValidStagingRestoreEvidence = (value: unknown): value is RestoreWorkflowEvidence => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const evidence = value as Partial<RestoreWorkflowEvidence>;
@@ -35,10 +41,7 @@ export const isValidStagingRestoreEvidence = (value: unknown): value is RestoreW
     /^[a-f0-9]{64}$/u.test(evidence.sourceSha256) &&
     typeof evidence.safetyBackupObject === 'string' &&
     evidence.safetyBackupObject.startsWith('staging/safety-before-restore/') &&
-    evidence.healthLive === 'passed' &&
-    evidence.healthReady === 'passed' &&
-    evidence.tenantLogin === 'passed' &&
-    evidence.authenticatedIam === 'passed' &&
+    hasPassedRuntimeChecks(evidence) &&
     typeof evidence.completedAt === 'string' &&
     Number.isFinite(Date.parse(evidence.completedAt))
   );

@@ -1,0 +1,4 @@
+{
+  "prNumber": 884,
+  "body": "Fehlerbehebung\n\n- Datenbank-Restores stellen die IAM-Rechte des tatsächlichen Studio-Runtime-Principals wieder her und verifizieren anschließend den authentifizierten Berechtigungszustand."
+}

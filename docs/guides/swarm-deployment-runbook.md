@@ -50,18 +50,18 @@ Diese Befehle sind Diagnosewerkzeuge und starten keinen regulären Rollout.
 
 GitHub Actions führt die regulären Prüfungen aus. Für eine unabhängige Incident-Verifikation gelten mindestens:
 
-| Prüfung                   | Erwartung                                                 |
-| ------------------------- | --------------------------------------------------------- |
-| `GET /health/live`        | HTTP 200                                                  |
-| `GET /health/ready`       | HTTP 200                                                  |
-| Root-Login                | HTTP 302 zum korrekten Root-Realm                         |
-| jeder aktive Tenant-Login | HTTP 302 zum jeweiligen Tenant-Realm                      |
-| Live-Service-Image        | exakt erwarteter SHA-256-Digest                           |
-| App-Task                  | gewünschter Zustand `running`                             |
-| Netzwerke                 | internes Zielnetz und öffentliches Traefik-Netz vorhanden |
+| Prüfung                   | Erwartung                                                              |
+| ------------------------- | ---------------------------------------------------------------------- |
+| `GET /health/live`        | HTTP 200                                                               |
+| `GET /health/ready`       | HTTP 200                                                               |
+| Root-Login                | HTTP 302 zum korrekten Root-Realm                                      |
+| jeder aktive Tenant-Login | HTTP 302 zum jeweiligen Tenant-Realm                                   |
+| Live-Service-Image        | exakt erwarteter SHA-256-Digest                                        |
+| App-Task                  | gewünschter Zustand `running`                                          |
+| Netzwerke                 | internes Zielnetz und öffentliches Traefik-Netz vorhanden              |
 | Traefik-Labels            | v1- und v2+-Regeln enthalten exakt Root- und freigegebene Tenant-Hosts |
-| TLS                       | gültiges Einzelzertifikat für jeden expliziten Host       |
-| unbekannter Tenant-Host   | kein Tenant-Inhalt und kein tenant-spezifischer Login     |
+| TLS                       | gültiges Einzelzertifikat für jeden expliziten Host                    |
+| unbekannter Tenant-Host   | kein Tenant-Inhalt und kein tenant-spezifischer Login                  |
 
 Ein Swarm-Service darf nach einem Update bis zu fünf Minuten konvergieren. Vor Ablauf dieses Fensters wird kein zusätzlicher mutierender Reparaturversuch gestartet. Bleibt ein Fehler danach bestehen, gilt der Rollout als fehlgeschlagen.
 
@@ -147,6 +147,32 @@ Ablauf:
 
 MinIO hält Request, Sicherheitsdump-Metadaten und Agent-Ergebnis getrennt unter `control/restores/`. GitHub hält zusätzlich die redigierte Workflow-Evidenz. Weder Evidenz enthält Secrets, SQL-Inhalte oder Datenbankdaten. Keycloak wird nicht verändert; erkannter Drift wird ausschließlich über die vorhandenen IAM-Reconcile-Pfade behandelt.
 
+### Wiederholbarer Restore-Ablauf für fehlende Runtime-ACLs
+
+Dieser Ablauf gilt, wenn ein fachlich korrekter Dump ohne ACLs wiederhergestellt wurde und die Anwendung anschließend beispielsweise `permission denied for schema iam`, leere `permissionActions` oder `permissionStatus: degraded` meldet:
+
+1. Exakten Dump-Objektschlüssel und die separat berechnete kleingeschriebene SHA-256 bestimmen. Zeitstempel oder Dateiname allein reichen nicht als Identität.
+2. Prüfen, welches unveränderliche App-Image aktuell im Ziel-Stack läuft, und dessen OCI-Revision als `change_head` verwenden. Der Restore-Workflow lehnt ein anderes Image vor der Mutation ab.
+3. Sicherstellen, dass der aktuelle Backup-Agent die Restore-Evidenz `runtime-principal-reconciliation` und `runtime-principal-probe` erzeugt. Ein älterer Agent kann einen ACL-losen Dump zwar einspielen, den Runtime-Zugriff aber nicht belastbar reparieren.
+4. **Controlled Database Restore** für genau eine Zielumgebung starten. Erforderlich sind `environment`, `source_object_key`, `source_sha256`, `maintenance_window`, `image_ref` und `change_head`. Eine Run-ID oder Evidenz der anderen Umgebung ist weder erforderlich noch zulässig.
+5. Das GitHub Environment der Zielumgebung freigeben und den Lauf bis einschließlich Restore, Migration, Principal-Reconciliation, Neustart, Runtime-Smoke und authentifiziertem IAM-Smoke beobachten.
+6. Abschließend mit einer bestehenden Sitzung prüfen, dass `/auth/me` HTTP 200 liefert, `permissionStatus` gleich `ok` ist und `permissionActions` nicht leer ist. Außerdem muss `/iam/me/permissions?instanceId=<instanceId-aus-auth-me>` HTTP 200 liefern.
+
+Der authentifizierte Smoke übernimmt `instanceId` aus `/auth/me`; ein Aufruf von `/iam/me/permissions` ohne diesen Queryparameter ist kein gültiger Berechtigungsnachweis.
+
+### Recovery nach fehlgeschlagener Nachprüfung
+
+Ein Fehler nach Beginn des Restores führt absichtlich erneut zum gestoppten Stackvertrag. Die grünen Einzelschritte bleiben dabei aussagekräftig: Sind Restore, Migration und Principal-Reconciliation erfolgreich und scheitert erst ein nachgelagerter HTTP-/Ingress-Smoke, darf nicht automatisch erneut restored werden.
+
+Für diesen Fall:
+
+1. Fehlerklasse und letzten erfolgreichen Schritt im Restore-Run feststellen.
+2. Bei einem ausschließlich externen Runtime-/Ingress-Fehler den bestehenden, unveränderten Live-Digest über **Promote** mit `migration_mode=assert-none` und `bootstrap_mode=assert-none` wieder ausrollen. `maintenance_window` muss auch bei diesem Recovery-Lauf mit einer nicht-sensitiven Incident-Referenz belegt sein.
+3. `health/live`, `health/ready` und den betroffenen Tenant-Host prüfen.
+4. Den fachlichen IAM-Nachweis über `/auth/me` und `/iam/me/permissions` nachholen.
+
+Wichtig: Der auf `main` laufende Restore-Smoke kann mehr explizite Tenant-Hosts kennen als ein älteres, weiterhin gebundenes Production-Image. Ein Fehler für einen solchen neuen Host widerlegt nicht die zuvor erfolgreiche Datenbank- und ACL-Reparatur. Er erfordert zunächst den beschriebenen Recovery-Promote und anschließend einen regulären Rollout des neueren Images über den kanonischen Build-/Promote-Pfad.
+
 ## DNS- und TLS-Prüfung
 
 Root- und Wildcard-DNS jeder Umgebung müssen auf denselben vorgesehenen Swarm-Ingress zeigen. Extern freigegeben sind trotzdem nur die expliziten `Host(...)`-Regeln mit konkretem Einzelzertifikat. Die Backup-Hosts müssen denselben verifizierten Ingress erreichen. DNS- oder TLS-Abweichungen werden diagnostiziert, aber nicht durch spontane Traefik-Änderungen im App-Rollout behoben.
@@ -173,3 +199,4 @@ Root- und Wildcard-DNS jeder Umgebung müssen auf denselben vorgesehenen Swarm-I
 - Backup-ADR: [`ADR-048`](../adr/ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md)
 - Monitoring: [`monitoring-stack.md`](../development/monitoring-stack.md)
 - Incident Response: [`incident-response.md`](./incident-response.md)
+- Abgeschlossener Production-IAM-Restore vom 1. August 2026: [`production-iam-restore-2026-08-01.md`](../reports/production-iam-restore-2026-08-01.md)

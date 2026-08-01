@@ -23,3 +23,4 @@
 - [x] 4.1 ADR-048 und Swarm-Runbook aktualisieren, ohne einen konkurrierenden Standard-Deploypfad zu definieren.
 - [x] 4.2 arc42-Abschnitte 06, 07, 08, 09 und 11 aktualisieren.
 - [ ] 4.3 Restore nur nach erfolgreichem Staging-Drill und expliziter Production-Freigabe aktivieren.
+- [x] 4.4 Eng begrenzten, environment-geschützten Bootstrap für die vier Restore-Swarm-Secrets und den Restore-Principal ohne SSH-Zugriff ergänzen.

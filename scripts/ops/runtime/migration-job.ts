@@ -330,6 +330,7 @@ export const buildMigrationJobComposeDocument = (
         name: input.internalNetworkName,
       },
     },
+    ...(composeWithoutName.secrets ? { secrets: composeWithoutName.secrets } : {}),
   }) as ComposeDocument;
 };
 

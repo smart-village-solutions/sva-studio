@@ -1,0 +1,59 @@
+name: Restore Infrastructure Bootstrap
+run-name: Bootstrap restore infrastructure for ${{ inputs.environment }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [staging, prod]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: restore-infrastructure-bootstrap-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    name: bootstrap restore infrastructure ${{ inputs.environment }}
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v7
+
+      - name: setup pnpm workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: setup quantum-cli
+        uses: hostwithquantum/setup-quantum-cli@v2.0.0
+        with:
+          api-key: ${{ secrets.QUANTUM_API_KEY }}
+          version: 3.2.1
+
+      - name: resolve Portainer endpoint ID
+        id: portainer
+        env:
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+        run: |
+          set -euo pipefail
+          endpoint_id="$(quantum-cli endpoints list -o json | jq -er --arg name "${QUANTUM_ENDPOINT}" '.[] | select(.Name == $name) | .Id')"
+          [[ "${endpoint_id}" =~ ^[1-9][0-9]*$ ]]
+          printf 'endpoint_id=%s\n' "${endpoint_id}" >> "${GITHUB_OUTPUT}"
+
+      - name: create missing restore secrets
+        env:
+          QUANTUM_API_KEY: ${{ secrets.QUANTUM_API_KEY }}
+          QUANTUM_ENDPOINT_ID: ${{ steps.portainer.outputs.endpoint_id }}
+          RESTORE_AGENT_SIGNING_KEY: ${{ secrets.RESTORE_AGENT_SIGNING_KEY }}
+          RESTORE_POSTGRES_PASSWORD: ${{ secrets.RESTORE_POSTGRES_PASSWORD }}
+        run: pnpm exec tsx scripts/ci/provision-restore-secrets.ts "${{ inputs.environment }}"
+
+      - name: create or reconcile restore database role
+        env:
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+        run: pnpm exec tsx scripts/ci/bootstrap-restore-role.ts "${{ inputs.environment }}"

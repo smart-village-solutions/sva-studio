@@ -27,6 +27,9 @@ describe('controlled database restore workflow', () => {
     expect(workflow).toContain('promote-image-contract.ts');
     expect(workflow).toContain('promote-live-digest.ts');
     expect(workflow).toContain('git merge-base --is-ancestor');
+    expect(workflow.indexOf('Login to GHCR')).toBeLessThan(
+      workflow.indexOf('validate image contract')
+    );
   });
 
   it('requires successful staging evidence before production mutation', () => {

@@ -1,0 +1,4 @@
+{
+  "prNumber": 871,
+  "body": "Interne Verbesserung\n\n- Der kontrollierte Datenbank-Restore authentifiziert die Prüfung privater, unveränderlicher Studio-Images gegen GHCR."
+}

@@ -1,0 +1,4 @@
+{
+  "prNumber": 817,
+  "body": "Sicherheitsupdate\n\n- Die HTML-Bereinigung für Authentifizierung und IAM verhindert eine unvollständige Validierung von URI-Schemata."
+}

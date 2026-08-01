@@ -81,7 +81,7 @@ networks:
     name: studio-staging_default
   production:
     external: true
-    name: portainer_internal
+    name: studio_default
 
 secrets:
   backup_staging_postgres_password_v3:

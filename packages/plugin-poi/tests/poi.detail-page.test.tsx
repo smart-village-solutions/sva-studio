@@ -61,30 +61,35 @@ vi.mock('@sva/plugin-sdk', async () => {
       };
     }),
     listHostMediaAssets: vi.fn(async () => []),
-    updateHostMediaAsset: vi.fn(async ({ assetId, metadata }: { assetId: string; metadata: Record<string, string> }) => {
-      const asset = resolveMockMediaAsset(assetId);
-      return {
-        id: assetId,
-        instanceId: 'instance-1',
-        storageKey: `media/${asset.fileName}`,
-        mediaType: 'image',
-        mimeType: 'image/jpeg',
-        byteSize: 2048,
-        visibility: 'public',
-        uploadStatus: 'processed',
-        processingStatus: 'ready',
-        metadata: {
-          title: metadata.title ?? asset.title,
-          altText: metadata.altText ?? '',
-          description: metadata.description ?? '',
-          copyright: metadata.copyright ?? 'Stadt Musterhausen',
-          license: metadata.license ?? '',
-        },
-        technical: {},
-        previewUrl: asset.previewUrl,
-      };
-    }),
-    uploadHostMediaFile: vi.fn(async () => ({ assetId: 'uploaded-asset', uploadSessionId: 'upload-1' })),
+    updateHostMediaAsset: vi.fn(
+      async ({ assetId, metadata }: { assetId: string; metadata: Record<string, string> }) => {
+        const asset = resolveMockMediaAsset(assetId);
+        return {
+          id: assetId,
+          instanceId: 'instance-1',
+          storageKey: `media/${asset.fileName}`,
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 2048,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {
+            title: metadata.title ?? asset.title,
+            altText: metadata.altText ?? '',
+            description: metadata.description ?? '',
+            copyright: metadata.copyright ?? 'Stadt Musterhausen',
+            license: metadata.license ?? '',
+          },
+          technical: {},
+          previewUrl: asset.previewUrl,
+        };
+      }
+    ),
+    uploadHostMediaFile: vi.fn(async () => ({
+      assetId: 'uploaded-asset',
+      uploadSessionId: 'upload-1',
+    })),
   };
 });
 
@@ -141,7 +146,10 @@ describe('PoiDetailPage', () => {
     vi.mocked(getHostMediaAsset).mockReset();
     vi.mocked(updateHostMediaAsset).mockReset();
     vi.mocked(uploadHostMediaFile).mockReset();
-    vi.mocked(uploadHostMediaFile).mockResolvedValue({ assetId: 'uploaded-asset', uploadSessionId: 'upload-1' } as never);
+    vi.mocked(uploadHostMediaFile).mockResolvedValue({
+      assetId: 'uploaded-asset',
+      uploadSessionId: 'upload-1',
+    } as never);
     vi.unstubAllGlobals();
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
@@ -171,7 +179,8 @@ describe('PoiDetailPage', () => {
         'poi.cards.prices.entries.title': 'Preise',
         'poi.cards.prices.entries.description': 'Preisangaben',
         'poi.cards.media.entries.title': 'Medieninhalte',
-        'poi.cards.media.entries.description': 'Quellen und Metadaten der übertragenen Medien pflegen.',
+        'poi.cards.media.entries.description':
+          'Quellen und Metadaten der übertragenen Medien pflegen.',
         'poi.cards.settings.media.title': 'Bilder',
         'poi.cards.settings.media.description': 'Bilder des Ortes verwalten',
         'poi.cards.advanced.payload.title': 'Zusatzdaten',
@@ -230,8 +239,10 @@ describe('PoiDetailPage', () => {
         'poi.messages.mediaUploadFinalizing': 'Upload wird abgeschlossen.',
         'poi.messages.mediaUploadSuccess': 'Medium wurde hochgeladen und zugeordnet.',
         'poi.messages.mediaUploadError': 'Das Medium konnte nicht hochgeladen werden.',
-        'poi.messages.mediaUploadUnsupportedType': 'Nur JPG, PNG und WebP können hochgeladen werden.',
-        'poi.messages.mediaUploadUnavailableUrl': 'Für dieses Medium ist keine öffentliche URL verfügbar.',
+        'poi.messages.mediaUploadUnsupportedType':
+          'Nur JPG, PNG und WebP können hochgeladen werden.',
+        'poi.messages.mediaUploadUnavailableUrl':
+          'Für dieses Medium ist keine öffentliche URL verfügbar.',
         'poi.messages.mediaPickerTitle': 'Medium hinzufügen',
         'poi.messages.mediaPickerUseMedia': 'Medium übernehmen',
         'poi.messages.mediaPickerAssetLoadError': 'Das Medium konnte nicht geladen werden.',
@@ -293,7 +304,9 @@ describe('PoiDetailPage', () => {
       expect(screen.getByLabelText('Wochentag')).toBeTruthy();
       expect(screen.getAllByLabelText('URL').length).toBeGreaterThan(1);
       expect(screen.getByText('Medieninhalte')).toBeTruthy();
-      expect(screen.getByText('Quellen und Metadaten der übertragenen Medien pflegen.')).toBeTruthy();
+      expect(
+        screen.getByText('Quellen und Metadaten der übertragenen Medien pflegen.')
+      ).toBeTruthy();
       expect(screen.getByLabelText('Preiskategorie')).toBeTruthy();
       expect(screen.getByLabelText('Preisbeschreibung')).toBeTruthy();
       expect(screen.queryByLabelText('Medienbeschriftung')).toBeNull();
@@ -303,8 +316,12 @@ describe('PoiDetailPage', () => {
     const libraryAction = within(mediaSection as HTMLElement).getByText('Aus Mediathek auswählen');
     const uploadAction = within(mediaSection as HTMLElement).getByText('Medium hochladen');
     const manualAction = within(mediaSection as HTMLElement).getByText('Manuell hinzufügen');
-    expect(libraryAction.compareDocumentPosition(uploadAction) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(uploadAction.compareDocumentPosition(manualAction) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      libraryAction.compareDocumentPosition(uploadAction) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      uploadAction.compareDocumentPosition(manualAction) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
   it('manages poi mediaContents in the content tab through the media library overlay', async () => {
@@ -316,7 +333,10 @@ describe('PoiDetailPage', () => {
         {
           captionText: 'Rathaus außen',
           contentType: 'image/jpeg',
-          sourceUrl: { url: 'https://cdn.example.test/rathaus-aussen.jpg', description: 'rathaus-aussen.jpg' },
+          sourceUrl: {
+            url: 'https://cdn.example.test/rathaus-aussen.jpg',
+            description: 'rathaus-aussen.jpg',
+          },
         },
       ],
     } as never);
@@ -374,7 +394,9 @@ describe('PoiDetailPage', () => {
       expect(screen.getByLabelText('Dateiname filtern')).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByLabelText('Dateiname filtern'), { target: { value: 'stadtpark' } });
+    fireEvent.change(screen.getByLabelText('Dateiname filtern'), {
+      target: { value: 'stadtpark' },
+    });
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).queryByText('Rathaus außen')).toBeNull();
     expect(within(dialog).getByText('Stadtpark')).toBeTruthy();
@@ -423,7 +445,7 @@ describe('PoiDetailPage', () => {
   it('renders a global save action and a history placeholder for poi', async () => {
     render(<PoiDetailPage mode="create" />);
 
-    expect(await screen.findByRole('button', { name: 'Speichern' })).toBeTruthy();
+    expect(await screen.findAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
     switchSection('history');
     expect(screen.getByText('Noch keine Historie verfügbar.')).toBeTruthy();
   });
@@ -476,7 +498,7 @@ describe('PoiDetailPage', () => {
     });
     switchSection('settings');
     fireEvent.change(screen.getByLabelText('Payload'), { target: { value: '{' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
@@ -488,7 +510,7 @@ describe('PoiDetailPage', () => {
   it('keeps the basis tab active when the name is missing', async () => {
     render(<PoiDetailPage mode="create" />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Speichern' }));
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Speichern' }))[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
@@ -508,7 +530,7 @@ describe('PoiDetailPage', () => {
     const categoryInput = screen.getByLabelText('Kategorien suchen');
     fireEvent.change(categoryInput, { target: { value: 'Verwaltung' } });
     fireEvent.blur(categoryInput);
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).toHaveBeenCalledWith(
@@ -530,7 +552,7 @@ describe('PoiDetailPage', () => {
       target: { value: 'http://invalid.example' },
     });
     switchSection('basis');
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
@@ -543,18 +565,22 @@ describe('PoiDetailPage', () => {
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
-    fireEvent.change(screen.getByLabelText('Name des Betreibers'), { target: { value: 'Stadtwerke' } });
+    fireEvent.change(screen.getByLabelText('Name des Betreibers'), {
+      target: { value: 'Stadtwerke' },
+    });
     fireEvent.change(document.getElementById('poi-operator-url') as HTMLInputElement, {
       target: { value: 'http://invalid.example/operator' },
     });
     switchSection('basis');
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
       expect(document.activeElement).toBe(document.getElementById('poi-operator-url'));
       expect(screen.getByText('URLs müssen mit https:// beginnen.')).toBeTruthy();
-      expect(document.getElementById('poi-operator-url')?.getAttribute('aria-invalid')).toBe('true');
+      expect(document.getElementById('poi-operator-url')?.getAttribute('aria-invalid')).toBe(
+        'true'
+      );
     });
   });
 
@@ -567,7 +593,7 @@ describe('PoiDetailPage', () => {
       target: { value: 'http://invalid.example/contact' },
     });
     switchSection('basis');
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
@@ -587,7 +613,7 @@ describe('PoiDetailPage', () => {
       target: { value: 'http://invalid.example/media.jpg' },
     });
     switchSection('basis');
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
@@ -615,7 +641,7 @@ describe('PoiDetailPage', () => {
     });
 
     switchSection('content');
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(updatePoi)).not.toHaveBeenCalled();
@@ -630,7 +656,9 @@ describe('PoiDetailPage', () => {
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
-    fireEvent.change(screen.getByLabelText('Name des Betreibers'), { target: { value: 'Stadtwerke' } });
+    fireEvent.change(screen.getByLabelText('Name des Betreibers'), {
+      target: { value: 'Stadtwerke' },
+    });
     fireEvent.change(document.getElementById('poi-operator-latitude') as HTMLInputElement, {
       target: { value: '91' },
     });
@@ -638,14 +666,20 @@ describe('PoiDetailPage', () => {
       target: { value: '13' },
     });
     switchSection('basis');
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
       expect(document.activeElement).toBe(document.getElementById('poi-operator-latitude'));
-      expect(screen.getAllByText('Koordinaten müssen gültige Breiten- und Längengrade sein.')).toHaveLength(2);
-      expect(document.getElementById('poi-operator-latitude')?.getAttribute('aria-invalid')).toBe('true');
-      expect(document.getElementById('poi-operator-longitude')?.getAttribute('aria-invalid')).toBe('true');
+      expect(
+        screen.getAllByText('Koordinaten müssen gültige Breiten- und Längengrade sein.')
+      ).toHaveLength(2);
+      expect(document.getElementById('poi-operator-latitude')?.getAttribute('aria-invalid')).toBe(
+        'true'
+      );
+      expect(document.getElementById('poi-operator-longitude')?.getAttribute('aria-invalid')).toBe(
+        'true'
+      );
     });
   });
 
@@ -707,7 +741,10 @@ describe('PoiDetailPage', () => {
         {
           captionText: 'Rathaus außen',
           contentType: 'image/jpeg',
-          sourceUrl: { url: 'https://cdn.example.test/rathaus-aussen.jpg', description: 'rathaus-aussen.jpg' },
+          sourceUrl: {
+            url: 'https://cdn.example.test/rathaus-aussen.jpg',
+            description: 'rathaus-aussen.jpg',
+          },
         },
       ],
       payload: { source: 'test' },
@@ -723,7 +760,7 @@ describe('PoiDetailPage', () => {
       expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(updatePoi)).toHaveBeenCalledWith(
@@ -771,7 +808,7 @@ describe('PoiDetailPage', () => {
       expect(screen.getByDisplayValue('service,amt')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(updatePoi)).toHaveBeenCalledWith(
@@ -853,7 +890,7 @@ describe('PoiDetailPage', () => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(updatePoi)).toHaveBeenCalledWith(
@@ -899,10 +936,13 @@ describe('PoiDetailPage', () => {
       expect(screen.getByRole('button', { name: 'Entfernen' })).toBeTruthy();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
-      expect(vi.mocked(updatePoi)).toHaveBeenCalledWith('poi-1', expect.objectContaining({ mediaContents: [] }));
+      expect(vi.mocked(updatePoi)).toHaveBeenCalledWith(
+        'poi-1',
+        expect.objectContaining({ mediaContents: [] })
+      );
     });
   });
 
@@ -915,11 +955,14 @@ describe('PoiDetailPage', () => {
     render(<PoiDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).toHaveBeenCalledTimes(1);
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/poi/$id', params: { id: 'poi-created' } });
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/admin/poi/$id',
+        params: { id: 'poi-created' },
+      });
     });
   });
 
@@ -968,7 +1011,7 @@ describe('PoiDetailPage', () => {
       expect(screen.getByDisplayValue('https://cdn.example.test/rathaus-aussen.jpg')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).toHaveBeenCalledWith(
@@ -1017,7 +1060,9 @@ describe('PoiDetailPage', () => {
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
     fireEvent.click(screen.getByRole('button', { name: 'Medium hochladen' }));
-    fireEvent.change(screen.getByTestId('media-upload-input'), { target: { files: [uploadedFile] } });
+    fireEvent.change(screen.getByTestId('media-upload-input'), {
+      target: { files: [uploadedFile] },
+    });
 
     await waitFor(() => {
       expect(vi.mocked(uploadHostMediaFile)).toHaveBeenCalledWith({
@@ -1036,7 +1081,7 @@ describe('PoiDetailPage', () => {
       expect(screen.getByDisplayValue('https://cdn.example.test/upload-rathaus.webp')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).toHaveBeenCalledWith(
@@ -1090,7 +1135,9 @@ describe('PoiDetailPage', () => {
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
     fireEvent.click(screen.getByRole('button', { name: 'Medium hochladen' }));
-    fireEvent.change(screen.getByTestId('media-upload-input'), { target: { files: [uploadedFile] } });
+    fireEvent.change(screen.getByTestId('media-upload-input'), {
+      target: { files: [uploadedFile] },
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Das Medium konnte nicht geladen werden.')).toBeTruthy();
@@ -1114,7 +1161,7 @@ describe('PoiDetailPage', () => {
     render(<PoiDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(screen.getByText('poi.messages.saveError')).toBeTruthy();
@@ -1127,7 +1174,10 @@ describe('PoiDetailPage', () => {
       name: 'Rathaus',
       payload: {},
     } as never);
-    vi.stubGlobal('confirm', vi.fn(() => false));
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => false)
+    );
 
     render(<PoiDetailPage mode="edit" contentId="poi-1" />);
 
@@ -1148,7 +1198,10 @@ describe('PoiDetailPage', () => {
       payload: {},
     } as never);
     vi.mocked(deletePoi).mockRejectedValueOnce(new Error('delete boom'));
-    vi.stubGlobal('confirm', vi.fn(() => true));
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => true)
+    );
 
     render(<PoiDetailPage mode="edit" contentId="poi-1" />);
 
@@ -1170,7 +1223,10 @@ describe('PoiDetailPage', () => {
       name: 'Rathaus',
       payload: {},
     } as never);
-    vi.stubGlobal('confirm', vi.fn(() => true));
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => true)
+    );
 
     render(<PoiDetailPage mode="edit" contentId="poi-1" />);
 

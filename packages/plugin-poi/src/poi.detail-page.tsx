@@ -29,7 +29,14 @@ import {
   useStudioMediaPickerOverlay,
 } from '@sva/studio-ui-react';
 
-import { createPoi, deletePoi, getPoi, listPoiCategories, PoiApiError, updatePoi } from './poi.api.js';
+import {
+  createPoi,
+  deletePoi,
+  getPoi,
+  listPoiCategories,
+  PoiApiError,
+  updatePoi,
+} from './poi.api.js';
 import { PoiDetailBasisTab } from './poi.detail-basis-tab.js';
 import { PoiDetailContentTab } from './poi.detail-content-tab.js';
 import {
@@ -60,8 +67,11 @@ type StatusMessage = Readonly<{
 
 type PoiMediaPickerAsset = StudioMediaPickerAssetDetail;
 
-const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknown, fallbackKey: string) =>
-  error instanceof PoiApiError ? error.message : pt(fallbackKey);
+const errorMessage = (
+  pt: ReturnType<typeof usePluginTranslation>,
+  error: unknown,
+  fallbackKey: string
+) => (error instanceof PoiApiError ? error.message : pt(fallbackKey));
 
 const renderPoiTabPanel = ({
   title,
@@ -79,7 +89,9 @@ const renderPoiTabPanel = ({
     >
       <div className="space-y-1">
         <h2 className="text-base font-semibold text-foreground">{title}</h2>
-        {description ? <p className="text-sm leading-relaxed text-muted-foreground">{description}</p> : null}
+        {description ? (
+          <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
+        ) : null}
       </div>
     </section>
     {panel}
@@ -230,7 +242,11 @@ export function PoiDetailPage({
 
   const refreshMediaAssets = React.useCallback(async () => {
     try {
-      const assets = await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), instanceId, visibility: 'public' });
+      const assets = await listHostMediaAssets({
+        fetch: globalThis.fetch.bind(globalThis),
+        instanceId,
+        visibility: 'public',
+      });
       mediaAssetsRef.current = assets;
       setMediaAssets(assets);
       return assets;
@@ -241,22 +257,29 @@ export function PoiDetailPage({
     }
   }, [instanceId]);
 
-  const isAssetSelectable = React.useCallback((asset: PoiMediaPickerAsset) => {
-    const nextMedia = mediaContentFromAsset({
-      id: asset.id,
-      fileName: asset.fileName,
-      metadata: asset.metadata,
-      visibility: asset.visibility,
-      mimeType: asset.mimeType,
-      previewUrl: asset.previewUrl,
-    });
-    if (!nextMedia) {
-      return false;
-    }
+  const isAssetSelectable = React.useCallback(
+    (asset: PoiMediaPickerAsset) => {
+      const nextMedia = mediaContentFromAsset({
+        id: asset.id,
+        fileName: asset.fileName,
+        metadata: asset.metadata,
+        visibility: asset.visibility,
+        mimeType: asset.mimeType,
+        previewUrl: asset.previewUrl,
+      });
+      if (!nextMedia) {
+        return false;
+      }
 
-    const existingSources = new Set((methods.getValues('content.mediaContents') ?? []).map(mediaContentSourceKey).filter(Boolean));
-    return existingSources.has(mediaContentSourceKey(nextMedia)) === false;
-  }, [methods]);
+      const existingSources = new Set(
+        (methods.getValues('content.mediaContents') ?? [])
+          .map(mediaContentSourceKey)
+          .filter(Boolean)
+      );
+      return existingSources.has(mediaContentSourceKey(nextMedia)) === false;
+    },
+    [methods]
+  );
 
   const mediaPicker = useStudioMediaPickerOverlay<PoiMediaPickerAsset>({
     onAccept: (asset) => {
@@ -273,7 +296,9 @@ export function PoiDetailPage({
       }
 
       const currentMedia = methods.getValues('content.mediaContents') ?? [];
-      methods.setValue('content.mediaContents', [...currentMedia, nextMedia], { shouldDirty: true });
+      methods.setValue('content.mediaContents', [...currentMedia, nextMedia], {
+        shouldDirty: true,
+      });
       void refreshMediaAssets();
     },
     canAcceptAsset: isAssetSelectable,
@@ -352,7 +377,10 @@ export function PoiDetailPage({
       })
       .catch((loadError) => {
         if (active) {
-          setStatus({ kind: 'error', text: errorMessage(pt, loadError, 'messages.missingContent') });
+          setStatus({
+            kind: 'error',
+            text: errorMessage(pt, loadError, 'messages.missingContent'),
+          });
           setLoading(false);
         }
       });
@@ -424,15 +452,24 @@ export function PoiDetailPage({
         focusFieldById('poi-contact-url');
       }
       if (validationErrors.includes('addresses')) {
-        methods.setError('content.addresses.0.geoLocation.latitude', { type: 'manual', message: 'addresses' });
+        methods.setError('content.addresses.0.geoLocation.latitude', {
+          type: 'manual',
+          message: 'addresses',
+        });
         setActiveTab('content');
       }
       if (validationErrors.includes('location')) {
-        methods.setError('content.location.geoLocation.latitude', { type: 'manual', message: 'location' });
+        methods.setError('content.location.geoLocation.latitude', {
+          type: 'manual',
+          message: 'location',
+        });
         setActiveTab('content');
       }
       if (validationErrors.includes('priceInformations')) {
-        methods.setError('content.prices.0.amount', { type: 'manual', message: 'priceInformations' });
+        methods.setError('content.prices.0.amount', {
+          type: 'manual',
+          message: 'priceInformations',
+        });
         setActiveTab('content');
       }
       if (validationErrors.includes('mediaContents')) {
@@ -441,7 +478,10 @@ export function PoiDetailPage({
           return url.length > 0 && isHttpsUrl(url) === false;
         });
         const mediaIndex = invalidMediaIndex >= 0 ? invalidMediaIndex : 0;
-        methods.setError(`content.mediaContents.${mediaIndex}.sourceUrl.url`, { type: 'manual', message: 'webUrls' });
+        methods.setError(`content.mediaContents.${mediaIndex}.sourceUrl.url`, {
+          type: 'manual',
+          message: 'webUrls',
+        });
         setActiveTab('content');
         focusFieldById(`poi-media-url-${mediaIndex}`);
       }
@@ -469,8 +509,14 @@ export function PoiDetailPage({
     }
 
     try {
-      const saved = mode === 'create' ? await createPoi(mutation) : await updatePoi(contentId as string, mutation);
-      setStatus({ kind: 'success', text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess') });
+      const saved =
+        mode === 'create'
+          ? await createPoi(mutation)
+          : await updatePoi(contentId as string, mutation);
+      setStatus({
+        kind: 'success',
+        text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess'),
+      });
       if (mode === 'create') {
         await navigate({ to: '/admin/poi/$id', params: { id: saved.id } });
       }
@@ -523,7 +569,14 @@ export function PoiDetailPage({
     <FormProvider {...methods}>
       <StudioDetailPageTemplate
         title={mode === 'create' ? pt('detail.createTitle') : pt('detail.editTitle')}
-        description={mode === 'create' ? pt('detail.createDescription') : pt('detail.editDescription')}
+        description={
+          mode === 'create' ? pt('detail.createDescription') : pt('detail.editDescription')
+        }
+        primaryAction={
+          <Button type="submit" form={formId}>
+            {pt('actions.save')}
+          </Button>
+        }
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
@@ -534,9 +587,6 @@ export function PoiDetailPage({
                 {pt('actions.delete')}
               </Button>
             ) : null}
-            <Button type="submit" form={formId}>
-              {pt('actions.save')}
-            </Button>
           </div>
         }
       >
@@ -568,7 +618,9 @@ export function PoiDetailPage({
           onClose={mediaPicker.close}
           onConfirmSelection={() => void mediaPicker.confirmSelection()}
           onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
-          onOpenMediaManagement={(assetId) => void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })}
+          onOpenMediaManagement={(assetId) =>
+            void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })
+          }
           onSearchValueChange={mediaPicker.setSearchValue}
           onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
           onUploadFile={(file) => void mediaPicker.uploadFile(file)}
@@ -580,7 +632,11 @@ export function PoiDetailPage({
         />
         <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5" noValidate>
           {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
-          <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as PoiDetailTabId)} className="space-y-0">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => handleTabChange(value as PoiDetailTabId)}
+            className="space-y-0"
+          >
             <label className="block md:hidden">
               <span className="sr-only">{pt('tabs.mobileLabel')}</span>
               <Select
@@ -607,7 +663,9 @@ export function PoiDetailPage({
                     onMouseEnter={() => warmTab(tab.id)}
                     onFocus={() => warmTab(tab.id)}
                     className={`relative z-10 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
-                      isActive ? 'mb-[-1px] border-primary text-primary' : 'border-transparent text-muted-foreground'
+                      isActive
+                        ? 'mb-[-1px] border-primary text-primary'
+                        : 'border-transparent text-muted-foreground'
                     }`}
                   >
                     <PoiTabTriggerLabel label={tab.label} />

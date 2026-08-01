@@ -67,7 +67,7 @@ test.describe('news plugin', () => {
     await page.locator('#news-media-caption-0').fill('Titelbild');
     await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
     await page.getByRole('radio', { name: /Entwurf|news\.publicationModes\.draft/ }).click();
-    await page.getByRole('button', { name: /Speichern|news\.actions\.save/ }).click();
+    await page.getByRole('button', { name: /Speichern|news\.actions\.save/ }).last().click();
     await expect.poll(() => newsItems.length).toBe(1);
     expect(createdBody).toMatchObject({ title: 'Erste News', author: 'Editor One', sourceUrl: { url: 'https://example.com/news/source', description: 'Quellseite' } });
     expect(createdBody?.categories).toEqual([{ name: 'Allgemein' }, { name: 'Kultur' }]);
@@ -76,7 +76,7 @@ test.describe('news plugin', () => {
     await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News aktualisiert');
     await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
     await page.getByRole('radio', { name: /Sofort veröffentlichen|news\.publicationModes\.immediate/ }).click();
-    await page.getByRole('button', { name: /Speichern|news\.actions\.save/ }).click();
+    await page.getByRole('button', { name: /Speichern|news\.actions\.save/ }).last().click();
     await expect.poll(() => newsItems[0]?.title).toBe('Erste News aktualisiert');
     page.once('dialog', async (dialog) => {
       await dialog.accept();

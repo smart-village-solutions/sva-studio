@@ -3,7 +3,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 
-import { createGenericItem, deleteGenericItem, updateGenericItem } from '../src/generic-items.api.js';
+import {
+  createGenericItem,
+  deleteGenericItem,
+  updateGenericItem,
+} from '../src/generic-items.api.js';
 import { GenericItemsDetailPage } from '../src/generic-items.detail-page.js';
 
 const navigateMock = vi.fn();
@@ -48,7 +52,9 @@ vi.mock('@tanstack/react-router', () => ({
     children: React.ReactNode;
     to: string;
     search?: Record<string, string>;
-  }) => <a href={search?.type ? `${to}?type=${encodeURIComponent(search.type)}` : to}>{children}</a>,
+  }) => (
+    <a href={search?.type ? `${to}?type=${encodeURIComponent(search.type)}` : to}>{children}</a>
+  ),
   useNavigate: () => navigateMock,
 }));
 
@@ -57,7 +63,10 @@ vi.mock('@sva/plugin-sdk', async () => {
   return {
     ...actual,
     listHostMediaAssets: vi.fn(async () => []),
-    uploadHostMediaFile: vi.fn(async () => ({ assetId: 'uploaded-asset', uploadSessionId: 'upload-1' })),
+    uploadHostMediaFile: vi.fn(async () => ({
+      assetId: 'uploaded-asset',
+      uploadSessionId: 'upload-1',
+    })),
   };
 });
 
@@ -65,7 +74,10 @@ describe('GenericItemsDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     navigateMock.mockReset();
-    vi.stubGlobal('confirm', vi.fn(() => true));
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => true)
+    );
     registerPluginTranslationResolver((key) => {
       const map: Record<string, string> = {
         'genericItems.editor.createTitle': 'Generic Item anlegen',
@@ -263,15 +275,19 @@ describe('GenericItemsDetailPage', () => {
         'genericItems.richText.linkInput': 'Link-URL',
         'genericItems.messages.imagePickerEmpty': 'Keine passenden Bilder gefunden.',
         'genericItems.messages.categoryOptionsLoading': 'Kategorien werden geladen.',
-        'genericItems.messages.categoryOptionsLoadError': 'Kategorien konnten nicht geladen werden.',
+        'genericItems.messages.categoryOptionsLoadError':
+          'Kategorien konnten nicht geladen werden.',
         'genericItems.messages.mediaUploadInitializing': 'Upload wird vorbereitet.',
         'genericItems.messages.mediaUploadUploading': 'Bild wird hochgeladen.',
         'genericItems.messages.mediaUploadFinalizing': 'Bild wird eingebunden.',
         'genericItems.messages.mediaUploadSuccess': 'Bild wurde hinzugefügt.',
         'genericItems.messages.mediaUploadError': 'Bild konnte nicht hochgeladen werden.',
-        'genericItems.messages.mediaUploadUnsupportedType': 'Dieser Dateityp wird nicht unterstützt.',
-        'genericItems.messages.mediaUploadUnavailableUrl': 'Dieses Medium hat keine öffentliche URL.',
-        'genericItems.validation.categories': 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
+        'genericItems.messages.mediaUploadUnsupportedType':
+          'Dieser Dateityp wird nicht unterstützt.',
+        'genericItems.messages.mediaUploadUnavailableUrl':
+          'Dieses Medium hat keine öffentliche URL.',
+        'genericItems.validation.categories':
+          'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
         'genericItems.validation.priceInformations': 'Preisangaben müssen valide Zahlen enthalten.',
         'genericItems.validation.webUrls': 'URLs müssen mit https:// beginnen.',
       };
@@ -293,14 +309,19 @@ describe('GenericItemsDetailPage', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Freier Eintrag' } });
     fireEvent.change(screen.getByLabelText('Generic-Type'), { target: { value: 'faq' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Generic Item anlegen' })[1]!);
 
     await waitFor(() => {
-      expect(createGenericItem).toHaveBeenCalledWith(expect.objectContaining({ title: 'Freier Eintrag', genericType: 'faq' }));
+      expect(createGenericItem).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Freier Eintrag', genericType: 'faq' })
+      );
     });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/generic-items/$id', params: { id: 'created' } });
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/admin/generic-items/$id',
+        params: { id: 'created' },
+      });
     });
   });
 
@@ -318,7 +339,7 @@ describe('GenericItemsDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Kategorie Rathaus entfernen' })).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Generic Item anlegen' })[1]!);
 
     await waitFor(() => {
       expect(createGenericItem).toHaveBeenCalledWith(
@@ -340,7 +361,7 @@ describe('GenericItemsDetailPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Aktualisiert' } });
-    fireEvent.click(screen.getByText('Änderungen speichern'));
+    fireEvent.click(screen.getAllByText('Änderungen speichern')[1]!);
 
     await waitFor(() => {
       expect(updateGenericItem).toHaveBeenCalledWith(

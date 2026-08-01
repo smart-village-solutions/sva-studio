@@ -73,14 +73,18 @@ type StatusMessage = Readonly<{
   text: string;
 }>;
 
-type PluginTranslator = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
+type PluginTranslator = (
+  key: string,
+  variables?: Readonly<Record<string, string | number>>
+) => string;
 
 const errorMessageTranslationKeys: Record<string, string> = {
   config_not_found: 'messages.errors.configNotFound',
   integration_disabled: 'messages.errors.integrationDisabled',
   invalid_config: 'messages.errors.invalidConfig',
   missing_credentials: 'messages.errors.missingCredentials',
-  organization_mainserver_credentials_missing: 'messages.errors.organizationMainserverCredentialsMissing',
+  organization_mainserver_credentials_missing:
+    'messages.errors.organizationMainserverCredentialsMissing',
   token_request_failed: 'messages.errors.tokenRequestFailed',
   unauthorized: 'messages.errors.unauthorized',
   forbidden: 'messages.errors.forbidden',
@@ -157,7 +161,9 @@ const parseDatetimeLocalInput = (value: string, referenceValue?: string) => {
 
 type NewsMediaPickerAsset = StudioMediaPickerAssetDetail;
 
-const toNewsMediaPickerSummary = (asset: HostMediaAssetListItem): StudioMediaPickerAssetSummary => ({
+const toNewsMediaPickerSummary = (
+  asset: HostMediaAssetListItem
+): StudioMediaPickerAssetSummary => ({
   id: asset.id,
   title: readAssetTitle(asset),
   fileName: readAssetFileName(asset),
@@ -269,7 +275,14 @@ const isDirtyFieldTree = (
 type NewsTabIconProps = Readonly<{ className?: string }>;
 
 const NewsTabBasisIcon = ({ className }: NewsTabIconProps) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    className={className}
+  >
     <path d="M7 4.75h7.5L19 9.25v9A1.75 1.75 0 0 1 17.25 20h-10.5A1.75 1.75 0 0 1 5 18.25v-11.5A1.75 1.75 0 0 1 6.75 5Z" />
     <path d="M14 4.75v4.5h4.5" />
     <path d="M8.5 12h7" />
@@ -278,7 +291,14 @@ const NewsTabBasisIcon = ({ className }: NewsTabIconProps) => (
 );
 
 const NewsTabContentIcon = ({ className }: NewsTabIconProps) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    className={className}
+  >
     <rect x="4.5" y="5" width="15" height="14" rx="2" />
     <path d="m8 14 2.5-2.5 2 2 2.5-3 3 4.5" />
     <circle cx="9" cy="9.5" r="1.2" />
@@ -286,7 +306,14 @@ const NewsTabContentIcon = ({ className }: NewsTabIconProps) => (
 );
 
 const NewsTabSettingsIcon = ({ className }: NewsTabIconProps) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    className={className}
+  >
     <path d="M4 7h10" />
     <path d="M4 17h16" />
     <circle cx="17" cy="7" r="2.5" />
@@ -295,7 +322,14 @@ const NewsTabSettingsIcon = ({ className }: NewsTabIconProps) => (
 );
 
 const NewsTabHistoryIcon = ({ className }: NewsTabIconProps) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    className={className}
+  >
     <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
     <path d="M4.5 5.5v3.7h3.7" />
     <path d="M12 8.5v4l2.5 1.5" />
@@ -333,7 +367,8 @@ export const NewsDetailPage = ({
   const [deletePending, setDeletePending] = React.useState(false);
   const [loadedItem, setLoadedItem] = React.useState<NewsContentItem | null>(null);
   const [scheduledPublicationInput, setScheduledPublicationInput] = React.useState('');
-  const [invalidScheduledPublicationInput, setInvalidScheduledPublicationInput] = React.useState(false);
+  const [invalidScheduledPublicationInput, setInvalidScheduledPublicationInput] =
+    React.useState(false);
   const [categoryOptions, setCategoryOptions] = React.useState<readonly NewsCategoryOption[]>([]);
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
@@ -348,15 +383,14 @@ export const NewsDetailPage = ({
     defaultValues: createDefaultNewsDetailFormValues(resolvedInitialAuthor),
     resolver: newsDetailFormResolver,
   });
-  const {
-    formState,
-    reset,
-    setValue,
-  } = methods;
+  const { formState, reset, setValue } = methods;
 
   const refreshMediaAssets = React.useCallback(async () => {
     try {
-      const assets = await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), visibility: 'public' });
+      const assets = await listHostMediaAssets({
+        fetch: globalThis.fetch.bind(globalThis),
+        visibility: 'public',
+      });
       mediaAssetsRef.current = assets;
       setMediaAssets(assets);
       return assets;
@@ -368,22 +402,27 @@ export const NewsDetailPage = ({
   }, []);
   const mediaPickerLabels = React.useMemo(() => createNewsMediaPickerLabels(pt), [pt]);
 
-  const isAssetSelectable = React.useCallback((asset: NewsMediaPickerAsset) => {
-    const nextMedia = mediaContentFromAsset({
-      id: asset.id,
-      fileName: asset.fileName,
-      metadata: asset.metadata,
-      visibility: asset.visibility,
-      mimeType: asset.mimeType,
-      previewUrl: asset.previewUrl,
-    });
-    if (!nextMedia) {
-      return false;
-    }
+  const isAssetSelectable = React.useCallback(
+    (asset: NewsMediaPickerAsset) => {
+      const nextMedia = mediaContentFromAsset({
+        id: asset.id,
+        fileName: asset.fileName,
+        metadata: asset.metadata,
+        visibility: asset.visibility,
+        mimeType: asset.mimeType,
+        previewUrl: asset.previewUrl,
+      });
+      if (!nextMedia) {
+        return false;
+      }
 
-    const existingSources = new Set((methods.getValues('contentMedia') ?? []).map(mediaContentSourceKey).filter(Boolean));
-    return existingSources.has(mediaContentSourceKey(nextMedia)) === false;
-  }, [methods]);
+      const existingSources = new Set(
+        (methods.getValues('contentMedia') ?? []).map(mediaContentSourceKey).filter(Boolean)
+      );
+      return existingSources.has(mediaContentSourceKey(nextMedia)) === false;
+    },
+    [methods]
+  );
 
   const mediaPicker = useStudioMediaPickerOverlay<NewsMediaPickerAsset>({
     onAccept: (asset) => {
@@ -492,7 +531,9 @@ export const NewsDetailPage = ({
           return;
         }
         setCategoryOptions([]);
-        setCategoryOptionsError(resolveNewsErrorMessage(pt, error, 'messages.categoryOptionsLoadError'));
+        setCategoryOptionsError(
+          resolveNewsErrorMessage(pt, error, 'messages.categoryOptionsLoadError')
+        );
       })
       .finally(() => {
         if (active) {
@@ -537,7 +578,10 @@ export const NewsDetailPage = ({
       })
       .catch((error: unknown) => {
         if (active && requestId === editLoadRequestIdRef.current) {
-          setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.loadError') });
+          setStatusMessage({
+            kind: 'error',
+            text: resolveNewsErrorMessage(pt, error, 'messages.loadError'),
+          });
         }
       })
       .finally(() => {
@@ -551,41 +595,50 @@ export const NewsDetailPage = ({
     };
   }, [contentId, mode, pt, reset]);
 
-  const saveCurrentItem = methods.handleSubmit(async (values) => {
-    setStatusMessage(null);
+  const saveCurrentItem = methods.handleSubmit(
+    async (values) => {
+      setStatusMessage(null);
 
-    if (mode === 'edit' && !contentId) {
-      setStatusMessage({ kind: 'error', text: pt('messages.missingContent') });
-      return;
-    }
-
-    try {
-      const saved = await saveNewsEditorItem({
-        contentId,
-        values,
-        existingItem: loadedItem ?? null,
-      }, {
-        createNews,
-        updateNews,
-      });
-
-      if (mode === 'create') {
-        await navigate({ to: '/admin/content' });
+      if (mode === 'edit' && !contentId) {
+        setStatusMessage({ kind: 'error', text: pt('messages.missingContent') });
         return;
       }
 
-      const nextValues = mapNewsItemToDetailFormValues(saved);
-      reset(nextValues);
-      setLoadedItem(saved);
-      setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
-      setInvalidScheduledPublicationInput(false);
-      setStatusMessage({ kind: 'success', text: pt('messages.updateSuccess') });
-    } catch (error) {
-      setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.saveError') });
+      try {
+        const saved = await saveNewsEditorItem(
+          {
+            contentId,
+            values,
+            existingItem: loadedItem ?? null,
+          },
+          {
+            createNews,
+            updateNews,
+          }
+        );
+
+        if (mode === 'create') {
+          await navigate({ to: '/admin/content' });
+          return;
+        }
+
+        const nextValues = mapNewsItemToDetailFormValues(saved);
+        reset(nextValues);
+        setLoadedItem(saved);
+        setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
+        setInvalidScheduledPublicationInput(false);
+        setStatusMessage({ kind: 'success', text: pt('messages.updateSuccess') });
+      } catch (error) {
+        setStatusMessage({
+          kind: 'error',
+          text: resolveNewsErrorMessage(pt, error, 'messages.saveError'),
+        });
+      }
+    },
+    () => {
+      setStatusMessage({ kind: 'error', text: pt('messages.validationError') });
     }
-  }, () => {
-    setStatusMessage({ kind: 'error', text: pt('messages.validationError') });
-  });
+  );
 
   const onDelete = async () => {
     if (!contentId || deletePending) {
@@ -602,7 +655,10 @@ export const NewsDetailPage = ({
       await deleteNews(contentId);
       await navigate({ to: '/admin/content' });
     } catch (error) {
-      setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.deleteError') });
+      setStatusMessage({
+        kind: 'error',
+        text: resolveNewsErrorMessage(pt, error, 'messages.deleteError'),
+      });
     } finally {
       setDeletePending(false);
     }
@@ -706,12 +762,16 @@ export const NewsDetailPage = ({
   return (
     <StudioDetailPageTemplate
       title={mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
-      description={mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
+      description={
+        mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')
+      }
+      primaryAction={
+        <Button type="submit" form={formId}>
+          {headerSaveLabel}
+        </Button>
+      }
       actions={
         <div className="flex flex-wrap gap-3">
-          <Button type="submit" form={formId}>
-            {headerSaveLabel}
-          </Button>
           <Button asChild variant="outline">
             <Link to="/admin/content">{pt('actions.back')}</Link>
           </Button>
@@ -752,7 +812,9 @@ export const NewsDetailPage = ({
           onClose={mediaPicker.close}
           onConfirmSelection={() => void mediaPicker.confirmSelection()}
           onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
-          onOpenMediaManagement={(assetId) => void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })}
+          onOpenMediaManagement={(assetId) =>
+            void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })
+          }
           onSearchValueChange={mediaPicker.setSearchValue}
           onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
           onUploadFile={(file) => void mediaPicker.uploadFile(file)}
@@ -769,8 +831,14 @@ export const NewsDetailPage = ({
             void saveCurrentItem();
           }}
         >
-          {statusMessage ? <StudioFormSummary kind={statusMessage.kind}>{statusMessage.text}</StudioFormSummary> : null}
-          <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as NewsDetailTabId)} className="space-y-0">
+          {statusMessage ? (
+            <StudioFormSummary kind={statusMessage.kind}>{statusMessage.text}</StudioFormSummary>
+          ) : null}
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => handleTabChange(value as NewsDetailTabId)}
+            className="space-y-0"
+          >
             <label className="block md:hidden">
               <span className="sr-only">{pt('tabs.mobileLabel')}</span>
               <Select
@@ -798,14 +866,18 @@ export const NewsDetailPage = ({
                     onMouseEnter={() => warmTab(tab.id)}
                     onFocus={() => warmTab(tab.id)}
                     className={`relative z-10 gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
-                      isActive ? 'mb-[-1px] border-primary text-primary' : 'border-transparent text-muted-foreground'
+                      isActive
+                        ? 'mb-[-1px] border-primary text-primary'
+                        : 'border-transparent text-muted-foreground'
                     }`}
                   >
                     <span className="inline-flex items-center gap-2">
                       <TabIcon aria-hidden="true" className="h-4 w-4 shrink-0" />
                       <span>{tab.label}</span>
                       {tab.hasChanges && tab.changeLabel ? (
-                        <span className="text-xs font-medium text-foreground">{tab.changeLabel}</span>
+                        <span className="text-xs font-medium text-foreground">
+                          {tab.changeLabel}
+                        </span>
                       ) : null}
                     </span>
                   </TabsTrigger>
@@ -828,12 +900,20 @@ export const NewsDetailPage = ({
                       className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
                     >
                       <div className="space-y-1">
-                        <h2 className="text-base font-semibold text-foreground">{tab.title ?? tab.label}</h2>
+                        <h2 className="text-base font-semibold text-foreground">
+                          {tab.title ?? tab.label}
+                        </h2>
                         {tab.description ? (
-                          <p className="text-sm leading-relaxed text-muted-foreground">{tab.description}</p>
+                          <p className="text-sm leading-relaxed text-muted-foreground">
+                            {tab.description}
+                          </p>
                         ) : null}
                       </div>
-                      {tab.actions ? <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">{tab.actions}</div> : null}
+                      {tab.actions ? (
+                        <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">
+                          {tab.actions}
+                        </div>
+                      ) : null}
                     </section>
                     {tab.panel}
                   </div>

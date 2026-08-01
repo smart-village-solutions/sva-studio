@@ -10,7 +10,11 @@ const useContentAccessMock = vi.fn();
 const invalidatePermissionsMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  Link: ({
+    children,
+    to,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -130,10 +134,12 @@ describe('ContentEditorPage', () => {
     render(<ContentEditorPage mode="create" />);
 
     expect(screen.getByRole('combobox', { name: 'Inhaltsbereiche' })).toBeTruthy();
-    expect((screen.getByRole('combobox', { name: 'Inhaltsbereiche' }) as HTMLSelectElement).value).toBe('general');
-    expect(screen.getByRole('tabpanel', { name: /Allgemeine Angaben/i }).firstElementChild?.className).toContain(
-      'bg-[rgb(var(--waste-panel-surface))]'
-    );
+    expect(
+      (screen.getByRole('combobox', { name: 'Inhaltsbereiche' }) as HTMLSelectElement).value
+    ).toBe('general');
+    expect(
+      screen.getByRole('tabpanel', { name: /Allgemeine Angaben/i }).firstElementChild?.className
+    ).toContain('bg-[rgb(var(--waste-panel-surface))]');
 
     fireEvent.change(screen.getByLabelText('Titel'), {
       target: { value: 'Landing Page' },
@@ -142,10 +148,14 @@ describe('ContentEditorPage', () => {
       target: { value: '{"hero":' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Inhalt anlegen' }));
+    const createButtons = screen.getAllByRole('button', { name: 'Inhalt anlegen' });
+    expect(createButtons).toHaveLength(2);
+    fireEvent.click(createButtons[1]!);
 
     await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('Die Payload muss gültiges JSON sein.');
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Die Payload muss gültiges JSON sein.'
+      );
     });
 
     expect(document.activeElement).toBe(screen.getByLabelText('Payload (JSON)'));
@@ -154,7 +164,7 @@ describe('ContentEditorPage', () => {
     fireEvent.change(screen.getByLabelText('Payload (JSON)'), {
       target: { value: '{"hero":"Willkommen"}' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Inhalt anlegen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Inhalt anlegen' })[1]!);
 
     await waitFor(() => {
       expect(createdPayload).toEqual({
@@ -205,7 +215,9 @@ describe('ContentEditorPage', () => {
     expect(screen.getByRole('heading', { name: 'Inhalt bearbeiten', level: 1 })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Startseite', level: 2 })).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'Inhaltsbereiche' })).toBeTruthy();
-    expect((screen.getByRole('combobox', { name: 'Inhaltsbereiche' }) as HTMLSelectElement).value).toBe('general');
+    expect(
+      (screen.getByRole('combobox', { name: 'Inhaltsbereiche' }) as HTMLSelectElement).value
+    ).toBe('general');
     expect(screen.getByText('Editor')).toBeTruthy();
     expect(screen.getAllByRole('button', { name: 'Änderungen speichern' })).toHaveLength(2);
 
@@ -214,7 +226,9 @@ describe('ContentEditorPage', () => {
     });
 
     await waitFor(() => {
-      expect((screen.getByRole('combobox', { name: 'Inhaltsbereiche' }) as HTMLSelectElement).value).toBe('history');
+      expect(
+        (screen.getByRole('combobox', { name: 'Inhaltsbereiche' }) as HTMLSelectElement).value
+      ).toBe('history');
     });
 
     const historyPanel = screen.getByRole('tabpanel', { name: /Historie/i });
@@ -269,7 +283,7 @@ describe('ContentEditorPage', () => {
     fireEvent.change(screen.getByLabelText('Status'), {
       target: { value: 'published' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Inhalt anlegen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Inhalt anlegen' })[1]!);
 
     await waitFor(() => {
       expect(createRequests).toBe(0);
@@ -279,19 +293,25 @@ describe('ContentEditorPage', () => {
     });
 
     expect(document.activeElement).toBe(screen.getByLabelText('Veröffentlichungsdatum'));
-    expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('aria-invalid')).toBe(
+      'true'
+    );
 
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), {
       target: { value: '2026-03-22T12:00' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Inhalt anlegen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Inhalt anlegen' })[1]!);
 
     await waitFor(() => {
       expect(createRequests).toBe(1);
     });
 
     expect(navigateMock).not.toHaveBeenCalled();
-    expect(screen.getByText('Die Inhaltsdaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Die Inhaltsdaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.'
+      )
+    ).toBeTruthy();
   });
 
   it('blocks saving when a non-empty publication date is invalid in Europe/Berlin', async () => {
@@ -426,7 +446,9 @@ describe('ContentEditorPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
 
     await waitFor(() => {
-      expect(screen.getByText('Der Inhalt enthält ungültige oder unvollständige Daten.')).toBeTruthy();
+      expect(
+        screen.getByText('Der Inhalt enthält ungültige oder unvollständige Daten.')
+      ).toBeTruthy();
     });
   });
 
@@ -453,10 +475,14 @@ describe('ContentEditorPage', () => {
     fireEvent.change(screen.getByLabelText('Payload (JSON)'), {
       target: { value: '{"hero":"Willkommen"}' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Inhalt anlegen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Inhalt anlegen' })[1]!);
 
     await waitFor(() => {
-      expect(screen.getByText('Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.')).toBeTruthy();
+      expect(
+        screen.getByText(
+          'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.'
+        )
+      ).toBeTruthy();
     });
   });
 
@@ -482,7 +508,11 @@ describe('ContentEditorPage', () => {
         'Aktionen bleiben deaktiviert, bis die erforderlichen Berechtigungen im aktuellen Kontext vorliegen.'
       )
     ).toBeTruthy();
-    expect((screen.getByRole('button', { name: 'Inhalt anlegen' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      screen
+        .getAllByRole('button', { name: 'Inhalt anlegen' })
+        .every((button) => (button as HTMLButtonElement).disabled)
+    ).toBe(true);
   });
 
   it('renders edit mode as read only when content access forbids updates', async () => {
@@ -518,10 +548,15 @@ describe('ContentEditorPage', () => {
     });
 
     expect(
-      screen.getAllByText('Der Inhalt ist im aktuellen Kontext nur lesbar. Felder und Speichern bleiben deaktiviert.')
-        .length
+      screen.getAllByText(
+        'Der Inhalt ist im aktuellen Kontext nur lesbar. Felder und Speichern bleiben deaktiviert.'
+      ).length
     ).toBeGreaterThan(0);
-    expect(screen.getAllByRole('button', { name: 'Änderungen speichern' }).every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
+    expect(
+      screen
+        .getAllByRole('button', { name: 'Änderungen speichern' })
+        .every((button) => (button as HTMLButtonElement).disabled)
+    ).toBe(true);
     expect((screen.getByLabelText('Titel') as HTMLInputElement).disabled).toBe(true);
     expect(screen.getByText('Nur lesbar')).toBeTruthy();
   });

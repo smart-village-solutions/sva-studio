@@ -44,10 +44,10 @@ test.describe('events and POI plugins', () => {
     await page.locator('#poi-link-url-0').fill('https://example.com/poi');
     await page.locator('#poi-opening-weekday-0').selectOption('MO');
     await page.locator('#poi-opening-time-from-0').fill('09:00');
-    await page.getByRole('button', { name: /Speichern|poi\.actions\.save/ }).click();
+    await page.getByRole('button', { name: /Speichern|poi\.actions\.save/ }).last().click();
     await page.getByRole('tab', { name: /Basis|poi\.detailTabs\.basis\.title/ }).click();
     await page.locator('#poi-name').fill('Rathaus aktualisiert');
-    await page.getByRole('button', { name: /Speichern|poi\.actions\.save/ }).click();
+    await page.getByRole('button', { name: /Speichern|poi\.actions\.save/ }).last().click();
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|poi\.actions\.delete/ }).click();
     await expectContentOverviewReady(page);
@@ -76,10 +76,10 @@ test.describe('events and POI plugins', () => {
     await page.locator('#event-city').fill('Musterhausen');
     await page.locator('#event-contact-email').fill('events@example.com');
     await page.locator('#event-url').fill('https://example.com/event');
-    await page.getByRole('button', { name: /Speichern|events\.actions\.save/ }).click();
+    await page.getByRole('button', { name: /Speichern|events\.actions\.save/ }).last().click();
     await page.getByRole('tab', { name: /Basis|events\.detailTabs\.basis\.title/ }).click();
     await page.locator('#event-title').fill('Stadtfest aktualisiert');
-    await page.getByRole('button', { name: /Speichern|events\.actions\.save/ }).click();
+    await page.getByRole('button', { name: /Speichern|events\.actions\.save/ }).last().click();
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|events\.actions\.delete/ }).click();
     await expectContentOverviewReady(page);

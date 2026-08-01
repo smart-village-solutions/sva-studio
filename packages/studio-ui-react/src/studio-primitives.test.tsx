@@ -36,6 +36,7 @@ import {
   StudioField,
   type StudioFieldControlProps,
   StudioFieldGroup,
+  StudioFormActionBar,
   StudioFormSummary,
   StudioJobSummaryCard,
   StudioListPageTemplate,
@@ -65,7 +66,12 @@ describe('studio-ui-react primitives', () => {
 
   it('renders overview pages with header, action and content regions', () => {
     render(
-      <StudioOverviewPageTemplate title="News" description="Verwalten" primaryAction={<button type="button">Anlegen</button>} toolbar={<span>Werkzeuge</span>}>
+      <StudioOverviewPageTemplate
+        title="News"
+        description="Verwalten"
+        primaryAction={<button type="button">Anlegen</button>}
+        toolbar={<span>Werkzeuge</span>}
+      >
         <p>Inhalt</p>
       </StudioOverviewPageTemplate>
     );
@@ -108,9 +114,13 @@ describe('studio-ui-react primitives', () => {
       />
     );
 
-    expect(screen.getByRole('tab', { name: 'Abholorte' }).getAttribute('data-state')).toBe('active');
+    expect(screen.getByRole('tab', { name: 'Abholorte' }).getAttribute('data-state')).toBe(
+      'active'
+    );
     expect(screen.getByText('Abholorte-Inhalt')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Ausweichtermine' }).getAttribute('data-state')).toBe('inactive');
+    expect(screen.getByRole('tab', { name: 'Ausweichtermine' }).getAttribute('data-state')).toBe(
+      'inactive'
+    );
   });
 
   it('renders tab lists with an explicit accessible name when the title is not a plain string', () => {
@@ -167,7 +177,11 @@ describe('studio-ui-react primitives', () => {
 
   it('renders detail pages, grouped fields and form summaries', () => {
     render(
-      <StudioDetailPageTemplate title="Detail" description="Beschreibung" actions={<Button>Speichern</Button>}>
+      <StudioDetailPageTemplate
+        title="Detail"
+        description="Beschreibung"
+        actions={<Button>Speichern</Button>}
+      >
         <StudioFieldGroup columns={2}>
           <StudioField id="summary-title" label="Titel">
             <Input id="summary-title" />
@@ -187,6 +201,40 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByLabelText('Text')).toBeTruthy();
     expect(screen.getByText('Gespeichert')).toBeTruthy();
     expect(screen.getByText('Fehler')).toBeTruthy();
+  });
+
+  it('renders the same detail-page primary action in the header and after the content', () => {
+    render(
+      <StudioDetailPageTemplate
+        title="Langer Editor"
+        actions={<Button variant="outline">Zurück</Button>}
+        primaryAction={<Button disabled>Speichern</Button>}
+      >
+        <p>Editorinhalt</p>
+      </StudioDetailPageTemplate>
+    );
+
+    expect(screen.getByRole('button', { name: 'Zurück' })).toBeTruthy();
+    const saveActions = screen.getAllByRole('button', { name: 'Speichern' });
+    expect(saveActions).toHaveLength(2);
+    expect(saveActions.every((action) => (action as HTMLButtonElement).disabled)).toBe(true);
+  });
+
+  it('renders form action bars at the requested boundary positions', () => {
+    render(
+      <div>
+        <StudioFormActionBar position="start">
+          <Button>Oben speichern</Button>
+        </StudioFormActionBar>
+        <p>Bearbeitungsfläche</p>
+        <StudioFormActionBar>
+          <Button>Unten speichern</Button>
+        </StudioFormActionBar>
+      </div>
+    );
+
+    expect(screen.getByRole('button', { name: 'Oben speichern' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Unten speichern' })).toBeTruthy();
   });
 
   it('keeps field label, description and error relationships explicit', () => {
@@ -219,7 +267,13 @@ describe('studio-ui-react primitives', () => {
     };
 
     render(
-      <StudioField id="title" label="Titel" description="Pflichtfeld" error="Titel fehlt" controlProps={controlProps}>
+      <StudioField
+        id="title"
+        label="Titel"
+        description="Pflichtfeld"
+        error="Titel fehlt"
+        controlProps={controlProps}
+      >
         <Input {...controlProps} aria-describedby="hint-extra" />
       </StudioField>
     );
@@ -269,7 +323,10 @@ describe('studio-ui-react primitives', () => {
         label="Titel"
         description="Pflichtfeld"
         error="Titel fehlt"
-        controlProps={{ id: 'resolved-id', 'aria-describedby': 'resolved-id-description resolved-id-error' }}
+        controlProps={{
+          id: 'resolved-id',
+          'aria-describedby': 'resolved-id-description resolved-id-error',
+        }}
       >
         <Input id="base-id" />
       </StudioField>
@@ -281,11 +338,7 @@ describe('studio-ui-react primitives', () => {
 
   it('keeps label htmlFor on base id when children cannot be cloned', () => {
     render(
-      <StudioField
-        id="fallback-id"
-        label="Titel"
-        controlProps={{ id: 'overridden-id' }}
-      >
+      <StudioField id="fallback-id" label="Titel" controlProps={{ id: 'overridden-id' }}>
         {'plain-text-child'}
       </StudioField>
     );
@@ -366,7 +419,11 @@ describe('studio-ui-react primitives', () => {
             items={[
               { id: 'save', label: 'Speichern', onSelect },
               { id: 'disabled', label: 'Gesperrt', disabled: true, onSelect },
-              { id: 'custom', label: 'Custom', render: <button type="button">Eigene Aktion</button> },
+              {
+                id: 'custom',
+                label: 'Custom',
+                render: <button type="button">Eigene Aktion</button>,
+              },
             ]}
           />
         </StudioEditSurface>
@@ -397,14 +454,30 @@ describe('studio-ui-react primitives', () => {
         labels={tableLabels}
         data={data}
         getRowId={(row) => row.id}
-        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.title, sortable: true, sortValue: (row) => row.title }]}
+        columns={[
+          {
+            id: 'title',
+            header: 'Titel',
+            cell: (row) => row.title,
+            sortable: true,
+            sortValue: (row) => row.title,
+          },
+        ]}
         emptyState={<p>Keine Daten</p>}
-        bulkActions={[{ id: 'archive', label: 'Archivieren', onClick: ({ selectedRows }) => onBulk(selectedRows) }]}
+        bulkActions={[
+          {
+            id: 'archive',
+            label: 'Archivieren',
+            onClick: ({ selectedRows }) => onBulk(selectedRows),
+          },
+        ]}
       />
     );
 
     fireEvent.click(screen.getByLabelText('News a auswählen'));
-    expect((screen.getByLabelText('Alle News auswählen') as HTMLInputElement).indeterminate).toBe(true);
+    expect((screen.getByLabelText('Alle News auswählen') as HTMLInputElement).indeterminate).toBe(
+      true
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Archivieren' }));
 
     expect(screen.getAllByText('Alpha')).toHaveLength(2);
@@ -428,13 +501,21 @@ describe('studio-ui-react primitives', () => {
         columns={[{ id: 'title', header: 'Titel', cell: (row) => row.title }]}
         emptyState={<p>Keine Daten</p>}
         canSelectRow={(row) => row.selectable}
-        bulkActions={[{ id: 'delete', label: 'Löschen', onClick: ({ selectedRows }) => onBulk(selectedRows) }]}
+        bulkActions={[
+          { id: 'delete', label: 'Löschen', onClick: ({ selectedRows }) => onBulk(selectedRows) },
+        ]}
       />
     );
 
-    const holidayCheckbox = screen.getByLabelText('Ausweichtermine holiday-1 auswählen') as HTMLInputElement;
-    const globalCheckbox = screen.getByLabelText('Ausweichtermine global-1 auswählen') as HTMLInputElement;
-    const tourCheckbox = screen.getByLabelText('Ausweichtermine tour-1 auswählen') as HTMLInputElement;
+    const holidayCheckbox = screen.getByLabelText(
+      'Ausweichtermine holiday-1 auswählen'
+    ) as HTMLInputElement;
+    const globalCheckbox = screen.getByLabelText(
+      'Ausweichtermine global-1 auswählen'
+    ) as HTMLInputElement;
+    const tourCheckbox = screen.getByLabelText(
+      'Ausweichtermine tour-1 auswählen'
+    ) as HTMLInputElement;
 
     expect(holidayCheckbox.disabled).toBe(true);
     expect(globalCheckbox.disabled).toBe(false);
@@ -471,7 +552,9 @@ describe('studio-ui-react primitives', () => {
       />
     );
 
-    const globalCheckbox = screen.getByLabelText('Ausweichtermine global-1 auswählen') as HTMLInputElement;
+    const globalCheckbox = screen.getByLabelText(
+      'Ausweichtermine global-1 auswählen'
+    ) as HTMLInputElement;
     fireEvent.click(globalCheckbox);
     expect(globalCheckbox.checked).toBe(true);
 
@@ -486,7 +569,9 @@ describe('studio-ui-react primitives', () => {
       />
     );
 
-    expect((screen.getByLabelText('Ausweichtermine global-1 auswählen') as HTMLInputElement).checked).toBe(true);
+    expect(
+      (screen.getByLabelText('Ausweichtermine global-1 auswählen') as HTMLInputElement).checked
+    ).toBe(true);
   });
 
   it('prunes selected rows when an unchanged row id becomes non-selectable', () => {
@@ -507,7 +592,9 @@ describe('studio-ui-react primitives', () => {
       />
     );
 
-    const globalCheckbox = screen.getByLabelText('Ausweichtermine global-1 auswählen') as HTMLInputElement;
+    const globalCheckbox = screen.getByLabelText(
+      'Ausweichtermine global-1 auswählen'
+    ) as HTMLInputElement;
     fireEvent.click(globalCheckbox);
     expect(globalCheckbox.checked).toBe(true);
 
@@ -526,7 +613,9 @@ describe('studio-ui-react primitives', () => {
       />
     );
 
-    const updatedGlobalCheckbox = screen.getByLabelText('Ausweichtermine global-1 auswählen') as HTMLInputElement;
+    const updatedGlobalCheckbox = screen.getByLabelText(
+      'Ausweichtermine global-1 auswählen'
+    ) as HTMLInputElement;
     expect(updatedGlobalCheckbox.checked).toBe(false);
     expect(updatedGlobalCheckbox.disabled).toBe(true);
   });
@@ -566,7 +655,12 @@ describe('studio-ui-react primitives', () => {
         footer={<span>Seitenfuß</span>}
         rowActions={(row) => <Button>Öffnen {row.title}</Button>}
         bulkActions={[
-          { id: 'custom', label: 'Custom', render: <button type="button">Sonderaktion</button>, onClick: vi.fn() },
+          {
+            id: 'custom',
+            label: 'Custom',
+            render: <button type="button">Sonderaktion</button>,
+            onClick: vi.fn(),
+          },
           {
             id: 'archive',
             label: 'Archivieren',
@@ -600,7 +694,9 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByRole('button', { name: 'Archivieren' }).hasAttribute('disabled')).toBe(true);
     const table = screen.getByRole('table', { name: 'News' });
     const footer = screen.getByText('Seitenfuß');
-    expect(Boolean(table.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(Boolean(table.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(
+      true
+    );
   });
 
   it('keeps desktop table rows height-stable on hover', () => {
@@ -738,7 +834,10 @@ describe('studio-ui-react primitives', () => {
       constructor(private readonly callback: ResizeObserverCallback) {}
 
       observe() {
-        this.callback([{ contentRect: { width: 320 } as DOMRectReadOnly }] as ResizeObserverEntry[], this as ResizeObserver);
+        this.callback(
+          [{ contentRect: { width: 320 } as DOMRectReadOnly }] as ResizeObserverEntry[],
+          this as ResizeObserver
+        );
       }
 
       unobserve = vi.fn();
@@ -759,7 +858,9 @@ describe('studio-ui-react primitives', () => {
       );
 
       fireEvent.click(screen.getByLabelText('News a in Kartenansicht auswählen'));
-      expect((screen.getByLabelText('News a in Kartenansicht auswählen') as HTMLInputElement).checked).toBe(true);
+      expect(
+        (screen.getByLabelText('News a in Kartenansicht auswählen') as HTMLInputElement).checked
+      ).toBe(true);
       unmount();
     } finally {
       globalThis.ResizeObserver = originalResizeObserver;
@@ -776,7 +877,10 @@ describe('studio-ui-react primitives', () => {
       constructor(private readonly callback: ResizeObserverCallback) {}
 
       observe() {
-        this.callback([{ contentRect: { width: 320 } as DOMRectReadOnly }] as ResizeObserverEntry[], this as ResizeObserver);
+        this.callback(
+          [{ contentRect: { width: 320 } as DOMRectReadOnly }] as ResizeObserverEntry[],
+          this as ResizeObserver
+        );
       }
 
       unobserve = vi.fn();
@@ -800,8 +904,20 @@ describe('studio-ui-react primitives', () => {
         />
       );
 
-      expect((screen.getByLabelText('Ausweichtermine holiday-1 in Kartenansicht auswählen') as HTMLInputElement).disabled).toBe(true);
-      expect((screen.getByLabelText('Ausweichtermine tour-1 in Kartenansicht auswählen') as HTMLInputElement).disabled).toBe(false);
+      expect(
+        (
+          screen.getByLabelText(
+            'Ausweichtermine holiday-1 in Kartenansicht auswählen'
+          ) as HTMLInputElement
+        ).disabled
+      ).toBe(true);
+      expect(
+        (
+          screen.getByLabelText(
+            'Ausweichtermine tour-1 in Kartenansicht auswählen'
+          ) as HTMLInputElement
+        ).disabled
+      ).toBe(false);
       unmount();
     } finally {
       globalThis.ResizeObserver = originalResizeObserver;
@@ -839,7 +955,9 @@ describe('studio-ui-react primitives', () => {
       </>
     );
 
-    expect(callbackRef).toHaveBeenCalledWith(screen.getByRole('checkbox', { name: 'Callback-Checkbox' }));
+    expect(callbackRef).toHaveBeenCalledWith(
+      screen.getByRole('checkbox', { name: 'Callback-Checkbox' })
+    );
     expect(objectRef.current).toBe(screen.getByRole('checkbox', { name: 'Objekt-Checkbox' }));
     expect(objectRef.current?.indeterminate).toBe(true);
   });
@@ -943,7 +1061,14 @@ describe('studio-ui-react primitives', () => {
   it('renders optional primitive variants without auxiliary content', () => {
     render(
       <>
-        <StudioOverviewPageTemplate title="Minimal" primaryAction={<Button asChild><a href="/new">Neu</a></Button>}>
+        <StudioOverviewPageTemplate
+          title="Minimal"
+          primaryAction={
+            <Button asChild>
+              <a href="/new">Neu</a>
+            </Button>
+          }
+        >
           <p>Minimaler Inhalt</p>
         </StudioOverviewPageTemplate>
         <StudioDetailPageTemplate title="Detail minimal">
@@ -964,7 +1089,9 @@ describe('studio-ui-react primitives', () => {
           <AlertTitle>Titel</AlertTitle>
           <AlertDescription>Beschreibung</AlertDescription>
         </Alert>
-        <Button variant="destructive" size="sm">Löschen</Button>
+        <Button variant="destructive" size="sm">
+          Löschen
+        </Button>
       </>
     );
 

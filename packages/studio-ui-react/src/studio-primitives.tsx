@@ -23,14 +23,24 @@ export type StudioPageHeaderProps = Readonly<{
   className?: string;
 }>;
 
-export function StudioPageHeader({ title, titleId, description, actions, className }: StudioPageHeaderProps) {
+export function StudioPageHeader({
+  title,
+  titleId,
+  description,
+  actions,
+  className,
+}: StudioPageHeaderProps) {
   return (
-    <header className={cn('flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between', className)}>
+    <header
+      className={cn('flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between', className)}
+    >
       <div className="space-y-2">
         <h1 id={titleId} className="text-3xl font-semibold text-foreground">
           {title}
         </h1>
-        {description ? <p className="max-w-3xl text-sm text-muted-foreground">{description}</p> : null}
+        {description ? (
+          <p className="max-w-3xl text-sm text-muted-foreground">{description}</p>
+        ) : null}
       </div>
       {actions ? <div className="flex shrink-0 items-start gap-2">{actions}</div> : null}
     </header>
@@ -98,7 +108,12 @@ const renderStudioListPageAction = (action: StudioListPageAction) => {
   }
 
   return (
-    <Button type="button" onClick={action.onClick} disabled={action.disabled} variant={action.variant ?? 'default'}>
+    <Button
+      type="button"
+      onClick={action.onClick}
+      disabled={action.disabled}
+      variant={action.variant ?? 'default'}
+    >
       {action.icon}
       {action.label}
     </Button>
@@ -142,7 +157,9 @@ export function StudioListPageTemplate({
           </TabsList>
           {tabs.map((tab) => (
             <TabsContent key={tab.id} value={tab.id} className="space-y-3">
-              {tab.description ? <p className="text-sm text-muted-foreground">{tab.description}</p> : null}
+              {tab.description ? (
+                <p className="text-sm text-muted-foreground">{tab.description}</p>
+              ) : null}
               {tab.content}
             </TabsContent>
           ))}
@@ -158,21 +175,56 @@ export type StudioDetailPageTemplateProps = Readonly<{
   title: React.ReactNode;
   description?: React.ReactNode;
   actions?: React.ReactNode;
+  primaryAction?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }>;
+
+export type StudioFormActionBarProps = Readonly<{
+  children: React.ReactNode;
+  position?: 'start' | 'end';
+  className?: string;
+}>;
+
+export function StudioFormActionBar({
+  children,
+  position = 'end',
+  className,
+}: StudioFormActionBarProps) {
+  return (
+    <div
+      className={cn(
+        'flex flex-wrap items-center justify-end gap-3 border-border/60',
+        position === 'start' ? 'border-b pb-4' : 'border-t pt-4',
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
 
 export function StudioDetailPageTemplate({
   title,
   description,
   actions,
+  primaryAction,
   children,
   className,
 }: StudioDetailPageTemplateProps) {
+  const headerActions =
+    actions || primaryAction ? (
+      <>
+        {actions}
+        {primaryAction}
+      </>
+    ) : undefined;
+
   return (
     <section className={cn('space-y-6', className)}>
-      <StudioPageHeader title={title} description={description} actions={actions} />
+      <StudioPageHeader title={title} description={description} actions={headerActions} />
       <div className="space-y-5">{children}</div>
+      {primaryAction ? <StudioFormActionBar>{primaryAction}</StudioFormActionBar> : null}
     </section>
   );
 }
@@ -197,7 +249,9 @@ export type StudioFieldControlProps = Readonly<{
 }>;
 
 const mergeDescribedBy = (currentValue: string | undefined, nextValue: string | undefined) => {
-  const tokens = [...(currentValue?.split(/\s+/) ?? []), ...(nextValue?.split(/\s+/) ?? [])].filter(Boolean);
+  const tokens = [...(currentValue?.split(/\s+/) ?? []), ...(nextValue?.split(/\s+/) ?? [])].filter(
+    Boolean
+  );
   return tokens.length > 0 ? Array.from(new Set(tokens)).join(' ') : undefined;
 };
 
@@ -289,7 +343,11 @@ export type StudioFieldGroupProps = Readonly<{
 }>;
 
 export function StudioFieldGroup({ children, columns = 1, className }: StudioFieldGroupProps) {
-  return <div className={cn(columns === 2 ? 'grid gap-4 md:grid-cols-2' : 'grid gap-4', className)}>{children}</div>;
+  return (
+    <div className={cn(columns === 2 ? 'grid gap-4 md:grid-cols-2' : 'grid gap-4', className)}>
+      {children}
+    </div>
+  );
 }
 
 export type StudioFormSummaryProps = Readonly<{
@@ -360,12 +418,13 @@ export function StudioConfirmDialog({
 
 export type StudioTechnicalStatusTone = 'neutral' | 'success' | 'warning' | 'error';
 
-const technicalStatusBadgeVariantByTone: Record<StudioTechnicalStatusTone, BadgeProps['variant']> = {
-  neutral: 'outline',
-  success: 'default',
-  warning: 'secondary',
-  error: 'destructive',
-};
+const technicalStatusBadgeVariantByTone: Record<StudioTechnicalStatusTone, BadgeProps['variant']> =
+  {
+    neutral: 'outline',
+    success: 'default',
+    warning: 'secondary',
+    error: 'destructive',
+  };
 
 export type StudioTechnicalStatusMetaItem = Readonly<{
   id: string;
@@ -409,7 +468,9 @@ const StudioStatusCardBody = ({
         ))}
       </div>
     ) : null}
-    {!metadata?.length && emptyState ? <div className="text-sm text-muted-foreground">{emptyState}</div> : null}
+    {!metadata?.length && emptyState ? (
+      <div className="text-sm text-muted-foreground">{emptyState}</div>
+    ) : null}
     {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
   </>
 );
@@ -501,7 +562,11 @@ export function StudioStateBlock({
   const ariaLive = role === 'alert' ? 'assertive' : role === 'status' ? 'polite' : undefined;
 
   return (
-    <div role={role} aria-live={ariaLive} className={cn('rounded-lg border border-border bg-card p-6', className)}>
+    <div
+      role={role}
+      aria-live={ariaLive}
+      className={cn('rounded-lg border border-border bg-card p-6', className)}
+    >
       {title ? <h2 className="text-lg font-medium text-foreground">{title}</h2> : null}
       {description ? <p className="mt-2 text-sm text-muted-foreground">{description}</p> : null}
       {children ? <div className="mt-4">{children}</div> : null}

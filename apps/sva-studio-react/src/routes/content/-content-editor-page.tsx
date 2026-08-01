@@ -1,6 +1,11 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { GENERIC_CONTENT_TYPE, withServerDeniedContentAccess, type IamContentAccessSummary, type IamContentStatus } from '@sva/core';
+import {
+  GENERIC_CONTENT_TYPE,
+  withServerDeniedContentAccess,
+  type IamContentAccessSummary,
+  type IamContentStatus,
+} from '@sva/core';
 import { FilePenLine, History } from 'lucide-react';
 import {
   StudioDetailPageTemplate,
@@ -30,7 +35,11 @@ import { useContentAccess } from '../../hooks/use-content-access';
 import { useContentDetail, useCreateContent } from '../../hooks/use-contents';
 import { t } from '../../i18n';
 import { formatContentAuthor } from '../../lib/content-author';
-import { formatEditorDateTime, parseOptionalEditorDateTime, toDatetimeLocalValue } from '../../lib/editor-date-time';
+import {
+  formatEditorDateTime,
+  parseOptionalEditorDateTime,
+  toDatetimeLocalValue,
+} from '../../lib/editor-date-time';
 import type { CreateContentPayload, IamHttpError, UpdateContentPayload } from '../../lib/iam-api';
 
 type ContentEditorPageProps = {
@@ -145,7 +154,9 @@ const historyActionLabelKey = {
   status_changed: 'content.history.actions.statusChanged',
 } as const;
 
-const parseContentPayload = (payloadText: string): { ok: true; payload: unknown } | { ok: false; message: string } => {
+const parseContentPayload = (
+  payloadText: string
+): { ok: true; payload: unknown } | { ok: false; message: string } => {
   try {
     return { ok: true, payload: JSON.parse(payloadText) };
   } catch {
@@ -192,7 +203,9 @@ const createContentFormSchema = (originalPublishedAt?: string) =>
       }
     });
 
-const toDeniedAccess = (errorCode: IamHttpError['code'] | undefined): IamContentAccessSummary | null =>
+const toDeniedAccess = (
+  errorCode: IamHttpError['code'] | undefined
+): IamContentAccessSummary | null =>
   errorCode === 'forbidden' ? withServerDeniedContentAccess(undefined) : null;
 
 const resolveActiveAccess = ({
@@ -269,10 +282,14 @@ const renderContentHistory = ({
       {history.map((entry) => (
         <li key={entry.id} className="rounded-lg border border-border p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm font-medium text-foreground">{t(historyActionLabelKey[entry.action])}</span>
+            <span className="text-sm font-medium text-foreground">
+              {t(historyActionLabelKey[entry.action])}
+            </span>
             <span className="text-xs text-muted-foreground">{formatDateTime(entry.createdAt)}</span>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{t('content.history.byline', { actor: entry.actor })}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t('content.history.byline', { actor: entry.actor })}
+          </p>
           {entry.summary ? <p className="mt-2 text-sm text-foreground">{entry.summary}</p> : null}
           {entry.changedFields.length > 0 ? (
             <p className="mt-2 text-xs text-muted-foreground">
@@ -303,11 +320,18 @@ const contentEditorTabBodyKeyMap = {
   history: 'content.tabs.historyDescription',
 } as const satisfies Record<ContentEditorTabId, string>;
 
-export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: ContentEditorPageProps) => {
+export const ContentEditorPage = ({
+  mode,
+  contentId,
+  activeTab,
+  onTabChange,
+}: ContentEditorPageProps) => {
   const navigate = useNavigate();
-  const [internalActiveTab, setInternalActiveTab] = React.useState<ContentEditorTabId>(activeTab ?? 'general');
+  const [internalActiveTab, setInternalActiveTab] = React.useState<ContentEditorTabId>(
+    activeTab ?? 'general'
+  );
   const createApi = useCreateContent();
-  const detailApi = useContentDetail(mode === 'edit' ? contentId ?? null : null);
+  const detailApi = useContentDetail(mode === 'edit' ? (contentId ?? null) : null);
   const contentAccessApi = useContentAccess();
   const formSchema = React.useMemo(
     () => createContentFormSchema(detailApi.content?.publishedAt),
@@ -344,7 +368,8 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
     activeErrorCode: activeError?.code,
   });
 
-  const isReadOnly = mode === 'edit' && activeAccess?.canRead === true && activeAccess.canUpdate === false;
+  const isReadOnly =
+    mode === 'edit' && activeAccess?.canRead === true && activeAccess.canUpdate === false;
 
   const actionsDisabled = isEditorActionDisabled({
     mode,
@@ -373,24 +398,37 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
     id: 'content-payload',
     error: errors.payloadText,
   });
-  const summaryErrors = collectSummaryErrors([titleField, contentTypeField, statusField, publishedAtField, payloadField]);
+  const summaryErrors = collectSummaryErrors([
+    titleField,
+    contentTypeField,
+    statusField,
+    publishedAtField,
+    payloadField,
+  ]);
   const formId = React.useId();
-  const primaryActionLabel = mode === 'create' ? t('content.actions.createNow') : t('content.actions.save');
-  const submitDisabled = actionsDisabled || isSubmitting || isLoading || (mode === 'edit' && !content);
+  const primaryActionLabel =
+    mode === 'create' ? t('content.actions.createNow') : t('content.actions.save');
+  const submitDisabled =
+    actionsDisabled || isSubmitting || isLoading || (mode === 'edit' && !content);
   const showEditorTabs = mode === 'create' || Boolean(content);
   const resolvedActiveTab = activeTab ?? internalActiveTab;
   const visibleTabs = React.useMemo<readonly ContentEditorTabId[]>(
     () => (mode === 'edit' ? ['general', 'history'] : ['general']),
     [mode]
   );
-  const [visitedTabs, setVisitedTabs] = React.useState<readonly ContentEditorTabId[]>([resolvedActiveTab]);
+  const [visitedTabs, setVisitedTabs] = React.useState<readonly ContentEditorTabId[]>([
+    resolvedActiveTab,
+  ]);
 
   const submitCreate = async (values: ContentFormState): Promise<void> => {
     const parsedPayload = parseContentPayload(values.payloadText);
     if (!parsedPayload.ok) {
       return;
     }
-    const publishedAt = parseOptionalEditorDateTime(values.publishedAt, detailApi.content?.publishedAt);
+    const publishedAt = parseOptionalEditorDateTime(
+      values.publishedAt,
+      detailApi.content?.publishedAt
+    );
     if (publishedAt.kind === 'invalid') {
       return;
     }
@@ -416,7 +454,10 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
     if (!parsedPayload.ok) {
       return;
     }
-    const publishedAt = parseOptionalEditorDateTime(values.publishedAt, detailApi.content?.publishedAt);
+    const publishedAt = parseOptionalEditorDateTime(
+      values.publishedAt,
+      detailApi.content?.publishedAt
+    );
     if (publishedAt.kind === 'invalid') {
       return;
     }
@@ -452,7 +493,9 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
   }, [activeTab]);
 
   React.useEffect(() => {
-    setVisitedTabs((current) => (current.includes(resolvedActiveTab) ? current : [...current, resolvedActiveTab]));
+    setVisitedTabs((current) =>
+      current.includes(resolvedActiveTab) ? current : [...current, resolvedActiveTab]
+    );
   }, [resolvedActiveTab]);
 
   const warmTab = React.useCallback((tabId: ContentEditorTabId) => {
@@ -473,9 +516,17 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
   const renderGeneralTabPanel = () => (
     <div className="space-y-5">
       <form id={formId} className="space-y-4" onSubmit={submitForm} noValidate>
-        <StudioFormSummaryErrors errors={summaryErrors} title={t('account.messages.validationSummary')} />
+        <StudioFormSummaryErrors
+          errors={summaryErrors}
+          title={t('account.messages.validationSummary')}
+        />
         <StudioFieldGroup columns={2}>
-          <StudioField {...titleField} label={t('content.fields.title')} required className="md:col-span-2">
+          <StudioField
+            {...titleField}
+            label={t('content.fields.title')}
+            required
+            className="md:col-span-2"
+          >
             <Input {...register('title')} disabled={actionsDisabled} />
           </StudioField>
           <StudioField {...contentTypeField} label={t('content.fields.contentType')}>
@@ -490,7 +541,11 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
               <option value="archived">{t('content.status.archived')}</option>
             </FieldSelect>
           </StudioField>
-          <StudioField {...publishedAtField} label={t('content.fields.publishedAt')} className="md:col-span-2">
+          <StudioField
+            {...publishedAtField}
+            label={t('content.fields.publishedAt')}
+            className="md:col-span-2"
+          >
             <Input
               {...register('publishedAt')}
               type="datetime-local"
@@ -498,7 +553,11 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
               required={statusValue === 'published'}
             />
           </StudioField>
-          <StudioField {...payloadField} label={t('content.fields.payload')} className="md:col-span-2">
+          <StudioField
+            {...payloadField}
+            label={t('content.fields.payload')}
+            className="md:col-span-2"
+          >
             <Textarea
               {...register('payloadText')}
               disabled={actionsDisabled}
@@ -507,14 +566,6 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
           </StudioField>
         </StudioFieldGroup>
       </form>
-      <div className="flex flex-wrap gap-3 border-t border-border/60 pt-4">
-        <Button asChild variant="outline">
-          <Link to="/admin/content">{t('content.actions.cancel')}</Link>
-        </Button>
-        <Button type="submit" form={formId} disabled={submitDisabled}>
-          {primaryActionLabel}
-        </Button>
-      </div>
     </div>
   );
 
@@ -528,16 +579,15 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
 
       <StudioDetailPageTemplate
         title={mode === 'create' ? t('content.editor.createTitle') : t('content.editor.editTitle')}
-        description={mode === 'create' ? t('content.editor.createSubtitle') : t('content.editor.editSubtitle')}
-        actions={
-          mode === 'edit' ? (
-            <Button type="submit" form={formId} disabled={submitDisabled}>
-              {primaryActionLabel}
-            </Button>
-          ) : undefined
+        description={
+          mode === 'create' ? t('content.editor.createSubtitle') : t('content.editor.editSubtitle')
+        }
+        primaryAction={
+          <Button type="submit" form={formId} disabled={submitDisabled}>
+            {primaryActionLabel}
+          </Button>
         }
       >
-
         {detailApi.error && mode === 'edit' ? (
           <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
             <AlertDescription>{contentErrorMessage(detailApi.error)}</AlertDescription>
@@ -563,12 +613,28 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
         {mode === 'edit' && content ? (
           <StudioResourceHeader
             title={resolveResourceTitle(content)}
-            status={<Badge variant={statusVariantByValue[content.status]}>{t(statusLabelKeyByValue[content.status])}</Badge>}
+            status={
+              <Badge variant={statusVariantByValue[content.status]}>
+                {t(statusLabelKeyByValue[content.status])}
+              </Badge>
+            }
             description={content.contentType}
             metadata={[
-              { id: 'author', label: t('content.meta.author'), value: formatContentAuthor(content.author) },
-              { id: 'createdAt', label: t('content.meta.createdAt'), value: formatDateTime(content.createdAt) },
-              { id: 'updatedAt', label: t('content.meta.updatedAt'), value: formatDateTime(content.updatedAt) },
+              {
+                id: 'author',
+                label: t('content.meta.author'),
+                value: formatContentAuthor(content.author),
+              },
+              {
+                id: 'createdAt',
+                label: t('content.meta.createdAt'),
+                value: formatDateTime(content.createdAt),
+              },
+              {
+                id: 'updatedAt',
+                label: t('content.meta.updatedAt'),
+                value: formatDateTime(content.updatedAt),
+              },
               { id: 'contentId', label: t('content.meta.id'), value: content.id },
               {
                 id: 'access',
@@ -592,7 +658,9 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
                   aria-label={t('content.tabs.ariaLabel')}
                   className="h-11 rounded-xl border-border/70 bg-card"
                   value={resolvedActiveTab}
-                  onChange={(event) => handleTabChange(normalizeContentEditorTab(event.target.value))}
+                  onChange={(event) =>
+                    handleTabChange(normalizeContentEditorTab(event.target.value))
+                  }
                 >
                   {visibleTabs.map((tabId) => (
                     <option key={tabId} value={tabId}>
@@ -602,7 +670,10 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
                 </StudioSelect>
               </label>
 
-              <TabsList aria-label={t('content.tabs.ariaLabel')} className="ml-[10px] hidden gap-10 md:flex">
+              <TabsList
+                aria-label={t('content.tabs.ariaLabel')}
+                className="ml-[10px] hidden gap-10 md:flex"
+              >
                 {visibleTabs.map((tabId) => {
                   const TabIcon = contentEditorTabIconMap[tabId];
                   const isActive = tabId === resolvedActiveTab;
@@ -614,7 +685,9 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
                       onMouseEnter={() => warmTab(tabId)}
                       onFocus={() => warmTab(tabId)}
                       className={`relative z-10 gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
-                        isActive ? 'mb-[-1px] border-primary text-primary' : 'border-transparent text-muted-foreground'
+                        isActive
+                          ? 'mb-[-1px] border-primary text-primary'
+                          : 'border-transparent text-muted-foreground'
                       }`}
                     >
                       <span className="inline-flex items-center gap-2">
@@ -627,7 +700,8 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
               </TabsList>
 
               {visibleTabs.map((tabId) => {
-                const shouldKeepMounted = visitedTabs.includes(tabId) && tabId !== resolvedActiveTab;
+                const shouldKeepMounted =
+                  visitedTabs.includes(tabId) && tabId !== resolvedActiveTab;
 
                 return (
                   <TabsContent
@@ -642,7 +716,9 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
                         className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
                       >
                         <div className="space-y-1">
-                          <h2 className="text-base font-semibold text-foreground">{t(contentEditorTabLabelKeyMap[tabId])}</h2>
+                          <h2 className="text-base font-semibold text-foreground">
+                            {t(contentEditorTabLabelKeyMap[tabId])}
+                          </h2>
                           <p className="text-sm leading-relaxed text-muted-foreground">
                             {t(contentEditorTabBodyKeyMap[tabId])}
                           </p>

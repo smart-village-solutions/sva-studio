@@ -142,7 +142,7 @@ Ablauf:
 7. Erst danach entfernt der Agent die anwendungseigenen Schemas `public` und `iam` vollständig und startet den einmaligen Vollrestore. Dadurch blockieren Objekte neuerer Migrationen nicht die Wiederherstellung eines älteren Dumps. Fehler oder Timeout führen zu keinem automatischen Retry oder Gegenrestore.
 8. Der Agent rekonstruiert zunächst die statischen `sva_app`-ACLs und prüft Goose-Version, IAM-Schema, `iam_app`-Mitgliedschaft, Datenbank-, Schema-, Tabellen- und Sequenzrechte sowie Registry. Alte Agent-Evidenz ohne `runtime-principal-reconciliation` und `runtime-principal-probe` wird vom Workflow abgelehnt.
 9. Der Workflow migriert einen historischen Stand anschließend mit dem unveränderlich ausgewählten Studio-Image und führt danach den allgemeinen Bootstrap als abschließendes Principal-Reconcile aus.
-10. Nur nach erfolgreicher DB-Evidenz startet der Workflow App und Provisioner wieder und fordert HTTP 200 für `health/live` und `health/ready`, einen erfolgreichen Runtime-Smoke mit Tenant-Login-Redirect sowie einen authentifizierten, nicht degradierten `/auth/me`- und `/iam/me/permissions`-Nachweis.
+10. Nur nach erfolgreicher DB-Evidenz startet der Workflow App und Provisioner wieder und fordert HTTP 200 für `health/live` und `health/ready`, einen erfolgreichen Runtime-Smoke mit Tenant-Login-Redirect sowie einen authentifizierten, nicht degradierten `/auth/me`- und `/iam/me/permissions?instanceId=<instanceId-aus-auth-me>`-Nachweis.
 11. Schlägt ein Schritt nach der Stilllegung fehl, deployt der Workflow den gestoppten Stackvertrag erneut. Die App bleibt bis zu einer manuellen Recovery-Entscheidung stillgelegt.
 
 MinIO hält Request, Sicherheitsdump-Metadaten und Agent-Ergebnis getrennt unter `control/restores/`. GitHub hält zusätzlich die redigierte Workflow-Evidenz. Weder Evidenz enthält Secrets, SQL-Inhalte oder Datenbankdaten. Keycloak wird nicht verändert; erkannter Drift wird ausschließlich über die vorhandenen IAM-Reconcile-Pfade behandelt.
@@ -167,9 +167,9 @@ Ein Fehler nach Beginn des Restores führt absichtlich erneut zum gestoppten Sta
 Für diesen Fall:
 
 1. Fehlerklasse und letzten erfolgreichen Schritt im Restore-Run feststellen.
-2. Bei einem ausschließlich externen Runtime-/Ingress-Fehler den bestehenden, unveränderten Live-Digest über **Promote** mit `migration_mode=assert-none` und `bootstrap_mode=assert-none` wieder ausrollen. `maintenance_window` muss auch bei diesem Recovery-Lauf mit einer nicht-sensitiven Incident-Referenz belegt sein.
+2. Bei einem ausschließlich externen Runtime-/Ingress-Fehler den bestehenden, unveränderten Live-Digest über **Promote** mit `migration_mode=assert-none` und `bootstrap_mode=assert-none` wieder ausrollen. `image_ref`, `change_base` und `change_head` müssen exakt aus der ursprünglichen Build-/Promote-Evidenz dieses Digests übernommen werden; `change_head` ist die attestierte OCI-Revision. Die Commit-Grenzen nicht während des Incidents raten oder aus dem aktuellen `main` ableiten. `maintenance_window` muss auch bei diesem Recovery-Lauf mit einer nicht-sensitiven Incident-Referenz belegt sein.
 3. `health/live`, `health/ready` und den betroffenen Tenant-Host prüfen.
-4. Den fachlichen IAM-Nachweis über `/auth/me` und `/iam/me/permissions` nachholen.
+4. Den fachlichen IAM-Nachweis über `/auth/me` und `/iam/me/permissions?instanceId=<instanceId-aus-auth-me>` nachholen.
 
 Wichtig: Der auf `main` laufende Restore-Smoke kann mehr explizite Tenant-Hosts kennen als ein älteres, weiterhin gebundenes Production-Image. Ein Fehler für einen solchen neuen Host widerlegt nicht die zuvor erfolgreiche Datenbank- und ACL-Reparatur. Er erfordert zunächst den beschriebenen Recovery-Promote und anschließend einen regulären Rollout des neueren Images über den kanonischen Build-/Promote-Pfad.
 

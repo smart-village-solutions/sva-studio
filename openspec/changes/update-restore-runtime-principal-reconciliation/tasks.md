@@ -13,6 +13,7 @@
 - [x] 2.2 Einen bestehenden sicheren Testzugang beziehungsweise Session-Probe-Vertrag für `/auth/me` und `/iam/me/permissions` wiederverwenden; keine Secrets oder PII protokollieren.
 - [x] 2.3 Workflow-Contract-Tests und Restore-Evidenztests für den neuen Gate-Pfad ergänzen.
 - [x] 2.4 Sicherstellen, dass jeder Fehler die App stillgelegt lässt und keinen automatischen Gegenrestore auslöst.
+- [x] 2.5 Staging- und Production-Restore voneinander entkoppeln und die umgebungsinterne Autorisierung per Workflow-Contract-Test absichern.
 
 ## 3. Dokumentation und Architektur
 

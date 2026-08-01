@@ -905,7 +905,7 @@ Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine ab
 
 ## Kontrollierter Datenbank-Vollrestore
 
-1. Der freigegebene Workflow `database-restore.yml` bindet Zielumgebung, unveränderliches App-Image, Wartungsfenster, MinIO-Objekt und SHA-256. Production verlangt zusätzlich die Evidenz eines erfolgreichen Staging-Drills.
+1. Der freigegebene Workflow `database-restore.yml` bindet Zielumgebung, unveränderliches App-Image, Wartungsfenster, MinIO-Objekt und SHA-256. Staging und Production werden unabhängig durch ihr jeweiliges GitHub Environment autorisiert und geprüft.
 2. Der Workflow setzt App und Provisioner auf null Replikate. Der Agent akzeptiert den Auftrag erst nach OIDC-/HMAC-Prüfung, action-spezifischer Workflow-Allowlist, Replay-Prüfung und nachgewiesenem Session-Drain.
 3. Der Agent lädt ausschließlich aus Bucket und Präfix der Zielumgebung, prüft SHA-256, Custom-Archiv sowie Goose- und IAM-Einträge und erzeugt vor der Mutation einen erneut heruntergeladenen und verifizierten Sicherheitsdump.
 4. `pg_restore` läuft einmalig mit demselben fest gepinnten PostgreSQL-18-Client wie der Backup-Pfad, festem Host, fester Datenbank und festem Rollenwechsel zur App-Rolle. Freie Optionen oder automatische Wiederholungen existieren nicht.

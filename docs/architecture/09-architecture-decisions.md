@@ -515,7 +515,7 @@ Zuordnung:
 - [ADR-048](../adr/ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md) umfasst zusätzlich den engen Vertrag `restore-and-verify-v1`.
 - Der einzige Aufrufer ist der geschützte Workflow `database-restore.yml`; generische Remote-Shell, freie Restore-Optionen und automatische Wiederholungen bleiben ausgeschlossen.
 - Der Workflow verantwortet Stilllegung und Wiederanlauf, der Agent ausschließlich Preflight, Sicherheitsdump, Restore und DB-Nachprüfungen.
-- Production setzt einen erfolgreichen Staging-Restore-Drill und eine neue explizite Environment-Freigabe voraus.
+- Staging- und Production-Restores sind voneinander unabhängig; jeder Lauf setzt ausschließlich eine neue explizite Freigabe seines eigenen GitHub Environments voraus.
 
 ### Fortschreibung 2026-08: Restore-spezifische Runtime-Principal-Konvergenz
 

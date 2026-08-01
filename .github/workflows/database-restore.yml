@@ -29,10 +29,6 @@ on:
         description: 'Commit revision represented by the immutable image'
         required: true
         type: string
-      staging_drill_run_id:
-        description: 'Successful staging restore run ID (required for production)'
-        required: false
-        type: string
 
 permissions:
   actions: read
@@ -56,16 +52,12 @@ jobs:
           MAINTENANCE_WINDOW: ${{ inputs.maintenance_window }}
           SOURCE_OBJECT_KEY: ${{ inputs.source_object_key }}
           SOURCE_SHA256: ${{ inputs.source_sha256 }}
-          STAGING_DRILL_RUN_ID: ${{ inputs.staging_drill_run_id }}
         run: |
           set -euo pipefail
           [[ "${SOURCE_OBJECT_KEY}" =~ ^${ENVIRONMENT}/[A-Za-z0-9._/-]{7,511}\.dump$ ]]
           [[ "${SOURCE_OBJECT_KEY}" != *..* ]]
           [[ "${SOURCE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
           [[ "${MAINTENANCE_WINDOW}" =~ ^[A-Za-z0-9][A-Za-z0-9._:/#\ -]{2,159}$ ]]
-          if [ "${ENVIRONMENT}" = "prod" ]; then
-            [[ "${STAGING_DRILL_RUN_ID}" =~ ^[0-9]+$ ]]
-          fi
 
       - name: checkout main workflow source
         uses: actions/checkout@v7
@@ -94,30 +86,6 @@ jobs:
             --environment "${ENVIRONMENT}" \
             --image "${IMAGE_INPUT}" \
             --expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
-
-      - name: download required staging drill evidence
-        if: ${{ inputs.environment == 'prod' }}
-        uses: actions/download-artifact@v5
-        with:
-          github-token: ${{ github.token }}
-          run-id: ${{ inputs.staging_drill_run_id }}
-          pattern: database-restore-staging-*
-          path: ${{ runner.temp }}/staging-restore-evidence
-
-      - name: verify staging drill workflow identity
-        if: ${{ inputs.environment == 'prod' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          STAGING_DRILL_RUN_ID: ${{ inputs.staging_drill_run_id }}
-        run: |
-          set -euo pipefail
-          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${STAGING_DRILL_RUN_ID}" \
-            --jq 'select(.path == ".github/workflows/database-restore.yml" and .event == "workflow_dispatch" and .head_branch == "main" and .conclusion == "success") | .id' \
-            | grep -Eq "^${STAGING_DRILL_RUN_ID}$"
-
-      - name: verify staging drill evidence for production
-        if: ${{ inputs.environment == 'prod' }}
-        run: pnpm exec tsx scripts/ci/verify-staging-restore-evidence.ts "${{ runner.temp }}/staging-restore-evidence"
 
       - name: materialize image-bound stack source
         id: image_source

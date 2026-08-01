@@ -9,17 +9,10 @@ const workflow = readFileSync(
 );
 
 describe('database restore workflow', () => {
-  it('identifies a successful staging drill by its stable workflow path, not its dynamic run name', () => {
-    expect(workflow).toContain('.path == ".github/workflows/database-restore.yml"');
-    expect(workflow).not.toContain('.name == "Controlled Database Restore"');
-  });
-
-  it('validates the production staging evidence before binding execution to the live image revision', () => {
-    const evidenceValidation = workflow.indexOf('verify staging drill evidence for production');
-    const imageRevisionBinding = workflow.indexOf('materialize image-bound stack source');
-
-    expect(evidenceValidation).toBeGreaterThan(-1);
-    expect(imageRevisionBinding).toBeGreaterThan(evidenceValidation);
+  it('keeps staging and production restores independent', () => {
+    expect(workflow).not.toContain('staging_drill_run_id');
+    expect(workflow).not.toContain('staging drill evidence');
+    expect(workflow).not.toContain('verify-staging-restore-evidence');
   });
 
   it('uses an image-bound worktree for stack inputs without replacing the current restore tooling source', () => {

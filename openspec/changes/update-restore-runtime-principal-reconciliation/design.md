@@ -45,6 +45,10 @@ Der Agent prüft mit PostgreSQL-Prädikaten mindestens:
 
 Danach führt er repräsentative read-only Abfragen im Zielkontext aus. Nach dem App-Neustart verlangt der Workflow zusätzlich einen authentifizierten IAM-Smoke, der für den Testbenutzer einen nicht degradierten Berechtigungszustand und einen erfolgreichen Permissions-Endpunkt nachweist.
 
+### Decision: Restore-Freigaben sind umgebungsautark
+
+Staging und Production verwenden denselben gehärteten Workflowvertrag, werden aber ausschließlich durch das GitHub Environment, die Secrets, Buckets, Präfixe, Datenbankziele und Nachprüfungen ihrer jeweiligen Zielumgebung autorisiert. Ein erfolgreicher Lauf oder ein Evidenzartefakt aus der anderen Umgebung ist keine Voraussetzung. Damit können environment-spezifische Ingress-, Daten- oder Zugangszustände keinen Restore einer anderen Umgebung blockieren.
+
 ### Decision: Der allgemeine Bootstrap bleibt getrennt
 
 Der bestehende Bootstrap behält seine Verantwortung für normale Deployments und weitere Umgebungsreconciliation. Restore-spezifische ACL-Konvergenz ist jedoch Bestandteil des atomaren Restore-Erfolgsvertrags und darf nicht allein von einem späteren Bootstrap abhängen.
@@ -54,6 +58,7 @@ Der bestehende Bootstrap behält seine Verantwortung für normale Deployments un
 - **Nur validieren:** sicher, lässt den bereits bekannten, deterministisch reparierbaren ACL-Zustand aber als manuellen Incident zurück und erhöht die Wiederherstellungszeit.
 - **Nur den nachgelagerten Bootstrap verwenden:** geringere Änderung am Agenten, konnte den fehlerhaften Production-Zustand jedoch nicht verhindern und erzeugte keine belastbare Principal-Evidenz.
 - **App-Zugangsdaten an den Agenten geben:** ermöglicht eine echte Passwortanmeldung, vergrößert aber Secret-Scope und Blast Radius ohne Notwendigkeit. Der reale App-Pfad wird stattdessen nach dem Neustart separat geprüft.
+- **Production weiterhin an eine Staging-Restore-Evidenz koppeln:** liefert einen zusätzlichen fremden Nachweis, blockiert aber durch environment-spezifische Fehler und beweist den Zustand der Production-Zielumgebung nicht. Die vollständigen Production-Gates sind der maßgebliche Nachweis.
 
 ## Security and failure handling
 

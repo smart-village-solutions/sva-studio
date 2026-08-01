@@ -113,7 +113,7 @@ Direkte Änderungen an Traefik, gemeinsamen Netzwerken oder fremden Stacks sind 
 
 ### Kontrollierter Vollrestore
 
-Der einzige zulässige Aufrufpfad ist der manuell freigegebene GitHub-Workflow **Controlled Database Restore** (`database-restore.yml`). Direkte HTTPS-Aufrufe, `quantum-cli exec`, freie `pg_restore`-Kommandos und lokale Deploy-Skripte sind kein Restore-Vertrag. Der Workflow verlangt Umgebung, exakten MinIO-Objektschlüssel, kleingeschriebene SHA-256, Wartungsfensterreferenz, unveränderliches App-Image und dessen Git-Revision. Für Production ist zusätzlich die Run-ID eines vollständig erfolgreichen Staging-Restore-Drills erforderlich.
+Der einzige zulässige Aufrufpfad ist der manuell freigegebene GitHub-Workflow **Controlled Database Restore** (`database-restore.yml`). Direkte HTTPS-Aufrufe, `quantum-cli exec`, freie `pg_restore`-Kommandos und lokale Deploy-Skripte sind kein Restore-Vertrag. Der Workflow verlangt Umgebung, exakten MinIO-Objektschlüssel, kleingeschriebene SHA-256, Wartungsfensterreferenz, unveränderliches App-Image und dessen Git-Revision. Staging und Production werden unabhängig voneinander durch das jeweils gewählte GitHub Environment, umgebungsgebundene Secrets und eigene Nachprüfungen abgesichert.
 
 Vor dem ersten Staging-Drill müssen pro Umgebung externe Swarm-Secrets für Restore-HMAC und Restore-Principal vorhanden sein. Dafür wird der manuell gestartete und durch das jeweilige GitHub Environment geschützte Workflow **Restore Infrastructure Bootstrap** (`restore-infrastructure-bootstrap.yml`) verwendet. Er legt ausschließlich fehlende `restore_<environment>_postgres_password`- und `restore_<environment>_signing_key`-Secrets über die Portainer-Docker-API an; vorhandene Secrets werden weder gelesen noch überschrieben. SSH-Zugriff auf den Swarm-Node ist nicht erforderlich.
 
@@ -134,7 +134,7 @@ Die geschützten GitHub Environments `staging` und `prod` benötigen zusätzlich
 Ablauf:
 
 1. GitHub Environment freigeben und Inputs revisionsfähig dokumentieren.
-2. Der Workflow bindet Executor-Revision und unveränderliches Image, prüft bei Production die Staging-Evidenz und setzt App sowie Provisioner auf null Replikate.
+2. Der Workflow bindet Executor-Revision und unveränderliches Image an die gewählte Zielumgebung und setzt App sowie Provisioner auf null Replikate.
 3. Der Agent lehnt aktive App-Sessions, Replay, falsche Umgebung, falsches Präfix, abgelaufene Requests, unbekannte Felder oder eine abweichende SHA-256 vor jeder Mutation ab.
 4. Der Agent prüft `pg_restore --list` und die erforderlichen Goose-/IAM-Archiveinträge.
 5. Der Agent akzeptiert den gleichen oder einen älteren Goose-Migrationsstand als den des Zielsystems; ein Dump mit neuerem, unbekanntem Schema wird abgelehnt.

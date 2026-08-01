@@ -27,12 +27,14 @@ jobs:
             const pull_number = pr.number;
             const author = pr.user.login;
 
-            await github.rest.issues.addAssignees({
-              owner,
-              repo,
-              issue_number: pull_number,
-              assignees: [author],
-            });
+            if (author !== 'dependabot[bot]') {
+              await github.rest.issues.addAssignees({
+                owner,
+                repo,
+                issue_number: pull_number,
+                assignees: [author],
+              });
+            }
 
             try {
               await github.rest.pulls.requestReviewers({

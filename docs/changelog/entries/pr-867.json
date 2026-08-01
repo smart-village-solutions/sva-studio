@@ -1,0 +1,4 @@
+{
+  "prNumber": 867,
+  "body": "Interne Verbesserung\n\n- Der gemeinsam betriebene Datenbank-Backup-Agent kann über einen geschützten, revisionsgebundenen Workflow mit einem unveränderlichen Image ausgerollt werden."
+}

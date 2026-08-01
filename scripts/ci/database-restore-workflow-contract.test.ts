@@ -13,4 +13,12 @@ describe('database restore workflow', () => {
     expect(workflow).toContain('.path == ".github/workflows/database-restore.yml"');
     expect(workflow).not.toContain('.name == "Controlled Database Restore"');
   });
+
+  it('validates the production staging evidence before binding execution to the live image revision', () => {
+    const evidenceValidation = workflow.indexOf('verify staging drill evidence for production');
+    const imageRevisionBinding = workflow.indexOf('bind executor source to image revision on main');
+
+    expect(evidenceValidation).toBeGreaterThan(-1);
+    expect(imageRevisionBinding).toBeGreaterThan(evidenceValidation);
+  });
 });

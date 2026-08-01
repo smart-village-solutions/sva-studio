@@ -72,16 +72,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: bind executor source to image revision on main
-        env:
-          CHANGE_HEAD: ${{ inputs.change_head }}
-        run: |
-          set -euo pipefail
-          git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
-          head="$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
-          git merge-base --is-ancestor "${head}" origin/main
-          git checkout --detach "${head}"
-
       - name: setup pnpm workspace
         uses: ./.github/actions/setup-pnpm-workspace
 
@@ -128,6 +118,16 @@ jobs:
       - name: verify staging drill evidence for production
         if: ${{ inputs.environment == 'prod' }}
         run: pnpm exec tsx scripts/ci/verify-staging-restore-evidence.ts "${{ runner.temp }}/staging-restore-evidence"
+
+      - name: bind executor source to image revision on main
+        env:
+          CHANGE_HEAD: ${{ inputs.change_head }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
+          head="$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
+          git merge-base --is-ancestor "${head}" origin/main
+          git checkout --detach "${head}"
 
       - name: setup quantum-cli
         uses: hostwithquantum/setup-quantum-cli@v2.0.0

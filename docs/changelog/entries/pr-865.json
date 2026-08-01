@@ -1,0 +1,4 @@
+{
+  "prNumber": 865,
+  "body": "Interne Verbesserung\n\n- Der vorbereitende Datenbank-Rollenabgleich für kontrollierte Wiederherstellungen verwendet zuverlässig den vorgesehenen Datenbankadministrator."
+}

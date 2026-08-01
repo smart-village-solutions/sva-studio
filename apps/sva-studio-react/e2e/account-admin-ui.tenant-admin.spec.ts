@@ -44,6 +44,6 @@ test('tenant admin mutations fail closed in the browser when the admin client co
   await navigateClientSide(page, '/admin/users/account-2');
   await page.getByRole('tab', { name: 'Verwaltung' }).click();
   await page.getByLabel('Mainserver Application-ID').fill('updated-app-id');
-  await page.getByRole('button', { name: 'Änderungen speichern' }).click();
+  await page.getByRole('button', { name: 'Änderungen speichern' }).last().click();
   await expect(page.getByText('Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Bitte zuerst den Instanzvertrag abgleichen.')).toBeVisible();
 });

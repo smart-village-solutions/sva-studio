@@ -41,7 +41,7 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
   await page.getByRole('tab', { name: 'Verwaltung' }).click();
   await page.getByLabel('Mainserver Application-ID').fill('updated-app-id');
   await page.getByLabel('Mainserver Application-Secret').fill('new-secret');
-  await page.getByRole('button', { name: 'Änderungen speichern' }).click();
+  await page.getByRole('button', { name: 'Änderungen speichern' }).last().click();
   await expect.poll(() => updateRequestBody).toEqual(expect.objectContaining({ mainserverUserApplicationId: 'updated-app-id', mainserverUserApplicationSecret: 'new-secret' }));
   await expect(page.getByText('Nutzerdaten wurden gespeichert.')).toBeVisible();
   await page.getByRole('tab', { name: 'Berechtigungen' }).click();

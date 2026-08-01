@@ -74,7 +74,7 @@ const emptyForm = () => ({
   targetGroupIds: '',
 });
 
-export const LegalTextCreatePage = () => {
+const useLegalTextCreatePage = () => {
   const navigate = useNavigate();
   const legalTextsApi = useLegalTexts();
   const [formValues, setFormValues] = React.useState(emptyForm);
@@ -115,6 +115,13 @@ export const LegalTextCreatePage = () => {
       params: { legalTextVersionId: created.id },
     });
   };
+
+  return { formValues, legalTextsApi, onSubmit, setFormValues, validationError };
+};
+
+export const LegalTextCreatePage = () => {
+  const { formValues, legalTextsApi, onSubmit, setFormValues, validationError } =
+    useLegalTextCreatePage();
 
   return (
     <StudioDetailPageTemplate

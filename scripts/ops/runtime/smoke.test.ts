@@ -8,6 +8,7 @@ import {
   shouldRetryInternalVerify,
 } from './smoke.ts';
 import { createRuntimeSmokeOps } from './smoke-runtime.ts';
+import { resolveStudioIngressContract } from './tenant-ingress-hosts.ts';
 
 const createProbe = (overrides: Partial<AcceptanceProbeResult>): AcceptanceProbeResult => ({
   durationMs: 10,
@@ -30,6 +31,7 @@ const createDoctorReport = (overrides: Partial<DoctorReport>): DoctorReport => (
 describe('smoke helpers', () => {
   it('probes every explicit ingress host and an unknown host for the selected environment', async () => {
     const targets: string[] = [];
+    const names: string[] = [];
     const ops = createRuntimeSmokeOps({
       buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
       buildSwarmServicePresenceProbe: () => createProbe({ scope: 'internal' }),
@@ -38,6 +40,7 @@ describe('smoke helpers', () => {
       parseRuntimeProfile: (value) => value,
       resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
       runHttpProbe: async (input) => {
+        names.push(input.name);
         targets.push(input.target);
         return createProbe({
           ...(input.name === 'public-ingress-unknown-host' ? { httpStatus: undefined } : { httpStatus: 200 }),
@@ -67,6 +70,46 @@ describe('smoke helpers', () => {
       message: expect.stringContaining('getaddrinfo ENOTFOUND unknown-ingress-smoke'),
       status: 'ok',
     });
+    expect(names).not.toContain('public-ingress-https-studio-dev.smart-village.app');
+    expect(names).not.toContain('public-ingress-login-studio-dev.smart-village.app');
+  });
+
+  it('checks the registry realm for every explicit tenant ingress login', async () => {
+    let loginExpectation: ((response: Response, payload: unknown) => string | null) | undefined;
+    const ops = createRuntimeSmokeOps({
+      buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
+      buildSwarmServicePresenceProbe: () => createProbe({ scope: 'internal' }),
+      doctorRuntime: async () => createDoctorReport({}),
+      isExpectedOidcRedirect: () => true,
+      parseRuntimeProfile: (value) => value,
+      resolveTenantRuntimeTargets: async () => ({
+        source: 'registry',
+        targets: [{ authRealm: 'custom-teststadt-realm', host: 'de-teststadt-dev.studio-dev.smart-village.app', instanceId: 'de-teststadt-dev' }],
+      }),
+      runHttpProbe: async (input) => {
+        if (input.name === 'public-ingress-login-de-teststadt-dev.studio-dev.smart-village.app') loginExpectation = input.expect;
+        return createProbe({ name: input.name, target: input.target });
+      },
+      selectSmokeTenantTargets: () => [],
+      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      wait: async () => undefined,
+    });
+
+    await ops.runExternalSmoke('studio', { SVA_PUBLIC_BASE_URL: 'https://studio-dev.smart-village.app' });
+
+    expect(loginExpectation).toBeDefined();
+    expect(loginExpectation?.(new Response(null, {
+      headers: { location: `https://keycloak.example/realms/wrong-realm/protocol/openid-connect/auth?redirect_uri=${encodeURIComponent('https://de-teststadt-dev.studio-dev.smart-village.app/auth/callback')}` },
+      status: 302,
+    }), null)).toContain('custom-teststadt-realm');
+    expect(loginExpectation?.(new Response(null, {
+      headers: { location: `https://keycloak.example/realms/custom-teststadt-realm/protocol/openid-connect/auth?redirect_uri=${encodeURIComponent('https://de-teststadt-dev.studio-dev.smart-village.app/auth/callback')}` },
+      status: 302,
+    }), null)).toBeNull();
+  });
+
+  it('returns no ingress contract for an invalid base URL', () => {
+    expect(resolveStudioIngressContract('https://')).toBeNull();
   });
 
   it('caps derived internal verify attempts when retry delay is zero or negative', () => {
@@ -97,7 +140,7 @@ describe('smoke helpers', () => {
   ])('retries transient failures for %s', (name) => {
     expect(shouldRetryExternalSmoke([
       createProbe({
-        message: 'Gateway antwortet waehrend des Warmups mit 503.',
+        message: 'Gateway antwortet während des Warmups mit 503.',
         name,
         status: 'error',
       }),

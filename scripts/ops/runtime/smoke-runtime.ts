@@ -67,11 +67,19 @@ const tenantAuthLoginProbe = (deps: RuntimeSmokeDeps, base: URL, tenantTarget: T
     },
   });
 
-const explicitIngressHostProbes = (deps: RuntimeSmokeDeps, base: URL) => {
+const explicitIngressHostProbes = (
+  deps: RuntimeSmokeDeps,
+  base: URL,
+  tenantTargets: TenantRuntimeTargetResolution['targets'],
+) => {
   const contract = resolveStudioIngressContract(base.toString());
   if (!contract) return [];
 
-  const allowedHostProbes = contract.hosts.flatMap((host) => [
+  const tenantTargetsByHost = new Map(tenantTargets.map((target) => [target.host, target] as const));
+  const allowedHostProbes = contract.tenantIds.flatMap((instanceId) => {
+    const host = `${instanceId}.${contract.rootHost}`;
+    const authRealm = tenantTargetsByHost.get(host)?.authRealm ?? instanceId;
+    return [
     deps.runHttpProbe({
       name: `public-ingress-https-${host}`,
       scope: 'external',
@@ -85,11 +93,13 @@ const explicitIngressHostProbes = (deps: RuntimeSmokeDeps, base: URL) => {
       expect: (response) => {
         const location = response.headers.get('location') ?? '';
         if (response.status !== 302) return `Login auf ${host} antwortet mit ${response.status}.`;
+        if (!location.includes(`/realms/${authRealm}/`)) return `Login auf ${host} verwendet nicht den erwarteten Realm ${authRealm}: ${location}`;
         const encodedRedirect = encodeURIComponent(`${base.protocol}//${host}/auth/callback`);
         return location.includes(`redirect_uri=${encodedRedirect}`) ? null : `Login auf ${host} behält den Rückkehr-Host nicht bei: ${location}`;
       },
     }),
-  ]);
+    ];
+  });
   const unknownHostProbe = deps.runHttpProbe({
     name: 'public-ingress-unknown-host',
     scope: 'external',
@@ -133,7 +143,7 @@ const runExternalSmoke = async (deps: RuntimeSmokeDeps, runtimeProfile: RuntimeP
   const tenantTargets = deps.selectSmokeTenantTargets(runtimeProfile, tenantResolution.targets, { env, source: tenantResolution.source });
   const tenantProbes = tenantTargets.map((tenantTarget) => tenantAuthLoginProbe(deps, base, tenantTarget));
 
-  return Promise.all([...baseExternalProbes(deps, baseUrl, env), ...explicitIngressHostProbes(deps, base), ...tenantProbes]);
+  return Promise.all([...baseExternalProbes(deps, baseUrl, env), ...explicitIngressHostProbes(deps, base, tenantResolution.targets), ...tenantProbes]);
 };
 
 const runExternalSmokeWithWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.ProcessEnv, options?: ExternalSmokeWarmupOptions) => {

@@ -104,6 +104,11 @@ export const studioIngressContracts: Readonly<Record<StudioIngressEnvironment, S
 };
 
 export const resolveStudioIngressContract = (baseUrl: string) => {
-  const hostname = new URL(baseUrl).hostname;
+  let hostname: string;
+  try {
+    hostname = new URL(baseUrl).hostname;
+  } catch {
+    return null;
+  }
   return Object.values(studioIngressContracts).find((contract) => contract.rootHost === hostname) ?? null;
 };

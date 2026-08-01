@@ -26,6 +26,12 @@ describe('authenticated restore IAM smoke', () => {
     ).toThrow('restore_iam_smoke_auth_payload_invalid');
   });
 
+  it('normalizes surrounding whitespace in the authenticated instance id', () => {
+    expect(getAuthenticatedInstanceId({ user: { instanceId: ' de-musterhausen ' } })).toBe(
+      'de-musterhausen'
+    );
+  });
+
   it('rejects degraded auth sessions and malformed permission payloads', () => {
     expect(() =>
       validateAuthenticatedIamPayloads(

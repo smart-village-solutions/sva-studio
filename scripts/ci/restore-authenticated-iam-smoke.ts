@@ -65,9 +65,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export const getAuthenticatedInstanceId = (authMe: unknown): string => {
   if (!isRecord(authMe) || !isRecord(authMe.user))
     throw new Error('restore_iam_smoke_auth_payload_invalid');
-  if (typeof authMe.user.instanceId !== 'string' || authMe.user.instanceId.trim().length === 0)
+  if (typeof authMe.user.instanceId !== 'string')
     throw new Error('restore_iam_smoke_auth_payload_invalid');
-  return authMe.user.instanceId;
+  const instanceId = authMe.user.instanceId.trim();
+  if (instanceId.length === 0) throw new Error('restore_iam_smoke_auth_payload_invalid');
+  return instanceId;
 };
 
 export const validateAuthenticatedIamPayloads = (authMe: unknown, permissions: unknown): void => {

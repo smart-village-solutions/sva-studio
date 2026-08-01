@@ -1,0 +1,4 @@
+{
+  "prNumber": 864,
+  "body": "Datenbanken von Staging und Produktion können jetzt in einem kontrollierten Wartungsfenster aus einem verifizierten Backup vollständig wiederhergestellt werden. Der geschützte Ablauf prüft Quelle und Prüfsumme, erstellt vorab einen Sicherheitsdump und startet das Studio erst nach erfolgreichen Datenbank-, Gesundheits- und Anmeldeprüfungen wieder."
+}

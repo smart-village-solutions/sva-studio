@@ -1,9 +1,21 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { buildMigrationJobComposeDocument } from '../ops/runtime/migration-job.ts';
 import { restoreRoleSecretNames } from './bootstrap-restore-role.ts';
 
 describe('restoreRoleSecretNames', () => {
+  it('connects psql with the configured database administrator instead of the container user', () => {
+    const compose = readFileSync(
+      resolve(import.meta.dirname, '../../deploy/restore-role-bootstrap.yaml'),
+      'utf8'
+    );
+
+    expect(compose).toContain('psql --host postgres --username "$$POSTGRES_USER"');
+  });
+
   it('binds staging only to the staging restore and admin secrets', () => {
     expect(restoreRoleSecretNames('staging')).toEqual({
       admin: 'backup_staging_postgres_password_v3',

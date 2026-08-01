@@ -10,7 +10,7 @@ services:
       - |
         export PGPASSWORD="$$(cat /run/secrets/postgres_admin_password)"
         restore_password="$$(cat /run/secrets/restore_postgres_password)"
-        psql --host postgres --set ON_ERROR_STOP=1 --set restore_password="$$restore_password" <<'SQL'
+        psql --host postgres --username "$$POSTGRES_USER" --set ON_ERROR_STOP=1 --set restore_password="$$restore_password" <<'SQL'
         SELECT 'CREATE ROLE sva_restore LOGIN NOINHERIT'
         WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sva_restore') \gexec
         SELECT format('ALTER ROLE sva_restore WITH LOGIN NOINHERIT PASSWORD %L', :'restore_password') \gexec

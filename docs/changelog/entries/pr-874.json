@@ -1,0 +1,4 @@
+{
+  "prNumber": 874,
+  "body": "Interne Verbesserung\n\n- Staging- und Production-Deployments sichern die Datenbank jetzt immer vor dem Rollout.\n- Der Restore-Smoke verwendet den Production-Tenant-Gate nur in Production."
+}

@@ -207,7 +207,7 @@ jobs:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
           SVA_PUBLIC_BASE_URL: ${{ steps.target.outputs.public_base_url }}
           SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}
-          SVA_ACCEPTANCE_RELEASE_MODE: ${{ inputs.environment }}
+          SVA_ACCEPTANCE_RELEASE_MODE: ${{ inputs.environment == 'prod' && 'prod' || '' }}
         run: |
           set -euo pipefail
           umask 077

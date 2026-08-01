@@ -629,6 +629,11 @@ export const extractAppliedGooseVersion = (sql) => {
   return appliedVersions.length > 0 ? Math.max(...appliedVersions) : null;
 };
 
+export const isHistoricalSchemaRestoreCompatible = (sourceGooseVersion, targetGooseVersion) =>
+  Number.isSafeInteger(sourceGooseVersion) &&
+  Number.isSafeInteger(targetGooseVersion) &&
+  sourceGooseVersion <= targetGooseVersion;
+
 const verifyArchiveSchema = async (archive) => {
   const listing = await runCapture('pg_restore', ['--list', archive], {
     maxOutputBytes: 10 * 1024 * 1024,
@@ -707,7 +712,7 @@ export const executeRestoreForIntegration = async (request) => {
         'SELECT max(version_id) FROM public.goose_db_version WHERE is_applied'
       )
     );
-    if (!Number.isSafeInteger(targetGooseVersion) || targetGooseVersion !== sourceGooseVersion)
+    if (!isHistoricalSchemaRestoreCompatible(sourceGooseVersion, targetGooseVersion))
       throw new Error('schema_version_mismatch');
     complete('schema-version-compatibility', { sourceGooseVersion, targetGooseVersion });
 

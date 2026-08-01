@@ -1,0 +1,4 @@
+{
+  "prNumber": 881,
+  "body": "Fehlerbehebung\n\n- Historische Datenbank-Backups mit älterem Goose-Schemastand werden vor dem Anwendungsneustart auf den Stand des freigegebenen Images migriert."
+}

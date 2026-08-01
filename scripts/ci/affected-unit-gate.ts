@@ -130,7 +130,7 @@ export const runAffectedUnitGate = (
     recordDuration(
       'unit:affected-workspace',
       runCommand(
-        `env -u NO_COLOR pnpm nx affected --target=test:unit --base=${options.base} --head=${options.head} --parallel=1 --exclude=${APP_PROJECT} --output-style=stream`,
+        `env -u NO_COLOR pnpm nx affected --target=test:unit --base=${options.base} --head=${options.head} --parallel=1 --exclude=${APP_PROJECT} --output-style=stream --skipNxCache`,
         { retries: 1 }
       )
     );

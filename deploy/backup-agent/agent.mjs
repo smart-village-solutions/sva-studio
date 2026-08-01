@@ -578,41 +578,70 @@ $restore_principal_guard$;
 SET ROLE ${schemaOwner};
 GRANT ${runtimeRole} TO ${runtimeUser};
 GRANT CONNECT ON DATABASE ${database} TO ${runtimeUser};
-GRANT USAGE ON SCHEMA iam TO ${runtimeUser};
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${runtimeUser};
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${runtimeUser};
+GRANT USAGE ON SCHEMA iam TO ${runtimeRole}, ${runtimeUser};
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${runtimeRole}, ${runtimeUser};
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${runtimeRole}, ${runtimeUser};
 RESET ROLE;
 `;
 };
 
-const runtimePrincipalProbeSql = (target) => {
+export const runtimePrincipalProbeSql = (target) => {
   assertRuntimePrincipalTarget(target);
   const database = sqlLiteral(target.postgresDatabase);
   const runtimeRole = sqlLiteral(target.runtimeRole);
   const runtimeUser = sqlLiteral(target.runtimeUser);
   return `
 SELECT json_build_object(
-  'accountSelect', has_table_privilege(
-    ${runtimeUser},
-    (SELECT relation.oid FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace WHERE namespace.nspname = 'iam' AND relation.relname = 'accounts'),
-    'SELECT'
-  ),
   'databaseConnect', has_database_privilege(${runtimeUser}, ${database}, 'CONNECT'),
-  'instancesSelect', has_table_privilege(
-    ${runtimeUser},
-    (SELECT relation.oid FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace WHERE namespace.nspname = 'iam' AND relation.relname = 'instances'),
-    'SELECT'
-  ),
-  'permissionsSelect', has_table_privilege(
-    ${runtimeUser},
-    (SELECT relation.oid FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace WHERE namespace.nspname = 'iam' AND relation.relname = 'permissions'),
-    'SELECT'
-  ),
   'roleMembership', pg_has_role(${runtimeUser}, ${runtimeRole}, 'MEMBER'),
-  'schemaUsage', has_schema_privilege(${runtimeUser}, 'iam', 'USAGE'),
-  'sequencesReady', COALESCE(
+  'runtimeUserSchemaUsage', has_schema_privilege(${runtimeUser}, 'iam', 'USAGE'),
+  'runtimeRoleSchemaUsage', has_schema_privilege(${runtimeRole}, 'iam', 'USAGE'),
+  'runtimeUserTablesReady', COALESCE(
     (
-      SELECT bool_and(has_sequence_privilege(${runtimeUser}, sequence.oid, 'USAGE,SELECT'))
+      SELECT bool_and(
+        has_table_privilege(${runtimeUser}, relation.oid, 'SELECT')
+        AND has_table_privilege(${runtimeUser}, relation.oid, 'INSERT')
+        AND has_table_privilege(${runtimeUser}, relation.oid, 'UPDATE')
+        AND has_table_privilege(${runtimeUser}, relation.oid, 'DELETE')
+      )
+      FROM pg_class relation
+      JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+      WHERE namespace.nspname = 'iam' AND relation.relkind IN ('r', 'p')
+    ),
+    true
+  ),
+  'runtimeRoleTablesReady', COALESCE(
+    (
+      SELECT bool_and(
+        has_table_privilege(${runtimeRole}, relation.oid, 'SELECT')
+        AND has_table_privilege(${runtimeRole}, relation.oid, 'INSERT')
+        AND has_table_privilege(${runtimeRole}, relation.oid, 'UPDATE')
+        AND has_table_privilege(${runtimeRole}, relation.oid, 'DELETE')
+      )
+      FROM pg_class relation
+      JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+      WHERE namespace.nspname = 'iam' AND relation.relkind IN ('r', 'p')
+    ),
+    true
+  ),
+  'runtimeUserSequencesReady', COALESCE(
+    (
+      SELECT bool_and(
+        has_sequence_privilege(${runtimeUser}, sequence.oid, 'USAGE')
+        AND has_sequence_privilege(${runtimeUser}, sequence.oid, 'SELECT')
+      )
+      FROM pg_class sequence
+      JOIN pg_namespace namespace ON namespace.oid = sequence.relnamespace
+      WHERE namespace.nspname = 'iam' AND sequence.relkind = 'S'
+    ),
+    true
+  ),
+  'runtimeRoleSequencesReady', COALESCE(
+    (
+      SELECT bool_and(
+        has_sequence_privilege(${runtimeRole}, sequence.oid, 'USAGE')
+        AND has_sequence_privilege(${runtimeRole}, sequence.oid, 'SELECT')
+      )
       FROM pg_class sequence
       JOIN pg_namespace namespace ON namespace.oid = sequence.relnamespace
       WHERE namespace.nspname = 'iam' AND sequence.relkind = 'S'
@@ -625,13 +654,14 @@ SELECT json_build_object(
 
 export const validateRuntimePrincipalProbe = (probe) => {
   const requiredChecks = [
-    'accountSelect',
     'databaseConnect',
-    'instancesSelect',
-    'permissionsSelect',
     'roleMembership',
-    'schemaUsage',
-    'sequencesReady',
+    'runtimeUserSchemaUsage',
+    'runtimeRoleSchemaUsage',
+    'runtimeUserTablesReady',
+    'runtimeRoleTablesReady',
+    'runtimeUserSequencesReady',
+    'runtimeRoleSequencesReady',
   ];
   if (!probe || typeof probe !== 'object' || requiredChecks.some((check) => probe[check] !== true))
     throw new Error('runtime_principal_probe_failed');
@@ -950,7 +980,7 @@ export const executeRestoreForIntegration = async (request) => {
       pgEnv,
       `SELECT to_regclass('iam.instances') IS NOT NULL`
     );
-    const appPrincipal = principalProbe.instancesSelect ? '1' : '0';
+    const appPrincipal = principalProbe.runtimeRoleTablesReady ? '1' : '0';
     const registryEntries = await runSqlAsSchemaOwner(
       target,
       pgEnv,

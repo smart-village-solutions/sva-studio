@@ -11,6 +11,7 @@ import {
   isRestoreSqlLineSupported,
   minioAwsCompatibilityEnv,
   restoreControlKeysFor,
+  runtimePrincipalProbeSql,
   restoreSchemaResetSql,
   runCommand,
   safeErrorCode,
@@ -171,11 +172,13 @@ describe('backup agent runtime contract', () => {
 
     expect(sql).toContain('SET ROLE "sva";');
     expect(sql).toContain('GRANT "iam_app" TO "sva_app";');
-    expect(sql).toContain('GRANT USAGE ON SCHEMA iam TO "sva_app";');
+    expect(sql).toContain('GRANT USAGE ON SCHEMA iam TO "iam_app", "sva_app";');
     expect(sql).toContain(
-      'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO "sva_app";'
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO "iam_app", "sva_app";'
     );
-    expect(sql).toContain('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO "sva_app";');
+    expect(sql).toContain(
+      'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO "iam_app", "sva_app";'
+    );
     expect(sql).not.toContain('PASSWORD');
   });
 
@@ -186,6 +189,20 @@ describe('backup agent runtime contract', () => {
         runtimeUser: 'attacker',
       })
     ).toThrow('runtime_principal_target_invalid');
+  });
+
+  it('probes complete table and sequence privileges for the login and switched role', () => {
+    const sql = runtimePrincipalProbeSql(targets.prod);
+
+    for (const principal of ["'sva_app'", "'iam_app'"]) {
+      expect(sql).toContain(`has_table_privilege(${principal}, relation.oid, 'SELECT')`);
+      expect(sql).toContain(`has_table_privilege(${principal}, relation.oid, 'INSERT')`);
+      expect(sql).toContain(`has_table_privilege(${principal}, relation.oid, 'UPDATE')`);
+      expect(sql).toContain(`has_table_privilege(${principal}, relation.oid, 'DELETE')`);
+      expect(sql).toContain(`has_sequence_privilege(${principal}, sequence.oid, 'USAGE')`);
+      expect(sql).toContain(`has_sequence_privilege(${principal}, sequence.oid, 'SELECT')`);
+    }
+    expect(sql).not.toContain("'USAGE,SELECT'");
   });
 
   it('uses persistent MinIO control keys for replay and terminal evidence', () => {
@@ -321,13 +338,14 @@ describe('backup agent runtime contract', () => {
 
   it('accepts only a complete runtime-principal probe', () => {
     const valid = {
-      accountSelect: true,
       databaseConnect: true,
-      instancesSelect: true,
-      permissionsSelect: true,
       roleMembership: true,
-      schemaUsage: true,
-      sequencesReady: true,
+      runtimeUserSchemaUsage: true,
+      runtimeRoleSchemaUsage: true,
+      runtimeUserTablesReady: true,
+      runtimeRoleTablesReady: true,
+      runtimeUserSequencesReady: true,
+      runtimeRoleSequencesReady: true,
     };
 
     expect(validateRuntimePrincipalProbe(valid)).toEqual(valid);

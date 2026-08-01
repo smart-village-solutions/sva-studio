@@ -17,6 +17,16 @@ bearer_token_env_var = "SONARCLOUD_TOKEN"
 [mcp_servers.sonarcloud.http_headers]
 SONARQUBE_ORG = "smart-village-app"
 
+[mcp_servers.sva-studio-production]
+command = "node"
+args = [ "packages/studio-mcp/dist/cli.js" ]
+
+[mcp_servers.sva-studio-production.env]
+SVA_STUDIO_MCP_BASE_URL = "https://studio.smart-village.app"
+SVA_STUDIO_MCP_TOKEN_URL = "https://keycloak.smart-village.app/realms/sva-studio/protocol/openid-connect/token"
+SVA_STUDIO_MCP_CLIENT_ID = "sva-studio-mcp"
+SVA_STUDIO_MCP_CLIENT_SECRET_COMMAND = '["security","find-generic-password","-a","sva-studio-mcp","-s","sva-studio-mcp-sva-studio","-w"]'
+
 [features]
 multi_agent = true
 

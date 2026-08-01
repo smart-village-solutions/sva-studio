@@ -15,6 +15,7 @@ describe('backup agent rollout workflow', () => {
     expect(workflow).toContain('sva-studio-backup-agent@sha256:');
     expect(workflow).toContain('org.opencontainers.image.revision');
     expect(workflow).toContain('git merge-base --is-ancestor');
+    expect(workflow).not.toContain('git checkout --detach');
   });
 
   it('updates only the dedicated central stack', () => {

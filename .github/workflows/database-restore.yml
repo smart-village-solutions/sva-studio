@@ -1,0 +1,238 @@
+name: Controlled Database Restore
+run-name: Restore ${{ inputs.environment }} database from ${{ inputs.source_object_key }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [staging, prod]
+      source_object_key:
+        description: 'Exact environment-bound MinIO custom-dump object key'
+        required: true
+        type: string
+      source_sha256:
+        description: 'Expected lowercase SHA-256 of the dump'
+        required: true
+        type: string
+      maintenance_window:
+        description: 'Non-sensitive incident or approved maintenance-window reference'
+        required: true
+        type: string
+      image_ref:
+        description: 'Immutable Studio image reference currently assigned to the target stack'
+        required: true
+        type: string
+      change_head:
+        description: 'Commit revision represented by the immutable image'
+        required: true
+        type: string
+      staging_drill_run_id:
+        description: 'Successful staging restore run ID (required for production)'
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+  packages: read
+
+concurrency:
+  group: database-restore-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    name: controlled restore ${{ inputs.environment }}
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: validate immutable restore inputs
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          MAINTENANCE_WINDOW: ${{ inputs.maintenance_window }}
+          SOURCE_OBJECT_KEY: ${{ inputs.source_object_key }}
+          SOURCE_SHA256: ${{ inputs.source_sha256 }}
+          STAGING_DRILL_RUN_ID: ${{ inputs.staging_drill_run_id }}
+        run: |
+          set -euo pipefail
+          [[ "${SOURCE_OBJECT_KEY}" =~ ^${ENVIRONMENT}/[A-Za-z0-9._/-]{7,511}\.dump$ ]]
+          [[ "${SOURCE_OBJECT_KEY}" != *..* ]]
+          [[ "${SOURCE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
+          [[ "${MAINTENANCE_WINDOW}" =~ ^[A-Za-z0-9][A-Za-z0-9._:/#\ -]{2,159}$ ]]
+          if [ "${ENVIRONMENT}" = "prod" ]; then
+            [[ "${STAGING_DRILL_RUN_ID}" =~ ^[0-9]+$ ]]
+          fi
+
+      - name: checkout main workflow source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: bind executor source to image revision on main
+        env:
+          CHANGE_HEAD: ${{ inputs.change_head }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
+          head="$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
+          git merge-base --is-ancestor "${head}" origin/main
+          git checkout --detach "${head}"
+
+      - name: setup pnpm workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: validate image contract
+        id: image_contract
+        env:
+          CHANGE_HEAD: ${{ inputs.change_head }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          IMAGE_INPUT: ${{ inputs.image_ref }}
+        run: |
+          set -euo pipefail
+          pnpm exec tsx scripts/ci/promote-image-contract.ts \
+            --environment "${ENVIRONMENT}" \
+            --image "${IMAGE_INPUT}" \
+            --expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
+
+      - name: download required staging drill evidence
+        if: ${{ inputs.environment == 'prod' }}
+        uses: actions/download-artifact@v5
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.staging_drill_run_id }}
+          pattern: database-restore-staging-*
+          path: ${{ runner.temp }}/staging-restore-evidence
+
+      - name: verify staging drill workflow identity
+        if: ${{ inputs.environment == 'prod' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_DRILL_RUN_ID: ${{ inputs.staging_drill_run_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${STAGING_DRILL_RUN_ID}" \
+            --jq 'select(.name == "Controlled Database Restore" and .event == "workflow_dispatch" and .head_branch == "main" and .conclusion == "success") | .id' \
+            | grep -Eq "^${STAGING_DRILL_RUN_ID}$"
+
+      - name: verify staging drill evidence for production
+        if: ${{ inputs.environment == 'prod' }}
+        run: pnpm exec tsx scripts/ci/verify-staging-restore-evidence.ts "${{ runner.temp }}/staging-restore-evidence"
+
+      - name: setup quantum-cli
+        uses: hostwithquantum/setup-quantum-cli@v2.0.0
+        with:
+          api-key: ${{ secrets.QUANTUM_API_KEY }}
+          version: 3.2.1
+
+      - name: resolve target
+        id: target
+        run: pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"
+
+      - name: require selected image to match the current live app
+        env:
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+        run: pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}" --expected "${{ steps.image_contract.outputs.deploy_image_ref }}"
+
+      - name: render stopped and running stack contracts
+        env:
+          APP_CONFIG: ${{ secrets.APP_CONFIG }}
+          DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          umask 077
+          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          printf '\nIMAGE_REF=%s\n' "${DEPLOY_IMAGE_REF}" >> .env
+          docker compose -f compose.yaml -f "./deploy/compose.${ENVIRONMENT}.yaml" config --no-normalize --format json > "${RUNNER_TEMP}/restore-stack.json"
+          pnpm exec tsx scripts/ci/render-restore-stack.ts --input "${RUNNER_TEMP}/restore-stack.json" --output "${RUNNER_TEMP}/restore-stack-stopped.yaml" --mode stopped
+          pnpm exec tsx scripts/ci/render-restore-stack.ts --input "${RUNNER_TEMP}/restore-stack.json" --output "${RUNNER_TEMP}/restore-stack-running.yaml" --mode running
+          rm -f .env
+
+      - name: stop application writers
+        id: maintenance
+        env:
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+        run: |
+          set -euo pipefail
+          quantum-cli stacks deploy -f "${RUNNER_TEMP}/restore-stack-stopped.yaml" --stack "${{ steps.target.outputs.stack_name }}" --endpoint "${QUANTUM_ENDPOINT}"
+          echo 'active=true' >> "${GITHUB_OUTPUT}"
+
+      - name: execute database restore and database checks
+        id: restore_agent
+        env:
+          MAINTENANCE_WINDOW_REFERENCE: ${{ inputs.maintenance_window }}
+          RESTORE_AGENT_SIGNING_KEY: ${{ secrets.RESTORE_AGENT_SIGNING_KEY }}
+          RESTORE_SOURCE_OBJECT_KEY: ${{ inputs.source_object_key }}
+          RESTORE_SOURCE_SHA256: ${{ inputs.source_sha256 }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_ENDPOINT: https://fileserver.smart-village.app
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+        run: pnpm exec tsx scripts/ci/submit-restore-agent-request.ts "${{ inputs.environment }}"
+
+      - name: restart application after successful database checks
+        id: restart
+        env:
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+        run: quantum-cli stacks deploy -f "${RUNNER_TEMP}/restore-stack-running.yaml" --stack "${{ steps.target.outputs.stack_name }}" --endpoint "${QUANTUM_ENDPOINT}"
+
+      - name: verify health, readiness and representative tenant login
+        id: external_verify
+        env:
+          APP_CONFIG: ${{ secrets.APP_CONFIG }}
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+          SVA_PUBLIC_BASE_URL: ${{ steps.target.outputs.public_base_url }}
+          SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}
+          SVA_ACCEPTANCE_RELEASE_MODE: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT
+          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          mkdir -p config/runtime
+          printf '%s\n' "${APP_CONFIG}" > config/runtime/base.vars
+          : > config/runtime/studio.vars
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 "${SVA_PUBLIC_BASE_URL}/health/live" >/dev/null
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 "${SVA_PUBLIC_BASE_URL}/health/ready" >/dev/null
+          pnpm exec tsx scripts/ops/runtime-env.ts smoke studio
+
+      - name: write successful workflow evidence
+        id: workflow_evidence
+        if: ${{ success() }}
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          REQUEST_ID: ${{ steps.restore_agent.outputs.restore_request_id }}
+          SAFETY_BACKUP_OBJECT: ${{ steps.restore_agent.outputs.safety_backup_object }}
+          SOURCE_OBJECT_KEY: ${{ inputs.source_object_key }}
+          SOURCE_SHA256: ${{ inputs.source_sha256 }}
+        run: |
+          jq -n \
+            --arg environment "${ENVIRONMENT}" \
+            --arg requestId "${REQUEST_ID}" \
+            --arg safetyBackupObject "${SAFETY_BACKUP_OBJECT}" \
+            --arg sourceObjectKey "${SOURCE_OBJECT_KEY}" \
+            --arg sourceSha256 "${SOURCE_SHA256}" \
+            --arg completedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{version:1,workflow:"database-restore",environment:$environment,status:"succeeded",requestId:$requestId,sourceObjectKey:$sourceObjectKey,sourceSha256:$sourceSha256,safetyBackupObject:$safetyBackupObject,healthLive:"passed",healthReady:"passed",tenantLogin:"passed",completedAt:$completedAt}' \
+            > "${RUNNER_TEMP}/database-restore-workflow-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+
+      - name: upload redacted restore evidence
+        id: evidence_upload
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-restore-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ steps.restore_agent.outputs.restore_evidence_path }}
+            ${{ runner.temp }}/database-restore-workflow-*.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: keep application stopped after any restore, post-check or evidence failure
+        if: ${{ always() && steps.maintenance.outputs.active == 'true' && (steps.external_verify.outcome != 'success' || steps.workflow_evidence.outcome != 'success' || steps.evidence_upload.outcome != 'success') }}
+        env:
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+        run: quantum-cli stacks deploy -f "${RUNNER_TEMP}/restore-stack-stopped.yaml" --stack "${{ steps.target.outputs.stack_name }}" --endpoint "${QUANTUM_ENDPOINT}"

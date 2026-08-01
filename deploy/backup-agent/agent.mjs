@@ -1,12 +1,21 @@
-import { createHash, createHmac, createPublicKey, randomUUID, timingSafeEqual, verify as verifySignature } from 'node:crypto';
+import {
+  createHash,
+  createHmac,
+  createPublicKey,
+  randomUUID,
+  timingSafeEqual,
+  verify as verifySignature,
+} from 'node:crypto';
 import { createServer } from 'node:http';
-import { readFile, writeFile } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const requestPath = '/_ops/backup/v1/requests';
+const restoreRequestPath = '/_ops/restore/v1/requests';
 const oidcIssuer = 'https://token.actions.githubusercontent.com';
 const jwksUrl = `${oidcIssuer}/.well-known/jwks`;
 const maxBodyBytes = 16_384;
@@ -23,7 +32,8 @@ const required = (value, name) => {
   return result;
 };
 
-const readSecret = async (name) => (await readFile(required(process.env[name], name), 'utf8')).trim();
+const readSecret = async (name) =>
+  (await readFile(required(process.env[name], name), 'utf8')).trim();
 
 export const targets = {
   staging: {
@@ -37,6 +47,10 @@ export const targets = {
     s3AccessKeyFile: 'BACKUP_STAGING_S3_ACCESS_KEY_FILE',
     s3SecretKeyFile: 'BACKUP_STAGING_S3_SECRET_KEY_FILE',
     signingKeyFile: 'BACKUP_STAGING_SIGNING_KEY_FILE',
+    restoreSigningKeyFile: 'RESTORE_STAGING_SIGNING_KEY_FILE',
+    restoreUser: process.env.RESTORE_STAGING_POSTGRES_USER || 'sva_restore',
+    restorePasswordFile: 'RESTORE_STAGING_POSTGRES_PASSWORD_FILE',
+    appUser: 'sva',
   },
   prod: {
     host: 'backup-studio.smart-village.app',
@@ -49,33 +63,111 @@ export const targets = {
     s3AccessKeyFile: 'BACKUP_PROD_S3_ACCESS_KEY_FILE',
     s3SecretKeyFile: 'BACKUP_PROD_S3_SECRET_KEY_FILE',
     signingKeyFile: 'BACKUP_PROD_SIGNING_KEY_FILE',
+    restoreSigningKeyFile: 'RESTORE_PROD_SIGNING_KEY_FILE',
+    restoreUser: process.env.RESTORE_PROD_POSTGRES_USER || 'sva_restore',
+    restorePasswordFile: 'RESTORE_PROD_POSTGRES_PASSWORD_FILE',
+    appUser: 'sva',
   },
 };
 
 export const validRequestHost = (environment, host) => targets[environment]?.host === host;
 
-export const canonicalRequest = (request) => JSON.stringify({
-  action: request.action,
-  deployImageDigest: request.deployImageDigest,
-  environment: request.environment,
-  expiresAt: request.expiresAt,
-  maintenanceWindowReference: request.maintenanceWindowReference ?? null,
-  requestId: request.requestId,
-  version: request.version,
-});
+export const canonicalRequest = (request) =>
+  JSON.stringify({
+    action: request.action,
+    deployImageDigest: request.deployImageDigest,
+    environment: request.environment,
+    expiresAt: request.expiresAt,
+    maintenanceWindowReference: request.maintenanceWindowReference ?? null,
+    requestId: request.requestId,
+    version: request.version,
+  });
+
+export const canonicalRestoreRequest = (request) =>
+  JSON.stringify({
+    action: request.action,
+    environment: request.environment,
+    expiresAt: request.expiresAt,
+    maintenanceWindowReference: request.maintenanceWindowReference,
+    requestId: request.requestId,
+    sourceObjectKey: request.sourceObjectKey,
+    sourceSha256: request.sourceSha256,
+    version: request.version,
+  });
 
 export const validRequest = (request, now = Date.now()) => {
   if (!request || typeof request !== 'object' || Array.isArray(request)) return false;
-  const allowedKeys = new Set(['action', 'deployImageDigest', 'environment', 'expiresAt', 'maintenanceWindowReference', 'requestId', 'version']);
+  const allowedKeys = new Set([
+    'action',
+    'deployImageDigest',
+    'environment',
+    'expiresAt',
+    'maintenanceWindowReference',
+    'requestId',
+    'version',
+  ]);
   if (Object.keys(request).some((key) => !allowedKeys.has(key))) return false;
   if (request.version !== 1 || request.action !== 'backup-and-verify') return false;
   if (request.environment !== 'staging' && request.environment !== 'prod') return false;
-  if (typeof request.requestId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u.test(request.requestId)) return false;
-  if (typeof request.deployImageDigest !== 'string' || !/^sha256:[a-f0-9]{64}$/u.test(request.deployImageDigest)) return false;
-  const expiresAt = typeof request.expiresAt === 'string' ? Date.parse(request.expiresAt) : Number.NaN;
-  if (!Number.isFinite(expiresAt) || expiresAt <= now || expiresAt > now + maxRequestLifetimeMs) return false;
-  return request.environment !== 'prod'
-    || (typeof request.maintenanceWindowReference === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:/# -]{2,159}$/u.test(request.maintenanceWindowReference));
+  if (
+    typeof request.requestId !== 'string' ||
+    !/^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u.test(request.requestId)
+  )
+    return false;
+  if (
+    typeof request.deployImageDigest !== 'string' ||
+    !/^sha256:[a-f0-9]{64}$/u.test(request.deployImageDigest)
+  )
+    return false;
+  const expiresAt =
+    typeof request.expiresAt === 'string' ? Date.parse(request.expiresAt) : Number.NaN;
+  if (!Number.isFinite(expiresAt) || expiresAt <= now || expiresAt > now + maxRequestLifetimeMs)
+    return false;
+  return (
+    request.environment !== 'prod' ||
+    (typeof request.maintenanceWindowReference === 'string' &&
+      /^[A-Za-z0-9][A-Za-z0-9._:/# -]{2,159}$/u.test(request.maintenanceWindowReference))
+  );
+};
+
+export const validRestoreRequest = (request, now = Date.now()) => {
+  if (!request || typeof request !== 'object' || Array.isArray(request)) return false;
+  const allowedKeys = new Set([
+    'action',
+    'environment',
+    'expiresAt',
+    'maintenanceWindowReference',
+    'requestId',
+    'sourceObjectKey',
+    'sourceSha256',
+    'version',
+  ]);
+  if (Object.keys(request).some((key) => !allowedKeys.has(key))) return false;
+  if (request.version !== 1 || request.action !== 'restore-and-verify-v1') return false;
+  if (request.environment !== 'staging' && request.environment !== 'prod') return false;
+  if (
+    typeof request.requestId !== 'string' ||
+    !/^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u.test(request.requestId)
+  )
+    return false;
+  if (
+    typeof request.maintenanceWindowReference !== 'string' ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:/# -]{2,159}$/u.test(request.maintenanceWindowReference)
+  )
+    return false;
+  if (typeof request.sourceSha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(request.sourceSha256))
+    return false;
+  const prefix = `${targets[request.environment].prefix}/`;
+  if (
+    typeof request.sourceObjectKey !== 'string' ||
+    !request.sourceObjectKey.startsWith(prefix) ||
+    !/^[A-Za-z0-9][A-Za-z0-9._/-]{7,511}\.dump$/u.test(request.sourceObjectKey) ||
+    request.sourceObjectKey.includes('..')
+  )
+    return false;
+  const expiresAt =
+    typeof request.expiresAt === 'string' ? Date.parse(request.expiresAt) : Number.NaN;
+  return Number.isFinite(expiresAt) && expiresAt > now && expiresAt <= now + maxRequestLifetimeMs;
 };
 
 const decodeBase64Url = (value) => Buffer.from(value, 'base64url');
@@ -91,68 +183,116 @@ const getJwks = async () => {
   return document.keys;
 };
 
-export const validateOidcClaims = (claims, environment, now = Math.floor(Date.now() / 1_000)) => {
-  if (claims.iss !== oidcIssuer || claims.aud !== required(process.env.BACKUP_AGENT_OIDC_AUDIENCE, 'BACKUP_AGENT_OIDC_AUDIENCE')) throw new Error('oidc_claims_invalid');
-  if (typeof claims.exp !== 'number' || typeof claims.nbf !== 'number' || claims.exp <= now || claims.nbf > now) throw new Error('oidc_time_invalid');
-  if (claims.repository !== required(process.env.BACKUP_AGENT_GITHUB_REPOSITORY, 'BACKUP_AGENT_GITHUB_REPOSITORY')) throw new Error('oidc_repository_invalid');
+export const validateOidcClaims = (
+  claims,
+  environment,
+  now = Math.floor(Date.now() / 1_000),
+  action = 'backup-and-verify'
+) => {
+  if (
+    claims.iss !== oidcIssuer ||
+    claims.aud !== required(process.env.BACKUP_AGENT_OIDC_AUDIENCE, 'BACKUP_AGENT_OIDC_AUDIENCE')
+  )
+    throw new Error('oidc_claims_invalid');
+  if (
+    typeof claims.exp !== 'number' ||
+    typeof claims.nbf !== 'number' ||
+    claims.exp <= now ||
+    claims.nbf > now
+  )
+    throw new Error('oidc_time_invalid');
+  if (
+    claims.repository !==
+    required(process.env.BACKUP_AGENT_GITHUB_REPOSITORY, 'BACKUP_AGENT_GITHUB_REPOSITORY')
+  )
+    throw new Error('oidc_repository_invalid');
   if (claims.environment !== environment) throw new Error('oidc_environment_invalid');
-  const allowedWorkflows = required(process.env.BACKUP_AGENT_ALLOWED_WORKFLOWS, 'BACKUP_AGENT_ALLOWED_WORKFLOWS')
+  const workflowVariable =
+    action === 'restore-and-verify-v1'
+      ? 'RESTORE_AGENT_ALLOWED_WORKFLOWS'
+      : 'BACKUP_AGENT_ALLOWED_WORKFLOWS';
+  const allowedWorkflows = required(process.env[workflowVariable], workflowVariable)
     .split(',')
     .map((value) => `${claims.repository}/.github/workflows/${value.trim()}@refs/heads/main`);
-  const workflowReferences = [claims.workflow_ref, claims.job_workflow_ref].filter((value) => typeof value === 'string');
-  if (!workflowReferences.some((value) => allowedWorkflows.includes(value))) throw new Error('oidc_workflow_invalid');
+  const workflowReferences = [claims.workflow_ref, claims.job_workflow_ref].filter(
+    (value) => typeof value === 'string'
+  );
+  if (!workflowReferences.some((value) => allowedWorkflows.includes(value)))
+    throw new Error('oidc_workflow_invalid');
 };
 
-const verifyOidc = async (token, environment) => {
+const verifyOidc = async (token, environment, action) => {
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('oidc_token_invalid');
   const header = JSON.parse(decodeBase64Url(parts[0]).toString('utf8'));
   const claims = JSON.parse(decodeBase64Url(parts[1]).toString('utf8'));
-  if (header.alg !== 'RS256' || typeof header.kid !== 'string') throw new Error('oidc_header_invalid');
+  if (header.alg !== 'RS256' || typeof header.kid !== 'string')
+    throw new Error('oidc_header_invalid');
   const key = (await getJwks()).find((candidate) => candidate.kid === header.kid);
   if (!key) throw new Error('oidc_key_unknown');
   const valid = verifySignature(
     'RSA-SHA256',
     Buffer.from(`${parts[0]}.${parts[1]}`),
     createPublicKey({ key, format: 'jwk' }),
-    decodeBase64Url(parts[2]),
+    decodeBase64Url(parts[2])
   );
   if (!valid) throw new Error('oidc_signature_invalid');
-  validateOidcClaims(claims, environment);
+  validateOidcClaims(claims, environment, Math.floor(Date.now() / 1_000), action);
 };
 
-export const runCommand = (command, args, options = {}) => new Promise((resolve, reject) => {
-  const { timeoutMs, ...spawnOptions } = options;
-  const child = spawn(command, args, { ...spawnOptions, stdio: ['ignore', 'ignore', 'pipe'] });
-  let stderr = '';
-  let settled = false;
-  const finish = (callback) => {
-    if (settled) return;
-    settled = true;
-    clearTimeout(timeoutTimer);
-    callback();
-  };
-  const timeoutTimer = timeoutMs
-    ? setTimeout(() => {
-      child.kill('SIGTERM');
-      setTimeout(() => child.kill('SIGKILL'), 1_000).unref();
-      finish(() => reject(new Error(`${command}_timeout`)));
-    }, timeoutMs)
-    : undefined;
-  child.stderr.on('data', (chunk) => { stderr = `${stderr}${chunk}`.slice(-2_000); });
-  child.once('error', (error) => finish(() => reject(error)));
-  child.once('exit', (code) => finish(() => code === 0 ? resolve() : reject(new Error(`${command}_failed_${String(code)}:${stderr.replaceAll(/\s+/gu, ' ')}`))));
-});
+export const runCommand = (command, args, options = {}) =>
+  new Promise((resolve, reject) => {
+    const { timeoutMs, ...spawnOptions } = options;
+    const child = spawn(command, args, { ...spawnOptions, stdio: ['ignore', 'ignore', 'pipe'] });
+    let stderr = '';
+    let settled = false;
+    const finish = (callback) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutTimer);
+      callback();
+    };
+    const timeoutTimer = timeoutMs
+      ? setTimeout(() => {
+          child.kill('SIGTERM');
+          setTimeout(() => child.kill('SIGKILL'), 1_000).unref();
+          finish(() => reject(new Error(`${command}_timeout`)));
+        }, timeoutMs)
+      : undefined;
+    child.stderr.on('data', (chunk) => {
+      stderr = `${stderr}${chunk}`.slice(-2_000);
+    });
+    child.once('error', (error) => finish(() => reject(error)));
+    child.once('exit', (code) =>
+      finish(() =>
+        code === 0
+          ? resolve()
+          : reject(
+              new Error(`${command}_failed_${String(code)}:${stderr.replaceAll(/\s+/gu, ' ')}`)
+            )
+      )
+    );
+  });
 
-const runCapture = (command, args) => new Promise((resolve, reject) => {
-  const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-  let stdout = '';
-  let stderr = '';
-  child.stdout.on('data', (chunk) => { stdout = `${stdout}${chunk}`.slice(-1_000); });
-  child.stderr.on('data', (chunk) => { stderr = `${stderr}${chunk}`.slice(-1_000); });
-  child.once('error', reject);
-  child.once('exit', (code) => code === 0 ? resolve(stdout.trim() || stderr.trim()) : reject(new Error(`${command}_preflight_failed_${String(code)}`)));
-});
+const runCapture = (command, args, options = {}) =>
+  new Promise((resolve, reject) => {
+    const { maxOutputBytes = 1_000, ...spawnOptions } = options;
+    const child = spawn(command, args, { ...spawnOptions, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => {
+      stdout = `${stdout}${chunk}`.slice(-maxOutputBytes);
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr = `${stderr}${chunk}`.slice(-maxOutputBytes);
+    });
+    child.once('error', reject);
+    child.once('exit', (code) =>
+      code === 0
+        ? resolve(stdout.trim() || stderr.trim())
+        : reject(new Error(`${command}_preflight_failed_${String(code)}`))
+    );
+  });
 
 const s3Env = async (target) => ({
   ...process.env,
@@ -169,15 +309,40 @@ const uploadJson = async (target, key, value) => {
   const path = join(tmpdir(), `backup-agent-${randomUUID()}.json`);
   await writeFile(path, `${JSON.stringify(value)}\n`, { mode: 0o600 });
   try {
-    await runCommand('aws', ['--endpoint-url', required(process.env.BACKUP_S3_ENDPOINT, 'BACKUP_S3_ENDPOINT'), 's3', 'cp', path, `s3://${target.bucket}/${key}`, '--only-show-errors'], { env: await s3Env(target), timeoutMs: acceptanceCommandTimeoutMs });
+    await runCommand(
+      'aws',
+      [
+        '--endpoint-url',
+        required(process.env.BACKUP_S3_ENDPOINT, 'BACKUP_S3_ENDPOINT'),
+        's3',
+        'cp',
+        path,
+        `s3://${target.bucket}/${key}`,
+        '--only-show-errors',
+      ],
+      { env: await s3Env(target), timeoutMs: acceptanceCommandTimeoutMs }
+    );
   } finally {
-    await runCommand('rm', ['-f', path]);
+    await rm(path, { force: true });
   }
 };
 
 const objectExists = async (target, key) => {
   try {
-    await runCommand('aws', ['--endpoint-url', required(process.env.BACKUP_S3_ENDPOINT, 'BACKUP_S3_ENDPOINT'), 's3api', 'head-object', '--bucket', target.bucket, '--key', key], { env: await s3Env(target), timeoutMs: acceptanceCommandTimeoutMs });
+    await runCommand(
+      'aws',
+      [
+        '--endpoint-url',
+        required(process.env.BACKUP_S3_ENDPOINT, 'BACKUP_S3_ENDPOINT'),
+        's3api',
+        'head-object',
+        '--bucket',
+        target.bucket,
+        '--key',
+        key,
+      ],
+      { env: await s3Env(target), timeoutMs: acceptanceCommandTimeoutMs }
+    );
     return true;
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('aws_failed_254:')) return false;
@@ -185,12 +350,28 @@ const objectExists = async (target, key) => {
   }
 };
 
-const sha256 = async (path) => createHash('sha256').update(await readFile(path)).digest('hex');
+const sha256 = (path) =>
+  new Promise((resolve, reject) => {
+    const hash = createHash('sha256');
+    const stream = createReadStream(path);
+    stream.on('error', reject);
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
 
 export const safeErrorCode = (error) => {
   const message = error instanceof Error ? error.message : '';
-  if (message === 'checksum_mismatch') return message;
-  const commandFailure = /^(aws|pg_dump|pg_restore)_failed_[0-9]+/u.exec(message);
+  if (
+    [
+      'checksum_mismatch',
+      'active_app_sessions',
+      'archive_schema_incompatible',
+      'schema_version_mismatch',
+      'database_postcheck_failed',
+    ].includes(message)
+  )
+    return message;
+  const commandFailure = /^(aws|pg_dump|pg_restore|psql)_(?:failed_[0-9]+|timeout)/u.exec(message);
   return commandFailure?.[0] ?? 'backup_failed';
 };
 
@@ -200,6 +381,12 @@ const terminalRequests = new Set();
 export const controlKeysFor = (requestId) => ({
   request: `control/requests/${requestId}.json`,
   result: `control/results/${requestId}.json`,
+});
+
+export const restoreControlKeysFor = (requestId) => ({
+  request: `control/restores/requests/${requestId}.json`,
+  safetyBackup: `control/restores/safety-backups/${requestId}.json`,
+  result: `control/restores/results/${requestId}.json`,
 });
 
 export const executeBackupForIntegration = async (request) => {
@@ -219,34 +406,401 @@ export const executeBackupForIntegration = async (request) => {
     environment: request.environment,
     deployImageDigest: request.deployImageDigest,
     agentImage: required(process.env.BACKUP_AGENT_IMAGE_REF, 'BACKUP_AGENT_IMAGE_REF'),
-    tools: JSON.parse(required(process.env.BACKUP_AGENT_TOOL_VERSIONS, 'BACKUP_AGENT_TOOL_VERSIONS')),
+    tools: JSON.parse(
+      required(process.env.BACKUP_AGENT_TOOL_VERSIONS, 'BACKUP_AGENT_TOOL_VERSIONS')
+    ),
   };
   try {
-    await runCommand('mkdir', ['-p', workdir]);
+    await mkdir(workdir, { recursive: true, mode: 0o700 });
     const pgEnv = { ...process.env, PGPASSWORD: await readSecret(target.postgresPasswordFile) };
-    await runCommand('pg_dump', ['--format=custom', '--no-owner', '--no-privileges', '--host', target.postgresHost, '--port', '5432', '--username', target.postgresUser, '--file', dump, target.postgresDatabase], { env: pgEnv });
+    await runCommand(
+      'pg_dump',
+      [
+        '--format=custom',
+        '--no-owner',
+        '--no-privileges',
+        '--host',
+        target.postgresHost,
+        '--port',
+        '5432',
+        '--username',
+        target.postgresUser,
+        '--file',
+        dump,
+        target.postgresDatabase,
+      ],
+      { env: pgEnv }
+    );
     complete('pg_dump');
     const env = await s3Env(target);
     const endpoint = required(process.env.BACKUP_S3_ENDPOINT, 'BACKUP_S3_ENDPOINT');
-    await runCommand('aws', ['--endpoint-url', endpoint, 's3', 'cp', dump, `s3://${target.bucket}/${objectKey}`, '--only-show-errors'], { env });
+    await runCommand(
+      'aws',
+      [
+        '--endpoint-url',
+        endpoint,
+        's3',
+        'cp',
+        dump,
+        `s3://${target.bucket}/${objectKey}`,
+        '--only-show-errors',
+      ],
+      { env }
+    );
     complete('upload');
-    await runCommand('aws', ['--endpoint-url', endpoint, 's3', 'cp', `s3://${target.bucket}/${objectKey}`, downloaded, '--only-show-errors'], { env });
+    await runCommand(
+      'aws',
+      [
+        '--endpoint-url',
+        endpoint,
+        's3',
+        'cp',
+        `s3://${target.bucket}/${objectKey}`,
+        downloaded,
+        '--only-show-errors',
+      ],
+      { env }
+    );
     complete('download');
     const dumpDigest = await sha256(dump);
-    if (dumpDigest !== await sha256(downloaded)) throw new Error('checksum_mismatch');
-    const bytes = (await readFile(dump)).byteLength;
+    if (dumpDigest !== (await sha256(downloaded))) throw new Error('checksum_mismatch');
+    const bytes = (await stat(dump)).size;
     complete('size-and-checksum-verify', { bytes, sha256: dumpDigest });
     await writeFile(`${dump}.sha256`, `${dumpDigest}  backup.dump\n`, { mode: 0o600 });
-    await runCommand('aws', ['--endpoint-url', endpoint, 's3', 'cp', `${dump}.sha256`, `s3://${target.bucket}/${objectKey}.sha256`, '--only-show-errors'], { env });
+    await runCommand(
+      'aws',
+      [
+        '--endpoint-url',
+        endpoint,
+        's3',
+        'cp',
+        `${dump}.sha256`,
+        `s3://${target.bucket}/${objectKey}.sha256`,
+        '--only-show-errors',
+      ],
+      { env }
+    );
     await runCommand('pg_restore', ['--list', downloaded]);
     complete('archive-validate');
-    await uploadJson(target, resultKey, { ...evidence, status: 'succeeded', objectKey, bytes, sha256: dumpDigest, steps, completedAt: new Date().toISOString() });
+    await uploadJson(target, resultKey, {
+      ...evidence,
+      status: 'succeeded',
+      objectKey,
+      bytes,
+      sha256: dumpDigest,
+      steps,
+      completedAt: new Date().toISOString(),
+    });
   } catch (error) {
-    await uploadJson(target, resultKey, { ...evidence, status: 'failed', errorCode: safeErrorCode(error), steps, completedAt: new Date().toISOString() });
+    await uploadJson(target, resultKey, {
+      ...evidence,
+      status: 'failed',
+      errorCode: safeErrorCode(error),
+      steps,
+      completedAt: new Date().toISOString(),
+    });
   } finally {
     terminalRequests.add(request.requestId);
     active = false;
-    await runCommand('rm', ['-rf', workdir]);
+    await rm(workdir, { recursive: true, force: true });
+  }
+};
+
+const postgresArgs = (target) => [
+  '--host',
+  target.postgresHost,
+  '--port',
+  '5432',
+  '--username',
+  target.restoreUser,
+  '--dbname',
+  target.postgresDatabase,
+];
+
+const runSql = async (target, pgEnv, sql) =>
+  runCapture(
+    'psql',
+    [
+      ...postgresArgs(target),
+      '--no-psqlrc',
+      '--tuples-only',
+      '--no-align',
+      '--set',
+      'ON_ERROR_STOP=1',
+      '--command',
+      sql,
+    ],
+    { env: pgEnv }
+  );
+
+const runSqlAsApp = async (target, pgEnv, sql) => {
+  const output = await runSql(target, pgEnv, `SET ROLE ${target.appUser}; ${sql}`);
+  return (
+    output
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .at(-1) ?? ''
+  );
+};
+
+export const waitForSessionDrain = async (
+  target,
+  pgEnv,
+  {
+    attempts = 30,
+    readActiveSessions = () =>
+      runSql(
+        target,
+        pgEnv,
+        `SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND usename = '${target.appUser}' AND backend_type = 'client backend' AND pid <> pg_backend_pid()`
+      ),
+    wait = () => new Promise((resolveWait) => setTimeout(resolveWait, 2_000)),
+  } = {}
+) => {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const activeSessions = Number(await readActiveSessions());
+    if (Number.isInteger(activeSessions) && activeSessions === 0) return;
+    if (attempt < attempts - 1) await wait();
+  }
+  throw new Error('active_app_sessions');
+};
+
+export const validateDatabasePostchecks = ({
+  appPrincipal,
+  gooseVersion,
+  iamSchema,
+  registryEntries,
+}) => {
+  if (
+    !/^\d+$/u.test(gooseVersion) ||
+    iamSchema !== 't' ||
+    appPrincipal !== '1' ||
+    !/^\d+$/u.test(registryEntries)
+  )
+    throw new Error('database_postcheck_failed');
+};
+
+export const archiveSchemaCompatible = (listing) =>
+  listing.includes('TABLE public goose_db_version') && listing.includes('TABLE iam instances');
+
+export const extractAppliedGooseVersion = (sql) => {
+  const lines = sql.split('\n');
+  const copyIndex = lines.findIndex((line) => line.startsWith('COPY public.goose_db_version ('));
+  if (copyIndex < 0) return null;
+  const columns = /^COPY public\.goose_db_version \(([^)]+)\) FROM stdin;$/u
+    .exec(lines[copyIndex])?.[1]
+    .split(', ')
+    .map((column) => column.replaceAll('"', ''));
+  if (!columns) return null;
+  const versionIndex = columns.indexOf('version_id');
+  const appliedIndex = columns.indexOf('is_applied');
+  if (versionIndex < 0 || appliedIndex < 0) return null;
+  const appliedVersions = lines
+    .slice(copyIndex + 1, lines.indexOf('\\.', copyIndex + 1))
+    .map((line) => line.split('\t'))
+    .filter((values) => values[appliedIndex] === 't' || values[appliedIndex] === 'true')
+    .map((values) => values[versionIndex])
+    .filter((value) => /^\d+$/u.test(value))
+    .map(Number);
+  return appliedVersions.length > 0 ? Math.max(...appliedVersions) : null;
+};
+
+const verifyArchiveSchema = async (archive) => {
+  const listing = await runCapture('pg_restore', ['--list', archive], {
+    maxOutputBytes: 10 * 1024 * 1024,
+  });
+  if (!archiveSchemaCompatible(listing)) throw new Error('archive_schema_incompatible');
+};
+
+const readArchiveGooseVersion = async (archive) => {
+  const sql = await runCapture(
+    'pg_restore',
+    ['--data-only', '--table', 'goose_db_version', '--file', '-', archive],
+    { maxOutputBytes: 2 * 1024 * 1024 }
+  );
+  return extractAppliedGooseVersion(sql);
+};
+
+export const executeRestoreForIntegration = async (request) => {
+  const target = targets[request.environment];
+  const keys = restoreControlKeysFor(request.requestId);
+  const workdir = join(tmpdir(), `restore-agent-${request.requestId}-${randomUUID()}`);
+  const sourceDump = join(workdir, 'source.dump');
+  const safetyDump = join(workdir, 'safety.dump');
+  const timestamp = new Date().toISOString().replaceAll(/[:.]/gu, '-');
+  const safetyObjectKey = `${target.prefix}/safety-before-restore/${timestamp}/${request.requestId}.dump`;
+  const steps = [];
+  const complete = (step, details = {}) => steps.push({ step, status: 'succeeded', ...details });
+  const evidence = {
+    version: 1,
+    action: request.action,
+    requestId: request.requestId,
+    environment: request.environment,
+    sourceObjectKey: request.sourceObjectKey,
+    sourceSha256: request.sourceSha256,
+    maintenanceWindowReference: request.maintenanceWindowReference,
+    agentImage: required(process.env.BACKUP_AGENT_IMAGE_REF, 'BACKUP_AGENT_IMAGE_REF'),
+  };
+  let mutationStarted = false;
+  try {
+    await mkdir(workdir, { recursive: true, mode: 0o700 });
+    const endpoint = required(process.env.BACKUP_S3_ENDPOINT, 'BACKUP_S3_ENDPOINT');
+    const storageEnv = await s3Env(target);
+    await runCommand(
+      'aws',
+      [
+        '--endpoint-url',
+        endpoint,
+        's3',
+        'cp',
+        `s3://${target.bucket}/${request.sourceObjectKey}`,
+        sourceDump,
+        '--only-show-errors',
+      ],
+      { env: storageEnv, timeoutMs: 5 * 60_000 }
+    );
+    if ((await sha256(sourceDump)) !== request.sourceSha256) throw new Error('checksum_mismatch');
+    complete('source-object-and-checksum-verify');
+    await verifyArchiveSchema(sourceDump);
+    const sourceGooseVersion = await readArchiveGooseVersion(sourceDump);
+    if (!Number.isSafeInteger(sourceGooseVersion)) throw new Error('archive_schema_incompatible');
+    complete('archive-and-schema-preflight', { sourceGooseVersion });
+
+    const pgEnv = {
+      ...process.env,
+      PGCONNECT_TIMEOUT: '10',
+      PGPASSWORD: await readSecret(target.restorePasswordFile),
+    };
+    await waitForSessionDrain(target, pgEnv);
+    complete('app-session-drain');
+    complete('exclusive-agent-restore-slot');
+    const targetGooseVersion = Number(
+      await runSqlAsApp(
+        target,
+        pgEnv,
+        'SELECT max(version_id) FROM public.goose_db_version WHERE is_applied'
+      )
+    );
+    if (!Number.isSafeInteger(targetGooseVersion) || targetGooseVersion !== sourceGooseVersion)
+      throw new Error('schema_version_mismatch');
+    complete('schema-version-compatibility', { sourceGooseVersion, targetGooseVersion });
+
+    await runCommand(
+      'pg_dump',
+      [
+        '--format=custom',
+        '--no-owner',
+        '--no-privileges',
+        '--role',
+        target.appUser,
+        '--host',
+        target.postgresHost,
+        '--port',
+        '5432',
+        '--username',
+        target.restoreUser,
+        '--file',
+        safetyDump,
+        target.postgresDatabase,
+      ],
+      { env: pgEnv, timeoutMs: 10 * 60_000 }
+    );
+    await runCommand('pg_restore', ['--list', safetyDump], { timeoutMs: 60_000 });
+    const safetySha256 = await sha256(safetyDump);
+    await runCommand(
+      'aws',
+      [
+        '--endpoint-url',
+        endpoint,
+        's3',
+        'cp',
+        safetyDump,
+        `s3://${target.bucket}/${safetyObjectKey}`,
+        '--only-show-errors',
+      ],
+      { env: storageEnv, timeoutMs: 5 * 60_000 }
+    );
+    const safetyDownloaded = join(workdir, 'safety.download');
+    await runCommand(
+      'aws',
+      [
+        '--endpoint-url',
+        endpoint,
+        's3',
+        'cp',
+        `s3://${target.bucket}/${safetyObjectKey}`,
+        safetyDownloaded,
+        '--only-show-errors',
+      ],
+      { env: storageEnv, timeoutMs: 5 * 60_000 }
+    );
+    if (safetySha256 !== (await sha256(safetyDownloaded))) throw new Error('checksum_mismatch');
+    await uploadJson(target, keys.safetyBackup, {
+      ...evidence,
+      objectKey: safetyObjectKey,
+      sha256: safetySha256,
+      status: 'verified',
+      completedAt: new Date().toISOString(),
+    });
+    complete('safety-backup', { objectKey: safetyObjectKey, sha256: safetySha256 });
+
+    mutationStarted = true;
+    await runCommand(
+      'pg_restore',
+      [
+        '--clean',
+        '--if-exists',
+        '--exit-on-error',
+        '--no-owner',
+        '--no-privileges',
+        '--role',
+        target.appUser,
+        ...postgresArgs(target),
+        sourceDump,
+      ],
+      { env: pgEnv, timeoutMs: 20 * 60_000 }
+    );
+    complete('pg_restore');
+    const gooseVersion = await runSqlAsApp(
+      target,
+      pgEnv,
+      'SELECT max(version_id) FROM public.goose_db_version WHERE is_applied'
+    );
+    const iamSchema = await runSqlAsApp(
+      target,
+      pgEnv,
+      `SELECT to_regclass('iam.instances') IS NOT NULL`
+    );
+    const appPrincipal = await runSqlAsApp(
+      target,
+      pgEnv,
+      `SELECT count(*) FROM pg_roles WHERE rolname = '${target.appUser}' AND has_table_privilege('${target.appUser}', 'iam.instances', 'SELECT,INSERT,UPDATE,DELETE')`
+    );
+    const registryEntries = await runSqlAsApp(target, pgEnv, 'SELECT count(*) FROM iam.instances');
+    validateDatabasePostchecks({ appPrincipal, gooseVersion, iamSchema, registryEntries });
+    complete('database-postchecks', { gooseVersion, registryEntries: Number(registryEntries) });
+    await uploadJson(target, keys.result, {
+      ...evidence,
+      status: 'database-restored',
+      mutationStarted,
+      safetyObjectKey,
+      steps,
+      completedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    await uploadJson(target, keys.result, {
+      ...evidence,
+      status: 'failed',
+      mutationStarted,
+      errorCode: safeErrorCode(error),
+      steps,
+      completedAt: new Date().toISOString(),
+    });
+  } finally {
+    terminalRequests.add(request.requestId);
+    active = false;
+    await rm(workdir, { recursive: true, force: true });
   }
 };
 
@@ -266,43 +820,62 @@ const respond = (response, status, body) => {
   response.end(`${JSON.stringify(body)}\n`);
 };
 
-export const createBackupAgentServer = () => createServer(async (incoming, response) => {
-  if (incoming.method === 'GET' && incoming.url === '/health/live') return respond(response, 200, { status: 'ok' });
-  if (incoming.method !== 'POST' || incoming.url !== requestPath) return respond(response, 404, { error: 'not_found' });
-  try {
-    const request = await readBody(incoming);
-    if (!validRequest(request)) return respond(response, 400, { error: 'invalid_request' });
-    if (!validRequestHost(request.environment, incoming.headers.host)) return respond(response, 400, { error: 'invalid_request' });
-    const auth = incoming.headers.authorization;
-    if (typeof auth !== 'string' || !auth.startsWith('Bearer ')) return respond(response, 401, { error: 'unauthorized' });
-    await verifyOidc(auth.slice('Bearer '.length), request.environment);
-    const signature = incoming.headers['x-backup-request-signature'];
-    if (typeof signature !== 'string' || !/^[a-f0-9]{64}$/u.test(signature)) return respond(response, 401, { error: 'unauthorized' });
-    const key = await readSecret(targets[request.environment].signingKeyFile);
-    const actual = Buffer.from(createHmac('sha256', key).update(canonicalRequest(request)).digest('hex'), 'hex');
-    const expected = Buffer.from(signature, 'hex');
-    if (!timingSafeEqual(actual, expected)) return respond(response, 401, { error: 'unauthorized' });
-    if (active) return respond(response, 409, { error: 'agent_busy' });
-    if (terminalRequests.has(request.requestId)) return respond(response, 409, { error: 'request_replayed' });
-    active = true;
-    const target = targets[request.environment];
-    const requestKey = controlKeysFor(request.requestId).request;
-    if (await objectExists(target, requestKey)) {
-      active = false;
-      return respond(response, 409, { error: 'request_replayed' });
-    }
+export const createBackupAgentServer = () =>
+  createServer(async (incoming, response) => {
+    if (incoming.method === 'GET' && incoming.url === '/health/live')
+      return respond(response, 200, { status: 'ok' });
+    const isBackup = incoming.url === requestPath;
+    const isRestore = incoming.url === restoreRequestPath;
+    if (incoming.method !== 'POST' || (!isBackup && !isRestore))
+      return respond(response, 404, { error: 'not_found' });
     try {
-      await uploadJson(target, requestKey, request);
-    } catch (error) {
-      active = false;
-      throw error;
+      const request = await readBody(incoming);
+      if (isBackup ? !validRequest(request) : !validRestoreRequest(request))
+        return respond(response, 400, { error: 'invalid_request' });
+      if (!validRequestHost(request.environment, incoming.headers.host))
+        return respond(response, 400, { error: 'invalid_request' });
+      const auth = incoming.headers.authorization;
+      if (typeof auth !== 'string' || !auth.startsWith('Bearer '))
+        return respond(response, 401, { error: 'unauthorized' });
+      await verifyOidc(auth.slice('Bearer '.length), request.environment, request.action);
+      const signature =
+        incoming.headers[isBackup ? 'x-backup-request-signature' : 'x-restore-request-signature'];
+      if (typeof signature !== 'string' || !/^[a-f0-9]{64}$/u.test(signature))
+        return respond(response, 401, { error: 'unauthorized' });
+      const keyFile = isBackup
+        ? targets[request.environment].signingKeyFile
+        : targets[request.environment].restoreSigningKeyFile;
+      const key = await readSecret(keyFile);
+      const canonical = isBackup ? canonicalRequest(request) : canonicalRestoreRequest(request);
+      const actual = Buffer.from(createHmac('sha256', key).update(canonical).digest('hex'), 'hex');
+      const expected = Buffer.from(signature, 'hex');
+      if (!timingSafeEqual(actual, expected))
+        return respond(response, 401, { error: 'unauthorized' });
+      if (active) return respond(response, 409, { error: 'agent_busy' });
+      if (terminalRequests.has(request.requestId))
+        return respond(response, 409, { error: 'request_replayed' });
+      active = true;
+      const target = targets[request.environment];
+      const requestKey = isBackup
+        ? controlKeysFor(request.requestId).request
+        : restoreControlKeysFor(request.requestId).request;
+      if (await objectExists(target, requestKey)) {
+        active = false;
+        return respond(response, 409, { error: 'request_replayed' });
+      }
+      try {
+        await uploadJson(target, requestKey, request);
+      } catch (error) {
+        active = false;
+        throw error;
+      }
+      if (isBackup) void executeBackupForIntegration(request);
+      else void executeRestoreForIntegration(request);
+      return respond(response, 202, { requestId: request.requestId });
+    } catch {
+      return respond(response, 400, { error: 'invalid_request' });
     }
-    void executeBackupForIntegration(request);
-    return respond(response, 202, { requestId: request.requestId });
-  } catch {
-    return respond(response, 400, { error: 'invalid_request' });
-  }
-});
+  });
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const versions = await Promise.all([
@@ -310,6 +883,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     runCapture('pg_dump', ['--version']),
     runCapture('pg_restore', ['--version']),
   ]);
-  process.env.BACKUP_AGENT_TOOL_VERSIONS = JSON.stringify({ aws: versions[0], pgDump: versions[1], pgRestore: versions[2] });
+  process.env.BACKUP_AGENT_TOOL_VERSIONS = JSON.stringify({
+    aws: versions[0],
+    pgDump: versions[1],
+    pgRestore: versions[2],
+  });
   createBackupAgentServer().listen(Number(process.env.BACKUP_AGENT_PORT || '3080'), '0.0.0.0');
 }

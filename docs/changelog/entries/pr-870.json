@@ -1,0 +1,4 @@
+{
+  "prNumber": 870,
+  "body": "Interne Verbesserung\n\n- Der geschützte Backup-Agent-Rollout prüft die Image-Revision, verwendet für die Stack-Definition aber weiterhin den aktuellen Hauptbranch."
+}

@@ -523,7 +523,7 @@ Referenzen:
 
 - Impact: sehr hoch (inkonsistente Studio-Datenbank oder nicht mehr passender Keycloak-Zustand)
 - Wahrscheinlichkeit: niedrig
-- Maßnahme: frischer verifizierter Sicherheitsdump, kontrollierte App-Stilllegung mit Session-Drain, fester PostgreSQL-16-Client, einmaliger fail-closed Restore, DB-/Health-/Tenant-Nachprüfungen und kein automatischer Wiederanlauf bei Fehlern. Keycloak wird nicht mutiert; Drift erfordert eine separate manuelle Recovery-Entscheidung und den bestehenden Reconcile-Pfad.
+- Maßnahme: frischer verifizierter Sicherheitsdump, kontrollierte App-Stilllegung mit Session-Drain, einheitlich fester PostgreSQL-18-Client für Backup und Restore, einmaliger fail-closed Restore, DB-/Health-/Tenant-Nachprüfungen und kein automatischer Wiederanlauf bei Fehlern. Keycloak wird nicht mutiert; Drift erfordert eine separate manuelle Recovery-Entscheidung und den bestehenden Reconcile-Pfad.
 
 36. Fehlbedienung des destruktiven Restore-Workflows
 

@@ -58,7 +58,7 @@ describe('backup agent stack', () => {
 
   it('uses a minimal dedicated image with required backup tools', () => {
     expect(dockerfile).toContain('aws-cli');
-    expect(dockerfile).toContain('postgresql16-client');
+    expect(dockerfile).toContain('postgresql18-client');
     expect(dockerfile).not.toContain('sva-studio-react');
     expect(dockerfile).not.toContain('pnpm install');
   });

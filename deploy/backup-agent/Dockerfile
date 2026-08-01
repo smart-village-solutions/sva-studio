@@ -9,7 +9,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN apk add --no-cache aws-cli ca-certificates curl postgresql16-client \
+RUN apk add --no-cache aws-cli ca-certificates curl postgresql18-client \
   && aws --version \
   && pg_dump --version \
   && pg_restore --version

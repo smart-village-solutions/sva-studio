@@ -7,11 +7,14 @@ import {
   verify as verifySignature,
 } from 'node:crypto';
 import { createServer } from 'node:http';
-import { createReadStream } from 'node:fs';
+import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createInterface } from 'node:readline';
+import { finished } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
 
 const requestPath = '/_ops/backup/v1/requests';
@@ -371,7 +374,8 @@ export const safeErrorCode = (error) => {
     ].includes(message)
   )
     return message;
-  const commandFailure = /^(aws|pg_dump|pg_restore|psql)_(?:failed_[0-9]+|timeout)/u.exec(message);
+  const commandFailure =
+    /^(aws|pg_dump|pg_restore|psql)_(?:(?:preflight_)?failed_[0-9]+|timeout)/u.exec(message);
   return commandFailure?.[0] ?? 'backup_failed';
 };
 
@@ -584,6 +588,25 @@ export const validateDatabasePostchecks = ({
 export const archiveSchemaCompatible = (listing) =>
   listing.includes('TABLE public goose_db_version') && listing.includes('TABLE iam instances');
 
+export const isRestoreSqlLineSupported = (line) => line !== 'SET transaction_timeout = 0;';
+
+const writeCompatibleRestoreSql = async (source, target) => {
+  const input = createReadStream(source);
+  const output = createWriteStream(target, { mode: 0o600 });
+  try {
+    for await (const line of createInterface({ input, crlfDelay: Infinity })) {
+      if (isRestoreSqlLineSupported(line) && !output.write(`${line}\n`)) {
+        await once(output, 'drain');
+      }
+    }
+    output.end();
+    await finished(output);
+  } catch (error) {
+    output.destroy();
+    throw error;
+  }
+};
+
 export const extractAppliedGooseVersion = (sql) => {
   const lines = sql.split('\n');
   const copyIndex = lines.findIndex((line) => line.startsWith('COPY public.goose_db_version ('));
@@ -628,6 +651,8 @@ export const executeRestoreForIntegration = async (request) => {
   const workdir = join(tmpdir(), `restore-agent-${request.requestId}-${randomUUID()}`);
   const sourceDump = join(workdir, 'source.dump');
   const safetyDump = join(workdir, 'safety.dump');
+  const restoreSql = join(workdir, 'restore.sql');
+  const compatibleRestoreSql = join(workdir, 'restore-compatible.sql');
   const timestamp = new Date().toISOString().replaceAll(/[:.]/gu, '-');
   const safetyObjectKey = `${target.prefix}/safety-before-restore/${timestamp}/${request.requestId}.dump`;
   const steps = [];
@@ -751,13 +776,26 @@ export const executeRestoreForIntegration = async (request) => {
       [
         '--clean',
         '--if-exists',
-        '--exit-on-error',
         '--no-owner',
         '--no-privileges',
         '--role',
         target.appUser,
-        ...postgresArgs(target),
+        '--file',
+        restoreSql,
         sourceDump,
+      ],
+      { env: pgEnv, timeoutMs: 20 * 60_000 }
+    );
+    await writeCompatibleRestoreSql(restoreSql, compatibleRestoreSql);
+    await runCommand(
+      'psql',
+      [
+        ...postgresArgs(target),
+        '--no-psqlrc',
+        '--set',
+        'ON_ERROR_STOP=1',
+        '--file',
+        compatibleRestoreSql,
       ],
       { env: pgEnv, timeoutMs: 20 * 60_000 }
     );

@@ -6,6 +6,7 @@ import {
   canonicalRestoreRequest,
   controlKeysFor,
   extractAppliedGooseVersion,
+  isHistoricalSchemaRestoreCompatible,
   isRestoreSqlLineSupported,
   minioAwsCompatibilityEnv,
   restoreControlKeysFor,
@@ -221,6 +222,12 @@ describe('backup agent runtime contract', () => {
     ].join('\n');
     expect(extractAppliedGooseVersion(sql)).toBe(2026080101);
     expect(extractAppliedGooseVersion('SELECT 1;')).toBeNull();
+  });
+
+  it('accepts historical schema versions but rejects dumps newer than the target', () => {
+    expect(isHistoricalSchemaRestoreCompatible(70, 71)).toBe(true);
+    expect(isHistoricalSchemaRestoreCompatible(71, 71)).toBe(true);
+    expect(isHistoricalSchemaRestoreCompatible(72, 71)).toBe(false);
   });
 
   it('requires both migration and IAM registry structures in the restore archive', () => {

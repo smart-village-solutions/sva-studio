@@ -133,8 +133,9 @@ Ablauf:
 2. Der Workflow bindet Executor-Revision und unveränderliches Image, prüft bei Production die Staging-Evidenz und setzt App sowie Provisioner auf null Replikate.
 3. Der Agent lehnt aktive App-Sessions, Replay, falsche Umgebung, falsches Präfix, abgelaufene Requests, unbekannte Felder oder eine abweichende SHA-256 vor jeder Mutation ab.
 4. Der Agent prüft `pg_restore --list` und die erforderlichen Goose-/IAM-Archiveinträge.
-5. Der Agent erzeugt einen neuen Custom-Dump, lädt ihn nach `safety-before-restore/`, lädt ihn erneut herunter und verifiziert seine SHA-256.
-6. Erst danach startet der einmalige Vollrestore. Fehler oder Timeout führen zu keinem automatischen Retry oder Gegenrestore.
+5. Der Agent akzeptiert den gleichen oder einen älteren Goose-Migrationsstand als den des Zielsystems; ein Dump mit neuerem, unbekanntem Schema wird abgelehnt.
+6. Der Agent erzeugt einen neuen Custom-Dump, lädt ihn nach `safety-before-restore/`, lädt ihn erneut herunter und verifiziert seine SHA-256.
+7. Erst danach startet der einmalige Vollrestore. Der Workflow migriert einen historischen Stand anschließend mit dem unveränderlich ausgewählten Studio-Image, bevor Principal-Reconcile und Neustart erfolgen. Fehler oder Timeout führen zu keinem automatischen Retry oder Gegenrestore.
 7. Der Agent prüft Goose-Version, IAM-Schema, App-Principal einschließlich Tabellenrechten und Registry.
 8. Nur nach erfolgreicher DB-Evidenz startet der Workflow App und Provisioner wieder und fordert HTTP 200 für `health/live` und `health/ready` sowie einen erfolgreichen Runtime-Smoke mit Tenant-Login-Redirect.
 9. Schlägt ein Schritt nach der Stilllegung fehl, deployt der Workflow den gestoppten Stackvertrag erneut. Die App bleibt bis zu einer manuellen Recovery-Entscheidung stillgelegt.

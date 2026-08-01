@@ -184,6 +184,21 @@ jobs:
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
         run: pnpm exec tsx scripts/ci/submit-restore-agent-request.ts "${{ inputs.environment }}"
 
+      - name: migrate restored database to the selected image schema
+        id: restored_database_migration
+        env:
+          APP_CONFIG: ${{ secrets.APP_CONFIG }}
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+          SVA_COMPOSE_SOURCE_ROOT: ${{ steps.image_source.outputs.path }}
+          SVA_DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f "${SVA_COMPOSE_SOURCE_ROOT}/.env"' EXIT
+          pnpm exec tsx scripts/ci/render-compose-env.ts --output "${SVA_COMPOSE_SOURCE_ROOT}/.env"
+          printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> "${SVA_COMPOSE_SOURCE_ROOT}/.env"
+          pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind migration --environment "${{ inputs.environment }}"
+
       - name: reconcile application database principal after restore
         id: app_principal
         env:

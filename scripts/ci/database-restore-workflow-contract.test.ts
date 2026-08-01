@@ -27,4 +27,18 @@ describe('database restore workflow', () => {
     expect(workflow).not.toContain('git checkout --detach "${head}"');
     expect(workflow).toContain('SVA_COMPOSE_SOURCE_ROOT: ${{ steps.image_source.outputs.path }}');
   });
+
+  it('migrates a historical dump before reconciling and restarting the application', () => {
+    const restore = workflow.indexOf('execute database restore and database checks');
+    const migration = workflow.indexOf('migrate restored database to the selected image schema');
+    const reconcile = workflow.indexOf('reconcile application database principal after restore');
+    const restart = workflow.indexOf('restart application after successful database checks');
+
+    expect(migration).toBeGreaterThan(restore);
+    expect(reconcile).toBeGreaterThan(migration);
+    expect(restart).toBeGreaterThan(reconcile);
+    expect(workflow).toContain(
+      'pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind migration --environment "${{ inputs.environment }}"',
+    );
+  });
 });

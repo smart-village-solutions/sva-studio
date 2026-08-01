@@ -634,6 +634,9 @@ export const isHistoricalSchemaRestoreCompatible = (sourceGooseVersion, targetGo
   Number.isSafeInteger(targetGooseVersion) &&
   sourceGooseVersion <= targetGooseVersion;
 
+export const restoreSchemaResetSql = (appUser) =>
+  `SET ROLE ${appUser}; DROP SCHEMA IF EXISTS iam CASCADE; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public AUTHORIZATION ${appUser}; CREATE SCHEMA iam AUTHORIZATION ${appUser};`;
+
 const verifyArchiveSchema = async (archive) => {
   const listing = await runCapture('pg_restore', ['--list', archive], {
     maxOutputBytes: 10 * 1024 * 1024,
@@ -776,6 +779,8 @@ export const executeRestoreForIntegration = async (request) => {
     complete('safety-backup', { objectKey: safetyObjectKey, sha256: safetySha256 });
 
     mutationStarted = true;
+    await runSql(target, pgEnv, restoreSchemaResetSql(target.appUser));
+    complete('application-schema-reset');
     await runCommand(
       'pg_restore',
       [

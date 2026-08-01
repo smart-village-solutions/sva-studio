@@ -135,7 +135,7 @@ Ablauf:
 4. Der Agent prüft `pg_restore --list` und die erforderlichen Goose-/IAM-Archiveinträge.
 5. Der Agent akzeptiert den gleichen oder einen älteren Goose-Migrationsstand als den des Zielsystems; ein Dump mit neuerem, unbekanntem Schema wird abgelehnt.
 6. Der Agent erzeugt einen neuen Custom-Dump, lädt ihn nach `safety-before-restore/`, lädt ihn erneut herunter und verifiziert seine SHA-256.
-7. Erst danach startet der einmalige Vollrestore. Der Workflow migriert einen historischen Stand anschließend mit dem unveränderlich ausgewählten Studio-Image, bevor Principal-Reconcile und Neustart erfolgen. Fehler oder Timeout führen zu keinem automatischen Retry oder Gegenrestore.
+7. Erst danach entfernt der Agent die anwendungseigenen Schemas `public` und `iam` vollständig und startet den einmaligen Vollrestore. Dadurch blockieren Objekte neuerer Migrationen nicht die Wiederherstellung eines älteren Dumps. Der Workflow migriert den historischen Stand anschließend mit dem unveränderlich ausgewählten Studio-Image, bevor Principal-Reconcile und Neustart erfolgen. Fehler oder Timeout führen zu keinem automatischen Retry oder Gegenrestore.
 7. Der Agent prüft Goose-Version, IAM-Schema, App-Principal einschließlich Tabellenrechten und Registry.
 8. Nur nach erfolgreicher DB-Evidenz startet der Workflow App und Provisioner wieder und fordert HTTP 200 für `health/live` und `health/ready` sowie einen erfolgreichen Runtime-Smoke mit Tenant-Login-Redirect.
 9. Schlägt ein Schritt nach der Stilllegung fehl, deployt der Workflow den gestoppten Stackvertrag erneut. Die App bleibt bis zu einer manuellen Recovery-Entscheidung stillgelegt.

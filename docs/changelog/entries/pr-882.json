@@ -1,0 +1,4 @@
+{
+  "prNumber": 882,
+  "body": "Fehlerbehebung\n\n- Der historische Datenbank-Restore entfernt vor dem Import vollständig die anwendungseigenen Schemas, damit neuere Constraints den älteren Dump nicht blockieren."
+}

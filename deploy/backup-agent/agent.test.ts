@@ -10,6 +10,7 @@ import {
   isRestoreSqlLineSupported,
   minioAwsCompatibilityEnv,
   restoreControlKeysFor,
+  restoreSchemaResetSql,
   runCommand,
   safeErrorCode,
   targets,
@@ -228,6 +229,12 @@ describe('backup agent runtime contract', () => {
     expect(isHistoricalSchemaRestoreCompatible(70, 71)).toBe(true);
     expect(isHistoricalSchemaRestoreCompatible(71, 71)).toBe(true);
     expect(isHistoricalSchemaRestoreCompatible(72, 71)).toBe(false);
+  });
+
+  it('resets application-owned schemas before applying a historical dump', () => {
+    expect(restoreSchemaResetSql('sva')).toBe(
+      'SET ROLE sva; DROP SCHEMA IF EXISTS iam CASCADE; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public AUTHORIZATION sva; CREATE SCHEMA iam AUTHORIZATION sva;'
+    );
   });
 
   it('requires both migration and IAM registry structures in the restore archive', () => {

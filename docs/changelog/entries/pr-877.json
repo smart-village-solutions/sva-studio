@@ -1,0 +1,4 @@
+{
+  "prNumber": 877,
+  "body": "Fehlerbehebung\n\n- Die Production-Restore-Evidenz wird vor der Bindung an die Live-Image-Revision geprüft, damit der aktuelle Workflow-Validator verfügbar bleibt."
+}

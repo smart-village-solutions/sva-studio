@@ -179,6 +179,12 @@ describe('backup agent runtime contract', () => {
     expect(sql).toContain(
       'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO "iam_app", "sva_app";'
     );
+    expect(sql).toContain(
+      'ALTER DEFAULT PRIVILEGES FOR ROLE "sva" IN SCHEMA iam\n  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "iam_app", "sva_app";'
+    );
+    expect(sql).toContain(
+      'ALTER DEFAULT PRIVILEGES FOR ROLE "sva" IN SCHEMA iam\n  GRANT USAGE, SELECT ON SEQUENCES TO "iam_app", "sva_app";'
+    );
     expect(sql).not.toContain('PASSWORD');
   });
 

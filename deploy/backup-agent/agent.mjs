@@ -581,6 +581,10 @@ GRANT CONNECT ON DATABASE ${database} TO ${runtimeUser};
 GRANT USAGE ON SCHEMA iam TO ${runtimeRole}, ${runtimeUser};
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${runtimeRole}, ${runtimeUser};
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${runtimeRole}, ${runtimeUser};
+ALTER DEFAULT PRIVILEGES FOR ROLE ${schemaOwner} IN SCHEMA iam
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${runtimeRole}, ${runtimeUser};
+ALTER DEFAULT PRIVILEGES FOR ROLE ${schemaOwner} IN SCHEMA iam
+  GRANT USAGE, SELECT ON SEQUENCES TO ${runtimeRole}, ${runtimeUser};
 RESET ROLE;
 `;
 };

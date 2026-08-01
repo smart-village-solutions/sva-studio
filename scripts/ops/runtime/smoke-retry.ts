@@ -68,5 +68,10 @@ export const shouldRetryInternalVerifyAttempt = ({
 
 export const shouldRetryExternalSmoke = (probes: readonly AcceptanceProbeResult[]) => {
   const failingProbes = probes.filter((probe) => probe.status === 'error');
-  return failingProbes.length > 0 && failingProbes.every((probe) => (retryableExternalWarmupProbeNames.has(probe.name) || probe.name.startsWith('public-auth-login-')) && retryableExternalWarmupSignals.some((signal) => probe.message.toLowerCase().includes(signal)));
+  return failingProbes.length > 0 && failingProbes.every((probe) => (
+    retryableExternalWarmupProbeNames.has(probe.name)
+    || probe.name.startsWith('public-auth-login-')
+    || probe.name.startsWith('public-ingress-https-')
+    || probe.name.startsWith('public-ingress-login-')
+  ) && retryableExternalWarmupSignals.some((signal) => probe.message.toLowerCase().includes(signal)));
 };

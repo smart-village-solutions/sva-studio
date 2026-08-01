@@ -41,6 +41,7 @@ describe('smoke helpers', () => {
         targets.push(input.target);
         return createProbe({
           ...(input.name === 'public-ingress-unknown-host' ? { httpStatus: undefined } : { httpStatus: 200 }),
+          message: input.name === 'public-ingress-unknown-host' ? 'getaddrinfo ENOTFOUND unknown-ingress-smoke' : 'ok',
           name: input.name,
           status: input.name === 'public-ingress-unknown-host' ? 'error' : 'ok',
           target: input.target,
@@ -63,6 +64,7 @@ describe('smoke helpers', () => {
       'https://unknown-ingress-smoke.studio-dev.smart-village.app/auth/login',
     ]));
     expect(probes.find((probe) => probe.name === 'public-ingress-unknown-host')).toMatchObject({
+      message: expect.stringContaining('getaddrinfo ENOTFOUND unknown-ingress-smoke'),
       status: 'ok',
     });
   });
@@ -87,6 +89,19 @@ describe('smoke helpers', () => {
     ];
 
     expect(shouldRetryExternalSmoke(probes)).toBe(true);
+  });
+
+  it.each([
+    'public-ingress-https-de-teststadt-dev.studio-dev.smart-village.app',
+    'public-ingress-login-de-teststadt-dev.studio-dev.smart-village.app',
+  ])('retries transient failures for %s', (name) => {
+    expect(shouldRetryExternalSmoke([
+      createProbe({
+        message: 'Gateway antwortet waehrend des Warmups mit 503.',
+        name,
+        status: 'error',
+      }),
+    ])).toBe(true);
   });
 
   it('does not retry non-warmup external failures', () => {

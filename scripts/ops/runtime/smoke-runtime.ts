@@ -86,7 +86,7 @@ const explicitIngressHostProbes = (deps: RuntimeSmokeDeps, base: URL) => {
         const location = response.headers.get('location') ?? '';
         if (response.status !== 302) return `Login auf ${host} antwortet mit ${response.status}.`;
         const encodedRedirect = encodeURIComponent(`${base.protocol}//${host}/auth/callback`);
-        return location.includes(`redirect_uri=${encodedRedirect}`) ? null : `Login auf ${host} behaelt den Rueckkehr-Host nicht bei: ${location}`;
+        return location.includes(`redirect_uri=${encodedRedirect}`) ? null : `Login auf ${host} behält den Rückkehr-Host nicht bei: ${location}`;
       },
     }),
   ]);
@@ -98,7 +98,11 @@ const explicitIngressHostProbes = (deps: RuntimeSmokeDeps, base: URL) => {
       ? `Unbekannter Host erscheint mit HTTP ${response.status} als betriebsbereit.`
       : null,
   }).then((probe) => probe.httpStatus === undefined
-    ? { ...probe, message: 'Unbekannter Host wurde vor der Anwendung fail-closed abgelehnt.', status: 'ok' as const }
+    ? {
+        ...probe,
+        message: `Unbekannter Host wurde vor der Anwendung fail-closed abgelehnt. Ursache: ${probe.message}`,
+        status: 'ok' as const,
+      }
     : probe);
 
   return [...allowedHostProbes, unknownHostProbe];

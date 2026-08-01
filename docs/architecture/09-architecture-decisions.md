@@ -517,6 +517,13 @@ Zuordnung:
 - Der Workflow verantwortet Stilllegung und Wiederanlauf, der Agent ausschließlich Preflight, Sicherheitsdump, Restore und DB-Nachprüfungen.
 - Production setzt einen erfolgreichen Staging-Restore-Drill und eine neue explizite Environment-Freigabe voraus.
 
+### Fortschreibung 2026-08: Restore-spezifische Runtime-Principal-Konvergenz
+
+- ADR-048 umfasst nach dem Incident vom 1. August 2026 auch die idempotente Rekonstruktion der statischen IAM-ACLs für `sva_app` durch den zentralen Restore-Agenten.
+- Schema-Owner `sva`, Runtime-Principal `sva_app`, Rolle `iam_app`, Datenbank und Grants bleiben interne Konstanten; der Request-Vertrag erhält keine SQL- oder Principal-Felder und der Agent keine App-Zugangsdaten.
+- Datenbanknahe Privilegproben und ein nachgelagerter authentifizierter IAM-Smoke sind getrennte fail-closed Gates.
+- Abschnitt 06/07/08/09: OpenSpec-Change `update-restore-runtime-principal-reconciliation`.
+
 Zuordnung:
 
 - Abschnitt 06/07/08/09/11: ADR-048 und OpenSpec-Change `add-controlled-database-restore`

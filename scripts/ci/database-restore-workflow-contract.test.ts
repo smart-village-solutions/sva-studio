@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 const workflow = readFileSync(
   resolve(import.meta.dirname, '../../.github/workflows/database-restore.yml'),
-  'utf8',
+  'utf8'
 );
 
 describe('database restore workflow', () => {
@@ -38,7 +38,19 @@ describe('database restore workflow', () => {
     expect(reconcile).toBeGreaterThan(migration);
     expect(restart).toBeGreaterThan(reconcile);
     expect(workflow).toContain(
-      'pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind migration --environment "${{ inputs.environment }}"',
+      'pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind migration --environment "${{ inputs.environment }}"'
     );
+  });
+
+  it('requires an authenticated IAM smoke after restart and before successful evidence', () => {
+    const restart = workflow.indexOf('restart application after successful database checks');
+    const authenticatedIam = workflow.indexOf('verify authenticated IAM runtime after restore');
+    const evidence = workflow.indexOf('write successful workflow evidence');
+
+    expect(authenticatedIam).toBeGreaterThan(restart);
+    expect(evidence).toBeGreaterThan(authenticatedIam);
+    expect(workflow).toContain('scripts/ci/restore-authenticated-iam-smoke.ts');
+    expect(workflow).toContain('authenticatedIam:"passed"');
+    expect(workflow).toContain("steps.authenticated_iam_verify.outcome != 'success'");
   });
 });

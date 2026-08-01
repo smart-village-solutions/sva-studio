@@ -4,6 +4,7 @@ import {
   archiveSchemaCompatible,
   canonicalRequest,
   canonicalRestoreRequest,
+  buildRuntimePrincipalReconciliationSql,
   controlKeysFor,
   extractAppliedGooseVersion,
   isHistoricalSchemaRestoreCompatible,
@@ -14,6 +15,7 @@ import {
   runCommand,
   safeErrorCode,
   targets,
+  validateRuntimePrincipalProbe,
   validateOidcClaims,
   validateDatabasePostchecks,
   validRequest,
@@ -158,6 +160,32 @@ describe('backup agent runtime contract', () => {
   it('uses the verified Swarm DNS names for both database stacks', () => {
     expect(targets.staging.postgresHost).toBe('studio-staging_postgres');
     expect(targets.prod.postgresHost).toBe('studio_postgres');
+    expect(targets.staging.schemaOwner).toBe('sva');
+    expect(targets.staging.runtimeUser).toBe('sva_app');
+    expect(targets.prod.schemaOwner).toBe('sva');
+    expect(targets.prod.runtimeUser).toBe('sva_app');
+  });
+
+  it('builds a static restore reconciliation for the allowlisted runtime principal', () => {
+    const sql = buildRuntimePrincipalReconciliationSql(targets.prod);
+
+    expect(sql).toContain('SET ROLE "sva";');
+    expect(sql).toContain('GRANT "iam_app" TO "sva_app";');
+    expect(sql).toContain('GRANT USAGE ON SCHEMA iam TO "sva_app";');
+    expect(sql).toContain(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO "sva_app";'
+    );
+    expect(sql).toContain('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO "sva_app";');
+    expect(sql).not.toContain('PASSWORD');
+  });
+
+  it('rejects target identities outside the internal restore allowlist', () => {
+    expect(() =>
+      buildRuntimePrincipalReconciliationSql({
+        ...targets.prod,
+        runtimeUser: 'attacker',
+      })
+    ).toThrow('runtime_principal_target_invalid');
   });
 
   it('uses persistent MinIO control keys for replay and terminal evidence', () => {
@@ -211,6 +239,12 @@ describe('backup agent runtime contract', () => {
     );
     expect(safeErrorCode(new Error('database_postcheck_failed'))).toBe('database_postcheck_failed');
     expect(safeErrorCode(new Error('schema_version_mismatch'))).toBe('schema_version_mismatch');
+    expect(safeErrorCode(new Error('runtime_principal_reconciliation_failed'))).toBe(
+      'runtime_principal_reconciliation_failed'
+    );
+    expect(safeErrorCode(new Error('runtime_principal_probe_failed'))).toBe(
+      'runtime_principal_probe_failed'
+    );
   });
 
   it('extracts the newest applied Goose version from custom-dump SQL output', () => {
@@ -233,7 +267,7 @@ describe('backup agent runtime contract', () => {
 
   it('resets application-owned schemas before applying a historical dump', () => {
     expect(restoreSchemaResetSql('sva')).toBe(
-      'SET ROLE sva; DROP SCHEMA IF EXISTS iam CASCADE; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public AUTHORIZATION sva; CREATE SCHEMA iam AUTHORIZATION sva;'
+      'SET ROLE "sva"; DROP SCHEMA IF EXISTS iam CASCADE; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public AUTHORIZATION "sva"; CREATE SCHEMA iam AUTHORIZATION "sva";'
     );
   });
 
@@ -283,6 +317,28 @@ describe('backup agent runtime contract', () => {
       { ...valid, registryEntries: 'invalid' },
     ])
       expect(() => validateDatabasePostchecks(invalid)).toThrow('database_postcheck_failed');
+  });
+
+  it('accepts only a complete runtime-principal probe', () => {
+    const valid = {
+      accountSelect: true,
+      databaseConnect: true,
+      instancesSelect: true,
+      permissionsSelect: true,
+      roleMembership: true,
+      schemaUsage: true,
+      sequencesReady: true,
+    };
+
+    expect(validateRuntimePrincipalProbe(valid)).toEqual(valid);
+    for (const key of Object.keys(valid)) {
+      expect(() => validateRuntimePrincipalProbe({ ...valid, [key]: false })).toThrow(
+        'runtime_principal_probe_failed'
+      );
+    }
+    expect(() => validateRuntimePrincipalProbe({ ...valid, databaseConnect: 't' })).toThrow(
+      'runtime_principal_probe_failed'
+    );
   });
 
   it('terminates an external command after its explicit deadline', async () => {

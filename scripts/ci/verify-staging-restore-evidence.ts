@@ -15,6 +15,7 @@ export type RestoreWorkflowEvidence = Readonly<{
   healthLive: 'passed';
   healthReady: 'passed';
   tenantLogin: 'passed';
+  authenticatedIam: 'passed';
   completedAt: string;
 }>;
 
@@ -37,6 +38,7 @@ export const isValidStagingRestoreEvidence = (value: unknown): value is RestoreW
     evidence.healthLive === 'passed' &&
     evidence.healthReady === 'passed' &&
     evidence.tenantLogin === 'passed' &&
+    evidence.authenticatedIam === 'passed' &&
     typeof evidence.completedAt === 'string' &&
     Number.isFinite(Date.parse(evidence.completedAt))
   );

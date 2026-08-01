@@ -51,7 +51,7 @@ describe('controlled database restore workflow', () => {
       workflow.indexOf('submit-restore-agent-request.ts')
     );
     expect(workflow).toContain(
-      "steps.external_verify.outcome != 'success' || steps.workflow_evidence.outcome != 'success' || steps.evidence_upload.outcome != 'success'"
+      "steps.external_verify.outcome != 'success' || steps.authenticated_iam_verify.outcome != 'success' || steps.workflow_evidence.outcome != 'success' || steps.evidence_upload.outcome != 'success'"
     );
     expect(workflow).toContain('restore-stack-stopped.yaml');
     expect(workflow).toContain('/health/live');
@@ -60,11 +60,21 @@ describe('controlled database restore workflow', () => {
     expect(workflow).toContain('runtime-env.ts smoke studio');
   });
 
+  it('requires authenticated IAM recovery evidence after restarting the application', () => {
+    expect(workflow.indexOf('verify authenticated IAM runtime after restore')).toBeGreaterThan(
+      workflow.indexOf('restart application after successful database checks')
+    );
+    expect(workflow).toContain('RESTORE_IAM_SMOKE_BASE_URL');
+    expect(workflow).toContain('RESTORE_IAM_SMOKE_USERNAME');
+    expect(workflow).toContain('RESTORE_IAM_SMOKE_PASSWORD');
+    expect(workflow).toContain('authenticatedIam:"passed"');
+  });
+
   it('reconciles the application database principal before restarting writers', () => {
     expect(workflow).toContain('promote-one-shot-job.ts --kind bootstrap');
-    expect(workflow.indexOf('reconcile application database principal after restore')).toBeGreaterThan(
-      workflow.indexOf('execute database restore and database checks')
-    );
+    expect(
+      workflow.indexOf('reconcile application database principal after restore')
+    ).toBeGreaterThan(workflow.indexOf('execute database restore and database checks'));
     expect(workflow.indexOf('reconcile application database principal after restore')).toBeLessThan(
       workflow.indexOf('restart application after successful database checks')
     );

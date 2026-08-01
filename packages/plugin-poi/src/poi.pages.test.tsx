@@ -11,7 +11,11 @@ const listHostMediaAssetsMock = vi.hoisted(() => vi.fn());
 const paramsMock = vi.hoisted(() => vi.fn(() => ({})));
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { readonly to: string }) => (
+  Link: ({
+    children,
+    to,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { readonly to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -66,11 +70,19 @@ describe('PoiCreatePage', () => {
     fireEvent.change(screen.getByLabelText('fields.url'), {
       target: { value: 'http://invalid.example' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
 
     await waitFor(() => {
-      expect(screen.getAllByRole('alert').some((element) => element.textContent?.includes('validation.name'))).toBe(true);
-      expect(screen.getAllByRole('alert').some((element) => element.textContent?.includes('validation.webUrls'))).toBe(true);
+      expect(
+        screen
+          .getAllByRole('alert')
+          .some((element) => element.textContent?.includes('validation.name'))
+      ).toBe(true);
+      expect(
+        screen
+          .getAllByRole('alert')
+          .some((element) => element.textContent?.includes('validation.webUrls'))
+      ).toBe(true);
     });
 
     const urlInput = screen.getByLabelText('fields.url');
@@ -108,14 +120,20 @@ describe('PoiCreatePage', () => {
       target: { value: 'x'.repeat(129) },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
 
     await waitFor(() => {
-      expect(screen.getAllByRole('alert').some((element) => element.textContent?.includes('validation.categories'))).toBe(true);
+      expect(
+        screen
+          .getAllByRole('alert')
+          .some((element) => element.textContent?.includes('validation.categories'))
+      ).toBe(true);
     });
 
     expect(screen.queryByRole('button', { name: 'actions.addCategory' })).toBeNull();
-    expect(screen.getByLabelText('fields.categoriesSearch').closest('section')?.textContent).toContain('validation.categories');
+    expect(
+      screen.getByLabelText('fields.categoriesSearch').closest('section')?.textContent
+    ).toContain('validation.categories');
     expect(createPoiMock).not.toHaveBeenCalled();
   });
 
@@ -142,10 +160,14 @@ describe('PoiCreatePage', () => {
       target: { value: '{"hero":' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
 
     await waitFor(() => {
-      expect(screen.getAllByRole('alert').some((element) => element.textContent?.includes('validation.payload'))).toBe(true);
+      expect(
+        screen
+          .getAllByRole('alert')
+          .some((element) => element.textContent?.includes('validation.payload'))
+      ).toBe(true);
     });
 
     const payloadInput = screen.getByLabelText('fields.payload');
@@ -155,7 +177,7 @@ describe('PoiCreatePage', () => {
     fireEvent.change(payloadInput, {
       target: { value: '{"hero":"Willkommen"}' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
 
     await waitFor(() => {
       expect(createPoiMock).toHaveBeenCalledWith(

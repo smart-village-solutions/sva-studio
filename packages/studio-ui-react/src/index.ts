@@ -40,9 +40,17 @@ export {
   type MediaReferenceFieldOption,
   type MediaReferenceFieldProps,
 } from './media-reference-field.js';
-export { MediaIntakePanel, type MediaIntakePanelPhase, type MediaIntakePanelProps } from './media-intake-panel.js';
+export {
+  MediaIntakePanel,
+  type MediaIntakePanelPhase,
+  type MediaIntakePanelProps,
+} from './media-intake-panel.js';
 export { Select } from './select.js';
-export { StudioFormSummaryErrors, getStudioFieldError, getStudioFormFieldProps } from './studio-form-bridge.js';
+export {
+  StudioFormSummaryErrors,
+  getStudioFieldError,
+  getStudioFormFieldProps,
+} from './studio-form-bridge.js';
 export type {
   GetStudioFormFieldPropsOptions,
   StudioFormFieldBindings,
@@ -64,6 +72,7 @@ export {
   StudioErrorState,
   StudioField,
   StudioFieldGroup,
+  StudioFormActionBar,
   StudioFormSummary,
   StudioJobSummaryCard,
   StudioLoadingState,
@@ -77,6 +86,7 @@ export {
   type StudioFieldGroupProps,
   type StudioFieldControlProps,
   type StudioFieldProps,
+  type StudioFormActionBarProps,
   type StudioFormSummaryProps,
   type StudioJobSummaryCardProps,
   type StudioListPageAction,

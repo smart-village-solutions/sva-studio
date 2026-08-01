@@ -1,4 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router';
+import { StudioDetailPageTemplate } from '@sva/studio-ui-react';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -116,53 +117,77 @@ export const LegalTextCreatePage = () => {
   };
 
   return (
-    <section className="space-y-5">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-semibold text-foreground">{t('admin.legalTexts.dialogs.createTitle')}</h1>
-          <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.legalTexts.dialogs.createDescription')}</p>
-        </div>
+    <StudioDetailPageTemplate
+      title={t('admin.legalTexts.dialogs.createTitle')}
+      description={t('admin.legalTexts.dialogs.createDescription')}
+      actions={
         <Button asChild type="button" variant="outline">
           <Link to="/admin/legal-texts">{t('admin.legalTexts.detail.backToList')}</Link>
         </Button>
-      </header>
-
+      }
+      primaryAction={
+        <Button type="submit" form="legal-text-create-form">
+          {t('admin.legalTexts.actions.create')}
+        </Button>
+      }
+    >
       <Card className="space-y-4 p-4">
-        <form className="space-y-4" onSubmit={(event) => void onSubmit(event)}>
+        <form
+          id="legal-text-create-form"
+          className="space-y-4"
+          onSubmit={(event) => void onSubmit(event)}
+        >
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="legal-text-create-name">{t('admin.legalTexts.fields.name')}</Label>
               <Input
                 id="legal-text-create-name"
                 value={formValues.name}
-                onChange={(event) => setFormValues((current) => ({ ...current, name: event.target.value }))}
+                onChange={(event) =>
+                  setFormValues((current) => ({ ...current, name: event.target.value }))
+                }
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="legal-text-create-version">{t('admin.legalTexts.fields.legalTextVersion')}</Label>
+              <Label htmlFor="legal-text-create-version">
+                {t('admin.legalTexts.fields.legalTextVersion')}
+              </Label>
               <Input
                 id="legal-text-create-version"
                 value={formValues.legalTextVersion}
-                onChange={(event) => setFormValues((current) => ({ ...current, legalTextVersion: event.target.value }))}
+                onChange={(event) =>
+                  setFormValues((current) => ({ ...current, legalTextVersion: event.target.value }))
+                }
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="legal-text-create-locale">{t('admin.legalTexts.fields.locale')}</Label>
+              <Label htmlFor="legal-text-create-locale">
+                {t('admin.legalTexts.fields.locale')}
+              </Label>
               <Input
                 id="legal-text-create-locale"
                 value={formValues.locale}
-                onChange={(event) => setFormValues((current) => ({ ...current, locale: event.target.value }))}
+                onChange={(event) =>
+                  setFormValues((current) => ({ ...current, locale: event.target.value }))
+                }
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="legal-text-create-status">{t('admin.legalTexts.fields.status')}</Label>
+              <Label htmlFor="legal-text-create-status">
+                {t('admin.legalTexts.fields.status')}
+              </Label>
               <Select
                 id="legal-text-create-status"
                 value={formValues.status}
-                onChange={(event) => setFormValues((current) => ({ ...current, status: event.target.value as LegalTextStatus }))}
+                onChange={(event) =>
+                  setFormValues((current) => ({
+                    ...current,
+                    status: event.target.value as LegalTextStatus,
+                  }))
+                }
               >
                 <option value="draft">{t('admin.legalTexts.status.draft')}</option>
                 <option value="valid">{t('admin.legalTexts.status.valid')}</option>
@@ -170,30 +195,42 @@ export const LegalTextCreatePage = () => {
               </Select>
             </div>
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="legal-text-create-published">{t('admin.legalTexts.fields.publishedAt')}</Label>
+              <Label htmlFor="legal-text-create-published">
+                {t('admin.legalTexts.fields.publishedAt')}
+              </Label>
               <Input
                 id="legal-text-create-published"
                 type="datetime-local"
                 value={formValues.publishedAt}
                 required={formValues.status === 'valid'}
-                onChange={(event) => setFormValues((current) => ({ ...current, publishedAt: event.target.value }))}
+                onChange={(event) =>
+                  setFormValues((current) => ({ ...current, publishedAt: event.target.value }))
+                }
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="legal-text-create-role-targets">{t('admin.legalTexts.fields.targetRoleIds')}</Label>
+              <Label htmlFor="legal-text-create-role-targets">
+                {t('admin.legalTexts.fields.targetRoleIds')}
+              </Label>
               <Input
                 id="legal-text-create-role-targets"
                 value={formValues.targetRoleIds}
-                onChange={(event) => setFormValues((current) => ({ ...current, targetRoleIds: event.target.value }))}
+                onChange={(event) =>
+                  setFormValues((current) => ({ ...current, targetRoleIds: event.target.value }))
+                }
                 placeholder={t('admin.legalTexts.fields.targetRoleIdsPlaceholder')}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="legal-text-create-group-targets">{t('admin.legalTexts.fields.targetGroupIds')}</Label>
+              <Label htmlFor="legal-text-create-group-targets">
+                {t('admin.legalTexts.fields.targetGroupIds')}
+              </Label>
               <Input
                 id="legal-text-create-group-targets"
                 value={formValues.targetGroupIds}
-                onChange={(event) => setFormValues((current) => ({ ...current, targetGroupIds: event.target.value }))}
+                onChange={(event) =>
+                  setFormValues((current) => ({ ...current, targetGroupIds: event.target.value }))
+                }
                 placeholder={t('admin.legalTexts.fields.targetGroupIdsPlaceholder')}
               />
             </div>
@@ -217,16 +254,17 @@ export const LegalTextCreatePage = () => {
             <Button asChild type="button" variant="outline">
               <Link to="/admin/legal-texts">{t('account.actions.cancel')}</Link>
             </Button>
-            <Button type="submit">{t('admin.legalTexts.actions.create')}</Button>
           </div>
         </form>
       </Card>
 
       {validationError || legalTextsApi.mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{validationError ?? legalTextErrorMessage(legalTextsApi.mutationError)}</AlertDescription>
+          <AlertDescription>
+            {validationError ?? legalTextErrorMessage(legalTextsApi.mutationError)}
+          </AlertDescription>
         </Alert>
       ) : null}
-    </section>
+    </StudioDetailPageTemplate>
   );
 };

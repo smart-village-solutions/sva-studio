@@ -75,8 +75,18 @@ describe('RoleDetailPage', () => {
           isScopeAssignable: true,
           supportedAccessScopes: ['all', 'own', 'organization'],
         },
-        { id: 'perm-3', instanceId: 'de-musterhausen', permissionKey: 'iam.configure', description: 'Konfigurieren' },
-        { id: 'perm-4', instanceId: 'de-musterhausen', permissionKey: 'news.read', description: 'News lesen' },
+        {
+          id: 'perm-3',
+          instanceId: 'de-musterhausen',
+          permissionKey: 'iam.configure',
+          description: 'Konfigurieren',
+        },
+        {
+          id: 'perm-4',
+          instanceId: 'de-musterhausen',
+          permissionKey: 'news.read',
+          description: 'News lesen',
+        },
       ],
       isLoading: false,
       error: null,
@@ -142,7 +152,9 @@ describe('RoleDetailPage', () => {
           memberCount: 3,
           syncState: 'failed',
           syncError: { code: 'IDP_UNAVAILABLE' },
-          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+          permissions: [
+            { id: 'perm-2', permissionKey: 'content.updatePayload', description: null },
+          ],
         },
       ],
       isLoading: false,
@@ -161,11 +173,17 @@ describe('RoleDetailPage', () => {
     render(<RoleDetailPage roleId="role-2" activeTab="general" />);
 
     expect(screen.getByRole('heading', { name: 'Editor' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Allgemein' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'Allgemein' }).getAttribute('aria-selected')).toBe(
+      'true'
+    );
     fireEvent.change(screen.getByLabelText('Anzeigename'), { target: { value: 'Content Editor' } });
-    fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Updated description' } });
+    fireEvent.change(screen.getByLabelText('Beschreibung'), {
+      target: { value: 'Updated description' },
+    });
     fireEvent.change(screen.getByLabelText('Rollenlevel'), { target: { value: '33' } });
-    fireEvent.submit(screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).closest('form')!);
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).closest('form')!
+    );
 
     await waitFor(() => {
       expect(updateRole).toHaveBeenCalledWith('role-2', {
@@ -190,7 +208,9 @@ describe('RoleDetailPage', () => {
           roleLevel: 20,
           memberCount: 3,
           syncState: 'synced',
-          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+          permissions: [
+            { id: 'perm-2', permissionKey: 'content.updatePayload', description: null },
+          ],
         },
       ],
       isLoading: false,
@@ -209,14 +229,18 @@ describe('RoleDetailPage', () => {
     render(<RoleDetailPage roleId="role-2" activeTab="general" />);
 
     fireEvent.change(screen.getByLabelText('Anzeigename'), { target: { value: 'Changed name' } });
-    fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Changed description' } });
+    fireEvent.change(screen.getByLabelText('Beschreibung'), {
+      target: { value: 'Changed description' },
+    });
     fireEvent.change(screen.getByLabelText('Rollenlevel'), { target: { value: '42' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Änderungen zurücksetzen' }));
 
     await waitFor(() => {
       expect((screen.getByLabelText('Anzeigename') as HTMLInputElement).value).toBe('Editor');
-      expect((screen.getByLabelText('Beschreibung') as HTMLTextAreaElement).value).toBe('Editorial role');
+      expect((screen.getByLabelText('Beschreibung') as HTMLTextAreaElement).value).toBe(
+        'Editorial role'
+      );
       expect((screen.getByLabelText('Rollenlevel') as HTMLInputElement).value).toBe('20');
     });
   });
@@ -237,7 +261,9 @@ describe('RoleDetailPage', () => {
           roleLevel: 20,
           memberCount: 3,
           syncState: 'synced',
-          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+          permissions: [
+            { id: 'perm-2', permissionKey: 'content.updatePayload', description: null },
+          ],
         },
       ],
       isLoading: false,
@@ -255,10 +281,14 @@ describe('RoleDetailPage', () => {
 
     render(<RoleDetailPage roleId="role-2" activeTab="permissions" />);
 
-    expect(screen.getByRole('tab', { name: 'Berechtigungen' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'Berechtigungen' }).getAttribute('aria-selected')).toBe(
+      'true'
+    );
 
     fireEvent.click(screen.getAllByLabelText(/Lesen/)[0]!);
-    fireEvent.click(screen.getByRole('button', { name: 'Rechte speichern' }));
+    const saveButtons = screen.getAllByRole('button', { name: 'Rechte speichern' });
+    expect(saveButtons).toHaveLength(2);
+    fireEvent.click(saveButtons[1]!);
 
     await waitFor(() => {
       expect(updateRole).toHaveBeenCalledWith('role-2', {
@@ -304,7 +334,7 @@ describe('RoleDetailPage', () => {
 
     render(<RoleDetailPage roleId="role-2" activeTab="permissions" />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Rechte speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rechte speichern' })[1]!);
 
     await waitFor(() => {
       expect(updateRole).toHaveBeenCalledWith('role-2', {
@@ -350,8 +380,18 @@ describe('RoleDetailPage', () => {
 
     useRolePermissionsMock.mockReturnValue({
       permissions: [
-        { id: 'perm-1', instanceId: 'de-musterhausen', permissionKey: 'content.read', description: 'Lesen' },
-        { id: 'perm-5', instanceId: 'de-musterhausen', permissionKey: 'content.custom_action', description: 'Spezial' },
+        {
+          id: 'perm-1',
+          instanceId: 'de-musterhausen',
+          permissionKey: 'content.read',
+          description: 'Lesen',
+        },
+        {
+          id: 'perm-5',
+          instanceId: 'de-musterhausen',
+          permissionKey: 'content.custom_action',
+          description: 'Spezial',
+        },
       ],
       isLoading: false,
       error: null,
@@ -362,7 +402,7 @@ describe('RoleDetailPage', () => {
 
     expect(screen.getAllByText('Custom Action').length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: 'Sichtbare Rechte entziehen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Rechte speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rechte speichern' })[1]!);
 
     await waitFor(() => {
       expect(updateRole).toHaveBeenCalledWith('role-2', {
@@ -398,7 +438,9 @@ describe('RoleDetailPage', () => {
           roleLevel: 20,
           memberCount: 3,
           syncState: 'synced',
-          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+          permissions: [
+            { id: 'perm-2', permissionKey: 'content.updatePayload', description: null },
+          ],
         },
       ],
       isLoading: false,
@@ -449,7 +491,9 @@ describe('RoleDetailPage', () => {
           roleLevel: 90,
           memberCount: 1,
           syncState: 'synced',
-          permissions: [{ id: 'perm-3', permissionKey: 'iam.configure', description: 'System konfigurieren' }],
+          permissions: [
+            { id: 'perm-3', permissionKey: 'iam.configure', description: 'System konfigurieren' },
+          ],
         },
       ],
       isLoading: false,
@@ -468,9 +512,13 @@ describe('RoleDetailPage', () => {
     render(<RoleDetailPage roleId="role-1" activeTab="general" />);
 
     expect(
-      screen.getByText('Systemrollen bleiben schreibgeschützt, damit Baseline-Rechte konsistent und nachvollziehbar bleiben.')
+      screen.getByText(
+        'Systemrollen bleiben schreibgeschützt, damit Baseline-Rechte konsistent und nachvollziehbar bleiben.'
+      )
     ).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).hasAttribute('disabled')).toBe(true);
+    expect(
+      screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).hasAttribute('disabled')
+    ).toBe(true);
   });
 
   it('treats legacy tenant bootstrap roles as editable when the API marks them editable', () => {
@@ -488,7 +536,9 @@ describe('RoleDetailPage', () => {
           roleLevel: 30,
           memberCount: 2,
           syncState: 'synced',
-          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+          permissions: [
+            { id: 'perm-2', permissionKey: 'content.updatePayload', description: null },
+          ],
         },
       ],
       isLoading: false,
@@ -507,9 +557,13 @@ describe('RoleDetailPage', () => {
     render(<RoleDetailPage roleId="role-legacy-editor" activeTab="general" />);
 
     expect(
-      screen.queryByText('Systemrollen bleiben schreibgeschützt, damit Baseline-Rechte konsistent und nachvollziehbar bleiben.')
+      screen.queryByText(
+        'Systemrollen bleiben schreibgeschützt, damit Baseline-Rechte konsistent und nachvollziehbar bleiben.'
+      )
     ).toBeNull();
-    expect(screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).hasAttribute('disabled')).toBe(false);
+    expect(
+      screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).hasAttribute('disabled')
+    ).toBe(false);
   });
 
   it('navigates between tabs through tab buttons', () => {
@@ -526,7 +580,9 @@ describe('RoleDetailPage', () => {
           roleLevel: 20,
           memberCount: 3,
           syncState: 'synced',
-          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+          permissions: [
+            { id: 'perm-2', permissionKey: 'content.updatePayload', description: null },
+          ],
         },
       ],
       isLoading: false,
@@ -607,7 +663,9 @@ describe('RoleDetailPage', () => {
           roleLevel: 20,
           memberCount: 3,
           syncState: 'synced',
-          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+          permissions: [
+            { id: 'perm-2', permissionKey: 'content.updatePayload', description: null },
+          ],
         },
       ],
       isLoading: false,
@@ -656,7 +714,9 @@ describe('RoleDetailPage', () => {
           syncState: 'failed',
           lastSyncedAt: '2026-03-31T10:15:00.000Z',
           syncError: { code: 'IDP_UNAVAILABLE' },
-          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+          permissions: [
+            { id: 'perm-2', permissionKey: 'content.updatePayload', description: null },
+          ],
         },
       ],
       isLoading: false,
@@ -674,7 +734,11 @@ describe('RoleDetailPage', () => {
 
     render(<RoleDetailPage roleId="role-2" activeTab="sync" />);
 
-    expect(screen.getByText('Diese Ansicht beschreibt ausschließlich den Abgleich der Studio-Rollenmetadaten mit Keycloak.')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Diese Ansicht beschreibt ausschließlich den Abgleich der Studio-Rollenmetadaten mit Keycloak.'
+      )
+    ).toBeTruthy();
     expect(
       screen.getByText(
         'Berechtigungen, Zuweisungen und lokale Rollenlevel werden im Studio gespeichert und verändern diesen Keycloak-Status nicht.'
@@ -764,7 +828,9 @@ describe('RoleDetailPage', () => {
 
     rerender(<RoleDetailPage roleId="role-missing" activeTab="general" />);
     expect(screen.getByText('Die angeforderte Rolle wurde nicht gefunden.')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Zur Rollenliste' }).getAttribute('href')).toBe('/admin/roles');
+    expect(screen.getByRole('link', { name: 'Zur Rollenliste' }).getAttribute('href')).toBe(
+      '/admin/roles'
+    );
   });
 
   it('supports keyboard tab navigation and sync actions', () => {
@@ -786,7 +852,9 @@ describe('RoleDetailPage', () => {
           syncState: 'failed',
           lastSyncedAt: null,
           syncError: null,
-          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+          permissions: [
+            { id: 'perm-2', permissionKey: 'content.updatePayload', description: null },
+          ],
         },
       ],
       isLoading: false,
@@ -834,7 +902,9 @@ describe('RoleDetailPage', () => {
           roleLevel: 20,
           memberCount: 1,
           syncState: 'synced',
-          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+          permissions: [
+            { id: 'perm-2', permissionKey: 'content.updatePayload', description: null },
+          ],
         },
       ],
       isLoading: false,
@@ -870,7 +940,12 @@ describe('RoleDetailPage', () => {
           isScopeAssignable: true,
           supportedAccessScopes: ['all', 'own', 'organization'],
         },
-        { id: 'perm-3', instanceId: 'de-musterhausen', permissionKey: 'iam.configure', description: 'Konfigurieren' },
+        {
+          id: 'perm-3',
+          instanceId: 'de-musterhausen',
+          permissionKey: 'iam.configure',
+          description: 'Konfigurieren',
+        },
       ],
       isLoading: false,
       error: null,
@@ -880,7 +955,7 @@ describe('RoleDetailPage', () => {
     rerender(<RoleDetailPage roleId="role-2" activeTab="permissions" />);
     fireEvent.change(screen.getByLabelText('Rechte suchen'), { target: { value: 'content' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sichtbare Rechte vergeben' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Rechte speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rechte speichern' })[1]!);
 
     await waitFor(() => {
       expect(updateRole).toHaveBeenLastCalledWith('role-2', {
@@ -892,7 +967,7 @@ describe('RoleDetailPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Alle Rechte entziehen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Rechte speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rechte speichern' })[1]!);
 
     await waitFor(() => {
       expect(updateRole).toHaveBeenLastCalledWith('role-2', {
@@ -956,7 +1031,9 @@ describe('RoleDetailPage', () => {
     render(<RoleDetailPage roleId="role-2" activeTab="assignments" />);
 
     expect(
-      screen.getByText('Extern verwaltete Rollen bleiben schreibgeschützt und müssen in der führenden Quelle angepasst werden.')
+      screen.getByText(
+        'Extern verwaltete Rollen bleiben schreibgeschützt und müssen in der führenden Quelle angepasst werden.'
+      )
     ).toBeTruthy();
     expect(screen.getByText('Rollen konnten nicht geladen werden.')).toBeTruthy();
     expect(screen.getByText('Die Benutzerzuweisungen konnten nicht geladen werden.')).toBeTruthy();

@@ -17,24 +17,46 @@ import { FaqListPage } from './faq-list-page.js';
 import { faqFormSchema } from './faq.model.js';
 import type { FaqFormValues } from './faq.types.js';
 
-const defaultValues: FaqFormValues = { question: '', answer: '', languageCode: 'de', sortWeight: 0, visible: true };
+const defaultValues: FaqFormValues = {
+  question: '',
+  answer: '',
+  languageCode: 'de',
+  sortWeight: 0,
+  visible: true,
+};
 
-const FaqEditorActions = ({ deletePending, mode, onDelete, onSave, saving, pt }: Readonly<{
+const FaqEditorActions = ({
+  deletePending,
+  mode,
+  onDelete,
+  pt,
+}: Readonly<{
   deletePending: boolean;
   mode: 'create' | 'edit';
   onDelete: () => Promise<void>;
-  onSave: () => Promise<void>;
   pt: (key: string) => string;
-  saving: boolean;
 }>) => (
   <div className="flex flex-wrap gap-2">
-    <Button asChild variant="outline"><Link to="/admin/content">{pt('actions.back')}</Link></Button>
-    {mode === 'edit' ? <Button type="button" variant="destructive" disabled={deletePending} onClick={() => void onDelete()}>{pt('actions.delete')}</Button> : null}
-    <Button type="button" disabled={saving || deletePending} onClick={() => void onSave()}>{pt('actions.save')}</Button>
+    <Button asChild variant="outline">
+      <Link to="/admin/content">{pt('actions.back')}</Link>
+    </Button>
+    {mode === 'edit' ? (
+      <Button
+        type="button"
+        variant="destructive"
+        disabled={deletePending}
+        onClick={() => void onDelete()}
+      >
+        {pt('actions.delete')}
+      </Button>
+    ) : null}
   </div>
 );
 
-const FaqEditorPage = ({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; contentId?: string }>) => {
+const FaqEditorPage = ({
+  mode,
+  contentId,
+}: Readonly<{ mode: 'create' | 'edit'; contentId?: string }>) => {
   const pt = usePluginTranslation('faq');
   const navigate = useNavigate();
   const form = useForm<FaqFormValues>({ defaultValues, resolver: zodResolver(faqFormSchema) });
@@ -43,8 +65,14 @@ const FaqEditorPage = ({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
   const onInvalid = () => setSaveErrorMessage(pt('messages.validationError'));
   const { existingPayload, loadError, loading } = useFaqEditorLoader({ contentId, form, mode });
   const { deletePending, onDelete, onSubmit } = useFaqEditorActions({
-    contentId, existingPayload, mode, navigate, pt, setSaveErrorMessage,
+    contentId,
+    existingPayload,
+    mode,
+    navigate,
+    pt,
+    setSaveErrorMessage,
   });
+  const save = form.handleSubmit(onSubmit, onInvalid);
 
   if (loading) return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   if (loadError) return <StudioErrorState>{pt('messages.loadError')}</StudioErrorState>;
@@ -52,11 +80,31 @@ const FaqEditorPage = ({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
   return (
     <StudioDetailPageTemplate
       title={pt(mode === 'create' ? 'editor.createTitle' : 'editor.editTitle')}
-      actions={<FaqEditorActions deletePending={deletePending} mode={mode} onDelete={onDelete} onSave={form.handleSubmit(onSubmit, onInvalid)} pt={pt} saving={form.formState.isSubmitting} />}
+      actions={
+        <FaqEditorActions deletePending={deletePending} mode={mode} onDelete={onDelete} pt={pt} />
+      }
+      primaryAction={
+        <Button
+          type="button"
+          disabled={form.formState.isSubmitting || deletePending}
+          onClick={() => void save()}
+        >
+          {pt('actions.save')}
+        </Button>
+      }
     >
       <FormProvider {...form}>
-        {saveErrorMessage ? <StudioFormSummary kind="error">{saveErrorMessage}</StudioFormSummary> : null}
-        <FaqEditorTabs activeTab={activeTab} contentId={contentId} form={form} mode={mode} onTabChange={setActiveTab} pt={pt} />
+        {saveErrorMessage ? (
+          <StudioFormSummary kind="error">{saveErrorMessage}</StudioFormSummary>
+        ) : null}
+        <FaqEditorTabs
+          activeTab={activeTab}
+          contentId={contentId}
+          form={form}
+          mode={mode}
+          onTabChange={setActiveTab}
+          pt={pt}
+        />
       </FormProvider>
     </StudioDetailPageTemplate>
   );
@@ -65,7 +113,10 @@ const FaqEditorPage = ({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
 export const FaqCreatePage = () => <FaqEditorPage mode="create" />;
 
 export const FaqEditPage = () => {
-  const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
+  const params = useParams({ strict: false }) as {
+    readonly contentId?: string;
+    readonly id?: string;
+  };
   return <FaqEditorPage mode="edit" contentId={params.contentId ?? params.id} />;
 };
 

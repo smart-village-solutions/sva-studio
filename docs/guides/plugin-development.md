@@ -244,6 +244,65 @@ Ein abgelehntes Plugin erscheint nicht teilweise im Snapshot.
 
 Plugin-Custom-Views sind zulässig, wenn sie die Host-Shell, hostseitige Guards und den Routing-Vertrag respektieren. Wiederverwendbare Studio-UI kommt ausschließlich aus `@sva/studio-ui-react`.
 
+### Design-Pattern für lange Bearbeitungsflächen
+
+Lange Erstellungs- und Bearbeitungsseiten bieten ihre eine fachliche Primäraktion sowohl im Seitenkopf als auch nach der Arbeitsfläche an. Das gilt nicht nur für klassische Inhalte wie News, Events, FAQ, POI, Umfragen oder generische Inhalte, sondern für jede lange Bearbeitungsfläche, beispielsweise Benutzer, Rollenberechtigungen oder Rechtstexte.
+
+Das Pattern ist anzuwenden, wenn mindestens eines dieser Merkmale vorliegt:
+
+- Tabs oder mehrere fachliche Sektionen verteilen die Eingaben.
+- Rich-Text-, Medien-, Tabellen- oder Listenbearbeitung macht die Seite lang.
+- Die Arbeitsfläche überschreitet typischerweise mehrere Viewport-Höhen.
+- Speichern schließt Änderungen aus mehreren Bereichen gemeinsam ab.
+
+Kurze Formulare und Dialoge, bei denen die Abschlusszone ohne Scrollen sichtbar bleibt, benötigen keine doppelte Primäraktion. Tab-spezifische Aktionen werden nicht in dieses Pattern aufgenommen. Die wiederholte Aktion speichert immer die gesamte Bearbeitungsfläche und bleibt deshalb unabhängig vom aktiven Tab.
+
+Für Detailseiten ist `primaryAction` von `StudioDetailPageTemplate` der Standard. Das Template rendert dieselbe Aktion im Kopf und am Seitenende:
+
+```tsx
+import { Button, StudioDetailPageTemplate } from '@sva/studio-ui-react';
+import React from 'react';
+
+export function ExampleDetailPage() {
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  const save = async () => {
+    setIsSaving(true);
+    try {
+      await saveAllSections();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <StudioDetailPageTemplate
+      title={pt('editor.title')}
+      description={pt('editor.description')}
+      primaryAction={
+        <Button type="button" disabled={isSaving} onClick={() => void save()}>
+          {pt('actions.save')}
+        </Button>
+      }
+    >
+      <ExampleEditor />
+    </StudioDetailPageTemplate>
+  );
+}
+```
+
+Bei nativen Formularen verweist die Aktion mit `type="submit"` und `form` auf genau dasselbe Formular. Beide sichtbaren Buttons müssen denselben Handler, Lade-/Disabled-Zustand, Berechtigungszustand und dieselbe Beschriftung verwenden. Es darf keine getrennte Kopf- und Fuß-Speicherlogik geben.
+
+Wenn eine Seite das Detailseiten-Template nicht verwenden kann, wird `StudioFormActionBar` explizit vor und nach der langen Arbeitsfläche eingebunden. `position="start"` kennzeichnet den oberen und `position="end"` den unteren Abschlussbereich.
+
+Review-Checkliste:
+
+- Ist die Primäraktion fachlich global und nicht tab-spezifisch?
+- Lösen beide Positionen exakt dieselbe Mutation beziehungsweise dasselbe Formular aus?
+- Sind Beschriftung, Berechtigung, Lade- und Disabled-Zustand identisch?
+- Bleiben Abbrechen, Löschen und andere sekundäre Aktionen bewusst getrennt?
+- Prüft mindestens ein UI-Test beide Positionen und eine Ausführung über die untere Aktion?
+
 Erlaubt:
 
 ```tsx
@@ -328,7 +387,14 @@ export const pluginNews: PluginDefinition = {
   displayName: 'News',
   permissions: newsPermissions,
   routes: [{ id: 'news.list', path: '/plugins/news', guard: 'news.read', component: NewsListPage }],
-  navigation: [{ id: 'news.navigation', to: '/plugins/news', titleKey: 'news.navigation.title', requiredAction: 'news.read' }],
+  navigation: [
+    {
+      id: 'news.navigation',
+      to: '/plugins/news',
+      titleKey: 'news.navigation.title',
+      requiredAction: 'news.read',
+    },
+  ],
   translations: {},
 };
 ```

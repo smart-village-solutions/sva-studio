@@ -43,7 +43,10 @@ import {
   type StatusMessage,
 } from './generic-items.detail-page.logic.js';
 import { GenericItemsDetailTabs } from './generic-items.detail-page.tabs.js';
-import { genericItemsDetailFormSchema, type GenericItemsDetailFormValues } from './generic-items.validation.js';
+import {
+  genericItemsDetailFormSchema,
+  type GenericItemsDetailFormValues,
+} from './generic-items.validation.js';
 
 const genericItemsListLink = {
   to: '/admin/content',
@@ -58,9 +61,13 @@ const getFieldErrorMessage = (error: unknown): string | undefined => {
   return typeof error.message === 'string' && error.message.length > 0 ? error.message : undefined;
 };
 
-const createSummaryErrors = (errors: ReturnType<typeof useForm<GenericItemsDetailFormValues>>['formState']['errors']) => {
+const createSummaryErrors = (
+  errors: ReturnType<typeof useForm<GenericItemsDetailFormValues>>['formState']['errors']
+) => {
   const entries = [
-    getFieldErrorMessage(errors.title) ? { field: 'generic-item-title', message: getFieldErrorMessage(errors.title) } : null,
+    getFieldErrorMessage(errors.title)
+      ? { field: 'generic-item-title', message: getFieldErrorMessage(errors.title) }
+      : null,
     getFieldErrorMessage(errors.genericType)
       ? { field: 'generic-item-type', message: getFieldErrorMessage(errors.genericType) }
       : null,
@@ -77,7 +84,9 @@ const createSummaryErrors = (errors: ReturnType<typeof useForm<GenericItemsDetai
 
 type GenericItemsMediaPickerAsset = StudioMediaPickerAssetDetail;
 
-const toGenericItemsMediaPickerSummary = (asset: Parameters<typeof readAssetTitle>[0]): StudioMediaPickerAssetSummary => ({
+const toGenericItemsMediaPickerSummary = (
+  asset: Parameters<typeof readAssetTitle>[0]
+): StudioMediaPickerAssetSummary => ({
   id: asset.id,
   title: readAssetTitle(asset),
   fileName: readAssetFileName(asset),
@@ -189,14 +198,12 @@ const DetailPageActions = ({
   mode,
   deleting,
   onDelete,
-  onSubmit,
   pt,
 }: Readonly<{
   disableActions: boolean;
   deleting: boolean;
   mode: 'create' | 'edit';
   onDelete: () => Promise<void>;
-  onSubmit: () => Promise<void>;
   pt: (key: string) => string;
 }>) => (
   <div className="flex gap-2">
@@ -204,13 +211,15 @@ const DetailPageActions = ({
       <Link {...genericItemsListLink}>{pt('actions.back')}</Link>
     </Button>
     {mode === 'edit' ? (
-      <Button type="button" variant="outline" disabled={disableActions || deleting} onClick={() => void onDelete()}>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={disableActions || deleting}
+        onClick={() => void onDelete()}
+      >
         {pt('actions.delete')}
       </Button>
     ) : null}
-    <Button type="button" disabled={disableActions} onClick={() => void onSubmit()}>
-      {mode === 'create' ? pt('actions.create') : pt('actions.update')}
-    </Button>
   </div>
 );
 
@@ -229,40 +238,48 @@ export function GenericItemsDetailPage({
     resolver: zodResolver(genericItemsDetailFormSchema),
     defaultValues: createDefaultGenericItemsDetailFormValues(),
   });
-  const summaryErrors = React.useMemo(() => createSummaryErrors(methods.formState.errors), [methods.formState.errors]);
+  const summaryErrors = React.useMemo(
+    () => createSummaryErrors(methods.formState.errors),
+    [methods.formState.errors]
+  );
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const { mediaAssets, refreshMediaAssets } = useGenericItemsMediaAssets();
   const mediaAssetsRef = React.useRef(mediaAssets);
-  const { categoryOptions, categoryOptionsError, categoryOptionsLoading } = useGenericItemsCategoryOptions(pt);
+  const { categoryOptions, categoryOptionsError, categoryOptionsLoading } =
+    useGenericItemsCategoryOptions(pt);
   const loading = useGenericItemsDetailLoader({ contentId, methods, mode, pt, setStatus });
-  const { activeTab, deleting, handleDelete, onSubmit, setActiveTab } = useGenericItemsDetailActions({
-    contentId,
-    methods,
-    mode,
-    navigate,
-    pt,
-    setStatus,
-  });
-  const isAssetSelectable = React.useCallback((asset: GenericItemsMediaPickerAsset) => {
-    const nextMedia = mediaContentFromAsset({
-      id: asset.id,
-      fileName: asset.fileName,
-      metadata: asset.metadata,
-      visibility: asset.visibility,
-      mimeType: asset.mimeType,
-      previewUrl: asset.previewUrl,
+  const { activeTab, deleting, handleDelete, onSubmit, setActiveTab } =
+    useGenericItemsDetailActions({
+      contentId,
+      methods,
+      mode,
+      navigate,
+      pt,
+      setStatus,
     });
-    if (!nextMedia) {
-      return false;
-    }
+  const isAssetSelectable = React.useCallback(
+    (asset: GenericItemsMediaPickerAsset) => {
+      const nextMedia = mediaContentFromAsset({
+        id: asset.id,
+        fileName: asset.fileName,
+        metadata: asset.metadata,
+        visibility: asset.visibility,
+        mimeType: asset.mimeType,
+        previewUrl: asset.previewUrl,
+      });
+      if (!nextMedia) {
+        return false;
+      }
 
-    const existingSources = new Set(
-      (methods.getValues('mediaContents') ?? [])
-        .map((entry) => entry.sourceUrl?.url?.trim() ?? '')
-        .filter((value) => value.length > 0)
-    );
-    return existingSources.has(nextMedia.sourceUrl?.url?.trim() ?? '') === false;
-  }, [methods]);
+      const existingSources = new Set(
+        (methods.getValues('mediaContents') ?? [])
+          .map((entry) => entry.sourceUrl?.url?.trim() ?? '')
+          .filter((value) => value.length > 0)
+      );
+      return existingSources.has(nextMedia.sourceUrl?.url?.trim() ?? '') === false;
+    },
+    [methods]
+  );
 
   const mediaPicker = useStudioMediaPickerOverlay<GenericItemsMediaPickerAsset>({
     onAccept: (asset) => {
@@ -334,7 +351,8 @@ export function GenericItemsDetailPage({
     mediaAssetsRef.current = mediaAssets;
   }, [mediaAssets]);
   const mediaPickerFeedback = React.useMemo(
-    () => resolveGenericItemsMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
+    () =>
+      resolveGenericItemsMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
     [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
   );
 
@@ -346,14 +364,24 @@ export function GenericItemsDetailPage({
     <FormProvider {...methods}>
       <StudioDetailPageTemplate
         title={mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
-        description={mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
+        description={
+          mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')
+        }
+        primaryAction={
+          <Button
+            type="button"
+            disabled={methods.formState.isSubmitting}
+            onClick={() => void onSubmit()}
+          >
+            {mode === 'create' ? pt('actions.create') : pt('actions.update')}
+          </Button>
+        }
         actions={
           <DetailPageActions
             disableActions={methods.formState.isSubmitting}
             deleting={deleting}
             mode={mode}
             onDelete={handleDelete}
-            onSubmit={onSubmit}
             pt={pt}
           />
         }
@@ -386,7 +414,9 @@ export function GenericItemsDetailPage({
           onClose={mediaPicker.close}
           onConfirmSelection={() => void mediaPicker.confirmSelection()}
           onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
-          onOpenMediaManagement={(assetId) => void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })}
+          onOpenMediaManagement={(assetId) =>
+            void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })
+          }
           onSearchValueChange={mediaPicker.setSearchValue}
           onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
           onUploadFile={(file) => void mediaPicker.uploadFile(file)}

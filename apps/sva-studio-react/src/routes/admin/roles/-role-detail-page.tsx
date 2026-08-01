@@ -3,6 +3,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import {
   StudioDataTable,
   StudioDetailPageTemplate,
+  StudioFormActionBar,
   type StudioColumnDef,
 } from '@sva/studio-ui-react';
 
@@ -214,14 +215,20 @@ const buildPermissionScopeDraft = (
   ) as Record<string, PermissionAccessScope>;
   const permissionById = new Map(catalog.map((permission) => [permission.id, permission] as const));
 
-  return role.permissions.reduce<Record<string, PermissionAccessScope>>((acc, permission) => {
-    acc[permission.id] = normalizePermissionAccessScope(byAssignment[permission.id] ?? permission.accessScope ?? 'all', {
-      isScopeAssignable: permission.isScopeAssignable ?? permissionById.get(permission.id)?.isScopeAssignable,
-      supportedAccessScopes:
-        permission.supportedAccessScopes ?? permissionById.get(permission.id)?.supportedAccessScopes,
-    });
-    return acc;
-  }, { ...Object.fromEntries(catalog.map((permission) => [permission.id, 'all'] as const)) });
+  return role.permissions.reduce<Record<string, PermissionAccessScope>>(
+    (acc, permission) => {
+      acc[permission.id] = normalizePermissionAccessScope(
+        byAssignment[permission.id] ?? permission.accessScope ?? 'all',
+        {
+          isScopeAssignable: permission.isScopeAssignable ?? permissionById.get(permission.id)?.isScopeAssignable,
+          supportedAccessScopes:
+            permission.supportedAccessScopes ?? permissionById.get(permission.id)?.supportedAccessScopes,
+        }
+      );
+      return acc;
+    },
+    { ...Object.fromEntries(catalog.map((permission) => [permission.id, 'all'] as const)) }
+  );
 };
 
 export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
@@ -259,7 +266,12 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       description: role.description ?? '',
       roleLevel: String(role.roleLevel),
     });
-    setPermissionDraft(sortPermissionIdsByCatalog(role.permissions.map((permission) => permission.id), permissionsApi.permissions));
+    setPermissionDraft(
+      sortPermissionIdsByCatalog(
+        role.permissions.map((permission) => permission.id),
+        permissionsApi.permissions
+      )
+    );
     setPermissionScopeDraft(buildPermissionScopeDraft(role, permissionsApi.permissions));
   }, [permissionsApi.permissions, role]);
 
@@ -277,9 +289,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
           detailLabel: summary.detailLabel,
           isAssigned: permissionDraft.includes(permission.id),
           isScopeAssignable: permission.isScopeAssignable ?? false,
-          supportedAccessScopes: normalizeSupportedAccessScopes(permission.supportedAccessScopes as
-            | readonly PermissionAccessScope[]
-            | undefined),
+          supportedAccessScopes: normalizeSupportedAccessScopes(
+            permission.supportedAccessScopes as readonly PermissionAccessScope[] | undefined
+          ),
           accessScope: normalizePermissionAccessScope(permissionScopeDraft[permission.id], permission),
         };
       }),
@@ -407,12 +419,20 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   );
 
   const assignAllPermissions = React.useCallback(() => {
-    setPermissionDraft(sortPermissionIdsByCatalog(permissionsApi.permissions.map((permission) => permission.id), permissionsApi.permissions));
+    setPermissionDraft(
+      sortPermissionIdsByCatalog(
+        permissionsApi.permissions.map((permission) => permission.id),
+        permissionsApi.permissions
+      )
+    );
     setPermissionScopeDraft((current) =>
-      permissionsApi.permissions.reduce<Record<string, PermissionAccessScope>>((acc, permission) => {
-        acc[permission.id] = current[permission.id] ?? 'all';
-        return acc;
-      }, { ...current })
+      permissionsApi.permissions.reduce<Record<string, PermissionAccessScope>>(
+        (acc, permission) => {
+          acc[permission.id] = current[permission.id] ?? 'all';
+          return acc;
+        },
+        { ...current }
+      )
     );
   }, [permissionsApi.permissions]);
 
@@ -431,10 +451,13 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       });
       if (nextAssigned) {
         setPermissionScopeDraft((current) =>
-          permissionIds.reduce<Record<string, PermissionAccessScope>>((acc, permissionId) => {
-            acc[permissionId] = current[permissionId] ?? 'all';
-            return acc;
-          }, { ...current })
+          permissionIds.reduce<Record<string, PermissionAccessScope>>(
+            (acc, permissionId) => {
+              acc[permissionId] = current[permissionId] ?? 'all';
+              return acc;
+            },
+            { ...current }
+          )
         );
       }
     },
@@ -527,7 +550,12 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       return;
     }
 
-    setPermissionDraft(sortPermissionIdsByCatalog(role.permissions.map((permission) => permission.id), permissionsApi.permissions));
+    setPermissionDraft(
+      sortPermissionIdsByCatalog(
+        role.permissions.map((permission) => permission.id),
+        permissionsApi.permissions
+      )
+    );
     setPermissionScopeDraft(buildPermissionScopeDraft(role, permissionsApi.permissions));
   };
 
@@ -618,6 +646,16 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     );
   }
 
+  const savePermissionsAction = (
+    <Button
+      type="button"
+      disabled={isReadOnly || permissionsApi.isLoading || Boolean(permissionsApi.error) || isSavingPermissions}
+      onClick={() => void onSavePermissions()}
+    >
+      {isSavingPermissions ? t('admin.roles.workspace.savingPermissions') : t('admin.roles.workspace.savePermissions')}
+    </Button>
+  );
+
   return (
     <StudioDetailPageTemplate
       title={role.roleName}
@@ -671,8 +709,16 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
               <div className="flex flex-wrap gap-2 text-xs">
                 <Badge variant="outline">{roleTypeLabel(role)}</Badge>
                 <Badge variant="outline">{roleStatusLabel(role.syncState)}</Badge>
-                <Badge variant="outline">{t('admin.roles.detail.badges.permissionCount', { count: String(role.permissions.length) })}</Badge>
-                <Badge variant="outline">{t('admin.roles.detail.badges.assignmentCount', { count: String(role.memberCount) })}</Badge>
+                <Badge variant="outline">
+                  {t('admin.roles.detail.badges.permissionCount', {
+                    count: String(role.permissions.length),
+                  })}
+                </Badge>
+                <Badge variant="outline">
+                  {t('admin.roles.detail.badges.assignmentCount', {
+                    count: String(role.memberCount),
+                  })}
+                </Badge>
               </div>
             </div>
           </CardHeader>
@@ -701,7 +747,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                 aria-selected={selected}
                 aria-controls={`role-detail-panel-${tab}`}
                 className={`text-sm transition ${
-                  selected ? 'bg-primary font-semibold text-primary-foreground hover:bg-primary/90' : 'text-muted-foreground'
+                  selected
+                    ? 'bg-primary font-semibold text-primary-foreground hover:bg-primary/90'
+                    : 'text-muted-foreground'
                 }`}
                 onClick={() => onTabIntent(tab)}
                 onKeyDown={(event) => {
@@ -816,315 +864,327 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
         </section>
 
         <section
-        id="role-detail-panel-permissions"
-        role="tabpanel"
-        aria-labelledby="role-detail-tab-permissions"
-        hidden={activeTab !== 'permissions'}
-        className="space-y-4"
-      >
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+          id="role-detail-panel-permissions"
+          role="tabpanel"
+          aria-labelledby="role-detail-tab-permissions"
+          hidden={activeTab !== 'permissions'}
+          className="space-y-4"
+        >
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('admin.roles.workspace.editPermissionsTitle')}</CardTitle>
+                <CardDescription>{t('admin.roles.detail.permissions.subtitle')}</CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">{t('admin.roles.workspace.sideTitle')}</CardTitle>
+                <CardDescription>{t('admin.roles.workspace.sideSubtitle')}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">{t('admin.roles.detail.permissions.cockpitHint')}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    aria-pressed={showTechnicalDetails}
+                    onClick={() => setShowTechnicalDetails((current) => !current)}
+                  >
+                    {showTechnicalDetails
+                      ? t('admin.roles.detail.permissions.hideTechnicalDetails')
+                      : t('admin.roles.detail.permissions.showTechnicalDetails')}
+                  </Button>
+                  <Button asChild type="button" variant="outline">
+                    <Link to="/admin/iam" search={{ tab: 'rights' }}>
+                      {t('admin.roles.workspace.openIamCta')}
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <StudioFormActionBar position="start">{savePermissionsAction}</StudioFormActionBar>
+
+          {permissionsApi.error ? (
+            <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+              <AlertDescription>{t('admin.roles.workspace.permissionsLoadError')}</AlertDescription>
+            </Alert>
+          ) : permissionsApi.isLoading ? (
+            <p className="text-sm text-muted-foreground">{t('admin.roles.workspace.permissionsLoading')}</p>
+          ) : (
+            <StudioDataTable
+              ariaLabel={t('admin.roles.detail.permissions.table.ariaLabel')}
+              labels={studioDataTableLabels}
+              caption={t('admin.roles.detail.permissions.table.caption')}
+              data={filteredPermissionTableRows}
+              columns={permissionTableColumns}
+              getRowId={(permission) => permission.id}
+              selectionMode="none"
+              emptyState={
+                <Card className="border-none p-0 text-sm text-muted-foreground shadow-none" role="status">
+                  {t('admin.roles.detail.permissions.table.empty')}
+                </Card>
+              }
+              toolbarStart={
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="flex min-w-[16rem] flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                    <Label htmlFor="role-permissions-search">
+                      {t('admin.roles.detail.permissions.filters.searchLabel')}
+                    </Label>
+                    <Input
+                      id="role-permissions-search"
+                      value={permissionSearch}
+                      onChange={(event) => setPermissionSearch(event.target.value)}
+                      placeholder={t('admin.roles.detail.permissions.filters.searchPlaceholder')}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <Badge variant="outline">
+                      {t('admin.roles.detail.permissions.summary.visibleCount', {
+                        count: String(filteredPermissionTableRows.length),
+                      })}
+                    </Badge>
+                    <Badge variant="outline">
+                      {t('admin.roles.detail.permissions.summary.assignedCount', {
+                        count: String(permissionDraft.length),
+                      })}
+                    </Badge>
+                  </div>
+                </div>
+              }
+              toolbarEnd={
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" disabled={isReadOnly} onClick={assignVisiblePermissions}>
+                    {t('admin.roles.detail.permissions.bulk.assignVisible')}
+                  </Button>
+                  <Button type="button" variant="outline" disabled={isReadOnly} onClick={removeVisiblePermissions}>
+                    {t('admin.roles.detail.permissions.bulk.removeVisible')}
+                  </Button>
+                  <Button type="button" variant="outline" disabled={isReadOnly} onClick={assignAllPermissions}>
+                    {t('admin.roles.detail.permissions.bulk.assignAll')}
+                  </Button>
+                  <Button type="button" variant="outline" disabled={isReadOnly} onClick={removeAllPermissions}>
+                    {t('admin.roles.detail.permissions.bulk.removeAll')}
+                  </Button>
+                </div>
+              }
+            />
+          )}
+
+          <StudioFormActionBar>
+            {savePermissionsAction}
+            <Button type="button" variant="outline" disabled={isReadOnly} onClick={resetPermissionDraft}>
+              {t('admin.roles.workspace.resetPermissions')}
+            </Button>
+          </StudioFormActionBar>
+        </section>
+
+        <section
+          id="role-detail-panel-assignments"
+          role="tabpanel"
+          aria-labelledby="role-detail-tab-assignments"
+          hidden={activeTab !== 'assignments'}
+          className="grid gap-4 md:grid-cols-2"
+        >
           <Card>
             <CardHeader>
-              <CardTitle>{t('admin.roles.workspace.editPermissionsTitle')}</CardTitle>
-              <CardDescription>{t('admin.roles.detail.permissions.subtitle')}</CardDescription>
+              <CardTitle>{t('admin.roles.detail.assignments.summaryTitle')}</CardTitle>
+              <CardDescription>{t('admin.roles.detail.assignments.summaryBody')}</CardDescription>
             </CardHeader>
+            <CardContent className="space-y-4">
+              <dl className="grid gap-4">
+                <DetailMetaItem
+                  label={t('admin.roles.workspace.assignmentCountLabel')}
+                  value={t('admin.roles.workspace.assignmentCountValue', {
+                    count: String(role.memberCount),
+                  })}
+                />
+                <DetailMetaItem label={t('admin.roles.detail.assignments.managedBy')} value={role.managedBy} />
+              </dl>
+              <div className="grid gap-2 text-sm text-foreground">
+                <Label htmlFor="role-assignment-search">{t('admin.roles.detail.assignments.searchLabel')}</Label>
+                <Input
+                  id="role-assignment-search"
+                  value={usersApi.filters.search}
+                  onChange={(event) => usersApi.setSearch(event.target.value)}
+                  placeholder={t('admin.roles.detail.assignments.searchPlaceholder')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle>{t('admin.roles.detail.assignments.managementTitle')}</CardTitle>
+                  <CardDescription>{t('admin.roles.detail.assignments.managementBody')}</CardDescription>
+                </div>
+                <Button asChild type="button" variant="outline">
+                  <Link to="/admin/users">{t('admin.roles.detail.assignments.openUsers')}</Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {usersApi.error ? (
+                <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+                  <AlertDescription>{t('admin.roles.detail.assignments.loadError')}</AlertDescription>
+                </Alert>
+              ) : null}
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-foreground">
+                    {t('admin.roles.detail.assignments.currentTitle')}
+                  </h3>
+                  {usersApi.isLoading ? (
+                    <p className="text-sm text-muted-foreground">{t('admin.roles.detail.assignments.loading')}</p>
+                  ) : assignedUsers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">{t('admin.roles.detail.assignments.emptyAssigned')}</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {assignedUsers.map((user) => {
+                        const roleIds = user.roles.map((assignment) => assignment.roleId);
+                        const isBusy = isUpdatingAssignmentsForUserIds.includes(user.id);
+                        return (
+                          <li
+                            key={user.id}
+                            className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground">{user.displayName}</p>
+                              <p className="text-xs text-muted-foreground">{user.email ?? user.keycloakSubject}</p>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={isReadOnly || isBusy}
+                              onClick={() => void removeRoleFromUser(user.id, roleIds)}
+                            >
+                              {isBusy
+                                ? t('admin.roles.detail.assignments.updating')
+                                : t('admin.roles.detail.assignments.remove')}
+                            </Button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-foreground">
+                    {t('admin.roles.detail.assignments.availableTitle')}
+                  </h3>
+                  {usersApi.isLoading ? (
+                    <p className="text-sm text-muted-foreground">{t('admin.roles.detail.assignments.loading')}</p>
+                  ) : unassignedUsers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {t('admin.roles.detail.assignments.emptyAvailable')}
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {unassignedUsers.map((user) => {
+                        const roleIds = user.roles.map((assignment) => assignment.roleId);
+                        const isBusy = isUpdatingAssignmentsForUserIds.includes(user.id);
+                        return (
+                          <li
+                            key={user.id}
+                            className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground">{user.displayName}</p>
+                              <p className="text-xs text-muted-foreground">{user.email ?? user.keycloakSubject}</p>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={isReadOnly || isBusy}
+                              onClick={() => void assignRoleToUser(user.id, roleIds)}
+                            >
+                              {isBusy
+                                ? t('admin.roles.detail.assignments.updating')
+                                : t('admin.roles.detail.assignments.assign')}
+                            </Button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section
+          id="role-detail-panel-sync"
+          role="tabpanel"
+          aria-labelledby="role-detail-tab-sync"
+          hidden={activeTab !== 'sync'}
+          className="grid gap-4 md:grid-cols-2"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('admin.roles.detail.sync.title')}</CardTitle>
+              <CardDescription>{t('admin.roles.detail.sync.subtitle')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert className="border-secondary/40 bg-secondary/5 text-secondary">
+                <AlertDescription>
+                  {role.managedBy === 'studio'
+                    ? t('admin.roles.detail.sync.metadataOnlyHint')
+                    : t('admin.roles.detail.sync.externalHint')}
+                </AlertDescription>
+              </Alert>
+              <dl className="grid gap-4">
+                <DetailMetaItem
+                  label={t('admin.roles.detail.sync.metadataStatus')}
+                  value={roleStatusLabel(role.syncState)}
+                />
+                <DetailMetaItem
+                  label={t('admin.roles.detail.sync.lastSyncedAt')}
+                  value={role.lastSyncedAt ?? t('admin.roles.detail.sync.notAvailable')}
+                />
+                <DetailMetaItem label={t('admin.roles.detail.sync.source')} value={role.managedBy} />
+                {role.syncError?.code ? (
+                  <DetailMetaItem label={t('admin.roles.detail.sync.errorCode')} value={role.syncError.code} />
+                ) : null}
+              </dl>
+            </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">{t('admin.roles.workspace.sideTitle')}</CardTitle>
-              <CardDescription>{t('admin.roles.workspace.sideSubtitle')}</CardDescription>
+              <CardTitle>{t('admin.roles.detail.sync.localChangesTitle')}</CardTitle>
+              <CardDescription>{t('admin.roles.detail.sync.localChangesBody')}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground">{t('admin.roles.detail.permissions.cockpitHint')}</p>
-              <div className="flex flex-wrap gap-2">
+            <CardContent className="space-y-4">
+              <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                <li>{t('admin.roles.detail.sync.localChangeItems.permissions')}</li>
+                <li>{t('admin.roles.detail.sync.localChangeItems.assignments')}</li>
+                <li>{t('admin.roles.detail.sync.localChangeItems.roleLevel')}</li>
+              </ul>
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-foreground">{t('admin.roles.detail.sync.actionsTitle')}</h3>
+                <p className="text-sm text-muted-foreground">{t('admin.roles.detail.sync.actionsBody')}</p>
+              </div>
+              <div className="flex flex-wrap gap-3">
                 <Button
                   type="button"
-                  variant="outline"
-                  aria-pressed={showTechnicalDetails}
-                  onClick={() => setShowTechnicalDetails((current) => !current)}
+                  variant="secondary"
+                  disabled={role.managedBy !== 'studio'}
+                  onClick={() => void rolesApi.retryRoleSync(role.id)}
                 >
-                  {showTechnicalDetails
-                    ? t('admin.roles.detail.permissions.hideTechnicalDetails')
-                    : t('admin.roles.detail.permissions.showTechnicalDetails')}
+                  {t('admin.roles.actions.retrySync')}
                 </Button>
-                <Button asChild type="button" variant="outline">
-                  <Link to="/admin/iam" search={{ tab: 'rights' }}>
-                    {t('admin.roles.workspace.openIamCta')}
-                  </Link>
+                <Button type="button" variant="outline" onClick={() => void rolesApi.refetch()}>
+                  {t('admin.roles.actions.retry')}
                 </Button>
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {permissionsApi.error ? (
-          <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-            <AlertDescription>{t('admin.roles.workspace.permissionsLoadError')}</AlertDescription>
-          </Alert>
-        ) : permissionsApi.isLoading ? (
-          <p className="text-sm text-muted-foreground">{t('admin.roles.workspace.permissionsLoading')}</p>
-        ) : (
-          <StudioDataTable
-            ariaLabel={t('admin.roles.detail.permissions.table.ariaLabel')}
-            labels={studioDataTableLabels}
-            caption={t('admin.roles.detail.permissions.table.caption')}
-            data={filteredPermissionTableRows}
-            columns={permissionTableColumns}
-            getRowId={(permission) => permission.id}
-            selectionMode="none"
-            emptyState={
-              <Card className="border-none p-0 text-sm text-muted-foreground shadow-none" role="status">
-                {t('admin.roles.detail.permissions.table.empty')}
-              </Card>
-            }
-            toolbarStart={
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="flex min-w-[16rem] flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-                  <Label htmlFor="role-permissions-search">{t('admin.roles.detail.permissions.filters.searchLabel')}</Label>
-                  <Input
-                    id="role-permissions-search"
-                    value={permissionSearch}
-                    onChange={(event) => setPermissionSearch(event.target.value)}
-                    placeholder={t('admin.roles.detail.permissions.filters.searchPlaceholder')}
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                  <Badge variant="outline">
-                    {t('admin.roles.detail.permissions.summary.visibleCount', {
-                      count: String(filteredPermissionTableRows.length),
-                    })}
-                  </Badge>
-                  <Badge variant="outline">
-                    {t('admin.roles.detail.permissions.summary.assignedCount', {
-                      count: String(permissionDraft.length),
-                    })}
-                  </Badge>
-                </div>
-              </div>
-            }
-            toolbarEnd={
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" disabled={isReadOnly} onClick={assignVisiblePermissions}>
-                  {t('admin.roles.detail.permissions.bulk.assignVisible')}
-                </Button>
-                <Button type="button" variant="outline" disabled={isReadOnly} onClick={removeVisiblePermissions}>
-                  {t('admin.roles.detail.permissions.bulk.removeVisible')}
-                </Button>
-                <Button type="button" variant="outline" disabled={isReadOnly} onClick={assignAllPermissions}>
-                  {t('admin.roles.detail.permissions.bulk.assignAll')}
-                </Button>
-                <Button type="button" variant="outline" disabled={isReadOnly} onClick={removeAllPermissions}>
-                  {t('admin.roles.detail.permissions.bulk.removeAll')}
-                </Button>
-              </div>
-            }
-          />
-        )}
-
-        <div className="flex flex-wrap gap-3">
-          <Button
-            type="button"
-            disabled={isReadOnly || permissionsApi.isLoading || Boolean(permissionsApi.error) || isSavingPermissions}
-            onClick={() => void onSavePermissions()}
-          >
-            {isSavingPermissions
-              ? t('admin.roles.workspace.savingPermissions')
-              : t('admin.roles.workspace.savePermissions')}
-          </Button>
-          <Button type="button" variant="outline" disabled={isReadOnly} onClick={resetPermissionDraft}>
-            {t('admin.roles.workspace.resetPermissions')}
-          </Button>
-        </div>
-        </section>
-
-        <section
-        id="role-detail-panel-assignments"
-        role="tabpanel"
-        aria-labelledby="role-detail-tab-assignments"
-        hidden={activeTab !== 'assignments'}
-        className="grid gap-4 md:grid-cols-2"
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('admin.roles.detail.assignments.summaryTitle')}</CardTitle>
-            <CardDescription>{t('admin.roles.detail.assignments.summaryBody')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <dl className="grid gap-4">
-              <DetailMetaItem
-                label={t('admin.roles.workspace.assignmentCountLabel')}
-                value={t('admin.roles.workspace.assignmentCountValue', { count: String(role.memberCount) })}
-              />
-              <DetailMetaItem label={t('admin.roles.detail.assignments.managedBy')} value={role.managedBy} />
-            </dl>
-            <div className="grid gap-2 text-sm text-foreground">
-              <Label htmlFor="role-assignment-search">{t('admin.roles.detail.assignments.searchLabel')}</Label>
-              <Input
-                id="role-assignment-search"
-                value={usersApi.filters.search}
-                onChange={(event) => usersApi.setSearch(event.target.value)}
-                placeholder={t('admin.roles.detail.assignments.searchPlaceholder')}
-              />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle>{t('admin.roles.detail.assignments.managementTitle')}</CardTitle>
-                <CardDescription>{t('admin.roles.detail.assignments.managementBody')}</CardDescription>
-              </div>
-              <Button asChild type="button" variant="outline">
-                <Link to="/admin/users">{t('admin.roles.detail.assignments.openUsers')}</Link>
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-
-          {usersApi.error ? (
-            <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-              <AlertDescription>{t('admin.roles.detail.assignments.loadError')}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          <div className="grid gap-4 xl:grid-cols-2">
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-foreground">{t('admin.roles.detail.assignments.currentTitle')}</h3>
-              {usersApi.isLoading ? (
-                <p className="text-sm text-muted-foreground">{t('admin.roles.detail.assignments.loading')}</p>
-              ) : assignedUsers.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('admin.roles.detail.assignments.emptyAssigned')}</p>
-              ) : (
-                <ul className="space-y-2">
-                  {assignedUsers.map((user) => {
-                    const roleIds = user.roles.map((assignment) => assignment.roleId);
-                    const isBusy = isUpdatingAssignmentsForUserIds.includes(user.id);
-                    return (
-                      <li key={user.id} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
-                        <div className="min-w-0">
-                          <p className="font-medium text-foreground">{user.displayName}</p>
-                          <p className="text-xs text-muted-foreground">{user.email ?? user.keycloakSubject}</p>
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={isReadOnly || isBusy}
-                          onClick={() => void removeRoleFromUser(user.id, roleIds)}
-                        >
-                          {isBusy
-                            ? t('admin.roles.detail.assignments.updating')
-                            : t('admin.roles.detail.assignments.remove')}
-                        </Button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-foreground">{t('admin.roles.detail.assignments.availableTitle')}</h3>
-              {usersApi.isLoading ? (
-                <p className="text-sm text-muted-foreground">{t('admin.roles.detail.assignments.loading')}</p>
-              ) : unassignedUsers.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('admin.roles.detail.assignments.emptyAvailable')}</p>
-              ) : (
-                <ul className="space-y-2">
-                  {unassignedUsers.map((user) => {
-                    const roleIds = user.roles.map((assignment) => assignment.roleId);
-                    const isBusy = isUpdatingAssignmentsForUserIds.includes(user.id);
-                    return (
-                      <li key={user.id} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
-                        <div className="min-w-0">
-                          <p className="font-medium text-foreground">{user.displayName}</p>
-                          <p className="text-xs text-muted-foreground">{user.email ?? user.keycloakSubject}</p>
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={isReadOnly || isBusy}
-                          onClick={() => void assignRoleToUser(user.id, roleIds)}
-                        >
-                          {isBusy
-                            ? t('admin.roles.detail.assignments.updating')
-                            : t('admin.roles.detail.assignments.assign')}
-                        </Button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          </div>
-          </CardContent>
-        </Card>
-        </section>
-
-        <section
-        id="role-detail-panel-sync"
-        role="tabpanel"
-        aria-labelledby="role-detail-tab-sync"
-        hidden={activeTab !== 'sync'}
-        className="grid gap-4 md:grid-cols-2"
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('admin.roles.detail.sync.title')}</CardTitle>
-            <CardDescription>{t('admin.roles.detail.sync.subtitle')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert className="border-secondary/40 bg-secondary/5 text-secondary">
-              <AlertDescription>
-                {role.managedBy === 'studio'
-                  ? t('admin.roles.detail.sync.metadataOnlyHint')
-                  : t('admin.roles.detail.sync.externalHint')}
-              </AlertDescription>
-            </Alert>
-            <dl className="grid gap-4">
-              <DetailMetaItem label={t('admin.roles.detail.sync.metadataStatus')} value={roleStatusLabel(role.syncState)} />
-              <DetailMetaItem
-                label={t('admin.roles.detail.sync.lastSyncedAt')}
-                value={role.lastSyncedAt ?? t('admin.roles.detail.sync.notAvailable')}
-              />
-              <DetailMetaItem label={t('admin.roles.detail.sync.source')} value={role.managedBy} />
-              {role.syncError?.code ? (
-                <DetailMetaItem label={t('admin.roles.detail.sync.errorCode')} value={role.syncError.code} />
-              ) : null}
-            </dl>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('admin.roles.detail.sync.localChangesTitle')}</CardTitle>
-            <CardDescription>{t('admin.roles.detail.sync.localChangesBody')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-              <li>{t('admin.roles.detail.sync.localChangeItems.permissions')}</li>
-              <li>{t('admin.roles.detail.sync.localChangeItems.assignments')}</li>
-              <li>{t('admin.roles.detail.sync.localChangeItems.roleLevel')}</li>
-            </ul>
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">{t('admin.roles.detail.sync.actionsTitle')}</h3>
-              <p className="text-sm text-muted-foreground">{t('admin.roles.detail.sync.actionsBody')}</p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={role.managedBy !== 'studio'}
-                onClick={() => void rolesApi.retryRoleSync(role.id)}
-              >
-                {t('admin.roles.actions.retrySync')}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => void rolesApi.refetch()}>
-                {t('admin.roles.actions.retry')}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
         </section>
       </section>
     </StudioDetailPageTemplate>

@@ -8,7 +8,11 @@ const useLegalTextsMock = vi.fn();
 const navigateMock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -79,25 +83,36 @@ describe('LegalTextCreatePage', () => {
     fireEvent.change(screen.getByLabelText('Status', { selector: '#legal-text-create-status' }), {
       target: { value: 'valid' },
     });
-    fireEvent.change(screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-create-published' }), {
-      target: { value: '2026-04-10T09:30' },
-    });
-    fireEvent.change(screen.getByLabelText('Zielrollen-IDs', { selector: '#legal-text-create-role-targets' }), {
-      target: {
-        value:
-          ' 11111111-1111-1111-1111-111111111111, 22222222-2222-2222-2222-222222222222 ,, 11111111-1111-1111-1111-111111111111 ',
-      },
-    });
-    fireEvent.change(screen.getByLabelText('Zielgruppen-IDs', { selector: '#legal-text-create-group-targets' }), {
-      target: {
-        value:
-          ' aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb ,, aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa ',
-      },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-create-published' }),
+      {
+        target: { value: '2026-04-10T09:30' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Zielrollen-IDs', { selector: '#legal-text-create-role-targets' }),
+      {
+        target: {
+          value:
+            ' 11111111-1111-1111-1111-111111111111, 22222222-2222-2222-2222-222222222222 ,, 11111111-1111-1111-1111-111111111111 ',
+        },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Zielgruppen-IDs', { selector: '#legal-text-create-group-targets' }),
+      {
+        target: {
+          value:
+            ' aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb ,, aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa ',
+        },
+      }
+    );
     fireEvent.change(screen.getByLabelText('Inhalt', { selector: '#legal-text-create-content' }), {
       target: { value: '<p> Rechtstext </p>' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Rechtstext anlegen' }));
+    const createButtons = screen.getAllByRole('button', { name: 'Rechtstext anlegen' });
+    expect(createButtons).toHaveLength(2);
+    fireEvent.click(createButtons[1]!);
 
     await waitFor(() => {
       expect(createLegalText).toHaveBeenCalledWith({
@@ -135,7 +150,7 @@ describe('LegalTextCreatePage', () => {
     fireEvent.change(screen.getByLabelText('Version', { selector: '#legal-text-create-version' }), {
       target: { value: '2026-05' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Rechtstext anlegen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rechtstext anlegen' })[1]!);
 
     await waitFor(() => {
       expect(createLegalText).toHaveBeenCalled();
@@ -173,10 +188,13 @@ describe('LegalTextCreatePage', () => {
     fireEvent.change(screen.getByLabelText('Status', { selector: '#legal-text-create-status' }), {
       target: { value: 'valid' },
     });
-    fireEvent.change(screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-create-published' }), {
-      target: { value: '2026-03-29T02:30' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Rechtstext anlegen' }));
+    fireEvent.change(
+      screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-create-published' }),
+      {
+        target: { value: '2026-03-29T02:30' },
+      }
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rechtstext anlegen' })[1]!);
 
     await waitFor(() => {
       expect(createLegalText).not.toHaveBeenCalled();

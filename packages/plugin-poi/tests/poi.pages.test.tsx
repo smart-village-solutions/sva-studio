@@ -11,7 +11,8 @@ import { createPoi, getPoi, listPoi, listPoiCategories, updatePoi } from '../src
 import { PoiCreatePage, PoiEditPage, PoiListPage } from '../src/poi.pages.js';
 
 vi.mock('@sva/studio-ui-react', async () => {
-  const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
+  const actual =
+    await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
   return {
     ...actual,
     RichTextHtmlEditor: ({
@@ -50,7 +51,9 @@ vi.mock('../src/poi.api.js', () => ({
     addresses: [{ street: 'Markt 2', city: 'Musterhausen' }],
     webUrls: [{ url: 'https://example.com/poi' }],
     openingHours: [{ weekday: 'Montag', timeFrom: '09:00' }],
-    mediaContents: [{ captionText: 'Bibliothek', sourceUrl: { url: 'https://example.com/poi/library.jpg' } }],
+    mediaContents: [
+      { captionText: 'Bibliothek', sourceUrl: { url: 'https://example.com/poi/library.jpg' } },
+    ],
     payload: { source: 'legacy' },
   })),
   listPoiCategories: vi.fn(async () => []),
@@ -132,7 +135,10 @@ describe('PoiListPage', () => {
   const getEditableNameInput = () =>
     screen
       .getAllByLabelText('Name')
-      .find((element): element is HTMLInputElement => element instanceof HTMLInputElement && element.readOnly === false);
+      .find(
+        (element): element is HTMLInputElement =>
+          element instanceof HTMLInputElement && element.readOnly === false
+      );
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -225,7 +231,8 @@ describe('PoiListPage', () => {
         'poi.cards.advanced.payload.title': 'Zusatzdaten',
         'poi.cards.advanced.payload.description': 'Zusätzliche Mainserver-Daten als JSON.',
         'poi.history.empty.title': 'Noch keine Historie verfügbar.',
-        'poi.history.empty.description': 'Historienereignisse für Orte werden in einem späteren Schritt angebunden.',
+        'poi.history.empty.description':
+          'Historienereignisse für Orte werden in einem späteren Schritt angebunden.',
         'poi.editor.createTitle': 'Ort anlegen',
         'poi.editor.createDescription': 'Erstellen Sie einen neuen Ort.',
         'poi.editor.editTitle': 'Ort bearbeiten',
@@ -338,7 +345,7 @@ describe('PoiListPage', () => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(createPoi).toHaveBeenCalledWith(
@@ -360,7 +367,10 @@ describe('PoiListPage', () => {
           ],
         })
       );
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/poi/$id', params: { id: 'poi-created' } });
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/admin/poi/$id',
+        params: { id: 'poi-created' },
+      });
     });
   }, 10_000);
 
@@ -383,8 +393,10 @@ describe('PoiListPage', () => {
     });
     const nameInput = getEditableNameInput();
     expect(nameInput).toBeTruthy();
-    fireEvent.change(nameInput as HTMLInputElement, { target: { value: 'Aktualisierte Stadtbibliothek' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.change(nameInput as HTMLInputElement, {
+      target: { value: 'Aktualisierte Stadtbibliothek' },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(updatePoi).toHaveBeenCalledWith(
@@ -408,7 +420,7 @@ describe('PoiListPage', () => {
       expect(screen.getByDisplayValue('Stadtbibliothek')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(screen.getByText('Der Ort wurde aktualisiert.')).toBeTruthy();
@@ -421,7 +433,7 @@ describe('PoiListPage', () => {
     fireEvent.change(document.getElementById('poi-link-url-0') as HTMLInputElement, {
       target: { value: 'http://invalid.example' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(screen.queryByText('Der Ort wurde aktualisiert.')).toBeNull();

@@ -8,7 +8,11 @@ const useLegalTextsMock = vi.fn();
 const navigateMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -111,9 +115,10 @@ describe('LegalTextDetailPage', () => {
     render(<LegalTextDetailPage legalTextVersionId="legal-1" />);
 
     await waitFor(() => {
-      expect((screen.getByLabelText('Name', { selector: '#legal-text-edit-name' }) as HTMLInputElement).value).toBe(
-        'Datenschutzhinweise'
-      );
+      expect(
+        (screen.getByLabelText('Name', { selector: '#legal-text-edit-name' }) as HTMLInputElement)
+          .value
+      ).toBe('Datenschutzhinweise');
     });
 
     fireEvent.change(screen.getByLabelText('Name', { selector: '#legal-text-edit-name' }), {
@@ -128,25 +133,36 @@ describe('LegalTextDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Status', { selector: '#legal-text-edit-status' }), {
       target: { value: 'valid' },
     });
-    fireEvent.change(screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' }), {
-      target: { value: '2026-04-10T10:45' },
-    });
-    fireEvent.change(screen.getByLabelText('Zielrollen-IDs', { selector: '#legal-text-edit-role-targets' }), {
-      target: {
-        value:
-          ' 33333333-3333-3333-3333-333333333333, 44444444-4444-4444-4444-444444444444 ,, 33333333-3333-3333-3333-333333333333 ',
-      },
-    });
-    fireEvent.change(screen.getByLabelText('Zielgruppen-IDs', { selector: '#legal-text-edit-group-targets' }), {
-      target: {
-        value:
-          ' cccccccc-cccc-cccc-cccc-cccccccccccc, dddddddd-dddd-dddd-dddd-dddddddddddd, cccccccc-cccc-cccc-cccc-cccccccccccc ',
-      },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' }),
+      {
+        target: { value: '2026-04-10T10:45' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Zielrollen-IDs', { selector: '#legal-text-edit-role-targets' }),
+      {
+        target: {
+          value:
+            ' 33333333-3333-3333-3333-333333333333, 44444444-4444-4444-4444-444444444444 ,, 33333333-3333-3333-3333-333333333333 ',
+        },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Zielgruppen-IDs', { selector: '#legal-text-edit-group-targets' }),
+      {
+        target: {
+          value:
+            ' cccccccc-cccc-cccc-cccc-cccccccccccc, dddddddd-dddd-dddd-dddd-dddddddddddd, cccccccc-cccc-cccc-cccc-cccccccccccc ',
+        },
+      }
+    );
     fireEvent.change(screen.getByLabelText('Inhalt', { selector: '#legal-text-edit-content' }), {
       target: { value: '<p>Neu</p>' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    const saveButtons = screen.getAllByRole('button', { name: 'Änderungen speichern' });
+    expect(saveButtons).toHaveLength(2);
+    fireEvent.click(saveButtons[1]!);
 
     await waitFor(() => {
       expect(updateLegalText).toHaveBeenCalledWith('legal-1', {
@@ -186,12 +202,16 @@ describe('LegalTextDetailPage', () => {
     render(<LegalTextDetailPage legalTextVersionId="legal-1" />);
 
     await waitFor(() => {
-      expect((screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' }) as HTMLInputElement).value).toBe(
-        '2026-10-25T02:30'
-      );
+      expect(
+        (
+          screen.getByLabelText('Veröffentlicht am', {
+            selector: '#legal-text-edit-published',
+          }) as HTMLInputElement
+        ).value
+      ).toBe('2026-10-25T02:30');
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
 
     await waitFor(() => {
       expect(updateLegalText).toHaveBeenCalledWith(
@@ -213,7 +233,9 @@ describe('LegalTextDetailPage', () => {
 
     render(<LegalTextDetailPage legalTextVersionId="missing" />);
 
-    expect(screen.getAllByText('Die angeforderte Rechtstext-Version wurde nicht gefunden.')).toHaveLength(2);
+    expect(
+      screen.getAllByText('Die angeforderte Rechtstext-Version wurde nicht gefunden.')
+    ).toHaveLength(2);
     expect(screen.getByRole('alert')).toBeTruthy();
   });
 
@@ -224,13 +246,18 @@ describe('LegalTextDetailPage', () => {
     render(<LegalTextDetailPage legalTextVersionId="legal-1" />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' })).toBeTruthy();
+      expect(
+        screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' })
+      ).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' }), {
-      target: { value: '2026-03-29T02:30' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.change(
+      screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' }),
+      {
+        target: { value: '2026-03-29T02:30' },
+      }
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
 
     await waitFor(() => {
       expect(updateLegalText).not.toHaveBeenCalled();

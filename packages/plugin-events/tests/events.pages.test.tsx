@@ -6,7 +6,8 @@ import { createEvent, getEvent, listEvents, updateEvent } from '../src/events.ap
 import { EventsCreatePage, EventsEditPage, EventsListPage } from '../src/events.pages.js';
 
 vi.mock('@sva/studio-ui-react', async () => {
-  const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
+  const actual =
+    await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
   return {
     ...actual,
     RichTextHtmlEditor: ({
@@ -41,7 +42,10 @@ vi.mock('../src/events.api.js', () => ({
     data: [],
     pagination: { page: 1, pageSize: 25, hasNextPage: false },
   })),
-  listEventCategories: vi.fn(async () => [{ id: 'cat-1', name: 'Kultur' }, { id: 'cat-2', name: 'Open Air' }]),
+  listEventCategories: vi.fn(async () => [
+    { id: 'cat-1', name: 'Kultur' },
+    { id: 'cat-2', name: 'Open Air' },
+  ]),
   listPoiForEventSelection: vi.fn(async () => []),
   getEvent: vi.fn(async () => ({
     id: 'event-1',
@@ -141,7 +145,8 @@ describe('EventsListPage', () => {
         'events.detail.createTitle': 'Event anlegen',
         'events.detail.createDescription': 'Erstellen Sie einen neuen Veranstaltungseintrag.',
         'events.detail.editTitle': 'Event bearbeiten',
-        'events.detail.editDescription': 'Aktualisieren oder löschen Sie den Veranstaltungseintrag.',
+        'events.detail.editDescription':
+          'Aktualisieren oder löschen Sie den Veranstaltungseintrag.',
         'events.detailTabs.basis.title': 'Basis',
         'events.detailTabs.content.title': 'Inhalt',
         'events.detailTabs.settings.title': 'Einstellungen',
@@ -165,15 +170,18 @@ describe('EventsListPage', () => {
         'events.cards.content.poi.title': 'POI-Verknüpfung',
         'events.cards.content.poi.description': 'Zuordnung zu einem bestehenden POI.',
         'events.cards.content.media.title': 'Medien',
-        'events.cards.content.media.description': 'Galerie, Upload oder manuelle Medienangaben für das Event.',
+        'events.cards.content.media.description':
+          'Galerie, Upload oder manuelle Medienangaben für das Event.',
         'events.history.empty.title': 'Noch keine Historie verfügbar.',
-        'events.history.empty.description': 'Historienereignisse für Events werden in einem späteren Schritt angebunden.',
+        'events.history.empty.description':
+          'Historienereignisse für Events werden in einem späteren Schritt angebunden.',
         'events.actions.addCategory': 'Kategorie hinzufügen',
         'events.actions.removeCategory': 'Kategorie {{name}} entfernen',
         'events.editor.createTitle': 'Event anlegen',
         'events.editor.createDescription': 'Erstellen Sie einen neuen Veranstaltungseintrag.',
         'events.editor.editTitle': 'Event bearbeiten',
-        'events.editor.editDescription': 'Aktualisieren oder löschen Sie den Veranstaltungseintrag.',
+        'events.editor.editDescription':
+          'Aktualisieren oder löschen Sie den Veranstaltungseintrag.',
         'events.validation.title': 'Der Titel ist erforderlich.',
         'events.validation.dates': 'Datumswerte müssen gültig sein.',
         'events.validation.urls': 'URLs müssen mit https:// beginnen.',
@@ -183,7 +191,9 @@ describe('EventsListPage', () => {
       };
       return labels[key] ?? key;
     });
-    vi.mocked(listHostMediaAssets).mockResolvedValue([{ id: 'asset-header', metadata: { title: 'Header Asset' } }]);
+    vi.mocked(listHostMediaAssets).mockResolvedValue([
+      { id: 'asset-header', metadata: { title: 'Header Asset' } },
+    ]);
   });
 
   afterEach(() => {
@@ -238,16 +248,22 @@ describe('EventsListPage', () => {
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Konzertabend' } });
     fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
 
-    fireEvent.change(await screen.findByLabelText('Beschreibung'), { target: { value: 'Live im Stadtpark' } });
+    fireEvent.change(await screen.findByLabelText('Beschreibung'), {
+      target: { value: 'Live im Stadtpark' },
+    });
     fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-04-14' } });
-    fireEvent.change(screen.getByLabelText('Web-URL'), { target: { value: 'https://example.com/events' } });
+    fireEvent.change(screen.getByLabelText('Web-URL'), {
+      target: { value: 'https://example.com/events' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Manuell hinzufügen' }));
-    fireEvent.change(await screen.findByLabelText('Bildunterschrift'), { target: { value: 'Bühne' } });
+    fireEvent.change(await screen.findByLabelText('Bildunterschrift'), {
+      target: { value: 'Bühne' },
+    });
     fireEvent.change(screen.getByLabelText('Copyright'), { target: { value: 'Stadt' } });
     fireEvent.change(await screen.findByLabelText('Web-URL', { selector: '#event-media-url-0' }), {
       target: { value: 'https://example.com/event.jpg' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(createEvent).toHaveBeenCalledWith(
@@ -267,7 +283,10 @@ describe('EventsListPage', () => {
       );
     });
 
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/events/$id', params: { id: 'event-created' } });
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/admin/events/$id',
+      params: { id: 'event-created' },
+    });
   }, 10_000);
 
   it('ignores impossible browser date values and still submits with the remaining valid input', async () => {
@@ -283,7 +302,7 @@ describe('EventsListPage', () => {
       expect(screen.getByLabelText('Startdatum')).toBeTruthy();
     });
     fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-02-31' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(createEvent).toHaveBeenCalledWith(
@@ -304,7 +323,12 @@ describe('EventsListPage', () => {
       title: 'Bestehendes Event',
       description: 'Beschreibung',
       categoryName: 'Kultur',
-      mediaContents: [{ sourceUrl: { url: 'https://example.com/header.jpg', description: 'Header Asset' }, captionText: 'Header' }],
+      mediaContents: [
+        {
+          sourceUrl: { url: 'https://example.com/header.jpg', description: 'Header Asset' },
+          captionText: 'Header',
+        },
+      ],
       dates: [{ dateStart: '2026-04-14T09:30:00.000Z' }],
       addresses: [{ street: 'Markt 1', city: 'Musterhausen' }],
       urls: [{ url: 'https://example.com/events' }],
@@ -321,7 +345,7 @@ describe('EventsListPage', () => {
       expect(screen.getByDisplayValue('Header')).toBeTruthy();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Medium entfernen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(updateEvent).toHaveBeenCalledWith(

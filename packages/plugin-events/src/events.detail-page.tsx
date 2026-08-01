@@ -72,7 +72,14 @@ type EventsMediaPickerAsset = StudioMediaPickerAssetDetail;
 type EventsTabIconProps = Readonly<{ className?: string }>;
 
 const EventsTabBasisIcon = ({ className }: EventsTabIconProps) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    className={className}
+  >
     <path d="M7 4.75h7.5L19 9.25v9A1.75 1.75 0 0 1 17.25 20h-10.5A1.75 1.75 0 0 1 5 18.25v-11.5A1.75 1.75 0 0 1 6.75 5Z" />
     <path d="M14 4.75v4.5h4.5" />
     <path d="M8.5 12h7" />
@@ -81,7 +88,14 @@ const EventsTabBasisIcon = ({ className }: EventsTabIconProps) => (
 );
 
 const EventsTabContentIcon = ({ className }: EventsTabIconProps) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    className={className}
+  >
     <rect x="4.5" y="5" width="15" height="14" rx="2" />
     <path d="m8 14 2.5-2.5 2 2 2.5-3 3 4.5" />
     <circle cx="9" cy="9.5" r="1.2" />
@@ -89,7 +103,14 @@ const EventsTabContentIcon = ({ className }: EventsTabIconProps) => (
 );
 
 const EventsTabSettingsIcon = ({ className }: EventsTabIconProps) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    className={className}
+  >
     <path d="M4 7h10" />
     <path d="M4 17h16" />
     <circle cx="17" cy="7" r="2.5" />
@@ -98,7 +119,14 @@ const EventsTabSettingsIcon = ({ className }: EventsTabIconProps) => (
 );
 
 const EventsTabHistoryIcon = ({ className }: EventsTabIconProps) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    className={className}
+  >
     <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
     <path d="M4.5 5.5v3.7h3.7" />
     <path d="M12 8.5v4l2.5 1.5" />
@@ -112,8 +140,11 @@ const eventsTabIconMap = {
   history: EventsTabHistoryIcon,
 } as const satisfies Record<EventsDetailTabId, (props: EventsTabIconProps) => React.JSX.Element>;
 
-const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknown, fallbackKey: string) =>
-  error instanceof EventsApiError ? error.message : pt(fallbackKey);
+const errorMessage = (
+  pt: ReturnType<typeof usePluginTranslation>,
+  error: unknown,
+  fallbackKey: string
+) => (error instanceof EventsApiError ? error.message : pt(fallbackKey));
 
 const parseDateOnlyInput = (value: string) => {
   if (value.trim().length === 0) {
@@ -127,7 +158,9 @@ const parseDateOnlyInput = (value: string) => {
   };
 };
 
-const toEventsMediaPickerSummary = (asset: HostMediaAssetListItem): StudioMediaPickerAssetSummary => ({
+const toEventsMediaPickerSummary = (
+  asset: HostMediaAssetListItem
+): StudioMediaPickerAssetSummary => ({
   id: asset.id,
   title: readAssetTitle(asset),
   fileName: readAssetFileName(asset),
@@ -254,7 +287,10 @@ export function EventsDetailPage({
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [dateStartInput, setDateStartInput] = React.useState('');
   const [dateEndInput, setDateEndInput] = React.useState('');
-  const [invalidDateInputs, setInvalidDateInputs] = React.useState({ dateStart: false, dateEnd: false });
+  const [invalidDateInputs, setInvalidDateInputs] = React.useState({
+    dateStart: false,
+    dateEnd: false,
+  });
   const [activeTab, setActiveTab] = React.useState<EventsDetailTabId>('basis');
   const [visitedTabs, setVisitedTabs] = React.useState<readonly EventsDetailTabId[]>(['basis']);
   const [categoryOptions, setCategoryOptions] = React.useState<readonly EventCategoryOption[]>([]);
@@ -268,7 +304,10 @@ export function EventsDetailPage({
 
   const refreshMediaAssets = React.useCallback(async () => {
     try {
-      const assets = await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), visibility: 'public' });
+      const assets = await listHostMediaAssets({
+        fetch: globalThis.fetch.bind(globalThis),
+        visibility: 'public',
+      });
       mediaAssetsRef.current = assets;
       setMediaAssets(assets);
       return assets;
@@ -279,27 +318,30 @@ export function EventsDetailPage({
     }
   }, []);
 
-  const isAssetSelectable = React.useCallback((asset: EventsMediaPickerAsset) => {
-    const nextMedia = mediaContentFromAsset({
-      id: asset.id,
-      fileName: asset.fileName,
-      metadata: asset.metadata,
-      visibility: asset.visibility,
-      mimeType: asset.mimeType,
-      previewUrl: asset.previewUrl,
-    });
-    if (!nextMedia) {
-      return false;
-    }
+  const isAssetSelectable = React.useCallback(
+    (asset: EventsMediaPickerAsset) => {
+      const nextMedia = mediaContentFromAsset({
+        id: asset.id,
+        fileName: asset.fileName,
+        metadata: asset.metadata,
+        visibility: asset.visibility,
+        mimeType: asset.mimeType,
+        previewUrl: asset.previewUrl,
+      });
+      if (!nextMedia) {
+        return false;
+      }
 
-    const existingUrls = new Set(
-      (methods.getValues('content.mediaContents') ?? [])
-        .map((entry) => entry.sourceUrl?.url?.trim() ?? '')
-        .filter((value) => value.length > 0)
-    );
-    const nextUrl = nextMedia.sourceUrl?.url?.trim() ?? '';
-    return existingUrls.has(nextUrl) === false;
-  }, [methods]);
+      const existingUrls = new Set(
+        (methods.getValues('content.mediaContents') ?? [])
+          .map((entry) => entry.sourceUrl?.url?.trim() ?? '')
+          .filter((value) => value.length > 0)
+      );
+      const nextUrl = nextMedia.sourceUrl?.url?.trim() ?? '';
+      return existingUrls.has(nextUrl) === false;
+    },
+    [methods]
+  );
 
   const mediaPicker = useStudioMediaPickerOverlay<EventsMediaPickerAsset>({
     onAccept: (asset) => {
@@ -420,7 +462,10 @@ export function EventsDetailPage({
       })
       .catch((loadError) => {
         if (active) {
-          setStatus({ kind: 'error', text: errorMessage(pt, loadError, 'messages.missingContent') });
+          setStatus({
+            kind: 'error',
+            text: errorMessage(pt, loadError, 'messages.missingContent'),
+          });
           setLoading(false);
         }
       });
@@ -448,11 +493,9 @@ export function EventsDetailPage({
     (field: 'dateStart' | 'dateEnd', nextValue: string) => {
       const currentDate = methods.getValues('content.dates.0') ?? {};
       const { isInvalid, normalizedValue } = parseDateOnlyInput(nextValue);
-      methods.setValue(
-        'content.dates',
-        [{ ...currentDate, [field]: normalizedValue }],
-        { shouldDirty: true }
-      );
+      methods.setValue('content.dates', [{ ...currentDate, [field]: normalizedValue }], {
+        shouldDirty: true,
+      });
       setInvalidDateInputs((current) => ({ ...current, [field]: isInvalid }));
       if (field === 'dateStart') {
         setDateStartInput(nextValue);
@@ -478,14 +521,28 @@ export function EventsDetailPage({
         methods.setFocus('content.dates.0.dateStart');
         setActiveTab('content');
       } else if (validationErrors.includes('geoLocation')) {
-        if ((payload.addresses ?? []).some((address) => hasInvalidGeoLocation(address.geoLocation))) {
-          methods.setError('content.addresses.0.geoLocation.latitude', { type: 'manual', message: 'geoLocation' });
-          methods.setError('content.addresses.0.geoLocation.longitude', { type: 'manual', message: 'geoLocation' });
+        if (
+          (payload.addresses ?? []).some((address) => hasInvalidGeoLocation(address.geoLocation))
+        ) {
+          methods.setError('content.addresses.0.geoLocation.latitude', {
+            type: 'manual',
+            message: 'geoLocation',
+          });
+          methods.setError('content.addresses.0.geoLocation.longitude', {
+            type: 'manual',
+            message: 'geoLocation',
+          });
           methods.setFocus('content.addresses.0.geoLocation.latitude');
         }
         if (hasInvalidGeoLocation(payload.organizer?.address?.geoLocation)) {
-          methods.setError('content.organizer.address.geoLocation.latitude', { type: 'manual', message: 'geoLocation' });
-          methods.setError('content.organizer.address.geoLocation.longitude', { type: 'manual', message: 'geoLocation' });
+          methods.setError('content.organizer.address.geoLocation.latitude', {
+            type: 'manual',
+            message: 'geoLocation',
+          });
+          methods.setError('content.organizer.address.geoLocation.longitude', {
+            type: 'manual',
+            message: 'geoLocation',
+          });
           methods.setFocus('content.organizer.address.geoLocation.latitude');
         }
         setActiveTab('content');
@@ -502,8 +559,14 @@ export function EventsDetailPage({
     }
 
     try {
-      const saved = mode === 'create' ? await createEvent(payload) : await updateEvent(contentId as string, payload);
-      setStatus({ kind: 'success', text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess') });
+      const saved =
+        mode === 'create'
+          ? await createEvent(payload)
+          : await updateEvent(contentId as string, payload);
+      setStatus({
+        kind: 'success',
+        text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess'),
+      });
       if (mode === 'create') {
         await navigate({ to: '/admin/events/$id', params: { id: saved.id } });
       }
@@ -533,7 +596,14 @@ export function EventsDetailPage({
     <FormProvider {...methods}>
       <StudioDetailPageTemplate
         title={mode === 'create' ? pt('detail.createTitle') : pt('detail.editTitle')}
-        description={mode === 'create' ? pt('detail.createDescription') : pt('detail.editDescription')}
+        description={
+          mode === 'create' ? pt('detail.createDescription') : pt('detail.editDescription')
+        }
+        primaryAction={
+          <Button type="submit" form={formId}>
+            {pt('actions.save')}
+          </Button>
+        }
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
@@ -544,9 +614,6 @@ export function EventsDetailPage({
                 {pt('actions.delete')}
               </Button>
             ) : null}
-            <Button type="submit" form={formId}>
-              {pt('actions.save')}
-            </Button>
           </div>
         }
       >
@@ -578,7 +645,9 @@ export function EventsDetailPage({
           onClose={mediaPicker.close}
           onConfirmSelection={() => void mediaPicker.confirmSelection()}
           onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
-          onOpenMediaManagement={(assetId) => void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })}
+          onOpenMediaManagement={(assetId) =>
+            void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })
+          }
           onSearchValueChange={mediaPicker.setSearchValue}
           onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
           onUploadFile={(file) => void mediaPicker.uploadFile(file)}
@@ -590,7 +659,11 @@ export function EventsDetailPage({
         />
         <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5">
           {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
-          <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as EventsDetailTabId)} className="space-y-0">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => handleTabChange(value as EventsDetailTabId)}
+            className="space-y-0"
+          >
             <label className="block md:hidden">
               <span className="sr-only">{pt('tabs.mobileLabel')}</span>
               <Select
@@ -619,7 +692,9 @@ export function EventsDetailPage({
                     onMouseEnter={() => warmTab(tab.id)}
                     onFocus={() => warmTab(tab.id)}
                     className={`relative z-10 gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
-                      isActive ? 'mb-[-1px] border-primary text-primary' : 'border-transparent text-muted-foreground'
+                      isActive
+                        ? 'mb-[-1px] border-primary text-primary'
+                        : 'border-transparent text-muted-foreground'
                     }`}
                   >
                     <span className="inline-flex items-center gap-2">
@@ -647,21 +722,23 @@ export function EventsDetailPage({
                     >
                       <div className="space-y-1">
                         <h2 className="text-base font-semibold text-foreground">{tab.title}</h2>
-                        <p className="text-sm leading-relaxed text-muted-foreground">{tab.description}</p>
+                        <p className="text-sm leading-relaxed text-muted-foreground">
+                          {tab.description}
+                        </p>
                       </div>
                     </section>
                     {tab.id === 'basis' ? (
-        <EventsDetailBasisTab
-          availableCategories={categoryOptions}
-          availablePois={poiOptions}
-          categoryOptionsError={categoryOptionsError}
-          categoryOptionsLoading={categoryOptionsLoading}
-          loadedItem={loadedItem}
-          mode={mode}
-          poiOptionsError={poiOptionsError}
-          poiOptionsLoading={poiOptionsLoading}
-          pt={pt}
-        />
+                      <EventsDetailBasisTab
+                        availableCategories={categoryOptions}
+                        availablePois={poiOptions}
+                        categoryOptionsError={categoryOptionsError}
+                        categoryOptionsLoading={categoryOptionsLoading}
+                        loadedItem={loadedItem}
+                        mode={mode}
+                        poiOptionsError={poiOptionsError}
+                        poiOptionsLoading={poiOptionsLoading}
+                        pt={pt}
+                      />
                     ) : null}
                     {tab.id === 'content' ? (
                       <EventsDetailContentTab
@@ -669,9 +746,13 @@ export function EventsDetailPage({
                         dateInputsInvalid={invalidDateInputs}
                         dateStartInput={dateStartInput}
                         onDateEndInputChange={(nextValue) => updateDateField('dateEnd', nextValue)}
-                        onDateStartInputChange={(nextValue) => updateDateField('dateStart', nextValue)}
+                        onDateStartInputChange={(nextValue) =>
+                          updateDateField('dateStart', nextValue)
+                        }
                         onOpenMediaPicker={(pickerMode) =>
-                          pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
+                          pickerMode === 'upload'
+                            ? mediaPicker.openUpload()
+                            : mediaPicker.openLibrary()
                         }
                         pt={pt}
                       />

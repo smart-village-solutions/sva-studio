@@ -58,7 +58,15 @@ describe('UserEditPage', () => {
     notes: '',
     avatarUrl: 'https://example.com/avatar.png',
     roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
-    groups: [{ groupId: 'group-1', groupKey: 'admins', displayName: 'Admins', groupType: 'role_bundle', origin: 'manual' as const }],
+    groups: [
+      {
+        groupId: 'group-1',
+        groupKey: 'admins',
+        displayName: 'Admins',
+        groupType: 'role_bundle',
+        origin: 'manual' as const,
+      },
+    ],
     organizationMemberships: [
       {
         organizationId: 'org-1',
@@ -148,8 +156,18 @@ describe('UserEditPage', () => {
     });
     useRolePermissionsMock.mockReturnValue({
       permissions: [
-        { id: 'perm-read', instanceId: 'de-musterhausen', permissionKey: 'content.read', description: 'Inhalte lesen' },
-        { id: 'perm-write', instanceId: 'de-musterhausen', permissionKey: 'content.updatePayload', description: 'Inhalte bearbeiten' },
+        {
+          id: 'perm-read',
+          instanceId: 'de-musterhausen',
+          permissionKey: 'content.read',
+          description: 'Inhalte lesen',
+        },
+        {
+          id: 'perm-write',
+          instanceId: 'de-musterhausen',
+          permissionKey: 'content.updatePayload',
+          description: 'Inhalte bearbeiten',
+        },
       ],
       isLoading: false,
       error: null,
@@ -269,7 +287,9 @@ describe('UserEditPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Passwort-Einladung erneut senden' }));
 
     await waitFor(() => expect(resendPasswordSetupEmail).toHaveBeenCalledTimes(1));
-    expect(screen.getByText('Die Einladungs-E-Mail zum Passwort setzen wurde versendet.')).toBeTruthy();
+    expect(
+      screen.getByText('Die Einladungs-E-Mail zum Passwort setzen wurde versendet.')
+    ).toBeTruthy();
   });
 
   it('reprovisions mainserver data and shows a success notice', async () => {
@@ -329,8 +349,20 @@ describe('UserEditPage', () => {
 
   it('builds group membership lookups by group id once for constant-time access', () => {
     const membershipById = buildGroupMembershipById([
-      { groupId: 'group-1', groupKey: 'admins', displayName: 'Admins', groupType: 'role_bundle', origin: 'manual' as const },
-      { groupId: 'group-2', groupKey: 'authors', displayName: 'Authors', groupType: 'role_bundle', origin: 'sync' as const },
+      {
+        groupId: 'group-1',
+        groupKey: 'admins',
+        displayName: 'Admins',
+        groupType: 'role_bundle',
+        origin: 'manual' as const,
+      },
+      {
+        groupId: 'group-2',
+        groupKey: 'authors',
+        displayName: 'Authors',
+        groupType: 'role_bundle',
+        origin: 'sync' as const,
+      },
     ]);
 
     expect(membershipById.get('group-1')).toMatchObject({ displayName: 'Admins' });
@@ -471,10 +503,14 @@ describe('UserEditPage', () => {
     expect(screen.getAllByText('content.read').length).toBeGreaterThan(0);
 
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Berechtigungen' }), { key: 'ArrowRight' });
-    expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('aria-selected')).toBe(
+      'true'
+    );
 
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Historie' }), { key: 'Home' });
-    expect(screen.getByRole('tab', { name: 'Persönliche Daten' }).getAttribute('aria-selected')).toBe('true');
+    expect(
+      screen.getByRole('tab', { name: 'Persönliche Daten' }).getAttribute('aria-selected')
+    ).toBe('true');
   });
 
   it('renders effective and inactive permission traces in the permissions tab', () => {
@@ -698,8 +734,12 @@ describe('UserEditPage', () => {
     });
     expect(setSearch).toHaveBeenLastCalledWith('');
 
-    fireEvent.change(screen.getByLabelText('Sichtbarkeit für Musterstadt'), { target: { value: 'external' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft für Musterstadt aktualisieren' }));
+    fireEvent.change(screen.getByLabelText('Sichtbarkeit für Musterstadt'), {
+      target: { value: 'external' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Mitgliedschaft für Musterstadt aktualisieren' })
+    );
 
     await waitFor(() => {
       expect(updateMembership).toHaveBeenCalledWith('org-1', 'user-1', {
@@ -750,10 +790,12 @@ describe('UserEditPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Organisation auswählen' }));
     fireEvent.click(screen.getByRole('option', { name: 'Stadtwerke (stadtwerke)' }));
 
-    expect(screen.getByRole('button', { name: 'Organisation auswählen' }).textContent).toContain('Stadtwerke');
-    expect((screen.getByRole('button', { name: 'Organisation zuweisen' }) as HTMLButtonElement).disabled).toBe(
-      false
+    expect(screen.getByRole('button', { name: 'Organisation auswählen' }).textContent).toContain(
+      'Stadtwerke'
     );
+    expect(
+      (screen.getByRole('button', { name: 'Organisation zuweisen' }) as HTMLButtonElement).disabled
+    ).toBe(false);
 
     useUserMock.mockReturnValue({
       user: secondUser,
@@ -769,9 +811,9 @@ describe('UserEditPage', () => {
     expect(screen.getByRole('button', { name: 'Organisation auswählen' }).textContent).toContain(
       'Organisation für neue Zuordnung auswählen'
     );
-    expect((screen.getByRole('button', { name: 'Organisation zuweisen' }) as HTMLButtonElement).disabled).toBe(
-      true
-    );
+    expect(
+      (screen.getByRole('button', { name: 'Organisation zuweisen' }) as HTMLButtonElement).disabled
+    ).toBe(true);
   });
 
   it('loads unified history entries and renders role validity windows', async () => {
@@ -930,7 +972,9 @@ describe('UserEditPage', () => {
     const notesField = document.querySelector('textarea');
     expect(notesField).toBeTruthy();
     fireEvent.change(notesField as HTMLTextAreaElement, { target: { value: 'saved note' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    const saveButtons = screen.getAllByRole('button', { name: 'Änderungen speichern' });
+    expect(saveButtons).toHaveLength(2);
+    fireEvent.click(saveButtons[1]!);
 
     await waitFor(() => {
       expect(save).toHaveBeenCalledTimes(1);
@@ -980,7 +1024,7 @@ describe('UserEditPage', () => {
       expect(editorCheckbox.checked).toBe(true);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
 
     await waitFor(() => {
       expect(save).toHaveBeenCalledWith({
@@ -1014,7 +1058,12 @@ describe('UserEditPage', () => {
 
     useRolesMock.mockReturnValue({
       roles: [
-        { id: 'role-1', roleName: 'system_admin', roleKey: 'system_admin', externalRoleName: 'system_admin' },
+        {
+          id: 'role-1',
+          roleName: 'system_admin',
+          roleKey: 'system_admin',
+          externalRoleName: 'system_admin',
+        },
         {
           id: 'role-root',
           roleName: 'instance_registry_admin',
@@ -1110,12 +1159,18 @@ describe('UserEditPage', () => {
     render(<UserEditPage userId="user-1" />);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Verwaltung' }));
-    expect((screen.getByLabelText('Mainserver Application-ID') as HTMLInputElement).value).toBe('app-id-1');
+    expect((screen.getByLabelText('Mainserver Application-ID') as HTMLInputElement).value).toBe(
+      'app-id-1'
+    );
     expect(screen.getByText('Ein Secret ist bereits hinterlegt.')).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText('Mainserver Application-ID'), { target: { value: 'updated-app-id' } });
-    fireEvent.change(screen.getByPlaceholderText('Neues Secret eingeben'), { target: { value: 'new-secret' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.change(screen.getByLabelText('Mainserver Application-ID'), {
+      target: { value: 'updated-app-id' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Neues Secret eingeben'), {
+      target: { value: 'new-secret' },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
 
     await waitFor(() => {
       expect(save).toHaveBeenCalledWith({
@@ -1180,7 +1235,9 @@ describe('UserEditPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Verwerfen und wechseln' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('aria-selected')).toBe('true');
+      expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('aria-selected')).toBe(
+        'true'
+      );
       expect(screen.getByText('Keine Historieneinträge vorhanden.')).toBeTruthy();
     });
   }, 15000);
@@ -1217,7 +1274,9 @@ describe('UserEditPage', () => {
     expect(screen.getByRole('alert').textContent).toContain(
       'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.'
     );
-    expect(screen.getByRole('alert').textContent).not.toContain('Nutzer konnten nicht geladen werden.');
+    expect(screen.getByRole('alert').textContent).not.toContain(
+      'Nutzer konnten nicht geladen werden.'
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
 
@@ -1254,15 +1313,23 @@ describe('UserEditPage', () => {
     expect(screen.getByRole('alert').textContent).toContain(
       'Technischer Fehler bei der Nutzeraktion: Einladungs-E-Mail zum Passwort setzen konnte nicht gesendet werden.'
     );
-    expect(screen.getByRole('alert').textContent).not.toContain('Technischer Fehler beim Laden der Nutzer');
+    expect(screen.getByRole('alert').textContent).not.toContain(
+      'Technischer Fehler beim Laden der Nutzer'
+    );
   });
 
   it.each([
     ['invalid_request', 'Die Nutzeraktion konnte nicht abgeschlossen werden.'],
     ['forbidden', 'Unzureichende Berechtigungen für diese Nutzeraktion.'],
-    ['csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.'],
+    [
+      'csrf_validation_failed',
+      'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
+    ],
     ['rate_limited', 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.'],
-    ['conflict', 'Die Nutzeränderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.'],
+    [
+      'conflict',
+      'Die Nutzeränderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.',
+    ],
     [
       'tenant_admin_client_not_configured',
       'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Bitte zuerst den Instanzvertrag abgleichen.',
@@ -1271,8 +1338,14 @@ describe('UserEditPage', () => {
       'tenant_admin_client_secret_missing',
       'Für diese Instanz fehlt noch das Tenant-Admin-Client-Secret. Bitte zuerst den Instanzvertrag abgleichen.',
     ],
-    ['keycloak_unavailable', 'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.'],
-    ['database_unavailable', 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.'],
+    [
+      'keycloak_unavailable',
+      'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.',
+    ],
+    [
+      'database_unavailable',
+      'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
+    ],
     [
       'mainserver_configuration_incomplete',
       'Die Mainserver-Integration ist unvollständig konfiguriert. Bitte die Schnittstellen-Konfiguration prüfen.',
@@ -1297,8 +1370,14 @@ describe('UserEditPage', () => {
       'mainserver_provisioning_failed',
       'Die Aktualisierung der Mainserver-Daten ist am Mainserver fehlgeschlagen. Bitte die Mainserver-Integration prüfen und erneut versuchen.',
     ],
-    ['last_admin_protection', 'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.'],
-    ['self_protection', 'Das aktuell angemeldete Konto kann nicht auf diese Weise deaktiviert werden.'],
+    [
+      'last_admin_protection',
+      'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.',
+    ],
+    [
+      'self_protection',
+      'Das aktuell angemeldete Konto kann nicht auf diese Weise deaktiviert werden.',
+    ],
   ])('maps %s save errors to the localized alert message', (code, expectedMessage) => {
     useUserMock.mockReturnValue({
       user: baseUser,
@@ -1330,13 +1409,18 @@ describe('UserEditPage', () => {
 
   it('falls back to the generic message for null and unknown errors', () => {
     expect(userErrorMessage(null)).toBe('Nutzer konnten nicht geladen werden.');
-    expect(userErrorMessage(null, 'mutation')).toBe('Die Nutzeraktion konnte nicht abgeschlossen werden.');
+    expect(userErrorMessage(null, 'mutation')).toBe(
+      'Die Nutzeraktion konnte nicht abgeschlossen werden.'
+    );
     expect(
-      userErrorMessage({
-        status: 400,
-        code: 'invalid_request',
-        message: 'invalid payload',
-      } as never, 'mutation')
+      userErrorMessage(
+        {
+          status: 400,
+          code: 'invalid_request',
+          message: 'invalid payload',
+        } as never,
+        'mutation'
+      )
     ).toBe('Die Nutzeraktion konnte nicht abgeschlossen werden.');
     expect(
       userErrorMessage({
@@ -1353,18 +1437,24 @@ describe('UserEditPage', () => {
       } as never)
     ).toBe('Technischer Fehler beim Laden der Nutzer: Failed to fetch');
     expect(
-      userErrorMessage({
-        status: 0,
-        code: 'non_json_response',
-        message: 'upstream proxy text',
-      } as never, 'mutation')
+      userErrorMessage(
+        {
+          status: 0,
+          code: 'non_json_response',
+          message: 'upstream proxy text',
+        } as never,
+        'mutation'
+      )
     ).toBe('Technischer Fehler bei der Nutzeraktion: upstream proxy text');
     expect(
-      userErrorMessage({
-        status: 500,
-        code: 'internal_error',
-        message: '   ',
-      } as never, 'mutation')
+      userErrorMessage(
+        {
+          status: 500,
+          code: 'internal_error',
+          message: '   ',
+        } as never,
+        'mutation'
+      )
     ).toBe('Die Nutzeraktion konnte nicht abgeschlossen werden.');
     expect(
       userErrorMessage({
@@ -1373,7 +1463,9 @@ describe('UserEditPage', () => {
         message: 'reconcile',
         classification: 'keycloak_reconcile',
       } as never)
-    ).toBe('Der Benutzerabgleich mit Keycloak ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund prüfen.');
+    ).toBe(
+      'Der Benutzerabgleich mit Keycloak ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund prüfen.'
+    );
     expect(
       userErrorMessage({
         status: 503,
@@ -1390,11 +1482,14 @@ describe('UserEditPage', () => {
       } as never)
     ).toBe('Nutzer konnten nicht geladen werden.');
     expect(
-      userErrorMessage({
-        status: 500,
-        code: 'unknown_error',
-        message: 'unexpected failure',
-      } as never, 'mutation')
+      userErrorMessage(
+        {
+          status: 500,
+          code: 'unknown_error',
+          message: 'unexpected failure',
+        } as never,
+        'mutation'
+      )
     ).toBe('Die Nutzeraktion konnte nicht abgeschlossen werden.');
   });
 
@@ -1429,7 +1524,7 @@ describe('UserEditPage', () => {
 
     fireEvent.change(systemAdminCheckbox, { target: { checked: true } });
     fireEvent.change(systemAdminCheckbox, { target: { checked: true } });
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
 
     await waitFor(() => {
       expect(save).toHaveBeenCalledWith(

@@ -43,7 +43,8 @@ vi.mock('@sva/plugin-sdk', async () => {
 });
 
 vi.mock('@sva/studio-ui-react', async () => {
-  const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
+  const actual =
+    await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
   return {
     ...actual,
     RichTextHtmlEditor: ({
@@ -264,7 +265,7 @@ describe('EventsDetailPage', () => {
   it('renders a global save action and a history placeholder for events', async () => {
     render(<EventsDetailPage mode="create" />);
 
-    expect(await screen.findByRole('button', { name: 'Speichern' })).toBeTruthy();
+    expect(await screen.findAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
     fireEvent.click(screen.getByRole('tab', { name: 'Historie' }));
     await waitFor(() => {
       expect(screen.getByText('Noch keine Historie verfügbar.')).toBeTruthy();
@@ -310,8 +311,10 @@ describe('EventsDetailPage', () => {
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
     fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: 'invalid-date' } });
-    fireEvent.change(screen.getByLabelText('URL'), { target: { value: 'http://example.com/events' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.change(screen.getByLabelText('URL'), {
+      target: { value: 'http://example.com/events' },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createEvent)).not.toHaveBeenCalled();
@@ -323,7 +326,7 @@ describe('EventsDetailPage', () => {
   it('keeps the basis tab active when the title is missing', async () => {
     render(<EventsDetailPage mode="create" />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Speichern' }));
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Speichern' }))[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createEvent)).not.toHaveBeenCalled();
@@ -337,8 +340,10 @@ describe('EventsDetailPage', () => {
 
     fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Neues Event' } });
     fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
-    fireEvent.change(await screen.findByLabelText('URL'), { target: { value: 'http://invalid.example' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.change(await screen.findByLabelText('URL'), {
+      target: { value: 'http://invalid.example' },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createEvent)).not.toHaveBeenCalled();
@@ -351,7 +356,12 @@ describe('EventsDetailPage', () => {
       id: 'event-1',
       title: 'Stadtfest',
       description: 'Innenstadt',
-      mediaContents: [{ sourceUrl: { url: 'https://example.com/header.jpg', description: 'Header' }, captionText: 'Headerbild' }],
+      mediaContents: [
+        {
+          sourceUrl: { url: 'https://example.com/header.jpg', description: 'Header' },
+          captionText: 'Headerbild',
+        },
+      ],
       dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
       addresses: [{ street: 'Marktplatz 1', city: 'Musterhausen' }],
       urls: [{ url: 'https://example.com/events' }],
@@ -367,7 +377,7 @@ describe('EventsDetailPage', () => {
       expect(screen.getByDisplayValue('Stadtfest')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(updateEvent)).toHaveBeenCalledTimes(1);
@@ -465,8 +475,12 @@ describe('EventsDetailPage', () => {
       id: 'event-created',
       title: 'Neues Event',
     } as never);
-    vi.mocked(listEventCategories).mockResolvedValueOnce([{ id: 'cat-1', name: 'Kultur' }] as never);
-    vi.mocked(listPoiForEventSelection).mockResolvedValue([{ id: 'poi-7', name: 'Rathaus' }] as never);
+    vi.mocked(listEventCategories).mockResolvedValueOnce([
+      { id: 'cat-1', name: 'Kultur' },
+    ] as never);
+    vi.mocked(listPoiForEventSelection).mockResolvedValue([
+      { id: 'poi-7', name: 'Rathaus' },
+    ] as never);
 
     render(<EventsDetailPage mode="create" />);
 
@@ -487,7 +501,7 @@ describe('EventsDetailPage', () => {
     fireEvent.click(screen.getByText('Rathaus').closest('button') as HTMLButtonElement);
     fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
     fireEvent.change(screen.getByLabelText('Externe ID'), { target: { value: 'event-ext-1' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createEvent)).toHaveBeenCalledTimes(1);
@@ -501,7 +515,10 @@ describe('EventsDetailPage', () => {
           visible: true,
         })
       );
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/events/$id', params: { id: 'event-created' } });
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/admin/events/$id',
+        params: { id: 'event-created' },
+      });
     });
   });
 
@@ -520,7 +537,7 @@ describe('EventsDetailPage', () => {
     render(<EventsDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Neues Event' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(screen.getByText('events.messages.saveError')).toBeTruthy();
@@ -533,7 +550,10 @@ describe('EventsDetailPage', () => {
       title: 'Stadtfest',
       dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
     } as never);
-    vi.stubGlobal('confirm', vi.fn(() => false));
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => false)
+    );
 
     render(<EventsDetailPage mode="edit" contentId="event-1" />);
 
@@ -554,7 +574,10 @@ describe('EventsDetailPage', () => {
       dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
     } as never);
     vi.mocked(deleteEvent).mockRejectedValueOnce(new Error('delete boom'));
-    vi.stubGlobal('confirm', vi.fn(() => true));
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => true)
+    );
 
     render(<EventsDetailPage mode="edit" contentId="event-1" />);
 
@@ -587,7 +610,7 @@ describe('EventsDetailPage', () => {
       expect(screen.getByDisplayValue('Stadtfest')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(updateEvent)).toHaveBeenCalledTimes(1);
@@ -600,7 +623,10 @@ describe('EventsDetailPage', () => {
       title: 'Stadtfest',
       dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
     } as never);
-    vi.stubGlobal('confirm', vi.fn(() => true));
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => true)
+    );
 
     render(<EventsDetailPage mode="edit" contentId="event-1" />);
 

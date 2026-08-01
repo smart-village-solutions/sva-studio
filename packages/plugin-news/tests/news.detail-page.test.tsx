@@ -16,7 +16,8 @@ import { listNewsCategories } from '../src/news.api.js';
 import { NewsDetailPage } from '../src/news.detail-page.js';
 
 vi.mock('@sva/studio-ui-react', async () => {
-  const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
+  const actual =
+    await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
   return {
     ...actual,
     RichTextHtmlEditor: ({
@@ -213,14 +214,12 @@ describe('NewsDetailPage', () => {
     cleanup();
   });
 
-  it('renders exactly one save button in the page header', async () => {
+  it('renders the same save action in the page header and after the editor', async () => {
     render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Speichern' })).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
     });
-
-    expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(1);
   });
 
   it('uses the upload response url when the refreshed news asset still has no preview url', async () => {
@@ -283,7 +282,9 @@ describe('NewsDetailPage', () => {
 
     render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
 
-    fireEvent.change(await screen.findByLabelText('Bereich auswählen'), { target: { value: 'content' } });
+    fireEvent.change(await screen.findByLabelText('Bereich auswählen'), {
+      target: { value: 'content' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Bild hochladen' }));
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: {
@@ -299,7 +300,12 @@ describe('NewsDetailPage', () => {
   });
 
   it('renders the author as a fixed readonly field when authorship is fixed', async () => {
-    render(<NewsDetailPage mode="create" authorControl={{ kind: 'fixed', value: 'Stadt Musterhausen' }} />);
+    render(
+      <NewsDetailPage
+        mode="create"
+        authorControl={{ kind: 'fixed', value: 'Stadt Musterhausen' }}
+      />
+    );
 
     const authorInput = await screen.findByLabelText('Autor');
     expect((authorInput as HTMLInputElement).value).toBe('Stadt Musterhausen');
@@ -323,10 +329,9 @@ describe('NewsDetailPage', () => {
 
     const authorSelect = await screen.findByRole('combobox', { name: 'Autor' });
     expect((authorSelect as HTMLSelectElement).value).toBe('Stadt Musterhausen');
-    expect(Array.from((authorSelect as HTMLSelectElement).options).map((option) => option.textContent)).toEqual([
-      'Stadt Musterhausen',
-      'Max Mustermann',
-    ]);
+    expect(
+      Array.from((authorSelect as HTMLSelectElement).options).map((option) => option.textContent)
+    ).toEqual(['Stadt Musterhausen', 'Max Mustermann']);
   });
 
   it('keeps the author editable when no author policy is provided', async () => {
@@ -343,9 +348,16 @@ describe('NewsDetailPage', () => {
   it('applies a later author policy update while the author field is still pristine', async () => {
     const { rerender } = render(<NewsDetailPage mode="create" initialAuthor="Max Mustermann" />);
 
-    expect((await screen.findByLabelText('Autor') as HTMLInputElement).value).toBe('Max Mustermann');
+    expect(((await screen.findByLabelText('Autor')) as HTMLInputElement).value).toBe(
+      'Max Mustermann'
+    );
 
-    rerender(<NewsDetailPage mode="create" authorControl={{ kind: 'fixed', value: 'Stadt Musterhausen' }} />);
+    rerender(
+      <NewsDetailPage
+        mode="create"
+        authorControl={{ kind: 'fixed', value: 'Stadt Musterhausen' }}
+      />
+    );
 
     await waitFor(() => {
       expect((screen.getByLabelText('Autor') as HTMLInputElement).value).toBe('Stadt Musterhausen');
@@ -389,7 +401,9 @@ describe('NewsDetailPage', () => {
     expect(source).toContain('aria-describedby={`publication-mode-${option}-description`}');
     expect(source).toContain('htmlFor={`publication-mode-${option}`}');
     expect(source).toContain('{pt(`publicationModes.${option}.label`)}');
-    expect(source).toContain('<p id={`publication-mode-${option}-description`} className="text-muted-foreground">');
+    expect(source).toContain(
+      '<p id={`publication-mode-${option}-description`} className="text-muted-foreground">'
+    );
     expect(source).toContain('<label');
   });
 

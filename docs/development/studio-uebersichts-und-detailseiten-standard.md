@@ -77,7 +77,7 @@ Der Ausnahmefall ist eine Plugin-Custom-View. Sie ist zulässig, wenn die Fachob
 Das Package startet mit einem bewusst kleinen, aber verbindlichen Umfang. Der erste umgesetzte MVP enthält die UI-Boundary, Basiscontrols, Page-/Form-/State-Primitives und `plugin-news` als Referenzverbraucher.
 
 - umgesetzt im MVP: `Button`, `Input`, `Textarea`, `Select`, `Checkbox`, `Badge`, `Alert`, `Dialog`, `AlertDialog`, `Tabs`
-- umgesetzt im MVP: `StudioPageHeader`, `StudioOverviewPageTemplate`, `StudioDetailPageTemplate`
+- umgesetzt im MVP: `StudioPageHeader`, `StudioOverviewPageTemplate`, `StudioDetailPageTemplate`, `StudioFormActionBar`
 - umgesetzt im MVP: `StudioField`, `StudioFieldGroup`, `StudioFormSummary`
 - umgesetzt im MVP: `StudioStateBlock`, `StudioLoadingState`, `StudioEmptyState`, `StudioErrorState`
 - Folgeumfang: Ressourcen-Header, Detail-Tabs, Sektionen, Editierflächen und Aktionsmenüs nach konkretem Host- oder Plugin-Bedarf
@@ -167,6 +167,27 @@ Detailseiten verwenden dieselbe Grundstruktur:
 - aktiver Arbeitsbereich mit fachlichen Sektionen
 - optionale Historie, Aktivität oder Audit-Information
 
+### Primäraktion auf langen Bearbeitungsflächen
+
+Wenn eine Erstellungs- oder Bearbeitungsseite mehrere Viewport-Höhen, Tabs, umfangreiche Sektionen, Rich Text, Tabellen oder Listen umfasst, wird ihre globale Primäraktion an zwei Stellen angeboten:
+
+1. im Seitenkopf vor Beginn der Arbeitsfläche
+2. nach der Arbeitsfläche als Abschluss der Seite
+
+Beide Positionen repräsentieren dieselbe Aktion. Sie verwenden dieselbe Beschriftung, denselben Submit- oder Mutationspfad und dieselben Berechtigungs-, Lade- und Disabled-Zustände. Insbesondere darf der Button im Seitenkopf nicht nur den aktiven Tab speichern: Eine globale Primäraktion speichert die gesamte Bearbeitungsfläche unabhängig vom aktuellen Tab.
+
+Das Pattern gilt fachübergreifend. Dazu zählen Inhalte wie News, Events, FAQ, POI, Umfragen und generische Inhalte ebenso wie Benutzerbearbeitung, Rollenberechtigungen sowie die Anlage und Bearbeitung von Rechtstexten.
+
+Technischer Standard:
+
+- Detailseiten übergeben die Aktion einmalig als `primaryAction` an `StudioDetailPageTemplate`; das Template platziert sie oben und unten.
+- Seiten ohne dieses Template verwenden `StudioFormActionBar` mit `position="start"` und `position="end"`.
+- Formularbasierte Aktionen referenzieren an beiden Positionen dieselbe Formular-ID über das native `form`-Attribut.
+- Sekundäre oder destruktive Aktionen werden nicht automatisch verdoppelt.
+- Kurze Formulare und Dialoge ohne relevanten Scrollweg bleiben bei einer einzelnen Abschlusszone.
+
+Damit ist das Muster eine Eigenschaft langer Bearbeitungsflächen und keine Sonderregel für Content-Plugins.
+
 ## Kanonisches Standardmuster: Fokussierte Erstellungs-/Bearbeitungsseite
 
 Das primäre Zielbild für neue Detailseiten ist eine ruhige, fokussierte Arbeitsseite mit genau einem dominanten Arbeitsauftrag. Visuell ist nicht entscheidend, ob die technische Umsetzung später als Route, Dialog, Drawer oder Template-Komposition erfolgt. Maßgeblich ist der finale wahrnehmbare Aufbau.
@@ -186,7 +207,7 @@ Diese Referenzen sind deshalb geeignet, weil sie ohne zusätzliche Verwaltungsum
 4. zentrale Arbeitsfläche
 5. logisch gruppierte Felder oder Sektionen
 6. optionale Inline-Hinweise oder Fehlerzusammenfassung
-7. eindeutige Abschlusszone mit `Abbrechen` und Primäraktion
+7. eindeutige Abschlusszone mit `Abbrechen` und Primäraktion; bei langen Bearbeitungsflächen zusätzlich dieselbe Primäraktion im Seitenkopf
 
 ### Zielbild
 

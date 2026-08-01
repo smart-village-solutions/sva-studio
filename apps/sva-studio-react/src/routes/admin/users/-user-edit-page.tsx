@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { StudioFormActionBar } from '@sva/studio-ui-react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -52,24 +53,34 @@ const PermissionTraceEntryCard = ({
   runtimeScopeText,
   scopeText,
 }: PermissionTraceEntryCardProps) => (
-  <li className={`rounded-lg border border-border bg-background p-3 ${dashed ? 'border-dashed' : ''}`}>
+  <li
+    className={`rounded-lg border border-border bg-background p-3 ${dashed ? 'border-dashed' : ''}`}
+  >
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <p className="font-medium text-foreground">{entry.permissionKey}</p>
         <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Badge variant="outline">{t(userEditTranslationKeys.permissionTraceStatus[entry.status])}</Badge>
+        <Badge variant="outline">
+          {t(userEditTranslationKeys.permissionTraceStatus[entry.status])}
+        </Badge>
         {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
       </div>
     </div>
     {scopeText !== undefined ? (
       <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-        <span>{t('admin.users.edit.permissionTrace.resourceType', { value: entry.resourceType })}</span>
+        <span>
+          {t('admin.users.edit.permissionTrace.resourceType', { value: entry.resourceType })}
+        </span>
         {entry.organizationId ? (
-          <span>{t('admin.users.edit.permissionTrace.organization', { value: entry.organizationId })}</span>
+          <span>
+            {t('admin.users.edit.permissionTrace.organization', { value: entry.organizationId })}
+          </span>
         ) : null}
-        {scopeText ? <span>{t('admin.users.edit.permissionTrace.scope', { value: scopeText })}</span> : null}
+        {scopeText ? (
+          <span>{t('admin.users.edit.permissionTrace.scope', { value: scopeText })}</span>
+        ) : null}
       </div>
     ) : null}
     {detailLines.length > 0 ? (
@@ -82,7 +93,11 @@ const PermissionTraceEntryCard = ({
   </li>
 );
 
-export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage }: UserEditPageProps) => {
+export const UserEditPage = ({
+  userId,
+  invitationStatus,
+  invitationErrorMessage,
+}: UserEditPageProps) => {
   const {
     activeTab,
     closeUnsavedDialog,
@@ -143,7 +158,10 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
       return {
         value: selectedAssignableOrganization.id,
         label: `${selectedAssignableOrganization.displayName} (${selectedAssignableOrganization.organizationKey})`,
-        keywords: [selectedAssignableOrganization.displayName, selectedAssignableOrganization.organizationKey],
+        keywords: [
+          selectedAssignableOrganization.displayName,
+          selectedAssignableOrganization.organizationKey,
+        ],
       };
     }
 
@@ -156,7 +174,11 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
       label: organizationAssignment.organizationLabel,
       keywords: [organizationAssignment.organizationLabel],
     };
-  }, [organizationAssignment.organizationId, organizationAssignment.organizationLabel, selectedAssignableOrganization]);
+  }, [
+    organizationAssignment.organizationId,
+    organizationAssignment.organizationLabel,
+    selectedAssignableOrganization,
+  ]);
 
   if (userApi.isLoading) {
     return (
@@ -205,14 +227,18 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               {t('account.fields.username')}: {userApi.user.username ?? '-'}
             </p>
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
-              <Badge variant="outline">{t(userEditTranslationKeys.status[userApi.user.status])}</Badge>
+              <Badge variant="outline">
+                {t(userEditTranslationKeys.status[userApi.user.status])}
+              </Badge>
               {userApi.user.roles.map((role) => {
                 const validityLabel = formatRoleValidity(role);
                 return (
                   <Badge key={role.roleId} variant="outline" className="h-auto items-start py-1">
                     <span className="block">{role.roleName}</span>
                     {validityLabel ? (
-                      <span className="block text-[11px] text-muted-foreground">{validityLabel}</span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        {validityLabel}
+                      </span>
                     ) : null}
                   </Badge>
                 );
@@ -255,7 +281,17 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
         </div>
       </Card>
 
-      <Card role="tablist" aria-label={t('admin.users.edit.tabsAriaLabel')} className="flex overflow-x-auto p-1">
+      <StudioFormActionBar position="start">
+        <Button type="submit" form="user-edit-form" disabled={isSaving}>
+          {isSaving ? t('account.actions.saving') : t('admin.users.edit.save')}
+        </Button>
+      </StudioFormActionBar>
+
+      <Card
+        role="tablist"
+        aria-label={t('admin.users.edit.tabsAriaLabel')}
+        className="flex overflow-x-auto p-1"
+      >
         {USER_EDIT_TABS.map((tab, index) => {
           const selected = tab.key === activeTab;
           return (
@@ -281,7 +317,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
         })}
       </Card>
 
-      <form className="space-y-4" onSubmit={onSave}>
+      <form id="user-edit-form" className="space-y-4" onSubmit={onSave}>
         <section
           id="user-edit-panel-personal"
           role="tabpanel"
@@ -291,14 +327,21 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
         >
           <div className="grid gap-2 text-sm text-foreground">
             <Label htmlFor="user-username">{t('account.fields.username')}</Label>
-            <Input id="user-username" value={userApi.user.username ?? ''} readOnly aria-readonly="true" />
+            <Input
+              id="user-username"
+              value={userApi.user.username ?? ''}
+              readOnly
+              aria-readonly="true"
+            />
           </div>
           <div className="grid gap-2 text-sm text-foreground">
             <Label htmlFor="user-first-name">{t('account.fields.firstName')}</Label>
             <Input
               id="user-first-name"
               value={formValues.firstName}
-              onChange={(event) => setFormValues((current) => ({ ...current, firstName: event.target.value }))}
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, firstName: event.target.value }))
+              }
             />
           </div>
           <div className="grid gap-2 text-sm text-foreground">
@@ -306,7 +349,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
             <Input
               id="user-last-name"
               value={formValues.lastName}
-              onChange={(event) => setFormValues((current) => ({ ...current, lastName: event.target.value }))}
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, lastName: event.target.value }))
+              }
             />
           </div>
           <div className="grid gap-2 text-sm text-foreground">
@@ -314,7 +359,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
             <Input
               id="user-display-name"
               value={formValues.displayName}
-              onChange={(event) => setFormValues((current) => ({ ...current, displayName: event.target.value }))}
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, displayName: event.target.value }))
+              }
             />
           </div>
           <div className="grid gap-2 text-sm text-foreground">
@@ -323,7 +370,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               id="user-email"
               type="email"
               value={formValues.email}
-              onChange={(event) => setFormValues((current) => ({ ...current, email: event.target.value }))}
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, email: event.target.value }))
+              }
             />
           </div>
           <div className="grid gap-2 text-sm text-foreground md:col-span-2">
@@ -331,7 +380,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
             <Input
               id="user-phone"
               value={formValues.phone}
-              onChange={(event) => setFormValues((current) => ({ ...current, phone: event.target.value }))}
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, phone: event.target.value }))
+              }
             />
           </div>
         </section>
@@ -366,7 +417,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
             <Input
               id="user-language"
               value={formValues.preferredLanguage}
-              onChange={(event) => setFormValues((current) => ({ ...current, preferredLanguage: event.target.value }))}
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, preferredLanguage: event.target.value }))
+              }
             />
           </div>
           <div className="grid gap-2 text-sm text-foreground">
@@ -374,7 +427,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
             <Input
               id="user-timezone"
               value={formValues.timezone}
-              onChange={(event) => setFormValues((current) => ({ ...current, timezone: event.target.value }))}
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, timezone: event.target.value }))
+              }
             />
           </div>
           <fieldset className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
@@ -411,7 +466,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               {selectableGroups.map((group) => {
                 const selected = formValues.groupIds.includes(group.id);
                 const currentMembership = groupMembershipById.get(group.id);
-                const membershipValidity = currentMembership ? formatTraceValidity(currentMembership) : null;
+                const membershipValidity = currentMembership
+                  ? formatTraceValidity(currentMembership)
+                  : null;
                 return (
                   <Label
                     key={group.id}
@@ -447,7 +504,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
             </div>
           </fieldset>
           <div className="grid gap-2 text-sm text-foreground md:col-span-2">
-            <Label htmlFor="user-mainserver-app-id">{t('admin.users.edit.mainserverApplicationIdLabel')}</Label>
+            <Label htmlFor="user-mainserver-app-id">
+              {t('admin.users.edit.mainserverApplicationIdLabel')}
+            </Label>
             <Input
               id="user-mainserver-app-id"
               value={formValues.mainserverUserApplicationId}
@@ -460,7 +519,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
             />
           </div>
           <div className="grid gap-2 text-sm text-foreground md:col-span-2">
-            <Label htmlFor="user-mainserver-app-secret">{t('admin.users.edit.mainserverApplicationSecretLabel')}</Label>
+            <Label htmlFor="user-mainserver-app-secret">
+              {t('admin.users.edit.mainserverApplicationSecretLabel')}
+            </Label>
             <Input
               id="user-mainserver-app-secret"
               type="password"
@@ -489,7 +550,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               id="user-notes"
               value={formValues.notes}
               maxLength={2000}
-              onChange={(event) => setFormValues((current) => ({ ...current, notes: event.target.value }))}
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, notes: event.target.value }))
+              }
             />
             <span className="text-xs text-muted-foreground">
               {t('admin.users.edit.notesCounter', { count: formValues.notes.length })}
@@ -505,13 +568,19 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
           className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-shell"
         >
           <div className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">{t('admin.users.edit.permissionTrace.title')}</h2>
-            <p className="text-sm text-muted-foreground">{t('admin.users.edit.permissionTrace.description')}</p>
+            <h2 className="text-lg font-semibold text-foreground">
+              {t('admin.users.edit.permissionTrace.title')}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t('admin.users.edit.permissionTrace.description')}
+            </p>
           </div>
 
           {effectivePermissionTrace.length > 0 ? (
             <div className="space-y-3">
-              <h3 className="text-sm font-medium text-foreground">{t('admin.users.edit.permissionTrace.effectiveTitle')}</h3>
+              <h3 className="text-sm font-medium text-foreground">
+                {t('admin.users.edit.permissionTrace.effectiveTitle')}
+              </h3>
               <ul className="grid gap-3">
                 {effectivePermissionTrace.map((entry, index) => {
                   const scopeText = formatScope(entry.scope);
@@ -533,7 +602,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
 
           {inactivePermissionTrace.length > 0 ? (
             <div className="space-y-3">
-              <h3 className="text-sm font-medium text-foreground">{t('admin.users.edit.permissionTrace.inactiveTitle')}</h3>
+              <h3 className="text-sm font-medium text-foreground">
+                {t('admin.users.edit.permissionTrace.inactiveTitle')}
+              </h3>
               <ul className="grid gap-3">
                 {inactivePermissionTrace.map((entry, index) => {
                   const detailLines = buildPermissionTraceDetails(entry);
@@ -558,7 +629,10 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
           userApi.user.permissions.length > 0 ? (
             <ul className="grid gap-2 text-sm text-foreground sm:grid-cols-2">
               {userApi.user.permissions.map((permission) => (
-                <li key={permission} className="rounded border border-border bg-background px-3 py-2">
+                <li
+                  key={permission}
+                  className="rounded border border-border bg-background px-3 py-2"
+                >
                   {permission}
                 </li>
               ))}
@@ -568,7 +642,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
           {effectivePermissionTrace.length === 0 &&
           inactivePermissionTrace.length === 0 &&
           (!userApi.user.permissions || userApi.user.permissions.length === 0) ? (
-            <p className="text-sm text-muted-foreground">{t('admin.users.edit.permissionsEmpty')}</p>
+            <p className="text-sm text-muted-foreground">
+              {t('admin.users.edit.permissionsEmpty')}
+            </p>
           ) : null}
         </section>
 
@@ -580,8 +656,12 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
           className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-shell"
         >
           <div className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">{t('admin.users.edit.organizations.title')}</h2>
-            <p className="text-sm text-muted-foreground">{t('admin.users.edit.organizations.description')}</p>
+            <h2 className="text-lg font-semibold text-foreground">
+              {t('admin.users.edit.organizations.title')}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t('admin.users.edit.organizations.description')}
+            </p>
           </div>
 
           <div className="grid gap-3 rounded-lg border border-border bg-background p-3 md:grid-cols-2">
@@ -614,16 +694,26 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                   }))
                 }
               >
-                <option value="internal">{t('admin.users.edit.organizations.visibility.internal')}</option>
-                <option value="external">{t('admin.users.edit.organizations.visibility.external')}</option>
+                <option value="internal">
+                  {t('admin.users.edit.organizations.visibility.internal')}
+                </option>
+                <option value="external">
+                  {t('admin.users.edit.organizations.visibility.external')}
+                </option>
               </Select>
             </div>
-            <Label htmlFor="user-organization-default" className="flex items-center gap-2 text-sm text-foreground">
+            <Label
+              htmlFor="user-organization-default"
+              className="flex items-center gap-2 text-sm text-foreground"
+            >
               <Checkbox
                 id="user-organization-default"
                 checked={organizationAssignment.isDefaultContext}
                 onChange={(event) =>
-                  setOrganizationAssignment((current) => ({ ...current, isDefaultContext: event.target.checked }))
+                  setOrganizationAssignment((current) => ({
+                    ...current,
+                    isDefaultContext: event.target.checked,
+                  }))
                 }
               />
               <span>{t('admin.users.edit.organizations.assignDefaultLabel')}</span>
@@ -656,12 +746,16 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                       <p className="font-medium text-foreground">{membership.displayName}</p>
                       <p className="text-xs text-muted-foreground">{membership.organizationKey}</p>
                       <p className="text-xs text-muted-foreground">
-                        {t('admin.users.edit.organizations.createdAt', { value: formatDateTime(membership.createdAt) })}
+                        {t('admin.users.edit.organizations.createdAt', {
+                          value: formatDateTime(membership.createdAt),
+                        })}
                       </p>
                     </div>
                     <div className="grid gap-1 text-sm text-foreground">
                       <Label htmlFor={`organization-visibility-${membership.organizationId}`}>
-                        {t('admin.users.edit.organizations.membershipVisibilityLabel', { name: membership.displayName })}
+                        {t('admin.users.edit.organizations.membershipVisibilityLabel', {
+                          name: membership.displayName,
+                        })}
                       </Label>
                       <Select
                         id={`organization-visibility-${membership.organizationId}`}
@@ -672,8 +766,12 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                           })
                         }
                       >
-                        <option value="internal">{t('admin.users.edit.organizations.visibility.internal')}</option>
-                        <option value="external">{t('admin.users.edit.organizations.visibility.external')}</option>
+                        <option value="internal">
+                          {t('admin.users.edit.organizations.visibility.internal')}
+                        </option>
+                        <option value="external">
+                          {t('admin.users.edit.organizations.visibility.external')}
+                        </option>
                       </Select>
                     </div>
                     <Label
@@ -697,14 +795,18 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                         variant="outline"
                         onClick={() => void saveOrganizationMembership(membership.organizationId)}
                       >
-                        {t('admin.users.edit.organizations.updateAction', { name: membership.displayName })}
+                        {t('admin.users.edit.organizations.updateAction', {
+                          name: membership.displayName,
+                        })}
                       </Button>
                       <Button
                         type="button"
                         variant="destructive"
                         onClick={() => void removeOrganizationMembership(membership.organizationId)}
                       >
-                        {t('admin.users.edit.organizations.removeAction', { name: membership.displayName })}
+                        {t('admin.users.edit.organizations.removeAction', {
+                          name: membership.displayName,
+                        })}
                       </Button>
                     </div>
                   </li>
@@ -712,7 +814,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               })}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">{t('admin.users.edit.organizations.empty')}</p>
+            <p className="text-sm text-muted-foreground">
+              {t('admin.users.edit.organizations.empty')}
+            </p>
           )}
         </section>
 
@@ -728,7 +832,12 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               <AlertDescription className="flex flex-col gap-3">
                 <span>{timelineError}</span>
                 <div>
-                  <Button type="button" size="sm" variant="outline" onClick={() => void reloadTimeline()}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void reloadTimeline()}
+                  >
                     {t('admin.users.edit.historyRetry')}
                   </Button>
                 </div>
@@ -757,8 +866,16 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                       </div>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      <span>{t('admin.users.edit.historyOccurredAt', { value: formatDateTime(entry.occurredAt) })}</span>
-                      {metadataText ? <span>{t('admin.users.edit.historyMetadata', { value: metadataText })}</span> : null}
+                      <span>
+                        {t('admin.users.edit.historyOccurredAt', {
+                          value: formatDateTime(entry.occurredAt),
+                        })}
+                      </span>
+                      {metadataText ? (
+                        <span>
+                          {t('admin.users.edit.historyMetadata', { value: metadataText })}
+                        </span>
+                      ) : null}
                     </div>
                   </li>
                 );
@@ -779,7 +896,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
         ) : null}
         {invitationStatus === 'failed' ? (
           <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
-            <AlertDescription>{invitationErrorMessage ?? t('admin.users.edit.invitationWarning')}</AlertDescription>
+            <AlertDescription>
+              {invitationErrorMessage ?? t('admin.users.edit.invitationWarning')}
+            </AlertDescription>
           </Alert>
         ) : null}
         {saveSuccess ? (
@@ -794,18 +913,20 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
         ) : null}
         {mainserverReprovisionSuccess ? (
           <Alert className="border-primary/40 bg-primary/10 text-primary" role="status">
-            <AlertDescription>{t('admin.users.edit.mainserverReprovisionSuccess')}</AlertDescription>
+            <AlertDescription>
+              {t('admin.users.edit.mainserverReprovisionSuccess')}
+            </AlertDescription>
           </Alert>
         ) : null}
 
-        <div className="flex flex-wrap justify-end gap-3">
+        <StudioFormActionBar>
           <Button type="button" variant="outline" onClick={resetFormValues}>
             {t('account.actions.cancel')}
           </Button>
           <Button type="submit" disabled={isSaving}>
             {isSaving ? t('account.actions.saving') : t('admin.users.edit.save')}
           </Button>
-        </div>
+        </StudioFormActionBar>
       </form>
 
       <ConfirmDialog

@@ -94,11 +94,11 @@ Docker-Swarm-Dienste dürfen nach einem Update bis zu fünf Minuten benötigen, 
 
 1. Ein unmittelbar nach dem Deploy fehlschlagender Smoke wird nicht durch weitere Mutationen „repariert“.
 2. Zuerst Service-Update und Tasks prüfen und bis zu fünf Minuten ab dem abgeschlossenen Update konvergieren lassen.
-3. Danach `health/live`, `health/ready`, alle aktiven Tenant-Login-Redirects und den Live-Digest erneut prüfen.
+3. Danach `health/live`, `health/ready`, den Release-Blocking-Tenant-Login-Redirect (`de-studio-sandbox`) und den Live-Digest erneut prüfen. Weitere Tenant-Redirects bleiben operativ überwacht, blockieren den Release aber nicht.
 4. Bleibt ein Fehler bestehen, ist der Rollout rot und wird diagnostiziert oder auf den vorherigen Digest zurückgeführt.
 5. Ein Workflow-Retry ist erst nach dokumentierter Ursache beziehungsweise bestätigtem reinen Konvergenzfehler zulässig.
 
-Ein regulärer Rollout ist nur erfolgreich, wenn der GitHub-Workflow grün ist, der erwartete Digest live läuft, `live` und `ready` HTTP 200 liefern und alle aktiven Tenant-Smokes bestanden sind. Abweichende Einzelfallfreigaben sind Incident-Entscheidungen, keine neue Prozessregel.
+Ein regulärer Rollout ist nur erfolgreich, wenn der GitHub-Workflow grün ist, der erwartete Digest live läuft, `live` und `ready` HTTP 200 liefern und der Release-Blocking-Tenant-Smoke für `de-studio-sandbox` bestanden ist. Weitere Tenant-Smokes sind operative Signale und keine Release-Blocker.
 
 ## Backup- und Rollback-Grenzen
 

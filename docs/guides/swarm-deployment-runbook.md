@@ -111,13 +111,17 @@ Direkte Änderungen an Traefik, gemeinsamen Netzwerken oder fremden Stacks sind 
 
 Der einzige zulässige Aufrufpfad ist der manuell freigegebene GitHub-Workflow **Controlled Database Restore** (`database-restore.yml`). Direkte HTTPS-Aufrufe, `quantum-cli exec`, freie `pg_restore`-Kommandos und lokale Deploy-Skripte sind kein Restore-Vertrag. Der Workflow verlangt Umgebung, exakten MinIO-Objektschlüssel, kleingeschriebene SHA-256, Wartungsfensterreferenz, unveränderliches App-Image und dessen Git-Revision. Für Production ist zusätzlich die Run-ID eines vollständig erfolgreichen Staging-Restore-Drills erforderlich.
 
-Vor dem ersten Staging-Drill müssen pro Umgebung externe Swarm-Secrets für Restore-HMAC und Restore-Principal vorhanden sein. Der Datenbank-Principal wird einmalig durch einen Datenbankadministrator eingerichtet; das Passwort wird dabei ausschließlich aus dem Secret-Store bezogen:
+Vor dem ersten Staging-Drill müssen pro Umgebung externe Swarm-Secrets für Restore-HMAC und Restore-Principal vorhanden sein. Dafür wird der manuell gestartete und durch das jeweilige GitHub Environment geschützte Workflow **Restore Infrastructure Bootstrap** (`restore-infrastructure-bootstrap.yml`) verwendet. Er legt ausschließlich fehlende `restore_<environment>_postgres_password`- und `restore_<environment>_signing_key`-Secrets über die Portainer-Docker-API an; vorhandene Secrets werden weder gelesen noch überschrieben. SSH-Zugriff auf den Swarm-Node ist nicht erforderlich.
+
+Danach gleicht derselbe Workflow den Datenbank-Principal über einen temporären Swarm-One-shot-Job im internen Netz der Zielumgebung ab. Admin- und Restore-Passwort werden ausschließlich als externe Swarm-Secrets gemountet. Der Job wird nach erfolgreicher Evidenz wieder entfernt und entspricht idempotent folgendem Vertrag:
 
 ```sql
 CREATE ROLE sva_restore LOGIN NOINHERIT PASSWORD '<aus Secret-Store>';
 GRANT sva TO sva_restore;
 GRANT pg_read_all_stats TO sva_restore;
 ```
+
+In den GitHub Environments `staging` und `prod` müssen dafür `RESTORE_POSTGRES_PASSWORD` und `RESTORE_AGENT_SIGNING_KEY` hinterlegt sein. `QUANTUM_API_KEY` und `QUANTUM_ENDPOINT` stammen aus dem bereits geschützten Deployment-Kontext; die Portainer-Endpoint-ID wird daraus zur Laufzeit eindeutig aufgelöst. Rotation oder allgemeines Secret-Reconciliation sind bewusst nicht Bestandteil dieses Bootstrap-Workflows. Der reguläre Studio-Rollout bleibt unverändert der in `studio-rollout-process.md` definierte Promote-Pfad.
 
 Der Principal erhält keine freie Host-, Datenbank- oder Rollenwahl. Der Agent setzt für Dump und Restore immer die fest konfigurierte App-Rolle `sva`. Das Agent-Image verwendet passend zum Studio-Stack ausschließlich PostgreSQL-16-Clientwerkzeuge.
 

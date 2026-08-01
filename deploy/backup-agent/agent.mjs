@@ -608,7 +608,7 @@ SELECT json_build_object(
       JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
       WHERE namespace.nspname = 'iam' AND relation.relkind IN ('r', 'p')
     ),
-    true
+    false
   ),
   'runtimeRoleTablesReady', COALESCE(
     (
@@ -622,7 +622,7 @@ SELECT json_build_object(
       JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
       WHERE namespace.nspname = 'iam' AND relation.relkind IN ('r', 'p')
     ),
-    true
+    false
   ),
   'runtimeUserSequencesReady', COALESCE(
     (
@@ -634,7 +634,7 @@ SELECT json_build_object(
       JOIN pg_namespace namespace ON namespace.oid = sequence.relnamespace
       WHERE namespace.nspname = 'iam' AND sequence.relkind = 'S'
     ),
-    true
+    false
   ),
   'runtimeRoleSequencesReady', COALESCE(
     (
@@ -646,7 +646,7 @@ SELECT json_build_object(
       JOIN pg_namespace namespace ON namespace.oid = sequence.relnamespace
       WHERE namespace.nspname = 'iam' AND sequence.relkind = 'S'
     ),
-    true
+    false
   )
 )::text;
 `;

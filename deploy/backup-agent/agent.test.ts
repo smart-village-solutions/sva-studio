@@ -203,6 +203,7 @@ describe('backup agent runtime contract', () => {
       expect(sql).toContain(`has_sequence_privilege(${principal}, sequence.oid, 'SELECT')`);
     }
     expect(sql).not.toContain("'USAGE,SELECT'");
+    expect(sql.match(/\n    false\n/gmu)).toHaveLength(4);
   });
 
   it('uses persistent MinIO control keys for replay and terminal evidence', () => {

@@ -147,6 +147,20 @@ describe('smoke helpers', () => {
     ])).toBe(true);
   });
 
+  it.each([
+    'public-ingress-https-de-teststadt-dev.studio-dev.smart-village.app',
+    'public-ingress-login-de-teststadt-dev.studio-dev.smart-village.app',
+  ])('retries transport failures without an HTTP response for %s', (name) => {
+    expect(shouldRetryExternalSmoke([
+      createProbe({
+        httpStatus: undefined,
+        message: 'fetch failed',
+        name,
+        status: 'error',
+      }),
+    ])).toBe(true);
+  });
+
   it('does not retry non-warmup external failures', () => {
     const probes = [
       createProbe({

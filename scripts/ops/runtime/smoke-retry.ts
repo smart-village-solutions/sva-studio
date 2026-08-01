@@ -68,10 +68,12 @@ export const shouldRetryInternalVerifyAttempt = ({
 
 export const shouldRetryExternalSmoke = (probes: readonly AcceptanceProbeResult[]) => {
   const failingProbes = probes.filter((probe) => probe.status === 'error');
-  return failingProbes.length > 0 && failingProbes.every((probe) => (
-    retryableExternalWarmupProbeNames.has(probe.name)
-    || probe.name.startsWith('public-auth-login-')
-    || probe.name.startsWith('public-ingress-https-')
-    || probe.name.startsWith('public-ingress-login-')
-  ) && retryableExternalWarmupSignals.some((signal) => probe.message.toLowerCase().includes(signal)));
+  return failingProbes.length > 0 && failingProbes.every((probe) => {
+    const isIngressProbe = probe.name.startsWith('public-ingress-https-') || probe.name.startsWith('public-ingress-login-');
+    const hasRetryableName = retryableExternalWarmupProbeNames.has(probe.name)
+      || probe.name.startsWith('public-auth-login-')
+      || isIngressProbe;
+    const hasRetryableSignal = retryableExternalWarmupSignals.some((signal) => probe.message.toLowerCase().includes(signal));
+    return hasRetryableName && (hasRetryableSignal || (isIngressProbe && probe.httpStatus === undefined));
+  });
 };

@@ -1,0 +1,4 @@
+{
+  "prNumber": 880,
+  "body": "Fehlerbehebung\n\n- Der Datenbank-Restore kann vorhandene, mit PostgreSQL 18 erzeugte Production-Dumps wiederherstellen und meldet Archiv-Preflight-Fehler eindeutig."
+}

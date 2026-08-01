@@ -6,6 +6,7 @@ import {
   canonicalRestoreRequest,
   controlKeysFor,
   extractAppliedGooseVersion,
+  isRestoreSqlLineSupported,
   minioAwsCompatibilityEnv,
   restoreControlKeysFor,
   runCommand,
@@ -203,6 +204,9 @@ describe('backup agent runtime contract', () => {
     ).toBe('aws_failed_1');
     expect(safeErrorCode(new Error('password=secret'))).toBe('backup_failed');
     expect(safeErrorCode(new Error('pg_restore_timeout'))).toBe('pg_restore_timeout');
+    expect(safeErrorCode(new Error('pg_restore_preflight_failed_1'))).toBe(
+      'pg_restore_preflight_failed_1'
+    );
     expect(safeErrorCode(new Error('database_postcheck_failed'))).toBe('database_postcheck_failed');
     expect(safeErrorCode(new Error('schema_version_mismatch'))).toBe('schema_version_mismatch');
   });
@@ -224,6 +228,12 @@ describe('backup agent runtime contract', () => {
       archiveSchemaCompatible('1; TABLE public goose_db_version sva\n2; TABLE iam instances sva\n')
     ).toBe(true);
     expect(archiveSchemaCompatible('1; TABLE public goose_db_version sva\n')).toBe(false);
+  });
+
+  it('removes only restore settings unsupported by the PostgreSQL 16 target', () => {
+    expect(isRestoreSqlLineSupported('SET transaction_timeout = 0;')).toBe(false);
+    expect(isRestoreSqlLineSupported('SET statement_timeout = 0;')).toBe(true);
+    expect(isRestoreSqlLineSupported('SELECT 1;')).toBe(true);
   });
 
   it('fails closed while application sessions remain active', async () => {

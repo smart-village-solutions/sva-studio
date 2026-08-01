@@ -125,7 +125,7 @@ GRANT pg_read_all_stats TO sva_restore;
 
 In den GitHub Environments `staging` und `prod` müssen dafür `RESTORE_POSTGRES_PASSWORD` und `RESTORE_AGENT_SIGNING_KEY` hinterlegt sein. `QUANTUM_API_KEY` und `QUANTUM_ENDPOINT` stammen aus dem bereits geschützten Deployment-Kontext; die Portainer-Endpoint-ID wird daraus zur Laufzeit eindeutig aufgelöst. Rotation oder allgemeines Secret-Reconciliation sind bewusst nicht Bestandteil dieses Bootstrap-Workflows. Der reguläre Studio-Rollout bleibt unverändert der in `studio-rollout-process.md` definierte Promote-Pfad.
 
-Der Principal erhält keine freie Host-, Datenbank- oder Rollenwahl. Der Agent setzt für Dump und Restore immer die fest konfigurierte App-Rolle `sva`. Das Agent-Image verwendet passend zum Studio-Stack ausschließlich PostgreSQL-16-Clientwerkzeuge.
+Der Principal erhält keine freie Host-, Datenbank- oder Rollenwahl. Der Agent setzt für Dump und Restore immer die fest konfigurierte App-Rolle `sva`. Das Agent-Image verwendet einheitlich fest gepinnte PostgreSQL-18-Clientwerkzeuge. Damit bleiben auch bereits mit PostgreSQL 18 erzeugte Custom-Dumps wiederherstellbar; Backups und Restores dürfen nicht mit unterschiedlichen Client-Hauptversionen ausgeführt werden.
 
 Ablauf:
 

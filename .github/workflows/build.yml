@@ -46,7 +46,7 @@ jobs:
 
       - name: Build and push Docker image
         id: build_image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           build-args: |
             SVA_IMAGE_REVISION=${{ github.sha }}
@@ -60,7 +60,7 @@ jobs:
 
       - name: Build and push backup agent image
         id: build_backup_agent_image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           build-args: |
             SVA_IMAGE_REVISION=${{ github.sha }}

@@ -8,6 +8,12 @@ const workflow = readFileSync(
 );
 
 describe('controlled database restore workflow', () => {
+  it('uses the production-only release-blocking tenant scope', () => {
+    expect(workflow).toContain(
+      "SVA_ACCEPTANCE_RELEASE_MODE: ${{ inputs.environment == 'prod' && 'prod' || '' }}"
+    );
+  });
+
   it('is manually dispatched, environment-protected and globally serialized per target', () => {
     expect(workflow).toContain('workflow_dispatch:');
     expect(workflow).toContain('environment: ${{ inputs.environment }}');

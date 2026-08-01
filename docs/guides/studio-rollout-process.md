@@ -12,7 +12,7 @@ Dieses Dokument ist die einzige normative Bedienanleitung für reguläre Studio-
 - Staging wird vor Production mit demselben Digest vollständig verifiziert.
 - Production wird ausschließlich manuell über das geschützte GitHub-Environment `prod` freigegeben.
 - `auto` ist ausschließlich in Dev zulässig. Staging und Production verwenden `assert-none` oder `run`.
-- Bei Migration oder Bootstrap in Staging oder Production muss vor der ersten Datenmutation ein erfolgreich verifiziertes PostgreSQL-Backup vorliegen.
+- Vor jedem Deployment nach Staging oder Production muss ein erfolgreich verifiziertes PostgreSQL-Backup vorliegen.
 - Backup, Migration, Bootstrap, Postconditions und Verifikation sind fail-closed: Ein Fehler blockiert alle nachfolgenden mutierenden Phasen.
 - Secrets kommen ausschließlich aus dem jeweiligen GitHub-Environment. Sie werden weder in Workflow-Inputs noch in Logs, Reports oder Dokumentation geschrieben.
 - Direkte Portainer-Änderungen, Docker-Service-Updates, rohe `quantum-cli stacks deploy/update`-Aufrufe und `env:release:studio:local` sind kein regulärer Rolloutpfad.
@@ -22,8 +22,8 @@ Dieses Dokument ist die einzige normative Bedienanleitung für reguläre Studio-
 | Umgebung | Stack | Root-URL | Auslösung | Modi | Backup |
 | --- | --- | --- | --- | --- | --- |
 | Dev | `studio-dev` | `https://studio-dev.smart-village.app` | automatisch nach erfolgreichem Build auf `main` | `migration_mode=auto`, `bootstrap_mode=auto` | kein Promote-Backup |
-| Staging | `studio-staging` | `https://studio-staging.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `staging` | `assert-none` oder `run` | verpflichtend, sobald Migration oder Bootstrap ausgeführt wird |
-| Production | `studio` | `https://studio.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `prod` | `assert-none` oder `run` | verpflichtend, sobald Migration oder Bootstrap ausgeführt wird |
+| Staging | `studio-staging` | `https://studio-staging.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `staging` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
+| Production | `studio` | `https://studio.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `prod` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
 
 Die Backup-Endpunkte und Buckets sind fest an die Zielumgebung gebunden:
 
@@ -60,7 +60,7 @@ Der manuelle Workflow [Promote](../../.github/workflows/promote.yml) erhält:
 
 `assert-none` ist kein Skip: Sobald der Diff ein entsprechendes Risiko enthält, bricht das Gate ab. Dann muss der betreffende Modus bewusst auf `run` gesetzt werden.
 
-Wenn mindestens ein One-shot-Job läuft, ist die Reihenfolge unveränderlich:
+Die Reihenfolge ist unveränderlich; nicht angeforderte One-shot-Jobs und deren Postconditions werden übersprungen:
 
 1. Inputs, Git-Bindung, Image-Digest und OCI-Revision validieren.
 2. Vorherigen Live-Digest erfassen.
@@ -86,7 +86,7 @@ Production verwendet denselben Workflow und denselben bereits in Staging geprüf
 
 Danach gilt dieselbe Reihenfolge wie in Staging: Backup → Migration → Bootstrap → Postconditions → App-Deploy → Runtime-Smoke → Digest-Prüfung.
 
-Ein reines App-Deployment mit beiden Modi `assert-none` führt kein Datenbank-Backup aus. Das ist nur zulässig, wenn die Diff-Gates belastbar bestätigen, dass weder Migration noch Bootstrap erforderlich sind.
+Auch ein reines App-Deployment mit beiden Modi `assert-none` beginnt mit einem erfolgreich verifizierten Datenbank-Backup.
 
 ## Konvergenz und Erfolgsdefinition
 

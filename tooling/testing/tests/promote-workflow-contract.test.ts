@@ -21,7 +21,7 @@ describe('Promote workflow contract', () => {
     const phases = [
       'bind executor source to promoted change head',
       'capture previous live app digest',
-      'create database backup before one-shot jobs',
+      'create database backup before deployment',
       'verify database backup object',
       'run migration one-shot job',
       'run bootstrap one-shot job',
@@ -68,7 +68,7 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('packages: read');
     expect(workflow).toContain('actions: read');
     expect(workflow).toContain('require successful staging parity for production mutation');
-    expect(workflow).toContain('create database backup before one-shot jobs');
+    expect(workflow).toContain('create database backup before deployment');
     expect(workflow).toContain('verify database backup object');
     expect(workflow).toContain(
       'S3_OBJECT_KEY: ${{ steps.backup_job.outputs.backup_object || steps.backup_fallback_job.outputs.backup_object }}'
@@ -87,7 +87,7 @@ describe('Promote workflow contract', () => {
     );
   });
 
-  it('runs backups only for staging or production mutations and blocks production deploys behind parity', () => {
+  it('runs backups before every staging or production deployment and blocks production mutations behind parity', () => {
     expect(workflow).toContain("inputs.environment == 'staging' || inputs.environment == 'prod'");
     expect(workflow).toContain(
       "inputs.environment == 'prod' && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true')"
@@ -95,7 +95,16 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('require successful staging parity for production mutation');
     expect(
       workflow.indexOf('require successful staging parity for production mutation')
-    ).toBeLessThan(workflow.indexOf('create database backup before one-shot jobs'));
+    ).toBeLessThan(workflow.indexOf('create database backup before deployment'));
+    expect(workflow).toContain(
+      "if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.BACKUP_EXECUTOR != 'temporary' }}"
+    );
+    expect(workflow).toContain(
+      "if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.BACKUP_EXECUTOR == 'temporary' }}"
+    );
+    expect(workflow).toContain(
+      "if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}"
+    );
   });
 
   it('uses automatic diff-based one-shot execution for main-to-Dev promotion', () => {

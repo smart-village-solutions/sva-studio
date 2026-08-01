@@ -1,0 +1,4 @@
+{
+  "prNumber": 873,
+  "body": "Interne Verbesserung\n\n- Der kontrollierte Datenbank-Restore stellt vor dem Neustart der Anwendung die Rechte des App-Datenbank-Principals über den bestehenden Bootstrap-Pfad wieder her."
+}

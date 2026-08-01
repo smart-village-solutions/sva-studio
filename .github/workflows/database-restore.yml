@@ -119,7 +119,8 @@ jobs:
         if: ${{ inputs.environment == 'prod' }}
         run: pnpm exec tsx scripts/ci/verify-staging-restore-evidence.ts "${{ runner.temp }}/staging-restore-evidence"
 
-      - name: bind executor source to image revision on main
+      - name: materialize image-bound stack source
+        id: image_source
         env:
           CHANGE_HEAD: ${{ inputs.change_head }}
         run: |
@@ -127,7 +128,9 @@ jobs:
           git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
           head="$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
           git merge-base --is-ancestor "${head}" origin/main
-          git checkout --detach "${head}"
+          image_source="${RUNNER_TEMP}/image-source-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git worktree add --detach "${image_source}" "${head}"
+          echo "path=${image_source}" >> "${GITHUB_OUTPUT}"
 
       - name: setup quantum-cli
         uses: hostwithquantum/setup-quantum-cli@v2.0.0
@@ -149,15 +152,16 @@ jobs:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
           DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           ENVIRONMENT: ${{ inputs.environment }}
+          IMAGE_SOURCE: ${{ steps.image_source.outputs.path }}
         run: |
           set -euo pipefail
           umask 077
-          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
-          printf '\nIMAGE_REF=%s\n' "${DEPLOY_IMAGE_REF}" >> .env
-          docker compose -f compose.yaml -f "./deploy/compose.${ENVIRONMENT}.yaml" config --no-normalize --format json > "${RUNNER_TEMP}/restore-stack.json"
+          trap 'rm -f "${IMAGE_SOURCE}/.env"' EXIT
+          pnpm exec tsx scripts/ci/render-compose-env.ts --output "${IMAGE_SOURCE}/.env"
+          printf '\nIMAGE_REF=%s\n' "${DEPLOY_IMAGE_REF}" >> "${IMAGE_SOURCE}/.env"
+          docker compose --project-directory "${IMAGE_SOURCE}" -f "${IMAGE_SOURCE}/compose.yaml" -f "${IMAGE_SOURCE}/deploy/compose.${ENVIRONMENT}.yaml" config --no-normalize --format json > "${RUNNER_TEMP}/restore-stack.json"
           pnpm exec tsx scripts/ci/render-restore-stack.ts --input "${RUNNER_TEMP}/restore-stack.json" --output "${RUNNER_TEMP}/restore-stack-stopped.yaml" --mode stopped
           pnpm exec tsx scripts/ci/render-restore-stack.ts --input "${RUNNER_TEMP}/restore-stack.json" --output "${RUNNER_TEMP}/restore-stack-running.yaml" --mode running
-          rm -f .env
 
       - name: stop application writers
         id: maintenance
@@ -186,12 +190,13 @@ jobs:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
           SVA_DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
+          SVA_COMPOSE_SOURCE_ROOT: ${{ steps.image_source.outputs.path }}
         run: |
           set -euo pipefail
           umask 077
-          trap 'rm -f .env' EXIT
-          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
-          printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
+          trap 'rm -f "${SVA_COMPOSE_SOURCE_ROOT}/.env"' EXIT
+          pnpm exec tsx scripts/ci/render-compose-env.ts --output "${SVA_COMPOSE_SOURCE_ROOT}/.env"
+          printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> "${SVA_COMPOSE_SOURCE_ROOT}/.env"
           pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind bootstrap --environment "${{ inputs.environment }}"
 
       - name: restart application after successful database checks
@@ -257,3 +262,9 @@ jobs:
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
         run: quantum-cli stacks deploy -f "${RUNNER_TEMP}/restore-stack-stopped.yaml" --stack "${{ steps.target.outputs.stack_name }}" --endpoint "${QUANTUM_ENDPOINT}"
+
+      - name: remove image-bound stack source
+        if: ${{ always() && steps.image_source.outputs.path != '' }}
+        env:
+          IMAGE_SOURCE: ${{ steps.image_source.outputs.path }}
+        run: git worktree remove --force "${IMAGE_SOURCE}"

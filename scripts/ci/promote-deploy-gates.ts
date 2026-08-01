@@ -41,7 +41,6 @@ const migrationRiskPatterns = [
   /^migrate-entrypoint\.sh$/u,
   /^docs\/development\/studio-db-schema-final\.sql$/u,
   /^docs\/development\/studio-db-schema\.md$/u,
-  /^packages\/(?:data|data-repositories|core|sva-mainserver)\/.+/u,
 ];
 const bootstrapRiskPatterns = [
   /^compose\.yaml$/u,

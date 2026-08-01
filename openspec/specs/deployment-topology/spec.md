@@ -195,6 +195,7 @@ Das System SHALL stateful Services, Secrets, Configs, Migrationen, Bootstrap und
 
 - **WHEN** ein Merge einen Push nach `main` auslöst und `Promote` für `dev` im Modus `auto` startet
 - **THEN** klassifiziert der Workflow Migration und Bootstrap anhand des konkreten Commit-Diffs unabhängig
+- **AND** markiert er Änderungen an Anwendungslogik nicht allein wegen ihres Package-Pfads als migrationsrelevant, sondern nur bei konkreten Migrationsartefakten oder Änderungen am Datenbank- beziehungsweise Deploy-Vertrag
 - **AND** führt er jeden erforderlichen One-shot-Job vor dem App-Deploy aus
 - **AND** überspringt er nicht erforderliche Jobs
 - **AND** aktualisiert er den Dev-App-Stack nur, wenn alle erforderlichen Jobs und der Build erfolgreich sind

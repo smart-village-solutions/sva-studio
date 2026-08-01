@@ -39,9 +39,10 @@ const migrationRiskPatterns = [
   /^packages\/.+\/migrations\//u,
   /(?:^|\/)migrations\//u,
   /^migrate-entrypoint\.sh$/u,
+  /^packages\/data\/goose\.config\.json$/u,
+  /^packages\/data\/scripts\/goosew\.sh$/u,
   /^docs\/development\/studio-db-schema-final\.sql$/u,
   /^docs\/development\/studio-db-schema\.md$/u,
-  /^packages\/(?:data|data-repositories|core|sva-mainserver)\/.+/u,
 ];
 const bootstrapRiskPatterns = [
   /^compose\.yaml$/u,

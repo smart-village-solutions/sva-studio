@@ -52,6 +52,50 @@ describe('promote-deploy-gates', () => {
     expect(result.migration.riskFiles).toEqual(['packages/data/migrations/0010_add_role.sql']);
   });
 
+  it('fails migration assert-none when the deployed Goose runner changes', () => {
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'assert-none',
+      changedFiles: [
+        'packages/data/goose.config.json',
+        'packages/data/scripts/goosew.sh',
+      ],
+      migrationMode: 'assert-none',
+    });
+
+    expect(result.migration).toMatchObject({
+      ok: false,
+      result: 'blocked-risk',
+      riskDetected: true,
+    });
+    expect(result.migration.riskFiles).toEqual([
+      'packages/data/goose.config.json',
+      'packages/data/scripts/goosew.sh',
+    ]);
+  });
+
+  it('treats application changes outside migration artifacts as safe for assert-none', () => {
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'assert-none',
+      changedFiles: [
+        'packages/core/src/actions.ts',
+        'packages/data/src/news.ts',
+        'packages/data-repositories/src/news-repository.ts',
+        'packages/sva-mainserver/src/server/news-route.test.ts',
+        'packages/sva-mainserver/src/server/news-route.ts',
+        'packages/sva-mainserver/src/server/service-internals/news-operations.ts',
+        'packages/sva-mainserver/src/server/service.test.ts',
+      ],
+      migrationMode: 'assert-none',
+    });
+
+    expect(result.migration).toMatchObject({
+      ok: true,
+      result: 'asserted-clean',
+      riskDetected: false,
+      riskFiles: [],
+    });
+  });
+
   it('fails bootstrap assert-none when provisioning-risk files changed', () => {
     const result = evaluatePromoteDeployGates({
       bootstrapMode: 'assert-none',

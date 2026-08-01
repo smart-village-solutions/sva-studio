@@ -1,0 +1,4 @@
+{
+  "prNumber": 852,
+  "body": "Der Studio-Promote erkennt Migrationsrisiken anhand konkreter Migrations-, Schema- und Deploy-Änderungen. Reine Änderungen an der Anwendungslogik lösen keinen unnötigen Migrationslauf mehr aus."
+}

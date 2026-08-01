@@ -509,3 +509,14 @@ Zuordnung:
 Zuordnung:
 
 - Abschnitt 03/04/05/06/07/08/09/10: ADR-047
+
+### Fortschreibung 2026-08: Kontrollierter Datenbank-Vollrestore
+
+- [ADR-048](../adr/ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md) umfasst zusätzlich den engen Vertrag `restore-and-verify-v1`.
+- Der einzige Aufrufer ist der geschützte Workflow `database-restore.yml`; generische Remote-Shell, freie Restore-Optionen und automatische Wiederholungen bleiben ausgeschlossen.
+- Der Workflow verantwortet Stilllegung und Wiederanlauf, der Agent ausschließlich Preflight, Sicherheitsdump, Restore und DB-Nachprüfungen.
+- Production setzt einen erfolgreichen Staging-Restore-Drill und eine neue explizite Environment-Freigabe voraus.
+
+Zuordnung:
+
+- Abschnitt 06/07/08/09/11: ADR-048 und OpenSpec-Change `add-controlled-database-restore`

@@ -1,15 +1,22 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
+  archiveSchemaCompatible,
   canonicalRequest,
+  canonicalRestoreRequest,
   controlKeysFor,
+  extractAppliedGooseVersion,
   minioAwsCompatibilityEnv,
+  restoreControlKeysFor,
   runCommand,
   safeErrorCode,
   targets,
   validateOidcClaims,
+  validateDatabasePostchecks,
   validRequest,
+  validRestoreRequest,
   validRequestHost,
+  waitForSessionDrain,
 } from './agent.mjs';
 
 const request = {
@@ -77,6 +84,33 @@ describe('backup agent runtime contract', () => {
       )
     ).not.toThrow();
   });
+
+  it('uses an action-specific workflow allowlist for restores', () => {
+    process.env.BACKUP_AGENT_OIDC_AUDIENCE = 'studio-backup-agent';
+    process.env.BACKUP_AGENT_GITHUB_REPOSITORY = 'smart-village-solutions/sva-studio';
+    process.env.RESTORE_AGENT_ALLOWED_WORKFLOWS = 'database-restore.yml';
+    const claims = {
+      aud: 'studio-backup-agent',
+      environment: 'staging',
+      exp: 1_800,
+      iss: 'https://token.actions.githubusercontent.com',
+      nbf: 900,
+      repository: 'smart-village-solutions/sva-studio',
+      workflow_ref:
+        'smart-village-solutions/sva-studio/.github/workflows/database-restore.yml@refs/heads/main',
+    };
+    expect(() =>
+      validateOidcClaims(claims, 'staging', 1_000, 'restore-and-verify-v1')
+    ).not.toThrow();
+    expect(() =>
+      validateOidcClaims(
+        { ...claims, workflow_ref: request.action },
+        'staging',
+        1_000,
+        'restore-and-verify-v1'
+      )
+    ).toThrow('oidc_workflow_invalid');
+  });
   it('accepts only short-lived requests', () => {
     expect(validRequest(request, Date.parse('2026-07-30T10:00:00.000Z'))).toBe(true);
     expect(
@@ -130,6 +164,32 @@ describe('backup agent runtime contract', () => {
     });
   });
 
+  it('validates restore requests independently and stores separate evidence', () => {
+    const restore = {
+      version: 1,
+      action: 'restore-and-verify-v1',
+      requestId: 'restore-12345678',
+      environment: 'staging',
+      expiresAt: '2026-07-30T10:10:00.000Z',
+      maintenanceWindowReference: 'INC-42',
+      sourceObjectKey: `staging/2026-07-30/${'a'.repeat(64)}/backup.dump`,
+      sourceSha256: 'b'.repeat(64),
+    } as const;
+    expect(validRestoreRequest(restore, Date.parse('2026-07-30T10:00:00.000Z'))).toBe(true);
+    expect(
+      validRestoreRequest(
+        { ...restore, sourceObjectKey: 'prod/backup.dump' },
+        Date.parse('2026-07-30T10:00:00.000Z')
+      )
+    ).toBe(false);
+    expect(canonicalRestoreRequest(restore)).not.toContain('postgres');
+    expect(restoreControlKeysFor(restore.requestId)).toEqual({
+      request: `control/restores/requests/${restore.requestId}.json`,
+      safetyBackup: `control/restores/safety-backups/${restore.requestId}.json`,
+      result: `control/restores/results/${restore.requestId}.json`,
+    });
+  });
+
   it('uses checksum settings compatible with the deployed MinIO endpoint', () => {
     expect(minioAwsCompatibilityEnv).toEqual({
       AWS_REQUEST_CHECKSUM_CALCULATION: 'when_required',
@@ -142,6 +202,63 @@ describe('backup agent runtime contract', () => {
       safeErrorCode(new Error('aws_failed_1:https://access:secret@minio/upload shell trace'))
     ).toBe('aws_failed_1');
     expect(safeErrorCode(new Error('password=secret'))).toBe('backup_failed');
+    expect(safeErrorCode(new Error('pg_restore_timeout'))).toBe('pg_restore_timeout');
+    expect(safeErrorCode(new Error('database_postcheck_failed'))).toBe('database_postcheck_failed');
+    expect(safeErrorCode(new Error('schema_version_mismatch'))).toBe('schema_version_mismatch');
+  });
+
+  it('extracts the newest applied Goose version from custom-dump SQL output', () => {
+    const sql = [
+      'COPY public.goose_db_version (id, version_id, is_applied, tstamp) FROM stdin;',
+      '1\t2026073101\tt\t2026-07-31 10:00:00',
+      '2\t2026080101\ttrue\t2026-08-01 10:00:00',
+      '3\t2026080201\tf\t2026-08-02 10:00:00',
+      '\\.',
+    ].join('\n');
+    expect(extractAppliedGooseVersion(sql)).toBe(2026080101);
+    expect(extractAppliedGooseVersion('SELECT 1;')).toBeNull();
+  });
+
+  it('requires both migration and IAM registry structures in the restore archive', () => {
+    expect(
+      archiveSchemaCompatible('1; TABLE public goose_db_version sva\n2; TABLE iam instances sva\n')
+    ).toBe(true);
+    expect(archiveSchemaCompatible('1; TABLE public goose_db_version sva\n')).toBe(false);
+  });
+
+  it('fails closed while application sessions remain active', async () => {
+    const readActiveSessions = vi.fn().mockResolvedValue('1');
+    const wait = vi.fn().mockResolvedValue(undefined);
+    await expect(
+      waitForSessionDrain(targets.staging, {}, { attempts: 2, readActiveSessions, wait })
+    ).rejects.toThrow('active_app_sessions');
+    expect(readActiveSessions).toHaveBeenCalledTimes(2);
+    expect(wait).toHaveBeenCalledTimes(1);
+  });
+
+  it('continues only after all application sessions have drained', async () => {
+    const readActiveSessions = vi.fn().mockResolvedValueOnce('2').mockResolvedValueOnce('0');
+    const wait = vi.fn().mockResolvedValue(undefined);
+    await expect(
+      waitForSessionDrain(targets.staging, {}, { attempts: 2, readActiveSessions, wait })
+    ).resolves.toBeUndefined();
+  });
+
+  it('rejects every incomplete database postcheck set', () => {
+    const valid = {
+      appPrincipal: '1',
+      gooseVersion: '2026080101',
+      iamSchema: 't',
+      registryEntries: '1',
+    };
+    expect(() => validateDatabasePostchecks(valid)).not.toThrow();
+    for (const invalid of [
+      { ...valid, appPrincipal: '0' },
+      { ...valid, gooseVersion: '' },
+      { ...valid, iamSchema: 'f' },
+      { ...valid, registryEntries: 'invalid' },
+    ])
+      expect(() => validateDatabasePostchecks(invalid)).toThrow('database_postcheck_failed');
   });
 
   it('terminates an external command after its explicit deadline', async () => {

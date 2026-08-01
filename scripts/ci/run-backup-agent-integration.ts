@@ -10,20 +10,27 @@ const integrationEnv = {
   INTEGRATION_S3_ACCESS_KEY: `test-${randomBytes(6).toString('hex')}`,
   INTEGRATION_S3_SECRET_KEY: secret(),
   INTEGRATION_STAGING_POSTGRES_PASSWORD: secret(),
+  INTEGRATION_STAGING_RESTORE_PASSWORD: secret(),
 };
 const cwd = new URL('../..', import.meta.url);
 const composeArgs = ['compose', '-f', 'deploy/backup-agent/compose.integration.yaml'];
-const compose = (args: string[], stdio: 'inherit' | 'pipe' = 'inherit') => spawnSync(
-  'docker',
-  [...composeArgs, ...args],
-  { cwd, env: integrationEnv, encoding: 'utf8', stdio },
-);
+const compose = (args: string[], stdio: 'inherit' | 'pipe' = 'inherit') =>
+  spawnSync('docker', [...composeArgs, ...args], {
+    cwd,
+    env: integrationEnv,
+    encoding: 'utf8',
+    stdio,
+  });
 
 const containerState = (service: string) => {
   const id = compose(['ps', '--all', '--quiet', service], 'pipe').stdout.trim();
   if (!id) return null;
-  const inspect = spawnSync('docker', ['inspect', '--format', '{{json .State}}', id], { encoding: 'utf8' });
-  return inspect.status === 0 ? JSON.parse(inspect.stdout) as { ExitCode: number; Status: string } : null;
+  const inspect = spawnSync('docker', ['inspect', '--format', '{{json .State}}', id], {
+    encoding: 'utf8',
+  });
+  return inspect.status === 0
+    ? (JSON.parse(inspect.stdout) as { ExitCode: number; Status: string })
+    : null;
 };
 
 const main = async () => {
@@ -38,7 +45,14 @@ const main = async () => {
         resultStatus = verify.ExitCode;
         break;
       }
-      const failed = ['minio-init', 'staging-agent-run', 'production-agent-run']
+      const failed = [
+        'minio-init',
+        'staging-seed',
+        'staging-agent-run',
+        'staging-restore-run',
+        'production-agent-run',
+        'verify-restored-db',
+      ]
         .map(containerState)
         .find((state) => state?.Status === 'exited' && state.ExitCode !== 0);
       if (failed) {

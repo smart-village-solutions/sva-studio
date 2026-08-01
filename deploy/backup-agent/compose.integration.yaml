@@ -34,7 +34,7 @@ services:
       POSTGRES_USER: sva
     networks:
       default:
-        aliases: [studio-prod_postgres]
+        aliases: [studio-prod_postgres, studio_postgres]
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U sva -d sva_studio']
       interval: 2s
@@ -53,6 +53,27 @@ services:
         mc mb --ignore-existing local/studio-db-backup-staging
         mc mb --ignore-existing local/studio-db-backup-production
 
+  staging-seed:
+    image: postgres:16.9-alpine
+    depends_on:
+      staging-db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${INTEGRATION_STAGING_POSTGRES_PASSWORD}
+    entrypoint: ['/bin/sh', '-ec']
+    command:
+      - |
+        psql -h studio-staging_postgres -U sva -d sva_studio -v ON_ERROR_STOP=1 <<SQL
+        CREATE SCHEMA iam;
+        CREATE TABLE public.goose_db_version (version_id bigint NOT NULL, is_applied boolean NOT NULL);
+        INSERT INTO public.goose_db_version VALUES (2026080101, true);
+        CREATE TABLE iam.instances (id text PRIMARY KEY, name text NOT NULL);
+        INSERT INTO iam.instances VALUES ('integration-tenant', 'Integration');
+        CREATE ROLE sva_restore LOGIN NOINHERIT PASSWORD '${INTEGRATION_STAGING_RESTORE_PASSWORD}';
+        GRANT sva TO sva_restore;
+        GRANT pg_read_all_stats TO sva_restore;
+        SQL
+
   staging-agent-run:
     build:
       context: ../..
@@ -62,6 +83,8 @@ services:
         condition: service_completed_successfully
       staging-db:
         condition: service_healthy
+      staging-seed:
+        condition: service_completed_successfully
     entrypoint: ['node', '--input-type=module', '--eval']
     command:
       - |
@@ -77,11 +100,13 @@ services:
       BACKUP_PROD_POSTGRES_PASSWORD_FILE: /run/secrets/production_postgres_password
       BACKUP_PROD_S3_ACCESS_KEY_FILE: /run/secrets/s3_access_key
       BACKUP_PROD_S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
+      RESTORE_STAGING_POSTGRES_PASSWORD_FILE: /run/secrets/staging_restore_password
     secrets: &agent-secrets
       - staging_postgres_password
       - production_postgres_password
       - s3_access_key
       - s3_secret_key
+      - staging_restore_password
 
   production-agent-run:
     build:
@@ -104,10 +129,53 @@ services:
     environment: *agent-environment
     secrets: *agent-secrets
 
+  staging-restore-run:
+    build:
+      context: ../..
+      dockerfile: deploy/backup-agent/Dockerfile
+    depends_on:
+      staging-agent-run:
+        condition: service_completed_successfully
+    entrypoint: ['node', '--input-type=module', '--eval']
+    command:
+      - |
+        const { execFileSync } = await import('node:child_process');
+        const { readFileSync } = await import('node:fs');
+        process.env.BACKUP_AGENT_IMAGE_REF='integration';
+        const accessKey = readFileSync('/run/secrets/s3_access_key','utf8').trim();
+        const secretKey = readFileSync('/run/secrets/s3_secret_key','utf8').trim();
+        const awsEnv = {...process.env,AWS_ACCESS_KEY_ID:accessKey,AWS_SECRET_ACCESS_KEY:secretKey,AWS_EC2_METADATA_DISABLED:'true',AWS_DEFAULT_REGION:'us-east-1',AWS_REQUEST_CHECKSUM_CALCULATION:'when_required',AWS_RESPONSE_CHECKSUM_VALIDATION:'when_required'};
+        const result = JSON.parse(execFileSync('aws',['--endpoint-url','http://minio:9000','s3','cp','s3://studio-db-backup-staging/control/results/integration-staging.json','-','--only-show-errors'],{encoding:'utf8',env:awsEnv}));
+        const appPassword = readFileSync('/run/secrets/staging_postgres_password','utf8').trim();
+        execFileSync('psql',['-h','studio-staging_postgres','-U','sva','-d','sva_studio','-v','ON_ERROR_STOP=1','-c',"INSERT INTO iam.instances VALUES ('must-disappear', 'Mutation after backup')"],{env:{...process.env,PGPASSWORD:appPassword}});
+        const { executeRestoreForIntegration } = await import('/app/agent.mjs');
+        await executeRestoreForIntegration({version:1,action:'restore-and-verify-v1',requestId:'integration-restore-staging',environment:'staging',expiresAt:'2099-01-01T00:00:00.000Z',maintenanceWindowReference:'integration-drill',sourceObjectKey:result.objectKey,sourceSha256:result.sha256});
+        const restoreResult = JSON.parse(execFileSync('aws',['--endpoint-url','http://minio:9000','s3','cp','s3://studio-db-backup-staging/control/restores/results/integration-restore-staging.json','-','--only-show-errors'],{encoding:'utf8',env:awsEnv}));
+        if (restoreResult.status !== 'database-restored') throw new Error('restore_failed:' + String(restoreResult.errorCode ?? 'unknown'));
+    environment: *agent-environment
+    secrets: *agent-secrets
+
+  verify-restored-db:
+    image: postgres:16.9-alpine
+    depends_on:
+      staging-restore-run:
+        condition: service_completed_successfully
+    environment:
+      PGPASSWORD: ${INTEGRATION_STAGING_POSTGRES_PASSWORD}
+    entrypoint: ['/bin/sh', '-ec']
+    command:
+      - |
+        test "$$(psql -h studio-staging_postgres -U sva -d sva_studio -Atc "SELECT count(*) FROM iam.instances WHERE id = 'integration-tenant'")" = 1
+        test "$$(psql -h studio-staging_postgres -U sva -d sva_studio -Atc "SELECT count(*) FROM iam.instances WHERE id = 'must-disappear'")" = 0
+
   verify:
     image: minio/mc:RELEASE.2025-04-16T18-13-26Z
     depends_on:
       production-agent-run:
+        condition: service_completed_successfully
+      staging-restore-run:
+        condition: service_completed_successfully
+      verify-restored-db:
         condition: service_completed_successfully
     entrypoint: ['/bin/sh', '-ec']
     command:
@@ -115,8 +183,11 @@ services:
         mc alias set local http://minio:9000 ${INTEGRATION_S3_ACCESS_KEY} ${INTEGRATION_S3_SECRET_KEY}
         staging_result="$(mc cat local/studio-db-backup-staging/control/results/integration-staging.json)"
         production_result="$(mc cat local/studio-db-backup-production/control/results/integration-production.json)"
+        restore_result="$(mc cat local/studio-db-backup-staging/control/restores/results/integration-restore-staging.json)"
         case "$$staging_result" in *'"status":"succeeded"'*) ;; *) exit 1 ;; esac
         case "$$production_result" in *'"status":"succeeded"'*) ;; *) exit 1 ;; esac
+        case "$$restore_result" in *'"status":"database-restored"'*) ;; *) exit 1 ;; esac
+        mc stat local/studio-db-backup-staging/control/restores/safety-backups/integration-restore-staging.json
         ! mc stat local/studio-db-backup-production/control/results/integration-staging.json
         ! mc stat local/studio-db-backup-staging/control/results/integration-production.json
 
@@ -132,3 +203,5 @@ secrets:
     environment: INTEGRATION_S3_ACCESS_KEY
   s3_secret_key:
     environment: INTEGRATION_S3_SECRET_KEY
+  staging_restore_password:
+    environment: INTEGRATION_STAGING_RESTORE_PASSWORD

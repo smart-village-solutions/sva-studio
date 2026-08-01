@@ -892,3 +892,13 @@ Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine ab
 3. Vor `202 Accepted` persistiert er den Auftrag unter `control/requests/`.
 4. Der einzelne Worker erzeugt einen Custom-Dump, lädt ihn hoch und wieder herunter, vergleicht Größe und SHA-256 und führt `pg_restore --list` aus.
 5. Das terminale Ergebnis unter `control/results/` entscheidet fail-closed, ob Migration, Bootstrap und Deploy fortgesetzt werden.
+
+## Kontrollierter Datenbank-Vollrestore
+
+1. Der freigegebene Workflow `database-restore.yml` bindet Zielumgebung, unveränderliches App-Image, Wartungsfenster, MinIO-Objekt und SHA-256. Production verlangt zusätzlich die Evidenz eines erfolgreichen Staging-Drills.
+2. Der Workflow setzt App und Provisioner auf null Replikate. Der Agent akzeptiert den Auftrag erst nach OIDC-/HMAC-Prüfung, action-spezifischer Workflow-Allowlist, Replay-Prüfung und nachgewiesenem Session-Drain.
+3. Der Agent lädt ausschließlich aus Bucket und Präfix der Zielumgebung, prüft SHA-256, Custom-Archiv sowie Goose- und IAM-Einträge und erzeugt vor der Mutation einen erneut heruntergeladenen und verifizierten Sicherheitsdump.
+4. `pg_restore` läuft einmalig mit festem PostgreSQL-16-Client, festem Host, fester Datenbank und festem Rollenwechsel zur App-Rolle. Freie Optionen oder automatische Wiederholungen existieren nicht.
+5. Nach dem Restore prüft der Agent Goose-Version, IAM-Schema, Tabellenrechte des App-Principals und Registry. Ein Fehler schreibt redigierte Evidenz und lässt die App stillgelegt.
+6. Erst nach erfolgreicher DB-Evidenz startet der Workflow App und Provisioner. HTTP-Liveness, Readiness und Tenant-Login müssen erfolgreich sein; andernfalls deployt der Workflow erneut den gestoppten Stackvertrag.
+7. Keycloak bleibt unverändert. Externer Drift wird nur über die getrennten IAM-Reconcile-Pfade behandelt.

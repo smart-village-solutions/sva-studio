@@ -1,0 +1,4 @@
+{
+  "prNumber": 883,
+  "body": "Verbesserung des Betriebs\n\n- Freigegebene Studio-Tenants sind in Dev, Staging und Production über explizite HTTPS-Hosts erreichbar.\n- Externe Prüfungen validieren die freigegebenen Hosts, den tenant-spezifischen Login und die Ablehnung unbekannter Hosts."
+}

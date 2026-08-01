@@ -54,6 +54,17 @@ describe('controlled database restore workflow', () => {
     expect(workflow).toContain('runtime-env.ts smoke studio');
   });
 
+  it('reconciles the application database principal before restarting writers', () => {
+    expect(workflow).toContain('promote-one-shot-job.ts --kind bootstrap');
+    expect(workflow.indexOf('reconcile application database principal after restore')).toBeGreaterThan(
+      workflow.indexOf('execute database restore and database checks')
+    );
+    expect(workflow.indexOf('reconcile application database principal after restore')).toBeLessThan(
+      workflow.indexOf('restart application after successful database checks')
+    );
+    expect(workflow).toContain("steps.app_principal.outcome != 'success'");
+  });
+
   it('uses only the dedicated restore contract and emits redacted evidence', () => {
     expect(workflow).toContain('RESTORE_AGENT_SIGNING_KEY');
     expect(workflow).toContain('database-restore-workflow-');

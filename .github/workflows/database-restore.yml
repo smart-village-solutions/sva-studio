@@ -180,6 +180,20 @@ jobs:
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
         run: pnpm exec tsx scripts/ci/submit-restore-agent-request.ts "${{ inputs.environment }}"
 
+      - name: reconcile application database principal after restore
+        id: app_principal
+        env:
+          APP_CONFIG: ${{ secrets.APP_CONFIG }}
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+          SVA_DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f .env' EXIT
+          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
+          pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind bootstrap --environment "${{ inputs.environment }}"
+
       - name: restart application after successful database checks
         id: restart
         env:
@@ -239,7 +253,7 @@ jobs:
           retention-days: 90
 
       - name: keep application stopped after any restore, post-check or evidence failure
-        if: ${{ always() && steps.maintenance.outputs.active == 'true' && (steps.external_verify.outcome != 'success' || steps.workflow_evidence.outcome != 'success' || steps.evidence_upload.outcome != 'success') }}
+        if: ${{ always() && steps.maintenance.outputs.active == 'true' && (steps.app_principal.outcome != 'success' || steps.external_verify.outcome != 'success' || steps.workflow_evidence.outcome != 'success' || steps.evidence_upload.outcome != 'success') }}
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
         run: quantum-cli stacks deploy -f "${RUNNER_TEMP}/restore-stack-stopped.yaml" --stack "${{ steps.target.outputs.stack_name }}" --endpoint "${QUANTUM_ENDPOINT}"

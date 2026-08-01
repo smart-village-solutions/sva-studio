@@ -1,4 +1,4 @@
 {
-  "prNumber": 878,
+  "prNumber": 879,
   "body": "Fehlerbehebung\n\n- Der Datenbank-Restore verwendet aktuelle Restore-Werkzeuge und liest die Stack-Konfiguration weiterhin aus dem Commit des laufenden Production-Images."
 }

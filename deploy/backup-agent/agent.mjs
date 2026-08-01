@@ -634,7 +634,7 @@ SELECT json_build_object(
       JOIN pg_namespace namespace ON namespace.oid = sequence.relnamespace
       WHERE namespace.nspname = 'iam' AND sequence.relkind = 'S'
     ),
-    false
+    true
   ),
   'runtimeRoleSequencesReady', COALESCE(
     (
@@ -646,7 +646,7 @@ SELECT json_build_object(
       JOIN pg_namespace namespace ON namespace.oid = sequence.relnamespace
       WHERE namespace.nspname = 'iam' AND sequence.relkind = 'S'
     ),
-    false
+    true
   )
 )::text;
 `;

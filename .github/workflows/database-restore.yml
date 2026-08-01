@@ -202,8 +202,8 @@ jobs:
           mkdir -p config/runtime
           printf '%s\n' "${APP_CONFIG}" > config/runtime/base.vars
           : > config/runtime/studio.vars
-          curl --fail --silent --show-error --retry 12 --retry-delay 5 "${SVA_PUBLIC_BASE_URL}/health/live" >/dev/null
-          curl --fail --silent --show-error --retry 12 --retry-delay 5 "${SVA_PUBLIC_BASE_URL}/health/ready" >/dev/null
+          curl --fail --silent --show-error --retry 60 --retry-delay 5 --retry-all-errors "${SVA_PUBLIC_BASE_URL}/health/live" >/dev/null
+          curl --fail --silent --show-error --retry 60 --retry-delay 5 --retry-all-errors "${SVA_PUBLIC_BASE_URL}/health/ready" >/dev/null
           pnpm exec tsx scripts/ops/runtime-env.ts smoke studio
 
       - name: write successful workflow evidence

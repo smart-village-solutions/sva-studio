@@ -15,6 +15,11 @@ type PromoteEnvironment = 'dev' | 'prod' | 'staging';
 
 const rootDir = resolve(import.meta.dirname, '../..');
 
+const resolveComposeSourceRoot = (value: string | undefined): string => {
+  const trimmed = value?.trim();
+  return trimmed ? resolve(trimmed) : rootDir;
+};
+
 const required = (value: string | undefined, label: string) => {
   const trimmed = value?.trim();
   if (!trimmed) throw new Error(`${label} darf nicht leer sein.`);
@@ -58,7 +63,15 @@ const main = async () => {
   const reportId = `gha-${runId}-${attempt}`;
   const env: NodeJS.ProcessEnv = { ...process.env, QUANTUM_ENVIRONMENT: 'studio' };
   delete env.SVA_MIGRATION_JOB_KEEP_FAILED_STACK;
-  const deps = { commandExists, rootDir, run, runCapture, runCaptureDetailed, spawnBackground, wait };
+  const deps = {
+    commandExists,
+    rootDir: resolveComposeSourceRoot(process.env.SVA_COMPOSE_SOURCE_ROOT),
+    run,
+    runCapture,
+    runCaptureDetailed,
+    spawnBackground,
+    wait,
+  };
   const liveAppContract = await inspectRemoteServiceContract(
     {
       commandExists: (command) => commandExists(rootDir, command),

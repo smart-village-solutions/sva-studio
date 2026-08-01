@@ -16,9 +16,15 @@ describe('database restore workflow', () => {
 
   it('validates the production staging evidence before binding execution to the live image revision', () => {
     const evidenceValidation = workflow.indexOf('verify staging drill evidence for production');
-    const imageRevisionBinding = workflow.indexOf('bind executor source to image revision on main');
+    const imageRevisionBinding = workflow.indexOf('materialize image-bound stack source');
 
     expect(evidenceValidation).toBeGreaterThan(-1);
     expect(imageRevisionBinding).toBeGreaterThan(evidenceValidation);
+  });
+
+  it('uses an image-bound worktree for stack inputs without replacing the current restore tooling source', () => {
+    expect(workflow).toContain('git worktree add --detach');
+    expect(workflow).not.toContain('git checkout --detach "${head}"');
+    expect(workflow).toContain('SVA_COMPOSE_SOURCE_ROOT: ${{ steps.image_source.outputs.path }}');
   });
 });

@@ -62,6 +62,14 @@ const required = (value: string | undefined, name: string): string => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
+export const getAuthenticatedInstanceId = (authMe: unknown): string => {
+  if (!isRecord(authMe) || !isRecord(authMe.user))
+    throw new Error('restore_iam_smoke_auth_payload_invalid');
+  if (typeof authMe.user.instanceId !== 'string' || authMe.user.instanceId.trim().length === 0)
+    throw new Error('restore_iam_smoke_auth_payload_invalid');
+  return authMe.user.instanceId;
+};
+
 export const validateAuthenticatedIamPayloads = (authMe: unknown, permissions: unknown): void => {
   if (!isRecord(authMe) || !isRecord(authMe.user))
     throw new Error('restore_iam_smoke_auth_payload_invalid');
@@ -127,13 +135,15 @@ const main = async (): Promise<void> => {
       failOnStatusCode: false,
     });
     if (authMeResponse.status() !== 200) throw new Error('restore_iam_smoke_auth_http_failed');
-    const permissionsResponse = await context.request.get(
-      new URL('/iam/me/permissions', baseUrl).toString(),
-      { failOnStatusCode: false }
-    );
+    const authMe = await authMeResponse.json();
+    const permissionsUrl = new URL('/iam/me/permissions', baseUrl);
+    permissionsUrl.searchParams.set('instanceId', getAuthenticatedInstanceId(authMe));
+    const permissionsResponse = await context.request.get(permissionsUrl.toString(), {
+      failOnStatusCode: false,
+    });
     if (permissionsResponse.status() !== 200)
       throw new Error('restore_iam_smoke_permissions_http_failed');
-    validateAuthenticatedIamPayloads(await authMeResponse.json(), await permissionsResponse.json());
+    validateAuthenticatedIamPayloads(authMe, await permissionsResponse.json());
     process.stdout.write('Authentifizierter IAM-Restore-Smoke erfolgreich.\n');
   } finally {
     await context.close().catch(() => undefined);

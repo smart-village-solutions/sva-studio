@@ -31,6 +31,7 @@ export default defineConfig({
       '../../scripts/ci/render-compose-env.test.ts',
       '../../scripts/ci/render-quantum-stack.test.ts',
       '../../scripts/ci/render-restore-stack.test.ts',
+      '../../scripts/ci/restore-authenticated-iam-smoke.test.ts',
       '../../scripts/ci/test-runner-standardization.test.ts',
       '../../scripts/ops/runtime-env-guardrails.test.ts',
       '../../scripts/ops/runtime-env.test.ts',

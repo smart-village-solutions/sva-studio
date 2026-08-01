@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { validateAuthenticatedIamPayloads } from './restore-authenticated-iam-smoke.ts';
+import {
+  getAuthenticatedInstanceId,
+  validateAuthenticatedIamPayloads,
+} from './restore-authenticated-iam-smoke.ts';
 
 describe('authenticated restore IAM smoke', () => {
   const authMe = {
     user: {
+      instanceId: 'de-musterhausen',
       permissionActions: ['iam.user.read'],
       permissionStatus: 'ok',
     },
@@ -13,6 +17,13 @@ describe('authenticated restore IAM smoke', () => {
 
   it('accepts a non-degraded authenticated permission snapshot', () => {
     expect(() => validateAuthenticatedIamPayloads(authMe, permissions)).not.toThrow();
+    expect(getAuthenticatedInstanceId(authMe)).toBe('de-musterhausen');
+  });
+
+  it('rejects an auth session without an instance id', () => {
+    expect(() =>
+      getAuthenticatedInstanceId({ user: { permissionActions: [], permissionStatus: 'ok' } })
+    ).toThrow('restore_iam_smoke_auth_payload_invalid');
   });
 
   it('rejects degraded auth sessions and malformed permission payloads', () => {

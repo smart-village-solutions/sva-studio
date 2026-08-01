@@ -13,7 +13,9 @@ describe('restoreRoleSecretNames', () => {
       'utf8'
     );
 
-    expect(compose).toContain('psql --host postgres --username "$$POSTGRES_USER"');
+    expect(compose).toContain(
+      'psql --host postgres --username "$$POSTGRES_USER" --dbname "$$POSTGRES_DB"'
+    );
   });
 
   it('binds staging only to the staging restore and admin secrets', () => {

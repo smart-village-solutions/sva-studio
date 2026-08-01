@@ -30,7 +30,7 @@ type NamedInputValue = string | { env: string };
 interface NxProjectJson {
   targets?: Record<
     string,
-    { dependsOn?: string[]; options?: { command?: string; lintFilePatterns?: string[] } }
+    { cache?: boolean; dependsOn?: string[]; options?: { command?: string; lintFilePatterns?: string[] } }
   >;
 }
 
@@ -416,15 +416,17 @@ describe('workspace package scripts', () => {
     expect(coverageCommand).not.toContain('../../scripts/');
   });
 
-  it('builds the auth runtime before executing tooling runtime tests', () => {
+  it('verifies and synchronizes the auth runtime before executing tooling runtime tests', () => {
     const toolingTestingProject = loadToolingTestingProject();
+    const authRuntimeProject = loadProjectJson('packages/auth-runtime');
 
     expect(toolingTestingProject.targets?.['test:unit']?.dependsOn).toContain(
-      'auth-runtime:build'
+      'auth-runtime:check:runtime'
     );
     expect(toolingTestingProject.targets?.['test:coverage']?.dependsOn).toContain(
-      'auth-runtime:build'
+      'auth-runtime:check:runtime'
     );
+    expect(authRuntimeProject.targets?.['check:runtime']?.cache).toBe(false);
   });
 
   it('marks tooling-testing affected for workflow and CI-gate changes', () => {

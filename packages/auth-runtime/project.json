@@ -13,6 +13,7 @@
       }
     },
     "check:runtime": {
+      "cache": false,
       "executor": "nx:run-commands",
       "dependsOn": ["build"],
       "options": {

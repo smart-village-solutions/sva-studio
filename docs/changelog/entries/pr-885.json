@@ -1,0 +1,4 @@
+{
+  "prNumber": 885,
+  "body": "Verbesserung des Betriebs\n\n- Staging- und Production-Datenbank-Restores werden unabhängig voneinander freigegeben und geprüft.\n- Der authentifizierte Restore-Smoke fragt Berechtigungen mit der Instanz der angemeldeten Session ab."
+}

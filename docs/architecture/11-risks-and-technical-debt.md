@@ -535,4 +535,4 @@ Referenzen:
 
 - Impact: sehr hoch (Überschreiben der falschen Umgebung oder eines unerwarteten Datenstands)
 - Wahrscheinlichkeit: niedrig
-- Maßnahme: GitHub Environment, action-spezifische OIDC-Allowlist und HMAC-Secrets, feste Bucket-/Präfix-/DB-Zuordnung, SHA-256, einmalige Request-ID, Wartungsfenster und obligatorischer Staging-Drill vor Production. Direkte Operator-Aufrufe bleiben ausgeschlossen.
+- Maßnahme: je Zielumgebung ein geschütztes GitHub Environment, action-spezifische OIDC-Allowlist und getrennte HMAC-Secrets, feste Bucket-/Präfix-/DB-Zuordnung, SHA-256, einmalige Request-ID, Wartungsfenster sowie vollständige umgebungsinterne Nachprüfungen. Direkte Operator-Aufrufe und umgebungsübergreifende Restore-Abhängigkeiten bleiben ausgeschlossen.

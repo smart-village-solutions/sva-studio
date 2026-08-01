@@ -12,6 +12,7 @@ Der Production-Restore vom 1. August 2026 wurde erfolgreich gemeldet, obwohl der
 - Der Agent benötigt dafür keine App-Zugangsdaten; er nutzt ausschließlich seinen bestehenden eingeschränkten Restore-Pfad und den fest konfigurierten Schema-Owner-Kontext.
 - Die Restore-Evidenz weist ACL-Reconciliation und Principal-Probe getrennt und redigiert aus.
 - Nach dem Neustart prüft der GitHub-Workflow zusätzlich einen authentifizierten IAM-Anwendungspfad; allgemeine Health- und Login-Redirect-Prüfungen reichen nicht aus.
+- Staging- und Production-Restores werden unabhängig autorisiert und geprüft; kein Restore verlangt Evidenz aus der jeweils anderen Umgebung.
 - Jeder Fehler hält die Anwendung fail-closed im Wartungszustand.
 
 ## Impact

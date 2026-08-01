@@ -2,7 +2,7 @@
 
 ### Requirement: Kontrollierter Datenbank-Vollrestore über den Backup-Agenten
 
-Das System SHALL vollständige PostgreSQL-Datenbankrestores ausschließlich über einen versionierten, GitHub-gesteuerten und umgebungsgebundenen Backup-Agent-Vertrag ermöglichen. Der Vertrag SHALL eine ausschließlich für Restore erlaubte Workflow-Allowlist verwenden und keine frei wählbaren Shell-Befehle, Hosts, Datenbanknamen, Buckets, Principals, Rollen, SQL-Anweisungen oder Restore-Optionen akzeptieren. Nach `pg_restore` SHALL der Agent die fest allowlisteten Runtime-Principal-ACLs idempotent rekonstruieren, bevor er einen Restore als erfolgreich meldet.
+Das System SHALL vollständige PostgreSQL-Datenbankrestores ausschließlich über einen versionierten, GitHub-gesteuerten und umgebungsgebundenen Backup-Agent-Vertrag ermöglichen. Der Vertrag SHALL eine ausschließlich für Restore erlaubte Workflow-Allowlist verwenden und keine frei wählbaren Shell-Befehle, Hosts, Datenbanknamen, Buckets, Principals, Rollen, SQL-Anweisungen oder Restore-Optionen akzeptieren. Nach `pg_restore` SHALL der Agent die fest allowlisteten Runtime-Principal-ACLs idempotent rekonstruieren, bevor er einen Restore als erfolgreich meldet. Staging- und Production-Restores SHALL unabhängig voneinander autorisiert und geprüft werden und keine Evidenz aus der jeweils anderen Umgebung voraussetzen.
 
 #### Scenario: Freigegebener Production-Vollrestore
 
@@ -19,6 +19,12 @@ Das System SHALL vollständige PostgreSQL-Datenbankrestores ausschließlich übe
 - **THEN** rekonstruiert der Agent die fest definierten Datenbank-, Schema-, Tabellen-, Sequenz- und Rollenrechte idempotent
 - **AND** verwendet er dafür weder App-Zugangsdaten noch vom Request gelieferte Rollen- oder SQL-Werte
 - **AND** gilt der Restore erst nach erfolgreicher Principal-Probe als datenbankseitig abgeschlossen
+
+#### Scenario: Production-Restore ohne Staging-Restore-Evidenz
+
+- **WHEN** ein Restore für `prod` alle Inputs und Freigaben des geschützten Production-Environments erfüllt
+- **THEN** beginnt der Workflow ohne Run-ID oder Evidenz eines Staging-Restores mit seinen Production-Preflights
+- **AND** führt er sämtliche Sicherheitsdump-, Restore-, Datenbank-, Runtime- und IAM-Prüfungen ausschließlich gegen Production aus
 
 #### Scenario: Unzulässiger oder manipuliert wirkender Restore-Auftrag
 

@@ -38,12 +38,10 @@ describe('controlled database restore workflow', () => {
     );
   });
 
-  it('requires successful staging evidence before production mutation', () => {
-    expect(workflow).toContain("if: ${{ inputs.environment == 'prod' }}");
-    expect(workflow).toContain('verify-staging-restore-evidence.ts');
-    expect(workflow.indexOf('verify-staging-restore-evidence.ts')).toBeLessThan(
-      workflow.indexOf('stop application writers')
-    );
+  it('keeps restore authorization and evidence scoped to the target environment', () => {
+    expect(workflow).not.toContain('staging_drill_run_id');
+    expect(workflow).not.toContain('verify-staging-restore-evidence.ts');
+    expect(workflow).toContain('environment: ${{ inputs.environment }}');
   });
 
   it('stops writers before the request and re-stops after every incomplete postcheck', () => {

@@ -73,6 +73,21 @@ const createS3Client = () =>
     },
   });
 
+const hasSucceededStep = (result: Record<string, unknown>, stepName: string): boolean =>
+  Array.isArray(result.steps) &&
+  result.steps.some(
+    (step) =>
+      Boolean(step) &&
+      typeof step === 'object' &&
+      !Array.isArray(step) &&
+      (step as Record<string, unknown>).step === stepName &&
+      (step as Record<string, unknown>).status === 'succeeded'
+  );
+
+export const hasRuntimePrincipalRestoreEvidence = (result: Record<string, unknown>): boolean =>
+  hasSucceededStep(result, 'runtime-principal-reconciliation') &&
+  hasSucceededStep(result, 'runtime-principal-probe');
+
 const waitForRestoreResult = async (
   target: BackupEnvironment,
   request: RestoreRequest,
@@ -100,7 +115,7 @@ const waitForRestoreResult = async (
         result.status !== 'database-restored' ||
         result.mutationStarted !== true ||
         typeof result.safetyObjectKey !== 'string' ||
-        !Array.isArray(result.steps)
+        !hasRuntimePrincipalRestoreEvidence(result)
       ) {
         const errorCode = typeof result.errorCode === 'string' ? result.errorCode : 'unknown';
         throw new Error(`Der Restore-Agent meldet keinen erfolgreichen DB-Restore (${errorCode}).`);

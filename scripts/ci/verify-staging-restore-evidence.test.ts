@@ -14,6 +14,7 @@ const evidence = {
   healthLive: 'passed',
   healthReady: 'passed',
   tenantLogin: 'passed',
+  authenticatedIam: 'passed',
   completedAt: '2026-08-01T10:00:00.000Z',
 } as const;
 
@@ -24,5 +25,6 @@ describe('staging restore evidence gate', () => {
     expect(isValidStagingRestoreEvidence({ ...evidence, environment: 'prod' })).toBe(false);
     expect(isValidStagingRestoreEvidence({ ...evidence, healthReady: 'failed' })).toBe(false);
     expect(isValidStagingRestoreEvidence({ ...evidence, safetyBackupObject: '' })).toBe(false);
+    expect(isValidStagingRestoreEvidence({ ...evidence, authenticatedIam: 'failed' })).toBe(false);
   });
 });

@@ -53,7 +53,9 @@ export const targets = {
     restoreSigningKeyFile: 'RESTORE_STAGING_SIGNING_KEY_FILE',
     restoreUser: process.env.RESTORE_STAGING_POSTGRES_USER || 'sva_restore',
     restorePasswordFile: 'RESTORE_STAGING_POSTGRES_PASSWORD_FILE',
-    appUser: 'sva',
+    schemaOwner: 'sva',
+    runtimeRole: 'iam_app',
+    runtimeUser: 'sva_app',
   },
   prod: {
     host: 'backup-studio.smart-village.app',
@@ -69,7 +71,9 @@ export const targets = {
     restoreSigningKeyFile: 'RESTORE_PROD_SIGNING_KEY_FILE',
     restoreUser: process.env.RESTORE_PROD_POSTGRES_USER || 'sva_restore',
     restorePasswordFile: 'RESTORE_PROD_POSTGRES_PASSWORD_FILE',
-    appUser: 'sva',
+    schemaOwner: 'sva',
+    runtimeRole: 'iam_app',
+    runtimeUser: 'sva_app',
   },
 };
 
@@ -371,6 +375,8 @@ export const safeErrorCode = (error) => {
       'archive_schema_incompatible',
       'schema_version_mismatch',
       'database_postcheck_failed',
+      'runtime_principal_reconciliation_failed',
+      'runtime_principal_probe_failed',
     ].includes(message)
   )
     return message;
@@ -537,8 +543,161 @@ const runSql = async (target, pgEnv, sql) =>
     { env: pgEnv }
   );
 
-const runSqlAsApp = async (target, pgEnv, sql) => {
-  const output = await runSql(target, pgEnv, `SET ROLE ${target.appUser}; ${sql}`);
+const sqlIdentifier = (value) => `"${String(value).replaceAll('"', '""')}"`;
+const sqlLiteral = (value) => `'${String(value).replaceAll("'", "''")}'`;
+
+const assertRuntimePrincipalTarget = (target) => {
+  const allowlisted = Object.values(targets).some(
+    (candidate) =>
+      candidate.postgresDatabase === target.postgresDatabase &&
+      candidate.postgresHost === target.postgresHost &&
+      candidate.runtimeRole === target.runtimeRole &&
+      candidate.runtimeUser === target.runtimeUser &&
+      candidate.schemaOwner === target.schemaOwner
+  );
+  if (!allowlisted) throw new Error('runtime_principal_target_invalid');
+};
+
+export const buildRuntimePrincipalReconciliationSql = (target) => {
+  assertRuntimePrincipalTarget(target);
+  const database = sqlIdentifier(target.postgresDatabase);
+  const runtimeRole = sqlIdentifier(target.runtimeRole);
+  const runtimeUser = sqlIdentifier(target.runtimeUser);
+  const schemaOwner = sqlIdentifier(target.schemaOwner);
+  return `
+DO $restore_principal_guard$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(target.schemaOwner)})
+    OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(target.runtimeRole)})
+    OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(target.runtimeUser)}) THEN
+    RAISE EXCEPTION 'restore_runtime_principal_missing';
+  END IF;
+END
+$restore_principal_guard$;
+
+SET ROLE ${schemaOwner};
+GRANT ${runtimeRole} TO ${runtimeUser};
+GRANT CONNECT ON DATABASE ${database} TO ${runtimeUser};
+GRANT USAGE ON SCHEMA iam TO ${runtimeRole}, ${runtimeUser};
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${runtimeRole}, ${runtimeUser};
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${runtimeRole}, ${runtimeUser};
+ALTER DEFAULT PRIVILEGES FOR ROLE ${schemaOwner} IN SCHEMA iam
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${runtimeRole}, ${runtimeUser};
+ALTER DEFAULT PRIVILEGES FOR ROLE ${schemaOwner} IN SCHEMA iam
+  GRANT USAGE, SELECT ON SEQUENCES TO ${runtimeRole}, ${runtimeUser};
+RESET ROLE;
+`;
+};
+
+export const runtimePrincipalProbeSql = (target) => {
+  assertRuntimePrincipalTarget(target);
+  const database = sqlLiteral(target.postgresDatabase);
+  const runtimeRole = sqlLiteral(target.runtimeRole);
+  const runtimeUser = sqlLiteral(target.runtimeUser);
+  return `
+SELECT json_build_object(
+  'databaseConnect', has_database_privilege(${runtimeUser}, ${database}, 'CONNECT'),
+  'roleMembership', pg_has_role(${runtimeUser}, ${runtimeRole}, 'MEMBER'),
+  'runtimeUserSchemaUsage', has_schema_privilege(${runtimeUser}, 'iam', 'USAGE'),
+  'runtimeRoleSchemaUsage', has_schema_privilege(${runtimeRole}, 'iam', 'USAGE'),
+  'runtimeUserTablesReady', COALESCE(
+    (
+      SELECT bool_and(
+        has_table_privilege(${runtimeUser}, relation.oid, 'SELECT')
+        AND has_table_privilege(${runtimeUser}, relation.oid, 'INSERT')
+        AND has_table_privilege(${runtimeUser}, relation.oid, 'UPDATE')
+        AND has_table_privilege(${runtimeUser}, relation.oid, 'DELETE')
+      )
+      FROM pg_class relation
+      JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+      WHERE namespace.nspname = 'iam' AND relation.relkind IN ('r', 'p')
+    ),
+    false
+  ),
+  'runtimeRoleTablesReady', COALESCE(
+    (
+      SELECT bool_and(
+        has_table_privilege(${runtimeRole}, relation.oid, 'SELECT')
+        AND has_table_privilege(${runtimeRole}, relation.oid, 'INSERT')
+        AND has_table_privilege(${runtimeRole}, relation.oid, 'UPDATE')
+        AND has_table_privilege(${runtimeRole}, relation.oid, 'DELETE')
+      )
+      FROM pg_class relation
+      JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+      WHERE namespace.nspname = 'iam' AND relation.relkind IN ('r', 'p')
+    ),
+    false
+  ),
+  'runtimeUserSequencesReady', COALESCE(
+    (
+      SELECT bool_and(
+        has_sequence_privilege(${runtimeUser}, sequence.oid, 'USAGE')
+        AND has_sequence_privilege(${runtimeUser}, sequence.oid, 'SELECT')
+      )
+      FROM pg_class sequence
+      JOIN pg_namespace namespace ON namespace.oid = sequence.relnamespace
+      WHERE namespace.nspname = 'iam' AND sequence.relkind = 'S'
+    ),
+    true
+  ),
+  'runtimeRoleSequencesReady', COALESCE(
+    (
+      SELECT bool_and(
+        has_sequence_privilege(${runtimeRole}, sequence.oid, 'USAGE')
+        AND has_sequence_privilege(${runtimeRole}, sequence.oid, 'SELECT')
+      )
+      FROM pg_class sequence
+      JOIN pg_namespace namespace ON namespace.oid = sequence.relnamespace
+      WHERE namespace.nspname = 'iam' AND sequence.relkind = 'S'
+    ),
+    true
+  )
+)::text;
+`;
+};
+
+export const validateRuntimePrincipalProbe = (probe) => {
+  const requiredChecks = [
+    'databaseConnect',
+    'roleMembership',
+    'runtimeUserSchemaUsage',
+    'runtimeRoleSchemaUsage',
+    'runtimeUserTablesReady',
+    'runtimeRoleTablesReady',
+    'runtimeUserSequencesReady',
+    'runtimeRoleSequencesReady',
+  ];
+  if (!probe || typeof probe !== 'object' || requiredChecks.some((check) => probe[check] !== true))
+    throw new Error('runtime_principal_probe_failed');
+  return Object.fromEntries(requiredChecks.map((check) => [check, true]));
+};
+
+const reconcileAndProbeRuntimePrincipal = async (target, pgEnv) => {
+  try {
+    await runSql(target, pgEnv, buildRuntimePrincipalReconciliationSql(target));
+  } catch {
+    throw new Error('runtime_principal_reconciliation_failed');
+  }
+  try {
+    const output = await runSql(target, pgEnv, runtimePrincipalProbeSql(target));
+    const payload = output
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .at(-1);
+    return validateRuntimePrincipalProbe(JSON.parse(payload ?? 'null'));
+  } catch (error) {
+    if (error instanceof Error && error.message === 'runtime_principal_probe_failed') throw error;
+    throw new Error('runtime_principal_probe_failed');
+  }
+};
+
+const runSqlAsSchemaOwner = async (target, pgEnv, sql) => {
+  const output = await runSql(
+    target,
+    pgEnv,
+    `SET ROLE ${sqlIdentifier(target.schemaOwner)}; ${sql}`
+  );
   return (
     output
       .split('\n')
@@ -557,7 +716,7 @@ export const waitForSessionDrain = async (
       runSql(
         target,
         pgEnv,
-        `SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND usename = '${target.appUser}' AND backend_type = 'client backend' AND pid <> pg_backend_pid()`
+        `SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND usename = ${sqlLiteral(target.runtimeUser)} AND backend_type = 'client backend' AND pid <> pg_backend_pid()`
       ),
     wait = () => new Promise((resolveWait) => setTimeout(resolveWait, 2_000)),
   } = {}
@@ -634,8 +793,10 @@ export const isHistoricalSchemaRestoreCompatible = (sourceGooseVersion, targetGo
   Number.isSafeInteger(targetGooseVersion) &&
   sourceGooseVersion <= targetGooseVersion;
 
-export const restoreSchemaResetSql = (appUser) =>
-  `SET ROLE ${appUser}; DROP SCHEMA IF EXISTS iam CASCADE; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public AUTHORIZATION ${appUser}; CREATE SCHEMA iam AUTHORIZATION ${appUser};`;
+export const restoreSchemaResetSql = (schemaOwner) => {
+  const owner = sqlIdentifier(schemaOwner);
+  return `SET ROLE ${owner}; DROP SCHEMA IF EXISTS iam CASCADE; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public AUTHORIZATION ${owner}; CREATE SCHEMA iam AUTHORIZATION ${owner};`;
+};
 
 const verifyArchiveSchema = async (archive) => {
   const listing = await runCapture('pg_restore', ['--list', archive], {
@@ -709,7 +870,7 @@ export const executeRestoreForIntegration = async (request) => {
     complete('app-session-drain');
     complete('exclusive-agent-restore-slot');
     const targetGooseVersion = Number(
-      await runSqlAsApp(
+      await runSqlAsSchemaOwner(
         target,
         pgEnv,
         'SELECT max(version_id) FROM public.goose_db_version WHERE is_applied'
@@ -726,7 +887,7 @@ export const executeRestoreForIntegration = async (request) => {
         '--no-owner',
         '--no-privileges',
         '--role',
-        target.appUser,
+        target.schemaOwner,
         '--host',
         target.postgresHost,
         '--port',
@@ -779,7 +940,7 @@ export const executeRestoreForIntegration = async (request) => {
     complete('safety-backup', { objectKey: safetyObjectKey, sha256: safetySha256 });
 
     mutationStarted = true;
-    await runSql(target, pgEnv, restoreSchemaResetSql(target.appUser));
+    await runSql(target, pgEnv, restoreSchemaResetSql(target.schemaOwner));
     complete('application-schema-reset');
     await runCommand(
       'pg_restore',
@@ -789,7 +950,7 @@ export const executeRestoreForIntegration = async (request) => {
         '--no-owner',
         '--no-privileges',
         '--role',
-        target.appUser,
+        target.schemaOwner,
         '--file',
         restoreSql,
         sourceDump,
@@ -810,22 +971,25 @@ export const executeRestoreForIntegration = async (request) => {
       { env: pgEnv, timeoutMs: 20 * 60_000 }
     );
     complete('pg_restore');
-    const gooseVersion = await runSqlAsApp(
+    const principalProbe = await reconcileAndProbeRuntimePrincipal(target, pgEnv);
+    complete('runtime-principal-reconciliation', { principal: target.runtimeUser });
+    complete('runtime-principal-probe', { principal: target.runtimeUser, ...principalProbe });
+    const gooseVersion = await runSqlAsSchemaOwner(
       target,
       pgEnv,
       'SELECT max(version_id) FROM public.goose_db_version WHERE is_applied'
     );
-    const iamSchema = await runSqlAsApp(
+    const iamSchema = await runSqlAsSchemaOwner(
       target,
       pgEnv,
       `SELECT to_regclass('iam.instances') IS NOT NULL`
     );
-    const appPrincipal = await runSqlAsApp(
+    const appPrincipal = principalProbe.runtimeRoleTablesReady ? '1' : '0';
+    const registryEntries = await runSqlAsSchemaOwner(
       target,
       pgEnv,
-      `SELECT count(*) FROM pg_roles WHERE rolname = '${target.appUser}' AND has_table_privilege('${target.appUser}', 'iam.instances', 'SELECT,INSERT,UPDATE,DELETE')`
+      'SELECT count(*) FROM iam.instances'
     );
-    const registryEntries = await runSqlAsApp(target, pgEnv, 'SELECT count(*) FROM iam.instances');
     validateDatabasePostchecks({ appPrincipal, gooseVersion, iamSchema, registryEntries });
     complete('database-postchecks', { gooseVersion, registryEntries: Number(registryEntries) });
     await uploadJson(target, keys.result, {

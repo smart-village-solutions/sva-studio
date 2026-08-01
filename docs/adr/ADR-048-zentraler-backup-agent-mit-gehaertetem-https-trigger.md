@@ -18,6 +18,8 @@ Der Agent persistiert den Request vor `202 Accepted`, verarbeitet global genau e
 
 Ein Restore wird nur durch `.github/workflows/database-restore.yml` ausgelöst. Der Workflow legt App und Provisioner still; der Agent bestätigt den Session-Drain, prüft Objekt, SHA-256, Archiv und erforderliche Schemas, erzeugt einen verifizierten Sicherheitsdump und führt `pg_restore` mit demselben fest gepinnten PostgreSQL-18-Client wie der Backup-Pfad gegen die fest konfigurierte Datenbank aus. Der dedizierte Login-Principal `sva_restore` darf ausschließlich in die feste App-Rolle wechseln und besitzt keine frei wählbaren Ziele oder Optionen. Der Agent startet die App nie selbst. Erst nach erfolgreichen DB-Prüfungen startet der Workflow die App und prüft Liveness, Readiness und Tenant-Login. Jeder Fehler hält beziehungsweise versetzt die App wieder in den stillgelegten Zustand. Production erfordert zusätzlich die Artefakte eines erfolgreichen Staging-Restore-Drills.
 
+Da Custom-Dumps bewusst ohne Owner- und ACL-Übernahme erzeugt werden, rekonstruiert der Agent nach `pg_restore` die fest allowlisteten Rechte des Runtime-Principals `sva_app` idempotent. Schema-Owner `sva`, Runtime-Principal `sva_app`, Rolle `iam_app`, Datenbank und Grants sind interne Konstanten und keine Request-Felder. Der Agent prüft anschließend Datenbank-, Schema-, Rollen-, Tabellen- und Sequenzrechte und meldet ohne vollständige Principal-Evidenz keinen erfolgreichen Restore. Er erhält dafür weder App-Passwort noch allgemeine SQL-Ausführung. Nach dem App-Neustart prüft der geschützte Workflow zusätzlich `/auth/me` und `/iam/me/permissions` mit einem dedizierten Restore-Smoke-Zugang.
+
 Nach der erfolgreichen Backup-Betriebsabnahme am 31. Juli 2026 ist der Agent der Backup-Standard. Der noch vorhandene Schalter `BACKUP_EXECUTOR=temporary` ist ausschließlich Incident-Fallback und kein regulärer Betriebsmodus; seine Entfernung bleibt ein separater Folgechange. Der Production-Restore wird erst nach dokumentiertem Staging-Drill und expliziter Freigabe des GitHub Environments genutzt.
 
 ## Konsequenzen
@@ -27,6 +29,8 @@ Nach der erfolgreichen Backup-Betriebsabnahme am 31. Juli 2026 ist der Agent der
 - MinIO-Evidenz ersetzt flüchtige Task-Logs als autoritativen Erfolgskanal.
 - Automatische, wiederholte oder teilweise Restores bleiben ausgeschlossen; jeder Versuch benötigt eine neue Request-ID und Environment-Freigabe.
 - Nach Beginn der Mutation gibt es keinen automatischen Gegenrestore. Der Sicherheitsdump ist der einzige neue Recovery-Punkt und darf nur in einem neuen freigegebenen Lauf verwendet werden.
+- Die restore-spezifische ACL-Reconciliation erweitert die Trust Boundary des Agenten ausschließlich um statische additive Grants; frei wählbare Principals, Rollen oder SQL bleiben ausgeschlossen.
+- Allgemeine Health-Prüfungen gelten nach einem Restore nicht als IAM-Nachweis. Datenbank-Principal-Probe und authentifizierter Anwendungssmoke sind getrennte Pflicht-Gates.
 
 ## Alternativen
 

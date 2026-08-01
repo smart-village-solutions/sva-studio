@@ -69,6 +69,10 @@ services:
         INSERT INTO public.goose_db_version VALUES (2026080101, true);
         CREATE TABLE iam.instances (id text PRIMARY KEY, name text NOT NULL);
         INSERT INTO iam.instances VALUES ('integration-tenant', 'Integration');
+        CREATE TABLE iam.accounts (id text PRIMARY KEY);
+        CREATE TABLE iam.permissions (id text PRIMARY KEY);
+        CREATE ROLE iam_app NOINHERIT;
+        CREATE ROLE sva_app LOGIN NOINHERIT PASSWORD '${INTEGRATION_STAGING_POSTGRES_PASSWORD}';
         CREATE ROLE sva_restore LOGIN NOINHERIT PASSWORD '${INTEGRATION_STAGING_RESTORE_PASSWORD}';
         GRANT sva TO sva_restore;
         GRANT pg_read_all_stats TO sva_restore;
@@ -167,6 +171,14 @@ services:
       - |
         test "$$(psql -h studio-staging_postgres -U sva -d sva_studio -Atc "SELECT count(*) FROM iam.instances WHERE id = 'integration-tenant'")" = 1
         test "$$(psql -h studio-staging_postgres -U sva -d sva_studio -Atc "SELECT count(*) FROM iam.instances WHERE id = 'must-disappear'")" = 0
+        test "$$(psql -h studio-staging_postgres -U sva_app -d sva_studio -Atc "SELECT count(*) FROM iam.instances WHERE id = 'integration-tenant'")" = 1
+        test "$$(psql -h studio-staging_postgres -U sva_app -d sva_studio -Atc "SELECT count(*) FROM iam.permissions")" = 0
+        test "$$(psql -h studio-staging_postgres -U sva_app -d sva_studio -Atc "SELECT has_schema_privilege(current_user, 'iam', 'USAGE')")" = t
+        test "$$(psql -h studio-staging_postgres -U sva_app -d sva_studio -Atc "SELECT pg_has_role(current_user, 'iam_app', 'MEMBER')")" = t
+        test "$$(psql -h studio-staging_postgres -U sva_app -d sva_studio -qAtc "SET ROLE iam_app; SELECT count(*) FROM iam.instances WHERE id = 'integration-tenant'")" = 1
+        test "$$(psql -h studio-staging_postgres -U sva_app -d sva_studio -qAtc "SET ROLE iam_app; SELECT has_schema_privilege(current_user, 'iam', 'USAGE')")" = t
+        psql -h studio-staging_postgres -U sva -d sva_studio -qAtc "CREATE TABLE iam.post_restore_migration_probe (id uuid PRIMARY KEY)"
+        test "$$(psql -h studio-staging_postgres -U sva_app -d sva_studio -qAtc "SET ROLE iam_app; SELECT count(*) FROM iam.post_restore_migration_probe")" = 0
 
   verify:
     image: minio/mc:RELEASE.2025-04-16T18-13-26Z
@@ -187,6 +199,8 @@ services:
         case "$$staging_result" in *'"status":"succeeded"'*) ;; *) exit 1 ;; esac
         case "$$production_result" in *'"status":"succeeded"'*) ;; *) exit 1 ;; esac
         case "$$restore_result" in *'"status":"database-restored"'*) ;; *) exit 1 ;; esac
+        case "$$restore_result" in *'"step":"runtime-principal-reconciliation"'*) ;; *) exit 1 ;; esac
+        case "$$restore_result" in *'"step":"runtime-principal-probe"'*) ;; *) exit 1 ;; esac
         mc stat local/studio-db-backup-staging/control/restores/safety-backups/integration-restore-staging.json
         ! mc stat local/studio-db-backup-production/control/results/integration-staging.json
         ! mc stat local/studio-db-backup-staging/control/results/integration-production.json

@@ -220,6 +220,9 @@ jobs:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
         run: quantum-cli stacks deploy -f "${RUNNER_TEMP}/restore-stack-running.yaml" --stack "${{ steps.target.outputs.stack_name }}" --endpoint "${QUANTUM_ENDPOINT}"
 
+      - name: install browser for authenticated IAM restore smoke
+        run: pnpm --filter sva-studio-react exec playwright install --with-deps chromium
+
       - name: verify health, readiness and representative tenant login
         id: external_verify
         env:
@@ -240,6 +243,14 @@ jobs:
           curl --fail --silent --show-error --retry 60 --retry-delay 5 --retry-all-errors "${SVA_PUBLIC_BASE_URL}/health/ready" >/dev/null
           pnpm exec tsx scripts/ops/runtime-env.ts smoke studio
 
+      - name: verify authenticated IAM runtime after restore
+        id: authenticated_iam_verify
+        env:
+          RESTORE_IAM_SMOKE_BASE_URL: ${{ vars.RESTORE_IAM_SMOKE_BASE_URL }}
+          RESTORE_IAM_SMOKE_PASSWORD: ${{ secrets.RESTORE_IAM_SMOKE_PASSWORD }}
+          RESTORE_IAM_SMOKE_USERNAME: ${{ secrets.RESTORE_IAM_SMOKE_USERNAME }}
+        run: pnpm exec tsx scripts/ci/restore-authenticated-iam-smoke.ts
+
       - name: write successful workflow evidence
         id: workflow_evidence
         if: ${{ success() }}
@@ -257,7 +268,7 @@ jobs:
             --arg sourceObjectKey "${SOURCE_OBJECT_KEY}" \
             --arg sourceSha256 "${SOURCE_SHA256}" \
             --arg completedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '{version:1,workflow:"database-restore",environment:$environment,status:"succeeded",requestId:$requestId,sourceObjectKey:$sourceObjectKey,sourceSha256:$sourceSha256,safetyBackupObject:$safetyBackupObject,healthLive:"passed",healthReady:"passed",tenantLogin:"passed",completedAt:$completedAt}' \
+            '{version:1,workflow:"database-restore",environment:$environment,status:"succeeded",requestId:$requestId,sourceObjectKey:$sourceObjectKey,sourceSha256:$sourceSha256,safetyBackupObject:$safetyBackupObject,healthLive:"passed",healthReady:"passed",tenantLogin:"passed",authenticatedIam:"passed",completedAt:$completedAt}' \
             > "${RUNNER_TEMP}/database-restore-workflow-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
 
       - name: upload redacted restore evidence
@@ -273,7 +284,7 @@ jobs:
           retention-days: 90
 
       - name: keep application stopped after any restore, post-check or evidence failure
-        if: ${{ always() && steps.maintenance.outputs.active == 'true' && (steps.app_principal.outcome != 'success' || steps.external_verify.outcome != 'success' || steps.workflow_evidence.outcome != 'success' || steps.evidence_upload.outcome != 'success') }}
+        if: ${{ always() && steps.maintenance.outputs.active == 'true' && (steps.app_principal.outcome != 'success' || steps.external_verify.outcome != 'success' || steps.authenticated_iam_verify.outcome != 'success' || steps.workflow_evidence.outcome != 'success' || steps.evidence_upload.outcome != 'success') }}
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
         run: quantum-cli stacks deploy -f "${RUNNER_TEMP}/restore-stack-stopped.yaml" --stack "${{ steps.target.outputs.stack_name }}" --endpoint "${QUANTUM_ENDPOINT}"

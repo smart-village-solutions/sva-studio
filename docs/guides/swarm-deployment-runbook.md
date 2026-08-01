@@ -127,7 +127,9 @@ GRANT pg_read_all_stats TO sva_restore;
 
 In den GitHub Environments `staging` und `prod` müssen dafür `RESTORE_POSTGRES_PASSWORD` und `RESTORE_AGENT_SIGNING_KEY` hinterlegt sein. `QUANTUM_API_KEY` und `QUANTUM_ENDPOINT` stammen aus dem bereits geschützten Deployment-Kontext; die Portainer-Endpoint-ID wird daraus zur Laufzeit eindeutig aufgelöst. Rotation oder allgemeines Secret-Reconciliation sind bewusst nicht Bestandteil dieses Bootstrap-Workflows. Der reguläre Studio-Rollout bleibt unverändert der in `studio-rollout-process.md` definierte Promote-Pfad.
 
-Der Principal erhält keine freie Host-, Datenbank- oder Rollenwahl. Der Agent setzt für Dump und Restore immer die fest konfigurierte App-Rolle `sva`. Das Agent-Image verwendet einheitlich fest gepinnte PostgreSQL-18-Clientwerkzeuge. Damit bleiben auch bereits mit PostgreSQL 18 erzeugte Custom-Dumps wiederherstellbar; Backups und Restores dürfen nicht mit unterschiedlichen Client-Hauptversionen ausgeführt werden.
+Der Principal erhält keine freie Host-, Datenbank- oder Rollenwahl. Der Agent wechselt für Sicherheitsdump und Objektwiederherstellung zum festen Schema-Owner `sva`. Nach `pg_restore` rekonstruiert er zusätzlich die fest allowlisteten Rechte des Runtime-Principals `sva_app` und der Rolle `iam_app`; keine dieser Identitäten stammt aus dem Request. Das Agent-Image verwendet einheitlich fest gepinnte PostgreSQL-18-Clientwerkzeuge. Damit bleiben auch bereits mit PostgreSQL 18 erzeugte Custom-Dumps wiederherstellbar; Backups und Restores dürfen nicht mit unterschiedlichen Client-Hauptversionen ausgeführt werden.
+
+Die geschützten GitHub Environments `staging` und `prod` benötigen zusätzlich `RESTORE_IAM_SMOKE_BASE_URL` als tenantgebundene Variable sowie `RESTORE_IAM_SMOKE_USERNAME` und `RESTORE_IAM_SMOKE_PASSWORD` als Secrets. Der Zugang dient ausschließlich dem Post-Restore-Smoke und darf nicht in Logs oder Evidenz erscheinen.
 
 Ablauf:
 
@@ -137,10 +139,11 @@ Ablauf:
 4. Der Agent prüft `pg_restore --list` und die erforderlichen Goose-/IAM-Archiveinträge.
 5. Der Agent akzeptiert den gleichen oder einen älteren Goose-Migrationsstand als den des Zielsystems; ein Dump mit neuerem, unbekanntem Schema wird abgelehnt.
 6. Der Agent erzeugt einen neuen Custom-Dump, lädt ihn nach `safety-before-restore/`, lädt ihn erneut herunter und verifiziert seine SHA-256.
-7. Erst danach entfernt der Agent die anwendungseigenen Schemas `public` und `iam` vollständig und startet den einmaligen Vollrestore. Dadurch blockieren Objekte neuerer Migrationen nicht die Wiederherstellung eines älteren Dumps. Der Workflow migriert den historischen Stand anschließend mit dem unveränderlich ausgewählten Studio-Image, bevor Principal-Reconcile und Neustart erfolgen. Fehler oder Timeout führen zu keinem automatischen Retry oder Gegenrestore.
-7. Der Agent prüft Goose-Version, IAM-Schema, App-Principal einschließlich Tabellenrechten und Registry.
-8. Nur nach erfolgreicher DB-Evidenz startet der Workflow App und Provisioner wieder und fordert HTTP 200 für `health/live` und `health/ready` sowie einen erfolgreichen Runtime-Smoke mit Tenant-Login-Redirect.
-9. Schlägt ein Schritt nach der Stilllegung fehl, deployt der Workflow den gestoppten Stackvertrag erneut. Die App bleibt bis zu einer manuellen Recovery-Entscheidung stillgelegt.
+7. Erst danach entfernt der Agent die anwendungseigenen Schemas `public` und `iam` vollständig und startet den einmaligen Vollrestore. Dadurch blockieren Objekte neuerer Migrationen nicht die Wiederherstellung eines älteren Dumps. Fehler oder Timeout führen zu keinem automatischen Retry oder Gegenrestore.
+8. Der Agent rekonstruiert zunächst die statischen `sva_app`-ACLs und prüft Goose-Version, IAM-Schema, `iam_app`-Mitgliedschaft, Datenbank-, Schema-, Tabellen- und Sequenzrechte sowie Registry. Alte Agent-Evidenz ohne `runtime-principal-reconciliation` und `runtime-principal-probe` wird vom Workflow abgelehnt.
+9. Der Workflow migriert einen historischen Stand anschließend mit dem unveränderlich ausgewählten Studio-Image und führt danach den allgemeinen Bootstrap als abschließendes Principal-Reconcile aus.
+10. Nur nach erfolgreicher DB-Evidenz startet der Workflow App und Provisioner wieder und fordert HTTP 200 für `health/live` und `health/ready`, einen erfolgreichen Runtime-Smoke mit Tenant-Login-Redirect sowie einen authentifizierten, nicht degradierten `/auth/me`- und `/iam/me/permissions`-Nachweis.
+11. Schlägt ein Schritt nach der Stilllegung fehl, deployt der Workflow den gestoppten Stackvertrag erneut. Die App bleibt bis zu einer manuellen Recovery-Entscheidung stillgelegt.
 
 MinIO hält Request, Sicherheitsdump-Metadaten und Agent-Ergebnis getrennt unter `control/restores/`. GitHub hält zusätzlich die redigierte Workflow-Evidenz. Weder Evidenz enthält Secrets, SQL-Inhalte oder Datenbankdaten. Keycloak wird nicht verändert; erkannter Drift wird ausschließlich über die vorhandenen IAM-Reconcile-Pfade behandelt.
 

@@ -19,8 +19,8 @@ Dieses Dokument ist die einzige normative Bedienanleitung für reguläre Studio-
 
 ## Umgebungsvertrag
 
-| Umgebung | Stack | Root-URL | Auslösung | Modi | Backup |
-| --- | --- | --- | --- | --- | --- |
+| Umgebung   | Stack            | Root-URL                                   | Auslösung                                                         | Modi                                         | Backup                             |
+| ---------- | ---------------- | ------------------------------------------ | ----------------------------------------------------------------- | -------------------------------------------- | ---------------------------------- |
 | Dev | `studio-dev` | `https://studio-dev.smart-village.app` | automatisch nach erfolgreichem Build auf `main` | `migration_mode=auto`, `bootstrap_mode=auto` | kein Promote-Backup |
 | Staging | `studio-staging` | `https://studio-staging.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `staging` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
 | Production | `studio` | `https://studio.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `prod` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
@@ -37,10 +37,10 @@ Dev veröffentlicht zusätzlich `de-teststadt-dev.studio-dev.smart-village.app`,
 
 Die Backup-Endpunkte und Buckets sind fest an die Zielumgebung gebunden:
 
-| Umgebung | Endpoint | Bucket |
-| --- | --- | --- |
-| Staging | `https://backup-studio-staging.smart-village.app/_ops/backup/v1/requests` | `studio-db-backup-staging` |
-| Production | `https://backup-studio.smart-village.app/_ops/backup/v1/requests` | `studio-db-backup-production` |
+| Umgebung   | Endpoint                                                                  | Bucket                        |
+| ---------- | ------------------------------------------------------------------------- | ----------------------------- |
+| Staging    | `https://backup-studio-staging.smart-village.app/_ops/backup/v1/requests` | `studio-db-backup-staging`    |
+| Production | `https://backup-studio.smart-village.app/_ops/backup/v1/requests`         | `studio-db-backup-production` |
 
 Der zentrale Agent akzeptiert nur den engen, OIDC- und HMAC-gesicherten Vertrag `backup-and-verify`. Er stellt keine Remote-Shell bereit. Der S3-kompatible Speicher ist MinIO unter `https://fileserver.smart-village.app`; AWS CLI und S3 SDK dienen lediglich als kompatible Clients.
 
@@ -109,6 +109,8 @@ Docker-Swarm-Dienste dürfen nach einem Update bis zu fünf Minuten benötigen, 
 5. Ein Workflow-Retry ist erst nach dokumentierter Ursache beziehungsweise bestätigtem reinen Konvergenzfehler zulässig.
 
 Ein regulärer Production-Rollout ist nur erfolgreich, wenn der GitHub-Workflow grün ist, der erwartete Digest live läuft, `live` und `ready` HTTP 200 liefern und der Release-Blocking-Tenant-Smoke für `de-studio-sandbox` bestanden ist. Weitere Tenant-Smokes sind operative Signale und keine Release-Blocker.
+
+Ein kontrollierter Datenbankrestore besitzt strengere Nachbedingungen als ein regulärer Rollout: Der Backup-Agent muss die statischen ACLs des Runtime-Principals rekonstruiert und datenbanknah validiert haben. Nach dem Neustart muss der Restore-Workflow zusätzlich mit dem geschützten Restore-Smoke-Zugang einen nicht degradierten `/auth/me`-Zustand und HTTP 200 für `/iam/me/permissions` nachweisen. Fehlt einer dieser Nachweise, bleibt der Restore rot und die Anwendung wird wieder stillgelegt.
 
 ## Backup- und Rollback-Grenzen
 

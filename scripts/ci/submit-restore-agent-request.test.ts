@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildRestoreAgentRequest } from './submit-restore-agent-request.ts';
+import {
+  buildRestoreAgentRequest,
+  hasRuntimePrincipalRestoreEvidence,
+} from './submit-restore-agent-request.ts';
 
 describe('submit restore agent request', () => {
   it('builds the complete short-lived workflow request', () => {
@@ -23,5 +26,19 @@ describe('submit restore agent request', () => {
       sourceObjectKey: `prod/2026-08-01/${'a'.repeat(64)}/backup.dump`,
       sourceSha256: 'b'.repeat(64),
     });
+  });
+
+  it('accepts only restore evidence containing reconciliation and principal probes', () => {
+    const steps = [
+      { step: 'runtime-principal-reconciliation', status: 'succeeded' },
+      { step: 'runtime-principal-probe', status: 'succeeded' },
+    ];
+    expect(hasRuntimePrincipalRestoreEvidence({ steps })).toBe(true);
+    expect(hasRuntimePrincipalRestoreEvidence({ steps: steps.slice(0, 1) })).toBe(false);
+    expect(
+      hasRuntimePrincipalRestoreEvidence({
+        steps: [steps[0], { ...steps[1], status: 'failed' }],
+      })
+    ).toBe(false);
   });
 });

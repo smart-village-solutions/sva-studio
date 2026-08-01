@@ -52,6 +52,27 @@ describe('promote-deploy-gates', () => {
     expect(result.migration.riskFiles).toEqual(['packages/data/migrations/0010_add_role.sql']);
   });
 
+  it('fails migration assert-none when the deployed Goose runner changes', () => {
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'assert-none',
+      changedFiles: [
+        'packages/data/goose.config.json',
+        'packages/data/scripts/goosew.sh',
+      ],
+      migrationMode: 'assert-none',
+    });
+
+    expect(result.migration).toMatchObject({
+      ok: false,
+      result: 'blocked-risk',
+      riskDetected: true,
+    });
+    expect(result.migration.riskFiles).toEqual([
+      'packages/data/goose.config.json',
+      'packages/data/scripts/goosew.sh',
+    ]);
+  });
+
   it('treats application changes outside migration artifacts as safe for assert-none', () => {
     const result = evaluatePromoteDeployGates({
       bootstrapMode: 'assert-none',

@@ -1,0 +1,4 @@
+{
+  "prNumber": 856,
+  "body": "Production-Rollouts prüfen nur noch den verbindlichen Studio-Referenz-Tenant. Störungen weiterer Mandanten bleiben sichtbar, blockieren aber keine Studio-Auslieferung."
+}

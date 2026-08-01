@@ -1,0 +1,4 @@
+{
+  "prNumber": 876,
+  "body": "Fehlerbehebung\n\n- Die Produktionsfreigabe eines Datenbank-Restores erkennt erfolgreiche Staging-Drills nun über die stabile Workflow-Datei statt über einen dynamischen Laufnamen."
+}

@@ -7,6 +7,7 @@ import {
   shouldRetryInternalProbeFailure,
   shouldRetryInternalVerify,
 } from './smoke.ts';
+import { createRuntimeSmokeOps } from './smoke-runtime.ts';
 
 const createProbe = (overrides: Partial<AcceptanceProbeResult>): AcceptanceProbeResult => ({
   durationMs: 10,
@@ -27,6 +28,45 @@ const createDoctorReport = (overrides: Partial<DoctorReport>): DoctorReport => (
 });
 
 describe('smoke helpers', () => {
+  it('probes every explicit ingress host and an unknown host for the selected environment', async () => {
+    const targets: string[] = [];
+    const ops = createRuntimeSmokeOps({
+      buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
+      buildSwarmServicePresenceProbe: () => createProbe({ scope: 'internal' }),
+      doctorRuntime: async () => createDoctorReport({}),
+      isExpectedOidcRedirect: () => true,
+      parseRuntimeProfile: (value) => value,
+      resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
+      runHttpProbe: async (input) => {
+        targets.push(input.target);
+        return createProbe({
+          ...(input.name === 'public-ingress-unknown-host' ? { httpStatus: undefined } : { httpStatus: 200 }),
+          name: input.name,
+          status: input.name === 'public-ingress-unknown-host' ? 'error' : 'ok',
+          target: input.target,
+        });
+      },
+      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
+      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      wait: async () => undefined,
+    });
+
+    const probes = await ops.runExternalSmoke('studio', {
+      SVA_PUBLIC_BASE_URL: 'https://studio-dev.smart-village.app',
+    });
+
+    expect(targets).toEqual(expect.arrayContaining([
+      'https://studio-dev.smart-village.app/health/live',
+      'https://studio-dev.smart-village.app/auth/login',
+      'https://de-teststadt-dev.studio-dev.smart-village.app/health/live',
+      'https://de-teststadt-dev.studio-dev.smart-village.app/auth/login',
+      'https://unknown-ingress-smoke.studio-dev.smart-village.app/auth/login',
+    ]));
+    expect(probes.find((probe) => probe.name === 'public-ingress-unknown-host')).toMatchObject({
+      status: 'ok',
+    });
+  });
+
   it('caps derived internal verify attempts when retry delay is zero or negative', () => {
     expect(deriveInternalVerifyMaxAttempts({ retryDelayMs: 0, warmupWindowMs: 90_000 })).toBe(91);
     expect(deriveInternalVerifyMaxAttempts({ retryDelayMs: -100, warmupWindowMs: 90_000 })).toBe(91);

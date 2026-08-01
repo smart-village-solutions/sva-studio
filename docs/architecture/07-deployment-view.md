@@ -68,7 +68,7 @@ Für den serverbasierten Betrieb ist ein Docker-Swarm-Stack mit Traefik als Ingr
 Internet
   │
   ▼
-Traefik (Ingress, TLS, HostRegexp-Routing)
+Traefik (Ingress, TLS, explizite Host-Regeln)
   │  Overlay-Netzwerk „public"
   ▼
 ┌──────────────────────────────────────────────────────────────┐
@@ -105,7 +105,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 - **Image-basiert:** Vorgebaute Images aus Container-Registry; für die App ist im Acceptance-Referenzpfad `SVA_IMAGE_REF` mit Digest verpflichtend, der Tag bleibt nur Metadatum. Kein `build:`-Block im Stack.
 - **Promote-Integrität:** Der Main-Build übergibt `dev` direkt den von ihm erzeugten Digest. `staging` löst jede zulässige Eingabe vor der Mutation zu einem Digest auf und prüft dessen OCI-Revision gegen den Git-Head; `prod` erfordert einen Digest. Der Deploy-Report hält den konkret aufgelösten Image-Ref plus `SVA_DEPLOY_REVISION` fest.
-- **Traefik-Labels:** Host-basiertes Routing über `HostRegexp` für Instanz-Subdomains unter `SVA_PARENT_DOMAIN`. TLS über Traefiks `certresolver`.
+- **Traefik-Labels:** Das Studio-Betriebsprofil führt Root- und freigegebene Tenant-Hosts in Traefik-v1- und v2+-Labels explizit und in identischer Reihenfolge. TLS läuft je konkretem `Host(...)`-Matcher über den vorhandenen `certresolver`; `HostRegexp`, Wildcard-TLS und DNS-01 gehören nicht zu diesem Profil.
 - **Profilgrenze Traefik:** Das Referenzprofil verwendet Traefik v2+-Labels; das Demo-Profil bleibt bewusst bei Traefik-v1-kompatiblen Labels und ist deshalb kein 1:1-Abbild des Referenzbetriebs.
 - **Swarm Secrets:** Vertrauliche Werte als externe Docker-Swarm-Secrets mit Namenskonvention `sva_studio_<service>_<secret_name>`. Ein Shell-Entrypoint (`entrypoint.sh`) liest Secret-Dateien und exportiert sie als Env-Variablen.
 - **Versionierte Monitoring-Konfigurationen:** Prometheus-, Loki-, Grafana-, Promtail- und Alertmanager-Konfigurationen liegen versioniert im Repository und werden über ein dediziertes `monitoring-config-init`-Image einmalig in die Swarm-Volumes geschrieben.
@@ -136,6 +136,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 - `<instanceId>.<SVA_PARENT_DOMAIN>` → Instanz-Kontext
 - Root-Domain (`SVA_PARENT_DOMAIN`) → Kanonischer Auth-Host
+- Externe Erreichbarkeit → zusätzlich versionierte explizite Hostregel und erfolgreiches Einzelzertifikat erforderlich
 - Registry-basierte Freigabe in Postgres als autoritative Quelle
 - Env-basierte Allowlist (`SVA_ALLOWED_INSTANCE_IDS`) nur noch als lokaler oder migrationsbezogener Kompatibilitätspfad
 - Startup-Validierung gegen `instanceId`-Regex bleibt für Kompatibilitätsprofile aktiv

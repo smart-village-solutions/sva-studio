@@ -1,5 +1,6 @@
 import type { AcceptanceProbeResult, DoctorReport, RemoteRuntimeProfile, RuntimeProfile, TenantRuntimeTargetResolution } from '../runtime-env.shared.ts';
 import { deriveInternalVerifyMaxAttempts, shouldRetryExternalSmoke, shouldRetryInternalVerifyAttempt } from './smoke-retry.ts';
+import { resolveStudioIngressContract } from './tenant-ingress-hosts.ts';
 
 type RunHttpProbeInput = {
   expect: (response: Response, payload: unknown) => string | null;
@@ -66,6 +67,43 @@ const tenantAuthLoginProbe = (deps: RuntimeSmokeDeps, base: URL, tenantTarget: T
     },
   });
 
+const explicitIngressHostProbes = (deps: RuntimeSmokeDeps, base: URL) => {
+  const contract = resolveStudioIngressContract(base.toString());
+  if (!contract) return [];
+
+  const allowedHostProbes = contract.hosts.flatMap((host) => [
+    deps.runHttpProbe({
+      name: `public-ingress-https-${host}`,
+      scope: 'external',
+      target: `${base.protocol}//${host}/health/live`,
+      expect: (response) => response.status === 200 ? null : `Expliziter Ingress-Host ${host} antwortet mit ${response.status}.`,
+    }),
+    deps.runHttpProbe({
+      name: `public-ingress-login-${host}`,
+      scope: 'external',
+      target: `${base.protocol}//${host}/auth/login`,
+      expect: (response) => {
+        const location = response.headers.get('location') ?? '';
+        if (response.status !== 302) return `Login auf ${host} antwortet mit ${response.status}.`;
+        const encodedRedirect = encodeURIComponent(`${base.protocol}//${host}/auth/callback`);
+        return location.includes(`redirect_uri=${encodedRedirect}`) ? null : `Login auf ${host} behaelt den Rueckkehr-Host nicht bei: ${location}`;
+      },
+    }),
+  ]);
+  const unknownHostProbe = deps.runHttpProbe({
+    name: 'public-ingress-unknown-host',
+    scope: 'external',
+    target: `${base.protocol}//${contract.unknownHost}/auth/login`,
+    expect: (response) => [200, 302].includes(response.status)
+      ? `Unbekannter Host erscheint mit HTTP ${response.status} als betriebsbereit.`
+      : null,
+  }).then((probe) => probe.httpStatus === undefined
+    ? { ...probe, message: 'Unbekannter Host wurde vor der Anwendung fail-closed abgelehnt.', status: 'ok' as const }
+    : probe);
+
+  return [...allowedHostProbes, unknownHostProbe];
+};
+
 const baseExternalProbes = (deps: RuntimeSmokeDeps, baseUrl: string, env: NodeJS.ProcessEnv) => [
   deps.runHttpProbe({ name: 'public-home', scope: 'external', target: baseUrl, expect: (response) => (response.status === 200 ? null : `Erwartet HTTP 200, erhalten ${response.status}.`) }),
   deps.runHttpProbe({ name: 'public-live', scope: 'external', target: new URL('/health/live', baseUrl).toString(), expect: (response) => (response.status === 200 ? null : `Erwartet HTTP 200, erhalten ${response.status}.`) }),
@@ -91,7 +129,7 @@ const runExternalSmoke = async (deps: RuntimeSmokeDeps, runtimeProfile: RuntimeP
   const tenantTargets = deps.selectSmokeTenantTargets(runtimeProfile, tenantResolution.targets, { env, source: tenantResolution.source });
   const tenantProbes = tenantTargets.map((tenantTarget) => tenantAuthLoginProbe(deps, base, tenantTarget));
 
-  return Promise.all([...baseExternalProbes(deps, baseUrl, env), ...tenantProbes]);
+  return Promise.all([...baseExternalProbes(deps, baseUrl, env), ...explicitIngressHostProbes(deps, base), ...tenantProbes]);
 };
 
 const runExternalSmokeWithWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.ProcessEnv, options?: ExternalSmokeWarmupOptions) => {
@@ -114,7 +152,10 @@ const runExternalSmokeWithWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.Pr
 };
 
 const isBlockingSmokeProbe = (probe: AcceptanceProbeResult) =>
-  ['public-live', 'public-ready', 'public-auth-login'].includes(probe.name) || probe.name.startsWith('public-auth-login-');
+  ['public-live', 'public-ready', 'public-auth-login', 'public-ingress-unknown-host'].includes(probe.name)
+  || probe.name.startsWith('public-auth-login-')
+  || probe.name.startsWith('public-ingress-https-')
+  || probe.name.startsWith('public-ingress-login-');
 
 const waitForRemoteSmokeWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.ProcessEnv, options?: ExternalSmokeWarmupOptions) => {
   const runtimeProfile = options?.runtimeProfile ?? defaultRuntimeProfile(deps, env);

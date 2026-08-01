@@ -34,10 +34,18 @@ export const runHttpChecks = async (
   }
 
   if (loginResponse.status === 'fulfilled') {
+    const location = loginResponse.value.headers.get('location') ?? '';
+    const encodedRedirectUri = encodeURIComponent(`${origin}/auth/callback`);
+    const loginReady = okStatus(loginResponse.value.status)
+      && loginResponse.value.status === 302
+      && location.includes(`redirect_uri=${encodedRedirectUri}`);
     checks.push({
       checkId: 'reachability.login',
-      status: okStatus(loginResponse.value.status) ? 'pass' : 'warn',
-      summary: `GET /auth/login -> ${loginResponse.value.status}`,
+      details: { location },
+      status: loginReady ? 'pass' : 'warn',
+      summary: loginReady
+        ? `GET /auth/login -> 302 mit Rückkehr zu ${target.primaryHostname}`
+        : `GET /auth/login -> ${loginResponse.value.status}; Rückkehr-Host nicht bestätigt`,
       title: 'Login-Einstieg antwortet',
     });
   } else {

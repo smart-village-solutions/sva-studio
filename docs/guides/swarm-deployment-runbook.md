@@ -14,7 +14,7 @@ Direkte Portainer-, Docker- oder Quantum-Mutationen aus diesem Runbook sind kein
 | Staging    | `studio-staging` | `studio-staging.smart-village.app` | `studio-staging_default` |
 | Production | `studio`         | `studio.smart-village.app`         | `studio_default`         |
 
-Jeder Stack enthält mindestens App, PostgreSQL und Redis. Traefik routet Root- und Tenant-Hosts über das öffentliche Overlay-Netz. Konkrete Docker-Netzwerk-IDs sind flüchtig und dürfen nicht dokumentiert oder wiederverwendet werden; vor jeder netzbezogenen Reparatur ist die aktuelle ID anhand des Namens live aufzulösen.
+Jeder Stack enthält mindestens App, PostgreSQL und Redis. Traefik routet den Root-Host und ausschließlich die in `deploy/compose.<umgebung>.yaml` explizit aufgeführten Tenant-Hosts über das öffentliche Overlay-Netz. Der vorhandene Certificate Resolver verwaltet dafür konkrete Einzelzertifikate; Wildcard-DNS, DNS-01 und ein generischer `HostRegexp`-Router gelten nicht als Tenant-Freigabe. Konkrete Docker-Netzwerk-IDs sind flüchtig und dürfen nicht dokumentiert oder wiederverwendet werden; vor jeder netzbezogenen Reparatur ist die aktuelle ID anhand des Namens live aufzulösen.
 
 ## Betriebsziele
 
@@ -59,7 +59,9 @@ GitHub Actions führt die regulären Prüfungen aus. Für eine unabhängige Inci
 | Live-Service-Image        | exakt erwarteter SHA-256-Digest                           |
 | App-Task                  | gewünschter Zustand `running`                             |
 | Netzwerke                 | internes Zielnetz und öffentliches Traefik-Netz vorhanden |
-| Traefik-Labels            | Root- und Wildcard-Router entsprechen der Zielumgebung    |
+| Traefik-Labels            | v1- und v2+-Regeln enthalten exakt Root- und freigegebene Tenant-Hosts |
+| TLS                       | gültiges Einzelzertifikat für jeden expliziten Host       |
+| unbekannter Tenant-Host   | kein Tenant-Inhalt und kein tenant-spezifischer Login     |
 
 Ein Swarm-Service darf nach einem Update bis zu fünf Minuten konvergieren. Vor Ablauf dieses Fensters wird kein zusätzlicher mutierender Reparaturversuch gestartet. Bleibt ein Fehler danach bestehen, gilt der Rollout als fehlgeschlagen.
 
@@ -94,7 +96,7 @@ Die Workflows **Staging Backup Drill** und **Production Backup Drill** testen de
 1. Zielstack, erwarteten Digest und Zeitpunkt festhalten.
 2. Service-Spec, Taskzustände, Netzwerke und Traefik-Labels read-only prüfen.
 3. Bis zu fünf Minuten Konvergenzzeit ab dem abgeschlossenen Service-Update berücksichtigen.
-4. Root- und Tenant-Probes erneut ausführen.
+4. Root-, alle expliziten Tenant-, Zertifikats- und Unknown-Host-Probes erneut ausführen.
 5. Bei anhaltendem Fehler den vorherigen Digest als Recovery-Ziel festlegen.
 6. Eine notwendige direkte Mutation auf genau den App-Service des Zielstacks begrenzen.
 7. Danach vollständige Health-, Tenant-, Digest- und Netzprüfung wiederholen und einen Incident-Report unter `docs/reports/` anlegen.
@@ -144,7 +146,7 @@ MinIO hält Request, Sicherheitsdump-Metadaten und Agent-Ergebnis getrennt unter
 
 ## DNS- und TLS-Prüfung
 
-Root- und Wildcard-DNS jeder Umgebung müssen auf denselben vorgesehenen Swarm-Ingress zeigen. Die Backup-Hosts müssen denselben verifizierten Ingress erreichen. DNS- oder TLS-Abweichungen werden diagnostiziert, aber nicht durch spontane Traefik-Änderungen im App-Rollout behoben.
+Root- und Wildcard-DNS jeder Umgebung müssen auf denselben vorgesehenen Swarm-Ingress zeigen. Extern freigegeben sind trotzdem nur die expliziten `Host(...)`-Regeln mit konkretem Einzelzertifikat. Die Backup-Hosts müssen denselben verifizierten Ingress erreichen. DNS- oder TLS-Abweichungen werden diagnostiziert, aber nicht durch spontane Traefik-Änderungen im App-Rollout behoben.
 
 ## Secrets und Evidenz
 

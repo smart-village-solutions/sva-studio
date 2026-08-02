@@ -13,7 +13,10 @@ vi.mock('@sva/plugin-generic-items', () => ({
 }));
 vi.mock('@sva/plugin-news', () => ({ setNewsVisibility: news.setVisibility }));
 vi.mock('@sva/plugin-poi', () => ({ getPoi: poi.get, updatePoi: poi.update }));
-vi.mock('@sva/plugin-surveys', () => ({ getSurvey: surveys.get, updateSurvey: surveys.update }));
+vi.mock('@sva/plugin-surveys/api', () => ({
+  getSurvey: surveys.get,
+  updateSurvey: surveys.update,
+}));
 
 import {
   getSupportedQuickStatuses,

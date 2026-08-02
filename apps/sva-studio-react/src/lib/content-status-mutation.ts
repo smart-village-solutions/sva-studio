@@ -3,12 +3,8 @@ import { getEvent, updateEvent } from '@sva/plugin-events';
 import { getGenericItem, updateGenericItem } from '@sva/plugin-generic-items';
 import { setNewsVisibility } from '@sva/plugin-news';
 import { getPoi, updatePoi } from '@sva/plugin-poi';
-import {
-  getSurvey,
-  updateSurvey,
-  type SurveyContentItem,
-  type SurveyStatus,
-} from '@sva/plugin-surveys';
+import type { SurveyContentItem, SurveyStatus } from '@sva/plugin-surveys';
+import { getSurvey, updateSurvey } from '@sva/plugin-surveys/api';
 
 const visibilityStatuses = ['draft', 'published'] as const satisfies readonly IamContentStatus[];
 const surveyStatuses = [

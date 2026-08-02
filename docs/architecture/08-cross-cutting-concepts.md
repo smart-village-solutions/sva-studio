@@ -612,3 +612,11 @@ Der Restore-Vertrag erweitert diese Grenze action-spezifisch: Nur `database-rest
 Restore-Dumps werden bewusst ohne Owner- und Privilegübernahme behandelt. Deshalb ist die idempotente ACL-Reconciliation für den internen Runtime-Principal ein fester Bestandteil derselben Trust Boundary: Der Agent darf ausschließlich die kompilierten Grants für `sva_app` und `iam_app` gegen die feste Zieldatenbank anwenden. Freie SQL-Eingaben und App-Passwörter bleiben ausgeschlossen. Erfolgreiche Evidenz verlangt sowohl boolesche Datenbank-Privilegproben als auch nach dem Neustart einen authentifizierten IAM-Anwendungssmoke; Payloads, Benutzernamen und Berechtigungslisten werden nicht protokolliert.
 
 Nach Mutationsbeginn gibt es keinen automatischen Retry und keinen automatischen Gegenrestore. Jeder weitere Versuch benötigt eine neue GitHub-Environment-Freigabe und Request-ID. Fehlende DB-, Health- oder Tenant-Nachweise halten die App fail-closed stillgelegt. Keycloak gehört nicht zur Datenbankmutation; IAM-Drift bleibt Aufgabe der vorhandenen Reconcile-Verträge.
+
+## Partielle Mainserver-Snapshots
+
+- `pagination.total` bezeichnet weiterhin die lokal verfügbare Trefferzahl. `totalCount` existiert nur bei einem vollständigen Snapshot; `isTotalFinal` macht die Semantik explizit.
+- `payload_json` ist für Mainserver-Projektionszeilen immer `{}`. Detailfragmente, Medien, Adressen und Content-Blöcke werden weder geladen noch für Listenfilterung vorausgesetzt.
+- Ein Datensatz ohne stabile Quell-ID wird übersprungen und gezählt. Transportfehler, fehlende Page-Metadaten und strukturell ungültige Pages stoppen nur den betroffenen Typ.
+- Browser-Revalidation läuft nur für laufende, partielle oder veraltete Zustände, pausiert bei unsichtbarem Dokument, verwendet Backoff und beendet sich nach Finalisierung. Filter, Auswahl, Fokus, lokale Seite und Scrollposition bleiben Browserzustand.
+- Rollback-Schalter ändern nur neue Läufe und Reads; additive Sync-State-Spalten bleiben erhalten.

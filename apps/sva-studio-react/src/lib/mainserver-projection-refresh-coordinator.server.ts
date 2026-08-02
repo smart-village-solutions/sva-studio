@@ -30,7 +30,8 @@ export const runMainserverProjectionRoundRobin = async <TTarget, TPageData>(
     target: TTarget,
     pages: readonly TPageData[],
     error: unknown
-  ) => Promise<void>
+  ) => Promise<void>,
+  onHotPhaseCompleted?: () => Promise<void>
 ): Promise<readonly MainserverProjectionRoundRobinState<TTarget, TPageData>[]> => {
   const states = targets.map((target) => ({
     target,
@@ -38,6 +39,7 @@ export const runMainserverProjectionRoundRobin = async <TTarget, TPageData>(
     nextPage: 1,
     completed: false,
   }));
+  let hotPhaseCompleted = false;
 
   while (states.some((state) => state.completed === false)) {
     for (const state of states) {
@@ -66,6 +68,11 @@ export const runMainserverProjectionRoundRobin = async <TTarget, TPageData>(
 
       state.completed = pageResult.hasNextPage === false;
       state.nextPage = pageResult.nextPage;
+    }
+
+    if (!hotPhaseCompleted && onHotPhaseCompleted) {
+      await onHotPhaseCompleted();
+      hotPhaseCompleted = true;
     }
   }
 

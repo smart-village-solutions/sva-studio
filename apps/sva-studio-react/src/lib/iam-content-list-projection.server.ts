@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   type IamContentAccessSummary,
   type IamContentListItem,
@@ -15,12 +17,14 @@ import {
   getSvaMainserverGenericItem,
   getSvaMainserverNews,
   getSvaMainserverPoi,
+  listSvaMainserverProjection,
   listSvaMainserverEvents,
   listSvaMainserverGenericItems,
   listSvaMainserverNews,
   listSvaMainserverPoi,
   listSvaMainserverSurveys,
 } from '@sva/sva-mainserver/server';
+import type { SvaMainserverProjectionListItem } from '@sva/sva-mainserver';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import {
@@ -90,7 +94,22 @@ type ProjectionSyncStateRow = {
   last_error_code: string | null;
   last_error_message: string | null;
   projected_count: number;
+  snapshot_state?: ContentProjectionSnapshotState;
+  refresh_run_id?: string | null;
+  refresh_phase?: 'hot' | 'reconciliation' | null;
+  completed_page?: number;
+  available_count?: number;
+  is_total_final?: boolean;
+  skipped_invalid_count?: number;
 };
+
+type ContentProjectionSnapshotState =
+  | 'empty'
+  | 'partial_running'
+  | 'partial_failed'
+  | 'complete_fresh'
+  | 'complete_refreshing'
+  | 'complete_failed';
 
 type ContentProjectionSyncState = Readonly<{
   contentType: MainserverContentType;
@@ -101,6 +120,12 @@ type ContentProjectionSyncState = Readonly<{
   isStale: boolean;
   isSyncRunning: boolean;
   hasSnapshot: boolean;
+  snapshotState: ContentProjectionSnapshotState;
+  refreshPhase?: 'hot' | 'reconciliation';
+  completedPage: number;
+  availableCount: number;
+  isTotalFinal: boolean;
+  skippedInvalidCount: number;
 }>;
 
 type ContentProjectionSyncTarget = Readonly<{
@@ -577,7 +602,14 @@ SELECT
   last_failed_at::text,
   last_error_code,
   last_error_message,
-  projected_count
+  projected_count,
+  snapshot_state,
+  refresh_run_id::text,
+  refresh_phase,
+  completed_page,
+  available_count,
+  is_total_final,
+  skipped_invalid_count
 FROM iam.content_list_projection_sync_state
 WHERE instance_id = $1
   AND source_system = 'mainserver'
@@ -596,7 +628,14 @@ SELECT
   last_failed_at::text,
   last_error_code,
   last_error_message,
-  projected_count
+  projected_count,
+  snapshot_state,
+  refresh_run_id::text,
+  refresh_phase,
+  completed_page,
+  available_count,
+  is_total_final,
+  skipped_invalid_count
 FROM iam.content_list_projection_sync_state
 WHERE instance_id = $1
   AND source_system = 'mainserver'
@@ -677,7 +716,9 @@ WHERE instance_id = $1
 };
 
 const markProjectionSyncStarted = async (
-  target: ContentProjectionSyncTarget
+  target: ContentProjectionSyncTarget,
+  refreshRunId: string,
+  refreshPhase: 'hot' | 'reconciliation'
 ): Promise<void> => {
   await withInstanceScopedDb(target.instanceId, async (client) => {
     await withProjectionSchemaModeRetry(target, 'sync-state', async () => {
@@ -691,16 +732,27 @@ INSERT INTO iam.content_list_projection_sync_state (
   content_type,
   sync_scope_key,
   sync_mode,
+  snapshot_state,
+  refresh_run_id,
+  refresh_phase,
+  completed_page,
+  is_total_final,
   last_started_at,
   updated_at
 )
-VALUES ($1, 'mainserver', $2, $3, 'full_refresh', NOW(), NOW())
+VALUES ($1, 'mainserver', $2, $3, 'full_refresh', 'partial_running', $4::uuid, $5, 0, FALSE, NOW(), NOW())
 ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
 DO UPDATE SET
   last_started_at = NOW(),
+  snapshot_state = CASE WHEN iam.content_list_projection_sync_state.last_succeeded_at IS NULL THEN 'partial_running' ELSE 'complete_refreshing' END,
+  refresh_run_id = EXCLUDED.refresh_run_id,
+  refresh_phase = EXCLUDED.refresh_phase,
+  completed_page = 0,
+  skipped_invalid_count = 0,
+  is_total_final = FALSE,
   updated_at = NOW();
         `,
-        [target.instanceId, target.contentType, buildMainserverSyncScopeKey(target)]
+        [target.instanceId, target.contentType, buildMainserverSyncScopeKey(target), refreshRunId, refreshPhase]
       );
         return;
       }
@@ -712,16 +764,27 @@ INSERT INTO iam.content_list_projection_sync_state (
   source_system,
   content_type,
   sync_mode,
+  snapshot_state,
+  refresh_run_id,
+  refresh_phase,
+  completed_page,
+  is_total_final,
   last_started_at,
   updated_at
 )
-VALUES ($1, 'mainserver', $2, 'full_refresh', NOW(), NOW())
+VALUES ($1, 'mainserver', $2, 'full_refresh', 'partial_running', $3::uuid, $4, 0, FALSE, NOW(), NOW())
 ON CONFLICT (instance_id, source_system, content_type)
 DO UPDATE SET
   last_started_at = NOW(),
+  snapshot_state = CASE WHEN iam.content_list_projection_sync_state.last_succeeded_at IS NULL THEN 'partial_running' ELSE 'complete_refreshing' END,
+  refresh_run_id = EXCLUDED.refresh_run_id,
+  refresh_phase = EXCLUDED.refresh_phase,
+  completed_page = 0,
+  skipped_invalid_count = 0,
+  is_total_final = FALSE,
   updated_at = NOW();
       `,
-      [target.instanceId, target.contentType]
+      [target.instanceId, target.contentType, refreshRunId, refreshPhase]
     );
     });
   });
@@ -729,6 +792,7 @@ DO UPDATE SET
 
 const markProjectionSyncFailed = async (
   target: ContentProjectionSyncTarget,
+  refreshRunId: string,
   errorCode: string,
   errorMessage: string
 ): Promise<void> => {
@@ -738,29 +802,25 @@ const markProjectionSyncFailed = async (
       if (schemaMode === 'scoped') {
         await client.query(
           `
-INSERT INTO iam.content_list_projection_sync_state (
-  instance_id,
-  source_system,
-  content_type,
-  sync_scope_key,
-  sync_mode,
-  last_failed_at,
-  last_error_code,
-  last_error_message,
-  updated_at
-)
-VALUES ($1, 'mainserver', $2, $3, 'full_refresh', NOW(), $4, $5, NOW())
-ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
-DO UPDATE SET
+UPDATE iam.content_list_projection_sync_state
+SET
   last_failed_at = NOW(),
-  last_error_code = EXCLUDED.last_error_code,
-  last_error_message = EXCLUDED.last_error_message,
-  updated_at = NOW();
+  last_error_code = $5,
+  last_error_message = $6,
+  snapshot_state = CASE WHEN iam.content_list_projection_sync_state.last_succeeded_at IS NULL THEN 'partial_failed' ELSE 'complete_failed' END,
+  is_total_final = FALSE,
+  updated_at = NOW()
+WHERE instance_id = $1
+  AND source_system = 'mainserver'
+  AND content_type = $2
+  AND sync_scope_key = $3
+  AND refresh_run_id = $4::uuid;
         `,
         [
           target.instanceId,
           target.contentType,
           buildMainserverSyncScopeKey(target),
+          refreshRunId,
           errorCode,
           errorMessage,
         ]
@@ -770,27 +830,50 @@ DO UPDATE SET
 
       await client.query(
         `
-INSERT INTO iam.content_list_projection_sync_state (
-  instance_id,
-  source_system,
-  content_type,
-  sync_mode,
-  last_failed_at,
-  last_error_code,
-  last_error_message,
-  updated_at
-)
-VALUES ($1, 'mainserver', $2, 'full_refresh', NOW(), $3, $4, NOW())
-ON CONFLICT (instance_id, source_system, content_type)
-DO UPDATE SET
+UPDATE iam.content_list_projection_sync_state
+SET
   last_failed_at = NOW(),
-  last_error_code = EXCLUDED.last_error_code,
-  last_error_message = EXCLUDED.last_error_message,
-  updated_at = NOW();
+  last_error_code = $4,
+  last_error_message = $5,
+  snapshot_state = CASE WHEN iam.content_list_projection_sync_state.last_succeeded_at IS NULL THEN 'partial_failed' ELSE 'complete_failed' END,
+  is_total_final = FALSE,
+  updated_at = NOW()
+WHERE instance_id = $1
+  AND source_system = 'mainserver'
+  AND content_type = $2
+  AND refresh_run_id = $3::uuid;
       `,
-      [target.instanceId, target.contentType, errorCode, errorMessage]
+      [target.instanceId, target.contentType, refreshRunId, errorCode, errorMessage]
     );
     });
+  });
+};
+
+const markProjectionRefreshPhase = async (
+  target: ContentProjectionSyncTarget,
+  refreshRunId: string,
+  refreshPhase: 'hot' | 'reconciliation'
+): Promise<void> => {
+  await withInstanceScopedDb(target.instanceId, async (client) => {
+    await client.query(
+      `
+UPDATE iam.content_list_projection_sync_state
+SET refresh_phase = $5,
+    updated_at = NOW()
+WHERE instance_id = $1
+  AND source_system = 'mainserver'
+  AND content_type = $2
+  AND sync_scope_key = $3
+  AND refresh_run_id = $4::uuid;
+      `,
+      [
+        target.instanceId,
+        target.contentType,
+        buildMainserverSyncScopeKey(target),
+        refreshRunId,
+        refreshPhase,
+      ]
+    );
   });
 };
 
@@ -1212,7 +1295,8 @@ const upsertMainserverProjectionRows = async (
 const upsertSingleMainserverProjectionRow = async (
   target: ContentProjectionSyncTarget,
   actorAccountId: string | undefined,
-  row: MainserverProjectionRowInput
+  row: MainserverProjectionRowInput,
+  refreshRunId: string
 ): Promise<void> => {
   const projectionPayloadJson = buildMainserverProjectionPayloadJson(
     [row],
@@ -1221,6 +1305,15 @@ const upsertSingleMainserverProjectionRow = async (
   );
 
   await withInstanceScopedDb(target.instanceId, async (client) => {
+    const leader = await client.query<{ refresh_run_id?: string | null }>(
+      `SELECT refresh_run_id::text FROM iam.content_list_projection_sync_state
+       WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
+         AND sync_scope_key = $3 FOR UPDATE;`,
+      [target.instanceId, target.contentType, buildMainserverSyncScopeKey(target)]
+    );
+    if (leader.rows[0]?.refresh_run_id !== refreshRunId) {
+      return;
+    }
     await upsertMainserverProjectionRows(client, target, projectionPayloadJson);
     const projectedCount = await countProjectedRowsForScopeWithClient(client, target);
     await markMainserverProjectionSyncSucceeded(client, target, projectedCount);
@@ -1248,9 +1341,12 @@ INSERT INTO iam.content_list_projection_sync_state (
   last_error_code,
   last_error_message,
   projected_count,
+  snapshot_state,
+  available_count,
+  is_total_final,
   updated_at
 )
-VALUES ($1, 'mainserver', $2, $3, 'full_refresh', NOW(), NOW(), NULL, NULL, $4, NOW())
+VALUES ($1, 'mainserver', $2, $3, 'full_refresh', NOW(), NOW(), NULL, NULL, $4, 'complete_fresh', $4, TRUE, NOW())
 ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
 DO UPDATE SET
   last_started_at = NOW(),
@@ -1258,6 +1354,11 @@ DO UPDATE SET
   last_error_code = NULL,
   last_error_message = NULL,
   projected_count = EXCLUDED.projected_count,
+  snapshot_state = 'complete_fresh',
+  available_count = EXCLUDED.available_count,
+  is_total_final = TRUE,
+  refresh_run_id = NULL,
+  refresh_phase = NULL,
   updated_at = NOW();
       `,
       [
@@ -1282,9 +1383,12 @@ INSERT INTO iam.content_list_projection_sync_state (
   last_error_code,
   last_error_message,
   projected_count,
+  snapshot_state,
+  available_count,
+  is_total_final,
   updated_at
 )
-VALUES ($1, 'mainserver', $2, 'full_refresh', NOW(), NOW(), NULL, NULL, $3, NOW())
+VALUES ($1, 'mainserver', $2, 'full_refresh', NOW(), NOW(), NULL, NULL, $3, 'complete_fresh', $3, TRUE, NOW())
 ON CONFLICT (instance_id, source_system, content_type)
 DO UPDATE SET
   last_started_at = NOW(),
@@ -1292,6 +1396,11 @@ DO UPDATE SET
   last_error_code = NULL,
   last_error_message = NULL,
   projected_count = EXCLUDED.projected_count,
+  snapshot_state = 'complete_fresh',
+  available_count = EXCLUDED.available_count,
+  is_total_final = TRUE,
+  refresh_run_id = NULL,
+  refresh_phase = NULL,
   updated_at = NOW();
     `,
     [target.instanceId, target.contentType, projectedCount]
@@ -1305,6 +1414,9 @@ const persistMainserverProjectionRowsProgressively = async (input: {
   readonly actorAccountId: string | undefined;
   readonly rows: readonly MainserverProjectionRowInput[];
   readonly finalize: boolean;
+  readonly page: number;
+  readonly refreshRunId: string;
+  readonly skippedInvalidCount: number;
 }): Promise<void> => {
   const dedupedRows = dedupeProjectionRows(input.rows, input.keycloakSubject);
   const projectionPayloadJson =
@@ -1317,9 +1429,46 @@ const persistMainserverProjectionRowsProgressively = async (input: {
       : null;
 
   await withInstanceScopedDb(input.target.instanceId, async (client) => {
+    const leaderResult = await client.query<{ refresh_run_id?: string | null }>(
+      `
+SELECT refresh_run_id::text
+FROM iam.content_list_projection_sync_state
+WHERE instance_id = $1
+  AND source_system = 'mainserver'
+  AND content_type = $2
+  AND sync_scope_key = $3
+LIMIT 1
+FOR UPDATE;
+      `,
+      [input.target.instanceId, input.target.contentType, buildMainserverSyncScopeKey(input.target)]
+    );
+    const persistedRunId = leaderResult.rows[0]?.refresh_run_id;
+    if (persistedRunId !== input.refreshRunId) {
+      return;
+    }
+
     if (projectionPayloadJson) {
       await upsertMainserverProjectionRows(client, input.target, projectionPayloadJson);
     }
+    const availableCount = await countProjectedRowsForScopeWithClient(client, input.target);
+
+    await client.query(
+      `
+UPDATE iam.content_list_projection_sync_state
+SET snapshot_state = CASE WHEN last_succeeded_at IS NULL THEN 'partial_running' ELSE 'complete_refreshing' END,
+    completed_page = GREATEST(completed_page, $5),
+    available_count = $6,
+    skipped_invalid_count = $7,
+    is_total_final = FALSE,
+    updated_at = NOW()
+WHERE instance_id = $1
+  AND source_system = 'mainserver'
+  AND content_type = $2
+  AND sync_scope_key = $3
+  AND (refresh_run_id = $4::uuid OR refresh_run_id IS NULL);
+      `,
+      [input.target.instanceId, input.target.contentType, buildMainserverSyncScopeKey(input.target), input.refreshRunId, input.page, availableCount, input.skippedInvalidCount]
+    );
 
     if (input.finalize) {
       await deleteMainserverProjectionRowsNotInSet(
@@ -1337,6 +1486,7 @@ type MainserverProjectionLoadedPage = Readonly<{
   readonly rows: readonly MainserverProjectionRowInput[];
   readonly hasNextPage: boolean;
   readonly nextPage: number;
+  readonly skippedInvalidCount: number;
 }>;
 
 type MainserverProjectionPageResult<TItem> = {
@@ -1391,6 +1541,7 @@ const buildLoadedProjectionPage = <TItem>(input: {
     rows: input.result.data.map((item) => input.mapRow(item, credentialSource)),
     hasNextPage: hasNextProjectionPage(pagingResult, input.pageQuery),
     nextPage: nextPage + 1,
+    skippedInvalidCount: 0,
   };
 };
 
@@ -1540,29 +1691,92 @@ const loadMainserverProjectionPage = async (
   if (!target.instanceId) {
     throw createListErrorResponse(400, 'invalid_instance_id', 'Kein Instanzkontext für diese Inhalte vorhanden.');
   }
+  if ((process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE ?? 'slim') !== 'legacy') {
+    const result = await listSvaMainserverProjection({
+      instanceId: target.instanceId,
+      keycloakSubject: target.keycloakSubject,
+      activeOrganizationId: target.organizationId,
+      contentType: target.contentType,
+      includeInvisible: true,
+      ...pageQuery,
+    });
+    const credentialSource = result.credentialSource ?? (target.organizationId ? 'organization' : 'user');
+    return {
+      rows: result.data.map((item: SvaMainserverProjectionListItem) => ({
+        id: item.id,
+        instanceId: target.instanceId,
+        ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+        contentType: target.contentType,
+        title: item.title,
+        ...(item.publishedAt ? { publishedAt: item.publishedAt } : {}),
+        createdAt: item.createdAt,
+        createdBy: item.author ?? 'mainserver',
+        updatedAt: item.updatedAt,
+        updatedBy: item.author ?? 'mainserver',
+        authorDisplayMode: 'organization',
+        author: item.author ?? 'mainserver',
+        ...(item.dataProvider?.id ? { sourceDataProviderId: item.dataProvider.id } : {}),
+        ...(item.dataProvider?.name ? { sourceDataProviderName: item.dataProvider.name } : {}),
+        credentialSource,
+        payload: {},
+        status:
+          item.visible === false || item.active === false || item.status === 'DRAFT'
+            ? 'draft'
+            : item.status === 'ARCHIVED'
+              ? 'archived'
+              : 'published',
+        validationState: 'valid',
+        historyRef: `mainserver:${target.contentType}:${item.id}`,
+        sourceEntityType: target.contentType,
+        sourceEntityId: item.id,
+      })),
+      hasNextPage: result.pagination.hasNextPage,
+      nextPage: (result.pagination.page ?? pageQuery.page) + 1,
+      skippedInvalidCount: result.skippedInvalidCount,
+    };
+  }
   return mainserverProjectionPageLoaders[target.contentType]({
     target,
     pageQuery,
   });
 };
 
-const refreshMainserverProjectionBatch = async (
+const refreshMainserverProjectionBatch = (
   targets: readonly ContentProjectionSyncTarget[],
   trigger: ProjectionRefreshTrigger
-): Promise<Map<string, Response | null>> => {
+): Readonly<{
+  hotCompletion: Promise<Map<string, Response | null>>;
+  completion: Promise<Map<string, Response | null>>;
+}> => {
   const responses = new Map<string, Response | null>();
   const accumulatedRows = new Map<string, MainserverProjectionRowInput[]>();
+  const refreshRunIds = new Map<string, string>();
+  const skippedInvalidCounts = new Map<string, number>();
+  let resolveHotCompletion: ((responses: Map<string, Response | null>) => void) | undefined;
+  const hotCompletion = new Promise<Map<string, Response | null>>((resolve) => {
+    resolveHotCompletion = resolve;
+  });
 
-  for (const target of targets) {
-    await markProjectionSyncStarted(target);
-    accumulatedRows.set(buildProjectionTargetKey(target), []);
-  }
+  const completion = (async () => {
+    for (const target of targets) {
+      const targetKey = buildProjectionTargetKey(target);
+      const refreshRunId = randomUUID();
+      await markProjectionSyncStarted(target, refreshRunId, 'hot');
+      accumulatedRows.set(targetKey, []);
+      refreshRunIds.set(targetKey, refreshRunId);
+      skippedInvalidCounts.set(targetKey, 0);
+    }
 
-  await runMainserverProjectionRoundRobin(
+    await runMainserverProjectionRoundRobin(
     targets,
     MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
     async (target, pageQuery) => {
       const result = await loadMainserverProjectionPage(target, pageQuery);
+      const targetKey = buildProjectionTargetKey(target);
+      skippedInvalidCounts.set(
+        targetKey,
+        (skippedInvalidCounts.get(targetKey) ?? 0) + result.skippedInvalidCount
+      );
       return {
         data: result.rows,
         hasNextPage: result.hasNextPage,
@@ -1587,6 +1801,9 @@ const refreshMainserverProjectionBatch = async (
         actorAccountId: target.actorAccountId,
         rows: latestPage,
         finalize: false,
+        page: pages.length,
+        refreshRunId: refreshRunIds.get(targetKey) as string,
+        skippedInvalidCount: skippedInvalidCounts.get(targetKey) ?? 0,
       });
     },
     async (target, _pages, error) => {
@@ -1606,13 +1823,31 @@ const refreshMainserverProjectionBatch = async (
         page: _pages.length + 1,
         page_size: MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
       });
-      await markProjectionSyncFailed(target, errorCode, errorMessage);
+      await markProjectionSyncFailed(
+        target,
+        refreshRunIds.get(buildProjectionTargetKey(target)) as string,
+        errorCode,
+        errorMessage
+      );
       responses.set(
         buildProjectionTargetKey(target),
         createListErrorResponse(503, errorCode, errorMessage, getWorkspaceContext().requestId)
       );
+    },
+    async () => {
+      resolveHotCompletion?.(new Map(responses));
+      for (const target of targets) {
+        const targetKey = buildProjectionTargetKey(target);
+        if (!responses.has(targetKey)) {
+          await markProjectionRefreshPhase(
+            target,
+            refreshRunIds.get(targetKey) as string,
+            'reconciliation'
+          );
+        }
+      }
     }
-  );
+    );
 
   for (const target of targets) {
     const targetKey = buildProjectionTargetKey(target);
@@ -1626,11 +1861,21 @@ const refreshMainserverProjectionBatch = async (
       actorAccountId: target.actorAccountId,
       rows: accumulatedRows.get(targetKey) ?? [],
       finalize: true,
+      page: Math.max(1, Math.ceil((accumulatedRows.get(targetKey)?.length ?? 0) / MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE)),
+      refreshRunId: refreshRunIds.get(targetKey) as string,
+      skippedInvalidCount: skippedInvalidCounts.get(targetKey) ?? 0,
     });
     responses.set(targetKey, null);
   }
 
-  return responses;
+    resolveHotCompletion?.(new Map(responses));
+    return responses;
+  })().catch((error: unknown) => {
+    resolveHotCompletion?.(new Map(responses));
+    throw error;
+  });
+
+  return { hotCompletion, completion };
 };
 
 type MainserverMutationProjectionLoader = (
@@ -1768,15 +2013,22 @@ const refreshMainserverProjectionForMutation = async (input: {
   const { target, operation, entityId } = input;
   const { actorAccountId } = target;
   const targetKey = buildProjectionTargetKey(target);
-  const previousSync = runningProjectionSyncs.get(targetKey);
-  const mutationWork = (previousSync ?? Promise.resolve(null))
-    .catch(() => null)
-    .then(async () => {
-      await markProjectionSyncStarted(target);
+  const refreshRunId = randomUUID();
+  const mutationWork = Promise.resolve().then(async () => {
+      await markProjectionSyncStarted(target, refreshRunId, 'hot');
 
       try {
         if (operation === 'delete') {
           await withInstanceScopedDb(target.instanceId, async (client) => {
+            const leader = await client.query<{ refresh_run_id?: string | null }>(
+              `SELECT refresh_run_id::text FROM iam.content_list_projection_sync_state
+               WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
+                 AND sync_scope_key = $3 FOR UPDATE;`,
+              [target.instanceId, target.contentType, buildMainserverSyncScopeKey(target)]
+            );
+            if (leader.rows[0]?.refresh_run_id !== refreshRunId) {
+              return;
+            }
             await deleteMainserverProjectionRowByEntity(client, target, entityId);
             const projectedCount = await countProjectedRowsForScopeWithClient(client, target);
             await markMainserverProjectionSyncSucceeded(client, target, projectedCount);
@@ -1788,7 +2040,7 @@ const refreshMainserverProjectionForMutation = async (input: {
         for (let attempt = 0; attempt < 2; attempt += 1) {
           try {
             const row = await loadMainserverProjectionMutationRow(target, entityId);
-            await upsertSingleMainserverProjectionRow(target, actorAccountId, row);
+            await upsertSingleMainserverProjectionRow(target, actorAccountId, row, refreshRunId);
             return;
           } catch (error) {
             lastError = error;
@@ -1815,7 +2067,7 @@ const refreshMainserverProjectionForMutation = async (input: {
           error_message: errorMessage,
           operation,
         });
-        await markProjectionSyncFailed(target, errorCode, errorMessage);
+        await markProjectionSyncFailed(target, refreshRunId, errorCode, errorMessage);
       }
     });
   const mutationSync = mutationWork
@@ -1880,9 +2132,9 @@ const computeProjectionSyncState = async (
   const hasGlobalSnapshot = Number.isFinite(lastSucceededAtMs);
   let hasSnapshot = hasGlobalSnapshot;
 
-  if (hasGlobalSnapshot) {
+  if (hasGlobalSnapshot || (process.env.SVA_CONTENT_PROJECTION_PARTIAL_READS_ENABLED ?? 'true') === 'true') {
     const projectedRowsForScope = await countProjectedRowsForScope(target);
-    hasSnapshot = projectedRowsForScope > 0 || (syncState?.projected_count ?? 0) === 0;
+    hasSnapshot = projectedRowsForScope > 0 || (hasGlobalSnapshot && (syncState?.projected_count ?? 0) === 0);
   }
 
   return {
@@ -1897,6 +2149,12 @@ const computeProjectionSyncState = async (
       Date.now() - lastSucceededAtMs >= MAIN_SERVER_SYNC_STALE_MS,
     isSyncRunning: runningProjectionSyncs.has(buildProjectionTargetKey(target)),
     hasSnapshot,
+    snapshotState: syncState?.snapshot_state ?? (hasSnapshot ? 'complete_fresh' : 'empty'),
+    ...(syncState?.refresh_phase ? { refreshPhase: syncState.refresh_phase } : {}),
+    completedPage: syncState?.completed_page ?? 0,
+    availableCount: syncState?.available_count ?? syncState?.projected_count ?? 0,
+    isTotalFinal: syncState?.is_total_final ?? hasSnapshot,
+    skippedInvalidCount: syncState?.skipped_invalid_count ?? 0,
   };
 };
 
@@ -1939,6 +2197,7 @@ const triggerMainserverProjectionRefreshBatch = async (
   }
 
   const pendingSyncs = new Map<string, Promise<Response | null>>();
+  const hotSyncs = new Map<string, Promise<Response | null>>();
   const idleTargets: ContentProjectionSyncTarget[] = [];
 
   for (const target of targetsToRefresh) {
@@ -1953,10 +2212,10 @@ const triggerMainserverProjectionRefreshBatch = async (
   }
 
   if (idleTargets.length > 0) {
-    const batchPromise = refreshMainserverProjectionBatch(idleTargets, options.trigger);
+    const batchRun = refreshMainserverProjectionBatch(idleTargets, options.trigger);
     for (const target of idleTargets) {
       const targetKey = buildProjectionTargetKey(target);
-      const targetPromise = batchPromise
+      const targetPromise = batchRun.completion
         .then((responses) => responses.get(targetKey) ?? null)
         .finally(() => {
           if (runningProjectionSyncs.get(targetKey) === targetPromise) {
@@ -1965,6 +2224,10 @@ const triggerMainserverProjectionRefreshBatch = async (
         });
       runningProjectionSyncs.set(targetKey, targetPromise);
       pendingSyncs.set(targetKey, targetPromise);
+      hotSyncs.set(
+        targetKey,
+        batchRun.hotCompletion.then((responses) => responses.get(targetKey) ?? null)
+      );
     }
   }
 
@@ -1982,13 +2245,18 @@ const triggerMainserverProjectionRefreshBatch = async (
     };
   }
 
-  const results = await Promise.all([...pendingSyncs.values()]);
+  const hotCompletionEnabled =
+    (process.env.SVA_CONTENT_PROJECTION_HOT_COMPLETION_ENABLED ?? 'true') !== 'false';
+  const awaitedSyncs = hotCompletionEnabled && hotSyncs.size > 0 ? hotSyncs : pendingSyncs;
+  const results = await Promise.all([...awaitedSyncs.values()]);
   return {
     status: results.some((result) => result !== null)
       ? 'failed'
       : idleTargets.length === 0
         ? 'already_running'
-        : 'completed',
+        : hotCompletionEnabled && hotSyncs.size > 0
+          ? 'accepted'
+          : 'completed',
     syncStates: await computeProjectionSyncStates(targets),
   };
 };
@@ -2563,6 +2831,7 @@ export const listProjectedContents = async (
     typeAuthorization.permissions,
     actorAccountId
   );
+  const isTotalFinal = responseSyncStates.every((syncState) => syncState.isTotalFinal);
 
   return new Response(
     JSON.stringify({
@@ -2583,6 +2852,9 @@ export const listProjectedContents = async (
               hasRunningMainserverSync: responseSyncStates.some(
                 (syncState) => syncState.isSyncRunning
               ),
+              availableCount: total,
+              ...(isTotalFinal ? { totalCount: total } : {}),
+              isTotalFinal,
             },
           }
         : {}),

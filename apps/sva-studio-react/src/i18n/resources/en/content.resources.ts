@@ -162,6 +162,8 @@ export const contentENResources = {
     refresh: 'Refresh',
     refreshing: 'Refreshing ...',
     running: 'Mainserver content is currently synchronizing in the background.',
+    partial:
+      'Preliminary view: sorting, filters, and counts apply only to content already available locally.',
     runningWithSnapshot:
       'Mainserver content is currently synchronizing in the background. The last successful snapshot from {{value}} is still shown.',
     stale:

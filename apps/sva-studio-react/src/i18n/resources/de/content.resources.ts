@@ -165,6 +165,8 @@ export const contentDEResources = {
     refresh: 'Aktualisieren',
     refreshing: 'Synchronisiert ...',
     running: 'Die Mainserver-Inhalte werden gerade im Hintergrund synchronisiert.',
+    partial:
+      'Vorläufige Ansicht: Sortierung, Filter und Anzahl beziehen sich nur auf die bereits lokal verfügbaren Inhalte.',
     runningWithSnapshot:
       'Die Mainserver-Inhalte werden gerade im Hintergrund synchronisiert. Angezeigt wird der letzte erfolgreiche Stand von {{value}}.',
     stale:

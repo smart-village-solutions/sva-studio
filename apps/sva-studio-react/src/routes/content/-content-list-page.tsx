@@ -808,14 +808,20 @@ export const ContentListPage = () => {
                   ))}
                 </Select>
               </div>
-              <ContentPaginationNav
-                page={safePage}
-                pageCount={pageCount}
-                pageSize={contentsApi.pagination.pageSize}
-                total={contentsApi.pagination.total}
-                currentCount={registeredContents.length}
-                onPageChange={(page) => navigateSearch({ page })}
-              />
+              {contentsApi.metadata?.isTotalFinal === false ? (
+                <p className="text-sm text-muted-foreground" role="status">
+                  {projectionSyncMessage ?? t('content.sync.running')} {t('content.sync.partial')}
+                </p>
+              ) : (
+                <ContentPaginationNav
+                  page={safePage}
+                  pageCount={pageCount}
+                  pageSize={contentsApi.pagination.pageSize}
+                  total={contentsApi.pagination.total}
+                  currentCount={registeredContents.length}
+                  onPageChange={(page) => navigateSearch({ page })}
+                />
+              )}
             </div>
           }
           rowActions={(item) => (

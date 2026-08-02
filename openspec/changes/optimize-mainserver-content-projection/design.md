@@ -51,7 +51,7 @@ Jede Seite wird weiterhin transaktional upserted. Der Löschabgleich für nicht 
 
 ### Decision: Persistierte Refresh-Generationen verhindern veraltete Finalisierung
 
-Jeder Hot-Refresh beziehungsweise jede Reconciliation erhält pro account- und credential-isoliertem Projektions-Scope eine persistierte `refresh_run_id`. Page-Upserts dürfen weiterhin idempotent erfolgen, aber nur die im Sync-State aktuell führende Run-ID darf Fortschritt schreiben, einen Snapshot finalisieren oder einen destruktiven Löschabgleich ausführen. Ein überholter Lauf beendet sich ohne weitere Zustands- oder Löschwirkung.
+Jeder Hot-Refresh beziehungsweise jede Reconciliation erhält pro account- und credential-isoliertem Projektions-Scope eine persistierte `refresh_run_id`. Nur die im Sync-State aktuell führende Run-ID darf innerhalb derselben Transaktion Page-Zeilen upserten, Fortschritt schreiben, einen Snapshot finalisieren oder einen destruktiven Löschabgleich ausführen. Ein überholter Lauf beendet sich ohne weitere Daten-, Zustands- oder Löschwirkung.
 
 Ein gezieltes Mutation-Upsert oder ein Identity-Delete invalidiert eine bereits laufende Reconciliation-Generation desselben Scopes vor der lokalen Änderung. Dadurch kann ein älterer, vor der Mutation gestarteter Vollscan die gezielte Änderung weder überschreiben noch beim Finalisieren löschen. Prozesslokale Promise-Deduplizierung bleibt eine Optimierung, ist aber keine Correctness-Grenze zwischen Replikaten.
 

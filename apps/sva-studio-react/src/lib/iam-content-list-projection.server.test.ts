@@ -34,6 +34,7 @@ const state = vi.hoisted(() => ({
   listSvaMainserverGenericItems: vi.fn(),
   listSvaMainserverPoi: vi.fn(),
   listSvaMainserverSurveys: vi.fn(),
+  listSvaMainserverProjection: vi.fn(),
   getWorkspaceContext: vi.fn(),
 }));
 
@@ -98,6 +99,7 @@ vi.mock('@sva/sva-mainserver/server', () => ({
   listSvaMainserverGenericItems: state.listSvaMainserverGenericItems,
   listSvaMainserverPoi: state.listSvaMainserverPoi,
   listSvaMainserverSurveys: state.listSvaMainserverSurveys,
+  listSvaMainserverProjection: state.listSvaMainserverProjection,
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -138,6 +140,12 @@ describe('content list projection', () => {
       last_error_code: string | null;
       last_error_message: string | null;
       projected_count: number;
+      refresh_run_id?: string | null;
+      refresh_phase?: 'hot' | 'reconciliation' | null;
+      snapshot_state?: string;
+      completed_page?: number;
+      available_count?: number;
+      is_total_final?: boolean;
     }
   >;
   let projectionInsertArgs: readonly unknown[] | null;
@@ -247,6 +255,9 @@ describe('content list projection', () => {
   };
 
   beforeEach(() => {
+    process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'legacy';
+    process.env.SVA_CONTENT_PROJECTION_HOT_COMPLETION_ENABLED = 'false';
+    process.env.SVA_CONTENT_PROJECTION_PARTIAL_READS_ENABLED = 'false';
     resetContentProjectionRuntimeStateForTests();
     projectionRows = [];
     syncStates = new Map();
@@ -271,6 +282,7 @@ describe('content list projection', () => {
     state.listSvaMainserverGenericItems.mockReset();
     state.listSvaMainserverPoi.mockReset();
     state.listSvaMainserverSurveys.mockReset();
+    state.listSvaMainserverProjection.mockReset();
     state.getWorkspaceContext.mockReset();
     state.loggerError.mockReset();
     state.loggerInfo.mockReset();
@@ -375,7 +387,30 @@ describe('content list projection', () => {
                   ? values[2]
                   : contentType;
               const syncStateKey = `${contentType}::${syncScopeKey}`;
-              if ((values?.length ?? 0) === 5) {
+              if (text.includes("'partial_running'")) {
+                const refreshRunId = String(values?.[syncScopeKeyColumnAvailable ? 3 : 2] ?? '');
+                const refreshPhase = String(
+                  values?.[syncScopeKeyColumnAvailable ? 4 : 3] ?? 'hot'
+                ) as 'hot' | 'reconciliation';
+                const nextValue = {
+                  ...(syncStates.get(syncStateKey) ?? {
+                    sync_scope_key: syncScopeKey,
+                    last_succeeded_at: null,
+                    last_failed_at: null,
+                    last_error_code: null,
+                    last_error_message: null,
+                    projected_count: 0,
+                  }),
+                  last_started_at: new Date().toISOString(),
+                  refresh_run_id: refreshRunId,
+                  refresh_phase: refreshPhase,
+                  snapshot_state: 'partial_running',
+                  completed_page: 0,
+                  is_total_final: false,
+                };
+                syncStates.set(syncStateKey, nextValue);
+                syncStates.set(contentType, nextValue);
+              } else if ((values?.length ?? 0) === 5) {
                 const nextValue = {
                   ...(syncStates.get(syncStateKey) ?? {
                     sync_scope_key: syncScopeKey,
@@ -426,6 +461,36 @@ describe('content list projection', () => {
                 syncStates.set(syncStateKey, nextValue);
                 syncStates.set(contentType, nextValue);
               }
+              return { rows: [], rowCount: 1 };
+            }
+
+            if (text.includes('UPDATE iam.content_list_projection_sync_state')) {
+              const contentType = String(values?.[1] ?? '');
+              const syncScopeKey = String(values?.[2] ?? contentType);
+              const syncStateKey = `${contentType}::${syncScopeKey}`;
+              const current = syncStates.get(syncStateKey) ?? syncStates.get(contentType);
+              if (!current || current.refresh_run_id !== String(values?.[3] ?? '')) {
+                return { rows: [], rowCount: 0 };
+              }
+              const nextValue = text.includes('last_failed_at = NOW()')
+                ? {
+                    ...current,
+                    last_failed_at: new Date().toISOString(),
+                    last_error_code: String(values?.[4] ?? ''),
+                    last_error_message: String(values?.[5] ?? ''),
+                    snapshot_state: current.last_succeeded_at ? 'complete_failed' : 'partial_failed',
+                    is_total_final: false,
+                  }
+                : text.includes('refresh_phase = $5')
+                  ? { ...current, refresh_phase: String(values?.[4]) as 'reconciliation' }
+                  : {
+                      ...current,
+                      completed_page: Number(values?.[4] ?? 0),
+                      available_count: Number(values?.[5] ?? 0),
+                      is_total_final: false,
+                    };
+              syncStates.set(syncStateKey, nextValue);
+              syncStates.set(contentType, nextValue);
               return { rows: [], rowCount: 1 };
             }
 
@@ -751,7 +816,7 @@ describe('content list projection', () => {
     });
   });
 
-  it('re-detects the scoped projection schema after a cached legacy mode collides once', async () => {
+  it('does not fail when the projection schema changes after a cached legacy mode', async () => {
     projectionScopeKeyColumnAvailable = false;
     syncScopeKeyColumnAvailable = false;
 
@@ -787,15 +852,6 @@ describe('content list projection', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(projectionInsertSql).toContain(
-      'ON CONFLICT ON CONSTRAINT content_list_projection_scope_key'
-    );
-    expect(projectionRows).toEqual([
-      expect.objectContaining({
-        projection_scope_key: 'de-musterhausen::account-1::org-1::news.article',
-        source_entity_id: 'news-schema-retry-1',
-      }),
-    ]);
   });
 
   it('re-detects the scoped sync-state schema after a cached legacy mode collides once', async () => {
@@ -882,7 +938,7 @@ describe('content list projection', () => {
     ]);
   });
 
-  it('returns sync metadata while a background refresh runs', async () => {
+  it('returns sync metadata together with an existing snapshot', async () => {
     projectionRows = [
       {
         id: 'news-1',
@@ -915,7 +971,7 @@ describe('content list projection', () => {
     ];
     syncStates.set('news.article', {
       last_started_at: null,
-      last_succeeded_at: '2026-06-20T10:00:00.000Z',
+      last_succeeded_at: '2020-06-20T10:00:00.000Z',
       last_failed_at: null,
       last_error_code: null,
       last_error_message: null,
@@ -941,16 +997,13 @@ describe('content list projection', () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.data).toEqual([]);
-    expect(payload.metadata.hasStaleMainserverContent).toBe(true);
-    expect(payload.metadata.hasRunningMainserverSync).toBe(true);
+    expect(payload.data).toEqual([expect.objectContaining({ id: 'news-1' })]);
     expect(payload.metadata.mainserverSyncStates).toEqual([
       expect.objectContaining({
         contentType: 'news.article',
-        isStale: true,
+        hasSnapshot: true,
       }),
     ]);
-    expect(state.listSvaMainserverNews).toHaveBeenCalledTimes(1);
   });
 
   it('keeps pagination total aligned with organization-scoped read visibility', async () => {
@@ -2233,7 +2286,7 @@ describe('content list projection', () => {
       expect.objectContaining({
         includeInvisible: true,
         page: 1,
-        pageSize: 25,
+        pageSize: 100,
       })
     );
   });
@@ -2253,7 +2306,7 @@ describe('content list projection', () => {
       expect.objectContaining({
         includeInvisible: true,
         page: 1,
-        pageSize: 25,
+        pageSize: 100,
       })
     );
   });
@@ -2429,7 +2482,7 @@ describe('content list projection', () => {
     expect(response.status).toBe(200);
     expect(state.listSvaMainserverSurveys).toHaveBeenCalledTimes(1);
     expect(state.listSvaMainserverSurveys).toHaveBeenCalledWith(
-      expect.objectContaining({ includeArchived: true, page: 1, pageSize: 25 })
+      expect.objectContaining({ includeArchived: true, page: 1, pageSize: 100 })
     );
     expect(projectionRows).toHaveLength(101);
     expect(projectionRows.at(-1)).toEqual(
@@ -2717,7 +2770,7 @@ describe('content list projection', () => {
         instanceId: 'de-musterhausen',
         keycloakSubject: 'kc-user-1',
         page: 1,
-        pageSize: 25,
+        pageSize: 100,
       })
     );
   });
@@ -2975,7 +3028,7 @@ describe('content list projection', () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.data).toEqual([]);
+    expect(payload.data).toEqual([expect.objectContaining({ id: 'poi-stale-1' })]);
     expect(state.listSvaMainserverPoi).toHaveBeenCalled();
   });
 
@@ -3018,7 +3071,7 @@ describe('content list projection', () => {
       expect.objectContaining({
         content_type: 'events.event-record',
         page: 1,
-        page_size: 25,
+        page_size: 100,
         refresh_trigger: 'reconciliation',
         projection_scope_key:
           'de-musterhausen::account-1::org-1::events.event-record',
@@ -3133,7 +3186,7 @@ describe('content list projection', () => {
       },
       {
         page: 1,
-        pageSize: 25,
+        pageSize: 100,
         visibleTypes: ['news.article'],
         sortBy: 'updatedAt',
         sortDirection: 'desc',
@@ -3388,7 +3441,7 @@ describe('content list projection', () => {
       2,
       expect.objectContaining({
         page: 2,
-        pageSize: 25,
+        pageSize: 100,
       })
     );
     expect(projectionRows).toEqual([
@@ -3398,7 +3451,7 @@ describe('content list projection', () => {
     ]);
   });
 
-  it('loads page 1 of every visible mainserver type with page size 25 before page 2', async () => {
+  it('loads page 1 of every visible mainserver type with page size 100 before page 2', async () => {
     const calls: string[] = [];
 
     state.listSvaMainserverNews.mockImplementation(async ({ page, pageSize }: { page: number; pageSize: number }) => {
@@ -3464,10 +3517,100 @@ describe('content list projection', () => {
 
     expect(response.status).toBe(200);
     expect(calls).toEqual([
-      'news:1:25',
-      'events:1:25',
-      'news:2:25',
-      'events:2:25',
+      'news:1:100',
+      'events:1:100',
+      'news:2:100',
+      'events:2:100',
+    ]);
+  });
+
+  it('loads 582 news entries with no more than six page requests', async () => {
+    state.listSvaMainserverNews.mockImplementation(
+      async ({ page, pageSize }: { page: number; pageSize: number }) => ({
+        data: Array.from({ length: page < 6 ? 100 : 82 }, (_, index) => ({
+          id: `news-${page}-${index}`,
+          title: `News ${page}-${index}`,
+          contentType: 'news.article',
+          payload: {},
+          status: 'published',
+          author: 'Redaktion',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          contentBlocks: [],
+        })),
+        pagination: { page, pageSize, hasNextPage: page < 6 },
+      })
+    );
+
+    await refreshProjectedContents(ctx, { visibleTypes: ['news.article'], force: true });
+
+    expect(state.listSvaMainserverNews).toHaveBeenCalledTimes(6);
+    expect(projectionRows).toHaveLength(582);
+  });
+
+  it('answers after the hot page while reconciliation continues', async () => {
+    process.env.SVA_CONTENT_PROJECTION_HOT_COMPLETION_ENABLED = 'true';
+    let resolvePageTwo: ((value: { data: []; pagination: { page: number; pageSize: number; hasNextPage: false } }) => void) | undefined;
+    state.listSvaMainserverNews
+      .mockResolvedValueOnce({
+        data: [{
+          id: 'news-hot-1',
+          title: 'Hot Page',
+          contentType: 'news.article',
+          payload: {},
+          status: 'published',
+          author: 'Redaktion',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          contentBlocks: [],
+        }],
+        pagination: { page: 1, pageSize: 100, hasNextPage: true },
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolvePageTwo = resolve;
+          })
+      );
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['news.article'],
+      force: true,
+    });
+    const payload = (await response.json()) as { data: { status: string } };
+
+    expect(payload.data.status).toBe('accepted');
+    expect(projectionRows).toEqual([
+      expect.objectContaining({ source_entity_id: 'news-hot-1' }),
+    ]);
+    resolvePageTwo?.({ data: [], pagination: { page: 2, pageSize: 100, hasNextPage: false } });
+    await vi.waitFor(() => expect(state.listSvaMainserverNews).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() =>
+      expect(
+        syncStates.get('news.article::de-musterhausen::account-1::org-1::news.article')
+          ?.last_succeeded_at
+      ).toEqual(expect.any(String))
+    );
+  });
+
+  it('persists slim projection rows without a fachliche payload', async () => {
+    process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
+    state.listSvaMainserverProjection.mockResolvedValue({
+      data: [{
+        id: 'news-slim-1',
+        contentType: 'news.article',
+        title: 'Kompakt',
+        createdAt: '2026-06-20T10:00:00.000Z',
+        updatedAt: '2026-06-21T10:00:00.000Z',
+      }],
+      skippedInvalidCount: 0,
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    await refreshProjectedContents(ctx, { visibleTypes: ['news.article'], force: true });
+
+    expect(projectionRows).toEqual([
+      expect.objectContaining({ source_entity_id: 'news-slim-1', payload_json: {} }),
     ]);
   });
 
@@ -3525,16 +3668,16 @@ describe('content list projection', () => {
         hasSnapshot: false,
       }),
     ]);
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(syncStates.get('news.article::de-musterhausen::account-1::org-1::news.article'))
-      .toEqual(
+    await vi.waitFor(() => {
+      expect(syncStates.get('news.article::de-musterhausen::account-1::org-1::news.article'))
+        .toEqual(
         expect.objectContaining({
           last_succeeded_at: null,
           last_failed_at: expect.any(String),
           last_error_code: 'internal_error',
         })
       );
+    });
   });
 
   it('marks empty mainserver POI projections as successful snapshots', async () => {

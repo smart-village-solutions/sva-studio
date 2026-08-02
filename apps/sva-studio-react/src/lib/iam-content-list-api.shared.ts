@@ -14,7 +14,7 @@ export const DEFAULT_MAINSERVER_VISIBLE_TYPES = [
 ] as const;
 
 const MAIN_SERVER_CONTENT_TYPES = new Set<string>(DEFAULT_MAINSERVER_VISIBLE_TYPES);
-export const MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE = 25;
+export const MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE = 100;
 export const EMPTY_VISIBLE_TYPE_SENTINEL = '__no_readable_content__';
 export type MainserverContentType =
   | (typeof DEFAULT_MAINSERVER_VISIBLE_TYPES)[number];

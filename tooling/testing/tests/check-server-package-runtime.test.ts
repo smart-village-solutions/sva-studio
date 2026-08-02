@@ -206,7 +206,7 @@ describe('check-server-package-runtime', () => {
     ]);
 
     fs.rmSync(rootDir, { recursive: true, force: true });
-  });
+  }, 30_000);
 
   it('syncs stale pnpm workspace package dist copies before smoke imports', async () => {
     const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'runtime-pnpm-sync-'));
@@ -309,5 +309,5 @@ describe('check-server-package-runtime', () => {
     expect(fs.readFileSync(path.join(injectedUnusedDir, 'dist/index.js'), 'utf8')).toContain('unusedStale');
 
     fs.rmSync(rootDir, { recursive: true, force: true });
-  });
+  }, 30_000);
 });

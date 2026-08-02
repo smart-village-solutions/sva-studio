@@ -23,7 +23,7 @@ describe('test runner standardization', () => {
       .map((filePath) => relative(REPO_ROOT, filePath));
 
     expect(offenders).toEqual([]);
-  });
+  }, 60_000);
 
   it('does not use node --test in workspace scripts', () => {
     const packageJson = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')) as {

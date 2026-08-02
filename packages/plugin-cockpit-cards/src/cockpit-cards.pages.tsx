@@ -235,6 +235,7 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
   const [tab, setTab] = React.useState<Tab>('basis');
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [error, setError] = React.useState(false);
+  const [mutationError, setMutationError] = React.useState<string | null>(null);
   const [payload, setPayload] = React.useState<unknown>();
   const { options, state: categoriesState } = useCategories();
   React.useEffect(() => {
@@ -258,11 +259,19 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
   if (loading) return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   if (error) return <StudioErrorState>{pt('messages.loadError')}</StudioErrorState>;
   const save = form.handleSubmit(async (values) => {
-    const input = mapCockpitCardFormValuesToGenericItemInput(values, payload);
-    if (mode === 'create') {
-      const item = await createCockpitCard(input);
-      await navigate({ to: '/admin/cockpit-cards/$id', params: { id: item.id } });
-    } else if (contentId) await updateCockpitCard(contentId, input);
+    setMutationError(null);
+    try {
+      const input = mapCockpitCardFormValuesToGenericItemInput(values, payload);
+      if (mode === 'create') {
+        const item = await createCockpitCard(input);
+        await navigate({ to: '/admin/cockpit-cards/$id', params: { id: item.id } });
+      } else if (contentId) await updateCockpitCard(contentId, input);
+    } catch (cause) {
+      const reason = cause instanceof Error ? cause.message : '';
+      setMutationError(
+        reason ? pt('messages.saveErrorWithReason').replace('{{reason}}', reason) : pt('messages.saveError')
+      );
+    }
   });
   const tabs: readonly Tab[] =
     mode === 'edit'
@@ -280,9 +289,12 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
             <Button
               type="button"
               variant="destructive"
-              onClick={() =>
-                void deleteCockpitCard(contentId).then(() => navigate({ to: '/admin/content' }))
-              }
+              onClick={() => {
+                setMutationError(null);
+                void deleteCockpitCard(contentId)
+                  .then(() => navigate({ to: '/admin/content' }))
+                  .catch(() => setMutationError(pt('messages.deleteError')));
+              }}
             >
               {pt('actions.delete')}
             </Button>
@@ -295,6 +307,7 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
         </Button>
       }
     >
+      {mutationError ? <p role="alert" className="text-sm text-destructive">{mutationError}</p> : null}
       <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
         <TabsList aria-label={pt('tabs.ariaLabel')}>
           {tabs.map((item) => (

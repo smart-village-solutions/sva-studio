@@ -66,6 +66,7 @@ const MAIN_SERVER_CONTENT_TYPES = new Set([
   'poi.point-of-interest',
   'surveys.survey',
   'generic-items.generic-item',
+  'cockpit-cards.cockpit-card',
 ]);
 
 const contentAdminResource = appAdminResources.find((resource) => resource.resourceId === 'content');

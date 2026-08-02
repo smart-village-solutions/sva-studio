@@ -216,15 +216,16 @@ const handleUpdateRequest = async (
   }
 
   const existingItem = contentKind !== 'generic-items' ? await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId }) : null;
-  if (contentKind === 'faq' && existingItem?.genericType !== 'FAQ') {
+  if (contentKind === 'faq' && existingItem && existingItem.genericType !== 'FAQ') {
     return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
   }
-  if (contentKind === 'cockpit-cards' && existingItem?.genericType !== 'COCKPIT_CARD') return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
+  if (contentKind === 'cockpit-cards' && existingItem && existingItem.genericType !== 'COCKPIT_CARD') return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
   const genericItem = contentKind === 'faq' ? await validateFaqWriteOrResponse(request)
     : contentKind === 'cockpit-cards' ? await validateCockpitCardWriteOrResponse(request)
     : await parseGenericItemOrResponse(request);
   if (isResponse(genericItem)) return genericItem;
-
+  if (contentKind === 'faq' && !existingItem) return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
+  if (contentKind === 'cockpit-cards' && !existingItem) return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
   const data = await updateSvaMainserverGenericItem({
     ...actor,
     genericItemId: itemId,

@@ -1557,11 +1557,12 @@ const hasNextProjectionPage = (
   pageQuery: {
     readonly page: number;
     readonly pageSize: number;
-  }
+  },
+  continueAfterEmptyPage = false
 ): boolean => {
   const nextPage = result.pagination.page ?? pageQuery.page;
   return (
-    result.data.length > 0 &&
+    (continueAfterEmptyPage || result.data.length > 0) &&
     nextPage >= pageQuery.page &&
     result.pagination.hasNextPage &&
     pageQuery.page * pageQuery.pageSize < MAX_SYNC_ITEMS_PER_TYPE
@@ -1801,7 +1802,11 @@ const loadMainserverProjectionPage = async (
         sourceEntityType: target.contentType,
         sourceEntityId: item.id,
       })),
-      hasNextPage: hasNextProjectionPage(result, pageQuery),
+      hasNextPage: hasNextProjectionPage(
+        result,
+        pageQuery,
+        target.contentType === 'faq.faq' || target.contentType === 'cockpit-cards.cockpit-card'
+      ),
       nextPage: (result.pagination.page ?? pageQuery.page) + 1,
       skippedInvalidCount: result.skippedInvalidCount,
     };

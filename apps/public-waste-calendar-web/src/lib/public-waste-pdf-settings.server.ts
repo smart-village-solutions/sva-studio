@@ -44,13 +44,15 @@ const resolvePublicWasteDataDatabaseUrl = (
 ): (() => string | undefined) =>
   getDatabaseUrl ?? (() => process.env.PUBLIC_WASTE_DATABASE_URL?.trim());
 
-const resolveLegacySettingsDatabaseUrl = (
-  getDatabaseUrl?: () => string | undefined
-): (() => string | undefined) =>
-  () => process.env.IAM_DATABASE_URL?.trim() || getDatabaseUrl?.();
+const resolveLegacySettingsDatabaseUrl =
+  (getDatabaseUrl?: () => string | undefined): (() => string | undefined) =>
+  () =>
+    process.env.IAM_DATABASE_URL?.trim() || getDatabaseUrl?.();
 
-const resolvePublicWasteSchemaName = (getSchemaName?: () => string | undefined): (() => string) =>
-  () => getSchemaName?.()?.trim() || process.env.PUBLIC_WASTE_SCHEMA_NAME?.trim() || 'public';
+const resolvePublicWasteSchemaName =
+  (getSchemaName?: () => string | undefined): (() => string) =>
+  () =>
+    getSchemaName?.()?.trim() || process.env.PUBLIC_WASTE_SCHEMA_NAME?.trim() || 'public';
 
 const getWastePdfStaticSettingsPool = (databaseUrl: string): Pool => {
   const cached = wastePdfStaticSettingsPoolCache.get(databaseUrl);
@@ -85,7 +87,10 @@ const loadWastePdfStaticSettings = async (options: {
       await client.query(`SET search_path TO ${quoteIdentifier(schemaName)}, public;`);
       const repository = createWasteMasterDataRepository({
         async execute(statement) {
-          const result = await client.query(statement.text, statement.values ? [...statement.values] : undefined);
+          const result = await client.query(
+            statement.text,
+            statement.values ? [...statement.values] : undefined
+          );
           return {
             rowCount: result.rowCount ?? 0,
             rows: result.rows,
@@ -127,7 +132,7 @@ export const loadPublicWastePdfStaticConfig = async (
   const selectedInterface =
     findSelectedWasteManagementInterfaceRecord(interfaceRecords) ??
     (await Promise.resolve(
-      loadDefaultExternalInterfaceRecord(instanceId, 'supabase', { getDatabaseUrl })
+      loadDefaultExternalInterfaceRecord(instanceId, 'postgresql', { getDatabaseUrl })
     ).catch(() => null));
 
   const fallbackConfig = !selectedInterface
@@ -145,14 +150,15 @@ export const loadPublicWastePdfStaticConfig = async (
       };
   const partialWastePdfStaticSettings =
     wastePdfStaticSettings && hasWastePdfStaticSettingsValue(wastePdfStaticSettings)
-    ? wastePdfStaticSettings
-    : null;
+      ? wastePdfStaticSettings
+      : null;
   if (!partialWastePdfStaticSettings) {
     return fallbackConfig;
   }
 
   return {
-    brandingAssetUrl: partialWastePdfStaticSettings.pdfBrandingAssetUrl ?? fallbackConfig.brandingAssetUrl,
+    brandingAssetUrl:
+      partialWastePdfStaticSettings.pdfBrandingAssetUrl ?? fallbackConfig.brandingAssetUrl,
     contactBlock: partialWastePdfStaticSettings.pdfContactBlock ?? fallbackConfig.contactBlock,
   };
 };

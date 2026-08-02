@@ -21,6 +21,7 @@ import {
 const logger = createSdkLogger({ component: 'studio-jobs-runner', level: 'info' });
 
 export const studioJobTaskIdentifier = 'studio_job_execute';
+export const privilegedStudioJobTaskIdentifier = 'studio_job_execute_privileged';
 export const pluginOperationTaskIdentifier = studioJobTaskIdentifier;
 
 let registeredStudioJobHandlers = new Map<string, StudioJobExecutionRegistration>();
@@ -79,7 +80,8 @@ export const getRegisteredPluginOperationExecutionRegistry = (): PluginOperation
   );
 
 export const createStudioJobTaskList = (
-  getHandlers: () => StudioJobExecutionRegistry
+  getHandlers: () => StudioJobExecutionRegistry,
+  taskIdentifier = studioJobTaskIdentifier
 ): graphileWorker.TaskList =>
   toStudioJobTaskList(async (payload, helpers) => {
     const { instanceId, jobId } = payload as StudioJobRunnerPayload;
@@ -104,7 +106,7 @@ export const createStudioJobTaskList = (
       attempts: helpers.job.attempts,
       maxAttempts: helpers.job.max_attempts,
     });
-  });
+  }, taskIdentifier);
 
 export const createPluginOperationTaskList = (
   getHandlers: () => PluginOperationExecutionRegistry

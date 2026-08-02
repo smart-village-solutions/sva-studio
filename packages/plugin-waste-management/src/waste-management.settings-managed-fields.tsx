@@ -31,15 +31,6 @@ export const WasteSettingsTechnicalConfigFields = ({
 
   return (
     <StudioFieldGroup>
-      <StudioField id="waste-settings-project-url" label={pt('settings.fields.projectUrl')}>
-        <Input
-          id="waste-settings-project-url"
-          value={form.projectUrl}
-          disabled
-          onChange={(event) => updateField('projectUrl', event.target.value)}
-          placeholder="https://example.supabase.co"
-        />
-      </StudioField>
       <StudioField id="waste-settings-schema-name" label={pt('settings.fields.schemaName')}>
         <Input
           id="waste-settings-schema-name"
@@ -47,27 +38,6 @@ export const WasteSettingsTechnicalConfigFields = ({
           disabled
           onChange={(event) => updateField('schemaName', event.target.value)}
           placeholder="public"
-        />
-      </StudioField>
-      <StudioField id="waste-settings-database-url" label={pt('settings.fields.databaseUrl')}>
-        <Input
-          id="waste-settings-database-url"
-          value={form.databaseUrl}
-          disabled
-          onChange={(event) => updateField('databaseUrl', event.target.value)}
-          placeholder="postgresql://..."
-        />
-      </StudioField>
-      <StudioField
-        id="waste-settings-service-role-key"
-        label={pt('settings.fields.serviceRoleKey')}
-      >
-        <Input
-          id="waste-settings-service-role-key"
-          value={form.serviceRoleKey}
-          disabled
-          onChange={(event) => updateField('serviceRoleKey', event.target.value)}
-          placeholder="service-role-key"
         />
       </StudioField>
       <div className="flex items-center gap-3">

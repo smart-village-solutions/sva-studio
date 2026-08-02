@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 const dataRepositoryMocks = vi.hoisted(() => ({
   listExternalInterfaceRecords: vi.fn(),
   loadDefaultExternalInterfaceRecord: vi.fn(),
+  loadWasteTenantProvisioningRecord: vi.fn(),
+  requestWasteTenantProvisioning: vi.fn(),
+  failWasteTenantProvisioningRequest: vi.fn(),
   saveExternalInterfaceConnectionCheck: vi.fn(),
   saveExternalInterfaceRecord: vi.fn(),
 }));
@@ -10,6 +13,9 @@ const dataRepositoryMocks = vi.hoisted(() => ({
 vi.mock('@sva/data-repositories/server', () => ({
   listExternalInterfaceRecords: dataRepositoryMocks.listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord: dataRepositoryMocks.loadDefaultExternalInterfaceRecord,
+  loadWasteTenantProvisioningRecord: dataRepositoryMocks.loadWasteTenantProvisioningRecord,
+  requestWasteTenantProvisioning: dataRepositoryMocks.requestWasteTenantProvisioning,
+  failWasteTenantProvisioningRequest: dataRepositoryMocks.failWasteTenantProvisioningRequest,
   saveExternalInterfaceConnectionCheck: dataRepositoryMocks.saveExternalInterfaceConnectionCheck,
   saveExternalInterfaceRecord: dataRepositoryMocks.saveExternalInterfaceRecord,
 }));
@@ -43,5 +49,14 @@ describe('sharedWasteManagementDeps', () => {
       dataRepositoryMocks.loadDefaultExternalInterfaceRecord
     );
     expect(sharedWasteManagementDeps.listInterfaceRecords).toBe(dataRepositoryMocks.listExternalInterfaceRecords);
+    expect(sharedWasteManagementDeps.loadWasteTenantProvisioning).toBe(
+      dataRepositoryMocks.loadWasteTenantProvisioningRecord
+    );
+    expect(sharedWasteManagementDeps.requestWasteTenantProvisioning).toBe(
+      dataRepositoryMocks.requestWasteTenantProvisioning
+    );
+    expect(sharedWasteManagementDeps.failWasteTenantProvisioningRequest).toBe(
+      dataRepositoryMocks.failWasteTenantProvisioningRequest
+    );
   });
 });

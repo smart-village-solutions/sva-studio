@@ -18,7 +18,7 @@ Es kombiniert:
 - Datenbank: `sva_studio`
 - Live-Dump: `artifacts/db-schema/studio-live-schema-2026-05-08.sql`
 - Finaler Soll-Snapshot aus Migrationen: `docs/development/studio-db-schema-final.sql`
-- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-06-03`
+- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-08-02`
 - Migrationen im Repo: `packages/data/migrations/*.sql`
 
 ### Zusammenfassung
@@ -38,9 +38,9 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0058_waste_email_reminders.sql`
+- Repo-Migrationen vorhanden bis: `0074_iam_waste_tenant_provisioning.sql`
 
-Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0053`:
+Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0074`:
 
 - auf `iam.role_permissions` die Ownership-/Origin-Felder `grant_origin_kind` und `grant_origin_module_id` samt Check-Constraints und Index `idx_role_permissions_origin_module`
 - auf `iam.role_permissions` das Assignment-Scope-Feld `access_scope` samt Constraint `role_permissions_access_scope_check`
@@ -52,6 +52,9 @@ Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038`
 - die tenantbezogenen Löschregel-Tabellen `iam.instance_deletion_rules` und `iam.account_deletion_content_preferences`
 - die Lifecycle-Spalten `last_login_at`, `deletion_lifecycle_state`, `deactivated_at`, `pseudonymized_at`, `deletion_marked_at` auf `iam.accounts`
 - die Content-Lifecycle-Spalten `deletion_lifecycle_state` und `deletion_lifecycle_changed_at` auf `iam.contents`
+- der bisherige Waste-Datenquellenstatus aus `0065_iam_instance_waste_data_sources.sql`
+- der PostgreSQL-Interface-Typ aus `0073_iam_external_interface_postgresql.sql`
+- der tenantgebundene Waste-Provisionierungsstatus und der Eindeutigkeitsindex für pluginverwaltete Waste-Interfaces aus `0074_iam_waste_tenant_provisioning.sql`
 
 Für Entwicklungsentscheidungen gilt deshalb:
 
@@ -64,7 +67,7 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält strukturell den Repo-Sollstand bis `0058_waste_email_reminders.sql`; `0050` bis `0053` sind daten- beziehungsweise permissionseitig, `0058` ergänzt drei runtime-nahe Waste-Tabellen für DOI- und Reminder-Persistenz
+- Enthält strukturell den Repo-Sollstand bis `0074_iam_waste_tenant_provisioning.sql`; `0074` ergänzt den tenantgebundenen Provisionierungsstatus und die Eindeutigkeit pluginverwalteter Waste-Interfaces
 - Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
@@ -169,6 +172,7 @@ Tabellen für Instanzkonfiguration, Hostnames und technische Provisionierung:
 - `iam.external_interface_types`
 - `iam.instance_external_interfaces`
 - `iam.instance_waste_data_sources`
+- `iam.instance_waste_provisioning`
 - `iam.instance_modules`
 - `iam.instance_hostnames`
 - `iam.instance_provisioning_runs`
@@ -180,8 +184,12 @@ Tabellen für Instanzkonfiguration, Hostnames und technische Provisionierung:
 Kernidee:
 
 - Diese Tabellen modellieren die technische Betriebs- und Provisioning-Ebene pro Instanz.
+- `iam.instance_waste_provisioning` hält ausschließlich Zustand, Generation, Datenbankname sowie Job- und Interface-Korrelation. Zugangsdaten und Waste-Fachdaten liegen dort nicht.
+- Der tenantgebundene Datenbankname ist der kanonische Inventarpfad für Backup und Restore; sowohl `ready` als auch `disabled` bleiben sicherungsrelevant.
 - Externe Schnittstellen werden hostgeführt über einen zentralen Typkatalog und instanzbezogene Konfigurationsdatensätze mit verschlüsselten Secret-Blöcken verwaltet.
+- Der Typ `postgresql` speichert nur `schemaName` öffentlich; die `databaseUrl` liegt ausschließlich verschlüsselt im Secret-Block. Der allgemeine Typ `supabase` bleibt daneben erhalten.
 - Die instanzspezifische Waste-Datenquelle bleibt als eigener technischer Datensatz im IAM-Schema modelliert und folgt demselben `instance_id`-basierten Isolationvertrag.
+- Waste-Fachdaten liegen nicht in `sva_studio`, sondern in einer getrennten, pro Studio-Instanz provisionierten Datenbank; die Studio-Datenbank hält lediglich Status, Inventar und verschlüsselte Verbindungsreferenz.
 - Keycloak-bezogene Zustände sind explizit persistiert und auditierbar.
 - Kritische Maschinenaktionen verwenden kurzlebige Einmal-Challenges, die atomar an Instanz, Akteur, Action, optionales Modul und Zustandsfingerprint gebunden sind, höchstens einmal verbraucht werden und ausschließlich den Phrase-Hash speichern.
 
@@ -255,7 +263,7 @@ Für den aktuellen Waste-PDF-Export-Shift ist wichtig:
 - Der runtime-nahe Backfill in `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts` schreibt `reminder_config` deterministisch aus den Legacy-Spalten und überschreibt vorhandene JSON-Konfigurationen nicht.
 - Die zugehörige Schemaquelle liegt aktuell im runtime-nahen Waste-Migrationspfad unter `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts`.
 - `calendarWebUrl` bleibt Teil von `iam.instance_external_interfaces.public_config` in der zentralen Studio-DB.
-- Die PDF-Stamminhalte `pdfBrandingAssetUrl` und `pdfContactBlock` haben ihre führende Quelle dagegen im Waste-Schema der angebundenen Supabase-DB in `waste_settings`; die zentrale Studio-DB dient dafür nur noch als Legacy-Fallback älterer Bestandsdaten. Diese externe Tabelle gehört bewusst nicht zum IAM-/Goose-Migrationspfad der Studio-DB, sondern nur zum runtime-nahen Waste-Migrationspfad.
+- Die PDF-Stamminhalte `pdfBrandingAssetUrl` und `pdfContactBlock` haben ihre führende Quelle im tenantbezogenen PostgreSQL-Waste-Schema in `waste_settings`; die zentrale Studio-DB dient dafür nur noch als Legacy-Fallback älterer Bestandsdaten. Diese externe Tabelle gehört bewusst nicht zum IAM-/Goose-Migrationspfad der Studio-DB, sondern nur zum runtime-nahen Waste-Migrationspfad.
 
 ## Wichtige Beziehungen
 

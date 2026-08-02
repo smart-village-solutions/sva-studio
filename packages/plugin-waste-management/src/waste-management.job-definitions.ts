@@ -10,6 +10,27 @@ const pluginNamespace = wasteManagementOperationsContract.pluginId;
 
 const wasteManagementPluginJobTypes = [
   {
+    jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+    queue: wasteManagementOperationsContract.queueName,
+    displayName: 'Waste-Tenant-Datenbank provisionieren',
+    progress: {
+      phaseKeys: [
+        'waste-management.provision-database',
+        'waste-management.apply-migrations',
+        'waste-management.verify-access',
+        'waste-management.completed',
+      ],
+      stepKeys: ['provision-roles', 'provision-database', 'materialize-interface', 'apply-migrations', 'verify-access'],
+    },
+    result: {
+      summaryKeys: ['durationMs'],
+      detailKeys: ['databaseName', 'interfaceId', 'desiredGeneration'],
+    },
+    errors: {
+      detailKeys: ['failed-step', 'error-code'],
+    },
+  },
+  {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.initializeDataSource,
     queue: wasteManagementOperationsContract.queueName,
     displayName: 'Abfall-Initialisierung',

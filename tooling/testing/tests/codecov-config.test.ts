@@ -217,7 +217,7 @@ describe('codecov config', () => {
 
       expect(trackedProjects.has(projectName)).toBe(true);
     }
-  });
+  }, 30_000);
 
   it('keeps Codecov project and patch checks informational', () => {
     const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');

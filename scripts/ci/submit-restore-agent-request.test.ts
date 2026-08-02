@@ -41,4 +41,17 @@ describe('submit restore agent request', () => {
       })
     ).toBe(false);
   });
+
+  it('includes the tenant identity in Waste restore requests', () => {
+    expect(buildRestoreAgentRequest({
+      environment: 'staging',
+      maintenanceWindowReference: 'DRILL-42',
+      now: new Date('2026-08-01T10:00:00.000Z'),
+      requestId: 'restore-gha-456-1',
+      sourceObjectKey: 'staging/waste/bb-prignitz/run/source.dump',
+      sourceSha256: 'c'.repeat(64),
+      database: 'waste',
+      tenantInstanceId: 'bb-prignitz',
+    })).toMatchObject({ database: 'waste', tenantInstanceId: 'bb-prignitz' });
+  });
 });

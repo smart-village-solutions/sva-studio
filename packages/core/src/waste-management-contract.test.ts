@@ -4,9 +4,15 @@ import { wasteManagementDataSourceContract } from './waste-management-contract.j
 
 describe('waste-management-contract', () => {
   it('defines stable data source providers and visible status values', () => {
-    expect(wasteManagementDataSourceContract.providers).toEqual(['supabase']);
-    expect(wasteManagementDataSourceContract.statuses).toEqual(['not_configured', 'unknown', 'ok', 'error']);
-    expect(wasteManagementDataSourceContract.isProvider('supabase')).toBe(true);
+    expect(wasteManagementDataSourceContract.providers).toEqual(['postgresql']);
+    expect(wasteManagementDataSourceContract.statuses).toEqual([
+      'not_configured',
+      'unknown',
+      'ok',
+      'error',
+    ]);
+    expect(wasteManagementDataSourceContract.isProvider('postgresql')).toBe(true);
+    expect(wasteManagementDataSourceContract.isProvider('supabase')).toBe(false);
     expect(wasteManagementDataSourceContract.isProvider('postgres')).toBe(false);
     expect(wasteManagementDataSourceContract.isStatus('ok')).toBe(true);
     expect(wasteManagementDataSourceContract.isStatus('degraded')).toBe(false);
@@ -40,6 +46,8 @@ describe('waste-management-contract', () => {
       'sync.failed',
     ]);
     expect(wasteManagementDataSourceContract.isTechnicalEventType('sync.failed')).toBe(true);
-    expect(wasteManagementDataSourceContract.isTechnicalEventType('connection-check.pending')).toBe(false);
+    expect(wasteManagementDataSourceContract.isTechnicalEventType('connection-check.pending')).toBe(
+      false
+    );
   });
 });

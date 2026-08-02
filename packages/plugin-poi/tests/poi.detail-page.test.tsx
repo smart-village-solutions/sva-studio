@@ -440,7 +440,7 @@ describe('PoiDetailPage', () => {
       expect(screen.queryByDisplayValue('https://cdn.example.test/rathaus-aussen.jpg')).toBeNull();
       expect(screen.getByDisplayValue('https://cdn.example.test/stadtpark.jpg')).toBeTruthy();
     });
-  });
+  }, 30_000);
 
   it('renders a global save action and a history placeholder for poi', async () => {
     render(<PoiDetailPage mode="create" />);

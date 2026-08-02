@@ -16,18 +16,20 @@ import { loadPublicWastePdfStaticConfig } from './src/lib/public-waste-pdf-setti
 import { createPublicWasteRepository } from './src/lib/public-waste-repository.server.js';
 
 const publicWasteApiPlugin = (): Plugin => {
-  const configPath = [
-    resolve(process.cwd(), 'public-waste-config.local.json'),
-  ].find((path) => existsSync(path));
+  const configPath = [resolve(process.cwd(), 'public-waste-config.local.json')].find((path) =>
+    existsSync(path)
+  );
 
   const bootstrapState = readPublicWasteBootstrapStateFromEnvironment({
-    rawConfigJson: process.env.PUBLIC_WASTE_CONFIG_JSON ?? (configPath ? readFileSync(configPath, 'utf8') : undefined),
+    rawConfigJson:
+      process.env.PUBLIC_WASTE_CONFIG_JSON ??
+      (configPath ? readFileSync(configPath, 'utf8') : undefined),
   });
 
   const pool =
     bootstrapState.status === 'ready'
       ? new Pool({
-          connectionString: bootstrapState.config.supabase.databaseUrl,
+          connectionString: bootstrapState.config.database.databaseUrl,
           max: 4,
           idleTimeoutMillis: 5_000,
           connectionTimeoutMillis: 5_000,
@@ -37,8 +39,11 @@ const publicWasteApiPlugin = (): Plugin => {
   const repository =
     bootstrapState.status === 'ready' && pool
       ? createPublicWasteRepository({
-          schemaName: bootstrapState.config.supabase.schemaName,
-          execute: async <TRow = Record<string, unknown>>({ text, values }: {
+          schemaName: bootstrapState.config.database.schemaName,
+          execute: async <TRow = Record<string, unknown>>({
+            text,
+            values,
+          }: {
             readonly text: string;
             readonly values?: readonly unknown[];
           }) => {
@@ -56,7 +61,10 @@ const publicWasteApiPlugin = (): Plugin => {
       return new Response(
         JSON.stringify({
           error: bootstrapState.status === 'error' ? bootstrapState.reason : 'invalid_config',
-          message: bootstrapState.status === 'error' ? bootstrapState.message : 'Konfiguration ist ungültig.',
+          message:
+            bootstrapState.status === 'error'
+              ? bootstrapState.message
+              : 'Konfiguration ist ungültig.',
         }),
         {
           status: 500,
@@ -79,8 +87,8 @@ const publicWasteApiPlugin = (): Plugin => {
         request,
         loadPdfStaticConfig: () =>
           loadPublicWastePdfStaticConfig(bootstrapState.config.instanceId, {
-            getDatabaseUrl: () => bootstrapState.config.supabase.databaseUrl,
-            getSchemaName: () => bootstrapState.config.supabase.schemaName,
+            getDatabaseUrl: () => bootstrapState.config.database.databaseUrl,
+            getSchemaName: () => bootstrapState.config.database.schemaName,
           }),
         loadBrandingImage: loadPublicWastePdfBrandingImage,
       });
@@ -105,7 +113,10 @@ const publicWasteApiPlugin = (): Plugin => {
           return next();
         }
 
-        const response = await handleApiRequest(`http://localhost${url}`, new Headers(req.headers as Record<string, string>));
+        const response = await handleApiRequest(
+          `http://localhost${url}`,
+          new Headers(req.headers as Record<string, string>)
+        );
         res.statusCode = response.status;
         response.headers.forEach((value, key) => res.setHeader(key, value));
         res.end(Buffer.from(await response.arrayBuffer()));
@@ -126,7 +137,10 @@ const publicWasteApiPlugin = (): Plugin => {
           return next();
         }
 
-        const response = await handleApiRequest(`http://localhost${url}`, new Headers(req.headers as Record<string, string>));
+        const response = await handleApiRequest(
+          `http://localhost${url}`,
+          new Headers(req.headers as Record<string, string>)
+        );
         res.statusCode = response.status;
         response.headers.forEach((value, key) => res.setHeader(key, value));
         res.end(Buffer.from(await response.arrayBuffer()));

@@ -67,6 +67,10 @@ export {
   runWasteConnectionCheck,
   WasteRuntimeError,
 } from './waste/data-source.server.js';
+export {
+  deriveWasteTenantDatabaseNames,
+  type WasteTenantDatabaseNames,
+} from './waste/tenant-database-identifiers.server.js';
 export type { JsonErrorResponseOptions } from './server/json-error-response.server.js';
 export { toJsonErrorResponse } from './server/json-error-response.server.js';
 export type {

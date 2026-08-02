@@ -4,7 +4,10 @@ import {
   type SaveSvaMainserverInterfaceSettingsInput,
   type SvaMainserverInterfacesOverview,
 } from '@sva/sva-mainserver/server';
-import type { SvaMainserverConnectionStatus, SvaMainserverInstanceConfig } from '@sva/sva-mainserver';
+import type {
+  SvaMainserverConnectionStatus,
+  SvaMainserverInstanceConfig,
+} from '@sva/sva-mainserver';
 
 import { extractErrorDiagnostics, isRecord, readErrorMessage } from './error-message-utils';
 import type {
@@ -12,6 +15,7 @@ import type {
   InstanceInterfaceDraft,
   InstanceInterfaceMapGeocoding,
   InstanceInterfaceMailTransport,
+  InstanceInterfacePostgresql,
   InstanceInterfaceS3,
   InstanceInterfaceSupabase,
   InstanceInterfaceType,
@@ -29,8 +33,7 @@ type SaveInterfacesPayload = {
 };
 
 type AuthenticatedInterfacesRunResult<T> =
-  | { readonly ok: true; readonly result: T }
-  | { readonly ok: false; readonly error: ErrorPayload };
+  { readonly ok: true; readonly result: T } | { readonly ok: false; readonly error: ErrorPayload };
 
 type InterfacesErrorField = 'graphql_base_url' | 'oauth_token_url';
 
@@ -60,6 +63,7 @@ const isInstanceInterfaceType = (value: unknown): value is InstanceInterfaceType
   value === 'mainserver' ||
   value === 's3' ||
   value === 'supabase' ||
+  value === 'postgresql' ||
   value === 'mailTransport' ||
   value === 'mapGeocoding';
 
@@ -102,9 +106,7 @@ const isAuthenticatedInterfacesRunResult = <T>(
     return false;
   }
 
-  return value.ok
-    ? 'result' in value
-    : isErrorPayload(value.error);
+  return value.ok ? 'result' in value : isErrorPayload(value.error);
 };
 
 const ERROR_CODES = new Set<string>([
@@ -125,7 +127,8 @@ const ERROR_CODES = new Set<string>([
 
 const isSvaMainserverErrorCode = (
   value: string | undefined
-): value is NonNullable<SvaMainserverConnectionStatus['errorCode']> => typeof value === 'string' && ERROR_CODES.has(value);
+): value is NonNullable<SvaMainserverConnectionStatus['errorCode']> =>
+  typeof value === 'string' && ERROR_CODES.has(value);
 
 const createErrorStatus = (
   errorCode: SvaMainserverConnectionStatus['errorCode'],
@@ -207,10 +210,7 @@ const getErrorStatusCode = (error: unknown, fallback: number): number => {
   return fallback;
 };
 
-const getErrorPayload = (
-  error: unknown,
-  fallbackCode?: string
-): ErrorPayload => {
+const getErrorPayload = (error: unknown, fallbackCode?: string): ErrorPayload => {
   const errorCode = readClientErrorCode(error);
   const message = error instanceof Error ? error.message : readErrorMessage(error, '');
   const field = parseInterfacesErrorField(message || null);
@@ -222,18 +222,22 @@ const getErrorPayload = (
 };
 
 const createClientError = (payload: ErrorPayload | null, fallbackMessage: string): Error => {
-  const message = typeof payload?.error === 'string' && payload.error.length > 0 ? payload.error : fallbackMessage;
+  const message =
+    typeof payload?.error === 'string' && payload.error.length > 0
+      ? payload.error
+      : fallbackMessage;
 
   return new Error(message, {
     cause: payload ?? undefined,
   });
 };
 
-type ServerRuntimeLogger = Awaited<typeof import('@sva/server-runtime')> extends {
-  createSdkLogger: (...args: never[]) => infer T;
-}
-  ? T
-  : never;
+type ServerRuntimeLogger =
+  Awaited<typeof import('@sva/server-runtime')> extends {
+    createSdkLogger: (...args: never[]) => infer T;
+  }
+    ? T
+    : never;
 
 type AuthenticatedInterfacesUser = {
   readonly id: string;
@@ -256,20 +260,20 @@ type SaveInterfacesDependencies = InterfacesRequestDependencies & {
 };
 
 type InterfacesOperation =
-  | 'list_interfaces'
-  | 'save_interfaces_settings'
-  | 'upsert_interface'
-  | 'delete_interface';
+  'list_interfaces' | 'save_interfaces_settings' | 'upsert_interface' | 'delete_interface';
 
 const WASTE_MANAGEMENT_MODULE_ID = 'waste-management';
 const DEFAULT_AVAILABLE_INTERFACE_TYPES: readonly InstanceInterfaceType[] = [
   'mainserver',
   's3',
+  'postgresql',
   'mailTransport',
   'mapGeocoding',
 ];
 
-const resolveAvailableInterfaceTypes = async (instanceId: string): Promise<readonly InstanceInterfaceType[]> => {
+const resolveAvailableInterfaceTypes = async (
+  instanceId: string
+): Promise<readonly InstanceInterfaceType[]> => {
   const { loadInstanceById } = await import('@sva/data-repositories/server');
   const instance = await loadInstanceById(instanceId);
   const assignedModules = Array.isArray(instance?.assignedModules) ? instance.assignedModules : [];
@@ -526,21 +530,23 @@ const saveInterfacesSettingsForUser = async (
   return config instanceof Response ? config : jsonResponse(200, config);
 };
 
-export const loadSvaMainserverInterfacesOverviewServerFn = createServerFn().handler(async (): Promise<InterfacesOverviewModel> => {
-  try {
-    const { getRequest } = await import('@tanstack/react-start/server');
-    const { loadSvaMainserverInterfacesOverview } = await import('@sva/sva-mainserver/server');
+export const loadSvaMainserverInterfacesOverviewServerFn = createServerFn().handler(
+  async (): Promise<InterfacesOverviewModel> => {
+    try {
+      const { getRequest } = await import('@tanstack/react-start/server');
+      const { loadSvaMainserverInterfacesOverview } = await import('@sva/sva-mainserver/server');
 
-    return await loadSvaMainserverInterfacesOverview(getRequest());
-  } catch (error) {
-    const message = readErrorMessage(error, 'Schnittstellenstatus konnte nicht geladen werden.');
-    return {
-      instanceId: '',
-      config: null,
-      status: createErrorStatus('network_error', message),
-    };
+      return await loadSvaMainserverInterfacesOverview(getRequest());
+    } catch (error) {
+      const message = readErrorMessage(error, 'Schnittstellenstatus konnte nicht geladen werden.');
+      return {
+        instanceId: '',
+        config: null,
+        status: createErrorStatus('network_error', message),
+      };
+    }
   }
-});
+);
 
 export const loadInterfacesOverview = loadSvaMainserverInterfacesOverviewServerFn;
 
@@ -555,8 +561,15 @@ const projectStoredEntry = async (
   entry:
     | Omit<InstanceInterfaceS3, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfaceSupabase, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
-    | Omit<InstanceInterfaceMailTransport, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
-    | Omit<InstanceInterfaceMapGeocoding, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
+    | Omit<InstanceInterfacePostgresql, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
+    | Omit<
+        InstanceInterfaceMailTransport,
+        'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
+      >
+    | Omit<
+        InstanceInterfaceMapGeocoding,
+        'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
+      >
 ): Promise<InstanceInterface> => {
   const { checkStoredInterfaceHealth } = await import('./instance-interfaces-server.js');
   const health = checkStoredInterfaceHealth(entry);
@@ -584,10 +597,14 @@ export const listInstanceInterfacesServerFn = createServerFn().handler(
         );
         const overview = await (async () => {
           try {
-            const { loadSvaMainserverInterfacesOverview } = await import('@sva/sva-mainserver/server');
+            const { loadSvaMainserverInterfacesOverview } =
+              await import('@sva/sva-mainserver/server');
             return await loadSvaMainserverInterfacesOverview(dependencies.request);
           } catch (error) {
-            const message = readErrorMessage(error, 'Schnittstellenstatus konnte nicht geladen werden.');
+            const message = readErrorMessage(
+              error,
+              'Schnittstellenstatus konnte nicht geladen werden.'
+            );
             return {
               instanceId: authorizedInstanceId,
               config: null,
@@ -666,7 +683,8 @@ export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
       throw new Error('mainserver_interfaces_use_dedicated_endpoint');
     }
     const dependencies = await loadInterfacesRequestDependencies();
-    const { getStoredInterface, upsertStoredInterface } = await import('./instance-interfaces-server.js');
+    const { getStoredInterface, upsertStoredInterface } =
+      await import('./instance-interfaces-server.js');
     return runWithAuthenticatedInterfacesUser({
       request: dependencies.request,
       fallbackMessage: 'Schnittstelle konnte nicht gespeichert werden.',
@@ -689,12 +707,15 @@ export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
             data.draft.type === 's3'
               ? data.draft.config.secretAccessKey.length > 0
               : data.draft.type === 'supabase'
-                ? data.draft.config.databaseUrl.length > 0 || data.draft.config.serviceRoleKey.length > 0
-                : data.draft.type === 'mailTransport'
-                  ? data.draft.config.password.length > 0
-                  : data.draft.type === 'mapGeocoding'
-                    ? data.draft.config.apiKey.length > 0
-                    : false,
+                ? data.draft.config.databaseUrl.length > 0 ||
+                  data.draft.config.serviceRoleKey.length > 0
+                : data.draft.type === 'postgresql'
+                  ? data.draft.config.databaseUrl.length > 0
+                  : data.draft.type === 'mailTransport'
+                    ? data.draft.config.password.length > 0
+                    : data.draft.type === 'mapGeocoding'
+                      ? data.draft.config.apiKey.length > 0
+                      : false,
           request_host: new URL(dependencies.request.url).host,
           has_iam_database_url: Boolean(process.env.IAM_DATABASE_URL),
         });
@@ -709,15 +730,19 @@ export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
             interface_type: data.draft.type,
             existing_interface_id: data.existingId,
             user_id: ctx.user.id,
-            error_message: readErrorMessage(error, 'Schnittstelle konnte nicht gespeichert werden.'),
+            error_message: readErrorMessage(
+              error,
+              'Schnittstelle konnte nicht gespeichert werden.'
+            ),
             ...extractErrorDiagnostics(error),
           });
           throw error;
         }
 
-        if (stored.type === 'supabase' || stored.type === 's3') {
+        if (stored.type === 'supabase' || stored.type === 'postgresql' || stored.type === 's3') {
           try {
-            const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+            const { runStoredInterfaceHealthcheck } =
+              await import('./instance-interface-healthcheck.server.js');
             await runStoredInterfaceHealthcheck({
               instanceId,
               interfaceId: stored.id,
@@ -767,10 +792,13 @@ export const deleteInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
         );
         const isMainserverDelete =
           data.id === `mainserver:${instanceId}` || data.id === `sva-mainserver:${instanceId}`;
-        const deleted =
-          isMainserverDelete
-            ? await (await import('@sva/sva-mainserver/server')).deleteSvaMainserverSettings(instanceId)
-            : await (await import('./instance-interfaces-server.js')).deleteStoredInterface(instanceId, data.id);
+        const deleted = isMainserverDelete
+          ? await (
+              await import('@sva/sva-mainserver/server')
+            ).deleteSvaMainserverSettings(instanceId)
+          : await (
+              await import('./instance-interfaces-server.js')
+            ).deleteStoredInterface(instanceId, data.id);
         if (!deleted) {
           throw new Error('interface_not_found');
         }
@@ -810,7 +838,10 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
     } catch (error) {
       const { createSdkLogger } = await import('@sva/server-runtime');
       const logger = createSdkLogger({ component: COMPONENT });
-      const payload = error instanceof Error && isRecord(error.cause) && isErrorPayload(error.cause) ? error.cause : null;
+      const payload =
+        error instanceof Error && isRecord(error.cause) && isErrorPayload(error.cause)
+          ? error.cause
+          : null;
       const message =
         payload?.error && isSvaMainserverErrorCode(payload.error)
           ? payload.error

@@ -174,6 +174,7 @@ const authServerMocks = vi.hoisted(() => {
       getToursOverview: vi.fn(async () => response('getWasteManagementToursOverviewHandler')),
       getSettings: vi.fn(async () => response('getWasteManagementSettingsHandler')),
       runHolidaySync: vi.fn(async () => response('runWasteManagementHolidaySyncHandler')),
+      retryProvisioning: vi.fn(async () => response('retryWasteTenantProvisioningHandler')),
       startInitialize: vi.fn(async () => response('startWasteManagementInitializeHandler')),
       updateSettings: vi.fn(async () => response('updateWasteManagementSettingsHandler')),
       updateHolidayRule: vi.fn(async () => response('updateWasteManagementHolidayRuleHandler')),
@@ -502,6 +503,9 @@ describe('auth.routes.server', () => {
     const tourDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/tours/$tourId');
     const settingsHandlers = resolveAuthHandlers('/api/v1/waste-management/settings');
     const holidaySyncHandlers = resolveAuthHandlers('/api/v1/waste-management/settings/holiday-sync');
+    const provisioningRetryHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/settings/provisioning/retry'
+    );
     const initializeHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/initialize');
     const migrationsHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/migrations');
     const importHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/imports');
@@ -543,6 +547,7 @@ describe('auth.routes.server', () => {
     expect(settingsHandlers?.GET).toBeDefined();
     expect(settingsHandlers?.PUT).toBeDefined();
     expect(holidaySyncHandlers?.POST).toBeDefined();
+    expect(provisioningRetryHandlers?.POST).toBeDefined();
     expect(migrationsHandlers?.POST).toBeDefined();
     expect(importHandlers?.POST).toBeDefined();
     expect(seedHandlers?.POST).toBeDefined();
@@ -683,6 +688,12 @@ describe('auth.routes.server', () => {
     await holidaySyncHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/settings/holiday-sync', { method: 'POST' }),
     });
+    await provisioningRetryHandlers.POST?.({
+      request: new Request(
+        'http://localhost/api/v1/waste-management/settings/provisioning/retry',
+        { method: 'POST' }
+      ),
+    });
     await initializeHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/initialize', { method: 'POST' }),
     });
@@ -744,6 +755,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.getSettings).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateSettings).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.runHolidaySync).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.retryProvisioning).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startInitialize).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startMigrations).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startImport).toHaveBeenCalled();

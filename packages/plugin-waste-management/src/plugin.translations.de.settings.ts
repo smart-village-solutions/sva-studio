@@ -5,8 +5,8 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
     actions: 'Aktionen',
   },
   technical: {
-    title: 'Technischer Status',
-    description: 'Der Host bewertet die aktive Abfall-Datenquelle und spiegelt den letzten serverseitigen Verbindungscheck wider.',
+    title: 'Bereitstellung',
+    description: 'Die Abfalldatenbank wird automatisch für diese Instanz bereitgestellt und verwaltet.',
   },
   fields: {
     projectUrl: 'Projekt-URL',
@@ -43,6 +43,9 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
     holidaySyncPartialSuccess: 'Teilweise erfolgreich',
     holidaySyncFailed: 'Fehlgeschlagen',
     customRecurrenceIntervalDays: 'Alle {{value}} Tage',
+    provisioningUpdatedAtLabel: 'Zuletzt aktualisiert',
+    provisioningErrorCodeLabel: 'Fehlercode',
+    provisioningErrorCodeEmpty: 'Kein Fehler',
   },
   actions: {
     save: 'Einstellungen speichern',
@@ -54,6 +57,8 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
     editCustomRecurrence: 'Bearbeiten',
     deleteCustomRecurrence: 'Löschen',
     saveCustomRecurrence: 'Abstand übernehmen',
+    retryProvisioning: 'Bereitstellung erneut starten',
+    retryingProvisioning: 'Wird erneut gestartet…',
   },
   messages: {
     loading: 'Einstellungen werden geladen.',
@@ -89,5 +94,8 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
     customRecurrenceFallbackHint: 'Optional: Wählen Sie direkt einen Fallback, falls dieser Abstand bereits Touren zugeordnet ist.',
     customRecurrenceFallbackPlaceholder: 'Keinen Fallback vorauswählen',
     noInterfacesAvailable: 'Es wurden noch keine externen Schnittstellen für diese Instanz hinterlegt.',
+    retryProvisioningSuccess: 'Die Bereitstellung wurde erneut gestartet.',
+    retryProvisioningError: 'Die Bereitstellung konnte nicht erneut gestartet werden.',
+    retryProvisioningForbidden: 'Für den erneuten Start der Bereitstellung fehlt die Berechtigung.',
   },
 });

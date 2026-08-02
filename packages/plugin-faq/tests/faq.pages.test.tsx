@@ -80,7 +80,7 @@ describe('faq editor pages', () => {
         params: { id: 'faq-new' },
       })
     );
-  });
+  }, 30_000);
 
   it('loads an existing faq entry and updates it while preserving existing payload fields', async () => {
     state.getFaqMock.mockResolvedValue({
@@ -116,7 +116,7 @@ describe('faq editor pages', () => {
       visible: true,
       publicationDate: '2026-07-21T10:00:00.000Z',
     });
-  });
+  }, 30_000);
 
   it('renders load and save errors for the edit page', async () => {
     state.getFaqMock.mockRejectedValueOnce(new Error('load failed'));

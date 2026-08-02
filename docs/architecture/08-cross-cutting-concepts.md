@@ -34,7 +34,7 @@ gleichzeitig beeinflussen.
 
 - Die PDF-Erzeugung für Waste folgt keinem browserseitigen Renderpfad; Dokumentmodell, Terminauflösung und PDF-Rendering bleiben vollständig serverseitig.
 - Das Studio pflegt nur statische PDF-Stamminhalte wie Branding oder Kontakttexte und erzeugt selbst keine PDFs mehr.
-- Die führende Persistenz für diese PDF-Stamminhalte liegt im Waste-Schema der angebundenen Supabase-DB; ältere Werte aus `iam.instance_external_interfaces.public_config` dienen nur noch als Legacy-Fallback.
+- Die führende Persistenz für diese PDF-Stamminhalte liegt im tenantbezogenen PostgreSQL-Waste-Schema; ältere Werte aus `iam.instance_external_interfaces.public_config` dienen nur noch als Legacy-Fallback.
 - Die öffentliche Web-App löst den PDF-Export ad hoc für den vollständig aufgelösten Standort, das gewählte Jahr und die gewählten Fraktionen aus.
 - Persistente Waste-PDF-Artefakte, deterministische Storage-Schlüssel und wiederverwendbare Delivery-Links sind kein Teil des Zielbilds.
 
@@ -613,7 +613,11 @@ Restore-Dumps werden bewusst ohne Owner- und Privilegübernahme behandelt. Desha
 
 Nach Mutationsbeginn gibt es keinen automatischen Retry und keinen automatischen Gegenrestore. Jeder weitere Versuch benötigt eine neue GitHub-Environment-Freigabe und Request-ID. Fehlende DB-, Health- oder Tenant-Nachweise halten die App fail-closed stillgelegt. Keycloak gehört nicht zur Datenbankmutation; IAM-Drift bleibt Aufgabe der vorhandenen Reconcile-Verträge.
 
-## Partielle Mainserver-Snapshots
+### Ergänzung 2026-08: Waste-Datenbankgrenze
+
+Waste-Fachdaten werden in einer eigenen Datenbank pro Studio-Instanz und nicht in der Governance-Datenbank `sva_studio` gespeichert. Datenbank und Rollen werden kollisionssicher aus der kanonischen Instanzidentität abgeleitet. Die External-Interface-Registry schützt alle Verbindungs-URLs als tenantgebundene Secrets; Owner, Migration, Studio-Runtime und öffentliche Runtime bleiben getrennt. Die normale App besitzt keine `CREATEDB`-/`CREATEROLE`-Rechte. Backups, Restore-Drills und der einmalige Offline-Cutover behandeln jede registrierte Tenant-Datenbank als eigene Sicherungs- und Wiederherstellungseinheit.
+
+### Partielle Mainserver-Snapshots
 
 - `pagination.total` bezeichnet weiterhin die lokal verfügbare Trefferzahl. Bei partiellen Snapshots erlaubt dieser Wert die Navigation zwischen bereits materialisierten lokalen Seiten, ohne eine endgültige Gesamtseitenzahl oder weitere, noch nicht materialisierte Seiten zu behaupten. `totalCount` existiert nur bei einem vollständigen Snapshot; `isTotalFinal` macht die Semantik explizit.
 - `payload_json` ist für Mainserver-Projektionszeilen immer `{}`. Detailfragmente, Medien, Adressen und Content-Blöcke werden weder geladen noch für Listenfilterung vorausgesetzt.

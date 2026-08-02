@@ -7,6 +7,7 @@ import type {
   InstanceRegistryRecord,
   InstanceRealmMode,
   InstanceStatus,
+  WasteTenantProvisioningRecord,
 } from '@sva/core';
 
 export type CreateKeycloakProvisioningRunResult = {
@@ -66,6 +67,34 @@ export type ProtectedSystemRolePermissionBundleRecord = {
 };
 
 export type InstanceRegistryRepository = {
+  readonly requestWasteProvisioning: (instanceId: string) => Promise<WasteTenantProvisioningRecord>;
+  readonly getWasteProvisioning: (instanceId: string) => Promise<WasteTenantProvisioningRecord | null>;
+  readonly disableWasteProvisioning: (instanceId: string) => Promise<WasteTenantProvisioningRecord | null>;
+  readonly claimWasteProvisioning: (input: {
+    instanceId: string;
+    jobId: string;
+    desiredGeneration: number;
+  }) => Promise<WasteTenantProvisioningRecord | null>;
+  readonly completeWasteProvisioning: (input: {
+    instanceId: string;
+    jobId: string;
+    desiredGeneration: number;
+    databaseName: string;
+    interfaceId: string;
+  }) => Promise<WasteTenantProvisioningRecord | null>;
+  readonly failWasteProvisioning: (input: {
+    instanceId: string;
+    jobId: string;
+    desiredGeneration: number;
+    errorCode: string;
+    errorMessage: string;
+  }) => Promise<WasteTenantProvisioningRecord | null>;
+  readonly failWasteProvisioningRequest: (input: {
+    instanceId: string;
+    desiredGeneration: number;
+    errorCode: string;
+    errorMessage: string;
+  }) => Promise<WasteTenantProvisioningRecord | null>;
   readonly prepareConfirmationChallenge: (
     input: PrepareInstanceConfirmationChallengeInput
   ) => Promise<InstanceConfirmationChallengeRecord>;

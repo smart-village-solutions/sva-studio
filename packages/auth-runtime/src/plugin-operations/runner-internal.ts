@@ -33,6 +33,7 @@ export type QueueStudioJobInput = {
   readonly jobId: string;
   readonly queueName: string;
   readonly maxAttempts: number;
+  readonly executionLane?: 'default' | 'privileged';
 };
 
 export const adaptPluginOperationExecutionHandler = (
@@ -49,6 +50,7 @@ export const adaptPluginOperationExecutionHandler = (
 
 export const toRegistryKey = (source: StudioJobSource, jobTypeId: string): string => `${source}:${jobTypeId}`;
 
-export const toStudioJobTaskList = (executeTask: graphileWorker.Task): graphileWorker.TaskList => ({
-  studio_job_execute: executeTask,
-});
+export const toStudioJobTaskList = (
+  executeTask: graphileWorker.Task,
+  taskIdentifier = 'studio_job_execute'
+): graphileWorker.TaskList => ({ [taskIdentifier]: executeTask });

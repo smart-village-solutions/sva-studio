@@ -30,14 +30,18 @@ describe('studio-release-local', () => {
     ).toThrow(/--rollback-hint/);
   });
 
-  it('requires a maintenance window for schema-and-app releases', () => {
-    expect(() =>
-      buildLocalStudioReleasePlan([
-        '--image-digest=sha256:abc',
-        '--release-mode=schema-and-app',
-        '--rollback-hint=Redeploy previous digest',
-      ]),
-    ).toThrow(/Wartungsfenster/);
+  it('builds schema-and-app releases without a maintenance window', () => {
+    const plan = buildLocalStudioReleasePlan([
+      '--image-digest=sha256:abc',
+      '--release-mode=schema-and-app',
+      '--rollback-hint=Redeploy previous digest',
+    ]);
+
+    expect(plan.options).toMatchObject({
+      maintenanceWindow: undefined,
+      releaseMode: 'schema-and-app',
+    });
+    expect(plan.steps[1]?.args).not.toContain(expect.stringContaining('--maintenance-window='));
   });
 
   it('builds the canonical local release sequence for app-only releases', () => {

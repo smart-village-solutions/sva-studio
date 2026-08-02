@@ -31,9 +31,6 @@ on:
       change_head:
         description: 'Git head ref represented by the promoted image'
         required: true
-      maintenance_window:
-        description: 'Non-sensitive, revisionable maintenance-window reference (required for staging migration run)'
-        required: false
   workflow_call:
     inputs:
       environment:
@@ -56,10 +53,6 @@ on:
       change_head:
         required: true
         type: string
-      maintenance_window:
-        required: false
-        type: string
-        default: ''
 
 permissions:
   actions: read
@@ -85,7 +78,6 @@ jobs:
           BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
           CHANGE_BASE: ${{ inputs.change_base }}
           CHANGE_HEAD: ${{ inputs.change_head }}
-          MAINTENANCE_WINDOW: ${{ inputs.maintenance_window }}
         run: |
           set -euo pipefail
 
@@ -122,13 +114,6 @@ jobs:
               exit 1
               ;;
           esac
-
-          if { [ "${ENVIRONMENT}" = "staging" ] && [ "${MIGRATION_MODE}" = "run" ]; } || { [ "${ENVIRONMENT}" = "prod" ] && { [ "${MIGRATION_MODE}" = "run" ] || [ "${BOOTSTRAP_MODE}" = "run" ]; }; }; then
-            if ! printf '%s' "${MAINTENANCE_WINDOW}" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._:/# -]{2,159}$'; then
-              echo "'maintenance_window' must be a non-sensitive, revisionable reference for the requested mutation." >&2
-              exit 1
-            fi
-          fi
 
       - name: checkout
         uses: actions/checkout@v7
@@ -258,7 +243,6 @@ jobs:
         env:
           BACKUP_AGENT_SIGNING_KEY: ${{ secrets.BACKUP_AGENT_SIGNING_KEY }}
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
-          MAINTENANCE_WINDOW_REFERENCE: ${{ inputs.maintenance_window }}
           S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
           S3_ENDPOINT: https://fileserver.smart-village.app
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
@@ -431,7 +415,6 @@ jobs:
           DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
           MIGRATION_MODE: ${{ inputs.migration_mode }}
           BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
-          MAINTENANCE_WINDOW: ${{ inputs.maintenance_window }}
           MIGRATION_GATE_RESULT: ${{ steps.gate_eval.outputs.migration_gate_result }}
           MIGRATION_GATE_RISK_FILES: ${{ steps.gate_eval.outputs.migration_gate_risk_files }}
           BOOTSTRAP_GATE_RESULT: ${{ steps.gate_eval.outputs.bootstrap_gate_result }}
@@ -461,7 +444,6 @@ jobs:
             echo "| immutability | ${DEPLOY_IMAGE_IMMUTABILITY:-not-evaluated} |"
             echo "| deploy_revision | ${DEPLOY_REVISION:-not-evaluated} |"
             echo "| migration_mode | ${MIGRATION_MODE} |"
-            echo "| maintenance_window | ${MAINTENANCE_WINDOW:-not-required} |"
             echo "| migration_gate_result | ${MIGRATION_GATE_RESULT:-not-evaluated} |"
             echo "| migration_job | ${MIGRATION_JOB_OUTCOME:-not-run} |"
             echo "| migration_risk_files | ${MIGRATION_GATE_RISK_FILES:-none} |"

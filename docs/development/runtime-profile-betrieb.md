@@ -448,7 +448,7 @@ Wichtig für die Interpretation:
 
 - Schemaänderungen bleiben ein separater, bewusster Schritt und sind nie Teil von `up`
 - Reguläre Remote-Deploys laufen ausschließlich über GitHub Actions `Promote`
-- Production- und Staging-Wartungsfenster folgen dem umgebungsabhängigen Vertrag aus `../guides/studio-rollout-process.md`
+- Migrationen und Bootstraps benötigen gemäß `../guides/studio-rollout-process.md` keinen Wartungsfenster-Verweis; Freigaben, Backups, Postconditions und Verifikation bleiben verpflichtend
 - lokale Mutationsbefehle sind Incident-Recovery und müssen danach gegen den Promote-Vertrag verifiziert werden
 
 ## Observability und Live-Diagnose
@@ -492,7 +492,7 @@ Für den produktionsnahen `studio`-Betrieb gilt:
 - Remote-Deploy scheitert: unvollständige Portainer-Variablen in `deploy/portainer/.env.example`
 - Remote-Migration findet keinen lokalen `postgres`-Container: erwartbar bei Remote-Swarm; der Befehl startet stattdessen den dedizierten Swarm-Migrationsjob
 - Remote-Bootstrap läuft nicht oder hinterlässt `migrate`/`bootstrap` auf `replicas > 0`: Stack mit `pnpm env:status:<profil>` prüfen; die Job-Services müssen nach Erfolg wieder auf `0` stehen
-- `env:deploy:<profil> --release-mode=schema-and-app` scheitert sofort: Wartungsfenster fehlt oder `quantum-cli`/Stack-Zugriff ist nicht verfügbar
+- `env:deploy:<profil> --release-mode=schema-and-app` scheitert sofort: `quantum-cli`- oder Stack-Zugriff ist nicht verfügbar
 - `status`, `doctor` oder `precheck` scheitern read-only trotz gesundem Stack: zuerst `QUANTUM_ENDPOINT_ID` und `QUANTUM_API_KEY` für den Portainer-Pfad prüfen, erst danach `quantum-cli` als Fallback debuggen
 - `env:deploy:<profil>` scheitert vor dem Rollout: `SVA_IMAGE_DIGEST` fehlt oder das Digest-Artefakt besteht den `image-smoke` nicht
 Für das frühe `studio`-Profil sind produktive Console-Logs bewusst per `SVA_ENABLE_SERVER_CONSOLE_LOGS=true` erlaubt, damit Loki die Serverdiagnostik auch ohne internen OTEL-Collector erfassen kann. Das Flag ist ein temporärer Testphasen-Hebel und soll in einer späteren Betriebsphase wieder deaktiviert werden, sobald die OTEL-Pipeline im Zielprofil stabil verfügbar ist.

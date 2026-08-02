@@ -14,4 +14,4 @@
 
 - [x] 3.1 Kanonischen Rollout-Leitfaden und betroffene Betriebsdokumentation aktualisieren.
 - [x] 3.2 Arc42-Abschnitte 06, 07, 08 und 10 auf den verbleibenden Sicherheitsvertrag aktualisieren; Abschnitt 11 prüfen und wegen seines Restore-Fokus unverändert lassen.
-- [ ] 3.3 OpenSpec strikt validieren, Tasks abhaken und PR mit grünen Checks eröffnen.
+- [x] 3.3 OpenSpec strikt validieren, Tasks abhaken und PR mit grünen Checks eröffnen.

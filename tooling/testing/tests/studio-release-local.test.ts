@@ -41,7 +41,7 @@ describe('studio-release-local', () => {
       maintenanceWindow: undefined,
       releaseMode: 'schema-and-app',
     });
-    expect(plan.steps[1]?.args).not.toContain(expect.stringContaining('--maintenance-window='));
+    expect(plan.steps[1]?.args.some((argument) => argument.startsWith('--maintenance-window='))).toBe(false);
   });
 
   it('builds the canonical local release sequence for app-only releases', () => {

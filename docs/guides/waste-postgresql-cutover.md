@@ -49,6 +49,10 @@ WHERE datname = current_database()
 ```
 
 Die erste Abfrage läuft in `sva_studio`, die zweite auf der Supabase-Quelle. Bei einem Treffer wird nicht gedumpt.
+Das Einmalskript wiederholt diese Prüfung maschinenlesbar für offene Waste-Jobs
+sowie aktive Fremdsitzungen auf Quelle und Ziel und bricht vor dem Dump ab. Rein
+inaktive PostgreSQL-Plattformsitzungen werden dabei nicht als Schreibverkehr
+gewertet.
 
 ## Preflight und Import
 

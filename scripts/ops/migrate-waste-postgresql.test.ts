@@ -41,6 +41,18 @@ describe('Waste-PostgreSQL-Cutover-Skript', () => {
     );
   });
 
+  it('blockiert den Dump bei nicht geleerten Waste-Jobs oder Datenbanksitzungen', () => {
+    expect(source).toContain("status IN ('queued', 'running', 'retrying')");
+    expect(source).toContain("state <> 'idle'");
+    expect(source).toContain('if [[ "$active_waste_jobs" != "0" ]]');
+    expect(source).toContain(
+      'if [[ "$source_active_sessions" != "0" || "$target_active_sessions" != "0" ]]'
+    );
+    expect(source.indexOf('if [[ "$active_waste_jobs" != "0" ]]')).toBeLessThan(
+      source.indexOf('"$source_pg_dump" "service=$SOURCE_PGSERVICE"')
+    );
+  });
+
   it('schreibt redigierte tenantbezogene Migrationsevidenz', () => {
     expect(source).toContain('migration-evidence.json');
     expect(source).toContain('instanceId');

@@ -15,7 +15,7 @@
 
 - [x] 3.1 `sva_waste` sowie `sva_waste_owner`, `sva_waste_migrator`, `sva_waste_app` und `sva_waste_public_app` mit minimalen Rechten reproduzierbar für die kanonischen Umgebungen provisionieren.
 - [x] 3.2 Backup- und Restore-Abläufe um die Waste-Fachdatenbank erweitern und mit einem Restore-Drill nachweisen.
-- [ ] 3.3 Kontrollierten Stopp von Studio-App, Public-Waste-App und Waste-Worker sowie Job- und Datenbanksitzungs-Drain für das Sonntagsfenster festlegen und testen; keinen neuen Anwendungs-Wartungsmodus einführen.
+- [x] 3.3 Kontrollierten Stopp von Studio-App, Public-Waste-App und Waste-Worker sowie Job- und Datenbanksitzungs-Drain für das Sonntagsfenster festlegen und testen; keinen neuen Anwendungs-Wartungsmodus einführen.
 - [x] 3.4 Maschinenlesbare Vorher-/Nachher-Verifikation für Schemaobjekte, Migrationen und Zeilenzahlen bereitstellen.
 
 ## 4. Einmaliger Cutover

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { ExternalInterfaceRecord } from '@sva/core';
 
 import {
   createProvisionTenantDatabaseOperation,
@@ -131,6 +132,111 @@ describe('waste tenant database provisioner', () => {
         errorMessage: 'Die Waste-Datenbank konnte nicht vollständig provisioniert werden.',
       })
     );
+  });
+
+  it('reconciles a partially provisioned tenant without recreating or deleting its database data', async () => {
+    const names = deriveWasteTenantDatabaseNames('bb-prignitz');
+    const statements: string[] = [];
+    const savedInterfaces: Record<string, unknown>[] = [];
+    const createPool = (url: string) => ({
+      connect: async () => ({
+        query: async <TRow>(text: string) => {
+          statements.push(text);
+          if (text.includes('FROM pg_roles')) {
+            return {
+              rowCount: 4,
+              rows: [
+                names.ownerRole,
+                names.migratorRole,
+                names.appRole,
+                names.publicAppRole,
+              ].map((rolname) => ({ rolname })) as TRow[],
+            };
+          }
+          if (text.includes('FROM pg_database')) {
+            return { rowCount: 1, rows: [{ exists: true }] as TRow[] };
+          }
+          if (text.includes('information_schema.tables')) {
+            return {
+              rowCount: requiredWasteTables.length,
+              rows: requiredWasteTables.map((table_name) => ({ table_name })) as TRow[],
+            };
+          }
+          if (text.includes('has_table_privilege')) {
+            return {
+              rowCount: 1,
+              rows: [
+                {
+                  can_select: true,
+                  can_insert: url.includes('_app:rotated-app@'),
+                  can_insert_subscription: true,
+                },
+              ] as TRow[],
+            };
+          }
+          return { rowCount: 0, rows: [] as TRow[] };
+        },
+        release: vi.fn(),
+      }),
+      end: vi.fn(async () => undefined),
+    });
+    const operation = createProvisionTenantDatabaseOperation({
+      getProvisionerDatabaseUrl: () =>
+        'postgresql://provisioner:admin@postgres:5432/sva_studio',
+      createPool,
+      createPassword: vi
+        .fn()
+        .mockReturnValueOnce('rotated-migrator')
+        .mockReturnValueOnce('rotated-app')
+        .mockReturnValueOnce('rotated-public'),
+      protectSecret: (plaintext) => `encrypted:${plaintext}`,
+      claimProvisioning: vi.fn(async () => ({ status: 'provisioning' } as never)),
+      completeProvisioning: vi.fn(async (input) => ({ ...input, status: 'ready' } as never)),
+      failProvisioning: vi.fn(async () => null),
+      loadManagedInterface: vi.fn(
+        async () =>
+          ({
+            id: 'waste-management:bb-prignitz',
+            instanceId: 'bb-prignitz',
+            typeKey: 'postgresql',
+            ownerKind: 'plugin',
+            ownerId: 'waste-management',
+            displayName: 'Waste PostgreSQL',
+            alias: 'waste-management',
+            enabled: false,
+            isDefault: true,
+            category: 'database',
+            publicConfig: { schemaName: 'public', databaseName: names.database, managed: true },
+            statusCheckKind: 'postgresql',
+            visibleStatus: 'error',
+            createdAt: '2026-08-01T08:00:00.000Z',
+            updatedAt: '2026-08-01T08:00:00.000Z',
+          }) satisfies ExternalInterfaceRecord
+      ),
+      saveManagedInterface: vi.fn(async (record) => {
+        savedInterfaces.push(record as unknown as Record<string, unknown>);
+      }),
+      now: () => new Date('2026-08-02T10:00:00.000Z'),
+    });
+
+    await operation(
+      'bb-prignitz',
+      { operation: 'provision-tenant-database', desiredGeneration: 2 },
+      { jobId: '00000000-0000-4000-8000-000000000003' }
+    );
+
+    expect(statements.filter((text) => text.startsWith('ALTER ROLE '))).toHaveLength(4);
+    expect(statements.some((text) => text.startsWith('CREATE ROLE '))).toBe(false);
+    expect(statements.some((text) => text.startsWith('CREATE DATABASE '))).toBe(false);
+    expect(
+      statements.some((text) => /\b(?:DROP\s+TABLE|TRUNCATE|DELETE\s+FROM)\b/iu.test(text))
+    ).toBe(false);
+    expect(savedInterfaces).toHaveLength(2);
+    expect(savedInterfaces[0]).toMatchObject({
+      createdAt: '2026-08-01T08:00:00.000Z',
+      enabled: false,
+    });
+    expect(savedInterfaces[1]).toMatchObject({ enabled: true, visibleStatus: 'ok' });
   });
 
   it('activates additional tenants with the same deployment contract and isolated databases', async () => {

@@ -160,6 +160,9 @@ importers:
       '@sva/data-repositories':
         specifier: workspace:*
         version: link:../../packages/data-repositories
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@tabler/icons-react':
         specifier: ^3.41.1
         version: 3.44.0(react@19.2.6)

@@ -211,6 +211,7 @@ Referenzen:
 - Der produktive Stack läuft getrennt vom Studio-Stack als `web-waste-calendar` mit `deploy/portainer/docker-compose.public-waste.yml`.
 - Das zugehörige Container-Image wird getrennt unter `ghcr.io/smart-village-solutions/public-waste-calendar-web:<tag>` gebaut; Studio-Image, Studio-Stack und Studio-Workflows bleiben unberührt.
 - Die produktive Runtime-Konfiguration nutzt führend getrennte `PUBLIC_WASTE_*`-Variablen (`PUBLIC_WASTE_IMAGE_TAG`, `PUBLIC_WASTE_PUBLIC_HOST`, `PUBLIC_WASTE_BASE_URL`, `PUBLIC_WASTE_INSTANCE_ID`, `PUBLIC_WASTE_DATABASE_URL`, `PUBLIC_WASTE_SCHEMA_NAME`).
+- Die Server-Runtime validiert Datenbankname und Public-Runtime-Rolle aus `PUBLIC_WASTE_DATABASE_URL` deterministisch gegen `PUBLIC_WASTE_INSTANCE_ID` und akzeptiert ausschließlich das Schema `public`; eine tenantfremde oder privilegiertere Verbindung verhindert den Bootstrap fail-closed.
 - `PUBLIC_WASTE_CONFIG_JSON` bleibt nur als lokaler oder kompatibilitätsbezogener Fallbackpfad erhalten und ist kein produktionsführender Betriebsvertrag.
 - Der Releasepfad wird ausschließlich über Git-Tags `waste-web-vX.Y.Z` ausgelöst. GitHub baut damit nur das Waste-Web-Image und aktualisiert im Portainer-Stack ausschließlich `PUBLIC_WASTE_IMAGE_TAG`.
 - Rollback folgt bewusst demselben einfachen Modell: vorigen SemVer-Tag in `PUBLIC_WASTE_IMAGE_TAG` eintragen und den Stack erneut deployen.

@@ -3,6 +3,7 @@ import {
   readWasteManagementEmailReminderSigningSecret,
   type WasteManagementEmailReminderConfig,
 } from '@sva/core';
+import { deriveWasteTenantDatabaseNames } from '@sva/server-runtime';
 
 export type PublicWasteConfig = {
   readonly instanceId: string;
@@ -28,6 +29,24 @@ const readString = (value: unknown): string | null => {
   return normalized.length > 0 ? normalized : null;
 };
 
+const assertTenantDatabaseIdentity = (instanceId: string, databaseUrl: string): void => {
+  let url: URL;
+  try {
+    url = new URL(databaseUrl);
+  } catch {
+    throw new Error(CONFIG_ERROR);
+  }
+  const names = deriveWasteTenantDatabaseNames(instanceId);
+  const databaseName = decodeURIComponent(url.pathname.replace(/^\//u, ''));
+  if (
+    (url.protocol !== 'postgres:' && url.protocol !== 'postgresql:') ||
+    decodeURIComponent(url.username) !== names.publicAppRole ||
+    databaseName !== names.database
+  ) {
+    throw new Error(CONFIG_ERROR);
+  }
+};
+
 export const parsePublicWasteConfig = (input: unknown): PublicWasteConfig => {
   if (!isRecord(input)) {
     throw new Error(CONFIG_ERROR);
@@ -39,9 +58,15 @@ export const parsePublicWasteConfig = (input: unknown): PublicWasteConfig => {
   const databaseUrl = readString(database?.databaseUrl);
   const schemaName = readString(database?.schemaName);
 
-  if (instanceId === null || databaseUrl === null || schemaName === null) {
+  if (
+    instanceId === null ||
+    databaseUrl === null ||
+    schemaName === null ||
+    schemaName !== 'public'
+  ) {
     throw new Error(CONFIG_ERROR);
   }
+  assertTenantDatabaseIdentity(instanceId, databaseUrl);
 
   const emailReminderConfig = readWasteManagementEmailReminderConfig(input);
   const emailReminderSigningSecret = readWasteManagementEmailReminderSigningSecret(input);
@@ -68,6 +93,10 @@ export const readPublicWasteConfigFromEnvironment = (
   if (instanceId === null || databaseUrl === null || schemaName === null) {
     return null;
   }
+  if (schemaName !== 'public') {
+    throw new Error(CONFIG_ERROR);
+  }
+  assertTenantDatabaseIdentity(instanceId, databaseUrl);
 
   let emailReminderConfig: WasteManagementEmailReminderConfig | undefined;
   let emailReminderSigningSecret: string | undefined;

@@ -2,8 +2,14 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { deriveWasteTenantDatabaseNames } from '@sva/server-runtime';
 
 import { createPublicWasteRuntime } from './public-waste-runtime.js';
+
+const databaseUrlFor = (instanceId: string): string => {
+  const names = deriveWasteTenantDatabaseNames(instanceId);
+  return `postgresql://${names.publicAppRole}:secret@postgres:5432/${names.database}`;
+};
 
 const createAssetsDir = async (): Promise<string> => {
   const assetsDir = await mkdtemp(join(tmpdir(), 'public-waste-runtime-'));
@@ -33,7 +39,7 @@ describe('public waste runtime', () => {
       assetsDir,
       env: {
         PUBLIC_WASTE_INSTANCE_ID: 'bb-prignitz',
-        PUBLIC_WASTE_DATABASE_URL: 'postgres://example',
+        PUBLIC_WASTE_DATABASE_URL: databaseUrlFor('bb-prignitz'),
         PUBLIC_WASTE_SCHEMA_NAME: 'public',
       },
     });
@@ -82,8 +88,8 @@ describe('public waste runtime', () => {
         PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
           instanceId: 'bb-prignitz',
           database: {
-            databaseUrl: 'postgres://example',
-            schemaName: 'wm',
+            databaseUrl: databaseUrlFor('bb-prignitz'),
+            schemaName: 'public',
           },
         }),
       },
@@ -158,7 +164,7 @@ describe('public waste runtime', () => {
         PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
           instanceId: 'bb-prignitz',
           database: {
-            databaseUrl: 'postgres://example',
+            databaseUrl: databaseUrlFor('bb-prignitz'),
             schemaName: 'public',
           },
           emailReminderConfig: {
@@ -240,7 +246,7 @@ describe('public waste runtime', () => {
         PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
           instanceId: 'bb-prignitz',
           database: {
-            databaseUrl: 'postgres://example',
+            databaseUrl: databaseUrlFor('bb-prignitz'),
             schemaName: 'public',
           },
           emailReminderConfig: {

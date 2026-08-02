@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { deriveWasteTenantDatabaseNames } from '@sva/server-runtime';
 
 import {
   readPublicWasteBootstrapStateFromEnvironment,
   resolvePublicWasteBootstrapState,
 } from './public-waste-bootstrap.server.js';
+
+const databaseUrlFor = (instanceId: string): string => {
+  const names = deriveWasteTenantDatabaseNames(instanceId);
+  return `postgresql://${names.publicAppRole}:secret@postgres:5432/${names.database}`;
+};
 
 describe('public waste bootstrap', () => {
   it('returns a missing-config error state when no raw config is provided', () => {
@@ -30,11 +36,14 @@ describe('public waste bootstrap', () => {
       readPublicWasteBootstrapStateFromEnvironment({
         env: {
           PUBLIC_WASTE_INSTANCE_ID: 'bb-prignitz-env',
-          PUBLIC_WASTE_DATABASE_URL: 'postgres://env',
-          PUBLIC_WASTE_SCHEMA_NAME: 'public-env',
+          PUBLIC_WASTE_DATABASE_URL: databaseUrlFor('bb-prignitz-env'),
+          PUBLIC_WASTE_SCHEMA_NAME: 'public',
           PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
             instanceId: 'bb-prignitz-json',
-            database: { databaseUrl: 'postgres://json', schemaName: 'public-json' },
+            database: {
+              databaseUrl: databaseUrlFor('bb-prignitz-json'),
+              schemaName: 'public',
+            },
             emailReminderConfig: {
               enabled: true,
               publicSignupEnabled: true,
@@ -84,7 +93,10 @@ describe('public waste bootstrap', () => {
         env: {},
         rawConfigJson: JSON.stringify({
           instanceId: 'bb-prignitz-json',
-          database: { databaseUrl: 'postgres://json', schemaName: 'public-json' },
+          database: {
+            databaseUrl: databaseUrlFor('bb-prignitz-json'),
+            schemaName: 'public',
+          },
         }),
       })
     ).toMatchObject({

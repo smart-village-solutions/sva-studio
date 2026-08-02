@@ -18,6 +18,10 @@ if [[ ! "$WASTE_TARGET_AVAILABLE_BYTES" =~ ^[0-9]+$ ]]; then
   exit 2
 fi
 
+normalize_count() {
+  tr -d '[:space:]'
+}
+
 SOURCE_PG_BIN="${SOURCE_PG_BIN:-}"
 source_pg_dump="${SOURCE_PG_BIN:+$SOURCE_PG_BIN/}pg_dump"
 source_pg_restore="${SOURCE_PG_BIN:+$SOURCE_PG_BIN/}pg_restore"
@@ -52,6 +56,9 @@ target_server_major="$(psql "service=$TARGET_PGSERVICE" --no-psqlrc --set=ON_ERR
 registry_database="$(psql "service=$STUDIO_PGSERVICE" --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align --command="SELECT database_name FROM iam.instance_waste_provisioning WHERE instance_id = 'bb-prignitz' AND status = 'ready'")"
 target_database="$(psql "service=$TARGET_PGSERVICE" --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align --command='SELECT current_database()')"
 target_user="$(psql "service=$TARGET_PGSERVICE" --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align --command='SELECT current_user')"
+active_waste_jobs="$(psql "service=$STUDIO_PGSERVICE" --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align --command="SELECT count(*) FROM iam.studio_jobs WHERE instance_id = 'bb-prignitz' AND plugin_id = 'waste-management' AND status IN ('queued', 'running', 'retrying')" | normalize_count)"
+source_active_sessions="$(psql "service=$SOURCE_PGSERVICE" --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align --command="SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND state <> 'idle'" | normalize_count)"
+target_active_sessions="$(psql "service=$TARGET_PGSERVICE" --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align --command="SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND state <> 'idle'" | normalize_count)"
 
 if [[ -z "$registry_database" ]] || [[ "$registry_database" != "$target_database" ]]; then
   echo "Die Zieldatenbank stimmt nicht mit der ready-Registry von bb-prignitz überein." >&2
@@ -60,6 +67,14 @@ fi
 expected_target_user="${target_database%_db}_migrator"
 if [[ "$target_user" != "$expected_target_user" ]]; then
   echo "TARGET_PGSERVICE muss die tenantgebundene Migrationsrolle verwenden." >&2
+  exit 2
+fi
+if [[ "$active_waste_jobs" != "0" ]]; then
+  echo "Der Offline-Cutover ist blockiert: Für bb-prignitz laufen noch Waste-Jobs." >&2
+  exit 2
+fi
+if [[ "$source_active_sessions" != "0" || "$target_active_sessions" != "0" ]]; then
+  echo "Der Offline-Cutover ist blockiert: Quelle oder Ziel besitzt noch aktive Fremdsitzungen." >&2
   exit 2
 fi
 

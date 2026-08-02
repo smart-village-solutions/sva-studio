@@ -8,7 +8,8 @@ Dieses Dokument beschreibt den Entwicklungs- und Testpfad für das modulbezogene
 
 - `iam.instances` enthält die Instanz
 - `iam.instance_modules` enthält den kanonischen Modulsatz
-- `@sva/plugin-sdk` liefert den deklarativen Modul-IAM-Vertrag
+- `@sva/core` liefert den kanonischen Katalog tenantweiter Core-Permissions
+- `@sva/studio-module-iam` liefert die Modulbeiträge und die validierte Gesamtsicht
 
 ## Lokaler Ablauf
 
@@ -43,13 +44,15 @@ pnpm nx run data:db:seed
 
 - Modulverträge dürfen nur über `plugin.moduleIam` eingebracht werden.
 - unbekannte Module werden serverseitig abgewiesen
-- Entzug entfernt modulbezogene Rechte hart
+- Entzug entfernt nur eindeutig als `module_sync` verwaltete Grants; Permission-Definitionen bleiben erhalten
 - `seedIamBaseline` verändert keine Rollenmitgliedschaften des aufrufenden Benutzers
+- Tenant- und aktive Modul-Permissions werden standardmäßig an `system_admin` vergeben; Ausnahmen sind explizit zu deklarieren
+- Katalogentfernung oder Deprecation löst keine automatische Löschung aus
 
 ## Relevante Checks
 
 ```bash
-openspec validate add-instance-module-activation --strict
+openspec validate add-canonical-permission-catalog --strict
 pnpm check:server-runtime
 pnpm nx run-many --target=test:unit --projects=plugin-sdk,instance-registry,data-repositories,data,routing,sva-studio-react --parallel=4
 ```

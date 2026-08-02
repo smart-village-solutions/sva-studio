@@ -74,6 +74,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 044 | Frontend-Test-Foundation mit MSW und selektivem fast-check | ✅ | 2026-05-22 | Frontend / Testing / Governance |
 | 046 | Plattform- vs. Tenant-Rollenmodell und Legacy-Standardrollen | ✅ | 2026-07-12 | IAM / Authorization |
 | 047 | Keycloak-Service-Accounts für die lokale MCP-Control-Plane | ✅ | 2026-07-13 | MCP / IAM / Security / Betrieb |
+| 049 | Kanonischer Permission-Katalog und additiver Reconcile | ✅ | 2026-08-02 | IAM / Authorization / Betrieb |
 
 ### Kanonischer Ablageort
 

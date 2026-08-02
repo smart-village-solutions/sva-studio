@@ -21,6 +21,7 @@ Exportierte Werte und Funktionen:
 - `studioPluginModuleIamContracts`
 - `studioHostModuleIamContracts`
 - `studioModuleIamContracts`
+- `studioPermissionCatalog` als validierte Gesamtsicht aus Core- und Modul-Permissions
 - `studioModuleIamRegistry`
 - `getStudioModuleIamContract(moduleId)`
 

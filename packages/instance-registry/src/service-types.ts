@@ -52,6 +52,7 @@ export type InstanceModuleIamRegistryEntry = {
     readonly roleName: string;
     readonly permissionIds: readonly string[];
   }[];
+  readonly systemAdminPermissionExclusions?: readonly string[];
 };
 
 type KeycloakProvisioningContext = {

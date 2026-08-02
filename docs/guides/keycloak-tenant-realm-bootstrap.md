@@ -202,6 +202,8 @@ Begründung:
 - `system_admin` reicht für die tenant-lokalen Admin-Funktionen wie Benutzer-, Rollen- und Gruppenverwaltung
 - `instance_registry_admin` ist eine Plattformrolle für globale Instanzmutationen und soll nicht automatisch an Tenant-Admins gehen
 - Tenant-Zugriffe werden fachlich über Permissions entschieden; `system_admin` ist nur die kanonische Bootstrap-Rolle, nicht das alleinige technische Zugriffsmodell
+- Der IAM-Baseline-Reconcile materialisiert alle aktiven tenantweiten Katalogeinträge sowie die Permissions der zugewiesenen Module und bindet sie standardmäßig additiv an `system_admin`.
+- Der Reconcile akzeptiert keine freien Permission-Payloads und löscht weder Custom-Rollen noch manuelle Grants; nach Katalogerweiterungen läuft derselbe Vertrag im regulären Studio-Rollout für bestehende Tenants.
 - der Root-Host-Provisioning-Pfad unter `/admin/instances` stellt den Tenant-Admin nicht nur in Keycloak sicher, sondern bindet den konfigurierten Bootstrap-User auch lokal in Studio direkt an die Sonderrolle `system_admin`
 - derselbe Root-Follow-up-Pfad synchronisiert nur `system_admin` und die IAM-Basis der aktivierten Module; Gruppen wie `admins`, Rollen wie `core_admin` oder modulbezogene `*_admin`-Standardrollen werden dabei nicht mehr automatisch angelegt
 

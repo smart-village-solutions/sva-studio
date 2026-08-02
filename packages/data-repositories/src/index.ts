@@ -39,6 +39,7 @@ export type {
   InstanceIntegrationRecord,
   InstanceIntegrationRepository,
   InstanceRegistryRepository,
+  PermissionCatalogReconcileResult,
   IntegrationProviderKey,
   MediaAssetListFilter,
   MediaAssetRecord,

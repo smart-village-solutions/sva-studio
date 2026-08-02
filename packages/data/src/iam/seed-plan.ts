@@ -1,26 +1,78 @@
+import { resolvesSystemAdminGrant } from '@sva/core';
+import { studioPermissionCatalog } from '@sva/studio-module-iam';
+
 import type { IamSeedPlan, PermissionKey, PersonaSeed } from './types.js';
 
-const permissions = [
-  ['40111111-1111-1111-1111-111111111168', 'iam.accounts.delete', 'Delete tenant accounts physically'],
+// IDs bleiben ausschließlich für reproduzierbare SQL-Fixtures stabil; fachliche Metadaten stammen aus dem Katalog.
+const permissionIdFixtures = [
+  [
+    '40111111-1111-1111-1111-111111111168',
+    'iam.accounts.delete',
+    'Delete tenant accounts physically',
+  ],
   ['40111111-1111-1111-1111-111111111111', 'iam.user.read', 'Read account data'],
   ['40111111-1111-1111-1111-111111111112', 'iam.user.write', 'Modify account data'],
   ['40111111-1111-1111-1111-111111111113', 'iam.role.read', 'Read role assignments'],
   ['40111111-1111-1111-1111-111111111114', 'iam.role.write', 'Modify role assignments'],
   ['40111111-1111-1111-1111-111111111115', 'iam.org.read', 'Read organization data'],
   ['40111111-1111-1111-1111-111111111116', 'iam.org.write', 'Modify organization data'],
-  ['40111111-1111-1111-1111-111111111151', 'iam.legalText.read', 'Read legal text administration data'],
-  ['40111111-1111-1111-1111-111111111152', 'iam.legalText.write', 'Modify legal text administration data'],
-  ['40111111-1111-1111-1111-111111111153', 'iam.governance.read', 'Read governance workflows and audit trails'],
-  ['40111111-1111-1111-1111-111111111154', 'iam.governance.write', 'Execute governance workflows and decisions'],
-  ['40111111-1111-1111-1111-111111111155', 'iam.governance.export', 'Export governance and legal consent evidence'],
+  [
+    '40111111-1111-1111-1111-111111111151',
+    'iam.legalText.read',
+    'Read legal text administration data',
+  ],
+  [
+    '40111111-1111-1111-1111-111111111152',
+    'iam.legalText.write',
+    'Modify legal text administration data',
+  ],
+  [
+    '40111111-1111-1111-1111-111111111153',
+    'iam.governance.read',
+    'Read governance workflows and audit trails',
+  ],
+  [
+    '40111111-1111-1111-1111-111111111154',
+    'iam.governance.write',
+    'Execute governance workflows and decisions',
+  ],
+  [
+    '40111111-1111-1111-1111-111111111155',
+    'iam.governance.export',
+    'Export governance and legal consent evidence',
+  ],
   ['40111111-1111-1111-1111-111111111156', 'iam.dsr.read', 'Read tenant data-subject-rights cases'],
-  ['40111111-1111-1111-1111-111111111157', 'iam.dsr.write', 'Process tenant data-subject-rights cases'],
-  ['40111111-1111-1111-1111-111111111158', 'iam.dsr.export', 'Export tenant data-subject-rights payloads'],
+  [
+    '40111111-1111-1111-1111-111111111157',
+    'iam.dsr.write',
+    'Process tenant data-subject-rights cases',
+  ],
+  [
+    '40111111-1111-1111-1111-111111111158',
+    'iam.dsr.export',
+    'Export tenant data-subject-rights payloads',
+  ],
   ['40111111-1111-1111-1111-111111111159', 'iam.deletionRules.read', 'Read tenant deletion rules'],
-  ['40111111-1111-1111-1111-111111111160', 'iam.deletionRules.write', 'Modify tenant deletion rules'],
-  ['40111111-1111-1111-1111-111111111161', 'iam.monitoring.read', 'Read IAM monitoring and plugin operation status'],
-  ['40111111-1111-1111-1111-111111111162', 'iam.monitoring.write', 'Run IAM monitoring and plugin operations'],
-  ['40111111-1111-1111-1111-111111111163', 'experimental.read', 'Enable experimental shell features and placeholders'],
+  [
+    '40111111-1111-1111-1111-111111111160',
+    'iam.deletionRules.write',
+    'Modify tenant deletion rules',
+  ],
+  [
+    '40111111-1111-1111-1111-111111111161',
+    'iam.monitoring.read',
+    'Read IAM monitoring and plugin operation status',
+  ],
+  [
+    '40111111-1111-1111-1111-111111111162',
+    'iam.monitoring.write',
+    'Run IAM monitoring and plugin operations',
+  ],
+  [
+    '40111111-1111-1111-1111-111111111163',
+    'experimental.read',
+    'Enable experimental shell features and placeholders',
+  ],
   ['40111111-1111-1111-1111-111111111117', 'content.read', 'Read content'],
   ['40111111-1111-1111-1111-111111111118', 'content.create', 'Create content'],
   ['40111111-1111-1111-1111-111111111119', 'content.updateMetadata', 'Update content metadata'],
@@ -30,7 +82,11 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111123', 'feature.toggle', 'Toggle feature flags'],
   ['40111111-1111-1111-1111-111111111149', 'app.read', 'Show the app link in the sidebar'],
   ['40111111-1111-1111-1111-111111111150', 'cockpit.read', 'Show the cockpit link in the sidebar'],
-  ['40111111-1111-1111-1111-111111111124', 'instance.registry.manage', 'Manage instance registry and provisioning'],
+  [
+    '40111111-1111-1111-1111-111111111124',
+    'instance.registry.manage',
+    'Manage instance registry and provisioning',
+  ],
   ['40111111-1111-1111-1111-111111111125', 'content.updatePayload', 'Update content payload'],
   ['40111111-1111-1111-1111-111111111126', 'content.changeStatus', 'Change content status'],
   ['40111111-1111-1111-1111-111111111127', 'content.archive', 'Archive content'],
@@ -60,11 +116,30 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111166', 'categories.update', 'Update categories plugin content'],
   ['40111111-1111-1111-1111-111111111167', 'categories.delete', 'Delete categories plugin content'],
 ] as const satisfies readonly [string, PermissionKey, string][];
-export const rootOnlySeedPermissionKeys = ['instance.registry.manage'] as const satisfies readonly PermissionKey[];
-const rootOnlySeedPermissionKeySet: ReadonlySet<PermissionKey> = new Set(rootOnlySeedPermissionKeys);
-export const tenantBootstrapPermissionKeys = permissions
-  .map(([, key]) => key)
-  .filter((key): key is PermissionKey => !rootOnlySeedPermissionKeySet.has(key));
+const fixturePermissionIds = new Map(permissionIdFixtures.map(([id, key]) => [key, id] as const));
+export const resolveFixturePermissionId = (
+  permissionIds: ReadonlyMap<PermissionKey, string>,
+  key: PermissionKey
+): string => {
+  const id = permissionIds.get(key);
+  if (!id) throw new Error(`Missing fixture permission ID: ${key}`);
+  return id;
+};
+const fixturePermissionCatalog = studioPermissionCatalog.filter(
+  (definition): definition is typeof definition & { readonly key: PermissionKey } =>
+    fixturePermissionIds.has(definition.key as PermissionKey)
+);
+export const rootOnlySeedPermissionKeys = fixturePermissionCatalog
+  .filter((definition) => definition.availability.kind === 'root')
+  .map((definition) => definition.key);
+export const tenantBootstrapPermissionKeys = fixturePermissionCatalog
+  .filter(
+    (definition) =>
+      definition.availability.kind !== 'root' &&
+      definition.lifecycle !== 'deprecated' &&
+      resolvesSystemAdminGrant(definition)
+  )
+  .map((definition) => definition.key);
 const personas: readonly PersonaSeed[] = [
   {
     personaKey: 'system_admin',
@@ -124,7 +199,10 @@ export const iamSeedPlan: IamSeedPlan & { readonly seedFiles: typeof iamSeedFile
       displayName: 'Seed District',
       organizationType: 'district',
       parentOrganizationId: '22333333-3333-3333-3333-333333333333',
-      hierarchyPath: ['22222222-2222-2222-2222-222222222222', '22333333-3333-3333-3333-333333333333'],
+      hierarchyPath: [
+        '22222222-2222-2222-2222-222222222222',
+        '22333333-3333-3333-3333-333333333333',
+      ],
       depth: 2,
       contentAuthorPolicy: 'org_only',
       isActive: true,
@@ -132,13 +210,13 @@ export const iamSeedPlan: IamSeedPlan & { readonly seedFiles: typeof iamSeedFile
     },
   ],
   personas,
-  permissions: permissions.map(([id, key, description]) => ({
-    id,
-    key,
-    action: key,
-    resourceType: key.replace(/\..*$/, ''),
+  permissions: fixturePermissionCatalog.map((definition) => ({
+      id: resolveFixturePermissionId(fixturePermissionIds, definition.key),
+    key: definition.key,
+    action: definition.key,
+    resourceType: definition.resourceType,
     scope: {},
-    description,
+    description: definition.description,
   })),
 };
 export const getPersonaSeed = (personaKey: PersonaSeed['personaKey']): PersonaSeed => {

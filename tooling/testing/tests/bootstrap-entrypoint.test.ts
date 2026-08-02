@@ -36,7 +36,7 @@ while (($#)); do
 done
 cp "$sql_file" "$OUTPUT_SQL_PATH"
 `,
-      'utf8',
+      'utf8'
     );
     chmodSync(fakePsqlPath, 0o755);
 
@@ -77,11 +77,22 @@ describe('bootstrap-entrypoint', () => {
     const sql = renderBootstrapSql();
 
     expect(sql).toContain(
-      'INSERT INTO iam.instances (id, display_name, status, parent_domain, primary_hostname, auth_realm, auth_client_id, tenant_admin_client_id)',
+      'INSERT INTO iam.instances (id, display_name, status, parent_domain, primary_hostname, auth_realm, auth_client_id, tenant_admin_client_id)'
     );
     expect(sql).toContain("'sva-studio-admin'");
     expect(sql).toContain(
-      "tenant_admin_client_id = COALESCE(NULLIF(iam.instances.tenant_admin_client_id, ''), EXCLUDED.tenant_admin_client_id)",
+      "tenant_admin_client_id = COALESCE(NULLIF(iam.instances.tenant_admin_client_id, ''), EXCLUDED.tenant_admin_client_id)"
     );
+  });
+
+  it('reconciles canonical tenant permissions and system_admin grants additively', () => {
+    const sql = renderBootstrapSql();
+
+    expect(sql).toContain("'iam.accounts.delete'");
+    expect(sql).toContain("'instance_permission_catalog_reconciled'");
+    expect(sql).toContain('FROM iam.instance_modules instance_module');
+    expect(sql).toContain('ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING');
+    expect(sql).not.toContain('DELETE FROM iam.permissions');
+    expect(sql).not.toContain('DELETE FROM iam.role_permissions');
   });
 });

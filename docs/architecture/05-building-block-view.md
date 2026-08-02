@@ -681,3 +681,10 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `@sva/sva-mainserver/server` stellt neben den unveränderten Fachadaptern schlanke Projection-List-Operationen bereit. Sie lesen ausschließlich Identität, Titel, Zeitpunkte, Sichtbarkeit, Status und Datenprovider; fachliche Payloads bleiben außerhalb des Projektionspfads.
 - Die Studio-Server-Runtime orchestriert pro Instanz, Account, Organisation und Inhaltstyp eine Hot-Phase und eine deduplizierte Reconciliation. Persistierte Pages sind sofort lesbar.
 - `iam.content_list_projection_sync_state` hält Generation, Phase, Page-Fortschritt, verfügbare Zeilen, Finalität und Fehlerzustand. Damit liegt die Konkurrenzkontrolle dauerhaft in PostgreSQL und nicht nur im Prozessspeicher.
+
+### Ergänzung 2026-08: Permission-Katalog und Reconcile
+
+- `@sva/core` besitzt Katalogtypen, Core-Definitionen, Availability, Lifecycle und Default-Grant-Regeln.
+- `@sva/studio-module-iam` komponiert die bestehenden Modulverträge zur validierten Gesamtsicht `studioPermissionCatalog`.
+- `@sva/data-repositories` materialisiert Definitionen und verwaltete Grants additiv und liefert sichere Änderungszähler.
+- `@sva/instance-registry` bindet denselben Vertrag an Tenant-Bootstrap, Modul-Lifecycle und explizites `seedIamBaseline`.

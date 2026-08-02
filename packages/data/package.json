@@ -3,7 +3,10 @@
   "license": "EUPL-1.2",
   "version": "0.0.1",
   "type": "module",
-  "svaPackageRoles": ["db-operations", "compat"],
+  "svaPackageRoles": [
+    "db-operations",
+    "compat"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/index.js",
@@ -18,9 +21,11 @@
     }
   },
   "dependencies": {
+    "@sva/core": "workspace:*",
     "@sva/data-client": "workspace:*",
     "@sva/data-repositories": "workspace:*",
     "@sva/server-runtime": "workspace:*",
+    "@sva/studio-module-iam": "workspace:*",
     "pg": "^8.22.0"
   },
   "devDependencies": {

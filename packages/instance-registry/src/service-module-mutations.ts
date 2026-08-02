@@ -1,3 +1,6 @@
+import { resolvesSystemAdminGrant, tenantCorePermissionCatalog } from '@sva/core';
+import type { PermissionCatalogReconcileResult } from '@sva/data-repositories';
+
 import { createGetInstanceDetail } from './service-detail.js';
 import {
   invalidateInstancePermissionSnapshots,
@@ -6,50 +9,6 @@ import {
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 
-// Keep this direct system_admin bundle aligned with the seeded tenant baseline until the seed accessor
-// is exposed as a stable cross-package runtime API.
-const SYSTEM_ADMIN_DIRECT_PERMISSION_KEYS = [
-  'iam.user.read',
-  'iam.user.write',
-  'iam.role.read',
-  'iam.role.write',
-  'iam.org.read',
-  'iam.org.write',
-  'iam.legalText.read',
-  'iam.legalText.write',
-  'iam.governance.read',
-  'iam.governance.write',
-  'iam.governance.export',
-  'iam.dsr.read',
-  'iam.dsr.write',
-  'iam.dsr.export',
-  'iam.deletionRules.read',
-  'iam.deletionRules.write',
-  'iam.monitoring.read',
-  'iam.monitoring.write',
-  'experimental.read',
-  'app.read',
-  'cockpit.read',
-  'content.read',
-  'content.create',
-  'content.updateMetadata',
-  'content.updatePayload',
-  'content.changeStatus',
-  'content.publish',
-  'content.archive',
-  'content.restore',
-  'content.readHistory',
-  'content.manageRevisions',
-  'content.delete',
-  'integration.manage',
-  'feature.toggle',
-  'media.read',
-  'media.create',
-  'media.update',
-  'media.reference.manage',
-  'media.delete',
-  'media.deliver.protected',
-] as const;
 const SYSTEM_ADMIN_ROLE_KEY = 'system_admin';
 const SYSTEM_ADMIN_DISPLAY_NAME = 'System Administrator';
 const SYSTEM_ADMIN_ROLE_LEVEL = 100;
@@ -58,39 +17,62 @@ const WASTE_MANAGEMENT_MODULE_ID = 'waste-management';
 const categoriesCompanionSourceModuleIds = new Set(['news', 'events', 'poi']);
 
 const withRequiredCompanionModules = (moduleIds: readonly string[]): string[] => {
-  const normalizedModuleIds = Array.from(new Set(moduleIds.map((moduleId) => moduleId.trim()).filter(Boolean)));
+  const normalizedModuleIds = Array.from(
+    new Set(moduleIds.map((moduleId) => moduleId.trim()).filter(Boolean))
+  );
 
   if (normalizedModuleIds.some((moduleId) => categoriesCompanionSourceModuleIds.has(moduleId))) {
     normalizedModuleIds.push(CATEGORIES_MODULE_ID);
   }
 
-  return Array.from(new Set(normalizedModuleIds)).sort((left, right) => left.localeCompare(right, 'de'));
+  return Array.from(new Set(normalizedModuleIds)).sort((left, right) =>
+    left.localeCompare(right, 'de')
+  );
 };
 
-type ProtectedSystemRolePermissionSyncRepository = InstanceRegistryServiceDeps['repository'] & {
-  syncProtectedSystemRolePermissions(input: {
-    instanceId: string;
-    role: {
-      roleKey: string;
-      displayName: string;
-      roleLevel: number;
-      permissionKeys: readonly string[];
-    };
-  }): Promise<void>;
-};
-
-const syncProtectedSystemAdminPermissions = async (deps: InstanceRegistryServiceDeps, instanceId: string) => {
-  const repository = deps.repository as ProtectedSystemRolePermissionSyncRepository;
-  await repository.syncProtectedSystemRolePermissions({
+const syncProtectedSystemAdminPermissions = async (
+  deps: InstanceRegistryServiceDeps,
+  instanceId: string
+) => {
+  return deps.repository.syncProtectedSystemRolePermissions({
     instanceId,
     role: {
       roleKey: SYSTEM_ADMIN_ROLE_KEY,
       displayName: SYSTEM_ADMIN_DISPLAY_NAME,
       roleLevel: SYSTEM_ADMIN_ROLE_LEVEL,
-      permissionKeys: [...SYSTEM_ADMIN_DIRECT_PERMISSION_KEYS],
+      permissions: tenantCorePermissionCatalog.map((permission) => ({
+        key: permission.key,
+        description: permission.description,
+        resourceType: permission.resourceType,
+      })),
+      grantPermissionKeys: tenantCorePermissionCatalog
+        .filter(resolvesSystemAdminGrant)
+        .map(({ key }) => key),
     },
   });
 };
+
+const normalizeReconcileResult = (
+  result: PermissionCatalogReconcileResult | void
+): PermissionCatalogReconcileResult =>
+  result ?? {
+    permissionsInserted: 0,
+    permissionsUpdated: 0,
+    permissionsUnchanged: 0,
+    grantsInserted: 0,
+    grantsUnchanged: 0,
+  };
+
+const mergeReconcileResults = (
+  ...results: readonly (PermissionCatalogReconcileResult | void)[]
+): PermissionCatalogReconcileResult =>
+  results.map(normalizeReconcileResult).reduce((total, result) => ({
+    permissionsInserted: total.permissionsInserted + result.permissionsInserted,
+    permissionsUpdated: total.permissionsUpdated + result.permissionsUpdated,
+    permissionsUnchanged: total.permissionsUnchanged + result.permissionsUnchanged,
+    grantsInserted: total.grantsInserted + result.grantsInserted,
+    grantsUnchanged: total.grantsUnchanged + result.grantsUnchanged,
+  }));
 
 const createModuleAssignRollbackError = (
   instanceId: string,
@@ -99,7 +81,11 @@ const createModuleAssignRollbackError = (
   rollbackError: unknown
 ): Error => {
   const message =
-    syncError instanceof Error ? syncError.message : typeof syncError === 'string' ? syncError : 'instance_module_sync_failed';
+    syncError instanceof Error
+      ? syncError.message
+      : typeof syncError === 'string'
+        ? syncError
+        : 'instance_module_sync_failed';
   const combined = new Error(message) as Error & {
     cause?: {
       rollbackError: unknown;
@@ -122,7 +108,11 @@ const createBootstrapAssignRollbackError = (
   rollbackError: unknown
 ): Error => {
   const message =
-    syncError instanceof Error ? syncError.message : typeof syncError === 'string' ? syncError : 'instance_module_sync_failed';
+    syncError instanceof Error
+      ? syncError.message
+      : typeof syncError === 'string'
+        ? syncError
+        : 'instance_module_sync_failed';
   const combined = new Error(message) as Error & {
     cause?: {
       rollbackError: unknown;
@@ -157,9 +147,12 @@ export const createAssignModuleHandler =
     }
 
     let assignedModuleIds: readonly string[];
+    let permissionReconcile: PermissionCatalogReconcileResult | void;
     const newlyAssignedModuleIds = [input.moduleId];
     try {
-      const assignedAfterPrimaryInsert = await deps.repository.listAssignedModules(input.instanceId);
+      const assignedAfterPrimaryInsert = await deps.repository.listAssignedModules(
+        input.instanceId
+      );
       const desiredAssignedModuleIds = withRequiredCompanionModules(assignedAfterPrimaryInsert);
 
       for (const moduleId of desiredAssignedModuleIds) {
@@ -171,8 +164,10 @@ export const createAssignModuleHandler =
         }
       }
 
-      assignedModuleIds = withRequiredCompanionModules(await deps.repository.listAssignedModules(input.instanceId));
-      await deps.repository.syncAssignedModuleIam({
+      assignedModuleIds = withRequiredCompanionModules(
+        await deps.repository.listAssignedModules(input.instanceId)
+      );
+      permissionReconcile = await deps.repository.syncAssignedModuleIam({
         instanceId: input.instanceId,
         managedModuleIds: [...registry.keys()],
         contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
@@ -183,7 +178,12 @@ export const createAssignModuleHandler =
           await deps.repository.revokeModule(input.instanceId, moduleId);
         }
       } catch (rollbackError) {
-        throw createModuleAssignRollbackError(input.instanceId, input.moduleId, error, rollbackError);
+        throw createModuleAssignRollbackError(
+          input.instanceId,
+          input.moduleId,
+          error,
+          rollbackError
+        );
       }
       throw error;
     }
@@ -196,6 +196,7 @@ export const createAssignModuleHandler =
       details: {
         moduleId: input.moduleId,
         assignedModules: assignedModuleIds,
+        permissionReconcile: normalizeReconcileResult(permissionReconcile),
         outcome: 'assigned',
       },
     });
@@ -223,7 +224,9 @@ export const createBootstrapAdminStructureHandler =
       return { ok: false, reason: 'unknown_module' };
     }
 
-    const currentAssignedModuleIds = new Set(await deps.repository.listAssignedModules(input.instanceId));
+    const currentAssignedModuleIds = new Set(
+      await deps.repository.listAssignedModules(input.instanceId)
+    );
     const newlyAssignedModuleIds: string[] = [];
     for (const moduleId of requestedModuleIds) {
       if (!currentAssignedModuleIds.has(moduleId)) {
@@ -235,9 +238,10 @@ export const createBootstrapAdminStructureHandler =
     }
 
     let assignedModuleIds: readonly string[];
+    let modulePermissionReconcile: PermissionCatalogReconcileResult | void;
     try {
       assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
-      await deps.repository.syncAssignedModuleIam({
+      modulePermissionReconcile = await deps.repository.syncAssignedModuleIam({
         instanceId: input.instanceId,
         managedModuleIds: [...registry.keys()],
         contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
@@ -247,21 +251,35 @@ export const createBootstrapAdminStructureHandler =
         for (const moduleId of [...newlyAssignedModuleIds].reverse()) {
           const removed = await deps.repository.revokeModule(input.instanceId, moduleId);
           if (!removed) {
-            const rollbackRevokeError = new Error(`rollback_revoke_failed:${moduleId}`) as Error & { cause?: unknown };
+            const rollbackRevokeError = new Error(`rollback_revoke_failed:${moduleId}`) as Error & {
+              cause?: unknown;
+            };
             rollbackRevokeError.cause = error;
             throw rollbackRevokeError;
           }
         }
       } catch (rollbackError) {
-        throw createBootstrapAssignRollbackError(input.instanceId, newlyAssignedModuleIds, error, rollbackError);
+        throw createBootstrapAssignRollbackError(
+          input.instanceId,
+          newlyAssignedModuleIds,
+          error,
+          rollbackError
+        );
       }
       throw error;
     }
 
     let bootstrapCompleted = false;
     try {
-      await syncProtectedSystemAdminPermissions(deps, input.instanceId);
+      const corePermissionReconcile = await syncProtectedSystemAdminPermissions(
+        deps,
+        input.instanceId
+      );
       bootstrapCompleted = true;
+      modulePermissionReconcile = mergeReconcileResults(
+        modulePermissionReconcile,
+        corePermissionReconcile
+      );
     } finally {
       await invalidateInstancePermissionSnapshots(
         deps,
@@ -279,6 +297,7 @@ export const createBootstrapAdminStructureHandler =
         assignedModules: assignedModuleIds,
         selectedModuleIds: requestedModuleIds,
         bootstrapMode: 'system_admin_only',
+        permissionReconcile: normalizeReconcileResult(modulePermissionReconcile),
         outcome: 'bootstrapped',
       },
     });
@@ -310,7 +329,7 @@ export const createRevokeModuleHandler =
     }
 
     const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
-    await deps.repository.syncAssignedModuleIam({
+    const permissionReconcile = await deps.repository.syncAssignedModuleIam({
       instanceId: input.instanceId,
       managedModuleIds: [...registry.keys()],
       contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
@@ -324,6 +343,7 @@ export const createRevokeModuleHandler =
       details: {
         moduleId: input.moduleId,
         assignedModules: assignedModuleIds,
+        permissionReconcile: normalizeReconcileResult(permissionReconcile),
         outcome: 'revoked',
       },
     });
@@ -346,13 +366,20 @@ export const createSeedIamBaselineHandler =
 
     const registry = requireModuleIamRegistry(deps);
     const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
-    await deps.repository.syncAssignedModuleIam({
+    const modulePermissionReconcile = await deps.repository.syncAssignedModuleIam({
       instanceId: input.instanceId,
       managedModuleIds: [...registry.keys()],
       contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
     });
-    await syncProtectedSystemAdminPermissions(deps, input.instanceId);
-    await invalidateInstancePermissionSnapshots(deps, input.instanceId, 'instance_module_iam_seeded');
+    const corePermissionReconcile = await syncProtectedSystemAdminPermissions(
+      deps,
+      input.instanceId
+    );
+    await invalidateInstancePermissionSnapshots(
+      deps,
+      input.instanceId,
+      'instance_module_iam_seeded'
+    );
     await deps.repository.appendAuditEvent({
       instanceId: input.instanceId,
       eventType: 'instance_module_iam_seeded',
@@ -360,6 +387,10 @@ export const createSeedIamBaselineHandler =
       requestId: input.requestId,
       details: {
         assignedModules: assignedModuleIds,
+        permissionReconcile: mergeReconcileResults(
+          modulePermissionReconcile,
+          corePermissionReconcile
+        ),
         outcome: 'seeded',
       },
     });

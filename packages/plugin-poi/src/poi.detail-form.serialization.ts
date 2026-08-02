@@ -1,6 +1,5 @@
 import type {
   PoiAccessibilityInformation,
-  PoiCertificate,
   PoiContact,
   PoiMediaContent,
   PoiWebUrl,
@@ -13,6 +12,12 @@ import type {
   PoiLocationFormValue,
 } from './poi.detail-form.types.js';
 import { normalizeMediaContentType } from './poi.detail-media-content-type.js';
+import {
+  hasSubstantiveFields,
+  serializeCertificates,
+  serializePayload,
+  serializeTags,
+} from './poi.detail-form.serialization.metadata.js';
 import { normalizeOpeningHourWeekday } from './poi.opening-hours.js';
 
 const compactString = (value?: string | null) => {
@@ -22,13 +27,6 @@ const compactString = (value?: string | null) => {
 
 const compactCategoryNames = (values: readonly string[]) =>
   Array.from(new Set(values.map((value) => value.trim()).filter((value) => value.length > 0)));
-
-const hasSubstantiveFields = <T extends Record<string, unknown>, K extends keyof T>(
-  entry: T,
-  ignoredKey: K,
-): boolean => {
-  return Object.keys(entry).some((key) => key !== ignoredKey);
-};
 
 const compactFiniteNumber = (value?: string | number | null) => {
   if (typeof value === 'number') {
@@ -64,7 +62,9 @@ const compactWebUrls = (value?: readonly PoiWebUrl[] | null) =>
   (value ?? [])
     .map((entry) => ({
       ...(compactString(entry?.url) ? { url: compactString(entry?.url) as string } : {}),
-      ...(compactString(entry?.description) ? { description: compactString(entry?.description) } : {}),
+      ...(compactString(entry?.description)
+        ? { description: compactString(entry?.description) }
+        : {}),
     }))
     .filter((entry): entry is PoiWebUrl => Boolean(entry.url));
 
@@ -110,7 +110,9 @@ const compactLocation = (value?: PoiLocationFormValue | null) => {
 const serializeOpeningHours = (values: PoiDetailFormValues['content']['openingHours']) =>
   (values ?? [])
     .map((entry) => ({
-      ...(compactString(entry?.weekday) ? { weekday: normalizeOpeningHourWeekday(compactString(entry?.weekday)) } : {}),
+      ...(compactString(entry?.weekday)
+        ? { weekday: normalizeOpeningHourWeekday(compactString(entry?.weekday)) }
+        : {}),
       ...(compactString(entry?.dateFrom) ? { dateFrom: compactString(entry?.dateFrom) } : {}),
       ...(compactString(entry?.dateTo) ? { dateTo: compactString(entry?.dateTo) } : {}),
       ...(compactString(entry?.timeFrom) ? { timeFrom: compactString(entry?.timeFrom) } : {}),
@@ -120,7 +122,9 @@ const serializeOpeningHours = (values: PoiDetailFormValues['content']['openingHo
         : {}),
       ...(entry?.open !== undefined ? { open: entry.open } : {}),
       ...(entry?.useYear !== undefined ? { useYear: entry.useYear } : {}),
-      ...(compactString(entry?.description) ? { description: compactString(entry?.description) } : {}),
+      ...(compactString(entry?.description)
+        ? { description: compactString(entry?.description) }
+        : {}),
     }))
     .filter((entry) => {
       const keys = Object.keys(entry);
@@ -142,7 +146,9 @@ const serializePrices = (values: PoiDetailFormValues['content']['prices']) =>
       ...(compactFiniteNumber(entry?.ageFrom) !== undefined
         ? { ageFrom: compactFiniteNumber(entry?.ageFrom) }
         : {}),
-      ...(compactFiniteNumber(entry?.ageTo) !== undefined ? { ageTo: compactFiniteNumber(entry?.ageTo) } : {}),
+      ...(compactFiniteNumber(entry?.ageTo) !== undefined
+        ? { ageTo: compactFiniteNumber(entry?.ageTo) }
+        : {}),
       ...(compactFiniteNumber(entry?.minAdultCount) !== undefined
         ? { minAdultCount: compactFiniteNumber(entry?.minAdultCount) }
         : {}),
@@ -155,7 +161,9 @@ const serializePrices = (values: PoiDetailFormValues['content']['prices']) =>
       ...(compactFiniteNumber(entry?.maxChildrenCount) !== undefined
         ? { maxChildrenCount: compactFiniteNumber(entry?.maxChildrenCount) }
         : {}),
-      ...(compactString(entry?.description) ? { description: compactString(entry?.description) } : {}),
+      ...(compactString(entry?.description)
+        ? { description: compactString(entry?.description) }
+        : {}),
       ...(compactString(entry?.category) ? { category: compactString(entry?.category) } : {}),
     }))
     .filter((entry) => {
@@ -170,21 +178,24 @@ const serializePrices = (values: PoiDetailFormValues['content']['prices']) =>
 const serializeMediaContents = (values: readonly PoiMediaContent[]) =>
   (values ?? [])
     .map((entry) => ({
-      ...(compactString(entry?.captionText) ? { captionText: compactString(entry?.captionText) } : {}),
+      ...(compactString(entry?.captionText)
+        ? { captionText: compactString(entry?.captionText) }
+        : {}),
       ...(compactString(entry?.copyright) ? { copyright: compactString(entry?.copyright) } : {}),
-      ...(compactFiniteNumber(entry?.height) !== undefined ? { height: compactFiniteNumber(entry?.height) } : {}),
-      ...(compactFiniteNumber(entry?.width) !== undefined ? { width: compactFiniteNumber(entry?.width) } : {}),
-      ...(normalizeMediaContentType(entry?.contentType) ? { contentType: normalizeMediaContentType(entry?.contentType) } : {}),
+      ...(compactFiniteNumber(entry?.height) !== undefined
+        ? { height: compactFiniteNumber(entry?.height) }
+        : {}),
+      ...(compactFiniteNumber(entry?.width) !== undefined
+        ? { width: compactFiniteNumber(entry?.width) }
+        : {}),
+      ...(normalizeMediaContentType(entry?.contentType)
+        ? { contentType: normalizeMediaContentType(entry?.contentType) }
+        : {}),
       ...(entry?.sourceUrl && compactWebUrls([entry.sourceUrl]).length > 0
         ? { sourceUrl: compactWebUrls([entry.sourceUrl])[0] }
         : {}),
     }))
     .filter((entry) => Object.keys(entry).length > 0);
-
-const serializeCertificates = (values: readonly PoiCertificate[]) =>
-  (values ?? [])
-    .map((entry) => ({ ...(compactString(entry?.name) ? { name: compactString(entry?.name) as string } : {}) }))
-    .filter((entry): entry is PoiCertificate => Boolean(entry.name));
 
 const serializeAccessibilityInformation = (value: PoiAccessibilityInformation) => {
   const urls = compactWebUrls(value.urls);
@@ -195,30 +206,26 @@ const serializeAccessibilityInformation = (value: PoiAccessibilityInformation) =
   };
 };
 
-const serializeTags = (value: string) => {
-  const tags = value
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter((tag) => tag.length > 0);
-  return tags;
-};
-
 export const mapPoiDetailFormValuesToInput = (
   values: PoiDetailFormValues,
-  payload: Record<string, unknown>,
+  payload: unknown
 ): PoiFormInput => {
   const contact = compactContact(values.content.contact);
   const operatorAddress = compactAddress(values.content.operator.address);
   const operatorContact = compactContact(values.content.operator.contact);
   const operator = {
-    ...(compactString(values.content.operator.name) ? { name: compactString(values.content.operator.name) } : {}),
+    ...(compactString(values.content.operator.name)
+      ? { name: compactString(values.content.operator.name) }
+      : {}),
     ...(operatorAddress ? { address: operatorAddress } : {}),
     ...(operatorContact ? { contact: operatorContact } : {}),
   };
 
   return {
     name: values.name.trim(),
-    ...(compactString(values.content.description) ? { description: compactString(values.content.description) } : {}),
+    ...(compactString(values.content.description)
+      ? { description: compactString(values.content.description) }
+      : {}),
     mobileDescription: compactString(values.content.mobileDescription) ?? '',
     active: values.basis.active,
     externalId: values.settings.externalId?.trim() ?? '',
@@ -233,15 +240,19 @@ export const mapPoiDetailFormValuesToInput = (
       .map((entry) => compactAddress(entry))
       .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
     ...(contact ? { contact } : {}),
-    ...(compactLocation(values.content.location) ? { location: compactLocation(values.content.location) } : {}),
+    ...(compactLocation(values.content.location)
+      ? { location: compactLocation(values.content.location) }
+      : {}),
     openingHours: serializeOpeningHours(values.content.openingHours),
     webUrls: compactWebUrls(values.content.webUrls),
     ...(Object.keys(operator).length > 0 ? { operatingCompany: operator } : {}),
     priceInformations: serializePrices(values.content.prices),
     mediaContents: serializeMediaContents(values.content.mediaContents),
     certificates: serializeCertificates(values.content.certificates),
-    accessibilityInformation: serializeAccessibilityInformation(values.content.accessibilityInformation),
+    accessibilityInformation: serializeAccessibilityInformation(
+      values.content.accessibilityInformation
+    ),
     tags: serializeTags(values.content.tagsText),
-    ...(Object.keys(payload).length > 0 ? { payload } : {}),
+    ...serializePayload(payload),
   };
 };

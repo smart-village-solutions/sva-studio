@@ -32,7 +32,7 @@ describe('resolveBreadcrumbItems', () => {
     expect(resolveBreadcrumbItems('/admin/news/new')).toEqual([
       { href: '/', label: 'Übersicht' },
       { href: '/admin/content', label: 'Inhalte' },
-      { label: 'News-Eintrag anlegen' },
+      { label: 'Nachricht anlegen' },
     ]);
   });
 
@@ -40,7 +40,7 @@ describe('resolveBreadcrumbItems', () => {
     expect(resolveBreadcrumbItems('/admin/news/content-1')).toEqual([
       { href: '/', label: 'Übersicht' },
       { href: '/admin/content', label: 'Inhalte' },
-      { label: 'News-Eintrag bearbeiten' },
+      { label: 'Nachricht bearbeiten' },
     ]);
   });
 
@@ -48,13 +48,13 @@ describe('resolveBreadcrumbItems', () => {
     expect(resolveBreadcrumbItems('/admin/events/new')).toEqual([
       { href: '/', label: 'Übersicht' },
       { href: '/admin/content', label: 'Inhalte' },
-      { label: 'Event anlegen' },
+      { label: 'Veranstaltung anlegen' },
     ]);
 
     expect(resolveBreadcrumbItems('/admin/events/event-1')).toEqual([
       { href: '/', label: 'Übersicht' },
       { href: '/admin/content', label: 'Inhalte' },
-      { label: 'Event bearbeiten' },
+      { label: 'Veranstaltung bearbeiten' },
     ]);
   });
 

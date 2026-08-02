@@ -170,7 +170,6 @@ export const contentENResources = {
       'The displayed Mainserver content comes from the last successful sync at {{value}}. A background refresh was started.',
     staleWithError:
       'The displayed Mainserver content comes from the last successful sync at {{value}}. The last background refresh reported {{errorCode}}.',
-    fresh: 'Last successful Mainserver sync: {{value}}.',
   },
   errors: {
     forbidden: 'You do not have sufficient permissions for this content action.',

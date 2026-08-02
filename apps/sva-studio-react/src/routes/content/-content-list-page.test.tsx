@@ -546,6 +546,31 @@ describe('ContentListPage', () => {
     });
   });
 
+  it('does not show a sync status for a fresh completed projection', () => {
+    useContentsMock.mockReturnValue(
+      createContentsApiResult({
+        metadata: {
+          mainserverSyncStates: [
+            {
+              contentType: 'news.article',
+              lastSucceededAt: '2026-06-24T08:00:00.000Z',
+              isStale: false,
+              isSyncRunning: false,
+              hasSnapshot: true,
+            },
+          ],
+          hasStaleMainserverContent: false,
+          hasBlockingSyncGap: false,
+          hasRunningMainserverSync: false,
+        },
+      })
+    );
+
+    render(<ContentListPage />);
+
+    expect(screen.queryByText(/letzter erfolgreicher Mainserver-Abgleich/i)).toBeNull();
+  });
+
   it('filters by status and falls back to the generic load error for unknown errors', () => {
     useContentsMock.mockReturnValue(createContentsApiResult({
       contents: [

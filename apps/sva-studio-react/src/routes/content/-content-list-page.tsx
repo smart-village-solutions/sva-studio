@@ -126,12 +126,6 @@ const renderProjectionSyncMessage = (metadata: IamContentListMetadata): string |
     });
   }
 
-  if (latestSucceededAt) {
-    return t('content.sync.fresh', {
-      value: formatDateTime(latestSucceededAt),
-    });
-  }
-
   return null;
 };
 

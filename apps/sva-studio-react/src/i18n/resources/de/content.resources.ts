@@ -173,7 +173,6 @@ export const contentDEResources = {
       'Die angezeigten Mainserver-Inhalte stammen aus dem letzten erfolgreichen Abgleich von {{value}}. Ein Hintergrundabgleich wurde angestoßen.',
     staleWithError:
       'Die angezeigten Mainserver-Inhalte stammen aus dem letzten erfolgreichen Abgleich von {{value}}. Der letzte Hintergrundabgleich meldete {{errorCode}}.',
-    fresh: 'Letzter erfolgreicher Mainserver-Abgleich: {{value}}.',
   },
   errors: {
     forbidden: 'Unzureichende Berechtigungen für diese Inhaltsaktion.',

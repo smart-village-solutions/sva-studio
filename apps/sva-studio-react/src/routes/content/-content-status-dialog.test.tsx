@@ -1,6 +1,6 @@
 import type { IamContentListItem, IamContentStatus } from '@sva/core';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const statusMutation = vi.hoisted(() => ({
   supported: vi.fn<(contentType: string) => readonly IamContentStatus[]>(),
@@ -40,6 +40,8 @@ const item = {
 } satisfies IamContentListItem;
 
 describe('ContentStatusDialog', () => {
+  afterEach(() => cleanup());
+
   beforeEach(() => {
     vi.clearAllMocks();
     statusMutation.supported.mockReturnValue(['draft', 'published']);
@@ -103,8 +105,8 @@ describe('ContentStatusDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Status von Rathausmeldung ändern' }));
     fireEvent.click(screen.getByRole('button', { name: 'Entwurf' }));
 
-    expect(screen.getByRole('button', { name: 'Entwurf' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Abbrechen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Entwurf' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Abbrechen' }).hasAttribute('disabled')).toBe(true);
     expect(statusMutation.update).toHaveBeenCalledWith(item, 'draft');
 
     resolveMutation?.();
@@ -120,7 +122,7 @@ describe('ContentStatusDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Entwurf' }));
 
     expect(await screen.findByText('Der Status konnte nicht geändert werden.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Entwurf' })).not.toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Abbrechen' })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Entwurf' }).hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('button', { name: 'Abbrechen' }).hasAttribute('disabled')).toBe(false);
   });
 });

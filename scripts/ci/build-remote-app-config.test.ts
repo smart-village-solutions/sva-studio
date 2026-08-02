@@ -27,6 +27,18 @@ describe('remote app config builder', () => {
     expect(JSON.stringify({ configRevision: result.configRevision, keys: result.keys, secretReferences: result.secretReferences })).not.toContain('sensitive-');
   });
 
+  it('emits the same canonical trimmed values that it validates', () => {
+    const result = buildRemoteAppConfig({
+      environment: 'staging',
+      profile: profile.replace('SVA_STACK_NAME=value', 'SVA_STACK_NAME=  value  '),
+      overrides: overrides.replace('external_secret_v1', '  external_secret_v1  '),
+    });
+
+    expect(result.source).toContain('SVA_STACK_NAME=value\n');
+    expect(result.source).toContain('WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME=external_secret_v1\n');
+    expect(result.source).not.toContain('  value  ');
+  });
+
   it('rejects duplicates, unknown keys, placeholders, misplaced config and invalid references', () => {
     expect(() => parseRemoteConfigLayer('dev', 'profile', 'SVA_RUNTIME_PROFILE=studio\nSVA_RUNTIME_PROFILE=other')).toThrow(PromoteContractError);
     expect(() => parseRemoteConfigLayer('dev', 'profile', 'UNKNOWN=value')).toThrow(/PROMOTE_CONFIG_INVALID/u);

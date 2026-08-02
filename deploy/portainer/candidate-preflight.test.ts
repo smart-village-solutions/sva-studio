@@ -4,9 +4,16 @@ vi.mock('@sva/auth-runtime/server', () => ({
   revealField: (value: string | null | undefined) => value === 'readable' ? 'secret' : undefined,
 }));
 
-const { parseAllowedInstanceIds, verifyTenantRows } = await import('./candidate-preflight.mjs');
+const { isCandidatePreflightEntrypoint, parseAllowedInstanceIds, verifyTenantRows } = await import('./candidate-preflight.mjs');
 
 describe('candidate preflight', () => {
+  it('recognizes relative and absolute CLI entrypoint paths', () => {
+    const absolutePath = new URL('./candidate-preflight.mjs', import.meta.url).pathname;
+    expect(isCandidatePreflightEntrypoint(new URL('./candidate-preflight.mjs', import.meta.url).href, absolutePath)).toBe(true);
+    expect(isCandidatePreflightEntrypoint(new URL('./candidate-preflight.mjs', import.meta.url).href, 'deploy/portainer/candidate-preflight.mjs')).toBe(true);
+    expect(isCandidatePreflightEntrypoint(new URL('./candidate-preflight.mjs', import.meta.url).href, undefined)).toBe(false);
+  });
+
   it('normalizes the explicit release tenant scope', () => {
     expect(parseAllowedInstanceIds('tenant-b, tenant-a,tenant-b')).toEqual(['tenant-a', 'tenant-b']);
   });

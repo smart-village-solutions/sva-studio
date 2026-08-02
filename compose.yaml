@@ -155,7 +155,7 @@ services:
       - "SVA_BOOTSTRAP_ENABLE_HOSTNAME_GUARD=${SVA_BOOTSTRAP_ENABLE_HOSTNAME_GUARD:-true}"
 
   candidate:
-    image: ghcr.io/smart-village-solutions/sva-studio
+    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG:-latest}}
     entrypoint:
       - node
       - ./candidate-preflight.mjs

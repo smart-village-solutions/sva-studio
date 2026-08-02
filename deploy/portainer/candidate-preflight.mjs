@@ -1,4 +1,6 @@
 import { access, constants } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { revealField } from '@sva/auth-runtime/server';
 
@@ -23,6 +25,9 @@ export const verifyTenantRows = (rows, allowedInstanceIds) => {
     }
   }
 };
+
+export const isCandidatePreflightEntrypoint = (moduleUrl, executablePath) =>
+  Boolean(executablePath) && moduleUrl === pathToFileURL(resolve(executablePath)).href;
 
 export const runCandidatePreflight = async () => {
   const { default: pg } = await import('pg');
@@ -56,7 +61,7 @@ export const runCandidatePreflight = async () => {
   }
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isCandidatePreflightEntrypoint(import.meta.url, process.argv[1])) {
   runCandidatePreflight().catch((error) => {
     const message = error instanceof Error ? error.message : 'candidate_internal_error';
     const code = message.includes('secret_unreadable')

@@ -82,9 +82,12 @@ describe('one-shot job compose documents', () => {
 
     const migration = buildMigrationJobComposeDocument(rendered, input);
     const bootstrap = buildBootstrapJobComposeDocument(rendered, { ...input, jobStackName: 'studio-staging-bootstrap-gha-123-1' });
+    const candidate = buildMigrationJobComposeDocument(rendered, { ...input, jobServiceName: 'candidate' });
+    const candidateService = candidate.services?.candidate as Record<string, unknown>;
 
     expect(Object.keys(migration.services ?? {})).toEqual(['migrate']);
     expect(Object.keys(bootstrap.services ?? {})).toEqual(['bootstrap']);
+    expect(candidateService.image).toBe('example.invalid/studio@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef');
     expect(migration.networks?.internal).toEqual({ external: true, name: 'studio-staging_internal' });
     expect(bootstrap.networks?.internal).toEqual({ external: true, name: 'studio-staging_internal' });
   });

@@ -34,7 +34,7 @@ export const parseRemoteConfigLayer = (environment: RemoteEnvironment, name: str
     if (!keyPattern.test(key)) fail(environment, 'PROMOTE_CONFIG_INVALID', `Ungueltiger Eintrag in ${name}, Zeile ${index + 1}.`, 'Nur KEY=VALUE-Eintraege mit gueltigen Umgebungsvariablennamen verwenden.');
     if (values.has(key)) fail(environment, 'PROMOTE_CONFIG_INVALID', `Doppelter Schluessel ${key} in ${name}.`, 'Jeden Schluessel pro Config-Schicht genau einmal definieren.');
     if (!remoteConfigContract[key]) fail(environment, 'PROMOTE_CONFIG_INVALID', `Unbekannter Remote-Config-Schluessel ${key}.`, 'Schluessel klassifizieren oder aus dem Remote-Bundle entfernen.');
-    values.set(key, line.slice(separator + 1));
+    values.set(key, line.slice(separator + 1).trim());
   });
   return { name, values };
 };

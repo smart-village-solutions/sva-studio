@@ -119,7 +119,7 @@
     "@nx/vite": "^23.0.1",
     "@nx/vitest": "^23.0.1",
     "@tailwindcss/postcss": "4.3.2",
-    "@types/node": "^25.6.0",
+    "@types/node": "^26.1.2",
     "@vitest/coverage-v8": "^4.1.9",
     "autoprefixer": "10.5.2",
     "eslint": "^10.6.0",
@@ -131,7 +131,7 @@
     "prettier": "^3.9.4",
     "tailwindcss": "4.3.2",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "8.62.1",
     "vite": "^8.0.16",
     "vitest": "^4.1.9"

@@ -29,6 +29,70 @@ const createDoctorReport = (overrides: Partial<DoctorReport>): DoctorReport => (
 });
 
 describe('smoke helpers', () => {
+  it('fails a persistent root 404 only after 50 attempts every 10 seconds by default', async () => {
+    const wait = vi.fn<(ms: number) => Promise<void>>().mockResolvedValue();
+    const runner = vi.fn<(env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>>()
+      .mockResolvedValue([
+        createProbe({
+          message: 'Erwartet HTTP 200, erhalten 404.',
+          name: 'public-home',
+          status: 'error',
+        }),
+      ]);
+    const ops = createRuntimeSmokeOps({
+      buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
+      buildSwarmServicePresenceProbe: () => createProbe({ scope: 'internal' }),
+      doctorRuntime: async () => createDoctorReport({}),
+      isExpectedOidcRedirect: () => true,
+      parseRuntimeProfile: (value) => value,
+      resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
+      runHttpProbe: async (input) => createProbe({ name: input.name, target: input.target }),
+      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
+      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      wait,
+    });
+
+    await expect(ops.waitForRemoteSmokeWarmup({}, { runner, runtimeProfile: 'studio' }))
+      .rejects.toThrow('public-home: Erwartet HTTP 200, erhalten 404.');
+
+    expect(runner).toHaveBeenCalledTimes(50);
+    expect(wait).toHaveBeenCalledTimes(49);
+    expect(wait.mock.calls).toEqual(Array.from({ length: 49 }, () => [10_000]));
+  });
+
+  it.each([
+    { SVA_EXTERNAL_SMOKE_MAX_ATTEMPTS: 'abc', SVA_EXTERNAL_SMOKE_RETRY_DELAY_MS: 'abc' },
+    { SVA_EXTERNAL_SMOKE_RETRY_DELAY_MS: 'abc', SVA_EXTERNAL_SMOKE_WARMUP_WINDOW_MS: 'abc' },
+  ])('falls back to safe defaults for invalid external warmup settings', async (env) => {
+    const wait = vi.fn<(ms: number) => Promise<void>>().mockResolvedValue();
+    const transientFailure = createProbe({
+      message: 'Erwartet HTTP 200, erhalten 404.',
+      name: 'public-home',
+      status: 'error',
+    });
+    const runner = vi.fn<(env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>>()
+      .mockResolvedValueOnce([transientFailure])
+      .mockResolvedValueOnce([createProbe({ name: 'public-home' })]);
+    const ops = createRuntimeSmokeOps({
+      buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
+      buildSwarmServicePresenceProbe: () => createProbe({ scope: 'internal' }),
+      doctorRuntime: async () => createDoctorReport({}),
+      isExpectedOidcRedirect: () => true,
+      parseRuntimeProfile: (value) => value,
+      resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
+      runHttpProbe: async (input) => createProbe({ name: input.name, target: input.target }),
+      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
+      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      wait,
+    });
+
+    await expect(ops.runExternalSmokeWithWarmup(env, { runner, runtimeProfile: 'studio' }))
+      .resolves.toEqual([expect.objectContaining({ name: 'public-home', status: 'ok' })]);
+
+    expect(runner).toHaveBeenCalledTimes(2);
+    expect(wait).toHaveBeenCalledExactlyOnceWith(10_000);
+  });
+
   it('probes every explicit ingress host and an unknown host for the selected environment', async () => {
     const targets: string[] = [];
     const names: string[] = [];

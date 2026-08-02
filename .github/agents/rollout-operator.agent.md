@@ -93,7 +93,7 @@ Nicht benötigte One-shot-Phasen werden durch die Gate-Auswertung übersprungen;
 
 ## Konvergenz
 
-Nach einem Swarm-Update bis zu fünf Minuten ab abgeschlossenem Service-Update zulassen. Während dieses Fensters keine zusätzliche Mutation starten. Danach erneut prüfen:
+Nach einem Swarm-Update bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden ab abgeschlossenem Service-Update zulassen. Während dieses Fensters keine zusätzliche Mutation starten. Danach erneut prüfen:
 
 - App-Task läuft,
 - `/health/live` und `/health/ready` liefern 200,
@@ -111,7 +111,7 @@ Wenn ein App-Rollback nötig ist:
 1. vorherigen Live-Digest aus der Promote-Evidenz nehmen,
 2. Datenbankschema-Kompatibilität prüfen,
 3. Recovery auf den expliziten App-Service und Zielstack begrenzen,
-4. fünf Minuten Konvergenz berücksichtigen,
+4. bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden berücksichtigen,
 5. vollständige Health-, Tenant- und Digest-Verifikation ausführen,
 6. Incident-Report unter `docs/reports/` anlegen,
 7. Zustand anschließend durch den kanonischen Promote-Pfad reconciliieren.

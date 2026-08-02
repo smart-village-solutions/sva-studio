@@ -13,20 +13,20 @@ Dieses Runbook beschreibt Betrieb, Fehlerdiagnose und Notfallmaßnahmen für die
 
 ## Fehlercodes
 
-| Fehlercode | Bedeutung | Typische Ursache | Sofortmaßnahme |
-| --- | --- | --- | --- |
-| `config_not_found` | Keine Mainserver-Konfiguration zur Instanz gefunden | fehlender Datensatz in `iam.instance_integrations` | Datensatz prüfen/anlegen |
-| `integration_disabled` | Integration ist betriebsseitig deaktiviert | `enabled = false` | nur nach Freigabe wieder aktivieren |
-| `invalid_config` | Upstream-URL verletzt das erlaubte Schema | `http` auf externen Hosts, URL mit Credentials/Fragment | URL korrigieren, erneute Diagnostik |
-| `database_unavailable` | Instanzkonfiguration konnte nicht aus der IAM-DB geladen werden | Postgres nicht erreichbar, Connection-Fehler | Postgres/Netzwerk prüfen, Logs korrelieren |
-| `identity_provider_unavailable` | Keycloak-Attribute konnten nicht gelesen werden | Keycloak-Ausfall, Rechteproblem, Admin-API-Störung | Keycloak/API-Fehler prüfen |
-| `missing_credentials` | API-Key/Secret fehlen für den Benutzer | leere oder unvollständige Keycloak-Attribute | Credentials für den Benutzer neu setzen |
-| `token_request_failed` | OAuth2-Tokenabruf schlug mit Nicht-Auth-Status fehl | 5xx/4xx vom OAuth-Endpunkt | Upstream-Status und Retry-Logs prüfen |
-| `unauthorized` | Upstream lehnt Credentials/Token ab | falscher API-Key/Secret, ungültiges Token | Credentials rotieren und Benutzer testen |
-| `forbidden` | Lokale oder Upstream-Berechtigung fehlt | fehlende Studio-Rolle oder Mainserver-Rechte | lokale Rollen und Mainserver-Rechte prüfen |
-| `network_error` | Netzwerk- oder Timeout-Fehler | DNS/Netzwerk/Timeout/503 trotz Retry | Upstream-Erreichbarkeit und Timeout-Logs prüfen |
-| `graphql_error` | GraphQL antwortet mit fachlichem Fehlerarray | Schema-/Resolver-Fehler upstream | Response-Details und Snapshot-Drift prüfen |
-| `invalid_response` | OAuth2- oder GraphQL-Body verletzt den erwarteten Contract | HTML statt JSON, unvollständige Antwort, Schema-Drift | Upstream-Response und Snapshot prüfen |
+| Fehlercode                      | Bedeutung                                                       | Typische Ursache                                        | Sofortmaßnahme                                  |
+| ------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------- |
+| `config_not_found`              | Keine Mainserver-Konfiguration zur Instanz gefunden             | fehlender Datensatz in `iam.instance_integrations`      | Datensatz prüfen/anlegen                        |
+| `integration_disabled`          | Integration ist betriebsseitig deaktiviert                      | `enabled = false`                                       | nur nach Freigabe wieder aktivieren             |
+| `invalid_config`                | Upstream-URL verletzt das erlaubte Schema                       | `http` auf externen Hosts, URL mit Credentials/Fragment | URL korrigieren, erneute Diagnostik             |
+| `database_unavailable`          | Instanzkonfiguration konnte nicht aus der IAM-DB geladen werden | Postgres nicht erreichbar, Connection-Fehler            | Postgres/Netzwerk prüfen, Logs korrelieren      |
+| `identity_provider_unavailable` | Keycloak-Attribute konnten nicht gelesen werden                 | Keycloak-Ausfall, Rechteproblem, Admin-API-Störung      | Keycloak/API-Fehler prüfen                      |
+| `missing_credentials`           | API-Key/Secret fehlen für den Benutzer                          | leere oder unvollständige Keycloak-Attribute            | Credentials für den Benutzer neu setzen         |
+| `token_request_failed`          | OAuth2-Tokenabruf schlug mit Nicht-Auth-Status fehl             | 5xx/4xx vom OAuth-Endpunkt                              | Upstream-Status und Retry-Logs prüfen           |
+| `unauthorized`                  | Upstream lehnt Credentials/Token ab                             | falscher API-Key/Secret, ungültiges Token               | Credentials rotieren und Benutzer testen        |
+| `forbidden`                     | Lokale oder Upstream-Berechtigung fehlt                         | fehlende Studio-Rolle oder Mainserver-Rechte            | lokale Rollen und Mainserver-Rechte prüfen      |
+| `network_error`                 | Netzwerk- oder Timeout-Fehler                                   | DNS/Netzwerk/Timeout/503 trotz Retry                    | Upstream-Erreichbarkeit und Timeout-Logs prüfen |
+| `graphql_error`                 | GraphQL antwortet mit fachlichem Fehlerarray                    | Schema-/Resolver-Fehler upstream                        | Response-Details und Snapshot-Drift prüfen      |
+| `invalid_response`              | OAuth2- oder GraphQL-Body verletzt den erwarteten Contract      | HTML statt JSON, unvollständige Antwort, Schema-Drift   | Upstream-Response und Snapshot prüfen           |
 
 ## Host-geführte Inhaltsübersicht
 
@@ -46,6 +46,9 @@ Betriebsrelevante Regeln:
 - Die Listen-Pagination der Übersicht ist serverseitig führend. Große Bestände müssen sich daher zuerst über die Antwortzeiten von `/api/v1/iam/contents` und erst danach über einzelne Mainserver-Adapter diagnostizieren lassen.
 - Die Detail- und Mutationspfade der Fachplugins bleiben unverändert auf den jeweiligen Host-Fassaden unter `/api/v1/mainserver/*`.
 - Nach erfolgreichen hostgeführten Mainserver-Mutationen für News, Events und POI stößt der Host direkt einen typbezogenen Projektions-Refresh an, damit ein anschließender Refetch auf `/admin/content` den neuen Stand sieht.
+- Die Übersicht zeigt pro Datensatz die technische ID sowie vorhandene Erstellungs- und Veröffentlichungszeitpunkte. Fehlende Veröffentlichungszeitpunkte werden ausdrücklich als nicht gesetzt dargestellt.
+- Ein Status-Badge ist nur mit Schreibrecht und für fachlich unterstützte Übergänge interaktiv. News, Veranstaltungen, Orte und generische Inhalte verwenden `Entwurf` und `Veröffentlicht`; Umfragen unterstützen zusätzlich `Archiviert`. Die Änderung läuft über die jeweilige Host-Fassade des Fachplugins und anschließend über einen Refetch der Projektion.
+- Unsichtbare News, Veranstaltungen und generische Inhalte sowie inaktive Orte werden sowohl im Projektions- als auch im Legacy-Listenadapter als `Entwurf` abgebildet. Der technische Mainserver-Default `published` darf diese Sichtbarkeitsinformation nicht überschreiben.
 
 ### Schnelldiagnose für `/admin/content`
 
@@ -60,21 +63,21 @@ Betriebsrelevante Regeln:
 
 Das News-Plugin nutzt produktiv keine lokalen IAM-Content-Datensätze mehr. Der Browser ruft ausschließlich die hostgeführte Fassade unter `/api/v1/mainserver/news` und `/api/v1/mainserver/news/$newsId` auf; die App prüft Session, Instanzkontext, lokale Content-Primitive und Mainserver-Credentials, bevor ein Upstream-Call erfolgt.
 
-| Studio-Methode | Lokale Primitive | Mainserver-Operation | Hinweis |
-| --- | --- | --- | --- |
-| `GET /api/v1/mainserver/news` | `content.read` | `newsItems` | Nur sichtbare Mainserver-News werden als veröffentlichte Plugin-Items abgebildet. |
-| `GET /api/v1/mainserver/news/$newsId` | `content.read` | `newsItem(id)` | `not_found` wird als stabiler Fehlercode an die Plugin-Fassade zurückgegeben. |
-| `POST /api/v1/mainserver/news` | `content.create` | `createNewsItem` | `publishedAt` ist verpflichtend; `contentBlocks` sind das führende Inhaltsmodell; `pushNotification` ist nur beim Erstellen erlaubt. |
-| `PATCH /api/v1/mainserver/news/$newsId` | `content.updateMetadata`, `content.updatePayload` | `createNewsItem(id, forceCreate: false)` | Update-Semantik ohne `payload` und mit vollständiger `contentBlocks`-Liste wurde gegen Staging bestätigt. |
-| `DELETE /api/v1/mainserver/news/$newsId` | `content.delete` | `destroyRecord(id, recordType: "NewsItem")` | Fachlich ein harter Löschpfad; kein lokaler Soft-Delete und kein Dual-Write. |
+| Studio-Methode                           | Lokale Primitive                                  | Mainserver-Operation                        | Hinweis                                                                                                                              |
+| ---------------------------------------- | ------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/v1/mainserver/news`            | `content.read`                                    | `newsItems`                                 | Nur sichtbare Mainserver-News werden als veröffentlichte Plugin-Items abgebildet.                                                    |
+| `GET /api/v1/mainserver/news/$newsId`    | `content.read`                                    | `newsItem(id)`                              | `not_found` wird als stabiler Fehlercode an die Plugin-Fassade zurückgegeben.                                                        |
+| `POST /api/v1/mainserver/news`           | `content.create`                                  | `createNewsItem`                            | `publishedAt` ist verpflichtend; `contentBlocks` sind das führende Inhaltsmodell; `pushNotification` ist nur beim Erstellen erlaubt. |
+| `PATCH /api/v1/mainserver/news/$newsId`  | `content.updateMetadata`, `content.updatePayload` | `createNewsItem(id, forceCreate: false)`    | Update-Semantik ohne `payload` und mit vollständiger `contentBlocks`-Liste wurde gegen Staging bestätigt.                            |
+| `DELETE /api/v1/mainserver/news/$newsId` | `content.delete`                                  | `destroyRecord(id, recordType: "NewsItem")` | Fachlich ein harter Löschpfad; kein lokaler Soft-Delete und kein Dual-Write.                                                         |
 
 ## Kategorien
 
 Die Kategorien-Fassade ist kein News-spezifischer Spezialfall mehr. Der Host schützt `/api/v1/mainserver/categories` über die eigenständige Instanz-Permission `categories.read`, damit sowohl die Kategorienseite als auch Facheditoren dieselbe fachliche Freigabe verwenden.
 
-| Studio-Methode | Lokale Primitive | Mainserver-Operation | Hinweis |
-| --- | --- | --- | --- |
-| `GET /api/v1/mainserver/categories` | `categories.read` | `categories` | Liefert die aktuell hostseitig validierte flache Kategorienliste mit optionalem `parent`-Kontext für die read-only Kategorienseite und für Editor-Auswahllisten. |
+| Studio-Methode                      | Lokale Primitive  | Mainserver-Operation | Hinweis                                                                                                                                                          |
+| ----------------------------------- | ----------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/mainserver/categories` | `categories.read` | `categories`         | Liefert die aktuell hostseitig validierte flache Kategorienliste mit optionalem `parent`-Kontext für die read-only Kategorienseite und für Editor-Auswahllisten. |
 
 Lokale Altinhalte mit `contentType = news.article` oder dem Legacy-Typ `news` werden nicht migriert und nicht mehr produktiv angezeigt. Falls solche Datensätze noch in der IAM-Content-Tabelle vorhanden sind, dienen sie nur noch als Altquelle für manuelle Analyse oder einen späteren operatorgeführten Export.
 
@@ -86,18 +89,18 @@ Rollback erfolgt über den Mainserver-Kill-Switch `iam.instance_integrations.ena
 
 Events und POI folgen demselben Boundary-Muster wie News: Browser-Plugins sprechen nur hostgeführte Fassaden, während Session, `instanceId`, lokale Content-Primitive, Mainserver-Credentials, Error-Mapping und Logging serverseitig bleiben.
 
-| Studio-Methode | Lokale Primitive | Mainserver-Operation | Hinweis |
-| --- | --- | --- | --- |
-| `GET /api/v1/mainserver/events` | `content.read` | `eventRecords` | Liefert veröffentlichte Event-Items mit Mainserver-Feldern für Titel, Beschreibung, Termine, Kategorie, Adresse, Kontakte, URLs, Medien, Veranstalter, Preise, Barrierefreiheit, Tags und optionalen POI-Bezug. |
-| `GET /api/v1/mainserver/events/$eventId` | `content.read` | `eventRecord(id)` | Fehlende Events werden als stabiler Fehlercode an das Plugin zurückgegeben. |
-| `POST /api/v1/mainserver/events` | `content.create` | `createEventRecord` | Neue Events werden nicht parallel als lokale IAM-Contents geschrieben. |
-| `PATCH /api/v1/mainserver/events/$eventId` | `content.updateMetadata`, `content.updatePayload` | `createEventRecord(id, forceCreate: false)` | Update nutzt die bestätigte Upsert-Semantik; Wiederholungen bleiben auf Snapshot-Felder wie `repeat`, `repeatDuration` und `recurring*` begrenzt. |
-| `DELETE /api/v1/mainserver/events/$eventId` | `content.delete` | `destroyRecord(id, recordType: "EventRecord")` | Phase 1 nutzt einen harten Löschpfad. Falls Staging diesen Record-Type widerlegt, wird nur dieser Pfad auf `changeVisibility(false)` umgestellt. |
-| `GET /api/v1/mainserver/poi` | `content.read` | `pointsOfInterest` | Dient der POI-Liste und der POI-Auswahl im Event-Editor. |
-| `GET /api/v1/mainserver/poi/$poiId` | `content.read` | `pointOfInterest(id)` | Liefert POI-Felder für Name, Beschreibungen, Aktivstatus, Kategorie, Adresse, Kontakt, Öffnungszeiten, Betreiber, URLs, Medien, Preise, Zertifikate, Barrierefreiheit, Tags und `payload`. |
-| `POST /api/v1/mainserver/poi` | `content.create` | `createPointOfInterest` | Keine Media-Uploads; Medien werden nur als URL-/Referenzmodell übertragen. |
-| `PATCH /api/v1/mainserver/poi/$poiId` | `content.updateMetadata`, `content.updatePayload` | `createPointOfInterest(id, forceCreate: false)` | `active` und Mainserver-Sichtbarkeit bleiben getrennte Fachfelder. |
-| `DELETE /api/v1/mainserver/poi/$poiId` | `content.delete` | `destroyRecord(id, recordType: "PointOfInterest")` | Phase 1 nutzt einen harten Löschpfad. |
+| Studio-Methode                              | Lokale Primitive                                  | Mainserver-Operation                               | Hinweis                                                                                                                                                                                                         |
+| ------------------------------------------- | ------------------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/mainserver/events`             | `content.read`                                    | `eventRecords`                                     | Liefert veröffentlichte Event-Items mit Mainserver-Feldern für Titel, Beschreibung, Termine, Kategorie, Adresse, Kontakte, URLs, Medien, Veranstalter, Preise, Barrierefreiheit, Tags und optionalen POI-Bezug. |
+| `GET /api/v1/mainserver/events/$eventId`    | `content.read`                                    | `eventRecord(id)`                                  | Fehlende Events werden als stabiler Fehlercode an das Plugin zurückgegeben.                                                                                                                                     |
+| `POST /api/v1/mainserver/events`            | `content.create`                                  | `createEventRecord`                                | Neue Events werden nicht parallel als lokale IAM-Contents geschrieben.                                                                                                                                          |
+| `PATCH /api/v1/mainserver/events/$eventId`  | `content.updateMetadata`, `content.updatePayload` | `createEventRecord(id, forceCreate: false)`        | Update nutzt die bestätigte Upsert-Semantik; Wiederholungen bleiben auf Snapshot-Felder wie `repeat`, `repeatDuration` und `recurring*` begrenzt.                                                               |
+| `DELETE /api/v1/mainserver/events/$eventId` | `content.delete`                                  | `destroyRecord(id, recordType: "EventRecord")`     | Phase 1 nutzt einen harten Löschpfad. Falls Staging diesen Record-Type widerlegt, wird nur dieser Pfad auf `changeVisibility(false)` umgestellt.                                                                |
+| `GET /api/v1/mainserver/poi`                | `content.read`                                    | `pointsOfInterest`                                 | Dient der POI-Liste und der POI-Auswahl im Event-Editor.                                                                                                                                                        |
+| `GET /api/v1/mainserver/poi/$poiId`         | `content.read`                                    | `pointOfInterest(id)`                              | Liefert POI-Felder für Name, Beschreibungen, Aktivstatus, Kategorie, Adresse, Kontakt, Öffnungszeiten, Betreiber, URLs, Medien, Preise, Zertifikate, Barrierefreiheit, Tags und `payload`.                      |
+| `POST /api/v1/mainserver/poi`               | `content.create`                                  | `createPointOfInterest`                            | Keine Media-Uploads; Medien werden nur als URL-/Referenzmodell übertragen.                                                                                                                                      |
+| `PATCH /api/v1/mainserver/poi/$poiId`       | `content.updateMetadata`, `content.updatePayload` | `createPointOfInterest(id, forceCreate: false)`    | `active` und Mainserver-Sichtbarkeit bleiben getrennte Fachfelder.                                                                                                                                              |
+| `DELETE /api/v1/mainserver/poi/$poiId`      | `content.delete`                                  | `destroyRecord(id, recordType: "PointOfInterest")` | Phase 1 nutzt einen harten Löschpfad.                                                                                                                                                                           |
 
 Der Event-Editor importiert das POI-Plugin nicht direkt. Die Auswahl nutzt ausschließlich `/api/v1/mainserver/poi`; dadurch bleiben Rechteprüfung, Downstream-Credentials und Fehlerklassifikation im Host.
 
@@ -107,13 +110,13 @@ Rollback erfolgt wie bei News über `iam.instance_integrations.enabled = false`.
 
 Surveys folgen demselben Boundary-Muster wie News, Events und POI. Das Plugin erzeugt Exportdateien aus den JSON-Ergebnissen im Studio; der Mainserver liefert dafür den hostgeführten Survey-Vertrag.
 
-| Studio-Methode | Lokale Primitive | Mainserver-Operation | Hinweis |
-| --- | --- | --- | --- |
-| `GET /api/v1/mainserver/surveys` | `surveys.read` | `surveys` | Liefert die Mainserver-gestützte Survey-Liste für Inhaltsliste und Editor-Einstiege. |
-| `GET /api/v1/mainserver/surveys/$surveyId` | `surveys.read` | `survey(id)` | Liefert den Survey-Detailvertrag für den Editor; Ergebnisdaten werden nur zusätzlich geladen, wenn `surveys.moderate` oder `surveys.export` freigegeben ist. |
-| `POST /api/v1/mainserver/surveys` | `surveys.create` | `createOrUpdateSurvey` | Der Host mappt das vereinfachte Studio-Zielmodell auf den Mainserver-Vertrag. |
-| `PATCH /api/v1/mainserver/surveys/$surveyId` | `surveys.update` | `createOrUpdateSurvey(id)` | Updates bleiben hostgeführt und verwenden keinen Plugin-eigenen GraphQL-Pfad. |
-| `DELETE /api/v1/mainserver/surveys/$surveyId` | `surveys.delete` | `destroyRecord(id, recordType: "Survey")` oder Survey-spezifischer Delete-Pfad | Der konkrete Mainserver-Löschpfad bleibt im typed Adapter gekapselt. |
+| Studio-Methode                                | Lokale Primitive | Mainserver-Operation                                                           | Hinweis                                                                                                                                                      |
+| --------------------------------------------- | ---------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/v1/mainserver/surveys`              | `surveys.read`   | `surveys`                                                                      | Liefert die Mainserver-gestützte Survey-Liste für Inhaltsliste und Editor-Einstiege.                                                                         |
+| `GET /api/v1/mainserver/surveys/$surveyId`    | `surveys.read`   | `survey(id)`                                                                   | Liefert den Survey-Detailvertrag für den Editor; Ergebnisdaten werden nur zusätzlich geladen, wenn `surveys.moderate` oder `surveys.export` freigegeben ist. |
+| `POST /api/v1/mainserver/surveys`             | `surveys.create` | `createOrUpdateSurvey`                                                         | Der Host mappt das vereinfachte Studio-Zielmodell auf den Mainserver-Vertrag.                                                                                |
+| `PATCH /api/v1/mainserver/surveys/$surveyId`  | `surveys.update` | `createOrUpdateSurvey(id)`                                                     | Updates bleiben hostgeführt und verwenden keinen Plugin-eigenen GraphQL-Pfad.                                                                                |
+| `DELETE /api/v1/mainserver/surveys/$surveyId` | `surveys.delete` | `destroyRecord(id, recordType: "Survey")` oder Survey-spezifischer Delete-Pfad | Der konkrete Mainserver-Löschpfad bleibt im typed Adapter gekapselt.                                                                                         |
 
 Fachliche Regeln des Studio-Vertrags:
 

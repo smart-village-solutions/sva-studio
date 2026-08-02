@@ -52,9 +52,9 @@ const sampleItem: NewsContentItem = {
 
 describe('news.detail-form', () => {
   it('backs compatibility aliases with the hidden snapshot instead of standalone public state', () => {
-    const values = createDefaultNewsDetailFormValues('Redaktion') as typeof createDefaultNewsDetailFormValues extends (
-      ...args: never[]
-    ) => infer TValue
+    const values = createDefaultNewsDetailFormValues(
+      'Redaktion'
+    ) as typeof createDefaultNewsDetailFormValues extends (...args: never[]) => infer TValue
       ? TValue & {
           externalId?: string;
           newsType?: string;
@@ -64,7 +64,9 @@ describe('news.detail-form', () => {
 
     values.externalId = 'ext-42';
     values.newsType = 'meldung';
-    values.contentBlocks = [{ title: 'Block', intro: 'Teaser', body: '<p>Body</p>', mediaContents: [] }];
+    values.contentBlocks = [
+      { title: 'Block', intro: 'Teaser', body: '<p>Body</p>', mediaContents: [] },
+    ];
 
     expect(values.__legacySnapshot).toMatchObject({
       externalId: 'ext-42',
@@ -102,61 +104,69 @@ describe('news.detail-form', () => {
   });
 
   it('requires a schedule date only for scheduled publication mode', async () => {
-    await expect(newsDetailFormSchema.parseAsync({
-      ...createDefaultNewsDetailFormValues(),
-      title: 'News title',
-      author: 'Redaktion',
-      contentTeaser: 'Teaser',
-      contentBody: '<p>Body</p>',
-      publicationMode: 'scheduled',
-      scheduledPublicationAt: '',
-    })).rejects.toThrow();
+    await expect(
+      newsDetailFormSchema.parseAsync({
+        ...createDefaultNewsDetailFormValues(),
+        title: 'News title',
+        author: 'Redaktion',
+        contentTeaser: 'Teaser',
+        contentBody: '<p>Body</p>',
+        publicationMode: 'scheduled',
+        scheduledPublicationAt: '',
+      })
+    ).rejects.toThrow();
   });
 
   it('allows draft mode without a scheduled publication date', async () => {
-    await expect(newsDetailFormSchema.parseAsync({
-      ...createDefaultNewsDetailFormValues(),
-      title: 'News title',
-      author: 'Redaktion',
-      contentTeaser: 'Teaser',
-      contentBody: '<p>Body</p>',
-      publicationMode: 'draft',
-      scheduledPublicationAt: '',
-    })).resolves.toMatchObject({
+    await expect(
+      newsDetailFormSchema.parseAsync({
+        ...createDefaultNewsDetailFormValues(),
+        title: 'News title',
+        author: 'Redaktion',
+        contentTeaser: 'Teaser',
+        contentBody: '<p>Body</p>',
+        publicationMode: 'draft',
+        scheduledPublicationAt: '',
+      })
+    ).resolves.toMatchObject({
       publicationMode: 'draft',
     });
   });
 
   it('accepts the simplified schema without public legacy fields', async () => {
-    await expect(newsDetailFormSchema.parseAsync({
-      title: 'News title',
-      author: 'Redaktion',
-      categories: [],
-      contentTeaser: 'Teaser',
-      contentBody: '<p>Body</p>',
-      contentMedia: [],
-      sourceUrl: { url: '', description: '' },
-      sourceUrlDescription: '',
-      pushNotificationEnabled: false,
-      publicationMode: 'immediate',
-      scheduledPublicationAt: '',
-    })).resolves.not.toHaveProperty('externalId');
+    await expect(
+      newsDetailFormSchema.parseAsync({
+        title: 'News title',
+        author: 'Redaktion',
+        categories: [],
+        contentTeaser: 'Teaser',
+        contentBody: '<p>Body</p>',
+        contentMedia: [],
+        sourceUrl: { url: '', description: '' },
+        sourceUrlDescription: '',
+        pushNotificationEnabled: false,
+        publicationMode: 'immediate',
+        scheduledPublicationAt: '',
+      })
+    ).resolves.not.toHaveProperty('externalId');
   });
 
   it('accepts news entries without content body and source url', async () => {
-    await expect(newsDetailFormSchema.parseAsync({
-      title: 'News title',
-      author: 'Redaktion',
-      categories: [],
-      contentTeaser: 'Teaser',
-      contentBody: '',
-      contentMedia: [],
-      sourceUrl: { url: '', description: '' },
-      sourceUrlDescription: '',
-      pushNotificationEnabled: false,
-      publicationMode: 'draft',
-      scheduledPublicationAt: '',
-    })).resolves.toMatchObject({
+    await expect(
+      newsDetailFormSchema.parseAsync({
+        title: 'News title',
+        author: 'Redaktion',
+        categories: [],
+        contentTeaser: 'Teaser',
+        contentBody: '',
+        contentMedia: [],
+        sourceUrl: { url: '', description: '' },
+        sourceUrlDescription: '',
+        pushNotificationEnabled: false,
+        publicationMode: 'draft',
+        scheduledPublicationAt: '',
+      })
+    ).resolves.toMatchObject({
       title: 'News title',
       contentBody: '',
       sourceUrl: { url: '', description: '' },
@@ -180,10 +190,25 @@ describe('news.detail-form', () => {
     expect(mutation).not.toHaveProperty('charactersToBeShown');
   });
 
+  it('preserves bullet lists, ordered lists, and links in serialized editor HTML', () => {
+    const values = createDefaultNewsDetailFormValues('Redaktion');
+    const formattedHtml =
+      '<ul><li>Erster Punkt</li></ul><ol><li>Erster Schritt</li></ol><p><a href="https://example.org">Weitere Informationen</a></p>';
+
+    values.title = 'Formatierte Nachricht';
+    values.contentBody = formattedHtml;
+
+    expect(mapNewsDetailFormValuesToMutation(values, 'create').contentBlocks?.[0]?.body).toBe(
+      formattedHtml
+    );
+  });
+
   it('preserves compatibility publicationDate edits distinct from publishedAt', () => {
     const values = createDefaultNewsDetailFormValues('Redaktion');
 
-    values.contentBlocks = [{ title: 'Block', intro: 'Teaser', body: '<p>Body</p>', mediaContents: [] }];
+    values.contentBlocks = [
+      { title: 'Block', intro: 'Teaser', body: '<p>Body</p>', mediaContents: [] },
+    ];
     values.publishedAt = '2026-06-01T12:00:00.000Z';
     values.publicationDate = '2026-05-31T18:30:00.000Z';
 
@@ -193,7 +218,9 @@ describe('news.detail-form', () => {
       title: 'Block',
       publishedAt: '2026-06-01T12:00:00.000Z',
       publicationDate: '2026-05-31T18:30:00.000Z',
-      contentBlocks: [expect.objectContaining({ title: 'Block', intro: 'Teaser', body: '<p>Body</p>' })],
+      contentBlocks: [
+        expect.objectContaining({ title: 'Block', intro: 'Teaser', body: '<p>Body</p>' }),
+      ],
     });
   });
 
@@ -305,7 +332,9 @@ describe('news.detail-form', () => {
         publishedAt: '2026-02-28T12:30',
         publicationDate: '2026-02-28T12:45',
         charactersToBeShown: '0',
-        contentBlocks: [{ title: 'Legacy', intro: 'Fallback', body: '<p>Body</p>', mediaContents: [] }],
+        contentBlocks: [
+          { title: 'Legacy', intro: 'Fallback', body: '<p>Body</p>', mediaContents: [] },
+        ],
       })
     ).resolves.toMatchObject({
       publishedAt: '2026-02-28T12:30',
@@ -440,7 +469,9 @@ describe('news.detail-form', () => {
         },
       ],
     });
-    expect(mapNewsDetailFormValuesToMutation(values, 'create').contentBlocks?.[0]?.mediaContents?.[0]).not.toHaveProperty('height');
+    expect(
+      mapNewsDetailFormValuesToMutation(values, 'create').contentBlocks?.[0]?.mediaContents?.[0]
+    ).not.toHaveProperty('height');
   });
 
   it('derives dirty tabs and character counts from simplified and compatibility-driven fields', () => {

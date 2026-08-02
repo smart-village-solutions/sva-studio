@@ -92,6 +92,9 @@ export const sharedVitestConfig = defineConfig({
       '@sva/plugin-poi': fileURLToPath(
         new URL('../../packages/plugin-poi/src/index.ts', import.meta.url)
       ),
+      '@sva/plugin-surveys/api': fileURLToPath(
+        new URL('../../packages/plugin-surveys/src/surveys.api.ts', import.meta.url)
+      ),
       '@sva/plugin-surveys': fileURLToPath(
         new URL('../../packages/plugin-surveys/src/index.ts', import.meta.url)
       ),

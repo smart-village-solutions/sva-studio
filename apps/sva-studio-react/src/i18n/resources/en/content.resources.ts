@@ -53,6 +53,13 @@ export const contentENResources = {
     published: 'Published',
     archived: 'Archived',
   },
+  statusDialog: {
+    open: 'Change status of {{title}}',
+    title: 'Change status',
+    description: 'Choose the new status for “{{title}}”.',
+    current: 'Current',
+    error: 'The status could not be changed.',
+  },
   table: {
     caption: 'Table of managed content items',
     ariaLabel: 'Content',
@@ -93,7 +100,8 @@ export const contentENResources = {
       news: 'Create and maintain news items, articles, and editorial stories for the app.',
       events: 'Create and manage events within the shared content area.',
       poi: 'Create and maintain places and relevant points of interest for the app.',
-      surveys: 'Create surveys as a regular content type and manage their internal evaluation flow.',
+      surveys:
+        'Create surveys as a regular content type and manage their internal evaluation flow.',
     },
     empty: {
       title: 'No creatable content types',

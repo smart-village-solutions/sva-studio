@@ -8,7 +8,8 @@ import { fileURLToPath, URL } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 
 const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, '');
-const resolveAppPath = (relativePath: string) => fileURLToPath(new URL(relativePath, import.meta.url));
+const resolveAppPath = (relativePath: string) =>
+  fileURLToPath(new URL(relativePath, import.meta.url));
 
 const appRoot = normalizeDirectory(new URL('./', import.meta.url));
 const workspaceRoot = normalizeDirectory(new URL('../../', import.meta.url));
@@ -38,7 +39,10 @@ const tanstackStartClientEnvCompatPlugin = () => ({
       return null;
     }
 
-    if (!code.includes('process.env.TSS_SERVER_FN_BASE') && !code.includes('process.env.TSS_ROUTER_BASEPATH')) {
+    if (
+      !code.includes('process.env.TSS_SERVER_FN_BASE') &&
+      !code.includes('process.env.TSS_ROUTER_BASEPATH')
+    ) {
       return null;
     }
 
@@ -92,24 +96,38 @@ const config = defineConfig({
       // TanStack router imports a default export here, so provide a compat shim.
       'react-dom/server': resolveAppPath('./src/lib/react-dom-server-compat.ts'),
       // Force the ESM builds here. The CommonJS variants pull tslib through a broken SSR interop path.
-      'react-remove-scroll': resolveAppPath('../../node_modules/.pnpm/node_modules/react-remove-scroll/dist/es2015'),
-      'react-remove-scroll-bar': resolveAppPath('../../node_modules/.pnpm/node_modules/react-remove-scroll-bar/dist/es2015'),
-      'react-style-singleton': resolveAppPath('../../node_modules/.pnpm/node_modules/react-style-singleton/dist/es2015'),
+      'react-remove-scroll': resolveAppPath(
+        '../../node_modules/.pnpm/node_modules/react-remove-scroll/dist/es2015'
+      ),
+      'react-remove-scroll-bar': resolveAppPath(
+        '../../node_modules/.pnpm/node_modules/react-remove-scroll-bar/dist/es2015'
+      ),
+      'react-style-singleton': resolveAppPath(
+        '../../node_modules/.pnpm/node_modules/react-style-singleton/dist/es2015'
+      ),
       tslib: resolveAppPath('../../node_modules/.pnpm/node_modules/tslib/tslib.es6.mjs'),
-      'use-callback-ref': resolveAppPath('../../node_modules/.pnpm/node_modules/use-callback-ref/dist/es2015'),
+      'use-callback-ref': resolveAppPath(
+        '../../node_modules/.pnpm/node_modules/use-callback-ref/dist/es2015'
+      ),
       // Workspace package subpath exports direkt auf Source files mappen (für Dev-SSR)
       '@sva/routing/server': resolveAppPath('../../packages/routing/src/index.server.ts'),
       '@sva/routing/auth': resolveAppPath('../../packages/routing/src/auth.routes.ts'),
       '@sva/routing': resolveAppPath('../../packages/routing/src/index.ts'),
       '@sva/auth-runtime/server': resolveAppPath('../../packages/auth-runtime/src/server.ts'),
       '@sva/auth-runtime/routes': resolveAppPath('../../packages/auth-runtime/src/routes.ts'),
-      '@sva/auth-runtime/runtime-routes': resolveAppPath('../../packages/auth-runtime/src/runtime-routes.ts'),
-      '@sva/auth-runtime/runtime-health': resolveAppPath('../../packages/auth-runtime/src/runtime-health.ts'),
+      '@sva/auth-runtime/runtime-routes': resolveAppPath(
+        '../../packages/auth-runtime/src/runtime-routes.ts'
+      ),
+      '@sva/auth-runtime/runtime-health': resolveAppPath(
+        '../../packages/auth-runtime/src/runtime-health.ts'
+      ),
       '@sva/auth-runtime': resolveAppPath('../../packages/auth-runtime/src/index.ts'),
       '@sva/data/server': resolveAppPath('../../packages/data/src/server.ts'),
       '@sva/data': resolveAppPath('../../packages/data/src/index.ts'),
       '@sva/data-client': resolveAppPath('../../packages/data-client/src/index.ts'),
-      '@sva/data-repositories/server': resolveAppPath('../../packages/data-repositories/src/server.ts'),
+      '@sva/data-repositories/server': resolveAppPath(
+        '../../packages/data-repositories/src/server.ts'
+      ),
       '@sva/data-repositories': resolveAppPath('../../packages/data-repositories/src/index.ts'),
       '@sva/mail-runtime': resolveAppPath('../../packages/mail-runtime/src/index.ts'),
       '@sva/iam-admin/encryption': resolveAppPath('../../packages/iam-admin/src/encryption.ts'),
@@ -130,14 +148,18 @@ const config = defineConfig({
       '@sva/iam-governance/dsr-export-status': resolveAppPath(
         '../../packages/iam-governance/src/dsr-export-status.ts'
       ),
-      '@sva/iam-governance/dsr-maintenance': resolveAppPath('../../packages/iam-governance/src/dsr-maintenance.ts'),
+      '@sva/iam-governance/dsr-maintenance': resolveAppPath(
+        '../../packages/iam-governance/src/dsr-maintenance.ts'
+      ),
       '@sva/iam-governance/legal-text-repository-shared': resolveAppPath(
         '../../packages/iam-governance/src/legal-text-repository-shared.ts'
       ),
       '@sva/iam-governance/legal-text-repository': resolveAppPath(
         '../../packages/iam-governance/src/legal-text-repository.ts'
       ),
-      '@sva/iam-governance/legal-text-html': resolveAppPath('../../packages/iam-governance/src/legal-text-html.ts'),
+      '@sva/iam-governance/legal-text-html': resolveAppPath(
+        '../../packages/iam-governance/src/legal-text-html.ts'
+      ),
       '@sva/iam-governance/legal-text-sanitize-html': resolveAppPath(
         '../../packages/iam-governance/src/legal-text-sanitize-html.ts'
       ),
@@ -163,7 +185,9 @@ const config = defineConfig({
       '@sva/instance-registry/http-contracts': resolveAppPath(
         '../../packages/instance-registry/src/http-contracts.ts'
       ),
-      '@sva/instance-registry/http-guards': resolveAppPath('../../packages/instance-registry/src/http-guards.ts'),
+      '@sva/instance-registry/http-guards': resolveAppPath(
+        '../../packages/instance-registry/src/http-guards.ts'
+      ),
       '@sva/instance-registry/http-instance-handlers': resolveAppPath(
         '../../packages/instance-registry/src/http-instance-handlers.ts'
       ),
@@ -191,7 +215,9 @@ const config = defineConfig({
       '@sva/instance-registry/runtime-wiring': resolveAppPath(
         '../../packages/instance-registry/src/runtime-wiring.ts'
       ),
-      '@sva/instance-registry/service': resolveAppPath('../../packages/instance-registry/src/service.ts'),
+      '@sva/instance-registry/service': resolveAppPath(
+        '../../packages/instance-registry/src/service.ts'
+      ),
       '@sva/instance-registry/service-detail': resolveAppPath(
         '../../packages/instance-registry/src/service-detail.ts'
       ),
@@ -208,7 +234,9 @@ const config = defineConfig({
         '../../packages/instance-registry/src/service-types.ts'
       ),
       '@sva/instance-registry': resolveAppPath('../../packages/instance-registry/src/index.ts'),
-      '@sva/sva-mainserver/server': resolveAppPath('../../packages/sva-mainserver/src/index.server.ts'),
+      '@sva/sva-mainserver/server': resolveAppPath(
+        '../../packages/sva-mainserver/src/index.server.ts'
+      ),
       '@sva/sva-mainserver': resolveAppPath('../../packages/sva-mainserver/src/index.ts'),
       '@sva/plugin-waste-management/waste-management.job-definitions': resolveAppPath(
         '../../packages/plugin-waste-management/src/waste-management.job-definitions.ts'
@@ -218,24 +246,37 @@ const config = defineConfig({
       '@sva/plugin-events': resolveAppPath('../../packages/plugin-events/src/index.ts'),
       '@sva/plugin-news': resolveAppPath('../../packages/plugin-news/src/index.ts'),
       '@sva/plugin-poi': resolveAppPath('../../packages/plugin-poi/src/index.ts'),
+      '@sva/plugin-surveys/api': resolveAppPath('../../packages/plugin-surveys/src/surveys.api.ts'),
       '@sva/plugin-surveys': resolveAppPath('../../packages/plugin-surveys/src/index.ts'),
-      '@sva/plugin-waste-management': resolveAppPath('../../packages/plugin-waste-management/src/index.ts'),
+      '@sva/plugin-waste-management': resolveAppPath(
+        '../../packages/plugin-waste-management/src/index.ts'
+      ),
       '@sva/plugin-sdk': resolveAppPath('../../packages/plugin-sdk/src/index.ts'),
-      '@sva/plugin-events/events.pages': resolveAppPath('../../packages/plugin-events/src/events.pages.tsx'),
+      '@sva/plugin-events/events.pages': resolveAppPath(
+        '../../packages/plugin-events/src/events.pages.tsx'
+      ),
       '@sva/plugin-poi/poi.pages': resolveAppPath('../../packages/plugin-poi/src/poi.pages.tsx'),
       '@sva/studio-module-iam': resolveAppPath('../../packages/studio-module-iam/src/index.ts'),
       '@sva/studio-ui-react': resolveAppPath('../../packages/studio-ui-react/src/index.ts'),
       '@sva/server-runtime': resolveAppPath('../../packages/server-runtime/src/index.ts'),
-      '@sva/monitoring-client/server': resolveAppPath('../../packages/monitoring-client/src/server.ts'),
+      '@sva/monitoring-client/server': resolveAppPath(
+        '../../packages/monitoring-client/src/server.ts'
+      ),
       '@sva/monitoring-client/logger-provider.server': resolveAppPath(
         '../../packages/monitoring-client/src/logger-provider.server.ts'
       ),
-      '@sva/monitoring-client/logging': resolveAppPath('../../packages/monitoring-client/src/logging.ts'),
+      '@sva/monitoring-client/logging': resolveAppPath(
+        '../../packages/monitoring-client/src/logging.ts'
+      ),
       '@sva/monitoring-client': resolveAppPath('../../packages/monitoring-client/src/index.ts'),
-      '@sva/waste-management-runtime/server': resolveAppPath('../../packages/waste-management-runtime/src/server.ts'),
+      '@sva/waste-management-runtime/server': resolveAppPath(
+        '../../packages/waste-management-runtime/src/server.ts'
+      ),
       '@sva/core/security': resolveAppPath('../../packages/core/src/security/index.ts'),
       '@sva/core': resolveAppPath('../../packages/core/src/index.ts'),
-      '@sva/waste-management-runtime': resolveAppPath('../../packages/waste-management-runtime/src/index.ts'),
+      '@sva/waste-management-runtime': resolveAppPath(
+        '../../packages/waste-management-runtime/src/index.ts'
+      ),
     },
   },
   ssr: {

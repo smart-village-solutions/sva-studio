@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapEventItem, mapNewsItem, mapPoiItem, mapSurveyItem } from './iam-content-list-mainserver.js';
+import {
+  mapEventItem,
+  mapGenericItem,
+  mapNewsItem,
+  mapPoiItem,
+  mapSurveyItem,
+} from './iam-content-list-mainserver.js';
 
 const publishedTimestamps = {
   createdAt: '2026-06-01T10:00:00.000Z',
@@ -25,10 +31,7 @@ describe('iam content list mainserver mapping', () => {
           ...publishedTimestamps,
         } as never,
         'instance-1',
-        [
-          { action: 'events.create' },
-          { action: 'events.update' },
-        ]
+        [{ action: 'events.create' }, { action: 'events.update' }]
       ).access
     ).toEqual({
       state: 'editable',
@@ -83,7 +86,14 @@ describe('iam content list mainserver mapping', () => {
     ).toMatchObject({
       title: 'poi-1',
       historyRef: 'mainserver:poi:poi-1',
-      payload: { description: 'Ort', active: true, payload: { legacy: true }, addresses: [], webUrls: [], tags: [] },
+      payload: {
+        description: 'Ort',
+        active: true,
+        payload: { legacy: true },
+        addresses: [],
+        webUrls: [],
+        tags: [],
+      },
       access: { state: 'editable', canCreate: true, canUpdate: true },
     });
   });
@@ -187,6 +197,64 @@ describe('iam content list mainserver mapping', () => {
         canUpdate: false,
       },
     });
+  });
+
+  it('maps hidden or inactive mainserver records as drafts', () => {
+    expect(
+      mapNewsItem(
+        {
+          id: 'news-draft',
+          contentType: 'news.article',
+          title: 'Entwurf',
+          author: 'redaktion',
+          visible: false,
+          publishedAt: '2026-06-03T10:00:00.000Z',
+          ...publishedTimestamps,
+        } as never,
+        'instance-1',
+        []
+      ).status
+    ).toBe('draft');
+    expect(
+      mapEventItem(
+        {
+          id: 'event-draft',
+          contentType: 'events.event-record',
+          title: 'Entwurf',
+          visible: false,
+          ...publishedTimestamps,
+        } as never,
+        'instance-1',
+        []
+      ).status
+    ).toBe('draft');
+    expect(
+      mapGenericItem(
+        {
+          id: 'generic-draft',
+          contentType: 'generic-items.generic-item',
+          title: 'Entwurf',
+          genericType: 'notice',
+          visible: false,
+          ...publishedTimestamps,
+        } as never,
+        'instance-1',
+        []
+      ).status
+    ).toBe('draft');
+    expect(
+      mapPoiItem(
+        {
+          id: 'poi-draft',
+          contentType: 'poi.point-of-interest',
+          name: 'Entwurf',
+          active: false,
+          ...publishedTimestamps,
+        } as never,
+        'instance-1',
+        []
+      ).status
+    ).toBe('draft');
   });
 
   it('falls back across localized survey values and keeps malformed namespaces read-only', () => {

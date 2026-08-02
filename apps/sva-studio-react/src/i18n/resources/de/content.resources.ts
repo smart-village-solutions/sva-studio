@@ -54,6 +54,13 @@ export const contentDEResources = {
     published: 'Veröffentlicht',
     archived: 'Archiviert',
   },
+  statusDialog: {
+    open: 'Status von {{title}} ändern',
+    title: 'Status ändern',
+    description: 'Wählen Sie den neuen Status für „{{title}}“.',
+    current: 'Aktuell',
+    error: 'Der Status konnte nicht geändert werden.',
+  },
   table: {
     caption: 'Tabelle der verwalteten Inhalte',
     ariaLabel: 'Inhalte',

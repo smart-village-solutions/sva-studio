@@ -1,8 +1,4 @@
-import type {
-  ContentJsonValue,
-  IamContentAccessSummary,
-  IamContentListItem,
-} from '@sva/core';
+import type { ContentJsonValue, IamContentAccessSummary, IamContentListItem } from '@sva/core';
 import type { EffectivePermission } from '@sva/iam-core';
 
 type MainserverDataProvider = Readonly<{
@@ -17,6 +13,7 @@ type MainserverNewsItem = Readonly<{
   contentBlocks?: readonly Readonly<{ title?: string }>[];
   author: string;
   payload?: unknown;
+  visible?: boolean;
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
@@ -35,6 +32,7 @@ type MainserverEventItem = Readonly<{
   urls?: unknown;
   tags?: unknown;
   pointOfInterestId?: string;
+  visible?: boolean;
   createdAt: string;
   updatedAt: string;
 }>;
@@ -77,6 +75,7 @@ type MainserverGenericItem = Readonly<{
   dates?: unknown;
   accessibilityInformations?: unknown;
   priceInformations?: unknown;
+  visible?: boolean;
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
@@ -202,7 +201,7 @@ export const mapNewsItem = (
   ...(item.dataProvider?.id ? { sourceDataProviderId: item.dataProvider.id } : {}),
   ...(item.dataProvider?.name ? { sourceDataProviderName: item.dataProvider.name } : {}),
   payload: toContentJsonValue(item.payload),
-  status: 'published',
+  status: item.visible === false ? 'draft' : 'published',
   validationState: 'valid',
   historyRef: `mainserver:news:${item.id}`,
   publishedAt: item.publishedAt,
@@ -234,7 +233,7 @@ export const mapEventItem = (
     tags: item.tags,
     pointOfInterestId: item.pointOfInterestId,
   }),
-  status: 'published',
+  status: item.visible === false ? 'draft' : 'published',
   validationState: 'valid',
   historyRef: `mainserver:events:${item.id}`,
   access: createMainserverItemAccess(item.contentType, permissions),
@@ -267,7 +266,7 @@ export const mapPoiItem = (
     webUrls: item.webUrls,
     tags: item.tags,
   }),
-  status: 'published',
+  status: item.active === false ? 'draft' : 'published',
   validationState: 'valid',
   historyRef: `mainserver:poi:${item.id}`,
   access: createMainserverItemAccess(item.contentType, permissions),
@@ -305,16 +304,14 @@ export const mapGenericItem = (
     accessibilityInformations: item.accessibilityInformations,
     priceInformations: item.priceInformations,
   }),
-  status: 'published',
+  status: item.visible === false ? 'draft' : 'published',
   validationState: 'valid',
   historyRef: `mainserver:generic-items:${item.id}`,
   ...(item.publishedAt ? { publishedAt: item.publishedAt } : {}),
   access: createMainserverItemAccess(item.contentType, permissions),
 });
 
-const mapSurveyStatus = (
-  status: MainserverSurveyItem['status']
-): IamContentListItem['status'] => {
+const mapSurveyStatus = (status: MainserverSurveyItem['status']): IamContentListItem['status'] => {
   switch (status) {
     case 'DRAFT':
       return 'draft';

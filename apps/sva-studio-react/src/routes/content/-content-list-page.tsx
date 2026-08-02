@@ -11,13 +11,17 @@ import { deleteNews } from '@sva/plugin-news';
 import { deletePoi } from '@sva/plugin-poi';
 import { deleteSurvey } from '@sva/plugin-surveys';
 import { IconEdit, IconEye, IconTrash, IconXboxX } from '@tabler/icons-react';
-import { StudioDataTable, StudioListPageTemplate, type StudioBulkAction, type StudioColumnDef } from '@sva/studio-ui-react';
+import {
+  StudioDataTable,
+  StudioListPageTemplate,
+  type StudioBulkAction,
+  type StudioColumnDef,
+} from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
 import { createStudioDataTableLabels } from '../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
@@ -35,6 +39,7 @@ import {
   filterRegisteredStudioContentItems,
 } from '../../lib/studio-content-types';
 import { appAdminResources } from '../../routing/admin-resources';
+import { ContentStatusDialog } from './-content-status-dialog';
 
 type StatusFilter = 'all' | 'draft' | 'in_review' | 'approved' | 'published' | 'archived';
 type SortDirection = 'asc' | 'desc';
@@ -54,10 +59,11 @@ type SortStateLike = Readonly<{
   field?: unknown;
   direction?: unknown;
 }>;
-type RegisteredContentRow = IamContentListItem & Readonly<{
-  typeLabel: string;
-  editPath: string;
-}>;
+type RegisteredContentRow = IamContentListItem &
+  Readonly<{
+    typeLabel: string;
+    editPath: string;
+  }>;
 
 const MAIN_SERVER_CONTENT_TYPES = new Set([
   'news.article',
@@ -67,11 +73,20 @@ const MAIN_SERVER_CONTENT_TYPES = new Set([
   'generic-items.generic-item',
 ]);
 
-const contentAdminResource = appAdminResources.find((resource) => resource.resourceId === 'content');
+const contentAdminResource = appAdminResources.find(
+  (resource) => resource.resourceId === 'content'
+);
 const contentListCapabilities = contentAdminResource?.capabilities?.list;
 const contentPagination = contentListCapabilities?.pagination;
 const contentSorting = contentListCapabilities?.sorting;
-const contentStatusOptions = ['all', 'draft', 'in_review', 'approved', 'published', 'archived'] as const satisfies readonly StatusFilter[];
+const contentStatusOptions = [
+  'all',
+  'draft',
+  'in_review',
+  'approved',
+  'published',
+  'archived',
+] as const satisfies readonly StatusFilter[];
 
 const contentErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {
@@ -150,22 +165,6 @@ const resolveRowAccess = (
   };
 };
 
-const statusVariantByValue = {
-  draft: 'outline',
-  in_review: 'secondary',
-  approved: 'default',
-  published: 'default',
-  archived: 'destructive',
-} as const;
-
-const statusLabelKeyByValue = {
-  draft: 'content.status.draft',
-  in_review: 'content.status.inReview',
-  approved: 'content.status.approved',
-  published: 'content.status.published',
-  archived: 'content.status.archived',
-} as const;
-
 const isStatusFilter = (value: unknown): value is StatusFilter =>
   typeof value === 'string' && contentStatusOptions.some((option) => option === value);
 
@@ -179,7 +178,8 @@ const normalizeTypeFilter = (value: unknown): string => {
     return 'all';
   }
 
-  return normalizedValue === 'all' || studioContentTypes.some((definition) => definition.contentType === normalizedValue)
+  return normalizedValue === 'all' ||
+    studioContentTypes.some((definition) => definition.contentType === normalizedValue)
     ? normalizedValue
     : 'all';
 };
@@ -187,7 +187,8 @@ const normalizeTypeFilter = (value: unknown): string => {
 const asRouteSearchState = (value: unknown): RouteSearchState | undefined =>
   value && typeof value === 'object' ? (value as RouteSearchState) : undefined;
 
-const normalizeStatusFilter = (value: unknown): StatusFilter => (isStatusFilter(value) ? value : 'all');
+const normalizeStatusFilter = (value: unknown): StatusFilter =>
+  isStatusFilter(value) ? value : 'all';
 
 const normalizePositiveInteger = (value: unknown, fallback: number): number => {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
@@ -238,7 +239,9 @@ const resolveRouteSortState = (search: RouteSearchState): ContentListSortState |
         })
       : undefined;
 
-  return sortFromExplicitParams ?? normalizeSortState(search.sort) ?? normalizeSortState(search.sorting);
+  return (
+    sortFromExplicitParams ?? normalizeSortState(search.sort) ?? normalizeSortState(search.sorting)
+  );
 };
 
 const readNormalizedRouteState = (search: RouteSearchState): ContentListRouteState => {
@@ -288,7 +291,10 @@ const deriveDeleteAction = (contentType: string): string | null => {
   return namespace ? `${namespace}.delete` : null;
 };
 
-const canDeleteMainserverItem = (contentType: string, permissionActions: readonly string[] = []): boolean => {
+const canDeleteMainserverItem = (
+  contentType: string,
+  permissionActions: readonly string[] = []
+): boolean => {
   const deleteAction = deriveDeleteAction(contentType);
   return deleteAction ? permissionActions.includes(deleteAction) : false;
 };
@@ -319,7 +325,9 @@ const deleteMainserverItem = async (contentType: string, contentId: string): Pro
   }
 };
 
-const resolveContentSortField = (routeSortField: string | undefined): IamContentListQuery['sortBy'] => {
+const resolveContentSortField = (
+  routeSortField: string | undefined
+): IamContentListQuery['sortBy'] => {
   switch (routeSortField) {
     case 'contentType':
     case 'title':
@@ -331,12 +339,15 @@ const resolveContentSortField = (routeSortField: string | undefined): IamContent
   }
 };
 
-const isMainserverContentType = (contentType: string): boolean => MAIN_SERVER_CONTENT_TYPES.has(contentType);
+const isMainserverContentType = (contentType: string): boolean =>
+  MAIN_SERVER_CONTENT_TYPES.has(contentType);
 
-const isBulkActionableContent = (item: RegisteredContentRow): boolean => !isMainserverContentType(item.contentType);
+const isBulkActionableContent = (item: RegisteredContentRow): boolean =>
+  !isMainserverContentType(item.contentType);
 
-const buildBulkActionLabel = (actionLabelKey: 'content.actions.archive' | 'content.actions.delete'): string =>
-  `${t(actionLabelKey)} (${t('content.bulk.scope.explicitIds')})`;
+const buildBulkActionLabel = (
+  actionLabelKey: 'content.actions.archive' | 'content.actions.delete'
+): string => `${t(actionLabelKey)} (${t('content.bulk.scope.explicitIds')})`;
 
 const resolveRowActionIcon = (access: IamContentAccessSummary): React.ReactNode => {
   if (access.canUpdate) {
@@ -454,12 +465,24 @@ const ContentPaginationNav = ({
         </p>
       </div>
       <div className="flex items-center gap-2">
-      <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))}>
-        {t('content.pagination.previous')}
-      </Button>
-      <Button type="button" size="sm" variant="outline" disabled={page >= pageCount} onClick={() => onPageChange(Math.min(pageCount, page + 1))}>
-        {t('content.pagination.next')}
-      </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={page <= 1}
+          onClick={() => onPageChange(Math.max(1, page - 1))}
+        >
+          {t('content.pagination.previous')}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={page >= pageCount}
+          onClick={() => onPageChange(Math.min(pageCount, page + 1))}
+        >
+          {t('content.pagination.next')}
+        </Button>
       </div>
     </nav>
   );
@@ -509,9 +532,7 @@ export const ContentListPage = () => {
       return EMPTY_VISIBLE_TYPE_SENTINEL;
     }
 
-    return readableContentTypes
-      .map((definition) => definition.contentType)
-      .join('|');
+    return readableContentTypes.map((definition) => definition.contentType).join('|');
   }, [readableContentTypes]);
   const visibleTypes = React.useMemo(
     () =>
@@ -552,19 +573,23 @@ export const ContentListPage = () => {
   );
   const createDisabled =
     creatableContentTypes.length === 0 &&
-    (contentAccessApi.access ? !contentAccessApi.access.canCreate : contentsApi.error?.code === 'forbidden');
+    (contentAccessApi.access
+      ? !contentAccessApi.access.canCreate
+      : contentsApi.error?.code === 'forbidden');
 
   const registeredContents = React.useMemo(
     () =>
-      filterRegisteredStudioContentItems(contentsApi.contents, studioContentTypes, effectivePermissionActions).map(
-        ({ item, definition }) => ({
-          ...item,
-          typeLabel: definition.displayName,
-          editPath: definition.detailPath
-            .replace('$contentId', encodeURIComponent(item.id))
-            .replace('$id', encodeURIComponent(item.id)),
-        })
-      ),
+      filterRegisteredStudioContentItems(
+        contentsApi.contents,
+        studioContentTypes,
+        effectivePermissionActions
+      ).map(({ item, definition }) => ({
+        ...item,
+        typeLabel: definition.displayName,
+        editPath: definition.detailPath
+          .replace('$contentId', encodeURIComponent(item.id))
+          .replace('$id', encodeURIComponent(item.id)),
+      })),
     [contentsApi.contents, effectivePermissionActions]
   );
   const safePage = Math.max(1, contentsApi.pagination.page);
@@ -665,7 +690,17 @@ export const ContentListPage = () => {
       {
         id: 'title',
         header: t('content.table.headerTitle'),
-        cell: (item) => <span className="font-medium text-foreground">{item.title}</span>,
+        cell: (item) => (
+          <span className="flex min-w-0 flex-col">
+            <span className="font-medium text-foreground">{item.title}</span>
+            <span
+              className="max-w-64 truncate font-mono text-xs text-muted-foreground"
+              title={item.id}
+            >
+              {item.id}
+            </span>
+          </span>
+        ),
         sortable: true,
         sortValue: (item) => item.title.toLowerCase(),
       },
@@ -677,25 +712,42 @@ export const ContentListPage = () => {
         sortValue: (item) => item.typeLabel.toLowerCase(),
       },
       {
-        id: 'updatedAt',
-        header: t('content.table.headerUpdated'),
-        cell: (item) => formatDateTime(item.updatedAt),
+        id: 'createdAt',
+        header: t('content.table.headerCreated'),
+        cell: (item) => formatDateTime(item.createdAt),
         sortable: true,
-        sortValue: (item) => item.updatedAt,
+        sortValue: (item) => item.createdAt,
+      },
+      {
+        id: 'publishedAt',
+        header: t('content.table.headerPublished'),
+        cell: (item) =>
+          item.publishedAt ? formatDateTime(item.publishedAt) : t('content.table.notPublished'),
+        sortable: true,
+        sortValue: (item) => item.publishedAt ?? '',
       },
       {
         id: 'status',
         header: t('content.table.headerStatus'),
-        cell: (item) => <Badge variant={statusVariantByValue[item.status]}>{t(statusLabelKeyByValue[item.status])}</Badge>,
+        cell: (item) => (
+          <ContentStatusDialog
+            item={item}
+            canUpdate={resolveRowAccess(item.access, contentsApi.error).canUpdate}
+            onUpdated={contentsApi.refetch}
+          />
+        ),
         sortable: true,
         sortValue: (item) => item.status,
       },
     ],
-    []
+    [contentsApi.error, contentsApi.refetch]
   );
 
   return (
-    <section className="space-y-5" aria-busy={contentsApi.isLoading || authSessionPending || contentAccessPending}>
+    <section
+      className="space-y-5"
+      aria-busy={contentsApi.isLoading || authSessionPending || contentAccessPending}
+    >
       <StudioListPageTemplate
         title={t('content.page.title')}
         description={t('content.page.subtitle')}
@@ -730,7 +782,12 @@ export const ContentListPage = () => {
           selectionMode="multiple"
           canSelectRow={isBulkActionableContent}
           bulkActions={bulkActionButtons}
-          isLoading={contentsApi.isLoading || contentAccessApi.isLoading || authSessionPending || contentAccessPending}
+          isLoading={
+            contentsApi.isLoading ||
+            contentAccessApi.isLoading ||
+            authSessionPending ||
+            contentAccessPending
+          }
           loadingState={t('content.messages.loading')}
           emptyState={
             <div className="space-y-2">
@@ -745,7 +802,9 @@ export const ContentListPage = () => {
                 <Select
                   id="content-type-filter"
                   value={routeState.type}
-                  onChange={(event) => navigateSearch({ type: normalizeTypeFilter(event.target.value), page: 1 })}
+                  onChange={(event) =>
+                    navigateSearch({ type: normalizeTypeFilter(event.target.value), page: 1 })
+                  }
                 >
                   <option value="all">{t('content.filters.typeAll')}</option>
                   {readableContentTypes.map((definition) => (
@@ -760,7 +819,9 @@ export const ContentListPage = () => {
                 <Select
                   id="content-status-filter"
                   value={routeState.status}
-                  onChange={(event) => navigateSearch({ status: normalizeStatusFilter(event.target.value), page: 1 })}
+                  onChange={(event) =>
+                    navigateSearch({ status: normalizeStatusFilter(event.target.value), page: 1 })
+                  }
                 >
                   <option value="all">{t('content.filters.statusAll')}</option>
                   <option value="draft">{t('content.status.draft')}</option>
@@ -802,7 +863,9 @@ export const ContentListPage = () => {
                 <Select
                   id="content-page-size"
                   value={String(contentsApi.pagination.pageSize)}
-                  onChange={(event) => navigateSearch({ page: 1, pageSize: Number(event.target.value) })}
+                  onChange={(event) =>
+                    navigateSearch({ page: 1, pageSize: Number(event.target.value) })
+                  }
                 >
                   {(contentPagination?.pageSizeOptions ?? [25]).map((option) => (
                     <option key={option} value={option}>

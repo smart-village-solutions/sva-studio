@@ -409,7 +409,7 @@ jobs:
 
       - name: upload staging parity evidence
         if: ${{ inputs.environment == 'staging' && success() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: promote-staging-parity-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/promote-staging-parity-${{ github.run_id }}.json
@@ -417,7 +417,7 @@ jobs:
 
       - name: upload redacted one-shot evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: promote-one-shot-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/promote-*.json

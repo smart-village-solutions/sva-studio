@@ -97,7 +97,7 @@ jobs:
 
       - name: upload redacted drill evidence
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: waste-database-restore-drill-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |

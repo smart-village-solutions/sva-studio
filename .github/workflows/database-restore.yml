@@ -242,7 +242,7 @@ jobs:
       - name: upload redacted restore evidence
         id: evidence_upload
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: database-restore-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |

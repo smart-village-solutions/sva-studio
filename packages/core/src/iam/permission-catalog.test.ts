@@ -77,4 +77,37 @@ describe('permission catalog', () => {
       composePermissionCatalog([], [{ moduleId: 'news', permissionIds: ['events.read'] }])
     ).toThrow('module_permission_namespace_mismatch:events.read');
   });
+
+  it('rejects incomplete definitions and unknown module grant exclusions', () => {
+    const tenantDefinition = {
+      key: 'iam.example.read',
+      description: 'Example',
+      resourceType: 'iam',
+      availability: { kind: 'tenant' as const },
+    };
+
+    expect(() =>
+      validatePermissionCatalog([{ ...tenantDefinition, description: ' ' }])
+    ).toThrow('invalid_permission_catalog_description:iam.example.read');
+    expect(() =>
+      validatePermissionCatalog([{ ...tenantDefinition, resourceType: '' }])
+    ).toThrow('invalid_permission_catalog_resource_type:iam.example.read');
+    expect(() =>
+      validatePermissionCatalog([
+        {
+          ...tenantDefinition,
+          availability: { kind: 'module', moduleId: '' },
+        },
+      ])
+    ).toThrow('invalid_permission_catalog_module_id:iam.example.read');
+    expect(() =>
+      composePermissionCatalog([], [
+        {
+          moduleId: 'news',
+          permissionIds: ['news.read'],
+          systemAdminPermissionExclusions: ['news.delete'],
+        },
+      ])
+    ).toThrow('unknown_system_admin_permission_exclusion:news:news.delete');
+  });
 });

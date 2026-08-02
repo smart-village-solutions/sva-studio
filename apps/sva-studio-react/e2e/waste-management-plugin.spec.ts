@@ -630,12 +630,12 @@ test.describe('waste management plugin', () => {
     await page.getByLabel('Zielschema').fill('waste_ops_v2');
     await page.getByLabel('Anfordernde Version').fill('2026.05.10');
     await page.getByRole('button', { name: 'Migrationen starten' }).click();
-    await page.getByRole('button', { name: 'Seed starten' }).click();
-    await page.getByRole('button', { name: 'Reset starten' }).click();
+    await page.getByRole('button', { name: 'Initialdaten laden' }).click();
+    await page.getByRole('button', { name: 'Daten zurücksetzen' }).click();
     await page.getByLabel('Bestätigungstoken').fill('RESET');
-    await page.getByRole('button', { name: 'Reset bestätigen' }).click();
+    await page.getByRole('button', { name: 'Zurücksetzen bestätigen' }).click();
 
-    await expect(page.getByText('Job job-reset-1 wurde gestartet.')).toBeVisible();
+    await expect(page.getByText('Prozess job-reset-1 wurde gestartet.')).toBeVisible();
 
     await page.getByRole('tab', { name: 'Ausgabe' }).click();
     const outputPanel = page.getByRole('tabpanel', { name: 'Ausgabe' });

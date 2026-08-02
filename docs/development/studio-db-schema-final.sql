@@ -605,8 +605,20 @@ CREATE TABLE iam.content_list_projection_sync_state (
     projected_count integer DEFAULT 0 NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     sync_scope_key text NOT NULL,
+    snapshot_state text DEFAULT 'empty'::text NOT NULL,
+    refresh_run_id uuid,
+    refresh_phase text,
+    completed_page integer DEFAULT 0 NOT NULL,
+    available_count integer DEFAULT 0 NOT NULL,
+    is_total_final boolean DEFAULT false NOT NULL,
+    skipped_invalid_count integer DEFAULT 0 NOT NULL,
     CONSTRAINT content_list_projection_sync_state_mode_chk CHECK ((sync_mode = 'full_refresh'::text)),
-    CONSTRAINT content_list_projection_sync_state_source_system_chk CHECK ((source_system = ANY (ARRAY['iam'::text, 'mainserver'::text])))
+    CONSTRAINT content_list_projection_sync_state_source_system_chk CHECK ((source_system = ANY (ARRAY['iam'::text, 'mainserver'::text]))),
+    CONSTRAINT content_list_projection_sync_state_snapshot_state_chk CHECK ((snapshot_state = ANY (ARRAY['empty'::text, 'partial_running'::text, 'partial_failed'::text, 'complete_fresh'::text, 'complete_refreshing'::text, 'complete_failed'::text]))),
+    CONSTRAINT content_list_projection_sync_state_refresh_phase_chk CHECK (((refresh_phase IS NULL) OR (refresh_phase = ANY (ARRAY['hot'::text, 'reconciliation'::text])))),
+    CONSTRAINT content_list_projection_sync_state_completed_page_chk CHECK ((completed_page >= 0)),
+    CONSTRAINT content_list_projection_sync_state_available_count_chk CHECK ((available_count >= 0)),
+    CONSTRAINT content_list_projection_sync_state_skipped_invalid_count_chk CHECK ((skipped_invalid_count >= 0))
 );
 
 

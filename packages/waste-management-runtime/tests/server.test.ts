@@ -11,6 +11,12 @@ import {
   type WasteManagementOperationRuntime,
 } from '../src/server.js';
 import { createWasteRuntimeOperationHandlers } from '../src/runtime-handler-helpers.js';
+import {
+  assertWasteJobInput,
+  createOperationResult,
+  getJobTypeDefinition,
+  getProgressDefinition,
+} from '../src/runtime-job-helpers.js';
 
 const createContext = (input: {
   readonly jobTypeId: string;
@@ -134,6 +140,98 @@ describe('waste management runtime handlers', () => {
 
     expect(Object.keys(directHandlers).sort()).toEqual(Object.keys(exportedHandlers).sort());
     expect(createPluginJobExecutionHandlers).toBe(createWasteManagementPluginOperationExecutionHandlers);
+  });
+
+  it('delegates every non-import operation to its matching runtime method', async () => {
+    const methodNames = [
+      ['provisionTenantDatabase', 'provision-tenant-database'],
+      ['initializeDataSource', 'initialize-data-source'],
+      ['seedData', 'seed-data'],
+      ['resetData', 'reset-data'],
+      ['syncMainserver', 'sync-mainserver'],
+      ['syncWasteTypes', 'sync-waste-types'],
+      ['materializeEmailReminders', 'materialize-email-reminders'],
+      ['processEmailReminderOutbox', 'process-email-reminder-outbox'],
+    ] as const;
+    const spies = Object.fromEntries(
+      methodNames.map(([methodName]) => [
+        methodName,
+        vi.fn(async (_instanceId: string, _payload: unknown, thirdArgument?: unknown) => {
+          const progressReporter =
+            typeof thirdArgument === 'object' &&
+            thirdArgument !== null &&
+            'reportProgress' in thirdArgument &&
+            typeof thirdArgument.reportProgress === 'function'
+              ? thirdArgument
+              : undefined;
+          await progressReporter?.reportProgress({
+            completedSteps: 2,
+            totalSteps: 2,
+            currentPhase: 'runtime.completed',
+            currentStepKey: 'runtime-complete',
+          } as never);
+          return { durationMs: 1, details: {} };
+        }),
+      ])
+    );
+    const handlers = createWasteManagementPluginOperationExecutionHandlers(
+      createRuntime(spies as Partial<WasteManagementOperationRuntime>)
+    );
+
+    for (const [methodName, operation] of methodNames) {
+      const jobTypeId = Object.values(wasteManagementOperationsContract.jobTypeIds).find((candidate) =>
+        candidate.endsWith(operation)
+      );
+      expect(jobTypeId).toBeDefined();
+      await handlers[jobTypeId as keyof typeof handlers]?.(
+        createContext({ jobTypeId: jobTypeId ?? '', inputPayload: { operation } })
+      );
+      expect(spies[methodName]).toHaveBeenCalledWith(
+        'instance-1',
+        expect.objectContaining({ operation }),
+        ...(methodName === 'syncMainserver'
+          ? [expect.objectContaining({ reportProgress: expect.any(Function) })]
+          : methodName === 'provisionTenantDatabase'
+            ? [{ jobId: 'job-1' }]
+            : [])
+      );
+    }
+  });
+
+  it('rejects invalid and unknown job inputs', () => {
+    expect(() => assertWasteJobInput('job.invalid', {}, 'seed-data')).toThrow(
+      'invalid_waste_management_job_input:job.invalid'
+    );
+    expect(() => getJobTypeDefinition('waste-management.unknown')).toThrow(
+      'unknown_waste_management_job_type:waste-management.unknown'
+    );
+  });
+
+  it('uses safe progress fallbacks and filters undeclared result details', () => {
+    expect(getProgressDefinition({ jobTypeId: 'test', queueName: 'test' } as never, 'fallback.phase')).toEqual({
+      initialPhaseKey: 'fallback.phase',
+      initialStepKey: 'resolve-operation',
+      completedPhaseKey: 'waste-management.completed',
+      completedStepKey: 'complete-operation',
+    });
+    expect(
+      createOperationResult({
+        jobTypeDefinition: { jobTypeId: 'test', queueName: 'test', result: { detailKeys: ['kept'] } } as never,
+        payload: { operation: 'seed-data' } as never,
+        operationResult: { durationMs: 0, details: { kept: 1, ignored: 2 } },
+        startedAt: Date.now(),
+        progress: {
+          completedSteps: 2,
+          totalSteps: 2,
+          currentPhase: 'done',
+          currentStepKey: 'done',
+          lastUpdatedAt: new Date().toISOString(),
+        },
+      }).resultPayload
+    ).toEqual({
+      summary: { durationMs: expect.any(Number) },
+      plugin: { operation: 'seed-data', mode: 'executed', kept: 1 },
+    });
   });
 });
 

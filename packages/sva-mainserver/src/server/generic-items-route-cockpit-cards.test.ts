@@ -24,11 +24,25 @@ describe('cockpit card route validation', () => {
   });
 
   it.each([
+    [{ ...validItem, contentBlocks: [] }, 'Text'],
+    [{ ...validItem, contentBlocks: [{ body: 'Text' }, { body: 'Mehr' }] }, 'Text'],
+    [{ ...validItem, payload: {} }, 'Sprachcode'],
+    [{ ...validItem, payload: { languageCode: 'invalid!', sortWeight: 0 } }, 'Sprachcode'],
+    [{ ...validItem, payload: { languageCode: 'de', sortWeight: '0' } }, 'Sortiergewicht'],
+    [{ ...validItem, payload: { languageCode: 'de', sortWeight: 1.5 } }, 'Sortiergewicht'],
+    [{ ...validItem, payload: { languageCode: 'de', sortWeight: Number.POSITIVE_INFINITY } }, 'Sortiergewicht'],
     [{ ...validItem, categories: [] }, 'Kategorie'],
+    [{ ...validItem, categories: [{ name: ' ' }] }, 'Kategorie'],
+    [{ ...validItem, categories: [{ name: 'A' }, { name: 'B' }] }, 'Kategorie'],
     [{ ...validItem, mediaContents: [] }, 'Bild'],
+    [{ ...validItem, mediaContents: [{ sourceUrl: { url: 'https://example.test/image.jpg' }, contentType: 'video' }] }, 'Bild'],
+    [{ ...validItem, mediaContents: [{ sourceUrl: { url: 'http://example.test/image.jpg' }, contentType: 'image' }] }, 'Bild'],
     [{ ...validItem, webUrls: [{ url: 'https://one.test' }, { url: 'https://two.test' }] }, 'Link'],
+    [{ ...validItem, webUrls: [{ url: 'http://example.test' }] }, 'Link'],
     [{ ...validItem, contentBlocks: [{ body: '<b>Text</b>' }] }, 'HTML'],
     [{ ...validItem, contacts: [{ email: 'person@example.test' }] }, 'Kontakte'],
+    [{ ...validItem, addresses: [{}] }, 'Kontakte'],
+    [{ ...validItem, locations: [{}] }, 'Kontakte'],
   ])('rejects a contract violation', async (item, message) => {
     const response = validateCockpitCardItemOrResponse(item);
     expect(response?.status).toBe(400);
@@ -44,5 +58,6 @@ describe('cockpit card route validation', () => {
         { languageCode: 'de', sortWeight: 2 }
       )
     ).toEqual({ legacy: true, languageCode: 'de', sortWeight: 2 });
+    expect(mergeCockpitCardPayload([], null)).toEqual({});
   });
 });

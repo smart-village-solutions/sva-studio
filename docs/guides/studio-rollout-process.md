@@ -99,10 +99,10 @@ Migrationen, Bootstraps und Backups benötigen keinen Wartungsfenster-Verweis. D
 
 ## Konvergenz und Erfolgsdefinition
 
-Docker-Swarm-Dienste dürfen nach einem Update bis zu fünf Minuten benötigen, bis alle Probes stabil sind. Deshalb gilt:
+Docker-Swarm-Dienste dürfen nach einem Update längere Zeit benötigen, bis alle Probes stabil sind. Der Runtime-Smoke prüft die Erreichbarkeit deshalb standardmäßig bis zu 50-mal im Abstand von zehn Sekunden. Deshalb gilt:
 
 1. Ein unmittelbar nach dem Deploy fehlschlagender Smoke wird nicht durch weitere Mutationen „repariert“.
-2. Zuerst Service-Update und Tasks prüfen und bis zu fünf Minuten ab dem abgeschlossenen Update konvergieren lassen.
+2. Zuerst Service-Update und Tasks prüfen und bis zum Abschluss der maximal 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden konvergieren lassen.
 3. In Production danach `health/live`, `health/ready`, den Release-Blocking-Tenant-Login-Redirect (`de-studio-sandbox`) und den Live-Digest erneut prüfen. Weitere Tenant-Redirects bleiben operativ überwacht, blockieren aber nicht. Staging verwendet den allgemeinen Runtime-Smoke ohne verpflichtenden Tenant-Scope.
 4. Bleibt ein Fehler bestehen, ist der Rollout rot und wird diagnostiziert oder auf den vorherigen Digest zurückgeführt.
 5. Ein Workflow-Retry ist erst nach dokumentierter Ursache beziehungsweise bestätigtem reinen Konvergenzfehler zulässig.

@@ -5,22 +5,22 @@ const createEventsLocaleTranslations = <TEvents extends Readonly<Record<string, 
 ) => ({ events }) as const;
 
 const eventsTranslationsDe = createEventsLocaleTranslations({
-  navigation: { title: 'Events' },
-  list: { title: 'Events', description: 'Veranstaltungen aus dem Mainserver bearbeiten.' },
+  navigation: { title: 'Veranstaltungen' },
+  list: { title: 'Veranstaltungen', description: 'Veranstaltungen aus dem Mainserver bearbeiten.' },
   detail: {
-    createTitle: 'Event anlegen',
+    createTitle: 'Veranstaltung anlegen',
     createDescription: 'Erstellen Sie einen neuen Veranstaltungseintrag.',
-    editTitle: 'Event bearbeiten',
+    editTitle: 'Veranstaltung bearbeiten',
     editDescription: 'Aktualisieren oder löschen Sie den Veranstaltungseintrag.',
   },
   editor: {
-    createTitle: 'Event anlegen',
+    createTitle: 'Veranstaltung anlegen',
     createDescription: 'Erstellen Sie einen neuen Veranstaltungseintrag.',
-    editTitle: 'Event bearbeiten',
+    editTitle: 'Veranstaltung bearbeiten',
     editDescription: 'Aktualisieren oder löschen Sie den Veranstaltungseintrag.',
   },
   fields: {
-    title: 'Titel',
+    title: 'Überschrift',
     description: 'Beschreibung',
     categories: 'Kategorien',
     categoriesHelp: 'Wählen Sie keine, eine oder mehrere Kategorien aus.',
@@ -108,7 +108,7 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     edit: 'Bearbeiten',
     delete: 'Löschen',
     back: 'Zurück zur Liste',
-    deleteConfirm: 'Soll dieses Event wirklich gelöscht werden?',
+    deleteConfirm: 'Soll diese Veranstaltung wirklich gelöscht werden?',
     addDate: 'Termin hinzufügen',
     addAddress: 'Ort hinzufügen',
     addContact: 'Kontakt hinzufügen',
@@ -129,14 +129,14 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     removeCategory: 'Kategorie {{name}} entfernen',
   },
   messages: {
-    loading: 'Events werden geladen.',
-    loadError: 'Events konnten nicht geladen werden.',
-    missingContent: 'Das Event konnte nicht geladen werden.',
-    saveError: 'Event konnte nicht gespeichert werden.',
-    deleteError: 'Event konnte nicht gelöscht werden.',
-    createSuccess: 'Event wurde erstellt.',
-    updateSuccess: 'Event wurde aktualisiert.',
-    deleteSuccess: 'Event wurde gelöscht.',
+    loading: 'Veranstaltungen werden geladen.',
+    loadError: 'Veranstaltungen konnten nicht geladen werden.',
+    missingContent: 'Die Veranstaltung konnte nicht geladen werden.',
+    saveError: 'Die Veranstaltung konnte nicht gespeichert werden.',
+    deleteError: 'Die Veranstaltung konnte nicht gelöscht werden.',
+    createSuccess: 'Die Veranstaltung wurde erstellt.',
+    updateSuccess: 'Die Veranstaltung wurde aktualisiert.',
+    deleteSuccess: 'Die Veranstaltung wurde gelöscht.',
     validationError: 'Bitte korrigieren Sie die markierten Felder.',
     categoryOptionsLoading: 'Kategorien werden geladen.',
     categoryOptionsLoadError: 'Kategorien konnten nicht geladen werden.',
@@ -144,14 +144,20 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     poiOptionsLoadError: 'Die POI konnten nicht geladen werden.',
     poiOptionsEmpty: 'Keine passenden POI gefunden.',
     locationGeocodeError: 'Die Ermittlung von Geo-Koordinaten ist derzeit nicht verfügbar.',
-    locationGeocodeDisabled: 'Die Ermittlung von Geo-Koordinaten ist für diese Instanz derzeit nicht verfügbar.',
+    locationGeocodeDisabled:
+      'Die Ermittlung von Geo-Koordinaten ist für diese Instanz derzeit nicht verfügbar.',
     locationGeocodeEmpty: 'Zu diesen Adressdaten wurden keine Geo-Koordinaten gefunden.',
-    locationGeocodeRateLimited: 'Das Geocoding-Limit wurde erreicht. Bitte versuchen Sie es später erneut.',
-    locationGeocodeTimeout: 'Die Ermittlung von Geo-Koordinaten hat zu lange gedauert. Bitte versuchen Sie es erneut.',
-    locationGeocodeForbidden: 'Für die Ermittlung von Geo-Koordinaten fehlen die erforderlichen Berechtigungen.',
-    locationGeocodeUnauthorized: 'Die Sitzung für die Ermittlung von Geo-Koordinaten ist abgelaufen. Bitte laden Sie die Seite neu.',
+    locationGeocodeRateLimited:
+      'Das Geocoding-Limit wurde erreicht. Bitte versuchen Sie es später erneut.',
+    locationGeocodeTimeout:
+      'Die Ermittlung von Geo-Koordinaten hat zu lange gedauert. Bitte versuchen Sie es erneut.',
+    locationGeocodeForbidden:
+      'Für die Ermittlung von Geo-Koordinaten fehlen die erforderlichen Berechtigungen.',
+    locationGeocodeUnauthorized:
+      'Die Sitzung für die Ermittlung von Geo-Koordinaten ist abgelaufen. Bitte laden Sie die Seite neu.',
     locationMapUnavailable: 'Die Kartenansicht ist für diese Instanz derzeit deaktiviert.',
-    locationMapError: 'Die Kartenansicht konnte nicht geladen werden. Die Felder bleiben manuell bearbeitbar.',
+    locationMapError:
+      'Die Kartenansicht konnte nicht geladen werden. Die Felder bleiben manuell bearbeitbar.',
     imagePickerEmpty: 'Keine passenden Medien gefunden.',
     mediaUploadInitializing: 'Upload wird vorbereitet.',
     mediaUploadUploading: 'Medium wird hochgeladen.',
@@ -159,17 +165,21 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     mediaUploadSuccess: 'Medium wurde hinzugefügt.',
     mediaUploadError: 'Medium konnte nicht hochgeladen werden.',
     mediaUploadUnsupportedType: 'Nur JPG-, PNG- und WebP-Bilder werden unterstützt.',
-    mediaUploadUnavailableUrl: 'Das gewählte Medium hat keine öffentliche URL und kann nicht verwendet werden.',
+    mediaUploadUnavailableUrl:
+      'Das gewählte Medium hat keine öffentliche URL und kann nicht verwendet werden.',
     mediaPickerTitle: 'Medium hinzufügen',
-    mediaPickerDescription: 'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
+    mediaPickerDescription:
+      'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
     mediaPickerReviewMode: 'Prüfen',
     mediaPickerUploadRegionLabel: 'Bilddatei hochladen',
     mediaPickerUploadTitle: 'Neues Medium hochladen',
-    mediaPickerUploadDescription: 'Laden Sie ein Bild hoch und prüfen Sie danach die Metadaten vor der Übernahme.',
+    mediaPickerUploadDescription:
+      'Laden Sie ein Bild hoch und prüfen Sie danach die Metadaten vor der Übernahme.',
     mediaPickerSelectFile: 'Datei auswählen',
     mediaPickerUploadSupportLabel: 'Unterstützt werden JPG, PNG und WebP.',
     mediaPickerReviewTitle: 'Metadaten prüfen',
-    mediaPickerReviewDescription: 'Ergänzen Sie Titel, Alternativtext und weitere Metadaten, bevor das Medium übernommen wird.',
+    mediaPickerReviewDescription:
+      'Ergänzen Sie Titel, Alternativtext und weitere Metadaten, bevor das Medium übernommen wird.',
     mediaPickerAltText: 'Alternativtext',
     mediaPickerLicense: 'Lizenz',
     mediaPickerBackToLibrary: 'Zurück zur Mediathek',
@@ -202,51 +212,91 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
   detailTabs: {
     basis: { title: 'Basis', description: 'Stammdaten und redaktionelle Kerndaten.' },
     content: { title: 'Inhalt', description: 'Termine, Orte, Veranstalter und weitere Fachdaten.' },
-    settings: { title: 'Einstellungen', description: 'Medien, Sichtbarkeit und technische Zusatzdaten.' },
+    settings: {
+      title: 'Einstellungen',
+      description: 'Medien, Sichtbarkeit und technische Zusatzdaten.',
+    },
     history: { title: 'Historie', description: 'Änderungs- und Aktivitätsverlauf.' },
   },
   cards: {
     basis: {
-      identity: { title: 'Titel & Kategorie', description: 'Titel und redaktionelle Grundkategorie des Events.' },
-      recurrence: { title: 'Serien-Logik', description: 'Wiederholung und Ausspielungsrhythmus des Events.' },
+      identity: {
+        title: 'Überschrift & Kategorie',
+        description: 'Überschrift und redaktionelle Grundkategorie der Veranstaltung.',
+      },
+      recurrence: {
+        title: 'Serien-Logik',
+        description: 'Wiederholung und Ausspielungsrhythmus der Veranstaltung.',
+      },
       relations: { title: 'Verknüpfungen', description: 'Verknüpfung zu anderen Studio-Inhalten.' },
       meta: { title: 'Metadaten', description: 'Zeitliche Einordnung des Eintrags.' },
     },
     content: {
-      descriptions: { title: 'Beschreibung', description: 'Redaktioneller Kerntext des Events.' },
-      media: { title: 'Medien', description: 'Galerie, Upload oder manuelle Medienangaben für das Event.' },
-      dates: { title: 'Termine', description: 'Termine, Zeiten und optionale Zeit-Hinweise.', itemTitle: 'Termin' },
+      descriptions: {
+        title: 'Beschreibung',
+        description: 'Redaktioneller Kerntext der Veranstaltung.',
+      },
+      media: {
+        title: 'Medien',
+        description: 'Galerie, Upload oder manuelle Medienangaben für die Veranstaltung.',
+      },
+      dates: {
+        title: 'Termine',
+        description: 'Termine, Zeiten und optionale Zeit-Hinweise.',
+        itemTitle: 'Termin',
+      },
       addresses: {
         title: 'Veranstaltungsort',
-        description: 'Adressen und Ortsbezeichnungen des Events.',
+        description: 'Adressen und Ortsbezeichnungen der Veranstaltung.',
         itemTitle: 'Ort',
       },
-      organizer: { title: 'Veranstalter', description: 'Institution, Firma oder verantwortliche Stelle.' },
-      contacts: { title: 'Ansprechpartner', description: 'Konkrete Kontaktpersonen für Rückfragen.', itemTitle: 'Kontakt' },
-      links: { title: 'Links', description: 'Externe Verweise zum Event.', itemTitle: 'Link' },
+      organizer: {
+        title: 'Veranstalter',
+        description: 'Institution, Firma oder verantwortliche Stelle.',
+      },
+      contacts: {
+        title: 'Ansprechpartner',
+        description: 'Konkrete Kontaktpersonen für Rückfragen.',
+        itemTitle: 'Kontakt',
+      },
+      links: {
+        title: 'Links',
+        description: 'Externe Verweise zur Veranstaltung.',
+        itemTitle: 'Link',
+      },
       prices: { title: 'Preise', description: 'Preisangaben und Kategorien.', itemTitle: 'Preis' },
-      accessibility: { title: 'Barrierefreiheit', description: 'Hinweise zur Zugänglichkeit des Events.' },
+      accessibility: {
+        title: 'Barrierefreiheit',
+        description: 'Hinweise zur Zugänglichkeit der Veranstaltung.',
+      },
     },
     settings: {
-      publication: { title: 'Sichtbarkeit', description: 'Ausspielung des Events.' },
-      technical: { title: 'Technische Zusatzdaten', description: 'Externe IDs, Schlagwörter und Tags.' },
+      publication: { title: 'Sichtbarkeit', description: 'Ausspielung der Veranstaltung.' },
+      technical: {
+        title: 'Technische Zusatzdaten',
+        description: 'Externe IDs, Schlagwörter und Tags.',
+      },
     },
   },
   history: {
     empty: {
       title: 'Noch keine Historie verfügbar.',
-      description: 'Historienereignisse für Events werden in einem späteren Schritt angebunden.',
+      description:
+        'Historienereignisse für Veranstaltungen werden in einem späteren Schritt angebunden.',
     },
   },
-  empty: { title: 'Noch keine Events vorhanden', description: 'Legen Sie das erste Event an.' },
+  empty: {
+    title: 'Noch keine Veranstaltungen vorhanden',
+    description: 'Legen Sie die erste Veranstaltung an.',
+  },
   pagination: {
-    ariaLabel: 'Events-Pagination',
+    ariaLabel: 'Veranstaltungs-Pagination',
     previous: 'Zurück',
     next: 'Weiter',
     pageLabel: 'Seite {{page}}',
   },
   validation: {
-    title: 'Der Titel ist erforderlich.',
+    title: 'Die Überschrift ist erforderlich.',
     dates: 'Datumswerte müssen gültig sein.',
     urls: 'URLs müssen mit https:// beginnen.',
     categories: 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
@@ -405,9 +455,11 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     poiOptionsLoadError: 'Failed to load POI.',
     poiOptionsEmpty: 'No matching POI found.',
     locationGeocodeError: 'Resolving geo coordinates is currently unavailable.',
-    locationGeocodeDisabled: 'Resolving geo coordinates is currently unavailable for this instance.',
+    locationGeocodeDisabled:
+      'Resolving geo coordinates is currently unavailable for this instance.',
     locationGeocodeEmpty: 'No geo coordinates were found for this address.',
-    locationGeocodeRateLimited: 'The geocoding rate limit has been reached. Please try again later.',
+    locationGeocodeRateLimited:
+      'The geocoding rate limit has been reached. Please try again later.',
     locationGeocodeTimeout: 'Resolving geo coordinates took too long. Please try again.',
     locationGeocodeForbidden: 'Missing permission to resolve geo coordinates.',
     locationGeocodeUnauthorized: 'The geocoding session has expired. Please reload the page.',
@@ -475,18 +527,36 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     },
     content: {
       descriptions: { title: 'Description', description: 'Editorial core text for the event.' },
-      media: { title: 'Media', description: 'Library, upload, or manual media entries for the event.' },
-      dates: { title: 'Dates', description: 'Dates, times, and optional time notes.', itemTitle: 'Date' },
+      media: {
+        title: 'Media',
+        description: 'Library, upload, or manual media entries for the event.',
+      },
+      dates: {
+        title: 'Dates',
+        description: 'Dates, times, and optional time notes.',
+        itemTitle: 'Date',
+      },
       addresses: {
         title: 'Venue',
         description: 'Addresses and location labels for the event.',
         itemTitle: 'Location',
       },
       organizer: { title: 'Organizer', description: 'Institution, company, or responsible body.' },
-      contacts: { title: 'Contacts', description: 'Named contacts for questions.', itemTitle: 'Contact' },
-      links: { title: 'Links', description: 'External references for the event.', itemTitle: 'Link' },
+      contacts: {
+        title: 'Contacts',
+        description: 'Named contacts for questions.',
+        itemTitle: 'Contact',
+      },
+      links: {
+        title: 'Links',
+        description: 'External references for the event.',
+        itemTitle: 'Link',
+      },
       prices: { title: 'Prices', description: 'Price entries and categories.', itemTitle: 'Price' },
-      accessibility: { title: 'Accessibility', description: 'Accessibility guidance for the event.' },
+      accessibility: {
+        title: 'Accessibility',
+        description: 'Accessibility guidance for the event.',
+      },
     },
     settings: {
       publication: { title: 'Visibility', description: 'Event exposure.' },

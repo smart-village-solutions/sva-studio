@@ -12,7 +12,10 @@ vi.mock('@tanstack/react-router', () => ({
     to,
     params,
     ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; params?: Record<string, string> }) => (
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    to: string;
+    params?: Record<string, string>;
+  }) => (
     <a href={params?.instanceId ? to.replace('$instanceId', params.instanceId) : to} {...props}>
       {children}
     </a>
@@ -217,7 +220,7 @@ describe('InstanceSetupPage', () => {
     expect(screen.getByRole('heading', { name: 'Setup abschließen' })).toBeTruthy();
     expect(screen.getByRole('checkbox', { name: /Kategorien/u })).toBeTruthy();
     expect(screen.getByRole('checkbox', { name: /Umfragen/u })).toBeTruthy();
-    expect(screen.getByRole('checkbox', { name: /Generic Items/u })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: /Generische Inhalte/u })).toBeTruthy();
     expect(screen.getByText('Setup-Status')).toBeTruthy();
     expect(screen.getByText('Tenant-Admin-Struktur')).toBeTruthy();
     expect(screen.queryByRole('tab')).toBeNull();
@@ -225,16 +228,20 @@ describe('InstanceSetupPage', () => {
   });
 
   it('bootstraps the admin structure with selected modules but keeps setup incomplete until activation', async () => {
-    const instancesApiState = createInstancesApiState() as ReturnType<typeof createInstancesApiState> & {
+    const instancesApiState = createInstancesApiState() as ReturnType<
+      typeof createInstancesApiState
+    > & {
       selectedInstance: ReturnType<typeof createSelectedInstance>;
     };
-    instancesApiState.bootstrapAdminStructure = vi.fn().mockImplementation(async (_instanceId: string, moduleIds: readonly string[]) => {
-      instancesApiState.selectedInstance = createSelectedInstance({
-        auditEvents: [createAuditEvent('instance_admin_bootstrapped')],
-        assignedModules: [...moduleIds],
+    instancesApiState.bootstrapAdminStructure = vi
+      .fn()
+      .mockImplementation(async (_instanceId: string, moduleIds: readonly string[]) => {
+        instancesApiState.selectedInstance = createSelectedInstance({
+          auditEvents: [createAuditEvent('instance_admin_bootstrapped')],
+          assignedModules: [...moduleIds],
+        });
+        return instancesApiState.selectedInstance;
       });
-      return instancesApiState.selectedInstance;
-    });
     useInstancesMock.mockImplementation(() => instancesApiState);
 
     render(<InstanceSetupPage instanceId="demo" />);
@@ -246,8 +253,16 @@ describe('InstanceSetupPage', () => {
       expect(instancesApiState.bootstrapAdminStructure).toHaveBeenCalledWith('demo', ['news']);
     });
 
-    expect(screen.getByText('Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Der Setup-Schritt ist damit abgeschlossen.')).toBeTruthy();
-    expect(screen.getByText('Setup noch nicht abgeschlossen. Prüfen Sie zuerst die beiden Pflichtschritte.')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Der Setup-Schritt ist damit abgeschlossen.'
+      )
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Setup noch nicht abgeschlossen. Prüfen Sie zuerst die beiden Pflichtschritte.'
+      )
+    ).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Zur Betriebsansicht wechseln' })).toBeNull();
   });
 
@@ -263,9 +278,11 @@ describe('InstanceSetupPage', () => {
 
     render(<InstanceSetupPage instanceId="demo" />);
 
-    expect(screen.getByText('Setup abgeschlossen. Sie können jetzt in den normalen Betrieb wechseln.')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Zur Betriebsansicht wechseln' }).getAttribute('href')).toBe(
-      '/admin/instances/demo'
-    );
+    expect(
+      screen.getByText('Setup abgeschlossen. Sie können jetzt in den normalen Betrieb wechseln.')
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: 'Zur Betriebsansicht wechseln' }).getAttribute('href')
+    ).toBe('/admin/instances/demo');
   });
 });

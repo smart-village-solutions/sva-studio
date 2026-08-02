@@ -1,12 +1,12 @@
 export const genericItemsTranslationsDeActions = {
   actions: {
-    create: 'Generic Item anlegen',
+    create: 'Generischen Inhalt anlegen',
     update: 'Änderungen speichern',
     save: 'Speichern',
     back: 'Zurück zur Liste',
     edit: 'Bearbeiten',
     delete: 'Löschen',
-    deleteConfirm: 'Soll dieses Generic Item wirklich gelöscht werden?',
+    deleteConfirm: 'Soll dieser generische Inhalt wirklich gelöscht werden?',
     addContentBlock: 'Block hinzufügen',
     addAddress: 'Adresse hinzufügen',
     addOpeningHour: 'Öffnungszeit hinzufügen',

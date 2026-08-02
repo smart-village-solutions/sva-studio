@@ -99,7 +99,7 @@ Migrationen, Bootstraps und Backups benötigen keinen Wartungsfenster-Verweis. D
 
 ## Konvergenz und Erfolgsdefinition
 
-Docker-Swarm-Dienste dürfen nach einem Update längere Zeit benötigen, bis alle Probes stabil sind. Der Runtime-Smoke prüft die Erreichbarkeit deshalb standardmäßig bis zu 50-mal im Abstand von zehn Sekunden. Deshalb gilt:
+Docker-Swarm-Dienste dürfen nach einem Update längere Zeit benötigen, bis alle Probes stabil sind. Die bisherige Warmup-Grenze von bis zu fünf Minuten reicht dafür nicht immer aus. Der Runtime-Smoke prüft die Erreichbarkeit deshalb standardmäßig bis zu 50-mal im Abstand von zehn Sekunden. Deshalb gilt:
 
 1. Ein unmittelbar nach dem Deploy fehlschlagender Smoke wird nicht durch weitere Mutationen „repariert“.
 2. Zuerst Service-Update und Tasks prüfen und bis zum Abschluss der maximal 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden konvergieren lassen.

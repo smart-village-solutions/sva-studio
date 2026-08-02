@@ -24,7 +24,7 @@
     "@sva/iam-core": "workspace:*"
   },
   "devDependencies": {
-    "fast-check": "^3.23.2",
+    "fast-check": "^4.9.0",
     "vitest": "^4.1.9"
   }
 }

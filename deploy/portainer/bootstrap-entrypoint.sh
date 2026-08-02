@@ -32,7 +32,29 @@ cleanup() {
 }
 trap cleanup EXIT
 
-node <<'NODE' >"${tmp_sql}"
+node --input-type=module <<'NODE' >"${tmp_sql}"
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const resolveWorkspacePackage = (packageName) => {
+  const packagePath = packageName.replace('@sva/', '');
+  const candidates = [
+    resolve('node_modules/@sva', packagePath, 'dist/index.js'),
+    resolve('apps/sva-studio-react/node_modules/@sva', packagePath, 'dist/index.js'),
+  ];
+  const entrypoint = candidates.find((candidate) => existsSync(candidate));
+  if (!entrypoint) {
+    throw new Error(`Bootstrap-Package nicht gefunden: ${packageName}`);
+  }
+  return import(pathToFileURL(entrypoint).href);
+};
+
+const [{ resolvesSystemAdminGrant }, { studioPermissionCatalog }] = await Promise.all([
+  resolveWorkspacePackage('@sva/core'),
+  resolveWorkspacePackage('@sva/studio-module-iam'),
+]);
+
 const appDbPassword = process.env.APP_DB_PASSWORD?.trim() ?? '';
 const appDbUser = process.env.APP_DB_USER?.trim() || 'sva_app';
 const instanceIds = (process.env.SVA_ALLOWED_INSTANCE_IDS ?? '')
@@ -272,6 +294,124 @@ SET
   auth_client_id = EXCLUDED.auth_client_id,
   tenant_admin_client_id = COALESCE(NULLIF(iam.instances.tenant_admin_client_id, ''), EXCLUDED.tenant_admin_client_id),
   updated_at = NOW();`,
+  );
+  const activePermissionCatalog = studioPermissionCatalog.filter(
+    (definition) => definition.availability.kind !== 'root' && definition.lifecycle !== 'deprecated',
+  );
+  const permissionCatalogRows = activePermissionCatalog
+    .map((definition) => {
+      const moduleId = definition.availability.kind === 'module'
+        ? sqlLiteral(definition.availability.moduleId)
+        : 'NULL';
+      return `(${sqlLiteral(definition.key)}, ${sqlLiteral(definition.description)}, ${sqlLiteral(definition.resourceType)}, ${moduleId}, ${resolvesSystemAdminGrant(definition) ? 'TRUE' : 'FALSE'})`;
+    })
+    .join(',\n        ');
+  statements.push(
+    `DO $permission_catalog_reconcile$
+DECLARE
+  target_instance_id text;
+  permissions_changed integer;
+  grants_inserted integer;
+BEGIN
+  FOR target_instance_id IN
+    SELECT id FROM iam.instances WHERE id IN (${instanceIdList}) ORDER BY id
+  LOOP
+    WITH catalog(permission_key, description, resource_type, module_id, system_admin_grant) AS (
+      VALUES
+        ${permissionCatalogRows}
+    )
+    INSERT INTO iam.permissions (
+      id, instance_id, permission_key, action, resource_type, resource_id, scope, description
+    )
+    SELECT
+      gen_random_uuid(), target_instance_id, catalog.permission_key, catalog.permission_key,
+      catalog.resource_type, NULL, '{}'::jsonb, catalog.description
+    FROM catalog
+    WHERE catalog.module_id IS NULL
+       OR EXISTS (
+         SELECT 1
+         FROM iam.instance_modules instance_module
+         WHERE instance_module.instance_id = target_instance_id
+           AND instance_module.module_id = catalog.module_id
+       )
+    ON CONFLICT (instance_id, permission_key) DO UPDATE
+    SET
+      action = EXCLUDED.action,
+      resource_type = EXCLUDED.resource_type,
+      resource_id = EXCLUDED.resource_id,
+      scope = EXCLUDED.scope,
+      description = EXCLUDED.description,
+      updated_at = NOW()
+    WHERE (iam.permissions.action, iam.permissions.resource_type, iam.permissions.resource_id, iam.permissions.scope, iam.permissions.description)
+      IS DISTINCT FROM (EXCLUDED.action, EXCLUDED.resource_type, EXCLUDED.resource_id, EXCLUDED.scope, EXCLUDED.description);
+    GET DIAGNOSTICS permissions_changed = ROW_COUNT;
+
+    INSERT INTO iam.roles (
+      id, instance_id, role_key, role_name, display_name, external_role_name, description,
+      is_system_role, role_level, managed_by, sync_state, last_synced_at, last_error_code
+    )
+    VALUES (
+      gen_random_uuid(), target_instance_id, 'system_admin', 'system_admin', 'System Administrator',
+      'system_admin', 'Geschützte Systemrolle System Administrator', TRUE, 100, 'studio', 'pending', NOW(), NULL
+    )
+    ON CONFLICT (instance_id, role_key) DO UPDATE
+    SET
+      role_name = EXCLUDED.role_name,
+      display_name = EXCLUDED.display_name,
+      external_role_name = EXCLUDED.external_role_name,
+      description = EXCLUDED.description,
+      is_system_role = TRUE,
+      role_level = EXCLUDED.role_level,
+      updated_at = NOW();
+
+    WITH catalog(permission_key, description, resource_type, module_id, system_admin_grant) AS (
+      VALUES
+        ${permissionCatalogRows}
+    )
+    INSERT INTO iam.role_permissions (
+      instance_id, role_id, permission_id, grant_origin_kind, grant_origin_module_id
+    )
+    SELECT
+      target_instance_id,
+      role.id,
+      permission.id,
+      CASE WHEN catalog.module_id IS NULL THEN 'bootstrap' ELSE 'module_sync' END,
+      catalog.module_id
+    FROM catalog
+    JOIN iam.roles role
+      ON role.instance_id = target_instance_id
+     AND role.role_key = 'system_admin'
+    JOIN iam.permissions permission
+      ON permission.instance_id = target_instance_id
+     AND permission.permission_key = catalog.permission_key
+    WHERE catalog.system_admin_grant = TRUE
+      AND (
+        catalog.module_id IS NULL
+        OR EXISTS (
+          SELECT 1
+          FROM iam.instance_modules instance_module
+          WHERE instance_module.instance_id = target_instance_id
+            AND instance_module.module_id = catalog.module_id
+        )
+      )
+    ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
+    GET DIAGNOSTICS grants_inserted = ROW_COUNT;
+
+    INSERT INTO iam.instance_audit_events (instance_id, event_type, actor_id, request_id, details)
+    VALUES (
+      target_instance_id,
+      'instance_permission_catalog_reconciled',
+      'runtime-bootstrap',
+      NULL,
+      jsonb_build_object(
+        'permissionsChanged', permissions_changed,
+        'grantsInserted', grants_inserted,
+        'outcome', 'reconciled'
+      )
+    );
+  END LOOP;
+END
+$permission_catalog_reconcile$;`,
   );
   statements.push(
     `UPDATE iam.instance_hostnames

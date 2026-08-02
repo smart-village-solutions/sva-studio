@@ -4,7 +4,7 @@ import type {
   InstanceModuleIamContractRecord,
   ProtectedSystemRolePermissionBundleRecord,
 } from './repository-contract.js';
-import { compareAlphabetically, createTextList, quoteSqlLiteral, statement } from './repository-shared.js';
+import { compareAlphabetically, createTextList, statement } from './repository-shared.js';
 
 export type RolePermissionPair = {
   moduleId: string;
@@ -15,8 +15,13 @@ export type RolePermissionPair = {
 export const buildManagedPermissions = (
   contracts: readonly InstanceModuleIamContractRecord[]
 ): readonly InstanceModuleIamContractRecord['permissions'][number][] =>
-  [...new Map(contracts.flatMap((contract) => contract.permissions).map((permission) => [permission.key, permission])).values()]
-    .sort((left, right) => compareAlphabetically(left.key, right.key));
+  [
+    ...new Map(
+      contracts
+        .flatMap((contract) => contract.permissions)
+        .map((permission) => [permission.key, permission])
+    ).values(),
+  ].sort((left, right) => compareAlphabetically(left.key, right.key));
 
 export const buildRolePermissionPairs = (
   contracts: readonly InstanceModuleIamContractRecord[]
@@ -92,17 +97,15 @@ export const cleanupModuleRolePermissions = async (
   executor: SqlExecutor,
   instanceId: string,
   managedModuleIds: readonly string[],
-  rolePermissionPairs: readonly RolePermissionPair[]
+  activeModuleIds: readonly string[]
 ): Promise<void> => {
   if (managedModuleIds.length === 0) {
     return;
   }
-  const desiredPairSql =
-    rolePermissionPairs.length > 0
-      ? rolePermissionPairs
-          .map((pair) => `(${quoteSqlLiteral(pair.moduleId)}, ${quoteSqlLiteral(pair.roleName)}, ${quoteSqlLiteral(pair.permissionId)})`)
-          .join(', ')
-      : null;
+  const activeModuleFilter =
+    activeModuleIds.length > 0
+      ? `AND role_permission.grant_origin_module_id NOT IN (${createTextList(activeModuleIds)})`
+      : '';
   await executor.execute(
     statement(
       `
@@ -115,7 +118,7 @@ WHERE role_permission.instance_id = $1
   AND permission.id = role_permission.permission_id
   AND role_permission.grant_origin_kind = 'module_sync'
   AND role_permission.grant_origin_module_id IN (${createTextList(managedModuleIds)})
-  ${desiredPairSql ? `AND (role_permission.grant_origin_module_id, role.role_key, permission.permission_key) NOT IN (${desiredPairSql})` : ''};
+  ${activeModuleFilter};
 `,
       [instanceId]
     )
@@ -145,7 +148,13 @@ SET
   role_level = EXCLUDED.role_level,
   updated_at = NOW();
 `,
-      [instanceId, role.roleKey, role.displayName, `Geschützte Systemrolle ${role.displayName}`, role.roleLevel]
+      [
+        instanceId,
+        role.roleKey,
+        role.displayName,
+        `Geschützte Systemrolle ${role.displayName}`,
+        role.roleLevel,
+      ]
     )
   );
 };

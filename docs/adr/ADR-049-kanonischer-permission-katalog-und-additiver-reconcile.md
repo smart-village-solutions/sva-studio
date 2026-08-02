@@ -15,11 +15,13 @@ Aktive tenantweite Permissions und Permissions zugewiesener Module werden standa
 
 Der Tenant-Reconcile verwendet `(instance_id, permission_key)` als natürliche Identität, legt fehlende Definitionen und verwaltete Grants idempotent an und aktualisiert fachliche Metadaten. Katalogentfernung oder Deprecation löschen weder Permission-Zeilen noch manuelle Grants oder Custom-Rollen. Ein destruktiver Cleanup benötigt einen eigenen Change und eine eigene Migration.
 
+Die scoped Runtime- beziehungsweise CLI-Grenze besitzt die Transaktion. Repository-Methoden starten oder beenden keine eigene Transaktion, damit der transaktionslokale Tenant-Kontext für RLS bis zum Ende der gesamten Operation erhalten bleibt. Der Release-Bootstrap lädt die kompilierte `studioPermissionCatalog`-Sicht aus demselben Image und wendet sie auf die explizit erlaubten Tenants an. Damit entstehen für den Rollout weder eine zweite handgepflegte Permission-Liste noch freie SQL- oder Permission-Payloads.
+
 Moduldeaktivierung darf ausschließlich eindeutig als `module_sync` markierte Grants entfernen; die Permission-Definition bleibt erhalten. Schema-Migrationen bleiben von der additiven Katalogdatenpflege getrennt.
 
 ## Konsequenzen
 
-- Eine neue tenantweite Permission benötigt nur Katalogeintrag, Tests, Review und den kontrollierten Reconcile im regulären Rollout.
+- Eine neue tenantweite Permission benötigt nur Katalogeintrag, Tests, Review und den kontrollierten Bootstrap-Reconcile im regulären Rollout.
 - Neue und bestehende Tenants verwenden dieselbe fachliche Quelle.
 - Reconcile-Auditdaten weisen sichere Zähler für eingefügte, aktualisierte und unveränderte Definitionen und Grants aus.
 - Deprecated Daten bleiben absichtlich erhalten, bis ein explizit freigegebener Cleanup erfolgt.

@@ -42,23 +42,34 @@ describe('instance registry repository module iam', () => {
       repository.syncAssignedModuleIam({
         instanceId: 'tenant-a',
         managedModuleIds: ['news'],
-        contracts: [
-          {
-            moduleId: 'news',
-            permissionIds: [],
-            permissions: [],
-            tenantBootstrapRoles: [{ roleName: 'news_admin', permissionIds: [] }],
-          },
-        ],
+        contracts: [],
       })
     ).resolves.toMatchObject({ permissionsUnchanged: 0, grantsUnchanged: 0 });
 
-    expect(statements.map((entry) => entry.text.trim())).toEqual([
-      'BEGIN;',
-      expect.stringContaining("role_permission.grant_origin_module_id IN ('news')"),
-      'COMMIT;',
-    ]);
-    expect(statements.some((statement) => statement.text.includes('DELETE FROM iam.permissions'))).toBe(false);
+    expect(statements).toHaveLength(1);
+    expect(statements[0]?.text).toContain("role_permission.grant_origin_module_id IN ('news')");
+    expect(
+      statements.some((statement) => statement.text.includes('DELETE FROM iam.permissions'))
+    ).toBe(false);
+  });
+
+  it('does not revoke grants merely because an active module removed a catalog entry', async () => {
+    const { executor, statements } = createQueuedExecutor([[]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await repository.syncAssignedModuleIam({
+      instanceId: 'tenant-a',
+      managedModuleIds: ['news'],
+      contracts: [{ moduleId: 'news', permissionIds: [], permissions: [] }],
+    });
+
+    const cleanup = statements.find((statement) =>
+      statement.text.includes('DELETE FROM iam.role_permissions')
+    );
+    expect(cleanup?.text).toContain("grant_origin_module_id NOT IN ('news')");
+    expect(
+      statements.some((statement) => statement.text.includes('DELETE FROM iam.permissions'))
+    ).toBe(false);
   });
 
   it('tags module-synced role grants with ownership metadata and cleans up only module-owned rows', async () => {
@@ -80,16 +91,31 @@ describe('instance registry repository module iam', () => {
       })
     ).resolves.toMatchObject({ permissionsUnchanged: 1, grantsUnchanged: 1 });
 
-    const rolePermissionInsert = statements.find((statement) => statement.text.includes('grant_origin_kind'));
+    const rolePermissionInsert = statements.find((statement) =>
+      statement.text.includes('grant_origin_kind')
+    );
     expect(rolePermissionInsert?.text).toContain('grant_origin_kind');
     expect(rolePermissionInsert?.text).toContain('grant_origin_module_id');
-    expect(rolePermissionInsert?.values).toEqual(['tenant-a', 'system_admin', 'news.read', 'module_sync', 'news']);
+    expect(rolePermissionInsert?.values).toEqual([
+      'tenant-a',
+      'system_admin',
+      'news.read',
+      'module_sync',
+      'news',
+    ]);
 
     const rolePermissionCleanup = statements.find((statement) =>
       statement.text.includes('DELETE FROM iam.role_permissions role_permission')
     );
-    expect(rolePermissionCleanup?.text).toContain("role_permission.grant_origin_kind = 'module_sync'");
-    expect(rolePermissionCleanup?.text).toContain("role_permission.grant_origin_module_id IN ('news', 'events')");
+    expect(rolePermissionCleanup?.text).toContain(
+      "role_permission.grant_origin_kind = 'module_sync'"
+    );
+    expect(rolePermissionCleanup?.text).toContain(
+      "role_permission.grant_origin_module_id IN ('news', 'events')"
+    );
+    expect(rolePermissionCleanup?.text).toContain(
+      "role_permission.grant_origin_module_id NOT IN ('news')"
+    );
     expect(rolePermissionCleanup?.text).not.toContain('role.role_key IN');
   });
 
@@ -118,9 +144,14 @@ describe('instance registry repository module iam', () => {
       })
     ).resolves.toMatchObject({ permissionsUnchanged: 2, grantsUnchanged: 2 });
 
-    const permissionUpserts = statements.filter((statement) => statement.text.includes('INSERT INTO iam.permissions'));
+    const permissionUpserts = statements.filter((statement) =>
+      statement.text.includes('INSERT INTO iam.permissions')
+    );
 
-    expect(permissionUpserts.map((statement) => statement.values[1])).toEqual(['ä.permission', 'z.permission']);
+    expect(permissionUpserts.map((statement) => statement.values[1])).toEqual([
+      'ä.permission',
+      'z.permission',
+    ]);
   });
 
   it('syncs protected system-role permissions without relying on bootstrap groups', async () => {
@@ -136,15 +167,18 @@ describe('instance registry repository module iam', () => {
           roleLevel: 100,
           permissions: [
             { key: 'cockpit.read', description: 'Read cockpit', resourceType: 'cockpit' },
+            { key: 'iam.optout.read', description: 'Read opt-out data', resourceType: 'iam' },
             { key: 'iam.user.read', description: 'Read accounts', resourceType: 'iam' },
           ],
+          grantPermissionKeys: ['cockpit.read', 'iam.user.read'],
         },
       })
-    ).resolves.toMatchObject({ permissionsUnchanged: 2, grantsUnchanged: 2 });
+    ).resolves.toMatchObject({ permissionsUnchanged: 3, grantsUnchanged: 2 });
 
     const roleUpsert = statements.find(
       (statement) =>
-        statement.text.includes('INSERT INTO iam.roles') && statement.text.includes('is_system_role = TRUE')
+        statement.text.includes('INSERT INTO iam.roles') &&
+        statement.text.includes('is_system_role = TRUE')
     );
     expect(roleUpsert?.values).toEqual([
       'tenant-a',
@@ -174,7 +208,7 @@ describe('instance registry repository module iam', () => {
     ]);
   });
 
-  it('rolls back the permission reconcile transaction when a write fails', async () => {
+  it('leaves transaction ownership to the scoped runtime boundary', async () => {
     const statements: SqlStatement[] = [];
     const executor: SqlExecutor = {
       async execute<TRow>(statement: SqlStatement) {
@@ -194,15 +228,15 @@ describe('instance registry repository module iam', () => {
           roleKey: 'system_admin',
           displayName: 'System Administrator',
           roleLevel: 100,
-          permissions: [{ key: 'iam.user.read', description: 'Read accounts', resourceType: 'iam' }],
+          permissions: [
+            { key: 'iam.user.read', description: 'Read accounts', resourceType: 'iam' },
+          ],
+          grantPermissionKeys: ['iam.user.read'],
         },
       })
     ).rejects.toThrow('permission_write_failed');
 
-    expect(statements.map((statement) => statement.text.trim())).toEqual([
-      'BEGIN;',
-      expect.stringContaining('INSERT INTO iam.permissions'),
-      'ROLLBACK;',
-    ]);
+    expect(statements).toHaveLength(1);
+    expect(statements[0]?.text).toContain('INSERT INTO iam.permissions');
   });
 });

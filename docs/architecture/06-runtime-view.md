@@ -936,5 +936,7 @@ Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine ab
 1. Der Registry-Service liest den Tenant und seine zugewiesenen Module.
 2. Er selektiert aktive tenantweite Katalogdefinitionen und Beiträge der aktiven Module.
 3. Das Repository führt idempotente Upserts über `(instance_id, permission_key)` aus und ergänzt fehlende verwaltete `system_admin`-Grants.
-4. Bei Moduldeaktivierung entfernt es nur eindeutig als `module_sync` markierte Grants; Definitionen, Custom-Rollen und manuelle Grants bleiben erhalten.
-5. Der Service invalidiert den Tenant-Permission-Snapshot und persistiert Audit-Evidenz mit sicheren Reconcile-Zählern.
+4. Die aufrufende scoped Runtime- oder CLI-Grenze besitzt die Datenbanktransaktion; das Repository öffnet und beendet keine verschachtelte Transaktion und behält dadurch den gesetzten Tenant-Kontext bis zum Abschluss der Operation.
+5. Katalogentfernung und explizite Grant-Ausnahmen wirken additiv: Bereits materialisierte Definitionen und Grants eines weiterhin aktiven Moduls bleiben bestehen. Bei echter Moduldeaktivierung entfernt das Repository ausschließlich eindeutig als `module_sync` markierte Grants des deaktivierten Moduls.
+6. Der Service invalidiert den Tenant-Permission-Snapshot und persistiert Audit-Evidenz mit sicheren Reconcile-Zählern.
+7. Der kontrollierte Bootstrap eines Releases liest dieselbe kompilierte Katalogsicht aus dem Image und reconciliiert Core-Permissions sowie die Beiträge der in `iam.instance_modules` zugewiesenen Module für alle erlaubten Tenants. Er führt keine katalogbedingten Löschungen aus.

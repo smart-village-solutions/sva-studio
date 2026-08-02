@@ -17,6 +17,7 @@ export type PermissionDefinition = Readonly<{
 export type ModulePermissionCatalogContribution = Readonly<{
   moduleId: string;
   permissionIds: readonly string[];
+  systemAdminPermissionExclusions?: readonly string[];
 }>;
 
 const tenantPermission = <const TKey extends string>(
@@ -121,23 +122,33 @@ export const composePermissionCatalog = (
 ): readonly PermissionDefinition[] =>
   validatePermissionCatalog([
     ...coreDefinitions,
-    ...moduleContributions.flatMap((contribution) =>
-      contribution.permissionIds.map((key): PermissionDefinition => ({
+    ...moduleContributions.flatMap((contribution) => {
+      const exclusions = new Set(contribution.systemAdminPermissionExclusions ?? []);
+      for (const exclusion of exclusions) {
+        if (!contribution.permissionIds.includes(exclusion)) {
+          throw new Error(
+            `unknown_system_admin_permission_exclusion:${contribution.moduleId}:${exclusion}`
+          );
+        }
+      }
+      return contribution.permissionIds.map((key): PermissionDefinition => ({
         key,
         description: `Module permission ${key}`,
         resourceType: key.split('.')[0] ?? key,
         availability: { kind: 'module', moduleId: contribution.moduleId },
-      }))
-    ),
+        ...(exclusions.has(key) ? { systemAdminGrant: false } : {}),
+      }));
+    }),
   ]);
 
 export const tenantCorePermissionCatalog = validatePermissionCatalog(corePermissionCatalog).filter(
   (definition) => definition.availability.kind === 'tenant' && definition.lifecycle !== 'deprecated'
 );
 
-export const tenantCoreSystemAdminPermissionKeys: readonly CorePermissionKey[] = tenantCorePermissionCatalog
-  .filter(resolvesSystemAdminGrant)
-  .map((definition) => definition.key as CorePermissionKey);
+export const tenantCoreSystemAdminPermissionKeys: readonly CorePermissionKey[] =
+  tenantCorePermissionCatalog
+    .filter(resolvesSystemAdminGrant)
+    .map((definition) => definition.key as CorePermissionKey);
 
 export const rootPermissionCatalog = corePermissionCatalog.filter(
   (definition) => definition.availability.kind === 'root' && definition.lifecycle !== 'deprecated'

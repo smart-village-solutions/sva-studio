@@ -38,18 +38,6 @@ const recordPermissionOutcome = (
   permissionsUnchanged: result.permissionsUnchanged + (outcome === 'unchanged' ? 1 : 0),
 });
 
-const inTransaction = async <T>(executor: SqlExecutor, work: () => Promise<T>): Promise<T> => {
-  await executor.execute(statement('BEGIN;', []));
-  try {
-    const result = await work();
-    await executor.execute(statement('COMMIT;', []));
-    return result;
-  } catch (error) {
-    await executor.execute(statement('ROLLBACK;', []));
-    throw error;
-  }
-};
-
 export const createModuleIamRepository = (executor: SqlExecutor): ModuleIamRepository => ({
   async assignModule(instanceId, moduleId) {
     const result = await executor.execute(
@@ -82,52 +70,64 @@ WHERE instance_id = $1
   async syncAssignedModuleIam({ instanceId, managedModuleIds, contracts }) {
     const permissions = buildManagedPermissions(contracts);
     const rolePermissionPairs = buildRolePermissionPairs(contracts);
-    if (permissions.length === 0 && rolePermissionPairs.length === 0 && managedModuleIds.length === 0) {
+    if (
+      permissions.length === 0 &&
+      rolePermissionPairs.length === 0 &&
+      managedModuleIds.length === 0
+    ) {
       return emptyReconcileResult();
     }
-    return inTransaction(executor, async () => {
-      let reconcileResult = emptyReconcileResult();
-      for (const permission of permissions) {
-        reconcileResult = recordPermissionOutcome(
-          reconcileResult,
-          await upsertPermission(executor, instanceId, permission)
-        );
-      }
-      for (const pair of rolePermissionPairs) {
-        const inserted = await insertModuleRolePermission(executor, instanceId, pair);
-        reconcileResult = {
-          ...reconcileResult,
-          grantsInserted: reconcileResult.grantsInserted + (inserted ? 1 : 0),
-          grantsUnchanged: reconcileResult.grantsUnchanged + (inserted ? 0 : 1),
-        };
-      }
-      await cleanupModuleRolePermissions(executor, instanceId, managedModuleIds, rolePermissionPairs);
-      return reconcileResult;
-    });
+    let reconcileResult = emptyReconcileResult();
+    for (const permission of permissions) {
+      reconcileResult = recordPermissionOutcome(
+        reconcileResult,
+        await upsertPermission(executor, instanceId, permission)
+      );
+    }
+    for (const pair of rolePermissionPairs) {
+      const inserted = await insertModuleRolePermission(executor, instanceId, pair);
+      reconcileResult = {
+        ...reconcileResult,
+        grantsInserted: reconcileResult.grantsInserted + (inserted ? 1 : 0),
+        grantsUnchanged: reconcileResult.grantsUnchanged + (inserted ? 0 : 1),
+      };
+    }
+    await cleanupModuleRolePermissions(
+      executor,
+      instanceId,
+      managedModuleIds,
+      contracts.map((contract) => contract.moduleId)
+    );
+    return reconcileResult;
   },
 
   async syncProtectedSystemRolePermissions({ instanceId, role }) {
-    const permissions = [...new Map(role.permissions.map((permission) => [permission.key, permission])).values()].sort(
-      (left, right) => compareAlphabetically(left.key, right.key)
-    );
-    return inTransaction(executor, async () => {
-      let reconcileResult = emptyReconcileResult();
-      for (const permission of permissions) {
-        reconcileResult = recordPermissionOutcome(
-          reconcileResult,
-          await upsertPermission(executor, instanceId, permission)
-        );
-      }
-      await upsertProtectedRole(executor, instanceId, role);
-      for (const permission of permissions) {
-        const inserted = await insertProtectedRolePermission(executor, instanceId, role.roleKey, permission.key);
-        reconcileResult = {
-          ...reconcileResult,
-          grantsInserted: reconcileResult.grantsInserted + (inserted ? 1 : 0),
-          grantsUnchanged: reconcileResult.grantsUnchanged + (inserted ? 0 : 1),
-        };
-      }
-      return reconcileResult;
-    });
+    const permissions = [
+      ...new Map(role.permissions.map((permission) => [permission.key, permission])).values(),
+    ].sort((left, right) => compareAlphabetically(left.key, right.key));
+    let reconcileResult = emptyReconcileResult();
+    for (const permission of permissions) {
+      reconcileResult = recordPermissionOutcome(
+        reconcileResult,
+        await upsertPermission(executor, instanceId, permission)
+      );
+    }
+    await upsertProtectedRole(executor, instanceId, role);
+    for (const permissionKey of [...new Set(role.grantPermissionKeys)].sort(
+      compareAlphabetically
+    )) {
+      const inserted = await insertProtectedRolePermission(
+        executor,
+        instanceId,
+        role.roleKey,
+        permissionKey
+      );
+      reconcileResult = {
+        ...reconcileResult,
+        grantsInserted: reconcileResult.grantsInserted + (inserted ? 1 : 0),
+        grantsUnchanged: reconcileResult.grantsUnchanged + (inserted ? 0 : 1),
+      };
+    }
+    return reconcileResult;
   },
 });

@@ -73,6 +73,7 @@ export type ProtectedSystemRolePermissionBundleRecord = {
     readonly description: string;
     readonly resourceType: string;
   }[];
+  readonly grantPermissionKeys: readonly string[];
 };
 
 export type PermissionCatalogReconcileResult = {
@@ -85,8 +86,12 @@ export type PermissionCatalogReconcileResult = {
 
 export type InstanceRegistryRepository = {
   readonly requestWasteProvisioning: (instanceId: string) => Promise<WasteTenantProvisioningRecord>;
-  readonly getWasteProvisioning: (instanceId: string) => Promise<WasteTenantProvisioningRecord | null>;
-  readonly disableWasteProvisioning: (instanceId: string) => Promise<WasteTenantProvisioningRecord | null>;
+  readonly getWasteProvisioning: (
+    instanceId: string
+  ) => Promise<WasteTenantProvisioningRecord | null>;
+  readonly disableWasteProvisioning: (
+    instanceId: string
+  ) => Promise<WasteTenantProvisioningRecord | null>;
   readonly claimWasteProvisioning: (input: {
     instanceId: string;
     jobId: string;
@@ -115,7 +120,9 @@ export type InstanceRegistryRepository = {
   readonly prepareConfirmationChallenge: (
     input: PrepareInstanceConfirmationChallengeInput
   ) => Promise<InstanceConfirmationChallengeRecord>;
-  readonly consumeConfirmationChallenge: (input: ConsumeInstanceConfirmationChallengeInput) => Promise<boolean>;
+  readonly consumeConfirmationChallenge: (
+    input: ConsumeInstanceConfirmationChallengeInput
+  ) => Promise<boolean>;
   readonly listInstances: (input?: {
     search?: string;
     status?: InstanceStatus;
@@ -138,7 +145,9 @@ export type InstanceRegistryRepository = {
   readonly getTenantAdminClientSecretCiphertext: (instanceId: string) => Promise<string | null>;
   readonly resolveHostname: (hostname: string) => Promise<InstanceRegistryRecord | null>;
   readonly resolvePrimaryHostname: (hostname: string) => Promise<InstanceRegistryRecord | null>;
-  readonly listProvisioningRuns: (instanceId: string) => Promise<readonly InstanceProvisioningRun[]>;
+  readonly listProvisioningRuns: (
+    instanceId: string
+  ) => Promise<readonly InstanceProvisioningRun[]>;
   readonly listLatestProvisioningRuns: (
     instanceIds: readonly string[]
   ) => Promise<Readonly<Record<string, InstanceProvisioningRun | undefined>>>;

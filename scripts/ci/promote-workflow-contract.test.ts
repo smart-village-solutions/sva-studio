@@ -12,6 +12,8 @@ describe('promote workflow hardening contract', () => {
     expect(workflow).toContain('APP_CONFIG: ${{ secrets.APP_CONFIG }}');
     expect(workflow).toContain('PROMOTE_CONFIG_OVERRIDES: ${{ secrets.PROMOTE_CONFIG_OVERRIDES }}');
     expect(workflow).toContain('authoritative)');
+    expect(workflow).toContain('Der Config-Builder-Modus ist ungueltig.');
+    expect(workflow).toContain('Die ausgewaehlte Remote-Konfiguration ist leer.');
   });
 
   it('checks production parity independently of migration and bootstrap modes', () => {

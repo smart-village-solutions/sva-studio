@@ -55,6 +55,9 @@ const validateValue = (environment: RemoteEnvironment, key: string, value: strin
 export const buildRemoteAppConfig = (input: { environment: RemoteEnvironment; profile: string; overrides: string }) => {
   const profile = parseRemoteConfigLayer(input.environment, 'Remote-Profil', input.profile);
   const overrides = parseRemoteConfigLayer(input.environment, 'geschuetztes Override-Bundle', input.overrides);
+  for (const key of profile.values.keys()) {
+    if (remoteConfigContract[key]?.kind === 'secret-value') fail(input.environment, 'PROMOTE_CONFIG_SOURCE_FORBIDDEN', `Sensitiver Schluessel ${key} ist im getrackten Remote-Profil nicht erlaubt.`, 'Den Secret-Wert in das geschuetzte Override-Bundle verschieben.');
+  }
   for (const key of overrides.values.keys()) {
     if (remoteConfigContract[key]?.kind === 'config') fail(input.environment, 'PROMOTE_CONFIG_INVALID', `Nicht-sensitiver Schluessel ${key} ist im geschuetzten Override-Bundle nicht erlaubt.`, 'Den Schluessel in das getrackte Remote-Profil verschieben.');
   }
@@ -70,11 +73,13 @@ export const buildRemoteAppConfig = (input: { environment: RemoteEnvironment; pr
 
 export const compareRemoteConfigShadow = (environment: RemoteEnvironment, legacySource: string, candidate: ReturnType<typeof buildRemoteAppConfig>) => {
   const legacy = parseRemoteConfigLayer(environment, 'bestehender APP_CONFIG-Pfad', legacySource);
+  const candidateLayer = parseRemoteConfigLayer(environment, 'Candidate', candidate.source);
   const legacyKeys = [...legacy.values.keys()].sort();
   const missing = legacyKeys.filter((key) => !candidate.keys.includes(key));
   const additional = candidate.keys.filter((key) => !legacy.values.has(key));
-  const configValueMismatches = candidate.keys.filter((key) => remoteConfigContract[key]?.kind === 'config' && legacy.values.has(key) && legacy.values.get(key) !== parseRemoteConfigLayer(environment, 'Candidate', candidate.source).values.get(key));
-  return { equivalent: missing.length === 0 && additional.length === 0 && configValueMismatches.length === 0, missing, additional, configValueMismatches };
+  const configValueMismatches = candidate.keys.filter((key) => remoteConfigContract[key]?.kind === 'config' && legacy.values.has(key) && legacy.values.get(key) !== candidateLayer.values.get(key));
+  const secretReferenceMismatches = candidate.keys.filter((key) => remoteConfigContract[key]?.kind === 'secret-reference' && legacy.values.has(key) && legacy.values.get(key) !== candidateLayer.values.get(key));
+  return { equivalent: missing.length === 0 && additional.length === 0 && configValueMismatches.length === 0 && secretReferenceMismatches.length === 0, missing, additional, configValueMismatches, secretReferenceMismatches };
 };
 
 export const runBuildRemoteAppConfig = (args: readonly string[], env: NodeJS.ProcessEnv = process.env): number => {

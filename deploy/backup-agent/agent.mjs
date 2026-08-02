@@ -157,6 +157,8 @@ export const resolveCapabilityEnvironment = (requestUrl, host) => {
   return requestedEnvironment ?? hostEnvironment;
 };
 
+export const readBackupAgentRevision = (env = process.env) => env.BACKUP_AGENT_IMAGE_REF?.trim() || undefined;
+
 export const canonicalRequest = (request) =>
   JSON.stringify({
     action: request.action,
@@ -1508,9 +1510,11 @@ export const createBackupAgentServer = () =>
         const auth = incoming.headers.authorization;
         if (typeof auth !== 'string' || !auth.startsWith('Bearer ')) return respond(response, 401, { error: 'unauthorized' });
         await verifyOidc(auth.slice('Bearer '.length), environment, 'backup-and-verify');
+        const agentRevision = readBackupAgentRevision();
+        if (!agentRevision) return respond(response, 503, { error: 'agent_misconfigured' });
         return respond(response, 200, {
           protocolVersions: [2],
-          agentRevision: required(process.env.BACKUP_AGENT_IMAGE_REF, 'BACKUP_AGENT_IMAGE_REF'),
+          agentRevision,
           databaseTargets: ['studio', 'waste'],
           resultFields: ['bytes', 'database', 'deployImageDigest', 'environment', 'objectKey', 'requestId', 'sha256', 'status', 'steps'],
           wasteInventory: true,

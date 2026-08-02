@@ -221,7 +221,7 @@ jobs:
                 --output "${RUNNER_TEMP}/promote-app-config.vars"
               ;;
             *)
-              echo '{"code":"PROMOTE_CONFIG_INVALID","phase":"config-build","retryable":false,"nextAction":"PROMOTE_CONFIG_BUILDER_MODE auf shadow oder authoritative setzen."}' >&2
+              printf '{"code":"PROMOTE_CONFIG_INVALID","environment":"%s","phase":"config-build","summary":"Der Config-Builder-Modus ist ungueltig.","retryable":false,"nextAction":"PROMOTE_CONFIG_BUILDER_MODE auf shadow oder authoritative setzen."}\n' "${{ inputs.environment }}" >&2
               exit 1
               ;;
           esac
@@ -309,7 +309,9 @@ jobs:
         if: ${{ inputs.environment == 'prod' }}
         env:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           GITHUB_TOKEN: ${{ github.token }}
+          PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
         run: pnpm exec tsx scripts/ci/verify-staging-promote-evidence.ts
 
       - name: verify live backup agent capabilities
@@ -462,7 +464,7 @@ jobs:
           fi
 
           if [ ! -s "${RUNNER_TEMP}/promote-app-config.vars" ]; then
-            echo "PROMOTE_CONFIG_REQUIRED_KEY_MISSING: Die ausgewaehlte Remote-Konfiguration ist leer." >&2
+            printf '{"code":"PROMOTE_CONFIG_REQUIRED_KEY_MISSING","environment":"%s","phase":"config-build","summary":"Die ausgewaehlte Remote-Konfiguration ist leer.","retryable":false,"nextAction":"APP_CONFIG oder das autoritative Profil plus Overrides vervollstaendigen."}\n' "${ENVIRONMENT}" >&2
             exit 1
           fi
 

@@ -15,6 +15,7 @@ import {
   isRestoreSqlLineSupported,
   minioAwsCompatibilityEnv,
   parseWasteInventory,
+  readBackupAgentRevision,
   restoreControlKeysFor,
   runtimePrincipalProbeSql,
   restoreSchemaResetSql,
@@ -52,6 +53,11 @@ describe('backup agent runtime contract', () => {
     expect(resolveCapabilityEnvironment('/_ops/backup/v1/capabilities?environment=prod', targets.prod.host)).toBe('prod');
     expect(resolveCapabilityEnvironment('/_ops/backup/v1/capabilities?environment=prod', targets.staging.host)).toBeUndefined();
     expect(resolveCapabilityEnvironment('/_ops/backup/v1/requests', targets.staging.host)).toBeUndefined();
+  });
+
+  it('reports a missing agent revision as runtime misconfiguration instead of auth state', () => {
+    expect(readBackupAgentRevision({})).toBeUndefined();
+    expect(readBackupAgentRevision({ BACKUP_AGENT_IMAGE_REF: '  image@sha256:abc  ' })).toBe('image@sha256:abc');
   });
 
   it('binds GitHub identity to repository, environment and allowlisted main workflow', () => {

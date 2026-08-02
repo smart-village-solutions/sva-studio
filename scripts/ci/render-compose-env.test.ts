@@ -36,4 +36,8 @@ describe('render-compose-env', () => {
       rmSync(directory, { force: true, recursive: true });
     }
   });
+
+  it('fails closed when --input has no path', () => {
+    expect(runRenderComposeEnv(['--input', '--output', '/tmp/unused'], 'VALUE=legacy')).toBe(2);
+  });
 });

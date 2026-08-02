@@ -58,6 +58,10 @@ export const runRenderComposeEnv = (
 
   const inputIndex = args.indexOf('--input');
   const inputPath = inputIndex >= 0 ? args[inputIndex + 1] : undefined;
+  if (inputIndex >= 0 && (!inputPath || inputPath.startsWith('--'))) {
+    process.stderr.write('Fehlender Wert für --input.\n');
+    return 2;
+  }
 
   try {
     const source = inputPath ? readFileSync(inputPath, 'utf8') : appConfig;

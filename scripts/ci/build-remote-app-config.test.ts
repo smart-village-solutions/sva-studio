@@ -32,6 +32,7 @@ describe('remote app config builder', () => {
     expect(() => parseRemoteConfigLayer('dev', 'profile', 'UNKNOWN=value')).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile, overrides: overrides.replace('external_secret_v1', 'not a reference') })).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile, overrides: `${overrides}\nSVA_STACK_NAME=secret-layer` })).toThrow(/PROMOTE_CONFIG_INVALID/u);
+    expect(() => buildRemoteAppConfig({ environment: 'dev', profile: `${profile}\nAPP_DB_PASSWORD=committed-secret`, overrides })).toThrow(/PROMOTE_CONFIG_SOURCE_FORBIDDEN/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_RUNTIME_PROFILE=value', 'SVA_RUNTIME_PROFILE=__SET__'), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_RUNTIME_PROFILE=value', 'SVA_RUNTIME_PROFILE=   '), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_RUNTIME_PROFILE=value', 'SVA_RUNTIME_PROFILE=  __SET__  '), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
@@ -42,6 +43,7 @@ describe('remote app config builder', () => {
     const changedSecrets = candidate.source.replaceAll('sensitive-', 'rotated-');
     expect(compareRemoteConfigShadow('prod', changedSecrets, candidate)).toMatchObject({ equivalent: true });
     expect(compareRemoteConfigShadow('prod', candidate.source.replace('SVA_STACK_NAME=value', 'SVA_STACK_NAME=other'), candidate)).toMatchObject({ equivalent: false, configValueMismatches: ['SVA_STACK_NAME'] });
+    expect(compareRemoteConfigShadow('prod', candidate.source.replace('external_secret_v1', 'external_secret_v2'), candidate)).toMatchObject({ equivalent: false, secretReferenceMismatches: ['WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME'] });
   });
 
   it('forbids local files without reading or disclosing their contents', () => {

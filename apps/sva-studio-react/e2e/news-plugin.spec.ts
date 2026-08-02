@@ -14,7 +14,13 @@ import {
   permissionPayload,
   type NewsRecord,
 } from './news-plugin.fixtures';
-import { createPagination, fulfillContentRoute, openNewsDetailTab, routeNewsMediaRequests, routeUnifiedContentOverview } from './news-plugin.routes';
+import {
+  createPagination,
+  fulfillContentRoute,
+  openNewsDetailTab,
+  routeNewsMediaRequests,
+  routeUnifiedContentOverview,
+} from './news-plugin.routes';
 
 test.describe('news plugin', () => {
   test.beforeEach(async ({ page }) => {
@@ -22,24 +28,75 @@ test.describe('news plugin', () => {
     await page.route('**/api/v1/iam/media**', routeNewsMediaRequests);
   });
 
-  test('supports draft creation, publication, and delete in the simplified news editor', async ({ page }) => {
+  test('supports draft creation, publication, and delete in the simplified news editor', async ({
+    page,
+  }) => {
     const newsItems: NewsRecord[] = [];
     let createdBody: Record<string, unknown> | undefined;
-    await page.route('**/auth/me', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authenticatedUser) }));
-    await page.route('**/iam/me/permissions?**', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(permissionPayload) }));
+    await page.route('**/auth/me', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(authenticatedUser),
+      })
+    );
+    await page.route('**/iam/me/permissions?**', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(permissionPayload),
+      })
+    );
     await page.route('**/api/v1/mainserver/news**', async (route) => {
       if (route.request().method() === 'GET') {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: newsItems, pagination: createPagination(newsItems.length) }) });
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: newsItems, pagination: createPagination(newsItems.length) }),
+        });
         return;
       }
       const body = route.request().postDataJSON() as Record<string, unknown>;
       createdBody = body;
-      newsItems.push({ id: 'news-1', title: String(body.title), contentType: 'news.article', status: 'published', publishedAt: typeof body.publishedAt === 'string' ? body.publishedAt : '2026-04-13T12:10:00.000Z', visible: body.visible !== false, categories: Array.isArray(body.categories) ? (body.categories as NewsRecord['categories']) : [], sourceUrl: typeof body.sourceUrl === 'object' ? (body.sourceUrl as NewsRecord['sourceUrl']) : undefined, categoryName: typeof body.categoryName === 'string' ? body.categoryName : undefined, payload: {}, contentBlocks: Array.isArray(body.contentBlocks) ? (body.contentBlocks as NewsRecord['contentBlocks']) : [], author: 'Editor One', createdAt: '2026-04-13T12:10:00.000Z', updatedAt: '2026-04-13T12:10:00.000Z' });
-      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ data: newsItems[0] }) });
+      newsItems.push({
+        id: 'news-1',
+        title: String(body.title),
+        contentType: 'news.article',
+        status: 'published',
+        publishedAt:
+          typeof body.publishedAt === 'string' ? body.publishedAt : '2026-04-13T12:10:00.000Z',
+        visible: body.visible !== false,
+        categories: Array.isArray(body.categories)
+          ? (body.categories as NewsRecord['categories'])
+          : [],
+        sourceUrl:
+          typeof body.sourceUrl === 'object'
+            ? (body.sourceUrl as NewsRecord['sourceUrl'])
+            : undefined,
+        categoryName: typeof body.categoryName === 'string' ? body.categoryName : undefined,
+        payload: {},
+        contentBlocks: Array.isArray(body.contentBlocks)
+          ? (body.contentBlocks as NewsRecord['contentBlocks'])
+          : [],
+        author: 'Editor One',
+        createdAt: '2026-04-13T12:10:00.000Z',
+        updatedAt: '2026-04-13T12:10:00.000Z',
+      });
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: newsItems[0] }),
+      });
     });
-    await page.route('**/api/v1/mainserver/news/**', async (route) => fulfillContentRoute(route, newsItems));
+    await page.route('**/api/v1/mainserver/news/**', async (route) =>
+      fulfillContentRoute(route, newsItems)
+    );
     await page.route('**/api/v1/mainserver/categories', async (route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [{ name: 'Allgemein' }, { name: 'Kultur' }] }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [{ name: 'Allgemein' }, { name: 'Kultur' }] }),
+      });
     });
     await routeUnifiedContentOverview(page, newsItems);
 
@@ -47,10 +104,12 @@ test.describe('news plugin', () => {
     await navigateClientSide(page, '/admin/content');
     await expectContentOverviewReady(page);
     await navigateClientSide(page, '/admin/news/new');
-    await expectPluginPageHeading(page, /News-Eintrag anlegen|news\.editor\.createTitle/);
-    await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News');
+    await expectPluginPageHeading(page, /Nachricht anlegen|news\.editor\.createTitle/);
+    await page.getByLabel(/Überschrift|news\.fields\.title/).fill('Erste News');
     await expect(page.locator('#news-author')).toHaveValue('Editor One');
-    const categorySearch = page.getByRole('combobox', { name: /Kategorien suchen|news\.fields\.categoriesSearch/ });
+    const categorySearch = page.getByRole('combobox', {
+      name: /Kategorien suchen|news\.fields\.categoriesSearch/,
+    });
     await categorySearch.fill('Allgemein');
     await categorySearch.blur();
     await expect(page.getByText('Allgemein')).toBeVisible();
@@ -62,21 +121,35 @@ test.describe('news plugin', () => {
     await page.locator('#news-content-body').fill('<p>Inhalt</p>');
     await page.locator('#news-source-url').fill('https://example.com/news/source');
     await page.locator('#news-source-description').fill('Quellseite');
-    await page.getByRole('button', { name: /Manuell hinzufügen|news\.actions\.addMediaManual/ }).click();
+    await page
+      .getByRole('button', { name: /Manuell hinzufügen|news\.actions\.addMediaManual/ })
+      .click();
     await page.locator('#news-media-url-0').fill('https://example.com/news/image.jpg');
     await page.locator('#news-media-caption-0').fill('Titelbild');
     await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
     await page.getByRole('radio', { name: /Entwurf|news\.publicationModes\.draft/ }).click();
-    await page.getByRole('button', { name: /Speichern|news\.actions\.save/ }).last().click();
+    await page
+      .getByRole('button', { name: /Speichern|news\.actions\.save/ })
+      .last()
+      .click();
     await expect.poll(() => newsItems.length).toBe(1);
-    expect(createdBody).toMatchObject({ title: 'Erste News', author: 'Editor One', sourceUrl: { url: 'https://example.com/news/source', description: 'Quellseite' } });
+    expect(createdBody).toMatchObject({
+      title: 'Erste News',
+      author: 'Editor One',
+      sourceUrl: { url: 'https://example.com/news/source', description: 'Quellseite' },
+    });
     expect(createdBody?.categories).toEqual([{ name: 'Allgemein' }, { name: 'Kultur' }]);
     await navigateClientSide(page, '/admin/news/news-1');
     await expectNewsEditorReady(page, 'edit');
-    await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News aktualisiert');
+    await page.getByLabel(/Überschrift|news\.fields\.title/).fill('Erste News aktualisiert');
     await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
-    await page.getByRole('radio', { name: /Sofort veröffentlichen|news\.publicationModes\.immediate/ }).click();
-    await page.getByRole('button', { name: /Speichern|news\.actions\.save/ }).last().click();
+    await page
+      .getByRole('radio', { name: /Sofort veröffentlichen|news\.publicationModes\.immediate/ })
+      .click();
+    await page
+      .getByRole('button', { name: /Speichern|news\.actions\.save/ })
+      .last()
+      .click();
     await expect.poll(() => newsItems[0]?.title).toBe('Erste News aktualisiert');
     page.once('dialog', async (dialog) => {
       await dialog.accept();
@@ -85,12 +158,47 @@ test.describe('news plugin', () => {
     await expect.poll(() => newsItems).toHaveLength(0);
   });
 
-  test('opens the news editor and supports keyboard navigation across detail tabs', async ({ page }) => {
-    const newsItems: NewsRecord[] = [{ id: 'news-1', title: 'Erste News', contentType: 'news.article', status: 'published', author: 'Editor One', createdAt: '2026-04-13T12:10:00.000Z', updatedAt: '2026-04-13T12:10:00.000Z', publishedAt: '2026-04-13T12:10:00.000Z', visible: true, payload: { teaser: 'Kurztext', body: '<p>Inhalt</p>' } }];
-    await page.route('**/auth/me', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authenticatedUser) }));
-    await page.route('**/iam/me/permissions?**', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(permissionPayload) }));
-    await page.route('**/api/v1/mainserver/news', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: newsItems, pagination: createPagination(1) }) }));
-    await page.route('**/api/v1/mainserver/news/**', async (route) => fulfillContentRoute(route, newsItems));
+  test('opens the news editor and supports keyboard navigation across detail tabs', async ({
+    page,
+  }) => {
+    const newsItems: NewsRecord[] = [
+      {
+        id: 'news-1',
+        title: 'Erste News',
+        contentType: 'news.article',
+        status: 'published',
+        author: 'Editor One',
+        createdAt: '2026-04-13T12:10:00.000Z',
+        updatedAt: '2026-04-13T12:10:00.000Z',
+        publishedAt: '2026-04-13T12:10:00.000Z',
+        visible: true,
+        payload: { teaser: 'Kurztext', body: '<p>Inhalt</p>' },
+      },
+    ];
+    await page.route('**/auth/me', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(authenticatedUser),
+      })
+    );
+    await page.route('**/iam/me/permissions?**', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(permissionPayload),
+      })
+    );
+    await page.route('**/api/v1/mainserver/news', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: newsItems, pagination: createPagination(1) }),
+      })
+    );
+    await page.route('**/api/v1/mainserver/news/**', async (route) =>
+      fulfillContentRoute(route, newsItems)
+    );
     await gotoHomeAsAuthenticatedUser(page);
     await navigateClientSide(page, '/admin/news/news-1');
     await expectNewsEditorReady(page, 'edit');
@@ -98,18 +206,30 @@ test.describe('news plugin', () => {
     await contentTab.focus();
     await expect(contentTab).toBeFocused();
     await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('tab', { selected: true, name: /Einstellungen|news\.tabs\.settings/ })).toBeVisible();
+    await expect(
+      page.getByRole('tab', { selected: true, name: /Einstellungen|news\.tabs\.settings/ })
+    ).toBeVisible();
   });
 
-  test('loads the content overview via paginated IAM requests without browser-side mainserver list scans', async ({ page }) => {
+  test('loads the content overview via paginated IAM requests without browser-side mainserver list scans', async ({
+    page,
+  }) => {
     const contentListRequests: string[] = [];
     let mainserverNewsListCalls = 0;
 
     await page.route('**/auth/me', async (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authenticatedUser) })
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(authenticatedUser),
+      })
     );
     await page.route('**/iam/me/permissions?**', async (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(permissionPayload) })
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(permissionPayload),
+      })
     );
     await page.route('**/api/v1/iam/contents**', async (route) => {
       const requestUrl = new URL(route.request().url());
@@ -184,18 +304,28 @@ test.describe('news plugin', () => {
     await navigateClientSide(page, '/admin/content');
     await expectContentOverviewReady(page);
     await expect.poll(() => contentListRequests.length).toBeGreaterThan(0);
-    expect(new URL(contentListRequests[0] ?? 'http://localhost').searchParams.get('page')).toBe('1');
+    expect(new URL(contentListRequests[0] ?? 'http://localhost').searchParams.get('page')).toBe(
+      '1'
+    );
     expect(
-      contentListRequests.every((requestUrl) => /^\d+$/u.test(new URL(requestUrl).searchParams.get('page') ?? ''))
+      contentListRequests.every((requestUrl) =>
+        /^\d+$/u.test(new URL(requestUrl).searchParams.get('page') ?? '')
+      )
     ).toBe(true);
-    expect(contentListRequests.some((requestUrl) => new URL(requestUrl).searchParams.get('page') === '1')).toBe(true);
+    expect(
+      contentListRequests.some((requestUrl) => new URL(requestUrl).searchParams.get('page') === '1')
+    ).toBe(true);
     expect(mainserverNewsListCalls).toBe(0);
 
     await page.getByRole('button', { name: /Weiter|content\.pagination\.next/ }).click();
 
-    await expect.poll(() =>
-      contentListRequests.some((requestUrl) => new URL(requestUrl).searchParams.get('page') === '2')
-    ).toBe(true);
+    await expect
+      .poll(() =>
+        contentListRequests.some(
+          (requestUrl) => new URL(requestUrl).searchParams.get('page') === '2'
+        )
+      )
+      .toBe(true);
     expect(mainserverNewsListCalls).toBe(0);
   });
 
@@ -208,16 +338,51 @@ test.describe('news plugin', () => {
   });
 
   test('stays free of serious accessibility violations on news views', async ({ page }) => {
-    const newsItems: NewsRecord[] = [{ id: 'news-1', title: 'Erste News', contentType: 'news.article', status: 'published', author: 'Editor One', createdAt: '2026-04-13T12:10:00.000Z', updatedAt: '2026-04-13T12:10:00.000Z', publishedAt: '2026-04-13T12:10:00.000Z', visible: true, payload: {} }];
-    await page.route('**/auth/me', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authenticatedUser) }));
-    await page.route('**/iam/me/permissions?**', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(permissionPayload) }));
-    await page.route('**/api/v1/mainserver/news', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: newsItems, pagination: createPagination(1) }) }));
-    await page.route('**/api/v1/mainserver/news/**', async (route) => fulfillContentRoute(route, newsItems));
+    const newsItems: NewsRecord[] = [
+      {
+        id: 'news-1',
+        title: 'Erste News',
+        contentType: 'news.article',
+        status: 'published',
+        author: 'Editor One',
+        createdAt: '2026-04-13T12:10:00.000Z',
+        updatedAt: '2026-04-13T12:10:00.000Z',
+        publishedAt: '2026-04-13T12:10:00.000Z',
+        visible: true,
+        payload: {},
+      },
+    ];
+    await page.route('**/auth/me', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(authenticatedUser),
+      })
+    );
+    await page.route('**/iam/me/permissions?**', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(permissionPayload),
+      })
+    );
+    await page.route('**/api/v1/mainserver/news', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: newsItems, pagination: createPagination(1) }),
+      })
+    );
+    await page.route('**/api/v1/mainserver/news/**', async (route) =>
+      fulfillContentRoute(route, newsItems)
+    );
     await routeUnifiedContentOverview(page, newsItems);
     await gotoHomeAsAuthenticatedUser(page);
     await navigateClientSide(page, '/admin/news/news-1');
     await expectNewsEditorReady(page, 'edit');
     const result = await new AxeBuilder({ page }).include('#main-content').analyze();
-    expect(result.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
+    expect(
+      result.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))
+    ).toEqual([]);
   });
 });

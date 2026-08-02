@@ -165,10 +165,12 @@ const createContentAccessState = (
   ...overrides,
 });
 
-const setupSidebarSession = (input: Readonly<{
-  user?: Record<string, unknown> | null;
-  contentAccess?: ReturnType<typeof createContentAccessState>;
-}>) => {
+const setupSidebarSession = (
+  input: Readonly<{
+    user?: Record<string, unknown> | null;
+    contentAccess?: ReturnType<typeof createContentAccessState>;
+  }>
+) => {
   useAuthMock.mockReturnValue(
     input.user ? createAuthenticatedAuthState(input.user) : unauthenticatedAuthState
   );
@@ -273,8 +275,12 @@ describe('Sidebar', () => {
     expect(screen.getByText('Anwendungen')).toBeTruthy();
     expect(screen.getByText('System')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Übersicht' }).className).toContain('rounded-lg');
-    expect(screen.getByRole('link', { name: 'Übersicht' }).className).toContain('text-sidebar-foreground');
-    expect(screen.getByRole('link', { name: 'Übersicht' }).getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('link', { name: 'Übersicht' }).className).toContain(
+      'text-sidebar-foreground'
+    );
+    expect(screen.getByRole('link', { name: 'Übersicht' }).getAttribute('aria-current')).toBe(
+      'page'
+    );
     expect(screen.getByRole('link', { name: 'Übersicht' }).getAttribute('href')).toBe('/');
     expect(screen.getByRole('link', { name: 'Inhalte' }).getAttribute('href')).toBe(
       '/admin/content'
@@ -316,9 +322,7 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(
       SUPPORT_ISSUES_URL
     );
-    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(
-      LICENSE_URL
-    );
+    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(LICENSE_URL);
   });
 
   it('blendet Gruppen ohne Instanzkontext aus', () => {
@@ -353,7 +357,9 @@ describe('Sidebar', () => {
     const usersToggle = screen.getByRole('button', { name: 'Benutzer' });
     fireEvent.click(usersToggle);
 
-    expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('href')).toBe('/admin/users');
+    expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('href')).toBe(
+      '/admin/users'
+    );
     expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
     expect(screen.queryByRole('link', { name: 'Gruppen' })).toBeNull();
   });
@@ -382,9 +388,7 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(
       SUPPORT_ISSUES_URL
     );
-    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(
-      LICENSE_URL
-    );
+    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(LICENSE_URL);
     expect(screen.queryByRole('button', { name: 'Benutzer' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
   });
@@ -585,7 +589,9 @@ describe('Sidebar', () => {
       }),
     });
 
-    expect(screen.getByRole('link', { name: 'Kategorien' }).getAttribute('href')).toBe('/categories');
+    expect(screen.getByRole('link', { name: 'Kategorien' }).getAttribute('href')).toBe(
+      '/categories'
+    );
     expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
   });
 
@@ -617,7 +623,9 @@ describe('Sidebar', () => {
       }),
     });
 
-    expect(screen.getByRole('link', { name: 'Inhalte' }).getAttribute('href')).toBe('/admin/content');
+    expect(screen.getByRole('link', { name: 'Inhalte' }).getAttribute('href')).toBe(
+      '/admin/content'
+    );
     expect(screen.queryByRole('link', { name: 'Kategorien' })).toBeNull();
   });
 
@@ -686,8 +694,12 @@ describe('Sidebar', () => {
       }),
     });
 
-    expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(HELP_DISCUSSIONS_URL);
-    expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(SUPPORT_ISSUES_URL);
+    expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(
+      HELP_DISCUSSIONS_URL
+    );
+    expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(
+      SUPPORT_ISSUES_URL
+    );
     expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(LICENSE_URL);
     expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
@@ -728,7 +740,7 @@ describe('Sidebar', () => {
     });
 
     const navigation = screen.getByRole('navigation', { name: 'Bereichsnavigation' });
-    const newsLink = within(navigation).getByRole('link', { name: 'News' });
+    const newsLink = within(navigation).getByRole('link', { name: 'Nachrichten' });
 
     expect(newsLink.getAttribute('href')).toBe('/plugins/news/review');
     expect(newsLink.getAttribute('aria-current')).toBe('page');
@@ -742,7 +754,7 @@ describe('Sidebar', () => {
       }),
     });
 
-    expect(screen.queryByRole('link', { name: 'News' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Nachrichten' })).toBeNull();
   });
 
   it('blendet Plugin-Navigation ohne passende Payload-Update-Berechtigung aus', () => {
@@ -767,7 +779,7 @@ describe('Sidebar', () => {
       }),
     });
 
-    expect(screen.queryByRole('link', { name: 'News' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Nachrichten' })).toBeNull();
   });
 
   it('löst Plugin-Navigation über die Action-Registry auf, wenn actionId gesetzt ist', () => {
@@ -823,6 +835,6 @@ describe('Sidebar', () => {
       }),
     });
 
-    expect(screen.queryByRole('link', { name: 'News' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Nachrichten' })).toBeNull();
   });
 });

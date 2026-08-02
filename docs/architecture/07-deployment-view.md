@@ -275,6 +275,8 @@ Der Rollout erfolgt `studio-dev` → `studio-staging` → `sva-studio`. Pro Stuf
 
 ## Zentraler Backup-Agent im Swarm
 
+Zusätzlich zu den beiden mutierenden POST-Verträgen veröffentlicht Traefik den OIDC-geschützten read-only Pfad `GET /_ops/backup/v1/capabilities`. Der Promote-Consumer validiert dort Protokollversion, laufende Agent-Revision, Datenbankziele, Ergebnisfelder und Waste-Inventar-Unterstützung, bevor er einen Backup-Auftrag sendet.
+
 `deploy/backup-agent-stack.yaml` definiert eine Replica mit deterministischem Placement. Der Service hängt an den jeweils live verifizierten internen Netzen von Staging und Production sowie am öffentlichen Traefik-Netz, veröffentlicht aber keinen Port. Konkrete Netzwerk-IDs sind flüchtig und keine Konfiguration. Traefik routet nur `POST /_ops/backup/v1/requests` und `POST /_ops/restore/v1/requests` für `backup-studio-staging.smart-village.app` und `backup-studio.smart-village.app` auf Port 3080. Sämtliche Runtime-Secrets sind externe Swarm-Secrets; Restore-Principal und Restore-HMAC sind je Umgebung von den Backup-Credentials getrennt.
 
 Für S3-Uploads setzt der Agent die AWS-CLI-Prüfsummenberechnung und -validierung auf `when_required`. Das verhindert mit aktuellen AWS-CLI-Versionen inkompatible optionale Prüfsummen-Header am bestehenden MinIO-Endpunkt; die eigene SHA-256-Prüfung des Backup-Artefakts bleibt davon unberührt.

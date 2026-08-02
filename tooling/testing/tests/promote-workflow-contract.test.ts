@@ -21,6 +21,7 @@ describe('Promote workflow contract', () => {
     const phases = [
       'bind executor source to promoted change head',
       'capture previous live app digest',
+      'run read-only candidate preflight',
       'create database backup before deployment',
       'verify database backup object',
       'run migration one-shot job',
@@ -42,14 +43,16 @@ describe('Promote workflow contract', () => {
       "trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT"
     );
     expect(
-      workflow.match(/printf '%s\\n' "\$\{APP_CONFIG\}" > config\/runtime\/base\.vars/gu)
+      workflow.match(/cp "\$\{RUNNER_TEMP\}\/promote-app-config\.vars" config\/runtime\/base\.vars/gu)
     ).toHaveLength(2);
+    expect(workflow).toContain('PROMOTE_CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}');
+    expect(workflow).toContain("continue-on-error: ${{ vars.CANDIDATE_PREFLIGHT_GATE != 'enforce' }}");
     expect(
       workflow.match(/SVA_STACK_NAME: \$\{\{ steps\.target\.outputs\.stack_name \}\}/gu)
     ).toHaveLength(2);
     expect(
       workflow.match(/SVA_PUBLIC_BASE_URL: \$\{\{ steps\.target\.outputs\.public_base_url \}\}/gu)
-    ).toHaveLength(2);
+    ).toHaveLength(3);
     expect(workflow).toContain('pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"');
     expect(workflow).toContain('SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}');
     expect(workflow).toContain('--stack "${{ steps.target.outputs.stack_name }}"');
@@ -88,7 +91,7 @@ describe('Promote workflow contract', () => {
   it('runs backups before every staging or production deployment and blocks production mutations behind parity', () => {
     expect(workflow).toContain("inputs.environment == 'staging' || inputs.environment == 'prod'");
     expect(workflow).toContain(
-      "inputs.environment == 'prod' && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true')"
+      "if: ${{ inputs.environment == 'prod' }}"
     );
     expect(workflow).toContain('require successful staging parity for production mutation');
     expect(

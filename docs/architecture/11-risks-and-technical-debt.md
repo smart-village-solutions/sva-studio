@@ -549,3 +549,9 @@ Referenzen:
 - Risiko: Eine wachsende Tenantzahl erhöht Backup-Laufzeit und Clusterobjekte. Maßnahme: zentrale Registry-Discovery, tenantgenaue Manifeste, Sicherung auch deaktivierter Bestände sowie Monitoring für fehlgeschlagene Inventareinträge.
 - Risiko: Der Provisionierer besitzt clusterweite `CREATEDB`-/`CREATEROLE`-Rechte. Maßnahme: externe Secret-Datei ausschließlich im vorhandenen Provisioner- und Backup-Agent-Vertrauensbereich, privilegierte Worker-Lane, keine Browser- oder normale Request-Verarbeitung und explizite Rechteproben nach jeder Provisionierung.
 - Risiko: Ein Operator ordnet einen Dump dem falschen Tenant zu. Maßnahme: signierte `tenantInstanceId`, objektpfadgebundene Validierung, erneute Registry-Auflösung und ausschließlich abgeleitete Restore-Drill-Datenbank.
+
+### Fortschreibung 2026-08: Promote-Vertrag
+
+- Risiko: Der neue Builder weicht vom bewährten `APP_CONFIG` ab. Maßnahme: zuerst ausschließlich redigierter Shadow-Vergleich, danach gestufte autoritative Aktivierung über Dev und Staging; Production bleibt bis zum Nachweis unverändert.
+- Risiko: Neue Gates blockieren einen legitimen Rollout. Maßnahme: stabile Fehlercodes mit nächster Aktion, klar begrenzte Infrastruktur-Retries und Recovery als ausdrücklich freigegebener Modus desselben Workflows.
+- Restrisiko: Geschützte Overrides sind nicht vollständig historisiert. Ein App-Rollback setzt ihre Rückwärtskompatibilität voraus; inkompatible Secret-Rotationen benötigen einen separaten Plan.

@@ -611,6 +611,8 @@ Referenzen:
 
 ## Backup-Sicherheitsvertrag
 
+Der Promote-Vertrag trennt getrackte nicht-sensitive Remote-Profile von geschützten Override-Werten. Lokale `*.local.vars` sind keine Deployment-Quelle. Strukturierte Promote-Fehler enthalten Phase, stabilen `PROMOTE_*`-Code, Retryklassifikation und nächste Aktion; GitHub-Annotation, Summary und JSON-Evidenz dürfen weder Secret-Werte noch deren Hashes oder Längen, vollständige Environment-Dumps, PII oder unredigierte Remote-Logs enthalten.
+
 Der Backup-Agent kombiniert GitHub-OIDC mit umgebungsspezifischen HMAC-Signaturen. OIDC ist auf Repository, Environment und freigegebene Workflows auf `main` gebunden. Requests sind höchstens zehn Minuten gültig und über ihre persistierte Request-ID vor Replay geschützt. HTTP-Antworten und terminale Fehler enthalten nur stabile Fehlercodes; Credentials, Connection-Strings, Datenbankinhalte und Shell-Traces werden nicht ausgegeben.
 
 Der Restore-Vertrag erweitert diese Grenze action-spezifisch: Nur `database-restore.yml` darf `restore-and-verify-v1` aufrufen; Restore-HMAC, Restore-Principal, Bucket, Präfix, Host, Datenbank, App-Rolle und `pg_restore`-Optionen sind fest vorgegeben. Unbekannte Request-Felder, Pfadtraversal, fremde Umgebungen, aktive App-Sessions und Schemaabweichungen werden vor der Mutation abgelehnt. Request-, Sicherheitsdump- und Ergebnisevidenz liegen getrennt unter `control/restores/` und enthalten weder Secrets noch Datenbankinhalte.

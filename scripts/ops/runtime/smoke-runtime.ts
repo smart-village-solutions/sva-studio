@@ -1,5 +1,5 @@
 import type { AcceptanceProbeResult, DoctorReport, RemoteRuntimeProfile, RuntimeProfile, TenantRuntimeTargetResolution } from '../runtime-env.shared.ts';
-import { deriveInternalVerifyMaxAttempts, shouldRetryExternalSmoke, shouldRetryInternalVerifyAttempt } from './smoke-retry.ts';
+import { deriveInternalVerifyMaxAttempts, shouldRetryExternalSmoke, shouldRetryInternalVerifyAttempt, summarizeExternalSmokeAttempt } from './smoke-retry.ts';
 import { resolveStudioIngressContract } from './tenant-ingress-hosts.ts';
 
 type RunHttpProbeInput = {
@@ -132,7 +132,7 @@ const explicitIngressHostProbes = (
 const baseExternalProbes = (deps: RuntimeSmokeDeps, baseUrl: string, env: NodeJS.ProcessEnv) => [
   deps.runHttpProbe({ name: 'public-home', scope: 'external', target: baseUrl, expect: (response) => (response.status === 200 ? null : `Erwartet HTTP 200, erhalten ${response.status}.`) }),
   deps.runHttpProbe({ name: 'public-live', scope: 'external', target: new URL('/health/live', baseUrl).toString(), expect: (response) => (response.status === 200 ? null : `Erwartet HTTP 200, erhalten ${response.status}.`) }),
-  deps.runHttpProbe({ name: 'public-ready', scope: 'external', target: new URL('/health/ready', baseUrl).toString(), expect: (response) => (response.status === 200 || response.status === 503 ? null : `Unerwarteter Ready-Status ${response.status}.`) }),
+  deps.runHttpProbe({ name: 'public-ready', scope: 'external', target: new URL('/health/ready', baseUrl).toString(), expect: (response) => (response.status === 200 ? null : `Unerwarteter Ready-Status ${response.status}.`) }),
   deps.runHttpProbe({
     name: 'public-auth-login',
     scope: 'external',
@@ -175,6 +175,8 @@ const runExternalSmokeWithWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.Pr
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const probes = await runner(env);
     lastProbes = probes;
+    const summary = summarizeExternalSmokeAttempt(probes);
+    process.stdout.write(`[runtime-env] HTTP-Warmup ${attempt}/${maxAttempts}: ${JSON.stringify(summary)}\n`);
     if (!shouldRetry(probes) || attempt >= maxAttempts) return probes;
     await deps.wait(retryDelayMs);
   }
@@ -224,7 +226,16 @@ const waitForRemoteSmokeWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.Proc
   const failingProbe = probes.find(
     (probe) => probe.status === 'error' && isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope),
   );
-  if (failingProbe) throw new Error(`${failingProbe.name}: ${failingProbe.message}`);
+  if (failingProbe) {
+    const code = failingProbe.name === 'public-ready'
+      ? 'PROMOTE_READINESS_NOT_READY'
+      : failingProbe.message.includes('Realm stimmt nicht') || failingProbe.message.includes('erwarteten Realm')
+        ? 'PROMOTE_SMOKE_REALM_MISMATCH'
+        : failingProbe.message.includes('Redirect-URI') || failingProbe.message.includes('Rückkehr-Host')
+          ? 'PROMOTE_SMOKE_CALLBACK_MISMATCH'
+          : 'PROMOTE_INTERNAL_ERROR';
+    throw new Error(`${code}: ${failingProbe.name}: ${failingProbe.message}`);
+  }
   return probes;
 };
 

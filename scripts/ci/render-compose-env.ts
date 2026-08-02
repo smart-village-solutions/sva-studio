@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/u;
@@ -56,8 +56,16 @@ export const runRenderComposeEnv = (
     return 2;
   }
 
+  const inputIndex = args.indexOf('--input');
+  const inputPath = inputIndex >= 0 ? args[inputIndex + 1] : undefined;
+  if (inputIndex >= 0 && (!inputPath || inputPath.startsWith('--'))) {
+    process.stderr.write('Fehlender Wert für --input.\n');
+    return 2;
+  }
+
   try {
-    writeFileSync(outputPath, renderComposeEnv(appConfig), { encoding: 'utf8', mode: 0o600 });
+    const source = inputPath ? readFileSync(inputPath, 'utf8') : appConfig;
+    writeFileSync(outputPath, renderComposeEnv(source), { encoding: 'utf8', mode: 0o600 });
     return 0;
   } catch (error) {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);

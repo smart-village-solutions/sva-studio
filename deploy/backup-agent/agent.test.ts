@@ -15,10 +15,12 @@ import {
   isRestoreSqlLineSupported,
   minioAwsCompatibilityEnv,
   parseWasteInventory,
+  readBackupAgentRevision,
   restoreControlKeysFor,
   runtimePrincipalProbeSql,
   restoreSchemaResetSql,
   resolveDatabaseTarget,
+  resolveCapabilityEnvironment,
   runCommand,
   safeErrorCode,
   targets,
@@ -46,6 +48,18 @@ const request = {
 } as const;
 
 describe('backup agent runtime contract', () => {
+  it('resolves capability requests with or without an explicit environment query', () => {
+    expect(resolveCapabilityEnvironment('/_ops/backup/v1/capabilities', targets.staging.host)).toBe('staging');
+    expect(resolveCapabilityEnvironment('/_ops/backup/v1/capabilities?environment=prod', targets.prod.host)).toBe('prod');
+    expect(resolveCapabilityEnvironment('/_ops/backup/v1/capabilities?environment=prod', targets.staging.host)).toBeUndefined();
+    expect(resolveCapabilityEnvironment('/_ops/backup/v1/requests', targets.staging.host)).toBeUndefined();
+  });
+
+  it('reports a missing agent revision as runtime misconfiguration instead of auth state', () => {
+    expect(readBackupAgentRevision({})).toBeUndefined();
+    expect(readBackupAgentRevision({ BACKUP_AGENT_IMAGE_REF: '  image@sha256:abc  ' })).toBe('image@sha256:abc');
+  });
+
   it('binds GitHub identity to repository, environment and allowlisted main workflow', () => {
     process.env.BACKUP_AGENT_OIDC_AUDIENCE = 'studio-backup-agent';
     process.env.BACKUP_AGENT_GITHUB_REPOSITORY = 'smart-village-solutions/sva-studio';

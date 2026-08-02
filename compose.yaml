@@ -154,6 +154,35 @@ services:
       - "SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE=${SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE:-true}"
       - "SVA_BOOTSTRAP_ENABLE_HOSTNAME_GUARD=${SVA_BOOTSTRAP_ENABLE_HOSTNAME_GUARD:-true}"
 
+  candidate:
+    image: ${IMAGE_REF:-ghcr.io/smart-village-solutions/sva-studio:${TAG:-latest}}
+    entrypoint:
+      - node
+      - ./candidate-preflight.mjs
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      replicas: 0
+      restart_policy:
+        condition: none
+    environment:
+      - "NODE_ENV=production"
+      - "SVA_RUNTIME_PROFILE=${SVA_RUNTIME_PROFILE}"
+      - "SVA_ALLOWED_INSTANCE_IDS=${SVA_ALLOWED_INSTANCE_IDS}"
+      - "APP_DB_USER=${APP_DB_USER}"
+      - "APP_DB_PASSWORD=${APP_DB_PASSWORD}"
+      - "POSTGRES_DB=sva_studio"
+      - "POSTGRES_HOST=postgres"
+      - "POSTGRES_PORT=5432"
+      - "IAM_PII_ACTIVE_KEY_ID=${IAM_PII_ACTIVE_KEY_ID}"
+      - "IAM_PII_KEYRING_JSON=${IAM_PII_KEYRING_JSON}"
+      - "WASTE_DATABASE_PROVISIONER_PASSWORD_FILE=/run/secrets/waste_database_provisioner_password"
+    secrets:
+      - waste_database_provisioner_password
+
   redis:
     image: redis:7-alpine
     environment:

@@ -53,7 +53,7 @@ describe('smoke helpers', () => {
     });
 
     await expect(ops.waitForRemoteSmokeWarmup({}, { runner, runtimeProfile: 'studio' }))
-      .rejects.toThrow('public-home: Erwartet HTTP 200, erhalten 404.');
+      .rejects.toThrow('PROMOTE_INTERNAL_ERROR: public-home: Erwartet HTTP 200, erhalten 404.');
 
     expect(runner).toHaveBeenCalledTimes(50);
     expect(wait).toHaveBeenCalledTimes(49);
@@ -258,6 +258,10 @@ describe('smoke helpers', () => {
     ];
 
     expect(shouldRetryExternalSmoke(probes)).toBe(true);
+  });
+
+  it.each(['public-iam-context', 'public-iam-instances'])('retries a complete router gap for %s', (name) => {
+    expect(shouldRetryExternalSmoke([createProbe({ message: 'Unerwarteter Status 404.', name, status: 'error' })])).toBe(true);
   });
 
   it.each([

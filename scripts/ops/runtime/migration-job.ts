@@ -81,6 +81,7 @@ type RemoteComposeInput =
 
 export type RunMigrationJobInput = RemoteComposeInput & {
   internalNetworkName: string;
+  jobServiceName?: 'candidate' | 'migrate';
   quantumEndpoint: string;
   reportId: string;
   runtimeProfile: string;
@@ -295,32 +296,36 @@ export const buildMigrationJobComposeDocument = (
     jobStackName: string;
     sourceStackName: string;
     targetReplicas: number;
+    jobServiceName?: 'candidate' | 'migrate';
   },
 ): ComposeDocument => {
   const { name: _stackName, ...composeWithoutName } = renderedCompose;
-  const migrateService = renderedCompose.services?.migrate;
-  if (!migrateService || typeof migrateService !== 'object' || Array.isArray(migrateService)) {
-    throw new Error('Render-Compose enthaelt keinen dedizierten migrate-Service.');
+  const jobServiceName = input.jobServiceName ?? 'migrate';
+  const jobService = renderedCompose.services?.[jobServiceName];
+  if (!jobService || typeof jobService !== 'object' || Array.isArray(jobService)) {
+    throw new Error(`Render-Compose enthaelt keinen dedizierten ${jobServiceName}-Service.`);
   }
 
   return normalizeQuantumComposeValue({
     version: composeWithoutName.version ?? '3.8',
     services: {
-      migrate: {
-        ...(migrateService as Record<string, JsonValue>),
+      [jobServiceName]: {
+        ...(jobService as Record<string, JsonValue>),
         networks: ['internal'],
         deploy: {
-          ...(((migrateService as Record<string, JsonValue>).deploy as Record<string, JsonValue> | undefined) ?? {}),
+          ...(((jobService as Record<string, JsonValue>).deploy as Record<string, JsonValue> | undefined) ?? {}),
           replicas: input.targetReplicas,
           restart_policy: {
             condition: 'none',
           },
         },
         environment: {
-          ...((((migrateService as Record<string, JsonValue>).environment as Record<string, JsonValue> | undefined) ?? {})),
+          ...((((jobService as Record<string, JsonValue>).environment as Record<string, JsonValue> | undefined) ?? {})),
           POSTGRES_HOST: `${input.sourceStackName}_postgres`,
-          SVA_MIGRATION_JOB_STACK: input.jobStackName,
-          SVA_MIGRATION_TARGET_STACK: input.sourceStackName,
+          ...(jobServiceName === 'migrate' ? {
+            SVA_MIGRATION_JOB_STACK: input.jobStackName,
+            SVA_MIGRATION_TARGET_STACK: input.sourceStackName,
+          } : {}),
         },
       },
     },
@@ -339,7 +344,8 @@ const createQuantumProject = (
   env: NodeJS.ProcessEnv,
   input: RunMigrationJobInput,
 ) => {
-  const jobStackName = toTemporaryJobStackName(input.sourceStackName, 'migrate', input.reportId);
+  const jobServiceName = input.jobServiceName ?? 'migrate';
+  const jobStackName = toTemporaryJobStackName(input.sourceStackName, jobServiceName, input.reportId);
   const remoteComposeFiles = input.remoteComposeFiles ?? [input.remoteComposeFile];
   const renderedComposeDocument = JSON.parse(
     deps.runCapture(
@@ -348,7 +354,7 @@ const createQuantumProject = (
       ['compose', ...remoteComposeFiles.flatMap((filePath) => ['-f', resolve(deps.rootDir, filePath)]), 'config', '--format', 'json'],
       {
         ...env,
-        SVA_MIGRATE_REPLICAS: '1',
+        ...(jobServiceName === 'migrate' ? { SVA_MIGRATE_REPLICAS: '1' } : {}),
         SVA_MIGRATION_JOB_STACK: jobStackName,
         SVA_MIGRATION_TARGET_STACK: input.sourceStackName,
         SVA_STACK_NAME: input.sourceStackName,
@@ -360,9 +366,10 @@ const createQuantumProject = (
     jobStackName,
     sourceStackName: input.sourceStackName,
     targetReplicas: 1,
+    jobServiceName,
   });
   const renderedComposeJson = JSON.stringify(jobCompose, null, 2);
-  const projectDir = mkdtempSync(resolve(tmpdir(), `sva-studio-${input.runtimeProfile}-migrate-`));
+  const projectDir = mkdtempSync(resolve(tmpdir(), `sva-studio-${input.runtimeProfile}-${jobServiceName}-`));
   const renderedComposePath = resolve(projectDir, 'docker-compose.rendered.json');
 
   writeFileSync(renderedComposePath, `${renderedComposeJson}\n`, 'utf8');
@@ -500,14 +507,15 @@ export const runMigrationJobAgainstAcceptance = async (
 ): Promise<MigrationJobResult> => {
   const quantumProject = createQuantumProject(deps, env, input);
   const startedAt = new Date().toISOString();
-  const jobServiceName = 'migrate';
-  const timeoutMs = Number(env.SVA_MIGRATION_JOB_TIMEOUT_MS ?? '300000');
-  const pollIntervalMs = Number(env.SVA_MIGRATION_JOB_POLL_INTERVAL_MS ?? '2000');
+  const jobServiceName = input.jobServiceName ?? 'migrate';
+  const jobLabel = jobServiceName === 'candidate' ? 'Candidate-Preflight' : 'Migrationsjob';
+  const timeoutMs = Number(jobServiceName === 'candidate' ? env.SVA_CANDIDATE_JOB_TIMEOUT_MS ?? '180000' : env.SVA_MIGRATION_JOB_TIMEOUT_MS ?? '300000');
+  const pollIntervalMs = Number(jobServiceName === 'candidate' ? env.SVA_CANDIDATE_JOB_POLL_INTERVAL_MS ?? '2000' : env.SVA_MIGRATION_JOB_POLL_INTERVAL_MS ?? '2000');
   const startTime = Date.now();
 
   if (!deps.commandExists(deps.rootDir, 'quantum-cli')) {
     quantumProject.cleanup();
-    throw new Error('quantum-cli ist fuer den Swarm-Migrationsjob nicht verfuegbar.');
+    throw new Error(`quantum-cli ist fuer den Swarm-${jobLabel} nicht verfuegbar.`);
   }
 
   try {
@@ -558,7 +566,7 @@ export const runMigrationJobAgainstAcceptance = async (
         });
         throw new Error(
           [
-            `Swarm-Migrationsjob ${quantumProject.jobStackName}/${jobServiceName} ist fehlgeschlagen.`,
+            `Swarm-${jobLabel} ${quantumProject.jobStackName}/${jobServiceName} ist fehlgeschlagen.`,
             task?.state ? `state=${task.state}` : null,
             typeof task?.exitCode === 'number' ? `exitCode=${String(task.exitCode)}` : null,
             task?.message ? `message=${task.message}` : null,
@@ -573,7 +581,7 @@ export const runMigrationJobAgainstAcceptance = async (
       if (Date.now() - startTime > timeoutMs) {
         throw new Error(
           [
-            `Swarm-Migrationsjob ${quantumProject.jobStackName}/${jobServiceName} hat das Timeout von ${timeoutMs} ms erreicht.`,
+            `Swarm-${jobLabel} ${quantumProject.jobStackName}/${jobServiceName} hat das Timeout von ${timeoutMs} ms erreicht.`,
             task?.state ? `state=${task.state}` : null,
             task?.message ? `message=${task.message}` : null,
             logTail ? `details:\n${logTail}` : null,
@@ -597,7 +605,7 @@ export const runMigrationJobAgainstAcceptance = async (
     quantumProject.cleanup();
     if (cleanupError) {
       throw new Error(
-        `Swarm-Migrationsjob ist fehlgeschlagen und der temporäre Stack konnte nicht bereinigt werden: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+        `Swarm-${jobLabel} ist fehlgeschlagen und der temporäre Stack konnte nicht bereinigt werden: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
         { cause: error },
       );
     }

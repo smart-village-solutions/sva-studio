@@ -7,11 +7,19 @@ import {
   listArtifacts,
   matchesSuccessfulStagingBackupEvidence,
   matchesSuccessfulStagingEvidence,
+  requiresStagingParity,
   selectEvidenceJsonFile,
   selectStagingBackupEvidenceJsonFile,
 } from './verify-staging-promote-evidence.ts';
 
 describe('staging parity evidence', () => {
+  it('requires staging evidence only when production would change the live digest', () => {
+    const target = `ghcr.io/example/app@sha256:${'a'.repeat(64)}`;
+    expect(requiresStagingParity(target, target)).toBe(false);
+    expect(requiresStagingParity(target, `ghcr.io/example/app@sha256:${'b'.repeat(64)}`)).toBe(true);
+    expect(requiresStagingParity(target, undefined)).toBe(true);
+  });
+
   it('accepts only successful staging evidence for the exact target digest', () => {
     expect(
       matchesSuccessfulStagingEvidence(
@@ -19,6 +27,17 @@ describe('staging parity evidence', () => {
           digest: 'sha256:expected',
           environment: 'staging',
           mutation: 'completed',
+          postflight: 'passed',
+        },
+        'sha256:expected'
+      )
+    ).toBe(true);
+    expect(
+      matchesSuccessfulStagingEvidence(
+        {
+          digest: 'sha256:expected',
+          environment: 'staging',
+          mutation: 'not-run',
           postflight: 'passed',
         },
         'sha256:expected'

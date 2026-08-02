@@ -10,8 +10,9 @@ import { commandExists, run, runCapture, runCaptureDetailed, spawnBackground, wa
 import { inspectRemoteServiceContract } from '../ops/runtime/remote-service-spec.ts';
 import { stackNameForEnvironment } from './promote-target.ts';
 
-type JobKind = 'bootstrap' | 'migration';
+type JobKind = 'bootstrap' | 'candidate' | 'migration';
 type PromoteEnvironment = 'dev' | 'prod' | 'staging';
+type OneShotResult = Awaited<ReturnType<typeof runMigrationJobAgainstAcceptance>> | Awaited<ReturnType<typeof runBootstrapJobAgainstAcceptance>>;
 
 const rootDir = resolve(import.meta.dirname, '../..');
 
@@ -31,13 +32,13 @@ export const parseArgs = (args: readonly string[]) => {
   for (let index = 0; index < args.length; index += 1) {
     const flag = args[index];
     const value = args[index + 1];
-    if (!flag?.startsWith('--') || !value) throw new Error('Erwartet: --kind <migration|bootstrap> --environment <dev|staging|prod>.');
+    if (!flag?.startsWith('--') || !value) throw new Error('Erwartet: --kind <candidate|migration|bootstrap> --environment <dev|staging|prod>.');
     values.set(flag, value);
     index += 1;
   }
   const kind = values.get('--kind');
   const environment = values.get('--environment');
-  if (kind !== 'migration' && kind !== 'bootstrap') throw new Error('Ungültiger --kind.');
+  if (kind !== 'candidate' && kind !== 'migration' && kind !== 'bootstrap') throw new Error('Ungültiger --kind.');
   if (environment !== 'dev' && environment !== 'staging' && environment !== 'prod') throw new Error('Ungültiges --environment.');
   return { environment, kind } as { environment: PromoteEnvironment; kind: JobKind };
 };
@@ -51,6 +52,25 @@ const redact = (value: string | undefined) => {
     .replace(/(\bpassword\s+')[^']*(')/giu, '$1[REDACTED]$2')
     .replace(/((?:password|token|secret|authorization)\s*[=:]\s*)[^\s]+/giu, '$1[REDACTED]')
     .slice(-8_000);
+};
+
+const runOneShot = (
+  kind: JobKind,
+  deps: Parameters<typeof runMigrationJobAgainstAcceptance>[0],
+  env: NodeJS.ProcessEnv,
+  input: Parameters<typeof runMigrationJobAgainstAcceptance>[2],
+): Promise<OneShotResult> => {
+  if (kind === 'bootstrap') return runBootstrapJobAgainstAcceptance(deps, env, input);
+  return runMigrationJobAgainstAcceptance(deps, env, {
+    ...input,
+    ...(kind === 'candidate' ? { jobServiceName: 'candidate' as const } : {}),
+  });
+};
+
+const throwTerminalFailure = (failure: unknown, cleanupError: unknown) => {
+  if (cleanupError && failure) throw new AggregateError([failure, cleanupError], 'One-shot-Job und Cleanup sind fehlgeschlagen.');
+  if (cleanupError) throw cleanupError;
+  if (failure) throw failure;
 };
 
 const main = async () => {
@@ -91,17 +111,15 @@ const main = async () => {
     sourceStackName,
   };
 
-  let result: Awaited<ReturnType<typeof runMigrationJobAgainstAcceptance>> | Awaited<ReturnType<typeof runBootstrapJobAgainstAcceptance>> | undefined;
+  let result: OneShotResult | undefined;
   let failure: unknown;
+  let cleanupError: unknown;
   try {
-    result = kind === 'migration'
-      ? await runMigrationJobAgainstAcceptance(deps, env, input)
-      : await runBootstrapJobAgainstAcceptance(deps, env, input);
+    result = await runOneShot(kind, deps, env, input);
     if (result.exitCode !== 0 || !result.taskId) throw new Error(`One-shot-Job lieferte keine erfolgreiche Task-Evidenz (exitCode=${String(result.exitCode)}, taskId=${result.taskId ?? 'fehlend'}).`);
   } catch (error) {
     failure = error;
   } finally {
-    let cleanupError: unknown;
     if (result) {
       try {
         await result.cleanup();
@@ -118,12 +136,8 @@ const main = async () => {
     };
     writeFileSync(resultPath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `evidence_path=${resultPath}\n`);
-    if (cleanupError) {
-      if (failure) throw new AggregateError([failure, cleanupError], 'One-shot-Job und Cleanup sind fehlgeschlagen.');
-      throw cleanupError;
-    }
   }
-  if (failure) throw failure;
+  throwTerminalFailure(failure, cleanupError);
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

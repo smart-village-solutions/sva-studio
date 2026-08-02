@@ -324,6 +324,9 @@ Referenzen:
 - Zielbild: Auth-Session-Cookies werden auf die Parent-Domain gesetzt, um SSO über Instanz-Subdomains zu ermöglichen; aktuell sind gemäß ADR-020 host-only-Cookies umgesetzt (Folgearbeit: Parent-Domain-Cookie-Scoping implementieren und verifizieren).
 - Entrypoint-basierte Secret-Injektion muss abwärtskompatibel sein (No-Op ohne `/run/secrets/`).
 - Rolling Updates (`start-first`) dürfen keine Downtime verursachen; Healthchecks müssen vor dem Routing-Start grün sein.
+- Production-Readiness besteht ausschließlich mit HTTP 200; 503 ist nur ein retryfähiger Warmup-Zustand.
+- Reine App-Promotions nach Production benötigen denselben erfolgreich in Staging geprüften Image-Digest.
+- Config-Builder, Shadow-Vergleich, Backup-Agent-Capabilities und `PROMOTE_*`-Fehlercodes benötigen positive und negative Vertragstests.
 
 ### Ergänzung 2026-06: Qualitätsziele POI-Voll-Editor
 

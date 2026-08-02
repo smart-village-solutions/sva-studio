@@ -919,6 +919,8 @@ Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine ab
 4. Der einzelne Worker erzeugt einen Custom-Dump, lädt ihn hoch und wieder herunter, vergleicht Größe und SHA-256 und führt `pg_restore --list` aus.
 5. Das terminale Ergebnis unter `control/results/` entscheidet fail-closed, ob Migration, Bootstrap und Deploy fortgesetzt werden.
 
+Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/v1/capabilities` auf. Erst eine kompatible Protokollversion, laufende Agent-Revision, vollständige Ergebnisfelder und die benötigten Datenbankziele erlauben den Auftrag. Nach dem App-Deploy wird zuerst der terminale Swarm-Service- und Task-Zustand bewertet; erst danach beginnt das externe HTTP-Warmup.
+
 ## Kontrollierter Datenbank-Vollrestore
 
 1. Der freigegebene Workflow `database-restore.yml` bindet Zielumgebung, unveränderliches App-Image, Wartungsfenster, MinIO-Objekt und SHA-256. Staging und Production werden unabhängig durch ihr jeweiliges GitHub Environment autorisiert und geprüft.

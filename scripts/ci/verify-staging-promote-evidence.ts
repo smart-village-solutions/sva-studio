@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { matchesExpectedLiveImage } from './promote-live-digest.ts';
+
 type Artifact = { expired?: boolean; id?: number; name?: string; workflow_run?: { id?: number } };
 type ArtifactPage = { artifacts?: Artifact[]; total_count?: number };
 type StagingEvidence = {
@@ -19,9 +21,12 @@ type WorkflowRun = { conclusion?: string; path?: string };
 
 export const matchesSuccessfulStagingEvidence = (evidence: StagingEvidence, targetDigest: string) =>
   evidence.environment === 'staging' &&
-  evidence.mutation === 'completed' &&
+  (evidence.mutation === 'completed' || evidence.mutation === 'not-run') &&
   evidence.postflight === 'passed' &&
   evidence.digest === targetDigest;
+
+export const requiresStagingParity = (targetImage: string, previousLiveImage: string | undefined) =>
+  !previousLiveImage || !matchesExpectedLiveImage(targetImage, previousLiveImage);
 
 export const matchesSuccessfulStagingBackupEvidence = (
   evidence: StagingEvidence,
@@ -77,6 +82,8 @@ const main = () => {
     throw new Error('Der Evidenztyp muss promote oder backup-drill sein.');
   }
   const targetDigest = required(process.env.DEPLOY_IMAGE_DIGEST, 'DEPLOY_IMAGE_DIGEST');
+  const targetImage = required(process.env.DEPLOY_IMAGE_REF, 'DEPLOY_IMAGE_REF');
+  if (!requiresStagingParity(targetImage, process.env.PREVIOUS_LIVE_IMAGE)) return;
   const repo = required(process.env.GITHUB_REPOSITORY, 'GITHUB_REPOSITORY');
   const api = (path: string) =>
     execFileSync('gh', ['api', path], {

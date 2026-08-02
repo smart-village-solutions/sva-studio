@@ -1,0 +1,4 @@
+{
+  "prNumber": 898,
+  "body": "Stabilerer und nachvollziehbarer Studio-Promote\n\n- Remote-Konfigurationen werden zunächst redigiert und ohne Einfluss auf das Deployment mit getrackten Profilen verglichen.\n- Production prüft Readiness und denselben erfolgreichen Staging-Digest auch bei reinen App-Promotions.\n- Backup-Agent-Kompatibilität und temporäre Router-Lücken werden kontrolliert und mit klaren Fehlercodes behandelt."
+}

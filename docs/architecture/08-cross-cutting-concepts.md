@@ -612,3 +612,7 @@ Der Restore-Vertrag erweitert diese Grenze action-spezifisch: Nur `database-rest
 Restore-Dumps werden bewusst ohne Owner- und Privilegübernahme behandelt. Deshalb ist die idempotente ACL-Reconciliation für den internen Runtime-Principal ein fester Bestandteil derselben Trust Boundary: Der Agent darf ausschließlich die kompilierten Grants für `sva_app` und `iam_app` gegen die feste Zieldatenbank anwenden. Freie SQL-Eingaben und App-Passwörter bleiben ausgeschlossen. Erfolgreiche Evidenz verlangt sowohl boolesche Datenbank-Privilegproben als auch nach dem Neustart einen authentifizierten IAM-Anwendungssmoke; Payloads, Benutzernamen und Berechtigungslisten werden nicht protokolliert.
 
 Nach Mutationsbeginn gibt es keinen automatischen Retry und keinen automatischen Gegenrestore. Jeder weitere Versuch benötigt eine neue GitHub-Environment-Freigabe und Request-ID. Fehlende DB-, Health- oder Tenant-Nachweise halten die App fail-closed stillgelegt. Keycloak gehört nicht zur Datenbankmutation; IAM-Drift bleibt Aufgabe der vorhandenen Reconcile-Verträge.
+
+### Ergänzung 2026-08: Waste-Datenbankgrenze
+
+Waste-Fachdaten werden in `sva_waste` und nicht in der Governance-Datenbank `sva_studio` gespeichert. Die External-Interface-Registry schützt die Verbindungs-URL als Secret. `sva_waste_owner` ist eine `NOLOGIN`-Rolle; Migration, administrative Runtime und öffentliche Runtime verwenden getrennte Login-Rollen. Backups, Restore-Drills und der einmalige Offline-Cutover behandeln `sva_waste` als eigenständige Sicherungs- und Wiederherstellungseinheit.

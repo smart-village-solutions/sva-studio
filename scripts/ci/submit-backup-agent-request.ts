@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
-import { backupEnvironmentConfig, isValidBackupRequest, signBackupRequest, type BackupEnvironment, type BackupRequest } from './backup-agent-contract.ts';
+import { backupEnvironmentConfig, isValidBackupRequest, signBackupRequest, type BackupDatabase, type BackupEnvironment, type BackupRequest } from './backup-agent-contract.ts';
 
 const required = (value: string | undefined, name: string) => {
   const result = value?.trim();
@@ -26,6 +26,7 @@ export const buildBackupAgentRequest = (input: {
   now: Date;
   requestId: string;
   maintenanceWindowReference?: string;
+  database?: BackupDatabase;
 }): BackupRequest => ({
   version: 1,
   action: 'backup-and-verify',
@@ -34,6 +35,7 @@ export const buildBackupAgentRequest = (input: {
   deployImageDigest: input.deployImageDigest,
   expiresAt: new Date(input.now.getTime() + 10 * 60_000).toISOString(),
   ...(input.maintenanceWindowReference ? { maintenanceWindowReference: input.maintenanceWindowReference } : {}),
+  ...(input.database && input.database !== 'studio' ? { database: input.database } : {}),
 });
 
 const requestOidcToken = async () => {
@@ -75,8 +77,9 @@ const waitForResult = async (target: BackupEnvironment, request: BackupRequest) 
         sha256?: unknown;
         status?: unknown;
         steps?: unknown;
+        database?: unknown;
       };
-      if (result.requestId !== request.requestId || result.environment !== target || result.deployImageDigest !== request.deployImageDigest) {
+      if (result.requestId !== request.requestId || result.environment !== target || result.deployImageDigest !== request.deployImageDigest || result.database !== (request.database ?? 'studio')) {
         throw new Error('Das Backup-Ergebnis stimmt nicht mit dem Auftrag überein.');
       }
       if (
@@ -100,11 +103,13 @@ const waitForResult = async (target: BackupEnvironment, request: BackupRequest) 
 
 const main = async () => {
   const target = environment(process.argv[2]);
+  const database: BackupDatabase = process.argv[3] === 'waste' ? 'waste' : 'studio';
   const request = buildBackupAgentRequest({
     environment: target,
     deployImageDigest: required(process.env.DEPLOY_IMAGE_DIGEST, 'DEPLOY_IMAGE_DIGEST'),
-    requestId: `gha-${required(process.env.GITHUB_RUN_ID, 'GITHUB_RUN_ID')}-${required(process.env.GITHUB_RUN_ATTEMPT, 'GITHUB_RUN_ATTEMPT')}`,
+    requestId: `gha-${required(process.env.GITHUB_RUN_ID, 'GITHUB_RUN_ID')}-${required(process.env.GITHUB_RUN_ATTEMPT, 'GITHUB_RUN_ATTEMPT')}${database === 'waste' ? '-waste' : ''}`,
     now: new Date(),
+    database,
     ...(target === 'prod' ? { maintenanceWindowReference: required(process.env.MAINTENANCE_WINDOW_REFERENCE, 'MAINTENANCE_WINDOW_REFERENCE') } : {}),
   });
   if (!isValidBackupRequest(request)) throw new Error('Der erzeugte Backup-Auftrag verletzt den Vertragscheck.');
@@ -126,7 +131,8 @@ const main = async () => {
   const evidencePath = resolve(process.env.RUNNER_TEMP ?? process.cwd(), `promote-backup-agent-${request.requestId}.json`);
   writeFileSync(evidencePath, `${JSON.stringify(result, null, 2)}\n`, { mode: 0o600 });
   const output = resolve(process.env.GITHUB_OUTPUT ?? '/dev/null');
-  writeFileSync(output, `backup_request_id=${request.requestId}\nbackup_bucket=${backupEnvironmentConfig(target).bucket}\nbackup_object=${result.objectKey}\nbackup_evidence_path=${evidencePath}\n` , { flag: 'a', mode: 0o600 });
+  const outputPrefix = database === 'waste' ? 'waste_backup' : 'backup';
+  writeFileSync(output, `${outputPrefix}_request_id=${request.requestId}\n${outputPrefix}_bucket=${backupEnvironmentConfig(target).bucket}\n${outputPrefix}_object=${result.objectKey}\n${outputPrefix}_evidence_path=${evidencePath}\n` , { flag: 'a', mode: 0o600 });
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

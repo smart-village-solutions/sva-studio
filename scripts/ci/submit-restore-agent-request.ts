@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
-import type { BackupEnvironment } from './backup-agent-contract.ts';
+import type { BackupDatabase, BackupEnvironment } from './backup-agent-contract.ts';
 import {
   isValidRestoreRequest,
   restoreEnvironmentConfig,
@@ -31,6 +31,7 @@ export const buildRestoreAgentRequest = (input: {
   requestId: string;
   sourceObjectKey: string;
   sourceSha256: string;
+  database?: BackupDatabase;
 }): RestoreRequest => ({
   version: 1,
   action: 'restore-and-verify-v1',
@@ -40,6 +41,7 @@ export const buildRestoreAgentRequest = (input: {
   maintenanceWindowReference: input.maintenanceWindowReference,
   sourceObjectKey: input.sourceObjectKey,
   sourceSha256: input.sourceSha256,
+  ...(input.database && input.database !== 'studio' ? { database: input.database } : {}),
 });
 
 const requestOidcToken = async () => {
@@ -107,6 +109,7 @@ const waitForRestoreResult = async (
       if (
         result.requestId !== request.requestId ||
         result.environment !== target ||
+        result.database !== (request.database ?? 'studio') ||
         result.sourceObjectKey !== request.sourceObjectKey ||
         result.sourceSha256 !== request.sourceSha256
       )
@@ -138,6 +141,7 @@ const waitForRestoreResult = async (
 
 const main = async () => {
   const target = parseEnvironment(process.argv[2]);
+  const database: BackupDatabase = process.argv[3] === 'waste' ? 'waste' : 'studio';
   const request = buildRestoreAgentRequest({
     environment: target,
     maintenanceWindowReference: required(
@@ -148,9 +152,10 @@ const main = async () => {
     requestId: `restore-gha-${required(process.env.GITHUB_RUN_ID, 'GITHUB_RUN_ID')}-${required(
       process.env.GITHUB_RUN_ATTEMPT,
       'GITHUB_RUN_ATTEMPT'
-    )}`,
+    )}${database === 'waste' ? '-waste' : ''}`,
     sourceObjectKey: required(process.env.RESTORE_SOURCE_OBJECT_KEY, 'RESTORE_SOURCE_OBJECT_KEY'),
     sourceSha256: required(process.env.RESTORE_SOURCE_SHA256, 'RESTORE_SOURCE_SHA256'),
+    database,
   });
   if (!isValidRestoreRequest(request))
     throw new Error('Der erzeugte Restore-Auftrag verletzt den Vertragscheck.');

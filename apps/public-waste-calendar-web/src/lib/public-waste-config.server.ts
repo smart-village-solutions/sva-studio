@@ -6,7 +6,7 @@ import {
 
 export type PublicWasteConfig = {
   readonly instanceId: string;
-  readonly supabase: {
+  readonly database: {
     readonly databaseUrl: string;
     readonly schemaName: string;
   };
@@ -34,10 +34,10 @@ export const parsePublicWasteConfig = (input: unknown): PublicWasteConfig => {
   }
 
   const instanceId = readString(input.instanceId);
-  const supabase = isRecord(input.supabase) ? input.supabase : null;
+  const database = isRecord(input.database) ? input.database : null;
 
-  const databaseUrl = readString(supabase?.databaseUrl);
-  const schemaName = readString(supabase?.schemaName);
+  const databaseUrl = readString(database?.databaseUrl);
+  const schemaName = readString(database?.schemaName);
 
   if (instanceId === null || databaseUrl === null || schemaName === null) {
     throw new Error(CONFIG_ERROR);
@@ -48,7 +48,7 @@ export const parsePublicWasteConfig = (input: unknown): PublicWasteConfig => {
 
   return {
     instanceId,
-    supabase: {
+    database: {
       databaseUrl,
       schemaName,
     },
@@ -87,7 +87,7 @@ export const readPublicWasteConfigFromEnvironment = (
 
   return {
     instanceId,
-    supabase: {
+    database: {
       databaseUrl,
       schemaName,
     },

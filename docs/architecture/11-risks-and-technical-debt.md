@@ -536,3 +536,10 @@ Referenzen:
 - Impact: sehr hoch (Überschreiben der falschen Umgebung oder eines unerwarteten Datenstands)
 - Wahrscheinlichkeit: niedrig
 - Maßnahme: je Zielumgebung ein geschütztes GitHub Environment, action-spezifische OIDC-Allowlist und getrennte HMAC-Secrets, feste Bucket-/Präfix-/DB-Zuordnung, SHA-256, einmalige Request-ID, Wartungsfenster sowie vollständige umgebungsinterne Nachprüfungen. Direkte Operator-Aufrufe und umgebungsübergreifende Restore-Abhängigkeiten bleiben ausgeschlossen.
+
+### Fortschreibung 2026-08: Waste-PostgreSQL-Cutover
+
+- Risiko: Ein veralteter Dump oder parallele Waste-Jobs erzeugen einen inkonsistenten Zielstand. Maßnahme: vollständiger Stopp von Studio, Public-Waste und Worker sowie expliziter Job- und Session-Drain vor dem finalen Dump.
+- Risiko: Owner- und Supabase-spezifische Grants werden unkontrolliert übernommen. Maßnahme: Restore ohne Owner und ACL, danach explizite Rollen- und Grant-Normalisierung.
+- Risiko: Ein später Konfigurations-Rollback verliert neue Daten. Maßnahme: verlustfreies Rollback nur vor Freigabe der ersten Zielschreiboperation; danach erneute Datenmigration.
+- Restrisiko: Die Supabase-Quelle bleibt nach dem Cutover nur 14 Tage als schreibgeschützte Vergleichsquelle erhalten. Backup- und Restore-Nachweis für `sva_waste` sind deshalb Freigabekriterien.

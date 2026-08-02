@@ -2,15 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 
-const resolveWasteDataSourceMock = vi.hoisted(() => vi.fn(async () => ({ databaseUrl: 'postgres://waste', schemaName: 'wm' })));
-const runWasteConnectionCheckMock = vi.hoisted(() => vi.fn(async () => ({
-  instanceId: 'tenant-a',
-  checkedAt: '2026-05-10T10:00:00.000Z',
-  checkStatus: 'failed',
-  visibleStatus: 'error',
-  errorCode: 'connection_failed',
-  errorMessage: 'Probe failed',
-})));
+const resolveWasteDataSourceMock = vi.hoisted(() =>
+  vi.fn(async () => ({ databaseUrl: 'postgres://waste', schemaName: 'wm' }))
+);
+const runWasteConnectionCheckMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    instanceId: 'tenant-a',
+    checkedAt: '2026-05-10T10:00:00.000Z',
+    checkStatus: 'failed',
+    visibleStatus: 'error',
+    errorCode: 'connection_failed',
+    errorMessage: 'Probe failed',
+  }))
+);
 
 vi.mock('@sva/server-runtime', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sva/server-runtime')>();
@@ -74,7 +78,7 @@ describe('waste-management settings handlers', () => {
     const loadDefaultInterfaceRecord = vi.fn(async () => ({
       id: 'supabase-1',
       instanceId: 'tenant-a',
-      typeKey: 'supabase',
+      typeKey: 'postgresql',
       ownerKind: 'host',
       ownerId: 'host',
       displayName: 'Supabase',
@@ -82,10 +86,9 @@ describe('waste-management settings handlers', () => {
       enabled: true,
       isDefault: true,
       category: 'database',
-      statusCheckKind: 'supabase',
+      statusCheckKind: 'postgresql',
       visibleStatus: 'ok',
       publicConfig: {
-        projectUrl: 'https://tenant.example',
         schemaName: 'wm',
         calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
         holidayStateCode: 'BY',
@@ -111,8 +114,7 @@ describe('waste-management settings handlers', () => {
 
     const response = await wasteManagementSettingsHandlers.updateWasteManagementSettingsInternal(
       createRequest({
-        provider: 'supabase',
-        projectUrl: 'https://tenant.example',
+        provider: 'postgresql',
         schemaName: 'wm',
         enabled: true,
         calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
@@ -138,7 +140,6 @@ describe('waste-management settings handlers', () => {
       expect.objectContaining({
         id: 'supabase-1',
         publicConfig: expect.objectContaining({
-          projectUrl: 'https://tenant.example',
           schemaName: 'wm',
           calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
           holidayStateCode: 'NW',
@@ -162,18 +163,17 @@ describe('waste-management settings handlers', () => {
     await expect(response.json()).resolves.toEqual({
       data: {
         instanceId: 'tenant-a',
-        provider: 'supabase',
-        projectUrl: 'https://tenant.example',
+        provider: 'postgresql',
         schemaName: 'wm',
         enabled: true,
         selectedInterfaceId: 'supabase-1',
         selectedInterfaceName: 'Supabase',
-        selectedInterfaceTypeKey: 'supabase',
+        selectedInterfaceTypeKey: 'postgresql',
         availableInterfaces: [
           {
             id: 'supabase-1',
             name: 'Supabase',
-            typeKey: 'supabase',
+            typeKey: 'postgresql',
             enabled: true,
             visibleStatus: 'ok',
             isSelected: true,
@@ -181,7 +181,6 @@ describe('waste-management settings handlers', () => {
         ],
         calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
         databaseUrlConfigured: true,
-        serviceRoleKeyConfigured: true,
         visibleStatus: 'ok',
         holidayStateCode: 'NW',
         lastHolidaySyncStatus: 'success',
@@ -205,29 +204,27 @@ describe('waste-management settings handlers', () => {
 
     const response = await wasteManagementSettingsHandlers.updateWasteManagementSettingsInternal(
       createRequest({
-        provider: 'supabase',
-        projectUrl: '',
-        schemaName: 'wm',
+        provider: 'postgresql',
+        schemaName: 'other_schema',
         enabled: true,
       }),
       actor,
       {
         ...deps,
         loadDefaultInterfaceRecord: vi.fn(async () => ({
-          id: 'supabase-1',
+          id: 'postgresql-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
-          displayName: 'Supabase',
+          displayName: 'PostgreSQL',
           alias: 'default',
           enabled: true,
           isDefault: true,
           category: 'database',
-          statusCheckKind: 'supabase',
+          statusCheckKind: 'postgresql',
           visibleStatus: 'ok',
           publicConfig: {
-            projectUrl: 'https://tenant.example',
             schemaName: 'wm',
           },
           secretConfigCiphertext: 'cipher-secret',
@@ -277,7 +274,7 @@ describe('waste-management settings handlers', () => {
         loadDefaultInterfaceRecord: vi.fn(async () => ({
           id: 'supabase-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
           displayName: 'Supabase',
@@ -285,10 +282,9 @@ describe('waste-management settings handlers', () => {
           enabled: true,
           isDefault: true,
           category: 'database',
-          statusCheckKind: 'supabase',
+          statusCheckKind: 'postgresql',
           visibleStatus: 'ok',
           publicConfig: {
-            projectUrl: 'https://tenant.example',
             schemaName: 'wm',
             calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
             holidayStateCode: 'NW',

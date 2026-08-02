@@ -160,7 +160,7 @@ const loadSelectedWasteInterfaceRecord = async (instanceId: string) => {
   const records = await listExternalInterfaceRecords(instanceId);
   return (
     findSelectedWasteManagementInterfaceRecord(records) ??
-    (await loadDefaultExternalInterfaceRecord(instanceId, 'supabase'))
+    (await loadDefaultExternalInterfaceRecord(instanceId, 'postgresql'))
   );
 };
 

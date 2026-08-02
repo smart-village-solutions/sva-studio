@@ -33,6 +33,15 @@ describe('backup agent stack', () => {
     expect(source).toContain(
       'RESTORE_PROD_POSTGRES_PASSWORD_FILE: /run/secrets/restore_prod_postgres_password'
     );
+    expect(source).toContain('BACKUP_STAGING_WASTE_POSTGRES_DB: sva_waste');
+    expect(source).toContain('BACKUP_PROD_WASTE_POSTGRES_USER: sva_waste_migrator');
+    expect(source).toContain('RESTORE_STAGING_WASTE_POSTGRES_DB: sva_waste_restore_drill');
+    expect(source).toContain('RESTORE_PROD_WASTE_POSTGRES_DB: sva_waste_restore_drill');
+    expect(source).toContain(
+      'RESTORE_PROD_WASTE_POSTGRES_PASSWORD_FILE: /run/secrets/restore_prod_waste_postgres_password'
+    );
+    expect(source).toContain('backup_staging_waste_postgres_password:');
+    expect(source).toContain('restore_prod_waste_postgres_password:');
   });
 
   it('routes only the exact POST endpoint on the existing hosts', () => {

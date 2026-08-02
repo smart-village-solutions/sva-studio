@@ -3,7 +3,7 @@ services:
     image: ${IMAGE_REF}
     environment:
       BACKUP_AGENT_ALLOWED_WORKFLOWS: promote.yml,staging-backup-drill.yml,production-backup-drill.yml
-      RESTORE_AGENT_ALLOWED_WORKFLOWS: database-restore.yml
+      RESTORE_AGENT_ALLOWED_WORKFLOWS: database-restore.yml,waste-database-restore-drill.yml
       BACKUP_AGENT_GITHUB_REPOSITORY: smart-village-solutions/sva-studio
       BACKUP_AGENT_IMAGE_REF: ${IMAGE_REF}
       BACKUP_AGENT_OIDC_AUDIENCE: studio-backup-agent
@@ -12,20 +12,32 @@ services:
       BACKUP_STAGING_POSTGRES_DB: sva_studio
       BACKUP_STAGING_POSTGRES_USER: sva
       BACKUP_STAGING_POSTGRES_PASSWORD_FILE: /run/secrets/backup_staging_postgres_password
+      BACKUP_STAGING_WASTE_POSTGRES_DB: sva_waste
+      BACKUP_STAGING_WASTE_POSTGRES_USER: sva_waste_migrator
+      BACKUP_STAGING_WASTE_POSTGRES_PASSWORD_FILE: /run/secrets/backup_staging_waste_postgres_password
       BACKUP_STAGING_S3_ACCESS_KEY_FILE: /run/secrets/backup_staging_s3_access_key
       BACKUP_STAGING_S3_SECRET_KEY_FILE: /run/secrets/backup_staging_s3_secret_key
       BACKUP_STAGING_SIGNING_KEY_FILE: /run/secrets/backup_staging_signing_key
       RESTORE_STAGING_POSTGRES_USER: sva_restore
       RESTORE_STAGING_POSTGRES_PASSWORD_FILE: /run/secrets/restore_staging_postgres_password
+      RESTORE_STAGING_WASTE_POSTGRES_USER: sva_waste_migrator
+      RESTORE_STAGING_WASTE_POSTGRES_DB: sva_waste_restore_drill
+      RESTORE_STAGING_WASTE_POSTGRES_PASSWORD_FILE: /run/secrets/restore_staging_waste_postgres_password
       RESTORE_STAGING_SIGNING_KEY_FILE: /run/secrets/restore_staging_signing_key
       BACKUP_PROD_POSTGRES_DB: sva_studio
       BACKUP_PROD_POSTGRES_USER: sva
       BACKUP_PROD_POSTGRES_PASSWORD_FILE: /run/secrets/backup_prod_postgres_password
+      BACKUP_PROD_WASTE_POSTGRES_DB: sva_waste
+      BACKUP_PROD_WASTE_POSTGRES_USER: sva_waste_migrator
+      BACKUP_PROD_WASTE_POSTGRES_PASSWORD_FILE: /run/secrets/backup_prod_waste_postgres_password
       BACKUP_PROD_S3_ACCESS_KEY_FILE: /run/secrets/backup_prod_s3_access_key
       BACKUP_PROD_S3_SECRET_KEY_FILE: /run/secrets/backup_prod_s3_secret_key
       BACKUP_PROD_SIGNING_KEY_FILE: /run/secrets/backup_prod_signing_key
       RESTORE_PROD_POSTGRES_USER: sva_restore
       RESTORE_PROD_POSTGRES_PASSWORD_FILE: /run/secrets/restore_prod_postgres_password
+      RESTORE_PROD_WASTE_POSTGRES_USER: sva_waste_migrator
+      RESTORE_PROD_WASTE_POSTGRES_DB: sva_waste_restore_drill
+      RESTORE_PROD_WASTE_POSTGRES_PASSWORD_FILE: /run/secrets/restore_prod_waste_postgres_password
       RESTORE_PROD_SIGNING_KEY_FILE: /run/secrets/restore_prod_signing_key
     networks:
       - ingress
@@ -34,17 +46,21 @@ services:
     secrets:
       - source: backup_staging_postgres_password_v3
         target: backup_staging_postgres_password
+      - backup_staging_waste_postgres_password
       - backup_staging_s3_access_key
       - backup_staging_s3_secret_key
       - backup_staging_signing_key
       - restore_staging_postgres_password
+      - restore_staging_waste_postgres_password
       - restore_staging_signing_key
       - source: backup_prod_postgres_password_v2
         target: backup_prod_postgres_password
+      - backup_prod_waste_postgres_password
       - backup_prod_s3_access_key
       - backup_prod_s3_secret_key
       - backup_prod_signing_key
       - restore_prod_postgres_password
+      - restore_prod_waste_postgres_password
       - restore_prod_signing_key
     healthcheck:
       test: ['CMD', 'curl', '--fail', '--silent', 'http://127.0.0.1:3080/health/live']
@@ -86,6 +102,8 @@ networks:
 secrets:
   backup_staging_postgres_password_v3:
     external: true
+  backup_staging_waste_postgres_password:
+    external: true
   backup_staging_s3_access_key:
     external: true
   backup_staging_s3_secret_key:
@@ -93,6 +111,8 @@ secrets:
   backup_staging_signing_key:
     external: true
   backup_prod_postgres_password_v2:
+    external: true
+  backup_prod_waste_postgres_password:
     external: true
   backup_prod_s3_access_key:
     external: true
@@ -102,9 +122,13 @@ secrets:
     external: true
   restore_staging_postgres_password:
     external: true
+  restore_staging_waste_postgres_password:
+    external: true
   restore_staging_signing_key:
     external: true
   restore_prod_postgres_password:
+    external: true
+  restore_prod_waste_postgres_password:
     external: true
   restore_prod_signing_key:
     external: true

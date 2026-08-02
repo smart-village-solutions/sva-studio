@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   archiveSchemaCompatible,
+  backupDumpArgs,
   canonicalRequest,
   canonicalRestoreRequest,
   buildRuntimePrincipalReconciliationSql,
+  buildWasteRuntimePrincipalReconciliationSql,
   controlKeysFor,
   extractAppliedGooseVersion,
   isHistoricalSchemaRestoreCompatible,
@@ -13,16 +15,21 @@ import {
   restoreControlKeysFor,
   runtimePrincipalProbeSql,
   restoreSchemaResetSql,
+  resolveDatabaseTarget,
   runCommand,
   safeErrorCode,
   targets,
   validateRuntimePrincipalProbe,
   validateOidcClaims,
   validateDatabasePostchecks,
+  validateWasteDatabasePostchecks,
   validRequest,
   validRestoreRequest,
   validRequestHost,
   waitForSessionDrain,
+  wasteArchiveSchemaCompatible,
+  wasteRestoreSchemaResetSql,
+  wasteRuntimePrincipalProbeSql,
 } from './agent.mjs';
 
 const request = {
@@ -116,6 +123,20 @@ describe('backup agent runtime contract', () => {
         'restore-and-verify-v1'
       )
     ).toThrow('oidc_workflow_invalid');
+    process.env.RESTORE_AGENT_ALLOWED_WORKFLOWS =
+      'database-restore.yml,waste-database-restore-drill.yml';
+    expect(() =>
+      validateOidcClaims(
+        {
+          ...claims,
+          workflow_ref:
+            'smart-village-solutions/sva-studio/.github/workflows/waste-database-restore-drill.yml@refs/heads/main',
+        },
+        'staging',
+        1_000,
+        'restore-and-verify-v1'
+      )
+    ).not.toThrow();
   });
   it('accepts only short-lived requests', () => {
     expect(validRequest(request, Date.parse('2026-07-30T10:00:00.000Z'))).toBe(true);
@@ -150,6 +171,14 @@ describe('backup agent runtime contract', () => {
     ).toBe(false);
   });
 
+  it('accepts only allowlisted database targets while preserving the legacy studio signature', () => {
+    const now = Date.parse('2026-07-30T10:00:00.000Z');
+    expect(validRequest({ ...request, database: 'waste' }, now)).toBe(true);
+    expect(validRequest({ ...request, database: 'other' }, now)).toBe(false);
+    expect(canonicalRequest(request)).not.toContain('database');
+    expect(canonicalRequest({ ...request, database: 'waste' })).toContain('"database":"waste"');
+  });
+
   it('accepts only the dedicated host of the requested environment', () => {
     expect(validRequestHost('staging', 'backup-studio-staging.smart-village.app')).toBe(true);
     expect(validRequestHost('prod', 'backup-studio.smart-village.app')).toBe(true);
@@ -165,6 +194,35 @@ describe('backup agent runtime contract', () => {
     expect(targets.staging.runtimeUser).toBe('sva_app');
     expect(targets.prod.schemaOwner).toBe('sva');
     expect(targets.prod.runtimeUser).toBe('sva_app');
+  });
+
+  it('derives the fixed Waste database, roles, prefix and secret references', () => {
+    const target = resolveDatabaseTarget('prod', 'waste');
+    expect(target).toMatchObject({
+      database: 'waste',
+      postgresDatabase: 'sva_waste',
+      postgresUser: 'sva_waste_migrator',
+      postgresPasswordFile: 'BACKUP_PROD_WASTE_POSTGRES_PASSWORD_FILE',
+      restorePasswordFile: 'RESTORE_PROD_WASTE_POSTGRES_PASSWORD_FILE',
+      prefix: 'prod/waste',
+      schemaOwner: 'sva_waste_owner',
+      runtimeUser: 'sva_waste_app',
+      publicRuntimeUser: 'sva_waste_public_app',
+    });
+    expect(() => resolveDatabaseTarget('prod', 'attacker')).toThrow('database_target_invalid');
+    expect(resolveDatabaseTarget('prod', 'waste', 'restore').postgresDatabase).toBe(
+      'sva_waste_restore_drill'
+    );
+  });
+
+  it('dumps Waste through the NOLOGIN owner role without changing Studio dump arguments', () => {
+    const wasteArgs = backupDumpArgs(resolveDatabaseTarget('prod', 'waste'), '/tmp/waste.dump');
+    const studioArgs = backupDumpArgs(resolveDatabaseTarget('prod', 'studio'), '/tmp/studio.dump');
+    expect(wasteArgs).toContain('sva_waste');
+    expect(wasteArgs).toContain('sva_waste_migrator');
+    expect(wasteArgs).toContain('sva_waste_owner');
+    expect(wasteArgs).toContain('--role');
+    expect(studioArgs).not.toContain('--role');
   });
 
   it('builds a static restore reconciliation for the allowlisted runtime principal', () => {
@@ -188,6 +246,42 @@ describe('backup agent runtime contract', () => {
     expect(sql).not.toContain('PASSWORD');
   });
 
+  it('builds fixed Waste runtime grants and privilege probes', () => {
+    const target = resolveDatabaseTarget('prod', 'waste');
+    const sql = buildWasteRuntimePrincipalReconciliationSql(target);
+    const probe = wasteRuntimePrincipalProbeSql(target);
+
+    expect(sql).toContain('SET ROLE "sva_waste_owner";');
+    expect(sql).toContain('GRANT CONNECT ON DATABASE "sva_waste"');
+    expect(sql).toContain('public.waste_email_reminder_outbox');
+    expect(sql).not.toContain('PASSWORD');
+    expect(probe).toContain("'sva_waste_app'");
+    expect(probe).toContain("'sva_waste_public_app'");
+    expect(probe).toContain("'publicRuntimeReminderWrites'");
+  });
+
+  it('uses a Waste-only schema reset and validates representative restore postchecks', () => {
+    expect(wasteRestoreSchemaResetSql('sva_waste_owner')).toBe(
+      'SET ROLE "sva_waste_owner"; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public AUTHORIZATION "sva_waste_owner";'
+    );
+    expect(() =>
+      validateWasteDatabasePostchecks({ requiredTables: '18', regionsTable: 't', toursTable: 't' })
+    ).not.toThrow();
+    expect(() =>
+      validateWasteDatabasePostchecks({ requiredTables: '2', regionsTable: 't', toursTable: 't' })
+    ).toThrow('database_postcheck_failed');
+  });
+
+  it('accepts only archives with the representative Waste schema', () => {
+    const listing = [
+      'TABLE public waste_regions',
+      'TABLE public waste_collection_locations',
+      'TABLE public waste_tours',
+    ].join('\n');
+    expect(wasteArchiveSchemaCompatible(listing)).toBe(true);
+    expect(wasteArchiveSchemaCompatible('TABLE public waste_regions')).toBe(false);
+  });
+
   it('rejects target identities outside the internal restore allowlist', () => {
     expect(() =>
       buildRuntimePrincipalReconciliationSql({
@@ -209,8 +303,8 @@ describe('backup agent runtime contract', () => {
       expect(sql).toContain(`has_sequence_privilege(${principal}, sequence.oid, 'SELECT')`);
     }
     expect(sql).not.toContain("'USAGE,SELECT'");
-    expect(sql.match(/\n    false\n/gmu)).toHaveLength(2);
-    expect(sql.match(/\n    true\n/gmu)).toHaveLength(2);
+    expect(sql.match(/\n {4}false\n/gmu)).toHaveLength(2);
+    expect(sql.match(/\n {4}true\n/gmu)).toHaveLength(2);
   });
 
   it('uses persistent MinIO control keys for replay and terminal evidence', () => {
@@ -232,6 +326,16 @@ describe('backup agent runtime contract', () => {
       sourceSha256: 'b'.repeat(64),
     } as const;
     expect(validRestoreRequest(restore, Date.parse('2026-07-30T10:00:00.000Z'))).toBe(true);
+    expect(
+      validRestoreRequest(
+        {
+          ...restore,
+          database: 'waste',
+          sourceObjectKey: `staging/waste/2026-07-30/${'a'.repeat(64)}/backup.dump`,
+        },
+        Date.parse('2026-07-30T10:00:00.000Z')
+      )
+    ).toBe(true);
     expect(
       validRestoreRequest(
         { ...restore, sourceObjectKey: 'prod/backup.dump' },

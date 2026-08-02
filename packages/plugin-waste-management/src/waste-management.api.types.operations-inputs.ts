@@ -14,8 +14,7 @@ import type {
 } from '@sva/plugin-sdk';
 
 export type WasteManagementSettingsInput = Readonly<{
-  provider: 'supabase';
-  projectUrl: string;
+  provider: 'postgresql';
   schemaName?: string;
   enabled: boolean;
   selectedInterfaceId?: string;
@@ -24,8 +23,6 @@ export type WasteManagementSettingsInput = Readonly<{
   pdfContactBlock?: string;
   emailReminderConfig?: WasteManagementEmailReminderConfig;
   holidayStateCode?: WasteHolidayStateCode;
-  databaseUrl?: string;
-  serviceRoleKey?: string;
   customRecurrencePresets: readonly Omit<
     WasteCustomRecurrencePresetRecord,
     'createdAt' | 'updatedAt'

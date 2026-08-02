@@ -64,4 +64,18 @@ describe('restore agent contract', () => {
     ).toBe(false);
     expect(verifyRestoreRequestSignature(request, 'secret', 'invalid')).toBe(false);
   });
+
+  it('binds Waste restores to the dedicated object prefix and signature', () => {
+    const now = new Date('2026-08-01T10:00:00.000Z');
+    const wasteRequest: RestoreRequest = {
+      ...request,
+      database: 'waste',
+      sourceObjectKey: `staging/waste/2026-08-01/${'a'.repeat(64)}/gha-12345678-waste.dump`,
+    };
+    expect(isValidRestoreRequest(wasteRequest, now)).toBe(true);
+    expect(
+      isValidRestoreRequest({ ...wasteRequest, sourceObjectKey: request.sourceObjectKey }, now)
+    ).toBe(false);
+    expect(signRestoreRequest(wasteRequest, 'secret')).not.toBe(signRestoreRequest(request, 'secret'));
+  });
 });

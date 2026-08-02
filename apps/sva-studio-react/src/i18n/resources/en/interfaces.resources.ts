@@ -38,10 +38,13 @@ export const interfacesENResources = {
       description:
         'Waste datasource with project URL, schema, database access, and service role key.',
     },
+    postgresql: {
+      label: 'PostgreSQL',
+      description: 'Direct PostgreSQL datasource with a schema and encrypted database credentials.',
+    },
     mailTransport: {
       label: 'Mail transport',
-      description:
-        'Central technical SMTP integration for transactional delivery.',
+      description: 'Central technical SMTP integration for transactional delivery.',
     },
     mapGeocoding: {
       label: 'Map & geocoding',
@@ -73,6 +76,10 @@ export const interfacesENResources = {
       serviceRoleKey: 'Service role key',
       notImplemented:
         'This interface is already persisted on the server. Automated status checks and connection probes are still pending.',
+    },
+    postgresql: {
+      schemaName: 'Schema name',
+      databaseUrl: 'Database URL',
     },
     mailTransport: {
       transportId: 'Transport ID',

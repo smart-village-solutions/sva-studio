@@ -1,0 +1,98 @@
+name: Waste Database Restore Drill
+run-name: Waste restore drill ${{ inputs.environment }} from ${{ inputs.source_object_key }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Isolierte Zielumgebung'
+        required: true
+        type: choice
+        options: [staging, prod]
+      source_object_key:
+        description: 'Exakter Waste-Custom-Dump unter <umgebung>/waste/'
+        required: true
+        type: string
+      source_sha256:
+        description: 'Erwartete SHA-256-Prüfsumme'
+        required: true
+        type: string
+      maintenance_window:
+        description: 'Nicht sensible Drill- oder Freigabereferenz'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: waste-database-restore-drill-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  restore-drill:
+    name: Waste restore drill ${{ inputs.environment }}
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: validate fixed Waste restore inputs
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          MAINTENANCE_WINDOW: ${{ inputs.maintenance_window }}
+          SOURCE_OBJECT_KEY: ${{ inputs.source_object_key }}
+          SOURCE_SHA256: ${{ inputs.source_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "${SOURCE_OBJECT_KEY}" =~ ^${ENVIRONMENT}/waste/[A-Za-z0-9._/-]{7,511}\.dump$ ]]
+          [[ "${SOURCE_OBJECT_KEY}" != *..* ]]
+          [[ "${SOURCE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
+          [[ "${MAINTENANCE_WINDOW}" =~ ^[A-Za-z0-9][A-Za-z0-9._:/#\ -]{2,159}$ ]]
+
+      - name: checkout workflow source
+        uses: actions/checkout@v7
+
+      - name: setup pnpm workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: restore Waste dump into the isolated drill database
+        id: restore_agent
+        env:
+          MAINTENANCE_WINDOW_REFERENCE: ${{ inputs.maintenance_window }}
+          RESTORE_AGENT_SIGNING_KEY: ${{ secrets.RESTORE_AGENT_SIGNING_KEY }}
+          RESTORE_SOURCE_OBJECT_KEY: ${{ inputs.source_object_key }}
+          RESTORE_SOURCE_SHA256: ${{ inputs.source_sha256 }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_ENDPOINT: https://fileserver.smart-village.app
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+        run: pnpm exec tsx scripts/ci/submit-restore-agent-request.ts "${{ inputs.environment }}" waste
+
+      - name: write redacted drill evidence
+        if: ${{ success() }}
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          REQUEST_ID: ${{ steps.restore_agent.outputs.restore_request_id }}
+          SAFETY_BACKUP_OBJECT: ${{ steps.restore_agent.outputs.safety_backup_object }}
+          SOURCE_OBJECT_KEY: ${{ inputs.source_object_key }}
+          SOURCE_SHA256: ${{ inputs.source_sha256 }}
+        run: |
+          jq -n \
+            --arg environment "${ENVIRONMENT}" \
+            --arg requestId "${REQUEST_ID}" \
+            --arg safetyBackupObject "${SAFETY_BACKUP_OBJECT}" \
+            --arg sourceObjectKey "${SOURCE_OBJECT_KEY}" \
+            --arg sourceSha256 "${SOURCE_SHA256}" \
+            --arg completedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{version:1,workflow:"waste-database-restore-drill",database:"waste",targetDatabase:"sva_waste_restore_drill",environment:$environment,status:"succeeded",requestId:$requestId,sourceObjectKey:$sourceObjectKey,sourceSha256:$sourceSha256,safetyBackupObject:$safetyBackupObject,completedAt:$completedAt}' \
+            > "${RUNNER_TEMP}/waste-database-restore-drill-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+
+      - name: upload redacted drill evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waste-database-restore-drill-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ steps.restore_agent.outputs.restore_evidence_path }}
+            ${{ runner.temp }}/waste-database-restore-drill-*.json
+          if-no-files-found: error
+          retention-days: 90

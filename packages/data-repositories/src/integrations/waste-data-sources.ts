@@ -31,13 +31,10 @@ type WasteDataSourceRow = {
 const mapRow = (row: WasteDataSourceRow): WasteManagementDataSourceRecord => ({
   instanceId: row.instance_id,
   provider: row.provider_key,
-  projectUrl: row.project_url,
   schemaName: row.schema_name,
   enabled: row.enabled,
   databaseUrlConfigured: Boolean(row.database_url_ciphertext),
-  serviceRoleKeyConfigured: Boolean(row.service_role_key_ciphertext),
   databaseUrlCiphertext: row.database_url_ciphertext ?? undefined,
-  serviceRoleKeyCiphertext: row.service_role_key_ciphertext ?? undefined,
   visibleStatus: row.visible_status,
   lastCheckedAt: row.last_checked_at ?? undefined,
   lastCheckStatus: row.last_check_status ?? undefined,
@@ -103,11 +100,11 @@ SET provider_key = EXCLUDED.provider_key,
   values: [
     input.instanceId,
     input.provider,
-    input.projectUrl,
+    '',
     input.schemaName,
     input.enabled,
     input.databaseUrlCiphertext ?? null,
-    input.serviceRoleKeyCiphertext ?? null,
+    null,
     input.visibleStatus,
     input.lastCheckedAt ?? null,
     input.lastCheckStatus ?? null,
@@ -116,7 +113,9 @@ SET provider_key = EXCLUDED.provider_key,
   ],
 });
 
-const updateConnectionCheckStatement = (input: WasteManagementConnectionCheckRecord): SqlStatement => ({
+const updateConnectionCheckStatement = (
+  input: WasteManagementConnectionCheckRecord
+): SqlStatement => ({
   text: `
 UPDATE iam.instance_waste_data_sources
 SET visible_status = $2,
@@ -137,7 +136,9 @@ WHERE instance_id = $1;
   ],
 });
 
-export const createWasteDataSourceRepository = (executor: SqlExecutor): WasteDataSourceRepository => ({
+export const createWasteDataSourceRepository = (
+  executor: SqlExecutor
+): WasteDataSourceRepository => ({
   async getByInstanceId(instanceId) {
     const result = await executor.execute<WasteDataSourceRow>(selectStatement(instanceId));
     return result.rows[0] ? mapRow(result.rows[0]) : null;

@@ -181,7 +181,9 @@ Kernidee:
 
 - Diese Tabellen modellieren die technische Betriebs- und Provisioning-Ebene pro Instanz.
 - Externe Schnittstellen werden hostgeführt über einen zentralen Typkatalog und instanzbezogene Konfigurationsdatensätze mit verschlüsselten Secret-Blöcken verwaltet.
+- Der Typ `postgresql` speichert nur `schemaName` öffentlich; die `databaseUrl` liegt ausschließlich verschlüsselt im Secret-Block. Der allgemeine Typ `supabase` bleibt daneben erhalten.
 - Die instanzspezifische Waste-Datenquelle bleibt als eigener technischer Datensatz im IAM-Schema modelliert und folgt demselben `instance_id`-basierten Isolationvertrag.
+- Waste-Fachdaten liegen nicht in `sva_studio`, sondern in der getrennten Datenbank `sva_waste`; die Studio-Datenbank hält lediglich Auswahl, Status und verschlüsselte Verbindungsreferenz.
 - Keycloak-bezogene Zustände sind explizit persistiert und auditierbar.
 - Kritische Maschinenaktionen verwenden kurzlebige Einmal-Challenges, die atomar an Instanz, Akteur, Action, optionales Modul und Zustandsfingerprint gebunden sind, höchstens einmal verbraucht werden und ausschließlich den Phrase-Hash speichern.
 

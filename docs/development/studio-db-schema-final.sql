@@ -1,6 +1,8 @@
 --
 -- PostgreSQL database dump
 --
+-- Der Schema-Snapshot enthält keine Seed-Daten. Migration 0072 registriert zusätzlich
+-- den External-Interface-Typ `postgresql` mit verschlüsselter `databaseUrl`.
 
 \restrict 8k3Qjf9gY0vuevNTyGYZ0GdclXCgxTTra0CfwVS3aqEMQXokjbN82cujAGXToFs
 

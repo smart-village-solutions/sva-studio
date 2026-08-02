@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildExternalInterfaceSecretConfigAad } from '../external-interfaces.server.js';
-import { WasteRuntimeError, resolveWasteDataSource, runWasteConnectionCheck } from './data-source.server.js';
+import {
+  WasteRuntimeError,
+  resolveWasteDataSource,
+  runWasteConnectionCheck,
+} from './data-source.server.js';
 
 describe('waste data source runtime', () => {
   it('resolves enabled waste data sources and reveals protected secrets with stable AADs', async () => {
@@ -13,18 +17,17 @@ describe('waste data source runtime', () => {
         loadDefaultInterface: async () => ({
           id: 'iface-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
-          displayName: 'Waste Supabase',
+          displayName: 'Waste PostgreSQL',
           alias: 'default',
           enabled: true,
           isDefault: true,
           category: 'database',
-          statusCheckKind: 'supabase',
+          statusCheckKind: 'postgresql',
           visibleStatus: 'unknown',
           publicConfig: {
-            projectUrl: 'https://tenant-a.supabase.co',
             schemaName: 'public',
           },
           secretConfigCiphertext: 'db-cipher',
@@ -33,16 +36,14 @@ describe('waste data source runtime', () => {
           revealCalls.push({ ciphertext, aad });
           return JSON.stringify({
             databaseUrl: 'postgres://db.example/waste',
-            serviceRoleKey: 'service-role-key',
           });
         },
       })
     ).resolves.toEqual(
       expect.objectContaining({
         instanceId: 'tenant-a',
-        provider: 'supabase',
+        provider: 'postgresql',
         databaseUrl: 'postgres://db.example/waste',
-        serviceRoleKey: 'service-role-key',
       })
     );
 
@@ -70,18 +71,17 @@ describe('waste data source runtime', () => {
         loadDefaultInterface: async () => ({
           id: 'iface-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
-          displayName: 'Waste Supabase',
+          displayName: 'Waste PostgreSQL',
           alias: 'default',
           enabled: false,
           isDefault: true,
           category: 'database',
-          statusCheckKind: 'supabase',
+          statusCheckKind: 'postgresql',
           visibleStatus: 'unknown',
           publicConfig: {
-            projectUrl: 'https://tenant-a.supabase.co',
             schemaName: 'public',
           },
           secretConfigCiphertext: 'db-cipher',
@@ -98,18 +98,17 @@ describe('waste data source runtime', () => {
         loadDefaultInterface: async () => ({
           id: 'iface-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
-          displayName: 'Waste Supabase',
+          displayName: 'Waste PostgreSQL',
           alias: 'default',
           enabled: true,
           isDefault: true,
           category: 'database',
-          statusCheckKind: 'supabase',
+          statusCheckKind: 'postgresql',
           visibleStatus: 'unknown',
           publicConfig: {
-            projectUrl: 'https://tenant-a.supabase.co',
             schemaName: 'public',
           },
           secretConfigCiphertext: 'db-cipher',
@@ -125,12 +124,10 @@ describe('waste data source runtime', () => {
   it('maps successful and failed connection checks into central technical status records', async () => {
     const dataSource = {
       instanceId: 'tenant-a',
-      provider: 'supabase' as const,
-      projectUrl: 'https://tenant-a.supabase.co',
+      provider: 'postgresql' as const,
       schemaName: 'public',
       enabled: true,
       databaseUrl: 'postgres://db.example/waste',
-      serviceRoleKey: 'service-role-key',
       visibleStatus: 'unknown' as const,
     };
 
@@ -173,12 +170,10 @@ describe('waste data source runtime', () => {
   it('uses the current time for waste connection checks when no clock is injected', async () => {
     const dataSource = {
       instanceId: 'tenant-a',
-      provider: 'supabase' as const,
-      projectUrl: 'https://tenant-a.supabase.co',
+      provider: 'postgresql' as const,
       schemaName: 'public',
       enabled: true,
       databaseUrl: 'postgres://db.example/waste',
-      serviceRoleKey: 'service-role-key',
       visibleStatus: 'unknown' as const,
     };
 
@@ -197,7 +192,7 @@ describe('waste data source runtime', () => {
     );
   });
 
-  it('resolves the supabase interface registry as the only waste datasource source', async () => {
+  it('resolves the PostgreSQL interface registry as the only waste datasource source', async () => {
     const revealCalls: Array<{ ciphertext: string | null | undefined; aad: string }> = [];
 
     await expect(
@@ -206,20 +201,18 @@ describe('waste data source runtime', () => {
         loadDefaultInterface: async () => ({
           id: 'iface-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
-          displayName: 'Waste Supabase',
+          displayName: 'Waste PostgreSQL',
           alias: 'default',
           enabled: true,
           isDefault: true,
           category: 'database',
-          baseUrl: 'https://tenant-a.supabase.co',
-          authMode: 'service_role',
-          statusCheckKind: 'supabase',
+          authMode: 'database_credentials',
+          statusCheckKind: 'postgresql',
           visibleStatus: 'unknown',
           publicConfig: {
-            projectUrl: 'https://tenant-a.supabase.co',
             schemaName: 'wm',
           },
           secretConfigCiphertext: 'interface-secret-cipher',
@@ -229,7 +222,6 @@ describe('waste data source runtime', () => {
           if (ciphertext === 'interface-secret-cipher') {
             return JSON.stringify({
               databaseUrl: 'postgres://db.example/interface',
-              serviceRoleKey: 'interface-service-role',
             });
           }
           return undefined;
@@ -237,10 +229,9 @@ describe('waste data source runtime', () => {
       })
     ).resolves.toEqual(
       expect.objectContaining({
-        projectUrl: 'https://tenant-a.supabase.co',
+        provider: 'postgresql',
         schemaName: 'wm',
         databaseUrl: 'postgres://db.example/interface',
-        serviceRoleKey: 'interface-service-role',
       })
     );
 
@@ -259,7 +250,7 @@ describe('waste data source runtime', () => {
       })
     ).rejects.toMatchObject({
       code: 'not_configured',
-      message: 'Für diese Instanz ist keine Waste-Supabase-Schnittstelle konfiguriert.',
+      message: 'Für diese Instanz ist keine Waste-PostgreSQL-Schnittstelle konfiguriert.',
     });
   });
 });

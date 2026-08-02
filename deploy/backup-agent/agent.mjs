@@ -77,11 +77,38 @@ export const targets = {
   },
 };
 
+export const resolveDatabaseTarget = (environment, database = 'studio', operation = 'backup') => {
+  const target = targets[environment];
+  if (!target || (database !== 'studio' && database !== 'waste') || (operation !== 'backup' && operation !== 'restore'))
+    throw new Error('database_target_invalid');
+  if (database === 'studio') return { ...target, database: 'studio' };
+  const prefix = environment === 'staging' ? 'BACKUP_STAGING' : 'BACKUP_PROD';
+  const restorePrefix = environment === 'staging' ? 'RESTORE_STAGING' : 'RESTORE_PROD';
+  return {
+    ...target,
+    database: 'waste',
+    prefix: `${target.prefix}/waste`,
+    postgresDatabase:
+      operation === 'restore'
+        ? process.env[`${restorePrefix}_WASTE_POSTGRES_DB`] || 'sva_waste_restore_drill'
+        : process.env[`${prefix}_WASTE_POSTGRES_DB`] || 'sva_waste',
+    postgresUser: process.env[`${prefix}_WASTE_POSTGRES_USER`] || 'sva_waste_migrator',
+    postgresPasswordFile: `${prefix}_WASTE_POSTGRES_PASSWORD_FILE`,
+    restoreUser: process.env[`${restorePrefix}_WASTE_POSTGRES_USER`] || 'sva_waste_migrator',
+    restorePasswordFile: `${restorePrefix}_WASTE_POSTGRES_PASSWORD_FILE`,
+    schemaOwner: 'sva_waste_owner',
+    runtimeRole: 'sva_waste_app',
+    runtimeUser: 'sva_waste_app',
+    publicRuntimeUser: 'sva_waste_public_app',
+  };
+};
+
 export const validRequestHost = (environment, host) => targets[environment]?.host === host;
 
 export const canonicalRequest = (request) =>
   JSON.stringify({
     action: request.action,
+    ...(request.database ? { database: request.database } : {}),
     deployImageDigest: request.deployImageDigest,
     environment: request.environment,
     expiresAt: request.expiresAt,
@@ -93,6 +120,7 @@ export const canonicalRequest = (request) =>
 export const canonicalRestoreRequest = (request) =>
   JSON.stringify({
     action: request.action,
+    ...(request.database ? { database: request.database } : {}),
     environment: request.environment,
     expiresAt: request.expiresAt,
     maintenanceWindowReference: request.maintenanceWindowReference,
@@ -106,6 +134,7 @@ export const validRequest = (request, now = Date.now()) => {
   if (!request || typeof request !== 'object' || Array.isArray(request)) return false;
   const allowedKeys = new Set([
     'action',
+    'database',
     'deployImageDigest',
     'environment',
     'expiresAt',
@@ -116,6 +145,8 @@ export const validRequest = (request, now = Date.now()) => {
   if (Object.keys(request).some((key) => !allowedKeys.has(key))) return false;
   if (request.version !== 1 || request.action !== 'backup-and-verify') return false;
   if (request.environment !== 'staging' && request.environment !== 'prod') return false;
+  if (request.database !== undefined && request.database !== 'studio' && request.database !== 'waste')
+    return false;
   if (
     typeof request.requestId !== 'string' ||
     !/^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u.test(request.requestId)
@@ -141,6 +172,7 @@ export const validRestoreRequest = (request, now = Date.now()) => {
   if (!request || typeof request !== 'object' || Array.isArray(request)) return false;
   const allowedKeys = new Set([
     'action',
+    'database',
     'environment',
     'expiresAt',
     'maintenanceWindowReference',
@@ -152,6 +184,8 @@ export const validRestoreRequest = (request, now = Date.now()) => {
   if (Object.keys(request).some((key) => !allowedKeys.has(key))) return false;
   if (request.version !== 1 || request.action !== 'restore-and-verify-v1') return false;
   if (request.environment !== 'staging' && request.environment !== 'prod') return false;
+  if (request.database !== undefined && request.database !== 'studio' && request.database !== 'waste')
+    return false;
   if (
     typeof request.requestId !== 'string' ||
     !/^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u.test(request.requestId)
@@ -164,7 +198,7 @@ export const validRestoreRequest = (request, now = Date.now()) => {
     return false;
   if (typeof request.sourceSha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(request.sourceSha256))
     return false;
-  const prefix = `${targets[request.environment].prefix}/`;
+  const prefix = `${resolveDatabaseTarget(request.environment, request.database).prefix}/`;
   if (
     typeof request.sourceObjectKey !== 'string' ||
     !request.sourceObjectKey.startsWith(prefix) ||
@@ -393,6 +427,22 @@ export const controlKeysFor = (requestId) => ({
   result: `control/results/${requestId}.json`,
 });
 
+export const backupDumpArgs = (target, dump) => [
+  '--format=custom',
+  '--no-owner',
+  '--no-privileges',
+  ...(target.database === 'waste' ? ['--role', target.schemaOwner] : []),
+  '--host',
+  target.postgresHost,
+  '--port',
+  '5432',
+  '--username',
+  target.postgresUser,
+  '--file',
+  dump,
+  target.postgresDatabase,
+];
+
 export const restoreControlKeysFor = (requestId) => ({
   request: `control/restores/requests/${requestId}.json`,
   safetyBackup: `control/restores/safety-backups/${requestId}.json`,
@@ -400,7 +450,7 @@ export const restoreControlKeysFor = (requestId) => ({
 });
 
 export const executeBackupForIntegration = async (request) => {
-  const target = targets[request.environment];
+  const target = resolveDatabaseTarget(request.environment, request.database);
   const workdir = join(tmpdir(), `backup-agent-${request.requestId}-${randomUUID()}`);
   const dump = join(workdir, 'backup.dump');
   const downloaded = join(workdir, 'backup.download');
@@ -414,6 +464,7 @@ export const executeBackupForIntegration = async (request) => {
     version: 1,
     requestId: request.requestId,
     environment: request.environment,
+    database: target.database,
     deployImageDigest: request.deployImageDigest,
     agentImage: required(process.env.BACKUP_AGENT_IMAGE_REF, 'BACKUP_AGENT_IMAGE_REF'),
     tools: JSON.parse(
@@ -425,20 +476,7 @@ export const executeBackupForIntegration = async (request) => {
     const pgEnv = { ...process.env, PGPASSWORD: await readSecret(target.postgresPasswordFile) };
     await runCommand(
       'pg_dump',
-      [
-        '--format=custom',
-        '--no-owner',
-        '--no-privileges',
-        '--host',
-        target.postgresHost,
-        '--port',
-        '5432',
-        '--username',
-        target.postgresUser,
-        '--file',
-        dump,
-        target.postgresDatabase,
-      ],
+      backupDumpArgs(target, dump),
       { env: pgEnv }
     );
     complete('pg_dump');
@@ -547,7 +585,13 @@ const sqlIdentifier = (value) => `"${String(value).replaceAll('"', '""')}"`;
 const sqlLiteral = (value) => `'${String(value).replaceAll("'", "''")}'`;
 
 const assertRuntimePrincipalTarget = (target) => {
-  const allowlisted = Object.values(targets).some(
+  const allowlisted = Object.keys(targets)
+    .flatMap((environment) => [
+      resolveDatabaseTarget(environment, 'studio'),
+      resolveDatabaseTarget(environment, 'waste'),
+      resolveDatabaseTarget(environment, 'waste', 'restore'),
+    ])
+    .some(
     (candidate) =>
       candidate.postgresDatabase === target.postgresDatabase &&
       candidate.postgresHost === target.postgresHost &&
@@ -560,6 +604,7 @@ const assertRuntimePrincipalTarget = (target) => {
 
 export const buildRuntimePrincipalReconciliationSql = (target) => {
   assertRuntimePrincipalTarget(target);
+  if (target.database === 'waste') return buildWasteRuntimePrincipalReconciliationSql(target);
   const database = sqlIdentifier(target.postgresDatabase);
   const runtimeRole = sqlIdentifier(target.runtimeRole);
   const runtimeUser = sqlIdentifier(target.runtimeUser);
@@ -589,8 +634,43 @@ RESET ROLE;
 `;
 };
 
+export const buildWasteRuntimePrincipalReconciliationSql = (target) => {
+  assertRuntimePrincipalTarget(target);
+  if (target.database !== 'waste') throw new Error('runtime_principal_target_invalid');
+  const database = sqlIdentifier(target.postgresDatabase);
+  const owner = sqlIdentifier(target.schemaOwner);
+  const app = sqlIdentifier(target.runtimeUser);
+  const publicApp = sqlIdentifier(target.publicRuntimeUser);
+  return `
+DO $restore_principal_guard$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(target.schemaOwner)})
+    OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(target.runtimeUser)})
+    OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(target.publicRuntimeUser)}) THEN
+    RAISE EXCEPTION 'restore_runtime_principal_missing';
+  END IF;
+END
+$restore_principal_guard$;
+
+SET ROLE ${owner};
+GRANT CONNECT ON DATABASE ${database} TO ${app}, ${publicApp};
+GRANT USAGE ON SCHEMA public TO ${app}, ${publicApp};
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${app};
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO ${app};
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${app};
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${publicApp};
+GRANT INSERT, UPDATE, DELETE ON TABLE
+  public.waste_email_reminder_subscriptions,
+  public.waste_email_reminder_subscription_items,
+  public.waste_email_reminder_outbox
+TO ${publicApp};
+RESET ROLE;
+`;
+};
+
 export const runtimePrincipalProbeSql = (target) => {
   assertRuntimePrincipalTarget(target);
+  if (target.database === 'waste') return wasteRuntimePrincipalProbeSql(target);
   const database = sqlLiteral(target.postgresDatabase);
   const runtimeRole = sqlLiteral(target.runtimeRole);
   const runtimeUser = sqlLiteral(target.runtimeUser);
@@ -656,8 +736,60 @@ SELECT json_build_object(
 `;
 };
 
+export const wasteRuntimePrincipalProbeSql = (target) => {
+  assertRuntimePrincipalTarget(target);
+  if (target.database !== 'waste') throw new Error('runtime_principal_target_invalid');
+  const database = sqlLiteral(target.postgresDatabase);
+  const app = sqlLiteral(target.runtimeUser);
+  const publicApp = sqlLiteral(target.publicRuntimeUser);
+  return `
+SELECT json_build_object(
+  'databaseConnect', has_database_privilege(${app}, ${database}, 'CONNECT'),
+  'runtimeUserSchemaUsage', has_schema_privilege(${app}, 'public', 'USAGE'),
+  'runtimeUserTablesReady', COALESCE((
+    SELECT bool_and(
+      has_table_privilege(${app}, relation.oid, 'SELECT')
+      AND has_table_privilege(${app}, relation.oid, 'INSERT')
+      AND has_table_privilege(${app}, relation.oid, 'UPDATE')
+      AND has_table_privilege(${app}, relation.oid, 'DELETE')
+    ) FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+    WHERE namespace.nspname = 'public' AND relation.relkind IN ('r', 'p') AND relation.relname LIKE 'waste\\_%' ESCAPE '\\'
+  ), false),
+  'publicRuntimeSchemaUsage', has_schema_privilege(${publicApp}, 'public', 'USAGE'),
+  'publicRuntimeTablesReadable', COALESCE((
+    SELECT bool_and(has_table_privilege(${publicApp}, relation.oid, 'SELECT'))
+    FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+    WHERE namespace.nspname = 'public' AND relation.relkind IN ('r', 'p') AND relation.relname LIKE 'waste\\_%' ESCAPE '\\'
+  ), false),
+  'publicRuntimeReminderWrites', (
+    SELECT bool_and(
+      has_table_privilege(${publicApp}, relation.oid, 'INSERT')
+      AND has_table_privilege(${publicApp}, relation.oid, 'UPDATE')
+      AND has_table_privilege(${publicApp}, relation.oid, 'DELETE')
+    )
+    FROM pg_class relation
+    JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+    WHERE namespace.nspname = 'public' AND relation.relname = ANY (ARRAY[
+      'waste_email_reminder_subscriptions',
+      'waste_email_reminder_subscription_items',
+      'waste_email_reminder_outbox'
+    ])
+  )
+)::text;
+`;
+};
+
 export const validateRuntimePrincipalProbe = (probe) => {
-  const requiredChecks = [
+  const requiredChecks = probe && 'publicRuntimeSchemaUsage' in probe
+    ? [
+        'databaseConnect',
+        'runtimeUserSchemaUsage',
+        'runtimeUserTablesReady',
+        'publicRuntimeSchemaUsage',
+        'publicRuntimeTablesReadable',
+        'publicRuntimeReminderWrites',
+      ]
+    : [
     'databaseConnect',
     'roleMembership',
     'runtimeUserSchemaUsage',
@@ -666,7 +798,7 @@ export const validateRuntimePrincipalProbe = (probe) => {
     'runtimeRoleTablesReady',
     'runtimeUserSequencesReady',
     'runtimeRoleSequencesReady',
-  ];
+      ];
   if (!probe || typeof probe !== 'object' || requiredChecks.some((check) => probe[check] !== true))
     throw new Error('runtime_principal_probe_failed');
   return Object.fromEntries(requiredChecks.map((check) => [check, true]));
@@ -688,7 +820,7 @@ const reconcileAndProbeRuntimePrincipal = async (target, pgEnv) => {
     return validateRuntimePrincipalProbe(JSON.parse(payload ?? 'null'));
   } catch (error) {
     if (error instanceof Error && error.message === 'runtime_principal_probe_failed') throw error;
-    throw new Error('runtime_principal_probe_failed');
+    throw new Error('runtime_principal_probe_failed', { cause: error });
   }
 };
 
@@ -716,7 +848,7 @@ export const waitForSessionDrain = async (
       runSql(
         target,
         pgEnv,
-        `SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND usename = ${sqlLiteral(target.runtimeUser)} AND backend_type = 'client backend' AND pid <> pg_backend_pid()`
+        `SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND usename = ANY(ARRAY[${sqlLiteral(target.runtimeUser)}${target.publicRuntimeUser ? `, ${sqlLiteral(target.publicRuntimeUser)}` : ''}]) AND backend_type = 'client backend' AND pid <> pg_backend_pid()`
       ),
     wait = () => new Promise((resolveWait) => setTimeout(resolveWait, 2_000)),
   } = {}
@@ -744,8 +876,18 @@ export const validateDatabasePostchecks = ({
     throw new Error('database_postcheck_failed');
 };
 
+export const validateWasteDatabasePostchecks = ({ requiredTables, regionsTable, toursTable }) => {
+  if (!/^\d+$/u.test(requiredTables) || Number(requiredTables) < 3 || regionsTable !== 't' || toursTable !== 't')
+    throw new Error('database_postcheck_failed');
+};
+
 export const archiveSchemaCompatible = (listing) =>
   listing.includes('TABLE public goose_db_version') && listing.includes('TABLE iam instances');
+
+export const wasteArchiveSchemaCompatible = (listing) =>
+  listing.includes('TABLE public waste_regions') &&
+  listing.includes('TABLE public waste_collection_locations') &&
+  listing.includes('TABLE public waste_tours');
 
 export const isRestoreSqlLineSupported = (line) => line !== 'SET transaction_timeout = 0;';
 
@@ -798,11 +940,17 @@ export const restoreSchemaResetSql = (schemaOwner) => {
   return `SET ROLE ${owner}; DROP SCHEMA IF EXISTS iam CASCADE; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public AUTHORIZATION ${owner}; CREATE SCHEMA iam AUTHORIZATION ${owner};`;
 };
 
-const verifyArchiveSchema = async (archive) => {
+export const wasteRestoreSchemaResetSql = (schemaOwner) => {
+  const owner = sqlIdentifier(schemaOwner);
+  return `SET ROLE ${owner}; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public AUTHORIZATION ${owner};`;
+};
+
+const verifyArchiveSchema = async (archive, database = 'studio') => {
   const listing = await runCapture('pg_restore', ['--list', archive], {
     maxOutputBytes: 10 * 1024 * 1024,
   });
-  if (!archiveSchemaCompatible(listing)) throw new Error('archive_schema_incompatible');
+  if (database === 'waste' ? !wasteArchiveSchemaCompatible(listing) : !archiveSchemaCompatible(listing))
+    throw new Error('archive_schema_incompatible');
 };
 
 const readArchiveGooseVersion = async (archive) => {
@@ -815,7 +963,7 @@ const readArchiveGooseVersion = async (archive) => {
 };
 
 export const executeRestoreForIntegration = async (request) => {
-  const target = targets[request.environment];
+  const target = resolveDatabaseTarget(request.environment, request.database, 'restore');
   const keys = restoreControlKeysFor(request.requestId);
   const workdir = join(tmpdir(), `restore-agent-${request.requestId}-${randomUUID()}`);
   const sourceDump = join(workdir, 'source.dump');
@@ -831,6 +979,7 @@ export const executeRestoreForIntegration = async (request) => {
     action: request.action,
     requestId: request.requestId,
     environment: request.environment,
+    database: target.database,
     sourceObjectKey: request.sourceObjectKey,
     sourceSha256: request.sourceSha256,
     maintenanceWindowReference: request.maintenanceWindowReference,
@@ -856,10 +1005,13 @@ export const executeRestoreForIntegration = async (request) => {
     );
     if ((await sha256(sourceDump)) !== request.sourceSha256) throw new Error('checksum_mismatch');
     complete('source-object-and-checksum-verify');
-    await verifyArchiveSchema(sourceDump);
-    const sourceGooseVersion = await readArchiveGooseVersion(sourceDump);
-    if (!Number.isSafeInteger(sourceGooseVersion)) throw new Error('archive_schema_incompatible');
-    complete('archive-and-schema-preflight', { sourceGooseVersion });
+    await verifyArchiveSchema(sourceDump, target.database);
+    const sourceGooseVersion = target.database === 'studio' ? await readArchiveGooseVersion(sourceDump) : null;
+    if (target.database === 'studio' && !Number.isSafeInteger(sourceGooseVersion))
+      throw new Error('archive_schema_incompatible');
+    complete('archive-and-schema-preflight', {
+      ...(target.database === 'studio' ? { sourceGooseVersion } : { database: 'waste' }),
+    });
 
     const pgEnv = {
       ...process.env,
@@ -869,16 +1021,20 @@ export const executeRestoreForIntegration = async (request) => {
     await waitForSessionDrain(target, pgEnv);
     complete('app-session-drain');
     complete('exclusive-agent-restore-slot');
-    const targetGooseVersion = Number(
-      await runSqlAsSchemaOwner(
-        target,
-        pgEnv,
-        'SELECT max(version_id) FROM public.goose_db_version WHERE is_applied'
-      )
-    );
-    if (!isHistoricalSchemaRestoreCompatible(sourceGooseVersion, targetGooseVersion))
-      throw new Error('schema_version_mismatch');
-    complete('schema-version-compatibility', { sourceGooseVersion, targetGooseVersion });
+    if (target.database === 'studio') {
+      const targetGooseVersion = Number(
+        await runSqlAsSchemaOwner(
+          target,
+          pgEnv,
+          'SELECT max(version_id) FROM public.goose_db_version WHERE is_applied'
+        )
+      );
+      if (!isHistoricalSchemaRestoreCompatible(sourceGooseVersion, targetGooseVersion))
+        throw new Error('schema_version_mismatch');
+      complete('schema-version-compatibility', { sourceGooseVersion, targetGooseVersion });
+    } else {
+      complete('schema-version-compatibility', { contract: 'waste-schema-inventory' });
+    }
 
     await runCommand(
       'pg_dump',
@@ -940,7 +1096,13 @@ export const executeRestoreForIntegration = async (request) => {
     complete('safety-backup', { objectKey: safetyObjectKey, sha256: safetySha256 });
 
     mutationStarted = true;
-    await runSql(target, pgEnv, restoreSchemaResetSql(target.schemaOwner));
+    await runSql(
+      target,
+      pgEnv,
+      target.database === 'waste'
+        ? wasteRestoreSchemaResetSql(target.schemaOwner)
+        : restoreSchemaResetSql(target.schemaOwner)
+    );
     complete('application-schema-reset');
     await runCommand(
       'pg_restore',
@@ -974,24 +1136,44 @@ export const executeRestoreForIntegration = async (request) => {
     const principalProbe = await reconcileAndProbeRuntimePrincipal(target, pgEnv);
     complete('runtime-principal-reconciliation', { principal: target.runtimeUser });
     complete('runtime-principal-probe', { principal: target.runtimeUser, ...principalProbe });
-    const gooseVersion = await runSqlAsSchemaOwner(
-      target,
-      pgEnv,
-      'SELECT max(version_id) FROM public.goose_db_version WHERE is_applied'
-    );
-    const iamSchema = await runSqlAsSchemaOwner(
-      target,
-      pgEnv,
-      `SELECT to_regclass('iam.instances') IS NOT NULL`
-    );
-    const appPrincipal = principalProbe.runtimeRoleTablesReady ? '1' : '0';
-    const registryEntries = await runSqlAsSchemaOwner(
-      target,
-      pgEnv,
-      'SELECT count(*) FROM iam.instances'
-    );
-    validateDatabasePostchecks({ appPrincipal, gooseVersion, iamSchema, registryEntries });
-    complete('database-postchecks', { gooseVersion, registryEntries: Number(registryEntries) });
+    if (target.database === 'waste') {
+      const requiredTables = await runSqlAsSchemaOwner(
+        target,
+        pgEnv,
+        `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE 'waste\\_%' ESCAPE '\\'`
+      );
+      const regionsTable = await runSqlAsSchemaOwner(
+        target,
+        pgEnv,
+        `SELECT to_regclass('public.waste_regions') IS NOT NULL`
+      );
+      const toursTable = await runSqlAsSchemaOwner(
+        target,
+        pgEnv,
+        `SELECT to_regclass('public.waste_tours') IS NOT NULL`
+      );
+      validateWasteDatabasePostchecks({ requiredTables, regionsTable, toursTable });
+      complete('database-postchecks', { requiredTables: Number(requiredTables) });
+    } else {
+      const gooseVersion = await runSqlAsSchemaOwner(
+        target,
+        pgEnv,
+        'SELECT max(version_id) FROM public.goose_db_version WHERE is_applied'
+      );
+      const iamSchema = await runSqlAsSchemaOwner(
+        target,
+        pgEnv,
+        `SELECT to_regclass('iam.instances') IS NOT NULL`
+      );
+      const appPrincipal = principalProbe.runtimeRoleTablesReady ? '1' : '0';
+      const registryEntries = await runSqlAsSchemaOwner(
+        target,
+        pgEnv,
+        'SELECT count(*) FROM iam.instances'
+      );
+      validateDatabasePostchecks({ appPrincipal, gooseVersion, iamSchema, registryEntries });
+      complete('database-postchecks', { gooseVersion, registryEntries: Number(registryEntries) });
+    }
     await uploadJson(target, keys.result, {
       ...evidence,
       status: 'database-restored',

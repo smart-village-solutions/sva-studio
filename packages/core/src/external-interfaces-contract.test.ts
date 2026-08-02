@@ -14,8 +14,20 @@ import {
 
 describe('external-interfaces-contract', () => {
   it('exposes the supported provider and status contracts', () => {
-    expect(externalInterfaceContract.typeKeys).toEqual(['sva_mainserver', 's3', 'supabase', 'mail_transport']);
-    expect(externalInterfaceContract.visibleStatuses).toEqual(['not_configured', 'unknown', 'ok', 'error', 'disabled']);
+    expect(externalInterfaceContract.typeKeys).toEqual([
+      'sva_mainserver',
+      's3',
+      'supabase',
+      'postgresql',
+      'mail_transport',
+    ]);
+    expect(externalInterfaceContract.visibleStatuses).toEqual([
+      'not_configured',
+      'unknown',
+      'ok',
+      'error',
+      'disabled',
+    ]);
     expect(externalInterfaceContract.checkStatuses).toEqual(['succeeded', 'failed']);
     expect(externalInterfaceContract.isTypeKey('s3')).toBe(true);
     expect(externalInterfaceContract.isTypeKey('mail_transport')).toBe(true);
@@ -25,6 +37,7 @@ describe('external-interfaces-contract', () => {
     expect(externalInterfaceContract.isCategory('database')).toBe(true);
     expect(externalInterfaceContract.isCategory('queue')).toBe(false);
     expect(externalInterfaceContract.isStatusCheckKind('supabase')).toBe(true);
+    expect(externalInterfaceContract.isStatusCheckKind('postgresql')).toBe(true);
     expect(externalInterfaceContract.isStatusCheckKind('mail_transport')).toBe(true);
     expect(externalInterfaceContract.isStatusCheckKind('ping')).toBe(false);
     expect(externalInterfaceContract.isVisibleStatus('ok')).toBe(true);

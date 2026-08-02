@@ -2,7 +2,7 @@ import type { WasteHolidayStateCode } from './waste-management/master-data-contr
 import type { WasteCustomRecurrencePresetRecord } from './waste-management/master-data-tours.js';
 import type { WasteManagementEmailReminderConfig } from './waste-management-settings-public-config.js';
 
-const wasteManagementDataSourceProviders = ['supabase'] as const;
+const wasteManagementDataSourceProviders = ['postgresql'] as const;
 const wasteManagementDataSourceStatuses = ['not_configured', 'unknown', 'ok', 'error'] as const;
 const wasteManagementConnectionCheckStatuses = ['succeeded', 'failed'] as const;
 const wasteHolidaySyncStatuses = ['success', 'partial_success', 'failed'] as const;
@@ -29,7 +29,8 @@ const wasteManagementTechnicalEventTypes = [
 
 export type WasteManagementDataSourceProvider = (typeof wasteManagementDataSourceProviders)[number];
 export type WasteManagementDataSourceStatus = (typeof wasteManagementDataSourceStatuses)[number];
-export type WasteManagementConnectionCheckStatus = (typeof wasteManagementConnectionCheckStatuses)[number];
+export type WasteManagementConnectionCheckStatus =
+  (typeof wasteManagementConnectionCheckStatuses)[number];
 export type WasteHolidaySyncStatus = (typeof wasteHolidaySyncStatuses)[number];
 export type WasteManagementTechnicalEventType = (typeof wasteManagementTechnicalEventTypes)[number];
 
@@ -74,7 +75,6 @@ export const wasteManagementDataSourceContract = {
 export type WasteManagementSettingsRecord = {
   readonly instanceId: string;
   readonly provider: WasteManagementDataSourceProvider;
-  readonly projectUrl: string;
   readonly schemaName: string;
   readonly enabled: boolean;
   readonly selectedInterfaceId?: string;
@@ -86,7 +86,6 @@ export type WasteManagementSettingsRecord = {
   readonly pdfContactBlock?: string;
   readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
   readonly databaseUrlConfigured: boolean;
-  readonly serviceRoleKeyConfigured: boolean;
   readonly visibleStatus: WasteManagementDataSourceStatus;
   readonly lastCheckedAt?: string;
   readonly lastCheckStatus?: WasteManagementConnectionCheckStatus;
@@ -101,7 +100,6 @@ export type WasteManagementSettingsRecord = {
 
 export type WasteManagementDataSourceRecord = WasteManagementSettingsRecord & {
   readonly databaseUrlCiphertext?: string;
-  readonly serviceRoleKeyCiphertext?: string;
 };
 
 export type WasteManagementConnectionCheckRecord = {

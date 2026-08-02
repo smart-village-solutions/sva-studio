@@ -41,7 +41,7 @@ describe('public waste config', () => {
     expect(() =>
       parsePublicWasteConfig({
         instanceId: '',
-        supabase: { databaseUrl: '', schemaName: 'waste' },
+        database: { databaseUrl: '', schemaName: 'waste' },
       })
     ).toThrow('public_waste_config_invalid');
   });
@@ -54,7 +54,7 @@ describe('public waste config', () => {
         PUBLIC_WASTE_SCHEMA_NAME: 'public',
         PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
           instanceId: 'ignored',
-          supabase: {
+          database: {
             databaseUrl: 'postgres://ignored',
             schemaName: 'ignored',
           },
@@ -64,7 +64,7 @@ describe('public waste config', () => {
       })
     ).toEqual({
       instanceId: 'bb-prignitz',
-      supabase: {
+      database: {
         databaseUrl: 'postgres://example',
         schemaName: 'public',
       },

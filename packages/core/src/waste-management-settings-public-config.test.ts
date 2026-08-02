@@ -28,7 +28,7 @@ const createInterfaceRecord = (
   enabled: input.enabled ?? true,
   isDefault: input.isDefault ?? false,
   category: input.category ?? 'database',
-  statusCheckKind: input.statusCheckKind ?? 'supabase',
+  statusCheckKind: input.statusCheckKind ?? 'postgresql',
   visibleStatus: input.visibleStatus ?? 'ok',
   publicConfig: input.publicConfig ?? {},
   secretConfigCiphertext: input.secretConfigCiphertext,
@@ -86,20 +86,20 @@ const createEmailReminderConfigInput = () => ({
 });
 
 describe('waste-management-settings-public-config', () => {
-  it('prefers the selected waste interface and falls back to default or generic supabase records', () => {
-    const selectedSupabase = createInterfaceRecord({
-      id: 'supabase-selected',
-      typeKey: 'supabase',
+  it('prefers the selected waste interface and falls back to default or generic PostgreSQL records', () => {
+    const selectedPostgresql = createInterfaceRecord({
+      id: 'postgresql-selected',
+      typeKey: 'postgresql',
       publicConfig: { wasteManagementSelected: true },
     });
-    const defaultSupabase = createInterfaceRecord({
-      id: 'supabase-default',
-      typeKey: 'supabase',
+    const defaultPostgresql = createInterfaceRecord({
+      id: 'postgresql-default',
+      typeKey: 'postgresql',
       isDefault: true,
     });
-    const genericSupabase = createInterfaceRecord({
-      id: 'supabase-generic',
-      typeKey: 'supabase',
+    const genericPostgresql = createInterfaceRecord({
+      id: 'postgresql-generic',
+      typeKey: 'postgresql',
     });
     const objectStorage = createInterfaceRecord({
       id: 's3-1',
@@ -108,16 +108,24 @@ describe('waste-management-settings-public-config', () => {
       statusCheckKind: 's3',
     });
 
-    expect(isWasteManagementInterfaceSelected(selectedSupabase)).toBe(true);
-    expect(findSelectedWasteManagementInterfaceRecord([objectStorage, defaultSupabase, selectedSupabase])?.id).toBe(
-      'supabase-selected'
+    expect(isWasteManagementInterfaceSelected(selectedPostgresql)).toBe(true);
+    expect(
+      findSelectedWasteManagementInterfaceRecord([
+        objectStorage,
+        defaultPostgresql,
+        selectedPostgresql,
+      ])?.id
+    ).toBe('postgresql-selected');
+    expect(findSelectedWasteManagementInterfaceRecord([objectStorage, defaultPostgresql])?.id).toBe(
+      'postgresql-default'
     );
-    expect(findSelectedWasteManagementInterfaceRecord([objectStorage, defaultSupabase])?.id).toBe('supabase-default');
-    expect(findSelectedWasteManagementInterfaceRecord([objectStorage, genericSupabase])?.id).toBe('supabase-generic');
+    expect(findSelectedWasteManagementInterfaceRecord([objectStorage, genericPostgresql])?.id).toBe(
+      'postgresql-generic'
+    );
     expect(findSelectedWasteManagementInterfaceRecord([objectStorage])).toBeNull();
   });
 
-  it('ignores selected non-supabase records for waste interface selection', () => {
+  it('ignores selected non-PostgreSQL records for waste interface selection', () => {
     const selectedObjectStorage = createInterfaceRecord({
       id: 's3-selected',
       typeKey: 's3',
@@ -125,16 +133,16 @@ describe('waste-management-settings-public-config', () => {
       statusCheckKind: 's3',
       publicConfig: { wasteManagementSelected: true },
     });
-    const defaultSupabase = createInterfaceRecord({
-      id: 'supabase-default',
-      typeKey: 'supabase',
+    const defaultPostgresql = createInterfaceRecord({
+      id: 'postgresql-default',
+      typeKey: 'postgresql',
       isDefault: true,
     });
 
     expect(isWasteManagementInterfaceSelected(selectedObjectStorage)).toBe(true);
-    expect(findSelectedWasteManagementInterfaceRecord([selectedObjectStorage, defaultSupabase])?.id).toBe(
-      'supabase-default'
-    );
+    expect(
+      findSelectedWasteManagementInterfaceRecord([selectedObjectStorage, defaultPostgresql])?.id
+    ).toBe('postgresql-default');
   });
 
   it('reads and writes pdf-specific public config fields', () => {
@@ -195,11 +203,14 @@ describe('waste-management-settings-public-config', () => {
   });
 
   it('reads and writes waste email reminder output config', () => {
-    const next = buildWasteManagementPublicConfig({}, {
-      selected: true,
-      calendarWebUrl: 'https://demo.abfallkalender.example',
-      emailReminderConfig: createEmailReminderConfigInput(),
-    });
+    const next = buildWasteManagementPublicConfig(
+      {},
+      {
+        selected: true,
+        calendarWebUrl: 'https://demo.abfallkalender.example',
+        emailReminderConfig: createEmailReminderConfigInput(),
+      }
+    );
 
     expect(readWasteManagementEmailReminderConfig(next)).toEqual(createEmailReminderConfigInput());
   });
@@ -217,11 +228,15 @@ describe('waste-management-settings-public-config', () => {
 
     expect(readWasteManagementCalendarWebUrl(next)).toBe('https://demo.abfallkalender.example');
     expect(readWasteManagementEmailReminderSigningSecret(next)).toBe('signing-secret');
-    expect(readWasteManagementEmailReminderSigningSecret({ emailReminderSigningSecret: 'secret-only' })).toBeUndefined();
+    expect(
+      readWasteManagementEmailReminderSigningSecret({ emailReminderSigningSecret: 'secret-only' })
+    ).toBeUndefined();
   });
 
   it('rejects malformed nested email reminder config payloads', () => {
-    expect(readWasteManagementEmailReminderConfig({ emailReminderConfig: 'invalid' })).toBeUndefined();
+    expect(
+      readWasteManagementEmailReminderConfig({ emailReminderConfig: 'invalid' })
+    ).toBeUndefined();
     expect(readWasteManagementEmailReminderConfig({ emailReminderConfig: [] })).toBeUndefined();
     expect(
       readWasteManagementEmailReminderConfig({

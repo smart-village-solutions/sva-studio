@@ -9,30 +9,36 @@ const expectedTechnicalHistoryJobTypeIds = [
   'waste-management.sync-waste-types',
 ] as const;
 
-const resolveWasteDataSourceMock = vi.hoisted(() => vi.fn(async () => ({
-  instanceId: 'tenant-a',
-  schemaName: 'wm',
-  databaseUrl: 'postgres://waste:test@localhost:5432/waste',
-  serviceRoleKey: 'service-key',
-  projectUrl: 'https://tenant.example',
-  enabled: true,
-})));
+const resolveWasteDataSourceMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    instanceId: 'tenant-a',
+    schemaName: 'wm',
+    databaseUrl: 'postgres://waste:test@localhost:5432/waste',
+    enabled: true,
+  }))
+);
 
-const listWasteManagementAuditRecordsMock = vi.hoisted(() => vi.fn(async () => ({
-  items: [{ id: 'audit-1', occurredAt: '2026-05-09T08:00:00.000Z' }],
-  total: 1,
-})));
+const listWasteManagementAuditRecordsMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    items: [{ id: 'audit-1', occurredAt: '2026-05-09T08:00:00.000Z' }],
+    total: 1,
+  }))
+);
 
-const listWasteManagementTechnicalAuditRecordsMock = vi.hoisted(() => vi.fn(async () => ({
-  items: [{
-    id: 'technical-audit-1',
-    eventType: 'connection.check.failed',
-    outcome: 'failure',
-    occurredAt: '2026-05-09T09:00:00.000Z',
-    source: 'audit',
-  }],
-  total: 1,
-})));
+const listWasteManagementTechnicalAuditRecordsMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    items: [
+      {
+        id: 'technical-audit-1',
+        eventType: 'connection.check.failed',
+        outcome: 'failure',
+        occurredAt: '2026-05-09T09:00:00.000Z',
+        source: 'audit',
+      },
+    ],
+    total: 1,
+  }))
+);
 
 const instanceDbQueryMock = vi.hoisted(() =>
   vi.fn(async () => ({
@@ -89,83 +95,91 @@ const instanceDbQueryMock = vi.hoisted(() =>
   }))
 );
 
-const withInstanceDbMock = vi.hoisted(() => vi.fn(async (instanceId: string, work: (client: object) => Promise<unknown>) =>
-  work({ instanceId, kind: 'db-client', query: instanceDbQueryMock })
-));
-
-const withStudioJobRepositoryMock = vi.hoisted(() =>
-  vi.fn(async (instanceId: string, work: (repository: { listJobs: typeof listJobsMock }) => Promise<unknown>) =>
-    work({
-      listJobs: listJobsMock,
-    })
+const withInstanceDbMock = vi.hoisted(() =>
+  vi.fn(async (instanceId: string, work: (client: object) => Promise<unknown>) =>
+    work({ instanceId, kind: 'db-client', query: instanceDbQueryMock })
   )
 );
 
-const listJobsMock = vi.hoisted(() => vi.fn(async () => ({
-  items: [
-    {
-      id: 'job-1',
-      jobTypeId: 'waste-management.apply-migrations',
-      status: 'succeeded',
-      finishedAt: '2026-05-09T12:00:00.000Z',
-      updatedAt: '2026-05-09T12:00:00.000Z',
-      requestId: 'req-1',
-      latestEvent: { message: 'done' },
-      errorPayload: undefined,
-    },
-    {
-      id: 'job-2',
-      jobTypeId: 'waste-management.import-data',
-      status: 'failed',
-      finishedAt: '2026-05-09T11:00:00.000Z',
-      updatedAt: '2026-05-09T11:00:00.000Z',
-      requestId: 'req-2',
-      latestEvent: { message: 'failed' },
-      errorPayload: { code: 'import_failed' },
-    },
-    {
-      id: 'job-3',
-      jobTypeId: 'waste-management.seed-data',
-      status: 'cancelled',
-      finishedAt: '2026-05-09T10:00:00.000Z',
-      updatedAt: '2026-05-09T10:00:00.000Z',
-      requestId: 'req-3',
-      latestEvent: { message: 'cancelled' },
-      errorPayload: { code: 'cancelled' },
-    },
-    {
-      id: 'job-5',
-      jobTypeId: 'other-job',
-      status: 'succeeded',
-      finishedAt: '2026-05-09T07:00:00.000Z',
-      updatedAt: '2026-05-09T07:00:00.000Z',
-      requestId: 'req-5',
-      latestEvent: { message: 'ignored' },
-      errorPayload: undefined,
-    },
-    {
-      id: 'job-6',
-      jobTypeId: 'waste-management.reset-data',
-      status: 'running',
-      finishedAt: null,
-      updatedAt: '2026-05-09T06:00:00.000Z',
-      requestId: 'req-6',
-      latestEvent: { message: 'running' },
-      errorPayload: undefined,
-    },
-    {
-      id: 'job-4',
-      jobTypeId: 'waste-management.sync-waste-types',
-      status: 'failed',
-      finishedAt: '2026-05-09T09:00:00.000Z',
-      updatedAt: '2026-05-09T09:00:00.000Z',
-      requestId: 'req-4',
-      latestEvent: { message: 'sync failed' },
-      errorPayload: { code: 'sync_failed' },
-    },
-  ],
-  total: 6,
-})));
+const withStudioJobRepositoryMock = vi.hoisted(() =>
+  vi.fn(
+    async (
+      instanceId: string,
+      work: (repository: { listJobs: typeof listJobsMock }) => Promise<unknown>
+    ) =>
+      work({
+        listJobs: listJobsMock,
+      })
+  )
+);
+
+const listJobsMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    items: [
+      {
+        id: 'job-1',
+        jobTypeId: 'waste-management.apply-migrations',
+        status: 'succeeded',
+        finishedAt: '2026-05-09T12:00:00.000Z',
+        updatedAt: '2026-05-09T12:00:00.000Z',
+        requestId: 'req-1',
+        latestEvent: { message: 'done' },
+        errorPayload: undefined,
+      },
+      {
+        id: 'job-2',
+        jobTypeId: 'waste-management.import-data',
+        status: 'failed',
+        finishedAt: '2026-05-09T11:00:00.000Z',
+        updatedAt: '2026-05-09T11:00:00.000Z',
+        requestId: 'req-2',
+        latestEvent: { message: 'failed' },
+        errorPayload: { code: 'import_failed' },
+      },
+      {
+        id: 'job-3',
+        jobTypeId: 'waste-management.seed-data',
+        status: 'cancelled',
+        finishedAt: '2026-05-09T10:00:00.000Z',
+        updatedAt: '2026-05-09T10:00:00.000Z',
+        requestId: 'req-3',
+        latestEvent: { message: 'cancelled' },
+        errorPayload: { code: 'cancelled' },
+      },
+      {
+        id: 'job-5',
+        jobTypeId: 'other-job',
+        status: 'succeeded',
+        finishedAt: '2026-05-09T07:00:00.000Z',
+        updatedAt: '2026-05-09T07:00:00.000Z',
+        requestId: 'req-5',
+        latestEvent: { message: 'ignored' },
+        errorPayload: undefined,
+      },
+      {
+        id: 'job-6',
+        jobTypeId: 'waste-management.reset-data',
+        status: 'running',
+        finishedAt: null,
+        updatedAt: '2026-05-09T06:00:00.000Z',
+        requestId: 'req-6',
+        latestEvent: { message: 'running' },
+        errorPayload: undefined,
+      },
+      {
+        id: 'job-4',
+        jobTypeId: 'waste-management.sync-waste-types',
+        status: 'failed',
+        finishedAt: '2026-05-09T09:00:00.000Z',
+        updatedAt: '2026-05-09T09:00:00.000Z',
+        requestId: 'req-4',
+        latestEvent: { message: 'sync failed' },
+        errorPayload: { code: 'sync_failed' },
+      },
+    ],
+    total: 6,
+  }))
+);
 
 const revealFieldMock = vi.hoisted(() => vi.fn(() => 'revealed-secret'));
 const loggerMock = vi.hoisted(() => ({
@@ -211,7 +225,11 @@ const repositoryMocks = vi.hoisted(() => ({
   upsertWasteCollectionLocation: vi.fn(async () => undefined),
   deleteWasteCollectionLocation: vi.fn(async () => undefined),
   upsertWastePdfStaticSettings: vi.fn(async () => undefined),
-  getWasteLocationTourLinkById: vi.fn(async (id: string) => ({ id, locationId: 'location-1', tourId: 'tour-1' })),
+  getWasteLocationTourLinkById: vi.fn(async (id: string) => ({
+    id,
+    locationId: 'location-1',
+    tourId: 'tour-1',
+  })),
   upsertWasteLocationTourLink: vi.fn(async () => undefined),
   deleteWasteLocationTourLink: vi.fn(async () => undefined),
   getWasteLocationTourPickupDateById: vi.fn(async (id: string) => ({ id })),
@@ -233,7 +251,11 @@ const repositoryMocks = vi.hoisted(() => ({
 }));
 
 const createWasteMasterDataRepositoryMock = vi.hoisted(() => vi.fn(() => repositoryMocks));
-const poolFactoryInstances: Array<{ query: ReturnType<typeof vi.fn>; release: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> }> = [];
+const poolFactoryInstances: Array<{
+  query: ReturnType<typeof vi.fn>;
+  release: ReturnType<typeof vi.fn>;
+  end: ReturnType<typeof vi.fn>;
+}> = [];
 const PoolMock = vi.hoisted(() =>
   vi.fn(function MockPool() {
     const query = vi.fn(async (text: string) => {
@@ -306,9 +328,11 @@ describe('waste-management server loaders', () => {
   });
 
   it('loads overviews and maps technical job history deterministically', async () => {
-    const masterDataOverview = await wasteManagementOverviewLoaders.loadMasterDataOverview('tenant-a');
+    const masterDataOverview =
+      await wasteManagementOverviewLoaders.loadMasterDataOverview('tenant-a');
     const toursOverview = await wasteManagementOverviewLoaders.loadToursOverview('tenant-a');
-    const schedulingOverview = await wasteManagementOverviewLoaders.loadSchedulingOverview('tenant-a');
+    const schedulingOverview =
+      await wasteManagementOverviewLoaders.loadSchedulingOverview('tenant-a');
     const historyOverview = await wasteManagementOverviewLoaders.loadWasteHistoryOverview({
       instanceId: 'tenant-a',
       search: 'fraction',
@@ -347,25 +371,27 @@ describe('waste-management server loaders', () => {
     expect(historyOverview.technical.items).toHaveLength(5);
     expect(historyOverview.technical.items).toEqual(
       expect.arrayContaining([
-      expect.objectContaining({ id: 'job:job-1:succeeded', eventType: 'migration.succeeded' }),
-      expect.objectContaining({
-        id: 'job:job-2:failed',
-        eventType: 'import.failed',
-        errorCode: 'import_failed',
-        message: 'failed',
-      }),
-      expect.objectContaining({ id: 'job:job-3:cancelled', eventType: 'seed.failed' }),
-      expect.objectContaining({
-        id: 'job:job-4:succeeded',
-        eventType: 'sync.succeeded',
-        message: 'synced',
-      }),
-      expect.objectContaining({ id: 'technical-audit-1' }),
+        expect.objectContaining({ id: 'job:job-1:succeeded', eventType: 'migration.succeeded' }),
+        expect.objectContaining({
+          id: 'job:job-2:failed',
+          eventType: 'import.failed',
+          errorCode: 'import_failed',
+          message: 'failed',
+        }),
+        expect.objectContaining({ id: 'job:job-3:cancelled', eventType: 'seed.failed' }),
+        expect.objectContaining({
+          id: 'job:job-4:succeeded',
+          eventType: 'sync.succeeded',
+          message: 'synced',
+        }),
+        expect.objectContaining({ id: 'technical-audit-1' }),
       ])
     );
     expect(PoolMock).toHaveBeenCalledTimes(1);
     expect(poolFactoryInstances.at(0)?.end).not.toHaveBeenCalled();
-    expect(poolFactoryInstances.at(0)?.query).toHaveBeenCalledWith('SET search_path TO "wm", public;');
+    expect(poolFactoryInstances.at(0)?.query).toHaveBeenCalledWith(
+      'SET search_path TO "wm", public;'
+    );
   });
 
   it('reuses the same scoped pool across multiple waste loader calls for one datasource', async () => {
@@ -387,7 +413,10 @@ describe('waste-management server loaders', () => {
       .map(([, payload]) => payload)
       .filter(
         (payload): payload is { readonly step: string } =>
-          typeof payload === 'object' && payload !== null && 'step' in payload && typeof payload.step === 'string'
+          typeof payload === 'object' &&
+          payload !== null &&
+          'step' in payload &&
+          typeof payload.step === 'string'
       )
       .map((payload) => payload.step);
 
@@ -412,8 +441,6 @@ describe('waste-management server loaders', () => {
       instanceId: 'tenant-a',
       schemaName: 'wm',
       databaseUrl: 'postgres://waste:test@localhost:5432/waste',
-      serviceRoleKey: 'service-key',
-      projectUrl: 'https://tenant.example',
       enabled: true,
     });
 
@@ -424,8 +451,6 @@ describe('waste-management server loaders', () => {
       instanceId: 'tenant-b',
       schemaName: 'wm',
       databaseUrl: 'postgres://waste:test@localhost:5432/waste-b',
-      serviceRoleKey: 'service-key',
-      projectUrl: 'https://tenant.example',
       enabled: true,
     });
 
@@ -437,7 +462,8 @@ describe('waste-management server loaders', () => {
   });
 
   it('loads a fractions-only master-data overview without the location hierarchy', async () => {
-    const overview = await wasteManagementOverviewLoaders.loadMasterDataFractionsOverview('tenant-a');
+    const overview =
+      await wasteManagementOverviewLoaders.loadMasterDataFractionsOverview('tenant-a');
 
     expect(overview).toEqual({
       fractions: [{ id: 'fraction-1' }],
@@ -458,7 +484,8 @@ describe('waste-management server loaders', () => {
   });
 
   it('loads a locations-only master-data overview without fractions', async () => {
-    const overview = await wasteManagementOverviewLoaders.loadMasterDataLocationsOverview('tenant-a');
+    const overview =
+      await wasteManagementOverviewLoaders.loadMasterDataLocationsOverview('tenant-a');
 
     expect(overview).toEqual({
       fractions: [],
@@ -530,29 +557,49 @@ describe('waste-management server loaders', () => {
   });
 
   it('delegates entity loaders, savers, and bulk link creation through the scoped repository', async () => {
-    await expect(wasteManagementEntityLoaders.loadWasteCustomRecurrencePresets('tenant-a')).resolves.toEqual([
-      { id: 'preset-1' },
-    ]);
-    await expect(wasteManagementEntityLoaders.loadWasteFractionById('tenant-a', 'fraction-1')).resolves.toEqual({ id: 'fraction-1' });
-    await expect(wasteManagementEntityLoaders.loadWasteRegionById('tenant-a', 'region-1')).resolves.toEqual({ id: 'region-1' });
-    await expect(wasteManagementEntityLoaders.loadWasteCityById('tenant-a', 'city-1')).resolves.toEqual({ id: 'city-1' });
-    await expect(wasteManagementEntityLoaders.loadWasteStreetById('tenant-a', 'street-1')).resolves.toEqual({ id: 'street-1' });
-    await expect(wasteManagementEntityLoaders.loadWasteHouseNumberById('tenant-a', 'house-1')).resolves.toEqual({ id: 'house-1' });
-    await expect(wasteManagementEntityLoaders.loadWasteCollectionLocationById('tenant-a', 'location-1')).resolves.toEqual({ id: 'location-1' });
-    await expect(wasteManagementEntityLoaders.loadWasteLocationTourLinkById('tenant-a', 'link-1')).resolves.toEqual({
+    await expect(
+      wasteManagementEntityLoaders.loadWasteCustomRecurrencePresets('tenant-a')
+    ).resolves.toEqual([{ id: 'preset-1' }]);
+    await expect(
+      wasteManagementEntityLoaders.loadWasteFractionById('tenant-a', 'fraction-1')
+    ).resolves.toEqual({ id: 'fraction-1' });
+    await expect(
+      wasteManagementEntityLoaders.loadWasteRegionById('tenant-a', 'region-1')
+    ).resolves.toEqual({ id: 'region-1' });
+    await expect(
+      wasteManagementEntityLoaders.loadWasteCityById('tenant-a', 'city-1')
+    ).resolves.toEqual({ id: 'city-1' });
+    await expect(
+      wasteManagementEntityLoaders.loadWasteStreetById('tenant-a', 'street-1')
+    ).resolves.toEqual({ id: 'street-1' });
+    await expect(
+      wasteManagementEntityLoaders.loadWasteHouseNumberById('tenant-a', 'house-1')
+    ).resolves.toEqual({ id: 'house-1' });
+    await expect(
+      wasteManagementEntityLoaders.loadWasteCollectionLocationById('tenant-a', 'location-1')
+    ).resolves.toEqual({ id: 'location-1' });
+    await expect(
+      wasteManagementEntityLoaders.loadWasteLocationTourLinkById('tenant-a', 'link-1')
+    ).resolves.toEqual({
       id: 'link-1',
       locationId: 'location-1',
       tourId: 'tour-1',
     });
-    await expect(wasteManagementEntityLoaders.listWasteLocationTourLinksByTourId('tenant-a', 'tour-1')).resolves.toEqual([
-      { id: 'link-1' },
-    ]);
-    await expect(wasteManagementEntityLoaders.loadWasteTourById('tenant-a', 'tour-1')).resolves.toEqual({ id: 'tour-1' });
-    await expect(wasteManagementEntityLoaders.loadWasteTourDateShiftById('tenant-a', 'shift-1')).resolves.toEqual({ id: 'shift-1' });
-    await expect(wasteManagementEntityLoaders.listWasteTourDateShiftsByTourId('tenant-a', 'tour-1')).resolves.toEqual([
-      { id: 'shift-1' },
-    ]);
-    await expect(wasteManagementEntityLoaders.loadWasteGlobalDateShiftById('tenant-a', 'global-shift-1')).resolves.toEqual({ id: 'global-shift-1' });
+    await expect(
+      wasteManagementEntityLoaders.listWasteLocationTourLinksByTourId('tenant-a', 'tour-1')
+    ).resolves.toEqual([{ id: 'link-1' }]);
+    await expect(
+      wasteManagementEntityLoaders.loadWasteTourById('tenant-a', 'tour-1')
+    ).resolves.toEqual({ id: 'tour-1' });
+    await expect(
+      wasteManagementEntityLoaders.loadWasteTourDateShiftById('tenant-a', 'shift-1')
+    ).resolves.toEqual({ id: 'shift-1' });
+    await expect(
+      wasteManagementEntityLoaders.listWasteTourDateShiftsByTourId('tenant-a', 'tour-1')
+    ).resolves.toEqual([{ id: 'shift-1' }]);
+    await expect(
+      wasteManagementEntityLoaders.loadWasteGlobalDateShiftById('tenant-a', 'global-shift-1')
+    ).resolves.toEqual({ id: 'global-shift-1' });
 
     await wasteManagementEntitySavers.saveWasteCustomRecurrencePresets('tenant-a', {
       nextItems: [{ id: 'preset-2', name: '14 Tage', intervalDays: 14 }],
@@ -563,22 +610,33 @@ describe('waste-management server loaders', () => {
     await wasteManagementEntitySavers.saveWasteCity('tenant-a', { id: 'city-2' } as never);
     await wasteManagementEntitySavers.saveWasteStreet('tenant-a', { id: 'street-2' } as never);
     await wasteManagementEntitySavers.saveWasteHouseNumber('tenant-a', { id: 'house-2' } as never);
-    await wasteManagementEntitySavers.saveWasteCollectionLocation('tenant-a', { id: 'location-2' } as never);
+    await wasteManagementEntitySavers.saveWasteCollectionLocation('tenant-a', {
+      id: 'location-2',
+    } as never);
     await wasteManagementEntitySavers.deleteWasteCollectionLocation('tenant-a', 'location-2');
-    await wasteManagementEntitySavers.saveWasteLocationTourLink('tenant-a', { id: 'link-2' } as never);
+    await wasteManagementEntitySavers.saveWasteLocationTourLink('tenant-a', {
+      id: 'link-2',
+    } as never);
     await wasteManagementEntitySavers.deleteWasteLocationTourLink('tenant-a', 'link-2');
     await wasteManagementEntitySavers.saveWasteTour('tenant-a', { id: 'tour-2' } as never);
     await wasteManagementEntitySavers.deleteWasteTourDateShift('tenant-a', 'shift-2');
-    await wasteManagementEntitySavers.saveWasteTourDateShift('tenant-a', { id: 'shift-2' } as never);
+    await wasteManagementEntitySavers.saveWasteTourDateShift('tenant-a', {
+      id: 'shift-2',
+    } as never);
     await wasteManagementEntitySavers.deleteWasteGlobalDateShift('tenant-a', 'global-shift-2');
-    await wasteManagementEntitySavers.saveWasteGlobalDateShift('tenant-a', { id: 'global-shift-2' } as never);
+    await wasteManagementEntitySavers.saveWasteGlobalDateShift('tenant-a', {
+      id: 'global-shift-2',
+    } as never);
 
-    const bulkResult = await wasteManagementEntitySavers.saveWasteLocationTourLinksBulk('tenant-a', {
-      locationIds: ['location-10', 'location-11'],
-      tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: '2026-12-31',
-    });
+    const bulkResult = await wasteManagementEntitySavers.saveWasteLocationTourLinksBulk(
+      'tenant-a',
+      {
+        locationIds: ['location-10', 'location-11'],
+        tourId: 'tour-1',
+        startDate: '2026-05-01',
+        endDate: '2026-12-31',
+      }
+    );
 
     expect(repositoryMocks.upsertWasteCustomRecurrencePreset).toHaveBeenCalledWith({
       id: 'preset-2',
@@ -605,7 +663,9 @@ describe('waste-management server loaders', () => {
     expect(PoolMock).toHaveBeenCalledTimes(1);
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('BEGIN');
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('COMMIT');
-    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('SET search_path TO "wm", public;');
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith(
+      'SET search_path TO "wm", public;'
+    );
     expect(poolFactoryInstances.at(-1)?.end).not.toHaveBeenCalled();
   });
 
@@ -720,7 +780,9 @@ describe('waste-management server loaders', () => {
       };
     });
 
-    await expect(wasteManagementOverviewLoaders.loadToursOverview('tenant-a')).rejects.toThrow('connect_failed');
+    await expect(wasteManagementOverviewLoaders.loadToursOverview('tenant-a')).rejects.toThrow(
+      'connect_failed'
+    );
     await expect(wasteManagementOverviewLoaders.loadToursOverview('tenant-a')).resolves.toEqual({
       tours: [{ id: 'tour-1' }],
       customRecurrencePresets: [{ id: 'preset-1' }],
@@ -738,7 +800,8 @@ describe('waste-management server loaders', () => {
     vi.setSystemTime(new Date('2026-01-15T08:00:00.000Z'));
     const originalFetch = globalThis.fetch;
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
       const year = Number(new URL(url).searchParams.get('jahr'));
       return new Response(
         JSON.stringify(
@@ -794,7 +857,9 @@ describe('waste-management server loaders', () => {
     ]);
 
     try {
-      await expect(wasteManagementEntitySavers.syncWasteHolidayRules('tenant-a', 'NW')).resolves.toBe('success');
+      await expect(
+        wasteManagementEntitySavers.syncWasteHolidayRules('tenant-a', 'NW')
+      ).resolves.toBe('success');
     } finally {
       globalThis.fetch = originalFetch;
       vi.useRealTimers();
@@ -828,7 +893,8 @@ describe('waste-management server loaders', () => {
 
     try {
       globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
-        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        const url =
+          typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
         const year = Number(new URL(url).searchParams.get('jahr'));
         if (year === 2027) {
           return new Response('down', { status: 503 });
@@ -839,15 +905,17 @@ describe('waste-management server loaders', () => {
         });
       }) as typeof globalThis.fetch;
 
-      await expect(wasteManagementEntitySavers.syncWasteHolidayRules('tenant-a', 'NW')).resolves.toBe(
-        'partial_success'
-      );
+      await expect(
+        wasteManagementEntitySavers.syncWasteHolidayRules('tenant-a', 'NW')
+      ).resolves.toBe('partial_success');
 
       globalThis.fetch = vi.fn(async () => {
         throw new Error('network_down');
       }) as typeof globalThis.fetch;
 
-      await expect(wasteManagementEntitySavers.syncWasteHolidayRules('tenant-a', 'NW')).resolves.toBe('failed');
+      await expect(
+        wasteManagementEntitySavers.syncWasteHolidayRules('tenant-a', 'NW')
+      ).resolves.toBe('failed');
     } finally {
       globalThis.fetch = originalFetch;
       vi.useRealTimers();
@@ -868,7 +936,9 @@ describe('waste-management server loaders', () => {
     await expect(
       wasteManagementEntityLoaders.loadWasteLocationTourPickupDateById('tenant-a', 'pickup-date-1')
     ).resolves.toEqual({ id: 'pickup-date-1' });
-    await expect(wasteManagementEntityLoaders.loadWasteHolidayRuleById('tenant-a', 'holiday-rule-1')).resolves.toEqual({
+    await expect(
+      wasteManagementEntityLoaders.loadWasteHolidayRuleById('tenant-a', 'holiday-rule-1')
+    ).resolves.toEqual({
       id: 'holiday-rule-1',
     });
 
@@ -879,9 +949,14 @@ describe('waste-management server loaders', () => {
       pickupDate: '2026-05-12',
       note: null,
     });
-    await wasteManagementEntitySavers.deleteWasteLocationTourPickupDate('tenant-a', 'pickup-date-1');
+    await wasteManagementEntitySavers.deleteWasteLocationTourPickupDate(
+      'tenant-a',
+      'pickup-date-1'
+    );
 
-    expect(repositoryMocks.getWasteLocationTourPickupDateById).toHaveBeenCalledWith('pickup-date-1');
+    expect(repositoryMocks.getWasteLocationTourPickupDateById).toHaveBeenCalledWith(
+      'pickup-date-1'
+    );
     expect(repositoryMocks.upsertWasteLocationTourPickupDate).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'pickup-date-1' })
     );
@@ -1040,40 +1115,42 @@ describe('waste-management server loaders', () => {
   });
 
   it('paginates technical history across audit and job sources in global chronology', async () => {
-    listWasteManagementTechnicalAuditRecordsMock.mockImplementation(async (_client, query: { page: number; pageSize: number }) => {
-      const itemsByPage = {
-        1: [
-          {
-            id: 'technical-audit-1',
-            eventType: 'connection.check.failed',
-            outcome: 'failure',
-            occurredAt: '2026-05-09T13:00:00.000Z',
-            source: 'audit',
-          },
-          {
-            id: 'technical-audit-2',
-            eventType: 'connection.check.failed',
-            outcome: 'failure',
-            occurredAt: '2026-05-09T11:00:00.000Z',
-            source: 'audit',
-          },
-        ],
-        2: [
-          {
-            id: 'technical-audit-3',
-            eventType: 'connection.check.failed',
-            outcome: 'failure',
-            occurredAt: '2026-05-09T09:00:00.000Z',
-            source: 'audit',
-          },
-        ],
-      } as const;
+    listWasteManagementTechnicalAuditRecordsMock.mockImplementation(
+      async (_client, query: { page: number; pageSize: number }) => {
+        const itemsByPage = {
+          1: [
+            {
+              id: 'technical-audit-1',
+              eventType: 'connection.check.failed',
+              outcome: 'failure',
+              occurredAt: '2026-05-09T13:00:00.000Z',
+              source: 'audit',
+            },
+            {
+              id: 'technical-audit-2',
+              eventType: 'connection.check.failed',
+              outcome: 'failure',
+              occurredAt: '2026-05-09T11:00:00.000Z',
+              source: 'audit',
+            },
+          ],
+          2: [
+            {
+              id: 'technical-audit-3',
+              eventType: 'connection.check.failed',
+              outcome: 'failure',
+              occurredAt: '2026-05-09T09:00:00.000Z',
+              source: 'audit',
+            },
+          ],
+        } as const;
 
-      return {
-        items: itemsByPage[query.page as 1 | 2] ?? [],
-        total: 3,
-      };
-    });
+        return {
+          items: itemsByPage[query.page as 1 | 2] ?? [],
+          total: 3,
+        };
+      }
+    );
 
     instanceDbQueryMock.mockResolvedValueOnce({
       rowCount: 2,

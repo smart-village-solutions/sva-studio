@@ -80,8 +80,7 @@ describe('waste-management settings shared helpers', () => {
     expect(
       sanitizeWasteSettings({
         instanceId: 'tenant-a',
-        provider: 'supabase',
-        projectUrl: 'https://tenant.example',
+        provider: 'postgresql',
         schemaName: 'wm',
         enabled: true,
         calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
@@ -89,9 +88,7 @@ describe('waste-management settings shared helpers', () => {
         pdfContactBlock: 'Abfallberatung 03395 / 1234',
         emailReminderConfig: createEmailReminderConfig(),
         databaseUrlConfigured: true,
-        serviceRoleKeyConfigured: false,
         databaseUrlCiphertext: 'cipher-db',
-        serviceRoleKeyCiphertext: 'cipher-key',
         visibleStatus: 'warning',
         lastCheckedAt: '2026-05-09T10:00:00.000Z',
         lastCheckStatus: 'failed',
@@ -104,8 +101,7 @@ describe('waste-management settings shared helpers', () => {
       })
     ).toEqual({
       instanceId: 'tenant-a',
-      provider: 'supabase',
-      projectUrl: 'https://tenant.example',
+      provider: 'postgresql',
       schemaName: 'wm',
       enabled: true,
       calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
@@ -113,7 +109,6 @@ describe('waste-management settings shared helpers', () => {
       pdfContactBlock: 'Abfallberatung 03395 / 1234',
       emailReminderConfig: createEmailReminderConfig(),
       databaseUrlConfigured: true,
-      serviceRoleKeyConfigured: false,
       visibleStatus: 'warning',
       lastCheckedAt: '2026-05-09T10:00:00.000Z',
       lastCheckStatus: 'failed',
@@ -132,7 +127,7 @@ describe('waste-management settings shared helpers', () => {
         loadDefaultInterfaceRecord: vi.fn(async () => ({
           id: 'supabase-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
           displayName: 'Supabase',
@@ -140,7 +135,7 @@ describe('waste-management settings shared helpers', () => {
           enabled: true,
           isDefault: true,
           category: 'database',
-          statusCheckKind: 'supabase',
+          statusCheckKind: 'postgresql',
           visibleStatus: 'error',
           lastCheckedAt: '2026-05-09T10:00:00.000Z',
           lastCheckStatus: 'failed',
@@ -148,7 +143,6 @@ describe('waste-management settings shared helpers', () => {
           lastCheckErrorMessage: 'DB auth failed',
           updatedAt: '2026-05-09T11:00:00.000Z',
           publicConfig: {
-            projectUrl: 'https://tenant.example',
             schemaName: 'wm',
             calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
             pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
@@ -178,18 +172,17 @@ describe('waste-management settings shared helpers', () => {
 
     expect(settings).toEqual({
       instanceId: 'tenant-a',
-      provider: 'supabase',
-      projectUrl: 'https://tenant.example',
+      provider: 'postgresql',
       schemaName: 'wm',
       enabled: true,
       selectedInterfaceId: 'supabase-1',
       selectedInterfaceName: 'Supabase',
-      selectedInterfaceTypeKey: 'supabase',
+      selectedInterfaceTypeKey: 'postgresql',
       availableInterfaces: [
         {
           id: 'supabase-1',
           name: 'Supabase',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           enabled: true,
           visibleStatus: 'error',
           isSelected: true,
@@ -200,7 +193,6 @@ describe('waste-management settings shared helpers', () => {
       pdfContactBlock: 'Abfallberatung aus Waste-DB',
       emailReminderConfig: createEmailReminderConfig(),
       databaseUrlConfigured: true,
-      serviceRoleKeyConfigured: true,
       visibleStatus: 'error',
       lastCheckedAt: '2026-05-09T10:00:00.000Z',
       lastCheckStatus: 'failed',
@@ -227,7 +219,7 @@ describe('waste-management settings shared helpers', () => {
         loadDefaultInterfaceRecord: vi.fn(async () => ({
           id: 'supabase-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
           displayName: 'Supabase',
@@ -235,10 +227,9 @@ describe('waste-management settings shared helpers', () => {
           enabled: true,
           isDefault: true,
           category: 'database',
-          statusCheckKind: 'supabase',
+          statusCheckKind: 'postgresql',
           visibleStatus: 'ok',
           publicConfig: {
-            projectUrl: 'https://tenant.example',
             schemaName: 'wm',
             calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
             pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
@@ -263,7 +254,7 @@ describe('waste-management settings shared helpers', () => {
         loadDefaultInterfaceRecord: vi.fn(async () => ({
           id: 'supabase-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
           displayName: 'Supabase',
@@ -271,10 +262,9 @@ describe('waste-management settings shared helpers', () => {
           enabled: true,
           isDefault: true,
           category: 'database',
-          statusCheckKind: 'supabase',
+          statusCheckKind: 'postgresql',
           visibleStatus: 'ok',
           publicConfig: {
-            projectUrl: 'https://tenant.example',
             schemaName: 'wm',
             pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
             pdfContactBlock: 'Abfallberatung 03395 / 1234',
@@ -301,7 +291,7 @@ describe('waste-management settings shared helpers', () => {
         loadDefaultInterfaceRecord: vi.fn(async () => ({
           id: 'supabase-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
           displayName: 'Supabase',
@@ -309,10 +299,9 @@ describe('waste-management settings shared helpers', () => {
           enabled: true,
           isDefault: true,
           category: 'database',
-          statusCheckKind: 'supabase',
+          statusCheckKind: 'postgresql',
           visibleStatus: 'ok',
           publicConfig: {
-            projectUrl: 'https://tenant.example',
             schemaName: 'wm',
             pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
             pdfContactBlock: 'Abfallberatung 03395 / 1234',
@@ -340,7 +329,7 @@ describe('waste-management settings shared helpers', () => {
         loadDefaultInterfaceRecord: vi.fn(async () => ({
           id: 'supabase-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
           displayName: 'Supabase',
@@ -348,10 +337,9 @@ describe('waste-management settings shared helpers', () => {
           enabled: true,
           isDefault: true,
           category: 'database',
-          statusCheckKind: 'supabase',
+          statusCheckKind: 'postgresql',
           visibleStatus: 'ok',
           publicConfig: {
-            projectUrl: 'https://tenant.example',
             schemaName: 'wm',
             pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
             pdfContactBlock: 'Abfallberatung 03395 / 1234',
@@ -379,7 +367,7 @@ describe('waste-management settings shared helpers', () => {
           loadDefaultInterfaceRecord: vi.fn(async () => ({
             id: 'supabase-1',
             instanceId: 'tenant-a',
-            typeKey: 'supabase',
+            typeKey: 'postgresql',
             ownerKind: 'host',
             ownerId: 'host',
             displayName: 'Supabase',
@@ -387,10 +375,9 @@ describe('waste-management settings shared helpers', () => {
             enabled: true,
             isDefault: true,
             category: 'database',
-            statusCheckKind: 'supabase',
+            statusCheckKind: 'postgresql',
             visibleStatus: 'ok',
             publicConfig: {
-              projectUrl: 'https://tenant.example',
               schemaName: 'wm',
             },
             secretConfigCiphertext: 'cipher-secret',
@@ -424,13 +411,11 @@ describe('waste-management settings shared helpers', () => {
     expect(loadWastePdfStaticSettings).not.toHaveBeenCalled();
     expect(settings).toEqual({
       instanceId: 'tenant-a',
-      provider: 'supabase',
-      projectUrl: '',
+      provider: 'postgresql',
       schemaName: 'public',
       enabled: false,
       availableInterfaces: [],
       databaseUrlConfigured: false,
-      serviceRoleKeyConfigured: false,
       visibleStatus: 'not_configured',
       customRecurrencePresets: [],
     });
@@ -447,13 +432,11 @@ describe('waste-management settings shared helpers', () => {
 
     expect(settings).toEqual({
       instanceId: 'tenant-a',
-      provider: 'supabase',
-      projectUrl: '',
+      provider: 'postgresql',
       schemaName: 'public',
       enabled: false,
       availableInterfaces: [],
       databaseUrlConfigured: false,
-      serviceRoleKeyConfigured: false,
       visibleStatus: 'not_configured',
       customRecurrencePresets: [],
     });
@@ -489,8 +472,7 @@ describe('waste-management settings shared helpers', () => {
 
     expect(settings).toEqual({
       instanceId: 'tenant-a',
-      provider: 'supabase',
-      projectUrl: '',
+      provider: 'postgresql',
       schemaName: 'public',
       enabled: false,
       availableInterfaces: [
@@ -504,7 +486,6 @@ describe('waste-management settings shared helpers', () => {
         },
       ],
       databaseUrlConfigured: false,
-      serviceRoleKeyConfigured: false,
       visibleStatus: 'not_configured',
       customRecurrencePresets: [],
     });
@@ -519,9 +500,7 @@ describe('waste-management settings shared helpers', () => {
       instanceId: 'tenant-a',
       schemaName: 'wm',
       databaseUrl: 'postgres://db',
-      projectUrl: 'https://tenant.example',
-      serviceRoleKey: 'service-key',
-      provider: 'supabase',
+      provider: 'postgresql',
       enabled: true,
     });
 
@@ -537,9 +516,7 @@ describe('waste-management settings shared helpers', () => {
       instanceId: 'tenant-a',
       schemaName: 'wm',
       databaseUrl: 'postgres://db',
-      projectUrl: 'https://tenant.example',
-      serviceRoleKey: 'service-key',
-      provider: 'supabase',
+      provider: 'postgresql',
       enabled: true,
     });
     runWasteConnectionCheckMock.mockResolvedValue({
@@ -554,7 +531,7 @@ describe('waste-management settings shared helpers', () => {
         loadDefaultInterfaceRecord: vi.fn(async () => ({
           id: 'supabase-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
           displayName: 'Supabase',
@@ -562,7 +539,7 @@ describe('waste-management settings shared helpers', () => {
           enabled: true,
           isDefault: true,
           category: 'database',
-          statusCheckKind: 'supabase',
+          statusCheckKind: 'postgresql',
           visibleStatus: 'unknown',
           publicConfig: {},
           secretConfigCiphertext: 'cipher-secret',
@@ -577,7 +554,7 @@ describe('waste-management settings shared helpers', () => {
         loadDefaultInterfaceRecord: vi.fn(async () => ({
           id: 'supabase-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
           displayName: 'Supabase',
@@ -586,15 +563,16 @@ describe('waste-management settings shared helpers', () => {
           visibleStatus: 'unknown',
           isDefault: true,
           category: 'database',
-          statusCheckKind: 'supabase',
+          statusCheckKind: 'postgresql',
           publicConfig: {
-            projectUrl: 'https://tenant.example',
             schemaName: 'wm',
           },
           secretConfigCiphertext: 'cipher-secret',
         })),
         saveExternalInterfaceConnectionCheck,
-        revealSecret: vi.fn((ciphertext: string | null | undefined) => ciphertext?.replace('cipher-', 'revealed-')),
+        revealSecret: vi.fn((ciphertext: string | null | undefined) =>
+          ciphertext?.replace('cipher-', 'revealed-')
+        ),
         runConnectionProbe: vi.fn(async () => undefined),
       },
       'tenant-a',
@@ -614,7 +592,9 @@ describe('waste-management settings shared helpers', () => {
 
   it('persists failed connection checks when revalidation throws and skips incomplete dependency sets', async () => {
     const saveExternalInterfaceConnectionCheck = vi.fn(async () => undefined);
-    resolveWasteDataSourceMock.mockRejectedValue(Object.assign(new Error('Probe fehlgeschlagen.'), { code: 'probe_failed' }));
+    resolveWasteDataSourceMock.mockRejectedValue(
+      Object.assign(new Error('Probe fehlgeschlagen.'), { code: 'probe_failed' })
+    );
 
     await updateWasteVisibleStatus(
       {
@@ -638,7 +618,7 @@ describe('waste-management settings shared helpers', () => {
         loadDefaultInterfaceRecord: vi.fn(async () => ({
           id: 'supabase-1',
           instanceId: 'tenant-a',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           ownerKind: 'host',
           ownerId: 'host',
           displayName: 'Supabase',
@@ -646,7 +626,7 @@ describe('waste-management settings shared helpers', () => {
           enabled: true,
           isDefault: true,
           category: 'database',
-          statusCheckKind: 'supabase',
+          statusCheckKind: 'postgresql',
           visibleStatus: 'unknown',
           publicConfig: {},
           secretConfigCiphertext: 'cipher-secret',

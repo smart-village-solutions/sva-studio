@@ -19,22 +19,26 @@ vi.mock('@sva/data-repositories/server', () => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   revealField: state.revealField,
-  normalizeDatabaseConnectionUrl: vi.fn(async (value: string, options?: { allowPrivateHosts?: boolean }) => {
-    const url = new URL(value);
-    const isPrivateTarget = ['localhost', '127.0.0.1'].includes(url.hostname);
-    if (isPrivateTarget && options?.allowPrivateHosts !== true) {
-      return null;
+  normalizeDatabaseConnectionUrl: vi.fn(
+    async (value: string, options?: { allowPrivateHosts?: boolean }) => {
+      const url = new URL(value);
+      const isPrivateTarget = ['localhost', '127.0.0.1'].includes(url.hostname);
+      if (isPrivateTarget && options?.allowPrivateHosts !== true) {
+        return null;
+      }
+      return url.toString();
     }
-    return url.toString();
-  }),
-  normalizeOutboundHttpUrl: vi.fn(async (value: string, options?: { allowPrivateHosts?: boolean }) => {
-    const url = new URL(value);
-    const isPrivateTarget = ['localhost', '127.0.0.1'].includes(url.hostname);
-    if (isPrivateTarget && options?.allowPrivateHosts !== true) {
-      return null;
+  ),
+  normalizeOutboundHttpUrl: vi.fn(
+    async (value: string, options?: { allowPrivateHosts?: boolean }) => {
+      const url = new URL(value);
+      const isPrivateTarget = ['localhost', '127.0.0.1'].includes(url.hostname);
+      if (isPrivateTarget && options?.allowPrivateHosts !== true) {
+        return null;
+      }
+      return url.toString();
     }
-    return url.toString();
-  }),
+  ),
 }));
 
 vi.mock('pg', () => ({
@@ -98,9 +102,12 @@ describe('instance-interface-healthcheck.server', () => {
       secretConfigCiphertext:
         'iam.instance_external_interfaces.secret_config:supabase-1:{"databaseUrl":"postgres://db.example/wm","serviceRoleKey":"service-role-key"}',
     });
-    state.poolQuery.mockRejectedValue(Object.assign(new Error('password authentication failed'), { code: '28P01' }));
+    state.poolQuery.mockRejectedValue(
+      Object.assign(new Error('password authentication failed'), { code: '28P01' })
+    );
 
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     await expect(
       runStoredInterfaceHealthcheck({
@@ -124,6 +131,50 @@ describe('instance-interface-healthcheck.server', () => {
         visibleStatus: 'error',
         errorCode: 'database_auth_failed',
       })
+    );
+    expect(state.fetch).not.toHaveBeenCalled();
+  });
+
+  it('checks PostgreSQL through the database connection without calling Supabase APIs', async () => {
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 'postgresql-1',
+      instanceId: 'de-test',
+      typeKey: 'postgresql',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Waste PostgreSQL',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'database',
+      authMode: 'database_credentials',
+      statusCheckKind: 'postgresql',
+      visibleStatus: 'unknown',
+      publicConfig: { schemaName: 'waste' },
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:postgresql-1:{"databaseUrl":"postgres://db.example/waste"}',
+    });
+    state.poolQuery.mockResolvedValue({ rows: [{ schema_exists: true }] });
+
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
+
+    await expect(
+      runStoredInterfaceHealthcheck({
+        instanceId: 'de-test',
+        interfaceId: 'postgresql-1',
+        now: () => '2026-08-01T10:00:00.000Z',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        checkStatus: 'succeeded',
+        visibleStatus: 'ok',
+      })
+    );
+
+    expect(state.poolQuery).toHaveBeenCalledWith(
+      'select exists(select 1 from information_schema.schemata where schema_name = $1) as schema_exists',
+      ['waste']
     );
     expect(state.fetch).not.toHaveBeenCalled();
   });
@@ -155,7 +206,8 @@ describe('instance-interface-healthcheck.server', () => {
       throw new Error('decrypt failed');
     });
 
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     await expect(
       runStoredInterfaceHealthcheck({
@@ -197,7 +249,8 @@ describe('instance-interface-healthcheck.server', () => {
     });
     state.poolQuery.mockResolvedValue({ rows: [{ schema_exists: false }] });
 
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     await expect(
       runStoredInterfaceHealthcheck({
@@ -241,10 +294,14 @@ describe('instance-interface-healthcheck.server', () => {
     });
     state.poolQuery.mockResolvedValue({ rows: [{ schema_exists: true }] });
     state.fetch.mockResolvedValue(
-      new Response(JSON.stringify({ message: 'Invalid API key' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+      new Response(JSON.stringify({ message: 'Invalid API key' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
     );
 
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     await expect(
       runStoredInterfaceHealthcheck({
@@ -262,7 +319,8 @@ describe('instance-interface-healthcheck.server', () => {
   });
 
   it('persists supabase validation failures for missing db urls, invalid project urls, api status errors, and unreachable hosts', async () => {
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     state.loadExternalInterfaceRecordById.mockResolvedValueOnce({
       id: 'supabase-missing-db-url',
@@ -392,7 +450,9 @@ describe('instance-interface-healthcheck.server', () => {
       secretConfigCiphertext:
         'iam.instance_external_interfaces.secret_config:supabase-host-down:{"databaseUrl":"postgres://db.example/wm","serviceRoleKey":"service-role-key"}',
     });
-    state.poolQuery.mockRejectedValueOnce(Object.assign(new Error('connect timed out'), { code: 'ETIMEDOUT' }));
+    state.poolQuery.mockRejectedValueOnce(
+      Object.assign(new Error('connect timed out'), { code: 'ETIMEDOUT' })
+    );
 
     await expect(
       runStoredInterfaceHealthcheck({
@@ -478,7 +538,8 @@ describe('instance-interface-healthcheck.server', () => {
   });
 
   it('blocks private supabase database hosts by default and allows them with explicit opt-in', async () => {
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     state.loadExternalInterfaceRecordById.mockResolvedValueOnce({
       id: 'supabase-private-db-host',
@@ -506,12 +567,12 @@ describe('instance-interface-healthcheck.server', () => {
       runStoredInterfaceHealthcheck({
         instanceId: 'de-test',
         interfaceId: 'supabase-private-db-host',
-      }),
+      })
     ).resolves.toEqual(
       expect.objectContaining({
         checkStatus: 'failed',
         errorCode: 'connection_failed',
-      }),
+      })
     );
     expect(state.poolQuery).not.toHaveBeenCalled();
 
@@ -544,12 +605,12 @@ describe('instance-interface-healthcheck.server', () => {
       runStoredInterfaceHealthcheck({
         instanceId: 'de-test',
         interfaceId: 'supabase-private-db-host-opt-in',
-      }),
+      })
     ).resolves.toEqual(
       expect.objectContaining({
         checkStatus: 'succeeded',
         visibleStatus: 'ok',
-      }),
+      })
     );
   });
 
@@ -581,7 +642,8 @@ describe('instance-interface-healthcheck.server', () => {
     });
     state.s3Send.mockResolvedValue({});
 
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     await expect(
       runStoredInterfaceHealthcheck({
@@ -623,9 +685,12 @@ describe('instance-interface-healthcheck.server', () => {
       secretConfigCiphertext:
         'iam.instance_external_interfaces.secret_config:s3-1:{"secretAccessKey":"secret-1"}',
     });
-    state.s3Send.mockRejectedValue(Object.assign(new Error('NotFound'), { name: 'NotFound', $metadata: { httpStatusCode: 404 } }));
+    state.s3Send.mockRejectedValue(
+      Object.assign(new Error('NotFound'), { name: 'NotFound', $metadata: { httpStatusCode: 404 } })
+    );
 
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     await expect(
       runStoredInterfaceHealthcheck({
@@ -669,10 +734,14 @@ describe('instance-interface-healthcheck.server', () => {
         'iam.instance_external_interfaces.secret_config:s3-1:{"secretAccessKey":"secret-1"}',
     });
     state.s3Send.mockRejectedValue(
-      Object.assign(new Error('SignatureDoesNotMatch'), { name: 'SignatureDoesNotMatch', $metadata: { httpStatusCode: 403 } })
+      Object.assign(new Error('SignatureDoesNotMatch'), {
+        name: 'SignatureDoesNotMatch',
+        $metadata: { httpStatusCode: 403 },
+      })
     );
 
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     await expect(
       runStoredInterfaceHealthcheck({
@@ -692,7 +761,8 @@ describe('instance-interface-healthcheck.server', () => {
   it('returns null for missing or unsupported stored interfaces', async () => {
     state.loadExternalInterfaceRecordById.mockResolvedValueOnce(null);
 
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     await expect(
       runStoredInterfaceHealthcheck({
@@ -716,7 +786,8 @@ describe('instance-interface-healthcheck.server', () => {
   });
 
   it('persists a not-configured check when supabase secrets are missing and maps api transport failures', async () => {
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     state.loadExternalInterfaceRecordById.mockResolvedValueOnce({
       id: 'supabase-missing-secret',
@@ -794,7 +865,8 @@ describe('instance-interface-healthcheck.server', () => {
   });
 
   it('persists failed s3 checks for missing secrets and unreachable endpoints', async () => {
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     state.loadExternalInterfaceRecordById.mockResolvedValueOnce({
       id: 's3-missing-secret',
@@ -856,7 +928,9 @@ describe('instance-interface-healthcheck.server', () => {
       secretConfigCiphertext:
         'iam.instance_external_interfaces.secret_config:s3-unreachable:{"secretAccessKey":"secret-1"}',
     });
-    state.s3Send.mockRejectedValueOnce(Object.assign(new Error('dns failed'), { code: 'ENOTFOUND' }));
+    state.s3Send.mockRejectedValueOnce(
+      Object.assign(new Error('dns failed'), { code: 'ENOTFOUND' })
+    );
 
     await expect(
       runStoredInterfaceHealthcheck({
@@ -874,7 +948,8 @@ describe('instance-interface-healthcheck.server', () => {
   });
 
   it('persists generic s3 validation failures for missing endpoint fields and unexpected transport errors', async () => {
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     state.loadExternalInterfaceRecordById.mockResolvedValueOnce({
       id: 's3-missing-endpoint',
@@ -1023,7 +1098,8 @@ describe('instance-interface-healthcheck.server', () => {
   });
 
   it('blocks private s3 endpoints by default and allows them with explicit opt-in', async () => {
-    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
 
     state.loadExternalInterfaceRecordById.mockResolvedValueOnce({
       id: 's3-private-endpoint',
@@ -1053,12 +1129,12 @@ describe('instance-interface-healthcheck.server', () => {
       runStoredInterfaceHealthcheck({
         instanceId: 'de-test',
         interfaceId: 's3-private-endpoint',
-      }),
+      })
     ).resolves.toEqual(
       expect.objectContaining({
         checkStatus: 'failed',
         errorCode: 'connection_failed',
-      }),
+      })
     );
     expect(state.s3Send).not.toHaveBeenCalled();
 
@@ -1092,12 +1168,12 @@ describe('instance-interface-healthcheck.server', () => {
       runStoredInterfaceHealthcheck({
         instanceId: 'de-test',
         interfaceId: 's3-private-endpoint-opt-in',
-      }),
+      })
     ).resolves.toEqual(
       expect.objectContaining({
         checkStatus: 'succeeded',
         visibleStatus: 'ok',
-      }),
+      })
     );
   });
 });

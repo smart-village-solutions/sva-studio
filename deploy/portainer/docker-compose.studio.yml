@@ -31,6 +31,7 @@ services:
       ENABLE_OTEL: 'false'
       SVA_ENABLE_SERVER_CONSOLE_LOGS: '${SVA_ENABLE_SERVER_CONSOLE_LOGS:-false}'
       SVA_AUTH_DEBUG_HEADERS: '${SVA_AUTH_DEBUG_HEADERS:-false}'
+      SVA_ALLOW_PRIVATE_INTERFACE_HEALTHCHECK_TARGETS: 'true'
       POSTGRES_DB: sva_studio
       APP_DB_USER: '${APP_DB_USER}'
       SVA_PUBLIC_BASE_URL: '${SVA_PUBLIC_BASE_URL}'
@@ -88,17 +89,16 @@ services:
           memory: 512M
           cpus: '1.0'
       labels:
-        traefik.docker.network: "network-node-005"
-        traefik.enable: "true"
-        traefik.frontend.passHostHeader: "true"
-        traefik.frontend.rule: "Host:studio.smart-village.app,bb-bad-belzig.studio.smart-village.app,bb-guben.studio.smart-village.app,bb-prignitz.studio.smart-village.app,de-musterhausen.studio.smart-village.app,de-studio-sandbox.studio.smart-village.app,hb-meinquartier.studio.smart-village.app"
-        traefik.port: "3000"
+        traefik.docker.network: 'network-node-005'
+        traefik.enable: 'true'
+        traefik.frontend.passHostHeader: 'true'
+        traefik.frontend.rule: 'Host:studio.smart-village.app,bb-bad-belzig.studio.smart-village.app,bb-guben.studio.smart-village.app,bb-prignitz.studio.smart-village.app,de-musterhausen.studio.smart-village.app,de-studio-sandbox.studio.smart-village.app,hb-meinquartier.studio.smart-village.app'
+        traefik.port: '3000'
 
         # v3
-        traefik.http.routers.studio-app.rule: "Host(`studio.smart-village.app`) || Host(`bb-bad-belzig.studio.smart-village.app`) || Host(`bb-guben.studio.smart-village.app`) || Host(`bb-prignitz.studio.smart-village.app`) || Host(`de-musterhausen.studio.smart-village.app`) || Host(`de-studio-sandbox.studio.smart-village.app`) || Host(`hb-meinquartier.studio.smart-village.app`)"
-        traefik.http.routers.studio-app.tls: "true"
-        traefik.http.services.studio-app.loadbalancer.server.port: "3000"
-
+        traefik.http.routers.studio-app.rule: 'Host(`studio.smart-village.app`) || Host(`bb-bad-belzig.studio.smart-village.app`) || Host(`bb-guben.studio.smart-village.app`) || Host(`bb-prignitz.studio.smart-village.app`) || Host(`de-musterhausen.studio.smart-village.app`) || Host(`de-studio-sandbox.studio.smart-village.app`) || Host(`hb-meinquartier.studio.smart-village.app`)'
+        traefik.http.routers.studio-app.tls: 'true'
+        traefik.http.services.studio-app.loadbalancer.server.port: '3000'
 
     healthcheck:
       test:

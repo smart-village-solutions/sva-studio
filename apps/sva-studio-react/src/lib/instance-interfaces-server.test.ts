@@ -6,7 +6,9 @@ const state = vi.hoisted(() => ({
   loadDefaultExternalInterfaceRecord: vi.fn(),
   saveExternalInterfaceRecord: vi.fn(),
   deleteExternalInterfaceRecord: vi.fn(),
-  protectField: vi.fn((value: string | undefined, aad: string) => (value ? `${aad}:${value}` : null)),
+  protectField: vi.fn((value: string | undefined, aad: string) =>
+    value ? `${aad}:${value}` : null
+  ),
   revealField: vi.fn((value: string | null | undefined, aad: string) =>
     value && value.startsWith(`${aad}:`) ? value.slice(aad.length + 1) : undefined
   ),
@@ -120,9 +122,11 @@ describe('instance-interfaces-server', () => {
   it('persists new s3 interfaces through the registry and encrypts secret JSON with stable AAD', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
     let savedRecord: Record<string, unknown> | null = null;
-    state.saveExternalInterfaceRecord.mockImplementation(async (record: Record<string, unknown>) => {
-      savedRecord = record;
-    });
+    state.saveExternalInterfaceRecord.mockImplementation(
+      async (record: Record<string, unknown>) => {
+        savedRecord = record;
+      }
+    );
     state.loadExternalInterfaceRecordById.mockImplementation(async () => {
       if (!savedRecord) {
         return null;
@@ -177,6 +181,59 @@ describe('instance-interfaces-server', () => {
     );
   });
 
+  it('persists PostgreSQL interfaces without Supabase-specific fields', async () => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
+    let savedRecord: Record<string, unknown> | null = null;
+    state.saveExternalInterfaceRecord.mockImplementation(
+      async (record: Record<string, unknown>) => {
+        savedRecord = record;
+      }
+    );
+    state.loadExternalInterfaceRecordById.mockImplementation(async () =>
+      savedRecord
+        ? {
+            ...savedRecord,
+            createdAt: '2026-08-01T08:00:00.000Z',
+            updatedAt: '2026-08-01T08:00:00.000Z',
+          }
+        : null
+    );
+
+    const { upsertStoredInterface } = await import('./instance-interfaces-server');
+
+    await expect(
+      upsertStoredInterface('de-test', {
+        type: 'postgresql',
+        name: 'Waste PostgreSQL',
+        enabled: true,
+        config: {
+          schemaName: 'waste',
+          databaseUrl: 'postgresql://sva_waste_app:secret@postgres:5432/sva_waste',
+        },
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        type: 'postgresql',
+        config: { schemaName: 'waste', databaseUrl: '' },
+      })
+    );
+
+    const persisted = state.saveExternalInterfaceRecord.mock.calls[0]?.[0];
+    expect(persisted).toEqual(
+      expect.objectContaining({
+        typeKey: 'postgresql',
+        category: 'database',
+        statusCheckKind: 'postgresql',
+        publicConfig: { schemaName: 'waste' },
+        secretConfigCiphertext: expect.stringContaining(
+          '{"databaseUrl":"postgresql://sva_waste_app:secret@postgres:5432/sva_waste"}'
+        ),
+      })
+    );
+    expect(JSON.stringify(persisted)).not.toContain('projectUrl');
+    expect(JSON.stringify(persisted)).not.toContain('serviceRoleKey');
+  });
+
   it('reuses persisted interface ids instead of generating a new uuid on updates', async () => {
     state.loadExternalInterfaceRecordById.mockResolvedValue({
       id: 'existing-interface-id',
@@ -198,7 +255,8 @@ describe('instance-interfaces-server', () => {
         accessKeyId: 'key-1',
         forcePathStyle: false,
       },
-      secretConfigCiphertext: 'iam.instance_external_interfaces.secret_config:existing-interface-id:{"secretAccessKey":"secret-old"}',
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:existing-interface-id:{"secretAccessKey":"secret-old"}',
       statusCheckKind: 's3',
       createdAt: '2026-05-12T08:00:00.000Z',
       updatedAt: '2026-05-12T08:00:00.000Z',
@@ -241,50 +299,54 @@ describe('instance-interfaces-server', () => {
   it('persists mail transport passwords in encrypted interface secrets and preserves them on blank updates', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
     let savedRecord: Record<string, unknown> | null = null;
-    state.saveExternalInterfaceRecord.mockImplementation(async (record: Record<string, unknown>) => {
-      savedRecord = record;
-    });
-    state.loadExternalInterfaceRecordById.mockImplementation(async (_instanceId: string, interfaceId: string) => {
-      if (interfaceId === 'existing-mail-id') {
-        return {
-          id: 'existing-mail-id',
-          instanceId: 'de-test',
-          typeKey: 'mail_transport',
-          ownerKind: 'host',
-          ownerId: 'host',
-          displayName: 'Bestehender Mail-Transport',
-          alias: 'mail-1',
-          enabled: true,
-          isDefault: true,
-          category: 'api',
-          baseUrl: 'smtp.example.org',
-          authMode: 'basic',
-          publicConfig: {
-            transportId: 'mail-1',
-            transportType: 'smtp',
-            securityMode: 'starttls',
+    state.saveExternalInterfaceRecord.mockImplementation(
+      async (record: Record<string, unknown>) => {
+        savedRecord = record;
+      }
+    );
+    state.loadExternalInterfaceRecordById.mockImplementation(
+      async (_instanceId: string, interfaceId: string) => {
+        if (interfaceId === 'existing-mail-id') {
+          return {
+            id: 'existing-mail-id',
+            instanceId: 'de-test',
+            typeKey: 'mail_transport',
+            ownerKind: 'host',
+            ownerId: 'host',
+            displayName: 'Bestehender Mail-Transport',
+            alias: 'mail-1',
+            enabled: true,
+            isDefault: true,
+            category: 'api',
+            baseUrl: 'smtp.example.org',
             authMode: 'basic',
-            host: 'smtp.example.org',
-            port: 587,
-            username: 'mailer',
-          },
-          secretConfigCiphertext:
-            'iam.instance_external_interfaces.secret_config:existing-mail-id:{"password":"secret-old"}',
-          statusCheckKind: 'mail_transport',
-          visibleStatus: 'unknown',
+            publicConfig: {
+              transportId: 'mail-1',
+              transportType: 'smtp',
+              securityMode: 'starttls',
+              authMode: 'basic',
+              host: 'smtp.example.org',
+              port: 587,
+              username: 'mailer',
+            },
+            secretConfigCiphertext:
+              'iam.instance_external_interfaces.secret_config:existing-mail-id:{"password":"secret-old"}',
+            statusCheckKind: 'mail_transport',
+            visibleStatus: 'unknown',
+            createdAt: '2026-05-12T08:00:00.000Z',
+            updatedAt: '2026-05-12T08:00:00.000Z',
+          };
+        }
+        if (!savedRecord) {
+          return null;
+        }
+        return {
+          ...savedRecord,
           createdAt: '2026-05-12T08:00:00.000Z',
           updatedAt: '2026-05-12T08:00:00.000Z',
         };
       }
-      if (!savedRecord) {
-        return null;
-      }
-      return {
-        ...savedRecord,
-        createdAt: '2026-05-12T08:00:00.000Z',
-        updatedAt: '2026-05-12T08:00:00.000Z',
-      };
-    });
+    );
 
     const { upsertStoredInterface } = await import('./instance-interfaces-server');
 
@@ -356,9 +418,11 @@ describe('instance-interfaces-server', () => {
   it('persists map geocoding interfaces with public runtime config and encrypted api keys', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
     let savedRecord: Record<string, unknown> | null = null;
-    state.saveExternalInterfaceRecord.mockImplementation(async (record: Record<string, unknown>) => {
-      savedRecord = record;
-    });
+    state.saveExternalInterfaceRecord.mockImplementation(
+      async (record: Record<string, unknown>) => {
+        savedRecord = record;
+      }
+    );
     state.loadExternalInterfaceRecordById.mockImplementation(async () => {
       if (!savedRecord) {
         return null;
@@ -501,9 +565,11 @@ describe('instance-interfaces-server', () => {
 
   it('clears stale optional map geocoding fields when they are removed during updates', async () => {
     let savedRecord: Record<string, unknown> | null = null;
-    state.saveExternalInterfaceRecord.mockImplementation(async (record: Record<string, unknown>) => {
-      savedRecord = record;
-    });
+    state.saveExternalInterfaceRecord.mockImplementation(
+      async (record: Record<string, unknown>) => {
+        savedRecord = record;
+      }
+    );
     state.loadExternalInterfaceRecordById.mockImplementation(async () => {
       if (savedRecord) {
         return {
@@ -539,7 +605,8 @@ describe('instance-interfaces-server', () => {
           rateLimitPerMinute: 90,
           killSwitchEnabled: false,
         },
-        secretConfigCiphertext: 'iam.instance_external_interfaces.secret_config:existing-map-id:{\"apiKey\":\"geoapify-key\"}',
+        secretConfigCiphertext:
+          'iam.instance_external_interfaces.secret_config:existing-map-id:{\"apiKey\":\"geoapify-key\"}',
         statusCheckKind: 'map_geocoding',
         visibleStatus: 'ok',
         createdAt: '2026-05-12T08:00:00.000Z',
@@ -573,7 +640,8 @@ describe('instance-interfaces-server', () => {
       'existing-map-id'
     );
 
-    const persisted = state.saveExternalInterfaceRecord.mock.calls[0]?.[0] as { publicConfig: Record<string, unknown> } | undefined;
+    const persisted = state.saveExternalInterfaceRecord.mock.calls[0]?.[0] as
+      { publicConfig: Record<string, unknown> } | undefined;
     expect(persisted?.publicConfig).toMatchObject({
       provider: 'geoapify',
       styleUrl: 'https://tiles.example/styles/poi',
@@ -614,7 +682,8 @@ describe('instance-interfaces-server', () => {
         reverseGeocodeEndpoint: '',
         killSwitchEnabled: false,
       },
-      secretConfigCiphertext: 'iam.instance_external_interfaces.secret_config:existing-map-id:{\"apiKey\":\"geoapify-key\"}',
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:existing-map-id:{\"apiKey\":\"geoapify-key\"}',
       statusCheckKind: 'map_geocoding',
       createdAt: '2026-05-12T08:00:00.000Z',
       updatedAt: '2026-05-12T08:00:00.000Z',
@@ -1210,7 +1279,8 @@ describe('instance-interfaces-server', () => {
       },
     ]);
 
-    const { checkStoredInterfaceHealth, listStoredInterfaces } = await import('./instance-interfaces-server');
+    const { checkStoredInterfaceHealth, listStoredInterfaces } =
+      await import('./instance-interfaces-server');
 
     await expect(listStoredInterfaces('de-test')).resolves.toEqual([
       expect.objectContaining({
@@ -1318,9 +1388,11 @@ describe('instance-interfaces-server', () => {
 
   it('clears stale optional mail transport fields and incompatible transport-specific fields on update', async () => {
     let savedRecord: Record<string, unknown> | null = null;
-    state.saveExternalInterfaceRecord.mockImplementation(async (record: Record<string, unknown>) => {
-      savedRecord = record;
-    });
+    state.saveExternalInterfaceRecord.mockImplementation(
+      async (record: Record<string, unknown>) => {
+        savedRecord = record;
+      }
+    );
     state.loadExternalInterfaceRecordById.mockImplementation(async () => {
       if (savedRecord) {
         return {
@@ -1331,38 +1403,38 @@ describe('instance-interfaces-server', () => {
       }
 
       return {
-      id: 'existing-mail-id',
-      instanceId: 'de-test',
-      typeKey: 'mail_transport',
-      ownerKind: 'host',
-      ownerId: 'host',
-      displayName: 'Bestehender Mail-Transport',
-      alias: 'mail-1',
-      enabled: true,
-      isDefault: true,
-      category: 'api',
-      baseUrl: 'https://api.mail.example',
-      authMode: 'basic',
-      publicConfig: {
-        transportId: 'mail-1',
-        transportType: 'provider_api',
-        securityMode: 'starttls',
+        id: 'existing-mail-id',
+        instanceId: 'de-test',
+        typeKey: 'mail_transport',
+        ownerKind: 'host',
+        ownerId: 'host',
+        displayName: 'Bestehender Mail-Transport',
+        alias: 'mail-1',
+        enabled: true,
+        isDefault: true,
+        category: 'api',
+        baseUrl: 'https://api.mail.example',
         authMode: 'basic',
-        endpoint: 'https://api.mail.example',
-        mode: 'transactional',
-        username: 'mailer',
-        defaultFromEmail: 'noreply@example.org',
-        defaultFromName: 'Abfallservice',
-        defaultReplyToEmail: 'service@example.org',
-        maxBatchSize: 25,
-        rateLimitPerMinute: 60,
-      },
-      secretConfigCiphertext: undefined,
-      statusCheckKind: 'mail_transport',
-      visibleStatus: 'ok',
-      createdAt: '2026-05-12T08:00:00.000Z',
-      updatedAt: '2026-05-12T08:00:00.000Z',
-    };
+        publicConfig: {
+          transportId: 'mail-1',
+          transportType: 'provider_api',
+          securityMode: 'starttls',
+          authMode: 'basic',
+          endpoint: 'https://api.mail.example',
+          mode: 'transactional',
+          username: 'mailer',
+          defaultFromEmail: 'noreply@example.org',
+          defaultFromName: 'Abfallservice',
+          defaultReplyToEmail: 'service@example.org',
+          maxBatchSize: 25,
+          rateLimitPerMinute: 60,
+        },
+        secretConfigCiphertext: undefined,
+        statusCheckKind: 'mail_transport',
+        visibleStatus: 'ok',
+        createdAt: '2026-05-12T08:00:00.000Z',
+        updatedAt: '2026-05-12T08:00:00.000Z',
+      };
     });
 
     const { upsertStoredInterface } = await import('./instance-interfaces-server');
@@ -1391,7 +1463,8 @@ describe('instance-interfaces-server', () => {
       'existing-mail-id'
     );
 
-    const persisted = state.saveExternalInterfaceRecord.mock.calls[0]?.[0] as { publicConfig: Record<string, unknown> } | undefined;
+    const persisted = state.saveExternalInterfaceRecord.mock.calls[0]?.[0] as
+      { publicConfig: Record<string, unknown> } | undefined;
     expect(persisted?.publicConfig).toMatchObject({
       transportType: 'smtp',
       host: 'smtp.example.org',

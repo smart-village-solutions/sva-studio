@@ -21,6 +21,7 @@ import type {
   InstanceInterfaceDraft,
   InstanceInterfaceMapGeocoding,
   InstanceInterfaceMailTransport,
+  InstanceInterfacePostgresql,
   InstanceInterfaceS3,
   InstanceInterfaceSupabase,
 } from './instance-interfaces';
@@ -43,8 +44,18 @@ export type StoredMapGeocodingRuntimeConfig = Readonly<{
   apiKey?: string;
 }>;
 
-type StoredS3 = Omit<InstanceInterfaceS3, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>;
-type StoredSupabase = Omit<InstanceInterfaceSupabase, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>;
+type StoredS3 = Omit<
+  InstanceInterfaceS3,
+  'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
+>;
+type StoredSupabase = Omit<
+  InstanceInterfaceSupabase,
+  'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
+>;
+type StoredPostgresql = Omit<
+  InstanceInterfacePostgresql,
+  'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
+>;
 type StoredMailTransport = Omit<
   InstanceInterfaceMailTransport,
   'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
@@ -54,24 +65,29 @@ type StoredMapGeocoding = Omit<
   'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
 >;
 
-type StoredEntry = StoredS3 | StoredSupabase | StoredMailTransport | StoredMapGeocoding;
+type StoredEntry =
+  StoredS3 | StoredSupabase | StoredPostgresql | StoredMailTransport | StoredMapGeocoding;
 type StoredInterfaceType = StoredEntry['type'];
 
 const logger = createSdkLogger({ component: 'instance-interfaces-server' });
 
-type PersistedStoredEntry = StoredEntry & Readonly<{
-  visibleStatus?: ExternalInterfaceVisibleStatus;
-  lastCheckedAt?: string;
-  lastCheckErrorCode?: string;
-  lastCheckErrorMessage?: string;
-}>;
+type PersistedStoredEntry = StoredEntry &
+  Readonly<{
+    visibleStatus?: ExternalInterfaceVisibleStatus;
+    lastCheckedAt?: string;
+    lastCheckErrorCode?: string;
+    lastCheckErrorMessage?: string;
+  }>;
 const nowIso = (): string => new Date().toISOString();
 const coerceText = (value: unknown): string => (typeof value === 'string' ? value : '');
 const coerceBoolean = (value: unknown): boolean => value === true;
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const parseSecretConfig = (ciphertext: string | undefined, interfaceId: string): Record<string, string> => {
+const parseSecretConfig = (
+  ciphertext: string | undefined,
+  interfaceId: string
+): Record<string, string> => {
   if (ciphertext === undefined) {
     return {};
   }
@@ -98,11 +114,10 @@ const parseSecretConfig = (ciphertext: string | undefined, interfaceId: string):
 
 const mapStoredTypeToKey = (
   type: StoredInterfaceType
-): 's3' | 'supabase' | 'mail_transport' | 'map_geocoding' =>
+): 's3' | 'supabase' | 'postgresql' | 'mail_transport' | 'map_geocoding' =>
   type === 'mailTransport' ? 'mail_transport' : type === 'mapGeocoding' ? 'map_geocoding' : type;
 
-const coerceOptionalText = (value: unknown): string =>
-  typeof value === 'string' ? value : '';
+const coerceOptionalText = (value: unknown): string => (typeof value === 'string' ? value : '');
 
 const coerceOptionalNumberString = (value: unknown): string =>
   typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
@@ -177,6 +192,26 @@ const mapRecordToStoredEntry = (record: ExternalInterfaceRecord): PersistedStore
     };
   }
 
+  if (record.typeKey === 'postgresql') {
+    return {
+      id: record.id,
+      instanceId: record.instanceId,
+      type: 'postgresql',
+      name: record.displayName,
+      enabled: record.enabled,
+      config: {
+        schemaName: coerceText(record.publicConfig.schemaName) || 'public',
+        databaseUrl: '',
+      },
+      createdAt,
+      updatedAt,
+      visibleStatus: record.visibleStatus,
+      lastCheckedAt: record.lastCheckedAt,
+      lastCheckErrorCode: record.lastCheckErrorCode,
+      lastCheckErrorMessage: record.lastCheckErrorMessage,
+    };
+  }
+
   if (record.typeKey === 'mail_transport') {
     return {
       id: record.id,
@@ -186,7 +221,8 @@ const mapRecordToStoredEntry = (record: ExternalInterfaceRecord): PersistedStore
       enabled: record.enabled,
       config: {
         transportId: coerceText(record.publicConfig.transportId),
-        host: coerceText(record.publicConfig.host) || coerceOptionalText(record.publicConfig.endpoint),
+        host:
+          coerceText(record.publicConfig.host) || coerceOptionalText(record.publicConfig.endpoint),
         port:
           typeof record.publicConfig.port === 'string'
             ? record.publicConfig.port
@@ -285,7 +321,8 @@ const buildS3Record = (input: {
   readonly hasDefaultRecord: boolean;
   readonly previousSecrets: Record<string, string>;
 }): ExternalInterfaceRecord => {
-  const nextSecretAccessKey = input.draft.config.secretAccessKey || input.previousSecrets.secretAccessKey || '';
+  const nextSecretAccessKey =
+    input.draft.config.secretAccessKey || input.previousSecrets.secretAccessKey || '';
   const existingPublicConfig = input.existing?.publicConfig ?? {};
 
   return {
@@ -373,6 +410,48 @@ const buildSupabaseRecord = (input: {
   };
 };
 
+const buildPostgresqlRecord = (input: {
+  readonly instanceId: string;
+  readonly draft: Extract<InstanceInterfaceDraft, { type: 'postgresql' }>;
+  readonly interfaceId: string;
+  readonly existing: ExternalInterfaceRecord | null;
+  readonly hasDefaultRecord: boolean;
+  readonly previousSecrets: Record<string, string>;
+}): ExternalInterfaceRecord => {
+  const databaseUrl = input.draft.config.databaseUrl || input.previousSecrets.databaseUrl || '';
+  const existingPublicConfig = input.existing?.publicConfig ?? {};
+
+  return {
+    id: input.interfaceId,
+    instanceId: input.instanceId,
+    typeKey: 'postgresql',
+    ownerKind: 'host',
+    ownerId: 'host',
+    displayName: input.draft.name.trim(),
+    alias: input.existing?.alias ?? input.interfaceId,
+    enabled: input.draft.enabled,
+    isDefault: input.existing?.isDefault ?? !input.hasDefaultRecord,
+    category: 'database',
+    authMode: 'database_credentials',
+    publicConfig: {
+      ...existingPublicConfig,
+      schemaName: input.draft.config.schemaName.trim() || 'public',
+    },
+    secretConfigCiphertext: buildSecretCiphertext({
+      interfaceId: input.interfaceId,
+      secretConfig: databaseUrl ? { databaseUrl } : {},
+    }),
+    statusCheckKind: 'postgresql',
+    visibleStatus: resolveVisibleStatus(input.draft.enabled, input.existing?.visibleStatus),
+    lastCheckedAt: input.existing?.lastCheckedAt,
+    lastCheckStatus: input.existing?.lastCheckStatus,
+    lastCheckErrorCode: input.existing?.lastCheckErrorCode,
+    lastCheckErrorMessage: input.existing?.lastCheckErrorMessage,
+    createdAt: input.existing?.createdAt,
+    updatedAt: input.existing?.updatedAt,
+  };
+};
+
 const parseOptionalPositiveInteger = (value: string): number | undefined => {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -414,12 +493,21 @@ const isValidAbsoluteHttpUrl = (value: string): boolean => {
 
 const isObviouslyUrlLikeMailHost = (value: string): boolean => {
   const trimmed = value.trim();
-  return trimmed.includes('://') || trimmed.includes('/') || trimmed.includes('?') || trimmed.includes('#');
+  return (
+    trimmed.includes('://') ||
+    trimmed.includes('/') ||
+    trimmed.includes('?') ||
+    trimmed.includes('#')
+  );
 };
 
 const assertValidMailTransportDraft = (
   draft: Extract<InstanceInterfaceDraft, { type: 'mailTransport' }>,
-  input: { readonly displayName: string; readonly transportId: string; readonly nextPassword: string }
+  input: {
+    readonly displayName: string;
+    readonly transportId: string;
+    readonly nextPassword: string;
+  }
 ): void => {
   const validationRules = [
     !input.transportId || !input.displayName,
@@ -476,7 +564,11 @@ const buildMailTransportPublicConfig = (input: {
     transportType: 'smtp',
     securityMode: input.draft.config.securityMode,
     authMode: input.draft.config.authMode,
-    ...Object.fromEntries(Object.entries(optionalFields).flatMap(([key, value]) => (value !== undefined ? [[key, value]] : []))),
+    ...Object.fromEntries(
+      Object.entries(optionalFields).flatMap(([key, value]) =>
+        value !== undefined ? [[key, value]] : []
+      )
+    ),
     host: input.draft.config.host.trim(),
     port: input.port,
   };
@@ -639,7 +731,10 @@ const buildMapGeocodingRecord = (input: {
 
 const buildRecordFromDraft = async (input: {
   readonly instanceId: string;
-  readonly draft: Extract<InstanceInterfaceDraft, { type: 's3' | 'supabase' | 'mailTransport' | 'mapGeocoding' }>;
+  readonly draft: Extract<
+    InstanceInterfaceDraft,
+    { type: 's3' | 'supabase' | 'postgresql' | 'mailTransport' | 'mapGeocoding' }
+  >;
   readonly existingId?: string;
 }): Promise<ExternalInterfaceRecord> => {
   logger.info('Building external interface record from draft', {
@@ -651,10 +746,13 @@ const buildRecordFromDraft = async (input: {
       input.draft.type === 's3'
         ? input.draft.config.secretAccessKey.length > 0
         : input.draft.type === 'supabase'
-          ? input.draft.config.databaseUrl.length > 0 || input.draft.config.serviceRoleKey.length > 0
-          : input.draft.type === 'mailTransport'
-            ? input.draft.config.password.length > 0
-            : input.draft.config.apiKey.length > 0,
+          ? input.draft.config.databaseUrl.length > 0 ||
+            input.draft.config.serviceRoleKey.length > 0
+          : input.draft.type === 'postgresql'
+            ? input.draft.config.databaseUrl.length > 0
+            : input.draft.type === 'mailTransport'
+              ? input.draft.config.password.length > 0
+              : input.draft.config.apiKey.length > 0,
   });
   const existing = input.existingId
     ? await loadExternalInterfaceRecordById(input.instanceId, input.existingId)
@@ -672,7 +770,9 @@ const buildRecordFromDraft = async (input: {
   const interfaceId = existing?.id ?? randomUUID();
   let previousSecrets: Record<string, string>;
   try {
-    previousSecrets = existing ? parseSecretConfig(existing.secretConfigCiphertext, interfaceId) : {};
+    previousSecrets = existing
+      ? parseSecretConfig(existing.secretConfigCiphertext, interfaceId)
+      : {};
   } catch (error) {
     logger.error('Failed to read stored external interface secrets', {
       operation: 'build_interface_record',
@@ -699,7 +799,10 @@ const buildRecordFromDraft = async (input: {
   const defaultRecord =
     existing?.isDefault !== undefined
       ? existing
-      : await loadDefaultExternalInterfaceRecord(input.instanceId, mapStoredTypeToKey(input.draft.type));
+      : await loadDefaultExternalInterfaceRecord(
+          input.instanceId,
+          mapStoredTypeToKey(input.draft.type)
+        );
   const sharedInput = {
     instanceId: input.instanceId,
     interfaceId,
@@ -712,9 +815,11 @@ const buildRecordFromDraft = async (input: {
     ? buildS3Record({ ...sharedInput, draft: input.draft })
     : input.draft.type === 'supabase'
       ? buildSupabaseRecord({ ...sharedInput, draft: input.draft })
-      : input.draft.type === 'mailTransport'
-        ? buildMailTransportRecord({ ...sharedInput, draft: input.draft })
-        : buildMapGeocodingRecord({ ...sharedInput, draft: input.draft });
+      : input.draft.type === 'postgresql'
+        ? buildPostgresqlRecord({ ...sharedInput, draft: input.draft })
+        : input.draft.type === 'mailTransport'
+          ? buildMailTransportRecord({ ...sharedInput, draft: input.draft })
+          : buildMapGeocodingRecord({ ...sharedInput, draft: input.draft });
 };
 
 export const isCustomInterfaceStorageAvailable = (): boolean => true;
@@ -793,7 +898,10 @@ export const deleteStoredInterface = async (instanceId: string, id: string): Pro
   return deleteExternalInterfaceRecord(instanceId, id);
 };
 
-export const getStoredInterface = async (instanceId: string, id: string): Promise<StoredEntry | null> => {
+export const getStoredInterface = async (
+  instanceId: string,
+  id: string
+): Promise<StoredEntry | null> => {
   const record = await loadExternalInterfaceRecordById(instanceId, id);
   return record ? mapRecordToStoredEntry(record) : null;
 };
@@ -847,8 +955,12 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
     return {
       status: 'disabled',
       checkedAt,
-      ...(persistedEntry.lastCheckErrorMessage ? { statusMessage: persistedEntry.lastCheckErrorMessage } : {}),
-      ...(persistedEntry.lastCheckErrorCode ? { errorCode: persistedEntry.lastCheckErrorCode } : {}),
+      ...(persistedEntry.lastCheckErrorMessage
+        ? { statusMessage: persistedEntry.lastCheckErrorMessage }
+        : {}),
+      ...(persistedEntry.lastCheckErrorCode
+        ? { errorCode: persistedEntry.lastCheckErrorCode }
+        : {}),
     };
   }
 
@@ -856,8 +968,12 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
     return {
       status: mapVisibleStatusToHealth(persistedEntry.visibleStatus),
       checkedAt,
-      ...(persistedEntry.lastCheckErrorMessage ? { statusMessage: persistedEntry.lastCheckErrorMessage } : {}),
-      ...(persistedEntry.lastCheckErrorCode ? { errorCode: persistedEntry.lastCheckErrorCode } : {}),
+      ...(persistedEntry.lastCheckErrorMessage
+        ? { statusMessage: persistedEntry.lastCheckErrorMessage }
+        : {}),
+      ...(persistedEntry.lastCheckErrorCode
+        ? { errorCode: persistedEntry.lastCheckErrorCode }
+        : {}),
     };
   }
 
@@ -865,7 +981,8 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
     if (!entry.config.endpoint || !entry.config.bucket || !entry.config.accessKeyId) {
       return {
         status: 'error',
-        statusMessage: 'S3-Konfiguration unvollständig (Endpoint, Bucket, Access Key erforderlich).',
+        statusMessage:
+          'S3-Konfiguration unvollständig (Endpoint, Bucket, Access Key erforderlich).',
         checkedAt,
       };
     }
@@ -920,6 +1037,19 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
     };
   }
 
+  if (entry.type === 'postgresql') {
+    if (!entry.config.databaseUrl) {
+      return {
+        status: 'error',
+        checkedAt,
+      };
+    }
+    return {
+      status: 'unknown',
+      checkedAt,
+    };
+  }
+
   if (!entry.config.projectUrl) {
     return {
       status: 'error',
@@ -931,7 +1061,8 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
   if (!entry.config.databaseUrl && !('serviceRoleKey' in entry.config)) {
     return {
       status: 'error',
-      statusMessage: 'Supabase-Konfiguration unvollständig (Direkte DB-URL und Service-Role-Key erforderlich).',
+      statusMessage:
+        'Supabase-Konfiguration unvollständig (Direkte DB-URL und Service-Role-Key erforderlich).',
       checkedAt,
     };
   }

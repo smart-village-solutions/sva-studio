@@ -40,11 +40,6 @@ export const WasteSettingsStatusPanel = ({
           value: settings?.databaseUrlConfigured ? pt('common.yes') : pt('common.no'),
         },
         {
-          id: 'serviceRoleKeyConfigured',
-          label: pt('settings.meta.serviceRoleKeyConfiguredLabel'),
-          value: settings?.serviceRoleKeyConfigured ? pt('common.yes') : pt('common.no'),
-        },
-        {
           id: 'lastCheckedAt',
           label: pt('settings.meta.lastCheckedAtLabel'),
           value: formatUpdatedAt(settings?.lastCheckedAt),

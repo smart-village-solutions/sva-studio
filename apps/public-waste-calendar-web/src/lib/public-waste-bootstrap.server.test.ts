@@ -17,7 +17,7 @@ describe('public waste bootstrap', () => {
     expect(
       resolvePublicWasteBootstrapState({
         instanceId: '',
-        supabase: { databaseUrl: '', schemaName: 'waste' },
+        database: { databaseUrl: '', schemaName: 'waste' },
       })
     ).toMatchObject({
       status: 'error',
@@ -34,7 +34,7 @@ describe('public waste bootstrap', () => {
           PUBLIC_WASTE_SCHEMA_NAME: 'public-env',
           PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
             instanceId: 'bb-prignitz-json',
-            supabase: { databaseUrl: 'postgres://json', schemaName: 'public-json' },
+            database: { databaseUrl: 'postgres://json', schemaName: 'public-json' },
             emailReminderConfig: {
               enabled: true,
               publicSignupEnabled: true,
@@ -84,7 +84,7 @@ describe('public waste bootstrap', () => {
         env: {},
         rawConfigJson: JSON.stringify({
           instanceId: 'bb-prignitz-json',
-          supabase: { databaseUrl: 'postgres://json', schemaName: 'public-json' },
+          database: { databaseUrl: 'postgres://json', schemaName: 'public-json' },
         }),
       })
     ).toMatchObject({

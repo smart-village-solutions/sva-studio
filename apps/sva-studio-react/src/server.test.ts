@@ -14,6 +14,7 @@ const dispatchAggregatedContentListRequestMock = vi.fn();
 const dispatchMapGeocodingRequestMock = vi.fn();
 const dispatchStudioChangelogRequestMock = vi.fn();
 const ensurePluginOperationWorkerStartedMock = vi.fn();
+const ensurePrivilegedStudioJobWorkerStartedMock = vi.fn();
 const getWorkspaceContextMock = vi.fn();
 const withRequestContextMock = vi.fn();
 const createServerFunctionRequestDiagnosticsMock = vi.fn();
@@ -43,6 +44,7 @@ vi.mock('@sva/routing/server', () => ({
 vi.mock('@sva/auth-runtime/server', () => ({
   ensureStudioJobWorkerStarted: ensurePluginOperationWorkerStartedMock,
   ensurePluginOperationWorkerStarted: ensurePluginOperationWorkerStartedMock,
+  ensurePrivilegedStudioJobWorkerStarted: ensurePrivilegedStudioJobWorkerStartedMock,
 }));
 
 vi.mock('./lib/mainserver-news-api.server', () => ({
@@ -110,6 +112,8 @@ describe('server transport', () => {
     dispatchStudioChangelogRequestMock.mockReset();
     ensurePluginOperationWorkerStartedMock.mockReset();
     ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
+    ensurePrivilegedStudioJobWorkerStartedMock.mockReset();
+    ensurePrivilegedStudioJobWorkerStartedMock.mockResolvedValue(undefined);
     getWorkspaceContextMock.mockReset();
     withRequestContextMock.mockReset();
     createServerFunctionRequestDiagnosticsMock.mockReset();
@@ -580,6 +584,24 @@ describe('server transport', () => {
 
     await expect(responsePromise).resolves.toBeInstanceOf(Response);
     expect(startFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts only the privileged worker lane in the provisioner runtime profile', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SVA_PLUGIN_OPERATION_WORKER_LANE', 'privileged');
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(vi.fn().mockResolvedValue(new Response('ok')));
+
+    const mod = await import('./server');
+    await mod.default.fetch(new Request('http://localhost:3000/health/live'));
+    await vi.waitFor(() => {
+      expect(ensurePrivilegedStudioJobWorkerStartedMock).toHaveBeenCalledOnce();
+    });
+    expect(ensurePluginOperationWorkerStartedMock).not.toHaveBeenCalled();
   });
 
   it('waits for plugin operation handlers before dispatching auth routes', async () => {

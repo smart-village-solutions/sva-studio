@@ -33,9 +33,11 @@ export { emitAuthAuditEvent } from './audit-events.js';
 export type { AuthAuditEvent, AuthAuditEventType, PluginActionAuditPayload } from './audit-events.types.js';
 export {
   ensureStudioJobWorkerStarted,
+  ensurePrivilegedStudioJobWorkerStarted,
   queueStudioJob,
   registerStudioJobExecutionHandlers,
   stopStudioJobWorker,
+  stopPrivilegedStudioJobWorker,
   ensurePluginOperationWorkerStarted,
   queuePluginOperationJob,
   registerPluginOperationExecutionHandlers,

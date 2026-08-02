@@ -99,10 +99,22 @@ const createOrUpdateRoles = async (
   }
 ): Promise<void> => {
   const roleSpecs = [
-    { name: input.names.ownerRole, attributes: 'NOLOGIN' },
-    { name: input.names.migratorRole, attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.migrator)}` },
-    { name: input.names.appRole, attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.app)}` },
-    { name: input.names.publicAppRole, attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.publicApp)}` },
+    {
+      name: input.names.ownerRole,
+      attributes: 'NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION',
+    },
+    {
+      name: input.names.migratorRole,
+      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.migrator)} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT`,
+    },
+    {
+      name: input.names.appRole,
+      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.app)} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT`,
+    },
+    {
+      name: input.names.publicAppRole,
+      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.publicApp)} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT`,
+    },
   ] as const;
   const existing = await client.query<{ rolname: string }>(
     'SELECT rolname FROM pg_roles WHERE rolname = ANY($1::text[]);',
@@ -118,6 +130,9 @@ const createOrUpdateRoles = async (
   }
   await client.query(
     `GRANT ${quoteIdentifier(input.names.ownerRole)} TO ${quoteIdentifier(input.names.migratorRole)};`
+  );
+  await client.query(
+    `GRANT ${quoteIdentifier(input.names.ownerRole)} TO CURRENT_USER WITH ADMIN OPTION;`
   );
 };
 
@@ -135,6 +150,9 @@ const ensureDatabase = async (
     );
   }
   await client.query(
+    `REVOKE ALL ON DATABASE ${quoteIdentifier(names.database)} FROM PUBLIC;`
+  );
+  await client.query(
     `GRANT CONNECT ON DATABASE ${quoteIdentifier(names.database)} TO ${quoteIdentifier(names.migratorRole)}, ${quoteIdentifier(names.appRole)}, ${quoteIdentifier(names.publicAppRole)};`
   );
 };
@@ -143,6 +161,8 @@ const migrateAndGrant = async (pool: ProvisioningPool, names: WasteTenantDatabas
   const client = await pool.connect();
   try {
     await client.query(`SET ROLE ${quoteIdentifier(names.ownerRole)};`);
+    await client.query('REVOKE CREATE ON SCHEMA public FROM PUBLIC;');
+    await client.query(`ALTER SCHEMA public OWNER TO ${quoteIdentifier(names.ownerRole)};`);
     for (const sql of applySchemaStatements('public')) {
       await client.query(sql);
     }
@@ -156,7 +176,26 @@ const migrateAndGrant = async (pool: ProvisioningPool, names: WasteTenantDatabas
       `GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${quoteIdentifier(names.publicAppRole)};`
     );
     await client.query(
+      `GRANT INSERT, UPDATE, DELETE ON TABLE
+        public.waste_email_reminder_subscriptions,
+        public.waste_email_reminder_subscription_items,
+        public.waste_email_reminder_outbox
+      TO ${quoteIdentifier(names.publicAppRole)};`
+    );
+    await client.query(
       `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${quoteIdentifier(names.appRole)};`
+    );
+    await client.query(
+      `ALTER DEFAULT PRIVILEGES FOR ROLE ${quoteIdentifier(names.ownerRole)} IN SCHEMA public
+       GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${quoteIdentifier(names.appRole)};`
+    );
+    await client.query(
+      `ALTER DEFAULT PRIVILEGES FOR ROLE ${quoteIdentifier(names.ownerRole)} IN SCHEMA public
+       GRANT USAGE, SELECT ON SEQUENCES TO ${quoteIdentifier(names.appRole)};`
+    );
+    await client.query(
+      `ALTER DEFAULT PRIVILEGES FOR ROLE ${quoteIdentifier(names.ownerRole)} IN SCHEMA public
+       GRANT SELECT ON TABLES TO ${quoteIdentifier(names.publicAppRole)};`
     );
     return inspectWasteSchema(client, 'public');
   } finally {
@@ -166,17 +205,26 @@ const migrateAndGrant = async (pool: ProvisioningPool, names: WasteTenantDatabas
 
 const verifyRuntimeAccess = async (
   pool: ProvisioningPool,
-  expectedAccess: 'read-write' | 'read-only'
+  expectedAccess: 'read-write' | 'public-runtime'
 ): Promise<void> => {
   const client = await pool.connect();
   try {
-    const result = await client.query<{ can_select: boolean; can_insert: boolean }>(
+    const result = await client.query<{
+      can_select: boolean;
+      can_insert: boolean;
+      can_insert_subscription: boolean;
+    }>(
       `SELECT
          has_table_privilege(current_user, 'public.waste_fractions', 'SELECT') AS can_select,
-         has_table_privilege(current_user, 'public.waste_fractions', 'INSERT') AS can_insert;`
+         has_table_privilege(current_user, 'public.waste_fractions', 'INSERT') AS can_insert,
+         has_table_privilege(current_user, 'public.waste_email_reminder_subscriptions', 'INSERT') AS can_insert_subscription;`
     );
     const access = result.rows[0];
-    if (!access?.can_select || access.can_insert !== (expectedAccess === 'read-write')) {
+    const valid =
+      expectedAccess === 'read-write'
+        ? access?.can_select && access.can_insert && access.can_insert_subscription
+        : access?.can_select && !access.can_insert && access.can_insert_subscription;
+    if (!valid) {
       throw new Error('waste_database_runtime_privileges_invalid');
     }
   } finally {
@@ -295,7 +343,7 @@ export const createProvisionTenantDatabaseOperation = (
     }
     const publicAppPool = createPool(publicAppUrl);
     try {
-      await verifyRuntimeAccess(publicAppPool, 'read-only');
+      await verifyRuntimeAccess(publicAppPool, 'public-runtime');
     } finally {
       await publicAppPool.end();
     }

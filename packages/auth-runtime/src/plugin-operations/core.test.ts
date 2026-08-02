@@ -148,6 +148,7 @@ describe('plugin operations handlers', () => {
       jobId: expect.any(String),
       queueName: 'plugin-imports',
       maxAttempts: 5,
+      executionLane: 'default',
     });
     await expect(response.json()).resolves.toMatchObject({
       data: {

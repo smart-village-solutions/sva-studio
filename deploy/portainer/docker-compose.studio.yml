@@ -26,12 +26,13 @@ services:
       ENCRYPTION_KEY: '${ENCRYPTION_KEY}'
       IAM_PII_KEYRING_JSON: '${IAM_PII_KEYRING_JSON}'
       APP_DB_PASSWORD: '${APP_DB_PASSWORD}'
-      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       REDIS_PASSWORD: '${REDIS_PASSWORD}'
       ENABLE_OTEL: 'false'
       SVA_ENABLE_SERVER_CONSOLE_LOGS: '${SVA_ENABLE_SERVER_CONSOLE_LOGS:-false}'
       SVA_AUTH_DEBUG_HEADERS: '${SVA_AUTH_DEBUG_HEADERS:-false}'
       SVA_ALLOW_PRIVATE_INTERFACE_HEALTHCHECK_TARGETS: 'true'
+      SVA_PLUGIN_OPERATION_WORKER_ENABLED: 'true'
+      SVA_PLUGIN_OPERATION_WORKER_LANE: 'default'
       POSTGRES_DB: sva_studio
       APP_DB_USER: '${APP_DB_USER}'
       SVA_PUBLIC_BASE_URL: '${SVA_PUBLIC_BASE_URL}'
@@ -117,7 +118,7 @@ services:
       - node
       - --import
       - ./otel-bootstrap.mjs
-      - node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js
+      - .output/server/index.mjs
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
@@ -142,6 +143,17 @@ services:
       KEYCLOAK_PROVISIONER_CLIENT_ID: '${KEYCLOAK_PROVISIONER_CLIENT_ID}'
       KEYCLOAK_PROVISIONER_CLIENT_SECRET: '${KEYCLOAK_PROVISIONER_CLIENT_SECRET}'
       SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS: '${SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS:-5000}'
+      SVA_PROVISIONER_COMBINED_WORKER: 'true'
+      SVA_PLUGIN_OPERATION_WORKER_ENABLED: 'true'
+      SVA_PLUGIN_OPERATION_WORKER_LANE: 'privileged'
+      SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY: '1'
+      WASTE_DATABASE_PROVISIONER_USER: '${WASTE_DATABASE_PROVISIONER_USER:-sva_waste_provisioner}'
+      WASTE_DATABASE_PROVISIONER_PASSWORD_FILE: '/run/secrets/waste_database_provisioner_password'
+      WASTE_DATABASE_PROVISIONER_HOST: postgres
+      WASTE_DATABASE_PROVISIONER_PORT: '5432'
+      WASTE_DATABASE_PROVISIONER_DATABASE: sva_studio
+    secrets:
+      - waste_database_provisioner_password
     labels:
       com.sva-studio.component: 'provisioner'
       com.sva-studio.environment: 'production'
@@ -333,3 +345,8 @@ volumes:
     driver: local
   redis-data:
     driver: local
+
+secrets:
+  waste_database_provisioner_password:
+    external: true
+    name: '${WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME:-studio_waste_database_provisioner_password_v1}'

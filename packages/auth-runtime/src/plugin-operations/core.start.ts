@@ -1,4 +1,4 @@
-import type { StudioPluginOperationStartRequest } from '@sva/core';
+import { wasteManagementOperationsContract, type StudioPluginOperationStartRequest } from '@sva/core';
 
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 import { createApiError, toPayloadHash } from '../shared/request-helpers.js';
@@ -143,6 +143,10 @@ export const executeStartPluginOperationJob = async (input: {
         jobId: job.id,
         queueName: job.queueName,
         maxAttempts: job.maxAttempts,
+        executionLane:
+          input.data.jobTypeId === wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase
+            ? 'privileged'
+            : 'default',
       });
     } catch {
       await markPluginOperationEnqueueFailed({ instanceId: input.instanceId, job });

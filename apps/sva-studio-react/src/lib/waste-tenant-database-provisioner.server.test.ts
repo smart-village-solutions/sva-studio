@@ -44,6 +44,7 @@ describe('waste tenant database provisioner', () => {
                 {
                   can_select: true,
                   can_insert: url.includes('_app:app-secret@'),
+                  can_insert_subscription: true,
                 },
               ] as TRow[],
             };
@@ -96,6 +97,13 @@ describe('waste tenant database provisioner', () => {
     expect(JSON.stringify(savedInterfaces[0]?.publicConfig)).not.toContain('secret');
     expect(String(savedInterfaces[0]?.secretConfigCiphertext)).toContain('app-secret');
     expect(statements.some(({ text }) => text.startsWith('CREATE DATABASE'))).toBe(true);
+    expect(statements.some(({ text }) => text.includes('TO CURRENT_USER WITH ADMIN OPTION'))).toBe(true);
+    expect(statements.some(({ text }) => text.includes('REVOKE ALL ON DATABASE'))).toBe(true);
+    expect(
+      statements.some(({ text }) =>
+        text.includes('public.waste_email_reminder_subscriptions')
+      )
+    ).toBe(true);
     expect(statements.some(({ text }) => text.includes('CREATE TABLE IF NOT EXISTS'))).toBe(true);
     expect(completeProvisioning).toHaveBeenCalledOnce();
     expect(failProvisioning).not.toHaveBeenCalled();

@@ -53,5 +53,5 @@
 - [x] 7.3 Durch einen automatisierten Aktivierungstest nachweisen, dass weitere Tenants ohne Deployment- oder manuelle Secret-Änderung provisioniert werden.
 - [x] 7.4 Betriebsdiagnose, Alerting und Runbooks für hängende Provisionierung, Drift, Backup-Fehler und Secret-Rotation ergänzen.
 - [x] 7.5 Die betroffenen arc42-Abschnitte `05`, `07`, `08`, `10` und `11` sowie die Waste-, Interface- und Rollout-Guides auf Deutsch aktualisieren.
-- [ ] 7.6 Die relevanten Unit-, Type-, ESLint-, Integration-, E2E-, Security- und File-Placement-Gates ausführen.
-- [ ] 7.7 Vor PR-Freigabe den affected Scope messen und nach Möglichkeit `pnpm test:pr` ausführen; ausgelassene breite Gates transparent dokumentieren.
+- [x] 7.6 Die relevanten Unit-, Type-, ESLint-, Integration-, E2E-, Security- und File-Placement-Gates ausführen.
+- [x] 7.7 Vor PR-Freigabe den affected Scope messen und nach Möglichkeit `pnpm test:pr` ausführen; ausgelassene breite Gates transparent dokumentieren.

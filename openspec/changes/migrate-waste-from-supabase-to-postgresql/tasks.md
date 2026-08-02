@@ -9,7 +9,7 @@
 - [x] 2.1 Waste-Datenquellenresolver und Settings auf die ausgewählte PostgreSQL-Schnittstelle umstellen und Supabase-Pflichtfelder entfernen.
 - [x] 2.2 Host-Fassade, Connection-Status, Pooling sowie Migrations- und Jobpfade mit PostgreSQL-Verträgen testen.
 - [x] 2.3 Public-Waste-App auf denselben PostgreSQL-Vertrag umstellen und Konfigurationsbeispiele sowie Runtime-Checks anpassen.
-- [ ] 2.4 Unit-, Type-, Server-Runtime- und relevante E2E-/Integrationstests nach jedem Änderungsblock ausführen.
+- [x] 2.4 Unit-, Type-, Server-Runtime- und relevante E2E-/Integrationstests nach jedem Änderungsblock ausführen.
 
 ## 3. Betrieb und Datensicherheit
 
@@ -30,4 +30,4 @@
 
 - [x] 5.1 Arc42-Abschnitte `03`, `05`, `07`, `08` und `11` auf PostgreSQL-Zielbild, Datenbankgrenze, Backup und Cutover-Risiken aktualisieren.
 - [x] 5.2 Public-Waste-, Schnittstellen-, lokale Betriebs- und Rollout-Dokumentation aktualisieren, ohne einen konkurrierenden Studio-Deploypfad einzuführen.
-- [ ] 5.3 Kleinste relevante Unit-/Type-/Runtime-Gates, `pnpm check:file-placement` und vor PR-Freigabe bevorzugt `pnpm test:pr` ausführen; ausgelassene breite Gates transparent dokumentieren.
+- [x] 5.3 Kleinste relevante Unit-/Type-/Runtime-Gates, `pnpm check:file-placement` und vor PR-Freigabe bevorzugt `pnpm test:pr` ausführen; ausgelassene breite Gates transparent dokumentieren.

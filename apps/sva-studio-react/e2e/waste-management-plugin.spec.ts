@@ -585,7 +585,7 @@ test.describe('waste management plugin', () => {
 
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
 
-    await expect(page.getByText('Die Waste-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+    await expect(page.getByText('Die Abfall-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
     expect(harness.requests.settingsUpdates).toHaveLength(1);
     expect(harness.requests.settingsUpdates[0]).toMatchObject({
       projectUrl: 'https://tenant-a.supabase.co',
@@ -699,14 +699,14 @@ test.describe('waste management plugin', () => {
 
     await page.getByRole('tab', { name: 'Abfallarten' }).click();
     await expect(
-      page.getByRole('table', { name: 'Tabelle der Waste-Abfallfraktionen' }).getByText('Bioabfall')
+      page.getByRole('table', { name: 'Tabelle der Abfallfraktionen' }).getByText('Bioabfall')
     ).toBeVisible();
     await page.getByRole('button', { name: 'Fraktion anlegen' }).click();
     await page.locator('#waste-fraction-name').fill('Papier Plus');
     await page.locator('#waste-fraction-pdf-short-label').fill('PP');
     await page.locator('#waste-fraction-color-text').fill('#123456');
     await page.locator('#waste-fraction-create-form').getByRole('button', { name: 'Abfallart speichern' }).click();
-    await expect(page.getByText('Für das Speichern von Waste-Fraktionen fehlt die Berechtigung.').first()).toBeVisible();
+    await expect(page.getByText('Für das Speichern von Abfall-Fraktionen fehlt die Berechtigung.').first()).toBeVisible();
   });
 
   test('supports custom recurrence preset creation, tour selection, editing and fallback deletion', async ({ page }) => {
@@ -761,7 +761,7 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
 
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
-    await expect(page.getByText('Die Waste-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+    await expect(page.getByText('Die Abfall-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
 
     const createdPresetIds = (
       (harness.requests.settingsUpdates[0]?.customRecurrencePresets as Array<Record<string, unknown>> | undefined) ?? []
@@ -801,7 +801,7 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
 
-    await expect(page.getByText('Die Waste-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+    await expect(page.getByText('Die Abfall-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
 
     await page.getByRole('tab', { name: 'Touren' }).click();
     await expect(page.getByRole('row', { name: /Ferienroute.*Ferien 12 Tage \(alle 12 Tage\)/ })).toBeVisible();
@@ -815,7 +815,7 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Löschen' }).click();
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
 
-    await expect(page.getByText('Die Waste-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+    await expect(page.getByText('Die Abfall-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
 
     const finalSettingsUpdate = harness.requests.settingsUpdates.at(-1) as
       | {

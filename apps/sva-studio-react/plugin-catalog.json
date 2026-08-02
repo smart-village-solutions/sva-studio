@@ -36,6 +36,12 @@
     "sourceRef": "packages/plugin-faq"
   },
   {
+    "pluginId": "cockpit-cards",
+    "sourceType": "workspace",
+    "enabled": true,
+    "sourceRef": "packages/plugin-cockpit-cards"
+  },
+  {
     "pluginId": "surveys",
     "sourceType": "workspace",
     "enabled": true,

@@ -87,6 +87,11 @@ Abhängigkeiten des aktuellen Systems.
    - Standard-Content-Plugin mit dem Content-Type `faq.faq`; die fachlichen Datensätze bleiben Mainserver-`GenericItem`s mit dem festen Discriminator `genericType: "FAQ"`
    - kapselt Frage, reine Textantwort, BCP-47-Sprachcode und Sortiergewicht; unbekannte `payload`-Schlüssel bleiben bei Updates erhalten
    - nutzt ausschließlich die hostgeführte Fassade `/api/v1/mainserver/faqs`; diese trennt FAQ- und sonstige GenericItem-IDs, erzwingt `faq.*`-Rechte und lädt für korrekte Filter-Pagination sämtliche Upstream-Seiten
+
+11b. Plugin Cockpit Cards (`packages/plugin-cockpit-cards`)
+   - eigenständiges Standard-Content-Plugin mit `cockpit-cards.cockpit-card` und festem GenericItem-Discriminator `COCKPIT_CARD`
+   - begrenzt die Bearbeitung auf Überschrift, Klartext, Sprache, genau eine bestehende Kategorie, Bilder, einen HTTPS-Link und Publikationsmetadaten
+   - nutzt die hostgeführte Fassade `/api/v1/mainserver/cockpit-cards`, die eigenen `cockpit-cards.*`-Rechte sowie vorhandene Kategorien- und Medienbausteine
 11a. Plugin Surveys (`packages/plugin-surveys`)
    - produktives Fachplugin für Mainserver-gestützte Umfragen mit pluginnahem Modell `surveys.survey`
    - registriert sich als normales Standard-Content-Plugin über `createStandardContentPluginContribution(...)` und erweitert dieses Muster nur um die Rechte `surveys.moderate` und `surveys.export`

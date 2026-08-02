@@ -106,6 +106,7 @@ const MAIN_SERVER_VISIBLE_TYPE_BY_READ_ACTION = new Map<string, string>([
   ['poi.read', 'poi.point-of-interest'],
   ['generic-items.read', 'generic-items.generic-item'],
   ['faq.read', 'faq.faq'],
+  ['cockpit-cards.read', 'cockpit-cards.cockpit-card'],
   ['surveys.read', 'surveys.survey'],
 ]);
 

@@ -83,6 +83,7 @@ const definitions: Record<SvaMainserverProjectionContentType, ProjectionDefiniti
   'poi.point-of-interest': { document: svaMainserverPoiProjectionListDocument, operationName: 'SvaMainserverPoiProjectionList', responseField: 'pointsOfInterest', contentType: 'poi.point-of-interest', titleField: 'name', order: 'updatedAt_DESC', paginated: true },
   'generic-items.generic-item': { document: svaMainserverGenericItemProjectionListDocument, operationName: 'SvaMainserverGenericItemProjectionList', responseField: 'genericItems', contentType: 'generic-items.generic-item', titleField: 'title', order: 'updatedAt_DESC', paginated: true },
   'faq.faq': { document: svaMainserverGenericItemProjectionListDocument, operationName: 'SvaMainserverGenericItemProjectionList', responseField: 'genericItems', contentType: 'faq.faq', titleField: 'title', order: 'updatedAt_DESC', paginated: true },
+  'cockpit-cards.cockpit-card': { document: svaMainserverGenericItemProjectionListDocument, operationName: 'SvaMainserverGenericItemProjectionList', responseField: 'genericItems', contentType: 'cockpit-cards.cockpit-card', titleField: 'title', order: 'updatedAt_DESC', paginated: true },
   'surveys.survey': { document: svaMainserverSurveyProjectionListDocument, operationName: 'SvaMainserverSurveyProjectionList', responseField: 'surveys', contentType: 'surveys.survey', titleField: 'title', order: 'updatedAt_DESC', paginated: false },
 };
 
@@ -113,14 +114,18 @@ export const createProjectionListOperations = (executeGraphqlWithConfig: Graphql
       ? responseItems.slice(0, query.pageSize)
       : responseItems;
     const rawItems: readonly unknown[] = upstreamPageItems.filter((item) => {
-      if (contentType !== 'faq.faq' && contentType !== 'generic-items.generic-item') {
+      if (contentType !== 'faq.faq' && contentType !== 'cockpit-cards.cockpit-card' && contentType !== 'generic-items.generic-item') {
         return true;
       }
-      const isFaq =
+      const genericType =
         item !== null &&
         typeof item === 'object' &&
-        (item as Record<string, unknown>).genericType === 'FAQ';
-      return contentType === 'faq.faq' ? isFaq : !isFaq;
+        typeof (item as Record<string, unknown>).genericType === 'string'
+          ? (item as Record<string, unknown>).genericType
+          : undefined;
+      return contentType === 'faq.faq' ? genericType === 'FAQ'
+        : contentType === 'cockpit-cards.cockpit-card' ? genericType === 'COCKPIT_CARD'
+        : genericType !== 'FAQ' && genericType !== 'COCKPIT_CARD';
     });
     const mapped = rawItems.map((item) => mapItem(item, contentType, definition.titleField));
     const skippedInvalidCount = mapped.filter((item) => item === null).length;

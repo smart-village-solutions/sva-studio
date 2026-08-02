@@ -28,6 +28,7 @@ const adminBootstrapModuleLabels = {
   events: 'admin.instances.adminBootstrap.modules.events',
   'generic-items': 'admin.instances.adminBootstrap.modules.genericItems',
   faq: 'admin.instances.adminBootstrap.modules.faq',
+  'cockpit-cards': 'admin.instances.adminBootstrap.modules.cockpitCards',
   poi: 'admin.instances.adminBootstrap.modules.poi',
   media: 'admin.instances.adminBootstrap.modules.media',
   surveys: 'admin.instances.adminBootstrap.modules.surveys',

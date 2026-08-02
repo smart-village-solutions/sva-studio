@@ -18,6 +18,10 @@ Plugins sollen Host-Funktionen nicht direkt aus App-Code oder aus `@sva/core` be
 
 `@sva/plugin-faq` ist das Fachplugin für mehrsprachige FAQs. Es modelliert eine FAQ als spezialisierte Mainserver-`GenericItem`-Sicht mit festem `genericType: "FAQ"`, Klartextantwort, BCP-47-Sprachcode und Sortiergewicht. Das Plugin verwendet den Standard-Content-Plugin-Vertrag, Studio-UI-Bausteine und ausschließlich die hostgeführte HTTP-Fassade; es kennt weder Mainserver-Secrets noch direkte GraphQL-Zugriffe.
 
+### `@sva/plugin-cockpit-cards`
+
+`@sva/plugin-cockpit-cards` ist das eigenständige Fachplugin für Cockpit Cards. Es speichert Überschrift, Klartext, genau eine bestehende Kategorie, ein oder mehrere Bilder, höchstens einen HTTPS-Link sowie Sprach- und Publikationsmetadaten als eng validiertes Mainserver-`GenericItem` mit `genericType: "COCKPIT_CARD"`. Kategorien, Medien und Transport bleiben hostgeführt; das Plugin besitzt eigene IAM-Actions und keine Mainserver-Secrets.
+
 ## 2. Server-Runtime und technische Querschnittsfunktionen
 
 ### `@sva/monitoring-client`

@@ -6,6 +6,7 @@ import {
 } from '@sva/core';
 import { deleteEvent } from '@sva/plugin-events';
 import { deleteFaq } from '@sva/plugin-faq';
+import { deleteCockpitCard } from '@sva/plugin-cockpit-cards';
 import { deleteGenericItem } from '@sva/plugin-generic-items';
 import { deleteNews } from '@sva/plugin-news';
 import { deletePoi } from '@sva/plugin-poi';
@@ -312,6 +313,10 @@ const deleteMainserverItem = async (contentType: string, contentId: string): Pro
   }
   if (contentType === 'faq.faq') {
     await deleteFaq(contentId);
+    return;
+  }
+  if (contentType === 'cockpit-cards.cockpit-card') {
+    await deleteCockpitCard(contentId);
     return;
   }
   if (contentType === 'generic-items.generic-item') {

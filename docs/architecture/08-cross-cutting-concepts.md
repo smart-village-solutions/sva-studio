@@ -568,6 +568,12 @@ Referenzen:
 - FAQ-Fassaden autorisieren ausschließlich vollständig qualifizierte Aktionen `faq.read`, `faq.create`, `faq.update` und `faq.delete`; der GenericItem-Pfad ist kein Berechtigungs-Bypass.
 - Der Server erzwingt den Discriminator `genericType: "FAQ"` bei Mutationen und beantwortet fremde IDs auf dem FAQ-Pfad nicht als GenericItem.
 - Der FAQ-Leseweg protokolliert nur technische Kontextdaten. Antworten, Fragen und sonstige Payload-Inhalte sind keine Logfelder.
+
+### Ergänzung 2026-08: Cockpit Cards als gefilterter GenericItem-Fachtyp
+
+- Cockpit-Cards-Fassaden verwenden ausschließlich die Actions `cockpit-cards.read`, `cockpit-cards.create`, `cockpit-cards.update` und `cockpit-cards.delete`.
+- Der Server erzwingt `genericType: "COCKPIT_CARD"`, genau eine Kategorie, mindestens ein Bild und höchstens einen HTTPS-Link; fremde Typ-IDs werden als nicht gefunden behandelt.
+- Beobachtbarkeitsdaten des vollständigen Paging-Lesewegs enthalten nur technische Zähler und Laufzeiten, keine Überschriften, Texte, Kategorien oder URLs.
 - Sprachcode und Sortiergewicht sind kontrollierte `payload`-Schlüssel; unbekannte historische Schlüssel bleiben bei Updates erhalten. Die Antwort ist Klartext und wird vor dem Write gegen HTML geprüft.
 
 ### Ergänzung 2026-03: IAM-Transparenz-UI und Privacy-Self-Service

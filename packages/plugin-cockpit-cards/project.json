@@ -1,0 +1,49 @@
+{
+  "name": "plugin-cockpit-cards",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/plugin-cockpit-cards/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "outputs": ["{projectRoot}/dist"],
+      "options": { "command": "tsc -p packages/plugin-cockpit-cards/tsconfig.lib.json" }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": [
+          "packages/plugin-cockpit-cards/src/**/*.{ts,tsx}",
+          "packages/plugin-cockpit-cards/tests/**/*.{ts,tsx}"
+        ]
+      }
+    },
+    "test:unit": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/plugin-cockpit-cards",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts tests --reporter=verbose --config vitest.config.ts --passWithNoTests"
+      }
+    },
+    "test:types": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "options": { "command": "tsc -p packages/plugin-cockpit-cards/tsconfig.lib.json --noEmit" }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/plugin-cockpit-cards",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts tests --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+      }
+    },
+    "test:integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -e \"console.log('no integration tests configured for @sva/plugin-cockpit-cards')\""
+      }
+    }
+  },
+  "tags": ["scope:plugin", "type:lib"]
+}

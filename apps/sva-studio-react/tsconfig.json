@@ -41,6 +41,7 @@
       "@sva/iam-governance": ["../../packages/iam-governance/dist/index.d.ts"],
       "@sva/iam-governance/*": ["../../packages/iam-governance/dist/*.d.ts"],
       "@sva/plugin-categories": ["../../packages/plugin-categories/src/index.ts"],
+      "@sva/plugin-cockpit-cards": ["../../packages/plugin-cockpit-cards/src/index.ts"],
       "@sva/plugin-events": ["../../packages/plugin-events/src/index.ts"],
       "@sva/plugin-faq": ["../../packages/plugin-faq/src/index.ts"],
       "@sva/plugin-waste-management": ["../../packages/plugin-waste-management/src/index.ts"],

@@ -17,6 +17,7 @@ describe('@sva/studio-module-iam', () => {
       'poi',
       'generic-items',
       'faq',
+      'cockpit-cards',
       'surveys',
       'waste-management',
     ]);
@@ -28,6 +29,7 @@ describe('@sva/studio-module-iam', () => {
       'poi',
       'generic-items',
       'faq',
+      'cockpit-cards',
       'surveys',
       'waste-management',
       'media',
@@ -122,6 +124,12 @@ describe('@sva/studio-module-iam', () => {
       namespace: 'faq',
       ownerPluginId: 'faq',
       permissionIds: ['faq.read', 'faq.create', 'faq.update', 'faq.delete'],
+    });
+    expect(getStudioModuleIamContract('cockpit-cards')).toMatchObject({
+      moduleId: 'cockpit-cards',
+      namespace: 'cockpit-cards',
+      ownerPluginId: 'cockpit-cards',
+      permissionIds: ['cockpit-cards.read', 'cockpit-cards.create', 'cockpit-cards.update', 'cockpit-cards.delete'],
     });
     expect(getStudioModuleIamContract('surveys')).toMatchObject({
       moduleId: 'surveys',

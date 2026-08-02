@@ -147,7 +147,8 @@ type TargetedMutationContentType =
   | 'events.event-record'
   | 'poi.point-of-interest'
   | 'generic-items.generic-item'
-  | 'faq.faq';
+  | 'faq.faq'
+  | 'cockpit-cards.cockpit-card';
 type ProjectionRefreshTrigger =
   | 'manual'
   | 'mutation_follow_up'
@@ -578,6 +579,7 @@ const toMainserverContentType = (value: string): MainserverContentType | null =>
     value === 'poi.point-of-interest' ||
     value === 'generic-items.generic-item' ||
     value === 'faq.faq' ||
+    value === 'cockpit-cards.cockpit-card' ||
     value === 'surveys.survey'
   ) {
     return value;
@@ -1631,7 +1633,7 @@ const mainserverProjectionPageLoaders: Record<
         ...pageQuery,
       }).then((result) =>
         buildLoadedProjectionPage({
-          result: { ...result, data: result.data.filter((item) => item.genericType !== 'FAQ') },
+          result: { ...result, data: result.data.filter((item) => item.genericType !== 'FAQ' && item.genericType !== 'COCKPIT_CARD') },
           pagingResult: result,
           pageQuery,
           mapRow: (item, credentialSource) => ({
@@ -1662,6 +1664,29 @@ const mainserverProjectionPageLoaders: Record<
             ...(target.organizationId ? { organizationId: target.organizationId } : {}),
             credentialSource,
             sourceEntityType: 'faq.faq',
+            sourceEntityId: item.id,
+          }),
+          projectedOrganizationId: target.organizationId,
+        })
+      ),
+  'cockpit-cards.cockpit-card': async ({ target, pageQuery }) =>
+    listSvaMainserverGenericItems({
+        instanceId: target.instanceId,
+        keycloakSubject: target.keycloakSubject,
+        activeOrganizationId: target.organizationId,
+        includeInvisible: true,
+        ...pageQuery,
+      }).then((result) =>
+        buildLoadedProjectionPage({
+          result: { ...result, data: result.data.filter((item) => item.genericType === 'COCKPIT_CARD') },
+          pagingResult: result,
+          pageQuery,
+          mapRow: (item, credentialSource) => ({
+            ...mapGenericItem(item, target.instanceId, []),
+            contentType: 'cockpit-cards.cockpit-card',
+            ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+            credentialSource,
+            sourceEntityType: 'cockpit-cards.cockpit-card',
             sourceEntityId: item.id,
           }),
           projectedOrganizationId: target.organizationId,
@@ -1990,6 +2015,22 @@ const mainserverMutationProjectionLoaders: Record<
       ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
       credentialSource,
       sourceEntityType: 'faq.faq',
+      sourceEntityId: item.id,
+    };
+  },
+  'cockpit-cards.cockpit-card': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
+    const item = await getSvaMainserverGenericItem({
+      activeOrganizationId: target.organizationId,
+      genericItemId: entityId,
+      instanceId: target.instanceId,
+      keycloakSubject: target.keycloakSubject,
+    });
+    return {
+      ...mapGenericItem(item, target.instanceId, []),
+      contentType: 'cockpit-cards.cockpit-card',
+      ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+      credentialSource,
+      sourceEntityType: 'cockpit-cards.cockpit-card',
       sourceEntityId: item.id,
     };
   },

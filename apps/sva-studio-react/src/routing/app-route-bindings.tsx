@@ -1,6 +1,7 @@
 import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
 import { resolveUserDisplayName, type IamOrganizationContextOption, type IamOrganizationDetail } from '@sva/core';
 import { CategoriesPage } from '@sva/plugin-categories';
+import { CockpitCardsCreatePage, CockpitCardsEditPage, CockpitCardsListPage } from '@sva/plugin-cockpit-cards';
 import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events';
 import { FaqCreatePage, FaqEditPage, FaqListPage } from '@sva/plugin-faq';
 import { GenericItemsCreatePage, GenericItemsEditPage } from '@sva/plugin-generic-items';
@@ -204,6 +205,9 @@ type StudioAppRouteBindings = BaseAppRouteBindings & {
   readonly faqList: React.ComponentType;
   readonly faqDetail: React.ComponentType;
   readonly faqEditor: React.ComponentType;
+  readonly cockpitCardsList: React.ComponentType;
+  readonly cockpitCardsDetail: React.ComponentType;
+  readonly cockpitCardsEditor: React.ComponentType;
   readonly genericItemsEditor: React.ComponentType;
   readonly poiList: React.ComponentType;
   readonly poiDetail: React.ComponentType;
@@ -399,6 +403,9 @@ export const appRouteBindings: StudioAppRouteBindings = {
   faqList: FaqListPage,
   faqDetail: FaqEditPage,
   faqEditor: FaqCreatePage,
+  cockpitCardsList: CockpitCardsListPage,
+  cockpitCardsDetail: CockpitCardsEditPage,
+  cockpitCardsEditor: CockpitCardsCreatePage,
   poiList: ContentListPage,
   poiDetail: PoiEditRoutePage,
   poiEditor: PoiCreateRoutePage,

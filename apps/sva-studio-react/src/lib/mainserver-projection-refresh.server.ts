@@ -13,6 +13,7 @@ type MainserverProjectionContentType =
   | 'poi.point-of-interest'
   | 'generic-items.generic-item'
   | 'faq.faq'
+  | 'cockpit-cards.cockpit-card'
   | 'surveys.survey';
 
 type MainserverProjectionMutationOperation = 'create' | 'update' | 'delete';
@@ -28,6 +29,7 @@ const mainserverCollectionSegments = new Set([
   'poi',
   'generic-items',
   'faqs',
+  'cockpit-cards',
   'surveys',
 ]);
 

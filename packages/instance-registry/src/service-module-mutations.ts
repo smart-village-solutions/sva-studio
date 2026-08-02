@@ -63,16 +63,19 @@ const normalizeReconcileResult = (
     grantsUnchanged: 0,
   };
 
-const mergeReconcileResults = (
+export const mergeReconcileResults = (
   ...results: readonly (PermissionCatalogReconcileResult | void)[]
 ): PermissionCatalogReconcileResult =>
-  results.map(normalizeReconcileResult).reduce((total, result) => ({
-    permissionsInserted: total.permissionsInserted + result.permissionsInserted,
-    permissionsUpdated: total.permissionsUpdated + result.permissionsUpdated,
-    permissionsUnchanged: total.permissionsUnchanged + result.permissionsUnchanged,
-    grantsInserted: total.grantsInserted + result.grantsInserted,
-    grantsUnchanged: total.grantsUnchanged + result.grantsUnchanged,
-  }));
+  results.map(normalizeReconcileResult).reduce(
+    (total, result) => ({
+      permissionsInserted: total.permissionsInserted + result.permissionsInserted,
+      permissionsUpdated: total.permissionsUpdated + result.permissionsUpdated,
+      permissionsUnchanged: total.permissionsUnchanged + result.permissionsUnchanged,
+      grantsInserted: total.grantsInserted + result.grantsInserted,
+      grantsUnchanged: total.grantsUnchanged + result.grantsUnchanged,
+    }),
+    normalizeReconcileResult(undefined)
+  );
 
 const createModuleAssignRollbackError = (
   instanceId: string,

@@ -192,6 +192,12 @@ describe('cockpit cards pages', () => {
     });
     await waitFor(() => expect(state.upload).toHaveBeenCalledTimes(1));
     expect(await screen.findByDisplayValue('https://example.test/upload.jpg')).toBeTruthy();
+
+    state.upload.mockRejectedValueOnce(new Error('upload failed'));
+    fireEvent.change(input, {
+      target: { files: [new File(['broken'], 'broken.png', { type: 'image/png' })] },
+    });
+    expect(await screen.findByText('messages.mediaError')).toBeTruthy();
   });
 
   it('renders history entries and history errors', async () => {

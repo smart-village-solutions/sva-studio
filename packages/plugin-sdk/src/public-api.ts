@@ -45,6 +45,7 @@ export type {
   WasteManagementMaterializeEmailRemindersJobInput,
   WasteManagementMasterDataOverview,
   WasteManagementProcessEmailReminderOutboxJobInput,
+  WasteManagementProvisionTenantDatabaseJobInput,
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
   WasteManagementSyncMainserverJobInput,

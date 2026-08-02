@@ -2,6 +2,7 @@ import type {
   ExternalInterfaceRecord,
   ExternalInterfaceRuntimeErrorCode,
   WasteManagementDataSourceStatus,
+  WasteTenantProvisioningRecord,
 } from '@sva/core';
 import {
   ExternalInterfaceRuntimeError,
@@ -13,6 +14,7 @@ export type WasteRuntimeErrorCode =
   | 'disabled'
   | 'database_url_missing'
   | 'database_url_unreadable'
+  | 'provisioning_not_ready'
   | 'connection_failed';
 
 export class WasteRuntimeError extends Error {
@@ -56,6 +58,7 @@ export const resolveWasteDataSource = async (input: {
     typeKey: string
   ) => Promise<ExternalInterfaceRecord | null>;
   readonly revealSecret: (ciphertext: string | null | undefined, aad: string) => string | undefined;
+  readonly loadProvisioning?: (instanceId: string) => Promise<WasteTenantProvisioningRecord | null>;
 }): Promise<ResolvedWasteDataSource> => {
   if (!input.loadDefaultInterface) {
     throw new WasteRuntimeError({
@@ -101,6 +104,18 @@ export const resolveWasteDataSource = async (input: {
       });
     }
     throw error;
+  }
+
+  if (resolvedInterface.ownerKind === 'plugin') {
+    const provisioning = await input.loadProvisioning?.(input.instanceId);
+    if (!provisioning || provisioning.status !== 'ready') {
+      throw new WasteRuntimeError({
+        code: 'provisioning_not_ready',
+        instanceId: input.instanceId,
+        message: 'Die Waste-Datenbank ist für diese Instanz noch nicht betriebsbereit.',
+        retryable: provisioning?.status === 'failed',
+      });
+    }
   }
 
   const databaseUrl = resolvedInterface.secretConfig.databaseUrl?.trim();

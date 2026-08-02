@@ -4,6 +4,7 @@ import type {
   WasteManagementApplyMigrationsJobInput,
   WasteManagementImportJobInput,
   WasteManagementInitializeJobInput,
+  WasteManagementProvisionTenantDatabaseJobInput,
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
   WasteManagementSyncWasteTypesJobInput,
@@ -23,6 +24,7 @@ type WasteManagementProcessEmailReminderOutboxJobInput = {
 };
 
 type WasteManagementJobInput =
+  | WasteManagementProvisionTenantDatabaseJobInput
   | WasteManagementInitializeJobInput
   | WasteManagementApplyMigrationsJobInput
   | WasteManagementImportJobInput

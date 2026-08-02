@@ -4,7 +4,10 @@ import {
   type SqlExecutor,
   type SqlStatement,
 } from '@sva/data-repositories';
-import { loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
+import {
+  loadDefaultExternalInterfaceRecord,
+  loadWasteTenantProvisioningRecord,
+} from '@sva/data-repositories/server';
 import {
   findSelectedWasteManagementInterfaceRecord,
 } from '@sva/core';
@@ -203,11 +206,11 @@ const loadSelectedWasteInterfaceRecord = async (
   instanceId: string
 ): Promise<ExternalInterfaceRecord | null> => {
   if (!deps.listInterfaceRecords) {
-    return await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(instanceId, 'supabase');
+    return await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(instanceId, 'postgresql');
   }
 
   const records = await deps.listInterfaceRecords(instanceId);
-  return findSelectedWasteManagementInterfaceRecord(records) ?? (await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(instanceId, 'supabase'));
+  return findSelectedWasteManagementInterfaceRecord(records) ?? (await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(instanceId, 'postgresql'));
 };
 
 export const resolveRuntimeDataSource = async (
@@ -217,6 +220,7 @@ export const resolveRuntimeDataSource = async (
   resolveWasteDataSource({
     instanceId,
     loadDefaultInterface: async () => await loadSelectedWasteInterfaceRecord(deps, instanceId),
+    loadProvisioning: deps.loadProvisioning ?? loadWasteTenantProvisioningRecord,
     revealSecret: deps.revealSecret ?? ((ciphertext, aad) => revealField(ciphertext, aad) ?? undefined),
   });
 

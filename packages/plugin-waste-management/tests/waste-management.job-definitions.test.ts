@@ -9,6 +9,31 @@ describe('waste management job definitions', () => {
   it('keeps waste-specific job types inside the waste plugin package', () => {
     expect(createWasteManagementPluginJobTypes()).toEqual([
       {
+        jobTypeId: 'waste-management.provision-tenant-database',
+        queue: 'plugin-operations',
+        displayName: 'Waste-Tenant-Datenbank provisionieren',
+        progress: {
+          phaseKeys: [
+            'waste-management.provision-database',
+            'waste-management.apply-migrations',
+            'waste-management.verify-access',
+            'waste-management.completed',
+          ],
+          stepKeys: [
+            'provision-roles',
+            'provision-database',
+            'materialize-interface',
+            'apply-migrations',
+            'verify-access',
+          ],
+        },
+        result: {
+          summaryKeys: ['durationMs'],
+          detailKeys: ['databaseName', 'interfaceId', 'desiredGeneration'],
+        },
+        errors: { detailKeys: ['failed-step', 'error-code'] },
+      },
+      {
         jobTypeId: 'waste-management.initialize-data-source',
         queue: 'plugin-operations',
         displayName: 'Waste-Initialisierung',

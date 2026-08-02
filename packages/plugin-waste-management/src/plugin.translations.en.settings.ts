@@ -5,8 +5,8 @@ export const wasteManagementPluginTranslationsENSettings = createWasteManagement
     actions: 'Actions',
   },
   technical: {
-    title: 'Technical status',
-    description: 'The host evaluates the active waste data source and reflects the latest server-side connection check.',
+    title: 'Provisioning',
+    description: 'The waste database is provisioned and managed automatically for this instance.',
   },
   fields: {
     projectUrl: 'Project URL',
@@ -43,6 +43,9 @@ export const wasteManagementPluginTranslationsENSettings = createWasteManagement
     holidaySyncPartialSuccess: 'Partially successful',
     holidaySyncFailed: 'Failed',
     customRecurrenceIntervalDays: 'Every {{value}} days',
+    provisioningUpdatedAtLabel: 'Last updated',
+    provisioningErrorCodeLabel: 'Error code',
+    provisioningErrorCodeEmpty: 'No error',
   },
   actions: {
     save: 'Save settings',

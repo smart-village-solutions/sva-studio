@@ -7,6 +7,7 @@ import {
 import {
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
+  loadWasteTenantProvisioningRecord,
 } from '@sva/data-repositories/server';
 import {
   findSelectedWasteManagementInterfaceRecord,
@@ -172,6 +173,7 @@ const resolveScopedWasteDataSource = (
     resolveWasteDataSource({
       instanceId,
       loadDefaultInterface: async () => await loadSelectedWasteInterfaceRecord(instanceId),
+      loadProvisioning: loadWasteTenantProvisioningRecord,
       revealSecret: (ciphertext, aad) => revealField(ciphertext, aad) ?? undefined,
     })
   );

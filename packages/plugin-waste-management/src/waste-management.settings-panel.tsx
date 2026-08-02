@@ -15,6 +15,7 @@ import {
   type StatusMessage,
 } from './waste-management.page.support.js';
 import { WasteSettingsForm } from './waste-management.settings-form.js';
+import { WasteSettingsStatusPanel } from './waste-management.settings-status-panel.js';
 import type {
   CustomRecurrencePresetInputState,
   SettingsFormState,
@@ -196,6 +197,7 @@ export const WasteSettingsPanel = () => {
   return (
     <div className="space-y-4">
       <StatusNotice message={message} />
+      <WasteSettingsStatusPanel settings={settings} />
       <WasteSettingsForm
         form={form}
         settings={settings}

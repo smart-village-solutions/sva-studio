@@ -1,5 +1,7 @@
 import { Pool } from 'pg';
-import { loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
+import {
+  loadDefaultExternalInterfaceRecord,
+} from '@sva/data-repositories/server';
 import {
   resolveWasteDataSource,
   runWasteConnectionCheck,
@@ -184,6 +186,9 @@ export const sanitizeWasteSettings = (
     pdfContactBlock: record.pdfContactBlock,
     databaseUrlConfigured: record.databaseUrlConfigured,
     visibleStatus: record.visibleStatus,
+    provisioningStatus: record.provisioningStatus,
+    provisioningErrorCode: record.provisioningErrorCode,
+    provisioningUpdatedAt: record.provisioningUpdatedAt,
     lastCheckedAt: record.lastCheckedAt,
     lastCheckStatus: record.lastCheckStatus,
     lastCheckErrorCode: record.lastCheckErrorCode,
@@ -216,6 +221,10 @@ export const loadConfiguredWasteSettings = async (
     return null;
   }
 
+  const provisioning = deps.loadWasteTenantProvisioning
+    ? await deps.loadWasteTenantProvisioning(instanceId)
+    : null;
+
   const customRecurrencePresets = deps.loadWasteCustomRecurrencePresets
     ? await deps.loadWasteCustomRecurrencePresets(instanceId)
     : [];
@@ -231,7 +240,17 @@ export const loadConfiguredWasteSettings = async (
   }
 
   return applyWastePdfStaticSettings(
-    { ...settings, customRecurrencePresets },
+    {
+      ...settings,
+      customRecurrencePresets,
+      ...(provisioning
+        ? {
+            provisioningStatus: provisioning.status,
+            provisioningErrorCode: provisioning.errorCode,
+            provisioningUpdatedAt: provisioning.updatedAt,
+          }
+        : {}),
+    },
     wastePdfStaticSettings
   );
 };
@@ -308,6 +327,7 @@ export const updateWasteVisibleStatus = async (
     const dataSource = await resolveWasteDataSource({
       instanceId,
       loadDefaultInterface: async () => interfaceRecord,
+      loadProvisioning: deps.loadWasteTenantProvisioning ?? (async () => null),
       revealSecret: (ciphertext, aad) => deps.revealSecret?.(ciphertext, aad) ?? undefined,
     });
     const connectionCheck = await runWasteConnectionCheck({

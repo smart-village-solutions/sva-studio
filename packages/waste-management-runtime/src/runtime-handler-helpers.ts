@@ -4,6 +4,7 @@ import {
   type WasteManagementInitializeJobInput,
   type WasteManagementMaterializeEmailRemindersJobInput,
   type WasteManagementProcessEmailReminderOutboxJobInput,
+  type WasteManagementProvisionTenantDatabaseJobInput,
   type WasteManagementResetJobInput,
   type WasteManagementSeedJobInput,
   type WasteManagementSyncMainserverJobInput,
@@ -15,6 +16,16 @@ import { createOperationHandler } from './runtime-job-helpers.js';
 import type { WasteManagementOperationRuntime } from './runtime-types.js';
 
 export const createWasteRuntimeOperationHandlers = (runtime: WasteManagementOperationRuntime) => ({
+  [wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase]:
+    createOperationHandler<WasteManagementProvisionTenantDatabaseJobInput>({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+      expectedOperation: 'provision-tenant-database',
+      phaseKey: 'waste-management.provision-database',
+      execute: (runtimeArg, instanceId, payload, _progressReporter, context) =>
+        runtimeArg.provisionTenantDatabase(instanceId, payload, {
+          jobId: context?.jobId ?? '',
+        }),
+    })(runtime),
   [wasteManagementOperationsContract.jobTypeIds.initializeDataSource]:
     createOperationHandler<WasteManagementInitializeJobInput>({
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.initializeDataSource,

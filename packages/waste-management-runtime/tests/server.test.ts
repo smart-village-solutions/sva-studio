@@ -140,6 +140,10 @@ describe('waste management runtime handlers', () => {
 const createRuntime = (
   overrides: Partial<WasteManagementOperationRuntime> = {}
 ): WasteManagementOperationRuntime => ({
+  provisionTenantDatabase: async () => ({
+    durationMs: 1,
+    details: { databaseName: 'sva_waste_test', interfaceId: 'waste-management:instance-1', desiredGeneration: 1 },
+  }),
   initializeDataSource: async () => ({
     durationMs: 1,
     details: { connectionCheck: 'ok', schemaInspection: { schemaVersion: 1 } },

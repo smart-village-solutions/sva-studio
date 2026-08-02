@@ -41,7 +41,12 @@ const mapRow = (row: WasteProvisioningRow): WasteTenantProvisioningRecord => ({
 
 type WasteProvisioningRepository = Pick<
   InstanceRegistryRepository,
-  'requestWasteProvisioning' | 'getWasteProvisioning' | 'disableWasteProvisioning'
+  | 'requestWasteProvisioning'
+  | 'getWasteProvisioning'
+  | 'disableWasteProvisioning'
+  | 'claimWasteProvisioning'
+  | 'completeWasteProvisioning'
+  | 'failWasteProvisioning'
 >;
 
 export const createWasteProvisioningRepository = (
@@ -103,5 +108,77 @@ RETURNING *;
     );
     return result.rows[0] ? mapRow(result.rows[0]) : null;
   },
-});
 
+  async claimWasteProvisioning(input) {
+    const result = await executor.execute<WasteProvisioningRow>(
+      statement(
+        `
+UPDATE iam.instance_waste_provisioning
+SET status = 'provisioning',
+    active_job_id = $2::uuid,
+    started_at = NOW(),
+    completed_at = NULL,
+    error_code = NULL,
+    error_message = NULL,
+    updated_at = NOW()
+WHERE instance_id = $1
+  AND desired_generation = $3
+  AND status <> 'disabled'
+  AND (active_job_id IS NULL OR active_job_id = $2::uuid)
+RETURNING *;
+`,
+        [input.instanceId, input.jobId, input.desiredGeneration]
+      )
+    );
+    return result.rows[0] ? mapRow(result.rows[0]) : null;
+  },
+
+  async completeWasteProvisioning(input) {
+    const result = await executor.execute<WasteProvisioningRow>(
+      statement(
+        `
+UPDATE iam.instance_waste_provisioning
+SET status = 'ready',
+    completed_generation = $3,
+    database_name = $4,
+    interface_id = $5,
+    active_job_id = NULL,
+    error_code = NULL,
+    error_message = NULL,
+    completed_at = NOW(),
+    updated_at = NOW()
+WHERE instance_id = $1
+  AND active_job_id = $2::uuid
+  AND desired_generation = $3
+  AND status = 'provisioning'
+RETURNING *;
+`,
+        [input.instanceId, input.jobId, input.desiredGeneration, input.databaseName, input.interfaceId]
+      )
+    );
+    return result.rows[0] ? mapRow(result.rows[0]) : null;
+  },
+
+  async failWasteProvisioning(input) {
+    const result = await executor.execute<WasteProvisioningRow>(
+      statement(
+        `
+UPDATE iam.instance_waste_provisioning
+SET status = 'failed',
+    active_job_id = NULL,
+    error_code = $4,
+    error_message = $5,
+    completed_at = NOW(),
+    updated_at = NOW()
+WHERE instance_id = $1
+  AND active_job_id = $2::uuid
+  AND desired_generation = $3
+  AND status = 'provisioning'
+RETURNING *;
+`,
+        [input.instanceId, input.jobId, input.desiredGeneration, input.errorCode, input.errorMessage]
+      )
+    );
+    return result.rows[0] ? mapRow(result.rows[0]) : null;
+  },
+});

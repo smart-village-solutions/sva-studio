@@ -121,6 +121,58 @@ describe('waste data source runtime', () => {
     });
   });
 
+  it('keeps plugin-managed data sources closed until tenant provisioning is ready', async () => {
+    const managedInterface = {
+      id: 'waste-management:tenant-a',
+      instanceId: 'tenant-a',
+      typeKey: 'postgresql' as const,
+      ownerKind: 'plugin' as const,
+      ownerId: 'waste-management',
+      displayName: 'Waste PostgreSQL',
+      alias: 'waste-management',
+      enabled: true,
+      isDefault: true,
+      category: 'database' as const,
+      statusCheckKind: 'postgresql' as const,
+      visibleStatus: 'ok' as const,
+      publicConfig: { schemaName: 'public' },
+      secretConfigCiphertext: 'db-cipher',
+    };
+
+    await expect(
+      resolveWasteDataSource({
+        instanceId: 'tenant-a',
+        loadDefaultInterface: async () => managedInterface,
+        loadProvisioning: async () => ({
+          instanceId: 'tenant-a',
+          status: 'failed',
+          desiredGeneration: 1,
+          completedGeneration: 0,
+          requestedAt: '2026-08-02T08:00:00.000Z',
+          updatedAt: '2026-08-02T08:05:00.000Z',
+        }),
+        revealSecret: () => JSON.stringify({ databaseUrl: 'postgres://db.example/waste' }),
+      })
+    ).rejects.toMatchObject({ code: 'provisioning_not_ready', retryable: true });
+
+    await expect(
+      resolveWasteDataSource({
+        instanceId: 'tenant-a',
+        loadDefaultInterface: async () => managedInterface,
+        loadProvisioning: async () => ({
+          instanceId: 'tenant-a',
+          status: 'ready',
+          desiredGeneration: 1,
+          completedGeneration: 1,
+          requestedAt: '2026-08-02T08:00:00.000Z',
+          completedAt: '2026-08-02T08:05:00.000Z',
+          updatedAt: '2026-08-02T08:05:00.000Z',
+        }),
+        revealSecret: () => JSON.stringify({ databaseUrl: 'postgres://db.example/waste' }),
+      })
+    ).resolves.toMatchObject({ databaseUrl: 'postgres://db.example/waste' });
+  });
+
   it('maps successful and failed connection checks into central technical status records', async () => {
     const dataSource = {
       instanceId: 'tenant-a',

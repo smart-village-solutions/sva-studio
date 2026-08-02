@@ -78,7 +78,7 @@ afterEach(() => {
 });
 
 describe('WasteSettingsPanel', () => {
-  it('does not render the technical status panel in settings view', async () => {
+  it('renders the managed provisioning status without exposing interface controls', async () => {
     getWasteManagementSettingsMock.mockResolvedValueOnce({
       instanceId: 'tenant-a',
       provider: 'supabase',
@@ -100,7 +100,7 @@ describe('WasteSettingsPanel', () => {
       expect(capturedForms.at(-1)).toEqual(expect.objectContaining({ holidayStateCode: 'NW' }));
     });
 
-    expect(screen.queryByText('settings-status-panel:NW')).toBeNull();
+    expect(screen.getByText('settings-status-panel:NW')).toBeTruthy();
   });
 
   it('loads the calendar web url and persists it through the global save action', async () => {

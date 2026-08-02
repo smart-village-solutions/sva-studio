@@ -1,4 +1,8 @@
-import { normalizeHost, type InstanceRegistryRecord } from '@sva/core';
+import {
+  normalizeHost,
+  type InstanceRegistryRecord,
+  type WasteTenantProvisioningRecord,
+} from '@sva/core';
 import { Pool } from 'pg';
 import { createSdkLogger } from '@sva/server-runtime';
 
@@ -321,4 +325,61 @@ export const loadTenantAdminClientSecretCiphertext = async (
       return repository.getTenantAdminClientSecretCiphertext(instanceId);
     },
     { getDatabaseUrl: options.getDatabaseUrl }
+  );
+
+type WasteProvisioningServerOptions = {
+  readonly getDatabaseUrl?: () => string | undefined;
+};
+
+const withWasteProvisioningRepository = <T>(
+  options: WasteProvisioningServerOptions,
+  work: (repository: ReturnType<typeof createInstanceRegistryRepository>) => Promise<T>
+): Promise<T> =>
+  withClient(
+    (client) => work(createInstanceRegistryRepository(createExecutor(client))),
+    { getDatabaseUrl: options.getDatabaseUrl }
+  );
+
+export const loadWasteTenantProvisioningRecord = (
+  instanceId: string,
+  options: WasteProvisioningServerOptions = {}
+): Promise<WasteTenantProvisioningRecord | null> =>
+  withWasteProvisioningRepository(options, (repository) =>
+    repository.getWasteProvisioning(instanceId)
+  );
+
+export const claimWasteTenantProvisioning = (
+  input: { readonly instanceId: string; readonly jobId: string; readonly desiredGeneration: number },
+  options: WasteProvisioningServerOptions = {}
+): Promise<WasteTenantProvisioningRecord | null> =>
+  withWasteProvisioningRepository(options, (repository) =>
+    repository.claimWasteProvisioning(input)
+  );
+
+export const completeWasteTenantProvisioning = (
+  input: {
+    readonly instanceId: string;
+    readonly jobId: string;
+    readonly desiredGeneration: number;
+    readonly databaseName: string;
+    readonly interfaceId: string;
+  },
+  options: WasteProvisioningServerOptions = {}
+): Promise<WasteTenantProvisioningRecord | null> =>
+  withWasteProvisioningRepository(options, (repository) =>
+    repository.completeWasteProvisioning(input)
+  );
+
+export const failWasteTenantProvisioning = (
+  input: {
+    readonly instanceId: string;
+    readonly jobId: string;
+    readonly desiredGeneration: number;
+    readonly errorCode: string;
+    readonly errorMessage: string;
+  },
+  options: WasteProvisioningServerOptions = {}
+): Promise<WasteTenantProvisioningRecord | null> =>
+  withWasteProvisioningRepository(options, (repository) =>
+    repository.failWasteProvisioning(input)
   );

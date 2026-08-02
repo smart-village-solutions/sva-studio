@@ -1,6 +1,7 @@
 import type { WasteHolidayStateCode } from './waste-management/master-data-contract.js';
 import type { WasteCustomRecurrencePresetRecord } from './waste-management/master-data-tours.js';
 import type { WasteManagementEmailReminderConfig } from './waste-management-settings-public-config.js';
+import type { WasteTenantProvisioningStatus } from './waste-tenant-provisioning-contract.js';
 
 const wasteManagementDataSourceProviders = ['postgresql'] as const;
 const wasteManagementDataSourceStatuses = ['not_configured', 'unknown', 'ok', 'error'] as const;
@@ -87,6 +88,9 @@ export type WasteManagementSettingsRecord = {
   readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
   readonly databaseUrlConfigured: boolean;
   readonly visibleStatus: WasteManagementDataSourceStatus;
+  readonly provisioningStatus?: WasteTenantProvisioningStatus;
+  readonly provisioningErrorCode?: string;
+  readonly provisioningUpdatedAt?: string;
   readonly lastCheckedAt?: string;
   readonly lastCheckStatus?: WasteManagementConnectionCheckStatus;
   readonly lastCheckErrorCode?: string;

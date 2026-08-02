@@ -59,5 +59,60 @@ describe('instance registry waste provisioning repository', () => {
     expect(statements[1]?.text).toContain("SET status = 'disabled'");
     expect(statements[1]?.text).not.toContain('DELETE');
   });
-});
 
+  it('correlates claim, completion and failure with job and desired generation', async () => {
+    const jobId = '00000000-0000-4000-8000-000000000001';
+    const claimedRow = { ...provisioningRow, active_job_id: jobId };
+    const completedRow = {
+      ...claimedRow,
+      status: 'ready',
+      active_job_id: null,
+      completed_generation: 2,
+      completed_at: '2026-08-02T09:00:00.000Z',
+    };
+    const failedRow = {
+      ...claimedRow,
+      status: 'failed',
+      active_job_id: null,
+      error_code: 'migration_failed',
+      error_message: 'redacted',
+    };
+    const { executor, statements } = createQueuedExecutor([
+      [claimedRow],
+      [completedRow],
+      [failedRow],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.claimWasteProvisioning({ instanceId: 'tenant-a', jobId, desiredGeneration: 2 })
+    ).resolves.toMatchObject({ status: 'provisioning', activeJobId: jobId });
+    await expect(
+      repository.completeWasteProvisioning({
+        instanceId: 'tenant-a',
+        jobId,
+        desiredGeneration: 2,
+        databaseName: 'tenant-db',
+        interfaceId: 'interface-1',
+      })
+    ).resolves.toMatchObject({ status: 'ready', completedGeneration: 2 });
+    await expect(
+      repository.failWasteProvisioning({
+        instanceId: 'tenant-a',
+        jobId,
+        desiredGeneration: 2,
+        errorCode: 'migration_failed',
+        errorMessage: 'redacted',
+      })
+    ).resolves.toMatchObject({ status: 'failed', errorCode: 'migration_failed' });
+
+    expect(statements[0]?.text).toContain('active_job_id = $2::uuid');
+    expect(statements[1]?.text).toContain("status = 'ready'");
+    expect(statements[2]?.text).toContain("status = 'failed'");
+    expect(statements.map(({ values }) => values?.slice(0, 3))).toEqual([
+      ['tenant-a', jobId, 2],
+      ['tenant-a', jobId, 2],
+      ['tenant-a', jobId, 2],
+    ]);
+  });
+});

@@ -442,6 +442,33 @@ describe('waste-management settings shared helpers', () => {
     });
   });
 
+  it('projects the tenant provisioning state without exposing provisioning secrets', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        listInterfaceRecords: vi.fn(async () => []),
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+        loadWasteTenantProvisioning: vi.fn(async () => ({
+          instanceId: 'tenant-a',
+          status: 'failed',
+          desiredGeneration: 2,
+          completedGeneration: 0,
+          errorCode: 'migration_failed',
+          errorMessage: 'sensitive database detail',
+          requestedAt: '2026-08-02T10:00:00.000Z',
+          updatedAt: '2026-08-02T10:05:00.000Z',
+        })),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toMatchObject({
+      provisioningStatus: 'failed',
+      provisioningErrorCode: 'migration_failed',
+      provisioningUpdatedAt: '2026-08-02T10:05:00.000Z',
+    });
+    expect(settings).not.toHaveProperty('provisioningErrorMessage');
+  });
+
   it('maps non-supabase interfaces into a not-configured waste settings shell while preserving interface options', async () => {
     const settings = await loadConfiguredWasteSettings(
       {

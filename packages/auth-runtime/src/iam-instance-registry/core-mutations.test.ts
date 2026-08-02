@@ -27,6 +27,9 @@ const state = vi.hoisted(() => {
     parseRegistryRequestBody: vi.fn(),
     withRegistryService: vi.fn(),
     withScopedRegistryService: vi.fn(),
+    loadWasteTenantProvisioningRecord: vi.fn(),
+    startPluginOperationJobFromFacade: vi.fn(),
+    loggerError: vi.fn(),
   };
 });
 
@@ -46,6 +49,15 @@ vi.mock('../db.js', () => ({
 
 vi.mock('@sva/server-runtime', () => ({
   getWorkspaceContext: state.getWorkspaceContext,
+  createSdkLogger: vi.fn(() => ({ error: state.loggerError })),
+}));
+
+vi.mock('@sva/data-repositories/server', () => ({
+  loadWasteTenantProvisioningRecord: state.loadWasteTenantProvisioningRecord,
+}));
+
+vi.mock('../waste-management/core/operations-support.js', () => ({
+  startPluginOperationJobFromFacade: state.startPluginOperationJobFromFacade,
 }));
 
 vi.mock('@sva/instance-registry/http-mutation-handlers', () => ({
@@ -71,6 +83,53 @@ describe('iam-instance-registry core mutations', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    state.startPluginOperationJobFromFacade.mockResolvedValue(new Response(null, { status: 202 }));
+  });
+
+  it('enqueues tenant provisioning after waste assignment and bootstrap', async () => {
+    state.loadWasteTenantProvisioningRecord.mockResolvedValue({
+      status: 'provisioning',
+      desiredGeneration: 2,
+    });
+    state.handlers.assignModule.mockResolvedValueOnce(
+      Response.json({ data: { instanceId: 'inst-waste', assignedModules: ['waste-management'] } })
+    );
+    state.handlers.bootstrapAdminStructure.mockResolvedValueOnce(
+      Response.json({ data: { instanceId: 'inst-bootstrap', assignedModules: ['news', 'waste-management'] } })
+    );
+    const subject = await import('./core-mutations.js');
+    const ctx = { user: { id: 'actor-1' } } as never;
+
+    await subject.assignInstanceModuleMutation(
+      new Request('https://example.test/api/v1/instances/inst-waste/modules', {
+        method: 'POST',
+        body: JSON.stringify({ moduleId: 'waste-management' }),
+      }),
+      ctx
+    );
+    await subject.bootstrapInstanceAdminStructureMutation(
+      new Request('https://example.test/api/v1/instances/inst-bootstrap/bootstrap', {
+        method: 'POST',
+      }),
+      ctx
+    );
+
+    expect(state.startPluginOperationJobFromFacade).toHaveBeenCalledTimes(2);
+    expect(state.startPluginOperationJobFromFacade).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        instanceId: 'inst-waste',
+        idempotencyKey: 'waste-provisioning:inst-waste:2',
+        data: expect.objectContaining({
+          jobTypeId: 'waste-management.provision-tenant-database',
+          input: { operation: 'provision-tenant-database', desiredGeneration: 2 },
+        }),
+      })
+    );
+    expect(state.startPluginOperationJobFromFacade).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ instanceId: 'inst-bootstrap' })
+    );
   });
 
   it('configures mutation handlers and error mapping with auth-runtime adapters', async () => {

@@ -29,6 +29,12 @@ CREATE TABLE iam.instance_waste_provisioning (
 CREATE INDEX idx_instance_waste_provisioning_status_updated_at
   ON iam.instance_waste_provisioning(status, updated_at DESC);
 
+CREATE UNIQUE INDEX idx_instance_external_interfaces_plugin_owner
+  ON iam.instance_external_interfaces(instance_id, owner_id)
+  WHERE owner_kind = 'plugin'
+    AND owner_id = 'waste-management'
+    AND type_key = 'postgresql';
+
 ALTER TABLE iam.instance_waste_provisioning ENABLE ROW LEVEL SECURITY;
 ALTER TABLE iam.instance_waste_provisioning FORCE ROW LEVEL SECURITY;
 CREATE POLICY instance_waste_provisioning_isolation_policy
@@ -40,7 +46,7 @@ CREATE POLICY instance_waste_provisioning_isolation_policy
 -- +goose Down
 -- +goose StatementBegin
 DROP POLICY IF EXISTS instance_waste_provisioning_isolation_policy ON iam.instance_waste_provisioning;
+DROP INDEX IF EXISTS iam.idx_instance_external_interfaces_plugin_owner;
 DROP INDEX IF EXISTS iam.idx_instance_waste_provisioning_status_updated_at;
 DROP TABLE IF EXISTS iam.instance_waste_provisioning;
 -- +goose StatementEnd
-

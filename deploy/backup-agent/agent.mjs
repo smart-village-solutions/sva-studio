@@ -147,6 +147,16 @@ export const deriveWasteInventoryTarget = (
 
 export const validRequestHost = (environment, host) => targets[environment]?.host === host;
 
+export const resolveCapabilityEnvironment = (requestUrl, host) => {
+  const url = new URL(requestUrl ?? '', 'http://backup-agent.internal');
+  if (url.pathname !== capabilityPath) return undefined;
+  const hostEnvironment = Object.entries(targets).find(([, target]) => target.host === host)?.[0];
+  const requestedEnvironment = url.searchParams.get('environment');
+  if (requestedEnvironment && requestedEnvironment !== 'staging' && requestedEnvironment !== 'prod') return undefined;
+  if (requestedEnvironment && requestedEnvironment !== hostEnvironment) return undefined;
+  return requestedEnvironment ?? hostEnvironment;
+};
+
 export const canonicalRequest = (request) =>
   JSON.stringify({
     action: request.action,
@@ -1490,10 +1500,9 @@ export const createBackupAgentServer = () =>
   createServer(async (incoming, response) => {
     if (incoming.method === 'GET' && incoming.url === '/health/live')
       return respond(response, 200, { status: 'ok' });
-    if (incoming.method === 'GET' && incoming.url?.startsWith(`${capabilityPath}?`)) {
+    if (incoming.method === 'GET' && new URL(incoming.url ?? '', 'http://backup-agent.internal').pathname === capabilityPath) {
       try {
-        const url = new URL(incoming.url, 'http://backup-agent.internal');
-        const environment = url.searchParams.get('environment');
+        const environment = resolveCapabilityEnvironment(incoming.url, incoming.headers.host);
         if (environment !== 'staging' && environment !== 'prod') return respond(response, 400, { error: 'invalid_request' });
         if (!validRequestHost(environment, incoming.headers.host)) return respond(response, 400, { error: 'invalid_request' });
         const auth = incoming.headers.authorization;

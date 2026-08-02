@@ -42,12 +42,13 @@ export const parseRemoteConfigLayer = (environment: RemoteEnvironment, name: str
 const validateValue = (environment: RemoteEnvironment, key: string, value: string) => {
   const contract = remoteConfigContract[key];
   if (!contract) return;
-  if ((!value && key !== 'SVA_ALLOWED_INSTANCE_IDS') || placeholderPattern.test(value)) fail(environment, 'PROMOTE_CONFIG_INVALID', `Schluessel ${key} enthaelt keinen produktionsfaehigen Wert.`, 'Den Wert im zulaessigen Profil oder geschuetzten Override-Bundle setzen.');
-  if (contract.kind === 'secret-reference' && !referencePattern.test(value)) fail(environment, 'PROMOTE_CONFIG_INVALID', `Secret-Referenz ${key} ist ungueltig.`, 'Nur den Namen des vorhandenen externen Secrets eintragen.');
-  if (contract.type === 'boolean' && value !== 'true' && value !== 'false') fail(environment, 'PROMOTE_CONFIG_INVALID', `Schluessel ${key} erwartet true oder false.`, 'Einen booleschen Wert setzen.');
-  if (contract.type === 'integer' && (!/^\d+$/u.test(value) || Number(value) < 1)) fail(environment, 'PROMOTE_CONFIG_INVALID', `Schluessel ${key} erwartet eine positive Ganzzahl.`, 'Eine positive Ganzzahl setzen.');
+  const normalizedValue = value.trim();
+  if ((!normalizedValue && key !== 'SVA_ALLOWED_INSTANCE_IDS') || placeholderPattern.test(normalizedValue)) fail(environment, 'PROMOTE_CONFIG_INVALID', `Schluessel ${key} enthaelt keinen produktionsfaehigen Wert.`, 'Den Wert im zulaessigen Profil oder geschuetzten Override-Bundle setzen.');
+  if (contract.kind === 'secret-reference' && !referencePattern.test(normalizedValue)) fail(environment, 'PROMOTE_CONFIG_INVALID', `Secret-Referenz ${key} ist ungueltig.`, 'Nur den Namen des vorhandenen externen Secrets eintragen.');
+  if (contract.type === 'boolean' && normalizedValue !== 'true' && normalizedValue !== 'false') fail(environment, 'PROMOTE_CONFIG_INVALID', `Schluessel ${key} erwartet true oder false.`, 'Einen booleschen Wert setzen.');
+  if (contract.type === 'integer' && (!/^\d+$/u.test(normalizedValue) || Number(normalizedValue) < 1)) fail(environment, 'PROMOTE_CONFIG_INVALID', `Schluessel ${key} erwartet eine positive Ganzzahl.`, 'Eine positive Ganzzahl setzen.');
   if (contract.type === 'url') {
-    try { new URL(value); } catch { fail(environment, 'PROMOTE_CONFIG_INVALID', `Schluessel ${key} erwartet eine absolute URL.`, 'Eine gueltige absolute URL setzen.'); }
+    try { new URL(normalizedValue); } catch { fail(environment, 'PROMOTE_CONFIG_INVALID', `Schluessel ${key} erwartet eine absolute URL.`, 'Eine gueltige absolute URL setzen.'); }
   }
 };
 

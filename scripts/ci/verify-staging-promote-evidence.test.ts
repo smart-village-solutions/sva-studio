@@ -26,6 +26,17 @@ describe('staging parity evidence', () => {
     ).toBe(true);
     expect(
       matchesSuccessfulStagingEvidence(
+        {
+          digest: 'sha256:expected',
+          environment: 'staging',
+          mutation: 'not-run',
+          postflight: 'passed',
+        },
+        'sha256:expected'
+      )
+    ).toBe(true);
+    expect(
+      matchesSuccessfulStagingEvidence(
         { digest: 'sha256:expected', environment: 'staging', postflight: 'passed' },
         'sha256:expected'
       )

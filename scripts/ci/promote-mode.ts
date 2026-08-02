@@ -9,7 +9,14 @@ export const validatePromoteMode = (input: {
 }): PromoteMode => {
   const mode = input.mode ?? 'standard';
   if (mode !== 'standard' && mode !== 'recovery') {
-    throw new Error('promote_mode muss standard oder recovery sein.');
+    throw new PromoteContractError({
+      code: 'PROMOTE_MODE_INVALID',
+      environment: input.environment,
+      phase: 'static-preflight',
+      summary: 'Der angeforderte Promote-Modus ist ungueltig.',
+      retryable: false,
+      nextAction: 'promote_mode auf standard oder recovery setzen.',
+    });
   }
   if (mode === 'recovery' && !input.recoveryReason?.trim()) {
     throw new PromoteContractError({
@@ -23,4 +30,3 @@ export const validatePromoteMode = (input: {
   }
   return mode;
 };
-

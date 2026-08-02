@@ -19,7 +19,7 @@ type WorkflowRun = { conclusion?: string; path?: string };
 
 export const matchesSuccessfulStagingEvidence = (evidence: StagingEvidence, targetDigest: string) =>
   evidence.environment === 'staging' &&
-  evidence.mutation === 'completed' &&
+  (evidence.mutation === 'completed' || evidence.mutation === 'not-run') &&
   evidence.postflight === 'passed' &&
   evidence.digest === targetDigest;
 

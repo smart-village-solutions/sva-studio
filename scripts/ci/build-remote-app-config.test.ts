@@ -33,6 +33,8 @@ describe('remote app config builder', () => {
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile, overrides: overrides.replace('external_secret_v1', 'not a reference') })).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile, overrides: `${overrides}\nSVA_STACK_NAME=secret-layer` })).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_RUNTIME_PROFILE=value', 'SVA_RUNTIME_PROFILE=__SET__'), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
+    expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_RUNTIME_PROFILE=value', 'SVA_RUNTIME_PROFILE=   '), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
+    expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_RUNTIME_PROFILE=value', 'SVA_RUNTIME_PROFILE=  __SET__  '), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
   });
 
   it('compares only keys, non-sensitive values and reference names', () => {
@@ -60,4 +62,3 @@ describe('remote app config builder', () => {
     expect(JSON.stringify(redactPromoteFailure(new Error('secret internal detail'), { environment: 'prod', phase: 'deploy' }))).not.toContain('secret internal detail');
   });
 });
-

@@ -12,6 +12,7 @@ import { stackNameForEnvironment } from './promote-target.ts';
 
 type JobKind = 'bootstrap' | 'candidate' | 'migration';
 type PromoteEnvironment = 'dev' | 'prod' | 'staging';
+type OneShotResult = Awaited<ReturnType<typeof runMigrationJobAgainstAcceptance>> | Awaited<ReturnType<typeof runBootstrapJobAgainstAcceptance>>;
 
 const rootDir = resolve(import.meta.dirname, '../..');
 
@@ -53,6 +54,25 @@ const redact = (value: string | undefined) => {
     .slice(-8_000);
 };
 
+const runOneShot = (
+  kind: JobKind,
+  deps: Parameters<typeof runMigrationJobAgainstAcceptance>[0],
+  env: NodeJS.ProcessEnv,
+  input: Parameters<typeof runMigrationJobAgainstAcceptance>[2],
+): Promise<OneShotResult> => {
+  if (kind === 'bootstrap') return runBootstrapJobAgainstAcceptance(deps, env, input);
+  return runMigrationJobAgainstAcceptance(deps, env, {
+    ...input,
+    ...(kind === 'candidate' ? { jobServiceName: 'candidate' as const } : {}),
+  });
+};
+
+const throwTerminalFailure = (failure: unknown, cleanupError: unknown) => {
+  if (cleanupError && failure) throw new AggregateError([failure, cleanupError], 'One-shot-Job und Cleanup sind fehlgeschlagen.');
+  if (cleanupError) throw cleanupError;
+  if (failure) throw failure;
+};
+
 const main = async () => {
   const { environment, kind } = parseArgs(process.argv.slice(2));
   const quantumEndpoint = required(process.env.QUANTUM_ENDPOINT, 'QUANTUM_ENDPOINT');
@@ -91,16 +111,11 @@ const main = async () => {
     sourceStackName,
   };
 
-  let result: Awaited<ReturnType<typeof runMigrationJobAgainstAcceptance>> | Awaited<ReturnType<typeof runBootstrapJobAgainstAcceptance>> | undefined;
+  let result: OneShotResult | undefined;
   let failure: unknown;
   let cleanupError: unknown;
   try {
-    result = kind === 'migration' || kind === 'candidate'
-      ? await runMigrationJobAgainstAcceptance(deps, env, {
-          ...input,
-          ...(kind === 'candidate' ? { jobServiceName: 'candidate' as const } : {}),
-        })
-      : await runBootstrapJobAgainstAcceptance(deps, env, input);
+    result = await runOneShot(kind, deps, env, input);
     if (result.exitCode !== 0 || !result.taskId) throw new Error(`One-shot-Job lieferte keine erfolgreiche Task-Evidenz (exitCode=${String(result.exitCode)}, taskId=${result.taskId ?? 'fehlend'}).`);
   } catch (error) {
     failure = error;
@@ -122,9 +137,7 @@ const main = async () => {
     writeFileSync(resultPath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `evidence_path=${resultPath}\n`);
   }
-  if (cleanupError && failure) throw new AggregateError([failure, cleanupError], 'One-shot-Job und Cleanup sind fehlgeschlagen.');
-  if (cleanupError) throw cleanupError;
-  if (failure) throw failure;
+  throwTerminalFailure(failure, cleanupError);
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -49,7 +49,7 @@ describe('Promote workflow contract', () => {
     ).toHaveLength(2);
     expect(
       workflow.match(/SVA_PUBLIC_BASE_URL: \$\{\{ steps\.target\.outputs\.public_base_url \}\}/gu)
-    ).toHaveLength(2);
+    ).toHaveLength(3);
     expect(workflow).toContain('pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"');
     expect(workflow).toContain('SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}');
     expect(workflow).toContain('--stack "${{ steps.target.outputs.stack_name }}"');
@@ -88,7 +88,7 @@ describe('Promote workflow contract', () => {
   it('runs backups before every staging or production deployment and blocks production mutations behind parity', () => {
     expect(workflow).toContain("inputs.environment == 'staging' || inputs.environment == 'prod'");
     expect(workflow).toContain(
-      "inputs.environment == 'prod' && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true')"
+      "if: ${{ inputs.environment == 'prod' }}"
     );
     expect(workflow).toContain('require successful staging parity for production mutation');
     expect(

@@ -29,7 +29,7 @@ const createEntry = (overrides: Partial<InstanceInterface>): InstanceInterface =
 
 describe('interfaces page controller helpers', () => {
   it('exposes the stable default type fallback for empty API responses', () => {
-    expect(DEFAULT_AVAILABLE_TYPES).toEqual(['mainserver', 's3', 'mailTransport', 'mapGeocoding']);
+    expect(DEFAULT_AVAILABLE_TYPES).toEqual(['mainserver', 's3', 'postgresql', 'mailTransport', 'mapGeocoding']);
   });
 
   it('validates the instance interfaces payload shape', () => {

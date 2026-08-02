@@ -21,33 +21,31 @@ const runWasteManagementMainserverSyncForInstanceMock = vi.hoisted(() => vi.fn()
 const createInterfaceRecord = (schemaName = 'wm'): ExternalInterfaceRecord => ({
   id: 'iface-1',
   instanceId: 'instance-1',
-  typeKey: 'supabase' as const,
+  typeKey: 'postgresql' as const,
   ownerKind: 'host' as const,
   ownerId: 'host',
-  displayName: 'Waste Supabase',
+  displayName: 'Waste PostgreSQL',
   alias: 'default',
   enabled: true,
   isDefault: true,
   category: 'database' as const,
-  baseUrl: 'https://tenant.supabase.co',
-  authMode: 'service_role',
+  baseUrl: null,
+  authMode: 'database_url',
   publicConfig: {
-    projectUrl: 'https://tenant.supabase.co',
     schemaName,
   },
   secretConfigCiphertext: 'cipher-secret',
-  statusCheckKind: 'supabase' as const,
+  statusCheckKind: 'postgresql' as const,
   visibleStatus: 'ok' as const,
   lastCheckStatus: 'succeeded' as const,
   lastCheckedAt: '2026-05-10T10:00:00.000Z',
   updatedAt: '2026-05-10T10:00:00.000Z',
 });
 
-const revealSupabaseSecretConfig = (ciphertext: string | null | undefined): string | undefined =>
+const revealPostgresqlSecretConfig = (ciphertext: string | null | undefined): string | undefined =>
   ciphertext
     ? JSON.stringify({
         databaseUrl: 'postgres://waste:test@localhost:5432/waste',
-        serviceRoleKey: 'service-key',
       })
     : undefined;
 
@@ -80,7 +78,7 @@ describe('waste management operations runtime', () => {
     };
     const runtime = createWasteManagementOperationRuntime({
       loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() => pool),
     });
 
@@ -198,7 +196,7 @@ describe('waste management operations runtime', () => {
     };
     const runtime = createWasteManagementOperationRuntime({
       loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() => pool),
       readBinarySource: vi.fn(async () => await createImportWorkbookBytes()),
     });
@@ -355,8 +353,6 @@ describe('waste management operations runtime', () => {
       instanceId: 'instance-1',
       schemaName: 'wm',
       databaseUrl: 'postgres://waste:test@localhost:5432/waste',
-      serviceRoleKey: 'service-key',
-      projectUrl: 'https://tenant.supabase.co',
       enabled: true,
     }));
 
@@ -550,7 +546,6 @@ describe('waste management operations runtime', () => {
     const secretConfigCiphertext = protectField(
       JSON.stringify({
         databaseUrl: 'postgres://waste:test@localhost:5432/waste',
-        serviceRoleKey: 'service-key',
       }),
       buildExternalInterfaceSecretConfigAad('iface-1')
     );
@@ -560,7 +555,6 @@ describe('waste management operations runtime', () => {
         loadDefaultInterfaceRecord: vi.fn(async () => ({
           ...createInterfaceRecord(),
           publicConfig: {
-            projectUrl: 'https://tenant.supabase.co',
             schemaName: 'wm',
           },
           secretConfigCiphertext: secretConfigCiphertext ?? undefined,
@@ -571,10 +565,8 @@ describe('waste management operations runtime', () => {
 
     expect(dataSource).toMatchObject({
       instanceId: 'instance-1',
-      projectUrl: 'https://tenant.supabase.co',
       schemaName: 'wm',
       databaseUrl: 'postgres://waste:test@localhost:5432/waste',
-      serviceRoleKey: 'service-key',
       visibleStatus: 'ok',
     });
   });
@@ -623,7 +615,7 @@ describe('waste management operations runtime', () => {
       await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() => ({
         connect: vi.fn(async () => ({
           query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
@@ -940,7 +932,7 @@ describe('waste management operations runtime', () => {
   it('rejects invalid schemas, foreign schema targets, and malformed blob references deterministically', async () => {
     const runtime = createWasteManagementOperationRuntime({
       loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() => ({
         connect: vi.fn(async () => ({
           query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
@@ -1155,7 +1147,7 @@ describe('waste management operations runtime', () => {
     }));
     const runtime = createWasteManagementOperationRuntime({
       loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() => ({
         connect: vi.fn(async () => ({
           query,
@@ -1427,7 +1419,7 @@ const createRuntimeWithRepositoryMock = async (
     await import('./waste-management-operations.server.js');
   return createRuntime({
     loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
-    revealSecret: vi.fn(revealSupabaseSecretConfig),
+    revealSecret: vi.fn(revealPostgresqlSecretConfig),
     createPool: vi.fn(() => createPoolMock(createSqlClientMock(query))),
     readBinarySource: vi.fn(async () => workbookBytes ?? (await createToursWorkbookBytes())),
   });
@@ -1441,7 +1433,7 @@ const createRuntimeWithRealRepository = async (
     await import('./waste-management-operations.server.js');
   return createRuntime({
     loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
-    revealSecret: vi.fn(revealSupabaseSecretConfig),
+    revealSecret: vi.fn(revealPostgresqlSecretConfig),
     createPool: vi.fn(() => createPoolMock(createSqlClientMock(query))),
     readBinarySource: vi.fn(async () => workbookBytes),
   });

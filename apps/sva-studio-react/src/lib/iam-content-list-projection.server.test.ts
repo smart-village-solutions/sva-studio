@@ -693,7 +693,7 @@ describe('content list projection', () => {
     expect(projectionInsertArgs).toHaveLength(1);
   });
 
-  it('keeps the legacy sync-state schema readable while scoped rows are refreshed separately', async () => {
+  it('keeps the legacy sync-state schema readable while scoped rows are refreshed', async () => {
     syncScopeKeyColumnAvailable = false;
     projectionRows = [
       {
@@ -750,7 +750,7 @@ describe('content list projection', () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.data).toEqual([]);
+    expect(payload.data).toEqual([expect.objectContaining({ id: 'news-1' })]);
     expect(
       payload.metadata.mainserverSyncStates.some((entry) => entry.contentType === 'news.article')
     ).toBe(true);
@@ -2863,12 +2863,17 @@ describe('content list projection', () => {
 
   it('serializes targeted mutation refreshes behind a running batch refresh for the same scope', async () => {
     const releaseBatchList = { current: null as (() => void) | null };
-    const batchListStarted = new Promise<void>((resolve) => {
+    const batchListRelease = new Promise<void>((resolve) => {
       releaseBatchList.current = resolve;
+    });
+    const markBatchListStarted = { current: null as (() => void) | null };
+    const batchListStarted = new Promise<void>((resolve) => {
+      markBatchListStarted.current = resolve;
     });
 
     state.listSvaMainserverPoi.mockImplementation(async () => {
-      await batchListStarted;
+      markBatchListStarted.current?.();
+      await batchListRelease;
       return {
         data: [
           {
@@ -2917,7 +2922,7 @@ describe('content list projection', () => {
       force: true,
     });
 
-    await Promise.resolve();
+    await batchListStarted;
 
     const mutationRefreshPromise = refreshProjectedContentsForMainserverMutation({
       contentType: 'poi.point-of-interest',
@@ -2929,16 +2934,21 @@ describe('content list projection', () => {
       entityId: 'poi-mutation-queued-1',
     });
 
-    await Promise.resolve();
+    for (let index = 0; index < 10; index += 1) {
+      await Promise.resolve();
+    }
     expect(state.getSvaMainserverPoi).not.toHaveBeenCalled();
 
     releaseBatchList.current?.();
 
     await expect(batchRefreshPromise).resolves.toBeInstanceOf(Response);
     await expect(mutationRefreshPromise).resolves.toBeUndefined();
-    expect(projectionRows).toEqual([
-      expect.objectContaining({ source_entity_id: 'poi-mutation-queued-1' }),
-    ]);
+    expect(projectionRows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source_entity_id: 'poi-batch-1' }),
+        expect.objectContaining({ source_entity_id: 'poi-mutation-queued-1' }),
+      ])
+    );
   });
 
   it('keeps stale snapshots visible after a targeted mutation refresh fails and leaves reconciliation responsible', async () => {

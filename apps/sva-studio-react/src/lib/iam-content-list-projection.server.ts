@@ -855,8 +855,11 @@ const markProjectionRefreshPhase = async (
   refreshPhase: 'hot' | 'reconciliation'
 ): Promise<void> => {
   await withInstanceScopedDb(target.instanceId, async (client) => {
-    await client.query(
-      `
+    await withProjectionSchemaModeRetry(target, 'sync-state', async () => {
+      const schemaMode = await loadProjectionSyncStateSchemaMode(client, target.instanceId);
+      await client.query(
+        schemaMode === 'scoped'
+          ? `
 UPDATE iam.content_list_projection_sync_state
 SET refresh_phase = $5,
     updated_at = NOW()
@@ -865,15 +868,27 @@ WHERE instance_id = $1
   AND content_type = $2
   AND sync_scope_key = $3
   AND refresh_run_id = $4::uuid;
-      `,
-      [
-        target.instanceId,
-        target.contentType,
-        buildMainserverSyncScopeKey(target),
-        refreshRunId,
-        refreshPhase,
-      ]
-    );
+          `
+          : `
+UPDATE iam.content_list_projection_sync_state
+SET refresh_phase = $4,
+    updated_at = NOW()
+WHERE instance_id = $1
+  AND source_system = 'mainserver'
+  AND content_type = $2
+  AND refresh_run_id = $3::uuid;
+          `,
+        schemaMode === 'scoped'
+          ? [
+              target.instanceId,
+              target.contentType,
+              buildMainserverSyncScopeKey(target),
+              refreshRunId,
+              refreshPhase,
+            ]
+          : [target.instanceId, target.contentType, refreshRunId, refreshPhase]
+      );
+    });
   });
 };
 
@@ -1429,8 +1444,11 @@ const persistMainserverProjectionRowsProgressively = async (input: {
       : null;
 
   await withInstanceScopedDb(input.target.instanceId, async (client) => {
-    const leaderResult = await client.query<{ refresh_run_id?: string | null }>(
-      `
+    await withProjectionSchemaModeRetry(input.target, 'sync-state', async () => {
+      const schemaMode = await loadProjectionSyncStateSchemaMode(client, input.target.instanceId);
+      const leaderResult = await client.query<{ refresh_run_id?: string | null }>(
+        schemaMode === 'scoped'
+          ? `
 SELECT refresh_run_id::text
 FROM iam.content_list_projection_sync_state
 WHERE instance_id = $1
@@ -1439,21 +1457,33 @@ WHERE instance_id = $1
   AND sync_scope_key = $3
 LIMIT 1
 FOR UPDATE;
-      `,
-      [input.target.instanceId, input.target.contentType, buildMainserverSyncScopeKey(input.target)]
-    );
-    const persistedRunId = leaderResult.rows[0]?.refresh_run_id;
-    if (persistedRunId !== input.refreshRunId) {
-      return;
-    }
+          `
+          : `
+SELECT refresh_run_id::text
+FROM iam.content_list_projection_sync_state
+WHERE instance_id = $1
+  AND source_system = 'mainserver'
+  AND content_type = $2
+LIMIT 1
+FOR UPDATE;
+          `,
+        schemaMode === 'scoped'
+          ? [input.target.instanceId, input.target.contentType, buildMainserverSyncScopeKey(input.target)]
+          : [input.target.instanceId, input.target.contentType]
+      );
+      const persistedRunId = leaderResult.rows[0]?.refresh_run_id;
+      if (persistedRunId !== input.refreshRunId) {
+        return;
+      }
 
-    if (projectionPayloadJson) {
-      await upsertMainserverProjectionRows(client, input.target, projectionPayloadJson);
-    }
-    const availableCount = await countProjectedRowsForScopeWithClient(client, input.target);
+      if (projectionPayloadJson) {
+        await upsertMainserverProjectionRows(client, input.target, projectionPayloadJson);
+      }
+      const availableCount = await countProjectedRowsForScopeWithClient(client, input.target);
 
-    await client.query(
-      `
+      await client.query(
+        schemaMode === 'scoped'
+          ? `
 UPDATE iam.content_list_projection_sync_state
 SET snapshot_state = CASE WHEN last_succeeded_at IS NULL THEN 'partial_running' ELSE 'complete_refreshing' END,
     completed_page = GREATEST(completed_page, $5),
@@ -1466,19 +1496,35 @@ WHERE instance_id = $1
   AND content_type = $2
   AND sync_scope_key = $3
   AND (refresh_run_id = $4::uuid OR refresh_run_id IS NULL);
-      `,
-      [input.target.instanceId, input.target.contentType, buildMainserverSyncScopeKey(input.target), input.refreshRunId, input.page, availableCount, input.skippedInvalidCount]
-    );
-
-    if (input.finalize) {
-      await deleteMainserverProjectionRowsNotInSet(
-        client,
-        input.target,
-        dedupedRows.map((row) => row.sourceEntityId)
+          `
+          : `
+UPDATE iam.content_list_projection_sync_state
+SET snapshot_state = CASE WHEN last_succeeded_at IS NULL THEN 'partial_running' ELSE 'complete_refreshing' END,
+    completed_page = GREATEST(completed_page, $4),
+    available_count = $5,
+    skipped_invalid_count = $6,
+    is_total_final = FALSE,
+    updated_at = NOW()
+WHERE instance_id = $1
+  AND source_system = 'mainserver'
+  AND content_type = $2
+  AND (refresh_run_id = $3::uuid OR refresh_run_id IS NULL);
+          `,
+        schemaMode === 'scoped'
+          ? [input.target.instanceId, input.target.contentType, buildMainserverSyncScopeKey(input.target), input.refreshRunId, input.page, availableCount, input.skippedInvalidCount]
+          : [input.target.instanceId, input.target.contentType, input.refreshRunId, input.page, availableCount, input.skippedInvalidCount]
       );
-      const projectedCount = await countProjectedRowsForScopeWithClient(client, input.target);
-      await markMainserverProjectionSyncSucceeded(client, input.target, projectedCount);
-    }
+
+      if (input.finalize) {
+        await deleteMainserverProjectionRowsNotInSet(
+          client,
+          input.target,
+          dedupedRows.map((row) => row.sourceEntityId)
+        );
+        const projectedCount = await countProjectedRowsForScopeWithClient(client, input.target);
+        await markMainserverProjectionSyncSucceeded(client, input.target, projectedCount);
+      }
+    });
   });
 };
 
@@ -2014,7 +2060,8 @@ const refreshMainserverProjectionForMutation = async (input: {
   const { actorAccountId } = target;
   const targetKey = buildProjectionTargetKey(target);
   const refreshRunId = randomUUID();
-  const mutationWork = Promise.resolve().then(async () => {
+  const precedingSync = runningProjectionSyncs.get(targetKey) ?? Promise.resolve(null);
+  const mutationWork = precedingSync.then(async () => {
       await markProjectionSyncStarted(target, refreshRunId, 'hot');
 
       try {
@@ -2217,6 +2264,14 @@ const triggerMainserverProjectionRefreshBatch = async (
       const targetKey = buildProjectionTargetKey(target);
       const targetPromise = batchRun.completion
         .then((responses) => responses.get(targetKey) ?? null)
+        .catch((error: unknown) => {
+          contentProjectionLogger.warn('mainserver_projection_reconciliation_failed', {
+            ...buildProjectionLogContext(target, options.trigger),
+            error_message:
+              error instanceof Error ? error.message : 'Mainserver-Reconciliation fehlgeschlagen.',
+          });
+          return new Response(null, { status: 500 });
+        })
         .finally(() => {
           if (runningProjectionSyncs.get(targetKey) === targetPromise) {
             runningProjectionSyncs.delete(targetKey);

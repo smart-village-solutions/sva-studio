@@ -1,0 +1,4 @@
+{
+  "prNumber": 899,
+  "body": "Stabilerer Abgleich von Berechtigungskatalogen\n\n- Leere Ergebnisse beim Abgleich von Berechtigungen werden zuverlässig als vollständige Null-Zusammenfassung behandelt.\n- Der Abgleich kann dadurch auch ohne gemeldete Änderungen sicher abgeschlossen und nachvollziehbar protokolliert werden."
+}

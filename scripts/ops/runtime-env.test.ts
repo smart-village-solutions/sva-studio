@@ -827,10 +827,10 @@ describe('waitForRemoteSmokeWarmup', () => {
           target: 'https://studio.smart-village.app/health/live',
         }),
         createProbe({
-          message: 'IAM-Instanzliste lieferte HTML statt JSON/API-Vertrag.',
-          name: 'public-iam-instances',
+          message: 'fetch failed',
+          name: 'public-ingress-https-bb-ahrensfelde.studio.smart-village.app',
           status: 'error',
-          target: 'https://studio.smart-village.app/api/v1/iam/instances',
+          target: 'https://bb-ahrensfelde.studio.smart-village.app/health/live',
         }),
       ])
       .mockResolvedValueOnce([
@@ -853,16 +853,17 @@ describe('waitForRemoteSmokeWarmup', () => {
           target: 'https://studio.smart-village.app/auth/login',
         }),
         createProbe({
-          message: 'IAM-Instanzliste lieferte HTML statt JSON/API-Vertrag.',
-          name: 'public-iam-instances',
+          message: 'fetch failed',
+          name: 'public-ingress-https-bb-ahrensfelde.studio.smart-village.app',
           status: 'error',
-          target: 'https://studio.smart-village.app/api/v1/iam/instances',
+          target: 'https://bb-ahrensfelde.studio.smart-village.app/health/live',
         }),
       ]);
 
     await expect(
       waitForRemoteSmokeWarmup(
         {
+          SVA_ACCEPTANCE_RELEASE_MODE: 'app-only',
           SVA_PUBLIC_BASE_URL: 'https://studio.smart-village.app',
         },
         {
@@ -877,7 +878,10 @@ describe('waitForRemoteSmokeWarmup', () => {
         expect.objectContaining({ name: 'public-live', status: 'ok' }),
         expect.objectContaining({ name: 'public-ready', status: 'ok' }),
         expect.objectContaining({ name: 'public-auth-login', status: 'ok' }),
-        expect.objectContaining({ name: 'public-iam-instances', status: 'error' }),
+        expect.objectContaining({
+          name: 'public-ingress-https-bb-ahrensfelde.studio.smart-village.app',
+          status: 'error',
+        }),
       ]),
     );
 

@@ -143,6 +143,7 @@ describe('smoke helpers', () => {
 
   it.each([
     'public-home',
+    'public-iam-context',
     'public-ingress-https-de-studio-sandbox.studio-staging.smart-village.app',
   ])('keeps %s release-blocking', async (name) => {
     const ops = createRuntimeSmokeOps({

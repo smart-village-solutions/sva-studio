@@ -9,7 +9,7 @@ import type {
   RemoteRuntimeProfile,
 } from '../runtime-env.shared.ts';
 import { createAcceptanceDeployRunner } from './acceptance-deploy.ts';
-import { isBlockingAcceptanceDeploySmokeProbe } from './acceptance-deploy-finalize.ts';
+import { isBlockingSmokeProbe } from './smoke-runtime.ts';
 
 const createDoctorReport = (status: DoctorReport['status']): DoctorReport => ({
   checks: [],
@@ -20,7 +20,7 @@ const createDoctorReport = (status: DoctorReport['status']): DoctorReport => ({
 
 describe('createAcceptanceDeployRunner', () => {
   it('only exempts additional tenant ingress failures in release scope', () => {
-    expect(isBlockingAcceptanceDeploySmokeProbe({
+    expect(isBlockingSmokeProbe({
       durationMs: 1,
       message: 'IAM-Kontext liefert HTML.',
       name: 'public-iam-context',
@@ -28,7 +28,7 @@ describe('createAcceptanceDeployRunner', () => {
       status: 'error',
       target: 'https://studio.smart-village.app/api/v1/iam/me/context',
     }, true)).toBe(true);
-    expect(isBlockingAcceptanceDeploySmokeProbe({
+    expect(isBlockingSmokeProbe({
       durationMs: 1,
       message: 'fetch failed',
       name: 'public-ingress-https-bb-ahrensfelde.studio.smart-village.app',

@@ -174,7 +174,7 @@ export const isBlockingSmokeProbe = (
 
   const isExplicitIngressProbe = probe.name.startsWith('public-ingress-https-')
     || probe.name.startsWith('public-ingress-login-');
-  if (!isExplicitIngressProbe) return false;
+  if (!isExplicitIngressProbe) return true;
   if (!usesReleaseBlockingTenantScope) return true;
 
   return probe.name.startsWith('public-ingress-https-de-studio-sandbox.')

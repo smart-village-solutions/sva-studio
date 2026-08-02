@@ -21,6 +21,7 @@ describe('Promote workflow contract', () => {
     const phases = [
       'bind executor source to promoted change head',
       'capture previous live app digest',
+      'run read-only candidate preflight',
       'create database backup before deployment',
       'verify database backup object',
       'run migration one-shot job',
@@ -42,8 +43,10 @@ describe('Promote workflow contract', () => {
       "trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT"
     );
     expect(
-      workflow.match(/printf '%s\\n' "\$\{APP_CONFIG\}" > config\/runtime\/base\.vars/gu)
+      workflow.match(/cp "\$\{RUNNER_TEMP\}\/promote-app-config\.vars" config\/runtime\/base\.vars/gu)
     ).toHaveLength(2);
+    expect(workflow).toContain('PROMOTE_CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}');
+    expect(workflow).toContain("continue-on-error: ${{ vars.CANDIDATE_PREFLIGHT_GATE != 'enforce' }}");
     expect(
       workflow.match(/SVA_STACK_NAME: \$\{\{ steps\.target\.outputs\.stack_name \}\}/gu)
     ).toHaveLength(2);

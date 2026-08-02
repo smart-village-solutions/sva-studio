@@ -19,6 +19,10 @@ export type PromoteErrorCode =
   | 'PROMOTE_CONFIG_REQUIRED_KEY_MISSING'
   | 'PROMOTE_CONFIG_SHADOW_MISMATCH'
   | 'PROMOTE_RECOVERY_REASON_REQUIRED'
+  | 'PROMOTE_PREFLIGHT_CONFIG_INVALID'
+  | 'PROMOTE_PREFLIGHT_SECRET_REFERENCE_MISSING'
+  | 'PROMOTE_PREFLIGHT_TENANT_SCOPE_MISMATCH'
+  | 'PROMOTE_PREFLIGHT_TENANT_SECRET_UNREADABLE'
   | 'PROMOTE_PARITY_DIGEST_MISMATCH'
   | 'PROMOTE_BACKUP_AGENT_INCOMPATIBLE'
   | 'PROMOTE_SWARM_CONVERGENCE_TIMEOUT'
@@ -59,4 +63,3 @@ export const redactPromoteFailure = (
       retryable: false,
       nextAction: 'Runner-Logs mit eingeschraenktem Zugriff pruefen und den Fehler einem stabilen Code zuordnen.',
     };
-

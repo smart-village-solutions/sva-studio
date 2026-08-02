@@ -125,6 +125,7 @@ COPY --from=build --chown=node:node /workspace/deploy/portainer/entrypoint.sh ./
 COPY --from=build --chown=node:node /workspace/deploy/portainer/bootstrap-entrypoint.sh ./bootstrap-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-entrypoint.sh ./migrate-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/provisioner-entrypoint.sh ./provisioner-entrypoint.sh
+COPY --from=build --chown=node:node /workspace/deploy/portainer/candidate-preflight.mjs ./candidate-preflight.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/otel-bootstrap.mjs ./otel-bootstrap.mjs
 COPY --from=build --chown=node:node /workspace/packages/data/goose.config.json ./packages/data/goose.config.json
 COPY --from=build --chown=node:node /workspace/packages/data/scripts/goosew.sh ./packages/data/scripts/goosew.sh

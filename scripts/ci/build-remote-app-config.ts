@@ -87,13 +87,14 @@ export const runBuildRemoteAppConfig = (args: readonly string[], env: NodeJS.Pro
     const overrideSourceName = env.PROMOTE_CONFIG_OVERRIDE_SOURCE ?? 'github-environment-secret';
     assertRemoteSource(environment, overrideSourceName);
     const legacySource = env.APP_CONFIG ?? '';
-    const shadowOverrides = shadow && env.PROMOTE_CONFIG_OVERRIDES === undefined
+    const explicitOverrides = env.PROMOTE_CONFIG_OVERRIDES?.trim() ? env.PROMOTE_CONFIG_OVERRIDES : undefined;
+    const shadowOverrides = shadow && explicitOverrides === undefined
       ? [...parseRemoteConfigLayer(environment, 'bestehender APP_CONFIG-Pfad', legacySource).values]
           .filter(([key]) => remoteConfigContract[key]?.kind !== 'config')
           .map(([key, value]) => `${key}=${value}`)
           .join('\n')
       : undefined;
-    const candidate = buildRemoteAppConfig({ environment, profile: readFileSync(resolve(profilePath), 'utf8'), overrides: env.PROMOTE_CONFIG_OVERRIDES ?? shadowOverrides ?? '' });
+    const candidate = buildRemoteAppConfig({ environment, profile: readFileSync(resolve(profilePath), 'utf8'), overrides: explicitOverrides ?? shadowOverrides ?? '' });
     if (shadow) {
       const comparison = compareRemoteConfigShadow(environment, legacySource, candidate);
       process.stdout.write(`${JSON.stringify({ mode: 'shadow', configRevision: candidate.configRevision, secretReferences: candidate.secretReferences, ...comparison })}\n`);

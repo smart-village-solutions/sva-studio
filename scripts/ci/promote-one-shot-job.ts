@@ -10,7 +10,7 @@ import { commandExists, run, runCapture, runCaptureDetailed, spawnBackground, wa
 import { inspectRemoteServiceContract } from '../ops/runtime/remote-service-spec.ts';
 import { stackNameForEnvironment } from './promote-target.ts';
 
-type JobKind = 'bootstrap' | 'migration';
+type JobKind = 'bootstrap' | 'candidate' | 'migration';
 type PromoteEnvironment = 'dev' | 'prod' | 'staging';
 
 const rootDir = resolve(import.meta.dirname, '../..');
@@ -31,13 +31,13 @@ export const parseArgs = (args: readonly string[]) => {
   for (let index = 0; index < args.length; index += 1) {
     const flag = args[index];
     const value = args[index + 1];
-    if (!flag?.startsWith('--') || !value) throw new Error('Erwartet: --kind <migration|bootstrap> --environment <dev|staging|prod>.');
+    if (!flag?.startsWith('--') || !value) throw new Error('Erwartet: --kind <candidate|migration|bootstrap> --environment <dev|staging|prod>.');
     values.set(flag, value);
     index += 1;
   }
   const kind = values.get('--kind');
   const environment = values.get('--environment');
-  if (kind !== 'migration' && kind !== 'bootstrap') throw new Error('Ungültiger --kind.');
+  if (kind !== 'candidate' && kind !== 'migration' && kind !== 'bootstrap') throw new Error('Ungültiger --kind.');
   if (environment !== 'dev' && environment !== 'staging' && environment !== 'prod') throw new Error('Ungültiges --environment.');
   return { environment, kind } as { environment: PromoteEnvironment; kind: JobKind };
 };
@@ -93,15 +93,18 @@ const main = async () => {
 
   let result: Awaited<ReturnType<typeof runMigrationJobAgainstAcceptance>> | Awaited<ReturnType<typeof runBootstrapJobAgainstAcceptance>> | undefined;
   let failure: unknown;
+  let cleanupError: unknown;
   try {
-    result = kind === 'migration'
-      ? await runMigrationJobAgainstAcceptance(deps, env, input)
+    result = kind === 'migration' || kind === 'candidate'
+      ? await runMigrationJobAgainstAcceptance(deps, env, {
+          ...input,
+          ...(kind === 'candidate' ? { jobServiceName: 'candidate' as const } : {}),
+        })
       : await runBootstrapJobAgainstAcceptance(deps, env, input);
     if (result.exitCode !== 0 || !result.taskId) throw new Error(`One-shot-Job lieferte keine erfolgreiche Task-Evidenz (exitCode=${String(result.exitCode)}, taskId=${result.taskId ?? 'fehlend'}).`);
   } catch (error) {
     failure = error;
   } finally {
-    let cleanupError: unknown;
     if (result) {
       try {
         await result.cleanup();
@@ -118,11 +121,9 @@ const main = async () => {
     };
     writeFileSync(resultPath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `evidence_path=${resultPath}\n`);
-    if (cleanupError) {
-      if (failure) throw new AggregateError([failure, cleanupError], 'One-shot-Job und Cleanup sind fehlgeschlagen.');
-      throw cleanupError;
-    }
   }
+  if (cleanupError && failure) throw new AggregateError([failure, cleanupError], 'One-shot-Job und Cleanup sind fehlgeschlagen.');
+  if (cleanupError) throw cleanupError;
   if (failure) throw failure;
 };
 

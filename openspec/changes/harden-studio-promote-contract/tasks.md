@@ -10,12 +10,12 @@
 
 ## 2. Candidate-Preflight und Promote-Modi
 
-- [ ] 2.1 Statischen Preflight nach Image-/Git-Validierung und vor der ersten Remote-Mutation integrieren.
-- [ ] 2.2 Isolierten read-only Candidate-One-shot mit minimalen Berechtigungen und terminalem Cleanup implementieren.
-- [ ] 2.3 Candidate-Prüfungen für Runtime-Profil, externe Secret-Referenzen, Registry-Lesbarkeit, Release-Tenant-Scope und Entschlüsselbarkeit aktiver Tenant-Secrets ergänzen.
+- [x] 2.1 Statischen Preflight nach Image-/Git-Validierung und vor der ersten Remote-Mutation integrieren.
+- [x] 2.2 Isolierten read-only Candidate-One-shot mit minimalen Berechtigungen und terminalem Cleanup implementieren.
+- [x] 2.3 Candidate-Prüfungen für Runtime-Profil, externe Secret-Referenzen, Registry-Lesbarkeit, Release-Tenant-Scope und Entschlüsselbarkeit aktiver Tenant-Secrets ergänzen.
 - [x] 2.4 `promote_mode=standard|recovery` mit `standard` als Default ergänzen.
 - [ ] 2.5 Recovery nur mit nicht leerem Grund, erneuter Environment-Freigabe, vorherigem Live-Digest und unveränderten Backup-, Paritäts- und Post-Deploy-Gates zulassen.
-- [ ] 2.6 Tests für unvollständige Config, verbotene lokale Quelle, falschen Schlüsselbund, fehlende Secret-Referenz, unzulässige Candidate-Mutation und Recovery ohne Grund ergänzen.
+- [x] 2.6 Tests für unvollständige Config, verbotene lokale Quelle, falschen Schlüsselbund, fehlende Secret-Referenz, unzulässige Candidate-Mutation und Recovery ohne Grund ergänzen.
 
 ## 3. Digest-Parität und Backup-Agent-Kompatibilität
 
@@ -56,7 +56,7 @@
 ## 7. Dokumentation und Abschluss
 
 - [x] 7.1 Kanonischen Rollout-Leitfaden um Builder, Shadow-Modus, Candidate-Preflight, Promote-Modi, Agent-Capabilities, Konvergenz und Fehlercodes ergänzen.
-- [ ] 7.2 Runtime-Profil- und Swarm-Runbooks so aktualisieren, dass lokale Override-Dateien keine Remote-Quelle sind und keine konkurrierenden Deploypfade entstehen.
+- [x] 7.2 Runtime-Profil- und Swarm-Runbooks so aktualisieren, dass lokale Override-Dateien keine Remote-Quelle sind und keine konkurrierenden Deploypfade entstehen.
 - [x] 7.3 Arc42-Abschnitte 06, 07, 08, 10 und 11 um Config-Grenze, Preflight, Observability, Konvergenz und Recovery fortschreiben.
 - [x] 7.4 Rollout-Operator und Review-Governance um Shadow-Nachweis, strukturierte Fehlercodes und Producer-vor-Consumer-Regel ergänzen.
 - [x] 7.5 Redigierten Learning-Report unter `docs/reports/` mit Ursachen, Auswirkungen, Recovery und Prävention erstellen.

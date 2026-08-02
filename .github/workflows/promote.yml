@@ -193,19 +193,39 @@ jobs:
             --image "${IMAGE_INPUT}" \
             --expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
 
-      - name: shadow remote config builder
-        continue-on-error: true
+      - name: build and select remote config
+        id: remote_config
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
+          PROMOTE_CONFIG_OVERRIDES: ${{ secrets.PROMOTE_CONFIG_OVERRIDES }}
+          PROMOTE_CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}
         run: |
           set -euo pipefail
           umask 077
-          trap 'rm -f "${RUNNER_TEMP}/candidate-app-config.vars"' EXIT
-          pnpm exec tsx scripts/ci/build-remote-app-config.ts \
-            --environment "${{ inputs.environment }}" \
-            --profile "config/runtime/remote/${{ inputs.environment }}.vars" \
-            --output "${RUNNER_TEMP}/candidate-app-config.vars" \
-            --shadow
+          mode="${PROMOTE_CONFIG_BUILDER_MODE:-shadow}"
+          case "${mode}" in
+            shadow)
+              if ! pnpm exec tsx scripts/ci/build-remote-app-config.ts \
+                  --environment "${{ inputs.environment }}" \
+                  --profile "config/runtime/remote/${{ inputs.environment }}.vars" \
+                  --output "${RUNNER_TEMP}/candidate-app-config.vars" \
+                  --shadow; then
+                echo "::warning::PROMOTE_CONFIG_SHADOW_MISMATCH: Der beobachtende Config-Builder konnte keinen gueltigen Candidate erzeugen."
+              fi
+              printf '%s\n' "${APP_CONFIG}" > "${RUNNER_TEMP}/promote-app-config.vars"
+              ;;
+            authoritative)
+              pnpm exec tsx scripts/ci/build-remote-app-config.ts \
+                --environment "${{ inputs.environment }}" \
+                --profile "config/runtime/remote/${{ inputs.environment }}.vars" \
+                --output "${RUNNER_TEMP}/promote-app-config.vars"
+              ;;
+            *)
+              echo '{"code":"PROMOTE_CONFIG_INVALID","phase":"config-build","retryable":false,"nextAction":"PROMOTE_CONFIG_BUILDER_MODE auf shadow oder authoritative setzen."}' >&2
+              exit 1
+              ;;
+          esac
+          echo "mode=${mode}" >> "${GITHUB_OUTPUT}"
 
       - name: evaluate migration and bootstrap gates
         id: gate_eval
@@ -299,6 +319,22 @@ jobs:
           WASTE_POSTGRES_BACKUP_ENABLED: ${{ vars.WASTE_POSTGRES_BACKUP_ENABLED }}
         run: pnpm exec tsx scripts/ci/verify-backup-agent-capabilities.ts "${{ inputs.environment }}"
 
+      - name: run read-only candidate preflight
+        id: candidate_job
+        continue-on-error: ${{ vars.CANDIDATE_PREFLIGHT_GATE != 'enforce' }}
+        env:
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+          SVA_DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f .env' EXIT
+          pnpm exec tsx scripts/ci/render-compose-env.ts \
+            --input "${RUNNER_TEMP}/promote-app-config.vars" \
+            --output .env
+          printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
+          pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind candidate --environment "${{ inputs.environment }}"
+
       - name: create database backup before deployment
         id: backup_job
         if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.BACKUP_EXECUTOR != 'temporary' }}
@@ -335,7 +371,7 @@ jobs:
           set -euo pipefail
           umask 077
           trap 'rm -f .env' EXIT
-          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
           printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
           pnpm exec tsx scripts/ci/promote-backup-job.ts "${{ inputs.environment }}"
 
@@ -370,7 +406,7 @@ jobs:
           set -euo pipefail
           umask 077
           trap 'rm -f .env' EXIT
-          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
           printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
           pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind migration --environment "${{ inputs.environment }}"
 
@@ -385,7 +421,7 @@ jobs:
           set -euo pipefail
           umask 077
           trap 'rm -f .env' EXIT
-          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
           printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
           pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind bootstrap --environment "${{ inputs.environment }}"
 
@@ -401,9 +437,9 @@ jobs:
           set -euo pipefail
           umask 077
           trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT
-          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
           mkdir -p config/runtime
-          printf '%s\n' "${APP_CONFIG}" > config/runtime/base.vars
+          cp "${RUNNER_TEMP}/promote-app-config.vars" config/runtime/base.vars
           : > config/runtime/studio.vars
           pnpm exec tsx scripts/ops/runtime-env.ts doctor studio
 
@@ -425,12 +461,12 @@ jobs:
             exit 1
           fi
 
-          if [ -z "${APP_CONFIG}" ]; then
-            echo "'APP_CONFIG' must not be empty." >&2
+          if [ ! -s "${RUNNER_TEMP}/promote-app-config.vars" ]; then
+            echo "PROMOTE_CONFIG_REQUIRED_KEY_MISSING: Die ausgewaehlte Remote-Konfiguration ist leer." >&2
             exit 1
           fi
 
-          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
           {
             printf '\nIMAGE_REF=%s\n' "${DEPLOY_IMAGE_REF}"
             printf 'SVA_DEPLOY_REVISION=%s\n' "${DEPLOY_REVISION}"
@@ -451,9 +487,9 @@ jobs:
           set -euo pipefail
           umask 077
           trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT
-          pnpm exec tsx scripts/ci/render-compose-env.ts --output .env
+          pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
           mkdir -p config/runtime
-          printf '%s\n' "${APP_CONFIG}" > config/runtime/base.vars
+          cp "${RUNNER_TEMP}/promote-app-config.vars" config/runtime/base.vars
           : > config/runtime/studio.vars
           pnpm exec tsx scripts/ops/runtime-env.ts smoke studio
 
@@ -486,6 +522,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: remove selected remote config
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/candidate-app-config.vars" "${RUNNER_TEMP}/promote-app-config.vars"
+
       - name: write deploy summary
         if: always()
         env:
@@ -506,6 +546,8 @@ jobs:
           PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
           MIGRATION_JOB_OUTCOME: ${{ steps.migration_job.outcome }}
           BOOTSTRAP_JOB_OUTCOME: ${{ steps.bootstrap_job.outcome }}
+          CANDIDATE_JOB_OUTCOME: ${{ steps.candidate_job.outcome }}
+          CONFIG_BUILDER_MODE: ${{ steps.remote_config.outputs.mode }}
         run: |
           set -euo pipefail
 
@@ -524,6 +566,8 @@ jobs:
             echo "| tag | ${DEPLOY_IMAGE_TAG:-not-evaluated} |"
             echo "| digest | ${DEPLOY_IMAGE_DIGEST:-not-evaluated} |"
             echo "| previous_live_image | ${PREVIOUS_LIVE_IMAGE:-not-captured} |"
+            echo "| config_builder_mode | ${CONFIG_BUILDER_MODE:-not-evaluated} |"
+            echo "| candidate_preflight | ${CANDIDATE_JOB_OUTCOME:-not-run} |"
             echo "| immutability | ${DEPLOY_IMAGE_IMMUTABILITY:-not-evaluated} |"
             echo "| deploy_revision | ${DEPLOY_REVISION:-not-evaluated} |"
             echo "| migration_mode | ${MIGRATION_MODE} |"

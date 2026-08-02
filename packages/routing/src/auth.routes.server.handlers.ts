@@ -184,6 +184,9 @@ export const governanceAuthHandlerMap = {
   '/api/v1/waste-management/settings/holiday-sync': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.runHolidaySync),
   },
+  '/api/v1/waste-management/settings/provisioning/retry': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.retryProvisioning),
+  },
   '/api/v1/waste-management/tools/initialize': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startInitialize),
   },

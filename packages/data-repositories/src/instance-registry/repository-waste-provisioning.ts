@@ -47,6 +47,7 @@ type WasteProvisioningRepository = Pick<
   | 'claimWasteProvisioning'
   | 'completeWasteProvisioning'
   | 'failWasteProvisioning'
+  | 'failWasteProvisioningRequest'
 >;
 
 export const createWasteProvisioningRepository = (
@@ -177,6 +178,28 @@ WHERE instance_id = $1
 RETURNING *;
 `,
         [input.instanceId, input.jobId, input.desiredGeneration, input.errorCode, input.errorMessage]
+      )
+    );
+    return result.rows[0] ? mapRow(result.rows[0]) : null;
+  },
+
+  async failWasteProvisioningRequest(input) {
+    const result = await executor.execute<WasteProvisioningRow>(
+      statement(
+        `
+UPDATE iam.instance_waste_provisioning
+SET status = 'failed',
+    error_code = $3,
+    error_message = $4,
+    completed_at = NOW(),
+    updated_at = NOW()
+WHERE instance_id = $1
+  AND desired_generation = $2
+  AND active_job_id IS NULL
+  AND status = 'provisioning'
+RETURNING *;
+`,
+        [input.instanceId, input.desiredGeneration, input.errorCode, input.errorMessage]
       )
     );
     return result.rows[0] ? mapRow(result.rows[0]) : null;

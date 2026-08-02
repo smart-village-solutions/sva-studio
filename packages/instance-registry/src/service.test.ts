@@ -76,6 +76,7 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     claimWasteProvisioning: vi.fn(async () => null),
     completeWasteProvisioning: vi.fn(async () => null),
     failWasteProvisioning: vi.fn(async () => null),
+    failWasteProvisioningRequest: vi.fn(async () => null),
     syncAssignedModuleIam: vi.fn(async () => undefined),
     syncProtectedSystemRolePermissions: vi.fn(async () => undefined),
     countLocalSystemAdminAssignments: vi.fn(async () => 1),

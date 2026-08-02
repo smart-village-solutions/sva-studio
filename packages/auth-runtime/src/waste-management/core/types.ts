@@ -76,6 +76,15 @@ export type WasteManagementHandlerDeps = {
   readonly loadWasteTenantProvisioning?: (
     instanceId: string
   ) => Promise<WasteTenantProvisioningRecord | null>;
+  readonly requestWasteTenantProvisioning?: (
+    instanceId: string
+  ) => Promise<WasteTenantProvisioningRecord>;
+  readonly failWasteTenantProvisioningRequest?: (input: {
+    readonly instanceId: string;
+    readonly desiredGeneration: number;
+    readonly errorCode: string;
+    readonly errorMessage: string;
+  }) => Promise<WasteTenantProvisioningRecord | null>;
   readonly saveExternalInterfaceRecord?: (record: ExternalInterfaceRecord) => Promise<void>;
   readonly saveExternalInterfaceConnectionCheck?: (
     record: ExternalInterfaceConnectionCheckRecord

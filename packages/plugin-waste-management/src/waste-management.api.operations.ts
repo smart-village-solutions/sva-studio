@@ -165,6 +165,9 @@ export const startWasteManagementHolidaySync =
   async (): Promise<WasteManagementSettingsRecord | null> =>
     requestWasteManagementMutation('/api/v1/waste-management/settings/holiday-sync', {}, 'POST');
 
+export const retryWasteTenantProvisioning = async () =>
+  requestWasteManagementJob('/api/v1/waste-management/settings/provisioning/retry', {});
+
 export const updateWasteManagementHolidayRule = async (
   ruleId: string,
   input: UpdateWasteManagementHolidayRuleInput

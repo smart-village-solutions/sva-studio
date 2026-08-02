@@ -57,6 +57,8 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
     editCustomRecurrence: 'Bearbeiten',
     deleteCustomRecurrence: 'Löschen',
     saveCustomRecurrence: 'Abstand übernehmen',
+    retryProvisioning: 'Bereitstellung erneut starten',
+    retryingProvisioning: 'Wird erneut gestartet…',
   },
   messages: {
     loading: 'Einstellungen werden geladen.',
@@ -92,5 +94,8 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
     customRecurrenceFallbackHint: 'Optional: Wählen Sie direkt einen Fallback, falls dieser Abstand bereits Touren zugeordnet ist.',
     customRecurrenceFallbackPlaceholder: 'Keinen Fallback vorauswählen',
     noInterfacesAvailable: 'Es wurden noch keine externen Schnittstellen für diese Instanz hinterlegt.',
+    retryProvisioningSuccess: 'Die Bereitstellung wurde erneut gestartet.',
+    retryProvisioningError: 'Die Bereitstellung konnte nicht erneut gestartet werden.',
+    retryProvisioningForbidden: 'Für den erneuten Start der Bereitstellung fehlt die Berechtigung.',
   },
 });

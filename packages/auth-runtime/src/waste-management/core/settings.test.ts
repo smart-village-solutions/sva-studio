@@ -73,6 +73,62 @@ describe('waste-management settings handlers', () => {
     runWasteConnectionCheckMock.mockClear();
   });
 
+  it('retries failed tenant provisioning with a new generation and a correlated plugin job', async () => {
+    const deps = createDeps();
+    const requestWasteTenantProvisioning = vi.fn(async () => ({
+      instanceId: 'tenant-a',
+      status: 'provisioning' as const,
+      desiredGeneration: 3,
+      completedGeneration: 1,
+      requestedAt: '2026-08-02T10:00:00.000Z',
+      updatedAt: '2026-08-02T10:00:00.000Z',
+    }));
+    const startPluginOperationJob = vi.fn(async () =>
+      Response.json({ data: { id: 'job-3' } }, { status: 202 })
+    );
+    const response = await wasteManagementSettingsHandlers.retryWasteTenantProvisioningInternal(
+      new Request('https://studio.test/api/v1/waste-management/settings/provisioning/retry', {
+        method: 'POST',
+        headers: {
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Idempotency-Key': 'retry-3',
+        },
+      }),
+      actor,
+      {
+        ...deps,
+        loadWasteTenantProvisioning: vi.fn(async () => ({
+          instanceId: 'tenant-a',
+          status: 'failed' as const,
+          desiredGeneration: 2,
+          completedGeneration: 1,
+          requestedAt: '2026-08-02T09:00:00.000Z',
+          updatedAt: '2026-08-02T09:05:00.000Z',
+        })),
+        requestWasteTenantProvisioning,
+        resolveActorInfo: vi.fn(async () => ({
+          actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
+        })),
+        startPluginOperationJob,
+      }
+    );
+
+    expect(response.status).toBe(202);
+    expect(requestWasteTenantProvisioning).toHaveBeenCalledWith('tenant-a');
+    expect(startPluginOperationJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        actorAccountId: 'account-1',
+        idempotencyKey: 'retry-3',
+        data: expect.objectContaining({
+          jobTypeId: 'waste-management.provision-tenant-database',
+          input: { operation: 'provision-tenant-database', desiredGeneration: 3 },
+        }),
+      })
+    );
+  });
+
   it('saves custom recurrence presets when the interface-managed fields stay unchanged', async () => {
     const deps = createDeps();
     const loadDefaultInterfaceRecord = vi.fn(async () => ({

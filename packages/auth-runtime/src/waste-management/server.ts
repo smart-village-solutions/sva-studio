@@ -39,6 +39,7 @@ const {
   getWasteManagementSettingsInternal,
   getWasteManagementToursOverviewInternal,
   runWasteManagementHolidaySyncInternal,
+  retryWasteTenantProvisioningInternal,
   startWasteManagementInitializeInternal,
   startWasteManagementImportInternal,
   previewWasteManagementLocationTourPickupDateImportInternal,
@@ -178,6 +179,12 @@ export const wasteManagementHandlers = {
         loadWastePdfStaticSettings,
         saveWastePdfStaticSettings,
         syncWasteHolidayRules,
+      })
+    ),
+  retryProvisioning: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      retryWasteTenantProvisioningInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
       })
     ),
   createFraction: (request: Request): Promise<Response> =>

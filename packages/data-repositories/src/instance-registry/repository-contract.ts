@@ -89,6 +89,12 @@ export type InstanceRegistryRepository = {
     errorCode: string;
     errorMessage: string;
   }) => Promise<WasteTenantProvisioningRecord | null>;
+  readonly failWasteProvisioningRequest: (input: {
+    instanceId: string;
+    desiredGeneration: number;
+    errorCode: string;
+    errorMessage: string;
+  }) => Promise<WasteTenantProvisioningRecord | null>;
   readonly prepareConfirmationChallenge: (
     input: PrepareInstanceConfirmationChallengeInput
   ) => Promise<InstanceConfirmationChallengeRecord>;

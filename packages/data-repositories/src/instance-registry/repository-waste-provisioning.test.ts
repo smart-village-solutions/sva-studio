@@ -77,10 +77,12 @@ describe('instance registry waste provisioning repository', () => {
       error_code: 'migration_failed',
       error_message: 'redacted',
     };
+    const failedRequestRow = { ...failedRow, error_code: 'job_start_failed' };
     const { executor, statements } = createQueuedExecutor([
       [claimedRow],
       [completedRow],
       [failedRow],
+      [failedRequestRow],
     ]);
     const repository = createInstanceRegistryRepository(executor);
 
@@ -105,14 +107,24 @@ describe('instance registry waste provisioning repository', () => {
         errorMessage: 'redacted',
       })
     ).resolves.toMatchObject({ status: 'failed', errorCode: 'migration_failed' });
+    await expect(
+      repository.failWasteProvisioningRequest({
+        instanceId: 'tenant-a',
+        desiredGeneration: 2,
+        errorCode: 'job_start_failed',
+        errorMessage: 'redacted',
+      })
+    ).resolves.toMatchObject({ status: 'failed', errorCode: 'job_start_failed' });
 
     expect(statements[0]?.text).toContain('active_job_id = $2::uuid');
     expect(statements[1]?.text).toContain("status = 'ready'");
     expect(statements[2]?.text).toContain("status = 'failed'");
+    expect(statements[3]?.text).toContain('active_job_id IS NULL');
     expect(statements.map(({ values }) => values?.slice(0, 3))).toEqual([
       ['tenant-a', jobId, 2],
       ['tenant-a', jobId, 2],
       ['tenant-a', jobId, 2],
+      ['tenant-a', 2, 'job_start_failed'],
     ]);
   });
 });

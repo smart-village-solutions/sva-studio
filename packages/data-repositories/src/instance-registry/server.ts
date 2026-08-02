@@ -348,6 +348,14 @@ export const loadWasteTenantProvisioningRecord = (
     repository.getWasteProvisioning(instanceId)
   );
 
+export const requestWasteTenantProvisioning = (
+  instanceId: string,
+  options: WasteProvisioningServerOptions = {}
+): Promise<WasteTenantProvisioningRecord> =>
+  withWasteProvisioningRepository(options, (repository) =>
+    repository.requestWasteProvisioning(instanceId)
+  );
+
 export const claimWasteTenantProvisioning = (
   input: { readonly instanceId: string; readonly jobId: string; readonly desiredGeneration: number },
   options: WasteProvisioningServerOptions = {}
@@ -382,4 +390,17 @@ export const failWasteTenantProvisioning = (
 ): Promise<WasteTenantProvisioningRecord | null> =>
   withWasteProvisioningRepository(options, (repository) =>
     repository.failWasteProvisioning(input)
+  );
+
+export const failWasteTenantProvisioningRequest = (
+  input: {
+    readonly instanceId: string;
+    readonly desiredGeneration: number;
+    readonly errorCode: string;
+    readonly errorMessage: string;
+  },
+  options: WasteProvisioningServerOptions = {}
+): Promise<WasteTenantProvisioningRecord | null> =>
+  withWasteProvisioningRepository(options, (repository) =>
+    repository.failWasteProvisioningRequest(input)
   );

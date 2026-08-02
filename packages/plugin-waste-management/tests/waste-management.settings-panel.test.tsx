@@ -6,6 +6,7 @@ import { WasteSettingsPanel } from '../src/waste-management.settings-panel.js';
 
 const getWasteManagementSettingsMock = vi.hoisted(() => vi.fn());
 const updateWasteManagementSettingsMock = vi.hoisted(() => vi.fn());
+const retryWasteTenantProvisioningMock = vi.hoisted(() => vi.fn());
 const capturedForms = vi.hoisted(() => [] as unknown[]);
 
 vi.mock('@sva/plugin-sdk', () => ({
@@ -24,6 +25,7 @@ vi.mock('@sva/studio-ui-react', () => ({
 vi.mock('../src/waste-management.api.js', () => ({
   getWasteManagementSettings: getWasteManagementSettingsMock,
   updateWasteManagementSettings: updateWasteManagementSettingsMock,
+  retryWasteTenantProvisioning: retryWasteTenantProvisioningMock,
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({
@@ -36,8 +38,19 @@ vi.mock('../src/waste-management.page.support.js', () => ({
 }));
 
 vi.mock('../src/waste-management.settings-status-panel.js', () => ({
-  WasteSettingsStatusPanel: ({ settings }: { readonly settings: { holidayStateCode?: string | undefined } | null }) => (
-    <div>settings-status-panel:{settings?.holidayStateCode ?? 'no-state'}</div>
+  WasteSettingsStatusPanel: ({
+    settings,
+    onRetry,
+  }: {
+    readonly settings: { holidayStateCode?: string; provisioningStatus?: string } | null;
+    readonly onRetry?: () => void;
+  }) => (
+    <div>
+      settings-status-panel:{settings?.holidayStateCode ?? 'no-state'}
+      {settings?.provisioningStatus === 'failed' ? (
+        <button type="button" onClick={onRetry}>retry-provisioning</button>
+      ) : null}
+    </div>
   ),
 }));
 
@@ -75,6 +88,7 @@ afterEach(() => {
   capturedForms.length = 0;
   getWasteManagementSettingsMock.mockReset();
   updateWasteManagementSettingsMock.mockReset();
+  retryWasteTenantProvisioningMock.mockReset();
 });
 
 describe('WasteSettingsPanel', () => {
@@ -101,6 +115,40 @@ describe('WasteSettingsPanel', () => {
     });
 
     expect(screen.getByText('settings-status-panel:NW')).toBeTruthy();
+  });
+
+  it('retries failed provisioning and refreshes the projected status', async () => {
+    getWasteManagementSettingsMock
+      .mockResolvedValueOnce({
+        instanceId: 'tenant-a',
+        provider: 'postgresql',
+        schemaName: 'public',
+        enabled: false,
+        databaseUrlConfigured: true,
+        visibleStatus: 'error',
+        provisioningStatus: 'failed',
+        customRecurrencePresets: [],
+      })
+      .mockResolvedValueOnce({
+        instanceId: 'tenant-a',
+        provider: 'postgresql',
+        schemaName: 'public',
+        enabled: false,
+        databaseUrlConfigured: true,
+        visibleStatus: 'unknown',
+        provisioningStatus: 'provisioning',
+        customRecurrencePresets: [],
+      });
+    retryWasteTenantProvisioningMock.mockResolvedValueOnce({ id: 'job-1' });
+
+    render(<WasteSettingsPanel />);
+    fireEvent.click(await screen.findByText('retry-provisioning'));
+
+    await waitFor(() => {
+      expect(retryWasteTenantProvisioningMock).toHaveBeenCalledOnce();
+      expect(screen.getByText('settings.messages.retryProvisioningSuccess')).toBeTruthy();
+    });
+    expect(screen.queryByText('retry-provisioning')).toBeNull();
   });
 
   it('loads the calendar web url and persists it through the global save action', async () => {

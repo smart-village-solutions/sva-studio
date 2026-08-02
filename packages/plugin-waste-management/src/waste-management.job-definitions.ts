@@ -12,7 +12,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.initializeDataSource,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Initialisierung',
+    displayName: 'Abfall-Initialisierung',
     progress: {
       phaseKeys: ['waste-management.initialize', 'waste-management.completed'],
       stepKeys: ['resolve-operation', 'complete-operation'],
@@ -28,7 +28,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.applyMigrations,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Migrationen anwenden',
+    displayName: 'Abfall-Migrationen anwenden',
     progress: {
       phaseKeys: ['waste-management.migrations', 'waste-management.completed'],
       stepKeys: ['resolve-operation', 'complete-operation'],
@@ -44,7 +44,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Daten importieren',
+    displayName: 'Abfall-Daten importieren',
     progress: {
       phaseKeys: [
         'waste-management.import-preparation',
@@ -150,7 +150,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncWasteTypes,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Typen mit Mainserver synchronisieren',
+    displayName: 'Abfall-Typen mit Mainserver synchronisieren',
     progress: {
       phaseKeys: ['waste-management.sync-waste-types', 'waste-management.completed'],
       stepKeys: ['build-static-content', 'push-static-content'],
@@ -166,7 +166,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.materializeEmailReminders,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-E-Mail-Erinnerungen materialisieren',
+    displayName: 'Abfall-E-Mail-Erinnerungen materialisieren',
     progress: {
       phaseKeys: ['waste-management.materialize-email-reminders', 'waste-management.completed'],
       stepKeys: ['load-reminder-state', 'complete-operation'],
@@ -182,7 +182,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.processEmailReminderOutbox,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-E-Mail-Erinnerungs-Outbox verarbeiten',
+    displayName: 'Abfall-E-Mail-Erinnerungs-Outbox verarbeiten',
     progress: {
       phaseKeys: ['waste-management.process-email-reminder-outbox', 'waste-management.completed'],
       stepKeys: ['lease-outbox', 'complete-operation'],

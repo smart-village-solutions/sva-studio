@@ -77,7 +77,7 @@ export const wasteManagementPluginTranslationsDEOutput = {
         reminderListIntroTemplate: 'Erinnerung-Listenintro',
         reminderOutroText: 'Erinnerung-Abschluss',
         unsubscribeLinkLabel: 'Abmeldelink-Label',
-        reminderReasonText: 'Begruendungstext',
+        reminderReasonText: 'Begründungstext',
         unsubscribeSuccessHeadline: 'Überschrift bei erfolgreicher Abmeldung',
         unsubscribeSuccessBody: 'Text bei erfolgreicher Abmeldung',
         unsubscribeAlreadyDoneHeadline: 'Überschrift bei bereits erfolgter Abmeldung',

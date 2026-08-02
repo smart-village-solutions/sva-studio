@@ -1776,7 +1776,7 @@ const loadMainserverProjectionPage = async (
         sourceEntityType: target.contentType,
         sourceEntityId: item.id,
       })),
-      hasNextPage: result.pagination.hasNextPage,
+      hasNextPage: hasNextProjectionPage(result, pageQuery),
       nextPage: (result.pagination.page ?? pageQuery.page) + 1,
       skippedInvalidCount: result.skippedInvalidCount,
     };

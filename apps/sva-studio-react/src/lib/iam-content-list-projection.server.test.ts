@@ -3624,6 +3624,30 @@ describe('content list projection', () => {
     ]);
   });
 
+  it('stops slim projection pagination at the local scan cap', async () => {
+    process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
+    state.listSvaMainserverProjection.mockImplementation(
+      async ({ page, pageSize }: { page: number; pageSize: number }) => ({
+        data: [{
+          id: `news-slim-${page}`,
+          contentType: 'news.article',
+          title: `Kompakt ${page}`,
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        }],
+        skippedInvalidCount: 0,
+        pagination: { page: Math.min(page, 50), pageSize, hasNextPage: true },
+      })
+    );
+
+    await refreshProjectedContents(ctx, { visibleTypes: ['news.article'], force: true });
+
+    expect(state.listSvaMainserverProjection).toHaveBeenCalledTimes(50);
+    expect(state.listSvaMainserverProjection).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 50, pageSize: 100 })
+    );
+  });
+
   it('does not mark a partially persisted progressive refresh as successful when a later page fails', async () => {
     state.listSvaMainserverNews
       .mockResolvedValueOnce({

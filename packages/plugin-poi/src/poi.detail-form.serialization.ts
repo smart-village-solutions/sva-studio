@@ -1,6 +1,5 @@
 import type {
   PoiAccessibilityInformation,
-  PoiCertificate,
   PoiContact,
   PoiMediaContent,
   PoiWebUrl,
@@ -13,6 +12,12 @@ import type {
   PoiLocationFormValue,
 } from './poi.detail-form.types.js';
 import { normalizeMediaContentType } from './poi.detail-media-content-type.js';
+import {
+  hasSubstantiveFields,
+  serializeCertificates,
+  serializePayload,
+  serializeTags,
+} from './poi.detail-form.serialization.metadata.js';
 import { normalizeOpeningHourWeekday } from './poi.opening-hours.js';
 
 const compactString = (value?: string | null) => {
@@ -22,13 +27,6 @@ const compactString = (value?: string | null) => {
 
 const compactCategoryNames = (values: readonly string[]) =>
   Array.from(new Set(values.map((value) => value.trim()).filter((value) => value.length > 0)));
-
-const hasSubstantiveFields = <T extends Record<string, unknown>, K extends keyof T>(
-  entry: T,
-  ignoredKey: K
-): boolean => {
-  return Object.keys(entry).some((key) => key !== ignoredKey);
-};
 
 const compactFiniteNumber = (value?: string | number | null) => {
   if (typeof value === 'number') {
@@ -199,13 +197,6 @@ const serializeMediaContents = (values: readonly PoiMediaContent[]) =>
     }))
     .filter((entry) => Object.keys(entry).length > 0);
 
-const serializeCertificates = (values: readonly PoiCertificate[]) =>
-  (values ?? [])
-    .map((entry) => ({
-      ...(compactString(entry?.name) ? { name: compactString(entry?.name) as string } : {}),
-    }))
-    .filter((entry): entry is PoiCertificate => Boolean(entry.name));
-
 const serializeAccessibilityInformation = (value: PoiAccessibilityInformation) => {
   const urls = compactWebUrls(value.urls);
   return {
@@ -213,14 +204,6 @@ const serializeAccessibilityInformation = (value: PoiAccessibilityInformation) =
     ...(compactString(value.types) ? { types: compactString(value.types) } : {}),
     ...(urls.length > 0 ? { urls } : {}),
   };
-};
-
-const serializeTags = (value: string) => {
-  const tags = value
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter((tag) => tag.length > 0);
-  return tags;
 };
 
 export const mapPoiDetailFormValuesToInput = (
@@ -270,11 +253,6 @@ export const mapPoiDetailFormValuesToInput = (
       values.content.accessibilityInformation
     ),
     tags: serializeTags(values.content.tagsText),
-    ...(payload !== null &&
-    typeof payload === 'object' &&
-    !Array.isArray(payload) &&
-    Object.keys(payload).length === 0
-      ? {}
-      : { payload }),
+    ...serializePayload(payload),
   };
 };

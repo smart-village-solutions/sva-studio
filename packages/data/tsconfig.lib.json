@@ -12,7 +12,8 @@
       "@sva/data-client": ["packages/data-client/dist/index.d.ts"],
       "@sva/data-repositories": ["packages/data-repositories/dist/index.d.ts"],
       "@sva/data-repositories/server": ["packages/data-repositories/dist/server.d.ts"],
-      "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"]
+      "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"],
+      "@sva/studio-module-iam": ["packages/studio-module-iam/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*.ts"]

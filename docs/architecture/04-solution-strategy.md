@@ -211,3 +211,7 @@ Referenzen:
 ### Ergänzung 2026-07: Policy-gesteuerter MCP-Zugang
 
 Die Instanz-Control-Plane wird über einen dünnen lokalen MCP-Adapter wiederverwendet. Keycloak-Service-Tokens werden serverseitig gegen Issuer, Audience, Zeitbindung und vollständig qualifizierte Action-IDs geprüft. Lesen, kontrollierte Mutationen und kritische Mutationen bilden drei feste Risikostufen. Kritische Aktionen verwenden einen serverseitig erzwungenen Zwei-Schritt-Vertrag aus aktuellem Read/Plan und einer kurzlebigen, einmaligen, zustandsgebundenen Confirmation-Challenge. Der MCP führt keine automatische Reparatur aus und reicht ausschließlich redigierte strukturierte Ergebnisse weiter.
+
+### Ergänzung 2026-08: Kanonischer Permission-Katalog
+
+Core- und Modul-Permissions werden in einer typsicheren, validierten Katalogsicht zusammengeführt. Tenantweite und aktivierte Modul-Permissions erhalten standardmäßig einen verwalteten `system_admin`-Grant; Root-Permissions bleiben isoliert. Der Reconcile ist idempotent und additiv, während Löschungen ausschließlich über separate, ausdrücklich freigegebene Changes erfolgen.

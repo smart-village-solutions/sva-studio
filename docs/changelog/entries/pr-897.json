@@ -1,0 +1,4 @@
+{
+  "prNumber": 897,
+  "body": "Zuverlässige Berechtigungen für Systemadministratoren\n\n- Neue tenantweite Berechtigungen werden zentral definiert und standardmäßig automatisch an die geschützte Rolle System Admin vergeben.\n- Modulberechtigungen werden bei Aktivierung ergänzt; bestehende Berechtigungen bleiben bei späteren Katalogänderungen erhalten.\n- Bestehende und zukünftige Tenants erhalten über Bootstrap und IAM-Abgleich denselben nachvollziehbaren Berechtigungsstand."
+}

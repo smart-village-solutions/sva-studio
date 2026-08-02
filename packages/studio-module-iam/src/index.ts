@@ -1,3 +1,5 @@
+import { composePermissionCatalog, corePermissionCatalog } from '@sva/core';
+
 export const studioModuleIamVersion = '0.0.1';
 
 export type StudioModuleIamBootstrapRole = Readonly<{
@@ -19,12 +21,20 @@ export type StudioModuleIamContract = Readonly<{
   tenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[];
   rootSystemRoles: readonly StudioModuleIamSystemRole[];
   systemRoles?: readonly StudioModuleIamBootstrapRole[];
+  systemAdminPermissionExclusions?: readonly string[];
 }>;
 
-const createStandardContentBootstrapRoles = (pluginId: string): readonly StudioModuleIamBootstrapRole[] => [
+const createStandardContentBootstrapRoles = (
+  pluginId: string
+): readonly StudioModuleIamBootstrapRole[] => [
   {
     roleName: 'system_admin',
-    permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],
+    permissionIds: [
+      `${pluginId}.read`,
+      `${pluginId}.create`,
+      `${pluginId}.update`,
+      `${pluginId}.delete`,
+    ],
   },
 ];
 
@@ -32,7 +42,10 @@ const createSystemAdminSystemRoles = (
   roles: readonly StudioModuleIamBootstrapRole[]
 ): readonly StudioModuleIamSystemRole[] => roles.filter((role) => role.roleName === 'system_admin');
 
-const createStandardContentContract = (pluginId: string, descriptionKey: string): StudioModuleIamContract => {
+const createStandardContentContract = (
+  pluginId: string,
+  descriptionKey: string
+): StudioModuleIamContract => {
   const tenantBootstrapRoles = createStandardContentBootstrapRoles(pluginId);
 
   return {
@@ -40,23 +53,37 @@ const createStandardContentContract = (pluginId: string, descriptionKey: string)
     namespace: pluginId,
     ownerPluginId: pluginId,
     descriptionKey,
-    permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],
+    permissionIds: [
+      `${pluginId}.read`,
+      `${pluginId}.create`,
+      `${pluginId}.update`,
+      `${pluginId}.delete`,
+    ],
     tenantBootstrapRoles,
     rootSystemRoles: [],
     systemRoles: createSystemAdminSystemRoles(tenantBootstrapRoles),
   };
 };
 
-const categoriesModuleIamContract = createStandardContentContract('categories', 'plugins.categories.description');
+const categoriesModuleIamContract = createStandardContentContract(
+  'categories',
+  'plugins.categories.description'
+);
 const newsModuleIamContract = createStandardContentContract('news', 'plugins.news.description');
-const eventsModuleIamContract = createStandardContentContract('events', 'plugins.events.description');
+const eventsModuleIamContract = createStandardContentContract(
+  'events',
+  'plugins.events.description'
+);
 const poiModuleIamContract = createStandardContentContract('poi', 'plugins.poi.description');
 const genericItemsModuleIamContract = createStandardContentContract(
   'generic-items',
   'plugins.generic-items.description'
 );
 const faqModuleIamContract = createStandardContentContract('faq', 'plugins.faq.description');
-const cockpitCardsModuleIamContract = createStandardContentContract('cockpit-cards', 'plugins.cockpit-cards.description');
+const cockpitCardsModuleIamContract = createStandardContentContract(
+  'cockpit-cards',
+  'plugins.cockpit-cards.description'
+);
 const surveysTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[] = [
   {
     roleName: 'system_admin',
@@ -168,12 +195,24 @@ export const studioPluginModuleIamContracts = [
   wasteManagementModuleIamContract,
 ] as const satisfies readonly StudioModuleIamContract[];
 
-export const studioHostModuleIamContracts = [mediaModuleIamContract] as const satisfies readonly StudioModuleIamContract[];
+export const studioHostModuleIamContracts = [
+  mediaModuleIamContract,
+] as const satisfies readonly StudioModuleIamContract[];
 
 export const studioModuleIamContracts = [
   ...studioPluginModuleIamContracts,
   ...studioHostModuleIamContracts,
 ] as const satisfies readonly StudioModuleIamContract[];
+
+/** Vollständige, validierte Katalogsicht für Diagnose, Review und Tests. */
+export const studioPermissionCatalog = composePermissionCatalog(
+  corePermissionCatalog,
+  studioModuleIamContracts.map((contract) => ({
+    moduleId: contract.moduleId,
+    permissionIds: contract.permissionIds,
+    systemAdminPermissionExclusions: contract.systemAdminPermissionExclusions,
+  }))
+);
 
 export const studioModuleIamRegistry = new Map(
   studioModuleIamContracts.map((contract) => [contract.moduleId, contract] as const)

@@ -527,3 +527,4 @@ Zuordnung:
 Zuordnung:
 
 - Abschnitt 06/07/08/09/11: ADR-048 und OpenSpec-Change `add-controlled-database-restore`
+- Abschnitt 04/05/06/08/09: ADR-049 und OpenSpec-Change `add-canonical-permission-catalog`

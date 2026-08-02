@@ -2,13 +2,12 @@ import type { SqlExecutor } from '../iam/repositories/types.js';
 
 import type {
   InstanceRegistryRepository,
+  PermissionCatalogReconcileResult,
 } from './repository-contract.js';
 import {
-  buildManagedPermissionKeys,
+  buildManagedPermissions,
   buildRolePermissionPairs,
-  cleanupModulePermissions,
   cleanupModuleRolePermissions,
-  cleanupProtectedRolePermissions,
   insertModuleRolePermission,
   insertProtectedRolePermission,
   upsertPermission,
@@ -20,6 +19,94 @@ type ModuleIamRepository = Pick<
   InstanceRegistryRepository,
   'assignModule' | 'revokeModule' | 'syncAssignedModuleIam' | 'syncProtectedSystemRolePermissions'
 >;
+
+const emptyReconcileResult = (): PermissionCatalogReconcileResult => ({
+  permissionsInserted: 0,
+  permissionsUpdated: 0,
+  permissionsUnchanged: 0,
+  grantsInserted: 0,
+  grantsUnchanged: 0,
+});
+
+const recordPermissionOutcome = (
+  result: PermissionCatalogReconcileResult,
+  outcome: 'inserted' | 'updated' | 'unchanged'
+): PermissionCatalogReconcileResult => ({
+  ...result,
+  permissionsInserted: result.permissionsInserted + (outcome === 'inserted' ? 1 : 0),
+  permissionsUpdated: result.permissionsUpdated + (outcome === 'updated' ? 1 : 0),
+  permissionsUnchanged: result.permissionsUnchanged + (outcome === 'unchanged' ? 1 : 0),
+});
+
+const createSyncAssignedModuleIam = (
+  executor: SqlExecutor
+): InstanceRegistryRepository['syncAssignedModuleIam'] =>
+  async ({ instanceId, managedModuleIds, contracts }) => {
+    const permissions = buildManagedPermissions(contracts);
+    const rolePermissionPairs = buildRolePermissionPairs(contracts);
+    if (
+      permissions.length === 0 &&
+      rolePermissionPairs.length === 0 &&
+      managedModuleIds.length === 0
+    ) {
+      return emptyReconcileResult();
+    }
+    let reconcileResult = emptyReconcileResult();
+    for (const permission of permissions) {
+      reconcileResult = recordPermissionOutcome(
+        reconcileResult,
+        await upsertPermission(executor, instanceId, permission)
+      );
+    }
+    for (const pair of rolePermissionPairs) {
+      const inserted = await insertModuleRolePermission(executor, instanceId, pair);
+      reconcileResult = {
+        ...reconcileResult,
+        grantsInserted: reconcileResult.grantsInserted + (inserted ? 1 : 0),
+        grantsUnchanged: reconcileResult.grantsUnchanged + (inserted ? 0 : 1),
+      };
+    }
+    await cleanupModuleRolePermissions(
+      executor,
+      instanceId,
+      managedModuleIds,
+      contracts.map((contract) => contract.moduleId)
+    );
+    return reconcileResult;
+  };
+
+const createSyncProtectedSystemRolePermissions = (
+  executor: SqlExecutor
+): InstanceRegistryRepository['syncProtectedSystemRolePermissions'] =>
+  async ({ instanceId, role }) => {
+    const permissions = [
+      ...new Map(role.permissions.map((permission) => [permission.key, permission])).values(),
+    ].sort((left, right) => compareAlphabetically(left.key, right.key));
+    let reconcileResult = emptyReconcileResult();
+    for (const permission of permissions) {
+      reconcileResult = recordPermissionOutcome(
+        reconcileResult,
+        await upsertPermission(executor, instanceId, permission)
+      );
+    }
+    await upsertProtectedRole(executor, instanceId, role);
+    for (const permissionKey of [...new Set(role.grantPermissionKeys)].sort(
+      compareAlphabetically
+    )) {
+      const inserted = await insertProtectedRolePermission(
+        executor,
+        instanceId,
+        role.roleKey,
+        permissionKey
+      );
+      reconcileResult = {
+        ...reconcileResult,
+        grantsInserted: reconcileResult.grantsInserted + (inserted ? 1 : 0),
+        grantsUnchanged: reconcileResult.grantsUnchanged + (inserted ? 0 : 1),
+      };
+    }
+    return reconcileResult;
+  };
 
 export const createModuleIamRepository = (executor: SqlExecutor): ModuleIamRepository => ({
   async assignModule(instanceId, moduleId) {
@@ -50,33 +137,6 @@ WHERE instance_id = $1
     return result.rowCount > 0;
   },
 
-  async syncAssignedModuleIam({ instanceId, managedModuleIds, contracts }) {
-    const permissionKeys = buildManagedPermissionKeys(contracts);
-    const rolePermissionPairs = buildRolePermissionPairs(contracts);
-    for (const permissionKey of permissionKeys) {
-      await upsertPermission(executor, instanceId, permissionKey, `Modulberechtigung ${permissionKey}`);
-    }
-    for (const pair of rolePermissionPairs) {
-      await insertModuleRolePermission(executor, instanceId, pair);
-    }
-    await cleanupModuleRolePermissions(executor, instanceId, managedModuleIds, rolePermissionPairs);
-    await cleanupModulePermissions(executor, instanceId, managedModuleIds, permissionKeys);
-  },
-
-  async syncProtectedSystemRolePermissions({ instanceId, role }) {
-    const permissionKeys = Array.from(new Set(role.permissionKeys)).sort(compareAlphabetically);
-    for (const permissionKey of permissionKeys) {
-      await upsertPermission(
-        executor,
-        instanceId,
-        permissionKey,
-        `Geschützte Systemrolle ${role.roleKey}: ${permissionKey}`
-      );
-    }
-    await upsertProtectedRole(executor, instanceId, role);
-    await cleanupProtectedRolePermissions(executor, instanceId, role.roleKey, permissionKeys);
-    for (const permissionKey of permissionKeys) {
-      await insertProtectedRolePermission(executor, instanceId, role.roleKey, permissionKey);
-    }
-  },
+  syncAssignedModuleIam: createSyncAssignedModuleIam(executor),
+  syncProtectedSystemRolePermissions: createSyncProtectedSystemRolePermissions(executor),
 });

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { getPersonaSeed, iamSeedPlan, rootOnlySeedPermissionKeys, tenantBootstrapPermissionKeys } from './seed-plan';
+import {
+  getPersonaSeed,
+  iamSeedPlan,
+  resolveFixturePermissionId,
+  rootOnlySeedPermissionKeys,
+  tenantBootstrapPermissionKeys,
+} from './seed-plan';
+import type { PermissionKey } from './types';
 
 describe('iam seed plan', () => {
   it('contains exactly one tenant bootstrap persona', () => {
@@ -79,5 +86,11 @@ describe('iam seed plan', () => {
 
   it('throws for unknown persona keys', () => {
     expect(() => getPersonaSeed('unknown' as never)).toThrowError(/Unknown persona key: unknown/);
+  });
+
+  it('fails clearly when a catalog permission has no stable fixture ID', () => {
+    expect(() => resolveFixturePermissionId(new Map(), 'iam.user.read' as PermissionKey)).toThrowError(
+      /Missing fixture permission ID: iam\.user\.read/
+    );
   });
 });

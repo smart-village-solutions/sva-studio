@@ -8,6 +8,7 @@ import type {
   InstanceConfirmationChallengeRecord,
   InstanceModuleIamContractRecord,
   InstanceRegistryRepository,
+  PermissionCatalogReconcileResult,
   ProtectedSystemRolePermissionBundleRecord,
   PrepareInstanceConfirmationChallengeInput,
 } from './repository-contract.js';
@@ -23,6 +24,7 @@ export type {
   InstanceConfirmationChallengeRecord,
   InstanceModuleIamContractRecord,
   InstanceRegistryRepository,
+  PermissionCatalogReconcileResult,
   ProtectedSystemRolePermissionBundleRecord,
   PrepareInstanceConfirmationChallengeInput,
 };

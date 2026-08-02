@@ -19,8 +19,8 @@ Dieses Dokument ist die einzige normative Bedienanleitung für reguläre Studio-
 
 ## Umgebungsvertrag
 
-| Umgebung   | Stack            | Root-URL                                   | Auslösung                                                         | Modi                                         | Backup                             |
-| ---------- | ---------------- | ------------------------------------------ | ----------------------------------------------------------------- | -------------------------------------------- | ---------------------------------- |
+| Umgebung | Stack | Root-URL | Auslösung | Modi | Backup |
+| --- | --- | --- | --- | --- | --- |
 | Dev | `studio-dev` | `https://studio-dev.smart-village.app` | automatisch nach erfolgreichem Build auf `main` | `migration_mode=auto`, `bootstrap_mode=auto` | kein Promote-Backup |
 | Staging | `studio-staging` | `https://studio-staging.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `staging` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
 | Production | `studio` | `https://studio.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `prod` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
@@ -81,6 +81,8 @@ Die Reihenfolge ist unveränderlich; nicht angeforderte One-shot-Jobs und deren 
 8. App-Stack `studio-staging` aktualisieren.
 9. Runtime-Smoke für Root-Host, alle expliziten Tenant-Hosts, deren konkrete TLS-Zertifikate und einen unbekannten Host sowie den Live-Digest verifizieren.
 10. Redigierte Staging-Paritätsevidenz für genau diesen Digest schreiben.
+
+Der Bootstrap-Reconcile liest den im Release-Image kompilierten kanonischen Permission-Katalog. Für jeden Tenant aus `SVA_ALLOWED_INSTANCE_IDS` legt er fehlende aktive Core-Permissions sowie Permissions der bereits zugewiesenen Module an und ergänzt die standardmäßig vorgesehenen `system_admin`-Grants. Der Pfad ist additiv: Er löscht weder Permission-Definitionen noch Grants aufgrund einer Katalogentfernung. Die erfolgreiche Ausführung erzeugt pro Tenant das Audit-Ereignis `instance_permission_catalog_reconciled`; dessen Zähler sind Bestandteil der Rollout-Evidenz.
 
 Nur ein insgesamt erfolgreicher mutierender Staging-Lauf erzeugt die für eine mutierende Production-Promotion gültige Paritätsevidenz.
 

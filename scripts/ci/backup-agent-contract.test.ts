@@ -38,6 +38,8 @@ describe('backup agent contract', () => {
     expect(isValidBackupRequest(wasteRequest, new Date('2026-07-30T09:50:00.000Z'))).toBe(true);
     expect(isValidBackupRequest({ ...stagingRequest, database: 'other' }, new Date('2026-07-30T09:50:00.000Z'))).toBe(false);
     expect(signBackupRequest(wasteRequest, 'key')).not.toBe(signBackupRequest(stagingRequest, 'key'));
+    expect(isValidBackupRequest({ ...wasteRequest, tenantInstanceId: 'bb-prignitz' }, new Date('2026-07-30T09:50:00.000Z'))).toBe(true);
+    expect(isValidBackupRequest({ ...stagingRequest, tenantInstanceId: 'bb-prignitz' }, new Date('2026-07-30T09:50:00.000Z'))).toBe(false);
   });
 
   it('requires production maintenance evidence and a future expiry', () => {

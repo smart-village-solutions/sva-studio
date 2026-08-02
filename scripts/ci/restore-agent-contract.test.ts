@@ -70,12 +70,14 @@ describe('restore agent contract', () => {
     const wasteRequest: RestoreRequest = {
       ...request,
       database: 'waste',
-      sourceObjectKey: `staging/waste/2026-08-01/${'a'.repeat(64)}/gha-12345678-waste.dump`,
+      tenantInstanceId: 'bb-prignitz',
+      sourceObjectKey: `staging/waste/bb-prignitz/2026-08-01/${'a'.repeat(64)}/gha-12345678-waste.dump`,
     };
     expect(isValidRestoreRequest(wasteRequest, now)).toBe(true);
     expect(
       isValidRestoreRequest({ ...wasteRequest, sourceObjectKey: request.sourceObjectKey }, now)
     ).toBe(false);
     expect(signRestoreRequest(wasteRequest, 'secret')).not.toBe(signRestoreRequest(request, 'secret'));
+    expect(isValidRestoreRequest({ ...wasteRequest, tenantInstanceId: 'bb-guben' }, now)).toBe(false);
   });
 });

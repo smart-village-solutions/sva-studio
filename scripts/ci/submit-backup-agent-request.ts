@@ -27,6 +27,7 @@ export const buildBackupAgentRequest = (input: {
   requestId: string;
   maintenanceWindowReference?: string;
   database?: BackupDatabase;
+  tenantInstanceId?: string;
 }): BackupRequest => ({
   version: 1,
   action: 'backup-and-verify',
@@ -36,6 +37,7 @@ export const buildBackupAgentRequest = (input: {
   expiresAt: new Date(input.now.getTime() + 10 * 60_000).toISOString(),
   ...(input.maintenanceWindowReference ? { maintenanceWindowReference: input.maintenanceWindowReference } : {}),
   ...(input.database && input.database !== 'studio' ? { database: input.database } : {}),
+  ...(input.tenantInstanceId ? { tenantInstanceId: input.tenantInstanceId } : {}),
 });
 
 const requestOidcToken = async () => {
@@ -78,8 +80,9 @@ const waitForResult = async (target: BackupEnvironment, request: BackupRequest) 
         status?: unknown;
         steps?: unknown;
         database?: unknown;
+        tenantInstanceId?: unknown;
       };
-      if (result.requestId !== request.requestId || result.environment !== target || result.deployImageDigest !== request.deployImageDigest || result.database !== (request.database ?? 'studio')) {
+      if (result.requestId !== request.requestId || result.environment !== target || result.deployImageDigest !== request.deployImageDigest || result.database !== (request.database ?? 'studio') || (request.tenantInstanceId !== undefined && result.tenantInstanceId !== request.tenantInstanceId)) {
         throw new Error('Das Backup-Ergebnis stimmt nicht mit dem Auftrag überein.');
       }
       if (
@@ -110,6 +113,7 @@ const main = async () => {
     requestId: `gha-${required(process.env.GITHUB_RUN_ID, 'GITHUB_RUN_ID')}-${required(process.env.GITHUB_RUN_ATTEMPT, 'GITHUB_RUN_ATTEMPT')}${database === 'waste' ? '-waste' : ''}`,
     now: new Date(),
     database,
+    ...(database === 'waste' && process.argv[4] ? { tenantInstanceId: process.argv[4] } : {}),
     ...(target === 'prod' ? { maintenanceWindowReference: required(process.env.MAINTENANCE_WINDOW_REFERENCE, 'MAINTENANCE_WINDOW_REFERENCE') } : {}),
   });
   if (!isValidBackupRequest(request)) throw new Error('Der erzeugte Backup-Auftrag verletzt den Vertragscheck.');

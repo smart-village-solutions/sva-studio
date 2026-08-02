@@ -8,10 +8,12 @@ const workflow = readFileSync(
 );
 
 describe('Waste database restore drill workflow', () => {
-  it('binds source objects and the agent request to Waste', () => {
-    expect(workflow).toContain('^${ENVIRONMENT}/waste/');
+  it('binds source objects and the agent request to the exact Waste tenant', () => {
+    expect(workflow).toContain('^${ENVIRONMENT}/waste/${TENANT_INSTANCE_ID}/');
+    expect(workflow).toContain('WASTE_TENANT_INSTANCE_ID: ${{ inputs.tenant_instance_id }}');
     expect(workflow).toContain('submit-restore-agent-request.ts "${{ inputs.environment }}" waste');
-    expect(workflow).toContain('targetDatabase:"sva_waste_restore_drill"');
+    expect(workflow).toContain('tenantInstanceId:$tenantInstanceId');
+    expect(workflow).not.toContain('targetDatabase:');
     expect(workflow).not.toContain('quantum-cli stacks deploy');
   });
 

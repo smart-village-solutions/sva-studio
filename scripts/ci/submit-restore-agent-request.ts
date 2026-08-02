@@ -32,6 +32,7 @@ export const buildRestoreAgentRequest = (input: {
   sourceObjectKey: string;
   sourceSha256: string;
   database?: BackupDatabase;
+  tenantInstanceId?: string;
 }): RestoreRequest => ({
   version: 1,
   action: 'restore-and-verify-v1',
@@ -42,6 +43,7 @@ export const buildRestoreAgentRequest = (input: {
   sourceObjectKey: input.sourceObjectKey,
   sourceSha256: input.sourceSha256,
   ...(input.database && input.database !== 'studio' ? { database: input.database } : {}),
+  ...(input.tenantInstanceId ? { tenantInstanceId: input.tenantInstanceId } : {}),
 });
 
 const requestOidcToken = async () => {
@@ -110,6 +112,7 @@ const waitForRestoreResult = async (
         result.requestId !== request.requestId ||
         result.environment !== target ||
         result.database !== (request.database ?? 'studio') ||
+        result.tenantInstanceId !== request.tenantInstanceId ||
         result.sourceObjectKey !== request.sourceObjectKey ||
         result.sourceSha256 !== request.sourceSha256
       )
@@ -156,6 +159,9 @@ const main = async () => {
     sourceObjectKey: required(process.env.RESTORE_SOURCE_OBJECT_KEY, 'RESTORE_SOURCE_OBJECT_KEY'),
     sourceSha256: required(process.env.RESTORE_SOURCE_SHA256, 'RESTORE_SOURCE_SHA256'),
     database,
+    ...(database === 'waste'
+      ? { tenantInstanceId: required(process.env.WASTE_TENANT_INSTANCE_ID, 'WASTE_TENANT_INSTANCE_ID') }
+      : {}),
   });
   if (!isValidRestoreRequest(request))
     throw new Error('Der erzeugte Restore-Auftrag verletzt den Vertragscheck.');

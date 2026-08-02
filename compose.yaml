@@ -4,10 +4,10 @@
 # Profil fuer den Stack "studio" auf Endpoint "sva".
 # Nur App + Redis + Postgres. Monitoring wird separat betrieben.
 #
-# Sensible Werte werden fuer studio bewusst als Stack-Variablen in Portainer gesetzt.
-# Dieses Profil nutzt aktuell absichtlich keine Swarm-Secrets; die Variablen sind
-# damit im Swarm-/Portainer-Kontext kein hartes Secret-Handling und muessen wie
-# kompromittierbare Deploy-Zugangsdaten behandelt und bei Bedarf rotiert werden.
+# Die meisten historischen Werte werden weiterhin als Portainer-Stack-Variablen
+# gesetzt. Das clusterweit privilegierte Waste-Provisionierer-Passwort ist davon
+# ausgenommen und wird ausschließlich als externes, versioniertes Swarm-Secret
+# in den vorhandenen Provisioner-Pfad gemountet.
 # ---------------------------------------------------------------------------
 services:
   app:

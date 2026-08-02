@@ -132,4 +132,63 @@ describe('waste tenant database provisioner', () => {
       })
     );
   });
+
+  it('activates additional tenants with the same deployment contract and isolated databases', async () => {
+    const statements: string[] = [];
+    const interfaces: Array<{ instanceId: string; enabled: boolean }> = [];
+    const provisionerUrl = vi.fn(() => 'postgresql://provisioner:admin@postgres:5432/sva_studio');
+    let passwordIndex = 0;
+    const operation = createProvisionTenantDatabaseOperation({
+      getProvisionerDatabaseUrl: provisionerUrl,
+      createPassword: () => `tenant-secret-${String(passwordIndex += 1)}`,
+      protectSecret: (plaintext) => `encrypted:${plaintext}`,
+      claimProvisioning: vi.fn(async () => ({ status: 'provisioning' } as never)),
+      completeProvisioning: vi.fn(async (input) => ({ ...input, status: 'ready' } as never)),
+      failProvisioning: vi.fn(async () => null),
+      loadManagedInterface: vi.fn(async () => null),
+      saveManagedInterface: vi.fn(async (record) => {
+        interfaces.push({ instanceId: record.instanceId, enabled: record.enabled });
+      }),
+      createPool: (url) => ({
+        connect: async () => ({
+          query: async <TRow>(text: string) => {
+            statements.push(`${url}\n${text}`);
+            if (text.includes('FROM pg_roles')) return { rowCount: 0, rows: [] as TRow[] };
+            if (text.includes('FROM pg_database')) {
+              return { rowCount: 1, rows: [{ exists: false }] as TRow[] };
+            }
+            if (text.includes('information_schema.tables')) {
+              return {
+                rowCount: requiredWasteTables.length,
+                rows: requiredWasteTables.map((table_name) => ({ table_name })) as TRow[],
+              };
+            }
+            if (text.includes('has_table_privilege')) {
+              return {
+                rowCount: 1,
+                rows: [{ can_select: true, can_insert: url.includes('_app:'), can_insert_subscription: true }] as TRow[],
+              };
+            }
+            return { rowCount: 0, rows: [] as TRow[] };
+          },
+          release: vi.fn(),
+        }),
+        end: vi.fn(async () => undefined),
+      }),
+    });
+
+    await operation('bb-prignitz', { operation: 'provision-tenant-database', desiredGeneration: 1 }, { jobId: '00000000-0000-4000-8000-000000000011' });
+    await operation('bb-guben', { operation: 'provision-tenant-database', desiredGeneration: 1 }, { jobId: '00000000-0000-4000-8000-000000000012' });
+
+    expect(provisionerUrl).toHaveBeenCalledTimes(2);
+    expect(interfaces.filter(({ enabled }) => enabled)).toEqual([
+      { instanceId: 'bb-prignitz', enabled: true },
+      { instanceId: 'bb-guben', enabled: true },
+    ]);
+    const createdDatabases = statements.filter((statement) => statement.includes('CREATE DATABASE'));
+    expect(createdDatabases).toHaveLength(2);
+    expect(createdDatabases[0]).not.toBe(createdDatabases[1]);
+    expect(createdDatabases.join('\n')).toContain(deriveWasteTenantDatabaseNames('bb-prignitz').database);
+    expect(createdDatabases.join('\n')).toContain(deriveWasteTenantDatabaseNames('bb-guben').database);
+  });
 });

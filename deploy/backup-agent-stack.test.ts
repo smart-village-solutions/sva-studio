@@ -17,7 +17,7 @@ describe('backup agent stack', () => {
     expect(source).not.toContain('name: studio-prod_default');
   });
 
-  it('uses application credentials for backups and dedicated principals for restores', () => {
+  it('uses central inventory credentials and the existing protected provisioner lane', () => {
     expect(source).toContain('BACKUP_STAGING_POSTGRES_USER: sva');
     expect(source).toContain('BACKUP_PROD_POSTGRES_USER: sva');
     expect(source).toContain('BACKUP_STAGING_POSTGRES_DB: sva_studio');
@@ -33,15 +33,15 @@ describe('backup agent stack', () => {
     expect(source).toContain(
       'RESTORE_PROD_POSTGRES_PASSWORD_FILE: /run/secrets/restore_prod_postgres_password'
     );
-    expect(source).toContain('BACKUP_STAGING_WASTE_POSTGRES_DB: sva_waste');
-    expect(source).toContain('BACKUP_PROD_WASTE_POSTGRES_USER: sva_waste_migrator');
-    expect(source).toContain('RESTORE_STAGING_WASTE_POSTGRES_DB: sva_waste_restore_drill');
-    expect(source).toContain('RESTORE_PROD_WASTE_POSTGRES_DB: sva_waste_restore_drill');
+    expect(source).toContain('BACKUP_STAGING_WASTE_PROVISIONER_USER: sva_waste_provisioner');
+    expect(source).toContain('BACKUP_PROD_WASTE_PROVISIONER_USER: sva_waste_provisioner');
     expect(source).toContain(
-      'RESTORE_PROD_WASTE_POSTGRES_PASSWORD_FILE: /run/secrets/restore_prod_waste_postgres_password'
+      'BACKUP_PROD_WASTE_PROVISIONER_PASSWORD_FILE: /run/secrets/prod_waste_database_provisioner_password'
     );
-    expect(source).toContain('backup_staging_waste_postgres_password:');
-    expect(source).toContain('restore_prod_waste_postgres_password:');
+    expect(source).toContain('source: studio_staging_waste_database_provisioner_password_v1');
+    expect(source).toContain('source: studio_waste_database_provisioner_password_v1');
+    expect(source).not.toContain('BACKUP_PROD_WASTE_POSTGRES_DB');
+    expect(source).not.toContain('RESTORE_PROD_WASTE_POSTGRES_DB');
   });
 
   it('routes only the exact POST endpoint on the existing hosts', () => {

@@ -56,6 +56,8 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `Promote` muss Git-Änderungsbereich, Executor-Revision, Image-Digest, OCI-Revision und die unabhängigen Migration-/Bootstrap-Gates vor jeder Mutation prüfen.
   - Staging und Production dürfen nur `assert-none` oder `run` verwenden; `auto` bleibt auf den automatischen Dev-Promote begrenzt.
   - Vor jeder Staging-/Production-Migration oder jedem Bootstrap muss das umgebungsgebundene PostgreSQL-Backup erfolgreich und das MinIO-Objekt unabhängig verifiziert sein.
+  - Bei aktiviertem Waste-Backup muss das Registry-Inventar vollständig verarbeitet sein; jeder `ready`- oder `disabled`-Tenant erhält ein verifiziertes Dump-Artefakt und tenantgenaue Evidenz.
+  - Ein Waste-Restore muss vor jeder Mutation Instanz-ID, Registry-Datenbank und abgeleitete Drill-Datenbank nachweisen; ein fremdes Objektpräfix wird fail-closed abgelehnt.
   - Mutierende Production-Läufe müssen Environment-Freigabe, Wartungsfenster und erfolgreiche mutierende Staging-Parität exakt desselben Digests nachweisen.
   - Migration, Bootstrap, Postconditions, App-Deploy, Runtime-Smoke und Digest-Prüfung müssen fail-closed in dieser Reihenfolge laufen.
   - Öffentliche Smoke-Probes gegen `/health/live`, `/health/ready`, Root-Login und alle aktiven Tenant-Logins dürfen nach bis zu fünf Minuten Swarm-Konvergenz keinen stabilen Fehler liefern.

@@ -7,11 +7,14 @@ import {
   canonicalRestoreRequest,
   buildRuntimePrincipalReconciliationSql,
   buildWasteRuntimePrincipalReconciliationSql,
+  deriveWasteDatabaseName,
+  deriveWasteInventoryTarget,
   controlKeysFor,
   extractAppliedGooseVersion,
   isHistoricalSchemaRestoreCompatible,
   isRestoreSqlLineSupported,
   minioAwsCompatibilityEnv,
+  parseWasteInventory,
   restoreControlKeysFor,
   runtimePrincipalProbeSql,
   restoreSchemaResetSql,
@@ -26,6 +29,7 @@ import {
   validRequest,
   validRestoreRequest,
   validRequestHost,
+  validTenantInstanceId,
   waitForSessionDrain,
   wasteArchiveSchemaCompatible,
   wasteRestoreSchemaResetSql,
@@ -177,6 +181,45 @@ describe('backup agent runtime contract', () => {
     expect(validRequest({ ...request, database: 'other' }, now)).toBe(false);
     expect(canonicalRequest(request)).not.toContain('database');
     expect(canonicalRequest({ ...request, database: 'waste' })).toContain('"database":"waste"');
+    expect(
+      validRequest({ ...request, database: 'waste', tenantInstanceId: 'bb-prignitz' }, now)
+    ).toBe(true);
+    expect(
+      validRequest({ ...request, tenantInstanceId: 'bb-prignitz' }, now)
+    ).toBe(false);
+  });
+
+  it('derives dynamic Waste targets only from validated central inventory', () => {
+    const inventory = { instanceId: 'bb-prignitz', databaseName: 'sva_w_bb_prignitz_4fc528d5be47_db', status: 'ready' };
+    const backup = deriveWasteInventoryTarget('prod', inventory);
+    const restore = deriveWasteInventoryTarget('prod', inventory, 'restore');
+    expect(backup).toMatchObject({
+      tenantInstanceId: 'bb-prignitz',
+      postgresDatabase: inventory.databaseName,
+      schemaOwner: 'sva_w_bb_prignitz_4fc528d5be47_owner',
+      runtimeUser: 'sva_w_bb_prignitz_4fc528d5be47_app',
+      publicRuntimeUser: 'sva_w_bb_prignitz_4fc528d5be47_public',
+      prefix: 'prod/waste/bb-prignitz',
+    });
+    expect(restore.postgresDatabase).toBe(`${inventory.databaseName}_restore`);
+    expect(validTenantInstanceId('bb-prignitz')).toBe(true);
+    expect(validTenantInstanceId('../bb-prignitz')).toBe(false);
+    expect(deriveWasteDatabaseName('bb-prignitz')).toBe(inventory.databaseName);
+    expect(() => deriveWasteInventoryTarget('prod', { ...inventory, databaseName: 'foreign' })).toThrow(
+      'waste_inventory_target_invalid'
+    );
+  });
+
+  it('rejects malformed or non-retained Waste inventory rows', () => {
+    expect(parseWasteInventory(JSON.stringify([
+      { instanceId: 'bb-prignitz', databaseName: 'sva_w_bb_prignitz_4fc528d5be47_db', status: 'disabled' },
+    ]))).toHaveLength(1);
+    expect(() => parseWasteInventory(JSON.stringify([
+      { instanceId: 'bb-prignitz', databaseName: 'postgres', status: 'ready' },
+    ]))).toThrow('waste_inventory_invalid');
+    expect(() => parseWasteInventory(JSON.stringify([
+      { instanceId: 'bb-prignitz', databaseName: 'sva_w_bb_prignitz_4fc528d5be47_db', status: 'failed' },
+    ]))).toThrow('waste_inventory_invalid');
   });
 
   it('accepts only the dedicated host of the requested environment', () => {
@@ -196,31 +239,37 @@ describe('backup agent runtime contract', () => {
     expect(targets.prod.runtimeUser).toBe('sva_app');
   });
 
-  it('derives the fixed Waste database, roles, prefix and secret references', () => {
-    const target = resolveDatabaseTarget('prod', 'waste');
+  it('rejects static Waste targets so they can only come from central inventory', () => {
+    expect(() => resolveDatabaseTarget('prod', 'waste')).toThrow('database_target_invalid');
+    const target = deriveWasteInventoryTarget('prod', {
+      instanceId: 'bb-prignitz',
+      databaseName: 'sva_w_bb_prignitz_4fc528d5be47_db',
+      status: 'ready',
+    });
     expect(target).toMatchObject({
       database: 'waste',
-      postgresDatabase: 'sva_waste',
-      postgresUser: 'sva_waste_migrator',
-      postgresPasswordFile: 'BACKUP_PROD_WASTE_POSTGRES_PASSWORD_FILE',
-      restorePasswordFile: 'RESTORE_PROD_WASTE_POSTGRES_PASSWORD_FILE',
-      prefix: 'prod/waste',
-      schemaOwner: 'sva_waste_owner',
-      runtimeUser: 'sva_waste_app',
-      publicRuntimeUser: 'sva_waste_public_app',
+      postgresDatabase: 'sva_w_bb_prignitz_4fc528d5be47_db',
+      postgresUser: 'sva_waste_provisioner',
+      postgresPasswordFile: 'BACKUP_PROD_WASTE_PROVISIONER_PASSWORD_FILE',
+      restorePasswordFile: 'BACKUP_PROD_WASTE_PROVISIONER_PASSWORD_FILE',
+      prefix: 'prod/waste/bb-prignitz',
+      schemaOwner: 'sva_w_bb_prignitz_4fc528d5be47_owner',
+      runtimeUser: 'sva_w_bb_prignitz_4fc528d5be47_app',
+      publicRuntimeUser: 'sva_w_bb_prignitz_4fc528d5be47_public',
     });
     expect(() => resolveDatabaseTarget('prod', 'attacker')).toThrow('database_target_invalid');
-    expect(resolveDatabaseTarget('prod', 'waste', 'restore').postgresDatabase).toBe(
-      'sva_waste_restore_drill'
-    );
   });
 
   it('dumps Waste through the NOLOGIN owner role without changing Studio dump arguments', () => {
-    const wasteArgs = backupDumpArgs(resolveDatabaseTarget('prod', 'waste'), '/tmp/waste.dump');
+    const wasteArgs = backupDumpArgs(deriveWasteInventoryTarget('prod', {
+      instanceId: 'bb-prignitz',
+      databaseName: 'sva_w_bb_prignitz_4fc528d5be47_db',
+      status: 'ready',
+    }), '/tmp/waste.dump');
     const studioArgs = backupDumpArgs(resolveDatabaseTarget('prod', 'studio'), '/tmp/studio.dump');
-    expect(wasteArgs).toContain('sva_waste');
-    expect(wasteArgs).toContain('sva_waste_migrator');
-    expect(wasteArgs).toContain('sva_waste_owner');
+    expect(wasteArgs).toContain('sva_w_bb_prignitz_4fc528d5be47_db');
+    expect(wasteArgs).toContain('sva_waste_provisioner');
+    expect(wasteArgs).toContain('sva_w_bb_prignitz_4fc528d5be47_owner');
     expect(wasteArgs).toContain('--role');
     expect(studioArgs).not.toContain('--role');
   });
@@ -246,17 +295,21 @@ describe('backup agent runtime contract', () => {
     expect(sql).not.toContain('PASSWORD');
   });
 
-  it('builds fixed Waste runtime grants and privilege probes', () => {
-    const target = resolveDatabaseTarget('prod', 'waste');
+  it('builds tenant-bound Waste runtime grants and privilege probes', () => {
+    const target = deriveWasteInventoryTarget('prod', {
+      instanceId: 'bb-prignitz',
+      databaseName: 'sva_w_bb_prignitz_4fc528d5be47_db',
+      status: 'ready',
+    });
     const sql = buildWasteRuntimePrincipalReconciliationSql(target);
     const probe = wasteRuntimePrincipalProbeSql(target);
 
-    expect(sql).toContain('SET ROLE "sva_waste_owner";');
-    expect(sql).toContain('GRANT CONNECT ON DATABASE "sva_waste"');
+    expect(sql).toContain('SET ROLE "sva_w_bb_prignitz_4fc528d5be47_owner";');
+    expect(sql).toContain('GRANT CONNECT ON DATABASE "sva_w_bb_prignitz_4fc528d5be47_db"');
     expect(sql).toContain('public.waste_email_reminder_outbox');
     expect(sql).not.toContain('PASSWORD');
-    expect(probe).toContain("'sva_waste_app'");
-    expect(probe).toContain("'sva_waste_public_app'");
+    expect(probe).toContain("'sva_w_bb_prignitz_4fc528d5be47_app'");
+    expect(probe).toContain("'sva_w_bb_prignitz_4fc528d5be47_public'");
     expect(probe).toContain("'publicRuntimeReminderWrites'");
   });
 
@@ -331,7 +384,8 @@ describe('backup agent runtime contract', () => {
         {
           ...restore,
           database: 'waste',
-          sourceObjectKey: `staging/waste/2026-07-30/${'a'.repeat(64)}/backup.dump`,
+          tenantInstanceId: 'bb-prignitz',
+          sourceObjectKey: `staging/waste/bb-prignitz/2026-07-30/${'a'.repeat(64)}/backup.dump`,
         },
         Date.parse('2026-07-30T10:00:00.000Z')
       )

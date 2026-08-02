@@ -147,7 +147,8 @@ Abhängigkeiten des aktuellen Systems.
 - derselbe Hostpfad startet auch den dedizierten Job `waste-management.sync-waste-types`; die eigentliche Mainserver-Schreiboperation bleibt dahinter in der Studio-Runtime und `@sva/sva-mainserver`
 - `@sva/server-runtime` löst die aktive instanzbezogene Waste-Datenquelle serverseitig auf und kapselt Secret-Nutzung sowie Connection-Checks
 - `@sva/data-repositories` hält sowohl die zentrale Governance-Persistenz der Waste-Datenquelle im Studio-Postgres als auch die hostseitigen Repositories gegen die instanzbezogene `waste_*`-Tabellenfamilie
-- die fachlichen Tabellen liegen in der separaten Datenbank `sva_waste`; die generische Registry-Schnittstelle `postgresql` enthält eine verschlüsselte `databaseUrl` und ein optionales Schema, während der weiterhin verfügbare Typ `supabase` nicht mehr vom Waste-Modul benötigt wird
+- jede Studio-Instanz erhält eine eigene, deterministisch benannte Waste-Datenbank; das pluginverwaltete `postgresql`-Interface enthält tenantgebundene, verschlüsselte Runtime-URLs und bleibt aus der allgemeinen Interface-UI ausgeblendet, während der weiterhin verfügbare Typ `supabase` nicht mehr vom Waste-Modul benötigt wird
+- Modulzuweisung und erneute Aktivierung enqueueen den namespaced Provisionierungsjob im vorhandenen Plugin-Operations-Pfad; nur die privilegierte Lane im vorhandenen Provisioner-Service darf Datenbanken und Rollen anlegen
 - `@sva/data` bleibt dabei ausdrücklich ohne neue primäre Waste-SQL- oder Orchestrierungs-Ownership
 - die Host-Fassade erzeugt keine persistenten Waste-PDF-Artefakte mehr; PDF-Exporte werden ad hoc in der öffentlichen Web-App ausgelöst
 
@@ -304,7 +305,7 @@ Abhängigkeiten des aktuellen Systems.
 - persistiert Pending- und aktive Reminder-Abos sowie DOI-Aufträge über gemeinsame Waste-Repositories, ohne selbst technische Mail-Credentials zu kennen
 - wird betrieblich über ein dediziertes Image, einen dedizierten Portainer-Stack `web-waste-calendar` und einen separaten Git-Tag-Releasepfad `waste-web-vX.Y.Z` ausgerollt, ohne den normalen Studio-Releasevertrag mitzubenutzen
 - liest explizite Tour-Einsätze mit mehreren Abholorten direkt aus der Waste-Fachdatenbank, löst übergeordnete Abholorte hierarchisch auf und übernimmt Fraktionen ausschließlich aus der normalen Tourzuordnung
-- verwendet für PostgreSQL die Rolle `sva_waste_public_app` mit Leserechten und eng begrenzten Schreibrechten auf Reminder-, Double-Opt-In-, Abmelde- und Outbox-Tabellen
+- verwendet tenantgenau die abgeleitete Public-Rolle mit Leserechten und eng begrenzten Schreibrechten auf Reminder-, Double-Opt-In-, Abmelde- und Outbox-Tabellen
 
 17. Waste-Reminder-Operationspfad (`apps/sva-studio-react` + `packages/waste-management-runtime`)
 
@@ -665,3 +666,5 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 ## Zentraler Backup-Agent
 
 Der `studio-backup-agent` ist ein eigenständiger operativer Baustein außerhalb der App-Stacks. Sein HTTP-Port wird nicht veröffentlicht; Traefik leitet ausschließlich die beiden exakten Backup-Request-Pfade an ihn weiter. Der Baustein besitzt getrennte Staging-/Production-Secrets und leitet Datenbankhost, Bucket und Objektpräfix ausschließlich aus der validierten Zielumgebung ab.
+
+Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provisioning`, sichert alle `ready`- und `disabled`-Datenbanken unter `<umgebung>/waste/<instance_id>/` und bindet Restores zusätzlich an die signierte Instanz-ID. Freie Datenbank- oder Rollennamen sind kein Bestandteil des Request-Vertrags.

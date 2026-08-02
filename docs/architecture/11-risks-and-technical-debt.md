@@ -542,4 +542,10 @@ Referenzen:
 - Risiko: Ein veralteter Dump oder parallele Waste-Jobs erzeugen einen inkonsistenten Zielstand. Maßnahme: vollständiger Stopp von Studio, Public-Waste und Worker sowie expliziter Job- und Session-Drain vor dem finalen Dump.
 - Risiko: Owner- und Supabase-spezifische Grants werden unkontrolliert übernommen. Maßnahme: Restore ohne Owner und ACL, danach explizite Rollen- und Grant-Normalisierung.
 - Risiko: Ein später Konfigurations-Rollback verliert neue Daten. Maßnahme: verlustfreies Rollback nur vor Freigabe der ersten Zielschreiboperation; danach erneute Datenmigration.
-- Restrisiko: Die Supabase-Quelle bleibt nach dem Cutover nur 14 Tage als schreibgeschützte Vergleichsquelle erhalten. Backup- und Restore-Nachweis für `sva_waste` sind deshalb Freigabekriterien.
+- Restrisiko: Die Supabase-Quelle bleibt nach dem Cutover nur 14 Tage als schreibgeschützte Vergleichsquelle erhalten. Backup- und Restore-Nachweis für die registrierte `bb-prignitz`-Zieldatenbank sind deshalb Freigabekriterien.
+
+### Fortschreibung 2026-08: Dynamische Waste-Tenant-Datenbanken
+
+- Risiko: Eine wachsende Tenantzahl erhöht Backup-Laufzeit und Clusterobjekte. Maßnahme: zentrale Registry-Discovery, tenantgenaue Manifeste, Sicherung auch deaktivierter Bestände sowie Monitoring für fehlgeschlagene Inventareinträge.
+- Risiko: Der Provisionierer besitzt clusterweite `CREATEDB`-/`CREATEROLE`-Rechte. Maßnahme: externe Secret-Datei ausschließlich im vorhandenen Provisioner- und Backup-Agent-Vertrauensbereich, privilegierte Worker-Lane, keine Browser- oder normale Request-Verarbeitung und explizite Rechteproben nach jeder Provisionierung.
+- Risiko: Ein Operator ordnet einen Dump dem falschen Tenant zu. Maßnahme: signierte `tenantInstanceId`, objektpfadgebundene Validierung, erneute Registry-Auflösung und ausschließlich abgeleitete Restore-Drill-Datenbank.

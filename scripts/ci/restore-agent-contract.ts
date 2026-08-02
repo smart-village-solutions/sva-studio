@@ -12,6 +12,7 @@ export type RestoreRequest = Readonly<{
   sourceObjectKey: string;
   sourceSha256: string;
   database?: BackupDatabase;
+  tenantInstanceId?: string;
 }>;
 
 const requestIdPattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u;
@@ -26,6 +27,7 @@ const restoreRequestKeys = new Set([
   'requestId',
   'sourceObjectKey',
   'sourceSha256',
+  'tenantInstanceId',
   'version',
 ]);
 
@@ -41,6 +43,7 @@ export const canonicalRestoreRequest = (request: RestoreRequest) =>
   JSON.stringify({
     action: request.action,
     ...(request.database ? { database: request.database } : {}),
+    ...(request.tenantInstanceId ? { tenantInstanceId: request.tenantInstanceId } : {}),
     environment: request.environment,
     expiresAt: request.expiresAt,
     maintenanceWindowReference: request.maintenanceWindowReference,
@@ -59,10 +62,11 @@ const hasOnlyRestoreRequestKeys = (request: object) =>
 const hasValidSourceObject = (
   environment: BackupEnvironment,
   database: BackupDatabase | undefined,
+  tenantInstanceId: string | undefined,
   sourceObjectKey: unknown,
   sourceSha256: unknown
 ) => {
-  const databasePrefix = database === 'waste' ? '/waste/' : '/';
+  const databasePrefix = database === 'waste' ? `/waste/${tenantInstanceId}/` : '/';
   const prefix = `${restoreEnvironmentConfig(environment).objectPrefix}${databasePrefix}`;
   return (
     typeof sourceObjectKey === 'string' &&
@@ -93,6 +97,11 @@ export const isValidRestoreRequest = (
   if (request.version !== 1 || request.action !== 'restore-and-verify-v1') return false;
   if (request.environment !== 'staging' && request.environment !== 'prod') return false;
   if (request.database !== undefined && request.database !== 'studio' && request.database !== 'waste') return false;
+  if (
+    request.database === 'waste'
+      ? typeof request.tenantInstanceId !== 'string' || !/^[a-z0-9][a-z0-9-]{1,62}$/u.test(request.tenantInstanceId)
+      : request.tenantInstanceId !== undefined
+  ) return false;
   if (typeof request.requestId !== 'string' || !requestIdPattern.test(request.requestId))
     return false;
   if (
@@ -101,7 +110,7 @@ export const isValidRestoreRequest = (
   )
     return false;
   return (
-    hasValidSourceObject(request.environment, request.database, request.sourceObjectKey, request.sourceSha256) &&
+    hasValidSourceObject(request.environment, request.database, request.tenantInstanceId, request.sourceObjectKey, request.sourceSha256) &&
     hasValidExpiry(request.expiresAt, now)
   );
 };

@@ -10,7 +10,11 @@ on:
         type: choice
         options: [staging, prod]
       source_object_key:
-        description: 'Exakter Waste-Custom-Dump unter <umgebung>/waste/'
+        description: 'Exakter Waste-Custom-Dump unter <umgebung>/waste/<tenant>/'
+        required: true
+        type: string
+      tenant_instance_id:
+        description: 'Kanonische Studio-Instanz des Waste-Dumps'
         required: true
         type: string
       source_sha256:
@@ -42,9 +46,11 @@ jobs:
           MAINTENANCE_WINDOW: ${{ inputs.maintenance_window }}
           SOURCE_OBJECT_KEY: ${{ inputs.source_object_key }}
           SOURCE_SHA256: ${{ inputs.source_sha256 }}
+          TENANT_INSTANCE_ID: ${{ inputs.tenant_instance_id }}
         run: |
           set -euo pipefail
-          [[ "${SOURCE_OBJECT_KEY}" =~ ^${ENVIRONMENT}/waste/[A-Za-z0-9._/-]{7,511}\.dump$ ]]
+          [[ "${TENANT_INSTANCE_ID}" =~ ^[a-z0-9][a-z0-9-]{1,62}$ ]]
+          [[ "${SOURCE_OBJECT_KEY}" =~ ^${ENVIRONMENT}/waste/${TENANT_INSTANCE_ID}/[A-Za-z0-9._/-]{7,511}\.dump$ ]]
           [[ "${SOURCE_OBJECT_KEY}" != *..* ]]
           [[ "${SOURCE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
           [[ "${MAINTENANCE_WINDOW}" =~ ^[A-Za-z0-9][A-Za-z0-9._:/#\ -]{2,159}$ ]]
@@ -65,6 +71,7 @@ jobs:
           S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
           S3_ENDPOINT: https://fileserver.smart-village.app
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          WASTE_TENANT_INSTANCE_ID: ${{ inputs.tenant_instance_id }}
         run: pnpm exec tsx scripts/ci/submit-restore-agent-request.ts "${{ inputs.environment }}" waste
 
       - name: write redacted drill evidence
@@ -75,6 +82,7 @@ jobs:
           SAFETY_BACKUP_OBJECT: ${{ steps.restore_agent.outputs.safety_backup_object }}
           SOURCE_OBJECT_KEY: ${{ inputs.source_object_key }}
           SOURCE_SHA256: ${{ inputs.source_sha256 }}
+          TENANT_INSTANCE_ID: ${{ inputs.tenant_instance_id }}
         run: |
           jq -n \
             --arg environment "${ENVIRONMENT}" \
@@ -82,8 +90,9 @@ jobs:
             --arg safetyBackupObject "${SAFETY_BACKUP_OBJECT}" \
             --arg sourceObjectKey "${SOURCE_OBJECT_KEY}" \
             --arg sourceSha256 "${SOURCE_SHA256}" \
+            --arg tenantInstanceId "${TENANT_INSTANCE_ID}" \
             --arg completedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '{version:1,workflow:"waste-database-restore-drill",database:"waste",targetDatabase:"sva_waste_restore_drill",environment:$environment,status:"succeeded",requestId:$requestId,sourceObjectKey:$sourceObjectKey,sourceSha256:$sourceSha256,safetyBackupObject:$safetyBackupObject,completedAt:$completedAt}' \
+            '{version:1,workflow:"waste-database-restore-drill",database:"waste",tenantInstanceId:$tenantInstanceId,environment:$environment,status:"succeeded",requestId:$requestId,sourceObjectKey:$sourceObjectKey,sourceSha256:$sourceSha256,safetyBackupObject:$safetyBackupObject,completedAt:$completedAt}' \
             > "${RUNNER_TEMP}/waste-database-restore-drill-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
 
       - name: upload redacted drill evidence

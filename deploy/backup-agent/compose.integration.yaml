@@ -69,6 +69,8 @@ services:
         INSERT INTO public.goose_db_version VALUES (2026080101, true);
         CREATE TABLE iam.instances (id text PRIMARY KEY, name text NOT NULL);
         INSERT INTO iam.instances VALUES ('integration-tenant', 'Integration');
+        CREATE TABLE iam.instance_waste_provisioning (instance_id text PRIMARY KEY, status text NOT NULL, database_name text);
+        INSERT INTO iam.instance_waste_provisioning VALUES ('integration-tenant', 'ready', 'sva_w_integration_tenant_456942f128c1_db');
         CREATE TABLE iam.accounts (id text PRIMARY KEY);
         CREATE TABLE iam.permissions (id text PRIMARY KEY);
         CREATE ROLE iam_app NOINHERIT;
@@ -76,16 +78,16 @@ services:
         CREATE ROLE sva_restore LOGIN NOINHERIT PASSWORD '${INTEGRATION_STAGING_RESTORE_PASSWORD}';
         GRANT sva TO sva_restore;
         GRANT pg_read_all_stats TO sva_restore;
-        CREATE ROLE sva_waste_owner NOLOGIN NOINHERIT;
-        CREATE ROLE sva_waste_migrator LOGIN NOINHERIT PASSWORD '${INTEGRATION_STAGING_WASTE_POSTGRES_PASSWORD}';
-        CREATE ROLE sva_waste_app LOGIN NOINHERIT PASSWORD '${INTEGRATION_STAGING_WASTE_POSTGRES_PASSWORD}';
-        CREATE ROLE sva_waste_public_app LOGIN NOINHERIT PASSWORD '${INTEGRATION_STAGING_WASTE_POSTGRES_PASSWORD}';
-        GRANT sva_waste_owner TO sva_waste_migrator;
-        CREATE DATABASE sva_waste OWNER sva_waste_owner;
-        CREATE DATABASE sva_waste_restore_drill OWNER sva_waste_owner;
+        CREATE ROLE sva_w_integration_tenant_456942f128c1_owner NOLOGIN NOINHERIT;
+        CREATE ROLE sva_w_integration_tenant_456942f128c1_migrator LOGIN NOINHERIT PASSWORD '${INTEGRATION_STAGING_WASTE_POSTGRES_PASSWORD}';
+        CREATE ROLE sva_w_integration_tenant_456942f128c1_app LOGIN NOINHERIT PASSWORD '${INTEGRATION_STAGING_WASTE_POSTGRES_PASSWORD}';
+        CREATE ROLE sva_w_integration_tenant_456942f128c1_public LOGIN NOINHERIT PASSWORD '${INTEGRATION_STAGING_WASTE_POSTGRES_PASSWORD}';
+        CREATE ROLE sva_waste_provisioner LOGIN NOINHERIT CREATEDB CREATEROLE PASSWORD '${INTEGRATION_STAGING_WASTE_POSTGRES_PASSWORD}';
+        GRANT sva_w_integration_tenant_456942f128c1_owner TO sva_w_integration_tenant_456942f128c1_migrator, sva_waste_provisioner WITH ADMIN OPTION;
+        CREATE DATABASE sva_w_integration_tenant_456942f128c1_db OWNER sva_w_integration_tenant_456942f128c1_owner;
         SQL
-        PGPASSWORD='${INTEGRATION_STAGING_WASTE_POSTGRES_PASSWORD}' psql -h studio-staging_postgres -U sva_waste_migrator -d sva_waste -v ON_ERROR_STOP=1 <<SQL
-        SET ROLE sva_waste_owner;
+        PGPASSWORD='${INTEGRATION_STAGING_WASTE_POSTGRES_PASSWORD}' psql -h studio-staging_postgres -U sva_w_integration_tenant_456942f128c1_migrator -d sva_w_integration_tenant_456942f128c1_db -v ON_ERROR_STOP=1 <<SQL
+        SET ROLE sva_w_integration_tenant_456942f128c1_owner;
         CREATE TABLE public.waste_regions (id uuid PRIMARY KEY, name text NOT NULL);
         CREATE TABLE public.waste_collection_locations (id uuid PRIMARY KEY, city_id uuid NOT NULL);
         CREATE TABLE public.waste_tours (id uuid PRIMARY KEY, name text NOT NULL);
@@ -122,8 +124,8 @@ services:
       BACKUP_PROD_S3_ACCESS_KEY_FILE: /run/secrets/s3_access_key
       BACKUP_PROD_S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
       RESTORE_STAGING_POSTGRES_PASSWORD_FILE: /run/secrets/staging_restore_password
-      BACKUP_STAGING_WASTE_POSTGRES_PASSWORD_FILE: /run/secrets/staging_waste_postgres_password
-      RESTORE_STAGING_WASTE_POSTGRES_PASSWORD_FILE: /run/secrets/staging_waste_postgres_password
+      BACKUP_STAGING_WASTE_PROVISIONER_PASSWORD_FILE: /run/secrets/staging_waste_postgres_password
+      BACKUP_PROD_WASTE_PROVISIONER_PASSWORD_FILE: /run/secrets/staging_waste_postgres_password
     secrets: &agent-secrets
       - staging_postgres_password
       - production_postgres_password
@@ -214,7 +216,8 @@ services:
         const awsEnv = {...process.env,AWS_ACCESS_KEY_ID:accessKey,AWS_SECRET_ACCESS_KEY:secretKey,AWS_EC2_METADATA_DISABLED:'true',AWS_DEFAULT_REGION:'us-east-1',AWS_REQUEST_CHECKSUM_CALCULATION:'when_required',AWS_RESPONSE_CHECKSUM_VALIDATION:'when_required'};
         const result = JSON.parse(execFileSync('aws',['--endpoint-url','http://minio:9000','s3','cp','s3://studio-db-backup-staging/control/results/integration-staging-waste.json','-','--only-show-errors'],{encoding:'utf8',env:awsEnv}));
         const { executeRestoreForIntegration } = await import('/app/agent.mjs');
-        await executeRestoreForIntegration({version:1,action:'restore-and-verify-v1',requestId:'integration-restore-staging-waste',environment:'staging',database:'waste',expiresAt:'2099-01-01T00:00:00.000Z',maintenanceWindowReference:'integration-drill',sourceObjectKey:result.objectKey,sourceSha256:result.sha256});
+        const tenantBackup = result.backups[0];
+        await executeRestoreForIntegration({version:1,action:'restore-and-verify-v1',requestId:'integration-restore-staging-waste',environment:'staging',database:'waste',tenantInstanceId:'integration-tenant',expiresAt:'2099-01-01T00:00:00.000Z',maintenanceWindowReference:'integration-drill',sourceObjectKey:tenantBackup.objectKey,sourceSha256:tenantBackup.sha256});
         const restoreResult = JSON.parse(execFileSync('aws',['--endpoint-url','http://minio:9000','s3','cp','s3://studio-db-backup-staging/control/restores/results/integration-restore-staging-waste.json','-','--only-show-errors'],{encoding:'utf8',env:awsEnv}));
         if (restoreResult.status !== 'database-restored') throw new Error('waste_restore_failed:' + String(restoreResult.errorCode ?? 'unknown'));
     environment: *agent-environment
@@ -251,9 +254,9 @@ services:
     entrypoint: ['/bin/sh', '-ec']
     command:
       - |
-        test "$$(psql -h studio-staging_postgres -U sva_waste_app -d sva_waste_restore_drill -Atc "SELECT count(*) FROM public.waste_regions WHERE name = 'Integration'")" = 1
-        test "$$(psql -h studio-staging_postgres -U sva_waste_public_app -d sva_waste_restore_drill -Atc "SELECT count(*) FROM public.waste_tours")" = 0
-        test "$$(psql -h studio-staging_postgres -U sva_waste_public_app -d sva_waste_restore_drill -Atc "SELECT has_table_privilege(current_user, 'public.waste_email_reminder_outbox', 'INSERT')")" = t
+        test "$$(psql -h studio-staging_postgres -U sva_w_integration_tenant_456942f128c1_app -d sva_w_integration_tenant_456942f128c1_db_restore -Atc "SELECT count(*) FROM public.waste_regions WHERE name = 'Integration'")" = 1
+        test "$$(psql -h studio-staging_postgres -U sva_w_integration_tenant_456942f128c1_public -d sva_w_integration_tenant_456942f128c1_db_restore -Atc "SELECT count(*) FROM public.waste_tours")" = 0
+        test "$$(psql -h studio-staging_postgres -U sva_w_integration_tenant_456942f128c1_public -d sva_w_integration_tenant_456942f128c1_db_restore -Atc "SELECT has_table_privilege(current_user, 'public.waste_email_reminder_outbox', 'INSERT')")" = t
 
   verify:
     image: minio/mc:RELEASE.2025-04-16T18-13-26Z
@@ -281,9 +284,11 @@ services:
         case "$$restore_result" in *'"step":"runtime-principal-reconciliation"'*) ;; *) exit 1 ;; esac
         case "$$restore_result" in *'"step":"runtime-principal-probe"'*) ;; *) exit 1 ;; esac
         case "$$waste_result" in *'"database":"waste"'*) ;; *) exit 1 ;; esac
-        case "$$waste_result" in *'"objectKey":"staging/waste/'*) ;; *) exit 1 ;; esac
+        case "$$waste_result" in *'"objectKey":"staging/waste/inventory/'*) ;; *) exit 1 ;; esac
+        case "$$waste_result" in *'"tenantInstanceId":"integration-tenant"'*) ;; *) exit 1 ;; esac
         case "$$waste_restore_result" in *'"status":"database-restored"'*) ;; *) exit 1 ;; esac
         case "$$waste_restore_result" in *'"database":"waste"'*) ;; *) exit 1 ;; esac
+        case "$$waste_restore_result" in *'"tenantInstanceId":"integration-tenant"'*) ;; *) exit 1 ;; esac
         mc stat local/studio-db-backup-staging/control/restores/safety-backups/integration-restore-staging.json
         ! mc stat local/studio-db-backup-production/control/results/integration-staging.json
         ! mc stat local/studio-db-backup-staging/control/results/integration-production.json

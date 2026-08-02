@@ -12,6 +12,7 @@ export type BackupRequest = Readonly<{
   expiresAt: string;
   maintenanceWindowReference?: string;
   database?: BackupDatabase;
+  tenantInstanceId?: string;
 }>;
 
 const environments = {
@@ -36,6 +37,7 @@ export const canonicalBackupRequest = (request: BackupRequest) => JSON.stringify
   expiresAt: request.expiresAt,
   maintenanceWindowReference: request.maintenanceWindowReference ?? null,
   ...(request.database ? { database: request.database } : {}),
+  ...(request.tenantInstanceId ? { tenantInstanceId: request.tenantInstanceId } : {}),
   requestId: request.requestId,
   version: request.version,
 });
@@ -46,11 +48,15 @@ export const signBackupRequest = (request: BackupRequest, key: string) =>
 export const isValidBackupRequest = (value: unknown, now = new Date()) : value is BackupRequest => {
   if (!value || typeof value !== 'object') return false;
   const request = value as Partial<BackupRequest>;
-  const allowedKeys = new Set(['action', 'database', 'deployImageDigest', 'environment', 'expiresAt', 'maintenanceWindowReference', 'requestId', 'version']);
+  const allowedKeys = new Set(['action', 'database', 'deployImageDigest', 'environment', 'expiresAt', 'maintenanceWindowReference', 'requestId', 'tenantInstanceId', 'version']);
   if (Object.keys(request).some((key) => !allowedKeys.has(key))) return false;
   if (request.version !== 1 || request.action !== 'backup-and-verify') return false;
   if (request.environment !== 'staging' && request.environment !== 'prod') return false;
   if (request.database !== undefined && request.database !== 'studio' && request.database !== 'waste') return false;
+  if (
+    (request.database === 'waste' && request.tenantInstanceId !== undefined && !/^[a-z0-9][a-z0-9-]{1,62}$/u.test(request.tenantInstanceId))
+    || (request.database !== 'waste' && request.tenantInstanceId !== undefined)
+  ) return false;
   if (typeof request.requestId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u.test(request.requestId)) return false;
   if (typeof request.deployImageDigest !== 'string' || !/^sha256:[a-f0-9]{64}$/u.test(request.deployImageDigest)) return false;
   if (

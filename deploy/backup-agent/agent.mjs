@@ -79,27 +79,68 @@ export const targets = {
 
 export const resolveDatabaseTarget = (environment, database = 'studio', operation = 'backup') => {
   const target = targets[environment];
-  if (!target || (database !== 'studio' && database !== 'waste') || (operation !== 'backup' && operation !== 'restore'))
+  if (!target || database !== 'studio' || (operation !== 'backup' && operation !== 'restore'))
     throw new Error('database_target_invalid');
-  if (database === 'studio') return { ...target, database: 'studio' };
+  return { ...target, database: 'studio' };
+};
+
+const tenantInstanceIdPattern = /^[a-z0-9][a-z0-9-]{1,62}$/u;
+const postgresIdentifierPattern = /^[a-z][a-z0-9_]{0,62}$/u;
+
+export const validTenantInstanceId = (value) =>
+  typeof value === 'string' && tenantInstanceIdPattern.test(value);
+
+export const deriveWasteDatabaseName = (instanceId) => {
+  if (!validTenantInstanceId(instanceId)) throw new Error('waste_inventory_target_invalid');
+  const normalized = instanceId
+    .normalize('NFKD')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, '_')
+    .replace(/^_+|_+$/gu, '') || 'tenant';
+  const safeSlug = /^[a-z]/u.test(normalized) ? normalized : `t_${normalized}`;
+  const hash = createHash('sha256').update(instanceId).digest('hex').slice(0, 12);
+  return `sva_w_${safeSlug.slice(0, 25)}_${hash}_db`;
+};
+
+export const deriveWasteInventoryTarget = (
+  environment,
+  inventory,
+  operation = 'backup'
+) => {
+  const target = targets[environment];
+  if (
+    !target ||
+    !inventory ||
+    !validTenantInstanceId(inventory.instanceId) ||
+    !postgresIdentifierPattern.test(inventory.databaseName) ||
+    inventory.databaseName !== deriveWasteDatabaseName(inventory.instanceId) ||
+    !['ready', 'disabled'].includes(inventory.status) ||
+    (operation !== 'backup' && operation !== 'restore')
+  ) {
+    throw new Error('waste_inventory_target_invalid');
+  }
+  const roleBase = inventory.databaseName.slice(0, -3);
   const prefix = environment === 'staging' ? 'BACKUP_STAGING' : 'BACKUP_PROD';
-  const restorePrefix = environment === 'staging' ? 'RESTORE_STAGING' : 'RESTORE_PROD';
+  const provisionerUser =
+    process.env[`${prefix}_WASTE_PROVISIONER_USER`] || 'sva_waste_provisioner';
+  const provisionerPasswordFile = `${prefix}_WASTE_PROVISIONER_PASSWORD_FILE`;
   return {
     ...target,
     database: 'waste',
-    prefix: `${target.prefix}/waste`,
+    tenantInstanceId: inventory.instanceId,
+    inventoryStatus: inventory.status,
+    prefix: `${target.prefix}/waste/${inventory.instanceId}`,
+    sourceDatabase: inventory.databaseName,
     postgresDatabase:
-      operation === 'restore'
-        ? process.env[`${restorePrefix}_WASTE_POSTGRES_DB`] || 'sva_waste_restore_drill'
-        : process.env[`${prefix}_WASTE_POSTGRES_DB`] || 'sva_waste',
-    postgresUser: process.env[`${prefix}_WASTE_POSTGRES_USER`] || 'sva_waste_migrator',
-    postgresPasswordFile: `${prefix}_WASTE_POSTGRES_PASSWORD_FILE`,
-    restoreUser: process.env[`${restorePrefix}_WASTE_POSTGRES_USER`] || 'sva_waste_migrator',
-    restorePasswordFile: `${restorePrefix}_WASTE_POSTGRES_PASSWORD_FILE`,
-    schemaOwner: 'sva_waste_owner',
-    runtimeRole: 'sva_waste_app',
-    runtimeUser: 'sva_waste_app',
-    publicRuntimeUser: 'sva_waste_public_app',
+      operation === 'restore' ? `${inventory.databaseName}_restore` : inventory.databaseName,
+    postgresUser: provisionerUser,
+    postgresPasswordFile: provisionerPasswordFile,
+    restoreUser: provisionerUser,
+    restorePasswordFile: provisionerPasswordFile,
+    schemaOwner: `${roleBase}_owner`,
+    runtimeRole: `${roleBase}_app`,
+    runtimeUser: `${roleBase}_app`,
+    publicRuntimeUser: `${roleBase}_public`,
   };
 };
 
@@ -109,6 +150,7 @@ export const canonicalRequest = (request) =>
   JSON.stringify({
     action: request.action,
     ...(request.database ? { database: request.database } : {}),
+    ...(request.tenantInstanceId ? { tenantInstanceId: request.tenantInstanceId } : {}),
     deployImageDigest: request.deployImageDigest,
     environment: request.environment,
     expiresAt: request.expiresAt,
@@ -121,6 +163,7 @@ export const canonicalRestoreRequest = (request) =>
   JSON.stringify({
     action: request.action,
     ...(request.database ? { database: request.database } : {}),
+    ...(request.tenantInstanceId ? { tenantInstanceId: request.tenantInstanceId } : {}),
     environment: request.environment,
     expiresAt: request.expiresAt,
     maintenanceWindowReference: request.maintenanceWindowReference,
@@ -139,6 +182,7 @@ export const validRequest = (request, now = Date.now()) => {
     'environment',
     'expiresAt',
     'maintenanceWindowReference',
+    'tenantInstanceId',
     'requestId',
     'version',
   ]);
@@ -147,6 +191,11 @@ export const validRequest = (request, now = Date.now()) => {
   if (request.environment !== 'staging' && request.environment !== 'prod') return false;
   if (request.database !== undefined && request.database !== 'studio' && request.database !== 'waste')
     return false;
+  if (
+    (request.database === 'waste' && request.tenantInstanceId !== undefined &&
+      !validTenantInstanceId(request.tenantInstanceId)) ||
+    (request.database !== 'waste' && request.tenantInstanceId !== undefined)
+  ) return false;
   if (
     typeof request.requestId !== 'string' ||
     !/^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u.test(request.requestId)
@@ -179,12 +228,15 @@ export const validRestoreRequest = (request, now = Date.now()) => {
     'requestId',
     'sourceObjectKey',
     'sourceSha256',
+    'tenantInstanceId',
     'version',
   ]);
   if (Object.keys(request).some((key) => !allowedKeys.has(key))) return false;
   if (request.version !== 1 || request.action !== 'restore-and-verify-v1') return false;
   if (request.environment !== 'staging' && request.environment !== 'prod') return false;
   if (request.database !== undefined && request.database !== 'studio' && request.database !== 'waste')
+    return false;
+  if (request.database === 'waste' ? !validTenantInstanceId(request.tenantInstanceId) : request.tenantInstanceId !== undefined)
     return false;
   if (
     typeof request.requestId !== 'string' ||
@@ -198,7 +250,9 @@ export const validRestoreRequest = (request, now = Date.now()) => {
     return false;
   if (typeof request.sourceSha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(request.sourceSha256))
     return false;
-  const prefix = `${resolveDatabaseTarget(request.environment, request.database).prefix}/`;
+  const prefix = request.database === 'waste'
+    ? `${targets[request.environment].prefix}/waste/${request.tenantInstanceId}/`
+    : `${resolveDatabaseTarget(request.environment, request.database).prefix}/`;
   if (
     typeof request.sourceObjectKey !== 'string' ||
     !request.sourceObjectKey.startsWith(prefix) ||
@@ -335,6 +389,76 @@ const runCapture = (command, args, options = {}) =>
     );
   });
 
+export const parseWasteInventory = (value) => {
+  let rows;
+  try {
+    rows = JSON.parse(value);
+  } catch {
+    throw new Error('waste_inventory_invalid');
+  }
+  if (!Array.isArray(rows)) throw new Error('waste_inventory_invalid');
+  return rows.map((row) => {
+    if (
+      !row ||
+      typeof row !== 'object' ||
+      !validTenantInstanceId(row.instanceId) ||
+      !postgresIdentifierPattern.test(row.databaseName) ||
+      row.databaseName !== deriveWasteDatabaseName(row.instanceId) ||
+      !['ready', 'disabled'].includes(row.status)
+    ) throw new Error('waste_inventory_invalid');
+    return {
+      instanceId: row.instanceId,
+      databaseName: row.databaseName,
+      status: row.status,
+    };
+  });
+};
+
+export const discoverWasteInventory = async (environment, tenantInstanceId) => {
+  const target = targets[environment];
+  if (!target || (tenantInstanceId !== undefined && !validTenantInstanceId(tenantInstanceId)))
+    throw new Error('waste_inventory_request_invalid');
+  const tenantFilter = tenantInstanceId
+    ? `AND instance_id = ${sqlLiteral(tenantInstanceId)}`
+    : '';
+  const sql = `
+SELECT COALESCE(json_agg(json_build_object(
+  'instanceId', instance_id,
+  'databaseName', database_name,
+  'status', status
+) ORDER BY instance_id), '[]'::json)
+FROM iam.instance_waste_provisioning
+WHERE status IN ('ready', 'disabled')
+  AND database_name IS NOT NULL
+  ${tenantFilter};`;
+  const output = await runCapture(
+    'psql',
+    [
+      '--host', target.postgresHost,
+      '--port', '5432',
+      '--username', target.postgresUser,
+      '--dbname', target.postgresDatabase,
+      '--no-psqlrc',
+      '--tuples-only',
+      '--no-align',
+      '--set', 'ON_ERROR_STOP=1',
+      '--command', sql,
+    ],
+    {
+      env: {
+        ...process.env,
+        PGCONNECT_TIMEOUT: '10',
+        PGPASSWORD: await readSecret(target.postgresPasswordFile),
+      },
+      maxOutputBytes: 1024 * 1024,
+    }
+  );
+  const inventory = parseWasteInventory(output);
+  if (tenantInstanceId && inventory.length !== 1)
+    throw new Error('waste_inventory_tenant_not_found');
+  return inventory;
+};
+
 const s3Env = async (target) => ({
   ...process.env,
   AWS_ACCESS_KEY_ID: await readSecret(target.s3AccessKeyFile),
@@ -411,6 +535,11 @@ export const safeErrorCode = (error) => {
       'database_postcheck_failed',
       'runtime_principal_reconciliation_failed',
       'runtime_principal_probe_failed',
+      'waste_inventory_invalid',
+      'waste_inventory_request_invalid',
+      'waste_inventory_tenant_not_found',
+      'waste_inventory_target_invalid',
+      'waste_restore_target_invalid',
     ].includes(message)
   )
     return message;
@@ -449,15 +578,13 @@ export const restoreControlKeysFor = (requestId) => ({
   result: `control/restores/results/${requestId}.json`,
 });
 
-export const executeBackupForIntegration = async (request) => {
-  const target = resolveDatabaseTarget(request.environment, request.database);
+const executeBackupTargetForIntegration = async (request, target) => {
   const workdir = join(tmpdir(), `backup-agent-${request.requestId}-${randomUUID()}`);
   const dump = join(workdir, 'backup.dump');
   const downloaded = join(workdir, 'backup.download');
   const digest = request.deployImageDigest.slice('sha256:'.length);
   const timestamp = new Date().toISOString().replaceAll(/[:.]/gu, '-');
   const objectKey = `${target.prefix}/${timestamp}/${digest}/${request.requestId}.dump`;
-  const resultKey = controlKeysFor(request.requestId).result;
   const steps = [];
   const complete = (step, details = {}) => steps.push({ step, status: 'succeeded', ...details });
   const evidence = {
@@ -465,6 +592,10 @@ export const executeBackupForIntegration = async (request) => {
     requestId: request.requestId,
     environment: request.environment,
     database: target.database,
+    ...(target.tenantInstanceId ? {
+      tenantInstanceId: target.tenantInstanceId,
+      databaseName: target.sourceDatabase,
+    } : {}),
     deployImageDigest: request.deployImageDigest,
     agentImage: required(process.env.BACKUP_AGENT_IMAGE_REF, 'BACKUP_AGENT_IMAGE_REF'),
     tools: JSON.parse(
@@ -530,7 +661,7 @@ export const executeBackupForIntegration = async (request) => {
     );
     await runCommand('pg_restore', ['--list', downloaded]);
     complete('archive-validate');
-    await uploadJson(target, resultKey, {
+    const result = {
       ...evidence,
       status: 'succeeded',
       objectKey,
@@ -538,19 +669,79 @@ export const executeBackupForIntegration = async (request) => {
       sha256: dumpDigest,
       steps,
       completedAt: new Date().toISOString(),
-    });
+    };
+    return result;
   } catch (error) {
-    await uploadJson(target, resultKey, {
+    return {
       ...evidence,
       status: 'failed',
       errorCode: safeErrorCode(error),
       steps,
       completedAt: new Date().toISOString(),
+    };
+  } finally {
+    await rm(workdir, { recursive: true, force: true });
+  }
+};
+
+export const executeBackupForIntegration = async (request) => {
+  const controlTarget = targets[request.environment];
+  const resultKey = controlKeysFor(request.requestId).result;
+  try {
+    if (request.database !== 'waste') {
+      const result = await executeBackupTargetForIntegration(
+        request,
+        resolveDatabaseTarget(request.environment, 'studio')
+      );
+      await uploadJson(controlTarget, resultKey, result);
+      return;
+    }
+
+    const inventory = await discoverWasteInventory(request.environment, request.tenantInstanceId);
+    const backups = [];
+    for (const item of inventory) {
+      backups.push(await executeBackupTargetForIntegration(
+        request,
+        deriveWasteInventoryTarget(request.environment, item)
+      ));
+    }
+    const succeeded = backups.every((backup) => backup.status === 'succeeded');
+    const manifest = {
+      version: 1,
+      requestId: request.requestId,
+      environment: request.environment,
+      database: 'waste',
+      deployImageDigest: request.deployImageDigest,
+      status: succeeded ? 'succeeded' : 'failed',
+      inventoryCount: inventory.length,
+      backups,
+      completedAt: new Date().toISOString(),
+    };
+    const manifestBody = `${JSON.stringify(manifest)}\n`;
+    const manifestKey = `${controlTarget.prefix}/waste/inventory/${request.requestId}.json`;
+    await uploadJson(controlTarget, manifestKey, manifest);
+    await uploadJson(controlTarget, resultKey, {
+      ...manifest,
+      objectKey: manifestKey,
+      bytes: Buffer.byteLength(manifestBody),
+      sha256: createHash('sha256').update(manifestBody).digest('hex'),
+      steps: [{ step: 'tenant-inventory-backups', status: succeeded ? 'succeeded' : 'failed' }],
+    });
+  } catch (error) {
+    await uploadJson(controlTarget, resultKey, {
+      version: 1,
+      requestId: request.requestId,
+      environment: request.environment,
+      database: request.database ?? 'studio',
+      deployImageDigest: request.deployImageDigest,
+      status: 'failed',
+      errorCode: safeErrorCode(error),
+      steps: [],
+      completedAt: new Date().toISOString(),
     });
   } finally {
     terminalRequests.add(request.requestId);
     active = false;
-    await rm(workdir, { recursive: true, force: true });
   }
 };
 
@@ -585,12 +776,8 @@ const sqlIdentifier = (value) => `"${String(value).replaceAll('"', '""')}"`;
 const sqlLiteral = (value) => `'${String(value).replaceAll("'", "''")}'`;
 
 const assertRuntimePrincipalTarget = (target) => {
-  const allowlisted = Object.keys(targets)
-    .flatMap((environment) => [
-      resolveDatabaseTarget(environment, 'studio'),
-      resolveDatabaseTarget(environment, 'waste'),
-      resolveDatabaseTarget(environment, 'waste', 'restore'),
-    ])
+  const studioTarget = Object.keys(targets)
+    .map((environment) => resolveDatabaseTarget(environment, 'studio'))
     .some(
     (candidate) =>
       candidate.postgresDatabase === target.postgresDatabase &&
@@ -599,7 +786,17 @@ const assertRuntimePrincipalTarget = (target) => {
       candidate.runtimeUser === target.runtimeUser &&
       candidate.schemaOwner === target.schemaOwner
   );
-  if (!allowlisted) throw new Error('runtime_principal_target_invalid');
+  const dynamicWasteTarget =
+    target.database === 'waste' &&
+    validTenantInstanceId(target.tenantInstanceId) &&
+    postgresIdentifierPattern.test(target.sourceDatabase) &&
+    target.sourceDatabase === deriveWasteDatabaseName(target.tenantInstanceId) &&
+    [target.sourceDatabase, `${target.sourceDatabase}_restore`].includes(target.postgresDatabase) &&
+    target.schemaOwner === `${target.sourceDatabase.slice(0, -3)}_owner` &&
+    target.runtimeRole === `${target.sourceDatabase.slice(0, -3)}_app` &&
+    target.runtimeUser === target.runtimeRole &&
+    target.publicRuntimeUser === `${target.sourceDatabase.slice(0, -3)}_public`;
+  if (!studioTarget && !dynamicWasteTarget) throw new Error('runtime_principal_target_invalid');
 };
 
 export const buildRuntimePrincipalReconciliationSql = (target) => {
@@ -962,8 +1159,66 @@ const readArchiveGooseVersion = async (archive) => {
   return extractAppliedGooseVersion(sql);
 };
 
+export const ensureWasteRestoreDatabase = async (environment, target, pgEnv) => {
+  assertRuntimePrincipalTarget(target);
+  if (target.database !== 'waste' || !target.postgresDatabase.endsWith('_restore'))
+    throw new Error('waste_restore_target_invalid');
+  const centralTarget = targets[environment];
+  const database = sqlIdentifier(target.postgresDatabase);
+  const owner = sqlIdentifier(target.schemaOwner);
+  const login = sqlIdentifier(target.restoreUser);
+  const centralArgs = [
+    '--host', centralTarget.postgresHost,
+    '--port', '5432',
+    '--username', target.restoreUser,
+    '--dbname', centralTarget.postgresDatabase,
+    '--no-psqlrc',
+    '--tuples-only',
+    '--no-align',
+    '--set', 'ON_ERROR_STOP=1',
+  ];
+  const exists = await runCapture(
+    'psql',
+    [...centralArgs, '--command', `SELECT 1 FROM pg_database WHERE datname = ${sqlLiteral(target.postgresDatabase)}`],
+    { env: pgEnv }
+  );
+  if (exists !== '1') {
+    await runCapture(
+      'psql',
+      [...centralArgs, '--command', `CREATE DATABASE ${database} OWNER ${owner}`],
+      { env: pgEnv }
+    );
+  }
+  const sql = `DO $restore_database_guard$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_database database
+    JOIN pg_roles owner_role ON owner_role.oid = database.datdba
+    WHERE database.datname = ${sqlLiteral(target.postgresDatabase)}
+      AND owner_role.rolname = ${sqlLiteral(target.schemaOwner)}
+  ) THEN
+    RAISE EXCEPTION 'waste_restore_database_owner_invalid';
+  END IF;
+END
+$restore_database_guard$;
+REVOKE ALL ON DATABASE ${database} FROM PUBLIC;
+GRANT CONNECT, TEMPORARY ON DATABASE ${database} TO ${owner}, ${login};`;
+  await runCapture(
+    'psql',
+    [...centralArgs, '--command', sql],
+    { env: pgEnv }
+  );
+};
+
 export const executeRestoreForIntegration = async (request) => {
-  const target = resolveDatabaseTarget(request.environment, request.database, 'restore');
+  const target = request.database === 'waste'
+    ? deriveWasteInventoryTarget(
+        request.environment,
+        (await discoverWasteInventory(request.environment, request.tenantInstanceId))[0],
+        'restore'
+      )
+    : resolveDatabaseTarget(request.environment, 'studio', 'restore');
   const keys = restoreControlKeysFor(request.requestId);
   const workdir = join(tmpdir(), `restore-agent-${request.requestId}-${randomUUID()}`);
   const sourceDump = join(workdir, 'source.dump');
@@ -980,6 +1235,11 @@ export const executeRestoreForIntegration = async (request) => {
     requestId: request.requestId,
     environment: request.environment,
     database: target.database,
+    ...(target.tenantInstanceId ? {
+      tenantInstanceId: target.tenantInstanceId,
+      sourceDatabaseName: target.sourceDatabase,
+      restoreDatabaseName: target.postgresDatabase,
+    } : {}),
     sourceObjectKey: request.sourceObjectKey,
     sourceSha256: request.sourceSha256,
     maintenanceWindowReference: request.maintenanceWindowReference,
@@ -1018,6 +1278,13 @@ export const executeRestoreForIntegration = async (request) => {
       PGCONNECT_TIMEOUT: '10',
       PGPASSWORD: await readSecret(target.restorePasswordFile),
     };
+    if (target.database === 'waste') {
+      await ensureWasteRestoreDatabase(request.environment, target, pgEnv);
+      complete('tenant-restore-target-verify', {
+        tenantInstanceId: target.tenantInstanceId,
+        restoreDatabaseName: target.postgresDatabase,
+      });
+    }
     await waitForSessionDrain(target, pgEnv);
     complete('app-session-drain');
     complete('exclusive-agent-restore-slot');

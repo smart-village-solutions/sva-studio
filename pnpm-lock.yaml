@@ -164,8 +164,8 @@ importers:
         specifier: workspace:*
         version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@tabler/icons-react':
-        specifier: ^3.41.1
-        version: 3.44.0(react@19.2.6)
+        specifier: ^3.46.0
+        version: 3.46.0(react@19.2.6)
       pg:
         specifier: ^8.22.0
         version: 8.22.0
@@ -312,8 +312,8 @@ importers:
         specifier: workspace:*
         version: file:packages/waste-management-runtime(@tanstack/react-router@1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@tabler/icons-react':
-        specifier: ^3.41.1
-        version: 3.44.0(react@19.2.6)
+        specifier: ^3.46.0
+        version: 3.46.0(react@19.2.6)
       '@tanstack/react-devtools':
         specifier: ^0.10.8
         version: 0.10.8(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(bufferutil@4.1.0)(csstype@3.2.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(solid-js@1.9.11)
@@ -1136,8 +1136,8 @@ importers:
         specifier: workspace:*
         version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
       '@tabler/icons-react':
-        specifier: ^3.41.1
-        version: 3.44.0(react@19.2.6)
+        specifier: ^3.46.0
+        version: 3.46.0(react@19.2.6)
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -5220,13 +5220,13 @@ packages:
   '@sva/waste-management-runtime@file:packages/waste-management-runtime':
     resolution: {directory: packages/waste-management-runtime, type: directory}
 
-  '@tabler/icons-react@3.44.0':
-    resolution: {integrity: sha512-8+rvzBbVm/1Z3sG3x7GUNAaxIKxwgz8xaMhRs23nrCnMTKRFAhEC+82zAIFeAA0seXdrAGX5HFCkaLpGK2rVHg==}
+  '@tabler/icons-react@3.46.0':
+    resolution: {integrity: sha512-CCm7xJWhDT2PH4ZIFkP6AgYKtVhq0gpYkjUN+GVh1AzmIQaa77OW0bQPBPQiTE0PsXMR9oSxFqA3qBglzPyrVQ==}
     peerDependencies:
       react: '>= 16'
 
-  '@tabler/icons@3.44.0':
-    resolution: {integrity: sha512-Wn0AOZG9sg0L+bjfMqq4eNhC6pQjIrk94LvvWYNYkY8KH8wC3YILRzQlrnVJc4FUeMxH/AK97QsYCX35H3LndA==}
+  '@tabler/icons@3.46.0':
+    resolution: {integrity: sha512-f2RYFl3fzPwj5WO82x6en0dmkjefxEfOm16D1ByM6cj/McNiwOkL4VaPUoP9VVIrXAD9WnTSVFr70px703b//A==}
 
   '@tailwindcss/node@4.3.2':
     resolution: {integrity: sha512-yWP/sqEcBLaD8JuA6zNwxoYKr75qxTioYwlRwekj5Jr/I5GXnoJfjetH/psLUIv74cYTH2lBUEzBkinthoYcBg==}
@@ -13506,7 +13506,7 @@ snapshots:
     dependencies:
       '@sva/plugin-sdk': file:packages/plugin-sdk
       '@sva/studio-ui-react': file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
-      '@tabler/icons-react': 3.44.0(react@19.2.6)
+      '@tabler/icons-react': 3.46.0(react@19.2.6)
       '@tanstack/react-router': 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       exceljs: 4.4.0
       react: 19.2.6
@@ -13599,12 +13599,12 @@ snapshots:
       - react
       - react-dom
 
-  '@tabler/icons-react@3.44.0(react@19.2.6)':
+  '@tabler/icons-react@3.46.0(react@19.2.6)':
     dependencies:
-      '@tabler/icons': 3.44.0
+      '@tabler/icons': 3.46.0
       react: 19.2.6
 
-  '@tabler/icons@3.44.0': {}
+  '@tabler/icons@3.46.0': {}
 
   '@tailwindcss/node@4.3.2':
     dependencies:

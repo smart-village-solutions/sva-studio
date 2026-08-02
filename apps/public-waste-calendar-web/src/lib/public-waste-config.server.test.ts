@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { deriveWasteTenantDatabaseNames } from '@sva/server-runtime';
 
 import {
   parsePublicWasteConfig,
   readPublicWasteConfigFromEnvironment,
 } from './public-waste-config.server.js';
+
+const databaseUrlFor = (instanceId: string): string => {
+  const names = deriveWasteTenantDatabaseNames(instanceId);
+  return `postgresql://${names.publicAppRole}:secret@postgres:5432/${names.database}`;
+};
 
 describe('public waste config', () => {
   const reminderConfigFixture = {
@@ -41,20 +47,21 @@ describe('public waste config', () => {
     expect(() =>
       parsePublicWasteConfig({
         instanceId: '',
-        supabase: { databaseUrl: '', schemaName: 'waste' },
+        database: { databaseUrl: '', schemaName: 'waste' },
       })
     ).toThrow('public_waste_config_invalid');
   });
 
   it('reads production config from split PUBLIC_WASTE_* environment variables', () => {
+    const databaseUrl = databaseUrlFor('bb-prignitz');
     expect(
       readPublicWasteConfigFromEnvironment({
         PUBLIC_WASTE_INSTANCE_ID: 'bb-prignitz',
-        PUBLIC_WASTE_DATABASE_URL: 'postgres://example',
+        PUBLIC_WASTE_DATABASE_URL: databaseUrl,
         PUBLIC_WASTE_SCHEMA_NAME: 'public',
         PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
           instanceId: 'ignored',
-          supabase: {
+          database: {
             databaseUrl: 'postgres://ignored',
             schemaName: 'ignored',
           },
@@ -64,12 +71,36 @@ describe('public waste config', () => {
       })
     ).toEqual({
       instanceId: 'bb-prignitz',
-      supabase: {
-        databaseUrl: 'postgres://example',
+      database: {
+        databaseUrl,
         schemaName: 'public',
       },
       emailReminderConfig: reminderConfigFixture,
       emailReminderSigningSecret: 'secret-1',
     });
+  });
+
+  it('rejects a database URL belonging to another tenant', () => {
+    expect(() =>
+      parsePublicWasteConfig({
+        instanceId: 'bb-prignitz',
+        database: {
+          databaseUrl: databaseUrlFor('bb-guben'),
+          schemaName: 'public',
+        },
+      })
+    ).toThrow('public_waste_config_invalid');
+  });
+
+  it('rejects non-public schemas for a tenant database', () => {
+    expect(() =>
+      parsePublicWasteConfig({
+        instanceId: 'bb-prignitz',
+        database: {
+          databaseUrl: databaseUrlFor('bb-prignitz'),
+          schemaName: 'waste',
+        },
+      })
+    ).toThrow('public_waste_config_invalid');
   });
 });

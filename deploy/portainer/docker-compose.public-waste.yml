@@ -15,6 +15,7 @@ services:
       com.sva-studio.environment: 'production'
     networks:
       - public
+      - waste-database
     deploy:
       replicas: 1
       placement:
@@ -42,19 +43,19 @@ services:
           memory: 384M
           cpus: '0.50'
       labels:
-        - "traefik.enable=true"
-        - "traefik.docker.network=public"
+        - 'traefik.enable=true'
+        - 'traefik.docker.network=public'
 
         #Traefik v1
-        - "traefik.frontend.rule=Host:${PUBLIC_WASTE_PUBLIC_HOST}"
-        - "traefik.frontend.priority=220"
-        - "traefik.frontend.passHostHeader=true"
-        - "traefik.port=3002"
+        - 'traefik.frontend.rule=Host:${PUBLIC_WASTE_PUBLIC_HOST}'
+        - 'traefik.frontend.priority=220'
+        - 'traefik.frontend.passHostHeader=true'
+        - 'traefik.port=3002'
 
         #Traefik v3
-        - "traefik.http.routers.public-waste.rule=Host(`${PUBLIC_WASTE_PUBLIC_HOST}`)"
-        - "traefik.http.routers.public-waste.tls=true"
-        - "traefik.http.services.public-waste.loadbalancer.server.port=3002"
+        - 'traefik.http.routers.public-waste.rule=Host(`${PUBLIC_WASTE_PUBLIC_HOST}`)'
+        - 'traefik.http.routers.public-waste.tls=true'
+        - 'traefik.http.services.public-waste.loadbalancer.server.port=3002'
 
     healthcheck:
       test:
@@ -68,3 +69,6 @@ services:
 networks:
   public:
     external: true
+  waste-database:
+    external: true
+    name: studio_internal

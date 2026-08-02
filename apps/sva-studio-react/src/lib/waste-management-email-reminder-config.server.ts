@@ -6,20 +6,20 @@ import {
 } from '@sva/core';
 import type { WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 
-const loadSelectedWasteSupabaseRecord = async (
+const loadSelectedWastePostgresqlRecord = async (
   deps: WasteOperationRuntimeDeps,
   instanceId: string,
 ): Promise<ExternalInterfaceRecord | null> => {
   if (deps.listInterfaceRecords) {
     const records = await deps.listInterfaceRecords(instanceId);
     return (
-      records.find((record) => record.typeKey === 'supabase' && record.publicConfig.wasteManagementSelected === true)
-      ?? records.find((record) => record.typeKey === 'supabase' && record.isDefault)
-      ?? records.find((record) => record.typeKey === 'supabase')
+      records.find((record) => record.typeKey === 'postgresql' && record.publicConfig.wasteManagementSelected === true)
+      ?? records.find((record) => record.typeKey === 'postgresql' && record.isDefault)
+      ?? records.find((record) => record.typeKey === 'postgresql')
       ?? null
     );
   }
-  return (await deps.loadDefaultInterfaceRecord?.(instanceId, 'supabase')) ?? null;
+  return (await deps.loadDefaultInterfaceRecord?.(instanceId, 'postgresql')) ?? null;
 };
 
 export const loadWasteEmailReminderSettings = async (
@@ -29,13 +29,15 @@ export const loadWasteEmailReminderSettings = async (
   readonly config: WasteManagementEmailReminderConfig;
   readonly unsubscribeSigningSecret?: string;
 } | null> => {
-  const selectedSupabase = await loadSelectedWasteSupabaseRecord(deps, instanceId);
-  const config = selectedSupabase ? readWasteManagementEmailReminderConfig(selectedSupabase.publicConfig) ?? null : null;
-  if (!selectedSupabase || !config) {
+  const selectedPostgresql = await loadSelectedWastePostgresqlRecord(deps, instanceId);
+  const config = selectedPostgresql
+    ? readWasteManagementEmailReminderConfig(selectedPostgresql.publicConfig) ?? null
+    : null;
+  if (!selectedPostgresql || !config) {
     return null;
   }
   return {
     config,
-    unsubscribeSigningSecret: readWasteManagementEmailReminderSigningSecret(selectedSupabase.publicConfig),
+    unsubscribeSigningSecret: readWasteManagementEmailReminderSigningSecret(selectedPostgresql.publicConfig),
   };
 };

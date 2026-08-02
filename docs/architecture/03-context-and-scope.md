@@ -70,7 +70,7 @@ Der lokale stdio-MCP-Server ist ein externer Operator-Client der Studio-API. Er 
 - Repo verantwortet die serverseitige Delegation an den externen SVA-Mainserver, aber nicht dessen Betrieb, Schema oder Berechtigungsmodell
 - Browser, React-Hooks und UI-Komponenten sprechen nie direkt mit dem externen Mainserver; alle Aufrufe laufen über serverseitige Studio-Bausteine
 - Browser, Plugins und Fachmodule sprechen nie direkt mit MinIO oder S3-kompatiblen Clients; Medienzugriffe laufen über hostseitige Media-Endpunkte und interne Storage-Ports
-- Browser der öffentlichen Abfallkalender-App sprechen weder das Studio-Plugin noch Supabase direkt an; die öffentliche Runtime kapselt Auswahlfluss, Kalenderprojektion, Präferenz-Cookie sowie PDF- und iCal-Exportpfade lokal in `apps/public-waste-calendar-web`.
+- Browser der öffentlichen Abfallkalender-App sprechen weder das Studio-Plugin noch eine Datenbank direkt an; die öffentliche Runtime kapselt Auswahlfluss, Kalenderprojektion, Präferenz-Cookie sowie PDF- und iCal-Exportpfade lokal in `apps/public-waste-calendar-web` und greift mit der eingeschränkten Public-Rolle exakt ihrer kanonischen Tenant-Datenbank zu.
 - Keycloak bleibt autoritative Quelle für per-User hinterlegte Mainserver-Credentials; die Studio-DB hält nur instanzbezogene Endpunktkonfiguration
 - Externe Dienste werden angebunden, aber nicht hier implementiert
 

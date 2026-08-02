@@ -15,33 +15,30 @@ const runWasteManagementMainserverSyncForInstanceMock = vi.hoisted(() => vi.fn()
 const createInterfaceRecord = (schemaName = 'wm'): ExternalInterfaceRecord => ({
   id: 'iface-1',
   instanceId: 'instance-1',
-  typeKey: 'supabase' as const,
+  typeKey: 'postgresql' as const,
   ownerKind: 'host' as const,
   ownerId: 'host',
-  displayName: 'Waste Supabase',
+  displayName: 'Waste PostgreSQL',
   alias: 'default',
   enabled: true,
   isDefault: true,
   category: 'database' as const,
-  baseUrl: 'https://tenant.supabase.co',
-  authMode: 'service_role',
+  authMode: 'database_url',
   publicConfig: {
-    projectUrl: 'https://tenant.supabase.co',
     schemaName,
   },
   secretConfigCiphertext: 'cipher-secret',
-  statusCheckKind: 'supabase' as const,
+  statusCheckKind: 'postgresql' as const,
   visibleStatus: 'ok' as const,
   lastCheckStatus: 'succeeded' as const,
   lastCheckedAt: '2026-05-10T10:00:00.000Z',
   updatedAt: '2026-05-10T10:00:00.000Z',
 });
 
-const revealSupabaseSecretConfig = (ciphertext: string | null | undefined): string | undefined =>
+const revealPostgresqlSecretConfig = (ciphertext: string | null | undefined): string | undefined =>
   ciphertext
     ? JSON.stringify({
         databaseUrl: 'postgres://waste:test@localhost:5432/waste',
-        serviceRoleKey: 'service-key',
       })
     : undefined;
 
@@ -141,7 +138,7 @@ describe('waste management operations runtime', () => {
         createInterfaceRecordWithEmailReminderConfig(),
         createMailTransportInterfaceRecord(),
       ]),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() =>
         createPoolMock(
           createSqlClientMock(async () => ({
@@ -339,7 +336,7 @@ describe('waste management operations runtime', () => {
         createInterfaceRecordWithEmailReminderConfig(),
         createMailTransportInterfaceRecord(),
       ]),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() =>
         createPoolMock(
           createSqlClientMock(async () => ({
@@ -415,7 +412,7 @@ describe('waste management operations runtime', () => {
           },
         },
       ]),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() =>
         createPoolMock(
           createSqlClientMock(async () => ({
@@ -533,7 +530,7 @@ describe('waste management operations runtime', () => {
           host: 'mail-legacy.example.org',
         }),
       ]),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() =>
         createPoolMock(
           createSqlClientMock(async () => ({
@@ -671,7 +668,7 @@ describe('waste management operations runtime', () => {
           },
         },
       ]),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() =>
         createPoolMock(
           createSqlClientMock(async () => ({
@@ -779,7 +776,7 @@ describe('waste management operations runtime', () => {
     const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() =>
         createPoolMock(
           createSqlClientMock(async () => ({
@@ -882,7 +879,7 @@ describe('waste management operations runtime', () => {
     const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() =>
         createPoolMock(
           createSqlClientMock(async () => ({
@@ -1015,7 +1012,7 @@ describe('waste management operations runtime', () => {
     const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() =>
         createPoolMock(
           createSqlClientMock(async () => ({
@@ -1137,7 +1134,7 @@ describe('waste management operations runtime', () => {
     const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() =>
         createPoolMock(
           createSqlClientMock(async () => ({
@@ -1253,7 +1250,7 @@ describe('waste management operations runtime', () => {
     const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() =>
         createPoolMock(
           createSqlClientMock(async () => ({
@@ -1377,7 +1374,7 @@ describe('waste management operations runtime', () => {
     const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() =>
         createPoolMock(
           createSqlClientMock(async () => ({
@@ -1512,7 +1509,7 @@ describe('waste management operations runtime', () => {
           },
         },
       ]),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() =>
         createPoolMock(
           createSqlClientMock(async () => ({
@@ -1656,7 +1653,7 @@ describe('waste management operations runtime', () => {
     const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
-      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
       createPool: vi.fn(() =>
         createPoolMock(
           createSqlClientMock(async () => ({
@@ -1747,7 +1744,6 @@ const createWasteEmailReminderConfig = () => ({
 const createInterfaceRecordWithEmailReminderConfig = (): ExternalInterfaceRecord => ({
   ...createInterfaceRecord(),
   publicConfig: {
-    projectUrl: 'https://tenant.supabase.co',
     schemaName: 'wm',
     wasteManagementSelected: true,
     emailReminderConfig: createWasteEmailReminderConfig(),

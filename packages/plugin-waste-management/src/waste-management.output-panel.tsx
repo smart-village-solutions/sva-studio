@@ -37,7 +37,6 @@ const persistEmailReminderSettings = async ({
 }): Promise<WasteManagementSettingsRecord | null> => {
   const result = await updateWasteManagementSettings({
     provider: settings.provider,
-    projectUrl: settings.projectUrl,
     schemaName: settings.schemaName,
     enabled: settings.enabled,
     selectedInterfaceId: settings.selectedInterfaceId,
@@ -112,7 +111,6 @@ export const WasteOutputPanel = () => {
     try {
       const result = await updateWasteManagementSettings({
         provider: settings.provider,
-        projectUrl: settings.projectUrl,
         schemaName: settings.schemaName,
         enabled: settings.enabled,
         selectedInterfaceId: settings.selectedInterfaceId,

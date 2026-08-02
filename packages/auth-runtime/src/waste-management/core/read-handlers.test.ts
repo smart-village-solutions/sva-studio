@@ -69,7 +69,7 @@ describe('waste-management read handlers', () => {
       loadDefaultInterfaceRecord: vi.fn(async () => ({
         id: 'supabase-1',
         instanceId: 'tenant-a',
-        typeKey: 'supabase',
+        typeKey: 'postgresql',
         ownerKind: 'host',
         ownerId: 'host',
         displayName: 'Supabase',
@@ -77,10 +77,9 @@ describe('waste-management read handlers', () => {
         enabled: true,
         isDefault: true,
         category: 'database',
-        statusCheckKind: 'supabase',
+        statusCheckKind: 'postgresql',
         visibleStatus: 'ok',
         publicConfig: {
-          projectUrl: 'https://tenant.example',
           schemaName: 'wm',
         },
         secretConfigCiphertext: 'cipher-secret',
@@ -96,7 +95,7 @@ describe('waste-management read handlers', () => {
     await expect(settingsResponse.json()).resolves.toMatchObject({
       data: {
         instanceId: 'tenant-a',
-        provider: 'supabase',
+        provider: 'postgresql',
         visibleStatus: 'ok',
       },
       requestId: 'req-test',
@@ -106,9 +105,14 @@ describe('waste-management read handlers', () => {
       keycloakSubject: 'user-1',
     });
 
-    const loadWasteHistoryOverview = vi.fn(async () => ({ audit: { items: [], total: 0 }, technical: { items: [], total: 0 } }));
+    const loadWasteHistoryOverview = vi.fn(async () => ({
+      audit: { items: [], total: 0 },
+      technical: { items: [], total: 0 },
+    }));
     const historyResponse = await wasteManagementReadHandlers.getWasteManagementHistoryInternal(
-      new Request('https://studio.test/api/v1/waste-management/history?page=2&pageSize=10&q=fraction'),
+      new Request(
+        'https://studio.test/api/v1/waste-management/history?page=2&pageSize=10&q=fraction'
+      ),
       actor,
       {
         ...createDeps(),
@@ -189,38 +193,40 @@ describe('waste-management read handlers', () => {
   });
 
   it('returns guard errors before overview loaders run', async () => {
-    const forbiddenResponse = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
-      new Request('https://studio.test/api/v1/waste-management/master-data'),
-      actor,
-      {
-        getRequestId: () => 'req-test',
-        getSessionById: vi.fn(async () => ({
-          activeOrganizationId: 'org-1',
-        })),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [],
-        })),
-        loadMasterDataOverview: vi.fn(async () => ({ fractions: [] })),
-      }
-    );
+    const forbiddenResponse =
+      await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
+        new Request('https://studio.test/api/v1/waste-management/master-data'),
+        actor,
+        {
+          getRequestId: () => 'req-test',
+          getSessionById: vi.fn(async () => ({
+            activeOrganizationId: 'org-1',
+          })),
+          resolvePermissions: vi.fn(async () => ({
+            ok: true as const,
+            permissions: [],
+          })),
+          loadMasterDataOverview: vi.fn(async () => ({ fractions: [] })),
+        }
+      );
 
     expect(forbiddenResponse.status).toBe(403);
 
-    const invalidInstanceResponse = await wasteManagementReadHandlers.getWasteManagementSchedulingOverviewInternal(
-      new Request('https://studio.test/api/v1/waste-management/scheduling'),
-      {
-        ...actor,
-        user: {
-          ...actor.user,
-          instanceId: '',
+    const invalidInstanceResponse =
+      await wasteManagementReadHandlers.getWasteManagementSchedulingOverviewInternal(
+        new Request('https://studio.test/api/v1/waste-management/scheduling'),
+        {
+          ...actor,
+          user: {
+            ...actor.user,
+            instanceId: '',
+          },
         },
-      },
-      {
-        ...createDeps(),
-        loadSchedulingOverview: vi.fn(async () => ({ tourDateShifts: [], globalDateShifts: [] })),
-      }
-    );
+        {
+          ...createDeps(),
+          loadSchedulingOverview: vi.fn(async () => ({ tourDateShifts: [], globalDateShifts: [] })),
+        }
+      );
 
     expect(invalidInstanceResponse.status).toBe(400);
   });
@@ -232,7 +238,18 @@ describe('waste-management read handlers', () => {
           wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
             new Request('https://studio.test/api/v1/waste-management/master-data'),
             actor,
-            { ...createDeps(), loadMasterDataOverview: vi.fn(async () => ({ fractions: [], regions: [], cities: [], streets: [], houseNumbers: [], collectionLocations: [], locationTourLinks: [] })) }
+            {
+              ...createDeps(),
+              loadMasterDataOverview: vi.fn(async () => ({
+                fractions: [],
+                regions: [],
+                cities: [],
+                streets: [],
+                houseNumbers: [],
+                collectionLocations: [],
+                locationTourLinks: [],
+              })),
+            }
           ),
       },
       {
@@ -248,7 +265,13 @@ describe('waste-management read handlers', () => {
           wasteManagementReadHandlers.getWasteManagementSchedulingOverviewInternal(
             new Request('https://studio.test/api/v1/waste-management/scheduling'),
             actor,
-            { ...createDeps(), loadSchedulingOverview: vi.fn(async () => ({ tourDateShifts: [], globalDateShifts: [] })) }
+            {
+              ...createDeps(),
+              loadSchedulingOverview: vi.fn(async () => ({
+                tourDateShifts: [],
+                globalDateShifts: [],
+              })),
+            }
           ),
       },
     ];
@@ -258,21 +281,30 @@ describe('waste-management read handlers', () => {
       expect(response.status).toBe(200);
     }
 
-    expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(expect.any(Object), 'tenant-a', 'success');
-
-    const failureResponse = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
-      new Request('https://studio.test/api/v1/waste-management/master-data'),
-      actor,
-      {
-        ...createDeps(),
-        loadMasterDataOverview: vi.fn(async () => {
-          throw new Error('db down');
-        }),
-      }
+    expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      'tenant-a',
+      'success'
     );
 
+    const failureResponse =
+      await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
+        new Request('https://studio.test/api/v1/waste-management/master-data'),
+        actor,
+        {
+          ...createDeps(),
+          loadMasterDataOverview: vi.fn(async () => {
+            throw new Error('db down');
+          }),
+        }
+      );
+
     expect(failureResponse.status).toBe(503);
-    expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(expect.any(Object), 'tenant-a', 'revalidate');
+    expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      'tenant-a',
+      'revalidate'
+    );
   });
 
   it('returns fractions data even when the visible-status update fails after a successful load', async () => {
@@ -384,7 +416,11 @@ describe('waste-management read handlers', () => {
 
   it('logs response serialization failures separately for master-data responses', async () => {
     const originalStringify = JSON.stringify;
-    const stringifySpy = vi.spyOn(JSON, 'stringify').mockImplementation(((value: unknown, replacer?: unknown, space?: unknown) => {
+    const stringifySpy = vi.spyOn(JSON, 'stringify').mockImplementation(((
+      value: unknown,
+      replacer?: unknown,
+      space?: unknown
+    ) => {
       if (
         value &&
         typeof value === 'object' &&
@@ -511,5 +547,4 @@ describe('waste-management read handlers', () => {
       },
     });
   });
-
 });

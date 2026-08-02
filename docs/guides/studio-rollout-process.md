@@ -12,7 +12,7 @@ Dieses Dokument ist die einzige normative Bedienanleitung für reguläre Studio-
 - Staging wird vor Production mit demselben Digest vollständig verifiziert.
 - Production wird ausschließlich manuell über das geschützte GitHub-Environment `prod` freigegeben.
 - `auto` ist ausschließlich in Dev zulässig. Staging und Production verwenden `assert-none` oder `run`.
-- Vor jedem Deployment nach Staging oder Production muss ein erfolgreich verifiziertes PostgreSQL-Backup vorliegen.
+- Vor jedem Deployment nach Staging oder Production muss ein erfolgreich verifiziertes PostgreSQL-Backup vorliegen. Sobald `WASTE_POSTGRES_BACKUP_ENABLED=true` gesetzt ist, gilt dieses Gate getrennt für `sva_studio` und das vollständige Registry-Inventar aller `ready`- oder `disabled`-Waste-Tenant-Datenbanken.
 - Backup, Migration, Bootstrap, Postconditions und Verifikation sind fail-closed: Ein Fehler blockiert alle nachfolgenden mutierenden Phasen.
 - Secrets kommen ausschließlich aus dem jeweiligen GitHub-Environment. Sie werden weder in Workflow-Inputs noch in Logs, Reports oder Dokumentation geschrieben.
 - Direkte Portainer-Änderungen, Docker-Service-Updates, rohe `quantum-cli stacks deploy/update`-Aufrufe und `env:release:studio:local` sind kein regulärer Rolloutpfad.
@@ -73,7 +73,7 @@ Die Reihenfolge ist unveränderlich; nicht angeforderte One-shot-Jobs und deren 
 
 1. Inputs, Git-Bindung, Image-Digest und OCI-Revision validieren.
 2. Vorherigen Live-Digest erfassen.
-3. Signierten Backup-Auftrag an den Staging-Agenten senden.
+3. Signierten Backup-Auftrag an den Staging-Agenten senden; bei aktiviertem Waste-Backup anschließend einen zweiten Auftrag mit `database: "waste"` ausführen. Der Agent entdeckt das vollständige Tenant-Inventar selbst und schreibt ein Manifest mit tenantgenauen Dump-Referenzen.
 4. Terminales Ergebnis aus MinIO abwarten und das Dump-Objekt unabhängig per S3-`HEAD` verifizieren.
 5. Migration ausführen, falls angefordert.
 6. Bootstrap ausführen, falls angefordert.

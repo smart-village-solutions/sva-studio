@@ -44,7 +44,7 @@ const createDeps = () => ({
   loadDefaultInterfaceRecord: vi.fn(async () => ({
     id: 'supabase-1',
     instanceId: 'tenant-a',
-    typeKey: 'supabase',
+    typeKey: 'postgresql',
     ownerKind: 'host' as const,
     ownerId: 'host',
     displayName: 'Supabase',
@@ -52,10 +52,9 @@ const createDeps = () => ({
     enabled: true,
     isDefault: true,
     category: 'database' as const,
-    statusCheckKind: 'supabase' as const,
+    statusCheckKind: 'postgresql' as const,
     visibleStatus: 'ok' as const,
     publicConfig: {
-      projectUrl: 'https://tenant.example',
       schemaName: 'wm',
     },
     secretConfigCiphertext: 'cipher-secret',
@@ -87,7 +86,11 @@ const createImportRequest = (body: Record<string, unknown>) =>
     body: JSON.stringify(body),
   });
 
-const createToolRequest = (url: string, body: Record<string, unknown>, headers?: Record<string, string>) =>
+const createToolRequest = (
+  url: string,
+  body: Record<string, unknown>,
+  headers?: Record<string, string>
+) =>
   new Request(url, {
     method: 'POST',
     headers: {
@@ -150,7 +153,8 @@ describe('waste-management operation handlers', () => {
     {
       label: 'mainserver-sync returns forbidden when the scheduling permission is missing',
       handler: wasteManagementOperationHandlers.startWasteManagementMainserverSyncInternal,
-      request: () => createToolRequest('https://studio.test/api/v1/waste-management/tools/mainserver-sync', {}),
+      request: () =>
+        createToolRequest('https://studio.test/api/v1/waste-management/tools/mainserver-sync', {}),
       deps: () => ({
         ...createDeps(),
         resolvePermissions: vi.fn(async () => ({
@@ -165,7 +169,8 @@ describe('waste-management operation handlers', () => {
     {
       label: 'sync-waste-types returns forbidden when the master-data permission is missing',
       handler: wasteManagementOperationHandlers.startWasteManagementSyncWasteTypesInternal,
-      request: () => createToolRequest('https://studio.test/api/v1/waste-management/tools/sync-waste-types', {}),
+      request: () =>
+        createToolRequest('https://studio.test/api/v1/waste-management/tools/sync-waste-types', {}),
       deps: () => ({
         ...createDeps(),
         resolvePermissions: vi.fn(async () => ({
@@ -255,21 +260,32 @@ describe('waste-management operation handlers', () => {
       expectedCode: 'idempotency_key_required',
       expectedJobCalls: 0,
     },
-  ])('$label', async ({ handler, request, deps, actor: scopedActor, expectedStatus, expectedCode, expectedJobCalls }) => {
-    const scopedDeps = deps();
-    const response = await handler(request(), scopedActor, scopedDeps);
+  ])(
+    '$label',
+    async ({
+      handler,
+      request,
+      deps,
+      actor: scopedActor,
+      expectedStatus,
+      expectedCode,
+      expectedJobCalls,
+    }) => {
+      const scopedDeps = deps();
+      const response = await handler(request(), scopedActor, scopedDeps);
 
-    expect(response.status).toBe(expectedStatus);
-    await expect(response.json()).resolves.toMatchObject({
-      error: {
-        code: expectedCode,
-      },
-      requestId: 'req-test',
-    });
-    if ('startPluginOperationJob' in scopedDeps) {
-      expect(scopedDeps.startPluginOperationJob).toHaveBeenCalledTimes(expectedJobCalls ?? 0);
+      expect(response.status).toBe(expectedStatus);
+      await expect(response.json()).resolves.toMatchObject({
+        error: {
+          code: expectedCode,
+        },
+        requestId: 'req-test',
+      });
+      if ('startPluginOperationJob' in scopedDeps) {
+        expect(scopedDeps.startPluginOperationJob).toHaveBeenCalledTimes(expectedJobCalls ?? 0);
+      }
     }
-  });
+  );
 
   it('rejects unknown import profile ids before a job is started', async () => {
     const startPluginOperationJob = vi.fn();
@@ -299,7 +315,9 @@ describe('waste-management operation handlers', () => {
   });
 
   it('resolves the IAM actor account id before starting a migrations job', async () => {
-    const startPluginOperationJob = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'job-1' } }), { status: 202 }));
+    const startPluginOperationJob = vi.fn(
+      async () => new Response(JSON.stringify({ data: { id: 'job-1' } }), { status: 202 })
+    );
 
     const response = await wasteManagementOperationHandlers.startWasteManagementMigrationsInternal(
       createToolRequest('https://studio.test/api/v1/waste-management/tools/migrations', {
@@ -331,25 +349,28 @@ describe('waste-management operation handlers', () => {
   });
 
   it('creates a dedicated waste-type sync job payload', async () => {
-    const startPluginOperationJob = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'job-2' } }), { status: 202 }));
-
-    const response = await wasteManagementOperationHandlers.startWasteManagementSyncWasteTypesInternal(
-      createToolRequest('https://studio.test/api/v1/waste-management/tools/sync-waste-types', {}),
-      actor,
-      {
-        ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            {
-              action: 'waste-management.master-data.manage',
-              resourceType: 'waste-management',
-            },
-          ],
-        })),
-        startPluginOperationJob,
-      }
+    const startPluginOperationJob = vi.fn(
+      async () => new Response(JSON.stringify({ data: { id: 'job-2' } }), { status: 202 })
     );
+
+    const response =
+      await wasteManagementOperationHandlers.startWasteManagementSyncWasteTypesInternal(
+        createToolRequest('https://studio.test/api/v1/waste-management/tools/sync-waste-types', {}),
+        actor,
+        {
+          ...createDeps(),
+          resolvePermissions: vi.fn(async () => ({
+            ok: true as const,
+            permissions: [
+              {
+                action: 'waste-management.master-data.manage',
+                resourceType: 'waste-management',
+              },
+            ],
+          })),
+          startPluginOperationJob,
+        }
+      );
 
     expect(startPluginOperationJob).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -368,25 +389,28 @@ describe('waste-management operation handlers', () => {
   });
 
   it('creates a dedicated mainserver sync job payload', async () => {
-    const startPluginOperationJob = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'job-sync-1' } }), { status: 202 }));
-
-    const response = await wasteManagementOperationHandlers.startWasteManagementMainserverSyncInternal(
-      createToolRequest('https://studio.test/api/v1/waste-management/tools/mainserver-sync', {}),
-      actor,
-      {
-        ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            {
-              action: 'waste-management.scheduling.manage',
-              resourceType: 'waste-management',
-            },
-          ],
-        })),
-        startPluginOperationJob,
-      }
+    const startPluginOperationJob = vi.fn(
+      async () => new Response(JSON.stringify({ data: { id: 'job-sync-1' } }), { status: 202 })
     );
+
+    const response =
+      await wasteManagementOperationHandlers.startWasteManagementMainserverSyncInternal(
+        createToolRequest('https://studio.test/api/v1/waste-management/tools/mainserver-sync', {}),
+        actor,
+        {
+          ...createDeps(),
+          resolvePermissions: vi.fn(async () => ({
+            ok: true as const,
+            permissions: [
+              {
+                action: 'waste-management.scheduling.manage',
+                resourceType: 'waste-management',
+              },
+            ],
+          })),
+          startPluginOperationJob,
+        }
+      );
 
     expect(startPluginOperationJob).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -810,19 +834,20 @@ describe('waste-management operation handlers', () => {
       errors: [],
     }));
 
-    const response = await wasteManagementOperationHandlers.previewWasteManagementLocationTourPickupDateImportInternal(
-      createToolRequest('https://studio.test/api/v1/waste-management/tools/imports/preview', {
-        importProfileId: 'waste-management.ortsbezogene-tourtermine',
-        sourceFormat: 'text/csv',
-        blobRef: 'data:text/csv;base64,ZmFrZQ==',
-        delimiterOverride: ';',
-      }),
-      actor,
-      {
-        ...createDeps(),
-        previewWasteLocationTourPickupDateImport,
-      }
-    );
+    const response =
+      await wasteManagementOperationHandlers.previewWasteManagementLocationTourPickupDateImportInternal(
+        createToolRequest('https://studio.test/api/v1/waste-management/tools/imports/preview', {
+          importProfileId: 'waste-management.ortsbezogene-tourtermine',
+          sourceFormat: 'text/csv',
+          blobRef: 'data:text/csv;base64,ZmFrZQ==',
+          delimiterOverride: ';',
+        }),
+        actor,
+        {
+          ...createDeps(),
+          previewWasteLocationTourPickupDateImport,
+        }
+      );
 
     expect(previewWasteLocationTourPickupDateImport).toHaveBeenCalledWith({
       instanceId: 'tenant-a',

@@ -161,6 +161,7 @@ export const createAndQueueDsrExportStudioJob = async (input: {
       jobId: job.id,
       queueName: job.queueName,
       maxAttempts: job.maxAttempts,
+      executionLane: 'default',
     });
   } catch (error) {
     await markStudioJobEnqueueFailed({

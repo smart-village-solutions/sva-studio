@@ -3,7 +3,7 @@ services:
     image: ${IMAGE_REF}
     environment:
       BACKUP_AGENT_ALLOWED_WORKFLOWS: promote.yml,staging-backup-drill.yml,production-backup-drill.yml
-      RESTORE_AGENT_ALLOWED_WORKFLOWS: database-restore.yml
+      RESTORE_AGENT_ALLOWED_WORKFLOWS: database-restore.yml,waste-database-restore-drill.yml
       BACKUP_AGENT_GITHUB_REPOSITORY: smart-village-solutions/sva-studio
       BACKUP_AGENT_IMAGE_REF: ${IMAGE_REF}
       BACKUP_AGENT_OIDC_AUDIENCE: studio-backup-agent
@@ -12,6 +12,8 @@ services:
       BACKUP_STAGING_POSTGRES_DB: sva_studio
       BACKUP_STAGING_POSTGRES_USER: sva
       BACKUP_STAGING_POSTGRES_PASSWORD_FILE: /run/secrets/backup_staging_postgres_password
+      BACKUP_STAGING_WASTE_PROVISIONER_USER: sva_waste_provisioner
+      BACKUP_STAGING_WASTE_PROVISIONER_PASSWORD_FILE: /run/secrets/staging_waste_database_provisioner_password
       BACKUP_STAGING_S3_ACCESS_KEY_FILE: /run/secrets/backup_staging_s3_access_key
       BACKUP_STAGING_S3_SECRET_KEY_FILE: /run/secrets/backup_staging_s3_secret_key
       BACKUP_STAGING_SIGNING_KEY_FILE: /run/secrets/backup_staging_signing_key
@@ -21,6 +23,8 @@ services:
       BACKUP_PROD_POSTGRES_DB: sva_studio
       BACKUP_PROD_POSTGRES_USER: sva
       BACKUP_PROD_POSTGRES_PASSWORD_FILE: /run/secrets/backup_prod_postgres_password
+      BACKUP_PROD_WASTE_PROVISIONER_USER: sva_waste_provisioner
+      BACKUP_PROD_WASTE_PROVISIONER_PASSWORD_FILE: /run/secrets/prod_waste_database_provisioner_password
       BACKUP_PROD_S3_ACCESS_KEY_FILE: /run/secrets/backup_prod_s3_access_key
       BACKUP_PROD_S3_SECRET_KEY_FILE: /run/secrets/backup_prod_s3_secret_key
       BACKUP_PROD_SIGNING_KEY_FILE: /run/secrets/backup_prod_signing_key
@@ -34,6 +38,10 @@ services:
     secrets:
       - source: backup_staging_postgres_password_v3
         target: backup_staging_postgres_password
+      - source: studio_staging_waste_database_provisioner_password_v1
+        target: staging_waste_database_provisioner_password
+      - source: studio_waste_database_provisioner_password_v1
+        target: prod_waste_database_provisioner_password
       - backup_staging_s3_access_key
       - backup_staging_s3_secret_key
       - backup_staging_signing_key
@@ -84,7 +92,11 @@ networks:
     name: studio_default
 
 secrets:
+  studio_staging_waste_database_provisioner_password_v1:
+    external: true
   backup_staging_postgres_password_v3:
+    external: true
+  studio_waste_database_provisioner_password_v1:
     external: true
   backup_staging_s3_access_key:
     external: true

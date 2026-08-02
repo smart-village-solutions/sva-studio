@@ -85,6 +85,10 @@ export const interfacesDEResources = {
       description:
         'Waste-Datenquelle mit Projekt-URL, Schema, Datenbankzugang und Service-Role-Key.',
     },
+    postgresql: {
+      label: 'PostgreSQL',
+      description: 'Direkte PostgreSQL-Datenquelle mit Schema und verschlüsseltem Datenbankzugang.',
+    },
     mailTransport: {
       label: 'Mail-Transport',
       description: 'Zentrale technische SMTP-Anbindung für transaktionale Zustellung.',
@@ -131,6 +135,10 @@ export const interfacesDEResources = {
       serviceRoleKey: 'Service-Role-Key',
       notImplemented:
         'Hinweis: Diese Schnittstelle wird bereits serverseitig gespeichert. Automatische Statusprüfungen und Verbindungschecks folgen noch.',
+    },
+    postgresql: {
+      schemaName: 'Schema',
+      databaseUrl: 'Datenbank-URL',
     },
     mailTransport: {
       transportId: 'Transport-ID',

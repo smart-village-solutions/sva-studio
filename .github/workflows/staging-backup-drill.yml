@@ -70,7 +70,7 @@ jobs:
 
       - name: create and verify database backup
         id: backup_job
-        if: ${{ vars.BACKUP_EXECUTOR != 'temporary' }}
+        if: ${{ vars.BACKUP_EXECUTOR != 'temporary' && vars.WASTE_POSTGRES_BACKUP_ENABLED == 'true' }}
         env:
           BACKUP_AGENT_SIGNING_KEY: ${{ secrets.BACKUP_AGENT_SIGNING_KEY }}
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
@@ -78,6 +78,17 @@ jobs:
           S3_ENDPOINT: https://fileserver.smart-village.app
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
         run: pnpm exec tsx scripts/ci/submit-backup-agent-request.ts staging
+
+      - name: create and verify Waste database backup
+        id: waste_backup_job
+        if: ${{ vars.BACKUP_EXECUTOR != 'temporary' && vars.WASTE_POSTGRES_BACKUP_ENABLED == 'true' }}
+        env:
+          BACKUP_AGENT_SIGNING_KEY: ${{ secrets.BACKUP_AGENT_SIGNING_KEY }}
+          DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_ENDPOINT: https://fileserver.smart-village.app
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+        run: pnpm exec tsx scripts/ci/submit-backup-agent-request.ts staging waste
 
       - name: create temporary database backup fallback
         id: backup_fallback_job
@@ -104,6 +115,16 @@ jobs:
           S3_BUCKET: ${{ steps.backup_job.outputs.backup_bucket || steps.backup_fallback_job.outputs.backup_bucket }}
           S3_ENDPOINT: https://fileserver.smart-village.app
           S3_OBJECT_KEY: ${{ steps.backup_job.outputs.backup_object || steps.backup_fallback_job.outputs.backup_object }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+        run: pnpm exec tsx scripts/ci/verify-promote-backup.ts
+
+      - name: verify Waste database backup object
+        if: ${{ vars.BACKUP_EXECUTOR != 'temporary' && vars.WASTE_POSTGRES_BACKUP_ENABLED == 'true' }}
+        env:
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_BUCKET: ${{ steps.waste_backup_job.outputs.waste_backup_bucket }}
+          S3_ENDPOINT: https://fileserver.smart-village.app
+          S3_OBJECT_KEY: ${{ steps.waste_backup_job.outputs.waste_backup_object }}
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
         run: pnpm exec tsx scripts/ci/verify-promote-backup.ts
 

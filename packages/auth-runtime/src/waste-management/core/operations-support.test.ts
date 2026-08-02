@@ -92,6 +92,7 @@ describe('waste-management operations support', () => {
       jobId: 'job-1',
       queueName: 'plugin-operations',
       maxAttempts: 5,
+      executionLane: 'default',
     });
     expect(completeIdempotencyMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -99,6 +100,29 @@ describe('waste-management operations support', () => {
         status: 'COMPLETED',
         responseStatus: 202,
       })
+    );
+  });
+
+  it('routes tenant database provisioning exclusively to the privileged worker lane', async () => {
+    reserveIdempotencyMock.mockResolvedValueOnce({ status: 'reserved' });
+    createPluginOperationJobMock.mockResolvedValueOnce({
+      id: 'job-provision',
+      queueName: 'waste-provisioning',
+      maxAttempts: 5,
+    });
+
+    const response = await startPluginOperationJobFromFacade({
+      ...input,
+      data: {
+        pluginId: 'waste-management',
+        jobTypeId: 'waste-management.provision-tenant-database',
+        input: { operation: 'provision-tenant-database', desiredGeneration: 1 },
+      },
+    });
+
+    expect(response.status).toBe(202);
+    expect(queuePluginOperationJobMock).toHaveBeenCalledWith(
+      expect.objectContaining({ executionLane: 'privileged' })
     );
   });
 

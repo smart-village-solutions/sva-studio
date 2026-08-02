@@ -11,6 +11,7 @@ const integrationEnv = {
   INTEGRATION_S3_SECRET_KEY: secret(),
   INTEGRATION_STAGING_POSTGRES_PASSWORD: secret(),
   INTEGRATION_STAGING_RESTORE_PASSWORD: secret(),
+  INTEGRATION_STAGING_WASTE_POSTGRES_PASSWORD: secret(),
 };
 const cwd = new URL('../..', import.meta.url);
 const composeArgs = ['compose', '-f', 'deploy/backup-agent/compose.integration.yaml'];
@@ -49,9 +50,12 @@ const main = async () => {
         'minio-init',
         'staging-seed',
         'staging-agent-run',
+        'staging-waste-agent-run',
         'staging-restore-run',
+        'staging-waste-restore-run',
         'production-agent-run',
         'verify-restored-db',
+        'verify-waste-restored-db',
       ]
         .map(containerState)
         .find((state) => state?.Status === 'exited' && state.ExitCode !== 0);

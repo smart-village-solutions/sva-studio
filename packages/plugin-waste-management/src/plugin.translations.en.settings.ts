@@ -5,8 +5,8 @@ export const wasteManagementPluginTranslationsENSettings = createWasteManagement
     actions: 'Actions',
   },
   technical: {
-    title: 'Technical status',
-    description: 'The host evaluates the active waste data source and reflects the latest server-side connection check.',
+    title: 'Provisioning',
+    description: 'The waste database is provisioned and managed automatically for this instance.',
   },
   fields: {
     projectUrl: 'Project URL',
@@ -43,6 +43,9 @@ export const wasteManagementPluginTranslationsENSettings = createWasteManagement
     holidaySyncPartialSuccess: 'Partially successful',
     holidaySyncFailed: 'Failed',
     customRecurrenceIntervalDays: 'Every {{value}} days',
+    provisioningUpdatedAtLabel: 'Last updated',
+    provisioningErrorCodeLabel: 'Error code',
+    provisioningErrorCodeEmpty: 'No error',
   },
   actions: {
     save: 'Save settings',
@@ -54,6 +57,8 @@ export const wasteManagementPluginTranslationsENSettings = createWasteManagement
     editCustomRecurrence: 'Edit',
     deleteCustomRecurrence: 'Delete',
     saveCustomRecurrence: 'Apply interval',
+    retryProvisioning: 'Retry provisioning',
+    retryingProvisioning: 'Retrying…',
   },
   messages: {
     loading: 'Loading settings.',
@@ -89,5 +94,8 @@ export const wasteManagementPluginTranslationsENSettings = createWasteManagement
     customRecurrenceFallbackHint: 'Optional: preselect a fallback when this interval is already assigned to tours.',
     customRecurrenceFallbackPlaceholder: 'Do not preselect a fallback',
     noInterfacesAvailable: 'No external interfaces have been configured for this instance yet.',
+    retryProvisioningSuccess: 'Provisioning was restarted.',
+    retryProvisioningError: 'Provisioning could not be restarted.',
+    retryProvisioningForbidden: 'Missing permission to retry provisioning.',
   },
 });

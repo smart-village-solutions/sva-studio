@@ -7,6 +7,7 @@ import type {
   MailDispatchPayload,
   MailTransportConfig,
   WasteManagementProcessEmailReminderOutboxJobInput,
+  WasteManagementProvisionTenantDatabaseJobInput,
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
   WasteManagementSyncMainserverJobInput,
@@ -14,6 +15,7 @@ import type {
 } from '@sva/core';
 import type { MailDispatchMessage } from '@sva/mail-runtime';
 import type { loadDefaultExternalInterfaceRecord, listExternalInterfaceRecords } from '@sva/data-repositories/server';
+import type { loadWasteTenantProvisioningRecord } from '@sva/data-repositories/server';
 
 export type SqlClient = {
   query: <TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) => Promise<{
@@ -32,7 +34,9 @@ export type WasteOperationRuntimeDeps = {
   readonly now?: () => Date;
   readonly loadDefaultInterfaceRecord?: typeof loadDefaultExternalInterfaceRecord;
   readonly listInterfaceRecords?: typeof listExternalInterfaceRecords;
+  readonly loadProvisioning?: typeof loadWasteTenantProvisioningRecord;
   readonly revealSecret?: (ciphertext: string | null | undefined, aad: string) => string | undefined;
+  readonly protectSecret?: (plaintext: string, aad: string) => string | null;
   readonly createPool?: (connectionString: string) => WasteOperationSqlPool;
   readonly readBinarySource?: (blobRef: string) => Promise<Uint8Array>;
   readonly dispatchMail?: (input: {
@@ -55,6 +59,11 @@ export type WasteOperationProgressReporter = {
 };
 
 export type WasteManagementOperationRuntime = {
+  provisionTenantDatabase: (
+    instanceId: string,
+    input: WasteManagementProvisionTenantDatabaseJobInput,
+    context: { readonly jobId: string }
+  ) => Promise<OperationSummary>;
   initializeDataSource: (instanceId: string, input: WasteManagementInitializeJobInput) => Promise<OperationSummary>;
   applyMigrations: (instanceId: string, input: WasteManagementApplyMigrationsJobInput) => Promise<OperationSummary>;
   importData: (

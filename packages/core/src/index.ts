@@ -201,11 +201,17 @@ export type {
   WasteManagementJobTypeId,
   WasteManagementMaterializeEmailRemindersJobInput,
   WasteManagementProcessEmailReminderOutboxJobInput,
+  WasteManagementProvisionTenantDatabaseJobInput,
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
   WasteManagementSyncWasteTypesJobInput,
 } from './waste-management-operations-contract.js';
 export type { WasteManagementSyncMainserverJobInput } from './waste-management-sync-mainserver-job-input.js';
+export {
+  wasteTenantProvisioningContract,
+  type WasteTenantProvisioningRecord,
+  type WasteTenantProvisioningStatus,
+} from './waste-tenant-provisioning-contract.js';
 export type {
   WasteDateShiftReasonType,
   WasteCollectionLocationListFilter,

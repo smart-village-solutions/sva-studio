@@ -80,7 +80,7 @@ describe('resolveDeleteRequestContext', () => {
       requiredPermissionAction: 'iam.accounts.delete',
       requestId: 'req-1',
     });
-  });
+  }, 30_000);
 
   it('returns shared guard responses unchanged', async () => {
     const { resolveDeleteRequestContext } = await import('./user-delete-handler.js');

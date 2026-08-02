@@ -63,6 +63,20 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     listAssignedModules: vi.fn(async () => baseInstance.assignedModules),
     assignModule: vi.fn(async () => true),
     revokeModule: vi.fn(async () => true),
+    requestWasteProvisioning: vi.fn(async () => ({
+      instanceId: 'demo',
+      status: 'provisioning' as const,
+      desiredGeneration: 1,
+      completedGeneration: 0,
+      requestedAt: '2026-08-02T08:00:00.000Z',
+      updatedAt: '2026-08-02T08:00:00.000Z',
+    })),
+    getWasteProvisioning: vi.fn(async () => null),
+    disableWasteProvisioning: vi.fn(async () => null),
+    claimWasteProvisioning: vi.fn(async () => null),
+    completeWasteProvisioning: vi.fn(async () => null),
+    failWasteProvisioning: vi.fn(async () => null),
+    failWasteProvisioningRequest: vi.fn(async () => null),
     syncAssignedModuleIam: vi.fn(async () => undefined),
     syncProtectedSystemRolePermissions: vi.fn(async () => undefined),
     countLocalSystemAdminAssignments: vi.fn(async () => 1),
@@ -1016,6 +1030,7 @@ describe('instance registry service facade', () => {
     });
 
     expect(repository.assignModule).toHaveBeenCalledWith('demo', 'waste-management');
+    expect(repository.requestWasteProvisioning).toHaveBeenCalledWith('demo');
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
@@ -1504,6 +1519,30 @@ describe('instance registry service facade', () => {
         }),
       })
     );
+  });
+
+  it('disables waste provisioning on module revocation without deleting its state', async () => {
+    const repository = createRepository({
+      revokeModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => []),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['waste-management'] })
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: [] }),
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).revokeModule({
+        instanceId: 'demo',
+        moduleId: 'waste-management',
+        confirmation: 'REVOKE',
+        idempotencyKey: 'idem-revoke-waste',
+        actorId: 'actor-1',
+        requestId: 'req-revoke-waste',
+      })
+    ).resolves.toMatchObject({ ok: true });
+
+    expect(repository.disableWasteProvisioning).toHaveBeenCalledWith('demo');
   });
 
   it('returns a local fallback keycloak status when no status snapshot exists yet', async () => {

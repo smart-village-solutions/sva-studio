@@ -4,12 +4,12 @@ import type { Page, Route } from '@playwright/test';
 import { registerSharedIamRoutes } from './studio-shell.helpers';
 
 type WasteSettingsState = {
-  provider: 'supabase';
-  projectUrl: string;
+  provider: 'postgresql' | 'supabase';
+  projectUrl?: string;
   schemaName: string;
   enabled: boolean;
   databaseUrlConfigured: boolean;
-  serviceRoleKeyConfigured: boolean;
+  serviceRoleKeyConfigured?: boolean;
   visibleStatus: 'ok' | 'error' | 'unknown' | 'not_configured';
   lastCheckedAt?: string;
   customRecurrencePresets?: WasteCustomRecurrencePresetState[];
@@ -499,12 +499,10 @@ test.describe('waste management plugin', () => {
     const harness = await mockWasteFacade(page, {
       instanceId: 'de-musterhausen',
       settings: {
-        provider: 'supabase',
-        projectUrl: 'https://tenant-a.supabase.co',
+        provider: 'postgresql',
         schemaName: 'waste_ops',
         enabled: true,
         databaseUrlConfigured: true,
-        serviceRoleKeyConfigured: true,
         visibleStatus: 'ok',
         lastCheckedAt: '2026-05-10T12:00:00.000Z',
       },
@@ -581,14 +579,19 @@ test.describe('waste management plugin', () => {
 
     await openWastePlugin(page);
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
-    await expect(page.locator('input[placeholder="https://example.supabase.co"]')).toHaveValue('https://tenant-a.supabase.co');
+    await expect(
+      page.getByText('Die Waste-Datenbank wird automatisch für diese Instanz bereitgestellt und verwaltet.').first()
+    ).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Schema' })).toBeDisabled();
+    await expect(page.getByRole('textbox', { name: 'Schema' })).toHaveValue('waste_ops');
+    await expect(page.locator('input[placeholder="https://example.supabase.co"]')).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
 
     await expect(page.getByText('Die Waste-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
     expect(harness.requests.settingsUpdates).toHaveLength(1);
     expect(harness.requests.settingsUpdates[0]).toMatchObject({
-      projectUrl: 'https://tenant-a.supabase.co',
+      provider: 'postgresql',
       schemaName: 'waste_ops',
       enabled: true,
     });
@@ -669,12 +672,10 @@ test.describe('waste management plugin', () => {
     await mockWasteFacade(page, {
       instanceId: 'de-zweitstadt',
       settings: {
-        provider: 'supabase',
-        projectUrl: 'https://tenant-b.supabase.co',
+        provider: 'postgresql',
         schemaName: 'waste_b',
         enabled: true,
         databaseUrlConfigured: true,
-        serviceRoleKeyConfigured: true,
         visibleStatus: 'ok',
         lastCheckedAt: '2026-05-10T13:00:00.000Z',
       },
@@ -694,8 +695,10 @@ test.describe('waste management plugin', () => {
 
     await openWastePlugin(page);
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
-    await expect(page.locator('input[placeholder="https://example.supabase.co"]')).toHaveValue('https://tenant-b.supabase.co');
-    await expect(page.locator('input[placeholder="https://example.supabase.co"]')).not.toHaveValue('https://tenant-a.supabase.co');
+    await expect(page.getByRole('textbox', { name: 'Schema' })).toBeDisabled();
+    await expect(page.getByRole('textbox', { name: 'Schema' })).toHaveValue('waste_b');
+    await expect(page.getByRole('textbox', { name: 'Schema' })).not.toHaveValue('waste_ops');
+    await expect(page.locator('input[placeholder="https://example.supabase.co"]')).toHaveCount(0);
 
     await page.getByRole('tab', { name: 'Abfallarten' }).click();
     await expect(

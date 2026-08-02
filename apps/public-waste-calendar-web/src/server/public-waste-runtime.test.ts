@@ -2,19 +2,31 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { deriveWasteTenantDatabaseNames } from '@sva/server-runtime';
 
 import { createPublicWasteRuntime } from './public-waste-runtime.js';
 
+const databaseUrlFor = (instanceId: string): string => {
+  const names = deriveWasteTenantDatabaseNames(instanceId);
+  return `postgresql://${names.publicAppRole}:secret@postgres:5432/${names.database}`;
+};
+
 const createAssetsDir = async (): Promise<string> => {
   const assetsDir = await mkdtemp(join(tmpdir(), 'public-waste-runtime-'));
-  await writeFile(join(assetsDir, 'index.html'), '<!doctype html><html><body>Public Waste</body></html>', 'utf8');
+  await writeFile(
+    join(assetsDir, 'index.html'),
+    '<!doctype html><html><body>Public Waste</body></html>',
+    'utf8'
+  );
   return assetsDir;
 };
 
 const cleanupPaths = new Set<string>();
 
 afterEach(async () => {
-  await Promise.all([...cleanupPaths].map(async (path) => rm(path, { recursive: true, force: true })));
+  await Promise.all(
+    [...cleanupPaths].map(async (path) => rm(path, { recursive: true, force: true }))
+  );
   cleanupPaths.clear();
 });
 
@@ -27,7 +39,7 @@ describe('public waste runtime', () => {
       assetsDir,
       env: {
         PUBLIC_WASTE_INSTANCE_ID: 'bb-prignitz',
-        PUBLIC_WASTE_DATABASE_URL: 'postgres://example',
+        PUBLIC_WASTE_DATABASE_URL: databaseUrlFor('bb-prignitz'),
         PUBLIC_WASTE_SCHEMA_NAME: 'public',
       },
     });
@@ -53,7 +65,9 @@ describe('public waste runtime', () => {
       env: {},
     });
 
-    const response = await runtime.handle(new Request('http://localhost/api/public-waste/selection'));
+    const response = await runtime.handle(
+      new Request('http://localhost/api/public-waste/selection')
+    );
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toMatchObject({
@@ -63,7 +77,7 @@ describe('public waste runtime', () => {
     await runtime.dispose();
   });
 
-  it('passes the resolved supabase config into the pdf static settings loader', async () => {
+  it('passes the resolved postgresql config into the pdf static settings loader', async () => {
     const assetsDir = await createAssetsDir();
     cleanupPaths.add(assetsDir);
     const loadPdfStaticConfig = vi.fn(async () => ({}));
@@ -73,9 +87,9 @@ describe('public waste runtime', () => {
       env: {
         PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
           instanceId: 'bb-prignitz',
-          supabase: {
-            databaseUrl: 'postgres://example',
-            schemaName: 'wm',
+          database: {
+            databaseUrl: databaseUrlFor('bb-prignitz'),
+            schemaName: 'public',
           },
         }),
       },
@@ -135,7 +149,7 @@ describe('public waste runtime', () => {
               id: 'subscription-1',
               status: 'pending',
               location_label: 'Perleberg, Ackerstr. 12',
-              expires_at: '2026-07-16T19:00:00.000Z',
+              expires_at: '2099-07-16T19:00:00.000Z',
             },
           ],
         })
@@ -149,8 +163,8 @@ describe('public waste runtime', () => {
       env: {
         PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
           instanceId: 'bb-prignitz',
-          supabase: {
-            databaseUrl: 'postgres://example',
+          database: {
+            databaseUrl: databaseUrlFor('bb-prignitz'),
             schemaName: 'public',
           },
           emailReminderConfig: {
@@ -231,8 +245,8 @@ describe('public waste runtime', () => {
       env: {
         PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
           instanceId: 'bb-prignitz',
-          supabase: {
-            databaseUrl: 'postgres://example',
+          database: {
+            databaseUrl: databaseUrlFor('bb-prignitz'),
             schemaName: 'public',
           },
           emailReminderConfig: {
@@ -308,8 +322,14 @@ describe('public waste runtime', () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ status: 'pending' });
-    expect(query).toHaveBeenCalledWith(expect.stringContaining('pg_advisory_xact_lock'), expect.any(Array));
-    expect(query).toHaveBeenCalledWith(expect.stringContaining('COUNT(*)::int AS total'), expect.any(Array));
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('pg_advisory_xact_lock'),
+      expect.any(Array)
+    );
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('COUNT(*)::int AS total'),
+      expect.any(Array)
+    );
 
     await runtime.dispose();
   });

@@ -4,10 +4,10 @@
 # Profil fuer den Stack "studio" auf Endpoint "sva".
 # Nur App + Redis + Postgres. Monitoring wird separat betrieben.
 #
-# Sensible Werte werden fuer studio bewusst als Stack-Variablen in Portainer gesetzt.
-# Dieses Profil nutzt aktuell absichtlich keine Swarm-Secrets; die Variablen sind
-# damit im Swarm-/Portainer-Kontext kein hartes Secret-Handling und muessen wie
-# kompromittierbare Deploy-Zugangsdaten behandelt und bei Bedarf rotiert werden.
+# Die meisten historischen Werte werden weiterhin als Portainer-Stack-Variablen
+# gesetzt. Das clusterweit privilegierte Waste-Provisionierer-Passwort ist davon
+# ausgenommen und wird ausschließlich als externes, versioniertes Swarm-Secret
+# in den vorhandenen Provisioner-Pfad gemountet.
 # ---------------------------------------------------------------------------
 version: '3.8'
 
@@ -26,11 +26,13 @@ services:
       ENCRYPTION_KEY: '${ENCRYPTION_KEY}'
       IAM_PII_KEYRING_JSON: '${IAM_PII_KEYRING_JSON}'
       APP_DB_PASSWORD: '${APP_DB_PASSWORD}'
-      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       REDIS_PASSWORD: '${REDIS_PASSWORD}'
       ENABLE_OTEL: 'false'
       SVA_ENABLE_SERVER_CONSOLE_LOGS: '${SVA_ENABLE_SERVER_CONSOLE_LOGS:-false}'
       SVA_AUTH_DEBUG_HEADERS: '${SVA_AUTH_DEBUG_HEADERS:-false}'
+      SVA_ALLOW_PRIVATE_INTERFACE_HEALTHCHECK_TARGETS: 'true'
+      SVA_PLUGIN_OPERATION_WORKER_ENABLED: 'true'
+      SVA_PLUGIN_OPERATION_WORKER_LANE: 'default'
       POSTGRES_DB: sva_studio
       APP_DB_USER: '${APP_DB_USER}'
       SVA_PUBLIC_BASE_URL: '${SVA_PUBLIC_BASE_URL}'
@@ -88,17 +90,16 @@ services:
           memory: 512M
           cpus: '1.0'
       labels:
-        traefik.docker.network: "network-node-005"
-        traefik.enable: "true"
-        traefik.frontend.passHostHeader: "true"
-        traefik.frontend.rule: "Host:studio.smart-village.app,bb-bad-belzig.studio.smart-village.app,bb-guben.studio.smart-village.app,bb-prignitz.studio.smart-village.app,de-musterhausen.studio.smart-village.app,de-studio-sandbox.studio.smart-village.app,hb-meinquartier.studio.smart-village.app"
-        traefik.port: "3000"
+        traefik.docker.network: 'network-node-005'
+        traefik.enable: 'true'
+        traefik.frontend.passHostHeader: 'true'
+        traefik.frontend.rule: 'Host:studio.smart-village.app,bb-bad-belzig.studio.smart-village.app,bb-guben.studio.smart-village.app,bb-prignitz.studio.smart-village.app,de-musterhausen.studio.smart-village.app,de-studio-sandbox.studio.smart-village.app,hb-meinquartier.studio.smart-village.app'
+        traefik.port: '3000'
 
         # v3
-        traefik.http.routers.studio-app.rule: "Host(`studio.smart-village.app`) || Host(`bb-bad-belzig.studio.smart-village.app`) || Host(`bb-guben.studio.smart-village.app`) || Host(`bb-prignitz.studio.smart-village.app`) || Host(`de-musterhausen.studio.smart-village.app`) || Host(`de-studio-sandbox.studio.smart-village.app`) || Host(`hb-meinquartier.studio.smart-village.app`)"
-        traefik.http.routers.studio-app.tls: "true"
-        traefik.http.services.studio-app.loadbalancer.server.port: "3000"
-
+        traefik.http.routers.studio-app.rule: 'Host(`studio.smart-village.app`) || Host(`bb-bad-belzig.studio.smart-village.app`) || Host(`bb-guben.studio.smart-village.app`) || Host(`bb-prignitz.studio.smart-village.app`) || Host(`de-musterhausen.studio.smart-village.app`) || Host(`de-studio-sandbox.studio.smart-village.app`) || Host(`hb-meinquartier.studio.smart-village.app`)'
+        traefik.http.routers.studio-app.tls: 'true'
+        traefik.http.services.studio-app.loadbalancer.server.port: '3000'
 
     healthcheck:
       test:
@@ -117,7 +118,7 @@ services:
       - node
       - --import
       - ./otel-bootstrap.mjs
-      - node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js
+      - .output/server/index.mjs
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
@@ -142,6 +143,17 @@ services:
       KEYCLOAK_PROVISIONER_CLIENT_ID: '${KEYCLOAK_PROVISIONER_CLIENT_ID}'
       KEYCLOAK_PROVISIONER_CLIENT_SECRET: '${KEYCLOAK_PROVISIONER_CLIENT_SECRET}'
       SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS: '${SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS:-5000}'
+      SVA_PROVISIONER_COMBINED_WORKER: 'true'
+      SVA_PLUGIN_OPERATION_WORKER_ENABLED: 'true'
+      SVA_PLUGIN_OPERATION_WORKER_LANE: 'privileged'
+      SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY: '1'
+      WASTE_DATABASE_PROVISIONER_USER: '${WASTE_DATABASE_PROVISIONER_USER:-sva_waste_provisioner}'
+      WASTE_DATABASE_PROVISIONER_PASSWORD_FILE: '/run/secrets/waste_database_provisioner_password'
+      WASTE_DATABASE_PROVISIONER_HOST: postgres
+      WASTE_DATABASE_PROVISIONER_PORT: '5432'
+      WASTE_DATABASE_PROVISIONER_DATABASE: sva_studio
+    secrets:
+      - waste_database_provisioner_password
     labels:
       com.sva-studio.component: 'provisioner'
       com.sva-studio.environment: 'production'
@@ -333,3 +345,8 @@ volumes:
     driver: local
   redis-data:
     driver: local
+
+secrets:
+  waste_database_provisioner_password:
+    external: true
+    name: '${WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME:-studio_waste_database_provisioner_password_v1}'

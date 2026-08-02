@@ -96,7 +96,8 @@ export const createOperationHandler = <TJobInput extends WasteManagementJobInput
     payload: TJobInput,
     progressReporter?: {
       readonly reportProgress: (progress: WasteManagementJobProgress) => Promise<void> | void;
-    }
+    },
+    context?: { readonly jobId: string }
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;
@@ -134,7 +135,8 @@ export const createOperationHandler = <TJobInput extends WasteManagementJobInput
       runtime,
       context.job.instanceId,
       payload,
-      useRuntimeManagedProgress ? runtimeProgressReporter : undefined
+      useRuntimeManagedProgress ? runtimeProgressReporter : undefined,
+      { jobId: context.jobId }
     );
     await context.throwIfCancellationRequested();
     const progress =

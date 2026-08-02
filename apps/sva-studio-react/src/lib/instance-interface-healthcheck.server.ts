@@ -77,26 +77,36 @@ const createRuntimeError = (
     retryable,
   });
 
-const mapDatabaseError = (error: unknown, instanceId: string): ExternalInterfaceRuntimeError => {
+const mapDatabaseError = (
+  error: unknown,
+  instanceId: string,
+  typeKey: 'supabase' | 'postgresql'
+): ExternalInterfaceRuntimeError => {
   if (error instanceof ExternalInterfaceRuntimeError) {
     return error;
   }
 
-  const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : undefined;
+  const code =
+    typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : undefined;
   if (code === '28P01') {
     return createRuntimeError(
       'database_auth_failed',
       instanceId,
-      'supabase',
+      typeKey,
       'Die Datenbankverbindung wurde abgelehnt. Benutzername oder Passwort der DB-URL sind falsch.'
     );
   }
 
-  if (code === 'ENOTFOUND' || code === 'ECONNREFUSED' || code === 'ETIMEDOUT' || code === 'EAI_AGAIN') {
+  if (
+    code === 'ENOTFOUND' ||
+    code === 'ECONNREFUSED' ||
+    code === 'ETIMEDOUT' ||
+    code === 'EAI_AGAIN'
+  ) {
     return createRuntimeError(
       'database_host_unreachable',
       instanceId,
-      'supabase',
+      typeKey,
       'Der Datenbank-Host aus der DB-URL ist nicht erreichbar.',
       true
     );
@@ -105,7 +115,7 @@ const mapDatabaseError = (error: unknown, instanceId: string): ExternalInterface
   return createRuntimeError(
     'connection_failed',
     instanceId,
-    'supabase',
+    typeKey,
     error instanceof Error ? error.message : 'Die Datenbankprüfung ist fehlgeschlagen.',
     true
   );
@@ -123,7 +133,9 @@ const toConnectionCheckRecord = (
   visibleStatus:
     error.code === 'disabled'
       ? 'disabled'
-      : error.code === 'secret_missing' || error.code === 'database_url_missing' || error.code === 'service_role_key_missing'
+      : error.code === 'secret_missing' ||
+          error.code === 'database_url_missing' ||
+          error.code === 'service_role_key_missing'
         ? 'not_configured'
         : 'error',
   errorCode: error.code,
@@ -176,7 +188,8 @@ const verifySupabaseDatabase = async (
 
   try {
     const schemaName =
-      typeof resolvedInterface.publicConfig.schemaName === 'string' && resolvedInterface.publicConfig.schemaName.trim().length > 0
+      typeof resolvedInterface.publicConfig.schemaName === 'string' &&
+      resolvedInterface.publicConfig.schemaName.trim().length > 0
         ? resolvedInterface.publicConfig.schemaName.trim()
         : 'public';
 
@@ -193,7 +206,61 @@ const verifySupabaseDatabase = async (
       );
     }
   } catch (error) {
-    throw mapDatabaseError(error, resolvedInterface.instanceId);
+    throw mapDatabaseError(error, resolvedInterface.instanceId, 'supabase');
+  } finally {
+    await pool.end();
+  }
+};
+
+const verifyPostgresqlDatabase = async (
+  resolvedInterface: ResolvedExternalInterface,
+  deps: {
+    readonly createPool?: (connectionString: string) => PoolLike;
+  }
+): Promise<void> => {
+  const databaseUrl = resolvedInterface.secretConfig.databaseUrl?.trim();
+  if (!databaseUrl) {
+    throw createRuntimeError(
+      'database_url_missing',
+      resolvedInterface.instanceId,
+      'postgresql',
+      'Für diese PostgreSQL-Schnittstelle fehlt die Datenbank-URL.'
+    );
+  }
+
+  const normalizedDatabaseUrl = await normalizeDatabaseConnectionUrl(databaseUrl, {
+    allowPrivateHosts: shouldAllowPrivateInterfaceHealthcheckTargets(),
+  });
+  if (!normalizedDatabaseUrl) {
+    throw createRuntimeError(
+      'connection_failed',
+      resolvedInterface.instanceId,
+      'postgresql',
+      'Die Datenbank-URL zeigt auf einen privaten oder lokalen Host. Setze SVA_ALLOW_PRIVATE_INTERFACE_HEALTHCHECK_TARGETS=true nur für bewusst interne Admin-Ziele.'
+    );
+  }
+
+  const pool = (deps.createPool ?? createPool)(normalizedDatabaseUrl);
+  try {
+    const schemaName =
+      typeof resolvedInterface.publicConfig.schemaName === 'string' &&
+      resolvedInterface.publicConfig.schemaName.trim().length > 0
+        ? resolvedInterface.publicConfig.schemaName.trim()
+        : 'public';
+    const result = await pool.query(
+      'select exists(select 1 from information_schema.schemata where schema_name = $1) as schema_exists',
+      [schemaName]
+    );
+    if (result.rows[0]?.schema_exists !== true) {
+      throw createRuntimeError(
+        'schema_missing',
+        resolvedInterface.instanceId,
+        'postgresql',
+        `Das konfigurierte Schema "${schemaName}" existiert in der Datenbank nicht.`
+      );
+    }
+  } catch (error) {
+    throw mapDatabaseError(error, resolvedInterface.instanceId, 'postgresql');
   } finally {
     await pool.end();
   }
@@ -205,7 +272,10 @@ const verifySupabaseApi = async (
     readonly fetchImpl?: typeof fetch;
   }
 ): Promise<void> => {
-  const projectUrl = normalizeProjectUrl(resolvedInterface.publicConfig.projectUrl, resolvedInterface.instanceId);
+  const projectUrl = normalizeProjectUrl(
+    resolvedInterface.publicConfig.projectUrl,
+    resolvedInterface.instanceId
+  );
   const { serviceRoleKey } = readSupabaseSecrets(resolvedInterface, resolvedInterface.instanceId);
 
   let response: Response;
@@ -247,7 +317,10 @@ const verifySupabaseApi = async (
 };
 
 const readS3Config = (resolvedInterface: ResolvedExternalInterface) => {
-  const endpoint = typeof resolvedInterface.publicConfig.endpoint === 'string' ? resolvedInterface.publicConfig.endpoint.trim() : '';
+  const endpoint =
+    typeof resolvedInterface.publicConfig.endpoint === 'string'
+      ? resolvedInterface.publicConfig.endpoint.trim()
+      : '';
   if (!endpoint) {
     throw createRuntimeError(
       'connection_failed',
@@ -257,7 +330,10 @@ const readS3Config = (resolvedInterface: ResolvedExternalInterface) => {
     );
   }
 
-  const bucket = typeof resolvedInterface.publicConfig.bucket === 'string' ? resolvedInterface.publicConfig.bucket.trim() : '';
+  const bucket =
+    typeof resolvedInterface.publicConfig.bucket === 'string'
+      ? resolvedInterface.publicConfig.bucket.trim()
+      : '';
   if (!bucket) {
     throw createRuntimeError(
       'bucket_missing',
@@ -268,7 +344,9 @@ const readS3Config = (resolvedInterface: ResolvedExternalInterface) => {
   }
 
   const accessKeyId =
-    typeof resolvedInterface.publicConfig.accessKeyId === 'string' ? resolvedInterface.publicConfig.accessKeyId.trim() : '';
+    typeof resolvedInterface.publicConfig.accessKeyId === 'string'
+      ? resolvedInterface.publicConfig.accessKeyId.trim()
+      : '';
   if (!accessKeyId) {
     throw createRuntimeError(
       'connection_failed',
@@ -289,7 +367,8 @@ const readS3Config = (resolvedInterface: ResolvedExternalInterface) => {
   }
 
   const region =
-    typeof resolvedInterface.publicConfig.region === 'string' && resolvedInterface.publicConfig.region.trim().length > 0
+    typeof resolvedInterface.publicConfig.region === 'string' &&
+    resolvedInterface.publicConfig.region.trim().length > 0
       ? resolvedInterface.publicConfig.region.trim()
       : 'us-east-1';
   const forcePathStyle = resolvedInterface.publicConfig.forcePathStyle === true;
@@ -309,14 +388,18 @@ const mapS3Error = (error: unknown, instanceId: string): ExternalInterfaceRuntim
     return error;
   }
 
-  const name = typeof error === 'object' && error !== null && 'name' in error ? String(error.name) : undefined;
+  const name =
+    typeof error === 'object' && error !== null && 'name' in error ? String(error.name) : undefined;
   const metadata =
-    typeof error === 'object' && error !== null && '$metadata' in error ? Reflect.get(error, '$metadata') : undefined;
+    typeof error === 'object' && error !== null && '$metadata' in error
+      ? Reflect.get(error, '$metadata')
+      : undefined;
   const httpStatusCode =
     typeof metadata === 'object' && metadata !== null && 'httpStatusCode' in metadata
       ? Number(Reflect.get(metadata, 'httpStatusCode'))
       : undefined;
-  const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : undefined;
+  const code =
+    typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : undefined;
 
   if (name === 'NotFound' || httpStatusCode === 404) {
     return createRuntimeError(
@@ -327,7 +410,13 @@ const mapS3Error = (error: unknown, instanceId: string): ExternalInterfaceRuntim
     );
   }
 
-  if (name === 'InvalidAccessKeyId' || name === 'SignatureDoesNotMatch' || name === 'AccessDenied' || httpStatusCode === 401 || httpStatusCode === 403) {
+  if (
+    name === 'InvalidAccessKeyId' ||
+    name === 'SignatureDoesNotMatch' ||
+    name === 'AccessDenied' ||
+    httpStatusCode === 401 ||
+    httpStatusCode === 403
+  ) {
     return createRuntimeError(
       's3_auth_failed',
       instanceId,
@@ -336,7 +425,12 @@ const mapS3Error = (error: unknown, instanceId: string): ExternalInterfaceRuntim
     );
   }
 
-  if (code === 'ENOTFOUND' || code === 'ECONNREFUSED' || code === 'ETIMEDOUT' || code === 'EAI_AGAIN') {
+  if (
+    code === 'ENOTFOUND' ||
+    code === 'ECONNREFUSED' ||
+    code === 'ETIMEDOUT' ||
+    code === 'EAI_AGAIN'
+  ) {
     return createRuntimeError(
       's3_endpoint_unreachable',
       instanceId,
@@ -412,7 +506,10 @@ export const runStoredInterfaceHealthcheck = async (
   }
 ): Promise<ExternalInterfaceConnectionCheckRecord | null> => {
   const record = await loadExternalInterfaceRecordById(input.instanceId, input.interfaceId);
-  if (!record || (record.typeKey !== 'supabase' && record.typeKey !== 's3')) {
+  if (
+    !record ||
+    (record.typeKey !== 'supabase' && record.typeKey !== 'postgresql' && record.typeKey !== 's3')
+  ) {
     return null;
   }
 
@@ -421,7 +518,7 @@ export const runStoredInterfaceHealthcheck = async (
   try {
     const resolvedInterface = await resolveExternalInterface({
       instanceId: input.instanceId,
-      typeKey: 'supabase',
+      typeKey: record.typeKey,
       interfaceId: input.interfaceId,
       loadById: async () => record,
       revealSecret: (ciphertext, aad) => revealField(ciphertext, aad) ?? undefined,
@@ -434,6 +531,11 @@ export const runStoredInterfaceHealthcheck = async (
         if (entry.typeKey === 'supabase') {
           await verifySupabaseDatabase(entry, input);
           await verifySupabaseApi(entry, input);
+          return;
+        }
+
+        if (entry.typeKey === 'postgresql') {
+          await verifyPostgresqlDatabase(entry, input);
           return;
         }
 
@@ -451,7 +553,9 @@ export const runStoredInterfaceHealthcheck = async (
             'connection_failed',
             input.instanceId,
             record.typeKey,
-            error instanceof Error ? error.message : 'Die Schnittstellenprüfung ist fehlgeschlagen.',
+            error instanceof Error
+              ? error.message
+              : 'Die Schnittstellenprüfung ist fehlgeschlagen.',
             true
           );
     const result = toConnectionCheckRecord(record, runtimeError, checkedAt);

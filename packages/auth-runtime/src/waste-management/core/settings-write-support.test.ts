@@ -75,21 +75,22 @@ const actor: AuthenticatedRequestContext = {
   },
 };
 
-const createInterfaceRecord = (overrides: Partial<ExternalInterfaceRecord> = {}): ExternalInterfaceRecord => ({
-  id: 'supabase-1',
+const createInterfaceRecord = (
+  overrides: Partial<ExternalInterfaceRecord> = {}
+): ExternalInterfaceRecord => ({
+  id: 'postgresql-1',
   instanceId: 'tenant-a',
-  typeKey: 'supabase',
+  typeKey: 'postgresql',
   ownerKind: 'host',
   ownerId: 'host',
-  displayName: 'Supabase',
+  displayName: 'PostgreSQL',
   alias: 'default',
   enabled: true,
   isDefault: true,
   category: 'database',
-  statusCheckKind: 'supabase',
+  statusCheckKind: 'postgresql',
   visibleStatus: 'ok',
   publicConfig: {
-    projectUrl: 'https://tenant.example',
     schemaName: 'wm',
     calendarWebUrl: 'https://calendar.example',
     pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
@@ -107,18 +108,17 @@ const createSettings = (
   overrides: Partial<WasteManagementSettingsRecord> = {}
 ): WasteManagementSettingsRecord => ({
   instanceId: 'tenant-a',
-  provider: 'supabase',
-  projectUrl: 'https://tenant.example',
+  provider: 'postgresql',
   schemaName: 'wm',
   enabled: true,
-  selectedInterfaceId: 'supabase-1',
-  selectedInterfaceName: 'Supabase',
-  selectedInterfaceTypeKey: 'supabase',
+  selectedInterfaceId: 'postgresql-1',
+  selectedInterfaceName: 'PostgreSQL',
+  selectedInterfaceTypeKey: 'postgresql',
   availableInterfaces: [
     {
-      id: 'supabase-1',
-      name: 'Supabase',
-      typeKey: 'supabase',
+      id: 'postgresql-1',
+      name: 'PostgreSQL',
+      typeKey: 'postgresql',
       enabled: true,
       visibleStatus: 'ok',
       isSelected: true,
@@ -128,7 +128,6 @@ const createSettings = (
   pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
   pdfContactBlock: 'Abfallberatung',
   databaseUrlConfigured: true,
-  serviceRoleKeyConfigured: true,
   visibleStatus: 'ok',
   holidayStateCode: 'BY',
   lastHolidaySyncStatus: 'partial_success',
@@ -192,17 +191,15 @@ describe('waste-management settings write support', () => {
     });
   });
 
-  it('detects managed supabase conflicts but ignores non-supabase interfaces', () => {
+  it('detects managed PostgreSQL conflicts but ignores other interfaces', () => {
     expect(
       hasManagedWasteSettingsConflict(
         createInterfaceRecord({
           publicConfig: {
-            projectUrl: 'https://tenant.example',
             schemaName: '   ',
           },
         }),
         {
-          projectUrl: 'https://tenant.example',
           schemaName: 'public',
           enabled: true,
         }
@@ -211,8 +208,7 @@ describe('waste-management settings write support', () => {
 
     expect(
       hasManagedWasteSettingsConflict(createInterfaceRecord(), {
-        projectUrl: 'https://other.example',
-        schemaName: 'wm',
+        schemaName: 'other_schema',
         enabled: true,
       })
     ).toBe(true);
@@ -226,7 +222,6 @@ describe('waste-management settings write support', () => {
           publicConfig: {},
         }),
         {
-          projectUrl: 'https://other.example',
           schemaName: 'ignored',
           enabled: false,
         }
@@ -241,8 +236,12 @@ describe('waste-management settings write support', () => {
       .mockRejectedValueOnce(new Error('boom'));
 
     await expect(syncWasteHolidayState({}, 'tenant-a')).resolves.toBeUndefined();
-    await expect(syncWasteHolidayState({ syncWasteHolidayRules }, 'tenant-a', 'NW')).resolves.toBe('success');
-    await expect(syncWasteHolidayState({ syncWasteHolidayRules }, 'tenant-a', 'NW')).resolves.toBe('failed');
+    await expect(syncWasteHolidayState({ syncWasteHolidayRules }, 'tenant-a', 'NW')).resolves.toBe(
+      'success'
+    );
+    await expect(syncWasteHolidayState({ syncWasteHolidayRules }, 'tenant-a', 'NW')).resolves.toBe(
+      'failed'
+    );
   });
 
   it('rejects updates when no target interface can be resolved', async () => {
@@ -261,7 +260,6 @@ describe('waste-management settings write support', () => {
       instanceId: 'tenant-a',
       requestId: 'req-1',
       input: {
-        projectUrl: 'https://tenant.example',
         schemaName: 'wm',
         enabled: true,
         customRecurrencePresets: [],
@@ -278,7 +276,7 @@ describe('waste-management settings write support', () => {
     expect(emitWasteAuditEventMock).not.toHaveBeenCalled();
   });
 
-  it('rejects updates that change interface-managed supabase fields', async () => {
+  it('rejects updates that change interface-managed PostgreSQL fields', async () => {
     loadConfiguredWasteSettingsMock.mockResolvedValue(createSettings());
     const saveExternalInterfaceRecord = vi.fn(async () => undefined);
 
@@ -291,8 +289,7 @@ describe('waste-management settings write support', () => {
       instanceId: 'tenant-a',
       requestId: 'req-1',
       input: {
-        projectUrl: 'https://other.example',
-        schemaName: 'wm',
+        schemaName: 'other_schema',
         enabled: true,
         customRecurrencePresets: [],
         deletedPresetFallbacks: {},
@@ -344,7 +341,7 @@ describe('waste-management settings write support', () => {
         {
           id: 'supabase-2',
           name: 'Supabase B',
-          typeKey: 'supabase',
+          typeKey: 'postgresql',
           enabled: true,
           visibleStatus: 'ok',
           isSelected: false,
@@ -354,7 +351,7 @@ describe('waste-management settings write support', () => {
     const saved = createSettings({
       selectedInterfaceId: 'supabase-2',
       selectedInterfaceName: 'Supabase B',
-      selectedInterfaceTypeKey: 'supabase',
+      selectedInterfaceTypeKey: 'postgresql',
       holidayStateCode: 'NW',
       lastHolidaySyncStatus: 'success',
       lastSuccessfulHolidaySyncAt: '2026-06-07T10:15:00.000Z',
@@ -381,7 +378,6 @@ describe('waste-management settings write support', () => {
       instanceId: 'tenant-a',
       requestId: 'req-1',
       input: {
-        projectUrl: 'https://tenant.example',
         schemaName: 'wm',
         enabled: true,
         selectedInterfaceId: 'supabase-2',
@@ -405,7 +401,9 @@ describe('waste-management settings write support', () => {
     });
     expect(saveExternalInterfaceRecord).toHaveBeenCalledTimes(2);
 
-    const persistedRecords = saveExternalInterfaceRecord.mock.calls.map(([record]) => record as ExternalInterfaceRecord);
+    const persistedRecords = saveExternalInterfaceRecord.mock.calls.map(
+      ([record]) => record as ExternalInterfaceRecord
+    );
     const persistedLegacy = persistedRecords.find((record) => record.id === 'legacy-1');
     const persistedTarget = persistedRecords.find((record) => record.id === 'supabase-2');
 
@@ -449,7 +447,9 @@ describe('waste-management settings write support', () => {
   });
 
   it('normalizes blank pdf values to unset before saving static settings', async () => {
-    loadConfiguredWasteSettingsMock.mockResolvedValueOnce(createSettings()).mockResolvedValueOnce(createSettings());
+    loadConfiguredWasteSettingsMock
+      .mockResolvedValueOnce(createSettings())
+      .mockResolvedValueOnce(createSettings());
     const saveWastePdfStaticSettings = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementSettingsAfterValidation({
@@ -463,7 +463,6 @@ describe('waste-management settings write support', () => {
       instanceId: 'tenant-a',
       requestId: 'req-1',
       input: {
-        projectUrl: 'https://tenant.example',
         schemaName: 'wm',
         enabled: true,
         pdfBrandingAssetUrl: '   ',
@@ -481,7 +480,9 @@ describe('waste-management settings write support', () => {
   });
 
   it('saves pdf static settings before updating interface selection', async () => {
-    loadConfiguredWasteSettingsMock.mockResolvedValueOnce(createSettings()).mockResolvedValueOnce(createSettings());
+    loadConfiguredWasteSettingsMock
+      .mockResolvedValueOnce(createSettings())
+      .mockResolvedValueOnce(createSettings());
     const callOrder: string[] = [];
     const saveWastePdfStaticSettings = vi.fn(async () => {
       callOrder.push('saveWastePdfStaticSettings');
@@ -501,7 +502,6 @@ describe('waste-management settings write support', () => {
       instanceId: 'tenant-a',
       requestId: 'req-order',
       input: {
-        projectUrl: 'https://tenant.example',
         schemaName: 'wm',
         enabled: true,
         pdfBrandingAssetUrl: 'https://cdn.example/new.svg',
@@ -533,7 +533,6 @@ describe('waste-management settings write support', () => {
       instanceId: 'tenant-a',
       requestId: 'req-1',
       input: {
-        projectUrl: 'https://tenant.example',
         schemaName: 'wm',
         enabled: true,
         holidayStateCode: 'BY',
@@ -555,7 +554,9 @@ describe('waste-management settings write support', () => {
 
   it('guards the manual holiday sync against missing interface selection or holiday state', async () => {
     loadConfiguredWasteSettingsMock
-      .mockResolvedValueOnce(createSettings({ selectedInterfaceId: undefined, availableInterfaces: [] }))
+      .mockResolvedValueOnce(
+        createSettings({ selectedInterfaceId: undefined, availableInterfaces: [] })
+      )
       .mockResolvedValueOnce(createSettings({ holidayStateCode: undefined }));
 
     const missingInterface = await runWasteManagementHolidaySyncAfterValidation({
@@ -592,7 +593,6 @@ describe('waste-management settings write support', () => {
     });
     const targetRecord = createInterfaceRecord({
       publicConfig: {
-        projectUrl: 'https://tenant.example',
         schemaName: 'wm',
         wasteManagementSelected: true,
         calendarWebUrl: 'https://calendar.example',
@@ -622,7 +622,7 @@ describe('waste-management settings write support', () => {
     expect(syncWasteHolidayRules).toHaveBeenCalledWith('tenant-a', 'NW');
     expect(saveExternalInterfaceRecord).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: 'supabase-1',
+        id: 'postgresql-1',
         publicConfig: expect.objectContaining({
           wasteManagementSelected: true,
           holidayStateCode: 'NW',
@@ -715,7 +715,9 @@ describe('waste-management settings write support', () => {
     const saved = createSettings();
     const saveExternalInterfaceRecord = vi.fn(async () => undefined);
 
-    loadConfiguredWasteSettingsMock.mockResolvedValueOnce(createSettings()).mockResolvedValueOnce(saved);
+    loadConfiguredWasteSettingsMock
+      .mockResolvedValueOnce(createSettings())
+      .mockResolvedValueOnce(saved);
 
     const response = await updateWasteManagementSettingsAfterValidation({
       deps: {
@@ -728,7 +730,6 @@ describe('waste-management settings write support', () => {
       instanceId: 'tenant-a',
       requestId: 'req-1',
       input: {
-        projectUrl: 'https://tenant.example',
         schemaName: 'wm',
         enabled: true,
         emailReminderConfig: {

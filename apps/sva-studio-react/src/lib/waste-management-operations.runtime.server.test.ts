@@ -12,6 +12,7 @@ describe('waste management operations runtime assembly', () => {
     const runtime = createWasteManagementOperationRuntime(deps);
 
     expect(runtime).toMatchObject({
+      provisionTenantDatabase: expect.any(Function),
       initializeDataSource: expect.any(Function),
       applyMigrations: expect.any(Function),
       importData: expect.any(Function),

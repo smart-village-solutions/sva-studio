@@ -6,7 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useContentAccess } from '../../hooks/use-content-access';
 import { t } from '../../i18n';
 import { studioContentTypes } from '../../lib/plugins';
-import { filterCreatableStudioContentTypes } from '../../lib/studio-content-types';
+import { filterCreatableStudioContentTypes, resolveStudioContentTypeLabel } from '../../lib/studio-content-types';
 import { Card, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 
 const contentTypePresentationByNamespace = {
@@ -87,11 +87,13 @@ export const ContentTypePickerPage = () => {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {creatableContentTypes.map((definition) => (
+          {creatableContentTypes.map((definition) => {
+            const label = resolveStudioContentTypeLabel(definition);
+            return (
             <Card key={definition.contentType} className="border-border/80 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
               <Link
                 to={definition.createPath}
-                aria-label={definition.displayName}
+                aria-label={label}
                 className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <CardHeader className="space-y-4">
@@ -102,7 +104,7 @@ export const ContentTypePickerPage = () => {
                     })()}
                   </div>
                   <div className="space-y-2">
-                    <CardTitle>{definition.displayName}</CardTitle>
+                    <CardTitle>{label}</CardTitle>
                     <CardDescription className="text-sm leading-6 text-muted-foreground">
                       {resolveTypeDescription(definition.contentType)}
                     </CardDescription>
@@ -110,7 +112,8 @@ export const ContentTypePickerPage = () => {
                 </CardHeader>
               </Link>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>

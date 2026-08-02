@@ -1,0 +1,4 @@
+{
+  "prNumber": 893,
+  "body": "News-Headlines wieder in der Inhaltsübersicht sichtbar\n\n- Fehlt der direkte News-Titel, verwendet die Inhaltsübersicht die Headline des ersten Content-Blocks.\n- Nur wenn weder Titel noch Headline vorhanden sind, wird weiterhin die technische News-ID angezeigt."
+}

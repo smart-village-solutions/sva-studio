@@ -51,7 +51,7 @@ export const interfacesDEResources = {
     interfaceTypeChangeNotSupported:
       'Der Typ einer vorhandenen Schnittstelle kann nicht nachträglich geändert werden.',
     supabaseRequiresWasteManagementModule:
-      'Supabase kann nur für Instanzen mit zugewiesenem Waste-Management-Modul angelegt werden.',
+      'Supabase kann nur für Instanzen mit zugewiesenem Abfall-Management-Modul angelegt werden.',
     secretUnreadable:
       'Das gespeicherte Secret der Schnittstelle konnte serverseitig nicht mehr gelesen werden. Bitte den Secret-Wert neu eintragen und erneut speichern.',
     networkError: 'Der Verbindungsstatus konnte nicht abgerufen werden.',
@@ -83,7 +83,11 @@ export const interfacesDEResources = {
     supabase: {
       label: 'Supabase',
       description:
-        'Waste-Datenquelle mit Projekt-URL, Schema, Datenbankzugang und Service-Role-Key.',
+        'Abfall-Datenquelle mit Projekt-URL, Schema, Datenbankzugang und Service-Role-Key.',
+    },
+    postgresql: {
+      label: 'PostgreSQL',
+      description: 'Direkte PostgreSQL-Datenquelle mit Schema und verschlüsseltem Datenbankzugang.',
     },
     mailTransport: {
       label: 'Mail-Transport',
@@ -131,6 +135,10 @@ export const interfacesDEResources = {
       serviceRoleKey: 'Service-Role-Key',
       notImplemented:
         'Hinweis: Diese Schnittstelle wird bereits serverseitig gespeichert. Automatische Statusprüfungen und Verbindungschecks folgen noch.',
+    },
+    postgresql: {
+      schemaName: 'Schema',
+      databaseUrl: 'Datenbank-URL',
     },
     mailTransport: {
       transportId: 'Transport-ID',

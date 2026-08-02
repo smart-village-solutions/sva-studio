@@ -1,5 +1,7 @@
 import { Pool } from 'pg';
-import { loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
+import {
+  loadDefaultExternalInterfaceRecord,
+} from '@sva/data-repositories/server';
 import {
   resolveWasteDataSource,
   runWasteConnectionCheck,
@@ -35,10 +37,11 @@ const hasWastePdfStaticSettingsValue = (
 
 const isMissingWasteSettingsTableError = (error: unknown): boolean =>
   error instanceof Error &&
-  (('code' in error ? error.code : undefined) === '42P01' || /relation "?waste_settings"? does not exist/i.test(error.message));
+  (('code' in error ? error.code : undefined) === '42P01' ||
+    /relation "?waste_settings"? does not exist/i.test(error.message));
 
 const canLoadWastePdfStaticSettings = (settings: WasteManagementSettingsRecord): boolean =>
-  settings.selectedInterfaceTypeKey === 'supabase' && settings.databaseUrlConfigured && settings.serviceRoleKeyConfigured;
+  settings.selectedInterfaceTypeKey === 'postgresql' && settings.databaseUrlConfigured;
 
 const applyWastePdfStaticSettings = (
   settings: WasteManagementSettingsRecord,
@@ -47,7 +50,8 @@ const applyWastePdfStaticSettings = (
   hasWastePdfStaticSettingsValue(wastePdfStaticSettings)
     ? {
         ...settings,
-        pdfBrandingAssetUrl: wastePdfStaticSettings.pdfBrandingAssetUrl ?? settings.pdfBrandingAssetUrl,
+        pdfBrandingAssetUrl:
+          wastePdfStaticSettings.pdfBrandingAssetUrl ?? settings.pdfBrandingAssetUrl,
         pdfContactBlock: wastePdfStaticSettings.pdfContactBlock ?? settings.pdfContactBlock,
       }
     : settings;
@@ -60,26 +64,23 @@ const mapExternalInterfaceToWasteSettings = (
   if (!record) {
     return {
       instanceId,
-      provider: 'supabase',
-      projectUrl: '',
+      provider: 'postgresql',
       schemaName: 'public',
       enabled: false,
       availableInterfaces,
       databaseUrlConfigured: false,
-      serviceRoleKeyConfigured: false,
       visibleStatus: 'not_configured',
       customRecurrencePresets: [],
     };
   }
 
-  const isSupabase = record.typeKey === 'supabase';
+  const isPostgresql = record.typeKey === 'postgresql';
   const emailReminderConfig = readWasteManagementEmailReminderConfig(record.publicConfig);
   return {
     instanceId: record.instanceId,
-    provider: 'supabase',
-    projectUrl: isSupabase && typeof record.publicConfig.projectUrl === 'string' ? record.publicConfig.projectUrl : '',
+    provider: 'postgresql',
     schemaName:
-      isSupabase &&
+      isPostgresql &&
       typeof record.publicConfig.schemaName === 'string' &&
       record.publicConfig.schemaName.trim().length > 0
         ? record.publicConfig.schemaName
@@ -92,16 +93,19 @@ const mapExternalInterfaceToWasteSettings = (
     calendarWebUrl: readWasteManagementCalendarWebUrl(record.publicConfig),
     pdfBrandingAssetUrl: readWasteManagementPdfBrandingAssetUrl(record.publicConfig),
     pdfContactBlock: readWasteManagementPdfContactBlock(record.publicConfig),
-    databaseUrlConfigured: isSupabase ? Boolean(record.secretConfigCiphertext) : false,
-    serviceRoleKeyConfigured: isSupabase ? Boolean(record.secretConfigCiphertext) : false,
-    visibleStatus: isSupabase ? normalizeInterfaceWasteVisibleStatus(record.visibleStatus) : 'not_configured',
+    databaseUrlConfigured: isPostgresql ? Boolean(record.secretConfigCiphertext) : false,
+    visibleStatus: isPostgresql
+      ? normalizeInterfaceWasteVisibleStatus(record.visibleStatus)
+      : 'not_configured',
     lastCheckedAt: record.lastCheckedAt,
     lastCheckStatus: record.lastCheckStatus,
     lastCheckErrorCode: record.lastCheckErrorCode,
     lastCheckErrorMessage: record.lastCheckErrorMessage,
     holidayStateCode: readWasteManagementHolidayStateCode(record.publicConfig),
     lastHolidaySyncStatus: readWasteManagementHolidaySyncStatus(record.publicConfig),
-    lastSuccessfulHolidaySyncAt: readWasteManagementLastSuccessfulHolidaySyncAt(record.publicConfig),
+    lastSuccessfulHolidaySyncAt: readWasteManagementLastSuccessfulHolidaySyncAt(
+      record.publicConfig
+    ),
     updatedAt: record.updatedAt,
     customRecurrencePresets: [],
     ...(emailReminderConfig ? { emailReminderConfig } : {}),
@@ -132,7 +136,7 @@ const loadWasteSettingsInterfaceRecords = async (
   }
 
   if (deps.loadDefaultInterfaceRecord) {
-    const fallbackRecord = await deps.loadDefaultInterfaceRecord(instanceId, 'supabase');
+    const fallbackRecord = await deps.loadDefaultInterfaceRecord(instanceId, 'postgresql');
     return fallbackRecord ? [fallbackRecord] : [];
   }
 
@@ -152,7 +156,9 @@ const loadSelectedWasteSettingsInterface = async (
     return { records, selectedInterface };
   }
 
-  const fallbackDefault = await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(instanceId, 'supabase');
+  const fallbackDefault = await (
+    deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord
+  )(instanceId, 'postgresql');
   return {
     records,
     selectedInterface: fallbackDefault,
@@ -169,7 +175,6 @@ export const sanitizeWasteSettings = (
   return {
     instanceId: record.instanceId,
     provider: record.provider,
-    projectUrl: record.projectUrl,
     schemaName: record.schemaName,
     enabled: record.enabled,
     selectedInterfaceId: record.selectedInterfaceId,
@@ -180,8 +185,10 @@ export const sanitizeWasteSettings = (
     pdfBrandingAssetUrl: record.pdfBrandingAssetUrl,
     pdfContactBlock: record.pdfContactBlock,
     databaseUrlConfigured: record.databaseUrlConfigured,
-    serviceRoleKeyConfigured: record.serviceRoleKeyConfigured,
     visibleStatus: record.visibleStatus,
+    provisioningStatus: record.provisioningStatus,
+    provisioningErrorCode: record.provisioningErrorCode,
+    provisioningUpdatedAt: record.provisioningUpdatedAt,
     lastCheckedAt: record.lastCheckedAt,
     lastCheckStatus: record.lastCheckStatus,
     lastCheckErrorCode: record.lastCheckErrorCode,
@@ -200,11 +207,23 @@ export const loadConfiguredWasteSettings = async (
   instanceId: string
 ): Promise<WasteManagementSettingsRecord | null> => {
   const { records, selectedInterface } = await loadSelectedWasteSettingsInterface(deps, instanceId);
-  const availableInterfaces = mapWasteSettingsInterfaceOptions(deps, records, selectedInterface?.id);
-  const settings = mapExternalInterfaceToWasteSettings(instanceId, selectedInterface, availableInterfaces);
+  const availableInterfaces = mapWasteSettingsInterfaceOptions(
+    deps,
+    records,
+    selectedInterface?.id
+  );
+  const settings = mapExternalInterfaceToWasteSettings(
+    instanceId,
+    selectedInterface,
+    availableInterfaces
+  );
   if (!settings) {
     return null;
   }
+
+  const provisioning = deps.loadWasteTenantProvisioning
+    ? await deps.loadWasteTenantProvisioning(instanceId)
+    : null;
 
   const customRecurrencePresets = deps.loadWasteCustomRecurrencePresets
     ? await deps.loadWasteCustomRecurrencePresets(instanceId)
@@ -220,10 +239,25 @@ export const loadConfiguredWasteSettings = async (
     }
   }
 
-  return applyWastePdfStaticSettings({ ...settings, customRecurrencePresets }, wastePdfStaticSettings);
+  return applyWastePdfStaticSettings(
+    {
+      ...settings,
+      customRecurrencePresets,
+      ...(provisioning
+        ? {
+            provisioningStatus: provisioning.status,
+            provisioningErrorCode: provisioning.errorCode,
+            provisioningUpdatedAt: provisioning.updatedAt,
+          }
+        : {}),
+    },
+    wastePdfStaticSettings
+  );
 };
 
-export const defaultRunConnectionProbe = async (dataSource: ResolvedWasteDataSource): Promise<void> => {
+export const defaultRunConnectionProbe = async (
+  dataSource: ResolvedWasteDataSource
+): Promise<void> => {
   const pool = new Pool({
     connectionString: dataSource.databaseUrl,
     max: 1,
@@ -263,7 +297,10 @@ export const updateWasteVisibleStatus = async (
     return;
   }
 
-  const { selectedInterface: interfaceRecord } = await loadSelectedWasteSettingsInterface(deps, instanceId);
+  const { selectedInterface: interfaceRecord } = await loadSelectedWasteSettingsInterface(
+    deps,
+    instanceId
+  );
   if (!interfaceRecord) {
     return;
   }
@@ -284,12 +321,13 @@ export const updateWasteVisibleStatus = async (
   }
 
   try {
-    if (interfaceRecord.typeKey !== 'supabase') {
+    if (interfaceRecord.typeKey !== 'postgresql') {
       throw new Error('connection_failed');
     }
     const dataSource = await resolveWasteDataSource({
       instanceId,
       loadDefaultInterface: async () => interfaceRecord,
+      loadProvisioning: deps.loadWasteTenantProvisioning ?? (async () => null),
       revealSecret: (ciphertext, aad) => deps.revealSecret?.(ciphertext, aad) ?? undefined,
     });
     const connectionCheck = await runWasteConnectionCheck({
@@ -303,8 +341,11 @@ export const updateWasteVisibleStatus = async (
     });
   } catch (error) {
     const errorCode =
-      error instanceof Error && 'code' in error && typeof error.code === 'string' ? error.code : 'connection_failed';
-    const errorMessage = error instanceof Error ? error.message : 'Connection-Check fehlgeschlagen.';
+      error instanceof Error && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : 'connection_failed';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Connection-Check fehlgeschlagen.';
     await persistWasteConnectionState(deps, {
       instanceId,
       interfaceId: interfaceRecord.id,

@@ -54,6 +54,7 @@ const SYSTEM_ADMIN_ROLE_KEY = 'system_admin';
 const SYSTEM_ADMIN_DISPLAY_NAME = 'System Administrator';
 const SYSTEM_ADMIN_ROLE_LEVEL = 100;
 const CATEGORIES_MODULE_ID = 'categories';
+const WASTE_MANAGEMENT_MODULE_ID = 'waste-management';
 const categoriesCompanionSourceModuleIds = new Set(['news', 'events', 'poi']);
 
 const withRequiredCompanionModules = (moduleIds: readonly string[]): string[] => {
@@ -199,6 +200,10 @@ export const createAssignModuleHandler =
       },
     });
 
+    if (input.moduleId === WASTE_MANAGEMENT_MODULE_ID) {
+      await deps.repository.requestWasteProvisioning(input.instanceId);
+    }
+
     const detail = await createGetInstanceDetail(deps)(input.instanceId);
     return detail ? { ok: true, instance: detail } : { ok: false, reason: 'not_found' };
   };
@@ -278,6 +283,10 @@ export const createBootstrapAdminStructureHandler =
       },
     });
 
+    if (requestedModuleIds.includes(WASTE_MANAGEMENT_MODULE_ID)) {
+      await deps.repository.requestWasteProvisioning(input.instanceId);
+    }
+
     const detail = await createGetInstanceDetail(deps)(input.instanceId);
     return detail ? { ok: true, instance: detail } : { ok: false, reason: 'not_found' };
   };
@@ -318,6 +327,10 @@ export const createRevokeModuleHandler =
         outcome: 'revoked',
       },
     });
+
+    if (input.moduleId === WASTE_MANAGEMENT_MODULE_ID) {
+      await deps.repository.disableWasteProvisioning(input.instanceId);
+    }
 
     const detail = await createGetInstanceDetail(deps)(input.instanceId);
     return detail ? { ok: true, instance: detail } : { ok: false, reason: 'not_found' };

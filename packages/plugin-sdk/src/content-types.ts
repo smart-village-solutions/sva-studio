@@ -44,11 +44,13 @@ export type StudioContentTypeDefinition = {
 export type RegisteredStudioContentType = StudioContentTypeDefinition & {
   readonly contentType: string;
   readonly displayName: string;
+  readonly titleKey?: string;
 };
 
 export type ContentTypeDefinition = {
   readonly contentType: string;
   readonly displayName: string;
+  readonly titleKey?: string;
   readonly studioContentType?: StudioContentTypeDefinition;
   readonly editorFields?: readonly ContentTypeEditorFieldDefinition[];
   readonly listColumns?: readonly ContentTypeListColumnDefinition[];
@@ -59,6 +61,7 @@ export type ContentTypeDefinition = {
 const contentTypeDefinitionAllowedKeys = new Set([
   'contentType',
   'displayName',
+  'titleKey',
   'studioContentType',
   'editorFields',
   'listColumns',
@@ -90,6 +93,7 @@ const normalizeContentTypeDefinition = (definition: ContentTypeDefinition): Cont
   ...definition,
   contentType: normalizePluginIdentifier(definition.contentType),
   displayName: definition.displayName.trim(),
+  ...(definition.titleKey?.trim() ? { titleKey: definition.titleKey.trim() } : {}),
   studioContentType: definition.studioContentType
     ? normalizeStudioContentTypeDefinition(definition.studioContentType)
     : undefined,
@@ -253,6 +257,7 @@ export const collectRegisteredStudioContentTypes = (
           {
             contentType: definition.contentType,
             displayName: definition.displayName,
+            ...(definition.titleKey ? { titleKey: definition.titleKey } : {}),
             ...definition.studioContentType,
           },
         ]

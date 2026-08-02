@@ -144,7 +144,7 @@ describe('instance registry server', () => {
         reason: 'iam_database_url_missing',
       })
     );
-  });
+  }, 30_000);
 
   it('serves cached hostname results without calling the repository twice', async () => {
     const server = await import('./server.js');
@@ -422,5 +422,70 @@ describe('instance registry server', () => {
       ['tenant-env']
     );
     expect(poolDouble.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('delegates the complete Waste provisioning lifecycle through the server repository', async () => {
+    const server = await import('./server.js');
+    const poolDouble = createPoolDouble();
+    const provisioningRecord = {
+      instanceId: 'tenant-a',
+      status: 'provisioning',
+      desiredGeneration: 2,
+      completedGeneration: 1,
+      requestedAt: '2026-08-02T10:00:00.000Z',
+      updatedAt: '2026-08-02T10:00:00.000Z',
+    } as const;
+    const repository = {
+      getWasteProvisioning: vi.fn(async () => provisioningRecord),
+      requestWasteProvisioning: vi.fn(async () => provisioningRecord),
+      claimWasteProvisioning: vi.fn(async () => provisioningRecord),
+      completeWasteProvisioning: vi.fn(async () => ({ ...provisioningRecord, status: 'ready' })),
+      failWasteProvisioning: vi.fn(async () => ({ ...provisioningRecord, status: 'failed' })),
+      failWasteProvisioningRequest: vi.fn(async () => ({ ...provisioningRecord, status: 'failed' })),
+    };
+    const options = { getDatabaseUrl: () => 'postgres://db.example.test/sva' };
+
+    mocks.poolFactory.mockReturnValue(poolDouble.pool);
+    mocks.createInstanceRegistryRepository.mockReturnValue(repository);
+
+    await expect(server.loadWasteTenantProvisioningRecord('tenant-a', options)).resolves.toEqual(
+      provisioningRecord
+    );
+    await expect(server.requestWasteTenantProvisioning('tenant-a', options)).resolves.toEqual(
+      provisioningRecord
+    );
+    await expect(server.claimWasteTenantProvisioning({
+      instanceId: 'tenant-a',
+      jobId: 'job-2',
+      desiredGeneration: 2,
+    }, options)).resolves.toEqual(provisioningRecord);
+    await expect(server.completeWasteTenantProvisioning({
+      instanceId: 'tenant-a',
+      jobId: 'job-2',
+      desiredGeneration: 2,
+      databaseName: 'sva_waste_tenant_a',
+      interfaceId: 'waste-management:tenant-a',
+    }, options)).resolves.toMatchObject({ status: 'ready' });
+    await expect(server.failWasteTenantProvisioning({
+      instanceId: 'tenant-a',
+      jobId: 'job-2',
+      desiredGeneration: 2,
+      errorCode: 'probe_failed',
+      errorMessage: 'Probe failed',
+    }, options)).resolves.toMatchObject({ status: 'failed' });
+    await expect(server.failWasteTenantProvisioningRequest({
+      instanceId: 'tenant-a',
+      desiredGeneration: 2,
+      errorCode: 'enqueue_failed',
+      errorMessage: 'Enqueue failed',
+    }, options)).resolves.toMatchObject({ status: 'failed' });
+
+    expect(repository.getWasteProvisioning).toHaveBeenCalledWith('tenant-a');
+    expect(repository.requestWasteProvisioning).toHaveBeenCalledWith('tenant-a');
+    expect(repository.claimWasteProvisioning).toHaveBeenCalledOnce();
+    expect(repository.completeWasteProvisioning).toHaveBeenCalledOnce();
+    expect(repository.failWasteProvisioning).toHaveBeenCalledOnce();
+    expect(repository.failWasteProvisioningRequest).toHaveBeenCalledOnce();
+    expect(poolDouble.release).toHaveBeenCalledTimes(6);
   });
 });

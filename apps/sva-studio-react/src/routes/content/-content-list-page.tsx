@@ -37,6 +37,7 @@ import { useAuth } from '../../providers/auth-provider';
 import {
   filterCreatableStudioContentTypes,
   filterRegisteredStudioContentItems,
+  resolveStudioContentTypeLabel,
 } from '../../lib/studio-content-types';
 import { appAdminResources } from '../../routing/admin-resources';
 import { ContentStatusDialog } from './-content-status-dialog';
@@ -585,7 +586,7 @@ export const ContentListPage = () => {
         effectivePermissionActions
       ).map(({ item, definition }) => ({
         ...item,
-        typeLabel: definition.displayName,
+        typeLabel: resolveStudioContentTypeLabel(definition),
         editPath: definition.detailPath
           .replace('$contentId', encodeURIComponent(item.id))
           .replace('$id', encodeURIComponent(item.id)),
@@ -809,7 +810,7 @@ export const ContentListPage = () => {
                   <option value="all">{t('content.filters.typeAll')}</option>
                   {readableContentTypes.map((definition) => (
                     <option key={definition.contentType} value={definition.contentType}>
-                      {definition.displayName}
+                      {resolveStudioContentTypeLabel(definition)}
                     </option>
                   ))}
                 </Select>

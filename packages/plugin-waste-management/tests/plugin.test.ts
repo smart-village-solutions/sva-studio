@@ -145,6 +145,7 @@ describe('pluginWasteManagement contract', () => {
       globalDateShiftId: undefined,
     });
     expect(pluginWasteManagement.jobTypes?.map((jobType) => jobType.jobTypeId)).toEqual([
+      'waste-management.provision-tenant-database',
       'waste-management.initialize-data-source',
       'waste-management.apply-migrations',
       'waste-management.import-data',

@@ -262,7 +262,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     description: 'Legen Sie die erste Nachricht an.',
   },
   pagination: {
-    ariaLabel: 'Nachrichten-Pagination',
+    ariaLabel: 'Seitennavigation der Nachrichten',
     previous: 'Zurück',
     next: 'Weiter',
     pageLabel: 'Seite {{page}}',

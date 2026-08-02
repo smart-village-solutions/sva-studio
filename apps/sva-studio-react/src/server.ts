@@ -15,6 +15,8 @@ const diagnosticsEnabled = (process.env.NODE_ENV ?? 'development') === 'developm
 const devRuntimeRefreshEnabled = diagnosticsEnabled;
 const serverFnBase = normalizeServerFnBase(process.env.TSS_SERVER_FN_BASE);
 const studioJobWorkerEnabled = process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED !== 'false';
+const studioJobWorkerLane =
+  process.env.SVA_PLUGIN_OPERATION_WORKER_LANE === 'privileged' ? 'privileged' : 'default';
 
 type WorkspaceContext = { readonly requestId?: string | null };
 type ServerTransportLogger = { info: (message: string, meta: Record<string, unknown>) => void };
@@ -46,9 +48,7 @@ type RequestContextSdk = {
 let sdkPromise: Promise<RequestContextSdk> | null = null;
 const loggerPromises = new Map<ServerTransportComponent, Promise<ServerTransportLogger>>();
 let dispatchAuthRouteRequestPromise: Promise<typeof import('@sva/routing/server')['dispatchAuthRouteRequest']> | null = null;
-let ensureStudioJobWorkerStartedPromise:
-  | Promise<typeof import('@sva/auth-runtime/server')['ensureStudioJobWorkerStarted']>
-  | null = null;
+let ensureStudioJobWorkerStartedPromise: Promise<() => Promise<void>> | null = null;
 let registerStudioPluginOperationHandlersPromise:
   | Promise<typeof import('./lib/plugin-operation-runtime.server')['registerStudioPluginOperationHandlers']>
   | null = null;
@@ -92,7 +92,10 @@ const getDispatchAuthRouteRequest = async () => {
 };
 const getEnsureStudioJobWorkerStarted = async () => {
   ensureStudioJobWorkerStartedPromise ??= import('@sva/auth-runtime/server').then(
-    (mod) => mod.ensureStudioJobWorkerStarted
+    (mod) =>
+      studioJobWorkerLane === 'privileged'
+        ? mod.ensurePrivilegedStudioJobWorkerStarted
+        : mod.ensureStudioJobWorkerStarted
   );
   return ensureStudioJobWorkerStartedPromise;
 };

@@ -1,9 +1,6 @@
 import React from 'react';
 
-import {
-  StudioDataTable,
-  type StudioColumnDef,
-} from '@sva/studio-ui-react';
+import { StudioDataTable, type StudioColumnDef } from '@sva/studio-ui-react';
 
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
@@ -44,8 +41,13 @@ const getInterfaceEndpoint = (entry: InstanceInterface): string => {
   if (entry.type === 'supabase') {
     return entry.config.projectUrl || '-';
   }
+  if (entry.type === 'postgresql') {
+    return entry.config.schemaName || '-';
+  }
   if (entry.type === 'mapGeocoding') {
-    return entry.config.suggestEndpoint || entry.config.geocodeEndpoint || entry.config.styleUrl || '-';
+    return (
+      entry.config.suggestEndpoint || entry.config.geocodeEndpoint || entry.config.styleUrl || '-'
+    );
   }
   return entry.config.host || '-';
 };
@@ -71,7 +73,9 @@ const renderInterfaceRowActions = (
 );
 
 const getEditCardTitle = (editState: Exclude<EditState, { mode: 'closed' }>): string =>
-  editState.mode === 'create' ? t(instanceInterfaceTypeMeta[editState.type].titleKey) : t('interfaces.edit.title');
+  editState.mode === 'create'
+    ? t(instanceInterfaceTypeMeta[editState.type].titleKey)
+    : t('interfaces.edit.title');
 
 export const InterfacesPage = () => {
   const {
@@ -127,11 +131,16 @@ export const InterfacesPage = () => {
         header: t('interfaces.table.headerStatus'),
         cell: (row) => (
           <div className="flex max-w-sm flex-col gap-1">
-            <Badge className={`w-fit rounded-full ${statusBadgeClass[row.status]}`} variant="outline">
+            <Badge
+              className={`w-fit rounded-full ${statusBadgeClass[row.status]}`}
+              variant="outline"
+            >
               {t(statusTranslationKey[row.status])}
             </Badge>
             {row.statusMessage ? (
-              <span className="text-xs leading-snug text-muted-foreground">{row.statusMessage}</span>
+              <span className="text-xs leading-snug text-muted-foreground">
+                {row.statusMessage}
+              </span>
             ) : null}
           </div>
         ),
@@ -141,7 +150,8 @@ export const InterfacesPage = () => {
       {
         id: 'lastChecked',
         header: t('interfaces.table.headerLastChecked'),
-        cell: (row) => (row.lastCheckedAt ? formatEditorDateTime(row.lastCheckedAt) ?? row.lastCheckedAt : '-'),
+        cell: (row) =>
+          row.lastCheckedAt ? (formatEditorDateTime(row.lastCheckedAt) ?? row.lastCheckedAt) : '-',
         sortable: true,
         sortValue: (row) => row.lastCheckedAt ?? '',
       },
@@ -161,7 +171,8 @@ export const InterfacesPage = () => {
         <p className="text-sm text-muted-foreground">{t('interfaces.page.subtitle')}</p>
         {instanceId ? (
           <p className="text-xs text-muted-foreground">
-            {t('interfaces.status.instanceLabel')}: <span className="font-medium">{instanceId}</span>
+            {t('interfaces.status.instanceLabel')}:{' '}
+            <span className="font-medium">{instanceId}</span>
           </p>
         ) : null}
       </header>

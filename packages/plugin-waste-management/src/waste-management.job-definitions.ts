@@ -10,9 +10,30 @@ const pluginNamespace = wasteManagementOperationsContract.pluginId;
 
 const wasteManagementPluginJobTypes = [
   {
+    jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+    queue: wasteManagementOperationsContract.queueName,
+    displayName: 'Waste-Tenant-Datenbank provisionieren',
+    progress: {
+      phaseKeys: [
+        'waste-management.provision-database',
+        'waste-management.apply-migrations',
+        'waste-management.verify-access',
+        'waste-management.completed',
+      ],
+      stepKeys: ['provision-roles', 'provision-database', 'materialize-interface', 'apply-migrations', 'verify-access'],
+    },
+    result: {
+      summaryKeys: ['durationMs'],
+      detailKeys: ['databaseName', 'interfaceId', 'desiredGeneration'],
+    },
+    errors: {
+      detailKeys: ['failed-step', 'error-code'],
+    },
+  },
+  {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.initializeDataSource,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Initialisierung',
+    displayName: 'Abfall-Initialisierung',
     progress: {
       phaseKeys: ['waste-management.initialize', 'waste-management.completed'],
       stepKeys: ['resolve-operation', 'complete-operation'],
@@ -28,7 +49,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.applyMigrations,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Migrationen anwenden',
+    displayName: 'Abfall-Migrationen anwenden',
     progress: {
       phaseKeys: ['waste-management.migrations', 'waste-management.completed'],
       stepKeys: ['resolve-operation', 'complete-operation'],
@@ -44,7 +65,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Daten importieren',
+    displayName: 'Abfall-Daten importieren',
     progress: {
       phaseKeys: [
         'waste-management.import-preparation',
@@ -78,7 +99,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.seedData,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Seed laden',
+    displayName: 'Abfallinitialdaten laden',
     progress: {
       phaseKeys: ['waste-management.seed', 'waste-management.completed'],
       stepKeys: ['resolve-operation', 'complete-operation'],
@@ -94,7 +115,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.resetData,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Daten zurücksetzen',
+    displayName: 'Abfalldaten zurücksetzen',
     progress: {
       phaseKeys: ['waste-management.reset', 'waste-management.completed'],
       stepKeys: ['resolve-operation', 'complete-operation'],
@@ -110,7 +131,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncMainserver,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Mainserver synchronisieren',
+    displayName: 'Abfalldaten mit dem Mainserver synchronisieren',
     progress: {
       phaseKeys: ['waste-management.mainserver-sync', 'waste-management.completed'],
       stepKeys: [
@@ -150,7 +171,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncWasteTypes,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Typen mit Mainserver synchronisieren',
+    displayName: 'Abfall-Typen mit Mainserver synchronisieren',
     progress: {
       phaseKeys: ['waste-management.sync-waste-types', 'waste-management.completed'],
       stepKeys: ['build-static-content', 'push-static-content'],
@@ -166,7 +187,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.materializeEmailReminders,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-E-Mail-Erinnerungen materialisieren',
+    displayName: 'Abfall-E-Mail-Erinnerungen materialisieren',
     progress: {
       phaseKeys: ['waste-management.materialize-email-reminders', 'waste-management.completed'],
       stepKeys: ['load-reminder-state', 'complete-operation'],
@@ -182,7 +203,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.processEmailReminderOutbox,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-E-Mail-Erinnerungs-Outbox verarbeiten',
+    displayName: 'Abfall-E-Mail-Erinnerungs-Outbox verarbeiten',
     progress: {
       phaseKeys: ['waste-management.process-email-reminder-outbox', 'waste-management.completed'],
       stepKeys: ['lease-outbox', 'complete-operation'],

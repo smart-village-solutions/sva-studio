@@ -284,8 +284,7 @@ const wasteEmailReminderConfigSchema = z.object({
 });
 
 const updateWasteSettingsSchema = z.object({
-  provider: z.literal('supabase'),
-  projectUrl: z.string().trim(),
+  provider: z.literal('postgresql'),
   schemaName: z.string().trim().optional(),
   enabled: z.boolean(),
   selectedInterfaceId: z.string().trim().min(1).optional(),

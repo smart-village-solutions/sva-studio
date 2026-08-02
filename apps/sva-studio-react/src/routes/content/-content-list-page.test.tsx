@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { mergeI18nResources, resetMergedI18nResources, resetTranslatorCache } from '../../i18n';
 import { ContentListPage } from './-content-list-page';
 
 const useContentsMock = vi.fn();
@@ -42,6 +43,7 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
     {
       contentType: 'news.article',
       displayName: 'News',
+      titleKey: 'news.navigation.title',
       requiredReadAction: 'news.read',
       requiredCreateAction: 'news.create',
       createPath: '/admin/news/new',
@@ -49,7 +51,8 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
     },
     {
       contentType: 'events.event-record',
-      displayName: 'Veranstaltungen',
+      displayName: 'Events',
+      titleKey: 'events.navigation.title',
       requiredReadAction: 'events.read',
       requiredCreateAction: 'events.create',
       createPath: '/admin/events/new',
@@ -146,6 +149,18 @@ vi.mock('../../lib/plugins', () => ({
 
 describe('ContentListPage', () => {
   beforeEach(() => {
+    resetMergedI18nResources();
+    mergeI18nResources({
+      de: {
+        news: { navigation: { title: 'Nachrichten' } },
+        events: { navigation: { title: 'Veranstaltungen' } },
+      },
+      en: {
+        news: { navigation: { title: 'News' } },
+        events: { navigation: { title: 'Events' } },
+      },
+    });
+    resetTranslatorCache();
     useContentsMock.mockReset();
     useContentAccessMock.mockReset();
     useAuthMock.mockReset();
@@ -219,6 +234,8 @@ describe('ContentListPage', () => {
 
   afterEach(() => {
     cleanup();
+    resetMergedI18nResources();
+    resetTranslatorCache();
   });
 
   const createContentsApiResult = (overrides: Record<string, unknown> = {}) => ({
@@ -356,6 +373,8 @@ describe('ContentListPage', () => {
     expect(screen.getByRole('button', { name: 'Entwurf' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Veröffentlicht Aktuell' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    expect(screen.getAllByText('Nachrichten').length).toBeGreaterThan(0);
+    expect(screen.queryByText('News')).toBeNull();
 
     fireEvent.change(screen.getByLabelText('Status'), {
       target: { value: 'archived' },

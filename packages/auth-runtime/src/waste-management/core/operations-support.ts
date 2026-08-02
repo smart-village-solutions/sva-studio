@@ -68,6 +68,10 @@ export const startPluginOperationJobFromFacade = async (input: {
         jobId: job.id,
         queueName: job.queueName,
         maxAttempts: job.maxAttempts,
+        executionLane:
+          input.data.jobTypeId === wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase
+            ? 'privileged'
+            : 'default',
       });
     } catch {
       await markPluginOperationEnqueueFailed({ instanceId: input.instanceId, job });

@@ -17,8 +17,8 @@ export const wasteManagementPluginTranslationsDEMasterData = createWasteManageme
   },
   messages: {
     loading: 'Stammdaten werden geladen.',
-    loadError: 'Die Waste-Stammdaten konnten nicht geladen werden.',
-    loadForbidden: 'Für die Waste-Stammdaten fehlt die Berechtigung.',
+    loadError: 'Die Abfall-Stammdaten konnten nicht geladen werden.',
+    loadForbidden: 'Für die Abfall-Stammdaten fehlt die Berechtigung.',
     emptyTitle: 'Keine Stammdaten gefunden',
     emptyBody: 'Passen Sie die Filter an oder legen Sie die erste Abfallfraktion an.',
   },

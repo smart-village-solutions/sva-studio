@@ -3,12 +3,10 @@ import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 type LegacyWasteManagementSettingsInput = {
-  readonly provider: 'supabase';
-  readonly projectUrl: string;
+  readonly provider: 'postgresql';
   readonly schemaName?: string;
   readonly enabled: boolean;
   readonly databaseUrl?: string;
-  readonly serviceRoleKey?: string;
 };
 
 export const instanceRegistryServiceLogger = createSdkLogger({
@@ -31,7 +29,11 @@ export const invalidateHostWithLog = (
   });
 };
 
-const protectSecret = (deps: InstanceRegistryServiceDeps, value: string, aad: string): string | undefined => {
+const protectSecret = (
+  deps: InstanceRegistryServiceDeps,
+  value: string,
+  aad: string
+): string | undefined => {
   if (!deps.protectSecret) {
     throw new Error('dependency_missing_protectSecret');
   }
@@ -59,7 +61,11 @@ export const encryptTenantAdminClientSecret = (
   if (!normalizedSecret) {
     return undefined;
   }
-  return protectSecret(deps, normalizedSecret, `iam.instances.tenant_admin_client_secret:${instanceId}`);
+  return protectSecret(
+    deps,
+    normalizedSecret,
+    `iam.instances.tenant_admin_client_secret:${instanceId}`
+  );
 };
 
 export const encryptWasteDatabaseUrl = (
@@ -71,19 +77,11 @@ export const encryptWasteDatabaseUrl = (
   if (!normalizedDatabaseUrl) {
     return undefined;
   }
-  return protectSecret(deps, normalizedDatabaseUrl, `iam.instance_waste_data_sources.database_url:${instanceId}`);
-};
-
-export const encryptWasteServiceRoleKey = (
-  deps: InstanceRegistryServiceDeps,
-  instanceId: string,
-  serviceRoleKey: string | undefined
-): string | undefined => {
-  const normalizedServiceRoleKey = serviceRoleKey?.trim();
-  if (!normalizedServiceRoleKey) {
-    return undefined;
-  }
-  return protectSecret(deps, normalizedServiceRoleKey, `iam.instance_waste_data_sources.service_role_key:${instanceId}`);
+  return protectSecret(
+    deps,
+    normalizedDatabaseUrl,
+    `iam.instance_waste_data_sources.database_url:${instanceId}`
+  );
 };
 
 export const buildWasteManagementSettingsRecord = async (
@@ -93,24 +91,16 @@ export const buildWasteManagementSettingsRecord = async (
 ) => {
   const existing = (await deps.loadWasteDataSourceRecord?.(instanceId)) ?? null;
   const databaseUrlCiphertext = encryptWasteDatabaseUrl(deps, instanceId, input.databaseUrl);
-  const serviceRoleKeyCiphertext = encryptWasteServiceRoleKey(deps, instanceId, input.serviceRoleKey);
   const nextDatabaseUrlCiphertext = databaseUrlCiphertext ?? existing?.databaseUrlCiphertext;
-  const nextServiceRoleKeyCiphertext = serviceRoleKeyCiphertext ?? existing?.serviceRoleKeyCiphertext;
 
   return {
     instanceId,
     provider: input.provider,
-    projectUrl: input.projectUrl.trim(),
     schemaName: input.schemaName?.trim() || 'public',
     enabled: input.enabled,
     databaseUrlConfigured: Boolean(nextDatabaseUrlCiphertext),
-    serviceRoleKeyConfigured: Boolean(nextServiceRoleKeyCiphertext),
     databaseUrlCiphertext: nextDatabaseUrlCiphertext,
-    serviceRoleKeyCiphertext: nextServiceRoleKeyCiphertext,
-    visibleStatus:
-      nextDatabaseUrlCiphertext && nextServiceRoleKeyCiphertext
-        ? 'unknown'
-        : 'not_configured',
+    visibleStatus: nextDatabaseUrlCiphertext ? 'unknown' : 'not_configured',
     lastCheckedAt: existing?.lastCheckedAt,
     lastCheckStatus: existing?.lastCheckStatus,
     lastCheckErrorCode: existing?.lastCheckErrorCode,
@@ -119,7 +109,8 @@ export const buildWasteManagementSettingsRecord = async (
   } as const;
 };
 
-export const requireModuleIamRegistry = (deps: InstanceRegistryServiceDeps) => deps.moduleIamRegistry ?? new Map();
+export const requireModuleIamRegistry = (deps: InstanceRegistryServiceDeps) =>
+  deps.moduleIamRegistry ?? new Map();
 
 export const resolveAssignedModuleContracts = (
   deps: InstanceRegistryServiceDeps,

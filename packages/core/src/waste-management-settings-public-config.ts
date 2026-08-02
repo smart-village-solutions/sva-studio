@@ -2,7 +2,10 @@ import type { ExternalInterfaceRecord } from './external-interfaces-contract.js'
 import type { WasteHolidayStateCode } from './waste-management/master-data-contract.js';
 import { isPlausibleEmailAddress } from './email-address.js';
 import { wasteManagementMasterDataContract } from './waste-management-master-data.js';
-import { wasteManagementDataSourceContract, type WasteHolidaySyncStatus } from './waste-management-contract.js';
+import {
+  wasteManagementDataSourceContract,
+  type WasteHolidaySyncStatus,
+} from './waste-management-contract.js';
 
 const WASTE_SELECTED_INTERFACE_KEY = 'wasteManagementSelected';
 const WASTE_CALENDAR_WEB_URL_KEY = 'calendarWebUrl';
@@ -25,7 +28,8 @@ const readBoundedPositiveInteger = (value: unknown, maximum: number): number | u
   return parsed !== undefined && parsed <= maximum ? parsed : undefined;
 };
 
-const readBoolean = (value: unknown): boolean | undefined => (typeof value === 'boolean' ? value : undefined);
+const readBoolean = (value: unknown): boolean | undefined =>
+  typeof value === 'boolean' ? value : undefined;
 
 const readEmail = (value: unknown): string | undefined => {
   const email = readTrimmedString(value);
@@ -261,7 +265,9 @@ const normalizeWasteManagementEmailReminderConfig = (
   const doiConfirmPath = readRelativePath(normalizedRequiredStrings.doiConfirmPath);
   const unsubscribePath = readRelativePath(normalizedRequiredStrings.unsubscribePath);
   const fromEmail = readEmail(normalizedRequiredStrings.fromEmail);
-  const replyToEmail = normalizedOptionalStrings.replyToEmail ? readEmail(normalizedOptionalStrings.replyToEmail) : undefined;
+  const replyToEmail = normalizedOptionalStrings.replyToEmail
+    ? readEmail(normalizedOptionalStrings.replyToEmail)
+    : undefined;
   const dataProtectionContactEmail = normalizedOptionalStrings.dataProtectionContactEmail
     ? readEmail(normalizedOptionalStrings.dataProtectionContactEmail)
     : undefined;
@@ -316,7 +322,8 @@ const normalizeWasteManagementEmailReminderConfig = (
     unsubscribeLinkLabel: normalizedRequiredStrings.unsubscribeLinkLabel!,
     unsubscribeSuccessHeadline: normalizedRequiredStrings.unsubscribeSuccessHeadline!,
     unsubscribeSuccessBody: normalizedRequiredStrings.unsubscribeSuccessBody!,
-    maxSubscriptionsPerEmailAndLocation: normalizedRequiredIntegers.maxSubscriptionsPerEmailAndLocation!,
+    maxSubscriptionsPerEmailAndLocation:
+      normalizedRequiredIntegers.maxSubscriptionsPerEmailAndLocation!,
     signupRateLimitPerIpPerHour: normalizedRequiredIntegers.signupRateLimitPerIpPerHour!,
     signupRateLimitPerEmailPerHour: normalizedRequiredIntegers.signupRateLimitPerEmailPerHour!,
     doiTokenTtlHours: normalizedRequiredIntegers.doiTokenTtlHours!,
@@ -327,26 +334,40 @@ const normalizeWasteManagementEmailReminderConfig = (
     ...(unsubscribeSuccessPath ? { unsubscribeSuccessPath } : {}),
     ...(invalidTokenPath ? { invalidTokenPath } : {}),
     ...(replyToEmail ? { replyToEmail } : {}),
-    ...(normalizedOptionalStrings.serviceLabel ? { serviceLabel: normalizedOptionalStrings.serviceLabel } : {}),
+    ...(normalizedOptionalStrings.serviceLabel
+      ? { serviceLabel: normalizedOptionalStrings.serviceLabel }
+      : {}),
     ...(normalizedOptionalStrings.dataControllerLabel
       ? { dataControllerLabel: normalizedOptionalStrings.dataControllerLabel }
       : {}),
     ...(dataProtectionContactEmail ? { dataProtectionContactEmail } : {}),
-    ...(normalizedOptionalStrings.doiPreheader ? { doiPreheader: normalizedOptionalStrings.doiPreheader } : {}),
-    ...(normalizedOptionalStrings.doiFallbackText ? { doiFallbackText: normalizedOptionalStrings.doiFallbackText } : {}),
+    ...(normalizedOptionalStrings.doiPreheader
+      ? { doiPreheader: normalizedOptionalStrings.doiPreheader }
+      : {}),
+    ...(normalizedOptionalStrings.doiFallbackText
+      ? { doiFallbackText: normalizedOptionalStrings.doiFallbackText }
+      : {}),
     ...(normalizedOptionalStrings.doiExpiryNoticeText
       ? { doiExpiryNoticeText: normalizedOptionalStrings.doiExpiryNoticeText }
       : {}),
     ...(normalizedOptionalStrings.doiSuccessHeadline
       ? { doiSuccessHeadline: normalizedOptionalStrings.doiSuccessHeadline }
       : {}),
-    ...(normalizedOptionalStrings.doiSuccessBody ? { doiSuccessBody: normalizedOptionalStrings.doiSuccessBody } : {}),
-    ...(normalizedOptionalStrings.doiErrorHeadline ? { doiErrorHeadline: normalizedOptionalStrings.doiErrorHeadline } : {}),
-    ...(normalizedOptionalStrings.doiErrorBody ? { doiErrorBody: normalizedOptionalStrings.doiErrorBody } : {}),
+    ...(normalizedOptionalStrings.doiSuccessBody
+      ? { doiSuccessBody: normalizedOptionalStrings.doiSuccessBody }
+      : {}),
+    ...(normalizedOptionalStrings.doiErrorHeadline
+      ? { doiErrorHeadline: normalizedOptionalStrings.doiErrorHeadline }
+      : {}),
+    ...(normalizedOptionalStrings.doiErrorBody
+      ? { doiErrorBody: normalizedOptionalStrings.doiErrorBody }
+      : {}),
     ...(normalizedOptionalStrings.reminderListIntroTemplate
       ? { reminderListIntroTemplate: normalizedOptionalStrings.reminderListIntroTemplate }
       : {}),
-    ...(normalizedOptionalStrings.reminderOutroText ? { reminderOutroText: normalizedOptionalStrings.reminderOutroText } : {}),
+    ...(normalizedOptionalStrings.reminderOutroText
+      ? { reminderOutroText: normalizedOptionalStrings.reminderOutroText }
+      : {}),
     ...(normalizedOptionalStrings.reminderReasonText
       ? { reminderReasonText: normalizedOptionalStrings.reminderReasonText }
       : {}),
@@ -375,9 +396,11 @@ export const isWasteManagementInterfaceSelected = (
 export const findSelectedWasteManagementInterfaceRecord = (
   records: readonly ExternalInterfaceRecord[]
 ): ExternalInterfaceRecord | null =>
-  records.find((record) => record.typeKey === 'supabase' && isWasteManagementInterfaceSelected(record)) ??
-  records.find((record) => record.typeKey === 'supabase' && record.isDefault) ??
-  records.find((record) => record.typeKey === 'supabase') ??
+  records.find(
+    (record) => record.typeKey === 'postgresql' && isWasteManagementInterfaceSelected(record)
+  ) ??
+  records.find((record) => record.typeKey === 'postgresql' && record.isDefault) ??
+  records.find((record) => record.typeKey === 'postgresql') ??
   null;
 
 export const readWasteManagementCalendarWebUrl = (
@@ -396,14 +419,19 @@ export const readWasteManagementHolidayStateCode = (
   publicConfig: Readonly<Record<string, unknown>>
 ): WasteHolidayStateCode | undefined => {
   const value = publicConfig[WASTE_HOLIDAY_STATE_CODE_KEY];
-  return typeof value === 'string' && wasteManagementMasterDataContract.isWasteHolidayStateCode(value) ? value : undefined;
+  return typeof value === 'string' &&
+    wasteManagementMasterDataContract.isWasteHolidayStateCode(value)
+    ? value
+    : undefined;
 };
 
 export const readWasteManagementHolidaySyncStatus = (
   publicConfig: Readonly<Record<string, unknown>>
 ): WasteHolidaySyncStatus | undefined => {
   const value = publicConfig[WASTE_LAST_HOLIDAY_SYNC_STATUS_KEY];
-  return typeof value === 'string' && wasteManagementDataSourceContract.isHolidaySyncStatus(value) ? value : undefined;
+  return typeof value === 'string' && wasteManagementDataSourceContract.isHolidaySyncStatus(value)
+    ? value
+    : undefined;
 };
 
 export const readWasteManagementLastSuccessfulHolidaySyncAt = (
@@ -465,7 +493,9 @@ export const buildWasteManagementPublicConfig = (
     delete nextPublicConfig[WASTE_PDF_CONTACT_BLOCK_KEY];
   }
 
-  const normalizedEmailReminderConfig = normalizeWasteManagementEmailReminderConfig(input.emailReminderConfig);
+  const normalizedEmailReminderConfig = normalizeWasteManagementEmailReminderConfig(
+    input.emailReminderConfig
+  );
   if (normalizedEmailReminderConfig) {
     nextPublicConfig[WASTE_EMAIL_REMINDER_CONFIG_KEY] = normalizedEmailReminderConfig;
   }

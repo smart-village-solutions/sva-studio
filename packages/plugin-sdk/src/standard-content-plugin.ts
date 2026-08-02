@@ -175,12 +175,14 @@ export const createStandardContentTypeDefinition = (
   pluginId: string,
   contentType: string,
   displayName: string,
-  basePath?: string
+  basePath?: string,
+  titleKey?: string
 ): readonly ContentTypeDefinition[] =>
   definePluginContentTypes(pluginId, [
     {
       contentType,
       displayName,
+      titleKey,
       studioContentType: {
         requiredReadAction: `${pluginId}.read`,
         requiredCreateAction: `${pluginId}.create`,
@@ -209,7 +211,8 @@ export const createStandardContentPluginContribution = (
     options.pluginId,
     options.contentType,
     options.displayName,
-    options.basePath
+    options.basePath,
+    options.titleKey
   ),
   adminResources: definePluginAdminResources(options.pluginId, [createStandardContentAdminResource(options)]),
 });

@@ -46,6 +46,18 @@ describe('external interfaces runtime', () => {
     );
   });
 
+  it('exposes only the configured database marker for PostgreSQL interfaces', () => {
+    expect(
+      sanitizeExternalInterfaceRecord({
+        ...baseRecord,
+        typeKey: 'postgresql',
+        displayName: 'PostgreSQL',
+        statusCheckKind: 'postgresql',
+        publicConfig: { schemaName: 'public' },
+      }).secretConfigConfigured
+    ).toEqual({ databaseUrl: true });
+  });
+
   it('resolves interfaces by id, alias and default with stable secret AADs', async () => {
     const revealCalls: Array<{ ciphertext: string | null | undefined; aad: string }> = [];
 

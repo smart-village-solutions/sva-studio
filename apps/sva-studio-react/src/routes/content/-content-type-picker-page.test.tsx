@@ -2,6 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { mergeI18nResources, resetMergedI18nResources, resetTranslatorCache } from '../../i18n';
 import { ContentTypePickerPage } from './-content-type-picker-page';
 
 const useContentAccessMock = vi.fn();
@@ -23,6 +24,7 @@ vi.mock('../../lib/plugins', () => ({
     {
       contentType: 'news.article',
       displayName: 'News',
+      titleKey: 'news.navigation.title',
       description: 'Artikel',
       requiredReadAction: 'news.read',
       requiredCreateAction: 'news.create',
@@ -32,6 +34,7 @@ vi.mock('../../lib/plugins', () => ({
     {
       contentType: 'events.event-record',
       displayName: 'Events',
+      titleKey: 'events.navigation.title',
       description: 'Veranstaltungen',
       requiredReadAction: 'events.read',
       requiredCreateAction: 'events.create',
@@ -53,10 +56,24 @@ vi.mock('../../lib/plugins', () => ({
 describe('ContentTypePickerPage', () => {
   beforeEach(() => {
     useContentAccessMock.mockReset();
+    resetMergedI18nResources();
+    mergeI18nResources({
+      de: {
+        news: { navigation: { title: 'Nachrichten' } },
+        events: { navigation: { title: 'Veranstaltungen' } },
+      },
+      en: {
+        news: { navigation: { title: 'News' } },
+        events: { navigation: { title: 'Events' } },
+      },
+    });
+    resetTranslatorCache();
   });
 
   afterEach(() => {
     cleanup();
+    resetMergedI18nResources();
+    resetTranslatorCache();
   });
 
   it('renders only creatable content types', () => {
@@ -77,7 +94,7 @@ describe('ContentTypePickerPage', () => {
     render(<ContentTypePickerPage />);
 
     expect(screen.getByRole('heading', { name: 'Inhaltstyp wählen' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: /News/i }).getAttribute('href')).toBe('/admin/news/new');
+    expect(screen.getByRole('link', { name: 'Nachrichten' }).getAttribute('href')).toBe('/admin/news/new');
     expect(screen.getByText('Meldungen, Artikel und redaktionelle Beiträge für die App erstellen und pflegen.')).toBeTruthy();
     expect(screen.queryByText('Erstellungsseite öffnen')).toBeNull();
     expect(screen.queryByText('news.article')).toBeNull();
@@ -102,7 +119,7 @@ describe('ContentTypePickerPage', () => {
 
     render(<ContentTypePickerPage />);
 
-    expect(screen.getByRole('link', { name: /Events/i }).getAttribute('href')).toBe('/admin/events/new');
+    expect(screen.getByRole('link', { name: 'Veranstaltungen' }).getAttribute('href')).toBe('/admin/events/new');
     expect(screen.getByText('Veranstaltungen im gemeinsamen Inhaltsbereich anlegen und verwalten.')).toBeTruthy();
   });
 

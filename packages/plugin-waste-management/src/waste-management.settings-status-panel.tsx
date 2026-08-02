@@ -1,29 +1,32 @@
 import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { StudioTechnicalStatusPanel } from '@sva/studio-ui-react';
+import { Button, StudioTechnicalStatusPanel } from '@sva/studio-ui-react';
 
-import { formatUpdatedAt, toTechnicalStatusTone } from './waste-management.page.support.js';
+import { formatUpdatedAt } from './waste-management.page.support.js';
 
-const formatHolidaySyncStatus = (
-  status: WasteManagementSettingsRecord['lastHolidaySyncStatus'],
-  pt: ReturnType<typeof usePluginTranslation>
-) => {
+const provisioningTone = (
+  status: WasteManagementSettingsRecord['provisioningStatus']
+): 'neutral' | 'success' | 'warning' | 'error' => {
   switch (status) {
-    case 'success':
-      return pt('settings.meta.holidaySyncSuccess');
-    case 'partial_success':
-      return pt('settings.meta.holidaySyncPartialSuccess');
+    case 'ready':
+      return 'success';
+    case 'provisioning':
+      return 'warning';
     case 'failed':
-      return pt('settings.meta.holidaySyncFailed');
+      return 'error';
     default:
-      return pt('settings.meta.lastHolidaySyncStatusEmpty');
+      return 'neutral';
   }
 };
 
 export const WasteSettingsStatusPanel = ({
   settings,
+  retrying = false,
+  onRetry,
 }: {
   readonly settings: WasteManagementSettingsRecord | null;
+  readonly retrying?: boolean;
+  readonly onRetry?: () => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
 
@@ -31,43 +34,27 @@ export const WasteSettingsStatusPanel = ({
     <StudioTechnicalStatusPanel
       title={pt('settings.technical.title')}
       description={pt('settings.technical.description')}
-      statusLabel={settings?.visibleStatus ?? 'not_configured'}
-      statusTone={toTechnicalStatusTone(settings?.visibleStatus)}
+      statusLabel={settings?.provisioningStatus ?? 'not_configured'}
+      statusTone={provisioningTone(settings?.provisioningStatus)}
+      actions={
+        settings?.provisioningStatus === 'failed' && onRetry ? (
+          <Button type="button" variant="outline" disabled={retrying} onClick={onRetry}>
+            {retrying
+              ? pt('settings.actions.retryingProvisioning')
+              : pt('settings.actions.retryProvisioning')}
+          </Button>
+        ) : undefined
+      }
       metadata={[
         {
-          id: 'databaseUrlConfigured',
-          label: pt('settings.meta.databaseUrlConfiguredLabel'),
-          value: settings?.databaseUrlConfigured ? pt('common.yes') : pt('common.no'),
+          id: 'provisioningUpdatedAt',
+          label: pt('settings.meta.provisioningUpdatedAtLabel'),
+          value: formatUpdatedAt(settings?.provisioningUpdatedAt),
         },
         {
-          id: 'serviceRoleKeyConfigured',
-          label: pt('settings.meta.serviceRoleKeyConfiguredLabel'),
-          value: settings?.serviceRoleKeyConfigured ? pt('common.yes') : pt('common.no'),
-        },
-        {
-          id: 'lastCheckedAt',
-          label: pt('settings.meta.lastCheckedAtLabel'),
-          value: formatUpdatedAt(settings?.lastCheckedAt),
-        },
-        {
-          id: 'selectedInterface',
-          label: pt('settings.meta.selectedInterfaceLabel'),
-          value: settings?.selectedInterfaceName ?? pt('settings.meta.selectedInterfaceEmpty'),
-        },
-        {
-          id: 'holidayStateCode',
-          label: pt('settings.meta.holidayStateCodeLabel'),
-          value: settings?.holidayStateCode ?? pt('settings.meta.holidayStateCodeEmpty'),
-        },
-        {
-          id: 'lastHolidaySyncStatus',
-          label: pt('settings.meta.lastHolidaySyncStatusLabel'),
-          value: formatHolidaySyncStatus(settings?.lastHolidaySyncStatus, pt),
-        },
-        {
-          id: 'lastSuccessfulHolidaySyncAt',
-          label: pt('settings.meta.lastSuccessfulHolidaySyncAtLabel'),
-          value: formatUpdatedAt(settings?.lastSuccessfulHolidaySyncAt),
+          id: 'provisioningErrorCode',
+          label: pt('settings.meta.provisioningErrorCodeLabel'),
+          value: settings?.provisioningErrorCode ?? pt('settings.meta.provisioningErrorCodeEmpty'),
         },
       ]}
     />

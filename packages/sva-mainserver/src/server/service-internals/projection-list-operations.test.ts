@@ -21,7 +21,14 @@ describe('projection list operations', () => {
   it('loads only allowlisted compact fields and skips invalid rows', async () => {
     const execute = vi.fn().mockResolvedValue({
       newsItems: [
-        { id: 'news-1', title: '', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
+        {
+          id: 'news-1',
+          title: '',
+          contentBlocks: [{ title: 'Headline aus dem ersten Inhaltsblock' }],
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-02T00:00:00Z',
+        },
+        { id: 'news-2', title: null, contentBlocks: [{ title: null }] },
         { title: 'Ohne ID' },
       ],
     });
@@ -30,12 +37,31 @@ describe('projection list operations', () => {
     const result = await operations.listProjectionWithConfig('news.article', input, config);
 
     expect(result.data).toEqual([
-      expect.objectContaining({ id: 'news-1', title: 'news-1' }),
+      expect.objectContaining({ id: 'news-1', title: 'Headline aus dem ersten Inhaltsblock' }),
+      expect.objectContaining({ id: 'news-2', title: 'news-2' }),
     ]);
     expect(result.skippedInvalidCount).toBe(1);
     const request = execute.mock.calls[0]?.[0] as { document: string; variables: unknown };
     expect(request.variables).toEqual({ limit: 101, skip: 0, order: 'updatedAt_DESC' });
-    expect(request.document).not.toMatch(/\b(payload|contentBlocks|media|addresses)\b/);
+    expect(request.document).toMatch(/contentBlocks\s*\{\s*title\s*\}/);
+    expect(request.document).not.toMatch(/\b(payload|media|addresses)\b/);
+  });
+
+  it('prefers the news title over the first content-block headline', async () => {
+    const execute = vi.fn().mockResolvedValue({
+      newsItems: [
+        {
+          id: 'news-1',
+          title: 'News-Titel',
+          contentBlocks: [{ title: 'Headline aus dem ersten Inhaltsblock' }],
+        },
+      ],
+    });
+    const operations = createProjectionListOperations(execute);
+
+    const result = await operations.listProjectionWithConfig('news.article', input, config);
+
+    expect(result.data[0]?.title).toBe('News-Titel');
   });
 
   it('loads surveys in one complete request without pagination variables', async () => {

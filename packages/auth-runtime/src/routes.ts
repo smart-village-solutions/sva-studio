@@ -125,6 +125,7 @@ export type AuthRoutePath =
   | '/api/v1/waste-management/tours/$tourId'
   | '/api/v1/waste-management/settings'
   | '/api/v1/waste-management/settings/holiday-sync'
+  | '/api/v1/waste-management/settings/provisioning/retry'
   | '/api/v1/waste-management/tools/initialize'
   | '/api/v1/waste-management/tools/imports'
   | '/api/v1/waste-management/tools/imports/preview'
@@ -263,6 +264,7 @@ export const authRoutePaths = [
   '/api/v1/waste-management/tours/$tourId',
   '/api/v1/waste-management/settings',
   '/api/v1/waste-management/settings/holiday-sync',
+  '/api/v1/waste-management/settings/provisioning/retry',
   '/api/v1/waste-management/tools/initialize',
   '/api/v1/waste-management/tools/imports',
   '/api/v1/waste-management/tools/imports/preview',

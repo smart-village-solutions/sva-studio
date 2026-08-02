@@ -1158,6 +1158,32 @@ ALTER TABLE ONLY iam.instance_waste_data_sources FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: instance_waste_provisioning; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.instance_waste_provisioning (
+    instance_id text NOT NULL,
+    status text NOT NULL,
+    desired_generation integer DEFAULT 1 NOT NULL,
+    completed_generation integer DEFAULT 0 NOT NULL,
+    database_name text,
+    interface_id text,
+    active_job_id uuid,
+    error_code text,
+    error_message text,
+    requested_at timestamp with time zone DEFAULT now() NOT NULL,
+    started_at timestamp with time zone,
+    completed_at timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT instance_waste_provisioning_database_name_chk CHECK (((database_name IS NULL) OR (database_name ~ '^[a-z][a-z0-9_]{0,62}$'::text))),
+    CONSTRAINT instance_waste_provisioning_generation_chk CHECK (((desired_generation >= 1) AND (completed_generation >= 0) AND (completed_generation <= desired_generation))),
+    CONSTRAINT instance_waste_provisioning_status_chk CHECK ((status = ANY (ARRAY['provisioning'::text, 'ready'::text, 'failed'::text, 'disabled'::text])))
+);
+
+ALTER TABLE ONLY iam.instance_waste_provisioning FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: instances; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -2041,6 +2067,14 @@ ALTER TABLE ONLY iam.instance_waste_data_sources
 
 
 --
+-- Name: instance_waste_provisioning instance_waste_provisioning_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_waste_provisioning
+    ADD CONSTRAINT instance_waste_provisioning_pkey PRIMARY KEY (instance_id);
+
+
+--
 -- Name: instances instances_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -2599,6 +2633,13 @@ CREATE INDEX idx_instance_external_interfaces_instance_type ON iam.instance_exte
 
 
 --
+-- Name: idx_instance_external_interfaces_plugin_owner; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_instance_external_interfaces_plugin_owner ON iam.instance_external_interfaces USING btree (instance_id, owner_id) WHERE ((owner_kind = 'plugin'::text) AND (owner_id = 'waste-management'::text) AND (type_key = 'postgresql'::text));
+
+
+--
 -- Name: idx_instance_integrations_instance_provider; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -2645,6 +2686,13 @@ CREATE INDEX idx_instance_modules_instance_created ON iam.instance_modules USING
 --
 
 CREATE INDEX idx_instance_provisioning_runs_instance_created ON iam.instance_provisioning_runs USING btree (instance_id, created_at DESC);
+
+
+--
+-- Name: idx_instance_waste_provisioning_status_updated_at; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_instance_waste_provisioning_status_updated_at ON iam.instance_waste_provisioning USING btree (status, updated_at DESC);
 
 
 --
@@ -3540,6 +3588,30 @@ ALTER TABLE ONLY iam.instance_waste_data_sources
 
 
 --
+-- Name: instance_waste_provisioning instance_waste_provisioning_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_waste_provisioning
+    ADD CONSTRAINT instance_waste_provisioning_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: instance_waste_provisioning instance_waste_provisioning_interface_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_waste_provisioning
+    ADD CONSTRAINT instance_waste_provisioning_interface_fk FOREIGN KEY (interface_id) REFERENCES iam.instance_external_interfaces(id) ON DELETE SET NULL;
+
+
+--
+-- Name: instance_waste_provisioning instance_waste_provisioning_job_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_waste_provisioning
+    ADD CONSTRAINT instance_waste_provisioning_job_fk FOREIGN KEY (active_job_id, instance_id) REFERENCES iam.studio_jobs(id, instance_id) ON DELETE SET NULL;
+
+
+--
 -- Name: legal_holds legal_holds_account_membership_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -4049,6 +4121,19 @@ ALTER TABLE iam.instance_waste_data_sources ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY instance_waste_data_sources_isolation_policy ON iam.instance_waste_data_sources USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: instance_waste_provisioning; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.instance_waste_provisioning ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: instance_waste_provisioning instance_waste_provisioning_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY instance_waste_provisioning_isolation_policy ON iam.instance_waste_provisioning USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
 
 
 --

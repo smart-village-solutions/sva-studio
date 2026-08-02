@@ -11,8 +11,7 @@ export type DeletedPresetFallbackState = {
 };
 
 export type SettingsFormState = {
-  readonly provider: 'supabase';
-  readonly projectUrl: string;
+  readonly provider: 'postgresql';
   readonly schemaName: string;
   readonly enabled: boolean;
   readonly selectedInterfaceId: string;
@@ -20,8 +19,6 @@ export type SettingsFormState = {
   readonly pdfBrandingAssetUrl: string;
   readonly pdfContactBlock: string;
   readonly holidayStateCode: string;
-  readonly databaseUrl: string;
-  readonly serviceRoleKey: string;
   readonly customRecurrencePresets: readonly CustomRecurrencePresetInputState[];
   readonly deletedPresetFallbacks: Readonly<Record<string, DeletedPresetFallbackState>>;
 };

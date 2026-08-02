@@ -1,5 +1,9 @@
 import { t } from '../../i18n';
-import { instanceInterfaceTypeMeta, type InstanceInterfaceDraft, type InstanceInterfaceType } from '../../lib/instance-interfaces';
+import {
+  instanceInterfaceTypeMeta,
+  type InstanceInterfaceDraft,
+  type InstanceInterfaceType,
+} from '../../lib/instance-interfaces';
 import { Button } from '../../components/ui/button';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Input } from '../../components/ui/input';
@@ -33,7 +37,9 @@ export const TypePickerDialog = ({
     >
       <div className="w-full max-w-xl rounded-xl border border-border bg-card p-6 shadow-shell">
         <h2 className="text-lg font-semibold">{t('interfaces.create.dialogTitle')}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t('interfaces.create.dialogDescription')}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t('interfaces.create.dialogDescription')}
+        </p>
         <div className="mt-4 grid gap-3">
           {availableTypes.map((type) => {
             const meta = instanceInterfaceTypeMeta[type];
@@ -95,7 +101,13 @@ type InterfaceFormProps = Readonly<{
   onSubmit: () => void;
 }>;
 
-export const InterfaceForm = ({ draft, isSaving, onChange, onCancel, onSubmit }: InterfaceFormProps) => (
+export const InterfaceForm = ({
+  draft,
+  isSaving,
+  onChange,
+  onCancel,
+  onSubmit,
+}: InterfaceFormProps) => (
   <form
     className="grid gap-4"
     onSubmit={(event) => {
@@ -120,6 +132,8 @@ export const InterfaceForm = ({ draft, isSaving, onChange, onCancel, onSubmit }:
       <MapGeocodingFields draft={draft} onChange={onChange} />
     ) : draft.type === 'mailTransport' ? (
       <MailTransportFields draft={draft} onChange={onChange} />
+    ) : draft.type === 'postgresql' ? (
+      <PostgresqlFields draft={draft} onChange={onChange} />
     ) : (
       <SupabaseFields draft={draft} onChange={onChange} />
     )}
@@ -162,7 +176,10 @@ const MainserverFields = ({
         type="url"
         value={draft.config.graphqlBaseUrl}
         onChange={(event) =>
-          onChange({ ...draft, config: { ...draft.config, graphqlBaseUrl: event.currentTarget.value } })
+          onChange({
+            ...draft,
+            config: { ...draft.config, graphqlBaseUrl: event.currentTarget.value },
+          })
         }
       />
     </div>
@@ -173,7 +190,10 @@ const MainserverFields = ({
         type="url"
         value={draft.config.oauthTokenUrl}
         onChange={(event) =>
-          onChange({ ...draft, config: { ...draft.config, oauthTokenUrl: event.currentTarget.value } })
+          onChange({
+            ...draft,
+            config: { ...draft.config, oauthTokenUrl: event.currentTarget.value },
+          })
         }
       />
     </div>
@@ -227,7 +247,10 @@ const S3Fields = ({
         id="s3-access-key"
         value={draft.config.accessKeyId}
         onChange={(event) =>
-          onChange({ ...draft, config: { ...draft.config, accessKeyId: event.currentTarget.value } })
+          onChange({
+            ...draft,
+            config: { ...draft.config, accessKeyId: event.currentTarget.value },
+          })
         }
       />
     </div>
@@ -238,7 +261,10 @@ const S3Fields = ({
         type="password"
         value={draft.config.secretAccessKey}
         onChange={(event) =>
-          onChange({ ...draft, config: { ...draft.config, secretAccessKey: event.currentTarget.value } })
+          onChange({
+            ...draft,
+            config: { ...draft.config, secretAccessKey: event.currentTarget.value },
+          })
         }
       />
     </div>
@@ -284,7 +310,10 @@ const SupabaseFields = ({
           id="supabase-schema"
           value={draft.config.schemaName}
           onChange={(event) =>
-            onChange({ ...draft, config: { ...draft.config, schemaName: event.currentTarget.value } })
+            onChange({
+              ...draft,
+              config: { ...draft.config, schemaName: event.currentTarget.value },
+            })
           }
         />
       </div>
@@ -294,7 +323,10 @@ const SupabaseFields = ({
           id="supabase-db"
           value={draft.config.databaseUrl}
           onChange={(event) =>
-            onChange({ ...draft, config: { ...draft.config, databaseUrl: event.currentTarget.value } })
+            onChange({
+              ...draft,
+              config: { ...draft.config, databaseUrl: event.currentTarget.value },
+            })
           }
         />
       </div>
@@ -306,11 +338,49 @@ const SupabaseFields = ({
         type="password"
         value={draft.config.serviceRoleKey}
         onChange={(event) =>
-          onChange({ ...draft, config: { ...draft.config, serviceRoleKey: event.currentTarget.value } })
+          onChange({
+            ...draft,
+            config: { ...draft.config, serviceRoleKey: event.currentTarget.value },
+          })
         }
       />
     </div>
   </>
+);
+
+const PostgresqlFields = ({
+  draft,
+  onChange,
+}: {
+  draft: Extract<InstanceInterfaceDraft, { type: 'postgresql' }>;
+  onChange: (next: InstanceInterfaceDraft) => void;
+}) => (
+  <div className="grid gap-2 md:grid-cols-2">
+    <div className="grid gap-2">
+      <Label htmlFor="postgresql-schema">{t('interfaces.forms.postgresql.schemaName')}</Label>
+      <Input
+        id="postgresql-schema"
+        value={draft.config.schemaName}
+        onChange={(event) =>
+          onChange({ ...draft, config: { ...draft.config, schemaName: event.currentTarget.value } })
+        }
+      />
+    </div>
+    <div className="grid gap-2">
+      <Label htmlFor="postgresql-db">{t('interfaces.forms.postgresql.databaseUrl')}</Label>
+      <Input
+        id="postgresql-db"
+        type="password"
+        value={draft.config.databaseUrl}
+        onChange={(event) =>
+          onChange({
+            ...draft,
+            config: { ...draft.config, databaseUrl: event.currentTarget.value },
+          })
+        }
+      />
+    </div>
+  </div>
 );
 
 const MailTransportFields = ({
@@ -336,7 +406,9 @@ const MailTransportFields = ({
     <>
       <div className="grid gap-2 md:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="mail-transport-id">{t('interfaces.forms.mailTransport.transportId')}</Label>
+          <Label htmlFor="mail-transport-id">
+            {t('interfaces.forms.mailTransport.transportId')}
+          </Label>
           <Input
             id="mail-transport-id"
             value={draft.config.transportId}
@@ -367,7 +439,9 @@ const MailTransportFields = ({
 
       <div className="grid gap-2 md:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="mail-security-mode">{t('interfaces.forms.mailTransport.securityMode')}</Label>
+          <Label htmlFor="mail-security-mode">
+            {t('interfaces.forms.mailTransport.securityMode')}
+          </Label>
           <select
             id="mail-security-mode"
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -378,11 +452,15 @@ const MailTransportFields = ({
               })
             }
           >
-            <option value="none">{t('interfaces.forms.mailTransport.securityModeOptions.none')}</option>
+            <option value="none">
+              {t('interfaces.forms.mailTransport.securityModeOptions.none')}
+            </option>
             <option value="starttls">
               {t('interfaces.forms.mailTransport.securityModeOptions.starttls')}
             </option>
-            <option value="tls">{t('interfaces.forms.mailTransport.securityModeOptions.tls')}</option>
+            <option value="tls">
+              {t('interfaces.forms.mailTransport.securityModeOptions.tls')}
+            </option>
           </select>
         </div>
         <div className="grid gap-2">
@@ -398,7 +476,9 @@ const MailTransportFields = ({
             }
           >
             <option value="none">{t('interfaces.forms.mailTransport.authModeOptions.none')}</option>
-            <option value="basic">{t('interfaces.forms.mailTransport.authModeOptions.basic')}</option>
+            <option value="basic">
+              {t('interfaces.forms.mailTransport.authModeOptions.basic')}
+            </option>
           </select>
         </div>
       </div>
@@ -460,7 +540,9 @@ const MailTransportFields = ({
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="mail-rate-limit">{t('interfaces.forms.mailTransport.rateLimitPerMinute')}</Label>
+          <Label htmlFor="mail-rate-limit">
+            {t('interfaces.forms.mailTransport.rateLimitPerMinute')}
+          </Label>
           <Input
             id="mail-rate-limit"
             inputMode="numeric"
@@ -471,7 +553,9 @@ const MailTransportFields = ({
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="mail-max-batch-size">{t('interfaces.forms.mailTransport.maxBatchSize')}</Label>
+        <Label htmlFor="mail-max-batch-size">
+          {t('interfaces.forms.mailTransport.maxBatchSize')}
+        </Label>
         <Input
           id="mail-max-batch-size"
           inputMode="numeric"
@@ -518,7 +602,9 @@ const MapGeocodingFields = ({
             }
           >
             <option value="geoapify">Geoapify</option>
-            <option value="custom">{t('interfaces.forms.mapGeocoding.providerOptions.custom')}</option>
+            <option value="custom">
+              {t('interfaces.forms.mapGeocoding.providerOptions.custom')}
+            </option>
           </select>
         </div>
         <div className="grid gap-2">
@@ -534,7 +620,9 @@ const MapGeocodingFields = ({
 
       <div className="grid gap-2 md:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="map-suggest-endpoint">{t('interfaces.forms.mapGeocoding.suggestEndpoint')}</Label>
+          <Label htmlFor="map-suggest-endpoint">
+            {t('interfaces.forms.mapGeocoding.suggestEndpoint')}
+          </Label>
           <Input
             id="map-suggest-endpoint"
             type="url"
@@ -543,7 +631,9 @@ const MapGeocodingFields = ({
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="map-geocode-endpoint">{t('interfaces.forms.mapGeocoding.geocodeEndpoint')}</Label>
+          <Label htmlFor="map-geocode-endpoint">
+            {t('interfaces.forms.mapGeocoding.geocodeEndpoint')}
+          </Label>
           <Input
             id="map-geocode-endpoint"
             type="url"
@@ -555,12 +645,16 @@ const MapGeocodingFields = ({
 
       <div className="grid gap-2 md:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="map-reverse-endpoint">{t('interfaces.forms.mapGeocoding.reverseGeocodeEndpoint')}</Label>
+          <Label htmlFor="map-reverse-endpoint">
+            {t('interfaces.forms.mapGeocoding.reverseGeocodeEndpoint')}
+          </Label>
           <Input
             id="map-reverse-endpoint"
             type="url"
             value={draft.config.reverseGeocodeEndpoint}
-            onChange={(event) => updateConfig({ reverseGeocodeEndpoint: event.currentTarget.value })}
+            onChange={(event) =>
+              updateConfig({ reverseGeocodeEndpoint: event.currentTarget.value })
+            }
           />
         </div>
         <div className="grid gap-2">
@@ -585,7 +679,9 @@ const MapGeocodingFields = ({
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="map-rate-limit">{t('interfaces.forms.mapGeocoding.rateLimitPerMinute')}</Label>
+          <Label htmlFor="map-rate-limit">
+            {t('interfaces.forms.mapGeocoding.rateLimitPerMinute')}
+          </Label>
           <Input
             id="map-rate-limit"
             inputMode="numeric"
@@ -616,7 +712,9 @@ const MapGeocodingFields = ({
           <Checkbox
             id="map-reverse-enabled"
             checked={draft.config.reverseGeocodeEnabled}
-            onChange={(event) => updateConfig({ reverseGeocodeEnabled: event.currentTarget.checked })}
+            onChange={(event) =>
+              updateConfig({ reverseGeocodeEnabled: event.currentTarget.checked })
+            }
           />
           <span>{t('interfaces.forms.mapGeocoding.reverseGeocodeEnabled')}</span>
         </Label>

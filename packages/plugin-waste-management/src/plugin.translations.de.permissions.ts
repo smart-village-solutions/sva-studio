@@ -16,10 +16,10 @@ export const wasteManagementPluginTranslationsDEPermissions = {
       "title": "Importe ausführen"
     },
     "seedExecute": {
-      "title": "Seed ausführen"
+      "title": "Initialdaten laden"
     },
     "resetExecute": {
-      "title": "Reset ausführen"
+      "title": "Daten zurücksetzen"
     },
     "settingsManage": {
       "title": "Einstellungen verwalten"

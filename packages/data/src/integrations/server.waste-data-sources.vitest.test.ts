@@ -22,14 +22,11 @@ vi.mock('pg', () => ({
 
 const record = {
   instanceId: 'tenant-a',
-  provider: 'supabase' as const,
-  projectUrl: 'https://tenant-a.supabase.co',
+  provider: 'postgresql' as const,
   schemaName: 'public',
   enabled: true,
   databaseUrlConfigured: true,
-  serviceRoleKeyConfigured: true,
   databaseUrlCiphertext: 'db-cipher',
-  serviceRoleKeyCiphertext: 'service-cipher',
   visibleStatus: 'ok' as const,
   lastCheckedAt: '2026-05-09T09:00:00.000Z',
   lastCheckStatus: 'succeeded' as const,
@@ -43,7 +40,8 @@ describe('data server re-export waste data sources', () => {
   });
 
   it('covers transactional read, write and rollback branches through the public server entrypoint', async () => {
-    const { loadWasteDataSourceRecord, saveWasteConnectionCheck, saveWasteDataSourceRecord } = await import('../server.js');
+    const { loadWasteDataSourceRecord, saveWasteConnectionCheck, saveWasteDataSourceRecord } =
+      await import('../server.js');
 
     const queries: string[] = [];
     const release = vi.fn();
@@ -57,8 +55,8 @@ describe('data server re-export waste data sources', () => {
               rows: [
                 {
                   instance_id: 'tenant-a',
-                  provider_key: 'supabase',
-                  project_url: 'https://tenant-a.supabase.co',
+                  provider_key: 'postgresql',
+                  project_url: '',
                   schema_name: 'public',
                   enabled: true,
                   database_url_ciphertext: 'db-cipher',

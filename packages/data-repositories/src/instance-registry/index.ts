@@ -15,6 +15,7 @@ import { createModuleIamRepository } from './repository-module-iam.js';
 import { createMutationRepository } from './repository-mutations.js';
 import { createProvisioningRepository } from './repository-provisioning.js';
 import { createReadRepository } from './repository-reads.js';
+import { createWasteProvisioningRepository } from './repository-waste-provisioning.js';
 
 export type {
   CreateKeycloakProvisioningRunResult,
@@ -33,4 +34,5 @@ export const createInstanceRegistryRepository = (executor: SqlExecutor): Instanc
   ...createProvisioningRepository(executor),
   ...createMutationRepository(executor),
   ...createKeycloakProvisioningRepository(executor),
+  ...createWasteProvisioningRepository(executor),
 });

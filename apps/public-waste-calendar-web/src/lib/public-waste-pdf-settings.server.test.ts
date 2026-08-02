@@ -45,15 +45,15 @@ const createExternalInterfaceRecord = (
 ): ExternalInterfaceRecord => ({
   id: 'interface-1',
   instanceId: 'tenant-a',
-  typeKey: 'supabase',
+  typeKey: 'postgresql',
   ownerKind: 'host',
   ownerId: 'host',
-  displayName: 'Supabase',
+  displayName: 'PostgreSQL',
   alias: 'default',
   enabled: true,
   isDefault: true,
   category: 'database',
-  statusCheckKind: 'supabase',
+  statusCheckKind: 'postgresql',
   visibleStatus: 'ok',
   publicConfig,
 });
@@ -159,7 +159,7 @@ describe('public waste pdf settings', () => {
 
     expect(loadDefaultExternalInterfaceRecordMock).toHaveBeenCalledWith(
       'tenant-a',
-      'supabase',
+      'postgresql',
       expect.objectContaining({
         getDatabaseUrl: expect.any(Function),
       })
@@ -188,7 +188,8 @@ describe('public waste pdf settings', () => {
     });
 
     expect(result).toEqual({
-      brandingAssetUrl: 'https://www.landkreis-prignitz.de/global/wGlobal/layout/images/logos/wappen-logo.png',
+      brandingAssetUrl:
+        'https://www.landkreis-prignitz.de/global/wGlobal/layout/images/logos/wappen-logo.png',
       contactBlock: 'Abfallberatung Prignitz',
     });
   });

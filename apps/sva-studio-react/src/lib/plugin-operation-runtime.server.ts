@@ -17,7 +17,7 @@ import {
 import {
   createNodemailerMailDispatcher,
 } from '@sva/mail-runtime';
-import { revealField } from '@sva/auth-runtime/server';
+import { protectField, revealField } from '@sva/auth-runtime/server';
 import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
 import {
   createPluginJobExecutionHandlers as createWasteManagementPluginJobExecutionHandlers,
@@ -202,6 +202,7 @@ const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
     createWasteManagementOperationRuntime({
       dispatchMail: createNodemailerMailDispatcher({}),
       revealSecret: (ciphertext, aad) => revealField(ciphertext, aad) ?? undefined,
+      protectSecret: protectField,
     }),
 };
 

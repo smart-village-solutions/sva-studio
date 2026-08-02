@@ -31,7 +31,10 @@ export class ExternalInterfaceRuntimeError extends Error {
 export const buildExternalInterfaceSecretConfigAad = (interfaceId: string): string =>
   `iam.instance_external_interfaces.secret_config:${interfaceId}`;
 
-const buildSecretConfigMarkers = (typeKey: string, configured: boolean): Record<string, boolean> => {
+const buildSecretConfigMarkers = (
+  typeKey: string,
+  configured: boolean
+): Record<string, boolean> => {
   if (!configured) {
     return {};
   }
@@ -41,6 +44,8 @@ const buildSecretConfigMarkers = (typeKey: string, configured: boolean): Record<
       return { secretAccessKey: true };
     case 'supabase':
       return { databaseUrl: true, serviceRoleKey: true };
+    case 'postgresql':
+      return { databaseUrl: true };
     case 'mail_transport':
       return { password: true };
     case 'sva_mainserver':
@@ -80,10 +85,17 @@ export const sanitizeExternalInterfaceRecord = (
   createdAt: record.createdAt,
   updatedAt: record.updatedAt,
   publicConfig: record.publicConfig,
-  secretConfigConfigured: buildSecretConfigMarkers(record.typeKey, Boolean(record.secretConfigCiphertext)),
+  secretConfigConfigured: buildSecretConfigMarkers(
+    record.typeKey,
+    Boolean(record.secretConfigCiphertext)
+  ),
 });
 
-const parseSecretConfig = (value: string, typeKey: string, instanceId: string): Record<string, string> => {
+const parseSecretConfig = (
+  value: string,
+  typeKey: string,
+  instanceId: string
+): Record<string, string> => {
   try {
     const parsed = JSON.parse(value) as unknown;
     if (!isPlainObject(parsed)) {
@@ -110,9 +122,19 @@ const resolveRecord = async (input: {
   readonly typeKey: string;
   readonly interfaceId?: string;
   readonly alias?: string;
-  readonly loadById?: (instanceId: string, interfaceId: string) => Promise<ExternalInterfaceRecord | null>;
-  readonly loadByAlias?: (instanceId: string, typeKey: string, alias: string) => Promise<ExternalInterfaceRecord | null>;
-  readonly loadDefault?: (instanceId: string, typeKey: string) => Promise<ExternalInterfaceRecord | null>;
+  readonly loadById?: (
+    instanceId: string,
+    interfaceId: string
+  ) => Promise<ExternalInterfaceRecord | null>;
+  readonly loadByAlias?: (
+    instanceId: string,
+    typeKey: string,
+    alias: string
+  ) => Promise<ExternalInterfaceRecord | null>;
+  readonly loadDefault?: (
+    instanceId: string,
+    typeKey: string
+  ) => Promise<ExternalInterfaceRecord | null>;
 }): Promise<ExternalInterfaceRecord | null> => {
   if (input.interfaceId) {
     return (await input.loadById?.(input.instanceId, input.interfaceId)) ?? null;
@@ -130,9 +152,19 @@ export const resolveExternalInterface = async (input: {
   readonly typeKey: string;
   readonly interfaceId?: string;
   readonly alias?: string;
-  readonly loadById?: (instanceId: string, interfaceId: string) => Promise<ExternalInterfaceRecord | null>;
-  readonly loadByAlias?: (instanceId: string, typeKey: string, alias: string) => Promise<ExternalInterfaceRecord | null>;
-  readonly loadDefault?: (instanceId: string, typeKey: string) => Promise<ExternalInterfaceRecord | null>;
+  readonly loadById?: (
+    instanceId: string,
+    interfaceId: string
+  ) => Promise<ExternalInterfaceRecord | null>;
+  readonly loadByAlias?: (
+    instanceId: string,
+    typeKey: string,
+    alias: string
+  ) => Promise<ExternalInterfaceRecord | null>;
+  readonly loadDefault?: (
+    instanceId: string,
+    typeKey: string
+  ) => Promise<ExternalInterfaceRecord | null>;
   readonly revealSecret: (ciphertext: string | null | undefined, aad: string) => string | undefined;
 }): Promise<ResolvedExternalInterface> => {
   const record = await resolveRecord(input);
@@ -191,7 +223,8 @@ export const resolveExternalInterface = async (input: {
   };
 };
 
-const asIsoTimestamp = (now: Date | string): string => (typeof now === 'string' ? now : now.toISOString());
+const asIsoTimestamp = (now: Date | string): string =>
+  typeof now === 'string' ? now : now.toISOString();
 
 export const runExternalInterfaceConnectionCheck = async (input: {
   readonly resolvedInterface: ResolvedExternalInterface;
@@ -214,10 +247,10 @@ export const runExternalInterfaceConnectionCheck = async (input: {
     const mapped =
       error instanceof ExternalInterfaceRuntimeError
         ? { code: error.code, message: error.message }
-        : input.mapError?.(error) ?? {
+        : (input.mapError?.(error) ?? {
             code: 'connection_failed',
             message: error instanceof Error ? error.message : 'Connection-Check fehlgeschlagen.',
-          };
+          });
 
     return {
       instanceId: input.resolvedInterface.instanceId,

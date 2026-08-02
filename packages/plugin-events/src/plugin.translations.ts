@@ -290,7 +290,7 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     description: 'Legen Sie die erste Veranstaltung an.',
   },
   pagination: {
-    ariaLabel: 'Veranstaltungs-Pagination',
+    ariaLabel: 'Seitennavigation der Veranstaltungen',
     previous: 'Zurück',
     next: 'Weiter',
     pageLabel: 'Seite {{page}}',

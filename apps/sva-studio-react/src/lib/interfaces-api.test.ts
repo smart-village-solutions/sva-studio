@@ -214,7 +214,7 @@ describe('interfaces app adapter', () => {
 
     await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
       instanceId: 'de-musterhausen',
-      availableTypes: ['mainserver', 's3', 'mailTransport', 'mapGeocoding', 'supabase'],
+      availableTypes: ['mainserver', 's3', 'postgresql', 'mailTransport', 'mapGeocoding', 'supabase'],
       entries: [
         expect.objectContaining({
           id: 's3-1',
@@ -297,7 +297,7 @@ describe('interfaces app adapter', () => {
 
     await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
       instanceId: 'de-musterhausen',
-      availableTypes: ['mainserver', 's3', 'mailTransport', 'mapGeocoding'],
+      availableTypes: ['mainserver', 's3', 'postgresql', 'mailTransport', 'mapGeocoding'],
       entries: [],
     });
   });
@@ -325,7 +325,7 @@ describe('interfaces app adapter', () => {
 
     await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
       instanceId: 'de-musterhausen',
-      availableTypes: ['mainserver', 's3', 'mailTransport', 'mapGeocoding'],
+      availableTypes: ['mainserver', 's3', 'postgresql', 'mailTransport', 'mapGeocoding'],
       entries: [],
     });
   });

@@ -63,7 +63,7 @@ GitHub Actions führt die regulären Prüfungen aus. Für eine unabhängige Inci
 | TLS                       | gültiges Einzelzertifikat für jeden expliziten Host                    |
 | unbekannter Tenant-Host   | kein Tenant-Inhalt und kein tenant-spezifischer Login                  |
 
-Ein Swarm-Service darf nach einem Update bis zu fünf Minuten konvergieren. Vor Ablauf dieses Fensters wird kein zusätzlicher mutierender Reparaturversuch gestartet. Bleibt ein Fehler danach bestehen, gilt der Rollout als fehlgeschlagen.
+Ein Swarm-Service darf nach einem Update bis zum Abschluss der maximal 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden konvergieren. Vor Ablauf dieses Fensters wird kein zusätzlicher mutierender Reparaturversuch gestartet. Bleibt ein Fehler danach bestehen, gilt der Rollout als fehlgeschlagen.
 
 ## Backup-Agent
 
@@ -97,7 +97,7 @@ Die Workflows **Staging Backup Drill** und **Production Backup Drill** testen de
 
 1. Zielstack, erwarteten Digest und Zeitpunkt festhalten.
 2. Service-Spec, Taskzustände, Netzwerke und Traefik-Labels read-only prüfen.
-3. Bis zu fünf Minuten Konvergenzzeit ab dem abgeschlossenen Service-Update berücksichtigen.
+3. Bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden ab dem abgeschlossenen Service-Update berücksichtigen.
 4. Root-, alle expliziten Tenant-, Zertifikats- und Unknown-Host-Probes erneut ausführen.
 5. Bei anhaltendem Fehler den vorherigen Digest als Recovery-Ziel festlegen.
 6. Eine notwendige direkte Mutation auf genau den App-Service des Zielstacks begrenzen.

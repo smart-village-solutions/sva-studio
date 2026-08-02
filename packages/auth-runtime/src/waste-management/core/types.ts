@@ -31,6 +31,7 @@ import type {
   WasteStreetRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
+  WasteTenantProvisioningRecord,
 } from '@sva/core';
 import type { EffectivePermission } from '@sva/iam-core';
 import type { ResolvedWasteDataSource } from '@sva/server-runtime';
@@ -72,6 +73,18 @@ export type WasteManagementHandlerDeps = {
   readonly listInterfaceRecords?: (
     instanceId: string
   ) => Promise<readonly ExternalInterfaceRecord[]>;
+  readonly loadWasteTenantProvisioning?: (
+    instanceId: string
+  ) => Promise<WasteTenantProvisioningRecord | null>;
+  readonly requestWasteTenantProvisioning?: (
+    instanceId: string
+  ) => Promise<WasteTenantProvisioningRecord>;
+  readonly failWasteTenantProvisioningRequest?: (input: {
+    readonly instanceId: string;
+    readonly desiredGeneration: number;
+    readonly errorCode: string;
+    readonly errorMessage: string;
+  }) => Promise<WasteTenantProvisioningRecord | null>;
   readonly saveExternalInterfaceRecord?: (record: ExternalInterfaceRecord) => Promise<void>;
   readonly saveExternalInterfaceConnectionCheck?: (
     record: ExternalInterfaceConnectionCheckRecord

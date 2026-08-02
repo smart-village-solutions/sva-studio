@@ -29,6 +29,7 @@ vi.mock('./runner-registry.js', () => ({
   createStudioJobTaskList: state.createStudioJobTaskList,
   getRegisteredStudioJobExecutionRegistry: state.getRegisteredStudioJobExecutionRegistry,
   studioJobTaskIdentifier: 'studio_job_execute',
+  privilegedStudioJobTaskIdentifier: 'studio_job_execute_privileged',
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -85,6 +86,40 @@ describe('plugin operation runner worker', () => {
       }
     );
     expect(runner.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs privileged jobs on a dedicated task identifier that the default worker cannot claim', async () => {
+    state.createStudioJobTaskList.mockImplementation((_registry, taskIdentifier) => ({
+      [taskIdentifier]: vi.fn(),
+    }));
+    const {
+      ensurePrivilegedStudioJobWorkerStarted,
+      queueStudioJob,
+      stopPrivilegedStudioJobWorker,
+    } = await import('./runner-worker.js');
+
+    await ensurePrivilegedStudioJobWorkerStarted();
+    await queueStudioJob({
+      instanceId: 'tenant-a',
+      jobId: 'job-privileged',
+      queueName: 'waste-provisioning',
+      maxAttempts: 5,
+      executionLane: 'privileged',
+    });
+    await stopPrivilegedStudioJobWorker();
+
+    expect(state.createStudioJobTaskList).toHaveBeenCalledWith(
+      state.getRegisteredStudioJobExecutionRegistry,
+      'studio_job_execute_privileged'
+    );
+    const privilegedRunner = await state.run.mock.results[0]?.value;
+    const defaultRunner = await state.run.mock.results[1]?.value;
+    expect(privilegedRunner.stop).toHaveBeenCalledOnce();
+    expect(defaultRunner.addJob).toHaveBeenCalledWith(
+      'studio_job_execute_privileged',
+      { instanceId: 'tenant-a', jobId: 'job-privileged' },
+      expect.objectContaining({ queueName: 'waste-provisioning' })
+    );
   });
 
   it('falls back to concurrency 1 for missing or invalid env values and rejects missing pools', async () => {

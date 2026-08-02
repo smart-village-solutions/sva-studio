@@ -1,3 +1,8 @@
+type WasteManagementProvisionTenantDatabaseJobInput = {
+  readonly operation: 'provision-tenant-database';
+  readonly desiredGeneration: number;
+};
+
 type WasteManagementInitializeJobInput = {
   readonly operation: 'initialize-data-source';
   readonly targetSchema?: string;
@@ -41,6 +46,7 @@ type WasteManagementSyncWasteTypesJobInput = {
 };
 
 export type {
+  WasteManagementProvisionTenantDatabaseJobInput,
   WasteManagementApplyMigrationsJobInput,
   WasteManagementImportJobInput,
   WasteManagementInitializeJobInput,

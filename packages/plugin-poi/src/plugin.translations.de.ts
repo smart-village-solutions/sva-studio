@@ -1,4 +1,5 @@
 import { createPoiLocaleTranslations } from './plugin.translations.shared.js';
+import { poiMessagesDe } from './plugin.translations.de.messages.js';
 
 export const poiTranslationsDe = createPoiLocaleTranslations({
   navigation: { title: 'Orte' },
@@ -111,61 +112,21 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     closeImagePicker: 'Schließen',
     removeCategory: 'Kategorie {{name}} entfernen',
   },
-  messages: {
-    loading: 'Orte werden geladen.',
-    loadError: 'Orte konnten nicht geladen werden.',
-    missingContent: 'Der Ort konnte nicht geladen werden.',
-    saveError: 'Der Ort konnte nicht gespeichert werden.',
-    deleteError: 'Der Ort konnte nicht gelöscht werden.',
-    createSuccess: 'Der Ort wurde erstellt.',
-    updateSuccess: 'Der Ort wurde aktualisiert.',
-    validationError: 'Bitte korrigieren Sie die markierten Felder.',
-    locationGeocodeError: 'Die Ermittlung von Geo-Koordinaten ist derzeit nicht verfügbar.',
-    locationGeocodeDisabled: 'Die Ermittlung von Geo-Koordinaten ist für diese Instanz derzeit nicht verfügbar.',
-    locationGeocodeEmpty: 'Zu diesen Adressdaten wurden keine Geo-Koordinaten gefunden.',
-    locationGeocodeRateLimited: 'Das Geocoding-Limit wurde erreicht. Bitte versuchen Sie es später erneut.',
-    locationGeocodeTimeout: 'Die Ermittlung von Geo-Koordinaten hat zu lange gedauert. Bitte versuchen Sie es erneut.',
-    locationGeocodeForbidden: 'Für die Ermittlung von Geo-Koordinaten fehlen die erforderlichen Berechtigungen.',
-    locationGeocodeUnauthorized: 'Die Sitzung für die Ermittlung von Geo-Koordinaten ist abgelaufen. Bitte laden Sie die Seite neu.',
-    locationMapUnavailable: 'Die Kartenansicht ist für diese Instanz derzeit deaktiviert.',
-    locationMapError: 'Die Kartenansicht konnte nicht geladen werden. Die Felder bleiben manuell bearbeitbar.',
-    mediaUploadInitializing: 'Upload wird vorbereitet.',
-    mediaUploadUploading: 'Medium wird hochgeladen.',
-    mediaUploadFinalizing: 'Upload wird abgeschlossen.',
-    mediaUploadSuccess: 'Medium wurde hochgeladen und zugeordnet.',
-    mediaUploadError: 'Das Medium konnte nicht hochgeladen werden.',
-    mediaUploadUnsupportedType: 'Nur JPG, PNG und WebP können hochgeladen werden.',
-    mediaUploadUnavailableUrl: 'Für dieses Medium ist keine öffentliche URL verfügbar.',
-    mediaPickerTitle: 'Medium hinzufügen',
-    mediaPickerDescription: 'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
-    mediaPickerReviewMode: 'Prüfen',
-    mediaPickerUploadRegionLabel: 'Bilddatei hochladen',
-    mediaPickerUploadTitle: 'Neues Medium hochladen',
-    mediaPickerUploadDescription: 'Laden Sie ein Bild hoch und prüfen Sie danach die Metadaten vor der Übernahme.',
-    mediaPickerSelectFile: 'Datei auswählen',
-    mediaPickerUploadSupportLabel: 'Unterstützt werden JPG, PNG und WebP.',
-    mediaPickerReviewTitle: 'Metadaten prüfen',
-    mediaPickerReviewDescription: 'Ergänzen Sie Titel, Alternativtext und weitere Metadaten, bevor das Medium übernommen wird.',
-    mediaPickerAltText: 'Alternativtext',
-    mediaPickerLicense: 'Lizenz',
-    mediaPickerBackToLibrary: 'Zurück zur Mediathek',
-    mediaPickerBackToUpload: 'Zurück zum Upload',
-    mediaPickerOpenMediaManagement: 'In Medienverwaltung öffnen',
-    mediaPickerUseMedia: 'Medium übernehmen',
-    mediaPickerAssetLoadError: 'Das Medium konnte nicht geladen werden.',
-    mediaPickerMetadataSaveError: 'Die Metadaten konnten nicht gespeichert werden.',
-    imagePickerEmpty: 'Keine Bilder gefunden.',
-    categoryOptionsLoading: 'Kategorien werden geladen.',
-    categoryOptionsLoadError: 'Die Kategorien konnten nicht geladen werden.',
-  },
+  messages: poiMessagesDe,
   tabs: {
     ariaLabel: 'Detailbereiche',
     mobileLabel: 'Bereich auswählen',
   },
   detailTabs: {
     basis: { title: 'Basis', description: 'Stammdaten und Veröffentlichungsstatus.' },
-    content: { title: 'Inhalt', description: 'Redaktionelle Inhalte, Ort, Medien und strukturierte Fachdaten.' },
-    settings: { title: 'Einstellungen', description: 'Bilder, Zusatzdaten und seltene Metafelder.' },
+    content: {
+      title: 'Inhalt',
+      description: 'Redaktionelle Inhalte, Ort, Medien und strukturierte Fachdaten.',
+    },
+    settings: {
+      title: 'Einstellungen',
+      description: 'Bilder, Zusatzdaten und seltene Metafelder.',
+    },
     history: { title: 'Historie', description: 'Änderungs- und Aktivitätsverlauf.' },
   },
   cards: {
@@ -174,7 +135,10 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
       meta: { title: 'Metadaten', description: 'Zeitliche Einordnung des Eintrags.' },
     },
     content: {
-      descriptions: { title: 'Beschreibungen', description: 'Redaktionelle Beschreibungen des Ortes.' },
+      descriptions: {
+        title: 'Beschreibungen',
+        description: 'Redaktionelle Beschreibungen des Ortes.',
+      },
       contact: { title: 'Kontakt', description: 'Kontaktinformationen für den Ort.' },
       location: { title: 'Lage und Adresse', description: 'Adressdaten des Ortes.' },
       openingHours: { title: 'Öffnungszeiten', description: 'Aktuelle Öffnungsinformationen.' },
@@ -184,7 +148,8 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     location: {
       address: {
         title: 'Lage und Adresse',
-        description: 'Ortsbezeichnung, Adresse, Karte und Geo-Koordinaten des Ortes in einem Ablauf pflegen.',
+        description:
+          'Ortsbezeichnung, Adresse, Karte und Geo-Koordinaten des Ortes in einem Ablauf pflegen.',
       },
     },
     description: {
@@ -207,17 +172,29 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
       entries: { title: 'Preise', description: 'Mehrere Preisangaben pflegen.' },
     },
     media: {
-      entries: { title: 'Medieninhalte', description: 'Quellen und Metadaten der übertragenen Medien pflegen.' },
+      entries: {
+        title: 'Medieninhalte',
+        description: 'Quellen und Metadaten der übertragenen Medien pflegen.',
+      },
       references: { title: 'Medien', description: 'Dateireferenzen des Ortes.' },
     },
     advanced: {
-      payload: { title: 'Zusatzdaten', description: 'Payload, Zertifikate und Barrierefreiheit.' },
+      payload: { title: 'Technische Metadaten', description: 'Technische Kennung des Ortes.' },
     },
     settings: {
-      media: { title: 'Bilder', description: 'Bilder des Ortes anzeigen, entfernen und aus der Medienbibliothek hinzufügen.' },
+      media: {
+        title: 'Bilder',
+        description:
+          'Bilder des Ortes anzeigen, entfernen und aus der Medienbibliothek hinzufügen.',
+      },
     },
   },
-  history: { empty: { title: 'Noch keine Historie verfügbar.', description: 'Historienereignisse für Orte werden in einem späteren Schritt angebunden.' } },
+  history: {
+    empty: {
+      title: 'Noch keine Historie verfügbar.',
+      description: 'Historienereignisse für Orte werden in einem späteren Schritt angebunden.',
+    },
+  },
   empty: { title: 'Noch keine Orte vorhanden', description: 'Legen Sie den ersten Ort an.' },
   pagination: {
     ariaLabel: 'Orte-Pagination',

@@ -1,0 +1,4 @@
+{
+  "prNumber": 895,
+  "body": "Tenant-eigene PostgreSQL-Datenbanken für das Abfallmanagement\n\n- Jede Studio-Instanz erhält bei Aktivierung des Abfallmanagements automatisch eine getrennte PostgreSQL-Datenbank mit rollenbasiertem Zugriff.\n- Die technische Schnittstelle wird systemverwaltet und erscheint nicht in der allgemeinen Schnittstellenverwaltung.\n- Backup, Wiederherstellung und der einmalige Offline-Umzug von bb-prignitz sind für die tenantgenauen Waste-Datenbanken vorbereitet."
+}

@@ -35,7 +35,6 @@ import {
   EventsApiError,
   getEvent,
   listEventCategories,
-  listPoiForEventSelection,
   updateEvent,
 } from './events.api.js';
 import { fromDateOnlyInputValue, toDateOnlyInputValue } from './events.date-only.js';
@@ -59,7 +58,6 @@ import {
 import { EventsDetailSettingsTab } from './events.detail-settings-tab.js';
 import { createEventsDetailTabDefinitions, type EventsDetailTabId } from './events.detail-tabs.js';
 import type { EventCategoryOption, EventContentItem } from './events.types.js';
-import type { PoiSelectItem } from './events.types.js';
 import { hasInvalidGeoLocation, validateEventForm } from './events.validation.js';
 
 type StatusMessage = Readonly<{
@@ -296,9 +294,6 @@ export function EventsDetailPage({
   const [categoryOptions, setCategoryOptions] = React.useState<readonly EventCategoryOption[]>([]);
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
-  const [poiOptions, setPoiOptions] = React.useState<readonly PoiSelectItem[]>([]);
-  const [poiOptionsLoading, setPoiOptionsLoading] = React.useState(true);
-  const [poiOptionsError, setPoiOptionsError] = React.useState<string | null>(null);
   const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
   const mediaPickerLabels = React.useMemo(() => createEventsMediaPickerLabels(pt), [pt]);
 
@@ -414,18 +409,6 @@ export function EventsDetailPage({
   );
 
   React.useEffect(() => {
-    void listPoiForEventSelection()
-      .then((pois) => {
-        setPoiOptions(pois);
-        setPoiOptionsError(null);
-      })
-      .catch((loadError: unknown) => {
-        setPoiOptions([]);
-        setPoiOptionsError(errorMessage(pt, loadError, 'messages.poiOptionsLoadError'));
-      })
-      .finally(() => {
-        setPoiOptionsLoading(false);
-      });
     void listEventCategories()
       .then((categories) => {
         setCategoryOptions(categories);
@@ -730,13 +713,10 @@ export function EventsDetailPage({
                     {tab.id === 'basis' ? (
                       <EventsDetailBasisTab
                         availableCategories={categoryOptions}
-                        availablePois={poiOptions}
                         categoryOptionsError={categoryOptionsError}
                         categoryOptionsLoading={categoryOptionsLoading}
                         loadedItem={loadedItem}
                         mode={mode}
-                        poiOptionsError={poiOptionsError}
-                        poiOptionsLoading={poiOptionsLoading}
                         pt={pt}
                       />
                     ) : null}

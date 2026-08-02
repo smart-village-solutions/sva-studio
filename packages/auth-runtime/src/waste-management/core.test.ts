@@ -90,7 +90,7 @@ const actor: AuthenticatedRequestContext = {
 const baseInterfaceRecord = {
   id: 'supabase-1',
   instanceId: 'tenant-a',
-  typeKey: 'supabase' as const,
+  typeKey: 'postgresql' as const,
   ownerKind: 'host' as const,
   ownerId: 'host',
   displayName: 'Waste Supabase',
@@ -98,10 +98,9 @@ const baseInterfaceRecord = {
   enabled: true,
   isDefault: true,
   category: 'database' as const,
-  statusCheckKind: 'supabase' as const,
+  statusCheckKind: 'postgresql' as const,
   visibleStatus: 'unknown' as const,
   publicConfig: {
-    projectUrl: 'https://tenant-a.supabase.co',
     schemaName: 'public',
     holidayStateCode: 'NW',
     lastHolidaySyncStatus: 'success',
@@ -136,7 +135,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('returns sanitized settings for the authenticated instance', async () => {
-
     const response = await getWasteManagementSettingsInternal(
       new Request('https://studio.test/api/v1/waste-management/settings'),
       actor,
@@ -154,25 +152,23 @@ describe('waste-management auth runtime handlers', () => {
     await expect(response.json()).resolves.toEqual({
       data: {
         instanceId: 'tenant-a',
-        provider: 'supabase',
-        projectUrl: 'https://tenant-a.supabase.co',
+        provider: 'postgresql',
         schemaName: 'public',
         enabled: true,
         selectedInterfaceId: 'supabase-1',
         selectedInterfaceName: 'Waste Supabase',
-        selectedInterfaceTypeKey: 'supabase',
+        selectedInterfaceTypeKey: 'postgresql',
         availableInterfaces: [
           {
             id: 'supabase-1',
             name: 'Waste Supabase',
-            typeKey: 'supabase',
+            typeKey: 'postgresql',
             enabled: true,
             visibleStatus: 'unknown',
             isSelected: true,
           },
         ],
         databaseUrlConfigured: true,
-        serviceRoleKeyConfigured: true,
         visibleStatus: 'unknown',
         holidayStateCode: 'NW',
         lastHolidaySyncStatus: 'success',
@@ -183,7 +179,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('returns a read-only waste master-data overview for the authenticated instance', async () => {
-
     const overview: WasteManagementMasterDataOverview = {
       fractions: [
         {
@@ -239,9 +234,10 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('returns the combined waste audit and technical history for the authenticated instance', async () => {
-
     const response = await getWasteManagementHistoryInternal(
-      new Request('https://studio.test/api/v1/waste-management/history?page=2&pageSize=10&q=fraction'),
+      new Request(
+        'https://studio.test/api/v1/waste-management/history?page=2&pageSize=10&q=fraction'
+      ),
       actor,
       {
         getRequestId: () => 'req-test',
@@ -354,7 +350,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('returns a read-only waste tours overview for the authenticated instance', async () => {
-
     const overview: WasteManagementToursOverview = {
       tours: [
         {
@@ -392,7 +387,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('returns a read-only waste scheduling overview for the authenticated instance', async () => {
-
     const overview: WasteManagementSchedulingOverview = {
       tourDateShifts: [
         {
@@ -455,8 +449,9 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('saves custom recurrence presets through the settings mutation path', async () => {
-
-    const saveExternalInterfaceConnectionCheck = vi.fn(async (_record: ExternalInterfaceConnectionCheckRecord) => undefined);
+    const saveExternalInterfaceConnectionCheck = vi.fn(
+      async (_record: ExternalInterfaceConnectionCheckRecord) => undefined
+    );
 
     const saveWasteCustomRecurrencePresets = vi.fn(async () => undefined);
     const saveExternalInterfaceRecord = vi.fn(async () => undefined);
@@ -484,8 +479,7 @@ describe('waste-management auth runtime handlers', () => {
           'X-Requested-With': 'XMLHttpRequest',
         },
         body: JSON.stringify({
-          provider: 'supabase',
-          projectUrl: 'https://tenant-a.supabase.co',
+          provider: 'postgresql',
           schemaName: 'public',
           enabled: true,
           holidayStateCode: 'NW',
@@ -528,7 +522,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('runs a manual holiday resync through the dedicated settings endpoint', async () => {
-
     const saveExternalInterfaceRecord = vi.fn(async () => undefined);
     const syncWasteHolidayRules = vi.fn(async () => 'partial_success' as const);
 
@@ -578,7 +571,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('creates a waste fraction through the master-data mutation path', async () => {
-
     const savedFraction: WasteFractionRecord = {
       id: 'fraction-new',
       name: 'Papier',
@@ -614,15 +606,17 @@ describe('waste-management auth runtime handlers', () => {
 
     const saveWasteFraction = vi.fn(async () => undefined);
     const loadWasteFractionById = vi.fn(async () => savedFraction);
-    const loadMasterDataFractionsOverview = vi.fn(async (): Promise<WasteManagementMasterDataOverview> => ({
-      fractions: [],
-      regions: [],
-      cities: [],
-      streets: [],
-      houseNumbers: [],
-      collectionLocations: [],
-      locationTourLinks: [],
-    }));
+    const loadMasterDataFractionsOverview = vi.fn(
+      async (): Promise<WasteManagementMasterDataOverview> => ({
+        fractions: [],
+        regions: [],
+        cities: [],
+        streets: [],
+        houseNumbers: [],
+        collectionLocations: [],
+        locationTourLinks: [],
+      })
+    );
     const startPluginOperationJob = vi.fn(
       async () =>
         new Response(JSON.stringify({ data: { id: 'job-fraction-create' } }), {
@@ -754,7 +748,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('updates a waste fraction through the master-data mutation path', async () => {
-
     const existingFraction: WasteFractionRecord = {
       id: 'fraction-1',
       name: 'Restmüll',
@@ -798,15 +791,17 @@ describe('waste-management auth runtime handlers', () => {
       .mockResolvedValueOnce(existingFraction)
       .mockResolvedValueOnce(updatedFraction);
     const saveWasteFraction = vi.fn(async () => undefined);
-    const loadMasterDataFractionsOverview = vi.fn(async (): Promise<WasteManagementMasterDataOverview> => ({
-      fractions: [],
-      regions: [],
-      cities: [],
-      streets: [],
-      houseNumbers: [],
-      collectionLocations: [],
-      locationTourLinks: [],
-    }));
+    const loadMasterDataFractionsOverview = vi.fn(
+      async (): Promise<WasteManagementMasterDataOverview> => ({
+        fractions: [],
+        regions: [],
+        cities: [],
+        streets: [],
+        houseNumbers: [],
+        collectionLocations: [],
+        locationTourLinks: [],
+      })
+    );
     const startPluginOperationJob = vi.fn(
       async () =>
         new Response(JSON.stringify({ data: { id: 'job-fraction-update' } }), {
@@ -906,7 +901,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('creates a waste region through the master-data mutation path', async () => {
-
     const savedRegion: WasteRegionRecord = {
       id: 'region-new',
       name: 'Region West',
@@ -955,7 +949,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('updates a waste region through the master-data mutation path', async () => {
-
     const existingRegion: WasteRegionRecord = {
       id: 'region-1',
       name: 'Region Mitte',
@@ -1010,7 +1003,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('creates a waste city through the master-data mutation path', async () => {
-
     const savedCity: WasteCityRecord = {
       id: 'city-new',
       name: 'Musterstadt West',
@@ -1062,7 +1054,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('updates a waste city through the master-data mutation path', async () => {
-
     const existingCity: WasteCityRecord = {
       id: 'city-1',
       name: 'Musterstadt',
@@ -1645,7 +1636,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('creates a waste tour through the tours mutation path', async () => {
-
     const savedTour: WasteTourRecord = {
       id: 'tour-new',
       name: 'Papier Mitte',
@@ -1865,15 +1855,18 @@ describe('waste-management auth runtime handlers', () => {
   it('rolls back the created waste tour when duplicated relation copying fails', async () => {
     const saveWasteTour = vi.fn(async () => undefined);
     const loadWasteTourById = vi.fn(async () => null);
-    const listWasteLocationTourLinksByTourId = vi.fn(async () => [
-      {
-        id: 'link-source-1',
-        locationId: 'location-1',
-        tourId: 'tour-source-1',
-        createdAt: '2026-05-01T00:00:00.000Z',
-        updatedAt: '2026-05-01T00:00:00.000Z',
-      },
-    ] satisfies readonly WasteLocationTourLinkRecord[]);
+    const listWasteLocationTourLinksByTourId = vi.fn(
+      async () =>
+        [
+          {
+            id: 'link-source-1',
+            locationId: 'location-1',
+            tourId: 'tour-source-1',
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-01T00:00:00.000Z',
+          },
+        ] satisfies readonly WasteLocationTourLinkRecord[]
+    );
     const saveWasteLocationTourLink = vi.fn(async () => {
       throw new Error('copy_failed');
     });
@@ -1920,7 +1913,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('updates a waste tour through the tours mutation path', async () => {
-
     const existingTour: WasteTourRecord = {
       id: 'tour-1',
       name: 'Restmüll Nord',
@@ -2054,7 +2046,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('creates a tour-related waste date shift through the scheduling mutation path', async () => {
-
     const savedShift: WasteTourDateShiftRecord = {
       id: 'shift-new',
       tourId: 'tour-1',
@@ -2123,7 +2114,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('updates a tour-related waste date shift through the scheduling mutation path', async () => {
-
     const existingShift: WasteTourDateShiftRecord = {
       id: 'shift-1',
       tourId: 'tour-1',
@@ -2199,7 +2189,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('creates a global waste date shift through the scheduling mutation path', async () => {
-
     const savedShift: WasteGlobalDateShiftRecord = {
       id: 'global-shift-new',
       originalDate: '2026-01-01',
@@ -2265,7 +2254,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('updates a global waste date shift through the scheduling mutation path', async () => {
-
     const existingShift: WasteGlobalDateShiftRecord = {
       id: 'global-shift-1',
       originalDate: '2026-01-01',
@@ -2556,7 +2544,11 @@ describe('waste-management auth runtime handlers', () => {
         permission: 'waste-management.master-data.manage',
         deps: {
           saveWasteStreet: failingSave,
-          loadWasteStreetById: vi.fn(async () => ({ id: 'street-1', name: 'Hauptstraße', cityId: 'city-1' })),
+          loadWasteStreetById: vi.fn(async () => ({
+            id: 'street-1',
+            name: 'Hauptstraße',
+            cityId: 'city-1',
+          })),
         },
         body: { name: 'Hauptstraße Nord', cityId: 'city-1' },
       },
@@ -2567,7 +2559,11 @@ describe('waste-management auth runtime handlers', () => {
         permission: 'waste-management.master-data.manage',
         deps: {
           saveWasteHouseNumber: failingSave,
-          loadWasteHouseNumberById: vi.fn(async () => ({ id: 'house-1', number: '12', streetId: 'street-1' })),
+          loadWasteHouseNumberById: vi.fn(async () => ({
+            id: 'house-1',
+            number: '12',
+            streetId: 'street-1',
+          })),
         },
         body: { number: '14', streetId: 'street-1' },
       },
@@ -2716,8 +2712,9 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('starts the waste migrations job through the generic plugin operations pipeline', async () => {
-
-    const startJob = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'job-1' } }), { status: 202 }));
+    const startJob = vi.fn(
+      async () => new Response(JSON.stringify({ data: { id: 'job-1' } }), { status: 202 })
+    );
 
     const response = await startWasteManagementMigrationsInternal(
       new Request('https://studio.test/api/v1/waste-management/tools/migrations', {
@@ -2773,7 +2770,9 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('starts the waste initialization job through the generic plugin operations pipeline', async () => {
-    const startJob = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'job-init-1' } }), { status: 202 }));
+    const startJob = vi.fn(
+      async () => new Response(JSON.stringify({ data: { id: 'job-init-1' } }), { status: 202 })
+    );
 
     const response = await startWasteManagementInitializeInternal(
       new Request('https://studio.test/api/v1/waste-management/tools/initialize', {
@@ -2938,7 +2937,9 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('starts the waste import job through the generic plugin operations pipeline', async () => {
-    const startJob = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'job-import-1' } }), { status: 202 }));
+    const startJob = vi.fn(
+      async () => new Response(JSON.stringify({ data: { id: 'job-import-1' } }), { status: 202 })
+    );
 
     const response = await startWasteManagementImportInternal(
       new Request('https://studio.test/api/v1/waste-management/tools/imports', {
@@ -2991,7 +2992,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('rejects malformed reset payloads before starting a job', async () => {
-
     const response = await startWasteManagementResetInternal(
       new Request('https://studio.test/api/v1/waste-management/tools/reset', {
         method: 'POST',
@@ -3071,7 +3071,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('rejects waste-fraction mutation without the dedicated master-data permission', async () => {
-
     const saveWasteFraction = vi.fn();
 
     const response = await createWasteManagementFractionInternal(
@@ -3105,7 +3104,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('rejects waste-region mutation without the dedicated master-data permission', async () => {
-
     const saveWasteRegion = vi.fn();
 
     const response = await createWasteManagementRegionInternal(
@@ -3137,7 +3135,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('rejects waste-city mutation without the dedicated master-data permission', async () => {
-
     const saveWasteCity = vi.fn();
 
     const response = await createWasteManagementCityInternal(
@@ -3170,7 +3167,6 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('rejects seed job starts without the dedicated high-risk permission', async () => {
-
     const startPluginOperationJob = vi.fn();
 
     const response = await startWasteManagementSeedInternal(

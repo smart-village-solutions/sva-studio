@@ -12,7 +12,7 @@ Dieses Dokument ist die einzige normative Bedienanleitung für reguläre Studio-
 - Staging wird vor Production mit demselben Digest vollständig verifiziert.
 - Production wird ausschließlich manuell über das geschützte GitHub-Environment `prod` freigegeben.
 - `auto` ist ausschließlich in Dev zulässig. Staging und Production verwenden `assert-none` oder `run`.
-- Vor jedem Deployment nach Staging oder Production muss ein erfolgreich verifiziertes PostgreSQL-Backup vorliegen.
+- Vor jedem Deployment nach Staging oder Production muss ein erfolgreich verifiziertes PostgreSQL-Backup vorliegen. Sobald `WASTE_POSTGRES_BACKUP_ENABLED=true` gesetzt ist, gilt dieses Gate getrennt für `sva_studio` und das vollständige Registry-Inventar aller `ready`- oder `disabled`-Waste-Tenant-Datenbanken.
 - Backup, Migration, Bootstrap, Postconditions und Verifikation sind fail-closed: Ein Fehler blockiert alle nachfolgenden mutierenden Phasen.
 - Secrets kommen ausschließlich aus dem jeweiligen GitHub-Environment. Sie werden weder in Workflow-Inputs noch in Logs, Reports oder Dokumentation geschrieben.
 - Direkte Portainer-Änderungen, Docker-Service-Updates, rohe `quantum-cli stacks deploy/update`-Aufrufe und `env:release:studio:local` sind kein regulärer Rolloutpfad.
@@ -66,7 +66,6 @@ Der manuelle Workflow [Promote](../../.github/workflows/promote.yml) erhält:
 - den aus dem erfolgreichen Build stammenden Image-Ref beziehungsweise Digest
 - `change_base` und `change_head` des tatsächlich im Image enthaltenen Änderungsbereichs
 - je nach Diff `migration_mode` und `bootstrap_mode` als `assert-none` oder `run`
-- bei `migration_mode=run` einen nicht-sensitiven, revisionsfähigen `maintenance_window`-Verweis
 
 `assert-none` ist kein Skip: Sobald der Diff ein entsprechendes Risiko enthält, bricht das Gate ab. Dann muss der betreffende Modus bewusst auf `run` gesetzt werden.
 
@@ -74,7 +73,7 @@ Die Reihenfolge ist unveränderlich; nicht angeforderte One-shot-Jobs und deren 
 
 1. Inputs, Git-Bindung, Image-Digest und OCI-Revision validieren.
 2. Vorherigen Live-Digest erfassen.
-3. Signierten Backup-Auftrag an den Staging-Agenten senden.
+3. Signierten Backup-Auftrag an den Staging-Agenten senden; bei aktiviertem Waste-Backup anschließend einen zweiten Auftrag mit `database: "waste"` ausführen. Der Agent entdeckt das vollständige Tenant-Inventar selbst und schreibt ein Manifest mit tenantgenauen Dump-Referenzen.
 4. Terminales Ergebnis aus MinIO abwarten und das Dump-Objekt unabhängig per S3-`HEAD` verifizieren.
 5. Migration ausführen, falls angefordert.
 6. Bootstrap ausführen, falls angefordert.
@@ -90,20 +89,20 @@ Nur ein insgesamt erfolgreicher mutierender Staging-Lauf erzeugt die für eine m
 Production verwendet denselben Workflow und denselben bereits in Staging geprüften Digest. Zusätzlich gelten:
 
 - Das GitHub-Environment `prod` muss ausdrücklich freigegeben werden.
-- Bei `migration_mode=run` oder `bootstrap_mode=run` ist ein nicht-sensitiver, revisionsfähiger `maintenance_window`-Verweis Pflicht.
 - Für genau den Zieldigest muss die erfolgreiche Evidenz eines abgeschlossenen mutierenden Staging-Laufs vorliegen.
 - Vor der ersten Production-Mutation muss der Production-Backup-Agent ein erfolgreiches und anschließend unabhängig verifiziertes Backup liefern.
 
 Danach gilt dieselbe Reihenfolge wie in Staging: Backup → Migration → Bootstrap → Postconditions → App-Deploy → Runtime-Smoke → Digest-Prüfung.
 
 Auch ein reines App-Deployment mit beiden Modi `assert-none` beginnt mit einem erfolgreich verifizierten Datenbank-Backup.
+Migrationen, Bootstraps und Backups benötigen keinen Wartungsfenster-Verweis. Die technische Audit-Kette besteht aus GitHub-Run-ID, Commit, unveränderlichem Ziel-Digest, Environment-Freigabe, Backup-Ergebnis, Staging-Parität und den redigierten Evidenzartefakten.
 
 ## Konvergenz und Erfolgsdefinition
 
-Docker-Swarm-Dienste dürfen nach einem Update bis zu fünf Minuten benötigen, bis alle Probes stabil sind. Deshalb gilt:
+Docker-Swarm-Dienste dürfen nach einem Update längere Zeit benötigen, bis alle Probes stabil sind. Die bisherige Warmup-Grenze von bis zu fünf Minuten reicht dafür nicht immer aus. Der Runtime-Smoke prüft die Erreichbarkeit deshalb standardmäßig bis zu 50-mal im Abstand von zehn Sekunden. Deshalb gilt:
 
 1. Ein unmittelbar nach dem Deploy fehlschlagender Smoke wird nicht durch weitere Mutationen „repariert“.
-2. Zuerst Service-Update und Tasks prüfen und bis zu fünf Minuten ab dem abgeschlossenen Update konvergieren lassen.
+2. Zuerst Service-Update und Tasks prüfen und bis zum Abschluss der maximal 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden konvergieren lassen.
 3. In Production danach `health/live`, `health/ready`, den Release-Blocking-Tenant-Login-Redirect (`de-studio-sandbox`) und den Live-Digest erneut prüfen. Weitere Tenant-Redirects bleiben operativ überwacht, blockieren aber nicht. Staging verwendet den allgemeinen Runtime-Smoke ohne verpflichtenden Tenant-Scope.
 4. Bleibt ein Fehler bestehen, ist der Rollout rot und wird diagnostiziert oder auf den vorherigen Digest zurückgeführt.
 5. Ein Workflow-Retry ist erst nach dokumentierter Ursache beziehungsweise bestätigtem reinen Konvergenzfehler zulässig.

@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
 import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
-import { createWasteDataSourceRepository, wasteDataSourceStatements } from './waste-data-sources.js';
+import {
+  createWasteDataSourceRepository,
+  wasteDataSourceStatements,
+} from './waste-data-sources.js';
 
 const record = {
   instanceId: 'tenant-a',
-  provider: 'supabase' as const,
-  projectUrl: 'https://tenant-a.supabase.co',
+  provider: 'postgresql' as const,
   schemaName: 'public',
   enabled: true,
   databaseUrlConfigured: true,
-  serviceRoleKeyConfigured: true,
   databaseUrlCiphertext: 'db-cipher',
-  serviceRoleKeyCiphertext: 'service-cipher',
   visibleStatus: 'ok' as const,
   lastCheckedAt: '2026-05-09T09:00:00.000Z',
   lastCheckStatus: 'succeeded' as const,
@@ -24,7 +24,9 @@ const record = {
 const createExecutor = (rows: readonly Record<string, unknown>[] = []) => {
   const statements: SqlStatement[] = [];
   const executor: SqlExecutor = {
-    async execute<TRow = Record<string, unknown>>(statement: SqlStatement): Promise<SqlExecutionResult<TRow>> {
+    async execute<TRow = Record<string, unknown>>(
+      statement: SqlStatement
+    ): Promise<SqlExecutionResult<TRow>> {
       statements.push(statement);
       return {
         rowCount: rows.length,
@@ -42,11 +44,11 @@ describe('waste data source repository', () => {
       {
         instance_id: record.instanceId,
         provider_key: record.provider,
-        project_url: record.projectUrl,
+        project_url: '',
         schema_name: record.schemaName,
         enabled: record.enabled,
         database_url_ciphertext: record.databaseUrlCiphertext,
-        service_role_key_ciphertext: record.serviceRoleKeyCiphertext,
+        service_role_key_ciphertext: null,
         visible_status: record.visibleStatus,
         last_checked_at: record.lastCheckedAt,
         last_check_status: record.lastCheckStatus,
@@ -56,11 +58,15 @@ describe('waste data source repository', () => {
       },
     ]);
 
-    await expect(createWasteDataSourceRepository(executor).getByInstanceId('tenant-a')).resolves.toEqual(record);
+    await expect(
+      createWasteDataSourceRepository(executor).getByInstanceId('tenant-a')
+    ).resolves.toEqual(record);
     expect(statements[0]?.values).toEqual(['tenant-a']);
 
     const empty = createExecutor();
-    await expect(createWasteDataSourceRepository(empty.executor).getByInstanceId('tenant-a')).resolves.toBeNull();
+    await expect(
+      createWasteDataSourceRepository(empty.executor).getByInstanceId('tenant-a')
+    ).resolves.toBeNull();
   });
 
   it('builds upsert statements with nullable secret and check fields', async () => {
@@ -68,9 +74,7 @@ describe('waste data source repository', () => {
     const input = {
       ...record,
       databaseUrlConfigured: false,
-      serviceRoleKeyConfigured: false,
       databaseUrlCiphertext: undefined,
-      serviceRoleKeyCiphertext: undefined,
       visibleStatus: 'not_configured' as const,
       lastCheckedAt: undefined,
       lastCheckStatus: undefined,
@@ -81,8 +85,8 @@ describe('waste data source repository', () => {
     expect(statements[0]?.text).toContain('ON CONFLICT (instance_id) DO UPDATE');
     expect(statements[0]?.values).toEqual([
       'tenant-a',
-      'supabase',
-      'https://tenant-a.supabase.co',
+      'postgresql',
+      '',
       'public',
       true,
       null,

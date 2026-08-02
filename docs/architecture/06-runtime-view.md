@@ -715,7 +715,7 @@ Fehlerpfad:
 2. Der Main-Push ruft `Promote` für Dev im diff-basierten Modus `auto` auf.
 3. Ein manueller Staging-Promote prüft denselben Digest inklusive OCI-Revision, One-shot-Gates, Runtime und Tenant-Hosts.
 4. Ein mutierender Staging-Lauf persistiert die Digest- und Phasenevidenz.
-5. Production akzeptiert bei Migration oder Bootstrap nur genau diesen Staging-Digest, ein Wartungsfenster, die Environment-Freigabe und ein frisches verifiziertes Production-Backup.
+5. Production akzeptiert bei Migration oder Bootstrap nur genau diesen Staging-Digest, die Environment-Freigabe und ein frisches verifiziertes Production-Backup; ein Wartungsfenster-Verweis ist nicht erforderlich.
 6. Der Workflow aktualisiert den Stack erst nach erfolgreichen Postconditions.
 7. Runtime-Smoke und Live-Digest-Prüfung erzeugen die abschließende Release-Evidenz.
 
@@ -914,7 +914,7 @@ Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine ab
 ## Backup-Agent-Laufzeit
 
 1. `Promote` bezieht ein GitHub-OIDC-Token, signiert den kurzlebigen Auftrag und sendet ihn an den Zielhost.
-2. Der Agent prüft Host, OIDC-Claims, HMAC, Schema, Ablaufzeit, Request-ID, Digest und Production-Wartungsfenster.
+2. Der Agent prüft Host, OIDC-Claims, HMAC, Schema, Ablaufzeit, Request-ID und Digest.
 3. Vor `202 Accepted` persistiert er den Auftrag unter `control/requests/`.
 4. Der einzelne Worker erzeugt einen Custom-Dump, lädt ihn hoch und wieder herunter, vergleicht Größe und SHA-256 und führt `pg_restore --list` aus.
 5. Das terminale Ergebnis unter `control/results/` entscheidet fail-closed, ob Migration, Bootstrap und Deploy fortgesetzt werden.

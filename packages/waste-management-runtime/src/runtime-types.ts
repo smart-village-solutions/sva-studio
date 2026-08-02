@@ -4,6 +4,7 @@ import type {
   WasteManagementInitializeJobInput,
   WasteManagementMaterializeEmailRemindersJobInput,
   WasteManagementProcessEmailReminderOutboxJobInput,
+  WasteManagementProvisionTenantDatabaseJobInput,
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
   WasteManagementSyncMainserverJobInput,
@@ -30,6 +31,14 @@ export const createProgress = (input: {
 export type WasteManagementJobProgress = ReturnType<typeof createProgress>;
 
 export type WasteManagementOperationRuntime = {
+  readonly provisionTenantDatabase: (
+    instanceId: string,
+    payload: WasteManagementProvisionTenantDatabaseJobInput,
+    context: { readonly jobId: string }
+  ) => Promise<{
+    readonly durationMs: number;
+    readonly details: Record<string, unknown>;
+  }>;
   readonly initializeDataSource: (
     instanceId: string,
     payload: WasteManagementInitializeJobInput

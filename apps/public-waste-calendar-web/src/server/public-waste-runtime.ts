@@ -3,7 +3,10 @@ import { extname, resolve, sep } from 'node:path';
 import { Pool } from 'pg';
 import type { WasteManagementEmailReminderConfig } from '@sva/core';
 import { createWasteEmailReminderRepository } from '@sva/data-repositories';
-import type { PublicWasteReminderSignupRequest, PublicWasteReminderSignupResponse } from '../lib/public-waste-contract.js';
+import type {
+  PublicWasteReminderSignupRequest,
+  PublicWasteReminderSignupResponse,
+} from '../lib/public-waste-contract.js';
 
 import {
   readPublicWasteBootstrapStateFromEnvironment,
@@ -18,7 +21,10 @@ import {
   handlePublicWasteSelectionRequest,
 } from '../lib/public-waste-endpoints.server.js';
 import type { WasteCalendarPdfBrandingImage } from '@sva/core/waste-output';
-import { createPublicWasteRepository, type PublicWasteRepository } from '../lib/public-waste-repository.server.js';
+import {
+  createPublicWasteRepository,
+  type PublicWasteRepository,
+} from '../lib/public-waste-repository.server.js';
 import {
   createPublicWasteReminderPageHandler,
   createPublicWasteReminderSignupRateLimitConsumer,
@@ -39,8 +45,13 @@ type RepositoryHandle = {
   readonly dispose: () => Promise<void>;
 };
 
-type RepositoryFactory = (config: PublicWasteConfig) => Promise<RepositoryHandle> | RepositoryHandle;
-type PublicWastePdfStaticConfig = { readonly brandingAssetUrl?: string; readonly contactBlock?: string };
+type RepositoryFactory = (
+  config: PublicWasteConfig
+) => Promise<RepositoryHandle> | RepositoryHandle;
+type PublicWastePdfStaticConfig = {
+  readonly brandingAssetUrl?: string;
+  readonly contactBlock?: string;
+};
 type PublicWastePdfStaticConfigLoaderOptions = {
   readonly getDatabaseUrl?: () => string | undefined;
   readonly getSchemaName?: () => string | undefined;
@@ -106,7 +117,7 @@ const quoteIdentifier = (value: string): string => {
 
 const createRepositoryHandle = async (config: PublicWasteConfig): Promise<RepositoryHandle> => {
   const pool = new Pool({
-    connectionString: config.supabase.databaseUrl,
+    connectionString: config.database.databaseUrl,
     max: 4,
     idleTimeoutMillis: 5_000,
     connectionTimeoutMillis: 5_000,
@@ -114,9 +125,9 @@ const createRepositoryHandle = async (config: PublicWasteConfig): Promise<Reposi
 
   return {
     pool,
-    schemaName: config.supabase.schemaName,
+    schemaName: config.database.schemaName,
     repository: createPublicWasteRepository({
-      schemaName: config.supabase.schemaName,
+      schemaName: config.database.schemaName,
       execute: async <TRow = Record<string, unknown>>(input: {
         readonly text: string;
         readonly values?: readonly unknown[];
@@ -144,13 +155,18 @@ const createDefaultReminderSignupSubmitter = (input: {
       const client = await input.repositoryHandle.pool.connect();
       try {
         await client.query('BEGIN');
-        await client.query(`SET LOCAL search_path TO ${quoteIdentifier(input.repositoryHandle.schemaName)}, public`);
+        await client.query(
+          `SET LOCAL search_path TO ${quoteIdentifier(input.repositoryHandle.schemaName)}, public`
+        );
         const repository = createWasteEmailReminderRepository({
           execute: async <TRow = Record<string, unknown>>(statement: {
             readonly text: string;
             readonly values?: readonly unknown[];
           }) => {
-            const result = await client.query(statement.text, statement.values ? [...statement.values] : undefined);
+            const result = await client.query(
+              statement.text,
+              statement.values ? [...statement.values] : undefined
+            );
             return {
               rowCount: result.rowCount ?? 0,
               rows: result.rows as readonly TRow[],
@@ -171,7 +187,9 @@ const createDefaultReminderSignupSubmitter = (input: {
       let transactionFinished = false;
       try {
         await client.query('BEGIN');
-        await client.query(`SET LOCAL search_path TO ${quoteIdentifier(input.repositoryHandle.schemaName)}, public`);
+        await client.query(
+          `SET LOCAL search_path TO ${quoteIdentifier(input.repositoryHandle.schemaName)}, public`
+        );
         await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
           signup.emailHash,
           JSON.stringify([
@@ -186,7 +204,10 @@ const createDefaultReminderSignupSubmitter = (input: {
             readonly text: string;
             readonly values?: readonly unknown[];
           }) => {
-            const result = await client.query(statement.text, statement.values ? [...statement.values] : undefined);
+            const result = await client.query(
+              statement.text,
+              statement.values ? [...statement.values] : undefined
+            );
             return {
               rowCount: result.rowCount ?? 0,
               rows: result.rows as readonly TRow[],
@@ -218,9 +239,14 @@ const createDefaultReminderSignupSubmitter = (input: {
   });
 };
 
-const createReminderRepositoryExecutor = (input: { readonly pool: Pool; readonly schemaName: string }) => ({
+const createReminderRepositoryExecutor = (input: {
+  readonly pool: Pool;
+  readonly schemaName: string;
+}) => ({
   async executeWithinTransaction<TResult>(
-    callback: (repository: ReturnType<typeof createWasteEmailReminderRepository>) => Promise<TResult>
+    callback: (
+      repository: ReturnType<typeof createWasteEmailReminderRepository>
+    ) => Promise<TResult>
   ): Promise<TResult> {
     const client = await input.pool.connect();
     try {
@@ -231,7 +257,10 @@ const createReminderRepositoryExecutor = (input: { readonly pool: Pool; readonly
           readonly text: string;
           readonly values?: readonly unknown[];
         }) => {
-          const result = await client.query(statement.text, statement.values ? [...statement.values] : undefined);
+          const result = await client.query(
+            statement.text,
+            statement.values ? [...statement.values] : undefined
+          );
           return {
             rowCount: result.rowCount ?? 0,
             rows: result.rows as readonly TRow[],
@@ -259,11 +288,17 @@ const createDefaultReminderPageHandler = (input: {
   });
   return createPublicWasteReminderPageHandler({
     activateByDoiTokenHash: async (payload) =>
-      await executor.executeWithinTransaction(async (repository) => await repository.activateByDoiTokenHash(payload)),
+      await executor.executeWithinTransaction(
+        async (repository) => await repository.activateByDoiTokenHash(payload)
+      ),
     loadUnsubscribeSubscriptionById: async (payload) =>
-      await executor.executeWithinTransaction(async (repository) => await repository.loadUnsubscribeSubscriptionById(payload)),
+      await executor.executeWithinTransaction(
+        async (repository) => await repository.loadUnsubscribeSubscriptionById(payload)
+      ),
     unsubscribeByTokenHash: async (payload) =>
-      await executor.executeWithinTransaction(async (repository) => await repository.unsubscribeByTokenHash(payload)),
+      await executor.executeWithinTransaction(
+        async (repository) => await repository.unsubscribeByTokenHash(payload)
+      ),
   });
 };
 
@@ -274,18 +309,20 @@ const createInvalidConfigResponse = (bootstrapState: PublicWasteBootstrapState):
   jsonResponse(
     {
       error: bootstrapState.status === 'error' ? bootstrapState.reason : 'invalid_config',
-      message: bootstrapState.status === 'error' ? bootstrapState.message : 'Konfiguration ist ungültig.',
+      message:
+        bootstrapState.status === 'error' ? bootstrapState.message : 'Konfiguration ist ungültig.',
     },
     500
   );
 
-const createMethodNotAllowedResponse = (): Response => new Response('Method Not Allowed', {
-  status: 405,
-  headers: {
-    allow: 'GET, HEAD, POST',
-    'content-type': 'text/plain; charset=utf-8',
-  },
-});
+const createMethodNotAllowedResponse = (): Response =>
+  new Response('Method Not Allowed', {
+    status: 405,
+    headers: {
+      allow: 'GET, HEAD, POST',
+      'content-type': 'text/plain; charset=utf-8',
+    },
+  });
 
 const toHeadResponse = (response: Response): Response =>
   new Response(null, {
@@ -294,7 +331,8 @@ const toHeadResponse = (response: Response): Response =>
     headers: response.headers,
   });
 const resolveStaticAssetPath = (assetsDir: string, pathname: string): string => {
-  const relativePath = pathname === '/' || extname(pathname).length === 0 ? '/index.html' : pathname;
+  const relativePath =
+    pathname === '/' || extname(pathname).length === 0 ? '/index.html' : pathname;
   const normalizedPath = relativePath.replace(/\\/g, '/');
   const absolutePath = resolve(assetsDir, `.${normalizedPath}`);
   const rootPath = resolve(assetsDir);
@@ -367,12 +405,10 @@ const dispatchPublicWasteApiRequest = async (input: {
       repository: input.repository,
       request: input.request,
       loadPdfStaticConfig: async () =>
-        await (
-          input.loadPdfStaticConfig?.(input.bootstrapState.config.instanceId, {
-            getDatabaseUrl: () => input.bootstrapState.config.supabase.databaseUrl,
-            getSchemaName: () => input.bootstrapState.config.supabase.schemaName,
-          }) ?? {}
-        ),
+        await (input.loadPdfStaticConfig?.(input.bootstrapState.config.instanceId, {
+          getDatabaseUrl: () => input.bootstrapState.config.database.databaseUrl,
+          getSchemaName: () => input.bootstrapState.config.database.schemaName,
+        }) ?? {}),
       loadBrandingImage: input.loadBrandingImage,
     });
   }
@@ -411,9 +447,12 @@ export const createPublicWasteRuntime = async (input: {
       ? await (input.createRepository ?? createRepositoryHandle)(bootstrapState.config)
       : null;
   const submitReminderSignup =
-    input.submitReminderSignup ?? (repositoryHandle ? createDefaultReminderSignupSubmitter({ repositoryHandle }) : undefined);
+    input.submitReminderSignup ??
+    (repositoryHandle ? createDefaultReminderSignupSubmitter({ repositoryHandle }) : undefined);
   const reminderPageHandler =
-    bootstrapState.status === 'ready' && bootstrapState.config.emailReminderConfig && repositoryHandle
+    bootstrapState.status === 'ready' &&
+    bootstrapState.config.emailReminderConfig &&
+    repositoryHandle
       ? createDefaultReminderPageHandler({ repositoryHandle })
       : null;
 
@@ -456,13 +495,18 @@ export const createPublicWasteRuntime = async (input: {
         return method === 'HEAD' ? toHeadResponse(response) : response;
       }
 
-      if (bootstrapState.status === 'ready' && bootstrapState.config.emailReminderConfig && reminderPageHandler) {
+      if (
+        bootstrapState.status === 'ready' &&
+        bootstrapState.config.emailReminderConfig &&
+        reminderPageHandler
+      ) {
         const response = await reminderPageHandler({
           request,
           pathname: url.pathname,
           reminderConfig: bootstrapState.config.emailReminderConfig,
           unsubscribeTokenSecret:
-            bootstrapState.config.emailReminderSigningSecret ?? bootstrapState.config.supabase.databaseUrl,
+            bootstrapState.config.emailReminderSigningSecret ??
+            bootstrapState.config.database.databaseUrl,
         });
         if (response) {
           return method === 'HEAD' ? toHeadResponse(response) : response;

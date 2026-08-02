@@ -10,6 +10,7 @@ const registerStudioJobExecutionHandlersMock = vi.fn();
 
 vi.mock('@sva/auth-runtime/server', () => ({
   dsrExportStudioJobRegistration: { jobTypeId: 'studio.dsr-export' },
+  protectField: vi.fn((value: string) => value),
   registerPluginOperationExecutionHandlers: registerPluginOperationExecutionHandlersMock,
   registerStudioJobExecutionHandlers: registerStudioJobExecutionHandlersMock,
 }));

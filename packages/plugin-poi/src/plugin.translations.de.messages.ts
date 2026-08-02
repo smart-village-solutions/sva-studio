@@ -1,0 +1,56 @@
+export const poiMessagesDe = {
+  loading: 'Orte werden geladen.',
+  loadError: 'Orte konnten nicht geladen werden.',
+  missingContent: 'Der Ort konnte nicht geladen werden.',
+  saveError: 'Der Ort konnte nicht gespeichert werden.',
+  deleteError: 'Der Ort konnte nicht gelöscht werden.',
+  createSuccess: 'Der Ort wurde erstellt.',
+  updateSuccess: 'Der Ort wurde aktualisiert.',
+  validationError: 'Bitte korrigieren Sie die markierten Felder.',
+  locationGeocodeError: 'Die Ermittlung von Geo-Koordinaten ist derzeit nicht verfügbar.',
+  locationGeocodeDisabled:
+    'Die Ermittlung von Geo-Koordinaten ist für diese Instanz derzeit nicht verfügbar.',
+  locationGeocodeEmpty: 'Zu diesen Adressdaten wurden keine Geo-Koordinaten gefunden.',
+  locationGeocodeRateLimited:
+    'Das Geocoding-Limit wurde erreicht. Bitte versuchen Sie es später erneut.',
+  locationGeocodeTimeout:
+    'Die Ermittlung von Geo-Koordinaten hat zu lange gedauert. Bitte versuchen Sie es erneut.',
+  locationGeocodeForbidden:
+    'Für die Ermittlung von Geo-Koordinaten fehlen die erforderlichen Berechtigungen.',
+  locationGeocodeUnauthorized:
+    'Die Sitzung für die Ermittlung von Geo-Koordinaten ist abgelaufen. Bitte laden Sie die Seite neu.',
+  locationMapUnavailable: 'Die Kartenansicht ist für diese Instanz derzeit deaktiviert.',
+  locationMapError:
+    'Die Kartenansicht konnte nicht geladen werden. Die Felder bleiben manuell bearbeitbar.',
+  mediaUploadInitializing: 'Upload wird vorbereitet.',
+  mediaUploadUploading: 'Medium wird hochgeladen.',
+  mediaUploadFinalizing: 'Upload wird abgeschlossen.',
+  mediaUploadSuccess: 'Medium wurde hochgeladen und zugeordnet.',
+  mediaUploadError: 'Das Medium konnte nicht hochgeladen werden.',
+  mediaUploadUnsupportedType: 'Nur JPG, PNG und WebP können hochgeladen werden.',
+  mediaUploadUnavailableUrl: 'Für dieses Medium ist keine öffentliche URL verfügbar.',
+  mediaPickerTitle: 'Medium hinzufügen',
+  mediaPickerDescription:
+    'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
+  mediaPickerReviewMode: 'Prüfen',
+  mediaPickerUploadRegionLabel: 'Bilddatei hochladen',
+  mediaPickerUploadTitle: 'Neues Medium hochladen',
+  mediaPickerUploadDescription:
+    'Laden Sie ein Bild hoch und prüfen Sie danach die Metadaten vor der Übernahme.',
+  mediaPickerSelectFile: 'Datei auswählen',
+  mediaPickerUploadSupportLabel: 'Unterstützt werden JPG, PNG und WebP.',
+  mediaPickerReviewTitle: 'Metadaten prüfen',
+  mediaPickerReviewDescription:
+    'Ergänzen Sie Titel, Alternativtext und weitere Metadaten, bevor das Medium übernommen wird.',
+  mediaPickerAltText: 'Alternativtext',
+  mediaPickerLicense: 'Lizenz',
+  mediaPickerBackToLibrary: 'Zurück zur Mediathek',
+  mediaPickerBackToUpload: 'Zurück zum Upload',
+  mediaPickerOpenMediaManagement: 'In Medienverwaltung öffnen',
+  mediaPickerUseMedia: 'Medium übernehmen',
+  mediaPickerAssetLoadError: 'Das Medium konnte nicht geladen werden.',
+  mediaPickerMetadataSaveError: 'Die Metadaten konnten nicht gespeichert werden.',
+  imagePickerEmpty: 'Keine Bilder gefunden.',
+  categoryOptionsLoading: 'Kategorien werden geladen.',
+  categoryOptionsLoadError: 'Die Kategorien konnten nicht geladen werden.',
+} as const;

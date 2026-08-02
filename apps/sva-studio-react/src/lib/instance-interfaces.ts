@@ -1,10 +1,8 @@
-import type {
-  MailTransportAuthMode,
-  MailTransportSecurityMode,
-} from '@sva/core';
+import type { MailTransportAuthMode, MailTransportSecurityMode } from '@sva/core';
 import type { SvaMainserverConnectionStatus } from '@sva/sva-mainserver';
 
-export type InstanceInterfaceType = 'mainserver' | 's3' | 'supabase' | 'mailTransport' | 'mapGeocoding';
+export type InstanceInterfaceType =
+  'mainserver' | 's3' | 'supabase' | 'postgresql' | 'mailTransport' | 'mapGeocoding';
 
 export type InstanceInterfaceStatus = 'connected' | 'error' | 'disabled' | 'unknown';
 
@@ -23,6 +21,11 @@ export type InstanceInterfaceS3Config = Readonly<{
 
 export type InstanceInterfaceSupabaseConfig = Readonly<{
   projectUrl: string;
+  schemaName: string;
+  databaseUrl: string;
+}>;
+
+export type InstanceInterfacePostgresqlConfig = Readonly<{
   schemaName: string;
   databaseUrl: string;
 }>;
@@ -68,46 +71,92 @@ type InstanceInterfaceBase = Readonly<{
   updatedAt: string;
 }>;
 
-export type InstanceInterfaceMainserver = InstanceInterfaceBase & Readonly<{
-  type: 'mainserver';
-  config: InstanceInterfaceMainserverConfig;
-}>;
+export type InstanceInterfaceMainserver = InstanceInterfaceBase &
+  Readonly<{
+    type: 'mainserver';
+    config: InstanceInterfaceMainserverConfig;
+  }>;
 
-export type InstanceInterfaceS3 = InstanceInterfaceBase & Readonly<{
-  type: 's3';
-  config: InstanceInterfaceS3Config;
-}>;
+export type InstanceInterfaceS3 = InstanceInterfaceBase &
+  Readonly<{
+    type: 's3';
+    config: InstanceInterfaceS3Config;
+  }>;
 
-export type InstanceInterfaceSupabase = InstanceInterfaceBase & Readonly<{
-  type: 'supabase';
-  config: InstanceInterfaceSupabaseConfig;
-}>;
+export type InstanceInterfaceSupabase = InstanceInterfaceBase &
+  Readonly<{
+    type: 'supabase';
+    config: InstanceInterfaceSupabaseConfig;
+  }>;
 
-export type InstanceInterfaceMailTransport = InstanceInterfaceBase & Readonly<{
-  type: 'mailTransport';
-  config: InstanceInterfaceMailTransportConfig;
-}>;
+export type InstanceInterfacePostgresql = InstanceInterfaceBase &
+  Readonly<{
+    type: 'postgresql';
+    config: InstanceInterfacePostgresqlConfig;
+  }>;
 
-export type InstanceInterfaceMapGeocoding = InstanceInterfaceBase & Readonly<{
-  type: 'mapGeocoding';
-  config: InstanceInterfaceMapGeocodingConfig;
-}>;
+export type InstanceInterfaceMailTransport = InstanceInterfaceBase &
+  Readonly<{
+    type: 'mailTransport';
+    config: InstanceInterfaceMailTransportConfig;
+  }>;
+
+export type InstanceInterfaceMapGeocoding = InstanceInterfaceBase &
+  Readonly<{
+    type: 'mapGeocoding';
+    config: InstanceInterfaceMapGeocodingConfig;
+  }>;
 
 export type InstanceInterface =
   | InstanceInterfaceMainserver
   | InstanceInterfaceS3
   | InstanceInterfaceSupabase
+  | InstanceInterfacePostgresql
   | InstanceInterfaceMailTransport
   | InstanceInterfaceMapGeocoding;
 
 export type InstanceInterfaceDraft =
-  | { type: 'mainserver'; name: string; enabled: boolean; config: InstanceInterfaceMainserverConfig }
-  | { type: 's3'; name: string; enabled: boolean; config: InstanceInterfaceS3Config & { secretAccessKey: string } }
-  | { type: 'supabase'; name: string; enabled: boolean; config: InstanceInterfaceSupabaseConfig & { serviceRoleKey: string } }
-  | { type: 'mailTransport'; name: string; enabled: boolean; config: InstanceInterfaceMailTransportConfig & { password: string } }
-  | { type: 'mapGeocoding'; name: string; enabled: boolean; config: InstanceInterfaceMapGeocodingConfig & { apiKey: string } };
+  | {
+      type: 'mainserver';
+      name: string;
+      enabled: boolean;
+      config: InstanceInterfaceMainserverConfig;
+    }
+  | {
+      type: 's3';
+      name: string;
+      enabled: boolean;
+      config: InstanceInterfaceS3Config & { secretAccessKey: string };
+    }
+  | {
+      type: 'supabase';
+      name: string;
+      enabled: boolean;
+      config: InstanceInterfaceSupabaseConfig & { serviceRoleKey: string };
+    }
+  | {
+      type: 'postgresql';
+      name: string;
+      enabled: boolean;
+      config: InstanceInterfacePostgresqlConfig;
+    }
+  | {
+      type: 'mailTransport';
+      name: string;
+      enabled: boolean;
+      config: InstanceInterfaceMailTransportConfig & { password: string };
+    }
+  | {
+      type: 'mapGeocoding';
+      name: string;
+      enabled: boolean;
+      config: InstanceInterfaceMapGeocodingConfig & { apiKey: string };
+    };
 
-export const instanceInterfaceTypeMeta: Record<InstanceInterfaceType, { titleKey: string; descriptionKey: string }> = {
+export const instanceInterfaceTypeMeta: Record<
+  InstanceInterfaceType,
+  { titleKey: string; descriptionKey: string }
+> = {
   mainserver: {
     titleKey: 'interfaces.types.mainserver.label',
     descriptionKey: 'interfaces.types.mainserver.description',
@@ -119,6 +168,10 @@ export const instanceInterfaceTypeMeta: Record<InstanceInterfaceType, { titleKey
   supabase: {
     titleKey: 'interfaces.types.supabase.label',
     descriptionKey: 'interfaces.types.supabase.description',
+  },
+  postgresql: {
+    titleKey: 'interfaces.types.postgresql.label',
+    descriptionKey: 'interfaces.types.postgresql.description',
   },
   mailTransport: {
     titleKey: 'interfaces.types.mailTransport.label',
@@ -174,6 +227,17 @@ export const createEmptyInstanceInterfaceDraft = (
         defaultReplyToEmail: '',
         maxBatchSize: '',
         rateLimitPerMinute: '',
+      },
+    };
+  }
+  if (type === 'postgresql') {
+    return {
+      type: 'postgresql',
+      name: 'PostgreSQL',
+      enabled: true,
+      config: {
+        schemaName: 'public',
+        databaseUrl: '',
       },
     };
   }

@@ -1,0 +1,4 @@
+{
+  "prNumber": 892,
+  "body": "Robusterer Deployment-Smoke bei langsamer Konvergenz\n\n- Der Runtime-Smoke wartet bei vorübergehenden Erreichbarkeitsfehlern standardmäßig bis zu 50 Versuche im Abstand von zehn Sekunden ab.\n- Dauerhafte Fehler bleiben blockierend und werden nach dem erweiterten Warmup weiterhin klar gemeldet."
+}

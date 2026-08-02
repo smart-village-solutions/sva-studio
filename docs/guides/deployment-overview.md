@@ -25,7 +25,7 @@ main → Build → Dev → manuelles Staging → manuell freigegebenes Productio
 - Production akzeptiert bei Datenmutationen nur denselben erfolgreich in Staging geprüften Digest.
 - Ein erfolgreich verifiziertes Datenbank-Backup liegt vor jeder Migration oder jedem Bootstrap in Staging und Production.
 - Die GitHub-Environments `staging` und `prod` bilden die Freigabe- und Secret-Grenzen.
-- Nach einem Swarm-Update wird eine Konvergenzzeit von bis zu fünf Minuten berücksichtigt.
+- Nach einem Swarm-Update werden zur Konvergenz bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden berücksichtigt.
 
 Die vollständige Reihenfolge, Eingaben, Stacknamen, Domains, Buckets und Erfolgskriterien stehen ausschließlich im [kanonischen Studio-Rollout](./studio-rollout-process.md).
 

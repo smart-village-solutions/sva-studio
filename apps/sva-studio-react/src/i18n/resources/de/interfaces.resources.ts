@@ -72,7 +72,8 @@ export const interfacesDEResources = {
   types: {
     mainserver: {
       label: 'SVA Mainserver',
-      description: 'GraphQL-Endpoint und OAuth-Token-URL für News-, Events- und POI-Importe.',
+      description:
+        'GraphQL-Endpoint und OAuth-Token-URL für Nachrichten-, Veranstaltungs- und POI-Importe.',
     },
     s3: {
       label: 'S3-kompatibler Object Storage',
@@ -84,10 +85,13 @@ export const interfacesDEResources = {
       description:
         'Waste-Datenquelle mit Projekt-URL, Schema, Datenbankzugang und Service-Role-Key.',
     },
+    postgresql: {
+      label: 'PostgreSQL',
+      description: 'Direkte PostgreSQL-Datenquelle mit Schema und verschlüsseltem Datenbankzugang.',
+    },
     mailTransport: {
       label: 'Mail-Transport',
-      description:
-        'Zentrale technische SMTP-Anbindung für transaktionale Zustellung.',
+      description: 'Zentrale technische SMTP-Anbindung für transaktionale Zustellung.',
     },
     mapGeocoding: {
       label: 'Karte & Geocoding',
@@ -131,6 +135,10 @@ export const interfacesDEResources = {
       serviceRoleKey: 'Service-Role-Key',
       notImplemented:
         'Hinweis: Diese Schnittstelle wird bereits serverseitig gespeichert. Automatische Statusprüfungen und Verbindungschecks folgen noch.',
+    },
+    postgresql: {
+      schemaName: 'Schema',
+      databaseUrl: 'Datenbank-URL',
     },
     mailTransport: {
       transportId: 'Transport-ID',

@@ -1,0 +1,4 @@
+{
+  "prNumber": 889,
+  "body": "Vereinfachte Editoren und verständlichere Inhaltsbegriffe\n\n- Nicht benötigte Verknüpfungs-, Barrierefreiheits- und Metadatenfelder werden in den Editoren für Veranstaltungen und Orte nicht mehr angezeigt.\n- Vorhandene Werte der ausgeblendeten Felder bleiben beim Speichern anderer Änderungen erhalten.\n- Nachrichten, Veranstaltungen und generische Inhalte verwenden einheitliche deutsche Bezeichnungen wie Überschrift und Einleitung."
+}

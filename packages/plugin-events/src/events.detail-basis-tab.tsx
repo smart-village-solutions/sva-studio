@@ -3,32 +3,26 @@ import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { Button, Checkbox, Input, Select, StudioField } from '@sva/studio-ui-react';
 
 import { EventsCategoryMultiselect } from './events.category-multiselect.js';
-import { EventsPoiSelect } from './events.poi-select.js';
 import type { EventsDetailFormValues } from './events.detail-form.js';
-import type { EventCategoryOption, EventContentItem, PoiSelectItem } from './events.types.js';
+import type { EventCategoryOption, EventContentItem } from './events.types.js';
 import { EventsDetailCard } from './events.detail-card.js';
 
-const formatMetaDate = (value?: string) => (value ? formatDateTimeInEditorTimeZone(value) ?? value : '--.--.-- --:--');
+const formatMetaDate = (value?: string) =>
+  value ? (formatDateTimeInEditorTimeZone(value) ?? value) : '--.--.-- --:--';
 
 export function EventsDetailBasisTab({
   availableCategories,
-  availablePois,
   categoryOptionsError,
   categoryOptionsLoading,
   loadedItem,
   mode,
-  poiOptionsError,
-  poiOptionsLoading,
   pt,
 }: Readonly<{
   availableCategories: readonly EventCategoryOption[];
-  availablePois: readonly PoiSelectItem[];
   categoryOptionsError?: string | null;
   categoryOptionsLoading: boolean;
   loadedItem: EventContentItem | null;
   mode: 'create' | 'edit';
-  poiOptionsError?: string | null;
-  poiOptionsLoading: boolean;
   pt: (key: string) => string;
 }>) {
   const { control, setValue } = useFormContext<EventsDetailFormValues>();
@@ -45,18 +39,49 @@ export function EventsDetailBasisTab({
     { value: '3', label: pt('fields.recurringTypeOptions.years') },
   ];
   const recurringWeekdayOptions = [
-    { value: 'MO', label: pt('fields.recurringWeekdayOptions.monday'), shortLabel: pt('fields.recurringWeekdayShortOptions.monday') },
-    { value: 'TU', label: pt('fields.recurringWeekdayOptions.tuesday'), shortLabel: pt('fields.recurringWeekdayShortOptions.tuesday') },
-    { value: 'WE', label: pt('fields.recurringWeekdayOptions.wednesday'), shortLabel: pt('fields.recurringWeekdayShortOptions.wednesday') },
-    { value: 'TH', label: pt('fields.recurringWeekdayOptions.thursday'), shortLabel: pt('fields.recurringWeekdayShortOptions.thursday') },
-    { value: 'FR', label: pt('fields.recurringWeekdayOptions.friday'), shortLabel: pt('fields.recurringWeekdayShortOptions.friday') },
-    { value: 'SA', label: pt('fields.recurringWeekdayOptions.saturday'), shortLabel: pt('fields.recurringWeekdayShortOptions.saturday') },
-    { value: 'SU', label: pt('fields.recurringWeekdayOptions.sunday'), shortLabel: pt('fields.recurringWeekdayShortOptions.sunday') },
+    {
+      value: 'MO',
+      label: pt('fields.recurringWeekdayOptions.monday'),
+      shortLabel: pt('fields.recurringWeekdayShortOptions.monday'),
+    },
+    {
+      value: 'TU',
+      label: pt('fields.recurringWeekdayOptions.tuesday'),
+      shortLabel: pt('fields.recurringWeekdayShortOptions.tuesday'),
+    },
+    {
+      value: 'WE',
+      label: pt('fields.recurringWeekdayOptions.wednesday'),
+      shortLabel: pt('fields.recurringWeekdayShortOptions.wednesday'),
+    },
+    {
+      value: 'TH',
+      label: pt('fields.recurringWeekdayOptions.thursday'),
+      shortLabel: pt('fields.recurringWeekdayShortOptions.thursday'),
+    },
+    {
+      value: 'FR',
+      label: pt('fields.recurringWeekdayOptions.friday'),
+      shortLabel: pt('fields.recurringWeekdayShortOptions.friday'),
+    },
+    {
+      value: 'SA',
+      label: pt('fields.recurringWeekdayOptions.saturday'),
+      shortLabel: pt('fields.recurringWeekdayShortOptions.saturday'),
+    },
+    {
+      value: 'SU',
+      label: pt('fields.recurringWeekdayOptions.sunday'),
+      shortLabel: pt('fields.recurringWeekdayShortOptions.sunday'),
+    },
   ];
 
   return (
     <div className="space-y-6">
-      <EventsDetailCard title={pt('cards.basis.identity.title')} description={pt('cards.basis.identity.description')}>
+      <EventsDetailCard
+        title={pt('cards.basis.identity.title')}
+        description={pt('cards.basis.identity.description')}
+      >
         <StudioField id="event-title" label={pt('fields.title')} required>
           <Input
             id="event-title"
@@ -65,7 +90,11 @@ export function EventsDetailBasisTab({
             onChange={(event) => setValue('title', event.target.value, { shouldDirty: true })}
           />
         </StudioField>
-        <StudioField id="event-categories" label={pt('fields.categories')} description={pt('fields.categoriesHelp')}>
+        <StudioField
+          id="event-categories"
+          label={pt('fields.categories')}
+          description={pt('fields.categoriesHelp')}
+        >
           <Controller
             name="basis.categories"
             control={control}
@@ -88,7 +117,10 @@ export function EventsDetailBasisTab({
         </StudioField>
       </EventsDetailCard>
 
-      <EventsDetailCard title={pt('cards.basis.recurrence.title')} description={pt('cards.basis.recurrence.description')}>
+      <EventsDetailCard
+        title={pt('cards.basis.recurrence.title')}
+        description={pt('cards.basis.recurrence.description')}
+      >
         <StudioField id="event-repeat" label={pt('fields.repeat')}>
           <Checkbox
             id="event-repeat"
@@ -133,7 +165,9 @@ export function EventsDetailBasisTab({
                 step="1"
                 inputMode="numeric"
                 value={recurringInterval}
-                onChange={(event) => setValue('basis.recurringInterval', event.target.value, { shouldDirty: true })}
+                onChange={(event) =>
+                  setValue('basis.recurringInterval', event.target.value, { shouldDirty: true })
+                }
               />
             </StudioField>
             {recurringType === '1' ? (
@@ -165,34 +199,11 @@ export function EventsDetailBasisTab({
         ) : null}
       </EventsDetailCard>
 
-      <EventsDetailCard title={pt('cards.basis.relations.title')} description={pt('cards.basis.relations.description')}>
-        <StudioField id="event-poi-link" label={pt('fields.pointOfInterestId')}>
-          <Controller
-            name="basis.pointOfInterestId"
-            control={control}
-            render={({ field }) => (
-              <EventsPoiSelect
-                availablePois={availablePois}
-                clearLabel={pt('actions.clearPoiSelection')}
-                emptyText={pt('messages.poiOptionsEmpty')}
-                errorMessage={poiOptionsError ?? undefined}
-                inputId="event-poi"
-                inputPlaceholder={pt('fields.pointOfInterestSearchPlaceholder')}
-                loading={poiOptionsLoading}
-                loadingText={pt('messages.poiOptionsLoading')}
-                searchLabel={pt('fields.pointOfInterestSearch')}
-                value={field.value}
-                onChange={(nextValue) => {
-                  setValue('basis.pointOfInterestId', nextValue, { shouldDirty: true });
-                }}
-              />
-            )}
-          />
-        </StudioField>
-      </EventsDetailCard>
-
       {mode === 'edit' ? (
-        <EventsDetailCard title={pt('cards.basis.meta.title')} description={pt('cards.basis.meta.description')}>
+        <EventsDetailCard
+          title={pt('cards.basis.meta.title')}
+          description={pt('cards.basis.meta.description')}
+        >
           <dl className="grid gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm md:grid-cols-2">
             <div className="space-y-1">
               <dt className="font-medium text-foreground">{pt('fields.createdAt')}</dt>

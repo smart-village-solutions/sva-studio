@@ -307,7 +307,7 @@ Der Container-Entrypoint kennt zusätzlich nur noch einen expliziten Legacy-Reco
 - Wenn das Ziel-Digest bereits live auf `app` läuft, darf das Parity-Gate die Live-Evidenz desselben Digests wiederverwenden. Voraussetzung sind grüne Nachweise für Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Live-Runtime-Flags.
 - Ein lokaler Kandidatencontainer ersetzt fuer `studio` keinen echten Swarm-/Ingress-/Private-DNS-Nachweis. Kann der Remote-Hostvertrag lokal nicht realistisch abgebildet werden, bleibt nur die dokumentierte Live-Paritaet desselben Digests oder ein echter Remote-Rollout im kanonischen Pfad.
 - Erkenntnis aus dem Studio-Release vom 28. April 2026: `migrate` und `bootstrap` bleiben harte Freigabegates, weil Schema-Pflichtfelder und Bootstrap-Reconcile gemeinsam betrachtet werden müssen.
-- Erkenntnis aus realen Studio-Rollouts: externe Health- und Tenant-Probes direkt nach dem Stack-Cutover können kurzzeitige Fehler liefern; der kanonische Prozess berücksichtigt bis zu fünf Minuten Konvergenzzeit, bevor ein stabiler Fehler bewertet wird.
+- Erkenntnis aus realen Studio-Rollouts: externe Health- und Tenant-Probes direkt nach dem Stack-Cutover können kurzzeitige Fehler liefern; der kanonische Prozess berücksichtigt bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden, bevor ein stabiler Fehler bewertet wird.
 - Erkenntnis aus dem Studio-Release vom 28. April 2026: eine erfolgreich in GitHub gelaufene `Studio Image Verify`-Evidenz ist fachlich gleichwertig zu lokal erzeugten Verify-Artefakten; ein reiner Lookup auf `artifacts/runtime/image-verify` erzeugt sonst Warnrauschen.
 
 ### `smoke`
@@ -337,7 +337,7 @@ Zusatzprüfungen:
 - Remote: zusätzlich `/api/v1/iam/instances`
 - Remote: mindestens ein aktiver Tenant-Host und ein negativer Host-Fall gegen dieselbe App-Instanz
 - Remote: `doctor` und `precheck` muessen `app-db-principal` fuer denselben Runtime-User wie die laufende App als `ok` ausweisen
-- Lokale Remote-Recovery: Wenn die erste externe Probe direkt nach einem `app-only`-Reconcile fehlschlägt, gilt dieselbe Konvergenzzeit von bis zu fünf Minuten wie im kanonischen Rollout, bevor ein stabiler `health`-Fehler gewertet wird
+- Lokale Remote-Recovery: Wenn die erste externe Probe direkt nach einem `app-only`-Reconcile fehlschlägt, gelten dieselben maximal 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden wie im kanonischen Rollout, bevor ein stabiler `health`-Fehler gewertet wird
 
 Im Profil `studio` prüfen die externen Smokes zusätzlich tenant-spezifische OIDC-Redirects. Der Scope kommt bevorzugt aus der Instanz-Registry; `SVA_ALLOWED_INSTANCE_IDS` bleibt nur lokaler oder migrationsbezogener Fallback, und `SVA_TENANT_SCOPE_INSTANCE_IDS` kann den Scope für gezielte Operator-Läufe explizit übersteuern.
 
@@ -448,7 +448,7 @@ Wichtig für die Interpretation:
 
 - Schemaänderungen bleiben ein separater, bewusster Schritt und sind nie Teil von `up`
 - Reguläre Remote-Deploys laufen ausschließlich über GitHub Actions `Promote`
-- Production- und Staging-Wartungsfenster folgen dem umgebungsabhängigen Vertrag aus `../guides/studio-rollout-process.md`
+- Migrationen und Bootstraps benötigen gemäß `../guides/studio-rollout-process.md` keinen Wartungsfenster-Verweis; Freigaben, Backups, Postconditions und Verifikation bleiben verpflichtend
 - lokale Mutationsbefehle sind Incident-Recovery und müssen danach gegen den Promote-Vertrag verifiziert werden
 
 ## Observability und Live-Diagnose
@@ -473,7 +473,7 @@ Für den produktionsnahen `studio`-Betrieb gilt:
 - bei lokalen Profilwechseln nie zwei Profile parallel auf Port `3000` betreiben
 - für serverseitige Details, Secrets und Portainer-Bedienung bleibt `../guides/swarm-deployment-runbook.md` die Referenz
 - `config/runtime/studio.local.vars` ist ausschließlich lokale Diagnose-/Recovery-Konfiguration und keine Quelle für GitHub-Environment-Secrets
-- Der Recovery-Pfad für `app 1/1`, aber externen `502`, lautet: Render-Compose prüfen, Live-Service-Spec prüfen, bis zu fünf Minuten Konvergenz berücksichtigen, bei Bedarf kontrollierten App-Reconcile ausführen und danach `status`, `smoke` und `precheck` wiederholen.
+- Der Recovery-Pfad für `app 1/1`, aber externen `502`, lautet: Render-Compose prüfen, Live-Service-Spec prüfen, bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden berücksichtigen, bei Bedarf kontrollierten App-Reconcile ausführen und danach `status`, `smoke` und `precheck` wiederholen.
 
 ## Typische Fehlerbilder
 
@@ -492,7 +492,7 @@ Für den produktionsnahen `studio`-Betrieb gilt:
 - Remote-Deploy scheitert: unvollständige Portainer-Variablen in `deploy/portainer/.env.example`
 - Remote-Migration findet keinen lokalen `postgres`-Container: erwartbar bei Remote-Swarm; der Befehl startet stattdessen den dedizierten Swarm-Migrationsjob
 - Remote-Bootstrap läuft nicht oder hinterlässt `migrate`/`bootstrap` auf `replicas > 0`: Stack mit `pnpm env:status:<profil>` prüfen; die Job-Services müssen nach Erfolg wieder auf `0` stehen
-- `env:deploy:<profil> --release-mode=schema-and-app` scheitert sofort: Wartungsfenster fehlt oder `quantum-cli`/Stack-Zugriff ist nicht verfügbar
+- `env:deploy:<profil> --release-mode=schema-and-app` scheitert sofort: `quantum-cli`- oder Stack-Zugriff ist nicht verfügbar
 - `status`, `doctor` oder `precheck` scheitern read-only trotz gesundem Stack: zuerst `QUANTUM_ENDPOINT_ID` und `QUANTUM_API_KEY` für den Portainer-Pfad prüfen, erst danach `quantum-cli` als Fallback debuggen
 - `env:deploy:<profil>` scheitert vor dem Rollout: `SVA_IMAGE_DIGEST` fehlt oder das Digest-Artefakt besteht den `image-smoke` nicht
 Für das frühe `studio`-Profil sind produktive Console-Logs bewusst per `SVA_ENABLE_SERVER_CONSOLE_LOGS=true` erlaubt, damit Loki die Serverdiagnostik auch ohne internen OTEL-Collector erfassen kann. Das Flag ist ein temporärer Testphasen-Hebel und soll in einer späteren Betriebsphase wieder deaktiviert werden, sobald die OTEL-Pipeline im Zielprofil stabil verfügbar ist.

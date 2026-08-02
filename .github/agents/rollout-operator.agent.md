@@ -37,7 +37,7 @@ Historische Reports, Staging-Unterlagen, PR-Dokumente, Pläne und archivierte Op
 - `auto` ist ausschließlich für den automatischen Dev-Promote zulässig.
 - Staging und Production verwenden nur `assert-none` oder bewusst `run`.
 - Vor jeder Staging-/Production-Migration oder jedem Bootstrap muss das passende Backup erfolgreich und unabhängig verifiziert sein.
-- Production-One-shots benötigen Environment-Freigabe, Wartungsfenster und erfolgreiche mutierende Staging-Evidenz desselben Digests.
+- Production-One-shots benötigen Environment-Freigabe und erfolgreiche mutierende Staging-Evidenz desselben Digests.
 - Datenbankmigrationen werden nie automatisch zurückgerollt.
 - Traefik, gemeinsame Netzwerke und fremde Stacks bleiben unangetastet, sofern der Nutzer den Incident-Scope nicht ausdrücklich erweitert.
 - Auf dem Swarm-Server läuft Traefik `v3.6`; der Rollout-Agent prüft den bestehenden `traefik.http.*`-Vertrag read-only und mutiert den Traefik-Stack nicht.
@@ -72,18 +72,16 @@ Backup-Vertrag:
 1. Exakt den Build-Digest auswählen.
 2. `change_base` und `change_head` an den Inhalt des Images binden.
 3. Diff-Risiko bestimmen; `assert-none` oder `run` verwenden.
-4. Bei Staging-Migration `maintenance_window` setzen.
-5. Die Schutzregeln und Secrets des GitHub-Environments `staging` anwenden lassen.
-6. Workflow bis Backup, One-shots, Postconditions, Deploy, Smoke, Digest und Evidenz vollständig überwachen.
-7. Nur einen insgesamt grünen mutierenden Lauf als Production-Parität akzeptieren.
+4. Die Schutzregeln und Secrets des GitHub-Environments `staging` anwenden lassen.
+5. Workflow bis Backup, One-shots, Postconditions, Deploy, Smoke, Digest und Evidenz vollständig überwachen.
+6. Nur einen insgesamt grünen mutierenden Lauf als Production-Parität akzeptieren.
 
 ### 3. Production
 
 1. Denselben in Staging geprüften Digest verwenden.
 2. GitHub-Environment `prod` ausdrücklich freigeben lassen.
-3. Bei Migration oder Bootstrap `maintenance_window` setzen.
-4. Staging-Parität, frisches Production-Backup und Objektprüfung abwarten.
-5. Migration, Bootstrap, Postconditions, Deploy und Verifikation überwachen.
+3. Staging-Parität, frisches Production-Backup und Objektprüfung abwarten.
+4. Migration, Bootstrap, Postconditions, Deploy und Verifikation überwachen.
 
 Die Workflow-Reihenfolge darf nicht manuell umgestellt werden:
 
@@ -95,7 +93,7 @@ Nicht benötigte One-shot-Phasen werden durch die Gate-Auswertung übersprungen;
 
 ## Konvergenz
 
-Nach einem Swarm-Update bis zu fünf Minuten ab abgeschlossenem Service-Update zulassen. Während dieses Fensters keine zusätzliche Mutation starten. Danach erneut prüfen:
+Nach einem Swarm-Update bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden ab abgeschlossenem Service-Update zulassen. Während dieses Fensters keine zusätzliche Mutation starten. Danach erneut prüfen:
 
 - App-Task läuft,
 - `/health/live` und `/health/ready` liefern 200,
@@ -113,7 +111,7 @@ Wenn ein App-Rollback nötig ist:
 1. vorherigen Live-Digest aus der Promote-Evidenz nehmen,
 2. Datenbankschema-Kompatibilität prüfen,
 3. Recovery auf den expliziten App-Service und Zielstack begrenzen,
-4. fünf Minuten Konvergenz berücksichtigen,
+4. bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden berücksichtigen,
 5. vollständige Health-, Tenant- und Digest-Verifikation ausführen,
 6. Incident-Report unter `docs/reports/` anlegen,
 7. Zustand anschließend durch den kanonischen Promote-Pfad reconciliieren.

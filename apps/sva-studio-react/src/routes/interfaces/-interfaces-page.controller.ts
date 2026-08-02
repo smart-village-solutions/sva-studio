@@ -19,12 +19,13 @@ import {
 export const DEFAULT_AVAILABLE_TYPES: readonly InstanceInterfaceType[] = [
   'mainserver',
   's3',
+  'postgresql',
   'mailTransport',
   'mapGeocoding',
 ];
 
 export const isInstanceInterfacesResponse = (
-  value: unknown,
+  value: unknown
 ): value is Readonly<{
   instanceId: string;
   availableTypes: readonly InstanceInterfaceType[];
@@ -40,7 +41,11 @@ export const isInstanceInterfacesResponse = (
     entries?: unknown;
   };
 
-  return typeof candidate.instanceId === 'string' && Array.isArray(candidate.availableTypes) && Array.isArray(candidate.entries);
+  return (
+    typeof candidate.instanceId === 'string' &&
+    Array.isArray(candidate.availableTypes) &&
+    Array.isArray(candidate.entries)
+  );
 };
 
 export type EditState =
@@ -81,6 +86,14 @@ export const draftFromEntry = (entry: InstanceInterface): InstanceInterfaceDraft
       config: { ...entry.config, apiKey: '' },
     };
   }
+  if (entry.type === 'postgresql') {
+    return {
+      type: 'postgresql',
+      name: entry.name,
+      enabled: entry.enabled,
+      config: { ...entry.config, databaseUrl: '' },
+    };
+  }
   return {
     type: 'supabase',
     name: entry.name,
@@ -118,7 +131,7 @@ export const translateInterfacesErrorMessage = (error: unknown, fallback: string
 
 export const buildUpsertPayload = (
   instanceId: string,
-  editState: Extract<EditState, { mode: 'create' | 'edit' }>,
+  editState: Extract<EditState, { mode: 'create' | 'edit' }>
 ) => ({
   instanceId,
   draft: editState.draft,
@@ -150,13 +163,15 @@ const useServerFnRefs = () => {
 };
 
 export const useInterfacesPageController = () => {
-  const { listInterfacesRef, saveMainserverRef, upsertInterfaceRef, deleteInterfaceRef } = useServerFnRefs();
+  const { listInterfacesRef, saveMainserverRef, upsertInterfaceRef, deleteInterfaceRef } =
+    useServerFnRefs();
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
   const [instanceId, setInstanceId] = React.useState('');
   const [interfaces, setInterfaces] = React.useState<readonly InstanceInterface[]>([]);
-  const [availableTypes, setAvailableTypes] = React.useState<readonly InstanceInterfaceType[]>(DEFAULT_AVAILABLE_TYPES);
+  const [availableTypes, setAvailableTypes] =
+    React.useState<readonly InstanceInterfaceType[]>(DEFAULT_AVAILABLE_TYPES);
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [pickerType, setPickerType] = React.useState<InstanceInterfaceType>('s3');
   const [editState, setEditState] = React.useState<EditState>({ mode: 'closed' });
@@ -172,11 +187,14 @@ export const useInterfacesPageController = () => {
         throw new Error('invalid_interfaces_payload');
       }
 
-      const nextAvailableTypes = result.availableTypes.length > 0 ? result.availableTypes : DEFAULT_AVAILABLE_TYPES;
+      const nextAvailableTypes =
+        result.availableTypes.length > 0 ? result.availableTypes : DEFAULT_AVAILABLE_TYPES;
       setInstanceId(result.instanceId);
       setInterfaces(result.entries);
       setAvailableTypes(nextAvailableTypes);
-      setPickerType((current) => (nextAvailableTypes.includes(current) ? current : nextAvailableTypes[0] ?? 's3'));
+      setPickerType((current) =>
+        nextAvailableTypes.includes(current) ? current : (nextAvailableTypes[0] ?? 's3')
+      );
     } catch (error) {
       setErrorMessage(translateInterfacesErrorMessage(error, t('interfaces.messages.loadError')));
     } finally {

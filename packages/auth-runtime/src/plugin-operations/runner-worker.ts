@@ -8,12 +8,14 @@ import type { QueueStudioJobInput } from './runner-internal.js';
 import {
   createStudioJobTaskList,
   getRegisteredStudioJobExecutionRegistry,
+  privilegedStudioJobTaskIdentifier,
   studioJobTaskIdentifier,
 } from './runner-registry.js';
 
 const logger = createSdkLogger({ component: 'studio-jobs-runner', level: 'info' });
 
 let runnerPromise: Promise<graphileWorker.Runner> | null = null;
+let privilegedRunnerPromise: Promise<graphileWorker.Runner> | null = null;
 
 const parseWorkerConcurrency = (rawValue: string | undefined): number => {
   const fallback = 1;
@@ -29,7 +31,9 @@ const parseWorkerConcurrency = (rawValue: string | undefined): number => {
   return Math.min(parsed, 16);
 };
 
-const createGraphileWorkerRunner = async (): Promise<graphileWorker.Runner> => {
+const createGraphileWorkerRunner = async (
+  taskIdentifier: string
+): Promise<graphileWorker.Runner> => {
   const pool = resolvePool();
   if (!pool) {
     throw new Error('studio_job_worker_database_unavailable');
@@ -40,7 +44,7 @@ const createGraphileWorkerRunner = async (): Promise<graphileWorker.Runner> => {
 
     return graphileWorker.run({
       pgPool: pool,
-      taskList: createStudioJobTaskList(getRegisteredStudioJobExecutionRegistry),
+      taskList: createStudioJobTaskList(getRegisteredStudioJobExecutionRegistry, taskIdentifier),
       concurrency: parseWorkerConcurrency(process.env.SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY),
       noHandleSignals: true,
     });
@@ -58,7 +62,7 @@ const createGraphileWorkerRunner = async (): Promise<graphileWorker.Runner> => {
 };
 
 export const ensureStudioJobWorkerStarted = async (): Promise<void> => {
-  runnerPromise ??= createGraphileWorkerRunner().catch((error) => {
+  runnerPromise ??= createGraphileWorkerRunner(studioJobTaskIdentifier).catch((error) => {
     runnerPromise = null;
     logger.error('Studio-Job-Worker konnte nicht gestartet werden', {
       operation: 'studio_job_worker_start_failed',
@@ -68,6 +72,20 @@ export const ensureStudioJobWorkerStarted = async (): Promise<void> => {
   });
 
   await runnerPromise;
+};
+
+export const ensurePrivilegedStudioJobWorkerStarted = async (): Promise<void> => {
+  privilegedRunnerPromise ??= createGraphileWorkerRunner(privilegedStudioJobTaskIdentifier).catch(
+    (error) => {
+      privilegedRunnerPromise = null;
+      logger.error('Privilegierter Studio-Job-Worker konnte nicht gestartet werden', {
+        operation: 'privileged_studio_job_worker_start_failed',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  );
+  await privilegedRunnerPromise;
 };
 
 export const ensurePluginOperationWorkerStarted = ensureStudioJobWorkerStarted;
@@ -83,7 +101,9 @@ const getRunner = async (): Promise<graphileWorker.Runner> => {
 export const queueStudioJob = async (input: QueueStudioJobInput): Promise<void> => {
   const runner = await getRunner();
   await runner.addJob(
-    studioJobTaskIdentifier,
+    input.executionLane === 'privileged'
+      ? privilegedStudioJobTaskIdentifier
+      : studioJobTaskIdentifier,
     {
       instanceId: input.instanceId,
       jobId: input.jobId,
@@ -106,6 +126,13 @@ export const stopStudioJobWorker = async (): Promise<void> => {
   const runner = await runnerPromise;
   await runner.stop();
   runnerPromise = null;
+};
+
+export const stopPrivilegedStudioJobWorker = async (): Promise<void> => {
+  if (!privilegedRunnerPromise) return;
+  const runner = await privilegedRunnerPromise;
+  await runner.stop();
+  privilegedRunnerPromise = null;
 };
 
 export const stopPluginOperationWorker = stopStudioJobWorker;

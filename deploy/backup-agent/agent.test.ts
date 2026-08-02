@@ -2,27 +2,38 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   archiveSchemaCompatible,
+  backupDumpArgs,
   canonicalRequest,
   canonicalRestoreRequest,
   buildRuntimePrincipalReconciliationSql,
+  buildWasteRuntimePrincipalReconciliationSql,
+  deriveWasteDatabaseName,
+  deriveWasteInventoryTarget,
   controlKeysFor,
   extractAppliedGooseVersion,
   isHistoricalSchemaRestoreCompatible,
   isRestoreSqlLineSupported,
   minioAwsCompatibilityEnv,
+  parseWasteInventory,
   restoreControlKeysFor,
   runtimePrincipalProbeSql,
   restoreSchemaResetSql,
+  resolveDatabaseTarget,
   runCommand,
   safeErrorCode,
   targets,
   validateRuntimePrincipalProbe,
   validateOidcClaims,
   validateDatabasePostchecks,
+  validateWasteDatabasePostchecks,
   validRequest,
   validRestoreRequest,
   validRequestHost,
+  validTenantInstanceId,
   waitForSessionDrain,
+  wasteArchiveSchemaCompatible,
+  wasteRestoreSchemaResetSql,
+  wasteRuntimePrincipalProbeSql,
 } from './agent.mjs';
 
 const request = {
@@ -116,6 +127,20 @@ describe('backup agent runtime contract', () => {
         'restore-and-verify-v1'
       )
     ).toThrow('oidc_workflow_invalid');
+    process.env.RESTORE_AGENT_ALLOWED_WORKFLOWS =
+      'database-restore.yml,waste-database-restore-drill.yml';
+    expect(() =>
+      validateOidcClaims(
+        {
+          ...claims,
+          workflow_ref:
+            'smart-village-solutions/sva-studio/.github/workflows/waste-database-restore-drill.yml@refs/heads/main',
+        },
+        'staging',
+        1_000,
+        'restore-and-verify-v1'
+      )
+    ).not.toThrow();
   });
   it('accepts only short-lived requests', () => {
     expect(validRequest(request, Date.parse('2026-07-30T10:00:00.000Z'))).toBe(true);
@@ -127,16 +152,28 @@ describe('backup agent runtime contract', () => {
     ).toBe(false);
   });
 
-  it('requires production maintenance evidence', () => {
+  it('accepts production backups without maintenance evidence', () => {
     expect(
       validRequest({ ...request, environment: 'prod' }, Date.parse('2026-07-30T10:00:00.000Z'))
     ).toBe(false);
+    expect(
+      validRequest(
+        { ...request, version: 2, environment: 'prod' },
+        Date.parse('2026-07-30T10:00:00.000Z')
+      )
+    ).toBe(true);
     expect(
       validRequest(
         { ...request, environment: 'prod', maintenanceWindowReference: 'CAB-42' },
         Date.parse('2026-07-30T10:00:00.000Z')
       )
     ).toBe(true);
+    expect(
+      validRequest(
+        { ...request, version: 2, environment: 'prod', maintenanceWindowReference: 'CAB-42' },
+        Date.parse('2026-07-30T10:00:00.000Z')
+      )
+    ).toBe(false);
   });
 
   it('canonicalizes requests without accepting target overrides', () => {
@@ -148,6 +185,53 @@ describe('backup agent runtime contract', () => {
         Date.parse('2026-07-30T10:00:00.000Z')
       )
     ).toBe(false);
+  });
+
+  it('accepts only allowlisted database targets while preserving the legacy studio signature', () => {
+    const now = Date.parse('2026-07-30T10:00:00.000Z');
+    expect(validRequest({ ...request, database: 'waste' }, now)).toBe(true);
+    expect(validRequest({ ...request, database: 'other' }, now)).toBe(false);
+    expect(canonicalRequest(request)).not.toContain('database');
+    expect(canonicalRequest({ ...request, database: 'waste' })).toContain('"database":"waste"');
+    expect(
+      validRequest({ ...request, database: 'waste', tenantInstanceId: 'bb-prignitz' }, now)
+    ).toBe(true);
+    expect(
+      validRequest({ ...request, tenantInstanceId: 'bb-prignitz' }, now)
+    ).toBe(false);
+  });
+
+  it('derives dynamic Waste targets only from validated central inventory', () => {
+    const inventory = { instanceId: 'bb-prignitz', databaseName: 'sva_w_bb_prignitz_4fc528d5be47_db', status: 'ready' };
+    const backup = deriveWasteInventoryTarget('prod', inventory);
+    const restore = deriveWasteInventoryTarget('prod', inventory, 'restore');
+    expect(backup).toMatchObject({
+      tenantInstanceId: 'bb-prignitz',
+      postgresDatabase: inventory.databaseName,
+      schemaOwner: 'sva_w_bb_prignitz_4fc528d5be47_owner',
+      runtimeUser: 'sva_w_bb_prignitz_4fc528d5be47_app',
+      publicRuntimeUser: 'sva_w_bb_prignitz_4fc528d5be47_public',
+      prefix: 'prod/waste/bb-prignitz',
+    });
+    expect(restore.postgresDatabase).toBe(`${inventory.databaseName}_restore`);
+    expect(validTenantInstanceId('bb-prignitz')).toBe(true);
+    expect(validTenantInstanceId('../bb-prignitz')).toBe(false);
+    expect(deriveWasteDatabaseName('bb-prignitz')).toBe(inventory.databaseName);
+    expect(() => deriveWasteInventoryTarget('prod', { ...inventory, databaseName: 'foreign' })).toThrow(
+      'waste_inventory_target_invalid'
+    );
+  });
+
+  it('rejects malformed or non-retained Waste inventory rows', () => {
+    expect(parseWasteInventory(JSON.stringify([
+      { instanceId: 'bb-prignitz', databaseName: 'sva_w_bb_prignitz_4fc528d5be47_db', status: 'disabled' },
+    ]))).toHaveLength(1);
+    expect(() => parseWasteInventory(JSON.stringify([
+      { instanceId: 'bb-prignitz', databaseName: 'postgres', status: 'ready' },
+    ]))).toThrow('waste_inventory_invalid');
+    expect(() => parseWasteInventory(JSON.stringify([
+      { instanceId: 'bb-prignitz', databaseName: 'sva_w_bb_prignitz_4fc528d5be47_db', status: 'failed' },
+    ]))).toThrow('waste_inventory_invalid');
   });
 
   it('accepts only the dedicated host of the requested environment', () => {
@@ -165,6 +249,41 @@ describe('backup agent runtime contract', () => {
     expect(targets.staging.runtimeUser).toBe('sva_app');
     expect(targets.prod.schemaOwner).toBe('sva');
     expect(targets.prod.runtimeUser).toBe('sva_app');
+  });
+
+  it('rejects static Waste targets so they can only come from central inventory', () => {
+    expect(() => resolveDatabaseTarget('prod', 'waste')).toThrow('database_target_invalid');
+    const target = deriveWasteInventoryTarget('prod', {
+      instanceId: 'bb-prignitz',
+      databaseName: 'sva_w_bb_prignitz_4fc528d5be47_db',
+      status: 'ready',
+    });
+    expect(target).toMatchObject({
+      database: 'waste',
+      postgresDatabase: 'sva_w_bb_prignitz_4fc528d5be47_db',
+      postgresUser: 'sva_waste_provisioner',
+      postgresPasswordFile: 'BACKUP_PROD_WASTE_PROVISIONER_PASSWORD_FILE',
+      restorePasswordFile: 'BACKUP_PROD_WASTE_PROVISIONER_PASSWORD_FILE',
+      prefix: 'prod/waste/bb-prignitz',
+      schemaOwner: 'sva_w_bb_prignitz_4fc528d5be47_owner',
+      runtimeUser: 'sva_w_bb_prignitz_4fc528d5be47_app',
+      publicRuntimeUser: 'sva_w_bb_prignitz_4fc528d5be47_public',
+    });
+    expect(() => resolveDatabaseTarget('prod', 'attacker')).toThrow('database_target_invalid');
+  });
+
+  it('dumps Waste through the NOLOGIN owner role without changing Studio dump arguments', () => {
+    const wasteArgs = backupDumpArgs(deriveWasteInventoryTarget('prod', {
+      instanceId: 'bb-prignitz',
+      databaseName: 'sva_w_bb_prignitz_4fc528d5be47_db',
+      status: 'ready',
+    }), '/tmp/waste.dump');
+    const studioArgs = backupDumpArgs(resolveDatabaseTarget('prod', 'studio'), '/tmp/studio.dump');
+    expect(wasteArgs).toContain('sva_w_bb_prignitz_4fc528d5be47_db');
+    expect(wasteArgs).toContain('sva_waste_provisioner');
+    expect(wasteArgs).toContain('sva_w_bb_prignitz_4fc528d5be47_owner');
+    expect(wasteArgs).toContain('--role');
+    expect(studioArgs).not.toContain('--role');
   });
 
   it('builds a static restore reconciliation for the allowlisted runtime principal', () => {
@@ -188,6 +307,46 @@ describe('backup agent runtime contract', () => {
     expect(sql).not.toContain('PASSWORD');
   });
 
+  it('builds tenant-bound Waste runtime grants and privilege probes', () => {
+    const target = deriveWasteInventoryTarget('prod', {
+      instanceId: 'bb-prignitz',
+      databaseName: 'sva_w_bb_prignitz_4fc528d5be47_db',
+      status: 'ready',
+    });
+    const sql = buildWasteRuntimePrincipalReconciliationSql(target);
+    const probe = wasteRuntimePrincipalProbeSql(target);
+
+    expect(sql).toContain('SET ROLE "sva_w_bb_prignitz_4fc528d5be47_owner";');
+    expect(sql).toContain('GRANT CONNECT ON DATABASE "sva_w_bb_prignitz_4fc528d5be47_db"');
+    expect(sql).toContain('public.waste_email_reminder_outbox');
+    expect(sql).not.toContain('PASSWORD');
+    expect(probe).toContain("'sva_w_bb_prignitz_4fc528d5be47_app'");
+    expect(probe).toContain("'sva_w_bb_prignitz_4fc528d5be47_public'");
+    expect(probe).toContain("'publicRuntimeReminderWrites'");
+  });
+
+  it('uses a Waste-only schema reset and validates representative restore postchecks', () => {
+    expect(wasteRestoreSchemaResetSql('sva_waste_owner')).toBe(
+      'SET ROLE "sva_waste_owner"; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public AUTHORIZATION "sva_waste_owner";'
+    );
+    expect(() =>
+      validateWasteDatabasePostchecks({ requiredTables: '18', regionsTable: 't', toursTable: 't' })
+    ).not.toThrow();
+    expect(() =>
+      validateWasteDatabasePostchecks({ requiredTables: '2', regionsTable: 't', toursTable: 't' })
+    ).toThrow('database_postcheck_failed');
+  });
+
+  it('accepts only archives with the representative Waste schema', () => {
+    const listing = [
+      'TABLE public waste_regions',
+      'TABLE public waste_collection_locations',
+      'TABLE public waste_tours',
+    ].join('\n');
+    expect(wasteArchiveSchemaCompatible(listing)).toBe(true);
+    expect(wasteArchiveSchemaCompatible('TABLE public waste_regions')).toBe(false);
+  });
+
   it('rejects target identities outside the internal restore allowlist', () => {
     expect(() =>
       buildRuntimePrincipalReconciliationSql({
@@ -209,8 +368,8 @@ describe('backup agent runtime contract', () => {
       expect(sql).toContain(`has_sequence_privilege(${principal}, sequence.oid, 'SELECT')`);
     }
     expect(sql).not.toContain("'USAGE,SELECT'");
-    expect(sql.match(/\n    false\n/gmu)).toHaveLength(2);
-    expect(sql.match(/\n    true\n/gmu)).toHaveLength(2);
+    expect(sql.match(/\n {4}false\n/gmu)).toHaveLength(2);
+    expect(sql.match(/\n {4}true\n/gmu)).toHaveLength(2);
   });
 
   it('uses persistent MinIO control keys for replay and terminal evidence', () => {
@@ -232,6 +391,17 @@ describe('backup agent runtime contract', () => {
       sourceSha256: 'b'.repeat(64),
     } as const;
     expect(validRestoreRequest(restore, Date.parse('2026-07-30T10:00:00.000Z'))).toBe(true);
+    expect(
+      validRestoreRequest(
+        {
+          ...restore,
+          database: 'waste',
+          tenantInstanceId: 'bb-prignitz',
+          sourceObjectKey: `staging/waste/bb-prignitz/2026-07-30/${'a'.repeat(64)}/backup.dump`,
+        },
+        Date.parse('2026-07-30T10:00:00.000Z')
+      )
+    ).toBe(true);
     expect(
       validRestoreRequest(
         { ...restore, sourceObjectKey: 'prod/backup.dump' },

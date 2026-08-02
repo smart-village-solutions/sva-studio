@@ -34,7 +34,7 @@ gleichzeitig beeinflussen.
 
 - Die PDF-Erzeugung für Waste folgt keinem browserseitigen Renderpfad; Dokumentmodell, Terminauflösung und PDF-Rendering bleiben vollständig serverseitig.
 - Das Studio pflegt nur statische PDF-Stamminhalte wie Branding oder Kontakttexte und erzeugt selbst keine PDFs mehr.
-- Die führende Persistenz für diese PDF-Stamminhalte liegt im Waste-Schema der angebundenen Supabase-DB; ältere Werte aus `iam.instance_external_interfaces.public_config` dienen nur noch als Legacy-Fallback.
+- Die führende Persistenz für diese PDF-Stamminhalte liegt im tenantbezogenen PostgreSQL-Waste-Schema; ältere Werte aus `iam.instance_external_interfaces.public_config` dienen nur noch als Legacy-Fallback.
 - Die öffentliche Web-App löst den PDF-Export ad hoc für den vollständig aufgelösten Standort, das gewählte Jahr und die gewählten Fraktionen aus.
 - Persistente Waste-PDF-Artefakte, deterministische Storage-Schlüssel und wiederverwendbare Delivery-Links sind kein Teil des Zielbilds.
 
@@ -256,10 +256,10 @@ gleichzeitig beeinflussen.
 - Hostgeführte Bulk-Actions fuer Content reusen denselben Audit-/Mutation-Backbone: der Host protokolliert nur sichere Metadaten wie Resource-ID, Action-ID, Selection-Mode, Counts und Sort-/Filter-Scope, waehrend die fachliche Mutation und serverseitige Audit-Persistenz in den bestehenden Content-Endpunkten bleibt
 - Lokale Incident-Recovery-Deploys erzeugen strukturierte Evidenz unter `artifacts/runtime/deployments/`; enthalten sind Release-Modus, Actor, Workflow, Image-Referenz, Schrittstatus und Stack-Zusammenfassung, jedoch keine Secrets oder PII
 - Reguläre Promotes erzeugen in GitHub Actions eigenständige redigierte Artefakte für Imagevertrag, Phasenstatus, Backup, Migration, Bootstrap, Jobstatus, Postconditions, Runtime-Smoke und Digest-Prüfung
-- Für alle regulären Studio-Rollouts sind GitHub Actions `Build` und `Promote` der kanonische Kanal gemäß [kanonischem Studio-Rollout](../guides/studio-rollout-process.md): Dev folgt automatisch auf `main`, Staging und Production laufen manuell über ihre geschützten GitHub-Environments. Ein revisionsfähiger nicht-sensitiver Wartungsfenster-Verweis ist bei Staging-`migration_mode=run` sowie bei jedem Production-`run` Pflicht; der Workflow bindet Git-Base/-Head, ausgecheckten Executor-Code sowie einen zu Digest aufgelösten und per OCI-Revision attestierten Image-Ref vor jeder Mutation.
+- Für alle regulären Studio-Rollouts sind GitHub Actions `Build` und `Promote` der kanonische Kanal gemäß [kanonischem Studio-Rollout](../guides/studio-rollout-process.md): Dev folgt automatisch auf `main`, Staging und Production laufen manuell über ihre geschützten GitHub-Environments. Der Workflow bindet Git-Base/-Head, ausgecheckten Executor-Code sowie einen zu Digest aufgelösten und per OCI-Revision attestierten Image-Ref vor jeder Mutation; ein Wartungsfenster-Verweis ist nicht erforderlich.
 - Der automatische Main-zu-Dev-Promote nutzt `migration_mode=auto` und `bootstrap_mode=auto`: Der Commit-Diff entscheidet je One-shot-Job, ob er nötig ist. Ein erforderlicher Job muss mit vollständiger Erfolgsevidenz enden, bevor `studio-dev` auf das neue Image aktualisiert wird; ohne Risiko wird der jeweilige Job nicht ausgeführt. Der Modus ist für Staging und Production nicht zulässig.
 - One-shot-Evidenz enthält nur redigierte Job-/Task-ID, Terminalzustand, Exit-Code, Dauer, Cleanup und Recovery-Hinweis. `.env`, `APP_CONFIG`, Tokens, vollständige Remote-Logs, SQL-Fehler mit sensitiven Daten und PII bleiben ausgeschlossen. Bei Migration, Bootstrap, Postcondition oder Verifikation wird vor dem App-Deploy fail-closed abgebrochen; automatisches Datenbank-Rollback ist ausgeschlossen.
-- Production-One-shots benötigen ein nicht-sensitives revisionsfähiges Wartungsfenster, ein erfolgreiches Artifact eines abgeschlossenen mutierenden Staging-Pfads für exakt dasselbe Digest sowie ein erfolgreiches Backup vor der ersten Mutation. Das Backup bleibt im umgebungsgetrennten MinIO-Bucket; die Evidenz enthält ausschließlich Bucket, Objektpfad, Task-ID und Ergebnis. Zugangsdaten, Dumps und unredigierte Logs bleiben ausgeschlossen.
+- Production-One-shots benötigen ein erfolgreiches Artifact eines abgeschlossenen mutierenden Staging-Pfads für exakt dasselbe Digest sowie ein erfolgreiches Backup vor der ersten Mutation. Das Backup bleibt im umgebungsgetrennten MinIO-Bucket; die Evidenz enthält ausschließlich Bucket, Objektpfad, Task-ID und Ergebnis. Zugangsdaten, Dumps und unredigierte Logs bleiben ausgeschlossen.
 - Remote-Prechecks für `studio` vergleichen zusätzlich die Live-Service-Spec der App mit dem gerenderten Sollzustand aus dem Deploy-Compose; dabei sind Netzwerke und ingressrelevante Labels eigene Drift-Signale
 
 ### Routing-Observability-Vertrag
@@ -287,7 +287,7 @@ gleichzeitig beeinflussen.
 - `studio-dev`, `studio-staging` und `studio` verwenden denselben verbindlichen Deploypfad über ein einmal gebautes, verifiziertes Image-Digest
 - Der einzige Main-Workflow `Build` führt `verify:runtime-artifact` aus, baut genau ein App-Image für `linux/amd64` und übergibt dessen Digest an Dev; `pnpm test:release:studio` ist nur eine lokale vollständige Vorprüfung
 - Der produktionsnahe Releasevertrag klassifiziert Fehler verbindlich in `config`, `image`, `migration`, `bootstrap`, `startup`, `health`, `ingress` und `dependency`; spätere Phasen dürfen frühere Resultate nicht überschreiben
-- Die Promote-Modi `run` arbeiten fail-closed: Ohne die umgebungsabhängig vorgeschriebene Wartungsfenster-Referenz startet keine Mutation
+- Die Promote-Modi `run` arbeiten fail-closed: Ohne Environment-Freigabe, erforderliche Staging-Parität, erfolgreiches Backup und bestandene Postconditions startet kein App-Deploy
 - Die Promote-Modi `run` arbeiten zusätzlich fail-closed auf Basis dedizierter Swarm-Jobs: Ohne erfolgreiches Backup, erfolgreichen Exit-Code von `migrate` und `bootstrap`, Post-Migration-Assertions und Schema-Guard startet kein App-Rollout
 - Reguläre Studio-Releases arbeiten fail-closed auf dem vom Build erzeugten beziehungsweise in Staging aufgelösten `SVA_IMAGE_DIGEST`; Production akzeptiert nur einen expliziten Digest
 - Production-Parität erfordert für mutierende Läufe erfolgreiche mutierende Staging-Evidenz exakt desselben Digests; lokale Root-/Tenant-/OIDC-Smokes sind nur zusätzliche Recovery-Evidenz
@@ -619,7 +619,11 @@ Restore-Dumps werden bewusst ohne Owner- und Privilegübernahme behandelt. Desha
 
 Nach Mutationsbeginn gibt es keinen automatischen Retry und keinen automatischen Gegenrestore. Jeder weitere Versuch benötigt eine neue GitHub-Environment-Freigabe und Request-ID. Fehlende DB-, Health- oder Tenant-Nachweise halten die App fail-closed stillgelegt. Keycloak gehört nicht zur Datenbankmutation; IAM-Drift bleibt Aufgabe der vorhandenen Reconcile-Verträge.
 
-## Partielle Mainserver-Snapshots
+### Ergänzung 2026-08: Waste-Datenbankgrenze
+
+Waste-Fachdaten werden in einer eigenen Datenbank pro Studio-Instanz und nicht in der Governance-Datenbank `sva_studio` gespeichert. Datenbank und Rollen werden kollisionssicher aus der kanonischen Instanzidentität abgeleitet. Die External-Interface-Registry schützt alle Verbindungs-URLs als tenantgebundene Secrets; Owner, Migration, Studio-Runtime und öffentliche Runtime bleiben getrennt. Die normale App besitzt keine `CREATEDB`-/`CREATEROLE`-Rechte. Backups, Restore-Drills und der einmalige Offline-Cutover behandeln jede registrierte Tenant-Datenbank als eigene Sicherungs- und Wiederherstellungseinheit.
+
+### Partielle Mainserver-Snapshots
 
 - `pagination.total` bezeichnet weiterhin die lokal verfügbare Trefferzahl. Bei partiellen Snapshots erlaubt dieser Wert die Navigation zwischen bereits materialisierten lokalen Seiten, ohne eine endgültige Gesamtseitenzahl oder weitere, noch nicht materialisierte Seiten zu behaupten. `totalCount` existiert nur bei einem vollständigen Snapshot; `isTotalFinal` macht die Semantik explizit.
 - `payload_json` ist für Mainserver-Projektionszeilen immer `{}`. Detailfragmente, Medien, Adressen und Content-Blöcke werden weder geladen noch für Listenfilterung vorausgesetzt.

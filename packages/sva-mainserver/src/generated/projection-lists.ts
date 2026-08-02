@@ -4,7 +4,7 @@ const provider = `dataProvider { id name }`;
 export const svaMainserverNewsProjectionListDocument = /* GraphQL */ `
   query SvaMainserverNewsProjectionList($limit: Int, $skip: Int, $order: NewsItemsOrder) {
     newsItems(limit: $limit, skip: $skip, order: $order) {
-      id title author createdAt updatedAt publicationDate publishedAt visible ${provider}
+      id title contentBlocks { title } author createdAt updatedAt publicationDate publishedAt visible ${provider}
     }
   }
 `;

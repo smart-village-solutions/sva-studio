@@ -2,6 +2,9 @@ import { createSdkLogger, toJsonErrorResponse, withRequestContext } from '@sva/s
 import {
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
+  loadWasteTenantProvisioningRecord,
+  requestWasteTenantProvisioning,
+  failWasteTenantProvisioningRequest,
   saveExternalInterfaceConnectionCheck,
   saveExternalInterfaceRecord,
 } from '@sva/data-repositories/server';
@@ -40,6 +43,9 @@ export const withAuthenticatedWasteManagementHandler = (
 export const sharedWasteManagementDeps = {
   loadDefaultInterfaceRecord: loadDefaultExternalInterfaceRecord,
   listInterfaceRecords: listExternalInterfaceRecords,
+  loadWasteTenantProvisioning: loadWasteTenantProvisioningRecord,
+  requestWasteTenantProvisioning,
+  failWasteTenantProvisioningRequest,
   saveExternalInterfaceRecord,
   saveExternalInterfaceConnectionCheck,
   protectSecret: protectField,

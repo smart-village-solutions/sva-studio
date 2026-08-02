@@ -6,27 +6,27 @@ const createNewsLocaleTranslations = <TNews extends Readonly<Record<string, unkn
 
 const newsTranslationsDe = createNewsLocaleTranslations({
   navigation: {
-    title: 'News',
+    title: 'Nachrichten',
   },
   list: {
-    title: 'News',
-    description: 'Verwalten Sie News-Einträge über das Plugin.',
+    title: 'Nachrichten',
+    description: 'Verwalten Sie Nachrichten über das Plugin.',
   },
   editor: {
-    createTitle: 'News-Eintrag anlegen',
-    createDescription: 'Erstellen Sie einen neuen News-Eintrag.',
-    editTitle: 'News-Eintrag bearbeiten',
-    editDescription: 'Aktualisieren oder löschen Sie den News-Eintrag.',
+    createTitle: 'Nachricht anlegen',
+    createDescription: 'Erstellen Sie eine neue Nachricht.',
+    editTitle: 'Nachricht bearbeiten',
+    editDescription: 'Aktualisieren oder löschen Sie die Nachricht.',
   },
   fields: {
-    title: 'Titel',
-    headline: 'Headline',
+    title: 'Überschrift',
+    headline: 'Überschrift',
     author: 'Autor',
     status: 'Status',
     createdAt: 'Erstellt am',
     keywords: 'Schlagwörter',
     externalId: 'Externe ID',
-    newsType: 'News-Typ',
+    newsType: 'Nachrichtentyp',
     fullVersion: 'Vollversion',
     charactersToBeShown: 'Zeichenbegrenzung',
     publishedAt: 'Veröffentlichungsdatum',
@@ -40,7 +40,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     sourceUrl: 'Quell-URL',
     sourceUrlDescription: 'Quellbeschreibung',
     description: 'Beschreibung',
-    contentTeaser: 'Teaser',
+    contentTeaser: 'Einleitung',
     contentBody: 'Inhalt',
     publicationMode: 'Veröffentlichungsmodus',
     scheduledPublicationAt: 'Zeitpunkt der Veröffentlichung',
@@ -82,12 +82,12 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     basis: {
       label: 'Basis',
       title: 'Basisdaten',
-      description: 'Titel, Kategorien, Autor und redaktionelle Metadaten des News-Eintrags.',
+      description: 'Überschrift, Kategorien, Autor und redaktionelle Metadaten der Nachricht.',
     },
     content: {
       label: 'Inhalte',
       title: 'Inhalte',
-      description: 'Textinhalt, Medien und Quelle der News.',
+      description: 'Textinhalt, Medien und Quelle der Nachricht.',
     },
     settings: {
       label: 'Einstellungen',
@@ -97,24 +97,25 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     history: {
       label: 'Historie',
       title: 'Historie',
-      description: 'Nachvollziehbare Änderungen und Statuswechsel dieses News-Eintrags.',
+      description: 'Nachvollziehbare Änderungen und Statuswechsel dieser Nachricht.',
     },
   },
   cards: {
     basis: {
       titleCategories: {
-        title: 'Titel & Kategorien',
-        description: 'Pflegen Sie den redaktionellen Titel und ordnen Sie passende Kategorien zu.',
+        title: 'Überschrift & Kategorien',
+        description:
+          'Pflegen Sie die redaktionelle Überschrift und ordnen Sie passende Kategorien zu.',
       },
       authorMeta: {
         title: 'Autor & Metadaten',
-        description: 'Autorenschaft und zeitliche Einordnung dieses News-Eintrags.',
+        description: 'Autorenschaft und zeitliche Einordnung dieser Nachricht.',
       },
     },
     content: {
       text: {
         title: 'Textinhalt',
-        description: 'Headline, Teaser und Hauptinhalt der News.',
+        description: 'Überschrift, Einleitung und Hauptinhalt der Nachricht.',
       },
       media: {
         title: 'Medien',
@@ -130,18 +131,20 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     settings: {
       push: {
         title: 'Push-Benachrichtigungen',
-        description: 'Push kann pro News genau einmal ausgelöst werden.',
-        toggleHint: 'Beim Speichern einer veröffentlichten News wird die Push-Benachrichtigung versendet.',
+        description: 'Push kann pro Nachricht genau einmal ausgelöst werden.',
+        toggleHint:
+          'Beim Speichern einer veröffentlichten Nachricht wird die Push-Benachrichtigung versendet.',
       },
       publication: {
         title: 'Veröffentlichung',
-        description: 'Führen Sie die Redaktion durch Entwurf, Sofort-Veröffentlichung oder Zeitsteuerung.',
+        description:
+          'Führen Sie die Redaktion durch Entwurf, Sofort-Veröffentlichung oder Zeitsteuerung.',
         scheduleHint: 'Der Zeitpunkt kann in der Vergangenheit oder Zukunft liegen.',
       },
     },
     history: {
       title: 'Historie',
-      description: 'Alle nachvollziehbaren Änderungen dieses News-Eintrags.',
+      description: 'Alle nachvollziehbaren Änderungen dieser Nachricht.',
     },
   },
   history: {
@@ -150,7 +153,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     empty: 'Noch keine Historie vorhanden.',
     emptySummary: 'Keine zusätzliche Zusammenfassung vorhanden.',
     changedFields: 'Geänderte Felder: {{fields}}',
-    tableLabel: 'Historie der News',
+    tableLabel: 'Historie der Nachricht',
     columns: {
       time: 'Zeitpunkt',
       action: 'Aktion',
@@ -164,7 +167,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     },
     errors: {
       forbidden: 'Die Historie darf nicht angezeigt werden.',
-      notFound: 'Für diesen News-Eintrag wurde keine Historie gefunden.',
+      notFound: 'Für diese Nachricht wurde keine Historie gefunden.',
       load: 'Die Historie konnte nicht geladen werden.',
     },
   },
@@ -203,15 +206,16 @@ const newsTranslationsDe = createNewsLocaleTranslations({
   publicationModes: {
     draft: {
       label: 'Entwurf',
-      description: 'Die News bleibt im Studio sichtbar, aber außerhalb unsichtbar.',
+      description: 'Die Nachricht bleibt im Studio sichtbar, aber außerhalb unsichtbar.',
     },
     immediate: {
       label: 'Sofort veröffentlichen',
-      description: 'Die News wird direkt sichtbar veröffentlicht.',
+      description: 'Die Nachricht wird direkt sichtbar veröffentlicht.',
     },
     scheduled: {
       label: 'Zeitgesteuert',
-      description: 'Die News wird mit einem frei wählbaren Veröffentlichungszeitpunkt gespeichert.',
+      description:
+        'Die Nachricht wird mit einem frei wählbaren Veröffentlichungszeitpunkt gespeichert.',
     },
   },
   release: {
@@ -236,7 +240,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     applyLink: 'Link setzen',
   },
   actions: {
-    create: 'News anlegen',
+    create: 'Nachricht anlegen',
     update: 'Änderungen speichern',
     save: 'Speichern',
     back: 'Zurück zur Liste',
@@ -251,29 +255,29 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     removeImage: 'Medium entfernen',
     remove: 'Entfernen',
     removeCategory: 'Kategorie {{name}} entfernen',
-    deleteConfirm: 'Soll dieser News-Eintrag wirklich gelöscht werden?',
+    deleteConfirm: 'Soll diese Nachricht wirklich gelöscht werden?',
   },
   empty: {
-    title: 'Noch keine News vorhanden',
-    description: 'Legen Sie den ersten News-Eintrag an.',
+    title: 'Noch keine Nachrichten vorhanden',
+    description: 'Legen Sie die erste Nachricht an.',
   },
   pagination: {
-    ariaLabel: 'News-Pagination',
+    ariaLabel: 'Nachrichten-Pagination',
     previous: 'Zurück',
     next: 'Weiter',
     pageLabel: 'Seite {{page}}',
   },
   messages: {
-    loading: 'News werden geladen.',
-    loadError: 'News konnten nicht geladen werden.',
-    missingContent: 'Der angeforderte News-Eintrag konnte nicht geladen werden.',
-    saveError: 'News konnten nicht gespeichert werden.',
+    loading: 'Nachrichten werden geladen.',
+    loadError: 'Nachrichten konnten nicht geladen werden.',
+    missingContent: 'Die angeforderte Nachricht konnte nicht geladen werden.',
+    saveError: 'Die Nachricht konnte nicht gespeichert werden.',
     validationError: 'Bitte korrigieren Sie die markierten Felder.',
     validationSummary: 'Bitte prüfen Sie die folgenden Felder:',
-    createSuccess: 'News-Eintrag wurde erstellt.',
-    updateSuccess: 'News-Eintrag wurde aktualisiert.',
-    deleteSuccess: 'News-Eintrag wurde gelöscht.',
-    deleteError: 'News-Eintrag konnte nicht gelöscht werden.',
+    createSuccess: 'Die Nachricht wurde erstellt.',
+    updateSuccess: 'Die Nachricht wurde aktualisiert.',
+    deleteSuccess: 'Die Nachricht wurde gelöscht.',
+    deleteError: 'Die Nachricht konnte nicht gelöscht werden.',
     categoryOptionsLoading: 'Kategorien werden geladen.',
     categoryOptionsLoadError: 'Die Kategorien konnten nicht geladen werden.',
     imagePickerEmpty: 'Keine passenden Medien gefunden.',
@@ -283,17 +287,21 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     mediaUploadSuccess: 'Medium wurde hinzugefügt.',
     mediaUploadError: 'Medium konnte nicht hochgeladen werden.',
     mediaUploadUnsupportedType: 'Nur JPG-, PNG- und WebP-Bilder werden unterstützt.',
-    mediaUploadUnavailableUrl: 'Das gewählte Medium hat keine öffentliche URL und kann nicht verwendet werden.',
+    mediaUploadUnavailableUrl:
+      'Das gewählte Medium hat keine öffentliche URL und kann nicht verwendet werden.',
     mediaPickerTitle: 'Medium hinzufügen',
-    mediaPickerDescription: 'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
+    mediaPickerDescription:
+      'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
     mediaPickerReviewMode: 'Prüfen',
     mediaPickerUploadRegionLabel: 'Bilddatei hochladen',
     mediaPickerUploadTitle: 'Neues Medium hochladen',
-    mediaPickerUploadDescription: 'Laden Sie ein Bild hoch und prüfen Sie danach die Metadaten vor der Übernahme.',
+    mediaPickerUploadDescription:
+      'Laden Sie ein Bild hoch und prüfen Sie danach die Metadaten vor der Übernahme.',
     mediaPickerSelectFile: 'Datei auswählen',
     mediaPickerUploadSupportLabel: 'Unterstützt werden JPG, PNG und WebP.',
     mediaPickerReviewTitle: 'Metadaten prüfen',
-    mediaPickerReviewDescription: 'Ergänzen Sie Titel, Alternativtext und weitere Metadaten, bevor das Medium übernommen wird.',
+    mediaPickerReviewDescription:
+      'Ergänzen Sie Titel, Alternativtext und weitere Metadaten, bevor das Medium übernommen wird.',
     mediaPickerAltText: 'Alternativtext',
     mediaPickerLicense: 'Lizenz',
     mediaPickerBackToLibrary: 'Zurück zur Mediathek',
@@ -302,30 +310,32 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     mediaPickerUseMedia: 'Medium übernehmen',
     mediaPickerAssetLoadError: 'Das Medium konnte nicht geladen werden.',
     mediaPickerMetadataSaveError: 'Die Metadaten konnten nicht gespeichert werden.',
-    unsavedTabChanges: 'Bitte speichern Sie die Änderungen im aktuellen Tab, bevor Sie den Bereich wechseln.',
+    unsavedTabChanges:
+      'Bitte speichern Sie die Änderungen im aktuellen Tab, bevor Sie den Bereich wechseln.',
     errors: {
       configNotFound: 'Für diese Instanz ist keine Mainserver-Konfiguration hinterlegt.',
       integrationDisabled: 'Die Mainserver-Integration ist für diese Instanz deaktiviert.',
-      invalidConfig: 'Die Mainserver-Konfiguration für News ist ungültig.',
+      invalidConfig: 'Die Mainserver-Konfiguration für Nachrichten ist ungültig.',
       missingCredentials: 'Mainserver-Credentials fehlen für diesen Benutzer.',
-      organizationMainserverCredentialsMissing: 'Für die aktive Organisation fehlen Mainserver-Credentials.',
+      organizationMainserverCredentialsMissing:
+        'Für die aktive Organisation fehlen Mainserver-Credentials.',
       tokenRequestFailed: 'Die Authentifizierung am Mainserver ist fehlgeschlagen.',
       unauthorized: 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',
-      forbidden: 'Für diese News-Operation fehlt die Berechtigung.',
-      graphqlError: 'Der Mainserver konnte die News-Operation nicht ausführen.',
-      invalidResponse: 'Der Mainserver hat eine unerwartete News-Antwort geliefert.',
-      invalidRequest: 'Die News-Daten sind unvollständig oder ungültig.',
+      forbidden: 'Für diese Nachrichten-Operation fehlt die Berechtigung.',
+      graphqlError: 'Der Mainserver konnte die Nachrichten-Operation nicht ausführen.',
+      invalidResponse: 'Der Mainserver hat eine unerwartete Nachrichten-Antwort geliefert.',
+      invalidRequest: 'Die Nachrichten-Daten sind unvollständig oder ungültig.',
       details: 'Details: {{message}}',
       csrfValidationFailed:
         'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
-      idempotencyKeyRequired: 'Die Sicherheitskennung für die News-Erstellung fehlt.',
-      idempotencyKeyReuse: 'Diese News-Erstellung wurde bereits verarbeitet.',
+      idempotencyKeyRequired: 'Die Sicherheitskennung für die Nachrichten-Erstellung fehlt.',
+      idempotencyKeyReuse: 'Diese Nachrichten-Erstellung wurde bereits verarbeitet.',
       missingInstance: 'Für diese Sitzung fehlt der Instanzkontext.',
       networkError: 'Der Mainserver ist aktuell nicht erreichbar.',
     },
   },
   validation: {
-    title: 'Der Titel ist erforderlich.',
+    title: 'Die Überschrift ist erforderlich.',
     publishedAt: 'Das Veröffentlichungsdatum ist erforderlich.',
     publicationDate: 'Das Publikationsdatum ist ungültig.',
     scheduledPublicationAt: 'Der geplante Veröffentlichungszeitpunkt ist ungültig.',
@@ -643,7 +653,8 @@ const newsTranslationsEn = createNewsLocaleTranslations({
       integrationDisabled: 'The Mainserver integration is disabled for this instance.',
       invalidConfig: 'The Mainserver configuration for news is invalid.',
       missingCredentials: 'Mainserver credentials are missing for this user.',
-      organizationMainserverCredentialsMissing: 'Mainserver credentials are missing for the active organization.',
+      organizationMainserverCredentialsMissing:
+        'Mainserver credentials are missing for the active organization.',
       tokenRequestFailed: 'Authentication with the Mainserver failed.',
       unauthorized: 'Your session is no longer valid. Please sign in again.',
       forbidden: 'You do not have permission for this news operation.',
@@ -651,8 +662,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
       invalidResponse: 'The Mainserver returned an unexpected news response.',
       invalidRequest: 'The news data is incomplete or invalid.',
       details: 'Details: {{message}}',
-      csrfValidationFailed:
-        'Security validation failed. Please reload the page and try again.',
+      csrfValidationFailed: 'Security validation failed. Please reload the page and try again.',
       idempotencyKeyRequired: 'The safety key for creating this news entry is missing.',
       idempotencyKeyReuse: 'This news creation request has already been processed.',
       missingInstance: 'This session has no instance context.',

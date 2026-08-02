@@ -2,16 +2,19 @@ import type {
   ExternalInterfaceRecord,
   ExternalInterfaceRuntimeErrorCode,
   WasteManagementDataSourceStatus,
+  WasteTenantProvisioningRecord,
 } from '@sva/core';
-import { ExternalInterfaceRuntimeError, resolveExternalInterface } from '../external-interfaces.server.js';
+import {
+  ExternalInterfaceRuntimeError,
+  resolveExternalInterface,
+} from '../external-interfaces.server.js';
 
 export type WasteRuntimeErrorCode =
   | 'not_configured'
   | 'disabled'
   | 'database_url_missing'
-  | 'service_role_key_missing'
   | 'database_url_unreadable'
-  | 'service_role_key_unreadable'
+  | 'provisioning_not_ready'
   | 'connection_failed';
 
 export class WasteRuntimeError extends Error {
@@ -35,12 +38,10 @@ export class WasteRuntimeError extends Error {
 
 export type ResolvedWasteDataSource = {
   readonly instanceId: string;
-  readonly provider: 'supabase';
-  readonly projectUrl: string;
+  readonly provider: 'postgresql';
   readonly schemaName: string;
   readonly enabled: boolean;
   readonly databaseUrl: string;
-  readonly serviceRoleKey: string;
   readonly visibleStatus: WasteManagementDataSourceStatus;
   readonly lastCheckedAt?: string;
   readonly lastCheckStatus?: ExternalInterfaceRecord['lastCheckStatus'];
@@ -52,14 +53,18 @@ const normalizeInterfaceWasteVisibleStatus = (
 
 export const resolveWasteDataSource = async (input: {
   readonly instanceId: string;
-  readonly loadDefaultInterface?: (instanceId: string, typeKey: string) => Promise<ExternalInterfaceRecord | null>;
+  readonly loadDefaultInterface?: (
+    instanceId: string,
+    typeKey: string
+  ) => Promise<ExternalInterfaceRecord | null>;
   readonly revealSecret: (ciphertext: string | null | undefined, aad: string) => string | undefined;
+  readonly loadProvisioning?: (instanceId: string) => Promise<WasteTenantProvisioningRecord | null>;
 }): Promise<ResolvedWasteDataSource> => {
   if (!input.loadDefaultInterface) {
     throw new WasteRuntimeError({
       code: 'not_configured',
       instanceId: input.instanceId,
-      message: 'Für diese Instanz ist keine Waste-Supabase-Schnittstelle konfiguriert.',
+      message: 'Für diese Instanz ist keine Waste-PostgreSQL-Schnittstelle konfiguriert.',
     });
   }
 
@@ -82,7 +87,7 @@ export const resolveWasteDataSource = async (input: {
   try {
     resolvedInterface = await resolveExternalInterface({
       instanceId: input.instanceId,
-      typeKey: 'supabase',
+      typeKey: 'postgresql',
       loadDefault: input.loadDefaultInterface,
       revealSecret: input.revealSecret,
     });
@@ -93,12 +98,24 @@ export const resolveWasteDataSource = async (input: {
         instanceId: input.instanceId,
         message:
           error.code === 'default_missing' || error.code === 'not_configured'
-            ? 'Für diese Instanz ist keine Waste-Supabase-Schnittstelle konfiguriert.'
+            ? 'Für diese Instanz ist keine Waste-PostgreSQL-Schnittstelle konfiguriert.'
             : error.message,
         retryable: error.retryable,
       });
     }
     throw error;
+  }
+
+  if (resolvedInterface.ownerKind === 'plugin') {
+    const provisioning = await input.loadProvisioning?.(input.instanceId);
+    if (!provisioning || provisioning.status !== 'ready') {
+      throw new WasteRuntimeError({
+        code: 'provisioning_not_ready',
+        instanceId: input.instanceId,
+        message: 'Die Waste-Datenbank ist für diese Instanz noch nicht betriebsbereit.',
+        retryable: provisioning?.status === 'failed',
+      });
+    }
   }
 
   const databaseUrl = resolvedInterface.secretConfig.databaseUrl?.trim();
@@ -109,20 +126,9 @@ export const resolveWasteDataSource = async (input: {
       message: 'Für diese Waste-Datenquelle fehlt die Datenbankverbindung.',
     });
   }
-  const serviceRoleKey = resolvedInterface.secretConfig.serviceRoleKey?.trim();
-  if (!serviceRoleKey) {
-    throw new WasteRuntimeError({
-      code: 'service_role_key_missing',
-      instanceId: input.instanceId,
-      message: 'Für diese Waste-Datenquelle fehlt der Service-Role-Schlüssel.',
-    });
-  }
-
   return {
     instanceId: resolvedInterface.instanceId,
-    provider: 'supabase',
-    projectUrl:
-      typeof resolvedInterface.publicConfig.projectUrl === 'string' ? resolvedInterface.publicConfig.projectUrl : '',
+    provider: 'postgresql',
     schemaName:
       typeof resolvedInterface.publicConfig.schemaName === 'string' &&
       resolvedInterface.publicConfig.schemaName.trim().length > 0
@@ -130,14 +136,14 @@ export const resolveWasteDataSource = async (input: {
         : 'public',
     enabled: resolvedInterface.enabled,
     databaseUrl,
-    serviceRoleKey,
     visibleStatus: normalizeInterfaceWasteVisibleStatus(resolvedInterface.visibleStatus),
     lastCheckedAt: resolvedInterface.lastCheckedAt,
     lastCheckStatus: resolvedInterface.lastCheckStatus,
   };
 };
 
-const asIsoTimestamp = (now: Date | string): string => (typeof now === 'string' ? now : now.toISOString());
+const asIsoTimestamp = (now: Date | string): string =>
+  typeof now === 'string' ? now : now.toISOString();
 
 export const runWasteConnectionCheck = async (input: {
   readonly dataSource: ResolvedWasteDataSource;
@@ -167,10 +173,10 @@ export const runWasteConnectionCheck = async (input: {
     const mapped =
       error instanceof WasteRuntimeError
         ? { code: error.code, message: error.message }
-        : input.mapError?.(error) ?? {
+        : (input.mapError?.(error) ?? {
             code: 'connection_failed',
             message: error instanceof Error ? error.message : 'Connection-Check fehlgeschlagen.',
-          };
+          });
 
     return {
       instanceId: input.dataSource.instanceId,

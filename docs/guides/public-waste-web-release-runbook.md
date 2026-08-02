@@ -28,6 +28,14 @@ Diese Variablen werden im Portainer-Stack gepflegt:
 Wert darf nur für lokale Entwicklung oder Legacy-Kompatibilität bestehen
 bleiben.
 
+`PUBLIC_WASTE_DATABASE_URL` muss die vom Waste-Provisionierer für
+`PUBLIC_WASTE_INSTANCE_ID` abgeleitete Public-Runtime-Rolle und genau die
+zugehörige tenantbezogene Datenbank verwenden. `PUBLIC_WASTE_SCHEMA_NAME` ist
+fest `public`. Die Runtime lehnt abweichende Rollen, Datenbanken und Schemas
+beim Bootstrap fail-closed als `public_waste_config_invalid` ab; dadurch kann
+eine falsch zugeordnete Konfiguration keine Daten eines anderen Tenants
+freigeben.
+
 ## Voraussetzungen in GitHub
 
 Für den Releaseworkflow werden mindestens diese GitHub-Konfigurationen

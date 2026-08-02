@@ -4,7 +4,10 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { describe, expect, it } from 'vitest';
 
 import { EventsDetailBasisTab } from '../src/events.detail-basis-tab.js';
-import { createDefaultEventsDetailFormValues, type EventsDetailFormValues } from '../src/events.detail-form.js';
+import {
+  createDefaultEventsDetailFormValues,
+  type EventsDetailFormValues,
+} from '../src/events.detail-form.js';
 
 const pt = (key: string) =>
   ({
@@ -12,8 +15,6 @@ const pt = (key: string) =>
     'cards.basis.identity.description': 'Basisdaten',
     'cards.basis.recurrence.title': 'Serien-Logik',
     'cards.basis.recurrence.description': 'Wiederholung',
-    'cards.basis.relations.title': 'Verknüpfungen',
-    'cards.basis.relations.description': 'Verknüpfungen',
     'fields.title': 'Titel',
     'fields.categories': 'Kategorien',
     'fields.categoriesHelp': 'Mehrfachauswahl',
@@ -42,15 +43,9 @@ const pt = (key: string) =>
     'fields.recurringWeekdayShortOptions.friday': 'Fr',
     'fields.recurringWeekdayShortOptions.saturday': 'Sa',
     'fields.recurringWeekdayShortOptions.sunday': 'So',
-    'fields.pointOfInterestId': 'Zugehöriger POI',
-    'fields.pointOfInterestSearch': 'POI suchen',
-    'fields.pointOfInterestSearchPlaceholder': 'POI suchen oder auswählen',
     'actions.addCategory': 'Kategorie hinzufügen',
     'actions.removeCategory': 'Kategorie {{name}} entfernen',
-    'actions.clearPoiSelection': 'Auswahl löschen',
     'messages.categoryOptionsLoading': 'Kategorien werden geladen.',
-    'messages.poiOptionsLoading': 'POI werden geladen.',
-    'messages.poiOptionsEmpty': 'Keine passenden POI gefunden.',
   })[key] ?? key;
 
 function renderTab(defaultValues?: Partial<EventsDetailFormValues>) {
@@ -65,12 +60,13 @@ function renderTab(defaultValues?: Partial<EventsDetailFormValues>) {
     return (
       <FormProvider {...methods}>
         <EventsDetailBasisTab
-          availableCategories={[{ id: 'cat-1', name: 'Kultur' }, { id: 'cat-2', name: 'Open Air' }]}
-          availablePois={[{ id: 'poi-1', name: 'Rathaus' }]}
+          availableCategories={[
+            { id: 'cat-1', name: 'Kultur' },
+            { id: 'cat-2', name: 'Open Air' },
+          ]}
           categoryOptionsLoading={false}
           loadedItem={null}
           mode="create"
-          poiOptionsLoading={false}
           pt={pt}
         />
       </FormProvider>
@@ -81,6 +77,13 @@ function renderTab(defaultValues?: Partial<EventsDetailFormValues>) {
 }
 
 describe('EventsDetailBasisTab', () => {
+  it('does not render the removed POI relation fields', () => {
+    renderTab();
+
+    expect(screen.queryByText('Verknüpfungen')).toBeNull();
+    expect(screen.queryByLabelText('Zugehöriger POI')).toBeNull();
+  });
+
   it('shows recurrence controls only when repeating is enabled and weekdays only for weeks', () => {
     renderTab();
 

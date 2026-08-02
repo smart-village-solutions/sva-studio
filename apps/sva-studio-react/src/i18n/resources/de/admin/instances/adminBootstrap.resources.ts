@@ -15,9 +15,9 @@ export const adminBootstrapInstancesAdminDEResources = {
     'Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Der Setup-Schritt ist damit abgeschlossen.',
   modules: {
     categories: 'Kategorien',
-    news: 'News',
-    events: 'Events',
-    genericItems: 'Generic Items',
+    news: 'Nachrichten',
+    events: 'Veranstaltungen',
+    genericItems: 'Generische Inhalte',
     faq: 'FAQ',
     cockpitCards: 'Cockpit Cards',
     poi: 'POI',

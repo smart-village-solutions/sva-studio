@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { runtimeEnvDangerousOperations, runtimeEnvRemoteVerification, runtimeEnvSmokeWarmup } from './runtime-env.ts';
 import type { AcceptanceProbeResult } from './runtime-env.shared.ts';
-import { parseRuntimeCliOptions } from './runtime-env.shared.ts';
+import { parseRuntimeCliOptions, resolveAcceptanceDeployOptions } from './runtime-env.shared.ts';
 
 const {
   assertDangerousOperationApproved,
@@ -43,6 +43,22 @@ const {
   shouldRetryInternalVerifyAttempt,
   waitForRemoteSmokeWarmup,
 } = runtimeEnvSmokeWarmup;
+
+describe('acceptance deploy options', () => {
+  it('allows schema-and-app without a maintenance window', () => {
+    expect(resolveAcceptanceDeployOptions(
+      {
+        SVA_ACCEPTANCE_RELEASE_MODE: 'schema-and-app',
+        SVA_IMAGE_DIGEST: `sha256:${'a'.repeat(64)}`,
+      },
+      { jsonOutput: false },
+      'studio',
+    )).toMatchObject({
+      maintenanceWindow: undefined,
+      releaseMode: 'schema-and-app',
+    });
+  });
+});
 
 const createProbe = (overrides: Partial<AcceptanceProbeResult>): AcceptanceProbeResult => ({
   durationMs: 10,

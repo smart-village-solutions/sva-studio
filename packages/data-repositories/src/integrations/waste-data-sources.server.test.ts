@@ -22,14 +22,11 @@ vi.mock('pg', () => ({
 
 const record = {
   instanceId: 'tenant-a',
-  provider: 'supabase' as const,
-  projectUrl: 'https://tenant-a.supabase.co',
+  provider: 'postgresql' as const,
   schemaName: 'public',
   enabled: true,
   databaseUrlConfigured: true,
-  serviceRoleKeyConfigured: true,
   databaseUrlCiphertext: 'db-cipher',
-  serviceRoleKeyCiphertext: 'service-cipher',
   visibleStatus: 'ok' as const,
   lastCheckedAt: '2026-05-09T09:00:00.000Z',
   lastCheckStatus: 'succeeded' as const,
@@ -110,12 +107,12 @@ describe('waste data sources server', () => {
               rows: [
                 {
                   instance_id: 'tenant-a',
-                  provider_key: 'supabase',
-                  project_url: 'https://tenant-a.supabase.co',
+                  provider_key: 'postgresql',
+                  project_url: '',
                   schema_name: 'public',
                   enabled: true,
                   database_url_ciphertext: 'db-cipher',
-                  service_role_key_ciphertext: 'service-cipher',
+                  service_role_key_ciphertext: null,
                   visible_status: 'ok',
                   last_checked_at: '2026-05-09T09:00:00.000Z',
                   last_check_status: 'succeeded',

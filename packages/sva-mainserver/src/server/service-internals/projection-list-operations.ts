@@ -38,6 +38,21 @@ const mapProvider = (value: unknown): SvaMainserverProjectionListItem['dataProvi
   return id || name ? { ...(id ? { id } : {}), ...(name ? { name } : {}) } : undefined;
 };
 
+const firstContentBlockTitle = (value: unknown): string | undefined => {
+  if (!Array.isArray(value)) return undefined;
+  const firstBlock = value[0];
+  if (!firstBlock || typeof firstBlock !== 'object') return undefined;
+  return localizedTitle((firstBlock as RawItem).title);
+};
+
+const resolveTitle = (
+  source: RawItem,
+  contentType: SvaMainserverProjectionContentType,
+  titleField: 'title' | 'name'
+): string | undefined =>
+  localizedTitle(source[titleField]) ??
+  (contentType === 'news.article' ? firstContentBlockTitle(source.contentBlocks) : undefined);
+
 const mapItem = (
   value: unknown,
   contentType: SvaMainserverProjectionContentType,
@@ -49,7 +64,7 @@ const mapItem = (
   if (!id) return null;
   const createdAt = stringValue(source.createdAt) ?? stringValue(source.updatedAt) ?? new Date(0).toISOString();
   const updatedAt = stringValue(source.updatedAt) ?? createdAt;
-  const title = localizedTitle(source[titleField]) ?? id;
+  const title = resolveTitle(source, contentType, titleField) ?? id;
   const publication = stringValue(source.publishedAt) ?? stringValue(source.publicationDate);
   const provider = mapProvider(source.dataProvider);
   return {

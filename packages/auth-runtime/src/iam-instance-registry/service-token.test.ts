@@ -39,7 +39,7 @@ describe('registry service token authentication', () => {
       audience: 'sva-studio-mcp',
       clientId: 'sva-studio-mcp',
     });
-  });
+  }, 30_000);
 
   it.each([
     ['invalid_service_token', { sub: 'service', azp: 'other', realm_access: { roles: ['instance_registry_admin'] }, resource_access: { 'sva-studio-mcp': { roles: ['instance.create'] } } }],

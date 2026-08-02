@@ -4,7 +4,7 @@ import { wasteManagementMasterDataSchemas, wasteManagementSettingsSchemas } from
 
 describe('waste-management schemas', () => {
   const baseSettingsPayload = {
-    provider: 'supabase' as const,
+    provider: 'postgresql' as const,
     projectUrl: 'https://tenant.example.test',
     enabled: true,
     customRecurrencePresets: [],

@@ -82,20 +82,18 @@ SET
     ).toThrow(/Image-Digest/);
   });
 
-  it('requires a maintenance window for schema-and-app releases', () => {
-    expect(() =>
-      resolveAcceptanceDeployOptions(
-        {
-          GITHUB_ACTOR: 'gha',
-          GITHUB_WORKFLOW: 'Acceptance Deploy',
-          SVA_IMAGE_DIGEST: 'sha256:abc',
-        },
-        {
-          jsonOutput: false,
-          releaseMode: 'schema-and-app',
-        }
-      )
-    ).toThrow(/Wartungsfenster/);
+  it('allows schema-and-app releases without a maintenance window', () => {
+    expect(resolveAcceptanceDeployOptions(
+      {
+        GITHUB_ACTOR: 'gha',
+        GITHUB_WORKFLOW: 'Acceptance Deploy',
+        SVA_IMAGE_DIGEST: 'sha256:abc',
+      },
+      {
+        jsonOutput: false,
+        releaseMode: 'schema-and-app',
+      }
+    )).toMatchObject({ maintenanceWindow: undefined, releaseMode: 'schema-and-app' });
   });
 
   it('resolves deploy defaults from env and sanitizes the report slug', () => {

@@ -1,8 +1,27 @@
-const externalInterfaceTypeKeys = ['sva_mainserver', 's3', 'supabase', 'mail_transport'] as const;
+const externalInterfaceTypeKeys = [
+  'sva_mainserver',
+  's3',
+  'supabase',
+  'postgresql',
+  'mail_transport',
+] as const;
 const externalInterfaceOwnerKinds = ['host', 'plugin'] as const;
 const externalInterfaceCategories = ['api', 'object_storage', 'database', 'feed'] as const;
-const externalInterfaceStatusCheckKinds = ['none', 'sva_mainserver', 's3', 'supabase', 'mail_transport'] as const;
-const externalInterfaceVisibleStatuses = ['not_configured', 'unknown', 'ok', 'error', 'disabled'] as const;
+const externalInterfaceStatusCheckKinds = [
+  'none',
+  'sva_mainserver',
+  's3',
+  'supabase',
+  'postgresql',
+  'mail_transport',
+] as const;
+const externalInterfaceVisibleStatuses = [
+  'not_configured',
+  'unknown',
+  'ok',
+  'error',
+  'disabled',
+] as const;
 const externalInterfaceCheckStatuses = ['succeeded', 'failed'] as const;
 const mailTransportTypes = ['smtp', 'provider_api'] as const;
 const mailTransportSecurityModes = ['none', 'starttls', 'tls'] as const;
@@ -191,10 +210,12 @@ export const mailTransportContract = {
   transportTypes: mailTransportTypes,
   securityModes: mailTransportSecurityModes,
   authModes: mailTransportAuthModes,
-  isTransportType: (value: string): value is MailTransportType => (mailTransportTypes as readonly string[]).includes(value),
+  isTransportType: (value: string): value is MailTransportType =>
+    (mailTransportTypes as readonly string[]).includes(value),
   isSecurityMode: (value: string): value is MailTransportSecurityMode =>
     (mailTransportSecurityModes as readonly string[]).includes(value),
-  isAuthMode: (value: string): value is MailTransportAuthMode => (mailTransportAuthModes as readonly string[]).includes(value),
+  isAuthMode: (value: string): value is MailTransportAuthMode =>
+    (mailTransportAuthModes as readonly string[]).includes(value),
 } as const;
 
 export const mailDispatchContract = {

@@ -470,7 +470,7 @@ describe('RoleDetailPage', () => {
     expect(screen.getAllByText('content.updatePayload').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('news.read').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Inhalte').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('News').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Nachrichten').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Lesen').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Payload bearbeiten').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Zugeordnet').length).toBeGreaterThanOrEqual(1);

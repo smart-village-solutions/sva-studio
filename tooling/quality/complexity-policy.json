@@ -3519,6 +3519,84 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Barrel-Exports in kleinere Runtime- und Type-Segmente aufteilen (packages/plugin-generic-items/src/index.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/waste-management/core/settings-shared.ts:fileLines": {
+      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Waste-Einstellungsprojektionen in fachliche Lese- und Statusbausteine aufteilen"
+    },
+    "auth-runtime:packages/auth-runtime/src/waste-management/core/settings-write-support.ts:fileLines": {
+      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Waste-Einstellungspersistenz und Provisionierungssteuerung in getrennte Module aufteilen"
+    },
+    "auth-runtime:packages/auth-runtime/src/waste-management/core/settings-write-support.ts:functionLines": {
+      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Waste-Einstellungspersistenz in kleinere transaktionale Schritte aufteilen"
+    },
+    "ci-scripts:scripts/ci/backup-agent-contract.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Dynamische Backup-Zielvalidierung in eigenständige Entscheidungsbausteine aufteilen"
+    },
+    "ci-scripts:scripts/ci/submit-backup-agent-request.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Backup-Request-Auflösung und Validierung in getrennte Schritte aufteilen"
+    },
+    "ci-scripts:scripts/ci/submit-restore-agent-request.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Restore-Request-Auflösung und Validierung in getrennte Schritte aufteilen"
+    },
+    "frontend-app:apps/sva-studio-react/src/lib/waste-tenant-database-provisioner.server.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Tenant-Datenbank-Provisionierung in explizite idempotente Phasen aufteilen"
+    },
+    "instance-registry-repositories:packages/data-repositories/src/instance-registry/repository-contract.ts:fileLines": {
+      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Waste-Provisionierungsvertrag aus dem allgemeinen Registry-Vertrag ausgliedern"
+    },
+    "instance-registry-repositories:packages/data-repositories/src/instance-registry/repository-waste-provisioning.ts:functionLines": {
+      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Provisionierungs-Lifecycle-Repository in kleinere SQL-Adapterfunktionen aufteilen"
+    },
+    "instance-registry-repositories:packages/data-repositories/src/instance-registry/server.ts:publicExports": {
+      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Waste-Provisionierungsfacade als separaten Server-Einstiegspunkt exportieren"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.job-definitions.ts:fileLines": {
+      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Waste-Jobdefinitionen nach Provisionierung und Datenoperationen gliedern"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.settings-panel.tsx:functionLines": {
+      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Provisionierungsstatus aus dem Waste-Einstellungspanel in eine Teilkomponente ausgliedern"
+    },
+    "packages-default:packages/server-runtime/src/external-interfaces.server.ts:fileLines": {
+      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "PostgreSQL-spezifische Interface-Auflösung aus dem allgemeinen Runtime-Modul ausgliedern"
     }
   }
 }

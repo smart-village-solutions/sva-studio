@@ -63,7 +63,7 @@ GitHub Actions führt die regulären Prüfungen aus. Für eine unabhängige Inci
 | TLS                       | gültiges Einzelzertifikat für jeden expliziten Host                    |
 | unbekannter Tenant-Host   | kein Tenant-Inhalt und kein tenant-spezifischer Login                  |
 
-Ein Swarm-Service darf nach einem Update bis zu fünf Minuten konvergieren. Vor Ablauf dieses Fensters wird kein zusätzlicher mutierender Reparaturversuch gestartet. Bleibt ein Fehler danach bestehen, gilt der Rollout als fehlgeschlagen.
+Ein Swarm-Service darf nach einem Update bis zum Abschluss der maximal 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden konvergieren. Vor Ablauf dieses Fensters wird kein zusätzlicher mutierender Reparaturversuch gestartet. Bleibt ein Fehler danach bestehen, gilt der Rollout als fehlgeschlagen.
 
 ## Backup-Agent
 
@@ -76,6 +76,8 @@ Der zentrale Service `studio-backup-agent` ist mit den aktuellen internen Netzen
 
 Da der Agent beide Umgebungen bedient, erfolgt sein Image-Rollout ausschließlich über den manuell gestarteten Workflow **Backup Agent Rollout** und das geschützte GitHub Environment `prod`. Der Workflow akzeptiert nur den unveränderlichen Digest des Backup-Agent-Images, bindet ihn an dessen Git-Revision und aktualisiert ausschließlich den Stack `studio-backup-agent`. Ein erfolgreicher Staging-Backup-Drill weist anschließend den tatsächlich laufenden Agent-Digest nach.
 
+Beim Wechsel auf den wartungsfensterfreien Backup-Vertrag muss zuerst der abwärtskompatible Agent ausgerollt werden. Er akzeptiert vorhandene Version-1-Aufträge weiterhin und zusätzlich Version-2-Aufträge ohne Wartungsfenster-Verweis. Erst danach dürfen `Promote` und Backup-Drills Version 2 senden.
+
 Ein erfolgreicher Auftrag erzeugt dauerhaft in MinIO:
 
 - das Request-Objekt unter `control/requests/`,
@@ -87,7 +89,7 @@ Der Promote-Workflow akzeptiert das Backup nur, wenn Request-ID, Umgebung, Diges
 
 ## Backup-Drills
 
-Die Workflows **Staging Backup Drill** und **Production Backup Drill** testen den Agenten ohne App-Deployment. Production benötigt die Freigabe des Environments `prod`, einen Wartungsfenster-Verweis und den passenden Staging-Nachweis. Ein Drill ersetzt weder Staging-Promotion noch Production-Promotion.
+Die Workflows **Staging Backup Drill** und **Production Backup Drill** testen den Agenten ohne App-Deployment. Production benötigt die Freigabe des Environments `prod` und den passenden Staging-Nachweis. Ein Drill ersetzt weder Staging-Promotion noch Production-Promotion.
 
 ## Incident-Recovery
 
@@ -95,7 +97,7 @@ Die Workflows **Staging Backup Drill** und **Production Backup Drill** testen de
 
 1. Zielstack, erwarteten Digest und Zeitpunkt festhalten.
 2. Service-Spec, Taskzustände, Netzwerke und Traefik-Labels read-only prüfen.
-3. Bis zu fünf Minuten Konvergenzzeit ab dem abgeschlossenen Service-Update berücksichtigen.
+3. Bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden ab dem abgeschlossenen Service-Update berücksichtigen.
 4. Root-, alle expliziten Tenant-, Zertifikats- und Unknown-Host-Probes erneut ausführen.
 5. Bei anhaltendem Fehler den vorherigen Digest als Recovery-Ziel festlegen.
 6. Eine notwendige direkte Mutation auf genau den App-Service des Zielstacks begrenzen.
@@ -167,7 +169,7 @@ Ein Fehler nach Beginn des Restores führt absichtlich erneut zum gestoppten Sta
 Für diesen Fall:
 
 1. Fehlerklasse und letzten erfolgreichen Schritt im Restore-Run feststellen.
-2. Bei einem ausschließlich externen Runtime-/Ingress-Fehler den bestehenden, unveränderten Live-Digest über **Promote** mit `migration_mode=assert-none` und `bootstrap_mode=assert-none` wieder ausrollen. `image_ref`, `change_base` und `change_head` müssen exakt aus der ursprünglichen Build-/Promote-Evidenz dieses Digests übernommen werden; `change_head` ist die attestierte OCI-Revision. Die Commit-Grenzen nicht während des Incidents raten oder aus dem aktuellen `main` ableiten. `maintenance_window` muss auch bei diesem Recovery-Lauf mit einer nicht-sensitiven Incident-Referenz belegt sein.
+2. Bei einem ausschließlich externen Runtime-/Ingress-Fehler den bestehenden, unveränderten Live-Digest über **Promote** mit `migration_mode=assert-none` und `bootstrap_mode=assert-none` wieder ausrollen. `image_ref`, `change_base` und `change_head` müssen exakt aus der ursprünglichen Build-/Promote-Evidenz dieses Digests übernommen werden; `change_head` ist die attestierte OCI-Revision. Die Commit-Grenzen nicht während des Incidents raten oder aus dem aktuellen `main` ableiten.
 3. `health/live`, `health/ready` und den betroffenen Tenant-Host prüfen.
 4. Den fachlichen IAM-Nachweis über `/auth/me` und `/iam/me/permissions?instanceId=<instanceId-aus-auth-me>` nachholen.
 

@@ -5,6 +5,7 @@ import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
 
 import {
   getWasteManagementSettings,
+  retryWasteTenantProvisioning,
   updateWasteManagementSettings,
   type WasteManagementSettingsInput,
 } from './waste-management.api.js';
@@ -15,11 +16,14 @@ import {
   type StatusMessage,
 } from './waste-management.page.support.js';
 import { WasteSettingsForm } from './waste-management.settings-form.js';
-import type { CustomRecurrencePresetInputState, SettingsFormState } from './waste-management.settings-form.js';
+import { WasteSettingsStatusPanel } from './waste-management.settings-status-panel.js';
+import type {
+  CustomRecurrencePresetInputState,
+  SettingsFormState,
+} from './waste-management.settings-form.js';
 
 const createDefaultSettingsForm = (): SettingsFormState => ({
-  provider: 'supabase',
-  projectUrl: '',
+  provider: 'postgresql',
   schemaName: 'public',
   enabled: false,
   selectedInterfaceId: '',
@@ -27,8 +31,6 @@ const createDefaultSettingsForm = (): SettingsFormState => ({
   pdfBrandingAssetUrl: '',
   pdfContactBlock: '',
   holidayStateCode: '',
-  databaseUrl: '',
-  serviceRoleKey: '',
   customRecurrencePresets: [],
   deletedPresetFallbacks: {},
 });
@@ -37,7 +39,6 @@ const mapSettingsToForm = (settings: WasteManagementSettingsRecord | null): Sett
   settings
     ? {
         provider: settings.provider,
-        projectUrl: settings.projectUrl,
         schemaName: settings.schemaName ?? 'public',
         enabled: settings.enabled,
         selectedInterfaceId: settings.selectedInterfaceId ?? '',
@@ -45,9 +46,9 @@ const mapSettingsToForm = (settings: WasteManagementSettingsRecord | null): Sett
         pdfBrandingAssetUrl: settings.pdfBrandingAssetUrl ?? '',
         pdfContactBlock: settings.pdfContactBlock ?? '',
         holidayStateCode: settings.holidayStateCode ?? '',
-        databaseUrl: '',
-        serviceRoleKey: '',
-        customRecurrencePresets: (settings.customRecurrencePresets ?? []).map<CustomRecurrencePresetInputState>((preset) => ({
+        customRecurrencePresets: (
+          settings.customRecurrencePresets ?? []
+        ).map<CustomRecurrencePresetInputState>((preset) => ({
           id: preset.id,
           name: preset.name,
           description: preset.description ?? '',
@@ -59,7 +60,6 @@ const mapSettingsToForm = (settings: WasteManagementSettingsRecord | null): Sett
 
 const toSettingsInput = (form: SettingsFormState): WasteManagementSettingsInput => ({
   provider: form.provider,
-  projectUrl: form.projectUrl.trim(),
   schemaName: compactOptionalString(form.schemaName),
   enabled: form.enabled,
   selectedInterfaceId: compactOptionalString(form.selectedInterfaceId),
@@ -69,8 +69,6 @@ const toSettingsInput = (form: SettingsFormState): WasteManagementSettingsInput 
   holidayStateCode: wasteManagementMasterDataContract.isWasteHolidayStateCode(form.holidayStateCode)
     ? form.holidayStateCode
     : undefined,
-  databaseUrl: compactOptionalString(form.databaseUrl),
-  serviceRoleKey: compactOptionalString(form.serviceRoleKey),
   customRecurrencePresets: form.customRecurrencePresets.map((preset) => ({
     id: preset.id,
     name: preset.name.trim(),
@@ -128,11 +126,16 @@ const useWasteSettingsState = (pt: ReturnType<typeof usePluginTranslation>) => {
 const persistWasteSettings = async (
   form: SettingsFormState,
   pt: ReturnType<typeof usePluginTranslation>
-): Promise<{ readonly message: StatusMessage; readonly settings: WasteManagementSettingsRecord | null }> => {
+): Promise<{
+  readonly message: StatusMessage;
+  readonly settings: WasteManagementSettingsRecord | null;
+}> => {
   try {
     const response = await updateWasteManagementSettings(toSettingsInput(form));
     const messageText = response?.lastHolidaySyncStatus
-      ? pt('settings.messages.saveSuccessWithHolidaySync', { status: response.lastHolidaySyncStatus })
+      ? pt('settings.messages.saveSuccessWithHolidaySync', {
+          status: response.lastHolidaySyncStatus,
+        })
       : pt('settings.messages.saveSuccess');
     return {
       settings: response,
@@ -140,7 +143,11 @@ const persistWasteSettings = async (
     };
   } catch (saveError) {
     const code = resolveApiErrorCode(saveError);
-    const error = new Error(code === 'forbidden' ? pt('settings.messages.saveForbidden') : pt('settings.messages.saveError'));
+    const error = new Error(
+      code === 'forbidden'
+        ? pt('settings.messages.saveForbidden')
+        : pt('settings.messages.saveError')
+    );
     (error as Error & { cause?: unknown }).cause = saveError;
     throw error;
   }
@@ -149,6 +156,7 @@ const persistWasteSettings = async (
 export const WasteSettingsPanel = () => {
   const pt = usePluginTranslation('wasteManagement');
   const [saving, setSaving] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const { error, form, loading, setForm, setSettings, settings } = useWasteSettingsState(pt);
 
@@ -160,7 +168,10 @@ export const WasteSettingsPanel = () => {
     return <StudioErrorState>{error}</StudioErrorState>;
   }
 
-  const applyPersistedSettings = (result: { readonly message: StatusMessage; readonly settings: WasteManagementSettingsRecord | null }) => {
+  const applyPersistedSettings = (result: {
+    readonly message: StatusMessage;
+    readonly settings: WasteManagementSettingsRecord | null;
+  }) => {
     startTransition(() => {
       setSettings(result.settings);
       setForm(mapSettingsToForm(result.settings));
@@ -176,15 +187,48 @@ export const WasteSettingsPanel = () => {
       const result = await persistWasteSettings(form, pt);
       applyPersistedSettings(result);
     } catch (saveError) {
-      setMessage({ kind: 'error', text: saveError instanceof Error ? saveError.message : pt('settings.messages.saveError') });
+      setMessage({
+        kind: 'error',
+        text: saveError instanceof Error ? saveError.message : pt('settings.messages.saveError'),
+      });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRetryProvisioning = async () => {
+    setRetrying(true);
+    setMessage(null);
+    try {
+      await retryWasteTenantProvisioning();
+      const refreshed = await getWasteManagementSettings();
+      startTransition(() => {
+        setSettings(refreshed);
+        setForm(mapSettingsToForm(refreshed));
+        setMessage({ kind: 'success', text: pt('settings.messages.retryProvisioningSuccess') });
+      });
+    } catch (retryError) {
+      const code = resolveApiErrorCode(retryError);
+      setMessage({
+        kind: 'error',
+        text:
+          code === 'forbidden'
+            ? pt('settings.messages.retryProvisioningForbidden')
+            : pt('settings.messages.retryProvisioningError'),
+      });
+    } finally {
+      setRetrying(false);
     }
   };
 
   return (
     <div className="space-y-4">
       <StatusNotice message={message} />
+      <WasteSettingsStatusPanel
+        settings={settings}
+        retrying={retrying}
+        onRetry={() => void handleRetryProvisioning()}
+      />
       <WasteSettingsForm
         form={form}
         settings={settings}

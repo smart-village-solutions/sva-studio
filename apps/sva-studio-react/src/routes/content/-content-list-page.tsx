@@ -6,6 +6,7 @@ import {
 } from '@sva/core';
 import { deleteEvent } from '@sva/plugin-events';
 import { deleteFaq } from '@sva/plugin-faq';
+import { deleteCockpitCard } from '@sva/plugin-cockpit-cards';
 import { deleteGenericItem } from '@sva/plugin-generic-items';
 import { deleteNews } from '@sva/plugin-news';
 import { deletePoi } from '@sva/plugin-poi';
@@ -72,6 +73,7 @@ const MAIN_SERVER_CONTENT_TYPES = new Set([
   'poi.point-of-interest',
   'surveys.survey',
   'generic-items.generic-item',
+  'cockpit-cards.cockpit-card',
 ]);
 
 const contentAdminResource = appAdminResources.find(
@@ -319,6 +321,10 @@ const deleteMainserverItem = async (contentType: string, contentId: string): Pro
   }
   if (contentType === 'faq.faq') {
     await deleteFaq(contentId);
+    return;
+  }
+  if (contentType === 'cockpit-cards.cockpit-card') {
+    await deleteCockpitCard(contentId);
     return;
   }
   if (contentType === 'generic-items.generic-item') {

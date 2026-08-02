@@ -80,6 +80,7 @@ export type SvaMainserverProjectionContentType =
   | 'poi.point-of-interest'
   | 'generic-items.generic-item'
   | 'faq.faq'
+  | 'cockpit-cards.cockpit-card'
   | 'surveys.survey';
 
 export type SvaMainserverProjectionListItem = Readonly<{

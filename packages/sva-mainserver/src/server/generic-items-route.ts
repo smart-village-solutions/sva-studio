@@ -16,8 +16,10 @@ import {
 } from './content-route-core.js';
 import { SvaMainserverError } from './errors.js';
 import { mergeFaqPayload, validateFaqWriteOrResponse } from './generic-items-route-faq.js';
+import { mergeCockpitCardPayload, validateCockpitCardWriteOrResponse } from './generic-items-route-cockpit-cards.js';
 import { parseGenericItemInput } from './generic-items-route-input.js';
 import { listFaqItems } from './faq-listing.js';
+import { listCockpitCardItems } from './cockpit-cards-listing.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
@@ -32,9 +34,11 @@ const GENERIC_ITEMS_CONTENT_TYPE = 'generic-items.generic-item';
 const GENERIC_ITEMS_COLLECTION_PATH = '/api/v1/mainserver/generic-items';
 const FAQ_CONTENT_TYPE = 'faq.faq';
 const FAQ_COLLECTION_PATH = '/api/v1/mainserver/faqs';
+const COCKPIT_CARDS_CONTENT_TYPE = 'cockpit-cards.cockpit-card';
+const COCKPIT_CARDS_COLLECTION_PATH = '/api/v1/mainserver/cockpit-cards';
 const logger = createSdkLogger({ component: 'sva-mainserver-generic-items-route', level: 'info' });
 
-type ContentKind = 'generic-items' | 'faq';
+type ContentKind = 'generic-items' | 'faq' | 'cockpit-cards';
 
 type ContentActor = {
   readonly instanceId: string;
@@ -46,10 +50,11 @@ type RouteMatch = SharedRouteMatch<ContentKind>;
 
 const matchRoute = (request: Request): RouteMatch | null =>
   matchRequestRoute(request, GENERIC_ITEMS_COLLECTION_PATH, 'generic-items') ??
-  matchRequestRoute(request, FAQ_COLLECTION_PATH, 'faq');
+  matchRequestRoute(request, FAQ_COLLECTION_PATH, 'faq') ??
+  matchRequestRoute(request, COCKPIT_CARDS_COLLECTION_PATH, 'cockpit-cards');
 
 const contentTypeFor = (contentKind: ContentKind) =>
-  contentKind === 'faq' ? FAQ_CONTENT_TYPE : GENERIC_ITEMS_CONTENT_TYPE;
+  contentKind === 'faq' ? FAQ_CONTENT_TYPE : contentKind === 'cockpit-cards' ? COCKPIT_CARDS_CONTENT_TYPE : GENERIC_ITEMS_CONTENT_TYPE;
 
 const pluginActionFor = (contentKind: ContentKind, actionName: 'read' | 'create' | 'update' | 'delete') =>
   `${contentKind}.${actionName}`;
@@ -137,8 +142,10 @@ const handleListRequest = async (
   };
   const startedAt = Date.now();
   const faqResult = contentKind === 'faq' ? await listFaqItems(input, listSvaMainserverGenericItems) : null;
-  const data = faqResult
-    ? { data: faqResult.data, pagination: faqResult.pagination }
+  const cockpitCardsResult = contentKind === 'cockpit-cards' ? await listCockpitCardItems(input, listSvaMainserverGenericItems) : null;
+  const specializedResult = faqResult ?? cockpitCardsResult;
+  const data = specializedResult
+    ? { data: specializedResult.data, pagination: specializedResult.pagination }
     : await listSvaMainserverGenericItems(input);
   if (faqResult) {
     logger.info('FAQ list upstream pagination completed', {
@@ -148,7 +155,8 @@ const handleListRequest = async (
       duration_ms: Date.now() - startedAt,
     });
   }
-  logSuccess(contentKind === 'faq' ? 'mainserver_faq_list' : 'mainserver_generic-items_list');
+  if (cockpitCardsResult) logger.info('Cockpit Cards list upstream pagination completed', { operation: 'mainserver_cockpit_cards_list_upstream', upstream_page_count: cockpitCardsResult.observability.upstreamPageCount, matching_item_count: cockpitCardsResult.observability.matchingItemCount, duration_ms: Date.now() - startedAt });
+  logSuccess(contentKind === 'faq' ? 'mainserver_faq_list' : contentKind === 'cockpit-cards' ? 'mainserver_cockpit_cards_list' : 'mainserver_generic-items_list');
   return json(data);
 };
 
@@ -167,6 +175,7 @@ const handleDetailRequest = async (
   if (contentKind === 'faq' && data.genericType !== 'FAQ') {
     return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
   }
+  if (contentKind === 'cockpit-cards' && data.genericType !== 'COCKPIT_CARD') return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
   logSuccess('mainserver_generic-items_detail', itemId);
   return json({ data });
 };
@@ -183,12 +192,12 @@ const handleCreateRequest = async (
     return actor;
   }
 
-  const genericItem = contentKind === 'faq'
-    ? await validateFaqWriteOrResponse(request)
+  const genericItem = contentKind === 'faq' ? await validateFaqWriteOrResponse(request)
+    : contentKind === 'cockpit-cards' ? await validateCockpitCardWriteOrResponse(request)
     : await parseGenericItemOrResponse(request);
   if (isResponse(genericItem)) return genericItem;
 
-  const data = await createSvaMainserverGenericItem({ ...actor, genericItem: contentKind === 'faq' ? { ...genericItem, genericType: 'FAQ' } : genericItem });
+  const data = await createSvaMainserverGenericItem({ ...actor, genericItem: contentKind === 'faq' ? { ...genericItem, genericType: 'FAQ' } : contentKind === 'cockpit-cards' ? { ...genericItem, genericType: 'COCKPIT_CARD' } : genericItem });
   logSuccess('mainserver_generic-items_create', data.id);
   return json({ data }, 201);
 };
@@ -206,15 +215,17 @@ const handleUpdateRequest = async (
     return actor;
   }
 
-  const existingItem = contentKind === 'faq' ? await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId }) : null;
-  if (existingItem && existingItem.genericType !== 'FAQ') {
+  const existingItem = contentKind !== 'generic-items' ? await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId }) : null;
+  if (contentKind === 'faq' && existingItem && existingItem.genericType !== 'FAQ') {
     return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
   }
-  const genericItem = contentKind === 'faq'
-    ? await validateFaqWriteOrResponse(request)
+  if (contentKind === 'cockpit-cards' && existingItem && existingItem.genericType !== 'COCKPIT_CARD') return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
+  const genericItem = contentKind === 'faq' ? await validateFaqWriteOrResponse(request)
+    : contentKind === 'cockpit-cards' ? await validateCockpitCardWriteOrResponse(request)
     : await parseGenericItemOrResponse(request);
   if (isResponse(genericItem)) return genericItem;
-
+  if (contentKind === 'faq' && !existingItem) return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
+  if (contentKind === 'cockpit-cards' && !existingItem) return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
   const data = await updateSvaMainserverGenericItem({
     ...actor,
     genericItemId: itemId,
@@ -225,7 +236,9 @@ const handleUpdateRequest = async (
             genericType: 'FAQ',
             payload: mergeFaqPayload(existingItem?.payload, genericItem.payload),
           }
-        : genericItem,
+        : contentKind === 'cockpit-cards'
+          ? { ...genericItem, genericType: 'COCKPIT_CARD', payload: mergeCockpitCardPayload(existingItem?.payload, genericItem.payload) }
+          : genericItem,
   });
   logSuccess('mainserver_generic-items_update', itemId);
   return json({ data });
@@ -244,10 +257,11 @@ const handleDeleteRequest = async (
     return actor;
   }
 
-  const existingItem = contentKind === 'faq' ? await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId }) : null;
-  if (existingItem && existingItem.genericType !== 'FAQ') {
+  const existingItem = contentKind !== 'generic-items' ? await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId }) : null;
+  if (contentKind === 'faq' && existingItem?.genericType !== 'FAQ') {
     return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
   }
+  if (contentKind === 'cockpit-cards' && existingItem?.genericType !== 'COCKPIT_CARD') return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
   const data = await deleteSvaMainserverGenericItem({ ...actor, genericItemId: itemId });
   logSuccess('mainserver_generic-items_delete', itemId);
   return json({ data });

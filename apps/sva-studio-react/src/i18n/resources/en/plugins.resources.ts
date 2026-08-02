@@ -14,6 +14,9 @@ export const pluginsENResources = {
   faq: {
     description: 'Publishes multilingual questions and answers for the tenant.',
   },
+  'cockpit-cards': {
+    description: 'Publishes categorized cockpit cards with text, images, and a related link.',
+  },
   categories: {
     description:
       'Provides Mainserver categories as an editorial companion module for news, events, and places.',

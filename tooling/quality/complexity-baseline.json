@@ -120,6 +120,38 @@
       "cyclomaticComplexity": 0,
       "publicExports": 11
     },
+    "packages/plugin-cockpit-cards/src/cockpit-cards.pages.tsx": {
+      "moduleId": "packages-default",
+      "filePath": "packages/plugin-cockpit-cards/src/cockpit-cards.pages.tsx",
+      "fileLines": 522,
+      "functionLines": 157,
+      "cyclomaticComplexity": 18,
+      "publicExports": 3
+    },
+    "packages/plugin-cockpit-cards/src/index.ts": {
+      "moduleId": "packages-default",
+      "filePath": "packages/plugin-cockpit-cards/src/index.ts",
+      "fileLines": 20,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 11
+    },
+    "packages/sva-mainserver/src/server/generic-items-route-cockpit-cards.ts": {
+      "moduleId": "sva-mainserver",
+      "filePath": "packages/sva-mainserver/src/server/generic-items-route-cockpit-cards.ts",
+      "fileLines": 79,
+      "functionLines": 61,
+      "cyclomaticComplexity": 25,
+      "publicExports": 3
+    },
+    "packages/sva-mainserver/src/server/generic-items-route.ts": {
+      "moduleId": "sva-mainserver",
+      "filePath": "packages/sva-mainserver/src/server/generic-items-route.ts",
+      "fileLines": 336,
+      "functionLines": 54,
+      "cyclomaticComplexity": 11,
+      "publicExports": 1
+    },
     "packages/routing/src/protected.routes.ts": {
       "moduleId": "routing",
       "filePath": "packages/routing/src/protected.routes.ts",

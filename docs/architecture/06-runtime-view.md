@@ -72,6 +72,14 @@ Fehlerpfad:
 4. Beim Lesen lädt die Fassade alle GenericItem-Upstream-Seiten, filtert `genericType: "FAQ"`, sortiert nach Sprachcode, Sortiergewicht, Frage und ID und paginiert erst anschließend.
 5. Beim Schreiben erzwingt die Fassade den FAQ-Discriminator; Detail-, Update- und Delete-Zugriffe auf Nicht-FAQ-IDs enden als nicht gefunden. Die Inhaltsprojektion führt FAQ als `faq.faq` und blendet sie aus der generischen GenericItem-Projektion aus.
 
+### Cockpit Cards: kategorisierte GenericItem-Fachansicht
+
+1. Ein Benutzer öffnet eine Cockpit Card aus der gemeinsamen Inhaltsübersicht oder legt eine neue an.
+2. Das Plugin lädt die bestehende Kategorienliste und öffentliche Bildmedien hostgeführt; Text und Bilder werden gemeinsam im Tab `Inhalt` bearbeitet.
+3. Die Fassade autorisiert mit `cockpit-cards.*`, validiert genau eine Kategorie, mindestens ein Bild und höchstens einen HTTPS-Link und erzwingt `genericType: "COCKPIT_CARD"`.
+4. Der Leseweg sammelt alle GenericItem-Upstream-Seiten, filtert und sortiert die Cockpit Cards und paginiert anschließend lokal.
+5. Die Inhaltsprojektion führt den Datensatz ausschließlich als `cockpit-cards.cockpit-card`; FAQ und offene GenericItems bleiben getrennt.
+
 ### Waste-Management: Settings, CRUD, PDF-Stamminhalte und technische Tools
 
 1. Ein berechtigter Instanzbenutzer öffnet `/plugins/waste-management`.

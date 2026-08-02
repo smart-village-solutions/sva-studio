@@ -3484,6 +3484,36 @@
       "status": "open",
       "summary": "Orts-Geofelder in kleinere Formular- und Kartenbausteine aufteilen (packages/plugin-generic-items/src/generic-items.geo-location-fields.tsx)"
     },
+    "packages-default:packages/plugin-cockpit-cards/src/cockpit-cards.pages.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-COCKPIT-CARDS-COMPLEXITY-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Cockpit-Cards-Seiten in kleinere Editor-, Inhalts- und Listenbausteine aufteilen"
+    },
+    "packages-default:packages/plugin-cockpit-cards/src/cockpit-cards.pages.tsx:fileLines": {
+      "ticketId": "QUAL-COCKPIT-CARDS-COMPLEXITY-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Cockpit-Cards-Seiten in kleinere Editor-, Inhalts- und Listenbausteine aufteilen"
+    },
+    "packages-default:packages/plugin-cockpit-cards/src/cockpit-cards.pages.tsx:functionLines": {
+      "ticketId": "QUAL-COCKPIT-CARDS-COMPLEXITY-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Cockpit-Cards-Editor in kleinere Formularsektionen aufteilen"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/generic-items-route-cockpit-cards.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-COCKPIT-CARDS-COMPLEXITY-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Cockpit-Card-Validierungsregeln in fokussierte Prüffunktionen aufteilen"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/generic-items-route.ts:fileLines": {
+      "ticketId": "QUAL-COCKPIT-CARDS-COMPLEXITY-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Gemeinsame Generic-Item-Routenhelfer aus dem Dispatcher extrahieren"
+    },
     "packages-default:packages/plugin-generic-items/src/index.ts:publicExports": {
       "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-011",
       "ticketSystem": "backlog",

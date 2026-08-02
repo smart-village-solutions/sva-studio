@@ -117,8 +117,11 @@ const permissionIdFixtures = [
   ['40111111-1111-1111-1111-111111111167', 'categories.delete', 'Delete categories plugin content'],
 ] as const satisfies readonly [string, PermissionKey, string][];
 const fixturePermissionIds = new Map(permissionIdFixtures.map(([id, key]) => [key, id] as const));
-const getFixturePermissionId = (key: PermissionKey): string => {
-  const id = fixturePermissionIds.get(key);
+export const resolveFixturePermissionId = (
+  permissionIds: ReadonlyMap<PermissionKey, string>,
+  key: PermissionKey
+): string => {
+  const id = permissionIds.get(key);
   if (!id) throw new Error(`Missing fixture permission ID: ${key}`);
   return id;
 };
@@ -208,7 +211,7 @@ export const iamSeedPlan: IamSeedPlan & { readonly seedFiles: typeof iamSeedFile
   ],
   personas,
   permissions: fixturePermissionCatalog.map((definition) => ({
-    id: getFixturePermissionId(definition.key),
+      id: resolveFixturePermissionId(fixturePermissionIds, definition.key),
     key: definition.key,
     action: definition.key,
     resourceType: definition.resourceType,

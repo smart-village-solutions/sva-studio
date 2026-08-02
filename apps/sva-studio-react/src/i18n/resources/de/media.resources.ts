@@ -259,7 +259,7 @@ export const mediaDEResources = {
       summary: '{{count}} Assets in der aktuellen Ansicht',
       page: 'Seite {{page}} von {{total}} · {{pageSize}} pro Abschnitt',
       pageSizeLabel: 'Einträge pro Seite',
-      paginationAriaLabel: 'Medienbibliothek Pagination',
+      paginationAriaLabel: 'Seitennavigation der Medienbibliothek',
       previous: 'Vorherige Seite',
       next: 'Nächste Seite',
     },

@@ -145,6 +145,7 @@ describe('standard content plugin helpers', () => {
         {
           contentType: 'poi.point-of-interest',
           displayName: 'POI',
+          titleKey: 'poi.navigation.title',
           studioContentType: {
             requiredReadAction: 'poi.read',
             requiredCreateAction: 'poi.create',

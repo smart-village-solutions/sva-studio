@@ -28,19 +28,19 @@ export const wasteManagementPluginTranslationsDETabs = createWasteManagementTabs
   ],
   output: [
     'Ausgabe',
-    'Erzeugen und verlinken Sie PDF-Ausdrücke pro Abholort und Jahr direkt aus den gepflegten Waste-Daten.',
+    'Erzeugen und verlinken Sie PDF-Ausdrücke pro Abholort und Jahr direkt aus den gepflegten Abfalldaten.',
     'Noch keine Ausgabe vorhanden',
     'Sobald ein PDF erzeugt wurde, erscheint der Direktlink hier und zusätzlich in der Tabelle der Abholorte.',
   ],
   tools: [
     'Datentools',
-    'Import, Migration, Seed und Reset werden über die generische Job-Fähigkeit des Hosts gestartet.',
+    'Import, Migration, Initialdaten und Zurücksetzen werden über die generische Prozessfunktion des Hosts gestartet.',
     'Werkzeuge folgen',
-    'Die Job-Starter und Verlaufsanzeigen hängen im nächsten Slice an die Host-Endpunkte.',
+    'Die Prozessstarter und Verlaufsanzeigen werden im nächsten Schritt an die Host-Endpunkte angebunden.',
   ],
   settings: [
     'Einstellungen',
-    'Die instanzbezogene Waste-Datenquelle bleibt auch bei Fehlerstatus gezielt erreichbar und rekonfigurierbar.',
+    'Die instanzbezogene Abfalldatenquelle bleibt auch bei Fehlerstatus gezielt erreichbar und rekonfigurierbar.',
     'Einstellungen folgen',
     'Die bestehende Settings-Fassade wird anschließend direkt in diesen Tab integriert.',
   ],

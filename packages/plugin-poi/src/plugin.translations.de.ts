@@ -197,7 +197,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
   },
   empty: { title: 'Noch keine Orte vorhanden', description: 'Legen Sie den ersten Ort an.' },
   pagination: {
-    ariaLabel: 'Orte-Pagination',
+    ariaLabel: 'Seitennavigation der Orte',
     previous: 'Zurück',
     next: 'Weiter',
     pageLabel: 'Seite {{page}}',

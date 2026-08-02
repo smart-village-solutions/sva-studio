@@ -78,7 +78,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.seedData,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Seed laden',
+    displayName: 'Abfallinitialdaten laden',
     progress: {
       phaseKeys: ['waste-management.seed', 'waste-management.completed'],
       stepKeys: ['resolve-operation', 'complete-operation'],
@@ -94,7 +94,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.resetData,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Daten zurücksetzen',
+    displayName: 'Abfalldaten zurücksetzen',
     progress: {
       phaseKeys: ['waste-management.reset', 'waste-management.completed'],
       stepKeys: ['resolve-operation', 'complete-operation'],
@@ -110,7 +110,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncMainserver,
     queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Waste-Mainserver synchronisieren',
+    displayName: 'Abfalldaten mit dem Mainserver synchronisieren',
     progress: {
       phaseKeys: ['waste-management.mainserver-sync', 'waste-management.completed'],
       stepKeys: [

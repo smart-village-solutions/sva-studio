@@ -68,6 +68,42 @@ const DEFAULT_CONTENT_PAGINATION = {
   total: 0,
 } as const satisfies ApiPagination;
 
+const useContentProjectionRevalidation = (
+  enabled: boolean,
+  metadata: IamContentListMetadata | null,
+  refetch: () => Promise<unknown>
+): void => {
+  React.useEffect(() => {
+    const shouldRevalidate =
+      enabled &&
+      metadata !== null &&
+      (metadata.hasRunningMainserverSync ||
+        metadata.hasStaleMainserverContent ||
+        metadata.mainserverSyncStates.some((state) => state.snapshotState?.startsWith('partial_')));
+    if (!shouldRevalidate) return;
+
+    let delayMs = 2_000;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const poll = () => {
+      timer = setTimeout(() => {
+        if (document.visibilityState !== 'visible') {
+          delayMs = Math.min(delayMs * 2, 30_000);
+          poll();
+          return;
+        }
+        void refetch().finally(() => {
+          delayMs = Math.min(Math.round(delayMs * 1.5), 15_000);
+          poll();
+        });
+      }, delayMs);
+    };
+    poll();
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [enabled, metadata, refetch]);
+};
+
 export const useContents = (query: IamContentListQuery, options: UseContentsOptions = {}): UseContentsResult => {
   const { invalidatePermissions } = useAuth();
   const enabled = options.enabled ?? true;
@@ -103,37 +139,7 @@ export const useContents = (query: IamContentListQuery, options: UseContentsOpti
     setPagination(DEFAULT_CONTENT_PAGINATION);
   }, [enabled]);
 
-  React.useEffect(() => {
-    const shouldRevalidate =
-      enabled &&
-      metadata !== null &&
-      (metadata.hasRunningMainserverSync ||
-        metadata.hasStaleMainserverContent ||
-        metadata.mainserverSyncStates.some((state) => state.snapshotState?.startsWith('partial_')));
-    if (!shouldRevalidate) {
-      return;
-    }
-
-    let delayMs = 2_000;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const poll = () => {
-      timer = setTimeout(() => {
-        if (document.visibilityState !== 'visible') {
-          delayMs = Math.min(delayMs * 2, 30_000);
-          poll();
-          return;
-        }
-        void adminList.refetch().finally(() => {
-          delayMs = Math.min(Math.round(delayMs * 1.5), 15_000);
-          poll();
-        });
-      }, delayMs);
-    };
-    poll();
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [adminList, enabled, metadata]);
+  useContentProjectionRevalidation(enabled, metadata, adminList.refetch);
 
   const runBulkMutation = React.useCallback(
     async (

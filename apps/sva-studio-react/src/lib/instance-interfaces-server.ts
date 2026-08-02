@@ -766,6 +766,15 @@ const buildRecordFromDraft = async (input: {
     });
     throw new Error('interface_not_found');
   }
+  if (existing?.ownerKind === 'plugin') {
+    logger.warn('Rejected mutation of plugin-managed external interface', {
+      operation: 'build_interface_record',
+      workspace_id: input.instanceId,
+      interface_id: existing.id,
+      interface_owner_id: existing.ownerId,
+    });
+    throw new Error('plugin_managed_interface_read_only');
+  }
 
   const interfaceId = existing?.id ?? randomUUID();
   let previousSecrets: Record<string, string>;
@@ -826,7 +835,7 @@ export const isCustomInterfaceStorageAvailable = (): boolean => true;
 
 export const listStoredInterfaces = async (instanceId: string): Promise<readonly StoredEntry[]> => {
   const records = await listExternalInterfaceRecords(instanceId);
-  return records.flatMap((record) => {
+  return records.filter((record) => record.ownerKind !== 'plugin').flatMap((record) => {
     const entry = mapRecordToStoredEntry(record);
     return entry ? [entry] : [];
   });
@@ -895,6 +904,14 @@ export const deleteStoredInterface = async (instanceId: string, id: string): Pro
     throw new Error('mainserver_interfaces_use_dedicated_endpoint');
   }
 
+  const record = await loadExternalInterfaceRecordById(instanceId, id);
+  if (!record) {
+    return false;
+  }
+  if (record.ownerKind === 'plugin') {
+    throw new Error('plugin_managed_interface_read_only');
+  }
+
   return deleteExternalInterfaceRecord(instanceId, id);
 };
 
@@ -903,7 +920,7 @@ export const getStoredInterface = async (
   id: string
 ): Promise<StoredEntry | null> => {
   const record = await loadExternalInterfaceRecordById(instanceId, id);
-  return record ? mapRecordToStoredEntry(record) : null;
+  return record?.ownerKind === 'plugin' ? null : record ? mapRecordToStoredEntry(record) : null;
 };
 
 export const loadStoredMapGeocodingRuntimeConfig = async (

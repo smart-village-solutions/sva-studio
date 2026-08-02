@@ -119,6 +119,57 @@ describe('instance-interfaces-server', () => {
     );
   });
 
+  it('hides plugin-managed interfaces and rejects general mutations fail-closed', async () => {
+    const managedRecord = {
+      id: 'waste-managed',
+      instanceId: 'de-test',
+      typeKey: 'postgresql',
+      ownerKind: 'plugin' as const,
+      ownerId: 'waste-management',
+      displayName: 'Waste PostgreSQL',
+      alias: 'waste-management',
+      enabled: true,
+      isDefault: true,
+      category: 'database' as const,
+      authMode: 'database_credentials',
+      publicConfig: { schemaName: 'public' },
+      secretConfigCiphertext: 'ciphertext',
+      statusCheckKind: 'postgresql' as const,
+      visibleStatus: 'ok' as const,
+      createdAt: '2026-08-02T08:00:00.000Z',
+      updatedAt: '2026-08-02T08:00:00.000Z',
+    };
+    state.listExternalInterfaceRecords.mockResolvedValue([managedRecord]);
+    state.loadExternalInterfaceRecordById.mockResolvedValue(managedRecord);
+
+    const {
+      deleteStoredInterface,
+      getStoredInterface,
+      listStoredInterfaces,
+      upsertStoredInterface,
+    } = await import('./instance-interfaces-server');
+
+    await expect(listStoredInterfaces('de-test')).resolves.toEqual([]);
+    await expect(getStoredInterface('de-test', 'waste-managed')).resolves.toBeNull();
+    await expect(deleteStoredInterface('de-test', 'waste-managed')).rejects.toThrow(
+      'plugin_managed_interface_read_only'
+    );
+    await expect(
+      upsertStoredInterface(
+        'de-test',
+        {
+          type: 'postgresql',
+          name: 'Manipuliert',
+          enabled: false,
+          config: { schemaName: 'public', databaseUrl: '' },
+        },
+        'waste-managed'
+      )
+    ).rejects.toThrow('plugin_managed_interface_read_only');
+    expect(state.saveExternalInterfaceRecord).not.toHaveBeenCalled();
+    expect(state.deleteExternalInterfaceRecord).not.toHaveBeenCalled();
+  });
+
   it('persists new s3 interfaces through the registry and encrypts secret JSON with stable AAD', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
     let savedRecord: Record<string, unknown> | null = null;

@@ -33,6 +33,11 @@ type ExternalSmokeWarmupOptions = {
 const defaultExternalSmokeMaxAttempts = 50;
 const defaultExternalSmokeRetryDelayMs = 10_000;
 
+const parsePositiveInteger = (value: number | string | undefined): number | undefined => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+};
+
 const defaultRuntimeProfile = (deps: RuntimeSmokeDeps, env: NodeJS.ProcessEnv) =>
   deps.parseRuntimeProfile(env.SVA_RUNTIME_PROFILE as RuntimeProfile | undefined) ?? 'local-keycloak';
 
@@ -150,12 +155,14 @@ const runExternalSmoke = async (deps: RuntimeSmokeDeps, runtimeProfile: RuntimeP
 };
 
 const runExternalSmokeWithWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.ProcessEnv, options?: ExternalSmokeWarmupOptions) => {
-  const retryDelayMs = options?.retryDelayMs ?? Number(env.SVA_EXTERNAL_SMOKE_RETRY_DELAY_MS ?? String(defaultExternalSmokeRetryDelayMs));
-  const configuredWarmupWindowMs = env.SVA_EXTERNAL_SMOKE_WARMUP_WINDOW_MS;
+  const retryDelayMs = parsePositiveInteger(options?.retryDelayMs ?? env.SVA_EXTERNAL_SMOKE_RETRY_DELAY_MS)
+    ?? defaultExternalSmokeRetryDelayMs;
+  const configuredWarmupWindowMs = parsePositiveInteger(env.SVA_EXTERNAL_SMOKE_WARMUP_WINDOW_MS);
   const maxAttemptsFromWarmupWindow = configuredWarmupWindowMs === undefined
     ? defaultExternalSmokeMaxAttempts
-    : Math.max(1, Math.floor(Number(configuredWarmupWindowMs) / Math.max(retryDelayMs, 1)) + 1);
-  const maxAttempts = options?.maxAttempts ?? Number(env.SVA_EXTERNAL_SMOKE_MAX_ATTEMPTS ?? String(maxAttemptsFromWarmupWindow));
+    : Math.max(1, Math.floor(configuredWarmupWindowMs / retryDelayMs) + 1);
+  const maxAttempts = parsePositiveInteger(options?.maxAttempts ?? env.SVA_EXTERNAL_SMOKE_MAX_ATTEMPTS)
+    ?? maxAttemptsFromWarmupWindow;
   const shouldRetry = options?.shouldRetry ?? shouldRetryExternalSmoke;
   const runtimeProfile = options?.runtimeProfile ?? defaultRuntimeProfile(deps, env);
   const runner = options?.runner ?? ((currentEnv: NodeJS.ProcessEnv) => runExternalSmoke(deps, runtimeProfile, currentEnv));

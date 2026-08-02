@@ -179,6 +179,79 @@ describe('instance-interface-healthcheck.server', () => {
     expect(state.fetch).not.toHaveBeenCalled();
   });
 
+  it.each([
+    [undefined, { schemaName: 'waste' }, 'database_url_missing', 'error'],
+    ['postgres://user:secret@localhost/waste', { schemaName: 'waste' }, 'connection_failed', 'error'],
+  ])(
+    'fails closed for unusable PostgreSQL database urls',
+    async (databaseUrl, publicConfig, errorCode, visibleStatus) => {
+      state.loadExternalInterfaceRecordById.mockResolvedValue({
+        id: 'postgresql-1',
+        instanceId: 'de-test',
+        typeKey: 'postgresql',
+        ownerKind: 'host',
+        ownerId: 'host',
+        displayName: 'Waste PostgreSQL',
+        alias: 'default',
+        enabled: true,
+        isDefault: true,
+        category: 'database',
+        authMode: 'database_credentials',
+        statusCheckKind: 'postgresql',
+        visibleStatus: 'unknown',
+        publicConfig,
+        secretConfigCiphertext: `iam.instance_external_interfaces.secret_config:postgresql-1:${JSON.stringify({ databaseUrl })}`,
+      });
+
+      const { runStoredInterfaceHealthcheck } =
+        await import('./instance-interface-healthcheck.server.js');
+      const result = await runStoredInterfaceHealthcheck({
+        instanceId: 'de-test',
+        interfaceId: 'postgresql-1',
+      });
+
+      expect(result).toMatchObject({ checkStatus: 'failed', errorCode, visibleStatus });
+      expect(state.poolQuery).not.toHaveBeenCalled();
+    }
+  );
+
+  it('uses the public schema fallback and reports missing PostgreSQL schemas', async () => {
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 'postgresql-1',
+      instanceId: 'de-test',
+      typeKey: 'postgresql',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Waste PostgreSQL',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'database',
+      authMode: 'database_credentials',
+      statusCheckKind: 'postgresql',
+      visibleStatus: 'unknown',
+      publicConfig: { schemaName: '   ' },
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:postgresql-1:{"databaseUrl":"postgres://db.example/waste"}',
+    });
+    state.poolQuery.mockResolvedValue({ rows: [{ schema_exists: false }] });
+
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
+    const result = await runStoredInterfaceHealthcheck({
+      instanceId: 'de-test',
+      interfaceId: 'postgresql-1',
+    });
+
+    expect(result).toMatchObject({
+      checkStatus: 'failed',
+      errorCode: 'schema_missing',
+      visibleStatus: 'error',
+    });
+    expect(state.poolQuery).toHaveBeenCalledWith(expect.any(String), ['public']);
+    expect(state.poolEnd).toHaveBeenCalledOnce();
+  });
+
   it('uses the provided Date timestamp when the local healthcheck wrapper catches an error', async () => {
     state.loadExternalInterfaceRecordById.mockResolvedValue({
       id: 'supabase-1',

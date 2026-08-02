@@ -47,6 +47,25 @@ const createRequest = (body: Record<string, unknown>) =>
     body: JSON.stringify(body),
   });
 
+const createRetryRequest = (idempotencyKey = 'retry-3') =>
+  new Request('https://studio.test/api/v1/waste-management/settings/provisioning/retry', {
+    method: 'POST',
+    headers: {
+      Origin: 'https://studio.test',
+      'X-Requested-With': 'XMLHttpRequest',
+      'Idempotency-Key': idempotencyKey,
+    },
+  });
+
+const failedProvisioning = {
+  instanceId: 'tenant-a',
+  status: 'failed' as const,
+  desiredGeneration: 2,
+  completedGeneration: 1,
+  requestedAt: '2026-08-02T09:00:00.000Z',
+  updatedAt: '2026-08-02T09:05:00.000Z',
+};
+
 const createDeps = () => ({
   getRequestId: () => 'req-test',
   getSessionById: vi.fn(async () => ({
@@ -124,6 +143,101 @@ describe('waste-management settings handlers', () => {
         data: expect.objectContaining({
           jobTypeId: 'waste-management.provision-tenant-database',
           input: { operation: 'provision-tenant-database', desiredGeneration: 3 },
+        }),
+      })
+    );
+  });
+
+  it('requires both provisioning repository dependencies for retries', async () => {
+    await expect(
+      wasteManagementSettingsHandlers.retryWasteTenantProvisioningInternal(
+        createRetryRequest(),
+        actor,
+        createDeps()
+      )
+    ).rejects.toThrow('missing_dependency:waste_tenant_provisioning_retry');
+  });
+
+  it('rejects retries unless the current provisioning state is failed', async () => {
+    const response = await wasteManagementSettingsHandlers.retryWasteTenantProvisioningInternal(
+      createRetryRequest(),
+      actor,
+      {
+        ...createDeps(),
+        loadWasteTenantProvisioning: vi.fn(async () => ({ ...failedProvisioning, status: 'ready' })),
+        requestWasteTenantProvisioning: vi.fn(),
+      }
+    );
+
+    expect(response.status).toBe(409);
+  });
+
+  it('forwards actor resolution errors and rejects actors without an account id', async () => {
+    const actorError = new Response(null, { status: 403 });
+    const baseDeps = {
+      ...createDeps(),
+      loadWasteTenantProvisioning: vi.fn(async () => failedProvisioning),
+      requestWasteTenantProvisioning: vi.fn(),
+    };
+
+    const errorResponse = await wasteManagementSettingsHandlers.retryWasteTenantProvisioningInternal(
+      createRetryRequest('retry-error'),
+      actor,
+      {
+        ...baseDeps,
+        resolveActorInfo: vi.fn(async () => ({ error: actorError })),
+      }
+    );
+    const missingActorResponse = await wasteManagementSettingsHandlers.retryWasteTenantProvisioningInternal(
+      createRetryRequest('retry-missing-actor'),
+      actor,
+      {
+        ...baseDeps,
+        resolveActorInfo: vi.fn(async () => ({
+          actor: { instanceId: 'tenant-a', actorAccountId: null },
+        })),
+      }
+    );
+
+    expect(errorResponse).toBe(actorError);
+    expect(missingActorResponse.status).toBe(403);
+  });
+
+  it('marks provisioning failed and audits the failure when the job cannot start', async () => {
+    const deps = createDeps();
+    const failWasteTenantProvisioningRequest = vi.fn(async () => null);
+    const response = await wasteManagementSettingsHandlers.retryWasteTenantProvisioningInternal(
+      createRetryRequest('retry-failed-job'),
+      actor,
+      {
+        ...deps,
+        loadWasteTenantProvisioning: vi.fn(async () => failedProvisioning),
+        requestWasteTenantProvisioning: vi.fn(async () => ({
+          ...failedProvisioning,
+          status: 'provisioning' as const,
+          desiredGeneration: 3,
+        })),
+        resolveActorInfo: vi.fn(async () => ({
+          actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
+        })),
+        startPluginOperationJob: vi.fn(async () => new Response(null, { status: 503 })),
+        failWasteTenantProvisioningRequest,
+      }
+    );
+
+    expect(response.status).toBe(503);
+    expect(failWasteTenantProvisioningRequest).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      desiredGeneration: 3,
+      errorCode: 'job_start_failed',
+      errorMessage: 'Der Provisionierungsjob konnte nicht gestartet werden.',
+    });
+    expect(deps.emitAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pluginAction: expect.objectContaining({
+          actionId: 'waste-management.provisioning.retry',
+          result: 'failure',
+          reasonCode: 'job_start_failed',
         }),
       })
     );

@@ -7,6 +7,59 @@ import {
 } from './waste-tenant-database-provisioner.server.js';
 import { requiredWasteTables } from './waste-management-operations.shared.js';
 
+const createProvisioningPool = (options: {
+  readonly missingTables?: boolean;
+  readonly invalidRuntimeUrlPart?: string;
+} = {}) => (url: string) => ({
+  connect: async () => ({
+    query: async <TRow>(text: string) => {
+      if (text.includes('FROM pg_roles')) return { rowCount: 0, rows: [] as TRow[] };
+      if (text.includes('FROM pg_database')) {
+        return { rowCount: 1, rows: [{ exists: true }] as TRow[] };
+      }
+      if (text.includes('information_schema.tables')) {
+        const tables = options.missingTables ? requiredWasteTables.slice(1) : requiredWasteTables;
+        return {
+          rowCount: tables.length,
+          rows: tables.map((table_name) => ({ table_name })) as TRow[],
+        };
+      }
+      if (text.includes('has_table_privilege')) {
+        const isApp = url.includes('_app:');
+        const isInvalid = options.invalidRuntimeUrlPart
+          ? url.includes(options.invalidRuntimeUrlPart)
+          : false;
+        return {
+          rowCount: 1,
+          rows: [{
+            can_select: !isInvalid,
+            can_insert: isApp,
+            can_insert_subscription: true,
+          }] as TRow[],
+        };
+      }
+      return { rowCount: 0, rows: [] as TRow[] };
+    },
+    release: vi.fn(),
+  }),
+  end: vi.fn(async () => undefined),
+});
+
+const createReadyDeps = (overrides: Record<string, unknown> = {}) => ({
+  getProvisionerDatabaseUrl: () =>
+    'postgresql://provisioner:admin@postgres:5432/sva_studio',
+  createPool: createProvisioningPool(),
+  createPassword: () => 'test-secret',
+  protectSecret: (plaintext: string) => `encrypted:${plaintext}`,
+  claimProvisioning: vi.fn(async () => ({ status: 'provisioning' } as never)),
+  completeProvisioning: vi.fn(async (input) => ({ ...input, status: 'ready' } as never)),
+  failProvisioning: vi.fn(async () => null),
+  loadManagedInterface: vi.fn(async () => null),
+  saveManagedInterface: vi.fn(async () => undefined),
+  now: () => new Date('2026-08-02T10:00:00.000Z'),
+  ...overrides,
+});
+
 describe('waste tenant database provisioner', () => {
   it('derives stable, bounded and collision-resistant PostgreSQL identifiers', () => {
     const names = deriveWasteTenantDatabaseNames('BB Prignitz/Äußerst-langer Tenant-Identifier-1234567890');
@@ -130,6 +183,181 @@ describe('waste tenant database provisioner', () => {
         instanceId: 'tenant-a',
         errorCode: 'waste_database_provisioner_url_missing',
         errorMessage: 'Die Waste-Datenbank konnte nicht vollständig provisioniert werden.',
+      })
+    );
+  });
+
+  it.each([
+    [{ operation: 'provision-tenant-database', desiredGeneration: 0 }, { jobId: 'job' }],
+    [{ operation: 'provision-tenant-database', desiredGeneration: 1 }, { jobId: '' }],
+  ])('rejects malformed provisioning input before claiming work', async (input, context) => {
+    const claimProvisioning = vi.fn();
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({ claimProvisioning })
+    );
+
+    await expect(operation('tenant-a', input, context)).rejects.toThrow(
+      'invalid_waste_tenant_provisioning_input'
+    );
+    expect(claimProvisioning).not.toHaveBeenCalled();
+  });
+
+  it('rejects a stale provisioning claim before touching infrastructure', async () => {
+    const createPool = vi.fn();
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({ claimProvisioning: vi.fn(async () => null), createPool })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_tenant_provisioning_claim_rejected');
+    expect(createPool).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when secret protection is unavailable', async () => {
+    const failProvisioning = vi.fn(async () => null);
+    const operation = createProvisionTenantDatabaseOperation({
+      getProvisionerDatabaseUrl: () =>
+        'postgresql://provisioner:admin@postgres:5432/sva_studio',
+      claimProvisioning: vi.fn(async () => ({ status: 'provisioning' } as never)),
+      failProvisioning,
+    });
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_database_secret_protection_missing');
+    expect(failProvisioning).toHaveBeenCalledOnce();
+  });
+
+  it('persists a disabled error interface when encryption returns no ciphertext', async () => {
+    const saveManagedInterface = vi.fn(async () => undefined);
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({ protectSecret: () => null, saveManagedInterface })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_database_secret_protection_failed');
+    expect(saveManagedInterface).not.toHaveBeenCalled();
+  });
+
+  it('rejects an alias owned outside the Waste plugin and records the failed interface', async () => {
+    const saveManagedInterface = vi.fn(async () => undefined);
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({
+        loadManagedInterface: vi.fn(async () => ({
+          ownerKind: 'tenant',
+          ownerId: 'tenant-a',
+        } as ExternalInterfaceRecord)),
+        saveManagedInterface,
+      })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_managed_interface_owner_conflict');
+    expect(saveManagedInterface).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false, visibleStatus: 'error' })
+    );
+  });
+
+  it('fails closed when migrations leave the Waste schema incomplete', async () => {
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({ createPool: createProvisioningPool({ missingTables: true }) })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_database_schema_incomplete');
+  });
+
+  it.each(['_app:', '_public:'])(
+    'fails closed when %s runtime privileges do not match the contract',
+    async (invalidRuntimeUrlPart) => {
+      const operation = createProvisionTenantDatabaseOperation(
+        createReadyDeps({
+          createPool: createProvisioningPool({ invalidRuntimeUrlPart }),
+        })
+      );
+
+      await expect(
+        operation(
+          'tenant-a',
+          { operation: 'provision-tenant-database', desiredGeneration: 1 },
+          { jobId: 'job-1' }
+        )
+      ).rejects.toThrow('waste_database_runtime_privileges_invalid');
+    }
+  );
+
+  it('keeps the interface failed when the readiness transition is rejected', async () => {
+    const saveManagedInterface = vi.fn(async () => undefined);
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({
+        completeProvisioning: vi.fn(async () => null),
+        saveManagedInterface,
+      })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_tenant_provisioning_completion_rejected');
+    expect(saveManagedInterface).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: false, visibleStatus: 'error' })
+    );
+  });
+
+  it('preserves the original failure when failure-state persistence also rejects', async () => {
+    const saveManagedInterface = vi
+      .fn(async () => undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('interface failure write rejected'));
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({
+        createPool: createProvisioningPool({ missingTables: true }),
+        saveManagedInterface,
+        failProvisioning: vi.fn(async () => {
+          throw new Error('provisioning failure write rejected');
+        }),
+      })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_database_schema_incomplete');
+    expect(saveManagedInterface).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        enabled: false,
+        lastCheckStatus: 'failed',
+        updatedAt: '2026-08-02T10:00:00.000Z',
       })
     );
   });

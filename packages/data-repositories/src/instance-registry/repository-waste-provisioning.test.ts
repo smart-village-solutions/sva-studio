@@ -127,4 +127,59 @@ describe('instance registry waste provisioning repository', () => {
       ['tenant-a', 2, 'job_start_failed'],
     ]);
   });
+
+  it('returns null for stale lifecycle transitions and normalizes PostgreSQL dates', async () => {
+    const datedRow = {
+      ...provisioningRow,
+      database_name: null,
+      interface_id: null,
+      requested_at: new Date('2026-08-02T08:00:00.000Z'),
+      started_at: new Date('2026-08-02T08:00:00.500Z'),
+      updated_at: new Date('2026-08-02T08:00:01.000Z'),
+    };
+    const { executor } = createQueuedExecutor([
+      [datedRow],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+    const jobId = '00000000-0000-4000-8000-000000000001';
+
+    await expect(repository.requestWasteProvisioning('tenant-a')).resolves.toMatchObject({
+      requestedAt: '2026-08-02T08:00:00.000Z',
+      startedAt: '2026-08-02T08:00:00.500Z',
+      updatedAt: '2026-08-02T08:00:01.000Z',
+    });
+    await expect(repository.getWasteProvisioning('missing')).resolves.toBeNull();
+    await expect(repository.disableWasteProvisioning('missing')).resolves.toBeNull();
+    await expect(repository.claimWasteProvisioning({
+      instanceId: 'tenant-a',
+      jobId,
+      desiredGeneration: 1,
+    })).resolves.toBeNull();
+    await expect(repository.completeWasteProvisioning({
+      instanceId: 'tenant-a',
+      jobId,
+      desiredGeneration: 1,
+      databaseName: 'tenant-db',
+      interfaceId: 'interface-1',
+    })).resolves.toBeNull();
+    await expect(repository.failWasteProvisioning({
+      instanceId: 'tenant-a',
+      jobId,
+      desiredGeneration: 1,
+      errorCode: 'stale',
+      errorMessage: 'Stale transition',
+    })).resolves.toBeNull();
+    await expect(repository.failWasteProvisioningRequest({
+      instanceId: 'tenant-a',
+      desiredGeneration: 1,
+      errorCode: 'stale',
+      errorMessage: 'Stale transition',
+    })).resolves.toBeNull();
+  });
 });

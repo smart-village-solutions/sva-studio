@@ -16,6 +16,8 @@ export const contentDEResources = {
     next: 'Weiter',
     pageLabel: 'Seite {{page}} von {{total}}',
     resultsLabel: '{{start}}–{{end}} von {{total}} Inhalten',
+    partialPageLabel: 'Lokale Seite {{page}}',
+    partialResultsLabel: 'Lokal verfügbare Inhalte {{start}}–{{end}} von derzeit {{total}}',
     pageSizeLabel: 'Seitengröße',
   },
   bulk: {
@@ -165,13 +167,14 @@ export const contentDEResources = {
     refresh: 'Aktualisieren',
     refreshing: 'Synchronisiert ...',
     running: 'Die Mainserver-Inhalte werden gerade im Hintergrund synchronisiert.',
+    partial:
+      'Vorläufige Ansicht: Sortierung, Filter und Anzahl beziehen sich nur auf die bereits lokal verfügbaren Inhalte.',
     runningWithSnapshot:
       'Die Mainserver-Inhalte werden gerade im Hintergrund synchronisiert. Angezeigt wird der letzte erfolgreiche Stand von {{value}}.',
     stale:
       'Die angezeigten Mainserver-Inhalte stammen aus dem letzten erfolgreichen Abgleich von {{value}}. Ein Hintergrundabgleich wurde angestoßen.',
     staleWithError:
       'Die angezeigten Mainserver-Inhalte stammen aus dem letzten erfolgreichen Abgleich von {{value}}. Der letzte Hintergrundabgleich meldete {{errorCode}}.',
-    fresh: 'Letzter erfolgreicher Mainserver-Abgleich: {{value}}.',
   },
   errors: {
     forbidden: 'Unzureichende Berechtigungen für diese Inhaltsaktion.',

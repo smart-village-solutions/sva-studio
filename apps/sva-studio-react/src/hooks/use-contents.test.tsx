@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useContentDetail, useContents, useCreateContent } from './use-contents';
 
@@ -85,6 +85,10 @@ describe('useContents', () => {
     authMockValue.invalidatePermissions.mockReset();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('loads content list items', async () => {
     asIamErrorMock.mockImplementation((cause: unknown) => cause);
     listContentsMock.mockResolvedValue({
@@ -124,6 +128,50 @@ describe('useContents', () => {
       expect(result.current.contents).toHaveLength(1);
       expect(result.current.metadata?.mainserverSyncStates).toHaveLength(1);
     });
+  });
+
+  it('preserves polling backoff when refetch returns equivalent sync metadata', async () => {
+    vi.useFakeTimers();
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    listContentsMock.mockImplementation(async () => ({
+      data: [],
+      pagination: { page: 1, pageSize: 25, total: 0 },
+      metadata: {
+        mainserverSyncStates: [
+          {
+            contentType: 'news.article',
+            isStale: false,
+            isSyncRunning: true,
+            hasSnapshot: true,
+            snapshotState: 'complete_refreshing',
+          },
+        ],
+        hasStaleMainserverContent: false,
+        hasBlockingSyncGap: false,
+        hasRunningMainserverSync: true,
+      },
+    }));
+
+    renderHook(() => useContents(contentListQuery));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(listContentsMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    expect(listContentsMock).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    expect(listContentsMock).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+    expect(listContentsMock).toHaveBeenCalledTimes(3);
   });
 
   it('refreshes the projected mainserver snapshot and refetches the current list', async () => {

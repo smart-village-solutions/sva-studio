@@ -311,3 +311,21 @@ Ergebnisse:
 Report-Datei:
 
 - `artifacts/benchmark/sva-mainserver-benchmark.json`
+
+## Inhaltsprojektion betreiben
+
+Die Inhaltsübersicht verwendet standardmäßig schlanke Mainserver-Listenadapter, partielle Reads und eine frühe Antwort nach der Hot-Phase:
+
+- `SVA_CONTENT_PROJECTION_ADAPTER_MODE=slim|legacy` (Standard: `slim`)
+- `SVA_CONTENT_PROJECTION_PARTIAL_READS_ENABLED=true|false` (Standard: `true`)
+- `SVA_CONTENT_PROJECTION_HOT_COMPLETION_ENABLED=true|false` (Standard: `true`)
+
+Ein nicht finaler Listenstand meldet `availableCount` und `isTotalFinal=false`; `totalCount` fehlt dann bewusst. Pro Typ liefern die Refresh-Metadaten Snapshot-Zustand, Phase, abgeschlossene Page, verfügbare Anzahl, Invalid-Zähler und den letzten Fehler.
+
+Rollback-Reihenfolge:
+
+1. `SVA_CONTENT_PROJECTION_HOT_COMPLETION_ENABLED=false` setzen, damit neue Requests vollständige Läufe abwarten.
+2. `SVA_CONTENT_PROJECTION_ADAPTER_MODE=legacy` setzen und eine vollständige Reconciliation abschließen lassen.
+3. Erst danach bei Bedarf `SVA_CONTENT_PROJECTION_PARTIAL_READS_ENABLED=false` setzen.
+
+Die Migration und ihre additiven Sync-State-Spalten werden bei einem Runtime-Rollback nicht zurückgenommen. Bereits laufende alte Generationen dürfen nach einer Mutation keine Pages, Finalisierung oder Löschung mehr schreiben.

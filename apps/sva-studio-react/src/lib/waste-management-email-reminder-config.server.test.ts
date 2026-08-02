@@ -80,7 +80,6 @@ const createPostgresqlRecord = (
     enabled: true,
     isDefault: true,
     category: 'database',
-    baseUrl: null,
     authMode: 'database_url',
     publicConfig: {
       schemaName: 'wm',

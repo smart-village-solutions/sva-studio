@@ -29,7 +29,6 @@ const createInterfaceRecord = (schemaName = 'wm'): ExternalInterfaceRecord => ({
   enabled: true,
   isDefault: true,
   category: 'database' as const,
-  baseUrl: null,
   authMode: 'database_url',
   publicConfig: {
     schemaName,

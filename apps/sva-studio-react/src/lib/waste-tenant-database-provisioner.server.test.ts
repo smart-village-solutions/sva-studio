@@ -190,7 +190,7 @@ describe('waste tenant database provisioner', () => {
   it.each([
     [{ operation: 'provision-tenant-database', desiredGeneration: 0 }, { jobId: 'job' }],
     [{ operation: 'provision-tenant-database', desiredGeneration: 1 }, { jobId: '' }],
-  ])('rejects malformed provisioning input before claiming work', async (input, context) => {
+  ] as const)('rejects malformed provisioning input before claiming work', async (input, context) => {
     const claimProvisioning = vi.fn();
     const operation = createProvisionTenantDatabaseOperation(
       createReadyDeps({ claimProvisioning })
@@ -260,7 +260,7 @@ describe('waste tenant database provisioner', () => {
         loadManagedInterface: vi.fn(async () => ({
           ownerKind: 'tenant',
           ownerId: 'tenant-a',
-        } as ExternalInterfaceRecord)),
+        } as unknown as ExternalInterfaceRecord)),
         saveManagedInterface,
       })
     );

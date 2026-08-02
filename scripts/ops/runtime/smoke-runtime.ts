@@ -165,21 +165,34 @@ const runExternalSmokeWithWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.Pr
   return lastProbes;
 };
 
-const isBlockingSmokeProbe = (
-  deps: RuntimeSmokeDeps,
+export const isBlockingSmokeProbe = (
   probe: AcceptanceProbeResult,
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv,
 ) => {
-  if (['public-live', 'public-ready', 'public-auth-login', 'public-ingress-unknown-host'].includes(probe.name)) return true;
+  if (['public-home', 'public-live', 'public-ready', 'public-auth-login', 'public-ingress-unknown-host'].includes(probe.name)) return true;
   if (probe.name.startsWith('public-auth-login-')) return true;
 
   const isExplicitIngressProbe = probe.name.startsWith('public-ingress-https-')
     || probe.name.startsWith('public-ingress-login-');
   if (!isExplicitIngressProbe) return false;
-  if (!deps.shouldUseStudioReleaseBlockingTenantScope(runtimeProfile, env)) return true;
+  const usesReleaseBlockingTenantScope = runtimeProfile === 'studio'
+    && (env.SVA_ACCEPTANCE_RELEASE_MODE?.trim().length ?? 0) > 0;
+  if (!usesReleaseBlockingTenantScope) return true;
 
-  return probe.name.includes('de-studio-sandbox.studio.smart-village.app');
+  return probe.name.startsWith('public-ingress-https-de-studio-sandbox.')
+    || probe.name.startsWith('public-ingress-login-de-studio-sandbox.');
+};
+
+export const reportNonBlockingSmokeFailures = (
+  probes: readonly AcceptanceProbeResult[],
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv,
+) => {
+  for (const probe of probes) {
+    if (probe.status !== 'error' || isBlockingSmokeProbe(probe, runtimeProfile, env)) continue;
+    console.warn(`[runtime-env] Nicht blockierender Smoke-Fehler: ${probe.name}: ${probe.message}`);
+  }
 };
 
 const waitForRemoteSmokeWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.ProcessEnv, options?: ExternalSmokeWarmupOptions) => {
@@ -190,11 +203,12 @@ const waitForRemoteSmokeWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.Proc
     runtimeProfile,
     runner: options?.runner,
     shouldRetry: (candidateProbes) => shouldRetryExternalSmoke(
-      candidateProbes.filter((probe) => isBlockingSmokeProbe(deps, probe, runtimeProfile, env)),
+      candidateProbes.filter((probe) => isBlockingSmokeProbe(probe, runtimeProfile, env)),
     ),
   });
+  reportNonBlockingSmokeFailures(probes, runtimeProfile, env);
   const failingProbe = probes.find(
-    (probe) => probe.status === 'error' && isBlockingSmokeProbe(deps, probe, runtimeProfile, env),
+    (probe) => probe.status === 'error' && isBlockingSmokeProbe(probe, runtimeProfile, env),
   );
   if (failingProbe) throw new Error(`${failingProbe.name}: ${failingProbe.message}`);
   return probes;

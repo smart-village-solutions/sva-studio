@@ -1,5 +1,6 @@
 import type { AcceptanceDeployDeps, AcceptanceDeployState } from './acceptance-deploy.types.ts';
 import { failDeploy } from './acceptance-deploy-state.ts';
+import { isBlockingSmokeProbe, reportNonBlockingSmokeFailures } from './smoke-runtime.ts';
 
 export const runInternalVerifyPhase = async (deps: AcceptanceDeployDeps, state: AcceptanceDeployState) => {
   const startedAt = Date.now();
@@ -19,7 +20,10 @@ export const runExternalSmokePhase = async (deps: AcceptanceDeployDeps, state: A
   try {
     const externalProbes = await deps.runExternalSmokeWithWarmup(state.env, { runtimeProfile: state.runtimeProfile });
     state.report = { ...state.report, externalProbes };
-    const failingProbe = externalProbes.find((probe) => probe.status === 'error');
+    reportNonBlockingSmokeFailures(externalProbes, state.runtimeProfile, state.env);
+    const failingProbe = externalProbes.find(
+      (probe) => probe.status === 'error' && isBlockingSmokeProbe(probe, state.runtimeProfile, state.env),
+    );
     if (failingProbe) {
       throw new Error(`${failingProbe.name}: ${failingProbe.message}`);
     }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { AcceptanceProbeResult, DoctorReport } from '../runtime-env.shared.ts';
 import {
@@ -109,6 +109,7 @@ describe('smoke helpers', () => {
   });
 
   it('does not block production releases on non-release tenant ingress failures', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const ops = createRuntimeSmokeOps({
       buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
       buildSwarmServicePresenceProbe: () => createProbe({ scope: 'internal' }),
@@ -119,7 +120,7 @@ describe('smoke helpers', () => {
       runHttpProbe: async (input) => createProbe({ name: input.name, target: input.target }),
       selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
       shouldUseStudioReleaseBlockingTenantScope: (runtimeProfile, env) =>
-        runtimeProfile === 'studio' && env.SVA_ACCEPTANCE_RELEASE_MODE === 'prod',
+        runtimeProfile === 'studio' && (env.SVA_ACCEPTANCE_RELEASE_MODE?.trim().length ?? 0) > 0,
       wait: async () => undefined,
     });
     const nonBlockingFailure = createProbe({
@@ -129,13 +130,43 @@ describe('smoke helpers', () => {
     });
 
     await expect(ops.waitForRemoteSmokeWarmup({
-      SVA_ACCEPTANCE_RELEASE_MODE: 'prod',
+      SVA_ACCEPTANCE_RELEASE_MODE: 'app-only',
       SVA_RUNTIME_PROFILE: 'studio',
     }, {
       maxAttempts: 1,
       runner: async () => [nonBlockingFailure],
       runtimeProfile: 'studio',
     })).resolves.toEqual([nonBlockingFailure]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining(nonBlockingFailure.name));
+    warn.mockRestore();
+  });
+
+  it.each([
+    'public-home',
+    'public-ingress-https-de-studio-sandbox.studio-staging.smart-village.app',
+  ])('keeps %s release-blocking', async (name) => {
+    const ops = createRuntimeSmokeOps({
+      buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
+      buildSwarmServicePresenceProbe: () => createProbe({ scope: 'internal' }),
+      doctorRuntime: async () => createDoctorReport({}),
+      isExpectedOidcRedirect: () => true,
+      parseRuntimeProfile: (value) => value,
+      resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
+      runHttpProbe: async (input) => createProbe({ name: input.name, target: input.target }),
+      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
+      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      wait: async () => undefined,
+    });
+    const blockingFailure = createProbe({ message: 'fetch failed', name, status: 'error' });
+
+    await expect(ops.waitForRemoteSmokeWarmup({
+      SVA_ACCEPTANCE_RELEASE_MODE: 'app-only',
+      SVA_RUNTIME_PROFILE: 'studio',
+    }, {
+      maxAttempts: 1,
+      runner: async () => [blockingFailure],
+      runtimeProfile: 'studio',
+    })).rejects.toThrow(name);
   });
 
   it('returns no ingress contract for an invalid base URL', () => {

@@ -172,6 +172,110 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     );
   });
 
+  it('lists cockpit cards with their dedicated action and content type', async () => {
+    mockAuthorizedMutation();
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      data: [{ id: 'card-1', genericType: 'COCKPIT_CARD', title: 'Karte' }],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/cockpit-cards')
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'cockpit-cards.read',
+        resource: { contentType: 'cockpit-cards.cockpit-card' },
+      })
+    );
+    expect(state.loggerInfo).toHaveBeenCalledWith(
+      'Cockpit Cards list upstream pagination completed',
+      expect.objectContaining({ matching_item_count: 1 })
+    );
+  });
+
+  it('creates, updates and deletes cockpit cards with discriminator protection', async () => {
+    mockAuthorizedMutation();
+    const body = {
+      title: 'Karte',
+      genericType: 'INFO',
+      contentBlocks: [{ body: 'Text' }],
+      payload: { languageCode: 'de', sortWeight: 2 },
+      categories: [{ name: 'Startseite' }],
+      mediaContents: [
+        { sourceUrl: { url: 'https://example.test/image.jpg' }, contentType: 'image' },
+      ],
+      webUrls: [{ url: 'https://example.test/details' }],
+    };
+    state.createSvaMainserverGenericItem.mockResolvedValue({ id: 'card-1' });
+    const createResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/cockpit-cards', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      })
+    );
+    expect(createResponse?.status).toBe(201);
+    expect(state.createSvaMainserverGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        genericItem: expect.objectContaining({ genericType: 'COCKPIT_CARD' }),
+      })
+    );
+
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'card-1',
+      genericType: 'COCKPIT_CARD',
+      payload: { legacy: 'keep', languageCode: 'de', sortWeight: 1 },
+    });
+    state.updateSvaMainserverGenericItem.mockResolvedValue({ id: 'card-1' });
+    const updateResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/cockpit-cards/card-1', {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      })
+    );
+    expect(updateResponse?.status).toBe(200);
+    expect(state.updateSvaMainserverGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        genericItem: expect.objectContaining({
+          genericType: 'COCKPIT_CARD',
+          payload: { legacy: 'keep', languageCode: 'de', sortWeight: 2 },
+        }),
+      })
+    );
+
+    state.deleteSvaMainserverGenericItem.mockResolvedValue({ id: 'card-1', deleted: true });
+    const deleteResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/cockpit-cards/card-1', {
+        method: 'DELETE',
+      })
+    );
+    expect(deleteResponse?.status).toBe(200);
+  });
+
+  it('returns not found for non-cockpit-card detail and mutation targets', async () => {
+    mockAuthorizedMutation();
+    state.getSvaMainserverGenericItem.mockResolvedValue({ id: 'other', genericType: 'FAQ' });
+    const detail = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/cockpit-cards/other')
+    );
+    const update = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/cockpit-cards/other', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Karte' }),
+      })
+    );
+    const remove = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/cockpit-cards/other', {
+        method: 'DELETE',
+      })
+    );
+    expect(detail?.status).toBe(404);
+    expect(update?.status).toBe(404);
+    expect(remove?.status).toBe(404);
+  });
+
   it('enforces the FAQ discriminator on writes', async () => {
     mockAuthorizedMutation();
     state.createSvaMainserverGenericItem.mockResolvedValue({ id: 'faq-1' });

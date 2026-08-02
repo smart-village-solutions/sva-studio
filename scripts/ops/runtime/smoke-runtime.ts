@@ -38,6 +38,9 @@ const parsePositiveInteger = (value: number | string | undefined): number | unde
   return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 };
 
+const parseNonNegativeInteger = (value: number | undefined): number | undefined =>
+  value !== undefined && Number.isInteger(value) && value >= 0 ? value : undefined;
+
 const defaultRuntimeProfile = (deps: RuntimeSmokeDeps, env: NodeJS.ProcessEnv) =>
   deps.parseRuntimeProfile(env.SVA_RUNTIME_PROFILE as RuntimeProfile | undefined) ?? 'local-keycloak';
 
@@ -155,12 +158,13 @@ const runExternalSmoke = async (deps: RuntimeSmokeDeps, runtimeProfile: RuntimeP
 };
 
 const runExternalSmokeWithWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.ProcessEnv, options?: ExternalSmokeWarmupOptions) => {
-  const retryDelayMs = parsePositiveInteger(options?.retryDelayMs ?? env.SVA_EXTERNAL_SMOKE_RETRY_DELAY_MS)
-    ?? defaultExternalSmokeRetryDelayMs;
+  const retryDelayMs = options?.retryDelayMs === undefined
+    ? parsePositiveInteger(env.SVA_EXTERNAL_SMOKE_RETRY_DELAY_MS) ?? defaultExternalSmokeRetryDelayMs
+    : parseNonNegativeInteger(options.retryDelayMs) ?? defaultExternalSmokeRetryDelayMs;
   const configuredWarmupWindowMs = parsePositiveInteger(env.SVA_EXTERNAL_SMOKE_WARMUP_WINDOW_MS);
   const maxAttemptsFromWarmupWindow = configuredWarmupWindowMs === undefined
     ? defaultExternalSmokeMaxAttempts
-    : Math.max(1, Math.floor(configuredWarmupWindowMs / retryDelayMs) + 1);
+    : Math.max(1, Math.floor(configuredWarmupWindowMs / Math.max(retryDelayMs, 1)) + 1);
   const maxAttempts = parsePositiveInteger(options?.maxAttempts ?? env.SVA_EXTERNAL_SMOKE_MAX_ATTEMPTS)
     ?? maxAttemptsFromWarmupWindow;
   const shouldRetry = options?.shouldRetry ?? shouldRetryExternalSmoke;

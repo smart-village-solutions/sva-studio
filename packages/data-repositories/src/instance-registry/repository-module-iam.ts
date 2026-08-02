@@ -38,36 +38,10 @@ const recordPermissionOutcome = (
   permissionsUnchanged: result.permissionsUnchanged + (outcome === 'unchanged' ? 1 : 0),
 });
 
-export const createModuleIamRepository = (executor: SqlExecutor): ModuleIamRepository => ({
-  async assignModule(instanceId, moduleId) {
-    const result = await executor.execute(
-      statement(
-        `
-INSERT INTO iam.instance_modules (instance_id, module_id)
-VALUES ($1, $2)
-ON CONFLICT (instance_id, module_id) DO NOTHING;
-`,
-        [instanceId, moduleId]
-      )
-    );
-    return result.rowCount > 0;
-  },
-
-  async revokeModule(instanceId, moduleId) {
-    const result = await executor.execute(
-      statement(
-        `
-DELETE FROM iam.instance_modules
-WHERE instance_id = $1
-  AND module_id = $2;
-`,
-        [instanceId, moduleId]
-      )
-    );
-    return result.rowCount > 0;
-  },
-
-  async syncAssignedModuleIam({ instanceId, managedModuleIds, contracts }) {
+const createSyncAssignedModuleIam = (
+  executor: SqlExecutor
+): InstanceRegistryRepository['syncAssignedModuleIam'] =>
+  async ({ instanceId, managedModuleIds, contracts }) => {
     const permissions = buildManagedPermissions(contracts);
     const rolePermissionPairs = buildRolePermissionPairs(contracts);
     if (
@@ -99,9 +73,12 @@ WHERE instance_id = $1
       contracts.map((contract) => contract.moduleId)
     );
     return reconcileResult;
-  },
+  };
 
-  async syncProtectedSystemRolePermissions({ instanceId, role }) {
+const createSyncProtectedSystemRolePermissions = (
+  executor: SqlExecutor
+): InstanceRegistryRepository['syncProtectedSystemRolePermissions'] =>
+  async ({ instanceId, role }) => {
     const permissions = [
       ...new Map(role.permissions.map((permission) => [permission.key, permission])).values(),
     ].sort((left, right) => compareAlphabetically(left.key, right.key));
@@ -129,5 +106,37 @@ WHERE instance_id = $1
       };
     }
     return reconcileResult;
+  };
+
+export const createModuleIamRepository = (executor: SqlExecutor): ModuleIamRepository => ({
+  async assignModule(instanceId, moduleId) {
+    const result = await executor.execute(
+      statement(
+        `
+INSERT INTO iam.instance_modules (instance_id, module_id)
+VALUES ($1, $2)
+ON CONFLICT (instance_id, module_id) DO NOTHING;
+`,
+        [instanceId, moduleId]
+      )
+    );
+    return result.rowCount > 0;
   },
+
+  async revokeModule(instanceId, moduleId) {
+    const result = await executor.execute(
+      statement(
+        `
+DELETE FROM iam.instance_modules
+WHERE instance_id = $1
+  AND module_id = $2;
+`,
+        [instanceId, moduleId]
+      )
+    );
+    return result.rowCount > 0;
+  },
+
+  syncAssignedModuleIam: createSyncAssignedModuleIam(executor),
+  syncProtectedSystemRolePermissions: createSyncProtectedSystemRolePermissions(executor),
 });

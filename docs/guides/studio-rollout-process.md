@@ -19,11 +19,11 @@ Dieses Dokument ist die einzige normative Bedienanleitung für reguläre Studio-
 
 ## Umgebungsvertrag
 
-| Umgebung   | Stack            | Root-URL                                   | Auslösung                                                         | Modi                                         | Backup                             |
-| ---------- | ---------------- | ------------------------------------------ | ----------------------------------------------------------------- | -------------------------------------------- | ---------------------------------- |
-| Dev        | `studio-dev`     | `https://studio-dev.smart-village.app`     | automatisch nach erfolgreichem Build auf `main`                   | `migration_mode=auto`, `bootstrap_mode=auto` | kein Promote-Backup                |
-| Staging    | `studio-staging` | `https://studio-staging.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `staging` | `assert-none` oder `run`                     | vor jedem Deployment verpflichtend |
-| Production | `studio`         | `https://studio.smart-village.app`         | manuell über `Promote`, geschützt durch das Environment `prod`    | `assert-none` oder `run`                     | vor jedem Deployment verpflichtend |
+| Umgebung | Stack | Root-URL | Auslösung | Modi | Backup |
+| --- | --- | --- | --- | --- | --- |
+| Dev | `studio-dev` | `https://studio-dev.smart-village.app` | automatisch nach erfolgreichem Build auf `main` | `migration_mode=auto`, `bootstrap_mode=auto` | kein Promote-Backup |
+| Staging | `studio-staging` | `https://studio-staging.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `staging` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
+| Production | `studio` | `https://studio.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `prod` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
 
 ## Explizite Tenant-Hostfreigabe
 

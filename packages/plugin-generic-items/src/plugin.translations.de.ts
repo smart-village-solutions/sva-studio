@@ -106,7 +106,7 @@ export const genericItemsTranslationsDe = {
       maxAdultCount: 'Erwachsene höchstens',
       minChildrenCount: 'Kinder mindestens',
       maxChildrenCount: 'Kinder höchstens',
-      payload: 'Payload',
+      payload: 'Zusatzdaten',
       payloadHelp:
         'Freies JSON-Objekt für plugin-spezifische Zusatzdaten. Dieser Bereich bleibt absichtlich offen.',
       updatedAt: 'Geändert am',
@@ -132,7 +132,7 @@ export const genericItemsTranslationsDe = {
       settings: {
         label: 'Einstellungen',
         title: 'Einstellungen',
-        description: 'Freie Payload und ergänzende technische Felder.',
+        description: 'Freie Zusatzdaten und ergänzende technische Felder.',
       },
       history: {
         label: 'Historie',
@@ -175,7 +175,7 @@ export const genericItemsTranslationsDe = {
       },
       settings: {
         payload: {
-          title: 'Payload',
+          title: 'Zusatzdaten',
           description: 'Freies JSON für plugin-spezifische Zusatzdaten.',
         },
         secondary: {

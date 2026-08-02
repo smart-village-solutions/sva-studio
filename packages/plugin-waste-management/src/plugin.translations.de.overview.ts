@@ -2,19 +2,19 @@ import { createWasteManagementOverviewTranslations } from './plugin.translations
 
 export const wasteManagementPluginTranslationsDEOverview = createWasteManagementOverviewTranslations({
   messages: {
-    loading: 'Waste-Historie wird geladen.',
-    loadError: 'Die Waste-Historie konnte nicht geladen werden.',
-    loadForbidden: 'Für die Waste-Historie fehlt die Berechtigung.',
+    loading: 'Abfall-Historie wird geladen.',
+    loadError: 'Die Abfall-Historie konnte nicht geladen werden.',
+    loadForbidden: 'Für die Abfall-Historie fehlt die Berechtigung.',
     emptyTitle: 'Noch keine Historieneinträge',
-    emptyBody: 'Die zentrale Auditspur enthält für diese Suche oder Seite noch keine Waste-Ereignisse.',
+    emptyBody: 'Die zentrale Auditspur enthält für diese Suche oder Seite noch keine Abfall-Ereignisse.',
   },
   sections: {
     technical: 'Technische Historie',
     audit: 'Audit-Historie',
   },
   technicalTable: {
-    ariaLabel: 'Tabelle technischer Waste-Historieneinträge',
-    caption: 'Tabelle technischer Historieneinträge für Waste.',
+    ariaLabel: 'Tabelle technischer Abfall-Historieneinträge',
+    caption: 'Tabelle technischer Historieneinträge für Abfall.',
     eventType: 'Ereignistyp',
     outcome: 'Ergebnis',
     occurredAt: 'Zeitpunkt',
@@ -24,8 +24,8 @@ export const wasteManagementPluginTranslationsDEOverview = createWasteManagement
     requestId: 'Request-ID',
   },
   auditTable: {
-    ariaLabel: 'Tabelle der Waste-Audit-Historie',
-    caption: 'Tabelle der Audit-Historie für Waste.',
+    ariaLabel: 'Tabelle der Abfall-Audit-Historie',
+    caption: 'Tabelle der Audit-Historie für Abfall.',
     actionId: 'Action-ID',
     outcome: 'Ergebnis',
     occurredAt: 'Zeitpunkt',

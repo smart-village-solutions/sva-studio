@@ -136,6 +136,7 @@ const permissionDefinitionAllowedKeys = new Set(['id', 'titleKey', 'descriptionK
 const contentTypeDefinitionAllowedKeys = new Set([
   'contentType',
   'displayName',
+  'titleKey',
   'studioContentType',
   'editorFields',
   'listColumns',

@@ -144,7 +144,7 @@ describe('ContentEditorPage', () => {
     fireEvent.change(screen.getByLabelText('Überschrift'), {
       target: { value: 'Landing Page' },
     });
-    fireEvent.change(screen.getByLabelText('Payload (JSON)'), {
+    fireEvent.change(screen.getByLabelText('Zusatzdaten (JSON)'), {
       target: { value: '{"hero":' },
     });
 
@@ -154,14 +154,14 @@ describe('ContentEditorPage', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('alert').textContent).toContain(
-        'Die Payload muss gültiges JSON sein.'
+        'Die Zusatzdaten müssen gültiges JSON sein.'
       );
     });
 
-    expect(document.activeElement).toBe(screen.getByLabelText('Payload (JSON)'));
-    expect(screen.getByLabelText('Payload (JSON)').getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(screen.getByLabelText('Zusatzdaten (JSON)'));
+    expect(screen.getByLabelText('Zusatzdaten (JSON)').getAttribute('aria-invalid')).toBe('true');
 
-    fireEvent.change(screen.getByLabelText('Payload (JSON)'), {
+    fireEvent.change(screen.getByLabelText('Zusatzdaten (JSON)'), {
       target: { value: '{"hero":"Willkommen"}' },
     });
     fireEvent.click(screen.getAllByRole('button', { name: 'Inhalt anlegen' })[1]!);
@@ -242,7 +242,7 @@ describe('ContentEditorPage', () => {
     fireEvent.change(screen.getByLabelText('Überschrift'), {
       target: { value: 'Neue Startseite' },
     });
-    fireEvent.change(screen.getByLabelText('Payload (JSON)'), {
+    fireEvent.change(screen.getByLabelText('Zusatzdaten (JSON)'), {
       target: { value: '{"hero":"Neu"}' },
     });
     fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
@@ -472,7 +472,7 @@ describe('ContentEditorPage', () => {
     fireEvent.change(screen.getByLabelText('Überschrift'), {
       target: { value: 'Landing Page' },
     });
-    fireEvent.change(screen.getByLabelText('Payload (JSON)'), {
+    fireEvent.change(screen.getByLabelText('Zusatzdaten (JSON)'), {
       target: { value: '{"hero":"Willkommen"}' },
     });
     fireEvent.click(screen.getAllByRole('button', { name: 'Inhalt anlegen' })[1]!);

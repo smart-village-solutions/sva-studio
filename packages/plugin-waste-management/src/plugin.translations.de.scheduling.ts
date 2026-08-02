@@ -7,8 +7,8 @@ export const wasteManagementPluginTranslationsDEScheduling =
       description: 'Verschiebungen mit globaler Wirkung über mehrere Touren hinweg.',
       cardTitle: 'Globaler Termin {{value}}',
       table: {
-        ariaLabel: 'Tabelle globaler Waste-Ausweichtermine',
-        caption: 'Tabelle globaler Waste-Ausweichtermine mit Kontext und Aktionen.',
+        ariaLabel: 'Tabelle globaler Abfall-Ausweichtermine',
+        caption: 'Tabelle globaler Abfall-Ausweichtermine mit Kontext und Aktionen.',
         originalDate: 'Ursprünglicher Termin',
         actualDate: 'Verschobener Termin',
         reason: 'Grund',
@@ -45,10 +45,10 @@ export const wasteManagementPluginTranslationsDEScheduling =
         editDescription: 'Passen Sie Termin, Beschreibung oder betroffene Touren an.',
       },
       messages: {
-        createSuccess: 'Der globale Waste-Ausweichtermin wurde angelegt.',
-        updateSuccess: 'Der globale Waste-Ausweichtermin wurde aktualisiert.',
-        saveError: 'Der globale Waste-Ausweichtermin konnte nicht gespeichert werden.',
-        saveForbidden: 'Für das Speichern globaler Waste-Ausweichtermine fehlt die Berechtigung.',
+        createSuccess: 'Der globale Abfall-Ausweichtermin wurde angelegt.',
+        updateSuccess: 'Der globale Abfall-Ausweichtermin wurde aktualisiert.',
+        saveError: 'Der globale Abfall-Ausweichtermin konnte nicht gespeichert werden.',
+        saveForbidden: 'Für das Speichern globaler Abfall-Ausweichtermine fehlt die Berechtigung.',
       },
     },
     tour: {
@@ -56,8 +56,8 @@ export const wasteManagementPluginTranslationsDEScheduling =
       description: 'Gezielte Einzelverschiebungen für konkrete Touren.',
       cardTitle: 'Tour {{value}}',
       table: {
-        ariaLabel: 'Tabelle tourbezogener Waste-Ausweichtermine',
-        caption: 'Tabelle tourbezogener Waste-Ausweichtermine mit Kontext und Aktionen.',
+        ariaLabel: 'Tabelle tourbezogener Abfall-Ausweichtermine',
+        caption: 'Tabelle tourbezogener Abfall-Ausweichtermine mit Kontext und Aktionen.',
         tourId: 'Tour',
         originalDate: 'Ursprünglicher Termin',
         actualDate: 'Verschobener Termin',
@@ -96,11 +96,11 @@ export const wasteManagementPluginTranslationsDEScheduling =
         editDescription: 'Passen Sie Tour, Termin oder Beschreibung der Einzelverschiebung an.',
       },
       messages: {
-        createSuccess: 'Der tourbezogene Waste-Ausweichtermin wurde angelegt.',
-        updateSuccess: 'Der tourbezogene Waste-Ausweichtermin wurde aktualisiert.',
-        saveError: 'Der tourbezogene Waste-Ausweichtermin konnte nicht gespeichert werden.',
+        createSuccess: 'Der tourbezogene Abfall-Ausweichtermin wurde angelegt.',
+        updateSuccess: 'Der tourbezogene Abfall-Ausweichtermin wurde aktualisiert.',
+        saveError: 'Der tourbezogene Abfall-Ausweichtermin konnte nicht gespeichert werden.',
         saveForbidden:
-          'Für das Speichern tourbezogener Waste-Ausweichtermine fehlt die Berechtigung.',
+          'Für das Speichern tourbezogener Abfall-Ausweichtermine fehlt die Berechtigung.',
       },
     },
     assignments: {
@@ -198,11 +198,11 @@ export const wasteManagementPluginTranslationsDEScheduling =
     },
     messages: {
       loading: 'Ausweichtermine werden geladen.',
-      loadError: 'Die Waste-Ausweichtermine konnten nicht geladen werden.',
-      loadForbidden: 'Für die Waste-Ausweichtermine fehlt die Berechtigung.',
+      loadError: 'Die Abfall-Ausweichtermine konnten nicht geladen werden.',
+      loadForbidden: 'Für die Abfall-Ausweichtermine fehlt die Berechtigung.',
       emptyTitle: 'Keine Ausweichtermine gefunden',
       emptyBody:
-        'Passen Sie die Filter an oder hinterlegen Sie Ausweichtermine in der Waste-Datenquelle.',
+        'Passen Sie die Filter an oder hinterlegen Sie Ausweichtermine in der Abfall-Datenquelle.',
       deleteSuccess: '{{value}} Ausweichtermine wurden gelöscht.',
       deleteError: 'Die markierten Ausweichtermine konnten nicht gelöscht werden.',
       deleteForbidden: 'Für das Löschen von Ausweichterminen fehlt die Berechtigung.',
@@ -241,9 +241,9 @@ export const wasteManagementPluginTranslationsDEScheduling =
       title: 'Ausweichtermine',
       description:
         'Feiertagsregeln, globale und tourbezogene Ausweichtermine in einer gemeinsamen Tabelle.',
-      ariaLabel: 'Tabelle der Waste-Ausweichtermine',
+      ariaLabel: 'Tabelle der Abfall-Ausweichtermine',
       caption:
-        'Tabelle der Feiertagsregeln sowie globalen und tourbezogenen Waste-Ausweichtermine mit Kontext und Aktionen.',
+        'Tabelle der Feiertagsregeln sowie globalen und tourbezogenen Abfall-Ausweichtermine mit Kontext und Aktionen.',
       selection: 'Auswahl',
       scope: 'Typ',
       context: 'Bezug',

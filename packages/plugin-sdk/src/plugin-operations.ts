@@ -155,7 +155,9 @@ const normalizeJobTypeDefinition = (definition: PluginJobTypeDefinition): Plugin
   jobTypeId: normalizePluginIdentifier(definition.jobTypeId),
   queue: normalizePluginIdentifier(definition.queue),
   displayName: definition.displayName.trim(),
-  descriptionKey: normalizePluginIdentifier(definition.descriptionKey ?? '') || undefined,
+  ...(definition.descriptionKey?.trim()
+    ? { descriptionKey: normalizePluginIdentifier(definition.descriptionKey) }
+    : {}),
   progress: definition.progress
     ? {
         phaseKeys: normalizeProgressKeys(definition.progress.phaseKeys),

@@ -6,7 +6,7 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
   },
   technical: {
     title: 'Bereitstellung',
-    description: 'Die Waste-Datenbank wird automatisch für diese Instanz bereitgestellt und verwaltet.',
+    description: 'Die Abfalldatenbank wird automatisch für diese Instanz bereitgestellt und verwaltet.',
   },
   fields: {
     projectUrl: 'Projekt-URL',
@@ -62,18 +62,18 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
   },
   messages: {
     loading: 'Einstellungen werden geladen.',
-    loadError: 'Die Waste-Einstellungen konnten nicht geladen werden.',
-    loadForbidden: 'Für die Waste-Einstellungen fehlt die Berechtigung.',
-    saveSuccess: 'Die Waste-Einstellungen wurden gespeichert und serverseitig geprüft.',
-    saveSuccessWithHolidaySync: 'Die Waste-Einstellungen wurden gespeichert. Feiertagssync: {{status}}.',
-    saveError: 'Die Waste-Einstellungen konnten nicht gespeichert werden.',
-    saveForbidden: 'Für das Speichern der Waste-Einstellungen fehlt die Berechtigung.',
+    loadError: 'Die Abfall-Einstellungen konnten nicht geladen werden.',
+    loadForbidden: 'Für die Abfall-Einstellungen fehlt die Berechtigung.',
+    saveSuccess: 'Die Abfall-Einstellungen wurden gespeichert und serverseitig geprüft.',
+    saveSuccessWithHolidaySync: 'Die Abfall-Einstellungen wurden gespeichert. Feiertagssync: {{status}}.',
+    saveError: 'Die Abfall-Einstellungen konnten nicht gespeichert werden.',
+    saveForbidden: 'Für das Speichern der Abfall-Einstellungen fehlt die Berechtigung.',
     holidaySyncSuccess: 'Feiertagssync abgeschlossen: {{status}}.',
     holidaySyncError: 'Die Feiertage konnten nicht neu synchronisiert werden.',
     holidaySyncForbidden: 'Für das erneute Synchronisieren der Feiertage fehlt die Berechtigung.',
     interfaceSelectionTitle: 'Auswahl der Schnittstelle',
     interfaceSelectionDescription:
-      'Wählen Sie die Schnittstelle, auf deren Basis das Waste-Modul arbeiten soll. Die Eignung wird derzeit nicht eingeschränkt.',
+      'Wählen Sie die Schnittstelle, auf deren Basis das Abfall-Modul arbeiten soll. Die Eignung wird derzeit nicht eingeschränkt.',
     holidayStateTitle: 'Auswahl des Bundeslandes',
     calendarWebUrlDescription:
       'Tragen Sie hier den Link zur öffentlichen Webversion des Abfallkalenders ein. Er wird im Plugin als Verweis ausgegeben.',

@@ -951,6 +951,7 @@ describe('plugin registries', () => {
             {
               contentType: 'news.article',
               displayName: 'Article',
+              titleKey: 'news.contentTypes.article.title',
               validatePayload,
             },
           ],
@@ -960,6 +961,7 @@ describe('plugin registries', () => {
 
     expect(registry.routes[0]?.component).toBe(component);
     expect(registry.contentTypes[0]?.validatePayload).toBe(validatePayload);
+    expect(registry.contentTypes[0]?.titleKey).toBe('news.contentTypes.article.title');
   });
 
   it('collects registered studio content types from plugins and resolves detail paths', () => {

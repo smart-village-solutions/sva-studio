@@ -580,7 +580,7 @@ test.describe('waste management plugin', () => {
     await openWastePlugin(page);
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
     await expect(
-      page.getByText('Die Waste-Datenbank wird automatisch für diese Instanz bereitgestellt und verwaltet.').first()
+      page.getByText('Die Abfalldatenbank wird automatisch für diese Instanz bereitgestellt und verwaltet.').first()
     ).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Schema' })).toBeDisabled();
     await expect(page.getByRole('textbox', { name: 'Schema' })).toHaveValue('waste_ops');
@@ -588,7 +588,7 @@ test.describe('waste management plugin', () => {
 
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
 
-    await expect(page.getByText('Die Waste-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+    await expect(page.getByText('Die Abfall-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
     expect(harness.requests.settingsUpdates).toHaveLength(1);
     expect(harness.requests.settingsUpdates[0]).toMatchObject({
       provider: 'postgresql',
@@ -633,12 +633,12 @@ test.describe('waste management plugin', () => {
     await page.getByLabel('Zielschema').fill('waste_ops_v2');
     await page.getByLabel('Anfordernde Version').fill('2026.05.10');
     await page.getByRole('button', { name: 'Migrationen starten' }).click();
-    await page.getByRole('button', { name: 'Seed starten' }).click();
-    await page.getByRole('button', { name: 'Reset starten' }).click();
+    await page.getByRole('button', { name: 'Initialdaten laden' }).click();
+    await page.getByRole('button', { name: 'Daten zurücksetzen' }).click();
     await page.getByLabel('Bestätigungstoken').fill('RESET');
-    await page.getByRole('button', { name: 'Reset bestätigen' }).click();
+    await page.getByRole('button', { name: 'Zurücksetzen bestätigen' }).click();
 
-    await expect(page.getByText('Job job-reset-1 wurde gestartet.')).toBeVisible();
+    await expect(page.getByText('Prozess job-reset-1 wurde gestartet.')).toBeVisible();
 
     await page.getByRole('tab', { name: 'Ausgabe' }).click();
     const outputPanel = page.getByRole('tabpanel', { name: 'Ausgabe' });
@@ -702,14 +702,14 @@ test.describe('waste management plugin', () => {
 
     await page.getByRole('tab', { name: 'Abfallarten' }).click();
     await expect(
-      page.getByRole('table', { name: 'Tabelle der Waste-Abfallfraktionen' }).getByText('Bioabfall')
+      page.getByRole('table', { name: 'Tabelle der Abfallfraktionen' }).getByText('Bioabfall')
     ).toBeVisible();
     await page.getByRole('button', { name: 'Fraktion anlegen' }).click();
     await page.locator('#waste-fraction-name').fill('Papier Plus');
     await page.locator('#waste-fraction-pdf-short-label').fill('PP');
     await page.locator('#waste-fraction-color-text').fill('#123456');
     await page.locator('#waste-fraction-create-form').getByRole('button', { name: 'Abfallart speichern' }).click();
-    await expect(page.getByText('Für das Speichern von Waste-Fraktionen fehlt die Berechtigung.').first()).toBeVisible();
+    await expect(page.getByText('Für das Speichern von Abfall-Fraktionen fehlt die Berechtigung.').first()).toBeVisible();
   });
 
   test('supports custom recurrence preset creation, tour selection, editing and fallback deletion', async ({ page }) => {
@@ -764,7 +764,7 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
 
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
-    await expect(page.getByText('Die Waste-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+    await expect(page.getByText('Die Abfall-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
 
     const createdPresetIds = (
       (harness.requests.settingsUpdates[0]?.customRecurrencePresets as Array<Record<string, unknown>> | undefined) ?? []
@@ -804,7 +804,7 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
 
-    await expect(page.getByText('Die Waste-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+    await expect(page.getByText('Die Abfall-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
 
     await page.getByRole('tab', { name: 'Touren' }).click();
     await expect(page.getByRole('row', { name: /Ferienroute.*Ferien 12 Tage \(alle 12 Tage\)/ })).toBeVisible();
@@ -818,7 +818,7 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Löschen' }).click();
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
 
-    await expect(page.getByText('Die Waste-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+    await expect(page.getByText('Die Abfall-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
 
     const finalSettingsUpdate = harness.requests.settingsUpdates.at(-1) as
       | {

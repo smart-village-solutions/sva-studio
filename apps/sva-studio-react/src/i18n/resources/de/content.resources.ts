@@ -2,7 +2,7 @@ export const contentDEResources = {
   page: {
     title: 'Inhalte',
     subtitle:
-      'Verwalten Sie generische Inhalte mit Kernmetadaten, JSON-Payload und auditierbarer Historie.',
+      'Verwalten Sie generische Inhalte mit Kernmetadaten, JSON-Zusatzdaten und auditierbarer Historie.',
   },
   filters: {
     typeLabel: 'Typ',
@@ -45,7 +45,7 @@ export const contentDEResources = {
     contentType: 'Typ',
     status: 'Status',
     publishedAt: 'Veröffentlichungsdatum',
-    payload: 'Payload (JSON)',
+    payload: 'Zusatzdaten (JSON)',
   },
   status: {
     draft: 'Entwurf',
@@ -63,7 +63,7 @@ export const contentDEResources = {
     headerCreated: 'Erstellungsdatum',
     headerUpdated: 'Änderungsdatum',
     headerAuthor: 'Autor',
-    headerPayload: 'Payload',
+    headerPayload: 'Zusatzdaten',
     headerStatus: 'Status',
     headerAccess: 'Bearbeitbarkeit',
     headerContext: 'Kontext',
@@ -72,9 +72,9 @@ export const contentDEResources = {
   },
   editor: {
     createTitle: 'Neuen Inhalt anlegen',
-    createSubtitle: 'Definieren Sie den Basiskern und hinterlegen Sie die generische JSON-Payload.',
+    createSubtitle: 'Definieren Sie die Basisangaben und hinterlegen Sie die generischen JSON-Zusatzdaten.',
     editTitle: 'Inhalt bearbeiten',
-    editSubtitle: 'Aktualisieren Sie Metadaten, Status und Payload des ausgewählten Inhalts.',
+    editSubtitle: 'Aktualisieren Sie Metadaten, Status und Zusatzdaten des ausgewählten Inhalts.',
   },
   tabs: {
     ariaLabel: 'Inhaltsbereiche',
@@ -82,7 +82,7 @@ export const contentDEResources = {
     general: 'Allgemein',
     generalTitle: 'Allgemeine Angaben',
     generalDescription:
-      'Pflegen Sie Überschrift, Status, Veröffentlichungsdatum und die generische Payload.',
+      'Pflegen Sie Überschrift, Status, Veröffentlichungsdatum und die generischen Zusatzdaten.',
     historyDescription: 'Prüfen Sie die automatische Änderungshistorie dieses Inhalts.',
   },
   typePicker: {
@@ -189,7 +189,7 @@ export const contentDEResources = {
   },
   validation: {
     titleRequired: 'Die Überschrift ist ein Pflichtfeld.',
-    payloadJsonInvalid: 'Die Payload muss gültiges JSON sein.',
+    payloadJsonInvalid: 'Die Zusatzdaten müssen gültiges JSON sein.',
     publishedAtRequired: 'Für veröffentlichte Inhalte ist ein Veröffentlichungsdatum erforderlich.',
     publishedAtInvalid:
       'Bitte geben Sie ein gültiges Veröffentlichungsdatum in der Fachzeitzone Europe/Berlin ein.',

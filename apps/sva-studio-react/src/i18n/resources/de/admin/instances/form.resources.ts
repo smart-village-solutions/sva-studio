@@ -34,20 +34,20 @@ export const formInstancesAdminDEResources = {
   tenantAdminLastName: 'Admin-Nachname',
   wasteManagementEnabled: 'Abfallmanagement konfigurieren',
   wasteManagementSubtitle:
-    'Instanzbezogene Waste-Datenquelle und technische Zugangsdaten für das Waste-Plugin.',
+    'Instanzbezogene Abfall-Datenquelle und technische Zugangsdaten für das Abfall-Plugin.',
   wasteManagementProjectUrl: 'Supabase-Projekt-URL',
   wasteManagementSchemaName: 'Schema-Name',
   wasteManagementProvider: 'Provider',
   wasteManagementDatabaseUrl: 'Datenbank-URL',
   wasteManagementDatabaseUrlConfigured: 'Bereits konfiguriert',
   wasteManagementDatabaseUrlHint:
-    'Leer lassen, um die bestehende Waste-Datenbank-URL unverändert zu lassen.',
+    'Leer lassen, um die bestehende Abfall-Datenbank-URL unverändert zu lassen.',
   wasteManagementDatabaseUrlCreateHint:
     'Optional beim Anlegen. Kann später in der Instanzkonfiguration ergänzt werden.',
   wasteManagementServiceRoleKey: 'Service-Role-Key',
   wasteManagementServiceRoleKeyConfigured: 'Bereits konfiguriert',
   wasteManagementServiceRoleKeyHint:
-    'Leer lassen, um den bestehenden Waste-Service-Role-Key unverändert zu lassen.',
+    'Leer lassen, um den bestehenden Abfall-Service-Role-Key unverändert zu lassen.',
   wasteManagementServiceRoleKeyCreateHint:
     'Optional beim Anlegen. Kann später in der Instanzkonfiguration ergänzt werden.',
 } as const;

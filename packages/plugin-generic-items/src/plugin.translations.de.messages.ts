@@ -49,7 +49,7 @@ export const genericItemsTranslationsDeMessages = {
     title: 'Noch keine generischen Inhalte vorhanden',
   },
   pagination: {
-    ariaLabel: 'Pagination für generische Inhalte',
+    ariaLabel: 'Seitennavigation der generischen Inhalte',
     previous: 'Zurück',
     next: 'Weiter',
     pageLabel: 'Seite {{page}}',

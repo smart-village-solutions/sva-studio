@@ -1,6 +1,6 @@
 export const wasteManagementPluginTranslationsDEAudit = {
   "audit": {
-    "settingsUpdated": "Waste-Einstellungen aktualisiert",
+    "settingsUpdated": "Abfalleinstellungen aktualisiert",
     "fractionCreated": "Abfallfraktion angelegt",
     "fractionUpdated": "Abfallfraktion aktualisiert",
     "regionCreated": "Region angelegt",
@@ -25,12 +25,12 @@ export const wasteManagementPluginTranslationsDEAudit = {
     "globalDateShiftCreated": "Globalen Ausweichtermin angelegt",
     "globalDateShiftUpdated": "Globalen Ausweichtermin aktualisiert",
     "globalDateShiftDeleted": "Globalen Ausweichtermin gelöscht",
-    "migrationsStarted": "Waste-Migration gestartet",
-    "importStarted": "Waste-Import gestartet",
-    "seedStarted": "Waste-Seed gestartet",
-    "resetStarted": "Waste-Reset gestartet",
-    "mainserverSyncStarted": "Waste-Mainserver-Synchronisierung gestartet",
-    "syncWasteTypesStarted": "Waste-Typen-Synchronisierung gestartet",
-    "dataSourceInitialized": "Waste-Datenquelle initialisiert"
+    "migrationsStarted": "Abfallmigration gestartet",
+    "importStarted": "Abfallimport gestartet",
+    "seedStarted": "Laden der Abfallinitialdaten gestartet",
+    "resetStarted": "Zurücksetzen der Abfalldaten gestartet",
+    "mainserverSyncStarted": "Abfall-Mainserver-Synchronisierung gestartet",
+    "syncWasteTypesStarted": "Synchronisierung der Abfalltypen gestartet",
+    "dataSourceInitialized": "Abfalldatenquelle initialisiert"
   }
 } as const;

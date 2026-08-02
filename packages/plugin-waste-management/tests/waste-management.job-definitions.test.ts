@@ -36,7 +36,7 @@ describe('waste management job definitions', () => {
       {
         jobTypeId: 'waste-management.initialize-data-source',
         queue: 'plugin-operations',
-        displayName: 'Waste-Initialisierung',
+        displayName: 'Abfall-Initialisierung',
         progress: {
           phaseKeys: ['waste-management.initialize', 'waste-management.completed'],
           stepKeys: ['resolve-operation', 'complete-operation'],
@@ -52,7 +52,7 @@ describe('waste management job definitions', () => {
       {
         jobTypeId: 'waste-management.apply-migrations',
         queue: 'plugin-operations',
-        displayName: 'Waste-Migrationen anwenden',
+        displayName: 'Abfall-Migrationen anwenden',
         progress: {
           phaseKeys: ['waste-management.migrations', 'waste-management.completed'],
           stepKeys: ['resolve-operation', 'complete-operation'],
@@ -68,7 +68,7 @@ describe('waste management job definitions', () => {
       {
         jobTypeId: 'waste-management.import-data',
         queue: 'plugin-operations',
-        displayName: 'Waste-Daten importieren',
+        displayName: 'Abfall-Daten importieren',
         progress: {
           phaseKeys: [
             'waste-management.import-preparation',
@@ -102,7 +102,7 @@ describe('waste management job definitions', () => {
       {
         jobTypeId: 'waste-management.seed-data',
         queue: 'plugin-operations',
-        displayName: 'Waste-Seed laden',
+        displayName: 'Abfallinitialdaten laden',
         progress: {
           phaseKeys: ['waste-management.seed', 'waste-management.completed'],
           stepKeys: ['resolve-operation', 'complete-operation'],
@@ -118,7 +118,7 @@ describe('waste management job definitions', () => {
       {
         jobTypeId: 'waste-management.reset-data',
         queue: 'plugin-operations',
-        displayName: 'Waste-Daten zurücksetzen',
+        displayName: 'Abfalldaten zurücksetzen',
         progress: {
           phaseKeys: ['waste-management.reset', 'waste-management.completed'],
           stepKeys: ['resolve-operation', 'complete-operation'],
@@ -134,7 +134,7 @@ describe('waste management job definitions', () => {
       {
         jobTypeId: 'waste-management.sync-mainserver',
         queue: 'plugin-operations',
-        displayName: 'Waste-Mainserver synchronisieren',
+        displayName: 'Abfalldaten mit dem Mainserver synchronisieren',
         progress: {
           phaseKeys: ['waste-management.mainserver-sync', 'waste-management.completed'],
           stepKeys: [
@@ -174,7 +174,7 @@ describe('waste management job definitions', () => {
       {
         jobTypeId: 'waste-management.sync-waste-types',
         queue: 'plugin-operations',
-        displayName: 'Waste-Typen mit Mainserver synchronisieren',
+        displayName: 'Abfall-Typen mit Mainserver synchronisieren',
         progress: {
           phaseKeys: ['waste-management.sync-waste-types', 'waste-management.completed'],
           stepKeys: ['build-static-content', 'push-static-content'],
@@ -190,7 +190,7 @@ describe('waste management job definitions', () => {
       {
         jobTypeId: 'waste-management.materialize-email-reminders',
         queue: 'plugin-operations',
-        displayName: 'Waste-E-Mail-Erinnerungen materialisieren',
+        displayName: 'Abfall-E-Mail-Erinnerungen materialisieren',
         progress: {
           phaseKeys: ['waste-management.materialize-email-reminders', 'waste-management.completed'],
           stepKeys: ['load-reminder-state', 'complete-operation'],
@@ -206,7 +206,7 @@ describe('waste management job definitions', () => {
       {
         jobTypeId: 'waste-management.process-email-reminder-outbox',
         queue: 'plugin-operations',
-        displayName: 'Waste-E-Mail-Erinnerungs-Outbox verarbeiten',
+        displayName: 'Abfall-E-Mail-Erinnerungs-Outbox verarbeiten',
         progress: {
           phaseKeys: ['waste-management.process-email-reminder-outbox', 'waste-management.completed'],
           stepKeys: ['lease-outbox', 'complete-operation'],

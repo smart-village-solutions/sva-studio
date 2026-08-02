@@ -1,6 +1,8 @@
 import type { IamContentListItem } from '@sva/core';
 import { resolveStudioContentDetailPath, type RegisteredStudioContentType } from '@sva/plugin-sdk';
 
+import { t } from '../i18n';
+
 const createStudioContentTypeMap = (
   studioContentTypes: readonly RegisteredStudioContentType[]
 ): ReadonlyMap<string, RegisteredStudioContentType> =>
@@ -8,6 +10,15 @@ const createStudioContentTypeMap = (
 
 const hasGrantedAction = (permissionActions: readonly string[], actionId: string): boolean =>
   permissionActions.includes(actionId);
+
+export const resolveStudioContentTypeLabel = (definition: RegisteredStudioContentType): string => {
+  if (!definition.titleKey) {
+    return definition.displayName;
+  }
+
+  const localizedLabel = t(definition.titleKey);
+  return localizedLabel === definition.titleKey ? definition.displayName : localizedLabel;
+};
 
 export const filterCreatableStudioContentTypes = (
   studioContentTypes: readonly RegisteredStudioContentType[],

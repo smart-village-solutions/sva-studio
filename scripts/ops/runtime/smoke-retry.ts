@@ -7,6 +7,8 @@ const retryableExternalWarmupProbeNames = new Set([
   'public-auth-login',
   'public-auth-login-bb-guben',
   'public-auth-login-de-musterhausen',
+  'public-iam-context',
+  'public-iam-instances',
 ]);
 const retryableExternalWarmupSignals = ['404', '502', '503', '504', 'timeout', 'timed out', 'gateway'];
 const retryableInternalWarmupStates = ['pending', 'preparing', 'starting', 'assigned', 'accepted', 'new', 'ready', 'shutdown'];
@@ -76,4 +78,14 @@ export const shouldRetryExternalSmoke = (probes: readonly AcceptanceProbeResult[
     const hasRetryableSignal = retryableExternalWarmupSignals.some((signal) => probe.message.toLowerCase().includes(signal));
     return hasRetryableName && (hasRetryableSignal || (isIngressProbe && probe.httpStatus === undefined));
   });
+};
+
+export const summarizeExternalSmokeAttempt = (probes: readonly AcceptanceProbeResult[]) => {
+  const failures = probes.filter((probe) => probe.status === 'error');
+  const statuses = failures.reduce<Record<string, number>>((summary, probe) => {
+    const key = probe.httpStatus === undefined ? 'transport' : String(probe.httpStatus);
+    summary[key] = (summary[key] ?? 0) + 1;
+    return summary;
+  }, {});
+  return { failed: failures.length, retryable: shouldRetryExternalSmoke(probes), statuses };
 };

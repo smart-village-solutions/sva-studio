@@ -44,11 +44,12 @@ describe('backup agent stack', () => {
     expect(source).not.toContain('RESTORE_PROD_WASTE_POSTGRES_DB');
   });
 
-  it('routes only the exact POST endpoint on the existing hosts', () => {
+  it('routes only the exact mutation and read-only capability endpoints on the existing hosts', () => {
     expect(source).toContain(
-      '(Host(`backup-studio-staging.smart-village.app`) || Host(`backup-studio.smart-village.app`)) && (Path(`/_ops/backup/v1/requests`) || Path(`/_ops/restore/v1/requests`)) && Method(`POST`)'
+      '((Path(`/_ops/backup/v1/requests`) || Path(`/_ops/restore/v1/requests`)) && Method(`POST`))'
     );
     expect(source).toContain('backup-agent-rate-limit.ratelimit.average=2');
+    expect(source).toContain('Path(`/_ops/backup/v1/capabilities`) && Method(`GET`)');
     expect(source).toContain('traefik.http.routers.backup-agent.priority=1000');
     expect(source).toContain('traefik.http.routers.backup-agent.tls.certresolver=default');
     expect(source).not.toContain('traefik.http.routers.backup-agent-prod.');

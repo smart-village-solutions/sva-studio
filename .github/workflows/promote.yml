@@ -31,6 +31,16 @@ on:
       change_head:
         description: 'Git head ref represented by the promoted image'
         required: true
+      promote_mode:
+        description: 'Promote mode'
+        required: true
+        default: standard
+        type: choice
+        options: [standard, recovery]
+      recovery_reason:
+        description: 'Required documented reason for recovery mode'
+        required: false
+        type: string
   workflow_call:
     inputs:
       environment:
@@ -53,6 +63,14 @@ on:
       change_head:
         required: true
         type: string
+      promote_mode:
+        required: false
+        type: string
+        default: standard
+      recovery_reason:
+        required: false
+        type: string
+        default: ''
 
 permissions:
   actions: read
@@ -78,6 +96,8 @@ jobs:
           BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
           CHANGE_BASE: ${{ inputs.change_base }}
           CHANGE_HEAD: ${{ inputs.change_head }}
+          PROMOTE_MODE: ${{ inputs.promote_mode }}
+          RECOVERY_REASON: ${{ inputs.recovery_reason }}
         run: |
           set -euo pipefail
 
@@ -111,6 +131,20 @@ jobs:
             run|assert-none|auto) ;;
             *)
               echo "Invalid bootstrap_mode: ${BOOTSTRAP_MODE}. Expected one of: run, assert-none, auto." >&2
+              exit 1
+              ;;
+          esac
+
+          case "${PROMOTE_MODE}" in
+            standard) ;;
+            recovery)
+              if [ -z "${RECOVERY_REASON//[[:space:]]/}" ]; then
+                echo '{"code":"PROMOTE_RECOVERY_REASON_REQUIRED","phase":"static-preflight","retryable":false,"nextAction":"Recovery-Grund dokumentieren und das geschuetzte Environment erneut freigeben."}' >&2
+                exit 1
+              fi
+              ;;
+            *)
+              echo "Invalid promote_mode: ${PROMOTE_MODE}. Expected standard or recovery." >&2
               exit 1
               ;;
           esac
@@ -158,6 +192,20 @@ jobs:
             --environment "${ENVIRONMENT}" \
             --image "${IMAGE_INPUT}" \
             --expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
+
+      - name: shadow remote config builder
+        continue-on-error: true
+        env:
+          APP_CONFIG: ${{ secrets.APP_CONFIG }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f "${RUNNER_TEMP}/candidate-app-config.vars"' EXIT
+          pnpm exec tsx scripts/ci/build-remote-app-config.ts \
+            --environment "${{ inputs.environment }}" \
+            --profile "config/runtime/remote/${{ inputs.environment }}.vars" \
+            --output "${RUNNER_TEMP}/candidate-app-config.vars" \
+            --shadow
 
       - name: evaluate migration and bootstrap gates
         id: gate_eval
@@ -223,6 +271,13 @@ jobs:
         id: target
         run: pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"
 
+      - name: verify pre-mutation production readiness
+        env:
+          PROMOTE_MODE: ${{ inputs.promote_mode }}
+          RECOVERY_REASON: ${{ inputs.recovery_reason }}
+          SVA_PUBLIC_BASE_URL: ${{ steps.target.outputs.public_base_url }}
+        run: pnpm exec tsx scripts/ci/verify-promote-readiness.ts "${{ inputs.environment }}"
+
       - name: capture previous live app digest
         id: previous_live_image
         if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
@@ -231,11 +286,18 @@ jobs:
         run: pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}"
 
       - name: require successful staging parity for production mutation
-        if: ${{ inputs.environment == 'prod' && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true') }}
+        if: ${{ inputs.environment == 'prod' }}
         env:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
           GITHUB_TOKEN: ${{ github.token }}
         run: pnpm exec tsx scripts/ci/verify-staging-promote-evidence.ts
+
+      - name: verify live backup agent capabilities
+        if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.BACKUP_EXECUTOR != 'temporary' }}
+        continue-on-error: ${{ vars.BACKUP_CAPABILITY_GATE != 'enforce' }}
+        env:
+          WASTE_POSTGRES_BACKUP_ENABLED: ${{ vars.WASTE_POSTGRES_BACKUP_ENABLED }}
+        run: pnpm exec tsx scripts/ci/verify-backup-agent-capabilities.ts "${{ inputs.environment }}"
 
       - name: create database backup before deployment
         id: backup_job

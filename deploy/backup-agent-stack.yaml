@@ -69,7 +69,7 @@ services:
       labels:
         - 'traefik.enable=true'
         - 'traefik.docker.network=network-node-005'
-        - 'traefik.http.routers.backup-agent.rule=(Host(`backup-studio-staging.smart-village.app`) || Host(`backup-studio.smart-village.app`)) && (Path(`/_ops/backup/v1/requests`) || Path(`/_ops/restore/v1/requests`)) && Method(`POST`)'
+        - 'traefik.http.routers.backup-agent.rule=(Host(`backup-studio-staging.smart-village.app`) || Host(`backup-studio.smart-village.app`)) && (((Path(`/_ops/backup/v1/requests`) || Path(`/_ops/restore/v1/requests`)) && Method(`POST`)) || (Path(`/_ops/backup/v1/capabilities`) && Method(`GET`)))'
         - 'traefik.http.routers.backup-agent.entrypoints=websecure'
         - 'traefik.http.routers.backup-agent.priority=1000'
         - 'traefik.http.routers.backup-agent.middlewares=backup-agent-rate-limit'

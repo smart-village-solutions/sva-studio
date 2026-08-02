@@ -18,6 +18,7 @@ import { finished } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
 
 const requestPath = '/_ops/backup/v1/requests';
+const capabilityPath = '/_ops/backup/v1/capabilities';
 const restoreRequestPath = '/_ops/restore/v1/requests';
 const oidcIssuer = 'https://token.actions.githubusercontent.com';
 const jwksUrl = `${oidcIssuer}/.well-known/jwks`;
@@ -1489,6 +1490,26 @@ export const createBackupAgentServer = () =>
   createServer(async (incoming, response) => {
     if (incoming.method === 'GET' && incoming.url === '/health/live')
       return respond(response, 200, { status: 'ok' });
+    if (incoming.method === 'GET' && incoming.url?.startsWith(`${capabilityPath}?`)) {
+      try {
+        const url = new URL(incoming.url, 'http://backup-agent.internal');
+        const environment = url.searchParams.get('environment');
+        if (environment !== 'staging' && environment !== 'prod') return respond(response, 400, { error: 'invalid_request' });
+        if (!validRequestHost(environment, incoming.headers.host)) return respond(response, 400, { error: 'invalid_request' });
+        const auth = incoming.headers.authorization;
+        if (typeof auth !== 'string' || !auth.startsWith('Bearer ')) return respond(response, 401, { error: 'unauthorized' });
+        await verifyOidc(auth.slice('Bearer '.length), environment, 'backup-and-verify');
+        return respond(response, 200, {
+          protocolVersions: [2],
+          agentRevision: required(process.env.BACKUP_AGENT_IMAGE_REF, 'BACKUP_AGENT_IMAGE_REF'),
+          databaseTargets: ['studio', 'waste'],
+          resultFields: ['bytes', 'database', 'deployImageDigest', 'environment', 'objectKey', 'requestId', 'sha256', 'status', 'steps'],
+          wasteInventory: true,
+        });
+      } catch {
+        return respond(response, 401, { error: 'unauthorized' });
+      }
+    }
     const isBackup = incoming.url === requestPath;
     const isRestore = incoming.url === restoreRequestPath;
     if (incoming.method !== 'POST' || (!isBackup && !isRestore))

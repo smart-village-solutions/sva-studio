@@ -99,6 +99,12 @@ Migrationen, Bootstraps und Backups benötigen keinen Wartungsfenster-Verweis. D
 
 ## Konvergenz und Erfolgsdefinition
 
+Vor der ersten Mutation läuft der repository-lokale Remote-Config-Builder zunächst im Shadow-Modus. Seine Quelle ist ausschließlich `config/runtime/remote/<umgebung>.vars`; `*.local.vars` sind als Remote-Quelle technisch gesperrt. Der Vergleich betrachtet Schlüsselmengen, nicht-sensitive Werte, Klassifikationen und externe Secret-Namen. Secret-Werte, Hashes und Wertlängen sind keine Evidenz. Bis zur ausdrücklich gestuften Umschaltung bleibt `APP_CONFIG` die autoritative Deploy-Ausgabe.
+
+`promote_mode=standard` verlangt für Production bereits vor Backup oder Deploy `health/ready` mit HTTP 200. Ein degradierter Ausgangszustand benötigt `promote_mode=recovery`, einen dokumentierten Grund und die Freigabe des geschützten Environments; Backup, Staging-Digest-Parität und sämtliche Nachprüfungen bleiben dabei unverändert. Production prüft die Staging-Parität bei jedem Promote, also auch bei einem reinen App-Deployment.
+
+Vor dem ersten Agent-Auftrag fragt der Workflow den geschützten read-only Capability-Endpunkt ab. Protokollversion 2, Agent-Revision, benötigte Ergebnisfelder sowie Studio- und gegebenenfalls Waste-Unterstützung müssen live vorhanden sein. Bis zum nachgewiesenen Producer-Rollout bleibt der Schritt beobachtend; erst `BACKUP_CAPABILITY_GATE=enforce` im geschützten Environment aktiviert ihn blockierend.
+
 Docker-Swarm-Dienste dürfen nach einem Update längere Zeit benötigen, bis alle Probes stabil sind. Die bisherige Warmup-Grenze von bis zu fünf Minuten reicht dafür nicht immer aus. Der Runtime-Smoke prüft die Erreichbarkeit deshalb standardmäßig bis zu 50-mal im Abstand von zehn Sekunden. Deshalb gilt:
 
 1. Ein unmittelbar nach dem Deploy fehlschlagender Smoke wird nicht durch weitere Mutationen „repariert“.
@@ -116,6 +122,7 @@ Ein kontrollierter Datenbankrestore besitzt strengere Nachbedingungen als ein re
 - Das Promote-Backup ist ein PostgreSQL-Custom-Dump, kein Snapshot des gesamten Systems.
 - Keycloak, MinIO-Objekte und weitere externe Systeme sind nicht automatisch Bestandteil dieses Dumps.
 - Ein App-Rollback verwendet den vorherigen unveränderlichen Digest.
+- Zum App-Rollback gehört die versionierte nicht-sensitive Config-Revision; das geschützte Override-Bundle muss rückwärtskompatibel sein. Eine inkompatible Secret-Rotation benötigt einen eigenen Recovery-Plan.
 - Erfolgreich angewandte Datenbankmigrationen werden niemals automatisch zurückgerollt.
 - Nicht rückwärtskompatible Migrationen benötigen vor dem Rollout einen separat geprüften Restore-Plan.
 - Die Workflows **Staging Backup Drill** und **Production Backup Drill** prüfen Backups ohne Migration, Bootstrap oder App-Deployment; sie ersetzen keinen Promote-Lauf.

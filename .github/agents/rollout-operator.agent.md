@@ -120,6 +120,8 @@ Ein PostgreSQL-Dump ist kein Rollback von Keycloak, MinIO oder anderen externen 
 
 ## Erfolgsmeldung
 
+Vor einer blockierenden Aktivierung zusätzlich prüfen: redigierte Shadow-Äquivalenz, Config-Revision, Backup-Agent-Capabilities und Producer-vor-Consumer-Reihenfolge. Terminale Fehler sind mit `PROMOTE_*`-Code, Retryklassifikation und konkreter nächster Aktion zu berichten; Secrets, Hashes, Wertlängen und PII bleiben ausgeschlossen.
+
 Berichte mindestens:
 
 - GitHub-Run und Attempt,

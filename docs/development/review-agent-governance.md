@@ -98,6 +98,8 @@ Empfohlene Aufrufe:
 
 ## Standard-Reihenfolge
 
+Bei Promote-Änderungen muss der Review zusätzlich Shadow-Nachweis, App-only-Digest-Parität, Producer-vor-Consumer-Kompatibilität, getrennte Swarm-/HTTP-Konvergenz und konsistente `PROMOTE_*`-Fehlercodes prüfen.
+
 1. Scope erfassen
 2. Orchestrator auswählen
 3. Pflichtreviewer aufrufen

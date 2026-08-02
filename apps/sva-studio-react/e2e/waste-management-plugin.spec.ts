@@ -4,12 +4,12 @@ import type { Page, Route } from '@playwright/test';
 import { registerSharedIamRoutes } from './studio-shell.helpers';
 
 type WasteSettingsState = {
-  provider: 'supabase';
-  projectUrl: string;
+  provider: 'postgresql' | 'supabase';
+  projectUrl?: string;
   schemaName: string;
   enabled: boolean;
   databaseUrlConfigured: boolean;
-  serviceRoleKeyConfigured: boolean;
+  serviceRoleKeyConfigured?: boolean;
   visibleStatus: 'ok' | 'error' | 'unknown' | 'not_configured';
   lastCheckedAt?: string;
   customRecurrencePresets?: WasteCustomRecurrencePresetState[];

@@ -388,7 +388,7 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
         </TabsContent>
         {mode === 'edit' && contentId ? (
           <TabsContent value="history">
-            {panel(pt('tabs.history.title'), <History contentId={contentId} />)}
+            {panel(pt('tabs.history.title'), <CockpitCardsHistory contentId={contentId} />)}
           </TabsContent>
         ) : null}
       </Tabs>
@@ -396,7 +396,7 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
   );
 }
 
-function History({ contentId }: Readonly<{ contentId: string }>) {
+export function CockpitCardsHistory({ contentId }: Readonly<{ contentId: string }>) {
   const pt = usePluginTranslation('cockpit-cards');
   const [entries, setEntries] = React.useState<readonly IamContentHistoryEntry[]>([]);
   const [state, setState] = React.useState<'loading' | 'error' | 'ready'>('loading');

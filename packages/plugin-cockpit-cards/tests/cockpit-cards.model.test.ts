@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  compareCockpitCardRecords,
+  isCockpitCardGenericItem,
   mapCockpitCardFormValuesToGenericItemInput,
   mapGenericItemToCockpitCardFormValues,
+  readCockpitCardPayload,
 } from '../src/cockpit-cards.model.js';
 
 const values = {
@@ -70,5 +73,51 @@ describe('cockpit card model', () => {
     } catch (error) {
       expect(JSON.stringify(error)).toContain(path);
     }
+  });
+
+  it('uses safe defaults for malformed payloads and missing optional GenericItem fields', () => {
+    expect(readCockpitCardPayload(null)).toEqual({ languageCode: 'und', sortWeight: 0 });
+    expect(readCockpitCardPayload([])).toEqual({ languageCode: 'und', sortWeight: 0 });
+    expect(readCockpitCardPayload({ languageCode: 'invalid!', sortWeight: 1.5 })).toEqual({
+      languageCode: 'und',
+      sortWeight: 0,
+    });
+    expect(
+      mapGenericItemToCockpitCardFormValues({
+        id: 'empty',
+        title: 'Leer',
+        genericType: 'COCKPIT_CARD',
+        contentBlocks: [],
+        payload: undefined,
+        categories: [],
+        mediaContents: [],
+        webUrls: [],
+        visible: false,
+        createdAt: '',
+        updatedAt: '',
+      })
+    ).toMatchObject({ text: '', category: '', link: '', visible: false });
+  });
+
+  it('identifies and deterministically orders cockpit card records', () => {
+    const makeRecord = (id: string, title: string, languageCode: string, sortWeight: number) => ({
+      id,
+      title,
+      genericType: 'COCKPIT_CARD' as const,
+      contentBlocks: [{ body: 'Text' }],
+      payload: { languageCode, sortWeight },
+      categories: [{ name: 'Startseite' }],
+      mediaContents: values.images,
+      webUrls: [],
+      visible: true,
+      createdAt: '',
+      updatedAt: '',
+    });
+    expect(isCockpitCardGenericItem(makeRecord('1', 'A', 'de', 0))).toBe(true);
+    expect(isCockpitCardGenericItem({ genericType: 'FAQ' } as never)).toBe(false);
+    expect(compareCockpitCardRecords(makeRecord('1', 'A', 'de', 0), makeRecord('2', 'A', 'en', 0))).toBeLessThan(0);
+    expect(compareCockpitCardRecords(makeRecord('1', 'A', 'de', 1), makeRecord('2', 'A', 'de', 2))).toBeLessThan(0);
+    expect(compareCockpitCardRecords(makeRecord('1', 'A2', 'de', 1), makeRecord('2', 'A10', 'de', 1))).toBeLessThan(0);
+    expect(compareCockpitCardRecords(makeRecord('1', 'A', 'de', 1), makeRecord('2', 'A', 'de', 1))).toBeLessThan(0);
   });
 });

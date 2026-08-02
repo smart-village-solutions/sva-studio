@@ -1,5 +1,7 @@
 import type { AcceptanceDeployDeps, AcceptanceDeployState } from './acceptance-deploy.types.ts';
 import { failDeploy } from './acceptance-deploy-state.ts';
+import { shouldUseStudioReleaseBlockingTenantScope } from './remote-verification.ts';
+import { shouldRetryExternalSmoke } from './smoke-retry.ts';
 import { isBlockingSmokeProbe, reportNonBlockingSmokeFailures } from './smoke-runtime.ts';
 
 export const runInternalVerifyPhase = async (deps: AcceptanceDeployDeps, state: AcceptanceDeployState) => {
@@ -18,11 +20,20 @@ export const runInternalVerifyPhase = async (deps: AcceptanceDeployDeps, state: 
 export const runExternalSmokePhase = async (deps: AcceptanceDeployDeps, state: AcceptanceDeployState) => {
   const startedAt = Date.now();
   try {
-    const externalProbes = await deps.runExternalSmokeWithWarmup(state.env, { runtimeProfile: state.runtimeProfile });
+    const usesReleaseBlockingTenantScope = shouldUseStudioReleaseBlockingTenantScope(
+      state.runtimeProfile,
+      state.env,
+    );
+    const externalProbes = await deps.runExternalSmokeWithWarmup(state.env, {
+      runtimeProfile: state.runtimeProfile,
+      shouldRetry: (probes) => shouldRetryExternalSmoke(
+        probes.filter((probe) => isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope)),
+      ),
+    });
     state.report = { ...state.report, externalProbes };
-    reportNonBlockingSmokeFailures(externalProbes, state.runtimeProfile, state.env);
+    reportNonBlockingSmokeFailures(externalProbes, usesReleaseBlockingTenantScope);
     const failingProbe = externalProbes.find(
-      (probe) => probe.status === 'error' && isBlockingSmokeProbe(probe, state.runtimeProfile, state.env),
+      (probe) => probe.status === 'error' && isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope),
     );
     if (failingProbe) {
       throw new Error(`${failingProbe.name}: ${failingProbe.message}`);

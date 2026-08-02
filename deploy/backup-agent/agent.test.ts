@@ -127,16 +127,28 @@ describe('backup agent runtime contract', () => {
     ).toBe(false);
   });
 
-  it('requires production maintenance evidence', () => {
+  it('accepts production backups without maintenance evidence', () => {
     expect(
       validRequest({ ...request, environment: 'prod' }, Date.parse('2026-07-30T10:00:00.000Z'))
     ).toBe(false);
+    expect(
+      validRequest(
+        { ...request, version: 2, environment: 'prod' },
+        Date.parse('2026-07-30T10:00:00.000Z')
+      )
+    ).toBe(true);
     expect(
       validRequest(
         { ...request, environment: 'prod', maintenanceWindowReference: 'CAB-42' },
         Date.parse('2026-07-30T10:00:00.000Z')
       )
     ).toBe(true);
+    expect(
+      validRequest(
+        { ...request, version: 2, environment: 'prod', maintenanceWindowReference: 'CAB-42' },
+        Date.parse('2026-07-30T10:00:00.000Z')
+      )
+    ).toBe(false);
   });
 
   it('canonicalizes requests without accepting target overrides', () => {

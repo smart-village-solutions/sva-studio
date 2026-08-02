@@ -56,7 +56,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `Promote` muss Git-Änderungsbereich, Executor-Revision, Image-Digest, OCI-Revision und die unabhängigen Migration-/Bootstrap-Gates vor jeder Mutation prüfen.
   - Staging und Production dürfen nur `assert-none` oder `run` verwenden; `auto` bleibt auf den automatischen Dev-Promote begrenzt.
   - Vor jeder Staging-/Production-Migration oder jedem Bootstrap muss das umgebungsgebundene PostgreSQL-Backup erfolgreich und das MinIO-Objekt unabhängig verifiziert sein.
-  - Mutierende Production-Läufe müssen Environment-Freigabe, Wartungsfenster und erfolgreiche mutierende Staging-Parität exakt desselben Digests nachweisen.
+  - Mutierende Production-Läufe müssen Environment-Freigabe und erfolgreiche mutierende Staging-Parität exakt desselben Digests nachweisen; ein Wartungsfenster-Verweis ist nicht erforderlich.
   - Migration, Bootstrap, Postconditions, App-Deploy, Runtime-Smoke und Digest-Prüfung müssen fail-closed in dieser Reihenfolge laufen.
   - Öffentliche Smoke-Probes gegen `/health/live`, `/health/ready`, Root-Login und alle aktiven Tenant-Logins dürfen nach bis zu fünf Minuten Swarm-Konvergenz keinen stabilen Fehler liefern.
   - GitHub-Step-Summary und Action-Artefakte müssen Digest, Stack, Phasenstatus, Backup-Referenz, Jobstatus und Verifikation redigiert dokumentieren; Secrets, `.env`, `APP_CONFIG`, PII und unredigierte Remote-Logs bleiben ausgeschlossen.

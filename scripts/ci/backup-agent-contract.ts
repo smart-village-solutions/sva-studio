@@ -3,13 +3,12 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 export type BackupEnvironment = 'staging' | 'prod';
 
 export type BackupRequest = Readonly<{
-  version: 1;
+  version: 2;
   action: 'backup-and-verify';
   requestId: string;
   environment: BackupEnvironment;
   deployImageDigest: string;
   expiresAt: string;
-  maintenanceWindowReference?: string;
 }>;
 
 const environments = {
@@ -32,7 +31,6 @@ export const canonicalBackupRequest = (request: BackupRequest) => JSON.stringify
   deployImageDigest: request.deployImageDigest,
   environment: request.environment,
   expiresAt: request.expiresAt,
-  maintenanceWindowReference: request.maintenanceWindowReference ?? null,
   requestId: request.requestId,
   version: request.version,
 });
@@ -43,9 +41,9 @@ export const signBackupRequest = (request: BackupRequest, key: string) =>
 export const isValidBackupRequest = (value: unknown, now = new Date()) : value is BackupRequest => {
   if (!value || typeof value !== 'object') return false;
   const request = value as Partial<BackupRequest>;
-  const allowedKeys = new Set(['action', 'deployImageDigest', 'environment', 'expiresAt', 'maintenanceWindowReference', 'requestId', 'version']);
+  const allowedKeys = new Set(['action', 'deployImageDigest', 'environment', 'expiresAt', 'requestId', 'version']);
   if (Object.keys(request).some((key) => !allowedKeys.has(key))) return false;
-  if (request.version !== 1 || request.action !== 'backup-and-verify') return false;
+  if (request.version !== 2 || request.action !== 'backup-and-verify') return false;
   if (request.environment !== 'staging' && request.environment !== 'prod') return false;
   if (typeof request.requestId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u.test(request.requestId)) return false;
   if (typeof request.deployImageDigest !== 'string' || !/^sha256:[a-f0-9]{64}$/u.test(request.deployImageDigest)) return false;
@@ -55,8 +53,7 @@ export const isValidBackupRequest = (value: unknown, now = new Date()) : value i
     || Date.parse(request.expiresAt) <= now.getTime()
     || Date.parse(request.expiresAt) > now.getTime() + 10 * 60_000
   ) return false;
-  return request.environment !== 'prod'
-    || (typeof request.maintenanceWindowReference === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:/# -]{2,159}$/u.test(request.maintenanceWindowReference));
+  return true;
 };
 
 export const verifyBackupRequestSignature = (request: BackupRequest, key: string, signature: string) => {

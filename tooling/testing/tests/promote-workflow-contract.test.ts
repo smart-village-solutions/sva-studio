@@ -56,11 +56,9 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}');
   });
 
-  it('requires a maintenance reference and guards production mutations with staging parity', () => {
-    expect(workflow).toContain('maintenance_window');
-    expect(workflow).toContain(
-      "'maintenance_window' must be a non-sensitive, revisionable reference"
-    );
+  it('does not require a maintenance reference and guards production mutations with staging parity', () => {
+    expect(workflow).not.toContain('maintenance_window');
+    expect(workflow).not.toContain('MAINTENANCE_WINDOW');
     expect(workflow).toContain('--environment "${ENVIRONMENT}"');
     expect(workflow).toContain('upload redacted one-shot evidence');
     expect(workflow).toContain('if-no-files-found: ignore');
@@ -148,7 +146,8 @@ describe('Promote workflow contract', () => {
   it('offers an approved production backup drill without application mutation', () => {
     expect(productionBackupDrillWorkflow).toContain('name: Production Backup Drill');
     expect(productionBackupDrillWorkflow).toContain('environment: prod');
-    expect(productionBackupDrillWorkflow).toContain('maintenance_window');
+    expect(productionBackupDrillWorkflow).not.toContain('maintenance_window');
+    expect(productionBackupDrillWorkflow).not.toContain('MAINTENANCE_WINDOW');
     expect(productionBackupDrillWorkflow).toContain('require successful staging backup parity');
     expect(productionBackupDrillWorkflow).toContain(
       'verify-staging-promote-evidence.ts backup-drill'

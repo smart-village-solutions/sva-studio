@@ -45,6 +45,11 @@ export type ConsumeInstanceConfirmationChallengeInput = {
 export type InstanceModuleIamContractRecord = {
   readonly moduleId: string;
   readonly permissionIds: readonly string[];
+  readonly permissions: readonly {
+    readonly key: string;
+    readonly description: string;
+    readonly resourceType: string;
+  }[];
   readonly tenantBootstrapRoles?: readonly {
     readonly roleName: string;
     readonly permissionIds: readonly string[];
@@ -63,7 +68,19 @@ export type ProtectedSystemRolePermissionBundleRecord = {
   readonly roleKey: string;
   readonly displayName: string;
   readonly roleLevel: number;
-  readonly permissionKeys: readonly string[];
+  readonly permissions: readonly {
+    readonly key: string;
+    readonly description: string;
+    readonly resourceType: string;
+  }[];
+};
+
+export type PermissionCatalogReconcileResult = {
+  readonly permissionsInserted: number;
+  readonly permissionsUpdated: number;
+  readonly permissionsUnchanged: number;
+  readonly grantsInserted: number;
+  readonly grantsUnchanged: number;
 };
 
 export type InstanceRegistryRepository = {
@@ -111,11 +128,11 @@ export type InstanceRegistryRepository = {
     instanceId: string;
     managedModuleIds: readonly string[];
     contracts: readonly InstanceModuleIamContractRecord[];
-  }) => Promise<void>;
+  }) => Promise<PermissionCatalogReconcileResult | void>;
   readonly syncProtectedSystemRolePermissions: (input: {
     instanceId: string;
     role: ProtectedSystemRolePermissionBundleRecord;
-  }) => Promise<void>;
+  }) => Promise<PermissionCatalogReconcileResult | void>;
   readonly countLocalSystemAdminAssignments: (instanceId: string) => Promise<number>;
   readonly getAuthClientSecretCiphertext: (instanceId: string) => Promise<string | null>;
   readonly getTenantAdminClientSecretCiphertext: (instanceId: string) => Promise<string | null>;

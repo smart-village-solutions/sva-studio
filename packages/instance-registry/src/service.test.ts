@@ -1090,13 +1090,14 @@ describe('instance registry service facade', () => {
       role: expect.objectContaining({
         roleKey: 'system_admin',
         roleLevel: 100,
-        permissionKeys: expect.arrayContaining([
-          'iam.user.read',
-          'iam.user.write',
-          'iam.role.read',
-          'iam.role.write',
-          'app.read',
-          'cockpit.read',
+        permissions: expect.arrayContaining([
+          expect.objectContaining({ key: 'iam.user.read' }),
+          expect.objectContaining({ key: 'iam.user.write' }),
+          expect.objectContaining({ key: 'iam.role.read' }),
+          expect.objectContaining({ key: 'iam.role.write' }),
+          expect.objectContaining({ key: 'app.read' }),
+          expect.objectContaining({ key: 'cockpit.read' }),
+          expect.objectContaining({ key: 'iam.accounts.delete' }),
         ]),
       }),
     });
@@ -1327,7 +1328,11 @@ describe('instance registry service facade', () => {
       instanceId: 'demo',
       role: expect.objectContaining({
         roleKey: 'system_admin',
-        permissionKeys: expect.arrayContaining(['iam.user.read', 'content.read', 'app.read']),
+        permissions: expect.arrayContaining([
+          expect.objectContaining({ key: 'iam.user.read' }),
+          expect.objectContaining({ key: 'content.read' }),
+          expect.objectContaining({ key: 'app.read' }),
+        ]),
       }),
     });
     expect(deps.invalidatePermissionSnapshots).toHaveBeenNthCalledWith(1, {
@@ -1361,7 +1366,7 @@ describe('instance registry service facade', () => {
             {
               moduleId: 'media',
               permissionIds: ['media.read', 'media.create'],
-              systemRoles: [{ roleName: 'system_admin', permissionIds: ['media.read', 'media.create'] }],
+              systemAdminPermissionExclusions: ['media.create'],
             },
           ],
         ]),
@@ -1388,7 +1393,12 @@ describe('instance registry service facade', () => {
       expect.objectContaining({
         instanceId: 'demo',
         managedModuleIds: ['media'],
-        contracts: [expect.objectContaining({ moduleId: 'media' })],
+        contracts: [
+          expect.objectContaining({
+            moduleId: 'media',
+            systemRoles: [{ roleName: 'system_admin', permissionIds: ['media.read'] }],
+          }),
+        ],
       })
     );
   });

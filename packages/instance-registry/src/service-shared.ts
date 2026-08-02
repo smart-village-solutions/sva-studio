@@ -1,6 +1,7 @@
+import { composePermissionCatalog } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
-import type { InstanceRegistryServiceDeps } from './service-types.js';
+import type { InstanceModuleIamRegistryEntry, InstanceRegistryServiceDeps } from './service-types.js';
 
 type LegacyWasteManagementSettingsInput = {
   readonly provider: 'postgresql';
@@ -119,11 +120,33 @@ export const resolveAssignedModuleContracts = (
   const registry = requireModuleIamRegistry(deps);
 
   return assignedModuleIds.map((moduleId) => {
-    const contract = registry.get(moduleId);
+    const contract: InstanceModuleIamRegistryEntry | undefined = registry.get(moduleId);
     if (!contract) {
       throw new Error(`unknown_module_contract:${moduleId}`);
     }
-    return contract;
+    const exclusions = new Set(contract.systemAdminPermissionExclusions ?? []);
+    for (const permissionId of exclusions) {
+      if (!contract.permissionIds.includes(permissionId)) {
+        throw new Error(`unknown_system_admin_permission_exclusion:${moduleId}:${permissionId}`);
+      }
+    }
+    const existingSystemRoles = (contract.systemRoles ?? contract.tenantBootstrapRoles ?? []).filter(
+      (role: { readonly roleName: string; readonly permissionIds: readonly string[] }) =>
+        role.roleName !== 'system_admin'
+    );
+    return {
+      ...contract,
+      permissions: composePermissionCatalog([], [
+        { moduleId: contract.moduleId, permissionIds: contract.permissionIds },
+      ]).map(({ key, description, resourceType }) => ({ key, description, resourceType })),
+      systemRoles: [
+        ...existingSystemRoles,
+        {
+          roleName: 'system_admin',
+          permissionIds: contract.permissionIds.filter((permissionId: string) => !exclusions.has(permissionId)),
+        },
+      ],
+    };
   });
 };
 

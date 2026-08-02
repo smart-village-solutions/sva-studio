@@ -12,8 +12,11 @@ export type RolePermissionPair = {
   permissionId: string;
 };
 
-export const buildManagedPermissionKeys = (contracts: readonly InstanceModuleIamContractRecord[]): readonly string[] =>
-  Array.from(new Set(contracts.flatMap((contract) => contract.permissionIds))).sort(compareAlphabetically);
+export const buildManagedPermissions = (
+  contracts: readonly InstanceModuleIamContractRecord[]
+): readonly InstanceModuleIamContractRecord['permissions'][number][] =>
+  [...new Map(contracts.flatMap((contract) => contract.permissions).map((permission) => [permission.key, permission])).values()]
+    .sort((left, right) => compareAlphabetically(left.key, right.key));
 
 export const buildRolePermissionPairs = (
   contracts: readonly InstanceModuleIamContractRecord[]
@@ -31,16 +34,15 @@ export const buildRolePermissionPairs = (
 export const upsertPermission = async (
   executor: SqlExecutor,
   instanceId: string,
-  permissionKey: string,
-  description: string
-): Promise<void> => {
-  await executor.execute(
+  definition: { readonly key: string; readonly description: string; readonly resourceType: string }
+): Promise<'inserted' | 'updated' | 'unchanged'> => {
+  const result = await executor.execute<{ readonly inserted: boolean }>(
     statement(
       `
 INSERT INTO iam.permissions (
   id, instance_id, permission_key, action, resource_type, resource_id, scope, description
 )
-VALUES (gen_random_uuid(), $1, $2, $2, split_part($2, '.', 1), NULL, '{}'::jsonb, $3)
+VALUES (gen_random_uuid(), $1, $2, $2, $3, NULL, '{}'::jsonb, $4)
 ON CONFLICT (instance_id, permission_key) DO UPDATE
 SET
   action = EXCLUDED.action,
@@ -48,19 +50,26 @@ SET
   resource_id = EXCLUDED.resource_id,
   scope = EXCLUDED.scope,
   description = EXCLUDED.description,
-  updated_at = NOW();
+  updated_at = NOW()
+WHERE (iam.permissions.action, iam.permissions.resource_type, iam.permissions.resource_id, iam.permissions.scope, iam.permissions.description)
+  IS DISTINCT FROM (EXCLUDED.action, EXCLUDED.resource_type, EXCLUDED.resource_id, EXCLUDED.scope, EXCLUDED.description)
+RETURNING (xmax = 0) AS inserted;
 `,
-      [instanceId, permissionKey, description]
+      [instanceId, definition.key, definition.resourceType, definition.description]
     )
   );
+  if (result.rowCount === 0) {
+    return 'unchanged';
+  }
+  return result.rows[0]?.inserted ? 'inserted' : 'updated';
 };
 
 export const insertModuleRolePermission = async (
   executor: SqlExecutor,
   instanceId: string,
   pair: RolePermissionPair
-): Promise<void> => {
-  await executor.execute(
+): Promise<boolean> => {
+  const result = await executor.execute(
     statement(
       `
 INSERT INTO iam.role_permissions (instance_id, role_id, permission_id, grant_origin_kind, grant_origin_module_id)
@@ -76,6 +85,7 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
       [instanceId, pair.roleName, pair.permissionId, 'module_sync', pair.moduleId]
     )
   );
+  return result.rowCount > 0;
 };
 
 export const cleanupModuleRolePermissions = async (
@@ -112,33 +122,6 @@ WHERE role_permission.instance_id = $1
   );
 };
 
-export const cleanupModulePermissions = async (
-  executor: SqlExecutor,
-  instanceId: string,
-  managedModuleIds: readonly string[],
-  permissionKeys: readonly string[]
-): Promise<void> => {
-  if (managedModuleIds.length === 0) {
-    return;
-  }
-  const managedPrefixConditions = managedModuleIds
-    .map((moduleId) => `permission_key LIKE ${quoteSqlLiteral(`${moduleId}.%`)}`)
-    .join(' OR ');
-  const desiredPermissionFilter =
-    permissionKeys.length > 0 ? `AND permission_key NOT IN (${createTextList(permissionKeys)})` : '';
-  await executor.execute(
-    statement(
-      `
-DELETE FROM iam.permissions
-WHERE instance_id = $1
-  ${desiredPermissionFilter}
-  AND (${managedPrefixConditions});
-`,
-      [instanceId]
-    )
-  );
-};
-
 export const upsertProtectedRole = async (
   executor: SqlExecutor,
   instanceId: string,
@@ -167,42 +150,13 @@ SET
   );
 };
 
-export const cleanupProtectedRolePermissions = async (
-  executor: SqlExecutor,
-  instanceId: string,
-  roleKey: string,
-  permissionKeys: readonly string[]
-): Promise<void> => {
-  await executor.execute(
-    statement(
-      `
-DELETE FROM iam.role_permissions role_permission
-WHERE role_permission.instance_id = $1
-  AND role_permission.role_id = (
-    SELECT id FROM iam.roles WHERE instance_id = $1 AND role_key = $2 LIMIT 1
-  )
-  AND role_permission.grant_origin_kind = 'bootstrap'
-  AND role_permission.grant_origin_module_id IS NULL
-  AND NOT EXISTS (
-    SELECT 1
-    FROM iam.permissions permission
-    WHERE permission.instance_id = role_permission.instance_id
-      AND permission.id = role_permission.permission_id
-      AND permission.permission_key = ANY($3::text[])
-  );
-`,
-      [instanceId, roleKey, permissionKeys]
-    )
-  );
-};
-
 export const insertProtectedRolePermission = async (
   executor: SqlExecutor,
   instanceId: string,
   roleKey: string,
   permissionKey: string
-): Promise<void> => {
-  await executor.execute(
+): Promise<boolean> => {
+  const result = await executor.execute(
     statement(
       `
 INSERT INTO iam.role_permissions (instance_id, role_id, permission_id, grant_origin_kind, grant_origin_module_id)
@@ -218,4 +172,5 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
       [instanceId, roleKey, permissionKey]
     )
   );
+  return result.rowCount > 0;
 };

@@ -930,3 +930,11 @@ Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine ab
 7. Nach dem App-Neustart prüft der Workflow zusätzlich zum allgemeinen Runtime-Smoke authentifiziert `/auth/me` auf `permissionStatus: ok` und `/iam/me/permissions` auf HTTP 200. Erst danach entsteht erfolgreiche Workflow-Evidenz.
 8. Erst nach erfolgreicher DB-Evidenz startet der Workflow App und Provisioner. HTTP-Liveness, Readiness und Tenant-Login müssen erfolgreich sein; andernfalls deployt der Workflow erneut den gestoppten Stackvertrag.
 9. Keycloak bleibt unverändert. Externer Drift wird nur über die getrennten IAM-Reconcile-Pfade behandelt.
+
+### Permission-Katalog-Reconcile
+
+1. Der Registry-Service liest den Tenant und seine zugewiesenen Module.
+2. Er selektiert aktive tenantweite Katalogdefinitionen und Beiträge der aktiven Module.
+3. Das Repository führt idempotente Upserts über `(instance_id, permission_key)` aus und ergänzt fehlende verwaltete `system_admin`-Grants.
+4. Bei Moduldeaktivierung entfernt es nur eindeutig als `module_sync` markierte Grants; Definitionen, Custom-Rollen und manuelle Grants bleiben erhalten.
+5. Der Service invalidiert den Tenant-Permission-Snapshot und persistiert Audit-Evidenz mit sicheren Reconcile-Zählern.

@@ -1,4 +1,20 @@
 export const coreVersion = '0.0.1';
+export {
+  composePermissionCatalog,
+  corePermissionCatalog,
+  resolvesSystemAdminGrant,
+  rootPermissionCatalog,
+  tenantCorePermissionCatalog,
+  tenantCoreSystemAdminPermissionKeys,
+  validatePermissionCatalog,
+} from './iam/permission-catalog.js';
+export type {
+  CorePermissionKey,
+  ModulePermissionCatalogContribution,
+  PermissionAvailability,
+  PermissionDefinition,
+  PermissionLifecycle,
+} from './iam/permission-catalog.js';
 export { isPlausibleEmailAddress } from './email-address.js';
 export {
   iamContentAccessReasonCodes,

@@ -195,6 +195,9 @@ Die genaue fachliche Spezifikation eines expliziten Ownership-Transfers folgt sp
 - Der vollständige Zugriff wird durch einen deterministischen Permission-Sync hergestellt.
 - Neue tenant-relevante Permissions und Modul-Permissions müssen automatisch oder über ein verbindliches Gate in die `System Admin`-Rolle aufgenommen werden.
 - Root-only Permissions bleiben außerhalb des tenant-lokalen `System Admin`.
+- Führend ist der typsichere Katalog in `@sva/core`; die validierte Gesamtsicht `studioPermissionCatalog` ergänzt die bestehenden Modul-IAM-Verträge.
+- Ohne explizite Ausnahme erhält `system_admin` jede aktive tenantweite Permission und jede Permission eines aktivierten Moduls.
+- Entfernte oder deprecated Katalogeinträge werden nicht automatisch aus der Datenbank oder aus manuellen Rollenbindungen gelöscht.
 
 ## Sichtbare Autorenanzeige
 

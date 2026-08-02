@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import type { SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
 import { createInstanceRegistryRepository } from './index.js';
 import { createQueuedExecutor } from './test-support.js';
 
@@ -22,12 +23,18 @@ describe('instance registry repository module iam', () => {
         managedModuleIds: [],
         contracts: [],
       })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({
+      permissionsInserted: 0,
+      permissionsUpdated: 0,
+      permissionsUnchanged: 0,
+      grantsInserted: 0,
+      grantsUnchanged: 0,
+    });
 
     expect(statements).toEqual([]);
   });
 
-  it('cleans up stale module permissions and role grants when desired sets are empty', async () => {
+  it('cleans up stale module grants but preserves materialized permission definitions', async () => {
     const { executor, statements } = createQueuedExecutor([[]]);
     const repository = createInstanceRegistryRepository(executor);
 
@@ -39,16 +46,19 @@ describe('instance registry repository module iam', () => {
           {
             moduleId: 'news',
             permissionIds: [],
+            permissions: [],
             tenantBootstrapRoles: [{ roleName: 'news_admin', permissionIds: [] }],
           },
         ],
       })
-    ).resolves.toBeUndefined();
+    ).resolves.toMatchObject({ permissionsUnchanged: 0, grantsUnchanged: 0 });
 
-    expect(statements).toHaveLength(2);
-    expect(statements[0]?.text).toContain("role_permission.grant_origin_module_id IN ('news')");
-    expect(statements[1]?.text).toContain("permission_key LIKE 'news.%'");
-    expect(statements[1]?.text).not.toContain('permission_key NOT IN (');
+    expect(statements.map((entry) => entry.text.trim())).toEqual([
+      'BEGIN;',
+      expect.stringContaining("role_permission.grant_origin_module_id IN ('news')"),
+      'COMMIT;',
+    ]);
+    expect(statements.some((statement) => statement.text.includes('DELETE FROM iam.permissions'))).toBe(false);
   });
 
   it('tags module-synced role grants with ownership metadata and cleans up only module-owned rows', async () => {
@@ -63,11 +73,12 @@ describe('instance registry repository module iam', () => {
           {
             moduleId: 'news',
             permissionIds: ['news.read'],
+            permissions: [{ key: 'news.read', description: 'Read news', resourceType: 'news' }],
             tenantBootstrapRoles: [{ roleName: 'system_admin', permissionIds: ['news.read'] }],
           },
         ],
       })
-    ).resolves.toBeUndefined();
+    ).resolves.toMatchObject({ permissionsUnchanged: 1, grantsUnchanged: 1 });
 
     const rolePermissionInsert = statements.find((statement) => statement.text.includes('grant_origin_kind'));
     expect(rolePermissionInsert?.text).toContain('grant_origin_kind');
@@ -94,6 +105,10 @@ describe('instance registry repository module iam', () => {
           {
             moduleId: 'news',
             permissionIds: ['z.permission', 'ä.permission'],
+            permissions: [
+              { key: 'z.permission', description: 'Z permission', resourceType: 'z' },
+              { key: 'ä.permission', description: 'Ä permission', resourceType: 'ä' },
+            ],
             tenantBootstrapRoles: [
               { roleName: 'z-role', permissionIds: ['z.permission'] },
               { roleName: 'ä-role', permissionIds: ['ä.permission'] },
@@ -101,12 +116,10 @@ describe('instance registry repository module iam', () => {
           },
         ],
       })
-    ).resolves.toBeUndefined();
+    ).resolves.toMatchObject({ permissionsUnchanged: 2, grantsUnchanged: 2 });
 
-    const permissionCleanup = statements.find((statement) => statement.text.includes('DELETE FROM iam.permissions'));
     const permissionUpserts = statements.filter((statement) => statement.text.includes('INSERT INTO iam.permissions'));
 
-    expect(permissionCleanup?.text).toContain("permission_key NOT IN ('ä.permission', 'z.permission')");
     expect(permissionUpserts.map((statement) => statement.values[1])).toEqual(['ä.permission', 'z.permission']);
   });
 
@@ -121,10 +134,13 @@ describe('instance registry repository module iam', () => {
           roleKey: 'system_admin',
           displayName: 'System Administrator',
           roleLevel: 100,
-          permissionKeys: ['cockpit.read', 'iam.user.read'],
+          permissions: [
+            { key: 'cockpit.read', description: 'Read cockpit', resourceType: 'cockpit' },
+            { key: 'iam.user.read', description: 'Read accounts', resourceType: 'iam' },
+          ],
         },
       })
-    ).resolves.toBeUndefined();
+    ).resolves.toMatchObject({ permissionsUnchanged: 2, grantsUnchanged: 2 });
 
     const roleUpsert = statements.find(
       (statement) =>
@@ -143,7 +159,7 @@ describe('instance registry repository module iam', () => {
         statement.text.includes('DELETE FROM iam.role_permissions role_permission') &&
         statement.text.includes("role_permission.grant_origin_kind = 'bootstrap'")
     );
-    expect(bootstrapCleanup?.values).toEqual(['tenant-a', 'system_admin', ['cockpit.read', 'iam.user.read']]);
+    expect(bootstrapCleanup).toBeUndefined();
 
     const rolePermissionInserts = statements.filter(
       (statement) =>
@@ -155,6 +171,38 @@ describe('instance registry repository module iam', () => {
     expect(rolePermissionInserts.map((statement) => statement.values)).toEqual([
       ['tenant-a', 'system_admin', 'cockpit.read'],
       ['tenant-a', 'system_admin', 'iam.user.read'],
+    ]);
+  });
+
+  it('rolls back the permission reconcile transaction when a write fails', async () => {
+    const statements: SqlStatement[] = [];
+    const executor: SqlExecutor = {
+      async execute<TRow>(statement: SqlStatement) {
+        statements.push(statement);
+        if (statement.text.includes('INSERT INTO iam.permissions')) {
+          throw new Error('permission_write_failed');
+        }
+        return { rowCount: 0, rows: [] as readonly TRow[] };
+      },
+    };
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.syncProtectedSystemRolePermissions({
+        instanceId: 'tenant-a',
+        role: {
+          roleKey: 'system_admin',
+          displayName: 'System Administrator',
+          roleLevel: 100,
+          permissions: [{ key: 'iam.user.read', description: 'Read accounts', resourceType: 'iam' }],
+        },
+      })
+    ).rejects.toThrow('permission_write_failed');
+
+    expect(statements.map((statement) => statement.text.trim())).toEqual([
+      'BEGIN;',
+      expect.stringContaining('INSERT INTO iam.permissions'),
+      'ROLLBACK;',
     ]);
   });
 });

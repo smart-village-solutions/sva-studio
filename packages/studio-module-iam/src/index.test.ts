@@ -5,6 +5,7 @@ import {
   studioHostModuleIamContracts,
   studioModuleIamContracts,
   studioModuleIamRegistry,
+  studioPermissionCatalog,
   studioPluginModuleIamContracts,
 } from './index.js';
 
@@ -58,6 +59,18 @@ describe('@sva/studio-module-iam', () => {
         'waste-management.settings.manage',
       ],
     });
+  });
+
+  it('publishes one validated view of core and module permissions', () => {
+    expect(studioPermissionCatalog.find((permission) => permission.key === 'iam.accounts.delete')).toMatchObject({
+      availability: { kind: 'tenant' },
+    });
+    expect(studioPermissionCatalog.find((permission) => permission.key === 'media.delete')).toMatchObject({
+      availability: { kind: 'module', moduleId: 'media' },
+    });
+    expect(new Set(studioPermissionCatalog.map((permission) => permission.key)).size).toBe(
+      studioPermissionCatalog.length
+    );
   });
 
   it('exposes normalized standard-content contracts for plugin modules', () => {

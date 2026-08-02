@@ -630,3 +630,11 @@ Waste-Fachdaten werden in einer eigenen Datenbank pro Studio-Instanz und nicht i
 - Ein Datensatz ohne stabile Quell-ID wird übersprungen und gezählt. Transportfehler, fehlende Page-Metadaten und strukturell ungültige Pages stoppen nur den betroffenen Typ.
 - Browser-Revalidation läuft nur für laufende, partielle oder veraltete Zustände, pausiert bei unsichtbarem Dokument, verwendet Backoff und beendet sich nach Finalisierung. Filter, Auswahl, Fokus, lokale Seite und Scrollposition bleiben Browserzustand.
 - Rollback-Schalter ändern nur neue Läufe und Reads; additive Sync-State-Spalten bleiben erhalten.
+
+### Permission-Katalog-Governance
+
+- Permission-Keys bleiben vollständig qualifiziert und global eindeutig.
+- Root-, Tenant- und Modul-Availability werden vor Deployment validiert; Modul-Keys müssen im Namespace ihres Moduls liegen.
+- `systemAdminGrant` ist für Tenant- und Modul-Permissions standardmäßig `true`, für Root-Permissions immer `false`.
+- Deprecation ist rein deklarativ und niemals ein Löschsignal. Destruktive Datenpflege benötigt eine eigene Migration und Freigabe.
+- Auditdaten enthalten nur IDs, Request-Korrelation und Zählwerte, keine freien Permission- oder Account-Payloads.

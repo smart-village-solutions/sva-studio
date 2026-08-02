@@ -1,3 +1,5 @@
+import { composePermissionCatalog, corePermissionCatalog } from '@sva/core';
+
 export const studioModuleIamVersion = '0.0.1';
 
 export type StudioModuleIamBootstrapRole = Readonly<{
@@ -19,6 +21,7 @@ export type StudioModuleIamContract = Readonly<{
   tenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[];
   rootSystemRoles: readonly StudioModuleIamSystemRole[];
   systemRoles?: readonly StudioModuleIamBootstrapRole[];
+  systemAdminPermissionExclusions?: readonly string[];
 }>;
 
 const createStandardContentBootstrapRoles = (pluginId: string): readonly StudioModuleIamBootstrapRole[] => [
@@ -174,6 +177,15 @@ export const studioModuleIamContracts = [
   ...studioPluginModuleIamContracts,
   ...studioHostModuleIamContracts,
 ] as const satisfies readonly StudioModuleIamContract[];
+
+/** Vollständige, validierte Katalogsicht für Diagnose, Review und Tests. */
+export const studioPermissionCatalog = composePermissionCatalog(
+  corePermissionCatalog,
+  studioModuleIamContracts.map((contract) => ({
+    moduleId: contract.moduleId,
+    permissionIds: contract.permissionIds,
+  }))
+);
 
 export const studioModuleIamRegistry = new Map(
   studioModuleIamContracts.map((contract) => [contract.moduleId, contract] as const)

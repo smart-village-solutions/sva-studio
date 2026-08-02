@@ -1,0 +1,4 @@
+{
+  "prNumber": 896,
+  "body": "Übersichtlichere Inhalte und schneller Statuswechsel\n\n- Die Inhaltsübersicht zeigt ID, Erstellungsdatum und Veröffentlichungsdatum direkt in der Tabelle.\n- Unterschiedliche Statuswerte sind farblich leichter erkennbar und lassen sich mit entsprechender Berechtigung direkt in einem Overlay ändern.\n- Aufzählungen, nummerierte Listen und Links bleiben beim Speichern von Nachrichtentexten korrekt formatiert."
+}

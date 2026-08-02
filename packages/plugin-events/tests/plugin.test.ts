@@ -9,7 +9,7 @@ import { pluginEventsTranslations } from '../src/plugin.translations.js';
 
 describe('pluginEvents contract', () => {
   it('uses the approved German editorial terminology', () => {
-    expect(pluginEvents.displayName).toBe('Veranstaltungen');
+    expect(pluginEvents.displayName).toBe('Events');
     expect(pluginEventsTranslations.de.events.navigation.title).toBe('Veranstaltungen');
     expect(pluginEventsTranslations.de.events.fields.title).toBe('Überschrift');
     expect(pluginEventsTranslations.en.events.navigation.title).toBe('Events');

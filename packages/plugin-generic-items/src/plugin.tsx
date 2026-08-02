@@ -9,7 +9,7 @@ import { pluginGenericItemsTranslations } from './plugin.translations.js';
 
 const standardGenericItemsContribution = createStandardContentPluginContribution({
   pluginId: 'generic-items',
-  displayName: 'Generische Inhalte',
+  displayName: 'Generic Items',
   contentType: GENERIC_ITEMS_CONTENT_TYPE,
   titleKey: 'genericItems.navigation.title',
   listBindingKey: 'genericItemsList',
@@ -23,7 +23,7 @@ export const pluginGenericItemsActionDefinitions = standardGenericItemsContribut
 
 export const pluginGenericItems: PluginDefinition = createStandardContentPluginDefinition({
   pluginId: 'generic-items',
-  displayName: 'Generische Inhalte',
+  displayName: 'Generic Items',
   contribution: standardGenericItemsContribution,
   translations: pluginGenericItemsTranslations,
 });

@@ -274,7 +274,7 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
       publication: { title: 'Sichtbarkeit', description: 'Ausspielung der Veranstaltung.' },
       technical: {
         title: 'Technische Zusatzdaten',
-        description: 'Externe IDs, Schlagwörter und Tags.',
+        description: 'Technische Kennung der Veranstaltung.',
       },
     },
   },
@@ -560,7 +560,7 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     },
     settings: {
       publication: { title: 'Visibility', description: 'Event exposure.' },
-      technical: { title: 'Technical metadata', description: 'External IDs, keywords, and tags.' },
+      technical: { title: 'Technical metadata', description: 'Technical identifier of the event.' },
     },
   },
   history: {

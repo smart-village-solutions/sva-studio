@@ -415,7 +415,7 @@ export function PoiDetailPage({
     setStatus(null);
     const payload = parsePoiPayloadText(values.content.payloadText);
 
-    if (!payload) {
+    if (payload === undefined) {
       methods.setError('content.payloadText', { type: 'manual', message: 'payload' });
       setActiveTab('settings');
       methods.setFocus('content.payloadText');

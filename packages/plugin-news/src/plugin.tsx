@@ -13,7 +13,7 @@ export const pluginNewsActionIds = createStandardContentPluginActionIds('news');
 
 const standardNewsContribution = createStandardContentPluginContribution({
   pluginId: 'news',
-  displayName: 'Nachrichten',
+  displayName: 'News',
   contentType: NEWS_CONTENT_TYPE,
   titleKey: 'news.navigation.title',
   listBindingKey: 'newsList',
@@ -39,7 +39,7 @@ export const getPluginNewsActionDefinition = (
 
 export const pluginNews: PluginDefinition = createStandardContentPluginDefinition({
   pluginId: 'news',
-  displayName: 'Nachrichten',
+  displayName: 'News',
   contribution: standardNewsContribution,
   translations: pluginNewsTranslations,
 });

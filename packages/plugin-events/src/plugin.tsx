@@ -9,7 +9,7 @@ import { pluginEventsTranslations } from './plugin.translations.js';
 
 const standardEventsContribution = createStandardContentPluginContribution({
   pluginId: 'events',
-  displayName: 'Veranstaltungen',
+  displayName: 'Events',
   contentType: EVENTS_CONTENT_TYPE,
   titleKey: 'events.navigation.title',
   listBindingKey: 'eventsList',
@@ -23,7 +23,7 @@ export const pluginEventsActionDefinitions = standardEventsContribution.actions;
 
 export const pluginEvents: PluginDefinition = createStandardContentPluginDefinition({
   pluginId: 'events',
-  displayName: 'Veranstaltungen',
+  displayName: 'Events',
   contribution: standardEventsContribution,
   translations: pluginEventsTranslations,
 });

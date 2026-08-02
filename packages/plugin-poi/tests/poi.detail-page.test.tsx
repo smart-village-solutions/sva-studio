@@ -795,7 +795,7 @@ describe('PoiDetailPage', () => {
       tags: ['service', 'amt'],
       certificates: [{ name: 'Reisen für Alle' }],
       accessibilityInformation: { description: 'Stufenlos', types: 'wheelchair' },
-      payload: { source: 'legacy' },
+      payload: ['legacy', { source: 'mainserver' }],
     } as never);
     vi.mocked(updatePoi).mockResolvedValueOnce({
       id: 'poi-1',
@@ -826,7 +826,7 @@ describe('PoiDetailPage', () => {
           tags: ['service', 'amt'],
           certificates: [{ name: 'Reisen für Alle' }],
           accessibilityInformation: { description: 'Stufenlos', types: 'wheelchair' },
-          payload: { source: 'legacy' },
+          payload: ['legacy', { source: 'mainserver' }],
         })
       );
     });

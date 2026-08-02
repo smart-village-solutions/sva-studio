@@ -9,7 +9,7 @@ import { genericItemsTranslationsDe } from '../src/plugin.translations.de.js';
 
 describe('pluginGenericItems contract', () => {
   it('uses the approved German editorial terminology', () => {
-    expect(pluginGenericItems.displayName).toBe('Generische Inhalte');
+    expect(pluginGenericItems.displayName).toBe('Generic Items');
     expect(genericItemsTranslationsDe.genericItems.navigation.title).toBe('Generische Inhalte');
     expect(genericItemsTranslationsDe.genericItems.fields.title).toBe('Überschrift');
     expect(genericItemsTranslationsDe.genericItems.fields.teaser).toBe('Einleitung');

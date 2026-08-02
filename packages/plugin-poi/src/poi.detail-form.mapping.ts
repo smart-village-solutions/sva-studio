@@ -17,10 +17,11 @@ import {
 } from './poi.detail-form.types.js';
 import { normalizeOpeningHourWeekday } from './poi.opening-hours.js';
 
-const mapNumberToString = (value?: number) => (typeof value === 'number' && Number.isFinite(value) ? String(value) : '');
+const mapNumberToString = (value?: number) =>
+  typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
 
 const mapGeoLocationToFormValue = (
-  value?: { readonly latitude?: number; readonly longitude?: number } | null,
+  value?: { readonly latitude?: number; readonly longitude?: number } | null
 ): PoiFormGeoLocationValue => ({
   latitude: mapNumberToString(value?.latitude),
   longitude: mapNumberToString(value?.longitude),
@@ -70,7 +71,9 @@ const mapPriceToFormValue = (price?: PoiPriceInformation): PoiPriceFormValue => 
 const mapPoiContentToFormValues = (item: PoiContentItem): PoiDetailFormValues['content'] => ({
   description: item.description ?? '',
   mobileDescription: item.mobileDescription ?? '',
-  addresses: item.addresses?.length ? item.addresses.map(mapAddressToFormValue) : [createDefaultAddress()],
+  addresses: item.addresses?.length
+    ? item.addresses.map(mapAddressToFormValue)
+    : [createDefaultAddress()],
   location: mapLocationToFormValue(item.location),
   contact: mapContactToFormValue(item.contact),
   openingHours: item.openingHours?.length
@@ -85,7 +88,9 @@ const mapPoiContentToFormValues = (item: PoiContentItem): PoiDetailFormValues['c
     address: mapAddressToFormValue(item.operatingCompany?.address),
     contact: mapContactToFormValue(item.operatingCompany?.contact),
   },
-  prices: item.priceInformations?.length ? item.priceInformations.map(mapPriceToFormValue) : [createDefaultPrice()],
+  prices: item.priceInformations?.length
+    ? item.priceInformations.map(mapPriceToFormValue)
+    : [createDefaultPrice()],
   mediaContents: item.mediaContents?.length ? item.mediaContents : [],
   certificates: item.certificates?.length ? item.certificates : [createDefaultCertificate()],
   accessibilityInformation: {
@@ -95,13 +100,17 @@ const mapPoiContentToFormValues = (item: PoiContentItem): PoiDetailFormValues['c
     urls: item.accessibilityInformation?.urls?.length ? item.accessibilityInformation.urls : [],
   },
   tagsText: item.tags?.join(', ') ?? '',
-  payloadText: JSON.stringify(item.payload ?? {}, null, 2),
+  payloadText: JSON.stringify(item.payload === undefined ? {} : item.payload, null, 2),
 });
 
 export const mapPoiItemToDetailFormValues = (item: PoiContentItem): PoiDetailFormValues => ({
   name: item.name,
   basis: {
-    categories: item.categories?.length ? item.categories.map((category) => category.name) : item.categoryName ? [item.categoryName] : [],
+    categories: item.categories?.length
+      ? item.categories.map((category) => category.name)
+      : item.categoryName
+        ? [item.categoryName]
+        : [],
     active: item.active !== false,
   },
   content: mapPoiContentToFormValues(item),
@@ -111,13 +120,10 @@ export const mapPoiItemToDetailFormValues = (item: PoiContentItem): PoiDetailFor
   },
 });
 
-export const parsePoiPayloadText = (payloadText: string): Record<string, unknown> | null => {
+export const parsePoiPayloadText = (payloadText: string): unknown => {
   try {
-    const parsed = JSON.parse(payloadText) as unknown;
-    return parsed !== null && typeof parsed === 'object' && Array.isArray(parsed) === false
-      ? (parsed as Record<string, unknown>)
-      : null;
+    return JSON.parse(payloadText) as unknown;
   } catch {
-    return null;
+    return undefined;
   }
 };

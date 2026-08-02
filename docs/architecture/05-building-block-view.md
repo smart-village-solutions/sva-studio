@@ -668,3 +668,9 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 Der `studio-backup-agent` ist ein eigenständiger operativer Baustein außerhalb der App-Stacks. Sein HTTP-Port wird nicht veröffentlicht; Traefik leitet ausschließlich die beiden exakten Backup-Request-Pfade an ihn weiter. Der Baustein besitzt getrennte Staging-/Production-Secrets und leitet Datenbankhost, Bucket und Objektpräfix ausschließlich aus der validierten Zielumgebung ab.
 
 Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provisioning`, sichert alle `ready`- und `disabled`-Datenbanken unter `<umgebung>/waste/<instance_id>/` und bindet Restores zusätzlich an die signierte Instanz-ID. Freie Datenbank- oder Rollennamen sind kein Bestandteil des Request-Vertrags.
+
+### Ergänzung 2026-08: Mainserver-Inhaltsprojektion
+
+- `@sva/sva-mainserver/server` stellt neben den unveränderten Fachadaptern schlanke Projection-List-Operationen bereit. Sie lesen ausschließlich Identität, Titel, Zeitpunkte, Sichtbarkeit, Status und Datenprovider; fachliche Payloads bleiben außerhalb des Projektionspfads.
+- Die Studio-Server-Runtime orchestriert pro Instanz, Account, Organisation und Inhaltstyp eine Hot-Phase und eine deduplizierte Reconciliation. Persistierte Pages sind sofort lesbar.
+- `iam.content_list_projection_sync_state` hält Generation, Phase, Page-Fortschritt, verfügbare Zeilen, Finalität und Fehlerzustand. Damit liegt die Konkurrenzkontrolle dauerhaft in PostgreSQL und nicht nur im Prozessspeicher.

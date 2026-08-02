@@ -4,23 +4,23 @@ import { genericItemsTranslationsDeMessages } from './plugin.translations.de.mes
 export const genericItemsTranslationsDe = {
   genericItems: {
     navigation: {
-      title: 'Generic Items',
+      title: 'Generische Inhalte',
     },
     list: {
-      title: 'Generic Items',
-      description: 'Freie Generic-Item-Inhalte im Studio verwalten.',
+      title: 'Generische Inhalte',
+      description: 'Frei modellierbare Inhalte im Studio verwalten.',
     },
     editor: {
-      createTitle: 'Generic Item anlegen',
-      createDescription: 'Erstellen Sie einen freien Generic-Item-Eintrag.',
-      editTitle: 'Generic Item bearbeiten',
-      editDescription: 'Aktualisieren oder löschen Sie den Generic-Item-Eintrag.',
+      createTitle: 'Generischen Inhalt anlegen',
+      createDescription: 'Erstellen Sie einen frei modellierbaren Inhalt.',
+      editTitle: 'Generischen Inhalt bearbeiten',
+      editDescription: 'Aktualisieren oder löschen Sie den generischen Inhalt.',
     },
     fields: {
       actions: 'Aktionen',
-      title: 'Titel',
+      title: 'Überschrift',
       titleHelp: 'Pflichtfeld für die redaktionelle Überschrift.',
-      genericType: 'Generic-Type',
+      genericType: 'Inhaltstyp',
       genericTypeHelp: 'Freitext-Marker für den inhaltlichen Typ, z. B. faq oder stellenanzeige.',
       visible: 'Sichtbar',
       visibleHelp: 'Steuert, ob der Eintrag grundsätzlich sichtbar ausgeliefert werden darf.',
@@ -32,9 +32,9 @@ export const genericItemsTranslationsDe = {
       publicationDateHelp: 'ISO-Datum oder freier technischer Wert.',
       publishedAt: 'Veröffentlicht am',
       publishedAtHelp: 'Optionaler Zeitstempel für Veröffentlichungslogik.',
-      teaser: 'Teaser',
-      teaserHelp: 'Kurzer redaktioneller Anreißer für Listen und Vorschauen.',
-      intro: 'Intro',
+      teaser: 'Einleitung',
+      teaserHelp: 'Kurze redaktionelle Einleitung für Listen und Vorschauen.',
+      intro: 'Einleitung',
       body: 'Inhalt',
       categoryName: 'Primärkategorie',
       categories: 'Kategorien',
@@ -55,9 +55,11 @@ export const genericItemsTranslationsDe = {
       latitude: 'Breitengrad',
       longitude: 'Längengrad',
       contentBlocks: 'Content-Blocks',
-      contentBlocksHelp: 'Strukturierte Redaktionsblöcke mit Titel, kurzem Intro und Richtext-Inhalt.',
+      contentBlocksHelp:
+        'Strukturierte Redaktionsblöcke mit Überschrift, kurzer Einleitung und Richtext-Inhalt.',
       openingHours: 'Öffnungszeiten',
-      openingHoursHelp: 'Mehrere Öffnungsfenster mit Datum, Uhrzeit, Wochentag und Freitext pflegen.',
+      openingHoursHelp:
+        'Mehrere Öffnungsfenster mit Datum, Uhrzeit, Wochentag und Freitext pflegen.',
       dateFrom: 'Datum von',
       dateTo: 'Datum bis',
       timeFrom: 'Uhrzeit von',
@@ -86,7 +88,8 @@ export const genericItemsTranslationsDe = {
       timeDescription: 'Zeitbeschreibung',
       useOnlyTimeDescription: 'Nur Zeitbeschreibung verwenden',
       accessibilityInformations: 'Barrierefreiheit',
-      accessibilityInformationsHelp: 'Hinweise zur Barrierefreiheit mit Freitext, Typen und optionalen Verweisen.',
+      accessibilityInformationsHelp:
+        'Hinweise zur Barrierefreiheit mit Freitext, Typen und optionalen Verweisen.',
       accessibilityTypes: 'Barrierefreiheits-Typen',
       accessibilityLinks: 'Weiterführende Links',
       priceInformations: 'Preise',
@@ -104,7 +107,8 @@ export const genericItemsTranslationsDe = {
       minChildrenCount: 'Kinder mindestens',
       maxChildrenCount: 'Kinder höchstens',
       payload: 'Payload',
-      payloadHelp: 'Freies JSON-Objekt für plugin-spezifische Zusatzdaten. Dieser Bereich bleibt absichtlich offen.',
+      payloadHelp:
+        'Freies JSON-Objekt für plugin-spezifische Zusatzdaten. Dieser Bereich bleibt absichtlich offen.',
       updatedAt: 'Geändert am',
       firstName: 'Vorname',
       lastName: 'Nachname',
@@ -118,12 +122,12 @@ export const genericItemsTranslationsDe = {
       basis: {
         label: 'Basis',
         title: 'Basis',
-        description: 'Identität, Typ und Kernmetadaten des Generic Items.',
+        description: 'Identität, Typ und Kernmetadaten des generischen Inhalts.',
       },
       content: {
         label: 'Inhalt',
         title: 'Inhalt',
-        description: 'Redaktionelle Inhalte und fachliche Feldgruppen des Generic Items.',
+        description: 'Redaktionelle Inhalte und fachliche Feldgruppen des generischen Inhalts.',
       },
       settings: {
         label: 'Einstellungen',
@@ -140,7 +144,7 @@ export const genericItemsTranslationsDe = {
       basis: {
         identity: {
           title: 'Identität',
-          description: 'Titel, Typ und Sichtbarkeit des Eintrags.',
+          description: 'Überschrift, Typ und Sichtbarkeit des Eintrags.',
         },
         meta: {
           title: 'Metadaten',
@@ -181,7 +185,8 @@ export const genericItemsTranslationsDe = {
       },
     },
     history: {
-      placeholder: 'Die Historie wird in einem späteren Schritt an eine Host-Ansicht angeschlossen.',
+      placeholder:
+        'Die Historie wird in einem späteren Schritt an eine Host-Ansicht angeschlossen.',
     },
     ...genericItemsTranslationsDeActions,
     ...genericItemsTranslationsDeMessages,

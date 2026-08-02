@@ -4,7 +4,10 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EventsDetailContentTab } from '../src/events.detail-content-tab.js';
-import { createDefaultEventsDetailFormValues, type EventsDetailFormValues } from '../src/events.detail-form.js';
+import {
+  createDefaultEventsDetailFormValues,
+  type EventsDetailFormValues,
+} from '../src/events.detail-form.js';
 
 const geocodingState = vi.hoisted(() => ({
   getConfig: vi.fn(async () => ({
@@ -35,7 +38,8 @@ const geocodingState = vi.hoisted(() => ({
 vi.mock('../src/events.map-geocoding-client.js', () => ({
   getMapGeocodingConfig: () => geocodingState.getConfig(),
   geocodeMapAddress: (input: { address: unknown }) => geocodingState.geocodeAddress(input),
-  reverseMapCoordinates: (input: { latitude: number; longitude: number }) => geocodingState.reverseCoordinates(input),
+  reverseMapCoordinates: (input: { latitude: number; longitude: number }) =>
+    geocodingState.reverseCoordinates(input),
 }));
 
 vi.mock('../src/events.location-map.js', () => ({
@@ -44,14 +48,18 @@ vi.mock('../src/events.location-map.js', () => ({
   }: {
     onCoordinatesChange: (coordinates: { latitude: string; longitude: string }) => void;
   }) => (
-    <button type="button" onClick={() => onCoordinatesChange({ latitude: '50.123456', longitude: '8.654321' })}>
+    <button
+      type="button"
+      onClick={() => onCoordinatesChange({ latitude: '50.123456', longitude: '8.654321' })}
+    >
       Kartenpunkt setzen
     </button>
   ),
 }));
 
 vi.mock('@sva/studio-ui-react', async () => {
-  const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
+  const actual =
+    await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
   return {
     ...actual,
     RichTextHtmlEditor: ({
@@ -156,7 +164,8 @@ const pt = (key: string) =>
     'actions.reverseGeocodingAddress': 'Adresse wird ermittelt',
     'actions.remove': 'Entfernen',
     'messages.locationGeocodeError': 'Geo-Koordinaten konnten nicht ermittelt werden.',
-    'messages.locationGeocodeDisabled': 'Geo-Koordinaten sind für diese Instanz derzeit nicht verfügbar.',
+    'messages.locationGeocodeDisabled':
+      'Geo-Koordinaten sind für diese Instanz derzeit nicht verfügbar.',
     'messages.locationGeocodeEmpty': 'Keine Koordinaten gefunden.',
     'messages.locationGeocodeRateLimited': 'Geocoding-Limit erreicht.',
     'messages.locationGeocodeTimeout': 'Geocoding hat zu lange gedauert.',
@@ -242,32 +251,46 @@ describe('EventsDetailContentTab', () => {
     const { onDateEndInputChange, onDateStartInputChange, getValues } = renderTab();
     await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
 
-    fireEvent.change(screen.getByTestId('rich-text-editor'), { target: { value: '<p>Eventbeschreibung</p>' } });
+    fireEvent.change(screen.getByTestId('rich-text-editor'), {
+      target: { value: '<p>Eventbeschreibung</p>' },
+    });
     fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-06-12' } });
     fireEvent.change(screen.getByLabelText('Enddatum'), { target: { value: '2026-06-12' } });
     fireEvent.change(screen.getByLabelText('Startzeit'), { target: { value: '10:15' } });
     fireEvent.change(screen.getByLabelText('Endzeit'), { target: { value: '12:30' } });
-    fireEvent.change(screen.getByLabelText('Institution/Firma'), { target: { value: 'Stadtwerke' } });
+    fireEvent.change(screen.getByLabelText('Institution/Firma'), {
+      target: { value: 'Stadtwerke' },
+    });
     fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Erika' } });
-    fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street' }), { target: { value: 'Marktplatz 1' } });
-    fireEvent.change(screen.getByLabelText('Ort', { selector: '#event-city' }), { target: { value: 'Musterstadt' } });
+    fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street' }), {
+      target: { value: 'Marktplatz 1' },
+    });
+    fireEvent.change(screen.getByLabelText('Ort', { selector: '#event-city' }), {
+      target: { value: 'Musterstadt' },
+    });
     fireEvent.change(screen.getByLabelText('E-Mail', { selector: '#event-contact-email' }), {
       target: { value: 'kontakt@example.com' },
     });
     fireEvent.change(screen.getByLabelText('Telefon', { selector: '#event-contact-phone' }), {
       target: { value: '01234 5678' },
     });
-    fireEvent.change(screen.getByLabelText('URL'), { target: { value: 'https://example.com/event' } });
-    fireEvent.change(screen.getByLabelText('Link-Beschreibung'), { target: { value: 'Weitere Infos' } });
+    fireEvent.change(screen.getByLabelText('URL'), {
+      target: { value: 'https://example.com/event' },
+    });
+    fireEvent.change(screen.getByLabelText('Link-Beschreibung'), {
+      target: { value: 'Weitere Infos' },
+    });
     fireEvent.change(screen.getByLabelText('Preiskategorie'), { target: { value: 'Erwachsene' } });
     fireEvent.change(screen.getByLabelText('Preis'), { target: { value: '12' } });
-    fireEvent.change(screen.getByLabelText('Barrierefreiheitsbeschreibung'), { target: { value: 'Stufenlos' } });
 
     expect(onDateStartInputChange).toHaveBeenCalledWith('2026-06-12');
     expect(onDateEndInputChange).toHaveBeenCalledWith('2026-06-12');
     expect(getValues().content.description).toBe('<p>Eventbeschreibung</p>');
     expect(getValues().content.dates?.[0]).toMatchObject({ timeStart: '10:15', timeEnd: '12:30' });
-    expect(getValues().content.addresses?.[0]).toMatchObject({ street: 'Marktplatz 1', city: 'Musterstadt' });
+    expect(getValues().content.addresses?.[0]).toMatchObject({
+      street: 'Marktplatz 1',
+      city: 'Musterstadt',
+    });
     expect(getValues().content.contacts?.[0]).toMatchObject({
       firstName: 'Erika',
       email: 'kontakt@example.com',
@@ -278,35 +301,66 @@ describe('EventsDetailContentTab', () => {
       url: 'https://example.com/event',
       description: 'Weitere Infos',
     });
-    expect(getValues().content.priceInformations?.[0]).toMatchObject({ category: 'Erwachsene', amount: 12 });
-    expect(getValues().content.accessibilityInformation).toMatchObject({ description: 'Stufenlos' });
+    expect(getValues().content.priceInformations?.[0]).toMatchObject({
+      category: 'Erwachsene',
+      amount: 12,
+    });
+    expect(screen.queryByText('Barrierefreiheit')).toBeNull();
+    expect(screen.queryByLabelText('Barrierefreiheitsbeschreibung')).toBeNull();
   });
 
   it('geocodes event venue addresses, accepts map updates, and reverse geocodes organizer coordinates', async () => {
     const { getValues } = renderTab();
     await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
 
-    fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street' }), { target: { value: 'Marktplatz 1' } });
-    fireEvent.change(screen.getByLabelText('PLZ', { selector: '#event-zip' }), { target: { value: '44787' } });
-    fireEvent.change(screen.getByLabelText('Ort', { selector: '#event-city' }), { target: { value: 'Bochum' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Geo-Koordinaten ermitteln' })[0] as HTMLButtonElement);
+    fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street' }), {
+      target: { value: 'Marktplatz 1' },
+    });
+    fireEvent.change(screen.getByLabelText('PLZ', { selector: '#event-zip' }), {
+      target: { value: '44787' },
+    });
+    fireEvent.change(screen.getByLabelText('Ort', { selector: '#event-city' }), {
+      target: { value: 'Bochum' },
+    });
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Geo-Koordinaten ermitteln' })[0] as HTMLButtonElement
+    );
 
     await screen.findByDisplayValue('51.4818');
-    expect(getValues().content.addresses?.[0]?.geoLocation).toMatchObject({ latitude: '51.4818', longitude: '7.2162' });
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Kartenpunkt setzen' })[0] as HTMLButtonElement);
-    expect(getValues().content.addresses?.[0]?.geoLocation).toMatchObject({ latitude: '50.123456', longitude: '8.654321' });
-
-    fireEvent.change(screen.getByLabelText('Breitengrad', { selector: '#event-organizer-latitude' }), {
-      target: { value: '51.4820' },
+    expect(getValues().content.addresses?.[0]?.geoLocation).toMatchObject({
+      latitude: '51.4818',
+      longitude: '7.2162',
     });
-    fireEvent.change(screen.getByLabelText('Längengrad', { selector: '#event-organizer-longitude' }), {
-      target: { value: '7.2166' },
+
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Kartenpunkt setzen' })[0] as HTMLButtonElement
+    );
+    expect(getValues().content.addresses?.[0]?.geoLocation).toMatchObject({
+      latitude: '50.123456',
+      longitude: '8.654321',
     });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Adresse ermitteln' })[1] as HTMLButtonElement);
+
+    fireEvent.change(
+      screen.getByLabelText('Breitengrad', { selector: '#event-organizer-latitude' }),
+      {
+        target: { value: '51.4820' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Längengrad', { selector: '#event-organizer-longitude' }),
+      {
+        target: { value: '7.2166' },
+      }
+    );
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Adresse ermitteln' })[1] as HTMLButtonElement
+    );
 
     await waitFor(() => {
-      expect(geocodingState.reverseCoordinates).toHaveBeenCalledWith({ latitude: 51.482, longitude: 7.2166 });
+      expect(geocodingState.reverseCoordinates).toHaveBeenCalledWith({
+        latitude: 51.482,
+        longitude: 7.2166,
+      });
       expect(getValues().content.organizer.address).toMatchObject({
         street: 'Rathausplatz 3',
         zip: '44787',
@@ -335,7 +389,10 @@ describe('EventsDetailContentTab', () => {
     const { getValues, onDateEndInputChange, onDateStartInputChange } = renderTab({
       content: {
         ...createDefaultEventsDetailFormValues().content,
-        dates: [createDefaultEventsDetailFormValues().content.dates[0]!, createDefaultEventsDetailFormValues().content.dates[0]!],
+        dates: [
+          createDefaultEventsDetailFormValues().content.dates[0]!,
+          createDefaultEventsDetailFormValues().content.dates[0]!,
+        ],
         addresses: [
           createDefaultEventsDetailFormValues().content.addresses[0]!,
           createDefaultEventsDetailFormValues().content.addresses[0]!,
@@ -344,7 +401,10 @@ describe('EventsDetailContentTab', () => {
           createDefaultEventsDetailFormValues().content.contacts[0]!,
           createDefaultEventsDetailFormValues().content.contacts[0]!,
         ],
-        urls: [createDefaultEventsDetailFormValues().content.urls[0]!, createDefaultEventsDetailFormValues().content.urls[0]!],
+        urls: [
+          createDefaultEventsDetailFormValues().content.urls[0]!,
+          createDefaultEventsDetailFormValues().content.urls[0]!,
+        ],
         priceInformations: [
           createDefaultEventsDetailFormValues().content.priceInformations[0]!,
           createDefaultEventsDetailFormValues().content.priceInformations[0]!,
@@ -359,19 +419,29 @@ describe('EventsDetailContentTab', () => {
     fireEvent.change(screen.getByLabelText('Enddatum', { selector: '#event-date-end-1' }), {
       target: { value: '2026-09-01' },
     });
-    fireEvent.click(screen.getByLabelText('Nur Zeit-Hinweis verwenden', { selector: '#event-only-time-description-0' }));
+    fireEvent.click(
+      screen.getByLabelText('Nur Zeit-Hinweis verwenden', {
+        selector: '#event-only-time-description-0',
+      })
+    );
     fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street-1' }), {
       target: { value: 'Zweite Straße 2' },
     });
-    fireEvent.change(screen.getByLabelText('Nachname', { selector: '#event-contact-last-name-1' }), {
-      target: { value: 'Kontakt Zwei' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Nachname', { selector: '#event-contact-last-name-1' }),
+      {
+        target: { value: 'Kontakt Zwei' },
+      }
+    );
     fireEvent.change(screen.getByLabelText('URL', { selector: '#event-url-1' }), {
       target: { value: 'https://example.test/zwei' },
     });
-    fireEvent.change(screen.getByLabelText('Link-Beschreibung', { selector: '#event-url-description-1' }), {
-      target: { value: 'Zweiter Link' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Link-Beschreibung', { selector: '#event-url-description-1' }),
+      {
+        target: { value: 'Zweiter Link' },
+      }
+    );
     fireEvent.change(screen.getByLabelText('Preis', { selector: '#event-price-amount-1' }), {
       target: { value: '' },
     });
@@ -399,14 +469,11 @@ describe('EventsDetailContentTab', () => {
   }, 10_000);
 
   it('marks invalid first date inputs for assistive technology', async () => {
-    renderTab(
-      undefined,
-      {
-        dateStartInput: 'invalid-start',
-        dateEndInput: 'invalid-end',
-        dateInputsInvalid: { dateStart: true, dateEnd: true },
-      }
-    );
+    renderTab(undefined, {
+      dateStartInput: 'invalid-start',
+      dateEndInput: 'invalid-end',
+      dateInputsInvalid: { dateStart: true, dateEnd: true },
+    });
     await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
 
     expect(screen.getByLabelText('Startdatum').getAttribute('aria-invalid')).toBe('true');
@@ -446,7 +513,9 @@ describe('EventsDetailContentTab', () => {
     await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
 
     expect((screen.getAllByLabelText('Startzeit')[0] as HTMLInputElement).value).toBe('');
-    expect((screen.getByLabelText('Straße', { selector: '#event-street' }) as HTMLInputElement).value).toBe('');
+    expect(
+      (screen.getByLabelText('Straße', { selector: '#event-street' }) as HTMLInputElement).value
+    ).toBe('');
     expect((screen.getByLabelText('URL') as HTMLInputElement).value).toBe('');
   });
 
@@ -457,21 +526,35 @@ describe('EventsDetailContentTab', () => {
     renderTab();
     await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
 
-    fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street' }), { target: { value: 'Marktplatz 1' } });
-    fireEvent.change(screen.getByLabelText('Ort', { selector: '#event-city' }), { target: { value: 'Bochum' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Geo-Koordinaten ermitteln' })[0] as HTMLButtonElement);
+    fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street' }), {
+      target: { value: 'Marktplatz 1' },
+    });
+    fireEvent.change(screen.getByLabelText('Ort', { selector: '#event-city' }), {
+      target: { value: 'Bochum' },
+    });
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Geo-Koordinaten ermitteln' })[0] as HTMLButtonElement
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Geocoding-Limit erreicht.')).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByLabelText('Breitengrad', { selector: '#event-organizer-latitude' }), {
-      target: { value: '51.4820' },
-    });
-    fireEvent.change(screen.getByLabelText('Längengrad', { selector: '#event-organizer-longitude' }), {
-      target: { value: '7.2166' },
-    });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Adresse ermitteln' })[1] as HTMLButtonElement);
+    fireEvent.change(
+      screen.getByLabelText('Breitengrad', { selector: '#event-organizer-latitude' }),
+      {
+        target: { value: '51.4820' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Längengrad', { selector: '#event-organizer-longitude' }),
+      {
+        target: { value: '7.2166' },
+      }
+    );
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Adresse ermitteln' })[1] as HTMLButtonElement
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Berechtigung für Geocoding fehlt.')).toBeTruthy();
@@ -486,12 +569,20 @@ describe('EventsDetailContentTab', () => {
       expect(screen.getAllByText('Karte nicht verfügbar.').length).toBeGreaterThan(1);
     });
 
-    fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street' }), { target: { value: 'Neue Straße 1' } });
-    fireEvent.change(screen.getByLabelText('Ort', { selector: '#event-city' }), { target: { value: 'Essen' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Geo-Koordinaten ermitteln' })[0] as HTMLButtonElement);
+    fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street' }), {
+      target: { value: 'Neue Straße 1' },
+    });
+    fireEvent.change(screen.getByLabelText('Ort', { selector: '#event-city' }), {
+      target: { value: 'Essen' },
+    });
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Geo-Koordinaten ermitteln' })[0] as HTMLButtonElement
+    );
 
     await waitFor(() => {
-      expect(screen.getByText('Geo-Koordinaten sind für diese Instanz derzeit nicht verfügbar.')).toBeTruthy();
+      expect(
+        screen.getByText('Geo-Koordinaten sind für diese Instanz derzeit nicht verfügbar.')
+      ).toBeTruthy();
     });
   });
 });

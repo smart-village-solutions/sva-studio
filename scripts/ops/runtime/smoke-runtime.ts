@@ -165,22 +165,48 @@ const runExternalSmokeWithWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.Pr
   return lastProbes;
 };
 
-const isBlockingSmokeProbe = (probe: AcceptanceProbeResult) =>
-  ['public-live', 'public-ready', 'public-auth-login', 'public-ingress-unknown-host'].includes(probe.name)
-  || probe.name.startsWith('public-auth-login-')
-  || probe.name.startsWith('public-ingress-https-')
-  || probe.name.startsWith('public-ingress-login-');
+export const isBlockingSmokeProbe = (
+  probe: AcceptanceProbeResult,
+  usesReleaseBlockingTenantScope: boolean,
+) => {
+  if (['public-home', 'public-live', 'public-ready', 'public-auth-login', 'public-ingress-unknown-host'].includes(probe.name)) return true;
+  if (probe.name.startsWith('public-auth-login-')) return true;
+
+  const isExplicitIngressProbe = probe.name.startsWith('public-ingress-https-')
+    || probe.name.startsWith('public-ingress-login-');
+  if (!isExplicitIngressProbe) return true;
+  if (!usesReleaseBlockingTenantScope) return true;
+
+  return probe.name.startsWith('public-ingress-https-de-studio-sandbox.')
+    || probe.name.startsWith('public-ingress-login-de-studio-sandbox.');
+};
+
+export const reportNonBlockingSmokeFailures = (
+  probes: readonly AcceptanceProbeResult[],
+  usesReleaseBlockingTenantScope: boolean,
+) => {
+  for (const probe of probes) {
+    if (probe.status !== 'error' || isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope)) continue;
+    console.warn(`[runtime-env] Nicht blockierender Smoke-Fehler: ${probe.name}: ${probe.message}`);
+  }
+};
 
 const waitForRemoteSmokeWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.ProcessEnv, options?: ExternalSmokeWarmupOptions) => {
   const runtimeProfile = options?.runtimeProfile ?? defaultRuntimeProfile(deps, env);
+  const usesReleaseBlockingTenantScope = deps.shouldUseStudioReleaseBlockingTenantScope(runtimeProfile, env);
   const probes = await runExternalSmokeWithWarmup(deps, env, {
     maxAttempts: options?.maxAttempts,
     retryDelayMs: options?.retryDelayMs,
     runtimeProfile,
     runner: options?.runner,
-    shouldRetry: (candidateProbes) => shouldRetryExternalSmoke(candidateProbes.filter(isBlockingSmokeProbe)),
+    shouldRetry: (candidateProbes) => shouldRetryExternalSmoke(
+      candidateProbes.filter((probe) => isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope)),
+    ),
   });
-  const failingProbe = probes.find((probe) => probe.status === 'error' && isBlockingSmokeProbe(probe));
+  reportNonBlockingSmokeFailures(probes, usesReleaseBlockingTenantScope);
+  const failingProbe = probes.find(
+    (probe) => probe.status === 'error' && isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope),
+  );
   if (failingProbe) throw new Error(`${failingProbe.name}: ${failingProbe.message}`);
   return probes;
 };

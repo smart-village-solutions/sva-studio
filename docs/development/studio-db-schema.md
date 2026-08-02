@@ -38,9 +38,9 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0073_iam_waste_tenant_provisioning.sql`
+- Repo-Migrationen vorhanden bis: `0074_iam_waste_tenant_provisioning.sql`
 
-Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0073`:
+Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0074`:
 
 - auf `iam.role_permissions` die Ownership-/Origin-Felder `grant_origin_kind` und `grant_origin_module_id` samt Check-Constraints und Index `idx_role_permissions_origin_module`
 - auf `iam.role_permissions` das Assignment-Scope-Feld `access_scope` samt Constraint `role_permissions_access_scope_check`
@@ -53,8 +53,8 @@ Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038`
 - die Lifecycle-Spalten `last_login_at`, `deletion_lifecycle_state`, `deactivated_at`, `pseudonymized_at`, `deletion_marked_at` auf `iam.accounts`
 - die Content-Lifecycle-Spalten `deletion_lifecycle_state` und `deletion_lifecycle_changed_at` auf `iam.contents`
 - der bisherige Waste-Datenquellenstatus aus `0065_iam_instance_waste_data_sources.sql`
-- der PostgreSQL-Interface-Typ aus `0072_iam_external_interface_postgresql.sql`
-- der tenantgebundene Waste-Provisionierungsstatus und der Eindeutigkeitsindex für pluginverwaltete Waste-Interfaces aus `0073_iam_waste_tenant_provisioning.sql`
+- der PostgreSQL-Interface-Typ aus `0073_iam_external_interface_postgresql.sql`
+- der tenantgebundene Waste-Provisionierungsstatus und der Eindeutigkeitsindex für pluginverwaltete Waste-Interfaces aus `0074_iam_waste_tenant_provisioning.sql`
 
 Für Entwicklungsentscheidungen gilt deshalb:
 
@@ -67,7 +67,7 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält strukturell den Repo-Sollstand bis `0073_iam_waste_tenant_provisioning.sql`; `0073` ergänzt den tenantgebundenen Provisionierungsstatus und die Eindeutigkeit pluginverwalteter Waste-Interfaces
+- Enthält strukturell den Repo-Sollstand bis `0074_iam_waste_tenant_provisioning.sql`; `0074` ergänzt den tenantgebundenen Provisionierungsstatus und die Eindeutigkeit pluginverwalteter Waste-Interfaces
 - Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
@@ -208,6 +208,7 @@ Kernidee:
 - `content_history` hält Historisierung und Änderungsverlauf.
 - `content_list_projection` ist das persistierte führende Read-Model für `/admin/content`; lokale IAM-Inhalte werden triggerbasiert gespiegelt, Mainserver-Typen serverseitig materialisiert. `projection_scope_key` trennt materialisierte Snapshots je Sichtbarkeits-Scope, damit derselbe Mainserver-Datensatz für unterschiedliche Organisationen oder Benutzer-Sichten parallel materialisiert werden kann.
 - `content_list_projection_sync_state` hält den letzten erfolgreichen beziehungsweise fehlgeschlagenen Refresh-Lauf pro Instanz, Mainserver-Content-Typ und `sync_scope_key`; dadurch bleiben Scope-spezifische Snapshots und ihre Refresh-Metadaten voneinander isoliert.
+- Der Sync-State unterscheidet explizit leere, partielle und vollständige Snapshots. `refresh_run_id` schützt Page-Upserts, Finalisierung und Löschabgleich vor überholten Läufen; Phase, abgeschlossene Seite, verfügbare Anzahl, Finalität und übersprungene ungültige Datensätze machen progressive Refreshs beobachtbar.
 - `contents` trägt zusätzlich einen eigenen Lösch-Lifecycle-Zustand, damit tenantweite Account-Löschregeln in V1 referenzwahrend auf Inhalte abgebildet werden können.
 - Für privilegierten Admin-Hard-Delete dürfen `author_account_id`, `creator_account_id`, `updater_account_id` und `content_history.actor_account_id` referenzwahrend auf `NULL` fallen.
 - Die übrigen bewusst blockierenden `ON DELETE RESTRICT`-Pfade bleiben unverändert und müssen im Runtime-Flow als Konflikt behandelt werden. Betroffen sind weiterhin DSR-, Governance-, Delegations-, Impersonation- und Korrekturpfade, etwa für Zielaccounts, Delegationsbeziehungen, Permission-Requests oder Profilkorrekturen.

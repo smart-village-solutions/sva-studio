@@ -154,7 +154,9 @@ export const canonicalRequest = (request) =>
     deployImageDigest: request.deployImageDigest,
     environment: request.environment,
     expiresAt: request.expiresAt,
-    maintenanceWindowReference: request.maintenanceWindowReference ?? null,
+    ...(request.version === 1
+      ? { maintenanceWindowReference: request.maintenanceWindowReference ?? null }
+      : {}),
     requestId: request.requestId,
     version: request.version,
   });
@@ -181,13 +183,14 @@ export const validRequest = (request, now = Date.now()) => {
     'deployImageDigest',
     'environment',
     'expiresAt',
-    'maintenanceWindowReference',
     'tenantInstanceId',
+    ...(request.version === 1 ? ['maintenanceWindowReference'] : []),
     'requestId',
     'version',
   ]);
   if (Object.keys(request).some((key) => !allowedKeys.has(key))) return false;
-  if (request.version !== 1 || request.action !== 'backup-and-verify') return false;
+  if ((request.version !== 1 && request.version !== 2) || request.action !== 'backup-and-verify')
+    return false;
   if (request.environment !== 'staging' && request.environment !== 'prod') return false;
   if (request.database !== undefined && request.database !== 'studio' && request.database !== 'waste')
     return false;
@@ -211,6 +214,7 @@ export const validRequest = (request, now = Date.now()) => {
   if (!Number.isFinite(expiresAt) || expiresAt <= now || expiresAt > now + maxRequestLifetimeMs)
     return false;
   return (
+    request.version === 2 ||
     request.environment !== 'prod' ||
     (typeof request.maintenanceWindowReference === 'string' &&
       /^[A-Za-z0-9][A-Za-z0-9._:/# -]{2,159}$/u.test(request.maintenanceWindowReference))

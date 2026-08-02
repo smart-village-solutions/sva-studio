@@ -168,7 +168,7 @@ services:
         process.env.BACKUP_AGENT_IMAGE_REF='integration';
         process.env.BACKUP_AGENT_TOOL_VERSIONS='{"aws":"integration","pgDump":"integration","pgRestore":"integration"}';
         const { executeBackupForIntegration } = await import('/app/agent.mjs');
-        await executeBackupForIntegration({version:1,action:'backup-and-verify',requestId:'integration-production',environment:'prod',deployImageDigest:'sha256:${INTEGRATION_DIGEST}',expiresAt:'2099-01-01T00:00:00.000Z',maintenanceWindowReference:'integration-test'});
+        await executeBackupForIntegration({version:2,action:'backup-and-verify',requestId:'integration-production',environment:'prod',deployImageDigest:'sha256:${INTEGRATION_DIGEST}',expiresAt:'2099-01-01T00:00:00.000Z'});
     environment: *agent-environment
     secrets: *agent-secrets
 

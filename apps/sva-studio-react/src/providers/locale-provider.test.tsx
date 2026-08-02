@@ -107,9 +107,9 @@ describe('LocaleProvider', () => {
       </LocaleProvider>
     );
 
-    expect(screen.getByText('News')).toBeTruthy();
-    expect(screen.getByText('News-Eintrag bearbeiten')).toBeTruthy();
-    expect(screen.getByText('Aktualisieren oder löschen Sie den News-Eintrag.')).toBeTruthy();
+    expect(screen.getByText('Nachrichten')).toBeTruthy();
+    expect(screen.getByText('Nachricht bearbeiten')).toBeTruthy();
+    expect(screen.getByText('Aktualisieren oder löschen Sie die Nachricht.')).toBeTruthy();
     expect(screen.getByText('Speichern')).toBeTruthy();
     expect(screen.getByText('Zurück zur Liste')).toBeTruthy();
     expect(screen.getByText('Löschen')).toBeTruthy();
@@ -119,18 +119,24 @@ describe('LocaleProvider', () => {
     expect(screen.getByText('Historie')).toBeTruthy();
     expect(screen.getByText('Basisdaten')).toBeTruthy();
     expect(
-      screen.getByText('Titel, Kategorien, Autor und redaktionelle Metadaten des News-Eintrags.')
+      screen.getByText('Überschrift, Kategorien, Autor und redaktionelle Metadaten der Nachricht.')
     ).toBeTruthy();
-    expect(screen.getByText('Titel & Kategorien')).toBeTruthy();
+    expect(screen.getByText('Überschrift & Kategorien')).toBeTruthy();
     expect(
-      screen.getByText('Pflegen Sie den redaktionellen Titel und ordnen Sie passende Kategorien zu.')
+      screen.getByText(
+        'Pflegen Sie die redaktionelle Überschrift und ordnen Sie passende Kategorien zu.'
+      )
     ).toBeTruthy();
-    expect(screen.getAllByText('Titel')).toHaveLength(1);
+    expect(screen.getAllByText('Überschrift')).toHaveLength(1);
     expect(screen.getByText('4 Zeichen')).toBeTruthy();
     expect(screen.getByText('Kategorien')).toBeTruthy();
     expect(screen.getByText('Kategorie suchen oder auswählen')).toBeTruthy();
-    expect(screen.getAllByText('Wählen Sie keine, eine oder mehrere Kategorien aus.')).toHaveLength(1);
+    expect(screen.getAllByText('Wählen Sie keine, eine oder mehrere Kategorien aus.')).toHaveLength(
+      1
+    );
     expect(screen.getByText('Autor & Metadaten')).toBeTruthy();
-    expect(screen.getByText('Autorenschaft und zeitliche Einordnung dieses News-Eintrags.')).toBeTruthy();
+    expect(
+      screen.getByText('Autorenschaft und zeitliche Einordnung dieser Nachricht.')
+    ).toBeTruthy();
   });
 });

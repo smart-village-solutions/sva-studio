@@ -15,6 +15,8 @@ export const contentENResources = {
     next: 'Next',
     pageLabel: 'Page {{page}} of {{total}}',
     resultsLabel: '{{start}}–{{end}} of {{total}} content items',
+    partialPageLabel: 'Local page {{page}}',
+    partialResultsLabel: 'Locally available content {{start}}–{{end}} of currently {{total}}',
     pageSizeLabel: 'Page size',
   },
   bulk: {
@@ -162,13 +164,14 @@ export const contentENResources = {
     refresh: 'Refresh',
     refreshing: 'Refreshing ...',
     running: 'Mainserver content is currently synchronizing in the background.',
+    partial:
+      'Preliminary view: sorting, filters, and counts apply only to content already available locally.',
     runningWithSnapshot:
       'Mainserver content is currently synchronizing in the background. The last successful snapshot from {{value}} is still shown.',
     stale:
       'The displayed Mainserver content comes from the last successful sync at {{value}}. A background refresh was started.',
     staleWithError:
       'The displayed Mainserver content comes from the last successful sync at {{value}}. The last background refresh reported {{errorCode}}.',
-    fresh: 'Last successful Mainserver sync: {{value}}.',
   },
   errors: {
     forbidden: 'You do not have sufficient permissions for this content action.',

@@ -9,14 +9,14 @@ export const pluginsDEResources = {
     description: 'Veröffentlicht Orte und zugehörige Standortinformationen für den Mandanten.',
   },
   'generic-items': {
-    description: 'Veröffentlicht frei modellierbare Generic Items für den Mandanten.',
+    description: 'Veröffentlicht frei modellierbare generische Inhalte für den Mandanten.',
   },
   faq: {
     description: 'Veröffentlicht mehrsprachige Fragen und Antworten für den Mandanten.',
   },
   categories: {
     description:
-      'Stellt die Mainserver-Kategorien als redaktionelles Begleitmodul für News, Termine und Orte bereit.',
+      'Stellt die Mainserver-Kategorien als redaktionelles Begleitmodul für Nachrichten, Veranstaltungen und Orte bereit.',
   },
   'waste-management': {
     description:

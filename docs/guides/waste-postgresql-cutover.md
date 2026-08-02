@@ -8,7 +8,7 @@ Ein verlustfreier Rückwechsel ist nur möglich, solange nach dem finalen Dump k
 
 ## Einmalige Vorbereitung
 
-1. Den regulären Studio-Rollout mit Migration `0073_iam_waste_tenant_provisioning.sql`, privilegierter Worker-Lane und dem externen Secret `studio_waste_database_provisioner_password_v1` abschließen.
+1. Den regulären Studio-Rollout mit Migration `0074_iam_waste_tenant_provisioning.sql`, privilegierter Worker-Lane und dem externen Secret `studio_waste_database_provisioner_password_v1` abschließen.
 2. `waste-management` für `bb-prignitz` aktivieren und warten, bis der Status `ready` ist. Datenbank, Rollen und pluginverwaltetes Interface entstehen automatisch.
 3. In der zentralen Studio-Datenbank prüfen, dass genau ein Ziel registriert ist:
 

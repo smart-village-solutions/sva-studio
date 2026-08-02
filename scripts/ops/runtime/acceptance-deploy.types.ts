@@ -59,7 +59,10 @@ export type AcceptanceDeployDeps = {
   printJsonIfRequested: (payload: unknown) => void;
   resolveAcceptanceDeployOptions: (env: NodeJS.ProcessEnv, cliOptions: unknown, runtimeProfile: RemoteRuntimeProfile) => AcceptanceDeployOptions;
   runBootstrapJobAgainstAcceptance: (env: NodeJS.ProcessEnv, runtimeProfile: RemoteRuntimeProfile, reportId: string) => Promise<JobResult>;
-  runExternalSmokeWithWarmup: (env: NodeJS.ProcessEnv, options: { readonly runtimeProfile: RemoteRuntimeProfile }) => Promise<readonly AcceptanceProbeResult[]>;
+  runExternalSmokeWithWarmup: (env: NodeJS.ProcessEnv, options: {
+    readonly runtimeProfile: RemoteRuntimeProfile;
+    readonly shouldRetry?: (probes: readonly AcceptanceProbeResult[]) => boolean;
+  }) => Promise<readonly AcceptanceProbeResult[]>;
   runImageSmoke: (env: NodeJS.ProcessEnv, options: AcceptanceDeployOptions, reportId: string) => Promise<readonly AcceptanceProbeResult[]>;
   runInternalVerify: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => Promise<InternalVerifyResult>;
   runMigrationJobAgainstAcceptance: (env: NodeJS.ProcessEnv, runtimeProfile: RemoteRuntimeProfile, reportId: string) => Promise<JobResult>;

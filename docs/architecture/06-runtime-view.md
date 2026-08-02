@@ -707,7 +707,7 @@ Fehlerpfad:
 2. Der Main-Push ruft `Promote` für Dev im diff-basierten Modus `auto` auf.
 3. Ein manueller Staging-Promote prüft denselben Digest inklusive OCI-Revision, One-shot-Gates, Runtime und Tenant-Hosts.
 4. Ein mutierender Staging-Lauf persistiert die Digest- und Phasenevidenz.
-5. Production akzeptiert bei Migration oder Bootstrap nur genau diesen Staging-Digest, ein Wartungsfenster, die Environment-Freigabe und ein frisches verifiziertes Production-Backup.
+5. Production akzeptiert bei Migration oder Bootstrap nur genau diesen Staging-Digest, die Environment-Freigabe und ein frisches verifiziertes Production-Backup; ein Wartungsfenster-Verweis ist nicht erforderlich.
 6. Der Workflow aktualisiert den Stack erst nach erfolgreichen Postconditions.
 7. Runtime-Smoke und Live-Digest-Prüfung erzeugen die abschließende Release-Evidenz.
 
@@ -877,6 +877,14 @@ Fehlerpfad:
 - Bei fehlender `SVA_PARENT_DOMAIN` (Entwicklungsmodus) wird die Host-Validierung übersprungen.
 - Bei lokalen oder migrationsbezogenen Fallback-Pfaden bricht die App bei ungültigen Einträgen in `SVA_ALLOWED_INSTANCE_IDS` weiterhin fail-fast ab.
 
+### Mainserver-Projektionsrefresh
+
+1. Login-Warm-up, Scheduler oder manueller Refresh registrieren einen Lauf mit neuer `refresh_run_id` und Phase `hot`.
+2. Paginierbare Inhaltstypen laden Page 1 mit 100 Einträgen; Surveys laden mangels Upstream-Pagination einmal vollständig. Jede valide Page wird in derselben Transaktion nur bei weiterhin führender Run-ID geschrieben.
+3. Nach der Hot-Phase kann die API antworten. Weitere Pages werden typübergreifend im Round-Robin-Verfahren geladen; der Sync-State wechselt auf `reconciliation`.
+4. Erst die erfolgreiche letzte Page erlaubt Löschabgleich, finale Gesamtzahl und `complete_fresh`. Ein später Fehler erhält alle vorhandenen Zeilen und setzt `partial_failed` oder `complete_failed`.
+5. Ein gezieltes Mutation-Upsert oder -Delete setzt vor der lokalen Änderung eine neue Generation. Ältere Page-Upserts, Finalisierungen und Löschabgleiche werden dadurch wirkungslos.
+
 ### Ergänzung 2026-06: POI-Ort- und Medienfluss
 
 1. Redaktion öffnet `/admin/poi/$id` oder den Create-Pfad; `PoiDetailPage` lädt POI-Daten und Host-Media-Assets getrennt.
@@ -898,7 +906,7 @@ Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine ab
 ## Backup-Agent-Laufzeit
 
 1. `Promote` bezieht ein GitHub-OIDC-Token, signiert den kurzlebigen Auftrag und sendet ihn an den Zielhost.
-2. Der Agent prüft Host, OIDC-Claims, HMAC, Schema, Ablaufzeit, Request-ID, Digest und Production-Wartungsfenster.
+2. Der Agent prüft Host, OIDC-Claims, HMAC, Schema, Ablaufzeit, Request-ID und Digest.
 3. Vor `202 Accepted` persistiert er den Auftrag unter `control/requests/`.
 4. Der einzelne Worker erzeugt einen Custom-Dump, lädt ihn hoch und wieder herunter, vergleicht Größe und SHA-256 und führt `pg_restore --list` aus.
 5. Das terminale Ergebnis unter `control/results/` entscheidet fail-closed, ob Migration, Bootstrap und Deploy fortgesetzt werden.

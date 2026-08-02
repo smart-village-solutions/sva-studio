@@ -220,6 +220,12 @@ export type IamContentProjectionSyncState = Readonly<{
   isStale: boolean;
   isSyncRunning: boolean;
   hasSnapshot: boolean;
+  snapshotState?: 'empty' | 'partial_running' | 'partial_failed' | 'complete_fresh' | 'complete_refreshing' | 'complete_failed';
+  refreshPhase?: 'hot' | 'reconciliation';
+  completedPage?: number;
+  availableCount?: number;
+  isTotalFinal?: boolean;
+  skippedInvalidCount?: number;
 }>;
 
 export type IamContentListMetadata = Readonly<{
@@ -227,6 +233,9 @@ export type IamContentListMetadata = Readonly<{
   hasStaleMainserverContent: boolean;
   hasBlockingSyncGap: boolean;
   hasRunningMainserverSync: boolean;
+  availableCount?: number;
+  totalCount?: number;
+  isTotalFinal?: boolean;
 }>;
 
 export type IamContentListResponse = ApiListResponse<IamContentListItem> & Readonly<{

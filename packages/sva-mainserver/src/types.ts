@@ -74,6 +74,31 @@ export type SvaMainserverListResult<TItem> = {
   readonly credentialSource?: 'organization' | 'user';
 };
 
+export type SvaMainserverProjectionContentType =
+  | 'news.article'
+  | 'events.event-record'
+  | 'poi.point-of-interest'
+  | 'generic-items.generic-item'
+  | 'faq.faq'
+  | 'surveys.survey';
+
+export type SvaMainserverProjectionListItem = Readonly<{
+  id: string;
+  contentType: SvaMainserverProjectionContentType;
+  title: string;
+  author?: string;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
+  visible?: boolean;
+  active?: boolean;
+  status?: string;
+  dataProvider?: Readonly<{ id?: string; name?: string }>;
+}>;
+
+export type SvaMainserverProjectionListResult = SvaMainserverListResult<SvaMainserverProjectionListItem> &
+  Readonly<{ skippedInvalidCount: number }>;
+
 export type SvaMainserverNewsPayload = {
   readonly teaser?: string;
   readonly body?: string;

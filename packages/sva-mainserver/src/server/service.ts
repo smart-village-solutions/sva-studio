@@ -21,6 +21,7 @@ import type {
   SvaMainserverNewsListInput,
   SvaMainserverNewsInput,
   SvaMainserverPoiInput,
+  SvaMainserverProjectionContentType,
   SvaMainserverStaticContentInput,
   SvaMainserverSurveyInput,
   SvaMainserverSurveyListInput,
@@ -36,6 +37,7 @@ import { createNewsOperations } from './service-internals/news-operations.js';
 import { createNewsVisibilityOperations } from './service-internals/news-visibility-operations.js';
 import { buildLogContext, logger, withObservedHop } from './service-internals/observability.js';
 import { createPoiOperations } from './service-internals/poi-operations.js';
+import { createProjectionListOperations } from './service-internals/projection-list-operations.js';
 import { createStaticContentOperations } from './service-internals/static-content-operations.js';
 import { createSurveyOperations } from './service-internals/survey-operations.js';
 import { createWasteOperations, type SvaMainserverWasteSyncItem } from './service-internals/waste-operations.js';
@@ -228,6 +230,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   const eventVisibilityOperations = createEventVisibilityOperations(executeGraphqlWithConfig);
   const genericItemOperations = createGenericItemOperations(executeGraphqlWithConfig);
   const poiOperations = createPoiOperations(executeGraphqlWithConfig);
+  const projectionListOperations = createProjectionListOperations(executeGraphqlWithConfig);
   const surveyOperations = createSurveyOperations(executeGraphqlWithConfig);
   const staticContentOperations = createStaticContentOperations(executeGraphqlWithConfig);
   const wasteOperations = createWasteOperations(executeGraphqlWithConfig);
@@ -317,6 +320,17 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     const credentialMetadata = await loadListCredentialMetadata(input);
     return {
       ...(await newsOperations.listNewsWithConfig(input, config)),
+      ...credentialMetadata,
+    };
+  };
+
+  const listProjection = async (
+    input: SvaMainserverConnectionInput & SvaMainserverListQuery & { readonly contentType: SvaMainserverProjectionContentType }
+  ) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    const credentialMetadata = await loadListCredentialMetadata(input);
+    return {
+      ...(await projectionListOperations.listProjectionWithConfig(input.contentType, input, config)),
       ...credentialMetadata,
     };
   };
@@ -612,6 +626,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     listGenericItems,
     listNews,
     listPoi,
+    listProjection,
     listSurveys,
     listWasteSyncSnapshot,
     releaseSurveyFreeTextResponse,
@@ -650,6 +665,10 @@ export const listSvaMainserverCategories = (input: SvaMainserverConnectionInput)
 
 export const listSvaMainserverNews = (input: SvaMainserverConnectionInput & SvaMainserverNewsListInput) =>
   getDefaultService().listNews(input);
+
+export const listSvaMainserverProjection = (
+  input: SvaMainserverConnectionInput & SvaMainserverListQuery & { readonly contentType: SvaMainserverProjectionContentType }
+) => getDefaultService().listProjection(input);
 
 export const getSvaMainserverNews = (input: SvaMainserverConnectionInput & { readonly newsId: string }) =>
   getDefaultService().getNews(input);

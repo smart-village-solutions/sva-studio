@@ -141,7 +141,7 @@ describe('ContentEditorPage', () => {
       screen.getByRole('tabpanel', { name: /Allgemeine Angaben/i }).firstElementChild?.className
     ).toContain('bg-[rgb(var(--waste-panel-surface))]');
 
-    fireEvent.change(screen.getByLabelText('Titel'), {
+    fireEvent.change(screen.getByLabelText('Überschrift'), {
       target: { value: 'Landing Page' },
     });
     fireEvent.change(screen.getByLabelText('Payload (JSON)'), {
@@ -239,7 +239,7 @@ describe('ContentEditorPage', () => {
       target: { value: 'general' },
     });
 
-    fireEvent.change(screen.getByLabelText('Titel'), {
+    fireEvent.change(screen.getByLabelText('Überschrift'), {
       target: { value: 'Neue Startseite' },
     });
     fireEvent.change(screen.getByLabelText('Payload (JSON)'), {
@@ -277,7 +277,7 @@ describe('ContentEditorPage', () => {
 
     render(<ContentEditorPage mode="create" />);
 
-    fireEvent.change(screen.getByLabelText('Titel'), {
+    fireEvent.change(screen.getByLabelText('Überschrift'), {
       target: { value: 'Landing Page' },
     });
     fireEvent.change(screen.getByLabelText('Status'), {
@@ -387,7 +387,7 @@ describe('ContentEditorPage', () => {
       expect(screen.getByText('Der angeforderte Inhalt wurde nicht gefunden.')).toBeTruthy();
     });
 
-    expect(screen.queryByLabelText('Titel')).toBeNull();
+    expect(screen.queryByLabelText('Überschrift')).toBeNull();
   });
 
   it('renders empty history and surfaces generic invalid request errors after an update failure', async () => {
@@ -469,7 +469,7 @@ describe('ContentEditorPage', () => {
 
     render(<ContentEditorPage mode="create" />);
 
-    fireEvent.change(screen.getByLabelText('Titel'), {
+    fireEvent.change(screen.getByLabelText('Überschrift'), {
       target: { value: 'Landing Page' },
     });
     fireEvent.change(screen.getByLabelText('Payload (JSON)'), {
@@ -557,7 +557,7 @@ describe('ContentEditorPage', () => {
         .getAllByRole('button', { name: 'Änderungen speichern' })
         .every((button) => (button as HTMLButtonElement).disabled)
     ).toBe(true);
-    expect((screen.getByLabelText('Titel') as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText('Überschrift') as HTMLInputElement).disabled).toBe(true);
     expect(screen.getByText('Nur lesbar')).toBeTruthy();
   });
 });

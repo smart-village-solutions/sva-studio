@@ -178,14 +178,7 @@ const resolveReleaseMode = (
 const resolveMaintenanceWindow = (
   env: NodeJS.ProcessEnv,
   cliOptions: RuntimeCliOptions,
-  releaseMode: AcceptanceReleaseMode,
-) => {
-  const maintenanceWindow = cliOptions.maintenanceWindow ?? optionalTrimmed(env.SVA_ACCEPTANCE_MAINTENANCE_WINDOW);
-  if (releaseMode === 'schema-and-app' && !maintenanceWindow) {
-    throw new Error('Release-Modus schema-and-app erfordert ein Wartungsfenster (--maintenance-window oder SVA_ACCEPTANCE_MAINTENANCE_WINDOW).');
-  }
-  return maintenanceWindow;
-};
+) => cliOptions.maintenanceWindow ?? optionalTrimmed(env.SVA_ACCEPTANCE_MAINTENANCE_WINDOW);
 
 const resolveImageDigest = (
   env: NodeJS.ProcessEnv,
@@ -214,7 +207,7 @@ export const resolveAcceptanceDeployOptions = (
   runtimeProfile: RemoteRuntimeProfile = 'studio',
 ): AcceptanceDeployOptions => {
   const releaseMode = resolveReleaseMode(env, cliOptions, runtimeProfile);
-  const maintenanceWindow = resolveMaintenanceWindow(env, cliOptions, releaseMode);
+  const maintenanceWindow = resolveMaintenanceWindow(env, cliOptions);
   const imageDigest = resolveImageDigest(env, cliOptions, runtimeProfile);
   const { imageRef, imageRepository } = resolveImageRef(env, imageDigest);
   return {

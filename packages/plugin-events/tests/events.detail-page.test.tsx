@@ -229,7 +229,7 @@ describe('EventsDetailPage', () => {
     expect(screen.getByText('Ansprechpartner')).toBeTruthy();
     expect(screen.getByText('Links')).toBeTruthy();
     expect(screen.getByText('Preise')).toBeTruthy();
-    expect(screen.getByText('Barrierefreiheit')).toBeTruthy();
+    expect(screen.queryByText('Barrierefreiheit')).toBeNull();
   });
 
   it('shows the planned basis and settings cards in their dedicated tabs', async () => {
@@ -238,7 +238,8 @@ describe('EventsDetailPage', () => {
     await screen.findByRole('tab', { name: 'Basis' });
     expect(screen.getByText('Titel & Kategorie')).toBeTruthy();
     expect(screen.getByText('Serien-Logik')).toBeTruthy();
-    expect(screen.getByText('Verknüpfungen')).toBeTruthy();
+    expect(screen.queryByText('Verknüpfungen')).toBeNull();
+    expect(screen.queryByLabelText('Zugehöriger POI')).toBeNull();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
 
@@ -246,6 +247,9 @@ describe('EventsDetailPage', () => {
       expect(screen.getByText('Sichtbarkeit')).toBeTruthy();
     });
     expect(screen.getByText('Technische Zusatzdaten')).toBeTruthy();
+    expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
+    expect(screen.queryByLabelText('Tags')).toBeNull();
+    expect(vi.mocked(listPoiForEventSelection)).not.toHaveBeenCalled();
   });
 
   it('maps recurring type to the fixed event options', async () => {
@@ -478,10 +482,6 @@ describe('EventsDetailPage', () => {
     vi.mocked(listEventCategories).mockResolvedValueOnce([
       { id: 'cat-1', name: 'Kultur' },
     ] as never);
-    vi.mocked(listPoiForEventSelection).mockResolvedValue([
-      { id: 'poi-7', name: 'Rathaus' },
-    ] as never);
-
     render(<EventsDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Neues Event' } });
@@ -494,11 +494,6 @@ describe('EventsDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Kategorie Kultur entfernen' })).toBeTruthy();
     });
-    fireEvent.change(screen.getByLabelText('POI suchen'), { target: { value: 'Rathaus' } });
-    await waitFor(() => {
-      expect(screen.getByText('Rathaus')).toBeTruthy();
-    });
-    fireEvent.click(screen.getByText('Rathaus').closest('button') as HTMLButtonElement);
     fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
     fireEvent.change(screen.getByLabelText('Externe ID'), { target: { value: 'event-ext-1' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
@@ -510,7 +505,6 @@ describe('EventsDetailPage', () => {
           title: 'Neues Event',
           categoryName: 'Kultur',
           categories: [{ name: 'Kultur' }],
-          pointOfInterestId: 'poi-7',
           externalId: 'event-ext-1',
           visible: true,
         })

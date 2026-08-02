@@ -48,7 +48,7 @@ export const appAdminResources = [
         search: {
           param: 'q',
           placeholderKey: 'content.filters.searchPlaceholder',
-          fields: ['title', 'author', 'contentType', 'payload'],
+          fields: ['title', 'author', 'contentType'],
         },
         filters: [
           {

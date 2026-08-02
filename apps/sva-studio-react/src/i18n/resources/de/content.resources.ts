@@ -16,6 +16,8 @@ export const contentDEResources = {
     next: 'Weiter',
     pageLabel: 'Seite {{page}} von {{total}}',
     resultsLabel: '{{start}}–{{end}} von {{total}} Inhalten',
+    partialPageLabel: 'Lokale Seite {{page}}',
+    partialResultsLabel: 'Lokal verfügbare Inhalte {{start}}–{{end}} von derzeit {{total}}',
     pageSizeLabel: 'Seitengröße',
   },
   bulk: {
@@ -39,7 +41,7 @@ export const contentDEResources = {
     deleteConfirm: 'Soll dieser Inhalt wirklich gelöscht werden?',
   },
   fields: {
-    title: 'Titel',
+    title: 'Überschrift',
     contentType: 'Typ',
     status: 'Status',
     publishedAt: 'Veröffentlichungsdatum',
@@ -55,7 +57,7 @@ export const contentDEResources = {
   table: {
     caption: 'Tabelle der verwalteten Inhalte',
     ariaLabel: 'Inhalte',
-    headerTitle: 'Titel',
+    headerTitle: 'Überschrift',
     headerType: 'Typ',
     headerPublished: 'Veröffentlichungsdatum',
     headerCreated: 'Erstellungsdatum',
@@ -80,7 +82,7 @@ export const contentDEResources = {
     general: 'Allgemein',
     generalTitle: 'Allgemeine Angaben',
     generalDescription:
-      'Pflegen Sie Titel, Status, Veröffentlichungsdatum und die generische Payload.',
+      'Pflegen Sie Überschrift, Status, Veröffentlichungsdatum und die generische Payload.',
     historyDescription: 'Prüfen Sie die automatische Änderungshistorie dieses Inhalts.',
   },
   typePicker: {
@@ -93,7 +95,8 @@ export const contentDEResources = {
       news: 'Meldungen, Artikel und redaktionelle Beiträge für die App erstellen und pflegen.',
       events: 'Veranstaltungen im gemeinsamen Inhaltsbereich anlegen und verwalten.',
       poi: 'Orte und relevante Anlaufstellen für die App anlegen und pflegen.',
-      surveys: 'Umfragen als weiteren Inhaltstyp anlegen, bearbeiten und in der internen Auswertung begleiten.',
+      surveys:
+        'Umfragen als weiteren Inhaltstyp anlegen, bearbeiten und in der internen Auswertung begleiten.',
     },
     empty: {
       title: 'Keine anlegbaren Inhaltstypen',
@@ -165,13 +168,14 @@ export const contentDEResources = {
     refresh: 'Aktualisieren',
     refreshing: 'Synchronisiert ...',
     running: 'Die Mainserver-Inhalte werden gerade im Hintergrund synchronisiert.',
+    partial:
+      'Vorläufige Ansicht: Sortierung, Filter und Anzahl beziehen sich nur auf die bereits lokal verfügbaren Inhalte.',
     runningWithSnapshot:
       'Die Mainserver-Inhalte werden gerade im Hintergrund synchronisiert. Angezeigt wird der letzte erfolgreiche Stand von {{value}}.',
     stale:
       'Die angezeigten Mainserver-Inhalte stammen aus dem letzten erfolgreichen Abgleich von {{value}}. Ein Hintergrundabgleich wurde angestoßen.',
     staleWithError:
       'Die angezeigten Mainserver-Inhalte stammen aus dem letzten erfolgreichen Abgleich von {{value}}. Der letzte Hintergrundabgleich meldete {{errorCode}}.',
-    fresh: 'Letzter erfolgreicher Mainserver-Abgleich: {{value}}.',
   },
   errors: {
     forbidden: 'Unzureichende Berechtigungen für diese Inhaltsaktion.',
@@ -184,7 +188,7 @@ export const contentDEResources = {
     invalidRequest: 'Der Inhalt enthält ungültige oder unvollständige Daten.',
   },
   validation: {
-    titleRequired: 'Der Titel ist ein Pflichtfeld.',
+    titleRequired: 'Die Überschrift ist ein Pflichtfeld.',
     payloadJsonInvalid: 'Die Payload muss gültiges JSON sein.',
     publishedAtRequired: 'Für veröffentlichte Inhalte ist ein Veröffentlichungsdatum erforderlich.',
     publishedAtInvalid:

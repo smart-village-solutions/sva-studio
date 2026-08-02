@@ -66,7 +66,6 @@ Der manuelle Workflow [Promote](../../.github/workflows/promote.yml) erhält:
 - den aus dem erfolgreichen Build stammenden Image-Ref beziehungsweise Digest
 - `change_base` und `change_head` des tatsächlich im Image enthaltenen Änderungsbereichs
 - je nach Diff `migration_mode` und `bootstrap_mode` als `assert-none` oder `run`
-- bei `migration_mode=run` einen nicht-sensitiven, revisionsfähigen `maintenance_window`-Verweis
 
 `assert-none` ist kein Skip: Sobald der Diff ein entsprechendes Risiko enthält, bricht das Gate ab. Dann muss der betreffende Modus bewusst auf `run` gesetzt werden.
 
@@ -90,13 +89,13 @@ Nur ein insgesamt erfolgreicher mutierender Staging-Lauf erzeugt die für eine m
 Production verwendet denselben Workflow und denselben bereits in Staging geprüften Digest. Zusätzlich gelten:
 
 - Das GitHub-Environment `prod` muss ausdrücklich freigegeben werden.
-- Bei `migration_mode=run` oder `bootstrap_mode=run` ist ein nicht-sensitiver, revisionsfähiger `maintenance_window`-Verweis Pflicht.
 - Für genau den Zieldigest muss die erfolgreiche Evidenz eines abgeschlossenen mutierenden Staging-Laufs vorliegen.
 - Vor der ersten Production-Mutation muss der Production-Backup-Agent ein erfolgreiches und anschließend unabhängig verifiziertes Backup liefern.
 
 Danach gilt dieselbe Reihenfolge wie in Staging: Backup → Migration → Bootstrap → Postconditions → App-Deploy → Runtime-Smoke → Digest-Prüfung.
 
 Auch ein reines App-Deployment mit beiden Modi `assert-none` beginnt mit einem erfolgreich verifizierten Datenbank-Backup.
+Migrationen, Bootstraps und Backups benötigen keinen Wartungsfenster-Verweis. Die technische Audit-Kette besteht aus GitHub-Run-ID, Commit, unveränderlichem Ziel-Digest, Environment-Freigabe, Backup-Ergebnis, Staging-Parität und den redigierten Evidenzartefakten.
 
 ## Konvergenz und Erfolgsdefinition
 

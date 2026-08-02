@@ -37,7 +37,7 @@ export type PoiFormInput = {
   readonly keywords?: string;
   readonly categoryName?: string;
   readonly categories?: readonly PoiCategory[];
-  readonly payload?: Record<string, unknown>;
+  readonly payload?: unknown;
   readonly addresses?: readonly PoiAddress[];
   readonly contact?: PoiContact;
   readonly location?: PoiLocation;

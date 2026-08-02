@@ -25,17 +25,15 @@ export const buildBackupAgentRequest = (input: {
   environment: BackupEnvironment;
   now: Date;
   requestId: string;
-  maintenanceWindowReference?: string;
   database?: BackupDatabase;
   tenantInstanceId?: string;
 }): BackupRequest => ({
-  version: 1,
+  version: 2,
   action: 'backup-and-verify',
   requestId: input.requestId,
   environment: input.environment,
   deployImageDigest: input.deployImageDigest,
   expiresAt: new Date(input.now.getTime() + 10 * 60_000).toISOString(),
-  ...(input.maintenanceWindowReference ? { maintenanceWindowReference: input.maintenanceWindowReference } : {}),
   ...(input.database && input.database !== 'studio' ? { database: input.database } : {}),
   ...(input.tenantInstanceId ? { tenantInstanceId: input.tenantInstanceId } : {}),
 });
@@ -114,7 +112,6 @@ const main = async () => {
     now: new Date(),
     database,
     ...(database === 'waste' && process.argv[4] ? { tenantInstanceId: process.argv[4] } : {}),
-    ...(target === 'prod' ? { maintenanceWindowReference: required(process.env.MAINTENANCE_WINDOW_REFERENCE, 'MAINTENANCE_WINDOW_REFERENCE') } : {}),
   });
   if (!isValidBackupRequest(request)) throw new Error('Der erzeugte Backup-Auftrag verletzt den Vertragscheck.');
   const signature = signBackupRequest(request, required(process.env.BACKUP_AGENT_SIGNING_KEY, 'BACKUP_AGENT_SIGNING_KEY'));

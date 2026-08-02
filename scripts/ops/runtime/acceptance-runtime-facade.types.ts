@@ -65,7 +65,10 @@ export type AcceptanceDeployFacadeDeps = AcceptanceRuntimeSharedDeps & {
   createBaseAcceptanceDeployReport: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv, options: AcceptanceDeployOptions, migrationFiles: readonly string[]) => AcceptanceDeployReport;
   getGitCommitSha: () => string | undefined;
   precheckAcceptance: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv, options?: AcceptanceDeployOptions) => Promise<import('../runtime-env.shared.ts').DoctorReport>;
-  runExternalSmokeWithWarmup: (env: NodeJS.ProcessEnv, options: { readonly runtimeProfile: RemoteRuntimeProfile }) => Promise<readonly AcceptanceProbeResult[]>;
+  runExternalSmokeWithWarmup: (env: NodeJS.ProcessEnv, options: {
+    readonly runtimeProfile: RemoteRuntimeProfile;
+    readonly shouldRetry?: (probes: readonly AcceptanceProbeResult[]) => boolean;
+  }) => Promise<readonly AcceptanceProbeResult[]>;
   runImageSmoke: (env: NodeJS.ProcessEnv, options: AcceptanceDeployOptions, reportId: string) => Promise<readonly AcceptanceProbeResult[]>;
   runInternalVerify: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => Promise<{ doctorReport: import('../runtime-env.shared.ts').DoctorReport; probes: readonly AcceptanceProbeResult[] }>;
   waitForPostDeployStabilization: (env: NodeJS.ProcessEnv) => Promise<number>;

@@ -1,0 +1,4 @@
+{
+  "prNumber": 890,
+  "body": "Zuverlässiger Rollout ohne Wartungsfenster-Pflicht\n\n- Migrationen, Bootstraps und Datenbank-Backups benötigen keinen wirkungslosen Wartungsfenster-Verweis mehr.\n- Environment-Freigaben, verifizierte Backups, Staging-Parität, Postconditions und Digest-Prüfungen bleiben unverändert verpflichtend.\n- Der versionierte Backup-Vertrag ermöglicht eine abwärtskompatible Umstellung des zentralen Backup-Agenten."
+}

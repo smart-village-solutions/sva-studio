@@ -72,7 +72,8 @@ export const interfacesDEResources = {
   types: {
     mainserver: {
       label: 'SVA Mainserver',
-      description: 'GraphQL-Endpoint und OAuth-Token-URL für News-, Events- und POI-Importe.',
+      description:
+        'GraphQL-Endpoint und OAuth-Token-URL für Nachrichten-, Veranstaltungs- und POI-Importe.',
     },
     s3: {
       label: 'S3-kompatibler Object Storage',

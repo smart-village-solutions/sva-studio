@@ -4,13 +4,12 @@ export type BackupEnvironment = 'staging' | 'prod';
 export type BackupDatabase = 'studio' | 'waste';
 
 export type BackupRequest = Readonly<{
-  version: 1;
+  version: 2;
   action: 'backup-and-verify';
   requestId: string;
   environment: BackupEnvironment;
   deployImageDigest: string;
   expiresAt: string;
-  maintenanceWindowReference?: string;
   database?: BackupDatabase;
   tenantInstanceId?: string;
 }>;
@@ -35,7 +34,6 @@ export const canonicalBackupRequest = (request: BackupRequest) => JSON.stringify
   deployImageDigest: request.deployImageDigest,
   environment: request.environment,
   expiresAt: request.expiresAt,
-  maintenanceWindowReference: request.maintenanceWindowReference ?? null,
   ...(request.database ? { database: request.database } : {}),
   ...(request.tenantInstanceId ? { tenantInstanceId: request.tenantInstanceId } : {}),
   requestId: request.requestId,
@@ -48,9 +46,9 @@ export const signBackupRequest = (request: BackupRequest, key: string) =>
 export const isValidBackupRequest = (value: unknown, now = new Date()) : value is BackupRequest => {
   if (!value || typeof value !== 'object') return false;
   const request = value as Partial<BackupRequest>;
-  const allowedKeys = new Set(['action', 'database', 'deployImageDigest', 'environment', 'expiresAt', 'maintenanceWindowReference', 'requestId', 'tenantInstanceId', 'version']);
+  const allowedKeys = new Set(['action', 'database', 'deployImageDigest', 'environment', 'expiresAt', 'requestId', 'tenantInstanceId', 'version']);
   if (Object.keys(request).some((key) => !allowedKeys.has(key))) return false;
-  if (request.version !== 1 || request.action !== 'backup-and-verify') return false;
+  if (request.version !== 2 || request.action !== 'backup-and-verify') return false;
   if (request.environment !== 'staging' && request.environment !== 'prod') return false;
   if (request.database !== undefined && request.database !== 'studio' && request.database !== 'waste') return false;
   if (
@@ -65,8 +63,7 @@ export const isValidBackupRequest = (value: unknown, now = new Date()) : value i
     || Date.parse(request.expiresAt) <= now.getTime()
     || Date.parse(request.expiresAt) > now.getTime() + 10 * 60_000
   ) return false;
-  return request.environment !== 'prod'
-    || (typeof request.maintenanceWindowReference === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:/# -]{2,159}$/u.test(request.maintenanceWindowReference));
+  return true;
 };
 
 export const verifyBackupRequestSignature = (request: BackupRequest, key: string, signature: string) => {

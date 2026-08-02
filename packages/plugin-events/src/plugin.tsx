@@ -1,4 +1,8 @@
-import { createStandardContentPluginDefinition, createStandardContentPluginContribution, type PluginDefinition } from '@sva/plugin-sdk';
+import {
+  createStandardContentPluginDefinition,
+  createStandardContentPluginContribution,
+  type PluginDefinition,
+} from '@sva/plugin-sdk';
 
 import { EVENTS_CONTENT_TYPE } from './events.constants.js';
 import { pluginEventsTranslations } from './plugin.translations.js';

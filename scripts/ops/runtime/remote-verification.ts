@@ -137,7 +137,7 @@ const selectReleaseBlockingTenantTargets = (
     ? tenantTargets.filter((target) => target.instanceId === 'de-studio-sandbox')
     : tenantTargets;
 
-const shouldUseStudioReleaseBlockingTenantScope = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) =>
+export const shouldUseStudioReleaseBlockingTenantScope = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) =>
   runtimeProfile === 'studio' && (env.SVA_ACCEPTANCE_RELEASE_MODE?.trim().length ?? 0) > 0;
 
 const selectSmokeTenantTargets = (

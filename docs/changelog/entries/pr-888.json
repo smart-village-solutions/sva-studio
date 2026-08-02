@@ -1,0 +1,4 @@
+{
+  "prNumber": 888,
+  "body": "Zuverlässiger Production-Rollout\n\n- Production-Rollouts bleiben bei Fehlern des Root-Hosts und des Freigabe-Tenants `de-studio-sandbox` geschützt.\n- Störungen anderer expliziter Tenant-Hosts werden sichtbar gemeldet, blockieren den Rollout aber nicht mehr."
+}

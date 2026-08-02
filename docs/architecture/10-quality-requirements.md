@@ -58,7 +58,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Vor jeder Staging-/Production-Migration oder jedem Bootstrap muss das umgebungsgebundene PostgreSQL-Backup erfolgreich und das MinIO-Objekt unabhängig verifiziert sein.
   - Bei aktiviertem Waste-Backup muss das Registry-Inventar vollständig verarbeitet sein; jeder `ready`- oder `disabled`-Tenant erhält ein verifiziertes Dump-Artefakt und tenantgenaue Evidenz.
   - Ein Waste-Restore muss vor jeder Mutation Instanz-ID, Registry-Datenbank und abgeleitete Drill-Datenbank nachweisen; ein fremdes Objektpräfix wird fail-closed abgelehnt.
-  - Mutierende Production-Läufe müssen Environment-Freigabe, Wartungsfenster und erfolgreiche mutierende Staging-Parität exakt desselben Digests nachweisen.
+  - Mutierende Production-Läufe müssen Environment-Freigabe und erfolgreiche mutierende Staging-Parität exakt desselben Digests nachweisen; ein Wartungsfenster-Verweis ist nicht erforderlich.
   - Migration, Bootstrap, Postconditions, App-Deploy, Runtime-Smoke und Digest-Prüfung müssen fail-closed in dieser Reihenfolge laufen.
   - Öffentliche Smoke-Probes gegen `/health/live`, `/health/ready`, Root-Login und alle aktiven Tenant-Logins dürfen nach bis zu fünf Minuten Swarm-Konvergenz keinen stabilen Fehler liefern.
   - GitHub-Step-Summary und Action-Artefakte müssen Digest, Stack, Phasenstatus, Backup-Referenz, Jobstatus und Verifikation redigiert dokumentieren; Secrets, `.env`, `APP_CONFIG`, PII und unredigierte Remote-Logs bleiben ausgeschlossen.

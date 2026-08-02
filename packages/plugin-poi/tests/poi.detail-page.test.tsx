@@ -489,7 +489,7 @@ describe('PoiDetailPage', () => {
     });
   });
 
-  it('blocks submission on invalid payload json and invalid https links', async () => {
+  it('hides advanced fields and still blocks submission on invalid https links', async () => {
     render(<PoiDetailPage mode="create" />);
 
     switchSection('content');
@@ -497,14 +497,18 @@ describe('PoiDetailPage', () => {
       target: { value: 'http://example.com/poi' },
     });
     switchSection('settings');
-    fireEvent.change(screen.getByLabelText('Payload'), { target: { value: '{' } });
+    expect(screen.getByLabelText('Externe ID')).toBeTruthy();
+    expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
+    expect(screen.queryByLabelText('Tags')).toBeNull();
+    expect(screen.queryByLabelText('Barrierefreiheit')).toBeNull();
+    expect(screen.queryByLabelText('Barrierefreiheits-Typen')).toBeNull();
+    expect(screen.queryByLabelText('Zertifikat')).toBeNull();
+    expect(screen.queryByLabelText('Payload')).toBeNull();
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
     });
-
-    expect(screen.getByLabelText('Payload').getAttribute('aria-invalid')).toBe('true');
   });
 
   it('keeps the basis tab active when the name is missing', async () => {
@@ -782,13 +786,16 @@ describe('PoiDetailPage', () => {
     });
   });
 
-  it('preserves loaded externalId and keywords on save', async () => {
+  it('preserves loaded hidden fields on save', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',
       name: 'Rathaus',
       externalId: 'poi-ext-7',
       keywords: 'service,amt',
-      payload: {},
+      tags: ['service', 'amt'],
+      certificates: [{ name: 'Reisen für Alle' }],
+      accessibilityInformation: { description: 'Stufenlos', types: 'wheelchair' },
+      payload: ['legacy', { source: 'mainserver' }],
     } as never);
     vi.mocked(updatePoi).mockResolvedValueOnce({
       id: 'poi-1',
@@ -805,8 +812,8 @@ describe('PoiDetailPage', () => {
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('poi-ext-7')).toBeTruthy();
-      expect(screen.getByDisplayValue('service,amt')).toBeTruthy();
     });
+    expect(screen.queryByDisplayValue('service,amt')).toBeNull();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
@@ -816,6 +823,10 @@ describe('PoiDetailPage', () => {
         expect.objectContaining({
           externalId: 'poi-ext-7',
           keywords: 'service,amt',
+          tags: ['service', 'amt'],
+          certificates: [{ name: 'Reisen für Alle' }],
+          accessibilityInformation: { description: 'Stufenlos', types: 'wheelchair' },
+          payload: ['legacy', { source: 'mainserver' }],
         })
       );
     });

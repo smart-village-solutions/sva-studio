@@ -1,0 +1,4 @@
+{
+  "prNumber": 887,
+  "body": "Schnellere und schrittweise verfügbare Inhaltsübersicht\n\n- Inhalte aus dem Mainserver werden mit schlanken Abfragen geladen und bereits nach der ersten Seite angezeigt.\n- Laufende Aktualisierungen bleiben durch Generation Fencing konsistent; unvollständige Datenstände werden transparent gekennzeichnet.\n- Die Inhaltsübersicht aktualisiert sich während des Abgleichs automatisch und verzichtet auf die nicht benötigte Payload-Spalte."
+}

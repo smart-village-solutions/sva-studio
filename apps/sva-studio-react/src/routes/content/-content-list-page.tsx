@@ -419,6 +419,7 @@ const ContentPaginationNav = ({
   pageSize,
   total,
   currentCount,
+  isTotalFinal,
   onPageChange,
 }: Readonly<{
   page: number;
@@ -426,6 +427,7 @@ const ContentPaginationNav = ({
   pageSize: number;
   total: number;
   currentCount: number;
+  isTotalFinal: boolean;
   onPageChange: (page: number) => void;
 }>) => {
   const resultStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -438,10 +440,17 @@ const ContentPaginationNav = ({
     >
       <div className="space-y-1">
         <p aria-live="polite">
-          {t('content.pagination.resultsLabel', { start: resultStart, end: resultEnd, total })}
+          {t(
+            isTotalFinal
+              ? 'content.pagination.resultsLabel'
+              : 'content.pagination.partialResultsLabel',
+            { start: resultStart, end: resultEnd, total }
+          )}
         </p>
         <p aria-live="polite">
-          {t('content.pagination.pageLabel', { page, total: pageCount })}
+          {isTotalFinal
+            ? t('content.pagination.pageLabel', { page, total: pageCount })
+            : t('content.pagination.partialPageLabel', { page })}
         </p>
       </div>
       <div className="flex items-center gap-2">
@@ -802,20 +811,22 @@ export const ContentListPage = () => {
                   ))}
                 </Select>
               </div>
-              {contentsApi.metadata?.isTotalFinal === false ? (
-                <p className="text-sm text-muted-foreground" role="status">
-                  {projectionSyncMessage ?? t('content.sync.running')} {t('content.sync.partial')}
-                </p>
-              ) : (
+              <div className="flex flex-col gap-2">
+                {contentsApi.metadata?.isTotalFinal === false ? (
+                  <p className="text-sm text-muted-foreground" role="status">
+                    {projectionSyncMessage ?? t('content.sync.running')} {t('content.sync.partial')}
+                  </p>
+                ) : null}
                 <ContentPaginationNav
                   page={safePage}
                   pageCount={pageCount}
                   pageSize={contentsApi.pagination.pageSize}
                   total={contentsApi.pagination.total}
                   currentCount={registeredContents.length}
+                  isTotalFinal={contentsApi.metadata?.isTotalFinal !== false}
                   onPageChange={(page) => navigateSearch({ page })}
                 />
-              )}
+              </div>
             </div>
           }
           rowActions={(item) => (

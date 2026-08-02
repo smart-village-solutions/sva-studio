@@ -571,6 +571,47 @@ describe('ContentListPage', () => {
     expect(screen.queryByText(/letzter erfolgreicher Mainserver-Abgleich/i)).toBeNull();
   });
 
+  it('navigates materialized local pages without presenting a final page count', () => {
+    useContentsMock.mockReturnValue(
+      createContentsApiResult({
+        contents: [
+          {
+            id: 'news-1',
+            contentType: 'news.article',
+            title: 'Erste Nachricht',
+            createdAt: '2026-03-20T10:00:00.000Z',
+            updatedAt: '2026-03-21T10:00:00.000Z',
+            author: 'Editor',
+            payload: {},
+            status: 'published',
+          },
+        ],
+        pagination: { page: 1, pageSize: 1, total: 2 },
+        metadata: {
+          mainserverSyncStates: [],
+          hasStaleMainserverContent: false,
+          hasBlockingSyncGap: false,
+          hasRunningMainserverSync: true,
+          isTotalFinal: false,
+        },
+      })
+    );
+
+    render(<ContentListPage />);
+
+    expect(screen.getByRole('navigation', { name: 'Inhaltsseiten' })).toBeTruthy();
+    expect(screen.getByText('Lokale Seite 1')).toBeTruthy();
+    expect(screen.queryByText('Seite 1 von 2')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    expect(navigateMock).toHaveBeenCalled();
+    const searchUpdater = navigateMock.mock.calls[0]?.[0]?.search as
+      | ((current: Record<string, unknown>) => Record<string, unknown>)
+      | undefined;
+    expect(searchUpdater?.({})).toEqual(expect.objectContaining({ page: 2 }));
+  });
+
   it('filters by status and falls back to the generic load error for unknown errors', () => {
     useContentsMock.mockReturnValue(createContentsApiResult({
       contents: [

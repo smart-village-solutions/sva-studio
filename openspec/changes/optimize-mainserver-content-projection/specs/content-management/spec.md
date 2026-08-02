@@ -42,6 +42,7 @@ Die Seite MUST für sichtbare Inhaltstypen eine einzige führende serverseitige 
 - **DANN** entspricht `pagination.total` aus Kompatibilitätsgründen ausschließlich der aktuell autorisiert verfügbaren lokalen Treffermenge
 - **UND** liefern additive Metadaten `availableCount`, `isTotalFinal = false` sowie den typbezogenen Snapshot-Zustand
 - **UND** fehlt `totalCount`, bis der angefragte Bestand vollständig reconciled wurde
+- **UND** erlaubt die Oberfläche die Navigation zwischen den aus `pagination.total` ableitbaren, bereits materialisierten lokalen Seiten, ohne eine endgültige Gesamtseitenzahl auszuweisen
 - **UND** bietet die Oberfläche keine Navigation auf noch nicht materialisierte Seiten an
 - **UND** kennzeichnet sie Sortierung und Filterung als vorläufig auf die lokal verfügbare Menge begrenzt
 

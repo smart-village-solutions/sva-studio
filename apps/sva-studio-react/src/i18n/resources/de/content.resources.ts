@@ -16,6 +16,8 @@ export const contentDEResources = {
     next: 'Weiter',
     pageLabel: 'Seite {{page}} von {{total}}',
     resultsLabel: '{{start}}–{{end}} von {{total}} Inhalten',
+    partialPageLabel: 'Lokale Seite {{page}}',
+    partialResultsLabel: 'Lokal verfügbare Inhalte {{start}}–{{end}} von derzeit {{total}}',
     pageSizeLabel: 'Seitengröße',
   },
   bulk: {

@@ -68,18 +68,21 @@ const DEFAULT_CONTENT_PAGINATION = {
   total: 0,
 } as const satisfies ApiPagination;
 
-const useContentProjectionRevalidation = (
+const shouldRevalidateContentProjection = (
   enabled: boolean,
-  metadata: IamContentListMetadata | null,
+  metadata: IamContentListMetadata | null
+): boolean =>
+  enabled &&
+  metadata !== null &&
+  (metadata.hasRunningMainserverSync ||
+    metadata.hasStaleMainserverContent ||
+    metadata.mainserverSyncStates.some((state) => state.snapshotState?.startsWith('partial_')));
+
+const useContentProjectionRevalidation = (
+  shouldRevalidate: boolean,
   refetch: () => Promise<unknown>
 ): void => {
   React.useEffect(() => {
-    const shouldRevalidate =
-      enabled &&
-      metadata !== null &&
-      (metadata.hasRunningMainserverSync ||
-        metadata.hasStaleMainserverContent ||
-        metadata.mainserverSyncStates.some((state) => state.snapshotState?.startsWith('partial_')));
     if (!shouldRevalidate) return;
 
     let delayMs = 2_000;
@@ -101,7 +104,7 @@ const useContentProjectionRevalidation = (
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [enabled, metadata, refetch]);
+  }, [refetch, shouldRevalidate]);
 };
 
 export const useContents = (query: IamContentListQuery, options: UseContentsOptions = {}): UseContentsResult => {
@@ -139,7 +142,10 @@ export const useContents = (query: IamContentListQuery, options: UseContentsOpti
     setPagination(DEFAULT_CONTENT_PAGINATION);
   }, [enabled]);
 
-  useContentProjectionRevalidation(enabled, metadata, adminList.refetch);
+  useContentProjectionRevalidation(
+    shouldRevalidateContentProjection(enabled, metadata),
+    adminList.refetch
+  );
 
   const runBulkMutation = React.useCallback(
     async (

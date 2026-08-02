@@ -51,6 +51,35 @@ describe('projection list operations', () => {
     expect(result.pagination).toEqual({ page: 1, pageSize: 1, hasNextPage: false, total: 1 });
   });
 
+  it('keeps upstream pagination independent from complementary FAQ filtering', async () => {
+    const faqItems = Array.from({ length: 99 }, (_, index) => ({
+      id: `faq-${index + 1}`,
+      title: `Frage ${index + 1}`,
+      genericType: 'FAQ',
+    }));
+    const execute = vi.fn().mockResolvedValue({
+      genericItems: [
+        { id: 'generic-1', title: 'Allgemein', genericType: 'ARTICLE' },
+        ...faqItems,
+        { id: 'faq-sentinel', title: 'Nächste Frage', genericType: 'FAQ' },
+      ],
+    });
+    const operations = createProjectionListOperations(execute);
+
+    const faqResult = await operations.listProjectionWithConfig('faq.faq', input, config);
+    const genericResult = await operations.listProjectionWithConfig(
+      'generic-items.generic-item',
+      input,
+      config
+    );
+
+    expect(faqResult.data).toHaveLength(99);
+    expect(faqResult.data.map((item) => item.id)).not.toContain('faq-sentinel');
+    expect(genericResult.data.map((item) => item.id)).toEqual(['generic-1']);
+    expect(faqResult.pagination.hasNextPage).toBe(true);
+    expect(genericResult.pagination.hasNextPage).toBe(true);
+  });
+
   it('rejects malformed projection pages', async () => {
     const operations = createProjectionListOperations(vi.fn().mockResolvedValue({ newsItems: null }));
 

@@ -109,15 +109,19 @@ export const createProjectionListOperations = (executeGraphqlWithConfig: Graphql
     if (!Array.isArray(responseItems)) {
       throw new Error(`Invalid projection page structure for ${definition.responseField}.`);
     }
-    const rawItems: readonly unknown[] =
-      contentType === 'faq.faq'
-        ? responseItems.filter(
-            (item) =>
-              item &&
-              typeof item === 'object' &&
-              (item as Record<string, unknown>).genericType === 'FAQ'
-          )
-        : responseItems;
+    const upstreamPageItems = definition.paginated
+      ? responseItems.slice(0, query.pageSize)
+      : responseItems;
+    const rawItems: readonly unknown[] = upstreamPageItems.filter((item) => {
+      if (contentType !== 'faq.faq' && contentType !== 'generic-items.generic-item') {
+        return true;
+      }
+      const isFaq =
+        item !== null &&
+        typeof item === 'object' &&
+        (item as Record<string, unknown>).genericType === 'FAQ';
+      return contentType === 'faq.faq' ? isFaq : !isFaq;
+    });
     const mapped = rawItems.map((item) => mapItem(item, contentType, definition.titleField));
     const skippedInvalidCount = mapped.filter((item) => item === null).length;
     const data = mapped.filter((item): item is SvaMainserverProjectionListItem => item !== null);
@@ -128,7 +132,7 @@ export const createProjectionListOperations = (executeGraphqlWithConfig: Graphql
       pagination: {
         page: query.page,
         pageSize: definition.paginated ? query.pageSize : Math.max(1, data.length),
-        hasNextPage: definition.paginated && rawItems.length > query.pageSize,
+        hasNextPage: definition.paginated && responseItems.length > query.pageSize,
         ...(!definition.paginated ? { total: data.length } : {}),
       },
     };

@@ -580,7 +580,7 @@ test.describe('waste management plugin', () => {
     await openWastePlugin(page);
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
     await expect(
-      page.getByText('Die Waste-Datenbank wird automatisch für diese Instanz bereitgestellt und verwaltet.').first()
+      page.getByText('Die Abfalldatenbank wird automatisch für diese Instanz bereitgestellt und verwaltet.').first()
     ).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Schema' })).toBeDisabled();
     await expect(page.getByRole('textbox', { name: 'Schema' })).toHaveValue('waste_ops');

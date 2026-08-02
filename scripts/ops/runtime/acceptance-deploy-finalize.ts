@@ -2,7 +2,16 @@ import type { AcceptanceDeployDeps, AcceptanceDeployState } from './acceptance-d
 import { failDeploy } from './acceptance-deploy-state.ts';
 import { shouldUseStudioReleaseBlockingTenantScope } from './remote-verification.ts';
 import { shouldRetryExternalSmoke } from './smoke-retry.ts';
-import { isBlockingSmokeProbe, reportNonBlockingSmokeFailures } from './smoke-runtime.ts';
+import { isBlockingSmokeProbe } from './smoke-runtime.ts';
+
+const isExplicitTenantIngressProbe = (probe: AcceptanceDeployState['report']['externalProbes'][number]) =>
+  probe.name.startsWith('public-ingress-https-') || probe.name.startsWith('public-ingress-login-');
+
+export const isBlockingAcceptanceDeploySmokeProbe = (
+  probe: AcceptanceDeployState['report']['externalProbes'][number],
+  usesReleaseBlockingTenantScope: boolean,
+) => !isExplicitTenantIngressProbe(probe)
+  || isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope);
 
 export const runInternalVerifyPhase = async (deps: AcceptanceDeployDeps, state: AcceptanceDeployState) => {
   const startedAt = Date.now();
@@ -27,13 +36,21 @@ export const runExternalSmokePhase = async (deps: AcceptanceDeployDeps, state: A
     const externalProbes = await deps.runExternalSmokeWithWarmup(state.env, {
       runtimeProfile: state.runtimeProfile,
       shouldRetry: (probes) => shouldRetryExternalSmoke(
-        probes.filter((probe) => isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope)),
+        probes.filter((probe) => isBlockingAcceptanceDeploySmokeProbe(
+          probe,
+          usesReleaseBlockingTenantScope,
+        )),
       ),
     });
     state.report = { ...state.report, externalProbes };
-    reportNonBlockingSmokeFailures(externalProbes, usesReleaseBlockingTenantScope);
+    for (const probe of externalProbes) {
+      if (probe.status !== 'error'
+        || isBlockingAcceptanceDeploySmokeProbe(probe, usesReleaseBlockingTenantScope)) continue;
+      console.warn(`[runtime-env] Nicht blockierender Smoke-Fehler: ${probe.name}: ${probe.message}`);
+    }
     const failingProbe = externalProbes.find(
-      (probe) => probe.status === 'error' && isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope),
+      (probe) => probe.status === 'error'
+        && isBlockingAcceptanceDeploySmokeProbe(probe, usesReleaseBlockingTenantScope),
     );
     if (failingProbe) {
       throw new Error(`${failingProbe.name}: ${failingProbe.message}`);

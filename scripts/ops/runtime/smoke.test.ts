@@ -108,6 +108,36 @@ describe('smoke helpers', () => {
     }), null)).toBeNull();
   });
 
+  it('does not block production releases on non-release tenant ingress failures', async () => {
+    const ops = createRuntimeSmokeOps({
+      buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
+      buildSwarmServicePresenceProbe: () => createProbe({ scope: 'internal' }),
+      doctorRuntime: async () => createDoctorReport({}),
+      isExpectedOidcRedirect: () => true,
+      parseRuntimeProfile: (value) => value,
+      resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
+      runHttpProbe: async (input) => createProbe({ name: input.name, target: input.target }),
+      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
+      shouldUseStudioReleaseBlockingTenantScope: (runtimeProfile, env) =>
+        runtimeProfile === 'studio' && env.SVA_ACCEPTANCE_RELEASE_MODE === 'prod',
+      wait: async () => undefined,
+    });
+    const nonBlockingFailure = createProbe({
+      message: 'fetch failed',
+      name: 'public-ingress-https-bb-ahrensfelde.studio.smart-village.app',
+      status: 'error',
+    });
+
+    await expect(ops.waitForRemoteSmokeWarmup({
+      SVA_ACCEPTANCE_RELEASE_MODE: 'prod',
+      SVA_RUNTIME_PROFILE: 'studio',
+    }, {
+      maxAttempts: 1,
+      runner: async () => [nonBlockingFailure],
+      runtimeProfile: 'studio',
+    })).resolves.toEqual([nonBlockingFailure]);
+  });
+
   it('returns no ingress contract for an invalid base URL', () => {
     expect(resolveStudioIngressContract('https://')).toBeNull();
   });

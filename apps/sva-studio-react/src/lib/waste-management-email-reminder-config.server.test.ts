@@ -56,7 +56,7 @@ const createEmailReminderConfig = (transportId = 'transport-smtp') => ({
   materializationLookaheadDays: 7,
 });
 
-const createSupabaseRecord = (
+const createPostgresqlRecord = (
   overrides: Partial<ExternalInterfaceRecord> & {
     emailReminderConfig?: Record<string, unknown> | null;
     unsubscribeSigningSecret?: string;
@@ -70,20 +70,19 @@ const createSupabaseRecord = (
   } = overrides;
 
   return {
-    id: overrides.id ?? 'supabase-1',
+    id: overrides.id ?? 'postgresql-1',
     instanceId: 'instance-1',
-    typeKey: 'supabase',
+    typeKey: 'postgresql',
     ownerKind: 'host',
     ownerId: 'host',
-    displayName: 'Waste Supabase',
+    displayName: 'Waste PostgreSQL',
     alias: 'default',
     enabled: true,
     isDefault: true,
     category: 'database',
-    baseUrl: 'https://tenant.supabase.co',
-    authMode: 'service_role',
+    baseUrl: null,
+    authMode: 'database_url',
     publicConfig: {
-      projectUrl: 'https://tenant.supabase.co',
       schemaName: 'wm',
       ...(unsubscribeSigningSecret
         ? { emailReminderSigningSecret: unsubscribeSigningSecret }
@@ -97,7 +96,7 @@ const createSupabaseRecord = (
       ...publicConfigOverrides,
     },
     secretConfigCiphertext: 'cipher',
-    statusCheckKind: 'supabase',
+    statusCheckKind: 'postgresql',
     visibleStatus: 'ok',
     lastCheckStatus: 'succeeded',
     lastCheckedAt: '2026-05-10T10:00:00.000Z',
@@ -107,25 +106,23 @@ const createSupabaseRecord = (
 };
 
 describe('waste email reminder config loader', () => {
-  it('prefers the explicitly selected supabase record and returns its signing secret', async () => {
+  it('prefers the explicitly selected PostgreSQL record and returns its signing secret', async () => {
     const deps: WasteOperationRuntimeDeps = {
       listInterfaceRecords: async () => [
-        createSupabaseRecord({
+        createPostgresqlRecord({
           id: 'default-record',
           isDefault: true,
           publicConfig: {
-            projectUrl: 'https://tenant.supabase.co',
             schemaName: 'wm',
             emailReminderConfig: {
               enabled: false,
             },
           },
         }),
-        createSupabaseRecord({
+        createPostgresqlRecord({
           id: 'selected-record',
           isDefault: false,
           publicConfig: {
-            projectUrl: 'https://tenant.supabase.co',
             schemaName: 'wm-selected',
             wasteManagementSelected: true,
             emailReminderSigningSecret: 'selected-secret',
@@ -146,10 +143,10 @@ describe('waste email reminder config loader', () => {
     });
   });
 
-  it('returns null when no selected supabase record exposes a valid reminder config', async () => {
+  it('returns null when no selected PostgreSQL record exposes a valid reminder config', async () => {
     const deps: WasteOperationRuntimeDeps = {
       listInterfaceRecords: async () => [
-        createSupabaseRecord({
+        createPostgresqlRecord({
           id: 'default-record',
           isDefault: true,
           emailReminderConfig: null,
@@ -163,8 +160,8 @@ describe('waste email reminder config loader', () => {
   it('supports the default-interface fallback when no interface list is available', async () => {
     const deps: WasteOperationRuntimeDeps = {
       loadDefaultInterfaceRecord: async (_instanceId, typeKey) =>
-        typeKey === 'supabase'
-          ? createSupabaseRecord({
+        typeKey === 'postgresql'
+          ? createPostgresqlRecord({
               id: 'fallback-record',
               unsubscribeSigningSecret: 'fallback-secret',
             })

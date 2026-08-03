@@ -22,4 +22,4 @@
 - [x] 3.3 Nach jedem Block die kleinsten relevanten Nx-Unit- und Type-Gates sowie bei Serveränderungen früh `pnpm check:server-runtime` ausführen.
 - [x] 3.4 `docs/development/studio-db-schema-final.sql`, `docs/development/studio-db-schema.md` sowie relevante deutsche Fach- und arc42-Dokumentation aktualisieren und `pnpm check:file-placement` ausführen.
 - [x] 3.5 `openspec validate add-featured-projects-plugin --strict` ausführen.
-- [ ] 3.6 Vor PR-Freigabe nach Möglichkeit `pnpm test:pr` ausführen.
+- [x] 3.6 Vor PR-Freigabe nach Möglichkeit `pnpm test:pr` ausführen.

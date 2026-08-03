@@ -279,6 +279,44 @@ describe('projects route', () => {
     );
   });
 
+  it('creates a hidden draft with the authenticated person as author', async () => {
+    prepareDefaults();
+    state.authorize.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'tenant-1', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.loadReferenceByOperation.mockResolvedValue(undefined);
+    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+    state.prepareExternalContent.mockResolvedValue({
+      contentId,
+      reference: { ...reference, sourceEntityId: undefined, reconciliationStatus: 'pending' },
+    });
+    state.loadCore.mockResolvedValue({ ...core, status: 'draft', publishedAt: undefined });
+    state.createGenericItem.mockResolvedValue({ ...genericItem, visible: false });
+    state.bindReference.mockResolvedValue(reference);
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-draft' },
+        body: JSON.stringify({
+          ...input,
+          status: 'draft',
+          author: { type: 'person', id: accountId, displayName: 'Redaktion' },
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(201);
+    expect(state.prepareExternalContent).toHaveBeenCalledWith(
+      expect.objectContaining({ authorDisplayMode: 'user', status: 'draft' })
+    );
+    expect(state.changeVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ visible: false })
+    );
+  });
+
   it('marks unknown provider results for reconciliation', async () => {
     prepareDefaults();
     state.loadReferenceByOperation.mockResolvedValue(undefined);

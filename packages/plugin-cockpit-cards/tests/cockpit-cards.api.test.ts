@@ -6,6 +6,7 @@ const state = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
+  requestJson: vi.fn(),
   options: undefined as unknown,
 }));
 
@@ -14,6 +15,7 @@ vi.mock('@sva/plugin-sdk', () => ({
     state.options = options;
     return state;
   },
+  requestMainserverJson: state.requestJson,
 }));
 
 describe('cockpit cards api', () => {
@@ -42,5 +44,17 @@ describe('cockpit cards api', () => {
     expect(state.create).toHaveBeenCalledWith({});
     expect(state.update).toHaveBeenCalledWith('card-1', {});
     expect(state.remove).toHaveBeenCalledWith('card-1');
+  });
+
+  it('loads category options through the host boundary', async () => {
+    state.requestJson.mockResolvedValue({ data: [{ id: 'category-1', name: 'Startseite' }] });
+    const api = await import('../src/cockpit-cards.api.js');
+
+    await expect(api.listCockpitCardCategories()).resolves.toEqual([
+      { id: 'category-1', name: 'Startseite' },
+    ]);
+    expect(state.requestJson).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/api/v1/mainserver/categories' })
+    );
   });
 });

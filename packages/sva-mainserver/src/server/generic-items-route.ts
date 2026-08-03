@@ -16,7 +16,10 @@ import {
 } from './content-route-core.js';
 import { SvaMainserverError } from './errors.js';
 import { mergeFaqPayload, validateFaqWriteOrResponse } from './generic-items-route-faq.js';
-import { mergeCockpitCardPayload, validateCockpitCardWriteOrResponse } from './generic-items-route-cockpit-cards.js';
+import {
+  mergeCockpitCardPayload,
+  validateCockpitCardWriteOrResponse,
+} from './generic-items-route-cockpit-cards.js';
 import { parseGenericItemInput } from './generic-items-route-input.js';
 import { listFaqItems } from './faq-listing.js';
 import { listCockpitCardItems } from './cockpit-cards-listing.js';
@@ -54,14 +57,22 @@ const matchRoute = (request: Request): RouteMatch | null =>
   matchRequestRoute(request, COCKPIT_CARDS_COLLECTION_PATH, 'cockpit-cards');
 
 const contentTypeFor = (contentKind: ContentKind) =>
-  contentKind === 'faq' ? FAQ_CONTENT_TYPE : contentKind === 'cockpit-cards' ? COCKPIT_CARDS_CONTENT_TYPE : GENERIC_ITEMS_CONTENT_TYPE;
+  contentKind === 'faq'
+    ? FAQ_CONTENT_TYPE
+    : contentKind === 'cockpit-cards'
+      ? COCKPIT_CARDS_CONTENT_TYPE
+      : GENERIC_ITEMS_CONTENT_TYPE;
 
-const pluginActionFor = (contentKind: ContentKind, actionName: 'read' | 'create' | 'update' | 'delete') =>
-  `${contentKind}.${actionName}`;
+const pluginActionFor = (
+  contentKind: ContentKind,
+  actionName: 'read' | 'create' | 'update' | 'delete'
+) => `${contentKind}.${actionName}`;
 
 const validateMutationRequest = (request: Request, requestId?: string): Response | null => {
   const csrfError = validateCsrf(request, requestId);
-  return csrfError ? errorJson(403, 'csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen.') : null;
+  return csrfError
+    ? errorJson(403, 'csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen.')
+    : null;
 };
 
 const authorizeOrResponse = async (
@@ -116,10 +127,17 @@ const authorizeMutation = async (
     return csrfError;
   }
 
-  return authorizeOrResponse(ctx, pluginActionFor(contentKind, actionName), contentTypeFor(contentKind), contentId);
+  return authorizeOrResponse(
+    ctx,
+    pluginActionFor(contentKind, actionName),
+    contentTypeFor(contentKind),
+    contentId
+  );
 };
 
-const parseGenericItemOrResponse = async (request: Request): Promise<SvaMainserverGenericItemInput | Response> => {
+const parseGenericItemOrResponse = async (
+  request: Request
+): Promise<SvaMainserverGenericItemInput | Response> => {
   return parseGenericItemInput(request);
 };
 
@@ -129,20 +147,31 @@ const handleListRequest = async (
   contentKind: ContentKind,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const actor = await authorizeOrResponse(ctx, pluginActionFor(contentKind, 'read'), contentTypeFor(contentKind));
+  const actor = await authorizeOrResponse(
+    ctx,
+    pluginActionFor(contentKind, 'read'),
+    contentTypeFor(contentKind)
+  );
   if (isResponse(actor)) {
     return actor;
   }
 
   const includeInvisible = new URL(request.url).searchParams.get('includeInvisible') === 'true';
+  const languageCode = new URL(request.url).searchParams.get('languageCode') ?? undefined;
   const input = {
     ...actor,
     ...parseMainserverListQuery(request),
     includeInvisible,
   };
   const startedAt = Date.now();
-  const faqResult = contentKind === 'faq' ? await listFaqItems(input, listSvaMainserverGenericItems) : null;
-  const cockpitCardsResult = contentKind === 'cockpit-cards' ? await listCockpitCardItems(input, listSvaMainserverGenericItems) : null;
+  const faqResult =
+    contentKind === 'faq'
+      ? await listFaqItems(input, listSvaMainserverGenericItems, languageCode)
+      : null;
+  const cockpitCardsResult =
+    contentKind === 'cockpit-cards'
+      ? await listCockpitCardItems(input, listSvaMainserverGenericItems)
+      : null;
   const specializedResult = faqResult ?? cockpitCardsResult;
   const data = specializedResult
     ? { data: specializedResult.data, pagination: specializedResult.pagination }
@@ -155,8 +184,20 @@ const handleListRequest = async (
       duration_ms: Date.now() - startedAt,
     });
   }
-  if (cockpitCardsResult) logger.info('Cockpit Cards list upstream pagination completed', { operation: 'mainserver_cockpit_cards_list_upstream', upstream_page_count: cockpitCardsResult.observability.upstreamPageCount, matching_item_count: cockpitCardsResult.observability.matchingItemCount, duration_ms: Date.now() - startedAt });
-  logSuccess(contentKind === 'faq' ? 'mainserver_faq_list' : contentKind === 'cockpit-cards' ? 'mainserver_cockpit_cards_list' : 'mainserver_generic-items_list');
+  if (cockpitCardsResult)
+    logger.info('Cockpit Cards list upstream pagination completed', {
+      operation: 'mainserver_cockpit_cards_list_upstream',
+      upstream_page_count: cockpitCardsResult.observability.upstreamPageCount,
+      matching_item_count: cockpitCardsResult.observability.matchingItemCount,
+      duration_ms: Date.now() - startedAt,
+    });
+  logSuccess(
+    contentKind === 'faq'
+      ? 'mainserver_faq_list'
+      : contentKind === 'cockpit-cards'
+        ? 'mainserver_cockpit_cards_list'
+        : 'mainserver_generic-items_list'
+  );
   return json(data);
 };
 
@@ -166,7 +207,12 @@ const handleDetailRequest = async (
   itemId: string,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const actor = await authorizeOrResponse(ctx, pluginActionFor(contentKind, 'read'), contentTypeFor(contentKind), itemId);
+  const actor = await authorizeOrResponse(
+    ctx,
+    pluginActionFor(contentKind, 'read'),
+    contentTypeFor(contentKind),
+    itemId
+  );
   if (isResponse(actor)) {
     return actor;
   }
@@ -175,7 +221,8 @@ const handleDetailRequest = async (
   if (contentKind === 'faq' && data.genericType !== 'FAQ') {
     return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
   }
-  if (contentKind === 'cockpit-cards' && data.genericType !== 'COCKPIT_CARD') return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
+  if (contentKind === 'cockpit-cards' && data.genericType !== 'COCKPIT_CARD')
+    return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
   logSuccess('mainserver_generic-items_detail', itemId);
   return json({ data });
 };
@@ -192,12 +239,23 @@ const handleCreateRequest = async (
     return actor;
   }
 
-  const genericItem = contentKind === 'faq' ? await validateFaqWriteOrResponse(request)
-    : contentKind === 'cockpit-cards' ? await validateCockpitCardWriteOrResponse(request)
-    : await parseGenericItemOrResponse(request);
+  const genericItem =
+    contentKind === 'faq'
+      ? await validateFaqWriteOrResponse(request)
+      : contentKind === 'cockpit-cards'
+        ? await validateCockpitCardWriteOrResponse(request)
+        : await parseGenericItemOrResponse(request);
   if (isResponse(genericItem)) return genericItem;
 
-  const data = await createSvaMainserverGenericItem({ ...actor, genericItem: contentKind === 'faq' ? { ...genericItem, genericType: 'FAQ' } : contentKind === 'cockpit-cards' ? { ...genericItem, genericType: 'COCKPIT_CARD' } : genericItem });
+  const data = await createSvaMainserverGenericItem({
+    ...actor,
+    genericItem:
+      contentKind === 'faq'
+        ? { ...genericItem, genericType: 'FAQ' }
+        : contentKind === 'cockpit-cards'
+          ? { ...genericItem, genericType: 'COCKPIT_CARD' }
+          : genericItem,
+  });
   logSuccess('mainserver_generic-items_create', data.id);
   return json({ data }, 201);
 };
@@ -215,17 +273,30 @@ const handleUpdateRequest = async (
     return actor;
   }
 
-  const existingItem = contentKind !== 'generic-items' ? await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId }) : null;
+  const existingItem =
+    contentKind !== 'generic-items'
+      ? await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId })
+      : null;
   if (contentKind === 'faq' && existingItem && existingItem.genericType !== 'FAQ') {
     return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
   }
-  if (contentKind === 'cockpit-cards' && existingItem && existingItem.genericType !== 'COCKPIT_CARD') return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
-  const genericItem = contentKind === 'faq' ? await validateFaqWriteOrResponse(request)
-    : contentKind === 'cockpit-cards' ? await validateCockpitCardWriteOrResponse(request)
-    : await parseGenericItemOrResponse(request);
+  if (
+    contentKind === 'cockpit-cards' &&
+    existingItem &&
+    existingItem.genericType !== 'COCKPIT_CARD'
+  )
+    return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
+  const genericItem =
+    contentKind === 'faq'
+      ? await validateFaqWriteOrResponse(request)
+      : contentKind === 'cockpit-cards'
+        ? await validateCockpitCardWriteOrResponse(request)
+        : await parseGenericItemOrResponse(request);
   if (isResponse(genericItem)) return genericItem;
-  if (contentKind === 'faq' && !existingItem) return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
-  if (contentKind === 'cockpit-cards' && !existingItem) return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
+  if (contentKind === 'faq' && !existingItem)
+    return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
+  if (contentKind === 'cockpit-cards' && !existingItem)
+    return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
   const data = await updateSvaMainserverGenericItem({
     ...actor,
     genericItemId: itemId,
@@ -237,7 +308,11 @@ const handleUpdateRequest = async (
             payload: mergeFaqPayload(existingItem?.payload, genericItem.payload),
           }
         : contentKind === 'cockpit-cards'
-          ? { ...genericItem, genericType: 'COCKPIT_CARD', payload: mergeCockpitCardPayload(existingItem?.payload, genericItem.payload) }
+          ? {
+              ...genericItem,
+              genericType: 'COCKPIT_CARD',
+              payload: mergeCockpitCardPayload(existingItem?.payload, genericItem.payload),
+            }
           : genericItem,
   });
   logSuccess('mainserver_generic-items_update', itemId);
@@ -257,17 +332,25 @@ const handleDeleteRequest = async (
     return actor;
   }
 
-  const existingItem = contentKind !== 'generic-items' ? await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId }) : null;
+  const existingItem =
+    contentKind !== 'generic-items'
+      ? await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId })
+      : null;
   if (contentKind === 'faq' && existingItem?.genericType !== 'FAQ') {
     return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
   }
-  if (contentKind === 'cockpit-cards' && existingItem?.genericType !== 'COCKPIT_CARD') return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
+  if (contentKind === 'cockpit-cards' && existingItem?.genericType !== 'COCKPIT_CARD')
+    return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
   const data = await deleteSvaMainserverGenericItem({ ...actor, genericItemId: itemId });
   logSuccess('mainserver_generic-items_delete', itemId);
   return json({ data });
 };
 
-const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: AuthenticatedRequestContext) => {
+const dispatchAuthenticated = async (
+  request: Request,
+  route: RouteMatch,
+  ctx: AuthenticatedRequestContext
+) => {
   const workspaceContext = getWorkspaceContext();
   const routeContentType = contentTypeFor(route.contentKind);
   const logSuccess = (operation: string, contentId?: string) => {
@@ -293,18 +376,42 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
     }
 
     if (route.kind === 'collection' && request.method === 'POST') {
-      return await handleCreateRequest(request, ctx, route.contentKind, workspaceContext.requestId, logSuccess);
+      return await handleCreateRequest(
+        request,
+        ctx,
+        route.contentKind,
+        workspaceContext.requestId,
+        logSuccess
+      );
     }
 
     if (route.kind === 'item' && request.method === 'PATCH') {
-      return await handleUpdateRequest(request, ctx, route.contentKind, workspaceContext.requestId, route.itemId, logSuccess);
+      return await handleUpdateRequest(
+        request,
+        ctx,
+        route.contentKind,
+        workspaceContext.requestId,
+        route.itemId,
+        logSuccess
+      );
     }
 
     if (route.kind === 'item' && request.method === 'DELETE') {
-      return await handleDeleteRequest(request, ctx, route.contentKind, workspaceContext.requestId, route.itemId, logSuccess);
+      return await handleDeleteRequest(
+        request,
+        ctx,
+        route.contentKind,
+        workspaceContext.requestId,
+        route.itemId,
+        logSuccess
+      );
     }
 
-    return errorJson(405, 'method_not_allowed', 'Methode wird für diesen Mainserver-Inhalt nicht unterstützt.');
+    return errorJson(
+      405,
+      'method_not_allowed',
+      'Methode wird für diesen Mainserver-Inhalt nicht unterstützt.'
+    );
   } catch (error) {
     logger.warn('Mainserver generic items route failed', {
       operation: 'mainserver_content_request',
@@ -322,7 +429,9 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
   }
 };
 
-export const dispatchSvaMainserverGenericItemsRequest = async (request: Request): Promise<Response | null> => {
+export const dispatchSvaMainserverGenericItemsRequest = async (
+  request: Request
+): Promise<Response | null> => {
   const route = matchRoute(request);
   if (!route) {
     return null;

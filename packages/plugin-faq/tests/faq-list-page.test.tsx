@@ -7,6 +7,7 @@ import { FaqListPage } from '../src/faq-list-page.js';
 const state = vi.hoisted(() => ({
   listFaqsMock: vi.fn(),
   navigateMock: vi.fn(),
+  search: { page: 1, pageSize: 25 } as { page?: number; pageSize?: number; languageCode?: string },
 }));
 
 vi.mock('../src/faq.api.js', () => ({
@@ -16,29 +17,82 @@ vi.mock('../src/faq.api.js', () => ({
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => state.navigateMock,
-  useSearch: () => ({ page: 1, pageSize: 25 }),
+  useSearch: () => state.search,
 }));
 
 describe('FaqListPage', () => {
   beforeEach(() => {
     state.listFaqsMock.mockReset();
     state.navigateMock.mockReset();
+    state.search = { page: 1, pageSize: 25 };
   });
 
-  it('filters loaded FAQ records by language code', async () => {
+  it('stores the normalized language filter in the URL and requests it from the API', async () => {
     state.listFaqsMock.mockResolvedValue({
       data: [
-        { id: 'de', title: 'Deutsch', genericType: 'FAQ', contentBlocks: [], payload: { languageCode: 'de', sortWeight: 0 }, visible: true, createdAt: '', updatedAt: '' },
-        { id: 'en', title: 'English', genericType: 'FAQ', contentBlocks: [], payload: { languageCode: 'en', sortWeight: 0 }, visible: true, createdAt: '', updatedAt: '' },
+        {
+          id: 'de',
+          title: 'Deutsch',
+          genericType: 'FAQ',
+          contentBlocks: [],
+          payload: { languageCode: 'de', sortWeight: 0 },
+          visible: true,
+          createdAt: '',
+          updatedAt: '',
+        },
+        {
+          id: 'en',
+          title: 'English',
+          genericType: 'FAQ',
+          contentBlocks: [],
+          payload: { languageCode: 'en', sortWeight: 0 },
+          visible: true,
+          createdAt: '',
+          updatedAt: '',
+        },
       ],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
-    render(<FaqListPage />);
+    const view = render(<FaqListPage />);
     await screen.findAllByText('Deutsch');
     fireEvent.change(screen.getByLabelText('faq.fields.languageCode'), { target: { value: 'EN' } });
-    await waitFor(() => expect(screen.queryAllByText('Deutsch')).toHaveLength(0));
-    expect(screen.getAllByText('English')).not.toHaveLength(0);
+    const searchUpdater = state.navigateMock.mock.calls.at(-1)?.[0]?.search as (
+      current: Record<string, unknown>
+    ) => Record<string, unknown>;
+    expect(searchUpdater({ filter: 'keep' })).toEqual({
+      filter: 'keep',
+      page: 1,
+      pageSize: 25,
+      languageCode: 'en',
+    });
+
+    state.search = { page: 1, pageSize: 25, languageCode: 'en' };
+    state.listFaqsMock.mockResolvedValue({
+      data: [
+        {
+          id: 'en',
+          title: 'English',
+          genericType: 'FAQ',
+          contentBlocks: [],
+          payload: { languageCode: 'en', sortWeight: 0 },
+          visible: true,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    view.rerender(<FaqListPage />);
+
+    await waitFor(() =>
+      expect(state.listFaqsMock).toHaveBeenLastCalledWith({
+        page: 1,
+        pageSize: 25,
+        languageCode: 'en',
+      })
+    );
+    expect(await screen.findAllByText('English')).not.toHaveLength(0);
   });
 
   it('renders an error state when loading fails', async () => {
@@ -49,25 +103,32 @@ describe('FaqListPage', () => {
     expect(await screen.findByText('faq.messages.loadError')).toBeTruthy();
   });
 
-  it('renders the empty state when the language filter removes all items', async () => {
+  it('renders the empty state returned for a language filter', async () => {
+    state.search = { page: 1, pageSize: 25, languageCode: 'fr' };
     state.listFaqsMock.mockResolvedValue({
-      data: [
-        { id: 'de', title: 'Deutsch', genericType: 'FAQ', contentBlocks: [], payload: { languageCode: 'de', sortWeight: 0 }, visible: true, createdAt: '', updatedAt: '' },
-      ],
-      pagination: { page: 1, pageSize: 25, hasNextPage: true },
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
     render(<FaqListPage />);
 
-    await screen.findAllByText('Deutsch');
-    fireEvent.change(screen.getByLabelText('faq.fields.languageCode'), { target: { value: 'fr' } });
     expect(await screen.findByText('faq.list.empty')).toBeTruthy();
+    expect(state.listFaqsMock).toHaveBeenCalledWith({ page: 1, pageSize: 25, languageCode: 'fr' });
   });
 
   it('paginates forward when additional results are available', async () => {
     state.listFaqsMock.mockResolvedValue({
       data: [
-        { id: 'de', title: 'Deutsch', genericType: 'FAQ', contentBlocks: [], payload: { languageCode: 'de', sortWeight: 0 }, visible: true, createdAt: '', updatedAt: '' },
+        {
+          id: 'de',
+          title: 'Deutsch',
+          genericType: 'FAQ',
+          contentBlocks: [],
+          payload: { languageCode: 'de', sortWeight: 0 },
+          visible: true,
+          createdAt: '',
+          updatedAt: '',
+        },
       ],
       pagination: { page: 1, pageSize: 25, hasNextPage: true },
     });
@@ -80,7 +141,14 @@ describe('FaqListPage', () => {
       to: '/admin/faq',
       search: expect.any(Function),
     });
-    const searchUpdater = state.navigateMock.mock.calls[0]?.[0]?.search as ((current: Record<string, unknown>) => Record<string, unknown>);
-    expect(searchUpdater({ filter: 'keep' })).toEqual({ filter: 'keep', page: 2, pageSize: 25 });
+    const searchUpdater = state.navigateMock.mock.calls[0]?.[0]?.search as (
+      current: Record<string, unknown>
+    ) => Record<string, unknown>;
+    expect(searchUpdater({ filter: 'keep' })).toEqual({
+      filter: 'keep',
+      page: 2,
+      pageSize: 25,
+      languageCode: undefined,
+    });
   });
 });

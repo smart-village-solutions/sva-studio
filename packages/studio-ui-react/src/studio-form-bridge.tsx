@@ -64,6 +64,7 @@ export type StudioFormSummaryErrorsProps = Readonly<{
   errors: readonly StudioFormFieldError[];
   title?: string;
   className?: string;
+  onSelectError?: (error: StudioFormFieldError) => void;
 }>;
 
 const focusFieldById = (fieldId: string) => {
@@ -79,6 +80,7 @@ export function StudioFormSummaryErrors({
   errors,
   title,
   className,
+  onSelectError,
 }: StudioFormSummaryErrorsProps) {
   if (errors.length === 0) {
     return null;
@@ -88,7 +90,10 @@ export function StudioFormSummaryErrors({
     <section
       role="alert"
       aria-live="assertive"
-      className={cn('space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive', className)}
+      className={cn(
+        'space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive',
+        className
+      )}
     >
       {title ? <p className="font-medium">{title}</p> : null}
       <ul className="space-y-1">
@@ -99,7 +104,12 @@ export function StudioFormSummaryErrors({
               className="underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               onClick={(event) => {
                 event.preventDefault();
-                focusFieldById(error.field);
+                if (onSelectError) {
+                  onSelectError(error);
+                  globalThis.setTimeout(() => focusFieldById(error.field), 0);
+                } else {
+                  focusFieldById(error.field);
+                }
               }}
             >
               {error.message}

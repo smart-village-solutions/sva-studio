@@ -20,13 +20,56 @@ export const pluginFaqTranslations = {
       },
       editor: {
         createTitle: 'FAQ anlegen',
+        createDescription: 'Erfasse eine neue Frage mit Antwort, Sprache und Sichtbarkeit.',
         editTitle: 'FAQ bearbeiten',
+        editDescription: 'Passe Inhalt, Sortierung und Veröffentlichung der FAQ an.',
       },
-      tabs: { ariaLabel: 'FAQ-Bereiche', mobileLabel: 'FAQ-Bereich auswählen', basis: { label: 'Basis', title: 'Basis' }, content: { label: 'Inhalt', title: 'Inhalt' }, settings: { label: 'Einstellungen', title: 'Einstellungen' }, history: { label: 'Historie', title: 'Historie' } },
-      history: { empty: 'Noch keine Historie verfügbar.', loading: 'Historie wird geladen.', tableLabel: 'FAQ-Historie', changedFields: 'Geändert: {{fields}}', emptySummary: 'Keine Detailangaben.', actions: { created: 'Angelegt', updated: 'Aktualisiert', statusChanged: 'Status geändert' }, columns: { time: 'Zeitpunkt', action: 'Aktion', actor: 'Bearbeitet von', summary: 'Zusammenfassung' }, errors: { load: 'Historie konnte nicht geladen werden.' } },
+      tabs: {
+        ariaLabel: 'FAQ-Bereiche',
+        mobileLabel: 'FAQ-Bereich auswählen',
+        basis: { label: 'Basis', title: 'Basis', description: 'Lege Frage und Sprache fest.' },
+        content: {
+          label: 'Inhalt',
+          title: 'Inhalt',
+          description: 'Formuliere die Antwort als Klartext.',
+        },
+        settings: {
+          label: 'Einstellungen',
+          title: 'Einstellungen',
+          description: 'Steuere Sortierung, Sichtbarkeit und Veröffentlichung.',
+        },
+        history: {
+          label: 'Historie',
+          title: 'Historie',
+          description: 'Nachvollziehbare Änderungen an dieser FAQ.',
+        },
+      },
+      history: {
+        empty: 'Noch keine Historie verfügbar.',
+        loading: 'Historie wird geladen.',
+        tableLabel: 'FAQ-Historie',
+        changedFields: 'Geändert: {{fields}}',
+        emptySummary: 'Keine Detailangaben.',
+        actions: { created: 'Angelegt', updated: 'Aktualisiert', statusChanged: 'Status geändert' },
+        columns: {
+          time: 'Zeitpunkt',
+          action: 'Aktion',
+          actor: 'Bearbeitet von',
+          summary: 'Zusammenfassung',
+        },
+        errors: { load: 'Historie konnte nicht geladen werden.' },
+      },
       list: {
         title: 'FAQ',
+        description: 'Verwalte häufig gestellte Fragen und ihre Antworten.',
         empty: 'Keine FAQ vorhanden.',
+      },
+      deleteDialog: {
+        title: 'FAQ löschen?',
+        description:
+          'Die FAQ wird dauerhaft gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.',
+        confirm: 'FAQ löschen',
+        cancel: 'Abbrechen',
       },
       pagination: {
         ariaLabel: 'FAQ-Paginierung',
@@ -53,6 +96,7 @@ export const pluginFaqTranslations = {
         validationError: 'Bitte prüfe die markierten Felder.',
       },
       validation: {
+        summaryTitle: 'Bitte prüfe folgende Felder:',
         required: 'Dieses Feld ist erforderlich.',
         answer: 'Bitte eine gültige Textantwort eingeben.',
         languageCode: 'Bitte einen gültigen BCP-47-Sprachcode eingeben.',
@@ -79,13 +123,54 @@ export const pluginFaqTranslations = {
       },
       editor: {
         createTitle: 'Create FAQ',
+        createDescription: 'Add a new question with its answer, language, and visibility.',
         editTitle: 'Edit FAQ',
+        editDescription: 'Update the FAQ content, sorting, and publication settings.',
       },
-      tabs: { ariaLabel: 'FAQ sections', mobileLabel: 'Select FAQ section', basis: { label: 'Basics', title: 'Basics' }, content: { label: 'Content', title: 'Content' }, settings: { label: 'Settings', title: 'Settings' }, history: { label: 'History', title: 'History' } },
-      history: { empty: 'No history available yet.', loading: 'Loading history.', tableLabel: 'FAQ history', changedFields: 'Changed: {{fields}}', emptySummary: 'No details.', actions: { created: 'Created', updated: 'Updated', statusChanged: 'Status changed' }, columns: { time: 'Time', action: 'Action', actor: 'Actor', summary: 'Summary' }, errors: { load: 'Could not load history.' } },
+      tabs: {
+        ariaLabel: 'FAQ sections',
+        mobileLabel: 'Select FAQ section',
+        basis: {
+          label: 'Basics',
+          title: 'Basics',
+          description: 'Define the question and language.',
+        },
+        content: {
+          label: 'Content',
+          title: 'Content',
+          description: 'Write the answer as plain text.',
+        },
+        settings: {
+          label: 'Settings',
+          title: 'Settings',
+          description: 'Control sorting, visibility, and publication.',
+        },
+        history: {
+          label: 'History',
+          title: 'History',
+          description: 'Review changes made to this FAQ.',
+        },
+      },
+      history: {
+        empty: 'No history available yet.',
+        loading: 'Loading history.',
+        tableLabel: 'FAQ history',
+        changedFields: 'Changed: {{fields}}',
+        emptySummary: 'No details.',
+        actions: { created: 'Created', updated: 'Updated', statusChanged: 'Status changed' },
+        columns: { time: 'Time', action: 'Action', actor: 'Actor', summary: 'Summary' },
+        errors: { load: 'Could not load history.' },
+      },
       list: {
         title: 'FAQ',
+        description: 'Manage frequently asked questions and their answers.',
         empty: 'No FAQ available.',
+      },
+      deleteDialog: {
+        title: 'Delete FAQ?',
+        description: 'The FAQ will be deleted permanently. This action cannot be undone.',
+        confirm: 'Delete FAQ',
+        cancel: 'Cancel',
       },
       pagination: {
         ariaLabel: 'FAQ pagination',
@@ -112,6 +197,7 @@ export const pluginFaqTranslations = {
         validationError: 'Please check the highlighted fields.',
       },
       validation: {
+        summaryTitle: 'Please check the following fields:',
         required: 'This field is required.',
         answer: 'Enter a valid text answer.',
         languageCode: 'Enter a valid BCP-47 language code.',

@@ -3,10 +3,13 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
+  StudioConfirmDialog,
   StudioDetailPageTemplate,
   StudioErrorState,
   StudioFormSummary,
+  StudioFormSummaryErrors,
   StudioLoadingState,
+  type StudioFormFieldError,
 } from '@sva/studio-ui-react';
 import React from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -25,42 +28,94 @@ const defaultValues: FaqFormValues = {
   visible: true,
 };
 
+const fieldTabs: Readonly<Record<string, FaqTab>> = {
+  'faq-question': 'basis',
+  'faq-language-code': 'basis',
+  'faq-answer': 'content',
+  'faq-sort-weight': 'settings',
+};
+
+const toSummaryError = (field: string, message: string | undefined): StudioFormFieldError[] =>
+  message ? [{ field, message }] : [];
+
+type Translator = ReturnType<typeof usePluginTranslation>;
+
 const FaqEditorActions = ({
-  deletePending,
+  disabled,
   mode,
   onDelete,
   pt,
 }: Readonly<{
-  deletePending: boolean;
+  disabled: boolean;
   mode: 'create' | 'edit';
-  onDelete: () => Promise<void>;
-  pt: (key: string) => string;
+  onDelete: () => void;
+  pt: Translator;
 }>) => (
   <div className="flex flex-wrap gap-2">
     <Button asChild variant="outline">
       <Link to="/admin/content">{pt('actions.back')}</Link>
     </Button>
     {mode === 'edit' ? (
-      <Button
-        type="button"
-        variant="destructive"
-        disabled={deletePending}
-        onClick={() => void onDelete()}
-      >
+      <Button type="button" variant="destructive" disabled={disabled} onClick={onDelete}>
         {pt('actions.delete')}
       </Button>
     ) : null}
   </div>
 );
 
-const FaqEditorPage = ({
-  mode,
-  contentId,
-}: Readonly<{ mode: 'create' | 'edit'; contentId?: string }>) => {
+const FaqDeleteDialog = ({
+  errorMessage,
+  onCancel,
+  onConfirm,
+  open,
+  pending,
+  pt,
+}: Readonly<{
+  errorMessage: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+  open: boolean;
+  pending: boolean;
+  pt: Translator;
+}>) => (
+  <StudioConfirmDialog
+    open={open}
+    title={pt('deleteDialog.title')}
+    description={pt('deleteDialog.description')}
+    confirmLabel={pt('deleteDialog.confirm')}
+    cancelLabel={pt('deleteDialog.cancel')}
+    confirmDisabled={pending}
+    cancelDisabled={pending}
+    onConfirm={onConfirm}
+    onCancel={onCancel}
+  >
+    {errorMessage ? <StudioFormSummary kind="error">{errorMessage}</StudioFormSummary> : null}
+  </StudioConfirmDialog>
+);
+
+const createSummaryErrors = (
+  errors: ReturnType<typeof useForm<FaqFormValues>>['formState']['errors'],
+  pt: Translator
+) => [
+  ...toSummaryError('faq-question', errors.question ? pt('validation.required') : undefined),
+  ...toSummaryError(
+    'faq-language-code',
+    errors.languageCode ? pt('validation.languageCode') : undefined
+  ),
+  ...toSummaryError('faq-answer', errors.answer ? pt('validation.answer') : undefined),
+  ...toSummaryError(
+    'faq-sort-weight',
+    errors.sortWeight ? pt('validation.sortWeight') : undefined
+  ),
+];
+
+const FaqEditorPage = ({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; contentId?: string }>) => {
   const pt = usePluginTranslation('faq');
   const navigate = useNavigate();
   const form = useForm<FaqFormValues>({ defaultValues, resolver: zodResolver(faqFormSchema) });
   const [activeTab, setActiveTab] = React.useState<FaqTab>('basis');
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
   const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
   const onInvalid = () => setSaveErrorMessage(pt('messages.validationError'));
   const { existingPayload, loadError, loading } = useFaqEditorLoader({ contentId, form, mode });
@@ -70,42 +125,67 @@ const FaqEditorPage = ({
     mode,
     navigate,
     pt,
+    setDeleteErrorMessage,
     setSaveErrorMessage,
   });
   const save = form.handleSubmit(onSubmit, onInvalid);
+  const formId = `faq-${mode}-form`;
+  const summaryErrors = createSummaryErrors(form.formState.errors, pt);
 
   if (loading) return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   if (loadError) return <StudioErrorState>{pt('messages.loadError')}</StudioErrorState>;
 
+  const handleDelete = async () => (await onDelete()) && setDeleteDialogOpen(false);
+
   return (
     <StudioDetailPageTemplate
       title={pt(mode === 'create' ? 'editor.createTitle' : 'editor.editTitle')}
+      description={pt(mode === 'create' ? 'editor.createDescription' : 'editor.editDescription')}
       actions={
-        <FaqEditorActions deletePending={deletePending} mode={mode} onDelete={onDelete} pt={pt} />
+        <FaqEditorActions
+          disabled={deletePending || form.formState.isSubmitting}
+          mode={mode}
+          onDelete={() => setDeleteDialogOpen(true)}
+          pt={pt}
+        />
       }
       primaryAction={
-        <Button
-          type="button"
-          disabled={form.formState.isSubmitting || deletePending}
-          onClick={() => void save()}
-        >
-          {pt('actions.save')}
+        <Button type="submit" form={formId} disabled={form.formState.isSubmitting || deletePending}>
+          {pt(mode === 'create' ? 'actions.create' : 'actions.update')}
         </Button>
       }
     >
       <FormProvider {...form}>
-        {saveErrorMessage ? (
-          <StudioFormSummary kind="error">{saveErrorMessage}</StudioFormSummary>
-        ) : null}
-        <FaqEditorTabs
-          activeTab={activeTab}
-          contentId={contentId}
-          form={form}
-          mode={mode}
-          onTabChange={setActiveTab}
-          pt={pt}
-        />
+        <form id={formId} className="space-y-5" onSubmit={(event) => void save(event)} noValidate>
+          {saveErrorMessage ? (
+            <StudioFormSummary kind="error">{saveErrorMessage}</StudioFormSummary>
+          ) : null}
+          <StudioFormSummaryErrors
+            errors={summaryErrors}
+            title={pt('validation.summaryTitle')}
+            onSelectError={({ field }) => setActiveTab(fieldTabs[field] ?? 'basis')}
+          />
+          <FaqEditorTabs
+            activeTab={activeTab}
+            contentId={contentId}
+            form={form}
+            mode={mode}
+            onTabChange={setActiveTab}
+            pt={pt}
+          />
+        </form>
       </FormProvider>
+      <FaqDeleteDialog
+        open={deleteDialogOpen}
+        pending={deletePending}
+        errorMessage={deleteErrorMessage}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => {
+          setDeleteDialogOpen(false);
+          setDeleteErrorMessage(null);
+        }}
+        pt={pt}
+      />
     </StudioDetailPageTemplate>
   );
 };

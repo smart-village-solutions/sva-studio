@@ -803,9 +803,6 @@ importers:
       '@hookform/resolvers':
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.80.0(react@19.2.6))
-      '@sva/plugin-categories':
-        specifier: workspace:*
-        version: link:../plugin-categories
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -13555,7 +13552,9 @@ snapshots:
       - '@opentelemetry/core'
       - supports-color
 
-  '@sva/studio-module-iam@file:packages/studio-module-iam': {}
+  '@sva/studio-module-iam@file:packages/studio-module-iam':
+    dependencies:
+      '@sva/core': file:packages/core
 
   '@sva/studio-ui-react@file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)':
     dependencies:

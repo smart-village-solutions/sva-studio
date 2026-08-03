@@ -378,6 +378,7 @@ export type StudioConfirmDialogProps = Readonly<{
   onCancel: () => void;
   children?: React.ReactNode;
   confirmDisabled?: boolean;
+  cancelDisabled?: boolean;
 }>;
 
 export function StudioConfirmDialog({
@@ -390,9 +391,10 @@ export function StudioConfirmDialog({
   onCancel,
   children,
   confirmDisabled = false,
+  cancelDisabled = false,
 }: StudioConfirmDialogProps) {
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
+    if (!nextOpen && !cancelDisabled) {
       onCancel();
     }
   };
@@ -406,7 +408,9 @@ export function StudioConfirmDialog({
         </AlertDialogHeader>
         {children ? <div className="mt-4">{children}</div> : null}
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>{cancelLabel}</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel} disabled={cancelDisabled}>
+            {cancelLabel}
+          </AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} disabled={confirmDisabled}>
             {confirmLabel}
           </AlertDialogAction>

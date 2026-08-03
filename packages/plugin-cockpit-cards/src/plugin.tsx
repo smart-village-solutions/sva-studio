@@ -9,7 +9,7 @@ import { pluginCockpitCardsTranslations } from './plugin.translations.js';
 
 const contribution = createStandardContentPluginContribution({
   pluginId: 'cockpit-cards',
-  displayName: 'Cockpit Cards',
+  displayName: 'Kacheln',
   contentType: COCKPIT_CARD_CONTENT_TYPE,
   titleKey: 'cockpit-cards.navigation.title',
   listBindingKey: 'cockpitCardsList',
@@ -19,7 +19,7 @@ const contribution = createStandardContentPluginContribution({
 
 export const pluginCockpitCards: PluginDefinition = createStandardContentPluginDefinition({
   pluginId: 'cockpit-cards',
-  displayName: 'Cockpit Cards',
+  displayName: 'Kacheln',
   contribution,
   translations: pluginCockpitCardsTranslations,
 });

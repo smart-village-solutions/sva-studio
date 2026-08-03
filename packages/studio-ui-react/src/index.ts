@@ -132,4 +132,10 @@ export {
   type StudioMediaPickerUploadPhase,
 } from './studio-media-picker-overlay.js';
 export { Textarea } from './textarea.js';
+export {
+  StudioDetailCard,
+  StudioPagination,
+  type StudioDetailCardProps,
+  type StudioPaginationProps,
+} from './studio-content-editor-primitives.js';
 export { cn } from './utils.js';

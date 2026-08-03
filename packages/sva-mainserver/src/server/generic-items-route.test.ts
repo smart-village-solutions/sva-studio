@@ -115,7 +115,10 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
   it('filters FAQ reads and authorizes them with the FAQ action', async () => {
     mockAuthorizedMutation();
     state.listSvaMainserverGenericItems.mockResolvedValue({
-      data: [{ id: 'faq-1', genericType: 'FAQ' }, { id: 'generic-1', genericType: 'INFO' }],
+      data: [
+        { id: 'faq-1', genericType: 'FAQ' },
+        { id: 'generic-1', genericType: 'INFO' },
+      ],
       pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
     });
 
@@ -138,14 +141,29 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
       .mockResolvedValueOnce({
         data: [
           { id: 'generic-1', genericType: 'INFO', title: 'Allgemein' },
-          { id: 'faq-2', genericType: 'FAQ', title: 'Zweite', payload: { languageCode: 'de', sortWeight: 2 } },
+          {
+            id: 'faq-2',
+            genericType: 'FAQ',
+            title: 'Zweite',
+            payload: { languageCode: 'de', sortWeight: 2 },
+          },
         ],
         pagination: { page: 1, pageSize: 100, hasNextPage: true },
       })
       .mockResolvedValueOnce({
         data: [
-          { id: 'faq-3', genericType: 'FAQ', title: 'Erste', payload: { languageCode: 'de', sortWeight: 1 } },
-          { id: 'faq-1', genericType: 'FAQ', title: 'English', payload: { languageCode: 'en', sortWeight: 1 } },
+          {
+            id: 'faq-3',
+            genericType: 'FAQ',
+            title: 'Erste',
+            payload: { languageCode: 'de', sortWeight: 1 },
+          },
+          {
+            id: 'faq-1',
+            genericType: 'FAQ',
+            title: 'English',
+            payload: { languageCode: 'en', sortWeight: 1 },
+          },
         ],
         pagination: { page: 2, pageSize: 100, hasNextPage: false },
       });
@@ -156,9 +174,24 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
 
     await expect(response?.json()).resolves.toEqual({
       data: [
-        { id: 'faq-3', genericType: 'FAQ', title: 'Erste', payload: { languageCode: 'de', sortWeight: 1 } },
-        { id: 'faq-2', genericType: 'FAQ', title: 'Zweite', payload: { languageCode: 'de', sortWeight: 2 } },
-        { id: 'faq-1', genericType: 'FAQ', title: 'English', payload: { languageCode: 'en', sortWeight: 1 } },
+        {
+          id: 'faq-3',
+          genericType: 'FAQ',
+          title: 'Erste',
+          payload: { languageCode: 'de', sortWeight: 1 },
+        },
+        {
+          id: 'faq-2',
+          genericType: 'FAQ',
+          title: 'Zweite',
+          payload: { languageCode: 'de', sortWeight: 2 },
+        },
+        {
+          id: 'faq-1',
+          genericType: 'FAQ',
+          title: 'English',
+          payload: { languageCode: 'en', sortWeight: 1 },
+        },
       ],
       pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 3 },
     });
@@ -170,6 +203,52 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
       2,
       expect.objectContaining({ page: 2, pageSize: 100 })
     );
+  });
+
+  it('filters FAQ records by language before applying pagination', async () => {
+    mockAuthorizedMutation();
+    const englishFaqs = Array.from({ length: 26 }, (_, index) => ({
+      id: `faq-en-${String(index + 1).padStart(2, '0')}`,
+      genericType: 'FAQ',
+      title: `English ${String(index + 1).padStart(2, '0')}`,
+      payload: { languageCode: index === 25 ? 'EN' : 'en', sortWeight: index + 1 },
+    }));
+    state.listSvaMainserverGenericItems
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'faq-de-1',
+            genericType: 'FAQ',
+            title: 'Deutsch',
+            payload: { languageCode: 'de', sortWeight: 1 },
+          },
+          ...englishFaqs.slice(0, 13),
+        ],
+        pagination: { page: 1, pageSize: 100, hasNextPage: true },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          ...englishFaqs.slice(13),
+          {
+            id: 'faq-de-2',
+            genericType: 'FAQ',
+            title: 'Noch Deutsch',
+            payload: { languageCode: 'de', sortWeight: 2 },
+          },
+        ],
+        pagination: { page: 2, pageSize: 100, hasNextPage: false },
+      });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest(
+        'https://studio.test/api/v1/mainserver/faqs?page=1&pageSize=1&languageCode=%20En%20'
+      )
+    );
+
+    await expect(response?.json()).resolves.toEqual({
+      data: englishFaqs.slice(0, 25),
+      pagination: { page: 1, pageSize: 25, hasNextPage: true, total: 26 },
+    });
   });
 
   it('lists cockpit cards with their dedicated action and content type', async () => {
@@ -424,7 +503,9 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
           webUrls: [{ url: 'https://example.invalid/faq' }],
           addresses: [{ city: 'Musterhausen' }],
           contentBlocks: [{ body: '<p>Antwort</p>' }],
-          mediaContents: [{ captionText: 'Bild', sourceUrl: { url: 'https://example.invalid/image.jpg' } }],
+          mediaContents: [
+            { captionText: 'Bild', sourceUrl: { url: 'https://example.invalid/image.jpg' } },
+          ],
           dates: [{ dateStart: '2026-08-01' }],
           accessibilityInformations: [{ description: 'Lesbar' }],
           visible: false,
@@ -545,7 +626,9 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     state.deleteSvaMainserverGenericItem.mockResolvedValue({ id: 'generic-1', deleted: true });
 
     const response = await dispatchSvaMainserverGenericItemsRequest(
-      createRequest('https://studio.test/api/v1/mainserver/generic-items/generic-1', { method: 'DELETE' })
+      createRequest('https://studio.test/api/v1/mainserver/generic-items/generic-1', {
+        method: 'DELETE',
+      })
     );
 
     expect(response?.status).toBe(200);
@@ -622,7 +705,11 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     const invalidLocationsResponse = await dispatchSvaMainserverGenericItemsRequest(
       createRequest('https://studio.test/api/v1/mainserver/generic-items', {
         method: 'POST',
-        body: JSON.stringify({ title: 'Freier Eintrag', genericType: 'faq', locations: ['invalid'] }),
+        body: JSON.stringify({
+          title: 'Freier Eintrag',
+          genericType: 'faq',
+          locations: ['invalid'],
+        }),
       })
     );
 
@@ -694,7 +781,9 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     mockAuthorizedMutation();
 
     const response = await dispatchSvaMainserverGenericItemsRequest(
-      createRequest('https://studio.test/api/v1/mainserver/generic-items/generic-1', { method: 'PUT' })
+      createRequest('https://studio.test/api/v1/mainserver/generic-items/generic-1', {
+        method: 'PUT',
+      })
     );
 
     expect(response?.status).toBe(405);

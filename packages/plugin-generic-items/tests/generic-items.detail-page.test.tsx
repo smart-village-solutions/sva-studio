@@ -390,9 +390,12 @@ describe('GenericItemsDetailPage', () => {
 
     const deleteButton = await screen.findByRole('button', { name: 'Löschen' });
     fireEvent.click(deleteButton);
+    const confirmButton = screen.getAllByRole('button', { name: 'Löschen' }).at(-1)!;
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(deleteButton).toHaveProperty('disabled', true);
+      expect(confirmButton).toHaveProperty('disabled', true);
     });
 
     resolveDelete?.();

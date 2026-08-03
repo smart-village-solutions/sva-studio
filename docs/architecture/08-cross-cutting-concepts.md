@@ -640,3 +640,9 @@ Waste-Fachdaten werden in einer eigenen Datenbank pro Studio-Instanz und nicht i
 - `systemAdminGrant` ist für Tenant- und Modul-Permissions standardmäßig `true`, für Root-Permissions immer `false`.
 - Deprecation ist rein deklarativ und niemals ein Löschsignal. Destruktive Datenpflege benötigt eine eigene Migration und Freigabe.
 - Auditdaten enthalten nur IDs, Request-Korrelation und Zählwerte, keine freien Permission- oder Account-Payloads.
+
+## Einheitliche Content-Editoren
+
+FAQ, Kacheln und GenericItems verwenden für Detailnavigation, Panel-Flächen, Formularfehler, Pagination und destruktive Bestätigungen die Primitives aus `@sva/studio-ui-react`. News, Events und POIs dienen als kuratierte Verhaltensreferenzen; ihre pluginlokalen Implementierungen werden nicht kopiert. Fachliche Mapper, Feldpfade und Mainserver-Verträge bleiben in den jeweiligen Plugins beziehungsweise Host-Fassaden.
+
+Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die die Treffermenge verändern, müssen vor Sortierung, Gesamtzahl und Pagination auf der vollständigen hostseitigen Teilmenge wirken. Bestätigungsdialoge sperren während einer laufenden Mutation sowohl Bestätigen als auch Abbrechen und zeigen Fehler innerhalb des Dialogkontexts.

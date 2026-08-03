@@ -26,7 +26,7 @@
   "dependencies": {
     "@sva/plugin-sdk": "workspace:*",
     "@sva/studio-ui-react": "workspace:*",
-    "@tabler/icons-react": "^3.41.1",
+    "@tabler/icons-react": "^3.46.0",
     "exceljs": "^4.4.0",
     "react-hook-form": "^7.80.0"
   },

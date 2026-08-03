@@ -18,7 +18,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.21",
     "@tanstack/react-table": "^8.21.3",
-    "@tiptap/extension-link": "^3.27.1",
+    "@tiptap/extension-link": "^3.29.2",
     "@tiptap/react": "^3.27.1",
     "@tiptap/starter-kit": "^3.27.1",
     "class-variance-authority": "^0.7.1",

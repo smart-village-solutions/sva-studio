@@ -34,8 +34,13 @@ vi.mock('./repository.js', () => ({
 
 import {
   bindExternalContentReference,
+  createExternalContentReference,
   listExternalContentReferences,
+  loadExternalContentCore,
+  loadExternalContentReferenceByContentId,
+  loadExternalContentReferenceByOperation,
   prepareExternalContent,
+  updateExternalContentCore,
   updateExternalContentReconciliationStatus,
   withExternalContentMutationLock,
 } from './external-content-references.js';
@@ -148,5 +153,87 @@ describe('external content references', () => {
       ['tenant-1', 'reference-1']
     );
     expect(execute).toHaveBeenCalledOnce();
+  });
+
+  it('creates and loads references through both stable lookup keys', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [row] })
+      .mockResolvedValueOnce({ rows: [{ ...row, last_error_code: 'retry' }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await expect(
+      createExternalContentReference({
+        instanceId: 'tenant-1',
+        contentId: 'content-1',
+        sourceSystem: 'mainserver',
+        sourceEntityType: 'GenericItem',
+        operationExternalId: 'operation-1',
+      })
+    ).resolves.toEqual(expect.objectContaining({ operationExternalId: 'operation-1' }));
+
+    await expect(
+      loadExternalContentReferenceByContentId({
+        instanceId: 'tenant-1',
+        contentId: 'content-1',
+        sourceSystem: 'mainserver',
+        sourceEntityType: 'GenericItem',
+      })
+    ).resolves.toEqual(expect.objectContaining({ lastErrorCode: 'retry' }));
+
+    await expect(
+      loadExternalContentReferenceByOperation({
+        instanceId: 'tenant-1',
+        sourceSystem: 'mainserver',
+        sourceEntityType: 'GenericItem',
+        operationExternalId: 'missing',
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('fails closed when reference writes return no row', async () => {
+    state.query.mockResolvedValue({ rows: [] });
+
+    await expect(
+      createExternalContentReference({
+        instanceId: 'tenant-1',
+        contentId: 'content-1',
+        sourceSystem: 'mainserver',
+        sourceEntityType: 'GenericItem',
+        operationExternalId: 'operation-1',
+      })
+    ).rejects.toThrow('external_content_reference_create_failed');
+
+    await expect(
+      bindExternalContentReference({
+        instanceId: 'tenant-1',
+        referenceId: 'missing',
+        sourceEntityId: 'external-1',
+      })
+    ).rejects.toThrow('external_content_reference_not_found');
+  });
+
+  it('delegates core reads and rejects missing core updates', async () => {
+    state.loadContentById.mockResolvedValue({ id: 'content-1' });
+    await expect(loadExternalContentCore('tenant-1', 'content-1')).resolves.toEqual({
+      id: 'content-1',
+    });
+    expect(state.loadContentById).toHaveBeenCalledWith('tenant-1', 'content-1');
+
+    state.updateContent.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    const update = {
+      instanceId: 'tenant-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      contentId: 'content-1',
+      title: 'Projekt',
+      payload: { language: 'de' },
+      status: 'draft' as const,
+      authorDisplayMode: 'user' as const,
+      authorDisplayName: 'Redaktion',
+    };
+    await expect(updateExternalContentCore(update)).resolves.toBeUndefined();
+    await expect(updateExternalContentCore(update)).rejects.toThrow(
+      'external_content_core_not_found'
+    );
   });
 });

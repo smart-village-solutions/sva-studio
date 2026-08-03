@@ -308,4 +308,205 @@ describe('projects route', () => {
       expect.objectContaining({ visible: false })
     );
   });
+
+  it('returns null for unrelated paths and rejects unsupported methods', async () => {
+    prepareDefaults();
+
+    await expect(
+      dispatchSvaMainserverProjectsRequest(request('/api/v1/mainserver/news'))
+    ).resolves.toBeNull();
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', { method: 'PUT' })
+    );
+    expect(response?.status).toBe(405);
+  });
+
+  it('loads a project detail and enforces missing, deleted and unauthorized contexts', async () => {
+    prepareDefaults();
+    state.loadCore.mockResolvedValue(core);
+    state.loadReferenceByContentId.mockResolvedValue(reference);
+    state.getGenericItem.mockResolvedValue(genericItem);
+
+    const success = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`)
+    );
+    expect(success?.status).toBe(200);
+
+    state.loadCore.mockResolvedValueOnce(undefined);
+    const missing = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`)
+    );
+    expect(missing?.status).toBe(404);
+
+    state.getGenericItem.mockResolvedValueOnce({
+      ...genericItem,
+      payload: { ...genericItem.payload, deleted: true },
+    });
+    const deleted = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`)
+    );
+    expect(deleted?.status).toBe(404);
+
+    state.authorize.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Nicht erlaubt',
+    });
+    const forbidden = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects')
+    );
+    expect(forbidden?.status).toBe(403);
+  });
+
+  it('handles create preconditions, replays and conflicts without provider mutations', async () => {
+    prepareDefaults();
+    state.validateCsrf.mockReturnValueOnce(new Response(null, { status: 403 }));
+    expect(
+      (await dispatchSvaMainserverProjectsRequest(
+        request('/api/v1/mainserver/projects', { method: 'POST', body: JSON.stringify(input) })
+      ))?.status
+    ).toBe(403);
+
+    expect(
+      (await dispatchSvaMainserverProjectsRequest(
+        request('/api/v1/mainserver/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+        })
+      ))?.status
+    ).toBe(400);
+
+    state.loadReferenceByOperation.mockResolvedValue(undefined);
+    state.reserveIdempotency.mockResolvedValueOnce({
+      status: 'replay',
+      responseBody: { data: { id: contentId } },
+      responseStatus: 201,
+    });
+    const replay = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        body: JSON.stringify(input),
+      })
+    );
+    expect(replay?.status).toBe(201);
+
+    state.reserveIdempotency.mockResolvedValueOnce({ status: 'conflict', message: 'already used' });
+    const conflict = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        body: JSON.stringify(input),
+      })
+    );
+    expect(conflict?.status).toBe(409);
+    expect(state.createGenericItem).not.toHaveBeenCalled();
+  });
+
+  it('repairs a previously prepared create by its stable external id', async () => {
+    prepareDefaults();
+    state.loadReferenceByOperation.mockResolvedValue({ ...reference, sourceEntityId: undefined });
+    state.loadCore.mockResolvedValue(core);
+    state.bindReference.mockResolvedValue(reference);
+    state.listGenericItems.mockResolvedValue({
+      data: [genericItem],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(201);
+    expect(state.createGenericItem).not.toHaveBeenCalled();
+    expect(state.bindReference).toHaveBeenCalledWith(
+      expect.objectContaining({ referenceId, sourceEntityId: 'external-1' })
+    );
+    expect(state.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'COMPLETED', responseStatus: 201 })
+    );
+  });
+
+  it('completes idempotency as failed when local create preparation is unavailable', async () => {
+    prepareDefaults();
+    state.loadReferenceByOperation.mockResolvedValue(undefined);
+    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+    state.prepareExternalContent.mockRejectedValue(new Error('database_lost'));
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(503);
+    expect(state.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+        responseStatus: 503,
+        responseBody: expect.objectContaining({ error: 'database_unavailable' }),
+      })
+    );
+  });
+
+  it('rejects author impersonation and records local finalize failures', async () => {
+    prepareDefaults();
+    state.loadReferenceByOperation.mockResolvedValue(undefined);
+    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+
+    const invalidAuthor = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        body: JSON.stringify({
+          ...input,
+          author: { type: 'organization', id: 'different-org', displayName: 'Fremd' },
+        }),
+      })
+    );
+    expect(invalidAuthor?.status).toBe(400);
+
+    state.loadReferenceByContentId.mockResolvedValue(reference);
+    state.getGenericItem.mockResolvedValue(genericItem);
+    state.loadCore.mockResolvedValue(core);
+    state.updateGenericItem.mockResolvedValue(genericItem);
+    state.updateCore.mockRejectedValue(new Error('database_lost'));
+
+    const update = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+    );
+    expect(update?.status).toBe(500);
+    expect(state.updateReconciliation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'reconciliation_required',
+        errorCode: 'local_finalize_failed',
+      })
+    );
+
+    state.updateCore.mockResolvedValue(undefined);
+    state.updateGenericItem.mockRejectedValueOnce(new Error('provider_lost'));
+    const deletion = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`, { method: 'DELETE' })
+    );
+    expect(deletion?.status).toBe(500);
+    expect(state.updateReconciliation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'reconciliation_required',
+        errorCode: 'soft_delete_finalize_failed',
+      })
+    );
+  });
 });

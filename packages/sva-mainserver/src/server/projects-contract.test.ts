@@ -5,6 +5,7 @@ import {
   mapGenericItemToProject,
   mergeProjectIntoGenericItem,
   parseProjectInput,
+  validateProjectProjection,
 } from './projects-contract.js';
 
 const project = {
@@ -55,6 +56,26 @@ const existing: SvaMainserverGenericItem = {
 };
 
 describe('projects contract', () => {
+  it('parses valid input and rejects non-contiguous image positions', async () => {
+    const valid = await parseProjectInput(
+      new Request('https://studio.test/api/v1/mainserver/projects', {
+        method: 'POST',
+        body: JSON.stringify(project),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+    expect(valid).toEqual({ ...project, language: 'de', title: 'Projekt', description: 'Kurz', fullText: '<p>Text</p>' });
+
+    const invalid = await parseProjectInput(
+      new Request('https://studio.test/api/v1/mainserver/projects', {
+        method: 'POST',
+        body: JSON.stringify({ ...project, images: [{ ...project.images[0], position: 2 }] }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+    expect(invalid).toBeInstanceOf(Response);
+  });
+
   it('rejects derived and unknown mutation fields', async () => {
     const response = await parseProjectInput(
       new Request('https://studio.test/api/v1/mainserver/projects', {
@@ -174,5 +195,98 @@ describe('projects contract', () => {
     expect(mapped).not.toHaveProperty('genericType');
     expect(mapped).not.toHaveProperty('translations');
     expect(mapped).not.toHaveProperty('type');
+  });
+
+  it('preserves every hidden structured GenericItem field without transport ids', () => {
+    const merged = mergeProjectIntoGenericItem({
+      project: { ...project, status: 'archived' },
+      existing: {
+        ...existing,
+        keywords: ['klima'],
+        publicationDate: '2026-01-03T00:00:00.000Z',
+        categories: [{ id: 'category-1', name: 'Umwelt', children: [{ id: 'child-1', name: 'Klima', children: [] }] }],
+        contacts: [{ id: 'contact-1', firstName: 'Ada', webUrls: [{ id: 'web-1', url: 'https://example.test', description: 'Profil' }] }],
+        addresses: [
+          { id: '12', street: 'Markt', houseNumber: '1' },
+          { id: 'not-a-number', street: 'Nebenstraße', houseNumber: '2' },
+        ],
+        openingHours: [{ id: 'hours-1', weekday: 'monday' }],
+        priceInformations: [{ id: 'price-1', name: 'Kostenlos' }],
+        locations: [{ id: 'location-1', name: 'Rathaus' }],
+        dates: [
+          { id: 'date-1', dateStart: '2026-01-01', useOnlyTimeDescription: 'true' },
+          { id: 'date-2', dateStart: '2026-01-02' },
+        ],
+        accessibilityInformations: [{ id: 'access-1', description: 'Rampe', urls: [] }],
+      },
+    });
+
+    expect(merged).toEqual(
+      expect.objectContaining({
+        visible: false,
+        keywords: ['klima'],
+        categories: [{ name: 'Umwelt', children: [{ name: 'Klima', children: [] }] }],
+        contacts: [{ firstName: 'Ada', webUrls: [{ url: 'https://example.test', description: 'Profil' }] }],
+        addresses: [
+          { id: 12, street: 'Markt', houseNumber: '1' },
+          { street: 'Nebenstraße', houseNumber: '2' },
+        ],
+        dates: [
+          { dateStart: '2026-01-01', useOnlyTimeDescription: true },
+          { dateStart: '2026-01-02' },
+        ],
+      })
+    );
+  });
+
+  it('maps safe projection fallbacks and validates malformed responses', () => {
+    const mapped = mapGenericItemToProject({
+      item: {
+        ...existing,
+        payload: null,
+        teaser: undefined,
+        contentBlocks: [],
+        mediaContents: [{ sourceUrl: undefined }],
+      },
+      core: {
+        id: 'local-1',
+        contentType: 'projects.project',
+        instanceId: 'tenant-1',
+        ownerUserId: 'person-1',
+        title: 'Projekt',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        createdBy: 'account-1',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        updatedBy: 'account-1',
+        authorDisplayMode: 'user',
+        author: 'Ada',
+        payload: {},
+        status: 'invalid' as 'draft',
+        validationState: 'valid',
+        historyRef: 'history-1',
+      },
+    });
+
+    expect(mapped).toEqual(
+      expect.objectContaining({
+        language: '',
+        description: '',
+        fullText: '',
+        status: 'draft',
+        published: false,
+        author: { type: 'person', id: 'person-1', displayName: 'Ada' },
+        images: [{ url: '', altText: '', position: 0 }],
+      })
+    );
+    expect(validateProjectProjection(mapped)).toBeInstanceOf(Response);
+    expect(
+      validateProjectProjection({
+        ...mapped,
+        language: 'de',
+        description: 'Kurz',
+        fullText: '<p>Text</p>',
+        images: [],
+      })
+    ).toBeNull();
   });
 });

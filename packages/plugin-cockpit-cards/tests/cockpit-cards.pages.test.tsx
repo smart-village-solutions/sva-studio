@@ -188,6 +188,46 @@ describe('cockpit cards pages', () => {
     await screen.findByText('messages.saveErrorWithReason');
   });
 
+  it('routes validation summaries to the affected tab and reports delete failures', async () => {
+    const { CockpitCardsCreatePage, CockpitCardsEditPage } =
+      await import('../src/cockpit-cards.pages.js');
+    const create = render(<CockpitCardsCreatePage />);
+    await screen.findByRole('option', { name: 'Startseite' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
+    expect(await screen.findByText('messages.validationError')).toBeTruthy();
+    expect(
+      screen.getByRole('tab', { name: 'tabs.content.label' }).getAttribute('aria-selected')
+    ).toBe('true');
+    fireEvent.change(screen.getByLabelText('fields.heading'), { target: { value: 'Kachel' } });
+    fireEvent.change(screen.getByLabelText('fields.category'), { target: { value: 'Startseite' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'tabs.content.label' }).getAttribute('aria-selected')).toBe(
+        'true'
+      )
+    );
+    create.unmount();
+
+    state.params = { id: 'card-1' };
+    state.get.mockResolvedValue(record);
+    state.delete.mockRejectedValue(new Error('delete failed'));
+    render(<CockpitCardsEditPage />);
+    await screen.findByDisplayValue('Bestehende Karte');
+    fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
+    fireEvent.click(screen.getByRole('button', { name: 'deleteDialog.confirm' }));
+    expect(await screen.findByText('messages.deleteError')).toBeTruthy();
+  });
+
+  it('uses the generic save error for non-Error rejections', async () => {
+    state.create.mockRejectedValue('save failed');
+    const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
+    render(<CockpitCardsCreatePage />);
+    await screen.findByRole('option', { name: 'Startseite' });
+    fillRequiredFields();
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
+    expect(await screen.findByText('messages.saveError')).toBeTruthy();
+  });
+
   it('selects, reorders, removes and uploads images', async () => {
     state.upload.mockResolvedValue({ previewUrl: 'https://example.test/upload.jpg' });
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
@@ -201,6 +241,8 @@ describe('cockpit cards pages', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.moveImageUp' })[1]!);
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.removeImage' })[1]!);
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [] } });
+    expect(state.upload).not.toHaveBeenCalled();
     fireEvent.change(input, {
       target: { files: [new File(['image'], 'upload.png', { type: 'image/png' })] },
     });
@@ -235,6 +277,22 @@ describe('cockpit cards pages', () => {
     state.history.mockRejectedValue(new Error('history failed'));
     render(<CockpitCardsHistory contentId="card-1" />);
     expect(await screen.findByText('history.error')).toBeTruthy();
+  });
+
+  it('formats every known history action and falls back to stored values', async () => {
+    state.history.mockResolvedValue([
+      { id: 'h1', createdAt: '', action: 'created', actor: 'Ada', summary: 'Angelegt', changedFields: [] },
+      { id: 'h2', createdAt: '', action: 'updated', actor: 'Ada', summary: 'Geändert', changedFields: [] },
+      { id: 'h3', createdAt: '', action: 'status_changed', actor: 'Ada', summary: 'Status', changedFields: [] },
+      { id: 'h4', createdAt: '', action: 'imported', actor: 'Ada', summary: 'Import', changedFields: [] },
+    ]);
+    const { CockpitCardsHistory } = await import('../src/cockpit-cards.pages.js');
+    render(<CockpitCardsHistory contentId="card-1" />);
+    expect(await screen.findByText('history.actions.created')).toBeTruthy();
+    expect(screen.getByText('history.actions.updated')).toBeTruthy();
+    expect(screen.getByText('history.actions.statusChanged')).toBeTruthy();
+    expect(screen.getByText('imported')).toBeTruthy();
+    expect(screen.getByText('Angelegt')).toBeTruthy();
   });
 
   it('renders list loading, data, empty and error states with normalized pagination', async () => {

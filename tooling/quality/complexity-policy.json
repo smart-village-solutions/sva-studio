@@ -3592,6 +3592,48 @@
       "status": "open",
       "summary": "Provisionierungsstatus aus dem Waste-Einstellungspanel in eine Teilkomponente ausgliedern"
     },
+    "packages-default:packages/plugin-projects/src/index.ts:publicExports": {
+      "ticketId": "QUAL-PROJECTS-COMPLEXITY-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Öffentliche Projekt-API bei wachsendem Vertrag in fokussierte Einstiegspunkte gliedern"
+    },
+    "packages-default:packages/plugin-projects/src/projects.pages.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-PROJECTS-COMPLEXITY-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Projektseiten in kleinere Listen-, Editor- und Medienbausteine aufteilen"
+    },
+    "packages-default:packages/plugin-projects/src/projects.pages.tsx:fileLines": {
+      "ticketId": "QUAL-PROJECTS-COMPLEXITY-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Projektseiten in kleinere Listen-, Editor- und Medienbausteine aufteilen"
+    },
+    "packages-default:packages/plugin-projects/src/projects.pages.tsx:functionLines": {
+      "ticketId": "QUAL-PROJECTS-COMPLEXITY-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Projekteditor in fokussierte Formularsektionen aufteilen"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/projects-route.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-PROJECTS-COMPLEXITY-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Projekt-Routenlogik in fokussierte Lifecycle- und Mapping-Funktionen gliedern"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/projects-route.ts:fileLines": {
+      "ticketId": "QUAL-PROJECTS-COMPLEXITY-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Projekt-Routenlogik in fokussierte Lifecycle- und Mapping-Module gliedern"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/projects-route.ts:functionLines": {
+      "ticketId": "QUAL-PROJECTS-COMPLEXITY-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Projekt-Create-Lifecycle in kleinere Ablaufbausteine aufteilen"
+    },
     "packages-default:packages/server-runtime/src/external-interfaces.server.ts:fileLines": {
       "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
       "ticketSystem": "backlog",

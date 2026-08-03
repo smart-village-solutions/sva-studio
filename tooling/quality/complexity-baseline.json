@@ -136,6 +136,30 @@
       "cyclomaticComplexity": 0,
       "publicExports": 11
     },
+    "packages/plugin-projects/src/index.ts": {
+      "moduleId": "packages-default",
+      "filePath": "packages/plugin-projects/src/index.ts",
+      "fileLines": 36,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 24
+    },
+    "packages/plugin-projects/src/projects.pages.tsx": {
+      "moduleId": "packages-default",
+      "filePath": "packages/plugin-projects/src/projects.pages.tsx",
+      "fileLines": 518,
+      "functionLines": 217,
+      "cyclomaticComplexity": 26,
+      "publicExports": 3
+    },
+    "packages/sva-mainserver/src/server/projects-route.ts": {
+      "moduleId": "sva-mainserver",
+      "filePath": "packages/sva-mainserver/src/server/projects-route.ts",
+      "fileLines": 633,
+      "functionLines": 131,
+      "cyclomaticComplexity": 21,
+      "publicExports": 1
+    },
     "packages/sva-mainserver/src/server/generic-items-route-cockpit-cards.ts": {
       "moduleId": "sva-mainserver",
       "filePath": "packages/sva-mainserver/src/server/generic-items-route-cockpit-cards.ts",

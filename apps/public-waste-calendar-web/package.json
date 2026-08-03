@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
-    "@tailwindcss/vite": "4.3.2",
+    "@tailwindcss/vite": "4.3.3",
     "@testing-library/react": "^16.2.0",
     "@types/pg": "^8.15.5",
     "@types/react": "^19.2.0",

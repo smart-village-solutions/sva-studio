@@ -70,7 +70,7 @@
     "@browserbasehq/stagehand": "3.6.0",
     "@codecov/rollup-plugin": "^2.0.1",
     "@playwright/test": "^1.62.1",
-    "@tailwindcss/vite": "4.3.2",
+    "@tailwindcss/vite": "4.3.3",
     "@tanstack/devtools-vite": "^0.8.1",
     "@tanstack/router-plugin": "^1.168.11",
     "@testing-library/react": "^16.2.0",

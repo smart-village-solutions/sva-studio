@@ -17,6 +17,9 @@ export const pluginsENResources = {
   'cockpit-cards': {
     description: 'Publishes categorized cockpit cards with text, images, and a related link.',
   },
+  projects: {
+    description: 'Publishes featured projects with editorial text and an ordered image gallery.',
+  },
   categories: {
     description:
       'Provides Mainserver categories as an editorial companion module for news, events, and places.',

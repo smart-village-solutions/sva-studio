@@ -35,6 +35,7 @@ import { createFetchWithRetry, createGraphqlExecutor } from './service-internals
 import { createGenericItemOperations } from './service-internals/generic-item-operations.js';
 import { createNewsOperations } from './service-internals/news-operations.js';
 import { createNewsVisibilityOperations } from './service-internals/news-visibility-operations.js';
+import { createGenericItemVisibilityOperations } from './service-internals/generic-item-visibility-operations.js';
 import { buildLogContext, logger, withObservedHop } from './service-internals/observability.js';
 import { createPoiOperations } from './service-internals/poi-operations.js';
 import { createProjectionListOperations } from './service-internals/projection-list-operations.js';
@@ -226,6 +227,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
 
   const newsOperations = createNewsOperations(executeGraphqlWithConfig);
   const newsVisibilityOperations = createNewsVisibilityOperations(executeGraphqlWithConfig);
+  const genericItemVisibilityOperations = createGenericItemVisibilityOperations(executeGraphqlWithConfig);
   const eventOperations = createEventOperations(executeGraphqlWithConfig);
   const eventVisibilityOperations = createEventVisibilityOperations(executeGraphqlWithConfig);
   const genericItemOperations = createGenericItemOperations(executeGraphqlWithConfig);
@@ -420,6 +422,16 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     };
   };
 
+  const changeGenericItemVisibility = async (
+    input: SvaMainserverConnectionInput & {
+      readonly genericItemId: string;
+      readonly visible: boolean;
+    }
+  ) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    await genericItemVisibilityOperations.changeGenericItemVisibilityWithConfig(input, config);
+  };
+
   const getGenericItem = async (input: SvaMainserverConnectionInput & { readonly genericItemId: string }) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return genericItemOperations.getGenericItemWithConfig(input, config);
@@ -607,6 +619,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     createSurvey,
     changeNewsVisibility,
     changeEventVisibility,
+    changeGenericItemVisibility,
     deleteEvent,
     deleteGenericItem,
     deleteNews,
@@ -717,6 +730,13 @@ export const listSvaMainserverGenericItems = (input: SvaMainserverConnectionInpu
 
 export const getSvaMainserverGenericItem = (input: SvaMainserverConnectionInput & { readonly genericItemId: string }) =>
   getDefaultService().getGenericItem(input);
+
+export const changeSvaMainserverGenericItemVisibility = (
+  input: SvaMainserverConnectionInput & {
+    readonly genericItemId: string;
+    readonly visible: boolean;
+  }
+) => getDefaultService().changeGenericItemVisibility(input);
 
 export const createSvaMainserverGenericItem = (
   input: SvaMainserverConnectionInput & { readonly genericItem: SvaMainserverGenericItemInput }

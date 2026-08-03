@@ -20,6 +20,7 @@ export const adminBootstrapInstancesAdminENResources = {
     genericItems: 'Generic items',
     faq: 'FAQ',
     cockpitCards: 'Cockpit Cards',
+    projects: 'Projects',
     poi: 'POI',
     media: 'Media',
     surveys: 'Surveys',

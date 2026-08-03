@@ -7,6 +7,7 @@ import { FaqCreatePage, FaqEditPage, FaqListPage } from '@sva/plugin-faq';
 import { GenericItemsCreatePage, GenericItemsEditPage } from '@sva/plugin-generic-items';
 import { NewsDetailPage, NewsEditPage, type NewsAuthorControl } from '@sva/plugin-news';
 import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi';
+import { ProjectsCreatePage, ProjectsEditPage, ProjectsListPage } from '@sva/plugin-projects';
 import { SurveyCreatePage, SurveyEditPage } from '@sva/plugin-surveys';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
@@ -208,6 +209,9 @@ type StudioAppRouteBindings = BaseAppRouteBindings & {
   readonly cockpitCardsList: React.ComponentType;
   readonly cockpitCardsDetail: React.ComponentType;
   readonly cockpitCardsEditor: React.ComponentType;
+  readonly projectsList: React.ComponentType;
+  readonly projectsDetail: React.ComponentType;
+  readonly projectsEditor: React.ComponentType;
   readonly genericItemsEditor: React.ComponentType;
   readonly poiList: React.ComponentType;
   readonly poiDetail: React.ComponentType;
@@ -406,6 +410,9 @@ export const appRouteBindings: StudioAppRouteBindings = {
   cockpitCardsList: CockpitCardsListPage,
   cockpitCardsDetail: CockpitCardsEditPage,
   cockpitCardsEditor: CockpitCardsCreatePage,
+  projectsList: ProjectsListPage,
+  projectsDetail: ProjectsEditPage,
+  projectsEditor: ProjectsCreatePage,
   poiList: ContentListPage,
   poiDetail: PoiEditRoutePage,
   poiEditor: PoiCreateRoutePage,

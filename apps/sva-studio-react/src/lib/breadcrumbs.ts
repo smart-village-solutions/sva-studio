@@ -179,6 +179,22 @@ const breadcrumbRoutes: ReadonlyArray<
     ],
   },
   {
+    pattern: /^\/admin\/projects\/new$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('projects.editor.createTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/projects\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('projects.editor.editTitle') },
+    ],
+  },
+  {
     pattern: /^\/admin\/surveys\/new$/,
     build: () => [
       overviewBreadcrumb(),

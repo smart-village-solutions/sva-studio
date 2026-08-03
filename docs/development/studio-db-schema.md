@@ -201,6 +201,7 @@ Host-seitiges Kernmodell für Inhalte und ihre führende Listenprojektion:
 - `iam.content_history`
 - `iam.content_list_projection`
 - `iam.content_list_projection_sync_state`
+- `iam.external_content_references`
 
 Kernidee:
 
@@ -216,6 +217,7 @@ Kernidee:
 - `author_display_mode` (`organization` oder `user`) steuert die fachliche sichtbare Autorenanzeige; `author_display_name` bleibt der persistierte Anzeige-Snapshot.
 - `source_data_provider_id`, `source_data_provider_name` und `credential_source` beschreiben bei Mainserver-Projektionen die externe Veröffentlichungsidentität und verwendete Credential-Quelle. Diese Felder setzen keine IAM-Ownership.
 - `owner_subject_id` bleibt nur noch Legacy-Kompatibilitätsfeld und ist nicht mehr maßgeblich für Autorisierung.
+- `external_content_references` verbindet einen lokalen Content-Core-Datensatz eindeutig mit einer externen Entität. Die stabile Operations-ID ermöglicht Repair nach verlorenen Providerantworten; `reconciliation_status` unterscheidet offene, gebundene, reparaturbedürftige und fehlgeschlagene Zustände. Instanz-, Operations- und externe Quellschlüssel verhindern Doppelbindungen, während RLS die Mandantentrennung erzwingt.
 
 ### 7. Media-Management
 

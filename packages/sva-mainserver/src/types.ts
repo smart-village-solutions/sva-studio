@@ -560,6 +560,40 @@ export type SvaMainserverGenericItem = {
   readonly updatedAt: string;
 };
 
+export type SvaMainserverProjectStatus = 'draft' | 'published' | 'archived';
+
+export type SvaMainserverProjectAuthor =
+  | Readonly<{ type: 'organization'; id: string; displayName: string }>
+  | Readonly<{ type: 'person'; id: string; displayName: string }>;
+
+export type SvaMainserverProjectImage = Readonly<{
+  url: string;
+  altText: string;
+  caption?: string;
+  credits?: string;
+  position: number;
+}>;
+
+export type SvaMainserverProjectInput = Readonly<{
+  language: string;
+  title: string;
+  description: string;
+  fullText: string;
+  images: readonly SvaMainserverProjectImage[];
+  status: SvaMainserverProjectStatus;
+  author: SvaMainserverProjectAuthor;
+}>;
+
+export type SvaMainserverProject = SvaMainserverProjectInput &
+  Readonly<{
+    id: string;
+    published: boolean;
+    publishedAt?: string;
+    deleted: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+
 export type SvaMainserverLocalizedText = Readonly<Record<string, string>>;
 
 export type SvaMainserverSurveyStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';

@@ -20,6 +20,7 @@ export const adminBootstrapInstancesAdminDEResources = {
     genericItems: 'Generische Inhalte',
     faq: 'FAQ',
     cockpitCards: 'Kacheln',
+    projects: 'Projekte',
     poi: 'POI',
     media: 'Medien',
     surveys: 'Umfragen',

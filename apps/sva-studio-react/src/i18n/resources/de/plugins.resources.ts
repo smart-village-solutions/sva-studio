@@ -17,6 +17,9 @@ export const pluginsDEResources = {
   'cockpit-cards': {
     description: 'Veröffentlicht kategorisierte Kacheln mit Text, Bildern und weiterführendem Link.',
   },
+  projects: {
+    description: 'Veröffentlicht hervorgehobene Projekte mit Texten und einer geordneten Bildergalerie.',
+  },
   categories: {
     description:
       'Stellt die Mainserver-Kategorien als redaktionelles Begleitmodul für Nachrichten, Veranstaltungen und Orte bereit.',

@@ -77,6 +77,7 @@ Abhängigkeiten des aktuellen Systems.
 - dedizierte Integrationsschicht für OAuth2, GraphQL-Transport, Fehlerabbildung und Fachadapter
 - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
 - exportiert die kanonischen serverseitigen Host-Verträge für Mainserver-News, -Events, -POI und die Schnittstellenverwaltung; `apps/sva-studio-react` hält dafür nur dünne Request- und TanStack-Adapter
+- kapselt Featured Projects als Mainserver-`GenericItem` mit `genericType: "PROJECT"`; der lokale `iam.contents`-Core bleibt für Lifecycle und Autorenschaft führend und wird über `iam.external_content_references` eindeutig an die externe Entität gebunden
 - kapselt zusätzlich den getypten Schreibpfad für Mainserver-Static-Content wie `wasteTypes` über `createOrUpdateStaticContent`, ohne Browser- oder Plugin-Code direkt an GraphQL zu koppeln
 - liest seine instanzbezogene Endpunktkonfiguration nicht mehr aus einer Mainserver-Spezialtabelle, sondern aus der zentralen External-Interface-Registry
 - hält `src/server/service.ts` bewusst als schlanke Fassade; Credentials, Token, GraphQL-Transport, Sichtbarkeits-Pagination, Mapper und ressourcenspezifische Operationen liegen in getrennten internen Modulen unter `src/server/service-internals/`

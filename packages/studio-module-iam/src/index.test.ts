@@ -19,6 +19,7 @@ describe('@sva/studio-module-iam', () => {
       'generic-items',
       'faq',
       'cockpit-cards',
+      'projects',
       'surveys',
       'waste-management',
     ]);
@@ -31,6 +32,7 @@ describe('@sva/studio-module-iam', () => {
       'generic-items',
       'faq',
       'cockpit-cards',
+      'projects',
       'surveys',
       'waste-management',
       'media',
@@ -143,6 +145,18 @@ describe('@sva/studio-module-iam', () => {
       namespace: 'cockpit-cards',
       ownerPluginId: 'cockpit-cards',
       permissionIds: ['cockpit-cards.read', 'cockpit-cards.create', 'cockpit-cards.update', 'cockpit-cards.delete'],
+    });
+    expect(getStudioModuleIamContract('projects')).toMatchObject({
+      moduleId: 'projects',
+      namespace: 'projects',
+      ownerPluginId: 'projects',
+      permissionIds: ['projects.read', 'projects.create', 'projects.update', 'projects.delete'],
+      tenantBootstrapRoles: [
+        {
+          roleName: 'system_admin',
+          permissionIds: ['projects.read', 'projects.create', 'projects.update', 'projects.delete'],
+        },
+      ],
     });
     expect(getStudioModuleIamContract('surveys')).toMatchObject({
       moduleId: 'surveys',

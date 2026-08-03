@@ -13,6 +13,7 @@ const deleteEventMock = vi.fn();
 const deleteFaqMock = vi.fn();
 const deletePoiMock = vi.fn();
 const deleteSurveyMock = vi.fn();
+const deleteProjectMock = vi.fn();
 const navigateMock = vi.fn();
 let searchState: Record<string, unknown> = {};
 const DEFAULT_VISIBLE_TYPES = [
@@ -143,6 +144,10 @@ vi.mock('@sva/plugin-surveys', () => ({
   deleteSurvey: (...args: unknown[]) => deleteSurveyMock(...args),
 }));
 
+vi.mock('@sva/plugin-projects', () => ({
+  deleteProject: (...args: unknown[]) => deleteProjectMock(...args),
+}));
+
 vi.mock('../../lib/plugins', () => ({
   studioContentTypes: mockedStudioContentTypes,
 }));
@@ -169,6 +174,7 @@ describe('ContentListPage', () => {
     deleteFaqMock.mockReset();
     deletePoiMock.mockReset();
     deleteSurveyMock.mockReset();
+    deleteProjectMock.mockReset();
     navigateMock.mockReset();
     searchState = {};
     useAuthMock.mockReturnValue({

@@ -299,6 +299,12 @@ vi.mock('@sva/plugin-generic-items', () => ({
   GenericItemsEditPage: () => <div data-testid="generic-items-edit-page" />,
 }));
 
+vi.mock('@sva/plugin-projects', () => ({
+  ProjectsCreatePage: () => <div data-testid="projects-create-page" />,
+  ProjectsEditPage: () => <div data-testid="projects-edit-page" />,
+  ProjectsListPage: () => <div data-testid="projects-list-page" />,
+}));
+
 vi.mock('@sva/plugin-poi', () => ({
   PoiCreatePage: ({ instanceId }: { instanceId?: string }) => <div data-testid="poi-create-page">{instanceId ?? ''}</div>,
   PoiEditPage: ({ instanceId }: { instanceId?: string }) => <div data-testid="poi-edit-page">{instanceId ?? ''}</div>,
@@ -776,6 +782,18 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.genericItemsDetail />);
     expect(screen.getByTestId('generic-items-edit-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.projectsList />);
+    expect(screen.getByTestId('projects-list-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.projectsEditor />);
+    expect(screen.getByTestId('projects-create-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.projectsDetail />);
+    expect(screen.getByTestId('projects-edit-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.poiList />);

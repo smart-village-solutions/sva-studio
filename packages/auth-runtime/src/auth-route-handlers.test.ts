@@ -213,8 +213,12 @@ describe('meHandler', () => {
       cacheStatus: 'hit',
       snapshotVersion: 'snap-1',
     });
-    mocks.withRegistryRepository.mockImplementation(async (handler: (repository: { listAssignedModules: (instanceId: string) => Promise<string[]> }) => Promise<unknown>) =>
+    mocks.withRegistryRepository.mockImplementation(async (handler: (repository: {
+      getInstanceById: (instanceId: string) => Promise<{ displayName: string }>;
+      listAssignedModules: (instanceId: string) => Promise<string[]>;
+    }) => Promise<unknown>) =>
       handler({
+        getInstanceById: async () => ({ displayName: 'Tenant Test' }),
         listAssignedModules: async () => ['news'],
       })
     );
@@ -264,12 +268,14 @@ describe('meHandler', () => {
         id: string;
         assignedModules: string[];
         groups: IamUserGroupAssignment[];
+        instanceDisplayName?: string;
         permissionActions: string[];
       };
     };
 
     expect(payload.user.id).toBe('kc-user-1');
     expect(payload.user.assignedModules).toEqual(['news']);
+    expect(payload.user.instanceDisplayName).toBe('Tenant Test');
     expect(payload.user.groups).toEqual([
       {
         groupId: 'group-1',

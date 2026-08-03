@@ -48,6 +48,7 @@ import {
 type SessionUser = {
   id: string;
   instanceId?: string;
+  instanceDisplayName?: string;
   assignedModules?: string[];
   groups?: readonly IamUserGroupAssignment[];
   keycloakRoles?: string[];

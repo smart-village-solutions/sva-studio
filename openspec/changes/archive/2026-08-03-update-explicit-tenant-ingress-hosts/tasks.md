@@ -21,4 +21,4 @@
 - [x] 3.3 `docs/architecture/06-runtime-view.md` um den Ingress-/Registry-/TLS-Aktivierungsablauf aktualisieren.
 - [x] 3.4 `docs/architecture/07-deployment-view.md` auf das tatsächlich betriebene explizite Hostrouting aktualisieren.
 - [x] 3.5 Sicherheits- und Betriebsgrenzen in `docs/architecture/08-cross-cutting-concepts.md` sowie Skalierungsrisiko in `docs/architecture/11-risks-and-technical-debt.md` dokumentieren.
-- [ ] 3.6 Dev, Staging und Production ausschließlich über den kanonischen GitHub-Actions-Pfad ausrollen und die jeweiligen Post-Deploy-Smokes dokumentieren.
+- [x] 3.6 Dev, Staging und Production ausschließlich über den kanonischen GitHub-Actions-Pfad ausrollen und die jeweiligen Post-Deploy-Smokes dokumentieren.

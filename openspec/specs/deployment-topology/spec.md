@@ -245,20 +245,21 @@ Das System SHALL `quantum-cli` im Regelbetrieb auf mutierende Rollout- und Job-P
 
 ### Requirement: Mutationen laufen in einem deterministischen Operator-Kontext
 
-Das System SHALL mutierende Remote-Operationen in einem deterministischen, umgebungsgebundenen Kontext ausführen.
+Das System SHALL mutierende Remote-Operationen in einem deterministischen, umgebungsgebundenen Kontext ausführen, ohne einen wirkungslosen Wartungsfenster-Verweis als Pflichtfeld zu verwenden.
 
-#### Scenario: Staging-Run erfordert explizite Freigabe und Wartungsfenster
+#### Scenario: Staging-Run verwendet die Environment-Freigabe ohne Wartungsfenster
 
-- **WHEN** `Promote` für `staging` mit `migration_mode=run` ausgeführt wird
+- **WHEN** `Promote` für `staging` mit `migration_mode=run` oder `bootstrap_mode=run` ausgeführt wird
 - **THEN** ist das GitHub-Environment `staging` freigegeben
-- **AND** enthält `maintenance_window` einen nicht-sensitiven revisionsfähigen Wartungsfenster-Verweis
 - **AND** dürfen die benötigten mutierenden Credentials nur aus diesem Environment bezogen werden
+- **AND** benötigt der Lauf keinen Wartungsfenster-Verweis
 
 #### Scenario: Production-Run verwendet den Staging-erprobten Ablauf
 
 - **WHEN** `Promote` für `prod` mit `migration_mode=run` oder `bootstrap_mode=run` aufgerufen wird
 - **THEN** verwendet der Workflow dieselbe Reihenfolge und dieselben gehärteten One-shot-Executors wie Staging
-- **AND** erfordert er vor der Mutation ein erfolgreiches Artifact eines abgeschlossenen mutierenden Staging-Pfads für exakt dasselbe Digest, ein revisionsfähiges Wartungsfenster und ein erfolgreiches Backup
+- **AND** erfordert er vor der Mutation ein erfolgreiches Artifact eines abgeschlossenen mutierenden Staging-Pfads für exakt dasselbe Digest und ein erfolgreiches Backup
+- **AND** benötigt der Lauf keinen Wartungsfenster-Verweis
 - **AND** blockiert er den App-Deploy bei Backup-, One-shot-, Postcondition- oder Verify-Fehlern
 - **AND** bleibt der vorhandene Production-App-only-Deploy mit unveränderlichem Digest unverändert verfügbar
 
@@ -395,13 +396,13 @@ Das System SHALL für reguläre Studio-Rollouts Migration und Bootstrap ausschli
 
 - **WHEN** `Promote` für Staging oder Production Migration oder Bootstrap im Modus `run` ausführt
 - **THEN** laufen Backup, Migration, Bootstrap und Postconditions kontrolliert vor dem App-Deploy
-- **AND** dokumentiert die GitHub-Evidenz Modi und vorgeschriebene Wartungsfenster-Referenz
+- **AND** dokumentiert die GitHub-Evidenz die Modi, Commit, Ziel-Digest und Phasenstatus ohne Wartungsfenster-Verweis
 - **AND** bleibt Schema-Recovery auf dokumentierten Roll-forward, kompatiblen App-Digest-Rollback oder explizit freigegebenen Restore beschränkt
 
-#### Scenario: Hostname-Bootstrap fuer erlaubte Testinstanzen
+#### Scenario: Hostname-Bootstrap für erlaubte Testinstanzen
 
 - **WHEN** `Promote` oder ein genehmigter lokaler Recovery-Pfad Bootstrap ausführt
-- **THEN** werden erlaubte Testinstanzen und ihre primaeren Hostnames idempotent sichergestellt
+- **THEN** werden erlaubte Testinstanzen und ihre primären Hostnames idempotent sichergestellt
 - **AND** fehlende Hostname-Mappings werden als Diagnose sichtbar
 
 ### Requirement: Env-gesteuerte Allowlist fuer gueltige Instanz-Hosts
@@ -615,7 +616,7 @@ Das System SHALL für jeden mutierenden Staging-Promote redigierte, menschen- un
 #### Scenario: Evidenz verknüpft Zielartefakt und Phasen
 
 - **WHEN** ein Staging-Promote endet, unabhängig von Erfolg oder Fehlschlag
-- **THEN** enthalten Step Summary und maschinenlesbare Artefakte Commit, Ziel-Digest, vorherigen Live-Digest, Wartungsfenster-Verweis, Phasenstatus, Job-/Task-IDs, Cleanup, Postflight und Recovery-Hinweis
+- **THEN** enthalten Step Summary und maschinenlesbare Artefakte Commit, Ziel-Digest, vorherigen Live-Digest, Phasenstatus, Job-/Task-IDs, Cleanup, Postflight und Recovery-Hinweis
 - **AND** enthalten sie weder `.env`-Inhalte, `APP_CONFIG`, Secrets, unredigierte Remote-Logs noch personenbezogene Daten
 
 #### Scenario: Datenbankmigration wird nicht automatisch zurückgerollt
@@ -623,7 +624,6 @@ Das System SHALL für jeden mutierenden Staging-Promote redigierte, menschen- un
 - **WHEN** eine Staging-Migration erfolgreich war, der nachfolgende App-Deploy oder Postflight aber fehlschlägt
 - **THEN** startet der Workflow kein automatisches Datenbank-Rollback
 - **AND** hält er den vorigen App-Digest und einen dokumentierten Recovery-Hinweis fest
-- **AND** erfordert eine nicht rückwärtskompatible Migration weiterhin einen separaten Restore-Plan
 
 ### Requirement: Kontrollierter Datenbank-Vollrestore über den Backup-Agenten
 
@@ -664,4 +664,83 @@ Das System SHALL nach einem erfolgreichen Datenbank-Vollrestore die Wiederherste
 - **THEN** markiert der Agent den Restore als fehlgeschlagenen Recovery-Vorgang
 - **AND** beendet er den Wartungsmodus nicht automatisch
 - **AND** dokumentiert er die Fehlerklasse sowie den vorhandenen Sicherheitsdump ohne Secrets oder Datenbankinhalte
+
+### Requirement: Explizite Ingress-Freigabe für betriebene Tenant-Hosts
+
+Das System SHALL bis zu einer separat spezifizierten Wildcard-TLS-Lösung ausschließlich explizit konfigurierte Tenant-Hosts über den Studio-Ingress veröffentlichen und für jeden veröffentlichten Host ein durch den vorhandenen Traefik Certificate Resolver verwaltetes Einzelzertifikat verwenden.
+
+#### Scenario: Dev veröffentlicht genau einen Tenant-Host
+
+- **WHEN** das Dev-Deployment gerendert oder ausgerollt wird
+- **THEN** routet der App-Service `studio-dev.smart-village.app`
+- **AND** routet er `de-teststadt-dev.studio-dev.smart-village.app`
+- **AND** enthält die Dev-Ingress-Konfiguration keinen weiteren Tenant-Host
+
+#### Scenario: Staging veröffentlicht genau den Sandbox-Tenant
+
+- **WHEN** das Staging-Deployment gerendert oder ausgerollt wird
+- **THEN** routet der App-Service `studio-staging.smart-village.app`
+- **AND** routet er `de-studio-sandbox.studio-staging.smart-village.app`
+- **AND** enthält die Staging-Ingress-Konfiguration keinen weiteren Tenant-Host
+
+#### Scenario: Production verwendet eine bestätigte Hostliste
+
+- **WHEN** das Production-Deployment gerendert oder ausgerollt wird
+- **THEN** routet der App-Service `studio.smart-village.app`
+- **AND** routet er ausschließlich die folgenden Tenant-IDs unter `<instanceId>.studio.smart-village.app`: `bb-ahrensfelde`, `bb-amt-schlieben`, `bb-angermuende`, `bb-bad-belzig`, `bb-bernau`, `bb-birkenwerder`, `bb-briesen`, `bb-dahme-spreewald`, `bb-eberswalde`, `bb-eisenhuettenstadt`, `bb-falkenberg-elster`, `bb-frankfurt-oder`, `bb-gransee`, `bb-gruenheide`, `bb-guben`, `bb-havelland`, `bb-herzberg-elster`, `bb-hohen-neuendorf`, `bb-kloster-lehnin`, `bb-koenigs-wusterhausen`, `bb-kyritz`, `bb-michendorf`, `bb-neuzelle`, `bb-nuthetal`, `bb-oberspreewald-lausitz`, `bb-panketal`, `bb-petershagen-eggersdorf`, `bb-prenzlau`, `bb-prignitz`, `bb-ruedersdorf`, `bb-schoenefeld`, `bb-seelow`, `bb-spremberg`, `bb-storkow`, `bb-uckermark`, `bb-wandlitz`, `bw-kommone`, `by-amorbach`, `by-augsburg`, `de-musterhausen`, `de-studio-sandbox`, `demo`, `eichenzell`, `hb-meinquartier`, `he-kassel`, `mv-crivitz`, `mv-hagenow`, `ni-goslar`, `ni-harsum`, `ni-lehrte`, `ni-osnabrueck`, `ni-papenburg`, `ni-wittingen`, `nrw-detmold`, `nrw-legden`, `rp-linz-am-rhein`, `sh-kiel`, `sh-nordapp`, `sl-sankt-wendel`, `st-arneburg-goldbeck`, `st-magdeburg`, `st-wittenberg`, `st-zeitz`
+- **AND** blockiert das Gate fehlende, doppelte oder syntaktisch ungültige Listeneinträge
+
+#### Scenario: Expliziter Host erhält ein Einzelzertifikat
+
+- **WHEN** ein Root- oder Tenant-Host in einer Studio-Routerregel freigegeben wird
+- **THEN** ist der vorhandene Traefik Certificate Resolver für diesen Router aktiviert
+- **AND** wird der konkrete Host über einen expliziten `Host(...)`-Matcher als ACME-Domain ableitbar
+- **AND** muss die externe Verifikation ein für den Host gültiges Zertifikat nachweisen
+
+#### Scenario: Wildcard-TLS bleibt außerhalb des Übergangsprofils
+
+- **WHEN** die Ingress- oder TLS-Konfiguration dieses Betriebsprofils bewertet wird
+- **THEN** benötigt der Studio-Stack weder DNS-01 noch AutoDNS-Credentials
+- **AND** setzt er kein Wildcard-Zertifikat voraus
+- **AND** darf ein generischer `HostRegexp`-Router die explizite Tenant-Hostfreigabe nicht ersetzen
+
+### Requirement: Tenant-Aktivierung berücksichtigt externe Hostbereitschaft
+
+Das System SHALL Registry-Aktivierung und externe Ingress-Bereitschaft als getrennte Gates behandeln und einen Production-Tenant erst dann als extern betriebsbereit einstufen, wenn seine versionierte Hostfreigabe ausgerollt sowie TLS und Tenant-Login erfolgreich verifiziert wurden.
+
+#### Scenario: Registry-Eintrag ohne Ingress-Freigabe
+
+- **WHEN** eine Instanz in der Registry vorhanden oder aktiv ist, ihr Host aber nicht in der Zielumgebung geroutet wird
+- **THEN** meldet der Audit die externe Hostbereitschaft als fehlgeschlagen oder nicht bereit
+- **AND** gilt der Registry-Status allein nicht als externer Betriebsnachweis
+
+#### Scenario: Neuer Production-Tenant benötigt regulären Rollout
+
+- **WHEN** ein neuer Production-Tenant extern freigegeben werden soll
+- **THEN** wird sein vollständiger Hostname über eine versionierte Compose-Änderung ergänzt
+- **AND** erfolgt die Änderung ausschließlich über den kanonischen GitHub-Actions-`Promote`-Pfad
+- **AND** verändert der Tenant-Erstellungsprozess den gemeinsamen Traefik nicht direkt
+
+#### Scenario: Ingress-Freigabe ersetzt keine Registry-Autorisierung
+
+- **WHEN** Traefik einen explizit konfigurierten Tenant-Host an die Anwendung weiterleitet
+- **THEN** prüft die Runtime den normalisierten Host weiterhin gegen einen aktiven, exakt passenden Registry-Eintrag
+- **AND** lehnt sie fehlende oder inaktive Registry-Einträge fail-closed ab
+
+### Requirement: Explizite Tenant-Host-Smoke-Matrix
+
+Das System SHALL nach jedem Umgebungsrollout den Root-Host, jeden explizit freigegebenen Tenant-Host und mindestens einen unbekannten Tenant-Host extern prüfen.
+
+#### Scenario: Freigegebener Tenant ist über HTTPS betriebsbereit
+
+- **WHEN** die Post-Deploy-Smokes für eine Zielumgebung laufen
+- **THEN** antworten Root-Host und alle explizit freigegebenen Tenant-Hosts über HTTPS
+- **AND** ist das jeweils ausgelieferte Zertifikat für den angefragten Host gültig
+- **AND** erzeugt `/auth/login` auf einem Tenant-Host einen tenant-spezifischen Redirect mit demselben Rückkehr-Host
+
+#### Scenario: Unbekannter Tenant bleibt fail-closed
+
+- **WHEN** die Smoke-Matrix einen syntaktisch gültigen, aber nicht freigegebenen Tenant-Host anfragt
+- **THEN** darf dieser Host nicht als betriebsbereiter Tenant erscheinen
+- **AND** liefert die Plattform weder Tenant-Daten noch einen tenant-spezifischen Login-Flow aus
 

@@ -25,13 +25,14 @@ Das System MUST in Child A keine fachlichen RBAC-/ABAC-Entscheidungen implementi
 
 ### Requirement: Persistente RBAC-Basisdaten
 
-Das System SHALL die für Autorisierung erforderlichen RBAC-Basisdaten (`roles`, `permissions`, Zuordnungen) konsistent und instanzgebunden persistieren.
+Das System SHALL die für Autorisierung erforderlichen RBAC-Basisdaten (`roles`, `permissions`, Rollen-Zuordnungen und Gruppen-Zuordnungen) konsistent und instanzgebunden persistieren. Permissions werden ausschließlich Rollen zugewiesen; Accounts erhalten Permissions nur indirekt über direkte Rollen oder Gruppenrollen.
 
 #### Scenario: Rollenauflösung im Instanzkontext
 
 - **WHEN** Rollen- und Permission-Zuordnungen für einen Benutzer abgefragt werden
 - **THEN** werden ausschließlich Zuordnungen der aktiven `instanceId` berücksichtigt
 - **AND** organisationsfremde Zuordnungen bleiben wirkungslos
+- **AND** direkte Account-Permissions werden nicht als fachliche Berechtigungsquelle ausgewertet
 
 ### Requirement: Idempotente Initialisierung von Basisrollen
 
@@ -45,38 +46,22 @@ Das System SHALL Basisrollen und Permission-Zuordnungen idempotent initialisiere
 
 ### Requirement: Zentrale Authorize-Schnittstelle (RBAC v1)
 
-Das System SHALL eine zentrale Autorisierungsschnittstelle bereitstellen, die pro Anfrage eine deterministische Entscheidung mit Begründung liefert und Diagnoseinformationen für Admin-Transparenz bereitstellen kann.
+Das System SHALL eine zentrale Allow-only-Autorisierungsschnittstelle bereitstellen, die pro Anfrage eine deterministische Entscheidung mit Begründung liefert und Diagnoseinformationen für Admin-Transparenz bereitstellen kann.
 
 #### Scenario: Autorisierungsentscheidung mit Begründung
 
 - **WHEN** ein Modul `POST /iam/authorize` mit `instanceId`, `action` und `resource` aufruft
 - **THEN** liefert das System eine Antwort mit `allowed` und `reason`
 - **AND** die Entscheidung ist bei identischem Kontext reproduzierbar
+- **AND** fehlende Allow-Grants führen zu einer Deny-Entscheidung
+- **AND** explizite `deny`-Permissions werden nicht als fachliches Modell unterstützt
 
-#### Scenario: Request-Input wird schema-validiert
+#### Scenario: Strukturierte Permission-Felder sind UI-verfügbar
 
-- **WHEN** ein `POST /iam/authorize`-Request eingeht
-- **THEN** wird der Request-Body gegen ein Zod-Schema validiert
-- **AND** bei ungültigem Input wird ein strukturierter 400-Fehler zurückgegeben
-
-#### Scenario: Diagnosefelder sind für Admin-UI auswertbar
-
-- **WHEN** eine Autorisierungsentscheidung zusätzliche technische Einordnung benötigt
-- **THEN** enthält die Antwort ausschließlich allowlist-basierte Diagnosefelder mit konflikt-, Hierarchie-, Scope- oder Impersonation-Hinweisen
-- **AND** interne Rohdaten, Stacktraces oder nicht spezifizierte Diagnosefelder werden nicht ausgegeben
-- **AND** diese Diagnoseinformationen sind stabil genug, um in einer Admin-Oberfläche verständlich dargestellt zu werden
-
-#### Scenario: Keine `any`-Casts in IAM- und Auth-Runtime-Infrastruktur
-
-- **WHEN** Auth-Server-Code kompiliert wird
-- **THEN** enthalten die Zielpackages `packages/auth-runtime/src/`, `packages/iam-admin/src/`, `packages/iam-governance/src/` und `packages/instance-registry/src/` keinen `any`-Cast ohne dokumentierten TODO-Kommentar mit Begründung und Scope
-- **AND** Redis-Optionen werden über typisierte Interfaces konfiguriert
-
-#### Scenario: Duplizierte Validierungs-Helfer konsolidiert
-
-- **WHEN** Input-Validierung in IAM-Endpoints benötigt wird
-- **THEN** werden zentrale Utilities aus dem zuständigen Zielpackage verwendet
-- **AND** keine Dateien in den IAM- und Auth-Runtime-Zielpackages definieren lokale Duplikate von `readString`, `isUuid`, `buildLogContext` oder `isTokenErrorLike`
+- **WHEN** die Permissions-Übersicht zurückgegeben wird
+- **THEN** enthält jeder Permission-Eintrag mindestens `action`, `resourceType`, optionale `resourceId`, optionale `organizationId`, optionale `scope` und `sourceRoleIds`
+- **AND** diese Felder können ohne zusätzliche Server-Interpretation in einer Admin-UI gerendert werden
+- **AND** die Antwort enthält keine fachliche `effect`-Unterscheidung zwischen Allow und Deny
 
 ### Requirement: Instanzzentriertes Scoping in RBAC v1
 
@@ -1530,4 +1515,188 @@ Das System SHALL historische oder externe Keycloak-Rollen für Tenant-Benutzer n
 - **WHEN** eine Analyse, Permissions-Übersicht oder Reconcile-Ausgabe eine historische Keycloak-Rolle für einen Tenant-Benutzer findet
 - **THEN** kennzeichnet das System diese Rolle als Legacy-, externes oder technisches Artefakt
 - **AND** beschreibt ihre fehlende normative Fachwirkung eindeutig
+
+### Requirement: Tenant-Account-Hard-Delete ist eine explizit permission-gesteuerte Mutation
+
+Das System SHALL die physische Löschung von Tenant-Accounts ausschließlich über die explizite Permission `iam.accounts.delete` autorisieren. `system_admin` darf nur über seine effektive Permission-Menge zugreifen und ist kein genereller Rollen-Bypass für diesen Runtime-Pfad.
+
+#### Scenario: Delete-Pfad verlangt die explizite Permission
+
+- **WENN** ein Tenant-Benutzer ohne wirksame Permission `iam.accounts.delete` den Admin-Delete-Pfad für einen Tenant-Account aufruft
+- **DANN** weist das System die Mutation mit einem Autorisierungsfehler ab
+- **UND** erklärt die Entscheidung als fehlende Permission statt als fehlende Rolle
+
+#### Scenario: system_admin bleibt permission-basiert, nicht rollenbasiert
+
+- **WENN** ein Actor die Rolle `system_admin` besitzt
+- **DANN** darf der Delete-Pfad nur deshalb erfolgreich sein, weil `system_admin` die Permission `iam.accounts.delete` in seiner effektiven Permission-Menge enthält
+- **UND** bleibt der Pfad Teil der normalen tenantseitigen Runtime-Autorisierung
+
+### Requirement: system_admin-Zielaccounts bleiben vor Löschung geschützt
+
+Das System SHALL Tenant-Accounts mit der Rolle `system_admin` vor physischer Löschung schützen, bis diese Rolle zuvor entzogen wurde.
+
+#### Scenario: Geschützter Zielaccount wird nicht gelöscht
+
+- **WENN** ein berechtigter Actor einen Zielaccount löschen will, der aktuell die Rolle `system_admin` besitzt
+- **DANN** lehnt das System die Löschung ab
+- **UND** beschreibt die Ablehnung als Schutzregel für `system_admin`
+- **UND** verlangt der fachliche Ablauf zuerst den Entzug der Rolle
+
+### Requirement: Wiederholte Primäraktion für Rollenberechtigungen
+
+Das System SHALL die Primäraktion der langen Rollenberechtigungsmatrix oberhalb und unterhalb der Matrix anbieten, ohne sie mit anderen speicherbaren Rollen-Teilflächen zu vermischen.
+
+#### Scenario: Administrator speichert eine lange Berechtigungsauswahl
+
+- **GIVEN** ein berechtigter Administrator bearbeitet die Berechtigungen einer Rolle
+- **WHEN** die Berechtigungsmatrix gerendert wird
+- **THEN** steht dieselbe Aktion zum Speichern der Berechtigungen oberhalb und unterhalb der Matrix bereit
+- **AND** beide Positionen verwenden denselben Handler sowie denselben Berechtigungs-, Lade- und Disabled-Zustand
+- **AND** allgemeine Rollendaten oder andere Rollen-Tabs werden dadurch nicht gespeichert
+
+### Requirement: Least-Privilege-Service-Token für MCP-Instanzanlage
+
+Das System SHALL den lokalen MCP-Pfad zur Instanzanlage ausschließlich über einen dedizierten, kurzlebigen und an die Zielumgebung gebundenen Service-Token autorisieren. Dieser Maschinenpfad ersetzt Browser-spezifische Nachweise nur für die explizit freigegebene Aktion.
+
+#### Scenario: Gültiger Service-Token autorisiert die MCP-Instanzanlage
+
+- **WHEN** ein lokaler MCP-Client einen nicht abgelaufenen Service-Token mit gültigem Aussteller, passender Audience und Berechtigung für die Instanzanlage vorlegt
+- **THEN** darf Studio die Instanzanlage als Maschinenpfad ausführen
+- **AND** prüft Studio weiterhin die Root-Host-Grenze und alle fachlichen Eingabevalidierungen
+- **AND** bleiben Browser-Session, CSRF und Fresh-Reauth für interaktive Aufrufe unverändert verpflichtend
+
+#### Scenario: Falsch gebundener oder unberechtigter Service-Token wird fail-closed abgelehnt
+
+- **WHEN** ein Service-Token abgelaufen ist, einen ungültigen Aussteller, eine falsche Audience oder keine Berechtigung für die Instanzanlage besitzt
+- **THEN** lehnt Studio den Request fail-closed ab
+- **AND** führt es keine fachliche Mutation aus
+- **AND** enthält die Außenantwort weder Token- noch sicherheitskritische Prüfdetails
+
+### Requirement: Action-spezifische Bestätigung kritischer MCP-Mutationen
+
+Das System SHALL kritische MCP-Mutationen mit vollständig qualifizierten, action-spezifischen Berechtigungen und einer serverseitig gebundenen Bestätigungs-Challenge absichern. Ein Service-Token darf nur die minimal benötigten Actions tragen.
+
+#### Scenario: Kritische Aktion wird nur nach aktueller Challenge ausgeführt
+
+- **WHEN** ein berechtigter MCP-Client eine kritische Action ausführen möchte
+- **THEN** muss er zuvor einen passenden Zustand oder Plan gelesen und eine an Action, Instanz, Zustands-/Versionswert und Ablauf gebundene Challenge erhalten haben
+- **AND** prüft Studio Scope, Challenge, Bestätigungsphrase und Idempotenz atomar vor der Mutation
+
+#### Scenario: Challenge kann nicht für andere oder spätere Aktionen wiederverwendet werden
+
+- **WHEN** eine Challenge für eine andere Action oder Instanz verwendet wird, abgelaufen ist, bereits verbraucht wurde oder sich der relevante Instanzzustand geändert hat
+- **THEN** lehnt Studio die kritische Mutation fail-closed ab
+- **AND** verlangt es einen neuen Vorab-Read oder Plan
+
+### Requirement: Owner-basierte Datensatz-Scopes
+
+Das System SHALL gescopte Datensatz-Permissions gegen kanonische IAM-Ownership auswerten.
+
+#### Scenario: Eigene Inhalte
+
+- **WHEN** ein Benutzer eine Permission mit Scope `own` besitzt
+- **AND** ein Inhalt `owner_user_id` gleich dem aktuellen Account besitzt
+- **THEN** ist der Scope für diesen Inhalt erfüllt
+- **AND** `creator_account_id` allein begründet keinen Own-Zugriff
+
+#### Scenario: Aktive Organisation
+
+- **WHEN** ein Benutzer eine Permission mit Scope `organization` besitzt
+- **AND** eine aktive Organisation gesetzt ist
+- **THEN** ist der Scope für Inhalte mit `owner_user_id` gleich dem aktuellen Account oder `owner_organization_id` gleich der aktiven Organisation erfüllt
+
+#### Scenario: Keine aktive Organisation
+
+- **WHEN** ein Benutzer eine Permission mit Scope `organization` besitzt
+- **AND** keine aktive Organisation gesetzt ist
+- **THEN** wirkt dieser Scope für inhaltsartige Datensätze wie `own`
+- **AND** Inhalte anderer Accounts oder ownerlose Inhalte werden nicht sichtbar
+
+### Requirement: Vollständige System-Admin-Permission-Synchronisierung
+
+Das System SHALL die geschützte tenantlokale Rolle `system_admin` als normale Rolle mit vollständigen tenant-relevanten Permissions synchronisieren.
+
+#### Scenario: Neue tenant-relevante Permission
+
+- **WHEN** eine neue tenant-visible Permission registriert oder migriert wird
+- **THEN** erhält `system_admin` diese Permission mit Scope `all`
+- **AND** ein Test oder Gate verhindert, dass tenant-visible Permissions ohne `system_admin`-Grant bleiben
+
+### Requirement: Kanonischer Permission-Katalog ist die einzige fachliche Definitionsquelle
+
+Das System MUST bekannte Core- und Modul-Permissions in einer typsicheren, validierten Katalogsicht zusammenführen. Seed-, Bootstrap-, Reconcile-, Diagnose- und Testpfade MUST ihre Permission-Definitionen aus dieser Katalogsicht ableiten und dürfen keine unabhängigen fachlichen Parallelkataloge pflegen.
+
+#### Scenario: Neue tenantweite Permission wird einmalig deklariert
+
+- **WHEN** eine neue tenantweite Permission in den kanonischen Katalog aufgenommen wird
+- **THEN** verwenden neue Tenant-Baselines und Reconcile-Läufe für bestehende Tenants dieselbe Definition
+- **AND** ist keine zusätzliche handgeschriebene Permission-Liste im Runtime-Bootstrap erforderlich
+
+#### Scenario: Ungültiger oder doppelter Katalogeintrag
+
+- **WHEN** der zusammengesetzte Katalog doppelte Keys, unbekannte Module, fremde Namespaces oder widersprüchliche Root-/Tenant-Metadaten enthält
+- **THEN** schlägt die Validierung vor Deployment fehl
+- **AND** es wird kein partieller Katalogzustand persistiert
+
+### Requirement: Tenant-Permissions gewähren system_admin standardmäßig Vollzugriff
+
+Das System MUST aktive tenantweite Permissions und aktive Permissions zugewiesener Module standardmäßig als verwalteten Grant an die geschützte Tenant-Rolle `system_admin` binden. Abweichungen MUST pro Permission explizit im Katalog definiert sein. Root-Permissions dürfen niemals durch diesen Default an `system_admin` gebunden werden.
+
+#### Scenario: Tenant-Permission ohne explizite Ausnahme
+
+- **WHEN** eine aktive tenantweite Permission keinen expliziten `systemAdminGrant`-Wert definiert
+- **THEN** behandelt der Katalog den Wert als `true`
+- **AND** ergänzt der Reconcile den fehlenden Grant an `system_admin`
+
+#### Scenario: Explizite Ausnahme vom Default-Grant
+
+- **WHEN** eine tenantweite oder modulbezogene Permission `systemAdminGrant=false` definiert
+- **THEN** erzeugt der Reconcile für diese Permission keinen automatischen `system_admin`-Grant
+- **AND** bleibt die Ausnahme im Katalog nachvollziehbar
+
+#### Scenario: Root-Permission bleibt isoliert
+
+- **WHEN** eine Permission als `root` klassifiziert ist
+- **THEN** darf der Tenant-Reconcile sie weder materialisieren noch an `system_admin` vergeben
+
+### Requirement: Permission-Reconcile arbeitet additiv und nicht destruktiv
+
+Das System MUST einen idempotenten, instanzgebundenen Permission-Reconcile bereitstellen, der fehlende aktive Definitionen und katalogverwaltete Grants ergänzt. Das Fehlen oder Deprecaten eines Katalogeintrags darf keine persistierte Permission, keinen manuellen Grant und keine Custom-Rollen-Zuordnung automatisch löschen.
+
+#### Scenario: Bestehender Tenant erhält neue Permission
+
+- **WHEN** der Reconcile für einen bestehenden Tenant nach Erweiterung des Katalogs ausgeführt wird
+- **THEN** wird die fehlende Permission idempotent angelegt oder aktualisiert
+- **AND** wird ein vorgesehener fehlender `system_admin`-Grant ergänzt
+- **AND** wird der betroffene Permission-Snapshot invalidiert
+
+#### Scenario: Wiederholter Reconcile
+
+- **WHEN** derselbe Katalogstand wiederholt für denselben Tenant reconciled wird
+- **THEN** entstehen keine doppelten Permission- oder Rollen-Permission-Datensätze
+- **AND** bleiben Custom-Rollen, manuelle Grants und Account-Rollenzuweisungen unverändert
+
+#### Scenario: Katalogeintrag wurde entfernt oder deprecated
+
+- **WHEN** eine persistierte Permission nicht mehr als aktiv im Katalog enthalten ist
+- **THEN** löscht der additive Reconcile weder die Permission noch bestehende manuelle Grants
+- **AND** benötigt eine destruktive Bereinigung einen separaten expliziten Change
+
+### Requirement: Modul-Permissions werden aktivierungsgebunden materialisiert
+
+Das System MUST Definitionen eines zugewiesenen Moduls spätestens bei dessen Aktivierung materialisieren und vorgesehene verwaltete Grants herstellen. Bereits vorhandene Modul-Permission-Definitionen dürfen vor Aktivierung oder nach Deaktivierung bestehen bleiben.
+
+#### Scenario: Modul wird aktiviert
+
+- **WHEN** ein Modul einer Instanz zugewiesen wird
+- **THEN** materialisiert der Reconcile seine aktiven Permission-Definitionen
+- **AND** bindet er sie standardmäßig an `system_admin`, sofern keine explizite Ausnahme definiert ist
+
+#### Scenario: Modul wird deaktiviert
+
+- **WHEN** ein Modul einer Instanz entzogen wird
+- **THEN** darf der eindeutig modulverwaltete `system_admin`-Grant gemäß Modulentzugsvertrag unwirksam gemacht werden
+- **AND** bleibt die Permission-Definition erhalten
+- **AND** bleiben manuelle Grants und Custom-Rollen unverändert
 

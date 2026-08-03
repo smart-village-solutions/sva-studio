@@ -545,3 +545,35 @@ Das System SHALL Ownership-Transfers, Änderungen der sichtbaren Autorenanzeige 
 - **THEN** erzeugt das System ein Audit-Ereignis mit Pfadklasse, Actor oder Service-Actor, Scope, Grundklasse, Ergebnis, `request_id` und `trace_id`
 - **AND** normale Tenant-Mutationspfade werden nicht als Ausnahme klassifiziert
 
+### Requirement: Auditierbarer Maschinenakteur für MCP-Instanzanlage
+
+Das System SHALL jede über den lokalen MCP-Pfad ausgelöste Instanzanlage mit einem nachvollziehbaren Maschinenakteur, der Authentisierungsart und einer Korrelationskennung auditieren.
+
+#### Scenario: Erfolgreiche MCP-Instanzanlage ist auditierbar
+
+- **WHEN** ein gültig autorisierter MCP-Client eine Instanz anlegt
+- **THEN** speichert Studio ein append-only Audit-Ereignis mit Instanz-ID, Maschinenakteur, Aktion, Ergebnis, Authentisierungsart und Korrelation
+- **AND** speichert das Audit weder den Service-Token noch übergebene Geheimnisse
+
+#### Scenario: Kritische MCP-Mutation dokumentiert ihre Bestätigung
+
+- **WHEN** eine kritische MCP-Mutation erfolgreich ausgeführt oder fail-closed abgelehnt wird
+- **THEN** speichert Studio die angeforderte Action, Instanz, Maschinenakteur, Ergebnis, Korrelation und den Status der Bestätigungsprüfung append-only
+- **AND** speichert es weder die Bestätigungs-Challenge noch Tokens, Secrets oder die vollständige Bestätigungsphrase
+
+### Requirement: Auditspur für Content-Ownership-Änderungen
+
+Das System SHALL Änderungen an Content-Ownership und sichtbarer Autorenanzeige revisionssicher historisieren.
+
+#### Scenario: Ownership wird geändert
+
+- **WHEN** `ownerUserId` oder `ownerOrganizationId` eines Inhalts geändert wird
+- **THEN** erzeugt das System einen Historien- oder Audit-Eintrag mit altem Wert, neuem Wert, Zeitpunkt, auslösendem Account, betroffenem Inhalt und betroffenem Feldtyp
+- **AND** der Eintrag enthält keine zusätzliche Klartext-PII
+
+#### Scenario: Sichtbare Autorenanzeige wird geändert
+
+- **WHEN** die sichtbare Autorenanzeige eines Inhalts geändert wird
+- **THEN** erzeugt das System einen Historien- oder Audit-Eintrag mit altem Wert, neuem Wert, Zeitpunkt, auslösendem Account, betroffenem Inhalt und betroffenem Feldtyp
+- **AND** diese Änderung ist von einer normalen Inhaltsbearbeitung unterscheidbar
+

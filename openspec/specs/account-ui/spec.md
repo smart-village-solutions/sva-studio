@@ -101,21 +101,48 @@ Das System MUST eine User-Administrationsliste unter `/admin/users` bereitstelle
 
 ### Requirement: User-Bearbeitungsseite
 
-Das System MUST eine User-Bearbeitungsseite unter `/admin/users/:userId` bereitstellen, die eine detaillierte Bearbeitung eines Benutzer-Accounts in einer Tab-Ansicht ermöglicht und direkte, gruppenbasierte sowie vererbte Berechtigungsursachen nachvollziehbar darstellt.
+Das System MUST eine User-Bearbeitungsseite unter `/admin/users/:userId` bereitstellen, die eine detaillierte Bearbeitung eines Benutzer-Accounts in einer Tab-Ansicht ermoeglicht und direkte, gruppenbasierte sowie vererbte Berechtigungsursachen nachvollziehbar darstellt.
 
 #### Scenario: Verwaltung zeigt nachvollziehbare Berechtigungsherkunft
 
-- **WENN** ein Administrator den Benutzer-Detailbereich mit Rollen- und Rechteinformationen öffnet
-- **DANN** zeigt die UI direkte Rollen, Gruppenherkünfte und effektive Berechtigungen in lesbarer Form an
+- **WENN** ein Administrator den Benutzer-Detailbereich mit Rollen- und Rechteinformationen oeffnet
+- **DANN** zeigt die UI direkte Rollen, Gruppenherkuenfte und effektive Berechtigungen in lesbarer Form an
 - **UND** markiert sie sichtbar, ob ein Eintrag instanzweit, datensatzbezogen oder organisationskontextbezogen ausgewertet wird
-- **UND** bleibt erkennbar, ob ein Eintrag direkt zugewiesen, über eine Gruppe wirksam oder über Organisations- bzw. Geo-Hierarchien vererbt ist
-- **UND** bleiben blockierte oder fachlich unwirksame Einträge als solche erkennbar statt still ausgeblendet zu werden
+- **UND** bleibt erkennbar, ob ein Eintrag direkt zugewiesen, ueber eine Gruppe wirksam oder ueber Organisations- bzw. Geo-Hierarchien vererbt ist
+- **UND** bleiben blockierte oder fachlich unwirksame Eintraege als solche erkennbar statt still ausgeblendet zu werden
 
-#### Scenario: Benutzerbearbeitung löscht fachlich unveränderte Assignment-Metadaten nicht
+#### Scenario: Benutzerbearbeitung loescht fachlich unveraenderte Assignment-Metadaten nicht
 
-- **WENN** ein Administrator einen Benutzer speichert, ohne eine bestehende Rollen- oder Gruppenzuordnung fachlich zu ändern
-- **DANN** bleiben vorhandene Metadaten wie Herkunft und Gültigkeitsfenster erhalten
-- **UND** erstellt die UI keinen Bedienfluss, der diese Metadaten implizit zurücksetzt, nur weil derselbe Benutzer erneut gespeichert wurde
+- **WENN** ein Administrator einen Benutzer speichert, ohne eine bestehende Rollen- oder Gruppenzuordnung fachlich zu aendern
+- **DANN** bleiben vorhandene Metadaten wie Herkunft und Gueltigkeitsfenster erhalten
+- **UND** erstellt die UI keinen Bedienfluss, der diese Metadaten implizit zuruecksetzt, nur weil derselbe Benutzer erneut gespeichert wurde
+
+#### Scenario: User-Detailseite zeigt Organisationsmitgliedschaften im eigenen Tab
+
+- **WENN** ein Administrator `/admin/users/:userId` oeffnet
+- **DANN** enthaelt die Tab-Navigation einen Tab `Organisationen`
+- **UND** zeigt dieser Tab alle bestehenden Organisationsmitgliedschaften des Benutzers mit Organisationsname, Membership-Sichtbarkeit, Default-Kontext-Markierung und Erstellzeitpunkt
+- **UND** sind die angezeigten Organisationsdaten aus demselben IAM-Read-Model abgeleitet wie die Organisationsverwaltung
+
+#### Scenario: Administrator weist aus der User-Detailseite weitere Organisationen zu
+
+- **WENN** ein Administrator im Tab `Organisationen` eine weitere Organisation zuweist
+- **DANN** erfolgt die Auswahl ueber eine suchbare Liste noch nicht zugewiesener Organisationen derselben Instanz
+- **UND** kann der Administrator beim Zuweisen `visibility` und `isDefaultContext` festlegen
+- **UND** wird die neue Organisationsmitgliedschaft ohne Seitenwechsel in der Membership-Liste sichtbar
+
+#### Scenario: Administrator pflegt Membership-Attribute direkt im User-Kontext
+
+- **WENN** ein Administrator im Tab `Organisationen` eine bestehende Organisationsmitgliedschaft bearbeitet
+- **DANN** kann er `visibility` und `isDefaultContext` direkt fuer diese Membership aktualisieren
+- **UND** wird eine Default-Kontext-Aenderung fachlich konsistent gespeichert, ohne parallele Default-Markierungen fuer denselben Account zu hinterlassen
+
+#### Scenario: Administrator entfernt Organisationsmitgliedschaften direkt im User-Kontext
+
+- **WENN** ein Administrator im Tab `Organisationen` eine bestehende Organisationsmitgliedschaft entfernt
+- **DANN** wird die Membership aus dem Benutzerkontext geloescht
+- **UND** aktualisiert die UI die Liste ohne Seitenwechsel
+- **UND** bleibt ein fachlich gueltiger Default-Kontext fuer den Account erhalten oder wird regelkonform neu bestimmt
 
 ### Requirement: Rollen-Verwaltungsseite
 
@@ -377,7 +404,7 @@ Das System MUST gruppenbasierte Herkunft von Berechtigungen in den relevanten IA
 
 ### Requirement: Organisations-Verwaltungsseite
 
-Das System MUST eine Organisations-Verwaltungsseite unter `/admin/organizations` bereitstellen, auf der berechtigte Administratoren Organisationen instanzgebunden pflegen können.
+Das System MUST eine Organisations-Verwaltungsseite unter `/admin/organizations` bereitstellen, auf der berechtigte Administratoren Organisationen instanzgebunden pflegen und zulässige Blatt-Organisationen endgültig löschen können.
 
 #### Scenario: Organisationsliste laden
 
@@ -397,6 +424,12 @@ Das System MUST eine Organisations-Verwaltungsseite unter `/admin/organizations`
 - **WENN** ein Administrator einen Typfilter wie `municipality`, `district` oder einen äquivalenten unterstützten Organisationstyp setzt
 - **DANN** werden nur Organisationen des gewählten Typs angezeigt
 - **UND** die aktive Filterung bleibt in der Oberfläche eindeutig erkennbar
+
+#### Scenario: Blatt-Organisation löschen
+
+- **WENN** ein Administrator auf der Organisationsliste oder im Detail eine Organisation ohne Children löscht
+- **DANN** ruft die UI den Delete-Endpunkt auf und entfernt die Organisation nach Erfolg aus dem sichtbaren Zustand
+- **UND** erklärt der Bestätigungsdialog, dass Memberships und organisationsgebundene Credentials mit entfernt werden
 
 ### Requirement: Organisation anlegen und bearbeiten
 
@@ -1477,4 +1510,44 @@ Das System SHALL in Profil-, Session- und Tenant-Admin-Ansichten eine kanonische
 - **WHEN** eine Benutzer- oder Rollenansicht Diagnosedaten zu Auth oder Sync einblendet
 - **THEN** sind kanonische Tenant-Rollen und rohe Keycloak-Rollen klar getrennt beschriftet
 - **AND** bleibt für Administratoren erkennbar, welche Sicht für Autorisierung normativ ist
+
+### Requirement: Benutzerverwaltung bietet eine privilegierte Löschaktion für Tenant-Accounts
+
+Das System MUST in der Tenant-Benutzerverwaltung eine explizite Löschaktion für Tenant-Accounts bereitstellen, wenn der aktuelle Actor die Permission `iam.accounts.delete` effektiv besitzt.
+
+#### Scenario: Löschaktion ist für berechtigte Administratoren verfügbar
+
+- **WENN** ein berechtigter Tenant-Administrator einen löschbaren Tenant-Account in der Benutzerverwaltung betrachtet
+- **DANN** zeigt die UI eine explizite Löschaktion
+- **UND** erklärt ein Bestätigungsdialog die physische Löschung des Tenant-Accounts, die Entfernung in Keycloak und die inhaltsbezogene Behandlung nach wirksamer Tenant-/Account-Regel
+
+#### Scenario: Geschützte Zielaccounts zeigen keinen irreführenden Delete-Flow
+
+- **WENN** ein Zielaccount aktuell die Rolle `system_admin` besitzt
+- **DANN** blendet die UI die Löschaktion aus oder deaktiviert sie mit klarer Begründung
+- **UND** suggeriert die Oberfläche keinen unmittelbar ausführbaren Delete-Flow
+
+#### Scenario: Unberechtigter Administrator sieht keine Löschaktion
+
+- **WENN** ein Administrator die Permission `iam.accounts.delete` nicht effektiv besitzt
+- **DANN** zeigt die UI keine ausführbare Löschaktion für Tenant-Accounts
+- **UND** werden keine sensitiven Delete-Folgen oder Bestätigungsdialoge unnötig exponiert
+
+### Requirement: Wiederholte Primäraktion in Benutzer- und Rechtstextbearbeitung
+
+Das System SHALL bei langen Benutzer- und Rechtstextformularen dieselbe formularweite Speichern- beziehungsweise Anlegen-Aktion oberhalb und unterhalb der bearbeitbaren Inhalte anbieten.
+
+#### Scenario: Administrator bearbeitet einen Benutzer über mehrere Tabs
+
+- **GIVEN** ein berechtigter Administrator bearbeitet einen Benutzer in der tab-basierten Benutzerbearbeitung
+- **WHEN** die Bearbeitungsseite gerendert wird
+- **THEN** steht dieselbe Speichern-Aktion oberhalb der Tabs und am Formularende bereit
+- **AND** beide Positionen verwenden denselben Submit-, Lade- und Disabled-Zustand
+
+#### Scenario: Administrator erstellt oder bearbeitet einen Rechtstext
+
+- **GIVEN** ein berechtigter Administrator öffnet die lange Rechtstexterstellung oder Rechtstextbearbeitung
+- **WHEN** die Eingabefläche einschließlich Rich-Text-Editor gerendert wird
+- **THEN** steht dieselbe Primäraktion oberhalb der Felder und unterhalb des Rich-Text-Editors bereit
+- **AND** beide Positionen speichern dasselbe vollständige Rechtstextformular
 

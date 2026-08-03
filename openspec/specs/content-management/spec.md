@@ -7,77 +7,102 @@ Definiert die fachliche Inhaltsverwaltung für SVA Studio mit tabellarischer Adm
 
 Das System MUST eine Seite `Inhalte` bereitstellen, die vorhandene Inhalte in einer tabellarischen Admin-Ansicht darstellt.
 
-Die Seite MUST fuer sichtbare Inhaltstypen eine einzige fuehrende serverseitige Listenquelle verwenden und darf fuer den produktiven Listenpfad keine browserseitigen Vollscans ueber mehrere Fachlisten ausfuehren.
+Die Seite MUST für sichtbare Inhaltstypen eine einzige führende serverseitige Listenquelle verwenden und darf für den produktiven Listenpfad keine browserseitigen Vollscans über mehrere Fachlisten ausführen.
 
 #### Scenario: Inhaltsliste wird geladen
 
-- **WENN** ein berechtigter Benutzer die Seite `Inhalte` oeffnet
-- **DANN** zeigt das System eine semantische Tabelle mit den Spalten Titel, Veroeffentlichungsdatum, Erstellungsdatum, Aenderungsdatum, Autor, Payload, Status und Historie
-- **UND** jede Tabellenzeile repraesentiert genau einen Inhalt
+- **WENN** ein berechtigter Benutzer die Seite `Inhalte` öffnet
+- **DANN** zeigt das System eine semantische Tabelle mit den Spalten Titel, Veröffentlichungsdatum, Erstellungsdatum, Änderungsdatum, Autor, Status und Historie
+- **UND** jede Tabellenzeile repräsentiert genau einen Inhalt
 - **UND** der Inhaltstyp ist pro Zeile erkennbar
-- **UND** das System zeigt einen Ladezustand, bis die Inhaltsdaten verfuegbar sind
+- **UND** das System zeigt einen Ladezustand, bis mindestens vollständige oder partielle Inhaltsdaten verfügbar sind
 
-#### Scenario: Mainserver-gestuetzte Inhaltstypen erscheinen ueber die fuehrende Listenquelle
+#### Scenario: Mainserver-gestützte Inhaltstypen erscheinen über die führende Listenquelle
 
-- **WENN** fuer die aktive Instanz lesbare News-, Event- oder POI-Inhalte nur im Mainserver existieren
+- **WENN** für die aktive Instanz lesbare News-, Event-, POI-, Generic-Item-, FAQ- oder Survey-Inhalte nur im Mainserver existieren
 - **DANN** erscheinen sie dennoch in der Seite `Inhalte`
-- **UND** die Seite liest sie ueber dieselbe fuehrende serverseitige Listenquelle wie andere sichtbare Inhalte
-- **UND** der Browser fuehrt dafuer keinen lokalen Vollscan ueber mehrere Mainserver-Fachlisten aus
+- **UND** die Seite liest sie über dieselbe führende serverseitige Listenquelle wie andere sichtbare Inhalte
+- **UND** der Browser führt dafür keinen lokalen Vollscan über mehrere Mainserver-Fachlisten aus
 
 #### Scenario: Inhaltsliste nutzt serverseitige Pagination
 
 - **WENN** die Seite `Inhalte` mit `page`, `pageSize`, `sortBy`, `sortDirection`, `q`, `type`, `status` oder `visibleType` angefragt wird
-- **DANN** wendet das System diese Parameter serverseitig auf die fuehrende Listenquelle an
-- **UND** der Browser erhaelt nur die angeforderte Ergebnis-Seite
-- **UND** die Seite laedt nicht den vollstaendigen Mainserver-Bestand vor der Anzeige
+- **DANN** wendet das System diese Parameter serverseitig auf die führende Listenquelle an
+- **UND** der Browser erhält nur die angeforderte Ergebnis-Seite
+- **UND** die Seite lädt nicht den vollständigen Mainserver-Bestand vor der Anzeige
 
-#### Scenario: Downstream-Fehler fuehren nicht zu endlosem Ladezustand
+#### Scenario: Partieller Snapshot wird sofort angezeigt
 
-- **WENN** eine fuer die Inhaltsuebersicht benoetigte Mainserver-Quelle fehlschlaegt oder auslaeuft
+- **WENN** für einen Mainserver-Inhaltstyp mindestens eine Seite erfolgreich lokal persistiert wurde
+- **UND** weitere Seiten noch im Hintergrund geladen werden
+- **DANN** zeigt die Inhaltsübersicht die bereits persistierten und autorisierten Zeilen sofort an
+- **UND** kennzeichnet sie als partiellen Snapshot im Aufbau
+- **UND** behauptet keine endgültige Trefferzahl, Seitenzahl oder Vollständigkeit
+
+#### Scenario: Partielle Pagination bleibt vorläufig
+
+- **WENN** mindestens ein angefragter Mainserver-Inhaltstyp nur partiell materialisiert ist
+- **DANN** entspricht `pagination.total` aus Kompatibilitätsgründen ausschließlich der aktuell autorisiert verfügbaren lokalen Treffermenge
+- **UND** liefern additive Metadaten `availableCount`, `isTotalFinal = false` sowie den typbezogenen Snapshot-Zustand
+- **UND** fehlt `totalCount`, bis der angefragte Bestand vollständig reconciled wurde
+- **UND** erlaubt die Oberfläche die Navigation zwischen den aus `pagination.total` ableitbaren, bereits materialisierten lokalen Seiten, ohne eine endgültige Gesamtseitenzahl auszuweisen
+- **UND** bietet die Oberfläche keine Navigation auf noch nicht materialisierte Seiten an
+- **UND** kennzeichnet sie Sortierung und Filterung als vorläufig auf die lokal verfügbare Menge begrenzt
+
+#### Scenario: Gemischte Inhaltstypen besitzen unterschiedliche Vollständigkeit
+
+- **WENN** eine Listenanfrage vollständige und partielle Mainserver-Inhaltstypen kombiniert
+- **DANN** ist die Gesamtantwort partiell, sobald mindestens ein angefragter Typ partiell ist
+- **UND** bleiben Vollständigkeit und Fehlerzustand pro Inhaltstyp separat in den Metadaten erhalten
+- **UND** bewertet ein expliziter Typfilter nur den angefragten Typ
+
+#### Scenario: Vorhandener Snapshot wird während einer Aktualisierung weiterverwendet
+
+- **WENN** beim Öffnen der Inhaltsübersicht bereits ein lesbarer lokaler Snapshot existiert
+- **DANN** zeigt das System diesen ohne Warten auf den Mainserver sofort an
+- **UND** startet die Revalidierung im Hintergrund
+- **UND** kennzeichnet einen veralteten oder laufend aktualisierten Stand, ohne die Tabelle durch einen Vollseiten-Ladezustand zu ersetzen
+
+#### Scenario: Hintergrund-Refresh liefert weitere lokale Seiten
+
+- **WENN** während einer geöffneten Inhaltsübersicht neue oder aktualisierte Projektionszeilen lokal persistiert werden
+- **DANN** revalidiert der Browser die führende Listenquelle mit begrenzter Frequenz und Backoff
+- **UND** zeigt die Tabelle die neuen lokalen Ergebnisse zeitnah an
+- **UND** bleiben Fokus, Zeilenauswahl, Filter, Sortierung und aktuelle Seite erhalten, soweit die angefragten Daten dies zulassen
+
+#### Scenario: Manueller Refresh beendet die priorisierte Phase
+
+- **WENN** ein Redakteur `Aktualisieren` auslöst
+- **UND** die neuesten Seiten der angefragten Inhaltstypen erfolgreich persistiert wurden
+- **DANN** meldet die Oberfläche den erfolgreichen Hot-Refresh
+- **UND** zeigt die neuen lokalen Zeilen
+- **UND** darf die vollständige Reconciliation weiterer Seiten im Hintergrund fortgesetzt werden
+
+#### Scenario: Spätere Seite schlägt nach partiellem Erfolg fehl
+
+- **WENN** bereits persistierte Seiten eines Mainserver-Inhaltstyps lesbar sind
+- **UND** eine spätere Seite nicht geladen oder verarbeitet werden kann
+- **DANN** bleiben die bereits persistierten Zeilen sichtbar
+- **UND** zeigt die Seite einen regulären Hinweis auf den partiellen, nicht vollständig aktualisierten Stand
+- **UND** verbleibt nicht in einem unendlichen Ladezustand
+
+#### Scenario: Downstream-Fehler ohne lesbaren Snapshot
+
+- **WENN** eine für die Inhaltsübersicht benötigte Mainserver-Quelle fehlschlägt oder ausläuft
+- **UND** für den betroffenen Typ weder ein vollständiger noch ein partieller Snapshot existiert
 - **DANN** beendet die Seite den Ladezustand deterministisch
-- **UND** sie zeigt einen regulären Fehlerzustand statt eines dauerhaften "Inhalte werden geladen ..."
+- **UND** zeigt sie einen regulären Fehlerzustand statt eines dauerhaften "Inhalte werden geladen ..."
 
 ### Requirement: Inhalt ist ein erweiterbares Core-Element
 
-Das System MUST `Inhalt` als kanonisches Core-Element modellieren, das über definierte SDK-Erweiterungspunkte für spezielle Datentypen erweitert werden kann und referenzbasierte Mediennutzung unterstützt.
+Das System MUST `Inhalt` als kanonisches Core-Element modellieren, das über definierte SDK-Erweiterungspunkte für spezielle Datentypen erweitert werden kann, referenzbasierte Mediennutzung unterstützt und IAM-Ownership getrennt von Ersteller, Bearbeiter und sichtbarem Autor hält.
 
 #### Scenario: Core-Inhalt wird mit Basiskern angelegt
 
 - **WENN** ein Inhalt gespeichert oder geladen wird
-- **DANN** enthält er mindestens `contentType`, Titel, Veröffentlichungsdatum, Erstellungsdatum, Änderungsdatum, Autor, Payload, Status und Historie
+- **DANN** enthält er mindestens `contentType`, Titel, Veröffentlichungsdatum, Erstellungsdatum, Änderungsdatum, Autor, Payload, Status, Historie, `ownerUserId` und `ownerOrganizationId`
 - **UND** diese Core-Felder bleiben unabhängig vom konkreten Inhaltstyp verfügbar
-
-#### Scenario: SDK erweitert einen speziellen Inhaltstyp
-
-- **WENN** für einen registrierten `contentType` eine SDK-Erweiterung vorhanden ist
-- **DANN** kann diese zusätzliche Validierung, UI-Bereiche, Tabelleninformationen oder Aktionen bereitstellen
-- **UND** der Core-Vertrag des Inhalts bleibt unverändert gültig
-
-#### Scenario: Plugin überschreibt den Core-Vertrag nicht
-
-- **WENN** ein Plugin oder SDK-Modul einen speziellen Inhaltstyp registriert
-- **DANN** darf es die Bedeutung oder Pflichtigkeit der Core-Felder nicht brechen
-- **UND** Statusmodell, Historie und Core-Metadaten bleiben systemweit konsistent
-
-#### Scenario: Inhalte binden Medien referenzbasiert an
-
-- **WENN** ein Inhalt ein Bild, Download oder anderes Medium benötigt
-- **DANN** referenziert der Inhalt Medien über die zentrale Medien-Capability und fachliche Rollen
-- **UND** der Inhalt speichert keine rohen Storage-Keys oder auslieferungsrelevanten Dateipfade als führenden Vertrag
-
-#### Scenario: Plugin nutzt hostseitigen Media-Picker
-
-- **WENN** ein Plugin ein Medium für einen Inhalt oder ein Fachobjekt auswählen lässt
-- **DANN** verwendet es den hostseitigen Media-Picker oder dessen SDK-Vertrag
-- **UND** das Plugin deklariert erlaubte Medienrollen, Medientypen und optionale Preset-Anforderungen
-- **UND** es erhält keine direkte Storage-Schnittstelle und speichert keine MinIO-Bucket-Namen, Object-Keys oder presigned URLs als führenden Vertrag
-
-#### Scenario: Bestehender URL-basierter Inhaltspfad wird migriert
-
-- **WENN** ein bestehender Inhaltstyp Medien noch über URL-basierte Felder wie `imageUrl`, `sourceUrl` oder eingebettete Medien-URLs speichert
-- **DANN** definiert das System einen kontrollierten Übergangspfad zur referenzbasierten Mediennutzung
-- **UND** neue Host-Integrationen bevorzugen den Media-Picker und Medienreferenzen
-- **UND** Legacy-URL-Felder bleiben nur übergangsweise zulässig
+- **UND** `ownerUserId` und `ownerOrganizationId` steuern IAM-Zugriff, nicht sichtbare Autorenanzeige
 
 ### Requirement: Lokaler Migrationspfad für das Inhaltsmodell ist verifiziert
 
@@ -107,9 +132,21 @@ Das System MUST in der Tabellenansicht einen klaren Einstieg zum Anlegen neuer I
 
 #### Scenario: Neuer Inhalt wird gestartet
 
-- **WENN** ein berechtigter Benutzer die Tabellenansicht öffnet
+- **WENN** ein berechtigter Benutzer die Tabellenansicht oeffnet
 - **DANN** ist ein sichtbarer Button `Neuer Inhalt` vorhanden
-- **UND** der Button führt in die Erstellungsansicht für einen neuen Inhalt
+- **UND** der Button fuehrt in die Erstellungsansicht fuer einen neuen Inhalt
+
+#### Scenario: Survey ist als neuer Inhalt waehlbar
+
+- **WENN** ein berechtigter Benutzer den Flow `Neuer Inhalt` oeffnet
+- **DANN** kann er `Survey` oder `Umfrage` als weiteren Inhaltstyp auswaehlen
+- **UND** das System fuehrt danach in die Survey-Erstellungsansicht des Standard-Content-Plugins
+
+#### Scenario: Survey-Editor folgt in Create und Edit demselben Arbeitsrahmen
+
+- **WENN** ein berechtigter Benutzer eine neue Survey anlegt oder eine bestehende Survey bearbeitet
+- **DANN** verwendet die Content-Verwaltung fuer beide Faelle denselben Survey-Editor-Rahmen
+- **UND** wechseln Create und Edit nicht zwischen unterschiedlichen Hauptnavigationsstrukturen
 
 ### Requirement: Design-System- und Tabellenkonsistenz im Admin-Bereich
 
@@ -137,34 +174,22 @@ Das System MUST die Inhaltsverwaltung mit den bestehenden `shadcn/ui`-Patterns u
 
 ### Requirement: Erstellungs- und Bearbeitungsansicht für Inhalte
 
-Das System MUST eine Erstellungs- und eine Bearbeitungsansicht für Inhalte bereitstellen.
+Das System MUST eine Erstellungs- und eine Bearbeitungsansicht für Inhalte bereitstellen und Ownership serverseitig nach IAM-Regeln setzen.
 
 #### Scenario: Inhalt anlegen
 
 - **WENN** ein berechtigter Benutzer einen neuen Inhalt anlegt
 - **DANN** kann er mindestens Inhaltstyp, Titel, Veröffentlichungsdatum, Payload und Status erfassen
-- **UND** das System setzt Erstellungsdatum, Änderungsdatum und Autor systemseitig
-- **UND** der gespeicherte Inhalt ist nach erfolgreichem Speichern in der Inhaltsliste sichtbar
+- **UND** das System setzt Erstellungsdatum, Änderungsdatum, Autor, `ownerUserId` und bei aktiver Organisation `ownerOrganizationId` systemseitig
+- **UND** der gespeicherte Inhalt ist nach erfolgreichem Speichern in der Inhaltsliste sichtbar, wenn derselbe Scope auch den Detailzugriff erlauben würde
 
 #### Scenario: Inhalt bearbeiten
 
 - **WENN** ein berechtigter Benutzer einen bestehenden Inhalt bearbeitet
-- **DANN** kann er Titel, Veröffentlichungsdatum, Payload und Status gemäß seiner Berechtigungen ändern
+- **DANN** kann er Titel, Veröffentlichungsdatum, Payload, Status und bei ausreichender `update`-Permission Ownership-Felder ändern
 - **UND** das Änderungsdatum wird nach erfolgreichem Speichern aktualisiert
 - **UND** die Bearbeitungsansicht zeigt die aktuellen Metadaten des Inhalts an
-
-#### Scenario: Typspezifische Erweiterungsfelder werden eingeblendet
-
-- **WENN** ein Inhalt einen registrierten `contentType` mit SDK-Erweiterung besitzt
-- **DANN** rendert die Erstellungs- oder Bearbeitungsansicht zusätzlich die zugehörigen typspezifischen UI-Bereiche
-- **UND** die Core-Felder bleiben weiterhin sichtbar und konsistent bedienbar
-
-#### Scenario: POI verwendet einen redaktionsorientierten Voll-Editor
-
-- **WENN** ein berechtigter Benutzer einen Inhalt vom Typ `poi.point-of-interest` erstellt oder bearbeitet
-- **DANN** rendert das System keinen reduzierten Sammel-Tab für alle Zusatzdaten
-- **SONDERN** einen aufgabenorientierten Voll-Editor mit den Bereichen `Basis`, `Ort`, `Beschreibung`, `Kontakt`, `Öffnungszeiten`, `Links`, `Betreiber`, `Preise`, `Medien & Dateien`, `Erweiterte Daten` und `Historie`
-- **UND** der Editor unterstützt sowohl Erstpflege als auch spätere gezielte Nachpflege
+- **UND** ein normales Update ändert den sichtbaren Autor nicht automatisch
 
 ### Requirement: Kontrolliertes Statusmodell für Inhalte
 
@@ -918,19 +943,19 @@ Das System MUST den allgemeinen POI-Kontakt und den Betreiber als getrennte Reda
 
 ### Requirement: Erweiterte POI-Daten bleiben aus dem Hauptflow herausgezogen
 
-Das System MUST technische oder selten genutzte POI-Zusatzdaten aus dem Standard-Redaktionsflow herausziehen.
+Das System MUST technische oder nicht benötigte POI-Zusatzdaten aus der redaktionellen Oberfläche ausblenden. Schlagwörter, Tags, Zertifikate, Accessibility-Daten und freie Payload-Bearbeitung MUST weiterhin im internen Formular- und Mainserver-Mapping erhalten bleiben, dürfen aber nicht redaktionell bearbeitbar sein.
 
-#### Scenario: Payload bleibt ein Spezialbereich
+#### Scenario: POI-Einstellungen zeigen nur die technische Kennung
 
-- **WENN** ein Redakteur einen POI im Standardfall bearbeitet
-- **DANN** muss er nicht mit `payload` oder anderen fortgeschrittenen Zusatzfeldern beginnen
-- **UND** diese Felder erscheinen gesammelt unter `Erweiterte Daten`
+- **WENN** ein Redakteur die Einstellungen eines POI öffnet
+- **DANN** zeigt das System die externe ID als technische Metadaten
+- **UND** es zeigt keine Schlagwörter, Tags, Zertifikate, Accessibility-Daten oder freie Payload-Bearbeitung
 
-#### Scenario: Erweiterte Zusatzfelder bleiben verfügbar
+#### Scenario: Bestehende ausgeblendete POI-Daten bleiben erhalten
 
-- **WENN** ein fortgeschrittener Redakteur Zertifikate, Accessibility-Daten oder technische Zusatzinformationen pflegen muss
-- **DANN** sind diese Felder weiterhin erreichbar
-- **UND** sie verdrängen nicht die Kernpflege von Name, Ort, Kontakt und Öffnungszeiten
+- **GEGEBEN** ein bestehender POI enthält Schlagwörter, Tags, Zertifikate, Accessibility-Daten oder Payload-Daten
+- **WENN** ein Redakteur ein weiterhin sichtbares Feld ändert und den POI speichert
+- **DANN** überträgt das System die bestehenden ausgeblendeten Werte unverändert an den Mainserver
 
 ### Requirement: Ownership-Transfer autorisiert den aktuellen Inhalt
 
@@ -986,4 +1011,150 @@ Das System SHALL die sichtbare Autorenanzeige eines Inhalts als fachliche Inhalt
 - **WHEN** der Actor persönliche Autorenanzeige auswählt
 - **THEN** speichert das System den Autorenanzeige-Modus getrennt von `ownerUserId` und `ownerOrganizationId`
 - **AND** spätere Ownership-Änderungen ändern die sichtbare Autorenanzeige nicht stillschweigend ohne explizite Mutation
+
+### Requirement: Formularweite Speichern-Aktion am Anfang und Ende von Inhaltseditoren
+
+Das System SHALL in tab-basierten Inhaltseditoren die formularweite Speichern- beziehungsweise Anlegen-Aktion sowohl im Seitenkopf als auch direkt unterhalb der Editor-Tabs anbieten. Beide Aktionen SHALL denselben Submit-Pfad, dieselbe Beschriftung sowie dieselben Lade-, Disabled- und Berechtigungszustände verwenden.
+
+#### Scenario: Redaktion speichert am Ende eines langen Editor-Tabs
+
+- **GIVEN** eine berechtigte Person bearbeitet News, Events, FAQs, POIs, Umfragen, generische Inhalte oder einen Kern-Inhalt
+- **WHEN** sie die Aktion unterhalb der Tabs auslöst
+- **THEN** speichert das System das gesamte Formular über denselben Pfad wie die Aktion im Seitenkopf
+- **AND** es wird kein tab-spezifischer Speichervorgang erzeugt
+
+#### Scenario: Speichern bleibt im Historien-Tab erreichbar
+
+- **GIVEN** ein Inhaltseditor besitzt einen schreibgeschützten Historien-Tab
+- **WHEN** die Person diesen Tab öffnet
+- **THEN** bleiben die formularweiten Speichern-Aktionen im Seitenkopf und unterhalb der Tabs sichtbar
+- **AND** zuvor vorgenommene Änderungen aus anderen Tabs können weiterhin gespeichert werden
+
+#### Scenario: Speichern ist nicht erlaubt oder läuft bereits
+
+- **GIVEN** die formularweite Speichern-Aktion ist durch Berechtigungen, Validierungszustand oder einen laufenden Submit deaktiviert
+- **WHEN** der Editor beide Aktionspositionen rendert
+- **THEN** spiegeln beide Positionen denselben Disabled- und Ladezustand wider
+
+### Requirement: The system SHALL update Mainserver-backed content list projections incrementally after successful single-record mutations
+Das System SHALL die fuehrende serverseitige Listenquelle fuer Mainserver-gestuetzte Inhaltstypen nach erfolgreichen Studio-initiierten Einzelmutationen gezielt fuer den betroffenen Datensatz aktualisieren und keinen typweiten Vollrefresh als Standardpfad verwenden.
+
+#### Scenario: Create aktualisiert nur den neuen Datensatz in der Inhaltsliste
+- **WENN** ein berechtigter Benutzer einen neuen News-, Event- oder POI-Datensatz erfolgreich ueber Studio im Mainserver anlegt
+- **DANN** aktualisiert das System die fuehrende Listenquelle gezielt fuer genau diesen Datensatz
+- **UND** der restliche Projektionsbestand desselben Inhaltstyps bleibt unveraendert
+- **UND** der neue Datensatz erscheint ohne erzwungenen Vollrefresh des gesamten Inhaltstyps in der Inhaltsliste
+
+#### Scenario: Update aktualisiert nur den geaenderten Datensatz in der Inhaltsliste
+- **WENN** ein berechtigter Benutzer einen bestehenden News-, Event- oder POI-Datensatz erfolgreich ueber Studio aendert
+- **DANN** aktualisiert das System die fuehrende Listenquelle gezielt fuer genau diesen Datensatz
+- **UND** die Listenansicht zeigt die geaenderten Metadaten, ohne alle Datensaetze dieses Typs neu aufzubauen
+
+#### Scenario: Delete entfernt nur den betroffenen Datensatz aus der Inhaltsliste
+- **WENN** ein berechtigter Benutzer einen bestehenden News-, Event- oder POI-Datensatz erfolgreich ueber Studio loescht
+- **DANN** entfernt das System gezielt genau diesen Datensatz aus der fuehrenden Listenquelle
+- **UND** der Loeschvorgang startet keinen typweiten Neuaufbau aller Datensaetze desselben Inhaltstyps
+
+### Requirement: The system SHALL retain periodic full refresh only as reconciliation path for Mainserver-backed content lists
+Das System SHALL den periodischen Vollabgleich fuer Mainserver-gestuetzte Inhaltstypen als Reconciliation-Pfad fuer externe Aenderungen, Drift und Fehlerfaelle behalten, aber nicht als Standardreaktion auf jede erfolgreiche Einzelmutation verwenden.
+
+#### Scenario: Externe Mainserver-Aenderung wird weiter ueber Reconciliation sichtbar
+- **WENN** ein News-, Event- oder POI-Datensatz ausserhalb von Studio direkt im Mainserver geaendert, angelegt oder geloescht wird
+- **DANN** darf das System diese Aenderung weiterhin ueber den periodischen Vollabgleich in die fuehrende Listenquelle uebernehmen
+- **UND** der gezielte Mutationspfad muss dafuer nicht alle externen Aenderungen selbst abdecken
+
+#### Scenario: Gezielte Nachsynchronisation scheitert nach erfolgreicher Mutation
+- **WENN** eine Studio-Mutation im Mainserver erfolgreich war, aber die gezielte Projektionsaktualisierung den Datensatz nicht deterministisch nachladen oder entfernen kann
+- **DANN** bleibt die Mutation fachlich erfolgreich
+- **UND** das System protokolliert den Fehler deterministisch
+- **UND** der periodische Vollabgleich bleibt fuer die spaetere Reconciliation zustaendig
+
+### Requirement: The system SHALL keep Mainserver-backed list snapshots account-isolated and stale-readable
+Das System SHALL die fuehrende Listenquelle fuer Mainserver-gestuetzte Inhaltstypen pro Account und effektivem Scope isoliert persistieren und bei Listenanfragen immer einen vorhandenen Snapshot ausliefern koennen, auch wenn dieser veraltet ist.
+
+#### Scenario: Zwei Accounts derselben Organisation teilen keinen Snapshot
+- **WENN** zwei Benutzer derselben Instanz und derselben Organisation unterschiedliche `actorAccountId`-Kontexte haben
+- **DANN** teilen sie keine Mainserver-Projektionszeilen oder Sync-Zustaende derselben Inhaltsliste
+- **UND** ein bereits geladener Snapshot des einen Accounts wird nicht als Fuehrungsquelle fuer den anderen Account wiederverwendet
+
+#### Scenario: Persistenz-Scope verwendet den account- und organisationsgebundenen Vertrag
+- **WENN** das System eine Mainserver-Projektion liest, schreibt, dedupliziert oder loescht
+- **DANN** verwendet es konsistent einen Scope-Vertrag aus `instanceId`, `actorAccountId`, `activeOrganizationId` und `contentType`
+- **UND** es verwendet fuer diese Operationen keinen `keycloakSubject`-Fallback als persistenten Scope-Ersatz
+
+#### Scenario: Tabelle zeigt veralteten Snapshot waehrend Hintergrund-Refresh
+- **WENN** fuer einen Account bereits eine persistierte Mainserver-Projektion existiert
+- **UND** im Hintergrund ein Refresh neuerer Daten laeuft oder fehlschlaegt
+- **DANN** liefert die Inhaltsliste weiterhin den vorhandenen Snapshot aus
+- **UND** die Tabelle bleibt nutzbar, statt auf die Vollstaendigkeit des Refreshs zu warten
+
+### Requirement: The system SHALL refresh newest Mainserver list pages first after login or session activation
+Das System SHALL fuer sichtbare Mainserver-Inhaltstypen nach Login oder relevantem Session-Aufbau zuerst die jeweils neuesten Datensaetze in die persistierte Listenquelle laden und erst danach aeltere Daten nachziehen.
+
+#### Scenario: Erste Seiten aller sichtbaren Typen werden zuerst geladen
+- **WENN** ein berechtigter Benutzer eine Session mit sichtbaren Mainserver-Inhaltstypen aufbaut
+- **DANN** startet das System einen Hintergrund-Refresh fuer alle sichtbaren Mainserver-Typen
+- **UND** es laedt fuer jeden Typ zuerst die erste Seite mit den neuesten Datensaetzen
+- **UND** es arbeitet im initialen Rollout konservativ sequentiell, um die Last auf Studio und Mainserver zu begrenzen
+- **UND** es wartet nicht auf den Vollimport aller aelteren Seiten, bevor erste Ergebnisse in der Liste verfuegbar sind
+
+#### Scenario: Aeltere Seiten folgen erst nach dem ersten Seitenblock
+- **WENN** fuer alle sichtbaren Mainserver-Typen die erste Seite erfolgreich geschrieben oder zumindest versucht wurde
+- **DANN** darf das System aeltere Seiten derselben Typen progressiv nachladen
+- **UND** die Inhaltsliste bleibt waehrenddessen auf dem bereits verfuegbaren Snapshot lesbar
+
+#### Scenario: Hintergrund-Refresh laeuft auch ohne spaeteren Listenaufruf weiter
+- **WENN** der Login-nahe Refresh bereits gestartet wurde
+- **UND** der Benutzer die Inhaltsliste in dieser Session zunaechst nicht oeffnet
+- **DANN** darf der Refresh trotzdem weiterlaufen
+- **UND** er setzt sich seitenweise fort, bis das Ende des verfuegbaren Upstream-Bestands erreicht ist
+
+### Requirement: Event-Editor fokussiert redaktionell benötigte Felder
+
+Das System MUST den Event-Editor auf die redaktionell benötigten Felder begrenzen. Die optionale POI-Verknüpfung, Barrierefreiheitsdaten, Schlagwörter und Tags MUST im Event-Editor ausgeblendet sein, ohne die zugehörigen Mainserver-Verträge zu entfernen.
+
+#### Scenario: Event wird ohne unnötige Zusatzfelder bearbeitet
+
+- **WENN** ein Redakteur ein Event erstellt oder bearbeitet
+- **DANN** zeigt der Editor keine POI-Verknüpfung, Barrierefreiheitsdaten, Schlagwörter oder Tags
+- **UND** der Editor lädt keine POI-Auswahlliste
+
+#### Scenario: Bestehende ausgeblendete Event-Daten bleiben erhalten
+
+- **GEGEBEN** ein bestehendes Event enthält eine POI-Verknüpfung, Barrierefreiheitsdaten, Schlagwörter oder Tags
+- **WENN** ein Redakteur ein weiterhin sichtbares Feld ändert und das Event speichert
+- **DANN** überträgt das System die bestehenden ausgeblendeten Werte unverändert an den Mainserver
+
+### Requirement: Deutsche Inhaltsbegriffe sind redaktionell verständlich
+
+Das System MUST in sichtbaren deutschen Produkttexten die Begriffe `Nachrichten`, `Veranstaltungen` und `Generische Inhalte` verwenden. Redaktionelle Haupttextfelder MUST als `Überschrift` und kurze einleitende Texte als `Einleitung` bezeichnet werden.
+
+#### Scenario: Redaktion öffnet die Inhaltsverwaltung auf Deutsch
+
+- **WENN** ein Redakteur Navigation, Listen oder Editoren für Nachrichten, Veranstaltungen oder generische Inhalte öffnet
+- **DANN** verwendet das System die festgelegten deutschen Inhaltsbegriffe
+- **UND** es zeigt für redaktionelle Felder weder `News`, `Events`, `Generic Items`, `Title`, `Headline`, `Titel`, `Teaser` noch `Intro` an
+
+#### Scenario: Technische Verträge bleiben stabil
+
+- **WENN** die sichtbaren deutschen Bezeichnungen geändert werden
+- **DANN** bleiben API-Feldnamen, Routen, TypeScript-Symbole und englische Übersetzungen unverändert
+
+### Requirement: Listen- und Detailautorisierung sind deckungsgleich
+
+Das System SHALL für Inhaltslisten, Inhaltsdetails und Inhaltsmutationen dieselben Owner- und Scope-Regeln verwenden.
+
+#### Scenario: Own-Scoped Listeneintrag
+
+- **WENN** ein Benutzer nur `content.read` mit Scope `own` besitzt
+- **UND** ein Inhalt `owner_user_id` gleich dem aktuellen Account besitzt
+- **DANN** erscheint der Inhalt in der Liste
+- **UND** derselbe Benutzer kann die Detailansicht öffnen
+
+#### Scenario: Ownerloser Inhalt
+
+- **WENN** ein Inhalt weder `owner_user_id` noch `owner_organization_id` besitzt
+- **UND** ein Benutzer nur `own` oder `organization` Scope besitzt
+- **DANN** erscheint der Inhalt nicht in der Liste
+- **UND** die Detailansicht wird verweigert
 

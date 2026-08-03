@@ -1,11 +1,8 @@
 # Capability: monorepo-structure
-
 ## Purpose
 
 Definiert die Nx-basierte Monorepo-Struktur für SVA Studio, inklusive Package-Management, Build-Konventionen und Generatoren für konsistente Entwicklungs-Workflows.
-
 ## Requirements
-
 ### Requirement: Monorepo-Grundstruktur
 
 Das System SHALL eine Nx Integrated Monorepo-Struktur mit getrennten Bereichen für Apps und Packages bereitstellen.
@@ -425,7 +422,7 @@ Das System SHALL für jedes kanonische Runtime-Profil ein offizielles `doctor`-K
 
 ### Requirement: Lokale Studio-Runtime-Werkzeuge bleiben Diagnose und Recovery
 
-Das System SHALL für das Runtime-Profil `studio` lokale Diagnose- und Recovery-Werkzeuge bereitstellen, ohne daraus einen konkurrierenden Standardpfad zum GitHub-basierten `Build`- und `Promote`-Rollout zu machen.
+Das System SHALL für das Runtime-Profil `studio` lokale Diagnose- und Recovery-Werkzeuge bereitstellen, ohne daraus einen konkurrierenden Standardpfad zum GitHub-basierten `Build`- und `Promote`-Rollout zu machen und ohne Wartungsfenster-Verweise als technische Pflicht zu verwenden.
 
 #### Scenario: Root-Scripts bilden den Studio-Releasepfad ab
 
@@ -434,11 +431,11 @@ Das System SHALL für das Runtime-Profil `studio` lokale Diagnose- und Recovery-
 - **AND** lokale mutierende Runtime-Einstiege sind ausschließlich als Incident-Recovery klassifiziert
 - **AND** GitHub-Workflows `build.yml` und `promote.yml` bilden den einzigen regulären Rolloutpfad ab
 
-#### Scenario: Schemaänderung erfordert Wartungsfenster
+#### Scenario: Schemaänderung benötigt kein Wartungsfenster-Pflichtfeld
 
-- **WHEN** ein Incident-Recovery-Pfad lokale Schema- und App-Mutationen benötigt
-- **THEN** verlangt das System ein dokumentiertes Wartungsfenster
-- **AND** startet ohne dieses Wartungsfenster keinen Rollout
+- **WHEN** ein genehmigter Incident-Recovery-Pfad lokale Schema- und App-Mutationen benötigt
+- **THEN** steuern die vorhandene Freigabe, Backups, Postconditions und Verifikation den Ablauf
+- **AND** blockiert ein fehlender Wartungsfenster-Verweis den Recovery-Pfad nicht
 
 ### Requirement: Standardisierte Deploy-Evidenz für Studio
 
@@ -945,3 +942,24 @@ Das System SHALL die kanonische `runtime-env`-Implementierung intern in dedizier
 - **WHEN** die Runtime-Orchestrierung getestet wird
 - **THEN** existieren neben den Fassaden-Tests dedizierte Tests für Smoke/Warmup-, Doctor-, Deploy- oder Remote-Verification-Module
 - **AND** diese Tests prüfen Retry-, Fehler- oder Report-Orchestrierung ohne den gesamten CLI-Einstieg auszuführen
+
+### Requirement: Serverseitige Mutationsorchestrierung bleibt außerhalb des App-Layers
+
+Das Monorepo MUST serverseitige Mutationsorchestrierung in Zielpackages halten und `apps/sva-studio-react` auf Host-Komposition, Routing-Bindings und framework-spezifische Entry-Points begrenzen.
+
+#### Scenario: App importiert einen internen Mutationspfad
+
+- **WHEN** die App einen internen `src`-Pfad oder einen package-spezifischen Mutations-Transporthandler direkt importiert
+- **THEN** schlagen die statischen Boundary-Gates fehl
+- **AND** die App muss stattdessen über öffentliche Package-Verträge oder Routing-Kontrakte integrieren
+
+### Requirement: Fester Mutation-Workflow ist Boundary-übergreifend konsistent
+
+Das Monorepo SHALL für serverseitige Mutationen einen festen Ablauf aus Prepare, CSRF, Authorize, Idempotency, Parse, Execute, Error-Mapping und Response-Mapping wiederverwenden.
+
+#### Scenario: Ein Zielpackage baut eine neue Mutation
+
+- **GIVEN** ein Zielpackage führt einen neuen serverseitigen Mutationshandler ein
+- **WHEN** der Handler Request-Guards, Parsing, Fachausführung und Response-Mapping kombiniert
+- **THEN** delegiert er diese Schrittfolge an einen gemeinsamen Workflow-Kern
+- **AND** paketlokale Unterschiede bleiben auf kleine Adapter für Autorisierung, Input-Building, Execute und Fehlermapping begrenzt

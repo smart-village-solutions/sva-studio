@@ -1,6 +1,6 @@
 ## Context
 
-Die lokale IAM-Content-Persistenz schreibt bereits unveränderliche Historieneinträge mit Actor, Aktion, Änderungsfeldern, Statusübergang, Zusammenfassung und Snapshot. FAQ, Cockpit Cards, News und Surveys besitzen bereits unterschiedlich ausgeprägte Historienansichten; Events, POI und Generic Items enthalten derzeit Platzhalter. News, Events und POI werden im Mainserver gespeichert, dessen vollständige externe Änderungshistorie nicht Teil des Studio-Vertrags ist. Waste Management besitzt eine eigene fachliche und technische Historie.
+Die lokale IAM-Content-Persistenz schreibt bereits unveränderliche Historieneinträge mit Actor, Aktion, Änderungsfeldern, Statusübergang, Zusammenfassung und Snapshot. FAQ, Cockpit Cards, News und Surveys besitzen bereits unterschiedlich ausgeprägte Historienansichten; Events, POI und Generic Items enthalten derzeit Platzhalter. Featured Projects werden bewusst vorher ohne Historien-Tab ausgeliefert. Ihr Change führt bereits die allgemeine External-Content-Referenz, stabile `externalId`, bestehende Idempotenz und Reconciliation für Mainserver-Inhalte ein. News, Events und POI werden ebenfalls im Mainserver gespeichert, dessen vollständige externe Änderungshistorie nicht Teil des Studio-Vertrags ist. Waste Management besitzt eine eigene fachliche und technische Historie.
 
 Der Change betrifft mehrere Plugins, Host-Runtime, IAM, Plugin-SDK und UI und benötigt deshalb einen gemeinsamen Architekturvertrag statt weiterer pluginlokaler Sonderlösungen.
 
@@ -32,6 +32,12 @@ Alternativen:
 
 - Pluginlokale Clients und Tabellen fortführen: verworfen, weil sie Rechte-, Fehler- und UX-Drift begünstigen.
 - Eine zweite generische History-Datenbank einführen: verworfen, weil `iam.content_history` und der host-owned Auditpfad bereits die passende Grundlage bilden.
+
+### Decision: Bestehende External-Content-Identität wird wiederverwendet
+
+Der Change `add-featured-projects-plugin` ist die technische Vorleistung für externe Content-Identität und Provider-Reconciliation. Dieser History-Change verwendet dieselbe Zuordnung von `iam.contents` zu Mainserver-Entitäten, dieselbe stabile Operations-/`externalId` und denselben Idempotenz- und Reconciliation-Vertrag. Er führt weder eine zweite externe Referenztabelle noch ein paralleles plugin- oder historylokales Mutation-Journal ein.
+
+Die External-Content-Referenz identifiziert den lokalen History-Subject. Der History-Change ergänzt ausschließlich die korrelierbare Erfolgsfinalisierung, History-Read-Verträge und Darstellung. Lifecycle-, Autoren- und fachliche Reconciliation-Regeln bleiben bei Content-Core und jeweiligem Fachadapter.
 
 ### Decision: Mainserver-Historie bedeutet Studio-Mutationshistorie
 
@@ -65,6 +71,7 @@ Die History ist schreibgeschützt. Speichern-Aktionen des Editors erscheinen nic
 - `plugin-news`, `plugin-events` und `plugin-poi`: Studio-Mutationen gegen den Mainserver korrelierbar erfassen; Herkunft und begrenzte Abdeckung anzeigen.
 - `plugin-generic-items`, `plugin-faq` und `plugin-cockpit-cards`: auf den gemeinsamen IAM-History-Client und dieselben Zustände vereinheitlichen.
 - `plugin-surveys`: bestehende History-Anbindung gegen den gemeinsamen Vertrag prüfen und vereinheitlichen.
+- `plugin-projects`: die bereits vorhandene External-Content-Referenz konsumieren, History-Capability und `content.readHistory` registrieren und den nachgelagerten Tab `Historie` ergänzen; keine neue Identitäts- oder Mutationspersistenz.
 - `plugin-waste-management`: fachliche und technische History gegen Rechte-, Scope-, Herkunfts- und UX-Invarianten prüfen; keine erzwungene Umstellung auf `iam.content_history`, wenn der fachliche Vertrag dies nicht trägt.
 - `plugin-categories`, `plugin-sdk` und weitere Beiträge ohne eigene redaktionelle Mutation: explizit als nicht historienpflichtig klassifizieren.
 
@@ -86,10 +93,10 @@ Die Implementierung muss vor Änderungen die tatsächlichen aktiven Contribution
 
 ## Migration Plan
 
-1. Aktive Plugin-Contributions und ihre Mutations-/History-Pfade inventarisieren.
-2. Gemeinsamen Contract, Client, Normalisierung und Registry-Validierung ergänzen.
+1. Aktive Plugin-Contributions und ihre Mutations-/History-Pfade einschließlich Featured Projects inventarisieren und die Vorleistung aus `add-featured-projects-plugin` verifizieren.
+2. Gemeinsamen Contract, Client, Normalisierung und Registry-Validierung auf der vorhandenen External-Content-Referenz ergänzen.
 3. Lokale IAM-Plugins auf den gemeinsamen Pfad migrieren.
-4. Mainserver-Plugins an die Studio-Mutationshistorie anbinden.
+4. Mainserver-Plugins einschließlich Featured Projects an die Studio-Mutationshistorie anbinden.
 5. Waste und nicht historienpflichtige Plugins explizit klassifizieren.
 6. Plugin-Scaffolding, Dokumentation und blockierende Contract-Tests aktualisieren.
 7. Bestehende Daten bleiben unverändert; neue Mainserver-Historie beginnt mit den nach Deployment über das Studio ausgeführten Mutationen.

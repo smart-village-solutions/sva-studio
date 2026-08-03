@@ -21,7 +21,7 @@
     "@sva/plugin-sdk": "workspace:*",
     "@sva/studio-ui-react": "workspace:*",
     "maplibre-gl": "^5.24.0",
-    "react-hook-form": "^7.80.0",
+    "react-hook-form": "^7.83.0",
     "zod": "^3.25.76"
   },
   "peerDependencies": {

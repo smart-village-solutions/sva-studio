@@ -223,7 +223,7 @@ importers:
         version: 3.1053.0
       '@hookform/resolvers':
         specifier: ^3.10.0
-        version: 3.10.0(react-hook-form@7.80.0(react@19.2.6))
+        version: 3.10.0(react-hook-form@7.84.0(react@19.2.6))
       '@kern-ux/native':
         specifier: ^2.6.4
         version: 2.6.4
@@ -307,7 +307,7 @@ importers:
         version: link:../../packages/studio-module-iam
       '@sva/studio-ui-react':
         specifier: workspace:*
-        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
+        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.84.0(react@19.2.6))(react@19.2.6)
       '@sva/sva-mainserver':
         specifier: workspace:*
         version: file:packages/sva-mainserver(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(typescript@6.0.3)
@@ -360,8 +360,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.6(react@19.2.6)
       react-hook-form:
-        specifier: ^7.80.0
-        version: 7.80.0(react@19.2.6)
+        specifier: ^7.83.0
+        version: 7.84.0(react@19.2.6)
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.6.0
@@ -771,7 +771,7 @@ importers:
         version: link:../plugin-sdk
       '@sva/studio-ui-react':
         specifier: workspace:*
-        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
+        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.84.0(react@19.2.6))(react@19.2.6)
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -805,13 +805,13 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0
-        version: 3.10.0(react-hook-form@7.80.0(react@19.2.6))
+        version: 3.10.0(react-hook-form@7.84.0(react@19.2.6))
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
       '@sva/studio-ui-react':
         specifier: workspace:*
-        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
+        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.84.0(react@19.2.6))(react@19.2.6)
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -822,8 +822,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.6(react@19.2.6)
       react-hook-form:
-        specifier: ^7.80.0
-        version: 7.80.0(react@19.2.6)
+        specifier: ^7.83.0
+        version: 7.84.0(react@19.2.6)
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -854,7 +854,7 @@ importers:
         version: link:../plugin-sdk
       '@sva/studio-ui-react':
         specifier: workspace:*
-        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
+        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.84.0(react@19.2.6))(react@19.2.6)
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -868,8 +868,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.6(react@19.2.6)
       react-hook-form:
-        specifier: ^7.80.0
-        version: 7.80.0(react@19.2.6)
+        specifier: ^7.83.0
+        version: 7.84.0(react@19.2.6)
     devDependencies:
       '@testing-library/react':
         specifier: ^16.2.0
@@ -894,13 +894,13 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0
-        version: 3.10.0(react-hook-form@7.80.0(react@19.2.6))
+        version: 3.10.0(react-hook-form@7.84.0(react@19.2.6))
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
       '@sva/studio-ui-react':
         specifier: workspace:*
-        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
+        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.84.0(react@19.2.6))(react@19.2.6)
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -911,8 +911,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.6(react@19.2.6)
       react-hook-form:
-        specifier: ^7.80.0
-        version: 7.80.0(react@19.2.6)
+        specifier: ^7.83.0
+        version: 7.84.0(react@19.2.6)
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -940,13 +940,13 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0
-        version: 3.10.0(react-hook-form@7.80.0(react@19.2.6))
+        version: 3.10.0(react-hook-form@7.84.0(react@19.2.6))
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
       '@sva/studio-ui-react':
         specifier: workspace:*
-        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
+        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.84.0(react@19.2.6))(react@19.2.6)
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -960,8 +960,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.6(react@19.2.6)
       react-hook-form:
-        specifier: ^7.80.0
-        version: 7.80.0(react@19.2.6)
+        specifier: ^7.83.0
+        version: 7.84.0(react@19.2.6)
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -989,13 +989,13 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0
-        version: 3.10.0(react-hook-form@7.80.0(react@19.2.6))
+        version: 3.10.0(react-hook-form@7.84.0(react@19.2.6))
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
       '@sva/studio-ui-react':
         specifier: workspace:*
-        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
+        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.84.0(react@19.2.6))(react@19.2.6)
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -1006,8 +1006,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.6(react@19.2.6)
       react-hook-form:
-        specifier: ^7.80.0
-        version: 7.80.0(react@19.2.6)
+        specifier: ^7.83.0
+        version: 7.84.0(react@19.2.6)
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -1038,7 +1038,7 @@ importers:
         version: link:../plugin-sdk
       '@sva/studio-ui-react':
         specifier: workspace:*
-        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
+        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.84.0(react@19.2.6))(react@19.2.6)
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -1052,8 +1052,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.6(react@19.2.6)
       react-hook-form:
-        specifier: ^7.80.0
-        version: 7.80.0(react@19.2.6)
+        specifier: ^7.83.0
+        version: 7.84.0(react@19.2.6)
     devDependencies:
       '@testing-library/react':
         specifier: ^16.2.0
@@ -1081,13 +1081,13 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0
-        version: 3.10.0(react-hook-form@7.80.0(react@19.2.6))
+        version: 3.10.0(react-hook-form@7.84.0(react@19.2.6))
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
       '@sva/studio-ui-react':
         specifier: workspace:*
-        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
+        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.84.0(react@19.2.6))(react@19.2.6)
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -1098,8 +1098,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.6(react@19.2.6)
       react-hook-form:
-        specifier: ^7.80.0
-        version: 7.80.0(react@19.2.6)
+        specifier: ^7.83.0
+        version: 7.84.0(react@19.2.6)
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -1143,7 +1143,7 @@ importers:
         version: link:../plugin-sdk
       '@sva/studio-ui-react':
         specifier: workspace:*
-        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
+        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.84.0(react@19.2.6))(react@19.2.6)
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -1154,8 +1154,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.6(react@19.2.6)
       react-hook-form:
-        specifier: ^7.76.0
-        version: 7.80.0(react@19.2.6)
+        specifier: ^7.83.0
+        version: 7.84.0(react@19.2.6)
     devDependencies:
       '@testing-library/react':
         specifier: ^16.2.0
@@ -1186,7 +1186,7 @@ importers:
         version: link:../plugin-sdk
       '@sva/studio-ui-react':
         specifier: workspace:*
-        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
+        version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.84.0(react@19.2.6))(react@19.2.6)
       '@tabler/icons-react':
         specifier: ^3.46.0
         version: 3.46.0(react@19.2.6)
@@ -1203,8 +1203,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.6(react@19.2.6)
       react-hook-form:
-        specifier: ^7.80.0
-        version: 7.80.0(react@19.2.6)
+        specifier: ^7.83.0
+        version: 7.84.0(react@19.2.6)
     devDependencies:
       '@testing-library/react':
         specifier: ^16.2.0
@@ -1383,8 +1383,8 @@ importers:
         specifier: ^20.11.1
         version: 20.11.1(bufferutil@4.1.0)
       react-hook-form:
-        specifier: ^7.80.0
-        version: 7.80.0(react@19.2.6)
+        specifier: ^7.83.0
+        version: 7.84.0(react@19.2.6)
       vitest:
         specifier: ^4.1.9
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.9)(happy-dom@20.11.1(bufferutil@4.1.0))(jsdom@29.1.1)(msw@2.15.0(@types/node@25.9.1)(typescript@7.0.2))(vite@8.2.0(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
@@ -5330,7 +5330,7 @@ packages:
     peerDependencies:
       react: ^19.2.0
       react-dom: ^19.2.0
-      react-hook-form: ^7.80.0
+      react-hook-form: ^7.83.0
 
   '@sva/sva-mainserver@file:packages/sva-mainserver':
     resolution: {directory: packages/sva-mainserver, type: directory}
@@ -8446,8 +8446,8 @@ packages:
     peerDependencies:
       react: ^19.2.6
 
-  react-hook-form@7.80.0:
-    resolution: {integrity: sha512-4P+fk6oXsxY+6xSj7Euhc2sumQD8zQqCuVHoJwoyp9EchP+IUW9OESB7uHFJOKsIBQ4MQqYE84INJFqUCYNoOg==}
+  react-hook-form@7.84.0:
+    resolution: {integrity: sha512-+hWvQP6GLco56mDwrbU4XnHix8t1z90ltZsDIrREl+jnQFQxYLX8oAzqe/Xn8nHpmoXTY5M6oEXrAhbP1qevNQ==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
@@ -11286,9 +11286,9 @@ snapshots:
     dependencies:
       hono: 4.12.26
 
-  '@hookform/resolvers@3.10.0(react-hook-form@7.80.0(react@19.2.6))':
+  '@hookform/resolvers@3.10.0(react-hook-form@7.84.0(react@19.2.6))':
     dependencies:
-      react-hook-form: 7.80.0(react@19.2.6)
+      react-hook-form: 7.84.0(react@19.2.6)
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -13831,13 +13831,13 @@ snapshots:
   '@sva/plugin-waste-management@file:packages/plugin-waste-management(@tanstack/react-router@1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
       '@sva/plugin-sdk': file:packages/plugin-sdk
-      '@sva/studio-ui-react': file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)
+      '@sva/studio-ui-react': file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.84.0(react@19.2.6))(react@19.2.6)
       '@tabler/icons-react': 3.46.0(react@19.2.6)
       '@tanstack/react-router': 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       exceljs: 4.4.0
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
-      react-hook-form: 7.80.0(react@19.2.6)
+      react-hook-form: 7.84.0(react@19.2.6)
     transitivePeerDependencies:
       - '@floating-ui/dom'
       - '@tiptap/core'
@@ -13875,7 +13875,7 @@ snapshots:
     dependencies:
       '@sva/core': file:packages/core
 
-  '@sva/studio-ui-react@file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.80.0(react@19.2.6))(react@19.2.6)':
+  '@sva/studio-ui-react@file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.84.0(react@19.2.6))(react@19.2.6)':
     dependencies:
       '@radix-ui/react-alert-dialog': 1.1.17(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@radix-ui/react-dialog': 1.1.17(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -13890,7 +13890,7 @@ snapshots:
       lucide-react: 1.28.0(react@19.2.6)
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
-      react-hook-form: 7.80.0(react@19.2.6)
+      react-hook-form: 7.84.0(react@19.2.6)
       tailwind-merge: 3.6.0
     transitivePeerDependencies:
       - '@floating-ui/dom'
@@ -17456,7 +17456,7 @@ snapshots:
       react: 19.2.6
       scheduler: 0.27.0
 
-  react-hook-form@7.80.0(react@19.2.6):
+  react-hook-form@7.84.0(react@19.2.6):
     dependencies:
       react: 19.2.6
 

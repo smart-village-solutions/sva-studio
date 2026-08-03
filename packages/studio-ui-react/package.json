@@ -29,7 +29,7 @@
   "peerDependencies": {
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-hook-form": "^7.80.0"
+    "react-hook-form": "^7.83.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.2.0",
@@ -37,7 +37,7 @@
     "@types/react-dom": "^19.2.0",
     "@vitest/coverage-v8": "^4.1.9",
     "happy-dom": "^20.11.1",
-    "react-hook-form": "^7.80.0",
+    "react-hook-form": "^7.83.0",
     "vitest": "^4.1.9"
   }
 }

@@ -12,7 +12,6 @@ export interface DurationEntry {
 }
 
 const APP_PROJECT = 'sva-studio-react';
-const APP_VITEST_CONFIG = 'apps/sva-studio-react/vitest.config.ts';
 const COVERAGE_WORKSPACE_ROOTS = ['apps', 'packages'] as const;
 const IGNORED_DIRECTORY_NAMES = new Set(['node_modules', '.git', '.nx', '.output', 'dist', 'build', '.generated']);
 const require = createRequire(import.meta.url);
@@ -47,7 +46,7 @@ const getAffectedCoverageProjects = (base: string, head: string): string[] => {
 };
 
 export const buildAppCoverageCommand = (): string =>
-  `pnpm exec vitest run --config ${APP_VITEST_CONFIG} --coverage --reporter=verbose`;
+  `pnpm nx run ${APP_PROJECT}:test:coverage`;
 
 const removeProjectRootCoverageDirectory = (workspaceRootPath: string): void => {
   if (!fs.existsSync(workspaceRootPath)) {

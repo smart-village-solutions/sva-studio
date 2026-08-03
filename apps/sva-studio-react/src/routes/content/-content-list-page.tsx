@@ -726,6 +726,14 @@ export const ContentListPage = () => {
         sortValue: (item) => item.createdAt,
       },
       {
+        id: 'updatedAt',
+        header: t('content.table.headerUpdated'),
+        cell: (item) =>
+          item.updatedAt ? formatDateTime(item.updatedAt) : t('content.table.notAvailable'),
+        sortable: true,
+        sortValue: (item) => item.updatedAt ?? '',
+      },
+      {
         id: 'publishedAt',
         header: t('content.table.headerPublished'),
         cell: (item) =>

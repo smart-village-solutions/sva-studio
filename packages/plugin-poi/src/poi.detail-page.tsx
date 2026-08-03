@@ -14,6 +14,7 @@ import {
 import {
   Button,
   Select,
+  StudioDetailTabIcon,
   StudioDetailPageTemplate,
   StudioFormSummary,
   StudioLoadingState,
@@ -668,7 +669,10 @@ export function PoiDetailPage({
                         : 'border-transparent text-muted-foreground'
                     }`}
                   >
-                    <PoiTabTriggerLabel label={tab.label} />
+                    <span className="inline-flex items-center gap-2">
+                      <StudioDetailTabIcon name={tab.id} />
+                      <PoiTabTriggerLabel label={tab.label} />
+                    </span>
                   </TabsTrigger>
                 );
               })}

@@ -316,7 +316,7 @@ describe('ContentListPage', () => {
             id: 'content-2',
             contentType: 'poi.point-of-interest',
             createdAt: '2026-03-20T10:00:00.000Z',
-            updatedAt: '2026-03-21T11:00:00.000Z',
+            updatedAt: '',
             title: 'Archiv',
             author: 'Redaktion',
             payload: { blocks: ['A'] },
@@ -359,8 +359,11 @@ describe('ContentListPage', () => {
     expect(screen.getAllByRole('button', { name: 'Löschen' }).length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('content-1')).toHaveLength(2);
     expect(screen.getAllByText('content-2')).toHaveLength(2);
+    expect(screen.getAllByRole('columnheader', { name: 'Änderungsdatum' })).toHaveLength(1);
     expect(screen.getAllByText('20.03.2026, 11:00')).toHaveLength(4);
     expect(screen.getAllByText('21.03.2026, 11:00')).toHaveLength(2);
+    expect(screen.getAllByText('21.03.2026, 12:00')).toHaveLength(2);
+    expect(screen.getAllByText('Nicht verfügbar')).toHaveLength(2);
     const statusButton = screen.getAllByRole('button', {
       name: 'Status von Startseite ändern',
     })[0] as HTMLElement;

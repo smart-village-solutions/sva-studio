@@ -111,6 +111,7 @@ export {
   type StudioResourceHeaderProps,
   type StudioSectionProps,
 } from './studio-surfaces.js';
+export { StudioDetailTabIcon, type StudioDetailTabIconName } from './studio-detail-tab-icon.js';
 export {
   StudioDetailTabs,
   type StudioDetailTab,

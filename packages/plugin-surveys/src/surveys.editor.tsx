@@ -15,11 +15,8 @@ import {
 } from './surveys.detail-form.js';
 import { SurveyEditorActions, SurveyEditorPrimaryAction } from './surveys.editor.actions.js';
 import { useSurveyEditorController } from './surveys.editor-logic.js';
-import {
-  createSurveyEditorTabs,
-  type SurveyEditorMode,
-  type SurveyEditorTabId,
-} from './surveys.editor.shared.js';
+import { type SurveyEditorMode, type SurveyEditorTabId } from './surveys.editor.shared.js';
+import { createSurveyEditorTabs } from './surveys.editor-tabs.js';
 
 const formId = 'survey-detail-form';
 

@@ -75,6 +75,7 @@ export const contentDEResources = {
     headerAccess: 'Bearbeitbarkeit',
     headerContext: 'Kontext',
     headerActions: 'Aktionen',
+    notAvailable: 'Nicht verfügbar',
     notPublished: 'Nicht gesetzt',
   },
   editor: {

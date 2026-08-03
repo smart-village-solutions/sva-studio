@@ -303,6 +303,12 @@ describe('GenericItemsDetailPage', () => {
   it('creates a generic item', async () => {
     render(<GenericItemsDetailPage mode="create" />);
 
+    const tablist = screen.getByRole('tablist', { name: 'Detailbereiche' });
+    const basisTab = screen.getByRole('tab', { name: 'Basis' });
+    expect(tablist.className).toContain('ml-[10px]');
+    expect(basisTab.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(screen.getByRole('tabpanel', { name: 'Basis' }).className).toContain('mt-0');
+
     expect(screen.getByRole('link', { name: 'Zurück' }).getAttribute('href')).toBe(
       '/admin/content?type=generic-items.generic-item'
     );

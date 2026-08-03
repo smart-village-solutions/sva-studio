@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  createSurveyEditorTabs,
   getSurveyEditorErrorMessage,
   mapSurveyItemToFormValues,
   mapSurveyModerationGroups,
   mapSurveyResultsTabData,
   toSurveyMutationInput,
 } from '../src/surveys.editor.shared.js';
+import { createSurveyEditorTabs } from '../src/surveys.editor-tabs.js';
 import { reorderEntries } from '../src/surveys.question-editor.shared.js';
 import type { SurveyContentItem } from '../src/surveys.types.js';
 
@@ -86,7 +86,9 @@ const surveyItem: SurveyContentItem = {
 
 describe('survey editor shared mappings', () => {
   it('maps loaded survey results into the results tab contract', () => {
-    const result = mapSurveyResultsTabData(surveyItem, (key) => (key === 'fields.statusOptions.active' ? 'Aktiv' : key));
+    const result = mapSurveyResultsTabData(surveyItem, (key) =>
+      key === 'fields.statusOptions.active' ? 'Aktiv' : key
+    );
 
     expect(result).toEqual({
       statusLabel: 'Aktiv',
@@ -472,7 +474,9 @@ describe('survey editor shared mappings', () => {
   });
 
   it('prefers non-empty error messages from thrown errors', () => {
-    expect(getSurveyEditorErrorMessage(new Error('Echte Fehlermeldung'), 'Fallback')).toBe('Echte Fehlermeldung');
+    expect(getSurveyEditorErrorMessage(new Error('Echte Fehlermeldung'), 'Fallback')).toBe(
+      'Echte Fehlermeldung'
+    );
   });
 
   it('emits delete markers when loaded survey questions are removed entirely', () => {
@@ -491,14 +495,15 @@ describe('survey editor shared mappings', () => {
   });
 
   it('creates editor tabs with empty result data and empty target areas before the first save', () => {
-    const tabs = createSurveyEditorTabs(
-      (key) => key,
-      'create',
-      null,
-      undefined
-    );
+    const tabs = createSurveyEditorTabs((key) => key, 'create', null, undefined);
 
-    expect(tabs.map((tab) => tab.id)).toEqual(['basis', 'content', 'moderation', 'results', 'history']);
+    expect(tabs.map((tab) => tab.id)).toEqual([
+      'basis',
+      'content',
+      'moderation',
+      'results',
+      'history',
+    ]);
   });
 
   it('trims optional mutation fields, converts date values, and removes empty descriptions', () => {

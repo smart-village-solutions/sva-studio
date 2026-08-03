@@ -19,7 +19,9 @@ export function SurveyQuestionOptionActions({
 }>) {
   return (
     <div className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-center sm:justify-between">
-      <h5 className="text-sm font-semibold text-foreground">{pt('labels.optionSection', { index: optionIndex + 1 })}</h5>
+      <h5 className="text-sm font-semibold text-foreground">
+        {pt('labels.answerSection', { index: optionIndex + 1 })}
+      </h5>
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"

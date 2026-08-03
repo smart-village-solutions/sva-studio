@@ -1,12 +1,29 @@
 import React from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sva/studio-ui-react';
+import {
+  StudioDetailTabIcon,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  type StudioDetailTabIconName,
+} from '@sva/studio-ui-react';
 
 import { GenericItemsDetailBasisTab } from './generic-items.detail-basis-tab.js';
 import { GenericItemsDetailContentTab } from './generic-items.detail-content-tab.js';
 import { GenericItemsDetailHistoryTab } from './generic-items.detail-history-tab.js';
 import { GenericItemsDetailSettingsTab } from './generic-items.detail-settings-tab.js';
-import { genericItemsDetailTabIds, type GenericItemsDetailTabId } from './generic-items.detail-tabs.js';
+import {
+  genericItemsDetailTabIds,
+  type GenericItemsDetailTabId,
+} from './generic-items.detail-tabs.js';
 import type { GenericItemCategoryOption } from './generic-items.api-types.js';
+
+const tabIconNames = {
+  basis: 'basis',
+  content: 'content',
+  settings: 'settings',
+  history: 'history',
+} as const satisfies Record<GenericItemsDetailTabId, StudioDetailTabIconName>;
 
 const renderTabPanel = (title: string, description: string, panel: React.JSX.Element) => (
   <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
@@ -37,16 +54,25 @@ export const GenericItemsDetailTabs = ({
   onTabChange: (tabId: GenericItemsDetailTabId) => void;
   pt: (key: string) => string;
 }>) => (
-  <Tabs value={activeTab} onValueChange={(value: string) => onTabChange(value as GenericItemsDetailTabId)}>
-    <TabsList aria-label={pt('tabs.ariaLabel')}>
+  <Tabs
+    value={activeTab}
+    onValueChange={(value: string) => onTabChange(value as GenericItemsDetailTabId)}
+    className="space-y-0"
+  >
+    <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] gap-10">
       {genericItemsDetailTabIds.map((tabId) => (
-        <TabsTrigger key={tabId} value={tabId}>
-          {pt(`tabs.${tabId}.label`)}
+        <TabsTrigger
+          key={tabId}
+          value={tabId}
+          className="gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none"
+        >
+          <StudioDetailTabIcon name={tabIconNames[tabId]} />
+          <span>{pt(`tabs.${tabId}.label`)}</span>
         </TabsTrigger>
       ))}
     </TabsList>
 
-    <TabsContent value="basis">
+    <TabsContent value="basis" className="mt-0">
       {renderTabPanel(
         pt('tabs.basis.title'),
         pt('tabs.basis.description'),
@@ -58,21 +84,21 @@ export const GenericItemsDetailTabs = ({
         />
       )}
     </TabsContent>
-    <TabsContent value="content">
+    <TabsContent value="content" className="mt-0">
       {renderTabPanel(
         pt('tabs.content.title'),
         pt('tabs.content.description'),
         <GenericItemsDetailContentTab labels={labels} onOpenMediaPicker={onOpenMediaPicker} />
       )}
     </TabsContent>
-    <TabsContent value="settings">
+    <TabsContent value="settings" className="mt-0">
       {renderTabPanel(
         pt('tabs.settings.title'),
         pt('tabs.settings.description'),
         <GenericItemsDetailSettingsTab labels={labels} />
       )}
     </TabsContent>
-    <TabsContent value="history">
+    <TabsContent value="history" className="mt-0">
       {renderTabPanel(
         pt('tabs.history.title'),
         pt('tabs.history.description'),

@@ -9,6 +9,9 @@ import {
 describe('check-i18n-keys', () => {
   it('scans app and plugin ui source roots', () => {
     expect(SOURCE_ROOTS).toContain('apps/sva-studio-react/src');
+    expect(SOURCE_ROOTS).toContain('packages/plugin-generic-items/src');
+    expect(SOURCE_ROOTS).toContain('packages/plugin-cockpit-cards/src');
+    expect(SOURCE_ROOTS).toContain('packages/plugin-surveys/src');
     expect(SOURCE_ROOTS).toContain('packages/plugin-waste-management/src');
   });
 
@@ -17,7 +20,10 @@ describe('check-i18n-keys', () => {
 
     expect(keys.has('news.navigation.title')).toBe(true);
     expect(keys.has('events.navigation.title')).toBe(true);
+    expect(keys.has('genericItems.editor.createTitle')).toBe(true);
+    expect(keys.has('cockpit-cards.editor.createTitle')).toBe(true);
     expect(keys.has('poi.navigation.title')).toBe(true);
+    expect(keys.has('surveys.pages.createTitle')).toBe(true);
     expect(keys.has('wasteManagement.page.title')).toBe(true);
   });
 

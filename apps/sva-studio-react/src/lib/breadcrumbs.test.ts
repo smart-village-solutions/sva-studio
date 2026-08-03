@@ -72,6 +72,28 @@ describe('resolveBreadcrumbItems', () => {
     ]);
   });
 
+  it.each([
+    ['generic-items', 'Generischen Inhalt anlegen', 'Generischen Inhalt bearbeiten'],
+    ['faq', 'FAQ anlegen', 'FAQ bearbeiten'],
+    ['cockpit-cards', 'Cockpit Card anlegen', 'Cockpit Card bearbeiten'],
+    ['surveys', 'Umfrage anlegen', 'Umfrage bearbeiten'],
+  ])(
+    'returns content breadcrumbs for %s create and edit pages',
+    (basePath, createTitle, editTitle) => {
+      expect(resolveBreadcrumbItems(`/admin/${basePath}/new`)).toEqual([
+        { href: '/', label: 'Übersicht' },
+        { href: '/admin/content', label: 'Inhalte' },
+        { label: createTitle },
+      ]);
+
+      expect(resolveBreadcrumbItems(`/admin/${basePath}/content-1`)).toEqual([
+        { href: '/', label: 'Übersicht' },
+        { href: '/admin/content', label: 'Inhalte' },
+        { label: editTitle },
+      ]);
+    }
+  );
+
   it('falls back to overview for unknown paths', () => {
     expect(resolveBreadcrumbItems('/unbekannt')).toEqual([{ label: 'Übersicht' }]);
   });

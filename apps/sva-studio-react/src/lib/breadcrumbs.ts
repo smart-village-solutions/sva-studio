@@ -131,6 +131,70 @@ const breadcrumbRoutes: ReadonlyArray<
     ],
   },
   {
+    pattern: /^\/admin\/generic-items\/new$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('genericItems.editor.createTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/generic-items\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('genericItems.editor.editTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/faq\/new$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('faq.editor.createTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/faq\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('faq.editor.editTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/cockpit-cards\/new$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('cockpit-cards.editor.createTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/cockpit-cards\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('cockpit-cards.editor.editTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/surveys\/new$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('surveys.pages.createTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/surveys\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('surveys.pages.editTitle') },
+    ],
+  },
+  {
     pattern: /^\/interfaces$/,
     build: () => [overviewBreadcrumb(), { label: t('interfaces.page.title') }],
   },
@@ -274,7 +338,9 @@ const breadcrumbRoutes: ReadonlyArray<
 
 export const resolveBreadcrumbItems = (pathname: string): ReadonlyArray<BreadcrumbItem> => {
   const normalizedPathname = normalizePathname(pathname);
-  const routeMatch = breadcrumbRoutes.find((candidate) => candidate.pattern.test(normalizedPathname));
+  const routeMatch = breadcrumbRoutes.find((candidate) =>
+    candidate.pattern.test(normalizedPathname)
+  );
 
   if (!routeMatch) {
     return [{ label: t('shell.sidebar.overview') }];

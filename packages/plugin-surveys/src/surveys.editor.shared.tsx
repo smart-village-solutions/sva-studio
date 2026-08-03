@@ -1,17 +1,11 @@
-import React from 'react';
-import { fromDatetimeLocalValue, toDatetimeLocalValue, usePluginTranslation } from '@sva/plugin-sdk';
-import { type StudioDetailTabDefinition } from '@sva/studio-ui-react';
-
-import { SurveyDetailBasisTab } from './surveys.detail-basis-tab.js';
-import type { SurveyTargetAreaOption } from './surveys.detail-basis-tab.js';
-import { SurveyDetailContentTab } from './surveys.detail-content-tab.js';
-import { type SurveyDetailFormValues } from './surveys.detail-form.js';
-import { SurveyDetailHistoryTab } from './surveys.detail-history-tab.js';
 import {
-  SurveyDetailModerationTab,
-  type SurveyModerationQuestionGroup,
-} from './surveys.detail-moderation-tab.js';
-import { SurveyDetailResultsTab, type SurveyResultsTabData } from './surveys.detail-results-tab.js';
+  fromDatetimeLocalValue,
+  toDatetimeLocalValue,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
+import { type SurveyDetailFormValues } from './surveys.detail-form.js';
+import { type SurveyModerationQuestionGroup } from './surveys.detail-moderation-tab.js';
+import { type SurveyResultsTabData } from './surveys.detail-results-tab.js';
 import type { SurveyMutationInput } from './surveys.mutation.types.js';
 import type { SurveyContentItem, SurveyLocalizedText } from './surveys.types.js';
 export type SurveyEditorMode = 'create' | 'edit';
@@ -26,7 +20,11 @@ const resolveLocalizedText = (value: SurveyLocalizedText | undefined): string =>
       return candidate;
     }
   }
-  return Object.values(value).find((candidate) => candidate.trim().length > 0)?.trim() ?? '';
+  return (
+    Object.values(value)
+      .find((candidate) => candidate.trim().length > 0)
+      ?.trim() ?? ''
+  );
 };
 const normalizeDateInput = (value?: string): string => (value ? toDatetimeLocalValue(value) : '');
 const surveyStatusLabelKey = {
@@ -34,20 +32,17 @@ const surveyStatusLabelKey = {
   ACTIVE: 'fields.statusOptions.active',
   ARCHIVED: 'fields.statusOptions.archived',
 } as const satisfies Record<SurveyContentItem['status'], string>;
-const deriveSurveyTargetAreaOptions = (item: SurveyContentItem | null): SurveyTargetAreaOption[] => {
-  if (!item) {
-    return [];
-  }
-  return [...new Set(item.targetAreaIds)].map((targetAreaId) => ({
-    id: targetAreaId,
-    label: targetAreaId,
-  }));
-};
-export const mapSurveyModerationGroups = (item: SurveyContentItem): SurveyModerationQuestionGroup[] =>
+export const mapSurveyModerationGroups = (
+  item: SurveyContentItem
+): SurveyModerationQuestionGroup[] =>
   (item.results?.questions ?? [])
     .map((questionResult) => {
-      const matchingQuestion = item.questions.find((question) => question.id === questionResult.questionId);
-      const optionFreeTextResponses = questionResult.optionResults.flatMap((optionResult) => optionResult.freeTextResponses);
+      const matchingQuestion = item.questions.find(
+        (question) => question.id === questionResult.questionId
+      );
+      const optionFreeTextResponses = questionResult.optionResults.flatMap(
+        (optionResult) => optionResult.freeTextResponses
+      );
 
       return {
         questionId: questionResult.questionId,
@@ -69,7 +64,9 @@ export const mapSurveyResultsTabData = (
     submissionCount: item.results.submissionCount,
     questionCount: item.questionCount,
     questions: item.results.questions.map((questionResult) => {
-      const matchingQuestion = item.questions.find((question) => question.id === questionResult.questionId);
+      const matchingQuestion = item.questions.find(
+        (question) => question.id === questionResult.questionId
+      );
       return {
         questionId: questionResult.questionId,
         questionTitle: resolveLocalizedText(matchingQuestion?.title),
@@ -135,7 +132,9 @@ const buildRemovedOptionMutations = (
   question: SurveyDetailFormValues['content']['questions'][number]
 ) => {
   const loadedQuestion = findLoadedQuestion(loadedItem, question.id);
-  const currentOptionIds = new Set(question.options.flatMap((option) => (option.id ? [option.id] : [])));
+  const currentOptionIds = new Set(
+    question.options.flatMap((option) => (option.id ? [option.id] : []))
+  );
   return (
     loadedQuestion?.options
       .filter((option) => currentOptionIds.has(option.id) === false)
@@ -155,18 +154,23 @@ const buildQuestionMutation = (
   type: question.type,
   required: question.required,
   position: question.position ?? questionIndex,
-  options: [...question.options.map((option, optionIndex) => ({
-    ...(option.id ? { id: option.id } : {}),
-    title: option.title.trim(),
-    position: option.position ?? optionIndex,
-    enablesFreeText: option.enablesFreeText,
-  })), ...buildRemovedOptionMutations(loadedItem, question)],
+  options: [
+    ...question.options.map((option, optionIndex) => ({
+      ...(option.id ? { id: option.id } : {}),
+      title: option.title.trim(),
+      position: option.position ?? optionIndex,
+      enablesFreeText: option.enablesFreeText,
+    })),
+    ...buildRemovedOptionMutations(loadedItem, question),
+  ],
 });
 const buildRemovedQuestionMutations = (
   loadedItem: SurveyContentItem | null | undefined,
   questions: SurveyDetailFormValues['content']['questions']
 ) => {
-  const currentQuestionIds = new Set(questions.flatMap((question) => (question.id ? [question.id] : [])));
+  const currentQuestionIds = new Set(
+    questions.flatMap((question) => (question.id ? [question.id] : []))
+  );
   return (
     loadedItem?.questions
       .filter((question) => currentQuestionIds.has(question.id) === false)
@@ -209,51 +213,3 @@ export const toSurveyMutationInput = (
 };
 export const getSurveyEditorErrorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error && error.message.trim().length > 0 ? error.message : fallback;
-export const createSurveyEditorTabs = (
-  pt: ReturnType<typeof usePluginTranslation>,
-  mode: SurveyEditorMode,
-  loadedItem: SurveyContentItem | null,
-  contentId?: string
-): readonly StudioDetailTabDefinition<SurveyEditorTabId>[] => {
-  const moderationGroups = loadedItem ? mapSurveyModerationGroups(loadedItem) : [];
-  const resultData = loadedItem ? mapSurveyResultsTabData(loadedItem, pt) : null;
-  const availableTargetAreas = deriveSurveyTargetAreaOptions(loadedItem);
-  return [
-    {
-      id: 'basis',
-      label: pt('tabs.basis.label'),
-      title: pt('tabs.basis.title'),
-      description: pt('tabs.basis.description'),
-      panel: (
-        <SurveyDetailBasisTab
-          mode={mode}
-          loadedItem={loadedItem}
-          availableTargetAreas={availableTargetAreas}
-          pt={pt}
-        />
-      ),
-    },
-    { id: 'content', label: pt('tabs.content.label'), title: pt('tabs.content.title'), description: pt('tabs.content.description'), panel: <SurveyDetailContentTab pt={pt} /> },
-    {
-      id: 'moderation',
-      label: pt('tabs.moderation.label'),
-      title: pt('tabs.moderation.title'),
-      description: pt('tabs.moderation.description'),
-      panel: <SurveyDetailModerationTab mode={mode} groups={moderationGroups} pt={pt} />,
-    },
-    {
-      id: 'results',
-      label: pt('tabs.results.label'),
-      title: pt('tabs.results.title'),
-      description: pt('tabs.results.description'),
-      panel: <SurveyDetailResultsTab mode={mode} resultData={resultData} pt={pt} />,
-    },
-    {
-      id: 'history',
-      label: pt('tabs.history.label'),
-      title: pt('tabs.history.title'),
-      description: pt('tabs.history.description'),
-      panel: <SurveyDetailHistoryTab contentId={contentId} pt={pt} />,
-    },
-  ];
-};

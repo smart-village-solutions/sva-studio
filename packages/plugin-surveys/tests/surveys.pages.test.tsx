@@ -10,14 +10,18 @@ const createSurveyMock = vi.fn();
 const updateSurveyMock = vi.fn();
 const useParamsMock = vi.fn(() => ({ contentId: 'survey-123' }));
 
-const surveyTranslate = (key: string, variables?: Readonly<Record<string, string | number>>): string => {
+const surveyTranslate = (
+  key: string,
+  variables?: Readonly<Record<string, string | number>>
+): string => {
   const template = messages[`surveys.${key}` as keyof typeof messages] ?? key;
   if (!variables) {
     return template;
   }
 
   return Object.entries(variables).reduce(
-    (value, [variableName, variableValue]) => value.replace(`{{${variableName}}}`, String(variableValue)),
+    (value, [variableName, variableValue]) =>
+      value.replace(`{{${variableName}}}`, String(variableValue)),
     template
   );
 };
@@ -48,8 +52,10 @@ vi.mock('@sva/plugin-sdk', async () => {
 const messages = {
   'surveys.pages.createTitle': 'Umfrage anlegen',
   'surveys.pages.editTitle': 'Umfrage bearbeiten',
-  'surveys.pages.createDescription': 'Neue Umfragen folgen dem gleichen Editor-Rahmen wie bestehende Inhalte.',
-  'surveys.pages.editDescription': 'Bestehende Umfragen nutzen denselben Editor-Rahmen wie neue Umfragen.',
+  'surveys.pages.createDescription':
+    'Neue Umfragen folgen dem gleichen Editor-Rahmen wie bestehende Inhalte.',
+  'surveys.pages.editDescription':
+    'Bestehende Umfragen nutzen denselben Editor-Rahmen wie neue Umfragen.',
   'surveys.tabs.ariaLabel': 'Umfrage-Bereiche',
   'surveys.tabs.basis.label': 'Basis',
   'surveys.tabs.basis.title': 'Basis',
@@ -67,7 +73,8 @@ const messages = {
   'surveys.tabs.history.title': 'Historie',
   'surveys.tabs.history.description': 'Änderungsverlauf der Umfrage.',
   'surveys.cards.basis.title': 'Basis-Rahmen',
-  'surveys.cards.basis.description': 'Status, Laufzeit, Zielgebiet und Metadaten folgen in den nächsten Schritten.',
+  'surveys.cards.basis.description':
+    'Status, Laufzeit, Zielgebiet und Metadaten folgen in den nächsten Schritten.',
   'surveys.cards.basis.identity.title': 'Identität',
   'surveys.cards.basis.identity.description': 'Titel und Status der Umfrage.',
   'surveys.cards.basis.schedule.title': 'Laufzeit',
@@ -77,24 +84,32 @@ const messages = {
   'surveys.cards.basis.metadata.title': 'Metadaten',
   'surveys.cards.basis.metadata.description': 'Zeitliche Metadaten der Umfrage.',
   'surveys.cards.content.title': 'Inhalts-Rahmen',
-  'surveys.cards.content.description': 'Beschreibung, Hinweise und Frageneditor folgen in den nächsten Schritten.',
+  'surveys.cards.content.description':
+    'Beschreibung, Hinweise und Frageneditor folgen in den nächsten Schritten.',
   'surveys.cards.moderation.title': 'Moderations-Rahmen',
-  'surveys.cards.moderation.description': 'Freitext-Freigaben werden nach dem ersten Speichern verfügbar.',
+  'surveys.cards.moderation.description':
+    'Freitext-Freigaben werden nach dem ersten Speichern verfügbar.',
   'surveys.cards.results.title': 'Ergebnis-Rahmen',
-  'surveys.cards.results.description': 'Ergebnisse und Exporte werden nach dem ersten Speichern verfügbar.',
+  'surveys.cards.results.description':
+    'Ergebnisse und Exporte werden nach dem ersten Speichern verfügbar.',
   'surveys.cards.results.summary.title': 'Übersicht',
   'surveys.cards.results.summary.description': 'Kompakter Überblick über die laufende Umfrage.',
   'surveys.cards.history.title': 'Historien-Rahmen',
-  'surveys.cards.history.description': 'Historieneinträge werden nach dem ersten Speichern verfügbar.',
-  'surveys.messages.createPendingHint': 'Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.',
-  'surveys.messages.sectionPlaceholder': 'Die fachlichen Felder dieses Bereichs folgen in den nächsten Umsetzungsabschnitten.',
-  'surveys.messages.historyPlaceholder': 'Die Historie erscheint hier, sobald die Umfrage bereits angelegt wurde.',
+  'surveys.cards.history.description':
+    'Historieneinträge werden nach dem ersten Speichern verfügbar.',
+  'surveys.messages.createPendingHint':
+    'Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.',
+  'surveys.messages.sectionPlaceholder':
+    'Die fachlichen Felder dieses Bereichs folgen in den nächsten Umsetzungsabschnitten.',
+  'surveys.messages.historyPlaceholder':
+    'Die Historie erscheint hier, sobald die Umfrage bereits angelegt wurde.',
   'surveys.messages.editorLoading': 'Umfrage wird geladen.',
   'surveys.history.createHint': 'Die Historie wird nach dem ersten Speichern verfügbar.',
   'surveys.history.loading': 'Historie wird geladen.',
   'surveys.messages.unlimitedScheduleHint': 'Ohne Enddatum bleibt die Umfrage unbefristet.',
   'surveys.messages.targetAreasEmpty': 'Es stehen derzeit keine Zielgebiete zur Auswahl.',
-  'surveys.messages.metadataCreateHint': 'Metadaten erscheinen nach dem ersten Speichern der Umfrage.',
+  'surveys.messages.metadataCreateHint':
+    'Metadaten erscheinen nach dem ersten Speichern der Umfrage.',
   'surveys.fields.title': 'Titel',
   'surveys.fields.status': 'Status',
   'surveys.fields.startAt': 'Start',
@@ -208,6 +223,21 @@ describe('survey editor pages', () => {
     expect(scoped.getByRole('tab', { name: 'Moderation' })).toBeTruthy();
     expect(scoped.getByRole('tab', { name: 'Ergebnisse' })).toBeTruthy();
     expect(scoped.getByRole('tab', { name: 'Historie' })).toBeTruthy();
+    expect(
+      scoped.getByRole('tab', { name: 'Basis' }).querySelector('svg')?.getAttribute('aria-hidden')
+    ).toBe('true');
+    expect(
+      scoped
+        .getByRole('tab', { name: 'Moderation' })
+        .querySelector('svg')
+        ?.getAttribute('aria-hidden')
+    ).toBe('true');
+    expect(
+      scoped
+        .getByRole('tab', { name: 'Ergebnisse' })
+        .querySelector('svg')
+        ?.getAttribute('aria-hidden')
+    ).toBe('true');
     expect(scoped.getAllByRole('tablist')).toHaveLength(1);
     expect(scoped.getByRole('heading', { name: 'Identität' })).toBeTruthy();
   });
@@ -222,13 +252,17 @@ describe('survey editor pages', () => {
       scoped.getByText('Freitext-Freigaben werden nach dem ersten Speichern verfügbar.')
     ).toBeTruthy();
     expect(
-      scoped.getByText('Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.')
+      scoped.getByText(
+        'Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.'
+      )
     ).toBeTruthy();
 
     fireEvent.change(tabSelect, { target: { value: 'results' } });
     expect(scoped.getByText('Kompakter Überblick über die laufende Umfrage.')).toBeTruthy();
     expect(
-      scoped.getAllByText('Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.').length
+      scoped.getAllByText(
+        'Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.'
+      ).length
     ).toBeGreaterThan(0);
 
     fireEvent.change(tabSelect, { target: { value: 'history' } });
@@ -262,7 +296,9 @@ describe('survey editor pages', () => {
       expect(scoped.getByRole('tab', { name: 'Basis' })).toBeTruthy();
       expect(scoped.getByRole('tab', { name: 'Historie' })).toBeTruthy();
       expect(
-        scoped.queryByText('Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.')
+        scoped.queryByText(
+          'Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.'
+        )
       ).toBeNull();
     })();
   });
@@ -286,5 +322,4 @@ describe('survey editor pages', () => {
     expect(scoped.getByText('Umfrage wird geladen.')).toBeTruthy();
     expect(getSurveyMock).toHaveBeenCalledWith('survey-legacy-123');
   });
-
 });

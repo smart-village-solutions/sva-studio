@@ -22,11 +22,8 @@ vi.mock('../src/cockpit-cards.api.js', () => ({
   deleteCockpitCard: state.delete,
   getCockpitCard: state.get,
   listCockpitCards: state.list,
+  listCockpitCardCategories: state.listCategories,
   updateCockpitCard: state.update,
-}));
-vi.mock('@sva/plugin-categories', () => ({
-  listCategories: state.listCategories,
-  flattenCategoriesForTable: (items: unknown[]) => items,
 }));
 vi.mock('@sva/plugin-sdk', () => ({
   fetchIamContentHistory: state.history,

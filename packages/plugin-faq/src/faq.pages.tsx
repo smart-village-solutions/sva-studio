@@ -38,10 +38,78 @@ const fieldTabs: Readonly<Record<string, FaqTab>> = {
 const toSummaryError = (field: string, message: string | undefined): StudioFormFieldError[] =>
   message ? [{ field, message }] : [];
 
-const FaqEditorPage = ({
+type Translator = ReturnType<typeof usePluginTranslation>;
+
+const FaqEditorActions = ({
+  disabled,
   mode,
-  contentId,
-}: Readonly<{ mode: 'create' | 'edit'; contentId?: string }>) => {
+  onDelete,
+  pt,
+}: Readonly<{
+  disabled: boolean;
+  mode: 'create' | 'edit';
+  onDelete: () => void;
+  pt: Translator;
+}>) => (
+  <div className="flex flex-wrap gap-2">
+    <Button asChild variant="outline">
+      <Link to="/admin/content">{pt('actions.back')}</Link>
+    </Button>
+    {mode === 'edit' ? (
+      <Button type="button" variant="destructive" disabled={disabled} onClick={onDelete}>
+        {pt('actions.delete')}
+      </Button>
+    ) : null}
+  </div>
+);
+
+const FaqDeleteDialog = ({
+  errorMessage,
+  onCancel,
+  onConfirm,
+  open,
+  pending,
+  pt,
+}: Readonly<{
+  errorMessage: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+  open: boolean;
+  pending: boolean;
+  pt: Translator;
+}>) => (
+  <StudioConfirmDialog
+    open={open}
+    title={pt('deleteDialog.title')}
+    description={pt('deleteDialog.description')}
+    confirmLabel={pt('deleteDialog.confirm')}
+    cancelLabel={pt('deleteDialog.cancel')}
+    confirmDisabled={pending}
+    cancelDisabled={pending}
+    onConfirm={onConfirm}
+    onCancel={onCancel}
+  >
+    {errorMessage ? <StudioFormSummary kind="error">{errorMessage}</StudioFormSummary> : null}
+  </StudioConfirmDialog>
+);
+
+const createSummaryErrors = (
+  errors: ReturnType<typeof useForm<FaqFormValues>>['formState']['errors'],
+  pt: Translator
+) => [
+  ...toSummaryError('faq-question', errors.question ? pt('validation.required') : undefined),
+  ...toSummaryError(
+    'faq-language-code',
+    errors.languageCode ? pt('validation.languageCode') : undefined
+  ),
+  ...toSummaryError('faq-answer', errors.answer ? pt('validation.answer') : undefined),
+  ...toSummaryError(
+    'faq-sort-weight',
+    errors.sortWeight ? pt('validation.sortWeight') : undefined
+  ),
+];
+
+const FaqEditorPage = ({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; contentId?: string }>) => {
   const pt = usePluginTranslation('faq');
   const navigate = useNavigate();
   const form = useForm<FaqFormValues>({ defaultValues, resolver: zodResolver(faqFormSchema) });
@@ -62,54 +130,24 @@ const FaqEditorPage = ({
   });
   const save = form.handleSubmit(onSubmit, onInvalid);
   const formId = `faq-${mode}-form`;
-  const summaryErrors = [
-    ...toSummaryError(
-      'faq-question',
-      form.formState.errors.question ? pt('validation.required') : undefined
-    ),
-    ...toSummaryError(
-      'faq-language-code',
-      form.formState.errors.languageCode ? pt('validation.languageCode') : undefined
-    ),
-    ...toSummaryError(
-      'faq-answer',
-      form.formState.errors.answer ? pt('validation.answer') : undefined
-    ),
-    ...toSummaryError(
-      'faq-sort-weight',
-      form.formState.errors.sortWeight ? pt('validation.sortWeight') : undefined
-    ),
-  ];
+  const summaryErrors = createSummaryErrors(form.formState.errors, pt);
 
   if (loading) return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   if (loadError) return <StudioErrorState>{pt('messages.loadError')}</StudioErrorState>;
 
-  const handleDelete = async () => {
-    if (await onDelete()) {
-      setDeleteDialogOpen(false);
-    }
-  };
+  const handleDelete = async () => (await onDelete()) && setDeleteDialogOpen(false);
 
   return (
     <StudioDetailPageTemplate
       title={pt(mode === 'create' ? 'editor.createTitle' : 'editor.editTitle')}
       description={pt(mode === 'create' ? 'editor.createDescription' : 'editor.editDescription')}
       actions={
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <Link to="/admin/content">{pt('actions.back')}</Link>
-          </Button>
-          {mode === 'edit' ? (
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={deletePending || form.formState.isSubmitting}
-              onClick={() => setDeleteDialogOpen(true)}
-            >
-              {pt('actions.delete')}
-            </Button>
-          ) : null}
-        </div>
+        <FaqEditorActions
+          disabled={deletePending || form.formState.isSubmitting}
+          mode={mode}
+          onDelete={() => setDeleteDialogOpen(true)}
+          pt={pt}
+        />
       }
       primaryAction={
         <Button type="submit" form={formId} disabled={form.formState.isSubmitting || deletePending}>
@@ -137,24 +175,17 @@ const FaqEditorPage = ({
           />
         </form>
       </FormProvider>
-      <StudioConfirmDialog
+      <FaqDeleteDialog
         open={deleteDialogOpen}
-        title={pt('deleteDialog.title')}
-        description={pt('deleteDialog.description')}
-        confirmLabel={pt('deleteDialog.confirm')}
-        cancelLabel={pt('deleteDialog.cancel')}
-        confirmDisabled={deletePending}
-        cancelDisabled={deletePending}
+        pending={deletePending}
+        errorMessage={deleteErrorMessage}
         onConfirm={() => void handleDelete()}
         onCancel={() => {
           setDeleteDialogOpen(false);
           setDeleteErrorMessage(null);
         }}
-      >
-        {deleteErrorMessage ? (
-          <StudioFormSummary kind="error">{deleteErrorMessage}</StudioFormSummary>
-        ) : null}
-      </StudioConfirmDialog>
+        pt={pt}
+      />
     </StudioDetailPageTemplate>
   );
 };

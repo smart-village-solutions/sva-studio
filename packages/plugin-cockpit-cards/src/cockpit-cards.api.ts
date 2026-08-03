@@ -1,4 +1,4 @@
-import { createMainserverCrudClient } from '@sva/plugin-sdk';
+import { createMainserverCrudClient, requestMainserverJson } from '@sva/plugin-sdk';
 
 import type {
   GenericItemCockpitCardInput,
@@ -9,6 +9,8 @@ export type CockpitCardListResult = Readonly<{
   data: readonly GenericItemCockpitCardRecord[];
   pagination: Readonly<{ page: number; pageSize: number; hasNextPage: boolean; total?: number }>;
 }>;
+
+export type CockpitCardCategoryOption = Readonly<{ id: string; name: string }>;
 
 export class CockpitCardsApiError extends Error {
   public constructor(
@@ -39,3 +41,16 @@ export const createCockpitCard = (input: GenericItemCockpitCardInput) => client.
 export const updateCockpitCard = (id: string, input: GenericItemCockpitCardInput) =>
   client.update(id, input);
 export const deleteCockpitCard = (id: string) => client.remove(id);
+
+export const listCockpitCardCategories = async (): Promise<
+  readonly CockpitCardCategoryOption[]
+> => {
+  const response = await requestMainserverJson<
+    { readonly data: readonly CockpitCardCategoryOption[] },
+    CockpitCardsApiError
+  >({
+    url: '/api/v1/mainserver/categories',
+    errorFactory: (code, message) => new CockpitCardsApiError(code, message),
+  });
+  return response.data;
+};

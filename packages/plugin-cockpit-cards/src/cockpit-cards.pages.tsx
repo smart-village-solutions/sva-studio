@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { flattenCategoriesForTable, listCategories } from '@sva/plugin-categories';
 import {
   fetchIamContentHistory,
   formatDateTimeInEditorTimeZone,
@@ -37,6 +36,7 @@ import {
   createCockpitCard,
   deleteCockpitCard,
   getCockpitCard,
+  listCockpitCardCategories,
   listCockpitCards,
   updateCockpitCard,
 } from './cockpit-cards.api.js';
@@ -65,10 +65,10 @@ function useCategories() {
   const [state, setState] = React.useState<'loading' | 'error' | 'ready'>('loading');
   React.useEffect(() => {
     let active = true;
-    void listCategories().then(
+    void listCockpitCardCategories().then(
       (items) => {
         if (active) {
-          setOptions(flattenCategoriesForTable(items).map(({ id, name }) => ({ id, name })));
+          setOptions(items);
           setState('ready');
         }
       },

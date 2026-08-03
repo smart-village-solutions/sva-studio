@@ -1,0 +1,4 @@
+{
+  "prNumber": 900,
+  "body": "Studio-MCP standardmäßig verfügbar\n\n- Studio-MCP ist in Dev, Staging und Production standardmäßig aktiviert.\n- Eine bewusste explizite Deaktivierung bleibt weiterhin möglich."
+}

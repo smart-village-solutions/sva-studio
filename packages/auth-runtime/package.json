@@ -44,7 +44,7 @@
     "@sva/studio-module-iam": "workspace:*",
     "cookie-es": "^3.1.1",
     "file-type": "^22.0.1",
-    "graphile-worker": "^0.16.6",
+    "graphile-worker": "^0.17.3",
     "ioredis": "^5.10.1",
     "jose": "^6.2.5",
     "openid-client": "^6.8.4",

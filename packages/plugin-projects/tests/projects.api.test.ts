@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createProject, listProjects } from '../src/projects.api.js';
+import {
+  createProject,
+  deleteProject,
+  getProject,
+  listProjects,
+  ProjectsApiError,
+  updateProject,
+} from '../src/projects.api.js';
 import type { ProjectFormInput } from '../src/projects.api-types.js';
 
 const input: ProjectFormInput = {
@@ -47,5 +54,37 @@ describe('projects api', () => {
     expect(new Headers(init.headers).get('Idempotency-Key')).toBe(
       '11111111-1111-4111-8111-111111111111'
     );
+  });
+
+  it('reads, updates and deletes projects through the shared CRUD contract', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ data: { id: 'project-1', ...input } }))
+      .mockResolvedValueOnce(Response.json({ data: { id: 'project-1', ...input } }))
+      .mockResolvedValueOnce(Response.json({ data: null }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getProject('project-1')).resolves.toMatchObject({ id: 'project-1' });
+    await expect(updateProject('project-1', input)).resolves.toMatchObject({ id: 'project-1' });
+    await expect(deleteProject('project-1')).resolves.toBeUndefined();
+
+    expect(fetchMock.mock.calls.map(([, init]) => (init as RequestInit).method)).toEqual([
+      undefined,
+      'PATCH',
+      'DELETE',
+    ]);
+  });
+
+  it('maps failed responses to the plugin error contract', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ error: 'forbidden', message: 'Nicht erlaubt' }, { status: 403 }))
+    );
+
+    await expect(getProject('project-1')).rejects.toMatchObject<ProjectsApiError>({
+      name: 'ProjectsApiError',
+      code: 'forbidden',
+      message: 'Nicht erlaubt',
+    });
   });
 });

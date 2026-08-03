@@ -74,6 +74,7 @@ coverage:
         - packages/monitoring-client/
         - packages/plugin-categories/
         - packages/plugin-cockpit-cards/
+        - packages/plugin-projects/
         - packages/plugin-events/
         - packages/plugin-faq/
         - packages/plugin-news/

@@ -33,7 +33,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitest/coverage-v8": "^4.1.9",
-    "happy-dom": "^20.10.6",
+    "happy-dom": "^20.11.1",
     "vitest": "^4.1.9"
   }
 }

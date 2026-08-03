@@ -91,8 +91,13 @@ describe('cockpit cards pages', () => {
   it('places text and image controls together and loads category and media options', async () => {
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsCreatePage />);
+    const tablist = screen.getByRole('tablist', { name: 'tabs.ariaLabel' });
+    const basisTab = screen.getByRole('tab', { name: 'tabs.basis.label' });
     const contentPanel = screen.getByLabelText('fields.text').closest('[role="tabpanel"]');
     const addImage = screen.getByRole('button', { name: 'actions.addImage' });
+    expect(tablist.className).toContain('ml-[10px]');
+    expect(basisTab.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(contentPanel?.className).toContain('mt-0');
     expect(contentPanel?.contains(addImage)).toBe(true);
     expect(await screen.findByRole('option', { name: 'Startseite' })).toBeTruthy();
     expect(await screen.findByRole('option', { name: 'bild.jpg' })).toBeTruthy();
@@ -138,11 +143,16 @@ describe('cockpit cards pages', () => {
     fireEvent.change(screen.getByLabelText('fields.text'), { target: { value: 'Geändert' } });
     fireEvent.click(screen.getByLabelText('fields.visible'));
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
-    await waitFor(() => expect(state.update).toHaveBeenCalledWith('card-1', expect.objectContaining({
-      contentBlocks: [{ body: 'Geändert' }],
-      payload: { languageCode: 'de', sortWeight: 2, legacy: 'keep' },
-      visible: true,
-    })));
+    await waitFor(() =>
+      expect(state.update).toHaveBeenCalledWith(
+        'card-1',
+        expect.objectContaining({
+          contentBlocks: [{ body: 'Geändert' }],
+          payload: { languageCode: 'de', sortWeight: 2, legacy: 'keep' },
+          visible: true,
+        })
+      )
+    );
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
     await waitFor(() => expect(state.delete).toHaveBeenCalledWith('card-1'));
     expect(state.navigate).toHaveBeenCalledWith({ to: '/admin/content' });
@@ -153,9 +163,8 @@ describe('cockpit cards pages', () => {
     state.get.mockRejectedValue(new Error('load failed'));
     state.listCategories.mockRejectedValue(new Error('categories failed'));
     state.listAssets.mockRejectedValue(new Error('media failed'));
-    const { CockpitCardsCreatePage, CockpitCardsEditPage } = await import(
-      '../src/cockpit-cards.pages.js'
-    );
+    const { CockpitCardsCreatePage, CockpitCardsEditPage } =
+      await import('../src/cockpit-cards.pages.js');
     const edit = render(<CockpitCardsEditPage />);
     await screen.findByText('messages.loadError');
     edit.unmount();
@@ -202,7 +211,14 @@ describe('cockpit cards pages', () => {
 
   it('renders history entries and history errors', async () => {
     state.history.mockResolvedValue([
-      { id: 'h1', createdAt: '2026-08-01', action: 'update', actor: 'Ada', summary: '', changedFields: ['title'] },
+      {
+        id: 'h1',
+        createdAt: '2026-08-01',
+        action: 'update',
+        actor: 'Ada',
+        summary: '',
+        changedFields: ['title'],
+      },
     ]);
     const { CockpitCardsHistory } = await import('../src/cockpit-cards.pages.js');
     const view = render(<CockpitCardsHistory contentId="card-1" />);
@@ -219,14 +235,20 @@ describe('cockpit cards pages', () => {
   it('renders list loading, data, empty and error states with normalized pagination', async () => {
     const { CockpitCardsListPage } = await import('../src/cockpit-cards.pages.js');
     state.search = { page: -1, pageSize: 42 };
-    state.list.mockResolvedValue({ data: [record], pagination: { page: 1, pageSize: 25, hasNextPage: false } });
+    state.list.mockResolvedValue({
+      data: [record],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
     const data = render(<CockpitCardsListPage />);
     expect((await screen.findAllByText('Bestehende Karte')).length).toBeGreaterThan(0);
     expect(state.list).toHaveBeenCalledWith({ page: 1, pageSize: 25 });
     expect(screen.getAllByText('de').length).toBeGreaterThan(0);
     data.unmount();
 
-    state.list.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 50, hasNextPage: false } });
+    state.list.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 50, hasNextPage: false },
+    });
     state.search = { page: 2, pageSize: 50 };
     const empty = render(<CockpitCardsListPage />);
     expect(await screen.findByText('list.empty')).toBeTruthy();

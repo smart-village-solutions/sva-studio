@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import { StudioDetailTabIcon, type StudioDetailTabIconName } from './studio-detail-tab-icon.js';
 import { Tabs } from './tabs.js';
 import { cn } from './utils.js';
 import {
@@ -12,6 +13,7 @@ import {
 export type StudioDetailTabDefinition<TTabId extends string> = Readonly<{
   id: TTabId;
   label: string;
+  icon?: StudioDetailTabIconName;
   title?: React.ReactNode;
   description?: string;
   isVisible?: boolean;
@@ -38,8 +40,7 @@ type StudioDetailTabLegacy<TTabId extends string> = Readonly<{
 }>;
 
 export type StudioDetailTab<TTabId extends string = string> =
-  | StudioDetailTabDefinition<TTabId>
-  | StudioDetailTabLegacy<TTabId>;
+  StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>;
 
 export type StudioDetailTabsProps<TTabId extends string = string> = Readonly<{
   ariaLabel: string;
@@ -48,7 +49,9 @@ export type StudioDetailTabsProps<TTabId extends string = string> = Readonly<{
   defaultValue?: TTabId;
   value?: TTabId;
   onValueChange?: (value: TTabId) => void;
-  onBeforeTabChange?: (context: Readonly<{ currentValue: TTabId; nextValue: TTabId }>) => boolean | string | void;
+  onBeforeTabChange?: (
+    context: Readonly<{ currentValue: TTabId; nextValue: TTabId }>
+  ) => boolean | string | void;
   blockedTabChangeMessage?: string;
   keepMounted?: boolean;
   status?: React.ReactNode;
@@ -56,7 +59,9 @@ export type StudioDetailTabsProps<TTabId extends string = string> = Readonly<{
   className?: string;
 }>;
 
-function isLegacyTab<TTabId extends string>(tab: StudioDetailTab<TTabId>): tab is StudioDetailTabLegacy<TTabId> {
+function isLegacyTab<TTabId extends string>(
+  tab: StudioDetailTab<TTabId>
+): tab is StudioDetailTabLegacy<TTabId> {
   return 'content' in tab;
 }
 
@@ -96,14 +101,14 @@ function getMobileOptionLabel<TTabId extends string>(tab: StudioDetailTab<TTabId
 
 function renderTabLabel<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
   const changeLabel = getChangeLabel(tab);
+  const icon = !isLegacyTab(tab) ? tab.icon : undefined;
 
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
+      {icon ? <StudioDetailTabIcon name={icon} /> : null}
       <span>{tab.label}</span>
       {tabHasChanges(tab) && changeLabel ? (
-        <span className="text-xs font-medium text-foreground">
-          {changeLabel}
-        </span>
+        <span className="text-xs font-medium text-foreground">{changeLabel}</span>
       ) : null}
     </span>
   );
@@ -125,9 +130,13 @@ export function StudioDetailTabs<TTabId extends string = string>({
 }: StudioDetailTabsProps<TTabId>) {
   const visibleTabs = React.useMemo(() => tabs.filter(isTabVisible), [tabs]);
   const firstTabId = visibleTabs[0]?.id;
-  const [internalValue, setInternalValue] = React.useState<TTabId | undefined>(defaultValue ?? firstTabId);
+  const [internalValue, setInternalValue] = React.useState<TTabId | undefined>(
+    defaultValue ?? firstTabId
+  );
   const requestedValue = value ?? internalValue ?? defaultValue ?? firstTabId;
-  const currentValue = visibleTabs.some((tab) => tab.id === requestedValue) ? requestedValue : firstTabId;
+  const currentValue = visibleTabs.some((tab) => tab.id === requestedValue)
+    ? requestedValue
+    : firstTabId;
   const [statusMessage, setStatusMessage] = React.useState<string>();
   const [visitedTabs, setVisitedTabs] = React.useState<ReadonlySet<TTabId>>(
     () => new Set(currentValue ? [currentValue] : [])
@@ -167,7 +176,9 @@ export function StudioDetailTabs<TTabId extends string = string>({
       });
 
       if (switchGuardResult === false || typeof switchGuardResult === 'string') {
-        setStatusMessage(typeof switchGuardResult === 'string' ? switchGuardResult : blockedTabChangeMessage);
+        setStatusMessage(
+          typeof switchGuardResult === 'string' ? switchGuardResult : blockedTabChangeMessage
+        );
         return;
       }
 
@@ -181,7 +192,11 @@ export function StudioDetailTabs<TTabId extends string = string>({
   );
 
   return (
-    <Tabs value={currentValue} onValueChange={handleValueChange} className={cn('space-y-0', className)}>
+    <Tabs
+      value={currentValue}
+      onValueChange={handleValueChange}
+      className={cn('space-y-0', className)}
+    >
       <StudioDetailTabsMobileSelect
         mobileSelectLabel={mobileSelectLabel}
         currentValue={currentValue}
@@ -195,7 +210,11 @@ export function StudioDetailTabs<TTabId extends string = string>({
         renderTabLabel={renderTabLabel}
         onChange={handleValueChange}
       />
-      <StudioDetailTabsStatus status={status} statusMessage={statusMessage} statusAriaLive={statusAriaLive} />
+      <StudioDetailTabsStatus
+        status={status}
+        statusMessage={statusMessage}
+        statusAriaLive={statusAriaLive}
+      />
 
       {visibleTabs.map((tab) => {
         const title = getTabTitle(tab);

@@ -15,6 +15,7 @@ import {
   Input,
   Select,
   StudioDataTable,
+  StudioDetailTabIcon,
   StudioDetailPageTemplate,
   StudioEmptyState,
   StudioErrorState,
@@ -26,6 +27,7 @@ import {
   TabsList,
   TabsTrigger,
   Textarea,
+  type StudioDetailTabIconName,
 } from '@sva/studio-ui-react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import * as React from 'react';
@@ -57,6 +59,13 @@ const defaults: CockpitCardFormValues = {
   visible: true,
 };
 type Tab = 'basis' | 'content' | 'settings' | 'history';
+
+const tabIconNames = {
+  basis: 'basis',
+  content: 'content',
+  settings: 'settings',
+  history: 'history',
+} as const satisfies Record<Tab, StudioDetailTabIconName>;
 
 const panel = (title: string, children: React.ReactNode) => (
   <section className="space-y-4 rounded-2xl border border-border/60 p-5">
@@ -269,7 +278,9 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
     } catch (cause) {
       const reason = cause instanceof Error ? cause.message : '';
       setMutationError(
-        reason ? pt('messages.saveErrorWithReason').replace('{{reason}}', reason) : pt('messages.saveError')
+        reason
+          ? pt('messages.saveErrorWithReason').replace('{{reason}}', reason)
+          : pt('messages.saveError')
       );
     }
   });
@@ -307,16 +318,25 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
         </Button>
       }
     >
-      {mutationError ? <p role="alert" className="text-sm text-destructive">{mutationError}</p> : null}
-      <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
-        <TabsList aria-label={pt('tabs.ariaLabel')}>
+      {mutationError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {mutationError}
+        </p>
+      ) : null}
+      <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)} className="space-y-0">
+        <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] gap-10">
           {tabs.map((item) => (
-            <TabsTrigger key={item} value={item}>
-              {pt(`tabs.${item}.label`)}
+            <TabsTrigger
+              key={item}
+              value={item}
+              className="gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none"
+            >
+              <StudioDetailTabIcon name={tabIconNames[item]} />
+              <span>{pt(`tabs.${item}.label`)}</span>
             </TabsTrigger>
           ))}
         </TabsList>
-        <TabsContent value="basis" forceMount className="data-[state=inactive]:hidden">
+        <TabsContent value="basis" forceMount className="mt-0 data-[state=inactive]:hidden">
           {panel(
             pt('tabs.basis.title'),
             <div className="space-y-4">
@@ -350,10 +370,10 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
             </div>
           )}
         </TabsContent>
-        <TabsContent value="content" forceMount className="data-[state=inactive]:hidden">
+        <TabsContent value="content" forceMount className="mt-0 data-[state=inactive]:hidden">
           {panel(pt('tabs.content.title'), <ContentFields form={form} pt={pt} />)}
         </TabsContent>
-        <TabsContent value="settings" forceMount className="data-[state=inactive]:hidden">
+        <TabsContent value="settings" forceMount className="mt-0 data-[state=inactive]:hidden">
           {panel(
             pt('tabs.settings.title'),
             <div className="space-y-4">
@@ -387,7 +407,7 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
           )}
         </TabsContent>
         {mode === 'edit' && contentId ? (
-          <TabsContent value="history">
+          <TabsContent value="history" className="mt-0">
             {panel(pt('tabs.history.title'), <CockpitCardsHistory contentId={contentId} />)}
           </TabsContent>
         ) : null}

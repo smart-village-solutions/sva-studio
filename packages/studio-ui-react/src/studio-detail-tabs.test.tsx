@@ -31,6 +31,19 @@ describe('StudioDetailTabs', () => {
     expect(screen.getByText('Inhalte Panel')).toBeTruthy();
   });
 
+  it('renders a decorative icon without changing the accessible tab label', () => {
+    render(
+      <StudioDetailTabs
+        ariaLabel="Detailbereiche"
+        tabs={[{ id: 'base', label: 'Basis', icon: 'basis', panel: <p>Basis Panel</p> }]}
+      />
+    );
+
+    const tab = screen.getByRole('tab', { name: 'Basis' });
+    expect(tab.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(screen.getByRole('option').getAttribute('label')).toBe('Basis');
+  });
+
   it('supports keyboard-only tab switching and moves focus to the selected trigger', () => {
     render(
       <StudioDetailTabs
@@ -153,7 +166,9 @@ describe('StudioDetailTabs', () => {
       />
     );
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), { target: { value: 'history' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), {
+      target: { value: 'history' },
+    });
 
     expect(screen.getByText('Basis Panel')).toBeTruthy();
     expect(screen.getByText('Historie Panel')).toBeTruthy();
@@ -170,7 +185,9 @@ describe('StudioDetailTabs', () => {
       />
     );
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), { target: { value: 'history' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), {
+      target: { value: 'history' },
+    });
 
     expect(screen.queryByText('Basis Panel')).toBeNull();
     expect(screen.getByText('Historie Panel')).toBeTruthy();
@@ -220,8 +237,12 @@ describe('StudioDetailTabs', () => {
     expect(screen.getByRole('tablist').className).toContain('ml-[10px]');
     expect(screen.getByRole('tablist').className).toContain('gap-10');
     expect(screen.getByRole('heading', { name: 'Freigabe' }).className).toContain('text-base');
-    expect(screen.getByText('Steuert den Veröffentlichungsstatus.').className).toContain('leading-relaxed');
-    expect(screen.getByRole('tabpanel').firstElementChild?.className).toContain('bg-[rgb(var(--waste-panel-surface))]');
+    expect(screen.getByText('Steuert den Veröffentlichungsstatus.').className).toContain(
+      'leading-relaxed'
+    );
+    expect(screen.getByRole('tabpanel').firstElementChild?.className).toContain(
+      'bg-[rgb(var(--waste-panel-surface))]'
+    );
   });
 
   it('announces blocked tab switches through an accessible status surface', () => {
@@ -236,7 +257,9 @@ describe('StudioDetailTabs', () => {
       />
     );
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), { target: { value: 'content' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), {
+      target: { value: 'content' },
+    });
 
     const status = screen.getByRole('status');
     expect(status.getAttribute('aria-live')).toBe('polite');
@@ -259,7 +282,9 @@ describe('StudioDetailTabs', () => {
       />
     );
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), { target: { value: 'history' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), {
+      target: { value: 'history' },
+    });
 
     expect(onValueChange).toHaveBeenCalledWith('history');
     expect(screen.getByRole('tab', { name: 'Basis' }).getAttribute('data-state')).toBe('active');
@@ -295,7 +320,9 @@ describe('StudioDetailTabs', () => {
       />
     );
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), { target: { value: 'history' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), {
+      target: { value: 'history' },
+    });
 
     expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange).toHaveBeenCalledWith('history');
@@ -315,7 +342,9 @@ describe('StudioDetailTabs', () => {
       />
     );
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), { target: { value: 'history' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), {
+      target: { value: 'history' },
+    });
 
     expect(onValueChange).not.toHaveBeenCalled();
     expect(screen.getByRole('tab', { name: 'Basis' }).getAttribute('data-state')).toBe('active');
@@ -356,9 +385,13 @@ describe('StudioDetailTabs', () => {
       />
     );
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), { target: { value: 'history' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Detailbereiche' }), {
+      target: { value: 'history' },
+    });
 
-    expect(screen.getByRole('status').textContent).toContain('Save changes before leaving this tab.');
+    expect(screen.getByRole('status').textContent).toContain(
+      'Save changes before leaving this tab.'
+    );
     expect(screen.getByRole('tab', { name: 'Basis' }).getAttribute('data-state')).toBe('active');
     expect(screen.queryByText('Historie Panel')).toBeNull();
   });

@@ -59,6 +59,9 @@ describe('faq editor pages', () => {
 
     render(<FaqCreatePage />);
 
+    const basisTab = screen.getByRole('tab', { name: 'tabs.basis.label' });
+    expect(basisTab.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+
     fireEvent.change(screen.getByLabelText('fields.question'), { target: { value: 'Neue Frage' } });
     fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Eine Antwort' } });
     fireEvent.change(screen.getByLabelText('fields.languageCode'), { target: { value: 'en-us' } });

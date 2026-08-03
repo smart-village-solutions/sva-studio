@@ -74,6 +74,7 @@ export const contentENResources = {
     headerAccess: 'Access',
     headerContext: 'Context',
     headerActions: 'Actions',
+    notAvailable: 'Not available',
     notPublished: 'Not set',
   },
   editor: {

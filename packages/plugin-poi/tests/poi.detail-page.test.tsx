@@ -287,6 +287,9 @@ describe('PoiDetailPage', () => {
     expect(screen.getByRole('tab', { name: 'Inhalt' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Einstellungen' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Historie' })).toBeTruthy();
+    expect(
+      screen.getByRole('tab', { name: 'Basis' }).querySelector('svg')?.getAttribute('aria-hidden')
+    ).toBe('true');
   });
 
   it('shows the content section cards inside the content tab', async () => {

@@ -18,7 +18,7 @@
     }
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.10.0",
+    "@hookform/resolvers": "^5.5.7",
     "@sva/plugin-sdk": "workspace:*",
     "@sva/studio-ui-react": "workspace:*",
     "react-hook-form": "^7.80.0",

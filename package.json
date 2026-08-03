@@ -124,7 +124,7 @@
     "autoprefixer": "10.5.2",
     "eslint": "^10.6.0",
     "fallow": "3.10.0",
-    "happy-dom": "^20.10.6",
+    "happy-dom": "^20.11.1",
     "knip": "^6.29.0",
     "nx": "23.0.1",
     "postcss": "8.5.18",

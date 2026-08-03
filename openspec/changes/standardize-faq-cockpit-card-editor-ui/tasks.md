@@ -48,5 +48,5 @@
 - [x] 5.8 Betroffene Tests von News, Events und POIs ausführen, falls gemeinsame `studio-ui-react`-Primitives deren Build- oder Laufzeitpfade verändern; keine fachfremden Snapshot-Anpassungen ohne sichtbare Verhaltensänderung vornehmen.
 - [x] 5.9 Relevante arc42-Abschnitte `05`, `08`, `10` und `11` sowie die Studio-Form-Migrationsdokumentation aktualisieren.
 - [x] 5.10 Kleinste relevante Nx-Unit-, Type-, Lint- und bei Hoständerungen Server-Runtime-Gates nach jedem Block ausführen.
-- [ ] 5.11 Vor PR-Freigabe den gemessenen affected Scope bewerten und nach Möglichkeit `pnpm test:pr` ausführen.
+- [x] 5.11 Vor PR-Freigabe den gemessenen affected Scope bewerten und nach Möglichkeit `pnpm test:pr` ausführen.
 - [x] 5.12 `pnpm exec openspec validate standardize-faq-cockpit-card-editor-ui --strict` und `pnpm check:file-placement` erfolgreich ausführen.

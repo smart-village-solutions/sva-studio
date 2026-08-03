@@ -1,0 +1,4 @@
+{
+  "prNumber": 910,
+  "body": "Stabilere Abhängigkeitsinstallation\n\n- Die nach mehreren Abhängigkeitsaktualisierungen inkonsistente Sperrdatei wurde repariert.\n- Builds können die festgeschriebenen Abhängigkeiten dadurch wieder zuverlässig und reproduzierbar installieren."
+}

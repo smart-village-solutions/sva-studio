@@ -16,7 +16,6 @@ import {
   withAuthenticatedUser,
   withExternalContentMutationLock,
   type AuthenticatedRequestContext,
-  type ExternalContentReference,
 } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 

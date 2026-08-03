@@ -187,53 +187,20 @@ Das System SHALL für Session- und Login-State-Löschungen nachvollziehbare Erge
 
 ### Requirement: Tenantbezogener Inaktivitäts-Lebenszyklus ergänzt das Recht auf Löschung
 
-Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebenszyklus bereitstellen, der die Stufen `active`, `deactivated`, `pseudonymized` und `deleted` verwendet. Der Lebenszyklus gilt nur im Tenant-Scope, leitet Inaktivität in V1 ausschließlich aus erfolgreichen Login-Events der betroffenen `instanceId` ab und endet in einem finalen Tombstone-Soft-Delete statt in einer physischen Löschung.
+Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebenszyklus bereitstellen, der die Stufen `active`, `deactivated`, `pseudonymized` und `deleted` verwendet. Der Lebenszyklus gilt nur im Tenant-Scope, leitet Inaktivität in V1 ausschließlich aus erfolgreichen Login-Events der betroffenen `instanceId` ab und endet im Standardpfad in einem finalen Tombstone-Soft-Delete statt in einer physischen Löschung. Ein separater, privilegierter Admin-Hard-Delete für Tenant-Accounts darf als explizite Ausnahme zusätzlich existieren, ersetzt den Lifecycle-Standardpfad jedoch nicht.
 
-#### Scenario: Inaktivität wird aus dem letzten Login bestimmt
+#### Scenario: Lebenszyklus bleibt der tombstone-basierte Standardpfad
 
-- **WHEN** das System prüft, ob ein Tenant-Account die konfigurierten Löschregeln erreicht hat
-- **THEN** verwendet es in V1 ausschließlich `MAX(iam.activity_logs.created_at)` für erfolgreiche `event_type = 'login'`-Events mit `result = 'success'` innerhalb der betroffenen `instanceId` als Referenzzeitpunkt
-- **AND** behandelt es diesen Wert nicht als globales Cross-Tenant-Inaktivitätssignal
-- **AND** halten fehlgeschlagene Login-Versuche diesen Referenzzeitpunkt nicht künstlich frisch
-- **AND** sind Accounts ohne Login-Event in V1 nicht für den automatischen Inaktivitäts-Lifecycle qualifiziert
-- **AND** sind Accounts ohne Login-Event auch durch manuelle Läufe dieses Deletion-Rules-Mechanismus nicht für Lifecycle-Übergänge qualifiziert
-- **AND** gilt ein Schwellwert `N` als erreicht, sobald `last_login_at + N * 24h <= now()`
-- **AND** verlangt kein neues Aktivitäts-Tracking-System und keine zusätzlichen Aktivitätsquellen
+- **WHEN** das System einen Tenant-Account über den automatischen oder manuellen Inaktivitäts-Lifecycle verarbeitet
+- **THEN** beschreibt `deleted` weiterhin den finalen Tombstone-Soft-Delete ohne physische Löschung
+- **AND** bleibt dieser Lifecycle unabhängig von einem separaten privilegierten Admin-Hard-Delete
 
-#### Scenario: Accounts ohne Login-Event bleiben außerhalb dieses V1-Lifecycles
+#### Scenario: Privilegierter Admin-Hard-Delete ist vom Lifecycle getrennt
 
-- **WHEN** ein Tenant-Account in `iam.activity_logs` kein erfolgreiches `login`-Event für die aktive `instanceId` besitzt
-- **THEN** verarbeitet das System den Account weder in geplanten noch in manuellen Läufen dieses Deletion-Rules-Mechanismus
-- **AND** bleibt die Behandlung dieses Accounts außerhalb des V1-Inaktivitäts-Lifecycles
-- **AND** erfordert sie separate manuelle Account-Administration
-
-#### Scenario: Lebenszyklus durchläuft die fachlichen Stufen geordnet
-
-- **WHEN** ein Tenant-Account die konfigurierten Schwellwerte erreicht
-- **THEN** wechselt er höchstens in der Reihenfolge `active` → `deactivated` → `pseudonymized` → `deleted`
-- **AND** bewegt ein einzelner geplanter oder manueller Lifecycle-Lauf den Account höchstens um eine benachbarte Stufe weiter
-- **AND** erfolgen weitere Stufen trotz bereits überschrittener späterer Schwellwerte erst in nachfolgenden Läufen
-- **AND** blockiert `deactivated` Login und reguläre Nutzung des Accounts, sodass bestehende Sessions keinen normalen Zugriff mehr vermitteln dürfen
-- **AND** bleibt `pseudonymized` für Login und Nutzung unbenutzbar und entfernt oder pseudonymisiert direkte identifizierende Account-Felder irreversibel, während Account-Referenzen für Audit- und Referenzintegrität erhalten bleiben
-- **AND** hebt ein bloßer Login den Zustand `deactivated` nicht automatisch auf
-- **AND** verlangt eine Rückkehr aus `deactivated` einen separaten Reaktivierungsprozess
-- **AND** dürfen ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterhin greifen
-- **AND** beschreibt `deleted` einen finalen Tombstone-Soft-Delete ohne physische Löschung, bei dem die Deleted-/Tombstone-Darstellung eine frühere pseudonymisierte Darstellung übersteuert
-- **AND** werden referenzwahrende Nachweise und Auditspuren weiterhin pseudonymisiert erhalten
-
-#### Scenario: Neue oder unkonfigurierte Tenants verwenden Baseline-Defaults
-
-- **WHEN** für einen Tenant noch keine individuellen Löschregeln konfiguriert wurden
-- **THEN** verwendet das System die Baseline-Defaults/Fallbacks `deactivateAfterDays=90`, `pseudonymizeAfterDays=180` und `deleteAfterDays=365`
-- **AND** gilt `beibehalten` als geerbte Default-Inhaltsstrategie
-- **AND** gilt `allowContentPreferenceOverride = false` als geerbter Tenant-Default
-- **AND** gelten diese Werte so lange als wirksame Tenant-Regeln, bis tenant-spezifische Werte gespeichert werden
-
-#### Scenario: Root- und Plattform-Accounts bleiben außerhalb des Löschregelmodells
-
-- **WHEN** ein Root- oder Plattform-Admin ohne Tenant-Scope betrachtet wird
-- **THEN** wird der Account nicht durch tenantbezogene Inaktivitätsregeln verarbeitet
-- **AND** bleiben solche Identitäten außerhalb dieses V1-Löschkonzepts
+- **WHEN** ein berechtigter Tenant-Admin einen Tenant-Account über den expliziten Admin-Delete-Pfad physisch löscht
+- **THEN** gilt dieser Vorgang nicht als normaler Lifecycle-Übergang des Inaktivitätsmodells
+- **AND** darf er den Account physisch entfernen, sobald referenzierende Daten regelkonform bereinigt wurden
+- **AND** bleiben die tenantbezogenen Löschregeln für die Behandlung eigener Inhalte weiterhin maßgeblich
 
 ### Requirement: Inhaltsbehandlung ist tenantweit steuerbar und pro Account überschreibbar
 

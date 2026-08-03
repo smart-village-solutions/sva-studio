@@ -34,6 +34,6 @@
 - [x] 5.2 Arc42-Abschnitte 04, 05, 06, 08 und 09 aktualisieren
 - [x] 5.3 IAM-Autorisierungsmodell und Tenant-Bootstrap-Guide aktualisieren
 - [x] 5.4 Katalogänderungs- und Deprecation-Verfahren dokumentieren
-- [ ] 5.5 Staging über den kanonischen Rollout aktualisieren und den Reconcile für `de-studio-sandbox` ausführen
-- [ ] 5.6 Effektive Permission `iam.accounts.delete`, Benutzer-Löschgate und Audit-/Snapshot-Evidenz live verifizieren
-- [ ] 5.7 Production mit demselben Image-Digest promoten und Reconcile-/IAM-Smokes dokumentieren
+- [x] 5.5 Staging über den kanonischen Rollout aktualisieren und den Reconcile für `de-studio-sandbox` ausführen
+- [x] 5.6 Effektive Permission `iam.accounts.delete`, Benutzer-Löschgate und Audit-/Snapshot-Evidenz live verifizieren
+- [x] 5.7 Production mit demselben Image-Digest promoten und Reconcile-/IAM-Smokes dokumentieren

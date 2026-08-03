@@ -243,22 +243,25 @@ The migration runtime SHALL retain actionable diagnostics for failed Swarm migra
 
 The system SHALL model the SVA Mainserver `NewsItem` GraphQL object with complete snapshot-backed field coverage in the server-only Mainserver adapter layer.
 
-The typed News adapter SHALL select and map all stable `NewsItem` fields from the checked-in schema snapshot: `id`, `title`, `author`, `keywords`, `externalId`, `fullVersion`, `charactersToBeShown`, `newsType`, `publicationDate`, `publishedAt`, `showPublishDate`, `payload`, `sourceUrl`, `address`, `categories`, `contentBlocks`, `visible`, `createdAt`, `updatedAt`, `dataProvider`, `settings`, `announcements`, `likeCount`, `likedByMe`, and `pushNotificationsSentAt`.
+The typed full News adapter SHALL select and map all stable `NewsItem` fields from the checked-in schema snapshot: `id`, `title`, `author`, `keywords`, `externalId`, `fullVersion`, `charactersToBeShown`, `newsType`, `publicationDate`, `publishedAt`, `showPublishDate`, `payload`, `sourceUrl`, `address`, `categories`, `contentBlocks`, `visible`, `createdAt`, `updatedAt`, `dataProvider`, `settings`, `announcements`, `likeCount`, `likedByMe`, and `pushNotificationsSentAt`.
+
+The dedicated News Projection-List adapter SHALL use a smaller typed selection and SHALL treat both `publicationDate` and `publishedAt` as optional.
 
 #### Scenario: Full NewsItem is loaded
 
 - **GIVEN** the Mainserver returns a `NewsItem` containing scalar, nested, read-only, and nullable fields
-- **WHEN** Studio maps the response through `@sva/sva-mainserver/server`
+- **WHEN** Studio maps the response through the full adapter in `@sva/sva-mainserver/server`
 - **THEN** all snapshot-backed fields are represented in the typed News DTO
 - **AND** nullable optional fields are normalized deterministically without rejecting the entire response
 - **AND** read-only fields are preserved for plugin display or diagnostics
 
 #### Scenario: Mainserver omits optional NewsItem fields
 
-- **GIVEN** the Mainserver returns a valid `NewsItem` with missing optional nested fields
-- **WHEN** the adapter maps the response
+- **GIVEN** the Mainserver returns a valid `NewsItem` with missing optional nested or publication fields
+- **WHEN** the full or Projection-List adapter maps the response
 - **THEN** missing optional fields are represented as `undefined`, empty arrays, or documented defaults
-- **AND** required identifiers and publication fields are still validated before the DTO is returned
+- **AND** a stable identifier remains required
+- **AND** missing `publicationDate` and `publishedAt` do not reject the item or its containing page
 
 ### Requirement: Complete createNewsItem Mutation Coverage
 
@@ -784,4 +787,399 @@ Listenfilter, Mainserver-DataProvider, externe Organisationswerte oder vorherige
 - **WHEN** das System User-Fallback-Credentials verwendet
 - **THEN** setzt das System keine Organisationsownership aus einer aktiven oder früher aktiven Organisation
 - **AND** speichert `credentialSource = user` oder eine äquivalente Credential-Herkunft
+
+### Requirement: Typed Survey GraphQL Adapters
+
+Das System MUST typed, server-only SVA-Mainserver-Adapter fuer Survey-Liste, Survey-Detail, Survey-Create-or-Update, Survey-Submission, Freitext-Freigabe, Freitext-Loeschung und Ergebnisabruf bereitstellen.
+
+Die Adapter MUST die bestehende policy-gesteuerte Mainserver-Credential-Resolution-Chain verwenden und duerfen keinen generischen GraphQL-Executor an Browsercode, Plugincode oder App-UI-Komponenten exponieren.
+
+#### Scenario: Survey-Liste wird ueber typed Adapter geladen
+
+- **WENN** ein Benutzer eine gueltige Studio-Session, einen Instanzkontext, lokale Content-Berechtigung und effektive Mainserver-Credentials besitzt
+- **UND** die Survey-Liste angefordert wird
+- **DANN** ruft der Host einen typed serverseitigen Survey-List-Adapter in `@sva/sva-mainserver/server` auf
+- **UND** fuehrt der Adapter die neue Survey-Listenabfrage ueber den bestehenden Mainserver-Servicepfad aus
+- **UND** erhaelt der Browser nur das gemappte Survey-Listenmodell
+
+#### Scenario: Survey-Detail wird ueber typed Adapter geladen
+
+- **WENN** ein Benutzer eine gueltige Studio-Session, einen Instanzkontext, lokale Content-Berechtigung und effektive Mainserver-Credentials besitzt
+- **UND** eine einzelne Survey angefordert wird
+- **DANN** ruft der Host einen typed serverseitigen Survey-Detail-Adapter auf
+- **UND** fuehrt der Adapter die neue Survey-Detailabfrage mit typed Variablen aus
+- **UND** werden fehlende oder invalide Antwortdaten auf einen deterministischen Integrationsfehler gemappt
+
+#### Scenario: Survey-Plugin versucht generischen GraphQL-Zugriff
+
+- **WENN** `@sva/plugin-surveys` Survey-Daten benoetigt
+- **DANN** importiert das Plugin nicht `@sva/sva-mainserver/server`
+- **UND** erhaelt keinen rohen GraphQL-Endpunkt, kein Secret, kein Token und keinen generischen Query-Executor
+
+### Requirement: Survey GraphQL Documents folgen dem Wunsch-Schema und Snapshot-Vertrag
+
+Das System MUST Survey-GraphQL-Dokumente aus dem eingecheckten Mainserver-Schema-Snapshot und den verifizierten Survey-Operationen ableiten.
+
+Die anfängliche Survey-Integration MUST die im fachlichen Wunsch-Schema beschriebenen neuen Survey-Queries und -Mutations nutzen, soweit diese im Mainserver-Snapshot oder in einem verifizierten Staging-Schema vorliegen.
+
+Das fuer Studio fuehrende Survey-Zielmodell verwendet nur die Statuswerte `DRAFT`, `ACTIVE` und `ARCHIVED` und enthaelt keine redaktionell steuerbare Option `allowsMultipleSubmissionsPerDevice`.
+
+#### Scenario: Survey-Operation nutzt verifizierten GraphQL-Vertrag
+
+- **WENN** eine Survey-GraphQL-Operation hinzugefuegt oder geaendert wird
+- **DANN** passen Query oder Mutation, Variablen und selektierte Felder zu den verifizierten Survey-Operationen des Mainservers
+- **UND** Unit-Tests decken erwartete Response-Shapes und invalides Upstream-Verhalten ab
+
+#### Scenario: Survey-Snapshot folgt dem vereinfachten Statusmodell
+
+- **WENN** Studio Survey-Typen, Enums oder Mapping-Layer fuer Mainserver-Responses aktualisiert
+- **DANN** verwendet das Zielmodell nur `DRAFT`, `ACTIVE` und `ARCHIVED`
+- **UND** werden fruehere Statuswerte wie `SCHEDULED` oder `ENDED` nicht als persistierte Studio-Statuswerte weitergefuehrt
+
+#### Scenario: Survey-Snapshot entfernt redaktionelle Mehrfachteilnahme-Option
+
+- **WENN** Studio den Survey-Write- und Read-Vertrag gegen den Mainserver abbildet
+- **DANN** fuehrt das Zielmodell keine redaktionell bearbeitbare Option `allowsMultipleSubmissionsPerDevice`
+- **UND** werden Mapping, Tests und Dokumentation entsprechend bereinigt
+
+#### Scenario: Mainserver-Schema driftet bei Survey-Operationen
+
+- **WENN** das Staging-Mainserver-Schema eine von Studio verwendete Survey-Operation nicht mehr unterstuetzt
+- **DANN** wird der Drift vor dem Rollout gemeldet
+- **UND** der betroffene Survey-Adapter gilt nicht als kompatibel, bis Dokument oder Mapping aktualisiert wurden
+
+### Requirement: Survey-spezifische Fehler und Freigabeoperationen bleiben deterministisch
+
+Das System MUST Mainserver- und Fachfehler fuer Survey-Operationen auf deterministische Studio-Fehler und Payload-Zustaende abbilden.
+
+#### Scenario: Fachlicher Survey-Fehler wird strukturiert weitergegeben
+
+- **WENN** eine Survey-Mutation fachlich fehlschlaegt, zum Beispiel wegen ungueltigem Statuswechsel oder unzulaessiger Eingabekombination
+- **DANN** mappt der Host die Antwort auf einen deterministischen Studio-Fehlervertrag
+- **UND** exponiert keine Secrets, Credentials oder rohen Upstream-Fehlerpayloads
+
+#### Scenario: Freitext-Freigabe nutzt denselben host-owned Adapterpfad
+
+- **WENN** ein berechtigter Benutzer Freitextantworten fuer eine Survey freigibt
+- **DANN** erfolgt die Mutation ueber denselben host-owned Survey-Adapterpfad wie andere Survey-Mutationen
+- **UND** die Freigabe wird nicht ueber einen pluginseitigen Direktzugriff am Host vorbei ausgefuehrt
+
+#### Scenario: Freitext-Loeschung nutzt denselben host-owned Adapterpfad
+
+- **WENN** ein berechtigter Benutzer eine Freitextantwort einer Survey loescht
+- **DANN** erfolgt die Loeschung ueber denselben host-owned Survey-Adapterpfad wie andere Survey-Mutationen
+- **UND** wird diese Loeschung nicht ueber einen pluginseitigen Direktzugriff am Host vorbei ausgefuehrt
+
+### Requirement: Mainserver-Projektionslisten verwenden minimale typisierte Abfragen
+
+Das System MUST für News, Events, POIs, Generic Items einschließlich FAQs und Surveys dedizierte typisierte Projection-List-Adapter verwenden, die nur Identität, Tabellendarstellung, erforderliche Zeit-/Statusfelder, minimale Quellmetadaten und sichere Diagnose laden.
+
+Die Adapter MUST die im Design festgelegte Feld-Allowlist einhalten und dürfen keine fachliche Detail-Payload selektieren. Solange `payload_json` im gemeinsamen Tabellenvertrag nicht nullable ist, MUST der Mainserver-Projektionspfad dort ein leeres Objekt persistieren.
+
+Die vollständigen Fachlisten-, Detail- und Mutationsadapter MUST ihre bestehenden snapshot-gestützten Verträge behalten und dürfen durch die reduzierten Projektions-Selections keine Felder verlieren.
+
+#### Scenario: Projektionsrefresh lädt nur benötigte Felder
+
+- **WENN** der Host einen typweiten Mainserver-Projektionsrefresh ausführt
+- **DANN** verwendet er den dedizierten Projection-List-Adapter des Inhaltstyps
+- **UND** dessen GraphQL-Selection entspricht exakt der typbezogenen Feld-Allowlist
+- **UND** persistiert der Projektionspfad ein leeres `payload_json`, ohne dafür fachliche Payload-Felder zu laden
+- **UND** lädt sie keine ausschließlich für Detailansicht oder Editor benötigten verschachtelten Felder
+
+#### Scenario: Fachdetail bleibt vollständig
+
+- **WENN** ein Fachplugin eine vollständige Liste, Detailansicht oder Mutation für einen Mainserver-Inhalt lädt
+- **DANN** verwendet es weiterhin den vollständigen typisierten Fachadapter
+- **UND** stehen alle bisher spezifizierten snapshot-gestützten Felder zur Verfügung
+
+#### Scenario: Selection wächst unbeabsichtigt
+
+- **WENN** ein neues Detailfeld in einen Projection-List-GraphQL-Vertrag aufgenommen wird
+- **DANN** verlangt der Selection-Allowlist-Test eine explizite fachliche Begründung
+- **UND** verhindert der Test, dass vollständige Detailfragmente still in den Vollscan gelangen
+
+### Requirement: Mainserver-Projektion akzeptiert fehlende Veröffentlichungsdaten typübergreifend
+
+Das System MUST Mainserver-Inhalte aller unterstützten projizierten Inhaltstypen auch dann materialisieren, wenn `publicationDate`, `publishedAt` oder semantisch entsprechende fachliche Veröffentlichungszeitpunkte fehlen.
+
+Der Host MUST fehlende Veröffentlichungszeitpunkte als optionalen Wert normalisieren und darf weder einen einzelnen Datensatz noch den gesamten Typ-Snapshot allein deshalb ablehnen. Er MUST weiterhin unverzichtbare Strukturfelder wie eine stabile Quell-ID deterministisch validieren.
+
+#### Scenario: News besitzt kein Veröffentlichungsdatum
+
+- **GIVEN** eine Mainserver-News enthält weder `publicationDate` noch `publishedAt`
+- **WHEN** der Projection-List-Adapter den Datensatz mappt
+- **THEN** wird die News mit optionalem `publishedAt` in die lokale Projektion aufgenommen
+- **AND** der Refresh setzt die Verarbeitung derselben und folgender Seiten fort
+
+#### Scenario: Anderer Inhaltstyp besitzt keinen Veröffentlichungszeitpunkt
+
+- **GIVEN** ein Event, POI, Generic Item, FAQ oder Survey enthält keinen fachlichen Veröffentlichungszeitpunkt
+- **WHEN** der jeweilige Projection-List-Adapter den Datensatz mappt
+- **THEN** wird der Inhalt ohne erfundenes Veröffentlichungsdatum materialisiert
+- **AND** bleiben vorhandene Erstellungs-, Änderungs-, Status- und Sichtbarkeitsinformationen erhalten
+
+#### Scenario: Unverzichtbare Quell-ID fehlt
+
+- **GIVEN** ein Mainserver-Datensatz enthält keine stabile Quell-ID
+- **WHEN** der Projection-List-Adapter ihn validiert
+- **THEN** materialisiert der Host nur diesen Datensatz nicht
+- **AND** erhöht er `skippedInvalidCount`
+- **AND** verarbeitet er valide Datensätze derselben und folgender Seiten weiter
+- **AND** protokolliert er Inhaltstyp, Seite und sichere Fehlerklasse ohne Secrets, PII oder Payload
+
+#### Scenario: Page-Struktur ist unbrauchbar
+
+- **GIVEN** eine Mainserver-Response besitzt keine validierbare Page-Struktur oder keine erforderlichen Pagination-Kontrollinformationen
+- **WHEN** der Projection-List-Adapter die Response validiert
+- **THEN** behandelt der Host die gesamte Seite als fehlgeschlagen
+- **AND** finalisiert oder bereinigt er den unvollständigen Snapshot nicht destruktiv
+
+### Requirement: Mainserver-Projektionsrefresh stellt partielle Snapshots progressiv bereit
+
+Das System MUST jede erfolgreich geladene Seite transaktional persistieren und einen erstmaligen Typ-Snapshot nach der ersten erfolgreich persistierten Seite als partiell lesbar bereitstellen, während weitere Seiten im Hintergrund geladen werden.
+
+Vollständigkeit, endgültiger Löschabgleich und endgültige Trefferzahl dürfen erst nach der erfolgreich verarbeiteten letzten Seite und atomarer Bestätigung der weiterhin führenden `refresh_run_id` zugesichert werden.
+
+Der persistierte Sync-State MUST die Zustände `empty`, `partial_running`, `partial_failed`, `complete_fresh`, `complete_refreshing` und `complete_failed` unterscheiden und mindestens Refresh-Run-ID, Phase, abgeschlossene Seite, verfügbare Anzahl, Finalitätskennzeichen und den letzten sicheren Page-Fehler führen.
+
+#### Scenario: Refresh beginnt für einen vollständigen vorhandenen Snapshot
+
+- **GIVEN** ein vollständiger lesbarer Snapshot existiert
+- **WHEN** ein neuer Refresh beginnt
+- **THEN** wechselt sein Zustand auf `complete_refreshing`
+- **AND** bleiben die vorhandenen Zeilen lesbar
+- **AND** erhält der Lauf eine neue scope-isolierte `refresh_run_id`
+
+#### Scenario: Erster Snapshot wird partiell lesbar
+
+- **GIVEN** noch kein vollständiger Snapshot existiert
+- **WHEN** die erste nichtleere Seite erfolgreich persistiert wurde
+- **THEN** wechselt der Zustand auf `partial_running`
+- **AND** entsprechen `available_count` und `completed_page` dem persistierten Fortschritt
+- **AND** bleibt `is_total_final = false`
+
+#### Scenario: Erste Seite eines erstmaligen Refreshs ist persistiert
+
+- **GIVEN** für einen Mainserver-Inhaltstyp existiert noch kein vollständiger Snapshot
+- **WHEN** die erste nichtleere Seite erfolgreich persistiert wurde
+- **THEN** liefert `GET /api/v1/iam/contents` die autorisierten Zeilen dieser Seite aus
+- **AND** kennzeichnen die Metadaten den Snapshot als partiell und den Refresh als laufend
+- **AND** blockiert ein expliziter Typfilter die bereits vorhandenen Zeilen nicht mit einem Missing-Snapshot-Fehler
+
+#### Scenario: Spätere Seite schlägt fehl
+
+- **GIVEN** mindestens eine Seite eines Typ-Refreshs wurde erfolgreich persistiert
+- **WHEN** eine spätere Seite fehlschlägt
+- **THEN** bleiben die erfolgreich persistierten Zeilen als partieller Snapshot lesbar
+- **AND** kennzeichnen die Sync-Metadaten den letzten Page-Fehler und die unvollständige Gesamtmenge
+- **AND** führt der Host keinen abschließenden Löschabgleich gegen die unvollständige Quellmenge aus
+
+#### Scenario: Letzte Seite schließt den Snapshot ab
+
+- **GIVEN** alle Seiten eines Typ-Refreshs wurden erfolgreich geladen und persistiert
+- **WHEN** der Host den Lauf finalisiert
+- **THEN** führt er den Löschabgleich für nicht mehr vorhandene Quellzeilen aus
+- **AND** markiert den Snapshot als vollständig und frisch
+- **AND** liefert eine endgültige Trefferzahl und Pagination-Metadaten
+
+#### Scenario: Ältere Refresh-Generation erreicht verspätet das Ende
+
+- **GIVEN** ein neuerer Lauf oder ein gezieltes Mutation-Update hat die führende `refresh_run_id` eines Scopes ersetzt
+- **WHEN** eine ältere Reconciliation ihre letzte Seite verarbeitet
+- **THEN** darf sie weder den Snapshot finalisieren noch Projektionszeilen löschen
+- **AND** beendet sie sich ohne weitere Zustandswirkung
+
+#### Scenario: Gezieltes Mutation-Update trifft während Reconciliation ein
+
+- **GIVEN** eine Reconciliation desselben Projektions-Scopes läuft
+- **WHEN** ein gezieltes Mutation-Upsert oder Identity-Delete beginnt
+- **THEN** invalidiert der Host die ältere Reconciliation-Generation vor der lokalen Änderung
+- **AND** kann der ältere Lauf die gezielte Änderung weder überschreiben noch beim Finalisieren löschen
+
+#### Scenario: Mainserver bestätigt einen leeren Typ
+
+- **GIVEN** die erste Seite enthält keine Datensätze
+- **WHEN** der Mainserver zugleich belastbar `hasNextPage = false` meldet
+- **THEN** finalisiert der Host einen vollständigen leeren Snapshot
+- **AND** behandelt er die leere Seite nicht als unbekannten oder dauerhaft partiellen Zustand
+
+### Requirement: Mainserver-Projektionsrefresh begrenzt sequenzielle Roundtrips
+
+Das System MUST die Seitengröße des schlanken, upstream-paginierbaren Projektionspfads für News, Events, POIs und Generic Items einschließlich FAQs nach nachgewiesener Mainserver-Kompatibilität auf 100 Datensätze festlegen oder eine dokumentierte kompatible Fallback-Größe verwenden.
+
+Die Round-Robin-Reihenfolge zwischen sichtbaren Inhaltstypen MUST erhalten bleiben, damit ein großer Typ die erste partielle Seite anderer Typen nicht blockiert.
+
+Surveys MUST von diesem Vertrag ausgenommen bleiben, weil der bestätigte Mainserver-Vertrag für `surveys` keine serverseitige Pagination anbietet. Der Survey-Adapter MUST seine Selection reduzieren, darf lokale Pagination aber nicht als Reduktion der Upstream-Requests darstellen.
+
+#### Scenario: Großer News-Bestand wird projiziert
+
+- **GIVEN** der Mainserver liefert 582 News und unterstützt `pageSize = 100`
+- **WHEN** der Host einen vollständigen Projection-List-Refresh ausführt
+- **THEN** benötigt er höchstens sechs erfolgreiche News-Page-Requests
+- **AND** persistiert er jede Seite vor dem nächsten Round-Robin-Schritt
+
+#### Scenario: Mehrere Typen werden gleichzeitig aufgebaut
+
+- **GIVEN** mehrere sichtbare Mainserver-Inhaltstypen besitzen noch keinen Snapshot
+- **WHEN** der progressive Refresh beginnt
+- **THEN** versucht der Coordinator die erste Seite jedes sichtbaren Typs, bevor er dessen nächste Seite lädt
+- **AND** kann jeder erfolgreich persistierte Typ unabhängig partiell gelesen werden
+
+#### Scenario: Surveys werden projiziert
+
+- **GIVEN** der bestätigte Mainserver-Vertrag bietet für `surveys` weder `limit`/`skip` noch Cursor-Pagination
+- **WHEN** der Host Surveys für die Projektion lädt
+- **THEN** verwendet er eine schlanke Survey-Selection in einem vollständigen Upstream-Abruf
+- **AND** wendet er `pageSize = 100`, partielle Upstream-Seiten und Round-Robin-Fortsetzung nicht auf Surveys an
+
+### Requirement: Hot-Refresh priorisiert die neuesten Inhalte
+
+Das System MUST bei einem manuellen oder interaktiven Refresh zuerst die neueste Projektionsseite jedes angefragten upstream-paginierbaren Inhaltstyps laden und persistieren. Die vollständige Reconciliation MUST anschließend entkoppelt im Hintergrund fortgesetzt werden, sofern sie nicht bereits anderweitig läuft. Für Surveys MUST der einzelne vollständige Upstream-Abruf als typspezifische Hot-Phase gelten.
+
+#### Scenario: Redakteur startet einen Refresh
+
+- **WHEN** ein Redakteur die Aktualisierung mehrerer Inhaltstypen startet
+- **THEN** lädt der Coordinator in der Hot-Phase zuerst die neueste Seite jedes angefragten Typs
+- **AND** persistiert jede erfolgreiche Seite sofort
+- **AND** beantwortet er den interaktiven Request nach Abschluss der Hot-Phase mit dem Zustand der Typen
+- **AND** wartet die Antwort nicht auf den vollständigen historischen Scan
+
+#### Scenario: Reconciliation läuft nach der Hot-Phase weiter
+
+- **GIVEN** die Hot-Phase wurde erfolgreich abgeschlossen
+- **AND** ältere Quellseiten müssen noch geprüft werden
+- **WHEN** der interaktive Request bereits beantwortet wurde
+- **THEN** setzt ein entkoppelter Lauf die vollständige Reconciliation fort
+- **AND** bleiben die Ergebnisse der Hot-Phase währenddessen lesbar
+
+### Requirement: Projektionsrefresh verwendet nur bestätigte Mainserver-Verträge
+
+Das System MUST für die bestehende Mainserver-Integration vollständige Reconciliation statt eines Delta-Wasserstands verwenden. Es MUST Offset-Pagination nicht als verlustfreien Delta-Sync behandeln und darf ohne bestätigten authentisierten Mainserver-Ereignisvertrag keinen Event-Ingress exponieren.
+
+#### Scenario: Schneller Refresh wird geplant
+
+- **GIVEN** die relevanten Mainserver-Listen bieten keinen stabilen Filter oder Cursor nach `(updatedAt, id)`
+- **WHEN** der Coordinator einen schnellen Refresh plant
+- **THEN** verwendet er die Hot-Phase mit anschließender vollständiger Reconciliation
+- **AND** speichert er keinen vermeintlich verlustfreien Delta-Wasserstand
+
+#### Scenario: Externe Mainserver-Änderung erfolgt
+
+- **GIVEN** der bestätigte Mainserver-Vertrag bietet weder GraphQL-Subscriptions noch einen authentisierten Webhook- oder Message-Bus-Vertrag
+- **WHEN** Inhalte außerhalb des Studios geändert oder gelöscht werden
+- **THEN** erkennt die nächste vollständige Reconciliation diese Änderung
+- **AND** exponiert Studio keinen unbestätigten Mainserver-Ereignisendpunkt
+
+### Requirement: Gezielte Änderungen bleiben der schnellste Projektionspfad
+
+Das System MUST die vorhandenen gezielten Mutation-Projection-Loader für News, Events, POIs, Generic Items und FAQs wiederverwenden und den Vertrag auf Surveys sowie weitere projizierte Typen mit verfügbarer Detailquelle erweitern. Ein erfolgreicher Fachschreibvorgang MUST nicht auf einen nachgelagerten vollständigen Projektionsrefresh warten.
+
+#### Scenario: Unterstützte Studio-Mutation ist erfolgreich
+
+- **WHEN** eine Mutation einen einzelnen Mainserver-Inhalt erfolgreich erstellt, ändert oder löscht
+- **THEN** aktualisiert oder entfernt der Host ausschließlich die zugehörige lokale Projektionszeile über den typisierten Detailpfad
+- **AND** bleibt eine spätere vollständige Reconciliation das Sicherheitsnetz
+
+#### Scenario: Survey wird im Studio geändert
+
+- **GIVEN** für Surveys steht eine stabile Detailquelle zur Verfügung
+- **WHEN** eine Survey-Mutation erfolgreich endet
+- **THEN** aktualisiert der Host die betroffene Survey-Projektionszeile gezielt
+- **AND** startet er nicht allein deshalb einen blockierenden Vollrefresh des Survey-Bestands
+
+### Requirement: The system SHALL support targeted projection updates after successful Mainserver content mutations
+The system SHALL expose enough typed Mainserver integration surface to refresh a single News, Event, or POI projection row after a successful Studio-initiated mutation without forcing a type-wide list rebuild.
+
+#### Scenario: Create or update uses typed detail read for targeted projection refresh
+- **GIVEN** Studio has successfully executed a News, Event, or POI mutation against Mainserver
+- **WHEN** the host refreshes the content-list projection for the affected record
+- **THEN** it loads the affected record through the corresponding typed detail adapter
+- **AND** it maps the response through the same typed integration layer used by the full projection path
+- **AND** it upserts only the affected projection row instead of rebuilding the whole content type
+
+#### Scenario: Delete uses record identity for targeted projection removal
+- **GIVEN** Studio has successfully executed a News, Event, or POI delete against Mainserver
+- **WHEN** the host refreshes the content-list projection for the affected record
+- **THEN** it removes the projection row by the known record identity and projection scope
+- **AND** it does not require a successful list-wide reload of the same content type
+
+### Requirement: Mainserver mutation follow-up refresh failures remain deterministic and non-destructive
+The system SHALL classify targeted projection-refresh failures after successful Mainserver mutations deterministically and SHALL preserve the existing periodic reconciliation path instead of turning those follow-up failures into implicit mutation rollbacks.
+
+#### Scenario: Detail read after mutation returns unusable data
+- **GIVEN** a Mainserver mutation succeeded but the follow-up typed detail read returns missing or invalid data for the affected News, Event, or POI record
+- **WHEN** Studio handles the targeted projection refresh
+- **THEN** Studio first performs a short, bounded retry for the typed detail read
+- **AND** only after the retry budget is exhausted does it record a deterministic follow-up refresh failure
+- **AND** it does not reinterpret the already successful mutation as failed
+- **AND** the periodic full reconciliation path remains responsible for eventual consistency
+
+#### Scenario: Mutation refresh is skipped deterministically when actor account resolution breaks
+- **GIVEN** Studio has successfully executed a Mainserver mutation
+- **AND** `actorAccountId` unexpectedly cannot be resolved for the follow-up projection refresh
+- **WHEN** Studio evaluates the targeted refresh path
+- **THEN** it keeps the mutation result fachlich successful
+- **AND** it skips the projection follow-up refresh for that mutation
+- **AND** it records the invariant violation deterministically for later investigation
+
+#### Scenario: Targeted projection refresh preserves credential and scope semantics
+- **GIVEN** Studio refreshes a single projection row after a successful Mainserver mutation
+- **WHEN** it resolves credentials and projection scope for the follow-up refresh
+- **THEN** it uses the same effective credential policy and scope semantics as the typed Mainserver mutation and projection mapping path
+- **AND** it does not introduce a separate bypass credential flow for targeted refreshes
+
+### Requirement: Mainserver-backed list projection scope SHALL remain isolated per account and effective credential context
+The system SHALL derive the persistent projection scope, sync-state scope, and deduplication scope for Mainserver-backed content lists from the same account-aware context so no two requests with different Mainserver credentials can share a snapshot implicitly.
+
+#### Scenario: Organization context does not collapse two account scopes into one snapshot
+- **GIVEN** two users of the same instance act inside the same active organization
+- **AND** their `actorAccountId` differs
+- **WHEN** Studio loads or refreshes the Mainserver-backed list projection
+- **THEN** it derives distinct projection and sync-state scopes for those requests
+- **AND** it does not reuse deduplicated rows or refresh progress across the two accounts
+
+#### Scenario: Projection scope contract stays consistent across persistence paths
+- **GIVEN** Studio reads, writes, deduplicates, or deletes Mainserver-backed projection rows
+- **WHEN** it derives the persistent scope for those operations
+- **THEN** it uses the same contract based on `instanceId`, `actorAccountId`, `activeOrganizationId`, and `contentType`
+- **AND** it does not persist a `keycloakSubject` fallback as an alternate scope key
+
+#### Scenario: Projection delete uses the same account-aware scope as projection upsert
+- **GIVEN** Studio removes a single Mainserver-backed projection row after a successful delete mutation
+- **WHEN** it identifies the row to delete
+- **THEN** it uses the same account-aware projection scope contract as list reads and targeted upserts
+- **AND** it does not remove rows belonging to a different account scope
+
+### Requirement: Mainserver list refresh SHALL fetch newest pages first and continue older pages progressively
+The system SHALL support a paginated refresh strategy for News, Events, and POI list projections that loads the newest upstream pages first and persists them before older pages continue.
+
+#### Scenario: First page uses upstream pagination and newest-first sort
+- **GIVEN** Studio starts a background refresh for a Mainserver-backed content type
+- **WHEN** it requests the first page from the typed Mainserver list adapter
+- **THEN** it uses upstream pagination arguments equivalent to `page = 1` and `pageSize = 25`
+- **AND** it requests the newest available records first using the snapshot-compatible `updatedAt DESC` sort semantics
+- **AND** it persists the returned page before requesting older pages
+
+#### Scenario: Older pages continue only after first pages of all visible types
+- **GIVEN** Studio refreshes multiple visible Mainserver-backed content types for the same account-aware scope
+- **WHEN** the refresh coordinator schedules follow-up pages
+- **THEN** it may continue with older pages only after the first page of each visible type was attempted for that scope
+- **AND** it preserves the same credential and projection-scope semantics for every subsequent page
+
+#### Scenario: Refresh continues after a single page failure
+- **GIVEN** Studio is running a progressive background refresh for multiple pages of a visible Mainserver-backed content type
+- **WHEN** one page request fails deterministically
+- **THEN** Studio records the page failure with enough context for observability
+- **AND** it does not abort the overall refresh run for the whole scope
+- **AND** it continues with the remaining scheduled page work according to the configured refresh strategy
+
+### Requirement: Mainserver-Integration bleibt Adapter über öffentliche Server-Verträge
+
+Das System MUST `@sva/sva-mainserver` als Integrationsgrenze halten, die Auth-, Runtime- und Mainserver-Fachlogik nur über öffentliche Package-Verträge verbindet.
+
+#### Scenario: Mainserver-Code greift auf interne Fachimplementierungen zu
+
+- **WHEN** `@sva/sva-mainserver` einen internen `src`-Pfad aus `@sva/auth-runtime`, `@sva/iam-admin` oder `@sva/instance-registry` importiert
+- **THEN** schlagen die statischen Boundary-Gates fehl
+- **AND** die Integration muss über öffentliche Adapter, Server-Verträge oder neutrale Runtime-Helfer erfolgen
 

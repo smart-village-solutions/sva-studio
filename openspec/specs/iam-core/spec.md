@@ -1,5 +1,4 @@
 # iam-core Specification
-
 ## Purpose
 TBD - created by archiving change setup-iam-identity-auth. Update Purpose after archive.
 ## Requirements
@@ -1249,3 +1248,68 @@ Das System SHALL für Session-, `/auth/me`- und Profilprojektionen zwischen rohe
 - **WHEN** ein Tenant-Benutzer noch historische Keycloak-Rollen besitzt, die nicht mehr Teil des Sollmodells sind
 - **THEN** kann die Session- oder Diagnoseprojektion diese Rollen als Legacy- oder Rohdaten sichtbar machen
 - **AND** wertet das System sie nicht automatisch als wirksame fachliche Tenant-Rollen
+
+### Requirement: Tenant-Accounts können privilegiert physisch gelöscht werden
+
+Das System SHALL für Tenant-Accounts einen privilegierten Admin-Delete-Pfad bereitstellen, der den Zielaccount physisch aus Studio und Keycloak entfernt. Der Pfad gilt nur für Accounts der aktiven `instanceId` und ist kein Self-Service- oder DSR-Standardpfad.
+
+#### Scenario: Berechtigter Tenant-Admin löscht einen normalen Tenant-Account physisch
+
+- **WENN** ein berechtigter Tenant-Admin einen Tenant-Account der aktiven `instanceId` löscht
+- **DANN** widerruft das System aktive Sessions des Zielaccounts
+- **UND** entfernt die zugehörige Identität in Keycloak
+- **UND** entfernt den Tenant-Account physisch aus den Studio-Accounttabellen
+- **UND** protokolliert das System den Vorgang auditierbar als privilegierte Admin-Mutation
+
+#### Scenario: Self-Delete bleibt verboten
+
+- **WENN** ein berechtigter Benutzer versucht, seinen eigenen Tenant-Account über diesen Admin-Pfad zu löschen
+- **DANN** lehnt das System den Vorgang ab
+- **UND** erfolgt keine Löschung in Keycloak oder Studio
+
+### Requirement: Inhalts- und Referenzbehandlung wird vor dem Hard-Delete aufgelöst
+
+Das System SHALL vor einem privilegierten Tenant-Account-Hard-Delete alle blockierenden Referenzen so behandeln, dass der Account physisch gelöscht werden kann, ohne fachlich unzulässige Datenzustände zu erzeugen.
+
+#### Scenario: Inhalte folgen der wirksamen Löschstrategie des Accounts
+
+- **WENN** der Zielaccount eigene Inhalte besitzt
+- **DANN** wertet das System vor dem Hard-Delete die wirksame Tenant-/Account-Regel für diese Inhalte aus
+- **UND** behandelt Inhalte bei `mit Eigentümer-Lifecycle mitbehandeln` in einen fachlich gelöschten oder gleichwertig referenzverträglichen Zustand
+- **UND** anonymisiert bei `beibehalten` owner-/author-bezogene Personenreferenzen so, dass der Account physisch entfernt werden kann
+
+#### Scenario: Referenzierende Historie darf anonymisiert erhalten bleiben
+
+- **WENN** Audit-, Verlaufs- oder andere referenzierende Fachdatensätze den Zielaccount noch referenzieren
+- **DANN** darf das System diese Datensätze erhalten
+- **UND** setzt oder transformiert es die Account-Bezüge vor dem Hard-Delete in einen anonymisierten oder referenzverträglichen Zustand
+- **UND** bricht es den Delete fail-closed ab, wenn ein erforderlicher Referenzpfad nicht regelkonform aufgelöst werden kann
+
+### Requirement: Zentrale Autorisierungsinvariante
+Das System MUST zentrale Autorisierungsentscheidungen ausschließlich über `@sva/iam-core` treffen. `@sva/iam-core` MUST die Authorize-Verträge, Reason Codes, Permission-/Resource-Typen und die reine synchrone `evaluateAuthorizeDecision`-Engine besitzen. Fachpackages MUST diesen Vertrag konsumieren und dürfen keine zweite Berechtigungsauflösung gegen eigene Tabellen, Keycloak-Rollen oder kopierte Rollenlogik einführen.
+
+#### Scenario: Fachpackage prüft Berechtigung
+- **WHEN** `@sva/iam-admin`, `@sva/iam-governance` oder `@sva/instance-registry` eine geschützte Operation ausführt
+- **THEN** konsumiert es Authorize-nahe Verträge aus `@sva/iam-core`
+- **AND** fehlender oder unvollständiger Autorisierungskontext führt fail-closed zu einer Ablehnung
+
+#### Scenario: Authorize-Engine bleibt rein
+- **WHEN** `evaluateAuthorizeDecision` ausgeführt wird
+- **THEN** benötigt die Funktion keine DB-, Redis-, Keycloak-, React- oder Runtime-Abhängigkeiten
+- **AND** die Funktion liefert bei gleichem Request und gleicher Permission-Liste dieselbe Entscheidung
+
+### Requirement: Allow-only Permission-Vertrag
+
+Das System SHALL effektive Tenant-Permissions als Allow-Grants ohne fachliche Deny-Variante modellieren.
+
+#### Scenario: Effektive Permission wird serialisiert
+
+- **WHEN** eine effektive Permission über einen IAM-API-Vertrag serialisiert wird
+- **THEN** enthält sie Action, Resource, optionalen Scope, optionale Organisation und Rollen-/Gruppen-Provenienz
+- **AND** enthält sie kein `effect`-Feld und keine direkte Benutzer-Provenienz
+
+#### Scenario: Fehlende Permission
+
+- **WHEN** für eine Autorisierungsanfrage kein passender Allow-Grant existiert
+- **THEN** wird die Anfrage verweigert
+- **AND** es ist kein expliziter Deny-Grant erforderlich

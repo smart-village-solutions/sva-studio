@@ -84,32 +84,32 @@ Die modulare Zielarchitektur SHALL einzelne Dateien, Funktionen und Exportfläch
 - **AND** sie erhält vor Merge einen dokumentierten Nachweis oder wird im selben Change behoben
 
 ### Requirement: IAM-Server-Hard-Cut in Zielpackages
-
-Der IAM-Server MUST von einer internen Modulstruktur in getrennte Zielpackages überführt werden. Authentifizierung, zentrale Autorisierung, IAM-Administration, IAM-Governance und Instanz-Control-Plane MUST getrennte Package-Verantwortlichkeiten erhalten.
+Der IAM-Server MUST von einer internen Modulstruktur in getrennte Zielpackages überführt werden. Authentifizierung, zentrale Autorisierung, IAM-Administration, IAM-Governance und Instanz-Control-Plane MUST getrennte Package-Verantwortlichkeiten erhalten. Alte Importpfade für verschobene Authorize-Verträge und Authorize-Engine-Funktionen MUST im Hard Cut entfernt werden.
 
 #### Scenario: Authentifizierungslogik wird migriert
-
 - **WHEN** Login, Logout, OIDC, Cookies, Session oder Auth-Middleware geändert werden
 - **THEN** liegt die Implementierung in `@sva/auth-runtime`
 - **AND** sie importiert keine IAM-Admin-, Governance- oder Instanz-Implementierungsdetails
 
 #### Scenario: IAM-Admin-Logik wird migriert
-
 - **WHEN** Benutzer, Rollen, Gruppen, Organisationen oder Reconcile-Logik geändert werden
-- **THEN** liegt die Implementierung in `@sva/iam-admin`
-- **AND** Autorisierungsentscheidungen werden über `@sva/iam-core` konsumiert
+- **THEN** liegt die fachliche Implementierung in `@sva/iam-admin`
+- **AND** Authorize-nahe Verträge werden über `@sva/iam-core` konsumiert
 
 #### Scenario: Governance- oder DSR-Logik wird migriert
-
 - **WHEN** DSR, Legal Texts, Audit-nahe IAM-Fälle oder Governance-Flows geändert werden
 - **THEN** liegt die Implementierung in `@sva/iam-governance`
 - **AND** PII-Verarbeitung ist dort explizit klassifiziert und getestet
 
 #### Scenario: Instanz-Control-Plane wird migriert
-
 - **WHEN** Instanzmodell, Host-Klassifikation, Registry, Provisioning oder Platform-Keycloak-Control-Plane geändert werden
 - **THEN** liegt die Implementierung in `@sva/instance-registry`
 - **AND** sie wird nicht als Unterfunktion von `@sva/auth-runtime` oder `@sva/iam-admin` umgesetzt
+
+#### Scenario: Runtime-Adapter bleibt schmal
+- **WHEN** ein Runtime-Handler in `@sva/auth-runtime` fachliche IAM-Admin- oder Governance-Funktionalität verdrahtet
+- **THEN** beschränkt sich der Runtime-Code auf Session, Request-Kontext, Auth-Guard, Dependency-Wiring und Response-Mapping
+- **AND** fachliche Entscheidungen liegen im zuständigen Zielpackage
 
 ### Requirement: Zentrale Autorisierungsinvariante
 
@@ -148,4 +148,14 @@ Das System MUST IAM-bezogene PII-Verarbeitung nach Zielpackage begrenzen. `@sva/
 - **WHEN** `@sva/instance-registry` Instanz- oder Hostdaten verarbeitet
 - **THEN** verarbeitet sie keine personenbezogenen Daten im Klartext
 - **AND** personenbezogene IAM-Daten bleiben in den autorisierten IAM-Fachpackages
+
+### Requirement: IAM-Mutationen verwenden einen neutralen Runtime-Workflow-Kern
+
+Das System SHALL IAM-nahe Mutationen über einen neutralen Workflow-Kern in `@sva/server-runtime` orchestrieren, während `@sva/auth-runtime` und `@sva/iam-admin` nur domänenspezifische Adapter und Fachlogik liefern.
+
+#### Scenario: Auth-Runtime oder IAM-Admin führt eine Mutation aus
+
+- **WHEN** ein IAM-Mutationspfad Guards, Berechtigungsprüfung, CSRF, Idempotency, Request-Parsing und Fachausführung kombiniert
+- **THEN** liegt die generische Orchestrierung im Runtime-Kern
+- **AND** die IAM-Pakete halten nur noch fachliche Adapter und Handler-spezifische Fehlerabbildungen
 

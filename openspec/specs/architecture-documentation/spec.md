@@ -1,5 +1,4 @@
 # architecture-documentation Specification
-
 ## Purpose
 TBD - created by archiving change add-arc42-architecture-documentation. Update Purpose after archive.
 ## Requirements
@@ -375,11 +374,27 @@ Die Architektur- und Betriebsdokumentation SHALL GitHub Actions `Build` und `Pro
 - **WHEN** ein Teammitglied den Studio-Rollout nachschlägt
 - **THEN** beschreiben `07-deployment-view`, der kanonische Rollout-Leitfaden und das Swarm-Runbook die Reihenfolge Build, Dev, Staging und Production mit demselben Digest
 - **AND** beschreiben sie bei Staging- und Production-One-shots die Reihenfolge Preflight, Backup, Migration, optional Bootstrap, Postconditions, App-Deploy und Verifikation
-- **AND** beschreibt `08-cross-cutting-concepts` die Environment-Freigabe, Wartungsfenster-Referenz, Geheimnisredaktion und Artefaktbindung
-- **AND** dokumentieren sie Production-`run` nur nach erfolgreicher mutierender Staging-Parität desselben Digests, Wartungsfenster, Production-Freigabe und verifiziertem Backup
+- **AND** beschreibt `08-cross-cutting-concepts` Environment-Freigabe, Geheimnisredaktion und Artefaktbindung als wirksame Sicherheitsbarrieren ohne Wartungsfenster-Pflichtfeld
+- **AND** dokumentieren sie Production-`run` nur nach erfolgreicher mutierender Staging-Parität desselben Digests, Production-Freigabe und verifiziertem Backup
 
 #### Scenario: Rollout-Evidenz und Recovery sind dokumentiert
 
 - **WHEN** ein Staging- oder Production-Promote fehlschlägt oder eine Verifikation verletzt
 - **THEN** beschreibt die Betriebsdokumentation die redigierten Evidenzartefakte, den vorherigen App-Digest, das Cleanup-Verhalten und den lokalen Recovery-Pfad
 - **AND** grenzt sie automatisches Datenbank-Rollback ausdrücklich aus
+
+### Requirement: Plugin-Guide dokumentiert lange Bearbeitungsflächen
+
+Die Entwicklungsdokumentation SHALL das Pattern „lange Bearbeitungsfläche“ für Host- und Plugin-Views mit Einsatzkriterien, gemeinsamen Studio-UI-Verträgen, einem vollständigen TypeScript-Beispiel, Ausnahmen und einer Review-Checkliste beschreiben.
+
+#### Scenario: Plugin-Entwickler implementiert einen langen Editor
+
+- **WHEN** ein Plugin-Entwickler den Plugin-Entwicklungsleitfaden liest
+- **THEN** erkennt er, wann eine Primäraktion oben und unten erforderlich ist
+- **AND** kann er den Golden Path mit `StudioDetailPageTemplate`, `StudioDetailTabs` und den gemeinsamen Aktionsverträgen übernehmen
+- **AND** erkennt er, dass kurze Dialoge und kompakte Einzelformulare ausgenommen sind
+
+#### Scenario: Reviewer prüft eine neue lange Bearbeitungsfläche
+
+- **WHEN** ein PR eine lange Host- oder Plugin-Bearbeitungsfläche einführt
+- **THEN** kann der Reviewer prüfen, ob Formulargrenze, Primäraktion, Zustände, Accessibility und Sekundäraktionen dem dokumentierten Pattern entsprechen

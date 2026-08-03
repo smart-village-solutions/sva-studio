@@ -119,7 +119,7 @@ Das System MUST zyklische Beziehungen in der Organisationshierarchie verhindern.
 
 ### Requirement: Organisations-CRUD für Administratoren
 
-Das System SHALL eine instanzgebundene Organisationsverwaltung über dedizierte Admin-Endpunkte bereitstellen.
+Das System SHALL eine instanzgebundene Organisationsverwaltung über dedizierte Admin-Endpunkte bereitstellen. Löschungen bleiben für Organisationen mit untergeordneten Children gesperrt; löschbare Blatt-Organisationen werden physisch entfernt.
 
 #### Scenario: Organisation anlegen
 
@@ -135,15 +135,16 @@ Das System SHALL eine instanzgebundene Organisationsverwaltung über dedizierte 
 
 #### Scenario: Organisation mit abhängigen Children kann nicht unkontrolliert gelöscht werden
 
-- **WHEN** ein Administrator eine Organisation mit untergeordneten Organisationen löschen oder deaktivieren will
+- **WHEN** ein Administrator eine Organisation mit untergeordneten Organisationen löschen will
 - **THEN** erzwingt das System eine definierte Konflikt- oder Schutzreaktion
 - **AND** die Hierarchie bleibt konsistent
 
-#### Scenario: Delete-Endpunkt deaktiviert Organisation kontrolliert
+#### Scenario: Delete-Endpunkt löscht zulässige Blatt-Organisationen physisch
 
-- **WHEN** ein berechtigter Administrator `DELETE /api/v1/iam/organizations/:organizationId` für eine zulässige Organisation aufruft
-- **THEN** wird die Organisation im ersten Schnitt kontrolliert deaktiviert statt physisch gelöscht
-- **AND** bestehende Audit- und Referenzbezüge bleiben erhalten
+- **WHEN** ein berechtigter Administrator `DELETE /api/v1/iam/organizations/:organizationId` für eine zulässige Organisation ohne Children aufruft
+- **THEN** wird die Organisation physisch gelöscht statt deaktiviert
+- **AND** setzt das System vorher referenzierende Content-Organisationen kontrolliert auf `NULL`
+- **AND** werden Memberships und organisationsgebundene Credentials über bestehende Löschregeln entfernt
 
 ### Requirement: Mehrfach-Zugehörigkeit von Accounts zu Organisationen
 
@@ -160,6 +161,19 @@ Das System SHALL Accounts mehreren Organisationen derselben Instanz zuordnen kö
 - **WHEN** ein Account einer Organisation einer anderen `instanceId` zugeordnet werden soll
 - **THEN** wird die Operation abgewiesen
 - **AND** keine Zuordnung wird gespeichert
+
+#### Scenario: Membership-Attribute werden nachtraeglich aktualisiert
+
+- **WHEN** ein Administrator für eine bestehende Organisationsmitgliedschaft `visibility` oder `isDefaultContext` ändert
+- **THEN** werden nur die Membership-Attribute aktualisiert
+- **AND** die fachliche Zuordnung des Accounts zur Organisation bleibt erhalten
+- **AND** der Account besitzt danach hoechstens eine als Default markierte Organisationsmitgliedschaft innerhalb derselben Instanz
+
+#### Scenario: User-zentrierte Read-Modelle koennen Organisationsmitgliedschaften aufloesen
+
+- **WHEN** ein Administrator Benutzerdetails für einen Account lädt
+- **THEN** liefert das Read-Model die Organisationsmitgliedschaften des Accounts inklusive Organisationsmetadaten und Membership-Attributen
+- **AND** die Antwort eignet sich sowohl für die User-Detailseite als auch für konsistente Folge-Mutationen im selben Bedienfluss
 
 ### Requirement: Organisationsarten und Basispolicies
 

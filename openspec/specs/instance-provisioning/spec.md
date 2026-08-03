@@ -674,3 +674,159 @@ Das System SHALL bei Tenant-Bootstrap, Repair und Reconcile in Keycloak nur die 
 - **THEN** darf das System diese Rollen als Legacy-Drift melden
 - **AND** materialisiert sie nicht erneut als Sollzustand des Tenant-Realm
 
+### Requirement: Lokaler MCP-Steuerungspfad für Instanzanlage
+
+Das System SHALL berechtigten lokalen Codex- oder CLI-Operatoren einen stdio-basierten MCP-Steuerungspfad für die Anlage neuer Studio-Instanzen bereitstellen. Der MCP-Pfad verwendet ausschließlich den bestehenden fachlichen Instanz-Anlagevertrag und führt weder direkte Datenbank- noch Keycloak-Mutationen aus.
+
+#### Scenario: MCP-Tool legt Instanz über den bestehenden Provisioning-Vertrag an
+
+- **WHEN** ein berechtigter lokaler Operator `studio_instances_create` mit einer gültigen Instanzkonfiguration aufruft
+- **THEN** validiert das Tool den bestehenden Create-Vertrag und ruft die konfigurierte Studio-API auf
+- **AND** verwendet Studio denselben fachlichen Provisioning-Pfad wie die Control-Plane
+- **AND** liefert das Tool Instanz-ID, primären Host, Status und Korrelation zurück
+- **AND** bleibt die neue Instanz im Status `requested`, bis getrennte Folgeaktionen ausgeführt werden
+
+#### Scenario: Wiederholter MCP-Aufruf ist idempotent
+
+- **WHEN** der lokale Operator denselben Idempotenz-Key mit derselben Instanzkonfiguration erneut verwendet
+- **THEN** führt Studio keine doppelte Instanzanlage aus
+- **AND** liefert das Tool ein deterministisches Ergebnis oder den bereits bestehenden fachlichen Zustand zurück
+
+#### Scenario: MCP-Tool schützt Geheimnisse
+
+- **WHEN** Eingabe oder Studio-Antwort Auth-Client- oder Tenant-Admin-Secrets enthalten könnte
+- **THEN** gibt das MCP-Tool diese Werte weder in Erfolgs- noch Fehlerantworten zurück
+- **AND** protokolliert es diese Werte nicht lokal
+
+### Requirement: Handlungsfähige Fehlerdiagnose für MCP-Instanzanlage
+
+Das System SHALL für die MCP-Instanzanlage einen stabilen, maschinenlesbaren Fehlervertrag bereitstellen und nach Fehlern eine begrenzte, kontextabhängige Read-only-Diagnose ergänzen. Der Vertrag enthält mindestens Fehlercode, Kategorie, Wiederholbarkeit, empfohlene Folgeaktion und Korrelation. Die Diagnose darf keine Mutation oder automatische Reparatur ausführen.
+
+#### Scenario: Fehler liefert stabile Ursache und sichere Folgeaktion
+
+- **WHEN** eine MCP-Instanzanlage wegen Eingabe, Konflikt, Plattform-Readiness, Abhängigkeit oder eines internen Fehlers scheitert
+- **THEN** erhält der MCP-Client einen stabilen Fehlercode, Kategorie, Wiederholbarkeitsangabe, Folgeaktion sowie Request- und Idempotenz-Korrelation
+- **AND** bleibt ein unbekannter Fehler als nicht klassifiziert erkennbar und wird nicht pauschal als Keycloak-Fehler ausgegeben
+
+#### Scenario: MCP ergänzt nach einem Fehler passende Read-only-Evidenz
+
+- **WHEN** eine MCP-Instanzanlage scheitert
+- **THEN** prüft der MCP-Client innerhalb eines begrenzten Diagnosebudgets nur zur Fehlerklasse passende Read-only-Evidenz
+- **AND** bleibt die ursprüngliche Fehlerursache maßgeblich, falls die Diagnose selbst fehlschlägt oder abläuft
+- **AND** enthält die Diagnose keine Geheimnisse, Stacktraces oder nicht erforderlichen Infrastrukturdetails
+
+#### Scenario: Diagnose löst keine automatische Mutation aus
+
+- **WHEN** die Diagnose einen reparierbaren Befund erkennt
+- **THEN** gibt der MCP-Client ausschließlich eine empfohlene Folgeaktion aus
+- **AND** wiederholt, repariert, provisioniert oder aktiviert er die Instanz nicht selbsttätig
+
+### Requirement: Dreistufige MCP-Instanz-Control-Plane
+
+Das System SHALL die vorhandenen Instanzverwaltungs- und Provisioning-Fähigkeiten über getrennte MCP-Tools für Lesen und Diagnose, kontrollierte Mutationen sowie kritische Mutationen bereitstellen. Die Tools verwenden ausschließlich die bestehenden fachlichen Registry- und Provisioning-Verträge.
+
+#### Scenario: Diagnose-Tools lesen den Instanzzustand ohne Mutation
+
+- **WHEN** ein berechtigter MCP-Client Instanzen, Instanzdetails, Audits, Provisioning-Runs oder eine aggregierte Instanzdiagnose abruft
+- **THEN** liefert das System die relevante Read-only-Evidenz ohne fachliche Mutation
+- **AND** priorisiert eine aggregierte Diagnose eine sichere nächste Aktion
+
+#### Scenario: Kontrollierte MCP-Mutation verwendet vorhandenen Fachvertrag
+
+- **WHEN** ein berechtigter MCP-Client Provisioning ausführt, reconciled, eine Instanz aktualisiert, ein Modul zuweist, die IAM-Basis seedet oder die Admin-Struktur bootstrappt
+- **THEN** verwendet Studio den jeweils bestehenden fachlichen Vertrag
+- **AND** erzwingt der Request einen action-spezifischen Scope, Idempotenz und Audit-Korrelation
+
+#### Scenario: Kritische MCP-Mutation erfordert serverseitige Bestätigung
+
+- **WHEN** ein MCP-Client eine Instanz aktiviert, suspendiert, archiviert, ein Modul entzieht oder ein Secret rotiert
+- **THEN** verlangt Studio einen action-spezifischen Scope, eine gültige aktuelle Bestätigungs-Challenge, einen Idempotenz-Key und eine explizite Bestätigungsphrase
+- **AND** lehnt Studio eine abgelaufene, wiederverwendete oder durch Zustandsänderung ungültig gewordene Challenge fail-closed ab
+- **AND** wird die Mutation einschließlich Bestätigung und Ergebnis append-only auditiert
+
+### Requirement: Durchgängig korrelierbares Prozessketten-Logging
+
+Das System SHALL die MCP-Create- und nachgelagerte Provisioning-/Keycloak-Kette mit stabilen Operationen, Ergebnissen und Prozessstufen strukturiert protokollieren. Pro Fehler SHALL genau ein kanonisches Error-Event entstehen. Freie Provider-, Datenbank- und Nutzereingaben dürfen nicht Bestandteil des Log-Ereignisses sein.
+
+#### Scenario: Create-Fehler benennt die konkrete Prozessstufe
+
+- **WHEN** Bestandsprüfung, Registry-Insert, Primary-Hostname-Upsert, Provisioning-Run, Audit-Ereignis oder Cache-Invalidierung fehlschlägt
+- **THEN** enthält das kanonische Error-Event `operation`, `result`, `request_id`, die verfügbare Instanzkorrelation sowie einen stabilen `step_key`
+- **AND** werden von PostgreSQL ausschließlich SQLSTATE, Tabelle, Spalte und Constraint übernommen
+- **AND** entstehen an Service- und HTTP-Grenze keine doppelten Error-Events
+
+#### Scenario: Worker-Fehler bleibt sicher und korrelierbar
+
+- **WHEN** Queue, Claim, Preflight, Plan, Keycloak-Ausführung, Secret-Synchronisierung, Admin-Bootstrap oder Abschluss fehlschlägt
+- **THEN** enthält `provisioning_run_failed` Request-, Instanz-, Run-, Intent-, Stufen- und Fehlerklassen-Kontext, soweit verfügbar
+- **AND** enthalten Log und persistierte Zusammenfassung keine Providerdetails, E-Mail-Adressen, Passwörter, Tokens, Connection-Strings, SQL-Werte oder Stacktraces
+- **AND** bleiben Request-, Instanz- und Run-IDs Log-Felder statt Loki-Labels oder Metrikdimensionen
+
+#### Scenario: Lokaler stdio-MCP schützt den Protokollkanal
+
+- **WHEN** das lokale MCP-Tool einen Erfolg oder Fehler verarbeitet
+- **THEN** bleibt `stdout` ausschließlich dem MCP-Protokoll vorbehalten
+- **AND** erfolgt die lokale Diagnose über die strukturierte Tool-Antwort ohne Token-, Payload- oder Secret-Logging
+
+### Requirement: Modularer MCP-Instanzprozess mit Doctor-Abnahme
+
+Das System SHALL berechtigten MCP-Operatoren einen modularen Gesamtprozess für die Neuanlage, Reparatur und Anpassung von Studio-Instanzen bereitstellen. Der Prozess SHALL die vorhandenen fachlichen Registry-, Modul-, Keycloak- und IAM-Verträge orchestrieren, ohne einen parallelen Provisioning-Pfad einzuführen.
+
+#### Scenario: Neue Instanz wird erst nach vollständiger Abnahme als abgeschlossen gemeldet
+
+- **WHEN** ein MCP-Operator den Gesamtprozess im Modus `create` für eine neue Instanz ausführt
+- **THEN** legt das System Registry, angeforderte Module, IAM-Basis und Keycloak-Artefakte über die bestehenden Verträge an
+- **AND** wartet es auf das terminale Ergebnis des Keycloak-Workers
+- **AND** führt es einen aktuellen Postflight, einen Rollenabgleich und eine tenantlokale Rechteprobe aus
+- **AND** meldet es `completed: true` nur, wenn die Instanz aktiv ist und alle für den Auftrag erforderlichen Doctor-Achsen `ready` sind
+
+#### Scenario: Kritische Aktivierung bleibt Human-in-the-Loop
+
+- **WHEN** die technische Abnahme erfolgreich ist, die Instanz aber noch nicht aktiviert wurde
+- **THEN** meldet der Gesamtprozess `awaiting_human_action` und `completed: false`
+- **AND** erklärt die Antwort verständlich, dass die Aktivierung noch aussteht und warum sie nicht automatisch ausgeführt wurde
+- **AND** nennt sie die konkrete nächste Action und die erforderliche serverseitige Bestätigungs-Challenge
+
+#### Scenario: Bestehende Instanz wird gezielt repariert oder angepasst
+
+- **WHEN** ein MCP-Operator den Gesamtprozess im Modus `repair` oder `adapt` aufruft, beispielsweise um ein Modul hinzuzufügen
+- **THEN** ermittelt das System den aktuellen Zustand und führt nur erforderliche, idempotente Schritte aus
+- **AND** ergänzt für neue Module deren IAM-Basis und Admin-Struktur über die gemeinsame Modul-IAM-Vertragsquelle
+- **AND** liefert es nach dem Postflight eine verständliche Beschreibung der erledigten, offenen und blockierten Schritte
+
+#### Scenario: Historischer Preflight übersteuert keinen aktuellen erfolgreichen Zustand
+
+- **WHEN** ein Keycloak-Worker vor der Mutation einen Preflight gespeichert und die Mutation anschließend erfolgreich abgeschlossen hat
+- **THEN** persistiert der Worker einen separaten aktuellen Postflight
+- **AND** verwenden Doctor, Instanzdetail und MCP für die Abschlussbewertung den aktuellen Status oder den Postflight statt des historischen Preflights
+
+#### Scenario: Prozessantwort bleibt verständlich und handlungsfähig
+
+- **WHEN** ein Gesamtprozess abgeschlossen, blockiert oder auf menschliche Bestätigung wartet
+- **THEN** enthält die MCP-Antwort den aktuellen Schritt, erledigte und offene Schritte, Doctor-Zusammenfassung, Korrelation und eine konkrete nächste Aktion
+- **AND** ergänzt sie stabile technische Codes nur als Diagnosehilfe
+- **AND** enthält sie keine Secrets, Tokens, Passwörter oder unnötigen Providerdetails
+
+### Requirement: Tenant-Baseline und Rollout reconciliieren den kanonischen Permission-Katalog
+
+Das System MUST bei Tenant-Erstellung, explizitem IAM-Baseline-Reconcile und kontrolliertem Rollout für bestehende Tenants denselben kanonischen Permission-Katalog additiv anwenden. Der Operatorvertrag darf keine freien Permission-Payloads oder freien SQL-Eingaben akzeptieren.
+
+#### Scenario: Neuer Tenant erhält vollständige Core-Basis
+
+- **WHEN** ein neuer Tenant mit `system_admin` initialisiert wird
+- **THEN** materialisiert der Baseline-Reconcile alle aktiven tenantweiten Katalog-Permissions
+- **AND** erhält `system_admin` alle standardmäßig vorgesehenen Grants
+
+#### Scenario: Bestehende Tenants werden nach Katalogerweiterung aktualisiert
+
+- **WHEN** ein Release einen erweiterten Permission-Katalog enthält
+- **THEN** führt der kanonische Rollout einen kontrollierten additiven Reconcile für die Zielumgebung aus
+- **AND** sind Ergebnis, Request-ID, betroffene Instanzen und sichere Änderungszähler nachvollziehbar
+- **AND** führt ein wiederholter Lauf nicht zu Dubletten
+
+#### Scenario: Reconcile schlägt für eine Instanz fehl
+
+- **WHEN** der Permission-Reconcile für eine Zielinstanz nicht vollständig abgeschlossen werden kann
+- **THEN** wird die Instanz als nicht erfolgreich reconciled ausgewiesen
+- **AND** wird der Fehler ohne freie SQL-Reparatur über den bestehenden Diagnose- und Rollout-Vertrag behandelt
+

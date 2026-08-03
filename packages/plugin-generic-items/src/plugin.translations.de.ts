@@ -119,6 +119,7 @@ export const genericItemsTranslationsDe = {
     },
     tabs: {
       ariaLabel: 'Detailbereiche',
+      mobileLabel: 'Bereich auswählen',
       basis: {
         label: 'Basis',
         title: 'Basis',

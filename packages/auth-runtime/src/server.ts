@@ -82,6 +82,20 @@ export {
   type ContentPrimitiveAuthorizationResult,
 } from './iam-contents/server-authorization.js';
 export {
+  bindExternalContentReference,
+  createExternalContentReference,
+  loadExternalContentCore,
+  loadExternalContentReferenceByContentId,
+  loadExternalContentReferenceByOperation,
+  listExternalContentReferences,
+  prepareExternalContent,
+  updateExternalContentCore,
+  updateExternalContentReconciliationStatus,
+  withExternalContentMutationLock,
+  type ExternalContentReconciliationStatus,
+  type ExternalContentReference,
+} from './iam-contents/external-content-references.js';
+export {
   authorizeInstancePermissionForUser,
   type InstancePermissionAuthorizationResult,
 } from './instance-permission-authorization.js';

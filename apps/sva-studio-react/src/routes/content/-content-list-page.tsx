@@ -10,6 +10,7 @@ import { deleteCockpitCard } from '@sva/plugin-cockpit-cards';
 import { deleteGenericItem } from '@sva/plugin-generic-items';
 import { deleteNews } from '@sva/plugin-news';
 import { deletePoi } from '@sva/plugin-poi';
+import { deleteProject } from '@sva/plugin-projects';
 import { deleteSurvey } from '@sva/plugin-surveys';
 import { IconEdit, IconEye, IconTrash, IconXboxX } from '@tabler/icons-react';
 import {
@@ -74,6 +75,7 @@ const MAIN_SERVER_CONTENT_TYPES = new Set([
   'surveys.survey',
   'generic-items.generic-item',
   'cockpit-cards.cockpit-card',
+  'projects.project',
 ]);
 
 const contentAdminResource = appAdminResources.find(
@@ -325,6 +327,10 @@ const deleteMainserverItem = async (contentType: string, contentId: string): Pro
   }
   if (contentType === 'cockpit-cards.cockpit-card') {
     await deleteCockpitCard(contentId);
+    return;
+  }
+  if (contentType === 'projects.project') {
+    await deleteProject(contentId);
     return;
   }
   if (contentType === 'generic-items.generic-item') {

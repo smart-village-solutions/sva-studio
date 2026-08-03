@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict gNUfUnTWqSPqYxOzygBeK1CoRLzmbEKUxR0kdvHTWHP3dtLClQzbA2cVET0T0Sx
+\restrict ZNOgquFmT6VS0nXNko3rmWH3jdmNR1X5StZsDexn9DW3WJxpBCc5f4gNNh6SRCp
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -763,6 +763,31 @@ CREATE TABLE iam.delegations (
     CONSTRAINT delegations_duration_chk CHECK ((ends_at > starts_at)),
     CONSTRAINT delegations_status_chk CHECK ((status = ANY (ARRAY['requested'::text, 'active'::text, 'expired'::text, 'revoked'::text])))
 );
+
+
+--
+-- Name: external_content_references; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.external_content_references (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    instance_id text NOT NULL,
+    content_id uuid NOT NULL,
+    source_system text NOT NULL,
+    source_entity_type text NOT NULL,
+    source_entity_id text,
+    operation_external_id text NOT NULL,
+    reconciliation_status text DEFAULT 'pending'::text NOT NULL,
+    last_error_code text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT external_content_references_operation_external_id_chk CHECK ((length(btrim(operation_external_id)) > 0)),
+    CONSTRAINT external_content_references_reconciliation_status_chk CHECK ((reconciliation_status = ANY (ARRAY['pending'::text, 'bound'::text, 'reconciliation_required'::text, 'failed'::text]))),
+    CONSTRAINT external_content_references_source_entity_type_chk CHECK ((length(btrim(source_entity_type)) > 0)),
+    CONSTRAINT external_content_references_source_system_chk CHECK ((source_system ~ '^[a-z][a-z0-9-]{1,62}$'::text))
+);
+
+ALTER TABLE ONLY iam.external_content_references FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1875,6 +1900,30 @@ ALTER TABLE ONLY iam.delegations
 
 
 --
+-- Name: external_content_references external_content_references_local_source_key; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.external_content_references
+    ADD CONSTRAINT external_content_references_local_source_key UNIQUE (instance_id, content_id, source_system, source_entity_type);
+
+
+--
+-- Name: external_content_references external_content_references_operation_key; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.external_content_references
+    ADD CONSTRAINT external_content_references_operation_key UNIQUE (instance_id, source_system, source_entity_type, operation_external_id);
+
+
+--
+-- Name: external_content_references external_content_references_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.external_content_references
+    ADD CONSTRAINT external_content_references_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: external_interface_types external_interface_types_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -2336,6 +2385,20 @@ ALTER TABLE ONLY public.waste_email_reminder_subscriptions
 
 ALTER TABLE ONLY public.waste_email_reminder_subscriptions
     ADD CONSTRAINT waste_email_reminder_subscriptions_unsubscribe_token_hash_uniqu UNIQUE (unsubscribe_token_hash);
+
+
+--
+-- Name: external_content_references_external_source_key; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX external_content_references_external_source_key ON iam.external_content_references USING btree (instance_id, source_system, source_entity_type, source_entity_id) WHERE (source_entity_id IS NOT NULL);
+
+
+--
+-- Name: external_content_references_reconciliation_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX external_content_references_reconciliation_idx ON iam.external_content_references USING btree (instance_id, reconciliation_status, updated_at);
 
 
 --
@@ -3356,6 +3419,22 @@ ALTER TABLE ONLY iam.delegations
 
 
 --
+-- Name: external_content_references external_content_references_content_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.external_content_references
+    ADD CONSTRAINT external_content_references_content_id_fkey FOREIGN KEY (content_id) REFERENCES iam.contents(id) ON DELETE CASCADE;
+
+
+--
+-- Name: external_content_references external_content_references_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.external_content_references
+    ADD CONSTRAINT external_content_references_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
 -- Name: geo_hierarchy geo_hierarchy_ancestor_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -4029,6 +4108,19 @@ CREATE POLICY delegations_isolation_policy ON iam.delegations USING ((instance_i
 
 
 --
+-- Name: external_content_references; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.external_content_references ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: external_content_references external_content_references_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY external_content_references_isolation_policy ON iam.external_content_references USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
 -- Name: geo_nodes geo_nodes_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
@@ -4255,4 +4347,4 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict gNUfUnTWqSPqYxOzygBeK1CoRLzmbEKUxR0kdvHTWHP3dtLClQzbA2cVET0T0Sx
+\unrestrict ZNOgquFmT6VS0nXNko3rmWH3jdmNR1X5StZsDexn9DW3WJxpBCc5f4gNNh6SRCp

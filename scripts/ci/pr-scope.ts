@@ -60,6 +60,7 @@ const pluginUiBuildRelevantPatterns = [
   /^packages\/plugin-events\/src\/.*\.(?:ts|tsx)$/u,
   /^packages\/plugin-faq\/src\/.*\.(?:ts|tsx)$/u,
   /^packages\/plugin-poi\/src\/.*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-projects\/src\/.*\.(?:ts|tsx)$/u,
   /^packages\/plugin-waste-management\/src\/.*\.(?:ts|tsx)$/u,
 ];
 
@@ -68,6 +69,7 @@ const pluginUiA11yRelevantPatterns = [
   /^packages\/plugin-events\/src\/.*\.tsx$/u,
   /^packages\/plugin-faq\/src\/.*\.tsx$/u,
   /^packages\/plugin-poi\/src\/.*\.tsx$/u,
+  /^packages\/plugin-projects\/src\/.*\.tsx$/u,
   /^packages\/plugin-waste-management\/src\/.*\.tsx$/u,
 ];
 
@@ -76,6 +78,7 @@ const pluginUiE2eRelevantPatterns = [
   /^packages\/plugin-events\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
   /^packages\/plugin-faq\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
   /^packages\/plugin-poi\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-projects\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
   /^packages\/plugin-waste-management\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
 ];
 

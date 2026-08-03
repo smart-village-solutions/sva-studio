@@ -32,6 +32,7 @@ import {
   listSvaMainserverGenericItems,
   updateSvaMainserverGenericItem,
 } from './service.js';
+import { dispatchSvaMainserverProjectsRequest } from './projects-route.js';
 
 const GENERIC_ITEMS_CONTENT_TYPE = 'generic-items.generic-item';
 const GENERIC_ITEMS_COLLECTION_PATH = '/api/v1/mainserver/generic-items';
@@ -432,6 +433,10 @@ const dispatchAuthenticated = async (
 export const dispatchSvaMainserverGenericItemsRequest = async (
   request: Request
 ): Promise<Response | null> => {
+  const projectsResponse = await dispatchSvaMainserverProjectsRequest(request);
+  if (projectsResponse) {
+    return projectsResponse;
+  }
   const route = matchRoute(request);
   if (!route) {
     return null;

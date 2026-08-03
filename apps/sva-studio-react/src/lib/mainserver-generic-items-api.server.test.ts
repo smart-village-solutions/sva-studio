@@ -41,4 +41,13 @@ describe('mainserver generic items app adapter', () => {
     await expect(dispatchMainserverGenericItemsRequest(request)).resolves.toBeNull();
     expect(state.refreshProjectionAfterMainserverMutation).not.toHaveBeenCalled();
   });
+
+  it('does not run the legacy Mainserver projection refresh for locally projected projects', async () => {
+    const response = new Response('project', { status: 201 });
+    const request = new Request('https://studio.test/api/v1/mainserver/projects', { method: 'POST' });
+    state.dispatchSvaMainserverGenericItemsRequest.mockResolvedValue(response);
+
+    await expect(dispatchMainserverGenericItemsRequest(request)).resolves.toBe(response);
+    expect(state.refreshProjectionAfterMainserverMutation).not.toHaveBeenCalled();
+  });
 });

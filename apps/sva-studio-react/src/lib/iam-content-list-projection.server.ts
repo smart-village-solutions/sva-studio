@@ -1634,7 +1634,15 @@ const mainserverProjectionPageLoaders: Record<
         ...pageQuery,
       }).then((result) =>
         buildLoadedProjectionPage({
-          result: { ...result, data: result.data.filter((item) => item.genericType !== 'FAQ' && item.genericType !== 'COCKPIT_CARD') },
+          result: {
+            ...result,
+            data: result.data.filter(
+              (item) =>
+                item.genericType !== 'FAQ' &&
+                item.genericType !== 'COCKPIT_CARD' &&
+                item.genericType !== 'PROJECT'
+            ),
+          },
           pagingResult: result,
           pageQuery,
           mapRow: (item, credentialSource) => ({
@@ -2573,7 +2581,11 @@ SELECT
   projection.source_entity_type,
   projection.source_entity_id
 FROM iam.content_list_projection AS projection
-${whereClause};
+${whereClause}
+  AND NOT (
+    projection.content_type = 'projects.project'
+    AND projection.payload_json->>'deleted' = 'true'
+  );
       `,
         params
       );

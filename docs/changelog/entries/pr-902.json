@@ -1,0 +1,4 @@
+{
+  "prNumber": 902,
+  "body": "Tenant-Kontext direkt in der Seitenleiste sichtbar\n\n- Der lesbare Tenant-Name wird unter dem Titel „SVA Studio“ angezeigt.\n- Falls kein Anzeigename verfügbar ist, bleibt der Tenant über seine technische ID erkennbar."
+}

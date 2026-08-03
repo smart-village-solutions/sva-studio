@@ -1,21 +1,11 @@
-import React from 'react';
 import {
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
   usePluginTranslation,
 } from '@sva/plugin-sdk';
-import { type StudioDetailTabDefinition } from '@sva/studio-ui-react';
-
-import { SurveyDetailBasisTab } from './surveys.detail-basis-tab.js';
-import type { SurveyTargetAreaOption } from './surveys.detail-basis-tab.js';
-import { SurveyDetailContentTab } from './surveys.detail-content-tab.js';
 import { type SurveyDetailFormValues } from './surveys.detail-form.js';
-import { SurveyDetailHistoryTab } from './surveys.detail-history-tab.js';
-import {
-  SurveyDetailModerationTab,
-  type SurveyModerationQuestionGroup,
-} from './surveys.detail-moderation-tab.js';
-import { SurveyDetailResultsTab, type SurveyResultsTabData } from './surveys.detail-results-tab.js';
+import { type SurveyModerationQuestionGroup } from './surveys.detail-moderation-tab.js';
+import { type SurveyResultsTabData } from './surveys.detail-results-tab.js';
 import type { SurveyMutationInput } from './surveys.mutation.types.js';
 import type { SurveyContentItem, SurveyLocalizedText } from './surveys.types.js';
 export type SurveyEditorMode = 'create' | 'edit';
@@ -42,17 +32,6 @@ const surveyStatusLabelKey = {
   ACTIVE: 'fields.statusOptions.active',
   ARCHIVED: 'fields.statusOptions.archived',
 } as const satisfies Record<SurveyContentItem['status'], string>;
-const deriveSurveyTargetAreaOptions = (
-  item: SurveyContentItem | null
-): SurveyTargetAreaOption[] => {
-  if (!item) {
-    return [];
-  }
-  return [...new Set(item.targetAreaIds)].map((targetAreaId) => ({
-    id: targetAreaId,
-    label: targetAreaId,
-  }));
-};
 export const mapSurveyModerationGroups = (
   item: SurveyContentItem
 ): SurveyModerationQuestionGroup[] =>
@@ -234,62 +213,3 @@ export const toSurveyMutationInput = (
 };
 export const getSurveyEditorErrorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error && error.message.trim().length > 0 ? error.message : fallback;
-export const createSurveyEditorTabs = (
-  pt: ReturnType<typeof usePluginTranslation>,
-  mode: SurveyEditorMode,
-  loadedItem: SurveyContentItem | null,
-  contentId?: string
-): readonly StudioDetailTabDefinition<SurveyEditorTabId>[] => {
-  const moderationGroups = loadedItem ? mapSurveyModerationGroups(loadedItem) : [];
-  const resultData = loadedItem ? mapSurveyResultsTabData(loadedItem, pt) : null;
-  const availableTargetAreas = deriveSurveyTargetAreaOptions(loadedItem);
-  return [
-    {
-      id: 'basis',
-      label: pt('tabs.basis.label'),
-      icon: 'basis',
-      title: pt('tabs.basis.title'),
-      description: pt('tabs.basis.description'),
-      panel: (
-        <SurveyDetailBasisTab
-          mode={mode}
-          loadedItem={loadedItem}
-          availableTargetAreas={availableTargetAreas}
-          pt={pt}
-        />
-      ),
-    },
-    {
-      id: 'content',
-      label: pt('tabs.content.label'),
-      icon: 'content',
-      title: pt('tabs.content.title'),
-      description: pt('tabs.content.description'),
-      panel: <SurveyDetailContentTab pt={pt} />,
-    },
-    {
-      id: 'moderation',
-      label: pt('tabs.moderation.label'),
-      icon: 'moderation',
-      title: pt('tabs.moderation.title'),
-      description: pt('tabs.moderation.description'),
-      panel: <SurveyDetailModerationTab mode={mode} groups={moderationGroups} pt={pt} />,
-    },
-    {
-      id: 'results',
-      label: pt('tabs.results.label'),
-      icon: 'results',
-      title: pt('tabs.results.title'),
-      description: pt('tabs.results.description'),
-      panel: <SurveyDetailResultsTab mode={mode} resultData={resultData} pt={pt} />,
-    },
-    {
-      id: 'history',
-      label: pt('tabs.history.label'),
-      icon: 'history',
-      title: pt('tabs.history.title'),
-      description: pt('tabs.history.description'),
-      panel: <SurveyDetailHistoryTab contentId={contentId} pt={pt} />,
-    },
-  ];
-};

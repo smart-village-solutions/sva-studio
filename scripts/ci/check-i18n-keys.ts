@@ -3,10 +3,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { DEFAULT_LOCALE, i18nResources } from '../../apps/sva-studio-react/src/i18n/resources';
+import { pluginCockpitCardsTranslations } from '../../packages/plugin-cockpit-cards/src/plugin.translations';
 import { pluginEventsTranslations } from '../../packages/plugin-events/src/plugin.translations';
 import { pluginFaqTranslations } from '../../packages/plugin-faq/src/plugin.translations';
+import { pluginGenericItemsTranslations } from '../../packages/plugin-generic-items/src/plugin.translations';
 import { pluginNewsTranslations } from '../../packages/plugin-news/src/plugin.translations';
 import { pluginPoiTranslations } from '../../packages/plugin-poi/src/plugin.translations';
+import { pluginSurveysTranslations } from '../../packages/plugin-surveys/src/plugin.translations';
 import { wasteManagementPluginTranslations } from '../../packages/plugin-waste-management/src/plugin.translations';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -19,7 +22,10 @@ export const SOURCE_ROOTS = [
   'packages/plugin-news/src',
   'packages/plugin-events/src',
   'packages/plugin-faq/src',
+  'packages/plugin-generic-items/src',
+  'packages/plugin-cockpit-cards/src',
   'packages/plugin-poi/src',
+  'packages/plugin-surveys/src',
   'packages/plugin-waste-management/src',
 ] as const;
 
@@ -28,7 +34,10 @@ const SOURCE_ROOT_CONFIGS = [
   { relativeRoot: 'packages/plugin-news/src', namespace: 'news' },
   { relativeRoot: 'packages/plugin-events/src', namespace: 'events' },
   { relativeRoot: 'packages/plugin-faq/src', namespace: 'faq' },
+  { relativeRoot: 'packages/plugin-generic-items/src', namespace: 'genericItems' },
+  { relativeRoot: 'packages/plugin-cockpit-cards/src', namespace: 'cockpit-cards' },
   { relativeRoot: 'packages/plugin-poi/src', namespace: 'poi' },
+  { relativeRoot: 'packages/plugin-surveys/src', namespace: 'surveys' },
   { relativeRoot: 'packages/plugin-waste-management/src', namespace: 'wasteManagement' },
 ] as const;
 
@@ -36,7 +45,10 @@ const pluginTranslationResources = [
   pluginNewsTranslations,
   pluginEventsTranslations,
   pluginFaqTranslations,
+  pluginGenericItemsTranslations,
+  pluginCockpitCardsTranslations,
   pluginPoiTranslations,
+  pluginSurveysTranslations,
   wasteManagementPluginTranslations,
 ] as const;
 
@@ -70,7 +82,10 @@ const flattenTranslationKeys = (input: TranslationNode, prefix = ''): string[] =
 
 const isTestSourceFile = (fileName: string): boolean => /\.(?:test|spec)\.[jt]sx?$/u.test(fileName);
 
-const collectSourceFiles = async (directory: string, namespace: string | null): Promise<SourceFileContext[]> => {
+const collectSourceFiles = async (
+  directory: string,
+  namespace: string | null
+): Promise<SourceFileContext[]> => {
   const entries = await readdir(directory, { withFileTypes: true });
   const files: SourceFileContext[] = [];
 
@@ -145,7 +160,10 @@ const collectUsedTranslationKeys = async (
 
 const ensureLocaleParity = (): string[] => {
   const localeKeys = Object.fromEntries(
-    Object.entries(i18nResources).map(([locale, translations]) => [locale, new Set(flattenTranslationKeys(translations))])
+    Object.entries(i18nResources).map(([locale, translations]) => [
+      locale,
+      new Set(flattenTranslationKeys(translations)),
+    ])
   ) as Record<string, Set<string>>;
 
   const referenceKeys = localeKeys[DEFAULT_LOCALE];
@@ -164,11 +182,15 @@ const ensureLocaleParity = (): string[] => {
     const extraInLocale = [...keys].filter((key) => !referenceKeys.has(key));
 
     if (missingInLocale.length > 0) {
-      problems.push(`Locale '${locale}' fehlen ${missingInLocale.length} Keys: ${missingInLocale.join(', ')}`);
+      problems.push(
+        `Locale '${locale}' fehlen ${missingInLocale.length} Keys: ${missingInLocale.join(', ')}`
+      );
     }
 
     if (extraInLocale.length > 0) {
-      problems.push(`Locale '${locale}' hat ${extraInLocale.length} unbekannte Keys: ${extraInLocale.join(', ')}`);
+      problems.push(
+        `Locale '${locale}' hat ${extraInLocale.length} unbekannte Keys: ${extraInLocale.join(', ')}`
+      );
     }
   }
 
@@ -191,7 +213,9 @@ const run = async (): Promise<void> => {
   const parityProblems = ensureLocaleParity();
 
   const fileGroups = await Promise.all(
-    SOURCE_ROOT_CONFIGS.map(({ relativeRoot, namespace }) => collectSourceFiles(resolveSourceRoot(relativeRoot), namespace))
+    SOURCE_ROOT_CONFIGS.map(({ relativeRoot, namespace }) =>
+      collectSourceFiles(resolveSourceRoot(relativeRoot), namespace)
+    )
   );
   const files = fileGroups.flat();
   const usedByFile = await collectUsedTranslationKeys(files);
@@ -228,7 +252,9 @@ const run = async (): Promise<void> => {
   }
 
   const usedKeyCount = [...usedByFile.values()].reduce((acc, current) => acc + current.size, 0);
-  console.info(`i18n-Key-Check erfolgreich (${usedKeyCount} verwendete Keys, ${availableKeys.size} definierte Keys).`);
+  console.info(
+    `i18n-Key-Check erfolgreich (${usedKeyCount} verwendete Keys, ${availableKeys.size} definierte Keys).`
+  );
 };
 
 void run().catch((error: unknown) => {

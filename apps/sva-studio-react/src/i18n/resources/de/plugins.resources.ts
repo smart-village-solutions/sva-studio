@@ -15,7 +15,7 @@ export const pluginsDEResources = {
     description: 'Veröffentlicht mehrsprachige Fragen und Antworten für den Mandanten.',
   },
   'cockpit-cards': {
-    description: 'Veröffentlicht kategorisierte Cockpit Cards mit Text, Bildern und weiterführendem Link.',
+    description: 'Veröffentlicht kategorisierte Kacheln mit Text, Bildern und weiterführendem Link.',
   },
   categories: {
     description:

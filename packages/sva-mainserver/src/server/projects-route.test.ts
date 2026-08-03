@@ -205,6 +205,35 @@ describe('projects route', () => {
     expect(state.listGenericItems).toHaveBeenCalledTimes(2);
   });
 
+  it('skips incomplete, unbound and mismatched project references while listing', async () => {
+    prepareDefaults();
+    state.listGenericItems.mockResolvedValue({
+      data: [genericItem],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    state.listReferences.mockResolvedValue([
+      { ...reference, id: 'missing-provider', sourceEntityId: undefined },
+      { ...reference, id: 'pending', reconciliationStatus: 'pending' },
+      { ...reference, id: 'missing-item', sourceEntityId: 'does-not-exist' },
+      { ...reference, id: 'wrong-core', contentId: 'wrong-core' },
+      reference,
+    ]);
+    state.loadCore.mockImplementation((_instanceId, requestedContentId) =>
+      requestedContentId === 'wrong-core'
+        ? { ...core, contentType: 'news.article' }
+        : core
+    );
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects')
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toEqual(
+      expect.objectContaining({ pagination: expect.objectContaining({ total: 1 }) })
+    );
+  });
+
   it('creates local core and stable external reference before binding the provider result', async () => {
     prepareDefaults();
     state.loadReferenceByOperation.mockResolvedValue(undefined);
@@ -360,6 +389,28 @@ describe('projects route', () => {
     expect(forbidden?.status).toBe(403);
   });
 
+  it('rejects non-project provider records and invalid project projections', async () => {
+    prepareDefaults();
+    state.loadCore.mockResolvedValue(core);
+    state.loadReferenceByContentId.mockResolvedValue(reference);
+    state.getGenericItem.mockResolvedValueOnce({ ...genericItem, genericType: 'INFO' });
+
+    const wrongType = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`)
+    );
+    expect(wrongType?.status).toBe(404);
+
+    state.getGenericItem.mockResolvedValueOnce({ ...genericItem, teaser: '' });
+    const invalidProjection = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`)
+    );
+    expect(invalidProjection?.status).toBe(502);
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Projects route failed',
+      expect.objectContaining({ error_code: 'invalid_response' })
+    );
+  });
+
   it('handles create preconditions, replays and conflicts without provider mutations', async () => {
     prepareDefaults();
     state.validateCsrf.mockReturnValueOnce(new Response(null, { status: 403 }));
@@ -474,6 +525,18 @@ describe('projects route', () => {
       })
     );
     expect(invalidAuthor?.status).toBe(400);
+
+    const invalidPerson = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-person' },
+        body: JSON.stringify({
+          ...input,
+          author: { type: 'person', id: 'different-person', displayName: 'Fremd' },
+        }),
+      })
+    );
+    expect(invalidPerson?.status).toBe(400);
 
     state.loadReferenceByContentId.mockResolvedValue(reference);
     state.getGenericItem.mockResolvedValue(genericItem);

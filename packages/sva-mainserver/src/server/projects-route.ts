@@ -602,11 +602,11 @@ const dispatchAuthenticated = async (
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
   try {
-    if (route.kind === 'collection' && request.method === 'GET') return listProjects(request, ctx);
-    if (route.kind === 'item' && request.method === 'GET') return detailProject(ctx, route.itemId);
-    if (route.kind === 'collection' && request.method === 'POST') return createProject(request, ctx);
-    if (route.kind === 'item' && request.method === 'PATCH') return updateProject(request, ctx, route.itemId);
-    if (route.kind === 'item' && request.method === 'DELETE') return deleteProject(request, ctx, route.itemId);
+    if (route.kind === 'collection' && request.method === 'GET') return await listProjects(request, ctx);
+    if (route.kind === 'item' && request.method === 'GET') return await detailProject(ctx, route.itemId);
+    if (route.kind === 'collection' && request.method === 'POST') return await createProject(request, ctx);
+    if (route.kind === 'item' && request.method === 'PATCH') return await updateProject(request, ctx, route.itemId);
+    if (route.kind === 'item' && request.method === 'DELETE') return await deleteProject(request, ctx, route.itemId);
     return errorJson(405, 'method_not_allowed', 'Methode wird für Projekte nicht unterstützt.');
   } catch (error) {
     logger.warn('Projects route failed', {

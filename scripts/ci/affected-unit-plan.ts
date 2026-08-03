@@ -9,7 +9,6 @@ export interface AppUnitExecutionPlan {
 }
 
 const APP_PROJECT = 'sva-studio-react';
-const APP_VITEST_CONFIG = 'apps/sva-studio-react/vitest.config.ts';
 const APP_UI_PATTERNS = [/^apps\/sva-studio-react\/src\/(?:components|providers|i18n)\//u];
 const APP_ROUTES_PATTERNS = [/^apps\/sva-studio-react\/src\/(?:routes|routing)\//u];
 const APP_SERVER_PATTERNS = [
@@ -33,13 +32,6 @@ const APP_INFRA_ONLY_NON_APP_PATTERNS = [
   /^(?:Dockerfile|entrypoint\.sh|migrate-entrypoint\.sh|otel-bootstrap\.mjs|provisioner-entrypoint\.sh)$/u,
   /^scripts\/ci\//u,
 ];
-const APP_SLICE_CONFIG_FILES: Record<AppUnitSlice, string> = {
-  hooks: 'apps/sva-studio-react/vitest.hooks.config.ts',
-  routes: 'apps/sva-studio-react/vitest.routes.config.ts',
-  server: 'apps/sva-studio-react/vitest.server.config.ts',
-  ui: 'apps/sva-studio-react/vitest.ui.config.ts',
-};
-
 const matchesAnyPattern = (filePath: string, patterns: readonly RegExp[]): boolean =>
   patterns.some((pattern) => pattern.test(filePath));
 
@@ -52,8 +44,8 @@ const classifyAppUnitSlice = (filePath: string): AppUnitSlice | null => {
 };
 
 export const buildAppUnitCommand = (slice?: AppUnitSlice): string => {
-  const configFile = slice ? APP_SLICE_CONFIG_FILES[slice] : APP_VITEST_CONFIG;
-  return `pnpm exec vitest run --config ${configFile} --reporter=verbose`;
+  const target = slice ? `test:unit:${slice}` : 'test:unit';
+  return `pnpm nx run ${APP_PROJECT}:${target}`;
 };
 
 export const planAppUnitExecution = (

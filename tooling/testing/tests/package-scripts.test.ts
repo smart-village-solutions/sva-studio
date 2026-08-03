@@ -481,16 +481,13 @@ describe('workspace package scripts', () => {
     expect(affectedUnitPlan).toContain(
       "export type AppUnitSlice = 'hooks' | 'routes' | 'server' | 'ui'"
     );
-    expect(affectedUnitPlan).toContain("routes: 'apps/sva-studio-react/vitest.routes.config.ts'");
     expect(affectedUnitPlan).toContain(
-      'return `pnpm exec vitest run --config ${configFile} --reporter=verbose`;'
+      "const target = slice ? `test:unit:${slice}` : 'test:unit';"
     );
+    expect(affectedUnitPlan).toContain('return `pnpm nx run ${APP_PROJECT}:${target}`;');
     expect(affectedUnitGate).toContain("from './affected-unit-plan.ts'");
     expect(affectedCoverageGate).toContain(
-      "const APP_VITEST_CONFIG = 'apps/sva-studio-react/vitest.config.ts';"
-    );
-    expect(affectedCoverageGate).toContain(
-      '`pnpm exec vitest run --config ${APP_VITEST_CONFIG} --coverage --reporter=verbose`'
+      '`pnpm nx run ${APP_PROJECT}:test:coverage`'
     );
     expect(runPrGateScript).toContain('formatDurationSummary');
     expect(runPrGateScript).toContain('for (const entry of runAffectedUnitGate({ base, head }))');

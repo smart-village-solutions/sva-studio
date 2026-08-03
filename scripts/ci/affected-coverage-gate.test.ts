@@ -18,10 +18,8 @@ describe('affected-coverage-gate', () => {
     }
   });
 
-  it('builds the direct vitest coverage command for the app', () => {
-    expect(buildAppCoverageCommand()).toBe(
-      'pnpm exec vitest run --config apps/sva-studio-react/vitest.config.ts --coverage --reporter=verbose'
-    );
+  it('builds the Nx coverage command for the app', () => {
+    expect(buildAppCoverageCommand()).toBe('pnpm nx run sva-studio-react:test:coverage');
   });
 
   it('clears stale workspace coverage outputs before affected runs', () => {

@@ -161,6 +161,7 @@
     "test:unit:routes": {
       "executor": "nx:run-commands",
       "cache": true,
+      "dependsOn": ["^build"],
       "inputs": [
         "default",
         "^production",
@@ -222,6 +223,7 @@
       "executor": "nx:run-commands",
       "parallelism": false,
       "cache": true,
+      "dependsOn": ["^build"],
       "inputs": [
         "default",
         "^production",

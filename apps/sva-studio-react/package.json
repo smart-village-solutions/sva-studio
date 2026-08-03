@@ -69,7 +69,7 @@
     "@axe-core/playwright": "^4.12.1",
     "@browserbasehq/stagehand": "3.6.0",
     "@codecov/rollup-plugin": "^2.0.1",
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "4.3.2",
     "@tanstack/devtools-vite": "^0.8.1",
     "@tanstack/router-plugin": "^1.168.11",

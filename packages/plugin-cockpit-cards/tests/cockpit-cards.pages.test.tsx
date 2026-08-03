@@ -61,8 +61,9 @@ const record = {
 
 const fillRequiredFields = () => {
   fireEvent.change(screen.getByLabelText('fields.heading'), { target: { value: 'Neue Karte' } });
-  fireEvent.change(screen.getByLabelText('fields.text'), { target: { value: 'Neuer Text' } });
   fireEvent.change(screen.getByLabelText('fields.category'), { target: { value: 'Startseite' } });
+  fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
+  fireEvent.change(screen.getByLabelText('fields.text'), { target: { value: 'Neuer Text' } });
   fireEvent.click(screen.getByRole('button', { name: 'actions.addImage' }));
   fireEvent.change(screen.getByLabelText('fields.imageUrl'), {
     target: { value: 'https://example.test/new.jpg' },
@@ -93,6 +94,7 @@ describe('cockpit cards pages', () => {
     render(<CockpitCardsCreatePage />);
     const tablist = screen.getByRole('tablist', { name: 'tabs.ariaLabel' });
     const basisTab = screen.getByRole('tab', { name: 'tabs.basis.label' });
+    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
     const contentPanel = screen.getByLabelText('fields.text').closest('[role="tabpanel"]');
     const addImage = screen.getByRole('button', { name: 'actions.addImage' });
     expect(tablist.className).toContain('ml-[10px]');
@@ -111,11 +113,12 @@ describe('cockpit cards pages', () => {
     await screen.findByRole('option', { name: 'Startseite' });
     fillRequiredFields();
     fireEvent.change(screen.getByLabelText('fields.languageCode'), { target: { value: 'en-us' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'tabs.settings.label' }));
     fireEvent.change(screen.getByLabelText('fields.link'), {
       target: { value: 'https://example.test/ziel' },
     });
     fireEvent.change(screen.getByLabelText('fields.sortWeight'), { target: { value: '7' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
 
     await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
     expect(state.create.mock.calls[0]?.[0]).toMatchObject({
@@ -140,9 +143,11 @@ describe('cockpit cards pages', () => {
     const { CockpitCardsEditPage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsEditPage />);
     await screen.findByDisplayValue('Bestehende Karte');
+    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
     fireEvent.change(screen.getByLabelText('fields.text'), { target: { value: 'Geändert' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'tabs.settings.label' }));
     fireEvent.click(screen.getByLabelText('fields.visible'));
-    fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.update' }).at(-1)!);
     await waitFor(() =>
       expect(state.update).toHaveBeenCalledWith(
         'card-1',
@@ -154,6 +159,7 @@ describe('cockpit cards pages', () => {
       )
     );
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
+    fireEvent.click(screen.getByRole('button', { name: 'deleteDialog.confirm' }));
     await waitFor(() => expect(state.delete).toHaveBeenCalledWith('card-1'));
     expect(state.navigate).toHaveBeenCalledWith({ to: '/admin/content' });
   });
@@ -172,6 +178,7 @@ describe('cockpit cards pages', () => {
     state.create.mockRejectedValue(new Error('save failed'));
     const failedDependencies = render(<CockpitCardsCreatePage />);
     await screen.findByText('messages.categoriesError');
+    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
     await screen.findByText('messages.mediaError');
     failedDependencies.unmount();
 
@@ -180,7 +187,7 @@ describe('cockpit cards pages', () => {
     render(<CockpitCardsCreatePage />);
     await screen.findByRole('option', { name: 'Startseite' });
     fillRequiredFields();
-    fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
     await screen.findByText('messages.saveErrorWithReason');
   });
 
@@ -188,6 +195,7 @@ describe('cockpit cards pages', () => {
     state.upload.mockResolvedValue({ previewUrl: 'https://example.test/upload.jpg' });
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsCreatePage />);
+    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
     const select = await screen.findByLabelText('actions.selectImage');
     fireEvent.change(select, { target: { value: 'https://example.test/bild.jpg' } });
     fireEvent.click(screen.getByRole('button', { name: 'actions.addImage' }));

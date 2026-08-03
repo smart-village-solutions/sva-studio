@@ -84,32 +84,36 @@ Abhängigkeiten des aktuellen Systems.
 
 11. Plugin News (`packages/plugin-news`)
 
-   - produktives Fachplugin für Mainserver-News mit pluginnahem Modell `news.article`
-   - eigene Listen- und Editor-Ansichten, plugin-beigestellte Admin-Ressourcen-Spezialisierungen, Navigation und Übersetzungen
-   - kapselt ein redaktionell vereinfachtes Editor-Mapping in `news.editor-model.ts`, das UI-Felder gezielt auf `contentBlocks[0]`, Kategorien, Veröffentlichungsmodus und den nachgelagerten Visibility-Schritt abbildet
-   - verwendet in der Bearbeitung card-basierte Tabpanels mit globalem Speichern, während Legacy-Felder außerhalb der vereinfachten Oberfläche bei Updates aus dem geladenen Datensatz erhalten bleiben
-   - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
-   - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an; die Studio-Liste lädt Entwürfe ausdrücklich mit `includeInvisible=true`
-11a. Plugin FAQ (`packages/plugin-faq`)
+- produktives Fachplugin für Mainserver-News mit pluginnahem Modell `news.article`
+- eigene Listen- und Editor-Ansichten, plugin-beigestellte Admin-Ressourcen-Spezialisierungen, Navigation und Übersetzungen
+- kapselt ein redaktionell vereinfachtes Editor-Mapping in `news.editor-model.ts`, das UI-Felder gezielt auf `contentBlocks[0]`, Kategorien, Veröffentlichungsmodus und den nachgelagerten Visibility-Schritt abbildet
+- verwendet in der Bearbeitung card-basierte Tabpanels mit globalem Speichern, während Legacy-Felder außerhalb der vereinfachten Oberfläche bei Updates aus dem geladenen Datensatz erhalten bleiben
+- nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
+- persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an; die Studio-Liste lädt Entwürfe ausdrücklich mit `includeInvisible=true`
+  11a. Plugin FAQ (`packages/plugin-faq`)
 
-   - Standard-Content-Plugin mit dem Content-Type `faq.faq`; die fachlichen Datensätze bleiben Mainserver-`GenericItem`s mit dem festen Discriminator `genericType: "FAQ"`
-   - kapselt Frage, reine Textantwort, BCP-47-Sprachcode und Sortiergewicht; unbekannte `payload`-Schlüssel bleiben bei Updates erhalten
-   - nutzt ausschließlich die hostgeführte Fassade `/api/v1/mainserver/faqs`; diese trennt FAQ- und sonstige GenericItem-IDs, erzwingt `faq.*`-Rechte und lädt für korrekte Filter-Pagination sämtliche Upstream-Seiten
+- Standard-Content-Plugin mit dem Content-Type `faq.faq`; die fachlichen Datensätze bleiben Mainserver-`GenericItem`s mit dem festen Discriminator `genericType: "FAQ"`
+- kapselt Frage, reine Textantwort, BCP-47-Sprachcode und Sortiergewicht; unbekannte `payload`-Schlüssel bleiben bei Updates erhalten
+- nutzt ausschließlich die hostgeführte Fassade `/api/v1/mainserver/faqs`; diese trennt FAQ- und sonstige GenericItem-IDs, erzwingt `faq.*`-Rechte und lädt für korrekte Filter-Pagination sämtliche Upstream-Seiten
+- verwendet dieselbe Detail-Shell wie GenericItems: gemeinsame Tabs, beschriebene Panel-Flächen, Formularzusammenfassung, Bestätigungsdialog und URL-gesteuerte Pagination
+- übergibt den optionalen Sprachcode an die Host-Fassade; Filterung, Sortierung, Gesamtzahl und Pagination werden dort in dieser Reihenfolge auf der vollständigen FAQ-Teilmenge berechnet
 
 11b. Plugin Cockpit Cards (`packages/plugin-cockpit-cards`)
 
-   - eigenständiges Standard-Content-Plugin mit `cockpit-cards.cockpit-card` und festem GenericItem-Discriminator `COCKPIT_CARD`
-   - begrenzt die Bearbeitung auf Überschrift, Klartext, Sprache, genau eine bestehende Kategorie, Bilder, einen HTTPS-Link und Publikationsmetadaten
-   - nutzt die hostgeführte Fassade `/api/v1/mainserver/cockpit-cards`, die eigenen `cockpit-cards.*`-Rechte sowie vorhandene Kategorien- und Medienbausteine
-11c. Plugin Surveys (`packages/plugin-surveys`)
+- eigenständiges Standard-Content-Plugin mit `cockpit-cards.cockpit-card` und festem GenericItem-Discriminator `COCKPIT_CARD`
+- begrenzt die Bearbeitung auf Überschrift, Klartext, Sprache, genau eine bestehende Kategorie, Bilder, einen HTTPS-Link und Publikationsmetadaten
+- nutzt die hostgeführte Fassade `/api/v1/mainserver/cockpit-cards`, die eigenen `cockpit-cards.*`-Rechte sowie vorhandene Kategorien- und Medienbausteine
+- heißt in der deutschen Redaktion „Kacheln“ und nutzt gemeinsame Detail-Tabs, semantische Kartenflächen, History-Darstellung, Löschbestätigung und URL-gesteuerte Pagination
+  11c. Plugin Surveys (`packages/plugin-surveys`)
 
-   - produktives Fachplugin für Mainserver-gestützte Umfragen mit pluginnahem Modell `surveys.survey`
-   - registriert sich als normales Standard-Content-Plugin über `createStandardContentPluginContribution(...)` und erweitert dieses Muster nur um die Rechte `surveys.moderate` und `surveys.export`
-   - nutzt einen stabilen Editor-Rahmen mit den Tabs `Basis`, `Inhalt`, `Moderation`, `Ergebnisse` und `Historie`
-   - hält Survey-spezifische UI-Bausteine wie Frageneditor, Freitext-Moderation, Ergebnisansicht und Historie bewusst plugin-lokal, ohne neue shared UI-Abstraktionen oder Host-Bypässe einzuführen
-   - spricht den Mainserver nicht direkt, sondern ausschließlich über hostgeführte HTTP-Fassaden und typed Adapter für Liste, Detail, Upsert, Moderation und Ergebnisse
-   - behält bewusst das Studio-Fachmodell im Plugin bei; Snapshot-Spezifika wie `SurveyPoll`, `date` oder `payload` enden an der Host-/Mainserver-Adaptergrenze
-   - erzeugt Exportvarianten wie `CSV`, `JSON`, `Excel` und `XML` im Studio aus hostgeführten JSON-Ergebnissen statt über pluginseitige GraphQL- oder Direkt-Exportpfade
+- produktives Fachplugin für Mainserver-gestützte Umfragen mit pluginnahem Modell `surveys.survey`
+- registriert sich als normales Standard-Content-Plugin über `createStandardContentPluginContribution(...)` und erweitert dieses Muster nur um die Rechte `surveys.moderate` und `surveys.export`
+- nutzt einen stabilen Editor-Rahmen mit den Tabs `Basis`, `Inhalt`, `Moderation`, `Ergebnisse` und `Historie`
+- hält Survey-spezifische UI-Bausteine wie Frageneditor, Freitext-Moderation, Ergebnisansicht und Historie bewusst plugin-lokal, ohne neue shared UI-Abstraktionen oder Host-Bypässe einzuführen
+- spricht den Mainserver nicht direkt, sondern ausschließlich über hostgeführte HTTP-Fassaden und typed Adapter für Liste, Detail, Upsert, Moderation und Ergebnisse
+- behält bewusst das Studio-Fachmodell im Plugin bei; Snapshot-Spezifika wie `SurveyPoll`, `date` oder `payload` enden an der Host-/Mainserver-Adaptergrenze
+- erzeugt Exportvarianten wie `CSV`, `JSON`, `Excel` und `XML` im Studio aus hostgeführten JSON-Ergebnissen statt über pluginseitige GraphQL- oder Direkt-Exportpfade
+
 12. Plugin Waste Management (`packages/plugin-waste-management`)
 
 - freies Fachplugin unter `/plugins/waste-management` für Waste-Stammdaten, Touren, Ausweichtermine, PDF-Stamminhalte, technische Werkzeuge und instanzbezogene Einstellungen

@@ -1,39 +1,11 @@
-import React from 'react';
-import {
-  StudioDetailTabIcon,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  type StudioDetailTabIconName,
-} from '@sva/studio-ui-react';
+import { StudioDetailTabs, type StudioDetailTabDefinition } from '@sva/studio-ui-react';
 
+import type { GenericItemCategoryOption } from './generic-items.api-types.js';
 import { GenericItemsDetailBasisTab } from './generic-items.detail-basis-tab.js';
 import { GenericItemsDetailContentTab } from './generic-items.detail-content-tab.js';
 import { GenericItemsDetailHistoryTab } from './generic-items.detail-history-tab.js';
 import { GenericItemsDetailSettingsTab } from './generic-items.detail-settings-tab.js';
-import {
-  genericItemsDetailTabIds,
-  type GenericItemsDetailTabId,
-} from './generic-items.detail-tabs.js';
-import type { GenericItemCategoryOption } from './generic-items.api-types.js';
-
-const tabIconNames = {
-  basis: 'basis',
-  content: 'content',
-  settings: 'settings',
-  history: 'history',
-} as const satisfies Record<GenericItemsDetailTabId, StudioDetailTabIconName>;
-
-const renderTabPanel = (title: string, description: string, panel: React.JSX.Element) => (
-  <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
-    <section className="space-y-1">
-      <h2 className="text-base font-semibold text-foreground">{title}</h2>
-      <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
-    </section>
-    {panel}
-  </div>
-);
+import type { GenericItemsDetailTabId } from './generic-items.detail-tabs.js';
 
 export const GenericItemsDetailTabs = ({
   activeTab,
@@ -53,57 +25,57 @@ export const GenericItemsDetailTabs = ({
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onTabChange: (tabId: GenericItemsDetailTabId) => void;
   pt: (key: string) => string;
-}>) => (
-  <Tabs
-    value={activeTab}
-    onValueChange={(value: string) => onTabChange(value as GenericItemsDetailTabId)}
-    className="space-y-0"
-  >
-    <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] gap-10">
-      {genericItemsDetailTabIds.map((tabId) => (
-        <TabsTrigger
-          key={tabId}
-          value={tabId}
-          className="gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none"
-        >
-          <StudioDetailTabIcon name={tabIconNames[tabId]} />
-          <span>{pt(`tabs.${tabId}.label`)}</span>
-        </TabsTrigger>
-      ))}
-    </TabsList>
-
-    <TabsContent value="basis" className="mt-0">
-      {renderTabPanel(
-        pt('tabs.basis.title'),
-        pt('tabs.basis.description'),
+}>) => {
+  const tabs: readonly StudioDetailTabDefinition<GenericItemsDetailTabId>[] = [
+    {
+      id: 'basis',
+      label: pt('tabs.basis.label'),
+      title: pt('tabs.basis.title'),
+      description: pt('tabs.basis.description'),
+      icon: 'basis',
+      panel: (
         <GenericItemsDetailBasisTab
           availableCategories={categoryOptions}
           categoryOptionsError={categoryOptionsError}
           categoryOptionsLoading={categoryOptionsLoading}
           labels={labels}
         />
-      )}
-    </TabsContent>
-    <TabsContent value="content" className="mt-0">
-      {renderTabPanel(
-        pt('tabs.content.title'),
-        pt('tabs.content.description'),
-        <GenericItemsDetailContentTab labels={labels} onOpenMediaPicker={onOpenMediaPicker} />
-      )}
-    </TabsContent>
-    <TabsContent value="settings" className="mt-0">
-      {renderTabPanel(
-        pt('tabs.settings.title'),
-        pt('tabs.settings.description'),
-        <GenericItemsDetailSettingsTab labels={labels} />
-      )}
-    </TabsContent>
-    <TabsContent value="history" className="mt-0">
-      {renderTabPanel(
-        pt('tabs.history.title'),
-        pt('tabs.history.description'),
-        <GenericItemsDetailHistoryTab message={pt('history.placeholder')} />
-      )}
-    </TabsContent>
-  </Tabs>
-);
+      ),
+    },
+    {
+      id: 'content',
+      label: pt('tabs.content.label'),
+      title: pt('tabs.content.title'),
+      description: pt('tabs.content.description'),
+      icon: 'content',
+      panel: <GenericItemsDetailContentTab labels={labels} onOpenMediaPicker={onOpenMediaPicker} />,
+    },
+    {
+      id: 'settings',
+      label: pt('tabs.settings.label'),
+      title: pt('tabs.settings.title'),
+      description: pt('tabs.settings.description'),
+      icon: 'settings',
+      panel: <GenericItemsDetailSettingsTab labels={labels} />,
+    },
+    {
+      id: 'history',
+      label: pt('tabs.history.label'),
+      title: pt('tabs.history.title'),
+      description: pt('tabs.history.description'),
+      icon: 'history',
+      panel: <GenericItemsDetailHistoryTab message={pt('history.placeholder')} />,
+    },
+  ];
+
+  return (
+    <StudioDetailTabs
+      ariaLabel={pt('tabs.ariaLabel')}
+      mobileSelectLabel={pt('tabs.mobileLabel')}
+      tabs={tabs}
+      value={activeTab}
+      onValueChange={onTabChange}
+      keepMounted
+    />
+  );
+};

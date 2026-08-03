@@ -44,6 +44,9 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 describe('faq editor pages', () => {
+  const visitTab = (name: string) => fireEvent.click(screen.getByRole('tab', { name }));
+  const primaryAction = (name: string) => screen.getAllByRole('button', { name }).at(-1)!;
+
   beforeEach(() => {
     state.createFaqMock.mockReset();
     state.deleteFaqMock.mockReset();
@@ -63,10 +66,12 @@ describe('faq editor pages', () => {
     expect(basisTab.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
 
     fireEvent.change(screen.getByLabelText('fields.question'), { target: { value: 'Neue Frage' } });
+    visitTab('tabs.content.label');
     fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Eine Antwort' } });
+    visitTab('tabs.settings.label');
     fireEvent.change(screen.getByLabelText('fields.languageCode'), { target: { value: 'en-us' } });
     fireEvent.change(screen.getByLabelText('fields.sortWeight'), { target: { value: '7' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
+    fireEvent.click(primaryAction('actions.create'));
 
     await waitFor(() =>
       expect(state.createFaqMock).toHaveBeenCalledWith({
@@ -103,12 +108,14 @@ describe('faq editor pages', () => {
     render(<FaqEditPage />);
 
     await screen.findByDisplayValue('Bestehende Frage');
+    visitTab('tabs.content.label');
     fireEvent.change(screen.getByLabelText('fields.answer'), {
       target: { value: 'Aktualisierte Antwort' },
     });
     fireEvent.change(screen.getByLabelText('fields.languageCode'), { target: { value: 'fr' } });
+    visitTab('tabs.settings.label');
     fireEvent.click(screen.getByLabelText('fields.visible'));
-    fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
+    fireEvent.click(primaryAction('actions.update'));
 
     await waitFor(() => expect(state.updateFaqMock).toHaveBeenCalledTimes(1));
     expect(state.updateFaqMock).toHaveBeenCalledWith('faq-1', {
@@ -131,8 +138,9 @@ describe('faq editor pages', () => {
     render(<FaqCreatePage />);
     state.createFaqMock.mockRejectedValueOnce(new Error('save failed'));
     fireEvent.change(screen.getByLabelText('fields.question'), { target: { value: 'Neue Frage' } });
+    visitTab('tabs.content.label');
     fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Eine Antwort' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
+    fireEvent.click(primaryAction('actions.create'));
 
     await waitFor(() => expect(state.updateFaqMock).not.toHaveBeenCalled());
     await screen.findByText('messages.saveError');
@@ -152,13 +160,14 @@ describe('faq editor pages', () => {
     render(<FaqCreatePage />);
 
     fireEvent.change(screen.getByLabelText('fields.question'), { target: { value: 'Neue Frage' } });
+    visitTab('tabs.content.label');
     fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Eine Antwort' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
+    fireEvent.click(primaryAction('actions.create'));
 
     await waitFor(() =>
       expect(
         screen
-          .getAllByRole('button', { name: 'actions.save' })
+          .getAllByRole('button', { name: 'actions.create' })
           .every((button) => button.hasAttribute('disabled'))
       ).toBe(true)
     );
@@ -169,7 +178,7 @@ describe('faq editor pages', () => {
     await waitFor(() =>
       expect(
         screen
-          .getAllByRole('button', { name: 'actions.save' })
+          .getAllByRole('button', { name: 'actions.create' })
           .every((button) => !button.hasAttribute('disabled'))
       ).toBe(true)
     );
@@ -200,6 +209,7 @@ describe('faq editor pages', () => {
     render(<FaqEditPage />);
     await screen.findByDisplayValue('Frage');
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
+    fireEvent.click(screen.getByRole('button', { name: 'deleteDialog.confirm' }));
     await waitFor(() => expect(state.deleteFaqMock).toHaveBeenCalledWith('faq-1'));
     expect(state.navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
   });
@@ -210,11 +220,13 @@ describe('faq editor pages', () => {
     render(<FaqCreatePage />);
 
     fireEvent.change(screen.getByLabelText('fields.question'), { target: { value: 'Neue Frage' } });
+    visitTab('tabs.content.label');
     fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Eine Antwort' } });
+    visitTab('tabs.settings.label');
     fireEvent.change(screen.getByLabelText('fields.sortWeight'), { target: { value: '1.5' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
+    fireEvent.click(primaryAction('actions.create'));
 
-    await screen.findByText('validation.sortWeight');
+    expect(await screen.findAllByText('validation.sortWeight')).not.toHaveLength(0);
     expect(state.createFaqMock).not.toHaveBeenCalled();
   });
 });

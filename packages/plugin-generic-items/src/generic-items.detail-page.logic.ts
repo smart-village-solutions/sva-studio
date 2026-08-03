@@ -1,4 +1,9 @@
-import { listHostMediaAssets, uploadHostMediaFile, usePluginTranslation, type HostMediaAssetListItem } from '@sva/plugin-sdk';
+import {
+  listHostMediaAssets,
+  uploadHostMediaFile,
+  usePluginTranslation,
+  type HostMediaAssetListItem,
+} from '@sva/plugin-sdk';
 import { type NavigateFn } from '@tanstack/react-router';
 import React from 'react';
 import type { UseFormReturn } from 'react-hook-form';
@@ -40,7 +45,10 @@ export const useGenericItemsMediaAssets = () => {
 
   const refreshMediaAssets = React.useCallback(async () => {
     try {
-      const assets = await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), visibility: 'public' });
+      const assets = await listHostMediaAssets({
+        fetch: globalThis.fetch.bind(globalThis),
+        visibility: 'public',
+      });
       setMediaAssets(assets);
       return assets;
     } catch {
@@ -75,7 +83,9 @@ export const useGenericItemsMediaAssets = () => {
 };
 
 export const useGenericItemsCategoryOptions = (pt: ReturnType<typeof usePluginTranslation>) => {
-  const [categoryOptions, setCategoryOptions] = React.useState<readonly GenericItemCategoryOption[]>([]);
+  const [categoryOptions, setCategoryOptions] = React.useState<
+    readonly GenericItemCategoryOption[]
+  >([]);
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
 
@@ -166,10 +176,6 @@ export const useGenericItemsDetailActions = ({
     if (!contentId || deleting || mode !== 'edit') {
       return;
     }
-    if (globalThis.confirm(pt('actions.deleteConfirm')) === false) {
-      return;
-    }
-
     setDeleting(true);
 
     try {

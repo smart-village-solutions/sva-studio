@@ -8,14 +8,16 @@ const updateMock = vi.fn();
 const removeMock = vi.fn();
 
 vi.mock('@sva/plugin-sdk', () => ({
-  createMainserverCrudClient: vi.fn((options: { errorFactory: (code: string, message?: string) => Error }) => ({
-    list: listMock,
-    get: getMock,
-    create: createMock,
-    update: updateMock,
-    remove: removeMock,
-    errorFactory: options.errorFactory,
-  })),
+  createMainserverCrudClient: vi.fn(
+    (options: { errorFactory: (code: string, message?: string) => Error }) => ({
+      list: listMock,
+      get: getMock,
+      create: createMock,
+      update: updateMock,
+      remove: removeMock,
+      errorFactory: options.errorFactory,
+    })
+  ),
 }));
 
 describe('faq api wrapper', () => {
@@ -28,16 +30,25 @@ describe('faq api wrapper', () => {
   });
 
   it('delegates list/get/create/update/delete to the generated crud client', async () => {
-    listMock.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 25, hasNextPage: false } });
+    listMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
     getMock.mockResolvedValue({ id: 'faq-1' });
     createMock.mockResolvedValue({ id: 'faq-2' });
     updateMock.mockResolvedValue({ id: 'faq-3' });
     removeMock.mockResolvedValue(undefined);
 
     const { listFaqs, getFaq, createFaq, updateFaq, deleteFaq } = await import('../src/faq.api.js');
-    const input = { title: 'Frage', genericType: 'FAQ' as const, contentBlocks: [{ body: 'Antwort' }], payload: {}, visible: true };
+    const input = {
+      title: 'Frage',
+      genericType: 'FAQ' as const,
+      contentBlocks: [{ body: 'Antwort' }],
+      payload: {},
+      visible: true,
+    };
 
-    await expect(listFaqs({ page: 1, pageSize: 25 })).resolves.toEqual({
+    await expect(listFaqs({ page: 1, pageSize: 25, languageCode: 'de' })).resolves.toEqual({
       data: [],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
@@ -46,7 +57,7 @@ describe('faq api wrapper', () => {
     await expect(updateFaq('faq-3', input)).resolves.toEqual({ id: 'faq-3' });
     await expect(deleteFaq('faq-4')).resolves.toBeUndefined();
 
-    expect(listMock).toHaveBeenCalledWith({ page: 1, pageSize: 25 });
+    expect(listMock).toHaveBeenCalledWith({ page: 1, pageSize: 25, languageCode: 'de' });
     expect(getMock).toHaveBeenCalledWith('faq-1');
     expect(createMock).toHaveBeenCalledWith(input);
     expect(updateMock).toHaveBeenCalledWith('faq-3', input);

@@ -555,3 +555,9 @@ Referenzen:
 - Risiko: Der neue Builder weicht vom bewährten `APP_CONFIG` ab. Maßnahme: zuerst ausschließlich redigierter Shadow-Vergleich, danach gestufte autoritative Aktivierung über Dev und Staging; Production bleibt bis zum Nachweis unverändert.
 - Risiko: Neue Gates blockieren einen legitimen Rollout. Maßnahme: stabile Fehlercodes mit nächster Aktion, klar begrenzte Infrastruktur-Retries und Recovery als ausdrücklich freigegebener Modus desselben Workflows.
 - Restrisiko: Geschützte Overrides sind nicht vollständig historisiert. Ein App-Rollback setzt ihre Rückwärtskompatibilität voraus; inkompatible Secret-Rotationen benötigen einen separaten Plan.
+
+### Fortschreibung 2026-08: Vereinheitlichung der Content-Editoren
+
+- Risiko: Gemeinsame Tabs mounten umfangreiche besuchte Bereiche weiter und erhöhen bei sehr großen Repeatern den Speicherbedarf. Maßnahme: nur bereits besuchte Panels halten; keine pauschale Initialisierung aller Bereiche.
+- Risiko: Ein fachlicher Listenfilter wird nur auf eine bereits paginierte Browserseite angewandt. Maßnahme: FAQ-Sprachfilter hostseitig auf der vollständig eingesammelten FAQ-Teilmenge ausführen und den Vertrag mit Mehrseiten-Tests absichern.
+- Risiko: Gemeinsame UI-Primitives entwickeln sich zu einer zweiten Fachlogikschicht. Maßnahme: ausschließlich Darstellung, Fokus und Dialogzustand teilen; Mapping, Validierung und Persistenz bleiben plugin- beziehungsweise hostnah.

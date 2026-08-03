@@ -11,6 +11,7 @@ import {
 } from '@sva/plugin-sdk';
 import {
   Button,
+  StudioConfirmDialog,
   StudioDetailPageTemplate,
   StudioFormSummary,
   StudioFormSummaryErrors,
@@ -203,7 +204,7 @@ const DetailPageActions = ({
   disableActions: boolean;
   deleting: boolean;
   mode: 'create' | 'edit';
-  onDelete: () => Promise<void>;
+  onDelete: () => void;
   pt: (key: string) => string;
 }>) => (
   <div className="flex gap-2">
@@ -215,7 +216,7 @@ const DetailPageActions = ({
         type="button"
         variant="outline"
         disabled={disableActions || deleting}
-        onClick={() => void onDelete()}
+        onClick={onDelete}
       >
         {pt('actions.delete')}
       </Button>
@@ -243,6 +244,7 @@ export function GenericItemsDetailPage({
     [methods.formState.errors]
   );
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const { mediaAssets, refreshMediaAssets } = useGenericItemsMediaAssets();
   const mediaAssetsRef = React.useRef(mediaAssets);
   const { categoryOptions, categoryOptionsError, categoryOptionsLoading } =
@@ -381,7 +383,10 @@ export function GenericItemsDetailPage({
             disableActions={methods.formState.isSubmitting}
             deleting={deleting}
             mode={mode}
-            onDelete={handleDelete}
+            onDelete={() => {
+              setStatus(null);
+              setDeleteDialogOpen(true);
+            }}
             pt={pt}
           />
         }
@@ -444,6 +449,21 @@ export function GenericItemsDetailPage({
           onTabChange={setActiveTab}
           pt={pt}
         />
+        <StudioConfirmDialog
+          open={deleteDialogOpen}
+          title={pt('actions.delete')}
+          description={pt('actions.deleteConfirm')}
+          confirmLabel={pt('actions.delete')}
+          cancelLabel={pt('actions.back')}
+          confirmDisabled={deleting}
+          cancelDisabled={deleting}
+          onConfirm={() => void handleDelete()}
+          onCancel={() => setDeleteDialogOpen(false)}
+        >
+          {status?.kind === 'error' ? (
+            <StudioFormSummary kind="error">{status.text}</StudioFormSummary>
+          ) : null}
+        </StudioConfirmDialog>
       </StudioDetailPageTemplate>
     </FormProvider>
   );

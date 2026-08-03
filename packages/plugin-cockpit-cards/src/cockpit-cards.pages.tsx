@@ -15,19 +15,19 @@ import {
   Input,
   Select,
   StudioDataTable,
-  StudioDetailTabIcon,
+  StudioConfirmDialog,
+  StudioDetailCard,
+  StudioDetailTabs,
   StudioDetailPageTemplate,
   StudioEmptyState,
   StudioErrorState,
   StudioField,
+  StudioFormSummaryErrors,
   StudioLoadingState,
   StudioOverviewPageTemplate,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+  StudioPagination,
   Textarea,
-  type StudioDetailTabIconName,
+  type StudioDetailTabDefinition,
 } from '@sva/studio-ui-react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import * as React from 'react';
@@ -59,20 +59,6 @@ const defaults: CockpitCardFormValues = {
   visible: true,
 };
 type Tab = 'basis' | 'content' | 'settings' | 'history';
-
-const tabIconNames = {
-  basis: 'basis',
-  content: 'content',
-  settings: 'settings',
-  history: 'history',
-} as const satisfies Record<Tab, StudioDetailTabIconName>;
-
-const panel = (title: string, children: React.ReactNode) => (
-  <section className="space-y-4 rounded-2xl border border-border/60 p-5">
-    <h2 className="text-base font-semibold">{title}</h2>
-    {children}
-  </section>
-);
 
 function useCategories() {
   const [options, setOptions] = React.useState<readonly { id: string; name: string }[]>([]);
@@ -127,12 +113,14 @@ function ContentFields({
   };
   return (
     <div className="space-y-5">
-      <StudioField id="cockpit-card-text" label={pt('fields.text')}>
-        <Textarea id="cockpit-card-text" className="min-h-32" {...form.register('text')} />
-      </StudioField>
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="font-medium">{pt('fields.images')}</h3>
+      <StudioDetailCard title={pt('fields.text')}>
+        <StudioField id="cockpit-card-text" label={pt('fields.text')}>
+          <Textarea id="cockpit-card-text" className="min-h-32" {...form.register('text')} />
+        </StudioField>
+      </StudioDetailCard>
+      <StudioDetailCard
+        title={pt('fields.images')}
+        actions={
           <div className="flex flex-wrap gap-2">
             <Select
               aria-label={pt('actions.selectImage')}
@@ -182,54 +170,75 @@ function ContentFields({
               {pt('actions.addImage')}
             </Button>
           </div>
-        </div>
+        }
+      >
         {mediaError ? (
           <p role="alert" className="text-sm text-destructive">
             {pt('messages.mediaError')}
           </p>
         ) : null}
-        {fields.map((field, index) => (
-          <div key={field.id} className="flex items-end gap-3 rounded-xl border p-3">
-            <StudioField
-              className="flex-1"
-              id={`cockpit-card-image-${index}`}
-              label={pt('fields.imageUrl')}
-            >
-              <Input
-                id={`cockpit-card-image-${index}`}
-                type="url"
-                {...form.register(`images.${index}.sourceUrl.url`)}
-              />
-            </StudioField>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={index === 0}
-                onClick={() => move(index, index - 1)}
+        <div className="grid gap-4 lg:grid-cols-2">
+          {fields.map((field, index) => {
+            const imageUrl = form.watch(`images.${index}.sourceUrl.url`);
+            return (
+              <article
+                key={field.id}
+                className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm"
               >
-                {pt('actions.moveImageUp')}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={index === fields.length - 1}
-                onClick={() => move(index, index + 1)}
-              >
-                {pt('actions.moveImageDown')}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => remove(index)}>
-                {pt('actions.removeImage')}
-              </Button>
-            </div>
-          </div>
-        ))}
+                <div className="aspect-video bg-muted">
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
+                      {pt('messages.imagePreviewEmpty')}
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-3 p-4">
+                  <StudioField id={`cockpit-card-image-${index}`} label={pt('fields.imageUrl')}>
+                    <Input
+                      id={`cockpit-card-image-${index}`}
+                      type="url"
+                      {...form.register(`images.${index}.sourceUrl.url`)}
+                    />
+                  </StudioField>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={index === 0}
+                      onClick={() => move(index, index - 1)}
+                    >
+                      {pt('actions.moveImageUp')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={index === fields.length - 1}
+                      onClick={() => move(index, index + 1)}
+                    >
+                      {pt('actions.moveImageDown')}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => remove(index)}>
+                      {pt('actions.removeImage')}
+                    </Button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
         {form.formState.errors.images ? (
           <p role="alert" className="text-sm text-destructive">
             {pt('validation.images')}
           </p>
         ) : null}
-      </div>
+      </StudioDetailCard>
     </div>
   );
 }
@@ -245,6 +254,8 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [error, setError] = React.useState(false);
   const [mutationError, setMutationError] = React.useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [deletePending, setDeletePending] = React.useState(false);
   const [payload, setPayload] = React.useState<unknown>();
   const { options, state: categoriesState } = useCategories();
   React.useEffect(() => {
@@ -267,30 +278,169 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
   }, [contentId, form, mode]);
   if (loading) return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   if (error) return <StudioErrorState>{pt('messages.loadError')}</StudioErrorState>;
-  const save = form.handleSubmit(async (values) => {
-    setMutationError(null);
-    try {
-      const input = mapCockpitCardFormValuesToGenericItemInput(values, payload);
-      if (mode === 'create') {
-        const item = await createCockpitCard(input);
-        await navigate({ to: '/admin/cockpit-cards/$id', params: { id: item.id } });
-      } else if (contentId) await updateCockpitCard(contentId, input);
-    } catch (cause) {
-      const reason = cause instanceof Error ? cause.message : '';
-      setMutationError(
-        reason
-          ? pt('messages.saveErrorWithReason').replace('{{reason}}', reason)
-          : pt('messages.saveError')
-      );
+  const save = form.handleSubmit(
+    async (values) => {
+      setMutationError(null);
+      try {
+        const input = mapCockpitCardFormValuesToGenericItemInput(values, payload);
+        if (mode === 'create') {
+          const item = await createCockpitCard(input);
+          await navigate({ to: '/admin/cockpit-cards/$id', params: { id: item.id } });
+        } else if (contentId) await updateCockpitCard(contentId, input);
+      } catch (cause) {
+        const reason = cause instanceof Error ? cause.message : '';
+        setMutationError(
+          reason
+            ? pt('messages.saveErrorWithReason').replace('{{reason}}', reason)
+            : pt('messages.saveError')
+        );
+      }
+    },
+    (errors) => {
+      setMutationError(pt('messages.validationError'));
+      if (errors.text || errors.images) setTab('content');
+      else if (errors.link || errors.sortWeight) setTab('settings');
+      else setTab('basis');
     }
-  });
-  const tabs: readonly Tab[] =
-    mode === 'edit'
-      ? ['basis', 'content', 'settings', 'history']
-      : ['basis', 'content', 'settings'];
+  );
+  const summaryErrors = [
+    form.formState.errors.heading
+      ? { field: 'cockpit-card-heading', message: pt('validation.required') }
+      : null,
+    form.formState.errors.languageCode
+      ? { field: 'cockpit-card-language', message: pt('validation.languageCode') }
+      : null,
+    form.formState.errors.category
+      ? { field: 'cockpit-card-category', message: pt('validation.required') }
+      : null,
+    form.formState.errors.text
+      ? { field: 'cockpit-card-text', message: pt('validation.required') }
+      : null,
+    form.formState.errors.images
+      ? { field: 'cockpit-card-image-0', message: pt('validation.images') }
+      : null,
+    form.formState.errors.link
+      ? { field: 'cockpit-card-link', message: pt('validation.link') }
+      : null,
+    form.formState.errors.sortWeight
+      ? { field: 'cockpit-card-weight', message: pt('validation.sortWeight') }
+      : null,
+  ].filter((entry): entry is { field: string; message: string } => entry !== null);
+  const formId = `cockpit-card-${mode}-form`;
+  const tabs: readonly StudioDetailTabDefinition<Tab>[] = [
+    {
+      id: 'basis',
+      label: pt('tabs.basis.label'),
+      title: pt('tabs.basis.title'),
+      description: pt('tabs.basis.description'),
+      icon: 'basis',
+      panel: (
+        <div className="space-y-4">
+          <StudioField id="cockpit-card-heading" label={pt('fields.heading')}>
+            <Input id="cockpit-card-heading" {...form.register('heading')} />
+          </StudioField>
+          <StudioField id="cockpit-card-language" label={pt('fields.languageCode')}>
+            <Input id="cockpit-card-language" {...form.register('languageCode')} />
+          </StudioField>
+          <StudioField id="cockpit-card-category" label={pt('fields.category')}>
+            <Select
+              id="cockpit-card-category"
+              disabled={categoriesState === 'loading'}
+              {...form.register('category')}
+            >
+              <option value="">
+                {categoriesState === 'loading' ? pt('messages.categoriesLoading') : ''}
+              </option>
+              {options.map((option) => (
+                <option key={option.id} value={option.name}>
+                  {option.name}
+                </option>
+              ))}
+            </Select>
+            {categoriesState === 'error' ? (
+              <p role="alert" className="text-sm text-destructive">
+                {pt('messages.categoriesError')}
+              </p>
+            ) : null}
+          </StudioField>
+        </div>
+      ),
+    },
+    {
+      id: 'content',
+      label: pt('tabs.content.label'),
+      title: pt('tabs.content.title'),
+      description: pt('tabs.content.description'),
+      icon: 'content',
+      panel: <ContentFields form={form} pt={pt} />,
+    },
+    {
+      id: 'settings',
+      label: pt('tabs.settings.label'),
+      title: pt('tabs.settings.title'),
+      description: pt('tabs.settings.description'),
+      icon: 'settings',
+      panel: (
+        <div className="space-y-4">
+          <StudioDetailCard title={pt('fields.link')}>
+            <StudioField id="cockpit-card-link" label={pt('fields.link')}>
+              <Input id="cockpit-card-link" type="url" {...form.register('link')} />
+            </StudioField>
+          </StudioDetailCard>
+          <StudioField id="cockpit-card-publication" label={pt('fields.publicationDate')}>
+            <Input id="cockpit-card-publication" {...form.register('publicationDate')} />
+          </StudioField>
+          <StudioField id="cockpit-card-weight" label={pt('fields.sortWeight')}>
+            <Input
+              id="cockpit-card-weight"
+              type="number"
+              {...form.register('sortWeight', { valueAsNumber: true })}
+            />
+          </StudioField>
+          <StudioField id="cockpit-card-visible" label={pt('fields.visible')}>
+            <Controller
+              control={form.control}
+              name="visible"
+              render={({ field }) => (
+                <Checkbox
+                  id="cockpit-card-visible"
+                  checked={field.value}
+                  onChange={(event) => field.onChange(event.currentTarget.checked)}
+                />
+              )}
+            />
+          </StudioField>
+        </div>
+      ),
+    },
+    {
+      id: 'history',
+      label: pt('tabs.history.label'),
+      title: pt('tabs.history.title'),
+      description: pt('tabs.history.description'),
+      icon: 'history',
+      isVisible: mode === 'edit' && Boolean(contentId),
+      panel: contentId ? <CockpitCardsHistory contentId={contentId} /> : null,
+    },
+  ];
+  const deleteCard = async () => {
+    if (!contentId) return;
+    setMutationError(null);
+    setDeletePending(true);
+    try {
+      await deleteCockpitCard(contentId);
+      await navigate({ to: '/admin/content' });
+      setDeleteDialogOpen(false);
+    } catch {
+      setMutationError(pt('messages.deleteError'));
+    } finally {
+      setDeletePending(false);
+    }
+  };
   return (
     <StudioDetailPageTemplate
       title={pt(mode === 'create' ? 'editor.createTitle' : 'editor.editTitle')}
+      description={pt(mode === 'create' ? 'editor.createDescription' : 'editor.editDescription')}
       actions={
         <div className="flex gap-2">
           <Button asChild variant="outline">
@@ -300,12 +450,8 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
             <Button
               type="button"
               variant="destructive"
-              onClick={() => {
-                setMutationError(null);
-                void deleteCockpitCard(contentId)
-                  .then(() => navigate({ to: '/admin/content' }))
-                  .catch(() => setMutationError(pt('messages.deleteError')));
-              }}
+              disabled={deletePending || form.formState.isSubmitting}
+              onClick={() => setDeleteDialogOpen(true)}
             >
               {pt('actions.delete')}
             </Button>
@@ -313,105 +459,46 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
         </div>
       }
       primaryAction={
-        <Button type="button" onClick={() => void save()}>
-          {pt('actions.save')}
+        <Button type="submit" form={formId} disabled={form.formState.isSubmitting || deletePending}>
+          {pt(mode === 'create' ? 'actions.create' : 'actions.update')}
         </Button>
       }
     >
-      {mutationError ? (
-        <p role="alert" className="text-sm text-destructive">
-          {mutationError}
-        </p>
-      ) : null}
-      <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)} className="space-y-0">
-        <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] gap-10">
-          {tabs.map((item) => (
-            <TabsTrigger
-              key={item}
-              value={item}
-              className="gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none"
-            >
-              <StudioDetailTabIcon name={tabIconNames[item]} />
-              <span>{pt(`tabs.${item}.label`)}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        <TabsContent value="basis" forceMount className="mt-0 data-[state=inactive]:hidden">
-          {panel(
-            pt('tabs.basis.title'),
-            <div className="space-y-4">
-              <StudioField id="cockpit-card-heading" label={pt('fields.heading')}>
-                <Input id="cockpit-card-heading" {...form.register('heading')} />
-              </StudioField>
-              <StudioField id="cockpit-card-language" label={pt('fields.languageCode')}>
-                <Input id="cockpit-card-language" {...form.register('languageCode')} />
-              </StudioField>
-              <StudioField id="cockpit-card-category" label={pt('fields.category')}>
-                <Select
-                  id="cockpit-card-category"
-                  disabled={categoriesState === 'loading'}
-                  {...form.register('category')}
-                >
-                  <option value="">
-                    {categoriesState === 'loading' ? pt('messages.categoriesLoading') : ''}
-                  </option>
-                  {options.map((option) => (
-                    <option key={option.id} value={option.name}>
-                      {option.name}
-                    </option>
-                  ))}
-                </Select>
-                {categoriesState === 'error' ? (
-                  <p role="alert" className="text-sm text-destructive">
-                    {pt('messages.categoriesError')}
-                  </p>
-                ) : null}
-              </StudioField>
-            </div>
-          )}
-        </TabsContent>
-        <TabsContent value="content" forceMount className="mt-0 data-[state=inactive]:hidden">
-          {panel(pt('tabs.content.title'), <ContentFields form={form} pt={pt} />)}
-        </TabsContent>
-        <TabsContent value="settings" forceMount className="mt-0 data-[state=inactive]:hidden">
-          {panel(
-            pt('tabs.settings.title'),
-            <div className="space-y-4">
-              <StudioField id="cockpit-card-link" label={pt('fields.link')}>
-                <Input id="cockpit-card-link" type="url" {...form.register('link')} />
-              </StudioField>
-              <StudioField id="cockpit-card-publication" label={pt('fields.publicationDate')}>
-                <Input id="cockpit-card-publication" {...form.register('publicationDate')} />
-              </StudioField>
-              <StudioField id="cockpit-card-weight" label={pt('fields.sortWeight')}>
-                <Input
-                  id="cockpit-card-weight"
-                  type="number"
-                  {...form.register('sortWeight', { valueAsNumber: true })}
-                />
-              </StudioField>
-              <StudioField id="cockpit-card-visible" label={pt('fields.visible')}>
-                <Controller
-                  control={form.control}
-                  name="visible"
-                  render={({ field }) => (
-                    <Checkbox
-                      id="cockpit-card-visible"
-                      checked={field.value}
-                      onChange={(event) => field.onChange(event.currentTarget.checked)}
-                    />
-                  )}
-                />
-              </StudioField>
-            </div>
-          )}
-        </TabsContent>
-        {mode === 'edit' && contentId ? (
-          <TabsContent value="history" className="mt-0">
-            {panel(pt('tabs.history.title'), <CockpitCardsHistory contentId={contentId} />)}
-          </TabsContent>
+      <form id={formId} className="space-y-5" onSubmit={(event) => void save(event)} noValidate>
+        {mutationError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {mutationError}
+          </p>
         ) : null}
-      </Tabs>
+        <StudioFormSummaryErrors
+          errors={summaryErrors}
+          title={pt('validation.summaryTitle')}
+          onSelectError={({ field }) => {
+            if (field.includes('text') || field.includes('image')) setTab('content');
+            else if (field.includes('link') || field.includes('weight')) setTab('settings');
+            else setTab('basis');
+          }}
+        />
+        <StudioDetailTabs
+          ariaLabel={pt('tabs.ariaLabel')}
+          mobileSelectLabel={pt('tabs.mobileLabel')}
+          tabs={tabs}
+          value={tab}
+          onValueChange={setTab}
+          keepMounted
+        />
+      </form>
+      <StudioConfirmDialog
+        open={deleteDialogOpen}
+        title={pt('deleteDialog.title')}
+        description={pt('deleteDialog.description')}
+        confirmLabel={pt('deleteDialog.confirm')}
+        cancelLabel={pt('deleteDialog.cancel')}
+        confirmDisabled={deletePending}
+        cancelDisabled={deletePending}
+        onConfirm={() => void deleteCard()}
+        onCancel={() => setDeleteDialogOpen(false)}
+      />
     </StudioDetailPageTemplate>
   );
 }
@@ -446,34 +533,46 @@ export function CockpitCardsHistory({ contentId }: Readonly<{ contentId: string 
     );
   if (!entries.length)
     return <p className="text-sm text-muted-foreground">{pt('history.empty')}</p>;
+  const formatAction = (action: string) => {
+    if (action === 'created' || action === 'create') return pt('history.actions.created');
+    if (action === 'updated' || action === 'update') return pt('history.actions.updated');
+    if (action === 'status_changed' || action === 'statusChanged')
+      return pt('history.actions.statusChanged');
+    return action;
+  };
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full" aria-label={pt('history.label')}>
-        <thead>
-          <tr>
-            <th>{pt('history.time')}</th>
-            <th>{pt('history.action')}</th>
-            <th>{pt('history.actor')}</th>
-            <th>{pt('history.summary')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((entry) => (
-            <tr key={entry.id} className="border-t">
-              <td>{formatDateTimeInEditorTimeZone(entry.createdAt) ?? entry.createdAt}</td>
-              <td>{entry.action}</td>
-              <td>{entry.actor}</td>
-              <td>{entry.summary || entry.changedFields.join(', ')}</td>
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="overflow-x-auto">
+        <table className="min-w-full border-collapse text-sm" aria-label={pt('history.label')}>
+          <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th>{pt('history.time')}</th>
+              <th>{pt('history.action')}</th>
+              <th>{pt('history.actor')}</th>
+              <th>{pt('history.summary')}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {entries.map((entry) => (
+              <tr key={entry.id} className="border-t border-border align-top">
+                <td className="px-3 py-3">
+                  {formatDateTimeInEditorTimeZone(entry.createdAt) ?? entry.createdAt}
+                </td>
+                <td className="px-3 py-3">{formatAction(entry.action)}</td>
+                <td className="px-3 py-3">{entry.actor}</td>
+                <td className="px-3 py-3">{entry.summary || entry.changedFields.join(', ')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 export function CockpitCardsListPage() {
   const pt = usePluginTranslation('cockpit-cards');
+  const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { page?: number; pageSize?: number };
   const page = Number.isInteger(search.page) && (search.page ?? 0) > 0 ? (search.page ?? 1) : 1;
   const pageSize = search.pageSize === 50 || search.pageSize === 100 ? search.pageSize : 25;
@@ -481,12 +580,14 @@ export function CockpitCardsListPage() {
     []
   );
   const [state, setState] = React.useState<'loading' | 'error' | 'ready'>('loading');
+  const [hasNextPage, setHasNextPage] = React.useState(false);
   React.useEffect(() => {
     let active = true;
     void listCockpitCards({ page, pageSize }).then(
       (result) => {
         if (active) {
           setItems(result.data);
+          setHasNextPage(result.pagination.hasNextPage);
           setState('ready');
         }
       },
@@ -499,6 +600,7 @@ export function CockpitCardsListPage() {
   return (
     <StudioOverviewPageTemplate
       title={pt('list.title')}
+      description={pt('list.description')}
       primaryAction={
         <Button asChild>
           <Link to="/admin/cockpit-cards/new">{pt('actions.create')}</Link>
@@ -513,35 +615,55 @@ export function CockpitCardsListPage() {
         <StudioEmptyState>{pt('list.empty')}</StudioEmptyState>
       ) : null}
       {state === 'ready' && items.length ? (
-        <StudioDataTable
-          ariaLabel={pt('list.title')}
-          data={items}
-          columns={[
-            { id: 'heading', header: pt('fields.heading'), cell: (item) => item.title },
-            {
-              id: 'language',
-              header: pt('fields.languageCode'),
-              cell: (item) => readCockpitCardPayload(item.payload).languageCode,
-            },
-          ]}
-          rowActions={(item) => (
-            <Button asChild variant="outline" size="sm">
-              <Link to="/admin/cockpit-cards/$id" params={{ id: item.id }}>
-                {pt('actions.edit')}
-              </Link>
-            </Button>
-          )}
-          getRowId={(item) => item.id}
-          selectionMode="none"
-          emptyState={null}
-          labels={{
-            selectionColumn: pt('fields.heading'),
-            actionsColumn: pt('fields.actions'),
-            loading: pt('messages.loading'),
-            selectAllRows: (label) => label,
-            selectRow: ({ label }) => label,
-          }}
-        />
+        <div className="space-y-4">
+          <StudioDataTable
+            ariaLabel={pt('list.title')}
+            data={items}
+            columns={[
+              { id: 'heading', header: pt('fields.heading'), cell: (item) => item.title },
+              {
+                id: 'language',
+                header: pt('fields.languageCode'),
+                cell: (item) => readCockpitCardPayload(item.payload).languageCode,
+              },
+            ]}
+            rowActions={(item) => (
+              <Button asChild variant="outline" size="sm">
+                <Link to="/admin/cockpit-cards/$id" params={{ id: item.id }}>
+                  {pt('actions.edit')}
+                </Link>
+              </Button>
+            )}
+            getRowId={(item) => item.id}
+            selectionMode="none"
+            emptyState={null}
+            labels={{
+              selectionColumn: pt('fields.heading'),
+              actionsColumn: pt('fields.actions'),
+              loading: pt('messages.loading'),
+              selectAllRows: (label) => label,
+              selectRow: ({ label }) => label,
+            }}
+          />
+          <StudioPagination
+            page={page}
+            hasNextPage={hasNextPage}
+            ariaLabel={pt('pagination.ariaLabel')}
+            pageLabel={pt('pagination.pageLabel').replace('{{page}}', String(page))}
+            previousLabel={pt('pagination.previous')}
+            nextLabel={pt('pagination.next')}
+            onPageChange={(nextPage) =>
+              void navigate({
+                to: '/admin/cockpit-cards',
+                search: (current: Record<string, unknown>) => ({
+                  ...current,
+                  page: nextPage,
+                  pageSize,
+                }),
+              })
+            }
+          />
+        </div>
       ) : null}
     </StudioOverviewPageTemplate>
   );

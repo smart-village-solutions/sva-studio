@@ -342,3 +342,11 @@ Referenzen:
 - End-to-End-Smokes dürfen destruktive Aktionen nur gegen eindeutig markierte kurzlebige Testinstanzen ausführen. Secret-Rotation prüft ausschließlich Status und Korrelation, niemals Secretwerte.
 - Vor PR-Freigabe ist `pnpm test:pr` auszuführen. Der reguläre Studio-Rollout läuft ausschließlich über `Build` und `Promote`; `pnpm test:release:studio` ist eine optionale lokale Vollprüfung. OpenSpec- und File-Placement-Gates bleiben verpflichtend.
 - Telemetrie und Betriebsberichte müssen nachweislich frei von Tokens, Client-/Tenant-Secrets und hochkardinalen Identitätslabels bleiben.
+
+### Ergänzung 2026-08: Einheitliche FAQ-, Kachel- und GenericItems-Editoren
+
+- Desktop- und Mobilnavigation müssen denselben aktiven Tab abbilden; besuchte Formularbereiche behalten ihre Werte und Fehler beim Tabwechsel.
+- Validierungszusammenfassungen müssen auf das betroffene Feld führen und bei tabübergreifenden Fehlern zuerst den richtigen Bereich öffnen.
+- FAQ-Sprachfilter müssen URL-stabil sein und vor Sortierung, Gesamtzahl und Pagination auf der vollständigen FAQ-Menge wirken.
+- Löschaktionen benötigen einen zugänglichen Bestätigungsdialog, eine Pending-Sperre und sichtbare Fehler; eine erfolgreiche Aktion darf genau eine Mutation auslösen.
+- Die deutschen sichtbaren Texte des Cockpit-Card-Plugins verwenden durchgängig „Kachel“ beziehungsweise „Kacheln“.

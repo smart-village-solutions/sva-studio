@@ -1,15 +1,11 @@
 import {
   Checkbox,
+  getStudioFormFieldProps,
   Input,
-  Select,
-  StudioDetailTabIcon,
+  StudioDetailTabs,
   StudioField,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   Textarea,
-  type StudioDetailTabIconName,
+  type StudioDetailTabDefinition,
 } from '@sva/studio-ui-react';
 import { Controller, type UseFormReturn } from 'react-hook-form';
 
@@ -18,76 +14,96 @@ import type { FaqFormValues } from './faq.types.js';
 
 export type FaqTab = 'basis' | 'content' | 'settings' | 'history';
 
-const tabIconNames = {
-  basis: 'basis',
-  content: 'content',
-  settings: 'settings',
-  history: 'history',
-} as const satisfies Record<FaqTab, StudioDetailTabIconName>;
+type FaqEditorTabProps = Readonly<{
+  form: UseFormReturn<FaqFormValues>;
+  pt: (key: string) => string;
+}>;
 
-const renderPanel = (title: string, content: React.ReactNode) => (
-  <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
-    <h2 className="text-base font-semibold text-foreground">{title}</h2>
-    {content}
-  </div>
-);
+const FaqBasisTab = ({ form, pt }: FaqEditorTabProps) => {
+  const question = getStudioFormFieldProps({
+    id: 'faq-question',
+    error: form.formState.errors.question,
+  });
+  const languageCode = getStudioFormFieldProps({
+    id: 'faq-language-code',
+    error: form.formState.errors.languageCode,
+  });
 
-const FaqBasisTab = ({
-  form,
-  pt,
-}: Readonly<{ form: UseFormReturn<FaqFormValues>; pt: (key: string) => string }>) => (
-  <div className="space-y-4">
-    <StudioField id="faq-question" label={pt('fields.question')}>
-      <Input id="faq-question" {...form.register('question')} />
-    </StudioField>
-    <StudioField id="faq-language-code" label={pt('fields.languageCode')}>
-      <Input id="faq-language-code" {...form.register('languageCode')} />
-    </StudioField>
-  </div>
-);
+  return (
+    <div className="space-y-4">
+      <StudioField
+        id={question.id}
+        label={pt('fields.question')}
+        error={question.error ? pt('validation.required') : undefined}
+      >
+        <Input {...question.controlProps} {...form.register('question')} />
+      </StudioField>
+      <StudioField
+        id={languageCode.id}
+        label={pt('fields.languageCode')}
+        error={languageCode.error ? pt('validation.languageCode') : undefined}
+      >
+        <Input {...languageCode.controlProps} {...form.register('languageCode')} />
+      </StudioField>
+    </div>
+  );
+};
 
-const FaqContentTab = ({
-  form,
-  pt,
-}: Readonly<{ form: UseFormReturn<FaqFormValues>; pt: (key: string) => string }>) => (
-  <StudioField id="faq-answer" label={pt('fields.answer')}>
-    <Textarea id="faq-answer" className="min-h-32" {...form.register('answer')} />
-  </StudioField>
-);
+const FaqContentTab = ({ form, pt }: FaqEditorTabProps) => {
+  const answer = getStudioFormFieldProps({
+    id: 'faq-answer',
+    error: form.formState.errors.answer,
+  });
 
-const FaqSettingsTab = ({
-  form,
-  pt,
-}: Readonly<{ form: UseFormReturn<FaqFormValues>; pt: (key: string) => string }>) => (
-  <div className="space-y-4">
-    <StudioField id="faq-publication-date" label={pt('fields.publicationDate')}>
-      <Input id="faq-publication-date" {...form.register('publicationDate')} />
+  return (
+    <StudioField
+      id={answer.id}
+      label={pt('fields.answer')}
+      error={answer.error ? pt('validation.answer') : undefined}
+    >
+      <Textarea {...answer.controlProps} className="min-h-32" {...form.register('answer')} />
     </StudioField>
-    <StudioField id="faq-sort-weight" label={pt('fields.sortWeight')}>
-      <Input
-        id="faq-sort-weight"
-        type="number"
-        {...form.register('sortWeight', { valueAsNumber: true })}
-      />
-      {form.formState.errors.sortWeight ? (
-        <span className="text-destructive">{pt('validation.sortWeight')}</span>
-      ) : null}
-    </StudioField>
-    <StudioField id="faq-visible" label={pt('fields.visible')}>
-      <Controller
-        name="visible"
-        control={form.control}
-        render={({ field }) => (
-          <Checkbox
-            id="faq-visible"
-            checked={field.value}
-            onChange={(event) => field.onChange(event.currentTarget.checked)}
-          />
-        )}
-      />
-    </StudioField>
-  </div>
-);
+  );
+};
+
+const FaqSettingsTab = ({ form, pt }: FaqEditorTabProps) => {
+  const sortWeight = getStudioFormFieldProps({
+    id: 'faq-sort-weight',
+    error: form.formState.errors.sortWeight,
+  });
+
+  return (
+    <div className="space-y-4">
+      <StudioField id="faq-publication-date" label={pt('fields.publicationDate')}>
+        <Input id="faq-publication-date" {...form.register('publicationDate')} />
+      </StudioField>
+      <StudioField
+        id={sortWeight.id}
+        label={pt('fields.sortWeight')}
+        error={sortWeight.error ? pt('validation.sortWeight') : undefined}
+      >
+        <Input
+          {...sortWeight.controlProps}
+          type="number"
+          {...form.register('sortWeight', { valueAsNumber: true })}
+        />
+      </StudioField>
+      <StudioField id="faq-visible" label={pt('fields.visible')}>
+        <Controller
+          name="visible"
+          control={form.control}
+          render={({ field }) => (
+            <Checkbox
+              id="faq-visible"
+              checked={field.value}
+              onChange={(event) => field.onChange(event.currentTarget.checked)}
+            />
+          )}
+        />
+      </StudioField>
+    </div>
+  );
+};
 
 export const FaqEditorTabs = ({
   activeTab,
@@ -104,57 +120,50 @@ export const FaqEditorTabs = ({
   onTabChange: (tab: FaqTab) => void;
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>) => {
-  const tabs: readonly FaqTab[] =
-    mode === 'edit'
-      ? ['basis', 'content', 'settings', 'history']
-      : ['basis', 'content', 'settings'];
-  const selectTab = (value: string) => onTabChange(value as FaqTab);
+  const tabs: readonly StudioDetailTabDefinition<FaqTab>[] = [
+    {
+      id: 'basis',
+      label: pt('tabs.basis.label'),
+      title: pt('tabs.basis.title'),
+      description: pt('tabs.basis.description'),
+      icon: 'basis',
+      panel: <FaqBasisTab form={form} pt={pt} />,
+    },
+    {
+      id: 'content',
+      label: pt('tabs.content.label'),
+      title: pt('tabs.content.title'),
+      description: pt('tabs.content.description'),
+      icon: 'content',
+      panel: <FaqContentTab form={form} pt={pt} />,
+    },
+    {
+      id: 'settings',
+      label: pt('tabs.settings.label'),
+      title: pt('tabs.settings.title'),
+      description: pt('tabs.settings.description'),
+      icon: 'settings',
+      panel: <FaqSettingsTab form={form} pt={pt} />,
+    },
+    {
+      id: 'history',
+      label: pt('tabs.history.label'),
+      title: pt('tabs.history.title'),
+      description: pt('tabs.history.description'),
+      icon: 'history',
+      isVisible: mode === 'edit' && Boolean(contentId),
+      panel: contentId ? <FaqDetailHistoryTab contentId={contentId} pt={pt} /> : null,
+    },
+  ];
 
   return (
-    <Tabs value={activeTab} onValueChange={selectTab} className="space-y-0">
-      <label className="block md:hidden">
-        <span className="sr-only">{pt('tabs.mobileLabel')}</span>
-        <Select
-          aria-label={pt('tabs.mobileLabel')}
-          value={activeTab}
-          onChange={(event) => selectTab(event.target.value)}
-        >
-          {tabs.map((tab) => (
-            <option key={tab} value={tab}>
-              {pt(`tabs.${tab}.label`)}
-            </option>
-          ))}
-        </Select>
-      </label>
-      <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] hidden gap-10 md:flex">
-        {tabs.map((tab) => (
-          <TabsTrigger
-            key={tab}
-            value={tab}
-            className="gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none"
-          >
-            <StudioDetailTabIcon name={tabIconNames[tab]} />
-            <span>{pt(`tabs.${tab}.label`)}</span>
-          </TabsTrigger>
-        ))}
-      </TabsList>
-      <TabsContent value="basis" forceMount className="mt-0 data-[state=inactive]:hidden">
-        {renderPanel(pt('tabs.basis.title'), <FaqBasisTab form={form} pt={pt} />)}
-      </TabsContent>
-      <TabsContent value="content" forceMount className="mt-0 data-[state=inactive]:hidden">
-        {renderPanel(pt('tabs.content.title'), <FaqContentTab form={form} pt={pt} />)}
-      </TabsContent>
-      <TabsContent value="settings" forceMount className="mt-0 data-[state=inactive]:hidden">
-        {renderPanel(pt('tabs.settings.title'), <FaqSettingsTab form={form} pt={pt} />)}
-      </TabsContent>
-      {mode === 'edit' && contentId ? (
-        <TabsContent value="history" className="mt-0">
-          {renderPanel(
-            pt('tabs.history.title'),
-            <FaqDetailHistoryTab contentId={contentId} pt={pt} />
-          )}
-        </TabsContent>
-      ) : null}
-    </Tabs>
+    <StudioDetailTabs
+      ariaLabel={pt('tabs.ariaLabel')}
+      mobileSelectLabel={pt('tabs.mobileLabel')}
+      tabs={tabs}
+      value={activeTab}
+      onValueChange={onTabChange}
+      keepMounted
+    />
   );
 };

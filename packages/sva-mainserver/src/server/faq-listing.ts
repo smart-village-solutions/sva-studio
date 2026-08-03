@@ -8,24 +8,34 @@ type GenericItem = Awaited<ReturnType<typeof listSvaMainserverGenericItems>>['da
 
 const readSortValues = (item: GenericItem) => {
   const payload = item.payload;
-  const record = payload && typeof payload === 'object' && !Array.isArray(payload)
-    ? payload as Record<string, unknown>
-    : {};
+  const record =
+    payload && typeof payload === 'object' && !Array.isArray(payload)
+      ? (payload as Record<string, unknown>)
+      : {};
   return {
     languageCode: typeof record.languageCode === 'string' ? record.languageCode : 'und',
-    sortWeight: typeof record.sortWeight === 'number' && Number.isInteger(record.sortWeight) ? record.sortWeight : 0,
+    sortWeight:
+      typeof record.sortWeight === 'number' && Number.isInteger(record.sortWeight)
+        ? record.sortWeight
+        : 0,
   };
 };
 
 export const compareFaqItems = (left: GenericItem, right: GenericItem) => {
   const leftValues = readSortValues(left);
   const rightValues = readSortValues(right);
-  return leftValues.languageCode.localeCompare(rightValues.languageCode) || leftValues.sortWeight - rightValues.sortWeight || faqTitleCollator.compare(left.title, right.title) || left.id.localeCompare(right.id);
+  return (
+    leftValues.languageCode.localeCompare(rightValues.languageCode) ||
+    leftValues.sortWeight - rightValues.sortWeight ||
+    faqTitleCollator.compare(left.title, right.title) ||
+    left.id.localeCompare(right.id)
+  );
 };
 
 export const listFaqItems = async (
   input: Parameters<typeof listSvaMainserverGenericItems>[0],
-  listItems: typeof listSvaMainserverGenericItems
+  listItems: typeof listSvaMainserverGenericItems,
+  languageCode?: string
 ) => {
   const items: GenericItem[] = [];
   let page = 1;
@@ -43,11 +53,22 @@ export const listFaqItems = async (
     hasNextPage = result.pagination.hasNextPage;
     page += 1;
   }
-  items.sort(compareFaqItems);
+  const normalizedLanguageCode = languageCode?.trim().toLowerCase();
+  const filteredItems = normalizedLanguageCode
+    ? items.filter(
+        (item) => readSortValues(item).languageCode.trim().toLowerCase() === normalizedLanguageCode
+      )
+    : items;
+  filteredItems.sort(compareFaqItems);
   const start = (input.page - 1) * input.pageSize;
   return {
-    data: items.slice(start, start + input.pageSize),
-    pagination: { page: input.page, pageSize: input.pageSize, hasNextPage: start + input.pageSize < items.length, total: items.length },
-    observability: { upstreamPageCount: page - 1, matchingItemCount: items.length },
+    data: filteredItems.slice(start, start + input.pageSize),
+    pagination: {
+      page: input.page,
+      pageSize: input.pageSize,
+      hasNextPage: start + input.pageSize < filteredItems.length,
+      total: filteredItems.length,
+    },
+    observability: { upstreamPageCount: page - 1, matchingItemCount: filteredItems.length },
   };
 };

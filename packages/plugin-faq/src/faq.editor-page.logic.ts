@@ -19,7 +19,11 @@ const resolveDeleteErrorMessage = (error: unknown, pt: Translation) =>
     ? pt('messages.deleteErrorWithReason', { reason: error.message })
     : pt('messages.deleteError');
 
-export const useFaqEditorLoader = ({ contentId, form, mode }: Readonly<{
+export const useFaqEditorLoader = ({
+  contentId,
+  form,
+  mode,
+}: Readonly<{
   contentId?: string;
   form: UseFormReturn<FaqFormValues>;
   mode: 'create' | 'edit';
@@ -48,18 +52,29 @@ export const useFaqEditorLoader = ({ contentId, form, mode }: Readonly<{
       })
       .catch(() => active && setLoadError(true))
       .finally(() => active && setLoading(false));
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [contentId, form, mode]);
 
   return { existingPayload, loadError, loading };
 };
 
-export const useFaqEditorActions = ({ contentId, existingPayload, mode, navigate, pt, setSaveErrorMessage }: Readonly<{
+export const useFaqEditorActions = ({
+  contentId,
+  existingPayload,
+  mode,
+  navigate,
+  pt,
+  setDeleteErrorMessage,
+  setSaveErrorMessage,
+}: Readonly<{
   contentId?: string;
   existingPayload: unknown;
   mode: 'create' | 'edit';
   navigate: Navigate;
   pt: Translation;
+  setDeleteErrorMessage: React.Dispatch<React.SetStateAction<string | null>>;
   setSaveErrorMessage: React.Dispatch<React.SetStateAction<string | null>>;
 }>) => {
   const [deletePending, setDeletePending] = React.useState(false);
@@ -80,13 +95,16 @@ export const useFaqEditorActions = ({ contentId, existingPayload, mode, navigate
   };
 
   const onDelete = async () => {
-    if (!contentId) return;
+    if (!contentId) return false;
+    setDeleteErrorMessage(null);
     setDeletePending(true);
     try {
       await deleteFaq(contentId);
       await navigate({ to: '/admin/content' });
+      return true;
     } catch (error) {
-      setSaveErrorMessage(resolveDeleteErrorMessage(error, pt));
+      setDeleteErrorMessage(resolveDeleteErrorMessage(error, pt));
+      return false;
     } finally {
       setDeletePending(false);
     }

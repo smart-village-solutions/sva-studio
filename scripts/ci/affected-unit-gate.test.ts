@@ -126,12 +126,10 @@ describe('affected-unit-gate', () => {
     });
   });
 
-  it('builds direct vitest commands for aggregate and sliced app runs', () => {
-    expect(buildAppUnitCommand()).toBe(
-      'pnpm exec vitest run --config apps/sva-studio-react/vitest.config.ts --reporter=verbose'
-    );
+  it('builds Nx commands for aggregate and sliced app runs', () => {
+    expect(buildAppUnitCommand()).toBe('pnpm nx run sva-studio-react:test:unit');
     expect(buildAppUnitCommand('routes')).toBe(
-      'pnpm exec vitest run --config apps/sva-studio-react/vitest.routes.config.ts --reporter=verbose'
+      'pnpm nx run sva-studio-react:test:unit:routes'
     );
   });
 

@@ -467,6 +467,7 @@ type CallbackDependencies = {
 };
 
 type AuthMeResolution = {
+  readonly instanceDisplayName?: string;
   readonly permissionActions: string[];
   readonly permissionStatus: 'ok' | 'degraded';
   readonly assignedModules: string[];
@@ -867,6 +868,28 @@ const loadAssignedModulesForAuthMe = async (user: { instanceId?: string }): Prom
   }
 };
 
+const loadInstanceDisplayNameForAuthMe = async (user: { instanceId?: string }): Promise<string | undefined> => {
+  if (!user.instanceId) {
+    return undefined;
+  }
+  const instanceId = user.instanceId;
+
+  try {
+    const instance = await withRegistryRepository((repository) => repository.getInstanceById(instanceId));
+    const displayName = instance?.displayName.trim();
+    return displayName || undefined;
+  } catch (error) {
+    logger.error('Auth me instance display name lookup failed', {
+      endpoint: '/auth/me',
+      operation: 'get_current_user',
+      error_type: error instanceof Error ? error.name : typeof error,
+      reason_code: 'instance_display_name_lookup_failed',
+      ...buildLogContext({ kind: 'instance', instanceId }),
+    });
+    return undefined;
+  }
+};
+
 type AuthMeGroupRow = {
   readonly group_id: string;
   readonly group_key: string;
@@ -939,12 +962,14 @@ ORDER BY g.display_name ASC, g.group_key ASC
 const resolveAuthMeState = async (user: { id: string; instanceId?: string }): Promise<AuthMeResolution> => {
   const permissionState = await loadAuthMePermissionState(user);
   const assignedModules = await loadAssignedModulesForAuthMe(user);
+  const instanceDisplayName = await loadInstanceDisplayNameForAuthMe(user);
   const groups = await loadGroupsForAuthMe(user);
 
   return {
     ...permissionState,
     assignedModules,
     groups,
+    instanceDisplayName,
   };
 };
 
@@ -963,6 +988,7 @@ const createAuthMeResponse = (
         ...user,
         assignedModules: resolution.assignedModules,
         groups: resolution.groups,
+        ...(resolution.instanceDisplayName ? { instanceDisplayName: resolution.instanceDisplayName } : {}),
         permissionActions: resolution.permissionActions,
         permissionStatus,
       },

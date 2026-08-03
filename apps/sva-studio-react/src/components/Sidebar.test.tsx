@@ -234,6 +234,22 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+it('zeigt den Tenant-Namen unter dem App-Titel und nutzt die Tenant-ID als Fallback', () => {
+  const { rerender } = renderSidebar({
+    user: createSidebarUser({
+      instanceId: 'tenant-a',
+      instanceDisplayName: 'Stadt Musterhausen',
+    }),
+  });
+
+  expect(screen.getByText('Stadt Musterhausen')).toBeTruthy();
+
+  setupSidebarSession({ user: createSidebarUser({ instanceId: 'tenant-a' }) });
+  rerender(<Sidebar />);
+
+  expect(screen.getByText('tenant-a')).toBeTruthy();
+});
+
 describe('Sidebar', () => {
   it('rendert im Loading-Zustand keine interaktiven Links', () => {
     useAuthMock.mockReturnValue(unauthenticatedAuthState);

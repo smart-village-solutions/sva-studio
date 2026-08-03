@@ -99,6 +99,7 @@ type SidebarPanelProps = Readonly<{
   sections: readonly SidebarSection[];
   footerItems: readonly SidebarLeafItem[];
   isCollapsed: boolean;
+  tenantName?: string;
   allowCollapse: boolean;
   onToggleCollapsed?: () => void;
   onNavigate?: () => void;
@@ -551,6 +552,7 @@ const SidebarPanel = ({
   sections,
   footerItems,
   isCollapsed,
+  tenantName,
   allowCollapse,
   onToggleCollapsed,
   onNavigate,
@@ -632,7 +634,14 @@ const SidebarPanel = ({
           className={`relative flex min-h-12 items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}
         >
           {showAppTitle ? (
-            <p className="text-3xl font-semibold text-foreground">{t('shell.appName')}</p>
+            <div className="min-w-0">
+              <p className="text-3xl font-semibold text-foreground">{t('shell.appName')}</p>
+              {tenantName ? (
+                <p className="truncate text-xs font-medium text-muted-foreground" title={tenantName}>
+                  {tenantName}
+                </p>
+              ) : null}
+            </div>
           ) : null}
           {allowCollapse ? (
             <Button
@@ -747,6 +756,7 @@ export default function Sidebar({
   onMobileOpenChange,
 }: SidebarProps) {
   const { user, isAuthenticated, isDevAuthAvailable: devAuthAvailable } = useAuth();
+  const tenantName = user?.instanceDisplayName?.trim() || user?.instanceId?.trim() || undefined;
   const contentAccessApi = useContentAccess();
   const canAccessWorkspace = isAuthenticated && isIamUiEnabled();
   const canAccessContent =
@@ -1142,6 +1152,7 @@ export default function Sidebar({
           sections={sections}
           footerItems={footerItems}
           isCollapsed={isCollapsed}
+          tenantName={tenantName}
           allowCollapse
           onToggleCollapsed={() => setIsCollapsed((current) => !current)}
         />
@@ -1164,6 +1175,7 @@ export default function Sidebar({
               sections={sections}
               footerItems={footerItems}
               isCollapsed={false}
+              tenantName={tenantName}
               allowCollapse={false}
               showMobileHeader
               onCloseMobileNavigation={() => onMobileOpenChange?.(false)}

@@ -1640,7 +1640,7 @@ const mainserverProjectionPageLoaders: Record<
               (item) =>
                 item.genericType !== 'FAQ' &&
                 item.genericType !== 'COCKPIT_CARD' &&
-                item.genericType !== 'PROJECT'
+                item.genericType !== 'FeaturedProject'
             ),
           },
           pagingResult: result,

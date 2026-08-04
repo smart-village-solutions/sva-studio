@@ -35,7 +35,7 @@ export const listAllActiveProjectItems = async (
   }
 
   const data = upstreamItems.filter(
-    (item) => item.genericType === 'PROJECT' && !isDeleted(item)
+    (item) => item.genericType === 'FeaturedProject' && !isDeleted(item)
   );
   return {
     data,

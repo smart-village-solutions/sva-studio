@@ -180,7 +180,7 @@ const loadProjectContext = async (
     ...(activeOrganizationId ? { activeOrganizationId } : {}),
     genericItemId: reference.sourceEntityId,
   });
-  if (item.genericType !== 'PROJECT') return undefined;
+  if (item.genericType !== 'FeaturedProject') return undefined;
   const payload =
     item.payload && typeof item.payload === 'object' && !Array.isArray(item.payload)
       ? (item.payload as Record<string, unknown>)
@@ -463,7 +463,7 @@ const updateProject = async (
           ...actor,
           genericItemId: context.reference.sourceEntityId!,
         });
-        if (!freshCore || freshItem.genericType !== 'PROJECT') {
+        if (!freshCore || freshItem.genericType !== 'FeaturedProject') {
           return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
         }
         const publishedAt = publishedAtFor(project, freshCore.publishedAt);
@@ -551,7 +551,7 @@ const deleteProject = async (
           ...actor,
           genericItemId: context.reference.sourceEntityId!,
         });
-        if (!freshCore || freshItem.genericType !== 'PROJECT') {
+        if (!freshCore || freshItem.genericType !== 'FeaturedProject') {
           return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
         }
         const freshProject = mapAndValidate(freshItem, freshCore);

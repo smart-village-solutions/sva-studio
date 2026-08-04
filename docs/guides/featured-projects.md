@@ -1,6 +1,6 @@
 # Featured Projects verwalten
 
-Featured Projects sind hervorgehobene Projektinhalte im Studio. Sie werden fachlich als `projects.project` geführt und im SVA-Mainserver als `GenericItem` mit `genericType: "PROJECT"` gespeichert.
+Featured Projects sind hervorgehobene Projektinhalte im Studio. Sie werden fachlich als `projects.project` geführt und im SVA-Mainserver als `GenericItem` mit `genericType: "FeaturedProject"` gespeichert.
 
 ## Berechtigungen und Einstieg
 

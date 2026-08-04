@@ -31,7 +31,7 @@ const existing: SvaMainserverGenericItem = {
   title: 'Alt',
   contentType: 'generic-items.generic-item',
   status: 'published',
-  genericType: 'PROJECT',
+  genericType: 'FeaturedProject',
   teaser: 'Alt',
   visible: false,
   author: 'Alt',
@@ -98,7 +98,7 @@ describe('projects contract', () => {
     ).toEqual(
       expect.objectContaining({
         title: 'Projekt',
-        genericType: 'PROJECT',
+        genericType: 'FeaturedProject',
         teaser: 'Kurz',
         visible: true,
         externalId: 'operation-1',

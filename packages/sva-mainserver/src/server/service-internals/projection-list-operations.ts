@@ -129,7 +129,7 @@ export const createProjectionListOperations = (executeGraphqlWithConfig: Graphql
       ? responseItems.slice(0, query.pageSize)
       : responseItems;
     const rawItems: readonly unknown[] = upstreamPageItems.filter((item) => {
-      if (contentType !== 'faq.faq' && contentType !== 'cockpit-cards.cockpit-card' && contentType !== 'generic-items.generic-item') {
+      if (contentType !== 'faq.faq' && contentType !== 'cockpit-cards.cockpit-card') {
         return true;
       }
       const genericType =
@@ -138,9 +138,9 @@ export const createProjectionListOperations = (executeGraphqlWithConfig: Graphql
         typeof (item as Record<string, unknown>).genericType === 'string'
           ? (item as Record<string, unknown>).genericType
           : undefined;
-      return contentType === 'faq.faq' ? genericType === 'FAQ'
-        : contentType === 'cockpit-cards.cockpit-card' ? genericType === 'COCKPIT_CARD'
-        : genericType !== 'FAQ' && genericType !== 'COCKPIT_CARD';
+      return contentType === 'faq.faq'
+        ? genericType === 'FAQ'
+        : genericType === 'COCKPIT_CARD';
     });
     const mapped = rawItems.map((item) => mapItem(item, contentType, definition.titleField));
     const skippedInvalidCount = mapped.filter((item) => item === null).length;

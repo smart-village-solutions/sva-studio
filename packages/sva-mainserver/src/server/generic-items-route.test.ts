@@ -94,7 +94,12 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
   it('lists generic items after read authorization', async () => {
     mockAuthorizedMutation();
     state.listSvaMainserverGenericItems.mockResolvedValue({
-      data: [{ id: 'generic-1' }],
+      data: [
+        { id: 'project-1', genericType: 'FeaturedProject' },
+        { id: 'faq-1', genericType: 'FAQ' },
+        { id: 'card-1', genericType: 'COCKPIT_CARD' },
+        { id: 'future-1', genericType: 'FUTURE_TYPE' },
+      ],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
@@ -104,9 +109,20 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
 
     expect(response?.status).toBe(200);
     await expect(response?.json()).resolves.toEqual({
-      data: [{ id: 'generic-1' }],
+      data: [
+        { id: 'project-1', genericType: 'FeaturedProject' },
+        { id: 'faq-1', genericType: 'FAQ' },
+        { id: 'card-1', genericType: 'COCKPIT_CARD' },
+        { id: 'future-1', genericType: 'FUTURE_TYPE' },
+      ],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'generic-items.read',
+        resource: { contentType: 'generic-items.generic-item' },
+      })
+    );
     expect(state.listSvaMainserverGenericItems).toHaveBeenCalledWith(
       expect.objectContaining({ instanceId: 'de-musterhausen', page: 1, pageSize: 25 })
     );
@@ -545,6 +561,61 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
       expect.objectContaining({
         genericItemId: 'generic-1',
         genericItem: expect.objectContaining({ title: 'Aktualisiert', genericType: 'faq' }),
+      })
+    );
+  });
+
+  it('uses only generic-item actions for specialized discriminators on generic paths', async () => {
+    mockAuthorizedMutation();
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'project-1',
+      genericType: 'FeaturedProject',
+    });
+    state.createSvaMainserverGenericItem.mockResolvedValue({ id: 'future-1' });
+    state.updateSvaMainserverGenericItem.mockResolvedValue({ id: 'faq-1' });
+    state.deleteSvaMainserverGenericItem.mockResolvedValue({ id: 'card-1', deleted: true });
+
+    const detailResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items/project-1')
+    );
+    const createResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items', {
+        method: 'POST',
+        body: JSON.stringify({ title: 'Zukünftiger Typ', genericType: 'FUTURE_TYPE' }),
+      })
+    );
+    const updateResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items/faq-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: 'Technisch bearbeitete FAQ',
+          genericType: 'FAQ',
+          payload: { languageCode: 'de', custom: 'keep' },
+        }),
+      })
+    );
+    const deleteResponse = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items/card-1', {
+        method: 'DELETE',
+      })
+    );
+
+    expect([
+      detailResponse?.status,
+      createResponse?.status,
+      updateResponse?.status,
+      deleteResponse?.status,
+    ]).toEqual([200, 201, 200, 200]);
+    expect(state.authorizeContentPrimitiveForUser.mock.calls.map(([input]) => input.action)).toEqual(
+      ['generic-items.read', 'generic-items.create', 'generic-items.update', 'generic-items.delete']
+    );
+    expect(state.updateSvaMainserverGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        genericItemId: 'faq-1',
+        genericItem: expect.objectContaining({
+          genericType: 'FAQ',
+          payload: { languageCode: 'de', custom: 'keep' },
+        }),
       })
     );
   });

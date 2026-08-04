@@ -569,7 +569,7 @@ Referenzen:
 
 ### Ergänzung 2026-07: FAQ als gefilterter GenericItem-Fachtyp
 
-- FAQ-Fassaden autorisieren ausschließlich vollständig qualifizierte Aktionen `faq.read`, `faq.create`, `faq.update` und `faq.delete`; der GenericItem-Pfad ist kein Berechtigungs-Bypass.
+- FAQ-Fassaden autorisieren ausschließlich vollständig qualifizierte Aktionen `faq.read`, `faq.create`, `faq.update` und `faq.delete`. Der getrennte technische GenericItem-Pfad darf denselben Datensatz ausschließlich mit `generic-items.*` lesen und verändern.
 - Der Server erzwingt den Discriminator `genericType: "FAQ"` bei Mutationen und beantwortet fremde IDs auf dem FAQ-Pfad nicht als GenericItem.
 - Der FAQ-Leseweg protokolliert nur technische Kontextdaten. Antworten, Fragen und sonstige Payload-Inhalte sind keine Logfelder.
 
@@ -579,6 +579,13 @@ Referenzen:
 - Der Server erzwingt `genericType: "COCKPIT_CARD"`, genau eine Kategorie, mindestens ein Bild und höchstens einen HTTPS-Link; fremde Typ-IDs werden als nicht gefunden behandelt.
 - Beobachtbarkeitsdaten des vollständigen Paging-Lesewegs enthalten nur technische Zähler und Laufzeiten, keine Überschriften, Texte, Kategorien oder URLs.
 - Sprachcode und Sortiergewicht sind kontrollierte `payload`-Schlüssel; unbekannte historische Schlüssel bleiben bei Updates erhalten. Die Antwort ist Klartext und wird vor dem Write gegen HTML geprüft.
+
+### Ergänzung 2026-08: GenericItems als technischer Vollzugriff
+
+- Generische Listen, Projektionen, Details und Mutationen filtern nicht nach `genericType` und verlangen ausschließlich die passende Action unter `generic-items.*`.
+- Fachpfade bleiben getrennt, verlangen ihre eigenen Actions und erzwingen weiterhin ihre jeweiligen Diskriminatoren und Validierungen.
+- Besitzt eine Person generische und fachliche Rechte, darf derselbe Mainserver-Datensatz in beiden Content-Type-Repräsentationen erscheinen.
+- `generic-items.*` kann fachliche Validierung umgehen und soll deshalb regulären Live-Rollen nicht zugewiesen werden; diese Betriebsgrenze wird durch Rollenvergabe und nicht durch umgebungsabhängige Codepfade umgesetzt.
 
 ### Ergänzung 2026-03: IAM-Transparenz-UI und Privacy-Self-Service
 

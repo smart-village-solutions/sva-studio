@@ -136,9 +136,9 @@ Wie die anderen Fachplugins nutzt es die öffentliche Plugin-Grenze des Hosts, s
 
 ### `@sva/plugin-generic-items`
 
-`@sva/plugin-generic-items` ist das redaktionelle Plugin für freie `GenericItem`-Inhalte auf Basis des Mainserver-Typs `GenericItem`. Das Package deckt bewusst einen breiten Satz kanonischer `GenericItem`-Felder ab, führt `genericType` als Freitext und hält `payload` als freie Erweiterungsfläche offen.
+`@sva/plugin-generic-items` ist die technische Vollansicht für alle Inhalte auf Basis des Mainserver-Typs `GenericItem`. Das Package deckt bewusst einen breiten Satz kanonischer `GenericItem`-Felder ab, führt `genericType` als Freitext und hält `payload` als freie Erweiterungsfläche offen. Es zeigt und bearbeitet auch fachlich spezialisierte Typen wie `FeaturedProject`, `FAQ` und `COCKPIT_CARD` sowie unbekannte zukünftige Diskriminatoren.
 
-Architektonisch folgt es demselben Host-Fassadenmuster wie News, Events und POI: plugin-lokale UI, hostgeführte HTTP-CRUD-Pfade und die Mainserver-Integration ausschließlich über `@sva/sva-mainserver`.
+Architektonisch folgt es demselben Host-Fassadenmuster wie News, Events und POI: plugin-lokale UI, hostgeführte HTTP-CRUD-Pfade und die Mainserver-Integration ausschließlich über `@sva/sva-mainserver`. Der generische Pfad autorisiert ausschließlich mit `generic-items.*` und verlangt keine zusätzlichen Fachrechte. Deshalb sollen reguläre Live-Rollen diese technischen Vollzugriffs-Actions nicht erhalten.
 
 ### `@sva/plugin-waste-management`
 

@@ -128,7 +128,7 @@
     "knip": "^6.29.0",
     "nx": "23.0.1",
     "postcss": "8.5.18",
-    "prettier": "^3.9.4",
+    "prettier": "^3.9.6",
     "tailwindcss": "4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",

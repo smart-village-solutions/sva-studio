@@ -2891,6 +2891,7 @@ describe('content list projection', () => {
     );
     expect(projectionRows.some((row) => row.content_type === 'faq.faq')).toBe(false);
     expect(projectionRows).toHaveLength(2);
+    expect([...syncStates.keys()].some((key) => key.startsWith('faq.faq::'))).toBe(false);
   });
 
   it('removes only the targeted generic item projection row after delete mutations', async () => {

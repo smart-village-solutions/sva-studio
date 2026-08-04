@@ -2195,6 +2195,40 @@ const resolveSpecializedGenericItemProjectionContentType = (
   return undefined;
 };
 
+const deleteStaleGenericItemSiblingProjection = async (
+  target: ContentProjectionSyncTarget,
+  entityId: string
+): Promise<void> => {
+  const targetKey = buildProjectionTargetKey(target);
+  const precedingSync = runningProjectionSyncs.get(targetKey) ?? Promise.resolve(null);
+  const deleteWork = precedingSync.then(() =>
+    withInstanceScopedDb(target.instanceId, async (client) => {
+      await deleteMainserverProjectionRowByEntity(client, target, entityId);
+    })
+  );
+  const siblingSync = deleteWork
+    .then(() => null as Response | null, () => null as Response | null)
+    .finally(() => {
+      if (runningProjectionSyncs.get(targetKey) === siblingSync) {
+        runningProjectionSyncs.delete(targetKey);
+      }
+    });
+
+  runningProjectionSyncs.set(targetKey, siblingSync);
+  await deleteWork;
+};
+
+const refreshGenericItemProjectionSnapshots = async (
+  target: ContentProjectionSyncTarget
+): Promise<void> => {
+  for (const contentType of genericItemProjectionContentTypes) {
+    await triggerMainserverProjectionRefresh(
+      { ...target, contentType },
+      { force: true, awaitCompletion: true, trigger: 'mutation_follow_up' }
+    );
+  }
+};
+
 const refreshGenericItemSiblingProjections = async (input: {
   readonly target: ContentProjectionSyncTarget;
   readonly operation: MainserverProjectionMutationOperation;
@@ -2211,7 +2245,7 @@ const refreshGenericItemSiblingProjections = async (input: {
           keycloakSubject: input.target.keycloakSubject,
         });
   } catch {
-    await refreshMainserverProjectionForMutation(input);
+    await refreshGenericItemProjectionSnapshots(input.target);
     return;
   }
   const specializedContentType = item
@@ -2232,12 +2266,16 @@ const refreshGenericItemSiblingProjections = async (input: {
         }
       : undefined;
 
-    await refreshMainserverProjectionForMutation({
-      target,
-      operation: shouldProject && input.operation !== 'delete' ? input.operation : 'delete',
-      entityId: input.entityId,
-      ...(row ? { row } : {}),
-    });
+    if (!shouldProject || input.operation === 'delete') {
+      await deleteStaleGenericItemSiblingProjection(target, input.entityId);
+    } else {
+      await refreshMainserverProjectionForMutation({
+        target,
+        operation: input.operation,
+        entityId: input.entityId,
+        ...(row ? { row } : {}),
+      });
+    }
   }
 };
 

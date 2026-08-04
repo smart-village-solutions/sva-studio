@@ -1,0 +1,4 @@
+{
+  "prNumber": 918,
+  "body": "Inhaltshistorie in Plugins vereinheitlicht\n\n- Historienansichten zeigen erfolgreiche Änderungen aus dem Studio jetzt in allen bearbeitbaren Content-Plugins konsistent an.\n- Bei Mainserver-Inhalten weist die Ansicht transparent darauf hin, dass Änderungen außerhalb des Studios nicht vollständig erfasst werden.\n- Neue Content-Plugins werden nur registriert, wenn sie den verbindlichen Historienvertrag erfüllen oder eine zulässige Ausnahme deklarieren."
+}

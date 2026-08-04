@@ -4,7 +4,7 @@ import {
   poiAssetToUsage,
   poiMediaContentsToUsages,
   poiMediaUsagesToContents,
-} from './poi.content-media-adapter.js';
+} from '../src/poi.content-media-adapter.js';
 
 describe('POI content media adapter', () => {
   it('roundtrips supported Mainserver fields and preserves additional dimensions', () => {

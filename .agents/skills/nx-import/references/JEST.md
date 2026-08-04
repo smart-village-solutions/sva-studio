@@ -183,7 +183,7 @@ Nx rewrites `package.json` scripts during init. Test scripts get broken:
 }
 ```
 
-This creates `test-ci--src/lib/foo.spec.ts` targets for each test file, enabling Nx Cloud distribution. Not relevant during import, but useful for post-import CI setup.
+This creates `test-ci--src/lib/foo.spec.ts` targets for each test file. It is not relevant during import, but can be useful for local or provider-managed parallel CI execution.
 
 ---
 

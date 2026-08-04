@@ -218,26 +218,16 @@ Aktivierungskriterium:
 - blockierend nur solange die relevante Median-Mehrlast im CI-Pfad bei höchstens `2 Minuten` liegt
 - initialer lokaler Benchmark am `2. Juni 2026`: bestehender Runtime-Pfad `pnpm env:verify:db-schema-snapshot` ca. `10.82s`, dedizierter CI-Check gegen einen sauberen Migrationsstand ca. `18.07s`
 
-## Nx-Remote-Cache: sichere Aktivierung vorbereiten
+## Nx-Cache ohne Cloud-Kosten
 
-Für Team- und CI-weite Wiederverwendung von Nx-Artefakten ist Nx Cloud der vorgesehene Standard. Laut offizieller Nx-Dokumentation wird ein bestehendes Workspace-Repo per `nx connect` angebunden; dabei wird ein `nxCloudId` in `nx.json` hinterlegt und im Repository committed. Für produktive Setups empfiehlt Nx außerdem eine Ende-zu-Ende-Verschlüsselung über `NX_CLOUD_ENCRYPTION_KEY`.
+Der Workspace verwendet Nx ausschließlich lokal. `nx.json` verhindert mit `neverConnectToCloud: true` eine versehentliche Verbindung zu Nx Cloud; die gemeinsame GitHub-Action setzt zusätzlich `NX_NO_CLOUD=true`. Dadurch bleiben Projektgraph, `affected` und der lokale Task-Cache verfügbar, während CI-Läufe weder an Nx Cloud übertragen werden noch Credits verbrauchen.
 
-Empfohlene Reihenfolge:
+Verbindliche Regeln:
 
-1. Workspace mit Nx Cloud verbinden:
-   ```bash
-   pnpm nx connect
-   ```
-2. Den erzeugten `nxCloudId`-Patch nach `nx.json` übernehmen.
-3. In GitHub Actions ein Secret `NX_CLOUD_ENCRYPTION_KEY` anlegen.
-4. Das Secret in den relevanten Workflows als Environment-Variable durchreichen.
-5. Für echte Deploy-Artefakte den Cache bewusst umgehen, wenn ein Lauf ein produktiv ausgerolltes Artefakt erzeugt.
-
-Wichtig:
-
-- Keine DIY-Bucket- oder Shared-FS-Remote-Caches für PR-Schreibzugriffe einführen. Nx weist aktuell explizit auf Cache-Poisoning-Risiken bei self-hosted Bucket-Lösungen hin.
-- Solange kein `nxCloudId` vorliegt, bleibt das Repository absichtlich bei lokalem Cache plus `affected`.
-- Die Aktivierung ist ein kleiner, separater Follow-up, weil dafür ein echter Nx-Cloud-Workspace benötigt wird.
+- Keine `nxCloudId` und keinen `nxCloudAccessToken` im Repository hinterlegen.
+- `NX_NO_CLOUD=true` im gemeinsamen CI-Setup nicht entfernen.
+- `pnpm nx connect`, Nx Agents und `nx fix-ci` nicht in regulären Workflows verwenden.
+- Eine erneute Cloud-Anbindung benötigt eine separate Kosten-Nutzen-Bewertung und eine ausdrücklich freigegebene Änderung.
 
 ### Codecov-Schwellenwerte
 

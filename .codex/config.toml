@@ -30,10 +30,6 @@ SVA_STUDIO_MCP_CLIENT_SECRET_COMMAND = '["security","find-generic-password","-a"
 [features]
 multi_agent = true
 
-[agents.ci-monitor-subagent]
-description = "CI helper for /monitor-ci. Fetches CI status, retrieves fix details, or updates self-healing fixes. Executes one MCP tool call and returns the result."
-config_file = "agents/ci-monitor-subagent.toml"
-
 [agents.architecture]
 description = "Prüft Architekturentscheidungen und föderale IT-Konformität."
 config_file = ".codex/agents/architecture.toml"

@@ -55,7 +55,7 @@ describe('content media persistence', () => {
     })).toEqual([{ status: 'missing' }, { assetId: 'asset-2', status: 'synced' }]);
   });
 
-  it('does not relabel a synchronized item when an extra reference exists', () => {
+  it('preserves synchronized items and appends extra references', () => {
     expect(alignHostMediaReferencesByOrder({
       itemCount: 1,
       role: 'gallery_item',
@@ -63,7 +63,10 @@ describe('content media persistence', () => {
         { assetId: 'asset-1', role: 'gallery_item', sortOrder: 0 },
         { assetId: 'asset-extra', role: 'gallery_item', sortOrder: 1 },
       ],
-    })).toEqual([{ assetId: 'asset-1', status: 'synced' }]);
+    })).toEqual([
+      { assetId: 'asset-1', status: 'synced' },
+      { assetId: 'asset-extra', status: 'additional' },
+    ]);
   });
 
   it('surfaces an extra reference through an otherwise missing slot', () => {
@@ -71,6 +74,10 @@ describe('content media persistence', () => {
       itemCount: 2,
       role: 'gallery_item',
       references: [{ assetId: 'asset-extra', role: 'gallery_item', sortOrder: 2 }],
-    })).toEqual([{ status: 'missing' }, { status: 'additional' }]);
+    })).toEqual([
+      { status: 'missing' },
+      { status: 'missing' },
+      { assetId: 'asset-extra', status: 'additional' },
+    ]);
   });
 });

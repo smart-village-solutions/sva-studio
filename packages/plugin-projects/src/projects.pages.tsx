@@ -188,6 +188,7 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
   const mediaAssetsRef = React.useRef(mediaAssets);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
   const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(null);
+  const [retryCreatedContentId, setRetryCreatedContentId] = React.useState<string | null>(null);
   const sessionAccess = React.useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
   const mediaCapabilities = React.useMemo(() => resolveContentMediaCapabilities({ canEditContent: true, permissionActions: sessionAccess.permissionActions }), [sessionAccess.permissionActions]);
   const canSelectMedia = mediaCapabilities.canSelect;
@@ -249,21 +250,18 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
   React.useEffect(() => {
     if (mode !== 'edit' || !contentId) return;
     let active = true;
-    void Promise.all([
-      getProject(contentId),
-      listHostMediaReferencesByTarget({ fetch: globalThis.fetch.bind(globalThis), targetType: 'projects.project', targetId: contentId }),
-    ])
-      .then(
-        ([project, references]) => {
+    void getProject(contentId)
+      .then(async (project) => {
+          if (!active) return;
+          const references = await listHostMediaReferencesByTarget({ fetch: globalThis.fetch.bind(globalThis), targetType: 'projects.project', targetId: contentId }).catch(() => []);
           if (!active) return;
           setItem(project);
           form.reset(projectToFormValues(project));
           const alignments = alignHostMediaReferencesByOrder({ itemCount: project.images.length, role: 'gallery_item', references });
           setMediaUsages(projectImagesToMediaUsages(project.images, alignments));
           setRequiresReferenceSync(references.length > 0);
-        },
-        () => active && setLoadError(true)
-      )
+        })
+      .catch(() => active && setLoadError(true))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
@@ -275,6 +273,10 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
 
   const save = form.handleSubmit(
     async (values) => {
+      if (retryReferenceSync) {
+        setMutationError(pt('messages.mediaReferencePartialFailure'));
+        return;
+      }
       setMutationError(undefined);
       try {
         const input = normalizeProjectInput({
@@ -287,11 +289,13 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
           : { status: 'complete' as const, saved: await saveContent() };
         if (result.status === 'reference_failed') {
           setRetryReferenceSync(() => result.retryReferenceSync);
+          setRetryCreatedContentId(mode === 'create' ? result.saved.id : null);
           setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage));
           setMutationError(pt('messages.mediaReferencePartialFailure'));
           return;
         }
         setRetryReferenceSync(null);
+        setRetryCreatedContentId(null);
         if (requiresReferenceSync) {
           setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
         }
@@ -458,7 +462,7 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
           ) : null}
         </div>
       }
-      primaryAction={<Button type="submit" form={formId} disabled={form.formState.isSubmitting}>{pt(mode === 'create' ? 'actions.create' : 'actions.update')}</Button>}
+      primaryAction={<Button type="submit" form={formId} disabled={form.formState.isSubmitting || Boolean(retryReferenceSync)}>{pt(mode === 'create' ? 'actions.create' : 'actions.update')}</Button>}
     >
       <StudioMediaPickerOverlay
         assets={mediaAssets.map(toPickerSummary)} open={mediaPicker.open} mode={mediaPicker.mode}
@@ -485,8 +489,12 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
           <Button type="button" variant="outline" onClick={() => {
             void retryReferenceSync().then(() => {
               setRetryReferenceSync(null);
+              setRetryCreatedContentId(null);
               setMutationError(undefined);
               setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
+              if (retryCreatedContentId) {
+                void navigate({ to: '/admin/projects/$id', params: { id: retryCreatedContentId } });
+              }
             }, () => setMutationError(pt('messages.mediaReferencePartialFailure')));
           }}>{pt('actions.retryMediaReferences')}</Button>
         ) : null}

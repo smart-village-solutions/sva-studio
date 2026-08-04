@@ -57,19 +57,8 @@ export const alignHostMediaReferencesByOrder = (input: {
       ? { assetId: reference.assetId, status: 'synced' as const }
       : { status: 'missing' as const };
   });
-  if (relevant.some((reference, index) => (reference.sortOrder ?? index) >= input.itemCount)) {
-    let missingIndex = -1;
-    for (let index = alignments.length - 1; index >= 0; index -= 1) {
-      if (alignments[index]?.status === 'missing') {
-        missingIndex = index;
-        break;
-      }
-    }
-    return missingIndex < 0
-      ? alignments
-      : alignments.map((alignment, index) =>
-          index === missingIndex ? { ...alignment, status: 'additional' as const } : alignment
-        );
-  }
-  return alignments;
+  const additional = relevant
+    .filter((reference, index) => (reference.sortOrder ?? index) >= input.itemCount)
+    .map((reference) => ({ assetId: reference.assetId, status: 'additional' as const }));
+  return [...alignments, ...additional];
 };

@@ -192,6 +192,29 @@ describe('plugin registries', () => {
     );
   });
 
+  it('distinguishes a missing editable history contract from an invalid classification', () => {
+    const editablePlugin: PluginDefinition = {
+      ...newsPlugin,
+      contentHistory: { mode: 'none', reasonCode: 'selection_values_only' },
+      contentTypes: [
+        {
+          contentType: 'news.article',
+          displayName: 'Article',
+          studioContentType: {
+            requiredReadAction: 'news.read',
+            requiredCreateAction: 'news.create',
+            createPath: '/admin/news/new',
+            detailPath: '/admin/news/$id',
+          },
+        },
+      ],
+    };
+
+    expect(() => createPluginRegistry([editablePlugin])).toThrow(
+      'plugin_content_history_classification_invalid:news'
+    );
+  });
+
   it('accepts host, domain, and explicit non-history classifications', () => {
     expect(() =>
       createPluginRegistry([

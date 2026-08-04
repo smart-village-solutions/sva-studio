@@ -6,14 +6,15 @@ const state = vi.hoisted(() => ({
   insertHistory: vi.fn(),
   updateRevision: vi.fn(),
   emitCreated: vi.fn(),
+  emitUpdated: vi.fn(),
   validatePublicationWindow: vi.fn(),
   loadContentById: vi.fn(),
   updateContent: vi.fn(),
+  withInstanceScopedDb: vi.fn(),
 }));
 
 vi.mock('../iam-account-management/shared.js', () => ({
-  withInstanceScopedDb: (_instanceId: string, execute: (client: { query: typeof state.query }) => unknown) =>
-    execute({ query: state.query }),
+  withInstanceScopedDb: state.withInstanceScopedDb,
 }));
 
 vi.mock('./repository-shared.js', () => ({
@@ -22,6 +23,7 @@ vi.mock('./repository-shared.js', () => ({
 
 vi.mock('./repository-write-helpers.js', () => ({
   emitContentCreatedActivity: state.emitCreated,
+  emitExternalContentUpdatedActivity: state.emitUpdated,
   insertContentRow: state.insertContentRow,
   updateContentRevisionRefs: state.updateRevision,
   validatePublicationWindow: state.validatePublicationWindow,
@@ -62,6 +64,10 @@ const row = {
 describe('external content references', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    state.withInstanceScopedDb.mockImplementation(
+      (_instanceId: string, execute: (client: { query: typeof state.query }) => unknown) =>
+        execute({ query: state.query })
+    );
     state.insertContentRow.mockResolvedValue('content-1');
     state.insertHistory.mockResolvedValue('history-1');
   });
@@ -274,6 +280,73 @@ describe('external content references', () => {
     expect(state.query).toHaveBeenLastCalledWith(
       expect.stringContaining("SET source_entity_id = $3, reconciliation_status = 'bound'"),
       ['tenant-1', 'reference-1', 'external-1']
+    );
+  });
+
+  it('keeps the locked provider lookup on the transaction client', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [row] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'request-locked',
+      operation: 'create',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'GenericItem',
+      sourceEntityId: 'external-locked',
+      contentType: 'generic-items.generic-item',
+      title: 'Eintrag',
+      payload: { status: 'draft' },
+      status: 'draft',
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Redaktion',
+    });
+
+    expect(state.query).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('source_entity_id = $4'),
+      ['tenant-1', 'mainserver', 'GenericItem', 'external-locked']
+    );
+    expect(state.withInstanceScopedDb).toHaveBeenCalledTimes(2);
+  });
+
+  it('emits update audit semantics when the first bound provider operation is an update', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [row] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'request-update',
+      operation: 'update',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'GenericItem',
+      sourceEntityId: 'external-update',
+      contentType: 'generic-items.generic-item',
+      title: 'Eintrag',
+      payload: { status: 'published' },
+      status: 'published',
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Redaktion',
+    });
+
+    expect(state.emitCreated).not.toHaveBeenCalled();
+    expect(state.emitUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.query }),
+      expect.objectContaining({ mutationRef: 'request-update' }),
+      'content-1',
+      ['title', 'payload', 'status']
     );
   });
 

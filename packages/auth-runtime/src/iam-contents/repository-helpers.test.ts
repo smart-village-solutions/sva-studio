@@ -33,6 +33,7 @@ const {
   emitContentCreatedActivity,
   emitContentDeletedActivity,
   emitContentUpdatedActivity,
+  emitExternalContentUpdatedActivity,
   insertContentRow,
   resolveCreateAuthorDisplay,
   resolveUpdateAuthorDisplay,
@@ -415,6 +416,31 @@ describe('iam content repository helpers', () => {
           primitive_action: 'content.delete',
           domain_capability: 'content.manage',
           title: 'Titel',
+        }),
+      })
+    );
+  });
+
+  it('emits update audit semantics for a newly bound external content core', async () => {
+    const client = createClient();
+
+    await emitExternalContentUpdatedActivity(
+      client,
+      createCreateInput({ status: 'published' }),
+      'content-1',
+      ['title', 'payload', 'status']
+    );
+
+    expect(state.emitActivityLogMock).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        eventType: 'iam.content.updated',
+        payload: expect.objectContaining({
+          action: 'content.updatePayload',
+          primitive_action: 'content.updatePayload',
+          changed_fields: ['title', 'payload', 'status'],
+          next_status: 'published',
+          payload_change: 'payload_updated',
         }),
       })
     );

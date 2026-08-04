@@ -9,6 +9,7 @@ import {
 import { insertContentHistory } from './repository-shared.js';
 import {
   emitContentCreatedActivity,
+  emitExternalContentUpdatedActivity,
   insertContentRow,
   updateContentRevisionRefs,
 } from './repository-write-helpers.js';
@@ -60,21 +61,34 @@ const createBoundContent = async (
       `${input.sourceSystem}:${input.sourceEntityType}`,
       input.sourceEntityId,
     ]);
-    const concurrentReference = await loadExternalContentReferenceBySourceEntity(input);
-    if (concurrentReference) return { contentId: concurrentReference.contentId, created: false };
+    const concurrentReference = await client.query<{ readonly content_id: string }>(
+      `SELECT content_id::text
+       FROM iam.external_content_references
+       WHERE instance_id = $1 AND source_system = $2
+         AND source_entity_type = $3 AND source_entity_id = $4
+       LIMIT 1;`,
+      [input.instanceId, input.sourceSystem, input.sourceEntityType, input.sourceEntityId]
+    );
+    const concurrentContentId = concurrentReference.rows[0]?.content_id;
+    if (concurrentContentId) return { contentId: concurrentContentId, created: false };
 
     const contentId = await insertContentRow(client, input);
+    const changedFields = ['title', 'payload', 'status', ...(input.publishedAt ? ['publishedAt'] : [])];
     const historyId = await insertContentHistory(client, {
       ...input,
       contentId,
       action: input.operation === 'create' ? 'created' : 'updated',
-      changedFields: ['title', 'payload', 'status', ...(input.publishedAt ? ['publishedAt'] : [])],
+      changedFields,
       nextStatus: input.status,
       summary: input.operation === 'create' ? 'Inhalt erstellt' : 'Inhalt aktualisiert',
       snapshot: input.payload,
     });
     await updateContentRevisionRefs(client, input.instanceId, contentId, historyId);
-    await emitContentCreatedActivity(client, input, contentId);
+    if (input.operation === 'create') {
+      await emitContentCreatedActivity(client, input, contentId);
+    } else {
+      await emitExternalContentUpdatedActivity(client, input, contentId, changedFields);
+    }
     const reference = await insertExternalContentReference(client, {
       instanceId: input.instanceId,
       contentId,

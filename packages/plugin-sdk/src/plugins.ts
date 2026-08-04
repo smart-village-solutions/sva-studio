@@ -762,7 +762,7 @@ const assertPluginRegistryContentHistory = ({ plugin, pluginNamespace }: PluginR
   const hasEditableContent = (plugin.contentTypes ?? []).some((definition) => definition.studioContentType !== undefined);
   const contract = plugin.contentHistory;
 
-  if (hasEditableContent && contract?.mode !== 'host') {
+  if (hasEditableContent && !contract) {
     throw new Error(`plugin_content_history_binding_missing:${pluginNamespace}`);
   }
   if (!contract) {
@@ -776,14 +776,15 @@ const assertPluginRegistryContentHistory = ({ plugin, pluginNamespace }: PluginR
     `${pluginNamespace}.contentHistory`
   );
 
+  if (hasEditableContent && contract.mode !== 'host') {
+    throw new Error(`plugin_content_history_classification_invalid:${pluginNamespace}`);
+  }
+
   if (contract.mode === 'host' && contract.coverage !== 'studio_mutations') {
     throw new Error(`invalid_plugin_content_history_coverage:${pluginNamespace}`);
   }
   if (contract.mode === 'domain' && contract.reasonCode !== 'domain_history') {
     throw new Error(`invalid_plugin_content_history_reason:${pluginNamespace}`);
-  }
-  if (contract.mode === 'none' && hasEditableContent) {
-    throw new Error(`plugin_content_history_classification_invalid:${pluginNamespace}`);
   }
 };
 

@@ -38,6 +38,9 @@ describe('StudioContentHistory', () => {
 
     expect(screen.getByRole('note').textContent).toContain('Only changes made in Studio');
     await waitFor(() => expect(screen.queryByRole('table', { name: 'Content history' })).not.toBeNull());
+    for (const header of screen.getAllByRole('columnheader')) {
+      expect(header.getAttribute('scope')).toBe('col');
+    }
     expect(screen.getAllByRole('row')[1]?.textContent).toContain('UPDATED');
     expect(loadHistory).toHaveBeenCalledWith('content-1');
   });

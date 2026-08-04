@@ -522,7 +522,7 @@ describe('content core authorization', () => {
 
   it('resolves external mainserver identities before authorizing and loading history', async () => {
     const content = item('local-content-1', '11111111-1111-4111-8111-111111111111');
-    loadContentByIdMock.mockResolvedValueOnce(undefined).mockResolvedValueOnce(content);
+    loadContentByIdMock.mockResolvedValue(content);
     loadExternalContentReferenceBySourceEntityMock.mockResolvedValue({
       contentId: 'local-content-1',
     });
@@ -543,6 +543,8 @@ describe('content core authorization', () => {
       sourceEntityType: 'news.article',
       sourceEntityId: 'mainserver-news-1',
     });
+    expect(loadContentByIdMock).toHaveBeenCalledTimes(1);
+    expect(loadContentByIdMock).toHaveBeenCalledWith('instance-1', 'local-content-1');
     expect(loadContentHistoryMock).toHaveBeenCalledWith('instance-1', 'local-content-1');
   });
 

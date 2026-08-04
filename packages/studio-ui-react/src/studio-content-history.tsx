@@ -48,10 +48,10 @@ const HistoryTable = ({ entries, labels, formatAction, formatDate, formatField }
     <table className="min-w-full border-collapse text-sm" aria-label={labels.tableLabel}>
       <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
         <tr>
-          <th className="px-3 py-2">{labels.time}</th>
-          <th className="px-3 py-2">{labels.action}</th>
-          <th className="px-3 py-2">{labels.actor}</th>
-          <th className="px-3 py-2">{labels.summary}</th>
+          <th scope="col" className="px-3 py-2">{labels.time}</th>
+          <th scope="col" className="px-3 py-2">{labels.action}</th>
+          <th scope="col" className="px-3 py-2">{labels.actor}</th>
+          <th scope="col" className="px-3 py-2">{labels.summary}</th>
         </tr>
       </thead>
       <tbody>

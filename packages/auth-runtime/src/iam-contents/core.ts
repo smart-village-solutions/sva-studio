@@ -212,9 +212,9 @@ export const getContentHistoryInternal = async (
   }
 
   try {
-    let item = await loadContentById(actorResolution.actor.instanceId, contentId);
     const requestedContentType = new URL(request.url).searchParams.get('contentType')?.trim();
-    if (!item && requestedContentType) {
+    let item;
+    if (requestedContentType) {
       const reference = await loadExternalContentReferenceBySourceEntity({
         instanceId: actorResolution.actor.instanceId,
         sourceSystem: 'mainserver',
@@ -225,6 +225,7 @@ export const getContentHistoryInternal = async (
         item = await loadContentById(actorResolution.actor.instanceId, reference.contentId);
       }
     }
+    item ??= await loadContentById(actorResolution.actor.instanceId, contentId);
     if (!item) {
       return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actorResolution.actor.requestId);
     }

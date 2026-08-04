@@ -30,6 +30,7 @@ const state = vi.hoisted(() => ({
   getSvaMainserverEvent: vi.fn(),
   getSvaMainserverGenericItem: vi.fn(),
   getSvaMainserverPoi: vi.fn(),
+  getSvaMainserverSurvey: vi.fn(),
   listSvaMainserverNews: vi.fn(),
   listSvaMainserverEvents: vi.fn(),
   listSvaMainserverGenericItems: vi.fn(),
@@ -96,6 +97,7 @@ vi.mock('@sva/sva-mainserver/server', () => ({
   getSvaMainserverEvent: state.getSvaMainserverEvent,
   getSvaMainserverGenericItem: state.getSvaMainserverGenericItem,
   getSvaMainserverPoi: state.getSvaMainserverPoi,
+  getSvaMainserverSurvey: state.getSvaMainserverSurvey,
   listSvaMainserverNews: state.listSvaMainserverNews,
   listSvaMainserverEvents: state.listSvaMainserverEvents,
   listSvaMainserverGenericItems: state.listSvaMainserverGenericItems,
@@ -2680,6 +2682,54 @@ describe('content list projection', () => {
     );
   });
 
+  it('records survey mutations through the targeted projection loader', async () => {
+    state.getSvaMainserverSurvey.mockResolvedValue({
+      id: 'survey-mutation-1',
+      contentType: 'surveys.survey',
+      title: { de: 'Mutation Umfrage' },
+      status: 'ACTIVE',
+      resultVisibility: 'NONE',
+      targetAreaIds: [],
+      showResultsInApp: false,
+      isAnonymous: true,
+      questions: [],
+      questionCount: 0,
+      participationCount: 0,
+      submissionCount: 0,
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    });
+
+    await refreshProjectedContentsForMainserverMutation({
+      contentType: 'surveys.survey',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'survey-mutation-ref',
+      organizationId: 'org-1',
+      operation: 'update',
+      entityId: 'survey-mutation-1',
+    });
+
+    expect(state.getSvaMainserverSurvey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activeOrganizationId: 'org-1',
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+        surveyId: 'survey-mutation-1',
+      })
+    );
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentType: 'surveys.survey',
+        mutationRef: 'survey-mutation-ref',
+        operation: 'update',
+        sourceEntityId: 'survey-mutation-1',
+      })
+    );
+  });
+
   it('keeps user-scoped mainserver mutation refreshes bound to the actor account', async () => {
     state.getSvaMainserverPoi.mockResolvedValue({
       id: 'poi-user-1',
@@ -2985,33 +3035,6 @@ describe('content list projection', () => {
         source_entity_id: 'generic-keep-1',
       }),
     ]);
-  });
-
-  it('falls back to the broad projection refresh for unsupported targeted mutation types', async () => {
-    state.listSvaMainserverSurveys.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-
-    await refreshProjectedContentsForMainserverMutation({
-      contentType: 'surveys.survey',
-      instanceId: 'de-musterhausen',
-      keycloakSubject: 'kc-user-1',
-      actorAccountId: 'account-1',
-      organizationId: 'org-1',
-      operation: 'update',
-      entityId: 'survey-1',
-    });
-
-    expect(state.listSvaMainserverSurveys).toHaveBeenCalledWith(
-      expect.objectContaining({
-        includeArchived: true,
-        instanceId: 'de-musterhausen',
-        keycloakSubject: 'kc-user-1',
-        page: 1,
-        pageSize: 100,
-      })
-    );
   });
 
   it('removes only the targeted mainserver projection row after delete mutations', async () => {

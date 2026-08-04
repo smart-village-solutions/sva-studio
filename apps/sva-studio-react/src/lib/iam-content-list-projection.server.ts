@@ -18,6 +18,7 @@ import {
   getSvaMainserverGenericItem,
   getSvaMainserverNews,
   getSvaMainserverPoi,
+  getSvaMainserverSurvey,
   listSvaMainserverProjection,
   listSvaMainserverEvents,
   listSvaMainserverGenericItems,
@@ -155,7 +156,8 @@ type TargetedMutationContentType =
   | 'poi.point-of-interest'
   | 'generic-items.generic-item'
   | 'faq.faq'
-  | 'cockpit-cards.cockpit-card';
+  | 'cockpit-cards.cockpit-card'
+  | 'surveys.survey';
 type ProjectionRefreshTrigger =
   | 'manual'
   | 'mutation_follow_up'
@@ -2075,6 +2077,21 @@ const mainserverMutationProjectionLoaders: Record<
       ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
       credentialSource,
       sourceEntityType: 'poi.point-of-interest',
+      sourceEntityId: item.id,
+    };
+  },
+  'surveys.survey': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
+    const item = await getSvaMainserverSurvey({
+      activeOrganizationId: target.organizationId,
+      instanceId: target.instanceId,
+      keycloakSubject: target.keycloakSubject,
+      surveyId: entityId,
+    });
+    return {
+      ...mapSurveyItem(item, target.instanceId, []),
+      ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+      credentialSource,
+      sourceEntityType: 'surveys.survey',
       sourceEntityId: item.id,
     };
   },

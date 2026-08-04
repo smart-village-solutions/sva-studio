@@ -416,10 +416,12 @@ describe('cockpit cards pages', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
     expect(await screen.findByText('messages.validationError')).toBeTruthy();
     expect(
-      screen.getByRole('tab', { name: 'tabs.content.label' }).getAttribute('aria-selected')
+      screen.getByRole('tab', { name: 'tabs.basis.label' }).getAttribute('aria-selected')
     ).toBe('true');
     fireEvent.change(screen.getByLabelText('fields.heading'), { target: { value: 'Kachel' } });
     fireEvent.change(screen.getByLabelText('fields.category'), { target: { value: 'Startseite' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
+    fireEvent.change(screen.getByLabelText('fields.text'), { target: { value: '<b>Kachel</b>' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
     await waitFor(() =>
       expect(

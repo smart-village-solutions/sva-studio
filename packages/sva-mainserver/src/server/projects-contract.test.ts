@@ -76,6 +76,28 @@ describe('projects contract', () => {
     expect(invalid).toBeInstanceOf(Response);
   });
 
+  it('accepts empty optional language and text fields', async () => {
+    const parsed = await parseProjectInput(
+      new Request('https://studio.test/api/v1/mainserver/projects', {
+        method: 'POST',
+        body: JSON.stringify({ ...project, language: '', description: '', fullText: '', images: [] }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    expect(parsed).toEqual({
+      ...project,
+      language: '',
+      title: 'Projekt',
+      description: '',
+      fullText: '',
+      images: [],
+    });
+    expect(
+      mergeProjectIntoGenericItem({ project: parsed as typeof project })
+    ).toEqual(expect.objectContaining({ teaser: '', contentBlocks: [], mediaContents: [] }));
+  });
+
   it('rejects derived and unknown mutation fields', async () => {
     const response = await parseProjectInput(
       new Request('https://studio.test/api/v1/mainserver/projects', {

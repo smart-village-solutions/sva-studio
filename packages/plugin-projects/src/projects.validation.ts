@@ -27,10 +27,10 @@ export const projectAuthorSchema = z.discriminatedUnion('type', [
 
 export const projectFormSchema = z
   .object({
-    language: requiredText('Sprache ist erforderlich.'),
+    language: z.string().trim(),
     title: requiredText('Titel ist erforderlich.'),
-    description: requiredText('Kurzbeschreibung ist erforderlich.'),
-    fullText: requiredText('Text ist erforderlich.'),
+    description: z.string().trim(),
+    fullText: z.string().trim(),
     images: z.array(projectImageSchema),
     status: z.enum(projectStatuses),
     author: projectAuthorSchema,

@@ -205,6 +205,15 @@
       }
     }
 
+    @keyframes validation-error-pulse {
+      0%, 100% {
+        box-shadow: 0 0 0 3px rgb(var(--destructive) / 0.2);
+      }
+      50% {
+        box-shadow: 0 0 0 6px rgb(var(--destructive) / 0.34);
+      }
+    }
+
     /* 5. Skeleton-Shimmer: Gradient-Animation von links nach rechts */
     @keyframes skeleton-shimmer {
       0% {
@@ -311,6 +320,16 @@
       animation: input-glow 200ms ease-out forwards;
     }
 
+    :where(
+      input:not([type='checkbox']):not([type='radio']),
+      textarea,
+      select,
+      [role='textbox'],
+      [role='combobox']
+    )[aria-invalid='true'] {
+      animation: validation-error-pulse 520ms ease-out 5;
+    }
+
     .animate-skeleton {
       background: linear-gradient(
         90deg,
@@ -362,6 +381,17 @@
     .field-group:has(input:focus-visible, textarea:focus-visible, [role='combobox']:focus-visible) .animate-label-float {
       animation: label-float 150ms ease-out forwards;
     }
+  }
+
+  :where(
+    input:not([type='checkbox']):not([type='radio']),
+    textarea,
+    select,
+    [role='textbox'],
+    [role='combobox']
+  )[aria-invalid='true'] {
+    border-color: rgb(var(--destructive));
+    box-shadow: 0 0 0 3px rgb(var(--destructive) / 0.2);
   }
 
   /* Fallback für prefers-reduced-motion: nur transition, kein animation */

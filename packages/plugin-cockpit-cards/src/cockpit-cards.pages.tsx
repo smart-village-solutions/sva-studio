@@ -323,7 +323,7 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
       ? { field: 'cockpit-card-category', message: pt('validation.required') }
       : null,
     form.formState.errors.text
-      ? { field: 'cockpit-card-text', message: pt('validation.required') }
+      ? { field: 'cockpit-card-text', message: pt('validation.plainText') }
       : null,
     form.formState.errors.images
       ? { field: 'cockpit-card-image-0', message: pt('validation.images') }

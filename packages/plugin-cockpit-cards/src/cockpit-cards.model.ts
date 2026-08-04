@@ -28,12 +28,14 @@ export const cockpitCardFormSchema = z.object({
   text: z
     .string()
     .trim()
-    .min(1)
     .refine((value) => !htmlTagPattern.test(value), 'html_not_allowed'),
-  languageCode: z.string().trim().regex(languageCodePattern, 'invalid_language_code'),
+  languageCode: z.string().trim().refine(
+    (value) => value.length === 0 || languageCodePattern.test(value),
+    'invalid_language_code'
+  ),
   sortWeight: z.number().int().finite(),
   category: z.string().trim().min(1),
-  images: z.array(imageSchema).min(1),
+  images: z.array(imageSchema),
   link: z.string().trim().url().startsWith('https://').optional().or(z.literal('')),
   visible: z.boolean(),
   publicationDate: z.string().trim().min(1).optional().or(z.literal('')),
@@ -92,7 +94,7 @@ export const mapCockpitCardFormValuesToGenericItemInput = (
   return {
     title: parsed.heading,
     genericType: COCKPIT_CARD_GENERIC_TYPE,
-    contentBlocks: [{ body: parsed.text }],
+    contentBlocks: parsed.text ? [{ body: parsed.text }] : [],
     payload: {
       ...toPayloadRecord(existingPayload),
       languageCode: normalizeLanguageCode(parsed.languageCode),

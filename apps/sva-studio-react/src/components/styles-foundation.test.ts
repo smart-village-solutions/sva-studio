@@ -44,4 +44,10 @@ describe('styles foundation tokens', () => {
     expect(stylesSource).toContain('--radius-card: 8px;');
     expect(stylesSource).toContain('--radius-modal: 12px;');
   });
+
+  it('marks invalid form controls and pulses the error shadow exactly five times', () => {
+    expect(stylesSource).toContain("[aria-invalid='true']");
+    expect(stylesSource).toContain('border-color: rgb(var(--destructive));');
+    expect(stylesSource).toContain('animation: validation-error-pulse 520ms ease-out 5;');
+  });
 });

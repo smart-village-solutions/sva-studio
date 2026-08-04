@@ -20,19 +20,25 @@ Das System MUST Cockpit Cards als eigenständigen Content-Type `cockpit-cards.co
 
 ### Requirement: Cockpit Cards besitzen ein begrenztes Fachmodell
 
-Das System MUST Überschrift, Nur-Text, Sprachcode, genau eine bestehende Kategorie, ein oder mehrere Bilder, höchstens einen HTTPS-Link, Sortiergewicht, Sichtbarkeit und Veröffentlichungszeitpunkt bearbeiten. Überschrift, Text, Sprachcode, Kategorie und mindestens ein Bild MUST Pflichtfelder sein. Andere GenericItem-Bereiche MUST verborgen bleiben.
+Das System MUST Überschrift, optionalen Nur-Text, optionalen Sprachcode, genau eine bestehende Kategorie, null oder mehr Bilder, höchstens einen HTTPS-Link, Sortiergewicht, Sichtbarkeit und Veröffentlichungszeitpunkt bearbeiten. Ausschließlich Überschrift und Kategorie MUST fachliche Pflichtfelder sein. Andere GenericItem-Bereiche MUST verborgen bleiben.
 
-#### Scenario: Vollständige Cockpit Card wird gespeichert
+#### Scenario: Cockpit Card mit optionalen Inhalten wird gespeichert
 
-- **WHEN** ein Benutzer alle Pflichtfelder, mehrere gültige Bilder und optional einen HTTPS-Link speichert
-- **THEN** persistiert das System Überschrift in `title`, Text als alleinigen Content-Block, Kategorie in `categories`, Bilder in `mediaContents` und den Link in `webUrls`
+- **WHEN** ein Benutzer Überschrift und Kategorie sowie optional Text, Sprache, gültige Bilder und einen HTTPS-Link speichert
+- **THEN** persistiert das System Überschrift in `title`, Kategorie in `categories`, vorhandenen Text als alleinigen Content-Block, Bilder in `mediaContents` und den Link in `webUrls`
 - **AND** erhält es unbekannte bestehende Payload-Schlüssel
 
 #### Scenario: Ungültige Kardinalität wird abgewiesen
 
-- **WHEN** keine oder mehrere Kategorien, kein Bild oder mehrere Links übermittelt werden
+- **WHEN** keine oder mehrere Kategorien oder mehrere Links übermittelt werden
 - **THEN** weist das System die Speicherung feldbezogen ab
 - **AND** verändert keinen bestehenden Datensatz
+
+#### Scenario: Optionale Inhalte bleiben leer
+
+- **WHEN** weder Text noch Sprache noch Bilder übermittelt werden
+- **THEN** speichert das System die Cockpit Card ohne Content-Block und ohne Medien
+- **AND** überlässt die sprachliche Standardabbildung dem konsumierenden Frontend
 
 #### Scenario: Fachfremde Inhalte werden abgewiesen
 

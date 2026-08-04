@@ -38,7 +38,7 @@ describe('project model', () => {
     ]);
   });
 
-  it('rejects missing required fields and incomplete image metadata', () => {
+  it('accepts optional language and text fields while rejecting required identity and image metadata', () => {
     const result = projectFormSchema.safeParse({
       language: '',
       title: '',
@@ -49,6 +49,17 @@ describe('project model', () => {
       author: { type: 'person', id: '', displayName: '' },
     });
     expect(result.success).toBe(false);
+    expect(
+      projectFormSchema.safeParse({
+        language: '',
+        title: 'Projekt',
+        description: '',
+        fullText: '',
+        images: [],
+        status: 'draft',
+        author: { type: 'organization', id: 'org-1', displayName: 'Gemeinde' },
+      }).success
+    ).toBe(true);
   });
 
   it('rejects non-contiguous input positions', () => {

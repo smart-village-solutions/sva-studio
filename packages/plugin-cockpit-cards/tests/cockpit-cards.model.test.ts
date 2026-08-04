@@ -63,7 +63,6 @@ describe('cockpit card model', () => {
 
   it.each([
     [{ ...values, category: '' }, 'category'],
-    [{ ...values, images: [] }, 'images'],
     [{ ...values, text: '<p>Markup</p>' }, 'text'],
     [{ ...values, link: 'http://example.test' }, 'link'],
   ])('rejects invalid constrained values', (invalid, path) => {
@@ -73,6 +72,23 @@ describe('cockpit card model', () => {
     } catch (error) {
       expect(JSON.stringify(error)).toContain(path);
     }
+  });
+
+  it('maps optional text, language and images without placeholder content', () => {
+    expect(
+      mapCockpitCardFormValuesToGenericItemInput({
+        ...values,
+        text: '',
+        languageCode: '',
+        images: [],
+      })
+    ).toEqual(
+      expect.objectContaining({
+        contentBlocks: [],
+        payload: { languageCode: '', sortWeight: 2 },
+        mediaContents: [],
+      })
+    );
   });
 
   it('uses safe defaults for malformed payloads and missing optional GenericItem fields', () => {

@@ -84,6 +84,26 @@ describe('news.editor-model', () => {
     ).toBe('Block Headline');
   });
 
+  it('normalizes sparse legacy content and media fields to editor defaults', () => {
+    const values = createNewsEditorFormValues({
+      ...newsItemFixture,
+      title: '',
+      author: undefined,
+      categories: [],
+      sourceUrl: undefined,
+      contentBlocks: [{ mediaContents: [{ sourceUrl: undefined }] }],
+    });
+
+    expect(values).toMatchObject({
+      title: '',
+      author: '',
+      contentTeaser: '',
+      contentBody: '',
+      sourceUrl: { url: '', description: '' },
+      contentMedia: [{ captionText: '', copyright: '', contentType: 'image', height: '', width: '', sourceUrl: { url: '', description: '' } }],
+    });
+  });
+
   it('derives draft, scheduled, and published from visible and publishedAt', () => {
     expect(
       deriveNewsEditorialStatus({ visible: false, publishedAt: '2026-06-09T09:00:00.000Z' }, '2026-06-09T10:00:00.000Z')
@@ -112,6 +132,16 @@ describe('news.editor-model', () => {
       pointOfInterestId: 'poi-7',
       keywords: 'Rathaus, Termin',
     });
+  });
+
+  it('omits blank legacy character limits from update payloads', () => {
+    const payload = buildNewsSavePayload(
+      editorValuesFixture,
+      { ...editorValuesFixture.__legacySnapshot, charactersToBeShown: ' ' },
+      '2026-06-09T10:00:00.000Z'
+    ).mutation;
+
+    expect(payload).not.toHaveProperty('charactersToBeShown');
   });
 
   it('preserves the original publishedAt when editing an already published item in immediate mode', () => {

@@ -448,6 +448,11 @@ describe('EventsDetailPage', () => {
     }));
     render(<EventsDetailPage mode="edit" contentId="event-1" />);
     await screen.findByDisplayValue('Stadtfest');
+    vi.mocked(getHostMediaAsset).mockResolvedValueOnce({ metadata: {} } as never);
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    fireEvent.click(screen.getByRole('button', { name: 'events.media.refresh' }));
+    await screen.findByText('events.media.refreshTitle');
+    fireEvent.click(screen.getByRole('button', { name: 'events.actions.cancel' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
     await screen.findByText('events.messages.mediaReferencePartialFailure');
     fireEvent.click(screen.getByRole('button', { name: 'events.actions.retryMediaReferences' }));

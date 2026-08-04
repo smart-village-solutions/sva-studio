@@ -839,6 +839,11 @@ describe('PoiDetailPage', () => {
     }));
     render(<PoiDetailPage mode="edit" contentId="poi-1" />);
     await screen.findByDisplayValue('Rathaus');
+    vi.mocked(getHostMediaAsset).mockResolvedValueOnce({ metadata: {} } as never);
+    switchSection('content');
+    fireEvent.click(screen.getByRole('button', { name: 'poi.messages.mediaRefreshMetadata' }));
+    await screen.findByText('poi.messages.mediaRefreshTitle');
+    fireEvent.click(screen.getByRole('button', { name: 'poi.actions.back' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
     await screen.findByText('poi.messages.mediaReferencePartialFailure');
     fireEvent.click(screen.getByRole('button', { name: 'poi.messages.mediaReferenceRetry' }));

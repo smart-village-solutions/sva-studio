@@ -1,0 +1,4 @@
+{
+  "prNumber": 913,
+  "body": "Nx Cloud deaktiviert\n\n- Die CI verwendet weiterhin Nx mit Projektgraph, betroffenen Projekten und lokalem Cache, überträgt jedoch keine Läufe mehr an Nx Cloud.\n- Nicht mehr nutzbare Nx-Cloud-Monitoring-Skills und -Agents wurden entfernt."
+}

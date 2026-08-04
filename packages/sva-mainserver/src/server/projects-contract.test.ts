@@ -76,6 +76,38 @@ describe('projects contract', () => {
     expect(invalid).toBeInstanceOf(Response);
   });
 
+  it('accepts empty optional language and text fields', async () => {
+    const parsed = await parseProjectInput(
+      new Request('https://studio.test/api/v1/mainserver/projects', {
+        method: 'POST',
+        body: JSON.stringify({ ...project, language: '', description: '', fullText: '', images: [] }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    expect(parsed).toEqual({
+      ...project,
+      language: '',
+      title: 'Projekt',
+      description: '',
+      fullText: '',
+      images: [],
+    });
+    expect(
+      mergeProjectIntoGenericItem({ project: parsed as typeof project })
+    ).toEqual(expect.objectContaining({ teaser: '', contentBlocks: [], mediaContents: [] }));
+  });
+
+  it('defaults omitted optional language and text fields', async () => {
+    const { language: _language, description: _description, fullText: _fullText, ...required } = project;
+    const parsed = await parseProjectInput(
+      new Request('https://studio.test/api/v1/mainserver/projects', {
+        method: 'POST', body: JSON.stringify(required), headers: { 'Content-Type': 'application/json' },
+      })
+    );
+    expect(parsed).toEqual({ ...required, title: 'Projekt', language: '', description: '', fullText: '' });
+  });
+
   it('rejects derived and unknown mutation fields', async () => {
     const response = await parseProjectInput(
       new Request('https://studio.test/api/v1/mainserver/projects', {
@@ -133,6 +165,30 @@ describe('projects contract', () => {
       { id: 'block-1', title: 'Verborgener Titel', body: '<p>Text</p>', mediaContents: [] },
       { id: 'block-2', body: 'Verborgener Block', mediaContents: [] },
     ]);
+  });
+
+  it('keeps cleared project text empty while preserving hidden remaining blocks', () => {
+    const merged = mergeProjectIntoGenericItem({
+      project: { ...project, description: '', fullText: '<p></p>' },
+      existing,
+    });
+    expect(merged.teaser).toBe('');
+    expect(merged.contentBlocks).toEqual([
+      { id: 'block-1', title: 'Verborgener Titel', body: '', mediaContents: [] },
+      { id: 'block-2', body: 'Verborgener Block', mediaContents: [] },
+    ]);
+    expect(
+      mapGenericItemToProject({
+        item: { ...existing, teaser: merged.teaser, contentBlocks: merged.contentBlocks ?? [] },
+        core: {
+          id: 'local-1', contentType: 'projects.project', instanceId: 'tenant-1', organizationId: 'org-1',
+          ownerOrganizationId: 'org-1', title: 'Projekt', createdAt: '2026-01-01T00:00:00.000Z',
+          createdBy: 'account-1', updatedAt: '2026-01-02T00:00:00.000Z', updatedBy: 'account-1',
+          authorDisplayMode: 'organization', author: 'Gemeinde', payload: {}, status: 'draft',
+          validationState: 'valid', historyRef: 'history-1',
+        },
+      }).fullText
+    ).toBe('');
   });
 
   it('returns the exact FeaturedProject response without technical type fields', () => {

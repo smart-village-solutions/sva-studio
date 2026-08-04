@@ -4,6 +4,7 @@ import type { SvaMainserverGenericItemInput } from '../types.js';
 import {
   mergeCockpitCardPayload,
   validateCockpitCardItemOrResponse,
+  validateCockpitCardWriteOrResponse,
 } from './generic-items-route-cockpit-cards.js';
 
 const validItem: SvaMainserverGenericItemInput = {
@@ -21,12 +22,21 @@ const validItem: SvaMainserverGenericItemInput = {
 describe('cockpit card route validation', () => {
   it('accepts the constrained GenericItem representation', () => {
     expect(validateCockpitCardItemOrResponse(validItem)).toBeNull();
+    expect(
+      validateCockpitCardItemOrResponse({
+        ...validItem,
+        contentBlocks: [],
+        payload: { sortWeight: 0 },
+        mediaContents: [],
+      })
+    ).toBeNull();
   });
 
   it.each([
-    [{ ...validItem, contentBlocks: [] }, 'Text'],
     [{ ...validItem, contentBlocks: [{ body: 'Text' }, { body: 'Mehr' }] }, 'Text'],
-    [{ ...validItem, payload: {} }, 'Sprachcode'],
+    [{ ...validItem, contentBlocks: [{ body: '' }] }, 'nicht leeren Text'],
+    [{ ...validItem, contentBlocks: [{ title: 'Versteckt' }] }, 'nicht leeren Text'],
+    [{ ...validItem, contentBlocks: [{ body: 'Text', title: 'Versteckt' }] }, 'nicht leeren Text'],
     [{ ...validItem, payload: { languageCode: 'invalid!', sortWeight: 0 } }, 'Sprachcode'],
     [{ ...validItem, payload: { languageCode: 'de', sortWeight: '0' } }, 'Sortiergewicht'],
     [{ ...validItem, payload: { languageCode: 'de', sortWeight: 1.5 } }, 'Sortiergewicht'],
@@ -34,7 +44,6 @@ describe('cockpit card route validation', () => {
     [{ ...validItem, categories: [] }, 'Kategorie'],
     [{ ...validItem, categories: [{ name: ' ' }] }, 'Kategorie'],
     [{ ...validItem, categories: [{ name: 'A' }, { name: 'B' }] }, 'Kategorie'],
-    [{ ...validItem, mediaContents: [] }, 'Bild'],
     [{ ...validItem, mediaContents: [{ sourceUrl: { url: 'https://example.test/image.jpg' }, contentType: 'video' }] }, 'Bild'],
     [{ ...validItem, mediaContents: [{ sourceUrl: { url: 'http://example.test/image.jpg' }, contentType: 'image' }] }, 'Bild'],
     [{ ...validItem, webUrls: [{ url: 'https://one.test' }, { url: 'https://two.test' }] }, 'Link'],
@@ -59,5 +68,31 @@ describe('cockpit card route validation', () => {
       )
     ).toEqual({ legacy: true, languageCode: 'de', sortWeight: 2 });
     expect(mergeCockpitCardPayload([], null)).toEqual({});
+  });
+
+  it('normalizes omitted optional fields to explicit clearing values', async () => {
+    const result = await validateCockpitCardWriteOrResponse(
+      new Request('https://studio.test/api/v1/mainserver/generic-items/card-1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: validItem.title,
+          genericType: validItem.genericType,
+          payload: { sortWeight: 0 },
+          categoryName: validItem.categoryName,
+          categories: validItem.categories,
+          visible: true,
+        }),
+      })
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        contentBlocks: [],
+        mediaContents: [],
+        webUrls: [],
+        payload: { languageCode: '', sortWeight: 0 },
+      })
+    );
   });
 });

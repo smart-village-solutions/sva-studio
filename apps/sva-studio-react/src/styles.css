@@ -205,6 +205,15 @@
       }
     }
 
+    @keyframes validation-error-pulse {
+      0%, 100% {
+        box-shadow: 0 0 0 3px rgb(var(--destructive) / 0.2);
+      }
+      50% {
+        box-shadow: 0 0 0 6px rgb(var(--destructive) / 0.34);
+      }
+    }
+
     /* 5. Skeleton-Shimmer: Gradient-Animation von links nach rechts */
     @keyframes skeleton-shimmer {
       0% {
@@ -370,6 +379,31 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  :where(
+    input:not([type='checkbox']):not([type='radio']),
+    textarea,
+    select,
+    [role='textbox'],
+    [role='combobox']
+  )[aria-invalid='true'] {
+    border-color: rgb(var(--destructive));
+    box-shadow: 0 0 0 3px rgb(var(--destructive) / 0.2);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    :where(
+      input:not([type='checkbox']):not([type='radio']),
+      textarea,
+      select,
+      [role='textbox'],
+      [role='combobox']
+    )[aria-invalid='true'] {
+      animation: validation-error-pulse 520ms ease-out 5;
     }
   }
 }

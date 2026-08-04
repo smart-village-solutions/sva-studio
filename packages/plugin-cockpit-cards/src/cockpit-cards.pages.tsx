@@ -137,7 +137,7 @@ function ContentFields({
     <div className="space-y-5">
       <StudioDetailCard title={pt('fields.text')}>
         <StudioField id="cockpit-card-text" label={pt('fields.text')}>
-          <Textarea id="cockpit-card-text" className="min-h-32" {...form.register('text')} />
+          <Textarea id="cockpit-card-text" className="min-h-32" aria-invalid={Boolean(form.formState.errors.text)} {...form.register('text')} />
         </StudioField>
       </StudioDetailCard>
       <StudioDetailCard title={pt('fields.images')}>
@@ -323,7 +323,7 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
       ? { field: 'cockpit-card-category', message: pt('validation.required') }
       : null,
     form.formState.errors.text
-      ? { field: 'cockpit-card-text', message: pt('validation.required') }
+      ? { field: 'cockpit-card-text', message: pt('validation.plainText') }
       : null,
     form.formState.errors.images
       ? { field: 'cockpit-card-image-0', message: pt('validation.images') }
@@ -346,14 +346,15 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
       panel: (
         <div className="space-y-4">
           <StudioField id="cockpit-card-heading" label={pt('fields.heading')}>
-            <Input id="cockpit-card-heading" {...form.register('heading')} />
+            <Input id="cockpit-card-heading" aria-invalid={Boolean(form.formState.errors.heading)} {...form.register('heading')} />
           </StudioField>
           <StudioField id="cockpit-card-language" label={pt('fields.languageCode')}>
-            <Input id="cockpit-card-language" {...form.register('languageCode')} />
+            <Input id="cockpit-card-language" aria-invalid={Boolean(form.formState.errors.languageCode)} {...form.register('languageCode')} />
           </StudioField>
           <StudioField id="cockpit-card-category" label={pt('fields.category')}>
             <Select
               id="cockpit-card-category"
+              aria-invalid={Boolean(form.formState.errors.category)}
               disabled={categoriesState === 'loading'}
               {...form.register('category')}
             >
@@ -399,7 +400,7 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
         <div className="space-y-4">
           <StudioDetailCard title={pt('fields.link')}>
             <StudioField id="cockpit-card-link" label={pt('fields.link')}>
-              <Input id="cockpit-card-link" type="url" {...form.register('link')} />
+              <Input id="cockpit-card-link" type="url" aria-invalid={Boolean(form.formState.errors.link)} {...form.register('link')} />
             </StudioField>
           </StudioDetailCard>
           <StudioField id="cockpit-card-publication" label={pt('fields.publicationDate')}>
@@ -409,6 +410,7 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
             <Input
               id="cockpit-card-weight"
               type="number"
+              aria-invalid={Boolean(form.formState.errors.sortWeight)}
               {...form.register('sortWeight', { valueAsNumber: true })}
             />
           </StudioField>

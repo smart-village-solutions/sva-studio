@@ -63,7 +63,6 @@ describe('cockpit card model', () => {
 
   it.each([
     [{ ...values, category: '' }, 'category'],
-    [{ ...values, images: [] }, 'images'],
     [{ ...values, text: '<p>Markup</p>' }, 'text'],
     [{ ...values, link: 'http://example.test' }, 'link'],
   ])('rejects invalid constrained values', (invalid, path) => {
@@ -73,6 +72,24 @@ describe('cockpit card model', () => {
     } catch (error) {
       expect(JSON.stringify(error)).toContain(path);
     }
+  });
+
+  it('maps optional text, language and images without placeholder content', () => {
+    expect(
+      mapCockpitCardFormValuesToGenericItemInput({
+        ...values,
+        text: '',
+        languageCode: '',
+        images: [],
+      })
+    ).toEqual(
+      expect.objectContaining({
+        contentBlocks: [],
+        payload: { languageCode: '', sortWeight: 2 },
+        mediaContents: [],
+      })
+    );
+    expect(readCockpitCardPayload({ languageCode: '', sortWeight: 2 })).toEqual({ languageCode: '', sortWeight: 2 });
   });
 
   it('uses safe defaults for malformed payloads and missing optional GenericItem fields', () => {
@@ -119,5 +136,6 @@ describe('cockpit card model', () => {
     expect(compareCockpitCardRecords(makeRecord('1', 'A', 'de', 1), makeRecord('2', 'A', 'de', 2))).toBeLessThan(0);
     expect(compareCockpitCardRecords(makeRecord('1', 'A2', 'de', 1), makeRecord('2', 'A10', 'de', 1))).toBeLessThan(0);
     expect(compareCockpitCardRecords(makeRecord('1', 'A', 'de', 1), makeRecord('2', 'A', 'de', 1))).toBeLessThan(0);
+    expect(compareCockpitCardRecords(makeRecord('1', 'A', '', 1), makeRecord('2', 'B', '', 1))).toBeLessThan(0);
   });
 });

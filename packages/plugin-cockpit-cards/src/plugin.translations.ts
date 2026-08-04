@@ -110,8 +110,9 @@ export const pluginCockpitCardsTranslations = {
       validation: {
         summaryTitle: 'Bitte prüfe folgende Felder:',
         required: 'Dieses Feld ist erforderlich.',
+        plainText: 'Der Text darf kein HTML enthalten.',
         languageCode: 'Bitte einen gültigen BCP-47-Sprachcode eingeben.',
-        images: 'Mindestens ein gültiges HTTPS-Bild ist erforderlich.',
+        images: 'Alle Bilder müssen gültige HTTPS-Bilder sein.',
         link: 'Der Link muss mit https:// beginnen.',
         sortWeight: 'Bitte eine ganze Zahl eingeben.',
       },
@@ -232,8 +233,9 @@ export const pluginCockpitCardsTranslations = {
       validation: {
         summaryTitle: 'Please check the following fields:',
         required: 'This field is required.',
+        plainText: 'The text must not contain HTML.',
         languageCode: 'Enter a valid BCP-47 language code.',
-        images: 'At least one valid HTTPS image is required.',
+        images: 'All images must be valid HTTPS images.',
         link: 'The link must start with https://.',
         sortWeight: 'Enter an integer.',
       },

@@ -1201,18 +1201,23 @@ Das System MUST je Featured Project `Id`, `Language`, `Title`, `Description`, `F
 - **THEN** verändert das System keinen anderen Datensatz
 - **AND** führt keinen Sprach-Fallback aus
 
-### Requirement: Featured Projects validieren ihre redaktionellen Pflichtfelder
+### Requirement: Featured Projects minimieren ihre redaktionellen Pflichtfelder
 
-Das System MUST `Language`, `Title`, `Description`, `FullText` und `Status` als Pflichtfelder behandeln. `Language` MUST ein nicht leerer, getrimmter und jederzeit editierbarer Freitext ohne feste Werteliste sein. `FullText` MUST Rich Text unterstützen.
+Das System MUST ausschließlich `Title`, `Status` und genau einen Autor als fachliche Pflichtangaben behandeln. `Language`, `Description` und `FullText` MUST leer gespeichert werden können. Ein vorhandener Wert für `Language` MUST als getrimmter und jederzeit editierbarer Freitext ohne feste Werteliste gespeichert werden. `FullText` MUST Rich Text unterstützen.
 
 #### Scenario: Beliebiges Sprachkürzel wird gespeichert
 
-- **WHEN** ein Benutzer einen nicht leeren freien Wert in `Language` eingibt
+- **WHEN** ein Benutzer einen freien Wert in `Language` eingibt
 - **THEN** speichert das System den getrimmten Wert ohne Wertelisten- oder BCP-47-Prüfung
 
-#### Scenario: Pflichtfeld fehlt
+#### Scenario: Optionale Textfelder bleiben leer
 
-- **WHEN** `Language`, `Title`, `Description` oder `FullText` leer übermittelt wird
+- **WHEN** `Language`, `Description` oder `FullText` leer übermittelt wird
+- **THEN** speichert das System das Featured Project ohne Platzhaltertext
+
+#### Scenario: Titel fehlt
+
+- **WHEN** `Title` leer übermittelt wird
 - **THEN** weist das System die Speicherung feldbezogen ab
 - **AND** führt keine Mainserver-Mutation aus
 

@@ -57,15 +57,18 @@ vi.mock('@sva/studio-ui-react', async (importOriginal) => {
       labelId,
       onChange,
       value,
+      ariaInvalid,
     }: {
       id: string;
       labelId: string;
       onChange: (value: string) => void;
       value: string;
+      ariaInvalid?: boolean;
     }) => (
       <textarea
         id={id}
         aria-labelledby={labelId}
+        aria-invalid={ariaInvalid}
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
       />
@@ -159,6 +162,13 @@ describe('projects pages', () => {
       images: [{ url: 'https://example.test/project.jpg', altText: 'Projektbild', position: 0 }],
       author: { type: 'organization', id: 'org-1', displayName: 'Stadt' },
     });
+  });
+
+  it('marks invalid controls for the shared validation styling', async () => {
+    const { ProjectsCreatePage } = await import('../src/projects.pages.js');
+    render(<ProjectsCreatePage />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1) as HTMLElement);
+    await waitFor(() => expect(screen.getByLabelText('fields.title').getAttribute('aria-invalid')).toBe('true'));
   });
 
   it('loads, reorders, updates and soft-deletes an existing project', async () => {

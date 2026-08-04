@@ -28,12 +28,14 @@ export const cockpitCardFormSchema = z.object({
   text: z
     .string()
     .trim()
-    .min(1)
     .refine((value) => !htmlTagPattern.test(value), 'html_not_allowed'),
-  languageCode: z.string().trim().regex(languageCodePattern, 'invalid_language_code'),
+  languageCode: z.string().trim().refine(
+    (value) => value.length === 0 || languageCodePattern.test(value),
+    'invalid_language_code'
+  ),
   sortWeight: z.number().int().finite(),
   category: z.string().trim().min(1),
-  images: z.array(imageSchema).min(1),
+  images: z.array(imageSchema),
   link: z.string().trim().url().startsWith('https://').optional().or(z.literal('')),
   visible: z.boolean(),
   publicationDate: z.string().trim().min(1).optional().or(z.literal('')),
@@ -57,7 +59,7 @@ export const readCockpitCardPayload = (value: unknown): CockpitCardPayload => {
   const payload = toPayloadRecord(value);
   const languageCode =
     typeof payload.languageCode === 'string' &&
-    languageCodePattern.test(payload.languageCode.trim())
+    (payload.languageCode.trim().length === 0 || languageCodePattern.test(payload.languageCode.trim()))
       ? normalizeLanguageCode(payload.languageCode)
       : DEFAULT_COCKPIT_CARD_LANGUAGE_CODE;
   const sortWeight =
@@ -92,7 +94,7 @@ export const mapCockpitCardFormValuesToGenericItemInput = (
   return {
     title: parsed.heading,
     genericType: COCKPIT_CARD_GENERIC_TYPE,
-    contentBlocks: [{ body: parsed.text }],
+    contentBlocks: parsed.text ? [{ body: parsed.text }] : [],
     payload: {
       ...toPayloadRecord(existingPayload),
       languageCode: normalizeLanguageCode(parsed.languageCode),
@@ -119,7 +121,7 @@ export const compareCockpitCardRecords = (
   return (
     leftPayload.languageCode.localeCompare(rightPayload.languageCode) ||
     leftPayload.sortWeight - rightPayload.sortWeight ||
-    new Intl.Collator(leftPayload.languageCode, {
+    new Intl.Collator(leftPayload.languageCode || undefined, {
       usage: 'sort',
       sensitivity: 'base',
       numeric: true,

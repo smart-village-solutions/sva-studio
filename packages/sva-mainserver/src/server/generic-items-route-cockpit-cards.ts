@@ -16,15 +16,24 @@ export const mergeCockpitCardPayload = (existing: unknown, next: unknown) => ({
 export const validateCockpitCardItemOrResponse = (
   item: SvaMainserverGenericItemInput
 ): Response | null => {
-  const text = item.contentBlocks?.[0]?.body?.trim() ?? '';
-  if ((item.contentBlocks?.length ?? 0) !== 1 || !text)
-    return errorJson(400, 'invalid_request', 'Der Cockpit-Card-Text ist erforderlich.');
+  const contentBlocks = item.contentBlocks ?? [];
+  const firstBlock = contentBlocks[0];
+  const text = firstBlock?.body?.trim() ?? '';
+  if (contentBlocks.length > 1)
+    return errorJson(400, 'invalid_request', 'Cockpit Cards unterstützen höchstens einen Textblock.');
+  if (firstBlock && (!text || Object.keys(firstBlock).some((key) => key !== 'body')))
+    return errorJson(
+      400,
+      'invalid_request',
+      'Cockpit-Card-Textblöcke dürfen ausschließlich nicht leeren Text enthalten.'
+    );
   if (htmlPattern.test(text))
     return errorJson(400, 'invalid_request', 'HTML im Cockpit-Card-Text ist nicht erlaubt.');
   const payload = payloadRecord(item.payload);
   if (
-    typeof payload.languageCode !== 'string' ||
-    !languagePattern.test(payload.languageCode.trim())
+    payload.languageCode !== undefined &&
+    (typeof payload.languageCode !== 'string' ||
+      (payload.languageCode.trim().length > 0 && !languagePattern.test(payload.languageCode.trim())))
   )
     return errorJson(400, 'invalid_request', 'Der Cockpit-Card-Sprachcode ist ungültig.');
   if (
@@ -36,15 +45,14 @@ export const validateCockpitCardItemOrResponse = (
   if (item.categories?.length !== 1 || !item.categories[0]?.name?.trim())
     return errorJson(400, 'invalid_request', 'Genau eine Cockpit-Card-Kategorie ist erforderlich.');
   if (
-    !item.mediaContents?.length ||
-    item.mediaContents.some(
+    item.mediaContents?.some(
       (media) => media.contentType !== 'image' || !media.sourceUrl?.url.startsWith('https://')
     )
   )
     return errorJson(
       400,
       'invalid_request',
-      'Mindestens ein gültiges HTTPS-Bild ist erforderlich.'
+      'Cockpit Cards unterstützen ausschließlich gültige HTTPS-Bilder.'
     );
   if (
     (item.webUrls?.length ?? 0) > 1 ||
@@ -72,5 +80,18 @@ export const validateCockpitCardWriteOrResponse = async (
   request: Request
 ): Promise<SvaMainserverGenericItemInput | Response> => {
   const item = await parseGenericItemInput(request);
-  return isResponse(item) ? item : (validateCockpitCardItemOrResponse(item) ?? item);
+  if (isResponse(item)) return item;
+  const validation = validateCockpitCardItemOrResponse(item);
+  if (validation) return validation;
+  const payload = payloadRecord(item.payload);
+  return {
+    ...item,
+    contentBlocks: item.contentBlocks ?? [],
+    mediaContents: item.mediaContents ?? [],
+    webUrls: item.webUrls ?? [],
+    payload: {
+      ...payload,
+      languageCode: typeof payload.languageCode === 'string' ? payload.languageCode : '',
+    },
+  };
 };

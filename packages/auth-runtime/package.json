@@ -55,7 +55,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/pg": "^8.20.0",
+    "@types/pg": "^8.20.3",
     "@types/sanitize-html": "^2.16.1",
     "@vitest/coverage-v8": "^4.1.10",
     "vitest": "^4.1.10"

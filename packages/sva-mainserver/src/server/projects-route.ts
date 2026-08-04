@@ -36,6 +36,7 @@ import { parseMainserverListQuery } from './list-pagination.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
   PROJECTS_CONTENT_TYPE,
+  PROJECTS_GENERIC_TYPE,
   mapGenericItemToProject,
   mergeProjectIntoGenericItem,
   parseProjectInput,
@@ -180,7 +181,7 @@ const loadProjectContext = async (
     ...(activeOrganizationId ? { activeOrganizationId } : {}),
     genericItemId: reference.sourceEntityId,
   });
-  if (item.genericType !== 'FeaturedProject') return undefined;
+  if (item.genericType !== PROJECTS_GENERIC_TYPE) return undefined;
   const payload =
     item.payload && typeof item.payload === 'object' && !Array.isArray(item.payload)
       ? (item.payload as Record<string, unknown>)
@@ -463,7 +464,7 @@ const updateProject = async (
           ...actor,
           genericItemId: context.reference.sourceEntityId!,
         });
-        if (!freshCore || freshItem.genericType !== 'FeaturedProject') {
+        if (!freshCore || freshItem.genericType !== PROJECTS_GENERIC_TYPE) {
           return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
         }
         const publishedAt = publishedAtFor(project, freshCore.publishedAt);
@@ -551,7 +552,7 @@ const deleteProject = async (
           ...actor,
           genericItemId: context.reference.sourceEntityId!,
         });
-        if (!freshCore || freshItem.genericType !== 'FeaturedProject') {
+        if (!freshCore || freshItem.genericType !== PROJECTS_GENERIC_TYPE) {
           return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
         }
         const freshProject = mapAndValidate(freshItem, freshCore);

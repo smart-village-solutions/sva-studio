@@ -2388,6 +2388,50 @@ describe('content list projection', () => {
     );
   });
 
+  it('includes featured projects in the generic-item projection', async () => {
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      data: [
+        {
+          id: 'featured-project-1',
+          title: 'Featured Project',
+          contentType: 'generic-items.generic-item',
+          genericType: 'FeaturedProject',
+          teaser: null,
+          keywords: [],
+          payload: {},
+          categories: [],
+          contacts: [],
+          webUrls: [],
+          addresses: [],
+          contentBlocks: [],
+          openingHours: [],
+          mediaContents: [],
+          locations: [],
+          dates: [],
+          accessibilityInformations: [],
+          priceInformations: [],
+          visible: true,
+          author: null,
+          createdAt: '2026-08-04T10:00:00.000Z',
+          updatedAt: '2026-08-04T11:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['generic-items.generic-item'],
+      force: true,
+    });
+
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        content_type: 'generic-items.generic-item',
+        source_entity_id: 'featured-project-1',
+      }),
+    ]);
+  });
+
   it('upserts only the latest loaded page during progressive batch refreshes', async () => {
     state.listSvaMainserverEvents
       .mockResolvedValueOnce({

@@ -415,6 +415,7 @@ describe('cockpit cards pages', () => {
     await screen.findByRole('option', { name: 'Startseite' });
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
     expect(await screen.findByText('messages.validationError')).toBeTruthy();
+    expect(screen.getByLabelText('fields.heading').getAttribute('aria-invalid')).toBe('true');
     expect(
       screen.getByRole('tab', { name: 'tabs.basis.label' }).getAttribute('aria-selected')
     ).toBe('true');

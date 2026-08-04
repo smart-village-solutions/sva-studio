@@ -59,7 +59,7 @@ export const readCockpitCardPayload = (value: unknown): CockpitCardPayload => {
   const payload = toPayloadRecord(value);
   const languageCode =
     typeof payload.languageCode === 'string' &&
-    languageCodePattern.test(payload.languageCode.trim())
+    (payload.languageCode.trim().length === 0 || languageCodePattern.test(payload.languageCode.trim()))
       ? normalizeLanguageCode(payload.languageCode)
       : DEFAULT_COCKPIT_CARD_LANGUAGE_CODE;
   const sortWeight =

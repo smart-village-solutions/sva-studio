@@ -33,6 +33,9 @@ describe('cockpit card route validation', () => {
 
   it.each([
     [{ ...validItem, contentBlocks: [{ body: 'Text' }, { body: 'Mehr' }] }, 'Text'],
+    [{ ...validItem, contentBlocks: [{ body: '' }] }, 'nicht leeren Text'],
+    [{ ...validItem, contentBlocks: [{ title: 'Versteckt' }] }, 'nicht leeren Text'],
+    [{ ...validItem, contentBlocks: [{ body: 'Text', title: 'Versteckt' }] }, 'nicht leeren Text'],
     [{ ...validItem, payload: { languageCode: 'invalid!', sortWeight: 0 } }, 'Sprachcode'],
     [{ ...validItem, payload: { languageCode: 'de', sortWeight: '0' } }, 'Sortiergewicht'],
     [{ ...validItem, payload: { languageCode: 'de', sortWeight: 1.5 } }, 'Sortiergewicht'],

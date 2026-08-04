@@ -89,6 +89,7 @@ describe('cockpit card model', () => {
         mediaContents: [],
       })
     );
+    expect(readCockpitCardPayload({ languageCode: '', sortWeight: 2 })).toEqual({ languageCode: '', sortWeight: 2 });
   });
 
   it('uses safe defaults for malformed payloads and missing optional GenericItem fields', () => {

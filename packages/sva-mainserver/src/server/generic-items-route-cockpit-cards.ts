@@ -16,9 +16,17 @@ export const mergeCockpitCardPayload = (existing: unknown, next: unknown) => ({
 export const validateCockpitCardItemOrResponse = (
   item: SvaMainserverGenericItemInput
 ): Response | null => {
-  const text = item.contentBlocks?.[0]?.body?.trim() ?? '';
-  if ((item.contentBlocks?.length ?? 0) > 1)
+  const contentBlocks = item.contentBlocks ?? [];
+  const firstBlock = contentBlocks[0];
+  const text = firstBlock?.body?.trim() ?? '';
+  if (contentBlocks.length > 1)
     return errorJson(400, 'invalid_request', 'Cockpit Cards unterstützen höchstens einen Textblock.');
+  if (firstBlock && (!text || Object.keys(firstBlock).some((key) => key !== 'body')))
+    return errorJson(
+      400,
+      'invalid_request',
+      'Cockpit-Card-Textblöcke dürfen ausschließlich nicht leeren Text enthalten.'
+    );
   if (htmlPattern.test(text))
     return errorJson(400, 'invalid_request', 'HTML im Cockpit-Card-Text ist nicht erlaubt.');
   const payload = payloadRecord(item.payload);

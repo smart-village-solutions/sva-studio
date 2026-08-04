@@ -98,6 +98,16 @@ describe('projects contract', () => {
     ).toEqual(expect.objectContaining({ teaser: '', contentBlocks: [], mediaContents: [] }));
   });
 
+  it('defaults omitted optional language and text fields', async () => {
+    const { language: _language, description: _description, fullText: _fullText, ...required } = project;
+    const parsed = await parseProjectInput(
+      new Request('https://studio.test/api/v1/mainserver/projects', {
+        method: 'POST', body: JSON.stringify(required), headers: { 'Content-Type': 'application/json' },
+      })
+    );
+    expect(parsed).toEqual({ ...required, title: 'Projekt', language: '', description: '', fullText: '' });
+  });
+
   it('rejects derived and unknown mutation fields', async () => {
     const response = await parseProjectInput(
       new Request('https://studio.test/api/v1/mainserver/projects', {
@@ -155,6 +165,12 @@ describe('projects contract', () => {
       { id: 'block-1', title: 'Verborgener Titel', body: '<p>Text</p>', mediaContents: [] },
       { id: 'block-2', body: 'Verborgener Block', mediaContents: [] },
     ]);
+  });
+
+  it('removes the cleared primary text block while preserving remaining blocks', () => {
+    const merged = mergeProjectIntoGenericItem({ project: { ...project, description: '', fullText: '' }, existing });
+    expect(merged.teaser).toBe('');
+    expect(merged.contentBlocks).toEqual([{ id: 'block-2', body: 'Verborgener Block', mediaContents: [] }]);
   });
 
   it('returns the exact FeaturedProject response without technical type fields', () => {

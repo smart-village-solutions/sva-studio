@@ -1945,6 +1945,7 @@ describe('createSvaMainserverService', () => {
         genericItem: {
           title: 'Freier Eintrag',
           genericType: 'faq',
+          teaser: '',
           visible: false,
           payload: { answer: '43' },
         },
@@ -1969,6 +1970,7 @@ describe('createSvaMainserverService', () => {
       id: 'generic-1',
       forceCreate: false,
       genericType: 'faq',
+      teaser: '',
       payload: { answer: '43' },
     });
     expect(requestBodies[2]?.variables).toMatchObject({ teaser: 'Kurztext' });

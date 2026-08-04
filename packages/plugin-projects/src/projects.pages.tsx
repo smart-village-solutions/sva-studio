@@ -334,13 +334,13 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
       panel: (
         <div className="space-y-4">
           <StudioField id="project-language" label={pt('fields.language')}>
-            <Input id="project-language" {...form.register('language')} />
+            <Input id="project-language" aria-invalid={Boolean(form.formState.errors.language)} {...form.register('language')} />
           </StudioField>
           <StudioField id="project-title" label={pt('fields.title')}>
-            <Input id="project-title" {...form.register('title')} />
+            <Input id="project-title" aria-invalid={Boolean(form.formState.errors.title)} {...form.register('title')} />
           </StudioField>
           <StudioField id="project-description" label={pt('fields.description')}>
-            <Textarea id="project-description" className="min-h-28" {...form.register('description')} />
+            <Textarea id="project-description" className="min-h-28" aria-invalid={Boolean(form.formState.errors.description)} {...form.register('description')} />
           </StudioField>
         </div>
       ),
@@ -363,6 +363,7 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
                   <RichTextHtmlEditor
                     id="project-fullText"
                     labelId="project-full-text-label"
+                    ariaInvalid={Boolean(form.formState.errors.fullText)}
                     value={fullText}
                     onChange={field.onChange}
                     blockTypeOptions={richTextOptions(pt)}
@@ -401,23 +402,23 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
       panel: (
         <div className="space-y-4">
           <StudioField id="project-status" label={pt('fields.status')}>
-            <Select id="project-status" {...form.register('status')}>
+            <Select id="project-status" aria-invalid={Boolean(form.formState.errors.status)} {...form.register('status')}>
               <option value="draft">{pt('status.draft')}</option>
               <option value="published">{pt('status.published')}</option>
               <option value="archived">{pt('status.archived')}</option>
             </Select>
           </StudioField>
           <StudioField id="project-author-type" label={pt('fields.authorType')}>
-            <Select id="project-author-type" {...form.register('author.type')}>
+            <Select id="project-author-type" aria-invalid={Boolean(form.formState.errors.author?.type)} {...form.register('author.type')}>
               <option value="organization">{pt('author.organization')}</option>
               <option value="person">{pt('author.person')}</option>
             </Select>
           </StudioField>
           <StudioField id="project-author-id" label={pt('fields.authorId')}>
-            <Input id="project-author-id" {...form.register('author.id')} />
+            <Input id="project-author-id" aria-invalid={Boolean(form.formState.errors.author?.id)} {...form.register('author.id')} />
           </StudioField>
           <StudioField id="project-author-name" label={pt('fields.authorName')}>
-            <Input id="project-author-name" {...form.register('author.displayName')} />
+            <Input id="project-author-name" aria-invalid={Boolean(form.formState.errors.author?.displayName)} {...form.register('author.displayName')} />
           </StudioField>
           <input type="hidden" value={authorType} readOnly />
           {item ? (

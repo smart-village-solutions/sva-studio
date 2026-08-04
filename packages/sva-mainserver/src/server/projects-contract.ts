@@ -36,10 +36,10 @@ const authorSchema = z.discriminatedUnion('type', [
 
 export const projectInputSchema = z
   .object({
-    language: z.string().trim(),
+    language: z.string().trim().default(''),
     title: requiredText,
-    description: z.string().trim(),
-    fullText: z.string().trim(),
+    description: z.string().trim().default(''),
+    fullText: z.string().trim().default(''),
     images: z.array(imageSchema),
     status: z.enum(['draft', 'published', 'archived']),
     author: authorSchema,
@@ -157,11 +157,9 @@ export const mergeProjectIntoGenericItem = (input: {
       status: input.project.status,
       deleted: input.deleted ?? existingPayload.deleted === true,
     },
-    contentBlocks: firstBlock
-      ? [{ ...firstBlock, body: input.project.fullText.trim() }, ...remainingBlocks]
-      : input.project.fullText.trim()
-        ? [{ body: input.project.fullText.trim() }]
-        : [],
+    contentBlocks: input.project.fullText.trim()
+      ? [{ ...(firstBlock ?? {}), body: input.project.fullText.trim() }, ...remainingBlocks]
+      : remainingBlocks,
     mediaContents: toMediaContents(input.project),
   };
 };

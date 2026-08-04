@@ -8,7 +8,7 @@ Die vorhandenen Featured-Project-Datensätze sind im Mainserver mit `genericType
 
 - **BREAKING**: Projekte-Routen lesen und schreiben ausschließlich GenericItems mit `genericType: "FeaturedProject"`.
 - Der bisherige Diskriminator `PROJECT` wird ohne Übergangs- oder Fallback-Verhalten entfernt.
-- Inhaltsprojektion, Tests und Dokumentation werden auf den korrigierten Diskriminator abgestimmt.
+- Fachliche und generische Inhaltsprojektion, Tests und Dokumentation werden auf den korrigierten Diskriminator und den technischen GenericItems-Vollzugriff abgestimmt.
 
 ## Impact
 

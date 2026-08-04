@@ -142,6 +142,10 @@ type TriggerProjectionRefreshResult = Readonly<{
 }>;
 
 type MainserverProjectionMutationOperation = 'create' | 'update' | 'delete';
+type GenericItemProjectionContentType =
+  | 'generic-items.generic-item'
+  | 'faq.faq'
+  | 'cockpit-cards.cockpit-card';
 type TargetedMutationContentType =
   | 'news.article'
   | 'events.event-record'
@@ -2098,8 +2102,9 @@ const refreshMainserverProjectionForMutation = async (input: {
   readonly target: ContentProjectionSyncTarget;
   readonly operation: MainserverProjectionMutationOperation;
   readonly entityId: string;
+  readonly row?: MainserverProjectionRowInput;
 }): Promise<void> => {
-  const { target, operation, entityId } = input;
+  const { target, operation, entityId, row: providedRow } = input;
   const { actorAccountId } = target;
   const targetKey = buildProjectionTargetKey(target);
   const refreshRunId = randomUUID();
@@ -2129,7 +2134,7 @@ const refreshMainserverProjectionForMutation = async (input: {
         let lastError: unknown;
         for (let attempt = 0; attempt < 2; attempt += 1) {
           try {
-            const row = await loadMainserverProjectionMutationRow(target, entityId);
+            const row = providedRow ?? await loadMainserverProjectionMutationRow(target, entityId);
             await upsertSingleMainserverProjectionRow(target, actorAccountId, row, refreshRunId);
             return;
           } catch (error) {
@@ -2170,6 +2175,70 @@ const refreshMainserverProjectionForMutation = async (input: {
 
   runningProjectionSyncs.set(targetKey, mutationSync);
   await mutationWork;
+};
+
+const genericItemProjectionContentTypes = [
+  'generic-items.generic-item',
+  'faq.faq',
+  'cockpit-cards.cockpit-card',
+] as const satisfies readonly GenericItemProjectionContentType[];
+
+const resolveSpecializedGenericItemProjectionContentType = (
+  genericType: string
+): Exclude<GenericItemProjectionContentType, 'generic-items.generic-item'> | undefined => {
+  if (genericType === 'FAQ') {
+    return 'faq.faq';
+  }
+  if (genericType === 'COCKPIT_CARD') {
+    return 'cockpit-cards.cockpit-card';
+  }
+  return undefined;
+};
+
+const refreshGenericItemSiblingProjections = async (input: {
+  readonly target: ContentProjectionSyncTarget;
+  readonly operation: MainserverProjectionMutationOperation;
+  readonly entityId: string;
+}): Promise<void> => {
+  let item: Awaited<ReturnType<typeof getSvaMainserverGenericItem>> | undefined;
+  try {
+    item = input.operation === 'delete'
+      ? undefined
+      : await getSvaMainserverGenericItem({
+          activeOrganizationId: input.target.organizationId,
+          genericItemId: input.entityId,
+          instanceId: input.target.instanceId,
+          keycloakSubject: input.target.keycloakSubject,
+        });
+  } catch {
+    await refreshMainserverProjectionForMutation(input);
+    return;
+  }
+  const specializedContentType = item
+    ? resolveSpecializedGenericItemProjectionContentType(item.genericType)
+    : undefined;
+
+  for (const contentType of genericItemProjectionContentTypes) {
+    const target = { ...input.target, contentType } satisfies ContentProjectionSyncTarget;
+    const shouldProject = contentType === 'generic-items.generic-item' || contentType === specializedContentType;
+    const row = item && shouldProject
+      ? {
+          ...mapGenericItem(item, target.instanceId, []),
+          contentType,
+          ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+          credentialSource: target.organizationId ? 'organization' as const : 'user' as const,
+          sourceEntityType: contentType,
+          sourceEntityId: item.id,
+        }
+      : undefined;
+
+    await refreshMainserverProjectionForMutation({
+      target,
+      operation: shouldProject && input.operation !== 'delete' ? input.operation : 'delete',
+      entityId: input.entityId,
+      ...(row ? { row } : {}),
+    });
+  }
 };
 
 const registerProjectionTarget = (target: ContentProjectionSyncTarget): void => {
@@ -3064,6 +3133,14 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
     (input.operation === 'create' || input.operation === 'update' || input.operation === 'delete');
 
   if (supportsTargetedMutationRefresh) {
+    if (genericItemProjectionContentTypes.includes(input.contentType as GenericItemProjectionContentType)) {
+      await refreshGenericItemSiblingProjections({
+        target,
+        operation: input.operation,
+        entityId: input.entityId,
+      });
+      return;
+    }
     await refreshMainserverProjectionForMutation({
       target,
       operation: input.operation,

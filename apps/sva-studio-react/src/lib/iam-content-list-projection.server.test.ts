@@ -2771,6 +2771,128 @@ describe('content list projection', () => {
     ]);
   });
 
+  it('refreshes the generic sibling projection after FAQ mutations', async () => {
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'faq-mutation-1',
+      title: 'Mutation FAQ',
+      contentType: 'generic-items.generic-item',
+      genericType: 'FAQ',
+      payload: { answer: '42' },
+      categories: [],
+      contacts: [],
+      webUrls: [],
+      addresses: [],
+      contentBlocks: [],
+      openingHours: [],
+      mediaContents: [],
+      locations: [],
+      dates: [],
+      accessibilityInformations: [],
+      priceInformations: [],
+      visible: true,
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    });
+
+    await refreshProjectedContentsForMainserverMutation({
+      contentType: 'faq.faq',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      organizationId: 'org-1',
+      operation: 'update',
+      entityId: 'faq-mutation-1',
+    });
+
+    expect(state.getSvaMainserverGenericItem).toHaveBeenCalledTimes(1);
+    expect(projectionRows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          content_type: 'generic-items.generic-item',
+          source_entity_id: 'faq-mutation-1',
+        }),
+        expect.objectContaining({
+          content_type: 'faq.faq',
+          source_entity_id: 'faq-mutation-1',
+        }),
+      ])
+    );
+    expect(projectionRows).toHaveLength(2);
+  });
+
+  it('removes stale specialized sibling projections when the generic type changes', async () => {
+    projectionRows = [
+      {
+        id: 'generic-type-change-1',
+        instance_id: 'de-musterhausen',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::faq.faq',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        owner_user_id: null,
+        owner_organization_id: 'org-1',
+        content_type: 'faq.faq',
+        title: 'Ehemalige FAQ',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_name: 'Redaktion',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-generic-type-change-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'mainserver',
+        source_entity_type: 'faq.faq',
+        source_entity_id: 'generic-type-change-1',
+      },
+    ];
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'generic-type-change-1',
+      title: 'Jetzt eine Kachel',
+      contentType: 'generic-items.generic-item',
+      genericType: 'COCKPIT_CARD',
+      payload: {},
+      categories: [],
+      contacts: [],
+      webUrls: [],
+      addresses: [],
+      contentBlocks: [],
+      openingHours: [],
+      mediaContents: [],
+      locations: [],
+      dates: [],
+      accessibilityInformations: [],
+      priceInformations: [],
+      visible: true,
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    });
+
+    await refreshProjectedContentsForMainserverMutation({
+      contentType: 'generic-items.generic-item',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      organizationId: 'org-1',
+      operation: 'update',
+      entityId: 'generic-type-change-1',
+    });
+
+    expect(projectionRows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ content_type: 'generic-items.generic-item' }),
+        expect.objectContaining({ content_type: 'cockpit-cards.cockpit-card' }),
+      ])
+    );
+    expect(projectionRows.some((row) => row.content_type === 'faq.faq')).toBe(false);
+    expect(projectionRows).toHaveLength(2);
+  });
+
   it('removes only the targeted generic item projection row after delete mutations', async () => {
     projectionRows = [
       {

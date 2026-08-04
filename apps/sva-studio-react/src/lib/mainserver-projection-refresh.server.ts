@@ -69,17 +69,22 @@ const parseEntityIdFromRequestPath = (request: Request): string | undefined => {
 };
 
 const parseEntityIdFromResponse = async (response: Response): Promise<string | undefined> => {
+  const location = response.headers.get('location');
+  if (location) {
+    const locationSegments = new URL(location, 'https://studio.invalid').pathname.split('/').filter(Boolean);
+    const locationId = locationSegments.at(-1);
+    if (locationId) return decodeURIComponent(locationId);
+  }
   const contentType = response.headers.get('content-type') ?? '';
   if (!contentType.includes('application/json')) {
     return undefined;
   }
 
   const payload = (await response.clone().json().catch(() => null)) as
-    | { data?: { id?: unknown } }
+    | { data?: { id?: unknown }; id?: unknown }
     | null;
-  return typeof payload?.data?.id === 'string' && payload.data.id.length > 0
-    ? payload.data.id
-    : undefined;
+  const id = payload?.data?.id ?? payload?.id;
+  return typeof id === 'string' && id.length > 0 ? id : undefined;
 };
 
 export const refreshProjectionAfterMainserverMutation = async (
@@ -95,6 +100,14 @@ export const refreshProjectionAfterMainserverMutation = async (
   const entityIdFromPath = parseEntityIdFromRequestPath(request);
   const entityIdFromResponse = await parseEntityIdFromResponse(response);
   const entityId = entityIdFromResponse ?? entityIdFromPath;
+  if ((operation === 'create' || operation === 'update') && !entityId) {
+    logger.warn('Mainserver mutation succeeded without a resolvable entity identity', {
+      contentType,
+      method: request.method,
+      requestPath: new URL(request.url).pathname,
+    });
+    throw new Error('mainserver_mutation_identity_missing');
+  }
 
   await withAuthenticatedUser(request, async (ctx) => {
     if (!ctx.user.instanceId) {

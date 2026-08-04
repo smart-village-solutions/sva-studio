@@ -41,11 +41,11 @@ import {
   loadExternalContentReferenceByOperation,
   loadExternalContentReferenceBySourceEntity,
   prepareExternalContent,
-  recordSuccessfulExternalContentMutation,
   updateExternalContentCore,
   updateExternalContentReconciliationStatus,
   withExternalContentMutationLock,
 } from './external-content-references.js';
+import { recordSuccessfulExternalContentMutation } from './external-content-mutations.js';
 
 const row = {
   id: 'reference-1',
@@ -265,6 +265,11 @@ describe('external content references', () => {
     expect(state.insertHistory).toHaveBeenCalledWith(
       expect.objectContaining({ query: state.query }),
       expect.objectContaining({ mutationRef: 'request-1', action: 'created' })
+    );
+    expect(state.emitCreated).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.query }),
+      expect.objectContaining({ mutationRef: 'request-1' }),
+      'content-1'
     );
     expect(state.query).toHaveBeenLastCalledWith(
       expect.stringContaining("SET source_entity_id = $3, reconciliation_status = 'bound'"),

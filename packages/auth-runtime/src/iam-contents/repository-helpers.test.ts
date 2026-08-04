@@ -25,6 +25,7 @@ vi.mock('../iam-account-management/shared.js', () => ({
 
 const {
   insertContentHistory,
+  isContentMutationFinalized,
   loadCurrentContentRow,
   resolveContentMutationMetadata,
 } = await import('./repository-shared.js');
@@ -124,6 +125,30 @@ describe('iam content repository helpers', () => {
       'instance-1',
       'content-1',
     ]);
+  });
+
+  it('serializes mutation finalization and detects an existing history entry', async () => {
+    const client = createClient();
+    client.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 'history-1' }] });
+
+    await expect(isContentMutationFinalized(client, {
+      instanceId: 'instance-1',
+      contentId: 'content-1',
+      mutationRef: 'mutation-1',
+    })).resolves.toBe(true);
+
+    expect(client.query).toHaveBeenNthCalledWith(
+      1,
+      'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));',
+      ['instance-1', 'content-1:mutation-1']
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('AND mutation_ref = $3'),
+      ['instance-1', 'content-1', 'mutation-1']
+    );
   });
 
   it('creates content history entries and throws when the database does not return an id', async () => {

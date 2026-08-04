@@ -35,6 +35,44 @@ export type StudioContentHistoryProps = Readonly<{
   formatError?: (error: unknown) => string;
 }>;
 
+type HistoryTableProps = Pick<
+  StudioContentHistoryProps,
+  'formatAction' | 'formatDate' | 'labels'
+> & Readonly<{
+  entries: readonly StudioContentHistoryEntry[];
+  formatField: (field: string) => string;
+}>;
+
+const HistoryTable = ({ entries, labels, formatAction, formatDate, formatField }: HistoryTableProps) => (
+  <div className="overflow-x-auto rounded-xl border border-border bg-card">
+    <table className="min-w-full border-collapse text-sm" aria-label={labels.tableLabel}>
+      <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+        <tr>
+          <th className="px-3 py-2">{labels.time}</th>
+          <th className="px-3 py-2">{labels.action}</th>
+          <th className="px-3 py-2">{labels.actor}</th>
+          <th className="px-3 py-2">{labels.summary}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {entries.map((entry) => {
+          const fields = entry.changedFields.map(formatField).join(', ');
+          return (
+            <tr key={entry.id} className="border-t border-border align-top">
+              <td className="px-3 py-3 text-muted-foreground">{formatDate(entry.createdAt)}</td>
+              <td className="px-3 py-3">{formatAction(entry.action)}</td>
+              <td className="px-3 py-3 text-muted-foreground">{entry.actor}</td>
+              <td className="px-3 py-3 text-muted-foreground">
+                {entry.summary || fields || labels.emptySummary}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+);
+
 export function StudioContentHistory({
   contentId,
   loadHistory,
@@ -96,33 +134,13 @@ export function StudioContentHistory({
       ) : null}
       {state === 'ready' && entries.length === 0 ? <StudioEmptyState>{labels.empty}</StudioEmptyState> : null}
       {state === 'ready' && entries.length > 0 ? (
-        <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <table className="min-w-full border-collapse text-sm" aria-label={labels.tableLabel}>
-            <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2">{labels.time}</th>
-                <th className="px-3 py-2">{labels.action}</th>
-                <th className="px-3 py-2">{labels.actor}</th>
-                <th className="px-3 py-2">{labels.summary}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry) => {
-                const fields = entry.changedFields.map(formatField).join(', ');
-                return (
-                  <tr key={entry.id} className="border-t border-border align-top">
-                    <td className="px-3 py-3 text-muted-foreground">{formatDate(entry.createdAt)}</td>
-                    <td className="px-3 py-3">{formatAction(entry.action)}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{entry.actor}</td>
-                    <td className="px-3 py-3 text-muted-foreground">
-                      {entry.summary || fields || labels.emptySummary}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <HistoryTable
+          entries={entries}
+          labels={labels}
+          formatAction={formatAction}
+          formatDate={formatDate}
+          formatField={formatField}
+        />
       ) : null}
     </div>
   );

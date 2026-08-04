@@ -94,29 +94,45 @@ describe('mainserver projection refresh', () => {
     });
   });
 
-  it('does not treat generic-items and surveys collection paths as entity ids when the response has no item id', async () => {
+  it('derives mutation identity from root response ids and Location headers', async () => {
     await refreshProjectionAfterMainserverMutation(
-      new Request('https://studio.test/api/v1/mainserver/generic-items', { method: 'POST' }),
-      new Response('created', { status: 200, headers: { 'content-type': 'text/plain' } }),
-      'generic-items.generic-item'
+      new Request('https://studio.test/api/v1/mainserver/news', { method: 'POST' }),
+      new Response(JSON.stringify({ id: 'news-root-1' }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      }),
+      'news.article'
     );
     await refreshProjectionAfterMainserverMutation(
-      new Request('https://studio.test/api/v1/mainserver/surveys', { method: 'POST' }),
-      new Response('created', { status: 200, headers: { 'content-type': 'text/plain' } }),
-      'surveys.survey'
+      new Request('https://studio.test/api/v1/mainserver/events', { method: 'POST' }),
+      new Response(null, {
+        status: 201,
+        headers: { location: '/api/v1/mainserver/events/event-location-1' },
+      }),
+      'events.event-record'
     );
 
     expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(
       1,
-      expect.not.objectContaining({
-        entityId: 'generic-items',
-      })
+      expect.objectContaining({ entityId: 'news-root-1' })
     );
     expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(
       2,
-      expect.not.objectContaining({
-        entityId: 'surveys',
-      })
+      expect.objectContaining({ entityId: 'event-location-1' })
+    );
+  });
+
+  it('fails closed when a successful create response has no resolvable item identity', async () => {
+    await expect(refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/generic-items', { method: 'POST' }),
+      new Response('created', { status: 200, headers: { 'content-type': 'text/plain' } }),
+      'generic-items.generic-item'
+    )).rejects.toThrow('mainserver_mutation_identity_missing');
+
+    expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Mainserver mutation succeeded without a resolvable entity identity',
+      expect.objectContaining({ contentType: 'generic-items.generic-item', method: 'POST' })
     );
   });
 
@@ -166,29 +182,22 @@ describe('mainserver projection refresh', () => {
   });
 
   it('skips targeted entity id derivation when the request path is outside known mainserver collections', async () => {
-    await refreshProjectionAfterMainserverMutation(
+    await expect(refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/other/news/news-42', {
         method: 'PATCH',
       }),
       new Response(null, { status: 204 }),
       'news.article'
-    );
-    await refreshProjectionAfterMainserverMutation(
+    )).rejects.toThrow('mainserver_mutation_identity_missing');
+    await expect(refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/unknown/news-42', {
         method: 'PATCH',
       }),
       new Response(null, { status: 204 }),
       'news.article'
-    );
+    )).rejects.toThrow('mainserver_mutation_identity_missing');
 
-    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(
-      1,
-      expect.not.objectContaining({ entityId: 'news-42' })
-    );
-    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(
-      2,
-      expect.not.objectContaining({ entityId: 'news-42' })
-    );
+    expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
   });
 
   it('skips projection refresh for read-only requests and failed responses', async () => {

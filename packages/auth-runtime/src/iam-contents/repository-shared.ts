@@ -22,6 +22,26 @@ LIMIT 1;
   return currentResult.rows[0];
 };
 
+export const isContentMutationFinalized = async (
+  client: InstanceScopedClient,
+  input: { readonly instanceId: string; readonly contentId: string; readonly mutationRef: string }
+): Promise<boolean> => {
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
+    input.instanceId,
+    `${input.contentId}:${input.mutationRef}`,
+  ]);
+  const result = await client.query<{ id: string }>(
+    `SELECT id::text
+     FROM iam.content_history
+     WHERE instance_id = $1
+       AND content_id = $2::uuid
+       AND mutation_ref = $3
+     LIMIT 1;`,
+    [input.instanceId, input.contentId, input.mutationRef]
+  );
+  return result.rows.length > 0;
+};
+
 export const insertContentHistory = async (
   client: InstanceScopedClient,
   input: {

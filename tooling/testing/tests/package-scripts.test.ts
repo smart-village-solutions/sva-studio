@@ -37,6 +37,7 @@ interface NxProjectJson {
 interface NxJson {
   namedInputs?: Record<string, NamedInputValue[]>;
   nxCloudId?: string;
+  neverConnectToCloud?: boolean;
   targetDefaults?: Record<string, { cache?: boolean }>;
 }
 
@@ -464,11 +465,12 @@ describe('workspace package scripts', () => {
     expect(coverageInputs).toContain('toolingScripts');
   });
 
-  it('keeps Nx Cloud configured while leaving coverage runs uncached', () => {
+  it('keeps Nx Cloud disabled while leaving coverage runs uncached', () => {
     const nxJson = loadNxJson();
     const coverageTarget = nxJson.targetDefaults?.['test:coverage'];
 
-    expect(nxJson.nxCloudId).toBeTruthy();
+    expect(nxJson.nxCloudId).toBeUndefined();
+    expect(nxJson.neverConnectToCloud).toBe(true);
     expect(coverageTarget?.cache).toBe(false);
   });
 

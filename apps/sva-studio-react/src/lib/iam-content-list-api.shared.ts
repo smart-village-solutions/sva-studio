@@ -11,6 +11,7 @@ export const DEFAULT_MAINSERVER_VISIBLE_TYPES = [
   'generic-items.generic-item',
   'faq.faq',
   'cockpit-cards.cockpit-card',
+  'projects.project',
   'surveys.survey',
 ] as const;
 

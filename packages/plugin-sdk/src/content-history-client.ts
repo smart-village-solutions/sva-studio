@@ -1,6 +1,7 @@
 import type { IamContentHistoryEntry } from '@sva/core';
 
 import { requestMainserverJson } from './mainserver-client.js';
+import { MainserverApiError } from './mainserver-request.js';
 
 type ApiListResponse<T> = Readonly<{
   data: readonly T[];
@@ -16,10 +17,18 @@ export const fetchIamContentHistory = async (
   const contentTypeQuery = options?.contentType
     ? `?contentType=${encodeURIComponent(options.contentType)}`
     : '';
-  const response = await requestMainserverJson<ApiListResponse<IamContentHistoryEntry>>({
-    url: `/api/v1/iam/contents/${encodeURIComponent(contentId)}/history${contentTypeQuery}`,
-    fetch: options?.fetch,
-  });
+  let response: ApiListResponse<IamContentHistoryEntry>;
+  try {
+    response = await requestMainserverJson<ApiListResponse<IamContentHistoryEntry>>({
+      url: `/api/v1/iam/contents/${encodeURIComponent(contentId)}/history${contentTypeQuery}`,
+      fetch: options?.fetch,
+    });
+  } catch (error) {
+    if (options?.contentType && error instanceof MainserverApiError && error.code === 'not_found') {
+      return [];
+    }
+    throw error;
+  }
 
   return response.data;
 };

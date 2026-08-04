@@ -135,6 +135,27 @@ describe('projection list operations', () => {
     ]);
   });
 
+  it('projects FeaturedProject items without requiring local Studio records', async () => {
+    const execute = vi.fn().mockResolvedValue({
+      genericItems: [
+        { id: 'project-1', title: 'Projekt', genericType: 'FeaturedProject' },
+        { id: 'legacy-1', title: 'Alt', genericType: 'PROJECT' },
+        { id: 'faq-1', title: 'FAQ', genericType: 'FAQ' },
+      ],
+    });
+    const operations = createProjectionListOperations(execute);
+
+    const result = await operations.listProjectionWithConfig('projects.project', input, config);
+
+    expect(result.data).toEqual([
+      expect.objectContaining({
+        id: 'project-1',
+        contentType: 'projects.project',
+        title: 'Projekt',
+      }),
+    ]);
+  });
+
   it('rejects malformed projection pages', async () => {
     const operations = createProjectionListOperations(vi.fn().mockResolvedValue({ newsItems: null }));
 

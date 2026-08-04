@@ -81,6 +81,7 @@ export type SvaMainserverProjectionContentType =
   | 'generic-items.generic-item'
   | 'faq.faq'
   | 'cockpit-cards.cockpit-card'
+  | 'projects.project'
   | 'surveys.survey';
 
 export type SvaMainserverProjectionListItem = Readonly<{

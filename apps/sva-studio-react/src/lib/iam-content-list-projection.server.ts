@@ -149,7 +149,8 @@ type MainserverProjectionMutationOperation = 'create' | 'update' | 'delete';
 type GenericItemProjectionContentType =
   | 'generic-items.generic-item'
   | 'faq.faq'
-  | 'cockpit-cards.cockpit-card';
+  | 'cockpit-cards.cockpit-card'
+  | 'projects.project';
 type TargetedMutationContentType =
   | 'news.article'
   | 'events.event-record'
@@ -157,6 +158,7 @@ type TargetedMutationContentType =
   | 'generic-items.generic-item'
   | 'faq.faq'
   | 'cockpit-cards.cockpit-card'
+  | 'projects.project'
   | 'surveys.survey';
 type ProjectionRefreshTrigger =
   | 'manual'
@@ -1699,6 +1701,32 @@ const mainserverProjectionPageLoaders: Record<
           projectedOrganizationId: target.organizationId,
         })
       ),
+  'projects.project': async ({ target, pageQuery }) =>
+    listSvaMainserverGenericItems({
+        instanceId: target.instanceId,
+        keycloakSubject: target.keycloakSubject,
+        activeOrganizationId: target.organizationId,
+        includeInvisible: true,
+        ...pageQuery,
+      }).then((result) =>
+        buildLoadedProjectionPage({
+          result: {
+            ...result,
+            data: result.data.filter((item) => item.genericType === 'FeaturedProject'),
+          },
+          pagingResult: result,
+          pageQuery,
+          mapRow: (item, credentialSource) => ({
+            ...mapGenericItem(item, target.instanceId, []),
+            contentType: 'projects.project',
+            ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+            credentialSource,
+            sourceEntityType: 'projects.project',
+            sourceEntityId: item.id,
+          }),
+          projectedOrganizationId: target.organizationId,
+        })
+      ),
   'news.article': async ({ target, pageQuery }) =>
     buildLoadedProjectionPage({
       result: await listSvaMainserverNews({
@@ -2045,6 +2073,22 @@ const mainserverMutationProjectionLoaders: Record<
       sourceEntityId: item.id,
     };
   },
+  'projects.project': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
+    const item = await getSvaMainserverGenericItem({
+      activeOrganizationId: target.organizationId,
+      genericItemId: entityId,
+      instanceId: target.instanceId,
+      keycloakSubject: target.keycloakSubject,
+    });
+    return {
+      ...mapGenericItem(item, target.instanceId, []),
+      contentType: 'projects.project',
+      ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+      credentialSource,
+      sourceEntityType: 'projects.project',
+      sourceEntityId: item.id,
+    };
+  },
   'news.article': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
     const item = await getSvaMainserverNews({
       activeOrganizationId: target.organizationId,
@@ -2221,6 +2265,7 @@ const genericItemProjectionContentTypes = [
   'generic-items.generic-item',
   'faq.faq',
   'cockpit-cards.cockpit-card',
+  'projects.project',
 ] as const satisfies readonly GenericItemProjectionContentType[];
 
 const resolveSpecializedGenericItemProjectionContentType = (
@@ -2231,6 +2276,9 @@ const resolveSpecializedGenericItemProjectionContentType = (
   }
   if (genericType === 'COCKPIT_CARD') {
     return 'cockpit-cards.cockpit-card';
+  }
+  if (genericType === 'FeaturedProject') {
+    return 'projects.project';
   }
   return undefined;
 };

@@ -179,23 +179,26 @@ describe('projects contract', () => {
     ]);
     expect(
       mapGenericItemToProject({
-        item: { ...existing, teaser: merged.teaser, contentBlocks: merged.contentBlocks ?? [] },
-        core: {
-          id: 'local-1', contentType: 'projects.project', instanceId: 'tenant-1', organizationId: 'org-1',
-          ownerOrganizationId: 'org-1', title: 'Projekt', createdAt: '2026-01-01T00:00:00.000Z',
-          createdBy: 'account-1', updatedAt: '2026-01-02T00:00:00.000Z', updatedBy: 'account-1',
-          authorDisplayMode: 'organization', author: 'Gemeinde', payload: {}, status: 'draft',
-          validationState: 'valid', historyRef: 'history-1',
-        },
+        ...existing,
+        teaser: merged.teaser,
+        contentBlocks: merged.contentBlocks ?? [],
       }).fullText
     ).toBe('');
   });
 
   it('returns the exact FeaturedProject response without technical type fields', () => {
     const mapped = mapGenericItemToProject({
-      item: {
         ...existing,
         teaser: 'Kurz',
+        visible: true,
+        publishedAt: '2026-01-03T00:00:00.000Z',
+        author: 'Gemeinde',
+        payload: {
+          language: 'en',
+          status: 'published',
+          deleted: false,
+          author: { type: 'organization', id: 'org-1', displayName: 'Gemeinde' },
+        },
         contentBlocks: [{ body: '<p>Text</p>', mediaContents: [] }],
         mediaContents: [
           {
@@ -204,29 +207,9 @@ describe('projects contract', () => {
             copyright: 'Gemeinde',
           },
         ],
-      },
-      core: {
-        id: 'local-1',
-        contentType: 'projects.project',
-        instanceId: 'tenant-1',
-        organizationId: 'org-1',
-        ownerOrganizationId: 'org-1',
-        title: 'Projekt',
-        publishedAt: '2026-01-03T00:00:00.000Z',
-        createdAt: '2026-01-01T00:00:00.000Z',
-        createdBy: 'account-1',
-        updatedAt: '2026-01-02T00:00:00.000Z',
-        updatedBy: 'account-1',
-        authorDisplayMode: 'organization',
-        author: 'Gemeinde',
-        payload: {},
-        status: 'published',
-        validationState: 'valid',
-        historyRef: 'history-1',
-      },
     });
     expect(mapped).toEqual({
-      id: 'local-1',
+      id: 'external-1',
       language: 'en',
       title: 'Alt',
       description: 'Kurz',
@@ -297,30 +280,11 @@ describe('projects contract', () => {
 
   it('maps safe projection fallbacks and validates malformed responses', () => {
     const mapped = mapGenericItemToProject({
-      item: {
         ...existing,
         payload: null,
         teaser: undefined,
         contentBlocks: [],
         mediaContents: [{ sourceUrl: undefined }],
-      },
-      core: {
-        id: 'local-1',
-        contentType: 'projects.project',
-        instanceId: 'tenant-1',
-        ownerUserId: 'person-1',
-        title: 'Projekt',
-        createdAt: '2026-01-01T00:00:00.000Z',
-        createdBy: 'account-1',
-        updatedAt: '2026-01-02T00:00:00.000Z',
-        updatedBy: 'account-1',
-        authorDisplayMode: 'user',
-        author: 'Ada',
-        payload: {},
-        status: 'invalid' as 'draft',
-        validationState: 'valid',
-        historyRef: 'history-1',
-      },
     });
 
     expect(mapped).toEqual(
@@ -330,7 +294,11 @@ describe('projects contract', () => {
         fullText: '',
         status: 'draft',
         published: false,
-        author: { type: 'person', id: 'person-1', displayName: 'Ada' },
+        author: {
+          type: 'organization',
+          id: 'mainserver:external-1',
+          displayName: 'Alt',
+        },
         images: [{ url: '', altText: '', position: 0 }],
       })
     );

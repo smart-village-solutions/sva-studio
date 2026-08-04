@@ -171,6 +171,10 @@ const prepareDefaults = () => {
   state.resolveActorInfo.mockResolvedValue({
     actor: { instanceId: 'tenant-1', actorAccountId: accountId },
   });
+  state.listGenericItems.mockResolvedValue({
+    data: [],
+    pagination: { page: 1, pageSize: 100, hasNextPage: false },
+  });
   state.withLock.mockImplementation(({ execute }) => execute());
 };
 
@@ -179,7 +183,7 @@ describe('projects route', () => {
     vi.resetAllMocks();
   });
 
-  it('reads every upstream page before joining, filtering and paginating projects', async () => {
+  it('reads every upstream page before filtering and paginating Mainserver projects', async () => {
     prepareDefaults();
     state.listReferences.mockResolvedValue([reference]);
     state.loadCore.mockResolvedValue(core);
@@ -199,30 +203,20 @@ describe('projects route', () => {
 
     expect(response?.status).toBe(200);
     await expect(response?.json()).resolves.toEqual({
-      data: [expect.objectContaining({ id: contentId, title: 'Projekt' })],
+      data: [expect.objectContaining({ id: 'external-1', title: 'Projekt' })],
       pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
     });
     expect(state.listGenericItems).toHaveBeenCalledTimes(2);
   });
 
-  it('skips incomplete, unbound and mismatched project references while listing', async () => {
+  it('lists Mainserver projects without requiring local references or cores', async () => {
     prepareDefaults();
     state.listGenericItems.mockResolvedValue({
       data: [genericItem],
       pagination: { page: 1, pageSize: 100, hasNextPage: false },
     });
-    state.listReferences.mockResolvedValue([
-      { ...reference, id: 'missing-provider', sourceEntityId: undefined },
-      { ...reference, id: 'pending', reconciliationStatus: 'pending' },
-      { ...reference, id: 'missing-item', sourceEntityId: 'does-not-exist' },
-      { ...reference, id: 'wrong-core', contentId: 'wrong-core' },
-      reference,
-    ]);
-    state.loadCore.mockImplementation((_instanceId, requestedContentId) =>
-      requestedContentId === 'wrong-core'
-        ? { ...core, contentType: 'news.article' }
-        : core
-    );
+    state.listReferences.mockRejectedValue(new Error('must not be used'));
+    state.loadCore.mockRejectedValue(new Error('must not be used'));
 
     const response = await dispatchSvaMainserverProjectsRequest(
       request('/api/v1/mainserver/projects')
@@ -232,6 +226,8 @@ describe('projects route', () => {
     await expect(response?.json()).resolves.toEqual(
       expect.objectContaining({ pagination: expect.objectContaining({ total: 1 }) })
     );
+    expect(state.listReferences).not.toHaveBeenCalled();
+    expect(state.loadCore).not.toHaveBeenCalled();
   });
 
   it('creates local core and stable external reference before binding the provider result', async () => {
@@ -317,7 +313,7 @@ describe('projects route', () => {
     );
   });
 
-  it('marks unknown provider results for reconciliation', async () => {
+  it('reports unknown provider results without requiring local reconciliation state', async () => {
     prepareDefaults();
     state.loadReferenceByOperation.mockResolvedValue(undefined);
     state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
@@ -334,9 +330,7 @@ describe('projects route', () => {
     );
 
     expect(response?.status).toBe(500);
-    expect(state.updateReconciliation).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'reconciliation_required' })
-    );
+    expect(state.updateReconciliation).not.toHaveBeenCalled();
     expect(state.completeIdempotency).not.toHaveBeenCalled();
   });
 
@@ -376,6 +370,44 @@ describe('projects route', () => {
     );
   });
 
+  it('updates and soft-deletes externally created Mainserver projects without a local core', async () => {
+    prepareDefaults();
+    state.loadReferenceByContentId.mockResolvedValue(undefined);
+    state.getGenericItem.mockResolvedValue(genericItem);
+    state.updateGenericItem.mockResolvedValue(genericItem);
+
+    const updateResponse = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects/external-1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(updateResponse?.status).toBe(200);
+    expect(state.updateGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({ genericItemId: 'external-1' })
+    );
+    expect(state.loadCore).not.toHaveBeenCalled();
+    expect(state.updateCore).not.toHaveBeenCalled();
+    expect(state.withLock).not.toHaveBeenCalled();
+
+    const deleteResponse = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects/external-1', { method: 'DELETE' })
+    );
+
+    expect(deleteResponse?.status).toBe(200);
+    await expect(deleteResponse?.json()).resolves.toEqual({ data: { id: 'external-1' } });
+    expect(state.updateGenericItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        genericItemId: 'external-1',
+        genericItem: expect.objectContaining({
+          payload: expect.objectContaining({ deleted: true }),
+        }),
+      })
+    );
+  });
+
   it('returns null for unrelated paths and rejects unsupported methods', async () => {
     prepareDefaults();
 
@@ -400,9 +432,10 @@ describe('projects route', () => {
     );
     expect(success?.status).toBe(200);
 
-    state.loadCore.mockResolvedValueOnce(undefined);
+    state.loadReferenceByContentId.mockResolvedValueOnce(undefined);
+    state.getGenericItem.mockRejectedValueOnce(new Error('not_found'));
     const missing = await dispatchSvaMainserverProjectsRequest(
-      request(`/api/v1/mainserver/projects/${contentId}`)
+      request('/api/v1/mainserver/projects/missing-external-id')
     );
     expect(missing?.status).toBe(404);
 
@@ -523,11 +556,13 @@ describe('projects route', () => {
     );
   });
 
-  it('completes idempotency as failed when local create preparation is unavailable', async () => {
+  it('preserves provider create success when local create follow-up is unavailable', async () => {
     prepareDefaults();
     state.loadReferenceByOperation.mockResolvedValue(undefined);
     state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
     state.prepareExternalContent.mockRejectedValue(new Error('database_lost'));
+    state.createGenericItem.mockResolvedValue(genericItem);
+    state.changeVisibility.mockResolvedValue(undefined);
 
     const response = await dispatchSvaMainserverProjectsRequest(
       request('/api/v1/mainserver/projects', {
@@ -537,17 +572,20 @@ describe('projects route', () => {
       })
     );
 
-    expect(response?.status).toBe(503);
+    expect(response?.status).toBe(201);
     expect(state.completeIdempotency).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: 'FAILED',
-        responseStatus: 503,
-        responseBody: expect.objectContaining({ error: 'database_unavailable' }),
+        status: 'COMPLETED',
+        responseStatus: 201,
       })
+    );
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Project local follow-up failed after provider create',
+      expect.objectContaining({ operation: 'mainserver_projects_local_follow_up' })
     );
   });
 
-  it('rejects author impersonation and records local finalize failures', async () => {
+  it('rejects author impersonation and preserves provider success across local finalize failures', async () => {
     prepareDefaults();
     state.loadReferenceByOperation.mockResolvedValue(undefined);
     state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
@@ -589,12 +627,16 @@ describe('projects route', () => {
         body: JSON.stringify(input),
       })
     );
-    expect(update?.status).toBe(500);
+    expect(update?.status).toBe(200);
     expect(state.updateReconciliation).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'reconciliation_required',
         errorCode: 'local_finalize_failed',
       })
+    );
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Project local follow-up failed after provider update',
+      expect.objectContaining({ operation: 'mainserver_projects_local_follow_up' })
     );
 
     state.updateCore.mockResolvedValue(undefined);

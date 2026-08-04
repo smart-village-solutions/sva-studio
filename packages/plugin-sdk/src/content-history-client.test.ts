@@ -73,6 +73,19 @@ describe('content-history-client', () => {
     await expect(fetchIamContentHistory('content-empty', { fetch: fetchMock as typeof fetch })).resolves.toEqual([]);
   });
 
+  it('returns an empty Studio history for external typed content without a local history core', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ error: 'not_found', message: 'Nicht gefunden' }), { status: 404 })
+    );
+
+    await expect(
+      fetchIamContentHistory('external-project-1', {
+        fetch: fetchMock as typeof fetch,
+        contentType: 'projects.project',
+      })
+    ).resolves.toEqual([]);
+  });
+
   it('surfaces forbidden and not-found errors as mainserver api errors', async () => {
     const forbiddenFetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ error: 'forbidden', message: 'Keine Rechte' }), { status: 403 })

@@ -86,10 +86,10 @@ test('creates, publishes, reorders and deletes a featured project with multiple 
   await page.locator('#project-fullText').fill('Ausführlicher Projekttext');
   await page.getByRole('button', { name: /Bild hinzufügen|projects\.actions\.addImage/ }).click();
   await page.getByRole('button', { name: /Bild hinzufügen|projects\.actions\.addImage/ }).click();
-  await page.locator('#project-image-url-0').fill('https://example.test/one.jpg');
-  await page.locator('#project-image-alt-0').fill('Brücke');
-  await page.locator('#project-image-url-1').fill('https://example.test/two.jpg');
-  await page.locator('#project-image-alt-1').fill('Baustelle');
+  await page.getByLabel(/Bild-URL|projects\.fields\.imageUrl/).nth(0).fill('https://example.test/one.jpg');
+  await page.getByLabel(/Alternativtext|projects\.fields\.altText/).nth(0).fill('Brücke');
+  await page.getByLabel(/Bild-URL|projects\.fields\.imageUrl/).nth(1).fill('https://example.test/two.jpg');
+  await page.getByLabel(/Alternativtext|projects\.fields\.altText/).nth(1).fill('Baustelle');
   await page.getByRole('tab', { name: /Einstellungen|projects\.tabs\.settings/ }).click();
   await page.locator('#project-status').selectOption('published');
   await page.locator('#project-author-id').fill('org-1');

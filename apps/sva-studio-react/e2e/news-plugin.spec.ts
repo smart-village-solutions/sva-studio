@@ -124,8 +124,12 @@ test.describe('news plugin', () => {
     await page
       .getByRole('button', { name: /Manuell hinzufügen|news\.actions\.addMediaManual/ })
       .click();
-    await page.locator('#news-media-url-0').fill('https://example.com/news/image.jpg');
-    await page.locator('#news-media-caption-0').fill('Titelbild');
+    await page
+      .getByLabel(/Medien-URL|news\.fields\.mediaUrl/)
+      .fill('https://example.com/news/image.jpg');
+    await page
+      .getByLabel(/Bildunterschrift|news\.fields\.mediaCaption/)
+      .fill('Titelbild');
     await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
     await page.getByRole('radio', { name: /Entwurf|news\.publicationModes\.draft/ }).click();
     await page

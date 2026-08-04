@@ -72,7 +72,7 @@ Fehlerpfad:
 2. Die hostmaterialisierte Route prüft Modulfreigabe und `faq.*`-Berechtigung; die direkte Navigation bleibt wie bei News und Events außerhalb der Hauptnavigation.
 3. Das Plugin ruft ausschließlich `/api/v1/mainserver/faqs` auf. Die Host-Fassade authentisiert den Request, prüft CSRF für Mutationen und delegiert mit instanzbezogenen Mainserver-Credentials.
 4. Beim Lesen lädt die Fassade alle GenericItem-Upstream-Seiten, filtert `genericType: "FAQ"`, sortiert nach Sprachcode, Sortiergewicht, Frage und ID und paginiert erst anschließend.
-5. Beim Schreiben erzwingt die Fassade den FAQ-Discriminator; Detail-, Update- und Delete-Zugriffe auf Nicht-FAQ-IDs enden als nicht gefunden. Die Inhaltsprojektion führt FAQ als `faq.faq` und blendet sie aus der generischen GenericItem-Projektion aus.
+5. Beim Schreiben erzwingt die Fassade den FAQ-Discriminator; Detail-, Update- und Delete-Zugriffe auf Nicht-FAQ-IDs enden als nicht gefunden. Die Inhaltsprojektion führt FAQ als `faq.faq`; bei vorhandenen `generic-items.read`-Rechten darf derselbe Datensatz zusätzlich als `generic-items.generic-item` erscheinen.
 
 ### Cockpit Cards: kategorisierte GenericItem-Fachansicht
 
@@ -80,7 +80,7 @@ Fehlerpfad:
 2. Das Plugin lädt die bestehende Kategorienliste und öffentliche Bildmedien hostgeführt; Text und Bilder werden gemeinsam im Tab `Inhalt` bearbeitet.
 3. Die Fassade autorisiert mit `cockpit-cards.*`, validiert genau eine Kategorie, mindestens ein Bild und höchstens einen HTTPS-Link und erzwingt `genericType: "COCKPIT_CARD"`.
 4. Der Leseweg sammelt alle GenericItem-Upstream-Seiten, filtert und sortiert die Cockpit Cards und paginiert anschließend lokal.
-5. Die Inhaltsprojektion führt den Datensatz ausschließlich als `cockpit-cards.cockpit-card`; FAQ und offene GenericItems bleiben getrennt.
+5. Die Inhaltsprojektion führt den Datensatz als `cockpit-cards.cockpit-card`; bei vorhandenen `generic-items.read`-Rechten darf derselbe Datensatz zusätzlich als `generic-items.generic-item` erscheinen.
 
 ### Waste-Management: Settings, CRUD, PDF-Stamminhalte und technische Tools
 

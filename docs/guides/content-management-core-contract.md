@@ -51,6 +51,12 @@ Content-Operationen verwenden keine groben Schreibrechte mehr. Kanonisch sind:
 - History-Lesen prüft `content.readHistory`.
 - Delete prüft `content.delete`.
 
+## Technischer GenericItems-Vollzugriff
+
+Das Modul „Generische Inhalte“ bildet alle Mainserver-`GenericItem`s unabhängig vom `genericType` ab. Dies schließt `FeaturedProject`, `FAQ`, `COCKPIT_CARD` sowie unbekannte oder zukünftige Typkennungen ein. Generische Listen, Details und Mutationen prüfen ausschließlich die jeweilige Action unter `generic-items.*`; zusätzliche Rechte der Fachplugins sind nicht erforderlich.
+
+Die generische Bearbeitung ist ein technischer Vollzugriff und erzwingt nicht die engeren Validierungen der Fachplugins. Reguläre Live-Rollen sollen deshalb keine `generic-items.*`-Actions erhalten. Wenn eine Person sowohl generische als auch fachliche Leserechte besitzt, kann derselbe Mainserver-Datensatz in der gemeinsamen Inhaltsübersicht in beiden Content-Type-Repräsentationen erscheinen.
+
 ## Scoped Rollen-Permissions fuer Content
 
 - Die datensatzbezogenen Content-Rechte koennen ueber Rollen additiv mit `accessScope` eingeschraenkt werden:

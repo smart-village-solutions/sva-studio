@@ -116,6 +116,13 @@ Abhängigkeiten des aktuellen Systems.
 - behält bewusst das Studio-Fachmodell im Plugin bei; Snapshot-Spezifika wie `SurveyPoll`, `date` oder `payload` enden an der Host-/Mainserver-Adaptergrenze
 - erzeugt Exportvarianten wie `CSV`, `JSON`, `Excel` und `XML` im Studio aus hostgeführten JSON-Ergebnissen statt über pluginseitige GraphQL- oder Direkt-Exportpfade
 
+  11d. Plugin Generic Items (`packages/plugin-generic-items`)
+
+- bildet als technische Vollansicht alle Mainserver-`GenericItem`s unabhängig vom `genericType` ab, einschließlich fachlich spezialisierter und unbekannter Diskriminatoren
+- autorisiert generische Lese- und Schreibpfade ausschließlich mit `generic-items.*`; zusätzliche Fachrechte sind nicht erforderlich
+- lässt die eigenständigen Fachplugins, ihre festen Diskriminatoren, Validierungen und Action-Namespaces unverändert
+- darf denselben Mainserver-Datensatz bei kombinierten Rechten zusätzlich zur fachlichen Repräsentation als `generic-items.generic-item` projizieren
+
 12. Plugin Waste Management (`packages/plugin-waste-management`)
 
 - freies Fachplugin unter `/plugins/waste-management` für Waste-Stammdaten, Touren, Ausweichtermine, PDF-Stamminhalte, technische Werkzeuge und instanzbezogene Einstellungen

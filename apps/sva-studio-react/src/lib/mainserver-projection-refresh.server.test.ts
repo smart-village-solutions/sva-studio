@@ -181,6 +181,24 @@ describe('mainserver projection refresh', () => {
     });
   });
 
+  it('keeps nested survey response ids from replacing the survey path identity', async () => {
+    await refreshProjectionAfterMainserverMutation(
+      new Request(
+        'https://studio.test/api/v1/mainserver/surveys/survey-42/free-text-responses/response-1',
+        { method: 'PATCH' }
+      ),
+      new Response(JSON.stringify({ data: { id: 'response-1' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+      'surveys.survey'
+    );
+
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledWith(
+      expect.objectContaining({ contentType: 'surveys.survey', entityId: 'survey-42' })
+    );
+  });
+
   it('skips targeted entity id derivation when the request path is outside known mainserver collections', async () => {
     await expect(refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/other/news/news-42', {

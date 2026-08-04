@@ -99,7 +99,7 @@ export const refreshProjectionAfterMainserverMutation = async (
   const operation = parseMutationOperation(request);
   const entityIdFromPath = parseEntityIdFromRequestPath(request);
   const entityIdFromResponse = await parseEntityIdFromResponse(response);
-  const entityId = entityIdFromResponse ?? entityIdFromPath;
+  const entityId = entityIdFromPath ?? entityIdFromResponse;
   if ((operation === 'create' || operation === 'update') && !entityId) {
     logger.warn('Mainserver mutation succeeded without a resolvable entity identity', {
       contentType,

@@ -66,7 +66,11 @@ vi.mock('@sva/plugin-sdk', async () => {
   return {
     ...actual,
     getHostMediaAsset: vi.fn(),
-    getHostMediaDelivery: vi.fn(async () => ({ deliveryUrl: 'https://cdn.example.test/upload-fallback.jpg', expiresAt: '2099-01-01T00:00:00.000Z', isPublicUrl: true })),
+    getHostMediaDelivery: vi.fn(async () => ({
+      deliveryUrl: 'https://cdn.example.test/upload-fallback.jpg',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      isPublicUrl: true,
+    })),
     listHostMediaAssets: vi.fn(async () => []),
     listHostMediaReferencesByTarget: vi.fn(async () => []),
     updateHostMediaAsset: vi.fn(),
@@ -91,7 +95,11 @@ describe('NewsDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
-    publishSessionAccessSnapshot({ isResolved: true, permissionActions: ['media.read', 'media.create', 'media.update', 'media.reference.manage'], roles: [] });
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
+      roles: [],
+    });
     navigateMock.mockReset();
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
@@ -305,6 +313,52 @@ describe('NewsDetailPage', () => {
       expect(screen.getByDisplayValue('https://cdn.example.test/upload-fallback.jpg')).toBeTruthy();
     });
     expect(screen.queryByText('Bild-URL konnte nicht ermittelt werden.')).toBeNull();
+  });
+
+  it('reviews and accepts a persistent asset from the media library', async () => {
+    vi.mocked(listHostMediaAssets).mockResolvedValueOnce([
+      {
+        id: 'asset-library',
+        fileName: 'library.jpg',
+        mimeType: 'image/jpeg',
+        visibility: 'public',
+        previewUrl: 'https://example.com/library-preview.jpg',
+        metadata: { title: 'Bibliotheksbild' },
+      },
+    ] as never);
+    vi.mocked(getHostMediaAsset).mockResolvedValueOnce({
+      id: 'asset-library',
+      fileName: 'library.jpg',
+      mimeType: 'image/jpeg',
+      visibility: 'public',
+      previewUrl: 'https://example.com/library-preview.jpg',
+      metadata: {
+        title: 'Bibliotheksbild',
+        altText: 'Alt',
+        description: 'Beschreibung',
+        copyright: 'Stadt',
+        license: 'CC0',
+      },
+    } as never);
+    render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
+    fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'content' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Bild aus Mediathek' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'news.actions.selectImage' }));
+    await screen.findByDisplayValue('Bibliotheksbild');
+    fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('https://cdn.example.test/upload-fallback.jpg')).toBeTruthy()
+    );
+
+    vi.mocked(getHostMediaAsset).mockResolvedValueOnce({
+      id: 'asset-library',
+      fileName: 'library.jpg',
+      mimeType: 'image/jpeg',
+      visibility: 'public',
+      metadata: {},
+    } as never);
+    fireEvent.click(screen.getByRole('button', { name: 'news.media.refresh' }));
+    expect(await screen.findByText('news.media.refreshTitle')).toBeTruthy();
   });
 
   it('renders the author as a fixed readonly field when authorship is fixed', async () => {

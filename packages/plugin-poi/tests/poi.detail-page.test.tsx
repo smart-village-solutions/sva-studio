@@ -3,9 +3,11 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import {
   getHostMediaAsset,
   listHostMediaAssets,
+  listHostMediaReferencesByTarget,
   publishSessionAccessSnapshot,
   registerPluginTranslationResolver,
   resetSessionAccessSnapshot,
+  saveContentWithHostMediaReferences,
   updateHostMediaAsset,
   uploadHostMediaFile,
 } from '@sva/plugin-sdk';
@@ -36,9 +38,14 @@ vi.mock('@sva/plugin-sdk', async () => {
     ...actual,
     listHostMediaReferencesByTarget: vi.fn(async () => []),
     replaceHostMediaReferences: vi.fn(async () => []),
+    saveContentWithHostMediaReferences: vi.fn(),
     getHostMediaDelivery: vi.fn(async ({ assetId }: { assetId: string }) => {
       const asset = resolveMockMediaAsset(assetId);
-      return { deliveryUrl: asset.previewUrl, expiresAt: '2099-01-01T00:00:00.000Z', isPublicUrl: true };
+      return {
+        deliveryUrl: asset.previewUrl,
+        expiresAt: '2099-01-01T00:00:00.000Z',
+        isPublicUrl: true,
+      };
     }),
     getHostMapGeocodingConfig: vi.fn(async () => ({
       provider: 'geoapify',
@@ -156,6 +163,11 @@ describe('PoiDetailPage', () => {
     vi.mocked(updatePoi).mockReset();
     vi.mocked(listHostMediaAssets).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
+    vi.mocked(saveContentWithHostMediaReferences).mockImplementation(async (input) => ({
+      status: 'complete',
+      saved: await input.saveContent(),
+    }));
     vi.mocked(getHostMediaAsset).mockReset();
     vi.mocked(updateHostMediaAsset).mockReset();
     vi.mocked(uploadHostMediaFile).mockReset();
@@ -803,6 +815,38 @@ describe('PoiDetailPage', () => {
       );
       expect(screen.getByText('Ort aktualisiert.')).toBeTruthy();
     });
+  });
+
+  it('surfaces repeated media-reference failures and completes the retry', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      payload: {},
+      mediaContents: [{ sourceUrl: { url: 'https://cdn.example.test/rathaus.jpg' } }],
+    } as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
+      { assetId: 'asset-1', role: 'gallery_item', sortOrder: 0 },
+    ]);
+    vi.mocked(updatePoi).mockResolvedValueOnce({ id: 'poi-1', name: 'Rathaus' } as never);
+    const retry = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('again'))
+      .mockResolvedValueOnce(undefined);
+    vi.mocked(saveContentWithHostMediaReferences).mockImplementationOnce(async (input) => ({
+      status: 'reference_failed',
+      saved: await input.saveContent(),
+      retryReferenceSync: retry,
+    }));
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+    await screen.findByDisplayValue('Rathaus');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+    await screen.findByText('poi.messages.mediaReferencePartialFailure');
+    fireEvent.click(screen.getByRole('button', { name: 'poi.messages.mediaReferenceRetry' }));
+    await waitFor(() => expect(retry).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'poi.messages.mediaReferenceRetry' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'poi.messages.mediaReferenceRetry' })).toBeNull()
+    );
   });
 
   it('preserves loaded hidden fields on save', async () => {

@@ -6,6 +6,7 @@ import {
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
   registerPluginTranslationResolver,
+  saveContentWithHostMediaReferences,
 } from '@sva/plugin-sdk';
 
 import { NewsCreatePage, NewsEditPage } from '../src/news.pages.js';
@@ -160,6 +161,7 @@ vi.mock('@sva/plugin-sdk', async () => {
     fetchIamContentHistory: vi.fn(async () => []),
     listHostMediaAssets: vi.fn(async () => []),
     listHostMediaReferencesByTarget: vi.fn(async () => []),
+    saveContentWithHostMediaReferences: vi.fn(),
   };
 });
 
@@ -244,6 +246,10 @@ describe('News editor pages', () => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
+    vi.mocked(saveContentWithHostMediaReferences).mockImplementation(async (input) => ({
+      status: 'complete',
+      saved: await input.saveContent(),
+    }));
     navigateMock.mockReset();
     paramsMock.mockReset();
     vi.mocked(getNews).mockResolvedValue({
@@ -815,6 +821,39 @@ describe('News editor pages', () => {
       expect(screen.getByText('News konnten nicht geladen werden.')).toBeTruthy();
       expect(screen.queryByText('News werden geladen.')).toBeNull();
     });
+  });
+
+  it('keeps the news form loaded when optional media-reference access fails', async () => {
+    vi.mocked(listHostMediaReferencesByTarget).mockRejectedValueOnce(new Error('forbidden'));
+    render(<NewsEditPage />);
+
+    expect(await screen.findByDisplayValue('Bestehende News')).toBeTruthy();
+    expect(screen.queryByText('News konnten nicht geladen werden.')).toBeNull();
+  });
+
+  it('surfaces repeated media-reference failures and completes a reference-only retry', async () => {
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
+      { assetId: 'asset-extra', role: 'gallery_item', sortOrder: 0 },
+    ]);
+    const retry = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('again'))
+      .mockResolvedValueOnce(undefined);
+    vi.mocked(saveContentWithHostMediaReferences).mockImplementationOnce(async (input) => ({
+      status: 'reference_failed',
+      saved: await input.saveContent(),
+      retryReferenceSync: retry,
+    }));
+    render(<NewsEditPage />);
+    await screen.findByDisplayValue('Bestehende News');
+    clickPrimaryAction('Änderungen speichern');
+    await screen.findByText('news.messages.mediaReferencePartialFailure');
+    fireEvent.click(screen.getByRole('button', { name: 'news.actions.retryMediaReferences' }));
+    await waitFor(() => expect(retry).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'news.actions.retryMediaReferences' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'news.actions.retryMediaReferences' })).toBeNull()
+    );
   });
 
   it('shows a fallback error when editing without a content id', async () => {

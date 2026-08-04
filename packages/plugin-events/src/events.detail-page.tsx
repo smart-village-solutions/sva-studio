@@ -3,8 +3,15 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
   getHostMediaAsset,
+  getHostMediaDelivery,
+  alignHostMediaReferencesByOrder,
   getHostMediaAssetFileName,
   listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  saveContentWithHostMediaReferences,
+  readSessionAccessSnapshot,
+  resolveContentMediaCapabilities,
+  subscribeSessionAccessSnapshot,
   updateHostMediaAsset,
   uploadHostMediaFile,
   usePluginTranslation,
@@ -13,6 +20,12 @@ import {
 } from '@sva/plugin-sdk';
 import {
   Button,
+  contentMediaUsageToReference,
+  contentMediaUsagesToMainserver,
+  isPersistableContentMediaUrl,
+  mainserverContentMediaToUsages,
+  toContentMediaAssetSnapshot,
+  type ContentMediaUsage,
   Select,
   StudioDetailPageTemplate,
   StudioFormSummary,
@@ -37,6 +50,7 @@ import {
   listEventCategories,
   updateEvent,
 } from './events.api.js';
+import { EVENTS_CONTENT_TYPE } from './events.constants.js';
 import { fromDateOnlyInputValue, toDateOnlyInputValue } from './events.date-only.js';
 import {
   createDefaultMediaContent,
@@ -169,7 +183,8 @@ const toEventsMediaPickerSummary = (
 
 const toEventsMediaPickerDetail = (
   asset: HostMediaAssetDetail,
-  summary?: HostMediaAssetListItem
+  summary?: HostMediaAssetListItem,
+  persistentUrl?: string | null
 ): EventsMediaPickerAsset => {
   const fileName = summary ? readAssetFileName(summary) : getHostMediaAssetFileName(asset);
   const title = asset.metadata.title?.trim() || (summary ? readAssetTitle(summary) : fileName);
@@ -181,6 +196,7 @@ const toEventsMediaPickerDetail = (
     previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
     mimeType: asset.mimeType,
     visibility: asset.visibility,
+    persistentUrl,
     metadata: {
       title,
       altText: asset.metadata.altText?.trim() ?? '',
@@ -283,6 +299,14 @@ export function EventsDetailPage({
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<EventContentItem | null>(null);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
+  const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
+  const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
+  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(null);
+  const sessionAccess = React.useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
+  const mediaCapabilities = React.useMemo(() => resolveContentMediaCapabilities({ canEditContent: true, permissionActions: sessionAccess.permissionActions }), [sessionAccess.permissionActions]);
+  const canSelectMedia = mediaCapabilities.canSelect;
+  const canUploadMedia = mediaCapabilities.canUpload;
+  const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
   const [dateStartInput, setDateStartInput] = React.useState('');
   const [dateEndInput, setDateEndInput] = React.useState('');
   const [invalidDateInputs, setInvalidDateInputs] = React.useState({
@@ -315,6 +339,8 @@ export function EventsDetailPage({
 
   const isAssetSelectable = React.useCallback(
     (asset: EventsMediaPickerAsset) => {
+      if (!asset.persistentUrl) return mediaUsages.every((usage) => usage.assetId !== asset.id);
+      if (!isPersistableContentMediaUrl(asset.persistentUrl)) return false;
       const nextMedia = mediaContentFromAsset({
         id: asset.id,
         fileName: asset.fileName,
@@ -335,11 +361,13 @@ export function EventsDetailPage({
       const nextUrl = nextMedia.sourceUrl?.url?.trim() ?? '';
       return existingUrls.has(nextUrl) === false;
     },
-    [methods]
+    [mediaUsages, methods]
   );
 
   const mediaPicker = useStudioMediaPickerOverlay<EventsMediaPickerAsset>({
     onAccept: (asset) => {
+      if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
+      const persistentUrl = asset.persistentUrl;
       const nextMedia = mediaContentFromAsset({
         id: asset.id,
         fileName: asset.fileName,
@@ -363,13 +391,22 @@ export function EventsDetailPage({
             copyright: nextMedia.copyright ?? '',
             contentType: nextMedia.contentType ?? '',
             sourceUrl: {
-              url: nextMedia.sourceUrl?.url ?? '',
+              url: persistentUrl,
               description: nextMedia.sourceUrl?.description ?? '',
             },
           },
         ],
         { shouldDirty: true }
       );
+      setMediaUsages((current) => [...current, {
+        uiId: `event-asset-${asset.id}-${current.length}`, assetId: asset.id, persistentUrl,
+        previewUrl: asset.previewUrl ?? undefined, altText: asset.metadata.altText || asset.fileName,
+        caption: asset.metadata.description || asset.title, credit: asset.metadata.copyright,
+        license: asset.metadata.license, role: 'gallery_item', sortOrder: current.length,
+        assetSnapshot: toContentMediaAssetSnapshot({ persistentUrl, altText: asset.metadata.altText || asset.fileName, caption: asset.metadata.description || asset.title, credit: asset.metadata.copyright, license: asset.metadata.license }),
+        referenceStatus: 'pending', additionalData: { contentType: nextMedia.contentType ?? 'image', width: '', height: '' },
+      }]);
+      setRequiresReferenceSync(true);
       void refreshMediaAssets();
     },
     canAcceptAsset: isAssetSelectable,
@@ -386,9 +423,9 @@ export function EventsDetailPage({
       return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
     loadAsset: async (assetId) => {
-      const detail = await getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId });
+      const [detail, delivery] = await Promise.all([getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }), getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId })]);
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      return toEventsMediaPickerDetail(detail, summary);
+      return toEventsMediaPickerDetail(detail, summary, delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl) ? delivery.deliveryUrl : null);
     },
     saveAssetMetadata: async (assetId, metadata) => {
       const detail = await updateHostMediaAsset({
@@ -400,7 +437,8 @@ export function EventsDetailPage({
       const assets = await refreshMediaAssets();
       mediaAssetsRef.current = assets;
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      return toEventsMediaPickerDetail(detail, summary);
+      const delivery = await getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId });
+      return toEventsMediaPickerDetail(detail, summary, delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl) ? delivery.deliveryUrl : null);
     },
   });
   const mediaPickerFeedback = React.useMemo(
@@ -430,13 +468,15 @@ export function EventsDetailPage({
     }
 
     let active = true;
-    void getEvent(contentId)
-      .then((item) => {
+    void Promise.all([getEvent(contentId), listHostMediaReferencesByTarget({ fetch: globalThis.fetch.bind(globalThis), targetType: EVENTS_CONTENT_TYPE, targetId: contentId })])
+      .then(([item, references]) => {
         if (!active) {
           return;
         }
         const nextValues = mapEventItemToDetailFormValues(item);
         reset(nextValues);
+        setMediaUsages(mainserverContentMediaToUsages(nextValues.content.mediaContents, alignHostMediaReferencesByOrder({ itemCount: nextValues.content.mediaContents.length, role: 'gallery_item', references })));
+        setRequiresReferenceSync(references.length > 0);
         setLoadedItem(item);
         setDateStartInput(toDateOnlyInputValue(nextValues.content.dates?.[0]?.dateStart));
         setDateEndInput(toDateOnlyInputValue(nextValues.content.dates?.[0]?.dateEnd));
@@ -492,7 +532,8 @@ export function EventsDetailPage({
   const submit = methods.handleSubmit(async (values) => {
     setStatus(null);
     methods.clearErrors();
-    const payload = mapEventsDetailFormValuesToInput(values);
+    const valuesWithMedia = { ...values, content: { ...values.content, mediaContents: contentMediaUsagesToMainserver(mediaUsages) as EventsDetailFormValues['content']['mediaContents'] } };
+    const payload = mapEventsDetailFormValuesToInput(valuesWithMedia);
     const validationErrors = [
       ...validateEventForm(payload),
       ...(invalidDateInputs.dateStart || invalidDateInputs.dateEnd ? ['dates'] : []),
@@ -542,10 +583,17 @@ export function EventsDetailPage({
     }
 
     try {
-      const saved =
-        mode === 'create'
-          ? await createEvent(payload)
-          : await updateEvent(contentId as string, payload);
+      const saveContent = () => mode === 'create' ? createEvent(payload) : updateEvent(contentId as string, payload);
+      const result = requiresReferenceSync ? await saveContentWithHostMediaReferences({ fetch: globalThis.fetch.bind(globalThis), saveContent, getTargetId: (saved) => saved.id, targetType: EVENTS_CONTENT_TYPE, references: mediaUsages.flatMap((usage) => { const reference = contentMediaUsageToReference(usage); return reference ? [reference] : []; }) }) : { status: 'complete' as const, saved: await saveContent() };
+      const saved = result.saved;
+      if (result.status === 'reference_failed') {
+        setRetryReferenceSync(() => result.retryReferenceSync);
+        setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage));
+        setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
+        return;
+      }
+      setRetryReferenceSync(null);
+      setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
       setStatus({
         kind: 'success',
         text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess'),
@@ -637,11 +685,13 @@ export function EventsDetailPage({
           open={mediaPicker.open}
           reviewAsset={mediaPicker.reviewAsset}
           reviewSource={mediaPicker.reviewSource}
+          isMetadataEditable={canUpdateMedia}
           searchValue={mediaPicker.searchValue}
           uploadPhase={mediaPicker.uploadPhase}
         />
         <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5">
           {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+          {retryReferenceSync ? <Button type="button" variant="outline" onClick={() => void retryReferenceSync().then(() => { setRetryReferenceSync(null); setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage)); setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') }); }, () => setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') }))}>{pt('actions.retryMediaReferences')}</Button> : null}
           <Tabs
             value={activeTab}
             onValueChange={(value) => handleTabChange(value as EventsDetailTabId)}
@@ -722,6 +772,16 @@ export function EventsDetailPage({
                     ) : null}
                     {tab.id === 'content' ? (
                       <EventsDetailContentTab
+                        mediaUsages={mediaUsages}
+                        onChangeMediaUsages={(usages) => { setMediaUsages(usages); setRequiresReferenceSync((current) => current || usages.some((usage) => Boolean(usage.assetId))); }}
+                        canSelectMedia={canSelectMedia}
+                        canUploadMedia={canUploadMedia}
+                        onLoadAssetSnapshot={async (usage) => {
+                          if (!usage.assetId) throw new Error('asset_unavailable');
+                          const [detail, delivery] = await Promise.all([getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }), getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId })]);
+                          if (delivery.isPublicUrl !== true || !isPersistableContentMediaUrl(delivery.deliveryUrl)) throw new Error('asset_unavailable');
+                          return toContentMediaAssetSnapshot({ persistentUrl: delivery.deliveryUrl, altText: detail.metadata.altText ?? '', caption: detail.metadata.description ?? '', credit: detail.metadata.copyright ?? '', license: detail.metadata.license ?? '' });
+                        }}
                         dateEndInput={dateEndInput}
                         dateInputsInvalid={invalidDateInputs}
                         dateStartInput={dateStartInput}

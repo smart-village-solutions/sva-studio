@@ -26,6 +26,7 @@ export const genericItemsTranslationsDeActions = {
     addMediaManual: 'Medium manuell ergänzen',
     selectImage: 'Bild auswählen',
     removeImage: 'Bild entfernen',
+    retryMediaReferences: 'Medienreferenzen erneut speichern',
     removeCategory: 'Kategorie {{name}} entfernen',
     remove: 'Entfernen',
   },

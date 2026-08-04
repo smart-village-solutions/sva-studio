@@ -44,6 +44,7 @@ type StudioMediaPickerOverlayProps = Readonly<{
   onOpenMediaManagement?: (assetId: string) => void | Promise<void>;
   isLoadingReviewAsset?: boolean;
   isSavingReviewAsset?: boolean;
+  isMetadataEditable?: boolean;
   isAssetSelectable?: (asset: StudioMediaPickerAssetSummary) => boolean;
   feedbackMessage?: string | null;
   feedbackTone?: 'default' | 'success' | 'error';
@@ -83,6 +84,7 @@ const StudioMediaPickerOverlayBody = ({
   isAssetSelectable,
   isLoadingReviewAsset,
   isSavingReviewAsset,
+  isMetadataEditable,
   labels,
   metadataDraft,
   mode,
@@ -134,6 +136,7 @@ const StudioMediaPickerOverlayBody = ({
         feedbackTone={feedbackTone}
         isLoadingReviewAsset={isLoadingReviewAsset}
         isSavingReviewAsset={isSavingReviewAsset}
+        isMetadataEditable={isMetadataEditable}
         labels={labels}
         metadataDraft={metadataDraft}
         onBackFromReview={onBackFromReview}
@@ -155,6 +158,7 @@ export const StudioMediaPickerOverlay = ({
   isAssetSelectable,
   isLoadingReviewAsset = false,
   isSavingReviewAsset = false,
+  isMetadataEditable = true,
   labels,
   metadataDraft,
   mode,
@@ -191,6 +195,7 @@ export const StudioMediaPickerOverlay = ({
           isAssetSelectable={isAssetSelectable}
           isLoadingReviewAsset={isLoadingReviewAsset}
           isSavingReviewAsset={isSavingReviewAsset}
+          isMetadataEditable={isMetadataEditable}
           labels={labels}
           metadataDraft={metadataDraft}
           mode={mode}

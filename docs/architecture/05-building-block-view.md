@@ -58,6 +58,7 @@ Abhängigkeiten des aktuellen Systems.
 - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
 - ist der kanonische UI-Owner für die Formular-Foundation rund um `react-hook-form`-, Resolver- und Form-Bridge-Muster; Host und Plugins sollen keine parallelen Basis-Formularsysteme etablieren
 - ist kanonischer Owner für wiederverwendbare Host-Listen-UI wie `StudioDataTable` und `StudioListPageTemplate`; die App liefert nur noch explizite Labels, Routen und Seitendaten
+- besitzt mit `ContentMediaUsageBlock` den kontrollierten, pluginneutralen Bildeditor. Er trennt stabile UI-Identität, optionale Asset-Identität, persistierbare Inhalts-URL, transiente Vorschau und redaktionelle Metadaten; pluginnahe Adapter erhalten alle nicht bearbeiteten Fachfelder.
 - bleibt UI-only: keine Plugin-Registry, keine Route-Materialisierung, keine Persistenz, keine IAM- oder Server-Runtime-Logik
 
 7. Tooling Testing (`tooling/testing`)
@@ -674,6 +675,15 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - binden tenantkonfiguriertes `mapGeocoding` an normierte Host-Endpunkte unter `/api/v1/iam/map-geocoding/*`.
 3. `packages/plugin-poi/src/poi.detail-page.tsx`, `poi.detail-location-tab.tsx`, `poi.detail-media-tab.tsx`
    - orchestrieren den vollständigen POI-Editor mit Bereichs-Tabs, Geocoding-Feldern, Reverse-Geocode-Unterstützung und Host-Media-Referenzierung.
+
+### Ergänzung 2026-08: Gemeinsamer Content-Media-Overlay-Flow
+
+1. `packages/studio-ui-react/src/content-media-usage*.ts(x)`
+   - definiert den kontrollierten Bildblock, barrierefreie Reihenfolgeaktionen, sichtbare Referenzzustände und den feldweisen Metadatenabgleich.
+2. `packages/plugin-sdk/src/media-picker-client.ts`, `content-media-persistence.ts`
+   - liefert browser-sichere Asset-/Delivery-/Referenzverträge und die Sequenz „Fachinhalt zuerst, Referenzen danach“ mit isoliertem Retry.
+3. POI, News, Events, Generic Items, Projects und Cockpit Cards
+   - behalten ihre Mainserver- beziehungsweise Fachmodelle als führenden Snapshot und übersetzen ausschließlich am Pluginrand in `ContentMediaUsage`; `gallery_item` und der normalisierte Listenindex bilden die geordnete Hostreferenz.
 
 ## Zentraler Backup-Agent
 

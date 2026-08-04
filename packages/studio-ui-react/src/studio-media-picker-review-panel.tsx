@@ -23,18 +23,19 @@ type ReviewFieldProps = Readonly<{
   label: string;
   value: string;
   multiline?: boolean;
+  disabled?: boolean;
   onChange: (value: string) => void;
 }>;
 
-const ReviewField = ({ id, label, multiline = false, onChange, value }: ReviewFieldProps) => (
+const ReviewField = ({ disabled = false, id, label, multiline = false, onChange, value }: ReviewFieldProps) => (
   <div className="space-y-2">
     <label className="text-sm font-medium text-foreground" htmlFor={id}>
       {label}
     </label>
     {multiline ? (
-      <Textarea id={id} value={value} onChange={(event) => onChange(event.target.value)} />
+      <Textarea disabled={disabled} id={id} value={value} onChange={(event) => onChange(event.target.value)} />
     ) : (
-      <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} />
+      <Input disabled={disabled} id={id} value={value} onChange={(event) => onChange(event.target.value)} />
     )}
   </div>
 );
@@ -65,28 +66,33 @@ const ReviewAssetPreview = ({
 );
 
 const ReviewMetadataFields = ({
+  isMetadataEditable,
   labels,
   metadataDraft,
   onMetadataChange,
 }: Readonly<{
+  isMetadataEditable: boolean;
   labels: Pick<StudioMediaPickerOverlayLabels, 'fields'>;
   metadataDraft: StudioMediaPickerMetadataDraft;
   onMetadataChange: <Key extends MetadataKey>(key: Key, value: StudioMediaPickerMetadataDraft[Key]) => void;
 }>) => (
   <div className="space-y-4">
     <ReviewField
+      disabled={!isMetadataEditable}
       id="studio-media-review-title"
       label={labels.fields.title}
       value={metadataDraft.title}
       onChange={(value) => onMetadataChange('title', value)}
     />
     <ReviewField
+      disabled={!isMetadataEditable}
       id="studio-media-review-alt-text"
       label={labels.fields.altText}
       value={metadataDraft.altText}
       onChange={(value) => onMetadataChange('altText', value)}
     />
     <ReviewField
+      disabled={!isMetadataEditable}
       id="studio-media-review-description"
       label={labels.fields.description}
       multiline
@@ -94,12 +100,14 @@ const ReviewMetadataFields = ({
       onChange={(value) => onMetadataChange('description', value)}
     />
     <ReviewField
+      disabled={!isMetadataEditable}
       id="studio-media-review-copyright"
       label={labels.fields.copyright}
       value={metadataDraft.copyright}
       onChange={(value) => onMetadataChange('copyright', value)}
     />
     <ReviewField
+      disabled={!isMetadataEditable}
       id="studio-media-review-license"
       label={labels.fields.license}
       value={metadataDraft.license}
@@ -168,6 +176,7 @@ export type StudioMediaPickerReviewPanelProps = Readonly<{
   feedbackTone?: 'default' | 'success' | 'error';
   isLoadingReviewAsset?: boolean;
   isSavingReviewAsset?: boolean;
+  isMetadataEditable?: boolean;
   onMetadataChange: <Key extends MetadataKey>(key: Key, value: StudioMediaPickerMetadataDraft[Key]) => void;
   onBackFromReview: () => void;
   onClose: () => void;
@@ -180,6 +189,7 @@ export const StudioMediaPickerReviewPanel = ({
   feedbackTone = 'default',
   isLoadingReviewAsset = false,
   isSavingReviewAsset = false,
+  isMetadataEditable = true,
   labels,
   metadataDraft,
   onBackFromReview,
@@ -208,7 +218,12 @@ export const StudioMediaPickerReviewPanel = ({
       ) : (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
           <ReviewAssetPreview metadataDraft={metadataDraft} reviewAsset={reviewAsset} />
-          <ReviewMetadataFields labels={labels} metadataDraft={metadataDraft} onMetadataChange={onMetadataChange} />
+          <ReviewMetadataFields
+            isMetadataEditable={isMetadataEditable}
+            labels={labels}
+            metadataDraft={metadataDraft}
+            onMetadataChange={onMetadataChange}
+          />
         </div>
       )}
 

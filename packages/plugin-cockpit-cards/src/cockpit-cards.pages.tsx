@@ -1,11 +1,22 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  alignHostMediaReferencesByOrder,
   fetchIamContentHistory,
   formatDateTimeInEditorTimeZone,
+  getHostMediaAsset,
+  getHostMediaAssetFileName,
+  getHostMediaDelivery,
   listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  readSessionAccessSnapshot,
+  resolveContentMediaCapabilities,
+  saveContentWithHostMediaReferences,
+  subscribeSessionAccessSnapshot,
+  updateHostMediaAsset,
   uploadHostMediaFile,
   usePluginTranslation,
   type HostMediaAssetListItem,
+  type HostMediaAssetDetail,
   type IamContentHistoryEntry,
 } from '@sva/plugin-sdk';
 import {
@@ -13,6 +24,10 @@ import {
   Checkbox,
   Input,
   Select,
+  ContentMediaUsageBlock,
+  contentMediaUsageToReference,
+  createManualContentMediaUsage,
+  isPersistableContentMediaUrl,
   StudioDataTable,
   StudioConfirmDialog,
   StudioDetailCard,
@@ -23,14 +38,20 @@ import {
   StudioField,
   StudioFormSummaryErrors,
   StudioLoadingState,
+  StudioMediaPickerOverlay,
   StudioOverviewPageTemplate,
   StudioPagination,
   Textarea,
+  toContentMediaAssetSnapshot,
+  useStudioMediaPickerOverlay,
+  type ContentMediaUsage,
+  type StudioMediaPickerAssetDetail,
+  type StudioMediaPickerOverlayLabels,
   type StudioDetailTabDefinition,
 } from '@sva/studio-ui-react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import * as React from 'react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 
 import {
   createCockpitCard,
@@ -46,7 +67,12 @@ import {
   mapGenericItemToCockpitCardFormValues,
   readCockpitCardPayload,
 } from './cockpit-cards.model.js';
+import {
+  cockpitCardMediaToUsages,
+  cockpitCardUsagesToMedia,
+} from './cockpit-cards.content-media-adapter.js';
 import type { CockpitCardFormValues } from './cockpit-cards.types.js';
+import { COCKPIT_CARD_CONTENT_TYPE } from './cockpit-cards.constants.js';
 
 const defaults: CockpitCardFormValues = {
   heading: '',
@@ -59,6 +85,9 @@ const defaults: CockpitCardFormValues = {
   visible: true,
 };
 type Tab = 'basis' | 'content' | 'settings' | 'history';
+const hasPersistablePublicDelivery = (delivery: { readonly deliveryUrl: string }): boolean =>
+  (delivery as { readonly isPublicUrl?: unknown }).isPublicUrl === true &&
+  isPersistableContentMediaUrl(delivery.deliveryUrl);
 
 function useCategories() {
   const [options, setOptions] = React.useState<readonly { id: string; name: string }[]>([]);
@@ -84,32 +113,25 @@ function useCategories() {
 function ContentFields({
   form,
   pt,
+  mediaUsages,
+  onMediaUsagesChange,
+  canSelectMedia,
+  canUploadMedia,
+  onOpenMediaPicker,
+  onLoadAssetSnapshot,
 }: Readonly<{
   form: ReturnType<typeof useForm<CockpitCardFormValues>>;
   pt: (key: string) => string;
+  mediaUsages: readonly ContentMediaUsage[];
+  onMediaUsagesChange: (usages: readonly ContentMediaUsage[]) => void;
+  canSelectMedia: boolean;
+  canUploadMedia: boolean;
+  onOpenMediaPicker: (mode: 'library' | 'upload') => void;
+  onLoadAssetSnapshot: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
 }>) {
-  const { fields, append, move, remove } = useFieldArray({ control: form.control, name: 'images' });
-  const [assets, setAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
-  const [mediaError, setMediaError] = React.useState(false);
-  const [uploading, setUploading] = React.useState(false);
-  React.useEffect(() => {
-    let active = true;
-    void listHostMediaAssets({
-      fetch: globalThis.fetch.bind(globalThis),
-      visibility: 'public',
-    }).then(
-      (items) =>
-        active &&
-        setAssets(items.filter((item) => item.mimeType?.startsWith('image/') && item.previewUrl)),
-      () => active && setMediaError(true)
-    );
-    return () => {
-      active = false;
-    };
-  }, []);
-  const appendUrl = (url: string | null | undefined) => {
-    if (url && !form.getValues('images').some((image) => image.sourceUrl.url === url))
-      append({ sourceUrl: { url }, contentType: 'image' });
+  const changeUsages = (next: readonly ContentMediaUsage[]) => {
+    onMediaUsagesChange(next);
+    form.setValue('images', [...cockpitCardUsagesToMedia(next)], { shouldDirty: true });
   };
   return (
     <div className="space-y-5">
@@ -118,121 +140,25 @@ function ContentFields({
           <Textarea id="cockpit-card-text" className="min-h-32" {...form.register('text')} />
         </StudioField>
       </StudioDetailCard>
-      <StudioDetailCard
-        title={pt('fields.images')}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Select
-              aria-label={pt('actions.selectImage')}
-              defaultValue=""
-              onChange={(event) => {
-                appendUrl(event.currentTarget.value);
-                event.currentTarget.value = '';
-              }}
-            >
-              <option value="">{pt('actions.selectImage')}</option>
-              {assets.map((asset) => (
-                <option key={asset.id} value={asset.previewUrl ?? ''}>
-                  {asset.fileName ?? asset.id}
-                </option>
-              ))}
-            </Select>
-            <label className="inline-flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm font-medium">
-              <span>{uploading ? pt('actions.uploadingImage') : pt('actions.uploadImage')}</span>
-              <input
-                className="sr-only"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                disabled={uploading}
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0];
-                  if (!file) return;
-                  setUploading(true);
-                  void uploadHostMediaFile({
-                    fetch: globalThis.fetch.bind(globalThis),
-                    file,
-                    visibility: 'public',
-                    mediaType: 'image',
-                  })
-                    .then(
-                      (result) => appendUrl(result.previewUrl),
-                      () => setMediaError(true)
-                    )
-                    .finally(() => setUploading(false));
-                }}
-              />
-            </label>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => append({ sourceUrl: { url: '' }, contentType: 'image' })}
-            >
-              {pt('actions.addImage')}
-            </Button>
-          </div>
-        }
-      >
-        {mediaError ? (
-          <p role="alert" className="text-sm text-destructive">
-            {pt('messages.mediaError')}
-          </p>
-        ) : null}
-        <div className="grid gap-4 lg:grid-cols-2">
-          {fields.map((field, index) => {
-            const imageUrl = form.watch(`images.${index}.sourceUrl.url`);
-            return (
-              <article
-                key={field.id}
-                className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm"
-              >
-                <div className="aspect-video bg-muted">
-                  {imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
-                      {pt('messages.imagePreviewEmpty')}
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-3 p-4">
-                  <StudioField id={`cockpit-card-image-${index}`} label={pt('fields.imageUrl')}>
-                    <Input
-                      id={`cockpit-card-image-${index}`}
-                      type="url"
-                      {...form.register(`images.${index}.sourceUrl.url`)}
-                    />
-                  </StudioField>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={index === 0}
-                      onClick={() => move(index, index - 1)}
-                    >
-                      {pt('actions.moveImageUp')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={index === fields.length - 1}
-                      onClick={() => move(index, index + 1)}
-                    >
-                      {pt('actions.moveImageDown')}
-                    </Button>
-                    <Button type="button" variant="outline" onClick={() => remove(index)}>
-                      {pt('actions.removeImage')}
-                    </Button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+      <StudioDetailCard title={pt('fields.images')}>
+        <ContentMediaUsageBlock
+          usages={mediaUsages}
+          onChange={changeUsages}
+          onAddManual={() => changeUsages([...mediaUsages, createManualContentMediaUsage({ sortOrder: mediaUsages.length })])}
+          onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
+          onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
+          onLoadAssetSnapshot={onLoadAssetSnapshot}
+          showHeader={false}
+          supportedFields={{ altText: true, caption: true, credit: true, license: false }}
+          labels={{
+            title: pt('fields.images'), description: pt('media.description'), empty: pt('media.empty'),
+            actions: { library: pt('actions.selectImage'), upload: pt('actions.uploadImage'), manual: pt('actions.addImage'), remove: pt('actions.removeImage'), moveUp: pt('actions.moveImageUp'), moveDown: pt('actions.moveImageDown'), refreshMetadata: pt('media.refresh'), cancel: pt('media.cancel'), apply: pt('media.apply') },
+            fields: { url: pt('fields.imageUrl'), altText: pt('media.altText'), caption: pt('media.caption'), credit: pt('media.credit'), license: pt('media.license') },
+            states: { linked: pt('media.linked'), manual: pt('media.manual'), synced: pt('media.synced'), pending: pt('media.pending'), missing: pt('media.missing'), additional: pt('media.additional'), unresolved: pt('media.unresolved'), failed: pt('media.failed'), previewUnavailable: pt('messages.imagePreviewEmpty') },
+            announcements: { moved: pt('media.moved'), removed: pt('media.removed') },
+            refresh: { title: pt('media.refreshTitle'), description: pt('media.refreshDescription'), assetValue: pt('media.assetValue'), contentValue: pt('media.contentValue') },
+          }}
+        />
         {form.formState.errors.images ? (
           <p role="alert" className="text-sm text-destructive">
             {pt('validation.images')}
@@ -257,15 +183,93 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [deletePending, setDeletePending] = React.useState(false);
   const [payload, setPayload] = React.useState<unknown>();
+  const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
+  const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
+  const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
+  const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
+  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(null);
+  const sessionAccess = React.useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
+  const mediaCapabilities = React.useMemo(() => resolveContentMediaCapabilities({ canEditContent: true, permissionActions: sessionAccess.permissionActions }), [sessionAccess.permissionActions]);
+  const canSelectMedia = mediaCapabilities.canSelect;
+  const canUploadMedia = mediaCapabilities.canUpload;
+  const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
   const { options, state: categoriesState } = useCategories();
+  const refreshMediaAssets = React.useCallback(async () => {
+    try {
+      const assets = (await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), visibility: 'public' }))
+        .filter((asset) => asset.mimeType?.startsWith('image/'));
+      mediaAssetsRef.current = assets;
+      setMediaAssets(assets);
+      return assets;
+    } catch {
+      mediaAssetsRef.current = [];
+      setMediaAssets([]);
+      return [];
+    }
+  }, []);
+  React.useEffect(() => { void refreshMediaAssets(); }, [refreshMediaAssets]);
+
+  const toDetail = React.useCallback((asset: HostMediaAssetDetail, persistentUrl?: string | null): StudioMediaPickerAssetDetail => {
+    const summary = mediaAssetsRef.current.find((item) => item.id === asset.id);
+    const fileName = summary?.fileName ?? getHostMediaAssetFileName(asset);
+    return {
+      id: asset.id, fileName, title: asset.metadata.title?.trim() || fileName,
+      previewUrl: asset.previewUrl ?? summary?.previewUrl ?? null, mimeType: asset.mimeType,
+      visibility: asset.visibility, persistentUrl,
+      metadata: { title: asset.metadata.title ?? '', altText: asset.metadata.altText ?? '', description: asset.metadata.description ?? '', copyright: asset.metadata.copyright ?? '', license: asset.metadata.license ?? '' },
+    };
+  }, []);
+  const mediaPicker = useStudioMediaPickerOverlay<StudioMediaPickerAssetDetail>({
+    onAccept: (asset) => {
+      if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
+      const usage: ContentMediaUsage = {
+        uiId: `cockpit-card-asset-${asset.id}-${mediaUsages.length}`, assetId: asset.id,
+        persistentUrl: asset.persistentUrl, previewUrl: asset.previewUrl ?? undefined,
+        altText: asset.metadata.altText || asset.fileName, caption: asset.metadata.description || asset.title,
+        credit: asset.metadata.copyright, license: asset.metadata.license,
+        role: 'gallery_item', sortOrder: mediaUsages.length, referenceStatus: 'pending',
+        assetSnapshot: toContentMediaAssetSnapshot({ persistentUrl: asset.persistentUrl, altText: asset.metadata.altText || asset.fileName, caption: asset.metadata.description || asset.title, credit: asset.metadata.copyright, license: asset.metadata.license }),
+      };
+      const next = [...mediaUsages, usage];
+      setMediaUsages(next); form.setValue('images', [...cockpitCardUsagesToMedia(next)], { shouldDirty: true });
+      setRequiresReferenceSync(true); void refreshMediaAssets();
+    },
+    canAcceptAsset: (asset) => Boolean(asset.persistentUrl && isPersistableContentMediaUrl(asset.persistentUrl) && !mediaUsages.some((usage) => usage.assetId === asset.id)),
+    isSupportedUploadFile: (file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type),
+    uploadAsset: async (file) => {
+      const result = await uploadHostMediaFile({ fetch: globalThis.fetch.bind(globalThis), file, visibility: 'public', mediaType: 'image' });
+      await refreshMediaAssets(); return { assetId: result.assetId, previewUrl: result.previewUrl };
+    },
+    loadAsset: async (assetId) => {
+      const [asset, delivery] = await Promise.all([getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }), getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId })]);
+      return toDetail(asset, hasPersistablePublicDelivery(delivery) ? delivery.deliveryUrl : null);
+    },
+    saveAssetMetadata: async (assetId, metadata) => {
+      const asset = await updateHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId, visibility: 'public', metadata });
+      await refreshMediaAssets();
+      const delivery = await getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId });
+      return toDetail(asset, hasPersistablePublicDelivery(delivery) ? delivery.deliveryUrl : null);
+    },
+  });
+  const pickerLabels: StudioMediaPickerOverlayLabels = {
+    title: pt('media.pickerTitle'), description: pt('media.pickerDescription'), modes: { library: pt('actions.selectImage'), upload: pt('actions.uploadImage'), review: pt('media.review') },
+    library: { searchLabel: pt('media.search'), empty: pt('media.empty'), select: pt('actions.selectImage') },
+    upload: { regionLabel: pt('media.uploadRegion'), title: pt('actions.uploadImage'), description: pt('media.uploadDescription'), browseAction: pt('media.browse'), supportLabel: pt('media.support') },
+    review: { title: pt('media.review'), description: pt('media.reviewDescription') },
+    fields: { title: pt('fields.heading'), altText: pt('media.altText'), description: pt('media.caption'), copyright: pt('media.credit'), license: pt('media.license') },
+    actions: { cancel: pt('media.cancel'), backToLibrary: pt('media.backLibrary'), backToUpload: pt('media.backUpload'), openMediaManagement: pt('media.openManagement'), useMedia: pt('media.use') },
+  };
   React.useEffect(() => {
     if (mode !== 'edit' || !contentId) return;
     let active = true;
-    void getCockpitCard(contentId)
+    void Promise.all([getCockpitCard(contentId), listHostMediaReferencesByTarget({ fetch: globalThis.fetch.bind(globalThis), targetType: COCKPIT_CARD_CONTENT_TYPE, targetId: contentId })])
       .then(
-        (item) => {
+        ([item, references]) => {
           if (active) {
-            form.reset(mapGenericItemToCockpitCardFormValues(item));
+            const values = mapGenericItemToCockpitCardFormValues(item);
+            form.reset(values);
+            setMediaUsages(cockpitCardMediaToUsages(values.images, alignHostMediaReferencesByOrder({ itemCount: values.images.length, role: 'gallery_item', references })));
+            setRequiresReferenceSync(references.length > 0);
             setPayload(item.payload);
           }
         },
@@ -282,11 +286,16 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
     async (values) => {
       setMutationError(null);
       try {
-        const input = mapCockpitCardFormValuesToGenericItemInput(values, payload);
-        if (mode === 'create') {
-          const item = await createCockpitCard(input);
-          await navigate({ to: '/admin/cockpit-cards/$id', params: { id: item.id } });
-        } else if (contentId) await updateCockpitCard(contentId, input);
+        const input = mapCockpitCardFormValuesToGenericItemInput({ ...values, images: [...cockpitCardUsagesToMedia(mediaUsages)] }, payload);
+        const saveContent = () => mode === 'create' ? createCockpitCard(input) : updateCockpitCard(contentId as string, input);
+        const result = requiresReferenceSync ? await saveContentWithHostMediaReferences({ fetch: globalThis.fetch.bind(globalThis), saveContent, getTargetId: (saved) => saved.id, targetType: COCKPIT_CARD_CONTENT_TYPE, references: mediaUsages.flatMap((usage) => { const reference = contentMediaUsageToReference(usage); return reference ? [reference] : []; }) }) : { status: 'complete' as const, saved: await saveContent() };
+        if (result.status === 'reference_failed') {
+          setRetryReferenceSync(() => result.retryReferenceSync);
+          setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage));
+          setMutationError(pt('messages.mediaReferencePartialFailure')); return;
+        }
+        setRetryReferenceSync(null);
+        if (mode === 'create') await navigate({ to: '/admin/cockpit-cards/$id', params: { id: result.saved.id } });
       } catch (cause) {
         const reason = cause instanceof Error ? cause.message : '';
         setMutationError(
@@ -372,7 +381,13 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
       title: pt('tabs.content.title'),
       description: pt('tabs.content.description'),
       icon: 'content',
-      panel: <ContentFields form={form} pt={pt} />,
+      panel: <ContentFields form={form} pt={pt} mediaUsages={mediaUsages} onMediaUsagesChange={setMediaUsages} canSelectMedia={canSelectMedia} canUploadMedia={canUploadMedia} onOpenMediaPicker={(pickerMode) => pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()} onLoadAssetSnapshot={async (usage) => {
+        if (!usage.assetId) throw new Error('missing_asset_id');
+        const [asset, delivery] = await Promise.all([getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }), getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId })]);
+        if (!hasPersistablePublicDelivery(delivery)) throw new Error('non_persistable_delivery_url');
+        const detail = toDetail(asset, delivery.deliveryUrl);
+        return toContentMediaAssetSnapshot({ persistentUrl: delivery.deliveryUrl, altText: detail.metadata.altText || detail.fileName, caption: detail.metadata.description || detail.title, credit: detail.metadata.copyright, license: detail.metadata.license });
+      }} />,
     },
     {
       id: 'settings',
@@ -464,12 +479,29 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
         </Button>
       }
     >
+      <StudioMediaPickerOverlay
+        assets={mediaAssets.map((asset) => ({ id: asset.id, title: typeof asset.metadata?.title === 'string' ? asset.metadata.title : asset.fileName ?? asset.id, fileName: asset.fileName ?? asset.id, previewUrl: asset.previewUrl ?? null, mimeType: asset.mimeType, visibility: asset.visibility }))}
+        open={mediaPicker.open} mode={mediaPicker.mode} labels={pickerLabels}
+        reviewAsset={mediaPicker.reviewAsset} reviewSource={mediaPicker.reviewSource}
+        metadataDraft={mediaPicker.metadataDraft} searchValue={mediaPicker.searchValue}
+        uploadPhase={mediaPicker.uploadPhase} isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
+        isSavingReviewAsset={mediaPicker.isSavingReviewAsset} isMetadataEditable={canUpdateMedia}
+        feedbackMessage={mediaPicker.errorCode ? pt('messages.mediaError') : null} feedbackTone={mediaPicker.errorCode ? 'error' : 'default'}
+        isAssetSelectable={(asset) => !mediaUsages.some((usage) => usage.assetId === asset.id)}
+        onClose={mediaPicker.close} onBackFromReview={mediaPicker.goBackFromReview}
+        onChangeMode={(next) => next === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()}
+        onSearchValueChange={mediaPicker.setSearchValue} onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
+        onUploadFile={(file) => void mediaPicker.uploadFile(file)} onConfirmSelection={() => void mediaPicker.confirmSelection()}
+        onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
+        onOpenMediaManagement={(assetId) => void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })}
+      />
       <form id={formId} className="space-y-5" onSubmit={(event) => void save(event)} noValidate>
         {mutationError ? (
           <p role="alert" className="text-sm text-destructive">
             {mutationError}
           </p>
         ) : null}
+        {retryReferenceSync ? <Button type="button" variant="outline" onClick={() => void retryReferenceSync().then(() => { setRetryReferenceSync(null); setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage)); setMutationError(null); }, () => setMutationError(pt('messages.mediaReferencePartialFailure')))}>{pt('actions.retryMediaReferences')}</Button> : null}
         <StudioFormSummaryErrors
           errors={summaryErrors}
           title={pt('validation.summaryTitle')}

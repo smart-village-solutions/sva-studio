@@ -16,6 +16,7 @@ const de = {
       removeImage: 'Bild entfernen',
       moveImageUp: 'Bild nach oben verschieben',
       moveImageDown: 'Bild nach unten verschieben',
+      retryMediaReferences: 'Medienreferenzen erneut speichern',
     },
     permissions: {
       read: 'Projekte lesen',
@@ -71,6 +72,21 @@ const de = {
       empty: 'Keine Projekte vorhanden.',
       deleteTitle: 'Projekt löschen?',
       deleteDescription: 'Das Projekt wird im Studio als gelöscht markiert.',
+      mediaReferencePartialFailure: 'Das Projekt wurde gespeichert, aber die Medienreferenzen konnten nicht gespeichert werden.',
+    },
+    media: {
+      description: 'Bilder auswählen, hochladen oder über eine dauerhafte URL hinzufügen.',
+      refresh: 'Metadaten abgleichen', apply: 'Auswahl übernehmen', license: 'Lizenz',
+      linked: 'Verknüpft', manual: 'Manuell', synced: 'Synchronisiert', pending: 'Ausstehend',
+      missing: 'Referenz fehlt', additional: 'Zusätzliche Referenz', unresolved: 'Nicht auflösbar', failed: 'Fehlgeschlagen',
+      moved: 'Bild an Position {{position}} von {{total}} verschoben.', removed: 'Bild wurde entfernt.',
+      refreshTitle: 'Metadaten abgleichen', refreshDescription: 'Wähle aus, welche Werte aus der Mediathek übernommen werden.',
+      assetValue: 'Mediathek', contentValue: 'Projekt',
+      pickerTitle: 'Bild auswählen', pickerDescription: 'Bild aus der Mediathek auswählen oder hochladen.',
+      review: 'Prüfen', search: 'Bilder suchen', empty: 'Keine Bilder gefunden.', select: 'Bild auswählen',
+      uploadRegion: 'Bild hochladen', uploadDescription: 'Wähle eine unterstützte Bilddatei aus.', browse: 'Datei auswählen', uploadSupport: 'JPEG, PNG oder WebP',
+      reviewTitle: 'Bild prüfen', reviewDescription: 'Metadaten vor der Übernahme prüfen.',
+      backToLibrary: 'Zur Mediathek', backToUpload: 'Zum Upload', openManagement: 'In Medienverwaltung öffnen', useMedia: 'Bild verwenden',
     },
     validation: { summary: 'Bitte prüfe die markierten Felder.' },
     pagination: {
@@ -108,6 +124,10 @@ const en = {
       yes: 'Yes',
       no: 'No',
       notAvailable: 'Not available',
+    },
+    media: {
+      ...de.projects.media,
+      moved: 'Image moved to position {{position}} of {{total}}.',
     },
   },
 };

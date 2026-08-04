@@ -10,6 +10,11 @@ import {
   StudioField,
   StudioFieldGroup,
   Textarea,
+  ContentMediaUsageBlock,
+  contentMediaUsagesToMainserver,
+  createManualContentMediaUsage,
+  mainserverContentMediaToUsages,
+  type ContentMediaUsage,
   getStudioFormFieldProps,
 } from '@sva/studio-ui-react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
@@ -18,17 +23,25 @@ import * as React from 'react';
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
 import { GenericItemsDetailCard } from './generic-items.detail-card.js';
 import { GenericItemsGeoAddressFields } from './generic-items.geo-address-fields.js';
-import { GenericItemsDetailMediaList } from './generic-items.detail-media-list.js';
 import { getMapGeocodingConfig } from './generic-items.map-geocoding-client.js';
 import { GenericItemsGeoLocationFields } from './generic-items.geo-location-fields.js';
-import { createEmptyMediaContent } from './generic-items.detail-media-upload.js';
 
 export const GenericItemsDetailContentTab = ({
   labels,
   onOpenMediaPicker,
+  mediaUsages,
+  onChangeMediaUsages = () => undefined,
+  canSelectMedia = true,
+  canUploadMedia = true,
+  onLoadAssetSnapshot,
 }: Readonly<{
   labels: Record<string, string>;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
+  mediaUsages?: readonly ContentMediaUsage[];
+  onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
+  canSelectMedia?: boolean;
+  canUploadMedia?: boolean;
+  onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
 }>) => {
   const {
     control,
@@ -42,7 +55,6 @@ export const GenericItemsDetailContentTab = ({
   const datesArray = useFieldArray({ control, name: 'dates' });
   const contentBlocksArray = useFieldArray({ control, name: 'contentBlocks' });
   const openingHoursArray = useFieldArray({ control, name: 'openingHours' });
-  const mediaContentsArray = useFieldArray({ control, name: 'mediaContents' });
   const locationsArray = useFieldArray({ control, name: 'locations' });
   const accessibilityInformationsArray = useFieldArray({ control, name: 'accessibilityInformations' });
   const priceInformationsArray = useFieldArray({ control, name: 'priceInformations' });
@@ -53,6 +65,21 @@ export const GenericItemsDetailContentTab = ({
   const contentBlocks = useWatch({ control, name: 'contentBlocks' }) ?? [];
   const openingHours = useWatch({ control, name: 'openingHours' }) ?? [];
   const mediaContents = useWatch({ control, name: 'mediaContents' }) ?? [];
+  const resolvedMediaUsages = mediaUsages ?? mainserverContentMediaToUsages(mediaContents);
+  const changeMediaUsages = (usages: readonly ContentMediaUsage[]) => {
+    onChangeMediaUsages(usages);
+    setValue('mediaContents', contentMediaUsagesToMainserver(usages).map((media) => ({
+      captionText: typeof media.captionText === 'string' ? media.captionText : '',
+      copyright: typeof media.copyright === 'string' ? media.copyright : '',
+      contentType: typeof media.contentType === 'string' ? media.contentType : '',
+      height: media.height === undefined ? '' : String(media.height),
+      width: media.width === undefined ? '' : String(media.width),
+      sourceUrl: {
+        url: typeof media.sourceUrl?.url === 'string' ? media.sourceUrl.url : '',
+        description: typeof media.sourceUrl?.description === 'string' ? media.sourceUrl.description : '',
+      },
+    })), { shouldDirty: true });
+  };
   const locations = useWatch({ control, name: 'locations' }) ?? [];
   const accessibilityInformations = useWatch({ control, name: 'accessibilityInformations' }) ?? [];
   const priceInformations = useWatch({ control, name: 'priceInformations' }) ?? [];
@@ -397,25 +424,39 @@ export const GenericItemsDetailContentTab = ({
 
       <GenericItemsDetailCard title={labels.linksMediaTitle} description={labels.linksMediaDescription}>
         <div className="space-y-5">
-          <GenericItemsDetailMediaList
-            errors={errors}
-            fields={mediaContentsArray.fields}
-            mediaContents={mediaContents}
-            onRemove={mediaContentsArray.remove}
-            labels={labels}
-            register={register}
+          <ContentMediaUsageBlock
+            usages={resolvedMediaUsages}
+            onChange={changeMediaUsages}
+            onAddManual={() => changeMediaUsages([...resolvedMediaUsages, {
+              ...createManualContentMediaUsage({ sortOrder: resolvedMediaUsages.length }),
+              additionalData: { contentType: '', width: '', height: '' },
+            }])}
+            onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
+            onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
+            onLoadAssetSnapshot={onLoadAssetSnapshot}
+            supportedFields={{ altText: true, caption: true, credit: true, license: false }}
+            showHeader={false}
+            renderAdditionalFields={({ usage, update }) => (
+              <StudioField id={`generic-item-media-${usage.uiId}-content-type`} label={labels.mediaContentType}>
+                <Select id={`generic-item-media-${usage.uiId}-content-type`} value={String(usage.additionalData?.contentType ?? '')} onChange={(event) => update({ additionalData: { ...usage.additionalData, contentType: event.currentTarget.value } })}>
+                  <option value="">{labels.mediaTypeUnspecified}</option>
+                  <option value="image">{labels.mediaTypeimage}</option>
+                  <option value="audio">{labels.mediaTypeaudio}</option>
+                  <option value="video">{labels.mediaTypevideo}</option>
+                  <option value="logo">{labels.mediaTypelogo}</option>
+                  <option value="attachment">{labels.mediaTypeattachment}</option>
+                </Select>
+              </StudioField>
+            )}
+            labels={{
+              title: labels.linksMediaTitle, description: labels.linksMediaDescription, empty: labels.mediaUsageEmpty,
+              actions: { library: labels.addImage, upload: labels.uploadMedia, manual: labels.addMediaManual, remove: labels.removeImage, moveUp: labels.mediaMoveUp, moveDown: labels.mediaMoveDown, refreshMetadata: labels.mediaRefresh, cancel: labels.mediaCancel, apply: labels.mediaApply },
+              fields: { url: labels.url, altText: labels.urlDescription, caption: labels.mediaCaption, credit: labels.mediaCopyright, license: labels.mediaLicense },
+              states: { linked: labels.mediaLinked, manual: labels.mediaManual, synced: labels.mediaSynced, pending: labels.mediaPending, missing: labels.mediaMissing, additional: labels.mediaAdditional, unresolved: labels.mediaUnresolved, failed: labels.mediaFailed, previewUnavailable: labels.mediaPreviewUnavailable },
+              announcements: { moved: labels.mediaMoved, removed: labels.mediaRemoved },
+              refresh: { title: labels.mediaRefreshTitle, description: labels.mediaRefreshDescription, assetValue: labels.mediaAssetValue, contentValue: labels.mediaContentValue },
+            }}
           />
-          <div className="flex flex-wrap gap-3">
-            <Button type="button" variant="outline" onClick={() => onOpenMediaPicker('library')}>
-              {labels.addImage}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => onOpenMediaPicker('upload')}>
-              {labels.uploadMedia}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => mediaContentsArray.append(createEmptyMediaContent())}>
-              {labels.addMediaManual}
-            </Button>
-          </div>
         </div>
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">

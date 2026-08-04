@@ -120,6 +120,17 @@ describe('news api', () => {
     expect(fetch).toHaveBeenCalledWith('/api/v1/mainserver/categories', expect.any(Object));
   });
 
+  it('maps category and visibility endpoint errors to NewsApiError', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ code: 'invalid_request', message: 'Invalid' }),
+    } as Response);
+
+    await expect(listNewsCategories()).rejects.toBeInstanceOf(NewsApiError);
+    await expect(setNewsVisibility('news-1', true)).rejects.toBeInstanceOf(NewsApiError);
+  });
+
   it('creates news with idempotency header through the mainserver facade', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,

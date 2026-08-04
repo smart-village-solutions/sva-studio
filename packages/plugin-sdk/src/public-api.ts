@@ -1,4 +1,6 @@
 export type { RouteFactory } from '@sva/core';
+export * from './content-media-contracts-public-api.js';
+export * from './host-media-public-api.js';
 export {
   wasteManagementImportCatalog,
   wasteManagementMasterDataContract,
@@ -94,33 +96,6 @@ export {
 } from './admin-resources.js';
 export type { MediaPickerDefinition, MediaPickerSelectionMode } from './media-picker.js';
 export { defineMediaPickerDefinition } from './media-picker.js';
-export type {
-  HostMediaAssetDetail,
-  HostMediaAssetListItem,
-  HostMediaAssetMetadata,
-  HostMediaReferenceSelection,
-  UpdateHostMediaMetadataInput,
-} from './media-picker-client.js';
-export {
-  listHostMediaAssets,
-  getHostMediaAsset,
-  getHostMediaAssetFileName,
-  updateHostMediaAsset,
-  listHostMediaReferencesByTarget,
-  replaceHostMediaReferences,
-} from './media-picker-client.js';
-export type {
-  CompleteHostMediaUploadResult,
-  HostMediaUploadVisibility,
-  InitializeHostMediaUploadInput,
-  InitializeHostMediaUploadResult,
-  UploadHostMediaFileResult,
-} from './media-upload-client.js';
-export {
-  completeHostMediaUpload,
-  initializeHostMediaUpload,
-  uploadHostMediaFile,
-} from './media-upload-client.js';
 export type { HostMediaFieldOption } from './content-ui-utils.js';
 export {
   compactOptionalString,

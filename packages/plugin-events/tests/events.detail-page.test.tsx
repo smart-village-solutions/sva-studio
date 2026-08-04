@@ -3,7 +3,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import {
   getHostMediaAsset,
   listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  publishSessionAccessSnapshot,
   registerPluginTranslationResolver,
+  resetSessionAccessSnapshot,
+  saveContentWithHostMediaReferences,
   updateHostMediaAsset,
   uploadHostMediaFile,
 } from '@sva/plugin-sdk';
@@ -36,7 +40,14 @@ vi.mock('@sva/plugin-sdk', async () => {
   return {
     ...actual,
     getHostMediaAsset: vi.fn(),
+    getHostMediaDelivery: vi.fn(async () => ({
+      deliveryUrl: 'https://example.com/uploaded-event.jpg',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      isPublicUrl: true,
+    })),
     listHostMediaAssets: vi.fn(async () => []),
+    listHostMediaReferencesByTarget: vi.fn(async () => []),
+    saveContentWithHostMediaReferences: vi.fn(),
     updateHostMediaAsset: vi.fn(),
     uploadHostMediaFile: vi.fn(),
   };
@@ -81,6 +92,11 @@ vi.mock('@tanstack/react-router', () => ({
 
 describe('EventsDetailPage', () => {
   beforeEach(() => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
+      roles: [],
+    });
     navigateMock.mockReset();
     vi.mocked(createEvent).mockReset();
     vi.mocked(deleteEvent).mockReset();
@@ -93,6 +109,12 @@ describe('EventsDetailPage', () => {
     vi.mocked(getHostMediaAsset).mockReset();
     vi.mocked(listHostMediaAssets).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockReset();
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
+    vi.mocked(saveContentWithHostMediaReferences).mockImplementation(async (input) => ({
+      status: 'complete',
+      saved: await input.saveContent(),
+    }));
     vi.mocked(updateHostMediaAsset).mockReset();
     vi.mocked(uploadHostMediaFile).mockReset();
     vi.unstubAllGlobals();
@@ -142,6 +164,8 @@ describe('EventsDetailPage', () => {
         'events.fields.recurringTypeOptions.months': 'Monate',
         'events.fields.recurringTypeOptions.years': 'Jahre',
         'events.fields.mediaCaption': 'Bildunterschrift',
+        'events.fields.mediaSourceUrl': 'Medien-URL',
+        'events.fields.mediaSourceDescription': 'Medien-Beschreibung',
         'events.fields.mediaCopyright': 'Copyright',
         'events.fields.mediaContentType': 'Medientyp',
         'events.fields.mediaWidth': 'Breite',
@@ -201,6 +225,7 @@ describe('EventsDetailPage', () => {
 
   afterEach(() => {
     cleanup();
+    resetSessionAccessSnapshot();
   });
 
   it('renders the fixed tab order for events', async () => {
@@ -399,6 +424,47 @@ describe('EventsDetailPage', () => {
     });
   });
 
+  it('surfaces repeated media-reference failures and clears the retry after success', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Stadtfest',
+      mediaContents: [{ sourceUrl: { url: 'https://example.com/header.jpg' } }],
+      dates: [],
+      addresses: [],
+      urls: [],
+    } as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
+      { assetId: 'asset-1', role: 'gallery_item', sortOrder: 0 },
+    ]);
+    vi.mocked(updateEvent).mockResolvedValueOnce({ id: 'event-1', title: 'Stadtfest' } as never);
+    const retry = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('again'))
+      .mockResolvedValueOnce(undefined);
+    vi.mocked(saveContentWithHostMediaReferences).mockImplementationOnce(async (input) => ({
+      status: 'reference_failed',
+      saved: await input.saveContent(),
+      retryReferenceSync: retry,
+    }));
+    render(<EventsDetailPage mode="edit" contentId="event-1" />);
+    await screen.findByDisplayValue('Stadtfest');
+    vi.mocked(getHostMediaAsset).mockResolvedValueOnce({ metadata: {} } as never);
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    fireEvent.click(screen.getByRole('button', { name: 'events.media.refresh' }));
+    await screen.findByText('events.media.refreshTitle');
+    fireEvent.click(screen.getByRole('button', { name: 'events.actions.cancel' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+    await screen.findByText('events.messages.mediaReferencePartialFailure');
+    fireEvent.click(screen.getByRole('button', { name: 'events.actions.retryMediaReferences' }));
+    await waitFor(() => expect(retry).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'events.actions.retryMediaReferences' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'events.actions.retryMediaReferences' })
+      ).toBeNull()
+    );
+  });
+
   it('uses the upload response url when the refreshed asset still has no preview url', async () => {
     vi.mocked(uploadHostMediaFile).mockResolvedValueOnce({
       assetId: 'asset-uploaded',
@@ -469,7 +535,7 @@ describe('EventsDetailPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Medium übernehmen' }));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('https://example.com/uploaded.jpg')).toBeTruthy();
+      expect(screen.getByDisplayValue('https://example.com/uploaded-event.jpg')).toBeTruthy();
     });
     expect(screen.queryByText('Bild-URL konnte nicht ermittelt werden.')).toBeNull();
   });

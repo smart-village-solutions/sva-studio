@@ -34,6 +34,13 @@ export type HostMediaAssetDetail = Readonly<{
   previewUrl?: string | null;
 }>;
 
+export type HostMediaDelivery = Readonly<{
+  deliveryUrl: string;
+  expiresAt: string;
+  contentType?: string;
+  isPublicUrl?: boolean;
+}>;
+
 export const getHostMediaAssetFileName = (asset: Pick<HostMediaAssetDetail, 'id' | 'storageKey'>): string => {
   const storageKeyParts = asset.storageKey.split('/');
   const fileName = storageKeyParts[storageKeyParts.length - 1]?.trim();
@@ -93,6 +100,23 @@ export const getHostMediaAsset = async (input: {
   const response = await requestJson<{ data: HostMediaAssetDetail }>({
     fetch: input.fetch,
     url: `/api/v1/iam/media/${encodeURIComponent(input.assetId)}${
+      searchParams.size > 0 ? `?${searchParams.toString()}` : ''
+    }`,
+    errorFactory: (failingResponse) => new Error(`media_picker_http_${failingResponse.status}`),
+  });
+  return response.data;
+};
+
+export const getHostMediaDelivery = async (input: {
+  readonly fetch: FetchLike;
+  readonly assetId: string;
+  readonly instanceId?: string;
+}): Promise<HostMediaDelivery> => {
+  const searchParams = new URLSearchParams();
+  if (input.instanceId) searchParams.set('instanceId', input.instanceId);
+  const response = await requestJson<{ data: HostMediaDelivery }>({
+    fetch: input.fetch,
+    url: `/api/v1/iam/media/${encodeURIComponent(input.assetId)}/delivery${
       searchParams.size > 0 ? `?${searchParams.toString()}` : ''
     }`,
     errorFactory: (failingResponse) => new Error(`media_picker_http_${failingResponse.status}`),

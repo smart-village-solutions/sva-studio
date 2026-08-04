@@ -4,8 +4,15 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import {
   fromDatetimeLocalValue,
   getHostMediaAsset,
+  getHostMediaDelivery,
   getHostMediaAssetFileName,
   listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  alignHostMediaReferencesByOrder,
+  readSessionAccessSnapshot,
+  resolveContentMediaCapabilities,
+  saveContentWithHostMediaReferences,
+  subscribeSessionAccessSnapshot,
   toDatetimeLocalValue,
   translatePluginKey,
   updateHostMediaAsset,
@@ -15,6 +22,12 @@ import {
 } from '@sva/plugin-sdk';
 import {
   Button,
+  contentMediaUsageToReference,
+  contentMediaUsagesToMainserver,
+  isPersistableContentMediaUrl,
+  mainserverContentMediaToUsages,
+  toContentMediaAssetSnapshot,
+  type ContentMediaUsage,
   Select,
   StudioDetailPageTemplate,
   StudioFormSummary,
@@ -40,6 +53,7 @@ import {
   saveNewsEditorItem,
   updateNews,
 } from './news.api.js';
+import { NEWS_CONTENT_TYPE } from './news.constants.js';
 import { NewsDetailBasisTab } from './news.detail-basis-tab.js';
 import { NewsDetailContentTab } from './news.detail-content-tab.js';
 import { NewsDetailHistoryTab } from './news.detail-history-tab.js';
@@ -174,7 +188,8 @@ const toNewsMediaPickerSummary = (
 
 const toNewsMediaPickerDetail = (
   asset: HostMediaAssetDetail,
-  summary?: HostMediaAssetListItem
+  summary?: HostMediaAssetListItem,
+  persistentUrl?: string | null
 ): NewsMediaPickerAsset => {
   const fileName = summary ? readAssetFileName(summary) : getHostMediaAssetFileName(asset);
   const title = asset.metadata.title?.trim() || (summary ? readAssetTitle(summary) : fileName);
@@ -186,6 +201,7 @@ const toNewsMediaPickerDetail = (
     previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
     mimeType: asset.mimeType,
     visibility: asset.visibility,
+    persistentUrl,
     metadata: {
       title,
       altText: asset.metadata.altText?.trim() ?? '',
@@ -373,6 +389,15 @@ export const NewsDetailPage = ({
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
+  const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
+  const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
+  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(null);
+  const [retryCreatedContentId, setRetryCreatedContentId] = React.useState<string | null>(null);
+  const sessionAccess = React.useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
+  const mediaCapabilities = React.useMemo(() => resolveContentMediaCapabilities({ canEditContent: true, permissionActions: sessionAccess.permissionActions }), [sessionAccess.permissionActions]);
+  const canSelectMedia = mediaCapabilities.canSelect;
+  const canUploadMedia = mediaCapabilities.canUpload;
+  const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
   const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
   const [visitedTabs, setVisitedTabs] = React.useState<readonly NewsDetailTabId[]>(['basis']);
   const editLoadRequestIdRef = React.useRef(0);
@@ -404,6 +429,8 @@ export const NewsDetailPage = ({
 
   const isAssetSelectable = React.useCallback(
     (asset: NewsMediaPickerAsset) => {
+      if (!asset.persistentUrl) return mediaUsages.every((usage) => usage.assetId !== asset.id);
+      if (!isPersistableContentMediaUrl(asset.persistentUrl)) return false;
       const nextMedia = mediaContentFromAsset({
         id: asset.id,
         fileName: asset.fileName,
@@ -421,11 +448,13 @@ export const NewsDetailPage = ({
       );
       return existingSources.has(mediaContentSourceKey(nextMedia)) === false;
     },
-    [methods]
+    [mediaUsages, methods]
   );
 
   const mediaPicker = useStudioMediaPickerOverlay<NewsMediaPickerAsset>({
     onAccept: (asset) => {
+      if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
+      const persistentUrl = asset.persistentUrl;
       const nextMedia = mediaContentFromAsset({
         id: asset.id,
         fileName: asset.fileName,
@@ -437,9 +466,19 @@ export const NewsDetailPage = ({
       if (!nextMedia) {
         return;
       }
+      const persistedMedia = { ...nextMedia, sourceUrl: { ...nextMedia.sourceUrl, url: persistentUrl } };
 
       const currentMedia = methods.getValues('contentMedia') ?? [];
-      methods.setValue('contentMedia', [...currentMedia, nextMedia], { shouldDirty: true });
+      methods.setValue('contentMedia', [...currentMedia, persistedMedia], { shouldDirty: true });
+      setMediaUsages((current) => [...current, {
+        uiId: `news-asset-${asset.id}-${current.length}`, assetId: asset.id,
+        persistentUrl, previewUrl: asset.previewUrl ?? undefined,
+        altText: asset.metadata.altText || asset.fileName, caption: asset.metadata.description || asset.title,
+        credit: asset.metadata.copyright, license: asset.metadata.license, role: 'gallery_item', sortOrder: current.length,
+        assetSnapshot: toContentMediaAssetSnapshot({ persistentUrl, altText: asset.metadata.altText || asset.fileName, caption: asset.metadata.description || asset.title, credit: asset.metadata.copyright, license: asset.metadata.license }),
+        referenceStatus: 'pending', additionalData: { contentType: persistedMedia.contentType, width: persistedMedia.width, height: persistedMedia.height },
+      }]);
+      setRequiresReferenceSync(true);
       void refreshMediaAssets();
     },
     canAcceptAsset: isAssetSelectable,
@@ -456,9 +495,9 @@ export const NewsDetailPage = ({
       return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
     loadAsset: async (assetId) => {
-      const detail = await getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId });
+      const [detail, delivery] = await Promise.all([getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }), getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId })]);
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      return toNewsMediaPickerDetail(detail, summary);
+      return toNewsMediaPickerDetail(detail, summary, delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl) ? delivery.deliveryUrl : null);
     },
     saveAssetMetadata: async (assetId, metadata) => {
       const detail = await updateHostMediaAsset({
@@ -470,7 +509,8 @@ export const NewsDetailPage = ({
       const assets = await refreshMediaAssets();
       mediaAssetsRef.current = assets;
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      return toNewsMediaPickerDetail(detail, summary);
+      const delivery = await getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId });
+      return toNewsMediaPickerDetail(detail, summary, delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl) ? delivery.deliveryUrl : null);
     },
   });
   const mediaPickerFeedback = React.useMemo(
@@ -565,13 +605,21 @@ export const NewsDetailPage = ({
     let active = true;
 
     void getNews(contentId)
-      .then((item) => {
+      .then(async (item) => {
         if (!active || requestId !== editLoadRequestIdRef.current) {
           return;
         }
 
+        const references = await listHostMediaReferencesByTarget({
+          fetch: globalThis.fetch.bind(globalThis), targetType: NEWS_CONTENT_TYPE, targetId: contentId,
+        }).catch(() => []);
+        if (!active || requestId !== editLoadRequestIdRef.current) {
+          return;
+        }
         const nextValues = mapNewsItemToDetailFormValues(item);
         reset(nextValues);
+        setMediaUsages(mainserverContentMediaToUsages(nextValues.contentMedia, alignHostMediaReferencesByOrder({ itemCount: nextValues.contentMedia.length, role: 'gallery_item', references })));
+        setRequiresReferenceSync(references.length > 0);
         setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
         setInvalidScheduledPublicationInput(false);
         setLoadedItem(item);
@@ -597,6 +645,14 @@ export const NewsDetailPage = ({
 
   const saveCurrentItem = methods.handleSubmit(
     async (values) => {
+      if (retryReferenceSync) {
+        setStatusMessage({
+          kind: 'error',
+          text: pt('messages.mediaReferencePartialFailure'),
+        });
+        return;
+      }
+
       setStatusMessage(null);
 
       if (mode === 'edit' && !contentId) {
@@ -605,17 +661,18 @@ export const NewsDetailPage = ({
       }
 
       try {
-        const saved = await saveNewsEditorItem(
-          {
-            contentId,
-            values,
-            existingItem: loadedItem ?? null,
-          },
-          {
-            createNews,
-            updateNews,
-          }
-        );
+        const saveContent = () => saveNewsEditorItem({ contentId, values: { ...values, contentMedia: contentMediaUsagesToMainserver(mediaUsages) as NewsDetailFormValues['contentMedia'] }, existingItem: loadedItem ?? null }, { createNews, updateNews });
+        const result = requiresReferenceSync
+          ? await saveContentWithHostMediaReferences({ fetch: globalThis.fetch.bind(globalThis), saveContent, getTargetId: (saved) => saved.id, targetType: NEWS_CONTENT_TYPE, references: mediaUsages.flatMap((usage) => { const reference = contentMediaUsageToReference(usage); return reference ? [reference] : []; }) })
+          : { status: 'complete' as const, saved: await saveContent() };
+        const saved = result.saved;
+        if (result.status === 'reference_failed') {
+          setRetryReferenceSync(() => result.retryReferenceSync);
+          setRetryCreatedContentId(mode === 'create' ? saved.id : null);
+          setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage));
+          setStatusMessage({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
+          return;
+        }
 
         if (mode === 'create') {
           await navigate({ to: '/admin/content' });
@@ -624,6 +681,9 @@ export const NewsDetailPage = ({
 
         const nextValues = mapNewsItemToDetailFormValues(saved);
         reset(nextValues);
+        setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
+        setRetryReferenceSync(null);
+        setRetryCreatedContentId(null);
         setLoadedItem(saved);
         setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
         setInvalidScheduledPublicationInput(false);
@@ -715,6 +775,16 @@ export const NewsDetailPage = ({
       changeLabel: pt('tabs.changeLabel'),
       panel: (
         <NewsDetailContentTab
+          mediaUsages={mediaUsages}
+          onChangeMediaUsages={(usages) => { setMediaUsages(usages); setRequiresReferenceSync((current) => current || usages.some((usage) => Boolean(usage.assetId))); }}
+          canSelectMedia={canSelectMedia}
+          canUploadMedia={canUploadMedia}
+          onLoadAssetSnapshot={async (usage) => {
+            if (!usage.assetId) throw new Error('asset_unavailable');
+            const [detail, delivery] = await Promise.all([getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }), getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId })]);
+            if (delivery.isPublicUrl !== true || !isPersistableContentMediaUrl(delivery.deliveryUrl)) throw new Error('asset_unavailable');
+            return toContentMediaAssetSnapshot({ persistentUrl: delivery.deliveryUrl, altText: detail.metadata.altText ?? '', caption: detail.metadata.description ?? '', credit: detail.metadata.copyright ?? '', license: detail.metadata.license ?? '' });
+          }}
           onOpenMediaPicker={(pickerMode) =>
             pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
           }
@@ -766,7 +836,7 @@ export const NewsDetailPage = ({
         mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')
       }
       primaryAction={
-        <Button type="submit" form={formId}>
+        <Button type="submit" form={formId} disabled={Boolean(retryReferenceSync)}>
           {headerSaveLabel}
         </Button>
       }
@@ -821,6 +891,7 @@ export const NewsDetailPage = ({
           open={mediaPicker.open}
           reviewAsset={mediaPicker.reviewAsset}
           reviewSource={mediaPicker.reviewSource}
+          isMetadataEditable={canUpdateMedia}
           searchValue={mediaPicker.searchValue}
           uploadPhase={mediaPicker.uploadPhase}
         />
@@ -833,6 +904,32 @@ export const NewsDetailPage = ({
         >
           {statusMessage ? (
             <StudioFormSummary kind={statusMessage.kind}>{statusMessage.text}</StudioFormSummary>
+          ) : null}
+          {retryReferenceSync ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                void retryReferenceSync().then(() => {
+                  setRetryReferenceSync(null);
+                  setRetryCreatedContentId(null);
+                  setMediaUsages((current) =>
+                    current.map((usage) =>
+                      usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
+                    )
+                  );
+                  setStatusMessage({
+                    kind: 'success',
+                    text: pt('messages.mediaReferenceRetrySuccess'),
+                  });
+                  if (retryCreatedContentId) {
+                    void navigate({ to: '/admin/news/$id', params: { id: retryCreatedContentId } });
+                  }
+                }, () => setStatusMessage({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') }))
+              }
+            >
+              {pt('actions.retryMediaReferences')}
+            </Button>
           ) : null}
           <Tabs
             value={activeTab}

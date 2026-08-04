@@ -1,13 +1,28 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  alignHostMediaReferencesByOrder,
+  getHostMediaAsset,
+  getHostMediaAssetFileName,
+  getHostMediaDelivery,
   listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  readSessionAccessSnapshot,
+  resolveContentMediaCapabilities,
+  saveContentWithHostMediaReferences,
+  subscribeSessionAccessSnapshot,
+  updateHostMediaAsset,
   uploadHostMediaFile,
   usePluginTranslation,
+  type HostMediaAssetDetail,
   type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
 import {
   Button,
+  ContentMediaUsageBlock,
+  contentMediaUsageToReference,
+  createManualContentMediaUsage,
   Input,
+  isPersistableContentMediaUrl,
   RichTextHtmlEditor,
   Select,
   StudioConfirmDialog,
@@ -20,14 +35,19 @@ import {
   StudioField,
   StudioFormSummaryErrors,
   StudioLoadingState,
+  StudioMediaPickerOverlay,
   StudioOverviewPageTemplate,
   StudioPagination,
   Textarea,
   type StudioDetailTabDefinition,
+  type ContentMediaUsage,
+  type StudioMediaPickerAssetDetail,
+  type StudioMediaPickerOverlayLabels,
+  useStudioMediaPickerOverlay,
 } from '@sva/studio-ui-react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import * as React from 'react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 
 import {
   createProject,
@@ -42,6 +62,12 @@ import {
   normalizeProjectInput,
   projectToFormValues,
 } from './projects.model.js';
+import {
+  projectAssetToMediaUsage,
+  projectImagesToMediaUsages,
+  projectMediaUsagesToImages,
+  resolveProjectPersistentDeliveryUrl,
+} from './projects.content-media-adapter.js';
 import { projectFormSchema, type ProjectFormValues } from './projects.validation.js';
 
 type ProjectTab = 'basis' | 'content' | 'settings';
@@ -67,157 +93,81 @@ const richTextLabels = (pt: Translate) => ({
   linkPrompt: pt('richText.linkInput'),
 });
 
-function ProjectImages({ form, pt }: Readonly<{
+function ProjectImages({ form, pt, usages, onChange, canSelectMedia, canUploadMedia, onOpenMediaPicker, onLoadAssetSnapshot }: Readonly<{
   form: ReturnType<typeof useForm<ProjectFormValues>>;
   pt: Translate;
+  usages: readonly ContentMediaUsage[];
+  onChange: (usages: readonly ContentMediaUsage[]) => void;
+  canSelectMedia: boolean;
+  canUploadMedia: boolean;
+  onOpenMediaPicker: (mode: 'library' | 'upload') => void;
+  onLoadAssetSnapshot: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
 }>) {
-  const { fields, append, remove, replace } = useFieldArray({ control: form.control, name: 'images' });
-  const [assets, setAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
-  const [mediaError, setMediaError] = React.useState(false);
-  const [uploading, setUploading] = React.useState(false);
-
-  React.useEffect(() => {
-    let active = true;
-    void listHostMediaAssets({
-      fetch: globalThis.fetch.bind(globalThis),
-      visibility: 'public',
-    }).then(
-      (items) =>
-        active &&
-        setAssets(items.filter((item) => item.mimeType?.startsWith('image/') && item.previewUrl)),
-      () => active && setMediaError(true)
-    );
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const appendImage = (url: string | null | undefined) => {
-    if (!url || form.getValues('images').some((image) => image.url === url)) return;
-    append({ url, altText: '', caption: '', credits: '', position: fields.length });
-  };
-
-  const moveImage = (from: number, to: number) => {
-    const images = [...form.getValues('images')];
-    const [image] = images.splice(from, 1);
-    if (!image) return;
-    images.splice(to, 0, image);
-    replace(images.map((entry, position) => ({ ...entry, position })));
+  const change = (next: readonly ContentMediaUsage[]) => {
+    onChange(next);
+    form.setValue('images', [...projectMediaUsagesToImages(next)], { shouldDirty: true, shouldValidate: true });
   };
 
   return (
-    <StudioDetailCard
-      title={pt('fields.images')}
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Select
-            aria-label={pt('actions.selectImage')}
-            defaultValue=""
-            onChange={(event) => {
-              appendImage(event.currentTarget.value);
-              event.currentTarget.value = '';
-            }}
-          >
-            <option value="">{pt('actions.selectImage')}</option>
-            {assets.map((asset) => (
-              <option key={asset.id} value={asset.previewUrl ?? ''}>
-                {asset.fileName ?? asset.id}
-              </option>
-            ))}
-          </Select>
-          <label className="inline-flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm font-medium">
-            <span>{pt(uploading ? 'actions.uploadingImage' : 'actions.uploadImage')}</span>
-            <input
-              className="sr-only"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              disabled={uploading}
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                if (!file) return;
-                setUploading(true);
-                void uploadHostMediaFile({
-                  fetch: globalThis.fetch.bind(globalThis),
-                  file,
-                  visibility: 'public',
-                  mediaType: 'image',
-                })
-                  .then((result) => appendImage(result.previewUrl), () => setMediaError(true))
-                  .finally(() => setUploading(false));
-              }}
-            />
-          </label>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() =>
-              append({ url: '', altText: '', caption: '', credits: '', position: fields.length })
-            }
-          >
-            {pt('actions.addImage')}
-          </Button>
-        </div>
-      }
-    >
-      {mediaError ? <p role="alert" className="text-sm text-destructive">{pt('messages.mediaError')}</p> : null}
-      {fields.length === 0 ? <p className="text-sm text-muted-foreground">{pt('messages.imagePreviewEmpty')}</p> : null}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {fields.map((field, index) => {
-          const imageUrl = form.watch(`images.${index}.url`);
-          return (
-            <article key={field.id} className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
-              <div className="aspect-video bg-muted">
-                {imageUrl ? (
-                  <img src={imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-                ) : (
-                  <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
-                    {pt('messages.imagePreviewEmpty')}
-                  </div>
-                )}
-              </div>
-              <div className="space-y-3 p-4">
-                <StudioField id={`project-image-url-${index}`} label={pt('fields.imageUrl')}>
-                  <Input id={`project-image-url-${index}`} type="url" {...form.register(`images.${index}.url`)} />
-                </StudioField>
-                <StudioField id={`project-image-alt-${index}`} label={pt('fields.altText')}>
-                  <Input id={`project-image-alt-${index}`} {...form.register(`images.${index}.altText`)} />
-                </StudioField>
-                <StudioField id={`project-image-caption-${index}`} label={pt('fields.caption')}>
-                  <Input id={`project-image-caption-${index}`} {...form.register(`images.${index}.caption`)} />
-                </StudioField>
-                <StudioField id={`project-image-credits-${index}`} label={pt('fields.credits')}>
-                  <Input id={`project-image-credits-${index}`} {...form.register(`images.${index}.credits`)} />
-                </StudioField>
-                <input type="hidden" {...form.register(`images.${index}.position`, { valueAsNumber: true })} />
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={index === 0}
-                    onClick={() => moveImage(index, index - 1)}
-                  >
-                    {pt('actions.moveImageUp')}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={index === fields.length - 1}
-                    onClick={() => moveImage(index, index + 1)}
-                  >
-                    {pt('actions.moveImageDown')}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => remove(index)}>
-                    {pt('actions.removeImage')}
-                  </Button>
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+    <StudioDetailCard title={pt('fields.images')}>
+      <ContentMediaUsageBlock
+        usages={usages} onChange={change} showHeader={false}
+        onAddManual={() => change([...usages, createManualContentMediaUsage({ sortOrder: usages.length })])}
+        onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
+        onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
+        onLoadAssetSnapshot={onLoadAssetSnapshot}
+        supportedFields={{ altText: true, caption: true, credit: true, license: false }}
+        labels={{
+          title: pt('fields.images'), description: pt('media.description'), empty: pt('messages.imagePreviewEmpty'),
+          actions: { library: pt('actions.selectImage'), upload: pt('actions.uploadImage'), manual: pt('actions.addImage'), remove: pt('actions.removeImage'), moveUp: pt('actions.moveImageUp'), moveDown: pt('actions.moveImageDown'), refreshMetadata: pt('media.refresh'), cancel: pt('actions.back'), apply: pt('media.apply') },
+          fields: { url: pt('fields.imageUrl'), altText: pt('fields.altText'), caption: pt('fields.caption'), credit: pt('fields.credits'), license: pt('media.license') },
+          states: { linked: pt('media.linked'), manual: pt('media.manual'), synced: pt('media.synced'), pending: pt('media.pending'), missing: pt('media.missing'), additional: pt('media.additional'), unresolved: pt('media.unresolved'), failed: pt('media.failed'), previewUnavailable: pt('messages.imagePreviewEmpty') },
+          announcements: { moved: pt('media.moved'), removed: pt('media.removed') },
+          refresh: { title: pt('media.refreshTitle'), description: pt('media.refreshDescription'), assetValue: pt('media.assetValue'), contentValue: pt('media.contentValue') },
+        }}
+      />
     </StudioDetailCard>
   );
 }
+
+const toPickerSummary = (asset: HostMediaAssetListItem) => ({
+  id: asset.id,
+  title: (typeof asset.metadata?.title === 'string' ? asset.metadata.title.trim() : '') || asset.fileName?.trim() || asset.id,
+  fileName: asset.fileName?.trim() || asset.id,
+  previewUrl: asset.previewUrl?.trim() || null,
+  mimeType: asset.mimeType,
+  visibility: asset.visibility,
+});
+
+const toPickerDetail = (
+  asset: HostMediaAssetDetail,
+  summary: HostMediaAssetListItem | undefined,
+  persistentUrl: string | null
+): StudioMediaPickerAssetDetail => {
+  const fileName = summary?.fileName?.trim() || getHostMediaAssetFileName(asset);
+  const summaryTitle = typeof summary?.metadata?.title === 'string' ? summary.metadata.title.trim() : '';
+  const title = asset.metadata.title?.trim() || summaryTitle || fileName;
+  return {
+    id: asset.id, title, fileName, persistentUrl,
+    previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
+    mimeType: asset.mimeType, visibility: asset.visibility,
+    metadata: {
+      title, altText: asset.metadata.altText?.trim() ?? '',
+      description: asset.metadata.description?.trim() ?? '',
+      copyright: asset.metadata.copyright?.trim() ?? '', license: asset.metadata.license?.trim() ?? '',
+    },
+  };
+};
+
+const pickerLabels = (pt: Translate): StudioMediaPickerOverlayLabels => ({
+  title: pt('media.pickerTitle'), description: pt('media.pickerDescription'),
+  modes: { library: pt('actions.selectImage'), upload: pt('actions.uploadImage'), review: pt('media.review') },
+  library: { searchLabel: pt('media.search'), empty: pt('media.empty'), select: pt('media.select') },
+  upload: { regionLabel: pt('media.uploadRegion'), title: pt('actions.uploadImage'), description: pt('media.uploadDescription'), browseAction: pt('media.browse'), supportLabel: pt('media.uploadSupport') },
+  review: { title: pt('media.reviewTitle'), description: pt('media.reviewDescription') },
+  fields: { title: pt('fields.title'), altText: pt('fields.altText'), description: pt('fields.caption'), copyright: pt('fields.credits'), license: pt('media.license') },
+  actions: { cancel: pt('actions.back'), backToLibrary: pt('media.backToLibrary'), backToUpload: pt('media.backToUpload'), openMediaManagement: pt('media.openManagement'), useMedia: pt('media.useMedia') },
+});
 
 function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; contentId?: string }>) {
   const pt = usePluginTranslation('projects');
@@ -233,19 +183,85 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
   const [mutationError, setMutationError] = React.useState<string>();
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [deletePending, setDeletePending] = React.useState(false);
+  const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
+  const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
+  const mediaAssetsRef = React.useRef(mediaAssets);
+  const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
+  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(null);
+  const [retryCreatedContentId, setRetryCreatedContentId] = React.useState<string | null>(null);
+  const sessionAccess = React.useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
+  const mediaCapabilities = React.useMemo(() => resolveContentMediaCapabilities({ canEditContent: true, permissionActions: sessionAccess.permissionActions }), [sessionAccess.permissionActions]);
+  const canSelectMedia = mediaCapabilities.canSelect;
+  const canUploadMedia = mediaCapabilities.canUpload;
+  const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
+
+  const refreshMediaAssets = React.useCallback(async () => {
+    try {
+      const assets = (await listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis), visibility: 'public' }))
+        .filter((asset) => asset.mimeType?.startsWith('image/'));
+      mediaAssetsRef.current = assets;
+      setMediaAssets(assets);
+      return assets;
+    } catch {
+      mediaAssetsRef.current = [];
+      setMediaAssets([]);
+      return [];
+    }
+  }, []);
+
+  const mediaPicker = useStudioMediaPickerOverlay<StudioMediaPickerAssetDetail>({
+    onAccept: (asset) => {
+      if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
+      const next = [...mediaUsages, projectAssetToMediaUsage({
+        assetId: asset.id, persistentUrl: asset.persistentUrl, previewUrl: asset.previewUrl,
+        metadata: { ...asset.metadata, fileName: asset.fileName }, sortOrder: mediaUsages.length,
+      })];
+      setMediaUsages(next);
+      form.setValue('images', [...projectMediaUsagesToImages(next)], { shouldDirty: true, shouldValidate: true });
+      setRequiresReferenceSync(true);
+      void refreshMediaAssets();
+    },
+    canAcceptAsset: (asset) => Boolean(asset.persistentUrl && isPersistableContentMediaUrl(asset.persistentUrl) && mediaUsages.every((usage) => usage.assetId !== asset.id)),
+    isSupportedUploadFile: (file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type),
+    uploadAsset: async (file) => {
+      const uploaded = await uploadHostMediaFile({ fetch: globalThis.fetch.bind(globalThis), file, visibility: 'public', mediaType: 'image' });
+      await refreshMediaAssets();
+      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
+    },
+    loadAsset: async (assetId) => {
+      const [asset, delivery] = await Promise.all([
+        getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }),
+        getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId }),
+      ]);
+      const persistentUrl = resolveProjectPersistentDeliveryUrl(delivery);
+      return toPickerDetail(asset, mediaAssetsRef.current.find((item) => item.id === assetId), persistentUrl);
+    },
+    saveAssetMetadata: async (assetId, metadata) => {
+      const asset = await updateHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId, visibility: 'public', metadata });
+      const delivery = await getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId });
+      const assets = await refreshMediaAssets();
+      const persistentUrl = resolveProjectPersistentDeliveryUrl(delivery);
+      return toPickerDetail(asset, assets.find((item) => item.id === assetId), persistentUrl);
+    },
+  });
+
+  React.useEffect(() => { void refreshMediaAssets(); }, [refreshMediaAssets]);
 
   React.useEffect(() => {
     if (mode !== 'edit' || !contentId) return;
     let active = true;
     void getProject(contentId)
-      .then(
-        (project) => {
+      .then(async (project) => {
+          if (!active) return;
+          const references = await listHostMediaReferencesByTarget({ fetch: globalThis.fetch.bind(globalThis), targetType: 'projects.project', targetId: contentId }).catch(() => []);
           if (!active) return;
           setItem(project);
           form.reset(projectToFormValues(project));
-        },
-        () => active && setLoadError(true)
-      )
+          const alignments = alignHostMediaReferencesByOrder({ itemCount: project.images.length, role: 'gallery_item', references });
+          setMediaUsages(projectImagesToMediaUsages(project.images, alignments));
+          setRequiresReferenceSync(references.length > 0);
+        })
+      .catch(() => active && setLoadError(true))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
@@ -257,17 +273,37 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
 
   const save = form.handleSubmit(
     async (values) => {
+      if (retryReferenceSync) {
+        setMutationError(pt('messages.mediaReferencePartialFailure'));
+        return;
+      }
       setMutationError(undefined);
       try {
         const input = normalizeProjectInput({
           ...values,
           images: values.images.map((image, position) => ({ ...image, position })),
         });
+        const saveContent = () => mode === 'create' ? createProject(input) : updateProject(contentId as string, input);
+        const result = requiresReferenceSync
+          ? await saveContentWithHostMediaReferences({ fetch: globalThis.fetch.bind(globalThis), saveContent, getTargetId: (saved) => saved.id, targetType: 'projects.project', references: mediaUsages.flatMap((usage) => { const reference = contentMediaUsageToReference(usage); return reference ? [reference] : []; }) })
+          : { status: 'complete' as const, saved: await saveContent() };
+        if (result.status === 'reference_failed') {
+          setRetryReferenceSync(() => result.retryReferenceSync);
+          setRetryCreatedContentId(mode === 'create' ? result.saved.id : null);
+          setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage));
+          setMutationError(pt('messages.mediaReferencePartialFailure'));
+          return;
+        }
+        setRetryReferenceSync(null);
+        setRetryCreatedContentId(null);
+        if (requiresReferenceSync) {
+          setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
+        }
         if (mode === 'create') {
-          const created = await createProject(input);
+          const created = result.saved;
           await navigate({ to: '/admin/projects/$id', params: { id: created.id } });
         } else if (contentId) {
-          const updated = await updateProject(contentId, input);
+          const updated = result.saved;
           setItem(updated);
           form.reset(projectToFormValues(updated));
         }
@@ -336,7 +372,25 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
               />
             </div>
           </StudioDetailCard>
-          <ProjectImages form={form} pt={pt} />
+          <ProjectImages
+            form={form} pt={pt} usages={mediaUsages}
+            onChange={(usages) => {
+              setRequiresReferenceSync((required) => required || mediaUsages.some((usage) => Boolean(usage.assetId)) || usages.some((usage) => Boolean(usage.assetId)));
+              setMediaUsages(usages);
+            }}
+            canSelectMedia={canSelectMedia} canUploadMedia={canUploadMedia}
+            onOpenMediaPicker={(pickerMode) => pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()}
+            onLoadAssetSnapshot={async (usage) => {
+              if (!usage.assetId) throw new Error('asset_unavailable');
+              const [asset, delivery] = await Promise.all([
+                getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }),
+                getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }),
+              ]);
+              const persistentUrl = resolveProjectPersistentDeliveryUrl(delivery);
+              if (!persistentUrl) throw new Error('asset_unavailable');
+              return { persistentUrl, altText: asset.metadata.altText ?? '', caption: asset.metadata.description ?? '', credit: asset.metadata.copyright ?? '', license: asset.metadata.license ?? '' };
+            }}
+          />
         </div>
       ),
     },
@@ -408,10 +462,42 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
           ) : null}
         </div>
       }
-      primaryAction={<Button type="submit" form={formId} disabled={form.formState.isSubmitting}>{pt(mode === 'create' ? 'actions.create' : 'actions.update')}</Button>}
+      primaryAction={<Button type="submit" form={formId} disabled={form.formState.isSubmitting || Boolean(retryReferenceSync)}>{pt(mode === 'create' ? 'actions.create' : 'actions.update')}</Button>}
     >
+      <StudioMediaPickerOverlay
+        assets={mediaAssets.map(toPickerSummary)} open={mediaPicker.open} mode={mediaPicker.mode}
+        labels={pickerLabels(pt)} searchValue={mediaPicker.searchValue}
+        metadataDraft={mediaPicker.metadataDraft} reviewAsset={mediaPicker.reviewAsset}
+        reviewSource={mediaPicker.reviewSource} uploadPhase={mediaPicker.uploadPhase}
+        isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
+        isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
+        isMetadataEditable={canUpdateMedia}
+        isAssetSelectable={(asset) => mediaUsages.every((usage) => usage.assetId !== asset.id)}
+        onClose={mediaPicker.close}
+        onChangeMode={(pickerMode) => pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()}
+        onSearchValueChange={mediaPicker.setSearchValue}
+        onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
+        onUploadFile={(file) => void mediaPicker.uploadFile(file)}
+        onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
+        onBackFromReview={mediaPicker.goBackFromReview}
+        onConfirmSelection={() => void mediaPicker.confirmSelection()}
+        onOpenMediaManagement={(assetId) => void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })}
+      />
       <form id={formId} className="space-y-5" onSubmit={(event) => void save(event)} noValidate>
         {mutationError ? <p role="alert" className="text-sm text-destructive">{mutationError}</p> : null}
+        {retryReferenceSync ? (
+          <Button type="button" variant="outline" onClick={() => {
+            void retryReferenceSync().then(() => {
+              setRetryReferenceSync(null);
+              setRetryCreatedContentId(null);
+              setMutationError(undefined);
+              setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
+              if (retryCreatedContentId) {
+                void navigate({ to: '/admin/projects/$id', params: { id: retryCreatedContentId } });
+              }
+            }, () => setMutationError(pt('messages.mediaReferencePartialFailure')));
+          }}>{pt('actions.retryMediaReferences')}</Button>
+        ) : null}
         <StudioFormSummaryErrors errors={summaryErrors} title={pt('validation.summary')} />
         <StudioDetailTabs
           ariaLabel={pt('tabs.ariaLabel')}

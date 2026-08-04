@@ -17,11 +17,11 @@ const imageSchema = z.object({
   sourceUrl: z.object({
     url: z.string().url().startsWith('https://'),
     description: z.string().optional(),
-  }),
+  }).passthrough(),
   contentType: z.literal('image'),
   captionText: z.string().optional(),
   copyright: z.string().optional(),
-});
+}).passthrough();
 
 export const cockpitCardFormSchema = z.object({
   heading: z.string().trim().min(1),

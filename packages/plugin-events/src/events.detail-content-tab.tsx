@@ -3,10 +3,15 @@ import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import {
   Button,
   Checkbox,
+  ContentMediaUsageBlock,
   Input,
   RichTextHtmlEditor,
   StudioField,
   StudioFieldGroup,
+  contentMediaUsagesToMainserver,
+  createManualContentMediaUsage,
+  mainserverContentMediaToUsages,
+  type ContentMediaUsage,
 } from '@sva/studio-ui-react';
 
 import {
@@ -19,8 +24,6 @@ import {
   type EventsDetailFormValues,
 } from './events.detail-form.js';
 import { EventsDetailCard } from './events.detail-card.js';
-import { EventsDetailMediaList } from './events.detail-media-list.js';
-import { createEmptyMediaContent } from './events.detail-media-upload.js';
 import { EventsGeoAddressFields } from './events.geo-address-fields.js';
 import { getMapGeocodingConfig } from './events.map-geocoding-client.js';
 type Translator = (key: string) => string;
@@ -46,6 +49,11 @@ export function EventsDetailContentTab({
   dateInputsInvalid,
   dateStartInput,
   onOpenMediaPicker,
+  mediaUsages,
+  onChangeMediaUsages = () => undefined,
+  canSelectMedia = true,
+  canUploadMedia = true,
+  onLoadAssetSnapshot,
   onDateEndInputChange,
   onDateStartInputChange,
   pt,
@@ -54,6 +62,11 @@ export function EventsDetailContentTab({
   dateInputsInvalid: Readonly<{ dateStart: boolean; dateEnd: boolean }>;
   dateStartInput: string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
+  mediaUsages?: readonly ContentMediaUsage[];
+  onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
+  canSelectMedia?: boolean;
+  canUploadMedia?: boolean;
+  onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
   onDateEndInputChange: (nextValue: string) => void;
   onDateStartInputChange: (nextValue: string) => void;
   pt: Translator;
@@ -61,14 +74,12 @@ export function EventsDetailContentTab({
   const {
     control,
     formState: { errors },
-    register,
     setValue,
   } = useFormContext<EventsDetailFormValues>();
   const datesArray = useFieldArray({ control, name: 'content.dates' });
   const addressesArray = useFieldArray({ control, name: 'content.addresses' });
   const contactsArray = useFieldArray({ control, name: 'content.contacts' });
   const urlsArray = useFieldArray({ control, name: 'content.urls' });
-  const mediaContentsArray = useFieldArray({ control, name: 'content.mediaContents' });
   const pricesArray = useFieldArray({ control, name: 'content.priceInformations' });
 
   const description = useWatch({ control, name: 'content.description' }) ?? '';
@@ -77,6 +88,11 @@ export function EventsDetailContentTab({
   const contacts = useWatch({ control, name: 'content.contacts' }) ?? [];
   const urls = useWatch({ control, name: 'content.urls' }) ?? [];
   const mediaContents = useWatch({ control, name: 'content.mediaContents' }) ?? [];
+  const resolvedMediaUsages = mediaUsages ?? mainserverContentMediaToUsages(mediaContents);
+  const changeMediaUsages = (usages: readonly ContentMediaUsage[]) => {
+    onChangeMediaUsages(usages);
+    setValue('content.mediaContents', contentMediaUsagesToMainserver(usages) as EventsDetailFormValues['content']['mediaContents'], { shouldDirty: true });
+  };
   const organizer = useWatch({ control, name: 'content.organizer' }) ?? createDefaultOrganizer();
   const prices = useWatch({ control, name: 'content.priceInformations' }) ?? [];
   const renderedDates = dates.length > 0 ? dates : [createDefaultDate()];
@@ -166,30 +182,21 @@ export function EventsDetailContentTab({
         title={pt('cards.content.media.title')}
         description={pt('cards.content.media.description')}
       >
-        <div className="space-y-5">
-          <EventsDetailMediaList
-            fields={mediaContentsArray.fields}
-            mediaContents={mediaContents}
-            onRemove={mediaContentsArray.remove}
-            pt={pt}
-            register={register}
-          />
-          <div className="flex flex-wrap gap-3">
-            <Button type="button" variant="outline" onClick={() => onOpenMediaPicker('library')}>
-              {pt('actions.addImage')}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => onOpenMediaPicker('upload')}>
-              {pt('actions.uploadMedia')}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => mediaContentsArray.append(createEmptyMediaContent())}
-            >
-              {pt('actions.addMediaManual')}
-            </Button>
-          </div>
-        </div>
+        <ContentMediaUsageBlock
+          usages={resolvedMediaUsages} onChange={changeMediaUsages}
+          onAddManual={() => changeMediaUsages([...resolvedMediaUsages, { ...createManualContentMediaUsage({ sortOrder: resolvedMediaUsages.length }), additionalData: { contentType: 'image', width: '', height: '' } }])}
+          onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
+          onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
+          onLoadAssetSnapshot={onLoadAssetSnapshot} showHeader={false}
+          supportedFields={{ altText: true, caption: true, credit: true, license: false }}
+          labels={{
+            title: pt('cards.content.media.title'), description: pt('cards.content.media.description'), empty: pt('cards.content.media.empty'),
+            actions: { library: pt('actions.addImage'), upload: pt('actions.uploadMedia'), manual: pt('actions.addMediaManual'), remove: pt('actions.removeImage'), moveUp: pt('media.moveUp'), moveDown: pt('media.moveDown'), refreshMetadata: pt('media.refresh'), cancel: pt('actions.cancel'), apply: pt('media.apply') },
+            fields: { url: pt('fields.mediaSourceUrl'), altText: pt('fields.mediaSourceDescription'), caption: pt('fields.mediaCaption'), credit: pt('fields.mediaCopyright'), license: pt('messages.mediaPickerLicense') },
+            states: { linked: pt('media.linked'), manual: pt('media.manual'), synced: pt('media.synced'), pending: pt('media.pending'), missing: pt('media.missing'), additional: pt('media.additional'), unresolved: pt('media.unresolved'), failed: pt('media.failed'), previewUnavailable: pt('media.previewUnavailable') },
+            announcements: { moved: pt('media.moved'), removed: pt('media.removed') }, refresh: { title: pt('media.refreshTitle'), description: pt('media.refreshDescription'), assetValue: pt('media.assetValue'), contentValue: pt('media.contentValue') },
+          }}
+        />
       </EventCardSection>
 
       <EventCardSection
